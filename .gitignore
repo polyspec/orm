@@ -1,0 +1,9 @@
+/bin/
+/target/
+/bench/rust/target/
+/bench/php/vendor/
+*.dylib
+*.so
+*.wasm
+*.h
+/docs/perf-raw/

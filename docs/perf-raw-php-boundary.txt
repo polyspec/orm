@@ -1,0 +1,18 @@
+== persistent UDS round-trip (compile) ==
+plan bytes: 1934 (list)
+uds compile list                   n=20000   mean=   28813ns p50=  26458ns p90=  33375ns p99=  90750ns max=  396750ns
+uds compile pk                     n=20000   mean=   19243ns p50=  17375ns p90=  21791ns p99=  59500ns max=  251791ns
+error path: {"error":{"code":"SCHEMA_HASH_MISMATCH","msg":"x"}}
+== per-request connect (non-persistent) x2000 ==
+connect+compile pk+close           n=2000    mean=   50551ns p50=  39125ns p90=  89584ns p99= 167375ns max=  289417ns
+== APCu plan-cache hit path ==
+xxh3(ir)+apcu_fetch                n=20000   mean=     290ns p50=    250ns p90=    292ns p99=    666ns max=   18292ns
+json_decode(plan 1.9KB)            n=20000   mean=    8641ns p50=   8250ns p90=   8917ns p99=  16875ns max=  108583ns
+== result decode: 100 rows x 20 cols ==
+bytes: json=16934 msgpack=11642
+json_decode 100x20                 n=20000   mean=   72048ns p50=  69750ns p90=  76792ns p99= 118542ns max=  243000ns
+msgpack_unpack 100x20              n=20000   mean=   29917ns p50=  28666ns p90=  32167ns p99=  55917ns max=  207042ns
+assoc bytes: json=33743 msgpack=24495
+json_decode assoc 100x20           n=20000   mean=  143841ns p50= 139083ns p90= 152958ns p99= 232583ns max= 3114042ns
+msgpack_unpack assoc 100x20        n=20000   mean=   72602ns p50=  69916ns p90=  77583ns p99= 131292ns max=  265000ns
+json positional + array_combine    n=20000   mean=   94140ns p50=  90708ns p90=  99875ns p99= 162667ns max=  280375ns
