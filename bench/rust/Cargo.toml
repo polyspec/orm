@@ -1,0 +1,24 @@
+[package]
+name = "orm-bench"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "boundary"
+path = "src/boundary.rs"
+
+[[bin]]
+name = "native"
+path = "src/native.rs"
+
+[dependencies]
+sqlx = { version = "0.9", features = ["runtime-tokio", "mysql"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+libloading = "0.9"
+wasmtime = "48"
+wasmtime-wasi = "48"
+
+[profile.release]
+opt-level = 3
+debug = false

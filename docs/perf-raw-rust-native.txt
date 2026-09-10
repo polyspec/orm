@@ -1,0 +1,4 @@
+sqlx pk get                    n=3000   mean=    90375ns p50=    81375ns p90=   115542ns p99=   234250ns
+sqlx list100                   n=3000   mean=   517303ns p50=   471792ns p90=   655458ns p99=  1031958ns
+sqlx insert                    n=1000   mean=   218871ns p50=   191125ns p90=   273334ns p99=   516041ns
+sqlx relation4 + rust assembly n=1000   mean=  6923766ns p50=  6683916ns p90=  7830917ns p99= 13194709ns

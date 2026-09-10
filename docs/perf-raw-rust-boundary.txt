@@ -1,0 +1,11 @@
+== libloading ==
+dlopen+symbols: 365.867166ms
+plan bytes: 1925 (list) / 1463 (pk)
+ffi compile list             n=20000   mean=   13414ns p50=  11416ns p90=  17125ns p99=  42334ns max=  155833ns
+ffi compile pk               n=20000   mean=    6510ns p50=   5416ns p90=   9083ns p99=  14417ns max=  212667ns
+ffi error path: {"error":{"code":"SCHEMA_HASH_MISMATCH","msg":"x"}}
+== wasmtime ==
+module compile(load, cached after first run): 389.667916ms, instantiate+_initialize: 1.869709ms
+wasm compile list            n=20000   mean=   56658ns p50=  50584ns p90=  68959ns p99= 172542ns max=  924375ns
+wasm compile pk              n=20000   mean=   26780ns p50=  23958ns p90=  32334ns p99=  67709ns max=  324458ns
+wasm load+instantiate (x5)   n=5       mean=22192600ns p50=22415125ns p90=22522417ns p99=22522417ns max=22577167ns
