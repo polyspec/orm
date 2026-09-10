@@ -1,0 +1,10 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/maxkwon/orm/bench/go
+cpu: Apple M3 Pro
+BenchmarkPKGet-11        	   62830	     37975 ns/op	    3507 B/op	      39 allocs/op
+BenchmarkList100-11      	    5394	    448096 ns/op	  124444 B/op	    2176 allocs/op
+BenchmarkInsert-11       	   13567	    174529 ns/op	     735 B/op	      13 allocs/op
+BenchmarkRelation4-11    	     386	   6430547 ns/op	 1057211 B/op	   13650 allocs/op
+PASS
+ok  	github.com/maxkwon/orm/bench/go	14.327s
