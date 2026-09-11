@@ -165,6 +165,7 @@ final class Config
     }
 
     private ?array $manifest = null;
+    private ?string $hash = null;
 
     private function manifest(): array
     {
@@ -184,7 +185,7 @@ final class Config
 
     public function schemaHash(): string
     {
-        return (string) $this->manifest()['schema_hash'];
+        return $this->hash ??= (string) $this->manifest()['schema_hash'];
     }
 
     /** Whether any column of the manifest carries the aes style (then a secret must be configured). */

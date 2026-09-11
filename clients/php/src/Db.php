@@ -10,10 +10,15 @@ namespace Orm;
 class Db
 {
     /**
-     * Decided by measurement (clients/php/tests/bench_emulate.php, S5): emulated prepares are
-     * one round trip per statement instead of prepare + execute, which is what a PHP-FPM
-     * request pays for every statement shape it runs (the statement cache is per process);
-     * mysqlnd still returns native ints/floats, INET6_NTOA strings and JSON text unchanged.
+     * Decided by measurement (clients/php/tests/bench_emulate.php, S5, p50 µs, off → on):
+     * cold (prepare + execute, what a PHP-FPM request pays once per statement shape since
+     * PDOStatements do not outlive the request): pk 72 → 48, IN(8) 107 → 75, 100 rows 460 → 382;
+     * warm (statement reused in-process): pk 33 → 49, IN(8) 75 → 84, 100 rows 435 → 400.
+     * Web requests run most shapes once, so emulation wins; a CLI loop re-running one small
+     * statement pays ~15µs more per execution (the server re-parses the text protocol query).
+     * Types are unchanged: mysqlnd returns native ints/floats, INET6_NTOA strings and JSON text
+     * in both modes (the conformance runner prints identical output). The DSN must carry
+     * charset=utf8mb4: the client-side quoting uses the connection charset.
      */
     public const EMULATE_PREPARES = true;
 
