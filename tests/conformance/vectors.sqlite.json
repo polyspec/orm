@@ -391,9 +391,9 @@
             "binds": [
               "conf-write-2",
               5,
-              "2026-09-11 07:42:14.964687",
+              "$NOW",
               "$SEQ",
-              "2026-09-11 07:42:14.964000"
+              "$TS"
             ],
             "sql": "UPDATE \"battle\" SET \"name\" = ?, \"like_count\" = ?, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ? AND \"battle\".\"updated_ts\" = ?"
           },
@@ -406,9 +406,9 @@
           {
             "binds": [
               "stale",
-              "2026-09-11 07:42:14.964837",
+              "$NOW",
               "$SEQ",
-              "2026-09-11 07:42:14.964000"
+              "$TS"
             ],
             "sql": "UPDATE \"battle\" SET \"name\" = ?, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ? AND \"battle\".\"updated_ts\" = ?"
           },
@@ -1156,7 +1156,7 @@
           {
             "binds": [
               "conf-save-2",
-              "2026-09-11 07:42:14.969332",
+              "$NOW",
               "$SEQ"
             ],
             "sql": "UPDATE \"battle\" SET \"name\" = ?, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ?"
@@ -1209,7 +1209,7 @@
           {
             "binds": [
               2,
-              "2026-09-11 07:42:14.969625",
+              "$NOW",
               "$SEQ"
             ],
             "sql": "UPDATE \"battle\" SET \"read_count\" = \"battle\".\"read_count\" + ?, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ?"
@@ -1224,7 +1224,7 @@
             "binds": [
               10,
               10,
-              "2026-09-11 07:42:14.969694",
+              "$NOW",
               "$SEQ"
             ],
             "sql": "UPDATE \"battle\" SET \"read_count\" = CASE WHEN \"battle\".\"read_count\" \u003e ? THEN \"battle\".\"read_count\" - ? ELSE 0 END, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ?"
@@ -1238,7 +1238,7 @@
           {
             "binds": [
               2,
-              "2026-09-11 07:42:14.969766",
+              "$NOW",
               "$SEQ"
             ],
             "sql": "UPDATE \"battle\" SET \"read_count\" = \"battle\".\"read_count\" * ? + 1, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ?"

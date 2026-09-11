@@ -131,8 +131,8 @@
 - [x] T6.1 E `dialect/postgres`: `$n`, `"quote"`, `ILIKE`, `ON CONFLICT (unique key 추론) DO UPDATE`, `RETURNING`, `to_tsvector('simple')`/`websearch_to_tsquery`, `host()`/`::inet`, aes/hex는 app-side — 골든 통과
 - [x] T6.2 E `dialect/sqlite`: `?`, `"quote"`, `LIKE … ESCAPE`, `INDEXED BY`, `ON CONFLICT`, `RETURNING`; `like_binary`·fulltext는 `OPERATOR_NOT_ALLOWED`로 거부(dialect `Supports`), 모든 스타일 app-side — 골든 통과
 - [ ] T6.3 **P** G/R 호스트측 AES 코덱(MySQL 키 폴딩, AES-128-ECB, PKCS7) + 벡터(MySQL `AES_ENCRYPT` 산출물과 바이트 일치), `ip` 16B packed, `point` 정책 → T2.6
-- [~] T6.4 드라이버 추상 — **Go 완료**(`orm.Open(driver…)` mysql|postgres|sqlite, pgx stdlib·modernc sqlite, `$n` 재번호, RETURNING, PG/SQLite 에러 매핑, `[db].driver`), Rust·PHP는 레인
-- [~] T6.5 로컬 PostgreSQL 17(`deploy/local-postgres.md`)·SQLite에 bench 시드 + AES 시더 적재; **Go 러너 결과: PG 39/40, SQLite 39/40 MySQL과 동일**(`sql_dump`는 방언 텍스트) → `vectors.postgres.json`·`vectors.sqlite.json` 기록; PHP·Rust 3 DB는 레인 후
+- [~] T6.4 드라이버 추상 — Go·Rust 완료(Go: pgx stdlib·modernc sqlite; Rust: sqlx postgres/sqlite feature, Pool enum, PG 파라미터 타입 서버 조회 후 변환), `$n` 재번호, RETURNING, 에러 매핑, `[db].driver`; hook은 `$SECRET`·`$NOW` 마스킹; PHP 레인 진행 중
+- [~] T6.5 로컬 PostgreSQL 17(`deploy/local-postgres.md`)·SQLite에 bench 시드 + AES 시더 적재; **Go·Rust: MySQL·PostgreSQL·SQLite 각 40/40 동일**(`vectors.postgres.json`·`vectors.sqlite.json`은 방언별 기록, 결과는 MySQL과 동일하고 `sql_dump`만 방언 텍스트); PHP 3 DB는 레인 후
 - [ ] T6.6 E `ormgen import --dsn postgres://…` → T5.10
 - [x] T6.7 `docs/dialects.md` 차이표 + 레인 스펙 `docs/lanes/s6.md`
 
