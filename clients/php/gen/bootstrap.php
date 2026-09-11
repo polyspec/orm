@@ -6,7 +6,7 @@ namespace App\Orm;
 
 use Orm\Registry;
 
-Registry::generated('01de65d5f6ace3cd');
+Registry::generated('11e1906438fe59a9');
 Registry::register('battle', BattleRow::class);
 Registry::register('user', UserRow::class);
 Registry::register('service', ServiceRow::class);
