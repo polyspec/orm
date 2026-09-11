@@ -47,7 +47,9 @@ impl BattleRow {
     pub const ENTITY: &'static str = "battle";
     pub const PK: &'static str = "seq";
 
-    pub(crate) fn from_row(vals: &mut [Val], a: &orm::plan::Assemble) -> Self {
+    /// Maps a positional row onto the struct, its joined children (same row) and
+    /// its relation children (rows of later steps, cloned per attachment).
+    pub(crate) fn from_row(vals: &mut [Val], a: &orm::plan::Assemble, rs: &db::Rows) -> Self {
         let mut r = Self::default();
         r.loaded = true;
         for c in &a.columns {
@@ -83,12 +85,39 @@ impl BattleRow {
             }
         }
         for ch in &a.children {
-            if ch.kind != "join" { continue; }
             match ch.rel.as_str() {
-                "service" => if db::join_present(vals, &ch.assemble) { r.service_ = Some(Box::new(super::service::ServiceRow::from_row(vals, &ch.assemble))); },
-                "service_member" => if db::join_present(vals, &ch.assemble) { r.service_member_ = Some(Box::new(super::service_member::ServiceMemberRow::from_row(vals, &ch.assemble))); },
-                "service_module" => if db::join_present(vals, &ch.assemble) { r.service_module_ = Some(Box::new(super::service_module::ServiceModuleRow::from_row(vals, &ch.assemble))); },
-                "user" => if db::join_present(vals, &ch.assemble) { r.user_ = Some(Box::new(super::user::UserRow::from_row(vals, &ch.assemble))); },
+                "service" => {
+                    if let Some(ja) = &ch.assemble {
+                        if db::join_present(vals, ja) { r.service_ = Some(Box::new(super::service::ServiceRow::from_row(vals, ja, rs))); }
+                    } else if let Some(row) = rs.related(ch, vals).first() {
+                        let mut row = row.to_vec();
+                        r.service_ = Some(Box::new(super::service::ServiceRow::from_row(&mut row, rs.step_assemble(ch), rs)));
+                    }
+                }
+                "service_member" => {
+                    if let Some(ja) = &ch.assemble {
+                        if db::join_present(vals, ja) { r.service_member_ = Some(Box::new(super::service_member::ServiceMemberRow::from_row(vals, ja, rs))); }
+                    } else if let Some(row) = rs.related(ch, vals).first() {
+                        let mut row = row.to_vec();
+                        r.service_member_ = Some(Box::new(super::service_member::ServiceMemberRow::from_row(&mut row, rs.step_assemble(ch), rs)));
+                    }
+                }
+                "service_module" => {
+                    if let Some(ja) = &ch.assemble {
+                        if db::join_present(vals, ja) { r.service_module_ = Some(Box::new(super::service_module::ServiceModuleRow::from_row(vals, ja, rs))); }
+                    } else if let Some(row) = rs.related(ch, vals).first() {
+                        let mut row = row.to_vec();
+                        r.service_module_ = Some(Box::new(super::service_module::ServiceModuleRow::from_row(&mut row, rs.step_assemble(ch), rs)));
+                    }
+                }
+                "user" => {
+                    if let Some(ja) = &ch.assemble {
+                        if db::join_present(vals, ja) { r.user_ = Some(Box::new(super::user::UserRow::from_row(vals, ja, rs))); }
+                    } else if let Some(row) = rs.related(ch, vals).first() {
+                        let mut row = row.to_vec();
+                        r.user_ = Some(Box::new(super::user::UserRow::from_row(&mut row, rs.step_assemble(ch), rs)));
+                    }
+                }
                 _ => {}
             }
         }
@@ -969,23 +998,8 @@ impl Battle {
     pub fn drop_child_key(mut self) -> Self { self.q.node().drop_child_key = true; self }
     pub fn if_parent_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("seq", v); self }
     pub fn if_parent_name_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("name", v.into()); self }
-    pub fn if_parent_is_close_eq(mut self, v: bool) -> Self { self.q.if_parent("is_close", v); self }
-    pub fn if_parent_is_display_eq(mut self, v: bool) -> Self { self.q.if_parent("is_display", v); self }
-    pub fn if_parent_is_allday_eq(mut self, v: bool) -> Self { self.q.if_parent("is_allday", v); self }
-    pub fn if_parent_target_team_player_count_eq(mut self, v: i32) -> Self { self.q.if_parent("target_team_player_count", v); self }
-    pub fn if_parent_success_count_eq(mut self, v: i32) -> Self { self.q.if_parent("success_count", v); self }
-    pub fn if_parent_player_count_eq(mut self, v: i32) -> Self { self.q.if_parent("player_count", v); self }
-    pub fn if_parent_read_count_eq(mut self, v: i32) -> Self { self.q.if_parent("read_count", v); self }
-    pub fn if_parent_cover_url_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("cover_url", v.into()); self }
-    pub fn if_parent_user_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("user_seq", v); self }
     pub fn if_parent_service_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("service_seq", v); self }
-    pub fn if_parent_service_module_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("service_module_seq", v); self }
-    pub fn if_parent_service_member_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("service_member_seq", v); self }
-    pub fn if_parent_uuid_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("uuid", v.into()); self }
-    pub fn if_parent_is_single_play_eq(mut self, v: bool) -> Self { self.q.if_parent("is_single_play", v); self }
-    pub fn if_parent_like_count_eq(mut self, v: i32) -> Self { self.q.if_parent("like_count", v); self }
-    pub fn if_parent_aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_email", v.into()); self }
-    pub fn if_parent_aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_phone", v.into()); self }
+    pub fn if_parent_user_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("user_seq", v); self }
 
     // ---- insert draft ----
     pub fn set_name(mut self, v: impl Into<String>) -> Self { let v: String = v.into(); self.q.set("name", v); self }
@@ -1062,7 +1076,8 @@ impl Battle {
     // ---- terminals ----
     pub async fn one(mut self, ex: &impl Exec) -> Result<Option<BattleRow>> {
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
-        Ok(rows.data.first_mut().map(|v| BattleRow::from_row(v, &rows.assemble)))
+        let data = std::mem::take(&mut rows.data);
+        Ok(data.into_iter().next().map(|mut v| BattleRow::from_row(&mut v, &rows.assemble, &rows)))
     }
 
     pub async fn all(mut self, ex: &impl Exec) -> Result<Collection<BattleRow>> {
@@ -1115,10 +1130,11 @@ impl Battle {
 impl Default for Battle { fn default() -> Self { Self::new() } }
 
 fn collect(rows: &mut db::Rows) -> Collection<BattleRow> {
-    let mut c = Collection::with_capacity(rows.data.len());
-    for v in &mut rows.data {
+    let data = std::mem::take(&mut rows.data);
+    let mut c = Collection::with_capacity(data.len());
+    for mut v in data {
         let k = Key::of(&v[0]);
-        c.put(k, BattleRow::from_row(v, &rows.assemble));
+        c.put(k, BattleRow::from_row(&mut v, &rows.assemble, rows));
     }
     c
 }

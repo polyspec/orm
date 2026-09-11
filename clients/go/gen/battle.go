@@ -469,10 +469,11 @@ func (r *BattleRow) UpdateOptimistic(ctx context.Context, ex orm.Exec) error {
 
 func (r *BattleRow) Delete(ctx context.Context, ex orm.Exec) error { return r.DeleteRow(ctx, ex) }
 
-// scanBattle maps a positional row slice onto the struct (and joined children).
-func scanBattle(vals []any, a *plan.Assemble) *BattleRow {
+// scanBattle maps a positional row slice onto the struct, its joined
+// children (same row) and its relation children (rows of later steps).
+func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 	r := &BattleRow{}
-	for i, c := range a.Columns {
+	for _, c := range a.Columns {
 		v := vals[c.Index]
 		switch c.Name {
 		case "seq":
@@ -549,28 +550,40 @@ func scanBattle(vals []any, a *plan.Assemble) *BattleRow {
 				r.AesHexPhone = &x
 			}
 		}
-		_ = i
 	}
 	for _, ch := range a.Children {
-		if ch.Kind != "join" {
-			continue
-		}
 		switch ch.Rel {
 		case "service":
-			if orm.JoinPresent(vals, ch.Assemble) {
-				r.Service = scanService(vals, ch.Assemble)
+			if ch.Kind == "join" {
+				if orm.JoinPresent(vals, ch.Assemble) {
+					r.Service = scanService(vals, ch.Assemble, rs)
+				}
+			} else if rows := rs.Related(ch, vals); len(rows) > 0 {
+				r.Service = scanService(rows[0], rs.StepAssemble(ch), rs)
 			}
 		case "service_member":
-			if orm.JoinPresent(vals, ch.Assemble) {
-				r.ServiceMember = scanServiceMember(vals, ch.Assemble)
+			if ch.Kind == "join" {
+				if orm.JoinPresent(vals, ch.Assemble) {
+					r.ServiceMember = scanServiceMember(vals, ch.Assemble, rs)
+				}
+			} else if rows := rs.Related(ch, vals); len(rows) > 0 {
+				r.ServiceMember = scanServiceMember(rows[0], rs.StepAssemble(ch), rs)
 			}
 		case "service_module":
-			if orm.JoinPresent(vals, ch.Assemble) {
-				r.ServiceModule = scanServiceModule(vals, ch.Assemble)
+			if ch.Kind == "join" {
+				if orm.JoinPresent(vals, ch.Assemble) {
+					r.ServiceModule = scanServiceModule(vals, ch.Assemble, rs)
+				}
+			} else if rows := rs.Related(ch, vals); len(rows) > 0 {
+				r.ServiceModule = scanServiceModule(rows[0], rs.StepAssemble(ch), rs)
 			}
 		case "user":
-			if orm.JoinPresent(vals, ch.Assemble) {
-				r.User = scanUser(vals, ch.Assemble)
+			if ch.Kind == "join" {
+				if orm.JoinPresent(vals, ch.Assemble) {
+					r.User = scanUser(vals, ch.Assemble, rs)
+				}
+			} else if rows := rs.Related(ch, vals); len(rows) > 0 {
+				r.User = scanUser(rows[0], rs.StepAssemble(ch), rs)
 			}
 		}
 	}
@@ -2547,37 +2560,13 @@ func (q *Battle) ForceIndexIxService() *Battle { q.q.Node.ForceIdx = "ix_service
 func (q *Battle) ForceIndexIxUser() *Battle    { q.q.Node.ForceIdx = "ix_user"; return q }
 
 // Relation-child options.
-func (q *Battle) Flatten() *Battle                   { q.q.Node.Flatten = true; return q }
-func (q *Battle) LimitPerParent(n int) *Battle       { q.q.Node.LimitPerParent = n; return q }
-func (q *Battle) DropChildKey() *Battle              { q.q.Node.DropChildKey = true; return q }
-func (q *Battle) IfParentSeqEq(v int64) *Battle      { q.q.IfParent("seq", v); return q }
-func (q *Battle) IfParentNameEq(v string) *Battle    { q.q.IfParent("name", v); return q }
-func (q *Battle) IfParentIsCloseEq(v bool) *Battle   { q.q.IfParent("is_close", v); return q }
-func (q *Battle) IfParentIsDisplayEq(v bool) *Battle { q.q.IfParent("is_display", v); return q }
-func (q *Battle) IfParentIsAlldayEq(v bool) *Battle  { q.q.IfParent("is_allday", v); return q }
-func (q *Battle) IfParentTargetTeamPlayerCountEq(v int32) *Battle {
-	q.q.IfParent("target_team_player_count", v)
-	return q
-}
-func (q *Battle) IfParentSuccessCountEq(v int32) *Battle { q.q.IfParent("success_count", v); return q }
-func (q *Battle) IfParentPlayerCountEq(v int32) *Battle  { q.q.IfParent("player_count", v); return q }
-func (q *Battle) IfParentReadCountEq(v int32) *Battle    { q.q.IfParent("read_count", v); return q }
-func (q *Battle) IfParentCoverUrlEq(v string) *Battle    { q.q.IfParent("cover_url", v); return q }
-func (q *Battle) IfParentUserSeqEq(v int64) *Battle      { q.q.IfParent("user_seq", v); return q }
-func (q *Battle) IfParentServiceSeqEq(v int64) *Battle   { q.q.IfParent("service_seq", v); return q }
-func (q *Battle) IfParentServiceModuleSeqEq(v int64) *Battle {
-	q.q.IfParent("service_module_seq", v)
-	return q
-}
-func (q *Battle) IfParentServiceMemberSeqEq(v int64) *Battle {
-	q.q.IfParent("service_member_seq", v)
-	return q
-}
-func (q *Battle) IfParentUuidEq(v string) *Battle        { q.q.IfParent("uuid", v); return q }
-func (q *Battle) IfParentIsSinglePlayEq(v bool) *Battle  { q.q.IfParent("is_single_play", v); return q }
-func (q *Battle) IfParentLikeCountEq(v int32) *Battle    { q.q.IfParent("like_count", v); return q }
-func (q *Battle) IfParentAesHexEmailEq(v string) *Battle { q.q.IfParent("aes_hex_email", v); return q }
-func (q *Battle) IfParentAesHexPhoneEq(v string) *Battle { q.q.IfParent("aes_hex_phone", v); return q }
+func (q *Battle) Flatten() *Battle                     { q.q.Node.Flatten = true; return q }
+func (q *Battle) LimitPerParent(n int) *Battle         { q.q.Node.LimitPerParent = n; return q }
+func (q *Battle) DropChildKey() *Battle                { q.q.Node.DropChildKey = true; return q }
+func (q *Battle) IfParentSeqEq(v int64) *Battle        { q.q.IfParent("seq", v); return q }
+func (q *Battle) IfParentNameEq(v string) *Battle      { q.q.IfParent("name", v); return q }
+func (q *Battle) IfParentServiceSeqEq(v int64) *Battle { q.q.IfParent("service_seq", v); return q }
+func (q *Battle) IfParentUserSeqEq(v int64) *Battle    { q.q.IfParent("user_seq", v); return q }
 
 // Insert draft.
 func (q *Battle) SetName(v string) *Battle { q.q.Set("name", v); return q }
@@ -2749,7 +2738,7 @@ func (q *Battle) One(ctx context.Context, ex orm.Exec) (*BattleRow, error) {
 	if err != nil || len(rows.Data) == 0 {
 		return nil, err
 	}
-	return scanBattle(rows.Data[0], rows.Assemble), nil
+	return scanBattle(rows.Data[0], rows.Assemble, rows), nil
 }
 
 func (q *Battle) All(ctx context.Context, ex orm.Exec) (*orm.Collection[BattleRow], error) {
@@ -2764,7 +2753,7 @@ func (q *Battle) All(ctx context.Context, ex orm.Exec) (*orm.Collection[BattleRo
 func collectBattle(rows *orm.Rows) *orm.Collection[BattleRow] {
 	c := orm.NewCollection[BattleRow](len(rows.Data))
 	for _, vals := range rows.Data {
-		r := scanBattle(vals, rows.Assemble)
+		r := scanBattle(vals, rows.Assemble, rows)
 		c.Put(orm.KeyOf(vals[0]), r)
 	}
 	return c

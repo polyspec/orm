@@ -5,6 +5,7 @@ package gen_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -191,4 +192,85 @@ func TestErrorSurface(t *testing.T) {
 	if _, err := gen.NewBattle().SeqIn([]int64{}).Count(ctx, db); err == nil || !strings.Contains(err.Error(), "EMPTY_IN") {
 		t.Errorf("EMPTY_IN: %v", err)
 	}
+}
+
+func TestRelationPaths(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	// data: service 7 has 50 members (service_member.service_seq = 7) and 1 module; each user has 20 battles.
+	var stmts []string
+	db.Cfg().OnQuery = func(e orm.Event) { stmts = append(stmts, e.SQL) }
+
+	// one relation off the root, many off a nested one, key_by + limit_per_parent + drop_child_key
+	rows, err := gen.NewBattle().
+		ServiceSeqEq(7).OrderBySeqAsc().Limit(0, 5).
+		RelationUser(gen.NewUser()).
+		RelationService(gen.NewService().
+			RelationsMembers(gen.NewServiceMember().OrderBySeqDesc().LimitPerParent(3).KeyByUserSeq().DropChildKey())).
+		All(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rows.Len() != 5 || len(stmts) != 4 { // main, user, service, members
+		t.Fatalf("len=%d statements=%d", rows.Len(), len(stmts))
+	}
+	for _, b := range rows.All() {
+		if b.GetUser() == nil || b.User.Seq != b.UserSeq || b.User.Name != fmt.Sprintf("user-%d", b.UserSeq) {
+			t.Errorf("battle %d user: %+v", b.Seq, b.User)
+		}
+		if b.GetService() == nil || b.Service.Seq != 7 || b.Service.GetMembers().Len() != 3 {
+			t.Errorf("battle %d service/members: %+v", b.Seq, b.Service)
+		}
+		for k, m := range b.Service.GetMembers().All() {
+			if k.I != m.UserSeq || m.ServiceSeq != 7 {
+				t.Errorf("member key %v vs %+v", k, m)
+			}
+		}
+	}
+	// the members step: 3 per service by seq desc, one IN value (service 7), dropped key stays readable (typed)
+	if !strings.Contains(stmts[3], "ROW_NUMBER() OVER (PARTITION BY `a`.`service_seq` ORDER BY `a`.`seq` DESC)") || !strings.Contains(stmts[3], "`orm_rn` <= 3") {
+		t.Errorf("members sql: %s", stmts[3])
+	}
+
+	// if_parent: users only for closed battles (seq%7==0); many relation with key_by; join + relation off the join
+	stmts = nil
+	rows, err = gen.NewBattle().
+		SeqIn([]int64{7, 8, 14}).OrderBySeqAsc().
+		RelationUser(gen.NewUser().IfParentIsCloseEq(true).RelationsBattles(gen.NewBattle().OrderBySeqAsc().LimitPerParent(2))).
+		JoinService(gen.NewService().RelationsModules(gen.NewServiceModule())).
+		All(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b7, b8, b14 := rows.Get(orm.KeyOf(int64(7))), rows.Get(orm.KeyOf(int64(8))), rows.Get(orm.KeyOf(int64(14)))
+	if b7.GetUser() == nil || b14.GetUser() == nil || b8.GetUser() != nil {
+		t.Errorf("if_parent: 7=%v 8=%v 14=%v", b7.User != nil, b8.User != nil, b14.User != nil)
+	}
+	if n := b7.User.GetBattles().Len(); n != 2 || b7.User.Battles.First().UserSeq != b7.UserSeq {
+		t.Errorf("nested many limit_per_parent: %d", n)
+	}
+	if b8.GetService() == nil || b8.Service.GetModules().Len() != 1 || b8.Service.Modules.First().ServiceSeq != b8.ServiceSeq {
+		t.Errorf("relation off join: %+v", b8.Service)
+	}
+	// the users step binds only the closed battles' user_seq (7 and 14 → two values → padded to 2 placeholders)
+	if !strings.Contains(stmts[1], "`a`.`seq` IN (?, ?)") {
+		t.Errorf("users IN: %s", stmts[1])
+	}
+
+	// no parents → relation steps are skipped, collections stay empty (never nil)
+	stmts = nil
+	none, err := gen.NewBattle().SeqEq(0).RelationUser(gen.NewUser()).All(ctx, db)
+	if err != nil || none.Len() != 0 || len(stmts) != 1 {
+		t.Errorf("empty parents: len=%d statements=%d err=%v", none.Len(), len(stmts), err)
+	}
+	one, err := gen.NewBattle().SeqEq(42).RelationService(gen.NewService().RelationsMembers(gen.NewServiceMember().LimitPerParent(1))).One(ctx, db)
+	if err != nil || one == nil || one.Service == nil || one.Service.GetMembers().Len() != 1 {
+		t.Errorf("one + relation: %+v %v", one, err)
+	}
+	// paginate keeps relations
+	page, err := gen.NewBattle().ServiceSeqEq(7).OrderBySeqAsc().RelationUser(gen.NewUser()).Paginate(ctx, db, 1, 4)
+	if err != nil || page.Total != 1000 || page.Items.Len() != 4 || page.Items.First().GetUser() == nil {
+		t.Errorf("paginate + relation: %+v %v", page, err)
+	}
+	db.Cfg().OnQuery = nil
 }
