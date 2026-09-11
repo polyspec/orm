@@ -145,6 +145,8 @@ impl Q {
         Q { req: Req::new(schema_hash, entity), pending_or: false }
     }
 
+    pub fn entity(&self) -> &str { &self.req.ir.query.entity }
+
     pub fn node(&mut self) -> &mut Query {
         &mut self.req.ir.query
     }

@@ -548,16 +548,38 @@ impl {{.Type}} {
     // ---- join children: on() = ON, where_() = parent WHERE group ----
     pub fn on(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { { let w = self.q.on_w(); f({{.Type}}Where { w }); } self }
     pub fn where_(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { { let w = self.q.w(); f({{.Type}}Where { w }); } self }
-{{range .Rels}}
-    pub fn join_{{.Ident}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.join({{printf "%q" .Name}}, "inner", &child.as_ref().q); self }
-    pub fn left_join_{{.Ident}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.join({{printf "%q" .Name}}, "left", &child.as_ref().q); self }
-{{- if eq .Kind "one"}}
-    pub fn relation_{{.Ident}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.relation({{printf "%q" .Name}}, &child.as_ref().q); self }
-{{- else}}
-    pub fn relations_{{.Ident}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.relation({{printf "%q" .Name}}, &child.as_ref().q); self }
+    pub fn relation(mut self, child: impl AsRef<Q>) -> Self {
+        let c = child.as_ref();
+        let rel = match c.entity() {
+{{- range .Rels}}{{- if eq .Kind "one"}}
+            {{printf "%q" .Target}} => {{printf "%q" .Name}},
+{{- end}}{{- end}}
+            _ => panic!("no one-to-one relation from {{.Name}}"),
+        };
+        self.q.relation(rel, c); self
+    }
+    pub fn relations(mut self, child: impl AsRef<Q>) -> Self {
+        let c = child.as_ref();
+        let rel = match c.entity() {
+{{- range .Rels}}{{- if eq .Kind "many"}}
+            {{printf "%q" .Target}} => {{printf "%q" .Name}},
+{{- end}}{{- end}}
+            _ => panic!("no one-to-many relation from {{.Name}}"),
+        };
+        self.q.relation(rel, c); self
+    }
+    pub fn join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "inner") }
+    pub fn left_join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "left") }
+    fn join_target(mut self, child: impl AsRef<Q>, kind: &str) -> Self {
+        let c = child.as_ref();
+        let rel = match c.entity() {
+{{- range .Rels}}
+            {{printf "%q" .Target}} => {{printf "%q" .Name}},
 {{- end}}
-{{- end}}
-
+            _ => panic!("no relation from {{.Name}}"),
+        };
+        self.q.join(rel, kind, c); self
+    }
     // ---- columns ----
     pub fn select_all(mut self) -> Self { self.q.columns().mode = "all".into(); self }
     pub fn select_none(mut self) -> Self { self.q.columns().mode = "none".into(); self }
@@ -757,6 +779,7 @@ impl {{.Type}} {
 }
 
 impl AsRef<{{.Type}}> for {{.Type}} { fn as_ref(&self) -> &Self { self } }
+impl AsRef<Q> for {{.Type}} { fn as_ref(&self) -> &Q { &self.q } }
 
 impl Default for {{.Type}} { fn default() -> Self { query() } }
 

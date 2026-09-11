@@ -1210,20 +1210,10 @@ final class Author extends Q implements AuthorInterface
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new AuthorWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new AuthorWhere($this->w())); return $this; }
-
-    public function joinService(Service $child): static { $this->attachJoin('service', 'inner', $child); return $this; }
-    public function leftJoinService(Service $child): static { $this->attachJoin('service', 'left', $child); return $this; }
-    public function relationService(Service $child): static { $this->attachRelation('service', $child); return $this; }
-    public function joinServiceMember(ServiceMember $child): static { $this->attachJoin('service_member', 'inner', $child); return $this; }
-    public function leftJoinServiceMember(ServiceMember $child): static { $this->attachJoin('service_member', 'left', $child); return $this; }
-    public function relationServiceMember(ServiceMember $child): static { $this->attachRelation('service_member', $child); return $this; }
-    public function joinServiceRegion(ServiceRegion $child): static { $this->attachJoin('service_region', 'inner', $child); return $this; }
-    public function leftJoinServiceRegion(ServiceRegion $child): static { $this->attachJoin('service_region', 'left', $child); return $this; }
-    public function relationServiceRegion(ServiceRegion $child): static { $this->attachRelation('service_region', $child); return $this; }
-    public function joinUser(User $child): static { $this->attachJoin('user', 'inner', $child); return $this; }
-    public function leftJoinUser(User $child): static { $this->attachJoin('user', 'left', $child); return $this; }
-    public function relationUser(User $child): static { $this->attachRelation('user', $child); return $this; }
-
+    public function relation(Q $child): static { $this->attachRelation(Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'one'), $child); return $this; }
+    public function relations(Q $child): static { $this->attachRelation(Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'many'), $child); return $this; }
+    public function join(Q $child): static { $this->attachJoin(Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
+    public function leftJoin(Q $child): static { $this->attachJoin(Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
     // ---- columns ----
     public function selectAll(): static { $this->colMode('all'); return $this; }
     public function selectNone(): static { $this->colMode('none'); return $this; }
