@@ -129,6 +129,95 @@ try {
 $again->delete($db);
 check((new Battle)->seqEq($created->getSeq())->count($db) === 0, 'delete');
 
+// ---- S3: upsert, save, query update/delete, deleteCascade, sql ----
+$draft = fn(string $name, int $readCount = 1) => (new Battle)
+    ->setName($name)->setReadCount($readCount)
+    ->setUserSeq(1)->setServiceSeq(999)->setServiceModuleSeq(1)->setServiceMemberSeq(1)
+    ->setStartDt('2026-06-01 00:00:00')->setEndDt('2026-12-31 00:00:00');
+$a = $draft('php-u1')->setUuid('php-upsert')->insert($db);
+$b = $draft('php-u2')->setUuid('php-upsert')->onDuplicateSetName('php-u2')->onDuplicatePlusReadCount(5)->insert($db);
+check($a !== null && $b !== null && $b->getSeq() === $a->getSeq() && $b->getName() === 'php-u2' && $b->getReadCount() === 6, 'insert on duplicate updates and returns the existing row');
+$c = $draft('php-u3', 9)->setUuid('php-upsert')->onDuplicateSetAll()->insert($db);
+check($c->getSeq() === $a->getSeq() && $c->getName() === 'php-u3' && $c->getReadCount() === 9, 'onDuplicateSetAll mirrors the draft');
+$d = $draft('php-u4')->setUuid('php-upsert')->onDuplicateSetNameExpr('CONCAT(`name`, ?)', ['!'])->onDuplicateMinusReadCount(100)->insert($db);
+check($d->getSeq() === $a->getSeq() && $d->getName() === 'php-u3!' && $d->getReadCount() === 0, 'on duplicate expr + minus clamped at 0');
+check((new Battle)->seqEq($a->getSeq())->delete($db) === 1 && (new Battle)->seqEq($a->getSeq())->count($db) === 0, 'query delete returns the affected count');
+
+$r = $draft('php-save')->save($db);
+check($r !== null && $r->getSeq() > 0 && $r->getName() === 'php-save', 'save without pk inserts');
+$r2 = (new Battle)->setSeq($r->getSeq())->setName('php-save-2')->save($db);
+check($r2 !== null && $r2->getSeq() === $r->getSeq() && $r2->getName() === 'php-save-2' && $r2->getUserSeq() === 1, 'save with pk updates the other columns only');
+check((new Battle)->seqEq($r->getSeq())->plusReadCount(2)->setLikeCount(7)->update($db) === 1, 'query update returns the affected count');
+$r3 = (new Battle)->oneBySeq($db, $r->getSeq());
+check($r3->getReadCount() === 3 && $r3->getLikeCount() === 7, 'query update applied (read_count 1 + 2)');
+try {
+    (new Battle)->setName('x')->update($db);
+    check(false, 'update without where should throw');
+} catch (OrmException $e) {
+    check($e->code_ === 'IR_INVALID', 'update without where → IR_INVALID');
+}
+check((new Battle)->seqEq($r->getSeq())->delete($db) === 1, 'query delete');
+
+$n0 = count($log);
+$dump = (new Battle)->serviceSeqEq(7)->selectAesHexEmail()->limit(0, 1)->sql($db);
+check(str_starts_with($dump['sql'], 'SELECT ') && $dump['binds'] === ['$SECRET', '$SECRET', 7] && count($log) === $n0, 'sql() dumps the main statement without executing');
+
+$svc = $db->transaction(function (Tx $tx) {
+    $s = (new Service)->setName('php-cascade')->insert($tx);
+    foreach ([1, 2] as $u) {
+        (new ServiceMember)->setServiceSeq($s->getSeq())->setUserSeq($u)->insert($tx);
+    }
+    (new ServiceModule)->setServiceSeq($s->getSeq())->setName('php-cascade-mod')->insert($tx);
+    return $s;
+});
+$loaded = (new Service)->seqEq($svc->getSeq())
+    ->relationsMembers((new ServiceMember)->orderBySeqAsc()->relationUser(new User))
+    ->relationsModules((new ServiceModule)->noCascadeDelete())
+    ->one($db);
+$n0 = count($log);
+$loaded->deleteCascade($db);
+check(count($log) - $n0 === 3
+    && str_starts_with($log[$n0], 'DELETE FROM `service_member`') && str_starts_with($log[$n0 + 1], 'DELETE FROM `service_member`') && str_starts_with($log[$n0 + 2], 'DELETE FROM `service`'),
+    'deleteCascade: owned members first, then the service; noCascadeDelete stops at modules; users (parent direction) untouched');
+check((new ServiceMember)->serviceSeqEq($svc->getSeq())->count($db) === 0 && (new Service)->seqEq($svc->getSeq())->count($db) === 0
+    && (new ServiceModule)->serviceSeqEq($svc->getSeq())->count($db) === 1 && (new User)->seqIn([1, 2])->count($db) === 2, 'deleteCascade result');
+check((new ServiceModule)->serviceSeqEq($svc->getSeq())->delete($db) === 1, 'cascade cleanup');
+
+// ---- deadlock gate: two processes, T1 updates A then B, T2 updates B then A ----
+$rowA = $draft('dl-php-1')->insert($db);
+$rowB = $draft('dl-php-2')->insert($db);
+$procs = [];
+foreach ([['t1', $rowA->getSeq(), $rowB->getSeq()], ['t2', $rowB->getSeq(), $rowA->getSeq()]] as [$tag, $first, $second]) {
+    $cmd = [PHP_BINARY, '-d', 'apc.enable_cli=0', __DIR__ . '/deadlock_child.php', $sock, $schema, (string) $first, (string) $second, $tag];
+    $p = proc_open($cmd, [['pipe', 'r'], ['pipe', 'w'], STDERR], $pipes);
+    check($p !== false, "spawn $tag");
+    $procs[$tag] = [$p, $pipes];
+}
+// Barrier: wait for both "locked" lines, then release both — only now does each ask for the other's row.
+foreach ($procs as $tag => [$p, $pipes]) {
+    check(trim((string) fgets($pipes[1])) === 'locked', "$tag locked its first row");
+}
+foreach ($procs as [$p, $pipes]) {
+    fwrite($pipes[0], "go\n");
+    fflush($pipes[0]);
+}
+$runs = [];
+foreach ($procs as $tag => [$p, $pipes]) {
+    $line = trim((string) fgets($pipes[1]));
+    fclose($pipes[0]);
+    fclose($pipes[1]);
+    check(proc_close($p) === 0 && str_starts_with($line, 'done '), "$tag finished: $line");
+    $runs[$tag] = (int) substr($line, 5);
+}
+check(array_sum($runs) >= 3, 'the deadlock loser re-ran its closure (' . json_encode($runs) . ')');
+$last = $runs['t1'] > $runs['t2'] ? 't1' : 't2'; // the re-run side commits after the winner, so it wrote last
+$a2 = (new Battle)->oneBySeq($db, $rowA->getSeq());
+$b2 = (new Battle)->oneBySeq($db, $rowB->getSeq());
+check($a2->getName() === "dl-php-$last" && $b2->getName() === "dl-php-$last", 'final values are the last writer\'s');
+$rowA->delete($db);
+$rowB->delete($db);
+check((new Battle)->seqIn([$rowA->getSeq(), $rowB->getSeq()])->count($db) === 0, 'deadlock rows cleaned up');
+
 // ---- error surface ----
 try {
     (new Battle)->seqIn([])->count($db);
