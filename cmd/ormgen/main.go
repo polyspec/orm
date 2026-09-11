@@ -25,6 +25,8 @@ func main() {
 		gen(os.Args[2:])
 	case "tokens":
 		tokens(os.Args[2:])
+	case "import":
+		importCmd(os.Args[2:])
 	default:
 		usage()
 	}
@@ -34,6 +36,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "usage: ormgen build <files.mmd...> --out schema/schema.json")
 	fmt.Fprintln(os.Stderr, "       ormgen gen --schema schema/schema.json --lang go --out clients/go/gen")
 	fmt.Fprintln(os.Stderr, "       ormgen tokens --schema schema/schema.json [--print] <file.go> <file.php> <file.rs>...")
+	fmt.Fprintln(os.Stderr, "       ormgen import --dsn <dsn> --out schema/app.mmd [--tables a,b]")
 	os.Exit(2)
 }
 

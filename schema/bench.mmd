@@ -10,9 +10,9 @@ erDiagram
     datetime(6)   display_start_dt             "?"
     datetime(6)   display_end_dt               "?"
     tinyint       is_allday                    "=0"
-    int           target_team_player_count     "=0"
-    int           success_count                "=0"
-    int           player_count                 "=0"
+    int           target_team_player_count     "=0 unsigned"
+    int           success_count                "=0 unsigned"
+    int           player_count                 "=0 unsigned"
     int           read_count                   "=0 unsigned"
     varchar(191)  cover_url                    "?"
     bigint        user_seq                 FK
@@ -23,7 +23,7 @@ erDiagram
     datetime(6)   end_dt
     varchar(36)   uuid                     UK  "?"
     tinyint       is_single_play               "=0"
-    int           like_count                   "=0"
+    int           like_count                   "=0 unsigned"
     varchar(255)  aes_hex_email                "?"
     varchar(255)  aes_hex_phone                "?"
     decimal(13_3) price                        "?"

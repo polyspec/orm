@@ -26,9 +26,9 @@ type BattleRow struct {
 	DisplayStartDt        *time.Time
 	DisplayEndDt          *time.Time
 	IsAllday              bool
-	TargetTeamPlayerCount int32
-	SuccessCount          int32
-	PlayerCount           int32
+	TargetTeamPlayerCount int64
+	SuccessCount          int64
+	PlayerCount           int64
 	ReadCount             int64
 	CoverUrl              *string
 	UserSeq               int64
@@ -39,7 +39,7 @@ type BattleRow struct {
 	EndDt                 time.Time
 	Uuid                  *string
 	IsSinglePlay          bool
-	LikeCount             int32
+	LikeCount             int64
 	AesHexEmail           *string
 	AesHexPhone           *string
 	Price                 *float64
@@ -200,45 +200,45 @@ func (r *BattleRow) SetIsAllday(v bool) *BattleRow {
 }
 
 // GetTargetTeamPlayerCount is nil-safe.
-func (r *BattleRow) GetTargetTeamPlayerCount() int32 {
+func (r *BattleRow) GetTargetTeamPlayerCount() int64 {
 	if r == nil {
-		var zero int32
+		var zero int64
 		return zero
 	}
 	return r.TargetTeamPlayerCount
 }
 
-func (r *BattleRow) SetTargetTeamPlayerCount(v int32) *BattleRow {
+func (r *BattleRow) SetTargetTeamPlayerCount(v int64) *BattleRow {
 	r.TargetTeamPlayerCount = v
 	r.Dirty("target_team_player_count", v)
 	return r
 }
 
 // GetSuccessCount is nil-safe.
-func (r *BattleRow) GetSuccessCount() int32 {
+func (r *BattleRow) GetSuccessCount() int64 {
 	if r == nil {
-		var zero int32
+		var zero int64
 		return zero
 	}
 	return r.SuccessCount
 }
 
-func (r *BattleRow) SetSuccessCount(v int32) *BattleRow {
+func (r *BattleRow) SetSuccessCount(v int64) *BattleRow {
 	r.SuccessCount = v
 	r.Dirty("success_count", v)
 	return r
 }
 
 // GetPlayerCount is nil-safe.
-func (r *BattleRow) GetPlayerCount() int32 {
+func (r *BattleRow) GetPlayerCount() int64 {
 	if r == nil {
-		var zero int32
+		var zero int64
 		return zero
 	}
 	return r.PlayerCount
 }
 
-func (r *BattleRow) SetPlayerCount(v int32) *BattleRow {
+func (r *BattleRow) SetPlayerCount(v int64) *BattleRow {
 	r.PlayerCount = v
 	r.Dirty("player_count", v)
 	return r
@@ -395,15 +395,15 @@ func (r *BattleRow) SetIsSinglePlay(v bool) *BattleRow {
 }
 
 // GetLikeCount is nil-safe.
-func (r *BattleRow) GetLikeCount() int32 {
+func (r *BattleRow) GetLikeCount() int64 {
 	if r == nil {
-		var zero int32
+		var zero int64
 		return zero
 	}
 	return r.LikeCount
 }
 
-func (r *BattleRow) SetLikeCount(v int32) *BattleRow {
+func (r *BattleRow) SetLikeCount(v int64) *BattleRow {
 	r.LikeCount = v
 	r.Dirty("like_count", v)
 	return r
@@ -618,11 +618,11 @@ func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 		case "is_allday":
 			r.IsAllday = orm.AsBool(v)
 		case "target_team_player_count":
-			r.TargetTeamPlayerCount = int32(orm.AsInt64(v))
+			r.TargetTeamPlayerCount = orm.AsInt64(v)
 		case "success_count":
-			r.SuccessCount = int32(orm.AsInt64(v))
+			r.SuccessCount = orm.AsInt64(v)
 		case "player_count":
-			r.PlayerCount = int32(orm.AsInt64(v))
+			r.PlayerCount = orm.AsInt64(v)
 		case "read_count":
 			r.ReadCount = orm.AsInt64(v)
 		case "cover_url":
@@ -650,7 +650,7 @@ func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 		case "is_single_play":
 			r.IsSinglePlay = orm.AsBool(v)
 		case "like_count":
-			r.LikeCount = int32(orm.AsInt64(v))
+			r.LikeCount = orm.AsInt64(v)
 		case "aes_hex_email":
 			if v != nil {
 				x := orm.AsString(v)
@@ -1811,75 +1811,75 @@ func (q *Battle) IsAlldayNotEqCol(ref orm.ColRef) *Battle {
 	q.q.W().PredCol("is_allday", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
-func (w *BattleWhere) TargetTeamPlayerCountEq(v int32) *BattleWhere {
+func (w *BattleWhere) TargetTeamPlayerCountEq(v int64) *BattleWhere {
 	w.w.Pred("target_team_player_count", "eq", v)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountEq(v int32) *Battle {
+func (q *Battle) TargetTeamPlayerCountEq(v int64) *Battle {
 	q.q.W().Pred("target_team_player_count", "eq", v)
 	return q
 }
-func (w *BattleWhere) TargetTeamPlayerCountNotEq(v int32) *BattleWhere {
+func (w *BattleWhere) TargetTeamPlayerCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("target_team_player_count", "not_eq", v)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountNotEq(v int32) *Battle {
+func (q *Battle) TargetTeamPlayerCountNotEq(v int64) *Battle {
 	q.q.W().Pred("target_team_player_count", "not_eq", v)
 	return q
 }
-func (w *BattleWhere) TargetTeamPlayerCountGt(v int32) *BattleWhere {
+func (w *BattleWhere) TargetTeamPlayerCountGt(v int64) *BattleWhere {
 	w.w.Pred("target_team_player_count", "gt", v)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountGt(v int32) *Battle {
+func (q *Battle) TargetTeamPlayerCountGt(v int64) *Battle {
 	q.q.W().Pred("target_team_player_count", "gt", v)
 	return q
 }
-func (w *BattleWhere) TargetTeamPlayerCountGte(v int32) *BattleWhere {
+func (w *BattleWhere) TargetTeamPlayerCountGte(v int64) *BattleWhere {
 	w.w.Pred("target_team_player_count", "gte", v)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountGte(v int32) *Battle {
+func (q *Battle) TargetTeamPlayerCountGte(v int64) *Battle {
 	q.q.W().Pred("target_team_player_count", "gte", v)
 	return q
 }
-func (w *BattleWhere) TargetTeamPlayerCountLt(v int32) *BattleWhere {
+func (w *BattleWhere) TargetTeamPlayerCountLt(v int64) *BattleWhere {
 	w.w.Pred("target_team_player_count", "lt", v)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountLt(v int32) *Battle {
+func (q *Battle) TargetTeamPlayerCountLt(v int64) *Battle {
 	q.q.W().Pred("target_team_player_count", "lt", v)
 	return q
 }
-func (w *BattleWhere) TargetTeamPlayerCountLte(v int32) *BattleWhere {
+func (w *BattleWhere) TargetTeamPlayerCountLte(v int64) *BattleWhere {
 	w.w.Pred("target_team_player_count", "lte", v)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountLte(v int32) *Battle {
+func (q *Battle) TargetTeamPlayerCountLte(v int64) *Battle {
 	q.q.W().Pred("target_team_player_count", "lte", v)
 	return q
 }
-func (w *BattleWhere) TargetTeamPlayerCountIn(vs []int32) *BattleWhere {
+func (w *BattleWhere) TargetTeamPlayerCountIn(vs []int64) *BattleWhere {
 	w.w.PredList("target_team_player_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountIn(vs []int32) *Battle {
+func (q *Battle) TargetTeamPlayerCountIn(vs []int64) *Battle {
 	q.q.W().PredList("target_team_player_count", "in", orm.Anys(vs))
 	return q
 }
-func (w *BattleWhere) TargetTeamPlayerCountNotIn(vs []int32) *BattleWhere {
+func (w *BattleWhere) TargetTeamPlayerCountNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("target_team_player_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountNotIn(vs []int32) *Battle {
+func (q *Battle) TargetTeamPlayerCountNotIn(vs []int64) *Battle {
 	q.q.W().PredList("target_team_player_count", "not_in", orm.Anys(vs))
 	return q
 }
-func (w *BattleWhere) TargetTeamPlayerCountBetween(lo, hi int32) *BattleWhere {
+func (w *BattleWhere) TargetTeamPlayerCountBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("target_team_player_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountBetween(lo, hi int32) *Battle {
+func (q *Battle) TargetTeamPlayerCountBetween(lo, hi int64) *Battle {
 	q.q.W().PredList("target_team_player_count", "between", []any{lo, hi})
 	return q
 }
@@ -1947,60 +1947,60 @@ func (q *Battle) TargetTeamPlayerCountLteCol(ref orm.ColRef) *Battle {
 	q.q.W().PredCol("target_team_player_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
-func (w *BattleWhere) SuccessCountEq(v int32) *BattleWhere {
+func (w *BattleWhere) SuccessCountEq(v int64) *BattleWhere {
 	w.w.Pred("success_count", "eq", v)
 	return w
 }
-func (q *Battle) SuccessCountEq(v int32) *Battle { q.q.W().Pred("success_count", "eq", v); return q }
-func (w *BattleWhere) SuccessCountNotEq(v int32) *BattleWhere {
+func (q *Battle) SuccessCountEq(v int64) *Battle { q.q.W().Pred("success_count", "eq", v); return q }
+func (w *BattleWhere) SuccessCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("success_count", "not_eq", v)
 	return w
 }
-func (q *Battle) SuccessCountNotEq(v int32) *Battle {
+func (q *Battle) SuccessCountNotEq(v int64) *Battle {
 	q.q.W().Pred("success_count", "not_eq", v)
 	return q
 }
-func (w *BattleWhere) SuccessCountGt(v int32) *BattleWhere {
+func (w *BattleWhere) SuccessCountGt(v int64) *BattleWhere {
 	w.w.Pred("success_count", "gt", v)
 	return w
 }
-func (q *Battle) SuccessCountGt(v int32) *Battle { q.q.W().Pred("success_count", "gt", v); return q }
-func (w *BattleWhere) SuccessCountGte(v int32) *BattleWhere {
+func (q *Battle) SuccessCountGt(v int64) *Battle { q.q.W().Pred("success_count", "gt", v); return q }
+func (w *BattleWhere) SuccessCountGte(v int64) *BattleWhere {
 	w.w.Pred("success_count", "gte", v)
 	return w
 }
-func (q *Battle) SuccessCountGte(v int32) *Battle { q.q.W().Pred("success_count", "gte", v); return q }
-func (w *BattleWhere) SuccessCountLt(v int32) *BattleWhere {
+func (q *Battle) SuccessCountGte(v int64) *Battle { q.q.W().Pred("success_count", "gte", v); return q }
+func (w *BattleWhere) SuccessCountLt(v int64) *BattleWhere {
 	w.w.Pred("success_count", "lt", v)
 	return w
 }
-func (q *Battle) SuccessCountLt(v int32) *Battle { q.q.W().Pred("success_count", "lt", v); return q }
-func (w *BattleWhere) SuccessCountLte(v int32) *BattleWhere {
+func (q *Battle) SuccessCountLt(v int64) *Battle { q.q.W().Pred("success_count", "lt", v); return q }
+func (w *BattleWhere) SuccessCountLte(v int64) *BattleWhere {
 	w.w.Pred("success_count", "lte", v)
 	return w
 }
-func (q *Battle) SuccessCountLte(v int32) *Battle { q.q.W().Pred("success_count", "lte", v); return q }
-func (w *BattleWhere) SuccessCountIn(vs []int32) *BattleWhere {
+func (q *Battle) SuccessCountLte(v int64) *Battle { q.q.W().Pred("success_count", "lte", v); return q }
+func (w *BattleWhere) SuccessCountIn(vs []int64) *BattleWhere {
 	w.w.PredList("success_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) SuccessCountIn(vs []int32) *Battle {
+func (q *Battle) SuccessCountIn(vs []int64) *Battle {
 	q.q.W().PredList("success_count", "in", orm.Anys(vs))
 	return q
 }
-func (w *BattleWhere) SuccessCountNotIn(vs []int32) *BattleWhere {
+func (w *BattleWhere) SuccessCountNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("success_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) SuccessCountNotIn(vs []int32) *Battle {
+func (q *Battle) SuccessCountNotIn(vs []int64) *Battle {
 	q.q.W().PredList("success_count", "not_in", orm.Anys(vs))
 	return q
 }
-func (w *BattleWhere) SuccessCountBetween(lo, hi int32) *BattleWhere {
+func (w *BattleWhere) SuccessCountBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("success_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) SuccessCountBetween(lo, hi int32) *Battle {
+func (q *Battle) SuccessCountBetween(lo, hi int64) *Battle {
 	q.q.W().PredList("success_count", "between", []any{lo, hi})
 	return q
 }
@@ -2065,60 +2065,60 @@ func (q *Battle) SuccessCountLteCol(ref orm.ColRef) *Battle {
 	q.q.W().PredCol("success_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
-func (w *BattleWhere) PlayerCountEq(v int32) *BattleWhere {
+func (w *BattleWhere) PlayerCountEq(v int64) *BattleWhere {
 	w.w.Pred("player_count", "eq", v)
 	return w
 }
-func (q *Battle) PlayerCountEq(v int32) *Battle { q.q.W().Pred("player_count", "eq", v); return q }
-func (w *BattleWhere) PlayerCountNotEq(v int32) *BattleWhere {
+func (q *Battle) PlayerCountEq(v int64) *Battle { q.q.W().Pred("player_count", "eq", v); return q }
+func (w *BattleWhere) PlayerCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("player_count", "not_eq", v)
 	return w
 }
-func (q *Battle) PlayerCountNotEq(v int32) *Battle {
+func (q *Battle) PlayerCountNotEq(v int64) *Battle {
 	q.q.W().Pred("player_count", "not_eq", v)
 	return q
 }
-func (w *BattleWhere) PlayerCountGt(v int32) *BattleWhere {
+func (w *BattleWhere) PlayerCountGt(v int64) *BattleWhere {
 	w.w.Pred("player_count", "gt", v)
 	return w
 }
-func (q *Battle) PlayerCountGt(v int32) *Battle { q.q.W().Pred("player_count", "gt", v); return q }
-func (w *BattleWhere) PlayerCountGte(v int32) *BattleWhere {
+func (q *Battle) PlayerCountGt(v int64) *Battle { q.q.W().Pred("player_count", "gt", v); return q }
+func (w *BattleWhere) PlayerCountGte(v int64) *BattleWhere {
 	w.w.Pred("player_count", "gte", v)
 	return w
 }
-func (q *Battle) PlayerCountGte(v int32) *Battle { q.q.W().Pred("player_count", "gte", v); return q }
-func (w *BattleWhere) PlayerCountLt(v int32) *BattleWhere {
+func (q *Battle) PlayerCountGte(v int64) *Battle { q.q.W().Pred("player_count", "gte", v); return q }
+func (w *BattleWhere) PlayerCountLt(v int64) *BattleWhere {
 	w.w.Pred("player_count", "lt", v)
 	return w
 }
-func (q *Battle) PlayerCountLt(v int32) *Battle { q.q.W().Pred("player_count", "lt", v); return q }
-func (w *BattleWhere) PlayerCountLte(v int32) *BattleWhere {
+func (q *Battle) PlayerCountLt(v int64) *Battle { q.q.W().Pred("player_count", "lt", v); return q }
+func (w *BattleWhere) PlayerCountLte(v int64) *BattleWhere {
 	w.w.Pred("player_count", "lte", v)
 	return w
 }
-func (q *Battle) PlayerCountLte(v int32) *Battle { q.q.W().Pred("player_count", "lte", v); return q }
-func (w *BattleWhere) PlayerCountIn(vs []int32) *BattleWhere {
+func (q *Battle) PlayerCountLte(v int64) *Battle { q.q.W().Pred("player_count", "lte", v); return q }
+func (w *BattleWhere) PlayerCountIn(vs []int64) *BattleWhere {
 	w.w.PredList("player_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) PlayerCountIn(vs []int32) *Battle {
+func (q *Battle) PlayerCountIn(vs []int64) *Battle {
 	q.q.W().PredList("player_count", "in", orm.Anys(vs))
 	return q
 }
-func (w *BattleWhere) PlayerCountNotIn(vs []int32) *BattleWhere {
+func (w *BattleWhere) PlayerCountNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("player_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) PlayerCountNotIn(vs []int32) *Battle {
+func (q *Battle) PlayerCountNotIn(vs []int64) *Battle {
 	q.q.W().PredList("player_count", "not_in", orm.Anys(vs))
 	return q
 }
-func (w *BattleWhere) PlayerCountBetween(lo, hi int32) *BattleWhere {
+func (w *BattleWhere) PlayerCountBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("player_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) PlayerCountBetween(lo, hi int32) *Battle {
+func (q *Battle) PlayerCountBetween(lo, hi int64) *Battle {
 	q.q.W().PredList("player_count", "between", []any{lo, hi})
 	return q
 }
@@ -3109,42 +3109,42 @@ func (q *Battle) IsSinglePlayNotEqCol(ref orm.ColRef) *Battle {
 	q.q.W().PredCol("is_single_play", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
-func (w *BattleWhere) LikeCountEq(v int32) *BattleWhere { w.w.Pred("like_count", "eq", v); return w }
-func (q *Battle) LikeCountEq(v int32) *Battle           { q.q.W().Pred("like_count", "eq", v); return q }
-func (w *BattleWhere) LikeCountNotEq(v int32) *BattleWhere {
+func (w *BattleWhere) LikeCountEq(v int64) *BattleWhere { w.w.Pred("like_count", "eq", v); return w }
+func (q *Battle) LikeCountEq(v int64) *Battle           { q.q.W().Pred("like_count", "eq", v); return q }
+func (w *BattleWhere) LikeCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("like_count", "not_eq", v)
 	return w
 }
-func (q *Battle) LikeCountNotEq(v int32) *Battle         { q.q.W().Pred("like_count", "not_eq", v); return q }
-func (w *BattleWhere) LikeCountGt(v int32) *BattleWhere  { w.w.Pred("like_count", "gt", v); return w }
-func (q *Battle) LikeCountGt(v int32) *Battle            { q.q.W().Pred("like_count", "gt", v); return q }
-func (w *BattleWhere) LikeCountGte(v int32) *BattleWhere { w.w.Pred("like_count", "gte", v); return w }
-func (q *Battle) LikeCountGte(v int32) *Battle           { q.q.W().Pred("like_count", "gte", v); return q }
-func (w *BattleWhere) LikeCountLt(v int32) *BattleWhere  { w.w.Pred("like_count", "lt", v); return w }
-func (q *Battle) LikeCountLt(v int32) *Battle            { q.q.W().Pred("like_count", "lt", v); return q }
-func (w *BattleWhere) LikeCountLte(v int32) *BattleWhere { w.w.Pred("like_count", "lte", v); return w }
-func (q *Battle) LikeCountLte(v int32) *Battle           { q.q.W().Pred("like_count", "lte", v); return q }
-func (w *BattleWhere) LikeCountIn(vs []int32) *BattleWhere {
+func (q *Battle) LikeCountNotEq(v int64) *Battle         { q.q.W().Pred("like_count", "not_eq", v); return q }
+func (w *BattleWhere) LikeCountGt(v int64) *BattleWhere  { w.w.Pred("like_count", "gt", v); return w }
+func (q *Battle) LikeCountGt(v int64) *Battle            { q.q.W().Pred("like_count", "gt", v); return q }
+func (w *BattleWhere) LikeCountGte(v int64) *BattleWhere { w.w.Pred("like_count", "gte", v); return w }
+func (q *Battle) LikeCountGte(v int64) *Battle           { q.q.W().Pred("like_count", "gte", v); return q }
+func (w *BattleWhere) LikeCountLt(v int64) *BattleWhere  { w.w.Pred("like_count", "lt", v); return w }
+func (q *Battle) LikeCountLt(v int64) *Battle            { q.q.W().Pred("like_count", "lt", v); return q }
+func (w *BattleWhere) LikeCountLte(v int64) *BattleWhere { w.w.Pred("like_count", "lte", v); return w }
+func (q *Battle) LikeCountLte(v int64) *Battle           { q.q.W().Pred("like_count", "lte", v); return q }
+func (w *BattleWhere) LikeCountIn(vs []int64) *BattleWhere {
 	w.w.PredList("like_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) LikeCountIn(vs []int32) *Battle {
+func (q *Battle) LikeCountIn(vs []int64) *Battle {
 	q.q.W().PredList("like_count", "in", orm.Anys(vs))
 	return q
 }
-func (w *BattleWhere) LikeCountNotIn(vs []int32) *BattleWhere {
+func (w *BattleWhere) LikeCountNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("like_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) LikeCountNotIn(vs []int32) *Battle {
+func (q *Battle) LikeCountNotIn(vs []int64) *Battle {
 	q.q.W().PredList("like_count", "not_in", orm.Anys(vs))
 	return q
 }
-func (w *BattleWhere) LikeCountBetween(lo, hi int32) *BattleWhere {
+func (w *BattleWhere) LikeCountBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("like_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) LikeCountBetween(lo, hi int32) *Battle {
+func (q *Battle) LikeCountBetween(lo, hi int64) *Battle {
 	q.q.W().PredList("like_count", "between", []any{lo, hi})
 	return q
 }
@@ -4460,7 +4460,7 @@ func (q *Battle) SetIsAlldayExpr(frag string, binds ...any) *Battle {
 	q.q.SetExpr("is_allday", frag, binds...)
 	return q
 }
-func (q *Battle) SetTargetTeamPlayerCount(v int32) *Battle {
+func (q *Battle) SetTargetTeamPlayerCount(v int64) *Battle {
 	q.q.Set("target_team_player_count", v)
 	return q
 }
@@ -4468,12 +4468,12 @@ func (q *Battle) SetTargetTeamPlayerCountExpr(frag string, binds ...any) *Battle
 	q.q.SetExpr("target_team_player_count", frag, binds...)
 	return q
 }
-func (q *Battle) SetSuccessCount(v int32) *Battle { q.q.Set("success_count", v); return q }
+func (q *Battle) SetSuccessCount(v int64) *Battle { q.q.Set("success_count", v); return q }
 func (q *Battle) SetSuccessCountExpr(frag string, binds ...any) *Battle {
 	q.q.SetExpr("success_count", frag, binds...)
 	return q
 }
-func (q *Battle) SetPlayerCount(v int32) *Battle { q.q.Set("player_count", v); return q }
+func (q *Battle) SetPlayerCount(v int64) *Battle { q.q.Set("player_count", v); return q }
 func (q *Battle) SetPlayerCountExpr(frag string, binds ...any) *Battle {
 	q.q.SetExpr("player_count", frag, binds...)
 	return q
@@ -4530,7 +4530,7 @@ func (q *Battle) SetIsSinglePlayExpr(frag string, binds ...any) *Battle {
 	q.q.SetExpr("is_single_play", frag, binds...)
 	return q
 }
-func (q *Battle) SetLikeCount(v int32) *Battle { q.q.Set("like_count", v); return q }
+func (q *Battle) SetLikeCount(v int64) *Battle { q.q.Set("like_count", v); return q }
 func (q *Battle) SetLikeCountExpr(frag string, binds ...any) *Battle {
 	q.q.SetExpr("like_count", frag, binds...)
 	return q
@@ -4601,18 +4601,18 @@ func (q *Battle) SetSerializeDataExpr(frag string, binds ...any) *Battle {
 }
 func (q *Battle) PlusSeq(v int64) *Battle  { q.q.Plus("seq", v); return q }
 func (q *Battle) MinusSeq(v int64) *Battle { q.q.Minus("seq", v); return q }
-func (q *Battle) PlusTargetTeamPlayerCount(v int32) *Battle {
+func (q *Battle) PlusTargetTeamPlayerCount(v int64) *Battle {
 	q.q.Plus("target_team_player_count", v)
 	return q
 }
-func (q *Battle) MinusTargetTeamPlayerCount(v int32) *Battle {
+func (q *Battle) MinusTargetTeamPlayerCount(v int64) *Battle {
 	q.q.Minus("target_team_player_count", v)
 	return q
 }
-func (q *Battle) PlusSuccessCount(v int32) *Battle      { q.q.Plus("success_count", v); return q }
-func (q *Battle) MinusSuccessCount(v int32) *Battle     { q.q.Minus("success_count", v); return q }
-func (q *Battle) PlusPlayerCount(v int32) *Battle       { q.q.Plus("player_count", v); return q }
-func (q *Battle) MinusPlayerCount(v int32) *Battle      { q.q.Minus("player_count", v); return q }
+func (q *Battle) PlusSuccessCount(v int64) *Battle      { q.q.Plus("success_count", v); return q }
+func (q *Battle) MinusSuccessCount(v int64) *Battle     { q.q.Minus("success_count", v); return q }
+func (q *Battle) PlusPlayerCount(v int64) *Battle       { q.q.Plus("player_count", v); return q }
+func (q *Battle) MinusPlayerCount(v int64) *Battle      { q.q.Minus("player_count", v); return q }
 func (q *Battle) PlusReadCount(v int64) *Battle         { q.q.Plus("read_count", v); return q }
 func (q *Battle) MinusReadCount(v int64) *Battle        { q.q.Minus("read_count", v); return q }
 func (q *Battle) PlusUserSeq(v int64) *Battle           { q.q.Plus("user_seq", v); return q }
@@ -4623,8 +4623,8 @@ func (q *Battle) PlusServiceModuleSeq(v int64) *Battle  { q.q.Plus("service_modu
 func (q *Battle) MinusServiceModuleSeq(v int64) *Battle { q.q.Minus("service_module_seq", v); return q }
 func (q *Battle) PlusServiceMemberSeq(v int64) *Battle  { q.q.Plus("service_member_seq", v); return q }
 func (q *Battle) MinusServiceMemberSeq(v int64) *Battle { q.q.Minus("service_member_seq", v); return q }
-func (q *Battle) PlusLikeCount(v int32) *Battle         { q.q.Plus("like_count", v); return q }
-func (q *Battle) MinusLikeCount(v int32) *Battle        { q.q.Minus("like_count", v); return q }
+func (q *Battle) PlusLikeCount(v int64) *Battle         { q.q.Plus("like_count", v); return q }
+func (q *Battle) MinusLikeCount(v int64) *Battle        { q.q.Minus("like_count", v); return q }
 func (q *Battle) PlusPrice(v float64) *Battle           { q.q.Plus("price", v); return q }
 func (q *Battle) MinusPrice(v float64) *Battle          { q.q.Minus("price", v); return q }
 

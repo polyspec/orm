@@ -410,12 +410,12 @@ func (q *User) IfParentNameEq(v string) *User    { q.q.IfParent("name", v); retu
 func (q *User) IfParentIsCloseEq(v bool) *User   { q.q.IfParent("is_close", v); return q }
 func (q *User) IfParentIsDisplayEq(v bool) *User { q.q.IfParent("is_display", v); return q }
 func (q *User) IfParentIsAlldayEq(v bool) *User  { q.q.IfParent("is_allday", v); return q }
-func (q *User) IfParentTargetTeamPlayerCountEq(v int32) *User {
+func (q *User) IfParentTargetTeamPlayerCountEq(v int64) *User {
 	q.q.IfParent("target_team_player_count", v)
 	return q
 }
-func (q *User) IfParentSuccessCountEq(v int32) *User { q.q.IfParent("success_count", v); return q }
-func (q *User) IfParentPlayerCountEq(v int32) *User  { q.q.IfParent("player_count", v); return q }
+func (q *User) IfParentSuccessCountEq(v int64) *User { q.q.IfParent("success_count", v); return q }
+func (q *User) IfParentPlayerCountEq(v int64) *User  { q.q.IfParent("player_count", v); return q }
 func (q *User) IfParentReadCountEq(v int64) *User    { q.q.IfParent("read_count", v); return q }
 func (q *User) IfParentCoverUrlEq(v string) *User    { q.q.IfParent("cover_url", v); return q }
 func (q *User) IfParentUserSeqEq(v int64) *User      { q.q.IfParent("user_seq", v); return q }
@@ -430,7 +430,7 @@ func (q *User) IfParentServiceMemberSeqEq(v int64) *User {
 }
 func (q *User) IfParentUuidEq(v string) *User        { q.q.IfParent("uuid", v); return q }
 func (q *User) IfParentIsSinglePlayEq(v bool) *User  { q.q.IfParent("is_single_play", v); return q }
-func (q *User) IfParentLikeCountEq(v int32) *User    { q.q.IfParent("like_count", v); return q }
+func (q *User) IfParentLikeCountEq(v int64) *User    { q.q.IfParent("like_count", v); return q }
 func (q *User) IfParentAesHexEmailEq(v string) *User { q.q.IfParent("aes_hex_email", v); return q }
 func (q *User) IfParentAesHexPhoneEq(v string) *User { q.q.IfParent("aes_hex_phone", v); return q }
 
