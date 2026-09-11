@@ -274,6 +274,117 @@ func TestWritePaths(t *testing.T) {
 	}
 }
 
+// TestAggregatesHavingRawPredicates covers the S4 surface: countDistinct/min/max
+// terminals (nil on no rows), having after groupBy, raw root, named predicates.
+func TestAggregatesHavingRawPredicates(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	var stmts []string
+	db.Cfg().OnQuery = func(e orm.Event) { stmts = append(stmts, e.SQL) }
+	t.Cleanup(func() { db.Cfg().OnQuery = nil })
+
+	// service 7 ⇔ seq ≡ 6 (mod 100), 1000 rows: min 6, max 99906
+	mn, err := gen.NewBattle().ServiceSeqEq(7).MinSeq(ctx, db)
+	if err != nil || mn == nil || *mn != 6 {
+		t.Errorf("min: %v %v", mn, err)
+	}
+	mx, err := gen.NewBattle().ServiceSeqEq(7).MaxSeq(ctx, db)
+	if err != nil || mx == nil || *mx != 99906 {
+		t.Errorf("max: %v %v", mx, err)
+	}
+	if !strings.Contains(stmts[0], "SELECT MIN(`a`.`seq`)") || !strings.Contains(stmts[1], "SELECT MAX(`a`.`seq`)") {
+		t.Errorf("min/max sql: %v", stmts)
+	}
+	// typed like the column: datetime → *time.Time
+	dt, err := gen.NewBattle().ServiceSeqEq(7).MaxStartDt(ctx, db)
+	if err != nil || dt == nil || dt.IsZero() {
+		t.Errorf("max datetime: %v %v", dt, err)
+	}
+	// no rows → nil, no error
+	none, err := gen.NewBattle().SeqEq(0).MinSeq(ctx, db)
+	if err != nil || none != nil {
+		t.Errorf("min on no rows: %v %v", none, err)
+	}
+	total, err := gen.NewBattle().ServiceSeqEq(7).CountDistinctUserSeq(ctx, db)
+	if err != nil || total <= 0 || total > 1000 {
+		t.Errorf("count distinct: %d %v", total, err)
+	}
+	if !strings.Contains(stmts[len(stmts)-1], "COUNT(DISTINCT `a`.`user_seq`)") {
+		t.Errorf("count distinct sql: %s", stmts[len(stmts)-1])
+	}
+
+	// count + groupBy = number of groups; having filters the groups
+	groups, err := gen.NewBattle().ServiceSeqEq(7).GroupByUserSeq().Count(ctx, db)
+	if err != nil || groups != total {
+		t.Errorf("group count %d != distinct users %d (%v)", groups, total, err)
+	}
+	stmts = nil
+	multi, err := gen.NewBattle().ServiceSeqEq(7).GroupByUserSeq().
+		Having(func(w *gen.BattleWhere) { w.Expr("COUNT(*) > ?", 1) }).
+		Count(ctx, db)
+	if err != nil || multi < 0 || multi > groups {
+		t.Errorf("having count: %d %v", multi, err)
+	}
+	if !strings.Contains(stmts[0], "GROUP BY `a`.`user_seq` HAVING (COUNT(*) > ?)") || !strings.Contains(stmts[0], "AS `orm_g`") {
+		t.Errorf("having sql: %s", stmts[0])
+	}
+	// having without groupBy is an engine error
+	if _, err := gen.NewBattle().Having(func(w *gen.BattleWhere) { w.Expr("COUNT(*) > ?", 1) }).Count(ctx, db); err == nil || !strings.Contains(err.Error(), "IR_INVALID") {
+		t.Errorf("having needs group_by: %v", err)
+	}
+
+	// named predicates on the query and inside a where group
+	visible, err := gen.NewBattle().Visible().ServiceSeqEq(7).Count(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manual, err := gen.NewBattle().IsCloseEq(false).IsDisplayEq(true).ServiceSeqEq(7).Count(ctx, db)
+	if err != nil || visible != manual || visible == 0 {
+		t.Errorf("visible %d != manual %d (%v)", visible, manual, err)
+	}
+	after, err := gen.NewBattle().StartedAfter("2026-01-01 00:00:00").ServiceSeqEq(7).Count(ctx, db)
+	if err != nil || after <= 0 || after > 1000 {
+		t.Errorf("started_after: %d %v", after, err)
+	}
+	stmts = nil
+	grouped, err := gen.NewBattle().ServiceSeqEq(7).
+		And(func(w *gen.BattleWhere) { w.Visible().Or().StartedAfter("2030-01-01 00:00:00") }).
+		Count(ctx, db)
+	if err != nil || grouped != visible {
+		t.Errorf("predicates in a group: %d vs %d (%v)", grouped, visible, err)
+	}
+	if !strings.Contains(stmts[0], "((`a`.`is_close` = 0 AND `a`.`is_display` = 1) OR (`a`.`start_dt` > ?))") {
+		t.Errorf("predicate group sql: %s", stmts[0])
+	}
+
+	// raw root: {table} substitution, binds in order, rows keyed by column name
+	stmts = nil
+	rows, err := gen.NewBattle().
+		Raw("SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?", 7, 0).
+		RawAll(ctx, db)
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("raw: %v %v", rows, err)
+	}
+	if !strings.HasPrefix(stmts[0], "SELECT COUNT(*) AS n, MAX(seq) AS m FROM `battle` WHERE") {
+		t.Errorf("raw sql: %s", stmts[0])
+	}
+	if n, ok := rows[0]["n"].(int64); !ok || n <= 0 {
+		t.Errorf("raw n: %#v", rows[0]["n"])
+	}
+	if m, ok := rows[0]["m"].(int64); !ok || m != 99906 {
+		t.Errorf("raw m: %#v", rows[0]["m"])
+	}
+	// empty result is an empty slice, never nil
+	empty, err := gen.NewBattle().Raw("SELECT seq FROM {table} WHERE seq = ?", 0).RawAll(ctx, db)
+	if err != nil || empty == nil || len(empty) != 0 {
+		t.Errorf("raw empty: %#v %v", empty, err)
+	}
+	// placeholder/bind mismatch is an engine error
+	if _, err := gen.NewBattle().Raw("SELECT seq FROM {table} WHERE seq = ?").RawAll(ctx, db); err == nil || !strings.Contains(err.Error(), "IR_INVALID") {
+		t.Errorf("raw arity: %v", err)
+	}
+}
+
 func TestErrorSurface(t *testing.T) {
 	db := open(t)
 	ctx := context.Background()
