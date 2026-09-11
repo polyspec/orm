@@ -64,6 +64,10 @@ pub struct BindSlot {
     pub step: u32,
     #[serde(default)]
     pub column: String,
+    /// Style stages the dialect leaves to the executor for this value (aes/hex/ip on
+    /// PostgreSQL/SQLite), applied to the bound value in write order. Empty on MySQL.
+    #[serde(default)]
+    pub host_styles: Vec<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
