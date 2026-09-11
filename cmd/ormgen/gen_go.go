@@ -113,7 +113,24 @@ type goEntity struct {
 	Fulltext          [][]string
 	UpdatedTs         string
 	Numeric           []goCol
-	ParentCols        []goCol // columns of every entity that has a relation to this one (ifParent<Col>Eq targets)
+	Aggs              []goCol  // countDistinct/min/max targets: not styled (ip aside), not json/bytes — the engine's rule
+	Preds             []goPred // manifest predicates, by name
+	ParentCols        []goCol  // columns of every entity that has a relation to this one (ifParent<Col>Eq targets)
+}
+
+// goPred is one `%% predicate` of the entity: <Method>(v…) adds expr(Expr, v…) with Arity binds.
+type goPred struct {
+	Name, Method, Expr string
+	Arity              int
+}
+
+// aggregable mirrors the engine's min/max/count_distinct rule (engine/ir Validate):
+// styled columns other than ip (a SQL-side style) and json/bytes columns are rejected.
+func aggregable(c *schema.Col) bool {
+	if len(c.Styles) > 0 && c.Styles[0] != "ip" {
+		return false
+	}
+	return c.Type != "json" && c.Type != "bytes"
 }
 
 type goCol struct {
@@ -166,6 +183,18 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 		if c.Type == "i32" || c.Type == "i64" || c.Type == "f64" || c.Type == "decimal" {
 			ge.Numeric = append(ge.Numeric, gc)
 		}
+		if aggregable(c) {
+			ge.Aggs = append(ge.Aggs, gc)
+		}
+	}
+	pnames := make([]string, 0, len(e.Predicates))
+	for n := range e.Predicates {
+		pnames = append(pnames, n)
+	}
+	sort.Strings(pnames)
+	for _, n := range pnames {
+		pr := e.Predicates[n]
+		ge.Preds = append(ge.Preds, goPred{Name: n, Method: pascal(n), Expr: pr.Expr, Arity: pr.Arity})
 	}
 	names := make([]string, 0, len(e.Relations))
 	for n := range e.Relations {
@@ -245,6 +274,26 @@ var goTmpl = template.Must(template.New("go").Funcs(template.FuncMap{
 			return "func() any { if " + f + " == nil { return nil }; return *" + f + " }()"
 		}
 		return f
+	},
+	"predParams": func(n int) string { // "v any" | "v0 any, v1 any" | ""
+		if n == 1 {
+			return "v any"
+		}
+		parts := make([]string, n)
+		for i := range parts {
+			parts[i] = fmt.Sprintf("v%d any", i)
+		}
+		return strings.Join(parts, ", ")
+	},
+	"predArgs": func(n int) string { // ", v" | ", v0, v1" | ""
+		if n == 1 {
+			return ", v"
+		}
+		var b strings.Builder
+		for i := 0; i < n; i++ {
+			fmt.Fprintf(&b, ", v%d", i)
+		}
+		return b.String()
 	},
 	"styleList": func(styles []string) string {
 		q := make([]string, len(styles))
@@ -504,6 +553,12 @@ func (w *{{$.Type}}Where) {{ftName .}}MatchBoolean(v string) *{{$.Type}}Where { 
 func (q *{{$.Type}}) {{ftName .}}Match(v string) *{{$.Type}} { q.q.W().Match([]string{ {{quoteList .}} }, false, v); return q }
 func (q *{{$.Type}}) {{ftName .}}MatchBoolean(v string) *{{$.Type}} { q.q.W().Match([]string{ {{quoteList .}} }, true, v); return q }
 {{- end}}
+{{- range .Preds}}
+
+// {{.Method}} is the manifest predicate {{.Name}}: {{.Expr}}
+func (w *{{$.Type}}Where) {{.Method}}({{predParams .Arity}}) *{{$.Type}}Where { w.w.Expr({{printf "%q" .Expr}}{{predArgs .Arity}}); return w }
+func (q *{{$.Type}}) {{.Method}}({{predParams .Arity}}) *{{$.Type}} { q.q.W().Expr({{printf "%q" .Expr}}{{predArgs .Arity}}); return q }
+{{- end}}
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
 func (q *{{.Type}}) Or() *{{.Type}} { q.q.Or(); return q }
@@ -516,6 +571,12 @@ func (q *{{$.Type}}) {{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}} { q
 // Join children: On = ON clause, Where = parent WHERE group. Bare predicates on a join child are rejected by the engine.
 func (q *{{.Type}}) On(fn func(*{{.Type}}Where)) *{{.Type}} { fn(&{{.Type}}Where{w: q.q.OnW()}); return q }
 func (q *{{.Type}}) Where(fn func(*{{.Type}}Where)) *{{.Type}} { fn(&{{.Type}}Where{w: q.q.W()}); return q }
+
+// Having is the group predicate after GroupBy<Col>: the same builder as where; aggregates go through Expr("COUNT(*) > ?", n).
+func (q *{{.Type}}) Having(fn func(*{{.Type}}Where)) *{{.Type}} { fn(&{{.Type}}Where{w: q.q.HavingW()}); return q }
+
+// Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
+func (q *{{.Type}}) Raw(sql string, binds ...any) *{{.Type}} { q.q.Raw(sql, binds...); return q }
 {{range .Rels}}
 func (q *{{$.Type}}) Join{{.Method}}(child *{{.TargetType}}) *{{$.Type}} { q.q.Join({{printf "%q" .Name}}, "inner", child.q); return q }
 func (q *{{$.Type}}) LeftJoin{{.Method}}(child *{{.TargetType}}) *{{$.Type}} { q.q.Join({{printf "%q" .Name}}, "left", child.q); return q }
@@ -632,6 +693,39 @@ func (q *{{$.Type}}) Avg{{.Field}}(ctx context.Context, ex orm.Exec) (float64, e
 	return orm.AsFloat64(v), err
 }
 {{- end}}
+{{- range .Aggs}}
+func (q *{{$.Type}}) CountDistinct{{.Field}}(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"; q.q.Req.IR.Agg = {{printf "%q" .Name}}
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+// Min{{.Field}} is nil when no row matches.
+func (q *{{$.Type}}) Min{{.Field}}(ctx context.Context, ex orm.Exec) (*{{.Type}}, error) {
+	q.q.Req.IR.Kind = "min"; q.q.Req.IR.Agg = {{printf "%q" .Name}}
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := {{conv .Type}}
+	return &x, nil
+}
+// Max{{.Field}} is nil when no row matches.
+func (q *{{$.Type}}) Max{{.Field}}(ctx context.Context, ex orm.Exec) (*{{.Type}}, error) {
+	q.q.Req.IR.Kind = "max"; q.q.Req.IR.Agg = {{printf "%q" .Name}}
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := {{conv .Type}}
+	return &x, nil
+}
+{{- end}}
+
+// RawAll runs the statement given to Raw and returns its rows by column name (values as the driver gives them, no codec).
+func (q *{{.Type}}) RawAll(ctx context.Context, ex orm.Exec) ([]map[string]any, error) {
+	q.q.Req.IR.Kind = "raw"
+	return orm.RawAll(ctx, ex, q.q.Req)
+}
 
 func (q *{{.Type}}) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm.Page[{{.Type}}Row], error) {
 	if page < 1 { page = 1 }
