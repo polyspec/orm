@@ -558,10 +558,11 @@ func main() {
 			if t.service, err = gen.NewService().SetName("conf-svc").Insert(ctx, tx); err != nil {
 				return t, err
 			}
-			for i, userSeq := range []int64{1, 2} {
-				if t.members[i], err = gen.NewServiceMember().SetServiceSeq(t.service.Seq).SetUserSeq(userSeq).Insert(ctx, tx); err != nil {
-					return t, err
-				}
+			if t.members[0], err = gen.NewServiceMember().SetServiceSeq(t.service.Seq).SetUserSeq(1).Insert(ctx, tx); err != nil {
+				return t, err
+			}
+			if t.members[1], err = gen.NewServiceMember().SetServiceSeq(t.service.Seq).SetUserSeq(2).Insert(ctx, tx); err != nil {
+				return t, err
 			}
 			t.module, err = gen.NewServiceModule().SetServiceSeq(t.service.Seq).SetName("conf-mod").Insert(ctx, tx)
 			return t, err
