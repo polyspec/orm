@@ -287,12 +287,14 @@ async fn main() {
     run!("bulk_update_plus_minus", async {
         let r = db.transaction(|tx| async move { fks(Battle::new().set_read_count(3).set_name("conf-bulk")).insert(&tx).await }).await?.unwrap();
         mask_created(&mask, &log, Mask { seqs: vec![r.seq], ts: Some(r.updated_ts) });
+        let read = |seq: i64| { let db = &db; async move { Battle::new().one_by_seq(db, seq).await.map(|b| b.unwrap().read_count) } };
         Battle::new().seq_eq(r.seq).plus_read_count(2).update(&db).await?;
-        let after_plus = Battle::new().one_by_seq(&db, r.seq).await?.unwrap().read_count;
+        let after_plus = read(r.seq).await?;
+        // minus clamps at zero
         Battle::new().seq_eq(r.seq).minus_read_count(10).update(&db).await?;
-        let after_minus = Battle::new().one_by_seq(&db, r.seq).await?.unwrap().read_count;
+        let after_minus = read(r.seq).await?;
         Battle::new().seq_eq(r.seq).set_read_count_expr("`read_count` * ? + 1", vec![2.into()]).update(&db).await?;
-        let after_expr = Battle::new().one_by_seq(&db, r.seq).await?.unwrap().read_count;
+        let after_expr = read(r.seq).await?;
         let deleted = Battle::new().seq_eq(r.seq).delete(&db).await?;
         Ok(json!({"after_plus": after_plus, "after_minus": after_minus, "after_expr": after_expr, "deleted": deleted}))
     }.await);
@@ -319,6 +321,28 @@ async fn main() {
     run!("sql_dump", async {
         let s = Battle::new().service_seq_eq(7).select_aes_hex_email().limit(0, 1).sql(&db).await?;
         Ok(json!({"sql": s.sql, "binds": s.binds.iter().map(|p| norm(p, &Mask::default())).collect::<Vec<_>>()}))
+    }.await);
+    run!("agg_min_max", async {
+        Ok(json!({
+            "min": Battle::new().service_seq_eq(7).min_seq(&db).await?,
+            "max": Battle::new().service_seq_eq(7).max_seq(&db).await?,
+            "distinct_users": Battle::new().service_seq_eq(7).count_distinct_user_seq(&db).await?,
+        }))
+    }.await);
+    run!("group_count_having", async {
+        Ok(json!(Battle::new().service_seq_eq(7).group_by_user_seq().having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).count(&db).await?))
+    }.await);
+    run!("predicate_named", async {
+        Ok(json!({
+            "visible": Battle::new().visible().service_seq_eq(7).count(&db).await?,
+            "started_after": Battle::new().started_after("2026-01-01 00:00:00").service_seq_eq(7).count(&db).await?,
+        }))
+    }.await);
+    run!("raw_root", async {
+        let rows = Battle::new()
+            .raw("SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?", vec![7.into(), 0.into()])
+            .raw_all(&db).await?;
+        Ok(Value::Array(rows.iter().map(|r| Value::Object(r.iter().map(|(k, v)| (k.clone(), v.to_json())).collect())).collect()))
     }.await);
     run!("codec_roundtrip", async {
         let value = json!({"a": 1, "b": [1, 2, {"c": "한글/slash"}], "d": null, "e": true, "f": 1.5});

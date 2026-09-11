@@ -361,6 +361,11 @@ impl ServiceModule {
     pub fn order_by_expr(mut self, frag: &str, desc: bool) -> Self { self.q.order_expr(frag, desc); self }
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
+    /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
+    pub fn having(mut self, f: impl FnOnce(ServiceModuleWhere<'_>) -> ServiceModuleWhere<'_>) -> Self { { let w = self.q.having_w(); f(ServiceModuleWhere { w }); } self }
+
+    // ---- raw root (trusted code only): {table} = the entity table, ? = binds in order; run with raw_all ----
+    pub fn raw(mut self, sql: &str, binds: Vec<Param>) -> Self { self.q.raw(sql, binds); self }
 
     // ---- relation-child options ----
     pub fn flatten(mut self) -> Self { self.q.node().flatten = true; self }
@@ -427,6 +432,26 @@ impl ServiceModule {
     pub async fn avg_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
     pub async fn sum_service_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
     pub async fn avg_service_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn count_distinct_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    /// None when no row matches.
+    pub async fn max_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_service_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_service_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    /// None when no row matches.
+    pub async fn max_service_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_name(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "name".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_name(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    /// None when no row matches.
+    pub async fn max_name(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+
+    /// Runs the raw() statement; rows keyed by the driver's column names in column order, cells typed by column type (no codec).
+    pub async fn raw_all(mut self, ex: &impl Exec) -> Result<Vec<indexmap::IndexMap<String, Val>>> {
+        db::raw(ex, &mut self.q.req).await
+    }
 
     pub async fn paginate(mut self, ex: &impl Exec, page: u32, per: u32) -> Result<Page<ServiceModuleRow>> {
         let page = page.max(1);

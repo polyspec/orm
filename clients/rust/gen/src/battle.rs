@@ -580,6 +580,8 @@ impl<'a> BattleWhere<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
     pub fn and(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { self.w.and_with(|w| { f(BattleWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
+    pub fn started_after(mut self, a0: impl Into<Param>) -> Self { self.w.expr("`start_dt` > ?", vec![a0.into()]); self }
+    pub fn visible(mut self) -> Self { self.w.expr("`is_close` = 0 AND `is_display` = 1", vec![]); self }
     pub fn service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.w.nav_with("service", |w| { f(super::service::ServiceWhere { w }); }); self }
     pub fn service_member(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with("service_member", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
     pub fn service_module(mut self, f: impl FnOnce(super::service_module::ServiceModuleWhere<'_>) -> super::service_module::ServiceModuleWhere<'_>) -> Self { self.w.nav_with("service_module", |w| { f(super::service_module::ServiceModuleWhere { w }); }); self }
@@ -1000,6 +1002,8 @@ impl Battle {
     pub fn or(mut self) -> Self { self.q.or(); self }
     pub fn and(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { self.q.w().and_with(|w| { f(BattleWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
+    pub fn started_after(mut self, a0: impl Into<Param>) -> Self { self.q.w().expr("`start_dt` > ?", vec![a0.into()]); self }
+    pub fn visible(mut self) -> Self { self.q.w().expr("`is_close` = 0 AND `is_display` = 1", vec![]); self }
     pub fn service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.q.w().nav_with("service", |w| { f(super::service::ServiceWhere { w }); }); self }
     pub fn service_member(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with("service_member", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
     pub fn service_module(mut self, f: impl FnOnce(super::service_module::ServiceModuleWhere<'_>) -> super::service_module::ServiceModuleWhere<'_>) -> Self { self.q.w().nav_with("service_module", |w| { f(super::service_module::ServiceModuleWhere { w }); }); self }
@@ -1660,9 +1664,14 @@ impl Battle {
     pub fn order_by_expr(mut self, frag: &str, desc: bool) -> Self { self.q.order_expr(frag, desc); self }
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
+    /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
+    pub fn having(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { { let w = self.q.having_w(); f(BattleWhere { w }); } self }
     pub fn force_index_ik(mut self) -> Self { self.q.node().force_index = "ik".into(); self }
     pub fn force_index_ix_service(mut self) -> Self { self.q.node().force_index = "ix_service".into(); self }
     pub fn force_index_ix_user(mut self) -> Self { self.q.node().force_index = "ix_user".into(); self }
+
+    // ---- raw root (trusted code only): {table} = the entity table, ? = binds in order; run with raw_all ----
+    pub fn raw(mut self, sql: &str, binds: Vec<Param>) -> Self { self.q.raw(sql, binds); self }
 
     // ---- relation-child options ----
     pub fn flatten(mut self) -> Self { self.q.node().flatten = true; self }
@@ -1888,6 +1897,141 @@ impl Battle {
     pub async fn avg_like_count(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
     pub async fn sum_price(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
     pub async fn avg_price(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn count_distinct_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    /// None when no row matches.
+    pub async fn max_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_name(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "name".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_name(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    /// None when no row matches.
+    pub async fn max_name(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn count_distinct_description(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "description".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_description(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "description".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    /// None when no row matches.
+    pub async fn max_description(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "description".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn count_distinct_created_ts(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "created_ts".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_created_ts(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "created_ts".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    /// None when no row matches.
+    pub async fn max_created_ts(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "created_ts".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn count_distinct_updated_ts(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "updated_ts".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_updated_ts(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "updated_ts".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    /// None when no row matches.
+    pub async fn max_updated_ts(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "updated_ts".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn count_distinct_is_close(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "is_close".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_is_close(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_close".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    /// None when no row matches.
+    pub async fn max_is_close(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_close".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    pub async fn count_distinct_is_display(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "is_display".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_is_display(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_display".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    /// None when no row matches.
+    pub async fn max_is_display(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_display".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    pub async fn count_distinct_display_start_dt(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "display_start_dt".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_display_start_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "display_start_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    /// None when no row matches.
+    pub async fn max_display_start_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "display_start_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn count_distinct_display_end_dt(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "display_end_dt".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_display_end_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "display_end_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    /// None when no row matches.
+    pub async fn max_display_end_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "display_end_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn count_distinct_is_allday(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "is_allday".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_is_allday(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_allday".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    /// None when no row matches.
+    pub async fn max_is_allday(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_allday".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    pub async fn count_distinct_target_team_player_count(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "target_team_player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_target_team_player_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "target_team_player_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    /// None when no row matches.
+    pub async fn max_target_team_player_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "target_team_player_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_success_count(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "success_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_success_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "success_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    /// None when no row matches.
+    pub async fn max_success_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "success_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_player_count(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_player_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "player_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    /// None when no row matches.
+    pub async fn max_player_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "player_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_read_count(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "read_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_read_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "read_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    /// None when no row matches.
+    pub async fn max_read_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "read_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_cover_url(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "cover_url".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_cover_url(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "cover_url".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    /// None when no row matches.
+    pub async fn max_cover_url(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "cover_url".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn count_distinct_user_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "user_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_user_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "user_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    /// None when no row matches.
+    pub async fn max_user_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "user_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_service_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_service_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    /// None when no row matches.
+    pub async fn max_service_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_service_module_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "service_module_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_service_module_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_module_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    /// None when no row matches.
+    pub async fn max_service_module_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_module_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_service_member_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "service_member_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_service_member_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_member_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    /// None when no row matches.
+    pub async fn max_service_member_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_member_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_start_dt(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "start_dt".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_start_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "start_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    /// None when no row matches.
+    pub async fn max_start_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "start_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn count_distinct_end_dt(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "end_dt".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_end_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "end_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    /// None when no row matches.
+    pub async fn max_end_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "end_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn count_distinct_uuid(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "uuid".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_uuid(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "uuid".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    /// None when no row matches.
+    pub async fn max_uuid(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "uuid".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn count_distinct_is_single_play(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "is_single_play".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_is_single_play(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_single_play".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    /// None when no row matches.
+    pub async fn max_is_single_play(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_single_play".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    pub async fn count_distinct_like_count(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_like_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "like_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    /// None when no row matches.
+    pub async fn max_like_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "like_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_price(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_price(mut self, ex: &impl Exec) -> Result<Option<f64>> { self.q.req.ir.agg = "price".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_f64()) }) }
+    /// None when no row matches.
+    pub async fn max_price(mut self, ex: &impl Exec) -> Result<Option<f64>> { self.q.req.ir.agg = "price".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_f64()) }) }
+    pub async fn count_distinct_ip(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "ip".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_ip(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "ip".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    /// None when no row matches.
+    pub async fn max_ip(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "ip".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+
+    /// Runs the raw() statement; rows keyed by the driver's column names in column order, cells typed by column type (no codec).
+    pub async fn raw_all(mut self, ex: &impl Exec) -> Result<Vec<indexmap::IndexMap<String, Val>>> {
+        db::raw(ex, &mut self.q.req).await
+    }
 
     pub async fn paginate(mut self, ex: &impl Exec, page: u32, per: u32) -> Result<Page<BattleRow>> {
         let page = page.max(1);
