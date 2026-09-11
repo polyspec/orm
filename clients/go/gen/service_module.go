@@ -225,7 +225,7 @@ var ServiceModuleCols = struct {
 	Name:       orm.ColRef{Column: "name"},
 }
 
-// ServiceModuleQuery builds a statement over service_module: ServiceModule() → Bind(ctx, db) → chain → terminal().
+// ServiceModuleQuery builds a statement over service_module: ServiceModule() → Using(ctx, db) → chain → terminal().
 type ServiceModuleQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -246,14 +246,14 @@ func ServiceModule() *ServiceModuleQuery {
 	return &ServiceModuleQuery{q: orm.NewQ(mustEngine(), "service_module")}
 }
 
-// Bind selects the context and pool or transaction for this query.
-func (q *ServiceModuleQuery) Bind(ctx context.Context, ex orm.Exec) *ServiceModuleQuery {
+// Using selects the context and pool or transaction for this query.
+func (q *ServiceModuleQuery) Using(ctx context.Context, ex orm.Exec) *ServiceModuleQuery {
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
 
-// Bind selects the context and pool or transaction for this loaded row.
-func (r *ServiceModuleRow) Bind(ctx context.Context, ex orm.Exec) *ServiceModuleRow {
+// Using selects the context and pool or transaction for this loaded row.
+func (r *ServiceModuleRow) Using(ctx context.Context, ex orm.Exec) *ServiceModuleRow {
 	r.Binding = orm.NewBinding(ctx, ex)
 	return r
 }
@@ -1292,7 +1292,7 @@ func (q *ServiceModuleQuery) Insert() (*ServiceModuleRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ServiceModule().Bind(ctx, ex).SeqEq(int64(id)).One()
+	return ServiceModule().Using(ctx, ex).SeqEq(int64(id)).One()
 }
 
 // Save updates the other assigned columns when SetSeq was called (and
@@ -1310,7 +1310,7 @@ func (q *ServiceModuleQuery) Save() (*ServiceModuleRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return ServiceModule().Bind(ctx, ex).SeqEq(pk.(int64)).One()
+	return ServiceModule().Using(ctx, ex).SeqEq(pk.(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

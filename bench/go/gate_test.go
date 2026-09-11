@@ -81,7 +81,7 @@ func TestHotPathGate(t *testing.T) {
 			name:   "pk",
 			native: func() { mustNoErr(t, func() error { _, err := pkGet(ctx, sqlDB, 42); return err }) },
 			client: func() {
-				mustNoErr(t, func() error { _, err := gen.Battle().Bind(ctx, db).GetBySeq(42); return err })
+				mustNoErr(t, func() error { _, err := gen.Battle().Using(ctx, db).GetBySeq(42); return err })
 			},
 			bound: pkBound,
 		},
@@ -90,7 +90,7 @@ func TestHotPathGate(t *testing.T) {
 			native: func() { mustNoErr(t, func() error { _, err := list100(ctx, sqlDB, 7); return err }) },
 			client: func() {
 				mustNoErr(t, func() error {
-					_, err := gen.Battle().ServiceSeq(7).IsClose(false).OrderBySeqDesc().Limit(0, 100).Bind(ctx, db).Gets()
+					_, err := gen.Battle().ServiceSeq(7).IsClose(false).OrderBySeqDesc().Limit(0, 100).Using(ctx, db).Gets()
 					return err
 				})
 			},

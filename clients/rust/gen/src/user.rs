@@ -27,8 +27,8 @@ pub struct UserRow {
 }
 
 impl UserRow {
-    /// Rebind this loaded row to a pool or transaction.
-    pub fn bind(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
+    /// Select a pool or transaction for this loaded row.
+    pub fn using(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
     pub const ENTITY: &'static str = "user";
     pub const PK: &'static str = "seq";
 
@@ -251,17 +251,21 @@ impl<'a> UserWhere<'a> {
     pub fn name_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "not_eq_col", r); self }
 }
 
-/// Query over user: User::new() → bind(&db) → chain → terminal().await.
+/// Query over user: query() → using(&db) → chain → terminal().await.
 pub struct User {
     binding: Binding,
     pub q: Q,
     key_fn: Option<Box<dyn Fn(&UserRow) -> Key + Send + Sync>>,
 }
 
+/// Construct a query over user.
+pub fn query() -> User {
+    User { binding: Binding::default(), q: Q::new(super::schema_hash(), "user"), key_fn: None }
+}
+
 impl User {
-    /// Bind this query to a pool or transaction.
-    pub fn bind(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
-    pub fn new() -> Self { Self { binding: Binding::default(), q: Q::new(super::schema_hash(), "user"), key_fn: None } }
+    /// Select a pool or transaction for this query.
+    pub fn using(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
 
     /// Keys the root collection by a function of each row (relations key by key_by_<col>).
     pub fn key_by_fn(mut self, f: impl Fn(&UserRow) -> Key + Send + Sync + 'static) -> Self { self.key_fn = Some(Box::new(f)); self }
@@ -478,7 +482,7 @@ impl User {
 
     pub async fn insert(&mut self) -> Result<Option<UserRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
-        User::new().bind(ex).seq_eq(id as i64).one().await
+        super::user::query().using(ex).seq_eq(id as i64).one().await
     }
 
     /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
@@ -487,7 +491,7 @@ impl User {
             Some(pk) => {
                 self.q.w().pred("seq", "eq", pk.clone());
                 db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = User::new().bind(ex);
+                let mut q = super::user::query().using(ex);
                 q.q.w().pred("seq", "eq", pk);
                 q.one().await
             }
@@ -525,7 +529,7 @@ impl User {
 
 impl AsRef<User> for User { fn as_ref(&self) -> &Self { self } }
 
-impl Default for User { fn default() -> Self { Self::new() } }
+impl Default for User { fn default() -> Self { query() } }
 
 fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&UserRow) -> Key + Send + Sync)>) -> Result<Collection<UserRow>> {
     use orm::Src as _;

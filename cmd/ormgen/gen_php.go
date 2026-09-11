@@ -186,14 +186,15 @@ final class {{.Type}}Where
 {{- end}}
 }
 
-/** Query over {{.Table}}: new {{.Type}} → bind($db) → chain → terminal(). Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
+/** Query over {{.Table}}: {{.Type}}::query() → using($db) → chain → terminal(). Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
 final class {{.Type}} extends Q implements {{.Type}}Interface
 {
     use CompatQuery;
 
     public const ENTITY = '{{.Name}}';
 
-    public function __construct(Db|\PDO|null $db = null) { parent::__construct('{{.Name}}'); if ($db !== null) { $this->bind($db); } }
+    private function __construct() { parent::__construct('{{.Name}}'); }
+    public static function query(): static { return new static(); }
 
     // ---- WHERE ----
     /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
@@ -395,7 +396,7 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
         $db = $this->terminalDb();
         $id = $this->runInsert($db);
 {{- if .Auto}}
-        return (new {{.Type}})($db)->{{camel .PK}}Eq((int) $id)->one();
+        return {{.Type}}::query()->using($db)->{{camel .PK}}Eq((int) $id)->one();
 {{- else}}
         return null;
 {{- end}}
@@ -408,10 +409,10 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
         $db = $this->terminalDb();
 {{- if .Auto}}
         [, $key] = $this->runSave($db, '{{.PK}}');
-        return (new {{.Type}})($db)->{{camel .PK}}Eq((int) $key)->one();
+        return {{.Type}}::query()->using($db)->{{camel .PK}}Eq((int) $key)->one();
 {{- else}}
         [$updated, $key] = $this->runSave($db, '{{.PK}}');
-        return $updated ? (new {{.Type}})($db)->{{camel .PK}}Eq($key)->one() : null;
+        return $updated ? {{.Type}}::query()->using($db)->{{camel .PK}}Eq($key)->one() : null;
 {{- end}}
     }
 

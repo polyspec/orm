@@ -756,14 +756,15 @@ final class BattleWhere
     public function nameWithDescriptionMatchBoolean(string $v): static { $this->w->match(['name', 'description'], true, $v); return $this; }
 }
 
-/** Query over battle: new Battle → bind($db) → chain → terminal(). Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
+/** Query over battle: Battle::query() → using($db) → chain → terminal(). Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
 final class Battle extends Q implements BattleInterface
 {
     use CompatQuery;
 
     public const ENTITY = 'battle';
 
-    public function __construct(Db|\PDO|null $db = null) { parent::__construct('battle'); if ($db !== null) { $this->bind($db); } }
+    private function __construct() { parent::__construct('battle'); }
+    public static function query(): static { return new static(); }
 
     // ---- WHERE ----
     /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
@@ -2271,7 +2272,7 @@ final class Battle extends Q implements BattleInterface
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
         $id = $this->runInsert($db);
-        return (new Battle)($db)->seqEq((int) $id)->one();
+        return Battle::query()->using($db)->seqEq((int) $id)->one();
     }
 
     /** UPDATE by PK when setSeq was called (the other set columns), else INSERT; returns the re-read row. */
@@ -2280,7 +2281,7 @@ final class Battle extends Q implements BattleInterface
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
         [, $key] = $this->runSave($db, 'seq');
-        return (new Battle)($db)->seqEq((int) $key)->one();
+        return Battle::query()->using($db)->seqEq((int) $key)->one();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */

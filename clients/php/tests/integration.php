@@ -42,17 +42,17 @@ $fail = 0;
 function check(bool $ok, string $what): void { global $fail; if (!$ok) { $fail++; fwrite(STDERR, "FAIL: $what\n"); } }
 
 // ---- reads ----
-$b = (new Battle)->bind($db)->getBySeq(42);
+$b = Battle::query()->using($db)->getBySeq(42);
 check($b !== null && $b->getSeq() === 42 && $b->getName() === 'battle-42' && $b->getAesHexEmail() === 'user42@example.com', 'one by pk + aes decode');
 check($b->getDescription() === null && $b['name'] === 'battle-42', 'lazy column null by default; ArrayAccess');
 check($b->getIsClose() === true && $b->getIsDisplay() === false, 'bool coercion (42: closed, not displayed)');
 check($b->getMemo('dflt') === 'dflt', 'getX(default) for unknown column');
 
-$b2 = (new Battle)->selectDescription()->seq(42)->bind($db)->get();
+$b2 = Battle::query()->selectDescription()->seq(42)->using($db)->get();
 check(str_starts_with((string) $b2->getDescription(), 'desc-42'), 'select lazy column');
 
 $now = '2026-09-11 00:00:00';
-$rows = (new Battle)
+$rows = Battle::query()
     ->serviceSeq(7)
     ->isClose(false)
     ->and(fn(BattleWhere $w) => $w
@@ -62,37 +62,37 @@ $rows = (new Battle)
     ->seqIn([6, 106, 206, 306, 406])
     ->orderBySeqDesc()
     ->limit(0, 3)
-    ->bind($db)->gets();
+    ->using($db)->gets();
 check(count($rows) === 3 && $rows->first()->getSeq() === 306, 'all + group + or + in + order + limit');
 foreach ($rows as $seq => $r) { check($seq === $r->getSeq(), 'collection keyed by pk'); }
 
-check((new Battle)->serviceSeq(7)->bind($db)->getCount() === 1000, 'count');
-check((new Battle)->serviceSeq(7)->bind($db)->sumLikeCount() > 0, 'sum');
+check(Battle::query()->serviceSeq(7)->using($db)->getCount() === 1000, 'count');
+check(Battle::query()->serviceSeq(7)->using($db)->sumLikeCount() > 0, 'sum');
 
-$cnt = (new Battle)
-    ->joinService((new Service)->where(fn(ServiceWhere $w) => $w->name('service-7')))
-    ->leftJoinUser((new User)->on(fn(UserWhere $w) => $w->nameContains('user')))
+$cnt = Battle::query()
+    ->joinService(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))
+    ->leftJoinUser(User::query()->on(fn(UserWhere $w) => $w->nameContains('user')))
     ->isClose(false)
     ->and(fn(BattleWhere $w) => $w->isDisplay(true)->or()->service(fn(ServiceWhere $s) => $s->seqGt(1000)))
-    ->bind($db)->getCount();
+    ->using($db)->getCount();
 check($cnt > 0, 'join + on/where + nav');
 
-$page = (new Battle)->serviceSeq(7)->orderBySeqAsc()->bind($db)->paginate(2, 10);
+$page = Battle::query()->serviceSeq(7)->orderBySeqAsc()->using($db)->paginate(2, 10);
 check($page->total === 1000 && $page->pages === 100 && count($page->items) === 10 && $page->items->first()->getSeq() === 1006, 'paginate');
-check((new Battle)->nameContains('%')->bind($db)->getCount() === 0, 'contains escapes %');
+check(Battle::query()->nameContains('%')->using($db)->getCount() === 0, 'contains escapes %');
 
 // join result access
-$j = (new Battle)->joinService((new Service)->where(fn(ServiceWhere $w) => $w->seq(7)))->seq(6)->bind($db)->get();
+$j = Battle::query()->joinService(Service::query()->where(fn(ServiceWhere $w) => $w->seq(7)))->seq(6)->using($db)->get();
 check($j !== null && $j->getService() !== null && $j->getService()->getName() === 'service-7' && $j['service']['name'] === 'service-7', 'joined row access');
 
 // ---- relations ----
 $n0 = count($log);
-$rows = (new Battle)
+$rows = Battle::query()
     ->serviceSeq(7)->orderBySeqAsc()->limit(0, 5)
-    ->relationUser(new User)
-    ->relationService((new Service)
-        ->relationsMembers((new ServiceMember)->orderBySeqDesc()->limitPerParent(3)->keyByUserSeq()->dropChildKey()))
-    ->bind($db)->gets();
+    ->relationUser(User::query())
+    ->relationService(Service::query()
+        ->relationsMembers(ServiceMember::query()->orderBySeqDesc()->limitPerParent(3)->keyByUserSeq()->dropChildKey()))
+    ->using($db)->gets();
 check(count($rows) === 5 && count($log) - $n0 === 4, 'relation statements: main, user, service, members');
 foreach ($rows as $b) {
     check($b->getUser() !== null && $b->getUser()->getSeq() === $b->getUserSeq() && $b['user']['name'] === 'user-' . $b->getUserSeq(), 'one relation');
@@ -101,106 +101,106 @@ foreach ($rows as $b) {
         check($k === $m->getUserSeq() && $m->getServiceSeq() === 7 && !array_key_exists('service_seq', $m->toArray()), 'key_by + drop_child_key');
     }
 }
-$rows = (new Battle)
+$rows = Battle::query()
     ->seqIn([7, 8, 14])->orderBySeqAsc()
-    ->relationUser((new User)->ifParentIsCloseEq(true)->relationsBattles((new Battle)->orderBySeqAsc()->limitPerParent(2)))
-    ->joinService((new Service)->relationsModules(new ServiceModule))
-    ->bind($db)->gets();
+    ->relationUser(User::query()->ifParentIsCloseEq(true)->relationsBattles(Battle::query()->orderBySeqAsc()->limitPerParent(2)))
+    ->joinService(Service::query()->relationsModules(ServiceModule::query()))
+    ->using($db)->gets();
 check($rows[7]->getUser() !== null && $rows[14]->getUser() !== null && $rows[8]->getUser() === null, 'if_parent loads only closed battles\' users');
 check(count($rows[7]->getUser()->getBattles()) === 2, 'nested many under one, limit_per_parent');
 check(count($rows[8]->getService()->getModules()) === 1 && $rows[8]->getService()->getModules()->first()->getServiceSeq() === $rows[8]->getServiceSeq(), 'relation off a join');
 $n0 = count($log);
-check(count((new Battle)->seq(0)->relationUser(new User)->bind($db)->gets()) === 0 && count($log) - $n0 === 1, 'no parents → relation step skipped');
-$one = (new Battle)->seq(42)->relationService((new Service)->relationsMembers((new ServiceMember)->limitPerParent(1)))->bind($db)->get();
+check(count(Battle::query()->seq(0)->relationUser(User::query())->using($db)->gets()) === 0 && count($log) - $n0 === 1, 'no parents → relation step skipped');
+$one = Battle::query()->seq(42)->relationService(Service::query()->relationsMembers(ServiceMember::query()->limitPerParent(1)))->using($db)->get();
 check($one !== null && count($one->getService()->getMembers()) === 1, 'one + relation');
-$m = (new ServiceMember)->serviceSeq(7)->orderBySeqAsc()->limit(0, 2)->relationUser((new User)->flatten())->bind($db)->gets()->first();
+$m = ServiceMember::query()->serviceSeq(7)->orderBySeqAsc()->limit(0, 2)->relationUser(User::query()->flatten())->using($db)->gets()->first();
 check($m['name'] === 'user-' . $m->getUserSeq() && $m->getName() === 'user-' . $m->getUserSeq() && $m->toArray()['name'] === $m['name'], 'flatten merges child columns into the parent');
-$page = (new Battle)->serviceSeq(7)->orderBySeqAsc()->relationUser(new User)->bind($db)->paginate(1, 4);
+$page = Battle::query()->serviceSeq(7)->orderBySeqAsc()->relationUser(User::query())->using($db)->paginate(1, 4);
 check($page->total === 1000 && count($page->items) === 4 && $page->items->first()->getUser() !== null, 'paginate keeps relations');
 
 // ---- writes ----
 $created = $db->transaction(function (Tx $tx) {
-    return (new Battle)
+    return Battle::query()
         ->setName('php-write')
         ->setUserSeq(1)->setServiceSeq(999)->setServiceModuleSeq(1)->setServiceMemberSeq(1)
         ->setStartDt('2026-06-01 00:00:00')->setEndDt('2026-12-31 00:00:00')
         ->setAesHexEmail('w@example.com')
-        ->bind($tx)->insert();
+        ->using($tx)->insert();
 });
 check($created !== null && $created->getSeq() > 0 && $created->getAesHexEmail() === 'w@example.com', 'insert in tx + aes');
 
-$created->setName('php-write-2')->setLikeCount(5)->bind($db)->updateOptimistic();
-$again = (new Battle)->bind($db)->getBySeq($created->getSeq());
+$created->setName('php-write-2')->setLikeCount(5)->using($db)->updateOptimistic();
+$again = Battle::query()->using($db)->getBySeq($created->getSeq());
 check($again->getName() === 'php-write-2' && $again->getLikeCount() === 5, 'dirty update');
 try {
-    $created->setName('stale')->bind($db)->updateOptimistic();
+    $created->setName('stale')->using($db)->updateOptimistic();
     check(false, 'optimistic lock should fail');
 } catch (OrmException $e) {
     check($e->code_ === Code::OPTIMISTIC_LOCK, 'optimistic lock code');
 }
-$again->bind($db)->delete();
-check((new Battle)->seq($created->getSeq())->bind($db)->getCount() === 0, 'delete');
+$again->using($db)->delete();
+check(Battle::query()->seq($created->getSeq())->using($db)->getCount() === 0, 'delete');
 
 // ---- S3: upsert, save, query update/delete, deleteCascade, sql ----
-$draft = fn(string $name, int $readCount = 1) => (new Battle)
+$draft = fn(string $name, int $readCount = 1) => Battle::query()
     ->setName($name)->setReadCount($readCount)
     ->setUserSeq(1)->setServiceSeq(999)->setServiceModuleSeq(1)->setServiceMemberSeq(1)
     ->setStartDt('2026-06-01 00:00:00')->setEndDt('2026-12-31 00:00:00');
-$a = $draft('php-u1')->setUuid('php-upsert')->bind($db)->insert();
-$b = $draft('php-u2')->setUuid('php-upsert')->onDuplicateSetName('php-u2')->onDuplicatePlusReadCount(5)->bind($db)->insert();
+$a = $draft('php-u1')->setUuid('php-upsert')->using($db)->insert();
+$b = $draft('php-u2')->setUuid('php-upsert')->onDuplicateSetName('php-u2')->onDuplicatePlusReadCount(5)->using($db)->insert();
 check($a !== null && $b !== null && $b->getSeq() === $a->getSeq() && $b->getName() === 'php-u2' && $b->getReadCount() === 6, 'insert on duplicate updates and returns the existing row');
-$c = $draft('php-u3', 9)->setUuid('php-upsert')->onDuplicateSetAll()->bind($db)->insert();
+$c = $draft('php-u3', 9)->setUuid('php-upsert')->onDuplicateSetAll()->using($db)->insert();
 check($c->getSeq() === $a->getSeq() && $c->getName() === 'php-u3' && $c->getReadCount() === 9, 'onDuplicateSetAll mirrors the draft');
 // With PDO, PostgreSQL parameters carry no type: a bare ? inside CONCAT (variadic "any") is indeterminate there, `||` is not.
 $concat = $driver === 'mysql' ? 'CONCAT(`name`, ?)' : '`name` || ?';
-$d = $draft('php-u4')->setUuid('php-upsert')->onDuplicateSetNameExpr($concat, ['!'])->onDuplicateMinusReadCount(100)->bind($db)->insert();
+$d = $draft('php-u4')->setUuid('php-upsert')->onDuplicateSetNameExpr($concat, ['!'])->onDuplicateMinusReadCount(100)->using($db)->insert();
 check($d->getSeq() === $a->getSeq() && $d->getName() === 'php-u3!' && $d->getReadCount() === 0, 'on duplicate expr + minus clamped at 0');
-check((new Battle)->seq($a->getSeq())->bind($db)->delete() === 1 && (new Battle)->seq($a->getSeq())->bind($db)->getCount() === 0, 'query delete returns the affected count');
+check(Battle::query()->seq($a->getSeq())->using($db)->delete() === 1 && Battle::query()->seq($a->getSeq())->using($db)->getCount() === 0, 'query delete returns the affected count');
 
-$r = $draft('php-save')->bind($db)->save();
+$r = $draft('php-save')->using($db)->save();
 check($r !== null && $r->getSeq() > 0 && $r->getName() === 'php-save', 'save without pk inserts');
-$r2 = (new Battle)->setSeq($r->getSeq())->setName('php-save-2')->bind($db)->save();
+$r2 = Battle::query()->setSeq($r->getSeq())->setName('php-save-2')->using($db)->save();
 check($r2 !== null && $r2->getSeq() === $r->getSeq() && $r2->getName() === 'php-save-2' && $r2->getUserSeq() === 1, 'save with pk updates the other columns only');
-check((new Battle)->seq($r->getSeq())->plusReadCount(2)->setLikeCount(7)->bind($db)->update() === 1, 'query update returns the affected count');
-$r3 = (new Battle)->bind($db)->getBySeq($r->getSeq());
+check(Battle::query()->seq($r->getSeq())->plusReadCount(2)->setLikeCount(7)->using($db)->update() === 1, 'query update returns the affected count');
+$r3 = Battle::query()->using($db)->getBySeq($r->getSeq());
 check($r3->getReadCount() === 3 && $r3->getLikeCount() === 7, 'query update applied (read_count 1 + 2)');
 try {
-    (new Battle)->setName('x')->bind($db)->update();
+    Battle::query()->setName('x')->using($db)->update();
     check(false, 'update without where should throw');
 } catch (OrmException $e) {
     check($e->code_ === Code::IR_INVALID, 'update without where → IR_INVALID');
 }
-check((new Battle)->seq($r->getSeq())->bind($db)->delete() === 1, 'query delete');
+check(Battle::query()->seq($r->getSeq())->using($db)->delete() === 1, 'query delete');
 
 $n0 = count($log);
-$dump = (new Battle)->serviceSeq(7)->selectAesHexEmail()->limit(0, 1)->bind($db)->sql();
+$dump = Battle::query()->serviceSeq(7)->selectAesHexEmail()->limit(0, 1)->using($db)->sql();
 check(str_starts_with($dump['sql'], 'SELECT ') && $dump['binds'] === $aesBinds && count($log) === $n0, 'sql() dumps the main statement without executing');
 
 $svc = $db->transaction(function (Tx $tx) {
-    $s = (new Service)->setName('php-cascade')->bind($tx)->insert();
+    $s = Service::query()->setName('php-cascade')->using($tx)->insert();
     foreach ([1, 2] as $u) {
-        (new ServiceMember)->setServiceSeq($s->getSeq())->setUserSeq($u)->bind($tx)->insert();
+        ServiceMember::query()->setServiceSeq($s->getSeq())->setUserSeq($u)->using($tx)->insert();
     }
-    (new ServiceModule)->setServiceSeq($s->getSeq())->setName('php-cascade-mod')->bind($tx)->insert();
+    ServiceModule::query()->setServiceSeq($s->getSeq())->setName('php-cascade-mod')->using($tx)->insert();
     return $s;
 });
-$loaded = (new Service)->seq($svc->getSeq())
-    ->relationsMembers((new ServiceMember)->orderBySeqAsc()->relationUser(new User))
-    ->relationsModules((new ServiceModule)->noCascadeDelete())
-    ->bind($db)->get();
+$loaded = Service::query()->seq($svc->getSeq())
+    ->relationsMembers(ServiceMember::query()->orderBySeqAsc()->relationUser(User::query()))
+    ->relationsModules(ServiceModule::query()->noCascadeDelete())
+    ->using($db)->get();
 $n0 = count($log);
-$loaded->bind($db)->deleteCascade();
+$loaded->using($db)->deleteCascade();
 check(count($log) - $n0 === 3
     && str_starts_with($log[$n0], 'DELETE FROM `service_member`') && str_starts_with($log[$n0 + 1], 'DELETE FROM `service_member`') && str_starts_with($log[$n0 + 2], 'DELETE FROM `service`'),
     'deleteCascade: owned members first, then the service; noCascadeDelete stops at modules; users (parent direction) untouched');
-check((new ServiceMember)->serviceSeq($svc->getSeq())->bind($db)->getCount() === 0 && (new Service)->seq($svc->getSeq())->bind($db)->getCount() === 0
-    && (new ServiceModule)->serviceSeq($svc->getSeq())->bind($db)->getCount() === 1 && (new User)->seqIn([1, 2])->bind($db)->getCount() === 2, 'deleteCascade result');
-check((new ServiceModule)->serviceSeq($svc->getSeq())->bind($db)->delete() === 1, 'cascade cleanup');
+check(ServiceMember::query()->serviceSeq($svc->getSeq())->using($db)->getCount() === 0 && Service::query()->seq($svc->getSeq())->using($db)->getCount() === 0
+    && ServiceModule::query()->serviceSeq($svc->getSeq())->using($db)->getCount() === 1 && User::query()->seqIn([1, 2])->using($db)->getCount() === 2, 'deleteCascade result');
+check(ServiceModule::query()->serviceSeq($svc->getSeq())->using($db)->delete() === 1, 'cascade cleanup');
 
 // ---- deadlock gate: two processes, T1 updates A then B, T2 updates B then A ----
 if ($driver !== 'sqlite') {
-$rowA = $draft('dl-php-1')->bind($db)->insert();
-$rowB = $draft('dl-php-2')->bind($db)->insert();
+$rowA = $draft('dl-php-1')->using($db)->insert();
+$rowB = $draft('dl-php-2')->using($db)->insert();
 $procs = [];
 foreach ([['t1', $rowA->getSeq(), $rowB->getSeq()], ['t2', $rowB->getSeq(), $rowA->getSeq()]] as [$tag, $first, $second]) {
     $cmd = [PHP_BINARY, '-d', 'apc.enable_cli=0', __DIR__ . '/deadlock_child.php', $sock, $schema, (string) $first, (string) $second, $tag];
@@ -226,34 +226,34 @@ foreach ($procs as $tag => [$p, $pipes]) {
 }
 check(array_sum($runs) >= 3, 'the deadlock loser re-ran its closure (' . json_encode($runs) . ')');
 $last = $runs['t1'] > $runs['t2'] ? 't1' : 't2'; // the re-run side commits after the winner, so it wrote last
-$a2 = (new Battle)->bind($db)->getBySeq($rowA->getSeq());
-$b2 = (new Battle)->bind($db)->getBySeq($rowB->getSeq());
+$a2 = Battle::query()->using($db)->getBySeq($rowA->getSeq());
+$b2 = Battle::query()->using($db)->getBySeq($rowB->getSeq());
 check($a2->getName() === "dl-php-$last" && $b2->getName() === "dl-php-$last", 'final values are the last writer\'s');
-$rowA->bind($db)->delete();
-$rowB->bind($db)->delete();
-check((new Battle)->seqIn([$rowA->getSeq(), $rowB->getSeq()])->bind($db)->getCount() === 0, 'deadlock rows cleaned up');
+$rowA->using($db)->delete();
+$rowB->using($db)->delete();
+check(Battle::query()->seqIn([$rowA->getSeq(), $rowB->getSeq()])->using($db)->getCount() === 0, 'deadlock rows cleaned up');
 } else {
     fwrite(STDERR, "skip: deadlock interleaving (SQLite has one writer; SQLITE_BUSY is mapped to DEADLOCK and re-run, but two transactions cannot interleave row locks)\n");
 }
 
 // ---- S4: countDistinct/min/max, having, named predicates, raw root ----
-check((new Battle)->serviceSeq(7)->bind($db)->minSeq() === 6 && (new Battle)->serviceSeq(7)->bind($db)->maxSeq() === 99906, 'min/max return the column type (int)');
-check((new Battle)->seq(0)->bind($db)->minSeq() === null && (new Battle)->seq(0)->bind($db)->maxStartDt() === null, 'min/max are null when no rows match');
-check(preg_match('/^\d{4}-\d\d-\d\d /', (string) (new Battle)->serviceSeq(7)->bind($db)->minStartDt()) === 1, 'min of a datetime column is its string form');
-check((new Battle)->seq(0)->bind($db)->maxIp() === null && (new Battle)->seq(0)->bind($db)->countDistinctIp() === 0, 'ip-styled column has the aggregate terminals (engine allows ip); null/0 when no rows');
-$du = (new Battle)->serviceSeq(7)->bind($db)->countDistinctUserSeq();
-check($du > 0 && $du <= 1000 && (new Battle)->seq(0)->bind($db)->countDistinctUserSeq() === 0, 'countDistinct is an int, 0 when no rows');
-$groups = (new Battle)->serviceSeq(7)->groupByUserSeq()->bind($db)->getCount();
+check(Battle::query()->serviceSeq(7)->using($db)->minSeq() === 6 && Battle::query()->serviceSeq(7)->using($db)->maxSeq() === 99906, 'min/max return the column type (int)');
+check(Battle::query()->seq(0)->using($db)->minSeq() === null && Battle::query()->seq(0)->using($db)->maxStartDt() === null, 'min/max are null when no rows match');
+check(preg_match('/^\d{4}-\d\d-\d\d /', (string) Battle::query()->serviceSeq(7)->using($db)->minStartDt()) === 1, 'min of a datetime column is its string form');
+check(Battle::query()->seq(0)->using($db)->maxIp() === null && Battle::query()->seq(0)->using($db)->countDistinctIp() === 0, 'ip-styled column has the aggregate terminals (engine allows ip); null/0 when no rows');
+$du = Battle::query()->serviceSeq(7)->using($db)->countDistinctUserSeq();
+check($du > 0 && $du <= 1000 && Battle::query()->seq(0)->using($db)->countDistinctUserSeq() === 0, 'countDistinct is an int, 0 when no rows');
+$groups = Battle::query()->serviceSeq(7)->groupByUserSeq()->using($db)->getCount();
 check($groups === $du, 'count with groupBy is the number of groups');
-$buckets = (new Battle)->serviceSeq(7)->groupByExpr('ROUND(`like_count`)', 'bucket')->bind($db)->getsCount();
+$buckets = Battle::query()->serviceSeq(7)->groupByExpr('ROUND(`like_count`)', 'bucket')->using($db)->getsCount();
 $bucket = $buckets->first();
 check($bucket !== null && $bucket->getRowCount() > 0 && $bucket->bucket !== null, 'getsCount supports expression groups and row_count');
-$multi = (new Battle)->serviceSeq(7)->groupByUserSeq()->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->bind($db)->getCount();
-$single = (new Battle)->serviceSeq(7)->groupByUserSeq()->having(fn(BattleWhere $w) => $w->expr('COUNT(*) = ?', [1]))->bind($db)->getCount();
+$multi = Battle::query()->serviceSeq(7)->groupByUserSeq()->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->using($db)->getCount();
+$single = Battle::query()->serviceSeq(7)->groupByUserSeq()->having(fn(BattleWhere $w) => $w->expr('COUNT(*) = ?', [1]))->using($db)->getCount();
 check($multi + $single === $groups && $multi > 0, 'having filters the groups (' . $multi . ' multi + ' . $single . ' single)');
-check(str_contains((new Battle)->serviceSeq(7)->groupByUserSeq()->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->bind($db)->sql()['sql'], ' HAVING '), 'having is rendered');
+check(str_contains(Battle::query()->serviceSeq(7)->groupByUserSeq()->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->using($db)->sql()['sql'], ' HAVING '), 'having is rendered');
 try {
-    (new Battle)->serviceSeq(7)->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->bind($db)->getCount();
+    Battle::query()->serviceSeq(7)->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->using($db)->getCount();
     check(false, 'having without groupBy should throw');
 } catch (OrmException $e) {
     check($e->code_ === Code::IR_INVALID, 'having without groupBy → IR_INVALID');
@@ -265,22 +265,22 @@ try {
     check($e->code_ === Code::OPERATOR_NOT_ALLOWED, 'min on a styled column → OPERATOR_NOT_ALLOWED (no method is generated for it)');
 }
 
-$vis = (new Battle)->visible()->serviceSeq(7)->bind($db)->getCount();
-check($vis > 0 && $vis === (new Battle)->serviceSeq(7)->isClose(false)->isDisplay(true)->bind($db)->getCount(), 'visible() = is_close = 0 AND is_display = 1');
+$vis = Battle::query()->visible()->serviceSeq(7)->using($db)->getCount();
+check($vis > 0 && $vis === Battle::query()->serviceSeq(7)->isClose(false)->isDisplay(true)->using($db)->getCount(), 'visible() = is_close = 0 AND is_display = 1');
 $since = '2026-01-01 00:00:00';
-$sa = (new Battle)->startedAfter($since)->serviceSeq(7)->bind($db)->getCount();
-check($sa === (new Battle)->startDtGt($since)->serviceSeq(7)->bind($db)->getCount(), 'startedAfter($v) binds its one argument');
-$either = (new Battle)->serviceSeq(7)->and(fn(BattleWhere $w) => $w->visible()->or()->startedAfter($since))->bind($db)->getCount();
+$sa = Battle::query()->startedAfter($since)->serviceSeq(7)->using($db)->getCount();
+check($sa === Battle::query()->startDtGt($since)->serviceSeq(7)->using($db)->getCount(), 'startedAfter($v) binds its one argument');
+$either = Battle::query()->serviceSeq(7)->and(fn(BattleWhere $w) => $w->visible()->or()->startedAfter($since))->using($db)->getCount();
 check($either >= max($vis, $sa) && $either <= $vis + $sa, 'named predicates on the Where builder, with or()');
-check(str_contains(orm_norm_sql((new Battle)->visible()->bind($db)->sql()['sql']), '(`a`.`is_close` = FALSE AND `a`.`is_display` = TRUE)'), 'predicate fragment reaches the SQL with its columns alias-resolved');
+check(str_contains(orm_norm_sql(Battle::query()->visible()->using($db)->sql()['sql']), '(`a`.`is_close` = FALSE AND `a`.`is_display` = TRUE)'), 'predicate fragment reaches the SQL with its columns alias-resolved');
 
-$raw = (new Battle)->raw('SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?', [7, 0])->bind($db)->rawAll();
-check(count($raw) === 1 && array_keys($raw[0]) === ['n', 'm'] && $raw[0]['n'] === (new Battle)->serviceSeq(7)->isClose(false)->bind($db)->getCount() && is_int($raw[0]['m']), 'rawAll: one row keyed by column name, ints as ints');
-$raw2 = (new Battle)->raw('SELECT seq, name FROM {table} WHERE seq IN (?, ?) ORDER BY seq', [42, 6])->bind($db)->rawAll();
+$raw = Battle::query()->raw('SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?', [7, 0])->using($db)->rawAll();
+check(count($raw) === 1 && array_keys($raw[0]) === ['n', 'm'] && $raw[0]['n'] === Battle::query()->serviceSeq(7)->isClose(false)->using($db)->getCount() && is_int($raw[0]['m']), 'rawAll: one row keyed by column name, ints as ints');
+$raw2 = Battle::query()->raw('SELECT seq, name FROM {table} WHERE seq IN (?, ?) ORDER BY seq', [42, 6])->using($db)->rawAll();
 check(count($raw2) === 2 && $raw2[0]['seq'] === 6 && $raw2[1]['name'] === 'battle-42', 'rawAll: rows in statement order, binds in order');
-check((new Battle)->raw('SELECT seq FROM {table} WHERE seq = ?', [0])->bind($db)->rawAll() === [], 'rawAll: empty list when nothing matches');
+check(Battle::query()->raw('SELECT seq FROM {table} WHERE seq = ?', [0])->using($db)->rawAll() === [], 'rawAll: empty list when nothing matches');
 try {
-    (new Battle)->raw('SELECT seq FROM {table} WHERE seq = ?', [])->bind($db)->rawAll();
+    Battle::query()->raw('SELECT seq FROM {table} WHERE seq = ?', [])->using($db)->rawAll();
     check(false, 'raw with a placeholder/bind mismatch should throw');
 } catch (OrmException $e) {
     check($e->code_ === Code::IR_INVALID, 'raw placeholder/bind mismatch → IR_INVALID');
@@ -288,7 +288,7 @@ try {
 
 // ---- error surface ----
 try {
-    (new Battle)->seqIn([])->bind($db)->getCount();
+    Battle::query()->seqIn([])->using($db)->getCount();
     check(false, 'EMPTY_IN should throw');
 } catch (OrmException $e) {
     check($e->code_ === Code::EMPTY_IN, 'EMPTY_IN code');
@@ -296,37 +296,37 @@ try {
 
 // ---- S5: on_query hook payload ----
 $n0 = count($hooked);
-(new Battle)->serviceSeq(7)->selectAesHexEmail()->limit(0, 1)->bind($db)->gets();
-(new Battle)->serviceSeq(8)->selectAesHexEmail()->limit(0, 1)->bind($db)->gets();
-(new Battle)->serviceSeq(8)->selectAesHexEmail()->limit(0, 2)->bind($db)->gets();
+Battle::query()->serviceSeq(7)->selectAesHexEmail()->limit(0, 1)->using($db)->gets();
+Battle::query()->serviceSeq(8)->selectAesHexEmail()->limit(0, 1)->using($db)->gets();
+Battle::query()->serviceSeq(8)->selectAesHexEmail()->limit(0, 2)->using($db)->gets();
 [$binds1, $plan1, $err1] = $hooked[$n0];
 [, $plan2] = $hooked[$n0 + 1];
 [, $plan3] = $hooked[$n0 + 2];
 check($binds1 === $aesBinds && $err1 === null, $driver === 'mysql' ? 'hook binds mask secret slots as $SECRET' : 'hook binds carry no secret (host AES)');
 check(preg_match('/^[0-9a-f]{16}$/', $plan1) === 1 && $plan1 === $plan2 && $plan1 !== $plan3, 'plan_id is the 16-hex plan key: same shape → same id, different limit → different id');
 try {
-    (new Battle)->raw('SELECT no_such_column FROM {table}', [])->bind($db)->rawAll();
+    Battle::query()->raw('SELECT no_such_column FROM {table}', [])->using($db)->rawAll();
     check(false, 'bad raw sql should throw');
 } catch (\PDOException $e) {
     check(str_contains($e->getMessage(), 'no_such_column') && $hooked[count($hooked) - 1][2] === $e, 'unmapped driver errors pass through as PDOException and reach the hook');
 }
 
 // ---- S5: driver error mapping ----
-$dup = $draft('php-dup')->setUuid('php-dup-uuid')->bind($db)->insert();
+$dup = $draft('php-dup')->setUuid('php-dup-uuid')->using($db)->insert();
 try {
-    $draft('php-dup-2')->setUuid('php-dup-uuid')->bind($db)->insert();
+    $draft('php-dup-2')->setUuid('php-dup-uuid')->using($db)->insert();
     check(false, 'duplicate uuid should throw');
 } catch (OrmException $e) {
     $driverMsg = ['mysql' => '1062', 'postgres' => '23505', 'sqlite' => 'UNIQUE'][$driver];
     check($e->code_ === Code::DUPLICATE_KEY && str_contains($e->getMessage(), $driverMsg) && $e->getPrevious() instanceof \PDOException, 'duplicate uuid → DUPLICATE_KEY with the driver message kept');
 }
 try {
-    $db->transaction(fn(Tx $tx) => $draft('php-dup-3')->setUuid('php-dup-uuid')->bind($tx)->insert());
+    $db->transaction(fn(Tx $tx) => $draft('php-dup-3')->setUuid('php-dup-uuid')->using($tx)->insert());
     check(false, 'duplicate uuid in a transaction should throw');
 } catch (OrmException $e) {
     check($e->code_ === Code::DUPLICATE_KEY && !$db->pdo->inTransaction(), 'DUPLICATE_KEY inside transaction() is not re-run and rolls back');
 }
-$dup->bind($db)->delete();
+$dup->using($db)->delete();
 
 // ---- S5: schema_hash boot check ----
 Registry::generated('0000000000000000');
@@ -407,19 +407,19 @@ unlink($bad);
 $good = $toml("schema = \"$schema\"");
 $db2 = Orm::fromConfig($good);
 unlink($good);
-check($db2 instanceof Db && $db2->driver() === $driver && Orm::config()->driver === $driver && Orm::config()->onQuery === null && Orm::config()->aesKey === 'bench-salt' && (new Battle)->bind($db2)->getBySeq(42)->getAesHexEmail() === 'user42@example.com', 'fromConfig loads db (driver), secrets and ormd and passes the boot check');
+check($db2 instanceof Db && $db2->driver() === $driver && Orm::config()->driver === $driver && Orm::config()->onQuery === null && Orm::config()->aesKey === 'bench-salt' && Battle::query()->using($db2)->getBySeq(42)->getAesHexEmail() === 'user42@example.com', 'fromConfig loads db (driver), secrets and ormd and passes the boot check');
 Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver,
     onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log) { $log[] = $sql; }));
 
 // ---- S6: host-side styles round trip on this database (aes/hex in SQL on MySQL, app-side elsewhere; ip packed on SQLite) ----
-$hb = $draft('php-host')->setAesHexEmail('한글@example.com')->setAesHexPhone('')->setIp('2001:db8::1')->bind($db)->insert();
+$hb = $draft('php-host')->setAesHexEmail('한글@example.com')->setAesHexPhone('')->setIp('2001:db8::1')->using($db)->insert();
 check($hb->getAesHexEmail() === '한글@example.com' && $hb->getAesHexPhone() === '' && $hb->getIp() === '2001:db8::1', 'aes_hex and ip written by this executor read back equal (' . $driver . ')');
-$rawHex = (new Battle)->raw('SELECT aes_hex_email AS h FROM {table} WHERE seq = ?', [$hb->getSeq()])->bind($db)->rawAll()[0]['h'];
+$rawHex = Battle::query()->raw('SELECT aes_hex_email AS h FROM {table} WHERE seq = ?', [$hb->getSeq()])->using($db)->rawAll()[0]['h'];
 check($rawHex === Codec::hostEncode('한글@example.com', ['aes', 'hex'], 'bench-salt'), 'the stored aes_hex bytes are the host codec\'s, which tests/codec/aes-vectors.json proves are MySQL\'s');
-check(count((new Battle)->aesHexEmail('한글@example.com')->seq($hb->getSeq())->bind($db)->gets()) === 1, 'aes_hex predicate binds the host-encoded value');
-$hb->setIp('10.1.2.3')->bind($db)->update();
-check((new Battle)->bind($db)->getBySeq($hb->getSeq())->getIp() === '10.1.2.3', 'ip update (IPv4 packs to 4 bytes)');
-$hb->bind($db)->delete();
+check(count(Battle::query()->aesHexEmail('한글@example.com')->seq($hb->getSeq())->using($db)->gets()) === 1, 'aes_hex predicate binds the host-encoded value');
+$hb->setIp('10.1.2.3')->using($db)->update();
+check(Battle::query()->using($db)->getBySeq($hb->getSeq())->getIp() === '10.1.2.3', 'ip update (IPv4 packs to 4 bytes)');
+$hb->using($db)->delete();
 
 if ($fail === 0) {
     echo "ok — " . count($log) . " statements\n";

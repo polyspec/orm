@@ -8,13 +8,13 @@ trait ConnectionBinding
 {
     private ?Binding $binding = null;
 
-    public function bind(Db|\PDO $db): static
+    public function using(Db|\PDO $db): static
     {
         $this->binding = new Binding($db instanceof Db ? $db : new Db($db, Orm::config()->driver));
         return $this;
     }
 
-    public function __invoke(Db|\PDO $db): static { return $this->bind($db); }
+    public function __invoke(Db|\PDO $db): static { return $this->using($db); }
 
     protected function terminalDb(): Db
     {

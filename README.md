@@ -4,19 +4,19 @@ A schema-driven fluent query grammar for **Go, PHP and Rust** that compiles thro
 into database plans and executes on each language's native driver. Version 0.0.1.
 
 ```php
-$battles = (new Battle)->bind($db)->serviceSeq(7)->isClose(false)
+$battles = Battle::query()->using($db)->serviceSeq(7)->isClose(false)
     ->and(fn(BattleWhere $w) => $w->isDisplay(true)->or()->isAllday(true))
-    ->relationUser(new User)->orderBySeqDesc()->limit(0, 20)->gets();
+    ->relationUser(User::query())->orderBySeqDesc()->limit(0, 20)->gets();
 ```
 ```go
-battles, err := gen.Battle().Bind(ctx, db).ServiceSeq(7).IsClose(false).
+battles, err := gen.Battle().Using(ctx, db).ServiceSeq(7).IsClose(false).
     And(func(w *gen.BattleWhere) { w.IsDisplay(true).Or().IsAllday(true) }).
     RelationUser(gen.User()).OrderBySeqDesc().Limit(0, 20).Gets()
 ```
 ```rust
-let battles = Battle::new().bind(&db).service_seq(7).is_close(false)
+let battles = battle::query().using(&db).service_seq(7).is_close(false)
     .and(|w| w.is_display(true).or().is_allday(true))
-    .relation_user(User::new()).order_by_seq_desc().limit(0, 20).gets().await?;
+    .relation_user(user::query()).order_by_seq_desc().limit(0, 20).gets().await?;
 ```
 The three chains produce the same SQL, the same binds and the same results — checked byte for byte by
 `tests/conformance` (58 vectors) and `ormgen tokens`.
@@ -24,18 +24,18 @@ The three chains produce the same SQL, the same binds and the same results — c
 For a direct finder, the same `getsBy` token is generated in all three clients:
 
 ```php
-$battles = (new Battle)->bind($db)->getsByServiceSeq(7);
+$battles = Battle::query()->using($db)->getsByServiceSeq(7);
 ```
 ```go
-battles, err := gen.Battle().Bind(ctx, db).GetsByServiceSeq(7)
+battles, err := gen.Battle().Using(ctx, db).GetsByServiceSeq(7)
 ```
 ```rust
-let battles = Battle::new().bind(&db).gets_by_service_seq(7).await?;
+let battles = battle::query().using(&db).gets_by_service_seq(7).await?;
 ```
 `getBy` is the one-row form for a primary or unique key; `getCountBy` is the scalar count form.
 `getsBy<Field>` and `getCountBy<Field>` are root-table equality shortcuts; index declarations affect the database plan, not whether the shortcut exists. For multiple predicates, keep the same root query and chain the columns before `gets` or `getCount`.
 
-`gen.Battle()` is Go's query factory and returns `*gen.BattleQuery`. PHP and Rust use `new Battle` and `Battle::new()` for the same query head. Creation, ownership and asynchronous execution follow each language; the query operations and semantics are shared. `get` returns one row, `gets` returns a collection. `one/all` remain compatibility aliases. Bind the executor to the root query before execution; terminals receive only values. The root binding runs every join and relation step, and loaded rows inherit it. A new `bind` selects another database or transaction without changing the query predicates. Go binds its context with the executor. Unbound queries and finished transactions return `CONFIG`.
+`gen.Battle()` is Go's query factory and returns `*gen.BattleQuery`. PHP and Rust use `Battle::query()` and `battle::query()` for the same query head. Creation, ownership and asynchronous execution follow each language; the query operations and semantics are shared. `get` returns one row, `gets` returns a collection. `one/all` remain compatibility aliases. Select the executor with `using` before execution; terminals receive only values. The selected executor runs every join and relation step, and loaded rows inherit it. Calling `using` again selects another database or transaction without changing the query predicates. Go passes its context with the executor. Unbound queries and finished transactions return `CONFIG`.
 
 ## How it works
 - **Schema**: one hand-written Mermaid `erDiagram` (`schema/*.mmd`) → `ormgen build` → `schema.json` (manifest with `schema_hash`).

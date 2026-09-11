@@ -22,32 +22,32 @@ $db = Db::mysql(getenv('ORM_MYSQL_DSN_PHP') ?: 'mysql:unix_socket=/tmp/mysql.soc
 
 // A join carrying its own ON and WHERE, a root group mixing a predicate with
 // navigation into the joined entity, and three levels of relations with options.
-$rows = (new Battle)
+$rows = Battle::query()
     ->selectNone()->selectName()
-    ->joinService((new Service)
+    ->joinService(Service::query()
         ->on(fn(ServiceWhere $w) => $w->seqGt(0))
         ->where(fn(ServiceWhere $w) => $w->name('service-7')))
     ->isClose(false)
     ->and(fn(BattleWhere $w) => $w->isDisplay(true)->or()->service(fn(ServiceWhere $s) => $s->seq(7)))
-    ->relationUser((new User)
-        ->relationsBattles((new Battle)->selectNone()->orderBySeqDesc()->limitPerParent(2)->dropChildKey()))
-    ->relationService((new Service)
-        ->relationsMembers((new ServiceMember)->selectNone()->orderBySeqAsc()->limitPerParent(2)->keyByUserSeq()))
+    ->relationUser(User::query()
+        ->relationsBattles(Battle::query()->selectNone()->orderBySeqDesc()->limitPerParent(2)->dropChildKey()))
+    ->relationService(Service::query()
+        ->relationsMembers(ServiceMember::query()->selectNone()->orderBySeqAsc()->limitPerParent(2)->keyByUserSeq()))
     ->orderBySeqAsc()->limit(0, 2)
-    ->bind($db)->gets();
+    ->using($db)->gets();
 $items = [];
 foreach ($rows as $b) {
     $items[] = $b->toArray();
 }
 
 // Aggregates over the same slice of data: a grouped count with HAVING, min/max, distinct.
-$groups = (new Battle)->serviceSeq(7)->groupByUserSeq()
-    ->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->bind($db)->getCount();
+$groups = Battle::query()->serviceSeq(7)->groupByUserSeq()
+    ->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->using($db)->getCount();
 
 echo json_encode([
     'rows' => $items,
     'groups' => $groups,
-    'min_seq' => (new Battle)->serviceSeq(7)->bind($db)->minSeq(),
-    'max_seq' => (new Battle)->serviceSeq(7)->bind($db)->maxSeq(),
-    'user_count' => (new Battle)->serviceSeq(7)->bind($db)->countDistinctUserSeq(),
+    'min_seq' => Battle::query()->serviceSeq(7)->using($db)->minSeq(),
+    'max_seq' => Battle::query()->serviceSeq(7)->using($db)->maxSeq(),
+    'user_count' => Battle::query()->serviceSeq(7)->using($db)->countDistinctUserSeq(),
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), "\n";

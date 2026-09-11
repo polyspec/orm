@@ -1038,7 +1038,7 @@ var BattleCols = struct {
 	SerializeData:         orm.ColRef{Column: "serialize_data"},
 }
 
-// BattleQuery builds a statement over battle: Battle() → Bind(ctx, db) → chain → terminal().
+// BattleQuery builds a statement over battle: Battle() → Using(ctx, db) → chain → terminal().
 type BattleQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -1054,14 +1054,14 @@ func (q *BattleQuery) Req() *orm.Req { return q.q.Req }
 // Battle starts a query over battle.
 func Battle() *BattleQuery { return &BattleQuery{q: orm.NewQ(mustEngine(), "battle")} }
 
-// Bind selects the context and pool or transaction for this query.
-func (q *BattleQuery) Bind(ctx context.Context, ex orm.Exec) *BattleQuery {
+// Using selects the context and pool or transaction for this query.
+func (q *BattleQuery) Using(ctx context.Context, ex orm.Exec) *BattleQuery {
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
 
-// Bind selects the context and pool or transaction for this loaded row.
-func (r *BattleRow) Bind(ctx context.Context, ex orm.Exec) *BattleRow {
+// Using selects the context and pool or transaction for this loaded row.
+func (r *BattleRow) Using(ctx context.Context, ex orm.Exec) *BattleRow {
 	r.Binding = orm.NewBinding(ctx, ex)
 	return r
 }
@@ -7314,7 +7314,7 @@ func (q *BattleQuery) Insert() (*BattleRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Battle().Bind(ctx, ex).SeqEq(int64(id)).One()
+	return Battle().Using(ctx, ex).SeqEq(int64(id)).One()
 }
 
 // Save updates the other assigned columns when SetSeq was called (and
@@ -7332,7 +7332,7 @@ func (q *BattleQuery) Save() (*BattleRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return Battle().Bind(ctx, ex).SeqEq(pk.(int64)).One()
+	return Battle().Using(ctx, ex).SeqEq(pk.(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

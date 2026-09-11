@@ -20,20 +20,20 @@ relations:
 
 ## PHP
 ```php
-$page = (new Product)
-    ->relationLang((new ProductLang)->langId($langId)->flatten())
-    ->relationBrand((new ProductBrand)
-        ->relationLang((new ProductBrandLang)->langId($langId)->flatten()))
-    ->relationsReviews((new ProductReview)
+$page = Product::query()
+    ->relationLang(ProductLang::query()->langId($langId)->flatten())
+    ->relationBrand(ProductBrand::query()
+        ->relationLang(ProductBrandLang::query()->langId($langId)->flatten()))
+    ->relationsReviews(ProductReview::query()
         ->isClose(0)->orderBySeqDesc()->limitPerParent(3)->keyBySeq()
-        ->relationUser((new User)->selectNone()->selectName()->selectProfileUrl()))
-    ->relationMyOrderItem((new OrderProductItem)
+        ->relationUser(User::query()->selectNone()->selectName()->selectProfileUrl()))
+    ->relationMyOrderItem(OrderProductItem::query()
         ->serviceMemberSeq($memberSeq)->isClose(0)->orderBySeqDesc()->limitPerParent(1))
-    ->joinCategories((new ProductMatchCategory)
+    ->joinCategories(ProductMatchCategory::query()
         ->selectNone()
         ->where(fn($c) => $c->serviceModuleCategoryItemSeqIn($categorySeqs)))
-    ->leftJoinBrandLangAll((new ProductBrandLang)->selectNone())
-    ->leftJoinLangAll((new ProductLang)->selectNone())
+    ->leftJoinBrandLangAll(ProductBrandLang::query()->selectNone())
+    ->leftJoinLangAll(ProductLang::query()->selectNone())
     ->serviceSeq($serviceSeq)->isClose(0)->isDisplay(1)
     ->and(fn($w) => $w
         ->isAllday(1)
@@ -44,7 +44,7 @@ $page = (new Product)
         ->or()->langAll(fn($l) => $l->nameWithShortDescriptionWithContentMatchBoolean($kw)))
     ->groupBySeq()
     ->orderByLikeCountDesc()->orderBySeqDesc()
-    ->bind($db)->paginate($pageNo, 20);
+    ->using($db)->paginate($pageNo, 20);
 
 foreach ($page->items as $seq => $p) {
     $p->getName();                         // lang이 flatten으로 평탄화됨 → 루트 컬럼처럼
@@ -82,7 +82,7 @@ page, err := m.Product().
         w.Or().LangAll(func(l *m.ProductLangWhere) { l.NameWithShortDescriptionWithContentMatchBoolean(kw) })
     }).
     GroupBySeq().
-    OrderByLikeCountDesc().OrderBySeqDesc().Bind(ctx, db).Paginate(pageNo, 20)
+    OrderByLikeCountDesc().OrderBySeqDesc().Using(ctx, db).Paginate(pageNo, 20)
 
 for seq, p := range page.Items.All() {
     _ = p.Name                                  // lang 평탄화 → typed 필드
@@ -95,20 +95,20 @@ _ = page.Total; _ = page.Pages
 
 ## Rust
 ```rust
-let page = Product::new()
-    .relation_lang(ProductLang::new().lang_id(lang_id).flatten())
-    .relation_brand(ProductBrand::new()
-        .relation_lang(ProductBrandLang::new().lang_id(lang_id).flatten()))
-    .relations_reviews(ProductReview::new()
+let page = product::query()
+    .relation_lang(product_lang::query().lang_id(lang_id).flatten())
+    .relation_brand(product_brand::query()
+        .relation_lang(product_brand_lang::query().lang_id(lang_id).flatten()))
+    .relations_reviews(product_review::query()
         .is_close(0).order_by_seq_desc().limit_per_parent(3).key_by_seq()
-        .relation_user(User::new().select_none().select_name().select_profile_url()))
-    .relation_my_order_item(OrderProductItem::new()
+        .relation_user(user::query().select_none().select_name().select_profile_url()))
+    .relation_my_order_item(order_product_item::query()
         .service_member_seq(member_seq).is_close(0).order_by_seq_desc().limit_per_parent(1))
-    .join_categories(ProductMatchCategory::new()
+    .join_categories(product_match_category::query()
         .select_none()
         .where_(|c| c.service_module_category_item_seq_in(category_seqs)))
-    .left_join_brand_lang_all(ProductBrandLang::new().select_none())
-    .left_join_lang_all(ProductLang::new().select_none())
+    .left_join_brand_lang_all(product_brand_lang::query().select_none())
+    .left_join_lang_all(product_lang::query().select_none())
     .service_seq(service_seq).is_close(0).is_display(1)
     .and(|w| w
         .is_allday(1)
@@ -119,7 +119,7 @@ let page = Product::new()
         .or().lang_all(|l| l.name_with_short_description_with_content_match_boolean(kw)))
     .group_by_seq()
     .order_by_like_count_desc().order_by_seq_desc()
-    .bind(&db).paginate(page_no, 20).await?;
+    .using(&db).paginate(page_no, 20).await?;
 
 for (seq, p) in &page.items {
     let _ = &p.name;
@@ -130,7 +130,7 @@ for (seq, p) in &page.items {
 let _ = page.total; let _ = page.pages;
 ```
 
-세 블록은 줄 단위로 대응한다. 다른 곳은 언어 고정 접사뿐: `(new X)`/`m.X()`/`X::new()`, 클로저 머리(`fn($w) =>` / `func(w *m.ProductWhere) {` / `|w|`), 터미널 `paginate($db,…)` / `Paginate(ctx, db,…)` / `paginate(&db,…).await?`, 결과 접근의 null 처리(`?->` / nil-safe getter / `Option`).
+세 블록은 줄 단위로 대응한다. 다른 곳은 언어 고정 접사뿐: `X::query()`/`m.X()`/`x::query()`, 클로저 머리(`fn($w) =>` / `func(w *m.ProductWhere) {` / `|w|`), 터미널 `paginate($db,…)` / `Paginate(ctx, db,…)` / `paginate(&db,…).await?`, 결과 접근의 null 처리(`?->` / nil-safe getter / `Option`).
 
 ## 엔진이 만드는 Plan (MySQL dialect)
 
@@ -195,7 +195,7 @@ step 6  query   my_order_item (ONE, group_limit 1)  bind_from: step0.seq
 - 이 플랜은 값과 무관하게 형태가 고정이라 캐시된다. 사용자 `IN` 리스트 길이는 2의 거듭제곱 bucket으로 패딩되어 bucket마다 한 형태만 생긴다; 관계 단계의 IN은 `LIST_EXPAND` 슬롯이라 부모 행 수와 무관하게 캐시 히트.
 
 ## 동적 PHP 호출에서 정규 문법으로 줄어드는 것
-- `->relation((new ProductLang)->matchSeqWithProductSeq()->aliasLang())` → `->relationLang(...)`: 관계 방향·키·이름을 YAML이 알고 있으므로 두 토큰 삭제.
+- `->relation(ProductLang::query()->matchSeqWithProductSeq()->aliasLang())` → `->relationLang(...)`: 관계 방향·키·이름을 YAML이 알고 있으므로 두 토큰 삭제.
 - `->and('(')` … 조인 안의 `->condition(')')` → `->and(fn($w) => … ->or()->brandLangAll(fn($b) => …))`: 괄호 위치·조인 선언 순서 무관, 조인 안 된 관계로 내려가면 컴파일 에러.
 - `$productModels->and('(')` 를 체인 밖에서 나중에 호출하는 트릭 → 불필요.
-- `Pagination::getList($model, recordsPerPage:…)` → `->bind($db)->paginate($page, 20)`.
+- `Pagination::getList($model, recordsPerPage:…)` → `->using($db)->paginate($page, 20)`.

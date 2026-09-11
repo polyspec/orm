@@ -31,17 +31,17 @@ async fn main() {
     let opts = connect_opts();
     let db = Db::connect(opts, 1, engine, Config { aes_key: "bench-salt".into(), on_query: None }).await.unwrap();
 
-    for _ in 0..200 { Battle::new().seq_eq(1).bind(&db).one().await.unwrap(); }
+    for _ in 0..200 { battle::query().seq_eq(1).using(&db).one().await.unwrap(); }
     let mut s = Vec::new();
-    for i in 0..iters { let t = Instant::now(); let r = Battle::new().seq_eq((i % 100000 + 1) as i64).bind(&db).one().await.unwrap(); assert!(r.is_some()); s.push(t.elapsed().as_nanos() as u64); }
+    for i in 0..iters { let t = Instant::now(); let r = battle::query().seq_eq((i % 100000 + 1) as i64).using(&db).one().await.unwrap(); assert!(r.is_some()); s.push(t.elapsed().as_nanos() as u64); }
     stats("client pk one", s);
 
-    for _ in 0..100 { Battle::new().service_seq_eq(1).is_close_eq(false).order_by_seq_desc().limit(0, 100).bind(&db).all().await.unwrap(); }
+    for _ in 0..100 { battle::query().service_seq_eq(1).is_close_eq(false).order_by_seq_desc().limit(0, 100).using(&db).all().await.unwrap(); }
     let mut s = Vec::new();
-    for i in 0..iters { let t = Instant::now(); let c = Battle::new().service_seq_eq((i % 100 + 1) as i64).is_close_eq(false).order_by_seq_desc().limit(0, 100).bind(&db).all().await.unwrap(); assert!(!c.is_empty()); s.push(t.elapsed().as_nanos() as u64); }
+    for i in 0..iters { let t = Instant::now(); let c = battle::query().service_seq_eq((i % 100 + 1) as i64).is_close_eq(false).order_by_seq_desc().limit(0, 100).using(&db).all().await.unwrap(); assert!(!c.is_empty()); s.push(t.elapsed().as_nanos() as u64); }
     stats("client list100", s);
 
     let mut s = Vec::new();
-    for i in 0..iters { let t = Instant::now(); let mut q = Battle::new().service_seq_eq(i as i64).is_close_eq(false).order_by_seq_desc().limit(0, 100); q.q.req.ir.kind = "all".into(); let _ = db.plan(&mut q.q.req).unwrap(); s.push(t.elapsed().as_nanos() as u64); }
+    for i in 0..iters { let t = Instant::now(); let mut q = battle::query().service_seq_eq(i as i64).is_close_eq(false).order_by_seq_desc().limit(0, 100); q.q.req.ir.kind = "all".into(); let _ = db.plan(&mut q.q.req).unwrap(); s.push(t.elapsed().as_nanos() as u64); }
     stats("plan cache hit (no db)", s);
 }

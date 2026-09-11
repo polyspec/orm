@@ -39,14 +39,14 @@ async fn main() {
     let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11).unwrap().and_hms_opt(0, 0, 0).unwrap();
 
     let query = || async {
-        Battle::new()
+        battle::query()
             .service_seq(7)
             .is_close(false)
             .and(|w| w.is_display(true).or().and(|w| w.is_display(false).display_start_dt_lt(now)))
             .seq_in(vec![6, 106, 206, 306, 406])
             .order_by_seq_desc()
             .limit(0, 3)
-            .bind(&db).gets()
+            .using(&db).gets()
             .await
     };
 

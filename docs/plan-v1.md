@@ -24,7 +24,7 @@
 | relation 세부(keyName 재키잉·parentNode 병합·matchKeyRemove·possible·관계별 연결·ONE 중복) 누락 | IR 필드·규칙 명시 (§프로토콜) |
 | `delete(true)`는 클라이언트가 로드한 트리를 걷는 것; 트랜잭션 내 데드락 재시도는 엔진이 불가 | 순서 있는 `MutationBatch`; 데드락 시 **클라이언트가 클로저 재실행** |
 | 집계·raw SQL 루트(26곳)·계산 컬럼 `addColumn(col,alias,'ST_Y(%s)')`·`Model::function` 미표현 | `aggregate`, `Query.raw`, `columns.computed`, `Predicate.lhs_expr` 추가 |
-| 세 언어 문법이 머리(`(new X)($db)` vs `x.Query(db)`)·관계 생성·터미널·결과 접근에서 갈라짐 | **정규 토큰 문법**: 머리 `new Entity`, 동일 중간 토큰, 실행기를 받는 터미널, `and(f)/or(f)` 그룹, YAML 선언 관계로 `alias<Name>()` 타입화 |
+| 세 언어 문법이 머리(`X::query()($db)` vs `x.Query(db)`)·관계 생성·터미널·결과 접근에서 갈라짐 | **정규 토큰 문법**: 머리 `query()`, 동일 중간 토큰, 실행기를 받는 터미널, `and(f)/or(f)` 그룹, YAML 선언 관계로 `alias<Name>()` 타입화 |
 | 일정 21–28주는 1인에게 비현실적; A/B/C 세 패키징을 M1 전에 만드는 건 함정 | 3일 스파이크 + 4주 thin slice, 총 ≈15–16주. WASM·protobuf·Connect는 후순위 실험 |
 | MySQL AES를 Go로 옮길 이유 없음(데이터베이스가 SQL 함수 제공) | MySQL은 **SQL 함수 유지**(바이트 동일). 호스트측 AES는 PG/SQLite에서만(S6) |
 | 토큰 이름 패리티는 이름만 검증 | **공유 JSON 적합성 벡터**를 3언어 실행기가 같은 DB에 대해 실행 + 정규화 토큰열 비교 |
@@ -125,7 +125,7 @@ fulltext: [[name, description]]
 
 | 토큰 | PHP | Go | Rust |
 |---|---|---|---|
-| 머리 `new Entity` | `new Battle` (`(new Battle)($db)` 호환) | `m.Battle()` | `Battle::new()` |
+| 머리 `query()` | `Battle::query()` (`Battle::query()($db)` 호환) | `m.Battle()` | `battle::query()` |
 | `<col>(v)` = `col = v` | `->isClose(0)` | `.IsClose(0)` | `.is_close(0)` |
 | `<op><Col>(v)`, op ∈ `ne gt ge lt le in nin lk lb between isNull notNull fulltext fulltextBoolean` | `->gtCreatedTs($t)`, `->inSeq([..])`, `->isNullEndDt()` | `.GtCreatedTs(t)`, `.InSeq(ids)`, `.IsNullEndDt()` | `.gt_created_ts(t)`, `.in_seq(ids)`, `.is_null_end_dt()` |
 | `or<op><Col>(v)` | `->orIsSale(1)` | `.OrIsSale(1)` | `.or_is_sale(1)` |
@@ -141,8 +141,8 @@ fulltext: [[name, description]]
 | `addAllColumns() removeAllColumns() addColumn<Col>() removeColumn<Col>() addColumnRaw(alias, fmt, cols)` | 동일 | 동일 | 동일 |
 | `set<Col>(v)` `setRaw<Col>(expr, binds)` `plus<Col>(n)` `minus<Col>(n)` | 동일 | 동일 | 동일 |
 | `debug()` · `clone` · `sql(db)` | `->debug()`, `clone $q` | `.Debug()`, `q.Clone()` | `.debug()`, `q.clone()` |
-| **터미널** `get gets count sum avg create update save delete paginate` — 실행기를 인자로 | `->bind($db)->gets()` | `.Bind(ctx, db).Gets()` | `.bind(&db).gets().await?` |
-| `getBy<PK\|unique>(…)`, `getsBy<Col>(…)`, `getCountBy<Col>(…)` 생성 | `->bind($db)->getBySeq($seq)` / `->bind($db)->getsByServiceSeq($seq)` | `.Bind(ctx, db).GetBySeq(seq)` / `.Bind(ctx, db).GetsByServiceSeq(seq)` | `.bind(&db).get_by_seq(seq).await?` / `.bind(&db).gets_by_service_seq(seq).await?` |
+| **터미널** `get gets count sum avg create update save delete paginate` — 실행기를 인자로 | `->using($db)->gets()` | `.Using(ctx, db).Gets()` | `.using(&db).gets().await?` |
+| `getBy<PK\|unique>(…)`, `getsBy<Col>(…)`, `getCountBy<Col>(…)` 생성 | `->using($db)->getBySeq($seq)` / `->using($db)->getsByServiceSeq($seq)` | `.Using(ctx, db).GetBySeq(seq)` / `.Using(ctx, db).GetsByServiceSeq(seq)` | `.using(&db).get_by_seq(seq).await?` / `.using(&db).gets_by_service_seq(seq).await?` |
 | 트랜잭션 | `$db->transaction(function ($tx) {…})` | `orm.Transaction(ctx, db, func(tx *orm.Tx) (T, error) {…})` | `db.transaction(\|tx\| async move {…}).await?` (`Tx: Clone`) |
 | 결과 스칼라 | `$m->getSeq()`, `$m->getName($default)`, `$m['name']` | `m.Seq` / nil-safe `m.GetSeq()` | `m.seq` (nullable은 `Option`) |
 | 결과 관계 | `$m->getUser()`→null, `$m->getItems([])` | `m.GetUser()`→nil, `m.GetItems()`→빈 컬렉션 | `m.user() -> Option<&User>`, `m.items() -> &Items` |
@@ -154,9 +154,9 @@ PHP 파서: camel 경계 토큰화 → 선두 키워드 전체토큰 최장일�
 
 ### 시나리오 예 (PHP / Go / Rust 줄 단위 대응 — R9: 조인 + 괄호 OR fulltext)
 ```php
-$products = (new Product)
-    ->relation((new ProductLang)->matchSeqWithProductSeq()->langId($langId)->aliasLang())
-    ->leftJoinProductBrandSeqWithSeq((new ProductBrand)->alias('ga2')->fulltextBooleanNameWithDescription($kw))
+$products = Product::query()
+    ->relation(ProductLang::query()->matchSeqWithProductSeq()->langId($langId)->aliasLang())
+    ->leftJoinProductBrandSeqWithSeq(ProductBrand::query()->alias('ga2')->fulltextBooleanNameWithDescription($kw))
     ->serviceSeq($serviceSeq)->isClose(0)
     ->and(fn($q) => $q->fulltextBooleanNameWithShortDescriptionWithContent($kw)->orJoin('ga2'))
     ->groupBySeq()->limit(0, 100)
@@ -168,12 +168,12 @@ products, err := m.Product().
     LeftJoinProductBrandSeqWithSeq(m.ProductBrand().Alias("ga2").FulltextBooleanNameWithDescription(kw)).
     ServiceSeq(serviceSeq).IsClose(0).
     And(func(q *m.Product) { q.FulltextBooleanNameWithShortDescriptionWithContent(kw).OrJoin("ga2") }).
-    GroupBySeq().Limit(0, 100).Bind(ctx, slave1).Gets()
+    GroupBySeq().Limit(0, 100).Using(ctx, slave1).Gets()
 ```
 ```rust
-let products = Product::new()
-    .relation(ProductLang::new().match_seq_with_product_seq().lang_id(lang_id).alias_lang())
-    .left_join_product_brand_seq_with_seq(ProductBrand::new().alias("ga2").fulltext_boolean_name_with_description(kw))
+let products = product::query()
+    .relation(product_lang::query().match_seq_with_product_seq().lang_id(lang_id).alias_lang())
+    .left_join_product_brand_seq_with_seq(product_brand::query().alias("ga2").fulltext_boolean_name_with_description(kw))
     .service_seq(service_seq).is_close(0)
     .and(|q| q.fulltext_boolean_name_with_short_description_with_content(kw).or_join("ga2"))
     .group_by_seq().limit(0, 100)

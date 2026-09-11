@@ -27,9 +27,9 @@ func TestUnboundExecution(t *testing.T) {
 		"sql":             func() error { _, err := gen.Battle().SQL(); return err },
 		"row update":      func() error { return (&gen.BattleRow{}).Update() },
 		"row delete":      func() error { return (&gen.BattleRow{}).Delete() },
-		"nil context":     func() error { _, err := gen.Battle().Bind(nil, &orm.DB{}).Get(); return err },
-		"nil database":    func() error { _, err := gen.Battle().Bind(context.Background(), (*orm.DB)(nil)).Get(); return err },
-		"nil transaction": func() error { _, err := gen.Battle().Bind(context.Background(), (*orm.Tx)(nil)).Get(); return err },
+		"nil context":     func() error { _, err := gen.Battle().Using(nil, &orm.DB{}).Get(); return err },
+		"nil database":    func() error { _, err := gen.Battle().Using(context.Background(), (*orm.DB)(nil)).Get(); return err },
+		"nil transaction": func() error { _, err := gen.Battle().Using(context.Background(), (*orm.Tx)(nil)).Get(); return err },
 	}
 	for name, check := range checks {
 		t.Run(name, func(t *testing.T) {
@@ -45,12 +45,12 @@ func TestUnboundExecution(t *testing.T) {
 func TestBoundContextAndRebind(t *testing.T) {
 	db := open(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	q := gen.Battle().Bind(ctx, db).ServiceSeq(7)
+	q := gen.Battle().Using(ctx, db).ServiceSeq(7)
 	cancel()
 	if _, err := q.GetCount(); !errors.Is(err, context.Canceled) {
 		t.Fatalf("bound context was not used: %v", err)
 	}
-	n, err := q.Bind(context.Background(), db).GetCount()
+	n, err := q.Using(context.Background(), db).GetCount()
 	if err != nil || n != 1000 {
 		t.Fatalf("rebind must preserve predicates and replace context: n=%d err=%v", n, err)
 	}
