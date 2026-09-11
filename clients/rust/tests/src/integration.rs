@@ -3,6 +3,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
+use chrono::Datelike;
 use gen::*;
 use orm::collection::Key;
 use orm::value::{Param, Val};
@@ -72,6 +73,41 @@ async fn main() {
 
     let j = Battle::new().join_service(Service::new().where_(|w| w.seq_eq(7))).seq_eq(6).one(&db).await.unwrap().unwrap();
     check!(fails, j.service().map(|s| s.name.as_str()) == Some("service-7"), "joined row access");
+
+    // ---- S4: count_distinct / min / max, having, named predicates, raw root ----
+    check!(fails, Battle::new().service_seq_eq(7).count_distinct_user_seq(&db).await.unwrap() == 50, "count_distinct");
+    check!(fails, Battle::new().service_seq_eq(7).min_seq(&db).await.unwrap() == Some(6), "min typed (i64)");
+    check!(fails, Battle::new().service_seq_eq(7).max_seq(&db).await.unwrap() == Some(99906), "max typed (i64)");
+    check!(fails, Battle::new().seq_eq(0).max_seq(&db).await.unwrap().is_none(), "max over no rows is None");
+    check!(fails, Battle::new().seq_eq(0).min_name(&db).await.unwrap().is_none(), "min String over no rows is None");
+    let mx = Battle::new().service_seq_eq(7).max_start_dt(&db).await.unwrap();
+    check!(fails, mx.map(|t| t.date().year() >= 2020).unwrap_or(false), "max typed (NaiveDateTime)");
+    check!(fails, Battle::new().service_seq_eq(7).max_price(&db).await.unwrap().is_none(), "max over a NULL-only column is None");
+    check!(fails, Battle::new().service_seq_eq(7).group_by_user_seq().count(&db).await.unwrap() == 50, "count + group_by = number of groups");
+    check!(fails, Battle::new().service_seq_eq(7).group_by_user_seq().having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).count(&db).await.unwrap() == 50, "having on group count");
+    check!(fails, Battle::new().service_seq_eq(7).group_by_user_seq().having(|w| w.expr("COUNT(*) > ?", vec![1000.into()])).count(&db).await.unwrap() == 0, "having filters every group");
+    // row select keeps HAVING (grouped by the PK so only_full_group_by holds): every group is one row
+    let grouped = Battle::new().service_seq_eq(7).group_by_seq().having(|w| w.expr("COUNT(*) > ?", vec![0.into()])).order_by_seq_asc().limit(0, 2).all(&db).await.expect("having rows");
+    check!(fails, grouped.len() == 2 && grouped.first().map(|b| b.seq) == Some(6), "having on row select");
+    check!(fails, Battle::new().service_seq_eq(7).group_by_seq().having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).limit(0, 2).all(&db).await.unwrap().is_empty(), "having on row select filters every group");
+    match Battle::new().service_seq_eq(7).having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).count(&db).await {
+        Err(e) if e.code() == "IR_INVALID" => {}
+        other => { fails += 1; eprintln!("FAIL: having without group_by not rejected: {:?}", other.err()); }
+    }
+    let visible = Battle::new().visible().service_seq_eq(7).count(&db).await.expect("visible");
+    check!(fails, visible == Battle::new().service_seq_eq(7).is_close_eq(false).is_display_eq(true).count(&db).await.unwrap() && visible > 0, "predicate visible() = is_close 0 AND is_display 1");
+    check!(fails, Battle::new().started_after("2026-01-01 00:00:00").service_seq_eq(7).count(&db).await.unwrap() == 1000, "predicate started_after(v) on the query");
+    check!(fails, Battle::new().service_seq_eq(7).and(|w| w.visible().or().started_after("2999-01-01 00:00:00")).count(&db).await.unwrap() == visible, "predicates on the Where builder honour or()");
+    let all_visible = Battle::new().visible().count(&db).await.unwrap();
+    check!(fails, all_visible > visible && Battle::new().seq_eq(0).or().visible().count(&db).await.unwrap() == all_visible, "query predicate honours a pending or()");
+    let rows = Battle::new().raw("SELECT COUNT(*) AS n, MAX(seq) AS m, MIN(`start_dt`) AS d FROM {table} WHERE service_seq = ? AND is_close = ?", vec![7.into(), 0.into()]).raw_all(&db).await.expect("raw_all");
+    check!(fails, rows.len() == 1 && rows[0].keys().cloned().collect::<Vec<_>>() == vec!["n", "m", "d"], "raw_all: one row keyed by column name in column order");
+    check!(fails, matches!(rows[0].get("n"), Some(Val::I64(_))) && rows[0].get("m") == Some(&Val::I64(99906)) && matches!(rows[0].get("d"), Some(Val::DateTime(_))), "raw_all: cells typed by column type");
+    check!(fails, Battle::new().raw("SELECT seq FROM {table} WHERE seq = ?", vec![0.into()]).raw_all(&db).await.unwrap().is_empty(), "raw_all: no rows = empty list");
+    match Battle::new().raw("SELECT seq FROM {table} WHERE seq = ?", vec![]).raw_all(&db).await {
+        Err(e) if e.code() == "IR_INVALID" => {}
+        other => { fails += 1; eprintln!("FAIL: raw placeholder/bind mismatch not rejected: {:?}", other.err()); }
+    }
 
     // ---- relations ----
     let n0 = statements.load(Ordering::Relaxed);
