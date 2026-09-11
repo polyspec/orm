@@ -486,6 +486,26 @@ pub async fn scalar(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Val> {
     })
 }
 
+/// Runs the request's raw statement (kind raw, step role raw, no assemble) and returns
+/// its rows keyed by the driver's column names in column order; cells are decoded by
+/// column type like any positional row (no codec, no assembly).
+pub async fn raw(ex: &impl Exec, req: &mut Req) -> Result<Vec<indexmap::IndexMap<String, Val>>> {
+    req.ir.kind = "raw".into();
+    let plan = ex.db().plan(req)?;
+    let rows = ex.query(&plan.steps[0], &req.params, Vec::new()).await?;
+    let mut out = Vec::with_capacity(rows.len());
+    for r in &rows {
+        let n = r.len();
+        let vals = read_row(r, n)?;
+        let mut m = indexmap::IndexMap::with_capacity(n);
+        for (i, v) in vals.into_iter().enumerate() {
+            m.insert(r.column(i).name().to_owned(), v);
+        }
+        out.push(m);
+    }
+    Ok(out)
+}
+
 pub async fn paginate(ex: &impl Exec, req: &mut Req) -> Result<(Rows, i64)> {
     req.ir.kind = "paginate".into();
     let plan = ex.db().plan(req)?;
