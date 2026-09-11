@@ -66,10 +66,29 @@ func rustFrom(t string) string {
 	return "v.take_string()"
 }
 
+// rustRead is the from_row read of a column from an orm::Cells source at index `i`.
+func rustRead(t string) string {
+	switch t {
+	case "i32":
+		return "src.i64(i)? as i32"
+	case "i64":
+		return "src.i64(i)?"
+	case "f64":
+		return "src.f64(i)?"
+	case "bool":
+		return "src.bool(i)?"
+	case "chrono::NaiveDateTime":
+		return "src.datetime(i)?"
+	case "chrono::NaiveDate":
+		return "src.date(i)?"
+	}
+	return "src.string(i)?"
+}
+
 type rustCol struct {
 	goCol
-	RType, From, Ident string
-	IsStr              bool
+	RType, From, Read, Ident string
+	IsStr, IsJson            bool
 }
 
 type rustRel struct {
@@ -84,6 +103,7 @@ type rustPred struct {
 
 type rustData struct {
 	Name, Type, Table, PK, PKType string
+	SchemaHash                    string
 	Auto                          bool
 	Cols                          []rustCol
 	Numeric                       []rustCol
@@ -176,61 +196,40 @@ pub struct {{.Type}}Row {
     dirty: Vec<(&'static str, Param)>,
     enc_err: Option<(String, String)>, // (code, msg) of the first codec error; surfaces from update
     extra: std::collections::HashMap<String, Val>, // select_expr / select_<col>_as outputs, by output name
-    // assembly facts recorded for to_map(): projected names, drop_child_key names, flattened one-relations, loaded relations
-    selected: Vec<String>,
-    hidden: Vec<String>,
-    flat: Vec<String>,
-    rels: Vec<String>,
-    // loaded relations whose rows belong to this row (children[].cascade): delete_cascade removes them first
-    cascade: Vec<String>,
-    loaded: bool,
+    // the assembly this row was loaded through (shared with every row of the statement): projected
+    // columns, drop_child_key ones, loaded relations, flattened one-relations, cascade children
+    asm: Option<std::sync::Arc<orm::plan::Assemble>>,
 }
 
 impl {{.Type}}Row {
     pub const ENTITY: &'static str = {{printf "%q" .Name}};
     pub const PK: &'static str = {{printf "%q" .PK}};
 
-    /// Maps a positional row onto the struct, its joined children (same row) and
-    /// its relation children (rows of later steps, cloned per attachment).
-    pub(crate) fn from_row(vals: &mut [Val], a: &orm::plan::Assemble, rs: &db::Rows) -> Self {
+    /// Maps one row of the statement onto the struct: relation children first (rows of later
+    /// steps, cloned per attachment; joins read the same row), then this node's columns,
+    /// each cell decoded once straight from the source.
+    pub(crate) fn from_row(src: &mut orm::Cells, a: &std::sync::Arc<orm::plan::Assemble>, rs: &db::Rows) -> Result<Self> {
+        use orm::Src as _;
         let mut r = Self::default();
-        r.loaded = true;
-        for c in &a.columns {
-            r.selected.push(c.name.clone());
-            if c.hidden { r.hidden.push(c.name.clone()); }
-        }
-        for ch in &a.children {
-            r.rels.push(ch.rel.clone());
-            if ch.flatten { r.flat.push(ch.rel.clone()); }
-            if ch.cascade { r.cascade.push(ch.rel.clone()); }
-        }
-        for c in &a.columns {
-            let v = &mut vals[c.index];
-            match c.name.as_str() {
-{{- range .Cols}}
-                {{printf "%q" .Name}} => r.{{.Ident}} = {{if .Nullable}}if v.is_null() { None } else { Some({{.From}}) }{{else}}{{.From}}{{end}},
-{{- end}}
-                other => { r.extra.insert(other.to_owned(), std::mem::take(v)); }
-            }
-        }
+        r.asm = Some(a.clone());
         for ch in &a.children {
             match ch.rel.as_str() {
 {{- range .Rels}}
                 {{printf "%q" .Name}} => {
 {{- if eq .Kind "one"}}
                     if let Some(ja) = &ch.assemble {
-                        if db::join_present(vals, ja) { r.{{.Ident}}_ = Some(Box::new(super::{{.Target}}::{{.TargetType}}Row::from_row(vals, ja, rs))); }
-                    } else if let Some(row) = rs.related(ch, vals).first() {
-                        let mut row = row.to_vec();
-                        r.{{.Ident}}_ = Some(Box::new(super::{{.Target}}::{{.TargetType}}Row::from_row(&mut row, rs.step_assemble(ch), rs)));
+                        if db::join_present(src, ja) { r.{{.Ident}}_ = Some(Box::new(super::{{.Target}}::{{.TargetType}}Row::from_row(src, ja, rs)?)); }
+                    } else if let Some(row) = rs.related(ch, src)?.first() {
+                        let mut row = orm::Cells::Pos(row.to_vec());
+                        r.{{.Ident}}_ = Some(Box::new(super::{{.Target}}::{{.TargetType}}Row::from_row(&mut row, rs.step_assemble(ch), rs)?));
                     }
 {{- else}}
-                    let related = rs.related(ch, vals);
+                    let related = rs.related(ch, src)?;
                     let mut c = Collection::with_capacity(related.len());
                     for row in related {
-                        let mut row = row.to_vec();
-                        let k = Key::of(&row[ch.key_index]);
-                        c.put(k, super::{{.Target}}::{{.TargetType}}Row::from_row(&mut row, rs.step_assemble(ch), rs));
+                        let mut row = orm::Cells::Pos(row.to_vec());
+                        let k = Key::of(&row.val(ch.key_index)?);
+                        c.put(k, super::{{.Target}}::{{.TargetType}}Row::from_row(&mut row, rs.step_assemble(ch), rs)?);
                     }
                     r.{{.Ident}}_ = c;
 {{- end}}
@@ -239,7 +238,20 @@ impl {{.Type}}Row {
                 _ => {}
             }
         }
-        r
+        for c in &a.columns {
+            let i = c.index;
+            match c.name.as_str() {
+{{- range .Cols}}
+{{- if .IsJson}}
+                {{printf "%q" .Name}} => r.{{.Ident}} = src.json(i, &c.styles)?{{if not .Nullable}}.unwrap_or_default(){{end}},
+{{- else}}
+                {{printf "%q" .Name}} => r.{{.Ident}} = {{if .Nullable}}if src.is_null(i) { None } else { Some({{.Read}}) }{{else}}{{.Read}}{{end}},
+{{- end}}
+{{- end}}
+                other => { let v = if c.styles.is_empty() { src.val(i)? } else { src.styled(i, &c.styles)? }; r.extra.insert(other.to_owned(), v); }
+            }
+        }
+        Ok(r)
     }
     /// A select_expr / select_<col>_as output by name.
     pub fn extra(&self, name: &str) -> Option<&Val> { self.extra.get(name) }
@@ -249,18 +261,19 @@ impl {{.Type}}Row {
     /// one-relations merged in (this row's keys win).
     pub fn to_map(&self) -> serde_json::Value {
         let mut m = serde_json::Map::new();
-        for name in &self.selected {
-            if self.hidden.iter().any(|h| h == name) { continue; }
-            let v = match name.as_str() {
+        let Some(a) = &self.asm else { return serde_json::Value::Object(m) };
+        for c in &a.columns {
+            if c.hidden { continue; }
+            let v = match c.name.as_str() {
 {{- range .Cols}}
                 {{printf "%q" .Name}} => {{mapExpr .}},
 {{- end}}
                 other => self.extra.get(other).map(|v| v.to_json()).unwrap_or(serde_json::Value::Null),
             };
-            m.insert(name.clone(), v);
+            m.insert(c.name.clone(), v);
         }
 {{- range .Rels}}
-        if self.rels.iter().any(|r| r == {{printf "%q" .Name}}) {
+        if a.has_child({{printf "%q" .Name}}) {
 {{- if eq .Kind "one"}}
             m.insert({{printf "%q" .Name}}.into(), self.{{.Ident}}_.as_ref().map(|c| c.to_map()).unwrap_or(serde_json::Value::Null));
 {{- else}}
@@ -270,8 +283,8 @@ impl {{.Type}}Row {
 {{- end}}
         }
 {{- end}}
-        for rel in &self.flat {
-            if let Some(serde_json::Value::Object(child)) = m.get(rel).cloned() {
+        for ch in a.children.iter().filter(|ch| ch.flatten) {
+            if let Some(serde_json::Value::Object(child)) = m.get(&ch.rel).cloned() {
                 for (k, v) in child { m.entry(k).or_insert(v); }
             }
         }
@@ -311,7 +324,7 @@ impl {{.Type}}Row {
 
     async fn update_inner(&mut self, ex: &impl Exec, optimistic: bool) -> Result<()> {
         if let Some((code, msg)) = self.enc_err.take() { return Err(orm::Error::Engine { code, msg }); }
-        if !self.loaded { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
+        if self.asm.is_none() { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
         if self.dirty.is_empty() { return Ok(()); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
         for (c, v) in self.dirty.drain(..) { q.set(c, v); }
@@ -329,7 +342,7 @@ impl {{.Type}}Row {
     }
 
     pub async fn delete(&self, ex: &impl Exec) -> Result<()> {
-        if !self.loaded { return Err(orm::Error::Config("delete on a row that was not loaded".into())); }
+        if self.asm.is_none() { return Err(orm::Error::Config("delete on a row that was not loaded".into())); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
         let pk: Param = self.{{ident .PK}}.clone().into();
         q.w().pred(Self::PK, "eq", pk);
@@ -342,7 +355,7 @@ impl {{.Type}}Row {
     /// order, then this row. Parent-direction relations (the FK is on this row) are never deleted.
     /// One DELETE … WHERE pk = ? per row. On a Db the whole walk runs in one transaction.
     pub async fn delete_cascade(&self, ex: &impl Exec) -> Result<()> {
-        if !self.loaded { return Err(orm::Error::Config("delete_cascade on a row that was not loaded".into())); }
+        if self.asm.is_none() { return Err(orm::Error::Config("delete_cascade on a row that was not loaded".into())); }
         match ex.tx() {
             Some(tx) => self.delete_cascade_in(tx).await,
             None => ex.db().transaction(|tx| async move { self.delete_cascade_in(&tx).await }).await,
@@ -352,8 +365,9 @@ impl {{.Type}}Row {
     /// The walk itself. Boxed: rows cascade into rows of other entities, which cascade back.
     pub fn delete_cascade_in<'a>(&'a self, tx: &'a db::Tx) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + 'a>> {
         Box::pin(async move {
-            for rel in &self.cascade {
-                match rel.as_str() {
+            let Some(a) = &self.asm else { return Ok(()) };
+            for ch in a.children.iter().filter(|ch| ch.cascade) {
+                match ch.rel.as_str() {
 {{- range .Rels}}
                     {{printf "%q" .Name}} => {
 {{- if eq .Kind "one"}}
@@ -530,13 +544,15 @@ impl {{.Type}} {
     // ---- terminals ----
     pub async fn one(mut self, ex: &impl Exec) -> Result<Option<{{.Type}}Row>> {
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
-        let data = std::mem::take(&mut rows.data);
-        Ok(data.into_iter().next().map(|mut v| {{.Type}}Row::from_row(&mut v, &rows.assemble, &rows)))
+        Ok(match rows.take_cells().into_iter().next() {
+            Some(mut src) => Some({{.Type}}Row::from_row(&mut src, &rows.assemble, &rows)?),
+            None => None,
+        })
     }
 
     pub async fn all(mut self, ex: &impl Exec) -> Result<Collection<{{.Type}}Row>> {
         let mut rows = db::select(ex, &mut self.q.req, "all").await?;
-        Ok(collect(&mut rows, self.key_fn.as_deref()))
+        collect(&mut rows, self.key_fn.as_deref())
     }
 
     pub async fn count(mut self, ex: &impl Exec) -> Result<i64> {
@@ -564,7 +580,7 @@ impl {{.Type}} {
         self.q.node().limit = Some(orm::ir::Limit { offset: (page - 1) * per, count: per });
         let (mut rows, total) = db::paginate(ex, &mut self.q.req).await?;
         let pages = (total + per as i64 - 1) / per as i64;
-        Ok(Page { items: collect(&mut rows, self.key_fn.as_deref()), total, pages, current: page as i64, per: per as i64 })
+        Ok(Page { items: collect(&mut rows, self.key_fn.as_deref())?, total, pages, current: page as i64, per: per as i64 })
     }
 
     pub async fn insert(mut self, ex: &impl Exec) -> Result<Option<{{.Type}}Row>> {
@@ -614,16 +630,17 @@ impl {{.Type}} {
 
 impl Default for {{.Type}} { fn default() -> Self { Self::new() } }
 
-fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&{{.Type}}Row) -> Key + Send + Sync)>) -> Collection<{{.Type}}Row> {
-    let data = std::mem::take(&mut rows.data);
-    let mut c = Collection::with_capacity(data.len());
-    for mut v in data {
-        let k = Key::of(&v[0]);
-        let r = {{.Type}}Row::from_row(&mut v, &rows.assemble, rows);
+fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&{{.Type}}Row) -> Key + Send + Sync)>) -> Result<Collection<{{.Type}}Row>> {
+    use orm::Src as _;
+    let cells = rows.take_cells();
+    let mut c = Collection::with_capacity(cells.len());
+    for mut src in cells {
+        let k = Key::of(&src.val(0)?);
+        let r = {{.Type}}Row::from_row(&mut src, &rows.assemble, rows)?;
         let k = match key_fn { Some(f) => f(&r), None => k };
         c.put(k, r);
     }
-    c
+    Ok(c)
 }
 `))
 
@@ -633,11 +650,23 @@ const rustLib = `// Code generated by ormgen; DO NOT EDIT.
 
 use std::sync::{Arc, OnceLock};
 
+/// The manifest hash this crate was generated from (schema.json \x60schema_hash\x60).
+pub const SCHEMA_HASH: &str = %q;
+
 static ENGINE: OnceLock<Arc<orm::Engine>> = OnceLock::new();
 
-/// Bind the generated crate to a compiled engine (once per process).
-pub fn init(engine: Arc<orm::Engine>) {
+/// Bind the generated crate to a compiled engine (once per process). The engine's loaded
+/// manifest must be the one this crate was generated from: a different hash is
+/// SCHEMA_HASH_MISMATCH and the crate stays unbound (no watching, no reload).
+pub fn init(engine: Arc<orm::Engine>) -> orm::Result<()> {
+    if engine.schema_hash != SCHEMA_HASH {
+        return Err(orm::Error::Engine {
+            code: orm::codes::SCHEMA_HASH_MISMATCH.into(),
+            msg: format!("generated from {} but the engine loaded {}", SCHEMA_HASH, engine.schema_hash),
+        });
+    }
     let _ = ENGINE.set(engine);
+    Ok(())
 }
 
 pub fn engine() -> Arc<orm::Engine> {
@@ -646,7 +675,7 @@ pub fn engine() -> Arc<orm::Engine> {
 
 /// The manifest hash this crate was generated from (the untyped Q::new needs it).
 pub fn schema_hash() -> &'static str {
-    &ENGINE.get().expect("gen::init(engine) must be called first").schema_hash
+    SCHEMA_HASH
 }
 `
 
@@ -655,6 +684,8 @@ name = "gen"
 version = "0.0.1"
 edition = "2021"
 publish = false
+description = "Generated entities for the orm engine (ormgen gen --lang rust)"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 orm = { path = "../orm" }
@@ -669,16 +700,18 @@ func genRust(m *schema.Manifest, outDir string) error {
 		return err
 	}
 	var lib bytes.Buffer
-	lib.WriteString(strings.ReplaceAll(rustLib, `\x60`, "`"))
+	lib.WriteString(fmt.Sprintf(strings.ReplaceAll(rustLib, `\x60`, "`"), m.SchemaHash))
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		ge := buildGoEntity(m, e)
-		d := rustData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs}
+		d := rustData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs, SchemaHash: m.SchemaHash}
 		for _, c := range ge.Cols {
 			col := e.Column(c.Name)
 			rc := rustCol{goCol: c, RType: rustType(col), Ident: rustIdent(c.Name)}
 			rc.From = rustFrom(rc.RType)
+			rc.Read = rustRead(rc.RType)
 			rc.IsStr = rc.RType == "String"
+			rc.IsJson = rc.RType == "serde_json::Value"
 			d.Cols = append(d.Cols, rc)
 			if c.Name == ge.PK {
 				d.PKType = rc.RType
