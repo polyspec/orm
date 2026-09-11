@@ -4,6 +4,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -45,15 +47,16 @@ type Rule struct {
 	Native map[string]Native `json:"native"`
 }
 type Manifest struct {
-	Version    int                 `json:"version"`
-	Schema     string              `json:"schema"`
-	Languages  map[string]Language `json:"languages"`
-	Rules      []Rule              `json:"rules"`
-	Components []json.RawMessage   `json:"components"`
-	Sequences  []Sequence          `json:"sequences"`
-	Records    []Record            `json:"records"`
-	Storage    []Rule              `json:"storage"`
-	Owners     []Owner             `json:"owners"`
+	Version      int                 `json:"version"`
+	Schema       string              `json:"schema"`
+	Languages    map[string]Language `json:"languages"`
+	SymbolHashes map[string]string   `json:"symbol_hashes"`
+	Rules        []Rule              `json:"rules"`
+	Components   []json.RawMessage   `json:"components"`
+	Sequences    []Sequence          `json:"sequences"`
+	Records      []Record            `json:"records"`
+	Storage      []Rule              `json:"storage"`
+	Owners       []Owner             `json:"owners"`
 }
 type Sequence struct {
 	ID         string `json:"id"`
@@ -72,7 +75,7 @@ func main() {
 	must(err)
 	var m Manifest
 	readJSON(filepath.Join(abs, "contracts/interfaces.json"), &m)
-	if m.Version != 1 || len(m.Languages) != 3 || len(m.Components) == 0 || len(m.Sequences) == 0 {
+	if m.Version != 1 || len(m.Languages) != 3 || len(m.SymbolHashes) != 3 || len(m.Components) == 0 || len(m.Sequences) == 0 {
 		fatal("invalid interface manifest")
 	}
 	diagram, err := contracts.Diagram()
@@ -122,6 +125,12 @@ func main() {
 				failed = true
 			}
 		}
+		if gotHash, err := fileSHA256(path); err != nil {
+			must(err)
+		} else if wantHash := m.SymbolHashes[lang]; wantHash != gotHash {
+			fmt.Fprintf(os.Stderr, "%s: symbol snapshot hash differs from contracts/interfaces.json\n  want %s\n  got  %s\n", lang, wantHash, gotHash)
+			failed = true
+		}
 		if *selfTest {
 			must(parserMutations(abs, lang, rust))
 			if lang == "php" {
@@ -151,6 +160,15 @@ func main() {
 	if failed {
 		os.Exit(1)
 	}
+}
+
+func fileSHA256(path string) (string, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(b)
+	return "sha256:" + hex.EncodeToString(sum[:]), nil
 }
 
 func readJSON(path string, dst any) {
