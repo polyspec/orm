@@ -19,7 +19,15 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-const dsn = "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true&interpolateParams=false"
+const localDSN = "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true&interpolateParams=false"
+
+// dsn is the local socket unless ORM_MYSQL_DSN_GO names another server (CI).
+func dsn() string {
+	if v := os.Getenv("ORM_MYSQL_DSN_GO"); v != "" {
+		return v
+	}
+	return localDSN
+}
 
 const listCols = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_team_player_count`, `a`.`success_count`, `a`.`player_count`, `a`.`read_count`, `a`.`cover_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_module_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_play`, `a`.`like_count`, AES_DECRYPT(UNHEX(`a`.`aes_hex_email`), ?) AS `aes_hex_email`, AES_DECRYPT(UNHEX(`a`.`aes_hex_phone`), ?) AS `aes_hex_phone`"
 
@@ -74,7 +82,7 @@ func prep(db *sql.DB, q string) *sql.Stmt {
 }
 
 func open(tb testing.TB) *sql.DB {
-	db, err := sql.Open("mysql", dsn)
+	db, err := sql.Open("mysql", dsn())
 	if err != nil {
 		tb.Fatal(err)
 	}
