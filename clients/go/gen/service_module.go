@@ -727,15 +727,15 @@ func (q *ServiceModule) IfParentIsAlldayEq(v bool) *ServiceModule {
 	q.q.IfParent("is_allday", v)
 	return q
 }
-func (q *ServiceModule) IfParentTargetTeamPlayerCountEq(v int32) *ServiceModule {
+func (q *ServiceModule) IfParentTargetTeamPlayerCountEq(v int64) *ServiceModule {
 	q.q.IfParent("target_team_player_count", v)
 	return q
 }
-func (q *ServiceModule) IfParentSuccessCountEq(v int32) *ServiceModule {
+func (q *ServiceModule) IfParentSuccessCountEq(v int64) *ServiceModule {
 	q.q.IfParent("success_count", v)
 	return q
 }
-func (q *ServiceModule) IfParentPlayerCountEq(v int32) *ServiceModule {
+func (q *ServiceModule) IfParentPlayerCountEq(v int64) *ServiceModule {
 	q.q.IfParent("player_count", v)
 	return q
 }
@@ -768,7 +768,7 @@ func (q *ServiceModule) IfParentIsSinglePlayEq(v bool) *ServiceModule {
 	q.q.IfParent("is_single_play", v)
 	return q
 }
-func (q *ServiceModule) IfParentLikeCountEq(v int32) *ServiceModule {
+func (q *ServiceModule) IfParentLikeCountEq(v int64) *ServiceModule {
 	q.q.IfParent("like_count", v)
 	return q
 }
