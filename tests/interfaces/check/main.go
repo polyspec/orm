@@ -53,6 +53,7 @@ type Manifest struct {
 	Sequences  []Sequence          `json:"sequences"`
 	Records    []Record            `json:"records"`
 	Storage    []Rule              `json:"storage"`
+	Owners     []Owner             `json:"owners"`
 }
 type Sequence struct {
 	ID         string `json:"id"`
@@ -99,6 +100,7 @@ func main() {
 		errors := checkRules(lang, actual, m.Rules, s)
 		errors = append(errors, checkRules(lang, actual, m.Storage, s)...)
 		errors = append(errors, checkRecords(lang, actual, m.Records)...)
+		errors = append(errors, checkOwners(lang, actual, m.Owners, s)...)
 		if len(errors) > 0 {
 			for _, e := range errors {
 				fmt.Fprintln(os.Stderr, e)
@@ -278,6 +280,9 @@ func goSymbols(root string, roots []string) (Symbols, error) {
 										out[rel+"::"+t.Name.Name+"#field."+name.Name] = print(f.Type)
 									}
 									if len(f.Names) == 0 {
+										name := strings.TrimPrefix(print(f.Type), "*")
+										name = name[strings.LastIndex(name, ".")+1:]
+										out[rel+"::"+t.Name.Name+"#field."+name] = print(f.Type)
 										wire["@flatten"] = goWireType(f.Type)
 										continue
 									}

@@ -146,7 +146,7 @@ type BattleRowInterface interface {
 	DeleteCascade() error
 	Has(name string) bool
 	RelLoaded(rel string) bool
-	ToArray() map[string]any
+	ToArray() (map[string]any, error)
 }
 
 var _ BattleRowInterface = (*BattleRow)(nil)
@@ -182,7 +182,7 @@ type UserRowInterface interface {
 	DeleteCascade() error
 	Has(name string) bool
 	RelLoaded(rel string) bool
-	ToArray() map[string]any
+	ToArray() (map[string]any, error)
 }
 
 var _ UserRowInterface = (*UserRow)(nil)
@@ -218,7 +218,7 @@ type ServiceRowInterface interface {
 	DeleteCascade() error
 	Has(name string) bool
 	RelLoaded(rel string) bool
-	ToArray() map[string]any
+	ToArray() (map[string]any, error)
 }
 
 var _ ServiceRowInterface = (*ServiceRow)(nil)
@@ -258,7 +258,7 @@ type ServiceModuleRowInterface interface {
 	DeleteCascade() error
 	Has(name string) bool
 	RelLoaded(rel string) bool
-	ToArray() map[string]any
+	ToArray() (map[string]any, error)
 }
 
 var _ ServiceModuleRowInterface = (*ServiceModuleRow)(nil)
@@ -298,7 +298,7 @@ type ServiceMemberRowInterface interface {
 	DeleteCascade() error
 	Has(name string) bool
 	RelLoaded(rel string) bool
-	ToArray() map[string]any
+	ToArray() (map[string]any, error)
 }
 
 var _ ServiceMemberRowInterface = (*ServiceMemberRow)(nil)

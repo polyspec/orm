@@ -35,7 +35,7 @@ async fn main() {
             .relations_members(ServiceMember::new().select_none().order_by_seq_asc().limit_per_parent(2).key_by_user_seq()))
         .order_by_seq_asc().limit(0, 2)
         .bind(&db).gets().await.expect("rows");
-    let items: Vec<_> = rows.iter().map(|(_, b)| b.to_map()).collect();
+    let items: Vec<_> = rows.iter().map(|(_, b)| b.to_map()).collect::<orm::Result<Vec<_>>>().expect("export");
 
     // Aggregates over the same slice of data: a grouped count with HAVING, min/max, distinct.
     let groups = Battle::new().service_seq(7).group_by_user_seq()

@@ -278,7 +278,11 @@ func main() {
 			if err := r.Update(); err != nil {
 				return nil, err
 			}
-			result = map[string]any{"before": before, "assigned": r.Has("name"), "value": r.Name, "export": r.ToArray(), "noop_statements": len(log) - n, "relation_loaded": r.RelLoaded("user")}
+			exported, err := r.ToArray()
+			if err != nil {
+				return nil, err
+			}
+			result = map[string]any{"before": before, "assigned": r.Has("name"), "value": r.Name, "export": exported, "noop_statements": len(log) - n, "relation_loaded": r.RelLoaded("user")}
 			return nil, rollback
 		})
 		if !errors.Is(err, rollback) {
@@ -340,6 +344,53 @@ func main() {
 			return nil, err
 		}
 		return result, nil
+	})
+	run("interface_identity", func() (any, error) {
+		var result any
+		rollback := errors.New("interface rollback")
+		_, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (any, error) {
+			r, err := gen.Battle().Bind(ctx, tx).GetBySeq(6)
+			if err != nil {
+				return nil, err
+			}
+			r.Seq = 5
+			r.SetName("identity-original")
+			if err := r.Update(); err != nil {
+				return nil, err
+			}
+			stored, err := gen.Battle().Bind(ctx, tx).GetBySeq(6)
+			if err != nil {
+				return nil, err
+			}
+			if err := r.Delete(); err != nil {
+				return nil, err
+			}
+			original, err := gen.Battle().Bind(ctx, tx).GetCountBySeq(6)
+			if err != nil {
+				return nil, err
+			}
+			other, err := gen.Battle().Bind(ctx, tx).GetCountBySeq(5)
+			if err != nil {
+				return nil, err
+			}
+			result = map[string]any{"updated": stored.Name, "original_left": original, "other_left": other}
+			return nil, rollback
+		})
+		if !errors.Is(err, rollback) {
+			return nil, err
+		}
+		return result, nil
+	})
+	run("interface_nested_keys", func() (any, error) {
+		r, err := gen.Service().Bind(ctx, db).RelationsMembers(gen.ServiceMember().OrderBySeqAsc().LimitPerParent(1)).GetBySeq(7)
+		if err != nil {
+			return nil, err
+		}
+		members := r.GetMembers()
+		first := members.First()
+		members.Put(orm.KeyOf(int64(1)), first)
+		members.Put(orm.KeyOf("1"), first)
+		return r.ToArray()
 	})
 	run("unbound_terminal", func() (any, error) {
 		return gen.Battle().GetCountByServiceSeq(7)
@@ -605,7 +656,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		return b.ToArray(), nil
+		return b.ToArray()
 	})
 	run("relation_one_ordered", func() (any, error) {
 		// a one-relation with an ORDER is fetched through a per-parent window of 1
@@ -613,7 +664,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		return b.ToArray(), nil
+		return b.ToArray()
 	})
 	run("relation_if_parent", func() (any, error) {
 		c, err := gen.Battle().SelectNone().SeqIn([]int64{7, 8, 14}).OrderBySeqAsc().RelationUser(gen.User().IfParentIsCloseEq(true)).Bind(ctx, db).Gets()
@@ -622,7 +673,11 @@ func main() {
 		}
 		items := []any{}
 		for _, b := range c.All() {
-			items = append(items, b.ToArray())
+			item, err := b.ToArray()
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, item)
 		}
 		return items, nil
 	})
@@ -638,7 +693,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		return b.ToArray(), nil
+		return b.ToArray()
 	})
 	run("paginate_relations", func() (any, error) {
 		p, err := gen.Battle().SelectNone().ServiceSeq(7).OrderBySeqAsc().RelationUser(gen.User()).Bind(ctx, db).Paginate(1, 3)
@@ -647,7 +702,11 @@ func main() {
 		}
 		items := []any{}
 		for _, b := range p.Items.All() {
-			items = append(items, b.ToArray())
+			item, err := b.ToArray()
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, item)
 		}
 		return map[string]any{"total": p.Total, "items": items}, nil
 	})
@@ -656,7 +715,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		return s.ToArray(), nil
+		return s.ToArray()
 	})
 	run("key_by_unselected", func() (any, error) {
 		// key_by on a column outside the projection: the planner selects it for keying
@@ -664,7 +723,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		return s.ToArray(), nil
+		return s.ToArray()
 	})
 	run("types_roundtrip", func() (any, error) {
 		dt := time.Date(2026, 6, 1, 12, 34, 56, 123456000, time.UTC)
@@ -702,7 +761,11 @@ func main() {
 		}
 		items := []any{}
 		for k, m := range c.All() {
-			items = append(items, []any{k.String(), m.ToArray()})
+			item, err := m.ToArray()
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, []any{k.String(), item})
 		}
 		return items, nil
 	})
@@ -711,7 +774,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		return u.ToArray(), nil
+		return u.ToArray()
 	})
 	// S3 write long tail. FKs and dates are the write_cycle fixtures.
 	fks := func(q *gen.BattleQuery) *gen.BattleQuery {
@@ -939,7 +1002,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		return b.ToArray(), nil
+		return b.ToArray()
 	})
 	run("codec_roundtrip", func() (any, error) {
 		value := map[string]any{"a": int64(1), "b": []any{int64(1), int64(2), map[string]any{"c": "한글/slash"}}, "d": nil, "e": true, "f": 1.5}
