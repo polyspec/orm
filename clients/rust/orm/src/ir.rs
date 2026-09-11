@@ -12,6 +12,9 @@ pub struct Request {
     pub query: Query,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub set: Vec<Assign>,
+    /// insert only: assignments applied when the unique key already exists (never PK/auto).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub on_duplicate: Vec<Assign>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub optimistic: Option<Optimist>,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -52,6 +55,9 @@ pub struct Query {
     pub if_parent: Option<IfParent>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub drop_child_key: bool,
+    /// delete_cascade stops at this relation (plan children[].cascade = false).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub no_cascade_delete: bool,
 }
 
 fn is_zero(n: &u32) -> bool {
