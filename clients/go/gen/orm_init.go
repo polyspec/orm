@@ -2,12 +2,26 @@
 
 package gen
 
-import "github.com/maxkwon/orm/engine"
+import (
+	"github.com/maxkwon/orm/clients/go/orm"
+	"github.com/maxkwon/orm/engine"
+)
+
+// SchemaHash is the schema_hash of the schema.json this package was generated from.
+const SchemaHash = "01de65d5f6ace3cd"
 
 var eng *engine.Engine
 
 // Init binds the generated package to a compiled engine (call once at startup).
-func Init(e *engine.Engine) { eng = e }
+// It checks, exactly once, that the engine loaded the schema this package was
+// generated from: SCHEMA_HASH_MISMATCH otherwise (no watching, no reload).
+func Init(e *engine.Engine) error {
+	if err := orm.CheckSchemaHash(e, SchemaHash); err != nil {
+		return err
+	}
+	eng = e
+	return nil
+}
 
 func mustEngine() *engine.Engine {
 	if eng == nil {

@@ -144,7 +144,7 @@ func scanService(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRow {
 			r.Modules = c
 		}
 	}
-	r.SetProjection(a)
+	r.SetProjection(rs.Projection(a))
 	r.Mark("service", "seq", r.Seq)
 	return r
 }
