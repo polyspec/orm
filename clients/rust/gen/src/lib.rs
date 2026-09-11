@@ -21,16 +21,16 @@ pub fn schema_hash() -> &'static str {
 }
 
 pub mod battle;
-pub use battle::*;
+pub use battle::{BattleRow, BattleWhere, Battle};
 
 pub mod user;
-pub use user::*;
+pub use user::{UserRow, UserWhere, User};
 
 pub mod service;
-pub use service::*;
+pub use service::{ServiceRow, ServiceWhere, Service};
 
 pub mod service_module;
-pub use service_module::*;
+pub use service_module::{ServiceModuleRow, ServiceModuleWhere, ServiceModule};
 
 pub mod service_member;
-pub use service_member::*;
+pub use service_member::{ServiceMemberRow, ServiceMemberWhere, ServiceMember};

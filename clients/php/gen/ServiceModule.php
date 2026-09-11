@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Orm;
 
+use Orm\ColRef;
 use Orm\Collection;
 use Orm\Db;
 use Orm\Page;
@@ -45,6 +46,14 @@ final class ServiceModuleRow extends Row
     public function getService(): ?ServiceRow { return $this->relation('service'); }
 }
 
+/** Column references for column-to-column predicates (ServiceModuleCols::seq()); ->at('service') points into a joined entity. */
+final class ServiceModuleCols
+{
+    public static function seq(): ColRef { return new ColRef('seq'); }
+    public static function serviceSeq(): ColRef { return new ColRef('service_seq'); }
+    public static function name(): ColRef { return new ColRef('name'); }
+}
+
 /** Where builder for service_module: predicates, or(), and(fn), relation navigation. */
 final class ServiceModuleWhere
 {
@@ -65,6 +74,14 @@ final class ServiceModuleWhere
     public function seqIn(array $vs): static { $this->w->predList('seq', 'in', array_values($vs)); return $this; }
     public function seqNotIn(array $vs): static { $this->w->predList('seq', 'not_in', array_values($vs)); return $this; }
     public function seqBetween(int $lo, int $hi): static { $this->w->predList('seq', 'between', [$lo, $hi]); return $this; }
+    public function seqIsNull(): static { $this->w->predNull('seq', 'is_null'); return $this; }
+    public function seqIsNotNull(): static { $this->w->predNull('seq', 'is_not_null'); return $this; }
+    public function seqEqCol(ColRef $ref): static { $this->w->predCol('seq', 'eq_col', $ref); return $this; }
+    public function seqNotEqCol(ColRef $ref): static { $this->w->predCol('seq', 'not_eq_col', $ref); return $this; }
+    public function seqGtCol(ColRef $ref): static { $this->w->predCol('seq', 'gt_col', $ref); return $this; }
+    public function seqGteCol(ColRef $ref): static { $this->w->predCol('seq', 'gte_col', $ref); return $this; }
+    public function seqLtCol(ColRef $ref): static { $this->w->predCol('seq', 'lt_col', $ref); return $this; }
+    public function seqLteCol(ColRef $ref): static { $this->w->predCol('seq', 'lte_col', $ref); return $this; }
     public function serviceSeqEq(int $v): static { $this->w->pred('service_seq', 'eq', $v); return $this; }
     public function serviceSeqNotEq(int $v): static { $this->w->pred('service_seq', 'not_eq', $v); return $this; }
     public function serviceSeqGt(int $v): static { $this->w->pred('service_seq', 'gt', $v); return $this; }
@@ -74,6 +91,14 @@ final class ServiceModuleWhere
     public function serviceSeqIn(array $vs): static { $this->w->predList('service_seq', 'in', array_values($vs)); return $this; }
     public function serviceSeqNotIn(array $vs): static { $this->w->predList('service_seq', 'not_in', array_values($vs)); return $this; }
     public function serviceSeqBetween(int $lo, int $hi): static { $this->w->predList('service_seq', 'between', [$lo, $hi]); return $this; }
+    public function serviceSeqIsNull(): static { $this->w->predNull('service_seq', 'is_null'); return $this; }
+    public function serviceSeqIsNotNull(): static { $this->w->predNull('service_seq', 'is_not_null'); return $this; }
+    public function serviceSeqEqCol(ColRef $ref): static { $this->w->predCol('service_seq', 'eq_col', $ref); return $this; }
+    public function serviceSeqNotEqCol(ColRef $ref): static { $this->w->predCol('service_seq', 'not_eq_col', $ref); return $this; }
+    public function serviceSeqGtCol(ColRef $ref): static { $this->w->predCol('service_seq', 'gt_col', $ref); return $this; }
+    public function serviceSeqGteCol(ColRef $ref): static { $this->w->predCol('service_seq', 'gte_col', $ref); return $this; }
+    public function serviceSeqLtCol(ColRef $ref): static { $this->w->predCol('service_seq', 'lt_col', $ref); return $this; }
+    public function serviceSeqLteCol(ColRef $ref): static { $this->w->predCol('service_seq', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w->pred('name', 'eq', $v); return $this; }
     public function nameNotEq(string $v): static { $this->w->pred('name', 'not_eq', $v); return $this; }
     public function nameIn(array $vs): static { $this->w->predList('name', 'in', array_values($vs)); return $this; }
@@ -83,6 +108,10 @@ final class ServiceModuleWhere
     public function nameContains(string $v): static { $this->w->pred('name', 'contains', $v); return $this; }
     public function nameStartsWith(string $v): static { $this->w->pred('name', 'starts_with', $v); return $this; }
     public function nameEndsWith(string $v): static { $this->w->pred('name', 'ends_with', $v); return $this; }
+    public function nameIsNull(): static { $this->w->predNull('name', 'is_null'); return $this; }
+    public function nameIsNotNull(): static { $this->w->predNull('name', 'is_not_null'); return $this; }
+    public function nameEqCol(ColRef $ref): static { $this->w->predCol('name', 'eq_col', $ref); return $this; }
+    public function nameNotEqCol(ColRef $ref): static { $this->w->predCol('name', 'not_eq_col', $ref); return $this; }
 }
 
 /** Query over service_module: new ServiceModule → chain → terminal($db). */
@@ -106,6 +135,14 @@ final class ServiceModule extends Q
     public function seqIn(array $vs): static { $this->w()->predList('seq', 'in', array_values($vs)); return $this; }
     public function seqNotIn(array $vs): static { $this->w()->predList('seq', 'not_in', array_values($vs)); return $this; }
     public function seqBetween(int $lo, int $hi): static { $this->w()->predList('seq', 'between', [$lo, $hi]); return $this; }
+    public function seqIsNull(): static { $this->w()->predNull('seq', 'is_null'); return $this; }
+    public function seqIsNotNull(): static { $this->w()->predNull('seq', 'is_not_null'); return $this; }
+    public function seqEqCol(ColRef $ref): static { $this->w()->predCol('seq', 'eq_col', $ref); return $this; }
+    public function seqNotEqCol(ColRef $ref): static { $this->w()->predCol('seq', 'not_eq_col', $ref); return $this; }
+    public function seqGtCol(ColRef $ref): static { $this->w()->predCol('seq', 'gt_col', $ref); return $this; }
+    public function seqGteCol(ColRef $ref): static { $this->w()->predCol('seq', 'gte_col', $ref); return $this; }
+    public function seqLtCol(ColRef $ref): static { $this->w()->predCol('seq', 'lt_col', $ref); return $this; }
+    public function seqLteCol(ColRef $ref): static { $this->w()->predCol('seq', 'lte_col', $ref); return $this; }
     public function serviceSeqEq(int $v): static { $this->w()->pred('service_seq', 'eq', $v); return $this; }
     public function serviceSeqNotEq(int $v): static { $this->w()->pred('service_seq', 'not_eq', $v); return $this; }
     public function serviceSeqGt(int $v): static { $this->w()->pred('service_seq', 'gt', $v); return $this; }
@@ -115,6 +152,14 @@ final class ServiceModule extends Q
     public function serviceSeqIn(array $vs): static { $this->w()->predList('service_seq', 'in', array_values($vs)); return $this; }
     public function serviceSeqNotIn(array $vs): static { $this->w()->predList('service_seq', 'not_in', array_values($vs)); return $this; }
     public function serviceSeqBetween(int $lo, int $hi): static { $this->w()->predList('service_seq', 'between', [$lo, $hi]); return $this; }
+    public function serviceSeqIsNull(): static { $this->w()->predNull('service_seq', 'is_null'); return $this; }
+    public function serviceSeqIsNotNull(): static { $this->w()->predNull('service_seq', 'is_not_null'); return $this; }
+    public function serviceSeqEqCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'eq_col', $ref); return $this; }
+    public function serviceSeqNotEqCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'not_eq_col', $ref); return $this; }
+    public function serviceSeqGtCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'gt_col', $ref); return $this; }
+    public function serviceSeqGteCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'gte_col', $ref); return $this; }
+    public function serviceSeqLtCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'lt_col', $ref); return $this; }
+    public function serviceSeqLteCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w()->pred('name', 'eq', $v); return $this; }
     public function nameNotEq(string $v): static { $this->w()->pred('name', 'not_eq', $v); return $this; }
     public function nameIn(array $vs): static { $this->w()->predList('name', 'in', array_values($vs)); return $this; }
@@ -124,6 +169,10 @@ final class ServiceModule extends Q
     public function nameContains(string $v): static { $this->w()->pred('name', 'contains', $v); return $this; }
     public function nameStartsWith(string $v): static { $this->w()->pred('name', 'starts_with', $v); return $this; }
     public function nameEndsWith(string $v): static { $this->w()->pred('name', 'ends_with', $v); return $this; }
+    public function nameIsNull(): static { $this->w()->predNull('name', 'is_null'); return $this; }
+    public function nameIsNotNull(): static { $this->w()->predNull('name', 'is_not_null'); return $this; }
+    public function nameEqCol(ColRef $ref): static { $this->w()->predCol('name', 'eq_col', $ref); return $this; }
+    public function nameNotEqCol(ColRef $ref): static { $this->w()->predCol('name', 'not_eq_col', $ref); return $this; }
 
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new ServiceModuleWhere($this->onW())); return $this; }

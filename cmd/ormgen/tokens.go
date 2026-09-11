@@ -45,6 +45,9 @@ func buildVocabulary(m *schema.Manifest) *vocabulary {
 			for _, o := range opsFor(c) {
 				v.other[lowerFirst(f)+o.Suffix] = true
 			}
+			for _, o := range colOpsFor(c) {
+				v.other[lowerFirst(f)+o.Suffix] = true
+			}
 			for _, p := range []string{"select", "unselect", "orderBy", "groupBy", "keyBy", "set", "plus", "minus", "ifParent"} {
 				v.other[p+f] = true
 			}

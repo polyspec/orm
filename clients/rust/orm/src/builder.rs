@@ -47,6 +47,26 @@ impl Req {
     }
 }
 
+/// A column of another entity in the same statement, for column-to-column
+/// predicates: path "" is the parent (inside on()/where() of a join child) or
+/// the root; `.at("service")` / `.at("campaign/service")` walks joins.
+#[derive(Debug, Clone)]
+pub struct ColRef {
+    pub path: String,
+    pub column: &'static str,
+}
+
+impl ColRef {
+    pub const fn new(column: &'static str) -> ColRef {
+        ColRef { path: String::new(), column }
+    }
+
+    pub fn at(mut self, path: &str) -> ColRef {
+        self.path = path.to_owned();
+        self
+    }
+}
+
 /// Query builder core. Generated types wrap this and move `self` through the chain.
 pub struct Q {
     pub req: Req,
@@ -181,6 +201,11 @@ impl<'a> W<'a> {
     pub fn pred_null(&mut self, col: &str, op: &str) {
         let conn = self.conn();
         self.g.items.push(Item::Pred { pred: Pred { conn, column: col.into(), op: op.into(), ..Default::default() } });
+    }
+
+    pub fn pred_col(&mut self, col: &str, op: &str, r: ColRef) {
+        let conn = self.conn();
+        self.g.items.push(Item::Pred { pred: Pred { conn, column: col.into(), op: op.into(), r#ref: Some(crate::ir::ColRef { path: r.path, column: r.column.into() }), ..Default::default() } });
     }
 
     pub fn match_(&mut self, cols: &[&str], boolean: bool, v: &str) {
