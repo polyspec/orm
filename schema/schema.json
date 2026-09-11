@@ -1,5 +1,5 @@
 {
-  "schema_hash": "cd21c76a45bcb2dd",
+  "schema_hash": "31c175ad68a02619",
   "order": [
     "battle",
     "user",
@@ -206,6 +206,68 @@
           "styles": [
             "aes",
             "hex"
+          ]
+        },
+        {
+          "name": "ip",
+          "type": "inet",
+          "raw": "varbinary(16)",
+          "nullable": true,
+          "len": 16,
+          "styles": [
+            "ip"
+          ]
+        },
+        {
+          "name": "gz_extend",
+          "type": "bytes",
+          "raw": "blob",
+          "nullable": true,
+          "lazy": true,
+          "styles": [
+            "serialize",
+            "gz"
+          ]
+        },
+        {
+          "name": "json_setting",
+          "type": "json",
+          "raw": "json",
+          "nullable": true,
+          "lazy": true,
+          "styles": [
+            "json"
+          ]
+        },
+        {
+          "name": "jsons_tags",
+          "type": "text",
+          "raw": "text",
+          "nullable": true,
+          "lazy": true,
+          "styles": [
+            "jsons"
+          ]
+        },
+        {
+          "name": "base64_extra",
+          "type": "text",
+          "raw": "text",
+          "nullable": true,
+          "lazy": true,
+          "styles": [
+            "serialize",
+            "base64"
+          ]
+        },
+        {
+          "name": "serialize_data",
+          "type": "text",
+          "raw": "text",
+          "nullable": true,
+          "lazy": true,
+          "styles": [
+            "serialize"
           ]
         }
       ],

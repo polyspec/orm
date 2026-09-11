@@ -8,6 +8,7 @@ pub mod plan;
 pub mod builder;
 pub mod db;
 pub mod value;
+pub mod codec;
 pub mod collection;
 
 pub use builder::{Q, W};

@@ -64,6 +64,9 @@ func norm(v any) any {
 		}
 		return fmtTime(x)
 	case []byte:
+		if len(x) > 0 && x[0] == 0x78 { // zlib stream (gz style): bytes differ per zlib implementation
+			return "$ZLIB"
+		}
 		return string(x)
 	}
 	return v
@@ -286,6 +289,36 @@ func main() {
 			"after_update": map[string]any{"name": again.Name, "like_count": again.LikeCount},
 			"stale": stale, "left": left,
 		}, nil
+	})
+
+	run("codec_roundtrip", func() (any, error) {
+		value := map[string]any{"a": int64(1), "b": []any{int64(1), int64(2), map[string]any{"c": "한글/slash"}}, "d": nil, "e": true, "f": 1.5}
+		ip := "10.1.2.3"
+		created, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {
+			return gen.NewBattle().
+				SetName("conf-codec").
+				SetUserSeq(1).SetServiceSeq(999).SetServiceModuleSeq(1).SetServiceMemberSeq(1).
+				SetStartDt(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)).SetEndDt(time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)).
+				SetJsonSetting(value).SetJsonsTags([]any{"x", "y"}).SetBase64Extra(value).SetSerializeData(value).SetGzExtend(value).SetIp(ip).
+				Insert(ctx, tx)
+		})
+		if err != nil {
+			return nil, err
+		}
+		maskSeq, maskTs = created.Seq, created.UpdatedTs
+		for i := range log {
+			for j := range log[i].Binds {
+				log[i].Binds[j] = norm(log[i].Binds[j])
+			}
+		}
+		b, err := gen.NewBattle().SelectJsonSetting().SelectJsonsTags().SelectBase64Extra().SelectSerializeData().SelectGzExtend().SeqEq(created.Seq).One(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		if err := b.Delete(ctx, db); err != nil {
+			return nil, err
+		}
+		return map[string]any{"json_setting": b.JsonSetting, "jsons_tags": b.JsonsTags, "base64_extra": b.Base64Extra, "serialize_data": b.SerializeData, "gz_extend": b.GzExtend, "ip": b.Ip}, nil
 	})
 
 	enc := json.NewEncoder(os.Stdout)

@@ -38,6 +38,9 @@ func pascal(s string) string {
 }
 
 func goType(c *schema.Col) string {
+	if len(appStyles(c)) > 0 {
+		return "any"
+	}
 	var t string
 	switch c.Type {
 	case "i32":
@@ -126,6 +129,18 @@ type goCol struct {
 	Name, Field, Type, ColType string
 	Nullable, Lazy, PK, Auto   bool
 	Ops                        []opDef
+	Styles                     []string // executor-side codec stages (docs/codec.md); the field is then `any`
+}
+
+// appStyles is the part of a column's style stack the executor handles (aes/hex/ip stay in SQL).
+func appStyles(c *schema.Col) []string {
+	var out []string
+	for _, s := range c.Styles {
+		if s != "aes" && s != "hex" && s != "ip" {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 type goRel struct {
@@ -148,7 +163,10 @@ func parentOf(m *schema.Manifest, e *schema.Entity, col string) string {
 func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 	ge := goEntity{Name: e.Name, Type: pascal(e.Name), Table: e.Table, PK: e.PK[0], Auto: e.Auto != ""}
 	for _, c := range e.Columns {
-		gc := goCol{Name: c.Name, Field: pascal(c.Name), Type: goType(c), ColType: c.Type, Nullable: c.Nullable, Lazy: c.Lazy, PK: c.PK, Auto: c.Auto, Ops: opsFor(c)}
+		gc := goCol{Name: c.Name, Field: pascal(c.Name), Type: goType(c), ColType: c.Type, Nullable: c.Nullable, Lazy: c.Lazy, PK: c.PK, Auto: c.Auto, Ops: opsFor(c), Styles: appStyles(c)}
+		if len(gc.Styles) > 0 {
+			gc.Nullable = false // `any` carries nil itself
+		}
 		ge.Cols = append(ge.Cols, gc)
 		if c.Name == e.PK[0] {
 			ge.PKType = gc.Type
@@ -217,8 +235,17 @@ var goTmpl = template.Must(template.New("go").Funcs(template.FuncMap{
 			return "orm.AsBool(v)"
 		case "time.Time":
 			return "orm.AsTime(v)"
+		case "any":
+			return "v"
 		}
 		return "orm.AsString(v)"
+	},
+	"styleList": func(styles []string) string {
+		q := make([]string, len(styles))
+		for i, s := range styles {
+			q[i] = fmt.Sprintf("%q", s)
+		}
+		return "[]string{" + strings.Join(q, ", ") + "}"
 	},
 	"quoteList": func(cols []string) string {
 		q := make([]string, len(cols))
@@ -269,7 +296,11 @@ func (r *{{$.Type}}Row) Get{{.Field}}() {{if .Nullable}}*{{end}}{{.Type}} {
 
 func (r *{{$.Type}}Row) Set{{.Field}}(v {{if .Nullable}}*{{end}}{{.Type}}) *{{$.Type}}Row {
 	r.{{.Field}} = v
+{{- if .Styles}}
+	r.DirtyStyled({{printf "%q" .Name}}, v, {{styleList .Styles}})
+{{- else}}
 	r.Dirty({{printf "%q" .Name}}, {{if .Nullable}}orm.Deref(v){{else}}v{{end}})
+{{- end}}
 	return r
 }
 {{- end}}
@@ -426,7 +457,7 @@ func (q *{{$.Type}}) IfParent{{.Field}}Eq(v {{.Type}}) *{{$.Type}} { q.q.IfParen
 
 // Insert draft.
 {{- range .Cols}}{{if not .Auto}}
-func (q *{{$.Type}}) Set{{.Field}}(v {{.Type}}) *{{$.Type}} { q.q.Set({{printf "%q" .Name}}, v); return q }
+func (q *{{$.Type}}) Set{{.Field}}(v {{.Type}}) *{{$.Type}} { {{if .Styles}}q.q.SetStyled({{printf "%q" .Name}}, v, {{styleList .Styles}}){{else}}q.q.Set({{printf "%q" .Name}}, v){{end}}; return q }
 {{- if .Nullable}}
 func (q *{{$.Type}}) Set{{.Field}}Null() *{{$.Type}} { q.q.SetNull({{printf "%q" .Name}}); return q }
 {{- end}}

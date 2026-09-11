@@ -1,0 +1,674 @@
+{
+    "vectors": [
+        {
+            "name": "json/null",
+            "styles": [
+                "json"
+            ],
+            "value": null,
+            "encoded_b64": null,
+            "deterministic": false
+        },
+        {
+            "name": "json/bool_true",
+            "styles": [
+                "json"
+            ],
+            "value": true,
+            "encoded_b64": "dHJ1ZQ==",
+            "deterministic": false
+        },
+        {
+            "name": "json/int",
+            "styles": [
+                "json"
+            ],
+            "value": 42,
+            "encoded_b64": "NDI=",
+            "deterministic": false
+        },
+        {
+            "name": "json/negative_int",
+            "styles": [
+                "json"
+            ],
+            "value": -7,
+            "encoded_b64": "LTc=",
+            "deterministic": false
+        },
+        {
+            "name": "json/float",
+            "styles": [
+                "json"
+            ],
+            "value": 1.5,
+            "encoded_b64": "MS41",
+            "deterministic": false
+        },
+        {
+            "name": "json/float_small",
+            "styles": [
+                "json"
+            ],
+            "value": 0.1,
+            "encoded_b64": "MC4x",
+            "deterministic": false
+        },
+        {
+            "name": "json/integral_float",
+            "styles": [
+                "json"
+            ],
+            "value": 2,
+            "encoded_b64": "Mg==",
+            "deterministic": false
+        },
+        {
+            "name": "json/string",
+            "styles": [
+                "json"
+            ],
+            "value": "hello",
+            "encoded_b64": "ImhlbGxvIg==",
+            "deterministic": false
+        },
+        {
+            "name": "json/unicode_slash",
+            "styles": [
+                "json"
+            ],
+            "value": "한글/slash \"q\" \\ back",
+            "encoded_b64": "Iu2VnOq4gC9zbGFzaCBcInFcIiBcXCBiYWNrIg==",
+            "deterministic": false
+        },
+        {
+            "name": "json/empty_string",
+            "styles": [
+                "json"
+            ],
+            "value": "",
+            "encoded_b64": "IiI=",
+            "deterministic": false
+        },
+        {
+            "name": "json/empty_list",
+            "styles": [
+                "json"
+            ],
+            "value": [],
+            "encoded_b64": "W10=",
+            "deterministic": false
+        },
+        {
+            "name": "json/list",
+            "styles": [
+                "json"
+            ],
+            "value": [
+                1,
+                "two",
+                3.5,
+                null,
+                false
+            ],
+            "encoded_b64": "WzEsInR3byIsMy41LG51bGwsZmFsc2Vd",
+            "deterministic": false
+        },
+        {
+            "name": "json/nested_map",
+            "styles": [
+                "json"
+            ],
+            "value": {
+                "a": 1,
+                "b": [
+                    1,
+                    2,
+                    {
+                        "c": "한"
+                    }
+                ],
+                "d": null,
+                "e": true,
+                "f": 1.5
+            },
+            "encoded_b64": "eyJhIjoxLCJiIjpbMSwyLHsiYyI6Iu2VnCJ9XSwiZCI6bnVsbCwiZSI6dHJ1ZSwiZiI6MS41fQ==",
+            "deterministic": false
+        },
+        {
+            "name": "json/int_keys_sparse",
+            "styles": [
+                "json"
+            ],
+            "value": {
+                "1": "x",
+                "5": "y"
+            },
+            "encoded_b64": "eyIxIjoieCIsIjUiOiJ5In0=",
+            "deterministic": false
+        },
+        {
+            "name": "json/numeric_string_keys",
+            "styles": [
+                "json"
+            ],
+            "value": {
+                "-3": "neg",
+                "07": "zero-padded",
+                "10": "ten"
+            },
+            "encoded_b64": "eyItMyI6Im5lZyIsIjA3IjoiemVyby1wYWRkZWQiLCIxMCI6InRlbiJ9",
+            "deterministic": false
+        },
+        {
+            "name": "serialize/null",
+            "styles": [
+                "serialize"
+            ],
+            "value": null,
+            "encoded_b64": null,
+            "deterministic": true
+        },
+        {
+            "name": "serialize/bool_true",
+            "styles": [
+                "serialize"
+            ],
+            "value": true,
+            "encoded_b64": "YjoxOw==",
+            "deterministic": true
+        },
+        {
+            "name": "serialize/int",
+            "styles": [
+                "serialize"
+            ],
+            "value": 42,
+            "encoded_b64": "aTo0Mjs=",
+            "deterministic": true
+        },
+        {
+            "name": "serialize/negative_int",
+            "styles": [
+                "serialize"
+            ],
+            "value": -7,
+            "encoded_b64": "aTotNzs=",
+            "deterministic": true
+        },
+        {
+            "name": "serialize/float",
+            "styles": [
+                "serialize"
+            ],
+            "value": 1.5,
+            "encoded_b64": "ZDoxLjU7",
+            "deterministic": true
+        },
+        {
+            "name": "serialize/float_small",
+            "styles": [
+                "serialize"
+            ],
+            "value": 0.1,
+            "encoded_b64": "ZDowLjE7",
+            "deterministic": true
+        },
+        {
+            "name": "serialize/integral_float",
+            "styles": [
+                "serialize"
+            ],
+            "value": 2,
+            "encoded_b64": "ZDoyOw==",
+            "deterministic": false
+        },
+        {
+            "name": "serialize/string",
+            "styles": [
+                "serialize"
+            ],
+            "value": "hello",
+            "encoded_b64": "czo1OiJoZWxsbyI7",
+            "deterministic": true
+        },
+        {
+            "name": "serialize/unicode_slash",
+            "styles": [
+                "serialize"
+            ],
+            "value": "한글/slash \"q\" \\ back",
+            "encoded_b64": "czoyMzoi7ZWc6riAL3NsYXNoICJxIiBcIGJhY2siOw==",
+            "deterministic": true
+        },
+        {
+            "name": "serialize/empty_string",
+            "styles": [
+                "serialize"
+            ],
+            "value": "",
+            "encoded_b64": "czowOiIiOw==",
+            "deterministic": true
+        },
+        {
+            "name": "serialize/empty_list",
+            "styles": [
+                "serialize"
+            ],
+            "value": [],
+            "encoded_b64": "YTowOnt9",
+            "deterministic": true
+        },
+        {
+            "name": "serialize/list",
+            "styles": [
+                "serialize"
+            ],
+            "value": [
+                1,
+                "two",
+                3.5,
+                null,
+                false
+            ],
+            "encoded_b64": "YTo1OntpOjA7aToxO2k6MTtzOjM6InR3byI7aToyO2Q6My41O2k6MztOO2k6NDtiOjA7fQ==",
+            "deterministic": true
+        },
+        {
+            "name": "serialize/nested_map",
+            "styles": [
+                "serialize"
+            ],
+            "value": {
+                "a": 1,
+                "b": [
+                    1,
+                    2,
+                    {
+                        "c": "한"
+                    }
+                ],
+                "d": null,
+                "e": true,
+                "f": 1.5
+            },
+            "encoded_b64": "YTo1OntzOjE6ImEiO2k6MTtzOjE6ImIiO2E6Mzp7aTowO2k6MTtpOjE7aToyO2k6MjthOjE6e3M6MToiYyI7czozOiLtlZwiO319czoxOiJkIjtOO3M6MToiZSI7YjoxO3M6MToiZiI7ZDoxLjU7fQ==",
+            "deterministic": true
+        },
+        {
+            "name": "serialize/int_keys_sparse",
+            "styles": [
+                "serialize"
+            ],
+            "value": {
+                "1": "x",
+                "5": "y"
+            },
+            "encoded_b64": "YToyOntpOjE7czoxOiJ4IjtpOjU7czoxOiJ5Ijt9",
+            "deterministic": true
+        },
+        {
+            "name": "serialize/numeric_string_keys",
+            "styles": [
+                "serialize"
+            ],
+            "value": {
+                "-3": "neg",
+                "07": "zero-padded",
+                "10": "ten"
+            },
+            "encoded_b64": "YTozOntpOi0zO3M6MzoibmVnIjtzOjI6IjA3IjtzOjExOiJ6ZXJvLXBhZGRlZCI7aToxMDtzOjM6InRlbiI7fQ==",
+            "deterministic": true
+        },
+        {
+            "name": "base64/null",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": null,
+            "encoded_b64": null,
+            "deterministic": true
+        },
+        {
+            "name": "base64/bool_true",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": true,
+            "encoded_b64": "WWpveE93PT0=",
+            "deterministic": true
+        },
+        {
+            "name": "base64/int",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": 42,
+            "encoded_b64": "YVRvME1qcz0=",
+            "deterministic": true
+        },
+        {
+            "name": "base64/negative_int",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": -7,
+            "encoded_b64": "YVRvdE56cz0=",
+            "deterministic": true
+        },
+        {
+            "name": "base64/float",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": 1.5,
+            "encoded_b64": "WkRveExqVTc=",
+            "deterministic": true
+        },
+        {
+            "name": "base64/float_small",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": 0.1,
+            "encoded_b64": "WkRvd0xqRTc=",
+            "deterministic": true
+        },
+        {
+            "name": "base64/integral_float",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": 2,
+            "encoded_b64": "WkRveU93PT0=",
+            "deterministic": false
+        },
+        {
+            "name": "base64/string",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": "hello",
+            "encoded_b64": "Y3pvMU9pSm9aV3hzYnlJNw==",
+            "deterministic": true
+        },
+        {
+            "name": "base64/unicode_slash",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": "한글/slash \"q\" \\ back",
+            "encoded_b64": "Y3pveU16b2k3WldjNnJpQUwzTnNZWE5vSUNKeElpQmNJR0poWTJzaU93PT0=",
+            "deterministic": true
+        },
+        {
+            "name": "base64/empty_string",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": "",
+            "encoded_b64": "Y3pvd09pSWlPdz09",
+            "deterministic": true
+        },
+        {
+            "name": "base64/empty_list",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": [],
+            "encoded_b64": "WVRvd09udDk=",
+            "deterministic": true
+        },
+        {
+            "name": "base64/list",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": [
+                1,
+                "two",
+                3.5,
+                null,
+                false
+            ],
+            "encoded_b64": "WVRvMU9udHBPakE3YVRveE8yazZNVHR6T2pNNkluUjNieUk3YVRveU8yUTZNeTQxTzJrNk16dE9PMms2TkR0aU9qQTdmUT09",
+            "deterministic": true
+        },
+        {
+            "name": "base64/nested_map",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": {
+                "a": 1,
+                "b": [
+                    1,
+                    2,
+                    {
+                        "c": "한"
+                    }
+                ],
+                "d": null,
+                "e": true,
+                "f": 1.5
+            },
+            "encoded_b64": "WVRvMU9udHpPakU2SW1FaU8yazZNVHR6T2pFNkltSWlPMkU2TXpwN2FUb3dPMms2TVR0cE9qRTdhVG95TzJrNk1qdGhPakU2ZTNNNk1Ub2lZeUk3Y3pvek9pTHRsWndpTzMxOWN6b3hPaUprSWp0T08zTTZNVG9pWlNJN1lqb3hPM002TVRvaVppSTdaRG94TGpVN2ZRPT0=",
+            "deterministic": true
+        },
+        {
+            "name": "base64/int_keys_sparse",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": {
+                "1": "x",
+                "5": "y"
+            },
+            "encoded_b64": "WVRveU9udHBPakU3Y3pveE9pSjRJanRwT2pVN2N6b3hPaUo1SWp0OQ==",
+            "deterministic": true
+        },
+        {
+            "name": "base64/numeric_string_keys",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": {
+                "-3": "neg",
+                "07": "zero-padded",
+                "10": "ten"
+            },
+            "encoded_b64": "WVRvek9udHBPaTB6TzNNNk16b2libVZuSWp0ek9qSTZJakEzSWp0ek9qRXhPaUo2WlhKdkxYQmhaR1JsWkNJN2FUb3hNRHR6T2pNNkluUmxiaUk3ZlE9PQ==",
+            "deterministic": true
+        },
+        {
+            "name": "gz/null",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": null,
+            "encoded_b64": null,
+            "deterministic": false
+        },
+        {
+            "name": "gz/bool_true",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": true,
+            "encoded_b64": "eNpLsjK0BgAC1wEJ",
+            "deterministic": false
+        },
+        {
+            "name": "gz/int",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": 42,
+            "encoded_b64": "eNrLtDIxsgYABDUBRQ==",
+            "deterministic": false
+        },
+        {
+            "name": "gz/negative_int",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": -7,
+            "encoded_b64": "eNrLtNI1twYABCoBQw==",
+            "deterministic": false
+        },
+        {
+            "name": "gz/float",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": 1.5,
+            "encoded_b64": "eNpLsTLUM7UGAAVzAW4=",
+            "deterministic": false
+        },
+        {
+            "name": "gz/float_small",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": 0.1,
+            "encoded_b64": "eNpLsTLQM7QGAAVnAWk=",
+            "deterministic": false
+        },
+        {
+            "name": "gz/integral_float",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": 2,
+            "encoded_b64": "eNpLsTKyBgAC4QEM",
+            "deterministic": false
+        },
+        {
+            "name": "gz/string",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": "hello",
+            "encoded_b64": "eNortjK1UspIzcnJV7IGABfoA7A=",
+            "deterministic": false
+        },
+        {
+            "name": "gz/unicode_slash",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": "한글/slash \"q\" \\ back",
+            "encoded_b64": "eNortjIytlJ6O3XOqx0N+sU5icUZCkqFSgoxCkmJydlK1gDE/QtY",
+            "deterministic": false
+        },
+        {
+            "name": "gz/empty_string",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": "",
+            "encoded_b64": "eNortjKwUlKyBgAHRQGX",
+            "deterministic": false
+        },
+        {
+            "name": "gz/empty_list",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": [],
+            "encoded_b64": "eNpLtDKwqq4FAAZPAf4=",
+            "deterministic": false
+        },
+        {
+            "name": "gz/list",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": [
+                1,
+                "two",
+                3.5,
+                null,
+                false
+            ],
+            "encoded_b64": "eNpLtDK1qs60MrDOtDIE42IrYyulkvJ8JSDPyDrFyljPFMgytvYDkibWSUCVtQB/3g5U",
+            "deterministic": false
+        },
+        {
+            "name": "gz/nested_map",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": {
+                "a": 1,
+                "b": [
+                    1,
+                    2,
+                    {
+                        "c": "한"
+                    }
+                ],
+                "d": null,
+                "e": true,
+                "f": 1.5
+            },
+            "encoded_b64": "eNpLtDK1qi62MrRSSlSyzrQytAazk5SsE62MraozrQzAghBsBMaJQAUQHclKQNXGVkpvp85Rsq6tBYulKFn7QcxIVbJOgpmXpmSdYmWoZ2pdCwDUfB7w",
+            "deterministic": false
+        },
+        {
+            "name": "gz/int_keys_sparse",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": {
+                "1": "x",
+                "5": "y"
+            },
+            "encoded_b64": "eNpLtDKyqs60MrQutjK0UqpQss60MoWwK5WsawGBCwhB",
+            "deterministic": false
+        },
+        {
+            "name": "gz/numeric_string_keys",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": {
+                "-3": "neg",
+                "07": "zero-padded",
+                "10": "ten"
+            },
+            "encoded_b64": "eNpLtDK2qs600jW2LgaylPJS05WALCMrJQNzEMPQ0EqpKrUoX7cgMSUlNUXJOtPK0ACitCQ1T8m6FgBEshJH",
+            "deterministic": false
+        }
+    ]
+}

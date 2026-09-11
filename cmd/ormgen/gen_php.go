@@ -24,6 +24,9 @@ func camel(s string) string {
 }
 
 func phpType(c *schema.Col) string {
+	if len(appStyles(c)) > 0 {
+		return "mixed"
+	}
 	switch c.Type {
 	case "i32", "i64":
 		return "int"
@@ -79,7 +82,7 @@ final class {{.Type}}Row extends Row
     public static function pk(): string { return '{{.PK}}'; }
     public static function columns(): array
     {
-        return [{{range $i, $c := .Cols}}{{if $i}}, {{end}}'{{$c.Name}}' => '{{$c.ColType}}'{{end}}];
+        return [{{range $i, $c := .Cols}}{{if $i}}, {{end}}'{{$c.Name}}' => '{{if $c.Styles}}styled{{else}}{{$c.ColType}}{{end}}'{{end}}];
     }
 {{range .Cols}}
     public function get{{.Field}}(mixed $default = null): {{if .Nullable}}?{{end}}{{.PhpType}}
@@ -88,7 +91,7 @@ final class {{.Type}}Row extends Row
         return $v === null ? $default : $v;
     }
 {{- if not .Auto}}
-    public function set{{.Field}}({{if .Nullable}}?{{end}}{{.PhpType}} $v): static { return $this->setCol('{{.Name}}', $v); }
+    public function set{{.Field}}({{if .Nullable}}?{{end}}{{.PhpType}} $v): static { return $this->{{if .Styles}}setStyled('{{.Name}}', $v, [{{phpList .Styles}}]){{else}}setCol('{{.Name}}', $v){{end}}; }
 {{- end}}
 {{end}}
 {{- range .Rels}}
@@ -203,7 +206,7 @@ final class {{.Type}} extends Q
 
     // ---- insert draft ----
 {{- range .Cols}}{{if not .Auto}}
-    public function set{{.Field}}({{if .Nullable}}?{{end}}{{.PhpType}} $v): static { $this->set('{{.Name}}', $v); return $this; }
+    public function set{{.Field}}({{if .Nullable}}?{{end}}{{.PhpType}} $v): static { $this->{{if .Styles}}setStyled('{{.Name}}', $v, [{{phpList .Styles}}]){{else}}set('{{.Name}}', $v){{end}}; return $this; }
     public function set{{.Field}}Expr(string $frag, array $binds = []): static { $this->setExpr('{{.Name}}', $frag, $binds); return $this; }
 {{- end}}{{end}}
 {{- range .Numeric}}

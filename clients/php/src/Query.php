@@ -225,6 +225,12 @@ class Q
         $this->node['order'][] = ['expr' => $frag, 'desc' => $desc];
     }
 
+    /** Encodes $v with the column's styles (docs/codec.md) before binding it. */
+    public function setStyled(string $col, mixed $v, array $styles): void
+    {
+        $this->set($col, Codec::encode($styles, $v));
+    }
+
     public function set(string $col, mixed $v): void
     {
         if ($v === null) {
