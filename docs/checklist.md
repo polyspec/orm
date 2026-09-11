@@ -18,6 +18,15 @@
 - [x] I5 CI에 생성물·구조·상태 계약 검사 연결, 현재 문서·예제 동기화
 - [x] I6 native PK 직접 변경 후 identity 보존, 중첩 컬렉션 변환 충돌 검증. `interface_identity`, `interface_nested_keys` 통과. 세부 범위: [구현 대조표](interface-implementation.md)
 
+## 온라인 문서
+
+- [x] D1 기존 Markdown을 직접 사용하는 VitePress 정적 사이트, 사용법·명세·구현 상태 탐색과 로컬 검색
+- [x] D2 Mermaid 원본 유지, 빌드 시 SVG 생성, JavaScript 없는 본문·언어별 예제·도표 읽기
+- [x] D3 `/orm/` 내부 링크·앵커·직접 HTML 경로·검색·모바일 검사, 반복 빌드 바이트 비교
+- [~] D4 GitHub Pages workflow 구성. 실제 배포와 공개 주소 확인 후 완료
+
+명령과 배포 구조: [문서 빌드와 배포](docs-development.md).
+
 ## 병렬 레인 (어떻게 나눠 일하는가)
 | 레인 | 담당 | 다른 레인과의 경계 |
 |---|---|---|

@@ -1,0 +1,35 @@
+:root {
+  --vp-c-brand-1: #3856ad;
+  --vp-c-brand-2: #496bd1;
+  --vp-c-brand-3: #3856ad;
+  --vp-home-hero-name-color: #3856ad;
+}
+
+.dark {
+  --vp-c-brand-1: #9eb7ff;
+  --vp-c-brand-2: #86a3f4;
+  --vp-c-brand-3: #496bd1;
+  --vp-home-hero-name-color: #9eb7ff;
+}
+
+.vp-doc { word-break: keep-all; overflow-wrap: anywhere; }
+.vp-doc table { word-break: normal; }
+.orm-diagram { margin: 24px 0; }
+.orm-diagram-viewport {
+  overflow: auto;
+  max-height: 720px;
+  padding: 20px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: #fff;
+}
+.orm-diagram-viewport img { max-width: none; }
+.orm-diagram figcaption { margin: 8px 0; font-size: 13px; }
+.orm-diagram details { font-size: 13px; }
+.orm-diagram summary { cursor: pointer; color: var(--vp-c-text-2); }
+.orm-diagram pre { overflow: auto; padding: 16px; background: var(--vp-code-block-bg); }
+.orm-diagram pre code { white-space: pre; }
+
+@media (max-width: 767px) {
+  .VPHome .vp-doc { padding: 0 24px; }
+}
