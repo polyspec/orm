@@ -197,7 +197,7 @@ final class {{.Type}} extends Q
     public function flatten(): static { $this->node['flatten'] = true; return $this; }
     public function limitPerParent(int $n): static { $this->node['limit_per_parent'] = $n; return $this; }
     public function dropChildKey(): static { $this->node['drop_child_key'] = true; return $this; }
-{{- range .Cols}}{{if eq .ColType "i32" "i64" "bool" "string" "enum"}}
+{{- range .ParentCols}}{{if eq .ColType "i32" "i64" "bool" "string" "enum"}}
     public function ifParent{{.Field}}Eq({{.PhpType}} $v): static { $this->ifParent('{{.Name}}', $v); return $this; }
 {{- end}}{{end}}
 
@@ -214,14 +214,13 @@ final class {{.Type}} extends Q
     // ---- terminals ----
     public function one(Db $db): ?{{.Type}}Row
     {
-        [$rows, $asm] = $this->runQuery($db, 'one');
-        return $rows === [] ? null : {{.Type}}Row::fromRow($rows[0], $asm);
+        $rows = $this->runQuery($db, 'one');
+        return $rows->data === [] ? null : {{.Type}}Row::fromRow($rows->data[0], $rows->asm, $rows);
     }
 
     public function all(Db $db): Collection
     {
-        [$rows, $asm] = $this->runQuery($db, 'all');
-        return Collection::fromRows($rows, $asm, {{.Type}}Row::class);
+        return Collection::fromRows($this->runQuery($db, 'all'), {{.Type}}Row::class);
     }
 
     public function count(Db $db): int { return (int) $this->runScalar($db, 'count'); }
@@ -232,8 +231,8 @@ final class {{.Type}} extends Q
 
     public function paginate(Db $db, int $page, int $per): Page
     {
-        [$rows, $asm, $total] = $this->runPaginate($db, $page, $per);
-        return new Page(Collection::fromRows($rows, $asm, {{.Type}}Row::class), $total, intdiv($total + $per - 1, $per), max(1, $page), $per);
+        [$rows, $total] = $this->runPaginate($db, $page, $per);
+        return new Page(Collection::fromRows($rows, {{.Type}}Row::class), $total, intdiv($total + $per - 1, $per), max(1, $page), $per);
     }
 
     public function insert(Db $db): ?{{.Type}}Row
@@ -260,6 +259,7 @@ type phpTmplData struct {
 	Auto                                    bool
 	Cols                                    []phpCol
 	Numeric                                 []phpCol
+	ParentCols                              []phpCol
 	Rels                                    []goRel
 	Indexes                                 []string
 	Fulltext                                [][]string
@@ -281,6 +281,9 @@ func genPHP(m *schema.Manifest, outDir, namespace string) error {
 			if c.Name == ge.PK {
 				d.PKPhp = pc.PhpType
 			}
+		}
+		for _, c := range ge.ParentCols {
+			d.ParentCols = append(d.ParentCols, phpCol{goCol: c, PhpType: phpType(m.Entities[parentOf(m, e, c.Name)].Column(c.Name))})
 		}
 		for _, c := range ge.Numeric {
 			d.Numeric = append(d.Numeric, phpCol{goCol: c, PhpType: phpType(e.Column(c.Name))})

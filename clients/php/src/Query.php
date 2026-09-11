@@ -266,11 +266,10 @@ class Q
         return Orm::transport()->plan($this->req->shape());
     }
 
-    /** @return array{0: list<list<mixed>>, 1: array} */
-    public function runQuery(Db $ex, string $kind): array
+    /** Runs the select plan (main step + relation steps). */
+    public function runQuery(Db $ex, string $kind): Rows
     {
-        $plan = $this->plan($kind);
-        return $ex->query($plan['steps'][0], $this->req->params);
+        return $ex->runPlan($this->plan($kind), $this->req->params);
     }
 
     public function runScalar(Db $ex, string $kind, ?string $agg = null): mixed
@@ -282,15 +281,20 @@ class Q
         return $ex->scalar($plan['steps'][0], $this->req->params);
     }
 
-    /** @return array{0: list<list<mixed>>, 1: array, 2: int} rows, assemble, total */
+    /** @return array{0: Rows, 1: int} rows (with relations) and total */
     public function runPaginate(Db $ex, int $page, int $per): array
     {
         $page = max(1, $page);
         $this->node['limit'] = ['offset' => ($page - 1) * $per, 'count' => $per];
         $plan = $this->plan('paginate');
-        [$rows, $asm] = $ex->query($plan['steps'][0], $this->req->params);
-        $total = (int) $ex->scalar($plan['steps'][1], $this->req->params);
-        return [$rows, $asm, $total];
+        $rows = $ex->runPlan($plan, $this->req->params);
+        $total = 0;
+        foreach ($plan['steps'] as $st) {
+            if ($st['role'] === 'count') {
+                $total = (int) $ex->scalar($st, $this->req->params);
+            }
+        }
+        return [$rows, $total];
     }
 
     /** @return int|string|null last insert id */

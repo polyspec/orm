@@ -84,10 +84,11 @@ func (r *ServiceRegionRow) Delete(ctx context.Context, ex orm.Exec) error {
 	return r.DeleteRow(ctx, ex)
 }
 
-// scanServiceRegion maps a positional row slice onto the struct (and joined children).
-func scanServiceRegion(vals []any, a *plan.Assemble) *ServiceRegionRow {
+// scanServiceRegion maps a positional row slice onto the struct, its joined
+// children (same row) and its relation children (rows of later steps).
+func scanServiceRegion(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRegionRow {
 	r := &ServiceRegionRow{}
-	for i, c := range a.Columns {
+	for _, c := range a.Columns {
 		v := vals[c.Index]
 		switch c.Name {
 		case "seq":
@@ -97,16 +98,23 @@ func scanServiceRegion(vals []any, a *plan.Assemble) *ServiceRegionRow {
 		case "name":
 			r.Name = orm.AsString(v)
 		}
-		_ = i
 	}
 	for _, ch := range a.Children {
-		if ch.Kind != "join" {
-			continue
-		}
 		switch ch.Rel {
+		case "authors":
+			rows := rs.Related(ch, vals)
+			c := orm.NewCollection[AuthorRow](len(rows))
+			for _, row := range rows {
+				c.Put(orm.KeyOf(row[ch.KeyIndex]), scanAuthor(row, rs.StepAssemble(ch), rs))
+			}
+			r.Authors = c
 		case "service":
-			if orm.JoinPresent(vals, ch.Assemble) {
-				r.Service = scanService(vals, ch.Assemble)
+			if ch.Kind == "join" {
+				if orm.JoinPresent(vals, ch.Assemble) {
+					r.Service = scanService(vals, ch.Assemble, rs)
+				}
+			} else if rows := rs.Related(ch, vals); len(rows) > 0 {
+				r.Service = scanService(rows[0], rs.StepAssemble(ch), rs)
 			}
 		}
 	}
@@ -482,15 +490,76 @@ func (q *ServiceRegion) Limit(offset, count int) *ServiceRegion {
 func (q *ServiceRegion) Distinct() *ServiceRegion { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
-func (q *ServiceRegion) Flatten() *ServiceRegion              { q.q.Node.Flatten = true; return q }
-func (q *ServiceRegion) LimitPerParent(n int) *ServiceRegion  { q.q.Node.LimitPerParent = n; return q }
-func (q *ServiceRegion) DropChildKey() *ServiceRegion         { q.q.Node.DropChildKey = true; return q }
-func (q *ServiceRegion) IfParentSeqEq(v int64) *ServiceRegion { q.q.IfParent("seq", v); return q }
+func (q *ServiceRegion) Flatten() *ServiceRegion                { q.q.Node.Flatten = true; return q }
+func (q *ServiceRegion) LimitPerParent(n int) *ServiceRegion    { q.q.Node.LimitPerParent = n; return q }
+func (q *ServiceRegion) DropChildKey() *ServiceRegion           { q.q.Node.DropChildKey = true; return q }
+func (q *ServiceRegion) IfParentSeqEq(v int64) *ServiceRegion   { q.q.IfParent("seq", v); return q }
+func (q *ServiceRegion) IfParentNameEq(v string) *ServiceRegion { q.q.IfParent("name", v); return q }
+func (q *ServiceRegion) IfParentIsCloseEq(v bool) *ServiceRegion {
+	q.q.IfParent("is_close", v)
+	return q
+}
+func (q *ServiceRegion) IfParentIsDisplayEq(v bool) *ServiceRegion {
+	q.q.IfParent("is_display", v)
+	return q
+}
+func (q *ServiceRegion) IfParentIsAlldayEq(v bool) *ServiceRegion {
+	q.q.IfParent("is_allday", v)
+	return q
+}
+func (q *ServiceRegion) IfParentTargetClubReaderCountEq(v int32) *ServiceRegion {
+	q.q.IfParent("target_club_reader_count", v)
+	return q
+}
+func (q *ServiceRegion) IfParentSuccessCountEq(v int32) *ServiceRegion {
+	q.q.IfParent("success_count", v)
+	return q
+}
+func (q *ServiceRegion) IfParentReaderCountEq(v int32) *ServiceRegion {
+	q.q.IfParent("reader_count", v)
+	return q
+}
+func (q *ServiceRegion) IfParentReadCountEq(v int32) *ServiceRegion {
+	q.q.IfParent("read_count", v)
+	return q
+}
+func (q *ServiceRegion) IfParentPhotoUrlEq(v string) *ServiceRegion {
+	q.q.IfParent("photo_url", v)
+	return q
+}
+func (q *ServiceRegion) IfParentUserSeqEq(v int64) *ServiceRegion {
+	q.q.IfParent("user_seq", v)
+	return q
+}
 func (q *ServiceRegion) IfParentServiceSeqEq(v int64) *ServiceRegion {
 	q.q.IfParent("service_seq", v)
 	return q
 }
-func (q *ServiceRegion) IfParentNameEq(v string) *ServiceRegion { q.q.IfParent("name", v); return q }
+func (q *ServiceRegion) IfParentServiceRegionSeqEq(v int64) *ServiceRegion {
+	q.q.IfParent("service_region_seq", v)
+	return q
+}
+func (q *ServiceRegion) IfParentServiceMemberSeqEq(v int64) *ServiceRegion {
+	q.q.IfParent("service_member_seq", v)
+	return q
+}
+func (q *ServiceRegion) IfParentUuidEq(v string) *ServiceRegion { q.q.IfParent("uuid", v); return q }
+func (q *ServiceRegion) IfParentIsSingleWorkEq(v bool) *ServiceRegion {
+	q.q.IfParent("is_single_work", v)
+	return q
+}
+func (q *ServiceRegion) IfParentLikeCountEq(v int32) *ServiceRegion {
+	q.q.IfParent("like_count", v)
+	return q
+}
+func (q *ServiceRegion) IfParentAesHexEmailEq(v string) *ServiceRegion {
+	q.q.IfParent("aes_hex_email", v)
+	return q
+}
+func (q *ServiceRegion) IfParentAesHexPhoneEq(v string) *ServiceRegion {
+	q.q.IfParent("aes_hex_phone", v)
+	return q
+}
 
 // Insert draft.
 func (q *ServiceRegion) SetServiceSeq(v int64) *ServiceRegion { q.q.Set("service_seq", v); return q }
@@ -518,7 +587,7 @@ func (q *ServiceRegion) One(ctx context.Context, ex orm.Exec) (*ServiceRegionRow
 	if err != nil || len(rows.Data) == 0 {
 		return nil, err
 	}
-	return scanServiceRegion(rows.Data[0], rows.Assemble), nil
+	return scanServiceRegion(rows.Data[0], rows.Assemble, rows), nil
 }
 
 func (q *ServiceRegion) All(ctx context.Context, ex orm.Exec) (*orm.Collection[ServiceRegionRow], error) {
@@ -533,7 +602,7 @@ func (q *ServiceRegion) All(ctx context.Context, ex orm.Exec) (*orm.Collection[S
 func collectServiceRegion(rows *orm.Rows) *orm.Collection[ServiceRegionRow] {
 	c := orm.NewCollection[ServiceRegionRow](len(rows.Data))
 	for _, vals := range rows.Data {
-		r := scanServiceRegion(vals, rows.Assemble)
+		r := scanServiceRegion(vals, rows.Assemble, rows)
 		c.Put(orm.KeyOf(vals[0]), r)
 	}
 	return c
