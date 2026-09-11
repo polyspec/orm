@@ -8,20 +8,17 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use gen::*;
-use orm::db::{Config, Db};
+use orm::db::{Config, ConnectOptions, Db, Pool};
 use orm::engine::{Engine, EngineConfig};
 use orm::value::Param;
 use serde_json::json;
-use sqlx::mysql::MySqlConnectOptions;
 
 const ITERATIONS: usize = 500;
 
 /// The test DSN: `ORM_MYSQL_URL_RUST` when set (CI), else the local socket.
-fn connect_opts() -> MySqlConnectOptions {
-    match std::env::var("ORM_MYSQL_URL_RUST") {
-        Ok(url) => url.parse().expect("ORM_MYSQL_URL_RUST is a mysql:// URL"),
-        Err(_) => MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench"),
-    }
+fn connect_opts() -> ConnectOptions {
+    let url = std::env::var("ORM_MYSQL_URL_RUST").unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into());
+    ConnectOptions::parse("mysql", &url).expect("ORM_MYSQL_URL_RUST is a mysql:// URL")
 }
 
 #[tokio::main]
@@ -29,7 +26,7 @@ async fn main() {
     let args: Vec<String> = std::env::args().collect();
     let wasm = std::fs::read(&args[1]).expect("wasm");
     let schema = std::fs::read(&args[2]).expect("schema.json");
-    let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, cache_dir: None }).expect("engine"));
+    let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, ..Default::default() }).expect("engine"));
     gen::init(engine.clone()).expect("schema hash");
 
     let last: Arc<Mutex<(String, Vec<Param>)>> = Arc::new(Mutex::new((String::new(), Vec::new())));
@@ -85,7 +82,8 @@ async fn main() {
                 Param::Date(d) => q.bind(*d),
             };
         }
-        let _rows: Vec<sqlx::mysql::MySqlRow> = q.fetch_all(&db.pool).await.expect("native");
+        let Pool::MySql(pool) = &db.pool else { panic!("the demo runs on MySQL") };
+        let _rows: Vec<sqlx::mysql::MySqlRow> = q.fetch_all(pool).await.expect("native");
         s.push(t.elapsed().as_micros());
     }
     s.sort_unstable();

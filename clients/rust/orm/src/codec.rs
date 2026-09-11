@@ -269,12 +269,21 @@ impl<'a> Parser<'a> {
     }
 }
 
+/// A positional column with executor-side stages: the codec stages (docs/codec.md) and the
+/// host stages a dialect left to us (aes/hex/ip); on read, host runs before codec.
+pub struct StyledCol {
+    pub index: usize,
+    pub codec: Vec<String>,
+    pub host: Vec<String>,
+}
+
 /// Positional columns of a step that need decoding (joins included).
-pub fn styled_cols(a: &crate::plan::Assemble) -> Vec<(usize, Vec<String>)> {
+pub fn styled_cols(a: &crate::plan::Assemble) -> Vec<StyledCol> {
     let mut out = Vec::new();
     for c in &a.columns {
         if !c.styles.is_empty() {
-            out.push((c.index, c.styles.clone()));
+            let (codec, host) = split_host(&c.styles);
+            out.push(StyledCol { index: c.index, codec, host });
         }
     }
     for ch in &a.children {
@@ -283,6 +292,169 @@ pub fn styled_cols(a: &crate::plan::Assemble) -> Vec<(usize, Vec<String>)> {
         }
     }
     out
+}
+
+/// Separates the codec stages from the host stages (aes/hex/ip), each in write order.
+pub fn split_host(styles: &[String]) -> (Vec<String>, Vec<String>) {
+    let (host, codec): (Vec<String>, Vec<String>) = styles.iter().cloned().partition(|s| is_host(s));
+    (codec, host)
+}
+
+fn is_host(style: &str) -> bool {
+    matches!(style, "aes" | "hex" | "ip")
+}
+
+// ---- host stages (docs/dialects.md): what MySQL does in SQL, PostgreSQL/SQLite leave to the executor ----
+
+use aes::cipher::{BlockDecrypt, BlockEncrypt, KeyInit};
+
+/// MySQL's key derivation for aes-128-ecb: the key bytes XOR-folded into a 16-byte block.
+pub fn mysql_key_fold(key: &str) -> [u8; 16] {
+    let mut k = [0u8; 16];
+    for (i, b) in key.bytes().enumerate() {
+        k[i % 16] ^= b;
+    }
+    k
+}
+
+/// `AES_ENCRYPT(plain, key)`: AES-128-ECB with PKCS7 padding over the folded key
+/// (byte-identical to MySQL; tests/codec/aes-vectors.json).
+pub fn aes_encrypt(plain: &[u8], key: &str) -> Vec<u8> {
+    let cipher = aes::Aes128::new(&aes::Block::from(mysql_key_fold(key)));
+    let pad = 16 - plain.len() % 16;
+    let mut buf = Vec::with_capacity(plain.len() + pad);
+    buf.extend_from_slice(plain);
+    buf.resize(plain.len() + pad, pad as u8);
+    for block in buf.chunks_exact_mut(16) {
+        let block: &mut [u8; 16] = block.try_into().unwrap();
+        cipher.encrypt_block(block.into());
+    }
+    buf
+}
+
+/// `AES_DECRYPT(cipher, key)`; a wrong key or corrupt data is CODEC_DECODE.
+pub fn aes_decrypt(cipher_text: &[u8], key: &str) -> Result<Vec<u8>> {
+    if cipher_text.is_empty() || cipher_text.len() % 16 != 0 {
+        return Err(err(CODEC_DECODE, format!("aes: ciphertext length {}", cipher_text.len())));
+    }
+    let cipher = aes::Aes128::new(&aes::Block::from(mysql_key_fold(key)));
+    let mut buf = cipher_text.to_vec();
+    for block in buf.chunks_exact_mut(16) {
+        let block: &mut [u8; 16] = block.try_into().unwrap();
+        cipher.decrypt_block(block.into());
+    }
+    let pad = *buf.last().unwrap() as usize;
+    if pad < 1 || pad > 16 || pad > buf.len() || buf[buf.len() - pad..].iter().any(|&b| b as usize != pad) {
+        return Err(err(CODEC_DECODE, "aes: bad padding"));
+    }
+    buf.truncate(buf.len() - pad);
+    Ok(buf)
+}
+
+/// `HEX(...)`: upper-case hex text.
+pub fn hex_upper(b: &[u8]) -> String {
+    const DIGITS: &[u8; 16] = b"0123456789ABCDEF";
+    let mut s = String::with_capacity(b.len() * 2);
+    for &x in b {
+        s.push(DIGITS[(x >> 4) as usize] as char);
+        s.push(DIGITS[(x & 15) as usize] as char);
+    }
+    s
+}
+
+/// `UNHEX(...)`: either case; whitespace around the text is ignored.
+pub fn hex_decode(s: &str) -> Result<Vec<u8>> {
+    let s = s.trim().as_bytes();
+    if s.len() % 2 != 0 {
+        return Err(err(CODEC_DECODE, "hex: odd length"));
+    }
+    let nibble = |c: u8| -> Result<u8> {
+        match c {
+            b'0'..=b'9' => Ok(c - b'0'),
+            b'a'..=b'f' => Ok(c - b'a' + 10),
+            b'A'..=b'F' => Ok(c - b'A' + 10),
+            _ => Err(err(CODEC_DECODE, format!("hex: invalid byte {c:#x}"))),
+        }
+    };
+    s.chunks_exact(2).map(|p| Ok(nibble(p[0])? << 4 | nibble(p[1])?)).collect()
+}
+
+/// `INET6_ATON`: 4 bytes for IPv4, 16 for IPv6.
+fn pack_ip(s: &str) -> Result<Vec<u8>> {
+    match s.trim().parse::<std::net::IpAddr>() {
+        Ok(std::net::IpAddr::V4(a)) => Ok(a.octets().to_vec()),
+        Ok(std::net::IpAddr::V6(a)) => Ok(a.octets().to_vec()),
+        Err(_) => Err(err(CODEC_ENCODE, format!("ip: {s:?} is not an address"))),
+    }
+}
+
+/// `INET6_NTOA`.
+fn unpack_ip(b: &[u8]) -> Result<String> {
+    match b.len() {
+        4 => Ok(std::net::Ipv4Addr::from(<[u8; 4]>::try_from(b).unwrap()).to_string()),
+        16 => Ok(std::net::Ipv6Addr::from(<[u8; 16]>::try_from(b).unwrap()).to_string()),
+        n => Err(err(CODEC_DECODE, format!("ip: {n} packed bytes"))),
+    }
+}
+
+/// Applies the host stages of a bound value in write order (`bind_slots[].host_styles`).
+/// The result binds as text after `hex`, as bytes otherwise; NULL stays NULL.
+pub fn host_encode(v: &Param, styles: &[String], aes_key: &str) -> Result<Param> {
+    let mut cur: Vec<u8> = match v {
+        Param::Null => return Ok(Param::Null),
+        Param::Str(s) => s.as_bytes().to_vec(),
+        Param::Bytes(b) => b.clone(),
+        Param::Bool(b) => b.to_string().into_bytes(),
+        Param::I64(x) => x.to_string().into_bytes(),
+        Param::F64(x) => x.to_string().into_bytes(),
+        Param::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string().into_bytes(),
+        Param::Date(d) => d.to_string().into_bytes(),
+    };
+    for st in styles {
+        cur = match st.as_str() {
+            "aes" => {
+                if aes_key.is_empty() {
+                    return Err(Error::Config("secret aes not configured".into()));
+                }
+                aes_encrypt(&cur, aes_key)
+            }
+            "hex" => hex_upper(&cur).into_bytes(),
+            "ip" => pack_ip(std::str::from_utf8(&cur).map_err(|e| err(CODEC_ENCODE, format!("ip: {e}")))?)?,
+            other => return Err(err(CODEC_UNSUPPORTED, format!("host style {other}"))),
+        };
+    }
+    Ok(match styles.last().map(String::as_str) {
+        Some("hex") => Param::Str(String::from_utf8(cur).expect("hex text")),
+        _ => Param::Bytes(cur),
+    })
+}
+
+/// Undoes `host_encode` on a read cell (styles in write order, applied in reverse):
+/// text when the bytes are UTF-8, bytes otherwise, the address text after `ip`.
+pub fn host_decode(raw: &Val, styles: &[String], aes_key: &str) -> Result<Val> {
+    let mut cur: Vec<u8> = match raw {
+        Val::Null => return Ok(Val::Null),
+        Val::Str(s) => s.as_bytes().to_vec(),
+        Val::Bytes(b) => b.clone(),
+        other => return Err(err(CODEC_DECODE, format!("cell is {other:?}, not bytes"))),
+    };
+    for st in styles.iter().rev() {
+        cur = match st.as_str() {
+            "hex" => hex_decode(&String::from_utf8_lossy(&cur))?,
+            "aes" => {
+                if aes_key.is_empty() {
+                    return Err(Error::Config("secret aes not configured".into()));
+                }
+                aes_decrypt(&cur, aes_key)?
+            }
+            "ip" => return Ok(Val::Str(unpack_ip(&cur)?)),
+            other => return Err(err(CODEC_UNSUPPORTED, format!("host style {other}"))),
+        };
+    }
+    Ok(match String::from_utf8(cur) {
+        Ok(s) => Val::Str(s),
+        Err(e) => Val::Bytes(e.into_bytes()),
+    })
 }
 
 #[cfg(test)]
@@ -358,6 +530,46 @@ mod tests {
         std::fs::create_dir_all(format!("{root}/out")).unwrap();
         std::fs::write(format!("{root}/out/rust.json"), serde_json::to_string_pretty(&Value::Object(out)).unwrap()).unwrap();
         assert_eq!(fails, 0);
+    }
+
+    /// Host AES/HEX must be byte-identical to MySQL's `HEX(AES_ENCRYPT(v, key))`: every entry of
+    /// tests/codec/aes-vectors.json (recorded from the local MySQL) encrypts to the same hex and
+    /// decrypts back, through the single-stage functions and through the styled `aes, hex` path.
+    #[test]
+    fn aes_vectors() {
+        #[derive(serde::Deserialize)]
+        struct Vector {
+            hex: String,
+            key: String,
+            plain: String,
+        }
+        let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../tests/codec");
+        let src = std::fs::read(format!("{root}/aes-vectors.json")).expect("aes-vectors.json");
+        let f: serde_json::Map<String, Value> = serde_json::from_slice(&src).unwrap();
+        assert_eq!(f["mode"], "aes-128-ecb");
+        let vectors: Vec<Vector> = serde_json::from_value(f["vectors"].clone()).unwrap();
+        assert!(!vectors.is_empty());
+        let styles = vec!["aes".to_string(), "hex".to_string()];
+        for v in &vectors {
+            assert_eq!(hex_upper(&aes_encrypt(v.plain.as_bytes(), &v.key)), v.hex, "encrypt {:?} with {:?}", v.plain, v.key);
+            assert_eq!(aes_decrypt(&hex_decode(&v.hex).unwrap(), &v.key).unwrap(), v.plain.as_bytes(), "decrypt {:?}", v.hex);
+            assert_eq!(host_encode(&Param::Str(v.plain.clone()), &styles, &v.key).unwrap(), Param::Str(v.hex.clone()));
+            assert_eq!(host_decode(&Val::Str(v.hex.clone()), &styles, &v.key).unwrap(), Val::Str(v.plain.clone()));
+        }
+        // ip: INET6_ATON packing, both families, text back
+        let ip = vec!["ip".to_string()];
+        assert_eq!(host_encode(&Param::Str("10.1.2.3".into()), &ip, "").unwrap(), Param::Bytes(vec![10, 1, 2, 3]));
+        assert_eq!(host_decode(&Val::Bytes(vec![10, 1, 2, 3]), &ip, "").unwrap(), Val::Str("10.1.2.3".into()));
+        let v6 = host_encode(&Param::Str("2001:db8::1".into()), &ip, "").unwrap();
+        assert!(matches!(&v6, Param::Bytes(b) if b.len() == 16));
+        assert_eq!(host_decode(&Val::Bytes(match v6 { Param::Bytes(b) => b, _ => unreachable!() }), &ip, "").unwrap(), Val::Str("2001:db8::1".into()));
+        assert_eq!(host_encode(&Param::Str("not an ip".into()), &ip, "").unwrap_err().code(), CODEC_ENCODE);
+        // a wrong key is CODEC_DECODE, a missing key is CONFIG
+        assert_eq!(host_decode(&Val::Str(vectors[0].hex.clone()), &styles, "other-key").unwrap_err().code(), CODEC_DECODE);
+        assert_eq!(host_encode(&Param::Str("x".into()), &styles, "").unwrap_err().code(), crate::codes::CONFIG);
+        assert_eq!(host_encode(&Param::Null, &styles, "k").unwrap(), Param::Null);
+        assert_eq!(split_host(&["serialize".to_string(), "gz".to_string()]), (vec!["serialize".to_string(), "gz".to_string()], vec![]));
+        assert_eq!(split_host(&styles), (vec![], styles.clone()));
     }
 
     #[test]
