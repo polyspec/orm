@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -277,5 +279,70 @@ func TestErrorSurface(t *testing.T) {
 	ctx := context.Background()
 	if _, err := gen.NewBattle().SeqIn([]int64{}).Count(ctx, db); err == nil || !strings.Contains(err.Error(), "EMPTY_IN") {
 		t.Errorf("EMPTY_IN: %v", err)
+	}
+}
+
+// TestDeadlockRetry is the S3 deadlock gate: two transactions lock the same two
+// rows in opposite order, MySQL kills one with 1213, and Transaction re-runs
+// that closure until both commit.
+func TestDeadlockRetry(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	insert := func(name string) *gen.BattleRow {
+		t.Helper()
+		r, err := gen.NewBattle().
+			SetName(name).
+			SetUserSeq(1).SetServiceSeq(999).SetServiceModuleSeq(1).SetServiceMemberSeq(1).
+			SetStartDt(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)).SetEndDt(time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)).
+			Insert(ctx, db)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r
+	}
+	a, b := insert("dl-go-1"), insert("dl-go-2")
+	t.Cleanup(func() {
+		if n, err := gen.NewBattle().SeqIn([]int64{a.Seq, b.Seq}).Delete(ctx, db); err != nil || n != 2 {
+			t.Errorf("cleanup: deleted %d, %v", n, err)
+		}
+	})
+
+	var calls atomic.Int32
+	// Both sides hold their first row before touching the second, so the second
+	// updates close the lock cycle; only the first attempt synchronises.
+	var locked sync.WaitGroup
+	locked.Add(2)
+	writer := func(tag int32, first, second int64) error {
+		attempt := 0
+		_, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (struct{}, error) {
+			attempt++
+			calls.Add(1)
+			if _, err := gen.NewBattle().SeqEq(first).SetLikeCount(tag).Update(ctx, tx); err != nil {
+				return struct{}{}, err
+			}
+			if attempt == 1 {
+				locked.Done()
+				locked.Wait()
+			}
+			_, err := gen.NewBattle().SeqEq(second).SetLikeCount(tag).Update(ctx, tx)
+			return struct{}{}, err
+		})
+		return err
+	}
+	errs := make(chan error, 2)
+	go func() { errs <- writer(1, a.Seq, b.Seq) }()
+	go func() { errs <- writer(2, b.Seq, a.Seq) }()
+	for i := 0; i < 2; i++ {
+		if err := <-errs; err != nil {
+			t.Fatalf("transaction did not recover: %v", err)
+		}
+	}
+	if n := calls.Load(); n < 3 {
+		t.Errorf("closure invocations = %d, the deadlock victim must have re-run", n)
+	}
+	ra, _ := gen.NewBattle().OneBySeq(ctx, db, a.Seq)
+	rb, _ := gen.NewBattle().OneBySeq(ctx, db, b.Seq)
+	if ra.LikeCount != rb.LikeCount || (ra.LikeCount != 1 && ra.LikeCount != 2) {
+		t.Errorf("last writer must own both rows: a=%d b=%d", ra.LikeCount, rb.LikeCount)
 	}
 }

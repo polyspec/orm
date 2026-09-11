@@ -66,6 +66,31 @@ func (r *UserRow) Update(ctx context.Context, ex orm.Exec) error {
 
 func (r *UserRow) Delete(ctx context.Context, ex orm.Exec) error { return r.DeleteRow(ctx, ex) }
 
+// DeleteCascade deletes the loaded relations this row owns (the assemble's
+// cascade children, in load order, each row through its own DeleteCascade)
+// and then this row. A bare DB runs the whole walk in one transaction.
+func (r *UserRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
+	return orm.InTx(ctx, ex, func(ex orm.Exec) error {
+		for _, rel := range r.Cascades() {
+			switch rel {
+			case "battles":
+				for _, child := range r.GetBattles().All() {
+					if err := child.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			case "service_members":
+				for _, child := range r.GetServiceMembers().All() {
+					if err := child.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return r.DeleteRow(ctx, ex)
+	})
+}
+
 // scanUser maps a positional row slice onto the struct, its joined
 // children (same row) and its relation children (rows of later steps).
 func scanUser(vals []any, a *plan.Assemble, rs *orm.Rows) *UserRow {
@@ -405,6 +430,7 @@ func (q *User) Distinct() *User { q.q.Node.Distinct = true; return q }
 func (q *User) Flatten() *User                   { q.q.Node.Flatten = true; return q }
 func (q *User) LimitPerParent(n int) *User       { q.q.Node.LimitPerParent = n; return q }
 func (q *User) DropChildKey() *User              { q.q.Node.DropChildKey = true; return q }
+func (q *User) NoCascadeDelete() *User           { q.q.Node.NoCascadeDelete = true; return q }
 func (q *User) IfParentSeqEq(v int64) *User      { q.q.IfParent("seq", v); return q }
 func (q *User) IfParentNameEq(v string) *User    { q.q.IfParent("name", v); return q }
 func (q *User) IfParentIsCloseEq(v bool) *User   { q.q.IfParent("is_close", v); return q }
@@ -434,7 +460,12 @@ func (q *User) IfParentLikeCountEq(v int32) *User    { q.q.IfParent("like_count"
 func (q *User) IfParentAesHexEmailEq(v string) *User { q.q.IfParent("aes_hex_email", v); return q }
 func (q *User) IfParentAesHexPhoneEq(v string) *User { q.q.IfParent("aes_hex_phone", v); return q }
 
-// Insert draft.
+// Insert draft. The auto PK is settable too: Save takes it as the update key.
+func (q *User) SetSeq(v int64) *User { q.q.Set("seq", v); return q }
+func (q *User) SetSeqExpr(frag string, binds ...any) *User {
+	q.q.SetExpr("seq", frag, binds...)
+	return q
+}
 func (q *User) SetName(v string) *User { q.q.Set("name", v); return q }
 func (q *User) SetNameExpr(frag string, binds ...any) *User {
 	q.q.SetExpr("name", frag, binds...)
@@ -442,6 +473,14 @@ func (q *User) SetNameExpr(frag string, binds ...any) *User {
 }
 func (q *User) PlusSeq(v int64) *User  { q.q.Plus("seq", v); return q }
 func (q *User) MinusSeq(v int64) *User { q.q.Minus("seq", v); return q }
+
+// ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
+func (q *User) OnDuplicateSetName(v string) *User { q.q.OnDuplicate("name", v); return q }
+func (q *User) OnDuplicateSetNameExpr(frag string, binds ...any) *User {
+	q.q.OnDuplicateExpr("name", frag, binds...)
+	return q
+}
+func (q *User) OnDuplicateSetAll() *User { q.q.OnDuplicateSetAll("seq", "seq"); return q }
 
 // Terminals.
 func (q *User) One(ctx context.Context, ex orm.Exec) (*UserRow, error) {
@@ -514,6 +553,40 @@ func (q *User) Insert(ctx context.Context, ex orm.Exec) (*UserRow, error) {
 		return nil, err
 	}
 	return NewUser().SeqEq(int64(id)).One(ctx, ex)
+}
+
+// Save updates the other assigned columns when SetSeq was called (and
+// returns the re-read row); otherwise it inserts like Insert.
+func (q *User) Save(ctx context.Context, ex orm.Exec) (*UserRow, error) {
+	pk, ok := q.q.MovePKToWhere("seq")
+	if !ok {
+		return q.Insert(ctx, ex)
+	}
+	q.q.Req.IR.Kind = "update"
+	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
+		return nil, err
+	}
+	return NewUser().SeqEq(pk.(int64)).One(ctx, ex)
+}
+
+// Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
+func (q *User) Update(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "update"
+	_, affected, err := orm.Write(ctx, ex, q.q.Req)
+	return affected, err
+}
+
+// Delete removes every row the WHERE matches (the engine rejects a missing WHERE).
+func (q *User) Delete(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "delete"
+	_, affected, err := orm.Write(ctx, ex, q.q.Req)
+	return affected, err
+}
+
+// SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
+func (q *User) SQL(ctx context.Context, ex orm.Exec) (*orm.Statement, error) {
+	q.q.Req.IR.Kind = "all"
+	return orm.SQL(ctx, ex, q.q.Req)
 }
 
 func (q *User) OneBySeq(ctx context.Context, ex orm.Exec, v int64) (*UserRow, error) {
