@@ -7,6 +7,18 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: maxkwon
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: orm_bench
+          TZ: UTC
+          PGTZ: UTC
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U maxkwon"
+          --health-interval 5s --health-timeout 3s --health-retries 20
       mysql:
         image: mysql:8.4
         env:
@@ -30,8 +42,16 @@ jobs:
           php-version: "8.4"
           extensions: pdo_mysql, apcu, msgpack
           ini-values: apc.enable_cli=1
-      - name: load bench schema
-        run: mysql -h 127.0.0.1 -uroot orm_bench < bench/sql/battle.sql
+      - name: load bench schema (mysql, postgres, sqlite)
+        run: |
+          mysql -h 127.0.0.1 -uroot orm_bench < bench/sql/battle.sql
+          sudo apt-get install -y -q postgresql-client sqlite3 >/dev/null
+          psql -h 127.0.0.1 -U maxkwon orm_bench -q -f bench/sql/battle.pg.sql
+          psql -h 127.0.0.1 -U maxkwon orm_bench -q -f bench/sql/seed.pg.sql
+          sqlite3 /tmp/orm_bench.sqlite < bench/sql/battle.sqlite.sql
+          sqlite3 /tmp/orm_bench.sqlite < bench/sql/seed.sqlite.sql
+          go run ./bench/seedaes -driver postgres -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable'
+          go run ./bench/seedaes -driver sqlite -dsn 'file:/tmp/orm_bench.sqlite'
       - name: engine
         run: go test ./engine/... && go vet ./...
       - name: artifacts
@@ -54,6 +74,14 @@ jobs:
           php clients/php/tests/integration.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
       - name: conformance (3 languages identical)
         run: go run ./tests/conformance/check run
+      - name: conformance on postgres and sqlite (Go; results identical to MySQL, statements per dialect)
+        run: |
+          go run ./tests/conformance/check run -driver postgres -langs go -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable'
+          go run ./tests/conformance/check run -driver sqlite -langs go -dsn 'file:/tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)'
+      - name: go integration on postgres and sqlite
+        run: |
+          ORM_TEST_DRIVER=postgres ORM_TEST_DSN='postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable' go test ./clients/go/gen/
+          ORM_TEST_DRIVER=sqlite ORM_TEST_DSN='file:/tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)' go test ./clients/go/gen/
       - name: codec vectors
         run: |
           go test ./clients/go/orm -run TestCodec
