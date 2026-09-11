@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/maxkwon/orm/engine/schema"
 )
 
 type checkFamily struct {
@@ -61,10 +63,22 @@ func checkCmd(args []string) {
 			dirs = append(dirs, args[i])
 		}
 	}
+	schemaPath := flagSet.String("schema", "schema/schema.json", "schema.json (--lang go)")
 	flagSet.Parse(flags)
-	if *lang != "php" || len(dirs) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ormgen check --lang php [--top n] <dir>...")
+	if len(dirs) == 0 || (*lang != "php" && *lang != "go") {
+		fmt.Fprintln(os.Stderr, "usage: ormgen check --lang php|go [--top n] [--schema schema/schema.json] <dir>...")
 		os.Exit(2)
+	}
+	if *lang == "go" {
+		js, err := os.ReadFile(*schemaPath)
+		if err != nil {
+			fail(err)
+		}
+		m, err := schema.Load(js)
+		if err != nil {
+			fail(err)
+		}
+		os.Exit(checkGo(m, dirs))
 	}
 	counts := map[string]int{}
 	perFile := map[string]map[string]int{}

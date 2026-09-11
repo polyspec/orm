@@ -98,7 +98,7 @@
 ### 4-B 생성기·실행기 — 레인 E(템플릿) → G ∥ P ∥ R
 - [x] T4.5 G/P/R(병렬 레인, docs/lanes/s4.md): 집계 터미널, `having`, `raw`/`rawAll`, 이름 붙인 술어 메서드 — **3언어 병합, 적합성 40 × 3 동일**
 - [x] T4.6 PHP compatibility `__call` 호환층(`clients/php/src/Compat.php`, 생성 클래스에 trait): and*/or*/condition*, op-first, 괄호 토큰·brace-call, relation/matchAWithB/alias, join, addColumn*, keyName/fetchKey, parentNode/groupLimit/possible/deleteLock, get/gets/getBy*/getsBy…And…, duplication, plus/minus/setRaw → 같은 IR; `compat.php` 50쌍 IR 동일; 번역 불가 목록은 dsl.md "PHP 호환층" 표(모델 경계 괄호 → PAREN_ACROSS_MODELS)
-- [~] T4.7 `ormgen check --lang php` 완료 → example application 스캔 결과 `docs/checklist.md`(6,752 파일: relation 7,306·match 7,259·alias 5,877·and/or/condition 4,032·괄호 토큰 720·brace-call 64·raw 조각 63·delete(true) 354·duplication 23; 모델 경계를 넘는 괄호 후보 59 파일) — `--lang go` expr analyzer는 남음
+- [x] T4.7 `ormgen check --lang php` 완료 → example application 스캔 결과 `docs/checklist.md`(6,752 파일: relation 7,306·match 7,259·alias 5,877·and/or/condition 4,032·괄호 토큰 720·brace-call 64·raw 조각 63·delete(true) 354·duplication 23; 모델 경계를 넘는 괄호 후보 59 파일) + `--lang go` 프래그먼트 analyzer(백틱 컬럼 존재·`?`/바인드 개수, `ormgen:ignore` 주석으로 의도적 음성 테스트 제외) — CI 단계로 포함
 
 ### 4-C 검증 — 레인 V
 - [x] T4.8 적합성 벡터 +13(S3 6 + S4 4 + 조인 3: `join_fulltext_or` R9 fulltext OR 탐색, `join_two_groups` 조인 2개의 ON/WHERE, `join_multi_level` 2단 조인 별칭) → **43 × 3언어 × 3 DB 동일**
