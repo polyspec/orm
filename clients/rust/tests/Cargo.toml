@@ -16,6 +16,10 @@ path = "src/client_bench.rs"
 name = "conformance"
 path = "src/conformance.rs"
 
+[[bin]]
+name = "demo"
+path = "../../../examples/thin-slice/rust/main.rs"
+
 [dependencies]
 orm = { path = "../orm" }
 gen = { path = "../gen" }
