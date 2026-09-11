@@ -2,9 +2,13 @@
 // compares each vector's statements and result against tests/conformance/vectors.json
 // after canonicalizing the JSON (sorted keys, shortest numbers).
 //
-//	go run ./tests/conformance/check run              # build/run all three runners, then compare
-//	go run ./tests/conformance/check compare out/…    # compare already-produced outputs (<lang>.json)
-//	go run ./tests/conformance/check record out/go.json  # fill vectors.json expectations from one output
+//	go run ./tests/conformance/check run [-driver postgres|sqlite -langs go,php,rust -dsn …]  # run runners, then compare
+//	go run ./tests/conformance/check compare [-driver …] out/…                                  # compare produced outputs (<lang>.json)
+//	go run ./tests/conformance/check record [-driver …] out/go.json                             # fill expectations from one output
+//
+// Expectations live in tests/conformance/vectors.json (MySQL) and
+// tests/conformance/vectors.<driver>.json for the other databases: statements
+// differ per dialect, results must not.
 //
 // The PHP runner needs ormd: `run` starts it on a socket under the output
 // directory and waits for its "listening" line (no polling), then stops it.
@@ -14,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -31,34 +36,63 @@ type file struct {
 	Vectors []vec `json:"vectors"`
 }
 
-const vectorsPath = "tests/conformance/vectors.json"
+// driver selects the database: "mysql" (default) or postgres/sqlite. The runners get
+// it as -driver/-dsn (Go), argv (PHP/Rust) and the expectations file follows it.
+var (
+	driver string
+	dsn    string
+	langs  string
+)
+
+func vectorsPath() string {
+	if driver == "" || driver == "mysql" {
+		return "tests/conformance/vectors.json"
+	}
+	return "tests/conformance/vectors." + driver + ".json"
+}
 
 func main() {
 	if len(os.Args) < 2 {
 		usage()
 	}
+	fs := flag.NewFlagSet("check", flag.ExitOnError)
+	fs.StringVar(&driver, "driver", "mysql", "mysql|postgres|sqlite")
+	fs.StringVar(&dsn, "dsn", "", "database DSN/URL for the runners (driver-specific; empty = each runner's default)")
+	fs.StringVar(&langs, "langs", "go,php,rust", "runners to execute")
+	fs.Parse(os.Args[2:])
 	root, err := os.Getwd()
 	must(err)
 	switch os.Args[1] {
 	case "run":
-		out := filepath.Join(root, "tests", "conformance", "out")
+		out := filepath.Join(root, "tests", "conformance", "out", driverDir())
 		must(os.MkdirAll(out, 0o755))
 		runAll(root, out)
-		os.Exit(compare(root, []string{filepath.Join(out, "go.json"), filepath.Join(out, "php.json"), filepath.Join(out, "rust.json")}))
+		var files []string
+		for _, l := range strings.Split(langs, ",") {
+			files = append(files, filepath.Join(out, l+".json"))
+		}
+		os.Exit(compare(root, files))
 	case "compare":
-		os.Exit(compare(root, os.Args[2:]))
+		os.Exit(compare(root, fs.Args()))
 	case "record":
-		if len(os.Args) != 3 {
+		if len(fs.Args()) != 1 {
 			usage()
 		}
-		record(root, os.Args[2])
+		record(root, fs.Args()[0])
 	default:
 		usage()
 	}
 }
 
+func driverDir() string {
+	if driver == "mysql" {
+		return ""
+	}
+	return driver
+}
+
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: check run | check compare <lang>.json... | check record <out.json>")
+	fmt.Fprintln(os.Stderr, "usage: check run [-driver d -dsn x -langs go,php,rust] | check compare [-driver d] <lang>.json... | check record [-driver d] <out.json>")
 	os.Exit(2)
 }
 
@@ -80,12 +114,37 @@ func runAll(root, out string) {
 		must(cmd.Run())
 		must(os.WriteFile(path, buf.Bytes(), 0o644))
 	}
-	capture(filepath.Join(out, "go.json"), exec.Command("go", "run", "./tests/conformance/runner_go", schema))
-	capture(filepath.Join(out, "rust.json"), exec.Command(filepath.Join(root, "clients", "rust", "target", "release", "conformance"), filepath.Join(root, "bin", "ormengine.wasm"), schema))
+	want := map[string]bool{}
+	for _, l := range strings.Split(langs, ",") {
+		want[l] = true
+	}
+	var goArgs []string
+	if driver != "mysql" {
+		goArgs = append(goArgs, "-driver", driver)
+	}
+	if dsn != "" {
+		goArgs = append(goArgs, "-dsn", dsn)
+	}
+	if want["go"] {
+		capture(filepath.Join(out, "go.json"), exec.Command("go", append([]string{"run", "./tests/conformance/runner_go"}, append(goArgs, schema)...)...))
+	}
+	if want["rust"] {
+		args := []string{filepath.Join(root, "bin", "ormengine.wasm"), schema}
+		if driver != "mysql" {
+			args = append(args, "--driver", driver)
+		}
+		if dsn != "" {
+			args = append(args, "--dsn", dsn)
+		}
+		capture(filepath.Join(out, "rust.json"), exec.Command(filepath.Join(root, "clients", "rust", "target", "release", "conformance"), args...))
+	}
+	if !want["php"] {
+		return
+	}
 
 	sock := filepath.Join(out, "ormd.sock")
 	_ = os.Remove(sock)
-	ormd := exec.Command(filepath.Join(root, "bin", "ormd"), "-socket", sock, "-schema", schema)
+	ormd := exec.Command(filepath.Join(root, "bin", "ormd"), "-socket", sock, "-schema", schema, "-dialect", driver)
 	stderr, err := ormd.StderrPipe()
 	must(err)
 	must(ormd.Start())
@@ -106,17 +165,35 @@ func runAll(root, out string) {
 		for sc.Scan() {
 		}
 	}()
-	capture(filepath.Join(out, "php.json"), exec.Command("php", "tests/conformance/runner.php", sock, schema))
+	phpArgs := []string{"tests/conformance/runner.php", sock, schema}
+	if driver != "mysql" {
+		phpArgs = append(phpArgs, "--driver", driver)
+	}
+	if dsn != "" {
+		phpArgs = append(phpArgs, "--dsn", dsn)
+	}
+	capture(filepath.Join(out, "php.json"), exec.Command("php", phpArgs...))
 	must(ormd.Process.Kill())
 	_ = ormd.Wait()
 	_ = os.Remove(sock)
 }
 
 func load(root string) file {
-	b, err := os.ReadFile(filepath.Join(root, vectorsPath))
+	b, err := os.ReadFile(filepath.Join(root, vectorsPath()))
+	if err != nil && driver != "mysql" {
+		// a new database starts from the MySQL vector list; results are recorded per driver
+		b, err = os.ReadFile(filepath.Join(root, "tests/conformance/vectors.json"))
+	}
 	must(err)
 	var f file
 	must(json.Unmarshal(b, &f))
+	if driver != "mysql" {
+		if _, statErr := os.Stat(filepath.Join(root, vectorsPath())); statErr != nil {
+			for i := range f.Vectors {
+				f.Vectors[i].Expect = nil
+			}
+		}
+	}
 	return f
 }
 
@@ -206,6 +283,6 @@ func record(root, output string) {
 	}
 	out, err := json.MarshalIndent(f, "", "  ")
 	must(err)
-	must(os.WriteFile(filepath.Join(root, vectorsPath), append(out, '\n'), 0o644))
-	fmt.Printf("recorded %d vectors from %s\n", len(f.Vectors), output)
+	must(os.WriteFile(filepath.Join(root, vectorsPath()), append(out, '\n'), 0o644))
+	fmt.Printf("recorded %d vectors from %s into %s\n", len(f.Vectors), output, vectorsPath())
 }
