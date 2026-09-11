@@ -1,0 +1,65 @@
+# CI (docs/checklist.md T5.8): engine tests, three clients, conformance and codec vectors against a
+# MySQL service, token parity. Bench regression gates run on a self-hosted runner (see perf job).
+name: ci
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: orm_bench
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      ORM_MYSQL_DSN_GO: "root@tcp(127.0.0.1:3306)/orm_bench?parseTime=true&clientFoundRows=true"
+      ORM_MYSQL_DSN_PHP: "mysql:host=127.0.0.1;port=3306;dbname=orm_bench;charset=utf8mb4"
+      ORM_MYSQL_URL_RUST: "mysql://root@127.0.0.1:3306/orm_bench"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.27" }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo_mysql, apcu, msgpack
+          ini-values: apc.enable_cli=1
+      - name: load bench schema
+        run: mysql -h 127.0.0.1 -uroot orm_bench < bench/sql/battle.sql
+      - name: engine
+        run: go test ./engine/... && go vet ./...
+      - name: artifacts
+        run: |
+          mkdir -p bin
+          go build -o bin/ormd ./cmd/ormd
+          GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o bin/ormengine.wasm ./engine/wasm
+      - name: generated clients are current
+        run: |
+          for l in go php rust; do go run ./cmd/ormgen gen --schema schema/schema.json --lang $l --out clients/$l/gen; done
+          git diff --exit-code -- clients/go/gen clients/php/gen clients/rust/gen
+      - name: go client
+        run: go test ./clients/go/...
+      - name: rust client
+        run: cd clients/rust && cargo build --release && cargo test --release -p orm && ./target/release/integration ../../bin/ormengine.wasm ../../schema/schema.json
+      - name: php client
+        run: |
+          bin/ormd -socket "$PWD/bin/ormd.sock" -schema schema/schema.json 2>bin/ormd.log &
+          until grep -q "listening on" bin/ormd.log; do sleep 0.2; done   # CI-only wait on the daemon's own ready line
+          php clients/php/tests/integration.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
+      - name: conformance (3 languages identical)
+        run: go run ./tests/conformance/check run
+      - name: codec vectors
+        run: |
+          go test ./clients/go/orm -run TestCodec
+          (cd clients/rust && cargo test --release -p orm codec)
+          php tests/codec/check.php
+      - name: token parity
+        run: |
+          go run ./cmd/ormgen tokens --schema schema/schema.json tests/conformance/runner_go/main.go tests/conformance/runner.php clients/rust/tests/src/conformance.rs
+          go run ./cmd/ormgen tokens --schema schema/schema.json clients/go/gen/gen_integration_test.go clients/php/tests/integration.php clients/rust/tests/src/integration.rs
