@@ -76,6 +76,15 @@ impl Query { pub async fn gets(&mut self) -> Result<Vec<Row>, Error> { todo!() }
 	if len(baseline) < 4 {
 		return fmt.Errorf("%s parser returned too few fixture declarations", lang)
 	}
+	var owner Owner
+	definition := map[string]any{"id": "Query", "for": "once", "native": map[string]any{lang: map[string]any{"symbol": "fixture." + f.ext + "::Query", "fields": []string{"binding"}}}}
+	raw, _ := json.Marshal(definition)
+	if err := json.Unmarshal(raw, &owner); err != nil {
+		return err
+	}
+	if failures := checkOwners(lang, baseline, []Owner{owner}, nil); len(failures) != 0 {
+		return fmt.Errorf("%s unmodified fixture failed the owner contract: %v", lang, failures)
+	}
 	for i, change := range f.changes {
 		if !strings.Contains(f.source, change[0]) {
 			return fmt.Errorf("invalid mutation fixture")
@@ -91,12 +100,6 @@ impl Query { pub async fn gets(&mut self) -> Result<Vec<Row>, Error> { todo!() }
 			return fmt.Errorf("%s parser missed source mutation %d (%s)", lang, i, change[1])
 		}
 		if i == len(f.changes)-1 {
-			var owner Owner
-			definition := map[string]any{"id": "Query", "for": "once", "native": map[string]any{lang: map[string]any{"symbol": "fixture." + f.ext + "::Query", "fields": []string{"binding"}}}}
-			raw, _ := json.Marshal(definition)
-			if err := json.Unmarshal(raw, &owner); err != nil {
-				return err
-			}
 			if len(checkOwners(lang, got, []Owner{owner}, nil)) == 0 {
 				return fmt.Errorf("%s extra field passed the shared owner contract", lang)
 			}
