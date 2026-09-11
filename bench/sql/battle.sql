@@ -51,3 +51,14 @@ SELECT CONCAT('battle-', i), CONCAT('desc-', i, ' ', REPEAT('x', 200)),
 FROM n;
 ANALYZE TABLE battle;
 SELECT COUNT(*) AS rows_, MIN(seq), MAX(seq) FROM battle;
+
+-- Related tables (schema/bench.mmd) so joins/relations can be exercised.
+DROP TABLE IF EXISTS user; DROP TABLE IF EXISTS service; DROP TABLE IF EXISTS service_module; DROP TABLE IF EXISTS service_member;
+CREATE TABLE user (seq bigint unsigned NOT NULL AUTO_INCREMENT, name varchar(191) NOT NULL, PRIMARY KEY (seq)) ENGINE=InnoDB;
+CREATE TABLE service (seq bigint unsigned NOT NULL AUTO_INCREMENT, name varchar(191) NOT NULL, PRIMARY KEY (seq)) ENGINE=InnoDB;
+CREATE TABLE service_module (seq bigint unsigned NOT NULL AUTO_INCREMENT, service_seq bigint unsigned NOT NULL, name varchar(191) NOT NULL, PRIMARY KEY (seq), KEY ix_service (service_seq)) ENGINE=InnoDB;
+CREATE TABLE service_member (seq bigint unsigned NOT NULL AUTO_INCREMENT, service_seq bigint unsigned NOT NULL, user_seq bigint unsigned NOT NULL, PRIMARY KEY (seq), KEY ix_service (service_seq), KEY ix_user (user_seq)) ENGINE=InnoDB;
+INSERT INTO user (seq, name) SELECT DISTINCT user_seq, CONCAT('user-', user_seq) FROM battle;
+INSERT INTO service (seq, name) SELECT DISTINCT service_seq, CONCAT('service-', service_seq) FROM battle;
+INSERT INTO service_module (seq, service_seq, name) SELECT service_module_seq, MIN(service_seq), CONCAT('module-', service_module_seq) FROM battle GROUP BY service_module_seq;
+INSERT INTO service_member (seq, service_seq, user_seq) SELECT service_member_seq, MIN(service_seq), MIN(user_seq) FROM battle GROUP BY service_member_seq;
