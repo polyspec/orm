@@ -92,7 +92,7 @@ Mermaid 표준 그대로다. `PK`/`FK`/`UK`는 Mermaid 키워드(`PK, FK`처럼 
 %% index    <table> (<col>, …)  [이름]      # 복합 인덱스. 단일 컬럼 인덱스는 FK면 자동, 아니면 여기
 %% fulltext <table> (<col>, …)              # FULLTEXT → `<a>With<b>Match…()` 생성
 %% timestamps <table> created_ts updated_ts # 자동 타임스탬프 컬럼 지정(기본: 이름이 created_ts/updated_ts면 자동)
-%% predicate <table> <name> : <dsl 조각>    # 재사용 술어 → `<name>()` 메서드 (S4)
+%% predicate <table> <name> : <expr 조각>   # 재사용 술어 → `<name>(args…)` 메서드. 백틱 컬럼은 검증, `?`마다 인자 하나
 ```
 
 ### 2.4 생략 가능한 것 (기본 규칙)
