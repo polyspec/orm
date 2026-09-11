@@ -39,6 +39,20 @@ final class Orm
     public static function fromConfig(string $path): Db
     {
         $cfg = Toml::parseFile($path);
+        // docs/config.md is the whole vocabulary; a key outside it is a typo, not an extension (strict, like Go).
+        $known = ['schema' => true, 'db' => ['dsn', 'user', 'password', 'pool'], 'secrets' => ['aes', 'aes_env'], 'engine' => ['wasm', 'cache_dir'], 'ormd' => ['socket'], 'debug' => ['on_query']];
+        foreach ($cfg as $k => $v) {
+            if (!isset($known[$k])) {
+                throw new OrmException(Code::CONFIG, "$path: unknown key $k");
+            }
+            if (is_array($known[$k])) {
+                foreach (array_keys(is_array($v) ? $v : []) as $sub) {
+                    if (!in_array($sub, $known[$k], true)) {
+                        throw new OrmException(Code::CONFIG, "$path: unknown key $k.$sub");
+                    }
+                }
+            }
+        }
         $schemaPath = self::pathOf($cfg, '', 'schema');
         $socket = self::pathOf($cfg, 'ormd', 'socket');
         $db = $cfg['db'] ?? throw new OrmException(Code::CONFIG, "$path: [db] is required");
