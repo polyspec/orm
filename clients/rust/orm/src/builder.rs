@@ -104,8 +104,22 @@ impl Q {
         W { params: &mut req.params, g, pending_or: false }
     }
 
+    /// A W over the root HAVING group (group predicates after group_by).
+    pub fn having_w(&mut self) -> W<'_> {
+        let req = &mut self.req;
+        let g = req.ir.query.having.get_or_insert_with(Group::default);
+        W { params: &mut req.params, g, pending_or: false }
+    }
+
     pub fn or(&mut self) {
         self.pending_or = true;
+    }
+
+    /// Stores a hand-written SELECT to run as the root (kind raw): `{table}` is the
+    /// entity table, each `?` binds the next of `binds`.
+    pub fn raw(&mut self, sql: &str, binds: Vec<Param>) {
+        let ps = binds.into_iter().map(|b| self.req.p(b)).collect();
+        self.req.ir.raw = Some(Raw { sql: sql.into(), ps });
     }
 
     pub fn join(&mut self, rel: &str, kind: &str, child: Q) {

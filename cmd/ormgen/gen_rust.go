@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -75,11 +76,19 @@ type rustRel struct {
 	Name, Ident, Target, TargetType, Kind string
 }
 
+// rustPred is a manifest predicate: `visible()` / `started_after(a0)`, one argument per `?`.
+type rustPred struct {
+	Ident, Expr string
+	Args        []string
+}
+
 type rustData struct {
 	Name, Type, Table, PK, PKType string
 	Auto                          bool
 	Cols                          []rustCol
 	Numeric                       []rustCol
+	Aggs                          []rustCol // count_distinct/min/max targets: unstyled or ip-styled, not json/bytes
+	Preds                         []rustPred
 	ParentCols                    []rustCol
 	Rels                          []rustRel
 	Indexes                       []string
@@ -122,6 +131,20 @@ var rustTmpl = template.Must(template.New("rust").Funcs(template.FuncMap{
 		return "serde_json::json!(" + f + ")"
 	},
 	"ftName": func(cols []string) string { return strings.Join(cols, "_with_") },
+	"predParams": func(args []string) string {
+		var b strings.Builder
+		for _, a := range args {
+			b.WriteString(", " + a + ": impl Into<Param>")
+		}
+		return b.String()
+	},
+	"predBinds": func(args []string) string {
+		q := make([]string, len(args))
+		for i, a := range args {
+			q[i] = a + ".into()"
+		}
+		return "vec![" + strings.Join(q, ", ") + "]"
+	},
 	"rsList": func(cols []string) string {
 		q := make([]string, len(cols))
 		for i, c := range cols {
@@ -363,6 +386,9 @@ impl<'a> {{.Type}}Where<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
     pub fn and(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { self.w.and_with(|w| { f({{.Type}}Where { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
+{{- range .Preds}}
+    pub fn {{.Ident}}(mut self{{predParams .Args}}) -> Self { self.w.expr({{printf "%q" .Expr}}, {{predBinds .Args}}); self }
+{{- end}}
 {{- range .Rels}}
     pub fn {{.Ident}}(mut self, f: impl FnOnce(super::{{.Target}}::{{.TargetType}}Where<'_>) -> super::{{.Target}}::{{.TargetType}}Where<'_>) -> Self { self.w.nav_with({{printf "%q" .Name}}, |w| { f(super::{{.Target}}::{{.TargetType}}Where { w }); }); self }
 {{- end}}
@@ -402,6 +428,9 @@ impl {{.Type}} {
     pub fn or(mut self) -> Self { self.q.or(); self }
     pub fn and(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { self.q.w().and_with(|w| { f({{.Type}}Where { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
+{{- range .Preds}}
+    pub fn {{.Ident}}(mut self{{predParams .Args}}) -> Self { self.q.w().expr({{printf "%q" .Expr}}, {{predBinds .Args}}); self }
+{{- end}}
 {{- range .Rels}}
     pub fn {{.Ident}}(mut self, f: impl FnOnce(super::{{.Target}}::{{.TargetType}}Where<'_>) -> super::{{.Target}}::{{.TargetType}}Where<'_>) -> Self { self.q.w().nav_with({{printf "%q" .Name}}, |w| { f(super::{{.Target}}::{{.TargetType}}Where { w }); }); self }
 {{- end}}
@@ -457,9 +486,14 @@ impl {{.Type}} {
     pub fn order_by_expr(mut self, frag: &str, desc: bool) -> Self { self.q.order_expr(frag, desc); self }
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
+    /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
+    pub fn having(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { { let w = self.q.having_w(); f({{.Type}}Where { w }); } self }
 {{- range .Indexes}}
     pub fn force_index_{{.}}(mut self) -> Self { self.q.node().force_index = {{printf "%q" .}}.into(); self }
 {{- end}}
+
+    // ---- raw root (trusted code only): {table} = the entity table, ? = binds in order; run with raw_all ----
+    pub fn raw(mut self, sql: &str, binds: Vec<Param>) -> Self { self.q.raw(sql, binds); self }
 
     // ---- relation-child options ----
     pub fn flatten(mut self) -> Self { self.q.node().flatten = true; self }
@@ -512,6 +546,18 @@ impl {{.Type}} {
     pub async fn sum_{{.Ident}}(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = {{printf "%q" .Name}}.into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
     pub async fn avg_{{.Ident}}(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = {{printf "%q" .Name}}.into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
 {{- end}}
+{{- range .Aggs}}
+    pub async fn count_distinct_{{.Ident}}(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = {{printf "%q" .Name}}.into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_{{.Ident}}(mut self, ex: &impl Exec) -> Result<Option<{{.RType}}>> { self.q.req.ir.agg = {{printf "%q" .Name}}.into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some({{.From}}) }) }
+    /// None when no row matches.
+    pub async fn max_{{.Ident}}(mut self, ex: &impl Exec) -> Result<Option<{{.RType}}>> { self.q.req.ir.agg = {{printf "%q" .Name}}.into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some({{.From}}) }) }
+{{- end}}
+
+    /// Runs the raw() statement; rows keyed by the driver's column names in column order, cells typed by column type (no codec).
+    pub async fn raw_all(mut self, ex: &impl Exec) -> Result<Vec<indexmap::IndexMap<String, Val>>> {
+        db::raw(ex, &mut self.q.req).await
+    }
 
     pub async fn paginate(mut self, ex: &impl Exec, page: u32, per: u32) -> Result<Page<{{.Type}}Row>> {
         let page = page.max(1);
@@ -614,6 +660,7 @@ publish = false
 orm = { path = "../orm" }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 serde_json = "1"
+indexmap = "2"
 `
 
 func genRust(m *schema.Manifest, outDir string) error {
@@ -639,6 +686,22 @@ func genRust(m *schema.Manifest, outDir string) error {
 			if c.PK || c.Auto {
 				d.KeyCols = append(d.KeyCols, c.Name)
 			}
+			// what engine/ir Validate allows for count_distinct/min/max: unstyled or ip-styled, not json/bytes
+			if (len(col.Styles) == 0 || col.Styles[0] == "ip") && col.Type != "json" && col.Type != "bytes" {
+				d.Aggs = append(d.Aggs, rc)
+			}
+		}
+		predNames := make([]string, 0, len(e.Predicates))
+		for n := range e.Predicates {
+			predNames = append(predNames, n)
+		}
+		sort.Strings(predNames)
+		for _, n := range predNames {
+			pr := rustPred{Ident: rustIdent(n), Expr: e.Predicates[n].Expr}
+			for i := 0; i < e.Predicates[n].Arity; i++ {
+				pr.Args = append(pr.Args, fmt.Sprintf("a%d", i))
+			}
+			d.Preds = append(d.Preds, pr)
 		}
 		for _, c := range ge.ParentCols {
 			col := m.Entities[parentOf(m, e, c.Name)].Column(c.Name)
