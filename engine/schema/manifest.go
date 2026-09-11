@@ -20,18 +20,18 @@ type Manifest struct {
 }
 
 type Entity struct {
-	Name       string              `json:"name"`
-	Table      string              `json:"table"`
-	PK         []string            `json:"pk"`
-	Auto       string              `json:"auto,omitempty"`
-	Columns    []*Col              `json:"columns"`
-	Relations  map[string]*Rel     `json:"relations"`
-	Unique     [][]string          `json:"unique,omitempty"`
-	Indexes    map[string][]string `json:"indexes,omitempty"`
-	Fulltext   [][]string          `json:"fulltext,omitempty"`
-	Timestamps *Timestamps         `json:"timestamps,omitempty"`
-	Predicates map[string]string   `json:"predicates,omitempty"`
-	Line       int                 `json:"-"`
+	Name       string                `json:"name"`
+	Table      string                `json:"table"`
+	PK         []string              `json:"pk"`
+	Auto       string                `json:"auto,omitempty"`
+	Columns    []*Col                `json:"columns"`
+	Relations  map[string]*Rel       `json:"relations"`
+	Unique     [][]string            `json:"unique,omitempty"`
+	Indexes    map[string][]string   `json:"indexes,omitempty"`
+	Fulltext   [][]string            `json:"fulltext,omitempty"`
+	Timestamps *Timestamps           `json:"timestamps,omitempty"`
+	Predicates map[string]*Predicate `json:"predicates,omitempty"` // %% predicate → generated <name>(args…) methods
+	Line       int                   `json:"-"`
 
 	cols map[string]*Col
 }
@@ -83,6 +83,13 @@ type Rel struct {
 	Left     string `json:"left"`
 	Right    string `json:"right"`
 	OnDelete string `json:"on_delete,omitempty"`
+}
+
+// Predicate is a reusable expr fragment declared with `%% predicate <table> <name> : <fragment>`:
+// backtick column names are checked against the entity, each `?` becomes a method argument.
+type Predicate struct {
+	Expr  string `json:"expr"`
+	Arity int    `json:"arity"`
 }
 
 type BuildError struct {
@@ -444,9 +451,23 @@ func (m *Manifest) addDirective(x *Directive) error {
 		ent.Timestamps = &Timestamps{Created: x.Columns[0], Updated: x.Columns[1]}
 	case "predicate":
 		if ent.Predicates == nil {
-			ent.Predicates = map[string]string{}
+			ent.Predicates = map[string]*Predicate{}
 		}
-		ent.Predicates[x.Name] = x.Raw
+		if err := checkColumnName(x.Name); err != nil {
+			return &BuildError{x.Line, "predicate " + x.Name + ": " + err.Error()}
+		}
+		if _, dup := ent.Predicates[x.Name]; dup {
+			return &BuildError{x.Line, "predicate " + x.Name + " declared twice"}
+		}
+		if ent.Column(x.Name) != nil {
+			return &BuildError{x.Line, "predicate " + x.Name + " collides with a column"}
+		}
+		for _, col := range backtickNames(x.Raw) {
+			if ent.Column(col) == nil {
+				return &BuildError{x.Line, "predicate " + x.Name + ": unknown column `" + col + "`"}
+			}
+		}
+		ent.Predicates[x.Name] = &Predicate{Expr: x.Raw, Arity: strings.Count(x.Raw, "?")}
 	}
 	return nil
 }
@@ -536,4 +557,21 @@ func Load(b []byte) (*Manifest, error) {
 	}
 	sort.Strings(nil)
 	return &m, nil
+}
+
+// backtickNames lists the `quoted` identifiers of an expr fragment.
+func backtickNames(frag string) []string {
+	var out []string
+	for {
+		i := strings.IndexByte(frag, '`')
+		if i < 0 {
+			return out
+		}
+		j := strings.IndexByte(frag[i+1:], '`')
+		if j < 0 {
+			return out
+		}
+		out = append(out, frag[i+1:i+1+j])
+		frag = frag[i+j+2:]
+	}
 }

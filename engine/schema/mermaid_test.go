@@ -37,7 +37,7 @@ const example = `erDiagram
   %% index    author (service_seq, is_close)              ik
   %% fulltext author (name, description)
   %% timestamps author created_ts updated_ts
-  %% predicate author display : isDisplayEq(1)
+  %% predicate author display : `is_display` = 1
 `
 
 func TestParseExample(t *testing.T) {
@@ -92,7 +92,7 @@ func TestParseExample(t *testing.T) {
 	if x := d.Directives[1]; x.Kind != "index" || x.Name != "ik" || strings.Join(x.Columns, ",") != "service_seq,is_close" {
 		t.Errorf("index: %+v", x)
 	}
-	if x := d.Directives[4]; x.Kind != "predicate" || x.Name != "display" || x.Raw != "isDisplayEq(1)" {
+	if x := d.Directives[4]; x.Kind != "predicate" || x.Name != "display" || x.Raw != "`is_display` = 1" {
 		t.Errorf("predicate: %+v", x)
 	}
 }

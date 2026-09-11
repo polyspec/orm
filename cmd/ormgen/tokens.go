@@ -31,7 +31,7 @@ func buildVocabulary(m *schema.Manifest) *vocabulary {
 		v.terminals[t] = true
 	}
 	for _, t := range []string{"and", "or", "on", "where", "expr", "limit", "distinct", "selectAll", "selectNone", "selectExpr", "orderByExpr",
-		"flatten", "limitPerParent", "dropChildKey", "noCascadeDelete", "keyByFn", "transaction", "onDuplicateSetAll"} {
+		"flatten", "limitPerParent", "dropChildKey", "noCascadeDelete", "keyByFn", "transaction", "onDuplicateSetAll", "having"} {
 		v.other[t] = true
 	}
 	for _, name := range m.Order {
@@ -59,6 +59,9 @@ func buildVocabulary(m *schema.Manifest) *vocabulary {
 			v.other["set"+f+"Expr"] = true
 			v.terminals["sum"+f] = true
 			v.terminals["avg"+f] = true
+			v.terminals["min"+f] = true
+			v.terminals["max"+f] = true
+			v.terminals["countDistinct"+f] = true
 		}
 		for rn, r := range e.Relations {
 			f := pascal(rn)
@@ -104,7 +107,7 @@ func snakeToCamel(s string) string {
 }
 
 var (
-	reCallDot  = regexp.MustCompile(`(\.|::)\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(`)  // go, rust
+	reCallDot  = regexp.MustCompile(`(\.|::)\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(`) // go, rust
 	reCallPHP  = regexp.MustCompile(`(->|::)\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(`) // php: `.` is string concatenation
 	reHeadPHP  = regexp.MustCompile(`\bnew\s+([A-Z][A-Za-z0-9_]*)`)
 	reHeadRust = regexp.MustCompile(`\b([A-Z][A-Za-z0-9_]*)::new\s*\(`)
