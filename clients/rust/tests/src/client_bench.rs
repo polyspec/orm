@@ -4,9 +4,8 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use gen::*;
-use orm::db::{Config, Db};
+use orm::db::{Config, ConnectOptions, Db};
 use orm::engine::{Engine, EngineConfig};
-use sqlx::mysql::MySqlConnectOptions;
 
 fn stats(name: &str, mut s: Vec<u64>) {
     s.sort_unstable();
@@ -16,11 +15,9 @@ fn stats(name: &str, mut s: Vec<u64>) {
 }
 
 /// The test DSN: `ORM_MYSQL_URL_RUST` when set (CI), else the local socket.
-fn connect_opts() -> MySqlConnectOptions {
-    match std::env::var("ORM_MYSQL_URL_RUST") {
-        Ok(url) => url.parse().expect("ORM_MYSQL_URL_RUST is a mysql:// URL"),
-        Err(_) => MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench"),
-    }
+fn connect_opts() -> ConnectOptions {
+    let url = std::env::var("ORM_MYSQL_URL_RUST").unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into());
+    ConnectOptions::parse("mysql", &url).expect("ORM_MYSQL_URL_RUST is a mysql:// URL")
 }
 
 #[tokio::main]
@@ -29,7 +26,7 @@ async fn main() {
     let iters: usize = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(3000);
     let wasm = std::fs::read(&args[1]).unwrap();
     let schema = std::fs::read(&args[2]).unwrap();
-    let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, cache_dir: None }).unwrap());
+    let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, ..Default::default() }).unwrap());
     gen::init(engine.clone()).expect("schema hash");
     let opts = connect_opts();
     let db = Db::connect(opts, 1, engine, Config { aes_key: "bench-salt".into(), on_query: None }).await.unwrap();
