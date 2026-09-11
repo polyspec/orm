@@ -21,11 +21,13 @@ pub struct Config {
     pub on_query: Option<Box<dyn Fn(&str, &[Param], std::time::Duration, Option<&Error>) + Send + Sync>>,
 }
 
+/// Cheap to clone: every field is shared. `Tx` owns a clone, so no lifetimes leak into closures.
+#[derive(Clone)]
 pub struct Db {
     pub pool: MySqlPool,
     pub engine: Arc<Engine>,
-    cfg: Config,
-    plans: Mutex<HashMap<u64, Arc<Plan>>>,
+    cfg: Arc<Config>,
+    plans: Arc<Mutex<HashMap<u64, Arc<Plan>>>>,
 }
 
 /// Rows of one select step, positional.
@@ -37,7 +39,7 @@ pub struct Rows {
 impl Db {
     pub async fn connect(opts: MySqlConnectOptions, max_connections: u32, engine: Arc<Engine>, cfg: Config) -> Result<Db> {
         let pool = MySqlPoolOptions::new().max_connections(max_connections).connect_with(opts.statement_cache_capacity(512)).await?;
-        Ok(Db { pool, engine, cfg, plans: Mutex::new(HashMap::new()) })
+        Ok(Db { pool, engine, cfg: Arc::new(cfg), plans: Arc::new(Mutex::new(HashMap::new())) })
     }
 
     /// Compile (or fetch from cache) the plan for the request's shape.
@@ -95,7 +97,7 @@ impl Db {
     {
         let mut last = None;
         for attempt in 0..3u32 {
-            let tx = Tx { inner: Arc::new(tokio::sync::Mutex::new(Some(self.pool.begin().await?))), db: self };
+            let tx = Tx { inner: Arc::new(tokio::sync::Mutex::new(Some(self.pool.begin().await?))), db: self.clone() };
             match f(tx.clone()).await {
                 Ok(v) => {
                     tx.commit().await?;
@@ -118,12 +120,12 @@ impl Db {
 
 /// A transaction handle: cheap to clone, so closures can `async move` it.
 #[derive(Clone)]
-pub struct Tx<'d> {
+pub struct Tx {
     inner: Arc<tokio::sync::Mutex<Option<sqlx::Transaction<'static, sqlx::MySql>>>>,
-    db: &'d Db,
+    db: Db,
 }
 
-impl<'d> Tx<'d> {
+impl Tx {
     async fn commit(&self) -> Result<()> {
         if let Some(t) = self.inner.lock().await.take() {
             t.commit().await?;
@@ -165,8 +167,11 @@ fn read_row(row: &MySqlRow, n: usize) -> Vec<Val> {
                 }
             }
             "FLOAT" | "DOUBLE" => row.try_get::<Option<f64>, _>(i).ok().flatten().map(Val::F64).unwrap_or(Val::Null),
-            "DECIMAL" => row.try_get::<Option<String>, _>(i).ok().flatten().map(|s| Val::F64(s.parse().unwrap_or(0.0))).unwrap_or(Val::Null),
-            "DATETIME" | "TIMESTAMP" => row.try_get::<Option<chrono::NaiveDateTime>, _>(i).ok().flatten().map(Val::DateTime).unwrap_or(Val::Null),
+            // NEWDECIMAL is only compatible with a decimal type in sqlx; we surface it as f64 like Go/PHP.
+            "DECIMAL" => row.try_get::<Option<rust_decimal::Decimal>, _>(i).ok().flatten().map(|d| Val::F64(rust_decimal::prelude::ToPrimitive::to_f64(&d).unwrap_or(0.0))).unwrap_or(Val::Null),
+            // sqlx's NaiveDateTime only accepts DATETIME; TIMESTAMP columns decode as DateTime<Utc> (session tz is UTC).
+            "DATETIME" => row.try_get::<Option<chrono::NaiveDateTime>, _>(i).ok().flatten().map(Val::DateTime).unwrap_or(Val::Null),
+            "TIMESTAMP" => row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i).ok().flatten().map(|t| Val::DateTime(t.naive_utc())).unwrap_or(Val::Null),
             "DATE" => row.try_get::<Option<chrono::NaiveDate>, _>(i).ok().flatten().map(Val::Date).unwrap_or(Val::Null),
             "BOOLEAN" => row.try_get::<Option<bool>, _>(i).ok().flatten().map(Val::Bool).unwrap_or(Val::Null),
             "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" | "VARBINARY" | "BINARY" => {
@@ -224,9 +229,9 @@ impl Exec for Db {
     }
 }
 
-impl<'d> Exec for Tx<'d> {
+impl Exec for Tx {
     fn db(&self) -> &Db {
-        self.db
+        &self.db
     }
 
     async fn query(&self, st: &Step, params: &[Param]) -> Result<Vec<MySqlRow>> {
