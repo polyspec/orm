@@ -44,6 +44,9 @@ type Event struct {
 // Secret replaces a secret bind (the AES key) wherever binds are shown.
 const Secret = "$SECRET"
 
+// Now replaces executor-supplied timestamps (`now` slots) in hook payloads.
+const Now = "$NOW"
+
 // DB wraps *sql.DB with the compiler, the plan cache and the statement cache.
 type DB struct {
 	SQL    *sql.DB
@@ -405,7 +408,7 @@ func (d *DB) plan(r *Req) (*cached, error) {
 // args resolves a step's bind slots against the request's params. secrets
 // lists the positions that hold a secret (nil when there is none) so the
 // on_query hook can mask exactly those.
-func (d *DB) args(st *plan.Step, r *Req, parentVals []any) (out []any, secrets []int, err error) {
+func (d *DB) args(st *plan.Step, r *Req, parentVals []any) (out []any, masks map[int]string, err error) {
 	out = make([]any, 0, len(st.BindSlots))
 	for _, b := range st.BindSlots {
 		switch b.From {
@@ -424,12 +427,20 @@ func (d *DB) args(st *plan.Step, r *Req, parentVals []any) (out []any, secrets [
 			if b.Name != "aes" || d.cfg.AESKey == "" {
 				return nil, nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("secret %q not configured", b.Name)}
 			}
-			secrets = append(secrets, len(out))
+			if masks == nil {
+				masks = map[int]string{}
+			}
+			masks[len(out)] = Secret
 			out = append(out, d.cfg.AESKey)
 		case "parent":
 			out = append(out, parentVals...)
 		case "now":
-			// dialects without a microsecond clock function (SQLite) get the timestamp from the executor
+			// dialects without a microsecond clock function (SQLite) get the timestamp from the executor;
+			// hooks see "$NOW" so logs and recorded vectors stay deterministic
+			if masks == nil {
+				masks = map[int]string{}
+			}
+			masks[len(out)] = Now
 			out = append(out, time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 		default:
 			return nil, nil, &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf("bind from %q", b.From)}
@@ -443,7 +454,7 @@ func (d *DB) args(st *plan.Step, r *Req, parentVals []any) (out []any, secrets [
 			}
 		}
 	}
-	return out, secrets, nil
+	return out, masks, nil
 }
 
 // paramValue is a param slot's bound value: the request's param after the slot's transform.
@@ -485,6 +496,8 @@ func SQL(ctx context.Context, ex Exec, r *Req) (*Statement, error) {
 			out.Binds = append(out.Binds, v)
 		case "secret":
 			out.Binds = append(out.Binds, Secret)
+		case "now":
+			out.Binds = append(out.Binds, Now)
 		default:
 			return nil, &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf("bind from %q in a main step", b.From)}
 		}
@@ -604,15 +617,15 @@ func scalarKey(v any) string {
 
 // emit delivers one executed statement to the on_query hook. Secret binds are
 // masked in a copy; the args the driver saw are never handed out.
-func (d *DB) emit(c *cached, sqlText string, args []any, secrets []int, start time.Time, err error) {
+func (d *DB) emit(c *cached, sqlText string, args []any, masks map[int]string, start time.Time, err error) {
 	if d.cfg.OnQuery == nil {
 		return
 	}
-	if len(secrets) > 0 {
+	if len(masks) > 0 {
 		masked := make([]any, len(args))
 		copy(masked, args)
-		for _, i := range secrets {
-			masked[i] = Secret
+		for i, m := range masks {
+			masked[i] = m
 		}
 		args = masked
 	}
@@ -805,7 +818,7 @@ func runSelect(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req, p
 	if parentVals != nil {
 		sqlText, parentVals = expandIn(st, parentVals)
 	}
-	args, secrets, err := d.args(st, r, parentVals)
+	args, masks, err := d.args(st, r, parentVals)
 	if err != nil {
 		return nil, err
 	}
@@ -816,7 +829,7 @@ func runSelect(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req, p
 	start := time.Now()
 	rows, err := stmt.QueryContext(ctx, args...)
 	err = mapDriverErr(err)
-	d.emit(c, sqlText, args, secrets, start, err)
+	d.emit(c, sqlText, args, masks, start, err)
 	if err != nil {
 		return nil, err
 	}
@@ -888,7 +901,7 @@ func Scalar(ctx context.Context, ex Exec, r *Req) (any, error) {
 		return nil, err
 	}
 	st := &c.plan.Steps[0]
-	args, secrets, err := d.args(st, r, nil)
+	args, masks, err := d.args(st, r, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -899,7 +912,7 @@ func Scalar(ctx context.Context, ex Exec, r *Req) (any, error) {
 	var v cell
 	start := time.Now()
 	err = mapDriverErr(stmt.QueryRowContext(ctx, args...).Scan(&v))
-	d.emit(c, st.SQL, args, secrets, start, err)
+	d.emit(c, st.SQL, args, masks, start, err)
 	return v.v, err
 }
 
@@ -912,7 +925,7 @@ func RawAll(ctx context.Context, ex Exec, r *Req) ([]map[string]any, error) {
 		return nil, err
 	}
 	st := &c.plan.Steps[0]
-	args, secrets, err := d.args(st, r, nil)
+	args, masks, err := d.args(st, r, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -923,7 +936,7 @@ func RawAll(ctx context.Context, ex Exec, r *Req) ([]map[string]any, error) {
 	start := time.Now()
 	rows, err := stmt.QueryContext(ctx, args...)
 	err = mapDriverErr(err)
-	d.emit(c, st.SQL, args, secrets, start, err)
+	d.emit(c, st.SQL, args, masks, start, err)
 	if err != nil {
 		return nil, err
 	}
@@ -969,7 +982,7 @@ func Paginate(ctx context.Context, ex Exec, r *Req) (*Rows, int64, error) {
 			st = &p.Steps[i]
 		}
 	}
-	args, secrets, err := d.args(st, r, nil)
+	args, masks, err := d.args(st, r, nil)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -980,7 +993,7 @@ func Paginate(ctx context.Context, ex Exec, r *Req) (*Rows, int64, error) {
 	var total int64
 	start := time.Now()
 	err = mapDriverErr(stmt.QueryRowContext(ctx, args...).Scan(&total))
-	d.emit(c, st.SQL, args, secrets, start, err)
+	d.emit(c, st.SQL, args, masks, start, err)
 	return rows, total, err
 }
 
@@ -993,7 +1006,7 @@ func Write(ctx context.Context, ex Exec, r *Req) (lastID, affected int64, err er
 		return 0, 0, err
 	}
 	st := &c.plan.Steps[0]
-	args, secrets, err := d.args(st, r, nil)
+	args, masks, err := d.args(st, r, nil)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -1005,7 +1018,7 @@ func Write(ctx context.Context, ex Exec, r *Req) (lastID, affected int64, err er
 	if r.IR.Kind == "insert" && strings.Contains(st.SQL, " RETURNING ") {
 		// PostgreSQL/SQLite: the id comes back as a row, not from the driver's last insert id.
 		err = mapDriverErr(stmt.QueryRowContext(ctx, args...).Scan(&lastID))
-		d.emit(c, st.SQL, args, secrets, start, err)
+		d.emit(c, st.SQL, args, masks, start, err)
 		if err != nil {
 			return 0, 0, err
 		}
@@ -1013,7 +1026,7 @@ func Write(ctx context.Context, ex Exec, r *Req) (lastID, affected int64, err er
 	}
 	res, err := stmt.ExecContext(ctx, args...)
 	err = mapDriverErr(err)
-	d.emit(c, st.SQL, args, secrets, start, err)
+	d.emit(c, st.SQL, args, masks, start, err)
 	if err != nil {
 		return 0, 0, err
 	}
