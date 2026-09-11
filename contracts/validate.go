@@ -60,8 +60,8 @@ func validateRules(d document) error {
 			if !ok {
 				return fmt.Errorf("%s unknown output %s", r.ID, r.Output)
 			}
-			if r.ID == "Query.construct" && lang == "php" {
-				want = ""
+			if r.ID == "Query.query" && lang == "rust" {
+				want = "{Entity}"
 			}
 			if ret != want {
 				return fmt.Errorf("%s/%s return %s does not implement %s", r.ID, lang, ret, r.Output)
@@ -96,9 +96,6 @@ func validateRules(d document) error {
 				permitted = map[string][]string{"go": {"namestring", "relstring"}, "php": {"string$col", "string$name"}, "rust": {"name:&str"}}[lang]
 			default:
 				return fmt.Errorf("%s unrecognized input contract %v", r.ID, r.Inputs)
-			}
-			if r.ID == "Query.construct" && lang == "php" {
-				permitted = []string{"Orm\\Db|PDO|null$db=null"}
 			}
 			if r.ID == "Row.delete" && lang == "php" {
 				permitted = []string{"bool$cascade=false"}

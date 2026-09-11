@@ -105,14 +105,15 @@ final class UserWhere
     public function nameNotEqCol(ColRef $ref): static { $this->w->predCol('name', 'not_eq_col', $ref); return $this; }
 }
 
-/** Query over user: new User → bind($db) → chain → terminal(). Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
+/** Query over user: User::query() → using($db) → chain → terminal(). Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
 final class User extends Q implements UserInterface
 {
     use CompatQuery;
 
     public const ENTITY = 'user';
 
-    public function __construct(Db|\PDO|null $db = null) { parent::__construct('user'); if ($db !== null) { $this->bind($db); } }
+    private function __construct() { parent::__construct('user'); }
+    public static function query(): static { return new static(); }
 
     // ---- WHERE ----
     /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
@@ -342,7 +343,7 @@ final class User extends Q implements UserInterface
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
         $id = $this->runInsert($db);
-        return (new User)($db)->seqEq((int) $id)->one();
+        return User::query()->using($db)->seqEq((int) $id)->one();
     }
 
     /** UPDATE by PK when setSeq was called (the other set columns), else INSERT; returns the re-read row. */
@@ -351,7 +352,7 @@ final class User extends Q implements UserInterface
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
         [, $key] = $this->runSave($db, 'seq');
-        return (new User)($db)->seqEq((int) $key)->one();
+        return User::query()->using($db)->seqEq((int) $key)->one();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */

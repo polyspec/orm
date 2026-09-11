@@ -756,14 +756,15 @@ final class AuthorWhere
     public function nameWithDescriptionMatchBoolean(string $v): static { $this->w->match(['name', 'description'], true, $v); return $this; }
 }
 
-/** Query over author: new Author → bind($db) → chain → terminal(). Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
+/** Query over author: Author::query() → using($db) → chain → terminal(). Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
 final class Author extends Q implements AuthorInterface
 {
     use CompatQuery;
 
     public const ENTITY = 'author';
 
-    public function __construct(Db|\PDO|null $db = null) { parent::__construct('author'); if ($db !== null) { $this->bind($db); } }
+    private function __construct() { parent::__construct('author'); }
+    public static function query(): static { return new static(); }
 
     // ---- WHERE ----
     /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
@@ -2271,7 +2272,7 @@ final class Author extends Q implements AuthorInterface
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
         $id = $this->runInsert($db);
-        return (new Author)($db)->seqEq((int) $id)->one();
+        return Author::query()->using($db)->seqEq((int) $id)->one();
     }
 
     /** UPDATE by PK when setSeq was called (the other set columns), else INSERT; returns the re-read row. */
@@ -2280,7 +2281,7 @@ final class Author extends Q implements AuthorInterface
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
         [, $key] = $this->runSave($db, 'seq');
-        return (new Author)($db)->seqEq((int) $key)->one();
+        return Author::query()->using($db)->seqEq((int) $key)->one();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */

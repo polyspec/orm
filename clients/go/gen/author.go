@@ -1038,7 +1038,7 @@ var AuthorCols = struct {
 	SerializeData:         orm.ColRef{Column: "serialize_data"},
 }
 
-// AuthorQuery builds a statement over author: Author() → Bind(ctx, db) → chain → terminal().
+// AuthorQuery builds a statement over author: Author() → Using(ctx, db) → chain → terminal().
 type AuthorQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -1054,14 +1054,14 @@ func (q *AuthorQuery) Req() *orm.Req { return q.q.Req }
 // Author starts a query over author.
 func Author() *AuthorQuery { return &AuthorQuery{q: orm.NewQ(mustEngine(), "author")} }
 
-// Bind selects the context and pool or transaction for this query.
-func (q *AuthorQuery) Bind(ctx context.Context, ex orm.Exec) *AuthorQuery {
+// Using selects the context and pool or transaction for this query.
+func (q *AuthorQuery) Using(ctx context.Context, ex orm.Exec) *AuthorQuery {
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
 
-// Bind selects the context and pool or transaction for this loaded row.
-func (r *AuthorRow) Bind(ctx context.Context, ex orm.Exec) *AuthorRow {
+// Using selects the context and pool or transaction for this loaded row.
+func (r *AuthorRow) Using(ctx context.Context, ex orm.Exec) *AuthorRow {
 	r.Binding = orm.NewBinding(ctx, ex)
 	return r
 }
@@ -7314,7 +7314,7 @@ func (q *AuthorQuery) Insert() (*AuthorRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Author().Bind(ctx, ex).SeqEq(int64(id)).One()
+	return Author().Using(ctx, ex).SeqEq(int64(id)).One()
 }
 
 // Save updates the other assigned columns when SetSeq was called (and
@@ -7332,7 +7332,7 @@ func (q *AuthorQuery) Save() (*AuthorRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return Author().Bind(ctx, ex).SeqEq(pk.(int64)).One()
+	return Author().Using(ctx, ex).SeqEq(pk.(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

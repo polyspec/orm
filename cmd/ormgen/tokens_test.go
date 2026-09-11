@@ -10,13 +10,13 @@ func TestValueOnlyTerminalTokens(t *testing.T) {
 		heads:     map[string]bool{"Author": true},
 		terminals: map[string]bool{"getCountByServiceSeq": true, "gets": true, "all": true},
 		navs:      map[string]bool{},
-		other:     map[string]bool{"bind": true, "serviceSeq": true},
+		other:     map[string]bool{"using": true, "serviceSeq": true},
 	}
-	want := []string{"query Author", "bind", "getCountByServiceSeq", "query Author", "bind", "serviceSeq", "gets"}
+	want := []string{"query Author", "using", "getCountByServiceSeq", "query Author", "using", "serviceSeq", "gets"}
 	sources := map[string]string{
-		"example.go":  "package main\nfunc demo() { q := gen.Author().Bind(ctx, db); q.GetCountByServiceSeq(7); rows, _ := gen.Author().Bind(ctx, db).ServiceSeq(7).Gets(); for range rows.All() {} }",
-		"example.php": "<?php $q = (new Author)->bind($db); $q->getCountByServiceSeq(7); $rows = (new Author)->bind($db)->serviceSeq(7)->gets(); foreach ($rows as $row) {}",
-		"example.rs":  "let q = Author::new().bind(&db); q.get_count_by_service_seq(7).await?; let rows = Author::new().bind(&db).service_seq(7).gets().await?; for row in &rows {}",
+		"example.go":  "package main\nfunc demo() { q := gen.Author().Using(ctx, db); q.GetCountByServiceSeq(7); rows, _ := gen.Author().Using(ctx, db).ServiceSeq(7).Gets(); for range rows.All() {} }",
+		"example.php": "<?php $q = Author::query()->using($db); $q->getCountByServiceSeq(7); $rows = Author::query()->using($db)->serviceSeq(7)->gets(); foreach ($rows as $row) {}",
+		"example.rs":  "let q = author::query().using(&db); q.get_count_by_service_seq(7).await?; let rows = author::query().using(&db).service_seq(7).gets().await?; for row in &rows {}",
 	}
 	for path, src := range sources {
 		if got := tokenize(v, path, src); !reflect.DeepEqual(got, want) {

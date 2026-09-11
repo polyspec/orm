@@ -37,7 +37,7 @@ Checks at startup (all three): `schema` exists and its `schema_hash` equals the 
 `secrets.aes` or `aes_env` present when the schema has aes columns; `[db].user/password` only with mysql DSNs (other drivers carry the user in the URL); the daemon/engine dialect must equal `[db].driver` (`CONFIG` otherwise).
 
 `fromConfig` opens the configured database; it does not install a default query connection.
-Bind it to a root query with Go `Bind(ctx, db)`, PHP `bind($db)`, or Rust `bind(&db)`.
+Select it for a root query with Go `Using(ctx, db)`, PHP `using($db)`, or Rust `using(&db)`.
 A transaction is bound the same way. All relation steps and loaded rows use that root binding.
 Terminals such as `getCountByServiceSeq(7)` take only values. Unbound execution and reuse of a
 finished transaction return `CONFIG`; rebind to an active handle before executing again.

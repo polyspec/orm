@@ -574,7 +574,7 @@ var {{.Type}}Cols = struct {
 {{- end}}
 }
 
-// {{.Type}}Query builds a statement over {{.Table}}: {{.Type}}() → Bind(ctx, db) → chain → terminal().
+// {{.Type}}Query builds a statement over {{.Table}}: {{.Type}}() → Using(ctx, db) → chain → terminal().
 type {{.Type}}Query struct {
 	binding orm.Binding
 	q     *orm.Q
@@ -590,11 +590,11 @@ func (q *{{.Type}}Query) Req() *orm.Req { return q.q.Req }
 // {{.Type}} starts a query over {{.Table}}.
 func {{.Type}}() *{{.Type}}Query { return &{{.Type}}Query{q: orm.NewQ(mustEngine(), {{printf "%q" .Name}})} }
 
-// Bind selects the context and pool or transaction for this query.
-func (q *{{.Type}}Query) Bind(ctx context.Context, ex orm.Exec) *{{.Type}}Query { q.binding = orm.NewBinding(ctx, ex); return q }
+// Using selects the context and pool or transaction for this query.
+func (q *{{.Type}}Query) Using(ctx context.Context, ex orm.Exec) *{{.Type}}Query { q.binding = orm.NewBinding(ctx, ex); return q }
 
-// Bind selects the context and pool or transaction for this loaded row.
-func (r *{{.Type}}Row) Bind(ctx context.Context, ex orm.Exec) *{{.Type}}Row { r.Binding = orm.NewBinding(ctx, ex); return r }
+// Using selects the context and pool or transaction for this loaded row.
+func (r *{{.Type}}Row) Using(ctx context.Context, ex orm.Exec) *{{.Type}}Row { r.Binding = orm.NewBinding(ctx, ex); return r }
 
 // {{.Type}}Where edits one WHERE/ON group of {{.Table}}.
 type {{.Type}}Where struct{ w *orm.W }
@@ -879,7 +879,7 @@ func (q *{{.Type}}Query) Insert() (*{{.Type}}Row, error) {
 		return nil, err
 	}
 {{- if .Auto}}
-	return {{.Type}}().Bind(ctx, ex).{{pascal .PK}}Eq({{.PKType}}(id)).One()
+	return {{.Type}}().Using(ctx, ex).{{pascal .PK}}Eq({{.PKType}}(id)).One()
 {{- else}}
 	_ = id
 	return nil, nil
@@ -898,7 +898,7 @@ func (q *{{.Type}}Query) Save() (*{{.Type}}Row, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return {{.Type}}().Bind(ctx, ex).{{pascal .PK}}Eq(pk.({{.PKType}})).One()
+	return {{.Type}}().Using(ctx, ex).{{pascal .PK}}Eq(pk.({{.PKType}})).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

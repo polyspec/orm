@@ -26,9 +26,9 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:73e510b225f5349b1e8836cd7ddce1205e4252c2f071716524d324de8057cea0",
-    "php": "sha256:96355b21edf63b20bae9e51126dcd3d3d92fcdbb75d54b6b38ac77edda73f4fa",
-    "rust": "sha256:1f5a46e94715f81d3766028058c74319b10d62428a201acc7547a950c0ea9368"
+    "go": "sha256:7c5c0634fa720b32f7092d6a3037e93a12d2bcb8f5d3abd6db2c4cfd0e1cbf2c",
+    "php": "sha256:a002e979e09392aef00310038499f61e91683513c0317986eec17e4ef6288f16",
+    "rust": "sha256:551146c13d26756850f21568edb29bf12604fdddfa5468465e66eeb9fc76d731"
   },
   "components": [
     {
@@ -39,8 +39,8 @@
         "keySelector": "Optional<Function<Row,Key>>"
       },
       "methods": [
-        "construct",
-        "bind",
+        "query",
+        "using",
         "predicate",
         "join",
         "relation",
@@ -189,7 +189,7 @@
         "has",
         "setColumn",
         "relLoaded",
-        "bind",
+        "using",
         "update",
         "updateOptimistic",
         "delete",
@@ -528,7 +528,7 @@
       }
     },
     {
-      "id": "Query.construct",
+      "id": "Query.query",
       "for": "entity",
       "inputs": [],
       "output": "Query",
@@ -540,17 +540,17 @@
           "signature": "func() *{Entity}Query"
         },
         "php": {
-          "symbol": "clients/php/gen/{Entity}.php::Polyspec\\Orm\\Tests\\Model\\{Entity}::__construct",
-          "signature": "public function __construct(Orm\\Db|PDO|null $db=null): "
+          "symbol": "clients/php/gen/{Entity}.php::Polyspec\\Orm\\Tests\\Model\\{Entity}::query",
+          "signature": "public static function query(): static"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::new",
-          "signature": "pub fn new() -> Self"
+          "symbol": "clients/rust/gen/src/{entity}.rs::query",
+          "signature": "pub fn query() -> {Entity}"
         }
       }
     },
     {
-      "id": "Query.bind",
+      "id": "Query.using",
       "for": "entity",
       "inputs": [
         "Executor",
@@ -558,19 +558,19 @@
       ],
       "output": "Query",
       "errors": [],
-      "state": "Replace binding; preserve IR",
+      "state": "Replace execution target; preserve IR",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Bind",
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Using",
           "signature": "receiver=*{Entity}Query func(ctx context.Context, ex orm.Exec) *{Entity}Query"
         },
         "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\Q::bind",
-          "signature": "public function bind(Orm\\Db|PDO $db): static"
+          "symbol": "clients/php/src/Query.php::Orm\\Q::using",
+          "signature": "public function using(Orm\\Db|PDO $db): static"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::bind",
-          "signature": "pub fn bind(mut self, ex: &impl Exec) -> Self"
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::using",
+          "signature": "pub fn using(mut self, ex: &impl Exec) -> Self"
         }
       }
     },
@@ -753,7 +753,7 @@
       }
     },
     {
-      "id": "Row.bind",
+      "id": "Row.using",
       "for": "entity",
       "inputs": [
         "Executor",
@@ -764,16 +764,16 @@
       "state": "Preserve row identity and binding; obey row state transition contract",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.Bind",
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.Using",
           "signature": "receiver=*{Entity}Row func(ctx context.Context, ex orm.Exec) *{Entity}Row"
         },
         "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::bind",
-          "signature": "public function bind(Orm\\Db|PDO $db): static"
+          "symbol": "clients/php/src/Row.php::Orm\\Row::using",
+          "signature": "public function using(Orm\\Db|PDO $db): static"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::bind",
-          "signature": "pub fn bind(&mut self, ex: &impl Exec) -> &mut Self"
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::using",
+          "signature": "pub fn using(&mut self, ex: &impl Exec) -> &mut Self"
         }
       }
     },

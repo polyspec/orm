@@ -223,12 +223,20 @@ func GenerateInterfaces(m *schema.Manifest, lang, outDir, namespace string) erro
 			case "rust":
 				fmt.Fprintf(&b, "\npub trait %sInterface: Sized {\n", name)
 				for _, n := range sigs {
+					// Query construction is a module function in Rust, so it is
+					// not an associated trait method.
+					if !strings.Contains(n.Signature, "self") {
+						continue
+					}
 					sig := strings.TrimPrefix(n.Signature, "pub ")
 					sig = strings.Replace(sig, "(mut self", "(self", 1)
 					fmt.Fprintf(&b, "%s;\n", sig)
 				}
 				fmt.Fprintf(&b, "}\nimpl %sInterface for %s {\n", name, name)
 				for _, n := range sigs {
+					if !strings.Contains(n.Signature, "self") {
+						continue
+					}
 					sig := strings.TrimPrefix(n.Signature, "pub ")
 					start := strings.Index(sig, "fn ") + 3
 					end := strings.Index(sig[start:], "(") + start

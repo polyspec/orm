@@ -64,7 +64,7 @@ abstract class Row implements \ArrayAccess
     public static function fromRow(array $vals, array $asm, ?Rows $rows = null): static
     {
         $r = new static();
-        if ($rows?->db !== null) { $r->bind($rows->db); }
+        if ($rows?->db !== null) { $r->using($rows->db); }
         $r->vals = $vals;
         $r->idx = $asm['idx'];
         $r->hidden = $asm['hidden'] ?? [];
