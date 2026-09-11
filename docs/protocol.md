@@ -85,3 +85,7 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 - `no_cascade_delete: true`(관계 자식 옵션) → `children[].cascade = false`. `cascade`는 "대상 행이 이 행의 FK를 갖는다"(관계 left = 부모 PK, right ≠ 대상 PK)일 때만 true. 실행기의 `deleteCascade`는 cascade=true인 로드된 관계를 깊이 우선으로 지우고 자기 행을 지운다(행마다 `DELETE … WHERE pk = ?`, Db를 받으면 트랜잭션으로 감싼다). 부모 방향(one, FK가 이 행에 있음)은 절대 지우지 않는다.
 - `save`·쿼리 `update`/`delete`·`sql`은 IR 추가 없이 실행기 규칙이다(`docs/lanes/s3.md`).
 
+### 집계 확장 (S4)
+- `kind`: `count_distinct`·`min`·`max`(`agg` = 컬럼; 스타일 컬럼·json·bytes 불가). `count` + `group_by`는 **그룹 수**: `SELECT COUNT(*) FROM (SELECT 1 … GROUP BY …[ HAVING …]) AS orm_g`.
+- `having: Group`(루트 전용, `group_by` 필수): where와 같은 그룹 문법; 집계식은 `expr` 항목(`COUNT(*) > ?`)으로 쓴다. 행 select(`one/all`)와 그룹 수에 붙고 스칼라 집계에는 무시된다.
+
