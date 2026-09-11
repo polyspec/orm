@@ -1,5 +1,5 @@
-# CI (docs/checklist.md T5.8): engine tests, three clients, conformance and codec vectors against a
-# MySQL service, token parity. Bench regression gates run on a self-hosted runner (see perf job).
+# CI (docs/checklist.md T5.8): engine, the three clients, conformance and codec vectors against
+# MySQL, PostgreSQL and SQLite, the fragment analyzer, token parity and the hot-path gate.
 name: ci
 on:
   push:
@@ -40,6 +40,10 @@ jobs:
       - uses: actions/setup-go@v6
         with: { go-version: "1.27" }
       - uses: dtolnay/rust-toolchain@stable
+      # sqlx and wasmtime are most of the build; without this the job spends ~6 of its 9 minutes compiling them again
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: clients/rust -> target
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
