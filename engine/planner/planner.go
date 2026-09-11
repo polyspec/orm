@@ -712,6 +712,7 @@ func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error
 	if len(styles) == 0 {
 		ph := b.param(i)
 		b.binds[len(b.binds)-1].HostStyles = host
+		b.binds[len(b.binds)-1].ColType = timeType(col)
 		return ph, nil
 	}
 	first := true
@@ -720,11 +721,24 @@ func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error
 			first = false
 			ph := b.param(i)
 			b.binds[len(b.binds)-1].HostStyles = host
+			b.binds[len(b.binds)-1].ColType = timeType(col)
 			return ph
 		}
 		return b.secret("aes")
 	}, styles)
 	return e, nil
+}
+
+// timeType names the column's type when it is a date/time one, else "".
+func timeType(col *schema.Col) string {
+	if col == nil {
+		return ""
+	}
+	switch col.Type {
+	case "date", "time", "datetime":
+		return col.Type
+	}
+	return ""
 }
 
 func (p *Planner) resolvePath(s *scope, path string) (*scope, error) {
