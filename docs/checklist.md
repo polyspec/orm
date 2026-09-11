@@ -23,7 +23,7 @@
 - [x] D1 기존 Markdown을 직접 사용하는 VitePress 정적 사이트, 사용법·명세·구현 상태 탐색과 로컬 검색
 - [x] D2 Mermaid 원본 유지, 빌드 시 SVG 생성, JavaScript 없는 본문·언어별 예제·도표 읽기
 - [x] D3 `/orm/` 내부 링크·앵커·직접 HTML 경로·검색·모바일 검사, 반복 빌드 바이트 비교
-- [~] D4 GitHub Pages workflow 구성. 실제 배포와 공개 주소 확인 후 완료
+- [x] D4 [GitHub Pages 배포](https://github.com/polyspec/orm/actions/runs/34649137210) 성공. [공개 문서](https://polyspec.github.io/orm/)의 본문·도표·검색·404 실제 확인
 
 명령과 배포 구조: [문서 빌드와 배포](docs-development.md).
 
