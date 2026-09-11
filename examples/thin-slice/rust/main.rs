@@ -3,6 +3,7 @@
 //! stderr: p50 of the generated client vs the same SQL through sqlx directly.
 //!
 //!   clients/rust/target/release/demo bin/ormengine.wasm schema/schema.json
+//! The DSN comes from ORM_MYSQL_URL_RUST when set, else the local socket.
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -15,20 +16,28 @@ use sqlx::mysql::MySqlConnectOptions;
 
 const ITERATIONS: usize = 500;
 
+/// The test DSN: `ORM_MYSQL_URL_RUST` when set (CI), else the local socket.
+fn connect_opts() -> MySqlConnectOptions {
+    match std::env::var("ORM_MYSQL_URL_RUST") {
+        Ok(url) => url.parse().expect("ORM_MYSQL_URL_RUST is a mysql:// URL"),
+        Err(_) => MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench"),
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
     let wasm = std::fs::read(&args[1]).expect("wasm");
     let schema = std::fs::read(&args[2]).expect("schema.json");
     let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, cache_dir: None }).expect("engine"));
-    gen::init(engine.clone());
+    gen::init(engine.clone()).expect("schema hash");
 
     let last: Arc<Mutex<(String, Vec<Param>)>> = Arc::new(Mutex::new((String::new(), Vec::new())));
     let last_h = last.clone();
-    let on_query = Box::new(move |sql: &str, params: &[Param], _: std::time::Duration, _: Option<&orm::Error>| {
+    let on_query = Box::new(move |sql: &str, params: &[Param], _: std::time::Duration, _: u64, _: Option<&orm::Error>| {
         *last_h.lock().unwrap() = (sql.to_owned(), params.to_vec());
     });
-    let opts = MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench");
+    let opts = connect_opts();
     let db = Db::connect(opts, 1, engine, Config { aes_key: "bench-salt".into(), on_query: Some(on_query) }).await.expect("connect");
     let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11).unwrap().and_hms_opt(0, 0, 0).unwrap();
 
@@ -58,6 +67,8 @@ async fn main() {
     let client = s[ITERATIONS / 2];
 
     let (sql, params) = last.lock().unwrap().clone();
+    // the hook masks secret binds; the native replay needs the real key
+    let params: Vec<Param> = params.into_iter().map(|p| if p == Param::Str(orm::db::SECRET_MASK.into()) { Param::Str("bench-salt".into()) } else { p }).collect();
     let mut s = Vec::with_capacity(ITERATIONS);
     for _ in 0..ITERATIONS {
         let t = Instant::now();

@@ -7,6 +7,7 @@ use base64::Engine as _;
 use serde_json::{Map, Value};
 
 use crate::value::{Param, Val};
+use crate::codes::{CODEC_DECODE, CODEC_ENCODE, CODEC_UNSUPPORTED};
 use crate::{Error, Result};
 
 fn err(code: &str, msg: impl Into<String>) -> Error {
@@ -23,26 +24,26 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
         Val::Str(s) => s.as_bytes().to_vec(),
         Val::Bytes(b) if b.is_empty() => return Ok(Val::Null),
         Val::Bytes(b) => b.clone(),
-        other => return Err(err("CODEC_DECODE", format!("cell is {other:?}, not bytes"))),
+        other => return Err(err(CODEC_DECODE, format!("cell is {other:?}, not bytes"))),
     };
     let mut value: Option<Value> = None;
     for st in styles.iter().rev() {
         if value.is_some() {
-            return Err(err("CODEC_DECODE", format!("style {st} after a decoded value")));
+            return Err(err(CODEC_DECODE, format!("style {st} after a decoded value")));
         }
         match st.as_str() {
             "gz" => {
                 let mut out = Vec::new();
-                flate2::read::ZlibDecoder::new(cur.as_slice()).read_to_end(&mut out).map_err(|e| err("CODEC_DECODE", format!("gz: {e}")))?;
+                flate2::read::ZlibDecoder::new(cur.as_slice()).read_to_end(&mut out).map_err(|e| err(CODEC_DECODE, format!("gz: {e}")))?;
                 cur = out;
             }
             "base64" => {
                 let text = String::from_utf8_lossy(&cur);
-                cur = base64::engine::general_purpose::STANDARD.decode(text.trim()).map_err(|e| err("CODEC_DECODE", format!("base64: {e}")))?;
+                cur = base64::engine::general_purpose::STANDARD.decode(text.trim()).map_err(|e| err(CODEC_DECODE, format!("base64: {e}")))?;
             }
             "serialize" => value = Some(php_unserialize(&cur)?),
-            "json" | "jsons" => value = Some(serde_json::from_slice(&cur).map_err(|e| err("CODEC_DECODE", format!("json: {e}")))?),
-            other => return Err(err("CODEC_UNSUPPORTED", format!("style {other}"))),
+            "json" | "jsons" => value = Some(serde_json::from_slice(&cur).map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?),
+            other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
     Ok(match value {
@@ -62,7 +63,7 @@ pub fn encode(styles: &[&str], v: Option<&Value>) -> Result<Param> {
         match *st {
             "serialize" => {
                 if i != 0 {
-                    return Err(err("CODEC_UNSUPPORTED", "serialize must be the first style"));
+                    return Err(err(CODEC_UNSUPPORTED, "serialize must be the first style"));
                 }
                 let mut s = String::new();
                 php_serialize(&mut s, v)?;
@@ -70,20 +71,20 @@ pub fn encode(styles: &[&str], v: Option<&Value>) -> Result<Param> {
             }
             "json" | "jsons" => {
                 if i != 0 {
-                    return Err(err("CODEC_UNSUPPORTED", "json must be the first style"));
+                    return Err(err(CODEC_UNSUPPORTED, "json must be the first style"));
                 }
-                cur = serde_json::to_vec(v).map_err(|e| err("CODEC_ENCODE", format!("json: {e}")))?;
+                cur = serde_json::to_vec(v).map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
             }
             "base64" => cur = base64::engine::general_purpose::STANDARD.encode(&cur).into_bytes(),
             "gz" => {
                 let mut enc = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::best());
-                enc.write_all(&cur).map_err(|e| err("CODEC_ENCODE", format!("gz: {e}")))?;
-                return Ok(Param::Bytes(enc.finish().map_err(|e| err("CODEC_ENCODE", format!("gz: {e}")))?));
+                enc.write_all(&cur).map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?;
+                return Ok(Param::Bytes(enc.finish().map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?));
             }
-            other => return Err(err("CODEC_UNSUPPORTED", format!("style {other}"))),
+            other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
-    Ok(Param::Str(String::from_utf8(cur).map_err(|e| err("CODEC_ENCODE", e.to_string()))?))
+    Ok(Param::Str(String::from_utf8(cur).map_err(|e| err(CODEC_ENCODE, e.to_string()))?))
 }
 
 // ---- PHP serialize format ----
@@ -98,7 +99,7 @@ fn php_serialize(out: &mut String, v: &Value) -> Result<()> {
             } else if let Some(f) = n.as_f64() {
                 out.push_str(&format!("d:{};", php_float(f)));
             } else {
-                return Err(err("CODEC_ENCODE", format!("number {n} out of range")));
+                return Err(err(CODEC_ENCODE, format!("number {n} out of range")));
             }
         }
         Value::String(s) => out.push_str(&format!("s:{}:\"{}\";", s.len(), s)),
@@ -170,7 +171,7 @@ struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn fail(&self, msg: &str) -> Error {
-        err("CODEC_DECODE", format!("serialize: {msg} at {}", self.i))
+        err(CODEC_DECODE, format!("serialize: {msg} at {}", self.i))
     }
 
     fn expect(&mut self, c: u8) -> Result<()> {
@@ -262,7 +263,7 @@ impl<'a> Parser<'a> {
                 }
                 Ok(Value::Object(m))
             }
-            b'O' | b'C' | b'r' | b'R' => Err(err("CODEC_UNSUPPORTED", format!("serialize: objects and references are not supported ({})", t as char))),
+            b'O' | b'C' | b'r' | b'R' => Err(err(CODEC_UNSUPPORTED, format!("serialize: objects and references are not supported ({})", t as char))),
             other => Err(self.fail(&format!("unknown type {}", other as char))),
         }
     }
