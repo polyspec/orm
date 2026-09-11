@@ -1,0 +1,282 @@
+// Package schema turns the hand-written Mermaid erDiagram (docs/schema.md)
+// into the manifest the engine and generators consume.
+//
+// Only three things are added on top of standard Mermaid:
+//   - column comment strings carry attributes:  "? =0 auto onupdate bool lazy aes hex -> user.seq"
+//   - %% directives:  %% unique|index|fulltext <table> (<cols>) [name]
+//   - relationship labels may name both sides:  "fk_col (child_name / parent_name)"
+package schema
+
+import (
+	"bufio"
+	"fmt"
+	"regexp"
+	"strings"
+)
+
+// Diagram is the parsed .mmd file, before validation and name derivation.
+type Diagram struct {
+	Entities   []*DEntity
+	Relations  []*DRelation
+	Directives []*Directive
+}
+
+type DEntity struct {
+	Name    string
+	Columns []*DColumn
+	Line    int
+}
+
+type DColumn struct {
+	Type    string // raw type text, e.g. varchar(191), decimal(13_3)
+	Name    string
+	Keys    []string // PK, FK, UK
+	Comment string   // raw comment string without quotes
+	Line    int
+
+	// Parsed from Comment.
+	Nullable bool
+	Default  *string // nil = none; "now" and "null" are keywords
+	Auto     bool
+	OnUpdate bool
+	Unsigned bool
+	Bool     bool
+	Int      bool // force integer exposure for is_* tinyint
+	Lazy     bool
+	Styles   []string
+	Ref      string // "table.column" from "-> table.column"
+	Describe string // leftover words
+}
+
+type DRelation struct {
+	Parent      string
+	Child       string
+	Cardinality string // the raw "||--o{" token
+	Label       string
+	Line        int
+
+	// Parsed from Label.
+	FK         string
+	ChildName  string // override for child->parent relation name
+	ParentName string // override for parent->child relation name
+	OnDelete   string // "", cascade, setnull
+}
+
+type Directive struct {
+	Kind    string // unique, index, fulltext, timestamps, predicate
+	Table   string
+	Columns []string
+	Name    string
+	Raw     string
+	Line    int
+}
+
+type ParseError struct {
+	Line int
+	Msg  string
+}
+
+func (e *ParseError) Error() string { return fmt.Sprintf("line %d: %s", e.Line, e.Msg) }
+
+var (
+	reEntityOpen = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s*\{\s*$`)
+	// type name [keys] ["comment"]
+	reColumn = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_()\[\]]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*((?:PK|FK|UK)(?:\s*,\s*(?:PK|FK|UK))*)?\s*(?:"([^"]*)")?\s*$`)
+	// parent CARD child : label
+	reRelation = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s+([|}o]{1,2}[-.]{2}[|{o]{1,2})\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$`)
+	// %% kind table (a, b) [name]
+	reDirective = regexp.MustCompile(`^%%\s*(unique|index|fulltext|timestamps|predicate)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
+	reLabel     = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s*(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
+	reRef       = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
+)
+
+var styleWords = map[string]bool{"aes": true, "hex": true, "gz": true, "json": true, "jsons": true, "base64": true, "serialize": true, "ip": true, "yaml": true}
+
+// Parse reads one .mmd file. It accepts exactly the subset in docs/schema.md
+// and fails loudly on anything else — a schema file is not a place for guesses.
+func Parse(src string) (*Diagram, error) {
+	d := &Diagram{}
+	sc := bufio.NewScanner(strings.NewReader(src))
+	sc.Buffer(make([]byte, 1<<20), 1<<20)
+	var cur *DEntity
+	line := 0
+	seenHeader := false
+	for sc.Scan() {
+		line++
+		raw := sc.Text()
+		t := strings.TrimSpace(raw)
+		if t == "" {
+			continue
+		}
+		if strings.HasPrefix(t, "%%") {
+			if m := reDirective.FindStringSubmatch(t); m != nil {
+				dir, err := parseDirective(m, line)
+				if err != nil {
+					return nil, err
+				}
+				d.Directives = append(d.Directives, dir)
+			}
+			continue // plain comments are ignored
+		}
+		if !seenHeader {
+			if t != "erDiagram" {
+				return nil, &ParseError{line, "file must start with erDiagram"}
+			}
+			seenHeader = true
+			continue
+		}
+		if cur != nil {
+			if t == "}" {
+				cur = nil
+				continue
+			}
+			m := reColumn.FindStringSubmatch(t)
+			if m == nil {
+				return nil, &ParseError{line, fmt.Sprintf("bad column line in %s: %q", cur.Name, t)}
+			}
+			c := &DColumn{Type: m[1], Name: m[2], Comment: m[4], Line: line}
+			if m[3] != "" {
+				for _, k := range strings.Split(m[3], ",") {
+					c.Keys = append(c.Keys, strings.TrimSpace(k))
+				}
+			}
+			if err := parseColumnComment(c); err != nil {
+				return nil, &ParseError{line, err.Error()}
+			}
+			cur.Columns = append(cur.Columns, c)
+			continue
+		}
+		if m := reEntityOpen.FindStringSubmatch(t); m != nil {
+			cur = &DEntity{Name: m[1], Line: line}
+			d.Entities = append(d.Entities, cur)
+			continue
+		}
+		if m := reRelation.FindStringSubmatch(t); m != nil {
+			r := &DRelation{Parent: m[1], Cardinality: m[2], Child: m[3], Label: strings.Trim(strings.TrimSpace(m[4]), `"`), Line: line}
+			if err := parseLabel(r); err != nil {
+				return nil, &ParseError{line, err.Error()}
+			}
+			d.Relations = append(d.Relations, r)
+			continue
+		}
+		return nil, &ParseError{line, fmt.Sprintf("unrecognized line: %q", t)}
+	}
+	if cur != nil {
+		return nil, &ParseError{line, "unterminated entity " + cur.Name}
+	}
+	if !seenHeader {
+		return nil, &ParseError{0, "empty file"}
+	}
+	return d, nil
+}
+
+func parseColumnComment(c *DColumn) error {
+	words := strings.Fields(c.Comment)
+	var desc []string
+	for i := 0; i < len(words); i++ {
+		w := words[i]
+		switch {
+		case w == "?":
+			c.Nullable = true
+		case strings.HasPrefix(w, "="):
+			v := w[1:]
+			c.Default = &v
+		case w == "auto":
+			c.Auto = true
+		case w == "onupdate":
+			c.OnUpdate = true
+		case w == "unsigned":
+			c.Unsigned = true
+		case w == "bool":
+			c.Bool = true
+		case w == "int":
+			c.Int = true
+		case w == "lazy":
+			c.Lazy = true
+		case w == "->":
+			if i+1 >= len(words) || !reRef.MatchString(words[i+1]) {
+				return fmt.Errorf("column %s: '->' must be followed by table.column", c.Name)
+			}
+			c.Ref = words[i+1]
+			i++
+		case strings.Contains(w, ","):
+			// "aes,hex" — a style pipeline written compactly
+			ok := true
+			for _, s := range strings.Split(w, ",") {
+				if !styleWords[s] {
+					ok = false
+				}
+			}
+			if !ok {
+				desc = append(desc, w)
+				continue
+			}
+			c.Styles = append(c.Styles, strings.Split(w, ",")...)
+		case styleWords[w]:
+			c.Styles = append(c.Styles, w)
+		default:
+			desc = append(desc, w)
+		}
+	}
+	c.Describe = strings.Join(desc, " ")
+	if c.Bool && c.Int {
+		return fmt.Errorf("column %s: bool and int are exclusive", c.Name)
+	}
+	return nil
+}
+
+func parseLabel(r *DRelation) error {
+	if r.Label == "" {
+		return fmt.Errorf("relation %s -> %s: label must name the FK column", r.Parent, r.Child)
+	}
+	m := reLabel.FindStringSubmatch(r.Label)
+	if m == nil {
+		return fmt.Errorf("relation %s -> %s: bad label %q", r.Parent, r.Child, r.Label)
+	}
+	r.FK, r.ChildName, r.ParentName = m[1], m[2], m[3]
+	for _, w := range strings.Fields(m[4]) {
+		switch w {
+		case "cascade", "setnull":
+			r.OnDelete = w
+		default:
+			return fmt.Errorf("relation %s -> %s: unknown label word %q", r.Parent, r.Child, w)
+		}
+	}
+	return nil
+}
+
+func parseDirective(m []string, line int) (*Directive, error) {
+	d := &Directive{Kind: m[1], Table: m[2], Raw: strings.TrimSpace(m[3]), Line: line}
+	switch d.Kind {
+	case "unique", "index", "fulltext":
+		open := strings.Index(d.Raw, "(")
+		closeIdx := strings.LastIndex(d.Raw, ")")
+		if open != 0 || closeIdx < 0 {
+			return nil, &ParseError{line, fmt.Sprintf("%%%% %s %s: expected (col, …)", d.Kind, d.Table)}
+		}
+		for _, c := range strings.Split(d.Raw[1:closeIdx], ",") {
+			c = strings.TrimSpace(c)
+			if c == "" {
+				return nil, &ParseError{line, fmt.Sprintf("%%%% %s %s: empty column", d.Kind, d.Table)}
+			}
+			d.Columns = append(d.Columns, c)
+		}
+		d.Name = strings.TrimSpace(d.Raw[closeIdx+1:])
+		if d.Kind != "index" && d.Name != "" {
+			return nil, &ParseError{line, fmt.Sprintf("%%%% %s: only index takes a name", d.Kind)}
+		}
+	case "timestamps":
+		d.Columns = strings.Fields(d.Raw)
+		if len(d.Columns) != 2 {
+			return nil, &ParseError{line, "%% timestamps <table> <created> <updated>"}
+		}
+	case "predicate":
+		name, body, ok := strings.Cut(d.Raw, ":")
+		if !ok || strings.TrimSpace(name) == "" || strings.TrimSpace(body) == "" {
+			return nil, &ParseError{line, "%% predicate <table> <name> : <dsl>"}
+		}
+		d.Name = strings.TrimSpace(name)
+		d.Raw = strings.TrimSpace(body)
+	}
+	return d, nil
+}

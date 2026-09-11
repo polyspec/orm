@@ -1,0 +1,59 @@
+erDiagram
+  author {
+    bigint        seq                      PK  "auto"
+    varchar(191)  name
+    text          description                  "?"
+    datetime(6)   created_ts                   "=now"
+    datetime(6)   updated_ts                   "=now onupdate"
+    tinyint       is_close                     "=0"
+    tinyint       is_display                   "=0"
+    datetime(6)   display_start_dt             "?"
+    datetime(6)   display_end_dt               "?"
+    tinyint       is_allday                    "=0"
+    int           target_club_reader_count     "=0"
+    int           success_count                "=0"
+    int           reader_count                 "=0"
+    int           read_count                   "=0"
+    varchar(191)  photo_url                    "?"
+    bigint        user_seq                 FK
+    bigint        service_seq              FK
+    bigint        service_region_seq       FK
+    bigint        service_member_seq       FK
+    datetime(6)   start_dt
+    datetime(6)   end_dt
+    varchar(36)   uuid                     UK  "?"
+    tinyint       is_single_work               "=0"
+    int           like_count                   "=0"
+    varchar(255)  aes_hex_email                "?"
+    varchar(255)  aes_hex_phone                "?"
+  }
+  user {
+    bigint        seq   PK "auto"
+    varchar(191)  name
+  }
+  service {
+    bigint        seq   PK "auto"
+    varchar(191)  name
+  }
+  service_region {
+    bigint        seq   PK "auto"
+    bigint        service_seq FK
+    varchar(191)  name
+  }
+  service_member {
+    bigint        seq   PK "auto"
+    bigint        service_seq FK
+    bigint        user_seq    FK
+  }
+
+  user           ||--o{ author         : user_seq
+  service        ||--o{ author         : service_seq
+  service_region ||--o{ author         : service_region_seq
+  service_member ||--o{ author         : service_member_seq
+  service        ||--o{ service_region : service_seq
+  service        ||--o{ service_member : service_seq
+  user           ||--o{ service_member : user_seq
+
+  %% index author (service_region_seq, is_close, is_display, is_allday) ik
+  %% index author (service_seq, is_close) ix_service
+  %% index author (user_seq, is_close) ix_user

@@ -1,0 +1,463 @@
+{
+  "schema_hash": "cd21c76a45bcb2dd",
+  "order": [
+    "author",
+    "user",
+    "service",
+    "service_region",
+    "service_member"
+  ],
+  "entities": {
+    "author": {
+      "name": "author",
+      "table": "author",
+      "pk": [
+        "seq"
+      ],
+      "auto": "seq",
+      "columns": [
+        {
+          "name": "seq",
+          "type": "i64",
+          "raw": "bigint",
+          "auto": true,
+          "pk": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "raw": "varchar(191)",
+          "len": 191
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "raw": "text",
+          "nullable": true,
+          "lazy": true
+        },
+        {
+          "name": "created_ts",
+          "type": "datetime",
+          "raw": "datetime(6)",
+          "default": "now",
+          "precision": 6
+        },
+        {
+          "name": "updated_ts",
+          "type": "datetime",
+          "raw": "datetime(6)",
+          "default": "now",
+          "on_update": true,
+          "precision": 6
+        },
+        {
+          "name": "is_close",
+          "type": "bool",
+          "raw": "tinyint",
+          "default": "0"
+        },
+        {
+          "name": "is_display",
+          "type": "bool",
+          "raw": "tinyint",
+          "default": "0"
+        },
+        {
+          "name": "display_start_dt",
+          "type": "datetime",
+          "raw": "datetime(6)",
+          "nullable": true,
+          "precision": 6
+        },
+        {
+          "name": "display_end_dt",
+          "type": "datetime",
+          "raw": "datetime(6)",
+          "nullable": true,
+          "precision": 6
+        },
+        {
+          "name": "is_allday",
+          "type": "bool",
+          "raw": "tinyint",
+          "default": "0"
+        },
+        {
+          "name": "target_club_reader_count",
+          "type": "i32",
+          "raw": "int",
+          "default": "0"
+        },
+        {
+          "name": "success_count",
+          "type": "i32",
+          "raw": "int",
+          "default": "0"
+        },
+        {
+          "name": "reader_count",
+          "type": "i32",
+          "raw": "int",
+          "default": "0"
+        },
+        {
+          "name": "read_count",
+          "type": "i32",
+          "raw": "int",
+          "default": "0"
+        },
+        {
+          "name": "photo_url",
+          "type": "string",
+          "raw": "varchar(191)",
+          "nullable": true,
+          "len": 191
+        },
+        {
+          "name": "user_seq",
+          "type": "i64",
+          "raw": "bigint",
+          "ref": {
+            "entity": "user",
+            "column": "seq"
+          },
+          "fk": true
+        },
+        {
+          "name": "service_seq",
+          "type": "i64",
+          "raw": "bigint",
+          "ref": {
+            "entity": "service",
+            "column": "seq"
+          },
+          "fk": true
+        },
+        {
+          "name": "service_region_seq",
+          "type": "i64",
+          "raw": "bigint",
+          "ref": {
+            "entity": "service_region",
+            "column": "seq"
+          },
+          "fk": true
+        },
+        {
+          "name": "service_member_seq",
+          "type": "i64",
+          "raw": "bigint",
+          "ref": {
+            "entity": "service_member",
+            "column": "seq"
+          },
+          "fk": true
+        },
+        {
+          "name": "start_dt",
+          "type": "datetime",
+          "raw": "datetime(6)",
+          "precision": 6
+        },
+        {
+          "name": "end_dt",
+          "type": "datetime",
+          "raw": "datetime(6)",
+          "precision": 6
+        },
+        {
+          "name": "uuid",
+          "type": "string",
+          "raw": "varchar(36)",
+          "nullable": true,
+          "len": 36,
+          "uk": true
+        },
+        {
+          "name": "is_single_work",
+          "type": "bool",
+          "raw": "tinyint",
+          "default": "0"
+        },
+        {
+          "name": "like_count",
+          "type": "i32",
+          "raw": "int",
+          "default": "0"
+        },
+        {
+          "name": "aes_hex_email",
+          "type": "string",
+          "raw": "varchar(255)",
+          "nullable": true,
+          "len": 255,
+          "styles": [
+            "aes",
+            "hex"
+          ]
+        },
+        {
+          "name": "aes_hex_phone",
+          "type": "string",
+          "raw": "varchar(255)",
+          "nullable": true,
+          "len": 255,
+          "styles": [
+            "aes",
+            "hex"
+          ]
+        }
+      ],
+      "relations": {
+        "service": {
+          "name": "service",
+          "kind": "one",
+          "target": "service",
+          "left": "service_seq",
+          "right": "seq"
+        },
+        "service_member": {
+          "name": "service_member",
+          "kind": "one",
+          "target": "service_member",
+          "left": "service_member_seq",
+          "right": "seq"
+        },
+        "service_region": {
+          "name": "service_region",
+          "kind": "one",
+          "target": "service_region",
+          "left": "service_region_seq",
+          "right": "seq"
+        },
+        "user": {
+          "name": "user",
+          "kind": "one",
+          "target": "user",
+          "left": "user_seq",
+          "right": "seq"
+        }
+      },
+      "unique": [
+        [
+          "uuid"
+        ]
+      ],
+      "indexes": {
+        "ik": [
+          "service_region_seq",
+          "is_close",
+          "is_display",
+          "is_allday"
+        ],
+        "ix_service": [
+          "service_seq",
+          "is_close"
+        ],
+        "ix_user": [
+          "user_seq",
+          "is_close"
+        ]
+      },
+      "timestamps": {
+        "created": "created_ts",
+        "updated": "updated_ts"
+      }
+    },
+    "service": {
+      "name": "service",
+      "table": "service",
+      "pk": [
+        "seq"
+      ],
+      "auto": "seq",
+      "columns": [
+        {
+          "name": "seq",
+          "type": "i64",
+          "raw": "bigint",
+          "auto": true,
+          "pk": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "raw": "varchar(191)",
+          "len": 191
+        }
+      ],
+      "relations": {
+        "authors": {
+          "name": "authors",
+          "kind": "many",
+          "target": "author",
+          "left": "seq",
+          "right": "service_seq"
+        },
+        "members": {
+          "name": "members",
+          "kind": "many",
+          "target": "service_member",
+          "left": "seq",
+          "right": "service_seq"
+        },
+        "modules": {
+          "name": "modules",
+          "kind": "many",
+          "target": "service_region",
+          "left": "seq",
+          "right": "service_seq"
+        }
+      }
+    },
+    "service_member": {
+      "name": "service_member",
+      "table": "service_member",
+      "pk": [
+        "seq"
+      ],
+      "auto": "seq",
+      "columns": [
+        {
+          "name": "seq",
+          "type": "i64",
+          "raw": "bigint",
+          "auto": true,
+          "pk": true
+        },
+        {
+          "name": "service_seq",
+          "type": "i64",
+          "raw": "bigint",
+          "ref": {
+            "entity": "service",
+            "column": "seq"
+          },
+          "fk": true
+        },
+        {
+          "name": "user_seq",
+          "type": "i64",
+          "raw": "bigint",
+          "ref": {
+            "entity": "user",
+            "column": "seq"
+          },
+          "fk": true
+        }
+      ],
+      "relations": {
+        "authors": {
+          "name": "authors",
+          "kind": "many",
+          "target": "author",
+          "left": "seq",
+          "right": "service_member_seq"
+        },
+        "service": {
+          "name": "service",
+          "kind": "one",
+          "target": "service",
+          "left": "service_seq",
+          "right": "seq"
+        },
+        "user": {
+          "name": "user",
+          "kind": "one",
+          "target": "user",
+          "left": "user_seq",
+          "right": "seq"
+        }
+      }
+    },
+    "service_region": {
+      "name": "service_region",
+      "table": "service_region",
+      "pk": [
+        "seq"
+      ],
+      "auto": "seq",
+      "columns": [
+        {
+          "name": "seq",
+          "type": "i64",
+          "raw": "bigint",
+          "auto": true,
+          "pk": true
+        },
+        {
+          "name": "service_seq",
+          "type": "i64",
+          "raw": "bigint",
+          "ref": {
+            "entity": "service",
+            "column": "seq"
+          },
+          "fk": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "raw": "varchar(191)",
+          "len": 191
+        }
+      ],
+      "relations": {
+        "authors": {
+          "name": "authors",
+          "kind": "many",
+          "target": "author",
+          "left": "seq",
+          "right": "service_region_seq"
+        },
+        "service": {
+          "name": "service",
+          "kind": "one",
+          "target": "service",
+          "left": "service_seq",
+          "right": "seq"
+        }
+      }
+    },
+    "user": {
+      "name": "user",
+      "table": "user",
+      "pk": [
+        "seq"
+      ],
+      "auto": "seq",
+      "columns": [
+        {
+          "name": "seq",
+          "type": "i64",
+          "raw": "bigint",
+          "auto": true,
+          "pk": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "raw": "varchar(191)",
+          "len": 191
+        }
+      ],
+      "relations": {
+        "authors": {
+          "name": "authors",
+          "kind": "many",
+          "target": "author",
+          "left": "seq",
+          "right": "user_seq"
+        },
+        "service_members": {
+          "name": "service_members",
+          "kind": "many",
+          "target": "service_member",
+          "left": "seq",
+          "right": "user_seq"
+        }
+      }
+    }
+  }
+}
