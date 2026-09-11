@@ -8,7 +8,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/maxkwon/orm/clients/go/gen"
+	"github.com/polyspec/orm/clients/go/gen"
 )
 
 func BenchmarkClientPKGet(b *testing.B) {

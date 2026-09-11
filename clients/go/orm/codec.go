@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/maxkwon/orm/engine/ir"
-	"github.com/maxkwon/orm/engine/plan"
+	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/engine/plan"
 )
 
 func codecErr(code, format string, a ...any) error {

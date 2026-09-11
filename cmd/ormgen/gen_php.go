@@ -9,7 +9,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/maxkwon/orm/engine/schema"
+	"github.com/polyspec/orm/engine/schema"
 )
 
 // PHP generator: one file per entity in namespace App\Orm (configurable later),

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/maxkwon/orm/engine/schema"
+	"github.com/polyspec/orm/engine/schema"
 )
 
 // Rust generator: crate `gen` (clients/rust/gen) with one module per entity,

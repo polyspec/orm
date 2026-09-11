@@ -14,7 +14,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/maxkwon/orm/engine/schema"
+	"github.com/polyspec/orm/engine/schema"
 )
 
 // vocabulary is every token the generators emit, in canonical form.

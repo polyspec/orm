@@ -14,7 +14,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/maxkwon/orm/engine/schema"
+	"github.com/polyspec/orm/engine/schema"
 )
 
 type checkFamily struct {

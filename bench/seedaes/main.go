@@ -16,7 +16,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
 
-	"github.com/maxkwon/orm/clients/go/orm"
+	"github.com/polyspec/orm/clients/go/orm"
 )
 
 func main() {

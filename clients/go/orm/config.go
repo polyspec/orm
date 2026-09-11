@@ -9,9 +9,9 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/go-sql-driver/mysql"
 
-	"github.com/maxkwon/orm/engine"
-	"github.com/maxkwon/orm/engine/ir"
-	"github.com/maxkwon/orm/engine/schema"
+	"github.com/polyspec/orm/engine"
+	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/engine/schema"
 )
 
 // FileConfig is orm.toml (docs/config.md): one declared configuration shared

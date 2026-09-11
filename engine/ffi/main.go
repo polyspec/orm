@@ -19,7 +19,7 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/maxkwon/orm/engine"
+	"github.com/polyspec/orm/engine"
 )
 
 func init() {

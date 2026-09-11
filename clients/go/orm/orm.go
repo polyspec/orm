@@ -20,9 +20,9 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	sqlite "modernc.org/sqlite"
 
-	"github.com/maxkwon/orm/engine"
-	"github.com/maxkwon/orm/engine/ir"
-	"github.com/maxkwon/orm/engine/plan"
+	"github.com/polyspec/orm/engine"
+	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/engine/plan"
 )
 
 // Config is the executor configuration. Paths and secrets are declared, never discovered.

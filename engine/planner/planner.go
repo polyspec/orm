@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/maxkwon/orm/engine/dialect"
-	"github.com/maxkwon/orm/engine/ir"
-	"github.com/maxkwon/orm/engine/plan"
-	"github.com/maxkwon/orm/engine/schema"
+	"github.com/polyspec/orm/engine/dialect"
+	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/engine/plan"
+	"github.com/polyspec/orm/engine/schema"
 )
 
 type Planner struct {
