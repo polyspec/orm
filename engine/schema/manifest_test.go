@@ -71,7 +71,7 @@ func TestBuildExample(t *testing.T) {
 	if len(b.Unique) != 2 || b.Indexes["ik"][1] != "is_close" || b.Fulltext[0][1] != "description" {
 		t.Errorf("unique/index/fulltext: %+v %+v %+v", b.Unique, b.Indexes, b.Fulltext)
 	}
-	if b.Timestamps.Created != "created_ts" || b.Timestamps.Updated != "updated_ts" || b.Predicates["display"] == nil || b.Predicates["display"].Expr != "`is_display` = 1" || b.Predicates["display"].Arity != 0 {
+	if b.Timestamps.Created != "created_ts" || b.Timestamps.Updated != "updated_ts" || b.Predicates["display"] == nil || b.Predicates["display"].Expr != "`seq` > 0" || b.Predicates["display"].Arity != 0 {
 		t.Errorf("timestamps/predicates: %+v %+v", b.Timestamps, b.Predicates)
 	}
 	if len(m.SchemaHash) != 16 {
