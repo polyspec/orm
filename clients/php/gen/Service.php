@@ -163,10 +163,10 @@ final class Service extends Q implements ServiceInterface
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new ServiceWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new ServiceWhere($this->w())); return $this; }
-    public function relation(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, 'one'), $child); return $this; }
-    public function relations(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, 'many'), $child); return $this; }
-    public function join(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, null), 'inner', $child); return $this; }
-    public function leftJoin(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, null), 'left', $child); return $this; }
+    public function relation(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { $child->compatMatch($m[0], $m[1], null); } return $this->compatRelation($child, false, null, null, 'relation'); }
+    public function relations(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { $child->compatMatch($m[0], $m[1], null); } return $this->compatRelation($child, true, null, null, 'relations'); }
+    public function join(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { return $this->compatJoin($child, null, false, $m[0], $m[1], 'join'); } $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
+    public function leftJoin(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { return $this->compatJoin($child, null, true, $m[0], $m[1], 'leftJoin'); } $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
 
 
 
