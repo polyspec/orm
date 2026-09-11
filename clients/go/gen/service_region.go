@@ -84,6 +84,31 @@ func (r *ServiceRegionRow) Delete(ctx context.Context, ex orm.Exec) error {
 	return r.DeleteRow(ctx, ex)
 }
 
+// DeleteCascade deletes the loaded relations this row owns (the assemble's
+// cascade children, in load order, each row through its own DeleteCascade)
+// and then this row. A bare DB runs the whole walk in one transaction.
+func (r *ServiceRegionRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
+	return orm.InTx(ctx, ex, func(ex orm.Exec) error {
+		for _, rel := range r.Cascades() {
+			switch rel {
+			case "authors":
+				for _, child := range r.GetAuthors().All() {
+					if err := child.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			case "service":
+				if r.Service != nil {
+					if err := r.Service.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return r.DeleteRow(ctx, ex)
+	})
+}
+
 // scanServiceRegion maps a positional row slice onto the struct, its joined
 // children (same row) and its relation children (rows of later steps).
 func scanServiceRegion(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRegionRow {
@@ -713,6 +738,7 @@ func (q *ServiceRegion) Distinct() *ServiceRegion { q.q.Node.Distinct = true; re
 func (q *ServiceRegion) Flatten() *ServiceRegion                { q.q.Node.Flatten = true; return q }
 func (q *ServiceRegion) LimitPerParent(n int) *ServiceRegion    { q.q.Node.LimitPerParent = n; return q }
 func (q *ServiceRegion) DropChildKey() *ServiceRegion           { q.q.Node.DropChildKey = true; return q }
+func (q *ServiceRegion) NoCascadeDelete() *ServiceRegion        { q.q.Node.NoCascadeDelete = true; return q }
 func (q *ServiceRegion) IfParentSeqEq(v int64) *ServiceRegion   { q.q.IfParent("seq", v); return q }
 func (q *ServiceRegion) IfParentNameEq(v string) *ServiceRegion { q.q.IfParent("name", v); return q }
 func (q *ServiceRegion) IfParentIsCloseEq(v bool) *ServiceRegion {
@@ -781,7 +807,12 @@ func (q *ServiceRegion) IfParentAesHexPhoneEq(v string) *ServiceRegion {
 	return q
 }
 
-// Insert draft.
+// Insert draft. The auto PK is settable too: Save takes it as the update key.
+func (q *ServiceRegion) SetSeq(v int64) *ServiceRegion { q.q.Set("seq", v); return q }
+func (q *ServiceRegion) SetSeqExpr(frag string, binds ...any) *ServiceRegion {
+	q.q.SetExpr("seq", frag, binds...)
+	return q
+}
 func (q *ServiceRegion) SetServiceSeq(v int64) *ServiceRegion { q.q.Set("service_seq", v); return q }
 func (q *ServiceRegion) SetServiceSeqExpr(frag string, binds ...any) *ServiceRegion {
 	q.q.SetExpr("service_seq", frag, binds...)
@@ -797,6 +828,36 @@ func (q *ServiceRegion) MinusSeq(v int64) *ServiceRegion       { q.q.Minus("seq"
 func (q *ServiceRegion) PlusServiceSeq(v int64) *ServiceRegion { q.q.Plus("service_seq", v); return q }
 func (q *ServiceRegion) MinusServiceSeq(v int64) *ServiceRegion {
 	q.q.Minus("service_seq", v)
+	return q
+}
+
+// ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
+func (q *ServiceRegion) OnDuplicateSetServiceSeq(v int64) *ServiceRegion {
+	q.q.OnDuplicate("service_seq", v)
+	return q
+}
+func (q *ServiceRegion) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *ServiceRegion {
+	q.q.OnDuplicateExpr("service_seq", frag, binds...)
+	return q
+}
+func (q *ServiceRegion) OnDuplicateSetName(v string) *ServiceRegion {
+	q.q.OnDuplicate("name", v)
+	return q
+}
+func (q *ServiceRegion) OnDuplicateSetNameExpr(frag string, binds ...any) *ServiceRegion {
+	q.q.OnDuplicateExpr("name", frag, binds...)
+	return q
+}
+func (q *ServiceRegion) OnDuplicatePlusServiceSeq(v int64) *ServiceRegion {
+	q.q.OnDuplicatePlus("service_seq", v)
+	return q
+}
+func (q *ServiceRegion) OnDuplicateMinusServiceSeq(v int64) *ServiceRegion {
+	q.q.OnDuplicateMinus("service_seq", v)
+	return q
+}
+func (q *ServiceRegion) OnDuplicateSetAll() *ServiceRegion {
+	q.q.OnDuplicateSetAll("seq", "seq")
 	return q
 }
 
@@ -883,6 +944,40 @@ func (q *ServiceRegion) Insert(ctx context.Context, ex orm.Exec) (*ServiceRegion
 		return nil, err
 	}
 	return NewServiceRegion().SeqEq(int64(id)).One(ctx, ex)
+}
+
+// Save updates the other assigned columns when SetSeq was called (and
+// returns the re-read row); otherwise it inserts like Insert.
+func (q *ServiceRegion) Save(ctx context.Context, ex orm.Exec) (*ServiceRegionRow, error) {
+	pk, ok := q.q.MovePKToWhere("seq")
+	if !ok {
+		return q.Insert(ctx, ex)
+	}
+	q.q.Req.IR.Kind = "update"
+	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
+		return nil, err
+	}
+	return NewServiceRegion().SeqEq(pk.(int64)).One(ctx, ex)
+}
+
+// Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
+func (q *ServiceRegion) Update(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "update"
+	_, affected, err := orm.Write(ctx, ex, q.q.Req)
+	return affected, err
+}
+
+// Delete removes every row the WHERE matches (the engine rejects a missing WHERE).
+func (q *ServiceRegion) Delete(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "delete"
+	_, affected, err := orm.Write(ctx, ex, q.q.Req)
+	return affected, err
+}
+
+// SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
+func (q *ServiceRegion) SQL(ctx context.Context, ex orm.Exec) (*orm.Statement, error) {
+	q.q.Req.IR.Kind = "all"
+	return orm.SQL(ctx, ex, q.q.Req)
 }
 
 func (q *ServiceRegion) OneBySeq(ctx context.Context, ex orm.Exec, v int64) (*ServiceRegionRow, error) {
