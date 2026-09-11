@@ -1535,6 +1535,24 @@ impl Author {
         };
         self.q.join(rel, kind, c); self
     }
+
+
+    pub fn join_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "inner", &child.as_ref().q); self }
+    pub fn left_join_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "left", &child.as_ref().q); self }
+    pub fn relation_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.relation("service", &child.as_ref().q); self }
+
+    pub fn join_service_member_seq_with_seq(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.join("service_member", "inner", &child.as_ref().q); self }
+    pub fn left_join_service_member_seq_with_seq(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.join("service_member", "left", &child.as_ref().q); self }
+    pub fn relation_service_member_seq_with_seq(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.relation("service_member", &child.as_ref().q); self }
+
+    pub fn join_service_region_seq_with_seq(mut self, child: impl AsRef<super::service_region::ServiceRegion>) -> Self { self.q.join("service_region", "inner", &child.as_ref().q); self }
+    pub fn left_join_service_region_seq_with_seq(mut self, child: impl AsRef<super::service_region::ServiceRegion>) -> Self { self.q.join("service_region", "left", &child.as_ref().q); self }
+    pub fn relation_service_region_seq_with_seq(mut self, child: impl AsRef<super::service_region::ServiceRegion>) -> Self { self.q.relation("service_region", &child.as_ref().q); self }
+
+    pub fn join_user_seq_with_seq(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.join("user", "inner", &child.as_ref().q); self }
+    pub fn left_join_user_seq_with_seq(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.join("user", "left", &child.as_ref().q); self }
+    pub fn relation_user_seq_with_seq(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.relation("user", &child.as_ref().q); self }
+
     // ---- columns ----
     pub fn select_all(mut self) -> Self { self.q.columns().mode = "all".into(); self }
     pub fn select_none(mut self) -> Self { self.q.columns().mode = "none".into(); self }

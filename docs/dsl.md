@@ -234,6 +234,8 @@ service.using(&db).delete().await?;
 
 PHP의 `X::query()->using($db)`가 쿼리 생성과 실행 대상 지정을 분리한다. 생성 메서드와 동적 호환 메서드 모두 이미 지정된 실행 대상을 사용하고 터미널에는 값만 넘긴다.
 
+관계는 모든 언어에서 `relation(Target)`, `relations(Target)`, `join(Target)`, `leftJoin(Target)`을 사용한다. manifest가 관계 쌍을 하나로 결정할 수 있을 때는 `relationAKeyWithBKey(Target)` 같은 생성형 단축 메서드도 제공하며, 이 단축형과 일반형은 같은 IR을 생성한다. `relationUser`처럼 대상 이름만 붙인 메서드는 생성하지 않는다.
+
 이름 해석: camel 토큰(`IsClose` → `Is`,`Close`)을 엔티티의 `columns()` 표에서 **최장 일치**로 컬럼에 맞춘다. 이름 안의 `And`/`Or`는 연결자, 괄호는 그룹. 모르는 컬럼 → `COLUMN_UNKNOWN`(후보 컬럼 목록 포함); op 단어로도 컬럼으로도 읽히면(`InStock` = 컬럼 `in_stock` 또는 `In`+`stock`) → `COLUMN_UNKNOWN`(두 해석 명시). 값은 그대로 바인드된다(`andIsClose(0)`은 `isClose(false)`와 같은 SQL·결과, 파라미터 타입만 다르다).
 
 ### 번역표
