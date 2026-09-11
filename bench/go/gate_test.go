@@ -20,13 +20,15 @@ import (
 	"github.com/polyspec/orm/engine/schema"
 )
 
-// Bounds are the ratios measured here plus headroom for a loaded CI box. One row
-// is dominated by the per-statement fixed cost (§6b), 100 rows by row mapping.
-// The PK bound is below 1 because the generated client currently beats this
-// package's hand-written helper (which rebuilds its scan targets per call): the
-// gate's job is to notice when that stops being true.
+// The gate is a ratio, so it travels between machines — but only the client's
+// share of the time does. Over a unix socket the fixed cost is a large part of a
+// PK read and the ratio sits near 0.5 (the client beats this package's helper,
+// which rebuilds its scan targets per call); over TCP (CI) the round trip
+// dominates and every ratio converges toward 1. The bounds are therefore set
+// where a real regression shows in both: a client that costs a third more than
+// the same statement by hand.
 const (
-	pkBound   = 0.90
+	pkBound   = 1.35
 	listBound = 1.25
 	gateIters = 300
 )
