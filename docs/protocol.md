@@ -68,6 +68,7 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 - `limit_per_parent n`: `SELECT <출력 컬럼> FROM (… , ROW_NUMBER() OVER (PARTITION BY right ORDER BY …) AS orm_rn …) AS orm_w WHERE orm_w.orm_rn <= n ORDER BY orm_w.right, orm_w.orm_rn`. 출력 컬럼 순서는 window 없는 경우와 같다.
 - `flatten`(one 전용): 배열/JSON 형태(PHP `toArray`/`['x']`, Go/Rust의 배열 변환)에서 자식 컬럼을 부모에 병합한다. 부모에 같은 이름이 있으면 부모가 이긴다. typed 접근자(`GetUser()`/`user()`)는 그대로 있다.
 - `drop_child_key`: 자식의 매치 컬럼이 `columns[].hidden = true`. 바인딩·키에는 쓰이고 배열/JSON 형태에서만 빠진다.
+- `columns[].styles`(실행기 코덱 단계, 쓰기 순서): 실행기는 행을 읽은 직후 역순으로 디코드한다(`docs/codec.md`). `aes`/`hex`/`ip`는 여기 오지 않는다(SQL 식으로 이미 처리). MySQL `JSON` 타입 컬럼은 드라이버가 파싱해 주기도 하므로 `json` 단일 스타일은 파싱된 값을 그대로 받아들인다.
 - `key_by`는 many 전용, `flatten`은 one 전용, `if_parent.column`은 **부모** 엔티티의 컬럼(`COLUMN_UNKNOWN`) — 위반은 `IR_INVALID`.
 
 ## 3. 에러

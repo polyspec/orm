@@ -26,6 +26,12 @@ erDiagram
     int           like_count                   "=0"
     varchar(255)  aes_hex_email                "?"
     varchar(255)  aes_hex_phone                "?"
+    varbinary(16) ip                           "?"
+    blob          gz_extend                    "?"
+    json          json_setting                 "?"
+    text          jsons_tags                   "?"
+    text          base64_extra                 "?"
+    text          serialize_data               "?"
   }
   user {
     bigint        seq   PK "auto"
