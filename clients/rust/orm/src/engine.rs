@@ -149,6 +149,6 @@ fn engine_error(body: &[u8]) -> Error {
     }
     match serde_json::from_slice::<Env>(body) {
         Ok(e) => Error::Engine { code: e.error.code, msg: e.error.msg },
-        Err(_) => Error::Engine { code: "INTERNAL".into(), msg: String::from_utf8_lossy(body).into_owned() },
+        Err(_) => Error::internal(String::from_utf8_lossy(body).into_owned()),
     }
 }
