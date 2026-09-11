@@ -394,7 +394,8 @@ pub fn engine() -> Arc<orm::Engine> {
     ENGINE.get().expect("gen::init(engine) must be called first").clone()
 }
 
-pub(crate) fn schema_hash() -> &'static str {
+/// The manifest hash this crate was generated from (the untyped Q::new needs it).
+pub fn schema_hash() -> &'static str {
     &ENGINE.get().expect("gen::init(engine) must be called first").schema_hash
 }
 `

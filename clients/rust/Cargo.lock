@@ -1365,6 +1365,7 @@ dependencies = [
  "chrono",
  "gen",
  "orm",
+ "serde_json",
  "sqlx",
  "tokio",
 ]
