@@ -208,6 +208,16 @@ final class ServiceRegion extends Q implements ServiceRegionInterface
     public function relations(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'many'), $child); return $this; }
     public function join(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
     public function leftJoin(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
+
+
+    public function joinSeqWithServiceRegionSeq(Author $child): static { $this->attachJoin('authors', 'inner', $child); return $this; }
+    public function leftJoinSeqWithServiceRegionSeq(Author $child): static { $this->attachJoin('authors', 'left', $child); return $this; }
+    public function relationsSeqWithServiceRegionSeq(Author $child): static { $this->attachRelation('authors', $child); return $this; }
+
+    public function joinServiceSeqWithSeq(Service $child): static { $this->attachJoin('service', 'inner', $child); return $this; }
+    public function leftJoinServiceSeqWithSeq(Service $child): static { $this->attachJoin('service', 'left', $child); return $this; }
+    public function relationServiceSeqWithSeq(Service $child): static { $this->attachRelation('service', $child); return $this; }
+
     // ---- columns ----
     public function selectAll(): static { $this->colMode('all'); return $this; }
     public function selectNone(): static { $this->colMode('none'); return $this; }

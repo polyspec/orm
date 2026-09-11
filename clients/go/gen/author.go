@@ -4064,6 +4064,58 @@ func (q *AuthorQuery) joinTarget(child any, kind string) *AuthorQuery {
 	return q
 }
 
+func (q *AuthorQuery) JoinServiceSeqWithSeq(child *ServiceQuery) *AuthorQuery {
+	q.q.Join("service", "inner", child.q)
+	return q
+}
+func (q *AuthorQuery) LeftJoinServiceSeqWithSeq(child *ServiceQuery) *AuthorQuery {
+	q.q.Join("service", "left", child.q)
+	return q
+}
+func (q *AuthorQuery) RelationServiceSeqWithSeq(child *ServiceQuery) *AuthorQuery {
+	q.q.Relation("service", child.q)
+	return q
+}
+
+func (q *AuthorQuery) JoinServiceMemberSeqWithSeq(child *ServiceMemberQuery) *AuthorQuery {
+	q.q.Join("service_member", "inner", child.q)
+	return q
+}
+func (q *AuthorQuery) LeftJoinServiceMemberSeqWithSeq(child *ServiceMemberQuery) *AuthorQuery {
+	q.q.Join("service_member", "left", child.q)
+	return q
+}
+func (q *AuthorQuery) RelationServiceMemberSeqWithSeq(child *ServiceMemberQuery) *AuthorQuery {
+	q.q.Relation("service_member", child.q)
+	return q
+}
+
+func (q *AuthorQuery) JoinServiceRegionSeqWithSeq(child *ServiceRegionQuery) *AuthorQuery {
+	q.q.Join("service_region", "inner", child.q)
+	return q
+}
+func (q *AuthorQuery) LeftJoinServiceRegionSeqWithSeq(child *ServiceRegionQuery) *AuthorQuery {
+	q.q.Join("service_region", "left", child.q)
+	return q
+}
+func (q *AuthorQuery) RelationServiceRegionSeqWithSeq(child *ServiceRegionQuery) *AuthorQuery {
+	q.q.Relation("service_region", child.q)
+	return q
+}
+
+func (q *AuthorQuery) JoinUserSeqWithSeq(child *UserQuery) *AuthorQuery {
+	q.q.Join("user", "inner", child.q)
+	return q
+}
+func (q *AuthorQuery) LeftJoinUserSeqWithSeq(child *UserQuery) *AuthorQuery {
+	q.q.Join("user", "left", child.q)
+	return q
+}
+func (q *AuthorQuery) RelationUserSeqWithSeq(child *UserQuery) *AuthorQuery {
+	q.q.Relation("user", child.q)
+	return q
+}
+
 // Columns.
 func (q *AuthorQuery) SelectAll() *AuthorQuery  { q.q.Columns().Mode = "all"; return q }
 func (q *AuthorQuery) SelectNone() *AuthorQuery { q.q.Columns().Mode = "none"; return q }

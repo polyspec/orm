@@ -98,6 +98,8 @@ type rustFinder struct {
 
 type rustRel struct {
 	Name, Ident, Target, TargetType, Kind string
+	Left, Right                           string
+	Pair                                  bool
 }
 
 // rustPred is a manifest predicate: `visible()` / `started_after(a0)`, one argument per `?`.
@@ -580,6 +582,18 @@ impl {{.Type}} {
         };
         self.q.join(rel, kind, c); self
     }
+{{range .Rels}}
+{{if .Pair}}
+    pub fn join_{{ident .Left}}_with_{{ident .Right}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.join("{{.Name}}", "inner", &child.as_ref().q); self }
+    pub fn left_join_{{ident .Left}}_with_{{ident .Right}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.join("{{.Name}}", "left", &child.as_ref().q); self }
+{{- if eq .Kind "one"}}
+    pub fn relation_{{ident .Left}}_with_{{ident .Right}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.relation("{{.Name}}", &child.as_ref().q); self }
+{{- else}}
+    pub fn relations_{{ident .Left}}_with_{{ident .Right}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.relation("{{.Name}}", &child.as_ref().q); self }
+{{- end}}
+{{- end}}
+{{- end}}
+
     // ---- columns ----
     pub fn select_all(mut self) -> Self { self.q.columns().mode = "all".into(); self }
     pub fn select_none(mut self) -> Self { self.q.columns().mode = "none".into(); self }
@@ -913,8 +927,12 @@ func genRust(m *schema.Manifest, outDir string) error {
 			col := e.Column(c.Name)
 			d.Numeric = append(d.Numeric, rustCol{goCol: c, RType: rustType(col), Ident: rustIdent(c.Name)})
 		}
+		pairs := map[string]int{}
 		for _, r := range ge.Rels {
-			d.Rels = append(d.Rels, rustRel{Name: r.Name, Ident: rustIdent(r.Name), Target: r.Target, TargetType: r.TargetType, Kind: r.Kind})
+			pairs[r.Left+"\x1f"+r.Right]++
+		}
+		for _, r := range ge.Rels {
+			d.Rels = append(d.Rels, rustRel{Name: r.Name, Ident: rustIdent(r.Name), Target: r.Target, TargetType: r.TargetType, Kind: r.Kind, Left: r.Left, Right: r.Right, Pair: pairs[r.Left+"\x1f"+r.Right] == 1})
 		}
 		var buf bytes.Buffer
 		if err := rustTmpl.Execute(&buf, d); err != nil {
