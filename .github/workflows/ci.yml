@@ -94,6 +94,8 @@ jobs:
           go test ./clients/go/orm -run TestCodec
           (cd clients/rust && cargo test --release -p orm codec)
           php tests/codec/check.php
+      - name: fragment analyzer (go)
+        run: go run ./cmd/ormgen check --lang go --schema schema/schema.json clients/go tests/conformance examples bench
       - name: token parity
         run: |
           # the conformance runners are the parity contract; integration tests may differ in coverage per language
