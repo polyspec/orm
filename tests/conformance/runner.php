@@ -12,6 +12,7 @@ use Polyspec\Orm\Tests\Model\AuthorWhere;
 use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Tests\Model\ServiceMember;
 use Polyspec\Orm\Tests\Model\ServiceMemberRow;
+use Polyspec\Orm\Tests\Model\ServiceRegion;
 use Polyspec\Orm\Tests\Model\ServiceWhere;
 use Polyspec\Orm\Tests\Model\User;
 use Polyspec\Orm\Tests\Model\UserWhere;
@@ -167,6 +168,54 @@ $run('expr_where', fn() => (new Author)->serviceSeqEq(7)->expr('DAYOFMONTH(`star
 $run('select_expr', function () use ($db) {
     $b = (new Author)->selectExpr('tag', "CONCAT(`name`, '!')")->seqEq(42)->one($db);
     return ['seq' => $b->getSeq(), 'tag' => $b['tag']];
+});
+$run('relation_four_levels', fn() => (new Author)->selectNone()->seqEq(7)
+    ->relationService((new Service)
+        ->relationsMembers((new ServiceMember)->orderBySeqAsc()->limitPerParent(2)
+            ->relationUser((new User)
+                ->relationsAuthors((new Author)->selectNone()->orderBySeqAsc()->limitPerParent(1)))))
+    ->one($db)->toArray());
+$run('relation_one_ordered', fn() => (new Author)->selectNone()->seqEq(7)->relationService((new Service)->orderBySeqDesc())->one($db)->toArray());
+$run('relation_if_parent', function () use ($db) {
+    $items = [];
+    foreach ((new Author)->selectNone()->seqIn([7, 8, 14])->orderBySeqAsc()->relationUser((new User)->ifParentIsCloseEq(true))->all($db) as $b) {
+        $items[] = $b->toArray();
+    }
+    return $items;
+});
+$run('relation_empty_parents', fn() => $keys((new Author)->seqEq(0)->relationUser(new User)->all($db)));
+$run('relation_off_join', fn() => (new Author)->selectNone()->seqEq(8)->joinService((new Service)->relationsModules(new ServiceRegion))->one($db)->toArray());
+$run('paginate_relations', function () use ($db) {
+    $p = (new Author)->selectNone()->serviceSeqEq(7)->orderBySeqAsc()->relationUser(new User)->paginate($db, 1, 3);
+    $items = [];
+    foreach ($p->items as $b) {
+        $items[] = $b->toArray();
+    }
+    return ['total' => $p->total, 'items' => $items];
+});
+$run('key_by_column', fn() => (new Service)->seqEq(7)->relationsMembers((new ServiceMember)->orderBySeqAsc()->limitPerParent(3)->keyByUserSeq())->one($db)->toArray());
+$run('key_by_unselected', fn() => (new Service)->seqEq(7)->relationsModules((new ServiceRegion)->selectNone()->keyByName())->one($db)->toArray());
+$run('types_roundtrip', function () use ($db, &$log, &$maskSeq, &$maskTs) {
+    $dt = '2026-06-01 12:34:56.123456';
+    $created = $db->transaction(fn(Tx $tx) => (new Author)
+        ->setName('conf-types')
+        ->setUserSeq(1)->setServiceSeq(999)->setServiceRegionSeq(1)->setServiceMemberSeq(1)
+        ->setStartDt($dt)->setEndDt($dt)->setDisplayStartDt($dt)->setIsDisplay(true)->setTargetClubReaderCount(2147483647)->setReadCount(4294967295)->setPrice(12345.678)
+        ->setJsonSetting(['k' => []])->setJsonsTags([])->setSerializeData('')
+        ->insert($tx));
+    $maskSeq = $created->getSeq();
+    $maskTs = $created->getUpdatedTs();
+    foreach ($log as &$st) {
+        $st['binds'] = array_map('norm', $st['binds']);
+    }
+    unset($st);
+    $b = (new Author)->selectJsonSetting()->selectJsonsTags()->selectSerializeData()->seqEq($created->getSeq())->one($db);
+    $b->delete($db);
+    return [
+        'display_start_dt' => fmtTime($b->getDisplayStartDt()), 'is_display' => $b->getIsDisplay(), 'is_close' => $b->getIsClose(),
+        'target_club_reader_count' => $b->getTargetClubReaderCount(), 'read_count' => $b->getReadCount(), 'price' => $b->getPrice(),
+        'json_setting' => $b->getJsonSetting(), 'jsons_tags' => $b->getJsonsTags(), 'serialize_data' => $b->getSerializeData(),
+    ];
 });
 $run('key_by_fn_to_array', function () use ($db) {
     $c = (new ServiceMember)->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 2)

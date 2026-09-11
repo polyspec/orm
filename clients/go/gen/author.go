@@ -29,7 +29,7 @@ type AuthorRow struct {
 	TargetClubReaderCount int32
 	SuccessCount          int32
 	ReaderCount           int32
-	ReadCount             int32
+	ReadCount             int64
 	PhotoUrl              *string
 	UserSeq               int64
 	ServiceSeq            int64
@@ -42,6 +42,7 @@ type AuthorRow struct {
 	LikeCount             int32
 	AesHexEmail           *string
 	AesHexPhone           *string
+	Price                 *float64
 	Ip                    *string
 	GzExtend              any
 	JsonSetting           any
@@ -244,15 +245,15 @@ func (r *AuthorRow) SetReaderCount(v int32) *AuthorRow {
 }
 
 // GetReadCount is nil-safe.
-func (r *AuthorRow) GetReadCount() int32 {
+func (r *AuthorRow) GetReadCount() int64 {
 	if r == nil {
-		var zero int32
+		var zero int64
 		return zero
 	}
 	return r.ReadCount
 }
 
-func (r *AuthorRow) SetReadCount(v int32) *AuthorRow {
+func (r *AuthorRow) SetReadCount(v int64) *AuthorRow {
 	r.ReadCount = v
 	r.Dirty("read_count", v)
 	return r
@@ -438,6 +439,21 @@ func (r *AuthorRow) SetAesHexPhone(v *string) *AuthorRow {
 	return r
 }
 
+// GetPrice is nil-safe.
+func (r *AuthorRow) GetPrice() *float64 {
+	if r == nil {
+		var zero *float64
+		return zero
+	}
+	return r.Price
+}
+
+func (r *AuthorRow) SetPrice(v *float64) *AuthorRow {
+	r.Price = v
+	r.Dirty("price", orm.Deref(v))
+	return r
+}
+
 // GetIp is nil-safe.
 func (r *AuthorRow) GetIp() *string {
 	if r == nil {
@@ -608,7 +624,7 @@ func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
 		case "reader_count":
 			r.ReaderCount = int32(orm.AsInt64(v))
 		case "read_count":
-			r.ReadCount = int32(orm.AsInt64(v))
+			r.ReadCount = orm.AsInt64(v)
 		case "photo_url":
 			if v != nil {
 				x := orm.AsString(v)
@@ -644,6 +660,11 @@ func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
 			if v != nil {
 				x := orm.AsString(v)
 				r.AesHexPhone = &x
+			}
+		case "price":
+			if v != nil {
+				x := orm.AsFloat64(v)
+				r.Price = &x
 			}
 		case "ip":
 			if v != nil {
@@ -802,6 +823,13 @@ func (r *AuthorRow) ToArray() map[string]any {
 				}
 				return *r.AesHexPhone
 			}()
+		case "price":
+			m[name] = func() any {
+				if r.Price == nil {
+					return nil
+				}
+				return *r.Price
+			}()
 		case "ip":
 			m[name] = func() any {
 				if r.Ip == nil {
@@ -888,6 +916,7 @@ var AuthorCols = struct {
 	LikeCount             orm.ColRef
 	AesHexEmail           orm.ColRef
 	AesHexPhone           orm.ColRef
+	Price                 orm.ColRef
 	Ip                    orm.ColRef
 	GzExtend              orm.ColRef
 	JsonSetting           orm.ColRef
@@ -921,6 +950,7 @@ var AuthorCols = struct {
 	LikeCount:             orm.ColRef{Column: "like_count"},
 	AesHexEmail:           orm.ColRef{Column: "aes_hex_email"},
 	AesHexPhone:           orm.ColRef{Column: "aes_hex_phone"},
+	Price:                 orm.ColRef{Column: "price"},
 	Ip:                    orm.ColRef{Column: "ip"},
 	GzExtend:              orm.ColRef{Column: "gz_extend"},
 	JsonSetting:           orm.ColRef{Column: "json_setting"},
@@ -2153,42 +2183,42 @@ func (q *Author) ReaderCountLteCol(ref orm.ColRef) *Author {
 	q.q.W().PredCol("reader_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
-func (w *AuthorWhere) ReadCountEq(v int32) *AuthorWhere { w.w.Pred("read_count", "eq", v); return w }
-func (q *Author) ReadCountEq(v int32) *Author           { q.q.W().Pred("read_count", "eq", v); return q }
-func (w *AuthorWhere) ReadCountNotEq(v int32) *AuthorWhere {
+func (w *AuthorWhere) ReadCountEq(v int64) *AuthorWhere { w.w.Pred("read_count", "eq", v); return w }
+func (q *Author) ReadCountEq(v int64) *Author           { q.q.W().Pred("read_count", "eq", v); return q }
+func (w *AuthorWhere) ReadCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("read_count", "not_eq", v)
 	return w
 }
-func (q *Author) ReadCountNotEq(v int32) *Author         { q.q.W().Pred("read_count", "not_eq", v); return q }
-func (w *AuthorWhere) ReadCountGt(v int32) *AuthorWhere  { w.w.Pred("read_count", "gt", v); return w }
-func (q *Author) ReadCountGt(v int32) *Author            { q.q.W().Pred("read_count", "gt", v); return q }
-func (w *AuthorWhere) ReadCountGte(v int32) *AuthorWhere { w.w.Pred("read_count", "gte", v); return w }
-func (q *Author) ReadCountGte(v int32) *Author           { q.q.W().Pred("read_count", "gte", v); return q }
-func (w *AuthorWhere) ReadCountLt(v int32) *AuthorWhere  { w.w.Pred("read_count", "lt", v); return w }
-func (q *Author) ReadCountLt(v int32) *Author            { q.q.W().Pred("read_count", "lt", v); return q }
-func (w *AuthorWhere) ReadCountLte(v int32) *AuthorWhere { w.w.Pred("read_count", "lte", v); return w }
-func (q *Author) ReadCountLte(v int32) *Author           { q.q.W().Pred("read_count", "lte", v); return q }
-func (w *AuthorWhere) ReadCountIn(vs []int32) *AuthorWhere {
+func (q *Author) ReadCountNotEq(v int64) *Author         { q.q.W().Pred("read_count", "not_eq", v); return q }
+func (w *AuthorWhere) ReadCountGt(v int64) *AuthorWhere  { w.w.Pred("read_count", "gt", v); return w }
+func (q *Author) ReadCountGt(v int64) *Author            { q.q.W().Pred("read_count", "gt", v); return q }
+func (w *AuthorWhere) ReadCountGte(v int64) *AuthorWhere { w.w.Pred("read_count", "gte", v); return w }
+func (q *Author) ReadCountGte(v int64) *Author           { q.q.W().Pred("read_count", "gte", v); return q }
+func (w *AuthorWhere) ReadCountLt(v int64) *AuthorWhere  { w.w.Pred("read_count", "lt", v); return w }
+func (q *Author) ReadCountLt(v int64) *Author            { q.q.W().Pred("read_count", "lt", v); return q }
+func (w *AuthorWhere) ReadCountLte(v int64) *AuthorWhere { w.w.Pred("read_count", "lte", v); return w }
+func (q *Author) ReadCountLte(v int64) *Author           { q.q.W().Pred("read_count", "lte", v); return q }
+func (w *AuthorWhere) ReadCountIn(vs []int64) *AuthorWhere {
 	w.w.PredList("read_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ReadCountIn(vs []int32) *Author {
+func (q *Author) ReadCountIn(vs []int64) *Author {
 	q.q.W().PredList("read_count", "in", orm.Anys(vs))
 	return q
 }
-func (w *AuthorWhere) ReadCountNotIn(vs []int32) *AuthorWhere {
+func (w *AuthorWhere) ReadCountNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("read_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ReadCountNotIn(vs []int32) *Author {
+func (q *Author) ReadCountNotIn(vs []int64) *Author {
 	q.q.W().PredList("read_count", "not_in", orm.Anys(vs))
 	return q
 }
-func (w *AuthorWhere) ReadCountBetween(lo, hi int32) *AuthorWhere {
+func (w *AuthorWhere) ReadCountBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("read_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) ReadCountBetween(lo, hi int32) *Author {
+func (q *Author) ReadCountBetween(lo, hi int64) *Author {
 	q.q.W().PredList("read_count", "between", []any{lo, hi})
 	return q
 }
@@ -3292,6 +3322,94 @@ func (q *Author) AesHexPhoneNotEqCol(ref orm.ColRef) *Author {
 	q.q.W().PredCol("aes_hex_phone", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
+func (w *AuthorWhere) PriceEq(v float64) *AuthorWhere    { w.w.Pred("price", "eq", v); return w }
+func (q *Author) PriceEq(v float64) *Author              { q.q.W().Pred("price", "eq", v); return q }
+func (w *AuthorWhere) PriceNotEq(v float64) *AuthorWhere { w.w.Pred("price", "not_eq", v); return w }
+func (q *Author) PriceNotEq(v float64) *Author           { q.q.W().Pred("price", "not_eq", v); return q }
+func (w *AuthorWhere) PriceGt(v float64) *AuthorWhere    { w.w.Pred("price", "gt", v); return w }
+func (q *Author) PriceGt(v float64) *Author              { q.q.W().Pred("price", "gt", v); return q }
+func (w *AuthorWhere) PriceGte(v float64) *AuthorWhere   { w.w.Pred("price", "gte", v); return w }
+func (q *Author) PriceGte(v float64) *Author             { q.q.W().Pred("price", "gte", v); return q }
+func (w *AuthorWhere) PriceLt(v float64) *AuthorWhere    { w.w.Pred("price", "lt", v); return w }
+func (q *Author) PriceLt(v float64) *Author              { q.q.W().Pred("price", "lt", v); return q }
+func (w *AuthorWhere) PriceLte(v float64) *AuthorWhere   { w.w.Pred("price", "lte", v); return w }
+func (q *Author) PriceLte(v float64) *Author             { q.q.W().Pred("price", "lte", v); return q }
+func (w *AuthorWhere) PriceIn(vs []float64) *AuthorWhere {
+	w.w.PredList("price", "in", orm.Anys(vs))
+	return w
+}
+func (q *Author) PriceIn(vs []float64) *Author {
+	q.q.W().PredList("price", "in", orm.Anys(vs))
+	return q
+}
+func (w *AuthorWhere) PriceNotIn(vs []float64) *AuthorWhere {
+	w.w.PredList("price", "not_in", orm.Anys(vs))
+	return w
+}
+func (q *Author) PriceNotIn(vs []float64) *Author {
+	q.q.W().PredList("price", "not_in", orm.Anys(vs))
+	return q
+}
+func (w *AuthorWhere) PriceBetween(lo, hi float64) *AuthorWhere {
+	w.w.PredList("price", "between", []any{lo, hi})
+	return w
+}
+func (q *Author) PriceBetween(lo, hi float64) *Author {
+	q.q.W().PredList("price", "between", []any{lo, hi})
+	return q
+}
+func (w *AuthorWhere) PriceIsNull() *AuthorWhere    { w.w.PredNull("price", "is_null"); return w }
+func (q *Author) PriceIsNull() *Author              { q.q.W().PredNull("price", "is_null"); return q }
+func (w *AuthorWhere) PriceIsNotNull() *AuthorWhere { w.w.PredNull("price", "is_not_null"); return w }
+func (q *Author) PriceIsNotNull() *Author           { q.q.W().PredNull("price", "is_not_null"); return q }
+func (w *AuthorWhere) PriceEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("price", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) PriceEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("price", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PriceNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("price", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) PriceNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("price", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PriceGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("price", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) PriceGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("price", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PriceGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("price", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) PriceGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("price", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PriceLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("price", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) PriceLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("price", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PriceLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("price", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) PriceLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("price", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) IpEq(v string) *AuthorWhere    { w.w.Pred("ip", "eq", v); return w }
 func (q *Author) IpEq(v string) *Author              { q.q.W().Pred("ip", "eq", v); return q }
 func (w *AuthorWhere) IpNotEq(v string) *AuthorWhere { w.w.Pred("ip", "not_eq", v); return w }
@@ -3914,6 +4032,20 @@ func (q *Author) SelectAesHexPhoneAs(name string) *Author {
 	c.As[name] = "aes_hex_phone"
 	return q
 }
+func (q *Author) SelectPrice() *Author { c := q.q.Columns(); c.Add = append(c.Add, "price"); return q }
+func (q *Author) UnselectPrice() *Author {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "price")
+	return q
+}
+func (q *Author) SelectPriceAs(name string) *Author {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "price"
+	return q
+}
 func (q *Author) SelectIp() *Author { c := q.q.Columns(); c.Add = append(c.Add, "ip"); return q }
 func (q *Author) UnselectIp() *Author {
 	c := q.q.Columns()
@@ -4213,7 +4345,14 @@ func (q *Author) GroupByAesHexPhone() *Author {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "aes_hex_phone")
 	return q
 }
-func (q *Author) KeyByAesHexPhone() *Author    { q.q.Node.KeyBy = "aes_hex_phone"; return q }
+func (q *Author) KeyByAesHexPhone() *Author { q.q.Node.KeyBy = "aes_hex_phone"; return q }
+func (q *Author) OrderByPriceAsc() *Author  { q.q.Order("price", false); return q }
+func (q *Author) OrderByPriceDesc() *Author { q.q.Order("price", true); return q }
+func (q *Author) GroupByPrice() *Author {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "price")
+	return q
+}
+func (q *Author) KeyByPrice() *Author          { q.q.Node.KeyBy = "price"; return q }
 func (q *Author) OrderByIpAsc() *Author        { q.q.Order("ip", false); return q }
 func (q *Author) OrderByIpDesc() *Author       { q.q.Order("ip", true); return q }
 func (q *Author) GroupByIp() *Author           { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "ip"); return q }
@@ -4339,7 +4478,7 @@ func (q *Author) SetReaderCountExpr(frag string, binds ...any) *Author {
 	q.q.SetExpr("reader_count", frag, binds...)
 	return q
 }
-func (q *Author) SetReadCount(v int32) *Author { q.q.Set("read_count", v); return q }
+func (q *Author) SetReadCount(v int64) *Author { q.q.Set("read_count", v); return q }
 func (q *Author) SetReadCountExpr(frag string, binds ...any) *Author {
 	q.q.SetExpr("read_count", frag, binds...)
 	return q
@@ -4408,6 +4547,12 @@ func (q *Author) SetAesHexPhoneExpr(frag string, binds ...any) *Author {
 	q.q.SetExpr("aes_hex_phone", frag, binds...)
 	return q
 }
+func (q *Author) SetPrice(v float64) *Author { q.q.Set("price", v); return q }
+func (q *Author) SetPriceNull() *Author      { q.q.SetNull("price"); return q }
+func (q *Author) SetPriceExpr(frag string, binds ...any) *Author {
+	q.q.SetExpr("price", frag, binds...)
+	return q
+}
 func (q *Author) SetIp(v string) *Author { q.q.Set("ip", v); return q }
 func (q *Author) SetIpNull() *Author     { q.q.SetNull("ip"); return q }
 func (q *Author) SetIpExpr(frag string, binds ...any) *Author {
@@ -4468,8 +4613,8 @@ func (q *Author) PlusSuccessCount(v int32) *Author      { q.q.Plus("success_coun
 func (q *Author) MinusSuccessCount(v int32) *Author     { q.q.Minus("success_count", v); return q }
 func (q *Author) PlusReaderCount(v int32) *Author       { q.q.Plus("reader_count", v); return q }
 func (q *Author) MinusReaderCount(v int32) *Author      { q.q.Minus("reader_count", v); return q }
-func (q *Author) PlusReadCount(v int32) *Author         { q.q.Plus("read_count", v); return q }
-func (q *Author) MinusReadCount(v int32) *Author        { q.q.Minus("read_count", v); return q }
+func (q *Author) PlusReadCount(v int64) *Author         { q.q.Plus("read_count", v); return q }
+func (q *Author) MinusReadCount(v int64) *Author        { q.q.Minus("read_count", v); return q }
 func (q *Author) PlusUserSeq(v int64) *Author           { q.q.Plus("user_seq", v); return q }
 func (q *Author) MinusUserSeq(v int64) *Author          { q.q.Minus("user_seq", v); return q }
 func (q *Author) PlusServiceSeq(v int64) *Author        { q.q.Plus("service_seq", v); return q }
@@ -4480,6 +4625,8 @@ func (q *Author) PlusServiceMemberSeq(v int64) *Author  { q.q.Plus("service_memb
 func (q *Author) MinusServiceMemberSeq(v int64) *Author { q.q.Minus("service_member_seq", v); return q }
 func (q *Author) PlusLikeCount(v int32) *Author         { q.q.Plus("like_count", v); return q }
 func (q *Author) MinusLikeCount(v int32) *Author        { q.q.Minus("like_count", v); return q }
+func (q *Author) PlusPrice(v float64) *Author           { q.q.Plus("price", v); return q }
+func (q *Author) MinusPrice(v float64) *Author          { q.q.Minus("price", v); return q }
 
 // Terminals.
 func (q *Author) One(ctx context.Context, ex orm.Exec) (*AuthorRow, error) {
@@ -4635,6 +4782,18 @@ func (q *Author) SumLikeCount(ctx context.Context, ex orm.Exec) (float64, error)
 func (q *Author) AvgLikeCount(ctx context.Context, ex orm.Exec) (float64, error) {
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "like_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsFloat64(v), err
+}
+func (q *Author) SumPrice(ctx context.Context, ex orm.Exec) (float64, error) {
+	q.q.Req.IR.Kind = "sum"
+	q.q.Req.IR.Agg = "price"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsFloat64(v), err
+}
+func (q *Author) AvgPrice(ctx context.Context, ex orm.Exec) (float64, error) {
+	q.q.Req.IR.Kind = "avg"
+	q.q.Req.IR.Agg = "price"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }

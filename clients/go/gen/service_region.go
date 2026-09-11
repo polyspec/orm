@@ -739,7 +739,7 @@ func (q *ServiceRegion) IfParentReaderCountEq(v int32) *ServiceRegion {
 	q.q.IfParent("reader_count", v)
 	return q
 }
-func (q *ServiceRegion) IfParentReadCountEq(v int32) *ServiceRegion {
+func (q *ServiceRegion) IfParentReadCountEq(v int64) *ServiceRegion {
 	q.q.IfParent("read_count", v)
 	return q
 }
