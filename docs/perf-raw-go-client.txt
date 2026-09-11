@@ -1,0 +1,3 @@
+BenchmarkClientPKGet-11           	   70316	     32909 ns/op	    5757 B/op	      75 allocs/op
+BenchmarkClientList100-11         	    6428	    369364 ns/op	  229353 B/op	    4517 allocs/op
+BenchmarkClientPlanCacheHit-11    	 1386397	      1734 ns/op	    1152 B/op	      14 allocs/op
