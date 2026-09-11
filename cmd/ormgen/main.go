@@ -48,7 +48,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "       ormgen validate --dsn <dsn> --schema schema/schema.json")
 	fmt.Fprintln(os.Stderr, "       ormgen errors --lang go|php|rust --out <file>")
 	fmt.Fprintln(os.Stderr, "       ormgen ddl --schema schema/schema.json --dialect mysql|postgres|sqlite --out <file.sql>")
-	fmt.Fprintln(os.Stderr, "       ormgen check --lang php [--top n] <dir>...")
+	fmt.Fprintln(os.Stderr, "       ormgen check --lang php|go [--top n] [--schema schema/schema.json] <dir>...")
 	os.Exit(2)
 }
 
