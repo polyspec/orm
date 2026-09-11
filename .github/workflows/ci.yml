@@ -65,6 +65,8 @@ jobs:
           git diff --exit-code -- clients/go/gen clients/php/gen clients/rust/gen
       - name: go client
         run: go test ./clients/go/...
+      - name: hot-path regression gate
+        run: go test ./bench/go -run TestHotPathGate -v
       - name: rust client
         run: cd clients/rust && cargo build --release && cargo test --release -p orm && ./target/release/integration ../../bin/ormengine.wasm ../../schema/schema.json
       - name: php client

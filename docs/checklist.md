@@ -120,9 +120,9 @@
 - [x] T5.5 `orm.toml` 스펙 + 로더 3언어(`orm.OpenConfig` / `Orm::fromConfig` / `Db::from_config`; 절대경로·존재·symlink 금지, 미지 키 거부, aes|aes_env)
 
 ### 5-C 배포 — 레인 V
-- [~] T5.6 `scripts/build-artifacts.sh`(wasm 단일, ormd·ormgen linux/darwin × amd64/arm64, 파일명에 0.0.1, SHA256SUMS) → composer/crates 패키징 메타데이터는 남음
+- [x] T5.6 아티팩트·패키징: `scripts/build-artifacts.sh`(wasm 1개 + ormd·ormgen linux/darwin × amd64/arm64, 파일명에 0.0.1, SHA256SUMS), `clients/php/composer.json`(PSR-4), `clients/rust/orm/Cargo.toml` 메타데이터, Go는 모듈 경로
 - [x] T5.7 `deploy/ormd.service`, `deploy/com.orm.ormd.plist`, `deploy/README.md`(소켓 소유자·0600·symlink 금지)
-- [~] T5.8 CI `.github/workflows/ci.yml` 작성(MySQL 서비스, 엔진·3클라이언트·적합성·코덱·토큰 패리티·생성물 최신 검사). **남은 것**: 러너·통합 테스트가 DSN을 환경변수로 받게(현재 `/tmp/mysql.sock` 고정 → 레인), 벤치 회귀 게이트, 실제 실행 확인
+- [~] T5.8 CI `.github/workflows/ci.yml`: MySQL·PostgreSQL 서비스 + SQLite, 엔진·3클라이언트·3 DB 적합성·코덱·토큰 패리티·생성물 최신 검사·회귀 게이트(`bench/go` TestHotPathGate)까지 작성 완료. **남은 것: GitHub에서 실제 실행 확인**(로컬에서는 각 단계를 그대로 실행해 통과 확인)
 - [x] T5.9 문서: README·`packaging.md`·`dsl.md`(호환층 표)·`dialects.md`·`config.md`·`codec.md`·`errors.yaml`, `perf.md` §6d 재측정(S6 종료 시점 3언어 × 네이티브 대비)
 
 ---
