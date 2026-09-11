@@ -166,7 +166,7 @@ func scanServiceMember(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceMembe
 			}
 		}
 	}
-	r.SetProjection(a)
+	r.SetProjection(rs.Projection(a))
 	r.Mark("service_member", "seq", r.Seq)
 	return r
 }
