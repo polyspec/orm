@@ -2,7 +2,6 @@ package orm
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/maxkwon/orm/engine"
@@ -304,49 +303,71 @@ type Row struct {
 	dvals  []any
 	encErr error          // first codec error from DirtyStyled; surfaces from UpdateRow
 	extra  map[string]any // selectExpr / select<Col>As outputs, by output name
-
-	// assembly facts generated scanners record for ToArray
-	selected []string        // output names present in this row's projection, in order
-	hidden   map[string]bool // drop_child_key columns
-	flat     []string        // one-relations whose columns merge into this row's array form
-	rels     map[string]bool // relations that were loaded (even when null/empty)
-	cascade  []string        // loaded relations whose rows belong to this row (children[].cascade), in child order
+	proj   *Projection    // assembly facts for ToArray/DeleteCascade, shared by every row of the node
 }
 
-// SetProjection records what the row's assemble node selected (generated scanners call it).
-func (r *Row) SetProjection(a *plan.Assemble) {
-	r.selected = r.selected[:0]
+// Projection is what one assemble node selected: computed once per plan
+// (Rows.Projection) and shared by every row scanned from that node.
+type Projection struct {
+	selected []string        // output names present in the projection, in order
+	hidden   map[string]bool // drop_child_key columns
+	flat     []string        // one-relations whose columns merge into the row's array form
+	rels     map[string]bool // relations that were loaded (even when null/empty)
+	cascade  []string        // loaded relations whose rows belong to the row (children[].cascade), in child order
+}
+
+func NewProjection(a *plan.Assemble) *Projection {
+	p := &Projection{selected: make([]string, 0, len(a.Columns))}
 	for _, c := range a.Columns {
-		r.selected = append(r.selected, c.Name)
+		p.selected = append(p.selected, c.Name)
 		if c.Hidden {
-			if r.hidden == nil {
-				r.hidden = map[string]bool{}
+			if p.hidden == nil {
+				p.hidden = map[string]bool{}
 			}
-			r.hidden[c.Name] = true
+			p.hidden[c.Name] = true
 		}
 	}
 	for _, ch := range a.Children {
-		if r.rels == nil {
-			r.rels = map[string]bool{}
+		if p.rels == nil {
+			p.rels = map[string]bool{}
 		}
-		r.rels[ch.Rel] = true
+		p.rels[ch.Rel] = true
 		if ch.Flatten {
-			r.flat = append(r.flat, ch.Rel)
+			p.flat = append(p.flat, ch.Rel)
 		}
 		if ch.Cascade {
-			r.cascade = append(r.cascade, ch.Rel)
+			p.cascade = append(p.cascade, ch.Rel)
 		}
 	}
+	return p
 }
 
+// SetProjection records what the row's assemble node selected (generated scanners call it).
+func (r *Row) SetProjection(p *Projection) { r.proj = p }
+
 // Selected lists the projected output names; Hidden/Flat/RelLoaded expose the assembly facts.
-func (r *Row) Selected() []string        { return r.selected }
-func (r *Row) Hidden(name string) bool   { return r.hidden[name] }
-func (r *Row) Flat() []string            { return r.flat }
-func (r *Row) RelLoaded(rel string) bool { return r.rels[rel] }
+func (r *Row) Selected() []string {
+	if r.proj == nil {
+		return nil
+	}
+	return r.proj.selected
+}
+func (r *Row) Hidden(name string) bool { return r.proj != nil && r.proj.hidden[name] }
+func (r *Row) Flat() []string {
+	if r.proj == nil {
+		return nil
+	}
+	return r.proj.flat
+}
+func (r *Row) RelLoaded(rel string) bool { return r.proj != nil && r.proj.rels[rel] }
 
 // Cascades lists the loaded relations DeleteCascade removes before this row, in load order.
-func (r *Row) Cascades() []string { return r.cascade }
+func (r *Row) Cascades() []string {
+	if r.proj == nil {
+		return nil
+	}
+	return r.proj.cascade
+}
 
 // FormatTime renders a datetime the way every language's array form does.
 func FormatTime(t time.Time) string { return t.Format("2006-01-02 15:04:05.000000") }
@@ -406,7 +427,7 @@ func (r *Row) UpdateRow(ctx context.Context, ex Exec, optimisticCol string, opti
 		return r.encErr
 	}
 	if !r.loaded {
-		return fmt.Errorf("orm: update on a row that was not loaded")
+		return &ir.Error{Code: CodeConfig, Msg: "update on a row that was not loaded"}
 	}
 	if len(r.dirty) == 0 {
 		return nil
@@ -430,7 +451,7 @@ func (r *Row) UpdateRow(ctx context.Context, ex Exec, optimisticCol string, opti
 
 func (r *Row) DeleteRow(ctx context.Context, ex Exec) error {
 	if !r.loaded {
-		return fmt.Errorf("orm: delete on a row that was not loaded")
+		return &ir.Error{Code: CodeConfig, Msg: "delete on a row that was not loaded"}
 	}
 	req := NewReq(ex.db().Eng, "delete", r.entity)
 	pk := req.P(r.pkVal)
