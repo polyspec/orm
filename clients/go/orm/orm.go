@@ -273,13 +273,9 @@ func (d *DB) args(st *plan.Step, r *Req, parentVals []any) ([]any, error) {
 	for _, b := range st.BindSlots {
 		switch b.From {
 		case "param":
-			v := r.Params[b.Param]
-			if b.Transform != "" {
-				s, ok := v.(string)
-				if !ok {
-					return nil, fmt.Errorf("orm: transform %s needs a string param", b.Transform)
-				}
-				v = Transform(b.Transform, s)
+			v, err := paramValue(&b, r)
+			if err != nil {
+				return nil, err
 			}
 			out = append(out, v)
 		case "secret":
@@ -294,6 +290,63 @@ func (d *DB) args(st *plan.Step, r *Req, parentVals []any) ([]any, error) {
 		}
 	}
 	return out, nil
+}
+
+// paramValue is a param slot's bound value: the request's param after the slot's transform.
+func paramValue(b *plan.BindSlot, r *Req) (any, error) {
+	v := r.Params[b.Param]
+	if b.Transform == "" {
+		return v, nil
+	}
+	s, ok := v.(string)
+	if !ok {
+		return nil, fmt.Errorf("orm: transform %s needs a string param", b.Transform)
+	}
+	return Transform(b.Transform, s), nil
+}
+
+// Statement is what SQL() returns: the main step's text and its binds, secret
+// slots rendered as "$SECRET" so the dump never carries a key.
+type Statement struct {
+	SQL   string
+	Binds []any
+}
+
+// SQL compiles (and caches) the request's plan and renders its main step
+// without executing anything.
+func SQL(ctx context.Context, ex Exec, r *Req) (*Statement, error) {
+	p, err := ex.db().Plan(r)
+	if err != nil {
+		return nil, err
+	}
+	st := &p.Steps[0]
+	out := &Statement{SQL: st.SQL, Binds: make([]any, 0, len(st.BindSlots))}
+	for _, b := range st.BindSlots {
+		switch b.From {
+		case "param":
+			v, err := paramValue(&b, r)
+			if err != nil {
+				return nil, err
+			}
+			out.Binds = append(out.Binds, v)
+		case "secret":
+			out.Binds = append(out.Binds, "$SECRET")
+		default:
+			return nil, fmt.Errorf("orm: bind from %q in a main step", b.From)
+		}
+	}
+	return out, nil
+}
+
+// InTx runs fn inside a transaction when ex is a bare DB, so a multi-statement
+// walk (deleteCascade) never half-persists; inside a Tx it joins the caller's.
+func InTx(ctx context.Context, ex Exec, fn func(Exec) error) error {
+	d, ok := ex.(*DB)
+	if !ok {
+		return fn(ex)
+	}
+	_, err := Transaction(ctx, d, func(tx *Tx) (struct{}, error) { return struct{}{}, fn(tx) })
+	return err
 }
 
 // Transform applies an executor-side value transform (same in every language).
