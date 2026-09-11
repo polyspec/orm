@@ -255,7 +255,7 @@ $sa = (new Battle)->startedAfter($since)->serviceSeqEq(7)->count($db);
 check($sa === (new Battle)->startDtGt($since)->serviceSeqEq(7)->count($db), 'startedAfter($v) binds its one argument');
 $either = (new Battle)->serviceSeqEq(7)->and(fn(BattleWhere $w) => $w->visible()->or()->startedAfter($since))->count($db);
 check($either >= max($vis, $sa) && $either <= $vis + $sa, 'named predicates on the Where builder, with or()');
-check(str_contains((new Battle)->visible()->sql($db)['sql'], '(`a`.`is_close` = 0 AND `a`.`is_display` = 1)'), 'predicate fragment reaches the SQL with its columns alias-resolved');
+check(str_contains((new Battle)->visible()->sql($db)['sql'], '(`a`.`is_close` = FALSE AND `a`.`is_display` = TRUE)'), 'predicate fragment reaches the SQL with its columns alias-resolved');
 
 $raw = (new Battle)->raw('SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?', [7, 0])->rawAll($db);
 check(count($raw) === 1 && array_keys($raw[0]) === ['n', 'm'] && $raw[0]['n'] === (new Battle)->serviceSeqEq(7)->isCloseEq(false)->count($db) && is_int($raw[0]['m']), 'rawAll: one row keyed by column name, ints as ints');

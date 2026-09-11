@@ -206,7 +206,7 @@ async fn main() {
             .join_service(Service::new().where_(|w| w.seq_eq_col(battle::cols::service_module_seq())))
             .seq_in(vec![1, 2, 10]).order_by_seq_asc().all(&db).await?))
     }.await);
-    run!("expr_where", async { Ok(json!(Battle::new().service_seq_eq(7).expr("DAYOFMONTH(`start_dt`) = ?", vec![1.into()]).count(&db).await?)) }.await);
+    run!("expr_where", async { Ok(json!(Battle::new().service_seq_eq(7).expr("LENGTH(`name`) > ?", vec![8.into()]).count(&db).await?)) }.await);
     run!("select_expr", async {
         let b = Battle::new().select_expr("tag", "CONCAT(`name`, '!')").seq_eq(42).one(&db).await?.unwrap();
         Ok(json!({"seq": b.seq, "tag": b.extra("tag").map(|v| v.as_string())}))
@@ -348,7 +348,7 @@ async fn main() {
     }.await);
     run!("raw_root", async {
         let rows = Battle::new()
-            .raw("SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?", vec![7.into(), 0.into()])
+            .raw("SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?", vec![7.into(), false.into()])
             .raw_all(&db).await?;
         Ok(Value::Array(rows.iter().map(|r| Value::Object(r.iter().map(|(k, v)| (k.clone(), v.to_json())).collect())).collect()))
     }.await);

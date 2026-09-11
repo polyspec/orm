@@ -27,6 +27,7 @@ type FileConfig struct {
 }
 
 type DBConfig struct {
+	Driver   string `toml:"driver"` // mysql (default) | postgres | sqlite — also the engine dialect
 	DSN      string `toml:"dsn"`
 	User     string `toml:"user"`
 	Password string `toml:"password"`
@@ -182,15 +183,23 @@ func OpenConfig(path string) (*DB, error) {
 	if key == "" && hasAES(eng.M) {
 		return nil, configErr("the schema has aes columns but [secrets] declares neither aes nor aes_env")
 	}
-	dsn, err := mysqlDSN(&fc.DB)
-	if err != nil {
-		return nil, err
+	driver := fc.DB.Driver
+	if driver == "" {
+		driver = "mysql"
+	}
+	dsn := fc.DB.DSN
+	if driver == "mysql" {
+		if dsn, err = mysqlDSN(&fc.DB); err != nil {
+			return nil, err
+		}
+	} else if fc.DB.User != "" {
+		return nil, configErr("[db].user/password apply to mysql DSNs only; put the user in the %s URL", driver)
 	}
 	cfg := Config{AESKey: key}
 	if fc.Debug.OnQuery {
 		cfg.OnQuery = LogQuery
 	}
-	db, err := Open("mysql", dsn, eng, cfg)
+	db, err := Open(driver, dsn, eng, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -204,4 +213,12 @@ func OpenConfig(path string) (*DB, error) {
 // standard logger (sql, binds with secrets masked, duration, plan id).
 func LogQuery(e Event) {
 	log.Printf("orm: plan=%s %s %v %s err=%v", e.PlanID, e.SQL, e.Args, e.Duration, e.Err)
+}
+
+// driverOf is [db].driver with the mysql default; the engine dialect follows it.
+func driverOf(db *DBConfig) string {
+	if db.Driver == "" {
+		return "mysql"
+	}
+	return db.Driver
 }

@@ -80,3 +80,5 @@ func (Postgres) WriteExpr(ph func() string, styles []string) (string, int) {
 	}
 	return expr, 1
 }
+
+func (Postgres) HostNow() bool { return false }

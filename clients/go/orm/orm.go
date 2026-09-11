@@ -10,11 +10,15 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgx/v5/pgconn"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	sqlite "modernc.org/sqlite"
 
 	"github.com/maxkwon/orm/engine"
 	"github.com/maxkwon/orm/engine/ir"
@@ -42,9 +46,10 @@ const Secret = "$SECRET"
 
 // DB wraps *sql.DB with the compiler, the plan cache and the statement cache.
 type DB struct {
-	SQL *sql.DB
-	Eng *engine.Engine
-	cfg Config
+	SQL    *sql.DB
+	Eng    *engine.Engine
+	cfg    Config
+	driver string
 
 	planMu sync.RWMutex
 	plans  map[uint64]*cached // shape key -> compiled plan plus the per-step facts derived from it
@@ -54,19 +59,35 @@ type DB struct {
 
 // Open connects with database/sql. The DSN must enable clientFoundRows (needed
 // for optimistic locking) — Open refuses DSNs without it rather than guessing.
+// Open connects with database/sql. driver is mysql | postgres | sqlite and must
+// be the dialect the engine compiles for (docs/dialects.md): the plans are
+// dialect-specific text.
 func Open(driver, dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
+	sqlDriver, ok := sqlDrivers[driver]
+	if !ok {
+		return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("driver %q: want mysql, postgres or sqlite", driver)}
+	}
+	if eng.P.D.Name() != driver {
+		return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("driver %s but the engine compiles for %s", driver, eng.P.D.Name())}
+	}
 	if driver == "mysql" && !strings.Contains(dsn, "clientFoundRows=true") {
 		return nil, &ir.Error{Code: CodeConfig, Msg: "mysql DSN must include clientFoundRows=true"}
 	}
-	s, err := sql.Open(driver, dsn)
+	s, err := sql.Open(sqlDriver, dsn)
 	if err != nil {
 		return nil, &ir.Error{Code: CodeConfig, Msg: err.Error()}
 	}
 	if err := s.Ping(); err != nil {
 		return nil, mapDriverErr(err)
 	}
-	return &DB{SQL: s, Eng: eng, cfg: cfg, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
+	return &DB{SQL: s, Eng: eng, cfg: cfg, driver: driver, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
 }
+
+// sqlDrivers maps our driver names to the registered database/sql drivers.
+var sqlDrivers = map[string]string{"mysql": "mysql", "postgres": "pgx", "sqlite": "sqlite"}
+
+// Driver is the database this DB talks to (mysql | postgres | sqlite).
+func (d *DB) Driver() string { return d.driver }
 
 // CheckSchemaHash compares the hash the generated package was produced from
 // with the manifest the engine loaded. Generated Init calls it exactly once at
@@ -187,15 +208,35 @@ func mapDriverErr(err error) error {
 		return nil
 	}
 	var me *mysql.MySQLError
-	if !errors.As(err, &me) {
+	if errors.As(err, &me) {
+		state := string(me.SQLState[:])
+		switch {
+		case me.Number == 1213 || state == "40001":
+			return &ir.Error{Code: CodeDeadlock, Msg: me.Error()}
+		case me.Number == 1062 || (me.Number == 0 && state == "23000"):
+			return &ir.Error{Code: CodeDuplicateKey, Msg: me.Error()}
+		}
 		return err
 	}
-	state := string(me.SQLState[:])
-	switch {
-	case me.Number == 1213 || state == "40001":
-		return &ir.Error{Code: CodeDeadlock, Msg: me.Error()}
-	case me.Number == 1062 || (me.Number == 0 && state == "23000"):
-		return &ir.Error{Code: CodeDuplicateKey, Msg: me.Error()}
+	var pe *pgconn.PgError
+	if errors.As(err, &pe) {
+		switch pe.Code {
+		case "40P01", "40001": // deadlock_detected, serialization_failure
+			return &ir.Error{Code: CodeDeadlock, Msg: pe.Error()}
+		case "23505": // unique_violation
+			return &ir.Error{Code: CodeDuplicateKey, Msg: pe.Error()}
+		}
+		return err
+	}
+	var se *sqlite.Error
+	if errors.As(err, &se) {
+		switch se.Code() {
+		case 5, 6, 261, 262: // SQLITE_BUSY / SQLITE_LOCKED and their extended forms: the other writer wins, re-run
+			return &ir.Error{Code: CodeDeadlock, Msg: se.Error()}
+		case 2067, 1555: // SQLITE_CONSTRAINT_UNIQUE / _PRIMARYKEY
+			return &ir.Error{Code: CodeDuplicateKey, Msg: se.Error()}
+		}
+		return err
 	}
 	return err
 }
@@ -373,6 +414,11 @@ func (d *DB) args(st *plan.Step, r *Req, parentVals []any) (out []any, secrets [
 			if err != nil {
 				return nil, nil, err
 			}
+			if len(b.HostStyles) > 0 {
+				if v, err = HostEncode(v, b.HostStyles, d.cfg.AESKey); err != nil {
+					return nil, nil, err
+				}
+			}
 			out = append(out, v)
 		case "secret":
 			if b.Name != "aes" || d.cfg.AESKey == "" {
@@ -382,8 +428,19 @@ func (d *DB) args(st *plan.Step, r *Req, parentVals []any) (out []any, secrets [
 			out = append(out, d.cfg.AESKey)
 		case "parent":
 			out = append(out, parentVals...)
+		case "now":
+			// dialects without a microsecond clock function (SQLite) get the timestamp from the executor
+			out = append(out, time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 		default:
 			return nil, nil, &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf("bind from %q", b.From)}
+		}
+	}
+	if d.driver == "sqlite" {
+		// SQLite stores what it is given: keep datetimes in the canonical text form every reader parses
+		for i, v := range out {
+			if t, ok := v.(time.Time); ok {
+				out[i] = t.UTC().Format("2006-01-02 15:04:05.000000")
+			}
 		}
 	}
 	return out, secrets, nil
@@ -671,8 +728,45 @@ func expandIn(st *plan.Step, vals []any) (string, []any) {
 	for i := len(vals); i < n; i++ {
 		padded[i] = vals[len(vals)-1]
 	}
-	slot := 0
 	var sb strings.Builder
+	if strings.Contains(st.SQL, "$1") {
+		// PostgreSQL: one $k per slot in slot order; the parent slot becomes n
+		// placeholders and every later number shifts by n-1.
+		parent := -1
+		for i, b := range st.BindSlots {
+			if b.From == "parent" {
+				parent = i + 1
+			}
+		}
+		for i := 0; i < len(st.SQL); i++ {
+			c := st.SQL[i]
+			if c != '$' {
+				sb.WriteByte(c)
+				continue
+			}
+			j := i + 1
+			for j < len(st.SQL) && st.SQL[j] >= '0' && st.SQL[j] <= '9' {
+				j++
+			}
+			k, _ := strconv.Atoi(st.SQL[i+1 : j])
+			switch {
+			case k == parent:
+				for m := 0; m < n; m++ {
+					if m > 0 {
+						sb.WriteString(", ")
+					}
+					sb.WriteString("$" + strconv.Itoa(k+m))
+				}
+			case k > parent:
+				sb.WriteString("$" + strconv.Itoa(k+n-1))
+			default:
+				sb.WriteString("$" + strconv.Itoa(k))
+			}
+			i = j - 1
+		}
+		return sb.String(), padded
+	}
+	slot := 0
 	for i := 0; i < len(st.SQL); i++ {
 		c := st.SQL[i]
 		if c != '?' {
@@ -755,11 +849,20 @@ func runSelect(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req, p
 			vals[i] = cells[i].v
 		}
 		for _, sc := range si.styled {
-			dv, err := Decode(sc.Styles, vals[sc.Index])
-			if err != nil {
-				return nil, fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.Name, err)
+			codec, host := splitHost(sc.Styles)
+			v := vals[sc.Index]
+			var err error
+			if len(host) > 0 {
+				if v, err = hostDecode(v, host, d.cfg.AESKey); err != nil {
+					return nil, fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.Name, err)
+				}
 			}
-			vals[sc.Index] = dv
+			if len(codec) > 0 {
+				if v, err = Decode(codec, v); err != nil {
+					return nil, fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.Name, err)
+				}
+			}
+			vals[sc.Index] = v
 		}
 		out = append(out, vals)
 	}
@@ -899,6 +1002,15 @@ func Write(ctx context.Context, ex Exec, r *Req) (lastID, affected int64, err er
 		return 0, 0, err
 	}
 	start := time.Now()
+	if r.IR.Kind == "insert" && strings.Contains(st.SQL, " RETURNING ") {
+		// PostgreSQL/SQLite: the id comes back as a row, not from the driver's last insert id.
+		err = mapDriverErr(stmt.QueryRowContext(ctx, args...).Scan(&lastID))
+		d.emit(c, st.SQL, args, secrets, start, err)
+		if err != nil {
+			return 0, 0, err
+		}
+		return lastID, 1, nil
+	}
 	res, err := stmt.ExecContext(ctx, args...)
 	err = mapDriverErr(err)
 	d.emit(c, st.SQL, args, secrets, start, err)
@@ -1073,7 +1185,7 @@ func AsTime(v any) time.Time {
 	case time.Time:
 		return x
 	case string:
-		for _, layout := range []string{"2006-01-02 15:04:05.999999", "2006-01-02 15:04:05", "2006-01-02"} {
+		for _, layout := range []string{"2006-01-02 15:04:05.999999", "2006-01-02 15:04:05", "2006-01-02 15:04:05.999999-07:00", "2006-01-02 15:04:05-07:00", time.RFC3339Nano, "2006-01-02"} {
 			if t, err := time.Parse(layout, x); err == nil {
 				return t
 			}
