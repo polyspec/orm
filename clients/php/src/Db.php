@@ -77,8 +77,11 @@ class Db
 
     // ---- execution ----
 
-    /** @param list<mixed> $params request params; @param list<mixed> $parentVals values for the step's `parent` slot */
-    private function args(array $step, array $params, array $parentVals = []): array
+    /**
+     * @param list<mixed> $params request params; @param list<mixed> $parentVals values for the step's `parent` slot
+     * @param bool $maskSecrets render secret slots as "$SECRET" (sql() dumps) instead of the configured key
+     */
+    private function args(array $step, array $params, array $parentVals = [], bool $maskSecrets = false): array
     {
         $out = [];
         foreach ($step['bind_slots'] as $b) {
@@ -96,6 +99,10 @@ class Db
                     $out[] = $v;
                     break;
                 case 'secret':
+                    if ($maskSecrets) {
+                        $out[] = '$SECRET';
+                        break;
+                    }
                     $key = Orm::config()->aesKey;
                     if (($b['name'] ?? '') !== 'aes' || $key === '') {
                         throw new OrmException('CONFIG', "secret {$b['name']} not configured");
@@ -107,6 +114,16 @@ class Db
             }
         }
         return $out;
+    }
+
+    /**
+     * What a step would run, without running it: the SQL and its binds with secrets masked
+     * (the sql() terminal). Relation steps are not dumped, so no parent values are expanded.
+     * @return array{sql: string, binds: list<mixed>}
+     */
+    public function sqlOf(array $step, array $params): array
+    {
+        return ['sql' => $step['sql'], 'binds' => $this->args($step, $params, [], true)];
     }
 
     private function emit(string $sql, array $args, float $start, ?\Throwable $err): void

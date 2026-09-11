@@ -25,6 +25,8 @@ abstract class Row implements \ArrayAccess
     protected array $extra = [];
     /** @var array<string, true> columns selected only for binding (drop_child_key): left out of toArray */
     protected array $hidden = [];
+    /** @var list<string> loaded relations whose rows this row owns (plan children[].cascade): deleteCascade removes them first */
+    protected array $cascade = [];
     protected bool $loaded = false;
 
     abstract public static function entity(): string;
@@ -53,6 +55,9 @@ abstract class Row implements \ArrayAccess
             }
             $related = $rows === null ? [] : $rows->related($ch, $vals);
             $ca = $rows === null ? [] : $rows->stepAssemble($ch);
+            if (!empty($ch['cascade'])) {
+                $r->cascade[] = $ch['rel'];
+            }
             if ($ch['kind'] === 'one') {
                 $child = $related === [] ? null : Registry::row($ca['entity'])::fromRow($related[0], $ca, $rows);
                 $r->rel[$ch['rel']] = $child;
@@ -248,6 +253,29 @@ abstract class Row implements \ArrayAccess
         $q->req->ir['kind'] = 'delete';
         $plan = Orm::transport()->plan($q->req->shape());
         $ex->write($plan['steps'][0], $q->req->params, false, false);
+    }
+
+    /**
+     * Deletes the rows this one owns — the loaded relations the plan flagged cascade (the related
+     * rows hold this row's FK and noCascadeDelete was not set) — depth-first in collection order,
+     * then this row, one DELETE … WHERE pk = ? per row. Parent-direction relations (the FK is on
+     * this row) are never touched. A plain Db is wrapped in a transaction so a failure undoes the walk.
+     */
+    public function deleteCascade(Db $ex): void
+    {
+        if (!$ex instanceof Tx) {
+            $ex->transaction(function (Tx $tx): void {
+                $this->deleteCascade($tx);
+            });
+            return;
+        }
+        foreach ($this->cascade as $name) {
+            $owned = $this->rel[$name];
+            foreach ($owned instanceof Collection ? $owned : ($owned === null ? [] : [$owned]) as $child) {
+                $child->deleteCascade($ex);
+            }
+        }
+        $this->delete($ex);
     }
 }
 
