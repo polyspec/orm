@@ -6,6 +6,8 @@ namespace Polyspec\Orm\Tests\Model;
 
 use Orm\ColRef;
 use Orm\Collection;
+use Orm\CompatQuery;
+use Orm\CompatWhere;
 use Orm\Db;
 use Orm\Page;
 use Orm\Q;
@@ -20,6 +22,11 @@ final class ServiceRegionRow extends Row
     public static function columns(): array
     {
         return ['seq' => 'i64', 'service_seq' => 'i64', 'name' => 'string'];
+    }
+    /** @return array<string, array{kind: string, target: string, left: string, right: string}> declared relations: name => kind, target entity, this.left = target.right */
+    public static function relations(): array
+    {
+        return ['authors' => ['kind' => 'many', 'target' => 'author', 'left' => 'seq', 'right' => 'service_region_seq'], 'service' => ['kind' => 'one', 'target' => 'service', 'left' => 'service_seq', 'right' => 'seq']];
     }
 
     public function getSeq(mixed $default = null): int
@@ -54,13 +61,19 @@ final class ServiceRegionCols
     public static function name(): ColRef { return new ColRef('name'); }
 }
 
-/** Where builder for service_region: predicates, or(), and(fn), relation navigation. */
+/** Where builder for service_region: predicates, or(), and(fn), relation navigation. Unknown names go to the compatibility layer (docs/dsl.md §6). */
 final class ServiceRegionWhere
 {
+    use CompatWhere;
+
+    public const ENTITY = 'service_region';
+
     public function __construct(private W $w) {}
 
-    public function or(): static { $this->w->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
+    public function or(\Closure|string|null $fn = null, mixed $v = null): static { if (func_num_args() === 0) { $this->w->orConn(); return $this; } return $this->compatConn('or', $fn, $v); }
+    /** and(fn) opens a parenthesised group; and('(') / and('sql …', binds) / and('Name', v) are compat tokens. */
+    public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new self($this->w->group())); $this->w->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
     public function authors(\Closure $fn): static { $fn(new AuthorWhere($this->w->nav('authors'))); $this->w->req->end(); return $this; }
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w->nav('service'))); $this->w->req->end(); return $this; }
@@ -114,14 +127,20 @@ final class ServiceRegionWhere
     public function nameNotEqCol(ColRef $ref): static { $this->w->predCol('name', 'not_eq_col', $ref); return $this; }
 }
 
-/** Query over service_region: new ServiceRegion → chain → terminal($db). */
+/** Query over service_region: new ServiceRegion → chain → terminal($db). Unknown names go to the compatibility layer (docs/dsl.md §6). */
 final class ServiceRegion extends Q
 {
+    use CompatQuery;
+
+    public const ENTITY = 'service_region';
+
     public function __construct() { parent::__construct('service_region'); }
 
     // ---- WHERE ----
-    public function or(): static { $this->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->group())); $this->req->end(); return $this; }
+    /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
+    public function or(\Closure|string|null $fn = null, mixed $v = null): static { if (func_num_args() === 0) { $this->orConn(); return $this; } return $this->compatConn('or', $fn, $v); }
+    /** and(fn) opens a parenthesised group; and('(') / and('sql …', binds) / and('Name', v) are compat tokens. */
+    public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new ServiceRegionWhere($this->w()->group())); $this->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
     public function authors(\Closure $fn): static { $fn(new AuthorWhere($this->w()->nav('authors'))); $this->req->end(); return $this; }
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w()->nav('service'))); $this->req->end(); return $this; }
@@ -178,12 +197,12 @@ final class ServiceRegion extends Q
     public function on(\Closure $fn): static { $fn(new ServiceRegionWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w())); return $this; }
 
-    public function joinAuthors(Author $child): static { $this->join('authors', 'inner', $child); return $this; }
-    public function leftJoinAuthors(Author $child): static { $this->join('authors', 'left', $child); return $this; }
-    public function relationsAuthors(Author $child): static { $this->relation('authors', $child); return $this; }
-    public function joinService(Service $child): static { $this->join('service', 'inner', $child); return $this; }
-    public function leftJoinService(Service $child): static { $this->join('service', 'left', $child); return $this; }
-    public function relationService(Service $child): static { $this->relation('service', $child); return $this; }
+    public function joinAuthors(Author $child): static { $this->attachJoin('authors', 'inner', $child); return $this; }
+    public function leftJoinAuthors(Author $child): static { $this->attachJoin('authors', 'left', $child); return $this; }
+    public function relationsAuthors(Author $child): static { $this->attachRelation('authors', $child); return $this; }
+    public function joinService(Service $child): static { $this->attachJoin('service', 'inner', $child); return $this; }
+    public function leftJoinService(Service $child): static { $this->attachJoin('service', 'left', $child); return $this; }
+    public function relationService(Service $child): static { $this->attachRelation('service', $child); return $this; }
 
     // ---- columns ----
     public function selectAll(): static { $this->colMode('all'); return $this; }
