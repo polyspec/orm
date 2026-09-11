@@ -91,6 +91,37 @@ func (r *ServiceMemberRow) Delete(ctx context.Context, ex orm.Exec) error {
 	return r.DeleteRow(ctx, ex)
 }
 
+// DeleteCascade deletes the loaded relations this row owns (the assemble's
+// cascade children, in load order, each row through its own DeleteCascade)
+// and then this row. A bare DB runs the whole walk in one transaction.
+func (r *ServiceMemberRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
+	return orm.InTx(ctx, ex, func(ex orm.Exec) error {
+		for _, rel := range r.Cascades() {
+			switch rel {
+			case "battles":
+				for _, child := range r.GetBattles().All() {
+					if err := child.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			case "service":
+				if r.Service != nil {
+					if err := r.Service.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			case "user":
+				if r.User != nil {
+					if err := r.User.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return r.DeleteRow(ctx, ex)
+	})
+}
+
 // scanServiceMember maps a positional row slice onto the struct, its joined
 // children (same row) and its relation children (rows of later steps).
 func scanServiceMember(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceMemberRow {
@@ -796,6 +827,7 @@ func (q *ServiceMember) Distinct() *ServiceMember { q.q.Node.Distinct = true; re
 func (q *ServiceMember) Flatten() *ServiceMember                { q.q.Node.Flatten = true; return q }
 func (q *ServiceMember) LimitPerParent(n int) *ServiceMember    { q.q.Node.LimitPerParent = n; return q }
 func (q *ServiceMember) DropChildKey() *ServiceMember           { q.q.Node.DropChildKey = true; return q }
+func (q *ServiceMember) NoCascadeDelete() *ServiceMember        { q.q.Node.NoCascadeDelete = true; return q }
 func (q *ServiceMember) IfParentSeqEq(v int64) *ServiceMember   { q.q.IfParent("seq", v); return q }
 func (q *ServiceMember) IfParentNameEq(v string) *ServiceMember { q.q.IfParent("name", v); return q }
 func (q *ServiceMember) IfParentIsCloseEq(v bool) *ServiceMember {
@@ -864,7 +896,12 @@ func (q *ServiceMember) IfParentAesHexPhoneEq(v string) *ServiceMember {
 	return q
 }
 
-// Insert draft.
+// Insert draft. The auto PK is settable too: Save takes it as the update key.
+func (q *ServiceMember) SetSeq(v int64) *ServiceMember { q.q.Set("seq", v); return q }
+func (q *ServiceMember) SetSeqExpr(frag string, binds ...any) *ServiceMember {
+	q.q.SetExpr("seq", frag, binds...)
+	return q
+}
 func (q *ServiceMember) SetServiceSeq(v int64) *ServiceMember { q.q.Set("service_seq", v); return q }
 func (q *ServiceMember) SetServiceSeqExpr(frag string, binds ...any) *ServiceMember {
 	q.q.SetExpr("service_seq", frag, binds...)
@@ -884,6 +921,44 @@ func (q *ServiceMember) MinusServiceSeq(v int64) *ServiceMember {
 }
 func (q *ServiceMember) PlusUserSeq(v int64) *ServiceMember  { q.q.Plus("user_seq", v); return q }
 func (q *ServiceMember) MinusUserSeq(v int64) *ServiceMember { q.q.Minus("user_seq", v); return q }
+
+// ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
+func (q *ServiceMember) OnDuplicateSetServiceSeq(v int64) *ServiceMember {
+	q.q.OnDuplicate("service_seq", v)
+	return q
+}
+func (q *ServiceMember) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *ServiceMember {
+	q.q.OnDuplicateExpr("service_seq", frag, binds...)
+	return q
+}
+func (q *ServiceMember) OnDuplicateSetUserSeq(v int64) *ServiceMember {
+	q.q.OnDuplicate("user_seq", v)
+	return q
+}
+func (q *ServiceMember) OnDuplicateSetUserSeqExpr(frag string, binds ...any) *ServiceMember {
+	q.q.OnDuplicateExpr("user_seq", frag, binds...)
+	return q
+}
+func (q *ServiceMember) OnDuplicatePlusServiceSeq(v int64) *ServiceMember {
+	q.q.OnDuplicatePlus("service_seq", v)
+	return q
+}
+func (q *ServiceMember) OnDuplicateMinusServiceSeq(v int64) *ServiceMember {
+	q.q.OnDuplicateMinus("service_seq", v)
+	return q
+}
+func (q *ServiceMember) OnDuplicatePlusUserSeq(v int64) *ServiceMember {
+	q.q.OnDuplicatePlus("user_seq", v)
+	return q
+}
+func (q *ServiceMember) OnDuplicateMinusUserSeq(v int64) *ServiceMember {
+	q.q.OnDuplicateMinus("user_seq", v)
+	return q
+}
+func (q *ServiceMember) OnDuplicateSetAll() *ServiceMember {
+	q.q.OnDuplicateSetAll("seq", "seq")
+	return q
+}
 
 // Terminals.
 func (q *ServiceMember) One(ctx context.Context, ex orm.Exec) (*ServiceMemberRow, error) {
@@ -980,6 +1055,40 @@ func (q *ServiceMember) Insert(ctx context.Context, ex orm.Exec) (*ServiceMember
 		return nil, err
 	}
 	return NewServiceMember().SeqEq(int64(id)).One(ctx, ex)
+}
+
+// Save updates the other assigned columns when SetSeq was called (and
+// returns the re-read row); otherwise it inserts like Insert.
+func (q *ServiceMember) Save(ctx context.Context, ex orm.Exec) (*ServiceMemberRow, error) {
+	pk, ok := q.q.MovePKToWhere("seq")
+	if !ok {
+		return q.Insert(ctx, ex)
+	}
+	q.q.Req.IR.Kind = "update"
+	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
+		return nil, err
+	}
+	return NewServiceMember().SeqEq(pk.(int64)).One(ctx, ex)
+}
+
+// Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
+func (q *ServiceMember) Update(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "update"
+	_, affected, err := orm.Write(ctx, ex, q.q.Req)
+	return affected, err
+}
+
+// Delete removes every row the WHERE matches (the engine rejects a missing WHERE).
+func (q *ServiceMember) Delete(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "delete"
+	_, affected, err := orm.Write(ctx, ex, q.q.Req)
+	return affected, err
+}
+
+// SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
+func (q *ServiceMember) SQL(ctx context.Context, ex orm.Exec) (*orm.Statement, error) {
+	q.q.Req.IR.Kind = "all"
+	return orm.SQL(ctx, ex, q.q.Req)
 }
 
 func (q *ServiceMember) OneBySeq(ctx context.Context, ex orm.Exec, v int64) (*ServiceMemberRow, error) {
