@@ -22,3 +22,14 @@ Executors still see the same plan shape: steps, bind slots, assemble.
 Executor consequences (docs/lanes/s6.md): a `$n` renumbering step when expanding relation IN lists on
 PostgreSQL, host-side AES/inet codecs where the table says "app-side", one DSN/driver per database
 (Go: `pgx` stdlib / `modernc.org/sqlite`; Rust: sqlx features; PHP: `pdo_pgsql` / `pdo_sqlite`).
+
+## Rules that keep the three databases identical (S6)
+- `UPDATE` always assigns the entity's updated timestamp explicitly (`updated_ts = CURRENT_TIMESTAMP(6)` on MySQL, `CURRENT_TIMESTAMP` on PostgreSQL, an executor-bound microsecond text on SQLite via a `now` bind slot) — MySQL's `ON UPDATE` has no counterpart elsewhere and optimistic locking relies on it.
+- `plus`/`minus` reference the column table-qualified (`"battle"."read_count" + $9`): inside `ON CONFLICT DO UPDATE` a bare name is ambiguous on PostgreSQL.
+- `?` in user fragments (`expr`, `setXExpr`, named predicates, `raw`) is rewritten to the dialect placeholder in bind order; the count must equal the binds (`IR_INVALID` otherwise). Fragments are otherwise raw SQL: write them portably (`LENGTH(x)`, `TRUE`/`FALSE`, not `DAYOFMONTH` or `= 0` against booleans).
+- SQLite datetimes are text with six fraction digits (`YYYY-MM-DD HH:MM:SS.ffffff`, UTC); the executor binds `time` values in that form and the DDL defaults produce it, so a value read back compares equal.
+- Booleans: PostgreSQL `boolean`, SQLite INTEGER 0/1 (read back as bool by column type); bind bools, not integers, in fragments/raw.
+- aes/hex/ip host stages: `bind_slots[].host_styles` names the stages the executor applies to a bound value; `columns[].styles` carries them on read. Host AES = MySQL key folding + AES-128-ECB/PKCS7 (byte-identical, `tests/codec/aes-vectors.json`).
+- Seeds: `bench/sql/seed.pg.sql`, `bench/sql/seed.sqlite.sql`, then `go run ./bench/seedaes` fills the aes columns with the same bytes MySQL's `AES_ENCRYPT` produced.
+- Conformance: `tests/conformance/vectors.postgres.json` / `vectors.sqlite.json` are recorded per dialect; every vector's **result** is identical to MySQL except `sql_dump`, whose result is the dialect's own SQL text.
+

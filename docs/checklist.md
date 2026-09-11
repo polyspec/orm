@@ -131,8 +131,8 @@
 - [x] T6.1 E `dialect/postgres`: `$n`, `"quote"`, `ILIKE`, `ON CONFLICT (unique key 추론) DO UPDATE`, `RETURNING`, `to_tsvector('simple')`/`websearch_to_tsquery`, `host()`/`::inet`, aes/hex는 app-side — 골든 통과
 - [x] T6.2 E `dialect/sqlite`: `?`, `"quote"`, `LIKE … ESCAPE`, `INDEXED BY`, `ON CONFLICT`, `RETURNING`; `like_binary`·fulltext는 `OPERATOR_NOT_ALLOWED`로 거부(dialect `Supports`), 모든 스타일 app-side — 골든 통과
 - [ ] T6.3 **P** G/R 호스트측 AES 코덱(MySQL 키 폴딩, AES-128-ECB, PKCS7) + 벡터(MySQL `AES_ENCRYPT` 산출물과 바이트 일치), `ip` 16B packed, `point` 정책 → T2.6
-- [ ] T6.4 G/P/R 드라이버 추상(Go: driver별 DSN·placeholder, Rust: sqlx feature 게이트, PHP: pdo_pgsql/pdo_sqlite) → T6.1, T6.2
-- [~] T6.5 V `ormgen ddl --dialect`(MySQL은 validate 왕복, SQLite는 로드 확인, PG는 로컬에 없음) → `bench/sql/battle.pg.sql`·`battle.sqlite.sql`; `tests/codec/aes-vectors.json`(MySQL AES 산출물 8개); docker-compose·3 DB 적합성은 레인 병합 후
+- [~] T6.4 드라이버 추상 — **Go 완료**(`orm.Open(driver…)` mysql|postgres|sqlite, pgx stdlib·modernc sqlite, `$n` 재번호, RETURNING, PG/SQLite 에러 매핑, `[db].driver`), Rust·PHP는 레인
+- [~] T6.5 로컬 PostgreSQL 17(`deploy/local-postgres.md`)·SQLite에 bench 시드 + AES 시더 적재; **Go 러너 결과: PG 39/40, SQLite 39/40 MySQL과 동일**(`sql_dump`는 방언 텍스트) → `vectors.postgres.json`·`vectors.sqlite.json` 기록; PHP·Rust 3 DB는 레인 후
 - [ ] T6.6 E `ormgen import --dsn postgres://…` → T5.10
 - [x] T6.7 `docs/dialects.md` 차이표 + 레인 스펙 `docs/lanes/s6.md`
 
