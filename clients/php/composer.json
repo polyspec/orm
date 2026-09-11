@@ -1,0 +1,28 @@
+{
+    "name": "orm/php-client",
+    "description": "PHP executor of the orm compiler: generated typed builders over PDO, plans compiled by ormd",
+    "type": "library",
+    "version": "0.0.1",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.2",
+        "ext-pdo": "*",
+        "ext-pdo_mysql": "*",
+        "ext-json": "*",
+        "ext-zlib": "*"
+    },
+    "suggest": {
+        "ext-apcu": "shares compiled plans across PHP-FPM workers (without it every process asks ormd once per statement shape)"
+    },
+    "autoload": {
+        "psr-4": {
+            "Orm\\": "src/"
+        },
+        "classmap": [
+            "src/"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}

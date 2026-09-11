@@ -5,13 +5,14 @@ namespace Orm;
 
 /**
  * Persistent unix-socket connection to ormd (length-prefixed JSON frames) and
- * the plan cache: APCu across workers, plus a per-request array.
+ * the plan cache: APCu across workers, plus a per-request array keyed by the
+ * builder's shape signature (no IR encoding on a local hit).
  */
 final class Transport
 {
     /** @var resource|null */
     private $fp = null;
-    /** @var array<string, array> */
+    /** @var array<string, array> plans by Req signature (this request only) */
     private array $local = [];
 
     public function __construct(private readonly Config $config) {}
@@ -27,7 +28,7 @@ final class Transport
             STREAM_CLIENT_CONNECT | STREAM_CLIENT_PERSISTENT
         );
         if (!$fp) {
-            throw new OrmException('ORMD_UNREACHABLE', "{$this->config->socket}: $errstr");
+            throw new OrmException(Code::CONFIG, "ormd unreachable at {$this->config->socket}: $errstr");
         }
         stream_set_blocking($fp, true);
         $this->fp = $fp;
@@ -44,13 +45,13 @@ final class Transport
             $this->fp = null;
             $fp = $this->conn();
             if (@fwrite($fp, $out) !== strlen($out)) {
-                throw new OrmException('ORMD_UNREACHABLE', 'write failed');
+                throw new OrmException(Code::CONFIG, "ormd at {$this->config->socket}: write failed");
             }
         }
         $hdr = stream_get_contents($fp, 4);
         if ($hdr === false || strlen($hdr) !== 4) {
             $this->fp = null;
-            throw new OrmException('ORMD_UNREACHABLE', 'short header');
+            throw new OrmException(Code::CONFIG, "ormd at {$this->config->socket}: short header");
         }
         $len = unpack('N', $hdr)[1];
         $body = '';
@@ -58,11 +59,40 @@ final class Transport
             $chunk = fread($fp, $len - strlen($body));
             if ($chunk === false || $chunk === '') {
                 $this->fp = null;
-                throw new OrmException('ORMD_UNREACHABLE', 'short body');
+                throw new OrmException(Code::CONFIG, "ormd at {$this->config->socket}: short body");
             }
             $body .= $chunk;
         }
         return $body;
+    }
+
+    private function decode(string $body): array
+    {
+        $resp = json_decode($body, true);
+        if (!is_array($resp)) {
+            throw new OrmException(Code::INTERNAL, 'ormd: bad response');
+        }
+        if (isset($resp['error'])) {
+            throw new OrmException($resp['error']['code'], $resp['error']['msg']);
+        }
+        return $resp;
+    }
+
+    /** The schema hash of the manifest ormd loaded ({"op":"hash"}). */
+    public function hash(): string
+    {
+        return (string) ($this->decode($this->call('{"op":"hash"}'))['schema_hash'] ?? throw new OrmException(Code::INTERNAL, 'ormd: no schema_hash'));
+    }
+
+    /**
+     * The plan of a request. The per-request cache is keyed by the builder's signature
+     * (kind + the tokens every builder call appended + param count), so a repeated shape
+     * costs one array lookup; only a miss encodes the IR for the APCu / ormd key.
+     */
+    public function planFor(Req $req, string $kind): array
+    {
+        $key = $kind . "\x1f" . $req->sig . "\x1f" . count($req->params);
+        return $this->local[$key] ?? ($this->local[$key] = $this->plan($req->shape($kind)));
     }
 
     /**
@@ -72,41 +102,39 @@ final class Transport
     public function plan(array $ir): array
     {
         $shape = json_encode($ir, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $key = 'orm:' . $this->config->schemaHash() . ':' . hash('xxh3', $shape);
-        if (isset($this->local[$key])) {
-            return $this->local[$key];
-        }
+        $id = hash('xxh3', $shape);
+        $key = 'orm:' . $this->config->schemaHash() . ':' . $id;
         if (function_exists('apcu_fetch')) {
             $hit = apcu_fetch($key, $ok);
             if ($ok && is_array($hit)) {
-                return $this->local[$key] = $hit;
+                return $hit;
             }
         }
-        $resp = json_decode($this->call('{"op":"compile","ir":' . $shape . '}'), true);
-        if (!is_array($resp)) {
-            throw new OrmException('ORMD_PROTOCOL', 'bad response');
-        }
-        if (isset($resp['error'])) {
-            throw new OrmException($resp['error']['code'], $resp['error']['msg']);
-        }
-        $plan = $resp['plan'];
-        // Precompute name→index maps for every assemble node once, so rows never need array_combine.
-        Assemble::index($plan);
+        $plan = $this->decode($this->call('{"op":"compile","ir":' . $shape . '}'))['plan'];
+        // Precompute per-step data once (name→index maps, styled flag, plan id), so rows never need array_combine.
+        Assemble::index($plan, $id);
         if (function_exists('apcu_store')) {
             apcu_store($key, $plan);
         }
-        return $this->local[$key] = $plan;
+        return $plan;
     }
 }
 
 final class Assemble
 {
-    /** Adds 'idx' => [name => position] to every assemble node in place. */
-    public static function index(array &$plan): void
+    /**
+     * Stamps every step with 'plan_id' (the cache key suffix, for the on_query hook), 'styled'
+     * (whether any selected column needs the codec) and adds 'idx' => [name => position] to
+     * every assemble node in place.
+     */
+    public static function index(array &$plan, string $id): void
     {
         foreach ($plan['steps'] as &$step) {
+            $step['plan_id'] = $id;
+            $step['styled'] = false;
             if (isset($step['assemble'])) {
                 self::indexNode($step['assemble']);
+                $step['styled'] = Codec::hasStyled($step['assemble']);
             }
         }
     }
