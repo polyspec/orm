@@ -31,6 +31,8 @@ func main() {
 		validateCmd(os.Args[2:])
 	case "errors":
 		errorsCmd(os.Args[2:])
+	case "ddl":
+		ddlCmd(os.Args[2:])
 	default:
 		usage()
 	}
@@ -43,6 +45,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "       ormgen import --dsn <dsn> --out schema/app.mmd [--tables a,b]")
 	fmt.Fprintln(os.Stderr, "       ormgen validate --dsn <dsn> --schema schema/schema.json")
 	fmt.Fprintln(os.Stderr, "       ormgen errors --lang go|php|rust --out <file>")
+	fmt.Fprintln(os.Stderr, "       ormgen ddl --schema schema/schema.json --dialect mysql|postgres|sqlite --out <file.sql>")
 	os.Exit(2)
 }
 
