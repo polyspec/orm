@@ -43,12 +43,12 @@
 - [ ] T1.4 `ormgen validate --dsn`(`.mmd` ↔ `schema.json` ↔ 라이브 DB, exit≠0) → T1.3
 
 ### 1-B 엔진 (T1.2 후, 일부 **P**)
-- [ ] T1.5 IR v1 정의(`docs/protocol.md`): Value, Pred 트리(Group/Pred/cmp/fn/expr), Query, Join, Relation, Mutation, MutationBatch, Plan, Result, 헤더(ir_version, schema_hash), 에러 코드(`docs/errors.yaml`) → **선행: 모든 클라이언트 작업**
-- [ ] T1.6 **P** `engine/ir`: JSON→IR, 트리 검증(그룹 선두 OR, alias 유일성, EntityNotJoined, EMPTY_IN, 연산자 허용표) → T1.5
-- [ ] T1.7 **P** `engine/dialect` 인터페이스 + MySQL 구현: quote, placeholder, LIKE(ci by collation), upsert, insert id, fulltext(값 변환 `' '→' +'`, 끝 `*`), row_number, force_index, StyleExpr(aes/hex/ip는 SQL 함수) → T1.5
-- [ ] T1.8 `engine/planner` v1: 단일 테이블 SELECT/INSERT/UPDATE/DELETE, order/limit, 위치 기반 `assemble.columns[]`, lazy 컬럼 제외·`add/remove/all/only` 모드 → T1.6, T1.7
-- [ ] T1.9 `engine/api.Compile` + 골든 테스트(IR→SQL+바인드) 30개 → T1.8
-- [ ] T1.10 **P** `engine/ffi`·`engine/wasm` 실제 엔진 연결, 빌드 스크립트(`make artifacts`: darwin/linux amd64/arm64 dylib·so, wasm), 파일명에 버전 포함 → T1.9
+- [x] T1.5 IR v1 정의(`docs/protocol.md`): Value, Pred 트리(Group/Pred/cmp/fn/expr), Query, Join, Relation, Mutation, MutationBatch, Plan, Result, 헤더(ir_version, schema_hash), 에러 코드(`docs/errors.yaml`) → **선행: 모든 클라이언트 작업**
+- [x] T1.6 **P** `engine/ir`: JSON→IR, 트리 검증(그룹 선두 OR, alias 유일성, EntityNotJoined, EMPTY_IN, 연산자 허용표) → T1.5
+- [x] T1.7 **P** `engine/dialect` 인터페이스 + MySQL 구현: quote, placeholder, LIKE(ci by collation), upsert, insert id, fulltext(값 변환 `' '→' +'`, 끝 `*`), row_number, force_index, StyleExpr(aes/hex/ip는 SQL 함수) → T1.5
+- [x] T1.8 `engine/planner` v1: 단일 테이블 SELECT/INSERT/UPDATE/DELETE, order/limit, 위치 기반 `assemble.columns[]`, lazy 컬럼 제외·`add/remove/all/only` 모드 → T1.6, T1.7
+- [x] T1.9 `engine/api.Compile` + 골든 테스트(IR→SQL+바인드) 30개 → T1.8
+- [~] T1.10 **P** `engine/ffi`·`engine/wasm` 실제 엔진 연결(완료: orm_load/orm_compile), 빌드 스크립트(`make artifacts`: darwin/linux amd64/arm64 dylib·so, wasm), 파일명에 버전 포함 → T1.9
 
 ### 1-C Go 클라이언트 (T1.9 후)
 - [ ] T1.11 `clients/go/orm`: `Db/Tx`(database/sql 래핑, `CLIENT_FOUND_ROWS` DSN 강제), 플랜 캐시(형태 해시 + IN 카디널리티 + schema_hash, 만료 없음), 러너(bind_slots), typed 스캔, `Collection[T]`(순서 유지), `on_query` 훅, `debug()` → T1.9

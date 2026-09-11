@@ -1,11 +1,11 @@
 //! S0: cost of crossing into the engine from Rust.
 //!   libloading: dlopen libormengine.dylib, call orm_compile
 //!   wasmtime:   instantiate ormengine.wasm (wasip1 reactor), call orm_compile
-//! Usage: boundary <dylib> <wasm> [iters]
+//! Usage: boundary <dylib> <wasm> <schema.json> [iters]
 
 use std::time::Instant;
 
-const IR_LIST: &str = r#"{"ir_version":1,"schema_hash":"s0-battle-v1","entity":"battle",
+const IR_LIST_T: &str = r#"{"ir_version":1,"schema_hash":"HASH","kind":"all","entity":"battle",
  "where":{"items":[
    {"pred":{"column":"service_seq","op":"eq","value":5}},
    {"pred":{"conn":"and","column":"is_close","op":"eq","value":0}},
@@ -15,11 +15,11 @@ const IR_LIST: &str = r#"{"ir_version":1,"schema_hash":"s0-battle-v1","entity":"
        {"pred":{"column":"is_display","op":"eq","value":2}},
        {"pred":{"conn":"and","column":"display_start_dt","op":"lt","value":"2026-09-11 00:00:00"}},
        {"pred":{"conn":"and","column":"display_end_dt","op":"gt","value":"2026-09-11 00:00:00"}}]}}]}},
-   {"pred":{"conn":"and","column":"seq","op":"in","value":[1,2,3]}}]},
- "order":[{"column":"seq","dir":"desc"}],"limit":{"offset":0,"count":100}}"#;
+   {"pred":{"conn":"and","column":"seq","op":"in","values":[1,2,3]}}]},
+ "order":[{"column":"seq","desc":true}],"limit":{"offset":0,"count":100}}"#;
 
-const IR_PK: &str = r#"{"ir_version":1,"schema_hash":"s0-battle-v1","entity":"battle",
- "where":{"items":[{"pred":{"column":"seq","op":"eq","value":42}}]},"limit":{"offset":0,"count":1}}"#;
+const IR_PK_T: &str = r#"{"ir_version":1,"schema_hash":"HASH","kind":"one","entity":"battle",
+ "where":{"items":[{"pred":{"column":"seq","op":"eq","value":42}}]}}"#;
 
 fn stats(name: &str, mut samples: Vec<u64>) {
     samples.sort_unstable();
@@ -34,6 +34,7 @@ fn stats(name: &str, mut samples: Vec<u64>) {
 
 // ---------- libloading ----------
 type CompileFn = unsafe extern "C" fn(*const u8, usize, *mut *mut u8, *mut usize) -> i32;
+type LoadFn = unsafe extern "C" fn(*const u8, usize, *const std::os::raw::c_char, *mut *mut u8, *mut usize) -> i32;
 type FreeFn = unsafe extern "C" fn(*mut u8);
 
 struct Ffi {
@@ -43,11 +44,17 @@ struct Ffi {
 }
 
 impl Ffi {
-    fn load(path: &str) -> Ffi {
+    fn load(path: &str, schema: &[u8]) -> Ffi {
         unsafe {
             let lib = libloading::Library::new(path).expect("dlopen");
+            let load: LoadFn = *lib.get(b"orm_load\0").expect("orm_load");
             let compile: CompileFn = *lib.get(b"orm_compile\0").expect("orm_compile");
             let free: FreeFn = *lib.get(b"orm_free\0").expect("orm_free");
+            let dialect = std::ffi::CString::new("mysql").unwrap();
+            let mut err: *mut u8 = std::ptr::null_mut();
+            let mut err_len: usize = 0;
+            let rc = load(schema.as_ptr(), schema.len(), dialect.as_ptr(), &mut err, &mut err_len);
+            assert_eq!(rc, 0, "orm_load failed: {}", String::from_utf8_lossy(std::slice::from_raw_parts(err, err_len)));
             Ffi { compile, free, _lib: lib }
         }
     }
@@ -73,7 +80,7 @@ struct Wasm {
 }
 
 impl Wasm {
-    fn load(path: &str) -> (Wasm, std::time::Duration, std::time::Duration) {
+    fn load(path: &str, schema: &[u8]) -> (Wasm, std::time::Duration, std::time::Duration) {
         let t0 = Instant::now();
         let mut config = wasmtime::Config::new();
         config.cache(Some(wasmtime::Cache::from_file(None).expect("cache config")));
@@ -95,8 +102,19 @@ impl Wasm {
         let alloc = instance.get_typed_func::<u32, u32>(&mut store, "orm_alloc").expect("orm_alloc");
         let free = instance.get_typed_func::<u32, ()>(&mut store, "orm_free").expect("orm_free");
         let compile = instance.get_typed_func::<(u32, u32), u32>(&mut store, "orm_compile").expect("orm_compile");
+        let load = instance.get_typed_func::<(u32, u32), u32>(&mut store, "orm_load").expect("orm_load");
         let t_inst = t1.elapsed();
-        (Wasm { store, memory, alloc, free, compile }, t_compile, t_inst)
+        let mut w = Wasm { store, memory, alloc, free, compile };
+        // load schema
+        let p = w.alloc.call(&mut w.store, schema.len() as u32).expect("alloc");
+        w.memory.write(&mut w.store, p as usize, schema).expect("write");
+        let rp = load.call(&mut w.store, (p, schema.len() as u32)).expect("load");
+        let mut hdr = [0u8; 8];
+        w.memory.read(&w.store, rp as usize, &mut hdr).expect("hdr");
+        assert_eq!(u32::from_le_bytes(hdr[0..4].try_into().unwrap()), 0, "orm_load failed");
+        w.free.call(&mut w.store, p).unwrap();
+        w.free.call(&mut w.store, rp).unwrap();
+        (w, t_compile, t_inst)
     }
 
     fn compile(&mut self, ir: &[u8]) -> Result<Vec<u8>, Vec<u8>> {
@@ -119,11 +137,20 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let dylib = &args[1];
     let wasm = &args[2];
-    let iters: usize = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(20_000);
+    let iters: usize = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(20_000);
+    let schema = std::fs::read(&args[3]).expect("schema.json");
+    let hash = {
+        let s = String::from_utf8_lossy(&schema);
+        let i = s.find("\"schema_hash\": \"").expect("schema_hash") + 16;
+        s[i..i + 16].to_string()
+    };
+    let ir_list = IR_LIST_T.replace("HASH", &hash);
+    let ir_pk = IR_PK_T.replace("HASH", &hash);
+    let (IR_LIST, IR_PK) = (ir_list.as_str(), ir_pk.as_str());
 
     println!("== libloading ==");
     let t = Instant::now();
-    let ffi = Ffi::load(dylib);
+    let ffi = Ffi::load(dylib, &schema);
     println!("dlopen+symbols: {:?}", t.elapsed());
     let plan = ffi.compile(IR_LIST.as_bytes()).expect("compile ok");
     println!("plan bytes: {} (list) / {} (pk)", plan.len(), ffi.compile(IR_PK.as_bytes()).unwrap().len());
@@ -138,11 +165,11 @@ fn main() {
         stats(name, s);
     }
     // error path
-    let err = ffi.compile(br#"{"ir_version":1,"schema_hash":"x","entity":"battle"}"#).unwrap_err();
+    let err = ffi.compile(br#"{"ir_version":1,"schema_hash":"x","kind":"all","entity":"battle"}"#).unwrap_err();
     println!("ffi error path: {}", String::from_utf8_lossy(&err));
 
     println!("== wasmtime ==");
-    let (mut w, t_compile, t_inst) = Wasm::load(wasm);
+    let (mut w, t_compile, t_inst) = Wasm::load(wasm, &schema);
     println!("module compile(load, cached after first run): {:?}, instantiate+_initialize: {:?}", t_compile, t_inst);
     let plan_w = w.compile(IR_LIST.as_bytes()).expect("compile ok");
     assert_eq!(plan, plan_w, "wasm and ffi must produce identical plans");
@@ -160,7 +187,7 @@ fn main() {
     let mut s = Vec::new();
     for _ in 0..5 {
         let t = Instant::now();
-        let (_w2, _, _) = Wasm::load(wasm);
+        let (_w2, _, _) = Wasm::load(wasm, &schema);
         s.push(t.elapsed().as_nanos() as u64);
     }
     stats("wasm load+instantiate (x5)", s);
