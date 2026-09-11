@@ -37,8 +37,8 @@
 ## 단계 1 — S1 thin slice (3 테이블 · 3언어 · 같은 문장 · 같은 결과)  [3.5주]
 
 ### 1-A 스키마 (순차)
-- [ ] T1.1 Mermaid `erDiagram` 파서(`docs/schema.md`): 엔티티 블록(타입·PK/FK/UK·주석 속성 `? =v auto bool lazy 스타일 -> t.c`), 관계선(crow's foot → kind, 라벨 `fk (child / parent)`), `%%` 지시문(unique/index/fulltext/timestamps/predicate), 이름 기본 규칙(`_seq` 제거·접두어 제거+복수형) → DoD: §1 예제 파싱, 라운드트립(파싱→출력) 동일
-- [ ] T1.2 매니페스트 빌더+검증기(`ormgen build` → `schema.json`, `schema_hash`): 컬럼명 규칙, 관계 이름 충돌·예약어, FK 무관계 경고, 정규 타입 매핑 → DoD: 픽스처 `order_number get_dt condition_type withdraw_count android_app_url origin_price brand_name` 허용, 금지 케이스 에러 → T1.1
+- [x] T1.1 Mermaid `erDiagram` 파서(`docs/schema.md`): 엔티티 블록(타입·PK/FK/UK·주석 속성 `? =v auto bool lazy 스타일 -> t.c`), 관계선(crow's foot → kind, 라벨 `fk (child / parent)`), `%%` 지시문(unique/index/fulltext/timestamps/predicate), 이름 기본 규칙(`_seq` 제거·접두어 제거+복수형) → DoD: §1 예제 파싱, 라운드트립(파싱→출력) 동일
+- [x] T1.2 매니페스트 빌더+검증기(`ormgen build` → `schema.json`, `schema_hash`): 컬럼명 규칙, 관계 이름 충돌·예약어, FK 무관계 경고, 정규 타입 매핑 → DoD: 픽스처 `order_number get_dt condition_type withdraw_count android_app_url origin_price brand_name` 허용, 금지 케이스 에러 → T1.1
 - [ ] T1.3 `ormgen import --dsn`(information_schema → `.mmd`): 접두어→style, FK→관계선, 인덱스→`%%`, lazy 규칙, `CURRENT_TIMESTAMP%`, collation, `block_encryption_mode` 확인, `INET6_ATON` 길이 확인, **멱등**(라벨 이름 재정의·주석 속성 보존) → T1.1, T0.3 → DoD: 로컬 `orm_bench` + 150-table fixture에서 임포트, 재실행 diff 0, Mermaid 렌더 확인
 - [ ] T1.4 `ormgen validate --dsn`(`.mmd` ↔ `schema.json` ↔ 라이브 DB, exit≠0) → T1.3
 

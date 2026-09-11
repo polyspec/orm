@@ -102,6 +102,18 @@ Mermaid 표준 그대로다. `PK`/`FK`/`UK`는 Mermaid 키워드(`PK, FK`처럼 
 - text/blob/스타일 컬럼은 자동 lazy(`aes_hex_*`만 예외로 기본 포함 — compatibility 관례).
 - FK 컬럼이 `<table>_seq`이고 관계선이 있으면 `-> table.seq` 불필요.
 
+### 2.5 표준 Mermaid가 못 담는 것과 그 자리 (CREATE문 대체 범위)
+| CREATE문 요소 | 자리 |
+|---|---|
+| 테이블·컬럼·타입·PK/FK/UK·관계·카디널리티 | 표준 Mermaid |
+| NULL/NOT NULL, DEFAULT, AUTO_INCREMENT, ON UPDATE, lazy, 스타일, FK 대상 | 컬럼 주석 문자열(렌더러는 글자로 표시) |
+| 복합 UNIQUE, INDEX(순서 포함), FULLTEXT, 타임스탬프 지정, 재사용 술어 | `%%` 지시문(렌더러는 무시) |
+| FK 참조 동작 | 관계선 라벨 속성 `cascade`/`setnull` (기본 RESTRICT) |
+| 3 DB 방언 차이 | 파일에 없음. 타입 어휘를 고정하고 `ormgen ddl --dialect mysql\|postgres\|sqlite`가 방언별 CREATE문을 생성 |
+| CHECK, 파티션, 콜레이션·엔진 옵션, 뷰·트리거·함수·시퀀스·확장 | 다루지 않음(ORM 범위 밖). 마이그레이션 SQL에 직접 |
+
+타입 문자열에 쉼표는 Mermaid 문법상 불가 → `decimal(13_3)`, `enum(a_b_c)`처럼 `_`로 쓴다(ormgen이 해석). 방언별 매핑 규칙표(정규 타입 → DDL)는 `docs/dialects.md`(S6)에 둔다.
+
 ## 3. 매니페스트 (생성물, `schema.json`)
 ```json
 {
@@ -128,6 +140,7 @@ Mermaid 표준 그대로다. `PK`/`FK`/`UK`는 Mermaid 키워드(`PK, FK`처럼 
 ormgen import   --dsn mysql://… --schema service --out schema/service.mmd   # DB → Mermaid (멱등: 라벨의 이름 재정의·주석 속성 보존)
 ormgen build    schema/*.mmd --out schema/schema.json                       # Mermaid → 매니페스트 (검증 포함)
 ormgen validate --dsn …                                                      # 매니페스트 ↔ 라이브 DB
+ormgen ddl      --dialect mysql|postgres|sqlite [--tables …]                # 매니페스트 → CREATE문
 ormgen gen      --lang php,go,rust                                           # 매니페스트 → 클라이언트
 ormgen check    --lang php                                                   # 소스 코드 ↔ 매니페스트 (레거시 이름·expr 컬럼)
 ```
