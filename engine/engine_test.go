@@ -174,6 +174,55 @@ func TestUpsertAndCascade(t *testing.T) {
 	}
 }
 
+func TestAggregates(t *testing.T) {
+	e := testEngine(t)
+	cases := map[string]string{
+		`"kind":"min","entity":"author","agg":"start_dt","n_params":1,"where":{"items":[{"pred":{"column":"service_seq","op":"eq","p":0}}]}`: "SELECT MIN(`a`.`start_dt`) FROM `author` AS `a` WHERE `a`.`service_seq` = ?",
+		`"kind":"max","entity":"author","agg":"like_count"`:                                                                                       "SELECT MAX(`a`.`like_count`) FROM `author` AS `a`",
+		`"kind":"count_distinct","entity":"author","agg":"user_seq"`:                                                                              "SELECT COUNT(DISTINCT `a`.`user_seq`) FROM `author` AS `a`",
+		`"kind":"count","entity":"author","group_by":["service_seq"],"n_params":1,"having":{"items":[{"pred":{"expr":"COUNT(*) > ?","ps":[0]}}]}`: "SELECT COUNT(*) FROM (SELECT 1 FROM `author` AS `a` GROUP BY `a`.`service_seq` HAVING (COUNT(*) > ?)) AS `orm_g`",
+		`"kind":"all","entity":"author","columns":{"mode":"none"},"group_by":["service_seq"],"n_params":1,"having":{"items":[{"pred":{"column":"service_seq","op":"gt","p":0}}]},"order":[{"column":"service_seq","desc":false}],"limit":{"offset":0,"count":2}`: "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` GROUP BY `a`.`service_seq` HAVING `a`.`service_seq` > ? ORDER BY `a`.`service_seq` ASC LIMIT 0, 2",
+	}
+	for irs, want := range cases {
+		p := compile(t, e, irs)
+		if p.Steps[0].SQL != want {
+			t.Errorf("%s\n got  %s\n want %s", irs, p.Steps[0].SQL, want)
+		}
+	}
+	for irs, code := range map[string]string{
+		`"kind":"all","entity":"author","n_params":1,"having":{"items":[{"pred":{"column":"seq","op":"gt","p":0}}]}`: "IR_INVALID: having needs group_by",
+		`"kind":"min","entity":"author","agg":"aes_hex_email"`:                                                       "OPERATOR_NOT_ALLOWED",
+		`"kind":"max","entity":"author","agg":"nope"`:                                                                "COLUMN_UNKNOWN",
+	} {
+		_, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `",` + irs + `}`))
+		if err == nil || !strings.HasPrefix(err.Error(), code) {
+			t.Errorf("%s\n got %v\n want %s", irs, err, code)
+		}
+	}
+}
+
+func TestRawAndPredicates(t *testing.T) {
+	e := testEngine(t)
+	p := compile(t, e, `"kind":"raw","entity":"author","n_params":2,"raw":{"sql":"SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?","ps":[0,1]}`)
+	if p.Steps[0].Role != "raw" || p.Steps[0].SQL != "SELECT COUNT(*) AS n, MAX(seq) AS m FROM `author` WHERE service_seq = ? AND is_close = ?" || len(p.Steps[0].BindSlots) != 2 || p.Steps[0].Assemble != nil {
+		t.Errorf("raw: %+v", p.Steps[0])
+	}
+	for irs, code := range map[string]string{
+		`"kind":"raw","entity":"author","n_params":1,"raw":{"sql":"SELECT ? , ?","ps":[0]}`: "IR_INVALID: raw: 2 placeholders but 1 params",
+		`"kind":"all","entity":"author","raw":{"sql":"SELECT 1"}`:                           "IR_INVALID: raw is only valid with kind raw",
+	} {
+		_, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `",` + irs + `}`))
+		if err == nil || !strings.HasPrefix(err.Error(), code) {
+			t.Errorf("%s\n got %v\n want %s", irs, err, code)
+		}
+	}
+	// named predicates come from the diagram, validated at build time
+	pr := e.M.Entities["author"].Predicates
+	if pr["visible"] == nil || pr["visible"].Arity != 0 || pr["started_after"] == nil || pr["started_after"].Arity != 1 || pr["started_after"].Expr != "`start_dt` > ?" {
+		t.Errorf("predicates: %+v", pr)
+	}
+}
+
 func TestCompileErrors(t *testing.T) {
 	e := testEngine(t)
 	h := e.M.SchemaHash

@@ -86,7 +86,7 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 	ps := &stepSet{}
 	var err error
 	switch r.Kind {
-	case "one", "all", "count", "sum", "avg":
+	case "one", "all", "count", "count_distinct", "sum", "avg", "min", "max":
 		_, err = p.selectStep(ps, &r.Query, r.Kind, r.Agg, nil)
 	case "paginate":
 		// main (+ its relation steps), then the count step: executors find it by role.
@@ -108,6 +108,14 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 		if st, err = p.deleteStep(r); err == nil {
 			ps.add(st)
 		}
+	case "raw":
+		b := &builder{p: p}
+		ent := p.M.Entities[r.Entity]
+		sql := strings.ReplaceAll(r.Raw.SQL, "{table}", p.D.Quote(ent.Table))
+		for _, i := range r.Raw.Ps {
+			b.param(i)
+		}
+		ps.add(&plan.Step{Role: "raw", SQL: sql, BindSlots: b.binds})
 	}
 	if err != nil {
 		return nil, err
@@ -151,17 +159,26 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	}
 	asm := &plan.Assemble{Entity: root.ent.Name, Alias: root.alias}
 	var outNames []string
+	groupCount := kind == "count" && len(q.GroupBy) > 0 // number of groups: wrap the grouped statement
 	switch kind {
 	case "count":
-		if len(q.GroupBy) > 0 || q.Distinct {
+		if groupCount {
+			sb.WriteString("1")
+		} else if q.Distinct {
 			sb.WriteString("COUNT(DISTINCT " + p.qcol(root, root.ent.PK[0]) + ")")
 		} else {
 			sb.WriteString("COUNT(*)")
 		}
+	case "count_distinct":
+		sb.WriteString("COUNT(DISTINCT " + p.qcol(root, agg) + ")")
 	case "sum":
 		sb.WriteString("COALESCE(SUM(" + p.qcol(root, agg) + "), 0)")
 	case "avg":
 		sb.WriteString("AVG(" + p.qcol(root, agg) + ")")
+	case "min":
+		sb.WriteString("MIN(" + p.qcol(root, agg) + ")")
+	case "max":
+		sb.WriteString("MAX(" + p.qcol(root, agg) + ")")
 	default:
 		idx := 0
 		if err := p.selectList(b, &sb, root, asm, &idx, &outNames); err != nil {
@@ -212,7 +229,8 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	if len(where) > 0 {
 		sb.WriteString(" WHERE " + strings.Join(where, " AND "))
 	}
-	if len(q.GroupBy) > 0 && kind != "count" && kind != "sum" && kind != "avg" {
+	// GROUP BY applies to row selects and to the group count; scalar aggregates ignore it.
+	if len(q.GroupBy) > 0 && (kind == "one" || kind == "all" || groupCount) {
 		sb.WriteString(" GROUP BY ")
 		for i, g := range q.GroupBy {
 			if i > 0 {
@@ -220,6 +238,18 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			}
 			sb.WriteString(p.qcol(root, g))
 		}
+		if q.Having != nil && len(q.Having.Items) > 0 {
+			h, err := p.renderGroup(b, root, q.Having, true)
+			if err != nil {
+				return nil, err
+			}
+			sb.WriteString(" HAVING " + h)
+		}
+	}
+	if groupCount {
+		wrapped := "SELECT COUNT(*) FROM (" + sb.String() + ") AS " + p.D.Quote("orm_g")
+		sb.Reset()
+		sb.WriteString(wrapped)
 	}
 	if kind == "one" || kind == "all" {
 		if perParent > 0 {
