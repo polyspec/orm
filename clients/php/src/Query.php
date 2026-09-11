@@ -56,6 +56,12 @@ final class Req
         }
         $q = $child->ir;
         unset($q['ir_version'], $q['schema_hash'], $q['kind']);
+        if (isset($q['where'])) {
+            // The child's cached root W holds a reference to its where group; re-slot it so the copy is a plain value.
+            $where = $q['where'];
+            unset($q['where']);
+            $q['where'] = $where;
+        }
         self::shiftQuery($q, $off);
         $this->sig .= $token . '{' . $child->sig . '}';
         return $q;
@@ -141,7 +147,11 @@ class W
     /** A predicate over an already-registered param (save reuses the PK assignment's slot as its where). */
     public function predAt(string $col, string $op, int $p): void
     {
-        $this->g['items'][] = ['pred' => $this->conn() + ['column' => $col, 'op' => $op, 'p' => $p]];
+        if ($this->pendingOr) {
+            $this->g['items'][] = ['pred' => $this->conn() + ['column' => $col, 'op' => $op, 'p' => $p]];
+        } else {
+            $this->g['items'][] = ['pred' => ['column' => $col, 'op' => $op, 'p' => $p]];
+        }
         $this->req->sig .= "|p$col\x1f$op\x1f$p";
     }
 
@@ -210,6 +220,7 @@ class Q
     /** @var array reference to the query node this builder edits */
     public array $node;
     private bool $pendingOr = false;
+    private ?W $rootW = null;
     /** keyByFn: client-side keying of the root collection (relations key by keyBy<Col>) */
     public ?\Closure $keyFn = null;
 
@@ -228,13 +239,15 @@ class Q
     /** W over the root where group, carrying the pending connector. */
     public function w(): W
     {
-        $this->node['where'] ??= ['items' => []];
-        $w = new W($this->req, $this->node['where']);
+        if ($this->rootW === null) {
+            $this->node['where'] ??= ['items' => []];
+            $this->rootW = new W($this->req, $this->node['where']);
+        }
         if ($this->pendingOr) {
-            $w->orConn();
+            $this->rootW->orConn();
             $this->pendingOr = false;
         }
-        return $w;
+        return $this->rootW;
     }
 
     public function onW(): W
