@@ -132,6 +132,24 @@ func (q *Q) Or() { q.pendingOr = true }
 
 func (q *Q) OnW() *W { return NewW(q.Req, q.on()) }
 
+// HavingW edits the root HAVING group (the engine requires group_by with it).
+func (q *Q) HavingW() *W {
+	if q.Node.Having == nil {
+		q.Node.Having = &ir.Group{}
+	}
+	return NewW(q.Req, q.Node.Having)
+}
+
+// Raw stores a hand-written SELECT as the request's root (kind raw): `{table}`
+// is the entity's table, each `?` binds the next value. RawAll runs it.
+func (q *Q) Raw(sql string, binds ...any) {
+	ps := make([]int, 0, len(binds))
+	for _, v := range binds {
+		ps = append(ps, q.Req.P(v))
+	}
+	q.Req.IR.Raw = &ir.Raw{SQL: sql, Ps: ps}
+}
+
 func (q *Q) Join(rel, kind string, child *Q) {
 	q.Node.Joins = append(q.Node.Joins, &ir.Join{Rel: rel, Kind: kind, Query: q.Req.Attach(child.Req)})
 }
