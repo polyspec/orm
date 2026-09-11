@@ -124,7 +124,7 @@ func scanUser(vals []any, a *plan.Assemble, rs *orm.Rows) *UserRow {
 			r.ServiceMembers = c
 		}
 	}
-	r.SetProjection(a)
+	r.SetProjection(rs.Projection(a))
 	r.Mark("user", "seq", r.Seq)
 	return r
 }

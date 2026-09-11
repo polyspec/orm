@@ -35,7 +35,7 @@ func Decode(styles []string, raw any) (any, error) {
 	case []byte:
 		b = x
 	default:
-		return nil, codecErr("CODEC_DECODE", "cell is %T, not bytes", raw)
+		return nil, codecErr(CodeCodecDecode, "cell is %T, not bytes", raw)
 	}
 	if len(b) == 0 {
 		return nil, nil
@@ -44,24 +44,24 @@ func Decode(styles []string, raw any) (any, error) {
 	for i := len(styles) - 1; i >= 0; i-- {
 		cur, ok := v.([]byte)
 		if !ok {
-			return nil, codecErr("CODEC_DECODE", "style %s after a decoded value", styles[i])
+			return nil, codecErr(CodeCodecDecode, "style %s after a decoded value", styles[i])
 		}
 		var err error
 		switch styles[i] {
 		case "gz":
 			r, e := zlib.NewReader(bytes.NewReader(cur))
 			if e != nil {
-				return nil, codecErr("CODEC_DECODE", "gz: %v", e)
+				return nil, codecErr(CodeCodecDecode, "gz: %v", e)
 			}
 			v, err = io.ReadAll(r)
 			r.Close()
 			if err != nil {
-				return nil, codecErr("CODEC_DECODE", "gz: %v", err)
+				return nil, codecErr(CodeCodecDecode, "gz: %v", err)
 			}
 		case "base64":
 			v, err = base64.StdEncoding.DecodeString(strings.TrimSpace(string(cur)))
 			if err != nil {
-				return nil, codecErr("CODEC_DECODE", "base64: %v", err)
+				return nil, codecErr(CodeCodecDecode, "base64: %v", err)
 			}
 		case "serialize":
 			v, err = phpUnserialize(cur)
@@ -71,10 +71,10 @@ func Decode(styles []string, raw any) (any, error) {
 		case "json", "jsons":
 			v, err = jsonDecode(cur)
 			if err != nil {
-				return nil, codecErr("CODEC_DECODE", "json: %v", err)
+				return nil, codecErr(CodeCodecDecode, "json: %v", err)
 			}
 		default:
-			return nil, codecErr("CODEC_UNSUPPORTED", "style %s", styles[i])
+			return nil, codecErr(CodeCodecUnsupported, "style %s", styles[i])
 		}
 	}
 	if raw, ok := v.([]byte); ok { // e.g. styles = [] — never happens for styled columns
@@ -93,7 +93,7 @@ func Encode(styles []string, v any) (any, error) {
 		switch st {
 		case "serialize":
 			if i != 0 {
-				return nil, codecErr("CODEC_UNSUPPORTED", "serialize must be the first style")
+				return nil, codecErr(CodeCodecUnsupported, "serialize must be the first style")
 			}
 			var sb strings.Builder
 			if err := phpSerialize(&sb, v); err != nil {
@@ -102,13 +102,13 @@ func Encode(styles []string, v any) (any, error) {
 			cur = []byte(sb.String())
 		case "json", "jsons":
 			if i != 0 {
-				return nil, codecErr("CODEC_UNSUPPORTED", "json must be the first style")
+				return nil, codecErr(CodeCodecUnsupported, "json must be the first style")
 			}
 			var buf bytes.Buffer
 			enc := json.NewEncoder(&buf)
 			enc.SetEscapeHTML(false)
 			if err := enc.Encode(v); err != nil {
-				return nil, codecErr("CODEC_ENCODE", "json: %v", err)
+				return nil, codecErr(CodeCodecEncode, "json: %v", err)
 			}
 			cur = bytes.TrimRight(buf.Bytes(), "\n")
 		case "base64":
@@ -120,7 +120,7 @@ func Encode(styles []string, v any) (any, error) {
 			w.Close()
 			return buf.Bytes(), nil
 		default:
-			return nil, codecErr("CODEC_UNSUPPORTED", "style %s", st)
+			return nil, codecErr(CodeCodecUnsupported, "style %s", st)
 		}
 	}
 	return string(cur), nil
@@ -210,7 +210,7 @@ func phpSerialize(sb *strings.Builder, v any) error {
 		}
 		sb.WriteString("}")
 	default:
-		return codecErr("CODEC_ENCODE", "cannot serialize %T", v)
+		return codecErr(CodeCodecEncode, "cannot serialize %T", v)
 	}
 	return nil
 }
@@ -262,7 +262,7 @@ func phpUnserialize(b []byte) (any, error) {
 		return nil, err
 	}
 	if p.i != len(b) {
-		return nil, codecErr("CODEC_DECODE", "serialize: trailing data at %d", p.i)
+		return nil, codecErr(CodeCodecDecode, "serialize: trailing data at %d", p.i)
 	}
 	return v, nil
 }
@@ -273,7 +273,7 @@ type phpParser struct {
 }
 
 func (p *phpParser) fail(msg string) error {
-	return codecErr("CODEC_DECODE", "serialize: %s at %d", msg, p.i)
+	return codecErr(CodeCodecDecode, "serialize: %s at %d", msg, p.i)
 }
 
 func (p *phpParser) expect(c byte) error {
@@ -414,7 +414,7 @@ func (p *phpParser) value() (any, error) {
 		}
 		return m, nil
 	case 'O', 'C', 'r', 'R':
-		return nil, codecErr("CODEC_UNSUPPORTED", "serialize: objects and references are not supported (%c)", t)
+		return nil, codecErr(CodeCodecUnsupported, "serialize: objects and references are not supported (%c)", t)
 	}
 	return nil, p.fail(fmt.Sprintf("unknown type %q", t))
 }

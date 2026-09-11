@@ -145,7 +145,7 @@ func scanServiceRegion(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRegio
 			}
 		}
 	}
-	r.SetProjection(a)
+	r.SetProjection(rs.Projection(a))
 	r.Mark("service_region", "seq", r.Seq)
 	return r
 }
