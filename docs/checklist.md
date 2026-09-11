@@ -6,7 +6,7 @@
 ## 현재 위치 (2026-09-11)
 - **S0 완료** (측정·결정 R1~R3, F1~F3 — `docs/perf.md`).
 - **S1 완료** (thin slice: 엔진·생성기·3언어 실행기, 적합성 하네스, `ormgen tokens`, 데모).
-- **S2 완료**(T2.15 150테이블 게이트만 example DB 대기), **S3 완료**, **S4 완료**(PHP `__call` 호환층 T4.6만 남음), **S5 언어 레인 진행 중**(docs/lanes/s5.md), **S6 엔진 완료**(dialect PG/SQLite, ddl).
+- **S2 완료**(T2.15 150테이블 게이트만 example DB 대기), **S3 완료**, **S4 완료**(PHP 호환층 포함), **S5 언어 레인 진행 중**(docs/lanes/s5.md), **S6 엔진 완료**(dialect PG/SQLite, ddl).
 - 적합성 벡터 **40개 × 3언어 바이트 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
 
 ## 병렬 레인 (어떻게 나눠 일하는가)
@@ -39,7 +39,7 @@
 - [x] T1.21 `tests/conformance` 하네스(러너 3 + `check run/compare/record`) · T1.22 `ormgen tokens` · T1.23 데모 `examples/thin-slice` · T1.24 Rust 컴파일 시간(5테이블 check 0.25s)
 - [x] T1.3 `ormgen import --dsn` (S5 T5.10에서 완료)
 - [x] T1.4 `ormgen validate --dsn` (S5 T5.1에서 완료)
-- [ ] T1.17 PHP `__call` 파서 → **S4 T4.7로 이동** (v3 문법은 생성 메서드를 쓰므로 호환층 전용)
+- [x] T1.17 PHP `__call` 파서 → T4.6에서 완료
 
 ---
 
@@ -97,7 +97,7 @@
 
 ### 4-B 생성기·실행기 — 레인 E(템플릿) → G ∥ P ∥ R
 - [x] T4.5 G/P/R(병렬 레인, docs/lanes/s4.md): 집계 터미널, `having`, `raw`/`rawAll`, 이름 붙인 술어 메서드 — **3언어 병합, 적합성 40 × 3 동일**
-- [ ] T4.6 **P** P: compatibility `__call` 호환층 — `condition*/and*/or*/on*`, op-first(`gtEndDt`), 무접두 `x(v)`, 배열→In·null→IsNull, `relation((new Y)->matchAWithB()->aliasR())`, `joinAWithB`, `addColumnX/addAllColumns`, `parentNode→flatten`, `groupLimit→limitPerParent`, `keyNameX→keyByX`, `fetchKey→keyByFn`, `deleteLock→noCascadeDelete`, `get/gets→one/all`, `getsByAAndB`, `and('(')…condition(')')`(모델 내 균형만, 경계 초과는 `PAREN_ACROSS_MODELS`) — 같은 IR 생성, 적합성으로 검증
+- [x] T4.6 PHP compatibility `__call` 호환층(`clients/php/src/Compat.php`, 생성 클래스에 trait): and*/or*/condition*, op-first, 괄호 토큰·brace-call, relation/matchAWithB/alias, join, addColumn*, keyName/fetchKey, parentNode/groupLimit/possible/deleteLock, get/gets/getBy*/getsBy…And…, duplication, plus/minus/setRaw → 같은 IR; `compat.php` 50쌍 IR 동일; 번역 불가 목록은 dsl.md "PHP 호환층" 표(모델 경계 괄호 → PAREN_ACROSS_MODELS)
 - [~] T4.7 `ormgen check --lang php` 완료 → example application 스캔 결과 `docs/checklist.md`(6,752 파일: relation 7,306·match 7,259·alias 5,877·and/or/condition 4,032·괄호 토큰 720·brace-call 64·raw 조각 63·delete(true) 354·duplication 23; 모델 경계를 넘는 괄호 후보 59 파일) — `--lang go` expr analyzer는 남음
 
 ### 4-C 검증 — 레인 V
