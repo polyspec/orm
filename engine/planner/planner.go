@@ -74,6 +74,32 @@ func (b *builder) secret(name string) string {
 	return b.p.D.Placeholder(b.n)
 }
 
+// now is a timestamp the executor supplies (dialects without a sub-second clock function).
+func (b *builder) now() string {
+	b.binds = append(b.binds, plan.BindSlot{From: "now"})
+	b.n++
+	return b.p.D.Placeholder(b.n)
+}
+
+// fillPlaceholders replaces each `?` of a user fragment with the dialect's
+// placeholder for the next bind (PostgreSQL needs $n); the count must match.
+func (p *Planner) fillPlaceholders(b *builder, frag string, ps []int) (string, error) {
+	if n := strings.Count(frag, "?"); n != len(ps) {
+		return "", &ir.Error{Code: "IR_INVALID", Msg: fmt.Sprintf("fragment has %d placeholders but %d binds", n, len(ps))}
+	}
+	var sb strings.Builder
+	k := 0
+	for i := 0; i < len(frag); i++ {
+		if frag[i] == '?' {
+			sb.WriteString(b.param(ps[k]))
+			k++
+			continue
+		}
+		sb.WriteByte(frag[i])
+	}
+	return sb.String(), nil
+}
+
 // parentList is the one placeholder an executor expands to the parent values.
 func (b *builder) parentList(step int) string {
 	b.binds = append(b.binds, plan.BindSlot{From: "parent", Step: step})
@@ -111,9 +137,10 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 	case "raw":
 		b := &builder{p: p}
 		ent := p.M.Entities[r.Entity]
-		sql := strings.ReplaceAll(r.Raw.SQL, "{table}", p.D.Quote(ent.Table))
-		for _, i := range r.Raw.Ps {
-			b.param(i)
+		sql, err2 := p.fillPlaceholders(b, strings.ReplaceAll(r.Raw.SQL, "{table}", p.D.Quote(ent.Table)), r.Raw.Ps)
+		if err2 != nil {
+			err = err2
+			break
 		}
 		ps.add(&plan.Step{Role: "raw", SQL: sql, BindSlots: b.binds})
 	}
@@ -594,9 +621,9 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		if err != nil {
 			return "", err
 		}
-		// expr binds are positional '?' in the fragment, in order
-		for _, i := range pr.Ps {
-			b.param(i)
+		e, err = p.fillPlaceholders(b, e, pr.Ps)
+		if err != nil {
+			return "", err
 		}
 		return "(" + e + ")", nil
 	}
@@ -674,14 +701,26 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 // equality predicates on encrypted columns keep working (compatibility behaviour).
 func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error) {
 	styles := p.sqlStyles(col.Styles)
+	// SQL-side stages the dialect lacks (aes/hex/ip on PostgreSQL/SQLite) are
+	// applied by the executor to the bound value: recorded on the slot.
+	var host []string
+	for _, st := range col.Styles {
+		if (st == "aes" || st == "hex" || st == "ip") && !p.D.HandlesStyle(st) {
+			host = append(host, st)
+		}
+	}
 	if len(styles) == 0 {
-		return b.param(i), nil
+		ph := b.param(i)
+		b.binds[len(b.binds)-1].HostStyles = host
+		return ph, nil
 	}
 	first := true
 	e, _ := p.D.WriteExpr(func() string {
 		if first {
 			first = false
-			return b.param(i)
+			ph := b.param(i)
+			b.binds[len(b.binds)-1].HostStyles = host
+			return ph
 		}
 		return b.secret("aes")
 	}, styles)
@@ -773,6 +812,15 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
 }
 
+func assigned(set []ir.Assign, col string) bool {
+	for _, a := range set {
+		if a.Column == col {
+			return true
+		}
+	}
+	return false
+}
+
 // conflictTarget picks the unique key an upsert conflicts on for dialects that
 // need one named (ON CONFLICT): the first declared unique key whose columns are
 // all being inserted, else the primary key.
@@ -802,15 +850,13 @@ func (p *Planner) renderAssign(b *builder, ent *schema.Entity, col *schema.Col, 
 		if err != nil {
 			return "", err
 		}
-		for _, i := range a.Ps {
-			b.param(i)
-		}
-		return e, nil
+		return p.fillPlaceholders(b, e, a.Ps)
 	case a.PlusP != nil:
-		return p.D.Quote(col.Name) + " + " + b.param(*a.PlusP), nil
+		// the reference is table-qualified: inside ON CONFLICT DO UPDATE a bare name is ambiguous
+		return p.D.Quote(ent.Table) + "." + p.D.Quote(col.Name) + " + " + b.param(*a.PlusP), nil
 	case a.MinusP != nil:
 		// clamp at zero, as compatibility does
-		q := p.D.Quote(col.Name)
+		q := p.D.Quote(ent.Table) + "." + p.D.Quote(col.Name)
 		ph := b.param(*a.MinusP)
 		return "CASE WHEN " + q + " > " + ph + " THEN " + q + " - " + b.param(*a.MinusP) + " ELSE 0 END", nil
 	case a.Null:
@@ -835,6 +881,21 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 			return nil, err
 		}
 		sets = append(sets, p.D.Quote(a.Column)+" = "+v)
+	}
+	// The updated timestamp is always assigned explicitly: MySQL's ON UPDATE
+	// clause has no counterpart on the other dialects, and optimistic locking
+	// (updated_ts as the version) needs identical behaviour everywhere.
+	if ts := ent.Timestamps; ts != nil && ts.Updated != "" && !assigned(r.Set, ts.Updated) {
+		if col := ent.Column(ts.Updated); col != nil {
+			now := p.D.Now()
+			switch {
+			case p.D.HostNow():
+				now = b.now() // no sub-second clock in SQL: the executor binds its own microsecond timestamp
+			case col.Precision > 0 && p.D.Name() == "mysql":
+				now = fmt.Sprintf("CURRENT_TIMESTAMP(%d)", col.Precision)
+			}
+			sets = append(sets, p.D.Quote(ts.Updated)+" = "+now)
+		}
 	}
 	where, err := p.renderGroup(b, root, r.Where, true)
 	if err != nil {

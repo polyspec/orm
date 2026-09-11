@@ -9,7 +9,7 @@ SELECT 'battle-' || i, 'desc-' || i || ' ' || replace(hex(zeroblob(100)), '00', 
   2, i % 7, i % 11, i % 1000, 'https://cdn/' || i || '.jpg', i % 5000 + 1, i % 100 + 1,
   i % 10 + 1, i % 5000 + 1, '2026-06-01 00:00:00.000000', '2026-12-31 00:00:00.000000', lower(hex(randomblob(16))), i % 4 = 0, i % 97,
   NULL, NULL,
-  strftime('%Y-%m-%d %H:%M:%f', 'now'), strftime('%Y-%m-%d %H:%M:%f', 'now')
+  strftime('%Y-%m-%d %H:%M:%f', 'now') || '000', strftime('%Y-%m-%d %H:%M:%f', 'now') || '000'
 FROM n;
 INSERT INTO "user" ("seq", "name") SELECT DISTINCT "user_seq", 'user-' || "user_seq" FROM "battle";
 INSERT INTO "service" ("seq", "name") SELECT DISTINCT "service_seq", 'service-' || "service_seq" FROM "battle";

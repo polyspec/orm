@@ -4,6 +4,7 @@ package gen_test
 // Skips when the socket is absent. This is the Go half of the S1 demo.
 
 import (
+	"regexp"
 	"context"
 	"errors"
 	"fmt"
@@ -28,10 +29,35 @@ const localDSN = "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoun
 
 // dsn is ORM_MYSQL_DSN_GO when set (CI), else the local socket; the test skips
 // when neither is available.
+var rePgPlaceholder = regexp.MustCompile(`\$\d+`)
+
+// normSQL renders a statement in the MySQL spelling (backticks, `?`) so the
+// SQL assertions below read the same on every dialect; results are asserted as they are.
+func normSQL(sql string) string {
+	if testDriver() == "mysql" {
+		return sql
+	}
+	return rePgPlaceholder.ReplaceAllString(strings.ReplaceAll(sql, `"`, "`"), "?")
+}
+
+// testDriver selects the database under test: ORM_TEST_DRIVER (mysql default) with ORM_TEST_DSN.
+func testDriver() string {
+	if v := os.Getenv("ORM_TEST_DRIVER"); v != "" {
+		return v
+	}
+	return "mysql"
+}
+
 func dsn(t *testing.T) string {
 	t.Helper()
-	if v := os.Getenv("ORM_MYSQL_DSN_GO"); v != "" {
+	if v := os.Getenv("ORM_TEST_DSN"); v != "" {
 		return v
+	}
+	if v := os.Getenv("ORM_MYSQL_DSN_GO"); v != "" && testDriver() == "mysql" {
+		return v
+	}
+	if testDriver() != "mysql" {
+		t.Fatalf("ORM_TEST_DSN is required for driver %s", testDriver())
 	}
 	if _, err := os.Stat("/tmp/mysql.sock"); err != nil {
 		t.Skip("no local mysql")
@@ -58,7 +84,7 @@ func loadEngine(t *testing.T) *engine.Engine {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eng, err := engine.New(m, "mysql")
+	eng, err := engine.New(m, testDriver())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,9 +96,9 @@ func open(t *testing.T) *orm.DB {
 	d := dsn(t)
 	eng := loadEngine(t)
 	var log []string
-	db, err := orm.Open("mysql", d, eng, orm.Config{
+	db, err := orm.Open(testDriver(), d, eng, orm.Config{
 		AESKey:  "bench-salt",
-		OnQuery: func(e orm.Event) { log = append(log, e.SQL) },
+		OnQuery: func(e orm.Event) { log = append(log, normSQL(e.SQL)) },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -187,7 +213,7 @@ func TestRelationPaths(t *testing.T) {
 	ctx := context.Background()
 	// data: service 7 has 50 members (service_member.service_seq = 7) and 1 module; each user has 20 battles.
 	var stmts []string
-	db.Cfg().OnQuery = func(e orm.Event) { stmts = append(stmts, e.SQL) }
+	db.Cfg().OnQuery = func(e orm.Event) { stmts = append(stmts, normSQL(e.SQL)) }
 
 	// one relation off the root, many off a nested one, key_by + limit_per_parent + drop_child_key
 	rows, err := gen.NewBattle().
@@ -313,7 +339,7 @@ func TestAggregatesHavingRawPredicates(t *testing.T) {
 	db := open(t)
 	ctx := context.Background()
 	var stmts []string
-	db.Cfg().OnQuery = func(e orm.Event) { stmts = append(stmts, e.SQL) }
+	db.Cfg().OnQuery = func(e orm.Event) { stmts = append(stmts, normSQL(e.SQL)) }
 	t.Cleanup(func() { db.Cfg().OnQuery = nil })
 
 	// service 7 ⇔ seq ≡ 6 (mod 100), 1000 rows: min 6, max 99906
@@ -386,14 +412,14 @@ func TestAggregatesHavingRawPredicates(t *testing.T) {
 	if err != nil || grouped != visible {
 		t.Errorf("predicates in a group: %d vs %d (%v)", grouped, visible, err)
 	}
-	if !strings.Contains(stmts[0], "((`a`.`is_close` = 0 AND `a`.`is_display` = 1) OR (`a`.`start_dt` > ?))") {
+	if !strings.Contains(stmts[0], "((`a`.`is_close` = FALSE AND `a`.`is_display` = TRUE) OR (`a`.`start_dt` > ?))") {
 		t.Errorf("predicate group sql: %s", stmts[0])
 	}
 
 	// raw root: {table} substitution, binds in order, rows keyed by column name
 	stmts = nil
 	rows, err := gen.NewBattle().
-		Raw("SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?", 7, 0).
+		Raw("SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?", 7, false).
 		RawAll(ctx, db)
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("raw: %v %v", rows, err)
@@ -430,6 +456,9 @@ func TestErrorSurface(t *testing.T) {
 // rows in opposite order, MySQL kills one with 1213, and Transaction re-runs
 // that closure until both commit.
 func TestDeadlockRetry(t *testing.T) {
+	if testDriver() == "sqlite" {
+		t.Skip("SQLite has one writer: two transactions cannot interleave row locks (SQLITE_BUSY is mapped to DEADLOCK and re-run, but this scenario cannot happen)")
+	}
 	db := open(t)
 	ctx := context.Background()
 	insert := func(name string) *gen.BattleRow {
@@ -592,7 +621,7 @@ func TestDuplicateKey(t *testing.T) {
 	if codeOf(err) != orm.CodeDuplicateKey {
 		t.Fatalf("want DUPLICATE_KEY, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "1062") || !strings.Contains(err.Error(), uuid) {
+	if driverMsg := map[string]string{"mysql": "1062", "postgres": "23505", "sqlite": "UNIQUE"}[testDriver()]; !strings.Contains(err.Error(), driverMsg) {
 		t.Errorf("driver message must be kept: %v", err)
 	}
 	if orm.IsDeadlock(err) {

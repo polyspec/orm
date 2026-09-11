@@ -128,7 +128,7 @@ func TestWrites(t *testing.T) {
 	}
 	p = compile(t, e, `"kind":"update","entity":"battle","set":[{"column":"name","p":0},{"column":"like_count","plus_p":1},{"column":"read_count","minus_p":2}],
 	  "where":{"items":[{"pred":{"column":"seq","op":"eq","p":3}}]},"optimistic":{"column":"updated_ts","p":4}`)
-	if want := "UPDATE `battle` SET `name` = ?, `like_count` = `like_count` + ?, `read_count` = CASE WHEN `read_count` > ? THEN `read_count` - ? ELSE 0 END WHERE `battle`.`seq` = ? AND `battle`.`updated_ts` = ?"; p.Steps[0].SQL != want {
+	if want := "UPDATE `battle` SET `name` = ?, `like_count` = `battle`.`like_count` + ?, `read_count` = CASE WHEN `battle`.`read_count` > ? THEN `battle`.`read_count` - ? ELSE 0 END, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `battle`.`seq` = ? AND `battle`.`updated_ts` = ?"; p.Steps[0].SQL != want {
 		t.Errorf("update: %s", p.Steps[0].SQL)
 	}
 	p = compile(t, e, `"kind":"delete","entity":"battle","where":{"items":[{"pred":{"column":"seq","op":"in","ps":[0,1]}}]}`)
@@ -145,7 +145,7 @@ func TestUpsertAndCascade(t *testing.T) {
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"insert","entity":"battle","set":[{"column":"uuid","p":0},{"column":"name","p":1},{"column":"user_seq","p":2},{"column":"service_seq","p":2},{"column":"service_module_seq","p":2},{"column":"service_member_seq","p":2},{"column":"start_dt","p":3},{"column":"end_dt","p":3}],
 	  "on_duplicate":[{"column":"name","p":1},{"column":"read_count","plus_p":4}]`)
-	if want := "INSERT INTO `battle` (`uuid`, `name`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?, `read_count` = `read_count` + ?, `seq` = LAST_INSERT_ID(`seq`)"; p.Steps[0].SQL != want {
+	if want := "INSERT INTO `battle` (`uuid`, `name`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?, `read_count` = `battle`.`read_count` + ?, `seq` = LAST_INSERT_ID(`seq`)"; p.Steps[0].SQL != want {
 		t.Errorf("upsert:\n got  %s\n want %s", p.Steps[0].SQL, want)
 	}
 	if got := len(p.Steps[0].BindSlots); got != 10 {

@@ -3564,12 +3564,15 @@ func (q *Battle) NameWithDescriptionMatchBoolean(v string) *Battle {
 func (w *BattleWhere) StartedAfter(v any) *BattleWhere { w.w.Expr("`start_dt` > ?", v); return w }
 func (q *Battle) StartedAfter(v any) *Battle           { q.q.W().Expr("`start_dt` > ?", v); return q }
 
-// Visible is the manifest predicate visible: `is_close` = 0 AND `is_display` = 1
+// Visible is the manifest predicate visible: `is_close` = FALSE AND `is_display` = TRUE
 func (w *BattleWhere) Visible() *BattleWhere {
-	w.w.Expr("`is_close` = 0 AND `is_display` = 1")
+	w.w.Expr("`is_close` = FALSE AND `is_display` = TRUE")
 	return w
 }
-func (q *Battle) Visible() *Battle { q.q.W().Expr("`is_close` = 0 AND `is_display` = 1"); return q }
+func (q *Battle) Visible() *Battle {
+	q.q.W().Expr("`is_close` = FALSE AND `is_display` = TRUE")
+	return q
+}
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
 func (q *Battle) Or() *Battle { q.q.Or(); return q }
