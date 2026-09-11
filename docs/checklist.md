@@ -1,7 +1,7 @@
 # 전체 작업 체크리스트 (plan-v2 기준)
 
 범례: `[ ]` 미착수 `[~]` 진행 `[x]` 완료 · **P** = 같은 단계 안에서 병렬 가능 · **→ T#** = 선행 의존 · 각 항목은 완료 조건(DoD)이 있어야 닫힌다.
-원칙: 폴링/타이머 금지 · symlink 금지(경로는 `orm.toml` 선언) · 폴백 금지(한 경로만) · 문제는 근본 해결, 감추지 않음.
+원칙: 폴링/타이머 금지 · symlink 금지(경로는 `orm.toml` 선언) · 폴백 금지(한 경로만) · 문제는 근본 해결, 감추지 않음 · 사람이 쓰는 정의는 하나(Mermaid), 나머지는 생성물.
 
 ---
 
@@ -37,10 +37,10 @@
 ## 단계 1 — S1 thin slice (3 테이블 · 3언어 · 같은 문장 · 같은 결과)  [3.5주]
 
 ### 1-A 스키마 (순차)
-- [ ] T1.1 YAML 스키마 파서 + 검증기 (`engine/schema`): 컬럼명 규칙(`_and_/_or_/_with_`, 연산자 접두어, 키워드 동일, `__`), 예약어 개명, `ref` 대상 검사, `relations:` 검증, `schema_hash`(정규화 YAML의 SHA-256) → DoD: 픽스처 `order_number get_dt condition_type withdraw_count android_app_url origin_price brand_name` 허용, 금지 케이스 에러
-- [ ] T1.2 컴파일 blob(`schema.blob`, gob 또는 msgpack) + 로더 → T1.1
-- [ ] T1.3 `ormgen import --dsn`(information_schema → YAML): 접두어→style, FK→ref·relations 시드, lazy 규칙, `CURRENT_TIMESTAMP%`, collation, `block_encryption_mode` 확인, `INET6_ATON` 길이 확인, **멱등**(수동 필드 보존) → T1.1, T0.3 → DoD: 150-table fixture에서 `battle battle_player user` 임포트, 재실행 diff 0
-- [ ] T1.4 `ormgen validate --dsn`(라이브 DB ↔ YAML diff, exit≠0) → T1.3
+- [ ] T1.1 Mermaid `erDiagram` 파서(`docs/schema.md`): 엔티티 블록(타입·PK/FK/UK·주석 속성 `? =v auto bool lazy 스타일 -> t.c`), 관계선(crow's foot → kind, 라벨 `fk (child / parent)`), `%%` 지시문(unique/index/fulltext/timestamps/predicate), 이름 기본 규칙(`_seq` 제거·접두어 제거+복수형) → DoD: §1 예제 파싱, 라운드트립(파싱→출력) 동일
+- [ ] T1.2 매니페스트 빌더+검증기(`ormgen build` → `schema.json`, `schema_hash`): 컬럼명 규칙, 관계 이름 충돌·예약어, FK 무관계 경고, 정규 타입 매핑 → DoD: 픽스처 `order_number get_dt condition_type withdraw_count android_app_url origin_price brand_name` 허용, 금지 케이스 에러 → T1.1
+- [ ] T1.3 `ormgen import --dsn`(information_schema → `.mmd`): 접두어→style, FK→관계선, 인덱스→`%%`, lazy 규칙, `CURRENT_TIMESTAMP%`, collation, `block_encryption_mode` 확인, `INET6_ATON` 길이 확인, **멱등**(라벨 이름 재정의·주석 속성 보존) → T1.1, T0.3 → DoD: 로컬 `orm_bench` + 150-table fixture에서 임포트, 재실행 diff 0, Mermaid 렌더 확인
+- [ ] T1.4 `ormgen validate --dsn`(`.mmd` ↔ `schema.json` ↔ 라이브 DB, exit≠0) → T1.3
 
 ### 1-B 엔진 (T1.2 후, 일부 **P**)
 - [ ] T1.5 IR v1 정의(`docs/protocol.md`): Value, Pred 트리(Group/Pred/cmp/fn/expr), Query, Join, Relation, Mutation, MutationBatch, Plan, Result, 헤더(ir_version, schema_hash), 에러 코드(`docs/errors.yaml`) → **선행: 모든 클라이언트 작업**
@@ -134,7 +134,7 @@
 - [ ] T5.4 **P** 아티팩트 빌드 파이프라인: wasm(단일), ormd(linux amd64/arm64, darwin), 버전을 파일명에, 체크섬 → composer(`bin/ormd-<ver>-<os>-<arch>`), crates.io(`include_bytes!` wasm), Go 모듈 태그
 - [ ] T5.5 **P** `orm.toml` 스펙·로더 3언어(연결 DSN, ormd 소켓 절대경로, wasm 캐시 디렉터리, schema blob 경로, 디버그) — 상대경로·symlink 금지 검증
 - [ ] T5.6 **P** `ormd` systemd/launchd 유닛 예제, 소켓 퍼미션 문서
-- [ ] T5.7 **P** `ormgen erd --mermaid`(YAML relations/ref → erDiagram, `--tables --depth`)
+- [x] T5.7 (불필요 — 스키마 소스 자체가 Mermaid erDiagram)
 - [ ] T5.8 CI: GitHub Actions — Go 테스트·골든, Rust 테스트, PHP 테스트, MySQL 서비스 컨테이너로 적합성 3언어, 벤치 회귀 게이트(T0.17 수치 대비), `ormgen tokens` diff, `ormgen check` → T5.1~T5.5
 - [ ] T5.9 문서: `dsl.md`(정규 문법·PHP 파서 알고리즘·호환층), `protocol.md`, `packaging.md`(결정·수치·뒤집는 조건), `perf.md` 갱신, README 3언어 퀵스타트
 
