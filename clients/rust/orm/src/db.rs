@@ -12,7 +12,7 @@ use sqlx::{Column, Row as _, TypeInfo};
 use crate::builder::Req;
 use crate::collection::Key;
 use crate::engine::Engine;
-use crate::plan::{Assemble, Child, ParentRef, Plan, Step};
+use crate::plan::{Assemble, BindSlot, Child, ParentRef, Plan, Step};
 use crate::value::{transform, Param, Val};
 use crate::{Error, Result};
 
@@ -179,6 +179,16 @@ fn decode_styled(asm: &Assemble, data: &mut [Vec<Val>]) -> Result<()> {
     Ok(())
 }
 
+/// The value a `param` slot binds: the request parameter, transformed when the slot says so.
+fn param_arg(b: &BindSlot, params: &[Param]) -> Result<Param> {
+    let v = &params[b.param];
+    if b.transform.is_empty() {
+        return Ok(v.clone());
+    }
+    let Param::Str(s) = v else { return Err(Error::Config(format!("transform {} needs a string", b.transform))) };
+    Ok(Param::Str(transform(&b.transform, s)))
+}
+
 /// Finds the match column of a relation step from the child spec that references it.
 fn child_index(plan: &Plan, id: u32) -> usize {
     fn find(a: &Assemble, id: u32) -> Option<usize> {
@@ -227,15 +237,7 @@ impl Db {
         for b in &st.bind_slots {
             match b.from.as_str() {
                 "parent" => out.extend(parent_vals.iter().cloned()),
-                "param" => {
-                    let v = &params[b.param];
-                    if b.transform.is_empty() {
-                        out.push(v.clone());
-                    } else {
-                        let Param::Str(s) = v else { return Err(Error::Config(format!("transform {} needs a string", b.transform))) };
-                        out.push(Param::Str(transform(&b.transform, s)));
-                    }
-                }
+                "param" => out.push(param_arg(b, params)?),
                 "secret" => {
                     if b.name != "aes" || self.cfg.aes_key.is_empty() {
                         return Err(Error::Config(format!("secret {} not configured", b.name)));
@@ -355,6 +357,8 @@ fn read_row(row: &MySqlRow, n: usize) -> Result<Vec<Val>> {
 /// What terminals take: `&Db` or `&Tx`.
 pub trait Exec: Sync {
     fn db(&self) -> &Db;
+    /// The transaction this executor runs in; None for a `Db` (each statement on its own).
+    fn tx(&self) -> Option<&Tx>;
     /// Runs a select step; `parent_vals` are the values for its `parent` slot (empty for the main step).
     fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> impl Future<Output = Result<Vec<MySqlRow>>> + Send;
     fn execute(&self, st: &Step, params: &[Param]) -> impl Future<Output = Result<(u64, u64)>> + Send;
@@ -363,6 +367,10 @@ pub trait Exec: Sync {
 impl Exec for Db {
     fn db(&self) -> &Db {
         self
+    }
+
+    fn tx(&self) -> Option<&Tx> {
+        None
     }
 
     async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<MySqlRow>> {
@@ -395,6 +403,10 @@ impl Exec for Db {
 impl Exec for Tx {
     fn db(&self) -> &Db {
         &self.db
+    }
+
+    fn tx(&self) -> Option<&Tx> {
+        Some(self)
     }
 
     async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<MySqlRow>> {
@@ -497,6 +509,30 @@ pub async fn write(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<(u64, u6
         return Err(Error::OptimisticLock);
     }
     Ok((id, affected))
+}
+
+/// The main statement of a query, rendered but not executed (`sql(&db)`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Sql {
+    pub sql: String,
+    /// `param` slots as their (transformed) values, `secret` slots as the string "$SECRET".
+    pub binds: Vec<Param>,
+}
+
+/// Compiles (or fetches) the plan for `kind` and returns its main step without executing.
+pub fn sql(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Sql> {
+    req.ir.kind = kind.into();
+    let plan = ex.db().plan(req)?;
+    let st = &plan.steps[0];
+    let mut binds = Vec::with_capacity(st.bind_slots.len());
+    for b in &st.bind_slots {
+        match b.from.as_str() {
+            "param" => binds.push(param_arg(b, &req.params)?),
+            "secret" => binds.push(Param::Str("$SECRET".into())),
+            other => return Err(Error::Config(format!("bind from {other}"))),
+        }
+    }
+    Ok(Sql { sql: st.sql.clone(), binds })
 }
 
 /// Slice of a positional row belonging to one assemble node.

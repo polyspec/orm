@@ -85,6 +85,7 @@ type rustData struct {
 	Indexes                       []string
 	Fulltext                      [][]string
 	UpdatedTs                     string
+	KeyCols                       []string // PK/auto columns: never copied into on_duplicate
 }
 
 func opSnake(suffix string) string {
@@ -157,6 +158,8 @@ pub struct {{.Type}}Row {
     hidden: Vec<String>,
     flat: Vec<String>,
     rels: Vec<String>,
+    // loaded relations whose rows belong to this row (children[].cascade): delete_cascade removes them first
+    cascade: Vec<String>,
     loaded: bool,
 }
 
@@ -176,6 +179,7 @@ impl {{.Type}}Row {
         for ch in &a.children {
             r.rels.push(ch.rel.clone());
             if ch.flatten { r.flat.push(ch.rel.clone()); }
+            if ch.cascade { r.cascade.push(ch.rel.clone()); }
         }
         for c in &a.columns {
             let v = &mut vals[c.index];
@@ -308,6 +312,40 @@ impl {{.Type}}Row {
         q.w().pred(Self::PK, "eq", pk);
         db::write(ex, &mut q.req, "delete").await.map(|_| ())
     }
+
+    /// Depth-first: deletes the rows of every loaded relation that belongs to this row
+    /// (children[].cascade: the related rows hold this row's PK as their FK and
+    /// no_cascade_delete was not set), each through its own delete_cascade in collection
+    /// order, then this row. Parent-direction relations (the FK is on this row) are never deleted.
+    /// One DELETE … WHERE pk = ? per row. On a Db the whole walk runs in one transaction.
+    pub async fn delete_cascade(&self, ex: &impl Exec) -> Result<()> {
+        if !self.loaded { return Err(orm::Error::Config("delete_cascade on a row that was not loaded".into())); }
+        match ex.tx() {
+            Some(tx) => self.delete_cascade_in(tx).await,
+            None => ex.db().transaction(|tx| async move { self.delete_cascade_in(&tx).await }).await,
+        }
+    }
+
+    /// The walk itself. Boxed: rows cascade into rows of other entities, which cascade back.
+    pub fn delete_cascade_in<'a>(&'a self, tx: &'a db::Tx) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + 'a>> {
+        Box::pin(async move {
+            for rel in &self.cascade {
+                match rel.as_str() {
+{{- range .Rels}}
+                    {{printf "%q" .Name}} => {
+{{- if eq .Kind "one"}}
+                        if let Some(r) = self.{{.Ident}}_.as_deref() { r.delete_cascade_in(tx).await?; }
+{{- else}}
+                        for (_, r) in self.{{.Ident}}_.iter() { r.delete_cascade_in(tx).await?; }
+{{- end}}
+                    }
+{{- end}}
+                    _ => {}
+                }
+            }
+            self.delete(tx).await
+        })
+    }
 }
 
 /// Column references for column-to-column predicates (w.seq_eq_col(cols::seq())); .at("service") points into a joined entity.
@@ -427,19 +465,33 @@ impl {{.Type}} {
     pub fn flatten(mut self) -> Self { self.q.node().flatten = true; self }
     pub fn limit_per_parent(mut self, n: u32) -> Self { self.q.node().limit_per_parent = n; self }
     pub fn drop_child_key(mut self) -> Self { self.q.node().drop_child_key = true; self }
+    pub fn no_cascade_delete(mut self) -> Self { self.q.node().no_cascade_delete = true; self }
 {{- range .ParentCols}}{{if eq .ColType "i32" "i64" "bool" "string" "enum"}}
     pub fn if_parent_{{.Ident}}_eq(mut self, v: {{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}) -> Self { self.q.if_parent({{printf "%q" .Name}}, {{if .IsStr}}v.into(){{else}}v{{end}}); self }
 {{- end}}{{end}}
 
-    // ---- insert draft ----
-{{- range .Cols}}{{if not .Auto}}
+    // ---- insert/update draft (set_<pk> only decides save: INSERT rejects it, UPDATE cannot change it) ----
+{{- range .Cols}}{{if or (not .Auto) .PK}}
     pub fn set_{{.Ident}}(mut self, v: {{if .Nullable}}Option<{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}>{{else}}{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}{{end}}) -> Self { let v: {{if .Nullable}}Option<{{.RType}}>{{else}}{{.RType}}{{end}} = {{if .Nullable}}v.map(|x| x.into()){{else}}v.into(){{end}}; {{if .Styles}}match orm::codec::encode(&[{{rsList .Styles}}], {{if .Nullable}}v.as_ref(){{else}}Some(&v){{end}}) { Ok(p) => self.q.set({{printf "%q" .Name}}, p), Err(e) => self.q.defer_err(e) }{{else}}self.q.set({{printf "%q" .Name}}, v){{end}}; self }
+{{- end}}{{if not .Auto}}
     pub fn set_{{.Ident}}_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr({{printf "%q" .Name}}, frag, binds); self }
 {{- end}}{{end}}
 {{- range .Numeric}}
     pub fn plus_{{.Ident}}(mut self, v: {{.RType}}) -> Self { self.q.plus({{printf "%q" .Name}}, v); self }
     pub fn minus_{{.Ident}}(mut self, v: {{.RType}}) -> Self { self.q.minus({{printf "%q" .Name}}, v); self }
 {{- end}}
+
+    // ---- insert: ON DUPLICATE KEY UPDATE assignments (never the PK/auto column) ----
+{{- range .Cols}}{{if not (or .Auto .PK)}}
+    pub fn on_duplicate_set_{{.Ident}}(mut self, v: {{if .Nullable}}Option<{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}>{{else}}{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}{{end}}) -> Self { let v: {{if .Nullable}}Option<{{.RType}}>{{else}}{{.RType}}{{end}} = {{if .Nullable}}v.map(|x| x.into()){{else}}v.into(){{end}}; {{if .Styles}}match orm::codec::encode(&[{{rsList .Styles}}], {{if .Nullable}}v.as_ref(){{else}}Some(&v){{end}}) { Ok(p) => self.q.on_duplicate_set({{printf "%q" .Name}}, p), Err(e) => self.q.defer_err(e) }{{else}}self.q.on_duplicate_set({{printf "%q" .Name}}, v){{end}}; self }
+    pub fn on_duplicate_set_{{.Ident}}_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr({{printf "%q" .Name}}, frag, binds); self }
+{{- end}}{{end}}
+{{- range .Numeric}}{{if not (or .Auto .PK)}}
+    pub fn on_duplicate_plus_{{.Ident}}(mut self, v: {{.RType}}) -> Self { self.q.on_duplicate_plus({{printf "%q" .Name}}, v); self }
+    pub fn on_duplicate_minus_{{.Ident}}(mut self, v: {{.RType}}) -> Self { self.q.on_duplicate_minus({{printf "%q" .Name}}, v); self }
+{{- end}}{{end}}
+    /// Copies every set_* assignment made so far (except the PK/auto column) into ON DUPLICATE KEY UPDATE.
+    pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&[{{rsList .KeyCols}}]); self }
 
     // ---- terminals ----
     pub async fn one(mut self, ex: &impl Exec) -> Result<Option<{{.Type}}Row>> {
@@ -477,6 +529,36 @@ impl {{.Type}} {
         let _ = id;
         Ok(None)
 {{- end}}
+    }
+
+    /// With set_{{ident .PK}}: UPDATE the other set columns WHERE {{.PK}} = that value and re-read the row; otherwise INSERT.
+    pub async fn save(mut self, ex: &impl Exec) -> Result<Option<{{.Type}}Row>> {
+        match self.q.take_set({{printf "%q" .PK}}) {
+            Some(pk) => {
+                self.q.w().pred({{printf "%q" .PK}}, "eq", pk.clone());
+                db::write(ex, &mut self.q.req, "update").await?;
+                let mut q = {{.Type}}::new();
+                q.q.w().pred({{printf "%q" .PK}}, "eq", pk);
+                q.one(ex).await
+            }
+            None => self.insert(ex).await,
+        }
+    }
+
+    /// UPDATE set_*/plus_*/minus_*/set_*_expr WHERE the query's predicates; returns the affected count.
+    /// The engine rejects a missing where (IR_INVALID).
+    pub async fn update(mut self, ex: &impl Exec) -> Result<u64> {
+        Ok(db::write(ex, &mut self.q.req, "update").await?.1)
+    }
+
+    /// DELETE WHERE the query's predicates; returns the affected count. The engine rejects a missing where.
+    pub async fn delete(mut self, ex: &impl Exec) -> Result<u64> {
+        Ok(db::write(ex, &mut self.q.req, "delete").await?.1)
+    }
+
+    /// The main statement (kind all) and its binds without executing; secret slots read "$SECRET".
+    pub async fn sql(mut self, ex: &impl Exec) -> Result<db::Sql> {
+        db::sql(ex, &mut self.q.req, "all")
     }
 
     pub async fn one_by_{{ident .PK}}(self, ex: &impl Exec, v: {{.PKType}}) -> Result<Option<{{.Type}}Row>> {
@@ -553,6 +635,9 @@ func genRust(m *schema.Manifest, outDir string) error {
 			d.Cols = append(d.Cols, rc)
 			if c.Name == ge.PK {
 				d.PKType = rc.RType
+			}
+			if c.PK || c.Auto {
+				d.KeyCols = append(d.KeyCols, c.Name)
 			}
 		}
 		for _, c := range ge.ParentCols {
