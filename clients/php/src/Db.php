@@ -271,6 +271,24 @@ class Db
         };
     }
 
+    /** Rows of a raw step keyed by the driver's column names; no codec, no assembly. @return list<array<string, mixed>> */
+    public function rows(array $step, array $params): array
+    {
+        $st = $this->stmt($step['sql']);
+        $args = $this->args($step, $params);
+        $start = microtime(true);
+        try {
+            $st->execute($args);
+            $rows = $st->fetchAll(\PDO::FETCH_ASSOC);
+            $st->closeCursor();
+        } catch (\Throwable $e) {
+            $this->emit($step['sql'], $args, $start, $e);
+            throw $e;
+        }
+        $this->emit($step['sql'], $args, $start, null);
+        return $rows;
+    }
+
     public function scalar(array $step, array $params): mixed
     {
         $st = $this->stmt($step['sql']);
