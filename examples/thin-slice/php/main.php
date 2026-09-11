@@ -23,7 +23,7 @@ Orm::init(new Config(socket: $argv[1], schemaPath: $argv[2], aesKey: 'bench-salt
 $db = Db::mysql(orm_test_dsn(), 'root', '');
 $now = '2026-09-11 00:00:00';
 
-$query = fn() => (new Battle)
+$query = fn() => Battle::query()
     ->serviceSeq(7)
     ->isClose(false)
     ->and(fn(BattleWhere $w) => $w
@@ -33,7 +33,7 @@ $query = fn() => (new Battle)
     ->seqIn([6, 106, 206, 306, 406])
     ->orderBySeqDesc()
     ->limit(0, 3)
-    ->bind($db)->gets();
+    ->using($db)->gets();
 
 $out = [];
 foreach ($query() as $r) {

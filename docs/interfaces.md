@@ -80,7 +80,7 @@ classDiagram
         Request request
         Binding binding
         Optional~KeySelector~ keySelector
-        bind(executor, control) Query
+        using(executor, control) Query
         predicate(column, op, values) Query
         and(callback) Query
         or() Query
@@ -174,11 +174,11 @@ classDiagram
 
 | 역할 | Go | PHP | Rust |
 |---|---|---|---|
-| 쿼리 생성 | `gen.Battle()` | `new Battle` | `Battle::new()` |
+| 쿼리 생성 | `gen.Battle()` | `Battle::query()` | `battle::query()` |
 | 쿼리 타입 | `*gen.BattleQuery` | `Battle` | `Battle` |
 | 행 타입 | `*gen.BattleRow` | `BattleRow` | `BattleRow` |
 | 조건 콜백 타입 | `*gen.BattleWhere` | `BattleWhere` | `BattleWhere<'_>` |
-| 바인딩 | `q.Bind(ctx, db)` | `$q->bind($db)` | `q.bind(&db)` |
+| 바인딩 | `q.Using(ctx, db)` | `$q->using($db)` | `q.using(&db)` |
 | 조회 | `q.Gets()` | `$q->gets()` | `q.gets().await` |
 | 오류 전달 | 별도 `error` 반환 | 예외 | `Result` |
 
@@ -206,10 +206,10 @@ classDiagram
 | Query | `set<Col>`, `set<Col>Null`, `set<Col>Expr`, `plus<Col>`, `minus<Col>` | 컬럼 값·식 | 순서 있는 쓰기 assignment 추가 |
 | Query | `onDuplicateSet<Col>`, `onDuplicateSet<Col>Expr`, `onDuplicateSetAll`, `onDuplicatePlus/Minus<Col>` | 값·식 | upsert assignment 추가 |
 | Query | `raw(sql, binds)` | 신뢰 SQL과 값 목록 | raw 루트 설정, 아직 실행하지 않음 |
-| Query | `bind` | Db 또는 Tx, 네이티브 실행 제어 | 바인딩 교체, IR 유지 |
+| Query | `using` | Db 또는 Tx, 네이티브 실행 제어 | 실행 대상 교체, IR 유지 |
 | Row | `get<Col>`, 필드 읽기, `has`, `extra`, 관계 접근자 | 컬럼·관계 | 행 상태 읽기 |
 | Row | `set<Col>`, nullable setter | 컬럼 타입 값 | 현재 값 변경 + dirty 표시 |
-| Row | `bind` | Db 또는 Tx | 해당 행의 바인딩 교체 |
+| Row | `using` | Db 또는 Tx | 해당 행의 실행 대상 교체 |
 | Collection | `get`, `first`, `len/count`, `keys`, 순서 있는 반복 | Key | lookup / ordered traversal |
 | Row / Collection | 배열·맵 변환 | 없음 | 값·관계의 projection, DB 실행 없음 |
 
@@ -285,14 +285,14 @@ classDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> Unbound
-    Unbound --> DbBound: bind(Db)
-    Unbound --> TxBound: bind(active Tx)
-    DbBound --> DbBound: execute / bind(Db)
-    DbBound --> TxBound: bind(active Tx)
+    Unbound --> DbBound: using(Db)
+    Unbound --> TxBound: using(active Tx)
+    DbBound --> DbBound: execute / using(Db)
+    DbBound --> TxBound: using(active Tx)
     TxBound --> TxBound: execute
     TxBound --> Finished: commit / rollback
-    Finished --> DbBound: bind(Db)
-    Finished --> TxBound: bind(new active Tx)
+    Finished --> DbBound: using(Db)
+    Finished --> TxBound: using(new active Tx)
     Unbound --> Unbound: execute returns CONFIG
     Finished --> Finished: execute returns CONFIG
 ```

@@ -20,7 +20,7 @@ type BattleInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Bind(ctx context.Context, ex orm.Exec) *BattleQuery
+	Using(ctx context.Context, ex orm.Exec) *BattleQuery
 	Paginate(page, per int) (*orm.Page[BattleRow], error)
 	GetsBySeq(v int64) (*orm.Collection[BattleRow], error)
 	GetsByName(v string) (*orm.Collection[BattleRow], error)
@@ -139,7 +139,7 @@ type BattleInterface interface {
 var _ BattleInterface = (*BattleQuery)(nil)
 
 type BattleRowInterface interface {
-	Bind(ctx context.Context, ex orm.Exec) *BattleRow
+	Using(ctx context.Context, ex orm.Exec) *BattleRow
 	Update() error
 	UpdateOptimistic() error
 	Delete() error
@@ -161,7 +161,7 @@ type UserInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Bind(ctx context.Context, ex orm.Exec) *UserQuery
+	Using(ctx context.Context, ex orm.Exec) *UserQuery
 	Paginate(page, per int) (*orm.Page[UserRow], error)
 	GetsBySeq(v int64) (*orm.Collection[UserRow], error)
 	GetsByName(v string) (*orm.Collection[UserRow], error)
@@ -176,7 +176,7 @@ type UserInterface interface {
 var _ UserInterface = (*UserQuery)(nil)
 
 type UserRowInterface interface {
-	Bind(ctx context.Context, ex orm.Exec) *UserRow
+	Using(ctx context.Context, ex orm.Exec) *UserRow
 	Update() error
 	Delete() error
 	DeleteCascade() error
@@ -197,7 +197,7 @@ type ServiceInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Bind(ctx context.Context, ex orm.Exec) *ServiceQuery
+	Using(ctx context.Context, ex orm.Exec) *ServiceQuery
 	Paginate(page, per int) (*orm.Page[ServiceRow], error)
 	GetsBySeq(v int64) (*orm.Collection[ServiceRow], error)
 	GetsByName(v string) (*orm.Collection[ServiceRow], error)
@@ -212,7 +212,7 @@ type ServiceInterface interface {
 var _ ServiceInterface = (*ServiceQuery)(nil)
 
 type ServiceRowInterface interface {
-	Bind(ctx context.Context, ex orm.Exec) *ServiceRow
+	Using(ctx context.Context, ex orm.Exec) *ServiceRow
 	Update() error
 	Delete() error
 	DeleteCascade() error
@@ -233,7 +233,7 @@ type ServiceModuleInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Bind(ctx context.Context, ex orm.Exec) *ServiceModuleQuery
+	Using(ctx context.Context, ex orm.Exec) *ServiceModuleQuery
 	Paginate(page, per int) (*orm.Page[ServiceModuleRow], error)
 	GetsBySeq(v int64) (*orm.Collection[ServiceModuleRow], error)
 	GetsByServiceSeq(v int64) (*orm.Collection[ServiceModuleRow], error)
@@ -252,7 +252,7 @@ type ServiceModuleInterface interface {
 var _ ServiceModuleInterface = (*ServiceModuleQuery)(nil)
 
 type ServiceModuleRowInterface interface {
-	Bind(ctx context.Context, ex orm.Exec) *ServiceModuleRow
+	Using(ctx context.Context, ex orm.Exec) *ServiceModuleRow
 	Update() error
 	Delete() error
 	DeleteCascade() error
@@ -273,7 +273,7 @@ type ServiceMemberInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Bind(ctx context.Context, ex orm.Exec) *ServiceMemberQuery
+	Using(ctx context.Context, ex orm.Exec) *ServiceMemberQuery
 	Paginate(page, per int) (*orm.Page[ServiceMemberRow], error)
 	GetsBySeq(v int64) (*orm.Collection[ServiceMemberRow], error)
 	GetsByServiceSeq(v int64) (*orm.Collection[ServiceMemberRow], error)
@@ -292,7 +292,7 @@ type ServiceMemberInterface interface {
 var _ ServiceMemberInterface = (*ServiceMemberQuery)(nil)
 
 type ServiceMemberRowInterface interface {
-	Bind(ctx context.Context, ex orm.Exec) *ServiceMemberRow
+	Using(ctx context.Context, ex orm.Exec) *ServiceMemberRow
 	Update() error
 	Delete() error
 	DeleteCascade() error

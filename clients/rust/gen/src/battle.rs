@@ -60,8 +60,8 @@ pub struct BattleRow {
 }
 
 impl BattleRow {
-    /// Rebind this loaded row to a pool or transaction.
-    pub fn bind(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
+    /// Select a pool or transaction for this loaded row.
+    pub fn using(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
     pub const ENTITY: &'static str = "battle";
     pub const PK: &'static str = "seq";
 
@@ -1043,17 +1043,21 @@ impl<'a> BattleWhere<'a> {
     pub fn name_with_description_match_boolean(mut self, v: &str) -> Self { self.w.match_(&["name", "description"], true, v); self }
 }
 
-/// Query over battle: Battle::new() → bind(&db) → chain → terminal().await.
+/// Query over battle: query() → using(&db) → chain → terminal().await.
 pub struct Battle {
     binding: Binding,
     pub q: Q,
     key_fn: Option<Box<dyn Fn(&BattleRow) -> Key + Send + Sync>>,
 }
 
+/// Construct a query over battle.
+pub fn query() -> Battle {
+    Battle { binding: Binding::default(), q: Q::new(super::schema_hash(), "battle"), key_fn: None }
+}
+
 impl Battle {
-    /// Bind this query to a pool or transaction.
-    pub fn bind(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
-    pub fn new() -> Self { Self { binding: Binding::default(), q: Q::new(super::schema_hash(), "battle"), key_fn: None } }
+    /// Select a pool or transaction for this query.
+    pub fn using(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
 
     /// Keys the root collection by a function of each row (relations key by key_by_<col>).
     pub fn key_by_fn(mut self, f: impl Fn(&BattleRow) -> Key + Send + Sync + 'static) -> Self { self.key_fn = Some(Box::new(f)); self }
@@ -2496,7 +2500,7 @@ impl Battle {
 
     pub async fn insert(&mut self) -> Result<Option<BattleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
-        Battle::new().bind(ex).seq_eq(id as i64).one().await
+        super::battle::query().using(ex).seq_eq(id as i64).one().await
     }
 
     /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
@@ -2505,7 +2509,7 @@ impl Battle {
             Some(pk) => {
                 self.q.w().pred("seq", "eq", pk.clone());
                 db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = Battle::new().bind(ex);
+                let mut q = super::battle::query().using(ex);
                 q.q.w().pred("seq", "eq", pk);
                 q.one().await
             }
@@ -2549,7 +2553,7 @@ impl Battle {
 
 impl AsRef<Battle> for Battle { fn as_ref(&self) -> &Self { self } }
 
-impl Default for Battle { fn default() -> Self { Self::new() } }
+impl Default for Battle { fn default() -> Self { query() } }
 
 fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&BattleRow) -> Key + Send + Sync)>) -> Result<Collection<BattleRow>> {
     use orm::Src as _;

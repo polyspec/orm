@@ -45,7 +45,7 @@ func main() {
 			RelationsBattles(gen.Battle().SelectNone().OrderBySeqDesc().LimitPerParent(2).DropChildKey())).
 		RelationService(gen.Service().
 			RelationsMembers(gen.ServiceMember().SelectNone().OrderBySeqAsc().LimitPerParent(2).KeyByUserSeq())).
-		OrderBySeqAsc().Limit(0, 2).Bind(ctx, db).Gets()
+		OrderBySeqAsc().Limit(0, 2).Using(ctx, db).Gets()
 	check(err)
 	items := []any{}
 	for _, b := range rows.All() {
@@ -56,13 +56,13 @@ func main() {
 
 	// Aggregates over the same slice of data: a grouped count with HAVING, min/max, distinct.
 	groups, err := gen.Battle().ServiceSeq(7).GroupByUserSeq().
-		Having(func(w *gen.BattleWhere) { w.Expr("COUNT(*) > ?", 1) }).Bind(ctx, db).GetCount()
+		Having(func(w *gen.BattleWhere) { w.Expr("COUNT(*) > ?", 1) }).Using(ctx, db).GetCount()
 	check(err)
-	min, err := gen.Battle().ServiceSeq(7).Bind(ctx, db).MinSeq()
+	min, err := gen.Battle().ServiceSeq(7).Using(ctx, db).MinSeq()
 	check(err)
-	max, err := gen.Battle().ServiceSeq(7).Bind(ctx, db).MaxSeq()
+	max, err := gen.Battle().ServiceSeq(7).Using(ctx, db).MaxSeq()
 	check(err)
-	users, err := gen.Battle().ServiceSeq(7).Bind(ctx, db).CountDistinctUserSeq()
+	users, err := gen.Battle().ServiceSeq(7).Using(ctx, db).CountDistinctUserSeq()
 	check(err)
 
 	out, err := json.MarshalIndent(map[string]any{

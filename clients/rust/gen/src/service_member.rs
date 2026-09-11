@@ -29,8 +29,8 @@ pub struct ServiceMemberRow {
 }
 
 impl ServiceMemberRow {
-    /// Rebind this loaded row to a pool or transaction.
-    pub fn bind(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
+    /// Select a pool or transaction for this loaded row.
+    pub fn using(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
     pub const ENTITY: &'static str = "service_member";
     pub const PK: &'static str = "seq";
 
@@ -300,17 +300,21 @@ impl<'a> ServiceMemberWhere<'a> {
     pub fn user_seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("user_seq", "lte_col", r); self }
 }
 
-/// Query over service_member: ServiceMember::new() → bind(&db) → chain → terminal().await.
+/// Query over service_member: query() → using(&db) → chain → terminal().await.
 pub struct ServiceMember {
     binding: Binding,
     pub q: Q,
     key_fn: Option<Box<dyn Fn(&ServiceMemberRow) -> Key + Send + Sync>>,
 }
 
+/// Construct a query over service_member.
+pub fn query() -> ServiceMember {
+    ServiceMember { binding: Binding::default(), q: Q::new(super::schema_hash(), "service_member"), key_fn: None }
+}
+
 impl ServiceMember {
-    /// Bind this query to a pool or transaction.
-    pub fn bind(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
-    pub fn new() -> Self { Self { binding: Binding::default(), q: Q::new(super::schema_hash(), "service_member"), key_fn: None } }
+    /// Select a pool or transaction for this query.
+    pub fn using(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
 
     /// Keys the root collection by a function of each row (relations key by key_by_<col>).
     pub fn key_by_fn(mut self, f: impl Fn(&ServiceMemberRow) -> Key + Send + Sync + 'static) -> Self { self.key_fn = Some(Box::new(f)); self }
@@ -593,7 +597,7 @@ impl ServiceMember {
 
     pub async fn insert(&mut self) -> Result<Option<ServiceMemberRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
-        ServiceMember::new().bind(ex).seq_eq(id as i64).one().await
+        super::service_member::query().using(ex).seq_eq(id as i64).one().await
     }
 
     /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
@@ -602,7 +606,7 @@ impl ServiceMember {
             Some(pk) => {
                 self.q.w().pred("seq", "eq", pk.clone());
                 db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = ServiceMember::new().bind(ex);
+                let mut q = super::service_member::query().using(ex);
                 q.q.w().pred("seq", "eq", pk);
                 q.one().await
             }
@@ -640,7 +644,7 @@ impl ServiceMember {
 
 impl AsRef<ServiceMember> for ServiceMember { fn as_ref(&self) -> &Self { self } }
 
-impl Default for ServiceMember { fn default() -> Self { Self::new() } }
+impl Default for ServiceMember { fn default() -> Self { query() } }
 
 fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&ServiceMemberRow) -> Key + Send + Sync)>) -> Result<Collection<ServiceMemberRow>> {
     use orm::Src as _;

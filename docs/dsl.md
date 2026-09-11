@@ -4,42 +4,42 @@
 
 | 기준 | 결정 |
 |---|---|
-| 명시적 | 비교 연산의 기본값은 컬럼 이름 자체다(`isClose(0)`). 다른 연산자는 이름에 붙인다(`isCloseNotEq(1)`). 관계(`relation`/`relations`, 1:1·1:N이 이름에 보임)와 조인(`join`/`leftJoin`)은 다른 단어. 조인 조건은 `on(fn)`/`where(fn)`으로 자리를 말한다. 실행은 `get/gets/getCount/insert`처럼 하는 일을 말하는 터미널이 값만 받는다. DB·트랜잭션은 루트 쿼리에 `bind`로 묶는다 |
+| 명시적 | 비교 연산의 기본값은 컬럼 이름 자체다(`isClose(0)`). 다른 연산자는 이름에 붙인다(`isCloseNotEq(1)`). 관계(`relation`/`relations`, 1:1·1:N이 이름에 보임)와 조인(`join`/`leftJoin`)은 다른 단어. 조인 조건은 `on(fn)`/`where(fn)`으로 자리를 말한다. 실행은 `get/gets/getCount/insert`처럼 하는 일을 말하는 터미널이 값만 받는다. DB·트랜잭션은 루트 쿼리에 `using`으로 지정한다 |
 | 직관적 | SQL 단어를 그대로 쓴다: `select*`, `where`(=술어), `and/or`, `join/leftJoin/on`, `orderBy`, `limit`, `groupBy`. 관계 옵션도 뜻으로 이름 짓는다(`flatten`, `limitPerParent`, `keyBy`) |
 | 누구나 읽기 | 세 언어가 같은 토큰열. 약어 없음(`lk`→`Like`, `ge`→`Gte`, `nin`→`NotIn`) |
 | 논리적 | 세 가지뿐: 술어 `<col>(v)` 또는 `<col><Op>(v)`, 연결자 `or()`, 괄호 `and(fn)/or(fn)`. 다른 테이블은 관계 이름으로 내려감. 예외 없음 |
 | 유연 | 그룹 무한 중첩, 관계 무한 중첩, 관계 안의 조인, 조인 안의 조인, `expr` 조각, `selectExpr`, `orderByExpr` |
 | IDE 힌팅 | 컬럼 먼저·연산자 뒤: `endDt` 입력 → 그 컬럼에 허용된 연산자만 완성. 클로저는 타입이 정해진 `<X>Where`를 받는다. 관계 탐색도 생성 메서드 |
 
-렌더 규칙: 토큰 `fooBar` → PHP `fooBar` / Go `FooBar` / Rust `foo_bar`. 언어별 접사는 머리(`new X` / `m.X()` / `X::new()`), 클로저 머리, 바인딩 인자(`bind($db)` / `Bind(ctx, db)` / `bind(&db)`)와 Rust의 `.await?`뿐이다. Go의 `m.X()`는 `*m.XQuery`를 반환하는 공개 함수다.
+렌더 규칙: 토큰 `fooBar` → PHP `fooBar` / Go `FooBar` / Rust `foo_bar`. 언어별 접사는 머리(`X::query()` / `m.X()` / `x::query()`), 클로저 머리, 실행 대상 인자(`using($db)` / `Using(ctx, db)` / `using(&db)`)와 Rust의 `.await?`뿐이다. Go의 `m.X()`는 `*m.XQuery`를 반환하는 공개 함수다.
 
 ## 1. 구조
 
-루트 쿼리의 연결이 조인·모든 관계 단계와 반환된 행에 적용된다. 자식 쿼리의 바인딩은 부착된 관계의 실행기를 바꾸지 않는다. 행의 `update()`, `updateOptimistic()`, `delete()`, `deleteCascade()`도 물려받은 연결로 실행한다. 트랜잭션이 종료된 뒤 그 쿼리나 행을 실행하면 `CONFIG`다. 이후 실행은 새 연결로 명시적으로 다시 바인딩한다. 바인딩이 없는 쿼리도 `CONFIG`이며 전역 기본 연결을 자동 선택하지 않는다.
+루트 쿼리의 실행 대상이 조인·모든 관계 단계와 반환된 행에 적용된다. 자식 쿼리의 실행 대상은 부착된 관계의 실행기를 바꾸지 않는다. 행의 `update()`, `updateOptimistic()`, `delete()`, `deleteCascade()`도 물려받은 실행 대상으로 실행한다. 트랜잭션이 종료된 뒤 그 쿼리나 행을 실행하면 `CONFIG`다. 이후 실행은 새 실행 대상으로 명시적으로 다시 지정한다. 실행 대상이 없는 쿼리도 `CONFIG`이며 전역 기본 연결을 자동 선택하지 않는다.
 
 ```php
-$battle = (new Battle)->bind($db); // (new Battle)($db)도 같다
+$battle = Battle::query()->using($db); // Battle::query()($db)도 같다
 $count = $battle->getCountByServiceSeq(7);
 ```
 ```go
-battle := gen.Battle().Bind(ctx, db)
+battle := gen.Battle().Using(ctx, db)
 count, err := battle.GetCountByServiceSeq(7)
 ```
 ```rust
-let battle = Battle::new().bind(&db);
+let battle = battle::query().using(&db);
 let count = battle.get_count_by_service_seq(7).await?;
 ```
 
 ```
-X 생성                                  ← 쿼리(행 아님)
-    .bind(db)                           ← 실행 연결 (Go는 ctx도 함께)
+X 쿼리 생성                              ← 쿼리(행 아님)
+    .using(db)                           ← 실행 대상 지정 (Go는 ctx도 함께)
     .select…                            ← 컬럼 (선택)
-    .join<Rel>(new Y .on(fn) .where(fn)) ← 같은 SELECT에 합침. ON과 WHERE를 자리로 명시
+    .join<Rel>(Y 쿼리 .on(fn) .where(fn)) ← 같은 SELECT에 합침. ON과 WHERE를 자리로 명시
     .<col>(v) / .<col><Op>(v) …         ← WHERE (최상위 그룹, 기본 AND)
     .or()                               ← 다음 항목을 OR로
     .and(fn) / .or(fn)                  ← 괄호 그룹
-    .relation<Rel>(new Y …)             ← 별도 IN 쿼리로 가져와 행 부착 (1:1)
-    .relations<Rel>(new Y …)            ← 별도 IN 쿼리로 가져와 키 맵 부착 (1:N)
+    .relation<Rel>(Y 쿼리 …)             ← 별도 IN 쿼리로 가져와 행 부착 (1:1)
+    .relations<Rel>(Y 쿼리 …)            ← 별도 IN 쿼리로 가져와 키 맵 부착 (1:N)
     .orderBy<Col>Asc/Desc() .limit(o,n)
     .get() / .gets() / .getCount() / .getsCount() / .paginate(page, per)
     .getBy<PK|Unique>(v) / .getsBy<Col>(v) / .getCountBy<Col>(v)
@@ -88,9 +88,9 @@ X 생성                                  ← 쿼리(행 아님)
 ### 2.4 관계·조인
 | 토큰 | 의미 |
 |---|---|
-| `relation<Rel>(new Y …)` | 1:1 관계(YAML `kind: one`에만 생성). 부모 결과의 키를 모아 `IN` 1회로 자식을 가져와 행으로 부착 |
-| `relations<Rel>(new Y …)` | 1:N 관계(`kind: many`에만 생성). 같은 방식으로 가져와 키 맵으로 부착. 카디널리티가 이름에 드러나고, kind가 맞지 않는 이름은 존재하지 않아 컴파일 에러 |
-| `join<Rel>(new Y …)` `leftJoin<Rel>(new Y …)` | 선언 관계를 같은 SELECT에 조인. 조인 자식에서 조건 자리는 **반드시 명시**: `on(fn)` = ON, `where(fn)` = 부모 WHERE에 AND 그룹. 조인 자식 체인의 맨 술어는 컴파일 에러 `JOIN_PREDICATE_PLACEMENT`(LEFT JOIN을 INNER로 바꾸는 함정 방지). 자식 안의 `join<Rel>`은 다단 조인. 결과는 `$r->getCampaign()`으로 관계와 같은 모양 |
+| `relation<Rel>(Y::query() …)` | 1:1 관계(YAML `kind: one`에만 생성). 부모 결과의 키를 모아 `IN` 1회로 자식을 가져와 행으로 부착 |
+| `relations<Rel>(Y::query() …)` | 1:N 관계(`kind: many`에만 생성). 같은 방식으로 가져와 키 맵으로 부착. 카디널리티가 이름에 드러나고, kind가 맞지 않는 이름은 존재하지 않아 컴파일 에러 |
+| `join<Rel>(Y::query() …)` `leftJoin<Rel>(Y::query() …)` | 선언 관계를 같은 SELECT에 조인. 조인 자식에서 조건 자리는 **반드시 명시**: `on(fn)` = ON, `where(fn)` = 부모 WHERE에 AND 그룹. 조인 자식 체인의 맨 술어는 컴파일 에러 `JOIN_PREDICATE_PLACEMENT`(LEFT JOIN을 INNER로 바꾸는 함정 방지). 자식 안의 `join<Rel>`은 다단 조인. 결과는 `$r->getCampaign()`으로 관계와 같은 모양 |
 | (자유 alias 조인 없음) | 같은 테이블 두 번이면 관계를 둘 선언(`p1`, `p2`), 동명 FK도 YAML 한 줄. 미선언 조인은 컴파일 에러 |
 | 자식에 붙이는 옵션 | `keyBy<Col>()` 키 컬럼 · `keyByFn(fn)` 클라이언트 재키잉 · `flatten()` 자식 컬럼을 부모 행에 병합 · `limitPerParent(n)` 부모당 n행 · `ifParent<Col>Eq(v)` 부모 행 조건부 로딩 · `dropChildKey()` 자식의 FK 컬럼 제거 · `noCascadeDelete()` `delete(cascade)` 정지점 |
 
@@ -114,7 +114,7 @@ X 생성                                  ← 쿼리(행 아님)
 | `getCountBy<Col>(v)` | `<col>(v)`를 붙인 뒤 `getCount()`를 실행하는 스칼라 단축. `Eq`가 허용된 컬럼마다 생성 |
 | `insert()` (쿼리에 `set*` 채운 뒤) | 삽입된 행 |
 
-`count`와 `one/all`과 `oneBy`는 각각 `getCount`, `get/gets`와 `getBy`의 호환 별칭이다. `getBy`는 PK·유니크 키, `getsBy`와 `getCountBy`는 본 엔티티의 `Eq` 가능한 컬럼 하나를 받는 세 언어 공통 finder 단축이다. 여러 조건은 같은 root 체인에 컬럼 메서드를 이어 붙인 뒤 `gets`나 `getCount`를 호출한다. 실행기는 루트 쿼리에 `bind`로 묶는다. Go는 `Bind(ctx, db)`, PHP는 `bind($db)`, Rust는 `bind(&db)`다. 이후 모든 터미널은 DB·컨텍스트 없이 호출한다. `bind`를 다시 호출하면 연결만 교체하고 조건·조인·관계는 유지한다. 바인딩은 IR·플랜 캐시 키에 들어가지 않는다.
+`count`와 `one/all`과 `oneBy`는 각각 `getCount`, `get/gets`와 `getBy`의 호환 별칭이다. `getBy`는 PK·유니크 키, `getsBy`와 `getCountBy`는 본 엔티티의 `Eq` 가능한 컬럼 하나를 받는 세 언어 공통 finder 단축이다. 여러 조건은 같은 root 체인에 컬럼 메서드를 이어 붙인 뒤 `gets`나 `getCount`를 호출한다. 실행기는 루트 쿼리에 `using`으로 지정한다. Go는 `Using(ctx, db)`, PHP는 `using($db)`, Rust는 `using(&db)`다. 이후 모든 터미널은 DB·컨텍스트 없이 호출한다. `using`을 다시 호출하면 실행 대상만 교체하고 조건·조인·관계는 유지한다. 실행 대상은 IR·플랜 캐시 키에 들어가지 않는다.
 
 `getsBy`와 `getCountBy`는 현재 쿼리의 본 엔티티에 equality 술어 하나를 추가한 뒤 터미널을 실행한다. 이미 붙인 `join`이나 `relation` 단계의 대상·조건·부착 방식은 바꾸지 않는다. `%% index`는 데이터베이스의 실행 계획을 위한 선언이며 finder 문법의 허용 여부를 결정하지 않는다.
 
@@ -134,30 +134,30 @@ X 생성                                  ← 쿼리(행 아님)
 같은 모델의 기본 조건, `or()` 그룹, 조인 `on/where`를 한 문장으로 표현한다.
 
 ```php
-$battles = (new Battle)
-    ->joinService((new Service)->nameLike('pro'))
+$battles = Battle::query()
+    ->joinService(Service::query()->nameLike('pro'))
     ->serviceSeq(7)
     ->isClose(false)
     ->and(fn(BattleWhere $w) => $w
         ->isDisplay(true)
         ->or()
         ->isAllday(true))
-    ->orderBySeqDesc()->limit(0, 20)->bind($db)->gets();
+    ->orderBySeqDesc()->limit(0, 20)->using($db)->gets();
 ```
 ```go
 battles, err := gen.Battle().
     JoinService(gen.Service().NameLike("pro")).
     ServiceSeq(7).IsClose(false).
     And(func(w *gen.BattleWhere) { w.IsDisplay(true).Or().IsAllday(true) }).
-    OrderBySeqDesc().Limit(0, 20).Bind(ctx, db).Gets()
+    OrderBySeqDesc().Limit(0, 20).Using(ctx, db).Gets()
 ```
 ```rust
-let battles = Battle::new()
-    .join_service(Service::new().name_like("pro"))
+let battles = battle::query()
+    .join_service(service::query().name_like("pro"))
     .service_seq(7)
     .is_close(false)
     .and(|w| w.is_display(true).or().is_allday(true))
-    .order_by_seq_desc().limit(0, 20).bind(&db).gets().await?;
+    .order_by_seq_desc().limit(0, 20).using(&db).gets().await?;
 ```
 
 `serviceSeq(7)`처럼 컬럼 이름만 쓰는 비교가 기본 `Eq`다. `andServiceSeq(7)`은 정규 문법이 아니며,
@@ -170,27 +170,27 @@ let battles = Battle::new()
 `limitPerParent`는 각 부모마다 적용된다.
 
 ```php
-$services = (new Service)
+$services = Service::query()
     ->nameLike('pro')
-    ->relationsModules((new ServiceModule)
+    ->relationsModules(ServiceModule::query()
         ->orderBySeqDesc()->limitPerParent(3))
-    ->relationsMembers((new ServiceMember)
-        ->relationUser(new User)->keyBySeq())
-    ->orderBySeqDesc()->bind($db)->gets();
+    ->relationsMembers(ServiceMember::query()
+        ->relationUser(User::query())->keyBySeq())
+    ->orderBySeqDesc()->using($db)->gets();
 ```
 ```go
 services, err := gen.Service().
     NameLike("pro").
     RelationsModules(gen.ServiceModule().OrderBySeqDesc().LimitPerParent(3)).
     RelationsMembers(gen.ServiceMember().RelationUser(gen.User()).KeyBySeq()).
-    OrderBySeqDesc().Bind(ctx, db).Gets()
+    OrderBySeqDesc().Using(ctx, db).Gets()
 ```
 ```rust
-let services = Service::new()
+let services = service::query()
     .name_like("pro")
-    .relations_modules(ServiceModule::new().order_by_seq_desc().limit_per_parent(3))
-    .relations_members(ServiceMember::new().relation_user(User::new()).key_by_seq())
-    .order_by_seq_desc().bind(&db).gets().await?;
+    .relations_modules(service_module::query().order_by_seq_desc().limit_per_parent(3))
+    .relations_members(service_member::query().relation_user(user::query()).key_by_seq())
+    .order_by_seq_desc().using(&db).gets().await?;
 ```
 
 관계 단계는 부모 결과의 키를 모아 `IN`으로 조회하고, 결과를 선언된 관계 이름에 붙인다.
@@ -200,39 +200,39 @@ let services = Service::new()
 
 ```php
 $service = $db->transaction(function ($tx) {
-    $service = (new Service)->bind($tx)->setName('example')->insert();
+    $service = Service::query()->using($tx)->setName('example')->insert();
     $service->setName('renamed')->update();
     return $service;
 });
-$service->bind($db)->delete();
+$service->using($db)->delete();
 ```
 ```go
 service, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.ServiceRow, error) {
-    service, err := gen.Service().Bind(ctx, tx).SetName("example").Insert()
+    service, err := gen.Service().Using(ctx, tx).SetName("example").Insert()
     if err != nil { return nil, err }
     if err := service.SetName("renamed").Update(); err != nil { return nil, err }
     return service, nil
 })
 if err != nil { return err }
-err = service.Bind(ctx, db).Delete()
+err = service.Using(ctx, db).Delete()
 ```
 ```rust
 let mut service = db.transaction(|tx| async move {
-    let mut service = Service::new().bind(&tx).set_name("example").insert().await?.unwrap();
+    let mut service = service::query().using(&tx).set_name("example").insert().await?.unwrap();
     service.set_name("renamed").update().await?;
     Ok(service)
 }).await?;
-service.bind(&db).delete().await?;
+service.using(&db).delete().await?;
 ```
 트랜잭션 안의 행 수정은 삽입 때 물려받은 연결을 쓴다. 커밋 후 삭제는 `bind(db)`로 새 연결을 선택한다.
 
 ## 6. PHP 호환층 (동적 문법; 정규 API 아님, `__call` 전용)
-정규 API에 없는 동적 PHP 표기를 같은 IR로 번역한다: `andX/orX/conditionX`(`orX` = `or()->x`), op-first(`gtEndDt`), 배열→In, null→IsNull, `relation((new Y)->matchAWithB()->aliasR())`→`relationR`/`relationsR`, `joinAWithB`, `addColumnX`/`addAllColumns`, `parentNode`→`flatten`, `groupLimit`→`limitPerParent`, `keyNameX`→`keyByX`, `fetchKey`→`keyByFn`, `deleteLock`→`noCascadeDelete`, `getAll/getsAll`, 선언되지 않은 복합 `getByXAndY/getsByXAndY`, `and('(')…condition(')')`(모델 내 균형만; 경계 초과는 `PAREN_ACROSS_MODELS`). 단일 컬럼 finder와 정규 `get/gets`·`<col>(v)`는 생성 메서드로 제공되므로 이 층을 거치지 않는다. `ormgen check --lang php`가 사용처를 목록으로 낸다.
+정규 API에 없는 동적 PHP 표기를 같은 IR로 번역한다: `andX/orX/conditionX`(`orX` = `or()->x`), op-first(`gtEndDt`), 배열→In, null→IsNull, `relation(Y::query()->matchAWithB()->aliasR())`→`relationR`/`relationsR`, `joinAWithB`, `addColumnX`/`addAllColumns`, `parentNode`→`flatten`, `groupLimit`→`limitPerParent`, `keyNameX`→`keyByX`, `fetchKey`→`keyByFn`, `deleteLock`→`noCascadeDelete`, `getAll/getsAll`, 선언되지 않은 복합 `getByXAndY/getsByXAndY`, `and('(')…condition(')')`(모델 내 균형만; 경계 초과는 `PAREN_ACROSS_MODELS`). 단일 컬럼 finder와 정규 `get/gets`·`<col>(v)`는 생성 메서드로 제공되므로 이 층을 거치지 않는다. `ormgen check --lang php`가 사용처를 목록으로 낸다.
 
 ## PHP 호환층
 `clients/php/src/Compat.php`(`CompatQuery`·`CompatWhere` 트레이트)가 생성된 쿼리·Where 클래스의 `__call`로 붙는다. 생성 메서드가 없는 이름만 여기로 오며, 호출 시점에 이름을 디코드해 **정규 메서드와 같은 Q/W 원시 호출**로 바꾼다 — 그래서 호환 체인과 정규 체인은 `Req::shape()` 바이트가 같다(`clients/php/tests/compat.php`, 50쌍). 디코드 결과는 (클래스, 메서드명)당 한 번 static 배열에 메모된다(opcache 친화, 요청마다 파싱 없음).
 
-PHP의 `(new X)($db)`와 `new X($db)`는 `bind($db)`의 축약이다. 생성 메서드와 동적 호환 메서드 모두 이미 묶인 연결을 사용하고 터미널에는 값만 넘긴다.
+PHP의 `X::query()->using($db)`가 쿼리 생성과 실행 대상 지정을 분리한다. 생성 메서드와 동적 호환 메서드 모두 이미 지정된 실행 대상을 사용하고 터미널에는 값만 넘긴다.
 
 이름 해석: camel 토큰(`IsClose` → `Is`,`Close`)을 엔티티의 `columns()` 표에서 **최장 일치**로 컬럼에 맞춘다. 이름 안의 `And`/`Or`는 연결자, 괄호는 그룹. 모르는 컬럼 → `COLUMN_UNKNOWN`(후보 컬럼 목록 포함); op 단어로도 컬럼으로도 읽히면(`InStock` = 컬럼 `in_stock` 또는 `In`+`stock`) → `COLUMN_UNKNOWN`(두 해석 명시). 값은 그대로 바인드된다(`andIsClose(0)`은 `isClose(false)`와 같은 SQL·결과, 파라미터 타입만 다르다).
 
@@ -253,10 +253,10 @@ PHP의 `(new X)($db)`와 `new X($db)`는 `bind($db)`의 축약이다. 생성 메
 | `and('Name', v)` `and('snake_name', v)` | `name(v)` | `and($key, $value)` |
 | 조인 자식의 `onX(v)` `onXOrY(a, b)` | `on(fn($w) => $w->x(v)…)` | ON 절 |
 | 조인 자식의 `andX(v)` | `where(fn($w) => $w->x(v))` | 부모 WHERE에 AND로 붙는 자리 |
-| `relation((new Y)->matchAWithB()->aliasR())` `relations(…)` `oneToOne/oneToMany` `relationAWithB(new Y)` `match('a', 'b')` `alias('r')` | `relationR(new Y)` / `relationsR(new Y)` | 부모.A = Y.B 쌍과 대상 엔티티로 매니페스트 관계를 찾는다. 쌍이 없거나(`RELATION_UNKNOWN`), 여러 관계가 맞으면 `alias<Name>`이 고른다(없으면 `RELATION_UNKNOWN`). `relation`인데 1:N이면 `RELATION_UNKNOWN`("relations를 쓰라"). match 없음 = 기본쌍(자식 PK, `<자식>_<pk>`) |
+| `relation(Y::query()->matchAWithB()->aliasR())` `relations(…)` `oneToOne/oneToMany` `relationAWithB(Y::query())` `match('a', 'b')` `alias('r')` | `relationR(Y::query())` / `relationsR(Y::query())` | 부모.A = Y.B 쌍과 대상 엔티티로 매니페스트 관계를 찾는다. 쌍이 없거나(`RELATION_UNKNOWN`), 여러 관계가 맞으면 `alias<Name>`이 고른다(없으면 `RELATION_UNKNOWN`). `relation`인데 1:N이면 `RELATION_UNKNOWN`("relations를 쓰라"). match 없음 = 기본쌍(자식 PK, `<자식>_<pk>`) |
 | `matchAWithB(false)` | `dropChildKey()` | 자식 컬럼 B가 자식 PK가 아닐 때 |
 | `matchAllAWithB()` | `selectAll()` + 관계 | |
-| `joinAWithB(new Y)` `leftJoinAWithB(new Y)` | `joinR(new Y)` `leftJoinR(new Y)` | 쌍은 이름에서, alias는 후보가 여럿일 때 |
+| `joinAWithB(Y::query())` `leftJoinAWithB(Y::query())` | `joinR(Y::query())` `leftJoinR(Y::query())` | 쌍은 이름에서, alias는 후보가 여럿일 때 |
 | `addColumnX()` `addColumn('x')` `addColumns([…])` | `selectX()` | |
 | `addColumnXAliasY()` `addColumn('x', 'y')` | `selectXAs('y')` | |
 | `addColumnXAliasY('fmt(%s)')` `addColumn('x', 'y', fmt)` | `selectExpr('y', 'fmt(`x`)')` | `%s` 자리에 백틱 컬럼 |
@@ -275,10 +275,10 @@ PHP의 `(new X)($db)`와 `new X($db)`는 `bind($db)`의 축약이다. 생성 메
 | `getsCount()` | 그룹별 행을 반환하는 터미널 | `groupBy`가 필요하며 `getCount`와 의미가 다르다. 결과 행은 그룹 컬럼과 `row_count`를 가진다 |
 | `getSumX()` `getAvgX()` | `sumX()` `avgX()` | |
 | `create()` | `insert()` | |
-| `duplication((new X)->setA(v)->plusB(n)->setCExpr(f, b))` `duplication(['a' => v])` | `onDuplicateSetA(v)->onDuplicatePlusB(n)->onDuplicateSetCExpr(f, b)` | 모델의 set/plus/minus/expr 순서 그대로 |
+| `duplication(X::query()->setA(v)->plusB(n)->setCExpr(f, b))` `duplication(['a' => v])` | `onDuplicateSetA(v)->onDuplicatePlusB(n)->onDuplicateSetCExpr(f, b)` | 모델의 set/plus/minus/expr 순서 그대로 |
 | `setRawX('f(:a, :b)', [':a' => 1, ':b' => 2])` | `setXExpr('f(?, ?)', [1, 2])` | |
 | `plusX(n)` `minusX(n)` `setX(v)` `limit(o, n)` `groupByX()` | 이미 정규 | 숫자 컬럼만 `plus/minus` |
-| 행 `->bind($db)->delete(true)` | `->bind($db)->deleteCascade()` | `delete()`는 그대로 |
+| 행 `->using($db)->delete(true)` | `->using($db)->deleteCascade()` | `delete()`는 그대로 |
 | 행 `->getRelModel()` `->getRelModels()` | `->getRel()` | 기본 attach 키 |
 
 ### 번역하지 않는 것 (에러 코드와 대체)
@@ -290,7 +290,7 @@ PHP의 `(new X)($db)`와 `new X($db)`는 `bind($db)`의 축약이다. 생성 메
 | `Model::function(v, 'expr %s', binds)` 값 객체 | `IR_INVALID` | `expr(fragment, binds)` |
 | 프로젝트에 선언되지 않은 헬퍼 `andDisplayCondition` `conditionDisplayCondition` `andStartEndDtRange` `onStartEndDtRange` `addColumnIsDisplayCondition` `addColumnIsStartEndDtRange` | `COLUMN_UNKNOWN` | Mermaid `%% predicate`로 선언해 `visible()`처럼 쓴다 |
 | `newX(v)` `newRawX(…)` (테이블 밖 속성) | `BadMethodCallException` | 행 배열에 붙인다 |
-| `get('SELECT …', binds)` `gets(sql, binds)` 원시 SQL 형 | `IR_INVALID`(get/gets는 인자가 없음) | `raw(sql, binds)->bind($db)->rawAll()` |
+| `get('SELECT …', binds)` `gets(sql, binds)` 원시 SQL 형 | `IR_INVALID`(get/gets는 인자가 없음) | `raw(sql, binds)->using($db)->rawAll()` |
 | `alias`를 행의 접근 키로 쓰는 것(`$row['member']`, `getMember()`) | 관계 이름으로만 접근(`getServiceMember()`, `getServiceMemberModel()`) | alias는 관계 선택에만 쓰인다; IR·플랜에 별칭이 없다 |
 | 조인 자식이 부모의 `(`를 닫는 체인 | `PAREN_ACROSS_MODELS` | `)`를 부모 체인으로 옮기거나 `and(fn)` |
 | `keyName`을 `relation`(1:1) 자식에 | 무시 | 1:1 관계에는 적용하지 않는다 |

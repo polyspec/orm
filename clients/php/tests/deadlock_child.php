@@ -20,13 +20,13 @@ $db = orm_open_db(orm_test_driver(), orm_test_dsn(), persistent: false);
 $runs = 0;
 $db->transaction(function (Tx $tx) use (&$runs, $first, $second, $tag): void {
     $runs++;
-    (new Battle)->seqEq((int) $first)->setName("dl-php-$tag")->bind($tx)->update();
+    Battle::query()->seqEq((int) $first)->setName("dl-php-$tag")->using($tx)->update();
     if ($runs === 1) {
         // Barrier: both sides hold their first row before either asks for its second.
         // The re-run after the deadlock must not wait again — the parent released us once.
         fwrite(STDOUT, "locked\n");
         fgets(STDIN);
     }
-    (new Battle)->seqEq((int) $second)->setName("dl-php-$tag")->bind($tx)->update();
+    Battle::query()->seqEq((int) $second)->setName("dl-php-$tag")->using($tx)->update();
 });
 fwrite(STDOUT, "done $runs\n");

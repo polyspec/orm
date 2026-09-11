@@ -14,8 +14,8 @@ public function save(): ?\App\Orm\BattleRow;
 public function update(): int;
 public function delete(): int;
 public function sql(): array;
-public function __construct(\Orm\Db|\PDO|null $db=null);
-public function bind(\Orm\Db|\PDO $db): static;
+public static function query(): static;
+public function using(\Orm\Db|\PDO $db): static;
 public function paginate(int $page, int $per): \Orm\Page;
 public function getsBySeq(int $value): \Orm\Collection;
 public function getsByName(string $value): \Orm\Collection;
@@ -132,7 +132,7 @@ public function ip(string $v): static;
 }
 
 interface BattleRowInterface {
-public function bind(\Orm\Db|\PDO $db): static;
+public function using(\Orm\Db|\PDO $db): static;
 public function update(): void;
 public function updateOptimistic(): void;
 public function delete(bool $cascade=false): void;
@@ -152,8 +152,8 @@ public function save(): ?\App\Orm\UserRow;
 public function update(): int;
 public function delete(): int;
 public function sql(): array;
-public function __construct(\Orm\Db|\PDO|null $db=null);
-public function bind(\Orm\Db|\PDO $db): static;
+public static function query(): static;
+public function using(\Orm\Db|\PDO $db): static;
 public function paginate(int $page, int $per): \Orm\Page;
 public function getsBySeq(int $value): \Orm\Collection;
 public function getsByName(string $value): \Orm\Collection;
@@ -166,7 +166,7 @@ public function name(string $v): static;
 }
 
 interface UserRowInterface {
-public function bind(\Orm\Db|\PDO $db): static;
+public function using(\Orm\Db|\PDO $db): static;
 public function update(): void;
 public function delete(bool $cascade=false): void;
 public function deleteCascade(): void;
@@ -185,8 +185,8 @@ public function save(): ?\App\Orm\ServiceRow;
 public function update(): int;
 public function delete(): int;
 public function sql(): array;
-public function __construct(\Orm\Db|\PDO|null $db=null);
-public function bind(\Orm\Db|\PDO $db): static;
+public static function query(): static;
+public function using(\Orm\Db|\PDO $db): static;
 public function paginate(int $page, int $per): \Orm\Page;
 public function getsBySeq(int $value): \Orm\Collection;
 public function getsByName(string $value): \Orm\Collection;
@@ -199,7 +199,7 @@ public function name(string $v): static;
 }
 
 interface ServiceRowInterface {
-public function bind(\Orm\Db|\PDO $db): static;
+public function using(\Orm\Db|\PDO $db): static;
 public function update(): void;
 public function delete(bool $cascade=false): void;
 public function deleteCascade(): void;
@@ -218,8 +218,8 @@ public function save(): ?\App\Orm\ServiceModuleRow;
 public function update(): int;
 public function delete(): int;
 public function sql(): array;
-public function __construct(\Orm\Db|\PDO|null $db=null);
-public function bind(\Orm\Db|\PDO $db): static;
+public static function query(): static;
+public function using(\Orm\Db|\PDO $db): static;
 public function paginate(int $page, int $per): \Orm\Page;
 public function getsBySeq(int $value): \Orm\Collection;
 public function getsByServiceSeq(int $value): \Orm\Collection;
@@ -236,7 +236,7 @@ public function name(string $v): static;
 }
 
 interface ServiceModuleRowInterface {
-public function bind(\Orm\Db|\PDO $db): static;
+public function using(\Orm\Db|\PDO $db): static;
 public function update(): void;
 public function delete(bool $cascade=false): void;
 public function deleteCascade(): void;
@@ -255,8 +255,8 @@ public function save(): ?\App\Orm\ServiceMemberRow;
 public function update(): int;
 public function delete(): int;
 public function sql(): array;
-public function __construct(\Orm\Db|\PDO|null $db=null);
-public function bind(\Orm\Db|\PDO $db): static;
+public static function query(): static;
+public function using(\Orm\Db|\PDO $db): static;
 public function paginate(int $page, int $per): \Orm\Page;
 public function getsBySeq(int $value): \Orm\Collection;
 public function getsByServiceSeq(int $value): \Orm\Collection;
@@ -273,7 +273,7 @@ public function userSeq(int $v): static;
 }
 
 interface ServiceMemberRowInterface {
-public function bind(\Orm\Db|\PDO $db): static;
+public function using(\Orm\Db|\PDO $db): static;
 public function update(): void;
 public function delete(bool $cascade=false): void;
 public function deleteCascade(): void;

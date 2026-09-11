@@ -257,7 +257,7 @@ var ServiceMemberCols = struct {
 	UserSeq:    orm.ColRef{Column: "user_seq"},
 }
 
-// ServiceMemberQuery builds a statement over service_member: ServiceMember() → Bind(ctx, db) → chain → terminal().
+// ServiceMemberQuery builds a statement over service_member: ServiceMember() → Using(ctx, db) → chain → terminal().
 type ServiceMemberQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -278,14 +278,14 @@ func ServiceMember() *ServiceMemberQuery {
 	return &ServiceMemberQuery{q: orm.NewQ(mustEngine(), "service_member")}
 }
 
-// Bind selects the context and pool or transaction for this query.
-func (q *ServiceMemberQuery) Bind(ctx context.Context, ex orm.Exec) *ServiceMemberQuery {
+// Using selects the context and pool or transaction for this query.
+func (q *ServiceMemberQuery) Using(ctx context.Context, ex orm.Exec) *ServiceMemberQuery {
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
 
-// Bind selects the context and pool or transaction for this loaded row.
-func (r *ServiceMemberRow) Bind(ctx context.Context, ex orm.Exec) *ServiceMemberRow {
+// Using selects the context and pool or transaction for this loaded row.
+func (r *ServiceMemberRow) Using(ctx context.Context, ex orm.Exec) *ServiceMemberRow {
 	r.Binding = orm.NewBinding(ctx, ex)
 	return r
 }
@@ -1424,7 +1424,7 @@ func (q *ServiceMemberQuery) Insert() (*ServiceMemberRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ServiceMember().Bind(ctx, ex).SeqEq(int64(id)).One()
+	return ServiceMember().Using(ctx, ex).SeqEq(int64(id)).One()
 }
 
 // Save updates the other assigned columns when SetSeq was called (and
@@ -1442,7 +1442,7 @@ func (q *ServiceMemberQuery) Save() (*ServiceMemberRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return ServiceMember().Bind(ctx, ex).SeqEq(pk.(int64)).One()
+	return ServiceMember().Using(ctx, ex).SeqEq(pk.(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

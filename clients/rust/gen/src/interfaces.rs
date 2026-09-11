@@ -14,8 +14,7 @@ async fn save(&mut self) -> Result<Option<BattleRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
-fn new() -> Self;
-fn bind(self, ex: &impl Exec) -> Self;
+fn using(self, ex: &impl Exec) -> Self;
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<BattleRow>>;
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<BattleRow>>;
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>>;
@@ -140,8 +139,7 @@ async fn save(&mut self) -> Result<Option<BattleRow>> { Battle::save(self).await
 async fn update(&mut self) -> Result<u64> { Battle::update(self).await }
 async fn delete(&mut self) -> Result<u64> { Battle::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { Battle::sql(self).await }
-fn new() -> Self { Battle::new() }
-fn bind(mut self, ex: &impl Exec) -> Self { Battle::bind(self,ex) }
+fn using(mut self, ex: &impl Exec) -> Self { Battle::using(self,ex) }
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<BattleRow>> { Battle::paginate(self,page,per).await }
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<BattleRow>> { Battle::gets_by_seq(self,v).await }
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> { Battle::gets_by_name(self,v).await }
@@ -258,7 +256,7 @@ fn ip(self, v: impl Into<String>) -> Self { Battle::ip(self,v) }
 }
 
 pub trait BattleRowInterface: Sized {
-fn bind(&mut self, ex: &impl Exec) -> &mut Self;
+fn using(&mut self, ex: &impl Exec) -> &mut Self;
 async fn update(&mut self) -> Result<()>;
 async fn update_optimistic(&mut self) -> Result<()>;
 async fn delete(&self) -> Result<()>;
@@ -268,7 +266,7 @@ fn rel_loaded(&self, name: &str) -> bool;
 fn to_map(&self) -> Result<serde_json::Value>;
 }
 impl BattleRowInterface for BattleRow {
-fn bind(&mut self, ex: &impl Exec) -> &mut Self { BattleRow::bind(self,ex) }
+fn using(&mut self, ex: &impl Exec) -> &mut Self { BattleRow::using(self,ex) }
 async fn update(&mut self) -> Result<()> { BattleRow::update(self).await }
 async fn update_optimistic(&mut self) -> Result<()> { BattleRow::update_optimistic(self).await }
 async fn delete(&self) -> Result<()> { BattleRow::delete(self).await }
@@ -288,8 +286,7 @@ async fn save(&mut self) -> Result<Option<UserRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
-fn new() -> Self;
-fn bind(self, ex: &impl Exec) -> Self;
+fn using(self, ex: &impl Exec) -> Self;
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<UserRow>>;
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<UserRow>>;
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<UserRow>>;
@@ -310,8 +307,7 @@ async fn save(&mut self) -> Result<Option<UserRow>> { User::save(self).await }
 async fn update(&mut self) -> Result<u64> { User::update(self).await }
 async fn delete(&mut self) -> Result<u64> { User::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { User::sql(self).await }
-fn new() -> Self { User::new() }
-fn bind(mut self, ex: &impl Exec) -> Self { User::bind(self,ex) }
+fn using(mut self, ex: &impl Exec) -> Self { User::using(self,ex) }
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<UserRow>> { User::paginate(self,page,per).await }
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<UserRow>> { User::gets_by_seq(self,v).await }
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<UserRow>> { User::gets_by_name(self,v).await }
@@ -324,7 +320,7 @@ fn name(self, v: impl Into<String>) -> Self { User::name(self,v) }
 }
 
 pub trait UserRowInterface: Sized {
-fn bind(&mut self, ex: &impl Exec) -> &mut Self;
+fn using(&mut self, ex: &impl Exec) -> &mut Self;
 async fn update(&mut self) -> Result<()>;
 async fn delete(&self) -> Result<()>;
 async fn delete_cascade(&self) -> Result<()>;
@@ -333,7 +329,7 @@ fn rel_loaded(&self, name: &str) -> bool;
 fn to_map(&self) -> Result<serde_json::Value>;
 }
 impl UserRowInterface for UserRow {
-fn bind(&mut self, ex: &impl Exec) -> &mut Self { UserRow::bind(self,ex) }
+fn using(&mut self, ex: &impl Exec) -> &mut Self { UserRow::using(self,ex) }
 async fn update(&mut self) -> Result<()> { UserRow::update(self).await }
 async fn delete(&self) -> Result<()> { UserRow::delete(self).await }
 async fn delete_cascade(&self) -> Result<()> { UserRow::delete_cascade(self).await }
@@ -352,8 +348,7 @@ async fn save(&mut self) -> Result<Option<ServiceRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
-fn new() -> Self;
-fn bind(self, ex: &impl Exec) -> Self;
+fn using(self, ex: &impl Exec) -> Self;
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceRow>>;
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceRow>>;
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<ServiceRow>>;
@@ -374,8 +369,7 @@ async fn save(&mut self) -> Result<Option<ServiceRow>> { Service::save(self).awa
 async fn update(&mut self) -> Result<u64> { Service::update(self).await }
 async fn delete(&mut self) -> Result<u64> { Service::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { Service::sql(self).await }
-fn new() -> Self { Service::new() }
-fn bind(mut self, ex: &impl Exec) -> Self { Service::bind(self,ex) }
+fn using(mut self, ex: &impl Exec) -> Self { Service::using(self,ex) }
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceRow>> { Service::paginate(self,page,per).await }
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceRow>> { Service::gets_by_seq(self,v).await }
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<ServiceRow>> { Service::gets_by_name(self,v).await }
@@ -388,7 +382,7 @@ fn name(self, v: impl Into<String>) -> Self { Service::name(self,v) }
 }
 
 pub trait ServiceRowInterface: Sized {
-fn bind(&mut self, ex: &impl Exec) -> &mut Self;
+fn using(&mut self, ex: &impl Exec) -> &mut Self;
 async fn update(&mut self) -> Result<()>;
 async fn delete(&self) -> Result<()>;
 async fn delete_cascade(&self) -> Result<()>;
@@ -397,7 +391,7 @@ fn rel_loaded(&self, name: &str) -> bool;
 fn to_map(&self) -> Result<serde_json::Value>;
 }
 impl ServiceRowInterface for ServiceRow {
-fn bind(&mut self, ex: &impl Exec) -> &mut Self { ServiceRow::bind(self,ex) }
+fn using(&mut self, ex: &impl Exec) -> &mut Self { ServiceRow::using(self,ex) }
 async fn update(&mut self) -> Result<()> { ServiceRow::update(self).await }
 async fn delete(&self) -> Result<()> { ServiceRow::delete(self).await }
 async fn delete_cascade(&self) -> Result<()> { ServiceRow::delete_cascade(self).await }
@@ -416,8 +410,7 @@ async fn save(&mut self) -> Result<Option<ServiceModuleRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
-fn new() -> Self;
-fn bind(self, ex: &impl Exec) -> Self;
+fn using(self, ex: &impl Exec) -> Self;
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceModuleRow>>;
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceModuleRow>>;
 async fn gets_by_service_seq(&mut self, v: i64) -> Result<Collection<ServiceModuleRow>>;
@@ -442,8 +435,7 @@ async fn save(&mut self) -> Result<Option<ServiceModuleRow>> { ServiceModule::sa
 async fn update(&mut self) -> Result<u64> { ServiceModule::update(self).await }
 async fn delete(&mut self) -> Result<u64> { ServiceModule::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { ServiceModule::sql(self).await }
-fn new() -> Self { ServiceModule::new() }
-fn bind(mut self, ex: &impl Exec) -> Self { ServiceModule::bind(self,ex) }
+fn using(mut self, ex: &impl Exec) -> Self { ServiceModule::using(self,ex) }
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceModuleRow>> { ServiceModule::paginate(self,page,per).await }
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceModuleRow>> { ServiceModule::gets_by_seq(self,v).await }
 async fn gets_by_service_seq(&mut self, v: i64) -> Result<Collection<ServiceModuleRow>> { ServiceModule::gets_by_service_seq(self,v).await }
@@ -460,7 +452,7 @@ fn name(self, v: impl Into<String>) -> Self { ServiceModule::name(self,v) }
 }
 
 pub trait ServiceModuleRowInterface: Sized {
-fn bind(&mut self, ex: &impl Exec) -> &mut Self;
+fn using(&mut self, ex: &impl Exec) -> &mut Self;
 async fn update(&mut self) -> Result<()>;
 async fn delete(&self) -> Result<()>;
 async fn delete_cascade(&self) -> Result<()>;
@@ -469,7 +461,7 @@ fn rel_loaded(&self, name: &str) -> bool;
 fn to_map(&self) -> Result<serde_json::Value>;
 }
 impl ServiceModuleRowInterface for ServiceModuleRow {
-fn bind(&mut self, ex: &impl Exec) -> &mut Self { ServiceModuleRow::bind(self,ex) }
+fn using(&mut self, ex: &impl Exec) -> &mut Self { ServiceModuleRow::using(self,ex) }
 async fn update(&mut self) -> Result<()> { ServiceModuleRow::update(self).await }
 async fn delete(&self) -> Result<()> { ServiceModuleRow::delete(self).await }
 async fn delete_cascade(&self) -> Result<()> { ServiceModuleRow::delete_cascade(self).await }
@@ -488,8 +480,7 @@ async fn save(&mut self) -> Result<Option<ServiceMemberRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
-fn new() -> Self;
-fn bind(self, ex: &impl Exec) -> Self;
+fn using(self, ex: &impl Exec) -> Self;
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceMemberRow>>;
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceMemberRow>>;
 async fn gets_by_service_seq(&mut self, v: i64) -> Result<Collection<ServiceMemberRow>>;
@@ -514,8 +505,7 @@ async fn save(&mut self) -> Result<Option<ServiceMemberRow>> { ServiceMember::sa
 async fn update(&mut self) -> Result<u64> { ServiceMember::update(self).await }
 async fn delete(&mut self) -> Result<u64> { ServiceMember::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { ServiceMember::sql(self).await }
-fn new() -> Self { ServiceMember::new() }
-fn bind(mut self, ex: &impl Exec) -> Self { ServiceMember::bind(self,ex) }
+fn using(mut self, ex: &impl Exec) -> Self { ServiceMember::using(self,ex) }
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceMemberRow>> { ServiceMember::paginate(self,page,per).await }
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceMemberRow>> { ServiceMember::gets_by_seq(self,v).await }
 async fn gets_by_service_seq(&mut self, v: i64) -> Result<Collection<ServiceMemberRow>> { ServiceMember::gets_by_service_seq(self,v).await }
@@ -532,7 +522,7 @@ fn user_seq(self, v: i64) -> Self { ServiceMember::user_seq(self,v) }
 }
 
 pub trait ServiceMemberRowInterface: Sized {
-fn bind(&mut self, ex: &impl Exec) -> &mut Self;
+fn using(&mut self, ex: &impl Exec) -> &mut Self;
 async fn update(&mut self) -> Result<()>;
 async fn delete(&self) -> Result<()>;
 async fn delete_cascade(&self) -> Result<()>;
@@ -541,7 +531,7 @@ fn rel_loaded(&self, name: &str) -> bool;
 fn to_map(&self) -> Result<serde_json::Value>;
 }
 impl ServiceMemberRowInterface for ServiceMemberRow {
-fn bind(&mut self, ex: &impl Exec) -> &mut Self { ServiceMemberRow::bind(self,ex) }
+fn using(&mut self, ex: &impl Exec) -> &mut Self { ServiceMemberRow::using(self,ex) }
 async fn update(&mut self) -> Result<()> { ServiceMemberRow::update(self).await }
 async fn delete(&self) -> Result<()> { ServiceMemberRow::delete(self).await }
 async fn delete_cascade(&self) -> Result<()> { ServiceMemberRow::delete_cascade(self).await }

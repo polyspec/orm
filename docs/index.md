@@ -29,19 +29,19 @@ features:
 ### Go
 
 ```go [Go]
-count, err := gen.Battle().Bind(ctx, db).GetCountByServiceSeq(7)
+count, err := gen.Battle().Using(ctx, db).GetCountByServiceSeq(7)
 ```
 
 ### PHP
 
 ```php [PHP]
-$count = (new Battle)->bind($db)->getCountByServiceSeq(7);
+$count = Battle::query()->using($db)->getCountByServiceSeq(7);
 ```
 
 ### Rust
 
 ```rust [Rust]
-let count = Battle::new().bind(&db).get_count_by_service_seq(7).await?;
+let count = battle::query().using(&db).get_count_by_service_seq(7).await?;
 ```
 
 Go의 `gen.Battle()`은 `*gen.BattleQuery`를 반환해요. Go는 실행 취소와 기한을 전달하는 `ctx`를 실행기와 함께 바인딩하고, Rust는 비동기 결과를 `await`로 받아요. 생성 표기와 오류 전달은 언어에 맞추며, 인자 의미·자료구조의 역할·실행 계약은 함께 유지해요.

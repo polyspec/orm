@@ -22,27 +22,27 @@ async fn main() {
 
     // A join carrying its own ON and WHERE, a root group mixing a predicate with
     // navigation into the joined entity, and three levels of relations with options.
-    let rows = Battle::new()
+    let rows = battle::query()
         .select_none().select_name()
-        .join_service(Service::new()
+        .join_service(service::query()
             .on(|w| w.seq_gt(0))
             .where_(|w| w.name("service-7")))
         .is_close(false)
         .and(|w| w.is_display(true).or().service(|s| s.seq(7)))
-        .relation_user(User::new()
-            .relations_battles(Battle::new().select_none().order_by_seq_desc().limit_per_parent(2).drop_child_key()))
-        .relation_service(Service::new()
-            .relations_members(ServiceMember::new().select_none().order_by_seq_asc().limit_per_parent(2).key_by_user_seq()))
+        .relation_user(user::query()
+            .relations_battles(battle::query().select_none().order_by_seq_desc().limit_per_parent(2).drop_child_key()))
+        .relation_service(service::query()
+            .relations_members(service_member::query().select_none().order_by_seq_asc().limit_per_parent(2).key_by_user_seq()))
         .order_by_seq_asc().limit(0, 2)
-        .bind(&db).gets().await.expect("rows");
+        .using(&db).gets().await.expect("rows");
     let items: Vec<_> = rows.iter().map(|(_, b)| b.to_map()).collect::<orm::Result<Vec<_>>>().expect("export");
 
     // Aggregates over the same slice of data: a grouped count with HAVING, min/max, distinct.
-    let groups = Battle::new().service_seq(7).group_by_user_seq()
-        .having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).bind(&db).get_count().await.expect("groups");
-    let min = Battle::new().service_seq(7).bind(&db).min_seq().await.expect("min").expect("rows exist");
-    let max = Battle::new().service_seq(7).bind(&db).max_seq().await.expect("max").expect("rows exist");
-    let users = Battle::new().service_seq(7).bind(&db).count_distinct_user_seq().await.expect("distinct");
+    let groups = battle::query().service_seq(7).group_by_user_seq()
+        .having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).using(&db).get_count().await.expect("groups");
+    let min = battle::query().service_seq(7).using(&db).min_seq().await.expect("min").expect("rows exist");
+    let max = battle::query().service_seq(7).using(&db).max_seq().await.expect("max").expect("rows exist");
+    let users = battle::query().service_seq(7).using(&db).count_distinct_user_seq().await.expect("distinct");
 
     let out = json!({"rows": items, "groups": groups, "min_seq": min, "max_seq": max, "user_count": users});
     println!("{}", serde_json::to_string_pretty(&out).unwrap());

@@ -44,9 +44,9 @@ PHP  앱 ── 영속 UDS ──▶ ormd (engine + Go 실행기 + 조립 + 코�
 
 ### 시나리오 (a) — 키워드를 여러 조인 테이블에서 OR 검색
 ```php
-$ga1 = (new ProductBrandLang)->alias('ga1');   $ga2 = (new ProductBrand)->alias('ga2');   $ga3 = (new ProductLang)->alias('ga3');
-$products = (new Product)
-    ->withLang((new ProductLang)->langId($langId))
+$ga1 = ProductBrandLang::query()->alias('ga1');   $ga2 = ProductBrand::query()->alias('ga2');   $ga3 = ProductLang::query()->alias('ga3');
+$products = Product::query()
+    ->withLang(ProductLang::query()->langId($langId))
     ->leftJoin('ga1', Product::productBrandSeq()->cmp(ProductBrandLang::productBrandSeq()), $ga1)
     ->leftJoinBrand($ga2)
     ->leftJoinLang($ga3)
@@ -56,7 +56,7 @@ $products = (new Product)
         ->orPred($ga2->cols()->fulltextBooleanNameWithDescription($kw))
         ->orPred($ga3->cols()->fulltextBooleanNameWithShortDescriptionWithContent($kw)))
     ->groupBySeq()->limit(0, 100)
-    ->bind($db)->gets();
+    ->using($db)->gets();
 ```
 ```go
 ga1 := m.ProductBrandLang().Alias("ga1");  ga2 := m.ProductBrand().Alias("ga2");  ga3 := m.ProductLang().Alias("ga3")
@@ -70,12 +70,12 @@ products, err := m.Product().
         OrPred(ga1.Cols().FulltextBooleanNameWithDescription(kw)).
         OrPred(ga2.Cols().FulltextBooleanNameWithDescription(kw)).
         OrPred(ga3.Cols().FulltextBooleanNameWithShortDescriptionWithContent(kw)) }).
-    GroupBySeq().Limit(0, 100).Bind(ctx, db).Gets()
+    GroupBySeq().Limit(0, 100).Using(ctx, db).Gets()
 ```
 ```rust
-let ga1 = ProductBrandLang::new().alias("ga1");  let ga2 = ProductBrand::new().alias("ga2");  let ga3 = ProductLang::new().alias("ga3");
-let products = Product::new()
-    .with_lang(ProductLang::new().lang_id(lang_id))
+let ga1 = product_brand_lang::query().alias("ga1");  let ga2 = product_brand::query().alias("ga2");  let ga3 = product_lang::query().alias("ga3");
+let products = product::query()
+    .with_lang(product_lang::query().lang_id(lang_id))
     .left_join("ga1", Product::product_brand_seq().cmp(ProductBrandLang::product_brand_seq()), ga1.clone())
     .left_join_brand(ga2.clone())
     .left_join_lang(ga3.clone())
@@ -85,13 +85,13 @@ let products = Product::new()
         .or_pred(ga2.cols().fulltext_boolean_name_with_description(kw))
         .or_pred(ga3.cols().fulltext_boolean_name_with_short_description_with_content(kw)))
     .group_by_seq().limit(0, 100)
-    .bind(&db).gets().await?;
+    .using(&db).gets().await?;
 ```
 조인 선언 순서·괄호 위치·스플라이스 누락이 사라진다. 잘못된 alias는 Go/Rust에서 변수 미정의 컴파일 에러.
 
 ### 시나리오 (f) — 같은 모델 6단 (Battle/IndexFromGet)
 ```php
-$battles = (new Battle)->addAllColumns()->withItems((new BattleItem)->orderByOrderNumber())
+$battles = Battle::query()->addAllColumns()->withItems(BattleItem::query()->orderByOrderNumber())
     ->serviceModuleSeq($smSeq)->isClose(0)
     ->and(fn($w) => $w->isDisplay(1)
         ->or(fn($w) => $w->isDisplay(2)->ltDisplayStartDt($now)->gtDisplayEndDt($now))
@@ -101,7 +101,7 @@ $battles = (new Battle)->addAllColumns()->withItems((new BattleItem)->orderByOrd
             ->or(fn($w) => $w->isAllday(1)->and(function ($w) use ($days) {
                 foreach ($days as $col => $n) { $w->or(fn($d) => $d->$col(1)->expr('DAYOFWEEK(NOW()) = ?', [$n])); }
             }))))
-    ->orderBySeqDesc()->bind($db)->paginate($page, 20);
+    ->orderBySeqDesc()->using($db)->paginate($page, 20);
 ```
 이런 재사용 조건은 스키마 `predicates:`로 선언해 `->displayCondition()` 메서드로 생성한다(S4).
 
@@ -117,7 +117,7 @@ $battles = (new Battle)->addAllColumns()->withItems((new BattleItem)->orderByOrd
 
 ## 3. 문법 결정 (Q3)
 
-- **유지**: `new Entity`, `<col>(v)`(`=`), `<op><Col>(v)`(`ne gt ge lt le in nin lk lb between isNull notNull fulltext… fulltextBoolean…`), `getBy<PK|unique>`, `getsBy<Col>`, `getCountBy<Col>`, `set*/setRaw*/plus*/minus*`, `keyName<Col>() parentNode() groupLimit(n) possible<Col>(v) stripKey()`, 정렬·그룹·limit·컬럼 선택, 터미널·트랜잭션·결과 접근·컬렉션 규칙(v1 표).
+- **유지**: `query()`, `<col>(v)`(`=`), `<op><Col>(v)`(`ne gt ge lt le in nin lk lb between isNull notNull fulltext… fulltextBoolean…`), `getBy<PK|unique>`, `getsBy<Col>`, `getCountBy<Col>`, `set*/setRaw*/plus*/minus*`, `keyName<Col>() parentNode() groupLimit(n) possible<Col>(v) stripKey()`, 정렬·그룹·limit·컬럼 선택, 터미널·트랜잭션·결과 접근·컬렉션 규칙(v1 표).
 - **삭제**: `or<op><Col>` 접두어 생성(OR은 `or(f)`·`orPred`), `--no-or-prefix` 옵션, `orJoin/andJoin`, `raw()/orRaw`, `relation()/relations()`, `match<A>With<B>()`, `alias<Name>()`(정규 문법에서; PHP 호환층은 유지), `join<A>With<B>` FK쌍 생성.
 - **추가**:
   - `with<Rel>(child)` — 스키마 `relations:` 선언 관계 부착. kind(one/many)·left/right는 스키마가 안다.

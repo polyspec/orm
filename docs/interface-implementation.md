@@ -7,7 +7,7 @@
 | 계약 | 구현과 검증 |
 |---|---|
 | IF-01, IF-10, IF-18, IF-32 | 공통 스키마·컴파일러와 Request/Plan 25개 레코드. Go/Rust 선언 대조, PHP 컴파일 경계 재귀 검사, 미지 IR 필드 거부 |
-| IF-03, IF-09 | Go `gen.Battle() -> *BattleQuery`, PHP `new Battle`, Rust `Battle::new()`. Query와 Row 타입 분리, 생성 인터페이스 컴파일 |
+| IF-03, IF-09 | Go `gen.Battle() -> *BattleQuery`, PHP `Battle::query()`, Rust `battle::query()`. Query와 Row 타입 분리, 생성 인터페이스 컴파일 |
 | IF-05 | Rust 터미널이 query를 빌리며 실행 결과에 params를 복사. `interface_query_reuse`: count → gets → count |
 | IF-06, IF-07 | 자식 트리 복사, ON·WHERE·HAVING·중첩·ifParent의 복사본 인덱스 이동. Go 전 필드 복사 검사, `interface_attach` |
 | IF-08 | 첫 오류 보존, 자식 오류 전달. `interface_error`: 같은 잘못된 요청이 반복 실패 |

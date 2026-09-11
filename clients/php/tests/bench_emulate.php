@@ -39,15 +39,15 @@ function p50(int $iters, \Closure $f): float
 }
 
 $cases = [
-    'pk one' => fn(Db $db, int $i) => (new Battle)->seqEq($i % 100000 + 1)->bind($db)->one(),
-    '100 rows' => fn(Db $db, int $i) => (new Battle)->serviceSeqEq($i % 100 + 1)->isCloseEq(false)->orderBySeqDesc()->limit(0, 100)->bind($db)->all(),
-    'IN(8)' => fn(Db $db, int $i) => (new Battle)->seqIn([$i % 1000 + 1, 6, 106, 206, 306, 406, 506, 606])->orderBySeqAsc()->bind($db)->all(),
+    'pk one' => fn(Db $db, int $i) => Battle::query()->seqEq($i % 100000 + 1)->using($db)->one(),
+    '100 rows' => fn(Db $db, int $i) => Battle::query()->serviceSeqEq($i % 100 + 1)->isCloseEq(false)->orderBySeqDesc()->limit(0, 100)->using($db)->all(),
+    'IN(8)' => fn(Db $db, int $i) => Battle::query()->seqIn([$i % 1000 + 1, 6, 106, 206, 306, 406, 506, 606])->orderBySeqAsc()->using($db)->all(),
 ];
 
 printf("%-12s %-8s %10s %10s\n", 'case', 'emulate', 'warm p50', 'cold p50');
-$probe = (new Battle)->setName('bench-emulate')->setUserSeq(1)->setServiceSeq(999)->setServiceModuleSeq(1)->setServiceMemberSeq(1)
+$probe = Battle::query()->setName('bench-emulate')->setUserSeq(1)->setServiceSeq(999)->setServiceModuleSeq(1)->setServiceMemberSeq(1)
     ->setStartDt('2026-06-01 00:00:00')->setEndDt('2026-12-31 00:00:00')->setIp('10.1.2.3')->setJsonSetting(['k' => [1, 'x']])->setPrice(12.5)
-    ->bind(Db::mysql(orm_test_dsn(), 'root', '', persistent: false))->insert();
+    ->using(Db::mysql(orm_test_dsn(), 'root', '', persistent: false))->insert();
 foreach ($order as $emulate) {
     $db = Db::mysql(orm_test_dsn(), 'root', '', persistent: false);
     $db->pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $emulate);
@@ -63,9 +63,9 @@ foreach ($order as $emulate) {
         });
         printf("%-12s %-8s %8.1fµs %8.1fµs\n", $name, $emulate ? 'on' : 'off', $warm, $cold);
     }
-    $r = (new Battle)->selectJsonSetting()->selectIp()->selectPrice()->seqEq($probe->getSeq())->bind($db)->one();
-    $raw = (new Battle)->raw('SELECT ip, json_setting, price, is_close, like_count FROM {table} WHERE seq = ?', [$probe->getSeq()])->bind($db)->rawAll()[0];
+    $r = Battle::query()->selectJsonSetting()->selectIp()->selectPrice()->seqEq($probe->getSeq())->using($db)->one();
+    $raw = Battle::query()->raw('SELECT ip, json_setting, price, is_close, like_count FROM {table} WHERE seq = ?', [$probe->getSeq()])->using($db)->rawAll()[0];
     printf("types (emulate %s): ip=%s json_setting=%s price=%s is_close=%s | raw: %s\n", $emulate ? 'on' : 'off',
         var_export($r->getIp(), true), json_encode($r->getJsonSetting()), var_export($r->getPrice(), true), var_export($r->getIsClose(), true), json_encode($raw));
 }
-$probe->bind(Db::mysql(orm_test_dsn(), 'root', '', persistent: false))->delete();
+$probe->using(Db::mysql(orm_test_dsn(), 'root', '', persistent: false))->delete();

@@ -198,7 +198,7 @@ var UserCols = struct {
 	Name: orm.ColRef{Column: "name"},
 }
 
-// UserQuery builds a statement over user: User() → Bind(ctx, db) → chain → terminal().
+// UserQuery builds a statement over user: User() → Using(ctx, db) → chain → terminal().
 type UserQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -214,14 +214,14 @@ func (q *UserQuery) Req() *orm.Req { return q.q.Req }
 // User starts a query over user.
 func User() *UserQuery { return &UserQuery{q: orm.NewQ(mustEngine(), "user")} }
 
-// Bind selects the context and pool or transaction for this query.
-func (q *UserQuery) Bind(ctx context.Context, ex orm.Exec) *UserQuery {
+// Using selects the context and pool or transaction for this query.
+func (q *UserQuery) Using(ctx context.Context, ex orm.Exec) *UserQuery {
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
 
-// Bind selects the context and pool or transaction for this loaded row.
-func (r *UserRow) Bind(ctx context.Context, ex orm.Exec) *UserRow {
+// Using selects the context and pool or transaction for this loaded row.
+func (r *UserRow) Using(ctx context.Context, ex orm.Exec) *UserRow {
 	r.Binding = orm.NewBinding(ctx, ex)
 	return r
 }
@@ -840,7 +840,7 @@ func (q *UserQuery) Insert() (*UserRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return User().Bind(ctx, ex).SeqEq(int64(id)).One()
+	return User().Using(ctx, ex).SeqEq(int64(id)).One()
 }
 
 // Save updates the other assigned columns when SetSeq was called (and
@@ -858,7 +858,7 @@ func (q *UserQuery) Save() (*UserRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return User().Bind(ctx, ex).SeqEq(pk.(int64)).One()
+	return User().Using(ctx, ex).SeqEq(pk.(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
