@@ -82,11 +82,11 @@ $created = $db->transaction(function (Tx $tx) {
 });
 check($created !== null && $created->getSeq() > 0 && $created->getAesHexEmail() === 'w@example.com', 'insert in tx + aes');
 
-$created->setName('php-write-2')->setLikeCount(5)->update($db, optimistic: true);
+$created->setName('php-write-2')->setLikeCount(5)->updateOptimistic($db);
 $again = (new Battle)->oneBySeq($db, $created->getSeq());
 check($again->getName() === 'php-write-2' && $again->getLikeCount() === 5, 'dirty update');
 try {
-    $created->setName('stale')->update($db, optimistic: true);
+    $created->setName('stale')->updateOptimistic($db);
     check(false, 'optimistic lock should fail');
 } catch (OrmException $e) {
     check($e->code_ === 'OPTIMISTIC_LOCK', 'optimistic lock code');

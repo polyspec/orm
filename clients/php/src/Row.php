@@ -147,8 +147,19 @@ abstract class Row implements \ArrayAccess
 
     // ---- writes ----
 
-    /** UPDATE the dirty columns; $optimistic compares updated_ts as read. */
-    public function update(Db $ex, bool $optimistic = false): static
+    /** UPDATE the dirty columns by PK. */
+    public function update(Db $ex): static
+    {
+        return $this->doUpdate($ex, false);
+    }
+
+    /** UPDATE the dirty columns; fails with OPTIMISTIC_LOCK when updated_ts changed since the row was read. */
+    public function updateOptimistic(Db $ex): static
+    {
+        return $this->doUpdate($ex, true);
+    }
+
+    private function doUpdate(Db $ex, bool $optimistic): static
     {
         if (!$this->loaded) {
             throw new OrmException('INTERNAL', 'update on a row that was not loaded');

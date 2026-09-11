@@ -67,7 +67,7 @@
 - [x] T1.20 `ormgen gen --lang rust`: 별도 crate `clients/rust/gen`, 모듈=테이블, `X::new()`, 술어 메서드 by-value, setter `&mut self`, 예약어 개명(`match_`), rustfmt 통과, `--tables` → T1.19
 
 ### 1-F 적합성·데모 (T1.12, T1.18, T1.20 후)
-- [ ] T1.21 `tests/conformance` 하네스 v0: 벡터 스키마(체인 정규 토큰열, 픽스처, 기대 SQL·바인드, 기대 결과 정규 JSON: 키 타입 태그·순서 민감), 3언어 러너, docker 없이 로컬 MySQL 사용 → 벡터 10개(PK, gets, IN, null 연산자 에러, 그룹, order, limit, create, save, update)
+- [x] T1.21 `tests/conformance` 하네스 v0 (15개 벡터 × 3언어 동일): 벡터 스키마(체인 정규 토큰열, 픽스처, 기대 SQL·바인드, 기대 결과 정규 JSON: 키 타입 태그·순서 민감), 3언어 러너, docker 없이 로컬 MySQL 사용 → 벡터 10개(PK, gets, IN, null 연산자 에러, 그룹, order, limit, create, save, update)
 - [ ] T1.22 `ormgen tokens`: 생성물에서 문장 단위 정규 토큰열 추출 3-way diff → T1.12/T1.18/T1.20
 - [ ] T1.23 **데모**: 같은 문장 3파일(`examples/thin-slice/{php,go,rust}`), 같은 JSON 출력, 네이티브 대비 타이밍 한 줄 → 모든 T1
 - [ ] T1.24 Rust 생성 crate 컴파일 시간 측정(3 테이블) 기록 → T1.20
