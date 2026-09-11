@@ -101,6 +101,14 @@ Go 1.27, Rust 1.98.1(sqlx 0.9, wasmtime 48), PHP 8.5.10(mysqlnd, msgpack, APCu).
 | 의존성 포함 첫 dev 빌드 | 38.6s (sqlx·wasmtime·tokio가 대부분) |
 5 테이블에서 문제 없음. 150 테이블(T2.15)에서 선형 외삽 시 release 증분 ≈ 40s — 그때 `--tables` 분할 여부를 결정한다.
 
+### 고정 비용 감축 결과 (S5 T5.3b)
+| | 전 | 후 | 방법 |
+|---|---:|---:|---|
+| Go 3행 데모 | +8µs (+13%) | +5µs (+8%) | IR 형태 키를 JSON 없이 해시, 플랜별 스캔 팩트 캐시, 스캔 셀 재사용(PK 82→67 allocs, list100 5,118→3,323 allocs) |
+| PHP 3행 데모 | +9µs (+16%) | +6µs (+11%) | 빌더 시그니처로 요청 내 플랜 캐시(IR 재인코딩 없음), 단계별 styled/plan_id 사전 계산 |
+| Rust 3행 데모 | +4.5µs | 오차 범위 | `MySqlRow` → typed 직접 디코드(`Vec<Val>` 제거); list100 476→428µs, PK p99 210→102µs |
+≤+5% 목표는 Rust만 도달. Go/PHP의 남은 비용은 빌더 객체 생성과 `[]any`→struct 2단 스캔이며, typed 직접 스캔은 생성기 재설계라 S7로 보낸다.
+
 ### PHP prepared 방식 (S5 T5.4)
 `PDO::ATTR_EMULATE_PREPARES = true`로 고정. 근거(p50, off → on): 콜드(prepare+execute, 요청마다 형태를 처음 보는 PHP-FPM의 현실) PK 72→48µs, IN(8) 107→75µs, 100행 460→382µs; 웜(같은 statement 재실행) PK 33→49µs, 100행 435→400µs. 웹 요청은 대부분 형태를 한 번 실행하므로 콜드가 결정 기준이다. 타입(ip 문자열·JSON·실수·불리언)과 적합성 출력은 두 모드에서 동일.
 
