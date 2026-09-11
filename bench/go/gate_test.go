@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maxkwon/orm/clients/go/gen"
-	"github.com/maxkwon/orm/clients/go/orm"
-	"github.com/maxkwon/orm/engine"
-	"github.com/maxkwon/orm/engine/schema"
+	"github.com/polyspec/orm/clients/go/gen"
+	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/engine"
+	"github.com/polyspec/orm/engine/schema"
 )
 
 // Bounds are the ratios measured here plus headroom for a loaded CI box. One row

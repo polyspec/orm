@@ -14,7 +14,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/maxkwon/orm/engine/schema"
+	"github.com/polyspec/orm/engine/schema"
 )
 
 func validateCmd(args []string) {

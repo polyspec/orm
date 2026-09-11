@@ -8,10 +8,10 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"github.com/maxkwon/orm/engine/dialect"
-	"github.com/maxkwon/orm/engine/ir"
-	"github.com/maxkwon/orm/engine/planner"
-	"github.com/maxkwon/orm/engine/schema"
+	"github.com/polyspec/orm/engine/dialect"
+	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/engine/planner"
+	"github.com/polyspec/orm/engine/schema"
 )
 
 // Engine binds a manifest to a dialect.

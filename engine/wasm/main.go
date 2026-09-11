@@ -13,8 +13,8 @@ import (
 	"encoding/binary"
 	"unsafe"
 
-	"github.com/maxkwon/orm/engine"
-	"github.com/maxkwon/orm/engine/ir"
+	"github.com/polyspec/orm/engine"
+	"github.com/polyspec/orm/engine/ir"
 )
 
 // buffers keeps every handed-out allocation reachable so the GC cannot move

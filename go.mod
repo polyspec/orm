@@ -1,4 +1,4 @@
-module github.com/maxkwon/orm
+module github.com/polyspec/orm
 
 go 1.27
 

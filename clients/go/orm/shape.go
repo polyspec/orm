@@ -1,6 +1,6 @@
 package orm
 
-import "github.com/maxkwon/orm/engine/ir"
+import "github.com/polyspec/orm/engine/ir"
 
 // The plan cache is keyed by the request's shape: everything in the IR except
 // the parameter values. shapeKey walks the ir.Request directly into an FNV-1a

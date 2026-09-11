@@ -68,7 +68,7 @@ schema/*.yaml ─▶ ormgen ─┬─▶ schema.blob (엔진 내장)
 
 ## 저장소 레이아웃 (`the repository`)
 ```
-go.mod                       github.com/maxkwon/orm (가칭)
+go.mod                       github.com/polyspec/orm (가칭)
 cmd/ormgen/                  import · gen · validate · tokens · erd
 cmd/ormd/                    PHP용 컴파일 데몬 (UDS, length-prefixed JSON 프레임, 무상태)
 engine/  schema/ ir/ planner/ dialect/{mysql,postgres,sqlite} plan/ api/(Compile)

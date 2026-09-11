@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/maxkwon/orm/engine/ir"
+	"github.com/polyspec/orm/engine/ir"
 )
 
 // TestShapeCoversEveryField mutates every reachable field of ir.Request (through

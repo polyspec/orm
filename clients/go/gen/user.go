@@ -6,9 +6,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/maxkwon/orm/clients/go/orm"
-	"github.com/maxkwon/orm/engine/ir"
-	"github.com/maxkwon/orm/engine/plan"
+	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/engine/plan"
 )
 
 var _ time.Time

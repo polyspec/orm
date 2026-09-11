@@ -15,10 +15,10 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
-	"github.com/maxkwon/orm/clients/go/gen"
-	"github.com/maxkwon/orm/clients/go/orm"
-	"github.com/maxkwon/orm/engine"
-	"github.com/maxkwon/orm/engine/schema"
+	"github.com/polyspec/orm/clients/go/gen"
+	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/engine"
+	"github.com/polyspec/orm/engine/schema"
 )
 
 const iterations = 500

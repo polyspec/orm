@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/maxkwon/orm/engine"
-	"github.com/maxkwon/orm/engine/ir"
-	"github.com/maxkwon/orm/engine/plan"
+	"github.com/polyspec/orm/engine"
+	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/engine/plan"
 )
 
 // Q is the untyped core of a generated query builder: the request, the query

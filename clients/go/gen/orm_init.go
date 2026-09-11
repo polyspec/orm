@@ -3,8 +3,8 @@
 package gen
 
 import (
-	"github.com/maxkwon/orm/clients/go/orm"
-	"github.com/maxkwon/orm/engine"
+	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/engine"
 )
 
 // SchemaHash is the schema_hash of the schema.json this package was generated from.

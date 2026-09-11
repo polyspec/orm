@@ -20,8 +20,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/maxkwon/orm/engine"
-	"github.com/maxkwon/orm/engine/ir"
+	"github.com/polyspec/orm/engine"
+	"github.com/polyspec/orm/engine/ir"
 )
 
 const maxFrame = 16 << 20

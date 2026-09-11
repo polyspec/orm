@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maxkwon/orm/engine/plan"
-	"github.com/maxkwon/orm/engine/schema"
+	"github.com/polyspec/orm/engine/plan"
+	"github.com/polyspec/orm/engine/schema"
 )
 
 func testEngine(t *testing.T) *Engine {

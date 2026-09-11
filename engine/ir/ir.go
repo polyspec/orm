@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/maxkwon/orm/engine/schema"
+	"github.com/polyspec/orm/engine/schema"
 )
 
 const Version = 1

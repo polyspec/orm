@@ -19,7 +19,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/maxkwon/orm/engine/schema"
+	"github.com/polyspec/orm/engine/schema"
 )
 
 // fragArg names the argument holding the fragment for each generated method
