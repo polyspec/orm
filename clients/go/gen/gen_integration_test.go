@@ -5,8 +5,10 @@ package gen_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -18,15 +20,37 @@ import (
 	"github.com/maxkwon/orm/clients/go/gen"
 	"github.com/maxkwon/orm/clients/go/orm"
 	"github.com/maxkwon/orm/engine"
+	"github.com/maxkwon/orm/engine/ir"
 	"github.com/maxkwon/orm/engine/schema"
 )
 
-func open(t *testing.T) *orm.DB {
+const localDSN = "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true"
+
+// dsn is ORM_MYSQL_DSN_GO when set (CI), else the local socket; the test skips
+// when neither is available.
+func dsn(t *testing.T) string {
 	t.Helper()
+	if v := os.Getenv("ORM_MYSQL_DSN_GO"); v != "" {
+		return v
+	}
 	if _, err := os.Stat("/tmp/mysql.sock"); err != nil {
 		t.Skip("no local mysql")
 	}
-	js, err := os.ReadFile("../../../schema/schema.json")
+	return localDSN
+}
+
+func schemaPath(t *testing.T) string {
+	t.Helper()
+	p, err := filepath.Abs("../../../schema/schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func loadEngine(t *testing.T) *engine.Engine {
+	t.Helper()
+	js, err := os.ReadFile(schemaPath(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,15 +62,24 @@ func open(t *testing.T) *orm.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return eng
+}
+
+func open(t *testing.T) *orm.DB {
+	t.Helper()
+	d := dsn(t)
+	eng := loadEngine(t)
 	var log []string
-	db, err := orm.Open("mysql", "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true", eng, orm.Config{
+	db, err := orm.Open("mysql", d, eng, orm.Config{
 		AESKey:  "bench-salt",
 		OnQuery: func(e orm.Event) { log = append(log, e.SQL) },
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	gen.Init(eng)
+	if err := gen.Init(eng); err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
 		if t.Failed() {
 			for _, s := range log {
@@ -455,5 +488,154 @@ func TestDeadlockRetry(t *testing.T) {
 	rb, _ := gen.NewBattle().OneBySeq(ctx, db, b.Seq)
 	if ra.LikeCount != rb.LikeCount || (ra.LikeCount != 1 && ra.LikeCount != 2) {
 		t.Errorf("last writer must own both rows: a=%d b=%d", ra.LikeCount, rb.LikeCount)
+	}
+}
+
+// ---- S5 hardening ----
+
+func codeOf(err error) string {
+	var e *ir.Error
+	if errors.As(err, &e) {
+		return e.Code
+	}
+	return ""
+}
+
+// TestSchemaHashCheck: Init compares the generated hash with the engine's
+// manifest once; a different manifest is SCHEMA_HASH_MISMATCH and leaves the
+// package bound to the previous engine.
+func TestSchemaHashCheck(t *testing.T) {
+	open(t)
+	other := loadEngine(t)
+	other.M.SchemaHash = "0000000000000000"
+	err := gen.Init(other)
+	if codeOf(err) != orm.CodeSchemaHashMismatch {
+		t.Fatalf("Init with a foreign manifest: %v", err)
+	}
+	if !strings.Contains(err.Error(), gen.SchemaHash) || !strings.Contains(err.Error(), "0000000000000000") {
+		t.Errorf("message must name both hashes: %v", err)
+	}
+	if gen.NewBattle().Req().IR.SchemaHash != gen.SchemaHash {
+		t.Error("a failed Init must not rebind the package")
+	}
+}
+
+// TestOpenConfig: orm.toml loads per docs/config.md; a relative path, a
+// symlink, an unknown key and an unset aes_env are CONFIG errors.
+func TestOpenConfig(t *testing.T) {
+	d := dsn(t)
+	dir := t.TempDir()
+	write := func(name, body string) string {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	good := fmt.Sprintf("schema = %q\n[db]\ndsn = %q\npool = 2\n[secrets]\naes = \"bench-salt\"\n[debug]\non_query = false\n", schemaPath(t), d)
+	bad := map[string]string{
+		"relative": strings.Replace(good, schemaPath(t), "schema/schema.json", 1),
+		"missing":  strings.Replace(good, schemaPath(t), filepath.Join(dir, "nope.json"), 1),
+		"unknown":  good + "[db2]\nx = 1\n",
+		"aes_env":  strings.Replace(good, "aes = \"bench-salt\"", "aes_env = \"ORM_TEST_UNSET_KEY\"", 1),
+		"no_key":   strings.Replace(good, "aes = \"bench-salt\"", "", 1),
+		"engine":   good + "[engine]\nwasm = \"/nonexistent/ormengine.wasm\"\n",
+	}
+	link := filepath.Join(dir, "schema-link.json")
+	if err := os.Symlink(schemaPath(t), link); err == nil {
+		bad["symlink"] = strings.Replace(good, schemaPath(t), link, 1)
+	}
+	for name, body := range bad {
+		_, err := orm.OpenConfig(write(name+".toml", body))
+		if codeOf(err) != orm.CodeConfig {
+			t.Errorf("%s: want CONFIG, got %v", name, err)
+		}
+	}
+	if _, err := orm.OpenConfig("orm.toml"); codeOf(err) != orm.CodeConfig {
+		t.Errorf("relative config path: %v", err)
+	}
+
+	db, err := orm.OpenConfig(write("orm.toml", good))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.SQL.Close()
+	if err := gen.Init(db.Eng); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	b, err := gen.NewBattle().OneBySeq(ctx, db, 42)
+	if err != nil || b == nil || b.GetAesHexEmail() == nil || *b.GetAesHexEmail() != "user42@example.com" {
+		t.Fatalf("query through OpenConfig: %v %v", err, b)
+	}
+	if n := db.SQL.Stats().MaxOpenConnections; n != 2 {
+		t.Errorf("pool: %d", n)
+	}
+}
+
+// TestDuplicateKey: MySQL 1062 surfaces as DUPLICATE_KEY with the driver's message kept.
+func TestDuplicateKey(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	uuid := fmt.Sprintf("dup-go-%d", time.Now().UnixNano())
+	draft := func() *gen.Battle {
+		return gen.NewBattle().SetName("dup-go").SetUuid(uuid).
+			SetUserSeq(1).SetServiceSeq(999).SetServiceModuleSeq(1).SetServiceMemberSeq(1).
+			SetStartDt(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)).SetEndDt(time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC))
+	}
+	r, err := draft().Insert(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { r.Delete(ctx, db) })
+	_, err = draft().Insert(ctx, db)
+	if codeOf(err) != orm.CodeDuplicateKey {
+		t.Fatalf("want DUPLICATE_KEY, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "1062") || !strings.Contains(err.Error(), uuid) {
+		t.Errorf("driver message must be kept: %v", err)
+	}
+	if orm.IsDeadlock(err) {
+		t.Error("a duplicate key is not a deadlock")
+	}
+}
+
+// TestOnQueryEvent: the hook carries the plan id (stable per shape) and masks secret binds.
+func TestOnQueryEvent(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	var events []orm.Event
+	db.Cfg().OnQuery = func(e orm.Event) { events = append(events, e) }
+	t.Cleanup(func() { db.Cfg().OnQuery = nil })
+	for _, seq := range []int64{42, 43} {
+		if _, err := gen.NewBattle().OneBySeq(ctx, db, seq); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := gen.NewBattle().ServiceSeqEq(7).Count(ctx, db); err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 3 {
+		t.Fatalf("events: %d", len(events))
+	}
+	if len(events[0].PlanID) != 16 || events[0].PlanID != events[1].PlanID || events[2].PlanID == events[0].PlanID {
+		t.Errorf("plan ids: %q %q %q", events[0].PlanID, events[1].PlanID, events[2].PlanID)
+	}
+	if events[0].Duration <= 0 {
+		t.Error("duration")
+	}
+	masked := 0
+	for _, e := range events[:2] {
+		for _, a := range e.Args {
+			if a == "bench-salt" {
+				t.Error("secret leaked into the hook payload")
+			}
+			if a == orm.Secret {
+				masked++
+			}
+		}
+	}
+	if masked == 0 {
+		t.Error("the aes select binds the key: expected $SECRET in the event")
 	}
 }

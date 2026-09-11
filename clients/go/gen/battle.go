@@ -758,7 +758,7 @@ func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 			}
 		}
 	}
-	r.SetProjection(a)
+	r.SetProjection(rs.Projection(a))
 	r.Mark("battle", "seq", r.Seq)
 	return r
 }
