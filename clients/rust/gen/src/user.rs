@@ -16,68 +16,56 @@ pub struct UserRow {
     dirty: Vec<(&'static str, Param)>,
     enc_err: Option<(String, String)>, // (code, msg) of the first codec error; surfaces from update
     extra: std::collections::HashMap<String, Val>, // select_expr / select_<col>_as outputs, by output name
-    // assembly facts recorded for to_map(): projected names, drop_child_key names, flattened one-relations, loaded relations
-    selected: Vec<String>,
-    hidden: Vec<String>,
-    flat: Vec<String>,
-    rels: Vec<String>,
-    // loaded relations whose rows belong to this row (children[].cascade): delete_cascade removes them first
-    cascade: Vec<String>,
-    loaded: bool,
+    // the assembly this row was loaded through (shared with every row of the statement): projected
+    // columns, drop_child_key ones, loaded relations, flattened one-relations, cascade children
+    asm: Option<std::sync::Arc<orm::plan::Assemble>>,
 }
 
 impl UserRow {
     pub const ENTITY: &'static str = "user";
     pub const PK: &'static str = "seq";
 
-    /// Maps a positional row onto the struct, its joined children (same row) and
-    /// its relation children (rows of later steps, cloned per attachment).
-    pub(crate) fn from_row(vals: &mut [Val], a: &orm::plan::Assemble, rs: &db::Rows) -> Self {
+    /// Maps one row of the statement onto the struct: relation children first (rows of later
+    /// steps, cloned per attachment; joins read the same row), then this node's columns,
+    /// each cell decoded once straight from the source.
+    pub(crate) fn from_row(src: &mut orm::Cells, a: &std::sync::Arc<orm::plan::Assemble>, rs: &db::Rows) -> Result<Self> {
+        use orm::Src as _;
         let mut r = Self::default();
-        r.loaded = true;
-        for c in &a.columns {
-            r.selected.push(c.name.clone());
-            if c.hidden { r.hidden.push(c.name.clone()); }
-        }
-        for ch in &a.children {
-            r.rels.push(ch.rel.clone());
-            if ch.flatten { r.flat.push(ch.rel.clone()); }
-            if ch.cascade { r.cascade.push(ch.rel.clone()); }
-        }
-        for c in &a.columns {
-            let v = &mut vals[c.index];
-            match c.name.as_str() {
-                "seq" => r.seq = v.as_i64(),
-                "name" => r.name = v.take_string(),
-                other => { r.extra.insert(other.to_owned(), std::mem::take(v)); }
-            }
-        }
+        r.asm = Some(a.clone());
         for ch in &a.children {
             match ch.rel.as_str() {
                 "battles" => {
-                    let related = rs.related(ch, vals);
+                    let related = rs.related(ch, src)?;
                     let mut c = Collection::with_capacity(related.len());
                     for row in related {
-                        let mut row = row.to_vec();
-                        let k = Key::of(&row[ch.key_index]);
-                        c.put(k, super::battle::BattleRow::from_row(&mut row, rs.step_assemble(ch), rs));
+                        let mut row = orm::Cells::Pos(row.to_vec());
+                        let k = Key::of(&row.val(ch.key_index)?);
+                        c.put(k, super::battle::BattleRow::from_row(&mut row, rs.step_assemble(ch), rs)?);
                     }
                     r.battles_ = c;
                 }
                 "service_members" => {
-                    let related = rs.related(ch, vals);
+                    let related = rs.related(ch, src)?;
                     let mut c = Collection::with_capacity(related.len());
                     for row in related {
-                        let mut row = row.to_vec();
-                        let k = Key::of(&row[ch.key_index]);
-                        c.put(k, super::service_member::ServiceMemberRow::from_row(&mut row, rs.step_assemble(ch), rs));
+                        let mut row = orm::Cells::Pos(row.to_vec());
+                        let k = Key::of(&row.val(ch.key_index)?);
+                        c.put(k, super::service_member::ServiceMemberRow::from_row(&mut row, rs.step_assemble(ch), rs)?);
                     }
                     r.service_members_ = c;
                 }
                 _ => {}
             }
         }
-        r
+        for c in &a.columns {
+            let i = c.index;
+            match c.name.as_str() {
+                "seq" => r.seq = src.i64(i)?,
+                "name" => r.name = src.string(i)?,
+                other => { let v = if c.styles.is_empty() { src.val(i)? } else { src.styled(i, &c.styles)? }; r.extra.insert(other.to_owned(), v); }
+            }
+        }
+        Ok(r)
     }
     /// A select_expr / select_<col>_as output by name.
     pub fn extra(&self, name: &str) -> Option<&Val> { self.extra.get(name) }
@@ -87,27 +75,28 @@ impl UserRow {
     /// one-relations merged in (this row's keys win).
     pub fn to_map(&self) -> serde_json::Value {
         let mut m = serde_json::Map::new();
-        for name in &self.selected {
-            if self.hidden.iter().any(|h| h == name) { continue; }
-            let v = match name.as_str() {
+        let Some(a) = &self.asm else { return serde_json::Value::Object(m) };
+        for c in &a.columns {
+            if c.hidden { continue; }
+            let v = match c.name.as_str() {
                 "seq" => serde_json::json!(self.seq),
                 "name" => serde_json::json!(self.name),
                 other => self.extra.get(other).map(|v| v.to_json()).unwrap_or(serde_json::Value::Null),
             };
-            m.insert(name.clone(), v);
+            m.insert(c.name.clone(), v);
         }
-        if self.rels.iter().any(|r| r == "battles") {
+        if a.has_child("battles") {
             let mut mm = serde_json::Map::new();
             for (k, v) in self.battles_.iter() { mm.insert(k.to_string(), v.to_map()); }
             m.insert("battles".into(), serde_json::Value::Object(mm));
         }
-        if self.rels.iter().any(|r| r == "service_members") {
+        if a.has_child("service_members") {
             let mut mm = serde_json::Map::new();
             for (k, v) in self.service_members_.iter() { mm.insert(k.to_string(), v.to_map()); }
             m.insert("service_members".into(), serde_json::Value::Object(mm));
         }
-        for rel in &self.flat {
-            if let Some(serde_json::Value::Object(child)) = m.get(rel).cloned() {
+        for ch in a.children.iter().filter(|ch| ch.flatten) {
+            if let Some(serde_json::Value::Object(child)) = m.get(&ch.rel).cloned() {
                 for (k, v) in child { m.entry(k).or_insert(v); }
             }
         }
@@ -130,7 +119,7 @@ impl UserRow {
 
     async fn update_inner(&mut self, ex: &impl Exec, optimistic: bool) -> Result<()> {
         if let Some((code, msg)) = self.enc_err.take() { return Err(orm::Error::Engine { code, msg }); }
-        if !self.loaded { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
+        if self.asm.is_none() { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
         if self.dirty.is_empty() { return Ok(()); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
         for (c, v) in self.dirty.drain(..) { q.set(c, v); }
@@ -141,7 +130,7 @@ impl UserRow {
     }
 
     pub async fn delete(&self, ex: &impl Exec) -> Result<()> {
-        if !self.loaded { return Err(orm::Error::Config("delete on a row that was not loaded".into())); }
+        if self.asm.is_none() { return Err(orm::Error::Config("delete on a row that was not loaded".into())); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
         let pk: Param = self.seq.clone().into();
         q.w().pred(Self::PK, "eq", pk);
@@ -154,7 +143,7 @@ impl UserRow {
     /// order, then this row. Parent-direction relations (the FK is on this row) are never deleted.
     /// One DELETE … WHERE pk = ? per row. On a Db the whole walk runs in one transaction.
     pub async fn delete_cascade(&self, ex: &impl Exec) -> Result<()> {
-        if !self.loaded { return Err(orm::Error::Config("delete_cascade on a row that was not loaded".into())); }
+        if self.asm.is_none() { return Err(orm::Error::Config("delete_cascade on a row that was not loaded".into())); }
         match ex.tx() {
             Some(tx) => self.delete_cascade_in(tx).await,
             None => ex.db().transaction(|tx| async move { self.delete_cascade_in(&tx).await }).await,
@@ -164,8 +153,9 @@ impl UserRow {
     /// The walk itself. Boxed: rows cascade into rows of other entities, which cascade back.
     pub fn delete_cascade_in<'a>(&'a self, tx: &'a db::Tx) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + 'a>> {
         Box::pin(async move {
-            for rel in &self.cascade {
-                match rel.as_str() {
+            let Some(a) = &self.asm else { return Ok(()) };
+            for ch in a.children.iter().filter(|ch| ch.cascade) {
+                match ch.rel.as_str() {
                     "battles" => {
                         for (_, r) in self.battles_.iter() { r.delete_cascade_in(tx).await?; }
                     }
@@ -360,13 +350,15 @@ impl User {
     // ---- terminals ----
     pub async fn one(mut self, ex: &impl Exec) -> Result<Option<UserRow>> {
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
-        let data = std::mem::take(&mut rows.data);
-        Ok(data.into_iter().next().map(|mut v| UserRow::from_row(&mut v, &rows.assemble, &rows)))
+        Ok(match rows.take_cells().into_iter().next() {
+            Some(mut src) => Some(UserRow::from_row(&mut src, &rows.assemble, &rows)?),
+            None => None,
+        })
     }
 
     pub async fn all(mut self, ex: &impl Exec) -> Result<Collection<UserRow>> {
         let mut rows = db::select(ex, &mut self.q.req, "all").await?;
-        Ok(collect(&mut rows, self.key_fn.as_deref()))
+        collect(&mut rows, self.key_fn.as_deref())
     }
 
     pub async fn count(mut self, ex: &impl Exec) -> Result<i64> {
@@ -395,7 +387,7 @@ impl User {
         self.q.node().limit = Some(orm::ir::Limit { offset: (page - 1) * per, count: per });
         let (mut rows, total) = db::paginate(ex, &mut self.q.req).await?;
         let pages = (total + per as i64 - 1) / per as i64;
-        Ok(Page { items: collect(&mut rows, self.key_fn.as_deref()), total, pages, current: page as i64, per: per as i64 })
+        Ok(Page { items: collect(&mut rows, self.key_fn.as_deref())?, total, pages, current: page as i64, per: per as i64 })
     }
 
     pub async fn insert(mut self, ex: &impl Exec) -> Result<Option<UserRow>> {
@@ -440,14 +432,15 @@ impl User {
 
 impl Default for User { fn default() -> Self { Self::new() } }
 
-fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&UserRow) -> Key + Send + Sync)>) -> Collection<UserRow> {
-    let data = std::mem::take(&mut rows.data);
-    let mut c = Collection::with_capacity(data.len());
-    for mut v in data {
-        let k = Key::of(&v[0]);
-        let r = UserRow::from_row(&mut v, &rows.assemble, rows);
+fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&UserRow) -> Key + Send + Sync)>) -> Result<Collection<UserRow>> {
+    use orm::Src as _;
+    let cells = rows.take_cells();
+    let mut c = Collection::with_capacity(cells.len());
+    for mut src in cells {
+        let k = Key::of(&src.val(0)?);
+        let r = UserRow::from_row(&mut src, &rows.assemble, rows)?;
         let k = match key_fn { Some(f) => f(&r), None => k };
         c.put(k, r);
     }
-    c
+    Ok(c)
 }

@@ -1,25 +1,34 @@
 //! The sqlx executor: plan cache keyed by IR shape, statement reuse through
 //! sqlx's per-connection cache, transactions with deadlock re-run.
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::future::Future;
-use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
 
 use sqlx::mysql::{MySqlConnectOptions, MySqlPool, MySqlPoolOptions, MySqlRow};
-use sqlx::{Column, Row as _, TypeInfo};
+use sqlx::{Column, Row as _};
 
 use crate::builder::Req;
 use crate::collection::Key;
 use crate::engine::Engine;
 use crate::plan::{Assemble, BindSlot, Child, ParentRef, Plan, Step};
+use crate::row::{decode_styled, read_cell, read_row, Cells, Src};
 use crate::value::{transform, Param, Val};
 use crate::{Error, Result};
+
+/// The statement hook: `(sql, binds, duration, plan_id, err)`. Secret binds arrive masked
+/// as `Param::Str("$SECRET")`; `plan_id` is the plan-cache key of the statement's plan
+/// (render it as 16 lowercase hex digits, `{plan_id:016x}`, to group logs by shape).
+pub type OnQuery = Box<dyn Fn(&str, &[Param], std::time::Duration, u64, Option<&Error>) + Send + Sync>;
+
+/// The masked form of a secret bind in the hook payload and in `sql()`.
+pub const SECRET_MASK: &str = "$SECRET";
 
 /// Executor configuration: declared, never discovered.
 pub struct Config {
     pub aes_key: String,
-    pub on_query: Option<Box<dyn Fn(&str, &[Param], std::time::Duration, Option<&Error>) + Send + Sync>>,
+    pub on_query: Option<OnQuery>,
 }
 
 /// Cheap to clone: every field is shared. `Tx` owns a clone, so no lifetimes leak into closures.
@@ -31,11 +40,12 @@ pub struct Db {
     plans: Arc<Mutex<HashMap<u64, Arc<Plan>>>>,
 }
 
-/// Rows of a select plan, positional: the main step's rows plus every
-/// relation step's rows grouped by their match column (see `related`).
+/// Rows of a select plan: the main step's rows (driver rows when the plan has no
+/// relation steps, positional rows otherwise) plus every relation step's rows grouped
+/// by their match column (see `related`).
 pub struct Rows {
     pub assemble: Arc<Assemble>,
-    pub data: Vec<Vec<Val>>,
+    cells: Vec<Cells>,
     plan: Arc<Plan>,
     steps: HashMap<u32, StepRows>,
     params: Vec<Param>,
@@ -47,30 +57,51 @@ struct StepRows {
 }
 
 impl Rows {
-    /// The rows of relation child `ch` that belong to one parent row (a positional
-    /// row of the step `ch` hangs off). Empty when the parent's value is null, when
-    /// the step was skipped, or when the parent fails `if_parent`.
-    pub fn related(&self, ch: &Child, parent: &[Val]) -> Vec<&[Val]> {
-        let Some(sr) = self.steps.get(&ch.step) else { return Vec::new() };
+    pub fn len(&self) -> usize {
+        self.cells.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.cells.is_empty()
+    }
+
+    /// Moves the main step's rows out for assembly.
+    pub fn take_cells(&mut self) -> Vec<Cells> {
+        std::mem::take(&mut self.cells)
+    }
+
+    /// The main step's rows as positional rows (every row is `Cells::Pos` when the plan
+    /// has relation steps).
+    fn positional(&self) -> impl Iterator<Item = &[Val]> {
+        self.cells.iter().filter_map(|c| match c {
+            Cells::Pos(v) => Some(v.as_slice()),
+            Cells::Raw(_) => None,
+        })
+    }
+
+    /// The rows of relation child `ch` that belong to one parent row. Empty when the
+    /// parent's value is null, when the step was skipped, or when the parent fails `if_parent`.
+    pub fn related(&self, ch: &Child, parent: &mut impl Src) -> Result<Vec<&[Val]>> {
+        let Some(sr) = self.steps.get(&ch.step) else { return Ok(Vec::new()) };
         let st = &self.plan.steps[ch.step as usize];
         if let Some(ifp) = st.parent.as_ref().and_then(|p| p.if_parent.as_ref()) {
-            if !same_scalar(&parent[ifp.index], &self.params[ifp.param]) {
-                return Vec::new();
+            if !same_scalar(&parent.val(ifp.index)?, &self.params[ifp.param]) {
+                return Ok(Vec::new());
             }
         }
-        let pv = &parent[ch.parent_index];
+        let pv = parent.val(ch.parent_index)?;
         if pv.is_null() {
-            return Vec::new();
+            return Ok(Vec::new());
         }
-        match sr.by_key.get(&Key::of(pv)) {
+        Ok(match sr.by_key.get(&Key::of(&pv)) {
             Some(idxs) => idxs.iter().map(|&i| sr.data[i].as_slice()).collect(),
             None => Vec::new(),
-        }
+        })
     }
 
     /// The assembly of the step a relation child's rows come from.
-    pub fn step_assemble(&self, ch: &Child) -> &Assemble {
-        self.plan.steps[ch.step as usize].assemble.as_deref().expect("relation step has an assemble")
+    pub fn step_assemble(&self, ch: &Child) -> &Arc<Assemble> {
+        self.plan.steps[ch.step as usize].assemble.as_ref().expect("relation step has an assemble")
     }
 }
 
@@ -103,7 +134,7 @@ pub fn same_scalar(v: &Val, p: &Param) -> bool {
 
 /// Distinct non-null values a relation step binds, first-seen order, from the
 /// parent rows that pass `if_parent`.
-fn parent_values(pr: &ParentRef, parents: &[Vec<Val>], params: &[Param]) -> Vec<Param> {
+fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'a [Val]>, params: &[Param]) -> Vec<Param> {
     let mut seen: std::collections::HashSet<Key> = std::collections::HashSet::new();
     let mut out = Vec::new();
     for row in parents {
@@ -165,20 +196,6 @@ fn expand_in(st: &Step, mut vals: Vec<Param>) -> (String, Vec<Param>) {
     (sql, vals)
 }
 
-/// Decodes styled cells (docs/codec.md) of every row of a step in place.
-fn decode_styled(asm: &Assemble, data: &mut [Vec<Val>]) -> Result<()> {
-    let styled = crate::codec::styled_cols(asm);
-    if styled.is_empty() {
-        return Ok(());
-    }
-    for row in data.iter_mut() {
-        for (i, styles) in &styled {
-            row[*i] = crate::codec::decode(styles, &row[*i])?;
-        }
-    }
-    Ok(())
-}
-
 /// The value a `param` slot binds: the request parameter, transformed when the slot says so.
 fn param_arg(b: &BindSlot, params: &[Param]) -> Result<Param> {
     let v = &params[b.param];
@@ -187,6 +204,29 @@ fn param_arg(b: &BindSlot, params: &[Param]) -> Result<Param> {
     }
     let Param::Str(s) = v else { return Err(Error::Config(format!("transform {} needs a string", b.transform))) };
     Ok(Param::Str(transform(&b.transform, s)))
+}
+
+/// The hook's view of the binds: `secret` slots masked, everything else as bound.
+fn masked(st: &Step, args: &[Param], n_parent: usize) -> Vec<Param> {
+    let mut out = Vec::with_capacity(args.len());
+    let mut i = 0;
+    for b in &st.bind_slots {
+        match b.from.as_str() {
+            "parent" => {
+                out.extend_from_slice(&args[i..i + n_parent]);
+                i += n_parent;
+            }
+            "secret" => {
+                out.push(Param::Str(SECRET_MASK.into()));
+                i += 1;
+            }
+            _ => {
+                out.push(args[i].clone());
+                i += 1;
+            }
+        }
+    }
+    out
 }
 
 /// Finds the match column of a relation step from the child spec that references it.
@@ -213,20 +253,21 @@ impl Db {
         Ok(Db { pool, engine, cfg: Arc::new(cfg), plans: Arc::new(Mutex::new(HashMap::new())) })
     }
 
-    /// Compile (or fetch from cache) the plan for the request's shape.
+    /// Compile (or fetch from cache) the plan for the request's shape. The cache key is
+    /// FNV-1a 64 of the IR bytes (`Req::shape_key`), computed without allocating them.
     pub fn plan(&self, req: &mut Req) -> Result<Arc<Plan>> {
         if let Some(e) = req.err.take() {
             return Err(e);
         }
-        let shape = req.shape();
-        let mut h = std::collections::hash_map::DefaultHasher::new();
-        shape.hash(&mut h);
-        let key = h.finish();
+        let key = req.shape_key();
         if let Some(p) = self.plans.lock().unwrap().get(&key) {
             return Ok(p.clone());
         }
-        let body = self.engine.compile(&shape)?;
-        let plan: Plan = serde_json::from_slice(&body).map_err(|e| Error::Engine { code: "INTERNAL".into(), msg: e.to_string() })?;
+        let body = self.engine.compile(&req.shape())?;
+        let mut plan: Plan = serde_json::from_slice(&body).map_err(|e| Error::internal(e.to_string()))?;
+        for st in &mut plan.steps {
+            st.plan_id = key;
+        }
         let plan = Arc::new(plan);
         self.plans.lock().unwrap().insert(key, plan.clone());
         Ok(plan)
@@ -250,9 +291,14 @@ impl Db {
         Ok(out)
     }
 
-    fn emit(&self, sql: &str, args: &[Param], start: std::time::Instant, err: Option<&Error>) {
+    fn emit(&self, st: &Step, sql: &str, args: &[Param], n_parent: usize, start: std::time::Instant, err: Option<&Error>) {
         if let Some(h) = &self.cfg.on_query {
-            h(sql, args, start.elapsed(), err);
+            let d = start.elapsed();
+            if st.bind_slots.iter().any(|b| b.from == "secret") {
+                h(sql, &masked(st, args, n_parent), d, st.plan_id, err);
+            } else {
+                h(sql, args, d, st.plan_id, err);
+            }
         }
     }
 
@@ -320,38 +366,14 @@ fn bind<'q>(q: sqlx::query::Query<'q, sqlx::MySql, sqlx::mysql::MySqlArguments>,
     }
 }
 
-/// Reads one positional row. Every cell is dispatched by its column type name
-/// and decoded exactly once; a decode failure is an error, never a silent NULL (F3).
-fn read_row(row: &MySqlRow, n: usize) -> Result<Vec<Val>> {
-    let mut out = Vec::with_capacity(n);
-    for i in 0..n {
-        let col = row.column(i);
-        let t = col.type_info().name();
-        let v = match t {
-            "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => row.try_get::<Option<i64>, _>(i)?.map(Val::I64),
-            "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => row.try_get::<Option<u64>, _>(i)?.map(|x| Val::I64(x as i64)),
-            "FLOAT" | "DOUBLE" => row.try_get::<Option<f64>, _>(i)?.map(Val::F64),
-            // NEWDECIMAL is only compatible with a decimal type in sqlx; we surface it as f64 like Go/PHP.
-            "DECIMAL" => row.try_get::<Option<rust_decimal::Decimal>, _>(i)?.map(|d| Val::F64(rust_decimal::prelude::ToPrimitive::to_f64(&d).unwrap_or(0.0))),
-            // sqlx's NaiveDateTime only accepts DATETIME; TIMESTAMP columns decode as DateTime<Utc> (session tz is UTC).
-            "DATETIME" => row.try_get::<Option<chrono::NaiveDateTime>, _>(i)?.map(Val::DateTime),
-            "TIMESTAMP" => row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?.map(|t| Val::DateTime(t.naive_utc())),
-            "DATE" => row.try_get::<Option<chrono::NaiveDate>, _>(i)?.map(Val::Date),
-            "BOOLEAN" => row.try_get::<Option<bool>, _>(i)?.map(Val::Bool),
-            // MySQL JSON columns arrive parsed; the json style then keeps the value as is.
-            "JSON" => row.try_get::<Option<serde_json::Value>, _>(i)?.map(Val::Json),
-            "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" | "VARBINARY" | "BINARY" => {
-                // AES_DECRYPT yields BLOB; treat as text when it decodes as UTF-8 (compatibility returns strings).
-                row.try_get::<Option<Vec<u8>>, _>(i)?.map(|b| match String::from_utf8(b) {
-                    Ok(s) => Val::Str(s),
-                    Err(e) => Val::Bytes(e.into_bytes()),
-                })
-            }
-            _ => row.try_get::<Option<String>, _>(i)?.map(Val::Str),
-        };
-        out.push(v.unwrap_or(Val::Null));
+/// The statement text of a step: the plan's SQL as is, or with its `parent` placeholder expanded.
+fn statement(st: &Step, parent_vals: Vec<Param>) -> (Cow<'_, str>, Vec<Param>) {
+    if parent_vals.is_empty() {
+        (Cow::Borrowed(st.sql.as_str()), parent_vals)
+    } else {
+        let (sql, vals) = expand_in(st, parent_vals);
+        (Cow::Owned(sql), vals)
     }
-    Ok(out)
 }
 
 /// What terminals take: `&Db` or `&Tx`.
@@ -374,15 +396,15 @@ impl Exec for Db {
     }
 
     async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<MySqlRow>> {
-        let (sql, parent_vals) = if parent_vals.is_empty() { (st.sql.clone(), parent_vals) } else { expand_in(st, parent_vals) };
+        let (sql, parent_vals) = statement(st, parent_vals);
         let args = self.args(st, params, &parent_vals)?;
-        let mut q = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()));
+        let mut q = sqlx::query(sqlx::AssertSqlSafe(&*sql));
         for a in &args {
             q = bind(q, a);
         }
         let start = std::time::Instant::now();
         let r = q.fetch_all(&self.pool).await.map_err(Error::from);
-        self.emit(&sql, &args, start, r.as_ref().err());
+        self.emit(st, &sql, &args, parent_vals.len(), start, r.as_ref().err());
         r
     }
 
@@ -394,7 +416,7 @@ impl Exec for Db {
         }
         let start = std::time::Instant::now();
         let r = q.execute(&self.pool).await.map_err(Error::from);
-        self.emit(&st.sql, &args, start, r.as_ref().err());
+        self.emit(st, &st.sql, &args, 0, start, r.as_ref().err());
         let r = r?;
         Ok((r.last_insert_id(), r.rows_affected()))
     }
@@ -410,9 +432,9 @@ impl Exec for Tx {
     }
 
     async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<MySqlRow>> {
-        let (sql, parent_vals) = if parent_vals.is_empty() { (st.sql.clone(), parent_vals) } else { expand_in(st, parent_vals) };
+        let (sql, parent_vals) = statement(st, parent_vals);
         let args = self.db.args(st, params, &parent_vals)?;
-        let mut q = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()));
+        let mut q = sqlx::query(sqlx::AssertSqlSafe(&*sql));
         for a in &args {
             q = bind(q, a);
         }
@@ -420,7 +442,7 @@ impl Exec for Tx {
         let tx = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
         let start = std::time::Instant::now();
         let r = q.fetch_all(&mut **tx).await.map_err(Error::from);
-        self.db.emit(&sql, &args, start, r.as_ref().err());
+        self.db.emit(st, &sql, &args, parent_vals.len(), start, r.as_ref().err());
         r
     }
 
@@ -434,7 +456,7 @@ impl Exec for Tx {
         let tx = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
         let start = std::time::Instant::now();
         let r = q.execute(&mut **tx).await.map_err(Error::from);
-        self.db.emit(&st.sql, &args, start, r.as_ref().err());
+        self.db.emit(st, &st.sql, &args, 0, start, r.as_ref().err());
         let r = r?;
         Ok((r.last_insert_id(), r.rows_affected()))
     }
@@ -447,20 +469,32 @@ pub async fn select(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Rows> {
     run_plan(ex, plan, req).await
 }
 
-async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &Req) -> Result<Rows> {
+async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows> {
     let st = &plan.steps[0];
-    let asm = st.assemble.clone().ok_or_else(|| Error::Engine { code: "INTERNAL".into(), msg: "no assemble".into() })?;
-    let n = asm.total_columns();
-    let mut data: Vec<Vec<Val>> = ex.query(st, &req.params, Vec::new()).await?.iter().map(|r| read_row(r, n)).collect::<Result<_>>()?;
-    decode_styled(&asm, &mut data)?;
-    let mut rows = Rows { assemble: asm, data, plan: plan.clone(), steps: HashMap::new(), params: req.params.clone() };
+    let asm = st.assemble.clone().ok_or_else(|| Error::internal("no assemble"))?;
+    let raw = ex.query(st, &req.params, Vec::new()).await?;
+    let has_relations = plan.steps.iter().skip(1).any(|s| s.role == "relation");
+    // Relation steps read parent values positionally and attach by key; without them the
+    // driver rows go straight to the generated struct.
+    let cells: Vec<Cells> = if has_relations {
+        let n = asm.total_columns();
+        let mut data: Vec<Vec<Val>> = raw.iter().map(|r| read_row(r, n)).collect::<Result<_>>()?;
+        decode_styled(&asm, &mut data)?;
+        data.into_iter().map(Cells::Pos).collect()
+    } else {
+        raw.into_iter().map(Cells::Raw).collect()
+    };
+    let mut rows = Rows { assemble: asm, cells, plan: plan.clone(), steps: HashMap::new(), params: Vec::new() };
     for st in plan.steps.iter().skip(1) {
         if st.role != "relation" {
             continue;
         }
         let pr = st.parent.as_ref().expect("relation step has a parent");
-        let parents: &[Vec<Val>] = if pr.step == 0 { &rows.data } else { &rows.steps[&pr.step].data };
-        let vals = parent_values(pr, parents, &req.params);
+        let vals = if pr.step == 0 {
+            parent_values(pr, rows.positional(), &req.params)
+        } else {
+            parent_values(pr, rows.steps[&pr.step].data.iter().map(Vec::as_slice), &req.params)
+        };
         let mut sr = StepRows { data: Vec::new(), by_key: HashMap::new() };
         if !vals.is_empty() {
             let asm = st.assemble.as_ref().expect("relation step has an assemble");
@@ -473,6 +507,7 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &Req) -> Result<Rows> {
         }
         rows.steps.insert(st.id, sr);
     }
+    rows.params = std::mem::take(&mut req.params);
     Ok(rows)
 }
 
@@ -481,7 +516,7 @@ pub async fn scalar(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Val> {
     let plan = ex.db().plan(req)?;
     let rows = ex.query(&plan.steps[0], &req.params, Vec::new()).await?;
     Ok(match rows.first() {
-        Some(r) => read_row(r, 1)?.remove(0),
+        Some(r) => read_cell(r, 0)?,
         None => Val::Null,
     })
 }
@@ -511,9 +546,9 @@ pub async fn paginate(ex: &impl Exec, req: &mut Req) -> Result<(Rows, i64)> {
     let plan = ex.db().plan(req)?;
     let rows = run_plan(ex, plan.clone(), req).await?;
     let count = plan.steps.iter().find(|s| s.role == "count").expect("paginate plan has a count step");
-    let cnt = ex.query(count, &req.params, Vec::new()).await?;
+    let cnt = ex.query(count, &rows.params, Vec::new()).await?;
     let total = match cnt.first() {
-        Some(r) => read_row(r, 1)?.remove(0).as_i64(),
+        Some(r) => read_cell(r, 0)?.as_i64(),
         None => 0,
     };
     Ok((rows, total))
@@ -537,6 +572,8 @@ pub struct Sql {
     pub sql: String,
     /// `param` slots as their (transformed) values, `secret` slots as the string "$SECRET".
     pub binds: Vec<Param>,
+    /// The plan-cache key of the statement's plan.
+    pub plan_id: u64,
 }
 
 /// Compiles (or fetches) the plan for `kind` and returns its main step without executing.
@@ -548,22 +585,14 @@ pub fn sql(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Sql> {
     for b in &st.bind_slots {
         match b.from.as_str() {
             "param" => binds.push(param_arg(b, &req.params)?),
-            "secret" => binds.push(Param::Str("$SECRET".into())),
+            "secret" => binds.push(Param::Str(SECRET_MASK.into())),
             other => return Err(Error::Config(format!("bind from {other}"))),
         }
     }
-    Ok(Sql { sql: st.sql.clone(), binds })
+    Ok(Sql { sql: st.sql.clone(), binds, plan_id: st.plan_id })
 }
 
-/// Slice of a positional row belonging to one assemble node.
-pub fn slice<'a>(vals: &'a [Val], a: &Assemble) -> &'a [Val] {
-    if a.columns.is_empty() {
-        return &[];
-    }
-    let start = a.columns[0].index;
-    &vals[start..start + a.columns.len()]
-}
-
-pub fn join_present(vals: &[Val], a: &Assemble) -> bool {
-    !a.columns.is_empty() && !vals[a.columns[0].index].is_null()
+/// Whether a joined node's slice of the row is present (its first column is not NULL).
+pub fn join_present(src: &mut impl Src, a: &Assemble) -> bool {
+    !a.columns.is_empty() && !src.is_null(a.columns[0].index)
 }

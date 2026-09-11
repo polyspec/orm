@@ -15,6 +15,14 @@ fn stats(name: &str, mut s: Vec<u64>) {
     println!("{:<30} n={:<6} mean={:>9.0}ns p50={:>9}ns p90={:>9}ns p99={:>9}ns", name, n, s.iter().sum::<u64>() as f64 / n as f64, p(0.5), p(0.9), p(0.99));
 }
 
+/// The test DSN: `ORM_MYSQL_URL_RUST` when set (CI), else the local socket.
+fn connect_opts() -> MySqlConnectOptions {
+    match std::env::var("ORM_MYSQL_URL_RUST") {
+        Ok(url) => url.parse().expect("ORM_MYSQL_URL_RUST is a mysql:// URL"),
+        Err(_) => MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench"),
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -22,8 +30,8 @@ async fn main() {
     let wasm = std::fs::read(&args[1]).unwrap();
     let schema = std::fs::read(&args[2]).unwrap();
     let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, cache_dir: None }).unwrap());
-    gen::init(engine.clone());
-    let opts = MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench");
+    gen::init(engine.clone()).expect("schema hash");
+    let opts = connect_opts();
     let db = Db::connect(opts, 1, engine, Config { aes_key: "bench-salt".into(), on_query: None }).await.unwrap();
 
     for _ in 0..200 { Battle::new().seq_eq(1).one(&db).await.unwrap(); }

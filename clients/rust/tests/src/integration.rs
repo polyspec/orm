@@ -1,6 +1,6 @@
 //! Rust half of the S1 demo: same statements as the Go/PHP integration tests.
 //! Usage: integration <ormengine.wasm> <schema.json>
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use chrono::Datelike;
@@ -17,19 +17,41 @@ macro_rules! check {
     };
 }
 
+/// The test DSN: `ORM_MYSQL_URL_RUST` when set (CI), else the local socket.
+fn connect_opts() -> MySqlConnectOptions {
+    match std::env::var("ORM_MYSQL_URL_RUST") {
+        Ok(url) => url.parse().expect("ORM_MYSQL_URL_RUST is a mysql:// URL"),
+        Err(_) => MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench"),
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
     let wasm = std::fs::read(&args[1]).expect("wasm");
     let schema = std::fs::read(&args[2]).expect("schema.json");
     let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, cache_dir: None }).expect("engine"));
-    gen::init(engine.clone());
-    let opts = MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench");
-    let statements = Arc::new(AtomicUsize::new(0));
-    let counter = statements.clone();
-    let on_query = Box::new(move |_: &str, _: &[orm::value::Param], _: std::time::Duration, _: Option<&orm::Error>| { counter.fetch_add(1, Ordering::Relaxed); });
-    let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), on_query: Some(on_query) }).await.expect("connect");
     let mut fails = 0;
+    // ---- S5 boot check: an engine whose loaded manifest has another hash is refused, and the crate stays unbound ----
+    let mut wrong = Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, cache_dir: None }).expect("engine");
+    wrong.schema_hash = "0000000000000000".into();
+    match gen::init(Arc::new(wrong)) {
+        Err(e) if e.code() == orm::codes::SCHEMA_HASH_MISMATCH => {}
+        other => { fails += 1; eprintln!("FAIL: wrong schema hash not rejected: {:?}", other.err()); }
+    }
+    gen::init(engine.clone()).expect("schema hash");
+    check!(fails, gen::SCHEMA_HASH == engine.schema_hash, "gen::SCHEMA_HASH is the engine's loaded hash");
+    let opts = connect_opts();
+    let statements = Arc::new(AtomicUsize::new(0));
+    let last_plan = Arc::new(AtomicU64::new(0));
+    let leaked = Arc::new(AtomicBool::new(false));
+    let (counter, last_plan_h, leaked_h) = (statements.clone(), last_plan.clone(), leaked.clone());
+    let on_query = Box::new(move |_: &str, binds: &[Param], _: std::time::Duration, plan_id: u64, _: Option<&orm::Error>| {
+        counter.fetch_add(1, Ordering::Relaxed);
+        last_plan_h.store(plan_id, Ordering::Relaxed);
+        if binds.iter().any(|b| *b == Param::Str("bench-salt".into())) { leaked_h.store(true, Ordering::Relaxed); }
+    });
+    let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), on_query: Some(on_query) }).await.expect("connect");
 
     // ---- reads ----
     let b = Battle::new().one_by_seq(&db, 42).await.expect("one").expect("row 42");
@@ -256,6 +278,37 @@ async fn main() {
     let (ra, rb) = (Battle::new().one_by_seq(&db, a).await.unwrap().unwrap(), Battle::new().one_by_seq(&db, b).await.unwrap().unwrap());
     check!(fails, expect > 0 && ra.like_count == expect && rb.like_count == expect, "final values are the last writer's");
     check!(fails, Battle::new().seq_in(vec![a, b]).delete(&db).await.unwrap() == 2, "deadlock rows cleaned up");
+
+    // ---- S5: on_query plan_id, secret masking, driver error mapping, orm.toml ----
+    let s = Battle::new().seq_eq(1).sql(&db).await.expect("sql");
+    Battle::new().seq_eq(2).all(&db).await.expect("all"); // same shape (kind all), another value
+    check!(fails, s.plan_id != 0 && last_plan.load(Ordering::Relaxed) == s.plan_id, "on_query plan_id is the plan-cache key of the statement's shape");
+    check!(fails, !leaked.load(Ordering::Relaxed), "the hook never sees the AES key (secret binds masked as $SECRET)");
+    let d1 = draft("rust-dup").set_uuid(Some("rust-dup")).insert(&db).await.expect("dup fixture").unwrap();
+    match draft("rust-dup-2").set_uuid(Some("rust-dup")).insert(&db).await {
+        Err(e) if e.code() == orm::codes::DUPLICATE_KEY && e.to_string().contains("Duplicate entry") => {}
+        other => { fails += 1; eprintln!("FAIL: duplicate uuid not mapped to DUPLICATE_KEY: {:?}", other.err()); }
+    }
+    check!(fails, Battle::new().seq_eq(d1.seq).delete(&db).await.unwrap() == 1, "duplicate fixture cleaned up");
+
+    let dir = std::env::temp_dir().join(format!("orm-rust-it-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("tmp dir");
+    let (wasm_abs, schema_abs) = (std::path::absolute(&args[1]).unwrap(), std::path::absolute(&args[2]).unwrap());
+    let dsn = std::env::var("ORM_MYSQL_URL_RUST").unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into());
+    let toml = |schema: &str| format!("schema = {schema:?}\n[db]\ndsn = {dsn:?}\npool = 2\n[secrets]\naes = \"bench-salt\"\n[engine]\nwasm = {:?}\n[debug]\non_query = false\n", wasm_abs);
+    let bad = dir.join("relative.toml");
+    std::fs::write(&bad, toml("schema/schema.json")).unwrap();
+    match Db::from_config(&bad).await {
+        Err(e) if e.code() == orm::codes::CONFIG => {}
+        other => { fails += 1; eprintln!("FAIL: relative schema path not rejected: {:?}", other.err()); }
+    }
+    let good = dir.join("orm.toml");
+    std::fs::write(&good, toml(schema_abs.to_str().unwrap())).unwrap();
+    let db2 = Db::from_config(&good).await.expect("from_config");
+    check!(fails, gen::init(db2.engine.clone()).is_ok(), "the engine from orm.toml passes the boot check");
+    let b = Battle::new().one_by_seq(&db2, 42).await.expect("one via from_config").expect("row 42");
+    check!(fails, b.seq == 42 && b.aes_hex_email.as_deref() == Some("user42@example.com"), "from_config: [db], [engine] and [secrets] applied");
+    let _ = std::fs::remove_dir_all(&dir);
 
     if fails == 0 { println!("ok"); } else { std::process::exit(1); }
 }
