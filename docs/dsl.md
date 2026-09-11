@@ -251,7 +251,7 @@ battle::query().relation(user::query().match_user_seq_with_seq()).gets().await?;
 battle::query().left_join(user::query().on_user_seq_with_seq()).gets().await?;
 ```
 
-키 선택이 없는 경우에는 대상 엔티티와 Manifest가 유일하게 정한 기본 관계를 사용한다. 선택한 키 쌍이 존재하지 않거나 관계 종류가 `relation`/`relations`와 맞지 않으면 세 언어 모두 `RELATION_UNKNOWN`으로 실패한다. 생성된 쌍 단축형은 동일한 관계 이름을 직접 선택하므로 선택형 일반 호출과 IR을 비교하는 계약 테스트의 기준이 된다.
+키 선택이 없는 경우에는 대상 엔티티에 대한 관계가 하나면 Manifest의 그 관계를 사용하고, 여러 개면 기본 키 쌍으로 해석한다. 선택한 키 쌍이 존재하지 않거나 관계 종류가 `relation`/`relations`와 맞지 않으면 세 언어 모두 `RELATION_UNKNOWN`으로 실패한다. 생성된 쌍 단축형은 동일한 관계 이름을 직접 선택하므로 선택형 일반 호출과 IR을 비교하는 계약 테스트의 기준이 된다.
 
 이름 해석: camel 토큰(`IsClose` → `Is`,`Close`)을 엔티티의 `columns()` 표에서 **최장 일치**로 컬럼에 맞춘다. 이름 안의 `And`/`Or`는 연결자, 괄호는 그룹. 모르는 컬럼 → `COLUMN_UNKNOWN`(후보 컬럼 목록 포함); op 단어로도 컬럼으로도 읽히면(`InStock` = 컬럼 `in_stock` 또는 `In`+`stock`) → `COLUMN_UNKNOWN`(두 해석 명시). 값은 그대로 바인드된다(`andIsClose(0)`은 `isClose(false)`와 같은 SQL·결과, 파라미터 타입만 다르다).
 
