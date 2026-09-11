@@ -375,6 +375,15 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s already a column", q.Entity, out)
 			}
 		}
+		// an output name is the row's key: two projections cannot claim the same one
+		for out := range q.Columns.Expr {
+			if ent.Column(out) != nil {
+				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s already a column", q.Entity, out)
+			}
+			if _, dup := q.Columns.As[out]; dup {
+				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s is both an alias and an expr output", q.Entity, out)
+			}
+		}
 	}
 	joined := map[string]*Join{}
 	for _, j := range q.Joins {
