@@ -24,6 +24,9 @@ func rustIdent(s string) string {
 }
 
 func rustType(c *schema.Col) string {
+	if len(appStyles(c)) > 0 {
+		return "serde_json::Value"
+	}
 	switch c.Type {
 	case "i32":
 		return "i32"
@@ -56,6 +59,8 @@ func rustFrom(t string) string {
 		return "v.as_datetime()"
 	case "chrono::NaiveDate":
 		return "v.as_date()"
+	case "serde_json::Value":
+		return "v.take_json().unwrap_or_default()"
 	}
 	return "v.take_string()"
 }
@@ -129,6 +134,7 @@ pub struct {{.Type}}Row {
 {{- end}}
 {{- end}}
     dirty: Vec<(&'static str, Param)>,
+    enc_err: Option<(String, String)>, // (code, msg) of the first codec error; surfaces from update
     loaded: bool,
 }
 
@@ -190,7 +196,14 @@ impl {{.Type}}Row {
         let v: {{if .Nullable}}Option<{{.RType}}>{{else}}{{.RType}}{{end}} = {{if .Nullable}}v.map(|x| x.into()){{else}}v.into(){{end}};
         self.{{.Ident}} = v.clone();
         self.dirty.retain(|(c, _)| *c != {{printf "%q" .Name}});
+{{- if .Styles}}
+        match orm::codec::encode(&[{{rsList .Styles}}], {{if .Nullable}}v.as_ref(){{else}}Some(&v){{end}}) {
+            Ok(p) => self.dirty.push(({{printf "%q" .Name}}, p)),
+            Err(e) => { if self.enc_err.is_none() { self.enc_err = Some((e.code().to_string(), e.to_string())); } }
+        }
+{{- else}}
         self.dirty.push(({{printf "%q" .Name}}, v.into()));
+{{- end}}
         self
     }
 {{- end}}{{end}}
@@ -204,6 +217,7 @@ impl {{.Type}}Row {
 {{- end}}
 
     async fn update_inner(&mut self, ex: &impl Exec, optimistic: bool) -> Result<()> {
+        if let Some((code, msg)) = self.enc_err.take() { return Err(orm::Error::Engine { code, msg }); }
         if !self.loaded { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
         if self.dirty.is_empty() { return Ok(()); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
@@ -333,7 +347,7 @@ impl {{.Type}} {
 
     // ---- insert draft ----
 {{- range .Cols}}{{if not .Auto}}
-    pub fn set_{{.Ident}}(mut self, v: {{if .Nullable}}Option<{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}>{{else}}{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}{{end}}) -> Self { let v: {{if .Nullable}}Option<{{.RType}}>{{else}}{{.RType}}{{end}} = {{if .Nullable}}v.map(|x| x.into()){{else}}v.into(){{end}}; self.q.set({{printf "%q" .Name}}, v); self }
+    pub fn set_{{.Ident}}(mut self, v: {{if .Nullable}}Option<{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}>{{else}}{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}{{end}}) -> Self { let v: {{if .Nullable}}Option<{{.RType}}>{{else}}{{.RType}}{{end}} = {{if .Nullable}}v.map(|x| x.into()){{else}}v.into(){{end}}; {{if .Styles}}match orm::codec::encode(&[{{rsList .Styles}}], {{if .Nullable}}v.as_ref(){{else}}Some(&v){{end}}) { Ok(p) => self.q.set({{printf "%q" .Name}}, p), Err(e) => self.q.defer_err(e) }{{else}}self.q.set({{printf "%q" .Name}}, v){{end}}; self }
     pub fn set_{{.Ident}}_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr({{printf "%q" .Name}}, frag, binds); self }
 {{- end}}{{end}}
 {{- range .Numeric}}
@@ -429,6 +443,7 @@ publish = false
 [dependencies]
 orm = { path = "../orm" }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
+serde_json = "1"
 `
 
 func genRust(m *schema.Manifest, outDir string) error {

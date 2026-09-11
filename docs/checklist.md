@@ -1,188 +1,165 @@
-# 전체 작업 체크리스트 (plan-v2 기준)
+# 전체 작업 체크리스트 (0.0.1 완료까지)
 
-범례: `[ ]` 미착수 `[~]` 진행 `[x]` 완료 · **P** = 같은 단계 안에서 병렬 가능 · **→ T#** = 선행 의존 · 각 항목은 완료 조건(DoD)이 있어야 닫힌다.
-원칙: 폴링/타이머 금지 · symlink 금지(경로는 `orm.toml` 선언) · 폴백 금지(한 경로만) · 문제는 근본 해결, 감추지 않음 · 사람이 쓰는 정의는 하나(Mermaid), 나머지는 생성물.
+범례: `[ ]` 미착수 `[~]` 진행 `[x]` 완료 · **P** = 같은 묶음 안에서 병렬 가능 · **→ T#** = 선행 의존 · 각 항목은 완료 조건(DoD)이 있어야 닫힌다.
+원칙: 폴링/타이머 금지 · symlink 금지(경로는 선언) · 폴백 금지(한 경로만) · 문제는 근본 해결, 감추지 않음 · 사람이 쓰는 정의는 하나(Mermaid), 나머지는 생성물 · 버전은 0.0.1 고정.
 
----
+## 현재 위치 (2026-09-11)
+- **S0 완료** (측정·결정 R1~R3, F1~F3 — `docs/perf.md`).
+- **S1 완료** (thin slice: 엔진·생성기·3언어 실행기, 적합성 하네스, `ormgen tokens`, 데모).
+- **S2 진행 중**: 관계(T2.1~2.3, 2.7~2.10a, 2.12a~2.14a)와 코덱(T2.6, 2.8b~2.10b, 2.17)은 완료. 남은 것: T2.4, T2.5, T2.12b~2.14b, T2.15, T2.16.
+- 적합성 벡터 **16개 × 3언어 바이트 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
 
-## 단계 0 — S0 스파이크 (경계·와이어·기준선 실측)  [3일]
+## 병렬 레인 (어떻게 나눠 일하는가)
+| 레인 | 담당 | 다른 레인과의 경계 |
+|---|---|---|
+| **E 엔진** | `engine/*`, `cmd/ormgen`(생성기 템플릿 포함), `docs/protocol.md` | 계약(IR·Plan·토큰 이름)을 **먼저** 확정·커밋한다. 언어 레인은 그 커밋 이후에만 시작 |
+| **G Go** | `clients/go/*`, Go 러너·통합 테스트 | 엔진 계약만 읽는다. 생성기 템플릿을 고쳐야 하면 E에 요청 |
+| **P PHP** | `clients/php/*`, PHP 러너·통합 테스트 | 동일 |
+| **R Rust** | `clients/rust/*`, Rust 러너·통합 테스트 | 동일 |
+| **V 검증·통합** | `tests/conformance`, `tests/codec`, `schema/*.mmd`, `bench/sql`, `bin/*`, 커밋 | **공유 상태를 바꾸는 유일한 레인**: 로컬 MySQL 스키마(ALTER), `schema.json` 재생성, 아티팩트 빌드, 벡터 재기록. 언어 레인은 스키마·DB를 바꾸지 않는다 |
 
-### 0-A 환경 (순차, 모두 선행)
-- [x] T0.1 Go 1.27 확인
-- [x] T0.2 Rust 1.98.1 확인 (`~/.cargo/bin`, 셸 PATH에 추가 필요)
-- [x] T0.3 MySQL 8.4 설치 (`brew install mysql@8.4`) → DoD: 로컬 소켓으로 접속, `battle` 벤치 테이블 생성
-- [x] T0.4 PHP 8.5 + APCu + msgpack 설치 → DoD: `php -m`에 apcu, msgpack 표시, php.ini에 `extension=` 등록
-- [x] T0.5 벤치 테이블·데이터 생성 (`bench/sql/battle.sql`: `battle` DDL 축약, 10만 행, `aes_hex_*` 2컬럼 포함) → T0.3
-
-### 0-B 엔진 스텁·아티팩트 (T0.1 후 순차)
-- [x] T0.6 `engine.Compile(IR JSON) → Plan JSON` 스텁(WHERE 트리, 그룹 선두 OR 에러, EMPTY_IN, 스키마 검증) + 테스트 + 벤치 → DoD: `go test ./engine` 통과, list 11µs/pk 5µs 기록
-- [x] T0.7 `engine/ffi` c-shared 빌드 (`libormengine.dylib`, 2.7MB)
-- [x] T0.8 `engine/wasm` wasip1 reactor 빌드 (`ormengine.wasm`, 4.6MB), vet 통과
-- [x] T0.9 `cmd/ormd` UDS 프레임 서버 스텁 (compile op)
-
-### 0-C 경계 벤치 (T0.6~T0.9 후, **P**)
-- [x] T0.10 **P** Rust: libloading vs wasmtime 컴파일 경계 → DoD: 수치 `docs/perf-raw-rust-boundary.txt` (FFI 11.4/5.4µs, wasm 50.6/24µs, wasm 인스턴스 1.9ms). **결정: Rust = wasmtime**
-- [x] T0.11 **P** PHP: 영속 UDS 스트림 왕복(compile), 요청당 connect 비용, APCu 히트 경로, JSON vs msgpack 100×20 디코드 → DoD: `docs/perf-raw-php-boundary.txt`, **결정: PHP 와이어(JSON|msgpack)**
-- [x] T0.12 **P** Go: in-process `Compile` ns/op·allocs (완료: 11µs/48 allocs), 형태 해시 계산 비용 → DoD: 해시 ≤1µs
-
-### 0-D 네이티브 기준선 + PHP 3경로 (T0.5 후, **P**)
-- [x] T0.13 **P** Go `database/sql`: PK 단건·100행·INSERT, 동시성 1/16/64, 로컬 소켓 → `bench/go/native_test.go`
-- [x] T0.14 **P** Rust `sqlx`: 동일 워크로드 → `bench/rust/src/native.rs`
-- [x] T0.15 **P** PHP PDO 직접: 동일 워크로드 + compatibility 조립 기준(vendor `yejune/compatibility` composer 설치, 손으로 쓴 모델 클래스, 4단 관계 1회) → `bench/php/native.php`
-- [x] T0.16 PHP 경로 (ii)(iii): `ormd`가 실행까지 하는 임시 경로(Go 실행기 없이 `database/sql` 직접 실행 + 행 JSON/msgpack 반환) → PDO 대비 단건·100행·4단 관계 → T0.11, T0.13
-- [x] T0.17 `docs/perf.md` 작성: 3계층(엔진/경계/e2e) 표, 핫패스·콜드패스 분리, 결정 3개(Rust 경계, PHP 와이어, PHP 실행 위치 재확인) → T0.10~T0.16. **게이트**: Go/Rust 핫패스 ≤5% 손실 / PHP 원격 단건 ≤+25%
+규칙: (1) 같은 단계 안에서 G∥P∥R은 항상 병렬 가능, E→(G,P,R)→V 순서. (2) 언어 레인은 쓰기 테스트에서 자기 언어 이름의 행(`go-write`, `php-write`, `rust-write`)만 쓰고 지운다. (3) 계약이 바뀌면 E가 `docs/protocol.md`+골든 테스트를 먼저 바꾸고, 세 레인이 같은 커밋을 기준으로 이식한다. (4) 서브에이전트로 돌릴 때는 워크트리 격리, V만 메인 브랜치에 병합.
 
 ---
 
-## 단계 1 — S1 thin slice (3 테이블 · 3언어 · 같은 문장 · 같은 결과)  [3.5주]
-
-### 1-A 스키마 (순차)
-- [x] T1.1 Mermaid `erDiagram` 파서(`docs/schema.md`): 엔티티 블록(타입·PK/FK/UK·주석 속성 `? =v auto bool lazy 스타일 -> t.c`), 관계선(crow's foot → kind, 라벨 `fk (child / parent)`), `%%` 지시문(unique/index/fulltext/timestamps/predicate), 이름 기본 규칙(`_seq` 제거·접두어 제거+복수형) → DoD: §1 예제 파싱, 라운드트립(파싱→출력) 동일
-- [x] T1.2 매니페스트 빌더+검증기(`ormgen build` → `schema.json`, `schema_hash`): 컬럼명 규칙, 관계 이름 충돌·예약어, FK 무관계 경고, 정규 타입 매핑 → DoD: 픽스처 `order_number get_dt condition_type withdraw_count android_app_url origin_price brand_name` 허용, 금지 케이스 에러 → T1.1
-- [ ] T1.3 `ormgen import --dsn`(information_schema → `.mmd`): 접두어→style, FK→관계선, 인덱스→`%%`, lazy 규칙, `CURRENT_TIMESTAMP%`, collation, `block_encryption_mode` 확인, `INET6_ATON` 길이 확인, **멱등**(라벨 이름 재정의·주석 속성 보존) → T1.1, T0.3 → DoD: 로컬 `orm_bench` + 150-table fixture에서 임포트, 재실행 diff 0, Mermaid 렌더 확인
-- [ ] T1.4 `ormgen validate --dsn`(`.mmd` ↔ `schema.json` ↔ 라이브 DB, exit≠0) → T1.3
-
-### 1-B 엔진 (T1.2 후, 일부 **P**)
-- [x] T1.5 IR v1 정의(`docs/protocol.md`): Value, Pred 트리(Group/Pred/cmp/fn/expr), Query, Join, Relation, Mutation, MutationBatch, Plan, Result, 헤더(ir_version, schema_hash), 에러 코드(`docs/errors.yaml`) → **선행: 모든 클라이언트 작업**
-- [x] T1.6 **P** `engine/ir`: JSON→IR, 트리 검증(그룹 선두 OR, alias 유일성, EntityNotJoined, EMPTY_IN, 연산자 허용표) → T1.5
-- [x] T1.7 **P** `engine/dialect` 인터페이스 + MySQL 구현: quote, placeholder, LIKE(ci by collation), upsert, insert id, fulltext(값 변환 `' '→' +'`, 끝 `*`), row_number, force_index, StyleExpr(aes/hex/ip는 SQL 함수) → T1.5
-- [x] T1.8 `engine/planner` v1: 단일 테이블 SELECT/INSERT/UPDATE/DELETE, order/limit, 위치 기반 `assemble.columns[]`, lazy 컬럼 제외·`add/remove/all/only` 모드 → T1.6, T1.7
-- [x] T1.9 `engine/api.Compile` + 골든 테스트(IR→SQL+바인드) 30개 → T1.8
-- [x] T1.10 **P** `engine/ffi`·`engine/wasm` 실제 엔진 연결(완료: orm_load/orm_compile), 빌드 스크립트(`make artifacts`: darwin/linux amd64/arm64 dylib·so, wasm), 파일명에 버전 포함 → T1.9
-
-### 1-C Go 클라이언트 (T1.9 후)
-- [x] T1.11 `clients/go/orm`: `Db/Tx`(database/sql 래핑, `CLIENT_FOUND_ROWS` DSN 강제), 플랜 캐시(형태 해시 + IN 카디널리티 + schema_hash, 만료 없음), 러너(bind_slots), typed 스캔, `Collection[T]`(순서 유지), `on_query` 훅, `debug()` → T1.9
-- [x] T1.12 `ormgen gen --lang go`: 엔티티 struct, `NewX()`, `<col>(v)`, `<op><Col>(v)` 타입별, `orderBy*`, `limit`, 컬럼 선택, `set*`, 터미널 `get gets count create update save delete`, `getBy<PK|unique>`, nil-safe `GetX()`, 별도 모듈 `clients/go/gen`, gofmt 통과 → T1.11
-- [x] T1.13 Go 트랜잭션 `orm.Transaction[T]`(에러=rollback, 데드락 3회 클로저 재실행, 백오프 50ms·2^n+지터 — 재시도이지 타이머 루프 아님) → T1.11
-
-### 1-D ormd(컴파일 전용) + PHP 클라이언트 (T1.9 후) — S0 R3: PHP는 PDO 네이티브 실행
-- [x] T1.14 `cmd/ormd` 컴파일 데몬 확정: 프레임 `compile`만, msgpack 응답(플랜), `request_id`, 무상태, DSN 없음, 소켓 0600, S0 임시 `exec*` op 삭제 → T1.9
-- [x] T1.15 `clients/php/src` 트랜스포트: 영속 UDS(`STREAM_CLIENT_PERSISTENT`, 실패 시 즉시 재연결 1회 — 루프 없음), APCu 플랜 캐시(배열로 저장, 키 = xxh3(IR 형태)+schema_hash) → T1.14
-- [x] T1.16 `clients/php/src` 실행기: PDO(`EMULATE_PREPARES=false`, `ATTR_FOUND_ROWS`), prepared statement 캐시(F1), 플랜 러너(bind_slots·LIST_EXPAND), 위치형 행 + 공유 컬럼 인덱스를 드는 `Model`(ArrayAccess + magic getter, `getX()`/`getX($d)` 규칙, 변환 비용 0), `Collection`, `Db/Tx`, `transaction(fn)`, 데드락 클로저 재실행 → T1.15
-- [ ] T1.17 (→ S4 T4.7로 이동: v3 문법은 생성된 실제 메서드를 쓰므로 `__call`은 compatibility 호환층 전용) PHP `__call` 파서: camel 토큰화 → 키워드 최장일치 → `[Op] Column (And|Or …)*` 컬럼표 최장일치 → 정적 배열 사전 계산(opcache) + 동적 이름 런타임 파싱, 충돌 픽스처 통과 → T1.16
-- [x] T1.18 `ormgen gen --lang php`: 클래스(정규 메서드 docblock, `COLUMNS` 표, 관계표), pint 통과 → T1.17
-
-### 1-E Rust 클라이언트 (T1.10 후)
-- [x] T1.19 `clients/rust/orm`: wasmtime 로더(엔진 wasm을 crate에 `include_bytes!`, `Cache` 디렉터리는 `orm.toml`/env 선언, 스레드당 `Store`), 플랜 캐시, sqlx(mysql) 러너(`AssertSqlSafe`, persistent prepared, F2: PK 81µs 원인 규명·재측정 DoD), typed 스캔, `IndexMap` 컬렉션, `Tx: Clone`, `db.transaction(|tx| async {…})` → T1.10
-- [x] T1.20 `ormgen gen --lang rust`: 별도 crate `clients/rust/gen`, 모듈=테이블, `X::new()`, 술어 메서드 by-value, setter `&mut self`, 예약어 개명(`match_`), rustfmt 통과, `--tables` → T1.19
-
-### 1-F 적합성·데모 (T1.12, T1.18, T1.20 후)
-- [x] T1.21 `tests/conformance` 하네스 v0 (15개 벡터 × 3언어 동일): 벡터 스키마(체인 정규 토큰열, 픽스처, 기대 SQL·바인드, 기대 결과 정규 JSON: 키 타입 태그·순서 민감), 3언어 러너, docker 없이 로컬 MySQL 사용 → 벡터 10개(PK, gets, IN, null 연산자 에러, 그룹, order, limit, create, save, update)
-- [x] T1.22 `ormgen tokens` (적합성 러너 99/99/99, 통합 테스트 80/80/80, 데모 13/13/13 동일): 생성물에서 문장 단위 정규 토큰열 추출 3-way diff → T1.12/T1.18/T1.20
-- [x] T1.23 **데모** (`examples/thin-slice`, JSON 바이트 동일; 고정 비용 perf.md §6b): 같은 문장 3파일(`examples/thin-slice/{php,go,rust}`), 같은 JSON 출력, 네이티브 대비 타이밍 한 줄 → 모든 T1
-- [x] T1.24 Rust 생성 crate 컴파일 시간 측정(5 테이블: check 0.25s, release 1.25s — perf.md §6c) 기록 → T1.20
+## 단계 0 — S0 스파이크 (경계·와이어·기준선 실측)  [완료]
+- [x] T0.1~T0.5 환경(Go 1.27, Rust 1.98.1, MySQL 8.4 `/tmp/mysql.sock`, PHP 8.5+APCu+msgpack, 벤치 테이블 10만 행)
+- [x] T0.6~T0.9 엔진 스텁, c-shared, wasip1 reactor, ormd 프레임 서버
+- [x] T0.10~T0.12 경계 벤치 → **R1 Rust = wasmtime**, **R2 PHP 와이어 = msgpack 위치형**
+- [x] T0.13~T0.17 네이티브 기준선 3언어, PHP 3경로 → **R3 PHP = PDO 네이티브, ormd 컴파일 전용**, F1 prepared 캐시 필수, `docs/perf.md`
 
 ---
 
-## 단계 2 — S2 관계·코덱  [3주]
-
-### 2-A 엔진 (순차 → 일부 P)
-- [x] T2.1 planner 관계 단계 그래프: `relation<Rel>`(one)/`relations<Rel>`(many) → 별도 step(`role: relation`, `parent{step,index,column}`), `parent` 바인드 슬롯(실행기가 부모값 dedup·null 제외·2의 거듭제곱으로 확장), 부모 0행 시 단계 생략, 중첩 재귀, 조인 하위 관계, paginate는 main→관계→count(역할로 식별) → T1.8
-- [x] T2.2 관계 의미론: `keyBy<Col>` 재키잉(last-wins, 키 컬럼 자동 선택), one 중복 = ORDER 첫 행(ORDER가 있으면 per-parent 1 window), `Relation.query.limit` → `LIMIT_IN_RELATION`, `flatten`(one 전용, 배열/JSON 형태에 자식 컬럼 병합·부모 키 우선), `ifParent<Col>Eq`(부모 컬럼 검증·부모 프로젝션 자동 추가·IN 목록도 필터), `dropChildKey`(`hidden` 컬럼: toArray 제외, typed 필드는 유지) → T2.1
-- [x] T2.3 `limitPerParent(n)`: `ROW_NUMBER() OVER (PARTITION BY right ORDER …)` 서브쿼리 `orm_w`, 외부 SELECT는 같은 출력 컬럼(`orm_rn` 제거), `ORDER BY right, orm_rn` → T2.1
-- [ ] T2.4 **P** 컬럼 객체·`Pred` IR: `<col>EqCol(ref)` 교차 컬럼 비교(planner에 있음, 생성기 미노출), `expr(fragment, binds)` 스키마 검사·alias 치환(있음), `selectExpr`(있음) → 생성기 3언어 노출 + 벡터 → T1.6
-- [ ] T2.5 **P** 타입별 연산자 허용표 확정(문서 + 검증; `ir.OpAllowed`와 `ormgen allowed` 이중 정의를 하나로) + fulltext는 Mermaid `%% fulltext` 컬럼 조합만 → T1.7
-- [ ] T2.6 **P** 코덱 명세(`docs/codec.md`) + 벡터(`tests/codec/*.json`, 로컬 MySQL 산출물: AES/hex/ip 바이트 일치, gz/json 라운드트립) → T0.3
-- [x] T2.7 골든 테스트: 관계 플랜(`TestRelations`: 4단계 그래프·조인 하위 관계·window·if_parent·hidden·paginate 역할·plain IN) + 옵션 에러 3 → T2.1~T2.3 (벡터 확장은 T2.16)
-
-### 2-B 실행기 (T2.1 후, **P** 언어별)
-- [x] T2.8a **P** Go 실행기: 단계 러너(관계 step 순서 실행, `parent` 확장·pow2 패딩), `Rows.Related/StepAssemble`, typed 조립(one/many/키/if_parent), 통합 테스트 `TestRelationPaths` → T2.1
-- [ ] T2.8b **P** Go 코덱(gz=zlib, json, jsons, serialize 읽기, base64) → T2.6
-- [x] T2.9a **P** Rust 실행기: 동일(`Rows.related/step_assemble`, 자식 행은 부착마다 clone) → T2.1
-- [ ] T2.9b **P** Rust 코덱 → T2.6
-- [x] T2.10a **P** PHP 실행기: `Db::runPlan`, `Rows`, `Row::fromRow` 관계 부착·`flatten` 병합(`extra`)·`hidden`(toArray 제외), `getRel()`·`['rel']` → T2.1
-- [ ] T2.10b **P** PHP 코덱(gz/json/jsons/serialize/base64는 PHP 내장) → T2.6
-
-### 2-C 생성기 (T2.4, T2.5 후, **P**)
-- [x] T2.12a **P** Go gen: `relation<Rel>/relations<Rel>`, `keyBy<Col>`, `flatten`, `limitPerParent`, `ifParent<Col>Eq`(부모 컬럼 합집합에서 생성), `dropChildKey`, `select<Col>/select<Col>As/selectAll/selectNone/selectExpr`, relation typed 필드·`Get<Rel>()` → T2.1
-- [ ] T2.12b **P** Go gen: `keyByFn(fn)`, 컬럼 참조 `<col>EqCol`, `ToArray()` → T2.4
-- [x] T2.13a **P** Rust gen: 동일 + `x() -> Option<&T>`, `xs() -> &Collection` → T2.1
-- [ ] T2.13b **P** Rust gen: `key_by_fn`, `<col>_eq_col`, `to_map()` → T2.4
-- [x] T2.14a **P** PHP gen: 동일(`ifParent<Col>Eq` 부모 컬럼) → T2.1
-- [ ] T2.14b **P** PHP gen: `keyByFn`, `<col>EqCol` → T2.4 (compatibility `__call` 호환층은 S4 T4.7)
-- [ ] T2.15 Rust 생성 crate 컴파일 시간 게이트(150-table fixture 임포트) → 초과 시 `--tables` 분할 문서화 → T2.13, T1.3
-
-### 2-D 검증
-- [ ] T2.16 적합성 벡터 +20 (R1, 중첩 parentNode, keyName 누락 에러, possible 정수, ONE 중복, groupLimit 3, json 빈 객체, serialize 참조·float, unsigned 상한, timestamp(6), tinyint→bool, decimal) → T2.8~T2.14
-- [ ] T2.17 코덱 벡터 3언어(Go·Rust·ormd) 통과 → T2.6
+## 단계 1 — S1 thin slice  [완료]
+- [x] T1.1 Mermaid `erDiagram` 파서 · T1.2 매니페스트 빌더+검증기(`ormgen build`, `schema_hash`)
+- [x] T1.5 IR v1(`docs/protocol.md`) · T1.6 `engine/ir` 검증 · T1.7 MySQL dialect · T1.8 planner v1 · T1.9 골든 테스트 · T1.10 ffi/wasm 연결
+- [x] T1.11~T1.13 Go 런타임·생성기·트랜잭션(데드락 3회 재실행)
+- [x] T1.14~T1.16, T1.18 ormd 컴파일 전용 데몬, PHP 트랜스포트(영속 UDS+APCu), PHP 실행기(PDO, FETCH_NUM 위치형), PHP 생성기
+- [x] T1.19~T1.20 Rust 런타임(전용 스레드 wasmtime, sqlx, `Tx: Clone`)·생성기. F2 종결(sqlx 고유 비용), F3(sqlx `try_get` 실패를 흐름 제어로 쓰지 않음)
+- [x] T1.21 `tests/conformance` 하네스(러너 3 + `check run/compare/record`) · T1.22 `ormgen tokens` · T1.23 데모 `examples/thin-slice` · T1.24 Rust 컴파일 시간(5테이블 check 0.25s)
+- [ ] T1.3 `ormgen import --dsn` → **S5 T5.10으로 이동** (150테이블 게이트 T2.15의 선행)
+- [ ] T1.4 `ormgen validate --dsn` → **S5 T5.1로 통합**
+- [ ] T1.17 PHP `__call` 파서 → **S4 T4.7로 이동** (v3 문법은 생성 메서드를 쓰므로 호환층 전용)
 
 ---
 
-## 단계 3 — S3 쓰기 long tail  [1.5주]  (T1.13, T2.8 후)
-- [ ] T3.1 엔진: `Mutation` set 변형(value|raw|plus|minus), `minus` 0 하한, plus/minus 바인드, `on_duplicate`(upsert), `optimistic{column,value}`, `MutationBatch` 순서 실행 플랜
-- [ ] T3.2 **P** Go 실행기: dirty 추적(origin 보관, 변경 컬럼만), `save()` 분기(PK 존재), 낙관 락(`affected==0` → `OptimisticLock`, `CLIENT_FOUND_ROWS` 검증), `delete(true)` 트리 워크(`deleteLock` 존중) → Batch, `duplication()` → T3.1
-- [ ] T3.3 **P** Rust 실행기: 동일 → T3.1
-- [ ] T3.4 **P** PHP 실행기: dirty 추적·save·낙관 락·delete(true) 트리 워크·duplication → T3.1
-- [ ] T3.5 **P** `paginate(db, page, per)` → `Page{items,total,pages,current}`(count 변형 플랜 자동), `debug()`/`sql(db)` 덤프(바인드 마스킹), `clone` 3언어 → T2.8
-- [ ] T3.6 데드락 동시성 테스트(2 tx 교차 갱신) 3언어 공통 게이트 → T1.13
-- [ ] T3.7 적합성 벡터 +10(W4 setRaw 카운터, plus/minus, upsert, 낙관 락 실패, delete cascade 순서)
+## 단계 2 — S2 관계·코덱  [3주 · 진행 중]
+
+### 2-A 엔진 — 레인 E
+- [x] T2.1 planner 관계 단계 그래프(step `role: relation`, `parent{step,index,column,if_parent}`, `parent` 슬롯 2의 거듭제곱 확장, 부모 0행 생략, 중첩, 조인 하위 관계, paginate = main→관계→count)
+- [x] T2.2 관계 의미론(`keyBy` last-wins, one = ORDER 첫 행, `LIMIT_IN_RELATION`, `flatten` one 전용, `ifParent` 부모 컬럼 검증·자동 프로젝션·IN 필터, `dropChildKey` = `hidden`)
+- [x] T2.3 `limitPerParent(n)` ROW_NUMBER 서브쿼리 `orm_w`
+- [x] T2.6 코덱 명세 `docs/codec.md` + 벡터 `tests/codec/vectors.json`(PHP 원본 60개, `gen.php`)
+- [x] T2.7 골든 `TestRelations`(4단계·조인 하위·window·if_parent·hidden·paginate 역할·plain IN) + 옵션 에러 3
+- [ ] T2.4 **P** 교차 컬럼 비교 `<col>EqCol(ref)`(planner 있음) → 생성기 3언어 노출 + `expr`/`selectExpr` 벡터 → T1.6
+- [ ] T2.5 **P** 타입별 연산자 허용표를 한 곳으로(`ir.OpAllowed` ↔ `ormgen allowed` 이중 정의 제거: 생성기가 `ir` 패키지를 import) + fulltext는 `%% fulltext` 컬럼 조합만 + `docs/dsl.md` 표 → T1.7
+
+### 2-B 실행기 — 레인 G ∥ P ∥ R (T2.1 후)
+- [x] T2.8a G 단계 러너·`Rows.Related/StepAssemble`·typed 조립 · T2.8b G 코덱(`codec.go`: json/serialize/base64/gz, PHP serialize 형식, `Decode` 읽기 직후·`SetStyled/DirtyStyled`)
+- [x] T2.9a R 동일 · T2.9b R 코덱(`codec.rs`, `Val::Json`, MySQL JSON 컬럼 직접 디코드, `read_row` 오류 전파)
+- [x] T2.10a P `Db::runPlan`·`Rows`·`flatten`(`extra`)·`hidden` · T2.10b P 코덱(`Codec.php`, `columns()` 타입 `styled`)
+
+### 2-C 생성기 — 레인 E (템플릿) 후 G ∥ P ∥ R 확인
+- [x] T2.12a/13a/14a 관계 메서드·옵션(`ifParent<Col>Eq`는 부모 컬럼 합집합), 스타일 컬럼 타입(Go `any` / Rust `serde_json::Value` / PHP `mixed`)과 인코딩 setter
+- [ ] T2.12b **P** Go: `KeyByFn(fn)`, `<Col>EqCol`, `ToArray()`(flatten·hidden 반영) → T2.4
+- [ ] T2.13b **P** Rust: `key_by_fn`, `<col>_eq_col`, `to_map()` → T2.4
+- [ ] T2.14b **P** PHP: `keyByFn`, `<col>EqCol` → T2.4
+- [ ] T2.15 Rust 생성 crate 컴파일 시간 게이트(150-table fixture) → 초과 시 `--tables` 분할 문서화 → **T5.10(import) 선행**
+
+### 2-D 검증 — 레인 V
+- [x] T2.17 코덱 벡터 3언어 통과(`go test ./clients/go/orm`, `cargo test -p orm`, `php tests/codec/check.php`: Go/Rust 산출물을 PHP가 읽어 동일)
+- [~] T2.16 적합성 벡터 +20 → 현재 +1(`codec_roundtrip`). 남은 목록: R1 4단 관계, 중첩 flatten, keyBy 컬럼 미선택(자동 선택 확인), ifParent 정수·불리언, one 중복(ORDER 첫 행), limitPerParent 3, json 빈 객체·빈 배열, serialize 실수·정수 키, unsigned 상한(BIGINT UNSIGNED 최대), timestamp(6) 마이크로초, tinyint→bool, decimal, dropChildKey toArray, 조인 하위 관계, 관계 0행, paginate+관계 → T2.8~T2.14
 
 ---
 
-## 단계 4 — S4 조인·엣지 문법  [2.5주]  (T2.x 후)
-- [ ] T4.1 엔진: `join<Rel>`/`leftJoin<Rel>`(선언 관계), `join(alias, cmp, child)` 탈출구, 조인 그룹 WHERE(부모에 AND), `on(f)`, 다단(target_alias), 조인 하위 relation(조인별 고유 키), 조인 컬럼 위치 매핑 + alias 네임스페이스, `ColumnAliasConflict`
-- [ ] T4.2 엔진: 집계 `aggregate{COUNT|COUNT_DISTINCT|GROUP_COUNT|SUM|AVG}`, `Query.raw`, `orderByRaw`, `groupBy raw`, `force_index`, `distinct`
-- [ ] T4.3 엔진: YAML `predicates:` 이름 붙인 술어 그룹 → 생성 메서드
-- [ ] T4.4 엔진: `multi_statement` 플랜 옵션(step 0 결과만 의존하는 단계 묶음) → 실행기 `NextResultSet`/`fetch_many`/`nextRowset` → T2.1
-- [ ] T4.5 **P** Go gen/실행기: `join<Rel>`, `cols()`, `andPred/orPred`, `Pred::all/any/not`, `expr`, `On(f)`, `orm.JoinOf`, 집계 터미널 → T4.1, T4.2
-- [ ] T4.6 **P** Rust gen/실행기: 동일 → T4.1, T4.2
-- [ ] T4.7 **P** PHP: `->{'condition(…)'}` 괄호문법 스택 트리화(모델 내 균형만), `ParenAcrossModels` 에러+재작성 힌트, `condition*/and*/or*/on*` 호환, `getsByAAndB` 호환, `addColumn<Col>Alias<Name>` 호환 → T4.1
-- [ ] T4.8 `ormgen check --lang php`(레거시 이름·expr 백틱 컬럼·ParenAcrossModels 목록) / `--lang go`(expr 문자열 analyzer) → T4.7
-- [ ] T4.9 적합성 벡터 +15(R9 조인+OR fulltext, (e) 조인 두 그룹, 다단 조인 R8, 조인 하위 relation R6, 집계, raw 루트, computed 컬럼 ST_Y, expr) → T4.5~T4.7
-- [ ] T4.10 `docs/examples/complex-query.md`를 실행 가능한 예제로 승격(3언어 실행, 플랜 덤프 비교) → T4.9
+## 단계 3 — S3 쓰기 long tail  [1.5주]  (T2.x 후)
+
+### 3-A 엔진 — 레인 E
+- [ ] T3.1 `on_duplicate`(upsert: `INSERT … ON DUPLICATE KEY UPDATE`, dialect 훅) + `MutationBatch`(순서 보장 단일 tx 플랜, delete cascade 트리용) + `delete` 다중 where 검증. (`plus/minus` 0 하한·바인드, `optimistic`은 S1에 이미 있음)
+- [ ] T3.2 골든: upsert, batch, minus 0 하한, optimistic 조합
+
+### 3-B 실행기 — 레인 G ∥ P ∥ R
+- [ ] T3.3 **P** G/P/R `save()`(PK 유무로 insert/update 분기), `insertOrUpdate`(upsert 터미널), `delete(cascade)` 로드된 관계 트리 워크(`noCascadeDelete` 정지점) → Batch 실행, `debug()`/`sql(db)` 플랜·바인드 덤프(비밀 마스킹), `clone` → T3.1
+- [ ] T3.4 데드락 동시성 테스트(2 tx 교차 갱신) 3언어 공통 → 재실행 3회 확인 → T1.13
+
+### 3-C 검증 — 레인 V
+- [ ] T3.5 적합성 벡터 +10(setExpr 카운터, plus/minus·0 하한, upsert, 낙관 락 실패, delete cascade 순서, save 분기, batch 롤백)
+
+---
+
+## 단계 4 — S4 조인·엣지 문법·PHP 호환층  [2.5주]  (T3.x 후)
+
+### 4-A 엔진 — 레인 E
+- [ ] T4.1 조인 잔여: 다단 조인 alias 충돌 검증(`COLUMN_ALIAS_CONFLICT` 실제 케이스), 조인 하위 관계 키 고유성, 조인 컬럼 `select<Col>As` 네임스페이스 (join/leftJoin/on/where/nav/조인 하위 관계는 S1·S2에 있음)
+- [ ] T4.2 집계 확장: `countDistinct<Col>`, `groupBy` + `count`(그룹 수), `min<Col>`/`max<Col>`, `having`(그룹 술어) — dsl.md에 토큰 추가
+- [ ] T4.3 `%% predicate` 이름 붙인 술어 그룹 → 생성 메서드(`whereActive()` 식) — 매니페스트에 파싱은 있음
+- [ ] T4.4 `Query.raw` 루트(신뢰 코드 전용, `{self}`/`{alias:x}` 치환) + `orderByExpr`/`groupByExpr` 검증
+
+### 4-B 생성기·실행기 — 레인 E(템플릿) → G ∥ P ∥ R
+- [ ] T4.5 **P** G/P/R: 집계 터미널, 술어 그룹 메서드, raw 루트 실행, `having`
+- [ ] T4.6 **P** P: compatibility `__call` 호환층 — `condition*/and*/or*/on*`, op-first(`gtEndDt`), 무접두 `x(v)`, 배열→In·null→IsNull, `relation((new Y)->matchAWithB()->aliasR())`, `joinAWithB`, `addColumnX/addAllColumns`, `parentNode→flatten`, `groupLimit→limitPerParent`, `keyNameX→keyByX`, `fetchKey→keyByFn`, `deleteLock→noCascadeDelete`, `get/gets→one/all`, `getsByAAndB`, `and('(')…condition(')')`(모델 내 균형만, 경계 초과는 `PAREN_ACROSS_MODELS`) — 같은 IR 생성, 적합성으로 검증
+- [ ] T4.7 `ormgen check --lang php`(example application 실코드 스캔: 레거시 이름·expr 백틱 컬럼·PAREN_ACROSS_MODELS 목록) / `--lang go`(expr 문자열 analyzer)
+
+### 4-C 검증 — 레인 V
+- [ ] T4.8 적합성 벡터 +15(R9 조인+OR fulltext, 조인 두 그룹, 다단 조인 R8, 조인 하위 relation R6, 집계 5종, raw 루트, computed 컬럼 `ST_Y`, expr 바인드, having)
+- [ ] T4.9 `docs/examples/complex-query.md`를 실행 가능한 예제로 승격(3언어 실행, 플랜 덤프 비교)
 
 ---
 
 ## 단계 5 — S5 하드닝·배포  [1.5주]  (T4.x 후, 대부분 **P**)
-- [ ] T5.1 **P** `schema_hash` 부팅 검사(각 클라이언트 초기화 시 엔진/ormd에 1회) + `ormgen validate --dsn` CI 게이트
-- [ ] T5.2 **P** `docs/errors.yaml` → 3언어 enum 생성, 드라이버 에러 원본 보존(Deadlock·DuplicateKey만 매핑)
-- [ ] T5.3 **P** `on_query(sql, binds, duration, plan_id)` 훅 3언어, 로깅 예제
-- [ ] T5.3b **P** 문장당 고정 비용 감축(perf.md §6b: Go +6µs, PHP +9µs, Rust +16µs): IR 형태 키를 전체 JSON 직렬화 없이 생성, Rust `Vec<Val>` 중간 단계 없이 typed 직접 디코드 → 3행 쿼리에서 네이티브 대비 ≤+5%
-- [ ] T5.4 **P** 아티팩트 빌드 파이프라인: wasm(단일), ormd(linux amd64/arm64, darwin), 버전을 파일명에, 체크섬 → composer(`bin/ormd-<ver>-<os>-<arch>`), crates.io(`include_bytes!` wasm), Go 모듈 태그
-- [ ] T5.5 **P** `orm.toml` 스펙·로더 3언어(연결 DSN, ormd 소켓 절대경로, wasm 캐시 디렉터리, schema blob 경로, 디버그) — 상대경로·symlink 금지 검증
-- [ ] T5.6 **P** `ormd` systemd/launchd 유닛 예제, 소켓 퍼미션 문서
-- [x] T5.7 (불필요 — 스키마 소스 자체가 Mermaid erDiagram)
-- [ ] T5.8 CI: GitHub Actions — Go 테스트·골든, Rust 테스트, PHP 테스트, MySQL 서비스 컨테이너로 적합성 3언어, 벤치 회귀 게이트(T0.17 수치 대비), `ormgen tokens` diff, `ormgen check` → T5.1~T5.5
-- [ ] T5.9 문서: `dsl.md`(정규 문법·PHP 파서 알고리즘·호환층), `protocol.md`, `packaging.md`(결정·수치·뒤집는 조건), `perf.md` 갱신, README 3언어 퀵스타트
+
+### 5-A 도구 — 레인 E
+- [ ] T5.10 **P** `ormgen import --dsn`(information_schema → `.mmd`, 멱등, 접두어→style, FK→관계선, 인덱스→`%%`, `CURRENT_TIMESTAMP%`, collation) → 150-table fixture 임포트 → T2.15 게이트 실행
+- [ ] T5.1 **P** `ormgen validate --dsn`(`.mmd` ↔ `schema.json` ↔ 라이브 DB) + 각 클라이언트 초기화 시 `schema_hash` 부팅 검사 1회(불일치 = 즉시 에러, 감시 없음)
+- [ ] T5.2 **P** `docs/errors.yaml` → 3언어 enum 생성(`CODEC_*` 포함), 드라이버 에러 원본 보존(Deadlock·DuplicateKey만 매핑)
+
+### 5-B 런타임 — 레인 G ∥ P ∥ R
+- [ ] T5.3 **P** `on_query(sql, binds, duration, plan_id, err)` 훅 통일(plan_id 추가) + 로깅 예제
+- [ ] T5.3b **P** 문장당 고정 비용 감축(perf.md §6b: Go +6µs, PHP +9µs, Rust +16µs): IR 형태 키를 전체 JSON 직렬화 없이 생성(호출 지점별 형태 캐시), Rust `Vec<Val>` 중간 단계 없이 typed 직접 디코드 → 3행 쿼리 네이티브 대비 ≤+5%
+- [ ] T5.4 **P** PHP `EMULATE_PREPARES` 결정: 서버 prepared(native) vs 에뮬레이션 실측(PK·100행·IN 확장) 후 하나로 고정, `ip`/JSON 타입 반환 확인
+- [ ] T5.5 **P** `orm.toml` 스펙·로더 3언어(DSN, ormd 소켓 절대경로, wasm 캐시 디렉터리, schema.json 경로, aes 키 출처, 디버그) — 상대경로·symlink 금지 검증
+
+### 5-C 배포 — 레인 V
+- [ ] T5.6 아티팩트 파이프라인: wasm(단일), ormd(linux amd64/arm64, darwin), 버전을 파일명에, 체크섬 → composer(`bin/ormd-0.0.1-<os>-<arch>`), crates(`include_bytes!` wasm), Go 모듈
+- [ ] T5.7 `ormd` systemd/launchd 유닛 예제, 소켓 퍼미션 문서
+- [ ] T5.8 CI(GitHub Actions): Go 테스트·골든, Rust 테스트, PHP 테스트, MySQL 서비스 컨테이너로 적합성 3언어 + 코덱 벡터, `ormgen tokens` diff, `ormgen check`, 벤치 회귀 게이트(perf.md 수치 대비 ±5%) → T5.1~T5.7
+- [ ] T5.9 문서: `dsl.md`(호환층 표), `protocol.md`, `codec.md`, `packaging.md`(결정·수치·뒤집는 조건), `perf.md` 재측정(ip 컬럼 추가 후), README 3언어 퀵스타트
 
 ---
 
 ## 단계 6 — S6 PostgreSQL · SQLite  [2.5주]  (T5.8 후)
-- [ ] T6.1 **P** `dialect/postgres`: `$n` placeholder, `"quote"`, `ILIKE`/`LIKE`, `ON CONFLICT`, `RETURNING`, fulltext → `tsvector`(v1 범위 결정 후), `ROW_NUMBER` 동일, pgx stdlib
-- [ ] T6.2 **P** `dialect/sqlite`: `?`, `"quote"`, `LIKE`(ci ASCII) → `lb`는 `GLOB` 또는 `= ` 처리 결정, `ON CONFLICT`, `RETURNING`(3.35+), modernc/sqlx-sqlite
-- [ ] T6.3 호스트측 AES 코덱(MySQL 키 폴딩, AES-128-ECB, PKCS7) Go·Rust + 벡터(MySQL `AES_ENCRYPT` 산출물과 바이트 일치), `ip` 16B packed, `point` 정책(v2 유지) → T2.6
-- [ ] T6.4 실행기 드라이버 추상(Go: driver별 DSN·placeholder, Rust: sqlx feature 게이트) → T6.1, T6.2
-- [ ] T6.5 docker-compose(mysql, postgres, sqlite 파일)로 적합성 전 벡터 × 3 DB 동일 결과 → T6.1~T6.4
-- [ ] T6.6 `ormgen import --dsn postgres://…` (information_schema 차이 흡수) → T1.3
+- [ ] T6.1 **P** E `dialect/postgres`: `$n`, `"quote"`, `ILIKE`/`LIKE`, `ON CONFLICT`, `RETURNING`, fulltext(`tsvector`, v1 범위 결정), `ROW_NUMBER` 동일, INET 타입 직접
+- [ ] T6.2 **P** E `dialect/sqlite`: `?`, `"quote"`, `LIKE`(ci ASCII, `like_binary`는 `GLOB`), `ON CONFLICT`, `RETURNING`(3.35+), 날짜 문자열 규약
+- [ ] T6.3 **P** G/R 호스트측 AES 코덱(MySQL 키 폴딩, AES-128-ECB, PKCS7) + 벡터(MySQL `AES_ENCRYPT` 산출물과 바이트 일치), `ip` 16B packed, `point` 정책 → T2.6
+- [ ] T6.4 G/P/R 드라이버 추상(Go: driver별 DSN·placeholder, Rust: sqlx feature 게이트, PHP: pdo_pgsql/pdo_sqlite) → T6.1, T6.2
+- [ ] T6.5 V docker-compose(mysql, postgres, sqlite 파일)로 적합성 전 벡터 × 3 DB 동일 결과 → T6.1~T6.4
+- [ ] T6.6 E `ormgen import --dsn postgres://…` → T5.10
 - [ ] T6.7 문서: dialect 차이표(LIKE, upsert, insert id, fulltext, 타입 매핑), 버전 하한(MySQL 8.0.2/MariaDB 10.2/PG 12/SQLite 3.25)
 
 ---
 
 ## 단계 7 — 이후 과제 (착수 안 함, 기록만)
-- [ ] protobuf/Connect 와이어 · FrankenPHP in-process · DDL diff/마이그레이션 생성 · 멀티테넌시 `scope` · min/max/having · point/yaml/curlfile 스타일 · 서버 스트리밍 · `ormgen precompile`(정적 형태 APCu 시드) · 4번째 언어 클라이언트(사이드카 경로)
+- [ ] protobuf/Connect 와이어 · FrankenPHP in-process · DDL diff/마이그레이션 생성 · 멀티테넌시 `scope` · point/yaml/curlfile 스타일 · 서버 스트리밍 · `ormgen precompile`(정적 형태 APCu 시드) · 4번째 언어 클라이언트 · sqlx 대체 드라이버 비교(`mysql_async`) · `multi_statement` 플랜(step 0만 의존하는 단계 묶음)
 
 ---
 
 ## 병렬 실행 요약
 | 시점 | 동시에 진행 가능한 묶음 |
 |---|---|
-| 지금 | T0.5 · T0.11 · T0.12 (T0.13~T0.15는 T0.5 후) |
-| T1.5 확정 직후 | T1.6 ∥ T1.7 ; T1.3 ∥ T1.4 |
-| T1.9 완료 후 | T1.10(아티팩트) ∥ T1.11(Go 런타임) — 이후 Rust(T1.19)는 T1.10, ormd/PHP(T1.14)는 T1.11에 매달림 |
-| S2 | T2.4 ∥ T2.5 ∥ T2.6 (엔진 코어 T2.1~T2.3와 병렬) → 실행기 T2.8 ∥ T2.9 → 생성기 T2.12 ∥ T2.13 ∥ T2.14 |
-| S3 | T3.2 ∥ T3.3 ∥ T3.5 |
-| S4 | T4.5 ∥ T4.6 ∥ T4.7 (엔진 T4.1~T4.4 후) |
-| S5 | T5.1~T5.7 전부 병렬 → T5.8 → T5.9 |
-| S6 | T6.1 ∥ T6.2 ∥ T6.3 → T6.4 → T6.5 |
+| **지금 (S2 잔여)** | E: T2.4 ∥ T2.5 → 그 뒤 G T2.12b ∥ P T2.14b ∥ R T2.13b ; V: T2.16(벡터 +19)는 지금 바로 |
+| S3 | E T3.1→T3.2 (T2.4/2.5와 병렬 가능) → G ∥ P ∥ R T3.3 → V T3.4, T3.5 |
+| S4 | E T4.1 ∥ T4.2 ∥ T4.3 ∥ T4.4 → G ∥ P(T4.5+T4.6) ∥ R → V T4.7~T4.9 |
+| S5 | E T5.10 ∥ T5.1 ∥ T5.2 ; G ∥ P ∥ R T5.3, T5.3b, T5.4, T5.5 ; V T5.6 ∥ T5.7 → T5.8 → T5.9 |
+| S6 | E T6.1 ∥ T6.2 ; G/R T6.3 → T6.4 → V T6.5 |
 
 ## 절대 순차(크리티컬 패스)
-T1.1 → T1.2 → T1.5 → T1.6/T1.7 → T1.8 → T1.9 → T1.11 → T1.14 → T1.16 → T1.21 → T2.1 → T2.8 → T3.1 → T4.1 → T5.8 → T6.5
+T2.4/T2.5 → T3.1 → T3.3 → T4.1~4.4 → T4.5/4.6 → T4.8 → T5.8 → T6.1/6.2 → T6.4 → T6.5
 
 ## 게이트(통과 못 하면 다음 단계 금지)
-- G0 (T0.17): Go/Rust 핫패스 ≤5% 손실, PHP 원격 단건 ≤+25%, 4단 관계 ormd ≥ compatibility 속도
-- G1 (T1.23): 3언어 데모 같은 JSON, `ormgen tokens` diff 0, 적합성 10/10
-- G2 (T2.15/T2.16): Rust 150테이블 `cargo check` 기록, 적합성 30/30, 코덱 벡터 3/3
-- G3 (T3.6/T3.7): 데드락 게이트 3/3, 적합성 40/40
-- G4 (T4.9): 적합성 55/55, `ormgen check` compatibility checks 문서화
-- G5 (T5.8): CI 녹색, 벤치 회귀 게이트 활성
+- G0 (T0.17) ✔ Go/Rust 핫패스 ≤5% 손실, PHP ≤+5%
+- G1 (T1.23) ✔ 3언어 데모 같은 JSON, `ormgen tokens` diff 0, 적합성 15/15
+- G2 (T2.15/T2.16): Rust 150테이블 `cargo check` 기록, 적합성 35/35, 코덱 벡터 60×3 ✔
+- G3 (T3.4/T3.5): 데드락 게이트 3/3, 적합성 45/45
+- G4 (T4.8): 적합성 60/60, `ormgen check` compatibility checks 문서화
+- G5 (T5.8): CI 녹색, 벤치 회귀 게이트 활성, perf.md 재측정
 - G6 (T6.5): 3 DB 동일 결과

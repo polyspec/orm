@@ -41,7 +41,7 @@ impl<T: Into<Param>> From<Option<T>> for Param {
     }
 }
 
-/// A value read from a row, positionally.
+/// A value read from a row, positionally. `Json` is a styled column after decoding (docs/codec.md).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Val {
     Null,
@@ -52,6 +52,7 @@ pub enum Val {
     DateTime(NaiveDateTime),
     Date(NaiveDate),
     Bool(bool),
+    Json(serde_json::Value),
 }
 
 impl Val {
@@ -87,6 +88,15 @@ impl Val {
         }
     }
 
+    /// Moves a decoded styled value out (leaves Null); Null stays Null.
+    pub fn take_json(&mut self) -> Option<serde_json::Value> {
+        match self {
+            Val::Json(v) => Some(std::mem::take(v)),
+            Val::Null => None,
+            other => Some(serde_json::Value::String(other.as_string())),
+        }
+    }
+
     /// Moves the string out (leaves Null) — avoids a clone when the row is consumed.
     pub fn take_string(&mut self) -> String {
         match self {
@@ -104,6 +114,7 @@ impl Val {
             Val::Bool(b) => (*b as i64).to_string(),
             Val::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
             Val::Date(d) => d.to_string(),
+            Val::Json(v) => v.to_string(),
             Val::Null => String::new(),
         }
     }

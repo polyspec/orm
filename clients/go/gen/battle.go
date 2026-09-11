@@ -42,6 +42,12 @@ type BattleRow struct {
 	LikeCount             int32
 	AesHexEmail           *string
 	AesHexPhone           *string
+	Ip                    *string
+	GzExtend              any
+	JsonSetting           any
+	JsonsTags             any
+	Base64Extra           any
+	SerializeData         any
 	Service               *ServiceRow
 	ServiceMember         *ServiceMemberRow
 	ServiceModule         *ServiceModuleRow
@@ -432,6 +438,96 @@ func (r *BattleRow) SetAesHexPhone(v *string) *BattleRow {
 	return r
 }
 
+// GetIp is nil-safe.
+func (r *BattleRow) GetIp() *string {
+	if r == nil {
+		var zero *string
+		return zero
+	}
+	return r.Ip
+}
+
+func (r *BattleRow) SetIp(v *string) *BattleRow {
+	r.Ip = v
+	r.Dirty("ip", orm.Deref(v))
+	return r
+}
+
+// GetGzExtend is nil-safe.
+func (r *BattleRow) GetGzExtend() any {
+	if r == nil {
+		var zero any
+		return zero
+	}
+	return r.GzExtend
+}
+
+func (r *BattleRow) SetGzExtend(v any) *BattleRow {
+	r.GzExtend = v
+	r.DirtyStyled("gz_extend", v, []string{"serialize", "gz"})
+	return r
+}
+
+// GetJsonSetting is nil-safe.
+func (r *BattleRow) GetJsonSetting() any {
+	if r == nil {
+		var zero any
+		return zero
+	}
+	return r.JsonSetting
+}
+
+func (r *BattleRow) SetJsonSetting(v any) *BattleRow {
+	r.JsonSetting = v
+	r.DirtyStyled("json_setting", v, []string{"json"})
+	return r
+}
+
+// GetJsonsTags is nil-safe.
+func (r *BattleRow) GetJsonsTags() any {
+	if r == nil {
+		var zero any
+		return zero
+	}
+	return r.JsonsTags
+}
+
+func (r *BattleRow) SetJsonsTags(v any) *BattleRow {
+	r.JsonsTags = v
+	r.DirtyStyled("jsons_tags", v, []string{"jsons"})
+	return r
+}
+
+// GetBase64Extra is nil-safe.
+func (r *BattleRow) GetBase64Extra() any {
+	if r == nil {
+		var zero any
+		return zero
+	}
+	return r.Base64Extra
+}
+
+func (r *BattleRow) SetBase64Extra(v any) *BattleRow {
+	r.Base64Extra = v
+	r.DirtyStyled("base64_extra", v, []string{"serialize", "base64"})
+	return r
+}
+
+// GetSerializeData is nil-safe.
+func (r *BattleRow) GetSerializeData() any {
+	if r == nil {
+		var zero any
+		return zero
+	}
+	return r.SerializeData
+}
+
+func (r *BattleRow) SetSerializeData(v any) *BattleRow {
+	r.SerializeData = v
+	r.DirtyStyled("serialize_data", v, []string{"serialize"})
+	return r
+}
+
 func (r *BattleRow) GetService() *ServiceRow {
 	if r == nil {
 		return nil
@@ -549,6 +645,21 @@ func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 				x := orm.AsString(v)
 				r.AesHexPhone = &x
 			}
+		case "ip":
+			if v != nil {
+				x := orm.AsString(v)
+				r.Ip = &x
+			}
+		case "gz_extend":
+			r.GzExtend = v
+		case "json_setting":
+			r.JsonSetting = v
+		case "jsons_tags":
+			r.JsonsTags = v
+		case "base64_extra":
+			r.Base64Extra = v
+		case "serialize_data":
+			r.SerializeData = v
 		}
 	}
 	for _, ch := range a.Children {
@@ -1827,6 +1938,86 @@ func (q *Battle) AesHexPhoneIsNotNull() *Battle {
 	q.q.W().PredNull("aes_hex_phone", "is_not_null")
 	return q
 }
+func (w *BattleWhere) IpEq(v string) *BattleWhere    { w.w.Pred("ip", "eq", v); return w }
+func (q *Battle) IpEq(v string) *Battle              { q.q.W().Pred("ip", "eq", v); return q }
+func (w *BattleWhere) IpNotEq(v string) *BattleWhere { w.w.Pred("ip", "not_eq", v); return w }
+func (q *Battle) IpNotEq(v string) *Battle           { q.q.W().Pred("ip", "not_eq", v); return q }
+func (w *BattleWhere) IpIn(vs []string) *BattleWhere {
+	w.w.PredList("ip", "in", orm.Anys(vs))
+	return w
+}
+func (q *Battle) IpIn(vs []string) *Battle { q.q.W().PredList("ip", "in", orm.Anys(vs)); return q }
+func (w *BattleWhere) IpNotIn(vs []string) *BattleWhere {
+	w.w.PredList("ip", "not_in", orm.Anys(vs))
+	return w
+}
+func (q *Battle) IpNotIn(vs []string) *Battle {
+	q.q.W().PredList("ip", "not_in", orm.Anys(vs))
+	return q
+}
+func (w *BattleWhere) IpIsNull() *BattleWhere       { w.w.PredNull("ip", "is_null"); return w }
+func (q *Battle) IpIsNull() *Battle                 { q.q.W().PredNull("ip", "is_null"); return q }
+func (w *BattleWhere) IpIsNotNull() *BattleWhere    { w.w.PredNull("ip", "is_not_null"); return w }
+func (q *Battle) IpIsNotNull() *Battle              { q.q.W().PredNull("ip", "is_not_null"); return q }
+func (w *BattleWhere) GzExtendIsNull() *BattleWhere { w.w.PredNull("gz_extend", "is_null"); return w }
+func (q *Battle) GzExtendIsNull() *Battle           { q.q.W().PredNull("gz_extend", "is_null"); return q }
+func (w *BattleWhere) GzExtendIsNotNull() *BattleWhere {
+	w.w.PredNull("gz_extend", "is_not_null")
+	return w
+}
+func (q *Battle) GzExtendIsNotNull() *Battle { q.q.W().PredNull("gz_extend", "is_not_null"); return q }
+func (w *BattleWhere) JsonSettingIsNull() *BattleWhere {
+	w.w.PredNull("json_setting", "is_null")
+	return w
+}
+func (q *Battle) JsonSettingIsNull() *Battle { q.q.W().PredNull("json_setting", "is_null"); return q }
+func (w *BattleWhere) JsonSettingIsNotNull() *BattleWhere {
+	w.w.PredNull("json_setting", "is_not_null")
+	return w
+}
+func (q *Battle) JsonSettingIsNotNull() *Battle {
+	q.q.W().PredNull("json_setting", "is_not_null")
+	return q
+}
+func (w *BattleWhere) JsonsTagsIsNull() *BattleWhere { w.w.PredNull("jsons_tags", "is_null"); return w }
+func (q *Battle) JsonsTagsIsNull() *Battle           { q.q.W().PredNull("jsons_tags", "is_null"); return q }
+func (w *BattleWhere) JsonsTagsIsNotNull() *BattleWhere {
+	w.w.PredNull("jsons_tags", "is_not_null")
+	return w
+}
+func (q *Battle) JsonsTagsIsNotNull() *Battle {
+	q.q.W().PredNull("jsons_tags", "is_not_null")
+	return q
+}
+func (w *BattleWhere) Base64ExtraIsNull() *BattleWhere {
+	w.w.PredNull("base64_extra", "is_null")
+	return w
+}
+func (q *Battle) Base64ExtraIsNull() *Battle { q.q.W().PredNull("base64_extra", "is_null"); return q }
+func (w *BattleWhere) Base64ExtraIsNotNull() *BattleWhere {
+	w.w.PredNull("base64_extra", "is_not_null")
+	return w
+}
+func (q *Battle) Base64ExtraIsNotNull() *Battle {
+	q.q.W().PredNull("base64_extra", "is_not_null")
+	return q
+}
+func (w *BattleWhere) SerializeDataIsNull() *BattleWhere {
+	w.w.PredNull("serialize_data", "is_null")
+	return w
+}
+func (q *Battle) SerializeDataIsNull() *Battle {
+	q.q.W().PredNull("serialize_data", "is_null")
+	return q
+}
+func (w *BattleWhere) SerializeDataIsNotNull() *BattleWhere {
+	w.w.PredNull("serialize_data", "is_not_null")
+	return w
+}
+func (q *Battle) SerializeDataIsNotNull() *Battle {
+	q.q.W().PredNull("serialize_data", "is_not_null")
+	return q
+}
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
 func (q *Battle) Or() *Battle { q.q.Or(); return q }
@@ -2353,6 +2544,110 @@ func (q *Battle) SelectAesHexPhoneAs(name string) *Battle {
 	c.As[name] = "aes_hex_phone"
 	return q
 }
+func (q *Battle) SelectIp() *Battle { c := q.q.Columns(); c.Add = append(c.Add, "ip"); return q }
+func (q *Battle) UnselectIp() *Battle {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "ip")
+	return q
+}
+func (q *Battle) SelectIpAs(name string) *Battle {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "ip"
+	return q
+}
+func (q *Battle) SelectGzExtend() *Battle {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "gz_extend")
+	return q
+}
+func (q *Battle) UnselectGzExtend() *Battle {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "gz_extend")
+	return q
+}
+func (q *Battle) SelectGzExtendAs(name string) *Battle {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "gz_extend"
+	return q
+}
+func (q *Battle) SelectJsonSetting() *Battle {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "json_setting")
+	return q
+}
+func (q *Battle) UnselectJsonSetting() *Battle {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "json_setting")
+	return q
+}
+func (q *Battle) SelectJsonSettingAs(name string) *Battle {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "json_setting"
+	return q
+}
+func (q *Battle) SelectJsonsTags() *Battle {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "jsons_tags")
+	return q
+}
+func (q *Battle) UnselectJsonsTags() *Battle {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "jsons_tags")
+	return q
+}
+func (q *Battle) SelectJsonsTagsAs(name string) *Battle {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "jsons_tags"
+	return q
+}
+func (q *Battle) SelectBase64Extra() *Battle {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "base64_extra")
+	return q
+}
+func (q *Battle) UnselectBase64Extra() *Battle {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "base64_extra")
+	return q
+}
+func (q *Battle) SelectBase64ExtraAs(name string) *Battle {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "base64_extra"
+	return q
+}
+func (q *Battle) SelectSerializeData() *Battle {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "serialize_data")
+	return q
+}
+func (q *Battle) UnselectSerializeData() *Battle {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "serialize_data")
+	return q
+}
+func (q *Battle) SelectSerializeDataAs(name string) *Battle {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "serialize_data"
+	return q
+}
 
 // Order, group, limit.
 func (q *Battle) OrderBySeqAsc() *Battle          { q.q.Order("seq", false); return q }
@@ -2548,7 +2843,46 @@ func (q *Battle) GroupByAesHexPhone() *Battle {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "aes_hex_phone")
 	return q
 }
-func (q *Battle) KeyByAesHexPhone() *Battle                  { q.q.Node.KeyBy = "aes_hex_phone"; return q }
+func (q *Battle) KeyByAesHexPhone() *Battle    { q.q.Node.KeyBy = "aes_hex_phone"; return q }
+func (q *Battle) OrderByIpAsc() *Battle        { q.q.Order("ip", false); return q }
+func (q *Battle) OrderByIpDesc() *Battle       { q.q.Order("ip", true); return q }
+func (q *Battle) GroupByIp() *Battle           { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "ip"); return q }
+func (q *Battle) KeyByIp() *Battle             { q.q.Node.KeyBy = "ip"; return q }
+func (q *Battle) OrderByGzExtendAsc() *Battle  { q.q.Order("gz_extend", false); return q }
+func (q *Battle) OrderByGzExtendDesc() *Battle { q.q.Order("gz_extend", true); return q }
+func (q *Battle) GroupByGzExtend() *Battle {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "gz_extend")
+	return q
+}
+func (q *Battle) KeyByGzExtend() *Battle          { q.q.Node.KeyBy = "gz_extend"; return q }
+func (q *Battle) OrderByJsonSettingAsc() *Battle  { q.q.Order("json_setting", false); return q }
+func (q *Battle) OrderByJsonSettingDesc() *Battle { q.q.Order("json_setting", true); return q }
+func (q *Battle) GroupByJsonSetting() *Battle {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "json_setting")
+	return q
+}
+func (q *Battle) KeyByJsonSetting() *Battle     { q.q.Node.KeyBy = "json_setting"; return q }
+func (q *Battle) OrderByJsonsTagsAsc() *Battle  { q.q.Order("jsons_tags", false); return q }
+func (q *Battle) OrderByJsonsTagsDesc() *Battle { q.q.Order("jsons_tags", true); return q }
+func (q *Battle) GroupByJsonsTags() *Battle {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "jsons_tags")
+	return q
+}
+func (q *Battle) KeyByJsonsTags() *Battle         { q.q.Node.KeyBy = "jsons_tags"; return q }
+func (q *Battle) OrderByBase64ExtraAsc() *Battle  { q.q.Order("base64_extra", false); return q }
+func (q *Battle) OrderByBase64ExtraDesc() *Battle { q.q.Order("base64_extra", true); return q }
+func (q *Battle) GroupByBase64Extra() *Battle {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "base64_extra")
+	return q
+}
+func (q *Battle) KeyByBase64Extra() *Battle         { q.q.Node.KeyBy = "base64_extra"; return q }
+func (q *Battle) OrderBySerializeDataAsc() *Battle  { q.q.Order("serialize_data", false); return q }
+func (q *Battle) OrderBySerializeDataDesc() *Battle { q.q.Order("serialize_data", true); return q }
+func (q *Battle) GroupBySerializeData() *Battle {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "serialize_data")
+	return q
+}
+func (q *Battle) KeyBySerializeData() *Battle                { q.q.Node.KeyBy = "serialize_data"; return q }
 func (q *Battle) OrderByExpr(frag string, desc bool) *Battle { q.q.OrderExpr(frag, desc); return q }
 func (q *Battle) Limit(offset, count int) *Battle {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
@@ -2702,6 +3036,52 @@ func (q *Battle) SetAesHexPhone(v string) *Battle { q.q.Set("aes_hex_phone", v);
 func (q *Battle) SetAesHexPhoneNull() *Battle     { q.q.SetNull("aes_hex_phone"); return q }
 func (q *Battle) SetAesHexPhoneExpr(frag string, binds ...any) *Battle {
 	q.q.SetExpr("aes_hex_phone", frag, binds...)
+	return q
+}
+func (q *Battle) SetIp(v string) *Battle { q.q.Set("ip", v); return q }
+func (q *Battle) SetIpNull() *Battle     { q.q.SetNull("ip"); return q }
+func (q *Battle) SetIpExpr(frag string, binds ...any) *Battle {
+	q.q.SetExpr("ip", frag, binds...)
+	return q
+}
+func (q *Battle) SetGzExtend(v any) *Battle {
+	q.q.SetStyled("gz_extend", v, []string{"serialize", "gz"})
+	return q
+}
+func (q *Battle) SetGzExtendExpr(frag string, binds ...any) *Battle {
+	q.q.SetExpr("gz_extend", frag, binds...)
+	return q
+}
+func (q *Battle) SetJsonSetting(v any) *Battle {
+	q.q.SetStyled("json_setting", v, []string{"json"})
+	return q
+}
+func (q *Battle) SetJsonSettingExpr(frag string, binds ...any) *Battle {
+	q.q.SetExpr("json_setting", frag, binds...)
+	return q
+}
+func (q *Battle) SetJsonsTags(v any) *Battle {
+	q.q.SetStyled("jsons_tags", v, []string{"jsons"})
+	return q
+}
+func (q *Battle) SetJsonsTagsExpr(frag string, binds ...any) *Battle {
+	q.q.SetExpr("jsons_tags", frag, binds...)
+	return q
+}
+func (q *Battle) SetBase64Extra(v any) *Battle {
+	q.q.SetStyled("base64_extra", v, []string{"serialize", "base64"})
+	return q
+}
+func (q *Battle) SetBase64ExtraExpr(frag string, binds ...any) *Battle {
+	q.q.SetExpr("base64_extra", frag, binds...)
+	return q
+}
+func (q *Battle) SetSerializeData(v any) *Battle {
+	q.q.SetStyled("serialize_data", v, []string{"serialize"})
+	return q
+}
+func (q *Battle) SetSerializeDataExpr(frag string, binds ...any) *Battle {
+	q.q.SetExpr("serialize_data", frag, binds...)
 	return q
 }
 func (q *Battle) PlusSeq(v int64) *Battle  { q.q.Plus("seq", v); return q }

@@ -18,7 +18,7 @@ final class BattleRow extends Row
     public static function pk(): string { return 'seq'; }
     public static function columns(): array
     {
-        return ['seq' => 'i64', 'name' => 'string', 'description' => 'text', 'created_ts' => 'datetime', 'updated_ts' => 'datetime', 'is_close' => 'bool', 'is_display' => 'bool', 'display_start_dt' => 'datetime', 'display_end_dt' => 'datetime', 'is_allday' => 'bool', 'target_team_player_count' => 'i32', 'success_count' => 'i32', 'player_count' => 'i32', 'read_count' => 'i32', 'cover_url' => 'string', 'user_seq' => 'i64', 'service_seq' => 'i64', 'service_module_seq' => 'i64', 'service_member_seq' => 'i64', 'start_dt' => 'datetime', 'end_dt' => 'datetime', 'uuid' => 'string', 'is_single_play' => 'bool', 'like_count' => 'i32', 'aes_hex_email' => 'string', 'aes_hex_phone' => 'string'];
+        return ['seq' => 'i64', 'name' => 'string', 'description' => 'text', 'created_ts' => 'datetime', 'updated_ts' => 'datetime', 'is_close' => 'bool', 'is_display' => 'bool', 'display_start_dt' => 'datetime', 'display_end_dt' => 'datetime', 'is_allday' => 'bool', 'target_team_player_count' => 'i32', 'success_count' => 'i32', 'player_count' => 'i32', 'read_count' => 'i32', 'cover_url' => 'string', 'user_seq' => 'i64', 'service_seq' => 'i64', 'service_module_seq' => 'i64', 'service_member_seq' => 'i64', 'start_dt' => 'datetime', 'end_dt' => 'datetime', 'uuid' => 'string', 'is_single_play' => 'bool', 'like_count' => 'i32', 'aes_hex_email' => 'string', 'aes_hex_phone' => 'string', 'ip' => 'inet', 'gz_extend' => 'styled', 'json_setting' => 'styled', 'jsons_tags' => 'styled', 'base64_extra' => 'styled', 'serialize_data' => 'styled'];
     }
 
     public function getSeq(mixed $default = null): int
@@ -201,6 +201,48 @@ final class BattleRow extends Row
         return $v === null ? $default : $v;
     }
     public function setAesHexPhone(?string $v): static { return $this->setCol('aes_hex_phone', $v); }
+
+    public function getIp(mixed $default = null): ?string
+    {
+        $v = $this->col('ip');
+        return $v === null ? $default : $v;
+    }
+    public function setIp(?string $v): static { return $this->setCol('ip', $v); }
+
+    public function getGzExtend(mixed $default = null): mixed
+    {
+        $v = $this->col('gz_extend');
+        return $v === null ? $default : $v;
+    }
+    public function setGzExtend(mixed $v): static { return $this->setStyled('gz_extend', $v, ['serialize', 'gz']); }
+
+    public function getJsonSetting(mixed $default = null): mixed
+    {
+        $v = $this->col('json_setting');
+        return $v === null ? $default : $v;
+    }
+    public function setJsonSetting(mixed $v): static { return $this->setStyled('json_setting', $v, ['json']); }
+
+    public function getJsonsTags(mixed $default = null): mixed
+    {
+        $v = $this->col('jsons_tags');
+        return $v === null ? $default : $v;
+    }
+    public function setJsonsTags(mixed $v): static { return $this->setStyled('jsons_tags', $v, ['jsons']); }
+
+    public function getBase64Extra(mixed $default = null): mixed
+    {
+        $v = $this->col('base64_extra');
+        return $v === null ? $default : $v;
+    }
+    public function setBase64Extra(mixed $v): static { return $this->setStyled('base64_extra', $v, ['serialize', 'base64']); }
+
+    public function getSerializeData(mixed $default = null): mixed
+    {
+        $v = $this->col('serialize_data');
+        return $v === null ? $default : $v;
+    }
+    public function setSerializeData(mixed $v): static { return $this->setStyled('serialize_data', $v, ['serialize']); }
 
     public function getService(): ?ServiceRow { return $this->relation('service'); }
     public function getServiceMember(): ?ServiceMemberRow { return $this->relation('service_member'); }
@@ -429,6 +471,22 @@ final class BattleWhere
     public function aesHexPhoneNotIn(array $vs): static { $this->w->predList('aes_hex_phone', 'not_in', array_values($vs)); return $this; }
     public function aesHexPhoneIsNull(): static { $this->w->predNull('aes_hex_phone', 'is_null'); return $this; }
     public function aesHexPhoneIsNotNull(): static { $this->w->predNull('aes_hex_phone', 'is_not_null'); return $this; }
+    public function ipEq(string $v): static { $this->w->pred('ip', 'eq', $v); return $this; }
+    public function ipNotEq(string $v): static { $this->w->pred('ip', 'not_eq', $v); return $this; }
+    public function ipIn(array $vs): static { $this->w->predList('ip', 'in', array_values($vs)); return $this; }
+    public function ipNotIn(array $vs): static { $this->w->predList('ip', 'not_in', array_values($vs)); return $this; }
+    public function ipIsNull(): static { $this->w->predNull('ip', 'is_null'); return $this; }
+    public function ipIsNotNull(): static { $this->w->predNull('ip', 'is_not_null'); return $this; }
+    public function gzExtendIsNull(): static { $this->w->predNull('gz_extend', 'is_null'); return $this; }
+    public function gzExtendIsNotNull(): static { $this->w->predNull('gz_extend', 'is_not_null'); return $this; }
+    public function jsonSettingIsNull(): static { $this->w->predNull('json_setting', 'is_null'); return $this; }
+    public function jsonSettingIsNotNull(): static { $this->w->predNull('json_setting', 'is_not_null'); return $this; }
+    public function jsonsTagsIsNull(): static { $this->w->predNull('jsons_tags', 'is_null'); return $this; }
+    public function jsonsTagsIsNotNull(): static { $this->w->predNull('jsons_tags', 'is_not_null'); return $this; }
+    public function base64ExtraIsNull(): static { $this->w->predNull('base64_extra', 'is_null'); return $this; }
+    public function base64ExtraIsNotNull(): static { $this->w->predNull('base64_extra', 'is_not_null'); return $this; }
+    public function serializeDataIsNull(): static { $this->w->predNull('serialize_data', 'is_null'); return $this; }
+    public function serializeDataIsNotNull(): static { $this->w->predNull('serialize_data', 'is_not_null'); return $this; }
 }
 
 /** Query over battle: new Battle → chain → terminal($db). */
@@ -653,6 +711,22 @@ final class Battle extends Q
     public function aesHexPhoneNotIn(array $vs): static { $this->w()->predList('aes_hex_phone', 'not_in', array_values($vs)); return $this; }
     public function aesHexPhoneIsNull(): static { $this->w()->predNull('aes_hex_phone', 'is_null'); return $this; }
     public function aesHexPhoneIsNotNull(): static { $this->w()->predNull('aes_hex_phone', 'is_not_null'); return $this; }
+    public function ipEq(string $v): static { $this->w()->pred('ip', 'eq', $v); return $this; }
+    public function ipNotEq(string $v): static { $this->w()->pred('ip', 'not_eq', $v); return $this; }
+    public function ipIn(array $vs): static { $this->w()->predList('ip', 'in', array_values($vs)); return $this; }
+    public function ipNotIn(array $vs): static { $this->w()->predList('ip', 'not_in', array_values($vs)); return $this; }
+    public function ipIsNull(): static { $this->w()->predNull('ip', 'is_null'); return $this; }
+    public function ipIsNotNull(): static { $this->w()->predNull('ip', 'is_not_null'); return $this; }
+    public function gzExtendIsNull(): static { $this->w()->predNull('gz_extend', 'is_null'); return $this; }
+    public function gzExtendIsNotNull(): static { $this->w()->predNull('gz_extend', 'is_not_null'); return $this; }
+    public function jsonSettingIsNull(): static { $this->w()->predNull('json_setting', 'is_null'); return $this; }
+    public function jsonSettingIsNotNull(): static { $this->w()->predNull('json_setting', 'is_not_null'); return $this; }
+    public function jsonsTagsIsNull(): static { $this->w()->predNull('jsons_tags', 'is_null'); return $this; }
+    public function jsonsTagsIsNotNull(): static { $this->w()->predNull('jsons_tags', 'is_not_null'); return $this; }
+    public function base64ExtraIsNull(): static { $this->w()->predNull('base64_extra', 'is_null'); return $this; }
+    public function base64ExtraIsNotNull(): static { $this->w()->predNull('base64_extra', 'is_not_null'); return $this; }
+    public function serializeDataIsNull(): static { $this->w()->predNull('serialize_data', 'is_null'); return $this; }
+    public function serializeDataIsNotNull(): static { $this->w()->predNull('serialize_data', 'is_not_null'); return $this; }
 
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new BattleWhere($this->onW())); return $this; }
@@ -753,6 +827,24 @@ final class Battle extends Q
     public function selectAesHexPhone(): static { $c = &$this->columns(); $c['add'][] = 'aes_hex_phone'; return $this; }
     public function unselectAesHexPhone(): static { $c = &$this->columns(); $c['remove'][] = 'aes_hex_phone'; return $this; }
     public function selectAesHexPhoneAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'aes_hex_phone'; return $this; }
+    public function selectIp(): static { $c = &$this->columns(); $c['add'][] = 'ip'; return $this; }
+    public function unselectIp(): static { $c = &$this->columns(); $c['remove'][] = 'ip'; return $this; }
+    public function selectIpAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'ip'; return $this; }
+    public function selectGzExtend(): static { $c = &$this->columns(); $c['add'][] = 'gz_extend'; return $this; }
+    public function unselectGzExtend(): static { $c = &$this->columns(); $c['remove'][] = 'gz_extend'; return $this; }
+    public function selectGzExtendAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'gz_extend'; return $this; }
+    public function selectJsonSetting(): static { $c = &$this->columns(); $c['add'][] = 'json_setting'; return $this; }
+    public function unselectJsonSetting(): static { $c = &$this->columns(); $c['remove'][] = 'json_setting'; return $this; }
+    public function selectJsonSettingAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'json_setting'; return $this; }
+    public function selectJsonsTags(): static { $c = &$this->columns(); $c['add'][] = 'jsons_tags'; return $this; }
+    public function unselectJsonsTags(): static { $c = &$this->columns(); $c['remove'][] = 'jsons_tags'; return $this; }
+    public function selectJsonsTagsAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'jsons_tags'; return $this; }
+    public function selectBase64Extra(): static { $c = &$this->columns(); $c['add'][] = 'base64_extra'; return $this; }
+    public function unselectBase64Extra(): static { $c = &$this->columns(); $c['remove'][] = 'base64_extra'; return $this; }
+    public function selectBase64ExtraAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'base64_extra'; return $this; }
+    public function selectSerializeData(): static { $c = &$this->columns(); $c['add'][] = 'serialize_data'; return $this; }
+    public function unselectSerializeData(): static { $c = &$this->columns(); $c['remove'][] = 'serialize_data'; return $this; }
+    public function selectSerializeDataAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'serialize_data'; return $this; }
 
     // ---- order, group, limit ----
     public function orderBySeqAsc(): static { $this->order('seq', false); return $this; }
@@ -859,6 +951,30 @@ final class Battle extends Q
     public function orderByAesHexPhoneDesc(): static { $this->order('aes_hex_phone', true); return $this; }
     public function groupByAesHexPhone(): static { $this->node['group_by'][] = 'aes_hex_phone'; return $this; }
     public function keyByAesHexPhone(): static { $this->node['key_by'] = 'aes_hex_phone'; return $this; }
+    public function orderByIpAsc(): static { $this->order('ip', false); return $this; }
+    public function orderByIpDesc(): static { $this->order('ip', true); return $this; }
+    public function groupByIp(): static { $this->node['group_by'][] = 'ip'; return $this; }
+    public function keyByIp(): static { $this->node['key_by'] = 'ip'; return $this; }
+    public function orderByGzExtendAsc(): static { $this->order('gz_extend', false); return $this; }
+    public function orderByGzExtendDesc(): static { $this->order('gz_extend', true); return $this; }
+    public function groupByGzExtend(): static { $this->node['group_by'][] = 'gz_extend'; return $this; }
+    public function keyByGzExtend(): static { $this->node['key_by'] = 'gz_extend'; return $this; }
+    public function orderByJsonSettingAsc(): static { $this->order('json_setting', false); return $this; }
+    public function orderByJsonSettingDesc(): static { $this->order('json_setting', true); return $this; }
+    public function groupByJsonSetting(): static { $this->node['group_by'][] = 'json_setting'; return $this; }
+    public function keyByJsonSetting(): static { $this->node['key_by'] = 'json_setting'; return $this; }
+    public function orderByJsonsTagsAsc(): static { $this->order('jsons_tags', false); return $this; }
+    public function orderByJsonsTagsDesc(): static { $this->order('jsons_tags', true); return $this; }
+    public function groupByJsonsTags(): static { $this->node['group_by'][] = 'jsons_tags'; return $this; }
+    public function keyByJsonsTags(): static { $this->node['key_by'] = 'jsons_tags'; return $this; }
+    public function orderByBase64ExtraAsc(): static { $this->order('base64_extra', false); return $this; }
+    public function orderByBase64ExtraDesc(): static { $this->order('base64_extra', true); return $this; }
+    public function groupByBase64Extra(): static { $this->node['group_by'][] = 'base64_extra'; return $this; }
+    public function keyByBase64Extra(): static { $this->node['key_by'] = 'base64_extra'; return $this; }
+    public function orderBySerializeDataAsc(): static { $this->order('serialize_data', false); return $this; }
+    public function orderBySerializeDataDesc(): static { $this->order('serialize_data', true); return $this; }
+    public function groupBySerializeData(): static { $this->node['group_by'][] = 'serialize_data'; return $this; }
+    public function keyBySerializeData(): static { $this->node['key_by'] = 'serialize_data'; return $this; }
     public function orderByExpr(string $frag, bool $desc = false): static { $this->orderExpr($frag, $desc); return $this; }
     public function limit(int $offset, int $count): static { $this->node['limit'] = ['offset' => $offset, 'count' => $count]; return $this; }
     public function distinct(): static { $this->node['distinct'] = true; return $this; }
@@ -926,6 +1042,18 @@ final class Battle extends Q
     public function setAesHexEmailExpr(string $frag, array $binds = []): static { $this->setExpr('aes_hex_email', $frag, $binds); return $this; }
     public function setAesHexPhone(?string $v): static { $this->set('aes_hex_phone', $v); return $this; }
     public function setAesHexPhoneExpr(string $frag, array $binds = []): static { $this->setExpr('aes_hex_phone', $frag, $binds); return $this; }
+    public function setIp(?string $v): static { $this->set('ip', $v); return $this; }
+    public function setIpExpr(string $frag, array $binds = []): static { $this->setExpr('ip', $frag, $binds); return $this; }
+    public function setGzExtend(mixed $v): static { $this->setStyled('gz_extend', $v, ['serialize', 'gz']); return $this; }
+    public function setGzExtendExpr(string $frag, array $binds = []): static { $this->setExpr('gz_extend', $frag, $binds); return $this; }
+    public function setJsonSetting(mixed $v): static { $this->setStyled('json_setting', $v, ['json']); return $this; }
+    public function setJsonSettingExpr(string $frag, array $binds = []): static { $this->setExpr('json_setting', $frag, $binds); return $this; }
+    public function setJsonsTags(mixed $v): static { $this->setStyled('jsons_tags', $v, ['jsons']); return $this; }
+    public function setJsonsTagsExpr(string $frag, array $binds = []): static { $this->setExpr('jsons_tags', $frag, $binds); return $this; }
+    public function setBase64Extra(mixed $v): static { $this->setStyled('base64_extra', $v, ['serialize', 'base64']); return $this; }
+    public function setBase64ExtraExpr(string $frag, array $binds = []): static { $this->setExpr('base64_extra', $frag, $binds); return $this; }
+    public function setSerializeData(mixed $v): static { $this->setStyled('serialize_data', $v, ['serialize']); return $this; }
+    public function setSerializeDataExpr(string $frag, array $binds = []): static { $this->setExpr('serialize_data', $frag, $binds); return $this; }
     public function plusSeq(int $v): static { $this->plus('seq', $v); return $this; }
     public function minusSeq(int $v): static { $this->minus('seq', $v); return $this; }
     public function plusTargetTeamPlayerCount(int $v): static { $this->plus('target_team_player_count', $v); return $this; }
