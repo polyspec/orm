@@ -186,7 +186,7 @@ async fn main() {
             let before=r.has("name");
             r.set_name("interface-first").set_like_count(5).set_name("interface-final");
             r.update().await?;let n=log.lock().unwrap().len();r.update().await?;
-            *observed.lock().unwrap()=Some(json!({"before":before,"assigned":r.has("name"),"value":r.name,"export":r.to_map(),"noop_statements":log.lock().unwrap().len()-n,"relation_loaded":r.rel_loaded("user")}));
+            *observed.lock().unwrap()=Some(json!({"before":before,"assigned":r.has("name"),"value":r.name,"export":r.to_map()?,"noop_statements":log.lock().unwrap().len()-n,"relation_loaded":r.rel_loaded("user")}));
             Err::<(),_>(orm::Error::Config("interface rollback".into()))
         }}).await.unwrap_err();
         if err.to_string()!="CONFIG: interface rollback"{return Err(err)}
@@ -222,6 +222,24 @@ async fn main() {
         }}).await.unwrap_err();
         if err.to_string()!="CONFIG: interface rollback"{return Err(err)}
         let value=observed.lock().unwrap().take().unwrap();Ok(value)
+    }.await);
+    run!("interface_identity", async {
+        let observed=Arc::new(Mutex::new(None));
+        let err=db.transaction(|tx|{let observed=observed.clone();async move {
+            let mut r=Battle::new().bind(&tx).get_by_seq(6).await?.unwrap();r.seq=5;
+            r.set_name("identity-original");r.update().await?;
+            let stored=Battle::new().bind(&tx).get_by_seq(6).await?.unwrap();r.delete().await?;
+            let original=Battle::new().bind(&tx).get_count_by_seq(6).await?;let other=Battle::new().bind(&tx).get_count_by_seq(5).await?;
+            *observed.lock().unwrap()=Some(json!({"updated":stored.name,"original_left":original,"other_left":other}));
+            Err::<(),_>(orm::Error::Config("interface rollback".into()))
+        }}).await.unwrap_err();
+        if err.to_string()!="CONFIG: interface rollback"{return Err(err)}
+        let value=observed.lock().unwrap().take().unwrap();Ok(value)
+    }.await);
+    run!("interface_nested_keys", async {
+        let mut r=Service::new().bind(&db).relations_members(ServiceMember::new().order_by_seq_asc().limit_per_parent(1)).get_by_seq(7).await?.unwrap();
+        let members=r.members_mut();let first=members.first().unwrap().clone();members.put(orm::Key::I(1),first.clone());members.put(orm::Key::S("1".into()),first);
+        r.to_map()
     }.await);
     run!("unbound_terminal", async { Ok(json!(Battle::new().get_count_by_service_seq(7).await?)) }.await);
     run!("bound_count_finder", async {
@@ -381,21 +399,21 @@ async fn main() {
                 .relations_members(ServiceMember::new().order_by_seq_asc().limit_per_parent(2)
                     .relation_user(User::new()
                         .relations_battles(Battle::new().select_none().order_by_seq_asc().limit_per_parent(1)))))
-            .bind(&db).get().await?.unwrap().to_map())
+            .bind(&db).get().await?.unwrap().to_map()?)
     }.await);
-    run!("relation_one_ordered", async { Ok(Battle::new().select_none().seq(7).relation_service(Service::new().order_by_seq_desc()).bind(&db).get().await?.unwrap().to_map()) }.await);
+    run!("relation_one_ordered", async { Ok(Battle::new().select_none().seq(7).relation_service(Service::new().order_by_seq_desc()).bind(&db).get().await?.unwrap().to_map()?) }.await);
     run!("relation_if_parent", async {
         let c = Battle::new().select_none().seq_in(vec![7, 8, 14]).order_by_seq_asc().relation_user(User::new().if_parent_is_close_eq(true)).bind(&db).gets().await?;
-        Ok(Value::Array(c.iter().map(|(_, b)| b.to_map()).collect()))
+        Ok(Value::Array(c.iter().map(|(_, b)| b.to_map()).collect::<orm::Result<Vec<_>>>()?))
     }.await);
     run!("relation_empty_parents", async { Ok(keys(&Battle::new().seq(0).relation_user(User::new()).bind(&db).gets().await?)) }.await);
-    run!("relation_off_join", async { Ok(Battle::new().select_none().seq(8).join_service(Service::new().relations_modules(ServiceModule::new())).bind(&db).get().await?.unwrap().to_map()) }.await);
+    run!("relation_off_join", async { Ok(Battle::new().select_none().seq(8).join_service(Service::new().relations_modules(ServiceModule::new())).bind(&db).get().await?.unwrap().to_map()?) }.await);
     run!("paginate_relations", async {
         let p = Battle::new().select_none().service_seq(7).order_by_seq_asc().relation_user(User::new()).bind(&db).paginate(1, 3).await?;
-        Ok(json!({"total": p.total, "items": p.items.iter().map(|(_, b)| b.to_map()).collect::<Vec<_>>()}))
+        Ok(json!({"total": p.total, "items": p.items.iter().map(|(_, b)| b.to_map()).collect::<orm::Result<Vec<_>>>()?}))
     }.await);
-    run!("key_by_column", async { Ok(Service::new().seq(7).relations_members(ServiceMember::new().order_by_seq_asc().limit_per_parent(3).key_by_user_seq()).bind(&db).get().await?.unwrap().to_map()) }.await);
-    run!("key_by_unselected", async { Ok(Service::new().seq(7).relations_modules(ServiceModule::new().select_none().key_by_name()).bind(&db).get().await?.unwrap().to_map()) }.await);
+    run!("key_by_column", async { Ok(Service::new().seq(7).relations_members(ServiceMember::new().order_by_seq_asc().limit_per_parent(3).key_by_user_seq()).bind(&db).get().await?.unwrap().to_map()?) }.await);
+    run!("key_by_unselected", async { Ok(Service::new().seq(7).relations_modules(ServiceModule::new().select_none().key_by_name()).bind(&db).get().await?.unwrap().to_map()?) }.await);
     run!("types_roundtrip", async {
         let dt = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_micro_opt(12, 34, 56, 123456).unwrap();
         let created = db.transaction(|tx| async move {
@@ -420,11 +438,11 @@ async fn main() {
             .relation_user(User::new().flatten())
             .key_by_fn(|m| Key::S(format!("u{}", m.user_seq)))
             .bind(&db).gets().await?;
-        Ok(Value::Array(c.iter().map(|(k, m)| json!([k.to_string(), m.to_map()])).collect()))
+        Ok(Value::Array(c.iter().map(|(k, m)| Ok(json!([k.to_string(), m.to_map()?]))).collect::<orm::Result<Vec<_>>>()?))
     }.await);
     run!("drop_child_key_to_array", async {
         let u = User::new().seq(5).relations_battles(Battle::new().select_none().order_by_seq_asc().limit_per_parent(2).drop_child_key()).bind(&db).get().await?.unwrap();
-        Ok(u.to_map())
+        u.to_map()
     }.await);
     let fks = |q: Battle| q.set_user_seq(1).set_service_seq(999).set_service_module_seq(1).set_service_member_seq(1).set_start_dt(start).set_end_dt(end);
     run!("upsert", async {
@@ -535,7 +553,7 @@ async fn main() {
             .join_service_member(ServiceMember::new().select_none()
                 .join_user(User::new().select_none())
                 .join_service(Service::new().select_none()))
-            .bind(&db).get().await?.unwrap().to_map())
+            .bind(&db).get().await?.unwrap().to_map()?)
     }.await);
     run!("codec_roundtrip", async {
         let value = json!({"a": 1, "b": [1, 2, {"c": "한글/slash"}], "d": null, "e": true, "f": 1.5});

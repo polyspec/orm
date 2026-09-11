@@ -186,6 +186,24 @@ $run('interface_original_version', function () use ($db,$remask) {
     });}catch(\Throwable $e){if($e!==$rollback){throw $e;}}
     return $result;
 });
+$run('interface_identity', function () use ($db) {
+    $result=null;$rollback=new \RuntimeException('interface rollback');
+    try {$db->transaction(function(Tx $tx)use(&$result,$rollback){
+        $r=(new Battle)->bind($tx)->getBySeq(6);
+        // Mutate native value storage without invoking a setter, as public fields do in Go/Rust.
+        $values=new \ReflectionProperty(\Orm\Row::class,'vals');$index=new \ReflectionProperty(\Orm\Row::class,'idx');
+        $v=$values->getValue($r);$v[$index->getValue($r)['seq']]=5;$values->setValue($r,$v);
+        $r->setName('identity-original');$r->update();
+        $stored=(new Battle)->bind($tx)->getBySeq(6);$r->delete();
+        $original=(new Battle)->bind($tx)->getCountBySeq(6);$other=(new Battle)->bind($tx)->getCountBySeq(5);
+        $result=['updated'=>$stored->getName(),'original_left'=>$original,'other_left'=>$other];throw $rollback;
+    });}catch(\Throwable $e){if($e!==$rollback){throw $e;}}return $result;
+});
+$run('interface_nested_keys', function () use ($db) {
+    $r=(new Service)->bind($db)->relationsMembers((new ServiceMember)->orderBySeqAsc()->limitPerParent(1))->getBySeq(7);
+    $members=$r->getMembers();$first=$members->first();$members->put(1,$first);$members->put('1',$first);
+    return $r->toArray();
+});
 $run('unbound_terminal', fn() => (new Battle)->getCountByServiceSeq(7));
 $run('bound_count_finder', fn() => (new Battle)->bind($db)
     ->joinService((new Service)->where(fn(ServiceWhere $w) => $w->name('service-7')))

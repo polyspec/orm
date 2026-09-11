@@ -926,12 +926,14 @@
       "for": "entity",
       "inputs": [],
       "output": "RowMap",
-      "errors": [],
+      "errors": [
+        "IR_INVALID"
+      ],
       "state": "Preserve row identity and binding; obey row state transition contract",
       "native": {
         "go": {
           "symbol": "clients/go/gen/{entity}.go::{Entity}Row.ToArray",
-          "signature": "receiver=*{Entity}Row func() map[string]any"
+          "signature": "receiver=*{Entity}Row func() (map[string]any, error)"
         },
         "php": {
           "symbol": "clients/php/src/Row.php::Orm\\Row::toArray",
@@ -939,7 +941,7 @@
         },
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::to_map",
-          "signature": "pub fn to_map(&self) -> serde_json::Value"
+          "signature": "pub fn to_map(&self) -> Result<serde_json::Value>"
         }
       }
     }
@@ -1296,6 +1298,35 @@
         "pending": "not-written"
       },
       "statements": 4
+    },
+    {
+      "id": "interface_identity",
+      "steps": [
+        "load row identity",
+        "mutate current PK storage without dirty tracking",
+        "update by loaded identity",
+        "read original row",
+        "delete by loaded identity",
+        "count original and other identities"
+      ],
+      "expected": {
+        "updated": "identity-original",
+        "original_left": 0,
+        "other_left": 1
+      },
+      "statements": 6
+    },
+    {
+      "id": "interface_nested_keys",
+      "steps": [
+        "load parent and many relation",
+        "insert Integer(1) and String(1)",
+        "export parent rejects colliding object keys"
+      ],
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "statements": 2
     }
   ],
   "inventory_policy": {
@@ -2314,6 +2345,298 @@
         }
       },
       "adapter": ""
+    },
+    {
+      "id": "Row.identity",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::Row#field.pkVal",
+          "signature": "any"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Row::$identity",
+          "signature": "protected mixed"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.original_key",
+          "signature": "Option<Param>"
+        }
+      }
+    }
+  ],
+  "owners": [
+    {
+      "id": "Query",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query",
+          "fields": [
+            "binding",
+            "q",
+            "keyFn"
+          ]
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}",
+          "fields": [
+            "cAlias",
+            "cDropKey",
+            "cKeyName",
+            "cMatch"
+          ],
+          "adapter": "Optional dynamic syntax parsing metadata; lowers to the common Request."
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}",
+          "fields": [
+            "binding",
+            "q",
+            "key_fn"
+          ]
+        }
+      }
+    },
+    {
+      "id": "QueryCore",
+      "for": "once",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::Q",
+          "fields": [
+            "Req",
+            "Node",
+            "pendingOr"
+          ]
+        },
+        "php": {
+          "symbol": "clients/php/src/Query.php::Orm\\Q",
+          "fields": [
+            "binding",
+            "req",
+            "node",
+            "pendingOr",
+            "rootW",
+            "wstack",
+            "unmatchedClose",
+            "keyFn"
+          ]
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/builder.rs::Q",
+          "fields": [
+            "req",
+            "pending_or"
+          ]
+        }
+      }
+    },
+    {
+      "id": "Where",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Where",
+          "fields": [
+            "w"
+          ]
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}Where",
+          "fields": [
+            "w",
+            "cstack"
+          ],
+          "adapter": "Dynamic parenthesis tokens keep a parser stack; canonical callbacks edit the same W."
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Where",
+          "fields": [
+            "w"
+          ]
+        }
+      }
+    },
+    {
+      "id": "WhereCore",
+      "for": "once",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::W",
+          "fields": [
+            "Req",
+            "G",
+            "pendingOr"
+          ]
+        },
+        "php": {
+          "symbol": "clients/php/src/Query.php::Orm\\W",
+          "fields": [
+            "pendingOr",
+            "req",
+            "g"
+          ]
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/builder.rs::W",
+          "fields": [
+            "params",
+            "g",
+            "pending_or"
+          ]
+        }
+      }
+    },
+    {
+      "id": "Request",
+      "for": "once",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/orm.go::Req",
+          "fields": [
+            "IR",
+            "Params",
+            "Err"
+          ]
+        },
+        "php": {
+          "symbol": "clients/php/src/Query.php::Orm\\Req",
+          "fields": [
+            "ir",
+            "params",
+            "error",
+            "sig"
+          ]
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/builder.rs::Req",
+          "fields": [
+            "ir",
+            "params",
+            "err"
+          ]
+        }
+      }
+    },
+    {
+      "id": "Binding",
+      "for": "once",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/binding.go::Binding",
+          "fields": [
+            "ctx",
+            "ex"
+          ]
+        },
+        "php": {
+          "symbol": "clients/php/src/Binding.php::Orm\\Binding",
+          "fields": [
+            "executor"
+          ]
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/binding.rs::Binding",
+          "fields": [
+            "0"
+          ]
+        }
+      }
+    },
+    {
+      "id": "Row",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Row",
+          "fields": [
+            "Row",
+            "{columns}",
+            "{relations}"
+          ]
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}Row",
+          "fields": []
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row",
+          "fields": [
+            "binding",
+            "{columns}",
+            "{relations}",
+            "assigned",
+            "original_version",
+            "original_key",
+            "dirty",
+            "enc_err",
+            "extra",
+            "asm"
+          ]
+        }
+      }
+    },
+    {
+      "id": "Collection",
+      "for": "once",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/orm.go::Collection",
+          "fields": [
+            "keys",
+            "items"
+          ]
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Collection",
+          "fields": [
+            "items"
+          ]
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/collection.rs::Collection",
+          "fields": [
+            "items"
+          ]
+        }
+      }
+    },
+    {
+      "id": "Page",
+      "for": "once",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/orm.go::Page",
+          "fields": [
+            "Items",
+            "Total",
+            "Pages",
+            "Current",
+            "Per"
+          ]
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Page",
+          "fields": [
+            "items",
+            "total",
+            "pages",
+            "current",
+            "per"
+          ]
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/collection.rs::Page",
+          "fields": [
+            "items",
+            "total",
+            "pages",
+            "current",
+            "per"
+          ]
+        }
+      }
     }
   ]
 }

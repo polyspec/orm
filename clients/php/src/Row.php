@@ -31,6 +31,7 @@ abstract class Row implements \ArrayAccess
     protected array $cascade = [];
     protected bool $loaded = false;
     protected mixed $originalVersion = null;
+    protected mixed $identity = null;
 
     abstract public static function entity(): string;
     abstract public static function pk(): string;
@@ -67,7 +68,8 @@ abstract class Row implements \ArrayAccess
         $r->vals = $vals;
         $r->idx = $asm['idx'];
         $r->hidden = $asm['hidden'] ?? [];
-        $r->loaded = true;
+        $r->loaded = $r->has(static::pk());
+        $r->identity = $r->col(static::pk());
         $version = static::versionColumn();
         if ($version !== null && isset($r->idx[$version])) { $r->originalVersion = $r->col($version); }
         foreach ($asm['children'] ?? [] as $ch) {
@@ -96,7 +98,7 @@ abstract class Row implements \ArrayAccess
                 $items = new Collection();
                 $cls = Registry::row($ca['entity']);
                 foreach ($related as $row) {
-                    $items[$row[$ch['key_index']]] = $cls::fromRow($row, $ca, $rows);
+                    $items[Collection::keyOf($row[$ch['key_index']])] = $cls::fromRow($row, $ca, $rows);
                 }
                 $r->rel[$ch['rel']] = $items;
             }
@@ -266,7 +268,7 @@ abstract class Row implements \ArrayAccess
             }
         }
         $pk = static::pk();
-        $q->w()->pred($pk, 'eq', $this->col($pk));
+        $q->w()->pred($pk, 'eq', $this->identity);
         if ($optimistic) {
             $q->optimistic(static::versionColumn(), $this->originalVersion);
         }
@@ -294,7 +296,7 @@ abstract class Row implements \ArrayAccess
         }
         $q = new Q(static::entity());
         $pk = static::pk();
-        $q->w()->pred($pk, 'eq', $this->col($pk));
+        $q->w()->pred($pk, 'eq', $this->identity);
         $plan = Orm::transport()->planFor($q->req, 'delete');
         $ex->write($plan['steps'][0], $q->req->params, false, false);
     }
@@ -358,6 +360,13 @@ final class Collection implements \ArrayAccess, \IteratorAggregate, \Countable
         return $this->items[self::identity($key)]['value'] ?? null;
     }
 
+    /** Implicit column/expression keys keep integers and stringify other scalars. */
+    public static function keyOf(mixed $key): int|string
+    {
+        if (is_int($key) || is_string($key)) { return $key; }
+        return $key === null ? '' : (is_bool($key) ? ($key ? '1' : '0') : (string)$key);
+    }
+
     public static function fromRows(Rows $rows, string $rowClass, ?\Closure $keyFn = null): self
     {
         $c = new self();
@@ -366,9 +375,7 @@ final class Collection implements \ArrayAccess, \IteratorAggregate, \Countable
             $key = $keyFn === null ? $vals[0] : $keyFn($r);
             // Expression groups can yield a scalar instead of an integer/text PK.
             // Match the native Key::of conversion; explicit key selectors stay typed.
-            if ($keyFn === null && !is_int($key) && !is_string($key)) {
-                $key = $key === null ? '' : (is_bool($key) ? ($key ? '1' : '0') : (string)$key);
-            }
+            if ($keyFn === null) { $key = self::keyOf($key); }
             $c->put($key, $r);
         }
         return $c;

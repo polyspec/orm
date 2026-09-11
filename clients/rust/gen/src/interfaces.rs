@@ -265,7 +265,7 @@ async fn delete(&self) -> Result<()>;
 async fn delete_cascade(&self) -> Result<()>;
 fn has(&self, name: &str) -> bool;
 fn rel_loaded(&self, name: &str) -> bool;
-fn to_map(&self) -> serde_json::Value;
+fn to_map(&self) -> Result<serde_json::Value>;
 }
 impl BattleRowInterface for BattleRow {
 fn bind(&mut self, ex: &impl Exec) -> &mut Self { BattleRow::bind(self,ex) }
@@ -275,7 +275,7 @@ async fn delete(&self) -> Result<()> { BattleRow::delete(self).await }
 async fn delete_cascade(&self) -> Result<()> { BattleRow::delete_cascade(self).await }
 fn has(&self, name: &str) -> bool { BattleRow::has(self,name) }
 fn rel_loaded(&self, name: &str) -> bool { BattleRow::rel_loaded(self,name) }
-fn to_map(&self) -> serde_json::Value { BattleRow::to_map(self) }
+fn to_map(&self) -> Result<serde_json::Value> { BattleRow::to_map(self) }
 }
 
 pub trait UserInterface: Sized {
@@ -330,7 +330,7 @@ async fn delete(&self) -> Result<()>;
 async fn delete_cascade(&self) -> Result<()>;
 fn has(&self, name: &str) -> bool;
 fn rel_loaded(&self, name: &str) -> bool;
-fn to_map(&self) -> serde_json::Value;
+fn to_map(&self) -> Result<serde_json::Value>;
 }
 impl UserRowInterface for UserRow {
 fn bind(&mut self, ex: &impl Exec) -> &mut Self { UserRow::bind(self,ex) }
@@ -339,7 +339,7 @@ async fn delete(&self) -> Result<()> { UserRow::delete(self).await }
 async fn delete_cascade(&self) -> Result<()> { UserRow::delete_cascade(self).await }
 fn has(&self, name: &str) -> bool { UserRow::has(self,name) }
 fn rel_loaded(&self, name: &str) -> bool { UserRow::rel_loaded(self,name) }
-fn to_map(&self) -> serde_json::Value { UserRow::to_map(self) }
+fn to_map(&self) -> Result<serde_json::Value> { UserRow::to_map(self) }
 }
 
 pub trait ServiceInterface: Sized {
@@ -394,7 +394,7 @@ async fn delete(&self) -> Result<()>;
 async fn delete_cascade(&self) -> Result<()>;
 fn has(&self, name: &str) -> bool;
 fn rel_loaded(&self, name: &str) -> bool;
-fn to_map(&self) -> serde_json::Value;
+fn to_map(&self) -> Result<serde_json::Value>;
 }
 impl ServiceRowInterface for ServiceRow {
 fn bind(&mut self, ex: &impl Exec) -> &mut Self { ServiceRow::bind(self,ex) }
@@ -403,7 +403,7 @@ async fn delete(&self) -> Result<()> { ServiceRow::delete(self).await }
 async fn delete_cascade(&self) -> Result<()> { ServiceRow::delete_cascade(self).await }
 fn has(&self, name: &str) -> bool { ServiceRow::has(self,name) }
 fn rel_loaded(&self, name: &str) -> bool { ServiceRow::rel_loaded(self,name) }
-fn to_map(&self) -> serde_json::Value { ServiceRow::to_map(self) }
+fn to_map(&self) -> Result<serde_json::Value> { ServiceRow::to_map(self) }
 }
 
 pub trait ServiceModuleInterface: Sized {
@@ -466,7 +466,7 @@ async fn delete(&self) -> Result<()>;
 async fn delete_cascade(&self) -> Result<()>;
 fn has(&self, name: &str) -> bool;
 fn rel_loaded(&self, name: &str) -> bool;
-fn to_map(&self) -> serde_json::Value;
+fn to_map(&self) -> Result<serde_json::Value>;
 }
 impl ServiceModuleRowInterface for ServiceModuleRow {
 fn bind(&mut self, ex: &impl Exec) -> &mut Self { ServiceModuleRow::bind(self,ex) }
@@ -475,7 +475,7 @@ async fn delete(&self) -> Result<()> { ServiceModuleRow::delete(self).await }
 async fn delete_cascade(&self) -> Result<()> { ServiceModuleRow::delete_cascade(self).await }
 fn has(&self, name: &str) -> bool { ServiceModuleRow::has(self,name) }
 fn rel_loaded(&self, name: &str) -> bool { ServiceModuleRow::rel_loaded(self,name) }
-fn to_map(&self) -> serde_json::Value { ServiceModuleRow::to_map(self) }
+fn to_map(&self) -> Result<serde_json::Value> { ServiceModuleRow::to_map(self) }
 }
 
 pub trait ServiceMemberInterface: Sized {
@@ -538,7 +538,7 @@ async fn delete(&self) -> Result<()>;
 async fn delete_cascade(&self) -> Result<()>;
 fn has(&self, name: &str) -> bool;
 fn rel_loaded(&self, name: &str) -> bool;
-fn to_map(&self) -> serde_json::Value;
+fn to_map(&self) -> Result<serde_json::Value>;
 }
 impl ServiceMemberRowInterface for ServiceMemberRow {
 fn bind(&mut self, ex: &impl Exec) -> &mut Self { ServiceMemberRow::bind(self,ex) }
@@ -547,5 +547,5 @@ async fn delete(&self) -> Result<()> { ServiceMemberRow::delete(self).await }
 async fn delete_cascade(&self) -> Result<()> { ServiceMemberRow::delete_cascade(self).await }
 fn has(&self, name: &str) -> bool { ServiceMemberRow::has(self,name) }
 fn rel_loaded(&self, name: &str) -> bool { ServiceMemberRow::rel_loaded(self,name) }
-fn to_map(&self) -> serde_json::Value { ServiceMemberRow::to_map(self) }
+fn to_map(&self) -> Result<serde_json::Value> { ServiceMemberRow::to_map(self) }
 }

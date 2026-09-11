@@ -486,6 +486,8 @@ classDiagram
 
 **IF-26:** Key의 타입 태그를 비교에 포함한다. 정수 `1`과 문자열 `"1"`은 다른 키다. PHP 배열의 자동 키 변환을 공통 규칙으로 삼지 않는다. 공통 손실 없는 표현은 ordered entries다. 문자열 키만 가능한 JSON object나 PHP array 변환은 키를 문자열로 표현했을 때 충돌이 없는 컬렉션에 한정한다. 충돌은 IR_INVALID로 거부하고 손실 없는 entries 변환을 사용한다. keyByFn은 Key를 반환하며 int/string 이외 값을 키로 주면 IR_INVALID다. 컬럼 keyBy의 스칼라 키는 정수이면 정수 태그를 유지하고 다른 스칼라는 문자열 키로 변환한다. 명시적 keyByFn의 키 타입 검사와 구별한다.
 
+행의 관계를 재귀 변환할 때도 같은 오류를 전달한다. Go의 행·컬렉션 `ToArray()`는 `(map[string]any, error)`, Rust의 `to_map()`은 `Result<serde_json::Value>`를 반환한다. PHP의 `toArray()`는 충돌 시 예외를 던진다. 변환은 실행기를 사용하지 않는 동기 연산이다.
+
 **IF-27:** Page는 동일한 다섯 필드를 갖는다. `items`는 Collection, `total`은 전체 결과 수, `pages = ceil(total/per)`, `current`는 정규화된 page, `per > 0`. 빈 페이지와 total 0을 구분한다. count 단계에는 row assembly를 적용하지 않는다.
 
 ## 10. 설정·오류·코덱·관측 — IF-28 ~ IF-31

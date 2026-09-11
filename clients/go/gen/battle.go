@@ -792,7 +792,7 @@ func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 // ToArray is the row's array form (what PHP's toArray() and Rust's to_map() give):
 // projected columns minus drop_child_key ones, extra outputs, loaded relations,
 // and flattened one-relations merged in (this row's keys win).
-func (r *BattleRow) ToArray() map[string]any {
+func (r *BattleRow) ToArray() (map[string]any, error) {
 	m := make(map[string]any, len(r.Selected()))
 	for _, name := range r.Selected() {
 		if r.Hidden(name) {
@@ -916,28 +916,44 @@ func (r *BattleRow) ToArray() map[string]any {
 	}
 	if r.RelLoaded("service") {
 		if r.Service != nil {
-			m["service"] = r.Service.ToArray()
+			child, err := r.Service.ToArray()
+			if err != nil {
+				return nil, err
+			}
+			m["service"] = child
 		} else {
 			m["service"] = nil
 		}
 	}
 	if r.RelLoaded("service_member") {
 		if r.ServiceMember != nil {
-			m["service_member"] = r.ServiceMember.ToArray()
+			child, err := r.ServiceMember.ToArray()
+			if err != nil {
+				return nil, err
+			}
+			m["service_member"] = child
 		} else {
 			m["service_member"] = nil
 		}
 	}
 	if r.RelLoaded("service_module") {
 		if r.ServiceModule != nil {
-			m["service_module"] = r.ServiceModule.ToArray()
+			child, err := r.ServiceModule.ToArray()
+			if err != nil {
+				return nil, err
+			}
+			m["service_module"] = child
 		} else {
 			m["service_module"] = nil
 		}
 	}
 	if r.RelLoaded("user") {
 		if r.User != nil {
-			m["user"] = r.User.ToArray()
+			child, err := r.User.ToArray()
+			if err != nil {
+				return nil, err
+			}
+			m["user"] = child
 		} else {
 			m["user"] = nil
 		}
@@ -947,7 +963,7 @@ func (r *BattleRow) ToArray() map[string]any {
 			orm.MergeFlat(m, child)
 		}
 	}
-	return m
+	return m, nil
 }
 
 // BattleCols are column references for column-to-column predicates

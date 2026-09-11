@@ -17,6 +17,7 @@ pub struct UserRow {
     service_members_: Collection<super::service_member::ServiceMemberRow>,
     assigned: Vec<&'static str>,
     original_version: Option<Param>,
+    original_key: Option<Param>,
     dirty: Vec<(&'static str, Param)>,
     enc_err: Option<(String, String)>, // (code, msg) of the first codec error; surfaces from update
     extra: std::collections::HashMap<String, Val>, // select_expr / select_<col>_as outputs, by output name
@@ -72,6 +73,7 @@ impl UserRow {
                 other => { let v = if c.styles.is_empty() { src.val(i)? } else { src.styled(i, &c.styles)? }; r.extra.insert(other.to_owned(), v); }
             }
         }
+        if r.has(Self::PK) { r.original_key = Some(r.seq.clone().into()); }
         Ok(r)
     }
     /// A select_expr / select_<col>_as output by name.
@@ -86,7 +88,7 @@ impl UserRow {
     /// The row's array form (what PHP's toArray() and Go's ToArray() give): projected
     /// columns minus drop_child_key ones, extra outputs, loaded relations, and flattened
     /// one-relations merged in (this row's keys win).
-    pub fn to_map(&self) -> serde_json::Value {
+    pub fn to_map(&self) -> Result<serde_json::Value> {
         let mut m = serde_json::Map::new();
         let empty = orm::plan::Assemble::default();
         let a = self.asm.as_deref().unwrap_or(&empty);
@@ -101,21 +103,17 @@ impl UserRow {
             m.insert(name.to_owned(), v);
         }
         if a.has_child("battles") {
-            let mut mm = serde_json::Map::new();
-            for (k, v) in self.battles_.iter() { mm.insert(k.to_string(), v.to_map()); }
-            m.insert("battles".into(), serde_json::Value::Object(mm));
+            m.insert("battles".into(), self.battles_.to_map()?);
         }
         if a.has_child("service_members") {
-            let mut mm = serde_json::Map::new();
-            for (k, v) in self.service_members_.iter() { mm.insert(k.to_string(), v.to_map()); }
-            m.insert("service_members".into(), serde_json::Value::Object(mm));
+            m.insert("service_members".into(), self.service_members_.to_map()?);
         }
         for ch in a.children.iter().filter(|ch| ch.flatten) {
             if let Some(serde_json::Value::Object(child)) = m.get(&ch.rel).cloned() {
                 for (k, v) in child { m.entry(k).or_insert(v); }
             }
         }
-        serde_json::Value::Object(m)
+        Ok(serde_json::Value::Object(m))
     }
 
     pub fn battles(&self) -> &Collection<super::battle::BattleRow> { &self.battles_ }
@@ -141,12 +139,12 @@ impl UserRow {
 
     async fn update_inner(&mut self, ex: &impl Exec, optimistic: bool) -> Result<()> {
         if let Some((code, msg)) = &self.enc_err { return Err(orm::Error::Engine { code: code.clone(), msg: msg.clone() }); }
-        if self.asm.is_none() { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
+        if self.original_key.is_none() { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
         if optimistic && self.original_version.is_none() { return Err(orm::Error::Config("optimistic update requires a loaded version column".into())); }
         if self.dirty.is_empty() { return Ok(()); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
         for (c, v) in &self.dirty { q.set(c, v.clone()); }
-        let pk: Param = self.seq.clone().into();
+        let pk = self.original_key.clone().ok_or_else(|| orm::Error::Config("row has no loaded identity".into()))?;
         q.w().pred(Self::PK, "eq", pk);
         let _ = optimistic;
         db::write(ex, &mut q.req, "update").await?;
@@ -159,7 +157,7 @@ impl UserRow {
     async fn delete_inner(&self, ex: &impl Exec) -> Result<()> {
         if self.asm.is_none() { return Err(orm::Error::Config("delete on a row that was not loaded".into())); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
-        let pk: Param = self.seq.clone().into();
+        let pk = self.original_key.clone().ok_or_else(|| orm::Error::Config("row has no loaded identity".into()))?;
         q.w().pred(Self::PK, "eq", pk);
         db::write(ex, &mut q.req, "delete").await.map(|_| ())
     }
@@ -196,6 +194,10 @@ impl UserRow {
             self.delete_inner(tx).await
         })
     }
+}
+
+impl orm::collection::RowExport for UserRow {
+    fn to_map(&self) -> Result<serde_json::Value> { UserRow::to_map(self) }
 }
 
 /// Column references for column-to-column predicates (w.seq_eq_col(cols::seq())); .at("service") points into a joined entity.

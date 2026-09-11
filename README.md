@@ -19,7 +19,7 @@ let battles = Battle::new().bind(&db).service_seq(7).is_close(false)
     .relation_user(User::new()).order_by_seq_desc().limit(0, 20).gets().await?;
 ```
 The three chains produce the same SQL, the same binds and the same results — checked byte for byte by
-`tests/conformance` (56 vectors) and `ormgen tokens`.
+`tests/conformance` (58 vectors) and `ormgen tokens`.
 
 For a direct finder, the same `getsBy` token is generated in all three clients:
 
