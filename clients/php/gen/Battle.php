@@ -1385,12 +1385,15 @@ final class Battle extends Q
     public function flatten(): static { $this->node['flatten'] = true; return $this; }
     public function limitPerParent(int $n): static { $this->node['limit_per_parent'] = $n; return $this; }
     public function dropChildKey(): static { $this->node['drop_child_key'] = true; return $this; }
+    public function noCascadeDelete(): static { $this->node['no_cascade_delete'] = true; return $this; }
     public function ifParentSeqEq(int $v): static { $this->ifParent('seq', $v); return $this; }
     public function ifParentNameEq(string $v): static { $this->ifParent('name', $v); return $this; }
     public function ifParentServiceSeqEq(int $v): static { $this->ifParent('service_seq', $v); return $this; }
     public function ifParentUserSeqEq(int $v): static { $this->ifParent('user_seq', $v); return $this; }
 
-    // ---- insert draft ----
+    // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
+    public function setSeq(int $v): static { $this->set('seq', $v); return $this; }
+    public function setSeqExpr(string $frag, array $binds = []): static { $this->setExpr('seq', $frag, $binds); return $this; }
     public function setName(string $v): static { $this->set('name', $v); return $this; }
     public function setNameExpr(string $frag, array $binds = []): static { $this->setExpr('name', $frag, $binds); return $this; }
     public function setDescription(?string $v): static { $this->set('description', $v); return $this; }
@@ -1478,6 +1481,93 @@ final class Battle extends Q
     public function plusPrice(float $v): static { $this->plus('price', $v); return $this; }
     public function minusPrice(float $v): static { $this->minus('price', $v); return $this; }
 
+    // ---- insert: ON DUPLICATE KEY UPDATE (never the PK/auto columns; the engine refuses them) ----
+    public function onDuplicateSetAll(): static { $this->onDuplicateAll(['seq']); return $this; }
+    public function onDuplicateSetName(string $v): static { $this->onDuplicate('name', $v); return $this; }
+    public function onDuplicateSetNameExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('name', $frag, $binds); return $this; }
+    public function onDuplicateSetDescription(?string $v): static { $this->onDuplicate('description', $v); return $this; }
+    public function onDuplicateSetDescriptionExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('description', $frag, $binds); return $this; }
+    public function onDuplicateSetCreatedTs(string $v): static { $this->onDuplicate('created_ts', $v); return $this; }
+    public function onDuplicateSetCreatedTsExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('created_ts', $frag, $binds); return $this; }
+    public function onDuplicateSetUpdatedTs(string $v): static { $this->onDuplicate('updated_ts', $v); return $this; }
+    public function onDuplicateSetUpdatedTsExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('updated_ts', $frag, $binds); return $this; }
+    public function onDuplicateSetIsClose(bool $v): static { $this->onDuplicate('is_close', $v); return $this; }
+    public function onDuplicateSetIsCloseExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('is_close', $frag, $binds); return $this; }
+    public function onDuplicateSetIsDisplay(bool $v): static { $this->onDuplicate('is_display', $v); return $this; }
+    public function onDuplicateSetIsDisplayExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('is_display', $frag, $binds); return $this; }
+    public function onDuplicateSetDisplayStartDt(?string $v): static { $this->onDuplicate('display_start_dt', $v); return $this; }
+    public function onDuplicateSetDisplayStartDtExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('display_start_dt', $frag, $binds); return $this; }
+    public function onDuplicateSetDisplayEndDt(?string $v): static { $this->onDuplicate('display_end_dt', $v); return $this; }
+    public function onDuplicateSetDisplayEndDtExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('display_end_dt', $frag, $binds); return $this; }
+    public function onDuplicateSetIsAllday(bool $v): static { $this->onDuplicate('is_allday', $v); return $this; }
+    public function onDuplicateSetIsAlldayExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('is_allday', $frag, $binds); return $this; }
+    public function onDuplicateSetTargetTeamPlayerCount(int $v): static { $this->onDuplicate('target_team_player_count', $v); return $this; }
+    public function onDuplicateSetTargetTeamPlayerCountExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('target_team_player_count', $frag, $binds); return $this; }
+    public function onDuplicateSetSuccessCount(int $v): static { $this->onDuplicate('success_count', $v); return $this; }
+    public function onDuplicateSetSuccessCountExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('success_count', $frag, $binds); return $this; }
+    public function onDuplicateSetPlayerCount(int $v): static { $this->onDuplicate('player_count', $v); return $this; }
+    public function onDuplicateSetPlayerCountExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('player_count', $frag, $binds); return $this; }
+    public function onDuplicateSetReadCount(int $v): static { $this->onDuplicate('read_count', $v); return $this; }
+    public function onDuplicateSetReadCountExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('read_count', $frag, $binds); return $this; }
+    public function onDuplicateSetCoverUrl(?string $v): static { $this->onDuplicate('cover_url', $v); return $this; }
+    public function onDuplicateSetCoverUrlExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('cover_url', $frag, $binds); return $this; }
+    public function onDuplicateSetUserSeq(int $v): static { $this->onDuplicate('user_seq', $v); return $this; }
+    public function onDuplicateSetUserSeqExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('user_seq', $frag, $binds); return $this; }
+    public function onDuplicateSetServiceSeq(int $v): static { $this->onDuplicate('service_seq', $v); return $this; }
+    public function onDuplicateSetServiceSeqExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('service_seq', $frag, $binds); return $this; }
+    public function onDuplicateSetServiceModuleSeq(int $v): static { $this->onDuplicate('service_module_seq', $v); return $this; }
+    public function onDuplicateSetServiceModuleSeqExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('service_module_seq', $frag, $binds); return $this; }
+    public function onDuplicateSetServiceMemberSeq(int $v): static { $this->onDuplicate('service_member_seq', $v); return $this; }
+    public function onDuplicateSetServiceMemberSeqExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('service_member_seq', $frag, $binds); return $this; }
+    public function onDuplicateSetStartDt(string $v): static { $this->onDuplicate('start_dt', $v); return $this; }
+    public function onDuplicateSetStartDtExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('start_dt', $frag, $binds); return $this; }
+    public function onDuplicateSetEndDt(string $v): static { $this->onDuplicate('end_dt', $v); return $this; }
+    public function onDuplicateSetEndDtExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('end_dt', $frag, $binds); return $this; }
+    public function onDuplicateSetUuid(?string $v): static { $this->onDuplicate('uuid', $v); return $this; }
+    public function onDuplicateSetUuidExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('uuid', $frag, $binds); return $this; }
+    public function onDuplicateSetIsSinglePlay(bool $v): static { $this->onDuplicate('is_single_play', $v); return $this; }
+    public function onDuplicateSetIsSinglePlayExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('is_single_play', $frag, $binds); return $this; }
+    public function onDuplicateSetLikeCount(int $v): static { $this->onDuplicate('like_count', $v); return $this; }
+    public function onDuplicateSetLikeCountExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('like_count', $frag, $binds); return $this; }
+    public function onDuplicateSetAesHexEmail(?string $v): static { $this->onDuplicate('aes_hex_email', $v); return $this; }
+    public function onDuplicateSetAesHexEmailExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('aes_hex_email', $frag, $binds); return $this; }
+    public function onDuplicateSetAesHexPhone(?string $v): static { $this->onDuplicate('aes_hex_phone', $v); return $this; }
+    public function onDuplicateSetAesHexPhoneExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('aes_hex_phone', $frag, $binds); return $this; }
+    public function onDuplicateSetPrice(?float $v): static { $this->onDuplicate('price', $v); return $this; }
+    public function onDuplicateSetPriceExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('price', $frag, $binds); return $this; }
+    public function onDuplicateSetIp(?string $v): static { $this->onDuplicate('ip', $v); return $this; }
+    public function onDuplicateSetIpExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('ip', $frag, $binds); return $this; }
+    public function onDuplicateSetGzExtend(mixed $v): static { $this->onDuplicateStyled('gz_extend', $v, ['serialize', 'gz']); return $this; }
+    public function onDuplicateSetGzExtendExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('gz_extend', $frag, $binds); return $this; }
+    public function onDuplicateSetJsonSetting(mixed $v): static { $this->onDuplicateStyled('json_setting', $v, ['json']); return $this; }
+    public function onDuplicateSetJsonSettingExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('json_setting', $frag, $binds); return $this; }
+    public function onDuplicateSetJsonsTags(mixed $v): static { $this->onDuplicateStyled('jsons_tags', $v, ['jsons']); return $this; }
+    public function onDuplicateSetJsonsTagsExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('jsons_tags', $frag, $binds); return $this; }
+    public function onDuplicateSetBase64Extra(mixed $v): static { $this->onDuplicateStyled('base64_extra', $v, ['serialize', 'base64']); return $this; }
+    public function onDuplicateSetBase64ExtraExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('base64_extra', $frag, $binds); return $this; }
+    public function onDuplicateSetSerializeData(mixed $v): static { $this->onDuplicateStyled('serialize_data', $v, ['serialize']); return $this; }
+    public function onDuplicateSetSerializeDataExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('serialize_data', $frag, $binds); return $this; }
+    public function onDuplicatePlusTargetTeamPlayerCount(int $v): static { $this->onDuplicatePlus('target_team_player_count', $v); return $this; }
+    public function onDuplicateMinusTargetTeamPlayerCount(int $v): static { $this->onDuplicateMinus('target_team_player_count', $v); return $this; }
+    public function onDuplicatePlusSuccessCount(int $v): static { $this->onDuplicatePlus('success_count', $v); return $this; }
+    public function onDuplicateMinusSuccessCount(int $v): static { $this->onDuplicateMinus('success_count', $v); return $this; }
+    public function onDuplicatePlusPlayerCount(int $v): static { $this->onDuplicatePlus('player_count', $v); return $this; }
+    public function onDuplicateMinusPlayerCount(int $v): static { $this->onDuplicateMinus('player_count', $v); return $this; }
+    public function onDuplicatePlusReadCount(int $v): static { $this->onDuplicatePlus('read_count', $v); return $this; }
+    public function onDuplicateMinusReadCount(int $v): static { $this->onDuplicateMinus('read_count', $v); return $this; }
+    public function onDuplicatePlusUserSeq(int $v): static { $this->onDuplicatePlus('user_seq', $v); return $this; }
+    public function onDuplicateMinusUserSeq(int $v): static { $this->onDuplicateMinus('user_seq', $v); return $this; }
+    public function onDuplicatePlusServiceSeq(int $v): static { $this->onDuplicatePlus('service_seq', $v); return $this; }
+    public function onDuplicateMinusServiceSeq(int $v): static { $this->onDuplicateMinus('service_seq', $v); return $this; }
+    public function onDuplicatePlusServiceModuleSeq(int $v): static { $this->onDuplicatePlus('service_module_seq', $v); return $this; }
+    public function onDuplicateMinusServiceModuleSeq(int $v): static { $this->onDuplicateMinus('service_module_seq', $v); return $this; }
+    public function onDuplicatePlusServiceMemberSeq(int $v): static { $this->onDuplicatePlus('service_member_seq', $v); return $this; }
+    public function onDuplicateMinusServiceMemberSeq(int $v): static { $this->onDuplicateMinus('service_member_seq', $v); return $this; }
+    public function onDuplicatePlusLikeCount(int $v): static { $this->onDuplicatePlus('like_count', $v); return $this; }
+    public function onDuplicateMinusLikeCount(int $v): static { $this->onDuplicateMinus('like_count', $v); return $this; }
+    public function onDuplicatePlusPrice(float $v): static { $this->onDuplicatePlus('price', $v); return $this; }
+    public function onDuplicateMinusPrice(float $v): static { $this->onDuplicateMinus('price', $v); return $this; }
+
     // ---- terminals ----
     public function one(Db $db): ?BattleRow
     {
@@ -1525,6 +1615,20 @@ final class Battle extends Q
         $id = $this->runInsert($db);
         return (new Battle)->seqEq((int) $id)->one($db);
     }
+
+    /** UPDATE by PK when setSeq was called (the other set columns), else INSERT; returns the re-read row. */
+    public function save(Db $db): ?BattleRow
+    {
+        [, $key] = $this->runSave($db, 'seq');
+        return (new Battle)->seqEq((int) $key)->one($db);
+    }
+
+    /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
+    public function update(Db $db): int { return $this->runWrite($db, 'update'); }
+    /** DELETE WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
+    public function delete(Db $db): int { return $this->runWrite($db, 'delete'); }
+    /** The main statement as the all() terminal would run it, without executing; secret slots read "$SECRET". @return array{sql: string, binds: list<mixed>} */
+    public function sql(Db $db): array { return $this->runSql($db); }
 
     public function oneBySeq(Db $db, int $v): ?BattleRow { return $this->seqEq($v)->one($db); }
 }
