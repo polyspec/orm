@@ -417,6 +417,15 @@ func (q *Service) Modules(fn func(*ServiceModuleWhere)) *Service {
 func (q *Service) On(fn func(*ServiceWhere)) *Service    { fn(&ServiceWhere{w: q.q.OnW()}); return q }
 func (q *Service) Where(fn func(*ServiceWhere)) *Service { fn(&ServiceWhere{w: q.q.W()}); return q }
 
+// Having is the group predicate after GroupBy<Col>: the same builder as where; aggregates go through Expr("COUNT(*) > ?", n).
+func (q *Service) Having(fn func(*ServiceWhere)) *Service {
+	fn(&ServiceWhere{w: q.q.HavingW()})
+	return q
+}
+
+// Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
+func (q *Service) Raw(sql string, binds ...any) *Service { q.q.Raw(sql, binds...); return q }
+
 func (q *Service) JoinBattles(child *Battle) *Service {
 	q.q.Join("battles", "inner", child.q)
 	return q
@@ -629,6 +638,72 @@ func (q *Service) AvgSeq(ctx context.Context, ex orm.Exec) (float64, error) {
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
+}
+func (q *Service) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinSeq is nil when no row matches.
+func (q *Service) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+
+// MaxSeq is nil when no row matches.
+func (q *Service) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *Service) CountDistinctName(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "name"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinName is nil when no row matches.
+func (q *Service) MinName(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "name"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// MaxName is nil when no row matches.
+func (q *Service) MaxName(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "name"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// RawAll runs the statement given to Raw and returns its rows by column name (values as the driver gives them, no codec).
+func (q *Service) RawAll(ctx context.Context, ex orm.Exec) ([]map[string]any, error) {
+	q.q.Req.IR.Kind = "raw"
+	return orm.RawAll(ctx, ex, q.q.Req)
 }
 
 func (q *Service) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm.Page[ServiceRow], error) {

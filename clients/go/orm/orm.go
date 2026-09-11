@@ -627,7 +627,7 @@ func countCols(a *plan.Assemble) int {
 	return n
 }
 
-// Scalar runs a count/sum/avg step.
+// Scalar runs a count/count_distinct/sum/avg/min/max step (nil when the aggregate is NULL).
 func Scalar(ctx context.Context, ex Exec, r *Req) (any, error) {
 	d := ex.db()
 	p, err := d.Plan(r)
@@ -651,6 +651,56 @@ func Scalar(ctx context.Context, ex Exec, r *Req) (any, error) {
 		v = string(b)
 	}
 	return v, err
+}
+
+// RawAll runs a kind-raw request and returns its rows keyed by the driver's
+// column names, values as the driver gives them ([]byte → string, no codec).
+func RawAll(ctx context.Context, ex Exec, r *Req) ([]map[string]any, error) {
+	d := ex.db()
+	p, err := d.Plan(r)
+	if err != nil {
+		return nil, err
+	}
+	st := &p.Steps[0]
+	args, err := d.args(st, r, nil)
+	if err != nil {
+		return nil, err
+	}
+	stmt, err := ex.stmt(ctx, st.SQL)
+	if err != nil {
+		return nil, err
+	}
+	start := time.Now()
+	rows, err := stmt.QueryContext(ctx, args...)
+	d.emit(st.SQL, args, start, err)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	names, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	out := []map[string]any{}
+	for rows.Next() {
+		vals := make([]any, len(names))
+		ptrs := make([]any, len(names))
+		for i := range vals {
+			ptrs[i] = &vals[i]
+		}
+		if err := rows.Scan(ptrs...); err != nil {
+			return nil, err
+		}
+		m := make(map[string]any, len(names))
+		for i, v := range vals {
+			if b, ok := v.([]byte); ok {
+				v = string(b)
+			}
+			m[names[i]] = v
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
 }
 
 // Paginate runs the main step (with its relations) and the count step.
