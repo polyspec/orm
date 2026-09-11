@@ -6,7 +6,7 @@
 ## 현재 위치 (2026-09-12)
 - **S0 완료** (측정·결정 R1~R3, F1~F3 — `docs/perf.md`).
 - **S1 완료** (thin slice: 엔진·생성기·3언어 실행기, 적합성 하네스, `ormgen tokens`, 데모).
-- **S2 구현·검증 완료**(T2.15 150테이블 게이트만 대형 스키마 fixture 대기), **S3 완료**, **S4 완료**(PHP 호환층 포함), **S5 구현 완료**(T5.8 GitHub 실제 실행 확인만 잔여), **S6 완료**(dialect PG/SQLite, ddl, 3언어 실행기).
+- **S2 구현·검증 완료**(T2.15 150테이블 게이트만 대형 스키마 fixture 대기), **S3 완료**, **S4 완료**(PHP 호환층 포함), **S5 구현·CI 검증 완료**(고정 비용 추가 개선은 S7), **S6 완료**(dialect PG/SQLite, ddl, 3언어 실행기).
 - 적합성 벡터 **58개 × 3언어 × 3 DB 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
 
 ## 공통 인터페이스 정합성
@@ -141,7 +141,7 @@
 ### 5-C 배포 — 레인 V
 - [x] T5.6 아티팩트·패키징: `scripts/build-artifacts.sh`(wasm 1개 + ormd·ormgen linux/darwin × amd64/arm64, 파일명에 0.0.1, SHA256SUMS), `clients/php/composer.json`(PSR-4), `clients/rust/orm/Cargo.toml` 메타데이터, Go는 모듈 경로
 - [x] T5.7 `deploy/ormd.service`, `deploy/com.orm.ormd.plist`, `deploy/README.md`(소켓 소유자·0600·symlink 금지)
-- [~] T5.8 CI `.github/workflows/ci.yml`: MySQL·PostgreSQL 서비스 + SQLite, 엔진·3클라이언트·3 DB 적합성·코덱·토큰 패리티·생성물 최신 검사·회귀 게이트(`bench/go` TestHotPathGate)까지 작성 완료. **남은 것: GitHub에서 실제 실행 확인**(로컬에서는 각 단계를 그대로 실행해 통과 확인)
+- [x] T5.8 CI `.github/workflows/ci.yml`: MySQL·PostgreSQL 서비스 + SQLite, 엔진·3클라이언트·3 DB 적합성·코덱·토큰 패리티·생성물 최신 검사·회귀 게이트(`bench/go` TestHotPathGate)까지 [GitHub CI 실제 실행](https://github.com/polyspec/orm/actions/runs/34649545210) 통과. 공통 구조·상태·소스 반례 검사 포함
 - [x] T5.9 문서: README·`packaging.md`·`dsl.md`(호환층 표)·`dialects.md`·`config.md`·`codec.md`·`errors.yaml`, `perf.md` §6d 재측정(S6 종료 시점 3언어 × 네이티브 대비)
 
 ---
@@ -171,7 +171,7 @@
 | S5 | E T5.10 ∥ T5.1 ∥ T5.2 ; G ∥ P ∥ R T5.3, T5.3b, T5.4, T5.5 ; V T5.6 ∥ T5.7 → T5.8 → T5.9 |
 | S6 | E T6.1 ∥ T6.2 ; G/R T6.3 → T6.4 → V T6.5 |
 
-## 크리티컬 패스 (구현 완료 · T5.8 외부 확인 잔여)
+## 크리티컬 패스 (구현·CI 실행 확인 완료)
 T2.4/T2.5 → T3.1 → T3.3 → T4.1~4.4 → T4.5/4.6 → T4.8 → T5.8 → T6.1/6.2 → T6.4 → T6.5
 
 ## 게이트(통과 못 하면 다음 단계 금지)
@@ -180,5 +180,5 @@ T2.4/T2.5 → T3.1 → T3.3 → T4.1~4.4 → T4.5/4.6 → T4.8 → T5.8 → T6.1
 - G2 (T2.15/T2.16): Rust 150테이블 `cargo check` 기록(대형 스키마 fixture 대기), 적합성 58/58 ✔, 코덱 벡터 60×3 ✔
 - G3 (T3.4/T3.5): 데드락 게이트 3/3, 적합성 45/45
 - G4 (T4.8): 적합성 58/58, `ormgen check`와 토큰 패리티를 CI에서 검증
-- G5 (T5.8): workflow 작성·로컬 단계 확인 완료, GitHub 실제 실행 대기; 벤치 회귀 게이트 활성
+- G5 (T5.8) ✔ [GitHub CI 실행](https://github.com/polyspec/orm/actions/runs/34649545210) 통과; 벤치 회귀 게이트 활성
 - G6 (T6.5) ✔ 3 DB 동일 결과 (3언어 × 58 벡터)
