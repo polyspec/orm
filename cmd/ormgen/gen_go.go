@@ -154,6 +154,7 @@ func appStyles(c *schema.Col) []string {
 
 type goRel struct {
 	Name, Method, Target, TargetType, Kind string
+	Left, Right                            string // this.Left = target.Right (the PHP compat layer resolves matchAWithB against them)
 }
 
 // parentOf returns the first entity related to e that has column col (ifParent targets).
@@ -203,7 +204,7 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 	sort.Strings(names)
 	for _, n := range names {
 		r := e.Relations[n]
-		ge.Rels = append(ge.Rels, goRel{Name: n, Method: pascal(n), Target: r.Target, TargetType: pascal(r.Target), Kind: r.Kind})
+		ge.Rels = append(ge.Rels, goRel{Name: n, Method: pascal(n), Target: r.Target, TargetType: pascal(r.Target), Kind: r.Kind, Left: r.Left, Right: r.Right})
 	}
 	for n := range e.Indexes {
 		ge.Indexes = append(ge.Indexes, n)

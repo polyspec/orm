@@ -165,6 +165,74 @@ battle.delete(&master, Cascade::Yes).await?;
 ## 6. PHP 호환층 (정규 문법 아님, `__call` 전용)
 compatibility 표기를 같은 IR로 번역한다: `andX/orX/conditionX`(`orX` = `or()->xEq`), op-first(`gtEndDt`), 무접두 `x(v)`, 배열→In, null→IsNull, `relation((new Y)->matchAWithB()->aliasR())`→`relationR`/`relationsR`, `joinAWithB`, `addColumnX`/`addAllColumns`, `parentNode`→`flatten`, `groupLimit`→`limitPerParent`, `keyNameX`→`keyByX`, `fetchKey`→`keyByFn`, `deleteLock`→`noCascadeDelete`, `get/gets`→`one/all`, `getsByAAndB`, `and('(')…condition(')')`(모델 내 균형만; 경계 초과는 `PAREN_ACROSS_MODELS`). `ormgen check --lang php`가 사용처를 목록으로 낸다.
 
+## PHP 호환층
+`clients/php/src/Compat.php`(`CompatQuery`·`CompatWhere` 트레이트)가 생성된 쿼리·Where 클래스의 `__call`로 붙는다. 생성 메서드가 없는 이름만 여기로 오며, 호출 시점에 이름을 디코드해 **정규 메서드와 같은 Q/W 원시 호출**로 바꾼다 — 그래서 호환 체인과 정규 체인은 `Req::shape()` 바이트가 같다(`clients/php/tests/compat.php`, 50쌍). 디코드 결과는 (클래스, 메서드명)당 한 번 static 배열에 메모된다(opcache 친화, 요청마다 파싱 없음).
+
+이름 해석: camel 토큰(`IsClose` → `Is`,`Close`)을 엔티티의 `columns()` 표에서 **최장 일치**로 컬럼에 맞춘다. 이름 안의 `And`/`Or`는 연결자, 괄호는 그룹. 모르는 컬럼 → `COLUMN_UNKNOWN`(후보 컬럼 목록 포함); op 단어로도 컬럼으로도 읽히면(`InStock` = 컬럼 `in_stock` 또는 `In`+`stock`) → `COLUMN_UNKNOWN`(두 해석 명시). 값은 그대로 바인드된다(`andIsClose(0)`은 `isCloseEq(false)`와 같은 SQL·결과, 파라미터 타입만 다르다).
+
+### 번역표
+| compatibility | 정규 | 비고 |
+|---|---|---|
+| `andX(v)` `conditionX(v)` `whereX(v)` | `xEq(v)` | 배열 → `xIn(v)`, `null` → `xIsNull()` |
+| `orX(v)` | `or()->xEq(v)` | |
+| `andXAndY(a, b)` `orXOrY(a, b)` `conditionXAnd(YOrZ)(a, b, c)` | `xEq(a)->yEq(b)` / `->or()` / `->and(fn)` | 이름의 `And`/`Or`가 연결자, 이름의 괄호가 그룹. 인자 수는 술어 수와 같아야 한다(`IR_INVALID`) |
+| op-first `GtX LtX GeX LeX EqX NeX` | `xGt xLt xGte xLte xEq xNotEq` | `NeX(null)` → `xIsNotNull()`, `NeX([…])` → `xNotIn([…])` |
+| `LkX(v)` `LbX(v)` | `xLike('%v%')` `xLikeBinary('%v%')` | compatibility처럼 `%`를 감싸고 이스케이프하지 않는다(`Contains`가 아님) |
+| `InX([…])` `NinX/NotInX([…])` `BetweenX([lo, hi])` `IsNullX()` `NotNullX()/IsNotNullX()` | `xIn xNotIn xBetween(lo, hi) xIsNull xIsNotNull` | `IsNull/NotNull`은 인자를 소비하지 않는다 |
+| `FulltextAWithB(v)` `FulltextBooleanAWithB(v)` | `aWithBMatch(v)` `aWithBMatchBoolean(v)` | 불리언 `+word*` 변형은 실행기가 정규 경로에서 이미 적용 |
+| `and('(')` `or('(')` `condition('(')` … `condition(')')`, `->{'and('}()` `->{'condition)'}()` | `and(fn)` / `or(fn)` 그룹 | 같은 모델 체인 안에서 균형. 조인·관계 자식이 부모의 `(`를 닫거나, 열어둔 채 붙거나, 터미널까지 안 닫히면 `PAREN_ACROSS_MODELS`(두 모델 이름과 고칠 위치를 메시지에 적는다) |
+| `->{'condition(AAndB)Or(C)'}(a, b, c)` `->{'or(IsSale)'}(1)` `->{'getsByAAnd((BAndC)Or(D))'}($db, …)` | 위와 같은 그룹 | brace-call 형 |
+| `and()` / `or()` / `or(fn)` | 없음 / `or()` / `or()->and(fn)` | |
+| `and('sql …', [':k' => v])` `or(…)` `condition('sql …', binds)` | `expr('sql … ?', [v])` | 공백이 있는 문자열 = 조각. 이름 바인드 `:k`는 등장 순으로 `?`가 된다 |
+| `and('Name', v)` `and('snake_name', v)` | `nameEq(v)` | compatibility `and($key, $value)` |
+| 조인 자식의 `onX(v)` `onXOrY(a, b)` | `on(fn($w) => $w->xEq(v)…)` | ON 절 |
+| 조인 자식의 `andX(v)` | `where(fn($w) => $w->xEq(v))` | compatibility가 부모 WHERE에 AND로 붙이던 자리 |
+| `relation((new Y)->matchAWithB()->aliasR())` `relations(…)` `oneToOne/oneToMany` `relationAWithB(new Y)` `match('a', 'b')` `alias('r')` | `relationR(new Y)` / `relationsR(new Y)` | 부모.A = Y.B 쌍과 대상 엔티티로 매니페스트 관계를 찾는다. 쌍이 없거나(`RELATION_UNKNOWN`), 여러 관계가 맞으면 `alias<Name>`이 고른다(없으면 `RELATION_UNKNOWN`). `relation`인데 1:N이면 `RELATION_UNKNOWN`("relations를 쓰라"). match 없음 = compatibility 기본쌍(자식 PK, `<자식>_<pk>`) |
+| `matchAWithB(false)` | `dropChildKey()` | 자식 컬럼 B가 자식 PK가 아닐 때(compatibility와 동일) |
+| `matchAllAWithB()` | `selectAll()` + 관계 | |
+| `joinAWithB(new Y)` `leftJoinAWithB(new Y)` | `joinR(new Y)` `leftJoinR(new Y)` | 쌍은 이름에서, alias는 후보가 여럿일 때 |
+| `addColumnX()` `addColumn('x')` `addColumns([…])` | `selectX()` | |
+| `addColumnXAliasY()` `addColumn('x', 'y')` | `selectXAs('y')` | |
+| `addColumnXAliasY('fmt(%s)')` `addColumn('x', 'y', fmt)` | `selectExpr('y', 'fmt(`x`)')` | `%s` 자리에 백틱 컬럼 |
+| `addRawColumnX(sql)` | `selectExpr('x', sql)` | |
+| `addAllColumns()` `removeAllColumns()` `onlyColumns([…])` | `selectAll()` `selectNone()` `selectNone()->select…()` | |
+| `removeColumnX()` `removeColumn('x')` `removeColumns([…])` | `unselectX()` | |
+| `orderByX()` `orderByXAndYDesc()` `orderByXDesc('fmt %s')` `orderBy('sql')` | `orderByXAsc()` `orderByXAsc()->orderByYDesc()` `orderByExpr('fmt `x`', true)` `orderByExpr('sql')` | `orderByXAsc/Desc`는 이미 정규 |
+| `groupByXAndY()` | `groupByX()->groupByY()` | |
+| `forceIndex('name')` | `forceIndex<Name>()` | |
+| `keyNameX()` `keyName('x')` | `relations` 자식: attach 시 `keyByX()` · 루트: 터미널에서 `keyByFn(fn($r) => $r['x'])` · `relation`(1:1) 자식: 무시 | compatibility와 같은 자리 규칙. attach 시 적용이라 정규 체인은 `keyByX()`를 자식 체인 끝에 둔다(`dropChildKey()`는 그 뒤) |
+| `keyName(fn)` `fetchKey(fn)` | `keyByFn(fn)` | 루트 컬렉션 전용(정규 PHP도 같음) |
+| `parentNode()` `groupLimit(n)` `possibleX(v)` `deleteLock()` | `flatten()` `limitPerParent(n)` `ifParentXEq(v)` `noCascadeDelete()` | `deleteLock(false)`는 없음 |
+| `get($db)` `gets($db)` | `one($db)` / `all($db)` | `gets`는 결과가 없으면 **null**(compatibility). DB는 첫 인자(`IR_INVALID`) |
+| `getAll($db)` `getsAll($db)` | `selectAll()->one/all($db)` | |
+| `getByX($db, v)` `getsByXAndY($db, a, b)` `getAllByX` `getsAllByX` | 술어 + `one/all($db)` | 술어는 호출 순서대로 붙는다(`->andA()->getsByB()` = `aEq()->bEq()`) |
+| `getCount($db)` `getsCount($db)` `getCountByX($db, v)` | `count($db)` | |
+| `getSumX($db)` `getAvgX($db)` | `sumX($db)` `avgX($db)` | |
+| `create($db)` | `insert($db)` | |
+| `duplication((new X)->setA(v)->plusB(n)->setCExpr(f, b))` `duplication(['a' => v])` | `onDuplicateSetA(v)->onDuplicatePlusB(n)->onDuplicateSetCExpr(f, b)` | 모델의 set/plus/minus/expr 순서 그대로 |
+| `setRawX('f(:a, :b)', [':a' => 1, ':b' => 2])` | `setXExpr('f(?, ?)', [1, 2])` | |
+| `plusX(n)` `minusX(n)` `setX(v)` `limit(o, n)` `groupByX()` | 이미 정규 | 숫자 컬럼만 `plus/minus` |
+| 행 `->delete($db, true)` | `->deleteCascade($db)` | `delete($db)`는 그대로 |
+| 행 `->getRelModel()` `->getRelModels()` | `->getRel()` | compatibility 기본 attach 키 |
+
+### 번역하지 않는 것 (에러 코드와 대체)
+| compatibility | 결과 | 대체 |
+|---|---|---|
+| `andAWithB($model)` 컬럼 대 컬럼(four cases) | `IR_INVALID` | `aEqCol(YCols::b())` |
+| `joinAWithB($child, $targetModel)` 다른 조인 모델 기준 조인 | `IR_INVALID` | 그 자식 체인 안에 `joinR`을 중첩 |
+| `addColumn('x', fn)` 콜백 컬럼, `column(col, alias, fn)`, `fetchValue(fn)` | `IR_INVALID` / `BadMethodCallException` | 행에서 계산 |
+| `Model::function(v, 'expr %s', binds)` 값 객체 | `IR_INVALID` | `expr(fragment, binds)` |
+| compatibility 내장 헬퍼 `andDisplayCondition` `conditionDisplayCondition` `andStartEndDtRange` `onStartEndDtRange` `addColumnIsDisplayCondition` `addColumnIsStartEndDtRange` | `COLUMN_UNKNOWN` | Mermaid `%% predicate`로 선언해 `visible()`처럼 쓴다 |
+| `newX(v)` `newRawX(…)` (테이블 밖 속성) | `BadMethodCallException` | 행 배열에 붙인다 |
+| `get('SELECT …', binds)` `gets(sql, binds)` 원시 SQL 형 | `IR_INVALID`(첫 인자가 DB가 아님) | `raw(sql, binds)->rawAll($db)` |
+| `alias`를 행의 접근 키로 쓰는 것(`$row['member']`, `getMember()`) | 관계 이름으로만 접근(`getServiceMember()`, `getServiceMemberModel()`) | alias는 관계 선택에만 쓰인다; IR·플랜에 별칭이 없다 |
+| 조인 자식이 부모의 `(`를 닫는 체인(59 files) | `PAREN_ACROSS_MODELS` | `)`를 부모 체인으로 옮기거나 `and(fn)` |
+| `keyName`을 `relation`(1:1) 자식에 | 무시 | compatibility도 무시 |
+| `fetchKey`를 관계 자식에 | 루트에만 적용 | 정규 PHP `keyByFn`도 루트 전용 |
+| `update(true)`(낙관적 잠금) `save($check)` | 행 `update($db)` / `updateOptimistic($db)`, 쿼리 `save($db)` | 인자 형이 다르다 |
+| `print()` `debug()` `Model::$debug` `filter(fn)` | `BadMethodCallException` | `sql($db)`, `on_query` 훅 |
+| `condition('table.col = 1')` 안의 테이블명 치환 | 그대로 전달 | 엔진은 백틱 컬럼만 alias로 해석한다(`expr` 규칙) |
+
 ## 7. 없는 것 (의도적)
 op-first 술어(`gtEndDt`), 무접두 술어, `or<op><Col>`, 술어 값 객체·`cols()`·`andPred`, `raw()`(→`expr`), `orderBy<Col>()` 무접미, `with<Rel>`, `match…With…`, `alias<Name>()`, `get/gets/getBy`, `addColumn*`, `parentNode`, `groupLimit`, `keyName*`, 텍스트 쿼리 언어, 맵/구조체 필터, 빌드타임 SQL.
 

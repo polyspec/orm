@@ -12,8 +12,12 @@ request). Version 0.0.1.
   application's concern (add `"App\\Orm\\": "path/to/gen/"` to its own PSR-4 map); the
   runtime only needs `gen/bootstrap.php` required once — it registers the row classes and the
   schema hash the code was generated from.
-- `tests/` — `integration.php` (the S1 demo statements plus the S3–S5 gates), the conformance
-  runner lives in `tests/conformance/runner.php`, benches in `bench.php` / `bench_emulate.php`.
+- `tests/` — `integration.php` (the S1 demo statements plus the S3–S5 gates), `compat.php`
+  (compatibility layer: 50 old-style/canonical pairs with identical IR and results, plus its error
+  codes), the conformance runner lives in `tests/conformance/runner.php`, benches in `bench.php` /
+  `bench_emulate.php`.
+- `src/Compat.php` — the compatibility `__call` compat layer (`CompatQuery` / `CompatWhere` traits the
+  generated classes use); translation table in `docs/dsl.md` "PHP 호환층".
 
 ## ormd
 PHP cannot link the engine, so the plans come from the compile daemon over a Unix socket:
@@ -53,6 +57,7 @@ uses the connection charset.
     go build -o bin/ormd ./cmd/ormd
     bin/ormd -socket "$PWD/bin/ormd.sock" -schema schema/schema.json &
     php -d apc.enable_cli=0 clients/php/tests/integration.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
+    php -d apc.enable_cli=0 clients/php/tests/compat.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
     php -d apc.enable_cli=0 tests/conformance/runner.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
 
 The tests connect with `ORM_MYSQL_DSN_PHP` when set (user `root`, no password), else
