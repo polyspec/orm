@@ -13,6 +13,9 @@ use crate::{Error, Result};
 pub struct Engine {
     jobs: Mutex<mpsc::Sender<Job>>,
     pub schema_hash: String,
+    /// The dialect the plans are compiled for (`mysql` | `postgres` | `sqlite`); `Db::connect`
+    /// refuses a driver that differs (docs/dialects.md: plans are dialect-specific text).
+    pub dialect: String,
 }
 
 struct Job {
@@ -20,11 +23,20 @@ struct Job {
     reply: mpsc::Sender<Result<(u32, Vec<u8>)>>,
 }
 
-/// Where wasmtime may keep its compiled-module cache. Declared, not discovered.
+/// What the engine loads. `dialect` selects the SQL the planner emits and must equal the
+/// database driver; `cache_dir` is where wasmtime may keep its compiled-module cache.
+/// Declared, not discovered: `EngineConfig { wasm, schema_json, dialect: "postgres", ..Default::default() }`.
 pub struct EngineConfig<'a> {
     pub wasm: &'a [u8],
     pub schema_json: &'a [u8],
+    pub dialect: &'a str,
     pub cache_dir: Option<&'a std::path::Path>,
+}
+
+impl Default for EngineConfig<'_> {
+    fn default() -> Self {
+        EngineConfig { wasm: &[], schema_json: &[], dialect: "mysql", cache_dir: None }
+    }
 }
 
 struct Inner {
@@ -39,13 +51,15 @@ impl Engine {
     pub fn new(cfg: EngineConfig<'_>) -> Result<Engine> {
         let wasm = cfg.wasm.to_vec();
         let schema = cfg.schema_json.to_vec();
+        let dialect = cfg.dialect.to_owned();
         let cache_dir = cfg.cache_dir.map(|p| p.to_path_buf());
         let (jobs_tx, jobs_rx) = mpsc::channel::<Job>();
         let (ready_tx, ready_rx) = mpsc::channel::<Result<()>>();
+        let dialect_t = dialect.clone();
         std::thread::Builder::new()
             .name("orm-engine".into())
             .spawn(move || {
-                let mut inner = match Inner::start(&wasm, &schema, cache_dir.as_deref()) {
+                let mut inner = match Inner::start(&wasm, &schema, &dialect_t, cache_dir.as_deref()) {
                     Ok(i) => {
                         let _ = ready_tx.send(Ok(()));
                         i
@@ -66,7 +80,7 @@ impl Engine {
             let v: serde_json::Value = serde_json::from_slice(cfg.schema_json).map_err(|e| Error::Config(e.to_string()))?;
             v["schema_hash"].as_str().unwrap_or_default().to_owned()
         };
-        Ok(Engine { jobs: Mutex::new(jobs_tx), schema_hash: hash })
+        Ok(Engine { jobs: Mutex::new(jobs_tx), schema_hash: hash, dialect })
     }
 
     /// Compile IR JSON into plan JSON.
@@ -86,7 +100,7 @@ impl Engine {
 }
 
 impl Inner {
-    fn start(wasm: &[u8], schema: &[u8], cache_dir: Option<&std::path::Path>) -> Result<Inner> {
+    fn start(wasm: &[u8], schema: &[u8], dialect: &str, cache_dir: Option<&std::path::Path>) -> Result<Inner> {
         let cfg_err = |e: wasmtime::Error| Error::Config(e.to_string());
         let mut config = wasmtime::Config::new();
         if let Some(dir) = cache_dir {
@@ -110,30 +124,49 @@ impl Inner {
         };
         let alloc = func(&mut store, "orm_alloc")?.typed::<u32, u32>(&store).map_err(cfg_err)?;
         let free = func(&mut store, "orm_free")?.typed::<u32, ()>(&store).map_err(cfg_err)?;
-        let load = func(&mut store, "orm_load")?.typed::<(u32, u32), u32>(&store).map_err(cfg_err)?;
+        // orm_load_dialect(schema, dialect): the dialect travels in a second buffer (engine/wasm).
+        let load = func(&mut store, "orm_load_dialect")?.typed::<(u32, u32, u32, u32), u32>(&store).map_err(cfg_err)?;
         let compile = func(&mut store, "orm_compile")?.typed::<(u32, u32), u32>(&store).map_err(cfg_err)?;
         let mut inner = Inner { store, memory, alloc, free, compile };
-        let (status, body) = inner.call(&load, schema)?;
+        let sp = inner.put(schema)?;
+        let dp = inner.put(dialect.as_bytes())?;
+        let rp = load.call(&mut inner.store, (sp, schema.len() as u32, dp, dialect.len() as u32)).map_err(cfg_err)?;
+        let (status, body) = inner.take_result(rp)?;
+        inner.free.call(&mut inner.store, sp).map_err(cfg_err)?;
+        inner.free.call(&mut inner.store, dp).map_err(cfg_err)?;
         if status != 0 {
             return Err(engine_error(&body));
         }
         Ok(inner)
     }
 
-    fn call(&mut self, f: &wasmtime::TypedFunc<(u32, u32), u32>, input: &[u8]) -> Result<(u32, Vec<u8>)> {
-        let wrap = |e: wasmtime::Error| Error::Config(e.to_string());
-        let p = self.alloc.call(&mut self.store, input.len() as u32).map_err(wrap)?;
+    /// Copies `input` into a fresh engine buffer (`orm_alloc`); the caller frees it.
+    fn put(&mut self, input: &[u8]) -> Result<u32> {
+        let p = self.alloc.call(&mut self.store, input.len() as u32).map_err(|e| Error::Config(e.to_string()))?;
         self.memory.write(&mut self.store, p as usize, input).map_err(|e| Error::Config(e.to_string()))?;
-        let rp = f.call(&mut self.store, (p, input.len() as u32)).map_err(wrap)?;
+        Ok(p)
+    }
+
+    /// Reads a `[u32 status][u32 len][bytes]` result buffer and frees it.
+    fn take_result(&mut self, rp: u32) -> Result<(u32, Vec<u8>)> {
+        let wrap = |e: wasmtime::Error| Error::Config(e.to_string());
         let mut hdr = [0u8; 8];
         self.memory.read(&self.store, rp as usize, &mut hdr).map_err(|e| Error::Config(e.to_string()))?;
         let status = u32::from_le_bytes(hdr[0..4].try_into().unwrap());
         let len = u32::from_le_bytes(hdr[4..8].try_into().unwrap()) as usize;
         let mut out = vec![0u8; len];
         self.memory.read(&self.store, rp as usize + 8, &mut out).map_err(|e| Error::Config(e.to_string()))?;
-        self.free.call(&mut self.store, p).map_err(wrap)?;
         self.free.call(&mut self.store, rp).map_err(wrap)?;
         Ok((status, out))
+    }
+
+    fn call(&mut self, f: &wasmtime::TypedFunc<(u32, u32), u32>, input: &[u8]) -> Result<(u32, Vec<u8>)> {
+        let wrap = |e: wasmtime::Error| Error::Config(e.to_string());
+        let p = self.put(input)?;
+        let rp = f.call(&mut self.store, (p, input.len() as u32)).map_err(wrap)?;
+        let out = self.take_result(rp)?;
+        self.free.call(&mut self.store, p).map_err(wrap)?;
+        Ok(out)
     }
 }
 

@@ -1,5 +1,8 @@
 //! Rust half of the S1 demo: same statements as the Go/PHP integration tests.
 //! Usage: integration <ormengine.wasm> <schema.json>
+//! The database under test is `ORM_TEST_DRIVER` (mysql default) with `ORM_TEST_DSN`
+//! (MySQL falls back to `ORM_MYSQL_URL_RUST`, then the local socket). Results are asserted
+//! as they are on every database; the SQL assertions read the statement in the MySQL spelling.
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -7,9 +10,8 @@ use chrono::Datelike;
 use gen::*;
 use orm::collection::Key;
 use orm::value::{Param, Val};
-use orm::db::{Config, Db};
+use orm::db::{Config, ConnectOptions, Db};
 use orm::engine::{Engine, EngineConfig};
-use sqlx::mysql::MySqlConnectOptions;
 
 macro_rules! check {
     ($fails:ident, $cond:expr, $what:expr) => {
@@ -17,11 +19,39 @@ macro_rules! check {
     };
 }
 
-/// The test DSN: `ORM_MYSQL_URL_RUST` when set (CI), else the local socket.
-fn connect_opts() -> MySqlConnectOptions {
-    match std::env::var("ORM_MYSQL_URL_RUST") {
-        Ok(url) => url.parse().expect("ORM_MYSQL_URL_RUST is a mysql:// URL"),
-        Err(_) => MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench"),
+/// The database under test: (driver, dsn).
+fn target() -> (String, String) {
+    let driver = std::env::var("ORM_TEST_DRIVER").unwrap_or_else(|_| "mysql".into());
+    let dsn = match std::env::var("ORM_TEST_DSN") {
+        Ok(d) => d,
+        Err(_) if driver == "mysql" => std::env::var("ORM_MYSQL_URL_RUST").unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into()),
+        Err(_) => panic!("ORM_TEST_DSN is required for driver {driver}"),
+    };
+    (driver, dsn)
+}
+
+/// The statement in the MySQL spelling (backticks, `?`, `LIMIT off, n`) so one assertion reads every dialect.
+fn norm_sql(sql: &str) -> String {
+    let mut out = String::with_capacity(sql.len());
+    let mut chars = sql.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' => out.push('`'),
+            '$' if chars.peek().map(|d| d.is_ascii_digit()).unwrap_or(false) => {
+                while chars.peek().map(|d| d.is_ascii_digit()).unwrap_or(false) {
+                    chars.next();
+                }
+                out.push('?');
+            }
+            _ => out.push(c),
+        }
+    }
+    match out.rsplit_once(" LIMIT ") {
+        Some((head, tail)) if tail.contains(" OFFSET ") => {
+            let (n, off) = tail.split_once(" OFFSET ").unwrap();
+            format!("{head} LIMIT {off}, {n}")
+        }
+        _ => out,
     }
 }
 
@@ -30,10 +60,18 @@ async fn main() {
     let args: Vec<String> = std::env::args().collect();
     let wasm = std::fs::read(&args[1]).expect("wasm");
     let schema = std::fs::read(&args[2]).expect("schema.json");
-    let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, cache_dir: None }).expect("engine"));
+    let (driver, dsn) = target();
+    let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, dialect: &driver, cache_dir: None }).expect("engine"));
     let mut fails = 0;
+    // ---- S6: the driver must be the engine's dialect ----
+    let other = if driver == "mysql" { "sqlite" } else { "mysql" };
+    let other_dsn = if other == "mysql" { "mysql://root@localhost/x" } else { "sqlite::memory:" };
+    match Db::connect(ConnectOptions::parse(other, other_dsn).unwrap(), 1, engine.clone(), Config { aes_key: String::new(), on_query: None }).await {
+        Err(e) if e.code() == orm::codes::CONFIG && e.to_string().contains("engine compiles for") => {}
+        other => { fails += 1; eprintln!("FAIL: driver/dialect mismatch not rejected: {:?}", other.err()); }
+    }
     // ---- S5 boot check: an engine whose loaded manifest has another hash is refused, and the crate stays unbound ----
-    let mut wrong = Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, cache_dir: None }).expect("engine");
+    let mut wrong = Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, dialect: &driver, cache_dir: None }).expect("engine");
     wrong.schema_hash = "0000000000000000".into();
     match gen::init(Arc::new(wrong)) {
         Err(e) if e.code() == orm::codes::SCHEMA_HASH_MISMATCH => {}
@@ -41,7 +79,7 @@ async fn main() {
     }
     gen::init(engine.clone()).expect("schema hash");
     check!(fails, gen::SCHEMA_HASH == engine.schema_hash, "gen::SCHEMA_HASH is the engine's loaded hash");
-    let opts = connect_opts();
+    let opts = ConnectOptions::parse(&driver, &dsn).expect("connect options");
     let statements = Arc::new(AtomicUsize::new(0));
     let last_plan = Arc::new(AtomicU64::new(0));
     let leaked = Arc::new(AtomicBool::new(false));
@@ -122,9 +160,11 @@ async fn main() {
     check!(fails, Battle::new().service_seq_eq(7).and(|w| w.visible().or().started_after("2999-01-01 00:00:00")).count(&db).await.unwrap() == visible, "predicates on the Where builder honour or()");
     let all_visible = Battle::new().visible().count(&db).await.unwrap();
     check!(fails, all_visible > visible && Battle::new().seq_eq(0).or().visible().count(&db).await.unwrap() == all_visible, "query predicate honours a pending or()");
-    let rows = Battle::new().raw("SELECT COUNT(*) AS n, MAX(seq) AS m, MIN(`start_dt`) AS d FROM {table} WHERE service_seq = ? AND is_close = ?", vec![7.into(), 0.into()]).raw_all(&db).await.expect("raw_all");
+    let rows = Battle::new().raw("SELECT COUNT(*) AS n, MAX(seq) AS m, MIN(start_dt) AS d FROM {table} WHERE service_seq = ? AND is_close = ?", vec![7.into(), false.into()]).raw_all(&db).await.expect("raw_all");
     check!(fails, rows.len() == 1 && rows[0].keys().cloned().collect::<Vec<_>>() == vec!["n", "m", "d"], "raw_all: one row keyed by column name in column order");
-    check!(fails, matches!(rows[0].get("n"), Some(Val::I64(_))) && rows[0].get("m") == Some(&Val::I64(99906)) && matches!(rows[0].get("d"), Some(Val::DateTime(_))), "raw_all: cells typed by column type");
+    // SQLite stores datetimes as text; the other drivers type the column
+    let d_typed = match rows[0].get("d") { Some(Val::DateTime(_)) => driver != "sqlite", Some(Val::Str(s)) => driver == "sqlite" && s.starts_with("20"), _ => false };
+    check!(fails, matches!(rows[0].get("n"), Some(Val::I64(_))) && rows[0].get("m") == Some(&Val::I64(99906)) && d_typed, "raw_all: cells typed by column type");
     check!(fails, Battle::new().raw("SELECT seq FROM {table} WHERE seq = ?", vec![0.into()]).raw_all(&db).await.unwrap().is_empty(), "raw_all: no rows = empty list");
     match Battle::new().raw("SELECT seq FROM {table} WHERE seq = ?", vec![]).raw_all(&db).await {
         Err(e) if e.code() == "IR_INVALID" => {}
@@ -222,8 +262,10 @@ async fn main() {
     }
     let n0 = statements.load(Ordering::Relaxed);
     let s = Battle::new().service_seq_eq(7).select_aes_hex_email().limit(0, 1).sql(&db).await.expect("sql");
-    check!(fails, s.sql.starts_with("SELECT ") && s.sql.ends_with(" LIMIT 0, 1") && statements.load(Ordering::Relaxed) == n0, "sql renders without executing");
-    check!(fails, s.binds == vec![Param::Str("$SECRET".into()), Param::Str("$SECRET".into()), Param::I64(7)], "sql binds: secrets masked, params as values");
+    check!(fails, s.sql.starts_with("SELECT ") && norm_sql(&s.sql).ends_with(" LIMIT 0, 1") && statements.load(Ordering::Relaxed) == n0, "sql renders without executing");
+    // MySQL decrypts in SQL (two secret slots); the other dialects decode aes/hex in the executor
+    let want_binds = if driver == "mysql" { vec![Param::Str("$SECRET".into()), Param::Str("$SECRET".into()), Param::I64(7)] } else { vec![Param::I64(7)] };
+    check!(fails, s.binds == want_binds, "sql binds: secrets masked, params as values");
     check!(fails, Battle::new().seq_in(vec![a.seq, inserted.seq]).delete(&db).await.expect("query delete") == 2, "query delete: affected count");
 
     let (svc, m1, m2, md) = db.transaction(|tx| async move {
@@ -247,6 +289,9 @@ async fn main() {
     check!(fails, ServiceModule::new().seq_eq(md).delete(&db).await.unwrap() == 1, "module cleaned up");
 
     // ---- deadlock gate: T1 locks A then B, T2 locks B then A; the loser's closure re-runs ----
+    // SQLite has one writer: two transactions cannot interleave row locks (SQLITE_BUSY is
+    // mapped to DEADLOCK and re-run, but this scenario cannot happen), so the gate is MySQL/PostgreSQL only.
+    if driver != "sqlite" {
     let a = draft("dl-rust-1").insert(&db).await.expect("dl a").unwrap().seq;
     let b = draft("dl-rust-2").insert(&db).await.expect("dl b").unwrap().seq;
     let barrier = Arc::new(tokio::sync::Barrier::new(2));
@@ -278,6 +323,7 @@ async fn main() {
     let (ra, rb) = (Battle::new().one_by_seq(&db, a).await.unwrap().unwrap(), Battle::new().one_by_seq(&db, b).await.unwrap().unwrap());
     check!(fails, expect > 0 && ra.like_count == expect && rb.like_count == expect, "final values are the last writer's");
     check!(fails, Battle::new().seq_in(vec![a, b]).delete(&db).await.unwrap() == 2, "deadlock rows cleaned up");
+    }
 
     // ---- S5: on_query plan_id, secret masking, driver error mapping, orm.toml ----
     let s = Battle::new().seq_eq(1).sql(&db).await.expect("sql");
@@ -285,8 +331,10 @@ async fn main() {
     check!(fails, s.plan_id != 0 && last_plan.load(Ordering::Relaxed) == s.plan_id, "on_query plan_id is the plan-cache key of the statement's shape");
     check!(fails, !leaked.load(Ordering::Relaxed), "the hook never sees the AES key (secret binds masked as $SECRET)");
     let d1 = draft("rust-dup").set_uuid(Some("rust-dup")).insert(&db).await.expect("dup fixture").unwrap();
+    // the driver's own message is kept
+    let driver_msg = match driver.as_str() { "mysql" => "Duplicate entry", "postgres" => "23505", _ => "UNIQUE" };
     match draft("rust-dup-2").set_uuid(Some("rust-dup")).insert(&db).await {
-        Err(e) if e.code() == orm::codes::DUPLICATE_KEY && e.to_string().contains("Duplicate entry") => {}
+        Err(e) if e.code() == orm::codes::DUPLICATE_KEY && e.to_string().contains(driver_msg) && !e.is_deadlock() => {}
         other => { fails += 1; eprintln!("FAIL: duplicate uuid not mapped to DUPLICATE_KEY: {:?}", other.err()); }
     }
     check!(fails, Battle::new().seq_eq(d1.seq).delete(&db).await.unwrap() == 1, "duplicate fixture cleaned up");
@@ -294,8 +342,7 @@ async fn main() {
     let dir = std::env::temp_dir().join(format!("orm-rust-it-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("tmp dir");
     let (wasm_abs, schema_abs) = (std::path::absolute(&args[1]).unwrap(), std::path::absolute(&args[2]).unwrap());
-    let dsn = std::env::var("ORM_MYSQL_URL_RUST").unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into());
-    let toml = |schema: &str| format!("schema = {schema:?}\n[db]\ndsn = {dsn:?}\npool = 2\n[secrets]\naes = \"bench-salt\"\n[engine]\nwasm = {:?}\n[debug]\non_query = false\n", wasm_abs);
+    let toml = |schema: &str| format!("schema = {schema:?}\n[db]\ndriver = {driver:?}\ndsn = {dsn:?}\npool = 2\n[secrets]\naes = \"bench-salt\"\n[engine]\nwasm = {:?}\n[debug]\non_query = false\n", wasm_abs);
     let bad = dir.join("relative.toml");
     std::fs::write(&bad, toml("schema/schema.json")).unwrap();
     match Db::from_config(&bad).await {
@@ -306,6 +353,7 @@ async fn main() {
     std::fs::write(&good, toml(schema_abs.to_str().unwrap())).unwrap();
     let db2 = Db::from_config(&good).await.expect("from_config");
     check!(fails, gen::init(db2.engine.clone()).is_ok(), "the engine from orm.toml passes the boot check");
+    check!(fails, db2.driver() == driver && db2.engine.dialect == driver, "from_config: [db].driver selects the pool and the engine dialect");
     let b = Battle::new().one_by_seq(&db2, 42).await.expect("one via from_config").expect("row 42");
     check!(fails, b.seq == 42 && b.aes_hex_email.as_deref() == Some("user42@example.com"), "from_config: [db], [engine] and [secrets] applied");
     let _ = std::fs::remove_dir_all(&dir);

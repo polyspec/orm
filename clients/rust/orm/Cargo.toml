@@ -7,11 +7,11 @@ description = "Rust executor for the orm engine: wasm compiler boundary, plan ca
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/maxkwon/orm"
 readme = "../README.md"
-keywords = ["orm", "mysql", "sqlx", "wasm"]
+keywords = ["orm", "mysql", "postgres", "sqlite", "sqlx", "wasm"]
 categories = ["database"]
 
 [dependencies]
-sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "chrono", "rust_decimal", "json"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite", "chrono", "rust_decimal", "json", "ipnet"] }
 rust_decimal = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 wasmtime = "48"
@@ -24,3 +24,4 @@ rand = "0.10"
 flate2 = "1"
 base64 = "0.22"
 toml = "0.9"
+aes = "0.8"

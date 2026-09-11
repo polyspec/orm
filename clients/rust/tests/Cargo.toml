@@ -24,6 +24,6 @@ path = "../../../examples/thin-slice/rust/main.rs"
 orm = { path = "../orm" }
 gen = { path = "../gen" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
-sqlx = { version = "0.9", features = ["runtime-tokio", "mysql"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 serde_json = "1"

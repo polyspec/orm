@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use serde::Deserialize;
 
-use crate::db::{Config, Db, OnQuery};
+use crate::db::{Config, ConnectOptions, Db, OnQuery};
 use crate::engine::{Engine, EngineConfig};
 use crate::value::Param;
 use crate::{Error, Result};
@@ -31,9 +31,14 @@ pub struct OrmConfig {
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct DbSection {
-    /// sqlx URL: `mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock`.
+    /// `mysql` (default) | `postgres` | `sqlite` — the driver, and the dialect the engine compiles for.
+    #[serde(default = "default_driver")]
+    pub driver: String,
+    /// sqlx URL: `mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock`,
+    /// `postgres://user@host:5432/db`, `sqlite:///abs/path.sqlite`.
     pub dsn: String,
-    /// Applied only when the URL carries no user; a different user in both is `CONFIG`.
+    /// MySQL only, applied when the URL carries no user; a different user in both is `CONFIG`.
+    /// Other drivers put the user in the URL (`[db].user` with them is `CONFIG`).
     #[serde(default)]
     pub user: Option<String>,
     #[serde(default)]
@@ -44,6 +49,10 @@ pub struct DbSection {
 
 fn default_pool() -> u32 {
     8
+}
+
+fn default_driver() -> String {
+    "mysql".into()
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -123,6 +132,12 @@ impl OrmConfig {
         if cfg.db.dsn.is_empty() {
             return Err(cfg_err("db.dsn is empty"));
         }
+        if !matches!(cfg.db.driver.as_str(), "mysql" | "postgres" | "sqlite") {
+            return Err(cfg_err(format!("db.driver {:?}: want mysql, postgres or sqlite", cfg.db.driver)));
+        }
+        if cfg.db.driver != "mysql" && (cfg.db.user.is_some() || cfg.db.password.is_some()) {
+            return Err(cfg_err(format!("db.user/password apply to mysql DSNs only; put the user in the {} URL", cfg.db.driver)));
+        }
         if let (Some(u), Some(cu)) = (url_user(&cfg.db.dsn), cfg.db.user.as_deref()) {
             if u != cu {
                 return Err(cfg_err(format!("db.user {cu:?} conflicts with the user {u:?} in db.dsn")));
@@ -144,18 +159,22 @@ impl OrmConfig {
         }
     }
 
-    /// The sqlx connect options: the URL, with `[db].user`/`password` applied when the URL has no user.
-    pub fn connect_options(&self) -> Result<sqlx::mysql::MySqlConnectOptions> {
-        let mut opts: sqlx::mysql::MySqlConnectOptions = self.db.dsn.parse().map_err(|e| cfg_err(format!("db.dsn: {e}")))?;
-        if url_user(&self.db.dsn).is_none() {
-            if let Some(u) = &self.db.user {
-                opts = opts.username(u);
+    /// The sqlx connect options of `[db].driver`: the URL, with `[db].user`/`password` applied
+    /// to a MySQL URL that has no user.
+    pub fn connect_options(&self) -> Result<ConnectOptions> {
+        let opts = ConnectOptions::parse(&self.db.driver, &self.db.dsn)?;
+        Ok(match opts {
+            ConnectOptions::MySql(mut o) if url_user(&self.db.dsn).is_none() => {
+                if let Some(u) = &self.db.user {
+                    o = o.username(u);
+                }
+                if let Some(p) = &self.db.password {
+                    o = o.password(p);
+                }
+                ConnectOptions::MySql(o)
             }
-            if let Some(p) = &self.db.password {
-                opts = opts.password(p);
-            }
-        }
-        Ok(opts)
+            other => other,
+        })
     }
 
     /// Whether the manifest declares a column with the `aes` style (so a secret must be configured).
@@ -191,7 +210,7 @@ impl Db {
         if aes_key.is_empty() && OrmConfig::schema_has_aes(&schema) {
             return Err(cfg_err("secrets: the schema has aes columns but neither aes nor aes_env is declared"));
         }
-        let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, cache_dir: cfg.engine.cache_dir.as_deref() })?);
+        let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, dialect: &cfg.db.driver, cache_dir: cfg.engine.cache_dir.as_deref() })?);
         let on_query = cfg.debug.on_query.then(stderr_logger);
         Db::connect(cfg.connect_options()?, cfg.db.pool, engine, Config { aes_key, on_query }).await
     }
@@ -246,8 +265,23 @@ mod tests {
         let ok = write(&d, "ok.toml", &format!("schema = {:?}\n[db]\ndsn = \"mysql://localhost/x\"\nuser = \"app\"\npassword = \"pw\"\npool = 2\n[secrets]\naes = \"k\"\n[engine]\nwasm = {:?}\n[debug]\non_query = true\n", schema, wasm));
         let c = OrmConfig::load(&ok).unwrap();
         assert_eq!(c.db.pool, 2);
+        assert_eq!(c.db.driver, "mysql");
         assert_eq!(c.aes_key().unwrap(), "k");
-        assert_eq!(c.connect_options().unwrap().get_username(), "app");
+        match c.connect_options().unwrap() {
+            ConnectOptions::MySql(o) => assert_eq!(o.get_username(), "app"),
+            _ => panic!("mysql options"),
+        }
+
+        let pg = write(&d, "pg.toml", &format!("schema = {:?}\n[db]\ndriver = \"postgres\"\ndsn = \"postgres://maxkwon@localhost:5432/orm_bench\"\n[engine]\nwasm = {:?}\n", schema, wasm));
+        let c = OrmConfig::load(&pg).unwrap();
+        assert_eq!(c.db.driver, "postgres");
+        assert!(matches!(c.connect_options().unwrap(), ConnectOptions::Postgres(_)));
+        let pg_user = write(&d, "pg-user.toml", &format!("schema = {:?}\n[db]\ndriver = \"postgres\"\ndsn = \"postgres://localhost/x\"\nuser = \"app\"\n[engine]\nwasm = {:?}\n", schema, wasm));
+        assert!(OrmConfig::load(&pg_user).unwrap_err().to_string().contains("mysql DSNs only"));
+        let lite = write(&d, "lite.toml", &format!("schema = {:?}\n[db]\ndriver = \"sqlite\"\ndsn = \"sqlite:///tmp/orm_bench.sqlite\"\n[engine]\nwasm = {:?}\n", schema, wasm));
+        assert!(matches!(OrmConfig::load(&lite).unwrap().connect_options().unwrap(), ConnectOptions::Sqlite(_)));
+        let odd = write(&d, "odd.toml", &format!("schema = {:?}\n[db]\ndriver = \"oracle\"\ndsn = \"x\"\n[engine]\nwasm = {:?}\n", schema, wasm));
+        assert_eq!(OrmConfig::load(&odd).unwrap_err().code(), crate::codes::CONFIG);
 
         let conflict = write(&d, "conflict.toml", &format!("schema = {:?}\n[db]\ndsn = \"mysql://root@localhost/x\"\nuser = \"app\"\n[engine]\nwasm = {:?}\n", schema, wasm));
         assert!(OrmConfig::load(&conflict).unwrap_err().to_string().contains("conflicts"));
