@@ -3564,12 +3564,15 @@ func (q *Author) NameWithDescriptionMatchBoolean(v string) *Author {
 func (w *AuthorWhere) StartedAfter(v any) *AuthorWhere { w.w.Expr("`start_dt` > ?", v); return w }
 func (q *Author) StartedAfter(v any) *Author           { q.q.W().Expr("`start_dt` > ?", v); return q }
 
-// Visible is the manifest predicate visible: `is_close` = 0 AND `is_display` = 1
+// Visible is the manifest predicate visible: `is_close` = FALSE AND `is_display` = TRUE
 func (w *AuthorWhere) Visible() *AuthorWhere {
-	w.w.Expr("`is_close` = 0 AND `is_display` = 1")
+	w.w.Expr("`is_close` = FALSE AND `is_display` = TRUE")
 	return w
 }
-func (q *Author) Visible() *Author { q.q.W().Expr("`is_close` = 0 AND `is_display` = 1"); return q }
+func (q *Author) Visible() *Author {
+	q.q.W().Expr("`is_close` = FALSE AND `is_display` = TRUE")
+	return q
+}
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
 func (q *Author) Or() *Author { q.q.Or(); return q }

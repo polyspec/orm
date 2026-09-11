@@ -571,7 +571,7 @@ impl<'a> AuthorWhere<'a> {
     pub fn and(mut self, f: impl FnOnce(AuthorWhere<'_>) -> AuthorWhere<'_>) -> Self { self.w.and_with(|w| { f(AuthorWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
     pub fn started_after(mut self, a0: impl Into<Param>) -> Self { self.w.expr("`start_dt` > ?", vec![a0.into()]); self }
-    pub fn visible(mut self) -> Self { self.w.expr("`is_close` = 0 AND `is_display` = 1", vec![]); self }
+    pub fn visible(mut self) -> Self { self.w.expr("`is_close` = FALSE AND `is_display` = TRUE", vec![]); self }
     pub fn service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.w.nav_with("service", |w| { f(super::service::ServiceWhere { w }); }); self }
     pub fn service_member(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with("service_member", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
     pub fn service_region(mut self, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.w.nav_with("service_region", |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
@@ -995,7 +995,7 @@ impl Author {
     pub fn and(mut self, f: impl FnOnce(AuthorWhere<'_>) -> AuthorWhere<'_>) -> Self { self.q.w().and_with(|w| { f(AuthorWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
     pub fn started_after(mut self, a0: impl Into<Param>) -> Self { self.q.w().expr("`start_dt` > ?", vec![a0.into()]); self }
-    pub fn visible(mut self) -> Self { self.q.w().expr("`is_close` = 0 AND `is_display` = 1", vec![]); self }
+    pub fn visible(mut self) -> Self { self.q.w().expr("`is_close` = FALSE AND `is_display` = TRUE", vec![]); self }
     pub fn service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.q.w().nav_with("service", |w| { f(super::service::ServiceWhere { w }); }); self }
     pub fn service_member(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with("service_member", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
     pub fn service_region(mut self, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.q.w().nav_with("service_region", |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }

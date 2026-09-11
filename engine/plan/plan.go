@@ -39,6 +39,7 @@ type IfParent struct {
 //   - param:  Params[Param] of the request, optionally passed through Transform
 //   - secret: a key from executor config (Name = "aes")
 //   - parent: the distinct values described by the step's ParentRef (relation IN lists; expands to N placeholders)
+//   - now:    the executor's current UTC time as "YYYY-MM-DD HH:MM:SS.ffffff" (dialects without a sub-second clock)
 //
 // Transform (executor-side, value-level): "" | "fulltext_boolean" (compatibility
 // "+w1 +w2*") | "like_contains" | "like_starts" | "like_ends" (escape % _ \ then wrap).
@@ -49,6 +50,10 @@ type BindSlot struct {
 	Name      string `json:"name,omitempty"`
 	Step      int    `json:"step,omitempty"`
 	Column    string `json:"column,omitempty"`
+	// HostStyles: style stages the dialect leaves to the executor for this
+	// value (aes/hex/ip on PostgreSQL/SQLite): the executor applies them to
+	// the bound value before sending it (write order). Empty on MySQL.
+	HostStyles []string `json:"host_styles,omitempty"`
 }
 
 // Assemble maps result columns positionally and describes how rows attach.
