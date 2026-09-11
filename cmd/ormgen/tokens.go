@@ -27,11 +27,11 @@ type vocabulary struct {
 
 func buildVocabulary(m *schema.Manifest) *vocabulary {
 	v := &vocabulary{heads: map[string]bool{}, terminals: map[string]bool{}, navs: map[string]bool{}, other: map[string]bool{}}
-	for _, t := range []string{"one", "all", "count", "paginate", "insert", "update", "updateOptimistic", "delete"} {
+	for _, t := range []string{"one", "all", "count", "paginate", "insert", "update", "updateOptimistic", "delete", "deleteCascade", "save", "sql"} {
 		v.terminals[t] = true
 	}
 	for _, t := range []string{"and", "or", "on", "where", "expr", "limit", "distinct", "selectAll", "selectNone", "selectExpr", "orderByExpr",
-		"flatten", "limitPerParent", "dropChildKey", "noCascadeDelete", "keyByFn", "transaction"} {
+		"flatten", "limitPerParent", "dropChildKey", "noCascadeDelete", "keyByFn", "transaction", "onDuplicateSetAll"} {
 		v.other[t] = true
 	}
 	for _, name := range m.Order {
@@ -48,9 +48,10 @@ func buildVocabulary(m *schema.Manifest) *vocabulary {
 			for _, o := range colOpsFor(c) {
 				v.other[lowerFirst(f)+o.Suffix] = true
 			}
-			for _, p := range []string{"select", "unselect", "orderBy", "groupBy", "keyBy", "set", "plus", "minus", "ifParent"} {
+			for _, p := range []string{"select", "unselect", "orderBy", "groupBy", "keyBy", "set", "plus", "minus", "ifParent", "onDuplicateSet", "onDuplicatePlus", "onDuplicateMinus"} {
 				v.other[p+f] = true
 			}
+			v.other["onDuplicateSet"+f+"Expr"] = true
 			v.other["select"+f+"As"] = true
 			v.other["orderBy"+f+"Asc"] = true
 			v.other["orderBy"+f+"Desc"] = true
