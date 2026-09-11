@@ -46,6 +46,8 @@ fn norm(p: &Param, m: &Mask) -> Value {
         Param::I64(x) if m.seqs.contains(x) => json!("$SEQ"),
         Param::I64(x) => json!(x),
         Param::F64(x) => json!(x),
+        // SQLite binds datetimes as text: the same value still masks
+        Param::Str(s) if m.ts.as_ref().map(|t| fmt_time(t) == *s).unwrap_or(false) => json!("$TS"),
         Param::Str(s) => json!(s),
         Param::Bytes(b) if b.first() == Some(&0x78) => json!("$ZLIB"), // zlib stream (gz style)
         Param::Bytes(b) => json!(String::from_utf8_lossy(b)),

@@ -79,6 +79,12 @@ func norm(v any) any {
 			return "$TS"
 		}
 		return fmtTime(x)
+	case string:
+		// SQLite binds datetimes as text: the same value still masks
+		if !maskTs.IsZero() && x == maskTs.UTC().Format("2006-01-02 15:04:05.000000") {
+			return "$TS"
+		}
+		return x
 	case []byte:
 		if len(x) > 0 && x[0] == 0x78 { // zlib stream (gz style): bytes differ per zlib implementation
 			return "$ZLIB"
