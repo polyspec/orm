@@ -302,14 +302,14 @@ final class BattleWhere
     public function __construct(private W $w) {}
 
     public function or(): static { $this->w->orConn(); return $this; }
-    public function and(\Closure $fn): static { $g = &$this->w->group(); $fn(new self(new W($this->w->req, $g))); return $this; }
+    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
     public function startedAfter(mixed $a0): static { $this->w->expr('`start_dt` > ?', [$a0]); return $this; }
     public function visible(): static { $this->w->expr('`is_close` = 0 AND `is_display` = 1', []); return $this; }
-    public function service(\Closure $fn): static { $g = &$this->w->nav('service'); $fn(new ServiceWhere(new W($this->w->req, $g))); return $this; }
-    public function serviceMember(\Closure $fn): static { $g = &$this->w->nav('service_member'); $fn(new ServiceMemberWhere(new W($this->w->req, $g))); return $this; }
-    public function serviceModule(\Closure $fn): static { $g = &$this->w->nav('service_module'); $fn(new ServiceModuleWhere(new W($this->w->req, $g))); return $this; }
-    public function user(\Closure $fn): static { $g = &$this->w->nav('user'); $fn(new UserWhere(new W($this->w->req, $g))); return $this; }
+    public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w->nav('service'))); $this->w->req->end(); return $this; }
+    public function serviceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w->nav('service_member'))); $this->w->req->end(); return $this; }
+    public function serviceModule(\Closure $fn): static { $fn(new ServiceModuleWhere($this->w->nav('service_module'))); $this->w->req->end(); return $this; }
+    public function user(\Closure $fn): static { $fn(new UserWhere($this->w->nav('user'))); $this->w->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w->pred('seq', 'eq', $v); return $this; }
     public function seqNotEq(int $v): static { $this->w->pred('seq', 'not_eq', $v); return $this; }
@@ -719,14 +719,14 @@ final class Battle extends Q
 
     // ---- WHERE ----
     public function or(): static { $this->orConn(); return $this; }
-    public function and(\Closure $fn): static { $g = &$this->w()->group(); $fn(new BattleWhere(new W($this->req, $g))); return $this; }
+    public function and(\Closure $fn): static { $fn(new BattleWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
     public function startedAfter(mixed $a0): static { $this->w()->expr('`start_dt` > ?', [$a0]); return $this; }
     public function visible(): static { $this->w()->expr('`is_close` = 0 AND `is_display` = 1', []); return $this; }
-    public function service(\Closure $fn): static { $g = &$this->w()->nav('service'); $fn(new ServiceWhere(new W($this->req, $g))); return $this; }
-    public function serviceMember(\Closure $fn): static { $g = &$this->w()->nav('service_member'); $fn(new ServiceMemberWhere(new W($this->req, $g))); return $this; }
-    public function serviceModule(\Closure $fn): static { $g = &$this->w()->nav('service_module'); $fn(new ServiceModuleWhere(new W($this->req, $g))); return $this; }
-    public function user(\Closure $fn): static { $g = &$this->w()->nav('user'); $fn(new UserWhere(new W($this->req, $g))); return $this; }
+    public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w()->nav('service'))); $this->req->end(); return $this; }
+    public function serviceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->nav('service_member'))); $this->req->end(); return $this; }
+    public function serviceModule(\Closure $fn): static { $fn(new ServiceModuleWhere($this->w()->nav('service_module'))); $this->req->end(); return $this; }
+    public function user(\Closure $fn): static { $fn(new UserWhere($this->w()->nav('user'))); $this->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w()->pred('seq', 'eq', $v); return $this; }
     public function seqNotEq(int $v): static { $this->w()->pred('seq', 'not_eq', $v); return $this; }
@@ -1146,256 +1146,256 @@ final class Battle extends Q
     public function relationUser(User $child): static { $this->relation('user', $child); return $this; }
 
     // ---- columns ----
-    public function selectAll(): static { $c = &$this->columns(); $c['mode'] = 'all'; return $this; }
-    public function selectNone(): static { $c = &$this->columns(); $c['mode'] = 'none'; return $this; }
-    public function selectExpr(string $name, string $frag): static { $c = &$this->columns(); $c['expr'][$name] = $frag; return $this; }
-    public function selectSeq(): static { $c = &$this->columns(); $c['add'][] = 'seq'; return $this; }
-    public function unselectSeq(): static { $c = &$this->columns(); $c['remove'][] = 'seq'; return $this; }
-    public function selectSeqAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'seq'; return $this; }
-    public function selectName(): static { $c = &$this->columns(); $c['add'][] = 'name'; return $this; }
-    public function unselectName(): static { $c = &$this->columns(); $c['remove'][] = 'name'; return $this; }
-    public function selectNameAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'name'; return $this; }
-    public function selectDescription(): static { $c = &$this->columns(); $c['add'][] = 'description'; return $this; }
-    public function unselectDescription(): static { $c = &$this->columns(); $c['remove'][] = 'description'; return $this; }
-    public function selectDescriptionAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'description'; return $this; }
-    public function selectCreatedTs(): static { $c = &$this->columns(); $c['add'][] = 'created_ts'; return $this; }
-    public function unselectCreatedTs(): static { $c = &$this->columns(); $c['remove'][] = 'created_ts'; return $this; }
-    public function selectCreatedTsAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'created_ts'; return $this; }
-    public function selectUpdatedTs(): static { $c = &$this->columns(); $c['add'][] = 'updated_ts'; return $this; }
-    public function unselectUpdatedTs(): static { $c = &$this->columns(); $c['remove'][] = 'updated_ts'; return $this; }
-    public function selectUpdatedTsAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'updated_ts'; return $this; }
-    public function selectIsClose(): static { $c = &$this->columns(); $c['add'][] = 'is_close'; return $this; }
-    public function unselectIsClose(): static { $c = &$this->columns(); $c['remove'][] = 'is_close'; return $this; }
-    public function selectIsCloseAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'is_close'; return $this; }
-    public function selectIsDisplay(): static { $c = &$this->columns(); $c['add'][] = 'is_display'; return $this; }
-    public function unselectIsDisplay(): static { $c = &$this->columns(); $c['remove'][] = 'is_display'; return $this; }
-    public function selectIsDisplayAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'is_display'; return $this; }
-    public function selectDisplayStartDt(): static { $c = &$this->columns(); $c['add'][] = 'display_start_dt'; return $this; }
-    public function unselectDisplayStartDt(): static { $c = &$this->columns(); $c['remove'][] = 'display_start_dt'; return $this; }
-    public function selectDisplayStartDtAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'display_start_dt'; return $this; }
-    public function selectDisplayEndDt(): static { $c = &$this->columns(); $c['add'][] = 'display_end_dt'; return $this; }
-    public function unselectDisplayEndDt(): static { $c = &$this->columns(); $c['remove'][] = 'display_end_dt'; return $this; }
-    public function selectDisplayEndDtAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'display_end_dt'; return $this; }
-    public function selectIsAllday(): static { $c = &$this->columns(); $c['add'][] = 'is_allday'; return $this; }
-    public function unselectIsAllday(): static { $c = &$this->columns(); $c['remove'][] = 'is_allday'; return $this; }
-    public function selectIsAlldayAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'is_allday'; return $this; }
-    public function selectTargetTeamPlayerCount(): static { $c = &$this->columns(); $c['add'][] = 'target_team_player_count'; return $this; }
-    public function unselectTargetTeamPlayerCount(): static { $c = &$this->columns(); $c['remove'][] = 'target_team_player_count'; return $this; }
-    public function selectTargetTeamPlayerCountAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'target_team_player_count'; return $this; }
-    public function selectSuccessCount(): static { $c = &$this->columns(); $c['add'][] = 'success_count'; return $this; }
-    public function unselectSuccessCount(): static { $c = &$this->columns(); $c['remove'][] = 'success_count'; return $this; }
-    public function selectSuccessCountAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'success_count'; return $this; }
-    public function selectPlayerCount(): static { $c = &$this->columns(); $c['add'][] = 'player_count'; return $this; }
-    public function unselectPlayerCount(): static { $c = &$this->columns(); $c['remove'][] = 'player_count'; return $this; }
-    public function selectPlayerCountAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'player_count'; return $this; }
-    public function selectReadCount(): static { $c = &$this->columns(); $c['add'][] = 'read_count'; return $this; }
-    public function unselectReadCount(): static { $c = &$this->columns(); $c['remove'][] = 'read_count'; return $this; }
-    public function selectReadCountAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'read_count'; return $this; }
-    public function selectCoverUrl(): static { $c = &$this->columns(); $c['add'][] = 'cover_url'; return $this; }
-    public function unselectCoverUrl(): static { $c = &$this->columns(); $c['remove'][] = 'cover_url'; return $this; }
-    public function selectCoverUrlAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'cover_url'; return $this; }
-    public function selectUserSeq(): static { $c = &$this->columns(); $c['add'][] = 'user_seq'; return $this; }
-    public function unselectUserSeq(): static { $c = &$this->columns(); $c['remove'][] = 'user_seq'; return $this; }
-    public function selectUserSeqAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'user_seq'; return $this; }
-    public function selectServiceSeq(): static { $c = &$this->columns(); $c['add'][] = 'service_seq'; return $this; }
-    public function unselectServiceSeq(): static { $c = &$this->columns(); $c['remove'][] = 'service_seq'; return $this; }
-    public function selectServiceSeqAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'service_seq'; return $this; }
-    public function selectServiceModuleSeq(): static { $c = &$this->columns(); $c['add'][] = 'service_module_seq'; return $this; }
-    public function unselectServiceModuleSeq(): static { $c = &$this->columns(); $c['remove'][] = 'service_module_seq'; return $this; }
-    public function selectServiceModuleSeqAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'service_module_seq'; return $this; }
-    public function selectServiceMemberSeq(): static { $c = &$this->columns(); $c['add'][] = 'service_member_seq'; return $this; }
-    public function unselectServiceMemberSeq(): static { $c = &$this->columns(); $c['remove'][] = 'service_member_seq'; return $this; }
-    public function selectServiceMemberSeqAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'service_member_seq'; return $this; }
-    public function selectStartDt(): static { $c = &$this->columns(); $c['add'][] = 'start_dt'; return $this; }
-    public function unselectStartDt(): static { $c = &$this->columns(); $c['remove'][] = 'start_dt'; return $this; }
-    public function selectStartDtAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'start_dt'; return $this; }
-    public function selectEndDt(): static { $c = &$this->columns(); $c['add'][] = 'end_dt'; return $this; }
-    public function unselectEndDt(): static { $c = &$this->columns(); $c['remove'][] = 'end_dt'; return $this; }
-    public function selectEndDtAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'end_dt'; return $this; }
-    public function selectUuid(): static { $c = &$this->columns(); $c['add'][] = 'uuid'; return $this; }
-    public function unselectUuid(): static { $c = &$this->columns(); $c['remove'][] = 'uuid'; return $this; }
-    public function selectUuidAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'uuid'; return $this; }
-    public function selectIsSinglePlay(): static { $c = &$this->columns(); $c['add'][] = 'is_single_play'; return $this; }
-    public function unselectIsSinglePlay(): static { $c = &$this->columns(); $c['remove'][] = 'is_single_play'; return $this; }
-    public function selectIsSinglePlayAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'is_single_play'; return $this; }
-    public function selectLikeCount(): static { $c = &$this->columns(); $c['add'][] = 'like_count'; return $this; }
-    public function unselectLikeCount(): static { $c = &$this->columns(); $c['remove'][] = 'like_count'; return $this; }
-    public function selectLikeCountAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'like_count'; return $this; }
-    public function selectAesHexEmail(): static { $c = &$this->columns(); $c['add'][] = 'aes_hex_email'; return $this; }
-    public function unselectAesHexEmail(): static { $c = &$this->columns(); $c['remove'][] = 'aes_hex_email'; return $this; }
-    public function selectAesHexEmailAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'aes_hex_email'; return $this; }
-    public function selectAesHexPhone(): static { $c = &$this->columns(); $c['add'][] = 'aes_hex_phone'; return $this; }
-    public function unselectAesHexPhone(): static { $c = &$this->columns(); $c['remove'][] = 'aes_hex_phone'; return $this; }
-    public function selectAesHexPhoneAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'aes_hex_phone'; return $this; }
-    public function selectPrice(): static { $c = &$this->columns(); $c['add'][] = 'price'; return $this; }
-    public function unselectPrice(): static { $c = &$this->columns(); $c['remove'][] = 'price'; return $this; }
-    public function selectPriceAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'price'; return $this; }
-    public function selectIp(): static { $c = &$this->columns(); $c['add'][] = 'ip'; return $this; }
-    public function unselectIp(): static { $c = &$this->columns(); $c['remove'][] = 'ip'; return $this; }
-    public function selectIpAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'ip'; return $this; }
-    public function selectGzExtend(): static { $c = &$this->columns(); $c['add'][] = 'gz_extend'; return $this; }
-    public function unselectGzExtend(): static { $c = &$this->columns(); $c['remove'][] = 'gz_extend'; return $this; }
-    public function selectGzExtendAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'gz_extend'; return $this; }
-    public function selectJsonSetting(): static { $c = &$this->columns(); $c['add'][] = 'json_setting'; return $this; }
-    public function unselectJsonSetting(): static { $c = &$this->columns(); $c['remove'][] = 'json_setting'; return $this; }
-    public function selectJsonSettingAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'json_setting'; return $this; }
-    public function selectJsonsTags(): static { $c = &$this->columns(); $c['add'][] = 'jsons_tags'; return $this; }
-    public function unselectJsonsTags(): static { $c = &$this->columns(); $c['remove'][] = 'jsons_tags'; return $this; }
-    public function selectJsonsTagsAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'jsons_tags'; return $this; }
-    public function selectBase64Extra(): static { $c = &$this->columns(); $c['add'][] = 'base64_extra'; return $this; }
-    public function unselectBase64Extra(): static { $c = &$this->columns(); $c['remove'][] = 'base64_extra'; return $this; }
-    public function selectBase64ExtraAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'base64_extra'; return $this; }
-    public function selectSerializeData(): static { $c = &$this->columns(); $c['add'][] = 'serialize_data'; return $this; }
-    public function unselectSerializeData(): static { $c = &$this->columns(); $c['remove'][] = 'serialize_data'; return $this; }
-    public function selectSerializeDataAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'serialize_data'; return $this; }
+    public function selectAll(): static { $this->colMode('all'); return $this; }
+    public function selectNone(): static { $this->colMode('none'); return $this; }
+    public function selectExpr(string $name, string $frag): static { $this->colExpr($name, $frag); return $this; }
+    public function selectSeq(): static { $this->colAdd('seq'); return $this; }
+    public function unselectSeq(): static { $this->colRemove('seq'); return $this; }
+    public function selectSeqAs(string $name): static { $this->colAs($name, 'seq'); return $this; }
+    public function selectName(): static { $this->colAdd('name'); return $this; }
+    public function unselectName(): static { $this->colRemove('name'); return $this; }
+    public function selectNameAs(string $name): static { $this->colAs($name, 'name'); return $this; }
+    public function selectDescription(): static { $this->colAdd('description'); return $this; }
+    public function unselectDescription(): static { $this->colRemove('description'); return $this; }
+    public function selectDescriptionAs(string $name): static { $this->colAs($name, 'description'); return $this; }
+    public function selectCreatedTs(): static { $this->colAdd('created_ts'); return $this; }
+    public function unselectCreatedTs(): static { $this->colRemove('created_ts'); return $this; }
+    public function selectCreatedTsAs(string $name): static { $this->colAs($name, 'created_ts'); return $this; }
+    public function selectUpdatedTs(): static { $this->colAdd('updated_ts'); return $this; }
+    public function unselectUpdatedTs(): static { $this->colRemove('updated_ts'); return $this; }
+    public function selectUpdatedTsAs(string $name): static { $this->colAs($name, 'updated_ts'); return $this; }
+    public function selectIsClose(): static { $this->colAdd('is_close'); return $this; }
+    public function unselectIsClose(): static { $this->colRemove('is_close'); return $this; }
+    public function selectIsCloseAs(string $name): static { $this->colAs($name, 'is_close'); return $this; }
+    public function selectIsDisplay(): static { $this->colAdd('is_display'); return $this; }
+    public function unselectIsDisplay(): static { $this->colRemove('is_display'); return $this; }
+    public function selectIsDisplayAs(string $name): static { $this->colAs($name, 'is_display'); return $this; }
+    public function selectDisplayStartDt(): static { $this->colAdd('display_start_dt'); return $this; }
+    public function unselectDisplayStartDt(): static { $this->colRemove('display_start_dt'); return $this; }
+    public function selectDisplayStartDtAs(string $name): static { $this->colAs($name, 'display_start_dt'); return $this; }
+    public function selectDisplayEndDt(): static { $this->colAdd('display_end_dt'); return $this; }
+    public function unselectDisplayEndDt(): static { $this->colRemove('display_end_dt'); return $this; }
+    public function selectDisplayEndDtAs(string $name): static { $this->colAs($name, 'display_end_dt'); return $this; }
+    public function selectIsAllday(): static { $this->colAdd('is_allday'); return $this; }
+    public function unselectIsAllday(): static { $this->colRemove('is_allday'); return $this; }
+    public function selectIsAlldayAs(string $name): static { $this->colAs($name, 'is_allday'); return $this; }
+    public function selectTargetTeamPlayerCount(): static { $this->colAdd('target_team_player_count'); return $this; }
+    public function unselectTargetTeamPlayerCount(): static { $this->colRemove('target_team_player_count'); return $this; }
+    public function selectTargetTeamPlayerCountAs(string $name): static { $this->colAs($name, 'target_team_player_count'); return $this; }
+    public function selectSuccessCount(): static { $this->colAdd('success_count'); return $this; }
+    public function unselectSuccessCount(): static { $this->colRemove('success_count'); return $this; }
+    public function selectSuccessCountAs(string $name): static { $this->colAs($name, 'success_count'); return $this; }
+    public function selectPlayerCount(): static { $this->colAdd('player_count'); return $this; }
+    public function unselectPlayerCount(): static { $this->colRemove('player_count'); return $this; }
+    public function selectPlayerCountAs(string $name): static { $this->colAs($name, 'player_count'); return $this; }
+    public function selectReadCount(): static { $this->colAdd('read_count'); return $this; }
+    public function unselectReadCount(): static { $this->colRemove('read_count'); return $this; }
+    public function selectReadCountAs(string $name): static { $this->colAs($name, 'read_count'); return $this; }
+    public function selectCoverUrl(): static { $this->colAdd('cover_url'); return $this; }
+    public function unselectCoverUrl(): static { $this->colRemove('cover_url'); return $this; }
+    public function selectCoverUrlAs(string $name): static { $this->colAs($name, 'cover_url'); return $this; }
+    public function selectUserSeq(): static { $this->colAdd('user_seq'); return $this; }
+    public function unselectUserSeq(): static { $this->colRemove('user_seq'); return $this; }
+    public function selectUserSeqAs(string $name): static { $this->colAs($name, 'user_seq'); return $this; }
+    public function selectServiceSeq(): static { $this->colAdd('service_seq'); return $this; }
+    public function unselectServiceSeq(): static { $this->colRemove('service_seq'); return $this; }
+    public function selectServiceSeqAs(string $name): static { $this->colAs($name, 'service_seq'); return $this; }
+    public function selectServiceModuleSeq(): static { $this->colAdd('service_module_seq'); return $this; }
+    public function unselectServiceModuleSeq(): static { $this->colRemove('service_module_seq'); return $this; }
+    public function selectServiceModuleSeqAs(string $name): static { $this->colAs($name, 'service_module_seq'); return $this; }
+    public function selectServiceMemberSeq(): static { $this->colAdd('service_member_seq'); return $this; }
+    public function unselectServiceMemberSeq(): static { $this->colRemove('service_member_seq'); return $this; }
+    public function selectServiceMemberSeqAs(string $name): static { $this->colAs($name, 'service_member_seq'); return $this; }
+    public function selectStartDt(): static { $this->colAdd('start_dt'); return $this; }
+    public function unselectStartDt(): static { $this->colRemove('start_dt'); return $this; }
+    public function selectStartDtAs(string $name): static { $this->colAs($name, 'start_dt'); return $this; }
+    public function selectEndDt(): static { $this->colAdd('end_dt'); return $this; }
+    public function unselectEndDt(): static { $this->colRemove('end_dt'); return $this; }
+    public function selectEndDtAs(string $name): static { $this->colAs($name, 'end_dt'); return $this; }
+    public function selectUuid(): static { $this->colAdd('uuid'); return $this; }
+    public function unselectUuid(): static { $this->colRemove('uuid'); return $this; }
+    public function selectUuidAs(string $name): static { $this->colAs($name, 'uuid'); return $this; }
+    public function selectIsSinglePlay(): static { $this->colAdd('is_single_play'); return $this; }
+    public function unselectIsSinglePlay(): static { $this->colRemove('is_single_play'); return $this; }
+    public function selectIsSinglePlayAs(string $name): static { $this->colAs($name, 'is_single_play'); return $this; }
+    public function selectLikeCount(): static { $this->colAdd('like_count'); return $this; }
+    public function unselectLikeCount(): static { $this->colRemove('like_count'); return $this; }
+    public function selectLikeCountAs(string $name): static { $this->colAs($name, 'like_count'); return $this; }
+    public function selectAesHexEmail(): static { $this->colAdd('aes_hex_email'); return $this; }
+    public function unselectAesHexEmail(): static { $this->colRemove('aes_hex_email'); return $this; }
+    public function selectAesHexEmailAs(string $name): static { $this->colAs($name, 'aes_hex_email'); return $this; }
+    public function selectAesHexPhone(): static { $this->colAdd('aes_hex_phone'); return $this; }
+    public function unselectAesHexPhone(): static { $this->colRemove('aes_hex_phone'); return $this; }
+    public function selectAesHexPhoneAs(string $name): static { $this->colAs($name, 'aes_hex_phone'); return $this; }
+    public function selectPrice(): static { $this->colAdd('price'); return $this; }
+    public function unselectPrice(): static { $this->colRemove('price'); return $this; }
+    public function selectPriceAs(string $name): static { $this->colAs($name, 'price'); return $this; }
+    public function selectIp(): static { $this->colAdd('ip'); return $this; }
+    public function unselectIp(): static { $this->colRemove('ip'); return $this; }
+    public function selectIpAs(string $name): static { $this->colAs($name, 'ip'); return $this; }
+    public function selectGzExtend(): static { $this->colAdd('gz_extend'); return $this; }
+    public function unselectGzExtend(): static { $this->colRemove('gz_extend'); return $this; }
+    public function selectGzExtendAs(string $name): static { $this->colAs($name, 'gz_extend'); return $this; }
+    public function selectJsonSetting(): static { $this->colAdd('json_setting'); return $this; }
+    public function unselectJsonSetting(): static { $this->colRemove('json_setting'); return $this; }
+    public function selectJsonSettingAs(string $name): static { $this->colAs($name, 'json_setting'); return $this; }
+    public function selectJsonsTags(): static { $this->colAdd('jsons_tags'); return $this; }
+    public function unselectJsonsTags(): static { $this->colRemove('jsons_tags'); return $this; }
+    public function selectJsonsTagsAs(string $name): static { $this->colAs($name, 'jsons_tags'); return $this; }
+    public function selectBase64Extra(): static { $this->colAdd('base64_extra'); return $this; }
+    public function unselectBase64Extra(): static { $this->colRemove('base64_extra'); return $this; }
+    public function selectBase64ExtraAs(string $name): static { $this->colAs($name, 'base64_extra'); return $this; }
+    public function selectSerializeData(): static { $this->colAdd('serialize_data'); return $this; }
+    public function unselectSerializeData(): static { $this->colRemove('serialize_data'); return $this; }
+    public function selectSerializeDataAs(string $name): static { $this->colAs($name, 'serialize_data'); return $this; }
 
     // ---- order, group, limit ----
     public function orderBySeqAsc(): static { $this->order('seq', false); return $this; }
     public function orderBySeqDesc(): static { $this->order('seq', true); return $this; }
-    public function groupBySeq(): static { $this->node['group_by'][] = 'seq'; return $this; }
-    public function keyBySeq(): static { $this->node['key_by'] = 'seq'; return $this; }
+    public function groupBySeq(): static { $this->groupBy('seq'); return $this; }
+    public function keyBySeq(): static { $this->opt('key_by', 'seq'); return $this; }
     public function orderByNameAsc(): static { $this->order('name', false); return $this; }
     public function orderByNameDesc(): static { $this->order('name', true); return $this; }
-    public function groupByName(): static { $this->node['group_by'][] = 'name'; return $this; }
-    public function keyByName(): static { $this->node['key_by'] = 'name'; return $this; }
+    public function groupByName(): static { $this->groupBy('name'); return $this; }
+    public function keyByName(): static { $this->opt('key_by', 'name'); return $this; }
     public function orderByDescriptionAsc(): static { $this->order('description', false); return $this; }
     public function orderByDescriptionDesc(): static { $this->order('description', true); return $this; }
-    public function groupByDescription(): static { $this->node['group_by'][] = 'description'; return $this; }
-    public function keyByDescription(): static { $this->node['key_by'] = 'description'; return $this; }
+    public function groupByDescription(): static { $this->groupBy('description'); return $this; }
+    public function keyByDescription(): static { $this->opt('key_by', 'description'); return $this; }
     public function orderByCreatedTsAsc(): static { $this->order('created_ts', false); return $this; }
     public function orderByCreatedTsDesc(): static { $this->order('created_ts', true); return $this; }
-    public function groupByCreatedTs(): static { $this->node['group_by'][] = 'created_ts'; return $this; }
-    public function keyByCreatedTs(): static { $this->node['key_by'] = 'created_ts'; return $this; }
+    public function groupByCreatedTs(): static { $this->groupBy('created_ts'); return $this; }
+    public function keyByCreatedTs(): static { $this->opt('key_by', 'created_ts'); return $this; }
     public function orderByUpdatedTsAsc(): static { $this->order('updated_ts', false); return $this; }
     public function orderByUpdatedTsDesc(): static { $this->order('updated_ts', true); return $this; }
-    public function groupByUpdatedTs(): static { $this->node['group_by'][] = 'updated_ts'; return $this; }
-    public function keyByUpdatedTs(): static { $this->node['key_by'] = 'updated_ts'; return $this; }
+    public function groupByUpdatedTs(): static { $this->groupBy('updated_ts'); return $this; }
+    public function keyByUpdatedTs(): static { $this->opt('key_by', 'updated_ts'); return $this; }
     public function orderByIsCloseAsc(): static { $this->order('is_close', false); return $this; }
     public function orderByIsCloseDesc(): static { $this->order('is_close', true); return $this; }
-    public function groupByIsClose(): static { $this->node['group_by'][] = 'is_close'; return $this; }
-    public function keyByIsClose(): static { $this->node['key_by'] = 'is_close'; return $this; }
+    public function groupByIsClose(): static { $this->groupBy('is_close'); return $this; }
+    public function keyByIsClose(): static { $this->opt('key_by', 'is_close'); return $this; }
     public function orderByIsDisplayAsc(): static { $this->order('is_display', false); return $this; }
     public function orderByIsDisplayDesc(): static { $this->order('is_display', true); return $this; }
-    public function groupByIsDisplay(): static { $this->node['group_by'][] = 'is_display'; return $this; }
-    public function keyByIsDisplay(): static { $this->node['key_by'] = 'is_display'; return $this; }
+    public function groupByIsDisplay(): static { $this->groupBy('is_display'); return $this; }
+    public function keyByIsDisplay(): static { $this->opt('key_by', 'is_display'); return $this; }
     public function orderByDisplayStartDtAsc(): static { $this->order('display_start_dt', false); return $this; }
     public function orderByDisplayStartDtDesc(): static { $this->order('display_start_dt', true); return $this; }
-    public function groupByDisplayStartDt(): static { $this->node['group_by'][] = 'display_start_dt'; return $this; }
-    public function keyByDisplayStartDt(): static { $this->node['key_by'] = 'display_start_dt'; return $this; }
+    public function groupByDisplayStartDt(): static { $this->groupBy('display_start_dt'); return $this; }
+    public function keyByDisplayStartDt(): static { $this->opt('key_by', 'display_start_dt'); return $this; }
     public function orderByDisplayEndDtAsc(): static { $this->order('display_end_dt', false); return $this; }
     public function orderByDisplayEndDtDesc(): static { $this->order('display_end_dt', true); return $this; }
-    public function groupByDisplayEndDt(): static { $this->node['group_by'][] = 'display_end_dt'; return $this; }
-    public function keyByDisplayEndDt(): static { $this->node['key_by'] = 'display_end_dt'; return $this; }
+    public function groupByDisplayEndDt(): static { $this->groupBy('display_end_dt'); return $this; }
+    public function keyByDisplayEndDt(): static { $this->opt('key_by', 'display_end_dt'); return $this; }
     public function orderByIsAlldayAsc(): static { $this->order('is_allday', false); return $this; }
     public function orderByIsAlldayDesc(): static { $this->order('is_allday', true); return $this; }
-    public function groupByIsAllday(): static { $this->node['group_by'][] = 'is_allday'; return $this; }
-    public function keyByIsAllday(): static { $this->node['key_by'] = 'is_allday'; return $this; }
+    public function groupByIsAllday(): static { $this->groupBy('is_allday'); return $this; }
+    public function keyByIsAllday(): static { $this->opt('key_by', 'is_allday'); return $this; }
     public function orderByTargetTeamPlayerCountAsc(): static { $this->order('target_team_player_count', false); return $this; }
     public function orderByTargetTeamPlayerCountDesc(): static { $this->order('target_team_player_count', true); return $this; }
-    public function groupByTargetTeamPlayerCount(): static { $this->node['group_by'][] = 'target_team_player_count'; return $this; }
-    public function keyByTargetTeamPlayerCount(): static { $this->node['key_by'] = 'target_team_player_count'; return $this; }
+    public function groupByTargetTeamPlayerCount(): static { $this->groupBy('target_team_player_count'); return $this; }
+    public function keyByTargetTeamPlayerCount(): static { $this->opt('key_by', 'target_team_player_count'); return $this; }
     public function orderBySuccessCountAsc(): static { $this->order('success_count', false); return $this; }
     public function orderBySuccessCountDesc(): static { $this->order('success_count', true); return $this; }
-    public function groupBySuccessCount(): static { $this->node['group_by'][] = 'success_count'; return $this; }
-    public function keyBySuccessCount(): static { $this->node['key_by'] = 'success_count'; return $this; }
+    public function groupBySuccessCount(): static { $this->groupBy('success_count'); return $this; }
+    public function keyBySuccessCount(): static { $this->opt('key_by', 'success_count'); return $this; }
     public function orderByPlayerCountAsc(): static { $this->order('player_count', false); return $this; }
     public function orderByPlayerCountDesc(): static { $this->order('player_count', true); return $this; }
-    public function groupByPlayerCount(): static { $this->node['group_by'][] = 'player_count'; return $this; }
-    public function keyByPlayerCount(): static { $this->node['key_by'] = 'player_count'; return $this; }
+    public function groupByPlayerCount(): static { $this->groupBy('player_count'); return $this; }
+    public function keyByPlayerCount(): static { $this->opt('key_by', 'player_count'); return $this; }
     public function orderByReadCountAsc(): static { $this->order('read_count', false); return $this; }
     public function orderByReadCountDesc(): static { $this->order('read_count', true); return $this; }
-    public function groupByReadCount(): static { $this->node['group_by'][] = 'read_count'; return $this; }
-    public function keyByReadCount(): static { $this->node['key_by'] = 'read_count'; return $this; }
+    public function groupByReadCount(): static { $this->groupBy('read_count'); return $this; }
+    public function keyByReadCount(): static { $this->opt('key_by', 'read_count'); return $this; }
     public function orderByCoverUrlAsc(): static { $this->order('cover_url', false); return $this; }
     public function orderByCoverUrlDesc(): static { $this->order('cover_url', true); return $this; }
-    public function groupByCoverUrl(): static { $this->node['group_by'][] = 'cover_url'; return $this; }
-    public function keyByCoverUrl(): static { $this->node['key_by'] = 'cover_url'; return $this; }
+    public function groupByCoverUrl(): static { $this->groupBy('cover_url'); return $this; }
+    public function keyByCoverUrl(): static { $this->opt('key_by', 'cover_url'); return $this; }
     public function orderByUserSeqAsc(): static { $this->order('user_seq', false); return $this; }
     public function orderByUserSeqDesc(): static { $this->order('user_seq', true); return $this; }
-    public function groupByUserSeq(): static { $this->node['group_by'][] = 'user_seq'; return $this; }
-    public function keyByUserSeq(): static { $this->node['key_by'] = 'user_seq'; return $this; }
+    public function groupByUserSeq(): static { $this->groupBy('user_seq'); return $this; }
+    public function keyByUserSeq(): static { $this->opt('key_by', 'user_seq'); return $this; }
     public function orderByServiceSeqAsc(): static { $this->order('service_seq', false); return $this; }
     public function orderByServiceSeqDesc(): static { $this->order('service_seq', true); return $this; }
-    public function groupByServiceSeq(): static { $this->node['group_by'][] = 'service_seq'; return $this; }
-    public function keyByServiceSeq(): static { $this->node['key_by'] = 'service_seq'; return $this; }
+    public function groupByServiceSeq(): static { $this->groupBy('service_seq'); return $this; }
+    public function keyByServiceSeq(): static { $this->opt('key_by', 'service_seq'); return $this; }
     public function orderByServiceModuleSeqAsc(): static { $this->order('service_module_seq', false); return $this; }
     public function orderByServiceModuleSeqDesc(): static { $this->order('service_module_seq', true); return $this; }
-    public function groupByServiceModuleSeq(): static { $this->node['group_by'][] = 'service_module_seq'; return $this; }
-    public function keyByServiceModuleSeq(): static { $this->node['key_by'] = 'service_module_seq'; return $this; }
+    public function groupByServiceModuleSeq(): static { $this->groupBy('service_module_seq'); return $this; }
+    public function keyByServiceModuleSeq(): static { $this->opt('key_by', 'service_module_seq'); return $this; }
     public function orderByServiceMemberSeqAsc(): static { $this->order('service_member_seq', false); return $this; }
     public function orderByServiceMemberSeqDesc(): static { $this->order('service_member_seq', true); return $this; }
-    public function groupByServiceMemberSeq(): static { $this->node['group_by'][] = 'service_member_seq'; return $this; }
-    public function keyByServiceMemberSeq(): static { $this->node['key_by'] = 'service_member_seq'; return $this; }
+    public function groupByServiceMemberSeq(): static { $this->groupBy('service_member_seq'); return $this; }
+    public function keyByServiceMemberSeq(): static { $this->opt('key_by', 'service_member_seq'); return $this; }
     public function orderByStartDtAsc(): static { $this->order('start_dt', false); return $this; }
     public function orderByStartDtDesc(): static { $this->order('start_dt', true); return $this; }
-    public function groupByStartDt(): static { $this->node['group_by'][] = 'start_dt'; return $this; }
-    public function keyByStartDt(): static { $this->node['key_by'] = 'start_dt'; return $this; }
+    public function groupByStartDt(): static { $this->groupBy('start_dt'); return $this; }
+    public function keyByStartDt(): static { $this->opt('key_by', 'start_dt'); return $this; }
     public function orderByEndDtAsc(): static { $this->order('end_dt', false); return $this; }
     public function orderByEndDtDesc(): static { $this->order('end_dt', true); return $this; }
-    public function groupByEndDt(): static { $this->node['group_by'][] = 'end_dt'; return $this; }
-    public function keyByEndDt(): static { $this->node['key_by'] = 'end_dt'; return $this; }
+    public function groupByEndDt(): static { $this->groupBy('end_dt'); return $this; }
+    public function keyByEndDt(): static { $this->opt('key_by', 'end_dt'); return $this; }
     public function orderByUuidAsc(): static { $this->order('uuid', false); return $this; }
     public function orderByUuidDesc(): static { $this->order('uuid', true); return $this; }
-    public function groupByUuid(): static { $this->node['group_by'][] = 'uuid'; return $this; }
-    public function keyByUuid(): static { $this->node['key_by'] = 'uuid'; return $this; }
+    public function groupByUuid(): static { $this->groupBy('uuid'); return $this; }
+    public function keyByUuid(): static { $this->opt('key_by', 'uuid'); return $this; }
     public function orderByIsSinglePlayAsc(): static { $this->order('is_single_play', false); return $this; }
     public function orderByIsSinglePlayDesc(): static { $this->order('is_single_play', true); return $this; }
-    public function groupByIsSinglePlay(): static { $this->node['group_by'][] = 'is_single_play'; return $this; }
-    public function keyByIsSinglePlay(): static { $this->node['key_by'] = 'is_single_play'; return $this; }
+    public function groupByIsSinglePlay(): static { $this->groupBy('is_single_play'); return $this; }
+    public function keyByIsSinglePlay(): static { $this->opt('key_by', 'is_single_play'); return $this; }
     public function orderByLikeCountAsc(): static { $this->order('like_count', false); return $this; }
     public function orderByLikeCountDesc(): static { $this->order('like_count', true); return $this; }
-    public function groupByLikeCount(): static { $this->node['group_by'][] = 'like_count'; return $this; }
-    public function keyByLikeCount(): static { $this->node['key_by'] = 'like_count'; return $this; }
+    public function groupByLikeCount(): static { $this->groupBy('like_count'); return $this; }
+    public function keyByLikeCount(): static { $this->opt('key_by', 'like_count'); return $this; }
     public function orderByAesHexEmailAsc(): static { $this->order('aes_hex_email', false); return $this; }
     public function orderByAesHexEmailDesc(): static { $this->order('aes_hex_email', true); return $this; }
-    public function groupByAesHexEmail(): static { $this->node['group_by'][] = 'aes_hex_email'; return $this; }
-    public function keyByAesHexEmail(): static { $this->node['key_by'] = 'aes_hex_email'; return $this; }
+    public function groupByAesHexEmail(): static { $this->groupBy('aes_hex_email'); return $this; }
+    public function keyByAesHexEmail(): static { $this->opt('key_by', 'aes_hex_email'); return $this; }
     public function orderByAesHexPhoneAsc(): static { $this->order('aes_hex_phone', false); return $this; }
     public function orderByAesHexPhoneDesc(): static { $this->order('aes_hex_phone', true); return $this; }
-    public function groupByAesHexPhone(): static { $this->node['group_by'][] = 'aes_hex_phone'; return $this; }
-    public function keyByAesHexPhone(): static { $this->node['key_by'] = 'aes_hex_phone'; return $this; }
+    public function groupByAesHexPhone(): static { $this->groupBy('aes_hex_phone'); return $this; }
+    public function keyByAesHexPhone(): static { $this->opt('key_by', 'aes_hex_phone'); return $this; }
     public function orderByPriceAsc(): static { $this->order('price', false); return $this; }
     public function orderByPriceDesc(): static { $this->order('price', true); return $this; }
-    public function groupByPrice(): static { $this->node['group_by'][] = 'price'; return $this; }
-    public function keyByPrice(): static { $this->node['key_by'] = 'price'; return $this; }
+    public function groupByPrice(): static { $this->groupBy('price'); return $this; }
+    public function keyByPrice(): static { $this->opt('key_by', 'price'); return $this; }
     public function orderByIpAsc(): static { $this->order('ip', false); return $this; }
     public function orderByIpDesc(): static { $this->order('ip', true); return $this; }
-    public function groupByIp(): static { $this->node['group_by'][] = 'ip'; return $this; }
-    public function keyByIp(): static { $this->node['key_by'] = 'ip'; return $this; }
+    public function groupByIp(): static { $this->groupBy('ip'); return $this; }
+    public function keyByIp(): static { $this->opt('key_by', 'ip'); return $this; }
     public function orderByGzExtendAsc(): static { $this->order('gz_extend', false); return $this; }
     public function orderByGzExtendDesc(): static { $this->order('gz_extend', true); return $this; }
-    public function groupByGzExtend(): static { $this->node['group_by'][] = 'gz_extend'; return $this; }
-    public function keyByGzExtend(): static { $this->node['key_by'] = 'gz_extend'; return $this; }
+    public function groupByGzExtend(): static { $this->groupBy('gz_extend'); return $this; }
+    public function keyByGzExtend(): static { $this->opt('key_by', 'gz_extend'); return $this; }
     public function orderByJsonSettingAsc(): static { $this->order('json_setting', false); return $this; }
     public function orderByJsonSettingDesc(): static { $this->order('json_setting', true); return $this; }
-    public function groupByJsonSetting(): static { $this->node['group_by'][] = 'json_setting'; return $this; }
-    public function keyByJsonSetting(): static { $this->node['key_by'] = 'json_setting'; return $this; }
+    public function groupByJsonSetting(): static { $this->groupBy('json_setting'); return $this; }
+    public function keyByJsonSetting(): static { $this->opt('key_by', 'json_setting'); return $this; }
     public function orderByJsonsTagsAsc(): static { $this->order('jsons_tags', false); return $this; }
     public function orderByJsonsTagsDesc(): static { $this->order('jsons_tags', true); return $this; }
-    public function groupByJsonsTags(): static { $this->node['group_by'][] = 'jsons_tags'; return $this; }
-    public function keyByJsonsTags(): static { $this->node['key_by'] = 'jsons_tags'; return $this; }
+    public function groupByJsonsTags(): static { $this->groupBy('jsons_tags'); return $this; }
+    public function keyByJsonsTags(): static { $this->opt('key_by', 'jsons_tags'); return $this; }
     public function orderByBase64ExtraAsc(): static { $this->order('base64_extra', false); return $this; }
     public function orderByBase64ExtraDesc(): static { $this->order('base64_extra', true); return $this; }
-    public function groupByBase64Extra(): static { $this->node['group_by'][] = 'base64_extra'; return $this; }
-    public function keyByBase64Extra(): static { $this->node['key_by'] = 'base64_extra'; return $this; }
+    public function groupByBase64Extra(): static { $this->groupBy('base64_extra'); return $this; }
+    public function keyByBase64Extra(): static { $this->opt('key_by', 'base64_extra'); return $this; }
     public function orderBySerializeDataAsc(): static { $this->order('serialize_data', false); return $this; }
     public function orderBySerializeDataDesc(): static { $this->order('serialize_data', true); return $this; }
-    public function groupBySerializeData(): static { $this->node['group_by'][] = 'serialize_data'; return $this; }
-    public function keyBySerializeData(): static { $this->node['key_by'] = 'serialize_data'; return $this; }
+    public function groupBySerializeData(): static { $this->groupBy('serialize_data'); return $this; }
+    public function keyBySerializeData(): static { $this->opt('key_by', 'serialize_data'); return $this; }
     /** Group predicates after groupBy<Col>(); the closure gets the same Where builder, aggregates via expr('COUNT(*) > ?', [n]). */
     public function having(\Closure $fn): static { $fn(new BattleWhere($this->havingW())); return $this; }
     public function orderByExpr(string $frag, bool $desc = false): static { $this->orderExpr($frag, $desc); return $this; }
-    public function limit(int $offset, int $count): static { $this->node['limit'] = ['offset' => $offset, 'count' => $count]; return $this; }
-    public function distinct(): static { $this->node['distinct'] = true; return $this; }
-    public function forceIndexIk(): static { $this->node['force_index'] = 'ik'; return $this; }
-    public function forceIndexIxService(): static { $this->node['force_index'] = 'ix_service'; return $this; }
-    public function forceIndexIxUser(): static { $this->node['force_index'] = 'ix_user'; return $this; }
+    public function limit(int $offset, int $count): static { $this->setLimit($offset, $count); return $this; }
+    public function distinct(): static { $this->opt('distinct', true); return $this; }
+    public function forceIndexIk(): static { $this->opt('force_index', 'ik'); return $this; }
+    public function forceIndexIxService(): static { $this->opt('force_index', 'ix_service'); return $this; }
+    public function forceIndexIxUser(): static { $this->opt('force_index', 'ix_user'); return $this; }
 
     // ---- relation-child options ----
-    public function flatten(): static { $this->node['flatten'] = true; return $this; }
-    public function limitPerParent(int $n): static { $this->node['limit_per_parent'] = $n; return $this; }
-    public function dropChildKey(): static { $this->node['drop_child_key'] = true; return $this; }
-    public function noCascadeDelete(): static { $this->node['no_cascade_delete'] = true; return $this; }
+    public function flatten(): static { $this->opt('flatten', true); return $this; }
+    public function limitPerParent(int $n): static { $this->opt('limit_per_parent', $n); return $this; }
+    public function dropChildKey(): static { $this->opt('drop_child_key', true); return $this; }
+    public function noCascadeDelete(): static { $this->opt('no_cascade_delete', true); return $this; }
     public function ifParentSeqEq(int $v): static { $this->ifParent('seq', $v); return $this; }
     public function ifParentNameEq(string $v): static { $this->ifParent('name', $v); return $this; }
     public function ifParentServiceSeqEq(int $v): static { $this->ifParent('service_seq', $v); return $this; }
