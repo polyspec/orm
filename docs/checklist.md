@@ -7,16 +7,16 @@
 - **S0 완료** (측정·결정 R1~R3, F1~F3 — `docs/perf.md`).
 - **S1 완료** (thin slice: 엔진·생성기·3언어 실행기, 적합성 하네스, `ormgen tokens`, 데모).
 - **S2 구현·검증 완료**(T2.15 150테이블 게이트만 대형 스키마 fixture 대기), **S3 완료**, **S4 완료**(PHP 호환층 포함), **S5 구현 완료**(T5.8 GitHub 실제 실행 확인만 잔여), **S6 완료**(dialect PG/SQLite, ddl, 3언어 실행기).
-- 적합성 벡터 **56개 × 3언어 × 3 DB 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
+- 적합성 벡터 **58개 × 3언어 × 3 DB 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
 
 ## 공통 인터페이스 정합성
 
 - [x] I1 공통 구조·소유권·상태 전이 명세와 Mermaid 도표 (`interfaces.md`, `contracts/interfaces.json`)
 - [x] I2 manifest 기반 Go/PHP/Rust Query·Row 인터페이스 생성, 공통 입력·출력 대조
 - [x] I3 저장 필드와 Request/Plan 25개 레코드 대조, AST/Reflection·소스 변경 반례 검사
-- [x] I4 Binding·쿼리 재사용·자식 복사·오류 보존·dirty·원본 버전·typed key·페이지 벡터: 총 56 × 3언어 × 3 DB
+- [x] I4 Binding·쿼리 재사용·자식 복사·오류 보존·dirty·원본 버전·typed key·페이지 벡터: 총 58 × 3언어 × 3 DB
 - [x] I5 CI에 생성물·구조·상태 계약 검사 연결, 현재 문서·예제 동기화
-- [~] I6 native PK 직접 변경 후 identity 보존, 중첩 컬렉션 변환 충돌 검증. 세부 범위: [구현 대조표](interface-implementation.md)
+- [x] I6 native PK 직접 변경 후 identity 보존, 중첩 컬렉션 변환 충돌 검증. `interface_identity`, `interface_nested_keys` 통과. 세부 범위: [구현 대조표](interface-implementation.md)
 
 ## 병렬 레인 (어떻게 나눠 일하는가)
 | 레인 | 담당 | 다른 레인과의 경계 |
@@ -77,7 +77,7 @@
 
 ### 2-D 검증 — 레인 V
 - [x] T2.17 코덱 벡터 3언어 통과(`go test ./clients/go/orm`, `cargo test -p orm`, `php tests/codec/check.php`: Go/Rust 산출물을 PHP가 읽어 동일)
-- [x] T2.16 적합성 벡터 S2분 완료(관계·코덱·타입 15개) → 현재 총 **56 × 3언어 × 3 DB 동일**
+- [x] T2.16 적합성 벡터 S2분 완료(관계·코덱·타입 15개) → 현재 총 **58 × 3언어 × 3 DB 동일**
 
 ---
 
@@ -168,8 +168,8 @@ T2.4/T2.5 → T3.1 → T3.3 → T4.1~4.4 → T4.5/4.6 → T4.8 → T5.8 → T6.1
 ## 게이트(통과 못 하면 다음 단계 금지)
 - G0 (T0.17) ✔ Go/Rust 핫패스 ≤5% 손실, PHP ≤+5%
 - G1 (T1.23) ✔ 3언어 데모 같은 JSON, `ormgen tokens` diff 0, 적합성 15/15
-- G2 (T2.15/T2.16): Rust 150테이블 `cargo check` 기록(대형 스키마 fixture 대기), 적합성 56/56 ✔, 코덱 벡터 60×3 ✔
+- G2 (T2.15/T2.16): Rust 150테이블 `cargo check` 기록(대형 스키마 fixture 대기), 적합성 58/58 ✔, 코덱 벡터 60×3 ✔
 - G3 (T3.4/T3.5): 데드락 게이트 3/3, 적합성 45/45
-- G4 (T4.8): 적합성 56/56, `ormgen check`와 토큰 패리티를 CI에서 검증
+- G4 (T4.8): 적합성 58/58, `ormgen check`와 토큰 패리티를 CI에서 검증
 - G5 (T5.8): workflow 작성·로컬 단계 확인 완료, GitHub 실제 실행 대기; 벤치 회귀 게이트 활성
-- G6 (T6.5) ✔ 3 DB 동일 결과 (3언어 × 56 벡터)
+- G6 (T6.5) ✔ 3 DB 동일 결과 (3언어 × 58 벡터)

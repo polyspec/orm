@@ -146,7 +146,7 @@ type AuthorRowInterface interface {
 	DeleteCascade() error
 	Has(name string) bool
 	RelLoaded(rel string) bool
-	ToArray() map[string]any
+	ToArray() (map[string]any, error)
 }
 
 var _ AuthorRowInterface = (*AuthorRow)(nil)
@@ -182,7 +182,7 @@ type UserRowInterface interface {
 	DeleteCascade() error
 	Has(name string) bool
 	RelLoaded(rel string) bool
-	ToArray() map[string]any
+	ToArray() (map[string]any, error)
 }
 
 var _ UserRowInterface = (*UserRow)(nil)
@@ -218,7 +218,7 @@ type ServiceRowInterface interface {
 	DeleteCascade() error
 	Has(name string) bool
 	RelLoaded(rel string) bool
-	ToArray() map[string]any
+	ToArray() (map[string]any, error)
 }
 
 var _ ServiceRowInterface = (*ServiceRow)(nil)
@@ -258,7 +258,7 @@ type ServiceRegionRowInterface interface {
 	DeleteCascade() error
 	Has(name string) bool
 	RelLoaded(rel string) bool
-	ToArray() map[string]any
+	ToArray() (map[string]any, error)
 }
 
 var _ ServiceRegionRowInterface = (*ServiceRegionRow)(nil)
@@ -298,7 +298,7 @@ type ServiceMemberRowInterface interface {
 	DeleteCascade() error
 	Has(name string) bool
 	RelLoaded(rel string) bool
-	ToArray() map[string]any
+	ToArray() (map[string]any, error)
 }
 
 var _ ServiceMemberRowInterface = (*ServiceMemberRow)(nil)

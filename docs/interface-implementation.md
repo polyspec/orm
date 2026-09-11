@@ -2,7 +2,7 @@
 
 기준: [공통 인터페이스 v1](interfaces.md), [기계 명세](../contracts/interfaces.json), [생성 도표](interfaces-model.md). 재현 명령과 검사 범위는 [검사 안내](../tests/interfaces/README.md)에 있다.
 
-2026-09-12 로컬 검증: **56개 시나리오 × Go·PHP·Rust × MySQL·PostgreSQL·SQLite 일치**. 공통 입력·출력, 저장 필드, 25개 wire 레코드, 네이티브 선언과 소스 변경 반례를 별도로 검사한다. TypeScript는 미구현이다.
+2026-09-12 로컬 검증: **58개 시나리오 × Go·PHP·Rust × MySQL·PostgreSQL·SQLite 일치**. 공통 입력·출력, 저장 필드, 25개 wire 레코드, 네이티브 선언과 소스 변경 반례를 별도로 검사한다. TypeScript는 미구현이다.
 
 | 계약 | 구현과 검증 |
 |---|---|
@@ -15,14 +15,14 @@
 | IF-13 ~ IF-17 | root Binding, 행·조인·관계 상속, 종료 Tx 거부. `unbound_terminal`, `finished_transaction`, `bound_transaction_rollback`, Go 취소·재바인딩과 Rust 취소 정리 검사 |
 | IF-19, IF-20, IF-24 | 관계 단계·pagination·flatten·hidden·projection 벡터, 변경 상태가 공유되지 않도록 조립 |
 | IF-21, IF-22 | 현재 값 유지, 최초 컬럼 순서 보존, 성공 후 dirty만 해제. `interface_row_state`, `interface_dirty_retry` |
-| IF-23, IF-29 | 미조회 행 CONFIG, 조회 원본 버전 별도 보관, 버전 미조회 CONFIG. `interface_original_version`. native PK 필드 직접 변경 후 identity 보존은 추가 검증 대상 |
+| IF-23, IF-29 | 미조회 행 CONFIG, 조회 원본 버전 별도 보관, 버전 미조회 CONFIG. `interface_original_version`. `interface_identity`는 현재 PK 값을 변경해도 조회 당시 PK로 수정·삭제하는지 검사 |
 | IF-02, IF-24 | has·relLoaded, setter로 지정한 미조회 컬럼의 결과 변환. `selectNone()`은 PK+FK 유지 |
-| IF-25, IF-26 | typed key·중복 위치·entries. `interface_typed_keys`. PHP array 변환 충돌 거부; 중첩 컬렉션의 손실 없는 변환 경계는 추가 검증 대상 |
+| IF-25, IF-26 | typed key·중복 위치·entries. `interface_typed_keys`. 모든 언어의 맵/배열 변환은 키 충돌 시 IR_INVALID. `interface_nested_keys`는 중첩 관계에서 발생한 충돌이 부모 행 변환까지 전달되는지 검사 |
 | IF-27 | Page 다섯 필드의 선언 대조, `interface_invalid_page`와 기존 pagination 벡터 |
 | IF-28, IF-30, IF-31 | 설정·코덱 60개·AES·hook 마스킹·실제 statement 순서 검사 |
 | IF-33 | manifest 기반 인터페이스·도표 생성, 생성 drift·구조·실행 계약을 CI에 연결 |
 | IF-34 | PHP 값 인자 guard와 동적 호환층. PHP integration·compat 검사 |
 
-구조 검사는 공통 메서드와 저장 필드를 먼저 대조하고, 전체 네이티브 선언의 누락·추가·변경을 검사한다. PHP의 기본 readonly setter 표기처럼 언어 버전이 자동 부여하는 표현은 정규화하며 명시적인 접근 제한 변경은 보존한다. 각 언어의 소스를 직접 바꾸는 6개 반례와 PHP wire 필드/형태 반례 165개도 검출한다.
+구조 검사는 공통 메서드와 저장 필드를 먼저 대조하고, 전체 네이티브 선언의 누락·추가·변경을 검사한다. `owners`는 역할별 필드 전체를 제한하므로 심볼 목록만 다시 기록해도 임의의 상태 필드를 추가할 수 없다. PHP의 기본 readonly setter 표기처럼 언어 버전이 자동 부여하는 표현은 정규화하며 명시적인 접근 제한 변경은 보존한다. 각 언어의 소스를 직접 바꾸는 7개 반례와 PHP wire 필드/형태 반례 165개도 검출한다.
 
-이 결과는 명시한 계약과 시나리오의 검증이다. 함수 본문 전체의 등가성이나 모든 입력에 대한 증명으로 확대하지 않는다. GitHub CI 실제 실행, 150테이블 Rust 빌드 게이트와 위 추가 검증 대상은 완료로 표시하지 않는다. 전체 진행 상태는 [체크리스트](checklist.md)에서 관리한다.
+이 결과는 명시한 계약과 시나리오의 검증이다. 함수 본문 전체의 등가성이나 모든 입력에 대한 증명으로 확대하지 않는다. GitHub CI 실제 실행과 150테이블 Rust 빌드 게이트는 완료로 표시하지 않는다. 전체 진행 상태는 [체크리스트](checklist.md)에서 관리한다.

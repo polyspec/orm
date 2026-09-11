@@ -42,6 +42,22 @@ pub struct Collection<T> {
     items: IndexMap<Key, T>,
 }
 
+pub trait RowExport {
+    fn to_map(&self) -> crate::Result<serde_json::Value>;
+}
+
+impl<T: RowExport> Collection<T> {
+    pub fn to_map(&self) -> crate::Result<serde_json::Value> {
+        let mut out = serde_json::Map::new();
+        for (key,row) in self.iter() {
+            let key=key.to_string();
+            if out.contains_key(&key) { return Err(crate::Error::Engine { code:"IR_INVALID".into(), msg:"array conversion loses key type; use entries".into() }); }
+            out.insert(key,row.to_map()?);
+        }
+        Ok(serde_json::Value::Object(out))
+    }
+}
+
 impl<T> Default for Collection<T> {
     fn default() -> Self {
         Collection { items: IndexMap::new() }

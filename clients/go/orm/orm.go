@@ -1128,6 +1128,32 @@ func NewCollection[T any](n int) *Collection[T] {
 	return &Collection[T]{keys: make([]Key, 0, n), items: make(map[Key]*T, n)}
 }
 
+// RowExport is the common fallible row conversion boundary.
+type RowExport interface {
+	ToArray() (map[string]any, error)
+}
+
+// ToArray refuses collisions introduced by a string-keyed representation.
+func (c *Collection[T]) ToArray() (map[string]any, error) {
+	out := make(map[string]any, c.Len())
+	for k, v := range c.All() {
+		key := k.String()
+		if _, ok := out[key]; ok {
+			return nil, &ir.Error{Code: CodeIrInvalid, Msg: "array conversion loses key type; use entries"}
+		}
+		row, ok := any(v).(RowExport)
+		if !ok {
+			return nil, &ir.Error{Code: CodeConfig, Msg: "collection value does not implement row export"}
+		}
+		value, err := row.ToArray()
+		if err != nil {
+			return nil, err
+		}
+		out[key] = value
+	}
+	return out, nil
+}
+
 func (c *Collection[T]) Put(k Key, v *T) {
 	if _, ok := c.items[k]; !ok {
 		c.keys = append(c.keys, k)
