@@ -385,6 +385,16 @@ impl ServiceModule {
         };
         self.q.join(rel, kind, c); self
     }
+
+
+    pub fn join_seq_with_service_module_seq(mut self, child: impl AsRef<super::battle::Battle>) -> Self { self.q.join("battles", "inner", &child.as_ref().q); self }
+    pub fn left_join_seq_with_service_module_seq(mut self, child: impl AsRef<super::battle::Battle>) -> Self { self.q.join("battles", "left", &child.as_ref().q); self }
+    pub fn relations_seq_with_service_module_seq(mut self, child: impl AsRef<super::battle::Battle>) -> Self { self.q.relation("battles", &child.as_ref().q); self }
+
+    pub fn join_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "inner", &child.as_ref().q); self }
+    pub fn left_join_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "left", &child.as_ref().q); self }
+    pub fn relation_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.relation("service", &child.as_ref().q); self }
+
     // ---- columns ----
     pub fn select_all(mut self) -> Self { self.q.columns().mode = "all".into(); self }
     pub fn select_none(mut self) -> Self { self.q.columns().mode = "none".into(); self }

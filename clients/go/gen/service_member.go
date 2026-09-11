@@ -800,6 +800,45 @@ func (q *ServiceMemberQuery) joinTarget(child any, kind string) *ServiceMemberQu
 	return q
 }
 
+func (q *ServiceMemberQuery) JoinSeqWithServiceMemberSeq(child *BattleQuery) *ServiceMemberQuery {
+	q.q.Join("battles", "inner", child.q)
+	return q
+}
+func (q *ServiceMemberQuery) LeftJoinSeqWithServiceMemberSeq(child *BattleQuery) *ServiceMemberQuery {
+	q.q.Join("battles", "left", child.q)
+	return q
+}
+func (q *ServiceMemberQuery) RelationsSeqWithServiceMemberSeq(child *BattleQuery) *ServiceMemberQuery {
+	q.q.Relation("battles", child.q)
+	return q
+}
+
+func (q *ServiceMemberQuery) JoinServiceSeqWithSeq(child *ServiceQuery) *ServiceMemberQuery {
+	q.q.Join("service", "inner", child.q)
+	return q
+}
+func (q *ServiceMemberQuery) LeftJoinServiceSeqWithSeq(child *ServiceQuery) *ServiceMemberQuery {
+	q.q.Join("service", "left", child.q)
+	return q
+}
+func (q *ServiceMemberQuery) RelationServiceSeqWithSeq(child *ServiceQuery) *ServiceMemberQuery {
+	q.q.Relation("service", child.q)
+	return q
+}
+
+func (q *ServiceMemberQuery) JoinUserSeqWithSeq(child *UserQuery) *ServiceMemberQuery {
+	q.q.Join("user", "inner", child.q)
+	return q
+}
+func (q *ServiceMemberQuery) LeftJoinUserSeqWithSeq(child *UserQuery) *ServiceMemberQuery {
+	q.q.Join("user", "left", child.q)
+	return q
+}
+func (q *ServiceMemberQuery) RelationUserSeqWithSeq(child *UserQuery) *ServiceMemberQuery {
+	q.q.Relation("user", child.q)
+	return q
+}
+
 // Columns.
 func (q *ServiceMemberQuery) SelectAll() *ServiceMemberQuery  { q.q.Columns().Mode = "all"; return q }
 func (q *ServiceMemberQuery) SelectNone() *ServiceMemberQuery { q.q.Columns().Mode = "none"; return q }

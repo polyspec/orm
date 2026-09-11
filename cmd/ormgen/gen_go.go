@@ -172,6 +172,7 @@ func appStyles(c *schema.Col) []string {
 type goRel struct {
 	Name, Method, Target, TargetType, Kind string
 	Left, Right                            string // this.Left = target.Right (the PHP compat layer resolves matchAWithB against them)
+	Pair                                   bool
 }
 
 // parentOf returns the first entity related to e that has column col (ifParent targets).
@@ -246,9 +247,14 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 		names = append(names, n)
 	}
 	sort.Strings(names)
+	pairs := map[string]int{}
 	for _, n := range names {
 		r := e.Relations[n]
-		ge.Rels = append(ge.Rels, goRel{Name: n, Method: pascal(n), Target: r.Target, TargetType: pascal(r.Target), Kind: r.Kind, Left: r.Left, Right: r.Right})
+		pairs[r.Left+"\x1f"+r.Right]++
+	}
+	for _, n := range names {
+		r := e.Relations[n]
+		ge.Rels = append(ge.Rels, goRel{Name: n, Method: pascal(n), Target: r.Target, TargetType: pascal(r.Target), Kind: r.Kind, Left: r.Left, Right: r.Right, Pair: pairs[r.Left+"\x1f"+r.Right] == 1})
 	}
 	for n := range e.Indexes {
 		ge.Indexes = append(ge.Indexes, n)
@@ -681,6 +687,17 @@ func (q *{{.Type}}Query) joinTarget(child any, kind string) *{{.Type}}Query {
 {{- end}}
 	return q
 }
+{{range .Rels}}
+{{if .Pair}}
+func (q *{{$.Type}}Query) Join{{pascal .Left}}With{{pascal .Right}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Join("{{.Name}}", "inner", child.q); return q }
+func (q *{{$.Type}}Query) LeftJoin{{pascal .Left}}With{{pascal .Right}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Join("{{.Name}}", "left", child.q); return q }
+{{- if eq .Kind "one"}}
+func (q *{{$.Type}}Query) Relation{{pascal .Left}}With{{pascal .Right}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Relation("{{.Name}}", child.q); return q }
+{{- else}}
+func (q *{{$.Type}}Query) Relations{{pascal .Left}}With{{pascal .Right}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Relation("{{.Name}}", child.q); return q }
+{{- end}}
+{{- end}}
+{{- end}}
 // Columns.
 func (q *{{.Type}}Query) SelectAll() *{{.Type}}Query { q.q.Columns().Mode = "all"; return q }
 func (q *{{.Type}}Query) SelectNone() *{{.Type}}Query { q.q.Columns().Mode = "none"; return q }
