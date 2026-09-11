@@ -21,6 +21,8 @@ func main() {
 	switch os.Args[1] {
 	case "build":
 		build(os.Args[2:])
+	case "gen":
+		gen(os.Args[2:])
 	default:
 		usage()
 	}
@@ -28,7 +30,43 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: ormgen build <files.mmd...> --out schema/schema.json")
+	fmt.Fprintln(os.Stderr, "       ormgen gen --schema schema/schema.json --lang go --out clients/go/gen")
 	os.Exit(2)
+}
+
+func gen(args []string) {
+	fs := flag.NewFlagSet("gen", flag.ExitOnError)
+	schemaPath := fs.String("schema", "", "schema.json (required)")
+	lang := fs.String("lang", "", "go|php|rust (required)")
+	out := fs.String("out", "", "output directory (required)")
+	ns := fs.String("namespace", "App\\Orm", "PHP namespace")
+	fs.Parse(args)
+	if *schemaPath == "" || *lang == "" || *out == "" {
+		usage()
+	}
+	js, err := os.ReadFile(*schemaPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
+		os.Exit(1)
+	}
+	m, err := schema.Load(js)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
+		os.Exit(1)
+	}
+	switch *lang {
+	case "go":
+		err = genGo(m, *out)
+	case "php":
+		err = genPHP(m, *out, *ns)
+	default:
+		err = fmt.Errorf("lang %q not implemented", *lang)
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("ormgen: %d entities → %s (%s)\n", len(m.Order), *out, *lang)
 }
 
 func build(args []string) {

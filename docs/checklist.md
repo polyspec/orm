@@ -48,12 +48,12 @@
 - [x] T1.7 **P** `engine/dialect` 인터페이스 + MySQL 구현: quote, placeholder, LIKE(ci by collation), upsert, insert id, fulltext(값 변환 `' '→' +'`, 끝 `*`), row_number, force_index, StyleExpr(aes/hex/ip는 SQL 함수) → T1.5
 - [x] T1.8 `engine/planner` v1: 단일 테이블 SELECT/INSERT/UPDATE/DELETE, order/limit, 위치 기반 `assemble.columns[]`, lazy 컬럼 제외·`add/remove/all/only` 모드 → T1.6, T1.7
 - [x] T1.9 `engine/api.Compile` + 골든 테스트(IR→SQL+바인드) 30개 → T1.8
-- [~] T1.10 **P** `engine/ffi`·`engine/wasm` 실제 엔진 연결(완료: orm_load/orm_compile), 빌드 스크립트(`make artifacts`: darwin/linux amd64/arm64 dylib·so, wasm), 파일명에 버전 포함 → T1.9
+- [x] T1.10 **P** `engine/ffi`·`engine/wasm` 실제 엔진 연결(완료: orm_load/orm_compile), 빌드 스크립트(`make artifacts`: darwin/linux amd64/arm64 dylib·so, wasm), 파일명에 버전 포함 → T1.9
 
 ### 1-C Go 클라이언트 (T1.9 후)
-- [ ] T1.11 `clients/go/orm`: `Db/Tx`(database/sql 래핑, `CLIENT_FOUND_ROWS` DSN 강제), 플랜 캐시(형태 해시 + IN 카디널리티 + schema_hash, 만료 없음), 러너(bind_slots), typed 스캔, `Collection[T]`(순서 유지), `on_query` 훅, `debug()` → T1.9
-- [ ] T1.12 `ormgen gen --lang go`: 엔티티 struct, `NewX()`, `<col>(v)`, `<op><Col>(v)` 타입별, `orderBy*`, `limit`, 컬럼 선택, `set*`, 터미널 `get gets count create update save delete`, `getBy<PK|unique>`, nil-safe `GetX()`, 별도 모듈 `clients/go/gen`, gofmt 통과 → T1.11
-- [ ] T1.13 Go 트랜잭션 `orm.Transaction[T]`(에러=rollback, 데드락 3회 클로저 재실행, 백오프 50ms·2^n+지터 — 재시도이지 타이머 루프 아님) → T1.11
+- [x] T1.11 `clients/go/orm`: `Db/Tx`(database/sql 래핑, `CLIENT_FOUND_ROWS` DSN 강제), 플랜 캐시(형태 해시 + IN 카디널리티 + schema_hash, 만료 없음), 러너(bind_slots), typed 스캔, `Collection[T]`(순서 유지), `on_query` 훅, `debug()` → T1.9
+- [x] T1.12 `ormgen gen --lang go`: 엔티티 struct, `NewX()`, `<col>(v)`, `<op><Col>(v)` 타입별, `orderBy*`, `limit`, 컬럼 선택, `set*`, 터미널 `get gets count create update save delete`, `getBy<PK|unique>`, nil-safe `GetX()`, 별도 모듈 `clients/go/gen`, gofmt 통과 → T1.11
+- [x] T1.13 Go 트랜잭션 `orm.Transaction[T]`(에러=rollback, 데드락 3회 클로저 재실행, 백오프 50ms·2^n+지터 — 재시도이지 타이머 루프 아님) → T1.11
 
 ### 1-D ormd(컴파일 전용) + PHP 클라이언트 (T1.9 후) — S0 R3: PHP는 PDO 네이티브 실행
 - [ ] T1.14 `cmd/ormd` 컴파일 데몬 확정: 프레임 `compile`만, msgpack 응답(플랜), `request_id`, 무상태, DSN 없음, 소켓 0600, S0 임시 `exec*` op 삭제 → T1.9
