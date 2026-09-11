@@ -8,6 +8,7 @@ schema = "/srv/app/schema/schema.json"      # the manifest the client was genera
 
 [db]
 driver = "mysql"            # mysql (default) | postgres | sqlite — also the engine dialect (ormd -dialect / wasm orm_load_dialect)
+                            # Go: a non-mysql driver needs its package imported, see docs/dialects.md
 dsn = "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true"   # Go
 # dsn = "mysql:unix_socket=/tmp/mysql.sock;dbname=orm_bench;charset=utf8mb4"          # PHP (PDO)
 # dsn = "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock"                      # Rust (sqlx)

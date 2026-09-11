@@ -23,6 +23,20 @@ Executor consequences (docs/lanes/s6.md): a `$n` renumbering step when expanding
 PostgreSQL, host-side AES/inet codecs where the table says "app-side", one DSN/driver per database
 (Go: `pgx` stdlib / `modernc.org/sqlite`; Rust: sqlx features; PHP: `pdo_pgsql` / `pdo_sqlite`).
 
+**Go driver packages.** `clients/go/orm` links MySQL only. A program that opens PostgreSQL or SQLite
+imports the matching package for its side effect, as it would a `database/sql` driver:
+
+```go
+import (
+    _ "github.com/polyspec/orm/clients/go/orm/pg"      // driver "postgres"
+    _ "github.com/polyspec/orm/clients/go/orm/sqlite"  // driver "sqlite"
+)
+```
+
+Without it `orm.Open` returns `CONFIG` naming the import. The split keeps a MySQL-only binary at
+4.6MB instead of 11MB and avoids SQLite's package init (it parses `/etc/services`). Rust does the
+same with sqlx features, PHP with the PDO extension that is installed.
+
 ## Rules that keep the three databases identical (S6)
 - `UPDATE` always assigns the entity's updated timestamp explicitly (`updated_ts = CURRENT_TIMESTAMP(6)` on MySQL, `CURRENT_TIMESTAMP` on PostgreSQL, an executor-bound microsecond text on SQLite via a `now` bind slot) — MySQL's `ON UPDATE` has no counterpart elsewhere and optimistic locking relies on it.
 - `plus`/`minus` reference the column table-qualified (`"battle"."read_count" + $9`): inside `ON CONFLICT DO UPDATE` a bare name is ambiguous on PostgreSQL.
