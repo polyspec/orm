@@ -3,29 +3,7 @@
 // Usage: php clients/php/tests/integration.php /abs/ormd.sock /abs/schema.json
 declare(strict_types=1);
 
-$root = dirname(__DIR__, 3);
-spl_autoload_register(function (string $class) use ($root): void {
-    $map = ['Orm\\' => "$root/clients/php/src/", 'App\\Orm\\' => "$root/clients/php/gen/"];
-    foreach ($map as $prefix => $dir) {
-        if (str_starts_with($class, $prefix)) {
-            $rel = substr($class, strlen($prefix));
-            // Orm\Row, Orm\Collection, Orm\Page, Orm\Registry, Orm\Names live in Row.php; Orm\W/Q/Req in Query.php; Db/Tx/Transform in Db.php; Config/OrmException in Orm.php
-            $file = match (true) {
-                $prefix === 'Orm\\' && in_array($rel, ['Row', 'Collection', 'Page', 'Registry', 'Names'], true) => $dir . 'Row.php',
-                $prefix === 'Orm\\' && in_array($rel, ['W', 'Q', 'Req'], true) => $dir . 'Query.php',
-                $prefix === 'Orm\\' && in_array($rel, ['Db', 'Tx', 'Transform'], true) => $dir . 'Db.php',
-                $prefix === 'Orm\\' && in_array($rel, ['Orm', 'Config', 'OrmException'], true) => $dir . 'Orm.php',
-                $prefix === 'Orm\\' && in_array($rel, ['Transport', 'Assemble'], true) => $dir . 'Transport.php',
-                $prefix === 'App\\Orm\\' => $dir . preg_replace('/(Row|Where)$/', '', $rel) . '.php',
-                default => null,
-            };
-            if ($file !== null && is_file($file)) {
-                require_once $file;
-            }
-        }
-    }
-});
-require_once "$root/clients/php/gen/bootstrap.php";
+require __DIR__ . '/autoload.php';
 
 use App\Orm\Battle;
 use App\Orm\BattleWhere;
