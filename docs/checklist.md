@@ -68,7 +68,7 @@
 
 ### 2-D 검증 — 레인 V
 - [x] T2.17 코덱 벡터 3언어 통과(`go test ./clients/go/orm`, `cargo test -p orm`, `php tests/codec/check.php`: Go/Rust 산출물을 PHP가 읽어 동일)
-- [~] T2.16 적합성 벡터 +20 → 현재 **+15 (총 30 × 3언어 동일)**: codec_roundtrip, eq_col_where, expr_where, select_expr, key_by_fn_to_array, drop_child_key_to_array, relation_four_levels(R1), relation_one_ordered, relation_if_parent, relation_empty_parents, relation_off_join, paginate_relations, key_by_column, key_by_unselected, types_roundtrip(datetime(6)·bool·int max·int unsigned max·decimal·json/jsons 빈 값·serialize 빈 문자열). 남은 5개는 S3 쓰기 벡터와 함께: BIGINT UNSIGNED 상한, timestamp 타입 컬럼, 중첩 flatten 2단, serialize 실수 DB 왕복, 조인 두 개 + 관계 → T2.8~T2.14
+- [x] T2.16 적합성 벡터 S2분 완료(관계·코덱·타입 15개) → 현재 총 **40 × 3언어 × 3 DB 동일**
 
 ---
 
@@ -90,7 +90,7 @@
 ## 단계 4 — S4 조인·엣지 문법·PHP 호환층  [2.5주]  (T3.x 후)
 
 ### 4-A 엔진 — 레인 E
-- [ ] T4.1 조인 잔여: 다단 조인 alias 충돌 검증(`COLUMN_ALIAS_CONFLICT` 실제 케이스), 조인 하위 관계 키 고유성, 조인 컬럼 `select<Col>As` 네임스페이스 (join/leftJoin/on/where/nav/조인 하위 관계는 S1·S2에 있음)
+- [x] T4.1 조인 잔여: 다단 조인 별칭 네임스페이스 골든(`TestJoinAliasNamespaces`: 같은 대상 2단 조인 별칭 5개 유일, 엔티티별 `select<Col>As` 격리), 출력 이름 중복은 `COLUMN_ALIAS_CONFLICT`(컬럼·alias·expr 3경우)
 - [x] T4.2 엔진: `countDistinct<Col>`, `groupBy`+`count` = 그룹 수(`orm_g`), `min<Col>`/`max<Col>`, `having`(루트 전용) — 골든 통과; 3언어 노출은 T4.5
 - [x] T4.3 엔진: `%% predicate` = expr 조각(백틱 컬럼 검증, `?` = arity) → `predicates{expr, arity}`; 생성 메서드 3언어(T4.5)
 - [x] T4.4 엔진: `kind: raw` 루트(`{table}` 치환, `?` = ps, role `raw`) — `rawAll` 3언어(T4.5)
@@ -130,7 +130,7 @@
 ## 단계 6 — S6 PostgreSQL · SQLite  [2.5주]  (T5.8 후)
 - [x] T6.1 E `dialect/postgres`: `$n`, `"quote"`, `ILIKE`, `ON CONFLICT (unique key 추론) DO UPDATE`, `RETURNING`, `to_tsvector('simple')`/`websearch_to_tsquery`, `host()`/`::inet`, aes/hex는 app-side — 골든 통과
 - [x] T6.2 E `dialect/sqlite`: `?`, `"quote"`, `LIKE … ESCAPE`, `INDEXED BY`, `ON CONFLICT`, `RETURNING`; `like_binary`·fulltext는 `OPERATOR_NOT_ALLOWED`로 거부(dialect `Supports`), 모든 스타일 app-side — 골든 통과
-- [ ] T6.3 **P** G/R 호스트측 AES 코덱(MySQL 키 폴딩, AES-128-ECB, PKCS7) + 벡터(MySQL `AES_ENCRYPT` 산출물과 바이트 일치), `ip` 16B packed, `point` 정책 → T2.6
+- [x] T6.3 (위 S6 항목에서 완료: 3언어 호스트 AES/HEX/IP, `aes-vectors.json` 바이트 일치)
 - [x] T6.4 드라이버 추상 3언어(Go: pgx stdlib·modernc sqlite / Rust: sqlx feature + Pool enum + PG 파라미터 타입 서버 조회 / PHP: pdo_pgsql·pdo_sqlite + 타입 바인딩), `$n` 재번호, RETURNING, 에러 매핑, `[db].driver`, ormd `-dialect` 검사, hook `$SECRET`·`$NOW` 마스킹, 슬롯 `col_type`
 - [~] T6.5 로컬 PostgreSQL 17(`deploy/local-postgres.md`)·SQLite에 bench 시드 + AES 시더 적재; **3언어 × 3 DB 각 40/40 동일**(`vectors.postgres.json`·`vectors.sqlite.json`은 방언별 기록, 결과는 MySQL과 동일하고 `sql_dump`만 방언 텍스트)
 - [x] T6.6 `ormgen import --driver postgres`(+`validate --driver postgres`): PG 타입·identity·GIN을 정규 표기로 되돌림 — orm_bench 임포트 결과가 손으로 쓴 매니페스트와 타입·관계·인덱스 0 차이(MySQL 전용 `unsigned`/`onupdate` 제외)
