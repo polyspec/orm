@@ -7,7 +7,7 @@
 {
   "ir_version": 1,
   "schema_hash": "cd21c76a45bcb2dd",
-  "kind": "one | all | count | sum | avg | paginate | insert | update | delete",
+  "kind": "one | all | count | group_count | count_distinct | sum | avg | min | max | paginate | insert | update | delete",
   "entity": "battle",
   "columns": {"mode": "" | "all" | "none", "add": [], "remove": [], "as": {"out": "col"}, "expr": {"out": "ST_Y(`location`)"}},
   "joins":     [{"rel": "campaign", "kind": "inner|left", "query": { …Query…, "on": Group }}],
@@ -15,6 +15,7 @@
   "relations": [{"rel": "items", "query": { …Query…, "key_by": "col", "flatten": true, "limit_per_parent": 3, "if_parent": {"column","value"}, "drop_child_key": true }}],
   "order":     [{"column": "seq", "desc": true} | {"expr": "…"}],
   "group_by":  ["seq"],
+  "group_by_expr": [{"expr": "ROUND(`score`)", "as": "score_bucket"}],
   "limit":     {"offset": 0, "count": 20},
   "distinct":  false,
   "force_index": "ik",
@@ -24,7 +25,7 @@
   "debug": false
 }
 ```
-`Query`(루트·조인 자식·관계 자식 공통) = `entity columns on where joins relations order group_by limit distinct force_index` + 관계 옵션.
+`Query`(루트·조인 자식·관계 자식 공통) = `entity columns on where joins relations order group_by group_by_expr limit distinct force_index` + 관계 옵션.
 
 ### Group / Item
 ```json
@@ -88,8 +89,8 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 
 ### 집계 확장 (S4)
 - `kind`: `count_distinct`·`min`·`max`(`agg` = 컬럼; 스타일 컬럼·json·bytes 불가). `count` + `group_by`는 **그룹 수**: `SELECT COUNT(*) FROM (SELECT 1 … GROUP BY …[ HAVING …]) AS orm_g`.
-- `having: Group`(루트 전용, `group_by` 필수): where와 같은 그룹 문법; 집계식은 `expr` 항목(`COUNT(*) > ?`)으로 쓴다. 행 select(`one/all`)와 그룹 수에 붙고 스칼라 집계에는 무시된다.
+- `group_by_expr`: `{expr, as}` 목록. `expr`는 백틱 컬럼을 현재 엔티티로 해석하는 신뢰된 SQL 조각이고, `as`는 `getsCount` 행에서 사용할 출력 이름이다. `?` 바인드는 지원하지 않는다.
+- `having: Group`(루트 전용, `group_by` 또는 `group_by_expr` 필수): where와 같은 그룹 문법; 집계식은 `expr` 항목(`COUNT(*) > ?`)으로 쓴다. 행 select(`one/all`)와 그룹 수에 붙고 스칼라 집계에는 무시된다.
 
 ### 방언 (S6)
 플랜 형식은 방언과 무관하다. 방언은 `docs/dialects.md`에 따라 식별자·플레이스홀더·LIKE·upsert·fulltext·스타일의 SQL측/앱측 분담만 바꾼다. `columns[].styles`는 "실행기가 처리할 나머지"이므로 PostgreSQL/SQLite에서는 `aes`/`hex`(그리고 SQLite의 `ip`)도 여기 나타난다. 방언이 지원하지 않는 연산자는 컴파일 시 `OPERATOR_NOT_ALLOWED`.
-

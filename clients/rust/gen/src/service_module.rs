@@ -2,6 +2,7 @@
 #![allow(clippy::all, dead_code, unused_imports, unused_mut)]
 
 use orm::builder::{ColRef, Q, W};
+use orm::binding::Binding;
 use orm::db::{self, Exec};
 use orm::value::{Param, Val};
 use orm::{Collection, Key, Page, Result};
@@ -9,11 +10,14 @@ use orm::{Collection, Key, Page, Result};
 /// One row of service_module.
 #[derive(Debug, Clone, Default)]
 pub struct ServiceModuleRow {
+    binding: Binding,
     pub seq: i64,
     pub service_seq: i64,
     pub name: String,
     battles_: Collection<super::battle::BattleRow>,
     service_: Option<Box<super::service::ServiceRow>>,
+    assigned: Vec<&'static str>,
+    original_version: Option<Param>,
     dirty: Vec<(&'static str, Param)>,
     enc_err: Option<(String, String)>, // (code, msg) of the first codec error; surfaces from update
     extra: std::collections::HashMap<String, Val>, // select_expr / select_<col>_as outputs, by output name
@@ -23,6 +27,8 @@ pub struct ServiceModuleRow {
 }
 
 impl ServiceModuleRow {
+    /// Rebind this loaded row to a pool or transaction.
+    pub fn bind(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
     pub const ENTITY: &'static str = "service_module";
     pub const PK: &'static str = "seq";
 
@@ -33,6 +39,7 @@ impl ServiceModuleRow {
         use orm::Src as _;
         let mut r = Self::default();
         r.asm = Some(a.clone());
+        r.binding = rs.binding.clone();
         for ch in &a.children {
             match ch.rel.as_str() {
                 "battles" => {
@@ -70,21 +77,29 @@ impl ServiceModuleRow {
     /// A select_expr / select_<col>_as output by name.
     pub fn extra(&self, name: &str) -> Option<&Val> { self.extra.get(name) }
 
+    /// The COUNT(*) value returned by a gets_count terminal.
+    pub fn has(&self, name: &str) -> bool { self.assigned.contains(&name) || self.extra.contains_key(name) || self.asm.as_ref().is_some_and(|a| a.columns.iter().any(|c| c.name == name)) }
+    pub fn rel_loaded(&self, name: &str) -> bool { self.asm.as_ref().is_some_and(|a| a.has_child(name)) }
+
+    pub fn row_count(&self) -> i64 { self.extra("row_count").map(|v| v.as_i64()).unwrap_or(0) }
+
     /// The row's array form (what PHP's toArray() and Go's ToArray() give): projected
     /// columns minus drop_child_key ones, extra outputs, loaded relations, and flattened
     /// one-relations merged in (this row's keys win).
     pub fn to_map(&self) -> serde_json::Value {
         let mut m = serde_json::Map::new();
-        let Some(a) = &self.asm else { return serde_json::Value::Object(m) };
-        for c in &a.columns {
-            if c.hidden { continue; }
-            let v = match c.name.as_str() {
+        let empty = orm::plan::Assemble::default();
+        let a = self.asm.as_deref().unwrap_or(&empty);
+        let names = a.columns.iter().map(|c| c.name.as_str()).chain(self.assigned.iter().copied());
+        for name in names {
+            if a.columns.iter().any(|c| c.name == name && c.hidden) { continue; }
+            let v = match name {
                 "seq" => serde_json::json!(self.seq),
                 "service_seq" => serde_json::json!(self.service_seq),
                 "name" => serde_json::json!(self.name),
                 other => self.extra.get(other).map(|v| v.to_json()).unwrap_or(serde_json::Value::Null),
             };
-            m.insert(c.name.clone(), v);
+            m.insert(name.to_owned(), v);
         }
         if a.has_child("battles") {
             let mut mm = serde_json::Map::new();
@@ -103,39 +118,51 @@ impl ServiceModuleRow {
     }
 
     pub fn battles(&self) -> &Collection<super::battle::BattleRow> { &self.battles_ }
+    pub fn battles_mut(&mut self) -> &mut Collection<super::battle::BattleRow> { &mut self.battles_ }
     pub fn service(&self) -> Option<&super::service::ServiceRow> { self.service_.as_deref() }
+    pub fn service_mut(&mut self) -> Option<&mut super::service::ServiceRow> { self.service_.as_deref_mut() }
 
     pub fn set_service_seq(&mut self, v: i64) -> &mut Self {
         let v: i64 = v.into();
         self.service_seq = v.clone();
-        self.dirty.retain(|(c, _)| *c != "service_seq");
-        self.dirty.push(("service_seq", v.into()));
+        if !self.assigned.contains(&"service_seq") { self.assigned.push("service_seq"); }
+        self.mark_dirty("service_seq", v.into());
         self
     }
     pub fn set_name(&mut self, v: impl Into<String>) -> &mut Self {
         let v: String = v.into();
         self.name = v.clone();
-        self.dirty.retain(|(c, _)| *c != "name");
-        self.dirty.push(("name", v.into()));
+        if !self.assigned.contains(&"name") { self.assigned.push("name"); }
+        self.mark_dirty("name", v.into());
         self
     }
 
+    fn mark_dirty(&mut self, col: &'static str, value: Param) {
+        if let Some((_, v)) = self.dirty.iter_mut().find(|(c, _)| *c == col) { *v = value; }
+        else { self.dirty.push((col, value)); }
+    }
+
     /// UPDATE the columns changed through set_*.
-    pub async fn update(&mut self, ex: &impl Exec) -> Result<()> { self.update_inner(ex, false).await }
+    pub async fn update(&mut self) -> Result<()> { let binding = self.binding.clone(); self.update_inner(binding.resolve()?, false).await }
 
     async fn update_inner(&mut self, ex: &impl Exec, optimistic: bool) -> Result<()> {
-        if let Some((code, msg)) = self.enc_err.take() { return Err(orm::Error::Engine { code, msg }); }
+        if let Some((code, msg)) = &self.enc_err { return Err(orm::Error::Engine { code: code.clone(), msg: msg.clone() }); }
         if self.asm.is_none() { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
+        if optimistic && self.original_version.is_none() { return Err(orm::Error::Config("optimistic update requires a loaded version column".into())); }
         if self.dirty.is_empty() { return Ok(()); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
-        for (c, v) in self.dirty.drain(..) { q.set(c, v); }
+        for (c, v) in &self.dirty { q.set(c, v.clone()); }
         let pk: Param = self.seq.clone().into();
         q.w().pred(Self::PK, "eq", pk);
         let _ = optimistic;
-        db::write(ex, &mut q.req, "update").await.map(|_| ())
+        db::write(ex, &mut q.req, "update").await?;
+        self.dirty.clear();
+        Ok(())
     }
 
-    pub async fn delete(&self, ex: &impl Exec) -> Result<()> {
+    pub async fn delete(&self) -> Result<()> { self.delete_inner(self.binding.resolve()?).await }
+
+    async fn delete_inner(&self, ex: &impl Exec) -> Result<()> {
         if self.asm.is_none() { return Err(orm::Error::Config("delete on a row that was not loaded".into())); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
         let pk: Param = self.seq.clone().into();
@@ -148,7 +175,8 @@ impl ServiceModuleRow {
     /// no_cascade_delete was not set), each through its own delete_cascade in collection
     /// order, then this row. Parent-direction relations (the FK is on this row) are never deleted.
     /// One DELETE … WHERE pk = ? per row. On a Db the whole walk runs in one transaction.
-    pub async fn delete_cascade(&self, ex: &impl Exec) -> Result<()> {
+    pub async fn delete_cascade(&self) -> Result<()> {
+        let ex = self.binding.resolve()?;
         if self.asm.is_none() { return Err(orm::Error::Config("delete_cascade on a row that was not loaded".into())); }
         match ex.tx() {
             Some(tx) => self.delete_cascade_in(tx).await,
@@ -171,7 +199,7 @@ impl ServiceModuleRow {
                     _ => {}
                 }
             }
-            self.delete(tx).await
+            self.delete_inner(tx).await
         })
     }
 }
@@ -195,6 +223,7 @@ impl<'a> ServiceModuleWhere<'a> {
     pub fn service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.w.nav_with("service", |w| { f(super::service::ServiceWhere { w }); }); self }
 
     pub fn seq_eq(mut self, v: i64) -> Self { self.w.pred("seq", "eq", v); self }
+    pub fn seq(self, v: i64) -> Self { self.seq_eq(v) }
     pub fn seq_not_eq(mut self, v: i64) -> Self { self.w.pred("seq", "not_eq", v); self }
     pub fn seq_gt(mut self, v: i64) -> Self { self.w.pred("seq", "gt", v); self }
     pub fn seq_gte(mut self, v: i64) -> Self { self.w.pred("seq", "gte", v); self }
@@ -212,6 +241,7 @@ impl<'a> ServiceModuleWhere<'a> {
     pub fn seq_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("seq", "lt_col", r); self }
     pub fn seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("seq", "lte_col", r); self }
     pub fn service_seq_eq(mut self, v: i64) -> Self { self.w.pred("service_seq", "eq", v); self }
+    pub fn service_seq(self, v: i64) -> Self { self.service_seq_eq(v) }
     pub fn service_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("service_seq", "not_eq", v); self }
     pub fn service_seq_gt(mut self, v: i64) -> Self { self.w.pred("service_seq", "gt", v); self }
     pub fn service_seq_gte(mut self, v: i64) -> Self { self.w.pred("service_seq", "gte", v); self }
@@ -229,6 +259,7 @@ impl<'a> ServiceModuleWhere<'a> {
     pub fn service_seq_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("service_seq", "lt_col", r); self }
     pub fn service_seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("service_seq", "lte_col", r); self }
     pub fn name_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "eq", v.into()); self }
+    pub fn name(self, v: impl Into<String>) -> Self { self.name_eq(v) }
     pub fn name_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "not_eq", v.into()); self }
     pub fn name_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("name", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn name_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("name", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -243,14 +274,17 @@ impl<'a> ServiceModuleWhere<'a> {
     pub fn name_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "not_eq_col", r); self }
 }
 
-/// Query over service_module: ServiceModule::new() → chain → terminal(&db).await.
+/// Query over service_module: ServiceModule::new() → bind(&db) → chain → terminal().await.
 pub struct ServiceModule {
+    binding: Binding,
     pub q: Q,
     key_fn: Option<Box<dyn Fn(&ServiceModuleRow) -> Key + Send + Sync>>,
 }
 
 impl ServiceModule {
-    pub fn new() -> Self { Self { q: Q::new(super::schema_hash(), "service_module"), key_fn: None } }
+    /// Bind this query to a pool or transaction.
+    pub fn bind(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
+    pub fn new() -> Self { Self { binding: Binding::default(), q: Q::new(super::schema_hash(), "service_module"), key_fn: None } }
 
     /// Keys the root collection by a function of each row (relations key by key_by_<col>).
     pub fn key_by_fn(mut self, f: impl Fn(&ServiceModuleRow) -> Key + Send + Sync + 'static) -> Self { self.key_fn = Some(Box::new(f)); self }
@@ -263,6 +297,7 @@ impl ServiceModule {
     pub fn service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.q.w().nav_with("service", |w| { f(super::service::ServiceWhere { w }); }); self }
 
     pub fn seq_eq(mut self, v: i64) -> Self { self.q.w().pred("seq", "eq", v); self }
+    pub fn seq(self, v: i64) -> Self { self.seq_eq(v) }
     pub fn seq_not_eq(mut self, v: i64) -> Self { self.q.w().pred("seq", "not_eq", v); self }
     pub fn seq_gt(mut self, v: i64) -> Self { self.q.w().pred("seq", "gt", v); self }
     pub fn seq_gte(mut self, v: i64) -> Self { self.q.w().pred("seq", "gte", v); self }
@@ -280,6 +315,7 @@ impl ServiceModule {
     pub fn seq_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("seq", "lt_col", r); self }
     pub fn seq_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("seq", "lte_col", r); self }
     pub fn service_seq_eq(mut self, v: i64) -> Self { self.q.w().pred("service_seq", "eq", v); self }
+    pub fn service_seq(self, v: i64) -> Self { self.service_seq_eq(v) }
     pub fn service_seq_not_eq(mut self, v: i64) -> Self { self.q.w().pred("service_seq", "not_eq", v); self }
     pub fn service_seq_gt(mut self, v: i64) -> Self { self.q.w().pred("service_seq", "gt", v); self }
     pub fn service_seq_gte(mut self, v: i64) -> Self { self.q.w().pred("service_seq", "gte", v); self }
@@ -297,6 +333,7 @@ impl ServiceModule {
     pub fn service_seq_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("service_seq", "lt_col", r); self }
     pub fn service_seq_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("service_seq", "lte_col", r); self }
     pub fn name_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "eq", v.into()); self }
+    pub fn name(self, v: impl Into<String>) -> Self { self.name_eq(v) }
     pub fn name_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "not_eq", v.into()); self }
     pub fn name_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("name", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn name_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("name", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -314,12 +351,12 @@ impl ServiceModule {
     pub fn on(mut self, f: impl FnOnce(ServiceModuleWhere<'_>) -> ServiceModuleWhere<'_>) -> Self { { let w = self.q.on_w(); f(ServiceModuleWhere { w }); } self }
     pub fn where_(mut self, f: impl FnOnce(ServiceModuleWhere<'_>) -> ServiceModuleWhere<'_>) -> Self { { let w = self.q.w(); f(ServiceModuleWhere { w }); } self }
 
-    pub fn join_battles(mut self, child: super::battle::Battle) -> Self { self.q.join("battles", "inner", child.q); self }
-    pub fn left_join_battles(mut self, child: super::battle::Battle) -> Self { self.q.join("battles", "left", child.q); self }
-    pub fn relations_battles(mut self, child: super::battle::Battle) -> Self { self.q.relation("battles", child.q); self }
-    pub fn join_service(mut self, child: super::service::Service) -> Self { self.q.join("service", "inner", child.q); self }
-    pub fn left_join_service(mut self, child: super::service::Service) -> Self { self.q.join("service", "left", child.q); self }
-    pub fn relation_service(mut self, child: super::service::Service) -> Self { self.q.relation("service", child.q); self }
+    pub fn join_battles(mut self, child: impl AsRef<super::battle::Battle>) -> Self { self.q.join("battles", "inner", &child.as_ref().q); self }
+    pub fn left_join_battles(mut self, child: impl AsRef<super::battle::Battle>) -> Self { self.q.join("battles", "left", &child.as_ref().q); self }
+    pub fn relations_battles(mut self, child: impl AsRef<super::battle::Battle>) -> Self { self.q.relation("battles", &child.as_ref().q); self }
+    pub fn join_service(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "inner", &child.as_ref().q); self }
+    pub fn left_join_service(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "left", &child.as_ref().q); self }
+    pub fn relation_service(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.relation("service", &child.as_ref().q); self }
 
     // ---- columns ----
     pub fn select_all(mut self) -> Self { self.q.columns().mode = "all".into(); self }
@@ -349,6 +386,7 @@ impl ServiceModule {
     pub fn group_by_name(mut self) -> Self { self.q.node().group_by.push("name".into()); self }
     pub fn key_by_name(mut self) -> Self { self.q.node().key_by = "name".into(); self }
     pub fn order_by_expr(mut self, frag: &str, desc: bool) -> Self { self.q.order_expr(frag, desc); self }
+    pub fn group_by_expr(mut self, expr: &str, as_: &str) -> Self { self.q.group_by_expr(expr, as_); self }
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
     /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
@@ -404,7 +442,7 @@ impl ServiceModule {
     pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&["seq"]); self }
 
     // ---- terminals ----
-    pub async fn one(mut self, ex: &impl Exec) -> Result<Option<ServiceModuleRow>> {
+    pub async fn one(&mut self) -> Result<Option<ServiceModuleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
         Ok(match rows.take_cells().into_iter().next() {
             Some(mut src) => Some(ServiceModuleRow::from_row(&mut src, &rows.assemble, &rows)?),
@@ -412,40 +450,100 @@ impl ServiceModule {
         })
     }
 
-    pub async fn all(mut self, ex: &impl Exec) -> Result<Collection<ServiceModuleRow>> {
+    pub async fn all(&mut self) -> Result<Collection<ServiceModuleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "all").await?;
         collect(&mut rows, self.key_fn.as_deref())
     }
 
-    pub async fn count(mut self, ex: &impl Exec) -> Result<i64> {
+    /// Preferred single-row terminal; one() remains available for compatibility.
+    pub async fn get(&mut self) -> Result<Option<ServiceModuleRow>> {
+        self.one().await
+    }
+
+    /// Preferred collection terminal; all() remains available for compatibility.
+    pub async fn gets(&mut self) -> Result<Collection<ServiceModuleRow>> {
+        self.all().await
+    }
+
+
+    /// Applies seq = value and runs the collection terminal.
+    pub async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceModuleRow>> {
+        self.q.w().pred("seq", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies service_seq = value and runs the collection terminal.
+    pub async fn gets_by_service_seq(&mut self, v: i64) -> Result<Collection<ServiceModuleRow>> {
+        self.q.w().pred("service_seq", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies name = value and runs the collection terminal.
+    pub async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<ServiceModuleRow>> {
+        self.q.w().pred("name", "eq", v.into());
+        self.gets().await
+    }
+
+    pub async fn count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         Ok(db::scalar(ex, &mut self.q.req, "count").await?.as_i64())
     }
-    pub async fn sum_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn sum_service_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_service_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn count_distinct_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+
+    /// Preferred scalar count terminal; count() remains available as a compatibility alias.
+    pub async fn get_count(&mut self) -> Result<i64> {
+        self.count().await
+    }
+
+
+    /// Applies seq = value and runs the scalar count terminal.
+    pub async fn get_count_by_seq(&mut self, v: i64) -> Result<i64> {
+        self.q.w().pred("seq", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies service_seq = value and runs the scalar count terminal.
+    pub async fn get_count_by_service_seq(&mut self, v: i64) -> Result<i64> {
+        self.q.w().pred("service_seq", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies name = value and runs the scalar count terminal.
+    pub async fn get_count_by_name(&mut self, v: impl Into<String>) -> Result<i64> {
+        self.q.w().pred("name", "eq", v.into());
+        self.get_count().await
+    }
+
+    /// Returns one row per group_by value; the aggregate is available as extra("row_count").
+    pub async fn gets_count(&mut self) -> Result<Collection<ServiceModuleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+        let mut rows = db::select(ex, &mut self.q.req, "group_count").await?;
+        collect(&mut rows, self.key_fn.as_deref())
+    }
+    pub async fn sum_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_service_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_service_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn count_distinct_seq(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn min_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
     /// None when no row matches.
-    pub async fn max_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
-    pub async fn count_distinct_service_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_service_seq(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_service_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn min_service_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
     /// None when no row matches.
-    pub async fn max_service_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
-    pub async fn count_distinct_name(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "name".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_service_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_name(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "name".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_name(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn min_name(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
     /// None when no row matches.
-    pub async fn max_name(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn max_name(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
 
     /// Runs the raw() statement; rows keyed by the driver's column names in column order, cells typed by column type (no codec).
-    pub async fn raw_all(mut self, ex: &impl Exec) -> Result<Vec<indexmap::IndexMap<String, Val>>> {
+    pub async fn raw_all(&mut self) -> Result<Vec<indexmap::IndexMap<String, Val>>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         db::raw(ex, &mut self.q.req).await
     }
 
-    pub async fn paginate(mut self, ex: &impl Exec, page: u32, per: u32) -> Result<Page<ServiceModuleRow>> {
+    pub async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceModuleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+        if per == 0 { return Err(orm::Error::Engine { code: orm::codes::IR_INVALID.into(), msg: "per must be positive".into() }); }
         let page = page.max(1);
         self.q.node().limit = Some(orm::ir::Limit { offset: (page - 1) * per, count: per });
         let (mut rows, total) = db::paginate(ex, &mut self.q.req).await?;
@@ -453,45 +551,54 @@ impl ServiceModule {
         Ok(Page { items: collect(&mut rows, self.key_fn.as_deref())?, total, pages, current: page as i64, per: per as i64 })
     }
 
-    pub async fn insert(mut self, ex: &impl Exec) -> Result<Option<ServiceModuleRow>> {
+    pub async fn insert(&mut self) -> Result<Option<ServiceModuleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
-        ServiceModule::new().seq_eq(id as i64).one(ex).await
+        ServiceModule::new().bind(ex).seq_eq(id as i64).one().await
     }
 
     /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
-    pub async fn save(mut self, ex: &impl Exec) -> Result<Option<ServiceModuleRow>> {
+    pub async fn save(&mut self) -> Result<Option<ServiceModuleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         match self.q.take_set("seq") {
             Some(pk) => {
                 self.q.w().pred("seq", "eq", pk.clone());
                 db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = ServiceModule::new();
+                let mut q = ServiceModule::new().bind(ex);
                 q.q.w().pred("seq", "eq", pk);
-                q.one(ex).await
+                q.one().await
             }
-            None => self.insert(ex).await,
+            None => self.insert().await,
         }
     }
 
     /// UPDATE set_*/plus_*/minus_*/set_*_expr WHERE the query's predicates; returns the affected count.
     /// The engine rejects a missing where (IR_INVALID).
-    pub async fn update(mut self, ex: &impl Exec) -> Result<u64> {
+    pub async fn update(&mut self) -> Result<u64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         Ok(db::write(ex, &mut self.q.req, "update").await?.1)
     }
 
     /// DELETE WHERE the query's predicates; returns the affected count. The engine rejects a missing where.
-    pub async fn delete(mut self, ex: &impl Exec) -> Result<u64> {
+    pub async fn delete(&mut self) -> Result<u64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         Ok(db::write(ex, &mut self.q.req, "delete").await?.1)
     }
 
     /// The main statement (kind all) and its binds without executing; secret slots read "$SECRET".
-    pub async fn sql(mut self, ex: &impl Exec) -> Result<db::Sql> {
+    pub async fn sql(&mut self) -> Result<db::Sql> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         db::sql(ex, &mut self.q.req, "all")
     }
 
-    pub async fn one_by_seq(self, ex: &impl Exec, v: i64) -> Result<Option<ServiceModuleRow>> {
-        self.seq_eq(v).one(ex).await
+    pub async fn one_by_seq(&mut self, v: i64) -> Result<Option<ServiceModuleRow>> {
+        self.q.w().pred("seq", "eq", v);
+        self.one().await
     }
+
+    /// Preferred primary-key lookup; one_by_seq remains available for compatibility.
+    pub async fn get_by_seq(&mut self, v: i64) -> Result<Option<ServiceModuleRow>> {
+        self.one_by_seq(v).await
+    }
+
 }
+
+impl AsRef<ServiceModule> for ServiceModule { fn as_ref(&self) -> &Self { self } }
 
 impl Default for ServiceModule { fn default() -> Self { Self::new() } }
 

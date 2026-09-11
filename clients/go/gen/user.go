@@ -60,28 +60,46 @@ func (r *UserRow) GetServiceMembers() *orm.Collection[ServiceMemberRow] {
 }
 
 // Update writes the columns changed through Set*.
-func (r *UserRow) Update(ctx context.Context, ex orm.Exec) error {
+func (r *UserRow) Update() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
 	return r.UpdateRow(ctx, ex, "", nil)
 }
 
-func (r *UserRow) Delete(ctx context.Context, ex orm.Exec) error { return r.DeleteRow(ctx, ex) }
+func (r *UserRow) Delete() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
+	return r.DeleteRow(ctx, ex)
+}
 
 // DeleteCascade deletes the loaded relations this row owns (the assemble's
 // cascade children, in load order, each row through its own DeleteCascade)
 // and then this row. A bare DB runs the whole walk in one transaction.
-func (r *UserRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
+func (r *UserRow) DeleteCascade() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
+	return r.deleteCascade(ctx, ex)
+}
+
+func (r *UserRow) deleteCascade(ctx context.Context, ex orm.Exec) error {
 	return orm.InTx(ctx, ex, func(ex orm.Exec) error {
 		for _, rel := range r.Cascades() {
 			switch rel {
 			case "battles":
 				for _, child := range r.GetBattles().All() {
-					if err := child.DeleteCascade(ctx, ex); err != nil {
+					if err := child.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
 			case "service_members":
 				for _, child := range r.GetServiceMembers().All() {
-					if err := child.DeleteCascade(ctx, ex); err != nil {
+					if err := child.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
@@ -95,6 +113,7 @@ func (r *UserRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
 // children (same row) and its relation children (rows of later steps).
 func scanUser(vals []any, a *plan.Assemble, rs *orm.Rows) *UserRow {
 	r := &UserRow{}
+	r.Binding = rs.Binding
 	for _, c := range a.Columns {
 		v := vals[c.Index]
 		switch c.Name {
@@ -179,19 +198,33 @@ var UserCols = struct {
 	Name: orm.ColRef{Column: "name"},
 }
 
-// User builds a statement over user: NewUser() → chain → terminal(ctx, db).
-type User struct {
-	q     *orm.Q
-	keyFn func(*UserRow) orm.Key // KeyByFn: client-side keying of the root collection
+// UserQuery builds a statement over user: User() → Bind(ctx, db) → chain → terminal().
+type UserQuery struct {
+	binding orm.Binding
+	q       *orm.Q
+	keyFn   func(*UserRow) orm.Key // KeyByFn: client-side keying of the root collection
 }
 
 // KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
-func (q *User) KeyByFn(fn func(*UserRow) orm.Key) *User { q.keyFn = fn; return q }
+func (q *UserQuery) KeyByFn(fn func(*UserRow) orm.Key) *UserQuery { q.keyFn = fn; return q }
 
 // Req exposes the underlying request (debugging, plan inspection).
-func (q *User) Req() *orm.Req { return q.q.Req }
+func (q *UserQuery) Req() *orm.Req { return q.q.Req }
 
-func NewUser() *User { return &User{q: orm.NewQ(mustEngine(), "user")} }
+// User starts a query over user.
+func User() *UserQuery { return &UserQuery{q: orm.NewQ(mustEngine(), "user")} }
+
+// Bind selects the context and pool or transaction for this query.
+func (q *UserQuery) Bind(ctx context.Context, ex orm.Exec) *UserQuery {
+	q.binding = orm.NewBinding(ctx, ex)
+	return q
+}
+
+// Bind selects the context and pool or transaction for this loaded row.
+func (r *UserRow) Bind(ctx context.Context, ex orm.Exec) *UserRow {
+	r.Binding = orm.NewBinding(ctx, ex)
+	return r
+}
 
 // UserWhere edits one WHERE/ON group of user.
 type UserWhere struct{ w *orm.W }
@@ -212,41 +245,49 @@ func (w *UserWhere) ServiceMembers(fn func(*ServiceMemberWhere)) *UserWhere {
 }
 
 func (w *UserWhere) SeqEq(v int64) *UserWhere    { w.w.Pred("seq", "eq", v); return w }
-func (q *User) SeqEq(v int64) *User              { q.q.W().Pred("seq", "eq", v); return q }
+func (q *UserQuery) SeqEq(v int64) *UserQuery    { q.q.W().Pred("seq", "eq", v); return q }
+func (w *UserWhere) Seq(v int64) *UserWhere      { return w.SeqEq(v) }
+func (q *UserQuery) Seq(v int64) *UserQuery      { return q.SeqEq(v) }
 func (w *UserWhere) SeqNotEq(v int64) *UserWhere { w.w.Pred("seq", "not_eq", v); return w }
-func (q *User) SeqNotEq(v int64) *User           { q.q.W().Pred("seq", "not_eq", v); return q }
+func (q *UserQuery) SeqNotEq(v int64) *UserQuery { q.q.W().Pred("seq", "not_eq", v); return q }
 func (w *UserWhere) SeqGt(v int64) *UserWhere    { w.w.Pred("seq", "gt", v); return w }
-func (q *User) SeqGt(v int64) *User              { q.q.W().Pred("seq", "gt", v); return q }
+func (q *UserQuery) SeqGt(v int64) *UserQuery    { q.q.W().Pred("seq", "gt", v); return q }
 func (w *UserWhere) SeqGte(v int64) *UserWhere   { w.w.Pred("seq", "gte", v); return w }
-func (q *User) SeqGte(v int64) *User             { q.q.W().Pred("seq", "gte", v); return q }
+func (q *UserQuery) SeqGte(v int64) *UserQuery   { q.q.W().Pred("seq", "gte", v); return q }
 func (w *UserWhere) SeqLt(v int64) *UserWhere    { w.w.Pred("seq", "lt", v); return w }
-func (q *User) SeqLt(v int64) *User              { q.q.W().Pred("seq", "lt", v); return q }
+func (q *UserQuery) SeqLt(v int64) *UserQuery    { q.q.W().Pred("seq", "lt", v); return q }
 func (w *UserWhere) SeqLte(v int64) *UserWhere   { w.w.Pred("seq", "lte", v); return w }
-func (q *User) SeqLte(v int64) *User             { q.q.W().Pred("seq", "lte", v); return q }
+func (q *UserQuery) SeqLte(v int64) *UserQuery   { q.q.W().Pred("seq", "lte", v); return q }
 func (w *UserWhere) SeqIn(vs []int64) *UserWhere { w.w.PredList("seq", "in", orm.Anys(vs)); return w }
-func (q *User) SeqIn(vs []int64) *User           { q.q.W().PredList("seq", "in", orm.Anys(vs)); return q }
+func (q *UserQuery) SeqIn(vs []int64) *UserQuery {
+	q.q.W().PredList("seq", "in", orm.Anys(vs))
+	return q
+}
 func (w *UserWhere) SeqNotIn(vs []int64) *UserWhere {
 	w.w.PredList("seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *User) SeqNotIn(vs []int64) *User { q.q.W().PredList("seq", "not_in", orm.Anys(vs)); return q }
+func (q *UserQuery) SeqNotIn(vs []int64) *UserQuery {
+	q.q.W().PredList("seq", "not_in", orm.Anys(vs))
+	return q
+}
 func (w *UserWhere) SeqBetween(lo, hi int64) *UserWhere {
 	w.w.PredList("seq", "between", []any{lo, hi})
 	return w
 }
-func (q *User) SeqBetween(lo, hi int64) *User {
+func (q *UserQuery) SeqBetween(lo, hi int64) *UserQuery {
 	q.q.W().PredList("seq", "between", []any{lo, hi})
 	return q
 }
 func (w *UserWhere) SeqIsNull() *UserWhere    { w.w.PredNull("seq", "is_null"); return w }
-func (q *User) SeqIsNull() *User              { q.q.W().PredNull("seq", "is_null"); return q }
+func (q *UserQuery) SeqIsNull() *UserQuery    { q.q.W().PredNull("seq", "is_null"); return q }
 func (w *UserWhere) SeqIsNotNull() *UserWhere { w.w.PredNull("seq", "is_not_null"); return w }
-func (q *User) SeqIsNotNull() *User           { q.q.W().PredNull("seq", "is_not_null"); return q }
+func (q *UserQuery) SeqIsNotNull() *UserQuery { q.q.W().PredNull("seq", "is_not_null"); return q }
 func (w *UserWhere) SeqEqCol(ref orm.ColRef) *UserWhere {
 	w.w.PredCol("seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *User) SeqEqCol(ref orm.ColRef) *User {
+func (q *UserQuery) SeqEqCol(ref orm.ColRef) *UserQuery {
 	q.q.W().PredCol("seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -254,7 +295,7 @@ func (w *UserWhere) SeqNotEqCol(ref orm.ColRef) *UserWhere {
 	w.w.PredCol("seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *User) SeqNotEqCol(ref orm.ColRef) *User {
+func (q *UserQuery) SeqNotEqCol(ref orm.ColRef) *UserQuery {
 	q.q.W().PredCol("seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -262,7 +303,7 @@ func (w *UserWhere) SeqGtCol(ref orm.ColRef) *UserWhere {
 	w.w.PredCol("seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *User) SeqGtCol(ref orm.ColRef) *User {
+func (q *UserQuery) SeqGtCol(ref orm.ColRef) *UserQuery {
 	q.q.W().PredCol("seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -270,7 +311,7 @@ func (w *UserWhere) SeqGteCol(ref orm.ColRef) *UserWhere {
 	w.w.PredCol("seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *User) SeqGteCol(ref orm.ColRef) *User {
+func (q *UserQuery) SeqGteCol(ref orm.ColRef) *UserQuery {
 	q.q.W().PredCol("seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -278,7 +319,7 @@ func (w *UserWhere) SeqLtCol(ref orm.ColRef) *UserWhere {
 	w.w.PredCol("seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *User) SeqLtCol(ref orm.ColRef) *User {
+func (q *UserQuery) SeqLtCol(ref orm.ColRef) *UserQuery {
 	q.q.W().PredCol("seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -286,46 +327,57 @@ func (w *UserWhere) SeqLteCol(ref orm.ColRef) *UserWhere {
 	w.w.PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *User) SeqLteCol(ref orm.ColRef) *User {
+func (q *UserQuery) SeqLteCol(ref orm.ColRef) *UserQuery {
 	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *UserWhere) NameEq(v string) *UserWhere    { w.w.Pred("name", "eq", v); return w }
-func (q *User) NameEq(v string) *User              { q.q.W().Pred("name", "eq", v); return q }
+func (q *UserQuery) NameEq(v string) *UserQuery    { q.q.W().Pred("name", "eq", v); return q }
+func (w *UserWhere) Name(v string) *UserWhere      { return w.NameEq(v) }
+func (q *UserQuery) Name(v string) *UserQuery      { return q.NameEq(v) }
 func (w *UserWhere) NameNotEq(v string) *UserWhere { w.w.Pred("name", "not_eq", v); return w }
-func (q *User) NameNotEq(v string) *User           { q.q.W().Pred("name", "not_eq", v); return q }
+func (q *UserQuery) NameNotEq(v string) *UserQuery { q.q.W().Pred("name", "not_eq", v); return q }
 func (w *UserWhere) NameIn(vs []string) *UserWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
 }
-func (q *User) NameIn(vs []string) *User { q.q.W().PredList("name", "in", orm.Anys(vs)); return q }
+func (q *UserQuery) NameIn(vs []string) *UserQuery {
+	q.q.W().PredList("name", "in", orm.Anys(vs))
+	return q
+}
 func (w *UserWhere) NameNotIn(vs []string) *UserWhere {
 	w.w.PredList("name", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *User) NameNotIn(vs []string) *User {
+func (q *UserQuery) NameNotIn(vs []string) *UserQuery {
 	q.q.W().PredList("name", "not_in", orm.Anys(vs))
 	return q
 }
 func (w *UserWhere) NameLike(v string) *UserWhere       { w.w.Pred("name", "like", v); return w }
-func (q *User) NameLike(v string) *User                 { q.q.W().Pred("name", "like", v); return q }
+func (q *UserQuery) NameLike(v string) *UserQuery       { q.q.W().Pred("name", "like", v); return q }
 func (w *UserWhere) NameLikeBinary(v string) *UserWhere { w.w.Pred("name", "like_binary", v); return w }
-func (q *User) NameLikeBinary(v string) *User           { q.q.W().Pred("name", "like_binary", v); return q }
+func (q *UserQuery) NameLikeBinary(v string) *UserQuery {
+	q.q.W().Pred("name", "like_binary", v)
+	return q
+}
 func (w *UserWhere) NameContains(v string) *UserWhere   { w.w.Pred("name", "contains", v); return w }
-func (q *User) NameContains(v string) *User             { q.q.W().Pred("name", "contains", v); return q }
+func (q *UserQuery) NameContains(v string) *UserQuery   { q.q.W().Pred("name", "contains", v); return q }
 func (w *UserWhere) NameStartsWith(v string) *UserWhere { w.w.Pred("name", "starts_with", v); return w }
-func (q *User) NameStartsWith(v string) *User           { q.q.W().Pred("name", "starts_with", v); return q }
-func (w *UserWhere) NameEndsWith(v string) *UserWhere   { w.w.Pred("name", "ends_with", v); return w }
-func (q *User) NameEndsWith(v string) *User             { q.q.W().Pred("name", "ends_with", v); return q }
-func (w *UserWhere) NameIsNull() *UserWhere             { w.w.PredNull("name", "is_null"); return w }
-func (q *User) NameIsNull() *User                       { q.q.W().PredNull("name", "is_null"); return q }
-func (w *UserWhere) NameIsNotNull() *UserWhere          { w.w.PredNull("name", "is_not_null"); return w }
-func (q *User) NameIsNotNull() *User                    { q.q.W().PredNull("name", "is_not_null"); return q }
+func (q *UserQuery) NameStartsWith(v string) *UserQuery {
+	q.q.W().Pred("name", "starts_with", v)
+	return q
+}
+func (w *UserWhere) NameEndsWith(v string) *UserWhere { w.w.Pred("name", "ends_with", v); return w }
+func (q *UserQuery) NameEndsWith(v string) *UserQuery { q.q.W().Pred("name", "ends_with", v); return q }
+func (w *UserWhere) NameIsNull() *UserWhere           { w.w.PredNull("name", "is_null"); return w }
+func (q *UserQuery) NameIsNull() *UserQuery           { q.q.W().PredNull("name", "is_null"); return q }
+func (w *UserWhere) NameIsNotNull() *UserWhere        { w.w.PredNull("name", "is_not_null"); return w }
+func (q *UserQuery) NameIsNotNull() *UserQuery        { q.q.W().PredNull("name", "is_not_null"); return q }
 func (w *UserWhere) NameEqCol(ref orm.ColRef) *UserWhere {
 	w.w.PredCol("name", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *User) NameEqCol(ref orm.ColRef) *User {
+func (q *UserQuery) NameEqCol(ref orm.ColRef) *UserQuery {
 	q.q.W().PredCol("name", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -333,57 +385,72 @@ func (w *UserWhere) NameNotEqCol(ref orm.ColRef) *UserWhere {
 	w.w.PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *User) NameNotEqCol(ref orm.ColRef) *User {
+func (q *UserQuery) NameNotEqCol(ref orm.ColRef) *UserQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *User) Or() *User { q.q.Or(); return q }
-func (q *User) And(fn func(*UserWhere)) *User {
+func (q *UserQuery) Or() *UserQuery { q.q.Or(); return q }
+func (q *UserQuery) And(fn func(*UserWhere)) *UserQuery {
 	q.q.W().And(func(x *orm.W) { fn(&UserWhere{w: x}) })
 	return q
 }
-func (q *User) Expr(frag string, binds ...any) *User { q.q.W().Expr(frag, binds...); return q }
-func (q *User) Battles(fn func(*BattleWhere)) *User {
+func (q *UserQuery) Expr(frag string, binds ...any) *UserQuery {
+	q.q.W().Expr(frag, binds...)
+	return q
+}
+func (q *UserQuery) Battles(fn func(*BattleWhere)) *UserQuery {
 	q.q.W().Nav("battles", func(x *orm.W) { fn(&BattleWhere{w: x}) })
 	return q
 }
-func (q *User) ServiceMembers(fn func(*ServiceMemberWhere)) *User {
+func (q *UserQuery) ServiceMembers(fn func(*ServiceMemberWhere)) *UserQuery {
 	q.q.W().Nav("service_members", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return q
 }
 
 // Join children: On = ON clause, Where = parent WHERE group. Bare predicates on a join child are rejected by the engine.
-func (q *User) On(fn func(*UserWhere)) *User    { fn(&UserWhere{w: q.q.OnW()}); return q }
-func (q *User) Where(fn func(*UserWhere)) *User { fn(&UserWhere{w: q.q.W()}); return q }
+func (q *UserQuery) On(fn func(*UserWhere)) *UserQuery    { fn(&UserWhere{w: q.q.OnW()}); return q }
+func (q *UserQuery) Where(fn func(*UserWhere)) *UserQuery { fn(&UserWhere{w: q.q.W()}); return q }
 
 // Having is the group predicate after GroupBy<Col>: the same builder as where; aggregates go through Expr("COUNT(*) > ?", n).
-func (q *User) Having(fn func(*UserWhere)) *User { fn(&UserWhere{w: q.q.HavingW()}); return q }
+func (q *UserQuery) Having(fn func(*UserWhere)) *UserQuery {
+	fn(&UserWhere{w: q.q.HavingW()})
+	return q
+}
 
 // Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
-func (q *User) Raw(sql string, binds ...any) *User { q.q.Raw(sql, binds...); return q }
+func (q *UserQuery) Raw(sql string, binds ...any) *UserQuery { q.q.Raw(sql, binds...); return q }
 
-func (q *User) JoinBattles(child *Battle) *User      { q.q.Join("battles", "inner", child.q); return q }
-func (q *User) LeftJoinBattles(child *Battle) *User  { q.q.Join("battles", "left", child.q); return q }
-func (q *User) RelationsBattles(child *Battle) *User { q.q.Relation("battles", child.q); return q }
-func (q *User) JoinServiceMembers(child *ServiceMember) *User {
+func (q *UserQuery) JoinBattles(child *BattleQuery) *UserQuery {
+	q.q.Join("battles", "inner", child.q)
+	return q
+}
+func (q *UserQuery) LeftJoinBattles(child *BattleQuery) *UserQuery {
+	q.q.Join("battles", "left", child.q)
+	return q
+}
+func (q *UserQuery) RelationsBattles(child *BattleQuery) *UserQuery {
+	q.q.Relation("battles", child.q)
+	return q
+}
+func (q *UserQuery) JoinServiceMembers(child *ServiceMemberQuery) *UserQuery {
 	q.q.Join("service_members", "inner", child.q)
 	return q
 }
-func (q *User) LeftJoinServiceMembers(child *ServiceMember) *User {
+func (q *UserQuery) LeftJoinServiceMembers(child *ServiceMemberQuery) *UserQuery {
 	q.q.Join("service_members", "left", child.q)
 	return q
 }
-func (q *User) RelationsServiceMembers(child *ServiceMember) *User {
+func (q *UserQuery) RelationsServiceMembers(child *ServiceMemberQuery) *UserQuery {
 	q.q.Relation("service_members", child.q)
 	return q
 }
 
 // Columns.
-func (q *User) SelectAll() *User  { q.q.Columns().Mode = "all"; return q }
-func (q *User) SelectNone() *User { q.q.Columns().Mode = "none"; return q }
-func (q *User) SelectExpr(name, frag string) *User {
+func (q *UserQuery) SelectAll() *UserQuery  { q.q.Columns().Mode = "all"; return q }
+func (q *UserQuery) SelectNone() *UserQuery { q.q.Columns().Mode = "none"; return q }
+func (q *UserQuery) SelectExpr(name, frag string) *UserQuery {
 	c := q.q.Columns()
 	if c.Expr == nil {
 		c.Expr = map[string]string{}
@@ -391,9 +458,17 @@ func (q *User) SelectExpr(name, frag string) *User {
 	c.Expr[name] = frag
 	return q
 }
-func (q *User) SelectSeq() *User   { c := q.q.Columns(); c.Add = append(c.Add, "seq"); return q }
-func (q *User) UnselectSeq() *User { c := q.q.Columns(); c.Remove = append(c.Remove, "seq"); return q }
-func (q *User) SelectSeqAs(name string) *User {
+func (q *UserQuery) SelectSeq() *UserQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "seq")
+	return q
+}
+func (q *UserQuery) UnselectSeq() *UserQuery {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "seq")
+	return q
+}
+func (q *UserQuery) SelectSeqAs(name string) *UserQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -401,13 +476,17 @@ func (q *User) SelectSeqAs(name string) *User {
 	c.As[name] = "seq"
 	return q
 }
-func (q *User) SelectName() *User { c := q.q.Columns(); c.Add = append(c.Add, "name"); return q }
-func (q *User) UnselectName() *User {
+func (q *UserQuery) SelectName() *UserQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "name")
+	return q
+}
+func (q *UserQuery) UnselectName() *UserQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "name")
 	return q
 }
-func (q *User) SelectNameAs(name string) *User {
+func (q *UserQuery) SelectNameAs(name string) *UserQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -417,79 +496,111 @@ func (q *User) SelectNameAs(name string) *User {
 }
 
 // Order, group, limit.
-func (q *User) OrderBySeqAsc() *User                     { q.q.Order("seq", false); return q }
-func (q *User) OrderBySeqDesc() *User                    { q.q.Order("seq", true); return q }
-func (q *User) GroupBySeq() *User                        { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "seq"); return q }
-func (q *User) KeyBySeq() *User                          { q.q.Node.KeyBy = "seq"; return q }
-func (q *User) OrderByNameAsc() *User                    { q.q.Order("name", false); return q }
-func (q *User) OrderByNameDesc() *User                   { q.q.Order("name", true); return q }
-func (q *User) GroupByName() *User                       { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "name"); return q }
-func (q *User) KeyByName() *User                         { q.q.Node.KeyBy = "name"; return q }
-func (q *User) OrderByExpr(frag string, desc bool) *User { q.q.OrderExpr(frag, desc); return q }
-func (q *User) Limit(offset, count int) *User {
+func (q *UserQuery) OrderBySeqAsc() *UserQuery  { q.q.Order("seq", false); return q }
+func (q *UserQuery) OrderBySeqDesc() *UserQuery { q.q.Order("seq", true); return q }
+func (q *UserQuery) GroupBySeq() *UserQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "seq")
+	return q
+}
+func (q *UserQuery) KeyBySeq() *UserQuery        { q.q.Node.KeyBy = "seq"; return q }
+func (q *UserQuery) OrderByNameAsc() *UserQuery  { q.q.Order("name", false); return q }
+func (q *UserQuery) OrderByNameDesc() *UserQuery { q.q.Order("name", true); return q }
+func (q *UserQuery) GroupByName() *UserQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "name")
+	return q
+}
+func (q *UserQuery) KeyByName() *UserQuery { q.q.Node.KeyBy = "name"; return q }
+func (q *UserQuery) OrderByExpr(frag string, desc bool) *UserQuery {
+	q.q.OrderExpr(frag, desc)
+	return q
+}
+func (q *UserQuery) GroupByExpr(expr, as string) *UserQuery { q.q.GroupByExpr(expr, as); return q }
+func (q *UserQuery) Limit(offset, count int) *UserQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *User) Distinct() *User { q.q.Node.Distinct = true; return q }
+func (q *UserQuery) Distinct() *UserQuery { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
-func (q *User) Flatten() *User                   { q.q.Node.Flatten = true; return q }
-func (q *User) LimitPerParent(n int) *User       { q.q.Node.LimitPerParent = n; return q }
-func (q *User) DropChildKey() *User              { q.q.Node.DropChildKey = true; return q }
-func (q *User) NoCascadeDelete() *User           { q.q.Node.NoCascadeDelete = true; return q }
-func (q *User) IfParentSeqEq(v int64) *User      { q.q.IfParent("seq", v); return q }
-func (q *User) IfParentNameEq(v string) *User    { q.q.IfParent("name", v); return q }
-func (q *User) IfParentIsCloseEq(v bool) *User   { q.q.IfParent("is_close", v); return q }
-func (q *User) IfParentIsDisplayEq(v bool) *User { q.q.IfParent("is_display", v); return q }
-func (q *User) IfParentIsAlldayEq(v bool) *User  { q.q.IfParent("is_allday", v); return q }
-func (q *User) IfParentTargetTeamPlayerCountEq(v int64) *User {
+func (q *UserQuery) Flatten() *UserQuery                   { q.q.Node.Flatten = true; return q }
+func (q *UserQuery) LimitPerParent(n int) *UserQuery       { q.q.Node.LimitPerParent = n; return q }
+func (q *UserQuery) DropChildKey() *UserQuery              { q.q.Node.DropChildKey = true; return q }
+func (q *UserQuery) NoCascadeDelete() *UserQuery           { q.q.Node.NoCascadeDelete = true; return q }
+func (q *UserQuery) IfParentSeqEq(v int64) *UserQuery      { q.q.IfParent("seq", v); return q }
+func (q *UserQuery) IfParentNameEq(v string) *UserQuery    { q.q.IfParent("name", v); return q }
+func (q *UserQuery) IfParentIsCloseEq(v bool) *UserQuery   { q.q.IfParent("is_close", v); return q }
+func (q *UserQuery) IfParentIsDisplayEq(v bool) *UserQuery { q.q.IfParent("is_display", v); return q }
+func (q *UserQuery) IfParentIsAlldayEq(v bool) *UserQuery  { q.q.IfParent("is_allday", v); return q }
+func (q *UserQuery) IfParentTargetTeamPlayerCountEq(v int64) *UserQuery {
 	q.q.IfParent("target_team_player_count", v)
 	return q
 }
-func (q *User) IfParentSuccessCountEq(v int64) *User { q.q.IfParent("success_count", v); return q }
-func (q *User) IfParentPlayerCountEq(v int64) *User  { q.q.IfParent("player_count", v); return q }
-func (q *User) IfParentReadCountEq(v int64) *User    { q.q.IfParent("read_count", v); return q }
-func (q *User) IfParentCoverUrlEq(v string) *User    { q.q.IfParent("cover_url", v); return q }
-func (q *User) IfParentUserSeqEq(v int64) *User      { q.q.IfParent("user_seq", v); return q }
-func (q *User) IfParentServiceSeqEq(v int64) *User   { q.q.IfParent("service_seq", v); return q }
-func (q *User) IfParentServiceModuleSeqEq(v int64) *User {
+func (q *UserQuery) IfParentSuccessCountEq(v int64) *UserQuery {
+	q.q.IfParent("success_count", v)
+	return q
+}
+func (q *UserQuery) IfParentPlayerCountEq(v int64) *UserQuery {
+	q.q.IfParent("player_count", v)
+	return q
+}
+func (q *UserQuery) IfParentReadCountEq(v int64) *UserQuery { q.q.IfParent("read_count", v); return q }
+func (q *UserQuery) IfParentCoverUrlEq(v string) *UserQuery { q.q.IfParent("cover_url", v); return q }
+func (q *UserQuery) IfParentUserSeqEq(v int64) *UserQuery   { q.q.IfParent("user_seq", v); return q }
+func (q *UserQuery) IfParentServiceSeqEq(v int64) *UserQuery {
+	q.q.IfParent("service_seq", v)
+	return q
+}
+func (q *UserQuery) IfParentServiceModuleSeqEq(v int64) *UserQuery {
 	q.q.IfParent("service_module_seq", v)
 	return q
 }
-func (q *User) IfParentServiceMemberSeqEq(v int64) *User {
+func (q *UserQuery) IfParentServiceMemberSeqEq(v int64) *UserQuery {
 	q.q.IfParent("service_member_seq", v)
 	return q
 }
-func (q *User) IfParentUuidEq(v string) *User        { q.q.IfParent("uuid", v); return q }
-func (q *User) IfParentIsSinglePlayEq(v bool) *User  { q.q.IfParent("is_single_play", v); return q }
-func (q *User) IfParentLikeCountEq(v int64) *User    { q.q.IfParent("like_count", v); return q }
-func (q *User) IfParentAesHexEmailEq(v string) *User { q.q.IfParent("aes_hex_email", v); return q }
-func (q *User) IfParentAesHexPhoneEq(v string) *User { q.q.IfParent("aes_hex_phone", v); return q }
+func (q *UserQuery) IfParentUuidEq(v string) *UserQuery { q.q.IfParent("uuid", v); return q }
+func (q *UserQuery) IfParentIsSinglePlayEq(v bool) *UserQuery {
+	q.q.IfParent("is_single_play", v)
+	return q
+}
+func (q *UserQuery) IfParentLikeCountEq(v int64) *UserQuery { q.q.IfParent("like_count", v); return q }
+func (q *UserQuery) IfParentAesHexEmailEq(v string) *UserQuery {
+	q.q.IfParent("aes_hex_email", v)
+	return q
+}
+func (q *UserQuery) IfParentAesHexPhoneEq(v string) *UserQuery {
+	q.q.IfParent("aes_hex_phone", v)
+	return q
+}
 
 // Insert draft. The auto PK is settable too: Save takes it as the update key.
-func (q *User) SetSeq(v int64) *User { q.q.Set("seq", v); return q }
-func (q *User) SetSeqExpr(frag string, binds ...any) *User {
+func (q *UserQuery) SetSeq(v int64) *UserQuery { q.q.Set("seq", v); return q }
+func (q *UserQuery) SetSeqExpr(frag string, binds ...any) *UserQuery {
 	q.q.SetExpr("seq", frag, binds...)
 	return q
 }
-func (q *User) SetName(v string) *User { q.q.Set("name", v); return q }
-func (q *User) SetNameExpr(frag string, binds ...any) *User {
+func (q *UserQuery) SetName(v string) *UserQuery { q.q.Set("name", v); return q }
+func (q *UserQuery) SetNameExpr(frag string, binds ...any) *UserQuery {
 	q.q.SetExpr("name", frag, binds...)
 	return q
 }
-func (q *User) PlusSeq(v int64) *User  { q.q.Plus("seq", v); return q }
-func (q *User) MinusSeq(v int64) *User { q.q.Minus("seq", v); return q }
+func (q *UserQuery) PlusSeq(v int64) *UserQuery  { q.q.Plus("seq", v); return q }
+func (q *UserQuery) MinusSeq(v int64) *UserQuery { q.q.Minus("seq", v); return q }
 
 // ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
-func (q *User) OnDuplicateSetName(v string) *User { q.q.OnDuplicate("name", v); return q }
-func (q *User) OnDuplicateSetNameExpr(frag string, binds ...any) *User {
+func (q *UserQuery) OnDuplicateSetName(v string) *UserQuery { q.q.OnDuplicate("name", v); return q }
+func (q *UserQuery) OnDuplicateSetNameExpr(frag string, binds ...any) *UserQuery {
 	q.q.OnDuplicateExpr("name", frag, binds...)
 	return q
 }
-func (q *User) OnDuplicateSetAll() *User { q.q.OnDuplicateSetAll("seq", "seq"); return q }
+func (q *UserQuery) OnDuplicateSetAll() *UserQuery { q.q.OnDuplicateSetAll("seq", "seq"); return q }
 
 // Terminals.
-func (q *User) One(ctx context.Context, ex orm.Exec) (*UserRow, error) {
+func (q *UserQuery) One() (*UserRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "one"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil || len(rows.Data) == 0 {
@@ -498,13 +609,37 @@ func (q *User) One(ctx context.Context, ex orm.Exec) (*UserRow, error) {
 	return scanUser(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *User) All(ctx context.Context, ex orm.Exec) (*orm.Collection[UserRow], error) {
+func (q *UserQuery) All() (*orm.Collection[UserRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "all"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
 	}
 	return collectUser(rows, q.keyFn), nil
+}
+
+// Get is the preferred single-row terminal. One is kept as a compatibility alias.
+func (q *UserQuery) Get() (*UserRow, error) {
+	return q.One()
+}
+
+// Gets is the preferred collection terminal. All is kept as a compatibility alias.
+func (q *UserQuery) Gets() (*orm.Collection[UserRow], error) {
+	return q.All()
+}
+
+// GetsBySeq applies seq = v and runs the collection terminal.
+func (q *UserQuery) GetsBySeq(v int64) (*orm.Collection[UserRow], error) {
+	return q.Seq(v).Gets()
+}
+
+// GetsByName applies name = v and runs the collection terminal.
+func (q *UserQuery) GetsByName(v string) (*orm.Collection[UserRow], error) {
+	return q.Name(v).Gets()
 }
 
 func collectUser(rows *orm.Rows, keyFn func(*UserRow) orm.Key) *orm.Collection[UserRow] {
@@ -520,24 +655,70 @@ func collectUser(rows *orm.Rows, keyFn func(*UserRow) orm.Key) *orm.Collection[U
 	return c
 }
 
-func (q *User) Count(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *UserQuery) Count() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
 }
-func (q *User) SumSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+
+// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
+func (q *UserQuery) GetCount() (int64, error) {
+	return q.Count()
+}
+
+// GetCountBySeq applies seq = v and runs the scalar count terminal.
+func (q *UserQuery) GetCountBySeq(v int64) (int64, error) {
+	return q.Seq(v).GetCount()
+}
+
+// GetCountByName applies name = v and runs the scalar count terminal.
+func (q *UserQuery) GetCountByName(v string) (int64, error) {
+	return q.Name(v).GetCount()
+}
+
+// GetsCount returns one row per group_by value. The grouped columns are in the
+// row and the aggregate is available as Extra("row_count").
+func (q *UserQuery) GetsCount() (*orm.Collection[UserRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "group_count"
+	rows, err := orm.Query(ctx, ex, q.q.Req)
+	if err != nil {
+		return nil, err
+	}
+	return collectUser(rows, q.keyFn), nil
+}
+func (q *UserQuery) SumSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *User) AvgSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *UserQuery) AvgSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *User) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *UserQuery) CountDistinctSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -545,7 +726,11 @@ func (q *User) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int64, error)
 }
 
 // MinSeq is nil when no row matches.
-func (q *User) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *UserQuery) MinSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -557,7 +742,11 @@ func (q *User) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
 }
 
 // MaxSeq is nil when no row matches.
-func (q *User) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *UserQuery) MaxSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -567,7 +756,11 @@ func (q *User) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *User) CountDistinctName(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *UserQuery) CountDistinctName() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -575,7 +768,11 @@ func (q *User) CountDistinctName(ctx context.Context, ex orm.Exec) (int64, error
 }
 
 // MinName is nil when no row matches.
-func (q *User) MinName(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *UserQuery) MinName() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -587,7 +784,11 @@ func (q *User) MinName(ctx context.Context, ex orm.Exec) (*string, error) {
 }
 
 // MaxName is nil when no row matches.
-func (q *User) MaxName(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *UserQuery) MaxName() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -599,12 +800,23 @@ func (q *User) MaxName(ctx context.Context, ex orm.Exec) (*string, error) {
 }
 
 // RawAll runs the statement given to Raw and returns its rows by column name (values as the driver gives them, no codec).
-func (q *User) RawAll(ctx context.Context, ex orm.Exec) ([]map[string]any, error) {
+func (q *UserQuery) RawAll() ([]map[string]any, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "raw"
 	return orm.RawAll(ctx, ex, q.q.Req)
 }
 
-func (q *User) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm.Page[UserRow], error) {
+func (q *UserQuery) Paginate(page, per int) (*orm.Page[UserRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	if per <= 0 {
+		return nil, &ir.Error{Code: "IR_INVALID", Msg: "per must be positive"}
+	}
 	if page < 1 {
 		page = 1
 	}
@@ -618,49 +830,74 @@ func (q *User) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm.P
 	return &orm.Page[UserRow]{Items: collectUser(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
-func (q *User) Insert(ctx context.Context, ex orm.Exec) (*UserRow, error) {
+func (q *UserQuery) Insert() (*UserRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "insert"
 	id, _, err := orm.Write(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
 	}
-	return NewUser().SeqEq(int64(id)).One(ctx, ex)
+	return User().Bind(ctx, ex).SeqEq(int64(id)).One()
 }
 
 // Save updates the other assigned columns when SetSeq was called (and
 // returns the re-read row); otherwise it inserts like Insert.
-func (q *User) Save(ctx context.Context, ex orm.Exec) (*UserRow, error) {
+func (q *UserQuery) Save() (*UserRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	pk, ok := q.q.MovePKToWhere("seq")
 	if !ok {
-		return q.Insert(ctx, ex)
+		return q.Insert()
 	}
 	q.q.Req.IR.Kind = "update"
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return NewUser().SeqEq(pk.(int64)).One(ctx, ex)
+	return User().Bind(ctx, ex).SeqEq(pk.(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *User) Update(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *UserQuery) Update() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "update"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // Delete removes every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *User) Delete(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *UserQuery) Delete() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "delete"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
-func (q *User) SQL(ctx context.Context, ex orm.Exec) (*orm.Statement, error) {
+func (q *UserQuery) SQL() (*orm.Statement, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "all"
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *User) OneBySeq(ctx context.Context, ex orm.Exec, v int64) (*UserRow, error) {
-	return q.SeqEq(v).One(ctx, ex)
+func (q *UserQuery) OneBySeq(v int64) (*UserRow, error) {
+	return q.SeqEq(v).One()
+}
+
+// GetBySeq is the preferred primary-key lookup. OneBySeq is kept as a compatibility alias.
+func (q *UserQuery) GetBySeq(v int64) (*UserRow, error) {
+	return q.OneBySeq(v)
 }

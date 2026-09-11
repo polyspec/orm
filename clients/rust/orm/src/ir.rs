@@ -22,6 +22,8 @@ pub struct Request {
     /// kind raw: a hand-written SELECT run as the root (`{table}` = the entity table, `?` bound from ps).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw: Option<Raw>,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub debug: bool,
     pub n_params: usize,
 }
 
@@ -49,6 +51,8 @@ pub struct Query {
     pub order: Vec<Order>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub group_by: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub group_by_expr: Vec<GroupExpr>,
     /// Root only, needs group_by: group predicates (aggregate expressions as expr items).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub having: Option<Group>,
@@ -161,6 +165,13 @@ pub struct Order {
     pub expr: String,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub desc: bool,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct GroupExpr {
+    pub expr: String,
+    #[serde(rename = "as")]
+    pub as_: String,
 }
 
 #[derive(Serialize, Debug, Clone)]

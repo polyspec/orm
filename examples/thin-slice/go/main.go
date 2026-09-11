@@ -51,16 +51,15 @@ func main() {
 	now := time.Date(2026, 9, 11, 0, 0, 0, 0, time.UTC)
 
 	query := func() (*orm.Collection[gen.BattleRow], error) {
-		return gen.NewBattle().
-			ServiceSeqEq(7).
-			IsCloseEq(false).
+		return gen.Battle().
+			ServiceSeq(7).
+			IsClose(false).
 			And(func(w *gen.BattleWhere) {
-				w.IsDisplayEq(true).Or().And(func(w *gen.BattleWhere) { w.IsDisplayEq(false).DisplayStartDtLt(now) })
+				w.IsDisplay(true).Or().And(func(w *gen.BattleWhere) { w.IsDisplay(false).DisplayStartDtLt(now) })
 			}).
 			SeqIn([]int64{6, 106, 206, 306, 406}).
 			OrderBySeqDesc().
-			Limit(0, 3).
-			All(ctx, db)
+			Limit(0, 3).Bind(ctx, db).Gets()
 	}
 
 	rows, err := query()

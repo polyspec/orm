@@ -40,13 +40,13 @@ async fn main() {
 
     let query = || async {
         Battle::new()
-            .service_seq_eq(7)
-            .is_close_eq(false)
-            .and(|w| w.is_display_eq(true).or().and(|w| w.is_display_eq(false).display_start_dt_lt(now)))
+            .service_seq(7)
+            .is_close(false)
+            .and(|w| w.is_display(true).or().and(|w| w.is_display(false).display_start_dt_lt(now)))
             .seq_in(vec![6, 106, 206, 306, 406])
             .order_by_seq_desc()
             .limit(0, 3)
-            .all(&db)
+            .bind(&db).gets()
             .await
     };
 

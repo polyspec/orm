@@ -448,7 +448,7 @@
       "id": "Query.update",
       "for": "entity",
       "inputs": [],
-      "output": "I64",
+      "output": "AffectedRows",
       "errors": [
         "CONFIG",
         "IR_INVALID",
@@ -474,7 +474,7 @@
       "id": "Query.delete",
       "for": "entity",
       "inputs": [],
-      "output": "I64",
+      "output": "AffectedRows",
       "errors": [
         "CONFIG",
         "IR_INVALID",
@@ -1214,7 +1214,11 @@
         "export": {
           "seq": 6,
           "name": "interface-final",
-          "like_count": 5
+          "like_count": 5,
+          "user_seq": 7,
+          "service_seq": 7,
+          "service_module_seq": 7,
+          "service_member_seq": 7
         },
         "noop_statements": 0,
         "relation_loaded": false
@@ -1274,6 +1278,24 @@
         "php",
         "rust"
       ]
+    },
+    {
+      "id": "interface_original_version",
+      "steps": [
+        "assemble and retain original version",
+        "set version and name",
+        "optimistic update succeeds against original version",
+        "assemble without version",
+        "optimistic update rejects missing version",
+        "read stored version and name"
+      ],
+      "expected": {
+        "name": "interface-version",
+        "version_retained": true,
+        "missing_version": "CONFIG",
+        "pending": "not-written"
+      },
+      "statements": 4
     }
   ],
   "inventory_policy": {
@@ -1407,6 +1429,891 @@
       "kind": "*--",
       "role": "root binding",
       "from": "ExecutionRows"
+    }
+  ],
+  "records": [
+    {
+      "id": "IRRequest",
+      "native": {
+        "go": "engine/ir/ir.go::Request",
+        "rust": "clients/rust/orm/src/ir.rs::Request"
+      },
+      "fields": {
+        "ir_version": "integer",
+        "schema_hash": "text",
+        "kind": "text",
+        "set": "list<IRAssign>",
+        "on_duplicate": "list<IRAssign>",
+        "optimistic": "IROptimist",
+        "agg": "text",
+        "raw": "IRRaw",
+        "debug": "bool",
+        "n_params": "integer"
+      },
+      "optional": [
+        "set",
+        "on_duplicate",
+        "optimistic",
+        "agg",
+        "raw",
+        "debug"
+      ],
+      "extends": "IRQuery"
+    },
+    {
+      "id": "IRQuery",
+      "native": {
+        "go": "engine/ir/ir.go::Query",
+        "rust": "clients/rust/orm/src/ir.rs::Query"
+      },
+      "fields": {
+        "entity": "text",
+        "columns": "IRColumns",
+        "on": "IRGroup",
+        "where": "IRGroup",
+        "having": "IRGroup",
+        "joins": "list<IRJoin>",
+        "relations": "list<IRRelation>",
+        "order": "list<IROrder>",
+        "group_by": "list<text>",
+        "group_by_expr": "list<IRGroupExpr>",
+        "limit": "IRLimit",
+        "distinct": "bool",
+        "force_index": "text",
+        "key_by": "text",
+        "flatten": "bool",
+        "limit_per_parent": "integer",
+        "if_parent": "IRIfParent",
+        "drop_child_key": "bool",
+        "no_cascade_delete": "bool"
+      },
+      "optional": [
+        "columns",
+        "on",
+        "where",
+        "having",
+        "joins",
+        "relations",
+        "order",
+        "group_by",
+        "group_by_expr",
+        "limit",
+        "distinct",
+        "force_index",
+        "key_by",
+        "flatten",
+        "limit_per_parent",
+        "if_parent",
+        "drop_child_key",
+        "no_cascade_delete"
+      ]
+    },
+    {
+      "id": "IRColumns",
+      "native": {
+        "go": "engine/ir/ir.go::Columns",
+        "rust": "clients/rust/orm/src/ir.rs::Columns"
+      },
+      "fields": {
+        "mode": "text",
+        "add": "list<text>",
+        "remove": "list<text>",
+        "as": "map<text>",
+        "expr": "map<text>"
+      },
+      "optional": [
+        "mode",
+        "add",
+        "remove",
+        "as",
+        "expr"
+      ]
+    },
+    {
+      "id": "IRJoin",
+      "native": {
+        "go": "engine/ir/ir.go::Join",
+        "rust": "clients/rust/orm/src/ir.rs::Join"
+      },
+      "fields": {
+        "rel": "text",
+        "kind": "text",
+        "query": "IRQuery"
+      },
+      "optional": []
+    },
+    {
+      "id": "IRRelation",
+      "native": {
+        "go": "engine/ir/ir.go::Relation",
+        "rust": "clients/rust/orm/src/ir.rs::Relation"
+      },
+      "fields": {
+        "rel": "text",
+        "query": "IRQuery"
+      },
+      "optional": []
+    },
+    {
+      "id": "IRGroup",
+      "native": {
+        "go": "engine/ir/ir.go::Group",
+        "rust": "clients/rust/orm/src/ir.rs::Group"
+      },
+      "fields": {
+        "conn": "text",
+        "items": "list<IRItem>"
+      },
+      "optional": [
+        "conn"
+      ]
+    },
+    {
+      "id": "IRItem",
+      "native": {
+        "go": "engine/ir/ir.go::Item",
+        "rust": "clients/rust/orm/src/ir.rs::Item"
+      },
+      "fields": {
+        "pred": "IRPred",
+        "group": "IRGroup",
+        "nav": "IRNav"
+      },
+      "optional": [
+        "pred",
+        "group",
+        "nav"
+      ],
+      "union": true
+    },
+    {
+      "id": "IRPred",
+      "native": {
+        "go": "engine/ir/ir.go::Pred",
+        "rust": "clients/rust/orm/src/ir.rs::Pred"
+      },
+      "fields": {
+        "conn": "text",
+        "column": "text",
+        "op": "text",
+        "p": "integer",
+        "ps": "list<integer>",
+        "ref": "IRColRef",
+        "expr": "text",
+        "match": "list<text>"
+      },
+      "optional": [
+        "conn",
+        "column",
+        "op",
+        "p",
+        "ps",
+        "ref",
+        "expr",
+        "match"
+      ]
+    },
+    {
+      "id": "IRColRef",
+      "native": {
+        "go": "engine/ir/ir.go::ColRef",
+        "rust": "clients/rust/orm/src/ir.rs::ColRef"
+      },
+      "fields": {
+        "path": "text",
+        "column": "text"
+      },
+      "optional": []
+    },
+    {
+      "id": "IRNav",
+      "native": {
+        "go": "engine/ir/ir.go::Nav",
+        "rust": "clients/rust/orm/src/ir.rs::Nav"
+      },
+      "fields": {
+        "conn": "text",
+        "rel": "text",
+        "group": "IRGroup"
+      },
+      "optional": [
+        "conn"
+      ]
+    },
+    {
+      "id": "IROrder",
+      "native": {
+        "go": "engine/ir/ir.go::Order",
+        "rust": "clients/rust/orm/src/ir.rs::Order"
+      },
+      "fields": {
+        "column": "text",
+        "expr": "text",
+        "desc": "bool"
+      },
+      "optional": [
+        "column",
+        "expr",
+        "desc"
+      ]
+    },
+    {
+      "id": "IRGroupExpr",
+      "native": {
+        "go": "engine/ir/ir.go::GroupExpr",
+        "rust": "clients/rust/orm/src/ir.rs::GroupExpr"
+      },
+      "fields": {
+        "expr": "text",
+        "as": "text"
+      },
+      "optional": []
+    },
+    {
+      "id": "IRLimit",
+      "native": {
+        "go": "engine/ir/ir.go::Limit",
+        "rust": "clients/rust/orm/src/ir.rs::Limit"
+      },
+      "fields": {
+        "offset": "integer",
+        "count": "integer"
+      },
+      "optional": []
+    },
+    {
+      "id": "IRIfParent",
+      "native": {
+        "go": "engine/ir/ir.go::IfParent",
+        "rust": "clients/rust/orm/src/ir.rs::IfParent"
+      },
+      "fields": {
+        "column": "text",
+        "p": "integer"
+      },
+      "optional": []
+    },
+    {
+      "id": "IRAssign",
+      "native": {
+        "go": "engine/ir/ir.go::Assign",
+        "rust": "clients/rust/orm/src/ir.rs::Assign"
+      },
+      "fields": {
+        "column": "text",
+        "p": "integer",
+        "null": "bool",
+        "expr": "text",
+        "ps": "list<integer>",
+        "plus_p": "integer",
+        "minus_p": "integer"
+      },
+      "optional": [
+        "p",
+        "null",
+        "expr",
+        "ps",
+        "plus_p",
+        "minus_p"
+      ]
+    },
+    {
+      "id": "IRRaw",
+      "native": {
+        "go": "engine/ir/ir.go::Raw",
+        "rust": "clients/rust/orm/src/ir.rs::Raw"
+      },
+      "fields": {
+        "sql": "text",
+        "ps": "list<integer>"
+      },
+      "optional": [
+        "ps"
+      ]
+    },
+    {
+      "id": "IROptimist",
+      "native": {
+        "go": "engine/ir/ir.go::Optimist",
+        "rust": "clients/rust/orm/src/ir.rs::Optimist"
+      },
+      "fields": {
+        "column": "text",
+        "p": "integer"
+      },
+      "optional": []
+    },
+    {
+      "id": "Plan",
+      "native": {
+        "go": "engine/plan/plan.go::Plan",
+        "rust": "clients/rust/orm/src/plan.rs::Plan"
+      },
+      "fields": {
+        "schema_hash": "text",
+        "kind": "text",
+        "steps": "list<PlanStep>"
+      },
+      "optional": []
+    },
+    {
+      "id": "PlanStep",
+      "native": {
+        "go": "engine/plan/plan.go::Step",
+        "rust": "clients/rust/orm/src/plan.rs::Step"
+      },
+      "fields": {
+        "id": "integer",
+        "role": "text",
+        "sql": "text",
+        "bind_slots": "list<PlanBindSlot>",
+        "assemble": "PlanAssemble",
+        "parent": "PlanParent"
+      },
+      "optional": [
+        "assemble",
+        "parent"
+      ]
+    },
+    {
+      "id": "PlanParent",
+      "native": {
+        "go": "engine/plan/plan.go::ParentRef",
+        "rust": "clients/rust/orm/src/plan.rs::ParentRef"
+      },
+      "fields": {
+        "step": "integer",
+        "column": "text",
+        "index": "integer",
+        "if_parent": "PlanIfParent"
+      },
+      "optional": [
+        "if_parent"
+      ]
+    },
+    {
+      "id": "PlanIfParent",
+      "native": {
+        "go": "engine/plan/plan.go::IfParent",
+        "rust": "clients/rust/orm/src/plan.rs::IfParent"
+      },
+      "fields": {
+        "column": "text",
+        "index": "integer",
+        "param": "integer"
+      },
+      "optional": []
+    },
+    {
+      "id": "PlanBindSlot",
+      "native": {
+        "go": "engine/plan/plan.go::BindSlot",
+        "rust": "clients/rust/orm/src/plan.rs::BindSlot"
+      },
+      "fields": {
+        "from": "text",
+        "param": "integer",
+        "transform": "text",
+        "name": "text",
+        "step": "integer",
+        "column": "text",
+        "host_styles": "list<text>",
+        "col_type": "text"
+      },
+      "optional": [
+        "transform",
+        "name",
+        "step",
+        "column",
+        "host_styles",
+        "col_type"
+      ]
+    },
+    {
+      "id": "PlanAssemble",
+      "native": {
+        "go": "engine/plan/plan.go::Assemble",
+        "rust": "clients/rust/orm/src/plan.rs::Assemble"
+      },
+      "fields": {
+        "entity": "text",
+        "alias": "text",
+        "columns": "list<PlanOutCol>",
+        "children": "list<PlanChild>"
+      },
+      "optional": [
+        "children"
+      ]
+    },
+    {
+      "id": "PlanOutCol",
+      "native": {
+        "go": "engine/plan/plan.go::OutCol",
+        "rust": "clients/rust/orm/src/plan.rs::OutCol"
+      },
+      "fields": {
+        "index": "integer",
+        "name": "text",
+        "column": "text",
+        "type": "text",
+        "styles": "list<text>",
+        "hidden": "bool"
+      },
+      "optional": [
+        "column",
+        "styles",
+        "hidden"
+      ]
+    },
+    {
+      "id": "PlanChild",
+      "native": {
+        "go": "engine/plan/plan.go::Child",
+        "rust": "clients/rust/orm/src/plan.rs::Child"
+      },
+      "fields": {
+        "rel": "text",
+        "kind": "text",
+        "step": "integer",
+        "parent_column": "text",
+        "parent_index": "integer",
+        "child_column": "text",
+        "child_index": "integer",
+        "key_by": "text",
+        "key_index": "integer",
+        "flatten": "bool",
+        "cascade": "bool",
+        "assemble": "PlanAssemble"
+      },
+      "optional": [
+        "step",
+        "parent_column",
+        "child_column",
+        "key_by",
+        "flatten",
+        "cascade",
+        "assemble"
+      ]
+    }
+  ],
+  "storage": [
+    {
+      "id": "Query.binding",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query#field.binding",
+          "signature": "orm.Binding"
+        },
+        "php": {
+          "symbol": "clients/php/src/Query.php::Orm\\Q::$binding",
+          "signature": "private ?Orm\\Binding"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}#field.binding",
+          "signature": "Binding"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Query.request",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::Q#field.Req",
+          "signature": "*Req"
+        },
+        "php": {
+          "symbol": "clients/php/src/Query.php::Orm\\Q::$req",
+          "signature": "public Orm\\Req"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/builder.rs::Q#field.req",
+          "signature": "Req"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Query.keySelector",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query#field.keyFn",
+          "signature": "func(*{Entity}Row) orm.Key"
+        },
+        "php": {
+          "symbol": "clients/php/src/Query.php::Orm\\Q::$keyFn",
+          "signature": "public ?Closure"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}#field.key_fn",
+          "signature": "Option<Box<dyn Fn(&{Entity}Row) -> Key + Send + Sync>>"
+        }
+      },
+      "adapter": "Closure callback is erased in PHP and typed in native clients."
+    },
+    {
+      "id": "Request.ir",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/orm.go::Req#field.IR",
+          "signature": "ir.Request"
+        },
+        "php": {
+          "symbol": "clients/php/src/Query.php::Orm\\Req::$ir",
+          "signature": "public array"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/builder.rs::Req#field.ir",
+          "signature": "Request"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Request.params",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/orm.go::Req#field.Params",
+          "signature": "[]any"
+        },
+        "php": {
+          "symbol": "clients/php/src/Query.php::Orm\\Req::$params",
+          "signature": "public array"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/builder.rs::Req#field.params",
+          "signature": "Vec<Param>"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Request.deferredError",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/orm.go::Req#field.Err",
+          "signature": "error"
+        },
+        "php": {
+          "symbol": "clients/php/src/Query.php::Orm\\Req::$error",
+          "signature": "public ?Orm\\OrmException"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/builder.rs::Req#field.err",
+          "signature": "Option<DeferredError>"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Where.request",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::W#field.Req",
+          "signature": "*Req"
+        },
+        "php": {
+          "symbol": "clients/php/src/Query.php::Orm\\W::$req",
+          "signature": "public readonly Orm\\Req"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/builder.rs::W#field.params",
+          "signature": "&'a mut Vec<Param>"
+        }
+      },
+      "adapter": "Rust borrows disjoint Request.params and Group; PHP g is a constructor reference."
+    },
+    {
+      "id": "Where.group",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::W#field.G",
+          "signature": "*ir.Group"
+        },
+        "php": {
+          "symbol": "clients/php/src/Query.php::Orm\\W::$g",
+          "signature": "public array"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/builder.rs::W#field.g",
+          "signature": "&'a mut Group"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Where.pendingConnector",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::W#field.pendingOr",
+          "signature": "bool"
+        },
+        "php": {
+          "symbol": "clients/php/src/Query.php::Orm\\W::$pendingOr",
+          "signature": "private bool"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/builder.rs::W#field.pending_or",
+          "signature": "bool"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Binding.executor",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/binding.go::Binding#field.ex",
+          "signature": "Exec"
+        },
+        "php": {
+          "symbol": "clients/php/src/Binding.php::Orm\\Binding::$executor",
+          "signature": "private readonly ?Orm\\Db"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/binding.rs::Binding#field.0",
+          "signature": "Option<BoundExec>"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Row.binding",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::Row#field.Binding",
+          "signature": "Binding"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Row::$binding",
+          "signature": "private ?Orm\\Binding"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.binding",
+          "signature": "Binding"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Row.originalVersion",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::Row#field.version",
+          "signature": "any"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Row::$originalVersion",
+          "signature": "protected mixed"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.original_version",
+          "signature": "Option<Param>"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Row.dirty",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::Row#field.dirty",
+          "signature": "[]ir.Assign"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Row::$dirty",
+          "signature": "protected array"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.dirty",
+          "signature": "Vec<(&'static str, Param)>"
+        }
+      },
+      "adapter": "Go stores assignments and values in paired ordered slices; PHP ordered column map; Rust ordered pairs. State vectors enforce replacement order."
+    },
+    {
+      "id": "Row.deferredError",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::Row#field.encErr",
+          "signature": "error"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Row::$error",
+          "signature": "protected ?Orm\\OrmException"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.enc_err",
+          "signature": "Option<(String,String)>"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Row.projection",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::Row#field.proj",
+          "signature": "*Projection"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Row::$idx",
+          "signature": "protected array"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.asm",
+          "signature": "Option<std::sync::Arc<orm::plan::Assemble>>"
+        }
+      },
+      "adapter": "Projection metadata is derived once from the shared Assemble record; PHP separates idx/hidden/cascade."
+    },
+    {
+      "id": "Collection.items",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/orm.go::Collection#field.items",
+          "signature": "map[Key]*T"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Collection::$items",
+          "signature": "private array"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/collection.rs::Collection#field.items",
+          "signature": "IndexMap<Key,T>"
+        }
+      },
+      "adapter": "Go ordered keys plus map; Rust IndexMap; PHP encoded key identities and typed entry values. Mixed-key vectors verify all forms."
+    },
+    {
+      "id": "Page.items",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/orm.go::Page#field.Items",
+          "signature": "*Collection[T]"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Page::$items",
+          "signature": "public readonly Orm\\Collection"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/collection.rs::Page#field.items",
+          "signature": "Collection<T>"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Page.total",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/orm.go::Page#field.Total",
+          "signature": "int64"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Page::$total",
+          "signature": "public readonly int"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/collection.rs::Page#field.total",
+          "signature": "i64"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Page.pages",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/orm.go::Page#field.Pages",
+          "signature": "int64"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Page::$pages",
+          "signature": "public readonly int"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/collection.rs::Page#field.pages",
+          "signature": "i64"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Page.current",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/orm.go::Page#field.Current",
+          "signature": "int64"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Page::$current",
+          "signature": "public readonly int"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/collection.rs::Page#field.current",
+          "signature": "i64"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Page.per",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/orm.go::Page#field.Per",
+          "signature": "int64"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Page::$per",
+          "signature": "public readonly int"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/collection.rs::Page#field.per",
+          "signature": "i64"
+        }
+      },
+      "adapter": ""
+    },
+    {
+      "id": "Tx.state",
+      "for": "entity",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/orm.go::Tx#field.finished",
+          "signature": "atomic.Bool"
+        },
+        "php": {
+          "symbol": "clients/php/src/Db.php::Orm\\Tx::$finished",
+          "signature": "private bool"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/db.rs::Tx#field.finished",
+          "signature": "Arc<AtomicBool>"
+        }
+      },
+      "adapter": ""
     }
   ]
 }

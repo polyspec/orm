@@ -76,30 +76,46 @@ func (r *ServiceModuleRow) GetService() *ServiceRow {
 }
 
 // Update writes the columns changed through Set*.
-func (r *ServiceModuleRow) Update(ctx context.Context, ex orm.Exec) error {
+func (r *ServiceModuleRow) Update() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
 	return r.UpdateRow(ctx, ex, "", nil)
 }
 
-func (r *ServiceModuleRow) Delete(ctx context.Context, ex orm.Exec) error {
+func (r *ServiceModuleRow) Delete() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
 	return r.DeleteRow(ctx, ex)
 }
 
 // DeleteCascade deletes the loaded relations this row owns (the assemble's
 // cascade children, in load order, each row through its own DeleteCascade)
 // and then this row. A bare DB runs the whole walk in one transaction.
-func (r *ServiceModuleRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
+func (r *ServiceModuleRow) DeleteCascade() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
+	return r.deleteCascade(ctx, ex)
+}
+
+func (r *ServiceModuleRow) deleteCascade(ctx context.Context, ex orm.Exec) error {
 	return orm.InTx(ctx, ex, func(ex orm.Exec) error {
 		for _, rel := range r.Cascades() {
 			switch rel {
 			case "battles":
 				for _, child := range r.GetBattles().All() {
-					if err := child.DeleteCascade(ctx, ex); err != nil {
+					if err := child.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
 			case "service":
 				if r.Service != nil {
-					if err := r.Service.DeleteCascade(ctx, ex); err != nil {
+					if err := r.Service.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
@@ -113,6 +129,7 @@ func (r *ServiceModuleRow) DeleteCascade(ctx context.Context, ex orm.Exec) error
 // children (same row) and its relation children (rows of later steps).
 func scanServiceModule(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceModuleRow {
 	r := &ServiceModuleRow{}
+	r.Binding = rs.Binding
 	for _, c := range a.Columns {
 		v := vals[c.Index]
 		switch c.Name {
@@ -204,23 +221,37 @@ var ServiceModuleCols = struct {
 	Name:       orm.ColRef{Column: "name"},
 }
 
-// ServiceModule builds a statement over service_module: NewServiceModule() → chain → terminal(ctx, db).
-type ServiceModule struct {
-	q     *orm.Q
-	keyFn func(*ServiceModuleRow) orm.Key // KeyByFn: client-side keying of the root collection
+// ServiceModuleQuery builds a statement over service_module: ServiceModule() → Bind(ctx, db) → chain → terminal().
+type ServiceModuleQuery struct {
+	binding orm.Binding
+	q       *orm.Q
+	keyFn   func(*ServiceModuleRow) orm.Key // KeyByFn: client-side keying of the root collection
 }
 
 // KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
-func (q *ServiceModule) KeyByFn(fn func(*ServiceModuleRow) orm.Key) *ServiceModule {
+func (q *ServiceModuleQuery) KeyByFn(fn func(*ServiceModuleRow) orm.Key) *ServiceModuleQuery {
 	q.keyFn = fn
 	return q
 }
 
 // Req exposes the underlying request (debugging, plan inspection).
-func (q *ServiceModule) Req() *orm.Req { return q.q.Req }
+func (q *ServiceModuleQuery) Req() *orm.Req { return q.q.Req }
 
-func NewServiceModule() *ServiceModule {
-	return &ServiceModule{q: orm.NewQ(mustEngine(), "service_module")}
+// ServiceModule starts a query over service_module.
+func ServiceModule() *ServiceModuleQuery {
+	return &ServiceModuleQuery{q: orm.NewQ(mustEngine(), "service_module")}
+}
+
+// Bind selects the context and pool or transaction for this query.
+func (q *ServiceModuleQuery) Bind(ctx context.Context, ex orm.Exec) *ServiceModuleQuery {
+	q.binding = orm.NewBinding(ctx, ex)
+	return q
+}
+
+// Bind selects the context and pool or transaction for this loaded row.
+func (r *ServiceModuleRow) Bind(ctx context.Context, ex orm.Exec) *ServiceModuleRow {
+	r.Binding = orm.NewBinding(ctx, ex)
+	return r
 }
 
 // ServiceModuleWhere edits one WHERE/ON group of service_module.
@@ -245,25 +276,45 @@ func (w *ServiceModuleWhere) Service(fn func(*ServiceWhere)) *ServiceModuleWhere
 }
 
 func (w *ServiceModuleWhere) SeqEq(v int64) *ServiceModuleWhere { w.w.Pred("seq", "eq", v); return w }
-func (q *ServiceModule) SeqEq(v int64) *ServiceModule           { q.q.W().Pred("seq", "eq", v); return q }
+func (q *ServiceModuleQuery) SeqEq(v int64) *ServiceModuleQuery {
+	q.q.W().Pred("seq", "eq", v)
+	return q
+}
+func (w *ServiceModuleWhere) Seq(v int64) *ServiceModuleWhere { return w.SeqEq(v) }
+func (q *ServiceModuleQuery) Seq(v int64) *ServiceModuleQuery { return q.SeqEq(v) }
 func (w *ServiceModuleWhere) SeqNotEq(v int64) *ServiceModuleWhere {
 	w.w.Pred("seq", "not_eq", v)
 	return w
 }
-func (q *ServiceModule) SeqNotEq(v int64) *ServiceModule         { q.q.W().Pred("seq", "not_eq", v); return q }
-func (w *ServiceModuleWhere) SeqGt(v int64) *ServiceModuleWhere  { w.w.Pred("seq", "gt", v); return w }
-func (q *ServiceModule) SeqGt(v int64) *ServiceModule            { q.q.W().Pred("seq", "gt", v); return q }
+func (q *ServiceModuleQuery) SeqNotEq(v int64) *ServiceModuleQuery {
+	q.q.W().Pred("seq", "not_eq", v)
+	return q
+}
+func (w *ServiceModuleWhere) SeqGt(v int64) *ServiceModuleWhere { w.w.Pred("seq", "gt", v); return w }
+func (q *ServiceModuleQuery) SeqGt(v int64) *ServiceModuleQuery {
+	q.q.W().Pred("seq", "gt", v)
+	return q
+}
 func (w *ServiceModuleWhere) SeqGte(v int64) *ServiceModuleWhere { w.w.Pred("seq", "gte", v); return w }
-func (q *ServiceModule) SeqGte(v int64) *ServiceModule           { q.q.W().Pred("seq", "gte", v); return q }
-func (w *ServiceModuleWhere) SeqLt(v int64) *ServiceModuleWhere  { w.w.Pred("seq", "lt", v); return w }
-func (q *ServiceModule) SeqLt(v int64) *ServiceModule            { q.q.W().Pred("seq", "lt", v); return q }
+func (q *ServiceModuleQuery) SeqGte(v int64) *ServiceModuleQuery {
+	q.q.W().Pred("seq", "gte", v)
+	return q
+}
+func (w *ServiceModuleWhere) SeqLt(v int64) *ServiceModuleWhere { w.w.Pred("seq", "lt", v); return w }
+func (q *ServiceModuleQuery) SeqLt(v int64) *ServiceModuleQuery {
+	q.q.W().Pred("seq", "lt", v)
+	return q
+}
 func (w *ServiceModuleWhere) SeqLte(v int64) *ServiceModuleWhere { w.w.Pred("seq", "lte", v); return w }
-func (q *ServiceModule) SeqLte(v int64) *ServiceModule           { q.q.W().Pred("seq", "lte", v); return q }
+func (q *ServiceModuleQuery) SeqLte(v int64) *ServiceModuleQuery {
+	q.q.W().Pred("seq", "lte", v)
+	return q
+}
 func (w *ServiceModuleWhere) SeqIn(vs []int64) *ServiceModuleWhere {
 	w.w.PredList("seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceModule) SeqIn(vs []int64) *ServiceModule {
+func (q *ServiceModuleQuery) SeqIn(vs []int64) *ServiceModuleQuery {
 	q.q.W().PredList("seq", "in", orm.Anys(vs))
 	return q
 }
@@ -271,7 +322,7 @@ func (w *ServiceModuleWhere) SeqNotIn(vs []int64) *ServiceModuleWhere {
 	w.w.PredList("seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceModule) SeqNotIn(vs []int64) *ServiceModule {
+func (q *ServiceModuleQuery) SeqNotIn(vs []int64) *ServiceModuleQuery {
 	q.q.W().PredList("seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -279,7 +330,7 @@ func (w *ServiceModuleWhere) SeqBetween(lo, hi int64) *ServiceModuleWhere {
 	w.w.PredList("seq", "between", []any{lo, hi})
 	return w
 }
-func (q *ServiceModule) SeqBetween(lo, hi int64) *ServiceModule {
+func (q *ServiceModuleQuery) SeqBetween(lo, hi int64) *ServiceModuleQuery {
 	q.q.W().PredList("seq", "between", []any{lo, hi})
 	return q
 }
@@ -287,12 +338,15 @@ func (w *ServiceModuleWhere) SeqIsNull() *ServiceModuleWhere {
 	w.w.PredNull("seq", "is_null")
 	return w
 }
-func (q *ServiceModule) SeqIsNull() *ServiceModule { q.q.W().PredNull("seq", "is_null"); return q }
+func (q *ServiceModuleQuery) SeqIsNull() *ServiceModuleQuery {
+	q.q.W().PredNull("seq", "is_null")
+	return q
+}
 func (w *ServiceModuleWhere) SeqIsNotNull() *ServiceModuleWhere {
 	w.w.PredNull("seq", "is_not_null")
 	return w
 }
-func (q *ServiceModule) SeqIsNotNull() *ServiceModule {
+func (q *ServiceModuleQuery) SeqIsNotNull() *ServiceModuleQuery {
 	q.q.W().PredNull("seq", "is_not_null")
 	return q
 }
@@ -300,7 +354,7 @@ func (w *ServiceModuleWhere) SeqEqCol(ref orm.ColRef) *ServiceModuleWhere {
 	w.w.PredCol("seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) SeqEqCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) SeqEqCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -308,7 +362,7 @@ func (w *ServiceModuleWhere) SeqNotEqCol(ref orm.ColRef) *ServiceModuleWhere {
 	w.w.PredCol("seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) SeqNotEqCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) SeqNotEqCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -316,7 +370,7 @@ func (w *ServiceModuleWhere) SeqGtCol(ref orm.ColRef) *ServiceModuleWhere {
 	w.w.PredCol("seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) SeqGtCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) SeqGtCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -324,7 +378,7 @@ func (w *ServiceModuleWhere) SeqGteCol(ref orm.ColRef) *ServiceModuleWhere {
 	w.w.PredCol("seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) SeqGteCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) SeqGteCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -332,7 +386,7 @@ func (w *ServiceModuleWhere) SeqLtCol(ref orm.ColRef) *ServiceModuleWhere {
 	w.w.PredCol("seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) SeqLtCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) SeqLtCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -340,7 +394,7 @@ func (w *ServiceModuleWhere) SeqLteCol(ref orm.ColRef) *ServiceModuleWhere {
 	w.w.PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) SeqLteCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) SeqLteCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -348,15 +402,17 @@ func (w *ServiceModuleWhere) ServiceSeqEq(v int64) *ServiceModuleWhere {
 	w.w.Pred("service_seq", "eq", v)
 	return w
 }
-func (q *ServiceModule) ServiceSeqEq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqEq(v int64) *ServiceModuleQuery {
 	q.q.W().Pred("service_seq", "eq", v)
 	return q
 }
+func (w *ServiceModuleWhere) ServiceSeq(v int64) *ServiceModuleWhere { return w.ServiceSeqEq(v) }
+func (q *ServiceModuleQuery) ServiceSeq(v int64) *ServiceModuleQuery { return q.ServiceSeqEq(v) }
 func (w *ServiceModuleWhere) ServiceSeqNotEq(v int64) *ServiceModuleWhere {
 	w.w.Pred("service_seq", "not_eq", v)
 	return w
 }
-func (q *ServiceModule) ServiceSeqNotEq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqNotEq(v int64) *ServiceModuleQuery {
 	q.q.W().Pred("service_seq", "not_eq", v)
 	return q
 }
@@ -364,7 +420,7 @@ func (w *ServiceModuleWhere) ServiceSeqGt(v int64) *ServiceModuleWhere {
 	w.w.Pred("service_seq", "gt", v)
 	return w
 }
-func (q *ServiceModule) ServiceSeqGt(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqGt(v int64) *ServiceModuleQuery {
 	q.q.W().Pred("service_seq", "gt", v)
 	return q
 }
@@ -372,7 +428,7 @@ func (w *ServiceModuleWhere) ServiceSeqGte(v int64) *ServiceModuleWhere {
 	w.w.Pred("service_seq", "gte", v)
 	return w
 }
-func (q *ServiceModule) ServiceSeqGte(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqGte(v int64) *ServiceModuleQuery {
 	q.q.W().Pred("service_seq", "gte", v)
 	return q
 }
@@ -380,7 +436,7 @@ func (w *ServiceModuleWhere) ServiceSeqLt(v int64) *ServiceModuleWhere {
 	w.w.Pred("service_seq", "lt", v)
 	return w
 }
-func (q *ServiceModule) ServiceSeqLt(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqLt(v int64) *ServiceModuleQuery {
 	q.q.W().Pred("service_seq", "lt", v)
 	return q
 }
@@ -388,7 +444,7 @@ func (w *ServiceModuleWhere) ServiceSeqLte(v int64) *ServiceModuleWhere {
 	w.w.Pred("service_seq", "lte", v)
 	return w
 }
-func (q *ServiceModule) ServiceSeqLte(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqLte(v int64) *ServiceModuleQuery {
 	q.q.W().Pred("service_seq", "lte", v)
 	return q
 }
@@ -396,7 +452,7 @@ func (w *ServiceModuleWhere) ServiceSeqIn(vs []int64) *ServiceModuleWhere {
 	w.w.PredList("service_seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceModule) ServiceSeqIn(vs []int64) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqIn(vs []int64) *ServiceModuleQuery {
 	q.q.W().PredList("service_seq", "in", orm.Anys(vs))
 	return q
 }
@@ -404,7 +460,7 @@ func (w *ServiceModuleWhere) ServiceSeqNotIn(vs []int64) *ServiceModuleWhere {
 	w.w.PredList("service_seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceModule) ServiceSeqNotIn(vs []int64) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqNotIn(vs []int64) *ServiceModuleQuery {
 	q.q.W().PredList("service_seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -412,7 +468,7 @@ func (w *ServiceModuleWhere) ServiceSeqBetween(lo, hi int64) *ServiceModuleWhere
 	w.w.PredList("service_seq", "between", []any{lo, hi})
 	return w
 }
-func (q *ServiceModule) ServiceSeqBetween(lo, hi int64) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqBetween(lo, hi int64) *ServiceModuleQuery {
 	q.q.W().PredList("service_seq", "between", []any{lo, hi})
 	return q
 }
@@ -420,7 +476,7 @@ func (w *ServiceModuleWhere) ServiceSeqIsNull() *ServiceModuleWhere {
 	w.w.PredNull("service_seq", "is_null")
 	return w
 }
-func (q *ServiceModule) ServiceSeqIsNull() *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqIsNull() *ServiceModuleQuery {
 	q.q.W().PredNull("service_seq", "is_null")
 	return q
 }
@@ -428,7 +484,7 @@ func (w *ServiceModuleWhere) ServiceSeqIsNotNull() *ServiceModuleWhere {
 	w.w.PredNull("service_seq", "is_not_null")
 	return w
 }
-func (q *ServiceModule) ServiceSeqIsNotNull() *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqIsNotNull() *ServiceModuleQuery {
 	q.q.W().PredNull("service_seq", "is_not_null")
 	return q
 }
@@ -436,7 +492,7 @@ func (w *ServiceModuleWhere) ServiceSeqEqCol(ref orm.ColRef) *ServiceModuleWhere
 	w.w.PredCol("service_seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) ServiceSeqEqCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqEqCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("service_seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -444,7 +500,7 @@ func (w *ServiceModuleWhere) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceModuleWh
 	w.w.PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -452,7 +508,7 @@ func (w *ServiceModuleWhere) ServiceSeqGtCol(ref orm.ColRef) *ServiceModuleWhere
 	w.w.PredCol("service_seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) ServiceSeqGtCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqGtCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("service_seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -460,7 +516,7 @@ func (w *ServiceModuleWhere) ServiceSeqGteCol(ref orm.ColRef) *ServiceModuleWher
 	w.w.PredCol("service_seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) ServiceSeqGteCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqGteCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("service_seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -468,7 +524,7 @@ func (w *ServiceModuleWhere) ServiceSeqLtCol(ref orm.ColRef) *ServiceModuleWhere
 	w.w.PredCol("service_seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) ServiceSeqLtCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqLtCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("service_seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -476,7 +532,7 @@ func (w *ServiceModuleWhere) ServiceSeqLteCol(ref orm.ColRef) *ServiceModuleWher
 	w.w.PredCol("service_seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) ServiceSeqLteCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) ServiceSeqLteCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("service_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -484,12 +540,17 @@ func (w *ServiceModuleWhere) NameEq(v string) *ServiceModuleWhere {
 	w.w.Pred("name", "eq", v)
 	return w
 }
-func (q *ServiceModule) NameEq(v string) *ServiceModule { q.q.W().Pred("name", "eq", v); return q }
+func (q *ServiceModuleQuery) NameEq(v string) *ServiceModuleQuery {
+	q.q.W().Pred("name", "eq", v)
+	return q
+}
+func (w *ServiceModuleWhere) Name(v string) *ServiceModuleWhere { return w.NameEq(v) }
+func (q *ServiceModuleQuery) Name(v string) *ServiceModuleQuery { return q.NameEq(v) }
 func (w *ServiceModuleWhere) NameNotEq(v string) *ServiceModuleWhere {
 	w.w.Pred("name", "not_eq", v)
 	return w
 }
-func (q *ServiceModule) NameNotEq(v string) *ServiceModule {
+func (q *ServiceModuleQuery) NameNotEq(v string) *ServiceModuleQuery {
 	q.q.W().Pred("name", "not_eq", v)
 	return q
 }
@@ -497,7 +558,7 @@ func (w *ServiceModuleWhere) NameIn(vs []string) *ServiceModuleWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceModule) NameIn(vs []string) *ServiceModule {
+func (q *ServiceModuleQuery) NameIn(vs []string) *ServiceModuleQuery {
 	q.q.W().PredList("name", "in", orm.Anys(vs))
 	return q
 }
@@ -505,7 +566,7 @@ func (w *ServiceModuleWhere) NameNotIn(vs []string) *ServiceModuleWhere {
 	w.w.PredList("name", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceModule) NameNotIn(vs []string) *ServiceModule {
+func (q *ServiceModuleQuery) NameNotIn(vs []string) *ServiceModuleQuery {
 	q.q.W().PredList("name", "not_in", orm.Anys(vs))
 	return q
 }
@@ -513,12 +574,15 @@ func (w *ServiceModuleWhere) NameLike(v string) *ServiceModuleWhere {
 	w.w.Pred("name", "like", v)
 	return w
 }
-func (q *ServiceModule) NameLike(v string) *ServiceModule { q.q.W().Pred("name", "like", v); return q }
+func (q *ServiceModuleQuery) NameLike(v string) *ServiceModuleQuery {
+	q.q.W().Pred("name", "like", v)
+	return q
+}
 func (w *ServiceModuleWhere) NameLikeBinary(v string) *ServiceModuleWhere {
 	w.w.Pred("name", "like_binary", v)
 	return w
 }
-func (q *ServiceModule) NameLikeBinary(v string) *ServiceModule {
+func (q *ServiceModuleQuery) NameLikeBinary(v string) *ServiceModuleQuery {
 	q.q.W().Pred("name", "like_binary", v)
 	return q
 }
@@ -526,7 +590,7 @@ func (w *ServiceModuleWhere) NameContains(v string) *ServiceModuleWhere {
 	w.w.Pred("name", "contains", v)
 	return w
 }
-func (q *ServiceModule) NameContains(v string) *ServiceModule {
+func (q *ServiceModuleQuery) NameContains(v string) *ServiceModuleQuery {
 	q.q.W().Pred("name", "contains", v)
 	return q
 }
@@ -534,7 +598,7 @@ func (w *ServiceModuleWhere) NameStartsWith(v string) *ServiceModuleWhere {
 	w.w.Pred("name", "starts_with", v)
 	return w
 }
-func (q *ServiceModule) NameStartsWith(v string) *ServiceModule {
+func (q *ServiceModuleQuery) NameStartsWith(v string) *ServiceModuleQuery {
 	q.q.W().Pred("name", "starts_with", v)
 	return q
 }
@@ -542,7 +606,7 @@ func (w *ServiceModuleWhere) NameEndsWith(v string) *ServiceModuleWhere {
 	w.w.Pred("name", "ends_with", v)
 	return w
 }
-func (q *ServiceModule) NameEndsWith(v string) *ServiceModule {
+func (q *ServiceModuleQuery) NameEndsWith(v string) *ServiceModuleQuery {
 	q.q.W().Pred("name", "ends_with", v)
 	return q
 }
@@ -550,12 +614,15 @@ func (w *ServiceModuleWhere) NameIsNull() *ServiceModuleWhere {
 	w.w.PredNull("name", "is_null")
 	return w
 }
-func (q *ServiceModule) NameIsNull() *ServiceModule { q.q.W().PredNull("name", "is_null"); return q }
+func (q *ServiceModuleQuery) NameIsNull() *ServiceModuleQuery {
+	q.q.W().PredNull("name", "is_null")
+	return q
+}
 func (w *ServiceModuleWhere) NameIsNotNull() *ServiceModuleWhere {
 	w.w.PredNull("name", "is_not_null")
 	return w
 }
-func (q *ServiceModule) NameIsNotNull() *ServiceModule {
+func (q *ServiceModuleQuery) NameIsNotNull() *ServiceModuleQuery {
 	q.q.W().PredNull("name", "is_not_null")
 	return q
 }
@@ -563,7 +630,7 @@ func (w *ServiceModuleWhere) NameEqCol(ref orm.ColRef) *ServiceModuleWhere {
 	w.w.PredCol("name", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) NameEqCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) NameEqCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("name", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -571,81 +638,81 @@ func (w *ServiceModuleWhere) NameNotEqCol(ref orm.ColRef) *ServiceModuleWhere {
 	w.w.PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceModule) NameNotEqCol(ref orm.ColRef) *ServiceModule {
+func (q *ServiceModuleQuery) NameNotEqCol(ref orm.ColRef) *ServiceModuleQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *ServiceModule) Or() *ServiceModule { q.q.Or(); return q }
-func (q *ServiceModule) And(fn func(*ServiceModuleWhere)) *ServiceModule {
+func (q *ServiceModuleQuery) Or() *ServiceModuleQuery { q.q.Or(); return q }
+func (q *ServiceModuleQuery) And(fn func(*ServiceModuleWhere)) *ServiceModuleQuery {
 	q.q.W().And(func(x *orm.W) { fn(&ServiceModuleWhere{w: x}) })
 	return q
 }
-func (q *ServiceModule) Expr(frag string, binds ...any) *ServiceModule {
+func (q *ServiceModuleQuery) Expr(frag string, binds ...any) *ServiceModuleQuery {
 	q.q.W().Expr(frag, binds...)
 	return q
 }
-func (q *ServiceModule) Battles(fn func(*BattleWhere)) *ServiceModule {
+func (q *ServiceModuleQuery) Battles(fn func(*BattleWhere)) *ServiceModuleQuery {
 	q.q.W().Nav("battles", func(x *orm.W) { fn(&BattleWhere{w: x}) })
 	return q
 }
-func (q *ServiceModule) Service(fn func(*ServiceWhere)) *ServiceModule {
+func (q *ServiceModuleQuery) Service(fn func(*ServiceWhere)) *ServiceModuleQuery {
 	q.q.W().Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return q
 }
 
 // Join children: On = ON clause, Where = parent WHERE group. Bare predicates on a join child are rejected by the engine.
-func (q *ServiceModule) On(fn func(*ServiceModuleWhere)) *ServiceModule {
+func (q *ServiceModuleQuery) On(fn func(*ServiceModuleWhere)) *ServiceModuleQuery {
 	fn(&ServiceModuleWhere{w: q.q.OnW()})
 	return q
 }
-func (q *ServiceModule) Where(fn func(*ServiceModuleWhere)) *ServiceModule {
+func (q *ServiceModuleQuery) Where(fn func(*ServiceModuleWhere)) *ServiceModuleQuery {
 	fn(&ServiceModuleWhere{w: q.q.W()})
 	return q
 }
 
 // Having is the group predicate after GroupBy<Col>: the same builder as where; aggregates go through Expr("COUNT(*) > ?", n).
-func (q *ServiceModule) Having(fn func(*ServiceModuleWhere)) *ServiceModule {
+func (q *ServiceModuleQuery) Having(fn func(*ServiceModuleWhere)) *ServiceModuleQuery {
 	fn(&ServiceModuleWhere{w: q.q.HavingW()})
 	return q
 }
 
 // Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
-func (q *ServiceModule) Raw(sql string, binds ...any) *ServiceModule {
+func (q *ServiceModuleQuery) Raw(sql string, binds ...any) *ServiceModuleQuery {
 	q.q.Raw(sql, binds...)
 	return q
 }
 
-func (q *ServiceModule) JoinBattles(child *Battle) *ServiceModule {
+func (q *ServiceModuleQuery) JoinBattles(child *BattleQuery) *ServiceModuleQuery {
 	q.q.Join("battles", "inner", child.q)
 	return q
 }
-func (q *ServiceModule) LeftJoinBattles(child *Battle) *ServiceModule {
+func (q *ServiceModuleQuery) LeftJoinBattles(child *BattleQuery) *ServiceModuleQuery {
 	q.q.Join("battles", "left", child.q)
 	return q
 }
-func (q *ServiceModule) RelationsBattles(child *Battle) *ServiceModule {
+func (q *ServiceModuleQuery) RelationsBattles(child *BattleQuery) *ServiceModuleQuery {
 	q.q.Relation("battles", child.q)
 	return q
 }
-func (q *ServiceModule) JoinService(child *Service) *ServiceModule {
+func (q *ServiceModuleQuery) JoinService(child *ServiceQuery) *ServiceModuleQuery {
 	q.q.Join("service", "inner", child.q)
 	return q
 }
-func (q *ServiceModule) LeftJoinService(child *Service) *ServiceModule {
+func (q *ServiceModuleQuery) LeftJoinService(child *ServiceQuery) *ServiceModuleQuery {
 	q.q.Join("service", "left", child.q)
 	return q
 }
-func (q *ServiceModule) RelationService(child *Service) *ServiceModule {
+func (q *ServiceModuleQuery) RelationService(child *ServiceQuery) *ServiceModuleQuery {
 	q.q.Relation("service", child.q)
 	return q
 }
 
 // Columns.
-func (q *ServiceModule) SelectAll() *ServiceModule  { q.q.Columns().Mode = "all"; return q }
-func (q *ServiceModule) SelectNone() *ServiceModule { q.q.Columns().Mode = "none"; return q }
-func (q *ServiceModule) SelectExpr(name, frag string) *ServiceModule {
+func (q *ServiceModuleQuery) SelectAll() *ServiceModuleQuery  { q.q.Columns().Mode = "all"; return q }
+func (q *ServiceModuleQuery) SelectNone() *ServiceModuleQuery { q.q.Columns().Mode = "none"; return q }
+func (q *ServiceModuleQuery) SelectExpr(name, frag string) *ServiceModuleQuery {
 	c := q.q.Columns()
 	if c.Expr == nil {
 		c.Expr = map[string]string{}
@@ -653,17 +720,17 @@ func (q *ServiceModule) SelectExpr(name, frag string) *ServiceModule {
 	c.Expr[name] = frag
 	return q
 }
-func (q *ServiceModule) SelectSeq() *ServiceModule {
+func (q *ServiceModuleQuery) SelectSeq() *ServiceModuleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "seq")
 	return q
 }
-func (q *ServiceModule) UnselectSeq() *ServiceModule {
+func (q *ServiceModuleQuery) UnselectSeq() *ServiceModuleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "seq")
 	return q
 }
-func (q *ServiceModule) SelectSeqAs(name string) *ServiceModule {
+func (q *ServiceModuleQuery) SelectSeqAs(name string) *ServiceModuleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -671,17 +738,17 @@ func (q *ServiceModule) SelectSeqAs(name string) *ServiceModule {
 	c.As[name] = "seq"
 	return q
 }
-func (q *ServiceModule) SelectServiceSeq() *ServiceModule {
+func (q *ServiceModuleQuery) SelectServiceSeq() *ServiceModuleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "service_seq")
 	return q
 }
-func (q *ServiceModule) UnselectServiceSeq() *ServiceModule {
+func (q *ServiceModuleQuery) UnselectServiceSeq() *ServiceModuleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "service_seq")
 	return q
 }
-func (q *ServiceModule) SelectServiceSeqAs(name string) *ServiceModule {
+func (q *ServiceModuleQuery) SelectServiceSeqAs(name string) *ServiceModuleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -689,17 +756,17 @@ func (q *ServiceModule) SelectServiceSeqAs(name string) *ServiceModule {
 	c.As[name] = "service_seq"
 	return q
 }
-func (q *ServiceModule) SelectName() *ServiceModule {
+func (q *ServiceModuleQuery) SelectName() *ServiceModuleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "name")
 	return q
 }
-func (q *ServiceModule) UnselectName() *ServiceModule {
+func (q *ServiceModuleQuery) UnselectName() *ServiceModuleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "name")
 	return q
 }
-func (q *ServiceModule) SelectNameAs(name string) *ServiceModule {
+func (q *ServiceModuleQuery) SelectNameAs(name string) *ServiceModuleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -709,172 +776,207 @@ func (q *ServiceModule) SelectNameAs(name string) *ServiceModule {
 }
 
 // Order, group, limit.
-func (q *ServiceModule) OrderBySeqAsc() *ServiceModule  { q.q.Order("seq", false); return q }
-func (q *ServiceModule) OrderBySeqDesc() *ServiceModule { q.q.Order("seq", true); return q }
-func (q *ServiceModule) GroupBySeq() *ServiceModule {
+func (q *ServiceModuleQuery) OrderBySeqAsc() *ServiceModuleQuery  { q.q.Order("seq", false); return q }
+func (q *ServiceModuleQuery) OrderBySeqDesc() *ServiceModuleQuery { q.q.Order("seq", true); return q }
+func (q *ServiceModuleQuery) GroupBySeq() *ServiceModuleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "seq")
 	return q
 }
-func (q *ServiceModule) KeyBySeq() *ServiceModule { q.q.Node.KeyBy = "seq"; return q }
-func (q *ServiceModule) OrderByServiceSeqAsc() *ServiceModule {
+func (q *ServiceModuleQuery) KeyBySeq() *ServiceModuleQuery { q.q.Node.KeyBy = "seq"; return q }
+func (q *ServiceModuleQuery) OrderByServiceSeqAsc() *ServiceModuleQuery {
 	q.q.Order("service_seq", false)
 	return q
 }
-func (q *ServiceModule) OrderByServiceSeqDesc() *ServiceModule {
+func (q *ServiceModuleQuery) OrderByServiceSeqDesc() *ServiceModuleQuery {
 	q.q.Order("service_seq", true)
 	return q
 }
-func (q *ServiceModule) GroupByServiceSeq() *ServiceModule {
+func (q *ServiceModuleQuery) GroupByServiceSeq() *ServiceModuleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "service_seq")
 	return q
 }
-func (q *ServiceModule) KeyByServiceSeq() *ServiceModule { q.q.Node.KeyBy = "service_seq"; return q }
-func (q *ServiceModule) OrderByNameAsc() *ServiceModule  { q.q.Order("name", false); return q }
-func (q *ServiceModule) OrderByNameDesc() *ServiceModule { q.q.Order("name", true); return q }
-func (q *ServiceModule) GroupByName() *ServiceModule {
+func (q *ServiceModuleQuery) KeyByServiceSeq() *ServiceModuleQuery {
+	q.q.Node.KeyBy = "service_seq"
+	return q
+}
+func (q *ServiceModuleQuery) OrderByNameAsc() *ServiceModuleQuery  { q.q.Order("name", false); return q }
+func (q *ServiceModuleQuery) OrderByNameDesc() *ServiceModuleQuery { q.q.Order("name", true); return q }
+func (q *ServiceModuleQuery) GroupByName() *ServiceModuleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "name")
 	return q
 }
-func (q *ServiceModule) KeyByName() *ServiceModule { q.q.Node.KeyBy = "name"; return q }
-func (q *ServiceModule) OrderByExpr(frag string, desc bool) *ServiceModule {
+func (q *ServiceModuleQuery) KeyByName() *ServiceModuleQuery { q.q.Node.KeyBy = "name"; return q }
+func (q *ServiceModuleQuery) OrderByExpr(frag string, desc bool) *ServiceModuleQuery {
 	q.q.OrderExpr(frag, desc)
 	return q
 }
-func (q *ServiceModule) Limit(offset, count int) *ServiceModule {
+func (q *ServiceModuleQuery) GroupByExpr(expr, as string) *ServiceModuleQuery {
+	q.q.GroupByExpr(expr, as)
+	return q
+}
+func (q *ServiceModuleQuery) Limit(offset, count int) *ServiceModuleQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *ServiceModule) Distinct() *ServiceModule { q.q.Node.Distinct = true; return q }
+func (q *ServiceModuleQuery) Distinct() *ServiceModuleQuery { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
-func (q *ServiceModule) Flatten() *ServiceModule                { q.q.Node.Flatten = true; return q }
-func (q *ServiceModule) LimitPerParent(n int) *ServiceModule    { q.q.Node.LimitPerParent = n; return q }
-func (q *ServiceModule) DropChildKey() *ServiceModule           { q.q.Node.DropChildKey = true; return q }
-func (q *ServiceModule) NoCascadeDelete() *ServiceModule        { q.q.Node.NoCascadeDelete = true; return q }
-func (q *ServiceModule) IfParentSeqEq(v int64) *ServiceModule   { q.q.IfParent("seq", v); return q }
-func (q *ServiceModule) IfParentNameEq(v string) *ServiceModule { q.q.IfParent("name", v); return q }
-func (q *ServiceModule) IfParentIsCloseEq(v bool) *ServiceModule {
+func (q *ServiceModuleQuery) Flatten() *ServiceModuleQuery { q.q.Node.Flatten = true; return q }
+func (q *ServiceModuleQuery) LimitPerParent(n int) *ServiceModuleQuery {
+	q.q.Node.LimitPerParent = n
+	return q
+}
+func (q *ServiceModuleQuery) DropChildKey() *ServiceModuleQuery {
+	q.q.Node.DropChildKey = true
+	return q
+}
+func (q *ServiceModuleQuery) NoCascadeDelete() *ServiceModuleQuery {
+	q.q.Node.NoCascadeDelete = true
+	return q
+}
+func (q *ServiceModuleQuery) IfParentSeqEq(v int64) *ServiceModuleQuery {
+	q.q.IfParent("seq", v)
+	return q
+}
+func (q *ServiceModuleQuery) IfParentNameEq(v string) *ServiceModuleQuery {
+	q.q.IfParent("name", v)
+	return q
+}
+func (q *ServiceModuleQuery) IfParentIsCloseEq(v bool) *ServiceModuleQuery {
 	q.q.IfParent("is_close", v)
 	return q
 }
-func (q *ServiceModule) IfParentIsDisplayEq(v bool) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentIsDisplayEq(v bool) *ServiceModuleQuery {
 	q.q.IfParent("is_display", v)
 	return q
 }
-func (q *ServiceModule) IfParentIsAlldayEq(v bool) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentIsAlldayEq(v bool) *ServiceModuleQuery {
 	q.q.IfParent("is_allday", v)
 	return q
 }
-func (q *ServiceModule) IfParentTargetTeamPlayerCountEq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentTargetTeamPlayerCountEq(v int64) *ServiceModuleQuery {
 	q.q.IfParent("target_team_player_count", v)
 	return q
 }
-func (q *ServiceModule) IfParentSuccessCountEq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentSuccessCountEq(v int64) *ServiceModuleQuery {
 	q.q.IfParent("success_count", v)
 	return q
 }
-func (q *ServiceModule) IfParentPlayerCountEq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentPlayerCountEq(v int64) *ServiceModuleQuery {
 	q.q.IfParent("player_count", v)
 	return q
 }
-func (q *ServiceModule) IfParentReadCountEq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentReadCountEq(v int64) *ServiceModuleQuery {
 	q.q.IfParent("read_count", v)
 	return q
 }
-func (q *ServiceModule) IfParentCoverUrlEq(v string) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentCoverUrlEq(v string) *ServiceModuleQuery {
 	q.q.IfParent("cover_url", v)
 	return q
 }
-func (q *ServiceModule) IfParentUserSeqEq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentUserSeqEq(v int64) *ServiceModuleQuery {
 	q.q.IfParent("user_seq", v)
 	return q
 }
-func (q *ServiceModule) IfParentServiceSeqEq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentServiceSeqEq(v int64) *ServiceModuleQuery {
 	q.q.IfParent("service_seq", v)
 	return q
 }
-func (q *ServiceModule) IfParentServiceModuleSeqEq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentServiceModuleSeqEq(v int64) *ServiceModuleQuery {
 	q.q.IfParent("service_module_seq", v)
 	return q
 }
-func (q *ServiceModule) IfParentServiceMemberSeqEq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentServiceMemberSeqEq(v int64) *ServiceModuleQuery {
 	q.q.IfParent("service_member_seq", v)
 	return q
 }
-func (q *ServiceModule) IfParentUuidEq(v string) *ServiceModule { q.q.IfParent("uuid", v); return q }
-func (q *ServiceModule) IfParentIsSinglePlayEq(v bool) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentUuidEq(v string) *ServiceModuleQuery {
+	q.q.IfParent("uuid", v)
+	return q
+}
+func (q *ServiceModuleQuery) IfParentIsSinglePlayEq(v bool) *ServiceModuleQuery {
 	q.q.IfParent("is_single_play", v)
 	return q
 }
-func (q *ServiceModule) IfParentLikeCountEq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentLikeCountEq(v int64) *ServiceModuleQuery {
 	q.q.IfParent("like_count", v)
 	return q
 }
-func (q *ServiceModule) IfParentAesHexEmailEq(v string) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentAesHexEmailEq(v string) *ServiceModuleQuery {
 	q.q.IfParent("aes_hex_email", v)
 	return q
 }
-func (q *ServiceModule) IfParentAesHexPhoneEq(v string) *ServiceModule {
+func (q *ServiceModuleQuery) IfParentAesHexPhoneEq(v string) *ServiceModuleQuery {
 	q.q.IfParent("aes_hex_phone", v)
 	return q
 }
 
 // Insert draft. The auto PK is settable too: Save takes it as the update key.
-func (q *ServiceModule) SetSeq(v int64) *ServiceModule { q.q.Set("seq", v); return q }
-func (q *ServiceModule) SetSeqExpr(frag string, binds ...any) *ServiceModule {
+func (q *ServiceModuleQuery) SetSeq(v int64) *ServiceModuleQuery { q.q.Set("seq", v); return q }
+func (q *ServiceModuleQuery) SetSeqExpr(frag string, binds ...any) *ServiceModuleQuery {
 	q.q.SetExpr("seq", frag, binds...)
 	return q
 }
-func (q *ServiceModule) SetServiceSeq(v int64) *ServiceModule { q.q.Set("service_seq", v); return q }
-func (q *ServiceModule) SetServiceSeqExpr(frag string, binds ...any) *ServiceModule {
+func (q *ServiceModuleQuery) SetServiceSeq(v int64) *ServiceModuleQuery {
+	q.q.Set("service_seq", v)
+	return q
+}
+func (q *ServiceModuleQuery) SetServiceSeqExpr(frag string, binds ...any) *ServiceModuleQuery {
 	q.q.SetExpr("service_seq", frag, binds...)
 	return q
 }
-func (q *ServiceModule) SetName(v string) *ServiceModule { q.q.Set("name", v); return q }
-func (q *ServiceModule) SetNameExpr(frag string, binds ...any) *ServiceModule {
+func (q *ServiceModuleQuery) SetName(v string) *ServiceModuleQuery { q.q.Set("name", v); return q }
+func (q *ServiceModuleQuery) SetNameExpr(frag string, binds ...any) *ServiceModuleQuery {
 	q.q.SetExpr("name", frag, binds...)
 	return q
 }
-func (q *ServiceModule) PlusSeq(v int64) *ServiceModule        { q.q.Plus("seq", v); return q }
-func (q *ServiceModule) MinusSeq(v int64) *ServiceModule       { q.q.Minus("seq", v); return q }
-func (q *ServiceModule) PlusServiceSeq(v int64) *ServiceModule { q.q.Plus("service_seq", v); return q }
-func (q *ServiceModule) MinusServiceSeq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) PlusSeq(v int64) *ServiceModuleQuery  { q.q.Plus("seq", v); return q }
+func (q *ServiceModuleQuery) MinusSeq(v int64) *ServiceModuleQuery { q.q.Minus("seq", v); return q }
+func (q *ServiceModuleQuery) PlusServiceSeq(v int64) *ServiceModuleQuery {
+	q.q.Plus("service_seq", v)
+	return q
+}
+func (q *ServiceModuleQuery) MinusServiceSeq(v int64) *ServiceModuleQuery {
 	q.q.Minus("service_seq", v)
 	return q
 }
 
 // ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
-func (q *ServiceModule) OnDuplicateSetServiceSeq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) OnDuplicateSetServiceSeq(v int64) *ServiceModuleQuery {
 	q.q.OnDuplicate("service_seq", v)
 	return q
 }
-func (q *ServiceModule) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *ServiceModule {
+func (q *ServiceModuleQuery) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *ServiceModuleQuery {
 	q.q.OnDuplicateExpr("service_seq", frag, binds...)
 	return q
 }
-func (q *ServiceModule) OnDuplicateSetName(v string) *ServiceModule {
+func (q *ServiceModuleQuery) OnDuplicateSetName(v string) *ServiceModuleQuery {
 	q.q.OnDuplicate("name", v)
 	return q
 }
-func (q *ServiceModule) OnDuplicateSetNameExpr(frag string, binds ...any) *ServiceModule {
+func (q *ServiceModuleQuery) OnDuplicateSetNameExpr(frag string, binds ...any) *ServiceModuleQuery {
 	q.q.OnDuplicateExpr("name", frag, binds...)
 	return q
 }
-func (q *ServiceModule) OnDuplicatePlusServiceSeq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) OnDuplicatePlusServiceSeq(v int64) *ServiceModuleQuery {
 	q.q.OnDuplicatePlus("service_seq", v)
 	return q
 }
-func (q *ServiceModule) OnDuplicateMinusServiceSeq(v int64) *ServiceModule {
+func (q *ServiceModuleQuery) OnDuplicateMinusServiceSeq(v int64) *ServiceModuleQuery {
 	q.q.OnDuplicateMinus("service_seq", v)
 	return q
 }
-func (q *ServiceModule) OnDuplicateSetAll() *ServiceModule {
+func (q *ServiceModuleQuery) OnDuplicateSetAll() *ServiceModuleQuery {
 	q.q.OnDuplicateSetAll("seq", "seq")
 	return q
 }
 
 // Terminals.
-func (q *ServiceModule) One(ctx context.Context, ex orm.Exec) (*ServiceModuleRow, error) {
+func (q *ServiceModuleQuery) One() (*ServiceModuleRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "one"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil || len(rows.Data) == 0 {
@@ -883,13 +985,42 @@ func (q *ServiceModule) One(ctx context.Context, ex orm.Exec) (*ServiceModuleRow
 	return scanServiceModule(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *ServiceModule) All(ctx context.Context, ex orm.Exec) (*orm.Collection[ServiceModuleRow], error) {
+func (q *ServiceModuleQuery) All() (*orm.Collection[ServiceModuleRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "all"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
 	}
 	return collectServiceModule(rows, q.keyFn), nil
+}
+
+// Get is the preferred single-row terminal. One is kept as a compatibility alias.
+func (q *ServiceModuleQuery) Get() (*ServiceModuleRow, error) {
+	return q.One()
+}
+
+// Gets is the preferred collection terminal. All is kept as a compatibility alias.
+func (q *ServiceModuleQuery) Gets() (*orm.Collection[ServiceModuleRow], error) {
+	return q.All()
+}
+
+// GetsBySeq applies seq = v and runs the collection terminal.
+func (q *ServiceModuleQuery) GetsBySeq(v int64) (*orm.Collection[ServiceModuleRow], error) {
+	return q.Seq(v).Gets()
+}
+
+// GetsByServiceSeq applies service_seq = v and runs the collection terminal.
+func (q *ServiceModuleQuery) GetsByServiceSeq(v int64) (*orm.Collection[ServiceModuleRow], error) {
+	return q.ServiceSeq(v).Gets()
+}
+
+// GetsByName applies name = v and runs the collection terminal.
+func (q *ServiceModuleQuery) GetsByName(v string) (*orm.Collection[ServiceModuleRow], error) {
+	return q.Name(v).Gets()
 }
 
 func collectServiceModule(rows *orm.Rows, keyFn func(*ServiceModuleRow) orm.Key) *orm.Collection[ServiceModuleRow] {
@@ -905,36 +1036,95 @@ func collectServiceModule(rows *orm.Rows, keyFn func(*ServiceModuleRow) orm.Key)
 	return c
 }
 
-func (q *ServiceModule) Count(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceModuleQuery) Count() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
 }
-func (q *ServiceModule) SumSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+
+// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
+func (q *ServiceModuleQuery) GetCount() (int64, error) {
+	return q.Count()
+}
+
+// GetCountBySeq applies seq = v and runs the scalar count terminal.
+func (q *ServiceModuleQuery) GetCountBySeq(v int64) (int64, error) {
+	return q.Seq(v).GetCount()
+}
+
+// GetCountByServiceSeq applies service_seq = v and runs the scalar count terminal.
+func (q *ServiceModuleQuery) GetCountByServiceSeq(v int64) (int64, error) {
+	return q.ServiceSeq(v).GetCount()
+}
+
+// GetCountByName applies name = v and runs the scalar count terminal.
+func (q *ServiceModuleQuery) GetCountByName(v string) (int64, error) {
+	return q.Name(v).GetCount()
+}
+
+// GetsCount returns one row per group_by value. The grouped columns are in the
+// row and the aggregate is available as Extra("row_count").
+func (q *ServiceModuleQuery) GetsCount() (*orm.Collection[ServiceModuleRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "group_count"
+	rows, err := orm.Query(ctx, ex, q.q.Req)
+	if err != nil {
+		return nil, err
+	}
+	return collectServiceModule(rows, q.keyFn), nil
+}
+func (q *ServiceModuleQuery) SumSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceModule) AvgSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *ServiceModuleQuery) AvgSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceModule) SumServiceSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *ServiceModuleQuery) SumServiceSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceModule) AvgServiceSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *ServiceModuleQuery) AvgServiceSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceModule) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceModuleQuery) CountDistinctSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -942,7 +1132,11 @@ func (q *ServiceModule) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int6
 }
 
 // MinSeq is nil when no row matches.
-func (q *ServiceModule) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceModuleQuery) MinSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -954,7 +1148,11 @@ func (q *ServiceModule) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error)
 }
 
 // MaxSeq is nil when no row matches.
-func (q *ServiceModule) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceModuleQuery) MaxSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -964,7 +1162,11 @@ func (q *ServiceModule) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error)
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *ServiceModule) CountDistinctServiceSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceModuleQuery) CountDistinctServiceSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -972,7 +1174,11 @@ func (q *ServiceModule) CountDistinctServiceSeq(ctx context.Context, ex orm.Exec
 }
 
 // MinServiceSeq is nil when no row matches.
-func (q *ServiceModule) MinServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceModuleQuery) MinServiceSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -984,7 +1190,11 @@ func (q *ServiceModule) MinServiceSeq(ctx context.Context, ex orm.Exec) (*int64,
 }
 
 // MaxServiceSeq is nil when no row matches.
-func (q *ServiceModule) MaxServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceModuleQuery) MaxServiceSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -994,7 +1204,11 @@ func (q *ServiceModule) MaxServiceSeq(ctx context.Context, ex orm.Exec) (*int64,
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *ServiceModule) CountDistinctName(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceModuleQuery) CountDistinctName() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1002,7 +1216,11 @@ func (q *ServiceModule) CountDistinctName(ctx context.Context, ex orm.Exec) (int
 }
 
 // MinName is nil when no row matches.
-func (q *ServiceModule) MinName(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *ServiceModuleQuery) MinName() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1014,7 +1232,11 @@ func (q *ServiceModule) MinName(ctx context.Context, ex orm.Exec) (*string, erro
 }
 
 // MaxName is nil when no row matches.
-func (q *ServiceModule) MaxName(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *ServiceModuleQuery) MaxName() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1026,12 +1248,23 @@ func (q *ServiceModule) MaxName(ctx context.Context, ex orm.Exec) (*string, erro
 }
 
 // RawAll runs the statement given to Raw and returns its rows by column name (values as the driver gives them, no codec).
-func (q *ServiceModule) RawAll(ctx context.Context, ex orm.Exec) ([]map[string]any, error) {
+func (q *ServiceModuleQuery) RawAll() ([]map[string]any, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "raw"
 	return orm.RawAll(ctx, ex, q.q.Req)
 }
 
-func (q *ServiceModule) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm.Page[ServiceModuleRow], error) {
+func (q *ServiceModuleQuery) Paginate(page, per int) (*orm.Page[ServiceModuleRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	if per <= 0 {
+		return nil, &ir.Error{Code: "IR_INVALID", Msg: "per must be positive"}
+	}
 	if page < 1 {
 		page = 1
 	}
@@ -1045,49 +1278,74 @@ func (q *ServiceModule) Paginate(ctx context.Context, ex orm.Exec, page, per int
 	return &orm.Page[ServiceModuleRow]{Items: collectServiceModule(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
-func (q *ServiceModule) Insert(ctx context.Context, ex orm.Exec) (*ServiceModuleRow, error) {
+func (q *ServiceModuleQuery) Insert() (*ServiceModuleRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "insert"
 	id, _, err := orm.Write(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
 	}
-	return NewServiceModule().SeqEq(int64(id)).One(ctx, ex)
+	return ServiceModule().Bind(ctx, ex).SeqEq(int64(id)).One()
 }
 
 // Save updates the other assigned columns when SetSeq was called (and
 // returns the re-read row); otherwise it inserts like Insert.
-func (q *ServiceModule) Save(ctx context.Context, ex orm.Exec) (*ServiceModuleRow, error) {
+func (q *ServiceModuleQuery) Save() (*ServiceModuleRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	pk, ok := q.q.MovePKToWhere("seq")
 	if !ok {
-		return q.Insert(ctx, ex)
+		return q.Insert()
 	}
 	q.q.Req.IR.Kind = "update"
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return NewServiceModule().SeqEq(pk.(int64)).One(ctx, ex)
+	return ServiceModule().Bind(ctx, ex).SeqEq(pk.(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *ServiceModule) Update(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceModuleQuery) Update() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "update"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // Delete removes every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *ServiceModule) Delete(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceModuleQuery) Delete() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "delete"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
-func (q *ServiceModule) SQL(ctx context.Context, ex orm.Exec) (*orm.Statement, error) {
+func (q *ServiceModuleQuery) SQL() (*orm.Statement, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "all"
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *ServiceModule) OneBySeq(ctx context.Context, ex orm.Exec, v int64) (*ServiceModuleRow, error) {
-	return q.SeqEq(v).One(ctx, ex)
+func (q *ServiceModuleQuery) OneBySeq(v int64) (*ServiceModuleRow, error) {
+	return q.SeqEq(v).One()
+}
+
+// GetBySeq is the preferred primary-key lookup. OneBySeq is kept as a compatibility alias.
+func (q *ServiceModuleQuery) GetBySeq(v int64) (*ServiceModuleRow, error) {
+	return q.OneBySeq(v)
 }

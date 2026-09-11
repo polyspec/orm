@@ -43,11 +43,13 @@ jobs:
       # sqlx and wasmtime are most of the build; without this the job spends ~6 of its 9 minutes compiling them again
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: clients/rust -> target
+          workspaces: |
+            clients/rust -> target
+            tests/interfaces/rust -> target
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
-          extensions: pdo_mysql, apcu, msgpack
+          extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, apcu, msgpack
           ini-values: apc.enable_cli=1
       - name: load bench schema (mysql, postgres, sqlite)
         run: |
@@ -60,7 +62,7 @@ jobs:
           go run ./bench/seedaes -driver postgres -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable'
           go run ./bench/seedaes -driver sqlite -dsn 'file:/tmp/orm_bench.sqlite'
       - name: engine
-        run: go test ./engine/... && go vet ./...
+        run: go test ./engine/... ./contracts ./tests/interfaces/check && go vet ./...
       - name: artifacts
         run: |
           mkdir -p bin
@@ -72,6 +74,8 @@ jobs:
           git diff --exit-code -- clients/go/gen clients/php/gen clients/rust/gen
       - name: go client
         run: go test ./clients/go/...
+      - name: common interfaces and native structure
+        run: go run ./tests/interfaces/check --self-test
       - name: hot-path regression gate
         run: go test ./bench/go -run TestHotPathGate -v
       - name: rust client
@@ -84,14 +88,21 @@ jobs:
           php clients/php/tests/compat.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
       - name: conformance (3 languages identical)
         run: go run ./tests/conformance/check run
-      - name: conformance on postgres and sqlite (Go + Rust; results identical to MySQL, statements per dialect)
+      - name: conformance on postgres and sqlite (3 languages; results identical to MySQL, statements per dialect)
         run: |
           go run ./tests/conformance/check run -driver postgres -langs go -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable'
+          go run ./tests/conformance/check run -driver postgres -langs php -dsn 'pgsql:host=127.0.0.1;port=5432;dbname=orm_bench;user=maxkwon'
           go run ./tests/conformance/check run -driver sqlite -langs go -dsn 'file:/tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)'
+          go run ./tests/conformance/check run -driver sqlite -langs php -dsn '/tmp/orm_bench.sqlite'
           clients/rust/target/release/conformance bin/ormengine.wasm schema/schema.json --driver postgres --dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench' > tests/conformance/out/postgres/rust.json
           clients/rust/target/release/conformance bin/ormengine.wasm schema/schema.json --driver sqlite --dsn 'sqlite:///tmp/orm_bench.sqlite' > tests/conformance/out/sqlite/rust.json
-          go run ./tests/conformance/check compare -driver postgres tests/conformance/out/postgres/go.json tests/conformance/out/postgres/rust.json
-          go run ./tests/conformance/check compare -driver sqlite tests/conformance/out/sqlite/go.json tests/conformance/out/sqlite/rust.json
+          go run ./tests/conformance/check compare -driver postgres tests/conformance/out/postgres/go.json tests/conformance/out/postgres/php.json tests/conformance/out/postgres/rust.json
+          go run ./tests/conformance/check compare -driver sqlite tests/conformance/out/sqlite/go.json tests/conformance/out/sqlite/php.json tests/conformance/out/sqlite/rust.json
+      - name: common state and execution contracts
+        run: |
+          go run ./tests/interfaces/check --results tests/conformance/out
+          go run ./tests/interfaces/check --results tests/conformance/out/postgres
+          go run ./tests/interfaces/check --results tests/conformance/out/sqlite
       - name: go integration on postgres and sqlite
         run: |
           ORM_TEST_DRIVER=postgres ORM_TEST_DSN='postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable' go test ./clients/go/gen/

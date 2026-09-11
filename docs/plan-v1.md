@@ -1,5 +1,11 @@
-# 최종안: compatibility 문법의 PHP / Go / Rust 공통 데이터 접근 계층
+# 최종안: PHP / Go / Rust 공통 데이터 접근 계층
+
+> 이전 설계 문서. 현행 구현 기준은 [공통 인터페이스](interfaces.md), [DSL](dsl.md), [프로토콜](protocol.md), [스키마](schema.md)다.
 ## — "컴파일러 1개(Go) + 네이티브 실행기 3개 + 동일 토큰 문법"
+
+> 이 문서는 초기 승인안의 역사적 기록입니다. 현재 구현과 운영 기준은
+> [plan-v2.md](plan-v2.md), [checklist.md](checklist.md), [usage.md](usage.md)와 코드가 우선합니다.
+> 특히 스키마는 Mermaid로 확정됐고, PHP 실행은 PDO 네이티브·`ormd` 컴파일 전용으로 정리됐습니다.
 
 ## Context
 
@@ -16,16 +22,16 @@
 | 쿼리 형태는 소스에서 고정 → 값 무관 플랜을 캐시하면 경계는 콜드패스에서만 | **언어별 플랜 캐시**(IR 형태 해시 + IN 카디널리티). 핫패스 = 네이티브 드라이버 + 캐시된 SQL |
 | WHERE 괄호가 루트에서 열려 조인 모델에서 닫히는 실제 코드 존재; 조인별 where 검증은 깨짐 | 루트+조인을 잇는 **단일 토큰 스트림**으로 검증, 선행 연결자, `orJoin(alias)` 스플라이스 |
 | relation 세부(keyName 재키잉·parentNode 병합·matchKeyRemove·possible·관계별 연결·ONE 중복) 누락 | IR 필드·규칙 명시 (§프로토콜) |
-| `delete(true)`는 클라이언트가 로드한 트리를 걷는 것; 트랜잭션 내 데드락 재시도는 엔진이 불가 | 순서 있는 `MutationBatch`; 데드락 시 **클라이언트가 클로저 재실행**(compatibility 방식) |
+| `delete(true)`는 클라이언트가 로드한 트리를 걷는 것; 트랜잭션 내 데드락 재시도는 엔진이 불가 | 순서 있는 `MutationBatch`; 데드락 시 **클라이언트가 클로저 재실행** |
 | 집계·raw SQL 루트(26곳)·계산 컬럼 `addColumn(col,alias,'ST_Y(%s)')`·`Model::function` 미표현 | `aggregate`, `Query.raw`, `columns.computed`, `Predicate.lhs_expr` 추가 |
 | 세 언어 문법이 머리(`(new X)($db)` vs `x.Query(db)`)·관계 생성·터미널·결과 접근에서 갈라짐 | **정규 토큰 문법**: 머리 `new Entity`, 동일 중간 토큰, 실행기를 받는 터미널, `and(f)/or(f)` 그룹, YAML 선언 관계로 `alias<Name>()` 타입화 |
 | 일정 21–28주는 1인에게 비현실적; A/B/C 세 패키징을 M1 전에 만드는 건 함정 | 3일 스파이크 + 4주 thin slice, 총 ≈15–16주. WASM·protobuf·Connect는 후순위 실험 |
-| MySQL AES를 Go로 옮길 이유 없음(compatibility는 SQL 함수) | MySQL은 **SQL 함수 유지**(바이트 동일). 호스트측 AES는 PG/SQLite에서만(S6) |
+| MySQL AES를 Go로 옮길 이유 없음(데이터베이스가 SQL 함수 제공) | MySQL은 **SQL 함수 유지**(바이트 동일). 호스트측 AES는 PG/SQLite에서만(S6) |
 | 토큰 이름 패리티는 이름만 검증 | **공유 JSON 적합성 벡터**를 3언어 실행기가 같은 DB에 대해 실행 + 정규화 토큰열 비교 |
 | YAML↔DB 드리프트 무방비 | `ormgen validate --dsn`, `schema_hash` 부팅 검사 필수, 임포터 멱등(수동 필드 보존) |
 
 ### 설계 원칙 (사용자 규칙)
-1. **폴링/타이머는 메인 메커니즘이 아니다.** 런타임에 주기 작업 없음: 플랜 캐시는 요청 시 채움, `ormd`는 요청-응답만, PHP UDS 스트림은 실패 시 즉시 재연결(재시도 루프 없음), 스키마 변경은 `schema_hash` 불일치 에러로 즉시 드러남(감시 없음). 데드락 재시도는 InnoDB가 트랜잭션을 통째로 롤백하는 상황의 정공법(compatibility와 동일)이며 최대 3회로 한정한 명시적 재실행이지 타이머 루프가 아니다.
+1. **폴링/타이머는 메인 메커니즘이 아니다.** 런타임에 주기 작업 없음: 플랜 캐시는 요청 시 채움, `ormd`는 요청-응답만, PHP UDS 스트림은 실패 시 즉시 재연결(재시도 루프 없음), 스키마 변경은 `schema_hash` 불일치 에러로 즉시 드러남(감시 없음). 데드락 재시도는 InnoDB가 트랜잭션을 통째로 롤백하는 상황에서 트랜잭션을 명시적으로 재실행하는 방식이며 최대 3회로 한정한다.
 2. **symlink 금지, 경로는 선언적/발견적으로 해석.** `.so`/`.wasm`/소켓/스키마 blob 경로는 설정에 절대경로로 선언하거나(`orm.toml`: `engine.library`, `ormd.socket`, `schema.blob`) 정해진 발견 규칙(Cargo `OUT_DIR` 내 프리빌드, composer `vendor/bin/ormd` 아래 고정 위치)으로 찾는다. 버전 symlink(`lib.so.1 → lib.so`) 없이 파일명에 버전 포함, 상대경로 가정 없음.
 3. **폴백은 정말 필요한 곳에만.** 언어별 경계 방식은 S0에서 **하나로 확정**하고 대안 경로를 코드에 남기지 않는다. 선언되지 않은 관계 alias는 "untyped bag" 폴백이 아니라 **검증 에러**. 스키마 불일치·컬럼 미지·괄호 불균형은 조용한 우회 없이 에러. 유일한 의도적 대안: `ormgen gen --no-or-prefix`(S2 컴파일 시간 게이트에서 한 번 결정하는 생성 옵션이며 런타임 폴백이 아님).
 
@@ -40,11 +46,11 @@
 | 대상 DB | MySQL ≥8.0.2 / MariaDB ≥10.2 먼저; PostgreSQL ≥12, SQLite ≥3.25는 S6. Dialect 인터페이스는 S1부터 |
 | 성능 | 핫패스 = 네이티브 드라이버 + 캐시 SQL (엔진 오버헤드 0). 콜드패스(형태당 1회) 비용을 S0에서 실측·문서화 |
 
-## 실측 요약 (example application)
+## 초기 사용 패턴 분석 요약
 - 스키마: dataStyle은 컬럼명 접두어(`aes_hex_*`, `gz_*`, `jsons_*`), `ip`는 컬럼명, `point`는 타입. 스타일 컬럼 121/5,145(2.4%). text/blob·스타일 컬럼은 기본 SELECT 제외(`addColumnX()` 옵트인). PK `seq` 99%, FK `<table>_seq`(+역할 접두어), `matchAWithB()` 양방향 1,776개. `created_ts/updated_ts timestamp(6)`. `service_seq` 수동 스코핑. Master/Slave 호출부 선택. 저장소에 DDL 없음.
 - 빈도: `set*`→`create/update/save` 19k/1.8k/1k/0.9k · `matchXWithY` 7k · `alias*` 5.7k · `relation/relations` 4.5k/2.6k · `and*/condition*/or*` 3k/1.3k/0.4k · `getBy*/getsBy*` 2.1k/1.1k · `orderBy*` 1.8k · `transaction(fn)` 934 · `join*` 788 · `keyName*` 683 · `parentNode` 583 · `Model::$debug` 355 · `Pagination` 238 · `->{'condition(…)'}` 괄호문법 275 · `groupLimit` 4(대체 불가) · `with()/having/offset/insert()` 0.
 - 연산자: Lk 245 · Gt 143 · Lt 61 · Ne 60 · Between 44 · Fulltext 30 · Ge 28 · Le 20; 배열→IN, null→IS NULL, 무토큰→`=` 암묵.
-- compatibility 버그(재현하지 않음): `matchAll…With…`/`relations…With…` 오파싱, `orderByBrandName`이 `And`로 분할, 조건 문자열 무구분자 연결, 전역 alias 카운터, 빈 배열 IN, `minus` 후 상태 잔존, `plus/minus` 값 미바인드.
+- 기존 호출에서 발견한 오류 유형(재현하지 않음): `matchAll…With…`/`relations…With…` 오파싱, `orderByBrandName`이 `And`로 분할, 조건 문자열 무구분자 연결, 전역 alias 카운터, 빈 배열 IN, `minus` 후 상태 잔존, `plus/minus` 값 미바인드.
 
 ## 아키텍처
 
@@ -66,7 +72,7 @@ schema/*.yaml ─▶ ormgen ─┬─▶ schema.blob (엔진 내장)
 - 트랜잭션은 실행기 네이티브(`Tx` 핸들을 터미널에 전달). 데드락(1213/40001)은 실행기가 클로저를 새 트랜잭션으로 재실행(3회, 50ms·2^n+지터).
 - 엔진 경계는 형태당 1회. 캐시 키 = IR 형태 해시(값 제외, IN 카디널리티 포함) + `schema_hash`.
 
-## 저장소 레이아웃 (`the repository`)
+## 저장소 레이아웃
 ```
 go.mod                       github.com/polyspec/orm (가칭)
 cmd/ormgen/                  import · gen · validate · tokens · erd
@@ -76,7 +82,7 @@ engine/ffi/                  c-shared 빌드 (orm_compile(req,len,&resp,&len), o
 clients/go/orm/              Db/Tx, Collection, 플랜 캐시, 러너, 조립  |  clients/go/gen/  (별도 module)
 clients/rust/orm/            동일 (sqlx, IndexMap)                     |  clients/rust/gen/ (별도 crate)
 clients/php/src/             Query/Model/Collection, __call 파서, Transport(Uds), APCu 캐시 | gen/
-schema/                      example import (battle, battle_player, user, company_store, product 등)
+schema/                      예시·임포트 매니페스트 (battle, battle_player, user, company_store, product 등)
 tests/conformance/*.json     체인·픽스처·기대 SQL/바인드/결과 (3언어 공통)
 tests/codec/*.json           스타일 코덱 벡터 (docker MySQL 산출물)
 bench/                       S0 스파이크 + 회귀 게이트
@@ -119,11 +125,11 @@ fulltext: [[name, description]]
 
 | 토큰 | PHP | Go | Rust |
 |---|---|---|---|
-| 머리 `new Entity` | `new Battle` (`(new Battle)($db)` 호환) | `m.NewBattle()` | `Battle::new()` |
+| 머리 `new Entity` | `new Battle` (`(new Battle)($db)` 호환) | `m.Battle()` | `Battle::new()` |
 | `<col>(v)` = `col = v` | `->isClose(0)` | `.IsClose(0)` | `.is_close(0)` |
 | `<op><Col>(v)`, op ∈ `ne gt ge lt le in nin lk lb between isNull notNull fulltext fulltextBoolean` | `->gtCreatedTs($t)`, `->inSeq([..])`, `->isNullEndDt()` | `.GtCreatedTs(t)`, `.InSeq(ids)`, `.IsNullEndDt()` | `.gt_created_ts(t)`, `.in_seq(ids)`, `.is_null_end_dt()` |
 | `or<op><Col>(v)` | `->orIsSale(1)` | `.OrIsSale(1)` | `.or_is_sale(1)` |
-| `and(f)` / `or(f)` 괄호 그룹 | `->or(fn($q) => $q->…)` | `.Or(func(q *m.Battle) { q.… })` | `.or(\|q\| q.…)` |
+| `and(f)` / `or(f)` 괄호 그룹 | `->or(fn($q) => $q->…)` | `.Or(func(q *m.BattleQuery) { q.… })` | `.or(\|q\| q.…)` |
 | `raw(sql, binds)` / `orRaw` | 동일 | 동일 | 동일 |
 | `andJoin(alias)` / `orJoin(alias)` 조인 where 스플라이스 | `->orJoin('ga1')` | `.OrJoin("ga1")` | `.or_join("ga1")` |
 | `on(f)` 조인 ON | `->on(fn($q) => $q->side('p1'))` | `.On(func(q *m.BattlePlayer){ q.Side("p1") })` | `.on(\|q\| q.side("p1"))` |
@@ -135,15 +141,15 @@ fulltext: [[name, description]]
 | `addAllColumns() removeAllColumns() addColumn<Col>() removeColumn<Col>() addColumnRaw(alias, fmt, cols)` | 동일 | 동일 | 동일 |
 | `set<Col>(v)` `setRaw<Col>(expr, binds)` `plus<Col>(n)` `minus<Col>(n)` | 동일 | 동일 | 동일 |
 | `debug()` · `clone` · `sql(db)` | `->debug()`, `clone $q` | `.Debug()`, `q.Clone()` | `.debug()`, `q.clone()` |
-| **터미널** `get gets count sum avg create update save delete paginate` — 실행기를 인자로 | `->gets($db)` | `.Gets(ctx, db)` | `.gets(&db).await?` |
-| `getBy<PK|unique>(…)` 만 생성 | `->getBySeq($db, $seq)` | `.GetBySeq(ctx, db, seq)` | `.get_by_seq(&db, seq).await?` |
+| **터미널** `get gets count sum avg create update save delete paginate` — 실행기를 인자로 | `->bind($db)->gets()` | `.Bind(ctx, db).Gets()` | `.bind(&db).gets().await?` |
+| `getBy<PK|unique>(…)`, `getsBy<Col>(…)`, `getCountBy<Col>(…)` 생성 | `->bind($db)->getBySeq($seq)` / `->bind($db)->getsByServiceSeq($seq)` | `.Bind(ctx, db).GetBySeq(seq)` / `.Bind(ctx, db).GetsByServiceSeq(seq)` | `.bind(&db).get_by_seq(seq).await?` / `.bind(&db).gets_by_service_seq(seq).await?` |
 | 트랜잭션 | `$db->transaction(function ($tx) {…})` | `orm.Transaction(ctx, db, func(tx *orm.Tx) (T, error) {…})` | `db.transaction(\|tx\| async move {…}).await?` (`Tx: Clone`) |
 | 결과 스칼라 | `$m->getSeq()`, `$m->getName($default)`, `$m['name']` | `m.Seq` / nil-safe `m.GetSeq()` | `m.seq` (nullable은 `Option`) |
-| 결과 관계 | `$m->getUser()`→null, `$m->getItems([])` | `m.GetUser()`→nil, `m.GetUser()`→빈 컬렉션 | `m.user() -> Option<&User>`, `m.user() -> &Items` |
+| 결과 관계 | `$m->getUser()`→null, `$m->getItems([])` | `m.GetUser()`→nil, `m.GetItems()`→빈 컬렉션 | `m.user() -> Option<&User>`, `m.items() -> &Items` |
 | 컬렉션(PK/keyName 순서 맵) | `foreach ($c as $seq => $m)`, `->first()`, `->count()`, `->toArray()` | `for k, m := range c.All()`, `c.First()`, `c.Len()`, `c.ToArray()` | `for (k, m) in &c`, `c.first()`, `c.len()`, `c.to_vec()` |
 
-규칙: `get`→null/nil/None, `gets`→빈 컬렉션(절대 null 아님); 에러/throw = rollback(compatibility의 "falsy 반환=rollback"은 폐기, 문서화); 무인자 `getX()`는 존재하는 키(null 포함)와 선언된 컬럼은 값/null 반환, 미선언 키만 throw; `getX($d)`는 누락·null·`''`에 `$d`. Go `GetX()`는 protobuf-go 관례의 nil-safe 체인. Rust 쿼리 메서드는 by-value, setter는 `&mut self`; 컬렉션 키는 `orm.Key`(int|string).
-PHP `__call` 호환층(패리티 덤프에는 미포함): `condition*/and*/on*` 접두어, `and('(')`/`condition(')')` 토큰, `->{'condition(AAndB)Or(C)'}` 괄호문법, `getsByAAndB` 복합, 배열→IN·null→IS NULL 암묵, `$model($db)` 재바인딩, `fetchValue`/`column(cb)` 후처리 훅.
+규칙: `get`→null/nil/None, `gets`→빈 컬렉션(절대 null 아님); 에러/throw = rollback; 무인자 `getX()`는 존재하는 키(null 포함)와 선언된 컬럼은 값/null 반환, 미선언 키만 throw; `getX($d)`는 누락·null·`''`에 `$d`. Go `GetX()`는 protobuf-go 관례의 nil-safe 체인. Rust 쿼리 메서드는 by-value, setter는 `&mut self`; 컬렉션 키는 `orm.Key`(int|string).
+PHP `__call` 호환층(패리티 덤프에는 미포함): `condition*/and*/on*` 접두어, `and('(')`/`condition(')')` 토큰, `->{'condition(AAndB)Or(C)'}` 괄호문법, 선언되지 않은 `getByAAndB`/`getsByAAndB` 복합, 배열→IN·null→IS NULL 암묵, `$model($db)` 재바인딩, `fetchValue`/`column(cb)` 후처리 훅. 본 엔티티의 단일 컬럼 `getsBy`·`getCountBy`, PK·유니크의 `getBy`는 세 언어 생성 API다.
 PHP 파서: camel 경계 토큰화 → 선두 키워드 전체토큰 최장일치 → 술어 `[Op] Column (And|Or [Op] Column)*`에서 Column은 엔티티 컬럼표와 최장일치(YAML 규칙으로 유일성 보장) → `match/join/relation`의 `With` 양쪽을 각 엔티티 컬럼표로 해석. 파싱 결과는 생성된 정적 배열(opcache 공유)로 사전 계산, 동적 이름만 런타임 파싱.
 
 ### 시나리오 예 (PHP / Go / Rust 줄 단위 대응 — R9: 조인 + 괄호 OR fulltext)
@@ -157,13 +163,12 @@ $products = (new Product)
     ->gets($slave1);
 ```
 ```go
-products, err := m.NewProduct().
-    Relation(m.NewProductLang().MatchSeqWithProductSeq().LangId(langId).AliasLang()).
-    LeftJoinProductBrandSeqWithSeq(m.NewProductBrand().Alias("ga2").FulltextBooleanNameWithDescription(kw)).
+products, err := m.Product().
+    Relation(m.ProductLang().MatchSeqWithProductSeq().LangId(langId).AliasLang()).
+    LeftJoinProductBrandSeqWithSeq(m.ProductBrand().Alias("ga2").FulltextBooleanNameWithDescription(kw)).
     ServiceSeq(serviceSeq).IsClose(0).
     And(func(q *m.Product) { q.FulltextBooleanNameWithShortDescriptionWithContent(kw).OrJoin("ga2") }).
-    GroupBySeq().Limit(0, 100).
-    Gets(ctx, slave1)
+    GroupBySeq().Limit(0, 100).Bind(ctx, slave1).Gets()
 ```
 ```rust
 let products = Product::new()
@@ -178,21 +183,21 @@ let products = Product::new()
 ## 프로토콜 (JSON IR → Plan)
 - `Value`: null | bool | i64 | u64 | f64 | string | bytes(b64) | decimal(string) | list. JSON 정수는 문자열 아닌 숫자(i64 범위 내), 초과는 문자열+태그.
 - `Predicate { conn: NONE|AND|OR(선행), open, close, op: EQ NE GT GE LT LE IN NIN BETWEEN LK LB IS_NULL NOT_NULL FT FT_BOOL COL_CMP RAW, alias, column, value, lhs_expr, expr_binds{}, ref_alias, ref_column, cmp_op, splice_alias }`.
-  괄호 전용 토큰 허용. **WHERE는 하나의 합성 스트림**: `implicit(getBy/relation IN) ++ root.where ++ 스플라이스되지 않은 joins[i].where(선언 순)`. 괄호 균형·연결자 검증은 합성 스트림에서만. 첫 토큰의 conn은 무시, 비선두 `NONE`은 `AND` 삽입, 선두 `OR`는 `CONN_AT_START`. `IN []`은 `EMPTY_IN` 에러. `FT_BOOL` 값 변환(`' '→' +'`, 끝 `*`)은 compatibility 그대로.
+  괄호 전용 토큰 허용. **WHERE는 하나의 합성 스트림**: `implicit(getBy/relation IN) ++ root.where ++ 스플라이스되지 않은 joins[i].where(선언 순)`. 괄호 균형·연결자 검증은 합성 스트림에서만. 첫 토큰의 conn은 무시, 비선두 `NONE`은 `AND` 삽입, 선두 `OR`는 `CONN_AT_START`. `IN []`은 `EMPTY_IN` 에러. `FT_BOOL` 값 변환(`' '→' +'`, 끝 `*`)은 정규화 규칙을 따른다.
 - `Query { entity, alias(클라이언트 부여·엔진 유일성 검증), conn(명명 연결), columns{mode: DEFAULT|ALL|ONLY, add[], remove[], computed[{alias, format, columns[]}], raw[]}, where[], order[{column|raw, dir}], group[{column|raw}], limit{offset,count}, group_limit{offset,count}, force_index, distinct, joins[], relations[], key_column, aggregate{kind: COUNT|COUNT_DISTINCT|GROUP_COUNT|SUM|AVG, column}, raw{sql, binds}, debug }`. raw 조각의 alias 참조는 `{self}`/`{alias:x}` 플레이스홀더. `ONLY` = PK + FK + add[].
 - `Join { kind: INNER|LEFT, left, right, target_alias, query(on[], where[], columns, relations[]) }`. 응답에서 `alias_col` 접두어로 분리.
 - `Relation { kind: ONE|MANY, left, right, alias, key_column, parent_node, strip_right_key, possible{column,value}, conn, query }`.
-  규칙: 배치 = 부모 left dedup → `right IN`; MANY는 right로 그룹핑 후 `key_column`으로 재키잉(중복은 last-wins, `key_column`은 projection에 있어야 함); ONE 중복은 **ORDER BY 기준 첫 행**(=`group_limit 1`, compatibility의 get/gets 불일치를 의도적으로 통일); `Relation.query.limit`은 `LIMIT_IN_RELATION` 에러; `group_limit`은 `PARTITION BY right`, 내부·외부 동일 ORDER, `row_num` 제거, 루트에는 `partition_by` 없으면 에러; `parent_node` 병합 = non-null은 덮어씀, null은 빈 키만 채움, PK는 건너뜀, 순서 = ONE → 조인하위 ONE → MANY → 조인하위 MANY; `possible`은 루트 행 기준 strict 비교, 불일치 부모는 null; 조인 하위 relation은 조인별 고유 키로 처리.
+  규칙: 배치 = 부모 left dedup → `right IN`; MANY는 right로 그룹핑 후 `key_column`으로 재키잉(중복은 last-wins, `key_column`은 projection에 있어야 함); ONE 중복은 **ORDER BY 기준 첫 행**(=`group_limit 1`); `Relation.query.limit`은 `LIMIT_IN_RELATION` 에러; `group_limit`은 `PARTITION BY right`, 내부·외부 동일 ORDER, `row_num` 제거, 루트에는 `partition_by` 없으면 에러; `parent_node` 병합 = non-null은 덮어씀, null은 빈 키만 채움, PK는 건너뜀, 순서 = ONE → 조인하위 ONE → MANY → 조인하위 MANY; `possible`은 루트 행 기준 strict 비교, 불일치 부모는 null; 조인 하위 relation은 조인별 고유 키로 처리.
 - `Mutation { entity, op: CREATE|UPDATE|DELETE, set[{column, value|raw{expr,binds}|plus|minus}], where[], on_duplicate[], optimistic{column,value} }`, `MutationBatch{mutations[]}`(순서 보장, 한 tx). `minus`는 0 하한, `plus/minus` 값은 바인드. `delete(true)`는 클라이언트 트리 워크(`deleteLock` 존중) → Batch. `update(true)` 낙관 락은 `CLIENT_FOUND_ROWS` 필수(드라이버 DSN 설정).
 - `Plan { steps[{id, kind: QUERY|EXEC, sql, bind_slots[{PARAM i | STEP{step,column} | LIST_EXPAND}], depends_on, link{kind, parent_column, child_column, parent_node, strip_child_column, possible, row_aligned}}], assemble }`. 실행기 응답 조립 = 평면 테이블 트리 `Result{alias, columns[], rows[][], key_column, link, children{alias→Result}}` → typed 모델(in-process Go는 바로 struct 스캔).
-- 헤더: `ir_version`, `schema_hash` → `VERSION_MISMATCH`/`SCHEMA_HASH_MISMATCH`. 에러 코드는 `docs/errors.yaml`에서 3언어 enum 생성(`SchemaInvalid ColumnUnknown OperatorNotAllowed ParenUnbalanced ConnAtStart EmptyIn LimitInRelation VersionMismatch SchemaHashMismatch OptimisticLock Deadlock DuplicateKey`). 드라이버 에러는 원본 유지.
+- 헤더: `ir_version`, `schema_hash` → `VERSION_MISMATCH`/`SCHEMA_HASH_MISMATCH`. 에러 코드는 `docs/errors.yaml`에서 3언어 enum 생성(`SchemaInvalid ColumnUnknown OperatorNotAllowed ParenUnbalanced ConnAtStart EmptyIn LimitInRelation VersionMismatch SchemaHashMismatch OptimisticLock Deadlock DuplicateKey`). 드라이버 에러는 그대로 전달.
 - RAW/`setRaw`/`lhs_expr`/raw order·group은 신뢰 코드 전용(호출자가 이미 DB 자격을 가짐); 바인드만 값 채널; `ormd`는 실행하지 않으므로 신뢰 경계 확장 없음.
 
 ## 엔진 (Go)
 - `engine/schema`: YAML 로드·검증·컴파일 blob, 연산자 허용표(타입·스타일별), 관계 기본키(left=부모 PK, right=`<parent>_<pk>`), `schema_hash`.
 - `engine/ir`: JSON → IR, 합성 WHERE 스트림 검증, alias 유일성.
 - `engine/planner`: 단계 그래프(루트 → 조인 포함 SELECT → 관계별 IN 단계 재귀), group_limit 서브쿼리, 조립 명세.
-- `engine/dialect`: `Quote Placeholder Like(ci) Upsert InsertReturning Fulltext RowNumber ForceIndex Now StyleExpr(style, read|write)`. MySQL: `HEX(AES_ENCRYPT(?,?))`/`AES_DECRYPT(UNHEX(col),?)`, `INET6_ATON/NTOA` — compatibility와 동일 SQL. `LIKE`는 컬럼 collation으로 ci 결정. PG/SQLite(S6): 호스트측 AES(MySQL 키 폴딩 재현, ECB, PKCS7), `ILIKE`/`LOWER()`.
+- `engine/dialect`: `Quote Placeholder Like(ci) Upsert InsertReturning Fulltext RowNumber ForceIndex Now StyleExpr(style, read|write)`. MySQL: `HEX(AES_ENCRYPT(?,?))`/`AES_DECRYPT(UNHEX(col),?)`, `INET6_ATON/NTOA`. `LIKE`는 컬럼 collation으로 ci 결정. PG/SQLite(S6): 호스트측 AES(MySQL 키 폴딩 재현, ECB, PKCS7), `ILIKE`/`LOWER()`.
 - `engine/api`: `Compile(ir) → Plan`, `Explain`, `Tokens`. 순수 함수, 무상태, 동시성 안전.
 - `engine/ffi`: `orm_compile/orm_free` c-shared(Linux amd64/arm64, macOS). `GOMAXPROCS=1`, 시그널 최소화.
 - `cmd/ormd`: length-prefixed JSON 프레임, UDS, 무상태(PHP 전용).
@@ -225,4 +230,4 @@ let products = Product::new()
 - 적합성: `tests/conformance/*.json` — 체인(정규 토큰열)·픽스처·기대 SQL·바인드·결과 JSON. 3언어 하네스가 같은 MySQL에 실행해 정규 JSON 출력 → diff. 시드: R1(4단 관계), R9(조인+괄호 OR fulltext), R10(groupLimit+join+groupBy), E1(6단 괄호), W4(setRaw 카운터), 엣지(빈 IN, null 연산자, ONE 중복, keyName 누락, unsigned 상한, timestamp(6), tinyint→bool, decimal).
 - 패리티 린트: `ormgen tokens`가 문장 단위 정규 토큰열(머리·접사 제거)을 3언어 생성물에서 추출해 diff.
 - 성능: 3계층 — (0) 엔진 `Compile` ns/op·allocs, (1) 경계 에코(1KB/64KB), (2) e2e: MySQL 로컬 소켓 + 원격 호스트 각각, 워크로드 PK 단건·100행(aes_hex 2컬럼)·4단 관계·INSERT·3문 tx, 동시성 1/16/64, 워밍업 30s, A/B 교차 5회, p50/p99/p99.9·처리량·CPU-time/op·allocs·PHP 워커 RSS/스레드. **캐시 웜(핫패스)과 콜드를 분리 보고**. 게이트: 핫패스 네이티브 대비 처리량 손실 ≤5%·CPU-time ≤+10%(조립 비용), 콜드 형태당 컴파일 ≤1ms(Go) / ≤2ms(Rust 경계) / ≤3ms(PHP UDS). CI에서 회귀 실패.
-- 실전: example tables 5개 YAML로 위 시나리오를 3언어로 재현, `Model::$debug` 대응 SQL 덤프가 compatibility 출력과 의미 동일함을 골든으로 확인.
+- 실전: 대표 테이블 5개 YAML로 위 시나리오를 3언어로 재현하고, SQL 덤프와 결과가 언어별로 일치하는지 골든으로 확인.

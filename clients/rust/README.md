@@ -15,7 +15,7 @@ Both library crates are `MIT OR Apache-2.0`, version 0.0.1.
 ```rust
 let db = orm::Db::from_config("/srv/app/orm.toml").await?;   // [db], [engine], [secrets], [debug]
 gen::init(db.engine.clone())?;                                // schema_hash boot check, once
-let row = gen::Battle::new().one_by_seq(&db, 42).await?;
+let row = gen::Battle::new().bind(&db).one_by_seq(42).await?;
 ```
 
 `orm.toml` is described in `docs/config.md`. The Rust client reads:

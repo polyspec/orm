@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/polyspec/orm/engine"
@@ -199,6 +200,10 @@ func (q *Q) OrderExpr(frag string, desc bool) {
 	q.Node.Order = append(q.Node.Order, ir.Order{Expr: frag, Desc: desc})
 }
 
+func (q *Q) GroupByExpr(expr, as string) {
+	q.Node.GroupByExpr = append(q.Node.GroupByExpr, ir.GroupExpr{Expr: expr, As: as})
+}
+
 func (q *Q) Set(col string, v any) {
 	i := q.Req.P(v)
 	q.Req.IR.Set = append(q.Req.IR.Set, ir.Assign{Column: col, P: &i})
@@ -322,15 +327,18 @@ func (q *Q) MovePKToWhere(pk string) (v any, ok bool) {
 // Row is embedded in every generated row struct: it remembers where the row
 // came from and which columns were changed through Set* so Update sends only those.
 type Row struct {
-	entity string
-	pk     string
-	pkVal  any
-	loaded bool
-	dirty  []ir.Assign
-	dvals  []any
-	encErr error          // first codec error from DirtyStyled; surfaces from UpdateRow
-	extra  map[string]any // selectExpr / select<Col>As outputs, by output name
-	proj   *Projection    // assembly facts for ToArray/DeleteCascade, shared by every row of the node
+	Binding  Binding
+	entity   string
+	pk       string
+	pkVal    any
+	loaded   bool
+	dirty    []ir.Assign
+	dvals    []any
+	assigned []string
+	version  any
+	encErr   error          // first codec error from DirtyStyled; surfaces from UpdateRow
+	extra    map[string]any // selectExpr / select<Col>As outputs, by output name
+	proj     *Projection    // assembly facts for ToArray/DeleteCascade, shared by every row of the node
 }
 
 // Projection is what one assemble node selected: computed once per plan
@@ -375,16 +383,31 @@ func (r *Row) SetProjection(p *Projection) { r.proj = p }
 // Selected lists the projected output names; Hidden/Flat/RelLoaded expose the assembly facts.
 func (r *Row) Selected() []string {
 	if r.proj == nil {
-		return nil
+		return slices.Clone(r.assigned)
 	}
-	return r.proj.selected
+	if len(r.assigned) == 0 {
+		return slices.Clone(r.proj.selected)
+	}
+	names := slices.Clone(r.proj.selected)
+	for _, name := range r.assigned {
+		if !slices.Contains(names, name) {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+func (r *Row) Has(name string) bool {
+	if _, ok := r.extra[name]; ok {
+		return true
+	}
+	return slices.Contains(r.assigned, name) || (r.proj != nil && slices.Contains(r.proj.selected, name))
 }
 func (r *Row) Hidden(name string) bool { return r.proj != nil && r.proj.hidden[name] }
 func (r *Row) Flat() []string {
 	if r.proj == nil {
 		return nil
 	}
-	return r.proj.flat
+	return slices.Clone(r.proj.flat)
 }
 func (r *Row) RelLoaded(rel string) bool { return r.proj != nil && r.proj.rels[rel] }
 
@@ -393,7 +416,7 @@ func (r *Row) Cascades() []string {
 	if r.proj == nil {
 		return nil
 	}
-	return r.proj.cascade
+	return slices.Clone(r.proj.cascade)
 }
 
 // FormatTime renders a datetime the way every language's array form does.
@@ -419,13 +442,22 @@ func (r *Row) SetExtra(name string, v any) {
 // Extra returns a selectExpr / select<Col>As output by name (nil when absent).
 func (r *Row) Extra(name string) any { return r.extra[name] }
 
+// GetRowCount reads the COUNT(*) value returned by a group_count terminal.
+func (r *Row) GetRowCount() int64 { return AsInt64(r.extra["row_count"]) }
+
 func (r *Row) Loaded() bool { return r.loaded }
+
+func (r *Row) SnapshotVersion(v any) { r.version = v }
+func (r *Row) OriginalVersion() any  { return r.version }
 
 func (r *Row) Mark(entity, pk string, pkVal any) {
 	r.entity, r.pk, r.pkVal, r.loaded = entity, pk, pkVal, true
 }
 
 func (r *Row) Dirty(col string, v any) {
+	if !slices.Contains(r.assigned, col) {
+		r.assigned = append(r.assigned, col)
+	}
 	// last write wins for the same column
 	for i, a := range r.dirty {
 		if a.Column == col {
@@ -440,9 +472,14 @@ func (r *Row) Dirty(col string, v any) {
 // DirtyStyled records a styled column change with its encoded value; the
 // encode error is kept and surfaces from UpdateRow.
 func (r *Row) DirtyStyled(col string, v any, styles []string) {
+	if !slices.Contains(r.assigned, col) {
+		r.assigned = append(r.assigned, col)
+	}
 	enc, err := Encode(styles, v)
 	if err != nil {
-		r.encErr = err
+		if r.encErr == nil {
+			r.encErr = err
+		}
 		return
 	}
 	r.Dirty(col, enc)
@@ -455,6 +492,9 @@ func (r *Row) UpdateRow(ctx context.Context, ex Exec, optimisticCol string, opti
 	}
 	if !r.loaded {
 		return &ir.Error{Code: CodeConfig, Msg: "update on a row that was not loaded"}
+	}
+	if optimisticCol != "" && optimisticVal == nil {
+		return &ir.Error{Code: CodeConfig, Msg: "optimistic update requires a loaded version column"}
 	}
 	if len(r.dirty) == 0 {
 		return nil

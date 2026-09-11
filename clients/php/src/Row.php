@@ -7,20 +7,22 @@ namespace Orm;
  * Base of every generated row class. Holds the positional values and a
  * reference to the assemble node's name→index map, so reads never copy.
  * Generated classes add typed getters/setters; ArrayAccess and getX($default)
- * are provided here for compatibility familiarity.
+ * are provided here for the PHP row API.
  */
 abstract class Row implements \ArrayAccess
 {
+    use ConnectionBinding;
     /** @var list<mixed> */
-    protected array $vals;
+    protected array $vals = [];
     /** @var array<string,int> */
-    protected array $idx;
+    protected array $idx = [];
     /** @var array<string, mixed> joined / related rows by relation name */
     protected array $rel = [];
     /** @var array<string, mixed> columns changed through set* */
     protected array $dirty = [];
     /** @var array<string, list<string>> styles of dirty columns that need encoding on write */
     protected array $dirtyStyles = [];
+    protected ?OrmException $error = null;
     /** @var array<string, mixed> columns merged from a flattened one-relation */
     protected array $extra = [];
     /** @var array<string, true> columns selected only for binding (drop_child_key): left out of toArray */
@@ -28,11 +30,30 @@ abstract class Row implements \ArrayAccess
     /** @var list<string> loaded relations whose rows this row owns (plan children[].cascade): deleteCascade removes them first */
     protected array $cascade = [];
     protected bool $loaded = false;
+    protected mixed $originalVersion = null;
 
     abstract public static function entity(): string;
     abstract public static function pk(): string;
+    protected static function versionColumn(): ?string { return null; }
     /** @return array<string,string> column => canonical type */
     abstract public static function columns(): array;
+
+    /** A grouped getsCount() row carries COUNT(*) under this compatibility field. */
+    public function getRowCount(mixed $default = 0): int
+    {
+        try {
+            $v = $this->col('row_count');
+        } catch (OrmException) {
+            return (int) $default;
+        }
+        return $v === null ? (int) $default : (int) $v;
+    }
+
+    /** Grouped-count rows also expose selected/extra fields as properties. */
+    public function __get(string $name): mixed
+    {
+        return $this->col($name);
+    }
 
     /**
      * Maps a positional row onto the model, its joined children (same row) and
@@ -42,10 +63,13 @@ abstract class Row implements \ArrayAccess
     public static function fromRow(array $vals, array $asm, ?Rows $rows = null): static
     {
         $r = new static();
+        if ($rows?->db !== null) { $r->bind($rows->db); }
         $r->vals = $vals;
         $r->idx = $asm['idx'];
         $r->hidden = $asm['hidden'] ?? [];
         $r->loaded = true;
+        $version = static::versionColumn();
+        if ($version !== null && isset($r->idx[$version])) { $r->originalVersion = $r->col($version); }
         foreach ($asm['children'] ?? [] as $ch) {
             if ($ch['kind'] === 'join') {
                 $ca = $ch['assemble'];
@@ -69,16 +93,18 @@ abstract class Row implements \ArrayAccess
                     }
                 }
             } else {
-                $items = [];
+                $items = new Collection();
                 $cls = Registry::row($ca['entity']);
                 foreach ($related as $row) {
                     $items[$row[$ch['key_index']]] = $cls::fromRow($row, $ca, $rows);
                 }
-                $r->rel[$ch['rel']] = new Collection($items);
+                $r->rel[$ch['rel']] = $items;
             }
         }
         return $r;
     }
+
+    public function relLoaded(string $name): bool { return array_key_exists($name, $this->rel); }
 
     public function has(string $col): bool
     {
@@ -95,7 +121,7 @@ abstract class Row implements \ArrayAccess
         }
         if (!isset($this->idx[$col])) {
             if (isset(static::columns()[$col])) {
-                return null; // declared but not selected (lazy) → null, as compatibility
+                return null; // declared but not selected (lazy) → null
             }
             throw new OrmException(Code::COLUMN_UNKNOWN, static::entity() . ".$col");
         }
@@ -116,6 +142,8 @@ abstract class Row implements \ArrayAccess
 
     protected function setCol(string $col, mixed $v): static
     {
+        if (!array_key_exists($col, $this->idx)) { $this->idx[$col] = count($this->vals); }
+        $this->vals[$this->idx[$col]] = $v;
         $this->dirty[$col] = $v;
         return $this;
     }
@@ -123,8 +151,10 @@ abstract class Row implements \ArrayAccess
     /** Records a styled column change; the value is kept decoded and encoded at write time. */
     protected function setStyled(string $col, mixed $v, array $styles): static
     {
-        $this->dirty[$col] = $v;
+        $this->setCol($col, $v);
         $this->dirtyStyles[$col] = $styles;
+        try { Codec::encode($styles, $v); }
+        catch (OrmException $e) { $this->error ??= $e; }
         return $this;
     }
 
@@ -134,8 +164,8 @@ abstract class Row implements \ArrayAccess
     }
 
     /**
-     * compatibility-style getX()/getX($default): getters declared by the generated class win; this is the fallback.
-     * A relation is also reachable by compatibility's default key, get<Rel>Model() / get<Rel>Models().
+     * Dynamic getX()/getX($default): getters declared by the generated class win; this is the fallback.
+     * A relation is also reachable through get<Rel>Model() / get<Rel>Models().
      */
     public function __call(string $name, array $args): mixed
     {
@@ -184,7 +214,7 @@ abstract class Row implements \ArrayAccess
         unset($this->dirty[(string) $k]);
     }
 
-    /** Deep array (compatibility toArray). */
+    /** Deep array representation. */
     public function toArray(): array
     {
         $out = [];
@@ -197,7 +227,7 @@ abstract class Row implements \ArrayAccess
             $out[$k] = $v;
         }
         foreach ($this->dirty as $k => $v) {
-            $out[$k] = $v;
+            if (!isset($this->hidden[$k])) { $out[$k] = $v; }
         }
         foreach ($this->rel as $k => $v) {
             $out[$k] = $v instanceof Row ? $v->toArray() : ($v instanceof Collection ? $v->toArray() : $v);
@@ -208,24 +238,24 @@ abstract class Row implements \ArrayAccess
     // ---- writes ----
 
     /** UPDATE the dirty columns by PK. */
-    public function update(Db $ex): static
+    public function update(): void
     {
-        return $this->doUpdate($ex, false);
+        $this->terminalArity(func_num_args());
+        $this->doUpdate($this->terminalDb(), false);
     }
 
     /** UPDATE the dirty columns; fails with OPTIMISTIC_LOCK when updated_ts changed since the row was read. */
-    public function updateOptimistic(Db $ex): static
+    protected function doUpdate(Db $ex, bool $optimistic): void
     {
-        return $this->doUpdate($ex, true);
-    }
-
-    private function doUpdate(Db $ex, bool $optimistic): static
-    {
+        if ($this->error !== null) { throw $this->error; }
         if (!$this->loaded) {
-            throw new OrmException(Code::INTERNAL, 'update on a row that was not loaded');
+            throw new OrmException(Code::CONFIG, 'update on a row that was not loaded');
+        }
+        if ($optimistic && $this->originalVersion === null) {
+            throw new OrmException(Code::CONFIG, 'optimistic update requires a loaded version column');
         }
         if ($this->dirty === []) {
-            return $this;
+            return;
         }
         $q = new Q(static::entity());
         foreach ($this->dirty as $col => $v) {
@@ -238,24 +268,29 @@ abstract class Row implements \ArrayAccess
         $pk = static::pk();
         $q->w()->pred($pk, 'eq', $this->col($pk));
         if ($optimistic) {
-            $q->optimistic('updated_ts', $this->col('updated_ts'));
+            $q->optimistic(static::versionColumn(), $this->originalVersion);
         }
         $plan = Orm::transport()->planFor($q->req, 'update');
         $ex->write($plan['steps'][0], $q->req->params, false, $optimistic);
         $this->dirty = [];
         $this->dirtyStyles = [];
-        return $this;
     }
 
-    /** DELETE this row by PK; with $cascade (compatibility delete(true)) the owned relations go first — see deleteCascade(). */
-    public function delete(Db $ex, bool $cascade = false): void
+    /** DELETE this row by PK; with $cascade the owned relations go first — see deleteCascade(). */
+    public function delete(bool $cascade = false): void
+    {
+        if (func_num_args() > 1) { $this->terminalArity(func_num_args(), 1); }
+        $this->deleteInner($this->terminalDb(), $cascade);
+    }
+
+    private function deleteInner(Db $ex, bool $cascade = false): void
     {
         if ($cascade) {
-            $this->deleteCascade($ex);
+            $this->deleteCascadeInner($ex);
             return;
         }
         if (!$this->loaded) {
-            throw new OrmException(Code::INTERNAL, 'delete on a row that was not loaded');
+            throw new OrmException(Code::CONFIG, 'delete on a row that was not loaded');
         }
         $q = new Q(static::entity());
         $pk = static::pk();
@@ -270,87 +305,111 @@ abstract class Row implements \ArrayAccess
      * then this row, one DELETE … WHERE pk = ? per row. Parent-direction relations (the FK is on
      * this row) are never touched. A plain Db is wrapped in a transaction so a failure undoes the walk.
      */
-    public function deleteCascade(Db $ex): void
+    public function deleteCascade(): void
+    {
+        $this->terminalArity(func_num_args());
+        $this->deleteCascadeInner($this->terminalDb());
+    }
+
+    private function deleteCascadeInner(Db $ex): void
     {
         if (!$ex instanceof Tx) {
             $ex->transaction(function (Tx $tx): void {
-                $this->deleteCascade($tx);
+                $this->deleteCascadeInner($tx);
             });
             return;
         }
         foreach ($this->cascade as $name) {
             $owned = $this->rel[$name];
             foreach ($owned instanceof Collection ? $owned : ($owned === null ? [] : [$owned]) as $child) {
-                $child->deleteCascade($ex);
+                $child->deleteCascadeInner($ex);
             }
         }
-        $this->delete($ex);
+        $this->deleteInner($ex);
     }
 }
 
-/** Ordered map keyed by PK (or key_by). PHP arrays keep insertion order. */
+/** Ordered map with distinct integer and string keys. */
 final class Collection implements \ArrayAccess, \IteratorAggregate, \Countable
 {
+    /** @var array<string, array{key: int|string, value: Row}> */
+    private array $items = [];
+
     /** @param array<int|string, Row> $items */
-    public function __construct(private array $items = []) {}
+    public function __construct(array $items = [])
+    {
+        foreach ($items as $key => $row) { $this->put($key, $row); }
+    }
+
+    private static function identity(mixed $key): string
+    {
+        if (is_int($key)) { return 'i:' . $key; }
+        if (is_string($key)) { return 's:' . $key; }
+        throw new OrmException(Code::IR_INVALID, 'collection key must be an integer or string');
+    }
+
+    public function put(mixed $key, Row $value): void
+    {
+        $this->items[self::identity($key)] = ['key' => $key, 'value' => $value];
+    }
+
+    public function get(mixed $key): ?Row
+    {
+        return $this->items[self::identity($key)]['value'] ?? null;
+    }
 
     public static function fromRows(Rows $rows, string $rowClass, ?\Closure $keyFn = null): self
     {
         $c = new self();
         foreach ($rows->data as $vals) {
             $r = $rowClass::fromRow($vals, $rows->asm, $rows);
-            $c->items[$keyFn === null ? $vals[0] : $keyFn($r)] = $r;
+            $key = $keyFn === null ? $vals[0] : $keyFn($r);
+            // Expression groups can yield a scalar instead of an integer/text PK.
+            // Match the native Key::of conversion; explicit key selectors stay typed.
+            if ($keyFn === null && !is_int($key) && !is_string($key)) {
+                $key = $key === null ? '' : (is_bool($key) ? ($key ? '1' : '0') : (string)$key);
+            }
+            $c->put($key, $r);
         }
         return $c;
     }
 
     public function first(): ?Row
     {
-        foreach ($this->items as $r) {
-            return $r;
-        }
+        foreach ($this->items as $entry) { return $entry['value']; }
         return null;
     }
 
-    public function count(): int
-    {
-        return count($this->items);
-    }
+    public function count(): int { return count($this->items); }
 
     public function getIterator(): \Iterator
     {
-        return new \ArrayIterator($this->items);
+        foreach ($this->items as $entry) { yield $entry['key'] => $entry['value']; }
     }
 
-    public function keys(): array
-    {
-        return array_keys($this->items);
-    }
+    /** @return list<int|string> */
+    public function keys(): array { return array_column(array_values($this->items), 'key'); }
+
+    /** @return list<array{key: int|string, value: Row}> */
+    public function entries(): array { return array_values($this->items); }
 
     public function toArray(): array
     {
-        return array_map(fn(Row $r) => $r->toArray(), $this->items);
+        $out = [];
+        foreach ($this->items as $entry) {
+            $key = $entry['key'];
+            if (array_key_exists($key, $out)) {
+                throw new OrmException(Code::IR_INVALID, 'array conversion loses key type; use entries');
+            }
+            $out[$key] = $entry['value']->toArray();
+        }
+        return $out;
     }
 
-    public function offsetExists(mixed $k): bool
-    {
-        return isset($this->items[$k]);
-    }
-
-    public function offsetGet(mixed $k): ?Row
-    {
-        return $this->items[$k] ?? null;
-    }
-
-    public function offsetSet(mixed $k, mixed $v): void
-    {
-        $this->items[$k] = $v;
-    }
-
-    public function offsetUnset(mixed $k): void
-    {
-        unset($this->items[$k]);
-    }
+    public function offsetExists(mixed $k): bool { return isset($this->items[self::identity($k)]); }
+    public function offsetGet(mixed $k): ?Row { return $this->get($k); }
+    public function offsetSet(mixed $k, mixed $v): void { $this->put($k, $v); }
+    public function offsetUnset(mixed $k): void { unset($this->items[self::identity($k)]); }
 }
 
 final class Page
@@ -367,6 +426,7 @@ final class Page
 /** Result of a select plan: the main step's rows plus every relation step's rows grouped by match column. */
 final class Rows
 {
+    public ?Db $db = null;
     /** @var array<int, array{data: list<list<mixed>>, byKey: array<int|string, list<int>>}> */
     public array $steps = [];
 

@@ -1,5 +1,5 @@
 //! A complex statement in three languages, one JSON document (docs/examples/complex-query.md
-//! shows the same shapes against the example schema). Run:
+//! shows the same product-domain shapes). Run:
 //!
 //!   clients/rust/target/release/complex bin/ormengine.wasm schema/schema.json
 use std::sync::Arc;
@@ -26,23 +26,23 @@ async fn main() {
         .select_none().select_name()
         .join_service(Service::new()
             .on(|w| w.seq_gt(0))
-            .where_(|w| w.name_eq("service-7")))
-        .is_close_eq(false)
-        .and(|w| w.is_display_eq(true).or().service(|s| s.seq_eq(7)))
+            .where_(|w| w.name("service-7")))
+        .is_close(false)
+        .and(|w| w.is_display(true).or().service(|s| s.seq(7)))
         .relation_user(User::new()
             .relations_battles(Battle::new().select_none().order_by_seq_desc().limit_per_parent(2).drop_child_key()))
         .relation_service(Service::new()
             .relations_members(ServiceMember::new().select_none().order_by_seq_asc().limit_per_parent(2).key_by_user_seq()))
         .order_by_seq_asc().limit(0, 2)
-        .all(&db).await.expect("rows");
+        .bind(&db).gets().await.expect("rows");
     let items: Vec<_> = rows.iter().map(|(_, b)| b.to_map()).collect();
 
     // Aggregates over the same slice of data: a grouped count with HAVING, min/max, distinct.
-    let groups = Battle::new().service_seq_eq(7).group_by_user_seq()
-        .having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).count(&db).await.expect("groups");
-    let min = Battle::new().service_seq_eq(7).min_seq(&db).await.expect("min").expect("rows exist");
-    let max = Battle::new().service_seq_eq(7).max_seq(&db).await.expect("max").expect("rows exist");
-    let users = Battle::new().service_seq_eq(7).count_distinct_user_seq(&db).await.expect("distinct");
+    let groups = Battle::new().service_seq(7).group_by_user_seq()
+        .having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).bind(&db).get_count().await.expect("groups");
+    let min = Battle::new().service_seq(7).bind(&db).min_seq().await.expect("min").expect("rows exist");
+    let max = Battle::new().service_seq(7).bind(&db).max_seq().await.expect("max").expect("rows exist");
+    let users = Battle::new().service_seq(7).bind(&db).count_distinct_user_seq().await.expect("distinct");
 
     let out = json!({"rows": items, "groups": groups, "min_seq": min, "max_seq": max, "user_count": users});
     println!("{}", serde_json::to_string_pretty(&out).unwrap());

@@ -106,7 +106,7 @@ foreach (['json_decode 100x20' => fn() => json_decode($json, true), 'msgpack_unp
     for ($i = 0; $i < $iters; $i++) { $t = hrtime(true); $f(); $s[] = hrtime(true) - $t; }
     stats($name, $s);
 }
-// what an executing ormd would also have to send: the same rows as objects keyed by column (compatibility shape)
+// what an executing ormd would also have to send: the same rows as objects keyed by column
 $assoc = []; foreach ($rows as $row) { $assoc[] = array_combine($cols, $row); }
 $jsonA = json_encode($assoc); $mpA = msgpack_pack($assoc);
 printf("assoc bytes: json=%d msgpack=%d\n", strlen($jsonA), strlen($mpA));

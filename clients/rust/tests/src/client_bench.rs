@@ -31,14 +31,14 @@ async fn main() {
     let opts = connect_opts();
     let db = Db::connect(opts, 1, engine, Config { aes_key: "bench-salt".into(), on_query: None }).await.unwrap();
 
-    for _ in 0..200 { Battle::new().seq_eq(1).one(&db).await.unwrap(); }
+    for _ in 0..200 { Battle::new().seq_eq(1).bind(&db).one().await.unwrap(); }
     let mut s = Vec::new();
-    for i in 0..iters { let t = Instant::now(); let r = Battle::new().seq_eq((i % 100000 + 1) as i64).one(&db).await.unwrap(); assert!(r.is_some()); s.push(t.elapsed().as_nanos() as u64); }
+    for i in 0..iters { let t = Instant::now(); let r = Battle::new().seq_eq((i % 100000 + 1) as i64).bind(&db).one().await.unwrap(); assert!(r.is_some()); s.push(t.elapsed().as_nanos() as u64); }
     stats("client pk one", s);
 
-    for _ in 0..100 { Battle::new().service_seq_eq(1).is_close_eq(false).order_by_seq_desc().limit(0, 100).all(&db).await.unwrap(); }
+    for _ in 0..100 { Battle::new().service_seq_eq(1).is_close_eq(false).order_by_seq_desc().limit(0, 100).bind(&db).all().await.unwrap(); }
     let mut s = Vec::new();
-    for i in 0..iters { let t = Instant::now(); let c = Battle::new().service_seq_eq((i % 100 + 1) as i64).is_close_eq(false).order_by_seq_desc().limit(0, 100).all(&db).await.unwrap(); assert!(!c.is_empty()); s.push(t.elapsed().as_nanos() as u64); }
+    for i in 0..iters { let t = Instant::now(); let c = Battle::new().service_seq_eq((i % 100 + 1) as i64).is_close_eq(false).order_by_seq_desc().limit(0, 100).bind(&db).all().await.unwrap(); assert!(!c.is_empty()); s.push(t.elapsed().as_nanos() as u64); }
     stats("client list100", s);
 
     let mut s = Vec::new();

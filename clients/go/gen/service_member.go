@@ -83,36 +83,52 @@ func (r *ServiceMemberRow) GetUser() *UserRow {
 }
 
 // Update writes the columns changed through Set*.
-func (r *ServiceMemberRow) Update(ctx context.Context, ex orm.Exec) error {
+func (r *ServiceMemberRow) Update() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
 	return r.UpdateRow(ctx, ex, "", nil)
 }
 
-func (r *ServiceMemberRow) Delete(ctx context.Context, ex orm.Exec) error {
+func (r *ServiceMemberRow) Delete() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
 	return r.DeleteRow(ctx, ex)
 }
 
 // DeleteCascade deletes the loaded relations this row owns (the assemble's
 // cascade children, in load order, each row through its own DeleteCascade)
 // and then this row. A bare DB runs the whole walk in one transaction.
-func (r *ServiceMemberRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
+func (r *ServiceMemberRow) DeleteCascade() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
+	return r.deleteCascade(ctx, ex)
+}
+
+func (r *ServiceMemberRow) deleteCascade(ctx context.Context, ex orm.Exec) error {
 	return orm.InTx(ctx, ex, func(ex orm.Exec) error {
 		for _, rel := range r.Cascades() {
 			switch rel {
 			case "battles":
 				for _, child := range r.GetBattles().All() {
-					if err := child.DeleteCascade(ctx, ex); err != nil {
+					if err := child.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
 			case "service":
 				if r.Service != nil {
-					if err := r.Service.DeleteCascade(ctx, ex); err != nil {
+					if err := r.Service.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
 			case "user":
 				if r.User != nil {
-					if err := r.User.DeleteCascade(ctx, ex); err != nil {
+					if err := r.User.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
@@ -126,6 +142,7 @@ func (r *ServiceMemberRow) DeleteCascade(ctx context.Context, ex orm.Exec) error
 // children (same row) and its relation children (rows of later steps).
 func scanServiceMember(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceMemberRow {
 	r := &ServiceMemberRow{}
+	r.Binding = rs.Binding
 	for _, c := range a.Columns {
 		v := vals[c.Index]
 		switch c.Name {
@@ -232,23 +249,37 @@ var ServiceMemberCols = struct {
 	UserSeq:    orm.ColRef{Column: "user_seq"},
 }
 
-// ServiceMember builds a statement over service_member: NewServiceMember() → chain → terminal(ctx, db).
-type ServiceMember struct {
-	q     *orm.Q
-	keyFn func(*ServiceMemberRow) orm.Key // KeyByFn: client-side keying of the root collection
+// ServiceMemberQuery builds a statement over service_member: ServiceMember() → Bind(ctx, db) → chain → terminal().
+type ServiceMemberQuery struct {
+	binding orm.Binding
+	q       *orm.Q
+	keyFn   func(*ServiceMemberRow) orm.Key // KeyByFn: client-side keying of the root collection
 }
 
 // KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
-func (q *ServiceMember) KeyByFn(fn func(*ServiceMemberRow) orm.Key) *ServiceMember {
+func (q *ServiceMemberQuery) KeyByFn(fn func(*ServiceMemberRow) orm.Key) *ServiceMemberQuery {
 	q.keyFn = fn
 	return q
 }
 
 // Req exposes the underlying request (debugging, plan inspection).
-func (q *ServiceMember) Req() *orm.Req { return q.q.Req }
+func (q *ServiceMemberQuery) Req() *orm.Req { return q.q.Req }
 
-func NewServiceMember() *ServiceMember {
-	return &ServiceMember{q: orm.NewQ(mustEngine(), "service_member")}
+// ServiceMember starts a query over service_member.
+func ServiceMember() *ServiceMemberQuery {
+	return &ServiceMemberQuery{q: orm.NewQ(mustEngine(), "service_member")}
+}
+
+// Bind selects the context and pool or transaction for this query.
+func (q *ServiceMemberQuery) Bind(ctx context.Context, ex orm.Exec) *ServiceMemberQuery {
+	q.binding = orm.NewBinding(ctx, ex)
+	return q
+}
+
+// Bind selects the context and pool or transaction for this loaded row.
+func (r *ServiceMemberRow) Bind(ctx context.Context, ex orm.Exec) *ServiceMemberRow {
+	r.Binding = orm.NewBinding(ctx, ex)
+	return r
 }
 
 // ServiceMemberWhere edits one WHERE/ON group of service_member.
@@ -277,25 +308,45 @@ func (w *ServiceMemberWhere) User(fn func(*UserWhere)) *ServiceMemberWhere {
 }
 
 func (w *ServiceMemberWhere) SeqEq(v int64) *ServiceMemberWhere { w.w.Pred("seq", "eq", v); return w }
-func (q *ServiceMember) SeqEq(v int64) *ServiceMember           { q.q.W().Pred("seq", "eq", v); return q }
+func (q *ServiceMemberQuery) SeqEq(v int64) *ServiceMemberQuery {
+	q.q.W().Pred("seq", "eq", v)
+	return q
+}
+func (w *ServiceMemberWhere) Seq(v int64) *ServiceMemberWhere { return w.SeqEq(v) }
+func (q *ServiceMemberQuery) Seq(v int64) *ServiceMemberQuery { return q.SeqEq(v) }
 func (w *ServiceMemberWhere) SeqNotEq(v int64) *ServiceMemberWhere {
 	w.w.Pred("seq", "not_eq", v)
 	return w
 }
-func (q *ServiceMember) SeqNotEq(v int64) *ServiceMember         { q.q.W().Pred("seq", "not_eq", v); return q }
-func (w *ServiceMemberWhere) SeqGt(v int64) *ServiceMemberWhere  { w.w.Pred("seq", "gt", v); return w }
-func (q *ServiceMember) SeqGt(v int64) *ServiceMember            { q.q.W().Pred("seq", "gt", v); return q }
+func (q *ServiceMemberQuery) SeqNotEq(v int64) *ServiceMemberQuery {
+	q.q.W().Pred("seq", "not_eq", v)
+	return q
+}
+func (w *ServiceMemberWhere) SeqGt(v int64) *ServiceMemberWhere { w.w.Pred("seq", "gt", v); return w }
+func (q *ServiceMemberQuery) SeqGt(v int64) *ServiceMemberQuery {
+	q.q.W().Pred("seq", "gt", v)
+	return q
+}
 func (w *ServiceMemberWhere) SeqGte(v int64) *ServiceMemberWhere { w.w.Pred("seq", "gte", v); return w }
-func (q *ServiceMember) SeqGte(v int64) *ServiceMember           { q.q.W().Pred("seq", "gte", v); return q }
-func (w *ServiceMemberWhere) SeqLt(v int64) *ServiceMemberWhere  { w.w.Pred("seq", "lt", v); return w }
-func (q *ServiceMember) SeqLt(v int64) *ServiceMember            { q.q.W().Pred("seq", "lt", v); return q }
+func (q *ServiceMemberQuery) SeqGte(v int64) *ServiceMemberQuery {
+	q.q.W().Pred("seq", "gte", v)
+	return q
+}
+func (w *ServiceMemberWhere) SeqLt(v int64) *ServiceMemberWhere { w.w.Pred("seq", "lt", v); return w }
+func (q *ServiceMemberQuery) SeqLt(v int64) *ServiceMemberQuery {
+	q.q.W().Pred("seq", "lt", v)
+	return q
+}
 func (w *ServiceMemberWhere) SeqLte(v int64) *ServiceMemberWhere { w.w.Pred("seq", "lte", v); return w }
-func (q *ServiceMember) SeqLte(v int64) *ServiceMember           { q.q.W().Pred("seq", "lte", v); return q }
+func (q *ServiceMemberQuery) SeqLte(v int64) *ServiceMemberQuery {
+	q.q.W().Pred("seq", "lte", v)
+	return q
+}
 func (w *ServiceMemberWhere) SeqIn(vs []int64) *ServiceMemberWhere {
 	w.w.PredList("seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceMember) SeqIn(vs []int64) *ServiceMember {
+func (q *ServiceMemberQuery) SeqIn(vs []int64) *ServiceMemberQuery {
 	q.q.W().PredList("seq", "in", orm.Anys(vs))
 	return q
 }
@@ -303,7 +354,7 @@ func (w *ServiceMemberWhere) SeqNotIn(vs []int64) *ServiceMemberWhere {
 	w.w.PredList("seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceMember) SeqNotIn(vs []int64) *ServiceMember {
+func (q *ServiceMemberQuery) SeqNotIn(vs []int64) *ServiceMemberQuery {
 	q.q.W().PredList("seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -311,7 +362,7 @@ func (w *ServiceMemberWhere) SeqBetween(lo, hi int64) *ServiceMemberWhere {
 	w.w.PredList("seq", "between", []any{lo, hi})
 	return w
 }
-func (q *ServiceMember) SeqBetween(lo, hi int64) *ServiceMember {
+func (q *ServiceMemberQuery) SeqBetween(lo, hi int64) *ServiceMemberQuery {
 	q.q.W().PredList("seq", "between", []any{lo, hi})
 	return q
 }
@@ -319,12 +370,15 @@ func (w *ServiceMemberWhere) SeqIsNull() *ServiceMemberWhere {
 	w.w.PredNull("seq", "is_null")
 	return w
 }
-func (q *ServiceMember) SeqIsNull() *ServiceMember { q.q.W().PredNull("seq", "is_null"); return q }
+func (q *ServiceMemberQuery) SeqIsNull() *ServiceMemberQuery {
+	q.q.W().PredNull("seq", "is_null")
+	return q
+}
 func (w *ServiceMemberWhere) SeqIsNotNull() *ServiceMemberWhere {
 	w.w.PredNull("seq", "is_not_null")
 	return w
 }
-func (q *ServiceMember) SeqIsNotNull() *ServiceMember {
+func (q *ServiceMemberQuery) SeqIsNotNull() *ServiceMemberQuery {
 	q.q.W().PredNull("seq", "is_not_null")
 	return q
 }
@@ -332,7 +386,7 @@ func (w *ServiceMemberWhere) SeqEqCol(ref orm.ColRef) *ServiceMemberWhere {
 	w.w.PredCol("seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) SeqEqCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) SeqEqCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -340,7 +394,7 @@ func (w *ServiceMemberWhere) SeqNotEqCol(ref orm.ColRef) *ServiceMemberWhere {
 	w.w.PredCol("seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) SeqNotEqCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) SeqNotEqCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -348,7 +402,7 @@ func (w *ServiceMemberWhere) SeqGtCol(ref orm.ColRef) *ServiceMemberWhere {
 	w.w.PredCol("seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) SeqGtCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) SeqGtCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -356,7 +410,7 @@ func (w *ServiceMemberWhere) SeqGteCol(ref orm.ColRef) *ServiceMemberWhere {
 	w.w.PredCol("seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) SeqGteCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) SeqGteCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -364,7 +418,7 @@ func (w *ServiceMemberWhere) SeqLtCol(ref orm.ColRef) *ServiceMemberWhere {
 	w.w.PredCol("seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) SeqLtCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) SeqLtCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -372,7 +426,7 @@ func (w *ServiceMemberWhere) SeqLteCol(ref orm.ColRef) *ServiceMemberWhere {
 	w.w.PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) SeqLteCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) SeqLteCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -380,15 +434,17 @@ func (w *ServiceMemberWhere) ServiceSeqEq(v int64) *ServiceMemberWhere {
 	w.w.Pred("service_seq", "eq", v)
 	return w
 }
-func (q *ServiceMember) ServiceSeqEq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqEq(v int64) *ServiceMemberQuery {
 	q.q.W().Pred("service_seq", "eq", v)
 	return q
 }
+func (w *ServiceMemberWhere) ServiceSeq(v int64) *ServiceMemberWhere { return w.ServiceSeqEq(v) }
+func (q *ServiceMemberQuery) ServiceSeq(v int64) *ServiceMemberQuery { return q.ServiceSeqEq(v) }
 func (w *ServiceMemberWhere) ServiceSeqNotEq(v int64) *ServiceMemberWhere {
 	w.w.Pred("service_seq", "not_eq", v)
 	return w
 }
-func (q *ServiceMember) ServiceSeqNotEq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqNotEq(v int64) *ServiceMemberQuery {
 	q.q.W().Pred("service_seq", "not_eq", v)
 	return q
 }
@@ -396,7 +452,7 @@ func (w *ServiceMemberWhere) ServiceSeqGt(v int64) *ServiceMemberWhere {
 	w.w.Pred("service_seq", "gt", v)
 	return w
 }
-func (q *ServiceMember) ServiceSeqGt(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqGt(v int64) *ServiceMemberQuery {
 	q.q.W().Pred("service_seq", "gt", v)
 	return q
 }
@@ -404,7 +460,7 @@ func (w *ServiceMemberWhere) ServiceSeqGte(v int64) *ServiceMemberWhere {
 	w.w.Pred("service_seq", "gte", v)
 	return w
 }
-func (q *ServiceMember) ServiceSeqGte(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqGte(v int64) *ServiceMemberQuery {
 	q.q.W().Pred("service_seq", "gte", v)
 	return q
 }
@@ -412,7 +468,7 @@ func (w *ServiceMemberWhere) ServiceSeqLt(v int64) *ServiceMemberWhere {
 	w.w.Pred("service_seq", "lt", v)
 	return w
 }
-func (q *ServiceMember) ServiceSeqLt(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqLt(v int64) *ServiceMemberQuery {
 	q.q.W().Pred("service_seq", "lt", v)
 	return q
 }
@@ -420,7 +476,7 @@ func (w *ServiceMemberWhere) ServiceSeqLte(v int64) *ServiceMemberWhere {
 	w.w.Pred("service_seq", "lte", v)
 	return w
 }
-func (q *ServiceMember) ServiceSeqLte(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqLte(v int64) *ServiceMemberQuery {
 	q.q.W().Pred("service_seq", "lte", v)
 	return q
 }
@@ -428,7 +484,7 @@ func (w *ServiceMemberWhere) ServiceSeqIn(vs []int64) *ServiceMemberWhere {
 	w.w.PredList("service_seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceMember) ServiceSeqIn(vs []int64) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqIn(vs []int64) *ServiceMemberQuery {
 	q.q.W().PredList("service_seq", "in", orm.Anys(vs))
 	return q
 }
@@ -436,7 +492,7 @@ func (w *ServiceMemberWhere) ServiceSeqNotIn(vs []int64) *ServiceMemberWhere {
 	w.w.PredList("service_seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceMember) ServiceSeqNotIn(vs []int64) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqNotIn(vs []int64) *ServiceMemberQuery {
 	q.q.W().PredList("service_seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -444,7 +500,7 @@ func (w *ServiceMemberWhere) ServiceSeqBetween(lo, hi int64) *ServiceMemberWhere
 	w.w.PredList("service_seq", "between", []any{lo, hi})
 	return w
 }
-func (q *ServiceMember) ServiceSeqBetween(lo, hi int64) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqBetween(lo, hi int64) *ServiceMemberQuery {
 	q.q.W().PredList("service_seq", "between", []any{lo, hi})
 	return q
 }
@@ -452,7 +508,7 @@ func (w *ServiceMemberWhere) ServiceSeqIsNull() *ServiceMemberWhere {
 	w.w.PredNull("service_seq", "is_null")
 	return w
 }
-func (q *ServiceMember) ServiceSeqIsNull() *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqIsNull() *ServiceMemberQuery {
 	q.q.W().PredNull("service_seq", "is_null")
 	return q
 }
@@ -460,7 +516,7 @@ func (w *ServiceMemberWhere) ServiceSeqIsNotNull() *ServiceMemberWhere {
 	w.w.PredNull("service_seq", "is_not_null")
 	return w
 }
-func (q *ServiceMember) ServiceSeqIsNotNull() *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqIsNotNull() *ServiceMemberQuery {
 	q.q.W().PredNull("service_seq", "is_not_null")
 	return q
 }
@@ -468,7 +524,7 @@ func (w *ServiceMemberWhere) ServiceSeqEqCol(ref orm.ColRef) *ServiceMemberWhere
 	w.w.PredCol("service_seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) ServiceSeqEqCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqEqCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("service_seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -476,7 +532,7 @@ func (w *ServiceMemberWhere) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceMemberWh
 	w.w.PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -484,7 +540,7 @@ func (w *ServiceMemberWhere) ServiceSeqGtCol(ref orm.ColRef) *ServiceMemberWhere
 	w.w.PredCol("service_seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) ServiceSeqGtCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqGtCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("service_seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -492,7 +548,7 @@ func (w *ServiceMemberWhere) ServiceSeqGteCol(ref orm.ColRef) *ServiceMemberWher
 	w.w.PredCol("service_seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) ServiceSeqGteCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqGteCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("service_seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -500,7 +556,7 @@ func (w *ServiceMemberWhere) ServiceSeqLtCol(ref orm.ColRef) *ServiceMemberWhere
 	w.w.PredCol("service_seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) ServiceSeqLtCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqLtCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("service_seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -508,7 +564,7 @@ func (w *ServiceMemberWhere) ServiceSeqLteCol(ref orm.ColRef) *ServiceMemberWher
 	w.w.PredCol("service_seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) ServiceSeqLteCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) ServiceSeqLteCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("service_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -516,15 +572,17 @@ func (w *ServiceMemberWhere) UserSeqEq(v int64) *ServiceMemberWhere {
 	w.w.Pred("user_seq", "eq", v)
 	return w
 }
-func (q *ServiceMember) UserSeqEq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqEq(v int64) *ServiceMemberQuery {
 	q.q.W().Pred("user_seq", "eq", v)
 	return q
 }
+func (w *ServiceMemberWhere) UserSeq(v int64) *ServiceMemberWhere { return w.UserSeqEq(v) }
+func (q *ServiceMemberQuery) UserSeq(v int64) *ServiceMemberQuery { return q.UserSeqEq(v) }
 func (w *ServiceMemberWhere) UserSeqNotEq(v int64) *ServiceMemberWhere {
 	w.w.Pred("user_seq", "not_eq", v)
 	return w
 }
-func (q *ServiceMember) UserSeqNotEq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqNotEq(v int64) *ServiceMemberQuery {
 	q.q.W().Pred("user_seq", "not_eq", v)
 	return q
 }
@@ -532,7 +590,7 @@ func (w *ServiceMemberWhere) UserSeqGt(v int64) *ServiceMemberWhere {
 	w.w.Pred("user_seq", "gt", v)
 	return w
 }
-func (q *ServiceMember) UserSeqGt(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqGt(v int64) *ServiceMemberQuery {
 	q.q.W().Pred("user_seq", "gt", v)
 	return q
 }
@@ -540,7 +598,7 @@ func (w *ServiceMemberWhere) UserSeqGte(v int64) *ServiceMemberWhere {
 	w.w.Pred("user_seq", "gte", v)
 	return w
 }
-func (q *ServiceMember) UserSeqGte(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqGte(v int64) *ServiceMemberQuery {
 	q.q.W().Pred("user_seq", "gte", v)
 	return q
 }
@@ -548,7 +606,7 @@ func (w *ServiceMemberWhere) UserSeqLt(v int64) *ServiceMemberWhere {
 	w.w.Pred("user_seq", "lt", v)
 	return w
 }
-func (q *ServiceMember) UserSeqLt(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqLt(v int64) *ServiceMemberQuery {
 	q.q.W().Pred("user_seq", "lt", v)
 	return q
 }
@@ -556,7 +614,7 @@ func (w *ServiceMemberWhere) UserSeqLte(v int64) *ServiceMemberWhere {
 	w.w.Pred("user_seq", "lte", v)
 	return w
 }
-func (q *ServiceMember) UserSeqLte(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqLte(v int64) *ServiceMemberQuery {
 	q.q.W().Pred("user_seq", "lte", v)
 	return q
 }
@@ -564,7 +622,7 @@ func (w *ServiceMemberWhere) UserSeqIn(vs []int64) *ServiceMemberWhere {
 	w.w.PredList("user_seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceMember) UserSeqIn(vs []int64) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqIn(vs []int64) *ServiceMemberQuery {
 	q.q.W().PredList("user_seq", "in", orm.Anys(vs))
 	return q
 }
@@ -572,7 +630,7 @@ func (w *ServiceMemberWhere) UserSeqNotIn(vs []int64) *ServiceMemberWhere {
 	w.w.PredList("user_seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceMember) UserSeqNotIn(vs []int64) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqNotIn(vs []int64) *ServiceMemberQuery {
 	q.q.W().PredList("user_seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -580,7 +638,7 @@ func (w *ServiceMemberWhere) UserSeqBetween(lo, hi int64) *ServiceMemberWhere {
 	w.w.PredList("user_seq", "between", []any{lo, hi})
 	return w
 }
-func (q *ServiceMember) UserSeqBetween(lo, hi int64) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqBetween(lo, hi int64) *ServiceMemberQuery {
 	q.q.W().PredList("user_seq", "between", []any{lo, hi})
 	return q
 }
@@ -588,7 +646,7 @@ func (w *ServiceMemberWhere) UserSeqIsNull() *ServiceMemberWhere {
 	w.w.PredNull("user_seq", "is_null")
 	return w
 }
-func (q *ServiceMember) UserSeqIsNull() *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqIsNull() *ServiceMemberQuery {
 	q.q.W().PredNull("user_seq", "is_null")
 	return q
 }
@@ -596,7 +654,7 @@ func (w *ServiceMemberWhere) UserSeqIsNotNull() *ServiceMemberWhere {
 	w.w.PredNull("user_seq", "is_not_null")
 	return w
 }
-func (q *ServiceMember) UserSeqIsNotNull() *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqIsNotNull() *ServiceMemberQuery {
 	q.q.W().PredNull("user_seq", "is_not_null")
 	return q
 }
@@ -604,7 +662,7 @@ func (w *ServiceMemberWhere) UserSeqEqCol(ref orm.ColRef) *ServiceMemberWhere {
 	w.w.PredCol("user_seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) UserSeqEqCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqEqCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("user_seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -612,7 +670,7 @@ func (w *ServiceMemberWhere) UserSeqNotEqCol(ref orm.ColRef) *ServiceMemberWhere
 	w.w.PredCol("user_seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) UserSeqNotEqCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqNotEqCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("user_seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -620,7 +678,7 @@ func (w *ServiceMemberWhere) UserSeqGtCol(ref orm.ColRef) *ServiceMemberWhere {
 	w.w.PredCol("user_seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) UserSeqGtCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqGtCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("user_seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -628,7 +686,7 @@ func (w *ServiceMemberWhere) UserSeqGteCol(ref orm.ColRef) *ServiceMemberWhere {
 	w.w.PredCol("user_seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) UserSeqGteCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqGteCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("user_seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -636,7 +694,7 @@ func (w *ServiceMemberWhere) UserSeqLtCol(ref orm.ColRef) *ServiceMemberWhere {
 	w.w.PredCol("user_seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) UserSeqLtCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqLtCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("user_seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -644,97 +702,97 @@ func (w *ServiceMemberWhere) UserSeqLteCol(ref orm.ColRef) *ServiceMemberWhere {
 	w.w.PredCol("user_seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceMember) UserSeqLteCol(ref orm.ColRef) *ServiceMember {
+func (q *ServiceMemberQuery) UserSeqLteCol(ref orm.ColRef) *ServiceMemberQuery {
 	q.q.W().PredCol("user_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *ServiceMember) Or() *ServiceMember { q.q.Or(); return q }
-func (q *ServiceMember) And(fn func(*ServiceMemberWhere)) *ServiceMember {
+func (q *ServiceMemberQuery) Or() *ServiceMemberQuery { q.q.Or(); return q }
+func (q *ServiceMemberQuery) And(fn func(*ServiceMemberWhere)) *ServiceMemberQuery {
 	q.q.W().And(func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return q
 }
-func (q *ServiceMember) Expr(frag string, binds ...any) *ServiceMember {
+func (q *ServiceMemberQuery) Expr(frag string, binds ...any) *ServiceMemberQuery {
 	q.q.W().Expr(frag, binds...)
 	return q
 }
-func (q *ServiceMember) Battles(fn func(*BattleWhere)) *ServiceMember {
+func (q *ServiceMemberQuery) Battles(fn func(*BattleWhere)) *ServiceMemberQuery {
 	q.q.W().Nav("battles", func(x *orm.W) { fn(&BattleWhere{w: x}) })
 	return q
 }
-func (q *ServiceMember) Service(fn func(*ServiceWhere)) *ServiceMember {
+func (q *ServiceMemberQuery) Service(fn func(*ServiceWhere)) *ServiceMemberQuery {
 	q.q.W().Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return q
 }
-func (q *ServiceMember) User(fn func(*UserWhere)) *ServiceMember {
+func (q *ServiceMemberQuery) User(fn func(*UserWhere)) *ServiceMemberQuery {
 	q.q.W().Nav("user", func(x *orm.W) { fn(&UserWhere{w: x}) })
 	return q
 }
 
 // Join children: On = ON clause, Where = parent WHERE group. Bare predicates on a join child are rejected by the engine.
-func (q *ServiceMember) On(fn func(*ServiceMemberWhere)) *ServiceMember {
+func (q *ServiceMemberQuery) On(fn func(*ServiceMemberWhere)) *ServiceMemberQuery {
 	fn(&ServiceMemberWhere{w: q.q.OnW()})
 	return q
 }
-func (q *ServiceMember) Where(fn func(*ServiceMemberWhere)) *ServiceMember {
+func (q *ServiceMemberQuery) Where(fn func(*ServiceMemberWhere)) *ServiceMemberQuery {
 	fn(&ServiceMemberWhere{w: q.q.W()})
 	return q
 }
 
 // Having is the group predicate after GroupBy<Col>: the same builder as where; aggregates go through Expr("COUNT(*) > ?", n).
-func (q *ServiceMember) Having(fn func(*ServiceMemberWhere)) *ServiceMember {
+func (q *ServiceMemberQuery) Having(fn func(*ServiceMemberWhere)) *ServiceMemberQuery {
 	fn(&ServiceMemberWhere{w: q.q.HavingW()})
 	return q
 }
 
 // Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
-func (q *ServiceMember) Raw(sql string, binds ...any) *ServiceMember {
+func (q *ServiceMemberQuery) Raw(sql string, binds ...any) *ServiceMemberQuery {
 	q.q.Raw(sql, binds...)
 	return q
 }
 
-func (q *ServiceMember) JoinBattles(child *Battle) *ServiceMember {
+func (q *ServiceMemberQuery) JoinBattles(child *BattleQuery) *ServiceMemberQuery {
 	q.q.Join("battles", "inner", child.q)
 	return q
 }
-func (q *ServiceMember) LeftJoinBattles(child *Battle) *ServiceMember {
+func (q *ServiceMemberQuery) LeftJoinBattles(child *BattleQuery) *ServiceMemberQuery {
 	q.q.Join("battles", "left", child.q)
 	return q
 }
-func (q *ServiceMember) RelationsBattles(child *Battle) *ServiceMember {
+func (q *ServiceMemberQuery) RelationsBattles(child *BattleQuery) *ServiceMemberQuery {
 	q.q.Relation("battles", child.q)
 	return q
 }
-func (q *ServiceMember) JoinService(child *Service) *ServiceMember {
+func (q *ServiceMemberQuery) JoinService(child *ServiceQuery) *ServiceMemberQuery {
 	q.q.Join("service", "inner", child.q)
 	return q
 }
-func (q *ServiceMember) LeftJoinService(child *Service) *ServiceMember {
+func (q *ServiceMemberQuery) LeftJoinService(child *ServiceQuery) *ServiceMemberQuery {
 	q.q.Join("service", "left", child.q)
 	return q
 }
-func (q *ServiceMember) RelationService(child *Service) *ServiceMember {
+func (q *ServiceMemberQuery) RelationService(child *ServiceQuery) *ServiceMemberQuery {
 	q.q.Relation("service", child.q)
 	return q
 }
-func (q *ServiceMember) JoinUser(child *User) *ServiceMember {
+func (q *ServiceMemberQuery) JoinUser(child *UserQuery) *ServiceMemberQuery {
 	q.q.Join("user", "inner", child.q)
 	return q
 }
-func (q *ServiceMember) LeftJoinUser(child *User) *ServiceMember {
+func (q *ServiceMemberQuery) LeftJoinUser(child *UserQuery) *ServiceMemberQuery {
 	q.q.Join("user", "left", child.q)
 	return q
 }
-func (q *ServiceMember) RelationUser(child *User) *ServiceMember {
+func (q *ServiceMemberQuery) RelationUser(child *UserQuery) *ServiceMemberQuery {
 	q.q.Relation("user", child.q)
 	return q
 }
 
 // Columns.
-func (q *ServiceMember) SelectAll() *ServiceMember  { q.q.Columns().Mode = "all"; return q }
-func (q *ServiceMember) SelectNone() *ServiceMember { q.q.Columns().Mode = "none"; return q }
-func (q *ServiceMember) SelectExpr(name, frag string) *ServiceMember {
+func (q *ServiceMemberQuery) SelectAll() *ServiceMemberQuery  { q.q.Columns().Mode = "all"; return q }
+func (q *ServiceMemberQuery) SelectNone() *ServiceMemberQuery { q.q.Columns().Mode = "none"; return q }
+func (q *ServiceMemberQuery) SelectExpr(name, frag string) *ServiceMemberQuery {
 	c := q.q.Columns()
 	if c.Expr == nil {
 		c.Expr = map[string]string{}
@@ -742,17 +800,17 @@ func (q *ServiceMember) SelectExpr(name, frag string) *ServiceMember {
 	c.Expr[name] = frag
 	return q
 }
-func (q *ServiceMember) SelectSeq() *ServiceMember {
+func (q *ServiceMemberQuery) SelectSeq() *ServiceMemberQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "seq")
 	return q
 }
-func (q *ServiceMember) UnselectSeq() *ServiceMember {
+func (q *ServiceMemberQuery) UnselectSeq() *ServiceMemberQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "seq")
 	return q
 }
-func (q *ServiceMember) SelectSeqAs(name string) *ServiceMember {
+func (q *ServiceMemberQuery) SelectSeqAs(name string) *ServiceMemberQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -760,17 +818,17 @@ func (q *ServiceMember) SelectSeqAs(name string) *ServiceMember {
 	c.As[name] = "seq"
 	return q
 }
-func (q *ServiceMember) SelectServiceSeq() *ServiceMember {
+func (q *ServiceMemberQuery) SelectServiceSeq() *ServiceMemberQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "service_seq")
 	return q
 }
-func (q *ServiceMember) UnselectServiceSeq() *ServiceMember {
+func (q *ServiceMemberQuery) UnselectServiceSeq() *ServiceMemberQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "service_seq")
 	return q
 }
-func (q *ServiceMember) SelectServiceSeqAs(name string) *ServiceMember {
+func (q *ServiceMemberQuery) SelectServiceSeqAs(name string) *ServiceMemberQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -778,17 +836,17 @@ func (q *ServiceMember) SelectServiceSeqAs(name string) *ServiceMember {
 	c.As[name] = "service_seq"
 	return q
 }
-func (q *ServiceMember) SelectUserSeq() *ServiceMember {
+func (q *ServiceMemberQuery) SelectUserSeq() *ServiceMemberQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "user_seq")
 	return q
 }
-func (q *ServiceMember) UnselectUserSeq() *ServiceMember {
+func (q *ServiceMemberQuery) UnselectUserSeq() *ServiceMemberQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "user_seq")
 	return q
 }
-func (q *ServiceMember) SelectUserSeqAs(name string) *ServiceMember {
+func (q *ServiceMemberQuery) SelectUserSeqAs(name string) *ServiceMemberQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -798,182 +856,235 @@ func (q *ServiceMember) SelectUserSeqAs(name string) *ServiceMember {
 }
 
 // Order, group, limit.
-func (q *ServiceMember) OrderBySeqAsc() *ServiceMember  { q.q.Order("seq", false); return q }
-func (q *ServiceMember) OrderBySeqDesc() *ServiceMember { q.q.Order("seq", true); return q }
-func (q *ServiceMember) GroupBySeq() *ServiceMember {
+func (q *ServiceMemberQuery) OrderBySeqAsc() *ServiceMemberQuery  { q.q.Order("seq", false); return q }
+func (q *ServiceMemberQuery) OrderBySeqDesc() *ServiceMemberQuery { q.q.Order("seq", true); return q }
+func (q *ServiceMemberQuery) GroupBySeq() *ServiceMemberQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "seq")
 	return q
 }
-func (q *ServiceMember) KeyBySeq() *ServiceMember { q.q.Node.KeyBy = "seq"; return q }
-func (q *ServiceMember) OrderByServiceSeqAsc() *ServiceMember {
+func (q *ServiceMemberQuery) KeyBySeq() *ServiceMemberQuery { q.q.Node.KeyBy = "seq"; return q }
+func (q *ServiceMemberQuery) OrderByServiceSeqAsc() *ServiceMemberQuery {
 	q.q.Order("service_seq", false)
 	return q
 }
-func (q *ServiceMember) OrderByServiceSeqDesc() *ServiceMember {
+func (q *ServiceMemberQuery) OrderByServiceSeqDesc() *ServiceMemberQuery {
 	q.q.Order("service_seq", true)
 	return q
 }
-func (q *ServiceMember) GroupByServiceSeq() *ServiceMember {
+func (q *ServiceMemberQuery) GroupByServiceSeq() *ServiceMemberQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "service_seq")
 	return q
 }
-func (q *ServiceMember) KeyByServiceSeq() *ServiceMember    { q.q.Node.KeyBy = "service_seq"; return q }
-func (q *ServiceMember) OrderByUserSeqAsc() *ServiceMember  { q.q.Order("user_seq", false); return q }
-func (q *ServiceMember) OrderByUserSeqDesc() *ServiceMember { q.q.Order("user_seq", true); return q }
-func (q *ServiceMember) GroupByUserSeq() *ServiceMember {
+func (q *ServiceMemberQuery) KeyByServiceSeq() *ServiceMemberQuery {
+	q.q.Node.KeyBy = "service_seq"
+	return q
+}
+func (q *ServiceMemberQuery) OrderByUserSeqAsc() *ServiceMemberQuery {
+	q.q.Order("user_seq", false)
+	return q
+}
+func (q *ServiceMemberQuery) OrderByUserSeqDesc() *ServiceMemberQuery {
+	q.q.Order("user_seq", true)
+	return q
+}
+func (q *ServiceMemberQuery) GroupByUserSeq() *ServiceMemberQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "user_seq")
 	return q
 }
-func (q *ServiceMember) KeyByUserSeq() *ServiceMember { q.q.Node.KeyBy = "user_seq"; return q }
-func (q *ServiceMember) OrderByExpr(frag string, desc bool) *ServiceMember {
+func (q *ServiceMemberQuery) KeyByUserSeq() *ServiceMemberQuery {
+	q.q.Node.KeyBy = "user_seq"
+	return q
+}
+func (q *ServiceMemberQuery) OrderByExpr(frag string, desc bool) *ServiceMemberQuery {
 	q.q.OrderExpr(frag, desc)
 	return q
 }
-func (q *ServiceMember) Limit(offset, count int) *ServiceMember {
+func (q *ServiceMemberQuery) GroupByExpr(expr, as string) *ServiceMemberQuery {
+	q.q.GroupByExpr(expr, as)
+	return q
+}
+func (q *ServiceMemberQuery) Limit(offset, count int) *ServiceMemberQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *ServiceMember) Distinct() *ServiceMember { q.q.Node.Distinct = true; return q }
+func (q *ServiceMemberQuery) Distinct() *ServiceMemberQuery { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
-func (q *ServiceMember) Flatten() *ServiceMember                { q.q.Node.Flatten = true; return q }
-func (q *ServiceMember) LimitPerParent(n int) *ServiceMember    { q.q.Node.LimitPerParent = n; return q }
-func (q *ServiceMember) DropChildKey() *ServiceMember           { q.q.Node.DropChildKey = true; return q }
-func (q *ServiceMember) NoCascadeDelete() *ServiceMember        { q.q.Node.NoCascadeDelete = true; return q }
-func (q *ServiceMember) IfParentSeqEq(v int64) *ServiceMember   { q.q.IfParent("seq", v); return q }
-func (q *ServiceMember) IfParentNameEq(v string) *ServiceMember { q.q.IfParent("name", v); return q }
-func (q *ServiceMember) IfParentIsCloseEq(v bool) *ServiceMember {
+func (q *ServiceMemberQuery) Flatten() *ServiceMemberQuery { q.q.Node.Flatten = true; return q }
+func (q *ServiceMemberQuery) LimitPerParent(n int) *ServiceMemberQuery {
+	q.q.Node.LimitPerParent = n
+	return q
+}
+func (q *ServiceMemberQuery) DropChildKey() *ServiceMemberQuery {
+	q.q.Node.DropChildKey = true
+	return q
+}
+func (q *ServiceMemberQuery) NoCascadeDelete() *ServiceMemberQuery {
+	q.q.Node.NoCascadeDelete = true
+	return q
+}
+func (q *ServiceMemberQuery) IfParentSeqEq(v int64) *ServiceMemberQuery {
+	q.q.IfParent("seq", v)
+	return q
+}
+func (q *ServiceMemberQuery) IfParentNameEq(v string) *ServiceMemberQuery {
+	q.q.IfParent("name", v)
+	return q
+}
+func (q *ServiceMemberQuery) IfParentIsCloseEq(v bool) *ServiceMemberQuery {
 	q.q.IfParent("is_close", v)
 	return q
 }
-func (q *ServiceMember) IfParentIsDisplayEq(v bool) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentIsDisplayEq(v bool) *ServiceMemberQuery {
 	q.q.IfParent("is_display", v)
 	return q
 }
-func (q *ServiceMember) IfParentIsAlldayEq(v bool) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentIsAlldayEq(v bool) *ServiceMemberQuery {
 	q.q.IfParent("is_allday", v)
 	return q
 }
-func (q *ServiceMember) IfParentTargetTeamPlayerCountEq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentTargetTeamPlayerCountEq(v int64) *ServiceMemberQuery {
 	q.q.IfParent("target_team_player_count", v)
 	return q
 }
-func (q *ServiceMember) IfParentSuccessCountEq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentSuccessCountEq(v int64) *ServiceMemberQuery {
 	q.q.IfParent("success_count", v)
 	return q
 }
-func (q *ServiceMember) IfParentPlayerCountEq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentPlayerCountEq(v int64) *ServiceMemberQuery {
 	q.q.IfParent("player_count", v)
 	return q
 }
-func (q *ServiceMember) IfParentReadCountEq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentReadCountEq(v int64) *ServiceMemberQuery {
 	q.q.IfParent("read_count", v)
 	return q
 }
-func (q *ServiceMember) IfParentCoverUrlEq(v string) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentCoverUrlEq(v string) *ServiceMemberQuery {
 	q.q.IfParent("cover_url", v)
 	return q
 }
-func (q *ServiceMember) IfParentUserSeqEq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentUserSeqEq(v int64) *ServiceMemberQuery {
 	q.q.IfParent("user_seq", v)
 	return q
 }
-func (q *ServiceMember) IfParentServiceSeqEq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentServiceSeqEq(v int64) *ServiceMemberQuery {
 	q.q.IfParent("service_seq", v)
 	return q
 }
-func (q *ServiceMember) IfParentServiceModuleSeqEq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentServiceModuleSeqEq(v int64) *ServiceMemberQuery {
 	q.q.IfParent("service_module_seq", v)
 	return q
 }
-func (q *ServiceMember) IfParentServiceMemberSeqEq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentServiceMemberSeqEq(v int64) *ServiceMemberQuery {
 	q.q.IfParent("service_member_seq", v)
 	return q
 }
-func (q *ServiceMember) IfParentUuidEq(v string) *ServiceMember { q.q.IfParent("uuid", v); return q }
-func (q *ServiceMember) IfParentIsSinglePlayEq(v bool) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentUuidEq(v string) *ServiceMemberQuery {
+	q.q.IfParent("uuid", v)
+	return q
+}
+func (q *ServiceMemberQuery) IfParentIsSinglePlayEq(v bool) *ServiceMemberQuery {
 	q.q.IfParent("is_single_play", v)
 	return q
 }
-func (q *ServiceMember) IfParentLikeCountEq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentLikeCountEq(v int64) *ServiceMemberQuery {
 	q.q.IfParent("like_count", v)
 	return q
 }
-func (q *ServiceMember) IfParentAesHexEmailEq(v string) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentAesHexEmailEq(v string) *ServiceMemberQuery {
 	q.q.IfParent("aes_hex_email", v)
 	return q
 }
-func (q *ServiceMember) IfParentAesHexPhoneEq(v string) *ServiceMember {
+func (q *ServiceMemberQuery) IfParentAesHexPhoneEq(v string) *ServiceMemberQuery {
 	q.q.IfParent("aes_hex_phone", v)
 	return q
 }
 
 // Insert draft. The auto PK is settable too: Save takes it as the update key.
-func (q *ServiceMember) SetSeq(v int64) *ServiceMember { q.q.Set("seq", v); return q }
-func (q *ServiceMember) SetSeqExpr(frag string, binds ...any) *ServiceMember {
+func (q *ServiceMemberQuery) SetSeq(v int64) *ServiceMemberQuery { q.q.Set("seq", v); return q }
+func (q *ServiceMemberQuery) SetSeqExpr(frag string, binds ...any) *ServiceMemberQuery {
 	q.q.SetExpr("seq", frag, binds...)
 	return q
 }
-func (q *ServiceMember) SetServiceSeq(v int64) *ServiceMember { q.q.Set("service_seq", v); return q }
-func (q *ServiceMember) SetServiceSeqExpr(frag string, binds ...any) *ServiceMember {
+func (q *ServiceMemberQuery) SetServiceSeq(v int64) *ServiceMemberQuery {
+	q.q.Set("service_seq", v)
+	return q
+}
+func (q *ServiceMemberQuery) SetServiceSeqExpr(frag string, binds ...any) *ServiceMemberQuery {
 	q.q.SetExpr("service_seq", frag, binds...)
 	return q
 }
-func (q *ServiceMember) SetUserSeq(v int64) *ServiceMember { q.q.Set("user_seq", v); return q }
-func (q *ServiceMember) SetUserSeqExpr(frag string, binds ...any) *ServiceMember {
+func (q *ServiceMemberQuery) SetUserSeq(v int64) *ServiceMemberQuery {
+	q.q.Set("user_seq", v)
+	return q
+}
+func (q *ServiceMemberQuery) SetUserSeqExpr(frag string, binds ...any) *ServiceMemberQuery {
 	q.q.SetExpr("user_seq", frag, binds...)
 	return q
 }
-func (q *ServiceMember) PlusSeq(v int64) *ServiceMember        { q.q.Plus("seq", v); return q }
-func (q *ServiceMember) MinusSeq(v int64) *ServiceMember       { q.q.Minus("seq", v); return q }
-func (q *ServiceMember) PlusServiceSeq(v int64) *ServiceMember { q.q.Plus("service_seq", v); return q }
-func (q *ServiceMember) MinusServiceSeq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) PlusSeq(v int64) *ServiceMemberQuery  { q.q.Plus("seq", v); return q }
+func (q *ServiceMemberQuery) MinusSeq(v int64) *ServiceMemberQuery { q.q.Minus("seq", v); return q }
+func (q *ServiceMemberQuery) PlusServiceSeq(v int64) *ServiceMemberQuery {
+	q.q.Plus("service_seq", v)
+	return q
+}
+func (q *ServiceMemberQuery) MinusServiceSeq(v int64) *ServiceMemberQuery {
 	q.q.Minus("service_seq", v)
 	return q
 }
-func (q *ServiceMember) PlusUserSeq(v int64) *ServiceMember  { q.q.Plus("user_seq", v); return q }
-func (q *ServiceMember) MinusUserSeq(v int64) *ServiceMember { q.q.Minus("user_seq", v); return q }
+func (q *ServiceMemberQuery) PlusUserSeq(v int64) *ServiceMemberQuery {
+	q.q.Plus("user_seq", v)
+	return q
+}
+func (q *ServiceMemberQuery) MinusUserSeq(v int64) *ServiceMemberQuery {
+	q.q.Minus("user_seq", v)
+	return q
+}
 
 // ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
-func (q *ServiceMember) OnDuplicateSetServiceSeq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) OnDuplicateSetServiceSeq(v int64) *ServiceMemberQuery {
 	q.q.OnDuplicate("service_seq", v)
 	return q
 }
-func (q *ServiceMember) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *ServiceMember {
+func (q *ServiceMemberQuery) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *ServiceMemberQuery {
 	q.q.OnDuplicateExpr("service_seq", frag, binds...)
 	return q
 }
-func (q *ServiceMember) OnDuplicateSetUserSeq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) OnDuplicateSetUserSeq(v int64) *ServiceMemberQuery {
 	q.q.OnDuplicate("user_seq", v)
 	return q
 }
-func (q *ServiceMember) OnDuplicateSetUserSeqExpr(frag string, binds ...any) *ServiceMember {
+func (q *ServiceMemberQuery) OnDuplicateSetUserSeqExpr(frag string, binds ...any) *ServiceMemberQuery {
 	q.q.OnDuplicateExpr("user_seq", frag, binds...)
 	return q
 }
-func (q *ServiceMember) OnDuplicatePlusServiceSeq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) OnDuplicatePlusServiceSeq(v int64) *ServiceMemberQuery {
 	q.q.OnDuplicatePlus("service_seq", v)
 	return q
 }
-func (q *ServiceMember) OnDuplicateMinusServiceSeq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) OnDuplicateMinusServiceSeq(v int64) *ServiceMemberQuery {
 	q.q.OnDuplicateMinus("service_seq", v)
 	return q
 }
-func (q *ServiceMember) OnDuplicatePlusUserSeq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) OnDuplicatePlusUserSeq(v int64) *ServiceMemberQuery {
 	q.q.OnDuplicatePlus("user_seq", v)
 	return q
 }
-func (q *ServiceMember) OnDuplicateMinusUserSeq(v int64) *ServiceMember {
+func (q *ServiceMemberQuery) OnDuplicateMinusUserSeq(v int64) *ServiceMemberQuery {
 	q.q.OnDuplicateMinus("user_seq", v)
 	return q
 }
-func (q *ServiceMember) OnDuplicateSetAll() *ServiceMember {
+func (q *ServiceMemberQuery) OnDuplicateSetAll() *ServiceMemberQuery {
 	q.q.OnDuplicateSetAll("seq", "seq")
 	return q
 }
 
 // Terminals.
-func (q *ServiceMember) One(ctx context.Context, ex orm.Exec) (*ServiceMemberRow, error) {
+func (q *ServiceMemberQuery) One() (*ServiceMemberRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "one"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil || len(rows.Data) == 0 {
@@ -982,13 +1093,42 @@ func (q *ServiceMember) One(ctx context.Context, ex orm.Exec) (*ServiceMemberRow
 	return scanServiceMember(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *ServiceMember) All(ctx context.Context, ex orm.Exec) (*orm.Collection[ServiceMemberRow], error) {
+func (q *ServiceMemberQuery) All() (*orm.Collection[ServiceMemberRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "all"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
 	}
 	return collectServiceMember(rows, q.keyFn), nil
+}
+
+// Get is the preferred single-row terminal. One is kept as a compatibility alias.
+func (q *ServiceMemberQuery) Get() (*ServiceMemberRow, error) {
+	return q.One()
+}
+
+// Gets is the preferred collection terminal. All is kept as a compatibility alias.
+func (q *ServiceMemberQuery) Gets() (*orm.Collection[ServiceMemberRow], error) {
+	return q.All()
+}
+
+// GetsBySeq applies seq = v and runs the collection terminal.
+func (q *ServiceMemberQuery) GetsBySeq(v int64) (*orm.Collection[ServiceMemberRow], error) {
+	return q.Seq(v).Gets()
+}
+
+// GetsByServiceSeq applies service_seq = v and runs the collection terminal.
+func (q *ServiceMemberQuery) GetsByServiceSeq(v int64) (*orm.Collection[ServiceMemberRow], error) {
+	return q.ServiceSeq(v).Gets()
+}
+
+// GetsByUserSeq applies user_seq = v and runs the collection terminal.
+func (q *ServiceMemberQuery) GetsByUserSeq(v int64) (*orm.Collection[ServiceMemberRow], error) {
+	return q.UserSeq(v).Gets()
 }
 
 func collectServiceMember(rows *orm.Rows, keyFn func(*ServiceMemberRow) orm.Key) *orm.Collection[ServiceMemberRow] {
@@ -1004,48 +1144,115 @@ func collectServiceMember(rows *orm.Rows, keyFn func(*ServiceMemberRow) orm.Key)
 	return c
 }
 
-func (q *ServiceMember) Count(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceMemberQuery) Count() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
 }
-func (q *ServiceMember) SumSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+
+// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
+func (q *ServiceMemberQuery) GetCount() (int64, error) {
+	return q.Count()
+}
+
+// GetCountBySeq applies seq = v and runs the scalar count terminal.
+func (q *ServiceMemberQuery) GetCountBySeq(v int64) (int64, error) {
+	return q.Seq(v).GetCount()
+}
+
+// GetCountByServiceSeq applies service_seq = v and runs the scalar count terminal.
+func (q *ServiceMemberQuery) GetCountByServiceSeq(v int64) (int64, error) {
+	return q.ServiceSeq(v).GetCount()
+}
+
+// GetCountByUserSeq applies user_seq = v and runs the scalar count terminal.
+func (q *ServiceMemberQuery) GetCountByUserSeq(v int64) (int64, error) {
+	return q.UserSeq(v).GetCount()
+}
+
+// GetsCount returns one row per group_by value. The grouped columns are in the
+// row and the aggregate is available as Extra("row_count").
+func (q *ServiceMemberQuery) GetsCount() (*orm.Collection[ServiceMemberRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "group_count"
+	rows, err := orm.Query(ctx, ex, q.q.Req)
+	if err != nil {
+		return nil, err
+	}
+	return collectServiceMember(rows, q.keyFn), nil
+}
+func (q *ServiceMemberQuery) SumSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceMember) AvgSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *ServiceMemberQuery) AvgSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceMember) SumServiceSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *ServiceMemberQuery) SumServiceSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceMember) AvgServiceSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *ServiceMemberQuery) AvgServiceSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceMember) SumUserSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *ServiceMemberQuery) SumUserSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceMember) AvgUserSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *ServiceMemberQuery) AvgUserSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceMember) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceMemberQuery) CountDistinctSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1053,7 +1260,11 @@ func (q *ServiceMember) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int6
 }
 
 // MinSeq is nil when no row matches.
-func (q *ServiceMember) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceMemberQuery) MinSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1065,7 +1276,11 @@ func (q *ServiceMember) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error)
 }
 
 // MaxSeq is nil when no row matches.
-func (q *ServiceMember) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceMemberQuery) MaxSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1075,7 +1290,11 @@ func (q *ServiceMember) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error)
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *ServiceMember) CountDistinctServiceSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceMemberQuery) CountDistinctServiceSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1083,7 +1302,11 @@ func (q *ServiceMember) CountDistinctServiceSeq(ctx context.Context, ex orm.Exec
 }
 
 // MinServiceSeq is nil when no row matches.
-func (q *ServiceMember) MinServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceMemberQuery) MinServiceSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1095,7 +1318,11 @@ func (q *ServiceMember) MinServiceSeq(ctx context.Context, ex orm.Exec) (*int64,
 }
 
 // MaxServiceSeq is nil when no row matches.
-func (q *ServiceMember) MaxServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceMemberQuery) MaxServiceSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1105,7 +1332,11 @@ func (q *ServiceMember) MaxServiceSeq(ctx context.Context, ex orm.Exec) (*int64,
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *ServiceMember) CountDistinctUserSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceMemberQuery) CountDistinctUserSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1113,7 +1344,11 @@ func (q *ServiceMember) CountDistinctUserSeq(ctx context.Context, ex orm.Exec) (
 }
 
 // MinUserSeq is nil when no row matches.
-func (q *ServiceMember) MinUserSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceMemberQuery) MinUserSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1125,7 +1360,11 @@ func (q *ServiceMember) MinUserSeq(ctx context.Context, ex orm.Exec) (*int64, er
 }
 
 // MaxUserSeq is nil when no row matches.
-func (q *ServiceMember) MaxUserSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceMemberQuery) MaxUserSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1137,12 +1376,23 @@ func (q *ServiceMember) MaxUserSeq(ctx context.Context, ex orm.Exec) (*int64, er
 }
 
 // RawAll runs the statement given to Raw and returns its rows by column name (values as the driver gives them, no codec).
-func (q *ServiceMember) RawAll(ctx context.Context, ex orm.Exec) ([]map[string]any, error) {
+func (q *ServiceMemberQuery) RawAll() ([]map[string]any, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "raw"
 	return orm.RawAll(ctx, ex, q.q.Req)
 }
 
-func (q *ServiceMember) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm.Page[ServiceMemberRow], error) {
+func (q *ServiceMemberQuery) Paginate(page, per int) (*orm.Page[ServiceMemberRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	if per <= 0 {
+		return nil, &ir.Error{Code: "IR_INVALID", Msg: "per must be positive"}
+	}
 	if page < 1 {
 		page = 1
 	}
@@ -1156,49 +1406,74 @@ func (q *ServiceMember) Paginate(ctx context.Context, ex orm.Exec, page, per int
 	return &orm.Page[ServiceMemberRow]{Items: collectServiceMember(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
-func (q *ServiceMember) Insert(ctx context.Context, ex orm.Exec) (*ServiceMemberRow, error) {
+func (q *ServiceMemberQuery) Insert() (*ServiceMemberRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "insert"
 	id, _, err := orm.Write(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
 	}
-	return NewServiceMember().SeqEq(int64(id)).One(ctx, ex)
+	return ServiceMember().Bind(ctx, ex).SeqEq(int64(id)).One()
 }
 
 // Save updates the other assigned columns when SetSeq was called (and
 // returns the re-read row); otherwise it inserts like Insert.
-func (q *ServiceMember) Save(ctx context.Context, ex orm.Exec) (*ServiceMemberRow, error) {
+func (q *ServiceMemberQuery) Save() (*ServiceMemberRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	pk, ok := q.q.MovePKToWhere("seq")
 	if !ok {
-		return q.Insert(ctx, ex)
+		return q.Insert()
 	}
 	q.q.Req.IR.Kind = "update"
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return NewServiceMember().SeqEq(pk.(int64)).One(ctx, ex)
+	return ServiceMember().Bind(ctx, ex).SeqEq(pk.(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *ServiceMember) Update(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceMemberQuery) Update() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "update"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // Delete removes every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *ServiceMember) Delete(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceMemberQuery) Delete() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "delete"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
-func (q *ServiceMember) SQL(ctx context.Context, ex orm.Exec) (*orm.Statement, error) {
+func (q *ServiceMemberQuery) SQL() (*orm.Statement, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "all"
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *ServiceMember) OneBySeq(ctx context.Context, ex orm.Exec, v int64) (*ServiceMemberRow, error) {
-	return q.SeqEq(v).One(ctx, ex)
+func (q *ServiceMemberQuery) OneBySeq(v int64) (*ServiceMemberRow, error) {
+	return q.SeqEq(v).One()
+}
+
+// GetBySeq is the preferred primary-key lookup. OneBySeq is kept as a compatibility alias.
+func (q *ServiceMemberQuery) GetBySeq(v int64) (*ServiceMemberRow, error) {
+	return q.OneBySeq(v)
 }

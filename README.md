@@ -1,25 +1,41 @@
 # orm — one grammar, three languages, one compiler
 
-A compatibility-style fluent query grammar for **Go, PHP and Rust** that compiles through a single Go engine
+A schema-driven fluent query grammar for **Go, PHP and Rust** that compiles through a single Go engine
 into database plans and executes on each language's native driver. Version 0.0.1.
 
 ```php
-$battles = (new Battle)->serviceSeqEq(7)->isCloseEq(false)
-    ->and(fn(BattleWhere $w) => $w->isDisplayEq(true)->or()->isAlldayEq(true))
-    ->relationUser(new User)->orderBySeqDesc()->limit(0, 20)->all($db);
+$battles = (new Battle)->bind($db)->serviceSeq(7)->isClose(false)
+    ->and(fn(BattleWhere $w) => $w->isDisplay(true)->or()->isAllday(true))
+    ->relationUser(new User)->orderBySeqDesc()->limit(0, 20)->gets();
 ```
 ```go
-battles, err := gen.NewBattle().ServiceSeqEq(7).IsCloseEq(false).
-    And(func(w *gen.BattleWhere) { w.IsDisplayEq(true).Or().IsAlldayEq(true) }).
-    RelationUser(gen.NewUser()).OrderBySeqDesc().Limit(0, 20).All(ctx, db)
+battles, err := gen.Battle().Bind(ctx, db).ServiceSeq(7).IsClose(false).
+    And(func(w *gen.BattleWhere) { w.IsDisplay(true).Or().IsAllday(true) }).
+    RelationUser(gen.User()).OrderBySeqDesc().Limit(0, 20).Gets()
 ```
 ```rust
-let battles = Battle::new().service_seq_eq(7).is_close_eq(false)
-    .and(|w| w.is_display_eq(true).or().is_allday_eq(true))
-    .relation_user(User::new()).order_by_seq_desc().limit(0, 20).all(&db).await?;
+let battles = Battle::new().bind(&db).service_seq(7).is_close(false)
+    .and(|w| w.is_display(true).or().is_allday(true))
+    .relation_user(User::new()).order_by_seq_desc().limit(0, 20).gets().await?;
 ```
 The three chains produce the same SQL, the same binds and the same results — checked byte for byte by
-`tests/conformance` (40 vectors) and `ormgen tokens`.
+`tests/conformance` (56 vectors) and `ormgen tokens`.
+
+For a direct finder, the same `getsBy` token is generated in all three clients:
+
+```php
+$battles = (new Battle)->bind($db)->getsByServiceSeq(7);
+```
+```go
+battles, err := gen.Battle().Bind(ctx, db).GetsByServiceSeq(7)
+```
+```rust
+let battles = Battle::new().bind(&db).gets_by_service_seq(7).await?;
+```
+`getBy` is the one-row form for a primary or unique key; `getCountBy` is the scalar count form.
+`getsBy<Field>` and `getCountBy<Field>` are root-table equality shortcuts; index declarations affect the database plan, not whether the shortcut exists. For multiple predicates, keep the same root query and chain the columns before `gets` or `getCount`.
+
+`gen.Battle()` is Go's query factory and returns `*gen.BattleQuery`. PHP and Rust use `new Battle` and `Battle::new()` for the same query head. Creation, ownership and asynchronous execution follow each language; the query operations and semantics are shared. `get` returns one row, `gets` returns a collection. `one/all` remain compatibility aliases. Bind the executor to the root query before execution; terminals receive only values. The root binding runs every join and relation step, and loaded rows inherit it. A new `bind` selects another database or transaction without changing the query predicates. Go binds its context with the executor. Unbound queries and finished transactions return `CONFIG`.
 
 ## How it works
 - **Schema**: one hand-written Mermaid `erDiagram` (`schema/*.mmd`) → `ormgen build` → `schema.json` (manifest with `schema_hash`).
@@ -43,6 +59,8 @@ go run ./tests/conformance/check run                                # 3 language
 ```
 
 ## Documents
+[**공통 인터페이스**](docs/interfaces.md) · [구현 대조표](docs/interface-implementation.md) · [자동 검사](tests/interfaces/README.md) — 자료구조·수명·공개 API와 검증 상태.
+
 [**docs/usage.md**](docs/usage.md) — start here: schema, generation, connecting, querying, writing, relations, the three databases, operations.
 
 `examples/thin-slice` (same statement in three languages) · `examples/complex` (joins, groups, three relation levels, aggregates — identical JSON in three languages) · `docs/dsl.md` grammar · `docs/schema.md` Mermaid dialect, import, validate · `docs/protocol.md` IR/Plan ·

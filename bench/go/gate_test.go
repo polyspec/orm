@@ -80,15 +80,17 @@ func TestHotPathGate(t *testing.T) {
 		{
 			name:   "pk",
 			native: func() { mustNoErr(t, func() error { _, err := pkGet(ctx, sqlDB, 42); return err }) },
-			client: func() { mustNoErr(t, func() error { _, err := gen.NewBattle().OneBySeq(ctx, db, 42); return err }) },
-			bound:  pkBound,
+			client: func() {
+				mustNoErr(t, func() error { _, err := gen.Battle().Bind(ctx, db).GetBySeq(42); return err })
+			},
+			bound: pkBound,
 		},
 		{
 			name:   "list100",
 			native: func() { mustNoErr(t, func() error { _, err := list100(ctx, sqlDB, 7); return err }) },
 			client: func() {
 				mustNoErr(t, func() error {
-					_, err := gen.NewBattle().ServiceSeqEq(7).IsCloseEq(false).OrderBySeqDesc().Limit(0, 100).All(ctx, db)
+					_, err := gen.Battle().ServiceSeq(7).IsClose(false).OrderBySeqDesc().Limit(0, 100).Bind(ctx, db).Gets()
 					return err
 				})
 			},

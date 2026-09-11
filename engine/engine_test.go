@@ -181,6 +181,7 @@ func TestAggregates(t *testing.T) {
 		`"kind":"max","entity":"battle","agg":"like_count"`:                                                                                       "SELECT MAX(`a`.`like_count`) FROM `battle` AS `a`",
 		`"kind":"count_distinct","entity":"battle","agg":"user_seq"`:                                                                              "SELECT COUNT(DISTINCT `a`.`user_seq`) FROM `battle` AS `a`",
 		`"kind":"count","entity":"battle","group_by":["service_seq"],"n_params":1,"having":{"items":[{"pred":{"expr":"COUNT(*) > ?","ps":[0]}}]}`: "SELECT COUNT(*) FROM (SELECT 1 FROM `battle` AS `a` GROUP BY `a`.`service_seq` HAVING (COUNT(*) > ?)) AS `orm_g`",
+		`"kind":"group_count","entity":"battle","group_by_expr":[{"expr":"ROUND(` + "`like_count`" + `)","as":"bucket"}]`:                         "SELECT ROUND(`a`.`like_count`) AS `a__bucket`, COUNT(*) AS `a__row_count` FROM `battle` AS `a` GROUP BY ROUND(`a`.`like_count`)",
 		`"kind":"all","entity":"battle","columns":{"mode":"none"},"group_by":["service_seq"],"n_params":1,"having":{"items":[{"pred":{"column":"service_seq","op":"gt","p":0}}]},"order":[{"column":"service_seq","desc":false}],"limit":{"offset":0,"count":2}`: "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_module_seq` AS `a__service_module_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `battle` AS `a` GROUP BY `a`.`service_seq` HAVING `a`.`service_seq` > ? ORDER BY `a`.`service_seq` ASC LIMIT 0, 2",
 	}
 	for irs, want := range cases {
@@ -191,6 +192,8 @@ func TestAggregates(t *testing.T) {
 	}
 	for irs, code := range map[string]string{
 		`"kind":"all","entity":"battle","n_params":1,"having":{"items":[{"pred":{"column":"seq","op":"gt","p":0}}]}`: "IR_INVALID: having needs group_by",
+		`"kind":"group_count","entity":"battle","group_by_expr":[{"expr":"ROUND(` + "`nope`" + `)","as":"bucket"}]`:  "COLUMN_UNKNOWN",
+		`"kind":"group_count","entity":"battle","group_by_expr":[{"expr":"ROUND(like_count)","as":""}]`:              "IR_INVALID",
 		`"kind":"min","entity":"battle","agg":"aes_hex_email"`:                                                       "OPERATOR_NOT_ALLOWED",
 		`"kind":"max","entity":"battle","agg":"nope"`:                                                                "COLUMN_UNKNOWN",
 	} {

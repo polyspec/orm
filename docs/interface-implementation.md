@@ -1,26 +1,28 @@
 # 공통 인터페이스 구현 대조표
 
-기준: [공통 인터페이스 v1](interfaces.md), [기계 명세](../contracts/interfaces.json), [생성 도표](interfaces-model.md). 적용과 검증을 분리한다. 기존 적합성 테스트 통과만으로 전체 계약의 완료를 표시하지 않는다.
+기준: [공통 인터페이스 v1](interfaces.md), [기계 명세](../contracts/interfaces.json), [생성 도표](interfaces-model.md). 재현 명령과 검사 범위는 [검사 안내](../tests/interfaces/README.md)에 있다.
 
-| 계약 | 대상 | 적용 내용 | 검증 / 현재 상태 |
-|---|---|---|---|
-| IF-01, IF-10, IF-18, IF-32 | 스키마·Request·Compiler·Plan | 공통 엔진·스키마 사용, 알 수 없는 IR 필드 거부 | 엔진·스키마 검사 통과. 공통 필드 대응 검사 보강 중 |
-| IF-03, IF-09 | 생성자·Query·Row 분리 | Go `gen.Battle() -> *BattleQuery`, PHP `new Battle`, Rust `Battle::new()` | 네이티브 선언 검사 통과 |
-| IF-05 | 쿼리 재사용 | Rust 터미널이 쿼리를 빌리고 실행 결과에 파라미터 복사 | count → gets → count의 3언어·3DB 재검증 중 |
-| IF-06, IF-07 | attach 독립성 | 중첩 트리 복사, ON·WHERE·HAVING·ifParent 인덱스 이동 | Go 전체 필드 복사 검사 통과. 공통 상태 벡터 재검증 중 |
-| IF-08 | deferred error | 첫 오류 보존, 자식 오류 전달, 반복 실행에도 실패 | 반복 오류 벡터 재검증 중 |
-| IF-11, IF-12 | 값 기반 터미널·finder | executor 인자 제거, 루트 equality finder 유지 | 생성 인터페이스·네이티브 선언 검사 통과. 실행 재검증 중 |
-| IF-13 ~ IF-17 | Binding·Tx·행 실행 | 루트 Binding과 행 상속, 종료 Tx 거부, Rust 취소 시 정리 | Go 통합 검사 통과. PHP·Rust·3DB 실행 재검증 중 |
-| IF-19, IF-20, IF-24 | 단계·관계·projection | 관계·pagination·flatten 벡터, 읽기 메타데이터 복사 | 기존 벡터와 새 행 상태 벡터 재검증 중 |
-| IF-21, IF-22 | 현재 값과 dirty | setter 값 유지, 최초 컬럼 순서 보존, 성공 시에만 dirty 해제 | 성공·실패·재실행 벡터 재검증 중 |
-| IF-23, IF-29 | 행 identity·optimistic 오류 | 미조회 행 CONFIG, 조회 원본 버전 별도 보관, 버전 미조회 CONFIG | 원본 버전과 현재 값 분리 벡터 추가 중 |
-| IF-02, IF-24 | 미조회·assigned 컬럼 | has·relLoaded, 미조회 컬럼 setter 후 결과 변환 포함 | 행 상태 벡터 재검증 중 |
-| IF-25, IF-26 | Collection·typed Key | 정수/문자열 키 구별, 중복 키 위치 유지, entries 제공 | 혼합 키·반복·변환 충돌 벡터 재검증 중 |
-| IF-27 | Page | 공통 다섯 필드, per=0 거부 | 선언·상태 검사 보강 중 |
-| IF-28, IF-30, IF-31 | 설정·코덱·hook | 기존 설정·코덱·마스킹·statement 순서 검사 유지 | 새 변경을 포함한 전체 실행 재검증 중 |
-| IF-33 | 생성 재현성 | 명세에서 네이티브 인터페이스와 도표 생성 | 생성 drift·CI 연결 작업 중 |
-| IF-34 | PHP adapter | 값 인자 guard, brace-call의 executor 인자 제거 | 최신 생성물로 compat 재검증 중 |
+2026-09-12 로컬 검증: **56개 시나리오 × Go·PHP·Rust × MySQL·PostgreSQL·SQLite 일치**. 공통 입력·출력, 저장 필드, 25개 wire 레코드, 네이티브 선언과 소스 변경 반례를 별도로 검사한다. TypeScript는 미구현이다.
 
-현재 네이티브 선언 검사는 Go AST, PHP Reflection, Rust syn으로 클래스·타입·필드·메서드·소유 타입·시그니처를 추출한다. 공통 메서드 규칙을 먼저 대조하고 전체 심볼 목록의 누락·추가·변경을 검사한다. 각 언어의 소스를 직접 바꾸는 6개 반례도 검출한다. 독립적인 심볼 목록만으로 언어 간 구조 대응을 증명하지 않으며, 공통 필드·상태 검사를 함께 적용한다.
+| 계약 | 구현과 검증 |
+|---|---|
+| IF-01, IF-10, IF-18, IF-32 | 공통 스키마·컴파일러와 Request/Plan 25개 레코드. Go/Rust 선언 대조, PHP 컴파일 경계 재귀 검사, 미지 IR 필드 거부 |
+| IF-03, IF-09 | Go `gen.Battle() -> *BattleQuery`, PHP `new Battle`, Rust `Battle::new()`. Query와 Row 타입 분리, 생성 인터페이스 컴파일 |
+| IF-05 | Rust 터미널이 query를 빌리며 실행 결과에 params를 복사. `interface_query_reuse`: count → gets → count |
+| IF-06, IF-07 | 자식 트리 복사, ON·WHERE·HAVING·중첩·ifParent의 복사본 인덱스 이동. Go 전 필드 복사 검사, `interface_attach` |
+| IF-08 | 첫 오류 보존, 자식 오류 전달. `interface_error`: 같은 잘못된 요청이 반복 실패 |
+| IF-11, IF-12 | 값 기반 터미널·루트 finder. `bound_count_finder`, `root_finder_join_relation`, 생성 시그니처·토큰 비교 |
+| IF-13 ~ IF-17 | root Binding, 행·조인·관계 상속, 종료 Tx 거부. `unbound_terminal`, `finished_transaction`, `bound_transaction_rollback`, Go 취소·재바인딩과 Rust 취소 정리 검사 |
+| IF-19, IF-20, IF-24 | 관계 단계·pagination·flatten·hidden·projection 벡터, 변경 상태가 공유되지 않도록 조립 |
+| IF-21, IF-22 | 현재 값 유지, 최초 컬럼 순서 보존, 성공 후 dirty만 해제. `interface_row_state`, `interface_dirty_retry` |
+| IF-23, IF-29 | 미조회 행 CONFIG, 조회 원본 버전 별도 보관, 버전 미조회 CONFIG. `interface_original_version`. native PK 필드 직접 변경 후 identity 보존은 추가 검증 대상 |
+| IF-02, IF-24 | has·relLoaded, setter로 지정한 미조회 컬럼의 결과 변환. `selectNone()`은 PK+FK 유지 |
+| IF-25, IF-26 | typed key·중복 위치·entries. `interface_typed_keys`. PHP array 변환 충돌 거부; 중첩 컬렉션의 손실 없는 변환 경계는 추가 검증 대상 |
+| IF-27 | Page 다섯 필드의 선언 대조, `interface_invalid_page`와 기존 pagination 벡터 |
+| IF-28, IF-30, IF-31 | 설정·코덱 60개·AES·hook 마스킹·실제 statement 순서 검사 |
+| IF-33 | manifest 기반 인터페이스·도표 생성, 생성 drift·구조·실행 계약을 CI에 연결 |
+| IF-34 | PHP 값 인자 guard와 동적 호환층. PHP integration·compat 검사 |
 
-전체 완료 조건은 구조 검사, 생성 인터페이스 컴파일, 실행 적합성, 수명 검사와 문서 동기화다. GitHub CI 실제 실행과 150테이블 Rust 빌드 게이트는 [전체 체크리스트](checklist.md)의 별도 항목이다.
+구조 검사는 공통 메서드와 저장 필드를 먼저 대조하고, 전체 네이티브 선언의 누락·추가·변경을 검사한다. PHP의 기본 readonly setter 표기처럼 언어 버전이 자동 부여하는 표현은 정규화하며 명시적인 접근 제한 변경은 보존한다. 각 언어의 소스를 직접 바꾸는 6개 반례와 PHP wire 필드/형태 반례 165개도 검출한다.
+
+이 결과는 명시한 계약과 시나리오의 검증이다. 함수 본문 전체의 등가성이나 모든 입력에 대한 증명으로 확대하지 않는다. GitHub CI 실제 실행, 150테이블 Rust 빌드 게이트와 위 추가 검증 대상은 완료로 표시하지 않는다. 전체 진행 상태는 [체크리스트](checklist.md)에서 관리한다.

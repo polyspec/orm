@@ -9,6 +9,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,18 +23,18 @@ import (
 // vocabulary is every token the generators emit, in canonical form.
 type vocabulary struct {
 	heads     map[string]bool // Battle, ServiceMember …
-	terminals map[string]bool // one all count … (always take the executor → ≥1 arg)
+	terminals map[string]bool // value-only execution methods
 	navs      map[string]bool // relation names used as `<rel>(fn)` (≥1 arg; zero-arg is the row accessor)
 	other     map[string]bool // everything else
 }
 
 func buildVocabulary(m *schema.Manifest) *vocabulary {
 	v := &vocabulary{heads: map[string]bool{}, terminals: map[string]bool{}, navs: map[string]bool{}, other: map[string]bool{}}
-	for _, t := range []string{"one", "all", "count", "paginate", "insert", "update", "updateOptimistic", "delete", "deleteCascade", "save", "sql", "rawAll"} {
+	for _, t := range []string{"get", "gets", "one", "all", "count", "getCount", "getsCount", "paginate", "insert", "update", "updateOptimistic", "delete", "deleteCascade", "save", "sql", "rawAll"} {
 		v.terminals[t] = true
 	}
-	for _, t := range []string{"and", "or", "on", "where", "expr", "limit", "distinct", "selectAll", "selectNone", "selectExpr", "orderByExpr",
-		"flatten", "limitPerParent", "dropChildKey", "noCascadeDelete", "keyByFn", "transaction", "onDuplicateSetAll", "having", "raw"} {
+	for _, t := range []string{"and", "or", "on", "where", "expr", "limit", "distinct", "selectAll", "selectNone", "selectExpr", "orderByExpr", "groupByExpr",
+		"bind", "flatten", "limitPerParent", "dropChildKey", "noCascadeDelete", "keyByFn", "transaction", "onDuplicateSetAll", "having", "raw"} {
 		v.other[t] = true
 	}
 	for _, name := range m.Order {
@@ -39,11 +42,28 @@ func buildVocabulary(m *schema.Manifest) *vocabulary {
 		v.heads[pascal(e.Name)] = true
 		for _, pk := range e.PK {
 			v.terminals["oneBy"+pascal(pk)] = true
+			v.terminals["getBy"+pascal(pk)] = true
+		}
+		seenUnique := map[string]bool{}
+		for _, cols := range e.Unique {
+			key := strings.Join(cols, "\x1f")
+			if seenUnique[key] || len(cols) == 0 || (len(cols) == 1 && cols[0] == e.PK[0]) {
+				continue
+			}
+			seenUnique[key] = true
+			v.terminals["getBy"+finderMethod(cols)] = true
 		}
 		for _, c := range e.Columns {
 			f := pascal(c.Name)
+			if allowed(c, "eq") {
+				v.terminals["getsBy"+f] = true
+				v.terminals["getCountBy"+f] = true
+			}
 			for _, o := range opsFor(c) {
 				v.other[lowerFirst(f)+o.Suffix] = true
+				if o.Op == "eq" {
+					v.other[lowerFirst(f)] = true
+				}
 			}
 			for _, o := range colOpsFor(c) {
 				v.other[lowerFirst(f)+o.Suffix] = true
@@ -114,7 +134,8 @@ var (
 	reCallPHP  = regexp.MustCompile(`(->|::)\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(`) // php: `.` is string concatenation
 	reHeadPHP  = regexp.MustCompile(`\bnew\s+([A-Z][A-Za-z0-9_]*)`)
 	reHeadRust = regexp.MustCompile(`\b([A-Z][A-Za-z0-9_]*)::new\s*\(`)
-	reHeadGo   = regexp.MustCompile(`\bNew([A-Z][A-Za-z0-9_]*)\s*\(`)
+	reHeadGo   = regexp.MustCompile(`\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?([A-Z][A-Za-z0-9_]*)\s*\(\s*\)`)
+	reGoColRef = regexp.MustCompile(`\b[A-Z][A-Za-z0-9_]*Cols\.([A-Z][A-Za-z0-9_]*)\b`)
 	reComment  = regexp.MustCompile(`(?m)//[^\n]*$|/\*[\s\S]*?\*/|(?m)^\s*#[^\n]*$`)
 )
 
@@ -127,6 +148,28 @@ type tok struct {
 func tokenize(v *vocabulary, path string, src string) []string {
 	src = reComment.ReplaceAllString(src, "")
 	lang := strings.TrimPrefix(filepath.Ext(path), ".")
+	iterationCalls := map[int]bool{}
+	if lang == "go" {
+		fs := token.NewFileSet()
+		f, _ := parser.ParseFile(fs, path, src, 0)
+		if f != nil {
+			ast.Inspect(f, func(n ast.Node) bool {
+				r, ok := n.(*ast.RangeStmt)
+				if !ok {
+					return true
+				}
+				c, ok := r.X.(*ast.CallExpr)
+				if !ok || len(c.Args) != 0 {
+					return true
+				}
+				s, ok := c.Fun.(*ast.SelectorExpr)
+				if ok && s.Sel.Name == "All" {
+					iterationCalls[fs.Position(s.Sel.Pos()).Offset] = true
+				}
+				return true
+			})
+		}
+	}
 	var toks []tok
 	var reHead, reCall *regexp.Regexp
 	switch lang {
@@ -143,10 +186,20 @@ func tokenize(v *vocabulary, path string, src string) []string {
 	for _, m := range reHead.FindAllStringSubmatchIndex(src, -1) {
 		name := src[m[2]:m[3]]
 		if v.heads[name] {
-			toks = append(toks, tok{m[0], "new " + name})
+			toks = append(toks, tok{m[0], "query " + name})
+		}
+	}
+	if lang == "go" {
+		for _, m := range reGoColRef.FindAllStringSubmatchIndex(src, -1) {
+			name := src[m[2]:m[3]]
+			toks = append(toks, tok{m[0], lowerFirst(name)})
 		}
 	}
 	for _, m := range reCall.FindAllStringSubmatchIndex(src, -1) {
+		// Collection.All used by Go's range is iteration, not a query terminal.
+		if iterationCalls[m[4]] {
+			continue
+		}
 		name := src[m[4]:m[5]]
 		var canon string
 		switch lang {
@@ -165,7 +218,7 @@ func tokenize(v *vocabulary, path string, src string) []string {
 		}
 		zeroArgs := zeroArgsAt(src, m[1])
 		switch {
-		case v.terminals[canon] && !zeroArgs, v.navs[canon] && !zeroArgs, v.other[canon]:
+		case v.terminals[canon], v.navs[canon] && !zeroArgs, v.other[canon]:
 			toks = append(toks, tok{m[0], canon})
 		}
 	}

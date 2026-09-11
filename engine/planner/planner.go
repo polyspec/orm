@@ -1,6 +1,6 @@
 // Package planner turns a validated IR request into a Plan.
 //
-// one/all/count/sum/avg/paginate over a root entity with nested joins;
+// one/all/count/group_count/sum/avg/paginate over a root entity with nested joins;
 // relations as separate IN steps bound to the parent step's rows (nested to
 // any depth, hanging off the root or a join); insert/update/delete.
 package planner
@@ -112,7 +112,7 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 	ps := &stepSet{}
 	var err error
 	switch r.Kind {
-	case "one", "all", "count", "count_distinct", "sum", "avg", "min", "max":
+	case "one", "all", "count", "group_count", "count_distinct", "sum", "avg", "min", "max":
 		_, err = p.selectStep(ps, &r.Query, r.Kind, r.Agg, nil)
 	case "paginate":
 		// main (+ its relation steps), then the count step: executors find it by role.
@@ -181,12 +181,14 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	}
 	var sb strings.Builder
 	sb.WriteString("SELECT ")
-	if q.Distinct && kind != "count" {
+	if q.Distinct && kind != "count" && kind != "group_count" {
 		sb.WriteString("DISTINCT ")
 	}
 	asm := &plan.Assemble{Entity: root.ent.Name, Alias: root.alias}
 	var outNames []string
-	groupCount := kind == "count" && len(q.GroupBy) > 0 // number of groups: wrap the grouped statement
+	idx := 0
+	groupCount := kind == "count" && (len(q.GroupBy) > 0 || len(q.GroupByExpr) > 0) // number of groups: wrap the grouped statement
+	groupRows := kind == "group_count"
 	switch kind {
 	case "count":
 		if groupCount {
@@ -206,8 +208,11 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 		sb.WriteString("MIN(" + p.qcol(root, agg) + ")")
 	case "max":
 		sb.WriteString("MAX(" + p.qcol(root, agg) + ")")
+	case "group_count":
+		if err := p.selectGroupCountList(b, &sb, root, asm, &idx, &outNames); err != nil {
+			return nil, err
+		}
 	default:
-		idx := 0
 		if err := p.selectList(b, &sb, root, asm, &idx, &outNames); err != nil {
 			return nil, err
 		}
@@ -257,14 +262,13 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 		sb.WriteString(" WHERE " + strings.Join(where, " AND "))
 	}
 	// GROUP BY applies to row selects and to the group count; scalar aggregates ignore it.
-	if len(q.GroupBy) > 0 && (kind == "one" || kind == "all" || groupCount) {
+	if (len(q.GroupBy) > 0 || len(q.GroupByExpr) > 0) && (kind == "one" || kind == "all" || groupCount || groupRows) {
 		sb.WriteString(" GROUP BY ")
-		for i, g := range q.GroupBy {
-			if i > 0 {
-				sb.WriteString(", ")
-			}
-			sb.WriteString(p.qcol(root, g))
+		group, err := p.renderGroupBy(root, q)
+		if err != nil {
+			return nil, err
 		}
+		sb.WriteString(group)
 		if q.Having != nil && len(q.Having.Items) > 0 {
 			h, err := p.renderGroup(b, root, q.Having, true)
 			if err != nil {
@@ -278,7 +282,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 		sb.Reset()
 		sb.WriteString(wrapped)
 	}
-	if kind == "one" || kind == "all" {
+	if kind == "one" || kind == "all" || kind == "group_count" {
 		if perParent > 0 {
 			// wrap: keep the output columns (same order), drop orm_rn, cut at n per parent
 			var outer strings.Builder
@@ -320,7 +324,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			asm.Columns[indexOf(asm, rc.right)].Hidden = true
 		}
 	}
-	if kind == "one" || kind == "all" {
+	if kind == "one" || kind == "all" || kind == "group_count" {
 		st.Assemble = asm
 	}
 	id := ps.add(st)
@@ -408,6 +412,69 @@ func (p *Planner) renderOrder(root *scope, q *ir.Query) (string, error) {
 		}
 	}
 	return sb.String(), nil
+}
+
+func (p *Planner) renderGroupBy(root *scope, q *ir.Query) (string, error) {
+	parts := make([]string, 0, len(q.GroupBy)+len(q.GroupByExpr))
+	for _, name := range q.GroupBy {
+		parts = append(parts, p.qcol(root, name))
+	}
+	for _, g := range q.GroupByExpr {
+		expr, err := p.renderExpr(root, g.Expr)
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, expr)
+	}
+	return strings.Join(parts, ", "), nil
+}
+
+// selectGroupCountList writes the grouped columns and row_count projection for
+// the grouped-count result shape. The result is still assembled as the root entity
+// so each language can expose the grouped columns through its normal row API.
+func (p *Planner) selectGroupCountList(b *builder, sb *strings.Builder, s *scope, asm *plan.Assemble, idx *int, outNames *[]string) error {
+	for _, name := range s.q.GroupBy {
+		col := s.ent.Column(name)
+		if col == nil {
+			return &ir.Error{Code: "COLUMN_UNKNOWN", Msg: s.ent.Name + "." + name}
+		}
+		if *idx > 0 {
+			sb.WriteString(", ")
+		}
+		expr, _ := p.D.ReadExpr(p.qcol(s, name), p.sqlStyles(col.Styles), func() string { return b.secret("aes") })
+		out := s.alias + "__" + name
+		sb.WriteString(expr + " AS " + p.D.Quote(out))
+		*outNames = append(*outNames, out)
+		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: name, Column: name, Type: col.Type, Styles: p.appStyles(col.Styles)})
+		*idx++
+	}
+	for _, g := range s.q.GroupByExpr {
+		if *idx > 0 {
+			sb.WriteString(", ")
+		}
+		expr, err := p.renderExpr(s, g.Expr)
+		if err != nil {
+			return err
+		}
+		out := s.alias + "__" + g.As
+		sb.WriteString(expr + " AS " + p.D.Quote(out))
+		*outNames = append(*outNames, out)
+		typ := "string"
+		if col := s.ent.Column(g.As); col != nil {
+			typ = col.Type
+		}
+		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: g.As, Type: typ})
+		*idx++
+	}
+	if *idx > 0 {
+		sb.WriteString(", ")
+	}
+	out := s.alias + "__row_count"
+	sb.WriteString("COUNT(*) AS " + p.D.Quote(out))
+	*outNames = append(*outNames, out)
+	asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: "row_count", Type: "i64"})
+	*idx++
+	return nil
 }
 
 // selectList writes the projection for a scope and its joins, recording the
@@ -698,7 +765,7 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 }
 
 // renderValue binds one value, wrapping it for SQL-side styles (aes/hex/ip) so
-// equality predicates on encrypted columns keep working (compatibility behaviour).
+// equality predicates on encrypted columns keep working.
 func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error) {
 	styles := p.sqlStyles(col.Styles)
 	// SQL-side stages the dialect lacks (aes/hex/ip on PostgreSQL/SQLite) are
@@ -869,7 +936,7 @@ func (p *Planner) renderAssign(b *builder, ent *schema.Entity, col *schema.Col, 
 		// the reference is table-qualified: inside ON CONFLICT DO UPDATE a bare name is ambiguous
 		return p.D.Quote(ent.Table) + "." + p.D.Quote(col.Name) + " + " + b.param(*a.PlusP), nil
 	case a.MinusP != nil:
-		// clamp at zero, as compatibility does
+		// clamp at zero
 		q := p.D.Quote(ent.Table) + "." + p.D.Quote(col.Name)
 		ph := b.param(*a.MinusP)
 		return "CASE WHEN " + q + " > " + ph + " THEN " + q + " - " + b.param(*a.MinusP) + " ELSE 0 END", nil
