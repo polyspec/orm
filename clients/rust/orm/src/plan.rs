@@ -11,6 +11,10 @@ pub struct Plan {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Step {
+    /// The plan-cache key of the plan this step belongs to (FNV-1a 64 of the IR shape bytes);
+    /// set by the executor when the plan is cached, passed to the on_query hook.
+    #[serde(skip)]
+    pub plan_id: u64,
     pub id: u32,
     pub role: String,
     pub sql: String,
@@ -112,7 +116,7 @@ pub struct Child {
     #[serde(default)]
     pub cascade: bool,
     #[serde(default)]
-    pub assemble: Option<Assemble>,
+    pub assemble: Option<std::sync::Arc<Assemble>>,
 }
 
 impl Assemble {
@@ -123,5 +127,15 @@ impl Assemble {
     /// Width of one positional row: this node's columns plus its joins'.
     pub fn total_columns(&self) -> usize {
         self.columns.len() + self.children.iter().filter_map(|c| c.assemble.as_ref()).map(|a| a.total_columns()).sum::<usize>()
+    }
+
+    /// Whether this node loads relation `rel` (a join or a relation child).
+    pub fn has_child(&self, rel: &str) -> bool {
+        self.children.iter().any(|c| c.rel == rel)
+    }
+
+    /// The child spec of relation `rel`.
+    pub fn child(&self, rel: &str) -> Option<&Child> {
+        self.children.iter().find(|c| c.rel == rel)
     }
 }
