@@ -197,7 +197,7 @@ fn raw_date(r: &MySqlRow, i: usize) -> Result<NaiveDate> {
     })
 }
 
-/// Bytes as text when they are UTF-8 (compatibility returns strings), bytes otherwise.
+/// Bytes as text when they are UTF-8, bytes otherwise.
 fn text_or_bytes(b: Vec<u8>) -> Val {
     match String::from_utf8(b) {
         Ok(s) => Val::Str(s),
@@ -220,7 +220,7 @@ pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
         "BOOLEAN" => row.try_get::<Option<bool>, _>(i)?.map(Val::Bool),
         // MySQL JSON columns arrive parsed; the json style then keeps the value as is.
         "JSON" => row.try_get::<Option<serde_json::Value>, _>(i)?.map(Val::Json),
-        // AES_DECRYPT yields BLOB; treat as text when it decodes as UTF-8 (compatibility returns strings).
+        // AES_DECRYPT yields BLOB; treat it as text when it decodes as UTF-8.
         "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" | "VARBINARY" | "BINARY" => row.try_get::<Option<Vec<u8>>, _>(i)?.map(text_or_bytes),
         _ => row.try_get::<Option<String>, _>(i)?.map(Val::Str),
     };

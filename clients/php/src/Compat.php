@@ -4,10 +4,10 @@ declare(strict_types=1);
 namespace Orm;
 
 /**
- * compatibility compatibility layer (docs/dsl.md §6 "PHP 호환층").
+ * PHP compatibility layer (docs/dsl.md §6 "PHP 호환층").
  *
  * The generated query and Where classes `use` the two traits below; their `__call`
- * translates the old `__call`-driven compatibility grammar into calls on the same Q/W
+ * translates the dynamic PHP grammar into calls on the same Q/W
  * primitives the canonical typed methods use, so an old-style chain and its canonical
  * spelling produce byte-identical IR (Req::shape()). Method names are decoded once per
  * (class, name) and memoized in a static array (opcache-friendly: the table is rebuilt
@@ -23,7 +23,7 @@ final class Compat
     private const OPS = ['Gt' => 'gt', 'Lt' => 'lt', 'Ge' => 'gte', 'Le' => 'lte', 'Eq' => 'eq', 'Ne' => 'ne', 'Lk' => 'lk', 'Lb' => 'lb', 'In' => 'in', 'Nin' => 'not_in', 'Between' => 'between'];
     private const OPS2 = ['Not In' => 'not_in', 'Is Null' => 'is_null', 'Not Null' => 'is_not_null', 'Is Not Null' => 'is_not_null'];
 
-    /** names handled by the traits' exact-name switch (compatibility's real methods) */
+    /** names handled by the traits' exact-name switch */
     private const EXACT = ['condition' => 1, 'get' => 1, 'gets' => 1, 'getAll' => 1, 'getsAll' => 1, 'getCount' => 1, 'getsCount' => 1, 'create' => 1,
         'relation' => 1, 'relations' => 1, 'oneToOne' => 1, 'oneToMany' => 1, 'match' => 1, 'alias' => 1, 'keyName' => 1, 'fetchKey' => 1,
         'parentNode' => 1, 'groupLimit' => 1, 'deleteLock' => 1, 'addColumn' => 1, 'addColumns' => 1, 'removeColumn' => 1, 'removeColumns' => 1,
@@ -77,7 +77,7 @@ final class Compat
 
     private static function unknown(string $entity, string $name): never
     {
-        throw new \BadMethodCallException("$entity: $name is neither a generated method nor a compatibility token the compat layer translates (docs/dsl.md §6)");
+        throw new \BadMethodCallException("$entity: $name is neither a generated method nor a token the compatibility layer translates (docs/dsl.md §6)");
     }
 
     // ---- names ----
@@ -141,7 +141,7 @@ final class Compat
         return ['l' => self::snake(array_slice($words, 0, $at)), 'r' => self::snake(array_slice($words, $at + 1))];
     }
 
-    /** orderByXAndYDesc / groupByXAndY: compatibility splits on the literal And; each part is a column with an optional Asc/Desc tail. @return list<array{0: string, 1: bool}> */
+    /** orderByXAndYDesc / groupByXAndY: split on the literal And; each part is a column with an optional Asc/Desc tail. @return list<array{0: string, 1: bool}> */
     private static function orderList(string $entity, array $cols, string $s, bool $dir): array
     {
         $out = [];
@@ -362,11 +362,11 @@ final class Compat
         }
     }
 
-    /** One predicate with compatibility's implicit operators: no op → = / IN (array) / IS NULL (null); Ne → != / NOT IN / IS NOT NULL; Lk/Lb → LIKE %v% (no escaping, as compatibility). */
+    /** One predicate with implicit operators: no op → = / IN (array) / IS NULL (null); Ne → != / NOT IN / IS NOT NULL; Lk/Lb → LIKE %v% (no escaping). */
     private static function pred1(W $w, string $entity, string $col, string $op, mixed $v): void
     {
         if (is_object($v) && !$v instanceof \Stringable) {
-            throw new OrmException(Code::IR_INVALID, "$entity.$col: an object value (compatibility Model::function) is not translated; use expr(fragment, binds)");
+            throw new OrmException(Code::IR_INVALID, "$entity.$col: an object value is not translated; use expr(fragment, binds)");
         }
         switch ($op) {
             case 'auto':
@@ -417,7 +417,7 @@ final class Compat
     }
 
     /**
-     * compatibility fragments bind by name (':x'); the engine binds by position. Every ':name' becomes '?'
+     * Dynamic fragments bind by name (':x'); the engine binds by position. Every ':name' becomes '?'
      * in order and its value is taken from $binds[':name'] or $binds['name']. A fragment without
      * names keeps its '?' and the binds as given.
      */
@@ -439,9 +439,9 @@ final class Compat
     }
 
     /**
-     * The relation of $parent that a compatibility child selects: target = the child's entity, the
+     * The relation of $parent that a child selects: target = the child's entity, the
      * matchAWithB pair = (left, right) of the manifest relation, alias<Name> = the relation name
-     * when the pair fits several. No match given → compatibility's default pair (child pk, <child>_<pk>).
+     * when the pair fits several. No match given → the default pair (child pk, <child>_<pk>).
      */
     public static function resolveRelation(string $parent, string $child, ?array $match, ?string $alias, ?string $kind): string
     {
@@ -474,10 +474,14 @@ final class Compat
         return $name;
     }
 
-    /** The executor of a compat terminal is its first argument: get($db), getsByX($db, v) … */
-    public static function db(array $args, string $name): Db
+    /** Dynamic terminals consume values; their connection is already bound. */
+    public static function db(array &$args, string $name, ?Db $bound = null): Db
     {
-        return $args[0] ?? null instanceof Db ? $args[0] : throw new OrmException(Code::IR_INVALID, "$name: the executor (Db or Tx) is the first argument in the compat layer");
+        if (($args[0] ?? null) instanceof Db || ($args[0] ?? null) instanceof \PDO) {
+            throw new OrmException(Code::IR_INVALID, "$name accepts values; bind the connection on the model");
+        }
+        if ($bound instanceof Tx) { $bound->assertActive(); }
+        return $bound ?? throw new OrmException(Code::CONFIG, 'bind a database or transaction before executing');
     }
 
     /** How and()/or() with a non-closure argument is meant: nothing, a paren token, a raw fragment, or a condition name. */
@@ -574,14 +578,14 @@ trait CompatWhere
     }
 }
 
-/** Compat `__call` for the generated query classes: the whole compatibility chain grammar (docs/dsl.md §6). */
+/** Compat `__call` for the generated query classes: the dynamic chain grammar (docs/dsl.md §6). */
 trait CompatQuery
 {
     /** @var array{0: string, 1: string}|null matchAWithB: (parent column, child column) of the relation this child selects */
     private ?array $cMatch = null;
-    /** alias<Name>: the relation name when the pair fits several (also compatibility's attach key, which the row does not carry) */
+    /** alias<Name>: the relation name when the pair fits several (also the attach key, which the row does not carry) */
     private ?string $cAlias = null;
-    /** matchAWithB(false): compatibility removes the child's match column → dropChildKey at attach */
+    /** matchAWithB(false): remove the child's match column → dropChildKey at attach */
     private bool $cDropKey = false;
     /** keyName<Col>: key_by at attach (relations child) or client-side keying at the root terminal */
     private ?string $cKeyName = null;
@@ -651,7 +655,8 @@ trait CompatQuery
                 $this->setExpr($ins['col'], $frag, $binds);
                 return $this;
             case 'agg':
-                return (float) $this->runScalar(Compat::db($args, $name), $ins['fn'], $ins['col']);
+                $this->terminalArity(count($args));
+                return (float) $this->runScalar(Compat::db($args, $name, $this->boundDb()), $ins['fn'], $ins['col']);
         }
         throw new \BadMethodCallException(static::class . "::$name");
     }
@@ -690,8 +695,7 @@ trait CompatQuery
     {
         $db = null;
         if ($ins['term'] !== null) {
-            $db = Compat::db($args, $name);
-            $args = array_slice($args, 1);
+            $db = Compat::db($args, $name, $this->boundDb());
         }
         if ($ins['all']) {
             $this->colMode('all');
@@ -718,30 +722,34 @@ trait CompatQuery
             null => $this,
             'one' => $this->compatGet($db),
             'all' => $this->compatGets($db),
-            'count' => $this->count($db),
+            'count' => $this->count(),
         };
     }
 
     private function compatExact(string $name, array $args): mixed
     {
+        if (in_array($name, ['get', 'gets', 'getAll', 'getsAll', 'getCount', 'getsCount', 'create'], true)) {
+            $this->terminalArity(count($args));
+        }
         switch ($name) {
             case 'condition':
                 return $this->compatConn('condition', $args[0] ?? null, $args[1] ?? null);
             case 'get':
-                return $this->compatGet(Compat::db($args, $name));
+                return $this->compatGet(Compat::db($args, $name, $this->boundDb()));
             case 'gets':
-                return $this->compatGets(Compat::db($args, $name));
+                return $this->compatGets(Compat::db($args, $name, $this->boundDb()));
             case 'getAll':
                 $this->colMode('all');
-                return $this->compatGet(Compat::db($args, $name));
+                return $this->compatGet(Compat::db($args, $name, $this->boundDb()));
             case 'getsAll':
                 $this->colMode('all');
-                return $this->compatGets(Compat::db($args, $name));
+                return $this->compatGets(Compat::db($args, $name, $this->boundDb()));
             case 'getCount':
+                Compat::db($args, $name, $this->boundDb()); return $this->count();
             case 'getsCount':
-                return $this->count(Compat::db($args, $name));
+                return $this->compatGetsCount(Compat::db($args, $name, $this->boundDb()));
             case 'create':
-                return $this->insert(Compat::db($args, $name));
+                Compat::db($args, $name, $this->boundDb()); return $this->insert();
             case 'relation':
             case 'oneToOne':
                 return $this->compatRelation($args[0] ?? null, false, null, null, $name);
@@ -850,7 +858,7 @@ trait CompatQuery
         }
     }
 
-    /** matchAWithB: (parent column, child column); $keep === false (compatibility's matchKeyRemove) drops the child's match column. Public: the parent calls it on the child. */
+    /** matchAWithB: (parent column, child column); $keep === false drops the child's match column. Public: the parent calls it on the child. */
     public function compatMatch(string $left, string $right, mixed $keep): void
     {
         $this->cMatch = [$left, $right];
@@ -859,7 +867,7 @@ trait CompatQuery
         }
     }
 
-    /** What a compatibility child chain declared for its attachment: match pair, alias, drop-key flag, key column. */
+    /** What a child chain declared for its attachment: match pair, alias, drop-key flag, key column. */
     public function compatLink(): array
     {
         return [$this->cMatch, $this->cAlias, $this->cDropKey, $this->cKeyName];
@@ -945,14 +953,24 @@ trait CompatQuery
     private function compatGet(Db $db): ?Row
     {
         $this->compatRootKey();
-        return $this->one($db);
+        return $this->one();
     }
 
-    /** compatibility gets() is null when nothing matched; all() is an empty collection. */
+    /** Compatibility gets() is null when nothing matched; canonical gets() is an empty collection. */
     private function compatGets(Db $db): ?Collection
     {
         $this->compatRootKey();
-        $c = $this->all($db);
+        $c = $this->all();
         return count($c) > 0 ? $c : null;
+    }
+
+    /** Compatibility getsCount(): grouped rows with row_count, keyed by keyName when supplied. */
+    private function compatGetsCount(Db $db): Collection
+    {
+        if (empty($this->req->ir['group_by']) && empty($this->req->ir['group_by_expr'])) {
+            throw new OrmException(Code::IR_INVALID, static::ENTITY . ': getsCount() needs groupBy()');
+        }
+        $this->compatRootKey();
+        return Collection::fromRows($this->runQuery($db, 'group_count'), Registry::row(static::ENTITY), $this->keyFn);
     }
 }

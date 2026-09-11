@@ -4,8 +4,10 @@
 package ir
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/polyspec/orm/engine/schema"
@@ -18,7 +20,7 @@ const Version = 1
 type Request struct {
 	IRVersion  int    `json:"ir_version"`
 	SchemaHash string `json:"schema_hash"`
-	Kind       string `json:"kind"` // one all count count_distinct sum avg min max paginate insert update delete
+	Kind       string `json:"kind"` // one all count group_count count_distinct sum avg min max paginate insert update delete
 	Query
 	Set         []Assign  `json:"set,omitempty"`
 	OnDuplicate []Assign  `json:"on_duplicate,omitempty"` // insert: assignments applied when the unique key already exists
@@ -33,18 +35,19 @@ type Request struct {
 
 // Query is the shape shared by the root, join children and relation children.
 type Query struct {
-	Entity    string      `json:"entity"`
-	Columns   *Columns    `json:"columns,omitempty"`
-	On        *Group      `json:"on,omitempty"` // join children only
-	Where     *Group      `json:"where,omitempty"`
-	Having    *Group      `json:"having,omitempty"` // group predicates (needs group_by); expr items may use aggregates
-	Joins     []*Join     `json:"joins,omitempty"`
-	Relations []*Relation `json:"relations,omitempty"`
-	Order     []Order     `json:"order,omitempty"`
-	GroupBy   []string    `json:"group_by,omitempty"`
-	Limit     *Limit      `json:"limit,omitempty"`
-	Distinct  bool        `json:"distinct,omitempty"`
-	ForceIdx  string      `json:"force_index,omitempty"`
+	Entity      string      `json:"entity"`
+	Columns     *Columns    `json:"columns,omitempty"`
+	On          *Group      `json:"on,omitempty"` // join children only
+	Where       *Group      `json:"where,omitempty"`
+	Having      *Group      `json:"having,omitempty"` // group predicates (needs group_by); expr items may use aggregates
+	Joins       []*Join     `json:"joins,omitempty"`
+	Relations   []*Relation `json:"relations,omitempty"`
+	Order       []Order     `json:"order,omitempty"`
+	GroupBy     []string    `json:"group_by,omitempty"`
+	GroupByExpr []GroupExpr `json:"group_by_expr,omitempty"`
+	Limit       *Limit      `json:"limit,omitempty"`
+	Distinct    bool        `json:"distinct,omitempty"`
+	ForceIdx    string      `json:"force_index,omitempty"`
 
 	// Relation-child options.
 	KeyBy           string    `json:"key_by,omitempty"`
@@ -120,6 +123,14 @@ type Order struct {
 	Column string `json:"column,omitempty"`
 	Expr   string `json:"expr,omitempty"`
 	Desc   bool   `json:"desc,omitempty"`
+}
+
+// GroupExpr is a trusted SQL expression used as a grouping key. As is the
+// output name exposed on the grouped row; backtick column names in Expr are
+// checked and qualified by the planner.
+type GroupExpr struct {
+	Expr string `json:"expr"`
+	As   string `json:"as"`
 }
 
 type Limit struct {
@@ -239,8 +250,13 @@ func OpAllowed(c *schema.Col, op string) bool {
 // Decode parses and validates a request against the manifest.
 func Decode(m *schema.Manifest, b []byte) (*Request, error) {
 	var r Request
-	if err := json.Unmarshal(b, &r); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&r); err != nil {
 		return nil, errf("IR_INVALID", "%v", err)
+	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		return nil, errf("IR_INVALID", "expected exactly one request object")
 	}
 	if err := Validate(m, &r); err != nil {
 		return nil, err
@@ -257,7 +273,7 @@ func Validate(m *schema.Manifest, r *Request) error {
 		return errf("SCHEMA_HASH_MISMATCH", "client %s, engine %s", r.SchemaHash, m.SchemaHash)
 	}
 	switch r.Kind {
-	case "one", "all", "count", "count_distinct", "sum", "avg", "min", "max", "paginate", "insert", "update", "delete", "raw":
+	case "one", "all", "count", "group_count", "count_distinct", "sum", "avg", "min", "max", "paginate", "insert", "update", "delete", "raw":
 	default:
 		return errf("IR_INVALID", "unknown kind %q", r.Kind)
 	}
@@ -284,8 +300,11 @@ func Validate(m *schema.Manifest, r *Request) error {
 			return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", r.Kind, r.Entity, r.Agg, c.Type)
 		}
 	}
-	if r.Having != nil && len(r.GroupBy) == 0 {
+	if r.Having != nil && !hasGroupBy(&r.Query) {
 		return errf("IR_INVALID", "having needs group_by")
+	}
+	if r.Kind == "group_count" && !hasGroupBy(&r.Query) {
+		return errf("IR_INVALID", "group_count needs group_by")
 	}
 	if r.Kind == "raw" {
 		if r.Raw == nil || strings.TrimSpace(r.Raw.SQL) == "" {
@@ -450,8 +469,11 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 			return err
 		}
 	}
-	if q.KeyBy != "" && ent.Column(q.KeyBy) == nil {
-		return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, q.KeyBy)
+	if q.KeyBy != "" {
+		col := ent.Column(q.KeyBy)
+		if col == nil {
+			return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, q.KeyBy)
+		}
 	}
 	if q.IfParent != nil {
 		if err := v.params([]int{q.IfParent.P}); err != nil {
@@ -474,6 +496,22 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 			return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, g)
 		}
 	}
+	seenGroups := make(map[string]bool, len(q.GroupBy)+len(q.GroupByExpr))
+	for _, g := range q.GroupBy {
+		seenGroups[g] = true
+	}
+	for _, g := range q.GroupByExpr {
+		if strings.TrimSpace(g.Expr) == "" || strings.TrimSpace(g.As) == "" {
+			return errf("IR_INVALID", "group_by_expr needs expr and as")
+		}
+		if strings.Contains(g.Expr, "?") {
+			return errf("IR_INVALID", "group_by_expr does not accept parameters")
+		}
+		if seenGroups[g.As] {
+			return errf("IR_INVALID", "duplicate group output %s", g.As)
+		}
+		seenGroups[g.As] = true
+	}
 	if q.Limit != nil && (q.Limit.Offset < 0 || q.Limit.Count <= 0) {
 		return errf("IR_INVALID", "limit offset>=0, count>0")
 	}
@@ -483,6 +521,10 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 		}
 	}
 	return nil
+}
+
+func hasGroupBy(q *Query) bool {
+	return len(q.GroupBy) > 0 || len(q.GroupByExpr) > 0
 }
 
 func joinPath(path, rel string) string {

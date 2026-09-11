@@ -12,10 +12,11 @@ use Orm\Db;
 use Orm\Page;
 use Orm\Q;
 use Orm\Row;
+use Orm\Registry;
 use Orm\W;
 
 /** One row of user. */
-final class UserRow extends Row
+final class UserRow extends Row implements UserRowInterface
 {
     public static function entity(): string { return 'user'; }
     public static function pk(): string { return 'seq'; }
@@ -32,13 +33,13 @@ final class UserRow extends Row
     public function getSeq(mixed $default = null): int
     {
         $v = $this->col('seq');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? 0) : $v;
     }
 
     public function getName(mixed $default = null): string
     {
         $v = $this->col('name');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? '') : $v;
     }
     public function setName(string $v): static { return $this->setCol('name', $v); }
 
@@ -53,7 +54,7 @@ final class UserCols
     public static function name(): ColRef { return new ColRef('name'); }
 }
 
-/** Where builder for user: predicates, or(), and(fn), relation navigation. Unknown names go to the compatibility layer (docs/dsl.md §6). */
+/** Where builder for user: predicates, or(), and(fn), relation navigation. Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
 final class UserWhere
 {
     use CompatWhere;
@@ -71,6 +72,7 @@ final class UserWhere
     public function serviceMembers(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w->nav('service_members'))); $this->w->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w->pred('seq', 'eq', $v); return $this; }
+    public function seq(int $v): static { return $this->seqEq($v); }
     public function seqNotEq(int $v): static { $this->w->pred('seq', 'not_eq', $v); return $this; }
     public function seqGt(int $v): static { $this->w->pred('seq', 'gt', $v); return $this; }
     public function seqGte(int $v): static { $this->w->pred('seq', 'gte', $v); return $this; }
@@ -88,6 +90,7 @@ final class UserWhere
     public function seqLtCol(ColRef $ref): static { $this->w->predCol('seq', 'lt_col', $ref); return $this; }
     public function seqLteCol(ColRef $ref): static { $this->w->predCol('seq', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w->pred('name', 'eq', $v); return $this; }
+    public function name(string $v): static { return $this->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w->pred('name', 'not_eq', $v); return $this; }
     public function nameIn(array $vs): static { $this->w->predList('name', 'in', array_values($vs)); return $this; }
     public function nameNotIn(array $vs): static { $this->w->predList('name', 'not_in', array_values($vs)); return $this; }
@@ -102,14 +105,14 @@ final class UserWhere
     public function nameNotEqCol(ColRef $ref): static { $this->w->predCol('name', 'not_eq_col', $ref); return $this; }
 }
 
-/** Query over user: new User → chain → terminal($db). Unknown names go to the compatibility layer (docs/dsl.md §6). */
-final class User extends Q
+/** Query over user: new User → bind($db) → chain → terminal(). Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
+final class User extends Q implements UserInterface
 {
     use CompatQuery;
 
     public const ENTITY = 'user';
 
-    public function __construct() { parent::__construct('user'); }
+    public function __construct(Db|\PDO|null $db = null) { parent::__construct('user'); if ($db !== null) { $this->bind($db); } }
 
     // ---- WHERE ----
     /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
@@ -121,6 +124,7 @@ final class User extends Q
     public function serviceMembers(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->nav('service_members'))); $this->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w()->pred('seq', 'eq', $v); return $this; }
+    public function seq(int $v): static { return $this->seqEq($v); }
     public function seqNotEq(int $v): static { $this->w()->pred('seq', 'not_eq', $v); return $this; }
     public function seqGt(int $v): static { $this->w()->pred('seq', 'gt', $v); return $this; }
     public function seqGte(int $v): static { $this->w()->pred('seq', 'gte', $v); return $this; }
@@ -138,6 +142,7 @@ final class User extends Q
     public function seqLtCol(ColRef $ref): static { $this->w()->predCol('seq', 'lt_col', $ref); return $this; }
     public function seqLteCol(ColRef $ref): static { $this->w()->predCol('seq', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w()->pred('name', 'eq', $v); return $this; }
+    public function name(string $v): static { return $this->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w()->pred('name', 'not_eq', $v); return $this; }
     public function nameIn(array $vs): static { $this->w()->predList('name', 'in', array_values($vs)); return $this; }
     public function nameNotIn(array $vs): static { $this->w()->predList('name', 'not_in', array_values($vs)); return $this; }
@@ -185,6 +190,7 @@ final class User extends Q
     /** Group predicates after groupBy<Col>(); the closure gets the same Where builder, aggregates via expr('COUNT(*) > ?', [n]). */
     public function having(\Closure $fn): static { $fn(new UserWhere($this->havingW())); return $this; }
     public function orderByExpr(string $frag, bool $desc = false): static { $this->orderExpr($frag, $desc); return $this; }
+    public function groupByExpr(string $expr, string $as): static { $this->groupExpr($expr, $as); return $this; }
     public function limit(int $offset, int $count): static { $this->setLimit($offset, $count); return $this; }
     public function distinct(): static { $this->opt('distinct', true); return $this; }
 
@@ -227,61 +233,143 @@ final class User extends Q
     public function onDuplicateSetNameExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('name', $frag, $binds); return $this; }
 
     // ---- terminals ----
-    public function one(Db $db): ?UserRow
+    public function one(): ?UserRow
     {
+        $this->terminalArity(func_num_args());
+        $db = $this->terminalDb();
         $rows = $this->runQuery($db, 'one');
         return $rows->data === [] ? null : UserRow::fromRow($rows->data[0], $rows->asm, $rows);
     }
 
-    public function all(Db $db): Collection
+    public function all(): Collection
     {
+        $this->terminalArity(func_num_args());
+        $db = $this->terminalDb();
+        $this->compatRootKey();
         return Collection::fromRows($this->runQuery($db, 'all'), UserRow::class, $this->keyFn);
     }
 
-    public function count(Db $db): int { return (int) $this->runScalar($db, 'count'); }
-    public function sumSeq(Db $db): float { return (float) $this->runScalar($db, 'sum', 'seq'); }
-    public function avgSeq(Db $db): float { return (float) $this->runScalar($db, 'avg', 'seq'); }
-    public function countDistinctSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'seq'); }
+    /** Preferred collection terminal; all() remains available for compatibility. */
+    public function gets(): Collection
+    {
+        $this->terminalArity(func_num_args());
+        return $this->all();
+    }
+
+    /** Preferred single-row terminal; one() remains available for compatibility. */
+    public function get(): ?UserRow
+    {
+        $this->terminalArity(func_num_args());
+        return $this->one();
+    }
+
+
+    /** Applies seq = value and runs the collection terminal. */
+    public function getsBySeq(int $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->seq($value)->gets();
+    }
+
+    /** Applies name = value and runs the collection terminal. */
+    public function getsByName(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->name($value)->gets();
+    }
+
+    public function count(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count'); }
+
+    /** Preferred scalar count terminal; count() remains available as a compatibility alias. */
+    public function getCount(): int { $this->terminalArity(func_num_args()); return $this->count(); }
+
+
+    /** Applies seq = value and runs the scalar count terminal. */
+    public function getCountBySeq(int $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->seq($value)->getCount();
+    }
+
+    /** Applies name = value and runs the scalar count terminal. */
+    public function getCountByName(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->name($value)->getCount();
+    }
+
+    /** Returns one row per group_by value; row_count is available through getRowCount()/['row_count']. */
+    public function getsCount(): Collection
+    {
+        $this->terminalArity(func_num_args());
+        $db = $this->terminalDb();
+        if (empty($this->req->ir['group_by']) && empty($this->req->ir['group_by_expr'])) {
+            throw new \Orm\OrmException(\Orm\Code::IR_INVALID, static::ENTITY . ': getsCount() needs groupBy()');
+        }
+        $this->compatRootKey();
+        return Collection::fromRows($this->runQuery($db, 'group_count'), Registry::row(static::ENTITY), $this->keyFn);
+    }
+    public function sumSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'seq'); }
+    public function avgSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'seq'); }
+    public function countDistinctSeq(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'seq'); }
     /** MIN(seq); null when no rows match. */
-    public function minSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'seq'); return $v === null ? null : (int) $v; }
+    public function minSeq(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'seq'); return $v === null ? null : (int) $v; }
     /** MAX(seq); null when no rows match. */
-    public function maxSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'seq'); return $v === null ? null : (int) $v; }
-    public function countDistinctName(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'name'); }
+    public function maxSeq(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'seq'); return $v === null ? null : (int) $v; }
+    public function countDistinctName(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'name'); }
     /** MIN(name); null when no rows match. */
-    public function minName(Db $db): ?string { $v = $this->runScalar($db, 'min', 'name'); return $v === null ? null : (string) $v; }
+    public function minName(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'name'); return $v === null ? null : (string) $v; }
     /** MAX(name); null when no rows match. */
-    public function maxName(Db $db): ?string { $v = $this->runScalar($db, 'max', 'name'); return $v === null ? null : (string) $v; }
+    public function maxName(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'name'); return $v === null ? null : (string) $v; }
 
     // ---- raw root (trusted code only): {table} = this entity's table, ? bound from $binds in order ----
     public function raw(string $sql, array $binds = []): static { $this->setRaw($sql, $binds); return $this; }
     /** Runs the raw() statement; rows keyed by the driver's column names, values as PDO gives them (no codec). @return list<array<string, mixed>> */
-    public function rawAll(Db $db): array { return $this->runRaw($db); }
+    public function rawAll(): array { $this->terminalArity(func_num_args()); return $this->runRaw($this->terminalDb()); }
 
-    public function paginate(Db $db, int $page, int $per): Page
+    public function paginate(int $page, int $per): Page
     {
+        $this->terminalArity(func_num_args(), 2);
+        $db = $this->terminalDb();
+        if ($per <= 0) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'per must be positive'); }
+        $this->compatRootKey();
         [$rows, $total] = $this->runPaginate($db, $page, $per);
         return new Page(Collection::fromRows($rows, UserRow::class, $this->keyFn), $total, intdiv($total + $per - 1, $per), max(1, $page), $per);
     }
 
-    public function insert(Db $db): ?UserRow
+    public function insert(): ?UserRow
     {
+        $this->terminalArity(func_num_args());
+        $db = $this->terminalDb();
         $id = $this->runInsert($db);
-        return (new User)->seqEq((int) $id)->one($db);
+        return (new User)($db)->seqEq((int) $id)->one();
     }
 
     /** UPDATE by PK when setSeq was called (the other set columns), else INSERT; returns the re-read row. */
-    public function save(Db $db): ?UserRow
+    public function save(): ?UserRow
     {
+        $this->terminalArity(func_num_args());
+        $db = $this->terminalDb();
         [, $key] = $this->runSave($db, 'seq');
-        return (new User)->seqEq((int) $key)->one($db);
+        return (new User)($db)->seqEq((int) $key)->one();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
-    public function update(Db $db): int { return $this->runWrite($db, 'update'); }
+    public function update(): int { $this->terminalArity(func_num_args()); return $this->runWrite($this->terminalDb(), 'update'); }
     /** DELETE WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
-    public function delete(Db $db): int { return $this->runWrite($db, 'delete'); }
+    public function delete(): int { $this->terminalArity(func_num_args()); return $this->runWrite($this->terminalDb(), 'delete'); }
     /** The main statement as the all() terminal would run it, without executing; secret slots read "$SECRET". @return array{sql: string, binds: list<mixed>} */
-    public function sql(Db $db): array { return $this->runSql($db); }
+    public function sql(): array { $this->terminalArity(func_num_args()); return $this->runSql($this->terminalDb()); }
 
-    public function oneBySeq(Db $db, int $v): ?UserRow { return $this->seqEq($v)->one($db); }
+    public function oneBySeq(int $value): ?UserRow
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->seqEq($value)->one();
+    }
+    public function getBySeq(int $value): ?UserRow
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->seqEq($value)->get();
+    }
+
 }

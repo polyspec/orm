@@ -76,30 +76,46 @@ func (r *ServiceRegionRow) GetService() *ServiceRow {
 }
 
 // Update writes the columns changed through Set*.
-func (r *ServiceRegionRow) Update(ctx context.Context, ex orm.Exec) error {
+func (r *ServiceRegionRow) Update() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
 	return r.UpdateRow(ctx, ex, "", nil)
 }
 
-func (r *ServiceRegionRow) Delete(ctx context.Context, ex orm.Exec) error {
+func (r *ServiceRegionRow) Delete() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
 	return r.DeleteRow(ctx, ex)
 }
 
 // DeleteCascade deletes the loaded relations this row owns (the assemble's
 // cascade children, in load order, each row through its own DeleteCascade)
 // and then this row. A bare DB runs the whole walk in one transaction.
-func (r *ServiceRegionRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
+func (r *ServiceRegionRow) DeleteCascade() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
+	return r.deleteCascade(ctx, ex)
+}
+
+func (r *ServiceRegionRow) deleteCascade(ctx context.Context, ex orm.Exec) error {
 	return orm.InTx(ctx, ex, func(ex orm.Exec) error {
 		for _, rel := range r.Cascades() {
 			switch rel {
 			case "authors":
 				for _, child := range r.GetAuthors().All() {
-					if err := child.DeleteCascade(ctx, ex); err != nil {
+					if err := child.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
 			case "service":
 				if r.Service != nil {
-					if err := r.Service.DeleteCascade(ctx, ex); err != nil {
+					if err := r.Service.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
@@ -113,6 +129,7 @@ func (r *ServiceRegionRow) DeleteCascade(ctx context.Context, ex orm.Exec) error
 // children (same row) and its relation children (rows of later steps).
 func scanServiceRegion(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRegionRow {
 	r := &ServiceRegionRow{}
+	r.Binding = rs.Binding
 	for _, c := range a.Columns {
 		v := vals[c.Index]
 		switch c.Name {
@@ -204,23 +221,37 @@ var ServiceRegionCols = struct {
 	Name:       orm.ColRef{Column: "name"},
 }
 
-// ServiceRegion builds a statement over service_region: NewServiceRegion() → chain → terminal(ctx, db).
-type ServiceRegion struct {
-	q     *orm.Q
-	keyFn func(*ServiceRegionRow) orm.Key // KeyByFn: client-side keying of the root collection
+// ServiceRegionQuery builds a statement over service_region: ServiceRegion() → Bind(ctx, db) → chain → terminal().
+type ServiceRegionQuery struct {
+	binding orm.Binding
+	q       *orm.Q
+	keyFn   func(*ServiceRegionRow) orm.Key // KeyByFn: client-side keying of the root collection
 }
 
 // KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
-func (q *ServiceRegion) KeyByFn(fn func(*ServiceRegionRow) orm.Key) *ServiceRegion {
+func (q *ServiceRegionQuery) KeyByFn(fn func(*ServiceRegionRow) orm.Key) *ServiceRegionQuery {
 	q.keyFn = fn
 	return q
 }
 
 // Req exposes the underlying request (debugging, plan inspection).
-func (q *ServiceRegion) Req() *orm.Req { return q.q.Req }
+func (q *ServiceRegionQuery) Req() *orm.Req { return q.q.Req }
 
-func NewServiceRegion() *ServiceRegion {
-	return &ServiceRegion{q: orm.NewQ(mustEngine(), "service_region")}
+// ServiceRegion starts a query over service_region.
+func ServiceRegion() *ServiceRegionQuery {
+	return &ServiceRegionQuery{q: orm.NewQ(mustEngine(), "service_region")}
+}
+
+// Bind selects the context and pool or transaction for this query.
+func (q *ServiceRegionQuery) Bind(ctx context.Context, ex orm.Exec) *ServiceRegionQuery {
+	q.binding = orm.NewBinding(ctx, ex)
+	return q
+}
+
+// Bind selects the context and pool or transaction for this loaded row.
+func (r *ServiceRegionRow) Bind(ctx context.Context, ex orm.Exec) *ServiceRegionRow {
+	r.Binding = orm.NewBinding(ctx, ex)
+	return r
 }
 
 // ServiceRegionWhere edits one WHERE/ON group of service_region.
@@ -245,25 +276,45 @@ func (w *ServiceRegionWhere) Service(fn func(*ServiceWhere)) *ServiceRegionWhere
 }
 
 func (w *ServiceRegionWhere) SeqEq(v int64) *ServiceRegionWhere { w.w.Pred("seq", "eq", v); return w }
-func (q *ServiceRegion) SeqEq(v int64) *ServiceRegion           { q.q.W().Pred("seq", "eq", v); return q }
+func (q *ServiceRegionQuery) SeqEq(v int64) *ServiceRegionQuery {
+	q.q.W().Pred("seq", "eq", v)
+	return q
+}
+func (w *ServiceRegionWhere) Seq(v int64) *ServiceRegionWhere { return w.SeqEq(v) }
+func (q *ServiceRegionQuery) Seq(v int64) *ServiceRegionQuery { return q.SeqEq(v) }
 func (w *ServiceRegionWhere) SeqNotEq(v int64) *ServiceRegionWhere {
 	w.w.Pred("seq", "not_eq", v)
 	return w
 }
-func (q *ServiceRegion) SeqNotEq(v int64) *ServiceRegion         { q.q.W().Pred("seq", "not_eq", v); return q }
-func (w *ServiceRegionWhere) SeqGt(v int64) *ServiceRegionWhere  { w.w.Pred("seq", "gt", v); return w }
-func (q *ServiceRegion) SeqGt(v int64) *ServiceRegion            { q.q.W().Pred("seq", "gt", v); return q }
+func (q *ServiceRegionQuery) SeqNotEq(v int64) *ServiceRegionQuery {
+	q.q.W().Pred("seq", "not_eq", v)
+	return q
+}
+func (w *ServiceRegionWhere) SeqGt(v int64) *ServiceRegionWhere { w.w.Pred("seq", "gt", v); return w }
+func (q *ServiceRegionQuery) SeqGt(v int64) *ServiceRegionQuery {
+	q.q.W().Pred("seq", "gt", v)
+	return q
+}
 func (w *ServiceRegionWhere) SeqGte(v int64) *ServiceRegionWhere { w.w.Pred("seq", "gte", v); return w }
-func (q *ServiceRegion) SeqGte(v int64) *ServiceRegion           { q.q.W().Pred("seq", "gte", v); return q }
-func (w *ServiceRegionWhere) SeqLt(v int64) *ServiceRegionWhere  { w.w.Pred("seq", "lt", v); return w }
-func (q *ServiceRegion) SeqLt(v int64) *ServiceRegion            { q.q.W().Pred("seq", "lt", v); return q }
+func (q *ServiceRegionQuery) SeqGte(v int64) *ServiceRegionQuery {
+	q.q.W().Pred("seq", "gte", v)
+	return q
+}
+func (w *ServiceRegionWhere) SeqLt(v int64) *ServiceRegionWhere { w.w.Pred("seq", "lt", v); return w }
+func (q *ServiceRegionQuery) SeqLt(v int64) *ServiceRegionQuery {
+	q.q.W().Pred("seq", "lt", v)
+	return q
+}
 func (w *ServiceRegionWhere) SeqLte(v int64) *ServiceRegionWhere { w.w.Pred("seq", "lte", v); return w }
-func (q *ServiceRegion) SeqLte(v int64) *ServiceRegion           { q.q.W().Pred("seq", "lte", v); return q }
+func (q *ServiceRegionQuery) SeqLte(v int64) *ServiceRegionQuery {
+	q.q.W().Pred("seq", "lte", v)
+	return q
+}
 func (w *ServiceRegionWhere) SeqIn(vs []int64) *ServiceRegionWhere {
 	w.w.PredList("seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceRegion) SeqIn(vs []int64) *ServiceRegion {
+func (q *ServiceRegionQuery) SeqIn(vs []int64) *ServiceRegionQuery {
 	q.q.W().PredList("seq", "in", orm.Anys(vs))
 	return q
 }
@@ -271,7 +322,7 @@ func (w *ServiceRegionWhere) SeqNotIn(vs []int64) *ServiceRegionWhere {
 	w.w.PredList("seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceRegion) SeqNotIn(vs []int64) *ServiceRegion {
+func (q *ServiceRegionQuery) SeqNotIn(vs []int64) *ServiceRegionQuery {
 	q.q.W().PredList("seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -279,7 +330,7 @@ func (w *ServiceRegionWhere) SeqBetween(lo, hi int64) *ServiceRegionWhere {
 	w.w.PredList("seq", "between", []any{lo, hi})
 	return w
 }
-func (q *ServiceRegion) SeqBetween(lo, hi int64) *ServiceRegion {
+func (q *ServiceRegionQuery) SeqBetween(lo, hi int64) *ServiceRegionQuery {
 	q.q.W().PredList("seq", "between", []any{lo, hi})
 	return q
 }
@@ -287,12 +338,15 @@ func (w *ServiceRegionWhere) SeqIsNull() *ServiceRegionWhere {
 	w.w.PredNull("seq", "is_null")
 	return w
 }
-func (q *ServiceRegion) SeqIsNull() *ServiceRegion { q.q.W().PredNull("seq", "is_null"); return q }
+func (q *ServiceRegionQuery) SeqIsNull() *ServiceRegionQuery {
+	q.q.W().PredNull("seq", "is_null")
+	return q
+}
 func (w *ServiceRegionWhere) SeqIsNotNull() *ServiceRegionWhere {
 	w.w.PredNull("seq", "is_not_null")
 	return w
 }
-func (q *ServiceRegion) SeqIsNotNull() *ServiceRegion {
+func (q *ServiceRegionQuery) SeqIsNotNull() *ServiceRegionQuery {
 	q.q.W().PredNull("seq", "is_not_null")
 	return q
 }
@@ -300,7 +354,7 @@ func (w *ServiceRegionWhere) SeqEqCol(ref orm.ColRef) *ServiceRegionWhere {
 	w.w.PredCol("seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) SeqEqCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) SeqEqCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -308,7 +362,7 @@ func (w *ServiceRegionWhere) SeqNotEqCol(ref orm.ColRef) *ServiceRegionWhere {
 	w.w.PredCol("seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) SeqNotEqCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) SeqNotEqCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -316,7 +370,7 @@ func (w *ServiceRegionWhere) SeqGtCol(ref orm.ColRef) *ServiceRegionWhere {
 	w.w.PredCol("seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) SeqGtCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) SeqGtCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -324,7 +378,7 @@ func (w *ServiceRegionWhere) SeqGteCol(ref orm.ColRef) *ServiceRegionWhere {
 	w.w.PredCol("seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) SeqGteCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) SeqGteCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -332,7 +386,7 @@ func (w *ServiceRegionWhere) SeqLtCol(ref orm.ColRef) *ServiceRegionWhere {
 	w.w.PredCol("seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) SeqLtCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) SeqLtCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -340,7 +394,7 @@ func (w *ServiceRegionWhere) SeqLteCol(ref orm.ColRef) *ServiceRegionWhere {
 	w.w.PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) SeqLteCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) SeqLteCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -348,15 +402,17 @@ func (w *ServiceRegionWhere) ServiceSeqEq(v int64) *ServiceRegionWhere {
 	w.w.Pred("service_seq", "eq", v)
 	return w
 }
-func (q *ServiceRegion) ServiceSeqEq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqEq(v int64) *ServiceRegionQuery {
 	q.q.W().Pred("service_seq", "eq", v)
 	return q
 }
+func (w *ServiceRegionWhere) ServiceSeq(v int64) *ServiceRegionWhere { return w.ServiceSeqEq(v) }
+func (q *ServiceRegionQuery) ServiceSeq(v int64) *ServiceRegionQuery { return q.ServiceSeqEq(v) }
 func (w *ServiceRegionWhere) ServiceSeqNotEq(v int64) *ServiceRegionWhere {
 	w.w.Pred("service_seq", "not_eq", v)
 	return w
 }
-func (q *ServiceRegion) ServiceSeqNotEq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqNotEq(v int64) *ServiceRegionQuery {
 	q.q.W().Pred("service_seq", "not_eq", v)
 	return q
 }
@@ -364,7 +420,7 @@ func (w *ServiceRegionWhere) ServiceSeqGt(v int64) *ServiceRegionWhere {
 	w.w.Pred("service_seq", "gt", v)
 	return w
 }
-func (q *ServiceRegion) ServiceSeqGt(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqGt(v int64) *ServiceRegionQuery {
 	q.q.W().Pred("service_seq", "gt", v)
 	return q
 }
@@ -372,7 +428,7 @@ func (w *ServiceRegionWhere) ServiceSeqGte(v int64) *ServiceRegionWhere {
 	w.w.Pred("service_seq", "gte", v)
 	return w
 }
-func (q *ServiceRegion) ServiceSeqGte(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqGte(v int64) *ServiceRegionQuery {
 	q.q.W().Pred("service_seq", "gte", v)
 	return q
 }
@@ -380,7 +436,7 @@ func (w *ServiceRegionWhere) ServiceSeqLt(v int64) *ServiceRegionWhere {
 	w.w.Pred("service_seq", "lt", v)
 	return w
 }
-func (q *ServiceRegion) ServiceSeqLt(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqLt(v int64) *ServiceRegionQuery {
 	q.q.W().Pred("service_seq", "lt", v)
 	return q
 }
@@ -388,7 +444,7 @@ func (w *ServiceRegionWhere) ServiceSeqLte(v int64) *ServiceRegionWhere {
 	w.w.Pred("service_seq", "lte", v)
 	return w
 }
-func (q *ServiceRegion) ServiceSeqLte(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqLte(v int64) *ServiceRegionQuery {
 	q.q.W().Pred("service_seq", "lte", v)
 	return q
 }
@@ -396,7 +452,7 @@ func (w *ServiceRegionWhere) ServiceSeqIn(vs []int64) *ServiceRegionWhere {
 	w.w.PredList("service_seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceRegion) ServiceSeqIn(vs []int64) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqIn(vs []int64) *ServiceRegionQuery {
 	q.q.W().PredList("service_seq", "in", orm.Anys(vs))
 	return q
 }
@@ -404,7 +460,7 @@ func (w *ServiceRegionWhere) ServiceSeqNotIn(vs []int64) *ServiceRegionWhere {
 	w.w.PredList("service_seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceRegion) ServiceSeqNotIn(vs []int64) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqNotIn(vs []int64) *ServiceRegionQuery {
 	q.q.W().PredList("service_seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -412,7 +468,7 @@ func (w *ServiceRegionWhere) ServiceSeqBetween(lo, hi int64) *ServiceRegionWhere
 	w.w.PredList("service_seq", "between", []any{lo, hi})
 	return w
 }
-func (q *ServiceRegion) ServiceSeqBetween(lo, hi int64) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqBetween(lo, hi int64) *ServiceRegionQuery {
 	q.q.W().PredList("service_seq", "between", []any{lo, hi})
 	return q
 }
@@ -420,7 +476,7 @@ func (w *ServiceRegionWhere) ServiceSeqIsNull() *ServiceRegionWhere {
 	w.w.PredNull("service_seq", "is_null")
 	return w
 }
-func (q *ServiceRegion) ServiceSeqIsNull() *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqIsNull() *ServiceRegionQuery {
 	q.q.W().PredNull("service_seq", "is_null")
 	return q
 }
@@ -428,7 +484,7 @@ func (w *ServiceRegionWhere) ServiceSeqIsNotNull() *ServiceRegionWhere {
 	w.w.PredNull("service_seq", "is_not_null")
 	return w
 }
-func (q *ServiceRegion) ServiceSeqIsNotNull() *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqIsNotNull() *ServiceRegionQuery {
 	q.q.W().PredNull("service_seq", "is_not_null")
 	return q
 }
@@ -436,7 +492,7 @@ func (w *ServiceRegionWhere) ServiceSeqEqCol(ref orm.ColRef) *ServiceRegionWhere
 	w.w.PredCol("service_seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) ServiceSeqEqCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqEqCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("service_seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -444,7 +500,7 @@ func (w *ServiceRegionWhere) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceRegionWh
 	w.w.PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -452,7 +508,7 @@ func (w *ServiceRegionWhere) ServiceSeqGtCol(ref orm.ColRef) *ServiceRegionWhere
 	w.w.PredCol("service_seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) ServiceSeqGtCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqGtCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("service_seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -460,7 +516,7 @@ func (w *ServiceRegionWhere) ServiceSeqGteCol(ref orm.ColRef) *ServiceRegionWher
 	w.w.PredCol("service_seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) ServiceSeqGteCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqGteCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("service_seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -468,7 +524,7 @@ func (w *ServiceRegionWhere) ServiceSeqLtCol(ref orm.ColRef) *ServiceRegionWhere
 	w.w.PredCol("service_seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) ServiceSeqLtCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqLtCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("service_seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -476,7 +532,7 @@ func (w *ServiceRegionWhere) ServiceSeqLteCol(ref orm.ColRef) *ServiceRegionWher
 	w.w.PredCol("service_seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) ServiceSeqLteCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) ServiceSeqLteCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("service_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -484,12 +540,17 @@ func (w *ServiceRegionWhere) NameEq(v string) *ServiceRegionWhere {
 	w.w.Pred("name", "eq", v)
 	return w
 }
-func (q *ServiceRegion) NameEq(v string) *ServiceRegion { q.q.W().Pred("name", "eq", v); return q }
+func (q *ServiceRegionQuery) NameEq(v string) *ServiceRegionQuery {
+	q.q.W().Pred("name", "eq", v)
+	return q
+}
+func (w *ServiceRegionWhere) Name(v string) *ServiceRegionWhere { return w.NameEq(v) }
+func (q *ServiceRegionQuery) Name(v string) *ServiceRegionQuery { return q.NameEq(v) }
 func (w *ServiceRegionWhere) NameNotEq(v string) *ServiceRegionWhere {
 	w.w.Pred("name", "not_eq", v)
 	return w
 }
-func (q *ServiceRegion) NameNotEq(v string) *ServiceRegion {
+func (q *ServiceRegionQuery) NameNotEq(v string) *ServiceRegionQuery {
 	q.q.W().Pred("name", "not_eq", v)
 	return q
 }
@@ -497,7 +558,7 @@ func (w *ServiceRegionWhere) NameIn(vs []string) *ServiceRegionWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceRegion) NameIn(vs []string) *ServiceRegion {
+func (q *ServiceRegionQuery) NameIn(vs []string) *ServiceRegionQuery {
 	q.q.W().PredList("name", "in", orm.Anys(vs))
 	return q
 }
@@ -505,7 +566,7 @@ func (w *ServiceRegionWhere) NameNotIn(vs []string) *ServiceRegionWhere {
 	w.w.PredList("name", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *ServiceRegion) NameNotIn(vs []string) *ServiceRegion {
+func (q *ServiceRegionQuery) NameNotIn(vs []string) *ServiceRegionQuery {
 	q.q.W().PredList("name", "not_in", orm.Anys(vs))
 	return q
 }
@@ -513,12 +574,15 @@ func (w *ServiceRegionWhere) NameLike(v string) *ServiceRegionWhere {
 	w.w.Pred("name", "like", v)
 	return w
 }
-func (q *ServiceRegion) NameLike(v string) *ServiceRegion { q.q.W().Pred("name", "like", v); return q }
+func (q *ServiceRegionQuery) NameLike(v string) *ServiceRegionQuery {
+	q.q.W().Pred("name", "like", v)
+	return q
+}
 func (w *ServiceRegionWhere) NameLikeBinary(v string) *ServiceRegionWhere {
 	w.w.Pred("name", "like_binary", v)
 	return w
 }
-func (q *ServiceRegion) NameLikeBinary(v string) *ServiceRegion {
+func (q *ServiceRegionQuery) NameLikeBinary(v string) *ServiceRegionQuery {
 	q.q.W().Pred("name", "like_binary", v)
 	return q
 }
@@ -526,7 +590,7 @@ func (w *ServiceRegionWhere) NameContains(v string) *ServiceRegionWhere {
 	w.w.Pred("name", "contains", v)
 	return w
 }
-func (q *ServiceRegion) NameContains(v string) *ServiceRegion {
+func (q *ServiceRegionQuery) NameContains(v string) *ServiceRegionQuery {
 	q.q.W().Pred("name", "contains", v)
 	return q
 }
@@ -534,7 +598,7 @@ func (w *ServiceRegionWhere) NameStartsWith(v string) *ServiceRegionWhere {
 	w.w.Pred("name", "starts_with", v)
 	return w
 }
-func (q *ServiceRegion) NameStartsWith(v string) *ServiceRegion {
+func (q *ServiceRegionQuery) NameStartsWith(v string) *ServiceRegionQuery {
 	q.q.W().Pred("name", "starts_with", v)
 	return q
 }
@@ -542,7 +606,7 @@ func (w *ServiceRegionWhere) NameEndsWith(v string) *ServiceRegionWhere {
 	w.w.Pred("name", "ends_with", v)
 	return w
 }
-func (q *ServiceRegion) NameEndsWith(v string) *ServiceRegion {
+func (q *ServiceRegionQuery) NameEndsWith(v string) *ServiceRegionQuery {
 	q.q.W().Pred("name", "ends_with", v)
 	return q
 }
@@ -550,12 +614,15 @@ func (w *ServiceRegionWhere) NameIsNull() *ServiceRegionWhere {
 	w.w.PredNull("name", "is_null")
 	return w
 }
-func (q *ServiceRegion) NameIsNull() *ServiceRegion { q.q.W().PredNull("name", "is_null"); return q }
+func (q *ServiceRegionQuery) NameIsNull() *ServiceRegionQuery {
+	q.q.W().PredNull("name", "is_null")
+	return q
+}
 func (w *ServiceRegionWhere) NameIsNotNull() *ServiceRegionWhere {
 	w.w.PredNull("name", "is_not_null")
 	return w
 }
-func (q *ServiceRegion) NameIsNotNull() *ServiceRegion {
+func (q *ServiceRegionQuery) NameIsNotNull() *ServiceRegionQuery {
 	q.q.W().PredNull("name", "is_not_null")
 	return q
 }
@@ -563,7 +630,7 @@ func (w *ServiceRegionWhere) NameEqCol(ref orm.ColRef) *ServiceRegionWhere {
 	w.w.PredCol("name", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) NameEqCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) NameEqCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("name", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -571,81 +638,81 @@ func (w *ServiceRegionWhere) NameNotEqCol(ref orm.ColRef) *ServiceRegionWhere {
 	w.w.PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *ServiceRegion) NameNotEqCol(ref orm.ColRef) *ServiceRegion {
+func (q *ServiceRegionQuery) NameNotEqCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *ServiceRegion) Or() *ServiceRegion { q.q.Or(); return q }
-func (q *ServiceRegion) And(fn func(*ServiceRegionWhere)) *ServiceRegion {
+func (q *ServiceRegionQuery) Or() *ServiceRegionQuery { q.q.Or(); return q }
+func (q *ServiceRegionQuery) And(fn func(*ServiceRegionWhere)) *ServiceRegionQuery {
 	q.q.W().And(func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
 	return q
 }
-func (q *ServiceRegion) Expr(frag string, binds ...any) *ServiceRegion {
+func (q *ServiceRegionQuery) Expr(frag string, binds ...any) *ServiceRegionQuery {
 	q.q.W().Expr(frag, binds...)
 	return q
 }
-func (q *ServiceRegion) Authors(fn func(*AuthorWhere)) *ServiceRegion {
+func (q *ServiceRegionQuery) Authors(fn func(*AuthorWhere)) *ServiceRegionQuery {
 	q.q.W().Nav("authors", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
 	return q
 }
-func (q *ServiceRegion) Service(fn func(*ServiceWhere)) *ServiceRegion {
+func (q *ServiceRegionQuery) Service(fn func(*ServiceWhere)) *ServiceRegionQuery {
 	q.q.W().Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return q
 }
 
 // Join children: On = ON clause, Where = parent WHERE group. Bare predicates on a join child are rejected by the engine.
-func (q *ServiceRegion) On(fn func(*ServiceRegionWhere)) *ServiceRegion {
+func (q *ServiceRegionQuery) On(fn func(*ServiceRegionWhere)) *ServiceRegionQuery {
 	fn(&ServiceRegionWhere{w: q.q.OnW()})
 	return q
 }
-func (q *ServiceRegion) Where(fn func(*ServiceRegionWhere)) *ServiceRegion {
+func (q *ServiceRegionQuery) Where(fn func(*ServiceRegionWhere)) *ServiceRegionQuery {
 	fn(&ServiceRegionWhere{w: q.q.W()})
 	return q
 }
 
 // Having is the group predicate after GroupBy<Col>: the same builder as where; aggregates go through Expr("COUNT(*) > ?", n).
-func (q *ServiceRegion) Having(fn func(*ServiceRegionWhere)) *ServiceRegion {
+func (q *ServiceRegionQuery) Having(fn func(*ServiceRegionWhere)) *ServiceRegionQuery {
 	fn(&ServiceRegionWhere{w: q.q.HavingW()})
 	return q
 }
 
 // Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
-func (q *ServiceRegion) Raw(sql string, binds ...any) *ServiceRegion {
+func (q *ServiceRegionQuery) Raw(sql string, binds ...any) *ServiceRegionQuery {
 	q.q.Raw(sql, binds...)
 	return q
 }
 
-func (q *ServiceRegion) JoinAuthors(child *Author) *ServiceRegion {
+func (q *ServiceRegionQuery) JoinAuthors(child *AuthorQuery) *ServiceRegionQuery {
 	q.q.Join("authors", "inner", child.q)
 	return q
 }
-func (q *ServiceRegion) LeftJoinAuthors(child *Author) *ServiceRegion {
+func (q *ServiceRegionQuery) LeftJoinAuthors(child *AuthorQuery) *ServiceRegionQuery {
 	q.q.Join("authors", "left", child.q)
 	return q
 }
-func (q *ServiceRegion) RelationsAuthors(child *Author) *ServiceRegion {
+func (q *ServiceRegionQuery) RelationsAuthors(child *AuthorQuery) *ServiceRegionQuery {
 	q.q.Relation("authors", child.q)
 	return q
 }
-func (q *ServiceRegion) JoinService(child *Service) *ServiceRegion {
+func (q *ServiceRegionQuery) JoinService(child *ServiceQuery) *ServiceRegionQuery {
 	q.q.Join("service", "inner", child.q)
 	return q
 }
-func (q *ServiceRegion) LeftJoinService(child *Service) *ServiceRegion {
+func (q *ServiceRegionQuery) LeftJoinService(child *ServiceQuery) *ServiceRegionQuery {
 	q.q.Join("service", "left", child.q)
 	return q
 }
-func (q *ServiceRegion) RelationService(child *Service) *ServiceRegion {
+func (q *ServiceRegionQuery) RelationService(child *ServiceQuery) *ServiceRegionQuery {
 	q.q.Relation("service", child.q)
 	return q
 }
 
 // Columns.
-func (q *ServiceRegion) SelectAll() *ServiceRegion  { q.q.Columns().Mode = "all"; return q }
-func (q *ServiceRegion) SelectNone() *ServiceRegion { q.q.Columns().Mode = "none"; return q }
-func (q *ServiceRegion) SelectExpr(name, frag string) *ServiceRegion {
+func (q *ServiceRegionQuery) SelectAll() *ServiceRegionQuery  { q.q.Columns().Mode = "all"; return q }
+func (q *ServiceRegionQuery) SelectNone() *ServiceRegionQuery { q.q.Columns().Mode = "none"; return q }
+func (q *ServiceRegionQuery) SelectExpr(name, frag string) *ServiceRegionQuery {
 	c := q.q.Columns()
 	if c.Expr == nil {
 		c.Expr = map[string]string{}
@@ -653,17 +720,17 @@ func (q *ServiceRegion) SelectExpr(name, frag string) *ServiceRegion {
 	c.Expr[name] = frag
 	return q
 }
-func (q *ServiceRegion) SelectSeq() *ServiceRegion {
+func (q *ServiceRegionQuery) SelectSeq() *ServiceRegionQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "seq")
 	return q
 }
-func (q *ServiceRegion) UnselectSeq() *ServiceRegion {
+func (q *ServiceRegionQuery) UnselectSeq() *ServiceRegionQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "seq")
 	return q
 }
-func (q *ServiceRegion) SelectSeqAs(name string) *ServiceRegion {
+func (q *ServiceRegionQuery) SelectSeqAs(name string) *ServiceRegionQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -671,17 +738,17 @@ func (q *ServiceRegion) SelectSeqAs(name string) *ServiceRegion {
 	c.As[name] = "seq"
 	return q
 }
-func (q *ServiceRegion) SelectServiceSeq() *ServiceRegion {
+func (q *ServiceRegionQuery) SelectServiceSeq() *ServiceRegionQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "service_seq")
 	return q
 }
-func (q *ServiceRegion) UnselectServiceSeq() *ServiceRegion {
+func (q *ServiceRegionQuery) UnselectServiceSeq() *ServiceRegionQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "service_seq")
 	return q
 }
-func (q *ServiceRegion) SelectServiceSeqAs(name string) *ServiceRegion {
+func (q *ServiceRegionQuery) SelectServiceSeqAs(name string) *ServiceRegionQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -689,17 +756,17 @@ func (q *ServiceRegion) SelectServiceSeqAs(name string) *ServiceRegion {
 	c.As[name] = "service_seq"
 	return q
 }
-func (q *ServiceRegion) SelectName() *ServiceRegion {
+func (q *ServiceRegionQuery) SelectName() *ServiceRegionQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "name")
 	return q
 }
-func (q *ServiceRegion) UnselectName() *ServiceRegion {
+func (q *ServiceRegionQuery) UnselectName() *ServiceRegionQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "name")
 	return q
 }
-func (q *ServiceRegion) SelectNameAs(name string) *ServiceRegion {
+func (q *ServiceRegionQuery) SelectNameAs(name string) *ServiceRegionQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -709,172 +776,207 @@ func (q *ServiceRegion) SelectNameAs(name string) *ServiceRegion {
 }
 
 // Order, group, limit.
-func (q *ServiceRegion) OrderBySeqAsc() *ServiceRegion  { q.q.Order("seq", false); return q }
-func (q *ServiceRegion) OrderBySeqDesc() *ServiceRegion { q.q.Order("seq", true); return q }
-func (q *ServiceRegion) GroupBySeq() *ServiceRegion {
+func (q *ServiceRegionQuery) OrderBySeqAsc() *ServiceRegionQuery  { q.q.Order("seq", false); return q }
+func (q *ServiceRegionQuery) OrderBySeqDesc() *ServiceRegionQuery { q.q.Order("seq", true); return q }
+func (q *ServiceRegionQuery) GroupBySeq() *ServiceRegionQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "seq")
 	return q
 }
-func (q *ServiceRegion) KeyBySeq() *ServiceRegion { q.q.Node.KeyBy = "seq"; return q }
-func (q *ServiceRegion) OrderByServiceSeqAsc() *ServiceRegion {
+func (q *ServiceRegionQuery) KeyBySeq() *ServiceRegionQuery { q.q.Node.KeyBy = "seq"; return q }
+func (q *ServiceRegionQuery) OrderByServiceSeqAsc() *ServiceRegionQuery {
 	q.q.Order("service_seq", false)
 	return q
 }
-func (q *ServiceRegion) OrderByServiceSeqDesc() *ServiceRegion {
+func (q *ServiceRegionQuery) OrderByServiceSeqDesc() *ServiceRegionQuery {
 	q.q.Order("service_seq", true)
 	return q
 }
-func (q *ServiceRegion) GroupByServiceSeq() *ServiceRegion {
+func (q *ServiceRegionQuery) GroupByServiceSeq() *ServiceRegionQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "service_seq")
 	return q
 }
-func (q *ServiceRegion) KeyByServiceSeq() *ServiceRegion { q.q.Node.KeyBy = "service_seq"; return q }
-func (q *ServiceRegion) OrderByNameAsc() *ServiceRegion  { q.q.Order("name", false); return q }
-func (q *ServiceRegion) OrderByNameDesc() *ServiceRegion { q.q.Order("name", true); return q }
-func (q *ServiceRegion) GroupByName() *ServiceRegion {
+func (q *ServiceRegionQuery) KeyByServiceSeq() *ServiceRegionQuery {
+	q.q.Node.KeyBy = "service_seq"
+	return q
+}
+func (q *ServiceRegionQuery) OrderByNameAsc() *ServiceRegionQuery  { q.q.Order("name", false); return q }
+func (q *ServiceRegionQuery) OrderByNameDesc() *ServiceRegionQuery { q.q.Order("name", true); return q }
+func (q *ServiceRegionQuery) GroupByName() *ServiceRegionQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "name")
 	return q
 }
-func (q *ServiceRegion) KeyByName() *ServiceRegion { q.q.Node.KeyBy = "name"; return q }
-func (q *ServiceRegion) OrderByExpr(frag string, desc bool) *ServiceRegion {
+func (q *ServiceRegionQuery) KeyByName() *ServiceRegionQuery { q.q.Node.KeyBy = "name"; return q }
+func (q *ServiceRegionQuery) OrderByExpr(frag string, desc bool) *ServiceRegionQuery {
 	q.q.OrderExpr(frag, desc)
 	return q
 }
-func (q *ServiceRegion) Limit(offset, count int) *ServiceRegion {
+func (q *ServiceRegionQuery) GroupByExpr(expr, as string) *ServiceRegionQuery {
+	q.q.GroupByExpr(expr, as)
+	return q
+}
+func (q *ServiceRegionQuery) Limit(offset, count int) *ServiceRegionQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *ServiceRegion) Distinct() *ServiceRegion { q.q.Node.Distinct = true; return q }
+func (q *ServiceRegionQuery) Distinct() *ServiceRegionQuery { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
-func (q *ServiceRegion) Flatten() *ServiceRegion                { q.q.Node.Flatten = true; return q }
-func (q *ServiceRegion) LimitPerParent(n int) *ServiceRegion    { q.q.Node.LimitPerParent = n; return q }
-func (q *ServiceRegion) DropChildKey() *ServiceRegion           { q.q.Node.DropChildKey = true; return q }
-func (q *ServiceRegion) NoCascadeDelete() *ServiceRegion        { q.q.Node.NoCascadeDelete = true; return q }
-func (q *ServiceRegion) IfParentSeqEq(v int64) *ServiceRegion   { q.q.IfParent("seq", v); return q }
-func (q *ServiceRegion) IfParentNameEq(v string) *ServiceRegion { q.q.IfParent("name", v); return q }
-func (q *ServiceRegion) IfParentIsCloseEq(v bool) *ServiceRegion {
+func (q *ServiceRegionQuery) Flatten() *ServiceRegionQuery { q.q.Node.Flatten = true; return q }
+func (q *ServiceRegionQuery) LimitPerParent(n int) *ServiceRegionQuery {
+	q.q.Node.LimitPerParent = n
+	return q
+}
+func (q *ServiceRegionQuery) DropChildKey() *ServiceRegionQuery {
+	q.q.Node.DropChildKey = true
+	return q
+}
+func (q *ServiceRegionQuery) NoCascadeDelete() *ServiceRegionQuery {
+	q.q.Node.NoCascadeDelete = true
+	return q
+}
+func (q *ServiceRegionQuery) IfParentSeqEq(v int64) *ServiceRegionQuery {
+	q.q.IfParent("seq", v)
+	return q
+}
+func (q *ServiceRegionQuery) IfParentNameEq(v string) *ServiceRegionQuery {
+	q.q.IfParent("name", v)
+	return q
+}
+func (q *ServiceRegionQuery) IfParentIsCloseEq(v bool) *ServiceRegionQuery {
 	q.q.IfParent("is_close", v)
 	return q
 }
-func (q *ServiceRegion) IfParentIsDisplayEq(v bool) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentIsDisplayEq(v bool) *ServiceRegionQuery {
 	q.q.IfParent("is_display", v)
 	return q
 }
-func (q *ServiceRegion) IfParentIsAlldayEq(v bool) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentIsAlldayEq(v bool) *ServiceRegionQuery {
 	q.q.IfParent("is_allday", v)
 	return q
 }
-func (q *ServiceRegion) IfParentTargetClubReaderCountEq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentTargetClubReaderCountEq(v int64) *ServiceRegionQuery {
 	q.q.IfParent("target_club_reader_count", v)
 	return q
 }
-func (q *ServiceRegion) IfParentSuccessCountEq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentSuccessCountEq(v int64) *ServiceRegionQuery {
 	q.q.IfParent("success_count", v)
 	return q
 }
-func (q *ServiceRegion) IfParentReaderCountEq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentReaderCountEq(v int64) *ServiceRegionQuery {
 	q.q.IfParent("reader_count", v)
 	return q
 }
-func (q *ServiceRegion) IfParentReadCountEq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentReadCountEq(v int64) *ServiceRegionQuery {
 	q.q.IfParent("read_count", v)
 	return q
 }
-func (q *ServiceRegion) IfParentPhotoUrlEq(v string) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentPhotoUrlEq(v string) *ServiceRegionQuery {
 	q.q.IfParent("photo_url", v)
 	return q
 }
-func (q *ServiceRegion) IfParentUserSeqEq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentUserSeqEq(v int64) *ServiceRegionQuery {
 	q.q.IfParent("user_seq", v)
 	return q
 }
-func (q *ServiceRegion) IfParentServiceSeqEq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentServiceSeqEq(v int64) *ServiceRegionQuery {
 	q.q.IfParent("service_seq", v)
 	return q
 }
-func (q *ServiceRegion) IfParentServiceRegionSeqEq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentServiceRegionSeqEq(v int64) *ServiceRegionQuery {
 	q.q.IfParent("service_region_seq", v)
 	return q
 }
-func (q *ServiceRegion) IfParentServiceMemberSeqEq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentServiceMemberSeqEq(v int64) *ServiceRegionQuery {
 	q.q.IfParent("service_member_seq", v)
 	return q
 }
-func (q *ServiceRegion) IfParentUuidEq(v string) *ServiceRegion { q.q.IfParent("uuid", v); return q }
-func (q *ServiceRegion) IfParentIsSingleWorkEq(v bool) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentUuidEq(v string) *ServiceRegionQuery {
+	q.q.IfParent("uuid", v)
+	return q
+}
+func (q *ServiceRegionQuery) IfParentIsSingleWorkEq(v bool) *ServiceRegionQuery {
 	q.q.IfParent("is_single_work", v)
 	return q
 }
-func (q *ServiceRegion) IfParentLikeCountEq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentLikeCountEq(v int64) *ServiceRegionQuery {
 	q.q.IfParent("like_count", v)
 	return q
 }
-func (q *ServiceRegion) IfParentAesHexEmailEq(v string) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentAesHexEmailEq(v string) *ServiceRegionQuery {
 	q.q.IfParent("aes_hex_email", v)
 	return q
 }
-func (q *ServiceRegion) IfParentAesHexPhoneEq(v string) *ServiceRegion {
+func (q *ServiceRegionQuery) IfParentAesHexPhoneEq(v string) *ServiceRegionQuery {
 	q.q.IfParent("aes_hex_phone", v)
 	return q
 }
 
 // Insert draft. The auto PK is settable too: Save takes it as the update key.
-func (q *ServiceRegion) SetSeq(v int64) *ServiceRegion { q.q.Set("seq", v); return q }
-func (q *ServiceRegion) SetSeqExpr(frag string, binds ...any) *ServiceRegion {
+func (q *ServiceRegionQuery) SetSeq(v int64) *ServiceRegionQuery { q.q.Set("seq", v); return q }
+func (q *ServiceRegionQuery) SetSeqExpr(frag string, binds ...any) *ServiceRegionQuery {
 	q.q.SetExpr("seq", frag, binds...)
 	return q
 }
-func (q *ServiceRegion) SetServiceSeq(v int64) *ServiceRegion { q.q.Set("service_seq", v); return q }
-func (q *ServiceRegion) SetServiceSeqExpr(frag string, binds ...any) *ServiceRegion {
+func (q *ServiceRegionQuery) SetServiceSeq(v int64) *ServiceRegionQuery {
+	q.q.Set("service_seq", v)
+	return q
+}
+func (q *ServiceRegionQuery) SetServiceSeqExpr(frag string, binds ...any) *ServiceRegionQuery {
 	q.q.SetExpr("service_seq", frag, binds...)
 	return q
 }
-func (q *ServiceRegion) SetName(v string) *ServiceRegion { q.q.Set("name", v); return q }
-func (q *ServiceRegion) SetNameExpr(frag string, binds ...any) *ServiceRegion {
+func (q *ServiceRegionQuery) SetName(v string) *ServiceRegionQuery { q.q.Set("name", v); return q }
+func (q *ServiceRegionQuery) SetNameExpr(frag string, binds ...any) *ServiceRegionQuery {
 	q.q.SetExpr("name", frag, binds...)
 	return q
 }
-func (q *ServiceRegion) PlusSeq(v int64) *ServiceRegion        { q.q.Plus("seq", v); return q }
-func (q *ServiceRegion) MinusSeq(v int64) *ServiceRegion       { q.q.Minus("seq", v); return q }
-func (q *ServiceRegion) PlusServiceSeq(v int64) *ServiceRegion { q.q.Plus("service_seq", v); return q }
-func (q *ServiceRegion) MinusServiceSeq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) PlusSeq(v int64) *ServiceRegionQuery  { q.q.Plus("seq", v); return q }
+func (q *ServiceRegionQuery) MinusSeq(v int64) *ServiceRegionQuery { q.q.Minus("seq", v); return q }
+func (q *ServiceRegionQuery) PlusServiceSeq(v int64) *ServiceRegionQuery {
+	q.q.Plus("service_seq", v)
+	return q
+}
+func (q *ServiceRegionQuery) MinusServiceSeq(v int64) *ServiceRegionQuery {
 	q.q.Minus("service_seq", v)
 	return q
 }
 
 // ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
-func (q *ServiceRegion) OnDuplicateSetServiceSeq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) OnDuplicateSetServiceSeq(v int64) *ServiceRegionQuery {
 	q.q.OnDuplicate("service_seq", v)
 	return q
 }
-func (q *ServiceRegion) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *ServiceRegion {
+func (q *ServiceRegionQuery) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *ServiceRegionQuery {
 	q.q.OnDuplicateExpr("service_seq", frag, binds...)
 	return q
 }
-func (q *ServiceRegion) OnDuplicateSetName(v string) *ServiceRegion {
+func (q *ServiceRegionQuery) OnDuplicateSetName(v string) *ServiceRegionQuery {
 	q.q.OnDuplicate("name", v)
 	return q
 }
-func (q *ServiceRegion) OnDuplicateSetNameExpr(frag string, binds ...any) *ServiceRegion {
+func (q *ServiceRegionQuery) OnDuplicateSetNameExpr(frag string, binds ...any) *ServiceRegionQuery {
 	q.q.OnDuplicateExpr("name", frag, binds...)
 	return q
 }
-func (q *ServiceRegion) OnDuplicatePlusServiceSeq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) OnDuplicatePlusServiceSeq(v int64) *ServiceRegionQuery {
 	q.q.OnDuplicatePlus("service_seq", v)
 	return q
 }
-func (q *ServiceRegion) OnDuplicateMinusServiceSeq(v int64) *ServiceRegion {
+func (q *ServiceRegionQuery) OnDuplicateMinusServiceSeq(v int64) *ServiceRegionQuery {
 	q.q.OnDuplicateMinus("service_seq", v)
 	return q
 }
-func (q *ServiceRegion) OnDuplicateSetAll() *ServiceRegion {
+func (q *ServiceRegionQuery) OnDuplicateSetAll() *ServiceRegionQuery {
 	q.q.OnDuplicateSetAll("seq", "seq")
 	return q
 }
 
 // Terminals.
-func (q *ServiceRegion) One(ctx context.Context, ex orm.Exec) (*ServiceRegionRow, error) {
+func (q *ServiceRegionQuery) One() (*ServiceRegionRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "one"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil || len(rows.Data) == 0 {
@@ -883,13 +985,42 @@ func (q *ServiceRegion) One(ctx context.Context, ex orm.Exec) (*ServiceRegionRow
 	return scanServiceRegion(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *ServiceRegion) All(ctx context.Context, ex orm.Exec) (*orm.Collection[ServiceRegionRow], error) {
+func (q *ServiceRegionQuery) All() (*orm.Collection[ServiceRegionRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "all"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
 	}
 	return collectServiceRegion(rows, q.keyFn), nil
+}
+
+// Get is the preferred single-row terminal. One is kept as a compatibility alias.
+func (q *ServiceRegionQuery) Get() (*ServiceRegionRow, error) {
+	return q.One()
+}
+
+// Gets is the preferred collection terminal. All is kept as a compatibility alias.
+func (q *ServiceRegionQuery) Gets() (*orm.Collection[ServiceRegionRow], error) {
+	return q.All()
+}
+
+// GetsBySeq applies seq = v and runs the collection terminal.
+func (q *ServiceRegionQuery) GetsBySeq(v int64) (*orm.Collection[ServiceRegionRow], error) {
+	return q.Seq(v).Gets()
+}
+
+// GetsByServiceSeq applies service_seq = v and runs the collection terminal.
+func (q *ServiceRegionQuery) GetsByServiceSeq(v int64) (*orm.Collection[ServiceRegionRow], error) {
+	return q.ServiceSeq(v).Gets()
+}
+
+// GetsByName applies name = v and runs the collection terminal.
+func (q *ServiceRegionQuery) GetsByName(v string) (*orm.Collection[ServiceRegionRow], error) {
+	return q.Name(v).Gets()
 }
 
 func collectServiceRegion(rows *orm.Rows, keyFn func(*ServiceRegionRow) orm.Key) *orm.Collection[ServiceRegionRow] {
@@ -905,36 +1036,95 @@ func collectServiceRegion(rows *orm.Rows, keyFn func(*ServiceRegionRow) orm.Key)
 	return c
 }
 
-func (q *ServiceRegion) Count(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceRegionQuery) Count() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
 }
-func (q *ServiceRegion) SumSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+
+// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
+func (q *ServiceRegionQuery) GetCount() (int64, error) {
+	return q.Count()
+}
+
+// GetCountBySeq applies seq = v and runs the scalar count terminal.
+func (q *ServiceRegionQuery) GetCountBySeq(v int64) (int64, error) {
+	return q.Seq(v).GetCount()
+}
+
+// GetCountByServiceSeq applies service_seq = v and runs the scalar count terminal.
+func (q *ServiceRegionQuery) GetCountByServiceSeq(v int64) (int64, error) {
+	return q.ServiceSeq(v).GetCount()
+}
+
+// GetCountByName applies name = v and runs the scalar count terminal.
+func (q *ServiceRegionQuery) GetCountByName(v string) (int64, error) {
+	return q.Name(v).GetCount()
+}
+
+// GetsCount returns one row per group_by value. The grouped columns are in the
+// row and the aggregate is available as Extra("row_count").
+func (q *ServiceRegionQuery) GetsCount() (*orm.Collection[ServiceRegionRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "group_count"
+	rows, err := orm.Query(ctx, ex, q.q.Req)
+	if err != nil {
+		return nil, err
+	}
+	return collectServiceRegion(rows, q.keyFn), nil
+}
+func (q *ServiceRegionQuery) SumSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceRegion) AvgSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *ServiceRegionQuery) AvgSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceRegion) SumServiceSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *ServiceRegionQuery) SumServiceSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceRegion) AvgServiceSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *ServiceRegionQuery) AvgServiceSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *ServiceRegion) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceRegionQuery) CountDistinctSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -942,7 +1132,11 @@ func (q *ServiceRegion) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int6
 }
 
 // MinSeq is nil when no row matches.
-func (q *ServiceRegion) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceRegionQuery) MinSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -954,7 +1148,11 @@ func (q *ServiceRegion) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error)
 }
 
 // MaxSeq is nil when no row matches.
-func (q *ServiceRegion) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceRegionQuery) MaxSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -964,7 +1162,11 @@ func (q *ServiceRegion) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error)
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *ServiceRegion) CountDistinctServiceSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceRegionQuery) CountDistinctServiceSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -972,7 +1174,11 @@ func (q *ServiceRegion) CountDistinctServiceSeq(ctx context.Context, ex orm.Exec
 }
 
 // MinServiceSeq is nil when no row matches.
-func (q *ServiceRegion) MinServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceRegionQuery) MinServiceSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -984,7 +1190,11 @@ func (q *ServiceRegion) MinServiceSeq(ctx context.Context, ex orm.Exec) (*int64,
 }
 
 // MaxServiceSeq is nil when no row matches.
-func (q *ServiceRegion) MaxServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *ServiceRegionQuery) MaxServiceSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -994,7 +1204,11 @@ func (q *ServiceRegion) MaxServiceSeq(ctx context.Context, ex orm.Exec) (*int64,
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *ServiceRegion) CountDistinctName(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceRegionQuery) CountDistinctName() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1002,7 +1216,11 @@ func (q *ServiceRegion) CountDistinctName(ctx context.Context, ex orm.Exec) (int
 }
 
 // MinName is nil when no row matches.
-func (q *ServiceRegion) MinName(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *ServiceRegionQuery) MinName() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1014,7 +1232,11 @@ func (q *ServiceRegion) MinName(ctx context.Context, ex orm.Exec) (*string, erro
 }
 
 // MaxName is nil when no row matches.
-func (q *ServiceRegion) MaxName(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *ServiceRegionQuery) MaxName() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -1026,12 +1248,23 @@ func (q *ServiceRegion) MaxName(ctx context.Context, ex orm.Exec) (*string, erro
 }
 
 // RawAll runs the statement given to Raw and returns its rows by column name (values as the driver gives them, no codec).
-func (q *ServiceRegion) RawAll(ctx context.Context, ex orm.Exec) ([]map[string]any, error) {
+func (q *ServiceRegionQuery) RawAll() ([]map[string]any, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "raw"
 	return orm.RawAll(ctx, ex, q.q.Req)
 }
 
-func (q *ServiceRegion) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm.Page[ServiceRegionRow], error) {
+func (q *ServiceRegionQuery) Paginate(page, per int) (*orm.Page[ServiceRegionRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	if per <= 0 {
+		return nil, &ir.Error{Code: "IR_INVALID", Msg: "per must be positive"}
+	}
 	if page < 1 {
 		page = 1
 	}
@@ -1045,49 +1278,74 @@ func (q *ServiceRegion) Paginate(ctx context.Context, ex orm.Exec, page, per int
 	return &orm.Page[ServiceRegionRow]{Items: collectServiceRegion(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
-func (q *ServiceRegion) Insert(ctx context.Context, ex orm.Exec) (*ServiceRegionRow, error) {
+func (q *ServiceRegionQuery) Insert() (*ServiceRegionRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "insert"
 	id, _, err := orm.Write(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
 	}
-	return NewServiceRegion().SeqEq(int64(id)).One(ctx, ex)
+	return ServiceRegion().Bind(ctx, ex).SeqEq(int64(id)).One()
 }
 
 // Save updates the other assigned columns when SetSeq was called (and
 // returns the re-read row); otherwise it inserts like Insert.
-func (q *ServiceRegion) Save(ctx context.Context, ex orm.Exec) (*ServiceRegionRow, error) {
+func (q *ServiceRegionQuery) Save() (*ServiceRegionRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	pk, ok := q.q.MovePKToWhere("seq")
 	if !ok {
-		return q.Insert(ctx, ex)
+		return q.Insert()
 	}
 	q.q.Req.IR.Kind = "update"
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return NewServiceRegion().SeqEq(pk.(int64)).One(ctx, ex)
+	return ServiceRegion().Bind(ctx, ex).SeqEq(pk.(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *ServiceRegion) Update(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceRegionQuery) Update() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "update"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // Delete removes every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *ServiceRegion) Delete(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *ServiceRegionQuery) Delete() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "delete"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
-func (q *ServiceRegion) SQL(ctx context.Context, ex orm.Exec) (*orm.Statement, error) {
+func (q *ServiceRegionQuery) SQL() (*orm.Statement, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "all"
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *ServiceRegion) OneBySeq(ctx context.Context, ex orm.Exec, v int64) (*ServiceRegionRow, error) {
-	return q.SeqEq(v).One(ctx, ex)
+func (q *ServiceRegionQuery) OneBySeq(v int64) (*ServiceRegionRow, error) {
+	return q.SeqEq(v).One()
+}
+
+// GetBySeq is the preferred primary-key lookup. OneBySeq is kept as a compatibility alias.
+func (q *ServiceRegionQuery) GetBySeq(v int64) (*ServiceRegionRow, error) {
+	return q.OneBySeq(v)
 }

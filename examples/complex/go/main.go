@@ -1,5 +1,5 @@
 // A complex statement in three languages, one JSON document (docs/examples/complex-query.md
-// shows the same shapes against the example schema). Run:
+// shows the same product-domain shapes). Run:
 //
 //	go run ./examples/complex/go schema/schema.json
 package main
@@ -32,21 +32,20 @@ func main() {
 
 	// A join carrying its own ON and WHERE, a root group mixing a predicate with
 	// navigation into the joined entity, and three levels of relations with options.
-	rows, err := gen.NewAuthor().
+	rows, err := gen.Author().
 		SelectNone().SelectName().
-		JoinService(gen.NewService().
+		JoinService(gen.Service().
 			On(func(w *gen.ServiceWhere) { w.SeqGt(0) }).
-			Where(func(w *gen.ServiceWhere) { w.NameEq("service-7") })).
-		IsCloseEq(false).
+			Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
+		IsClose(false).
 		And(func(w *gen.AuthorWhere) {
-			w.IsDisplayEq(true).Or().Service(func(s *gen.ServiceWhere) { s.SeqEq(7) })
+			w.IsDisplay(true).Or().Service(func(s *gen.ServiceWhere) { s.Seq(7) })
 		}).
-		RelationUser(gen.NewUser().
-			RelationsAuthors(gen.NewAuthor().SelectNone().OrderBySeqDesc().LimitPerParent(2).DropChildKey())).
-		RelationService(gen.NewService().
-			RelationsMembers(gen.NewServiceMember().SelectNone().OrderBySeqAsc().LimitPerParent(2).KeyByUserSeq())).
-		OrderBySeqAsc().Limit(0, 2).
-		All(ctx, db)
+		RelationUser(gen.User().
+			RelationsAuthors(gen.Author().SelectNone().OrderBySeqDesc().LimitPerParent(2).DropChildKey())).
+		RelationService(gen.Service().
+			RelationsMembers(gen.ServiceMember().SelectNone().OrderBySeqAsc().LimitPerParent(2).KeyByUserSeq())).
+		OrderBySeqAsc().Limit(0, 2).Bind(ctx, db).Gets()
 	check(err)
 	items := []any{}
 	for _, b := range rows.All() {
@@ -54,14 +53,14 @@ func main() {
 	}
 
 	// Aggregates over the same slice of data: a grouped count with HAVING, min/max, distinct.
-	groups, err := gen.NewAuthor().ServiceSeqEq(7).GroupByUserSeq().
-		Having(func(w *gen.AuthorWhere) { w.Expr("COUNT(*) > ?", 1) }).Count(ctx, db)
+	groups, err := gen.Author().ServiceSeq(7).GroupByUserSeq().
+		Having(func(w *gen.AuthorWhere) { w.Expr("COUNT(*) > ?", 1) }).Bind(ctx, db).GetCount()
 	check(err)
-	min, err := gen.NewAuthor().ServiceSeqEq(7).MinSeq(ctx, db)
+	min, err := gen.Author().ServiceSeq(7).Bind(ctx, db).MinSeq()
 	check(err)
-	max, err := gen.NewAuthor().ServiceSeqEq(7).MaxSeq(ctx, db)
+	max, err := gen.Author().ServiceSeq(7).Bind(ctx, db).MaxSeq()
 	check(err)
-	users, err := gen.NewAuthor().ServiceSeqEq(7).CountDistinctUserSeq(ctx, db)
+	users, err := gen.Author().ServiceSeq(7).Bind(ctx, db).CountDistinctUserSeq()
 	check(err)
 
 	out, err := json.MarshalIndent(map[string]any{

@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/polyspec/orm/contracts"
 	"github.com/polyspec/orm/engine/schema"
 )
 
@@ -85,6 +86,9 @@ func gen(args []string) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
 		os.Exit(1)
+	}
+	if err := contracts.GenerateInterfaces(m, *lang, *out, *ns); err != nil {
+		fail(err)
 	}
 	fmt.Printf("ormgen: %d entities → %s (%s)\n", len(m.Order), *out, *lang)
 }
