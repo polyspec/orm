@@ -135,8 +135,58 @@ func scanServiceMember(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceMembe
 			}
 		}
 	}
+	r.SetProjection(a)
 	r.Mark("service_member", "seq", r.Seq)
 	return r
+}
+
+// ToArray is the row's array form (what PHP's toArray() and Rust's to_map() give):
+// projected columns minus drop_child_key ones, extra outputs, loaded relations,
+// and flattened one-relations merged in (this row's keys win).
+func (r *ServiceMemberRow) ToArray() map[string]any {
+	m := make(map[string]any, len(r.Selected()))
+	for _, name := range r.Selected() {
+		if r.Hidden(name) {
+			continue
+		}
+		switch name {
+		case "seq":
+			m[name] = r.Seq
+		case "service_seq":
+			m[name] = r.ServiceSeq
+		case "user_seq":
+			m[name] = r.UserSeq
+		default:
+			m[name] = r.Extra(name)
+		}
+	}
+	if r.RelLoaded("battles") {
+		mm := map[string]any{}
+		for k, v := range r.GetBattles().All() {
+			mm[k.String()] = v.ToArray()
+		}
+		m["battles"] = mm
+	}
+	if r.RelLoaded("service") {
+		if r.Service != nil {
+			m["service"] = r.Service.ToArray()
+		} else {
+			m["service"] = nil
+		}
+	}
+	if r.RelLoaded("user") {
+		if r.User != nil {
+			m["user"] = r.User.ToArray()
+		} else {
+			m["user"] = nil
+		}
+	}
+	for _, rel := range r.Flat() {
+		if child, ok := m[rel].(map[string]any); ok {
+			orm.MergeFlat(m, child)
+		}
+	}
+	return m
 }
 
 // ServiceMemberCols are column references for column-to-column predicates
@@ -152,7 +202,16 @@ var ServiceMemberCols = struct {
 }
 
 // ServiceMember builds a statement over service_member: NewServiceMember() → chain → terminal(ctx, db).
-type ServiceMember struct{ q *orm.Q }
+type ServiceMember struct {
+	q     *orm.Q
+	keyFn func(*ServiceMemberRow) orm.Key // KeyByFn: client-side keying of the root collection
+}
+
+// KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
+func (q *ServiceMember) KeyByFn(fn func(*ServiceMemberRow) orm.Key) *ServiceMember {
+	q.keyFn = fn
+	return q
+}
 
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *ServiceMember) Req() *orm.Req { return q.q.Req }
@@ -842,13 +901,17 @@ func (q *ServiceMember) All(ctx context.Context, ex orm.Exec) (*orm.Collection[S
 	if err != nil {
 		return nil, err
 	}
-	return collectServiceMember(rows), nil
+	return collectServiceMember(rows, q.keyFn), nil
 }
 
-func collectServiceMember(rows *orm.Rows) *orm.Collection[ServiceMemberRow] {
+func collectServiceMember(rows *orm.Rows, keyFn func(*ServiceMemberRow) orm.Key) *orm.Collection[ServiceMemberRow] {
 	c := orm.NewCollection[ServiceMemberRow](len(rows.Data))
 	for _, vals := range rows.Data {
 		r := scanServiceMember(vals, rows.Assemble, rows)
+		if keyFn != nil {
+			c.Put(keyFn(r), r)
+			continue
+		}
 		c.Put(orm.KeyOf(vals[0]), r)
 	}
 	return c
@@ -907,7 +970,7 @@ func (q *ServiceMember) Paginate(ctx context.Context, ex orm.Exec, page, per int
 		return nil, err
 	}
 	pages := (total + int64(per) - 1) / int64(per)
-	return &orm.Page[ServiceMemberRow]{Items: collectServiceMember(rows), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
+	return &orm.Page[ServiceMemberRow]{Items: collectServiceMember(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
 func (q *ServiceMember) Insert(ctx context.Context, ex orm.Exec) (*ServiceMemberRow, error) {

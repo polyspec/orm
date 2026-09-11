@@ -113,8 +113,56 @@ func scanService(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRow {
 			r.Modules = c
 		}
 	}
+	r.SetProjection(a)
 	r.Mark("service", "seq", r.Seq)
 	return r
+}
+
+// ToArray is the row's array form (what PHP's toArray() and Rust's to_map() give):
+// projected columns minus drop_child_key ones, extra outputs, loaded relations,
+// and flattened one-relations merged in (this row's keys win).
+func (r *ServiceRow) ToArray() map[string]any {
+	m := make(map[string]any, len(r.Selected()))
+	for _, name := range r.Selected() {
+		if r.Hidden(name) {
+			continue
+		}
+		switch name {
+		case "seq":
+			m[name] = r.Seq
+		case "name":
+			m[name] = r.Name
+		default:
+			m[name] = r.Extra(name)
+		}
+	}
+	if r.RelLoaded("battles") {
+		mm := map[string]any{}
+		for k, v := range r.GetBattles().All() {
+			mm[k.String()] = v.ToArray()
+		}
+		m["battles"] = mm
+	}
+	if r.RelLoaded("members") {
+		mm := map[string]any{}
+		for k, v := range r.GetMembers().All() {
+			mm[k.String()] = v.ToArray()
+		}
+		m["members"] = mm
+	}
+	if r.RelLoaded("modules") {
+		mm := map[string]any{}
+		for k, v := range r.GetModules().All() {
+			mm[k.String()] = v.ToArray()
+		}
+		m["modules"] = mm
+	}
+	for _, rel := range r.Flat() {
+		if child, ok := m[rel].(map[string]any); ok {
+			orm.MergeFlat(m, child)
+		}
+	}
+	return m
 }
 
 // ServiceCols are column references for column-to-column predicates
@@ -128,7 +176,13 @@ var ServiceCols = struct {
 }
 
 // Service builds a statement over service: NewService() → chain → terminal(ctx, db).
-type Service struct{ q *orm.Q }
+type Service struct {
+	q     *orm.Q
+	keyFn func(*ServiceRow) orm.Key // KeyByFn: client-side keying of the root collection
+}
+
+// KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
+func (q *Service) KeyByFn(fn func(*ServiceRow) orm.Key) *Service { q.keyFn = fn; return q }
 
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *Service) Req() *orm.Req { return q.q.Req }
@@ -498,13 +552,17 @@ func (q *Service) All(ctx context.Context, ex orm.Exec) (*orm.Collection[Service
 	if err != nil {
 		return nil, err
 	}
-	return collectService(rows), nil
+	return collectService(rows, q.keyFn), nil
 }
 
-func collectService(rows *orm.Rows) *orm.Collection[ServiceRow] {
+func collectService(rows *orm.Rows, keyFn func(*ServiceRow) orm.Key) *orm.Collection[ServiceRow] {
 	c := orm.NewCollection[ServiceRow](len(rows.Data))
 	for _, vals := range rows.Data {
 		r := scanService(vals, rows.Assemble, rows)
+		if keyFn != nil {
+			c.Put(keyFn(r), r)
+			continue
+		}
 		c.Put(orm.KeyOf(vals[0]), r)
 	}
 	return c
@@ -539,7 +597,7 @@ func (q *Service) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*or
 		return nil, err
 	}
 	pages := (total + int64(per) - 1) / int64(per)
-	return &orm.Page[ServiceRow]{Items: collectService(rows), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
+	return &orm.Page[ServiceRow]{Items: collectService(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
 func (q *Service) Insert(ctx context.Context, ex orm.Exec) (*ServiceRow, error) {

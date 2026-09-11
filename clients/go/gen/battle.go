@@ -700,8 +700,163 @@ func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 			}
 		}
 	}
+	r.SetProjection(a)
 	r.Mark("battle", "seq", r.Seq)
 	return r
+}
+
+// ToArray is the row's array form (what PHP's toArray() and Rust's to_map() give):
+// projected columns minus drop_child_key ones, extra outputs, loaded relations,
+// and flattened one-relations merged in (this row's keys win).
+func (r *BattleRow) ToArray() map[string]any {
+	m := make(map[string]any, len(r.Selected()))
+	for _, name := range r.Selected() {
+		if r.Hidden(name) {
+			continue
+		}
+		switch name {
+		case "seq":
+			m[name] = r.Seq
+		case "name":
+			m[name] = r.Name
+		case "description":
+			m[name] = func() any {
+				if r.Description == nil {
+					return nil
+				}
+				return *r.Description
+			}()
+		case "created_ts":
+			m[name] = orm.FormatTime(r.CreatedTs)
+		case "updated_ts":
+			m[name] = orm.FormatTime(r.UpdatedTs)
+		case "is_close":
+			m[name] = r.IsClose
+		case "is_display":
+			m[name] = r.IsDisplay
+		case "display_start_dt":
+			m[name] = func() any {
+				if r.DisplayStartDt == nil {
+					return nil
+				}
+				return orm.FormatTime(*r.DisplayStartDt)
+			}()
+		case "display_end_dt":
+			m[name] = func() any {
+				if r.DisplayEndDt == nil {
+					return nil
+				}
+				return orm.FormatTime(*r.DisplayEndDt)
+			}()
+		case "is_allday":
+			m[name] = r.IsAllday
+		case "target_team_player_count":
+			m[name] = r.TargetTeamPlayerCount
+		case "success_count":
+			m[name] = r.SuccessCount
+		case "player_count":
+			m[name] = r.PlayerCount
+		case "read_count":
+			m[name] = r.ReadCount
+		case "cover_url":
+			m[name] = func() any {
+				if r.CoverUrl == nil {
+					return nil
+				}
+				return *r.CoverUrl
+			}()
+		case "user_seq":
+			m[name] = r.UserSeq
+		case "service_seq":
+			m[name] = r.ServiceSeq
+		case "service_module_seq":
+			m[name] = r.ServiceModuleSeq
+		case "service_member_seq":
+			m[name] = r.ServiceMemberSeq
+		case "start_dt":
+			m[name] = orm.FormatTime(r.StartDt)
+		case "end_dt":
+			m[name] = orm.FormatTime(r.EndDt)
+		case "uuid":
+			m[name] = func() any {
+				if r.Uuid == nil {
+					return nil
+				}
+				return *r.Uuid
+			}()
+		case "is_single_play":
+			m[name] = r.IsSinglePlay
+		case "like_count":
+			m[name] = r.LikeCount
+		case "aes_hex_email":
+			m[name] = func() any {
+				if r.AesHexEmail == nil {
+					return nil
+				}
+				return *r.AesHexEmail
+			}()
+		case "aes_hex_phone":
+			m[name] = func() any {
+				if r.AesHexPhone == nil {
+					return nil
+				}
+				return *r.AesHexPhone
+			}()
+		case "ip":
+			m[name] = func() any {
+				if r.Ip == nil {
+					return nil
+				}
+				return *r.Ip
+			}()
+		case "gz_extend":
+			m[name] = r.GzExtend
+		case "json_setting":
+			m[name] = r.JsonSetting
+		case "jsons_tags":
+			m[name] = r.JsonsTags
+		case "base64_extra":
+			m[name] = r.Base64Extra
+		case "serialize_data":
+			m[name] = r.SerializeData
+		default:
+			m[name] = r.Extra(name)
+		}
+	}
+	if r.RelLoaded("service") {
+		if r.Service != nil {
+			m["service"] = r.Service.ToArray()
+		} else {
+			m["service"] = nil
+		}
+	}
+	if r.RelLoaded("service_member") {
+		if r.ServiceMember != nil {
+			m["service_member"] = r.ServiceMember.ToArray()
+		} else {
+			m["service_member"] = nil
+		}
+	}
+	if r.RelLoaded("service_module") {
+		if r.ServiceModule != nil {
+			m["service_module"] = r.ServiceModule.ToArray()
+		} else {
+			m["service_module"] = nil
+		}
+	}
+	if r.RelLoaded("user") {
+		if r.User != nil {
+			m["user"] = r.User.ToArray()
+		} else {
+			m["user"] = nil
+		}
+	}
+	for _, rel := range r.Flat() {
+		if child, ok := m[rel].(map[string]any); ok {
+			orm.MergeFlat(m, child)
+		}
+	}
+	return m
 }
 
 // BattleCols are column references for column-to-column predicates
@@ -775,7 +930,13 @@ var BattleCols = struct {
 }
 
 // Battle builds a statement over battle: NewBattle() → chain → terminal(ctx, db).
-type Battle struct{ q *orm.Q }
+type Battle struct {
+	q     *orm.Q
+	keyFn func(*BattleRow) orm.Key // KeyByFn: client-side keying of the root collection
+}
+
+// KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
+func (q *Battle) KeyByFn(fn func(*BattleRow) orm.Key) *Battle { q.keyFn = fn; return q }
 
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *Battle) Req() *orm.Req { return q.q.Req }
@@ -4336,13 +4497,17 @@ func (q *Battle) All(ctx context.Context, ex orm.Exec) (*orm.Collection[BattleRo
 	if err != nil {
 		return nil, err
 	}
-	return collectBattle(rows), nil
+	return collectBattle(rows, q.keyFn), nil
 }
 
-func collectBattle(rows *orm.Rows) *orm.Collection[BattleRow] {
+func collectBattle(rows *orm.Rows, keyFn func(*BattleRow) orm.Key) *orm.Collection[BattleRow] {
 	c := orm.NewCollection[BattleRow](len(rows.Data))
 	for _, vals := range rows.Data {
 		r := scanBattle(vals, rows.Assemble, rows)
+		if keyFn != nil {
+			c.Put(keyFn(r), r)
+			continue
+		}
 		c.Put(orm.KeyOf(vals[0]), r)
 	}
 	return c
@@ -4485,7 +4650,7 @@ func (q *Battle) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm
 		return nil, err
 	}
 	pages := (total + int64(per) - 1) / int64(per)
-	return &orm.Page[BattleRow]{Items: collectBattle(rows), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
+	return &orm.Page[BattleRow]{Items: collectBattle(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
 func (q *Battle) Insert(ctx context.Context, ex orm.Exec) (*BattleRow, error) {

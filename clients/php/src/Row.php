@@ -257,11 +257,12 @@ final class Collection implements \ArrayAccess, \IteratorAggregate, \Countable
     /** @param array<int|string, Row> $items */
     public function __construct(private array $items = []) {}
 
-    public static function fromRows(Rows $rows, string $rowClass): self
+    public static function fromRows(Rows $rows, string $rowClass, ?\Closure $keyFn = null): self
     {
         $c = new self();
         foreach ($rows->data as $vals) {
-            $c->items[$vals[0]] = $rowClass::fromRow($vals, $rows->asm, $rows);
+            $r = $rowClass::fromRow($vals, $rows->asm, $rows);
+            $c->items[$keyFn === null ? $vals[0] : $keyFn($r)] = $r;
         }
         return $c;
     }

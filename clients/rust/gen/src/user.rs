@@ -16,6 +16,11 @@ pub struct UserRow {
     dirty: Vec<(&'static str, Param)>,
     enc_err: Option<(String, String)>, // (code, msg) of the first codec error; surfaces from update
     extra: std::collections::HashMap<String, Val>, // select_expr / select_<col>_as outputs, by output name
+    // assembly facts recorded for to_map(): projected names, drop_child_key names, flattened one-relations, loaded relations
+    selected: Vec<String>,
+    hidden: Vec<String>,
+    flat: Vec<String>,
+    rels: Vec<String>,
     loaded: bool,
 }
 
@@ -28,6 +33,14 @@ impl UserRow {
     pub(crate) fn from_row(vals: &mut [Val], a: &orm::plan::Assemble, rs: &db::Rows) -> Self {
         let mut r = Self::default();
         r.loaded = true;
+        for c in &a.columns {
+            r.selected.push(c.name.clone());
+            if c.hidden { r.hidden.push(c.name.clone()); }
+        }
+        for ch in &a.children {
+            r.rels.push(ch.rel.clone());
+            if ch.flatten { r.flat.push(ch.rel.clone()); }
+        }
         for c in &a.columns {
             let v = &mut vals[c.index];
             match c.name.as_str() {
@@ -65,6 +78,38 @@ impl UserRow {
     }
     /// A select_expr / select_<col>_as output by name.
     pub fn extra(&self, name: &str) -> Option<&Val> { self.extra.get(name) }
+
+    /// The row's array form (what PHP's toArray() and Go's ToArray() give): projected
+    /// columns minus drop_child_key ones, extra outputs, loaded relations, and flattened
+    /// one-relations merged in (this row's keys win).
+    pub fn to_map(&self) -> serde_json::Value {
+        let mut m = serde_json::Map::new();
+        for name in &self.selected {
+            if self.hidden.iter().any(|h| h == name) { continue; }
+            let v = match name.as_str() {
+                "seq" => serde_json::json!(self.seq),
+                "name" => serde_json::json!(self.name),
+                other => self.extra.get(other).map(|v| v.to_json()).unwrap_or(serde_json::Value::Null),
+            };
+            m.insert(name.clone(), v);
+        }
+        if self.rels.iter().any(|r| r == "battles") {
+            let mut mm = serde_json::Map::new();
+            for (k, v) in self.battles_.iter() { mm.insert(k.to_string(), v.to_map()); }
+            m.insert("battles".into(), serde_json::Value::Object(mm));
+        }
+        if self.rels.iter().any(|r| r == "service_members") {
+            let mut mm = serde_json::Map::new();
+            for (k, v) in self.service_members_.iter() { mm.insert(k.to_string(), v.to_map()); }
+            m.insert("service_members".into(), serde_json::Value::Object(mm));
+        }
+        for rel in &self.flat {
+            if let Some(serde_json::Value::Object(child)) = m.get(rel).cloned() {
+                for (k, v) in child { m.entry(k).or_insert(v); }
+            }
+        }
+        serde_json::Value::Object(m)
+    }
 
     pub fn battles(&self) -> &Collection<super::battle::BattleRow> { &self.battles_ }
     pub fn service_members(&self) -> &Collection<super::service_member::ServiceMemberRow> { &self.service_members_ }
@@ -151,10 +196,16 @@ impl<'a> UserWhere<'a> {
 }
 
 /// Query over user: User::new() → chain → terminal(&db).await.
-pub struct User { pub q: Q }
+pub struct User {
+    pub q: Q,
+    key_fn: Option<Box<dyn Fn(&UserRow) -> Key + Send + Sync>>,
+}
 
 impl User {
-    pub fn new() -> Self { Self { q: Q::new(super::schema_hash(), "user") } }
+    pub fn new() -> Self { Self { q: Q::new(super::schema_hash(), "user"), key_fn: None } }
+
+    /// Keys the root collection by a function of each row (relations key by key_by_<col>).
+    pub fn key_by_fn(mut self, f: impl Fn(&UserRow) -> Key + Send + Sync + 'static) -> Self { self.key_fn = Some(Box::new(f)); self }
 
     // ---- WHERE ----
     pub fn or(mut self) -> Self { self.q.or(); self }
@@ -268,7 +319,7 @@ impl User {
 
     pub async fn all(mut self, ex: &impl Exec) -> Result<Collection<UserRow>> {
         let mut rows = db::select(ex, &mut self.q.req, "all").await?;
-        Ok(collect(&mut rows))
+        Ok(collect(&mut rows, self.key_fn.as_deref()))
     }
 
     pub async fn count(mut self, ex: &impl Exec) -> Result<i64> {
@@ -282,7 +333,7 @@ impl User {
         self.q.node().limit = Some(orm::ir::Limit { offset: (page - 1) * per, count: per });
         let (mut rows, total) = db::paginate(ex, &mut self.q.req).await?;
         let pages = (total + per as i64 - 1) / per as i64;
-        Ok(Page { items: collect(&mut rows), total, pages, current: page as i64, per: per as i64 })
+        Ok(Page { items: collect(&mut rows, self.key_fn.as_deref()), total, pages, current: page as i64, per: per as i64 })
     }
 
     pub async fn insert(mut self, ex: &impl Exec) -> Result<Option<UserRow>> {
@@ -297,12 +348,14 @@ impl User {
 
 impl Default for User { fn default() -> Self { Self::new() } }
 
-fn collect(rows: &mut db::Rows) -> Collection<UserRow> {
+fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&UserRow) -> Key + Send + Sync)>) -> Collection<UserRow> {
     let data = std::mem::take(&mut rows.data);
     let mut c = Collection::with_capacity(data.len());
     for mut v in data {
         let k = Key::of(&v[0]);
-        c.put(k, UserRow::from_row(&mut v, &rows.assemble, rows));
+        let r = UserRow::from_row(&mut v, &rows.assemble, rows);
+        let k = match key_fn { Some(f) => f(&r), None => k };
+        c.put(k, r);
     }
     c
 }

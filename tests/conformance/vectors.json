@@ -507,6 +507,93 @@
       }
     },
     {
+      "name": "key_by_fn_to_array",
+      "chain": "ServiceMember.serviceSeqEq(7).orderBySeqAsc().limit(0,2).relationUser(User.flatten()).keyByFn(m =\u003e 'u'+m.userSeq).all → [[key, m.toArray()]] — client-side keying; flatten merges user columns (member keys win)",
+      "expect": {
+        "result": [
+          [
+            "u7",
+            {
+              "name": "user-7",
+              "seq": 7,
+              "service_seq": 7,
+              "user": {
+                "name": "user-7",
+                "seq": 7
+              },
+              "user_seq": 7
+            }
+          ],
+          [
+            "u107",
+            {
+              "name": "user-107",
+              "seq": 107,
+              "service_seq": 7,
+              "user": {
+                "name": "user-107",
+                "seq": 107
+              },
+              "user_seq": 107
+            }
+          ]
+        ],
+        "statements": [
+          {
+            "binds": [
+              7
+            ],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`user_seq` AS `a__user_seq` FROM `service_member` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT 0, 2"
+          },
+          {
+            "binds": [
+              7,
+              107
+            ],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` IN (?, ?)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "drop_child_key_to_array",
+      "chain": "User.seqEq(5).relationsBattles(Battle.selectNone().orderBySeqAsc().limitPerParent(2).dropChildKey()).one → toArray — battles keyed by seq, user_seq hidden from the array form",
+      "expect": {
+        "result": {
+          "battles": {
+            "4": {
+              "seq": 4,
+              "service_member_seq": 5,
+              "service_module_seq": 5,
+              "service_seq": 5
+            },
+            "5004": {
+              "seq": 5004,
+              "service_member_seq": 5,
+              "service_module_seq": 5,
+              "service_seq": 5
+            }
+          },
+          "name": "user-5",
+          "seq": 5
+        },
+        "statements": [
+          {
+            "binds": [
+              5
+            ],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+          },
+          {
+            "binds": [
+              5
+            ],
+            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__user_seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__service_module_seq`, `orm_w`.`a__service_member_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_module_seq` AS `a__service_module_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`user_seq` ORDER BY `a`.`seq` ASC) AS `orm_rn` FROM `battle` AS `a` WHERE `a`.`user_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` \u003c= 2 ORDER BY `orm_w`.`a__user_seq`, `orm_w`.`orm_rn`"
+          }
+        ]
+      }
+    },
+    {
       "name": "codec_roundtrip",
       "chain": "transaction(tx =\u003e Battle.setName('conf-codec').set…().setJsonSetting(v).setJsonsTags(['x','y']).setBase64Extra(v).setSerializeData(v).setGzExtend(v).setIp('10.1.2.3').insert(tx)); Battle.selectJsonSetting().selectJsonsTags().selectBase64Extra().selectSerializeData().selectGzExtend().seqEq(seq).one; row.delete — styled columns round-trip (docs/codec.md); gz bind masked as $ZLIB",
       "expect": {

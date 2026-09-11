@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/maxkwon/orm/engine"
 	"github.com/maxkwon/orm/engine/ir"
@@ -213,6 +214,53 @@ type Row struct {
 	dvals  []any
 	encErr error // first codec error from DirtyStyled; surfaces from UpdateRow
 	extra  map[string]any // selectExpr / select<Col>As outputs, by output name
+
+	// assembly facts generated scanners record for ToArray
+	selected []string        // output names present in this row's projection, in order
+	hidden   map[string]bool // drop_child_key columns
+	flat     []string        // one-relations whose columns merge into this row's array form
+	rels     map[string]bool // relations that were loaded (even when null/empty)
+}
+
+// SetProjection records what the row's assemble node selected (generated scanners call it).
+func (r *Row) SetProjection(a *plan.Assemble) {
+	r.selected = r.selected[:0]
+	for _, c := range a.Columns {
+		r.selected = append(r.selected, c.Name)
+		if c.Hidden {
+			if r.hidden == nil {
+				r.hidden = map[string]bool{}
+			}
+			r.hidden[c.Name] = true
+		}
+	}
+	for _, ch := range a.Children {
+		if r.rels == nil {
+			r.rels = map[string]bool{}
+		}
+		r.rels[ch.Rel] = true
+		if ch.Flatten {
+			r.flat = append(r.flat, ch.Rel)
+		}
+	}
+}
+
+// Selected lists the projected output names; Hidden/Flat/RelLoaded expose the assembly facts.
+func (r *Row) Selected() []string      { return r.selected }
+func (r *Row) Hidden(name string) bool { return r.hidden[name] }
+func (r *Row) Flat() []string          { return r.flat }
+func (r *Row) RelLoaded(rel string) bool { return r.rels[rel] }
+
+// FormatTime renders a datetime the way every language's array form does.
+func FormatTime(t time.Time) string { return t.Format("2006-01-02 15:04:05.000000") }
+
+// MergeFlat copies a flattened child's array form into the parent's (parent keys win).
+func MergeFlat(parent, child map[string]any) {
+	for k, v := range child {
+		if _, ok := parent[k]; !ok {
+			parent[k] = v
+		}
+	}
 }
 
 // SetExtra records a computed or aliased output column (generated scanners call it).

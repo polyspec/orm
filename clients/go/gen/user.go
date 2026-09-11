@@ -99,8 +99,49 @@ func scanUser(vals []any, a *plan.Assemble, rs *orm.Rows) *UserRow {
 			r.ServiceMembers = c
 		}
 	}
+	r.SetProjection(a)
 	r.Mark("user", "seq", r.Seq)
 	return r
+}
+
+// ToArray is the row's array form (what PHP's toArray() and Rust's to_map() give):
+// projected columns minus drop_child_key ones, extra outputs, loaded relations,
+// and flattened one-relations merged in (this row's keys win).
+func (r *UserRow) ToArray() map[string]any {
+	m := make(map[string]any, len(r.Selected()))
+	for _, name := range r.Selected() {
+		if r.Hidden(name) {
+			continue
+		}
+		switch name {
+		case "seq":
+			m[name] = r.Seq
+		case "name":
+			m[name] = r.Name
+		default:
+			m[name] = r.Extra(name)
+		}
+	}
+	if r.RelLoaded("battles") {
+		mm := map[string]any{}
+		for k, v := range r.GetBattles().All() {
+			mm[k.String()] = v.ToArray()
+		}
+		m["battles"] = mm
+	}
+	if r.RelLoaded("service_members") {
+		mm := map[string]any{}
+		for k, v := range r.GetServiceMembers().All() {
+			mm[k.String()] = v.ToArray()
+		}
+		m["service_members"] = mm
+	}
+	for _, rel := range r.Flat() {
+		if child, ok := m[rel].(map[string]any); ok {
+			orm.MergeFlat(m, child)
+		}
+	}
+	return m
 }
 
 // UserCols are column references for column-to-column predicates
@@ -114,7 +155,13 @@ var UserCols = struct {
 }
 
 // User builds a statement over user: NewUser() → chain → terminal(ctx, db).
-type User struct{ q *orm.Q }
+type User struct {
+	q     *orm.Q
+	keyFn func(*UserRow) orm.Key // KeyByFn: client-side keying of the root collection
+}
+
+// KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
+func (q *User) KeyByFn(fn func(*UserRow) orm.Key) *User { q.keyFn = fn; return q }
 
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *User) Req() *orm.Req { return q.q.Req }
@@ -412,13 +459,17 @@ func (q *User) All(ctx context.Context, ex orm.Exec) (*orm.Collection[UserRow], 
 	if err != nil {
 		return nil, err
 	}
-	return collectUser(rows), nil
+	return collectUser(rows, q.keyFn), nil
 }
 
-func collectUser(rows *orm.Rows) *orm.Collection[UserRow] {
+func collectUser(rows *orm.Rows, keyFn func(*UserRow) orm.Key) *orm.Collection[UserRow] {
 	c := orm.NewCollection[UserRow](len(rows.Data))
 	for _, vals := range rows.Data {
 		r := scanUser(vals, rows.Assemble, rows)
+		if keyFn != nil {
+			c.Put(keyFn(r), r)
+			continue
+		}
 		c.Put(orm.KeyOf(vals[0]), r)
 	}
 	return c
@@ -453,7 +504,7 @@ func (q *User) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm.P
 		return nil, err
 	}
 	pages := (total + int64(per) - 1) / int64(per)
-	return &orm.Page[UserRow]{Items: collectUser(rows), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
+	return &orm.Page[UserRow]{Items: collectUser(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
 func (q *User) Insert(ctx context.Context, ex orm.Exec) (*UserRow, error) {
