@@ -147,53 +147,6 @@ func TestReadPaths(t *testing.T) {
 	}
 }
 
-func TestWritePaths(t *testing.T) {
-	db := open(t)
-	ctx := context.Background()
-	email := "w@example.com"
-	created, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.AuthorRow, error) {
-		return gen.NewAuthor().
-			SetName("go-write").
-			SetUserSeq(1).SetServiceSeq(999).SetServiceRegionSeq(1).SetServiceMemberSeq(1).
-			SetStartDt(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)).SetEndDt(time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)).
-			SetAesHexEmail(email).
-			Insert(ctx, tx)
-	})
-	if err != nil || created == nil || created.Seq == 0 || created.AesHexEmail == nil || *created.AesHexEmail != email {
-		t.Fatalf("insert: %v %+v", err, created)
-	}
-
-	// update dirty columns only, optimistic
-	created.SetName("go-write-2").SetLikeCount(5)
-	if err := created.UpdateOptimistic(ctx, db); err != nil {
-		t.Fatalf("update: %v", err)
-	}
-	again, _ := gen.NewAuthor().OneBySeq(ctx, db, created.Seq)
-	if again.Name != "go-write-2" || again.LikeCount != 5 {
-		t.Errorf("after update: %+v", again)
-	}
-	// stale optimistic value → OPTIMISTIC_LOCK
-	created.SetName("stale")
-	if err := created.UpdateOptimistic(ctx, db); err == nil || !strings.Contains(err.Error(), "OPTIMISTIC_LOCK") {
-		t.Errorf("optimistic lock not detected: %v", err)
-	}
-	// plus/minus via draft-style update through query is S3; delete now
-	if err := again.Delete(ctx, db); err != nil {
-		t.Fatal(err)
-	}
-	if left, _ := gen.NewAuthor().SeqEq(created.Seq).Count(ctx, db); left != 0 {
-		t.Errorf("row not deleted")
-	}
-}
-
-func TestErrorSurface(t *testing.T) {
-	db := open(t)
-	ctx := context.Background()
-	if _, err := gen.NewAuthor().SeqIn([]int64{}).Count(ctx, db); err == nil || !strings.Contains(err.Error(), "EMPTY_IN") {
-		t.Errorf("EMPTY_IN: %v", err)
-	}
-}
-
 func TestRelationPaths(t *testing.T) {
 	db := open(t)
 	ctx := context.Background()
@@ -267,10 +220,62 @@ func TestRelationPaths(t *testing.T) {
 	if err != nil || one == nil || one.Service == nil || one.Service.GetMembers().Len() != 1 {
 		t.Errorf("one + relation: %+v %v", one, err)
 	}
+	// flatten: typed access is unchanged (array/JSON forms merge the child's columns)
+	m, err := gen.NewServiceMember().ServiceSeqEq(7).OrderBySeqAsc().Limit(0, 2).RelationUser(gen.NewUser().Flatten()).All(ctx, db)
+	if err != nil || m.First().GetUser() == nil || m.First().User.Name != fmt.Sprintf("user-%d", m.First().UserSeq) {
+		t.Errorf("flatten: %v %+v", err, m.First())
+	}
 	// paginate keeps relations
 	page, err := gen.NewAuthor().ServiceSeqEq(7).OrderBySeqAsc().RelationUser(gen.NewUser()).Paginate(ctx, db, 1, 4)
 	if err != nil || page.Total != 1000 || page.Items.Len() != 4 || page.Items.First().GetUser() == nil {
 		t.Errorf("paginate + relation: %+v %v", page, err)
 	}
 	db.Cfg().OnQuery = nil
+}
+
+func TestWritePaths(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	email := "w@example.com"
+	created, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.AuthorRow, error) {
+		return gen.NewAuthor().
+			SetName("go-write").
+			SetUserSeq(1).SetServiceSeq(999).SetServiceRegionSeq(1).SetServiceMemberSeq(1).
+			SetStartDt(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)).SetEndDt(time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)).
+			SetAesHexEmail(email).
+			Insert(ctx, tx)
+	})
+	if err != nil || created == nil || created.Seq == 0 || created.AesHexEmail == nil || *created.AesHexEmail != email {
+		t.Fatalf("insert: %v %+v", err, created)
+	}
+
+	// update dirty columns only, optimistic
+	created.SetName("go-write-2").SetLikeCount(5)
+	if err := created.UpdateOptimistic(ctx, db); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	again, _ := gen.NewAuthor().OneBySeq(ctx, db, created.Seq)
+	if again.Name != "go-write-2" || again.LikeCount != 5 {
+		t.Errorf("after update: %+v", again)
+	}
+	// stale optimistic value → OPTIMISTIC_LOCK
+	created.SetName("stale")
+	if err := created.UpdateOptimistic(ctx, db); err == nil || !strings.Contains(err.Error(), "OPTIMISTIC_LOCK") {
+		t.Errorf("optimistic lock not detected: %v", err)
+	}
+	// plus/minus via draft-style update through query is S3; delete now
+	if err := again.Delete(ctx, db); err != nil {
+		t.Fatal(err)
+	}
+	if left, _ := gen.NewAuthor().SeqEq(created.Seq).Count(ctx, db); left != 0 {
+		t.Errorf("row not deleted")
+	}
+}
+
+func TestErrorSurface(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	if _, err := gen.NewAuthor().SeqIn([]int64{}).Count(ctx, db); err == nil || !strings.Contains(err.Error(), "EMPTY_IN") {
+		t.Errorf("EMPTY_IN: %v", err)
+	}
 }

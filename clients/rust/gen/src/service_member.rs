@@ -16,6 +16,7 @@ pub struct ServiceMemberRow {
     service_: Option<Box<super::service::ServiceRow>>,
     user_: Option<Box<super::user::UserRow>>,
     dirty: Vec<(&'static str, Param)>,
+    enc_err: Option<(String, String)>, // (code, msg) of the first codec error; surfaces from update
     loaded: bool,
 }
 
@@ -94,6 +95,7 @@ impl ServiceMemberRow {
     pub async fn update(&mut self, ex: &impl Exec) -> Result<()> { self.update_inner(ex, false).await }
 
     async fn update_inner(&mut self, ex: &impl Exec, optimistic: bool) -> Result<()> {
+        if let Some((code, msg)) = self.enc_err.take() { return Err(orm::Error::Engine { code, msg }); }
         if !self.loaded { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
         if self.dirty.is_empty() { return Ok(()); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);

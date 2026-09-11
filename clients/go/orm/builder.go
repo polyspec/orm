@@ -149,6 +149,23 @@ func (q *Q) Set(col string, v any) {
 	q.Req.IR.Set = append(q.Req.IR.Set, ir.Assign{Column: col, P: &i})
 }
 
+// SetStyled encodes v with the column's styles (docs/codec.md) before binding
+// it; an encode error is kept on the request and surfaces from the terminal.
+func (q *Q) SetStyled(col string, v any, styles []string) {
+	enc, err := Encode(styles, v)
+	if err != nil {
+		if q.Req.Err == nil {
+			q.Req.Err = err
+		}
+		return
+	}
+	if enc == nil {
+		q.SetNull(col)
+		return
+	}
+	q.Set(col, enc)
+}
+
 func (q *Q) SetNull(col string) {
 	q.Req.IR.Set = append(q.Req.IR.Set, ir.Assign{Column: col, Null: true})
 }
@@ -184,6 +201,7 @@ type Row struct {
 	loaded bool
 	dirty  []ir.Assign
 	dvals  []any
+	encErr error // first codec error from DirtyStyled; surfaces from UpdateRow
 }
 
 func (r *Row) Loaded() bool { return r.loaded }
@@ -204,8 +222,22 @@ func (r *Row) Dirty(col string, v any) {
 	r.dvals = append(r.dvals, v)
 }
 
+// DirtyStyled records a styled column change with its encoded value; the
+// encode error is kept and surfaces from UpdateRow.
+func (r *Row) DirtyStyled(col string, v any, styles []string) {
+	enc, err := Encode(styles, v)
+	if err != nil {
+		r.encErr = err
+		return
+	}
+	r.Dirty(col, enc)
+}
+
 // UpdateRow writes the dirty columns; optimistic passes the loaded updated_ts value.
 func (r *Row) UpdateRow(ctx context.Context, ex Exec, optimisticCol string, optimisticVal any) error {
+	if r.encErr != nil {
+		return r.encErr
+	}
 	if !r.loaded {
 		return fmt.Errorf("orm: update on a row that was not loaded")
 	}

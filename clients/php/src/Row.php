@@ -19,6 +19,8 @@ abstract class Row implements \ArrayAccess
     protected array $rel = [];
     /** @var array<string, mixed> columns changed through set* */
     protected array $dirty = [];
+    /** @var array<string, list<string>> styles of dirty columns that need encoding on write */
+    protected array $dirtyStyles = [];
     /** @var array<string, mixed> columns merged from a flattened one-relation */
     protected array $extra = [];
     /** @var array<string, true> columns selected only for binding (drop_child_key): left out of toArray */
@@ -99,6 +101,7 @@ abstract class Row implements \ArrayAccess
     private static function coerce(string $type, mixed $v): mixed
     {
         return match ($type) {
+            'styled' => $v,
             'i32', 'i64' => (int) $v,
             'f64', 'decimal' => (float) $v,
             'bool' => (bool) $v,
@@ -109,6 +112,14 @@ abstract class Row implements \ArrayAccess
     protected function setCol(string $col, mixed $v): static
     {
         $this->dirty[$col] = $v;
+        return $this;
+    }
+
+    /** Records a styled column change; the value is kept decoded and encoded at write time. */
+    protected function setStyled(string $col, mixed $v, array $styles): static
+    {
+        $this->dirty[$col] = $v;
+        $this->dirtyStyles[$col] = $styles;
         return $this;
     }
 
@@ -207,7 +218,11 @@ abstract class Row implements \ArrayAccess
         }
         $q = new Q(static::entity());
         foreach ($this->dirty as $col => $v) {
-            $q->set($col, $v);
+            if (isset($this->dirtyStyles[$col])) {
+                $q->setStyled($col, $v, $this->dirtyStyles[$col]);
+            } else {
+                $q->set($col, $v);
+            }
         }
         $pk = static::pk();
         $q->w()->pred($pk, 'eq', $this->col($pk));
@@ -218,6 +233,7 @@ abstract class Row implements \ArrayAccess
         $plan = Orm::transport()->plan($q->req->shape());
         $ex->write($plan['steps'][0], $q->req->params, false, $optimistic);
         $this->dirty = [];
+        $this->dirtyStyles = [];
         return $this;
     }
 

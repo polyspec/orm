@@ -42,6 +42,12 @@ type AuthorRow struct {
 	LikeCount             int32
 	AesHexEmail           *string
 	AesHexPhone           *string
+	Ip                    *string
+	GzExtend              any
+	JsonSetting           any
+	JsonsTags             any
+	Base64Extra           any
+	SerializeData         any
 	Service               *ServiceRow
 	ServiceMember         *ServiceMemberRow
 	ServiceRegion         *ServiceRegionRow
@@ -432,6 +438,96 @@ func (r *AuthorRow) SetAesHexPhone(v *string) *AuthorRow {
 	return r
 }
 
+// GetIp is nil-safe.
+func (r *AuthorRow) GetIp() *string {
+	if r == nil {
+		var zero *string
+		return zero
+	}
+	return r.Ip
+}
+
+func (r *AuthorRow) SetIp(v *string) *AuthorRow {
+	r.Ip = v
+	r.Dirty("ip", orm.Deref(v))
+	return r
+}
+
+// GetGzExtend is nil-safe.
+func (r *AuthorRow) GetGzExtend() any {
+	if r == nil {
+		var zero any
+		return zero
+	}
+	return r.GzExtend
+}
+
+func (r *AuthorRow) SetGzExtend(v any) *AuthorRow {
+	r.GzExtend = v
+	r.DirtyStyled("gz_extend", v, []string{"serialize", "gz"})
+	return r
+}
+
+// GetJsonSetting is nil-safe.
+func (r *AuthorRow) GetJsonSetting() any {
+	if r == nil {
+		var zero any
+		return zero
+	}
+	return r.JsonSetting
+}
+
+func (r *AuthorRow) SetJsonSetting(v any) *AuthorRow {
+	r.JsonSetting = v
+	r.DirtyStyled("json_setting", v, []string{"json"})
+	return r
+}
+
+// GetJsonsTags is nil-safe.
+func (r *AuthorRow) GetJsonsTags() any {
+	if r == nil {
+		var zero any
+		return zero
+	}
+	return r.JsonsTags
+}
+
+func (r *AuthorRow) SetJsonsTags(v any) *AuthorRow {
+	r.JsonsTags = v
+	r.DirtyStyled("jsons_tags", v, []string{"jsons"})
+	return r
+}
+
+// GetBase64Extra is nil-safe.
+func (r *AuthorRow) GetBase64Extra() any {
+	if r == nil {
+		var zero any
+		return zero
+	}
+	return r.Base64Extra
+}
+
+func (r *AuthorRow) SetBase64Extra(v any) *AuthorRow {
+	r.Base64Extra = v
+	r.DirtyStyled("base64_extra", v, []string{"serialize", "base64"})
+	return r
+}
+
+// GetSerializeData is nil-safe.
+func (r *AuthorRow) GetSerializeData() any {
+	if r == nil {
+		var zero any
+		return zero
+	}
+	return r.SerializeData
+}
+
+func (r *AuthorRow) SetSerializeData(v any) *AuthorRow {
+	r.SerializeData = v
+	r.DirtyStyled("serialize_data", v, []string{"serialize"})
+	return r
+}
+
 func (r *AuthorRow) GetService() *ServiceRow {
 	if r == nil {
 		return nil
@@ -549,6 +645,21 @@ func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
 				x := orm.AsString(v)
 				r.AesHexPhone = &x
 			}
+		case "ip":
+			if v != nil {
+				x := orm.AsString(v)
+				r.Ip = &x
+			}
+		case "gz_extend":
+			r.GzExtend = v
+		case "json_setting":
+			r.JsonSetting = v
+		case "jsons_tags":
+			r.JsonsTags = v
+		case "base64_extra":
+			r.Base64Extra = v
+		case "serialize_data":
+			r.SerializeData = v
 		}
 	}
 	for _, ch := range a.Children {
@@ -1827,6 +1938,86 @@ func (q *Author) AesHexPhoneIsNotNull() *Author {
 	q.q.W().PredNull("aes_hex_phone", "is_not_null")
 	return q
 }
+func (w *AuthorWhere) IpEq(v string) *AuthorWhere    { w.w.Pred("ip", "eq", v); return w }
+func (q *Author) IpEq(v string) *Author              { q.q.W().Pred("ip", "eq", v); return q }
+func (w *AuthorWhere) IpNotEq(v string) *AuthorWhere { w.w.Pred("ip", "not_eq", v); return w }
+func (q *Author) IpNotEq(v string) *Author           { q.q.W().Pred("ip", "not_eq", v); return q }
+func (w *AuthorWhere) IpIn(vs []string) *AuthorWhere {
+	w.w.PredList("ip", "in", orm.Anys(vs))
+	return w
+}
+func (q *Author) IpIn(vs []string) *Author { q.q.W().PredList("ip", "in", orm.Anys(vs)); return q }
+func (w *AuthorWhere) IpNotIn(vs []string) *AuthorWhere {
+	w.w.PredList("ip", "not_in", orm.Anys(vs))
+	return w
+}
+func (q *Author) IpNotIn(vs []string) *Author {
+	q.q.W().PredList("ip", "not_in", orm.Anys(vs))
+	return q
+}
+func (w *AuthorWhere) IpIsNull() *AuthorWhere       { w.w.PredNull("ip", "is_null"); return w }
+func (q *Author) IpIsNull() *Author                 { q.q.W().PredNull("ip", "is_null"); return q }
+func (w *AuthorWhere) IpIsNotNull() *AuthorWhere    { w.w.PredNull("ip", "is_not_null"); return w }
+func (q *Author) IpIsNotNull() *Author              { q.q.W().PredNull("ip", "is_not_null"); return q }
+func (w *AuthorWhere) GzExtendIsNull() *AuthorWhere { w.w.PredNull("gz_extend", "is_null"); return w }
+func (q *Author) GzExtendIsNull() *Author           { q.q.W().PredNull("gz_extend", "is_null"); return q }
+func (w *AuthorWhere) GzExtendIsNotNull() *AuthorWhere {
+	w.w.PredNull("gz_extend", "is_not_null")
+	return w
+}
+func (q *Author) GzExtendIsNotNull() *Author { q.q.W().PredNull("gz_extend", "is_not_null"); return q }
+func (w *AuthorWhere) JsonSettingIsNull() *AuthorWhere {
+	w.w.PredNull("json_setting", "is_null")
+	return w
+}
+func (q *Author) JsonSettingIsNull() *Author { q.q.W().PredNull("json_setting", "is_null"); return q }
+func (w *AuthorWhere) JsonSettingIsNotNull() *AuthorWhere {
+	w.w.PredNull("json_setting", "is_not_null")
+	return w
+}
+func (q *Author) JsonSettingIsNotNull() *Author {
+	q.q.W().PredNull("json_setting", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) JsonsTagsIsNull() *AuthorWhere { w.w.PredNull("jsons_tags", "is_null"); return w }
+func (q *Author) JsonsTagsIsNull() *Author           { q.q.W().PredNull("jsons_tags", "is_null"); return q }
+func (w *AuthorWhere) JsonsTagsIsNotNull() *AuthorWhere {
+	w.w.PredNull("jsons_tags", "is_not_null")
+	return w
+}
+func (q *Author) JsonsTagsIsNotNull() *Author {
+	q.q.W().PredNull("jsons_tags", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) Base64ExtraIsNull() *AuthorWhere {
+	w.w.PredNull("base64_extra", "is_null")
+	return w
+}
+func (q *Author) Base64ExtraIsNull() *Author { q.q.W().PredNull("base64_extra", "is_null"); return q }
+func (w *AuthorWhere) Base64ExtraIsNotNull() *AuthorWhere {
+	w.w.PredNull("base64_extra", "is_not_null")
+	return w
+}
+func (q *Author) Base64ExtraIsNotNull() *Author {
+	q.q.W().PredNull("base64_extra", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) SerializeDataIsNull() *AuthorWhere {
+	w.w.PredNull("serialize_data", "is_null")
+	return w
+}
+func (q *Author) SerializeDataIsNull() *Author {
+	q.q.W().PredNull("serialize_data", "is_null")
+	return q
+}
+func (w *AuthorWhere) SerializeDataIsNotNull() *AuthorWhere {
+	w.w.PredNull("serialize_data", "is_not_null")
+	return w
+}
+func (q *Author) SerializeDataIsNotNull() *Author {
+	q.q.W().PredNull("serialize_data", "is_not_null")
+	return q
+}
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
 func (q *Author) Or() *Author { q.q.Or(); return q }
@@ -2353,6 +2544,110 @@ func (q *Author) SelectAesHexPhoneAs(name string) *Author {
 	c.As[name] = "aes_hex_phone"
 	return q
 }
+func (q *Author) SelectIp() *Author { c := q.q.Columns(); c.Add = append(c.Add, "ip"); return q }
+func (q *Author) UnselectIp() *Author {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "ip")
+	return q
+}
+func (q *Author) SelectIpAs(name string) *Author {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "ip"
+	return q
+}
+func (q *Author) SelectGzExtend() *Author {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "gz_extend")
+	return q
+}
+func (q *Author) UnselectGzExtend() *Author {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "gz_extend")
+	return q
+}
+func (q *Author) SelectGzExtendAs(name string) *Author {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "gz_extend"
+	return q
+}
+func (q *Author) SelectJsonSetting() *Author {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "json_setting")
+	return q
+}
+func (q *Author) UnselectJsonSetting() *Author {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "json_setting")
+	return q
+}
+func (q *Author) SelectJsonSettingAs(name string) *Author {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "json_setting"
+	return q
+}
+func (q *Author) SelectJsonsTags() *Author {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "jsons_tags")
+	return q
+}
+func (q *Author) UnselectJsonsTags() *Author {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "jsons_tags")
+	return q
+}
+func (q *Author) SelectJsonsTagsAs(name string) *Author {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "jsons_tags"
+	return q
+}
+func (q *Author) SelectBase64Extra() *Author {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "base64_extra")
+	return q
+}
+func (q *Author) UnselectBase64Extra() *Author {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "base64_extra")
+	return q
+}
+func (q *Author) SelectBase64ExtraAs(name string) *Author {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "base64_extra"
+	return q
+}
+func (q *Author) SelectSerializeData() *Author {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "serialize_data")
+	return q
+}
+func (q *Author) UnselectSerializeData() *Author {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "serialize_data")
+	return q
+}
+func (q *Author) SelectSerializeDataAs(name string) *Author {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "serialize_data"
+	return q
+}
 
 // Order, group, limit.
 func (q *Author) OrderBySeqAsc() *Author          { q.q.Order("seq", false); return q }
@@ -2548,7 +2843,46 @@ func (q *Author) GroupByAesHexPhone() *Author {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "aes_hex_phone")
 	return q
 }
-func (q *Author) KeyByAesHexPhone() *Author                  { q.q.Node.KeyBy = "aes_hex_phone"; return q }
+func (q *Author) KeyByAesHexPhone() *Author    { q.q.Node.KeyBy = "aes_hex_phone"; return q }
+func (q *Author) OrderByIpAsc() *Author        { q.q.Order("ip", false); return q }
+func (q *Author) OrderByIpDesc() *Author       { q.q.Order("ip", true); return q }
+func (q *Author) GroupByIp() *Author           { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "ip"); return q }
+func (q *Author) KeyByIp() *Author             { q.q.Node.KeyBy = "ip"; return q }
+func (q *Author) OrderByGzExtendAsc() *Author  { q.q.Order("gz_extend", false); return q }
+func (q *Author) OrderByGzExtendDesc() *Author { q.q.Order("gz_extend", true); return q }
+func (q *Author) GroupByGzExtend() *Author {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "gz_extend")
+	return q
+}
+func (q *Author) KeyByGzExtend() *Author          { q.q.Node.KeyBy = "gz_extend"; return q }
+func (q *Author) OrderByJsonSettingAsc() *Author  { q.q.Order("json_setting", false); return q }
+func (q *Author) OrderByJsonSettingDesc() *Author { q.q.Order("json_setting", true); return q }
+func (q *Author) GroupByJsonSetting() *Author {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "json_setting")
+	return q
+}
+func (q *Author) KeyByJsonSetting() *Author     { q.q.Node.KeyBy = "json_setting"; return q }
+func (q *Author) OrderByJsonsTagsAsc() *Author  { q.q.Order("jsons_tags", false); return q }
+func (q *Author) OrderByJsonsTagsDesc() *Author { q.q.Order("jsons_tags", true); return q }
+func (q *Author) GroupByJsonsTags() *Author {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "jsons_tags")
+	return q
+}
+func (q *Author) KeyByJsonsTags() *Author         { q.q.Node.KeyBy = "jsons_tags"; return q }
+func (q *Author) OrderByBase64ExtraAsc() *Author  { q.q.Order("base64_extra", false); return q }
+func (q *Author) OrderByBase64ExtraDesc() *Author { q.q.Order("base64_extra", true); return q }
+func (q *Author) GroupByBase64Extra() *Author {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "base64_extra")
+	return q
+}
+func (q *Author) KeyByBase64Extra() *Author         { q.q.Node.KeyBy = "base64_extra"; return q }
+func (q *Author) OrderBySerializeDataAsc() *Author  { q.q.Order("serialize_data", false); return q }
+func (q *Author) OrderBySerializeDataDesc() *Author { q.q.Order("serialize_data", true); return q }
+func (q *Author) GroupBySerializeData() *Author {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "serialize_data")
+	return q
+}
+func (q *Author) KeyBySerializeData() *Author                { q.q.Node.KeyBy = "serialize_data"; return q }
 func (q *Author) OrderByExpr(frag string, desc bool) *Author { q.q.OrderExpr(frag, desc); return q }
 func (q *Author) Limit(offset, count int) *Author {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
@@ -2702,6 +3036,52 @@ func (q *Author) SetAesHexPhone(v string) *Author { q.q.Set("aes_hex_phone", v);
 func (q *Author) SetAesHexPhoneNull() *Author     { q.q.SetNull("aes_hex_phone"); return q }
 func (q *Author) SetAesHexPhoneExpr(frag string, binds ...any) *Author {
 	q.q.SetExpr("aes_hex_phone", frag, binds...)
+	return q
+}
+func (q *Author) SetIp(v string) *Author { q.q.Set("ip", v); return q }
+func (q *Author) SetIpNull() *Author     { q.q.SetNull("ip"); return q }
+func (q *Author) SetIpExpr(frag string, binds ...any) *Author {
+	q.q.SetExpr("ip", frag, binds...)
+	return q
+}
+func (q *Author) SetGzExtend(v any) *Author {
+	q.q.SetStyled("gz_extend", v, []string{"serialize", "gz"})
+	return q
+}
+func (q *Author) SetGzExtendExpr(frag string, binds ...any) *Author {
+	q.q.SetExpr("gz_extend", frag, binds...)
+	return q
+}
+func (q *Author) SetJsonSetting(v any) *Author {
+	q.q.SetStyled("json_setting", v, []string{"json"})
+	return q
+}
+func (q *Author) SetJsonSettingExpr(frag string, binds ...any) *Author {
+	q.q.SetExpr("json_setting", frag, binds...)
+	return q
+}
+func (q *Author) SetJsonsTags(v any) *Author {
+	q.q.SetStyled("jsons_tags", v, []string{"jsons"})
+	return q
+}
+func (q *Author) SetJsonsTagsExpr(frag string, binds ...any) *Author {
+	q.q.SetExpr("jsons_tags", frag, binds...)
+	return q
+}
+func (q *Author) SetBase64Extra(v any) *Author {
+	q.q.SetStyled("base64_extra", v, []string{"serialize", "base64"})
+	return q
+}
+func (q *Author) SetBase64ExtraExpr(frag string, binds ...any) *Author {
+	q.q.SetExpr("base64_extra", frag, binds...)
+	return q
+}
+func (q *Author) SetSerializeData(v any) *Author {
+	q.q.SetStyled("serialize_data", v, []string{"serialize"})
+	return q
+}
+func (q *Author) SetSerializeDataExpr(frag string, binds ...any) *Author {
+	q.q.SetExpr("serialize_data", frag, binds...)
 	return q
 }
 func (q *Author) PlusSeq(v int64) *Author  { q.q.Plus("seq", v); return q }

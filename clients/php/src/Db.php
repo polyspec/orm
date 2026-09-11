@@ -133,6 +133,12 @@ class Db
             throw $e;
         }
         $this->emit($sql, $args, $start, null);
+        if (Codec::hasStyled($step['assemble'])) {
+            foreach ($rows as &$vals) {
+                Codec::decodeRow($vals, $step['assemble']);
+            }
+            unset($vals);
+        }
         return [$rows, $step['assemble']];
     }
 

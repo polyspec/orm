@@ -164,3 +164,16 @@ compatibility 표기를 같은 IR로 번역한다: `andX/orX/conditionX`(`orX` =
 
 ## 7. 없는 것 (의도적)
 op-first 술어(`gtEndDt`), 무접두 술어, `or<op><Col>`, 술어 값 객체·`cols()`·`andPred`, `raw()`(→`expr`), `orderBy<Col>()` 무접미, `with<Rel>`, `match…With…`, `alias<Name>()`, `get/gets/getBy`, `addColumn*`, `parentNode`, `groupLimit`, `keyName*`, 텍스트 쿼리 언어, 맵/구조체 필터, 빌드타임 SQL.
+
+## 스타일 컬럼 (코덱, `docs/codec.md`)
+`gz_*`·`json_*`·`jsons_*`·`base64_*`·`serialize_*`(그리고 MySQL `json` 타입)은 저장 바이트가 아니라 **디코드된 값**으로 드나든다. 타입은 JSON형 값 하나다.
+
+| | PHP | Go | Rust |
+|---|---|---|---|
+| 필드/getter | `$r->getJsonSetting()` → array/스칼라/null (`mixed`) | `r.JsonSetting` (`any`: nil, bool, int64, float64, string, []any, map[string]any) | `r.json_setting` (`serde_json::Value`, NULL은 `Value::Null`) |
+| setter | `->setJsonSetting(['a' => 1])` | `.SetJsonSetting(map[string]any{"a": 1})` | `.set_json_setting(json!({"a": 1}))` |
+| 기본 SELECT | 제외(lazy) → `selectJsonSetting()` 로 옵트인 | `SelectJsonSetting()` | `select_json_setting()` |
+| 술어 | `isNull`/`isNotNull`만 | 동일 | 동일 |
+
+인코딩은 setter 시점에 일어나고, 실패(직렬화 불가한 값·객체)는 터미널에서 `CODEC_ENCODE`/`CODEC_UNSUPPORTED`로 돌아온다. 읽기 실패는 `CODEC_DECODE`. `aes_hex_*`·`ip`는 SQL 함수라 문자열 그대로다.
+
