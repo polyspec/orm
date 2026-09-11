@@ -3543,6 +3543,22 @@ func (q *Battle) SerializeDataIsNotNull() *Battle {
 	q.q.W().PredNull("serialize_data", "is_not_null")
 	return q
 }
+func (w *BattleWhere) NameWithDescriptionMatch(v string) *BattleWhere {
+	w.w.Match([]string{"name", "description"}, false, v)
+	return w
+}
+func (w *BattleWhere) NameWithDescriptionMatchBoolean(v string) *BattleWhere {
+	w.w.Match([]string{"name", "description"}, true, v)
+	return w
+}
+func (q *Battle) NameWithDescriptionMatch(v string) *Battle {
+	q.q.W().Match([]string{"name", "description"}, false, v)
+	return q
+}
+func (q *Battle) NameWithDescriptionMatchBoolean(v string) *Battle {
+	q.q.W().Match([]string{"name", "description"}, true, v)
+	return q
+}
 
 // StartedAfter is the manifest predicate started_after: `start_dt` > ?
 func (w *BattleWhere) StartedAfter(v any) *BattleWhere { w.w.Expr("`start_dt` > ?", v); return w }
