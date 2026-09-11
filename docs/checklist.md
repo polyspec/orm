@@ -6,8 +6,8 @@
 ## 현재 위치 (2026-09-11)
 - **S0 완료** (측정·결정 R1~R3, F1~F3 — `docs/perf.md`).
 - **S1 완료** (thin slice: 엔진·생성기·3언어 실행기, 적합성 하네스, `ormgen tokens`, 데모).
-- **S2 진행 중**: 관계(T2.1~2.3, 2.7~2.10a, 2.12a~2.14a)와 코덱(T2.6, 2.8b~2.10b, 2.17)은 완료. 남은 것: T2.4, T2.5, T2.12b~2.14b, T2.15, T2.16.
-- 적합성 벡터 **16개 × 3언어 바이트 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
+- **S2 진행 중**: 관계(T2.1~2.3, 2.7~2.10a, 2.12a~2.14a)와 코덱(T2.6, 2.8b~2.10b, 2.17)은 완료. 남은 것: T2.12b~2.14b(keyByFn·ToArray), T2.15(import 선행), T2.16(벡터 +16).
+- 적합성 벡터 **19개 × 3언어 바이트 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
 
 ## 병렬 레인 (어떻게 나눠 일하는가)
 | 레인 | 담당 | 다른 레인과의 경계 |
@@ -51,8 +51,8 @@
 - [x] T2.3 `limitPerParent(n)` ROW_NUMBER 서브쿼리 `orm_w`
 - [x] T2.6 코덱 명세 `docs/codec.md` + 벡터 `tests/codec/vectors.json`(PHP 원본 60개, `gen.php`)
 - [x] T2.7 골든 `TestRelations`(4단계·조인 하위·window·if_parent·hidden·paginate 역할·plain IN) + 옵션 에러 3
-- [ ] T2.4 **P** 교차 컬럼 비교 `<col>EqCol(ref)`(planner 있음) → 생성기 3언어 노출 + `expr`/`selectExpr` 벡터 → T1.6
-- [ ] T2.5 **P** 타입별 연산자 허용표를 한 곳으로(`ir.OpAllowed` ↔ `ormgen allowed` 이중 정의 제거: 생성기가 `ir` 패키지를 import) + fulltext는 `%% fulltext` 컬럼 조합만 + `docs/dsl.md` 표 → T1.7
+- [x] T2.4 교차 컬럼 비교 `<col><Op>Col(ref)` 3언어 노출(`XCols` 참조: Go `gen.BattleCols.Seq` / PHP `BattleCols::seq()` / Rust `battle::cols::seq()`, `.At/at('path')`), `selectExpr` 출력은 `Extra(name)`/`extra(name)`/`$r['name']`; 벡터 `eq_col_where`·`expr_where`·`select_expr`
+- [x] T2.5 연산자 허용표 단일화(`ormgen`이 `ir.OpAllowed`를 그대로 씀; fulltext는 `%% fulltext` 조합만 생성)
 
 ### 2-B 실행기 — 레인 G ∥ P ∥ R (T2.1 후)
 - [x] T2.8a G 단계 러너·`Rows.Related/StepAssemble`·typed 조립 · T2.8b G 코덱(`codec.go`: json/serialize/base64/gz, PHP serialize 형식, `Decode` 읽기 직후·`SetStyled/DirtyStyled`)
@@ -68,7 +68,7 @@
 
 ### 2-D 검증 — 레인 V
 - [x] T2.17 코덱 벡터 3언어 통과(`go test ./clients/go/orm`, `cargo test -p orm`, `php tests/codec/check.php`: Go/Rust 산출물을 PHP가 읽어 동일)
-- [~] T2.16 적합성 벡터 +20 → 현재 +1(`codec_roundtrip`). 남은 목록: R1 4단 관계, 중첩 flatten, keyBy 컬럼 미선택(자동 선택 확인), ifParent 정수·불리언, one 중복(ORDER 첫 행), limitPerParent 3, json 빈 객체·빈 배열, serialize 실수·정수 키, unsigned 상한(BIGINT UNSIGNED 최대), timestamp(6) 마이크로초, tinyint→bool, decimal, dropChildKey toArray, 조인 하위 관계, 관계 0행, paginate+관계 → T2.8~T2.14
+- [~] T2.16 적합성 벡터 +20 → 현재 +4(`codec_roundtrip`, `eq_col_where`, `expr_where`, `select_expr`). 남은 목록: R1 4단 관계, 중첩 flatten, keyBy 컬럼 미선택(자동 선택 확인), ifParent 정수·불리언, one 중복(ORDER 첫 행), limitPerParent 3, json 빈 객체·빈 배열, serialize 실수·정수 키, unsigned 상한(BIGINT UNSIGNED 최대), timestamp(6) 마이크로초, tinyint→bool, decimal, dropChildKey toArray, 조인 하위 관계, 관계 0행, paginate+관계 → T2.8~T2.14
 
 ---
 

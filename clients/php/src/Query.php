@@ -132,6 +132,11 @@ class W
         $this->g['items'][] = ['pred' => $this->conn() + ['column' => $col, 'op' => $op]];
     }
 
+    public function predCol(string $col, string $op, ColRef $ref): void
+    {
+        $this->g['items'][] = ['pred' => $this->conn() + ['column' => $col, 'op' => $op, 'ref' => ['path' => $ref->path, 'column' => $ref->column]]];
+    }
+
     /** @param list<string> $cols */
     public function match(array $cols, bool $boolean, string $v): void
     {
@@ -311,3 +316,18 @@ class Q
         return $id;
     }
 }
+
+/**
+ * A column of another entity in the same statement, for column-to-column predicates:
+ * path '' is the parent (inside on()/where() of a join child) or the root; at('service') walks joins.
+ */
+final class ColRef
+{
+    public function __construct(public readonly string $column, public readonly string $path = '') {}
+
+    public function at(string $path): self
+    {
+        return new self($this->column, $path);
+    }
+}
+

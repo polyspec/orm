@@ -104,6 +104,8 @@ func scanServiceMember(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceMembe
 			r.ServiceSeq = orm.AsInt64(v)
 		case "user_seq":
 			r.UserSeq = orm.AsInt64(v)
+		default:
+			r.SetExtra(c.Name, v)
 		}
 	}
 	for _, ch := range a.Children {
@@ -135,6 +137,18 @@ func scanServiceMember(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceMembe
 	}
 	r.Mark("service_member", "seq", r.Seq)
 	return r
+}
+
+// ServiceMemberCols are column references for column-to-column predicates
+// (w.SeqEqCol(ServiceMemberCols.Seq)); .At("service") points into a joined entity.
+var ServiceMemberCols = struct {
+	Seq        orm.ColRef
+	ServiceSeq orm.ColRef
+	UserSeq    orm.ColRef
+}{
+	Seq:        orm.ColRef{Column: "seq"},
+	ServiceSeq: orm.ColRef{Column: "service_seq"},
+	UserSeq:    orm.ColRef{Column: "user_seq"},
 }
 
 // ServiceMember builds a statement over service_member: NewServiceMember() → chain → terminal(ctx, db).
@@ -211,6 +225,67 @@ func (q *ServiceMember) SeqBetween(lo, hi int64) *ServiceMember {
 	q.q.W().PredList("seq", "between", []any{lo, hi})
 	return q
 }
+func (w *ServiceMemberWhere) SeqIsNull() *ServiceMemberWhere {
+	w.w.PredNull("seq", "is_null")
+	return w
+}
+func (q *ServiceMember) SeqIsNull() *ServiceMember { q.q.W().PredNull("seq", "is_null"); return q }
+func (w *ServiceMemberWhere) SeqIsNotNull() *ServiceMemberWhere {
+	w.w.PredNull("seq", "is_not_null")
+	return w
+}
+func (q *ServiceMember) SeqIsNotNull() *ServiceMember {
+	q.q.W().PredNull("seq", "is_not_null")
+	return q
+}
+func (w *ServiceMemberWhere) SeqEqCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) SeqEqCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) SeqNotEqCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) SeqNotEqCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) SeqGtCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) SeqGtCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) SeqGteCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) SeqGteCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) SeqLtCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) SeqLtCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) SeqLteCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) SeqLteCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *ServiceMemberWhere) ServiceSeqEq(v int64) *ServiceMemberWhere {
 	w.w.Pred("service_seq", "eq", v)
 	return w
@@ -283,6 +358,70 @@ func (q *ServiceMember) ServiceSeqBetween(lo, hi int64) *ServiceMember {
 	q.q.W().PredList("service_seq", "between", []any{lo, hi})
 	return q
 }
+func (w *ServiceMemberWhere) ServiceSeqIsNull() *ServiceMemberWhere {
+	w.w.PredNull("service_seq", "is_null")
+	return w
+}
+func (q *ServiceMember) ServiceSeqIsNull() *ServiceMember {
+	q.q.W().PredNull("service_seq", "is_null")
+	return q
+}
+func (w *ServiceMemberWhere) ServiceSeqIsNotNull() *ServiceMemberWhere {
+	w.w.PredNull("service_seq", "is_not_null")
+	return w
+}
+func (q *ServiceMember) ServiceSeqIsNotNull() *ServiceMember {
+	q.q.W().PredNull("service_seq", "is_not_null")
+	return q
+}
+func (w *ServiceMemberWhere) ServiceSeqEqCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("service_seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) ServiceSeqEqCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("service_seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) ServiceSeqGtCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("service_seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) ServiceSeqGtCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("service_seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) ServiceSeqGteCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("service_seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) ServiceSeqGteCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("service_seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) ServiceSeqLtCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("service_seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) ServiceSeqLtCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("service_seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) ServiceSeqLteCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("service_seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) ServiceSeqLteCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("service_seq", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *ServiceMemberWhere) UserSeqEq(v int64) *ServiceMemberWhere {
 	w.w.Pred("user_seq", "eq", v)
 	return w
@@ -353,6 +492,70 @@ func (w *ServiceMemberWhere) UserSeqBetween(lo, hi int64) *ServiceMemberWhere {
 }
 func (q *ServiceMember) UserSeqBetween(lo, hi int64) *ServiceMember {
 	q.q.W().PredList("user_seq", "between", []any{lo, hi})
+	return q
+}
+func (w *ServiceMemberWhere) UserSeqIsNull() *ServiceMemberWhere {
+	w.w.PredNull("user_seq", "is_null")
+	return w
+}
+func (q *ServiceMember) UserSeqIsNull() *ServiceMember {
+	q.q.W().PredNull("user_seq", "is_null")
+	return q
+}
+func (w *ServiceMemberWhere) UserSeqIsNotNull() *ServiceMemberWhere {
+	w.w.PredNull("user_seq", "is_not_null")
+	return w
+}
+func (q *ServiceMember) UserSeqIsNotNull() *ServiceMember {
+	q.q.W().PredNull("user_seq", "is_not_null")
+	return q
+}
+func (w *ServiceMemberWhere) UserSeqEqCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("user_seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) UserSeqEqCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("user_seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) UserSeqNotEqCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("user_seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) UserSeqNotEqCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("user_seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) UserSeqGtCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("user_seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) UserSeqGtCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("user_seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) UserSeqGteCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("user_seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) UserSeqGteCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("user_seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) UserSeqLtCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("user_seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) UserSeqLtCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("user_seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceMemberWhere) UserSeqLteCol(ref orm.ColRef) *ServiceMemberWhere {
+	w.w.PredCol("user_seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceMember) UserSeqLteCol(ref orm.ColRef) *ServiceMember {
+	q.q.W().PredCol("user_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 

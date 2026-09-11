@@ -97,6 +97,8 @@ func scanServiceModule(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceModul
 			r.ServiceSeq = orm.AsInt64(v)
 		case "name":
 			r.Name = orm.AsString(v)
+		default:
+			r.SetExtra(c.Name, v)
 		}
 	}
 	for _, ch := range a.Children {
@@ -120,6 +122,18 @@ func scanServiceModule(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceModul
 	}
 	r.Mark("service_module", "seq", r.Seq)
 	return r
+}
+
+// ServiceModuleCols are column references for column-to-column predicates
+// (w.SeqEqCol(ServiceModuleCols.Seq)); .At("service") points into a joined entity.
+var ServiceModuleCols = struct {
+	Seq        orm.ColRef
+	ServiceSeq orm.ColRef
+	Name       orm.ColRef
+}{
+	Seq:        orm.ColRef{Column: "seq"},
+	ServiceSeq: orm.ColRef{Column: "service_seq"},
+	Name:       orm.ColRef{Column: "name"},
 }
 
 // ServiceModule builds a statement over service_module: NewServiceModule() → chain → terminal(ctx, db).
@@ -190,6 +204,67 @@ func (w *ServiceModuleWhere) SeqBetween(lo, hi int64) *ServiceModuleWhere {
 }
 func (q *ServiceModule) SeqBetween(lo, hi int64) *ServiceModule {
 	q.q.W().PredList("seq", "between", []any{lo, hi})
+	return q
+}
+func (w *ServiceModuleWhere) SeqIsNull() *ServiceModuleWhere {
+	w.w.PredNull("seq", "is_null")
+	return w
+}
+func (q *ServiceModule) SeqIsNull() *ServiceModule { q.q.W().PredNull("seq", "is_null"); return q }
+func (w *ServiceModuleWhere) SeqIsNotNull() *ServiceModuleWhere {
+	w.w.PredNull("seq", "is_not_null")
+	return w
+}
+func (q *ServiceModule) SeqIsNotNull() *ServiceModule {
+	q.q.W().PredNull("seq", "is_not_null")
+	return q
+}
+func (w *ServiceModuleWhere) SeqEqCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) SeqEqCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceModuleWhere) SeqNotEqCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) SeqNotEqCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceModuleWhere) SeqGtCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) SeqGtCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceModuleWhere) SeqGteCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) SeqGteCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceModuleWhere) SeqLtCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) SeqLtCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceModuleWhere) SeqLteCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) SeqLteCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *ServiceModuleWhere) ServiceSeqEq(v int64) *ServiceModuleWhere {
@@ -264,6 +339,70 @@ func (q *ServiceModule) ServiceSeqBetween(lo, hi int64) *ServiceModule {
 	q.q.W().PredList("service_seq", "between", []any{lo, hi})
 	return q
 }
+func (w *ServiceModuleWhere) ServiceSeqIsNull() *ServiceModuleWhere {
+	w.w.PredNull("service_seq", "is_null")
+	return w
+}
+func (q *ServiceModule) ServiceSeqIsNull() *ServiceModule {
+	q.q.W().PredNull("service_seq", "is_null")
+	return q
+}
+func (w *ServiceModuleWhere) ServiceSeqIsNotNull() *ServiceModuleWhere {
+	w.w.PredNull("service_seq", "is_not_null")
+	return w
+}
+func (q *ServiceModule) ServiceSeqIsNotNull() *ServiceModule {
+	q.q.W().PredNull("service_seq", "is_not_null")
+	return q
+}
+func (w *ServiceModuleWhere) ServiceSeqEqCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("service_seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) ServiceSeqEqCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("service_seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceModuleWhere) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceModuleWhere) ServiceSeqGtCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("service_seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) ServiceSeqGtCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("service_seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceModuleWhere) ServiceSeqGteCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("service_seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) ServiceSeqGteCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("service_seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceModuleWhere) ServiceSeqLtCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("service_seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) ServiceSeqLtCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("service_seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceModuleWhere) ServiceSeqLteCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("service_seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) ServiceSeqLteCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("service_seq", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *ServiceModuleWhere) NameEq(v string) *ServiceModuleWhere {
 	w.w.Pred("name", "eq", v)
 	return w
@@ -328,6 +467,35 @@ func (w *ServiceModuleWhere) NameEndsWith(v string) *ServiceModuleWhere {
 }
 func (q *ServiceModule) NameEndsWith(v string) *ServiceModule {
 	q.q.W().Pred("name", "ends_with", v)
+	return q
+}
+func (w *ServiceModuleWhere) NameIsNull() *ServiceModuleWhere {
+	w.w.PredNull("name", "is_null")
+	return w
+}
+func (q *ServiceModule) NameIsNull() *ServiceModule { q.q.W().PredNull("name", "is_null"); return q }
+func (w *ServiceModuleWhere) NameIsNotNull() *ServiceModuleWhere {
+	w.w.PredNull("name", "is_not_null")
+	return w
+}
+func (q *ServiceModule) NameIsNotNull() *ServiceModule {
+	q.q.W().PredNull("name", "is_not_null")
+	return q
+}
+func (w *ServiceModuleWhere) NameEqCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("name", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) NameEqCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("name", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceModuleWhere) NameNotEqCol(ref orm.ColRef) *ServiceModuleWhere {
+	w.w.PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceModule) NameNotEqCol(ref orm.ColRef) *ServiceModule {
+	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 
