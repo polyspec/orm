@@ -79,3 +79,9 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 - Rust: `ormengine.wasm` — `orm_alloc/orm_load/orm_compile/orm_free`(결과 `[u32 status][u32 len][bytes]`).
 - PHP: `ormd -socket /abs/path.sock -schema /abs/schema.json` — 길이 접두 프레임, `{"op":"compile","ir":…}` → `{"plan":…}`, `{"op":"hash"}` → `{"schema_hash":…}`.
 - 캐시 키 = xxh3(IR에서 값(`value/values/binds`)을 제거한 형태 JSON + IN 카디널리티) + schema_hash.
+
+### 쓰기 확장 (S3)
+- `on_duplicate: [Assign]`(insert 전용, PK/auto 금지): planner가 `INSERT … ON DUPLICATE KEY UPDATE a = ?, b = b + ?[, pk = LAST_INSERT_ID(pk)]`를 만든다. auto PK가 있으면 마지막 항목을 항상 붙여 갱신 시에도 last insert id가 기존 행을 가리키게 한다(MySQL 관용구). 실행기의 `insert`는 이 id로 행을 다시 읽어 돌려준다.
+- `no_cascade_delete: true`(관계 자식 옵션) → `children[].cascade = false`. `cascade`는 "대상 행이 이 행의 FK를 갖는다"(관계 left = 부모 PK, right ≠ 대상 PK)일 때만 true. 실행기의 `deleteCascade`는 cascade=true인 로드된 관계를 깊이 우선으로 지우고 자기 행을 지운다(행마다 `DELETE … WHERE pk = ?`, Db를 받으면 트랜잭션으로 감싼다). 부모 방향(one, FK가 이 행에 있음)은 절대 지우지 않는다.
+- `save`·쿼리 `update`/`delete`·`sql`은 IR 추가 없이 실행기 규칙이다(`docs/lanes/s3.md`).
+

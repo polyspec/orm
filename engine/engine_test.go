@@ -141,6 +141,39 @@ func TestWrites(t *testing.T) {
 	}
 }
 
+func TestUpsertAndCascade(t *testing.T) {
+	e := testEngine(t)
+	p := compile(t, e, `"kind":"insert","entity":"battle","set":[{"column":"uuid","p":0},{"column":"name","p":1},{"column":"user_seq","p":2},{"column":"service_seq","p":2},{"column":"service_module_seq","p":2},{"column":"service_member_seq","p":2},{"column":"start_dt","p":3},{"column":"end_dt","p":3}],
+	  "on_duplicate":[{"column":"name","p":1},{"column":"read_count","plus_p":4}]`)
+	if want := "INSERT INTO `battle` (`uuid`, `name`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?, `read_count` = `read_count` + ?, `seq` = LAST_INSERT_ID(`seq`)"; p.Steps[0].SQL != want {
+		t.Errorf("upsert:\n got  %s\n want %s", p.Steps[0].SQL, want)
+	}
+	if got := len(p.Steps[0].BindSlots); got != 10 {
+		t.Errorf("upsert binds: %d", got)
+	}
+	// cascade: service → members (owned) yes; member → user (parent) no; no_cascade_delete stops it
+	p = compile(t, e, `"kind":"one","entity":"service","where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},
+	  "relations":[{"rel":"members","query":{"entity":"service_member","relations":[{"rel":"user","query":{"entity":"user"}}]}},
+	               {"rel":"modules","query":{"entity":"service_module","no_cascade_delete":true}}]`)
+	root := p.Steps[0].Assemble
+	if !root.Children[0].Cascade || root.Children[1].Cascade {
+		t.Errorf("cascade flags: members=%v modules=%v", root.Children[0].Cascade, root.Children[1].Cascade)
+	}
+	if mc := p.Steps[1].Assemble.Children; len(mc) != 1 || mc[0].Cascade {
+		t.Errorf("member → user must not cascade: %+v", mc)
+	}
+	for irs, code := range map[string]string{
+		`"kind":"update","entity":"battle","n_params":2,"set":[{"column":"name","p":0}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":1}}]},"on_duplicate":[{"column":"name","p":0}]`: "IR_INVALID: on_duplicate is only valid on insert",
+		`"kind":"insert","entity":"battle","n_params":2,"set":[{"column":"name","p":0}],"on_duplicate":[{"column":"seq","p":1}]`:                                                                "IR_INVALID: on_duplicate cannot assign",
+		`"kind":"all","entity":"battle","no_cascade_delete":true`: "IR_INVALID: relation-only options",
+	} {
+		_, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `",` + irs + `}`))
+		if err == nil || !strings.HasPrefix(err.Error(), code) {
+			t.Errorf("%s\n got %v\n want %s", irs, err, code)
+		}
+	}
+}
+
 func TestCompileErrors(t *testing.T) {
 	e := testEngine(t)
 	h := e.M.SchemaHash
@@ -148,9 +181,9 @@ func TestCompileErrors(t *testing.T) {
 		`{"ir_version":2,"schema_hash":"` + h + `","kind":"all","entity":"battle"}`:                                                                                                             "VERSION_MISMATCH",
 		`{"ir_version":1,"schema_hash":"nope","kind":"all","entity":"battle"}`:                                                                                                                  "SCHEMA_HASH_MISMATCH",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"nope"}`:                                                                                                               "ENTITY_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"nope","op":"eq","p":2}}]}}`:                                              "COLUMN_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"name","op":"gt","p":0}}]}}`:                                              "OPERATOR_NOT_ALLOWED",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"aes_hex_email","op":"contains","p":0}}]}}`:                               "OPERATOR_NOT_ALLOWED",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"nope","op":"eq","p":2}}]}}`:                                 "COLUMN_UNKNOWN",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"name","op":"gt","p":0}}]}}`:                                 "OPERATOR_NOT_ALLOWED",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"aes_hex_email","op":"contains","p":0}}]}}`:                  "OPERATOR_NOT_ALLOWED",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"pred":{"conn":"or","column":"seq","op":"eq","p":2}}]}}`:                                   "OR_AT_GROUP_START",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"pred":{"column":"seq","op":"in","ps":[]}}]}}`:                                             "EMPTY_IN",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"pred":{"column":"seq","op":"gt"}}]}}`:                                                     "IR_INVALID",
@@ -251,8 +284,8 @@ func TestRelations(t *testing.T) {
 		t.Errorf("plain relation: %s", p.Steps[1].SQL)
 	}
 	for irs, code := range map[string]string{
-		`"kind":"all","entity":"battle","relations":[{"rel":"user","query":{"entity":"user","key_by":"name"}}]`:      "IR_INVALID",
-		`"kind":"all","entity":"service","relations":[{"rel":"modules","query":{"entity":"service_module","flatten":true}}]`: "IR_INVALID",
+		`"kind":"all","entity":"battle","relations":[{"rel":"user","query":{"entity":"user","key_by":"name"}}]`:                                  "IR_INVALID",
+		`"kind":"all","entity":"service","relations":[{"rel":"modules","query":{"entity":"service_module","flatten":true}}]`:                     "IR_INVALID",
 		`"kind":"all","entity":"battle","n_params":2,"relations":[{"rel":"user","query":{"entity":"user","if_parent":{"column":"nope","p":0}}}]`: "COLUMN_UNKNOWN",
 	} {
 		_, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `",` + irs + `}`))
