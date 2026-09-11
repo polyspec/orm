@@ -177,6 +177,7 @@ final class Service extends Q
     public function flatten(): static { $this->node['flatten'] = true; return $this; }
     public function limitPerParent(int $n): static { $this->node['limit_per_parent'] = $n; return $this; }
     public function dropChildKey(): static { $this->node['drop_child_key'] = true; return $this; }
+    public function noCascadeDelete(): static { $this->node['no_cascade_delete'] = true; return $this; }
     public function ifParentSeqEq(int $v): static { $this->ifParent('seq', $v); return $this; }
     public function ifParentNameEq(string $v): static { $this->ifParent('name', $v); return $this; }
     public function ifParentIsCloseEq(bool $v): static { $this->ifParent('is_close', $v); return $this; }
@@ -197,11 +198,18 @@ final class Service extends Q
     public function ifParentAesHexEmailEq(string $v): static { $this->ifParent('aes_hex_email', $v); return $this; }
     public function ifParentAesHexPhoneEq(string $v): static { $this->ifParent('aes_hex_phone', $v); return $this; }
 
-    // ---- insert draft ----
+    // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
+    public function setSeq(int $v): static { $this->set('seq', $v); return $this; }
+    public function setSeqExpr(string $frag, array $binds = []): static { $this->setExpr('seq', $frag, $binds); return $this; }
     public function setName(string $v): static { $this->set('name', $v); return $this; }
     public function setNameExpr(string $frag, array $binds = []): static { $this->setExpr('name', $frag, $binds); return $this; }
     public function plusSeq(int $v): static { $this->plus('seq', $v); return $this; }
     public function minusSeq(int $v): static { $this->minus('seq', $v); return $this; }
+
+    // ---- insert: ON DUPLICATE KEY UPDATE (never the PK/auto columns; the engine refuses them) ----
+    public function onDuplicateSetAll(): static { $this->onDuplicateAll(['seq']); return $this; }
+    public function onDuplicateSetName(string $v): static { $this->onDuplicate('name', $v); return $this; }
+    public function onDuplicateSetNameExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('name', $frag, $binds); return $this; }
 
     // ---- terminals ----
     public function one(Db $db): ?ServiceRow
@@ -230,6 +238,20 @@ final class Service extends Q
         $id = $this->runInsert($db);
         return (new Service)->seqEq((int) $id)->one($db);
     }
+
+    /** UPDATE by PK when setSeq was called (the other set columns), else INSERT; returns the re-read row. */
+    public function save(Db $db): ?ServiceRow
+    {
+        [, $key] = $this->runSave($db, 'seq');
+        return (new Service)->seqEq((int) $key)->one($db);
+    }
+
+    /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
+    public function update(Db $db): int { return $this->runWrite($db, 'update'); }
+    /** DELETE WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
+    public function delete(Db $db): int { return $this->runWrite($db, 'delete'); }
+    /** The main statement as the all() terminal would run it, without executing; secret slots read "$SECRET". @return array{sql: string, binds: list<mixed>} */
+    public function sql(Db $db): array { return $this->runSql($db); }
 
     public function oneBySeq(Db $db, int $v): ?ServiceRow { return $this->seqEq($v)->one($db); }
 }

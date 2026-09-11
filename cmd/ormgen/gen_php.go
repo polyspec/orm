@@ -215,19 +215,31 @@ final class {{.Type}} extends Q
     public function flatten(): static { $this->node['flatten'] = true; return $this; }
     public function limitPerParent(int $n): static { $this->node['limit_per_parent'] = $n; return $this; }
     public function dropChildKey(): static { $this->node['drop_child_key'] = true; return $this; }
+    public function noCascadeDelete(): static { $this->node['no_cascade_delete'] = true; return $this; }
 {{- range .ParentCols}}{{if eq .ColType "i32" "i64" "bool" "string" "enum"}}
     public function ifParent{{.Field}}Eq({{.PhpType}} $v): static { $this->ifParent('{{.Name}}', $v); return $this; }
 {{- end}}{{end}}
 
-    // ---- insert draft ----
-{{- range .Cols}}{{if not .Auto}}
+    // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
+{{- range .Cols}}
     public function set{{.Field}}({{if .Nullable}}?{{end}}{{.PhpType}} $v): static { $this->{{if .Styles}}setStyled('{{.Name}}', $v, [{{phpList .Styles}}]){{else}}set('{{.Name}}', $v){{end}}; return $this; }
     public function set{{.Field}}Expr(string $frag, array $binds = []): static { $this->setExpr('{{.Name}}', $frag, $binds); return $this; }
-{{- end}}{{end}}
+{{- end}}
 {{- range .Numeric}}
     public function plus{{.Field}}({{.PhpType}} $v): static { $this->plus('{{.Name}}', $v); return $this; }
     public function minus{{.Field}}({{.PhpType}} $v): static { $this->minus('{{.Name}}', $v); return $this; }
 {{- end}}
+
+    // ---- insert: ON DUPLICATE KEY UPDATE (never the PK/auto columns; the engine refuses them) ----
+    public function onDuplicateSetAll(): static { $this->onDuplicateAll([{{phpList .Protected}}]); return $this; }
+{{- range .Cols}}{{if not (or .Auto .PK)}}
+    public function onDuplicateSet{{.Field}}({{if .Nullable}}?{{end}}{{.PhpType}} $v): static { $this->{{if .Styles}}onDuplicateStyled('{{.Name}}', $v, [{{phpList .Styles}}]){{else}}onDuplicate('{{.Name}}', $v){{end}}; return $this; }
+    public function onDuplicateSet{{.Field}}Expr(string $frag, array $binds = []): static { $this->onDuplicateExpr('{{.Name}}', $frag, $binds); return $this; }
+{{- end}}{{end}}
+{{- range .Numeric}}{{if not (or .Auto .PK)}}
+    public function onDuplicatePlus{{.Field}}({{.PhpType}} $v): static { $this->onDuplicatePlus('{{.Name}}', $v); return $this; }
+    public function onDuplicateMinus{{.Field}}({{.PhpType}} $v): static { $this->onDuplicateMinus('{{.Name}}', $v); return $this; }
+{{- end}}{{end}}
 
     // ---- terminals ----
     public function one(Db $db): ?{{.Type}}Row
@@ -263,6 +275,25 @@ final class {{.Type}} extends Q
 {{- end}}
     }
 
+    /** UPDATE by PK when set{{pascal .PK}} was called (the other set columns), else INSERT; returns the re-read row. */
+    public function save(Db $db): ?{{.Type}}Row
+    {
+{{- if .Auto}}
+        [, $key] = $this->runSave($db, '{{.PK}}');
+        return (new {{.Type}})->{{camel .PK}}Eq((int) $key)->one($db);
+{{- else}}
+        [$updated, $key] = $this->runSave($db, '{{.PK}}');
+        return $updated ? (new {{.Type}})->{{camel .PK}}Eq($key)->one($db) : null;
+{{- end}}
+    }
+
+    /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
+    public function update(Db $db): int { return $this->runWrite($db, 'update'); }
+    /** DELETE WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
+    public function delete(Db $db): int { return $this->runWrite($db, 'delete'); }
+    /** The main statement as the all() terminal would run it, without executing; secret slots read "$SECRET". @return array{sql: string, binds: list<mixed>} */
+    public function sql(Db $db): array { return $this->runSql($db); }
+
     public function oneBy{{pascal .PK}}(Db $db, {{.PKPhp}} $v): ?{{.Type}}Row { return $this->{{camel .PK}}Eq($v)->one($db); }
 }
 `))
@@ -281,6 +312,7 @@ type phpTmplData struct {
 	Rels                                    []goRel
 	Indexes                                 []string
 	Fulltext                                [][]string
+	Protected                               []string // PK and auto columns: never assigned by onDuplicateSetAll
 }
 
 func genPHP(m *schema.Manifest, outDir, namespace string) error {
@@ -298,6 +330,9 @@ func genPHP(m *schema.Manifest, outDir, namespace string) error {
 			d.Cols = append(d.Cols, pc)
 			if c.Name == ge.PK {
 				d.PKPhp = pc.PhpType
+			}
+			if c.PK || c.Auto {
+				d.Protected = append(d.Protected, c.Name)
 			}
 		}
 		for _, c := range ge.ParentCols {
