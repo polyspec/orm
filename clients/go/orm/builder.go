@@ -451,7 +451,7 @@ func (r *Row) SnapshotVersion(v any) { r.version = v }
 func (r *Row) OriginalVersion() any  { return r.version }
 
 func (r *Row) Mark(entity, pk string, pkVal any) {
-	r.entity, r.pk, r.pkVal, r.loaded = entity, pk, pkVal, true
+	r.entity, r.pk, r.pkVal, r.loaded = entity, pk, pkVal, r.Has(pk)
 }
 
 func (r *Row) Dirty(col string, v any) {

@@ -522,7 +522,7 @@ func scan{{.Type}}(vals []any, a *plan.Assemble, rs *orm.Rows) *{{.Type}}Row {
 // ToArray is the row's array form (what PHP's toArray() and Rust's to_map() give):
 // projected columns minus drop_child_key ones, extra outputs, loaded relations,
 // and flattened one-relations merged in (this row's keys win).
-func (r *{{.Type}}Row) ToArray() map[string]any {
+func (r *{{.Type}}Row) ToArray() (map[string]any, error) {
 	m := make(map[string]any, len(r.Selected()))
 	for _, name := range r.Selected() {
 		if r.Hidden(name) {
@@ -541,15 +541,15 @@ func (r *{{.Type}}Row) ToArray() map[string]any {
 	if r.RelLoaded({{printf "%q" .Name}}) {
 {{- if eq .Kind "one"}}
 		if r.{{.Method}} != nil {
-			m[{{printf "%q" .Name}}] = r.{{.Method}}.ToArray()
+			child, err := r.{{.Method}}.ToArray()
+			if err != nil { return nil, err }
+			m[{{printf "%q" .Name}}] = child
 		} else {
 			m[{{printf "%q" .Name}}] = nil
 		}
 {{- else}}
-		mm := map[string]any{}
-		for k, v := range r.Get{{.Method}}().All() {
-			mm[k.String()] = v.ToArray()
-		}
+		mm, err := r.Get{{.Method}}().ToArray()
+		if err != nil { return nil, err }
 		m[{{printf "%q" .Name}}] = mm
 {{- end}}
 	}
@@ -559,7 +559,7 @@ func (r *{{.Type}}Row) ToArray() map[string]any {
 			orm.MergeFlat(m, child)
 		}
 	}
-	return m
+	return m, nil
 }
 
 // {{.Type}}Cols are column references for column-to-column predicates

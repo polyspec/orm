@@ -28,7 +28,7 @@ func validateRules(d document) error {
 		"SqlStatement":    {"go": "(*orm.Statement,error)", "php": "array", "rust": "Result<db::Sql>"},
 		"Success":         {"go": "error", "php": "void", "rust": "Result<()>"},
 		"Bool":            {"go": "bool", "php": "bool", "rust": "bool"},
-		"RowMap":          {"go": "map[string]any", "php": "array", "rust": "serde_json::Value"},
+		"RowMap":          {"go": "(map[string]any,error)", "php": "array", "rust": "Result<serde_json::Value>"},
 		"Query":           {"go": "*{Entity}Query", "php": "static", "rust": "Self"},
 		"Where":           {"go": "*{Entity}Where", "php": "static", "rust": "Self"},
 		"Row":             {"go": "*{Entity}Row", "php": "static", "rust": "&mutSelf"},
@@ -78,7 +78,7 @@ func validateRules(d document) error {
 						return fmt.Errorf("%s must borrow query for execution", r.ID)
 					}
 				}
-				if len(r.Errors) > 0 && !strings.Contains(sig, "asyncfn") {
+				if len(r.Errors) > 0 && r.ID != "Row.export" && !strings.Contains(sig, "asyncfn") {
 					return fmt.Errorf("%s Rust execution must be async", r.ID)
 				}
 			}

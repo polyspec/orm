@@ -49,7 +49,9 @@ func main() {
 	check(err)
 	items := []any{}
 	for _, b := range rows.All() {
-		items = append(items, b.ToArray())
+		item, err := b.ToArray()
+		check(err)
+		items = append(items, item)
 	}
 
 	// Aggregates over the same slice of data: a grouped count with HAVING, min/max, distinct.
