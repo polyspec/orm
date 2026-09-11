@@ -1,5 +1,5 @@
-//! Untyped cores of the generated builders. Q owns the request and edits one
-//! query node (root, join child or relation child); W edits one group.
+//! Untyped cores of the generated builders. Q owns the request; W edits one
+//! group while borrowing the params list and the group as *disjoint* fields.
 
 use crate::ir::*;
 use crate::value::Param;
@@ -44,11 +44,9 @@ impl Req {
     }
 }
 
-/// Query-node builder. Generated types wrap this and move `self` through the chain.
+/// Query builder core. Generated types wrap this and move `self` through the chain.
 pub struct Q {
     pub req: Req,
-    /// Path of this node inside req.ir.query; empty = root. Children are built
-    /// as separate Qs and attached, so a Q always edits the root of its own Req.
     pending_or: bool,
 }
 
@@ -64,15 +62,16 @@ impl Q {
     /// A W over the root WHERE group, carrying the pending connector.
     pub fn w(&mut self) -> W<'_> {
         let pending = std::mem::take(&mut self.pending_or);
-        let Q { req, .. } = self;
+        let req = &mut self.req;
         let g = req.ir.query.where_.get_or_insert_with(Group::default);
-        W { req, g, pending_or: pending }
+        W { params: &mut req.params, g, pending_or: pending }
     }
 
+    /// A W over the ON group (join children).
     pub fn on_w(&mut self) -> W<'_> {
-        let Q { req, .. } = self;
+        let req = &mut self.req;
         let g = req.ir.query.on.get_or_insert_with(Group::default);
-        W { req, g, pending_or: false }
+        W { params: &mut req.params, g, pending_or: false }
     }
 
     pub fn or(&mut self) {
@@ -132,9 +131,9 @@ impl Q {
     }
 }
 
-/// Group builder borrowing the request (for params) and the group it edits.
+/// Group builder: borrows the params list and the group it edits (disjoint fields of Req).
 pub struct W<'a> {
-    pub req: &'a mut Req,
+    pub params: &'a mut Vec<Param>,
     pub g: &'a mut Group,
     pending_or: bool,
 }
@@ -148,19 +147,24 @@ impl<'a> W<'a> {
         }
     }
 
+    fn p(&mut self, v: impl Into<Param>) -> usize {
+        self.params.push(v.into());
+        self.params.len() - 1
+    }
+
     pub fn or(&mut self) {
         self.pending_or = true;
     }
 
     pub fn pred(&mut self, col: &str, op: &str, v: impl Into<Param>) {
         let conn = self.conn();
-        let p = self.req.p(v);
+        let p = self.p(v);
         self.g.items.push(Item::Pred { pred: Pred { conn, column: col.into(), op: op.into(), p: Some(p), ..Default::default() } });
     }
 
     pub fn pred_list(&mut self, col: &str, op: &str, vs: Vec<Param>) {
         let conn = self.conn();
-        let ps = vs.into_iter().map(|v| self.req.p(v)).collect();
+        let ps = vs.into_iter().map(|v| self.p(v)).collect();
         self.g.items.push(Item::Pred { pred: Pred { conn, column: col.into(), op: op.into(), ps, ..Default::default() } });
     }
 
@@ -171,7 +175,7 @@ impl<'a> W<'a> {
 
     pub fn match_(&mut self, cols: &[&str], boolean: bool, v: &str) {
         let conn = self.conn();
-        let p = self.req.p(v);
+        let p = self.p(v);
         self.g.items.push(Item::Pred {
             pred: Pred {
                 conn,
@@ -185,25 +189,23 @@ impl<'a> W<'a> {
 
     pub fn expr(&mut self, frag: &str, binds: Vec<Param>) {
         let conn = self.conn();
-        let ps = binds.into_iter().map(|b| self.req.p(b)).collect();
+        let ps = binds.into_iter().map(|b| self.p(b)).collect();
         self.g.items.push(Item::Pred { pred: Pred { conn, expr: frag.into(), ps, ..Default::default() } });
     }
 
     /// Opens a parenthesised group and hands a W over it to `f`.
-    pub fn and(&mut self, f: impl FnOnce(&mut W<'_>)) {
+    pub fn and_with(&mut self, f: impl FnOnce(W<'_>)) {
         let conn = self.conn();
         self.g.items.push(Item::Group { group: Group { conn, items: Vec::new() } });
         let Some(Item::Group { group }) = self.g.items.last_mut() else { unreachable!() };
-        let mut w = W { req: self.req, g: group, pending_or: false };
-        f(&mut w);
+        f(W { params: &mut *self.params, g: group, pending_or: false });
     }
 
     /// Descends into a joined relation.
-    pub fn nav(&mut self, rel: &str, f: impl FnOnce(&mut W<'_>)) {
+    pub fn nav_with(&mut self, rel: &str, f: impl FnOnce(W<'_>)) {
         let conn = self.conn();
         self.g.items.push(Item::Nav { nav: Nav { conn, rel: rel.into(), group: Group::default() } });
         let Some(Item::Nav { nav }) = self.g.items.last_mut() else { unreachable!() };
-        let mut w = W { req: self.req, g: &mut nav.group, pending_or: false };
-        f(&mut w);
+        f(W { params: &mut *self.params, g: &mut nav.group, pending_or: false });
     }
 }
