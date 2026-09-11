@@ -197,6 +197,9 @@ class Db
                     } elseif (is_bool($v) || $v instanceof Bytes) {
                         $this->typed = true;
                     }
+                    if ($this->driver === 'sqlite' && !empty($b['col_type'])) {
+                        $v = $this->sqliteTime($v);
+                    }
                     $out[] = $v;
                     break;
                 case 'secret':
@@ -225,18 +228,24 @@ class Db
                     throw new OrmException(Code::INTERNAL, "bind from {$b['from']}");
             }
         }
-        if ($this->driver === 'sqlite') {
-            // SQLite stores what it is given: keep datetimes in the canonical text form every reader parses
-            // (docs/dialects.md), so a value written here reads back equal to one written by Go or Rust
-            foreach ($out as $i => $v) {
-                if ($v instanceof \DateTimeInterface) {
-                    $out[$i] = \DateTimeImmutable::createFromInterface($v)->setTimezone(self::utc())->format('Y-m-d H:i:s.u');
-                } elseif (is_string($v) && strlen($v) >= 19 && strlen($v) < 26 && preg_match('/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d(\.\d{1,5})?$/', $v)) {
-                    $out[$i] = str_pad(strlen($v) === 19 ? "$v." : $v, 26, '0');
-                }
-            }
-        }
         return $out;
+    }
+
+    /**
+     * SQLite stores what it is given, and PHP has no datetime type: a value bound for a
+     * date/time column (the plan's slot says so — never a bare string that merely looks
+     * like a timestamp) is written in the canonical text form every reader parses
+     * (docs/dialects.md), so it reads back equal to one written by Go or Rust.
+     */
+    private function sqliteTime(mixed $v): mixed
+    {
+        if ($v instanceof \DateTimeInterface) {
+            return \DateTimeImmutable::createFromInterface($v)->setTimezone(self::utc())->format('Y-m-d H:i:s.u');
+        }
+        if (is_string($v) && preg_match('/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d(\.\d{1,6})?$/', $v)) {
+            return str_pad(strlen($v) === 19 ? "$v." : $v, 26, '0');
+        }
+        return $v;
     }
 
     private static ?\DateTimeZone $utc = null;
