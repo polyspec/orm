@@ -17,6 +17,8 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/polyspec/orm/clients/go/orm/pg"
+	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
 
 	"github.com/polyspec/orm/clients/go/gen"
 	"github.com/polyspec/orm/clients/go/orm"
