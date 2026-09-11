@@ -25,6 +25,7 @@ The three chains produce the same SQL, the same binds and the same results — c
 - **Schema**: one hand-written Mermaid `erDiagram` (`schema/*.mmd`) → `ormgen build` → `schema.json` (manifest with `schema_hash`).
 - **Engine** (`engine/`, Go, compiler only): JSON IR → Plan (SQL text + bind slots + positional assembly). Never executes. Plans are value-free and cached per statement shape in every client.
 - **Executors**: Go `database/sql` in-process; PHP `PDO` + `ormd` (compile daemon over a unix socket, plans cached in APCu); Rust `sqlx` + the engine as wasm (wasmtime on a dedicated thread). Row data never crosses a language boundary.
+- **Databases**: MySQL 8 / MariaDB first; PostgreSQL 12+ and SQLite 3.35+ through the same plans (`docs/dialects.md`) — the conformance vectors produce identical results on all three.
 - **Generated code**: `ormgen gen --lang go|php|rust` emits typed builders, rows and relation accessors per entity.
 
 ## Quick start (MySQL 8.x, local socket)
