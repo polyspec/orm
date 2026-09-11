@@ -56,11 +56,11 @@
 - [x] T1.13 Go 트랜잭션 `orm.Transaction[T]`(에러=rollback, 데드락 3회 클로저 재실행, 백오프 50ms·2^n+지터 — 재시도이지 타이머 루프 아님) → T1.11
 
 ### 1-D ormd(컴파일 전용) + PHP 클라이언트 (T1.9 후) — S0 R3: PHP는 PDO 네이티브 실행
-- [ ] T1.14 `cmd/ormd` 컴파일 데몬 확정: 프레임 `compile`만, msgpack 응답(플랜), `request_id`, 무상태, DSN 없음, 소켓 0600, S0 임시 `exec*` op 삭제 → T1.9
-- [ ] T1.15 `clients/php/src` 트랜스포트: 영속 UDS(`STREAM_CLIENT_PERSISTENT`, 실패 시 즉시 재연결 1회 — 루프 없음), APCu 플랜 캐시(배열로 저장, 키 = xxh3(IR 형태)+schema_hash) → T1.14
-- [ ] T1.16 `clients/php/src` 실행기: PDO(`EMULATE_PREPARES=false`, `ATTR_FOUND_ROWS`), prepared statement 캐시(F1), 플랜 러너(bind_slots·LIST_EXPAND), 위치형 행 + 공유 컬럼 인덱스를 드는 `Model`(ArrayAccess + magic getter, `getX()`/`getX($d)` 규칙, 변환 비용 0), `Collection`, `Db/Tx`, `transaction(fn)`, 데드락 클로저 재실행 → T1.15
-- [ ] T1.17 PHP `__call` 파서: camel 토큰화 → 키워드 최장일치 → `[Op] Column (And|Or …)*` 컬럼표 최장일치 → 정적 배열 사전 계산(opcache) + 동적 이름 런타임 파싱, 충돌 픽스처 통과 → T1.16
-- [ ] T1.18 `ormgen gen --lang php`: 클래스(정규 메서드 docblock, `COLUMNS` 표, 관계표), pint 통과 → T1.17
+- [x] T1.14 `cmd/ormd` 컴파일 데몬 확정: 프레임 `compile`만, msgpack 응답(플랜), `request_id`, 무상태, DSN 없음, 소켓 0600, S0 임시 `exec*` op 삭제 → T1.9
+- [x] T1.15 `clients/php/src` 트랜스포트: 영속 UDS(`STREAM_CLIENT_PERSISTENT`, 실패 시 즉시 재연결 1회 — 루프 없음), APCu 플랜 캐시(배열로 저장, 키 = xxh3(IR 형태)+schema_hash) → T1.14
+- [x] T1.16 `clients/php/src` 실행기: PDO(`EMULATE_PREPARES=false`, `ATTR_FOUND_ROWS`), prepared statement 캐시(F1), 플랜 러너(bind_slots·LIST_EXPAND), 위치형 행 + 공유 컬럼 인덱스를 드는 `Model`(ArrayAccess + magic getter, `getX()`/`getX($d)` 규칙, 변환 비용 0), `Collection`, `Db/Tx`, `transaction(fn)`, 데드락 클로저 재실행 → T1.15
+- [ ] T1.17 (→ S4 T4.7로 이동: v3 문법은 생성된 실제 메서드를 쓰므로 `__call`은 compatibility 호환층 전용) PHP `__call` 파서: camel 토큰화 → 키워드 최장일치 → `[Op] Column (And|Or …)*` 컬럼표 최장일치 → 정적 배열 사전 계산(opcache) + 동적 이름 런타임 파싱, 충돌 픽스처 통과 → T1.16
+- [x] T1.18 `ormgen gen --lang php`: 클래스(정규 메서드 docblock, `COLUMNS` 표, 관계표), pint 통과 → T1.17
 
 ### 1-E Rust 클라이언트 (T1.10 후)
 - [ ] T1.19 `clients/rust/orm`: wasmtime 로더(엔진 wasm을 crate에 `include_bytes!`, `Cache` 디렉터리는 `orm.toml`/env 선언, 스레드당 `Store`), 플랜 캐시, sqlx(mysql) 러너(`AssertSqlSafe`, persistent prepared, F2: PK 81µs 원인 규명·재측정 DoD), typed 스캔, `IndexMap` 컬렉션, `Tx: Clone`, `db.transaction(|tx| async {…})` → T1.10
