@@ -25,6 +25,11 @@
       "symbols": "contracts/symbols/rust.json"
     }
   },
+  "symbol_hashes": {
+    "go": "sha256:7be4d82df7030a9f2be8054ede9fc6bb7815a03ea720594ddbfb40ee2ce82864",
+    "php": "sha256:667d4dd133259230cc113b497752580cc5827c072937aadab28536630cc46295",
+    "rust": "sha256:ba062f370728e00206262a235a2f54b54ce8fb69a6c8d36503f40dd809cf4901"
+  },
   "components": [
     {
       "id": "Query",
