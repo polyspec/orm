@@ -1782,11 +1782,11 @@ impl Battle {
     pub fn on_duplicate_set_display_end_dt_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("display_end_dt", frag, binds); self }
     pub fn on_duplicate_set_is_allday(mut self, v: bool) -> Self { let v: bool = v.into(); self.q.on_duplicate_set("is_allday", v); self }
     pub fn on_duplicate_set_is_allday_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("is_allday", frag, binds); self }
-    pub fn on_duplicate_set_target_team_player_count(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.on_duplicate_set("target_team_player_count", v); self }
+    pub fn on_duplicate_set_target_team_player_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.on_duplicate_set("target_team_player_count", v); self }
     pub fn on_duplicate_set_target_team_player_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("target_team_player_count", frag, binds); self }
-    pub fn on_duplicate_set_success_count(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.on_duplicate_set("success_count", v); self }
+    pub fn on_duplicate_set_success_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.on_duplicate_set("success_count", v); self }
     pub fn on_duplicate_set_success_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("success_count", frag, binds); self }
-    pub fn on_duplicate_set_player_count(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.on_duplicate_set("player_count", v); self }
+    pub fn on_duplicate_set_player_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.on_duplicate_set("player_count", v); self }
     pub fn on_duplicate_set_player_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("player_count", frag, binds); self }
     pub fn on_duplicate_set_read_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.on_duplicate_set("read_count", v); self }
     pub fn on_duplicate_set_read_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("read_count", frag, binds); self }
@@ -1808,7 +1808,7 @@ impl Battle {
     pub fn on_duplicate_set_uuid_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("uuid", frag, binds); self }
     pub fn on_duplicate_set_is_single_play(mut self, v: bool) -> Self { let v: bool = v.into(); self.q.on_duplicate_set("is_single_play", v); self }
     pub fn on_duplicate_set_is_single_play_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("is_single_play", frag, binds); self }
-    pub fn on_duplicate_set_like_count(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.on_duplicate_set("like_count", v); self }
+    pub fn on_duplicate_set_like_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.on_duplicate_set("like_count", v); self }
     pub fn on_duplicate_set_like_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("like_count", frag, binds); self }
     pub fn on_duplicate_set_aes_hex_email(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.on_duplicate_set("aes_hex_email", v); self }
     pub fn on_duplicate_set_aes_hex_email_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("aes_hex_email", frag, binds); self }
@@ -1828,12 +1828,12 @@ impl Battle {
     pub fn on_duplicate_set_base64_extra_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("base64_extra", frag, binds); self }
     pub fn on_duplicate_set_serialize_data(mut self, v: serde_json::Value) -> Self { let v: serde_json::Value = v.into(); match orm::codec::encode(&["serialize"], Some(&v)) { Ok(p) => self.q.on_duplicate_set("serialize_data", p), Err(e) => self.q.defer_err(e) }; self }
     pub fn on_duplicate_set_serialize_data_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("serialize_data", frag, binds); self }
-    pub fn on_duplicate_plus_target_team_player_count(mut self, v: i32) -> Self { self.q.on_duplicate_plus("target_team_player_count", v); self }
-    pub fn on_duplicate_minus_target_team_player_count(mut self, v: i32) -> Self { self.q.on_duplicate_minus("target_team_player_count", v); self }
-    pub fn on_duplicate_plus_success_count(mut self, v: i32) -> Self { self.q.on_duplicate_plus("success_count", v); self }
-    pub fn on_duplicate_minus_success_count(mut self, v: i32) -> Self { self.q.on_duplicate_minus("success_count", v); self }
-    pub fn on_duplicate_plus_player_count(mut self, v: i32) -> Self { self.q.on_duplicate_plus("player_count", v); self }
-    pub fn on_duplicate_minus_player_count(mut self, v: i32) -> Self { self.q.on_duplicate_minus("player_count", v); self }
+    pub fn on_duplicate_plus_target_team_player_count(mut self, v: i64) -> Self { self.q.on_duplicate_plus("target_team_player_count", v); self }
+    pub fn on_duplicate_minus_target_team_player_count(mut self, v: i64) -> Self { self.q.on_duplicate_minus("target_team_player_count", v); self }
+    pub fn on_duplicate_plus_success_count(mut self, v: i64) -> Self { self.q.on_duplicate_plus("success_count", v); self }
+    pub fn on_duplicate_minus_success_count(mut self, v: i64) -> Self { self.q.on_duplicate_minus("success_count", v); self }
+    pub fn on_duplicate_plus_player_count(mut self, v: i64) -> Self { self.q.on_duplicate_plus("player_count", v); self }
+    pub fn on_duplicate_minus_player_count(mut self, v: i64) -> Self { self.q.on_duplicate_minus("player_count", v); self }
     pub fn on_duplicate_plus_read_count(mut self, v: i64) -> Self { self.q.on_duplicate_plus("read_count", v); self }
     pub fn on_duplicate_minus_read_count(mut self, v: i64) -> Self { self.q.on_duplicate_minus("read_count", v); self }
     pub fn on_duplicate_plus_user_seq(mut self, v: i64) -> Self { self.q.on_duplicate_plus("user_seq", v); self }
@@ -1844,8 +1844,8 @@ impl Battle {
     pub fn on_duplicate_minus_service_module_seq(mut self, v: i64) -> Self { self.q.on_duplicate_minus("service_module_seq", v); self }
     pub fn on_duplicate_plus_service_member_seq(mut self, v: i64) -> Self { self.q.on_duplicate_plus("service_member_seq", v); self }
     pub fn on_duplicate_minus_service_member_seq(mut self, v: i64) -> Self { self.q.on_duplicate_minus("service_member_seq", v); self }
-    pub fn on_duplicate_plus_like_count(mut self, v: i32) -> Self { self.q.on_duplicate_plus("like_count", v); self }
-    pub fn on_duplicate_minus_like_count(mut self, v: i32) -> Self { self.q.on_duplicate_minus("like_count", v); self }
+    pub fn on_duplicate_plus_like_count(mut self, v: i64) -> Self { self.q.on_duplicate_plus("like_count", v); self }
+    pub fn on_duplicate_minus_like_count(mut self, v: i64) -> Self { self.q.on_duplicate_minus("like_count", v); self }
     pub fn on_duplicate_plus_price(mut self, v: f64) -> Self { self.q.on_duplicate_plus("price", v); self }
     pub fn on_duplicate_minus_price(mut self, v: f64) -> Self { self.q.on_duplicate_minus("price", v); self }
     /// Copies every set_* assignment made so far (except the PK/auto column) into ON DUPLICATE KEY UPDATE.

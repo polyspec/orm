@@ -203,10 +203,10 @@ async fn main() {
                 let attempt = attempts.fetch_add(1, Ordering::Relaxed);
                 async move {
                     runs.fetch_add(1, Ordering::Relaxed);
-                    Battle::new().seq_eq(first).set_like_count(id as i32 * 10).update(&tx).await?;
+                    Battle::new().seq_eq(first).set_like_count(id as i64 * 10).update(&tx).await?;
                     // both sides hold their first row before touching the second; a re-run has no partner to wait for
                     if attempt == 0 { barrier.wait().await; }
-                    Battle::new().seq_eq(second).set_like_count(id as i32 * 10).update(&tx).await?;
+                    Battle::new().seq_eq(second).set_like_count(id as i64 * 10).update(&tx).await?;
                     last_writer.store(id, Ordering::Relaxed);
                     Ok(())
                 }
@@ -216,7 +216,7 @@ async fn main() {
     let (r1, r2) = tokio::join!(task(1, a, b), task(2, b, a));
     check!(fails, r1.expect("t1 join").is_ok() && r2.expect("t2 join").is_ok(), "both transactions eventually succeed");
     check!(fails, runs.load(Ordering::Relaxed) >= 3, "the deadlock loser re-ran its closure");
-    let expect = last_writer.load(Ordering::Relaxed) as i32 * 10;
+    let expect = last_writer.load(Ordering::Relaxed) as i64 * 10;
     let (ra, rb) = (Battle::new().one_by_seq(&db, a).await.unwrap().unwrap(), Battle::new().one_by_seq(&db, b).await.unwrap().unwrap());
     check!(fails, expect > 0 && ra.like_count == expect && rb.like_count == expect, "final values are the last writer's");
     check!(fails, Battle::new().seq_in(vec![a, b]).delete(&db).await.unwrap() == 2, "deadlock rows cleaned up");
