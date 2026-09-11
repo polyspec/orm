@@ -4732,7 +4732,7 @@ func (q *Battle) OnDuplicateSetIsAlldayExpr(frag string, binds ...any) *Battle {
 	q.q.OnDuplicateExpr("is_allday", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetTargetTeamPlayerCount(v int32) *Battle {
+func (q *Battle) OnDuplicateSetTargetTeamPlayerCount(v int64) *Battle {
 	q.q.OnDuplicate("target_team_player_count", v)
 	return q
 }
@@ -4740,7 +4740,7 @@ func (q *Battle) OnDuplicateSetTargetTeamPlayerCountExpr(frag string, binds ...a
 	q.q.OnDuplicateExpr("target_team_player_count", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetSuccessCount(v int32) *Battle {
+func (q *Battle) OnDuplicateSetSuccessCount(v int64) *Battle {
 	q.q.OnDuplicate("success_count", v)
 	return q
 }
@@ -4748,7 +4748,7 @@ func (q *Battle) OnDuplicateSetSuccessCountExpr(frag string, binds ...any) *Batt
 	q.q.OnDuplicateExpr("success_count", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetPlayerCount(v int32) *Battle {
+func (q *Battle) OnDuplicateSetPlayerCount(v int64) *Battle {
 	q.q.OnDuplicate("player_count", v)
 	return q
 }
@@ -4818,7 +4818,7 @@ func (q *Battle) OnDuplicateSetIsSinglePlayExpr(frag string, binds ...any) *Batt
 	q.q.OnDuplicateExpr("is_single_play", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetLikeCount(v int32) *Battle { q.q.OnDuplicate("like_count", v); return q }
+func (q *Battle) OnDuplicateSetLikeCount(v int64) *Battle { q.q.OnDuplicate("like_count", v); return q }
 func (q *Battle) OnDuplicateSetLikeCountExpr(frag string, binds ...any) *Battle {
 	q.q.OnDuplicateExpr("like_count", frag, binds...)
 	return q
@@ -4889,27 +4889,27 @@ func (q *Battle) OnDuplicateSetSerializeDataExpr(frag string, binds ...any) *Bat
 	q.q.OnDuplicateExpr("serialize_data", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicatePlusTargetTeamPlayerCount(v int32) *Battle {
+func (q *Battle) OnDuplicatePlusTargetTeamPlayerCount(v int64) *Battle {
 	q.q.OnDuplicatePlus("target_team_player_count", v)
 	return q
 }
-func (q *Battle) OnDuplicateMinusTargetTeamPlayerCount(v int32) *Battle {
+func (q *Battle) OnDuplicateMinusTargetTeamPlayerCount(v int64) *Battle {
 	q.q.OnDuplicateMinus("target_team_player_count", v)
 	return q
 }
-func (q *Battle) OnDuplicatePlusSuccessCount(v int32) *Battle {
+func (q *Battle) OnDuplicatePlusSuccessCount(v int64) *Battle {
 	q.q.OnDuplicatePlus("success_count", v)
 	return q
 }
-func (q *Battle) OnDuplicateMinusSuccessCount(v int32) *Battle {
+func (q *Battle) OnDuplicateMinusSuccessCount(v int64) *Battle {
 	q.q.OnDuplicateMinus("success_count", v)
 	return q
 }
-func (q *Battle) OnDuplicatePlusPlayerCount(v int32) *Battle {
+func (q *Battle) OnDuplicatePlusPlayerCount(v int64) *Battle {
 	q.q.OnDuplicatePlus("player_count", v)
 	return q
 }
-func (q *Battle) OnDuplicateMinusPlayerCount(v int32) *Battle {
+func (q *Battle) OnDuplicateMinusPlayerCount(v int64) *Battle {
 	q.q.OnDuplicateMinus("player_count", v)
 	return q
 }
@@ -4953,11 +4953,11 @@ func (q *Battle) OnDuplicateMinusServiceMemberSeq(v int64) *Battle {
 	q.q.OnDuplicateMinus("service_member_seq", v)
 	return q
 }
-func (q *Battle) OnDuplicatePlusLikeCount(v int32) *Battle {
+func (q *Battle) OnDuplicatePlusLikeCount(v int64) *Battle {
 	q.q.OnDuplicatePlus("like_count", v)
 	return q
 }
-func (q *Battle) OnDuplicateMinusLikeCount(v int32) *Battle {
+func (q *Battle) OnDuplicateMinusLikeCount(v int64) *Battle {
 	q.q.OnDuplicateMinus("like_count", v)
 	return q
 }
