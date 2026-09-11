@@ -218,12 +218,12 @@ Battle::query()->visible()->serviceSeq(7)->using($db)->getCount();   // %% predi
 
 ```php
 $rows = Battle::query()->serviceSeq(7)->limit(0, 20)
-    ->relationUser(User::query())                                   // one  → $b->getUser()
-    ->relationService(Service::query()
-        ->relationsMembers(ServiceMember::query()                 // many → ->getMembers()
+    ->relation(User::query())                                   // one  → $b->getUser()
+    ->relation(Service::query()
+        ->relations(ServiceMember::query()                 // many → ->getMembers()
             ->orderBySeqDesc()->limitPerParent(3)              // 부모당 3행 (윈도 함수)
             ->keyByUserSeq()->dropChildKey()))
-    ->joinService(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))
+    ->join(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))
     ->using($db)->gets();
 ```
 

@@ -120,8 +120,8 @@ $run('interface_query_reuse', function () use ($db) {
 });
 $run('interface_attach', function () {
     $child=User::query()->seqIn([1,2])->and(fn(UserWhere $w)=>$w->name('user-1')->or()->name('user-2'));
-    $a=Battle::query()->serviceSeq(7)->joinUser($child);
-    $b=Battle::query()->serviceSeq(8)->joinUser($child);
+    $a=Battle::query()->serviceSeq(7)->join($child);
+    $b=Battle::query()->serviceSeq(8)->join($child);
     $child->name('later');
     $node=static function ($q) { $ir=$q->req->ir; unset($ir['ir_version'],$ir['schema_hash'],$ir['kind']); return $ir; };
     return ['a'=>$node($a),'b'=>$node($b),'child'=>$node($child),'a_params'=>$a->req->params,'b_params'=>$b->req->params,'child_params'=>$child->req->params];
@@ -139,7 +139,7 @@ $run('interface_typed_keys', function () {
 $run('interface_invalid_page', fn()=>Battle::query()->using($db)->paginate(1,0));
 $run('interface_error', function () use ($db) {
     $child=User::query(); $child->setStyled('name','x',['unsupported']);
-    $q=Battle::query()->using($db)->joinUser($child);
+    $q=Battle::query()->using($db)->join($child);
     $errors=[];
     try{$q->sql();$errors[]=null;}catch(OrmException $e){$errors[]=$e->code_;}
     try{$q->sql();$errors[]=null;}catch(OrmException $e){$errors[]=$e->code_;}
@@ -200,14 +200,14 @@ $run('interface_identity', function () use ($db) {
     });}catch(\Throwable $e){if($e!==$rollback){throw $e;}}return $result;
 });
 $run('interface_nested_keys', function () use ($db) {
-    $r=Service::query()->using($db)->relationsMembers(ServiceMember::query()->orderBySeqAsc()->limitPerParent(1))->getBySeq(7);
+    $r=Service::query()->using($db)->relations(ServiceMember::query()->orderBySeqAsc()->limitPerParent(1))->getBySeq(7);
     $members=$r->getMembers();$first=$members->first();$members->put(1,$first);$members->put('1',$first);
     return $r->toArray();
 });
 $run('unbound_terminal', fn() => Battle::query()->getCountByServiceSeq(7));
 $run('bound_count_finder', fn() => Battle::query()->using($db)
-    ->joinService(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))
-    ->relationUser(User::query())->getCountByServiceSeq(7));
+    ->join(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))
+    ->relation(User::query())->getCountByServiceSeq(7));
 $run('finished_transaction', function () use ($db) {
     $q = $db->transaction(fn(Tx $tx) => Battle::query()->using($tx));
     return $q->getCountByServiceSeq(7);
@@ -223,7 +223,7 @@ $run('bound_transaction_rollback', function () use ($db, $remask) {
             $s->setName('conf-bound')->update();
             $m = ServiceMember::query()->using($tx)->setServiceSeq($s->getSeq())->setUserSeq(1)->insert();
             $parent = Service::query()->using($db)->using($tx)
-                ->relationsMembers(ServiceMember::query()->using($db)->joinUser(User::query()))->getBySeq($s->getSeq());
+                ->relations(ServiceMember::query()->using($db)->join(User::query()))->getBySeq($s->getSeq());
             if ($parent === null || $parent->getName() !== 'conf-bound' || count($parent->getMembers()) !== 1) {
                 throw new \RuntimeException('bound relation missing');
             }
@@ -274,19 +274,19 @@ $run('aggregates', fn() => [
     'avg_like_count' => Battle::query()->serviceSeq(7)->using($db)->avgLikeCount(),
 ]);
 $run('join_nav_count', fn() => Battle::query()
-    ->joinService(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))
-    ->leftJoinUser(User::query()->on(fn(UserWhere $w) => $w->nameContains('user')))
+    ->join(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))
+    ->leftJoin(User::query()->on(fn(UserWhere $w) => $w->nameContains('user')))
     ->isClose(false)
     ->and(fn(BattleWhere $w) => $w->isDisplay(true)->or()->service(fn(ServiceWhere $s) => $s->seqGt(1000)))
     ->using($db)->getCount());
 $run('join_row', function () use ($db) {
-    $b = Battle::query()->joinService(Service::query()->where(fn(ServiceWhere $w) => $w->seq(7)))->seq(6)->using($db)->get();
+    $b = Battle::query()->join(Service::query()->where(fn(ServiceWhere $w) => $w->seq(7)))->seq(6)->using($db)->get();
     return ['seq' => $b->getSeq(), 'service' => ['seq' => $b->getService()->getSeq(), 'name' => $b->getService()->getName()]];
 });
 $run('root_finder_join_relation', function () use ($db) {
     $rows = Battle::query()->selectNone()
-        ->joinService(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))
-        ->relationUser(User::query())->orderBySeqAsc()->limit(0, 2)
+        ->join(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))
+        ->relation(User::query())->orderBySeqAsc()->limit(0, 2)
         ->using($db)->getsByServiceSeq(7);
     $items = [];
     foreach ($rows as $b) {
@@ -336,7 +336,7 @@ $run('write_cycle', function () use ($db, $remask) {
 });
 
 $run('eq_col_where', fn() => $keys(Battle::query()
-    ->joinService(Service::query()->where(fn(ServiceWhere $w) => $w->seqEqCol(BattleCols::serviceModuleSeq())))
+    ->join(Service::query()->where(fn(ServiceWhere $w) => $w->seqEqCol(BattleCols::serviceModuleSeq())))
     ->seqIn([1, 2, 10])->orderBySeqAsc()->using($db)->gets()));
 $run('expr_where', fn() => Battle::query()->serviceSeq(7)->expr('LENGTH(`name`) > ?', [8])->using($db)->getCount());
 $run('select_expr', function () use ($db) {
@@ -344,31 +344,31 @@ $run('select_expr', function () use ($db) {
     return ['seq' => $b->getSeq(), 'tag' => $b['tag']];
 });
 $run('relation_four_levels', fn() => Battle::query()->selectNone()->seq(7)
-    ->relationService(Service::query()
-        ->relationsMembers(ServiceMember::query()->orderBySeqAsc()->limitPerParent(2)
-            ->relationUser(User::query()
-                ->relationsBattles(Battle::query()->selectNone()->orderBySeqAsc()->limitPerParent(1)))))
+    ->relation(Service::query()
+        ->relations(ServiceMember::query()->orderBySeqAsc()->limitPerParent(2)
+            ->relation(User::query()
+                ->relations(Battle::query()->selectNone()->orderBySeqAsc()->limitPerParent(1)))))
     ->using($db)->get()->toArray());
-$run('relation_one_ordered', fn() => Battle::query()->selectNone()->seq(7)->relationService(Service::query()->orderBySeqDesc())->using($db)->get()->toArray());
+$run('relation_one_ordered', fn() => Battle::query()->selectNone()->seq(7)->relation(Service::query()->orderBySeqDesc())->using($db)->get()->toArray());
 $run('relation_if_parent', function () use ($db) {
     $items = [];
-    foreach (Battle::query()->selectNone()->seqIn([7, 8, 14])->orderBySeqAsc()->relationUser(User::query()->ifParentIsCloseEq(true))->using($db)->gets() as $b) {
+    foreach (Battle::query()->selectNone()->seqIn([7, 8, 14])->orderBySeqAsc()->relation(User::query()->ifParentIsCloseEq(true))->using($db)->gets() as $b) {
         $items[] = $b->toArray();
     }
     return $items;
 });
-$run('relation_empty_parents', fn() => $keys(Battle::query()->seq(0)->relationUser(User::query())->using($db)->gets()));
-$run('relation_off_join', fn() => Battle::query()->selectNone()->seq(8)->joinService(Service::query()->relationsModules(ServiceModule::query()))->using($db)->get()->toArray());
+$run('relation_empty_parents', fn() => $keys(Battle::query()->seq(0)->relation(User::query())->using($db)->gets()));
+$run('relation_off_join', fn() => Battle::query()->selectNone()->seq(8)->join(Service::query()->relations(ServiceModule::query()))->using($db)->get()->toArray());
 $run('paginate_relations', function () use ($db) {
-    $p = Battle::query()->selectNone()->serviceSeq(7)->orderBySeqAsc()->relationUser(User::query())->using($db)->paginate(1, 3);
+    $p = Battle::query()->selectNone()->serviceSeq(7)->orderBySeqAsc()->relation(User::query())->using($db)->paginate(1, 3);
     $items = [];
     foreach ($p->items as $b) {
         $items[] = $b->toArray();
     }
     return ['total' => $p->total, 'items' => $items];
 });
-$run('key_by_column', fn() => Service::query()->seq(7)->relationsMembers(ServiceMember::query()->orderBySeqAsc()->limitPerParent(3)->keyByUserSeq())->using($db)->get()->toArray());
-$run('key_by_unselected', fn() => Service::query()->seq(7)->relationsModules(ServiceModule::query()->selectNone()->keyByName())->using($db)->get()->toArray());
+$run('key_by_column', fn() => Service::query()->seq(7)->relations(ServiceMember::query()->orderBySeqAsc()->limitPerParent(3)->keyByUserSeq())->using($db)->get()->toArray());
+$run('key_by_unselected', fn() => Service::query()->seq(7)->relations(ServiceModule::query()->selectNone()->keyByName())->using($db)->get()->toArray());
 $run('types_roundtrip', function () use ($db, $remask) {
     $dt = '2026-06-01 12:34:56.123456';
     $created = $db->transaction(fn(Tx $tx) => Battle::query()
@@ -388,7 +388,7 @@ $run('types_roundtrip', function () use ($db, $remask) {
 });
 $run('key_by_fn_to_array', function () use ($db) {
     $c = ServiceMember::query()->serviceSeq(7)->orderBySeqAsc()->limit(0, 2)
-        ->relationUser(User::query()->flatten())
+        ->relation(User::query()->flatten())
         ->keyByFn(fn(ServiceMemberRow $m) => 'u' . $m->getUserSeq())
         ->using($db)->gets();
     $items = [];
@@ -397,7 +397,7 @@ $run('key_by_fn_to_array', function () use ($db) {
     }
     return $items;
 });
-$run('drop_child_key_to_array', fn() => User::query()->seq(5)->relationsBattles(Battle::query()->selectNone()->orderBySeqAsc()->limitPerParent(2)->dropChildKey())->using($db)->get()->toArray());
+$run('drop_child_key_to_array', fn() => User::query()->seq(5)->relations(Battle::query()->selectNone()->orderBySeqAsc()->limitPerParent(2)->dropChildKey())->using($db)->get()->toArray());
 $fks = fn(Battle $q): Battle => $q
     ->setUserSeq(1)->setServiceSeq(999)->setServiceModuleSeq(1)->setServiceMemberSeq(1)
     ->setStartDt('2026-06-01 00:00:00')->setEndDt('2026-12-31 00:00:00');
@@ -457,8 +457,8 @@ $run('delete_cascade_order', function () use ($db, $remask) {
     });
     $remask($seqs, '');
     Service::query()->seq($s->getSeq())
-        ->relationsMembers(ServiceMember::query()->orderBySeqAsc())
-        ->relationsModules(ServiceModule::query()->noCascadeDelete())
+        ->relations(ServiceMember::query()->orderBySeqAsc())
+        ->relations(ServiceModule::query()->noCascadeDelete())
         ->using($db)->get()
         ->using($db)->deleteCascade();
     $left = [
@@ -482,7 +482,7 @@ $run('predicate_named', fn() => [
 ]);
 $run('raw_root', fn() => Battle::query()->raw('SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?', [7, false])->using($db)->rawAll());
 $run('join_fulltext_or', fn() => Battle::query()
-    ->joinService(Service::query()->where(fn(ServiceWhere $w) => $w->seq(7)))
+    ->join(Service::query()->where(fn(ServiceWhere $w) => $w->seq(7)))
     ->isClose(false)
     ->and(fn(BattleWhere $w) => $w
         ->nameWithDescriptionMatchBoolean('battle')
@@ -490,14 +490,14 @@ $run('join_fulltext_or', fn() => Battle::query()
         ->service(fn(ServiceWhere $s) => $s->name('service-999')))
     ->using($db)->getCount());
 $run('join_two_groups', fn() => Battle::query()
-    ->joinService(Service::query()->on(fn(ServiceWhere $w) => $w->name('service-7'))->where(fn(ServiceWhere $w) => $w->seqGt(0)))
-    ->leftJoinUser(User::query()->where(fn(UserWhere $w) => $w->nameContains('user-4')))
+    ->join(Service::query()->on(fn(ServiceWhere $w) => $w->name('service-7'))->where(fn(ServiceWhere $w) => $w->seqGt(0)))
+    ->leftJoin(User::query()->where(fn(UserWhere $w) => $w->nameContains('user-4')))
     ->seqIn([6, 106, 206, 406])
     ->using($db)->getCount());
 $run('join_multi_level', fn() => Battle::query()->selectNone()->seq(6)
-    ->joinServiceMember(ServiceMember::query()->selectNone()
-        ->joinUser(User::query()->selectNone())
-        ->joinService(Service::query()->selectNone()))
+    ->join(ServiceMember::query()->selectNone()
+        ->join(User::query()->selectNone())
+        ->join(Service::query()->selectNone()))
     ->using($db)->get()->toArray());
 $run('codec_roundtrip', function () use ($db, $remask) {
     $value = ['a' => 1, 'b' => [1, 2, ['c' => '한글/slash']], 'd' => null, 'e' => true, 'f' => 1.5];

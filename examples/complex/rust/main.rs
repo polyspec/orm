@@ -24,15 +24,15 @@ async fn main() {
     // navigation into the joined entity, and three levels of relations with options.
     let rows = battle::query()
         .select_none().select_name()
-        .join_service(service::query()
+        .join(service::query()
             .on(|w| w.seq_gt(0))
             .where_(|w| w.name("service-7")))
         .is_close(false)
         .and(|w| w.is_display(true).or().service(|s| s.seq(7)))
-        .relation_user(user::query()
-            .relations_battles(battle::query().select_none().order_by_seq_desc().limit_per_parent(2).drop_child_key()))
-        .relation_service(service::query()
-            .relations_members(service_member::query().select_none().order_by_seq_asc().limit_per_parent(2).key_by_user_seq()))
+        .relation(user::query()
+            .relations(battle::query().select_none().order_by_seq_desc().limit_per_parent(2).drop_child_key()))
+        .relation(service::query()
+            .relations(service_member::query().select_none().order_by_seq_asc().limit_per_parent(2).key_by_user_seq()))
         .order_by_seq_asc().limit(0, 2)
         .using(&db).gets().await.expect("rows");
     let items: Vec<_> = rows.iter().map(|(_, b)| b.to_map()).collect::<orm::Result<Vec<_>>>().expect("export");

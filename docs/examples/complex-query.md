@@ -26,7 +26,7 @@ $page = Product::query()
         ->relationLang(ProductBrandLang::query()->langId($langId)->flatten()))
     ->relationsReviews(ProductReview::query()
         ->isClose(0)->orderBySeqDesc()->limitPerParent(3)->keyBySeq()
-        ->relationUser(User::query()->selectNone()->selectName()->selectProfileUrl()))
+        ->relation(User::query()->selectNone()->selectName()->selectProfileUrl()))
     ->relationMyOrderItem(OrderProductItem::query()
         ->serviceMemberSeq($memberSeq)->isClose(0)->orderBySeqDesc()->limitPerParent(1))
     ->joinCategories(ProductMatchCategory::query()
@@ -63,7 +63,7 @@ page, err := m.Product().
         RelationLang(m.ProductBrandLang().LangId(langId).Flatten())).
     RelationsReviews(m.ProductReview().
         IsClose(0).OrderBySeqDesc().LimitPerParent(3).KeyBySeq().
-        RelationUser(m.User().SelectNone().SelectName().SelectProfileUrl())).
+        Relation(m.User().SelectNone().SelectName().SelectProfileUrl())).
     RelationMyOrderItem(m.OrderProductItem().
         ServiceMemberSeq(memberSeq).IsClose(0).OrderBySeqDesc().LimitPerParent(1)).
     JoinCategories(m.ProductMatchCategory().
@@ -101,7 +101,7 @@ let page = product::query()
         .relation_lang(product_brand_lang::query().lang_id(lang_id).flatten()))
     .relations_reviews(product_review::query()
         .is_close(0).order_by_seq_desc().limit_per_parent(3).key_by_seq()
-        .relation_user(user::query().select_none().select_name().select_profile_url()))
+        .relation(user::query().select_none().select_name().select_profile_url()))
     .relation_my_order_item(order_product_item::query()
         .service_member_seq(member_seq).is_close(0).order_by_seq_desc().limit_per_parent(1))
     .join_categories(product_match_category::query()

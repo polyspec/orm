@@ -6,17 +6,17 @@ into database plans and executes on each language's native driver. Version 0.0.1
 ```php
 $battles = Battle::query()->using($db)->serviceSeq(7)->isClose(false)
     ->and(fn(BattleWhere $w) => $w->isDisplay(true)->or()->isAllday(true))
-    ->relationUser(User::query())->orderBySeqDesc()->limit(0, 20)->gets();
+    ->relation(User::query())->orderBySeqDesc()->limit(0, 20)->gets();
 ```
 ```go
 battles, err := gen.Battle().Using(ctx, db).ServiceSeq(7).IsClose(false).
     And(func(w *gen.BattleWhere) { w.IsDisplay(true).Or().IsAllday(true) }).
-    RelationUser(gen.User()).OrderBySeqDesc().Limit(0, 20).Gets()
+    Relation(gen.User()).OrderBySeqDesc().Limit(0, 20).Gets()
 ```
 ```rust
 let battles = battle::query().using(&db).service_seq(7).is_close(false)
     .and(|w| w.is_display(true).or().is_allday(true))
-    .relation_user(user::query()).order_by_seq_desc().limit(0, 20).gets().await?;
+    .relation(user::query()).order_by_seq_desc().limit(0, 20).gets().await?;
 ```
 The three chains produce the same SQL, the same binds and the same results — checked byte for byte by
 `tests/conformance` (58 vectors) and `ormgen tokens`.

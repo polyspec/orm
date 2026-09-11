@@ -118,8 +118,8 @@ async fn main() {
     check!(fails, battle::query().service_seq_eq(7).using(&db).sum_like_count().await.unwrap() > 0.0, "sum");
 
     let cnt = battle::query()
-        .join_service(service::query().where_(|w| w.name_eq("service-7")))
-        .left_join_user(user::query().on(|w| w.name_contains("user")))
+        .join(service::query().where_(|w| w.name_eq("service-7")))
+        .left_join(user::query().on(|w| w.name_contains("user")))
         .is_close_eq(false)
         .and(|w| w.is_display_eq(true).or().service(|s| s.seq_gt(1000)))
         .using(&db).count()
@@ -131,7 +131,7 @@ async fn main() {
     check!(fails, page.total == 1000 && page.pages == 100 && page.items.len() == 10 && page.items.first().map(|r| r.seq) == Some(1006), "paginate");
     check!(fails, battle::query().name_contains("%").using(&db).count().await.unwrap() == 0, "contains escapes %");
 
-    let j = battle::query().join_service(service::query().where_(|w| w.seq_eq(7))).seq_eq(6).using(&db).one().await.unwrap().unwrap();
+    let j = battle::query().join(service::query().where_(|w| w.seq_eq(7))).seq_eq(6).using(&db).one().await.unwrap().unwrap();
     check!(fails, j.service().map(|s| s.name.as_str()) == Some("service-7"), "joined row access");
 
     // ---- S4: count_distinct / min / max, having, named predicates, raw root ----
@@ -175,9 +175,9 @@ async fn main() {
     let n0 = statements.load(Ordering::Relaxed);
     let rows = battle::query()
         .service_seq_eq(7).order_by_seq_asc().limit(0, 5)
-        .relation_user(user::query())
-        .relation_service(service::query()
-            .relations_members(service_member::query().order_by_seq_desc().limit_per_parent(3).key_by_user_seq().drop_child_key()))
+        .relation(user::query())
+        .relation(service::query()
+            .relations(service_member::query().order_by_seq_desc().limit_per_parent(3).key_by_user_seq().drop_child_key()))
         .using(&db).all().await.expect("relations");
     check!(fails, rows.len() == 5 && statements.load(Ordering::Relaxed) - n0 == 4, "relation statements: main, user, service, members");
     for (_, b) in &rows {
@@ -187,22 +187,22 @@ async fn main() {
     }
     let rows = battle::query()
         .seq_in(vec![7, 8, 14]).order_by_seq_asc()
-        .relation_user(user::query().if_parent_is_close_eq(true).relations_battles(battle::query().order_by_seq_asc().limit_per_parent(2)))
-        .join_service(service::query().relations_modules(service_module::query()))
+        .relation(user::query().if_parent_is_close_eq(true).relations(battle::query().order_by_seq_asc().limit_per_parent(2)))
+        .join(service::query().relations(service_module::query()))
         .using(&db).all().await.expect("if_parent");
     let (b7, b8, b14) = (rows.get(&Key::of(&Val::I64(7))).unwrap(), rows.get(&Key::of(&Val::I64(8))).unwrap(), rows.get(&Key::of(&Val::I64(14))).unwrap());
     check!(fails, b7.user().is_some() && b14.user().is_some() && b8.user().is_none(), "if_parent loads only closed battles' users");
     check!(fails, b7.user().unwrap().battles().len() == 2, "nested many under one, limit_per_parent");
     check!(fails, b8.service().map(|s| s.modules().len() == 1 && s.modules().first().unwrap().service_seq == b8.service_seq) == Some(true), "relation off a join");
     let n0 = statements.load(Ordering::Relaxed);
-    let none = battle::query().seq_eq(0).relation_user(user::query()).using(&db).all().await.expect("empty");
+    let none = battle::query().seq_eq(0).relation(user::query()).using(&db).all().await.expect("empty");
     check!(fails, none.is_empty() && statements.load(Ordering::Relaxed) - n0 == 1, "no parents → relation step skipped");
-    let one = battle::query().seq_eq(42).relation_service(service::query().relations_members(service_member::query().limit_per_parent(1))).using(&db).one().await.expect("one").expect("row 42");
+    let one = battle::query().seq_eq(42).relation(service::query().relations(service_member::query().limit_per_parent(1))).using(&db).one().await.expect("one").expect("row 42");
     check!(fails, one.service().map(|s| s.members().len()) == Some(1), "one + relation");
     // flatten: typed access is unchanged (array/JSON forms merge the child's columns)
-    let m = service_member::query().service_seq_eq(7).order_by_seq_asc().limit(0, 2).relation_user(user::query().flatten()).using(&db).all().await.expect("flatten");
+    let m = service_member::query().service_seq_eq(7).order_by_seq_asc().limit(0, 2).relation(user::query().flatten()).using(&db).all().await.expect("flatten");
     check!(fails, m.first().and_then(|m| m.user()).map(|u| u.name.starts_with("user-")) == Some(true), "flatten");
-    let page = battle::query().service_seq_eq(7).order_by_seq_asc().relation_user(user::query()).using(&db).paginate(1, 4).await.expect("paginate");
+    let page = battle::query().service_seq_eq(7).order_by_seq_asc().relation(user::query()).using(&db).paginate(1, 4).await.expect("paginate");
     check!(fails, page.total == 1000 && page.items.len() == 4 && page.items.first().and_then(|b| b.user()).is_some(), "paginate keeps relations");
 
     // ---- writes ----
@@ -299,8 +299,8 @@ async fn main() {
         Ok((s.seq, m1.seq, m2.seq, md.seq))
     }).await.expect("cascade fixture");
     let row = service::query().seq_eq(svc)
-        .relations_members(service_member::query().order_by_seq_asc())
-        .relations_modules(service_module::query().no_cascade_delete())
+        .relations(service_member::query().order_by_seq_asc())
+        .relations(service_module::query().no_cascade_delete())
         .using(&db).one().await.expect("service").expect("service row");
     check!(fails, row.members().len() == 2 && row.modules().len() == 1, "cascade fixture loaded");
     let n0 = statements.load(Ordering::Relaxed);

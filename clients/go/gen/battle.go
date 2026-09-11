@@ -4018,52 +4018,49 @@ func (q *BattleQuery) Having(fn func(*BattleWhere)) *BattleQuery {
 // Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
 func (q *BattleQuery) Raw(sql string, binds ...any) *BattleQuery { q.q.Raw(sql, binds...); return q }
 
-func (q *BattleQuery) JoinService(child *ServiceQuery) *BattleQuery {
-	q.q.Join("service", "inner", child.q)
+// Relation attaches a declared one-to-one child query. The manifest resolves
+// the relation name from the parent and child entities.
+func (q *BattleQuery) Relation(child any) *BattleQuery {
+	if c, ok := child.(*ServiceQuery); ok {
+		q.q.Relation("service", c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceMemberQuery); ok {
+		q.q.Relation("service_member", c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceModuleQuery); ok {
+		q.q.Relation("service_module", c.q)
+		return q
+	}
+	if c, ok := child.(*UserQuery); ok {
+		q.q.Relation("user", c.q)
+		return q
+	}
 	return q
 }
-func (q *BattleQuery) LeftJoinService(child *ServiceQuery) *BattleQuery {
-	q.q.Join("service", "left", child.q)
+func (q *BattleQuery) Relations(child any) *BattleQuery {
 	return q
 }
-func (q *BattleQuery) RelationService(child *ServiceQuery) *BattleQuery {
-	q.q.Relation("service", child.q)
-	return q
-}
-func (q *BattleQuery) JoinServiceMember(child *ServiceMemberQuery) *BattleQuery {
-	q.q.Join("service_member", "inner", child.q)
-	return q
-}
-func (q *BattleQuery) LeftJoinServiceMember(child *ServiceMemberQuery) *BattleQuery {
-	q.q.Join("service_member", "left", child.q)
-	return q
-}
-func (q *BattleQuery) RelationServiceMember(child *ServiceMemberQuery) *BattleQuery {
-	q.q.Relation("service_member", child.q)
-	return q
-}
-func (q *BattleQuery) JoinServiceModule(child *ServiceModuleQuery) *BattleQuery {
-	q.q.Join("service_module", "inner", child.q)
-	return q
-}
-func (q *BattleQuery) LeftJoinServiceModule(child *ServiceModuleQuery) *BattleQuery {
-	q.q.Join("service_module", "left", child.q)
-	return q
-}
-func (q *BattleQuery) RelationServiceModule(child *ServiceModuleQuery) *BattleQuery {
-	q.q.Relation("service_module", child.q)
-	return q
-}
-func (q *BattleQuery) JoinUser(child *UserQuery) *BattleQuery {
-	q.q.Join("user", "inner", child.q)
-	return q
-}
-func (q *BattleQuery) LeftJoinUser(child *UserQuery) *BattleQuery {
-	q.q.Join("user", "left", child.q)
-	return q
-}
-func (q *BattleQuery) RelationUser(child *UserQuery) *BattleQuery {
-	q.q.Relation("user", child.q)
+func (q *BattleQuery) Join(child any) *BattleQuery     { return q.joinTarget(child, "inner") }
+func (q *BattleQuery) LeftJoin(child any) *BattleQuery { return q.joinTarget(child, "left") }
+func (q *BattleQuery) joinTarget(child any, kind string) *BattleQuery {
+	if c, ok := child.(*ServiceQuery); ok {
+		q.q.Join("service", kind, c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceMemberQuery); ok {
+		q.q.Join("service_member", kind, c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceModuleQuery); ok {
+		q.q.Join("service_module", kind, c.q)
+		return q
+	}
+	if c, ok := child.(*UserQuery); ok {
+		q.q.Join("user", kind, c.q)
+		return q
+	}
 	return q
 }
 

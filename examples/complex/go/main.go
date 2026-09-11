@@ -34,17 +34,17 @@ func main() {
 	// navigation into the joined entity, and three levels of relations with options.
 	rows, err := gen.Battle().
 		SelectNone().SelectName().
-		JoinService(gen.Service().
+		Join(gen.Service().
 			On(func(w *gen.ServiceWhere) { w.SeqGt(0) }).
 			Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
 		IsClose(false).
 		And(func(w *gen.BattleWhere) {
 			w.IsDisplay(true).Or().Service(func(s *gen.ServiceWhere) { s.Seq(7) })
 		}).
-		RelationUser(gen.User().
-			RelationsBattles(gen.Battle().SelectNone().OrderBySeqDesc().LimitPerParent(2).DropChildKey())).
-		RelationService(gen.Service().
-			RelationsMembers(gen.ServiceMember().SelectNone().OrderBySeqAsc().LimitPerParent(2).KeyByUserSeq())).
+		Relation(gen.User().
+			Relations(gen.Battle().SelectNone().OrderBySeqDesc().LimitPerParent(2).DropChildKey())).
+		Relation(gen.Service().
+			Relations(gen.ServiceMember().SelectNone().OrderBySeqAsc().LimitPerParent(2).KeyByUserSeq())).
 		OrderBySeqAsc().Limit(0, 2).Using(ctx, db).Gets()
 	check(err)
 	items := []any{}

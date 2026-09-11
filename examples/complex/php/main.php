@@ -24,15 +24,15 @@ $db = Db::mysql(getenv('ORM_MYSQL_DSN_PHP') ?: 'mysql:unix_socket=/tmp/mysql.soc
 // navigation into the joined entity, and three levels of relations with options.
 $rows = Battle::query()
     ->selectNone()->selectName()
-    ->joinService(Service::query()
+    ->join(Service::query()
         ->on(fn(ServiceWhere $w) => $w->seqGt(0))
         ->where(fn(ServiceWhere $w) => $w->name('service-7')))
     ->isClose(false)
     ->and(fn(BattleWhere $w) => $w->isDisplay(true)->or()->service(fn(ServiceWhere $s) => $s->seq(7)))
-    ->relationUser(User::query()
-        ->relationsBattles(Battle::query()->selectNone()->orderBySeqDesc()->limitPerParent(2)->dropChildKey()))
-    ->relationService(Service::query()
-        ->relationsMembers(ServiceMember::query()->selectNone()->orderBySeqAsc()->limitPerParent(2)->keyByUserSeq()))
+    ->relation(User::query()
+        ->relations(Battle::query()->selectNone()->orderBySeqDesc()->limitPerParent(2)->dropChildKey()))
+    ->relation(Service::query()
+        ->relations(ServiceMember::query()->selectNone()->orderBySeqAsc()->limitPerParent(2)->keyByUserSeq()))
     ->orderBySeqAsc()->limit(0, 2)
     ->using($db)->gets();
 $items = [];

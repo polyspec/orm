@@ -135,7 +135,7 @@ X 쿼리 생성                              ← 쿼리(행 아님)
 
 ```php
 $battles = Battle::query()
-    ->joinService(Service::query()->nameLike('pro'))
+    ->join(Service::query()->nameLike('pro'))
     ->serviceSeq(7)
     ->isClose(false)
     ->and(fn(BattleWhere $w) => $w
@@ -146,14 +146,14 @@ $battles = Battle::query()
 ```
 ```go
 battles, err := gen.Battle().
-    JoinService(gen.Service().NameLike("pro")).
+    Join(gen.Service().NameLike("pro")).
     ServiceSeq(7).IsClose(false).
     And(func(w *gen.BattleWhere) { w.IsDisplay(true).Or().IsAllday(true) }).
     OrderBySeqDesc().Limit(0, 20).Using(ctx, db).Gets()
 ```
 ```rust
 let battles = battle::query()
-    .join_service(service::query().name_like("pro"))
+    .join(service::query().name_like("pro"))
     .service_seq(7)
     .is_close(false)
     .and(|w| w.is_display(true).or().is_allday(true))
@@ -172,24 +172,24 @@ let battles = battle::query()
 ```php
 $services = Service::query()
     ->nameLike('pro')
-    ->relationsModules(ServiceModule::query()
+    ->relations(ServiceModule::query()
         ->orderBySeqDesc()->limitPerParent(3))
-    ->relationsMembers(ServiceMember::query()
-        ->relationUser(User::query())->keyBySeq())
+    ->relations(ServiceMember::query()
+        ->relation(User::query())->keyBySeq())
     ->orderBySeqDesc()->using($db)->gets();
 ```
 ```go
 services, err := gen.Service().
     NameLike("pro").
-    RelationsModules(gen.ServiceModule().OrderBySeqDesc().LimitPerParent(3)).
-    RelationsMembers(gen.ServiceMember().RelationUser(gen.User()).KeyBySeq()).
+    Relations(gen.ServiceModule().OrderBySeqDesc().LimitPerParent(3)).
+    Relations(gen.ServiceMember().Relation(gen.User()).KeyBySeq()).
     OrderBySeqDesc().Using(ctx, db).Gets()
 ```
 ```rust
 let services = service::query()
     .name_like("pro")
-    .relations_modules(service_module::query().order_by_seq_desc().limit_per_parent(3))
-    .relations_members(service_member::query().relation_user(user::query()).key_by_seq())
+    .relations(service_module::query().order_by_seq_desc().limit_per_parent(3))
+    .relations(service_member::query().relation(user::query()).key_by_seq())
     .order_by_seq_desc().using(&db).gets().await?;
 ```
 

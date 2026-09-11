@@ -70,8 +70,8 @@ check(Battle::query()->serviceSeq(7)->using($db)->getCount() === 1000, 'count');
 check(Battle::query()->serviceSeq(7)->using($db)->sumLikeCount() > 0, 'sum');
 
 $cnt = Battle::query()
-    ->joinService(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))
-    ->leftJoinUser(User::query()->on(fn(UserWhere $w) => $w->nameContains('user')))
+    ->join(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))
+    ->leftJoin(User::query()->on(fn(UserWhere $w) => $w->nameContains('user')))
     ->isClose(false)
     ->and(fn(BattleWhere $w) => $w->isDisplay(true)->or()->service(fn(ServiceWhere $s) => $s->seqGt(1000)))
     ->using($db)->getCount();
@@ -82,16 +82,16 @@ check($page->total === 1000 && $page->pages === 100 && count($page->items) === 1
 check(Battle::query()->nameContains('%')->using($db)->getCount() === 0, 'contains escapes %');
 
 // join result access
-$j = Battle::query()->joinService(Service::query()->where(fn(ServiceWhere $w) => $w->seq(7)))->seq(6)->using($db)->get();
+$j = Battle::query()->join(Service::query()->where(fn(ServiceWhere $w) => $w->seq(7)))->seq(6)->using($db)->get();
 check($j !== null && $j->getService() !== null && $j->getService()->getName() === 'service-7' && $j['service']['name'] === 'service-7', 'joined row access');
 
 // ---- relations ----
 $n0 = count($log);
 $rows = Battle::query()
     ->serviceSeq(7)->orderBySeqAsc()->limit(0, 5)
-    ->relationUser(User::query())
-    ->relationService(Service::query()
-        ->relationsMembers(ServiceMember::query()->orderBySeqDesc()->limitPerParent(3)->keyByUserSeq()->dropChildKey()))
+    ->relation(User::query())
+    ->relation(Service::query()
+        ->relations(ServiceMember::query()->orderBySeqDesc()->limitPerParent(3)->keyByUserSeq()->dropChildKey()))
     ->using($db)->gets();
 check(count($rows) === 5 && count($log) - $n0 === 4, 'relation statements: main, user, service, members');
 foreach ($rows as $b) {
@@ -103,19 +103,19 @@ foreach ($rows as $b) {
 }
 $rows = Battle::query()
     ->seqIn([7, 8, 14])->orderBySeqAsc()
-    ->relationUser(User::query()->ifParentIsCloseEq(true)->relationsBattles(Battle::query()->orderBySeqAsc()->limitPerParent(2)))
-    ->joinService(Service::query()->relationsModules(ServiceModule::query()))
+    ->relation(User::query()->ifParentIsCloseEq(true)->relations(Battle::query()->orderBySeqAsc()->limitPerParent(2)))
+    ->join(Service::query()->relations(ServiceModule::query()))
     ->using($db)->gets();
 check($rows[7]->getUser() !== null && $rows[14]->getUser() !== null && $rows[8]->getUser() === null, 'if_parent loads only closed battles\' users');
 check(count($rows[7]->getUser()->getBattles()) === 2, 'nested many under one, limit_per_parent');
 check(count($rows[8]->getService()->getModules()) === 1 && $rows[8]->getService()->getModules()->first()->getServiceSeq() === $rows[8]->getServiceSeq(), 'relation off a join');
 $n0 = count($log);
-check(count(Battle::query()->seq(0)->relationUser(User::query())->using($db)->gets()) === 0 && count($log) - $n0 === 1, 'no parents → relation step skipped');
-$one = Battle::query()->seq(42)->relationService(Service::query()->relationsMembers(ServiceMember::query()->limitPerParent(1)))->using($db)->get();
+check(count(Battle::query()->seq(0)->relation(User::query())->using($db)->gets()) === 0 && count($log) - $n0 === 1, 'no parents → relation step skipped');
+$one = Battle::query()->seq(42)->relation(Service::query()->relations(ServiceMember::query()->limitPerParent(1)))->using($db)->get();
 check($one !== null && count($one->getService()->getMembers()) === 1, 'one + relation');
-$m = ServiceMember::query()->serviceSeq(7)->orderBySeqAsc()->limit(0, 2)->relationUser(User::query()->flatten())->using($db)->gets()->first();
+$m = ServiceMember::query()->serviceSeq(7)->orderBySeqAsc()->limit(0, 2)->relation(User::query()->flatten())->using($db)->gets()->first();
 check($m['name'] === 'user-' . $m->getUserSeq() && $m->getName() === 'user-' . $m->getUserSeq() && $m->toArray()['name'] === $m['name'], 'flatten merges child columns into the parent');
-$page = Battle::query()->serviceSeq(7)->orderBySeqAsc()->relationUser(User::query())->using($db)->paginate(1, 4);
+$page = Battle::query()->serviceSeq(7)->orderBySeqAsc()->relation(User::query())->using($db)->paginate(1, 4);
 check($page->total === 1000 && count($page->items) === 4 && $page->items->first()->getUser() !== null, 'paginate keeps relations');
 
 // ---- writes ----
@@ -185,8 +185,8 @@ $svc = $db->transaction(function (Tx $tx) {
     return $s;
 });
 $loaded = Service::query()->seq($svc->getSeq())
-    ->relationsMembers(ServiceMember::query()->orderBySeqAsc()->relationUser(User::query()))
-    ->relationsModules(ServiceModule::query()->noCascadeDelete())
+    ->relations(ServiceMember::query()->orderBySeqAsc()->relation(User::query()))
+    ->relations(ServiceModule::query()->noCascadeDelete())
     ->using($db)->get();
 $n0 = count($log);
 $loaded->using($db)->deleteCascade();

@@ -204,14 +204,10 @@ final class ServiceModule extends Q implements ServiceModuleInterface
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new ServiceModuleWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new ServiceModuleWhere($this->w())); return $this; }
-
-    public function joinBattles(Battle $child): static { $this->attachJoin('battles', 'inner', $child); return $this; }
-    public function leftJoinBattles(Battle $child): static { $this->attachJoin('battles', 'left', $child); return $this; }
-    public function relationsBattles(Battle $child): static { $this->attachRelation('battles', $child); return $this; }
-    public function joinService(Service $child): static { $this->attachJoin('service', 'inner', $child); return $this; }
-    public function leftJoinService(Service $child): static { $this->attachJoin('service', 'left', $child); return $this; }
-    public function relationService(Service $child): static { $this->attachRelation('service', $child); return $this; }
-
+    public function relation(Q $child): static { $this->attachRelation(Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'one'), $child); return $this; }
+    public function relations(Q $child): static { $this->attachRelation(Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'many'), $child); return $this; }
+    public function join(Q $child): static { $this->attachJoin(Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
+    public function leftJoin(Q $child): static { $this->attachJoin(Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
     // ---- columns ----
     public function selectAll(): static { $this->colMode('all'); return $this; }
     public function selectNone(): static { $this->colMode('none'); return $this; }
