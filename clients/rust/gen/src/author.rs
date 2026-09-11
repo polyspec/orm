@@ -19,9 +19,9 @@ pub struct AuthorRow {
     pub display_start_dt: Option<chrono::NaiveDateTime>,
     pub display_end_dt: Option<chrono::NaiveDateTime>,
     pub is_allday: bool,
-    pub target_club_reader_count: i32,
-    pub success_count: i32,
-    pub reader_count: i32,
+    pub target_club_reader_count: i64,
+    pub success_count: i64,
+    pub reader_count: i64,
     pub read_count: i64,
     pub photo_url: Option<String>,
     pub user_seq: i64,
@@ -32,7 +32,7 @@ pub struct AuthorRow {
     pub end_dt: chrono::NaiveDateTime,
     pub uuid: Option<String>,
     pub is_single_work: bool,
-    pub like_count: i32,
+    pub like_count: i64,
     pub aes_hex_email: Option<String>,
     pub aes_hex_phone: Option<String>,
     pub price: Option<f64>,
@@ -87,9 +87,9 @@ impl AuthorRow {
                 "display_start_dt" => r.display_start_dt = if v.is_null() { None } else { Some(v.as_datetime()) },
                 "display_end_dt" => r.display_end_dt = if v.is_null() { None } else { Some(v.as_datetime()) },
                 "is_allday" => r.is_allday = v.as_bool(),
-                "target_club_reader_count" => r.target_club_reader_count = v.as_i64() as i32,
-                "success_count" => r.success_count = v.as_i64() as i32,
-                "reader_count" => r.reader_count = v.as_i64() as i32,
+                "target_club_reader_count" => r.target_club_reader_count = v.as_i64(),
+                "success_count" => r.success_count = v.as_i64(),
+                "reader_count" => r.reader_count = v.as_i64(),
                 "read_count" => r.read_count = v.as_i64(),
                 "photo_url" => r.photo_url = if v.is_null() { None } else { Some(v.take_string()) },
                 "user_seq" => r.user_seq = v.as_i64(),
@@ -100,7 +100,7 @@ impl AuthorRow {
                 "end_dt" => r.end_dt = v.as_datetime(),
                 "uuid" => r.uuid = if v.is_null() { None } else { Some(v.take_string()) },
                 "is_single_work" => r.is_single_work = v.as_bool(),
-                "like_count" => r.like_count = v.as_i64() as i32,
+                "like_count" => r.like_count = v.as_i64(),
                 "aes_hex_email" => r.aes_hex_email = if v.is_null() { None } else { Some(v.take_string()) },
                 "aes_hex_phone" => r.aes_hex_phone = if v.is_null() { None } else { Some(v.take_string()) },
                 "price" => r.price = if v.is_null() { None } else { Some(v.as_f64()) },
@@ -288,22 +288,22 @@ impl AuthorRow {
         self.dirty.push(("is_allday", v.into()));
         self
     }
-    pub fn set_target_club_reader_count(&mut self, v: i32) -> &mut Self {
-        let v: i32 = v.into();
+    pub fn set_target_club_reader_count(&mut self, v: i64) -> &mut Self {
+        let v: i64 = v.into();
         self.target_club_reader_count = v.clone();
         self.dirty.retain(|(c, _)| *c != "target_club_reader_count");
         self.dirty.push(("target_club_reader_count", v.into()));
         self
     }
-    pub fn set_success_count(&mut self, v: i32) -> &mut Self {
-        let v: i32 = v.into();
+    pub fn set_success_count(&mut self, v: i64) -> &mut Self {
+        let v: i64 = v.into();
         self.success_count = v.clone();
         self.dirty.retain(|(c, _)| *c != "success_count");
         self.dirty.push(("success_count", v.into()));
         self
     }
-    pub fn set_reader_count(&mut self, v: i32) -> &mut Self {
-        let v: i32 = v.into();
+    pub fn set_reader_count(&mut self, v: i64) -> &mut Self {
+        let v: i64 = v.into();
         self.reader_count = v.clone();
         self.dirty.retain(|(c, _)| *c != "reader_count");
         self.dirty.push(("reader_count", v.into()));
@@ -379,8 +379,8 @@ impl AuthorRow {
         self.dirty.push(("is_single_work", v.into()));
         self
     }
-    pub fn set_like_count(&mut self, v: i32) -> &mut Self {
-        let v: i32 = v.into();
+    pub fn set_like_count(&mut self, v: i64) -> &mut Self {
+        let v: i64 = v.into();
         self.like_count = v.clone();
         self.dirty.retain(|(c, _)| *c != "like_count");
         self.dirty.push(("like_count", v.into()));
@@ -672,15 +672,15 @@ impl<'a> AuthorWhere<'a> {
     pub fn is_allday_is_not_null(mut self) -> Self { self.w.pred_null("is_allday", "is_not_null"); self }
     pub fn is_allday_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_allday", "eq_col", r); self }
     pub fn is_allday_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_allday", "not_eq_col", r); self }
-    pub fn target_club_reader_count_eq(mut self, v: i32) -> Self { self.w.pred("target_club_reader_count", "eq", v); self }
-    pub fn target_club_reader_count_not_eq(mut self, v: i32) -> Self { self.w.pred("target_club_reader_count", "not_eq", v); self }
-    pub fn target_club_reader_count_gt(mut self, v: i32) -> Self { self.w.pred("target_club_reader_count", "gt", v); self }
-    pub fn target_club_reader_count_gte(mut self, v: i32) -> Self { self.w.pred("target_club_reader_count", "gte", v); self }
-    pub fn target_club_reader_count_lt(mut self, v: i32) -> Self { self.w.pred("target_club_reader_count", "lt", v); self }
-    pub fn target_club_reader_count_lte(mut self, v: i32) -> Self { self.w.pred("target_club_reader_count", "lte", v); self }
-    pub fn target_club_reader_count_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("target_club_reader_count", "in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn target_club_reader_count_not_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("target_club_reader_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn target_club_reader_count_between(mut self, lo: i32, hi: i32) -> Self { self.w.pred_list("target_club_reader_count", "between", vec![lo.into(), hi.into()]); self }
+    pub fn target_club_reader_count_eq(mut self, v: i64) -> Self { self.w.pred("target_club_reader_count", "eq", v); self }
+    pub fn target_club_reader_count_not_eq(mut self, v: i64) -> Self { self.w.pred("target_club_reader_count", "not_eq", v); self }
+    pub fn target_club_reader_count_gt(mut self, v: i64) -> Self { self.w.pred("target_club_reader_count", "gt", v); self }
+    pub fn target_club_reader_count_gte(mut self, v: i64) -> Self { self.w.pred("target_club_reader_count", "gte", v); self }
+    pub fn target_club_reader_count_lt(mut self, v: i64) -> Self { self.w.pred("target_club_reader_count", "lt", v); self }
+    pub fn target_club_reader_count_lte(mut self, v: i64) -> Self { self.w.pred("target_club_reader_count", "lte", v); self }
+    pub fn target_club_reader_count_in(mut self, vs: Vec<i64>) -> Self { self.w.pred_list("target_club_reader_count", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn target_club_reader_count_not_in(mut self, vs: Vec<i64>) -> Self { self.w.pred_list("target_club_reader_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn target_club_reader_count_between(mut self, lo: i64, hi: i64) -> Self { self.w.pred_list("target_club_reader_count", "between", vec![lo.into(), hi.into()]); self }
     pub fn target_club_reader_count_is_null(mut self) -> Self { self.w.pred_null("target_club_reader_count", "is_null"); self }
     pub fn target_club_reader_count_is_not_null(mut self) -> Self { self.w.pred_null("target_club_reader_count", "is_not_null"); self }
     pub fn target_club_reader_count_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("target_club_reader_count", "eq_col", r); self }
@@ -689,15 +689,15 @@ impl<'a> AuthorWhere<'a> {
     pub fn target_club_reader_count_gte_col(mut self, r: ColRef) -> Self { self.w.pred_col("target_club_reader_count", "gte_col", r); self }
     pub fn target_club_reader_count_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("target_club_reader_count", "lt_col", r); self }
     pub fn target_club_reader_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("target_club_reader_count", "lte_col", r); self }
-    pub fn success_count_eq(mut self, v: i32) -> Self { self.w.pred("success_count", "eq", v); self }
-    pub fn success_count_not_eq(mut self, v: i32) -> Self { self.w.pred("success_count", "not_eq", v); self }
-    pub fn success_count_gt(mut self, v: i32) -> Self { self.w.pred("success_count", "gt", v); self }
-    pub fn success_count_gte(mut self, v: i32) -> Self { self.w.pred("success_count", "gte", v); self }
-    pub fn success_count_lt(mut self, v: i32) -> Self { self.w.pred("success_count", "lt", v); self }
-    pub fn success_count_lte(mut self, v: i32) -> Self { self.w.pred("success_count", "lte", v); self }
-    pub fn success_count_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("success_count", "in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn success_count_not_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("success_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn success_count_between(mut self, lo: i32, hi: i32) -> Self { self.w.pred_list("success_count", "between", vec![lo.into(), hi.into()]); self }
+    pub fn success_count_eq(mut self, v: i64) -> Self { self.w.pred("success_count", "eq", v); self }
+    pub fn success_count_not_eq(mut self, v: i64) -> Self { self.w.pred("success_count", "not_eq", v); self }
+    pub fn success_count_gt(mut self, v: i64) -> Self { self.w.pred("success_count", "gt", v); self }
+    pub fn success_count_gte(mut self, v: i64) -> Self { self.w.pred("success_count", "gte", v); self }
+    pub fn success_count_lt(mut self, v: i64) -> Self { self.w.pred("success_count", "lt", v); self }
+    pub fn success_count_lte(mut self, v: i64) -> Self { self.w.pred("success_count", "lte", v); self }
+    pub fn success_count_in(mut self, vs: Vec<i64>) -> Self { self.w.pred_list("success_count", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn success_count_not_in(mut self, vs: Vec<i64>) -> Self { self.w.pred_list("success_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn success_count_between(mut self, lo: i64, hi: i64) -> Self { self.w.pred_list("success_count", "between", vec![lo.into(), hi.into()]); self }
     pub fn success_count_is_null(mut self) -> Self { self.w.pred_null("success_count", "is_null"); self }
     pub fn success_count_is_not_null(mut self) -> Self { self.w.pred_null("success_count", "is_not_null"); self }
     pub fn success_count_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("success_count", "eq_col", r); self }
@@ -706,15 +706,15 @@ impl<'a> AuthorWhere<'a> {
     pub fn success_count_gte_col(mut self, r: ColRef) -> Self { self.w.pred_col("success_count", "gte_col", r); self }
     pub fn success_count_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("success_count", "lt_col", r); self }
     pub fn success_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("success_count", "lte_col", r); self }
-    pub fn reader_count_eq(mut self, v: i32) -> Self { self.w.pred("reader_count", "eq", v); self }
-    pub fn reader_count_not_eq(mut self, v: i32) -> Self { self.w.pred("reader_count", "not_eq", v); self }
-    pub fn reader_count_gt(mut self, v: i32) -> Self { self.w.pred("reader_count", "gt", v); self }
-    pub fn reader_count_gte(mut self, v: i32) -> Self { self.w.pred("reader_count", "gte", v); self }
-    pub fn reader_count_lt(mut self, v: i32) -> Self { self.w.pred("reader_count", "lt", v); self }
-    pub fn reader_count_lte(mut self, v: i32) -> Self { self.w.pred("reader_count", "lte", v); self }
-    pub fn reader_count_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("reader_count", "in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn reader_count_not_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("reader_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn reader_count_between(mut self, lo: i32, hi: i32) -> Self { self.w.pred_list("reader_count", "between", vec![lo.into(), hi.into()]); self }
+    pub fn reader_count_eq(mut self, v: i64) -> Self { self.w.pred("reader_count", "eq", v); self }
+    pub fn reader_count_not_eq(mut self, v: i64) -> Self { self.w.pred("reader_count", "not_eq", v); self }
+    pub fn reader_count_gt(mut self, v: i64) -> Self { self.w.pred("reader_count", "gt", v); self }
+    pub fn reader_count_gte(mut self, v: i64) -> Self { self.w.pred("reader_count", "gte", v); self }
+    pub fn reader_count_lt(mut self, v: i64) -> Self { self.w.pred("reader_count", "lt", v); self }
+    pub fn reader_count_lte(mut self, v: i64) -> Self { self.w.pred("reader_count", "lte", v); self }
+    pub fn reader_count_in(mut self, vs: Vec<i64>) -> Self { self.w.pred_list("reader_count", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn reader_count_not_in(mut self, vs: Vec<i64>) -> Self { self.w.pred_list("reader_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn reader_count_between(mut self, lo: i64, hi: i64) -> Self { self.w.pred_list("reader_count", "between", vec![lo.into(), hi.into()]); self }
     pub fn reader_count_is_null(mut self) -> Self { self.w.pred_null("reader_count", "is_null"); self }
     pub fn reader_count_is_not_null(mut self) -> Self { self.w.pred_null("reader_count", "is_not_null"); self }
     pub fn reader_count_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("reader_count", "eq_col", r); self }
@@ -874,15 +874,15 @@ impl<'a> AuthorWhere<'a> {
     pub fn is_single_work_is_not_null(mut self) -> Self { self.w.pred_null("is_single_work", "is_not_null"); self }
     pub fn is_single_work_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_single_work", "eq_col", r); self }
     pub fn is_single_work_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_single_work", "not_eq_col", r); self }
-    pub fn like_count_eq(mut self, v: i32) -> Self { self.w.pred("like_count", "eq", v); self }
-    pub fn like_count_not_eq(mut self, v: i32) -> Self { self.w.pred("like_count", "not_eq", v); self }
-    pub fn like_count_gt(mut self, v: i32) -> Self { self.w.pred("like_count", "gt", v); self }
-    pub fn like_count_gte(mut self, v: i32) -> Self { self.w.pred("like_count", "gte", v); self }
-    pub fn like_count_lt(mut self, v: i32) -> Self { self.w.pred("like_count", "lt", v); self }
-    pub fn like_count_lte(mut self, v: i32) -> Self { self.w.pred("like_count", "lte", v); self }
-    pub fn like_count_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("like_count", "in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn like_count_not_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("like_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn like_count_between(mut self, lo: i32, hi: i32) -> Self { self.w.pred_list("like_count", "between", vec![lo.into(), hi.into()]); self }
+    pub fn like_count_eq(mut self, v: i64) -> Self { self.w.pred("like_count", "eq", v); self }
+    pub fn like_count_not_eq(mut self, v: i64) -> Self { self.w.pred("like_count", "not_eq", v); self }
+    pub fn like_count_gt(mut self, v: i64) -> Self { self.w.pred("like_count", "gt", v); self }
+    pub fn like_count_gte(mut self, v: i64) -> Self { self.w.pred("like_count", "gte", v); self }
+    pub fn like_count_lt(mut self, v: i64) -> Self { self.w.pred("like_count", "lt", v); self }
+    pub fn like_count_lte(mut self, v: i64) -> Self { self.w.pred("like_count", "lte", v); self }
+    pub fn like_count_in(mut self, vs: Vec<i64>) -> Self { self.w.pred_list("like_count", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn like_count_not_in(mut self, vs: Vec<i64>) -> Self { self.w.pred_list("like_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn like_count_between(mut self, lo: i64, hi: i64) -> Self { self.w.pred_list("like_count", "between", vec![lo.into(), hi.into()]); self }
     pub fn like_count_is_null(mut self) -> Self { self.w.pred_null("like_count", "is_null"); self }
     pub fn like_count_is_not_null(mut self) -> Self { self.w.pred_null("like_count", "is_not_null"); self }
     pub fn like_count_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("like_count", "eq_col", r); self }
@@ -1092,15 +1092,15 @@ impl Author {
     pub fn is_allday_is_not_null(mut self) -> Self { self.q.w().pred_null("is_allday", "is_not_null"); self }
     pub fn is_allday_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("is_allday", "eq_col", r); self }
     pub fn is_allday_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("is_allday", "not_eq_col", r); self }
-    pub fn target_club_reader_count_eq(mut self, v: i32) -> Self { self.q.w().pred("target_club_reader_count", "eq", v); self }
-    pub fn target_club_reader_count_not_eq(mut self, v: i32) -> Self { self.q.w().pred("target_club_reader_count", "not_eq", v); self }
-    pub fn target_club_reader_count_gt(mut self, v: i32) -> Self { self.q.w().pred("target_club_reader_count", "gt", v); self }
-    pub fn target_club_reader_count_gte(mut self, v: i32) -> Self { self.q.w().pred("target_club_reader_count", "gte", v); self }
-    pub fn target_club_reader_count_lt(mut self, v: i32) -> Self { self.q.w().pred("target_club_reader_count", "lt", v); self }
-    pub fn target_club_reader_count_lte(mut self, v: i32) -> Self { self.q.w().pred("target_club_reader_count", "lte", v); self }
-    pub fn target_club_reader_count_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("target_club_reader_count", "in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn target_club_reader_count_not_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("target_club_reader_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn target_club_reader_count_between(mut self, lo: i32, hi: i32) -> Self { self.q.w().pred_list("target_club_reader_count", "between", vec![lo.into(), hi.into()]); self }
+    pub fn target_club_reader_count_eq(mut self, v: i64) -> Self { self.q.w().pred("target_club_reader_count", "eq", v); self }
+    pub fn target_club_reader_count_not_eq(mut self, v: i64) -> Self { self.q.w().pred("target_club_reader_count", "not_eq", v); self }
+    pub fn target_club_reader_count_gt(mut self, v: i64) -> Self { self.q.w().pred("target_club_reader_count", "gt", v); self }
+    pub fn target_club_reader_count_gte(mut self, v: i64) -> Self { self.q.w().pred("target_club_reader_count", "gte", v); self }
+    pub fn target_club_reader_count_lt(mut self, v: i64) -> Self { self.q.w().pred("target_club_reader_count", "lt", v); self }
+    pub fn target_club_reader_count_lte(mut self, v: i64) -> Self { self.q.w().pred("target_club_reader_count", "lte", v); self }
+    pub fn target_club_reader_count_in(mut self, vs: Vec<i64>) -> Self { self.q.w().pred_list("target_club_reader_count", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn target_club_reader_count_not_in(mut self, vs: Vec<i64>) -> Self { self.q.w().pred_list("target_club_reader_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn target_club_reader_count_between(mut self, lo: i64, hi: i64) -> Self { self.q.w().pred_list("target_club_reader_count", "between", vec![lo.into(), hi.into()]); self }
     pub fn target_club_reader_count_is_null(mut self) -> Self { self.q.w().pred_null("target_club_reader_count", "is_null"); self }
     pub fn target_club_reader_count_is_not_null(mut self) -> Self { self.q.w().pred_null("target_club_reader_count", "is_not_null"); self }
     pub fn target_club_reader_count_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("target_club_reader_count", "eq_col", r); self }
@@ -1109,15 +1109,15 @@ impl Author {
     pub fn target_club_reader_count_gte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("target_club_reader_count", "gte_col", r); self }
     pub fn target_club_reader_count_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("target_club_reader_count", "lt_col", r); self }
     pub fn target_club_reader_count_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("target_club_reader_count", "lte_col", r); self }
-    pub fn success_count_eq(mut self, v: i32) -> Self { self.q.w().pred("success_count", "eq", v); self }
-    pub fn success_count_not_eq(mut self, v: i32) -> Self { self.q.w().pred("success_count", "not_eq", v); self }
-    pub fn success_count_gt(mut self, v: i32) -> Self { self.q.w().pred("success_count", "gt", v); self }
-    pub fn success_count_gte(mut self, v: i32) -> Self { self.q.w().pred("success_count", "gte", v); self }
-    pub fn success_count_lt(mut self, v: i32) -> Self { self.q.w().pred("success_count", "lt", v); self }
-    pub fn success_count_lte(mut self, v: i32) -> Self { self.q.w().pred("success_count", "lte", v); self }
-    pub fn success_count_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("success_count", "in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn success_count_not_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("success_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn success_count_between(mut self, lo: i32, hi: i32) -> Self { self.q.w().pred_list("success_count", "between", vec![lo.into(), hi.into()]); self }
+    pub fn success_count_eq(mut self, v: i64) -> Self { self.q.w().pred("success_count", "eq", v); self }
+    pub fn success_count_not_eq(mut self, v: i64) -> Self { self.q.w().pred("success_count", "not_eq", v); self }
+    pub fn success_count_gt(mut self, v: i64) -> Self { self.q.w().pred("success_count", "gt", v); self }
+    pub fn success_count_gte(mut self, v: i64) -> Self { self.q.w().pred("success_count", "gte", v); self }
+    pub fn success_count_lt(mut self, v: i64) -> Self { self.q.w().pred("success_count", "lt", v); self }
+    pub fn success_count_lte(mut self, v: i64) -> Self { self.q.w().pred("success_count", "lte", v); self }
+    pub fn success_count_in(mut self, vs: Vec<i64>) -> Self { self.q.w().pred_list("success_count", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn success_count_not_in(mut self, vs: Vec<i64>) -> Self { self.q.w().pred_list("success_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn success_count_between(mut self, lo: i64, hi: i64) -> Self { self.q.w().pred_list("success_count", "between", vec![lo.into(), hi.into()]); self }
     pub fn success_count_is_null(mut self) -> Self { self.q.w().pred_null("success_count", "is_null"); self }
     pub fn success_count_is_not_null(mut self) -> Self { self.q.w().pred_null("success_count", "is_not_null"); self }
     pub fn success_count_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("success_count", "eq_col", r); self }
@@ -1126,15 +1126,15 @@ impl Author {
     pub fn success_count_gte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("success_count", "gte_col", r); self }
     pub fn success_count_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("success_count", "lt_col", r); self }
     pub fn success_count_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("success_count", "lte_col", r); self }
-    pub fn reader_count_eq(mut self, v: i32) -> Self { self.q.w().pred("reader_count", "eq", v); self }
-    pub fn reader_count_not_eq(mut self, v: i32) -> Self { self.q.w().pred("reader_count", "not_eq", v); self }
-    pub fn reader_count_gt(mut self, v: i32) -> Self { self.q.w().pred("reader_count", "gt", v); self }
-    pub fn reader_count_gte(mut self, v: i32) -> Self { self.q.w().pred("reader_count", "gte", v); self }
-    pub fn reader_count_lt(mut self, v: i32) -> Self { self.q.w().pred("reader_count", "lt", v); self }
-    pub fn reader_count_lte(mut self, v: i32) -> Self { self.q.w().pred("reader_count", "lte", v); self }
-    pub fn reader_count_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("reader_count", "in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn reader_count_not_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("reader_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn reader_count_between(mut self, lo: i32, hi: i32) -> Self { self.q.w().pred_list("reader_count", "between", vec![lo.into(), hi.into()]); self }
+    pub fn reader_count_eq(mut self, v: i64) -> Self { self.q.w().pred("reader_count", "eq", v); self }
+    pub fn reader_count_not_eq(mut self, v: i64) -> Self { self.q.w().pred("reader_count", "not_eq", v); self }
+    pub fn reader_count_gt(mut self, v: i64) -> Self { self.q.w().pred("reader_count", "gt", v); self }
+    pub fn reader_count_gte(mut self, v: i64) -> Self { self.q.w().pred("reader_count", "gte", v); self }
+    pub fn reader_count_lt(mut self, v: i64) -> Self { self.q.w().pred("reader_count", "lt", v); self }
+    pub fn reader_count_lte(mut self, v: i64) -> Self { self.q.w().pred("reader_count", "lte", v); self }
+    pub fn reader_count_in(mut self, vs: Vec<i64>) -> Self { self.q.w().pred_list("reader_count", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn reader_count_not_in(mut self, vs: Vec<i64>) -> Self { self.q.w().pred_list("reader_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn reader_count_between(mut self, lo: i64, hi: i64) -> Self { self.q.w().pred_list("reader_count", "between", vec![lo.into(), hi.into()]); self }
     pub fn reader_count_is_null(mut self) -> Self { self.q.w().pred_null("reader_count", "is_null"); self }
     pub fn reader_count_is_not_null(mut self) -> Self { self.q.w().pred_null("reader_count", "is_not_null"); self }
     pub fn reader_count_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("reader_count", "eq_col", r); self }
@@ -1294,15 +1294,15 @@ impl Author {
     pub fn is_single_work_is_not_null(mut self) -> Self { self.q.w().pred_null("is_single_work", "is_not_null"); self }
     pub fn is_single_work_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("is_single_work", "eq_col", r); self }
     pub fn is_single_work_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("is_single_work", "not_eq_col", r); self }
-    pub fn like_count_eq(mut self, v: i32) -> Self { self.q.w().pred("like_count", "eq", v); self }
-    pub fn like_count_not_eq(mut self, v: i32) -> Self { self.q.w().pred("like_count", "not_eq", v); self }
-    pub fn like_count_gt(mut self, v: i32) -> Self { self.q.w().pred("like_count", "gt", v); self }
-    pub fn like_count_gte(mut self, v: i32) -> Self { self.q.w().pred("like_count", "gte", v); self }
-    pub fn like_count_lt(mut self, v: i32) -> Self { self.q.w().pred("like_count", "lt", v); self }
-    pub fn like_count_lte(mut self, v: i32) -> Self { self.q.w().pred("like_count", "lte", v); self }
-    pub fn like_count_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("like_count", "in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn like_count_not_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("like_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn like_count_between(mut self, lo: i32, hi: i32) -> Self { self.q.w().pred_list("like_count", "between", vec![lo.into(), hi.into()]); self }
+    pub fn like_count_eq(mut self, v: i64) -> Self { self.q.w().pred("like_count", "eq", v); self }
+    pub fn like_count_not_eq(mut self, v: i64) -> Self { self.q.w().pred("like_count", "not_eq", v); self }
+    pub fn like_count_gt(mut self, v: i64) -> Self { self.q.w().pred("like_count", "gt", v); self }
+    pub fn like_count_gte(mut self, v: i64) -> Self { self.q.w().pred("like_count", "gte", v); self }
+    pub fn like_count_lt(mut self, v: i64) -> Self { self.q.w().pred("like_count", "lt", v); self }
+    pub fn like_count_lte(mut self, v: i64) -> Self { self.q.w().pred("like_count", "lte", v); self }
+    pub fn like_count_in(mut self, vs: Vec<i64>) -> Self { self.q.w().pred_list("like_count", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn like_count_not_in(mut self, vs: Vec<i64>) -> Self { self.q.w().pred_list("like_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn like_count_between(mut self, lo: i64, hi: i64) -> Self { self.q.w().pred_list("like_count", "between", vec![lo.into(), hi.into()]); self }
     pub fn like_count_is_null(mut self) -> Self { self.q.w().pred_null("like_count", "is_null"); self }
     pub fn like_count_is_not_null(mut self) -> Self { self.q.w().pred_null("like_count", "is_not_null"); self }
     pub fn like_count_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("like_count", "eq_col", r); self }
@@ -1652,11 +1652,11 @@ impl Author {
     pub fn set_display_end_dt_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("display_end_dt", frag, binds); self }
     pub fn set_is_allday(mut self, v: bool) -> Self { let v: bool = v.into(); self.q.set("is_allday", v); self }
     pub fn set_is_allday_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("is_allday", frag, binds); self }
-    pub fn set_target_club_reader_count(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.set("target_club_reader_count", v); self }
+    pub fn set_target_club_reader_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("target_club_reader_count", v); self }
     pub fn set_target_club_reader_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("target_club_reader_count", frag, binds); self }
-    pub fn set_success_count(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.set("success_count", v); self }
+    pub fn set_success_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("success_count", v); self }
     pub fn set_success_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("success_count", frag, binds); self }
-    pub fn set_reader_count(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.set("reader_count", v); self }
+    pub fn set_reader_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("reader_count", v); self }
     pub fn set_reader_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("reader_count", frag, binds); self }
     pub fn set_read_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("read_count", v); self }
     pub fn set_read_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("read_count", frag, binds); self }
@@ -1678,7 +1678,7 @@ impl Author {
     pub fn set_uuid_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("uuid", frag, binds); self }
     pub fn set_is_single_work(mut self, v: bool) -> Self { let v: bool = v.into(); self.q.set("is_single_work", v); self }
     pub fn set_is_single_work_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("is_single_work", frag, binds); self }
-    pub fn set_like_count(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.set("like_count", v); self }
+    pub fn set_like_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("like_count", v); self }
     pub fn set_like_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("like_count", frag, binds); self }
     pub fn set_aes_hex_email(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("aes_hex_email", v); self }
     pub fn set_aes_hex_email_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("aes_hex_email", frag, binds); self }
@@ -1700,12 +1700,12 @@ impl Author {
     pub fn set_serialize_data_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("serialize_data", frag, binds); self }
     pub fn plus_seq(mut self, v: i64) -> Self { self.q.plus("seq", v); self }
     pub fn minus_seq(mut self, v: i64) -> Self { self.q.minus("seq", v); self }
-    pub fn plus_target_club_reader_count(mut self, v: i32) -> Self { self.q.plus("target_club_reader_count", v); self }
-    pub fn minus_target_club_reader_count(mut self, v: i32) -> Self { self.q.minus("target_club_reader_count", v); self }
-    pub fn plus_success_count(mut self, v: i32) -> Self { self.q.plus("success_count", v); self }
-    pub fn minus_success_count(mut self, v: i32) -> Self { self.q.minus("success_count", v); self }
-    pub fn plus_reader_count(mut self, v: i32) -> Self { self.q.plus("reader_count", v); self }
-    pub fn minus_reader_count(mut self, v: i32) -> Self { self.q.minus("reader_count", v); self }
+    pub fn plus_target_club_reader_count(mut self, v: i64) -> Self { self.q.plus("target_club_reader_count", v); self }
+    pub fn minus_target_club_reader_count(mut self, v: i64) -> Self { self.q.minus("target_club_reader_count", v); self }
+    pub fn plus_success_count(mut self, v: i64) -> Self { self.q.plus("success_count", v); self }
+    pub fn minus_success_count(mut self, v: i64) -> Self { self.q.minus("success_count", v); self }
+    pub fn plus_reader_count(mut self, v: i64) -> Self { self.q.plus("reader_count", v); self }
+    pub fn minus_reader_count(mut self, v: i64) -> Self { self.q.minus("reader_count", v); self }
     pub fn plus_read_count(mut self, v: i64) -> Self { self.q.plus("read_count", v); self }
     pub fn minus_read_count(mut self, v: i64) -> Self { self.q.minus("read_count", v); self }
     pub fn plus_user_seq(mut self, v: i64) -> Self { self.q.plus("user_seq", v); self }
@@ -1716,8 +1716,8 @@ impl Author {
     pub fn minus_service_region_seq(mut self, v: i64) -> Self { self.q.minus("service_region_seq", v); self }
     pub fn plus_service_member_seq(mut self, v: i64) -> Self { self.q.plus("service_member_seq", v); self }
     pub fn minus_service_member_seq(mut self, v: i64) -> Self { self.q.minus("service_member_seq", v); self }
-    pub fn plus_like_count(mut self, v: i32) -> Self { self.q.plus("like_count", v); self }
-    pub fn minus_like_count(mut self, v: i32) -> Self { self.q.minus("like_count", v); self }
+    pub fn plus_like_count(mut self, v: i64) -> Self { self.q.plus("like_count", v); self }
+    pub fn minus_like_count(mut self, v: i64) -> Self { self.q.minus("like_count", v); self }
     pub fn plus_price(mut self, v: f64) -> Self { self.q.plus("price", v); self }
     pub fn minus_price(mut self, v: f64) -> Self { self.q.minus("price", v); self }
 

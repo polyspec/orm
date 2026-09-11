@@ -810,15 +810,15 @@ func (q *ServiceMember) IfParentIsAlldayEq(v bool) *ServiceMember {
 	q.q.IfParent("is_allday", v)
 	return q
 }
-func (q *ServiceMember) IfParentTargetClubReaderCountEq(v int32) *ServiceMember {
+func (q *ServiceMember) IfParentTargetClubReaderCountEq(v int64) *ServiceMember {
 	q.q.IfParent("target_club_reader_count", v)
 	return q
 }
-func (q *ServiceMember) IfParentSuccessCountEq(v int32) *ServiceMember {
+func (q *ServiceMember) IfParentSuccessCountEq(v int64) *ServiceMember {
 	q.q.IfParent("success_count", v)
 	return q
 }
-func (q *ServiceMember) IfParentReaderCountEq(v int32) *ServiceMember {
+func (q *ServiceMember) IfParentReaderCountEq(v int64) *ServiceMember {
 	q.q.IfParent("reader_count", v)
 	return q
 }
@@ -851,7 +851,7 @@ func (q *ServiceMember) IfParentIsSingleWorkEq(v bool) *ServiceMember {
 	q.q.IfParent("is_single_work", v)
 	return q
 }
-func (q *ServiceMember) IfParentLikeCountEq(v int32) *ServiceMember {
+func (q *ServiceMember) IfParentLikeCountEq(v int64) *ServiceMember {
 	q.q.IfParent("like_count", v)
 	return q
 }

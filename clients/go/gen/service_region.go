@@ -727,15 +727,15 @@ func (q *ServiceRegion) IfParentIsAlldayEq(v bool) *ServiceRegion {
 	q.q.IfParent("is_allday", v)
 	return q
 }
-func (q *ServiceRegion) IfParentTargetClubReaderCountEq(v int32) *ServiceRegion {
+func (q *ServiceRegion) IfParentTargetClubReaderCountEq(v int64) *ServiceRegion {
 	q.q.IfParent("target_club_reader_count", v)
 	return q
 }
-func (q *ServiceRegion) IfParentSuccessCountEq(v int32) *ServiceRegion {
+func (q *ServiceRegion) IfParentSuccessCountEq(v int64) *ServiceRegion {
 	q.q.IfParent("success_count", v)
 	return q
 }
-func (q *ServiceRegion) IfParentReaderCountEq(v int32) *ServiceRegion {
+func (q *ServiceRegion) IfParentReaderCountEq(v int64) *ServiceRegion {
 	q.q.IfParent("reader_count", v)
 	return q
 }
@@ -768,7 +768,7 @@ func (q *ServiceRegion) IfParentIsSingleWorkEq(v bool) *ServiceRegion {
 	q.q.IfParent("is_single_work", v)
 	return q
 }
-func (q *ServiceRegion) IfParentLikeCountEq(v int32) *ServiceRegion {
+func (q *ServiceRegion) IfParentLikeCountEq(v int64) *ServiceRegion {
 	q.q.IfParent("like_count", v)
 	return q
 }
