@@ -81,7 +81,24 @@ final class Transport
     /** The schema hash of the manifest ormd loaded ({"op":"hash"}). */
     public function hash(): string
     {
-        return (string) ($this->decode($this->call('{"op":"hash"}'))['schema_hash'] ?? throw new OrmException(Code::INTERNAL, 'ormd: no schema_hash'));
+        return $this->info()['schema_hash'];
+    }
+
+    /**
+     * What ormd was started with: the schema hash of its manifest and the dialect it compiles for
+     * (`-dialect`), both checked once by Orm::init. An ormd without a dialect in its answer predates S6.
+     * @return array{schema_hash: string, dialect: string}
+     */
+    public function info(): array
+    {
+        $r = $this->decode($this->call('{"op":"hash"}'));
+        if (!isset($r['schema_hash'])) {
+            throw new OrmException(Code::INTERNAL, 'ormd: no schema_hash');
+        }
+        if (!isset($r['dialect'])) {
+            throw new OrmException(Code::CONFIG, "ormd at {$this->config->socket} does not report its dialect: rebuild it from cmd/ormd");
+        }
+        return ['schema_hash' => (string) $r['schema_hash'], 'dialect' => (string) $r['dialect']];
     }
 
     /**
@@ -103,7 +120,7 @@ final class Transport
     {
         $shape = json_encode($ir, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $id = hash('xxh3', $shape);
-        $key = 'orm:' . $this->config->schemaHash() . ':' . $id;
+        $key = 'orm:' . $this->config->driver . ':' . $this->config->schemaHash() . ':' . $id; // plans are dialect text
         if (function_exists('apcu_fetch')) {
             $hit = apcu_fetch($key, $ok);
             if ($ok && is_array($hit)) {
@@ -125,7 +142,8 @@ final class Assemble
     /**
      * Stamps every step with 'plan_id' (the cache key suffix, for the on_query hook), 'styled'
      * (whether any selected column needs the codec) and adds 'idx' => [name => position] to
-     * every assemble node in place.
+     * every assemble node in place. A styled column's styles are split once into 'host' (aes/hex/ip,
+     * the stages the dialect left to the executor) and 'codec' (docs/codec.md), in write order.
      */
     public static function index(array &$plan, string $id): void
     {
@@ -143,10 +161,23 @@ final class Assemble
     {
         $idx = [];
         $hidden = [];
-        foreach ($a['columns'] as $c) {
+        foreach ($a['columns'] as $i => $c) {
             $idx[$c['name']] = $c['index'];
             if (!empty($c['hidden'])) {
                 $hidden[$c['name']] = true;
+            }
+            if (!empty($c['styles'])) {
+                $host = [];
+                $codec = [];
+                foreach ($c['styles'] as $st) {
+                    if (Codec::isHostStyle($st)) {
+                        $host[] = $st;
+                    } else {
+                        $codec[] = $st;
+                    }
+                }
+                $a['columns'][$i]['host'] = $host;
+                $a['columns'][$i]['codec'] = $codec;
             }
         }
         $a['idx'] = $idx;

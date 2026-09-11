@@ -12,7 +12,10 @@
         "ext-zlib": "*"
     },
     "suggest": {
-        "ext-apcu": "shares compiled plans across PHP-FPM workers (without it every process asks ormd once per statement shape)"
+        "ext-apcu": "shares compiled plans across PHP-FPM workers (without it every process asks ormd once per statement shape)",
+        "ext-pdo_pgsql": "Db::postgres (ormd -dialect postgres)",
+        "ext-pdo_sqlite": "Db::sqlite (ormd -dialect sqlite)",
+        "ext-openssl": "host-side AES on PostgreSQL and SQLite (aes columns)"
     },
     "autoload": {
         "psr-4": {
