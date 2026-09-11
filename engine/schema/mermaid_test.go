@@ -37,7 +37,7 @@ const example = `erDiagram
   %% index    author (service_seq, is_close)              ik
   %% fulltext author (name, description)
   %% timestamps author created_ts updated_ts
-  %% predicate author display : `is_display` = 1
+  %% predicate author display : ` + "`is_display` = 1" + `
 `
 
 func TestParseExample(t *testing.T) {
