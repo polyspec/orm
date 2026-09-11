@@ -159,6 +159,51 @@ impl Q {
         let p = self.req.p(v);
         self.req.ir.query.if_parent = Some(IfParent { column: col.into(), p });
     }
+
+    // ---- insert: ON DUPLICATE KEY UPDATE assignments ----
+    pub fn on_duplicate_set(&mut self, col: &str, v: impl Into<Param>) {
+        let v = v.into();
+        if matches!(v, Param::Null) {
+            self.req.ir.on_duplicate.push(Assign { column: col.into(), null: true, ..Default::default() });
+        } else {
+            let p = self.req.p(v);
+            self.req.ir.on_duplicate.push(Assign { column: col.into(), p: Some(p), ..Default::default() });
+        }
+    }
+
+    pub fn on_duplicate_set_expr(&mut self, col: &str, frag: &str, binds: Vec<Param>) {
+        let ps = binds.into_iter().map(|b| self.req.p(b)).collect();
+        self.req.ir.on_duplicate.push(Assign { column: col.into(), expr: frag.into(), ps, ..Default::default() });
+    }
+
+    pub fn on_duplicate_plus(&mut self, col: &str, v: impl Into<Param>) {
+        let p = self.req.p(v);
+        self.req.ir.on_duplicate.push(Assign { column: col.into(), plus_p: Some(p), ..Default::default() });
+    }
+
+    pub fn on_duplicate_minus(&mut self, col: &str, v: impl Into<Param>) {
+        let p = self.req.p(v);
+        self.req.ir.on_duplicate.push(Assign { column: col.into(), minus_p: Some(p), ..Default::default() });
+    }
+
+    /// Copies every current set[] assignment except `skip` (the PK/auto columns)
+    /// into on_duplicate, at call time: later set_* calls are not mirrored.
+    pub fn on_duplicate_set_all(&mut self, skip: &[&str]) {
+        let copies: Vec<Assign> = self.req.ir.set.iter().filter(|a| !skip.contains(&a.column.as_str())).cloned().collect();
+        self.req.ir.on_duplicate.extend(copies);
+    }
+
+    /// Removes the value assignment of `col` from set[] and returns its value
+    /// (save: the PK decides between UPDATE and INSERT). An expr/plus/minus
+    /// assignment of the column is not a value and stays.
+    pub fn take_set(&mut self, col: &str) -> Option<Param> {
+        let i = self.req.ir.set.iter().position(|a| a.column == col && (a.p.is_some() || a.null))?;
+        let a = self.req.ir.set.remove(i);
+        Some(match a.p {
+            Some(p) => self.req.params[p].clone(),
+            None => Param::Null,
+        })
+    }
 }
 
 /// Group builder: borrows the params list and the group it edits (disjoint fields of Req).
