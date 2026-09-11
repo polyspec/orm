@@ -8,6 +8,8 @@ require __DIR__ . '/autoload.php';
 use App\Orm\Battle;
 use App\Orm\BattleWhere;
 use App\Orm\Service;
+use App\Orm\ServiceMember;
+use App\Orm\ServiceModule;
 use App\Orm\ServiceWhere;
 use App\Orm\User;
 use App\Orm\UserWhere;
@@ -70,6 +72,37 @@ check((new Battle)->nameContains('%')->count($db) === 0, 'contains escapes %');
 // join result access
 $j = (new Battle)->joinService((new Service)->where(fn(ServiceWhere $w) => $w->seqEq(7)))->seqEq(6)->one($db);
 check($j !== null && $j->getService() !== null && $j->getService()->getName() === 'service-7' && $j['service']['name'] === 'service-7', 'joined row access');
+
+// ---- relations ----
+$n0 = count($log);
+$rows = (new Battle)
+    ->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 5)
+    ->relationUser(new User)
+    ->relationService((new Service)
+        ->relationsMembers((new ServiceMember)->orderBySeqDesc()->limitPerParent(3)->keyByUserSeq()->dropChildKey()))
+    ->all($db);
+check(count($rows) === 5 && count($log) - $n0 === 4, 'relation statements: main, user, service, members');
+foreach ($rows as $b) {
+    check($b->getUser() !== null && $b->getUser()->getSeq() === $b->getUserSeq() && $b['user']['name'] === 'user-' . $b->getUserSeq(), 'one relation');
+    check($b->getService()->getSeq() === 7 && count($b->getService()->getMembers()) === 3, 'nested many relation, 3 per parent');
+    foreach ($b->getService()->getMembers() as $k => $m) {
+        check($k === $m->getUserSeq() && $m->getServiceSeq() === 7 && !array_key_exists('service_seq', $m->toArray()), 'key_by + drop_child_key');
+    }
+}
+$rows = (new Battle)
+    ->seqIn([7, 8, 14])->orderBySeqAsc()
+    ->relationUser((new User)->ifParentIsCloseEq(true)->relationsBattles((new Battle)->orderBySeqAsc()->limitPerParent(2)))
+    ->joinService((new Service)->relationsModules(new ServiceModule))
+    ->all($db);
+check($rows[7]->getUser() !== null && $rows[14]->getUser() !== null && $rows[8]->getUser() === null, 'if_parent loads only closed battles\' users');
+check(count($rows[7]->getUser()->getBattles()) === 2, 'nested many under one, limit_per_parent');
+check(count($rows[8]->getService()->getModules()) === 1 && $rows[8]->getService()->getModules()->first()->getServiceSeq() === $rows[8]->getServiceSeq(), 'relation off a join');
+$n0 = count($log);
+check(count((new Battle)->seqEq(0)->relationUser(new User)->all($db)) === 0 && count($log) - $n0 === 1, 'no parents → relation step skipped');
+$m = (new ServiceMember)->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 2)->relationUser((new User)->flatten())->all($db)->first();
+check($m['name'] === 'user-' . $m->getUserSeq() && $m->getName() === 'user-' . $m->getUserSeq() && $m->toArray()['name'] === $m['name'], 'flatten merges child columns into the parent');
+$page = (new Battle)->serviceSeqEq(7)->orderBySeqAsc()->relationUser(new User)->paginate($db, 1, 4);
+check($page->total === 1000 && count($page->items) === 4 && $page->items->first()->getUser() !== null, 'paginate keeps relations');
 
 // ---- writes ----
 $created = $db->transaction(function (Tx $tx) {

@@ -1,8 +1,11 @@
 //! Rust half of the S1 demo: same statements as the Go/PHP integration tests.
 //! Usage: integration <ormengine.wasm> <schema.json>
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use gen::*;
+use orm::collection::Key;
+use orm::value::Val;
 use orm::db::{Config, Db};
 use orm::engine::{Engine, EngineConfig};
 use sqlx::mysql::MySqlConnectOptions;
@@ -21,7 +24,10 @@ async fn main() {
     let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, cache_dir: None }).expect("engine"));
     gen::init(engine.clone());
     let opts = MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench");
-    let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), on_query: None }).await.expect("connect");
+    let statements = Arc::new(AtomicUsize::new(0));
+    let counter = statements.clone();
+    let on_query = Box::new(move |_: &str, _: &[orm::value::Param], _: std::time::Duration, _: Option<&orm::Error>| { counter.fetch_add(1, Ordering::Relaxed); });
+    let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), on_query: Some(on_query) }).await.expect("connect");
     let mut fails = 0;
 
     // ---- reads ----
@@ -66,6 +72,35 @@ async fn main() {
 
     let j = Battle::new().join_service(Service::new().where_(|w| w.seq_eq(7))).seq_eq(6).one(&db).await.unwrap().unwrap();
     check!(fails, j.service().map(|s| s.name.as_str()) == Some("service-7"), "joined row access");
+
+    // ---- relations ----
+    let n0 = statements.load(Ordering::Relaxed);
+    let rows = Battle::new()
+        .service_seq_eq(7).order_by_seq_asc().limit(0, 5)
+        .relation_user(User::new())
+        .relation_service(Service::new()
+            .relations_members(ServiceMember::new().order_by_seq_desc().limit_per_parent(3).key_by_user_seq().drop_child_key()))
+        .all(&db).await.expect("relations");
+    check!(fails, rows.len() == 5 && statements.load(Ordering::Relaxed) - n0 == 4, "relation statements: main, user, service, members");
+    for (_, b) in &rows {
+        check!(fails, b.user().map(|u| u.seq == b.user_seq && u.name == format!("user-{}", b.user_seq)) == Some(true), "one relation");
+        check!(fails, b.service().map(|s| s.seq == 7 && s.members().len() == 3) == Some(true), "nested many relation, 3 per parent");
+        for (k, m) in b.service().unwrap().members() { check!(fails, k.as_i64() == m.user_seq && m.service_seq == 7, "key_by user_seq"); }
+    }
+    let rows = Battle::new()
+        .seq_in(vec![7, 8, 14]).order_by_seq_asc()
+        .relation_user(User::new().if_parent_is_close_eq(true).relations_battles(Battle::new().order_by_seq_asc().limit_per_parent(2)))
+        .join_service(Service::new().relations_modules(ServiceModule::new()))
+        .all(&db).await.expect("if_parent");
+    let (b7, b8, b14) = (rows.get(&Key::of(&Val::I64(7))).unwrap(), rows.get(&Key::of(&Val::I64(8))).unwrap(), rows.get(&Key::of(&Val::I64(14))).unwrap());
+    check!(fails, b7.user().is_some() && b14.user().is_some() && b8.user().is_none(), "if_parent loads only closed battles' users");
+    check!(fails, b7.user().unwrap().battles().len() == 2, "nested many under one, limit_per_parent");
+    check!(fails, b8.service().map(|s| s.modules().len() == 1 && s.modules().first().unwrap().service_seq == b8.service_seq) == Some(true), "relation off a join");
+    let n0 = statements.load(Ordering::Relaxed);
+    let none = Battle::new().seq_eq(0).relation_user(User::new()).all(&db).await.expect("empty");
+    check!(fails, none.is_empty() && statements.load(Ordering::Relaxed) - n0 == 1, "no parents → relation step skipped");
+    let page = Battle::new().service_seq_eq(7).order_by_seq_asc().relation_user(User::new()).paginate(&db, 1, 4).await.expect("paginate");
+    check!(fails, page.total == 1000 && page.items.len() == 4 && page.items.first().and_then(|b| b.user()).is_some(), "paginate keeps relations");
 
     // ---- writes ----
     let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();

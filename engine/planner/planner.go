@@ -1,8 +1,8 @@
 // Package planner turns a validated IR request into a Plan.
 //
-// S1 scope: one/all/count/sum/avg/paginate over a root entity with nested
-// joins; insert/update/delete. Relations (separate IN steps) arrive in S2 and
-// hook into Assemble.Children.
+// one/all/count/sum/avg/paginate over a root entity with nested joins;
+// relations as separate IN steps bound to the parent step's rows (nested to
+// any depth, hanging off the root or a join); insert/update/delete.
 package planner
 
 import (
@@ -28,6 +28,26 @@ type scope struct {
 	q      *ir.Query
 	joins  map[string]*scope
 	parent *scope
+	extra  []string // columns a relation step needs selected (its match column, key_by)
+}
+
+// relCtx describes the relation a step loads: which parent step/column feeds
+// its IN list and how the rows attach.
+type relCtx struct {
+	parentStep   int
+	parentAsm    *plan.Assemble
+	parentColumn string
+	right        string
+	kind         string
+}
+
+// stepSet numbers steps in build order, so a parent always precedes its relation steps.
+type stepSet struct{ steps []*plan.Step }
+
+func (ps *stepSet) add(st *plan.Step) int {
+	st.ID = len(ps.steps)
+	ps.steps = append(ps.steps, st)
+	return st.ID
 }
 
 type builder struct {
@@ -54,42 +74,45 @@ func (b *builder) secret(name string) string {
 	return b.p.D.Placeholder(b.n)
 }
 
+// parentList is the one placeholder an executor expands to the parent values.
+func (b *builder) parentList(step int) string {
+	b.binds = append(b.binds, plan.BindSlot{From: "parent", Step: step})
+	b.n++
+	return b.p.D.Placeholder(b.n)
+}
+
 func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 	out := &plan.Plan{SchemaHash: p.M.SchemaHash, Kind: r.Kind}
+	ps := &stepSet{}
+	var err error
 	switch r.Kind {
 	case "one", "all", "count", "sum", "avg":
-		st, err := p.selectStep(r, r.Kind, 0)
-		if err != nil {
-			return nil, err
-		}
-		out.Steps = append(out.Steps, *st)
+		_, err = p.selectStep(ps, &r.Query, r.Kind, r.Agg, nil)
 	case "paginate":
-		main, err := p.selectStep(r, "all", 0)
-		if err != nil {
-			return nil, err
+		// main (+ its relation steps), then the count step: executors find it by role.
+		if _, err = p.selectStep(ps, &r.Query, "all", "", nil); err == nil {
+			_, err = p.selectStep(ps, &r.Query, "count", "", nil)
 		}
-		cnt, err := p.selectStep(r, "count", 1)
-		if err != nil {
-			return nil, err
-		}
-		out.Steps = append(out.Steps, *main, *cnt)
 	case "insert":
-		st, err := p.insertStep(r)
-		if err != nil {
-			return nil, err
+		var st *plan.Step
+		if st, err = p.insertStep(r); err == nil {
+			ps.add(st)
 		}
-		out.Steps = append(out.Steps, *st)
 	case "update":
-		st, err := p.updateStep(r)
-		if err != nil {
-			return nil, err
+		var st *plan.Step
+		if st, err = p.updateStep(r); err == nil {
+			ps.add(st)
 		}
-		out.Steps = append(out.Steps, *st)
 	case "delete":
-		st, err := p.deleteStep(r)
-		if err != nil {
-			return nil, err
+		var st *plan.Step
+		if st, err = p.deleteStep(r); err == nil {
+			ps.add(st)
 		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	for _, st := range ps.steps {
 		out.Steps = append(out.Steps, *st)
 	}
 	return out, nil
@@ -109,43 +132,75 @@ func (p *Planner) buildScopes(q *ir.Query, alias string, parent *scope) *scope {
 	return s
 }
 
-func (p *Planner) selectStep(r *ir.Request, kind string, id int) (*plan.Step, error) {
+// selectStep builds one SELECT statement for q. rc is nil for the root
+// statement; for a relation step it names the parent and the match column,
+// and the step's own relations are built (recursively) right after it.
+func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *relCtx) (*plan.Step, error) {
 	b := &builder{p: p}
-	root := p.buildScopes(&r.Query, "a", nil)
+	root := p.buildScopes(q, "a", nil)
+	if rc != nil {
+		root.extra = append(root.extra, rc.right)
+		if q.KeyBy != "" {
+			root.extra = append(root.extra, q.KeyBy)
+		}
+	}
 	var sb strings.Builder
 	sb.WriteString("SELECT ")
-	if r.Distinct && kind != "count" {
+	if q.Distinct && kind != "count" {
 		sb.WriteString("DISTINCT ")
 	}
 	asm := &plan.Assemble{Entity: root.ent.Name, Alias: root.alias}
+	var outNames []string
 	switch kind {
 	case "count":
-		if len(r.GroupBy) > 0 || r.Distinct {
+		if len(q.GroupBy) > 0 || q.Distinct {
 			sb.WriteString("COUNT(DISTINCT " + p.qcol(root, root.ent.PK[0]) + ")")
 		} else {
 			sb.WriteString("COUNT(*)")
 		}
 	case "sum":
-		sb.WriteString("COALESCE(SUM(" + p.qcol(root, r.Agg) + "), 0)")
+		sb.WriteString("COALESCE(SUM(" + p.qcol(root, agg) + "), 0)")
 	case "avg":
-		sb.WriteString("AVG(" + p.qcol(root, r.Agg) + ")")
+		sb.WriteString("AVG(" + p.qcol(root, agg) + ")")
 	default:
 		idx := 0
-		if err := p.selectList(b, &sb, root, asm, &idx, true); err != nil {
+		if err := p.selectList(b, &sb, root, asm, &idx, &outNames); err != nil {
 			return nil, err
 		}
 	}
+	// Rows per parent: ROW_NUMBER() over the match column. A one-relation with an
+	// ORDER is the same thing with n = 1 (the first row by that order wins).
+	perParent := 0
+	if rc != nil {
+		perParent = q.LimitPerParent
+		if perParent == 0 && rc.kind == "one" && len(q.Order) > 0 {
+			perParent = 1
+		}
+	}
+	if perParent > 0 {
+		order, err := p.renderOrder(root, q)
+		if err != nil {
+			return nil, err
+		}
+		if order == "" {
+			order = " ORDER BY " + p.qcol(root, root.ent.PK[0]) + " ASC"
+		}
+		sb.WriteString(", ROW_NUMBER() OVER (PARTITION BY " + p.qcol(root, rc.right) + order + ") AS " + p.D.Quote("orm_rn"))
+	}
 	sb.WriteString(" FROM " + p.D.Quote(root.ent.Table) + " AS " + p.D.Quote(root.alias))
-	if r.ForceIdx != "" {
-		sb.WriteString(p.D.ForceIndex(r.ForceIdx))
+	if q.ForceIdx != "" {
+		sb.WriteString(p.D.ForceIndex(q.ForceIdx))
 	}
 	if err := p.renderJoins(b, &sb, root); err != nil {
 		return nil, err
 	}
-	// WHERE = root group, then each join's where group as an AND group (declaration order).
+	// WHERE = [parent IN list] AND root group AND each join's where group (declaration order).
 	var where []string
-	if r.Where != nil && len(r.Where.Items) > 0 {
-		s, err := p.renderGroup(b, root, r.Where, true)
+	if rc != nil {
+		where = append(where, p.qcol(root, rc.right)+" IN ("+b.parentList(rc.parentStep)+")")
+	}
+	if q.Where != nil && len(q.Where.Items) > 0 {
+		s, err := p.renderGroup(b, root, q.Where, rc == nil)
 		if err != nil {
 			return nil, err
 		}
@@ -157,60 +212,147 @@ func (p *Planner) selectStep(r *ir.Request, kind string, id int) (*plan.Step, er
 	if len(where) > 0 {
 		sb.WriteString(" WHERE " + strings.Join(where, " AND "))
 	}
-	if kind != "count" && kind != "sum" && kind != "avg" || len(r.GroupBy) > 0 && kind == "count" {
-		if len(r.GroupBy) > 0 && kind != "count" {
-			sb.WriteString(" GROUP BY ")
-			for i, g := range r.GroupBy {
-				if i > 0 {
-					sb.WriteString(", ")
-				}
-				sb.WriteString(p.qcol(root, g))
+	if len(q.GroupBy) > 0 && kind != "count" && kind != "sum" && kind != "avg" {
+		sb.WriteString(" GROUP BY ")
+		for i, g := range q.GroupBy {
+			if i > 0 {
+				sb.WriteString(", ")
 			}
+			sb.WriteString(p.qcol(root, g))
 		}
 	}
 	if kind == "one" || kind == "all" {
-		if len(r.Order) > 0 {
-			sb.WriteString(" ORDER BY ")
-			for i, o := range r.Order {
+		if perParent > 0 {
+			// wrap: keep the output columns (same order), drop orm_rn, cut at n per parent
+			var outer strings.Builder
+			outer.WriteString("SELECT ")
+			for i, n := range outNames {
 				if i > 0 {
-					sb.WriteString(", ")
+					outer.WriteString(", ")
 				}
-				if o.Expr != "" {
-					s, err := p.renderExpr(root, o.Expr)
-					if err != nil {
-						return nil, err
-					}
-					sb.WriteString(s)
-				} else {
-					sb.WriteString(p.qcol(root, o.Column))
-				}
-				if o.Desc {
-					sb.WriteString(" DESC")
-				} else {
-					sb.WriteString(" ASC")
-				}
+				outer.WriteString(p.D.Quote("orm_w") + "." + p.D.Quote(n))
+			}
+			outer.WriteString(" FROM (" + sb.String() + ") AS " + p.D.Quote("orm_w") + " WHERE " + p.D.Quote("orm_w") + "." + p.D.Quote("orm_rn") + " <= " + strconv.Itoa(perParent))
+			outer.WriteString(" ORDER BY " + p.D.Quote("orm_w") + "." + p.D.Quote(root.alias+"__"+rc.right) + ", " + p.D.Quote("orm_w") + "." + p.D.Quote("orm_rn"))
+			sb = outer
+		} else {
+			order, err := p.renderOrder(root, q)
+			if err != nil {
+				return nil, err
+			}
+			sb.WriteString(order)
+			switch {
+			case kind == "one" && rc == nil:
+				sb.WriteString(p.D.Limit(0, 1))
+			case q.Limit != nil:
+				sb.WriteString(p.D.Limit(q.Limit.Offset, q.Limit.Count))
 			}
 		}
-		switch {
-		case kind == "one":
-			sb.WriteString(p.D.Limit(0, 1))
-		case r.Limit != nil:
-			sb.WriteString(p.D.Limit(r.Limit.Offset, r.Limit.Count))
-		}
 	}
-	st := &plan.Step{ID: id, Role: "main", SQL: sb.String(), BindSlots: b.binds}
-	if id == 1 {
+	st := &plan.Step{Role: "main", SQL: sb.String(), BindSlots: b.binds}
+	switch {
+	case kind == "count" && len(ps.steps) > 0:
 		st.Role = "count"
+	case rc != nil:
+		st.Role = "relation"
+		st.Parent = &plan.ParentRef{Step: rc.parentStep, Column: rc.parentColumn, Index: indexOf(rc.parentAsm, rc.parentColumn)}
+		if q.IfParent != nil {
+			st.Parent.IfParent = &plan.IfParent{Column: q.IfParent.Column, Index: indexOf(rc.parentAsm, q.IfParent.Column), Param: q.IfParent.P}
+		}
+		if q.DropChildKey {
+			asm.Columns[indexOf(asm, rc.right)].Hidden = true
+		}
 	}
 	if kind == "one" || kind == "all" {
 		st.Assemble = asm
 	}
+	id := ps.add(st)
+	if st.Assemble != nil {
+		if err := p.relationSteps(ps, root, asm, id); err != nil {
+			return nil, err
+		}
+	}
 	return st, nil
+}
+
+// relationSteps builds a step per relation declared on s (and on its joins,
+// recursively) and records how its rows attach in asm.Children.
+func (p *Planner) relationSteps(ps *stepSet, s *scope, asm *plan.Assemble, stepID int) error {
+	for _, r := range s.q.Relations {
+		rel := s.ent.Relations[r.Rel]
+		rc := &relCtx{parentStep: stepID, parentAsm: asm, parentColumn: rel.Left, right: rel.Right, kind: rel.Kind}
+		st, err := p.selectStep(ps, r.Query, "all", "", rc)
+		if err != nil {
+			return err
+		}
+		ch := &plan.Child{
+			Rel: r.Rel, Kind: rel.Kind, Step: st.ID,
+			ParentColumn: rel.Left, ParentIndex: indexOf(asm, rel.Left),
+			ChildColumn: rel.Right, ChildIndex: indexOf(st.Assemble, rel.Right),
+			KeyBy: r.Query.KeyBy, Flatten: r.Query.Flatten,
+		}
+		if r.Query.KeyBy != "" {
+			ch.KeyIndex = indexOf(st.Assemble, r.Query.KeyBy)
+		} else {
+			ch.KeyIndex = indexOf(st.Assemble, p.M.Entities[st.Assemble.Entity].PK[0])
+		}
+		asm.Children = append(asm.Children, ch)
+	}
+	for _, j := range s.q.Joins {
+		js := s.joins[j.Rel]
+		for _, ch := range asm.Children {
+			if ch.Kind == "join" && ch.Rel == j.Rel {
+				if err := p.relationSteps(ps, js, ch.Assemble, stepID); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// indexOf returns the positional index of a column in an assemble node. The
+// planner guarantees presence (PK first, relation columns via scope.extra).
+func indexOf(a *plan.Assemble, name string) int {
+	for _, c := range a.Columns {
+		if c.Name == name {
+			return c.Index
+		}
+	}
+	panic("planner: column " + name + " not projected in " + a.Entity)
+}
+
+func (p *Planner) renderOrder(root *scope, q *ir.Query) (string, error) {
+	if len(q.Order) == 0 {
+		return "", nil
+	}
+	var sb strings.Builder
+	sb.WriteString(" ORDER BY ")
+	for i, o := range q.Order {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		if o.Expr != "" {
+			s, err := p.renderExpr(root, o.Expr)
+			if err != nil {
+				return "", err
+			}
+			sb.WriteString(s)
+		} else {
+			sb.WriteString(p.qcol(root, o.Column))
+		}
+		if o.Desc {
+			sb.WriteString(" DESC")
+		} else {
+			sb.WriteString(" ASC")
+		}
+	}
+	return sb.String(), nil
 }
 
 // selectList writes the projection for a scope and its joins, recording the
 // positional mapping in asm. Join columns become Child{kind: join}.
-func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *plan.Assemble, idx *int, first bool) error {
+func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *plan.Assemble, idx *int, outNames *[]string) error {
 	cols, err := p.projection(s)
 	if err != nil {
 		return err
@@ -235,6 +377,7 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 			styles = appStyles(col.Styles)
 		}
 		sb.WriteString(expr + " AS " + p.D.Quote(s.alias+"__"+c.name))
+		*outNames = append(*outNames, s.alias+"__"+c.name)
 		typ := "string"
 		if col != nil {
 			typ = col.Type
@@ -245,7 +388,7 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 	for _, j := range s.q.Joins {
 		js := s.joins[j.Rel]
 		child := &plan.Child{Rel: j.Rel, Kind: "join", Assemble: &plan.Assemble{Entity: js.ent.Name, Alias: js.alias}}
-		if err := p.selectList(b, sb, js, child.Assemble, idx, false); err != nil {
+		if err := p.selectList(b, sb, js, child.Assemble, idx, outNames); err != nil {
 			return err
 		}
 		asm.Children = append(asm.Children, child)
@@ -291,6 +434,22 @@ func (p *Planner) projection(s *scope) ([]outCol, error) {
 				}
 			}
 			base = kept
+		}
+	}
+	// Columns relation steps bind or key on are always selected (hidden ones
+	// are marked by the relation step itself).
+	for _, x := range s.extra {
+		if !contains(base, x) {
+			base = append(base, x)
+		}
+	}
+	for _, r := range s.q.Relations {
+		rel := s.ent.Relations[r.Rel]
+		if !contains(base, rel.Left) {
+			base = append(base, rel.Left)
+		}
+		if r.Query.IfParent != nil && !contains(base, r.Query.IfParent.Column) {
+			base = append(base, r.Query.IfParent.Column)
 		}
 	}
 	// PK is always selected (needed for keying and relation binding).
@@ -560,7 +719,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	if p.D.InsertReturningID() && ent.Auto != "" {
 		sql += " RETURNING " + p.D.Quote(ent.Auto)
 	}
-	return &plan.Step{ID: 0, Role: "main", SQL: sql, BindSlots: b.binds}, nil
+	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
 }
 
 func (p *Planner) renderAssign(b *builder, ent *schema.Entity, col *schema.Col, a *ir.Assign) (string, error) {
@@ -612,7 +771,7 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 		where += " AND " + p.qcol(root, r.Optimistic.Column) + " = " + b.param(r.Optimistic.P)
 	}
 	sql := "UPDATE " + p.D.Quote(ent.Table) + " SET " + strings.Join(sets, ", ") + " WHERE " + where
-	return &plan.Step{ID: 0, Role: "main", SQL: sql, BindSlots: b.binds}, nil
+	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
 }
 
 func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
@@ -624,7 +783,7 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 		return nil, err
 	}
 	sql := "DELETE FROM " + p.D.Quote(ent.Table) + " WHERE " + where
-	return &plan.Step{ID: 0, Role: "main", SQL: sql, BindSlots: b.binds}, nil
+	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
 }
 
 func (p *Planner) qcol(s *scope, col string) string {
@@ -693,5 +852,4 @@ func sortedKeys(m map[string]string) []string {
 	return keys
 }
 
-var _ = strconv.Itoa
 var _ = fmt.Sprintf

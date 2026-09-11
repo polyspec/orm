@@ -17,6 +17,27 @@ pub struct Step {
     pub bind_slots: Vec<BindSlot>,
     #[serde(default)]
     pub assemble: Option<std::sync::Arc<Assemble>>,
+    /// Relation steps: where the IN values come from.
+    #[serde(default)]
+    pub parent: Option<ParentRef>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ParentRef {
+    pub step: u32,
+    #[serde(default)]
+    pub column: String,
+    pub index: usize,
+    #[serde(default)]
+    pub if_parent: Option<IfParent>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct IfParent {
+    #[serde(default)]
+    pub column: String,
+    pub index: usize,
+    pub param: usize,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -53,8 +74,12 @@ pub struct OutCol {
     pub typ: String,
     #[serde(default)]
     pub styles: Vec<String>,
+    #[serde(default)]
+    pub hidden: bool,
 }
 
+/// A joined entity's slice of the same row (kind join, `assemble` set) or a
+/// relation step's rows attached by key (kind one/many, `step` set).
 #[derive(Deserialize, Debug, Clone)]
 pub struct Child {
     pub rel: String,
@@ -64,14 +89,19 @@ pub struct Child {
     #[serde(default)]
     pub parent_column: String,
     #[serde(default)]
+    pub parent_index: usize,
+    #[serde(default)]
     pub child_column: String,
+    #[serde(default)]
+    pub child_index: usize,
     #[serde(default)]
     pub key_by: String,
     #[serde(default)]
+    pub key_index: usize,
+    #[serde(default)]
     pub flatten: bool,
     #[serde(default)]
-    pub drop_child_key: bool,
-    pub assemble: Assemble,
+    pub assemble: Option<Assemble>,
 }
 
 impl Assemble {
@@ -79,7 +109,8 @@ impl Assemble {
         self.columns.iter().find(|c| c.name == name).map(|c| c.index)
     }
 
+    /// Width of one positional row: this node's columns plus its joins'.
     pub fn total_columns(&self) -> usize {
-        self.columns.len() + self.children.iter().map(|c| c.assemble.total_columns()).sum::<usize>()
+        self.columns.len() + self.children.iter().filter_map(|c| c.assemble.as_ref()).map(|a| a.total_columns()).sum::<usize>()
     }
 }

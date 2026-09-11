@@ -66,10 +66,11 @@ func (r *UserRow) Update(ctx context.Context, ex orm.Exec) error {
 
 func (r *UserRow) Delete(ctx context.Context, ex orm.Exec) error { return r.DeleteRow(ctx, ex) }
 
-// scanUser maps a positional row slice onto the struct (and joined children).
-func scanUser(vals []any, a *plan.Assemble) *UserRow {
+// scanUser maps a positional row slice onto the struct, its joined
+// children (same row) and its relation children (rows of later steps).
+func scanUser(vals []any, a *plan.Assemble, rs *orm.Rows) *UserRow {
 	r := &UserRow{}
-	for i, c := range a.Columns {
+	for _, c := range a.Columns {
 		v := vals[c.Index]
 		switch c.Name {
 		case "seq":
@@ -77,13 +78,23 @@ func scanUser(vals []any, a *plan.Assemble) *UserRow {
 		case "name":
 			r.Name = orm.AsString(v)
 		}
-		_ = i
 	}
 	for _, ch := range a.Children {
-		if ch.Kind != "join" {
-			continue
-		}
 		switch ch.Rel {
+		case "battles":
+			rows := rs.Related(ch, vals)
+			c := orm.NewCollection[BattleRow](len(rows))
+			for _, row := range rows {
+				c.Put(orm.KeyOf(row[ch.KeyIndex]), scanBattle(row, rs.StepAssemble(ch), rs))
+			}
+			r.Battles = c
+		case "service_members":
+			rows := rs.Related(ch, vals)
+			c := orm.NewCollection[ServiceMemberRow](len(rows))
+			for _, row := range rows {
+				c.Put(orm.KeyOf(row[ch.KeyIndex]), scanServiceMember(row, rs.StepAssemble(ch), rs))
+			}
+			r.ServiceMembers = c
 		}
 	}
 	r.Mark("user", "seq", r.Seq)
@@ -260,11 +271,37 @@ func (q *User) Limit(offset, count int) *User {
 func (q *User) Distinct() *User { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
-func (q *User) Flatten() *User                { q.q.Node.Flatten = true; return q }
-func (q *User) LimitPerParent(n int) *User    { q.q.Node.LimitPerParent = n; return q }
-func (q *User) DropChildKey() *User           { q.q.Node.DropChildKey = true; return q }
-func (q *User) IfParentSeqEq(v int64) *User   { q.q.IfParent("seq", v); return q }
-func (q *User) IfParentNameEq(v string) *User { q.q.IfParent("name", v); return q }
+func (q *User) Flatten() *User                   { q.q.Node.Flatten = true; return q }
+func (q *User) LimitPerParent(n int) *User       { q.q.Node.LimitPerParent = n; return q }
+func (q *User) DropChildKey() *User              { q.q.Node.DropChildKey = true; return q }
+func (q *User) IfParentSeqEq(v int64) *User      { q.q.IfParent("seq", v); return q }
+func (q *User) IfParentNameEq(v string) *User    { q.q.IfParent("name", v); return q }
+func (q *User) IfParentIsCloseEq(v bool) *User   { q.q.IfParent("is_close", v); return q }
+func (q *User) IfParentIsDisplayEq(v bool) *User { q.q.IfParent("is_display", v); return q }
+func (q *User) IfParentIsAlldayEq(v bool) *User  { q.q.IfParent("is_allday", v); return q }
+func (q *User) IfParentTargetTeamPlayerCountEq(v int32) *User {
+	q.q.IfParent("target_team_player_count", v)
+	return q
+}
+func (q *User) IfParentSuccessCountEq(v int32) *User { q.q.IfParent("success_count", v); return q }
+func (q *User) IfParentPlayerCountEq(v int32) *User  { q.q.IfParent("player_count", v); return q }
+func (q *User) IfParentReadCountEq(v int32) *User    { q.q.IfParent("read_count", v); return q }
+func (q *User) IfParentCoverUrlEq(v string) *User    { q.q.IfParent("cover_url", v); return q }
+func (q *User) IfParentUserSeqEq(v int64) *User      { q.q.IfParent("user_seq", v); return q }
+func (q *User) IfParentServiceSeqEq(v int64) *User   { q.q.IfParent("service_seq", v); return q }
+func (q *User) IfParentServiceModuleSeqEq(v int64) *User {
+	q.q.IfParent("service_module_seq", v)
+	return q
+}
+func (q *User) IfParentServiceMemberSeqEq(v int64) *User {
+	q.q.IfParent("service_member_seq", v)
+	return q
+}
+func (q *User) IfParentUuidEq(v string) *User        { q.q.IfParent("uuid", v); return q }
+func (q *User) IfParentIsSinglePlayEq(v bool) *User  { q.q.IfParent("is_single_play", v); return q }
+func (q *User) IfParentLikeCountEq(v int32) *User    { q.q.IfParent("like_count", v); return q }
+func (q *User) IfParentAesHexEmailEq(v string) *User { q.q.IfParent("aes_hex_email", v); return q }
+func (q *User) IfParentAesHexPhoneEq(v string) *User { q.q.IfParent("aes_hex_phone", v); return q }
 
 // Insert draft.
 func (q *User) SetName(v string) *User { q.q.Set("name", v); return q }
@@ -282,7 +319,7 @@ func (q *User) One(ctx context.Context, ex orm.Exec) (*UserRow, error) {
 	if err != nil || len(rows.Data) == 0 {
 		return nil, err
 	}
-	return scanUser(rows.Data[0], rows.Assemble), nil
+	return scanUser(rows.Data[0], rows.Assemble, rows), nil
 }
 
 func (q *User) All(ctx context.Context, ex orm.Exec) (*orm.Collection[UserRow], error) {
@@ -297,7 +334,7 @@ func (q *User) All(ctx context.Context, ex orm.Exec) (*orm.Collection[UserRow], 
 func collectUser(rows *orm.Rows) *orm.Collection[UserRow] {
 	c := orm.NewCollection[UserRow](len(rows.Data))
 	for _, vals := range rows.Data {
-		r := scanUser(vals, rows.Assemble)
+		r := scanUser(vals, rows.Assemble, rows)
 		c.Put(orm.KeyOf(vals[0]), r)
 	}
 	return c
