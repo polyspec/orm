@@ -4732,7 +4732,7 @@ func (q *Author) OnDuplicateSetIsAlldayExpr(frag string, binds ...any) *Author {
 	q.q.OnDuplicateExpr("is_allday", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetTargetClubReaderCount(v int32) *Author {
+func (q *Author) OnDuplicateSetTargetClubReaderCount(v int64) *Author {
 	q.q.OnDuplicate("target_club_reader_count", v)
 	return q
 }
@@ -4740,7 +4740,7 @@ func (q *Author) OnDuplicateSetTargetClubReaderCountExpr(frag string, binds ...a
 	q.q.OnDuplicateExpr("target_club_reader_count", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetSuccessCount(v int32) *Author {
+func (q *Author) OnDuplicateSetSuccessCount(v int64) *Author {
 	q.q.OnDuplicate("success_count", v)
 	return q
 }
@@ -4748,7 +4748,7 @@ func (q *Author) OnDuplicateSetSuccessCountExpr(frag string, binds ...any) *Auth
 	q.q.OnDuplicateExpr("success_count", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetReaderCount(v int32) *Author {
+func (q *Author) OnDuplicateSetReaderCount(v int64) *Author {
 	q.q.OnDuplicate("reader_count", v)
 	return q
 }
@@ -4818,7 +4818,7 @@ func (q *Author) OnDuplicateSetIsSingleWorkExpr(frag string, binds ...any) *Auth
 	q.q.OnDuplicateExpr("is_single_work", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetLikeCount(v int32) *Author { q.q.OnDuplicate("like_count", v); return q }
+func (q *Author) OnDuplicateSetLikeCount(v int64) *Author { q.q.OnDuplicate("like_count", v); return q }
 func (q *Author) OnDuplicateSetLikeCountExpr(frag string, binds ...any) *Author {
 	q.q.OnDuplicateExpr("like_count", frag, binds...)
 	return q
@@ -4889,27 +4889,27 @@ func (q *Author) OnDuplicateSetSerializeDataExpr(frag string, binds ...any) *Aut
 	q.q.OnDuplicateExpr("serialize_data", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicatePlusTargetClubReaderCount(v int32) *Author {
+func (q *Author) OnDuplicatePlusTargetClubReaderCount(v int64) *Author {
 	q.q.OnDuplicatePlus("target_club_reader_count", v)
 	return q
 }
-func (q *Author) OnDuplicateMinusTargetClubReaderCount(v int32) *Author {
+func (q *Author) OnDuplicateMinusTargetClubReaderCount(v int64) *Author {
 	q.q.OnDuplicateMinus("target_club_reader_count", v)
 	return q
 }
-func (q *Author) OnDuplicatePlusSuccessCount(v int32) *Author {
+func (q *Author) OnDuplicatePlusSuccessCount(v int64) *Author {
 	q.q.OnDuplicatePlus("success_count", v)
 	return q
 }
-func (q *Author) OnDuplicateMinusSuccessCount(v int32) *Author {
+func (q *Author) OnDuplicateMinusSuccessCount(v int64) *Author {
 	q.q.OnDuplicateMinus("success_count", v)
 	return q
 }
-func (q *Author) OnDuplicatePlusReaderCount(v int32) *Author {
+func (q *Author) OnDuplicatePlusReaderCount(v int64) *Author {
 	q.q.OnDuplicatePlus("reader_count", v)
 	return q
 }
-func (q *Author) OnDuplicateMinusReaderCount(v int32) *Author {
+func (q *Author) OnDuplicateMinusReaderCount(v int64) *Author {
 	q.q.OnDuplicateMinus("reader_count", v)
 	return q
 }
@@ -4953,11 +4953,11 @@ func (q *Author) OnDuplicateMinusServiceMemberSeq(v int64) *Author {
 	q.q.OnDuplicateMinus("service_member_seq", v)
 	return q
 }
-func (q *Author) OnDuplicatePlusLikeCount(v int32) *Author {
+func (q *Author) OnDuplicatePlusLikeCount(v int64) *Author {
 	q.q.OnDuplicatePlus("like_count", v)
 	return q
 }
-func (q *Author) OnDuplicateMinusLikeCount(v int32) *Author {
+func (q *Author) OnDuplicateMinusLikeCount(v int64) *Author {
 	q.q.OnDuplicateMinus("like_count", v)
 	return q
 }
