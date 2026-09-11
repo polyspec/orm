@@ -120,9 +120,9 @@
 - [~] T5.5 `orm.toml` 스펙 `docs/config.md` 작성 → 로더 3언어(절대경로·symlink 금지 검증, schema_hash 부팅 검사)는 레인
 
 ### 5-C 배포 — 레인 V
-- [ ] T5.6 아티팩트 파이프라인: wasm(단일), ormd(linux amd64/arm64, darwin), 버전을 파일명에, 체크섬 → composer(`bin/ormd-0.0.1-<os>-<arch>`), crates(`include_bytes!` wasm), Go 모듈
-- [ ] T5.7 `ormd` systemd/launchd 유닛 예제, 소켓 퍼미션 문서
-- [ ] T5.8 CI(GitHub Actions): Go 테스트·골든, Rust 테스트, PHP 테스트, MySQL 서비스 컨테이너로 적합성 3언어 + 코덱 벡터, `ormgen tokens` diff, `ormgen check`, 벤치 회귀 게이트(perf.md 수치 대비 ±5%) → T5.1~T5.7
+- [~] T5.6 `scripts/build-artifacts.sh`(wasm 단일, ormd·ormgen linux/darwin × amd64/arm64, 파일명에 0.0.1, SHA256SUMS) → composer/crates 패키징 메타데이터는 남음
+- [x] T5.7 `deploy/ormd.service`, `deploy/com.orm.ormd.plist`, `deploy/README.md`(소켓 소유자·0600·symlink 금지)
+- [~] T5.8 CI `.github/workflows/ci.yml` 작성(MySQL 서비스, 엔진·3클라이언트·적합성·코덱·토큰 패리티·생성물 최신 검사). **남은 것**: 러너·통합 테스트가 DSN을 환경변수로 받게(현재 `/tmp/mysql.sock` 고정 → 레인), 벤치 회귀 게이트, 실제 실행 확인
 - [ ] T5.9 문서: `dsl.md`(호환층 표), `protocol.md`, `codec.md`, `packaging.md`(결정·수치·뒤집는 조건), `perf.md` 재측정(ip 컬럼 추가 후), README 3언어 퀵스타트
 
 ---
