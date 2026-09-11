@@ -57,7 +57,7 @@ func rustFrom(t string) string {
 	case "chrono::NaiveDate":
 		return "v.as_date()"
 	}
-	return "v.as_string()"
+	return "v.take_string()"
 }
 
 type rustCol struct {
@@ -135,11 +135,11 @@ impl {{.Type}}Row {
     pub const ENTITY: &'static str = {{printf "%q" .Name}};
     pub const PK: &'static str = {{printf "%q" .PK}};
 
-    pub(crate) fn from_row(vals: &[Val], a: &orm::plan::Assemble) -> Self {
+    pub(crate) fn from_row(vals: &mut [Val], a: &orm::plan::Assemble) -> Self {
         let mut r = Self::default();
         r.loaded = true;
         for c in &a.columns {
-            let v = &vals[c.index];
+            let v = &mut vals[c.index];
             match c.name.as_str() {
 {{- range .Cols}}
                 {{printf "%q" .Name}} => r.{{.Ident}} = {{if .Nullable}}if v.is_null() { None } else { Some({{.From}}) }{{else}}{{.From}}{{end}},
@@ -325,13 +325,13 @@ impl {{.Type}} {
 
     // ---- terminals ----
     pub async fn one(mut self, ex: &impl Exec) -> Result<Option<{{.Type}}Row>> {
-        let rows = db::select(ex, &mut self.q.req, "one").await?;
-        Ok(rows.data.first().map(|v| {{.Type}}Row::from_row(v, &rows.assemble)))
+        let mut rows = db::select(ex, &mut self.q.req, "one").await?;
+        Ok(rows.data.first_mut().map(|v| {{.Type}}Row::from_row(v, &rows.assemble)))
     }
 
     pub async fn all(mut self, ex: &impl Exec) -> Result<Collection<{{.Type}}Row>> {
-        let rows = db::select(ex, &mut self.q.req, "all").await?;
-        Ok(collect(&rows))
+        let mut rows = db::select(ex, &mut self.q.req, "all").await?;
+        Ok(collect(&mut rows))
     }
 
     pub async fn count(mut self, ex: &impl Exec) -> Result<i64> {
@@ -345,9 +345,9 @@ impl {{.Type}} {
     pub async fn paginate(mut self, ex: &impl Exec, page: u32, per: u32) -> Result<Page<{{.Type}}Row>> {
         let page = page.max(1);
         self.q.node().limit = Some(orm::ir::Limit { offset: (page - 1) * per, count: per });
-        let (rows, total) = db::paginate(ex, &mut self.q.req).await?;
+        let (mut rows, total) = db::paginate(ex, &mut self.q.req).await?;
         let pages = (total + per as i64 - 1) / per as i64;
-        Ok(Page { items: collect(&rows), total, pages, current: page as i64, per: per as i64 })
+        Ok(Page { items: collect(&mut rows), total, pages, current: page as i64, per: per as i64 })
     }
 
     pub async fn insert(mut self, ex: &impl Exec) -> Result<Option<{{.Type}}Row>> {
@@ -367,10 +367,11 @@ impl {{.Type}} {
 
 impl Default for {{.Type}} { fn default() -> Self { Self::new() } }
 
-fn collect(rows: &db::Rows) -> Collection<{{.Type}}Row> {
+fn collect(rows: &mut db::Rows) -> Collection<{{.Type}}Row> {
     let mut c = Collection::with_capacity(rows.data.len());
-    for v in &rows.data {
-        c.put(Key::of(&v[0]), {{.Type}}Row::from_row(v, &rows.assemble));
+    for v in &mut rows.data {
+        let k = Key::of(&v[0]);
+        c.put(k, {{.Type}}Row::from_row(v, &rows.assemble));
     }
     c
 }

@@ -87,6 +87,14 @@ impl Val {
         }
     }
 
+    /// Moves the string out (leaves Null) — avoids a clone when the row is consumed.
+    pub fn take_string(&mut self) -> String {
+        match self {
+            Val::Str(s) => std::mem::take(s),
+            other => other.as_string(),
+        }
+    }
+
     pub fn as_string(&self) -> String {
         match self {
             Val::Str(s) => s.clone(),
