@@ -1,15 +1,14 @@
 //! Conformance runner (Rust). Same chains as tests/conformance/runner_go and runner.php; prints the same document.
-//! Usage: conformance <ormengine.wasm> <schema.json>
+//! Usage: conformance <ormengine.wasm> <schema.json> [--driver mysql|postgres|sqlite] [--dsn …]
 use std::sync::{Arc, Mutex};
 
 use gen::*;
 use orm::builder::Q;
 use orm::collection::{Collection, Key};
-use orm::db::{Config, Db};
+use orm::db::{Config, ConnectOptions, Db};
 use orm::engine::{Engine, EngineConfig};
 use orm::value::Param;
 use serde_json::{json, Value};
-use sqlx::mysql::MySqlConnectOptions;
 
 type Log = Arc<Mutex<Vec<Value>>>;
 
@@ -74,11 +73,37 @@ fn keys(c: &Collection<BattleRow>) -> Value {
     Value::Array(c.iter().map(|(k, _)| json!(k.as_i64())).collect())
 }
 
-/// The test DSN: `ORM_MYSQL_URL_RUST` when set (CI), else the local socket.
-fn connect_opts() -> MySqlConnectOptions {
-    match std::env::var("ORM_MYSQL_URL_RUST") {
-        Ok(url) => url.parse().expect("ORM_MYSQL_URL_RUST is a mysql:// URL"),
-        Err(_) => MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench"),
+/// The database under test: `--driver` (mysql default) and `--dsn`; the defaults are the Go
+/// runner's (MySQL: `ORM_MYSQL_URL_RUST` when set, else the local socket).
+struct Target {
+    driver: String,
+    dsn: Option<String>,
+}
+
+impl Target {
+    fn parse(args: &[String]) -> Target {
+        let mut t = Target { driver: "mysql".into(), dsn: None };
+        let mut i = 0;
+        while i < args.len() {
+            match args[i].as_str() {
+                "--driver" => t.driver = args[i + 1].clone(),
+                "--dsn" => t.dsn = Some(args[i + 1].clone()),
+                other => panic!("unknown argument {other}; usage: conformance <wasm> <schema.json> [--driver mysql|postgres|sqlite] [--dsn …]"),
+            }
+            i += 2;
+        }
+        t
+    }
+
+    fn connect_opts(&self) -> ConnectOptions {
+        let dsn = match (&self.dsn, self.driver.as_str()) {
+            (Some(d), _) => d.clone(),
+            (None, "mysql") => std::env::var("ORM_MYSQL_URL_RUST").unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into()),
+            (None, "postgres") => "postgres://maxkwon@localhost:5432/orm_bench".into(),
+            (None, "sqlite") => "sqlite:///tmp/orm_bench.sqlite".into(),
+            (None, other) => panic!("driver {other}: want mysql, postgres or sqlite"),
+        };
+        ConnectOptions::parse(&self.driver, &dsn).expect("connect options")
     }
 }
 
@@ -87,7 +112,8 @@ async fn main() {
     let args: Vec<String> = std::env::args().collect();
     let wasm = std::fs::read(&args[1]).expect("wasm");
     let schema = std::fs::read(&args[2]).expect("schema.json");
-    let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, cache_dir: None }).expect("engine"));
+    let target = Target::parse(&args[3..]);
+    let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, dialect: &target.driver, cache_dir: None }).expect("engine"));
     gen::init(engine.clone()).expect("schema hash");
 
     let log: Log = Arc::new(Mutex::new(Vec::new()));
@@ -97,7 +123,7 @@ async fn main() {
         let m = mask_h.lock().unwrap().clone();
         log_h.lock().unwrap().push(json!({"sql": sql, "binds": params.iter().map(|p| norm(p, &m)).collect::<Vec<_>>()}));
     });
-    let opts = connect_opts();
+    let opts = target.connect_opts();
     let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), on_query: Some(on_query) }).await.expect("connect");
 
     let mut out: Vec<(String, Value)> = Vec::new();
