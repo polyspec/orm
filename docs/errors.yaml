@@ -1,0 +1,69 @@
+# Error codes shared by the engine and the three executors. `ormgen errors --lang go|php|rust`
+# (S5) generates one enum per language from this file; codes are the wire form (`error.code`).
+# origin: engine = raised while compiling IR → Plan (ormd / wasm / in-process alike);
+#         executor = raised by the language runtime; driver = passed through from the DB driver
+#         with the original message, only the listed ones are mapped to a code.
+codes:
+  # ---- request framing ----
+  - code: VERSION_MISMATCH        # ir_version the engine does not speak
+    origin: engine
+  - code: SCHEMA_HASH_MISMATCH    # client generated from another schema.json than the engine loaded
+    origin: engine
+  - code: SCHEMA_INVALID          # schema.json failed validation at load
+    origin: engine
+  - code: SCHEMA_NOT_LOADED       # wasm/ffi: orm_compile before orm_load
+    origin: engine
+  - code: DIALECT_UNKNOWN
+    origin: engine
+  - code: FRAME_INVALID           # ormd: bad length-prefixed frame
+    origin: engine
+  - code: OP_UNKNOWN              # ormd: unknown op
+    origin: engine
+  - code: IR_INVALID              # structural: missing fields, wrong combination, param index out of range
+    origin: engine
+  # ---- schema references ----
+  - code: ENTITY_UNKNOWN
+    origin: engine
+  - code: COLUMN_UNKNOWN
+    origin: engine
+  - code: RELATION_UNKNOWN
+    origin: engine
+  - code: INDEX_UNKNOWN           # force_index name not declared
+    origin: engine
+  - code: COLUMN_ALIAS_CONFLICT   # select<Col>As name collides with a column
+    origin: engine
+  # ---- predicates ----
+  - code: OPERATOR_UNKNOWN
+    origin: engine
+  - code: OPERATOR_NOT_ALLOWED    # op not valid for the column's type/style (ir.OpAllowed)
+    origin: engine
+  - code: OR_AT_GROUP_START       # or() as the first item of a group
+    origin: engine
+  - code: EMPTY_IN                # in()/notIn() with no values
+    origin: engine
+  - code: ENTITY_NOT_JOINED       # nav into a relation that was not joined in this statement
+    origin: engine
+  - code: LIMIT_IN_RELATION       # limit() on a relation child (use limitPerParent)
+    origin: engine
+  # ---- executor ----
+  - code: OPTIMISTIC_LOCK         # updateOptimistic matched no row (updated_ts changed)
+    origin: executor
+  - code: CODEC_DECODE            # styled column bytes could not be decoded (docs/codec.md)
+    origin: executor
+  - code: CODEC_ENCODE
+    origin: executor
+  - code: CODEC_UNSUPPORTED       # PHP objects/references in serialize, unknown style
+    origin: executor
+  - code: CONFIG                  # missing secret, bad DSN/paths, transaction misuse
+    origin: executor
+  - code: JOIN_PREDICATE_PLACEMENT  # PHP compat layer: bare predicate on a join child (use on()/where())
+    origin: executor
+  - code: PAREN_ACROSS_MODELS     # PHP compat layer: '(' opened in one model and closed in another
+    origin: executor
+  - code: INTERNAL
+    origin: executor
+  # ---- driver (mapped) ----
+  - code: DEADLOCK                # MySQL 1213 / SQLSTATE 40001 — transaction() re-runs the closure up to 3 times before surfacing it
+    origin: driver
+  - code: DUPLICATE_KEY           # MySQL 1062 / SQLSTATE 23000
+    origin: driver
