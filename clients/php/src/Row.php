@@ -19,6 +19,10 @@ abstract class Row implements \ArrayAccess
     protected array $rel = [];
     /** @var array<string, mixed> columns changed through set* */
     protected array $dirty = [];
+    /** @var array<string, mixed> columns merged from a flattened one-relation */
+    protected array $extra = [];
+    /** @var array<string, true> columns selected only for binding (drop_child_key): left out of toArray */
+    protected array $hidden = [];
     protected bool $loaded = false;
 
     abstract public static function entity(): string;
@@ -26,18 +30,44 @@ abstract class Row implements \ArrayAccess
     /** @return array<string,string> column => canonical type */
     abstract public static function columns(): array;
 
-    /** @param list<mixed> $vals @param array $asm assemble node with 'idx' */
-    public static function fromRow(array $vals, array $asm): static
+    /**
+     * Maps a positional row onto the model, its joined children (same row) and
+     * its relation children (rows of later steps, from $rows).
+     * @param list<mixed> $vals @param array $asm assemble node with 'idx'
+     */
+    public static function fromRow(array $vals, array $asm, ?Rows $rows = null): static
     {
         $r = new static();
         $r->vals = $vals;
         $r->idx = $asm['idx'];
+        $r->hidden = $asm['hidden'] ?? [];
         $r->loaded = true;
         foreach ($asm['children'] ?? [] as $ch) {
             if ($ch['kind'] === 'join') {
                 $ca = $ch['assemble'];
                 $pkIdx = $ca['columns'][0]['index'];
-                $r->rel[$ch['rel']] = $vals[$pkIdx] === null ? null : Registry::row($ca['entity'])::fromRow($vals, $ca);
+                $r->rel[$ch['rel']] = $vals[$pkIdx] === null ? null : Registry::row($ca['entity'])::fromRow($vals, $ca, $rows);
+                continue;
+            }
+            $related = $rows === null ? [] : $rows->related($ch, $vals);
+            $ca = $rows === null ? [] : $rows->stepAssemble($ch);
+            if ($ch['kind'] === 'one') {
+                $child = $related === [] ? null : Registry::row($ca['entity'])::fromRow($related[0], $ca, $rows);
+                $r->rel[$ch['rel']] = $child;
+                if ($child !== null && ($ch['flatten'] ?? false)) {
+                    foreach ($ca['columns'] as $c) {
+                        if (empty($c['hidden']) && !isset($r->idx[$c['name']])) {
+                            $r->extra[$c['name']] = $child->col($c['name']);
+                        }
+                    }
+                }
+            } else {
+                $items = [];
+                $cls = Registry::row($ca['entity']);
+                foreach ($related as $row) {
+                    $items[$row[$ch['key_index']]] = $cls::fromRow($row, $ca, $rows);
+                }
+                $r->rel[$ch['rel']] = new Collection($items);
             }
         }
         return $r;
@@ -45,13 +75,16 @@ abstract class Row implements \ArrayAccess
 
     public function has(string $col): bool
     {
-        return isset($this->idx[$col]) || array_key_exists($col, $this->dirty);
+        return isset($this->idx[$col]) || array_key_exists($col, $this->dirty) || array_key_exists($col, $this->extra);
     }
 
     protected function col(string $col): mixed
     {
         if (array_key_exists($col, $this->dirty)) {
             return $this->dirty[$col];
+        }
+        if (!isset($this->idx[$col]) && array_key_exists($col, $this->extra)) {
+            return $this->extra[$col];
         }
         if (!isset($this->idx[$col])) {
             if (isset(static::columns()[$col])) {
@@ -134,7 +167,12 @@ abstract class Row implements \ArrayAccess
     {
         $out = [];
         foreach ($this->idx as $name => $i) {
-            $out[$name] = $this->col($name);
+            if (!isset($this->hidden[$name])) {
+                $out[$name] = $this->col($name);
+            }
+        }
+        foreach ($this->extra as $k => $v) {
+            $out[$k] = $v;
         }
         foreach ($this->dirty as $k => $v) {
             $out[$k] = $v;
@@ -203,12 +241,11 @@ final class Collection implements \ArrayAccess, \IteratorAggregate, \Countable
     /** @param array<int|string, Row> $items */
     public function __construct(private array $items = []) {}
 
-    /** @param list<list<mixed>> $rows */
-    public static function fromRows(array $rows, array $asm, string $rowClass): self
+    public static function fromRows(Rows $rows, string $rowClass): self
     {
         $c = new self();
-        foreach ($rows as $vals) {
-            $c->items[$vals[0]] = $rowClass::fromRow($vals, $asm);
+        foreach ($rows->data as $vals) {
+            $c->items[$vals[0]] = $rowClass::fromRow($vals, $rows->asm, $rows);
         }
         return $c;
     }
@@ -271,6 +308,47 @@ final class Page
         public readonly int $current,
         public readonly int $per,
     ) {}
+}
+
+/** Result of a select plan: the main step's rows plus every relation step's rows grouped by match column. */
+final class Rows
+{
+    /** @var array<int, array{data: list<list<mixed>>, byKey: array<int|string, list<int>>}> */
+    public array $steps = [];
+
+    /** @param list<list<mixed>> $data @param list<mixed> $params */
+    public function __construct(public readonly array $plan, public readonly array $asm, public array $data, public readonly array $params) {}
+
+    /**
+     * Child rows of relation $ch for one parent row: empty when the parent's value is
+     * null, when the step was skipped, or when the parent fails if_parent.
+     * @return list<list<mixed>>
+     */
+    public function related(array $ch, array $parent): array
+    {
+        $sr = $this->steps[$ch['step']] ?? null;
+        if ($sr === null) {
+            return [];
+        }
+        $ifp = $this->plan['steps'][$ch['step']]['parent']['if_parent'] ?? null;
+        if ($ifp !== null && !Db::sameScalar($parent[$ifp['index']], $this->params[$ifp['param']])) {
+            return [];
+        }
+        $pv = $parent[$ch['parent_index'] ?? 0];
+        if ($pv === null) {
+            return [];
+        }
+        $out = [];
+        foreach ($sr['byKey'][$pv] ?? [] as $i) {
+            $out[] = $sr['data'][$i];
+        }
+        return $out;
+    }
+
+    public function stepAssemble(array $ch): array
+    {
+        return $this->plan['steps'][$ch['step']]['assemble'];
+    }
 }
 
 /** Maps entity names to generated row classes (filled by the generated bootstrap). */

@@ -73,10 +73,11 @@ func (r *ServiceRow) Update(ctx context.Context, ex orm.Exec) error {
 
 func (r *ServiceRow) Delete(ctx context.Context, ex orm.Exec) error { return r.DeleteRow(ctx, ex) }
 
-// scanService maps a positional row slice onto the struct (and joined children).
-func scanService(vals []any, a *plan.Assemble) *ServiceRow {
+// scanService maps a positional row slice onto the struct, its joined
+// children (same row) and its relation children (rows of later steps).
+func scanService(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRow {
 	r := &ServiceRow{}
-	for i, c := range a.Columns {
+	for _, c := range a.Columns {
 		v := vals[c.Index]
 		switch c.Name {
 		case "seq":
@@ -84,13 +85,30 @@ func scanService(vals []any, a *plan.Assemble) *ServiceRow {
 		case "name":
 			r.Name = orm.AsString(v)
 		}
-		_ = i
 	}
 	for _, ch := range a.Children {
-		if ch.Kind != "join" {
-			continue
-		}
 		switch ch.Rel {
+		case "battles":
+			rows := rs.Related(ch, vals)
+			c := orm.NewCollection[BattleRow](len(rows))
+			for _, row := range rows {
+				c.Put(orm.KeyOf(row[ch.KeyIndex]), scanBattle(row, rs.StepAssemble(ch), rs))
+			}
+			r.Battles = c
+		case "members":
+			rows := rs.Related(ch, vals)
+			c := orm.NewCollection[ServiceMemberRow](len(rows))
+			for _, row := range rows {
+				c.Put(orm.KeyOf(row[ch.KeyIndex]), scanServiceMember(row, rs.StepAssemble(ch), rs))
+			}
+			r.Members = c
+		case "modules":
+			rows := rs.Related(ch, vals)
+			c := orm.NewCollection[ServiceModuleRow](len(rows))
+			for _, row := range rows {
+				c.Put(orm.KeyOf(row[ch.KeyIndex]), scanServiceModule(row, rs.StepAssemble(ch), rs))
+			}
+			r.Modules = c
 		}
 	}
 	r.Mark("service", "seq", r.Seq)
@@ -327,11 +345,49 @@ func (q *Service) Limit(offset, count int) *Service {
 func (q *Service) Distinct() *Service { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
-func (q *Service) Flatten() *Service                { q.q.Node.Flatten = true; return q }
-func (q *Service) LimitPerParent(n int) *Service    { q.q.Node.LimitPerParent = n; return q }
-func (q *Service) DropChildKey() *Service           { q.q.Node.DropChildKey = true; return q }
-func (q *Service) IfParentSeqEq(v int64) *Service   { q.q.IfParent("seq", v); return q }
-func (q *Service) IfParentNameEq(v string) *Service { q.q.IfParent("name", v); return q }
+func (q *Service) Flatten() *Service                   { q.q.Node.Flatten = true; return q }
+func (q *Service) LimitPerParent(n int) *Service       { q.q.Node.LimitPerParent = n; return q }
+func (q *Service) DropChildKey() *Service              { q.q.Node.DropChildKey = true; return q }
+func (q *Service) IfParentSeqEq(v int64) *Service      { q.q.IfParent("seq", v); return q }
+func (q *Service) IfParentNameEq(v string) *Service    { q.q.IfParent("name", v); return q }
+func (q *Service) IfParentIsCloseEq(v bool) *Service   { q.q.IfParent("is_close", v); return q }
+func (q *Service) IfParentIsDisplayEq(v bool) *Service { q.q.IfParent("is_display", v); return q }
+func (q *Service) IfParentIsAlldayEq(v bool) *Service  { q.q.IfParent("is_allday", v); return q }
+func (q *Service) IfParentTargetTeamPlayerCountEq(v int32) *Service {
+	q.q.IfParent("target_team_player_count", v)
+	return q
+}
+func (q *Service) IfParentSuccessCountEq(v int32) *Service {
+	q.q.IfParent("success_count", v)
+	return q
+}
+func (q *Service) IfParentPlayerCountEq(v int32) *Service { q.q.IfParent("player_count", v); return q }
+func (q *Service) IfParentReadCountEq(v int32) *Service   { q.q.IfParent("read_count", v); return q }
+func (q *Service) IfParentCoverUrlEq(v string) *Service   { q.q.IfParent("cover_url", v); return q }
+func (q *Service) IfParentUserSeqEq(v int64) *Service     { q.q.IfParent("user_seq", v); return q }
+func (q *Service) IfParentServiceSeqEq(v int64) *Service  { q.q.IfParent("service_seq", v); return q }
+func (q *Service) IfParentServiceModuleSeqEq(v int64) *Service {
+	q.q.IfParent("service_module_seq", v)
+	return q
+}
+func (q *Service) IfParentServiceMemberSeqEq(v int64) *Service {
+	q.q.IfParent("service_member_seq", v)
+	return q
+}
+func (q *Service) IfParentUuidEq(v string) *Service { q.q.IfParent("uuid", v); return q }
+func (q *Service) IfParentIsSinglePlayEq(v bool) *Service {
+	q.q.IfParent("is_single_play", v)
+	return q
+}
+func (q *Service) IfParentLikeCountEq(v int32) *Service { q.q.IfParent("like_count", v); return q }
+func (q *Service) IfParentAesHexEmailEq(v string) *Service {
+	q.q.IfParent("aes_hex_email", v)
+	return q
+}
+func (q *Service) IfParentAesHexPhoneEq(v string) *Service {
+	q.q.IfParent("aes_hex_phone", v)
+	return q
+}
 
 // Insert draft.
 func (q *Service) SetName(v string) *Service { q.q.Set("name", v); return q }
@@ -349,7 +405,7 @@ func (q *Service) One(ctx context.Context, ex orm.Exec) (*ServiceRow, error) {
 	if err != nil || len(rows.Data) == 0 {
 		return nil, err
 	}
-	return scanService(rows.Data[0], rows.Assemble), nil
+	return scanService(rows.Data[0], rows.Assemble, rows), nil
 }
 
 func (q *Service) All(ctx context.Context, ex orm.Exec) (*orm.Collection[ServiceRow], error) {
@@ -364,7 +420,7 @@ func (q *Service) All(ctx context.Context, ex orm.Exec) (*orm.Collection[Service
 func collectService(rows *orm.Rows) *orm.Collection[ServiceRow] {
 	c := orm.NewCollection[ServiceRow](len(rows.Data))
 	for _, vals := range rows.Data {
-		r := scanService(vals, rows.Assemble)
+		r := scanService(vals, rows.Assemble, rows)
 		c.Put(orm.KeyOf(vals[0]), r)
 	}
 	return c

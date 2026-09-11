@@ -10,8 +10,9 @@ use sqlx::mysql::{MySqlConnectOptions, MySqlPool, MySqlPoolOptions, MySqlRow};
 use sqlx::{Column, Row as _, TypeInfo};
 
 use crate::builder::Req;
+use crate::collection::Key;
 use crate::engine::Engine;
-use crate::plan::{Assemble, Plan, Step};
+use crate::plan::{Assemble, Child, ParentRef, Plan, Step};
 use crate::value::{transform, Param, Val};
 use crate::{Error, Result};
 
@@ -30,10 +31,154 @@ pub struct Db {
     plans: Arc<Mutex<HashMap<u64, Arc<Plan>>>>,
 }
 
-/// Rows of one select step, positional.
+/// Rows of a select plan, positional: the main step's rows plus every
+/// relation step's rows grouped by their match column (see `related`).
 pub struct Rows {
     pub assemble: Arc<Assemble>,
     pub data: Vec<Vec<Val>>,
+    plan: Arc<Plan>,
+    steps: HashMap<u32, StepRows>,
+    params: Vec<Param>,
+}
+
+struct StepRows {
+    data: Vec<Vec<Val>>,
+    by_key: HashMap<Key, Vec<usize>>,
+}
+
+impl Rows {
+    /// The rows of relation child `ch` that belong to one parent row (a positional
+    /// row of the step `ch` hangs off). Empty when the parent's value is null, when
+    /// the step was skipped, or when the parent fails `if_parent`.
+    pub fn related(&self, ch: &Child, parent: &[Val]) -> Vec<&[Val]> {
+        let Some(sr) = self.steps.get(&ch.step) else { return Vec::new() };
+        let st = &self.plan.steps[ch.step as usize];
+        if let Some(ifp) = st.parent.as_ref().and_then(|p| p.if_parent.as_ref()) {
+            if !same_scalar(&parent[ifp.index], &self.params[ifp.param]) {
+                return Vec::new();
+            }
+        }
+        let pv = &parent[ch.parent_index];
+        if pv.is_null() {
+            return Vec::new();
+        }
+        match sr.by_key.get(&Key::of(pv)) {
+            Some(idxs) => idxs.iter().map(|&i| sr.data[i].as_slice()).collect(),
+            None => Vec::new(),
+        }
+    }
+
+    /// The assembly of the step a relation child's rows come from.
+    pub fn step_assemble(&self, ch: &Child) -> &Assemble {
+        self.plan.steps[ch.step as usize].assemble.as_deref().expect("relation step has an assemble")
+    }
+}
+
+/// Compares a row value with a bound parameter regardless of representation
+/// (bool vs int, driver width): both are reduced to the same canonical text.
+pub fn same_scalar(v: &Val, p: &Param) -> bool {
+    let a = match v {
+        Val::Null => return matches!(p, Param::Null),
+        Val::Bool(b) => (*b as i64).to_string(),
+        Val::I64(x) => x.to_string(),
+        Val::F64(x) => x.to_string(),
+        Val::Str(s) => s.clone(),
+        Val::Bytes(b) => String::from_utf8_lossy(b).into_owned(),
+        Val::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
+        Val::Date(d) => d.to_string(),
+    };
+    let b = match p {
+        Param::Null => return false,
+        Param::Bool(b) => (*b as i64).to_string(),
+        Param::I64(x) => x.to_string(),
+        Param::F64(x) => x.to_string(),
+        Param::Str(s) => s.clone(),
+        Param::Bytes(b) => String::from_utf8_lossy(b).into_owned(),
+        Param::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
+        Param::Date(d) => d.to_string(),
+    };
+    a == b
+}
+
+/// Distinct non-null values a relation step binds, first-seen order, from the
+/// parent rows that pass `if_parent`.
+fn parent_values(pr: &ParentRef, parents: &[Vec<Val>], params: &[Param]) -> Vec<Param> {
+    let mut seen: std::collections::HashSet<Key> = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for row in parents {
+        if let Some(ifp) = &pr.if_parent {
+            if !same_scalar(&row[ifp.index], &params[ifp.param]) {
+                continue;
+            }
+        }
+        let v = &row[pr.index];
+        if v.is_null() {
+            continue;
+        }
+        if seen.insert(Key::of(v)) {
+            out.push(match v {
+                Val::I64(x) => Param::I64(*x),
+                Val::Str(s) => Param::Str(s.clone()),
+                Val::Bytes(b) => Param::Bytes(b.clone()),
+                Val::Bool(b) => Param::Bool(*b),
+                Val::F64(x) => Param::F64(*x),
+                Val::DateTime(t) => Param::DateTime(*t),
+                Val::Date(d) => Param::Date(*d),
+                Val::Null => Param::Null,
+            });
+        }
+    }
+    out
+}
+
+/// Rewrites the step's single `parent` placeholder into n placeholders. n is
+/// rounded up to a power of two (values padded by repetition) so the prepared
+/// statement cache holds one statement per size class.
+fn expand_in(st: &Step, mut vals: Vec<Param>) -> (String, Vec<Param>) {
+    let mut n = 1;
+    while n < vals.len() {
+        n <<= 1;
+    }
+    let last = vals.last().cloned().unwrap_or(Param::Null);
+    while vals.len() < n {
+        vals.push(last.clone());
+    }
+    let mut sql = String::with_capacity(st.sql.len() + 2 * n);
+    let mut slot = 0;
+    for c in st.sql.chars() {
+        if c != '?' {
+            sql.push(c);
+            continue;
+        }
+        if st.bind_slots[slot].from == "parent" {
+            sql.push('?');
+            for _ in 1..n {
+                sql.push_str(", ?");
+            }
+        } else {
+            sql.push('?');
+        }
+        slot += 1;
+    }
+    (sql, vals)
+}
+
+/// Finds the match column of a relation step from the child spec that references it.
+fn child_index(plan: &Plan, id: u32) -> usize {
+    fn find(a: &Assemble, id: u32) -> Option<usize> {
+        for ch in &a.children {
+            if ch.kind != "join" && ch.step == id {
+                return Some(ch.child_index);
+            }
+            if let Some(ja) = &ch.assemble {
+                if let Some(i) = find(ja, id) {
+                    return Some(i);
+                }
+            }
+        }
+        None
+    }
+    plan.steps.iter().filter_map(|s| s.assemble.as_deref()).find_map(|a| find(a, id)).expect("relation step without a child spec")
 }
 
 impl Db {
@@ -58,10 +203,11 @@ impl Db {
         Ok(plan)
     }
 
-    fn args(&self, st: &Step, params: &[Param]) -> Result<Vec<Param>> {
-        let mut out = Vec::with_capacity(st.bind_slots.len());
+    fn args(&self, st: &Step, params: &[Param], parent_vals: &[Param]) -> Result<Vec<Param>> {
+        let mut out = Vec::with_capacity(st.bind_slots.len() + parent_vals.len());
         for b in &st.bind_slots {
             match b.from.as_str() {
+                "parent" => out.extend(parent_vals.iter().cloned()),
                 "param" => {
                     let v = &params[b.param];
                     if b.transform.is_empty() {
@@ -191,7 +337,8 @@ fn read_row(row: &MySqlRow, n: usize) -> Vec<Val> {
 /// What terminals take: `&Db` or `&Tx`.
 pub trait Exec: Sync {
     fn db(&self) -> &Db;
-    fn query(&self, st: &Step, params: &[Param]) -> impl Future<Output = Result<Vec<MySqlRow>>> + Send;
+    /// Runs a select step; `parent_vals` are the values for its `parent` slot (empty for the main step).
+    fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> impl Future<Output = Result<Vec<MySqlRow>>> + Send;
     fn execute(&self, st: &Step, params: &[Param]) -> impl Future<Output = Result<(u64, u64)>> + Send;
 }
 
@@ -200,20 +347,21 @@ impl Exec for Db {
         self
     }
 
-    async fn query(&self, st: &Step, params: &[Param]) -> Result<Vec<MySqlRow>> {
-        let args = self.args(st, params)?;
-        let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.as_str()));
+    async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<MySqlRow>> {
+        let (sql, parent_vals) = if parent_vals.is_empty() { (st.sql.clone(), parent_vals) } else { expand_in(st, parent_vals) };
+        let args = self.args(st, params, &parent_vals)?;
+        let mut q = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()));
         for a in &args {
             q = bind(q, a);
         }
         let start = std::time::Instant::now();
         let r = q.fetch_all(&self.pool).await.map_err(Error::from);
-        self.emit(&st.sql, &args, start, r.as_ref().err());
+        self.emit(&sql, &args, start, r.as_ref().err());
         r
     }
 
     async fn execute(&self, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
-        let args = self.args(st, params)?;
+        let args = self.args(st, params, &[])?;
         let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.as_str()));
         for a in &args {
             q = bind(q, a);
@@ -231,9 +379,10 @@ impl Exec for Tx {
         &self.db
     }
 
-    async fn query(&self, st: &Step, params: &[Param]) -> Result<Vec<MySqlRow>> {
-        let args = self.db.args(st, params)?;
-        let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.as_str()));
+    async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<MySqlRow>> {
+        let (sql, parent_vals) = if parent_vals.is_empty() { (st.sql.clone(), parent_vals) } else { expand_in(st, parent_vals) };
+        let args = self.db.args(st, params, &parent_vals)?;
+        let mut q = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()));
         for a in &args {
             q = bind(q, a);
         }
@@ -241,12 +390,12 @@ impl Exec for Tx {
         let tx = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
         let start = std::time::Instant::now();
         let r = q.fetch_all(&mut **tx).await.map_err(Error::from);
-        self.db.emit(&st.sql, &args, start, r.as_ref().err());
+        self.db.emit(&sql, &args, start, r.as_ref().err());
         r
     }
 
     async fn execute(&self, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
-        let args = self.db.args(st, params)?;
+        let args = self.db.args(st, params, &[])?;
         let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.as_str()));
         for a in &args {
             q = bind(q, a);
@@ -261,36 +410,55 @@ impl Exec for Tx {
     }
 }
 
-/// Run the main select step of a request.
+/// Run the select plan of a request: the main step, then every relation step.
 pub async fn select(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Rows> {
     req.ir.kind = kind.into();
     let plan = ex.db().plan(req)?;
+    run_plan(ex, plan, req).await
+}
+
+async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &Req) -> Result<Rows> {
     let st = &plan.steps[0];
     let asm = st.assemble.clone().ok_or_else(|| Error::Engine { code: "INTERNAL".into(), msg: "no assemble".into() })?;
     let n = asm.total_columns();
-    let rows = ex.query(st, &req.params).await?;
-    let data = rows.iter().map(|r| read_row(r, n)).collect();
-    Ok(Rows { assemble: asm, data })
+    let data: Vec<Vec<Val>> = ex.query(st, &req.params, Vec::new()).await?.iter().map(|r| read_row(r, n)).collect();
+    let mut rows = Rows { assemble: asm, data, plan: plan.clone(), steps: HashMap::new(), params: req.params.clone() };
+    for st in plan.steps.iter().skip(1) {
+        if st.role != "relation" {
+            continue;
+        }
+        let pr = st.parent.as_ref().expect("relation step has a parent");
+        let parents: &[Vec<Val>] = if pr.step == 0 { &rows.data } else { &rows.steps[&pr.step].data };
+        let vals = parent_values(pr, parents, &req.params);
+        let mut sr = StepRows { data: Vec::new(), by_key: HashMap::new() };
+        if !vals.is_empty() {
+            let n = st.assemble.as_ref().expect("relation step has an assemble").total_columns();
+            sr.data = ex.query(st, &req.params, vals).await?.iter().map(|r| read_row(r, n)).collect();
+            let ci = child_index(&plan, st.id);
+            for (j, row) in sr.data.iter().enumerate() {
+                sr.by_key.entry(Key::of(&row[ci])).or_default().push(j);
+            }
+        }
+        rows.steps.insert(st.id, sr);
+    }
+    Ok(rows)
 }
 
 pub async fn scalar(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Val> {
     req.ir.kind = kind.into();
     let plan = ex.db().plan(req)?;
-    let rows = ex.query(&plan.steps[0], &req.params).await?;
+    let rows = ex.query(&plan.steps[0], &req.params, Vec::new()).await?;
     Ok(rows.first().map(|r| read_row(r, 1).remove(0)).unwrap_or(Val::Null))
 }
 
 pub async fn paginate(ex: &impl Exec, req: &mut Req) -> Result<(Rows, i64)> {
     req.ir.kind = "paginate".into();
     let plan = ex.db().plan(req)?;
-    let st = &plan.steps[0];
-    let asm = st.assemble.clone().ok_or_else(|| Error::Engine { code: "INTERNAL".into(), msg: "no assemble".into() })?;
-    let n = asm.total_columns();
-    let rows = ex.query(st, &req.params).await?;
-    let data = rows.iter().map(|r| read_row(r, n)).collect();
-    let cnt = ex.query(&plan.steps[1], &req.params).await?;
+    let rows = run_plan(ex, plan.clone(), req).await?;
+    let count = plan.steps.iter().find(|s| s.role == "count").expect("paginate plan has a count step");
+    let cnt = ex.query(count, &req.params, Vec::new()).await?;
     let total = cnt.first().map(|r| read_row(r, 1).remove(0).as_i64()).unwrap_or(0);
-    Ok((Rows { assemble: asm, data }, total))
+    Ok((rows, total))
 }
 
 /// insert/update/delete. Returns (last_insert_id, affected). Optimistic updates

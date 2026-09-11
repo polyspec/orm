@@ -55,10 +55,20 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
   ]
 }
 ```
-- `bind_slots.from`: `param`(IR의 값) · `secret`(실행기 설정의 AES 키) · `parent`(S2: 관계 IN — 부모 단계 컬럼값 dedup, N개로 확장).
+- `bind_slots.from`: `param`(IR의 값) · `secret`(실행기 설정의 AES 키) · `parent`(관계 IN — 단계의 `parent`가 가리키는 부모 행 값, N개로 확장. 아래 "관계 단계").
 - 결과 매핑은 위치(`index`)로. SELECT 별칭 `alias__col`은 디버그 가독성용이며 실행기는 이름을 보지 않는다.
 - `assemble.columns[].styles`는 앱측 디코드 단계(gz/json/serialize 등). SQL측(aes/hex/ip)은 이미 SQL에 들어가 있다.
-- `children[].kind`: `join`(같은 행의 조각) · `one`/`many`(S2: 다른 단계의 행을 `parent_column`/`child_column`으로 부착).
+- `children[].kind`: `join`(같은 행의 조각, `assemble` 있음) · `one`/`many`(다른 단계 `step`의 행을 `parent_index`/`child_index` 값으로 부착, 조립은 `steps[step].assemble`).
+
+### 관계 단계 (S2)
+- 관계마다 step 하나(`role: relation`), 부모 step 뒤에 온다(중첩·조인 하위 관계도 같은 규칙, paginate는 main → 관계… → `count`).
+- `step.parent = {step, column, index, if_parent?{column, index, param}}`: 실행기는 부모 step의 행에서 `index` 위치 값을 **null 제외·처음 본 순서로 dedup**하고, `if_parent`가 있으면 `params[param]`과 같은 부모 행만 쓴다. 값이 0개면 **질의하지 않고** 빈 결과로 둔다.
+- SQL의 `parent` 슬롯은 `?` 하나다. 실행기가 그 자리를 N개 `?`로 바꾼다. N은 값 개수를 **2의 거듭제곱으로 올림**(마지막 값 반복으로 패딩) — prepared statement 캐시가 크기 등급당 하나만 갖도록. 세 언어 동일.
+- 부착: `children[]`의 `kind one` = 자식 행 중 첫 행(자식 ORDER가 있으면 planner가 per-parent 1 window로 이미 잘라 옴), `many` = `key_index` 값으로 키 맵(행 순서 유지, 중복 키는 last-wins). `if_parent`를 통과 못한 부모는 null/빈 컬렉션.
+- `limit_per_parent n`: `SELECT <출력 컬럼> FROM (… , ROW_NUMBER() OVER (PARTITION BY right ORDER BY …) AS orm_rn …) AS orm_w WHERE orm_w.orm_rn <= n ORDER BY orm_w.right, orm_w.orm_rn`. 출력 컬럼 순서는 window 없는 경우와 같다.
+- `flatten`(one 전용): 배열/JSON 형태(PHP `toArray`/`['x']`, Go/Rust의 배열 변환)에서 자식 컬럼을 부모에 병합한다. 부모에 같은 이름이 있으면 부모가 이긴다. typed 접근자(`GetUser()`/`user()`)는 그대로 있다.
+- `drop_child_key`: 자식의 매치 컬럼이 `columns[].hidden = true`. 바인딩·키에는 쓰이고 배열/JSON 형태에서만 빠진다.
+- `key_by`는 many 전용, `flatten`은 one 전용, `if_parent.column`은 **부모** 엔티티의 컬럼(`COLUMN_UNKNOWN`) — 위반은 `IR_INVALID`.
 
 ## 3. 에러
 `{"error": {"code": "…", "msg": "…"}}` — 코드: `IR_INVALID VERSION_MISMATCH SCHEMA_HASH_MISMATCH SCHEMA_INVALID SCHEMA_NOT_LOADED ENTITY_UNKNOWN COLUMN_UNKNOWN RELATION_UNKNOWN INDEX_UNKNOWN OPERATOR_UNKNOWN OPERATOR_NOT_ALLOWED OR_AT_GROUP_START EMPTY_IN ENTITY_NOT_JOINED LIMIT_IN_RELATION COLUMN_ALIAS_CONFLICT DIALECT_UNKNOWN FRAME_INVALID OP_UNKNOWN INTERNAL`. 실행기 측: `OPTIMISTIC_LOCK DEADLOCK DUPLICATE_KEY JOIN_PREDICATE_PLACEMENT PAREN_ACROSS_MODELS`.

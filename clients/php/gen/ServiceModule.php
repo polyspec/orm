@@ -172,8 +172,24 @@ final class ServiceModule extends Q
     public function limitPerParent(int $n): static { $this->node['limit_per_parent'] = $n; return $this; }
     public function dropChildKey(): static { $this->node['drop_child_key'] = true; return $this; }
     public function ifParentSeqEq(int $v): static { $this->ifParent('seq', $v); return $this; }
-    public function ifParentServiceSeqEq(int $v): static { $this->ifParent('service_seq', $v); return $this; }
     public function ifParentNameEq(string $v): static { $this->ifParent('name', $v); return $this; }
+    public function ifParentIsCloseEq(bool $v): static { $this->ifParent('is_close', $v); return $this; }
+    public function ifParentIsDisplayEq(bool $v): static { $this->ifParent('is_display', $v); return $this; }
+    public function ifParentIsAlldayEq(bool $v): static { $this->ifParent('is_allday', $v); return $this; }
+    public function ifParentTargetTeamPlayerCountEq(int $v): static { $this->ifParent('target_team_player_count', $v); return $this; }
+    public function ifParentSuccessCountEq(int $v): static { $this->ifParent('success_count', $v); return $this; }
+    public function ifParentPlayerCountEq(int $v): static { $this->ifParent('player_count', $v); return $this; }
+    public function ifParentReadCountEq(int $v): static { $this->ifParent('read_count', $v); return $this; }
+    public function ifParentCoverUrlEq(string $v): static { $this->ifParent('cover_url', $v); return $this; }
+    public function ifParentUserSeqEq(int $v): static { $this->ifParent('user_seq', $v); return $this; }
+    public function ifParentServiceSeqEq(int $v): static { $this->ifParent('service_seq', $v); return $this; }
+    public function ifParentServiceModuleSeqEq(int $v): static { $this->ifParent('service_module_seq', $v); return $this; }
+    public function ifParentServiceMemberSeqEq(int $v): static { $this->ifParent('service_member_seq', $v); return $this; }
+    public function ifParentUuidEq(string $v): static { $this->ifParent('uuid', $v); return $this; }
+    public function ifParentIsSinglePlayEq(bool $v): static { $this->ifParent('is_single_play', $v); return $this; }
+    public function ifParentLikeCountEq(int $v): static { $this->ifParent('like_count', $v); return $this; }
+    public function ifParentAesHexEmailEq(string $v): static { $this->ifParent('aes_hex_email', $v); return $this; }
+    public function ifParentAesHexPhoneEq(string $v): static { $this->ifParent('aes_hex_phone', $v); return $this; }
 
     // ---- insert draft ----
     public function setServiceSeq(int $v): static { $this->set('service_seq', $v); return $this; }
@@ -188,14 +204,13 @@ final class ServiceModule extends Q
     // ---- terminals ----
     public function one(Db $db): ?ServiceModuleRow
     {
-        [$rows, $asm] = $this->runQuery($db, 'one');
-        return $rows === [] ? null : ServiceModuleRow::fromRow($rows[0], $asm);
+        $rows = $this->runQuery($db, 'one');
+        return $rows->data === [] ? null : ServiceModuleRow::fromRow($rows->data[0], $rows->asm, $rows);
     }
 
     public function all(Db $db): Collection
     {
-        [$rows, $asm] = $this->runQuery($db, 'all');
-        return Collection::fromRows($rows, $asm, ServiceModuleRow::class);
+        return Collection::fromRows($this->runQuery($db, 'all'), ServiceModuleRow::class);
     }
 
     public function count(Db $db): int { return (int) $this->runScalar($db, 'count'); }
@@ -206,8 +221,8 @@ final class ServiceModule extends Q
 
     public function paginate(Db $db, int $page, int $per): Page
     {
-        [$rows, $asm, $total] = $this->runPaginate($db, $page, $per);
-        return new Page(Collection::fromRows($rows, $asm, ServiceModuleRow::class), $total, intdiv($total + $per - 1, $per), max(1, $page), $per);
+        [$rows, $total] = $this->runPaginate($db, $page, $per);
+        return new Page(Collection::fromRows($rows, ServiceModuleRow::class), $total, intdiv($total + $per - 1, $per), max(1, $page), $per);
     }
 
     public function insert(Db $db): ?ServiceModuleRow
