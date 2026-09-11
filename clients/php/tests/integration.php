@@ -13,19 +13,22 @@ use App\Orm\ServiceModule;
 use App\Orm\ServiceWhere;
 use App\Orm\User;
 use App\Orm\UserWhere;
+use Orm\Code;
 use Orm\Config;
 use Orm\Db;
 use Orm\Orm;
 use Orm\OrmException;
 use Orm\Q;
+use Orm\Registry;
 use Orm\Tx;
 
 $sock = $argv[1] ?? die("usage: integration.php /abs/ormd.sock /abs/schema.json\n");
 $schema = $argv[2] ?? die("schema.json required\n");
 $log = [];
+$hooked = [];
 Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt',
-    onQuery: function (string $sql, array $args, float $sec, ?\Throwable $e) use (&$log) { $log[] = $sql; }));
-$db = Db::mysql('mysql:unix_socket=/tmp/mysql.sock;dbname=orm_bench;charset=utf8mb4', 'root', '');
+    onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log, &$hooked) { $log[] = $sql; $hooked[] = [$binds, $planId, $e]; }));
+$db = Db::mysql(orm_test_dsn(), 'root', '');
 
 $fail = 0;
 function check(bool $ok, string $what): void { global $fail; if (!$ok) { $fail++; fwrite(STDERR, "FAIL: $what\n"); } }
@@ -125,7 +128,7 @@ try {
     $created->setName('stale')->updateOptimistic($db);
     check(false, 'optimistic lock should fail');
 } catch (OrmException $e) {
-    check($e->code_ === 'OPTIMISTIC_LOCK', 'optimistic lock code');
+    check($e->code_ === Code::OPTIMISTIC_LOCK, 'optimistic lock code');
 }
 $again->delete($db);
 check((new Battle)->seqEq($created->getSeq())->count($db) === 0, 'delete');
@@ -155,7 +158,7 @@ try {
     (new Battle)->setName('x')->update($db);
     check(false, 'update without where should throw');
 } catch (OrmException $e) {
-    check($e->code_ === 'IR_INVALID', 'update without where → IR_INVALID');
+    check($e->code_ === Code::IR_INVALID, 'update without where → IR_INVALID');
 }
 check((new Battle)->seqEq($r->getSeq())->delete($db) === 1, 'query delete');
 
@@ -236,13 +239,13 @@ try {
     (new Battle)->serviceSeqEq(7)->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->count($db);
     check(false, 'having without groupBy should throw');
 } catch (OrmException $e) {
-    check($e->code_ === 'IR_INVALID', 'having without groupBy → IR_INVALID');
+    check($e->code_ === Code::IR_INVALID, 'having without groupBy → IR_INVALID');
 }
 try {
     (new Q('battle'))->runScalar($db, 'min', 'aes_hex_email');
     check(false, 'min on a styled column should throw');
 } catch (OrmException $e) {
-    check($e->code_ === 'OPERATOR_NOT_ALLOWED', 'min on a styled column → OPERATOR_NOT_ALLOWED (no method is generated for it)');
+    check($e->code_ === Code::OPERATOR_NOT_ALLOWED, 'min on a styled column → OPERATOR_NOT_ALLOWED (no method is generated for it)');
 }
 
 $vis = (new Battle)->visible()->serviceSeqEq(7)->count($db);
@@ -263,7 +266,7 @@ try {
     (new Battle)->raw('SELECT seq FROM {table} WHERE seq = ?', [])->rawAll($db);
     check(false, 'raw with a placeholder/bind mismatch should throw');
 } catch (OrmException $e) {
-    check($e->code_ === 'IR_INVALID', 'raw placeholder/bind mismatch → IR_INVALID');
+    check($e->code_ === Code::IR_INVALID, 'raw placeholder/bind mismatch → IR_INVALID');
 }
 
 // ---- error surface ----
@@ -271,8 +274,92 @@ try {
     (new Battle)->seqIn([])->count($db);
     check(false, 'EMPTY_IN should throw');
 } catch (OrmException $e) {
-    check($e->code_ === 'EMPTY_IN', 'EMPTY_IN code');
+    check($e->code_ === Code::EMPTY_IN, 'EMPTY_IN code');
 }
+
+// ---- S5: on_query hook payload ----
+$n0 = count($hooked);
+(new Battle)->serviceSeqEq(7)->selectAesHexEmail()->limit(0, 1)->all($db);
+(new Battle)->serviceSeqEq(8)->selectAesHexEmail()->limit(0, 1)->all($db);
+(new Battle)->serviceSeqEq(8)->selectAesHexEmail()->limit(0, 2)->all($db);
+[$binds1, $plan1, $err1] = $hooked[$n0];
+[, $plan2] = $hooked[$n0 + 1];
+[, $plan3] = $hooked[$n0 + 2];
+check($binds1 === ['$SECRET', '$SECRET', 7] && $err1 === null, 'hook binds mask secret slots as $SECRET');
+check(preg_match('/^[0-9a-f]{16}$/', $plan1) === 1 && $plan1 === $plan2 && $plan1 !== $plan3, 'plan_id is the 16-hex plan key: same shape → same id, different limit → different id');
+try {
+    (new Battle)->raw('SELECT no_such_column FROM {table}', [])->rawAll($db);
+    check(false, 'bad raw sql should throw');
+} catch (\PDOException $e) {
+    check(str_contains($e->getMessage(), 'no_such_column') && $hooked[count($hooked) - 1][2] === $e, 'unmapped driver errors pass through as PDOException and reach the hook');
+}
+
+// ---- S5: driver error mapping ----
+$dup = $draft('php-dup')->setUuid('php-dup-uuid')->insert($db);
+try {
+    $draft('php-dup-2')->setUuid('php-dup-uuid')->insert($db);
+    check(false, 'duplicate uuid should throw');
+} catch (OrmException $e) {
+    check($e->code_ === Code::DUPLICATE_KEY && str_contains($e->getMessage(), '1062') && $e->getPrevious() instanceof \PDOException, 'duplicate uuid → DUPLICATE_KEY with the driver message kept');
+}
+try {
+    $db->transaction(fn(Tx $tx) => $draft('php-dup-3')->setUuid('php-dup-uuid')->insert($tx));
+    check(false, 'duplicate uuid in a transaction should throw');
+} catch (OrmException $e) {
+    check($e->code_ === Code::DUPLICATE_KEY && !$db->pdo->inTransaction(), 'DUPLICATE_KEY inside transaction() is not re-run and rolls back');
+}
+$dup->delete($db);
+
+// ---- S5: schema_hash boot check ----
+Registry::generated('0000000000000000');
+try {
+    Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt'));
+    check(false, 'wrong generated hash should throw');
+} catch (OrmException $e) {
+    check($e->code_ === Code::SCHEMA_HASH_MISMATCH, 'generated hash ≠ schema.json → SCHEMA_HASH_MISMATCH');
+}
+Registry::generated(json_decode(file_get_contents($schema), true)['schema_hash']);
+
+// ---- S5: orm.toml ----
+$toml = function (string $schemaLine, string $extra = '') use ($sock): string {
+    $f = tempnam(sys_get_temp_dir(), 'orm-toml-');
+    file_put_contents($f, "$schemaLine\n[db]\ndsn = \"" . orm_test_dsn() . "\"\nuser = \"root\"\npassword = \"\"\npool = 8   # ignored by PHP\n[secrets]\naes = \"bench-salt\"\n[ormd]\nsocket = \"$sock\"\n[debug]\non_query = false\n$extra");
+    return $f;
+};
+$bad = $toml('schema = "schema/schema.json"');
+try {
+    Orm::fromConfig($bad);
+    check(false, 'relative schema path should throw');
+} catch (OrmException $e) {
+    check($e->code_ === Code::CONFIG && str_contains($e->getMessage(), 'absolute'), 'orm.toml relative path → CONFIG');
+}
+unlink($bad);
+$link = sys_get_temp_dir() . '/orm-toml-link-' . getmypid() . '.json';
+@unlink($link);
+symlink($schema, $link);
+$bad = $toml("schema = \"$link\"");
+try {
+    Orm::fromConfig($bad);
+    check(false, 'symlinked schema path should throw');
+} catch (OrmException $e) {
+    check($e->code_ === Code::CONFIG && str_contains($e->getMessage(), 'symlink'), 'orm.toml symlink → CONFIG');
+}
+unlink($bad);
+unlink($link);
+$bad = $toml("schema = \"$schema\"", "[engine]\nwasm = [\"x\"]\n");
+try {
+    Orm::fromConfig($bad);
+    check(false, 'array value should throw');
+} catch (OrmException $e) {
+    check($e->code_ === Code::CONFIG && str_contains($e->getMessage(), 'unsupported value'), 'orm.toml outside the subset → CONFIG');
+}
+unlink($bad);
+$good = $toml("schema = \"$schema\"");
+$db2 = Orm::fromConfig($good);
+unlink($good);
+check($db2 instanceof Db && Orm::config()->onQuery === null && Orm::config()->aesKey === 'bench-salt' && (new Battle)->oneBySeq($db2, 42)->getAesHexEmail() === 'user42@example.com', 'fromConfig loads db, secrets and ormd and passes the boot check');
+Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt',
+    onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log) { $log[] = $sql; }));
 
 if ($fail === 0) {
     echo "ok — " . count($log) . " statements\n";

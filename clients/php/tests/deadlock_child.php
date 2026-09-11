@@ -16,7 +16,7 @@ use Orm\Tx;
 
 [, $sock, $schema, $first, $second, $tag] = $argv;
 Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt'));
-$db = Db::mysql('mysql:unix_socket=/tmp/mysql.sock;dbname=orm_bench;charset=utf8mb4', 'root', '', persistent: false);
+$db = Db::mysql(orm_test_dsn(), 'root', '', persistent: false);
 
 $runs = 0;
 $db->transaction(function (Tx $tx) use (&$runs, $first, $second, $tag): void {

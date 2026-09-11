@@ -97,7 +97,7 @@ abstract class Row implements \ArrayAccess
             if (isset(static::columns()[$col])) {
                 return null; // declared but not selected (lazy) → null, as compatibility
             }
-            throw new OrmException('COLUMN_UNKNOWN', static::entity() . ".$col");
+            throw new OrmException(Code::COLUMN_UNKNOWN, static::entity() . ".$col");
         }
         $v = $this->vals[$this->idx[$col]];
         return $v === null ? null : self::coerce(static::columns()[$col] ?? 'string', $v);
@@ -145,7 +145,7 @@ abstract class Row implements \ArrayAccess
                 if (array_key_exists(0, $args)) {
                     return $args[0];
                 }
-                throw new OrmException('COLUMN_UNKNOWN', static::entity() . ".$col");
+                throw new OrmException(Code::COLUMN_UNKNOWN, static::entity() . ".$col");
             }
             $v = $this->col($col);
             return ($v === null || $v === '') && array_key_exists(0, $args) ? $args[0] : $v;
@@ -216,7 +216,7 @@ abstract class Row implements \ArrayAccess
     private function doUpdate(Db $ex, bool $optimistic): static
     {
         if (!$this->loaded) {
-            throw new OrmException('INTERNAL', 'update on a row that was not loaded');
+            throw new OrmException(Code::INTERNAL, 'update on a row that was not loaded');
         }
         if ($this->dirty === []) {
             return $this;
@@ -232,10 +232,9 @@ abstract class Row implements \ArrayAccess
         $pk = static::pk();
         $q->w()->pred($pk, 'eq', $this->col($pk));
         if ($optimistic) {
-            $q->req->ir['optimistic'] = ['column' => 'updated_ts', 'p' => $q->req->p($this->col('updated_ts'))];
+            $q->optimistic('updated_ts', $this->col('updated_ts'));
         }
-        $q->req->ir['kind'] = 'update';
-        $plan = Orm::transport()->plan($q->req->shape());
+        $plan = Orm::transport()->planFor($q->req, 'update');
         $ex->write($plan['steps'][0], $q->req->params, false, $optimistic);
         $this->dirty = [];
         $this->dirtyStyles = [];
@@ -245,13 +244,12 @@ abstract class Row implements \ArrayAccess
     public function delete(Db $ex): void
     {
         if (!$this->loaded) {
-            throw new OrmException('INTERNAL', 'delete on a row that was not loaded');
+            throw new OrmException(Code::INTERNAL, 'delete on a row that was not loaded');
         }
         $q = new Q(static::entity());
         $pk = static::pk();
         $q->w()->pred($pk, 'eq', $this->col($pk));
-        $q->req->ir['kind'] = 'delete';
-        $plan = Orm::transport()->plan($q->req->shape());
+        $plan = Orm::transport()->planFor($q->req, 'delete');
         $ex->write($plan['steps'][0], $q->req->params, false, false);
     }
 
@@ -396,11 +394,24 @@ final class Rows
     }
 }
 
-/** Maps entity names to generated row classes (filled by the generated bootstrap). */
+/** Maps entity names to generated row classes and holds the generated code's schema hash (filled by the generated bootstrap). */
 final class Registry
 {
     /** @var array<string, class-string<Row>> */
     private static array $rows = [];
+    private static string $hash = '';
+
+    /** Called by the generated bootstrap with the schema_hash it was generated from. */
+    public static function generated(string $schemaHash): void
+    {
+        self::$hash = $schemaHash;
+    }
+
+    /** The schema hash of the generated code; CONFIG when no bootstrap has been loaded. */
+    public static function schemaHash(): string
+    {
+        return self::$hash !== '' ? self::$hash : throw new OrmException(Code::CONFIG, 'generated bootstrap.php not loaded');
+    }
 
     public static function register(string $entity, string $rowClass): void
     {
@@ -410,7 +421,7 @@ final class Registry
     /** @return class-string<Row> */
     public static function row(string $entity): string
     {
-        return self::$rows[$entity] ?? throw new OrmException('ENTITY_UNKNOWN', $entity);
+        return self::$rows[$entity] ?? throw new OrmException(Code::ENTITY_UNKNOWN, $entity);
     }
 }
 

@@ -60,10 +60,10 @@ final class ServiceModuleWhere
     public function __construct(private W $w) {}
 
     public function or(): static { $this->w->orConn(); return $this; }
-    public function and(\Closure $fn): static { $g = &$this->w->group(); $fn(new self(new W($this->w->req, $g))); return $this; }
+    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
-    public function battles(\Closure $fn): static { $g = &$this->w->nav('battles'); $fn(new BattleWhere(new W($this->w->req, $g))); return $this; }
-    public function service(\Closure $fn): static { $g = &$this->w->nav('service'); $fn(new ServiceWhere(new W($this->w->req, $g))); return $this; }
+    public function battles(\Closure $fn): static { $fn(new BattleWhere($this->w->nav('battles'))); $this->w->req->end(); return $this; }
+    public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w->nav('service'))); $this->w->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w->pred('seq', 'eq', $v); return $this; }
     public function seqNotEq(int $v): static { $this->w->pred('seq', 'not_eq', $v); return $this; }
@@ -121,10 +121,10 @@ final class ServiceModule extends Q
 
     // ---- WHERE ----
     public function or(): static { $this->orConn(); return $this; }
-    public function and(\Closure $fn): static { $g = &$this->w()->group(); $fn(new ServiceModuleWhere(new W($this->req, $g))); return $this; }
+    public function and(\Closure $fn): static { $fn(new ServiceModuleWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
-    public function battles(\Closure $fn): static { $g = &$this->w()->nav('battles'); $fn(new BattleWhere(new W($this->req, $g))); return $this; }
-    public function service(\Closure $fn): static { $g = &$this->w()->nav('service'); $fn(new ServiceWhere(new W($this->req, $g))); return $this; }
+    public function battles(\Closure $fn): static { $fn(new BattleWhere($this->w()->nav('battles'))); $this->req->end(); return $this; }
+    public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w()->nav('service'))); $this->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w()->pred('seq', 'eq', $v); return $this; }
     public function seqNotEq(int $v): static { $this->w()->pred('seq', 'not_eq', $v); return $this; }
@@ -186,43 +186,43 @@ final class ServiceModule extends Q
     public function relationService(Service $child): static { $this->relation('service', $child); return $this; }
 
     // ---- columns ----
-    public function selectAll(): static { $c = &$this->columns(); $c['mode'] = 'all'; return $this; }
-    public function selectNone(): static { $c = &$this->columns(); $c['mode'] = 'none'; return $this; }
-    public function selectExpr(string $name, string $frag): static { $c = &$this->columns(); $c['expr'][$name] = $frag; return $this; }
-    public function selectSeq(): static { $c = &$this->columns(); $c['add'][] = 'seq'; return $this; }
-    public function unselectSeq(): static { $c = &$this->columns(); $c['remove'][] = 'seq'; return $this; }
-    public function selectSeqAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'seq'; return $this; }
-    public function selectServiceSeq(): static { $c = &$this->columns(); $c['add'][] = 'service_seq'; return $this; }
-    public function unselectServiceSeq(): static { $c = &$this->columns(); $c['remove'][] = 'service_seq'; return $this; }
-    public function selectServiceSeqAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'service_seq'; return $this; }
-    public function selectName(): static { $c = &$this->columns(); $c['add'][] = 'name'; return $this; }
-    public function unselectName(): static { $c = &$this->columns(); $c['remove'][] = 'name'; return $this; }
-    public function selectNameAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'name'; return $this; }
+    public function selectAll(): static { $this->colMode('all'); return $this; }
+    public function selectNone(): static { $this->colMode('none'); return $this; }
+    public function selectExpr(string $name, string $frag): static { $this->colExpr($name, $frag); return $this; }
+    public function selectSeq(): static { $this->colAdd('seq'); return $this; }
+    public function unselectSeq(): static { $this->colRemove('seq'); return $this; }
+    public function selectSeqAs(string $name): static { $this->colAs($name, 'seq'); return $this; }
+    public function selectServiceSeq(): static { $this->colAdd('service_seq'); return $this; }
+    public function unselectServiceSeq(): static { $this->colRemove('service_seq'); return $this; }
+    public function selectServiceSeqAs(string $name): static { $this->colAs($name, 'service_seq'); return $this; }
+    public function selectName(): static { $this->colAdd('name'); return $this; }
+    public function unselectName(): static { $this->colRemove('name'); return $this; }
+    public function selectNameAs(string $name): static { $this->colAs($name, 'name'); return $this; }
 
     // ---- order, group, limit ----
     public function orderBySeqAsc(): static { $this->order('seq', false); return $this; }
     public function orderBySeqDesc(): static { $this->order('seq', true); return $this; }
-    public function groupBySeq(): static { $this->node['group_by'][] = 'seq'; return $this; }
-    public function keyBySeq(): static { $this->node['key_by'] = 'seq'; return $this; }
+    public function groupBySeq(): static { $this->groupBy('seq'); return $this; }
+    public function keyBySeq(): static { $this->opt('key_by', 'seq'); return $this; }
     public function orderByServiceSeqAsc(): static { $this->order('service_seq', false); return $this; }
     public function orderByServiceSeqDesc(): static { $this->order('service_seq', true); return $this; }
-    public function groupByServiceSeq(): static { $this->node['group_by'][] = 'service_seq'; return $this; }
-    public function keyByServiceSeq(): static { $this->node['key_by'] = 'service_seq'; return $this; }
+    public function groupByServiceSeq(): static { $this->groupBy('service_seq'); return $this; }
+    public function keyByServiceSeq(): static { $this->opt('key_by', 'service_seq'); return $this; }
     public function orderByNameAsc(): static { $this->order('name', false); return $this; }
     public function orderByNameDesc(): static { $this->order('name', true); return $this; }
-    public function groupByName(): static { $this->node['group_by'][] = 'name'; return $this; }
-    public function keyByName(): static { $this->node['key_by'] = 'name'; return $this; }
+    public function groupByName(): static { $this->groupBy('name'); return $this; }
+    public function keyByName(): static { $this->opt('key_by', 'name'); return $this; }
     /** Group predicates after groupBy<Col>(); the closure gets the same Where builder, aggregates via expr('COUNT(*) > ?', [n]). */
     public function having(\Closure $fn): static { $fn(new ServiceModuleWhere($this->havingW())); return $this; }
     public function orderByExpr(string $frag, bool $desc = false): static { $this->orderExpr($frag, $desc); return $this; }
-    public function limit(int $offset, int $count): static { $this->node['limit'] = ['offset' => $offset, 'count' => $count]; return $this; }
-    public function distinct(): static { $this->node['distinct'] = true; return $this; }
+    public function limit(int $offset, int $count): static { $this->setLimit($offset, $count); return $this; }
+    public function distinct(): static { $this->opt('distinct', true); return $this; }
 
     // ---- relation-child options ----
-    public function flatten(): static { $this->node['flatten'] = true; return $this; }
-    public function limitPerParent(int $n): static { $this->node['limit_per_parent'] = $n; return $this; }
-    public function dropChildKey(): static { $this->node['drop_child_key'] = true; return $this; }
-    public function noCascadeDelete(): static { $this->node['no_cascade_delete'] = true; return $this; }
+    public function flatten(): static { $this->opt('flatten', true); return $this; }
+    public function limitPerParent(int $n): static { $this->opt('limit_per_parent', $n); return $this; }
+    public function dropChildKey(): static { $this->opt('drop_child_key', true); return $this; }
+    public function noCascadeDelete(): static { $this->opt('no_cascade_delete', true); return $this; }
     public function ifParentSeqEq(int $v): static { $this->ifParent('seq', $v); return $this; }
     public function ifParentNameEq(string $v): static { $this->ifParent('name', $v); return $this; }
     public function ifParentIsCloseEq(bool $v): static { $this->ifParent('is_close', $v); return $this; }
