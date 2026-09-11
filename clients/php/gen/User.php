@@ -160,13 +160,17 @@ final class User extends Q implements UserInterface
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new UserWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new UserWhere($this->w())); return $this; }
-    public function relation(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'one'), $child); return $this; }
-    public function relations(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'many'), $child); return $this; }
-    public function join(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
-    public function leftJoin(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
+    public function relation(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, 'one'), $child); return $this; }
+    public function relations(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, 'many'), $child); return $this; }
+    public function join(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, null), 'inner', $child); return $this; }
+    public function leftJoin(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, null), 'left', $child); return $this; }
 
 
 
+
+
+    public function matchUserSeqWithSeq(): static { $this->setLink('user_seq', 'seq'); return $this; }
+    public function onUserSeqWithSeq(): static { $this->setLink('user_seq', 'seq'); return $this; }
 
     // ---- columns ----
     public function selectAll(): static { $this->colMode('all'); return $this; }

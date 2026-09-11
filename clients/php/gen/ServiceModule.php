@@ -204,10 +204,10 @@ final class ServiceModule extends Q implements ServiceModuleInterface
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new ServiceModuleWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new ServiceModuleWhere($this->w())); return $this; }
-    public function relation(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'one'), $child); return $this; }
-    public function relations(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'many'), $child); return $this; }
-    public function join(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
-    public function leftJoin(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
+    public function relation(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, 'one'), $child); return $this; }
+    public function relations(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, 'many'), $child); return $this; }
+    public function join(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, null), 'inner', $child); return $this; }
+    public function leftJoin(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, null), 'left', $child); return $this; }
 
 
     public function joinSeqWithServiceModuleSeq(Battle $child): static { $this->attachJoin('battles', 'inner', $child); return $this; }
@@ -217,6 +217,12 @@ final class ServiceModule extends Q implements ServiceModuleInterface
     public function joinServiceSeqWithSeq(Service $child): static { $this->attachJoin('service', 'inner', $child); return $this; }
     public function leftJoinServiceSeqWithSeq(Service $child): static { $this->attachJoin('service', 'left', $child); return $this; }
     public function relationServiceSeqWithSeq(Service $child): static { $this->attachRelation('service', $child); return $this; }
+
+
+    public function matchServiceModuleSeqWithSeq(): static { $this->setLink('service_module_seq', 'seq'); return $this; }
+    public function onServiceModuleSeqWithSeq(): static { $this->setLink('service_module_seq', 'seq'); return $this; }
+    public function matchSeqWithServiceSeq(): static { $this->setLink('seq', 'service_seq'); return $this; }
+    public function onSeqWithServiceSeq(): static { $this->setLink('seq', 'service_seq'); return $this; }
 
     // ---- columns ----
     public function selectAll(): static { $this->colMode('all'); return $this; }
