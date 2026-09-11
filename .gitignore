@@ -9,3 +9,4 @@
 /docs/perf-raw/
 /tests/conformance/out/
 /tests/codec/out/
+/clients/rust/target/
