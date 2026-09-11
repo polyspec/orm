@@ -29,6 +29,7 @@ CREATE TABLE battle (
   like_count int unsigned NOT NULL DEFAULT 0,
   aes_hex_email varchar(255) NULL,
   aes_hex_phone varchar(255) NULL,
+  price decimal(13,3) NULL,
   ip varbinary(16) NULL,
   gz_extend blob NULL,
   json_setting json NULL,

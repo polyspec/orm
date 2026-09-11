@@ -22,7 +22,7 @@ pub struct BattleRow {
     pub target_team_player_count: i32,
     pub success_count: i32,
     pub player_count: i32,
-    pub read_count: i32,
+    pub read_count: i64,
     pub cover_url: Option<String>,
     pub user_seq: i64,
     pub service_seq: i64,
@@ -35,6 +35,7 @@ pub struct BattleRow {
     pub like_count: i32,
     pub aes_hex_email: Option<String>,
     pub aes_hex_phone: Option<String>,
+    pub price: Option<f64>,
     pub ip: Option<String>,
     pub gz_extend: serde_json::Value,
     pub json_setting: serde_json::Value,
@@ -89,7 +90,7 @@ impl BattleRow {
                 "target_team_player_count" => r.target_team_player_count = v.as_i64() as i32,
                 "success_count" => r.success_count = v.as_i64() as i32,
                 "player_count" => r.player_count = v.as_i64() as i32,
-                "read_count" => r.read_count = v.as_i64() as i32,
+                "read_count" => r.read_count = v.as_i64(),
                 "cover_url" => r.cover_url = if v.is_null() { None } else { Some(v.take_string()) },
                 "user_seq" => r.user_seq = v.as_i64(),
                 "service_seq" => r.service_seq = v.as_i64(),
@@ -102,6 +103,7 @@ impl BattleRow {
                 "like_count" => r.like_count = v.as_i64() as i32,
                 "aes_hex_email" => r.aes_hex_email = if v.is_null() { None } else { Some(v.take_string()) },
                 "aes_hex_phone" => r.aes_hex_phone = if v.is_null() { None } else { Some(v.take_string()) },
+                "price" => r.price = if v.is_null() { None } else { Some(v.as_f64()) },
                 "ip" => r.ip = if v.is_null() { None } else { Some(v.take_string()) },
                 "gz_extend" => r.gz_extend = v.take_json().unwrap_or_default(),
                 "json_setting" => r.json_setting = v.take_json().unwrap_or_default(),
@@ -187,6 +189,7 @@ impl BattleRow {
                 "like_count" => serde_json::json!(self.like_count),
                 "aes_hex_email" => serde_json::json!(self.aes_hex_email),
                 "aes_hex_phone" => serde_json::json!(self.aes_hex_phone),
+                "price" => serde_json::json!(self.price),
                 "ip" => serde_json::json!(self.ip),
                 "gz_extend" => self.gz_extend.clone(),
                 "json_setting" => self.json_setting.clone(),
@@ -306,8 +309,8 @@ impl BattleRow {
         self.dirty.push(("player_count", v.into()));
         self
     }
-    pub fn set_read_count(&mut self, v: i32) -> &mut Self {
-        let v: i32 = v.into();
+    pub fn set_read_count(&mut self, v: i64) -> &mut Self {
+        let v: i64 = v.into();
         self.read_count = v.clone();
         self.dirty.retain(|(c, _)| *c != "read_count");
         self.dirty.push(("read_count", v.into()));
@@ -395,6 +398,13 @@ impl BattleRow {
         self.aes_hex_phone = v.clone();
         self.dirty.retain(|(c, _)| *c != "aes_hex_phone");
         self.dirty.push(("aes_hex_phone", v.into()));
+        self
+    }
+    pub fn set_price(&mut self, v: Option<f64>) -> &mut Self {
+        let v: Option<f64> = v.map(|x| x.into());
+        self.price = v.clone();
+        self.dirty.retain(|(c, _)| *c != "price");
+        self.dirty.push(("price", v.into()));
         self
     }
     pub fn set_ip(&mut self, v: Option<impl Into<String>>) -> &mut Self {
@@ -514,6 +524,7 @@ pub mod cols {
     pub fn like_count() -> ColRef { ColRef::new("like_count") }
     pub fn aes_hex_email() -> ColRef { ColRef::new("aes_hex_email") }
     pub fn aes_hex_phone() -> ColRef { ColRef::new("aes_hex_phone") }
+    pub fn price() -> ColRef { ColRef::new("price") }
     pub fn ip() -> ColRef { ColRef::new("ip") }
     pub fn gz_extend() -> ColRef { ColRef::new("gz_extend") }
     pub fn json_setting() -> ColRef { ColRef::new("json_setting") }
@@ -712,15 +723,15 @@ impl<'a> BattleWhere<'a> {
     pub fn player_count_gte_col(mut self, r: ColRef) -> Self { self.w.pred_col("player_count", "gte_col", r); self }
     pub fn player_count_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("player_count", "lt_col", r); self }
     pub fn player_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("player_count", "lte_col", r); self }
-    pub fn read_count_eq(mut self, v: i32) -> Self { self.w.pred("read_count", "eq", v); self }
-    pub fn read_count_not_eq(mut self, v: i32) -> Self { self.w.pred("read_count", "not_eq", v); self }
-    pub fn read_count_gt(mut self, v: i32) -> Self { self.w.pred("read_count", "gt", v); self }
-    pub fn read_count_gte(mut self, v: i32) -> Self { self.w.pred("read_count", "gte", v); self }
-    pub fn read_count_lt(mut self, v: i32) -> Self { self.w.pred("read_count", "lt", v); self }
-    pub fn read_count_lte(mut self, v: i32) -> Self { self.w.pred("read_count", "lte", v); self }
-    pub fn read_count_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("read_count", "in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn read_count_not_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("read_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn read_count_between(mut self, lo: i32, hi: i32) -> Self { self.w.pred_list("read_count", "between", vec![lo.into(), hi.into()]); self }
+    pub fn read_count_eq(mut self, v: i64) -> Self { self.w.pred("read_count", "eq", v); self }
+    pub fn read_count_not_eq(mut self, v: i64) -> Self { self.w.pred("read_count", "not_eq", v); self }
+    pub fn read_count_gt(mut self, v: i64) -> Self { self.w.pred("read_count", "gt", v); self }
+    pub fn read_count_gte(mut self, v: i64) -> Self { self.w.pred("read_count", "gte", v); self }
+    pub fn read_count_lt(mut self, v: i64) -> Self { self.w.pred("read_count", "lt", v); self }
+    pub fn read_count_lte(mut self, v: i64) -> Self { self.w.pred("read_count", "lte", v); self }
+    pub fn read_count_in(mut self, vs: Vec<i64>) -> Self { self.w.pred_list("read_count", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn read_count_not_in(mut self, vs: Vec<i64>) -> Self { self.w.pred_list("read_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn read_count_between(mut self, lo: i64, hi: i64) -> Self { self.w.pred_list("read_count", "between", vec![lo.into(), hi.into()]); self }
     pub fn read_count_is_null(mut self) -> Self { self.w.pred_null("read_count", "is_null"); self }
     pub fn read_count_is_not_null(mut self) -> Self { self.w.pred_null("read_count", "is_not_null"); self }
     pub fn read_count_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("read_count", "eq_col", r); self }
@@ -896,6 +907,23 @@ impl<'a> BattleWhere<'a> {
     pub fn aes_hex_phone_is_not_null(mut self) -> Self { self.w.pred_null("aes_hex_phone", "is_not_null"); self }
     pub fn aes_hex_phone_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_hex_phone", "eq_col", r); self }
     pub fn aes_hex_phone_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_hex_phone", "not_eq_col", r); self }
+    pub fn price_eq(mut self, v: f64) -> Self { self.w.pred("price", "eq", v); self }
+    pub fn price_not_eq(mut self, v: f64) -> Self { self.w.pred("price", "not_eq", v); self }
+    pub fn price_gt(mut self, v: f64) -> Self { self.w.pred("price", "gt", v); self }
+    pub fn price_gte(mut self, v: f64) -> Self { self.w.pred("price", "gte", v); self }
+    pub fn price_lt(mut self, v: f64) -> Self { self.w.pred("price", "lt", v); self }
+    pub fn price_lte(mut self, v: f64) -> Self { self.w.pred("price", "lte", v); self }
+    pub fn price_in(mut self, vs: Vec<f64>) -> Self { self.w.pred_list("price", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn price_not_in(mut self, vs: Vec<f64>) -> Self { self.w.pred_list("price", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn price_between(mut self, lo: f64, hi: f64) -> Self { self.w.pred_list("price", "between", vec![lo.into(), hi.into()]); self }
+    pub fn price_is_null(mut self) -> Self { self.w.pred_null("price", "is_null"); self }
+    pub fn price_is_not_null(mut self) -> Self { self.w.pred_null("price", "is_not_null"); self }
+    pub fn price_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("price", "eq_col", r); self }
+    pub fn price_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("price", "not_eq_col", r); self }
+    pub fn price_gt_col(mut self, r: ColRef) -> Self { self.w.pred_col("price", "gt_col", r); self }
+    pub fn price_gte_col(mut self, r: ColRef) -> Self { self.w.pred_col("price", "gte_col", r); self }
+    pub fn price_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("price", "lt_col", r); self }
+    pub fn price_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("price", "lte_col", r); self }
     pub fn ip_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("ip", "eq", v.into()); self }
     pub fn ip_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("ip", "not_eq", v.into()); self }
     pub fn ip_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("ip", "in", vs.into_iter().map(Into::into).collect()); self }
@@ -1115,15 +1143,15 @@ impl Battle {
     pub fn player_count_gte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("player_count", "gte_col", r); self }
     pub fn player_count_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("player_count", "lt_col", r); self }
     pub fn player_count_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("player_count", "lte_col", r); self }
-    pub fn read_count_eq(mut self, v: i32) -> Self { self.q.w().pred("read_count", "eq", v); self }
-    pub fn read_count_not_eq(mut self, v: i32) -> Self { self.q.w().pred("read_count", "not_eq", v); self }
-    pub fn read_count_gt(mut self, v: i32) -> Self { self.q.w().pred("read_count", "gt", v); self }
-    pub fn read_count_gte(mut self, v: i32) -> Self { self.q.w().pred("read_count", "gte", v); self }
-    pub fn read_count_lt(mut self, v: i32) -> Self { self.q.w().pred("read_count", "lt", v); self }
-    pub fn read_count_lte(mut self, v: i32) -> Self { self.q.w().pred("read_count", "lte", v); self }
-    pub fn read_count_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("read_count", "in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn read_count_not_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("read_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
-    pub fn read_count_between(mut self, lo: i32, hi: i32) -> Self { self.q.w().pred_list("read_count", "between", vec![lo.into(), hi.into()]); self }
+    pub fn read_count_eq(mut self, v: i64) -> Self { self.q.w().pred("read_count", "eq", v); self }
+    pub fn read_count_not_eq(mut self, v: i64) -> Self { self.q.w().pred("read_count", "not_eq", v); self }
+    pub fn read_count_gt(mut self, v: i64) -> Self { self.q.w().pred("read_count", "gt", v); self }
+    pub fn read_count_gte(mut self, v: i64) -> Self { self.q.w().pred("read_count", "gte", v); self }
+    pub fn read_count_lt(mut self, v: i64) -> Self { self.q.w().pred("read_count", "lt", v); self }
+    pub fn read_count_lte(mut self, v: i64) -> Self { self.q.w().pred("read_count", "lte", v); self }
+    pub fn read_count_in(mut self, vs: Vec<i64>) -> Self { self.q.w().pred_list("read_count", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn read_count_not_in(mut self, vs: Vec<i64>) -> Self { self.q.w().pred_list("read_count", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn read_count_between(mut self, lo: i64, hi: i64) -> Self { self.q.w().pred_list("read_count", "between", vec![lo.into(), hi.into()]); self }
     pub fn read_count_is_null(mut self) -> Self { self.q.w().pred_null("read_count", "is_null"); self }
     pub fn read_count_is_not_null(mut self) -> Self { self.q.w().pred_null("read_count", "is_not_null"); self }
     pub fn read_count_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("read_count", "eq_col", r); self }
@@ -1299,6 +1327,23 @@ impl Battle {
     pub fn aes_hex_phone_is_not_null(mut self) -> Self { self.q.w().pred_null("aes_hex_phone", "is_not_null"); self }
     pub fn aes_hex_phone_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_hex_phone", "eq_col", r); self }
     pub fn aes_hex_phone_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_hex_phone", "not_eq_col", r); self }
+    pub fn price_eq(mut self, v: f64) -> Self { self.q.w().pred("price", "eq", v); self }
+    pub fn price_not_eq(mut self, v: f64) -> Self { self.q.w().pred("price", "not_eq", v); self }
+    pub fn price_gt(mut self, v: f64) -> Self { self.q.w().pred("price", "gt", v); self }
+    pub fn price_gte(mut self, v: f64) -> Self { self.q.w().pred("price", "gte", v); self }
+    pub fn price_lt(mut self, v: f64) -> Self { self.q.w().pred("price", "lt", v); self }
+    pub fn price_lte(mut self, v: f64) -> Self { self.q.w().pred("price", "lte", v); self }
+    pub fn price_in(mut self, vs: Vec<f64>) -> Self { self.q.w().pred_list("price", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn price_not_in(mut self, vs: Vec<f64>) -> Self { self.q.w().pred_list("price", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn price_between(mut self, lo: f64, hi: f64) -> Self { self.q.w().pred_list("price", "between", vec![lo.into(), hi.into()]); self }
+    pub fn price_is_null(mut self) -> Self { self.q.w().pred_null("price", "is_null"); self }
+    pub fn price_is_not_null(mut self) -> Self { self.q.w().pred_null("price", "is_not_null"); self }
+    pub fn price_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("price", "eq_col", r); self }
+    pub fn price_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("price", "not_eq_col", r); self }
+    pub fn price_gt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("price", "gt_col", r); self }
+    pub fn price_gte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("price", "gte_col", r); self }
+    pub fn price_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("price", "lt_col", r); self }
+    pub fn price_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("price", "lte_col", r); self }
     pub fn ip_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("ip", "eq", v.into()); self }
     pub fn ip_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("ip", "not_eq", v.into()); self }
     pub fn ip_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("ip", "in", vs.into_iter().map(Into::into).collect()); self }
@@ -1417,6 +1462,9 @@ impl Battle {
     pub fn select_aes_hex_phone(mut self) -> Self { self.q.columns().add.push("aes_hex_phone".into()); self }
     pub fn unselect_aes_hex_phone(mut self) -> Self { self.q.columns().remove.push("aes_hex_phone".into()); self }
     pub fn select_aes_hex_phone_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "aes_hex_phone".into()); self }
+    pub fn select_price(mut self) -> Self { self.q.columns().add.push("price".into()); self }
+    pub fn unselect_price(mut self) -> Self { self.q.columns().remove.push("price".into()); self }
+    pub fn select_price_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "price".into()); self }
     pub fn select_ip(mut self) -> Self { self.q.columns().add.push("ip".into()); self }
     pub fn unselect_ip(mut self) -> Self { self.q.columns().remove.push("ip".into()); self }
     pub fn select_ip_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "ip".into()); self }
@@ -1541,6 +1589,10 @@ impl Battle {
     pub fn order_by_aes_hex_phone_desc(mut self) -> Self { self.q.order("aes_hex_phone", true); self }
     pub fn group_by_aes_hex_phone(mut self) -> Self { self.q.node().group_by.push("aes_hex_phone".into()); self }
     pub fn key_by_aes_hex_phone(mut self) -> Self { self.q.node().key_by = "aes_hex_phone".into(); self }
+    pub fn order_by_price_asc(mut self) -> Self { self.q.order("price", false); self }
+    pub fn order_by_price_desc(mut self) -> Self { self.q.order("price", true); self }
+    pub fn group_by_price(mut self) -> Self { self.q.node().group_by.push("price".into()); self }
+    pub fn key_by_price(mut self) -> Self { self.q.node().key_by = "price".into(); self }
     pub fn order_by_ip_asc(mut self) -> Self { self.q.order("ip", false); self }
     pub fn order_by_ip_desc(mut self) -> Self { self.q.order("ip", true); self }
     pub fn group_by_ip(mut self) -> Self { self.q.node().group_by.push("ip".into()); self }
@@ -1606,7 +1658,7 @@ impl Battle {
     pub fn set_success_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("success_count", frag, binds); self }
     pub fn set_player_count(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.set("player_count", v); self }
     pub fn set_player_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("player_count", frag, binds); self }
-    pub fn set_read_count(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.set("read_count", v); self }
+    pub fn set_read_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("read_count", v); self }
     pub fn set_read_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("read_count", frag, binds); self }
     pub fn set_cover_url(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("cover_url", v); self }
     pub fn set_cover_url_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("cover_url", frag, binds); self }
@@ -1632,6 +1684,8 @@ impl Battle {
     pub fn set_aes_hex_email_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("aes_hex_email", frag, binds); self }
     pub fn set_aes_hex_phone(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("aes_hex_phone", v); self }
     pub fn set_aes_hex_phone_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("aes_hex_phone", frag, binds); self }
+    pub fn set_price(mut self, v: Option<f64>) -> Self { let v: Option<f64> = v.map(|x| x.into()); self.q.set("price", v); self }
+    pub fn set_price_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("price", frag, binds); self }
     pub fn set_ip(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("ip", v); self }
     pub fn set_ip_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("ip", frag, binds); self }
     pub fn set_gz_extend(mut self, v: serde_json::Value) -> Self { let v: serde_json::Value = v.into(); match orm::codec::encode(&["serialize", "gz"], Some(&v)) { Ok(p) => self.q.set("gz_extend", p), Err(e) => self.q.defer_err(e) }; self }
@@ -1652,8 +1706,8 @@ impl Battle {
     pub fn minus_success_count(mut self, v: i32) -> Self { self.q.minus("success_count", v); self }
     pub fn plus_player_count(mut self, v: i32) -> Self { self.q.plus("player_count", v); self }
     pub fn minus_player_count(mut self, v: i32) -> Self { self.q.minus("player_count", v); self }
-    pub fn plus_read_count(mut self, v: i32) -> Self { self.q.plus("read_count", v); self }
-    pub fn minus_read_count(mut self, v: i32) -> Self { self.q.minus("read_count", v); self }
+    pub fn plus_read_count(mut self, v: i64) -> Self { self.q.plus("read_count", v); self }
+    pub fn minus_read_count(mut self, v: i64) -> Self { self.q.minus("read_count", v); self }
     pub fn plus_user_seq(mut self, v: i64) -> Self { self.q.plus("user_seq", v); self }
     pub fn minus_user_seq(mut self, v: i64) -> Self { self.q.minus("user_seq", v); self }
     pub fn plus_service_seq(mut self, v: i64) -> Self { self.q.plus("service_seq", v); self }
@@ -1664,6 +1718,8 @@ impl Battle {
     pub fn minus_service_member_seq(mut self, v: i64) -> Self { self.q.minus("service_member_seq", v); self }
     pub fn plus_like_count(mut self, v: i32) -> Self { self.q.plus("like_count", v); self }
     pub fn minus_like_count(mut self, v: i32) -> Self { self.q.minus("like_count", v); self }
+    pub fn plus_price(mut self, v: f64) -> Self { self.q.plus("price", v); self }
+    pub fn minus_price(mut self, v: f64) -> Self { self.q.minus("price", v); self }
 
     // ---- terminals ----
     pub async fn one(mut self, ex: &impl Exec) -> Result<Option<BattleRow>> {
@@ -1700,6 +1756,8 @@ impl Battle {
     pub async fn avg_service_member_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "service_member_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
     pub async fn sum_like_count(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
     pub async fn avg_like_count(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_price(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_price(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
 
     pub async fn paginate(mut self, ex: &impl Exec, page: u32, per: u32) -> Result<Page<BattleRow>> {
         let page = page.max(1);

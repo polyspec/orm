@@ -6,8 +6,8 @@
 ## 현재 위치 (2026-09-11)
 - **S0 완료** (측정·결정 R1~R3, F1~F3 — `docs/perf.md`).
 - **S1 완료** (thin slice: 엔진·생성기·3언어 실행기, 적합성 하네스, `ormgen tokens`, 데모).
-- **S2 진행 중**: 관계(T2.1~2.3, 2.7~2.10a, 2.12a~2.14a)와 코덱(T2.6, 2.8b~2.10b, 2.17)은 완료. 남은 것: T2.15(import 선행 → S5), T2.16(벡터 +14).
-- 적합성 벡터 **21개 × 3언어 바이트 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
+- **S2 진행 중**: 관계(T2.1~2.3, 2.7~2.10a, 2.12a~2.14a)와 코덱(T2.6, 2.8b~2.10b, 2.17)은 완료. 남은 것: T2.15(import 선행 → S5), T2.16 잔여 5개(S3와 함께). **다음: S3 T3.1.**
+- 적합성 벡터 **30개 × 3언어 바이트 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
 
 ## 병렬 레인 (어떻게 나눠 일하는가)
 | 레인 | 담당 | 다른 레인과의 경계 |
@@ -68,7 +68,7 @@
 
 ### 2-D 검증 — 레인 V
 - [x] T2.17 코덱 벡터 3언어 통과(`go test ./clients/go/orm`, `cargo test -p orm`, `php tests/codec/check.php`: Go/Rust 산출물을 PHP가 읽어 동일)
-- [~] T2.16 적합성 벡터 +20 → 현재 +6(`codec_roundtrip`, `eq_col_where`, `expr_where`, `select_expr`, `key_by_fn_to_array`, `drop_child_key_to_array`). 남은 목록: R1 4단 관계, 중첩 flatten, keyBy 컬럼 미선택(자동 선택 확인), ifParent 정수·불리언, one 중복(ORDER 첫 행), limitPerParent 3, json 빈 객체·빈 배열, serialize 실수·정수 키, unsigned 상한(BIGINT UNSIGNED 최대), timestamp(6) 마이크로초, tinyint→bool, decimal, dropChildKey toArray, 조인 하위 관계, 관계 0행, paginate+관계 → T2.8~T2.14
+- [~] T2.16 적합성 벡터 +20 → 현재 **+15 (총 30 × 3언어 동일)**: codec_roundtrip, eq_col_where, expr_where, select_expr, key_by_fn_to_array, drop_child_key_to_array, relation_four_levels(R1), relation_one_ordered, relation_if_parent, relation_empty_parents, relation_off_join, paginate_relations, key_by_column, key_by_unselected, types_roundtrip(datetime(6)·bool·int max·int unsigned max·decimal·json/jsons 빈 값·serialize 빈 문자열). 남은 5개는 S3 쓰기 벡터와 함께: BIGINT UNSIGNED 상한, timestamp 타입 컬럼, 중첩 flatten 2단, serialize 실수 DB 왕복, 조인 두 개 + 관계 → T2.8~T2.14
 
 ---
 
@@ -158,7 +158,7 @@ T2.4/T2.5 → T3.1 → T3.3 → T4.1~4.4 → T4.5/4.6 → T4.8 → T5.8 → T6.1
 ## 게이트(통과 못 하면 다음 단계 금지)
 - G0 (T0.17) ✔ Go/Rust 핫패스 ≤5% 손실, PHP ≤+5%
 - G1 (T1.23) ✔ 3언어 데모 같은 JSON, `ormgen tokens` diff 0, 적합성 15/15
-- G2 (T2.15/T2.16): Rust 150테이블 `cargo check` 기록, 적합성 35/35, 코덱 벡터 60×3 ✔
+- G2 (T2.15/T2.16): Rust 150테이블 `cargo check` 기록(S5 import 후), 적합성 35/35 (현재 30/30 ✔), 코덱 벡터 60×3 ✔
 - G3 (T3.4/T3.5): 데드락 게이트 3/3, 적합성 45/45
 - G4 (T4.8): 적합성 60/60, `ormgen check` compatibility checks 문서화
 - G5 (T5.8): CI 녹색, 벤치 회귀 게이트 활성, perf.md 재측정

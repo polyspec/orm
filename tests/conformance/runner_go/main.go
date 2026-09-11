@@ -311,6 +311,110 @@ func main() {
 		}
 		return map[string]any{"seq": b.Seq, "tag": b.Extra("tag")}, nil
 	})
+	run("relation_four_levels", func() (any, error) {
+		// battle → service → members (2 per service) → user → battles (1 per user): four relation steps
+		b, err := gen.NewBattle().SelectNone().SeqEq(7).
+			RelationService(gen.NewService().
+				RelationsMembers(gen.NewServiceMember().OrderBySeqAsc().LimitPerParent(2).
+					RelationUser(gen.NewUser().
+						RelationsBattles(gen.NewBattle().SelectNone().OrderBySeqAsc().LimitPerParent(1))))).
+			One(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		return b.ToArray(), nil
+	})
+	run("relation_one_ordered", func() (any, error) {
+		// a one-relation with an ORDER is fetched through a per-parent window of 1
+		b, err := gen.NewBattle().SelectNone().SeqEq(7).RelationService(gen.NewService().OrderBySeqDesc()).One(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		return b.ToArray(), nil
+	})
+	run("relation_if_parent", func() (any, error) {
+		c, err := gen.NewBattle().SelectNone().SeqIn([]int64{7, 8, 14}).OrderBySeqAsc().RelationUser(gen.NewUser().IfParentIsCloseEq(true)).All(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		items := []any{}
+		for _, b := range c.All() {
+			items = append(items, b.ToArray())
+		}
+		return items, nil
+	})
+	run("relation_empty_parents", func() (any, error) {
+		c, err := gen.NewBattle().SeqEq(0).RelationUser(gen.NewUser()).All(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		return keys(c), nil
+	})
+	run("relation_off_join", func() (any, error) {
+		b, err := gen.NewBattle().SelectNone().SeqEq(8).JoinService(gen.NewService().RelationsModules(gen.NewServiceModule())).One(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		return b.ToArray(), nil
+	})
+	run("paginate_relations", func() (any, error) {
+		p, err := gen.NewBattle().SelectNone().ServiceSeqEq(7).OrderBySeqAsc().RelationUser(gen.NewUser()).Paginate(ctx, db, 1, 3)
+		if err != nil {
+			return nil, err
+		}
+		items := []any{}
+		for _, b := range p.Items.All() {
+			items = append(items, b.ToArray())
+		}
+		return map[string]any{"total": p.Total, "items": items}, nil
+	})
+	run("key_by_column", func() (any, error) {
+		s, err := gen.NewService().SeqEq(7).RelationsMembers(gen.NewServiceMember().OrderBySeqAsc().LimitPerParent(3).KeyByUserSeq()).One(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		return s.ToArray(), nil
+	})
+	run("key_by_unselected", func() (any, error) {
+		// key_by on a column outside the projection: the planner selects it for keying
+		s, err := gen.NewService().SeqEq(7).RelationsModules(gen.NewServiceModule().SelectNone().KeyByName()).One(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		return s.ToArray(), nil
+	})
+	run("types_roundtrip", func() (any, error) {
+		dt := time.Date(2026, 6, 1, 12, 34, 56, 123456000, time.UTC)
+		created, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {
+			return gen.NewBattle().
+				SetName("conf-types").
+				SetUserSeq(1).SetServiceSeq(999).SetServiceModuleSeq(1).SetServiceMemberSeq(1).
+				SetStartDt(dt).SetEndDt(dt).SetDisplayStartDt(dt).SetIsDisplay(true).SetTargetTeamPlayerCount(2147483647).SetReadCount(4294967295).SetPrice(12345.678).
+				SetJsonSetting(map[string]any{"k": []any{}}).SetJsonsTags([]any{}).SetSerializeData("").
+				Insert(ctx, tx)
+		})
+		if err != nil {
+			return nil, err
+		}
+		maskSeq, maskTs = created.Seq, created.UpdatedTs
+		for i := range log {
+			for j := range log[i].Binds {
+				log[i].Binds[j] = norm(log[i].Binds[j])
+			}
+		}
+		b, err := gen.NewBattle().SelectJsonSetting().SelectJsonsTags().SelectSerializeData().SeqEq(created.Seq).One(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		if err := b.Delete(ctx, db); err != nil {
+			return nil, err
+		}
+		return map[string]any{
+			"display_start_dt": fmtTime(*b.DisplayStartDt), "is_display": b.IsDisplay, "is_close": b.IsClose,
+			"target_team_player_count": b.TargetTeamPlayerCount, "read_count": b.ReadCount, "price": b.Price,
+			"json_setting": b.JsonSetting, "jsons_tags": b.JsonsTags, "serialize_data": b.SerializeData,
+		}, nil
+	})
 	run("key_by_fn_to_array", func() (any, error) {
 		// root keyed by a function; flattened user columns merge into the member's array form
 		c, err := gen.NewServiceMember().ServiceSeqEq(7).OrderBySeqAsc().Limit(0, 2).

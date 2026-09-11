@@ -1,5 +1,5 @@
 {
-  "schema_hash": "31c175ad68a02619",
+  "schema_hash": "850f6bcbaa714d9b",
   "order": [
     "battle",
     "user",
@@ -103,9 +103,10 @@
         },
         {
           "name": "read_count",
-          "type": "i32",
+          "type": "i64",
           "raw": "int",
-          "default": "0"
+          "default": "0",
+          "unsigned": true
         },
         {
           "name": "cover_url",
@@ -207,6 +208,14 @@
             "aes",
             "hex"
           ]
+        },
+        {
+          "name": "price",
+          "type": "decimal",
+          "raw": "decimal(13_3)",
+          "nullable": true,
+          "precision": 13,
+          "scale": 3
         },
         {
           "name": "ip",

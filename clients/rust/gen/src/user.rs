@@ -292,7 +292,7 @@ impl User {
     pub fn if_parent_target_team_player_count_eq(mut self, v: i32) -> Self { self.q.if_parent("target_team_player_count", v); self }
     pub fn if_parent_success_count_eq(mut self, v: i32) -> Self { self.q.if_parent("success_count", v); self }
     pub fn if_parent_player_count_eq(mut self, v: i32) -> Self { self.q.if_parent("player_count", v); self }
-    pub fn if_parent_read_count_eq(mut self, v: i32) -> Self { self.q.if_parent("read_count", v); self }
+    pub fn if_parent_read_count_eq(mut self, v: i64) -> Self { self.q.if_parent("read_count", v); self }
     pub fn if_parent_cover_url_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("cover_url", v.into()); self }
     pub fn if_parent_user_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("user_seq", v); self }
     pub fn if_parent_service_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("service_seq", v); self }

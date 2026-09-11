@@ -12,6 +12,7 @@ use App\Orm\BattleWhere;
 use App\Orm\Service;
 use App\Orm\ServiceMember;
 use App\Orm\ServiceMemberRow;
+use App\Orm\ServiceModule;
 use App\Orm\ServiceWhere;
 use App\Orm\User;
 use App\Orm\UserWhere;
@@ -167,6 +168,54 @@ $run('expr_where', fn() => (new Battle)->serviceSeqEq(7)->expr('DAYOFMONTH(`star
 $run('select_expr', function () use ($db) {
     $b = (new Battle)->selectExpr('tag', "CONCAT(`name`, '!')")->seqEq(42)->one($db);
     return ['seq' => $b->getSeq(), 'tag' => $b['tag']];
+});
+$run('relation_four_levels', fn() => (new Battle)->selectNone()->seqEq(7)
+    ->relationService((new Service)
+        ->relationsMembers((new ServiceMember)->orderBySeqAsc()->limitPerParent(2)
+            ->relationUser((new User)
+                ->relationsBattles((new Battle)->selectNone()->orderBySeqAsc()->limitPerParent(1)))))
+    ->one($db)->toArray());
+$run('relation_one_ordered', fn() => (new Battle)->selectNone()->seqEq(7)->relationService((new Service)->orderBySeqDesc())->one($db)->toArray());
+$run('relation_if_parent', function () use ($db) {
+    $items = [];
+    foreach ((new Battle)->selectNone()->seqIn([7, 8, 14])->orderBySeqAsc()->relationUser((new User)->ifParentIsCloseEq(true))->all($db) as $b) {
+        $items[] = $b->toArray();
+    }
+    return $items;
+});
+$run('relation_empty_parents', fn() => $keys((new Battle)->seqEq(0)->relationUser(new User)->all($db)));
+$run('relation_off_join', fn() => (new Battle)->selectNone()->seqEq(8)->joinService((new Service)->relationsModules(new ServiceModule))->one($db)->toArray());
+$run('paginate_relations', function () use ($db) {
+    $p = (new Battle)->selectNone()->serviceSeqEq(7)->orderBySeqAsc()->relationUser(new User)->paginate($db, 1, 3);
+    $items = [];
+    foreach ($p->items as $b) {
+        $items[] = $b->toArray();
+    }
+    return ['total' => $p->total, 'items' => $items];
+});
+$run('key_by_column', fn() => (new Service)->seqEq(7)->relationsMembers((new ServiceMember)->orderBySeqAsc()->limitPerParent(3)->keyByUserSeq())->one($db)->toArray());
+$run('key_by_unselected', fn() => (new Service)->seqEq(7)->relationsModules((new ServiceModule)->selectNone()->keyByName())->one($db)->toArray());
+$run('types_roundtrip', function () use ($db, &$log, &$maskSeq, &$maskTs) {
+    $dt = '2026-06-01 12:34:56.123456';
+    $created = $db->transaction(fn(Tx $tx) => (new Battle)
+        ->setName('conf-types')
+        ->setUserSeq(1)->setServiceSeq(999)->setServiceModuleSeq(1)->setServiceMemberSeq(1)
+        ->setStartDt($dt)->setEndDt($dt)->setDisplayStartDt($dt)->setIsDisplay(true)->setTargetTeamPlayerCount(2147483647)->setReadCount(4294967295)->setPrice(12345.678)
+        ->setJsonSetting(['k' => []])->setJsonsTags([])->setSerializeData('')
+        ->insert($tx));
+    $maskSeq = $created->getSeq();
+    $maskTs = $created->getUpdatedTs();
+    foreach ($log as &$st) {
+        $st['binds'] = array_map('norm', $st['binds']);
+    }
+    unset($st);
+    $b = (new Battle)->selectJsonSetting()->selectJsonsTags()->selectSerializeData()->seqEq($created->getSeq())->one($db);
+    $b->delete($db);
+    return [
+        'display_start_dt' => fmtTime($b->getDisplayStartDt()), 'is_display' => $b->getIsDisplay(), 'is_close' => $b->getIsClose(),
+        'target_team_player_count' => $b->getTargetTeamPlayerCount(), 'read_count' => $b->getReadCount(), 'price' => $b->getPrice(),
+        'json_setting' => $b->getJsonSetting(), 'jsons_tags' => $b->getJsonsTags(), 'serialize_data' => $b->getSerializeData(),
+    ];
 });
 $run('key_by_fn_to_array', function () use ($db) {
     $c = (new ServiceMember)->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 2)
