@@ -1,7 +1,10 @@
 # CI (docs/checklist.md T5.8): engine tests, three clients, conformance and codec vectors against a
 # MySQL service, token parity. Bench regression gates run on a self-hosted runner (see perf job).
 name: ci
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
@@ -33,8 +36,8 @@ jobs:
       ORM_MYSQL_DSN_PHP: "mysql:host=127.0.0.1;port=3306;dbname=orm_bench;charset=utf8mb4"
       ORM_MYSQL_URL_RUST: "mysql://root@127.0.0.1:3306/orm_bench"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with: { go-version: "1.27" }
       - uses: dtolnay/rust-toolchain@stable
       - uses: shivammathur/setup-php@v2
