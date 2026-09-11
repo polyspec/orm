@@ -9,7 +9,7 @@ spl_autoload_register(function (string $class) use ($root): void {
             $rel = substr($class, strlen($prefix));
             // Orm\Row, Orm\Collection, Orm\Page, Orm\Registry, Orm\Names live in Row.php; Orm\W/Q/Req in Query.php; Db/Tx/Transform in Db.php; Config/OrmException in Orm.php
             $file = match (true) {
-                $prefix === 'Orm\\' && in_array($rel, ['Row', 'Collection', 'Page', 'Registry', 'Names'], true) => $dir . 'Row.php',
+                $prefix === 'Orm\\' && in_array($rel, ['Row', 'Rows', 'Collection', 'Page', 'Registry', 'Names'], true) => $dir . 'Row.php',
                 $prefix === 'Orm\\' && in_array($rel, ['W', 'Q', 'Req'], true) => $dir . 'Query.php',
                 $prefix === 'Orm\\' && in_array($rel, ['Db', 'Tx', 'Transform'], true) => $dir . 'Db.php',
                 $prefix === 'Orm\\' && in_array($rel, ['Orm', 'Config', 'OrmException'], true) => $dir . 'Orm.php',

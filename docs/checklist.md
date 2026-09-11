@@ -77,23 +77,29 @@
 ## 단계 2 — S2 관계·코덱  [3주]
 
 ### 2-A 엔진 (순차 → 일부 P)
-- [ ] T2.1 planner 관계 단계 그래프: `with<Rel>`(ONE/MANY), `bind_from{step,column}` dedup, `LIST_EXPAND` 슬롯, 부모 0행 시 단계 생략, 중첩 재귀, 관계별 `conn` → T1.8
-- [ ] T2.2 관계 의미론: `key_column` 재키잉(last-wins, projection 포함 검증), ONE 중복 = ORDER 첫 행(`group_limit 1`), `Relation.query.limit` → `LIMIT_IN_RELATION`, `parent_node` 병합 규칙(non-null 덮어씀·null은 빈 키만·PK 제외·순서 ONE→조인ONE→MANY→조인MANY), `possible` strict, `strip_right_key` → T2.1
-- [ ] T2.3 `group_limit`: `ROW_NUMBER() OVER (PARTITION BY right ORDER …)` 서브쿼리, 내·외부 동일 ORDER, `row_num` 제거, 루트에 partition_by 없으면 에러 → T2.1
-- [ ] T2.4 **P** 컬럼 객체·`Pred` IR: `cmp`, `fn(format)`, `expr(fragment, binds)` 스키마 검사·alias 치환·`{self}/{alias:x}` → T1.6
-- [ ] T2.5 **P** 타입별 연산자 허용표 확정(문서 + 검증) + fulltext는 YAML `fulltext:` 인덱스 컬럼 조합만 → T1.7
+- [x] T2.1 planner 관계 단계 그래프: `relation<Rel>`(one)/`relations<Rel>`(many) → 별도 step(`role: relation`, `parent{step,index,column}`), `parent` 바인드 슬롯(실행기가 부모값 dedup·null 제외·2의 거듭제곱으로 확장), 부모 0행 시 단계 생략, 중첩 재귀, 조인 하위 관계, paginate는 main→관계→count(역할로 식별) → T1.8
+- [x] T2.2 관계 의미론: `keyBy<Col>` 재키잉(last-wins, 키 컬럼 자동 선택), one 중복 = ORDER 첫 행(ORDER가 있으면 per-parent 1 window), `Relation.query.limit` → `LIMIT_IN_RELATION`, `flatten`(one 전용, 배열/JSON 형태에 자식 컬럼 병합·부모 키 우선), `ifParent<Col>Eq`(부모 컬럼 검증·부모 프로젝션 자동 추가·IN 목록도 필터), `dropChildKey`(`hidden` 컬럼: toArray 제외, typed 필드는 유지) → T2.1
+- [x] T2.3 `limitPerParent(n)`: `ROW_NUMBER() OVER (PARTITION BY right ORDER …)` 서브쿼리 `orm_w`, 외부 SELECT는 같은 출력 컬럼(`orm_rn` 제거), `ORDER BY right, orm_rn` → T2.1
+- [ ] T2.4 **P** 컬럼 객체·`Pred` IR: `<col>EqCol(ref)` 교차 컬럼 비교(planner에 있음, 생성기 미노출), `expr(fragment, binds)` 스키마 검사·alias 치환(있음), `selectExpr`(있음) → 생성기 3언어 노출 + 벡터 → T1.6
+- [ ] T2.5 **P** 타입별 연산자 허용표 확정(문서 + 검증; `ir.OpAllowed`와 `ormgen allowed` 이중 정의를 하나로) + fulltext는 Mermaid `%% fulltext` 컬럼 조합만 → T1.7
 - [ ] T2.6 **P** 코덱 명세(`docs/codec.md`) + 벡터(`tests/codec/*.json`, 로컬 MySQL 산출물: AES/hex/ip 바이트 일치, gz/json 라운드트립) → T0.3
-- [ ] T2.7 골든 테스트: 관계 플랜 단계 그래프 20개(R1 4단, R10 groupLimit, parentNode 중첩, possible) → T2.1~T2.3
+- [x] T2.7 골든 테스트: 관계 플랜(`TestRelations`: 4단계 그래프·조인 하위 관계·window·if_parent·hidden·paginate 역할·plain IN) + 옵션 에러 3 → T2.1~T2.3 (벡터 확장은 T2.16)
 
 ### 2-B 실행기 (T2.1 후, **P** 언어별)
-- [ ] T2.8 **P** Go 실행기: 단계 러너(DAG 순서), 결과 트리 조립(ONE/MANY 링크, key_column, parent_node, possible, strip), 코덱(gz=zlib, json, jsons, serialize 읽기, base64), 컬렉션 중첩 타입 → T2.1, T2.6
-- [ ] T2.9 **P** Rust 실행기: 동일 → T2.1, T2.6
-- [ ] T2.10 **P** PHP 실행기: 단계 러너·결과 트리 조립·코덱(gz/json/jsons/serialize/base64는 PHP 내장), 중첩 모델/컬렉션, `getRel()`·`['rel']` → T2.1, T2.6
+- [x] T2.8a **P** Go 실행기: 단계 러너(관계 step 순서 실행, `parent` 확장·pow2 패딩), `Rows.Related/StepAssemble`, typed 조립(one/many/키/if_parent), 통합 테스트 `TestRelationPaths` → T2.1
+- [ ] T2.8b **P** Go 코덱(gz=zlib, json, jsons, serialize 읽기, base64) → T2.6
+- [x] T2.9a **P** Rust 실행기: 동일(`Rows.related/step_assemble`, 자식 행은 부착마다 clone) → T2.1
+- [ ] T2.9b **P** Rust 코덱 → T2.6
+- [x] T2.10a **P** PHP 실행기: `Db::runPlan`, `Rows`, `Row::fromRow` 관계 부착·`flatten` 병합(`extra`)·`hidden`(toArray 제외), `getRel()`·`['rel']` → T2.1
+- [ ] T2.10b **P** PHP 코덱(gz/json/jsons/serialize/base64는 PHP 내장) → T2.6
 
 ### 2-C 생성기 (T2.4, T2.5 후, **P**)
-- [ ] T2.12 **P** Go gen: `with<Rel>`, `keyName<Col>`, `parentNode`, `groupLimit`, `possible<Col>`, `stripKey`, `addColumn<Col>`/`addColumn<Col>As`/`addAllColumns`/`removeAllColumns`, 컬럼 객체 `m.XCol`, `Pred` 결합자, relation typed 필드·`GetRel()` → T2.4, T2.5
-- [ ] T2.13 **P** Rust gen: 동일 + `x() -> Option<&T>`, `xs() -> &Collection` → T2.4, T2.5
-- [ ] T2.14 **P** PHP gen + `__call`: `with<Rel>`, compatibility 호환(`relation(s)`, `match<A>With<B>`, `alias<Name>`) → 같은 IR → T2.4
+- [x] T2.12a **P** Go gen: `relation<Rel>/relations<Rel>`, `keyBy<Col>`, `flatten`, `limitPerParent`, `ifParent<Col>Eq`(부모 컬럼 합집합에서 생성), `dropChildKey`, `select<Col>/select<Col>As/selectAll/selectNone/selectExpr`, relation typed 필드·`Get<Rel>()` → T2.1
+- [ ] T2.12b **P** Go gen: `keyByFn(fn)`, 컬럼 참조 `<col>EqCol`, `ToArray()` → T2.4
+- [x] T2.13a **P** Rust gen: 동일 + `x() -> Option<&T>`, `xs() -> &Collection` → T2.1
+- [ ] T2.13b **P** Rust gen: `key_by_fn`, `<col>_eq_col`, `to_map()` → T2.4
+- [x] T2.14a **P** PHP gen: 동일(`ifParent<Col>Eq` 부모 컬럼) → T2.1
+- [ ] T2.14b **P** PHP gen: `keyByFn`, `<col>EqCol` → T2.4 (compatibility `__call` 호환층은 S4 T4.7)
 - [ ] T2.15 Rust 생성 crate 컴파일 시간 게이트(150-table fixture 임포트) → 초과 시 `--tables` 분할 문서화 → T2.13, T1.3
 
 ### 2-D 검증

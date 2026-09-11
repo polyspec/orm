@@ -469,10 +469,11 @@ func (r *AuthorRow) UpdateOptimistic(ctx context.Context, ex orm.Exec) error {
 
 func (r *AuthorRow) Delete(ctx context.Context, ex orm.Exec) error { return r.DeleteRow(ctx, ex) }
 
-// scanAuthor maps a positional row slice onto the struct (and joined children).
-func scanAuthor(vals []any, a *plan.Assemble) *AuthorRow {
+// scanAuthor maps a positional row slice onto the struct, its joined
+// children (same row) and its relation children (rows of later steps).
+func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
 	r := &AuthorRow{}
-	for i, c := range a.Columns {
+	for _, c := range a.Columns {
 		v := vals[c.Index]
 		switch c.Name {
 		case "seq":
@@ -549,28 +550,40 @@ func scanAuthor(vals []any, a *plan.Assemble) *AuthorRow {
 				r.AesHexPhone = &x
 			}
 		}
-		_ = i
 	}
 	for _, ch := range a.Children {
-		if ch.Kind != "join" {
-			continue
-		}
 		switch ch.Rel {
 		case "service":
-			if orm.JoinPresent(vals, ch.Assemble) {
-				r.Service = scanService(vals, ch.Assemble)
+			if ch.Kind == "join" {
+				if orm.JoinPresent(vals, ch.Assemble) {
+					r.Service = scanService(vals, ch.Assemble, rs)
+				}
+			} else if rows := rs.Related(ch, vals); len(rows) > 0 {
+				r.Service = scanService(rows[0], rs.StepAssemble(ch), rs)
 			}
 		case "service_member":
-			if orm.JoinPresent(vals, ch.Assemble) {
-				r.ServiceMember = scanServiceMember(vals, ch.Assemble)
+			if ch.Kind == "join" {
+				if orm.JoinPresent(vals, ch.Assemble) {
+					r.ServiceMember = scanServiceMember(vals, ch.Assemble, rs)
+				}
+			} else if rows := rs.Related(ch, vals); len(rows) > 0 {
+				r.ServiceMember = scanServiceMember(rows[0], rs.StepAssemble(ch), rs)
 			}
 		case "service_region":
-			if orm.JoinPresent(vals, ch.Assemble) {
-				r.ServiceRegion = scanServiceRegion(vals, ch.Assemble)
+			if ch.Kind == "join" {
+				if orm.JoinPresent(vals, ch.Assemble) {
+					r.ServiceRegion = scanServiceRegion(vals, ch.Assemble, rs)
+				}
+			} else if rows := rs.Related(ch, vals); len(rows) > 0 {
+				r.ServiceRegion = scanServiceRegion(rows[0], rs.StepAssemble(ch), rs)
 			}
 		case "user":
-			if orm.JoinPresent(vals, ch.Assemble) {
-				r.User = scanUser(vals, ch.Assemble)
+			if ch.Kind == "join" {
+				if orm.JoinPresent(vals, ch.Assemble) {
+					r.User = scanUser(vals, ch.Assemble, rs)
+				}
+			} else if rows := rs.Related(ch, vals); len(rows) > 0 {
+				r.User = scanUser(rows[0], rs.StepAssemble(ch), rs)
 			}
 		}
 	}
@@ -2547,37 +2560,13 @@ func (q *Author) ForceIndexIxService() *Author { q.q.Node.ForceIdx = "ix_service
 func (q *Author) ForceIndexIxUser() *Author    { q.q.Node.ForceIdx = "ix_user"; return q }
 
 // Relation-child options.
-func (q *Author) Flatten() *Author                   { q.q.Node.Flatten = true; return q }
-func (q *Author) LimitPerParent(n int) *Author       { q.q.Node.LimitPerParent = n; return q }
-func (q *Author) DropChildKey() *Author              { q.q.Node.DropChildKey = true; return q }
-func (q *Author) IfParentSeqEq(v int64) *Author      { q.q.IfParent("seq", v); return q }
-func (q *Author) IfParentNameEq(v string) *Author    { q.q.IfParent("name", v); return q }
-func (q *Author) IfParentIsCloseEq(v bool) *Author   { q.q.IfParent("is_close", v); return q }
-func (q *Author) IfParentIsDisplayEq(v bool) *Author { q.q.IfParent("is_display", v); return q }
-func (q *Author) IfParentIsAlldayEq(v bool) *Author  { q.q.IfParent("is_allday", v); return q }
-func (q *Author) IfParentTargetClubReaderCountEq(v int32) *Author {
-	q.q.IfParent("target_club_reader_count", v)
-	return q
-}
-func (q *Author) IfParentSuccessCountEq(v int32) *Author { q.q.IfParent("success_count", v); return q }
-func (q *Author) IfParentReaderCountEq(v int32) *Author  { q.q.IfParent("reader_count", v); return q }
-func (q *Author) IfParentReadCountEq(v int32) *Author    { q.q.IfParent("read_count", v); return q }
-func (q *Author) IfParentPhotoUrlEq(v string) *Author    { q.q.IfParent("photo_url", v); return q }
-func (q *Author) IfParentUserSeqEq(v int64) *Author      { q.q.IfParent("user_seq", v); return q }
-func (q *Author) IfParentServiceSeqEq(v int64) *Author   { q.q.IfParent("service_seq", v); return q }
-func (q *Author) IfParentServiceRegionSeqEq(v int64) *Author {
-	q.q.IfParent("service_region_seq", v)
-	return q
-}
-func (q *Author) IfParentServiceMemberSeqEq(v int64) *Author {
-	q.q.IfParent("service_member_seq", v)
-	return q
-}
-func (q *Author) IfParentUuidEq(v string) *Author        { q.q.IfParent("uuid", v); return q }
-func (q *Author) IfParentIsSingleWorkEq(v bool) *Author  { q.q.IfParent("is_single_work", v); return q }
-func (q *Author) IfParentLikeCountEq(v int32) *Author    { q.q.IfParent("like_count", v); return q }
-func (q *Author) IfParentAesHexEmailEq(v string) *Author { q.q.IfParent("aes_hex_email", v); return q }
-func (q *Author) IfParentAesHexPhoneEq(v string) *Author { q.q.IfParent("aes_hex_phone", v); return q }
+func (q *Author) Flatten() *Author                     { q.q.Node.Flatten = true; return q }
+func (q *Author) LimitPerParent(n int) *Author         { q.q.Node.LimitPerParent = n; return q }
+func (q *Author) DropChildKey() *Author                { q.q.Node.DropChildKey = true; return q }
+func (q *Author) IfParentSeqEq(v int64) *Author        { q.q.IfParent("seq", v); return q }
+func (q *Author) IfParentNameEq(v string) *Author      { q.q.IfParent("name", v); return q }
+func (q *Author) IfParentServiceSeqEq(v int64) *Author { q.q.IfParent("service_seq", v); return q }
+func (q *Author) IfParentUserSeqEq(v int64) *Author    { q.q.IfParent("user_seq", v); return q }
 
 // Insert draft.
 func (q *Author) SetName(v string) *Author { q.q.Set("name", v); return q }
@@ -2749,7 +2738,7 @@ func (q *Author) One(ctx context.Context, ex orm.Exec) (*AuthorRow, error) {
 	if err != nil || len(rows.Data) == 0 {
 		return nil, err
 	}
-	return scanAuthor(rows.Data[0], rows.Assemble), nil
+	return scanAuthor(rows.Data[0], rows.Assemble, rows), nil
 }
 
 func (q *Author) All(ctx context.Context, ex orm.Exec) (*orm.Collection[AuthorRow], error) {
@@ -2764,7 +2753,7 @@ func (q *Author) All(ctx context.Context, ex orm.Exec) (*orm.Collection[AuthorRo
 func collectAuthor(rows *orm.Rows) *orm.Collection[AuthorRow] {
 	c := orm.NewCollection[AuthorRow](len(rows.Data))
 	for _, vals := range rows.Data {
-		r := scanAuthor(vals, rows.Assemble)
+		r := scanAuthor(vals, rows.Assemble, rows)
 		c.Put(orm.KeyOf(vals[0]), r)
 	}
 	return c

@@ -365,6 +365,15 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 		if r.Query.Limit != nil {
 			return errf("LIMIT_IN_RELATION", "%s: use limit_per_parent", r.Rel)
 		}
+		if r.Query.Flatten && rel.Kind != "one" {
+			return errf("IR_INVALID", "relation %s: flatten needs a one relation", r.Rel)
+		}
+		if r.Query.KeyBy != "" && rel.Kind != "many" {
+			return errf("IR_INVALID", "relation %s: key_by needs a many relation", r.Rel)
+		}
+		if r.Query.IfParent != nil && ent.Column(r.Query.IfParent.Column) == nil {
+			return errf("COLUMN_UNKNOWN", "%s.%s (if_parent)", q.Entity, r.Query.IfParent.Column)
+		}
 		if err := v.query(r.Query, joinPath(path, r.Rel), false, true); err != nil {
 			return err
 		}

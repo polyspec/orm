@@ -75,6 +75,7 @@ type rustData struct {
 	Auto                          bool
 	Cols                          []rustCol
 	Numeric                       []rustCol
+	ParentCols                    []rustCol
 	Rels                          []rustRel
 	Indexes                       []string
 	Fulltext                      [][]string
@@ -135,7 +136,9 @@ impl {{.Type}}Row {
     pub const ENTITY: &'static str = {{printf "%q" .Name}};
     pub const PK: &'static str = {{printf "%q" .PK}};
 
-    pub(crate) fn from_row(vals: &mut [Val], a: &orm::plan::Assemble) -> Self {
+    /// Maps a positional row onto the struct, its joined children (same row) and
+    /// its relation children (rows of later steps, cloned per attachment).
+    pub(crate) fn from_row(vals: &mut [Val], a: &orm::plan::Assemble, rs: &db::Rows) -> Self {
         let mut r = Self::default();
         r.loaded = true;
         for c in &a.columns {
@@ -148,12 +151,27 @@ impl {{.Type}}Row {
             }
         }
         for ch in &a.children {
-            if ch.kind != "join" { continue; }
             match ch.rel.as_str() {
 {{- range .Rels}}
+                {{printf "%q" .Name}} => {
 {{- if eq .Kind "one"}}
-                {{printf "%q" .Name}} => if db::join_present(vals, &ch.assemble) { r.{{.Ident}}_ = Some(Box::new(super::{{.Target}}::{{.TargetType}}Row::from_row(vals, &ch.assemble))); },
+                    if let Some(ja) = &ch.assemble {
+                        if db::join_present(vals, ja) { r.{{.Ident}}_ = Some(Box::new(super::{{.Target}}::{{.TargetType}}Row::from_row(vals, ja, rs))); }
+                    } else if let Some(row) = rs.related(ch, vals).first() {
+                        let mut row = row.to_vec();
+                        r.{{.Ident}}_ = Some(Box::new(super::{{.Target}}::{{.TargetType}}Row::from_row(&mut row, rs.step_assemble(ch), rs)));
+                    }
+{{- else}}
+                    let related = rs.related(ch, vals);
+                    let mut c = Collection::with_capacity(related.len());
+                    for row in related {
+                        let mut row = row.to_vec();
+                        let k = Key::of(&row[ch.key_index]);
+                        c.put(k, super::{{.Target}}::{{.TargetType}}Row::from_row(&mut row, rs.step_assemble(ch), rs));
+                    }
+                    r.{{.Ident}}_ = c;
 {{- end}}
+                }
 {{- end}}
                 _ => {}
             }
@@ -309,7 +327,7 @@ impl {{.Type}} {
     pub fn flatten(mut self) -> Self { self.q.node().flatten = true; self }
     pub fn limit_per_parent(mut self, n: u32) -> Self { self.q.node().limit_per_parent = n; self }
     pub fn drop_child_key(mut self) -> Self { self.q.node().drop_child_key = true; self }
-{{- range .Cols}}{{if eq .ColType "i32" "i64" "bool" "string" "enum"}}
+{{- range .ParentCols}}{{if eq .ColType "i32" "i64" "bool" "string" "enum"}}
     pub fn if_parent_{{.Ident}}_eq(mut self, v: {{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}) -> Self { self.q.if_parent({{printf "%q" .Name}}, {{if .IsStr}}v.into(){{else}}v{{end}}); self }
 {{- end}}{{end}}
 
@@ -326,7 +344,8 @@ impl {{.Type}} {
     // ---- terminals ----
     pub async fn one(mut self, ex: &impl Exec) -> Result<Option<{{.Type}}Row>> {
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
-        Ok(rows.data.first_mut().map(|v| {{.Type}}Row::from_row(v, &rows.assemble)))
+        let data = std::mem::take(&mut rows.data);
+        Ok(data.into_iter().next().map(|mut v| {{.Type}}Row::from_row(&mut v, &rows.assemble, &rows)))
     }
 
     pub async fn all(mut self, ex: &impl Exec) -> Result<Collection<{{.Type}}Row>> {
@@ -368,10 +387,11 @@ impl {{.Type}} {
 impl Default for {{.Type}} { fn default() -> Self { Self::new() } }
 
 fn collect(rows: &mut db::Rows) -> Collection<{{.Type}}Row> {
-    let mut c = Collection::with_capacity(rows.data.len());
-    for v in &mut rows.data {
+    let data = std::mem::take(&mut rows.data);
+    let mut c = Collection::with_capacity(data.len());
+    for mut v in data {
         let k = Key::of(&v[0]);
-        c.put(k, {{.Type}}Row::from_row(v, &rows.assemble));
+        c.put(k, {{.Type}}Row::from_row(&mut v, &rows.assemble, rows));
     }
     c
 }
@@ -431,6 +451,10 @@ func genRust(m *schema.Manifest, outDir string) error {
 			if c.Name == ge.PK {
 				d.PKType = rc.RType
 			}
+		}
+		for _, c := range ge.ParentCols {
+			col := m.Entities[parentOf(m, e, c.Name)].Column(c.Name)
+			d.ParentCols = append(d.ParentCols, rustCol{goCol: c, RType: rustType(col), Ident: rustIdent(c.Name), IsStr: col.Type == "string" || col.Type == "text" || col.Type == "enum"})
 		}
 		for _, c := range ge.Numeric {
 			col := e.Column(c.Name)

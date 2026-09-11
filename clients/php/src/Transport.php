@@ -114,13 +114,20 @@ final class Assemble
     private static function indexNode(array &$a): void
     {
         $idx = [];
+        $hidden = [];
         foreach ($a['columns'] as $c) {
             $idx[$c['name']] = $c['index'];
+            if (!empty($c['hidden'])) {
+                $hidden[$c['name']] = true;
+            }
         }
         $a['idx'] = $idx;
+        $a['hidden'] = $hidden;
         if (isset($a['children'])) {
             foreach ($a['children'] as &$ch) {
-                self::indexNode($ch['assemble']);
+                if (isset($ch['assemble'])) {
+                    self::indexNode($ch['assemble']);
+                }
             }
         }
     }

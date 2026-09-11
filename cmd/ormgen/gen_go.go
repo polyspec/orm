@@ -119,6 +119,7 @@ type goEntity struct {
 	Fulltext          [][]string
 	UpdatedTs         string
 	Numeric           []goCol
+	ParentCols        []goCol // columns of every entity that has a relation to this one (ifParent<Col>Eq targets)
 }
 
 type goCol struct {
@@ -129,6 +130,19 @@ type goCol struct {
 
 type goRel struct {
 	Name, Method, Target, TargetType, Kind string
+}
+
+// parentOf returns the first entity related to e that has column col (ifParent targets).
+func parentOf(m *schema.Manifest, e *schema.Entity, col string) string {
+	for _, pn := range m.Order {
+		pe := m.Entities[pn]
+		for _, r := range pe.Relations {
+			if r.Target == e.Name && pe.Column(col) != nil {
+				return pn
+			}
+		}
+	}
+	panic("ormgen: no parent of " + e.Name + " has column " + col)
 }
 
 func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
@@ -159,6 +173,24 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 	ge.Fulltext = e.Fulltext
 	if e.Timestamps != nil {
 		ge.UpdatedTs = e.Timestamps.Updated
+	}
+	// ifParent<Col>Eq is set on the child but names a column of the parent: offer the
+	// union of all possible parents' columns; the engine validates the actual pair.
+	seen := map[string]bool{}
+	for _, pn := range m.Order {
+		pe := m.Entities[pn]
+		for _, r := range pe.Relations {
+			if r.Target != e.Name {
+				continue
+			}
+			for _, c := range pe.Columns {
+				if seen[c.Name] {
+					continue
+				}
+				seen[c.Name] = true
+				ge.ParentCols = append(ge.ParentCols, goCol{Name: c.Name, Field: pascal(c.Name), Type: goType(c), ColType: c.Type, Nullable: c.Nullable})
+			}
+		}
 	}
 	return ge
 }
@@ -260,10 +292,11 @@ func (r *{{.Type}}Row) UpdateOptimistic(ctx context.Context, ex orm.Exec) error 
 
 func (r *{{.Type}}Row) Delete(ctx context.Context, ex orm.Exec) error { return r.DeleteRow(ctx, ex) }
 
-// scan{{.Type}} maps a positional row slice onto the struct (and joined children).
-func scan{{.Type}}(vals []any, a *plan.Assemble) *{{.Type}}Row {
+// scan{{.Type}} maps a positional row slice onto the struct, its joined
+// children (same row) and its relation children (rows of later steps).
+func scan{{.Type}}(vals []any, a *plan.Assemble, rs *orm.Rows) *{{.Type}}Row {
 	r := &{{.Type}}Row{}
-	for i, c := range a.Columns {
+	for _, c := range a.Columns {
 		v := vals[c.Index]
 		switch c.Name {
 {{- range .Cols}}
@@ -275,15 +308,22 @@ func scan{{.Type}}(vals []any, a *plan.Assemble) *{{.Type}}Row {
 {{- end}}
 {{- end}}
 		}
-		_ = i
 	}
 	for _, ch := range a.Children {
-		if ch.Kind != "join" { continue }
 		switch ch.Rel {
 {{- range .Rels}}
-{{- if eq .Kind "one"}}
 		case {{printf "%q" .Name}}:
-			if orm.JoinPresent(vals, ch.Assemble) { r.{{.Method}} = scan{{.TargetType}}(vals, ch.Assemble) }
+{{- if eq .Kind "one"}}
+			if ch.Kind == "join" {
+				if orm.JoinPresent(vals, ch.Assemble) { r.{{.Method}} = scan{{.TargetType}}(vals, ch.Assemble, rs) }
+			} else if rows := rs.Related(ch, vals); len(rows) > 0 {
+				r.{{.Method}} = scan{{.TargetType}}(rows[0], rs.StepAssemble(ch), rs)
+			}
+{{- else}}
+			rows := rs.Related(ch, vals)
+			c := orm.NewCollection[{{.TargetType}}Row](len(rows))
+			for _, row := range rows { c.Put(orm.KeyOf(row[ch.KeyIndex]), scan{{.TargetType}}(row, rs.StepAssemble(ch), rs)) }
+			r.{{.Method}} = c
 {{- end}}
 {{- end}}
 		}
@@ -380,7 +420,7 @@ func (q *{{$.Type}}) ForceIndex{{pascal .}}() *{{$.Type}} { q.q.Node.ForceIdx = 
 func (q *{{.Type}}) Flatten() *{{.Type}} { q.q.Node.Flatten = true; return q }
 func (q *{{.Type}}) LimitPerParent(n int) *{{.Type}} { q.q.Node.LimitPerParent = n; return q }
 func (q *{{.Type}}) DropChildKey() *{{.Type}} { q.q.Node.DropChildKey = true; return q }
-{{- range .Cols}}{{if eq .ColType "i32" "i64" "bool" "string" "enum"}}
+{{- range .ParentCols}}{{if eq .ColType "i32" "i64" "bool" "string" "enum"}}
 func (q *{{$.Type}}) IfParent{{.Field}}Eq(v {{.Type}}) *{{$.Type}} { q.q.IfParent({{printf "%q" .Name}}, v); return q }
 {{- end}}{{end}}
 
@@ -404,7 +444,7 @@ func (q *{{.Type}}) One(ctx context.Context, ex orm.Exec) (*{{.Type}}Row, error)
 	if err != nil || len(rows.Data) == 0 {
 		return nil, err
 	}
-	return scan{{.Type}}(rows.Data[0], rows.Assemble), nil
+	return scan{{.Type}}(rows.Data[0], rows.Assemble, rows), nil
 }
 
 func (q *{{.Type}}) All(ctx context.Context, ex orm.Exec) (*orm.Collection[{{.Type}}Row], error) {
@@ -419,7 +459,7 @@ func (q *{{.Type}}) All(ctx context.Context, ex orm.Exec) (*orm.Collection[{{.Ty
 func collect{{.Type}}(rows *orm.Rows) *orm.Collection[{{.Type}}Row] {
 	c := orm.NewCollection[{{.Type}}Row](len(rows.Data))
 	for _, vals := range rows.Data {
-		r := scan{{.Type}}(vals, rows.Assemble)
+		r := scan{{.Type}}(vals, rows.Assemble, rows)
 		c.Put(orm.KeyOf(vals[0]), r)
 	}
 	return c

@@ -264,7 +264,7 @@ func (d *DB) Plan(r *Req) (*plan.Plan, error) {
 }
 
 // args resolves a step's bind slots against the request's params.
-func (d *DB) args(st *plan.Step, r *Req, parents map[int][]any) ([]any, error) {
+func (d *DB) args(st *plan.Step, r *Req, parentVals []any) ([]any, error) {
 	out := make([]any, 0, len(st.BindSlots))
 	for _, b := range st.BindSlots {
 		switch b.From {
@@ -284,7 +284,7 @@ func (d *DB) args(st *plan.Step, r *Req, parents map[int][]any) ([]any, error) {
 			}
 			out = append(out, d.cfg.AESKey)
 		case "parent":
-			out = append(out, parents[b.Step]...)
+			out = append(out, parentVals...)
 		default:
 			return nil, fmt.Errorf("orm: bind from %q", b.From)
 		}
@@ -315,10 +315,69 @@ func Transform(kind, s string) string {
 	return s
 }
 
-// Rows is the positional result of a select step plus its assembly spec.
+// Rows is the positional result of a select plan: the main step's rows plus
+// every relation step's rows, grouped by their match column so generated
+// scanners can attach them (Related).
 type Rows struct {
 	Assemble *plan.Assemble
 	Data     [][]any
+	steps    map[int]*stepRows
+	params   []any
+}
+
+type stepRows struct {
+	step  *plan.Step
+	data  [][]any
+	byKey map[Key][]int
+}
+
+// Related returns the rows of relation child ch that belong to one parent row
+// (a positional row of the step ch hangs off). Empty when the parent's value
+// is null, when the step was skipped, or when the parent fails IfParent.
+func (r *Rows) Related(ch *plan.Child, parent []any) [][]any {
+	sr := r.steps[ch.Step]
+	if sr == nil {
+		return nil
+	}
+	if ifp := sr.step.Parent.IfParent; ifp != nil && !SameScalar(parent[ifp.Index], r.params[ifp.Param]) {
+		return nil
+	}
+	pv := parent[ch.ParentIndex]
+	if pv == nil {
+		return nil
+	}
+	idxs := sr.byKey[KeyOf(pv)]
+	out := make([][]any, len(idxs))
+	for i, j := range idxs {
+		out[i] = sr.data[j]
+	}
+	return out
+}
+
+// StepAssemble is the assembly of the step a relation child's rows come from.
+func (r *Rows) StepAssemble(ch *plan.Child) *plan.Assemble { return r.steps[ch.Step].step.Assemble }
+
+// SameScalar compares a row value with a bound parameter regardless of the
+// driver's or the caller's numeric/bool representation.
+func SameScalar(a, b any) bool { return scalarKey(a) == scalarKey(b) }
+
+func scalarKey(v any) string {
+	switch x := v.(type) {
+	case nil:
+		return "\x00"
+	case bool:
+		if x {
+			return "1"
+		}
+		return "0"
+	case []byte:
+		return string(x)
+	case string:
+		return x
+	case time.Time:
+		return x.UTC().Format("2006-01-02 15:04:05.000000")
+	}
+	return fmt.Sprint(v)
 }
 
 func (d *DB) emit(sqlText string, args []any, start time.Time, err error) {
@@ -327,40 +386,152 @@ func (d *DB) emit(sqlText string, args []any, start time.Time, err error) {
 	}
 }
 
-// Query runs the main select step and returns positional rows. Values come
-// back as int64 / float64 / string / time.Time / bool / nil.
+// Query runs the main select step and every relation step of the plan and
+// returns positional rows. Values come back as int64 / float64 / string /
+// time.Time / bool / nil.
 func Query(ctx context.Context, ex Exec, r *Req) (*Rows, error) {
 	d := ex.db()
 	p, err := d.Plan(r)
 	if err != nil {
 		return nil, err
 	}
-	st := &p.Steps[0]
-	return runSelect(ctx, ex, st, r, nil)
+	return runPlan(ctx, ex, p, r)
 }
 
-func runSelect(ctx context.Context, ex Exec, st *plan.Step, r *Req, parents map[int][]any) (*Rows, error) {
-	d := ex.db()
-	args, err := d.args(st, r, parents)
+func runPlan(ctx context.Context, ex Exec, p *plan.Plan, r *Req) (*Rows, error) {
+	main, err := runSelect(ctx, ex, &p.Steps[0], r, nil)
 	if err != nil {
 		return nil, err
 	}
-	stmt, err := ex.stmt(ctx, st.SQL)
+	out := &Rows{Assemble: p.Steps[0].Assemble, Data: main, steps: map[int]*stepRows{}, params: r.Params}
+	for i := range p.Steps[1:] {
+		st := &p.Steps[i+1]
+		if st.Role != "relation" {
+			continue
+		}
+		parents := out.Data
+		if st.Parent.Step != 0 {
+			parents = out.steps[st.Parent.Step].data
+		}
+		sr := &stepRows{step: st, byKey: map[Key][]int{}}
+		vals := parentValues(st.Parent, parents, r.Params)
+		if len(vals) > 0 {
+			if sr.data, err = runSelect(ctx, ex, st, r, vals); err != nil {
+				return nil, err
+			}
+			ci := childIndex(p, st)
+			for j, row := range sr.data {
+				k := KeyOf(row[ci])
+				sr.byKey[k] = append(sr.byKey[k], j)
+			}
+		}
+		out.steps[st.ID] = sr
+	}
+	return out, nil
+}
+
+// childIndex finds the match column of a relation step from the child spec that references it.
+func childIndex(p *plan.Plan, st *plan.Step) int {
+	var find func(a *plan.Assemble) int
+	find = func(a *plan.Assemble) int {
+		for _, ch := range a.Children {
+			if ch.Kind != "join" && ch.Step == st.ID {
+				return ch.ChildIndex
+			}
+			if ch.Kind == "join" {
+				if i := find(ch.Assemble); i >= 0 {
+					return i
+				}
+			}
+		}
+		return -1
+	}
+	for i := range p.Steps {
+		if p.Steps[i].Assemble != nil {
+			if idx := find(p.Steps[i].Assemble); idx >= 0 {
+				return idx
+			}
+		}
+	}
+	panic("orm: relation step without a child spec")
+}
+
+// parentValues collects the distinct non-null values a relation step binds,
+// in first-seen order, from the parent rows that pass IfParent.
+func parentValues(pr *plan.ParentRef, parents [][]any, params []any) []any {
+	seen := map[Key]bool{}
+	var out []any
+	for _, row := range parents {
+		if pr.IfParent != nil && !SameScalar(row[pr.IfParent.Index], params[pr.IfParent.Param]) {
+			continue
+		}
+		v := row[pr.Index]
+		if v == nil {
+			continue
+		}
+		k := KeyOf(v)
+		if !seen[k] {
+			seen[k] = true
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// expandIn rewrites the step's single `parent` placeholder into n placeholders.
+// n is rounded up to a power of two (values are padded by repetition) so the
+// prepared-statement cache holds one statement per size class, not per size.
+func expandIn(st *plan.Step, vals []any) (string, []any) {
+	n := 1
+	for n < len(vals) {
+		n <<= 1
+	}
+	padded := make([]any, n)
+	copy(padded, vals)
+	for i := len(vals); i < n; i++ {
+		padded[i] = vals[len(vals)-1]
+	}
+	slot := 0
+	var sb strings.Builder
+	for i := 0; i < len(st.SQL); i++ {
+		c := st.SQL[i]
+		if c != '?' {
+			sb.WriteByte(c)
+			continue
+		}
+		if st.BindSlots[slot].From == "parent" {
+			sb.WriteString("?" + strings.Repeat(", ?", n-1))
+		} else {
+			sb.WriteByte('?')
+		}
+		slot++
+	}
+	return sb.String(), padded
+}
+
+func runSelect(ctx context.Context, ex Exec, st *plan.Step, r *Req, parentVals []any) ([][]any, error) {
+	d := ex.db()
+	sqlText := st.SQL
+	if parentVals != nil {
+		sqlText, parentVals = expandIn(st, parentVals)
+	}
+	args, err := d.args(st, r, parentVals)
+	if err != nil {
+		return nil, err
+	}
+	stmt, err := ex.stmt(ctx, sqlText)
 	if err != nil {
 		return nil, err
 	}
 	start := time.Now()
 	rows, err := stmt.QueryContext(ctx, args...)
-	d.emit(st.SQL, args, start, err)
+	d.emit(sqlText, args, start, err)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	n := len(st.Assemble.Columns)
-	for _, c := range st.Assemble.Children {
-		n += countCols(c.Assemble)
-	}
-	out := &Rows{Assemble: st.Assemble}
+	n := countCols(st.Assemble)
+	var out [][]any
 	for rows.Next() {
 		vals := make([]any, n)
 		ptrs := make([]any, n)
@@ -375,15 +546,18 @@ func runSelect(ctx context.Context, ex Exec, st *plan.Step, r *Req, parents map[
 				vals[i] = string(b)
 			}
 		}
-		out.Data = append(out.Data, vals)
+		out = append(out, vals)
 	}
 	return out, rows.Err()
 }
 
+// countCols is the width of one positional row: the node's columns plus its joins'.
 func countCols(a *plan.Assemble) int {
 	n := len(a.Columns)
 	for _, c := range a.Children {
-		n += countCols(c.Assemble)
+		if c.Kind == "join" {
+			n += countCols(c.Assemble)
+		}
 	}
 	return n
 }
@@ -414,18 +588,23 @@ func Scalar(ctx context.Context, ex Exec, r *Req) (any, error) {
 	return v, err
 }
 
-// Paginate runs the main step with limit and the count step.
+// Paginate runs the main step (with its relations) and the count step.
 func Paginate(ctx context.Context, ex Exec, r *Req) (*Rows, int64, error) {
 	d := ex.db()
 	p, err := d.Plan(r)
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := runSelect(ctx, ex, &p.Steps[0], r, nil)
+	rows, err := runPlan(ctx, ex, p, r)
 	if err != nil {
 		return nil, 0, err
 	}
-	st := &p.Steps[1]
+	var st *plan.Step
+	for i := range p.Steps {
+		if p.Steps[i].Role == "count" {
+			st = &p.Steps[i]
+		}
+	}
 	args, err := d.args(st, r, nil)
 	if err != nil {
 		return nil, 0, err
@@ -486,6 +665,12 @@ func KeyOf(v any) Key {
 	case int64:
 		return Key{I: x}
 	case int:
+		return Key{I: int64(x)}
+	case int32:
+		return Key{I: int64(x)}
+	case uint64:
+		return Key{I: int64(x)}
+	case uint32:
 		return Key{I: int64(x)}
 	case string:
 		return Key{S: x, isStr: true}
@@ -662,4 +847,7 @@ func JoinPresent(vals []any, a *plan.Assemble) bool {
 
 // DB exposes the connection for generated terminals that need a follow-up query.
 func (d *DB) DB() *DB { return d }
+
+// Cfg is the live configuration (hooks may be swapped at runtime, e.g. by tests).
+func (d *DB) Cfg() *Config { return &d.cfg }
 func (t *Tx) DB() *DB { return t.d }
