@@ -1,5 +1,5 @@
 {
-  "schema_hash": "850f6bcbaa714d9b",
+  "schema_hash": "7b5909e7d91d7770",
   "order": [
     "battle",
     "user",
@@ -334,6 +334,16 @@
       "timestamps": {
         "created": "created_ts",
         "updated": "updated_ts"
+      },
+      "predicates": {
+        "started_after": {
+          "expr": "`start_dt` \u003e ?",
+          "arity": 1
+        },
+        "visible": {
+          "expr": "`is_close` = 0 AND `is_display` = 1",
+          "arity": 0
+        }
       }
     },
     "service": {

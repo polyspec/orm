@@ -44,6 +44,7 @@ new X                                   ← 쿼리(행 아님)
 | `<A>With<B>Match` `<A>With<B>MatchBoolean` | FULLTEXT — YAML `fulltext:` 인덱스 컬럼 조합에만 생성 | `nameWithDescriptionMatchBoolean($kw)` |
 | `<col>EqCol(ref)` `<col>NotEqCol(ref)` `GtCol` `GteCol` `LtCol` `LteCol` | 컬럼 대 컬럼 비교. `ref`는 생성된 컬럼 참조 — PHP `ProductCols::langId()` / Go `gen.ProductCols.LangId` / Rust `product::cols::lang_id()`. 경로 없는 참조 = 조인 자식의 `on/where` 안에서는 **부모**, 루트에서는 루트. 다른 조인 엔티티는 `->at('service')` / `.At("service")` / `.at("service")` | `langIdEqCol(ProductCols::langId())` |
 | `expr(fragment, binds)` | 스키마 검사 조각. 백틱 컬럼은 현재 엔티티로 해석·alias 치환 | `expr('DAYOFWEEK(`created_ts`) = ?', [1])` |
+| `<name>(args…)` 이름 붙인 술어 | Mermaid `%% predicate battle visible : `is_close` = 0 AND `is_display` = 1` → `visible()`; `?`마다 인자 하나(`startedAfter($dt)`) | `visible()` |
 
 연속된 술어는 AND(`or()`로 바꿈: `->isCloseEq(0)->or()->isDisplayEq(1)` = `is_close = 0 OR is_display = 1`, 우선순위는 SQL 그대로). 타입별 허용표: 숫자·날짜 = 비교·In·Between·Null, 문자열 = Eq·NotEq·In·Like·Contains·Null, bool = Eq·NotEq·Null, json/bytes = Null만.
 
@@ -84,7 +85,9 @@ new X                                   ← 쿼리(행 아님)
 |---|---|
 | `one(db)` | 행 또는 null/nil/None |
 | `all(db)` | 컬렉션(PK 또는 `keyBy` 키 순서 맵). 절대 null 아님 |
-| `count(db)` `sum<Col>(db)` `avg<Col>(db)` | 스칼라 |
+| `count(db)` `countDistinct<Col>(db)` `sum<Col>(db)` `avg<Col>(db)` `min<Col>(db)` `max<Col>(db)` | 스칼라. `groupBy<Col>()`가 있는 `count`는 **그룹 수** |
+| `having(fn)` | `groupBy` 뒤 그룹 술어. where와 같은 빌더; 집계식은 `expr('COUNT(*) > ?', [n])` |
+| `raw(sql, binds)` → `rawAll(db)` | 손으로 쓴 SELECT를 루트로 실행(신뢰 코드 전용). `{table}`은 엔티티 테이블, `?`는 binds 순서. 행은 컬럼명 맵으로 돌아온다(typed 아님) |
 | `paginate(db, page, per)` | `Page{items, total, pages, current}` |
 | `oneBy<PK|Unique>(db, …)` | PK·유니크 인덱스 단축 |
 | `insert(db)` (쿼리에 `set*` 채운 뒤) | 삽입된 행 |

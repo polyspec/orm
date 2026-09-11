@@ -18,12 +18,13 @@ const Version = 1
 type Request struct {
 	IRVersion  int    `json:"ir_version"`
 	SchemaHash string `json:"schema_hash"`
-	Kind       string `json:"kind"` // one all count sum avg paginate insert update delete
+	Kind       string `json:"kind"` // one all count count_distinct sum avg min max paginate insert update delete
 	Query
 	Set         []Assign  `json:"set,omitempty"`
 	OnDuplicate []Assign  `json:"on_duplicate,omitempty"` // insert: assignments applied when the unique key already exists
 	Optimistic  *Optimist `json:"optimistic,omitempty"`
-	Agg         string    `json:"agg,omitempty"` // column for sum/avg
+	Agg         string    `json:"agg,omitempty"` // column for sum/avg/min/max/count_distinct
+	Raw         *Raw      `json:"raw,omitempty"` // kind raw: a hand-written SELECT (trusted code only)
 	Debug       bool      `json:"debug,omitempty"`
 	// NParams is how many parameters the client holds. The engine only checks
 	// indices against it; values never reach the engine.
@@ -36,6 +37,7 @@ type Query struct {
 	Columns   *Columns    `json:"columns,omitempty"`
 	On        *Group      `json:"on,omitempty"` // join children only
 	Where     *Group      `json:"where,omitempty"`
+	Having    *Group      `json:"having,omitempty"` // group predicates (needs group_by); expr items may use aggregates
 	Joins     []*Join     `json:"joins,omitempty"`
 	Relations []*Relation `json:"relations,omitempty"`
 	Order     []Order     `json:"order,omitempty"`
@@ -139,6 +141,14 @@ type Assign struct {
 	Ps     []int  `json:"ps,omitempty"`
 	PlusP  *int   `json:"plus_p,omitempty"`
 	MinusP *int   `json:"minus_p,omitempty"`
+}
+
+// Raw is a hand-written statement run as the root: `{table}` is replaced by the
+// entity's quoted table, each `?` is bound from Ps in order. Rows come back by
+// column name (no assembly), so this is the escape hatch, not the grammar.
+type Raw struct {
+	SQL string `json:"sql"`
+	Ps  []int  `json:"ps,omitempty"`
 }
 
 type Optimist struct {
@@ -247,7 +257,7 @@ func Validate(m *schema.Manifest, r *Request) error {
 		return errf("SCHEMA_HASH_MISMATCH", "client %s, engine %s", r.SchemaHash, m.SchemaHash)
 	}
 	switch r.Kind {
-	case "one", "all", "count", "sum", "avg", "paginate", "insert", "update", "delete":
+	case "one", "all", "count", "count_distinct", "sum", "avg", "min", "max", "paginate", "insert", "update", "delete", "raw":
 	default:
 		return errf("IR_INVALID", "unknown kind %q", r.Kind)
 	}
@@ -256,7 +266,8 @@ func Validate(m *schema.Manifest, r *Request) error {
 		return err
 	}
 	ent := m.Entities[r.Entity]
-	if r.Kind == "sum" || r.Kind == "avg" {
+	switch r.Kind {
+	case "sum", "avg":
 		c := ent.Column(r.Agg)
 		if c == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, r.Agg)
@@ -264,6 +275,30 @@ func Validate(m *schema.Manifest, r *Request) error {
 		if c.Type != "i32" && c.Type != "i64" && c.Type != "f64" && c.Type != "decimal" {
 			return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", r.Kind, r.Entity, r.Agg, c.Type)
 		}
+	case "min", "max", "count_distinct":
+		c := ent.Column(r.Agg)
+		if c == nil {
+			return errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, r.Agg)
+		}
+		if len(c.Styles) > 0 && c.Styles[0] != "ip" || c.Type == "json" || c.Type == "bytes" {
+			return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", r.Kind, r.Entity, r.Agg, c.Type)
+		}
+	}
+	if r.Having != nil && len(r.GroupBy) == 0 {
+		return errf("IR_INVALID", "having needs group_by")
+	}
+	if r.Kind == "raw" {
+		if r.Raw == nil || strings.TrimSpace(r.Raw.SQL) == "" {
+			return errf("IR_INVALID", "raw needs raw.sql")
+		}
+		if n := strings.Count(r.Raw.SQL, "?"); n != len(r.Raw.Ps) {
+			return errf("IR_INVALID", "raw: %d placeholders but %d params", n, len(r.Raw.Ps))
+		}
+		if err := v.params(r.Raw.Ps); err != nil {
+			return err
+		}
+	} else if r.Raw != nil {
+		return errf("IR_INVALID", "raw is only valid with kind raw")
 	}
 	if r.Kind == "insert" || r.Kind == "update" {
 		if len(r.Set) == 0 {
@@ -371,6 +406,14 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 	}
 	if q.Where != nil {
 		if err := v.group(ent, q.Where, joined, true); err != nil {
+			return err
+		}
+	}
+	if q.Having != nil {
+		if isJoin || isRelation {
+			return errf("IR_INVALID", "having is only valid on the root query")
+		}
+		if err := v.group(ent, q.Having, joined, true); err != nil {
 			return err
 		}
 	}
