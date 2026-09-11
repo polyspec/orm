@@ -56,10 +56,10 @@ function norm(mixed $v): mixed
 }
 
 Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt',
-    onQuery: function (string $sql, array $args, float $sec, ?\Throwable $e) use (&$log) {
-        $log[] = ['sql' => $sql, 'binds' => array_map('norm', $args)];
+    onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log) {
+        $log[] = ['sql' => $sql, 'binds' => array_map('norm', $binds)];
     }));
-$db = Db::mysql('mysql:unix_socket=/tmp/mysql.sock;dbname=orm_bench;charset=utf8mb4', 'root', '');
+$db = Db::mysql(orm_test_dsn(), 'root', '');
 
 $out = [];
 $run = function (string $name, \Closure $fn) use (&$out, &$log, &$maskSeqs, &$maskTs): void {
