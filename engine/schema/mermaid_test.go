@@ -37,7 +37,7 @@ const example = `erDiagram
   %% index    battle (service_seq, is_close)              ik
   %% fulltext battle (name, description)
   %% timestamps battle created_ts updated_ts
-  %% predicate battle display : `is_display` = 1
+  %% predicate battle display : ` + "`is_display` = 1" + `
 `
 
 func TestParseExample(t *testing.T) {
