@@ -55,7 +55,7 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
   ]
 }
 ```
-- `bind_slots.from`: `param`(IR의 값; `host_styles`가 있으면 실행기가 aes/hex/ip를 적용해 바인드) · `secret`(실행기 설정의 AES 키) · `parent`(관계 IN — 단계의 `parent`가 가리키는 부모 행 값, N개로 확장. 아래 "관계 단계") · `now`(실행기의 UTC 마이크로초 타임스탬프 텍스트; SQLite처럼 초 이하 시계 함수가 없는 방언의 `updated_ts`).
+- `bind_slots.from`: `param`(IR의 값; `host_styles`가 있으면 실행기가 aes/hex/ip를 적용해 바인드, `col_type`이 date/time/datetime이면 그 언어의 날짜 표현으로 정규화) · `secret`(실행기 설정의 AES 키) · `parent`(관계 IN — 단계의 `parent`가 가리키는 부모 행 값, N개로 확장. 아래 "관계 단계") · `now`(실행기의 UTC 마이크로초 타임스탬프 텍스트; SQLite처럼 초 이하 시계 함수가 없는 방언의 `updated_ts`).
 - 결과 매핑은 위치(`index`)로. SELECT 별칭 `alias__col`은 디버그 가독성용이며 실행기는 이름을 보지 않는다.
 - `assemble.columns[].styles`는 앱측 디코드 단계(gz/json/serialize 등). SQL측(aes/hex/ip)은 이미 SQL에 들어가 있다.
 - `children[].kind`: `join`(같은 행의 조각, `assemble` 있음) · `one`/`many`(다른 단계 `step`의 행을 `parent_index`/`child_index` 값으로 부착, 조립은 `steps[step].assemble`).
