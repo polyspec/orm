@@ -97,6 +97,8 @@ func scanServiceRegion(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRegio
 			r.ServiceSeq = orm.AsInt64(v)
 		case "name":
 			r.Name = orm.AsString(v)
+		default:
+			r.SetExtra(c.Name, v)
 		}
 	}
 	for _, ch := range a.Children {
@@ -120,6 +122,18 @@ func scanServiceRegion(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRegio
 	}
 	r.Mark("service_region", "seq", r.Seq)
 	return r
+}
+
+// ServiceRegionCols are column references for column-to-column predicates
+// (w.SeqEqCol(ServiceRegionCols.Seq)); .At("service") points into a joined entity.
+var ServiceRegionCols = struct {
+	Seq        orm.ColRef
+	ServiceSeq orm.ColRef
+	Name       orm.ColRef
+}{
+	Seq:        orm.ColRef{Column: "seq"},
+	ServiceSeq: orm.ColRef{Column: "service_seq"},
+	Name:       orm.ColRef{Column: "name"},
 }
 
 // ServiceRegion builds a statement over service_region: NewServiceRegion() → chain → terminal(ctx, db).
@@ -190,6 +204,67 @@ func (w *ServiceRegionWhere) SeqBetween(lo, hi int64) *ServiceRegionWhere {
 }
 func (q *ServiceRegion) SeqBetween(lo, hi int64) *ServiceRegion {
 	q.q.W().PredList("seq", "between", []any{lo, hi})
+	return q
+}
+func (w *ServiceRegionWhere) SeqIsNull() *ServiceRegionWhere {
+	w.w.PredNull("seq", "is_null")
+	return w
+}
+func (q *ServiceRegion) SeqIsNull() *ServiceRegion { q.q.W().PredNull("seq", "is_null"); return q }
+func (w *ServiceRegionWhere) SeqIsNotNull() *ServiceRegionWhere {
+	w.w.PredNull("seq", "is_not_null")
+	return w
+}
+func (q *ServiceRegion) SeqIsNotNull() *ServiceRegion {
+	q.q.W().PredNull("seq", "is_not_null")
+	return q
+}
+func (w *ServiceRegionWhere) SeqEqCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) SeqEqCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) SeqNotEqCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) SeqNotEqCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) SeqGtCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) SeqGtCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) SeqGteCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) SeqGteCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) SeqLtCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) SeqLtCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) SeqLteCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) SeqLteCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *ServiceRegionWhere) ServiceSeqEq(v int64) *ServiceRegionWhere {
@@ -264,6 +339,70 @@ func (q *ServiceRegion) ServiceSeqBetween(lo, hi int64) *ServiceRegion {
 	q.q.W().PredList("service_seq", "between", []any{lo, hi})
 	return q
 }
+func (w *ServiceRegionWhere) ServiceSeqIsNull() *ServiceRegionWhere {
+	w.w.PredNull("service_seq", "is_null")
+	return w
+}
+func (q *ServiceRegion) ServiceSeqIsNull() *ServiceRegion {
+	q.q.W().PredNull("service_seq", "is_null")
+	return q
+}
+func (w *ServiceRegionWhere) ServiceSeqIsNotNull() *ServiceRegionWhere {
+	w.w.PredNull("service_seq", "is_not_null")
+	return w
+}
+func (q *ServiceRegion) ServiceSeqIsNotNull() *ServiceRegion {
+	q.q.W().PredNull("service_seq", "is_not_null")
+	return q
+}
+func (w *ServiceRegionWhere) ServiceSeqEqCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("service_seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) ServiceSeqEqCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("service_seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) ServiceSeqNotEqCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) ServiceSeqGtCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("service_seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) ServiceSeqGtCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("service_seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) ServiceSeqGteCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("service_seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) ServiceSeqGteCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("service_seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) ServiceSeqLtCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("service_seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) ServiceSeqLtCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("service_seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) ServiceSeqLteCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("service_seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) ServiceSeqLteCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("service_seq", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *ServiceRegionWhere) NameEq(v string) *ServiceRegionWhere {
 	w.w.Pred("name", "eq", v)
 	return w
@@ -328,6 +467,35 @@ func (w *ServiceRegionWhere) NameEndsWith(v string) *ServiceRegionWhere {
 }
 func (q *ServiceRegion) NameEndsWith(v string) *ServiceRegion {
 	q.q.W().Pred("name", "ends_with", v)
+	return q
+}
+func (w *ServiceRegionWhere) NameIsNull() *ServiceRegionWhere {
+	w.w.PredNull("name", "is_null")
+	return w
+}
+func (q *ServiceRegion) NameIsNull() *ServiceRegion { q.q.W().PredNull("name", "is_null"); return q }
+func (w *ServiceRegionWhere) NameIsNotNull() *ServiceRegionWhere {
+	w.w.PredNull("name", "is_not_null")
+	return w
+}
+func (q *ServiceRegion) NameIsNotNull() *ServiceRegion {
+	q.q.W().PredNull("name", "is_not_null")
+	return q
+}
+func (w *ServiceRegionWhere) NameEqCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("name", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) NameEqCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("name", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) NameNotEqCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegion) NameNotEqCol(ref orm.ColRef) *ServiceRegion {
+	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 

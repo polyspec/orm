@@ -42,7 +42,7 @@ new X                                   ← 쿼리(행 아님)
 | `Between` | `BETWEEN ? AND ?` | `createdTsBetween($from, $to)` |
 | `IsNull` `IsNotNull` | | `endDtIsNull()` |
 | `<A>With<B>Match` `<A>With<B>MatchBoolean` | FULLTEXT — YAML `fulltext:` 인덱스 컬럼 조합에만 생성 | `nameWithDescriptionMatchBoolean($kw)` |
-| `<col>EqCol(ref)` `<col>NotEqCol(ref)` `GtCol` `GteCol` `LtCol` `LteCol` | 컬럼 대 컬럼 비교. `ref`는 `on(fn($c, $a))`의 부모 참조 `$a-><col>()` 또는 탐색 안의 다른 엔티티 참조 | `langIdEqCol($a->langId())` |
+| `<col>EqCol(ref)` `<col>NotEqCol(ref)` `GtCol` `GteCol` `LtCol` `LteCol` | 컬럼 대 컬럼 비교. `ref`는 생성된 컬럼 참조 — PHP `ProductCols::langId()` / Go `gen.ProductCols.LangId` / Rust `product::cols::lang_id()`. 경로 없는 참조 = 조인 자식의 `on/where` 안에서는 **부모**, 루트에서는 루트. 다른 조인 엔티티는 `->at('service')` / `.At("service")` / `.at("service")` | `langIdEqCol(ProductCols::langId())` |
 | `expr(fragment, binds)` | 스키마 검사 조각. 백틱 컬럼은 현재 엔티티로 해석·alias 치환 | `expr('DAYOFWEEK(`created_ts`) = ?', [1])` |
 
 연속된 술어는 AND(`or()`로 바꿈: `->isCloseEq(0)->or()->isDisplayEq(1)` = `is_close = 0 OR is_display = 1`, 우선순위는 SQL 그대로). 타입별 허용표: 숫자·날짜 = 비교·In·Between·Null, 문자열 = Eq·NotEq·In·Like·Contains·Null, bool = Eq·NotEq·Null, json/bytes = Null만.
@@ -55,7 +55,7 @@ new X                                   ← 쿼리(행 아님)
 | `<rel>(fn)` | **조인된** 관계 `<rel>`의 `<Y>Where`로 내려간다. 조인되지 않았으면 `ENTITY_NOT_JOINED` |
 | 다단 탐색 | `campaign(fn($c) => $c->service(fn($s) => …))` — 조인 안의 조인도 관계 이름으로 계속 내려간다 |
 
-쿼리 최상위에서 쓰는 술어·`and/or`·탐색은 곧 WHERE 최상위 그룹이다(같은 토큰). **`on(fn)`·`where(fn)` 안도 같은 Where 빌더**이므로 OR·괄호·탐색 규칙이 그대로 적용된다. `on(fn($c, $a))`의 둘째 인자 `$a`는 부모(조인을 건 쪽) 컬럼 참조로, ON에서 컬럼 대 컬럼 비교(`$c->langIdEqCol($a->langId())`)에 쓴다.
+쿼리 최상위에서 쓰는 술어·`and/or`·탐색은 곧 WHERE 최상위 그룹이다(같은 토큰). **`on(fn)`·`where(fn)` 안도 같은 Where 빌더**이므로 OR·괄호·탐색 규칙이 그대로 적용된다. 컬럼 대 컬럼 비교는 생성된 참조로 쓴다: `$c->langIdEqCol(ProductCols::langId())` — 경로 없는 참조는 부모(조인을 건 쪽) 컬럼이다.
 
 ### 2.3 컬럼 — SELECT
 | 토큰 | 의미 |

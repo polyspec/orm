@@ -77,6 +77,8 @@ func scanUser(vals []any, a *plan.Assemble, rs *orm.Rows) *UserRow {
 			r.Seq = orm.AsInt64(v)
 		case "name":
 			r.Name = orm.AsString(v)
+		default:
+			r.SetExtra(c.Name, v)
 		}
 	}
 	for _, ch := range a.Children {
@@ -99,6 +101,16 @@ func scanUser(vals []any, a *plan.Assemble, rs *orm.Rows) *UserRow {
 	}
 	r.Mark("user", "seq", r.Seq)
 	return r
+}
+
+// UserCols are column references for column-to-column predicates
+// (w.SeqEqCol(UserCols.Seq)); .At("service") points into a joined entity.
+var UserCols = struct {
+	Seq  orm.ColRef
+	Name orm.ColRef
+}{
+	Seq:  orm.ColRef{Column: "seq"},
+	Name: orm.ColRef{Column: "name"},
 }
 
 // User builds a statement over user: NewUser() → chain → terminal(ctx, db).
@@ -154,6 +166,58 @@ func (q *User) SeqBetween(lo, hi int64) *User {
 	q.q.W().PredList("seq", "between", []any{lo, hi})
 	return q
 }
+func (w *UserWhere) SeqIsNull() *UserWhere    { w.w.PredNull("seq", "is_null"); return w }
+func (q *User) SeqIsNull() *User              { q.q.W().PredNull("seq", "is_null"); return q }
+func (w *UserWhere) SeqIsNotNull() *UserWhere { w.w.PredNull("seq", "is_not_null"); return w }
+func (q *User) SeqIsNotNull() *User           { q.q.W().PredNull("seq", "is_not_null"); return q }
+func (w *UserWhere) SeqEqCol(ref orm.ColRef) *UserWhere {
+	w.w.PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *User) SeqEqCol(ref orm.ColRef) *User {
+	q.q.W().PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *UserWhere) SeqNotEqCol(ref orm.ColRef) *UserWhere {
+	w.w.PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *User) SeqNotEqCol(ref orm.ColRef) *User {
+	q.q.W().PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *UserWhere) SeqGtCol(ref orm.ColRef) *UserWhere {
+	w.w.PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *User) SeqGtCol(ref orm.ColRef) *User {
+	q.q.W().PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *UserWhere) SeqGteCol(ref orm.ColRef) *UserWhere {
+	w.w.PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *User) SeqGteCol(ref orm.ColRef) *User {
+	q.q.W().PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *UserWhere) SeqLtCol(ref orm.ColRef) *UserWhere {
+	w.w.PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *User) SeqLtCol(ref orm.ColRef) *User {
+	q.q.W().PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *UserWhere) SeqLteCol(ref orm.ColRef) *UserWhere {
+	w.w.PredCol("seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *User) SeqLteCol(ref orm.ColRef) *User {
+	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *UserWhere) NameEq(v string) *UserWhere    { w.w.Pred("name", "eq", v); return w }
 func (q *User) NameEq(v string) *User              { q.q.W().Pred("name", "eq", v); return q }
 func (w *UserWhere) NameNotEq(v string) *UserWhere { w.w.Pred("name", "not_eq", v); return w }
@@ -181,6 +245,26 @@ func (w *UserWhere) NameStartsWith(v string) *UserWhere { w.w.Pred("name", "star
 func (q *User) NameStartsWith(v string) *User           { q.q.W().Pred("name", "starts_with", v); return q }
 func (w *UserWhere) NameEndsWith(v string) *UserWhere   { w.w.Pred("name", "ends_with", v); return w }
 func (q *User) NameEndsWith(v string) *User             { q.q.W().Pred("name", "ends_with", v); return q }
+func (w *UserWhere) NameIsNull() *UserWhere             { w.w.PredNull("name", "is_null"); return w }
+func (q *User) NameIsNull() *User                       { q.q.W().PredNull("name", "is_null"); return q }
+func (w *UserWhere) NameIsNotNull() *UserWhere          { w.w.PredNull("name", "is_not_null"); return w }
+func (q *User) NameIsNotNull() *User                    { q.q.W().PredNull("name", "is_not_null"); return q }
+func (w *UserWhere) NameEqCol(ref orm.ColRef) *UserWhere {
+	w.w.PredCol("name", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *User) NameEqCol(ref orm.ColRef) *User {
+	q.q.W().PredCol("name", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *UserWhere) NameNotEqCol(ref orm.ColRef) *UserWhere {
+	w.w.PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *User) NameNotEqCol(ref orm.ColRef) *User {
+	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
 func (q *User) Or() *User { q.q.Or(); return q }
