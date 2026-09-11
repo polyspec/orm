@@ -75,10 +75,14 @@ jobs:
           php clients/php/tests/compat.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
       - name: conformance (3 languages identical)
         run: go run ./tests/conformance/check run
-      - name: conformance on postgres and sqlite (Go; results identical to MySQL, statements per dialect)
+      - name: conformance on postgres and sqlite (Go + Rust; results identical to MySQL, statements per dialect)
         run: |
           go run ./tests/conformance/check run -driver postgres -langs go -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable'
           go run ./tests/conformance/check run -driver sqlite -langs go -dsn 'file:/tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)'
+          clients/rust/target/release/conformance bin/ormengine.wasm schema/schema.json --driver postgres --dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench' > tests/conformance/out/postgres/rust.json
+          clients/rust/target/release/conformance bin/ormengine.wasm schema/schema.json --driver sqlite --dsn 'sqlite:///tmp/orm_bench.sqlite' > tests/conformance/out/sqlite/rust.json
+          go run ./tests/conformance/check compare -driver postgres tests/conformance/out/postgres/go.json tests/conformance/out/postgres/rust.json
+          go run ./tests/conformance/check compare -driver sqlite tests/conformance/out/sqlite/go.json tests/conformance/out/sqlite/rust.json
       - name: go integration on postgres and sqlite
         run: |
           ORM_TEST_DRIVER=postgres ORM_TEST_DSN='postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable' go test ./clients/go/gen/
