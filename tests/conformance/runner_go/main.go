@@ -33,10 +33,26 @@ type vector struct {
 }
 
 var (
-	log     []stmt
-	maskSeq int64
-	maskTs  time.Time
+	log      []stmt
+	maskSeqs map[int64]bool
+	maskTs   time.Time
 )
+
+// maskRows hides the identity of the rows a vector created: their seqs
+// wherever they are bound and the updated_ts read with the first one. The
+// creating statements were logged before the rows existed, so they are
+// re-masked here.
+func maskRows(ts time.Time, seqs ...int64) {
+	maskTs = ts
+	for _, seq := range seqs {
+		maskSeqs[seq] = true
+	}
+	for i := range log {
+		for j := range log[i].Binds {
+			log[i].Binds[j] = norm(log[i].Binds[j])
+		}
+	}
+}
 
 func fmtTime(t time.Time) string {
 	if t.Nanosecond() == 0 {
@@ -54,7 +70,7 @@ func norm(v any) any {
 	case int32:
 		return norm(int64(x))
 	case int64:
-		if maskSeq != 0 && x == maskSeq {
+		if maskSeqs[x] {
 			return "$SEQ"
 		}
 		return x
@@ -115,7 +131,7 @@ func main() {
 	out := map[string]vector{}
 
 	run := func(name string, fn func() (any, error)) {
-		log = nil
+		log, maskSeqs, maskTs = nil, map[int64]bool{}, time.Time{}
 		res, err := fn()
 		if err != nil {
 			res = map[string]any{"error": code(err)}
@@ -260,13 +276,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		maskSeq, maskTs = created.Seq, created.UpdatedTs
-		// the INSERT's own log entries were recorded before the mask existed: re-mask them
-		for i := range log {
-			for j := range log[i].Binds {
-				log[i].Binds[j] = norm(log[i].Binds[j])
-			}
-		}
+		maskRows(created.UpdatedTs, created.Seq)
 		created.SetName("conf-write-2").SetLikeCount(5)
 		if err := created.UpdateOptimistic(ctx, db); err != nil {
 			return nil, err
@@ -396,12 +406,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		maskSeq, maskTs = created.Seq, created.UpdatedTs
-		for i := range log {
-			for j := range log[i].Binds {
-				log[i].Binds[j] = norm(log[i].Binds[j])
-			}
-		}
+		maskRows(created.UpdatedTs, created.Seq)
 		b, err := gen.NewBattle().SelectJsonSetting().SelectJsonsTags().SelectSerializeData().SeqEq(created.Seq).One(ctx, db)
 		if err != nil {
 			return nil, err
@@ -437,6 +442,172 @@ func main() {
 		}
 		return u.ToArray(), nil
 	})
+	// S3 write long tail. FKs and dates are the write_cycle fixtures.
+	fks := func(q *gen.Battle) *gen.Battle {
+		return q.SetUserSeq(1).SetServiceSeq(999).SetServiceModuleSeq(1).SetServiceMemberSeq(1).
+			SetStartDt(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)).SetEndDt(time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC))
+	}
+	run("upsert", func() (any, error) {
+		return orm.Transaction(ctx, db, func(tx *orm.Tx) (any, error) {
+			a, err := fks(gen.NewBattle().SetUuid("conf-upsert").SetName("u1").SetReadCount(1)).Insert(ctx, tx)
+			if err != nil {
+				return nil, err
+			}
+			maskRows(a.UpdatedTs, a.Seq)
+			// the duplicate uuid turns the insert into an update; LAST_INSERT_ID(seq) makes the re-read find the existing row
+			b, err := fks(gen.NewBattle().SetUuid("conf-upsert").SetName("u2").SetReadCount(1)).
+				OnDuplicateSetName("u2").OnDuplicatePlusReadCount(5).
+				Insert(ctx, tx)
+			if err != nil {
+				return nil, err
+			}
+			if err := b.Delete(ctx, tx); err != nil {
+				return nil, err
+			}
+			return map[string]any{"same_seq": a.Seq == b.Seq, "name": b.Name, "read_count": b.ReadCount}, nil
+		})
+	})
+	run("upsert_set_all", func() (any, error) {
+		return orm.Transaction(ctx, db, func(tx *orm.Tx) (any, error) {
+			a, err := fks(gen.NewBattle().SetUuid("conf-upsert").SetName("u1").SetReadCount(1)).Insert(ctx, tx)
+			if err != nil {
+				return nil, err
+			}
+			maskRows(a.UpdatedTs, a.Seq)
+			b, err := fks(gen.NewBattle().SetUuid("conf-upsert").SetName("u3").SetReadCount(9)).OnDuplicateSetAll().Insert(ctx, tx)
+			if err != nil {
+				return nil, err
+			}
+			if err := b.Delete(ctx, tx); err != nil {
+				return nil, err
+			}
+			return map[string]any{"same_seq": a.Seq == b.Seq, "name": b.Name, "read_count": b.ReadCount}, nil
+		})
+	})
+	run("save_branch", func() (any, error) {
+		// no PK in set[] → INSERT; PK set → UPDATE of the other columns and a re-read
+		r, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {
+			return fks(gen.NewBattle().SetName("conf-save")).Save(ctx, tx)
+		})
+		if err != nil {
+			return nil, err
+		}
+		maskRows(r.UpdatedTs, r.Seq)
+		after, err := gen.NewBattle().SetSeq(r.Seq).SetName("conf-save-2").Save(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		if err := after.Delete(ctx, db); err != nil {
+			return nil, err
+		}
+		return map[string]any{"inserted": r.Seq > 0, "after": after.Name}, nil
+	})
+	run("bulk_update_plus_minus", func() (any, error) {
+		created, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {
+			return fks(gen.NewBattle().SetReadCount(3).SetName("conf-bulk")).Insert(ctx, tx)
+		})
+		if err != nil {
+			return nil, err
+		}
+		maskRows(created.UpdatedTs, created.Seq)
+		readCount := func() (int64, error) {
+			b, err := gen.NewBattle().OneBySeq(ctx, db, created.Seq)
+			if err != nil {
+				return 0, err
+			}
+			return b.ReadCount, nil
+		}
+		if _, err := gen.NewBattle().SeqEq(created.Seq).PlusReadCount(2).Update(ctx, db); err != nil {
+			return nil, err
+		}
+		afterPlus, err := readCount()
+		if err != nil {
+			return nil, err
+		}
+		// minus clamps at zero
+		if _, err := gen.NewBattle().SeqEq(created.Seq).MinusReadCount(10).Update(ctx, db); err != nil {
+			return nil, err
+		}
+		afterMinus, err := readCount()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := gen.NewBattle().SeqEq(created.Seq).SetReadCountExpr("`read_count` * ? + 1", 2).Update(ctx, db); err != nil {
+			return nil, err
+		}
+		afterExpr, err := readCount()
+		if err != nil {
+			return nil, err
+		}
+		deleted, err := gen.NewBattle().SeqEq(created.Seq).Delete(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"after_plus": afterPlus, "after_minus": afterMinus, "after_expr": afterExpr, "deleted": deleted}, nil
+	})
+	run("delete_cascade_order", func() (any, error) {
+		// a service owning two members and one module; the module relation opts out of the cascade
+		type tree struct {
+			service *gen.ServiceRow
+			members [2]*gen.ServiceMemberRow
+			module  *gen.ServiceModuleRow
+		}
+		made, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (tree, error) {
+			var t tree
+			var err error
+			if t.service, err = gen.NewService().SetName("conf-svc").Insert(ctx, tx); err != nil {
+				return t, err
+			}
+			for i, userSeq := range []int64{1, 2} {
+				if t.members[i], err = gen.NewServiceMember().SetServiceSeq(t.service.Seq).SetUserSeq(userSeq).Insert(ctx, tx); err != nil {
+					return t, err
+				}
+			}
+			t.module, err = gen.NewServiceModule().SetServiceSeq(t.service.Seq).SetName("conf-mod").Insert(ctx, tx)
+			return t, err
+		})
+		if err != nil {
+			return nil, err
+		}
+		maskRows(time.Time{}, made.service.Seq, made.members[0].Seq, made.members[1].Seq, made.module.Seq)
+		svc, err := gen.NewService().SeqEq(made.service.Seq).
+			RelationsMembers(gen.NewServiceMember().OrderBySeqAsc()).
+			RelationsModules(gen.NewServiceModule().NoCascadeDelete()).
+			One(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		if err := svc.DeleteCascade(ctx, db); err != nil {
+			return nil, err
+		}
+		membersLeft, err := gen.NewServiceMember().ServiceSeqEq(made.service.Seq).Count(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		modulesLeft, err := gen.NewServiceModule().ServiceSeqEq(made.service.Seq).Count(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		serviceLeft, err := gen.NewService().SeqEq(made.service.Seq).Count(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := gen.NewServiceModule().SeqEq(made.module.Seq).Delete(ctx, db); err != nil {
+			return nil, err
+		}
+		return map[string]any{"members_left": membersLeft, "modules_left": modulesLeft, "service_left": serviceLeft}, nil
+	})
+	run("sql_dump", func() (any, error) {
+		st, err := gen.NewBattle().ServiceSeqEq(7).SelectAesHexEmail().Limit(0, 1).SQL(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		binds := make([]any, len(st.Binds))
+		for i, b := range st.Binds {
+			binds[i] = norm(b)
+		}
+		return map[string]any{"sql": st.SQL, "binds": binds}, nil
+	})
 	run("codec_roundtrip", func() (any, error) {
 		value := map[string]any{"a": int64(1), "b": []any{int64(1), int64(2), map[string]any{"c": "한글/slash"}}, "d": nil, "e": true, "f": 1.5}
 		ip := "10.1.2.3"
@@ -451,12 +622,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		maskSeq, maskTs = created.Seq, created.UpdatedTs
-		for i := range log {
-			for j := range log[i].Binds {
-				log[i].Binds[j] = norm(log[i].Binds[j])
-			}
-		}
+		maskRows(created.UpdatedTs, created.Seq)
 		b, err := gen.NewBattle().SelectJsonSetting().SelectJsonsTags().SelectBase64Extra().SelectSerializeData().SelectGzExtend().SeqEq(created.Seq).One(ctx, db)
 		if err != nil {
 			return nil, err
