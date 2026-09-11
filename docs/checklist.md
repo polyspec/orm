@@ -96,7 +96,7 @@
 - [ ] T4.4 `Query.raw` 루트(신뢰 코드 전용, `{self}`/`{alias:x}` 치환) + `orderByExpr`/`groupByExpr` 검증
 
 ### 4-B 생성기·실행기 — 레인 E(템플릿) → G ∥ P ∥ R
-- [ ] T4.5 **P** G/P/R: 집계 터미널, 술어 그룹 메서드, raw 루트 실행, `having`
+- [~] T4.5 G/P/R(병렬 레인, docs/lanes/s4.md): 집계 터미널, `having`, `raw`/`rawAll`, 이름 붙인 술어 메서드 — **Go 병합 완료(벡터 4개 기록, 총 40)**, PHP·Rust 진행 중
 - [ ] T4.6 **P** P: compatibility `__call` 호환층 — `condition*/and*/or*/on*`, op-first(`gtEndDt`), 무접두 `x(v)`, 배열→In·null→IsNull, `relation((new Y)->matchAWithB()->aliasR())`, `joinAWithB`, `addColumnX/addAllColumns`, `parentNode→flatten`, `groupLimit→limitPerParent`, `keyNameX→keyByX`, `fetchKey→keyByFn`, `deleteLock→noCascadeDelete`, `get/gets→one/all`, `getsByAAndB`, `and('(')…condition(')')`(모델 내 균형만, 경계 초과는 `PAREN_ACROSS_MODELS`) — 같은 IR 생성, 적합성으로 검증
 - [ ] T4.7 `ormgen check --lang php`(example application 실코드 스캔: 레거시 이름·expr 백틱 컬럼·PAREN_ACROSS_MODELS 목록) / `--lang go`(expr 문자열 analyzer)
 
