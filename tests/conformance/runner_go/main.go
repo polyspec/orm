@@ -89,6 +89,9 @@ func norm(v any) any {
 }
 
 func code(err error) any {
+	if err == nil {
+		return nil
+	}
 	var e *ir.Error
 	if errors.As(err, &e) {
 		return e.Code
@@ -97,19 +100,48 @@ func code(err error) any {
 }
 
 // dsn is ORM_MYSQL_DSN_GO when set (CI), else the local socket.
+// driver/dsnFlag come from -driver/-dsn (default mysql on the local socket, or ORM_MYSQL_DSN_GO).
+var (
+	driver  = "mysql"
+	dsnFlag = ""
+)
+
 func dsn() string {
-	if v := os.Getenv("ORM_MYSQL_DSN_GO"); v != "" {
+	if dsnFlag != "" {
+		return dsnFlag
+	}
+	if v := os.Getenv("ORM_MYSQL_DSN_GO"); v != "" && driver == "mysql" {
 		return v
+	}
+	switch driver {
+	case "postgres":
+		return "postgres://maxkwon@localhost:5432/orm_bench?sslmode=disable"
+	case "sqlite":
+		return "file:/tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
 	}
 	return "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true"
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: runner_go <schema.json>")
+	args := os.Args[1:]
+	var rest []string
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "-driver":
+			driver = args[i+1]
+			i++
+		case "-dsn":
+			dsnFlag = args[i+1]
+			i++
+		default:
+			rest = append(rest, args[i])
+		}
+	}
+	if len(rest) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: runner_go [-driver mysql|postgres|sqlite] [-dsn …] <schema.json>")
 		os.Exit(2)
 	}
-	js, err := os.ReadFile(os.Args[1])
+	js, err := os.ReadFile(rest[0])
 	if err != nil {
 		fail(err)
 	}
@@ -117,12 +149,12 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	eng, err := engine.New(m, "mysql")
+	eng, err := engine.New(m, driver)
 	if err != nil {
 		fail(err)
 	}
 	const aesKey = "bench-salt"
-	db, err := orm.Open("mysql", dsn(), eng, orm.Config{
+	db, err := orm.Open(driver, dsn(), eng, orm.Config{
 		AESKey: aesKey,
 		OnQuery: func(e orm.Event) {
 			binds := make([]any, len(e.Args))
@@ -323,7 +355,7 @@ func main() {
 		return keys(c), nil
 	})
 	run("expr_where", func() (any, error) {
-		return gen.NewBattle().ServiceSeqEq(7).Expr("DAYOFMONTH(`start_dt`) = ?", 1).Count(ctx, db)
+		return gen.NewBattle().ServiceSeqEq(7).Expr("LENGTH(`name`) > ?", 8).Count(ctx, db)
 	})
 	run("select_expr", func() (any, error) {
 		b, err := gen.NewBattle().SelectExpr("tag", "CONCAT(`name`, '!')").SeqEq(42).One(ctx, db)
@@ -654,7 +686,7 @@ func main() {
 	})
 	run("raw_root", func() (any, error) {
 		return gen.NewBattle().
-			Raw("SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?", 7, 0).
+			Raw("SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?", 7, false).
 			RawAll(ctx, db)
 	})
 	run("codec_roundtrip", func() (any, error) {

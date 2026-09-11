@@ -171,7 +171,7 @@ $run('write_cycle', function () use ($db, $remask) {
 $run('eq_col_where', fn() => $keys((new Battle)
     ->joinService((new Service)->where(fn(ServiceWhere $w) => $w->seqEqCol(BattleCols::serviceModuleSeq())))
     ->seqIn([1, 2, 10])->orderBySeqAsc()->all($db)));
-$run('expr_where', fn() => (new Battle)->serviceSeqEq(7)->expr('DAYOFMONTH(`start_dt`) = ?', [1])->count($db));
+$run('expr_where', fn() => (new Battle)->serviceSeqEq(7)->expr('LENGTH(`name`) > ?', [8])->count($db));
 $run('select_expr', function () use ($db) {
     $b = (new Battle)->selectExpr('tag', "CONCAT(`name`, '!')")->seqEq(42)->one($db);
     return ['seq' => $b->getSeq(), 'tag' => $b['tag']];
@@ -313,7 +313,7 @@ $run('predicate_named', fn() => [
     'visible' => (new Battle)->visible()->serviceSeqEq(7)->count($db),
     'started_after' => (new Battle)->startedAfter('2026-01-01 00:00:00')->serviceSeqEq(7)->count($db),
 ]);
-$run('raw_root', fn() => (new Battle)->raw('SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?', [7, 0])->rawAll($db));
+$run('raw_root', fn() => (new Battle)->raw('SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?', [7, false])->rawAll($db));
 $run('codec_roundtrip', function () use ($db, $remask) {
     $value = ['a' => 1, 'b' => [1, 2, ['c' => '한글/slash']], 'd' => null, 'e' => true, 'f' => 1.5];
     $created = $db->transaction(fn(Tx $tx) => (new Battle)

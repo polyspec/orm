@@ -415,7 +415,7 @@
               "$SEQ",
               "$TS"
             ],
-            "sql": "UPDATE `battle` SET `name` = ?, `like_count` = ? WHERE `battle`.`seq` = ? AND `battle`.`updated_ts` = ?"
+            "sql": "UPDATE `battle` SET `name` = ?, `like_count` = ?, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `battle`.`seq` = ? AND `battle`.`updated_ts` = ?"
           },
           {
             "binds": [
@@ -431,7 +431,7 @@
               "$SEQ",
               "$TS"
             ],
-            "sql": "UPDATE `battle` SET `name` = ? WHERE `battle`.`seq` = ? AND `battle`.`updated_ts` = ?"
+            "sql": "UPDATE `battle` SET `name` = ?, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `battle`.`seq` = ? AND `battle`.`updated_ts` = ?"
           },
           {
             "binds": [
@@ -472,16 +472,16 @@
     },
     {
       "name": "expr_where",
-      "chain": "Battle.serviceSeqEq(7).expr('DAYOFMONTH(`start_dt`) = ?', [1]).count",
+      "chain": "Battle.serviceSeqEq(7).expr('LENGTH(`name`) \u003e ?', [8]).count — portable fragment (names 'battle-N' with N ≥ 100 → 999)",
       "expect": {
-        "result": 1000,
+        "result": 999,
         "statements": [
           {
             "binds": [
               7,
-              1
+              8
             ],
-            "sql": "SELECT COUNT(*) FROM `battle` AS `a` WHERE `a`.`service_seq` = ? AND (DAYOFMONTH(`a`.`start_dt`) = ?)"
+            "sql": "SELECT COUNT(*) FROM `battle` AS `a` WHERE `a`.`service_seq` = ? AND (LENGTH(`a`.`name`) \u003e ?)"
           }
         ]
       }
@@ -1074,7 +1074,7 @@
               "u2",
               5
             ],
-            "sql": "INSERT INTO `battle` (`uuid`, `name`, `read_count`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?, `read_count` = `read_count` + ?, `seq` = LAST_INSERT_ID(`seq`)"
+            "sql": "INSERT INTO `battle` (`uuid`, `name`, `read_count`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?, `read_count` = `battle`.`read_count` + ?, `seq` = LAST_INSERT_ID(`seq`)"
           },
           {
             "binds": [
@@ -1199,7 +1199,7 @@
               "conf-save-2",
               "$SEQ"
             ],
-            "sql": "UPDATE `battle` SET `name` = ? WHERE `battle`.`seq` = ?"
+            "sql": "UPDATE `battle` SET `name` = ?, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `battle`.`seq` = ?"
           },
           {
             "binds": [
@@ -1255,7 +1255,7 @@
               2,
               "$SEQ"
             ],
-            "sql": "UPDATE `battle` SET `read_count` = `read_count` + ? WHERE `battle`.`seq` = ?"
+            "sql": "UPDATE `battle` SET `read_count` = `battle`.`read_count` + ?, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `battle`.`seq` = ?"
           },
           {
             "binds": [
@@ -1271,7 +1271,7 @@
               10,
               "$SEQ"
             ],
-            "sql": "UPDATE `battle` SET `read_count` = CASE WHEN `read_count` \u003e ? THEN `read_count` - ? ELSE 0 END WHERE `battle`.`seq` = ?"
+            "sql": "UPDATE `battle` SET `read_count` = CASE WHEN `battle`.`read_count` \u003e ? THEN `battle`.`read_count` - ? ELSE 0 END, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `battle`.`seq` = ?"
           },
           {
             "binds": [
@@ -1286,7 +1286,7 @@
               2,
               "$SEQ"
             ],
-            "sql": "UPDATE `battle` SET `read_count` = `battle`.`read_count` * ? + 1 WHERE `battle`.`seq` = ?"
+            "sql": "UPDATE `battle` SET `read_count` = `battle`.`read_count` * ? + 1, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `battle`.`seq` = ?"
           },
           {
             "binds": [
@@ -1504,7 +1504,7 @@
             "binds": [
               7
             ],
-            "sql": "SELECT COUNT(*) FROM `battle` AS `a` WHERE (`a`.`is_close` = 0 AND `a`.`is_display` = 1) AND `a`.`service_seq` = ?"
+            "sql": "SELECT COUNT(*) FROM `battle` AS `a` WHERE (`a`.`is_close` = FALSE AND `a`.`is_display` = TRUE) AND `a`.`service_seq` = ?"
           },
           {
             "binds": [
@@ -1518,7 +1518,7 @@
     },
     {
       "name": "raw_root",
-      "chain": "Battle.raw('SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?',[7,0]).rawAll → rows by column name",
+      "chain": "Battle.raw('SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?',[7,false]).rawAll → rows by column name (boolean bind so every dialect accepts it)",
       "expect": {
         "result": [
           {
@@ -1530,7 +1530,7 @@
           {
             "binds": [
               7,
-              0
+              false
             ],
             "sql": "SELECT COUNT(*) AS n, MAX(seq) AS m FROM `battle` WHERE service_seq = ? AND is_close = ?"
           }
