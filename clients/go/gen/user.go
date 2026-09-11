@@ -416,7 +416,7 @@ func (q *User) IfParentTargetClubReaderCountEq(v int32) *User {
 }
 func (q *User) IfParentSuccessCountEq(v int32) *User { q.q.IfParent("success_count", v); return q }
 func (q *User) IfParentReaderCountEq(v int32) *User  { q.q.IfParent("reader_count", v); return q }
-func (q *User) IfParentReadCountEq(v int32) *User    { q.q.IfParent("read_count", v); return q }
+func (q *User) IfParentReadCountEq(v int64) *User    { q.q.IfParent("read_count", v); return q }
 func (q *User) IfParentPhotoUrlEq(v string) *User    { q.q.IfParent("photo_url", v); return q }
 func (q *User) IfParentUserSeqEq(v int64) *User      { q.q.IfParent("user_seq", v); return q }
 func (q *User) IfParentServiceSeqEq(v int64) *User   { q.q.IfParent("service_seq", v); return q }

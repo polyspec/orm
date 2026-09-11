@@ -59,7 +59,7 @@ erDiagram
 
 ### 2.1 컬럼 줄 — `타입 이름 [PK|FK|UK] ["주석"]`
 Mermaid 표준 그대로다. `PK`/`FK`/`UK`는 Mermaid 키워드(`PK, FK`처럼 복수 가능, 여러 컬럼에 `PK`면 복합 PK, 여러 컬럼에 같은 `UK`는 아래 `%% unique`로).
-타입은 DB 타입을 그대로 쓴다(`bigint`, `varchar(191)`, `datetime(6)`, `decimal(13,3)`, `enum('a','b')`). 매니페스트가 정규 타입(i64/string/datetime/…)으로 바꾼다.
+타입은 DB 타입을 그대로 쓴다(`bigint`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum('a','b')`). 매니페스트가 정규 타입(i64/string/datetime/…)으로 바꾼다.
 
 주석 문자열은 공백으로 나눈 **속성 목록**이다. 없으면 NOT NULL, 기본값 없음, 일반 컬럼.
 | 속성 | 의미 |

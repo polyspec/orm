@@ -822,7 +822,7 @@ func (q *ServiceMember) IfParentReaderCountEq(v int32) *ServiceMember {
 	q.q.IfParent("reader_count", v)
 	return q
 }
-func (q *ServiceMember) IfParentReadCountEq(v int32) *ServiceMember {
+func (q *ServiceMember) IfParentReadCountEq(v int64) *ServiceMember {
 	q.q.IfParent("read_count", v)
 	return q
 }

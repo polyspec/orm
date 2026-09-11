@@ -241,6 +241,9 @@ func buildColumn(dc *DColumn) (*Col, error) {
 	switch base {
 	case "tinyint", "smallint", "mediumint", "int", "integer":
 		c.Type = "i32"
+		if dc.Unsigned {
+			c.Type = "i64" // an unsigned 32-bit column needs 64 bits on the host side
+		}
 		if base == "tinyint" && (dc.Bool || (strings.HasPrefix(dc.Name, "is_") && !dc.Int)) {
 			c.Type = "bool"
 		}

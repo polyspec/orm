@@ -91,8 +91,8 @@ func TestSelectAll(t *testing.T) {
 		t.Errorf("bind kinds: %s", got)
 	}
 	asm := p.Steps[0].Assemble
-	// 26 eager columns: ip (INET6_NTOA in SQL) is eager, the styled gz/json/… columns are lazy
-	if asm == nil || asm.Columns[0].Name != "seq" || asm.Columns[0].Index != 0 || len(asm.Columns) != 26 || asm.Columns[25].Name != "ip" || !strings.Contains(sql, "INET6_NTOA(`a`.`ip`) AS `a__ip`") {
+	// 27 eager columns: price and ip (INET6_NTOA in SQL) are eager, the styled gz/json/… columns are lazy
+	if asm == nil || asm.Columns[0].Name != "seq" || asm.Columns[0].Index != 0 || len(asm.Columns) != 27 || asm.Columns[26].Name != "ip" || !strings.Contains(sql, "INET6_NTOA(`a`.`ip`) AS `a__ip`") {
 		t.Errorf("assemble: %+v", asm)
 	}
 }
