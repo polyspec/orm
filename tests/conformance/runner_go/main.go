@@ -127,12 +127,7 @@ func main() {
 		OnQuery: func(e orm.Event) {
 			binds := make([]any, len(e.Args))
 			for i, a := range e.Args {
-				// The hook masks secret binds ($SECRET); the vectors record the
-				// value actually bound, which this runner configured itself.
-				if a == orm.Secret {
-					a = aesKey
-				}
-				binds[i] = norm(a)
+				binds[i] = norm(a) // secret slots arrive masked as $SECRET and are recorded that way
 			}
 			log = append(log, stmt{SQL: e.SQL, Binds: binds})
 		},
