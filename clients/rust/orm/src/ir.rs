@@ -19,7 +19,17 @@ pub struct Request {
     pub optimistic: Option<Optimist>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub agg: String,
+    /// kind raw: a hand-written SELECT run as the root (`{table}` = the entity table, `?` bound from ps).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw: Option<Raw>,
     pub n_params: usize,
+}
+
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct Raw {
+    pub sql: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub ps: Vec<usize>,
 }
 
 #[derive(Serialize, Debug, Clone, Default)]
@@ -39,6 +49,9 @@ pub struct Query {
     pub order: Vec<Order>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub group_by: Vec<String>,
+    /// Root only, needs group_by: group predicates (aggregate expressions as expr items).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub having: Option<Group>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<Limit>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
@@ -192,6 +205,9 @@ impl Query {
             g.shift(off);
         }
         if let Some(g) = self.where_.as_mut() {
+            g.shift(off);
+        }
+        if let Some(g) = self.having.as_mut() {
             g.shift(off);
         }
         for j in &mut self.joins {
