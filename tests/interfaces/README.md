@@ -10,6 +10,7 @@
 - `owners`는 역할별 허용 필드 전체와 스키마에서 확장되는 컬럼·관계 필드를 고정한다. 심볼 목록을 다시 기록해도 Query 등에 임의의 상태 필드를 추가하면 실패한다.
 - `records`는 RequestIR/QueryNode/조건/assignment/Plan/Step/Assemble 등 25개 레코드의 모든 필드와 중첩 타입을 고정한다. Go AST와 Rust syn에서 JSON/serde 필드명을 읽어 같은 레코드에 대응시킨다. PHP는 생성 정의를 `Wire`에 설치하고 실제 컴파일 입력·응답에서 재귀 검사한다. 알 수 없는 필드, 잘못된 타입·목록·union 형태를 거부한다. 빈 Go slice의 wire null만 메타데이터의 빈 목록으로 허용하며 DB 값에는 적용하지 않는다.
 - 모든 네이티브 타입·필드·함수·메서드 선언을 `contracts/symbols`와 대조한다. 이 목록은 공통 규칙 밖의 선언 변경도 드러내는 변경 검사다. 목록 자체를 언어 간 동작 동일성의 근거로 삼지 않는다.
+- PHP의 `self`·`parent`는 선언 클래스 기준의 타입으로 정규화하고 `static`은 구분한다. 상대 타입·완전한 클래스 이름의 일치와 실제 반환 타입 변경의 검출을 별도 fixture로 검사한다.
 - `sequences`는 독립 기대값과 실제 statement 수를 정의한다. 실행 러너는 SQL·순서·typed binds·결과를 비교한다. 상태 비교기는 JSON 숫자의 I64 정밀도와 문자열/정수 구별을 보존한다.
 
 ```sh
