@@ -94,7 +94,7 @@ new X                                   ← 쿼리(행 아님)
 |---|---|---|---|
 | 스칼라 | `$r->getName()` `$r->getName($default)` `$r['name']` | `r.Name` / nil-safe `r.GetName()` | `r.name` (nullable은 `Option`) |
 | 관계·조인 | `$r->getService()` → 행/null, `$r->getUser()` → 컬렉션 | `r.GetService()` / `r.GetUser()` | `r.service() -> Option<&T>` / `r.user() -> &Collection<T>` |
-| 변경 | `$r->setName('x')->save($db)` `->update($db)` `->delete($db)` `->delete($db, cascade: true)` | `r.SetName("x").Save(ctx, db)` | `r.set_name("x"); r.save(&db).await?` |
+| 변경 | `$r->setName('x')->update($db)` `->updateOptimistic($db)` `->delete($db)` | `r.SetName("x"); r.Update(ctx, db)` `r.UpdateOptimistic(ctx, db)` `r.Delete(ctx, db)` | `r.set_name("x"); r.update(&db).await?` `r.update_optimistic(&db).await?` `r.delete(&db).await?` |
 | 컬렉션 | `foreach ($c as $k => $r)` `first()` `count()` `toArray()` | `for k, r := range c.All()` `First()` `Len()` `ToArray()` | `for (k, r) in &c` `first()` `len()` `to_vec()` |
 | 트랜잭션 | `$db->transaction(fn($tx) => …)` | `orm.Transaction(ctx, db, func(tx *orm.Tx) (T, error) {…})` | `db.transaction(\|tx\| async move {…}).await?` |
 
