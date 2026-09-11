@@ -19,8 +19,8 @@ const ITERATIONS = 500;
 $lastSql = '';
 $lastArgs = [];
 Orm::init(new Config(socket: $argv[1], schemaPath: $argv[2], aesKey: 'bench-salt',
-    onQuery: function (string $sql, array $args) use (&$lastSql, &$lastArgs) { $lastSql = $sql; $lastArgs = $args; }));
-$db = Db::mysql('mysql:unix_socket=/tmp/mysql.sock;dbname=orm_bench;charset=utf8mb4', 'root', '');
+    onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$lastSql, &$lastArgs) { $lastSql = $sql; $lastArgs = array_map(fn($v) => $v === '$SECRET' ? 'bench-salt' : $v, $binds); }));
+$db = Db::mysql(orm_test_dsn(), 'root', '');
 $now = '2026-09-11 00:00:00';
 
 $query = fn() => (new Battle)
