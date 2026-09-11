@@ -111,13 +111,13 @@
 ### 5-A 도구 — 레인 E
 - [x] T5.10 `ormgen import --dsn`(information_schema → `.mmd`, 결정적·멱등, 이름 기반 FK 추론, 인덱스→`%%`, `=now`, 기존 파일의 라벨/lazy/bool/스타일/predicate 이어받기) — orm_bench 임포트 = 손으로 쓴 매니페스트와 타입·관계·인덱스 동일. **150-table fixture는 로컬에 없음** → T2.15(150테이블 게이트)는 사용자가 DB 접근을 주면 실행
 - [ ] T5.1 **P** `ormgen validate --dsn`(`.mmd` ↔ `schema.json` ↔ 라이브 DB) + 각 클라이언트 초기화 시 `schema_hash` 부팅 검사 1회(불일치 = 즉시 에러, 감시 없음)
-- [ ] T5.2 **P** `docs/errors.yaml` → 3언어 enum 생성(`CODEC_*` 포함), 드라이버 에러 원본 보존(Deadlock·DuplicateKey만 매핑)
+- [~] T5.2 `docs/errors.yaml` 작성(엔진/실행기/드라이버 출처 표기) → `ormgen errors --lang` enum 생성 + 각 실행기가 DEADLOCK/DUPLICATE_KEY 매핑은 레인
 
 ### 5-B 런타임 — 레인 G ∥ P ∥ R
 - [ ] T5.3 **P** `on_query(sql, binds, duration, plan_id, err)` 훅 통일(plan_id 추가) + 로깅 예제
 - [ ] T5.3b **P** 문장당 고정 비용 감축(perf.md §6b: Go +6µs, PHP +9µs, Rust +16µs): IR 형태 키를 전체 JSON 직렬화 없이 생성(호출 지점별 형태 캐시), Rust `Vec<Val>` 중간 단계 없이 typed 직접 디코드 → 3행 쿼리 네이티브 대비 ≤+5%
 - [ ] T5.4 **P** PHP `EMULATE_PREPARES` 결정: 서버 prepared(native) vs 에뮬레이션 실측(PK·100행·IN 확장) 후 하나로 고정, `ip`/JSON 타입 반환 확인
-- [ ] T5.5 **P** `orm.toml` 스펙·로더 3언어(DSN, ormd 소켓 절대경로, wasm 캐시 디렉터리, schema.json 경로, aes 키 출처, 디버그) — 상대경로·symlink 금지 검증
+- [~] T5.5 `orm.toml` 스펙 `docs/config.md` 작성 → 로더 3언어(절대경로·symlink 금지 검증, schema_hash 부팅 검사)는 레인
 
 ### 5-C 배포 — 레인 V
 - [ ] T5.6 아티팩트 파이프라인: wasm(단일), ormd(linux amd64/arm64, darwin), 버전을 파일명에, 체크섬 → composer(`bin/ormd-0.0.1-<os>-<arch>`), crates(`include_bytes!` wasm), Go 모듈
