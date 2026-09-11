@@ -13,7 +13,7 @@ erDiagram
     int           target_team_player_count     "=0"
     int           success_count                "=0"
     int           player_count                 "=0"
-    int           read_count                   "=0"
+    int           read_count                   "=0 unsigned"
     varchar(191)  cover_url                    "?"
     bigint        user_seq                 FK
     bigint        service_seq              FK
@@ -26,6 +26,7 @@ erDiagram
     int           like_count                   "=0"
     varchar(255)  aes_hex_email                "?"
     varchar(255)  aes_hex_phone                "?"
+    decimal(13_3) price                        "?"
     varbinary(16) ip                           "?"
     blob          gz_extend                    "?"
     json          json_setting                 "?"

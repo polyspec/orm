@@ -199,6 +199,55 @@ async fn main() {
         let b = Battle::new().select_expr("tag", "CONCAT(`name`, '!')").seq_eq(42).one(&db).await?.unwrap();
         Ok(json!({"seq": b.seq, "tag": b.extra("tag").map(|v| v.as_string())}))
     }.await);
+    run!("relation_four_levels", async {
+        Ok(Battle::new().select_none().seq_eq(7)
+            .relation_service(Service::new()
+                .relations_members(ServiceMember::new().order_by_seq_asc().limit_per_parent(2)
+                    .relation_user(User::new()
+                        .relations_battles(Battle::new().select_none().order_by_seq_asc().limit_per_parent(1)))))
+            .one(&db).await?.unwrap().to_map())
+    }.await);
+    run!("relation_one_ordered", async { Ok(Battle::new().select_none().seq_eq(7).relation_service(Service::new().order_by_seq_desc()).one(&db).await?.unwrap().to_map()) }.await);
+    run!("relation_if_parent", async {
+        let c = Battle::new().select_none().seq_in(vec![7, 8, 14]).order_by_seq_asc().relation_user(User::new().if_parent_is_close_eq(true)).all(&db).await?;
+        Ok(Value::Array(c.iter().map(|(_, b)| b.to_map()).collect()))
+    }.await);
+    run!("relation_empty_parents", async { Ok(keys(&Battle::new().seq_eq(0).relation_user(User::new()).all(&db).await?)) }.await);
+    run!("relation_off_join", async { Ok(Battle::new().select_none().seq_eq(8).join_service(Service::new().relations_modules(ServiceModule::new())).one(&db).await?.unwrap().to_map()) }.await);
+    run!("paginate_relations", async {
+        let p = Battle::new().select_none().service_seq_eq(7).order_by_seq_asc().relation_user(User::new()).paginate(&db, 1, 3).await?;
+        Ok(json!({"total": p.total, "items": p.items.iter().map(|(_, b)| b.to_map()).collect::<Vec<_>>()}))
+    }.await);
+    run!("key_by_column", async { Ok(Service::new().seq_eq(7).relations_members(ServiceMember::new().order_by_seq_asc().limit_per_parent(3).key_by_user_seq()).one(&db).await?.unwrap().to_map()) }.await);
+    run!("key_by_unselected", async { Ok(Service::new().seq_eq(7).relations_modules(ServiceModule::new().select_none().key_by_name()).one(&db).await?.unwrap().to_map()) }.await);
+    run!("types_roundtrip", async {
+        let dt = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_micro_opt(12, 34, 56, 123456).unwrap();
+        let created = db.transaction(|tx| async move {
+            Battle::new()
+                .set_name("conf-types")
+                .set_user_seq(1).set_service_seq(999).set_service_module_seq(1).set_service_member_seq(1)
+                .set_start_dt(dt).set_end_dt(dt).set_display_start_dt(Some(dt)).set_is_display(true).set_target_team_player_count(2147483647).set_read_count(4294967295).set_price(Some(12345.678))
+                .set_json_setting(json!({"k": []})).set_jsons_tags(json!([])).set_serialize_data(json!(""))
+                .insert(&tx).await
+        }).await?.unwrap();
+        *mask.lock().unwrap() = Mask { seq: created.seq, ts: Some(created.updated_ts) };
+        {
+            let m = mask.lock().unwrap().clone();
+            for st in log.lock().unwrap().iter_mut() {
+                for b in st["binds"].as_array_mut().unwrap() {
+                    if *b == json!(m.seq) { *b = json!("$SEQ"); }
+                    if *b == json!(fmt_time(m.ts.as_ref().unwrap())) { *b = json!("$TS"); }
+                }
+            }
+        }
+        let b = Battle::new().select_json_setting().select_jsons_tags().select_serialize_data().seq_eq(created.seq).one(&db).await?.unwrap();
+        b.delete(&db).await?;
+        Ok(json!({
+            "display_start_dt": fmt_time(b.display_start_dt.as_ref().unwrap()), "is_display": b.is_display, "is_close": b.is_close,
+            "target_team_player_count": b.target_team_player_count, "read_count": b.read_count, "price": b.price,
+            "json_setting": b.json_setting, "jsons_tags": b.jsons_tags, "serialize_data": b.serialize_data,
+        }))
+    }.await);
     run!("key_by_fn_to_array", async {
         let c = ServiceMember::new().service_seq_eq(7).order_by_seq_asc().limit(0, 2)
             .relation_user(User::new().flatten())

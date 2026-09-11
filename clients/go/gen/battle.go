@@ -29,7 +29,7 @@ type BattleRow struct {
 	TargetTeamPlayerCount int32
 	SuccessCount          int32
 	PlayerCount           int32
-	ReadCount             int32
+	ReadCount             int64
 	CoverUrl              *string
 	UserSeq               int64
 	ServiceSeq            int64
@@ -42,6 +42,7 @@ type BattleRow struct {
 	LikeCount             int32
 	AesHexEmail           *string
 	AesHexPhone           *string
+	Price                 *float64
 	Ip                    *string
 	GzExtend              any
 	JsonSetting           any
@@ -244,15 +245,15 @@ func (r *BattleRow) SetPlayerCount(v int32) *BattleRow {
 }
 
 // GetReadCount is nil-safe.
-func (r *BattleRow) GetReadCount() int32 {
+func (r *BattleRow) GetReadCount() int64 {
 	if r == nil {
-		var zero int32
+		var zero int64
 		return zero
 	}
 	return r.ReadCount
 }
 
-func (r *BattleRow) SetReadCount(v int32) *BattleRow {
+func (r *BattleRow) SetReadCount(v int64) *BattleRow {
 	r.ReadCount = v
 	r.Dirty("read_count", v)
 	return r
@@ -438,6 +439,21 @@ func (r *BattleRow) SetAesHexPhone(v *string) *BattleRow {
 	return r
 }
 
+// GetPrice is nil-safe.
+func (r *BattleRow) GetPrice() *float64 {
+	if r == nil {
+		var zero *float64
+		return zero
+	}
+	return r.Price
+}
+
+func (r *BattleRow) SetPrice(v *float64) *BattleRow {
+	r.Price = v
+	r.Dirty("price", orm.Deref(v))
+	return r
+}
+
 // GetIp is nil-safe.
 func (r *BattleRow) GetIp() *string {
 	if r == nil {
@@ -608,7 +624,7 @@ func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 		case "player_count":
 			r.PlayerCount = int32(orm.AsInt64(v))
 		case "read_count":
-			r.ReadCount = int32(orm.AsInt64(v))
+			r.ReadCount = orm.AsInt64(v)
 		case "cover_url":
 			if v != nil {
 				x := orm.AsString(v)
@@ -644,6 +660,11 @@ func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 			if v != nil {
 				x := orm.AsString(v)
 				r.AesHexPhone = &x
+			}
+		case "price":
+			if v != nil {
+				x := orm.AsFloat64(v)
+				r.Price = &x
 			}
 		case "ip":
 			if v != nil {
@@ -802,6 +823,13 @@ func (r *BattleRow) ToArray() map[string]any {
 				}
 				return *r.AesHexPhone
 			}()
+		case "price":
+			m[name] = func() any {
+				if r.Price == nil {
+					return nil
+				}
+				return *r.Price
+			}()
 		case "ip":
 			m[name] = func() any {
 				if r.Ip == nil {
@@ -888,6 +916,7 @@ var BattleCols = struct {
 	LikeCount             orm.ColRef
 	AesHexEmail           orm.ColRef
 	AesHexPhone           orm.ColRef
+	Price                 orm.ColRef
 	Ip                    orm.ColRef
 	GzExtend              orm.ColRef
 	JsonSetting           orm.ColRef
@@ -921,6 +950,7 @@ var BattleCols = struct {
 	LikeCount:             orm.ColRef{Column: "like_count"},
 	AesHexEmail:           orm.ColRef{Column: "aes_hex_email"},
 	AesHexPhone:           orm.ColRef{Column: "aes_hex_phone"},
+	Price:                 orm.ColRef{Column: "price"},
 	Ip:                    orm.ColRef{Column: "ip"},
 	GzExtend:              orm.ColRef{Column: "gz_extend"},
 	JsonSetting:           orm.ColRef{Column: "json_setting"},
@@ -2153,42 +2183,42 @@ func (q *Battle) PlayerCountLteCol(ref orm.ColRef) *Battle {
 	q.q.W().PredCol("player_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
-func (w *BattleWhere) ReadCountEq(v int32) *BattleWhere { w.w.Pred("read_count", "eq", v); return w }
-func (q *Battle) ReadCountEq(v int32) *Battle           { q.q.W().Pred("read_count", "eq", v); return q }
-func (w *BattleWhere) ReadCountNotEq(v int32) *BattleWhere {
+func (w *BattleWhere) ReadCountEq(v int64) *BattleWhere { w.w.Pred("read_count", "eq", v); return w }
+func (q *Battle) ReadCountEq(v int64) *Battle           { q.q.W().Pred("read_count", "eq", v); return q }
+func (w *BattleWhere) ReadCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("read_count", "not_eq", v)
 	return w
 }
-func (q *Battle) ReadCountNotEq(v int32) *Battle         { q.q.W().Pred("read_count", "not_eq", v); return q }
-func (w *BattleWhere) ReadCountGt(v int32) *BattleWhere  { w.w.Pred("read_count", "gt", v); return w }
-func (q *Battle) ReadCountGt(v int32) *Battle            { q.q.W().Pred("read_count", "gt", v); return q }
-func (w *BattleWhere) ReadCountGte(v int32) *BattleWhere { w.w.Pred("read_count", "gte", v); return w }
-func (q *Battle) ReadCountGte(v int32) *Battle           { q.q.W().Pred("read_count", "gte", v); return q }
-func (w *BattleWhere) ReadCountLt(v int32) *BattleWhere  { w.w.Pred("read_count", "lt", v); return w }
-func (q *Battle) ReadCountLt(v int32) *Battle            { q.q.W().Pred("read_count", "lt", v); return q }
-func (w *BattleWhere) ReadCountLte(v int32) *BattleWhere { w.w.Pred("read_count", "lte", v); return w }
-func (q *Battle) ReadCountLte(v int32) *Battle           { q.q.W().Pred("read_count", "lte", v); return q }
-func (w *BattleWhere) ReadCountIn(vs []int32) *BattleWhere {
+func (q *Battle) ReadCountNotEq(v int64) *Battle         { q.q.W().Pred("read_count", "not_eq", v); return q }
+func (w *BattleWhere) ReadCountGt(v int64) *BattleWhere  { w.w.Pred("read_count", "gt", v); return w }
+func (q *Battle) ReadCountGt(v int64) *Battle            { q.q.W().Pred("read_count", "gt", v); return q }
+func (w *BattleWhere) ReadCountGte(v int64) *BattleWhere { w.w.Pred("read_count", "gte", v); return w }
+func (q *Battle) ReadCountGte(v int64) *Battle           { q.q.W().Pred("read_count", "gte", v); return q }
+func (w *BattleWhere) ReadCountLt(v int64) *BattleWhere  { w.w.Pred("read_count", "lt", v); return w }
+func (q *Battle) ReadCountLt(v int64) *Battle            { q.q.W().Pred("read_count", "lt", v); return q }
+func (w *BattleWhere) ReadCountLte(v int64) *BattleWhere { w.w.Pred("read_count", "lte", v); return w }
+func (q *Battle) ReadCountLte(v int64) *Battle           { q.q.W().Pred("read_count", "lte", v); return q }
+func (w *BattleWhere) ReadCountIn(vs []int64) *BattleWhere {
 	w.w.PredList("read_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) ReadCountIn(vs []int32) *Battle {
+func (q *Battle) ReadCountIn(vs []int64) *Battle {
 	q.q.W().PredList("read_count", "in", orm.Anys(vs))
 	return q
 }
-func (w *BattleWhere) ReadCountNotIn(vs []int32) *BattleWhere {
+func (w *BattleWhere) ReadCountNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("read_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) ReadCountNotIn(vs []int32) *Battle {
+func (q *Battle) ReadCountNotIn(vs []int64) *Battle {
 	q.q.W().PredList("read_count", "not_in", orm.Anys(vs))
 	return q
 }
-func (w *BattleWhere) ReadCountBetween(lo, hi int32) *BattleWhere {
+func (w *BattleWhere) ReadCountBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("read_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) ReadCountBetween(lo, hi int32) *Battle {
+func (q *Battle) ReadCountBetween(lo, hi int64) *Battle {
 	q.q.W().PredList("read_count", "between", []any{lo, hi})
 	return q
 }
@@ -3292,6 +3322,94 @@ func (q *Battle) AesHexPhoneNotEqCol(ref orm.ColRef) *Battle {
 	q.q.W().PredCol("aes_hex_phone", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
+func (w *BattleWhere) PriceEq(v float64) *BattleWhere    { w.w.Pred("price", "eq", v); return w }
+func (q *Battle) PriceEq(v float64) *Battle              { q.q.W().Pred("price", "eq", v); return q }
+func (w *BattleWhere) PriceNotEq(v float64) *BattleWhere { w.w.Pred("price", "not_eq", v); return w }
+func (q *Battle) PriceNotEq(v float64) *Battle           { q.q.W().Pred("price", "not_eq", v); return q }
+func (w *BattleWhere) PriceGt(v float64) *BattleWhere    { w.w.Pred("price", "gt", v); return w }
+func (q *Battle) PriceGt(v float64) *Battle              { q.q.W().Pred("price", "gt", v); return q }
+func (w *BattleWhere) PriceGte(v float64) *BattleWhere   { w.w.Pred("price", "gte", v); return w }
+func (q *Battle) PriceGte(v float64) *Battle             { q.q.W().Pred("price", "gte", v); return q }
+func (w *BattleWhere) PriceLt(v float64) *BattleWhere    { w.w.Pred("price", "lt", v); return w }
+func (q *Battle) PriceLt(v float64) *Battle              { q.q.W().Pred("price", "lt", v); return q }
+func (w *BattleWhere) PriceLte(v float64) *BattleWhere   { w.w.Pred("price", "lte", v); return w }
+func (q *Battle) PriceLte(v float64) *Battle             { q.q.W().Pred("price", "lte", v); return q }
+func (w *BattleWhere) PriceIn(vs []float64) *BattleWhere {
+	w.w.PredList("price", "in", orm.Anys(vs))
+	return w
+}
+func (q *Battle) PriceIn(vs []float64) *Battle {
+	q.q.W().PredList("price", "in", orm.Anys(vs))
+	return q
+}
+func (w *BattleWhere) PriceNotIn(vs []float64) *BattleWhere {
+	w.w.PredList("price", "not_in", orm.Anys(vs))
+	return w
+}
+func (q *Battle) PriceNotIn(vs []float64) *Battle {
+	q.q.W().PredList("price", "not_in", orm.Anys(vs))
+	return q
+}
+func (w *BattleWhere) PriceBetween(lo, hi float64) *BattleWhere {
+	w.w.PredList("price", "between", []any{lo, hi})
+	return w
+}
+func (q *Battle) PriceBetween(lo, hi float64) *Battle {
+	q.q.W().PredList("price", "between", []any{lo, hi})
+	return q
+}
+func (w *BattleWhere) PriceIsNull() *BattleWhere    { w.w.PredNull("price", "is_null"); return w }
+func (q *Battle) PriceIsNull() *Battle              { q.q.W().PredNull("price", "is_null"); return q }
+func (w *BattleWhere) PriceIsNotNull() *BattleWhere { w.w.PredNull("price", "is_not_null"); return w }
+func (q *Battle) PriceIsNotNull() *Battle           { q.q.W().PredNull("price", "is_not_null"); return q }
+func (w *BattleWhere) PriceEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("price", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) PriceEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("price", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PriceNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("price", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) PriceNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("price", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PriceGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("price", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) PriceGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("price", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PriceGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("price", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) PriceGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("price", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PriceLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("price", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) PriceLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("price", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PriceLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("price", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) PriceLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("price", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) IpEq(v string) *BattleWhere    { w.w.Pred("ip", "eq", v); return w }
 func (q *Battle) IpEq(v string) *Battle              { q.q.W().Pred("ip", "eq", v); return q }
 func (w *BattleWhere) IpNotEq(v string) *BattleWhere { w.w.Pred("ip", "not_eq", v); return w }
@@ -3914,6 +4032,20 @@ func (q *Battle) SelectAesHexPhoneAs(name string) *Battle {
 	c.As[name] = "aes_hex_phone"
 	return q
 }
+func (q *Battle) SelectPrice() *Battle { c := q.q.Columns(); c.Add = append(c.Add, "price"); return q }
+func (q *Battle) UnselectPrice() *Battle {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "price")
+	return q
+}
+func (q *Battle) SelectPriceAs(name string) *Battle {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "price"
+	return q
+}
 func (q *Battle) SelectIp() *Battle { c := q.q.Columns(); c.Add = append(c.Add, "ip"); return q }
 func (q *Battle) UnselectIp() *Battle {
 	c := q.q.Columns()
@@ -4213,7 +4345,14 @@ func (q *Battle) GroupByAesHexPhone() *Battle {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "aes_hex_phone")
 	return q
 }
-func (q *Battle) KeyByAesHexPhone() *Battle    { q.q.Node.KeyBy = "aes_hex_phone"; return q }
+func (q *Battle) KeyByAesHexPhone() *Battle { q.q.Node.KeyBy = "aes_hex_phone"; return q }
+func (q *Battle) OrderByPriceAsc() *Battle  { q.q.Order("price", false); return q }
+func (q *Battle) OrderByPriceDesc() *Battle { q.q.Order("price", true); return q }
+func (q *Battle) GroupByPrice() *Battle {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "price")
+	return q
+}
+func (q *Battle) KeyByPrice() *Battle          { q.q.Node.KeyBy = "price"; return q }
 func (q *Battle) OrderByIpAsc() *Battle        { q.q.Order("ip", false); return q }
 func (q *Battle) OrderByIpDesc() *Battle       { q.q.Order("ip", true); return q }
 func (q *Battle) GroupByIp() *Battle           { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "ip"); return q }
@@ -4339,7 +4478,7 @@ func (q *Battle) SetPlayerCountExpr(frag string, binds ...any) *Battle {
 	q.q.SetExpr("player_count", frag, binds...)
 	return q
 }
-func (q *Battle) SetReadCount(v int32) *Battle { q.q.Set("read_count", v); return q }
+func (q *Battle) SetReadCount(v int64) *Battle { q.q.Set("read_count", v); return q }
 func (q *Battle) SetReadCountExpr(frag string, binds ...any) *Battle {
 	q.q.SetExpr("read_count", frag, binds...)
 	return q
@@ -4408,6 +4547,12 @@ func (q *Battle) SetAesHexPhoneExpr(frag string, binds ...any) *Battle {
 	q.q.SetExpr("aes_hex_phone", frag, binds...)
 	return q
 }
+func (q *Battle) SetPrice(v float64) *Battle { q.q.Set("price", v); return q }
+func (q *Battle) SetPriceNull() *Battle      { q.q.SetNull("price"); return q }
+func (q *Battle) SetPriceExpr(frag string, binds ...any) *Battle {
+	q.q.SetExpr("price", frag, binds...)
+	return q
+}
 func (q *Battle) SetIp(v string) *Battle { q.q.Set("ip", v); return q }
 func (q *Battle) SetIpNull() *Battle     { q.q.SetNull("ip"); return q }
 func (q *Battle) SetIpExpr(frag string, binds ...any) *Battle {
@@ -4468,8 +4613,8 @@ func (q *Battle) PlusSuccessCount(v int32) *Battle      { q.q.Plus("success_coun
 func (q *Battle) MinusSuccessCount(v int32) *Battle     { q.q.Minus("success_count", v); return q }
 func (q *Battle) PlusPlayerCount(v int32) *Battle       { q.q.Plus("player_count", v); return q }
 func (q *Battle) MinusPlayerCount(v int32) *Battle      { q.q.Minus("player_count", v); return q }
-func (q *Battle) PlusReadCount(v int32) *Battle         { q.q.Plus("read_count", v); return q }
-func (q *Battle) MinusReadCount(v int32) *Battle        { q.q.Minus("read_count", v); return q }
+func (q *Battle) PlusReadCount(v int64) *Battle         { q.q.Plus("read_count", v); return q }
+func (q *Battle) MinusReadCount(v int64) *Battle        { q.q.Minus("read_count", v); return q }
 func (q *Battle) PlusUserSeq(v int64) *Battle           { q.q.Plus("user_seq", v); return q }
 func (q *Battle) MinusUserSeq(v int64) *Battle          { q.q.Minus("user_seq", v); return q }
 func (q *Battle) PlusServiceSeq(v int64) *Battle        { q.q.Plus("service_seq", v); return q }
@@ -4480,6 +4625,8 @@ func (q *Battle) PlusServiceMemberSeq(v int64) *Battle  { q.q.Plus("service_memb
 func (q *Battle) MinusServiceMemberSeq(v int64) *Battle { q.q.Minus("service_member_seq", v); return q }
 func (q *Battle) PlusLikeCount(v int32) *Battle         { q.q.Plus("like_count", v); return q }
 func (q *Battle) MinusLikeCount(v int32) *Battle        { q.q.Minus("like_count", v); return q }
+func (q *Battle) PlusPrice(v float64) *Battle           { q.q.Plus("price", v); return q }
+func (q *Battle) MinusPrice(v float64) *Battle          { q.q.Minus("price", v); return q }
 
 // Terminals.
 func (q *Battle) One(ctx context.Context, ex orm.Exec) (*BattleRow, error) {
@@ -4635,6 +4782,18 @@ func (q *Battle) SumLikeCount(ctx context.Context, ex orm.Exec) (float64, error)
 func (q *Battle) AvgLikeCount(ctx context.Context, ex orm.Exec) (float64, error) {
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "like_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsFloat64(v), err
+}
+func (q *Battle) SumPrice(ctx context.Context, ex orm.Exec) (float64, error) {
+	q.q.Req.IR.Kind = "sum"
+	q.q.Req.IR.Agg = "price"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsFloat64(v), err
+}
+func (q *Battle) AvgPrice(ctx context.Context, ex orm.Exec) (float64, error) {
+	q.q.Req.IR.Kind = "avg"
+	q.q.Req.IR.Agg = "price"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }

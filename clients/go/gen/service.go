@@ -500,7 +500,7 @@ func (q *Service) IfParentSuccessCountEq(v int32) *Service {
 	return q
 }
 func (q *Service) IfParentPlayerCountEq(v int32) *Service { q.q.IfParent("player_count", v); return q }
-func (q *Service) IfParentReadCountEq(v int32) *Service   { q.q.IfParent("read_count", v); return q }
+func (q *Service) IfParentReadCountEq(v int64) *Service   { q.q.IfParent("read_count", v); return q }
 func (q *Service) IfParentCoverUrlEq(v string) *Service   { q.q.IfParent("cover_url", v); return q }
 func (q *Service) IfParentUserSeqEq(v int64) *Service     { q.q.IfParent("user_seq", v); return q }
 func (q *Service) IfParentServiceSeqEq(v int64) *Service  { q.q.IfParent("service_seq", v); return q }
