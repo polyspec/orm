@@ -29,6 +29,8 @@ func main() {
 		importCmd(os.Args[2:])
 	case "validate":
 		validateCmd(os.Args[2:])
+	case "errors":
+		errorsCmd(os.Args[2:])
 	default:
 		usage()
 	}
@@ -40,6 +42,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "       ormgen tokens --schema schema/schema.json [--print] <file.go> <file.php> <file.rs>...")
 	fmt.Fprintln(os.Stderr, "       ormgen import --dsn <dsn> --out schema/app.mmd [--tables a,b]")
 	fmt.Fprintln(os.Stderr, "       ormgen validate --dsn <dsn> --schema schema/schema.json")
+	fmt.Fprintln(os.Stderr, "       ormgen errors --lang go|php|rust --out <file>")
 	os.Exit(2)
 }
 
