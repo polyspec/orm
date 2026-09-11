@@ -213,6 +213,23 @@ class Q
         return new W($this->req, $this->node['on']);
     }
 
+    /** W over the root having group (root only; the engine requires group_by). */
+    public function havingW(): W
+    {
+        $this->node['having'] ??= ['items' => []];
+        return new W($this->req, $this->node['having']);
+    }
+
+    /** kind raw: the hand-written statement; `{table}` is this entity's table, each `?` bound from $binds in order. */
+    public function setRaw(string $sql, array $binds): void
+    {
+        $ps = [];
+        foreach ($binds as $v) {
+            $ps[] = $this->req->p($v);
+        }
+        $this->req->ir['raw'] = ['sql' => $sql, 'ps' => $ps];
+    }
+
     public function orConn(): void
     {
         $this->pendingOr = true;
@@ -416,6 +433,12 @@ class Q
             return [true, $this->req->params[$a['p']]];
         }
         return [false, $this->runInsert($ex)];
+    }
+
+    /** Runs the raw() statement (step role raw, no assemble): rows keyed by column name, values as the driver gives them. @return list<array<string, mixed>> */
+    public function runRaw(Db $ex): array
+    {
+        return $ex->rows($this->plan('raw')['steps'][0], $this->req->params);
     }
 
     /** The main step's SQL and resolved binds without executing (the plan is compiled and cached as usual). */
