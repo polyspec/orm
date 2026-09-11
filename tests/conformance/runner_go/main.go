@@ -609,6 +609,43 @@ func main() {
 		}
 		return map[string]any{"sql": st.SQL, "binds": binds}, nil
 	})
+	// S4: aggregates, group count + having, named predicates, raw root.
+	run("agg_min_max", func() (any, error) {
+		mn, err := gen.NewBattle().ServiceSeqEq(7).MinSeq(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		mx, err := gen.NewBattle().ServiceSeqEq(7).MaxSeq(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		users, err := gen.NewBattle().ServiceSeqEq(7).CountDistinctUserSeq(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"min": mn, "max": mx, "distinct_users": users}, nil
+	})
+	run("group_count_having", func() (any, error) {
+		return gen.NewBattle().ServiceSeqEq(7).GroupByUserSeq().
+			Having(func(w *gen.BattleWhere) { w.Expr("COUNT(*) > ?", 1) }).
+			Count(ctx, db)
+	})
+	run("predicate_named", func() (any, error) {
+		visible, err := gen.NewBattle().Visible().ServiceSeqEq(7).Count(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		after, err := gen.NewBattle().StartedAfter("2026-01-01 00:00:00").ServiceSeqEq(7).Count(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"visible": visible, "started_after": after}, nil
+	})
+	run("raw_root", func() (any, error) {
+		return gen.NewBattle().
+			Raw("SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?", 7, 0).
+			RawAll(ctx, db)
+	})
 	run("codec_roundtrip", func() (any, error) {
 		value := map[string]any{"a": int64(1), "b": []any{int64(1), int64(2), map[string]any{"c": "한글/slash"}}, "d": nil, "e": true, "f": 1.5}
 		ip := "10.1.2.3"

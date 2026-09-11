@@ -358,6 +358,12 @@ func (q *User) ServiceMembers(fn func(*ServiceMemberWhere)) *User {
 func (q *User) On(fn func(*UserWhere)) *User    { fn(&UserWhere{w: q.q.OnW()}); return q }
 func (q *User) Where(fn func(*UserWhere)) *User { fn(&UserWhere{w: q.q.W()}); return q }
 
+// Having is the group predicate after GroupBy<Col>: the same builder as where; aggregates go through Expr("COUNT(*) > ?", n).
+func (q *User) Having(fn func(*UserWhere)) *User { fn(&UserWhere{w: q.q.HavingW()}); return q }
+
+// Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
+func (q *User) Raw(sql string, binds ...any) *User { q.q.Raw(sql, binds...); return q }
+
 func (q *User) JoinBattles(child *Battle) *User      { q.q.Join("battles", "inner", child.q); return q }
 func (q *User) LeftJoinBattles(child *Battle) *User  { q.q.Join("battles", "left", child.q); return q }
 func (q *User) RelationsBattles(child *Battle) *User { q.q.Relation("battles", child.q); return q }
@@ -530,6 +536,72 @@ func (q *User) AvgSeq(ctx context.Context, ex orm.Exec) (float64, error) {
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
+}
+func (q *User) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinSeq is nil when no row matches.
+func (q *User) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+
+// MaxSeq is nil when no row matches.
+func (q *User) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *User) CountDistinctName(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "name"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinName is nil when no row matches.
+func (q *User) MinName(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "name"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// MaxName is nil when no row matches.
+func (q *User) MaxName(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "name"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// RawAll runs the statement given to Raw and returns its rows by column name (values as the driver gives them, no codec).
+func (q *User) RawAll(ctx context.Context, ex orm.Exec) ([]map[string]any, error) {
+	q.q.Req.IR.Kind = "raw"
+	return orm.RawAll(ctx, ex, q.q.Req)
 }
 
 func (q *User) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm.Page[UserRow], error) {

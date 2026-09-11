@@ -3544,6 +3544,17 @@ func (q *Battle) SerializeDataIsNotNull() *Battle {
 	return q
 }
 
+// StartedAfter is the manifest predicate started_after: `start_dt` > ?
+func (w *BattleWhere) StartedAfter(v any) *BattleWhere { w.w.Expr("`start_dt` > ?", v); return w }
+func (q *Battle) StartedAfter(v any) *Battle           { q.q.W().Expr("`start_dt` > ?", v); return q }
+
+// Visible is the manifest predicate visible: `is_close` = 0 AND `is_display` = 1
+func (w *BattleWhere) Visible() *BattleWhere {
+	w.w.Expr("`is_close` = 0 AND `is_display` = 1")
+	return w
+}
+func (q *Battle) Visible() *Battle { q.q.W().Expr("`is_close` = 0 AND `is_display` = 1"); return q }
+
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
 func (q *Battle) Or() *Battle { q.q.Or(); return q }
 func (q *Battle) And(fn func(*BattleWhere)) *Battle {
@@ -3571,6 +3582,12 @@ func (q *Battle) User(fn func(*UserWhere)) *Battle {
 // Join children: On = ON clause, Where = parent WHERE group. Bare predicates on a join child are rejected by the engine.
 func (q *Battle) On(fn func(*BattleWhere)) *Battle    { fn(&BattleWhere{w: q.q.OnW()}); return q }
 func (q *Battle) Where(fn func(*BattleWhere)) *Battle { fn(&BattleWhere{w: q.q.W()}); return q }
+
+// Having is the group predicate after GroupBy<Col>: the same builder as where; aggregates go through Expr("COUNT(*) > ?", n).
+func (q *Battle) Having(fn func(*BattleWhere)) *Battle { fn(&BattleWhere{w: q.q.HavingW()}); return q }
+
+// Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
+func (q *Battle) Raw(sql string, binds ...any) *Battle { q.q.Raw(sql, binds...); return q }
 
 func (q *Battle) JoinService(child *Service) *Battle { q.q.Join("service", "inner", child.q); return q }
 func (q *Battle) LeftJoinService(child *Service) *Battle {
@@ -5133,6 +5150,792 @@ func (q *Battle) AvgPrice(ctx context.Context, ex orm.Exec) (float64, error) {
 	q.q.Req.IR.Agg = "price"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
+}
+func (q *Battle) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinSeq is nil when no row matches.
+func (q *Battle) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+
+// MaxSeq is nil when no row matches.
+func (q *Battle) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctName(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "name"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinName is nil when no row matches.
+func (q *Battle) MinName(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "name"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// MaxName is nil when no row matches.
+func (q *Battle) MaxName(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "name"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctDescription(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "description"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinDescription is nil when no row matches.
+func (q *Battle) MinDescription(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "description"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// MaxDescription is nil when no row matches.
+func (q *Battle) MaxDescription(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "description"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctCreatedTs(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "created_ts"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinCreatedTs is nil when no row matches.
+func (q *Battle) MinCreatedTs(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "created_ts"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsTime(v)
+	return &x, nil
+}
+
+// MaxCreatedTs is nil when no row matches.
+func (q *Battle) MaxCreatedTs(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "created_ts"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsTime(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctUpdatedTs(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "updated_ts"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinUpdatedTs is nil when no row matches.
+func (q *Battle) MinUpdatedTs(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "updated_ts"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsTime(v)
+	return &x, nil
+}
+
+// MaxUpdatedTs is nil when no row matches.
+func (q *Battle) MaxUpdatedTs(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "updated_ts"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsTime(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctIsClose(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "is_close"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinIsClose is nil when no row matches.
+func (q *Battle) MinIsClose(ctx context.Context, ex orm.Exec) (*bool, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "is_close"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsBool(v)
+	return &x, nil
+}
+
+// MaxIsClose is nil when no row matches.
+func (q *Battle) MaxIsClose(ctx context.Context, ex orm.Exec) (*bool, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "is_close"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsBool(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctIsDisplay(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "is_display"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinIsDisplay is nil when no row matches.
+func (q *Battle) MinIsDisplay(ctx context.Context, ex orm.Exec) (*bool, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "is_display"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsBool(v)
+	return &x, nil
+}
+
+// MaxIsDisplay is nil when no row matches.
+func (q *Battle) MaxIsDisplay(ctx context.Context, ex orm.Exec) (*bool, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "is_display"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsBool(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctDisplayStartDt(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "display_start_dt"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinDisplayStartDt is nil when no row matches.
+func (q *Battle) MinDisplayStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "display_start_dt"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsTime(v)
+	return &x, nil
+}
+
+// MaxDisplayStartDt is nil when no row matches.
+func (q *Battle) MaxDisplayStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "display_start_dt"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsTime(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctDisplayEndDt(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "display_end_dt"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinDisplayEndDt is nil when no row matches.
+func (q *Battle) MinDisplayEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "display_end_dt"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsTime(v)
+	return &x, nil
+}
+
+// MaxDisplayEndDt is nil when no row matches.
+func (q *Battle) MaxDisplayEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "display_end_dt"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsTime(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctIsAllday(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "is_allday"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinIsAllday is nil when no row matches.
+func (q *Battle) MinIsAllday(ctx context.Context, ex orm.Exec) (*bool, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "is_allday"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsBool(v)
+	return &x, nil
+}
+
+// MaxIsAllday is nil when no row matches.
+func (q *Battle) MaxIsAllday(ctx context.Context, ex orm.Exec) (*bool, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "is_allday"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsBool(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctTargetTeamPlayerCount(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "target_team_player_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinTargetTeamPlayerCount is nil when no row matches.
+func (q *Battle) MinTargetTeamPlayerCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "target_team_player_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+
+// MaxTargetTeamPlayerCount is nil when no row matches.
+func (q *Battle) MaxTargetTeamPlayerCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "target_team_player_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctSuccessCount(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "success_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinSuccessCount is nil when no row matches.
+func (q *Battle) MinSuccessCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "success_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+
+// MaxSuccessCount is nil when no row matches.
+func (q *Battle) MaxSuccessCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "success_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctPlayerCount(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "player_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinPlayerCount is nil when no row matches.
+func (q *Battle) MinPlayerCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "player_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+
+// MaxPlayerCount is nil when no row matches.
+func (q *Battle) MaxPlayerCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "player_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctReadCount(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "read_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinReadCount is nil when no row matches.
+func (q *Battle) MinReadCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "read_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+
+// MaxReadCount is nil when no row matches.
+func (q *Battle) MaxReadCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "read_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctCoverUrl(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "cover_url"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinCoverUrl is nil when no row matches.
+func (q *Battle) MinCoverUrl(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "cover_url"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// MaxCoverUrl is nil when no row matches.
+func (q *Battle) MaxCoverUrl(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "cover_url"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctUserSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "user_seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinUserSeq is nil when no row matches.
+func (q *Battle) MinUserSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "user_seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+
+// MaxUserSeq is nil when no row matches.
+func (q *Battle) MaxUserSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "user_seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctServiceSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "service_seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinServiceSeq is nil when no row matches.
+func (q *Battle) MinServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "service_seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+
+// MaxServiceSeq is nil when no row matches.
+func (q *Battle) MaxServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "service_seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctServiceModuleSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "service_module_seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinServiceModuleSeq is nil when no row matches.
+func (q *Battle) MinServiceModuleSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "service_module_seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+
+// MaxServiceModuleSeq is nil when no row matches.
+func (q *Battle) MaxServiceModuleSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "service_module_seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctServiceMemberSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "service_member_seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinServiceMemberSeq is nil when no row matches.
+func (q *Battle) MinServiceMemberSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "service_member_seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+
+// MaxServiceMemberSeq is nil when no row matches.
+func (q *Battle) MaxServiceMemberSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "service_member_seq"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctStartDt(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "start_dt"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinStartDt is nil when no row matches.
+func (q *Battle) MinStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "start_dt"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsTime(v)
+	return &x, nil
+}
+
+// MaxStartDt is nil when no row matches.
+func (q *Battle) MaxStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "start_dt"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsTime(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctEndDt(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "end_dt"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinEndDt is nil when no row matches.
+func (q *Battle) MinEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "end_dt"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsTime(v)
+	return &x, nil
+}
+
+// MaxEndDt is nil when no row matches.
+func (q *Battle) MaxEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "end_dt"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsTime(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctUuid(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "uuid"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinUuid is nil when no row matches.
+func (q *Battle) MinUuid(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "uuid"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// MaxUuid is nil when no row matches.
+func (q *Battle) MaxUuid(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "uuid"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctIsSinglePlay(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "is_single_play"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinIsSinglePlay is nil when no row matches.
+func (q *Battle) MinIsSinglePlay(ctx context.Context, ex orm.Exec) (*bool, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "is_single_play"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsBool(v)
+	return &x, nil
+}
+
+// MaxIsSinglePlay is nil when no row matches.
+func (q *Battle) MaxIsSinglePlay(ctx context.Context, ex orm.Exec) (*bool, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "is_single_play"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsBool(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctLikeCount(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "like_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinLikeCount is nil when no row matches.
+func (q *Battle) MinLikeCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "like_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+
+// MaxLikeCount is nil when no row matches.
+func (q *Battle) MaxLikeCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "like_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctPrice(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "price"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinPrice is nil when no row matches.
+func (q *Battle) MinPrice(ctx context.Context, ex orm.Exec) (*float64, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "price"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsFloat64(v)
+	return &x, nil
+}
+
+// MaxPrice is nil when no row matches.
+func (q *Battle) MaxPrice(ctx context.Context, ex orm.Exec) (*float64, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "price"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsFloat64(v)
+	return &x, nil
+}
+func (q *Battle) CountDistinctIp(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "ip"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinIp is nil when no row matches.
+func (q *Battle) MinIp(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "ip"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// MaxIp is nil when no row matches.
+func (q *Battle) MaxIp(ctx context.Context, ex orm.Exec) (*string, error) {
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "ip"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// RawAll runs the statement given to Raw and returns its rows by column name (values as the driver gives them, no codec).
+func (q *Battle) RawAll(ctx context.Context, ex orm.Exec) ([]map[string]any, error) {
+	q.q.Req.IR.Kind = "raw"
+	return orm.RawAll(ctx, ex, q.q.Req)
 }
 
 func (q *Battle) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm.Page[BattleRow], error) {
