@@ -100,6 +100,10 @@ pub struct Child {
     pub key_index: usize,
     #[serde(default)]
     pub flatten: bool,
+    /// The related rows hold this row's PK as their FK and no_cascade_delete was
+    /// not set: delete_cascade removes them before this row.
+    #[serde(default)]
+    pub cascade: bool,
     #[serde(default)]
     pub assemble: Option<Assemble>,
 }

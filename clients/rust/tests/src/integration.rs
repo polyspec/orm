@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use gen::*;
 use orm::collection::Key;
-use orm::value::Val;
+use orm::value::{Param, Val};
 use orm::db::{Config, Db};
 use orm::engine::{Engine, EngineConfig};
 use sqlx::mysql::MySqlConnectOptions;
@@ -137,6 +137,89 @@ async fn main() {
         Err(e) if e.code() == "EMPTY_IN" => {}
         other => { fails += 1; eprintln!("FAIL: EMPTY_IN: {:?}", other.err()); }
     }
+
+    // ---- S3 writes: upsert, save, query update/delete, sql, delete_cascade ----
+    let draft = |name: &str| Battle::new()
+        .set_name(name)
+        .set_user_seq(1).set_service_seq(999).set_service_module_seq(1).set_service_member_seq(1)
+        .set_start_dt(start).set_end_dt(end);
+    let a = draft("rust-u1").set_uuid(Some("rust-upsert")).set_read_count(1).insert(&db).await.expect("insert a").unwrap();
+    let b = draft("rust-u2").set_uuid(Some("rust-upsert")).set_read_count(1)
+        .on_duplicate_set_name("rust-u2").on_duplicate_plus_read_count(5)
+        .insert(&db).await.expect("upsert").unwrap();
+    check!(fails, a.seq == b.seq && b.name == "rust-u2" && b.read_count == 6, "on_duplicate: existing row returned, set + plus applied");
+    let c = draft("rust-u3").set_uuid(Some("rust-upsert")).set_read_count(9).on_duplicate_set_all().insert(&db).await.expect("upsert set_all").unwrap();
+    check!(fails, c.seq == a.seq && c.name == "rust-u3" && c.read_count == 9, "on_duplicate_set_all copies the draft's set columns");
+    let n = Battle::new().seq_eq(a.seq).plus_read_count(2).update(&db).await.expect("query update");
+    check!(fails, n == 1 && Battle::new().one_by_seq(&db, a.seq).await.unwrap().unwrap().read_count == 11, "query update: affected 1, plus applied");
+    let n = Battle::new().seq_eq(a.seq).minus_read_count(100).update(&db).await.expect("query update minus");
+    check!(fails, n == 1 && Battle::new().one_by_seq(&db, a.seq).await.unwrap().unwrap().read_count == 0, "minus clamps at zero");
+    let saved = Battle::new().set_seq(a.seq).set_name("rust-saved").save(&db).await.expect("save update").unwrap();
+    check!(fails, saved.seq == a.seq && saved.name == "rust-saved" && saved.uuid.as_deref() == Some("rust-upsert"), "save with pk: update + re-read");
+    let inserted = draft("rust-saved-new").save(&db).await.expect("save insert").unwrap();
+    check!(fails, inserted.seq != a.seq && inserted.name == "rust-saved-new", "save without pk: insert");
+    match Battle::new().set_name("x").update(&db).await {
+        Err(e) if e.code() == "IR_INVALID" => {}
+        other => { fails += 1; eprintln!("FAIL: update without where not rejected: {:?}", other.err()); }
+    }
+    let n0 = statements.load(Ordering::Relaxed);
+    let s = Battle::new().service_seq_eq(7).select_aes_hex_email().limit(0, 1).sql(&db).await.expect("sql");
+    check!(fails, s.sql.starts_with("SELECT ") && s.sql.ends_with(" LIMIT 0, 1") && statements.load(Ordering::Relaxed) == n0, "sql renders without executing");
+    check!(fails, s.binds == vec![Param::Str("$SECRET".into()), Param::Str("$SECRET".into()), Param::I64(7)], "sql binds: secrets masked, params as values");
+    check!(fails, Battle::new().seq_in(vec![a.seq, inserted.seq]).delete(&db).await.expect("query delete") == 2, "query delete: affected count");
+
+    let (svc, m1, m2, md) = db.transaction(|tx| async move {
+        let s = Service::new().set_name("rust-svc").insert(&tx).await?.unwrap();
+        let m1 = ServiceMember::new().set_service_seq(s.seq).set_user_seq(1).insert(&tx).await?.unwrap();
+        let m2 = ServiceMember::new().set_service_seq(s.seq).set_user_seq(2).insert(&tx).await?.unwrap();
+        let md = ServiceModule::new().set_service_seq(s.seq).set_name("rust-mod").insert(&tx).await?.unwrap();
+        Ok((s.seq, m1.seq, m2.seq, md.seq))
+    }).await.expect("cascade fixture");
+    let row = Service::new().seq_eq(svc)
+        .relations_members(ServiceMember::new().order_by_seq_asc())
+        .relations_modules(ServiceModule::new().no_cascade_delete())
+        .one(&db).await.expect("service").expect("service row");
+    check!(fails, row.members().len() == 2 && row.modules().len() == 1, "cascade fixture loaded");
+    let n0 = statements.load(Ordering::Relaxed);
+    row.delete_cascade(&db).await.expect("delete_cascade");
+    check!(fails, statements.load(Ordering::Relaxed) - n0 == 3, "delete_cascade: one DELETE per member + the service");
+    check!(fails, ServiceMember::new().seq_in(vec![m1, m2]).count(&db).await.unwrap() == 0, "delete_cascade removed the members");
+    check!(fails, Service::new().seq_eq(svc).count(&db).await.unwrap() == 0, "delete_cascade removed the service");
+    check!(fails, ServiceModule::new().seq_eq(md).count(&db).await.unwrap() == 1, "no_cascade_delete kept the module");
+    check!(fails, ServiceModule::new().seq_eq(md).delete(&db).await.unwrap() == 1, "module cleaned up");
+
+    // ---- deadlock gate: T1 locks A then B, T2 locks B then A; the loser's closure re-runs ----
+    let a = draft("dl-rust-1").insert(&db).await.expect("dl a").unwrap().seq;
+    let b = draft("dl-rust-2").insert(&db).await.expect("dl b").unwrap().seq;
+    let barrier = Arc::new(tokio::sync::Barrier::new(2));
+    let runs = Arc::new(AtomicUsize::new(0));
+    let last_writer = Arc::new(AtomicUsize::new(0));
+    let task = |id: usize, first: i64, second: i64| {
+        let (db, barrier, runs, last_writer) = (db.clone(), barrier.clone(), runs.clone(), last_writer.clone());
+        tokio::spawn(async move {
+            let attempts = AtomicUsize::new(0);
+            db.transaction(|tx| {
+                let (barrier, runs, last_writer) = (barrier.clone(), runs.clone(), last_writer.clone());
+                let attempt = attempts.fetch_add(1, Ordering::Relaxed);
+                async move {
+                    runs.fetch_add(1, Ordering::Relaxed);
+                    Battle::new().seq_eq(first).set_like_count(id as i32 * 10).update(&tx).await?;
+                    // both sides hold their first row before touching the second; a re-run has no partner to wait for
+                    if attempt == 0 { barrier.wait().await; }
+                    Battle::new().seq_eq(second).set_like_count(id as i32 * 10).update(&tx).await?;
+                    last_writer.store(id, Ordering::Relaxed);
+                    Ok(())
+                }
+            }).await
+        })
+    };
+    let (r1, r2) = tokio::join!(task(1, a, b), task(2, b, a));
+    check!(fails, r1.expect("t1 join").is_ok() && r2.expect("t2 join").is_ok(), "both transactions eventually succeed");
+    check!(fails, runs.load(Ordering::Relaxed) >= 3, "the deadlock loser re-ran its closure");
+    let expect = last_writer.load(Ordering::Relaxed) as i32 * 10;
+    let (ra, rb) = (Battle::new().one_by_seq(&db, a).await.unwrap().unwrap(), Battle::new().one_by_seq(&db, b).await.unwrap().unwrap());
+    check!(fails, expect > 0 && ra.like_count == expect && rb.like_count == expect, "final values are the last writer's");
+    check!(fails, Battle::new().seq_in(vec![a, b]).delete(&db).await.unwrap() == 2, "deadlock rows cleaned up");
 
     if fails == 0 { println!("ok"); } else { std::process::exit(1); }
 }
