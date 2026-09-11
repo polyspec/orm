@@ -581,6 +581,43 @@ func (r *AuthorRow) UpdateOptimistic(ctx context.Context, ex orm.Exec) error {
 
 func (r *AuthorRow) Delete(ctx context.Context, ex orm.Exec) error { return r.DeleteRow(ctx, ex) }
 
+// DeleteCascade deletes the loaded relations this row owns (the assemble's
+// cascade children, in load order, each row through its own DeleteCascade)
+// and then this row. A bare DB runs the whole walk in one transaction.
+func (r *AuthorRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
+	return orm.InTx(ctx, ex, func(ex orm.Exec) error {
+		for _, rel := range r.Cascades() {
+			switch rel {
+			case "service":
+				if r.Service != nil {
+					if err := r.Service.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			case "service_member":
+				if r.ServiceMember != nil {
+					if err := r.ServiceMember.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			case "service_region":
+				if r.ServiceRegion != nil {
+					if err := r.ServiceRegion.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			case "user":
+				if r.User != nil {
+					if err := r.User.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return r.DeleteRow(ctx, ex)
+	})
+}
+
 // scanAuthor maps a positional row slice onto the struct, its joined
 // children (same row) and its relation children (rows of later steps).
 func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
@@ -4406,12 +4443,18 @@ func (q *Author) ForceIndexIxUser() *Author    { q.q.Node.ForceIdx = "ix_user"; 
 func (q *Author) Flatten() *Author                     { q.q.Node.Flatten = true; return q }
 func (q *Author) LimitPerParent(n int) *Author         { q.q.Node.LimitPerParent = n; return q }
 func (q *Author) DropChildKey() *Author                { q.q.Node.DropChildKey = true; return q }
+func (q *Author) NoCascadeDelete() *Author             { q.q.Node.NoCascadeDelete = true; return q }
 func (q *Author) IfParentSeqEq(v int64) *Author        { q.q.IfParent("seq", v); return q }
 func (q *Author) IfParentNameEq(v string) *Author      { q.q.IfParent("name", v); return q }
 func (q *Author) IfParentServiceSeqEq(v int64) *Author { q.q.IfParent("service_seq", v); return q }
 func (q *Author) IfParentUserSeqEq(v int64) *Author    { q.q.IfParent("user_seq", v); return q }
 
-// Insert draft.
+// Insert draft. The auto PK is settable too: Save takes it as the update key.
+func (q *Author) SetSeq(v int64) *Author { q.q.Set("seq", v); return q }
+func (q *Author) SetSeqExpr(frag string, binds ...any) *Author {
+	q.q.SetExpr("seq", frag, binds...)
+	return q
+}
 func (q *Author) SetName(v string) *Author { q.q.Set("name", v); return q }
 func (q *Author) SetNameExpr(frag string, binds ...any) *Author {
 	q.q.SetExpr("name", frag, binds...)
@@ -4628,6 +4671,300 @@ func (q *Author) MinusLikeCount(v int64) *Author        { q.q.Minus("like_count"
 func (q *Author) PlusPrice(v float64) *Author           { q.q.Plus("price", v); return q }
 func (q *Author) MinusPrice(v float64) *Author          { q.q.Minus("price", v); return q }
 
+// ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
+func (q *Author) OnDuplicateSetName(v string) *Author { q.q.OnDuplicate("name", v); return q }
+func (q *Author) OnDuplicateSetNameExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("name", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetDescription(v string) *Author {
+	q.q.OnDuplicate("description", v)
+	return q
+}
+func (q *Author) OnDuplicateSetDescriptionExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("description", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetCreatedTs(v time.Time) *Author {
+	q.q.OnDuplicate("created_ts", v)
+	return q
+}
+func (q *Author) OnDuplicateSetCreatedTsExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("created_ts", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetUpdatedTs(v time.Time) *Author {
+	q.q.OnDuplicate("updated_ts", v)
+	return q
+}
+func (q *Author) OnDuplicateSetUpdatedTsExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("updated_ts", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetIsClose(v bool) *Author { q.q.OnDuplicate("is_close", v); return q }
+func (q *Author) OnDuplicateSetIsCloseExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("is_close", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetIsDisplay(v bool) *Author { q.q.OnDuplicate("is_display", v); return q }
+func (q *Author) OnDuplicateSetIsDisplayExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("is_display", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetDisplayStartDt(v time.Time) *Author {
+	q.q.OnDuplicate("display_start_dt", v)
+	return q
+}
+func (q *Author) OnDuplicateSetDisplayStartDtExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("display_start_dt", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetDisplayEndDt(v time.Time) *Author {
+	q.q.OnDuplicate("display_end_dt", v)
+	return q
+}
+func (q *Author) OnDuplicateSetDisplayEndDtExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("display_end_dt", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetIsAllday(v bool) *Author { q.q.OnDuplicate("is_allday", v); return q }
+func (q *Author) OnDuplicateSetIsAlldayExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("is_allday", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetTargetClubReaderCount(v int32) *Author {
+	q.q.OnDuplicate("target_club_reader_count", v)
+	return q
+}
+func (q *Author) OnDuplicateSetTargetClubReaderCountExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("target_club_reader_count", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetSuccessCount(v int32) *Author {
+	q.q.OnDuplicate("success_count", v)
+	return q
+}
+func (q *Author) OnDuplicateSetSuccessCountExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("success_count", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetReaderCount(v int32) *Author {
+	q.q.OnDuplicate("reader_count", v)
+	return q
+}
+func (q *Author) OnDuplicateSetReaderCountExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("reader_count", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetReadCount(v int64) *Author { q.q.OnDuplicate("read_count", v); return q }
+func (q *Author) OnDuplicateSetReadCountExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("read_count", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetPhotoUrl(v string) *Author { q.q.OnDuplicate("photo_url", v); return q }
+func (q *Author) OnDuplicateSetPhotoUrlExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("photo_url", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetUserSeq(v int64) *Author { q.q.OnDuplicate("user_seq", v); return q }
+func (q *Author) OnDuplicateSetUserSeqExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("user_seq", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetServiceSeq(v int64) *Author {
+	q.q.OnDuplicate("service_seq", v)
+	return q
+}
+func (q *Author) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("service_seq", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetServiceRegionSeq(v int64) *Author {
+	q.q.OnDuplicate("service_region_seq", v)
+	return q
+}
+func (q *Author) OnDuplicateSetServiceRegionSeqExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("service_region_seq", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetServiceMemberSeq(v int64) *Author {
+	q.q.OnDuplicate("service_member_seq", v)
+	return q
+}
+func (q *Author) OnDuplicateSetServiceMemberSeqExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("service_member_seq", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetStartDt(v time.Time) *Author { q.q.OnDuplicate("start_dt", v); return q }
+func (q *Author) OnDuplicateSetStartDtExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("start_dt", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetEndDt(v time.Time) *Author { q.q.OnDuplicate("end_dt", v); return q }
+func (q *Author) OnDuplicateSetEndDtExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("end_dt", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetUuid(v string) *Author { q.q.OnDuplicate("uuid", v); return q }
+func (q *Author) OnDuplicateSetUuidExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("uuid", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetIsSingleWork(v bool) *Author {
+	q.q.OnDuplicate("is_single_work", v)
+	return q
+}
+func (q *Author) OnDuplicateSetIsSingleWorkExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("is_single_work", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetLikeCount(v int32) *Author { q.q.OnDuplicate("like_count", v); return q }
+func (q *Author) OnDuplicateSetLikeCountExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("like_count", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetAesHexEmail(v string) *Author {
+	q.q.OnDuplicate("aes_hex_email", v)
+	return q
+}
+func (q *Author) OnDuplicateSetAesHexEmailExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("aes_hex_email", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetAesHexPhone(v string) *Author {
+	q.q.OnDuplicate("aes_hex_phone", v)
+	return q
+}
+func (q *Author) OnDuplicateSetAesHexPhoneExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("aes_hex_phone", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetPrice(v float64) *Author { q.q.OnDuplicate("price", v); return q }
+func (q *Author) OnDuplicateSetPriceExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("price", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetIp(v string) *Author { q.q.OnDuplicate("ip", v); return q }
+func (q *Author) OnDuplicateSetIpExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("ip", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetGzExtend(v any) *Author {
+	q.q.OnDuplicateStyled("gz_extend", v, []string{"serialize", "gz"})
+	return q
+}
+func (q *Author) OnDuplicateSetGzExtendExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("gz_extend", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetJsonSetting(v any) *Author {
+	q.q.OnDuplicateStyled("json_setting", v, []string{"json"})
+	return q
+}
+func (q *Author) OnDuplicateSetJsonSettingExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("json_setting", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetJsonsTags(v any) *Author {
+	q.q.OnDuplicateStyled("jsons_tags", v, []string{"jsons"})
+	return q
+}
+func (q *Author) OnDuplicateSetJsonsTagsExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("jsons_tags", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetBase64Extra(v any) *Author {
+	q.q.OnDuplicateStyled("base64_extra", v, []string{"serialize", "base64"})
+	return q
+}
+func (q *Author) OnDuplicateSetBase64ExtraExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("base64_extra", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicateSetSerializeData(v any) *Author {
+	q.q.OnDuplicateStyled("serialize_data", v, []string{"serialize"})
+	return q
+}
+func (q *Author) OnDuplicateSetSerializeDataExpr(frag string, binds ...any) *Author {
+	q.q.OnDuplicateExpr("serialize_data", frag, binds...)
+	return q
+}
+func (q *Author) OnDuplicatePlusTargetClubReaderCount(v int32) *Author {
+	q.q.OnDuplicatePlus("target_club_reader_count", v)
+	return q
+}
+func (q *Author) OnDuplicateMinusTargetClubReaderCount(v int32) *Author {
+	q.q.OnDuplicateMinus("target_club_reader_count", v)
+	return q
+}
+func (q *Author) OnDuplicatePlusSuccessCount(v int32) *Author {
+	q.q.OnDuplicatePlus("success_count", v)
+	return q
+}
+func (q *Author) OnDuplicateMinusSuccessCount(v int32) *Author {
+	q.q.OnDuplicateMinus("success_count", v)
+	return q
+}
+func (q *Author) OnDuplicatePlusReaderCount(v int32) *Author {
+	q.q.OnDuplicatePlus("reader_count", v)
+	return q
+}
+func (q *Author) OnDuplicateMinusReaderCount(v int32) *Author {
+	q.q.OnDuplicateMinus("reader_count", v)
+	return q
+}
+func (q *Author) OnDuplicatePlusReadCount(v int64) *Author {
+	q.q.OnDuplicatePlus("read_count", v)
+	return q
+}
+func (q *Author) OnDuplicateMinusReadCount(v int64) *Author {
+	q.q.OnDuplicateMinus("read_count", v)
+	return q
+}
+func (q *Author) OnDuplicatePlusUserSeq(v int64) *Author {
+	q.q.OnDuplicatePlus("user_seq", v)
+	return q
+}
+func (q *Author) OnDuplicateMinusUserSeq(v int64) *Author {
+	q.q.OnDuplicateMinus("user_seq", v)
+	return q
+}
+func (q *Author) OnDuplicatePlusServiceSeq(v int64) *Author {
+	q.q.OnDuplicatePlus("service_seq", v)
+	return q
+}
+func (q *Author) OnDuplicateMinusServiceSeq(v int64) *Author {
+	q.q.OnDuplicateMinus("service_seq", v)
+	return q
+}
+func (q *Author) OnDuplicatePlusServiceRegionSeq(v int64) *Author {
+	q.q.OnDuplicatePlus("service_region_seq", v)
+	return q
+}
+func (q *Author) OnDuplicateMinusServiceRegionSeq(v int64) *Author {
+	q.q.OnDuplicateMinus("service_region_seq", v)
+	return q
+}
+func (q *Author) OnDuplicatePlusServiceMemberSeq(v int64) *Author {
+	q.q.OnDuplicatePlus("service_member_seq", v)
+	return q
+}
+func (q *Author) OnDuplicateMinusServiceMemberSeq(v int64) *Author {
+	q.q.OnDuplicateMinus("service_member_seq", v)
+	return q
+}
+func (q *Author) OnDuplicatePlusLikeCount(v int32) *Author {
+	q.q.OnDuplicatePlus("like_count", v)
+	return q
+}
+func (q *Author) OnDuplicateMinusLikeCount(v int32) *Author {
+	q.q.OnDuplicateMinus("like_count", v)
+	return q
+}
+func (q *Author) OnDuplicatePlusPrice(v float64) *Author  { q.q.OnDuplicatePlus("price", v); return q }
+func (q *Author) OnDuplicateMinusPrice(v float64) *Author { q.q.OnDuplicateMinus("price", v); return q }
+func (q *Author) OnDuplicateSetAll() *Author              { q.q.OnDuplicateSetAll("seq", "seq"); return q }
+
 // Terminals.
 func (q *Author) One(ctx context.Context, ex orm.Exec) (*AuthorRow, error) {
 	q.q.Req.IR.Kind = "one"
@@ -4819,6 +5156,40 @@ func (q *Author) Insert(ctx context.Context, ex orm.Exec) (*AuthorRow, error) {
 		return nil, err
 	}
 	return NewAuthor().SeqEq(int64(id)).One(ctx, ex)
+}
+
+// Save updates the other assigned columns when SetSeq was called (and
+// returns the re-read row); otherwise it inserts like Insert.
+func (q *Author) Save(ctx context.Context, ex orm.Exec) (*AuthorRow, error) {
+	pk, ok := q.q.MovePKToWhere("seq")
+	if !ok {
+		return q.Insert(ctx, ex)
+	}
+	q.q.Req.IR.Kind = "update"
+	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
+		return nil, err
+	}
+	return NewAuthor().SeqEq(pk.(int64)).One(ctx, ex)
+}
+
+// Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
+func (q *Author) Update(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "update"
+	_, affected, err := orm.Write(ctx, ex, q.q.Req)
+	return affected, err
+}
+
+// Delete removes every row the WHERE matches (the engine rejects a missing WHERE).
+func (q *Author) Delete(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "delete"
+	_, affected, err := orm.Write(ctx, ex, q.q.Req)
+	return affected, err
+}
+
+// SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
+func (q *Author) SQL(ctx context.Context, ex orm.Exec) (*orm.Statement, error) {
+	q.q.Req.IR.Kind = "all"
+	return orm.SQL(ctx, ex, q.q.Req)
 }
 
 func (q *Author) OneBySeq(ctx context.Context, ex orm.Exec, v int64) (*AuthorRow, error) {
