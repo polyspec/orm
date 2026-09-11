@@ -2,8 +2,6 @@
 // assembly spec. Plans are value-independent so clients cache them by IR shape.
 package plan
 
-import "encoding/json"
-
 type Plan struct {
 	SchemaHash string `json:"schema_hash"`
 	Kind       string `json:"kind"`
@@ -19,15 +17,19 @@ type Step struct {
 }
 
 // BindSlot tells the executor where the value for one placeholder comes from.
-//   - param:  a literal carried in the IR (Value)
-//   - secret: the AES key from executor config (Name = "aes")
-//   - parent: dedup'd values of Column from step From (relation IN lists; expands to N placeholders)
+//   - param:  Params[Param] of the request, optionally passed through Transform
+//   - secret: a key from executor config (Name = "aes")
+//   - parent: dedup'd values of Column from step Step (relation IN lists; expands to N placeholders)
+//
+// Transform (executor-side, value-level): "" | "fulltext_boolean" (compatibility
+// "+w1 +w2*") | "like_contains" | "like_starts" | "like_ends" (escape % _ \ then wrap).
 type BindSlot struct {
-	From   string          `json:"from"`
-	Value  json.RawMessage `json:"value,omitempty"`
-	Name   string          `json:"name,omitempty"`
-	Step   int             `json:"step,omitempty"`
-	Column string          `json:"column,omitempty"`
+	From      string `json:"from"`
+	Param     int    `json:"param,omitempty"`
+	Transform string `json:"transform,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Step      int    `json:"step,omitempty"`
+	Column    string `json:"column,omitempty"`
 }
 
 // Assemble maps result columns positionally and describes how rows attach.
@@ -62,6 +64,6 @@ type Child struct {
 }
 
 type IfParent struct {
-	Column string          `json:"column"`
-	Value  json.RawMessage `json:"value"`
+	Column string `json:"column"`
+	Param  int    `json:"param"`
 }

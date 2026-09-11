@@ -18,12 +18,15 @@ const Version = 1
 type Request struct {
 	IRVersion  int    `json:"ir_version"`
 	SchemaHash string `json:"schema_hash"`
-	Kind       string `json:"kind"` // select one all count sum avg paginate insert update delete
+	Kind       string `json:"kind"` // one all count sum avg paginate insert update delete
 	Query
 	Set        []Assign  `json:"set,omitempty"`
 	Optimistic *Optimist `json:"optimistic,omitempty"`
 	Agg        string    `json:"agg,omitempty"` // column for sum/avg
 	Debug      bool      `json:"debug,omitempty"`
+	// NParams is how many parameters the client holds. The engine only checks
+	// indices against it; values never reach the engine.
+	NParams int `json:"n_params"`
 }
 
 // Query is the shape shared by the root, join children and relation children.
@@ -81,16 +84,18 @@ type Item struct {
 	Nav   *Nav   `json:"nav,omitempty"`
 }
 
+// Values never travel inside the tree: a predicate references parameters by
+// index (P, Ps) into the request's Params list. The plan is therefore
+// value-independent and executors fill placeholders from their own Params.
 type Pred struct {
-	Conn   string            `json:"conn,omitempty"`
-	Column string            `json:"column,omitempty"`
-	Op     string            `json:"op,omitempty"`
-	Value  json.RawMessage   `json:"value,omitempty"`
-	Values []json.RawMessage `json:"values,omitempty"` // in, not_in, between
-	Ref    *ColRef           `json:"ref,omitempty"`    // *_col operators
-	Expr   string            `json:"expr,omitempty"`   // schema-checked fragment
-	Binds  []json.RawMessage `json:"binds,omitempty"`
-	Match  []string          `json:"match,omitempty"` // fulltext columns
+	Conn   string   `json:"conn,omitempty"`
+	Column string   `json:"column,omitempty"`
+	Op     string   `json:"op,omitempty"`
+	P      *int     `json:"p,omitempty"`     // single value
+	Ps     []int    `json:"ps,omitempty"`    // in, not_in, between, expr binds
+	Ref    *ColRef  `json:"ref,omitempty"`   // *_col operators
+	Expr   string   `json:"expr,omitempty"`  // schema-checked fragment
+	Match  []string `json:"match,omitempty"` // fulltext columns
 }
 
 // ColRef points at a column on another entity in the same statement:
@@ -119,22 +124,24 @@ type Limit struct {
 }
 
 type IfParent struct {
-	Column string          `json:"column"`
-	Value  json.RawMessage `json:"value"`
+	Column string `json:"column"`
+	P      int    `json:"p"`
 }
 
+// Assign sets one column: exactly one of P (value), Expr(+Ps binds), PlusP, MinusP, Null.
 type Assign struct {
-	Column string            `json:"column"`
-	Value  json.RawMessage   `json:"value,omitempty"`
-	Expr   string            `json:"expr,omitempty"`
-	Binds  []json.RawMessage `json:"binds,omitempty"`
-	Plus   json.RawMessage   `json:"plus,omitempty"`
-	Minus  json.RawMessage   `json:"minus,omitempty"`
+	Column string `json:"column"`
+	P      *int   `json:"p,omitempty"`
+	Null   bool   `json:"null,omitempty"`
+	Expr   string `json:"expr,omitempty"`
+	Ps     []int  `json:"ps,omitempty"`
+	PlusP  *int   `json:"plus_p,omitempty"`
+	MinusP *int   `json:"minus_p,omitempty"`
 }
 
 type Optimist struct {
-	Column string          `json:"column"`
-	Value  json.RawMessage `json:"value"`
+	Column string `json:"column"`
+	P      int    `json:"p"`
 }
 
 // Error is a compile error with a stable code (docs/errors.yaml).
@@ -194,65 +201,99 @@ func Decode(m *schema.Manifest, b []byte) (*Request, error) {
 	if err := json.Unmarshal(b, &r); err != nil {
 		return nil, errf("IR_INVALID", "%v", err)
 	}
+	if err := Validate(m, &r); err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+// Validate checks an already-built request (in-process Go clients skip JSON).
+func Validate(m *schema.Manifest, r *Request) error {
 	if r.IRVersion != Version {
-		return nil, errf("VERSION_MISMATCH", "ir_version %d, engine %d", r.IRVersion, Version)
+		return errf("VERSION_MISMATCH", "ir_version %d, engine %d", r.IRVersion, Version)
 	}
 	if r.SchemaHash != m.SchemaHash {
-		return nil, errf("SCHEMA_HASH_MISMATCH", "client %s, engine %s", r.SchemaHash, m.SchemaHash)
+		return errf("SCHEMA_HASH_MISMATCH", "client %s, engine %s", r.SchemaHash, m.SchemaHash)
 	}
 	switch r.Kind {
 	case "one", "all", "count", "sum", "avg", "paginate", "insert", "update", "delete":
 	default:
-		return nil, errf("IR_INVALID", "unknown kind %q", r.Kind)
+		return errf("IR_INVALID", "unknown kind %q", r.Kind)
 	}
-	v := &validator{m: m}
+	v := &validator{m: m, n: r.NParams}
 	if err := v.query(&r.Query, "", false, false); err != nil {
-		return nil, err
+		return err
 	}
 	ent := m.Entities[r.Entity]
 	if r.Kind == "sum" || r.Kind == "avg" {
 		c := ent.Column(r.Agg)
 		if c == nil {
-			return nil, errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, r.Agg)
+			return errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, r.Agg)
 		}
 		if c.Type != "i32" && c.Type != "i64" && c.Type != "f64" && c.Type != "decimal" {
-			return nil, errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", r.Kind, r.Entity, r.Agg, c.Type)
+			return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", r.Kind, r.Entity, r.Agg, c.Type)
 		}
 	}
 	if r.Kind == "insert" || r.Kind == "update" {
 		if len(r.Set) == 0 {
-			return nil, errf("IR_INVALID", "%s needs set[]", r.Kind)
+			return errf("IR_INVALID", "%s needs set[]", r.Kind)
 		}
 		for _, a := range r.Set {
 			c := ent.Column(a.Column)
 			if c == nil {
-				return nil, errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, a.Column)
+				return errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, a.Column)
 			}
 			n := 0
-			for _, has := range []bool{len(a.Value) > 0, a.Expr != "", len(a.Plus) > 0, len(a.Minus) > 0} {
+			for _, has := range []bool{a.P != nil, a.Null, a.Expr != "", a.PlusP != nil, a.MinusP != nil} {
 				if has {
 					n++
 				}
 			}
 			if n != 1 {
-				return nil, errf("IR_INVALID", "set %s: exactly one of value/expr/plus/minus", a.Column)
+				return errf("IR_INVALID", "set %s: exactly one of p/null/expr/plus_p/minus_p", a.Column)
 			}
-			if (len(a.Plus) > 0 || len(a.Minus) > 0) && c.Type != "i32" && c.Type != "i64" && c.Type != "f64" && c.Type != "decimal" {
-				return nil, errf("OPERATOR_NOT_ALLOWED", "plus/minus on %s.%s (%s)", r.Entity, a.Column, c.Type)
+			if a.Null && !c.Nullable {
+				return errf("IR_INVALID", "set %s.%s to null but column is NOT NULL", r.Entity, a.Column)
+			}
+			if (a.PlusP != nil || a.MinusP != nil) && c.Type != "i32" && c.Type != "i64" && c.Type != "f64" && c.Type != "decimal" {
+				return errf("OPERATOR_NOT_ALLOWED", "plus/minus on %s.%s (%s)", r.Entity, a.Column, c.Type)
+			}
+			for _, idx := range []*int{a.P, a.PlusP, a.MinusP} {
+				if idx != nil && (*idx < 0 || *idx >= r.NParams) {
+					return errf("IR_INVALID", "param index %d out of range (n_params %d)", *idx, r.NParams)
+				}
+			}
+			if err := v.params(a.Ps); err != nil {
+				return err
 			}
 		}
 	}
-	if r.Optimistic != nil && ent.Column(r.Optimistic.Column) == nil {
-		return nil, errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, r.Optimistic.Column)
+	if r.Optimistic != nil {
+		if ent.Column(r.Optimistic.Column) == nil {
+			return errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, r.Optimistic.Column)
+		}
+		if err := v.params([]int{r.Optimistic.P}); err != nil {
+			return err
+		}
 	}
 	if (r.Kind == "update" || r.Kind == "delete") && (r.Where == nil || len(r.Where.Items) == 0) {
-		return nil, errf("IR_INVALID", "%s without where", r.Kind)
+		return errf("IR_INVALID", "%s without where", r.Kind)
 	}
-	return &r, nil
+	return nil
 }
 
 type validator struct {
 	m *schema.Manifest
+	n int // NParams
+}
+
+func (v *validator) params(ps []int) error {
+	for _, i := range ps {
+		if i < 0 || i >= v.n {
+			return errf("IR_INVALID", "param index %d out of range (n_params %d)", i, v.n)
+		}
+	}
+	return nil
 }
 
 // query validates one Query and its subtrees. path is the relation path from
@@ -330,6 +371,11 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 	}
 	if q.KeyBy != "" && ent.Column(q.KeyBy) == nil {
 		return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, q.KeyBy)
+	}
+	if q.IfParent != nil {
+		if err := v.params([]int{q.IfParent.P}); err != nil {
+			return err
+		}
 	}
 	if !isRelation && (q.KeyBy != "" || q.Flatten || q.LimitPerParent > 0 || q.IfParent != nil || q.DropChildKey) {
 		return errf("IR_INVALID", "relation-only options on %s", q.Entity)
@@ -424,6 +470,14 @@ func (v *validator) group(ent *schema.Entity, g *Group, joined map[string]*Join,
 }
 
 func (v *validator) pred(ent *schema.Entity, p *Pred) error {
+	if err := v.params(p.Ps); err != nil {
+		return err
+	}
+	if p.P != nil {
+		if err := v.params([]int{*p.P}); err != nil {
+			return err
+		}
+	}
 	if p.Expr != "" {
 		if p.Column != "" || p.Op != "" {
 			return errf("IR_INVALID", "expr pred may not carry column/op")
@@ -437,8 +491,8 @@ func (v *validator) pred(ent *schema.Entity, p *Pred) error {
 		if !hasFulltext(ent, p.Match) {
 			return errf("INDEX_UNKNOWN", "no fulltext index on %s(%s)", ent.Name, strings.Join(p.Match, ","))
 		}
-		if len(p.Value) == 0 {
-			return errf("IR_INVALID", "match needs a value")
+		if p.P == nil {
+			return errf("IR_INVALID", "match needs a value (p)")
 		}
 		return nil
 	}
@@ -452,12 +506,12 @@ func (v *validator) pred(ent *schema.Entity, p *Pred) error {
 	switch p.Op {
 	case "is_null", "is_not_null":
 	case "in", "not_in":
-		if len(p.Values) == 0 {
+		if len(p.Ps) == 0 {
 			return errf("EMPTY_IN", "%s.%s", ent.Name, p.Column)
 		}
 	case "between":
-		if len(p.Values) != 2 {
-			return errf("IR_INVALID", "between needs 2 values")
+		if len(p.Ps) != 2 {
+			return errf("IR_INVALID", "between needs 2 params (ps)")
 		}
 	default:
 		if colOps[p.Op] {
@@ -466,8 +520,8 @@ func (v *validator) pred(ent *schema.Entity, p *Pred) error {
 			}
 			return nil
 		}
-		if len(p.Value) == 0 || string(p.Value) == "null" {
-			return errf("IR_INVALID", "%s %s.%s needs a non-null value (use is_null)", p.Op, ent.Name, p.Column)
+		if p.P == nil {
+			return errf("IR_INVALID", "%s %s.%s needs a value (p)", p.Op, ent.Name, p.Column)
 		}
 	}
 	return nil
