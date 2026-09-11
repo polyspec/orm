@@ -49,111 +49,99 @@ pub struct BattleRow {
     dirty: Vec<(&'static str, Param)>,
     enc_err: Option<(String, String)>, // (code, msg) of the first codec error; surfaces from update
     extra: std::collections::HashMap<String, Val>, // select_expr / select_<col>_as outputs, by output name
-    // assembly facts recorded for to_map(): projected names, drop_child_key names, flattened one-relations, loaded relations
-    selected: Vec<String>,
-    hidden: Vec<String>,
-    flat: Vec<String>,
-    rels: Vec<String>,
-    // loaded relations whose rows belong to this row (children[].cascade): delete_cascade removes them first
-    cascade: Vec<String>,
-    loaded: bool,
+    // the assembly this row was loaded through (shared with every row of the statement): projected
+    // columns, drop_child_key ones, loaded relations, flattened one-relations, cascade children
+    asm: Option<std::sync::Arc<orm::plan::Assemble>>,
 }
 
 impl BattleRow {
     pub const ENTITY: &'static str = "battle";
     pub const PK: &'static str = "seq";
 
-    /// Maps a positional row onto the struct, its joined children (same row) and
-    /// its relation children (rows of later steps, cloned per attachment).
-    pub(crate) fn from_row(vals: &mut [Val], a: &orm::plan::Assemble, rs: &db::Rows) -> Self {
+    /// Maps one row of the statement onto the struct: relation children first (rows of later
+    /// steps, cloned per attachment; joins read the same row), then this node's columns,
+    /// each cell decoded once straight from the source.
+    pub(crate) fn from_row(src: &mut orm::Cells, a: &std::sync::Arc<orm::plan::Assemble>, rs: &db::Rows) -> Result<Self> {
+        use orm::Src as _;
         let mut r = Self::default();
-        r.loaded = true;
-        for c in &a.columns {
-            r.selected.push(c.name.clone());
-            if c.hidden { r.hidden.push(c.name.clone()); }
-        }
-        for ch in &a.children {
-            r.rels.push(ch.rel.clone());
-            if ch.flatten { r.flat.push(ch.rel.clone()); }
-            if ch.cascade { r.cascade.push(ch.rel.clone()); }
-        }
-        for c in &a.columns {
-            let v = &mut vals[c.index];
-            match c.name.as_str() {
-                "seq" => r.seq = v.as_i64(),
-                "name" => r.name = v.take_string(),
-                "description" => r.description = if v.is_null() { None } else { Some(v.take_string()) },
-                "created_ts" => r.created_ts = v.as_datetime(),
-                "updated_ts" => r.updated_ts = v.as_datetime(),
-                "is_close" => r.is_close = v.as_bool(),
-                "is_display" => r.is_display = v.as_bool(),
-                "display_start_dt" => r.display_start_dt = if v.is_null() { None } else { Some(v.as_datetime()) },
-                "display_end_dt" => r.display_end_dt = if v.is_null() { None } else { Some(v.as_datetime()) },
-                "is_allday" => r.is_allday = v.as_bool(),
-                "target_team_player_count" => r.target_team_player_count = v.as_i64(),
-                "success_count" => r.success_count = v.as_i64(),
-                "player_count" => r.player_count = v.as_i64(),
-                "read_count" => r.read_count = v.as_i64(),
-                "cover_url" => r.cover_url = if v.is_null() { None } else { Some(v.take_string()) },
-                "user_seq" => r.user_seq = v.as_i64(),
-                "service_seq" => r.service_seq = v.as_i64(),
-                "service_module_seq" => r.service_module_seq = v.as_i64(),
-                "service_member_seq" => r.service_member_seq = v.as_i64(),
-                "start_dt" => r.start_dt = v.as_datetime(),
-                "end_dt" => r.end_dt = v.as_datetime(),
-                "uuid" => r.uuid = if v.is_null() { None } else { Some(v.take_string()) },
-                "is_single_play" => r.is_single_play = v.as_bool(),
-                "like_count" => r.like_count = v.as_i64(),
-                "aes_hex_email" => r.aes_hex_email = if v.is_null() { None } else { Some(v.take_string()) },
-                "aes_hex_phone" => r.aes_hex_phone = if v.is_null() { None } else { Some(v.take_string()) },
-                "price" => r.price = if v.is_null() { None } else { Some(v.as_f64()) },
-                "ip" => r.ip = if v.is_null() { None } else { Some(v.take_string()) },
-                "gz_extend" => r.gz_extend = v.take_json().unwrap_or_default(),
-                "json_setting" => r.json_setting = v.take_json().unwrap_or_default(),
-                "jsons_tags" => r.jsons_tags = v.take_json().unwrap_or_default(),
-                "base64_extra" => r.base64_extra = v.take_json().unwrap_or_default(),
-                "serialize_data" => r.serialize_data = v.take_json().unwrap_or_default(),
-                other => { r.extra.insert(other.to_owned(), std::mem::take(v)); }
-            }
-        }
+        r.asm = Some(a.clone());
         for ch in &a.children {
             match ch.rel.as_str() {
                 "service" => {
                     if let Some(ja) = &ch.assemble {
-                        if db::join_present(vals, ja) { r.service_ = Some(Box::new(super::service::ServiceRow::from_row(vals, ja, rs))); }
-                    } else if let Some(row) = rs.related(ch, vals).first() {
-                        let mut row = row.to_vec();
-                        r.service_ = Some(Box::new(super::service::ServiceRow::from_row(&mut row, rs.step_assemble(ch), rs)));
+                        if db::join_present(src, ja) { r.service_ = Some(Box::new(super::service::ServiceRow::from_row(src, ja, rs)?)); }
+                    } else if let Some(row) = rs.related(ch, src)?.first() {
+                        let mut row = orm::Cells::Pos(row.to_vec());
+                        r.service_ = Some(Box::new(super::service::ServiceRow::from_row(&mut row, rs.step_assemble(ch), rs)?));
                     }
                 }
                 "service_member" => {
                     if let Some(ja) = &ch.assemble {
-                        if db::join_present(vals, ja) { r.service_member_ = Some(Box::new(super::service_member::ServiceMemberRow::from_row(vals, ja, rs))); }
-                    } else if let Some(row) = rs.related(ch, vals).first() {
-                        let mut row = row.to_vec();
-                        r.service_member_ = Some(Box::new(super::service_member::ServiceMemberRow::from_row(&mut row, rs.step_assemble(ch), rs)));
+                        if db::join_present(src, ja) { r.service_member_ = Some(Box::new(super::service_member::ServiceMemberRow::from_row(src, ja, rs)?)); }
+                    } else if let Some(row) = rs.related(ch, src)?.first() {
+                        let mut row = orm::Cells::Pos(row.to_vec());
+                        r.service_member_ = Some(Box::new(super::service_member::ServiceMemberRow::from_row(&mut row, rs.step_assemble(ch), rs)?));
                     }
                 }
                 "service_module" => {
                     if let Some(ja) = &ch.assemble {
-                        if db::join_present(vals, ja) { r.service_module_ = Some(Box::new(super::service_module::ServiceModuleRow::from_row(vals, ja, rs))); }
-                    } else if let Some(row) = rs.related(ch, vals).first() {
-                        let mut row = row.to_vec();
-                        r.service_module_ = Some(Box::new(super::service_module::ServiceModuleRow::from_row(&mut row, rs.step_assemble(ch), rs)));
+                        if db::join_present(src, ja) { r.service_module_ = Some(Box::new(super::service_module::ServiceModuleRow::from_row(src, ja, rs)?)); }
+                    } else if let Some(row) = rs.related(ch, src)?.first() {
+                        let mut row = orm::Cells::Pos(row.to_vec());
+                        r.service_module_ = Some(Box::new(super::service_module::ServiceModuleRow::from_row(&mut row, rs.step_assemble(ch), rs)?));
                     }
                 }
                 "user" => {
                     if let Some(ja) = &ch.assemble {
-                        if db::join_present(vals, ja) { r.user_ = Some(Box::new(super::user::UserRow::from_row(vals, ja, rs))); }
-                    } else if let Some(row) = rs.related(ch, vals).first() {
-                        let mut row = row.to_vec();
-                        r.user_ = Some(Box::new(super::user::UserRow::from_row(&mut row, rs.step_assemble(ch), rs)));
+                        if db::join_present(src, ja) { r.user_ = Some(Box::new(super::user::UserRow::from_row(src, ja, rs)?)); }
+                    } else if let Some(row) = rs.related(ch, src)?.first() {
+                        let mut row = orm::Cells::Pos(row.to_vec());
+                        r.user_ = Some(Box::new(super::user::UserRow::from_row(&mut row, rs.step_assemble(ch), rs)?));
                     }
                 }
                 _ => {}
             }
         }
-        r
+        for c in &a.columns {
+            let i = c.index;
+            match c.name.as_str() {
+                "seq" => r.seq = src.i64(i)?,
+                "name" => r.name = src.string(i)?,
+                "description" => r.description = if src.is_null(i) { None } else { Some(src.string(i)?) },
+                "created_ts" => r.created_ts = src.datetime(i)?,
+                "updated_ts" => r.updated_ts = src.datetime(i)?,
+                "is_close" => r.is_close = src.bool(i)?,
+                "is_display" => r.is_display = src.bool(i)?,
+                "display_start_dt" => r.display_start_dt = if src.is_null(i) { None } else { Some(src.datetime(i)?) },
+                "display_end_dt" => r.display_end_dt = if src.is_null(i) { None } else { Some(src.datetime(i)?) },
+                "is_allday" => r.is_allday = src.bool(i)?,
+                "target_team_player_count" => r.target_team_player_count = src.i64(i)?,
+                "success_count" => r.success_count = src.i64(i)?,
+                "player_count" => r.player_count = src.i64(i)?,
+                "read_count" => r.read_count = src.i64(i)?,
+                "cover_url" => r.cover_url = if src.is_null(i) { None } else { Some(src.string(i)?) },
+                "user_seq" => r.user_seq = src.i64(i)?,
+                "service_seq" => r.service_seq = src.i64(i)?,
+                "service_module_seq" => r.service_module_seq = src.i64(i)?,
+                "service_member_seq" => r.service_member_seq = src.i64(i)?,
+                "start_dt" => r.start_dt = src.datetime(i)?,
+                "end_dt" => r.end_dt = src.datetime(i)?,
+                "uuid" => r.uuid = if src.is_null(i) { None } else { Some(src.string(i)?) },
+                "is_single_play" => r.is_single_play = src.bool(i)?,
+                "like_count" => r.like_count = src.i64(i)?,
+                "aes_hex_email" => r.aes_hex_email = if src.is_null(i) { None } else { Some(src.string(i)?) },
+                "aes_hex_phone" => r.aes_hex_phone = if src.is_null(i) { None } else { Some(src.string(i)?) },
+                "price" => r.price = if src.is_null(i) { None } else { Some(src.f64(i)?) },
+                "ip" => r.ip = if src.is_null(i) { None } else { Some(src.string(i)?) },
+                "gz_extend" => r.gz_extend = src.json(i, &c.styles)?.unwrap_or_default(),
+                "json_setting" => r.json_setting = src.json(i, &c.styles)?.unwrap_or_default(),
+                "jsons_tags" => r.jsons_tags = src.json(i, &c.styles)?.unwrap_or_default(),
+                "base64_extra" => r.base64_extra = src.json(i, &c.styles)?.unwrap_or_default(),
+                "serialize_data" => r.serialize_data = src.json(i, &c.styles)?.unwrap_or_default(),
+                other => { let v = if c.styles.is_empty() { src.val(i)? } else { src.styled(i, &c.styles)? }; r.extra.insert(other.to_owned(), v); }
+            }
+        }
+        Ok(r)
     }
     /// A select_expr / select_<col>_as output by name.
     pub fn extra(&self, name: &str) -> Option<&Val> { self.extra.get(name) }
@@ -163,9 +151,10 @@ impl BattleRow {
     /// one-relations merged in (this row's keys win).
     pub fn to_map(&self) -> serde_json::Value {
         let mut m = serde_json::Map::new();
-        for name in &self.selected {
-            if self.hidden.iter().any(|h| h == name) { continue; }
-            let v = match name.as_str() {
+        let Some(a) = &self.asm else { return serde_json::Value::Object(m) };
+        for c in &a.columns {
+            if c.hidden { continue; }
+            let v = match c.name.as_str() {
                 "seq" => serde_json::json!(self.seq),
                 "name" => serde_json::json!(self.name),
                 "description" => serde_json::json!(self.description),
@@ -201,22 +190,22 @@ impl BattleRow {
                 "serialize_data" => self.serialize_data.clone(),
                 other => self.extra.get(other).map(|v| v.to_json()).unwrap_or(serde_json::Value::Null),
             };
-            m.insert(name.clone(), v);
+            m.insert(c.name.clone(), v);
         }
-        if self.rels.iter().any(|r| r == "service") {
+        if a.has_child("service") {
             m.insert("service".into(), self.service_.as_ref().map(|c| c.to_map()).unwrap_or(serde_json::Value::Null));
         }
-        if self.rels.iter().any(|r| r == "service_member") {
+        if a.has_child("service_member") {
             m.insert("service_member".into(), self.service_member_.as_ref().map(|c| c.to_map()).unwrap_or(serde_json::Value::Null));
         }
-        if self.rels.iter().any(|r| r == "service_module") {
+        if a.has_child("service_module") {
             m.insert("service_module".into(), self.service_module_.as_ref().map(|c| c.to_map()).unwrap_or(serde_json::Value::Null));
         }
-        if self.rels.iter().any(|r| r == "user") {
+        if a.has_child("user") {
             m.insert("user".into(), self.user_.as_ref().map(|c| c.to_map()).unwrap_or(serde_json::Value::Null));
         }
-        for rel in &self.flat {
-            if let Some(serde_json::Value::Object(child)) = m.get(rel).cloned() {
+        for ch in a.children.iter().filter(|ch| ch.flatten) {
+            if let Some(serde_json::Value::Object(child)) = m.get(&ch.rel).cloned() {
                 for (k, v) in child { m.entry(k).or_insert(v); }
             }
         }
@@ -476,7 +465,7 @@ impl BattleRow {
 
     async fn update_inner(&mut self, ex: &impl Exec, optimistic: bool) -> Result<()> {
         if let Some((code, msg)) = self.enc_err.take() { return Err(orm::Error::Engine { code, msg }); }
-        if !self.loaded { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
+        if self.asm.is_none() { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
         if self.dirty.is_empty() { return Ok(()); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
         for (c, v) in self.dirty.drain(..) { q.set(c, v); }
@@ -490,7 +479,7 @@ impl BattleRow {
     }
 
     pub async fn delete(&self, ex: &impl Exec) -> Result<()> {
-        if !self.loaded { return Err(orm::Error::Config("delete on a row that was not loaded".into())); }
+        if self.asm.is_none() { return Err(orm::Error::Config("delete on a row that was not loaded".into())); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
         let pk: Param = self.seq.clone().into();
         q.w().pred(Self::PK, "eq", pk);
@@ -503,7 +492,7 @@ impl BattleRow {
     /// order, then this row. Parent-direction relations (the FK is on this row) are never deleted.
     /// One DELETE … WHERE pk = ? per row. On a Db the whole walk runs in one transaction.
     pub async fn delete_cascade(&self, ex: &impl Exec) -> Result<()> {
-        if !self.loaded { return Err(orm::Error::Config("delete_cascade on a row that was not loaded".into())); }
+        if self.asm.is_none() { return Err(orm::Error::Config("delete_cascade on a row that was not loaded".into())); }
         match ex.tx() {
             Some(tx) => self.delete_cascade_in(tx).await,
             None => ex.db().transaction(|tx| async move { self.delete_cascade_in(&tx).await }).await,
@@ -513,8 +502,9 @@ impl BattleRow {
     /// The walk itself. Boxed: rows cascade into rows of other entities, which cascade back.
     pub fn delete_cascade_in<'a>(&'a self, tx: &'a db::Tx) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + 'a>> {
         Box::pin(async move {
-            for rel in &self.cascade {
-                match rel.as_str() {
+            let Some(a) = &self.asm else { return Ok(()) };
+            for ch in a.children.iter().filter(|ch| ch.cascade) {
+                match ch.rel.as_str() {
                     "service" => {
                         if let Some(r) = self.service_.as_deref() { r.delete_cascade_in(tx).await?; }
                     }
@@ -1867,13 +1857,15 @@ impl Battle {
     // ---- terminals ----
     pub async fn one(mut self, ex: &impl Exec) -> Result<Option<BattleRow>> {
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
-        let data = std::mem::take(&mut rows.data);
-        Ok(data.into_iter().next().map(|mut v| BattleRow::from_row(&mut v, &rows.assemble, &rows)))
+        Ok(match rows.take_cells().into_iter().next() {
+            Some(mut src) => Some(BattleRow::from_row(&mut src, &rows.assemble, &rows)?),
+            None => None,
+        })
     }
 
     pub async fn all(mut self, ex: &impl Exec) -> Result<Collection<BattleRow>> {
         let mut rows = db::select(ex, &mut self.q.req, "all").await?;
-        Ok(collect(&mut rows, self.key_fn.as_deref()))
+        collect(&mut rows, self.key_fn.as_deref())
     }
 
     pub async fn count(mut self, ex: &impl Exec) -> Result<i64> {
@@ -2042,7 +2034,7 @@ impl Battle {
         self.q.node().limit = Some(orm::ir::Limit { offset: (page - 1) * per, count: per });
         let (mut rows, total) = db::paginate(ex, &mut self.q.req).await?;
         let pages = (total + per as i64 - 1) / per as i64;
-        Ok(Page { items: collect(&mut rows, self.key_fn.as_deref()), total, pages, current: page as i64, per: per as i64 })
+        Ok(Page { items: collect(&mut rows, self.key_fn.as_deref())?, total, pages, current: page as i64, per: per as i64 })
     }
 
     pub async fn insert(mut self, ex: &impl Exec) -> Result<Option<BattleRow>> {
@@ -2087,14 +2079,15 @@ impl Battle {
 
 impl Default for Battle { fn default() -> Self { Self::new() } }
 
-fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&BattleRow) -> Key + Send + Sync)>) -> Collection<BattleRow> {
-    let data = std::mem::take(&mut rows.data);
-    let mut c = Collection::with_capacity(data.len());
-    for mut v in data {
-        let k = Key::of(&v[0]);
-        let r = BattleRow::from_row(&mut v, &rows.assemble, rows);
+fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&BattleRow) -> Key + Send + Sync)>) -> Result<Collection<BattleRow>> {
+    use orm::Src as _;
+    let cells = rows.take_cells();
+    let mut c = Collection::with_capacity(cells.len());
+    for mut src in cells {
+        let k = Key::of(&src.val(0)?);
+        let r = BattleRow::from_row(&mut src, &rows.assemble, rows)?;
         let k = match key_fn { Some(f) => f(&r), None => k };
         c.put(k, r);
     }
-    c
+    Ok(c)
 }

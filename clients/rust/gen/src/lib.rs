@@ -4,11 +4,23 @@
 
 use std::sync::{Arc, OnceLock};
 
+/// The manifest hash this crate was generated from (schema.json `schema_hash`).
+pub const SCHEMA_HASH: &str = "11e1906438fe59a9";
+
 static ENGINE: OnceLock<Arc<orm::Engine>> = OnceLock::new();
 
-/// Bind the generated crate to a compiled engine (once per process).
-pub fn init(engine: Arc<orm::Engine>) {
+/// Bind the generated crate to a compiled engine (once per process). The engine's loaded
+/// manifest must be the one this crate was generated from: a different hash is
+/// SCHEMA_HASH_MISMATCH and the crate stays unbound (no watching, no reload).
+pub fn init(engine: Arc<orm::Engine>) -> orm::Result<()> {
+    if engine.schema_hash != SCHEMA_HASH {
+        return Err(orm::Error::Engine {
+            code: orm::codes::SCHEMA_HASH_MISMATCH.into(),
+            msg: format!("generated from {} but the engine loaded {}", SCHEMA_HASH, engine.schema_hash),
+        });
+    }
     let _ = ENGINE.set(engine);
+    Ok(())
 }
 
 pub fn engine() -> Arc<orm::Engine> {
@@ -17,7 +29,7 @@ pub fn engine() -> Arc<orm::Engine> {
 
 /// The manifest hash this crate was generated from (the untyped Q::new needs it).
 pub fn schema_hash() -> &'static str {
-    &ENGINE.get().expect("gen::init(engine) must be called first").schema_hash
+    SCHEMA_HASH
 }
 
 pub mod battle;
