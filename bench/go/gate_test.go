@@ -61,7 +61,7 @@ func TestHotPathGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	db, err := orm.Open("mysql", dsn, eng, orm.Config{AESKey: "bench-salt"})
+	db, err := orm.Open("mysql", dsn(), eng, orm.Config{AESKey: "bench-salt"})
 	if err != nil {
 		t.Fatal(err)
 	}
