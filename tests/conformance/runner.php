@@ -6,6 +6,7 @@ declare(strict_types=1);
 require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
 
 use Polyspec\Orm\Tests\Model\Author;
+use Polyspec\Orm\Tests\Model\AuthorCols;
 use Polyspec\Orm\Tests\Model\AuthorRow;
 use Polyspec\Orm\Tests\Model\AuthorWhere;
 use Polyspec\Orm\Tests\Model\Service;
@@ -157,6 +158,14 @@ $run('write_cycle', function () use ($db, &$log, &$maskSeq, &$maskTs) {
     ];
 });
 
+$run('eq_col_where', fn() => $keys((new Author)
+    ->joinService((new Service)->where(fn(ServiceWhere $w) => $w->seqEqCol(AuthorCols::serviceRegionSeq())))
+    ->seqIn([1, 2, 10])->orderBySeqAsc()->all($db)));
+$run('expr_where', fn() => (new Author)->serviceSeqEq(7)->expr('DAYOFMONTH(`start_dt`) = ?', [1])->count($db));
+$run('select_expr', function () use ($db) {
+    $b = (new Author)->selectExpr('tag', "CONCAT(`name`, '!')")->seqEq(42)->one($db);
+    return ['seq' => $b->getSeq(), 'tag' => $b['tag']];
+});
 $run('codec_roundtrip', function () use ($db, &$log, &$maskSeq, &$maskTs) {
     $value = ['a' => 1, 'b' => [1, 2, ['c' => '한글/slash']], 'd' => null, 'e' => true, 'f' => 1.5];
     $created = $db->transaction(fn(Tx $tx) => (new Author)

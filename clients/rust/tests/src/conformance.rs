@@ -189,6 +189,16 @@ async fn main() {
         }))
     }.await);
 
+    run!("eq_col_where", async {
+        Ok(keys(&Author::new()
+            .join_service(Service::new().where_(|w| w.seq_eq_col(author::cols::service_region_seq())))
+            .seq_in(vec![1, 2, 10]).order_by_seq_asc().all(&db).await?))
+    }.await);
+    run!("expr_where", async { Ok(json!(Author::new().service_seq_eq(7).expr("DAYOFMONTH(`start_dt`) = ?", vec![1.into()]).count(&db).await?)) }.await);
+    run!("select_expr", async {
+        let b = Author::new().select_expr("tag", "CONCAT(`name`, '!')").seq_eq(42).one(&db).await?.unwrap();
+        Ok(json!({"seq": b.seq, "tag": b.extra("tag").map(|v| v.as_string())}))
+    }.await);
     run!("codec_roundtrip", async {
         let value = json!({"a": 1, "b": [1, 2, {"c": "한글/slash"}], "d": null, "e": true, "f": 1.5});
         let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();

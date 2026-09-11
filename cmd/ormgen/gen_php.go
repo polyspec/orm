@@ -68,6 +68,7 @@ declare(strict_types=1);
 
 namespace {{.Namespace}};
 
+use Orm\ColRef;
 use Orm\Collection;
 use Orm\Db;
 use Orm\Page;
@@ -103,6 +104,14 @@ final class {{.Type}}Row extends Row
 {{- end}}
 }
 
+/** Column references for column-to-column predicates ({{.Type}}Cols::seq()); ->at('service') points into a joined entity. */
+final class {{.Type}}Cols
+{
+{{- range .Cols}}
+    public static function {{camel .Name}}(): ColRef { return new ColRef('{{.Name}}'); }
+{{- end}}
+}
+
 /** Where builder for {{.Table}}: predicates, or(), and(fn), relation navigation. */
 final class {{.Type}}Where
 {
@@ -124,6 +133,9 @@ final class {{.Type}}Where
 {{- else}}
     public function {{camel $c.Name}}{{.Suffix}}(): static { $this->w->predNull('{{$c.Name}}', '{{.Op}}'); return $this; }
 {{- end}}
+{{- end}}
+{{- range $c.ColOps}}
+    public function {{camel $c.Name}}{{.Suffix}}(ColRef $ref): static { $this->w->predCol('{{$c.Name}}', '{{.Op}}', $ref); return $this; }
 {{- end}}{{end}}
 {{- range .Fulltext}}
     public function {{camel (ftName .)}}Match(string $v): static { $this->w->match([{{phpList .}}], false, $v); return $this; }
@@ -153,6 +165,9 @@ final class {{.Type}} extends Q
 {{- else}}
     public function {{camel $c.Name}}{{.Suffix}}(): static { $this->w()->predNull('{{$c.Name}}', '{{.Op}}'); return $this; }
 {{- end}}
+{{- end}}
+{{- range $c.ColOps}}
+    public function {{camel $c.Name}}{{.Suffix}}(ColRef $ref): static { $this->w()->predCol('{{$c.Name}}', '{{.Op}}', $ref); return $this; }
 {{- end}}{{end}}
 {{- range .Fulltext}}
     public function {{camel (ftName .)}}Match(string $v): static { $this->w()->match([{{phpList .}}], false, $v); return $this; }

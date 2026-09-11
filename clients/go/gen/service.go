@@ -84,6 +84,8 @@ func scanService(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRow {
 			r.Seq = orm.AsInt64(v)
 		case "name":
 			r.Name = orm.AsString(v)
+		default:
+			r.SetExtra(c.Name, v)
 		}
 	}
 	for _, ch := range a.Children {
@@ -113,6 +115,16 @@ func scanService(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRow {
 	}
 	r.Mark("service", "seq", r.Seq)
 	return r
+}
+
+// ServiceCols are column references for column-to-column predicates
+// (w.SeqEqCol(ServiceCols.Seq)); .At("service") points into a joined entity.
+var ServiceCols = struct {
+	Seq  orm.ColRef
+	Name orm.ColRef
+}{
+	Seq:  orm.ColRef{Column: "seq"},
+	Name: orm.ColRef{Column: "name"},
 }
 
 // Service builds a statement over service: NewService() → chain → terminal(ctx, db).
@@ -181,6 +193,58 @@ func (q *Service) SeqBetween(lo, hi int64) *Service {
 	q.q.W().PredList("seq", "between", []any{lo, hi})
 	return q
 }
+func (w *ServiceWhere) SeqIsNull() *ServiceWhere    { w.w.PredNull("seq", "is_null"); return w }
+func (q *Service) SeqIsNull() *Service              { q.q.W().PredNull("seq", "is_null"); return q }
+func (w *ServiceWhere) SeqIsNotNull() *ServiceWhere { w.w.PredNull("seq", "is_not_null"); return w }
+func (q *Service) SeqIsNotNull() *Service           { q.q.W().PredNull("seq", "is_not_null"); return q }
+func (w *ServiceWhere) SeqEqCol(ref orm.ColRef) *ServiceWhere {
+	w.w.PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Service) SeqEqCol(ref orm.ColRef) *Service {
+	q.q.W().PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceWhere) SeqNotEqCol(ref orm.ColRef) *ServiceWhere {
+	w.w.PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Service) SeqNotEqCol(ref orm.ColRef) *Service {
+	q.q.W().PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceWhere) SeqGtCol(ref orm.ColRef) *ServiceWhere {
+	w.w.PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Service) SeqGtCol(ref orm.ColRef) *Service {
+	q.q.W().PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceWhere) SeqGteCol(ref orm.ColRef) *ServiceWhere {
+	w.w.PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Service) SeqGteCol(ref orm.ColRef) *Service {
+	q.q.W().PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceWhere) SeqLtCol(ref orm.ColRef) *ServiceWhere {
+	w.w.PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Service) SeqLtCol(ref orm.ColRef) *Service {
+	q.q.W().PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceWhere) SeqLteCol(ref orm.ColRef) *ServiceWhere {
+	w.w.PredCol("seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Service) SeqLteCol(ref orm.ColRef) *Service {
+	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *ServiceWhere) NameEq(v string) *ServiceWhere    { w.w.Pred("name", "eq", v); return w }
 func (q *Service) NameEq(v string) *Service              { q.q.W().Pred("name", "eq", v); return q }
 func (w *ServiceWhere) NameNotEq(v string) *ServiceWhere { w.w.Pred("name", "not_eq", v); return w }
@@ -222,7 +286,27 @@ func (w *ServiceWhere) NameEndsWith(v string) *ServiceWhere {
 	w.w.Pred("name", "ends_with", v)
 	return w
 }
-func (q *Service) NameEndsWith(v string) *Service { q.q.W().Pred("name", "ends_with", v); return q }
+func (q *Service) NameEndsWith(v string) *Service    { q.q.W().Pred("name", "ends_with", v); return q }
+func (w *ServiceWhere) NameIsNull() *ServiceWhere    { w.w.PredNull("name", "is_null"); return w }
+func (q *Service) NameIsNull() *Service              { q.q.W().PredNull("name", "is_null"); return q }
+func (w *ServiceWhere) NameIsNotNull() *ServiceWhere { w.w.PredNull("name", "is_not_null"); return w }
+func (q *Service) NameIsNotNull() *Service           { q.q.W().PredNull("name", "is_not_null"); return q }
+func (w *ServiceWhere) NameEqCol(ref orm.ColRef) *ServiceWhere {
+	w.w.PredCol("name", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Service) NameEqCol(ref orm.ColRef) *Service {
+	q.q.W().PredCol("name", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceWhere) NameNotEqCol(ref orm.ColRef) *ServiceWhere {
+	w.w.PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Service) NameNotEqCol(ref orm.ColRef) *Service {
+	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
 func (q *Service) Or() *Service { q.q.Or(); return q }

@@ -660,6 +660,8 @@ func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
 			r.Base64Extra = v
 		case "serialize_data":
 			r.SerializeData = v
+		default:
+			r.SetExtra(c.Name, v)
 		}
 	}
 	for _, ch := range a.Children {
@@ -700,6 +702,76 @@ func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
 	}
 	r.Mark("author", "seq", r.Seq)
 	return r
+}
+
+// AuthorCols are column references for column-to-column predicates
+// (w.SeqEqCol(AuthorCols.Seq)); .At("service") points into a joined entity.
+var AuthorCols = struct {
+	Seq                   orm.ColRef
+	Name                  orm.ColRef
+	Description           orm.ColRef
+	CreatedTs             orm.ColRef
+	UpdatedTs             orm.ColRef
+	IsClose               orm.ColRef
+	IsDisplay             orm.ColRef
+	DisplayStartDt        orm.ColRef
+	DisplayEndDt          orm.ColRef
+	IsAllday              orm.ColRef
+	TargetClubReaderCount orm.ColRef
+	SuccessCount          orm.ColRef
+	ReaderCount           orm.ColRef
+	ReadCount             orm.ColRef
+	PhotoUrl              orm.ColRef
+	UserSeq               orm.ColRef
+	ServiceSeq            orm.ColRef
+	ServiceRegionSeq      orm.ColRef
+	ServiceMemberSeq      orm.ColRef
+	StartDt               orm.ColRef
+	EndDt                 orm.ColRef
+	Uuid                  orm.ColRef
+	IsSingleWork          orm.ColRef
+	LikeCount             orm.ColRef
+	AesHexEmail           orm.ColRef
+	AesHexPhone           orm.ColRef
+	Ip                    orm.ColRef
+	GzExtend              orm.ColRef
+	JsonSetting           orm.ColRef
+	JsonsTags             orm.ColRef
+	Base64Extra           orm.ColRef
+	SerializeData         orm.ColRef
+}{
+	Seq:                   orm.ColRef{Column: "seq"},
+	Name:                  orm.ColRef{Column: "name"},
+	Description:           orm.ColRef{Column: "description"},
+	CreatedTs:             orm.ColRef{Column: "created_ts"},
+	UpdatedTs:             orm.ColRef{Column: "updated_ts"},
+	IsClose:               orm.ColRef{Column: "is_close"},
+	IsDisplay:             orm.ColRef{Column: "is_display"},
+	DisplayStartDt:        orm.ColRef{Column: "display_start_dt"},
+	DisplayEndDt:          orm.ColRef{Column: "display_end_dt"},
+	IsAllday:              orm.ColRef{Column: "is_allday"},
+	TargetClubReaderCount: orm.ColRef{Column: "target_club_reader_count"},
+	SuccessCount:          orm.ColRef{Column: "success_count"},
+	ReaderCount:           orm.ColRef{Column: "reader_count"},
+	ReadCount:             orm.ColRef{Column: "read_count"},
+	PhotoUrl:              orm.ColRef{Column: "photo_url"},
+	UserSeq:               orm.ColRef{Column: "user_seq"},
+	ServiceSeq:            orm.ColRef{Column: "service_seq"},
+	ServiceRegionSeq:      orm.ColRef{Column: "service_region_seq"},
+	ServiceMemberSeq:      orm.ColRef{Column: "service_member_seq"},
+	StartDt:               orm.ColRef{Column: "start_dt"},
+	EndDt:                 orm.ColRef{Column: "end_dt"},
+	Uuid:                  orm.ColRef{Column: "uuid"},
+	IsSingleWork:          orm.ColRef{Column: "is_single_work"},
+	LikeCount:             orm.ColRef{Column: "like_count"},
+	AesHexEmail:           orm.ColRef{Column: "aes_hex_email"},
+	AesHexPhone:           orm.ColRef{Column: "aes_hex_phone"},
+	Ip:                    orm.ColRef{Column: "ip"},
+	GzExtend:              orm.ColRef{Column: "gz_extend"},
+	JsonSetting:           orm.ColRef{Column: "json_setting"},
+	JsonsTags:             orm.ColRef{Column: "jsons_tags"},
+	Base64Extra:           orm.ColRef{Column: "base64_extra"},
+	SerializeData:         orm.ColRef{Column: "serialize_data"},
 }
 
 // Author builds a statement over author: NewAuthor() → chain → terminal(ctx, db).
@@ -772,6 +844,58 @@ func (q *Author) SeqBetween(lo, hi int64) *Author {
 	q.q.W().PredList("seq", "between", []any{lo, hi})
 	return q
 }
+func (w *AuthorWhere) SeqIsNull() *AuthorWhere    { w.w.PredNull("seq", "is_null"); return w }
+func (q *Author) SeqIsNull() *Author              { q.q.W().PredNull("seq", "is_null"); return q }
+func (w *AuthorWhere) SeqIsNotNull() *AuthorWhere { w.w.PredNull("seq", "is_not_null"); return w }
+func (q *Author) SeqIsNotNull() *Author           { q.q.W().PredNull("seq", "is_not_null"); return q }
+func (w *AuthorWhere) SeqEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) SeqEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) SeqNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) SeqNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) SeqGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) SeqGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) SeqGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) SeqGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) SeqLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) SeqLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) SeqLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) SeqLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) NameEq(v string) *AuthorWhere    { w.w.Pred("name", "eq", v); return w }
 func (q *Author) NameEq(v string) *Author              { q.q.W().Pred("name", "eq", v); return q }
 func (w *AuthorWhere) NameNotEq(v string) *AuthorWhere { w.w.Pred("name", "not_eq", v); return w }
@@ -805,6 +929,26 @@ func (w *AuthorWhere) NameStartsWith(v string) *AuthorWhere {
 func (q *Author) NameStartsWith(v string) *Author         { q.q.W().Pred("name", "starts_with", v); return q }
 func (w *AuthorWhere) NameEndsWith(v string) *AuthorWhere { w.w.Pred("name", "ends_with", v); return w }
 func (q *Author) NameEndsWith(v string) *Author           { q.q.W().Pred("name", "ends_with", v); return q }
+func (w *AuthorWhere) NameIsNull() *AuthorWhere           { w.w.PredNull("name", "is_null"); return w }
+func (q *Author) NameIsNull() *Author                     { q.q.W().PredNull("name", "is_null"); return q }
+func (w *AuthorWhere) NameIsNotNull() *AuthorWhere        { w.w.PredNull("name", "is_not_null"); return w }
+func (q *Author) NameIsNotNull() *Author                  { q.q.W().PredNull("name", "is_not_null"); return q }
+func (w *AuthorWhere) NameEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("name", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) NameEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("name", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) NameNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) NameNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) DescriptionEq(v string) *AuthorWhere {
 	w.w.Pred("description", "eq", v)
 	return w
@@ -868,6 +1012,22 @@ func (q *Author) DescriptionIsNotNull() *Author {
 	q.q.W().PredNull("description", "is_not_null")
 	return q
 }
+func (w *AuthorWhere) DescriptionEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("description", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DescriptionEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("description", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DescriptionNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("description", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DescriptionNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("description", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) CreatedTsEq(v time.Time) *AuthorWhere {
 	w.w.Pred("created_ts", "eq", v)
 	return w
@@ -923,6 +1083,64 @@ func (w *AuthorWhere) CreatedTsBetween(lo, hi time.Time) *AuthorWhere {
 }
 func (q *Author) CreatedTsBetween(lo, hi time.Time) *Author {
 	q.q.W().PredList("created_ts", "between", []any{lo, hi})
+	return q
+}
+func (w *AuthorWhere) CreatedTsIsNull() *AuthorWhere { w.w.PredNull("created_ts", "is_null"); return w }
+func (q *Author) CreatedTsIsNull() *Author           { q.q.W().PredNull("created_ts", "is_null"); return q }
+func (w *AuthorWhere) CreatedTsIsNotNull() *AuthorWhere {
+	w.w.PredNull("created_ts", "is_not_null")
+	return w
+}
+func (q *Author) CreatedTsIsNotNull() *Author {
+	q.q.W().PredNull("created_ts", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) CreatedTsEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("created_ts", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) CreatedTsEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("created_ts", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) CreatedTsNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("created_ts", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) CreatedTsNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("created_ts", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) CreatedTsGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("created_ts", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) CreatedTsGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("created_ts", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) CreatedTsGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("created_ts", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) CreatedTsGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("created_ts", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) CreatedTsLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("created_ts", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) CreatedTsLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("created_ts", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) CreatedTsLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("created_ts", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) CreatedTsLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("created_ts", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) UpdatedTsEq(v time.Time) *AuthorWhere {
@@ -982,17 +1200,124 @@ func (q *Author) UpdatedTsBetween(lo, hi time.Time) *Author {
 	q.q.W().PredList("updated_ts", "between", []any{lo, hi})
 	return q
 }
+func (w *AuthorWhere) UpdatedTsIsNull() *AuthorWhere { w.w.PredNull("updated_ts", "is_null"); return w }
+func (q *Author) UpdatedTsIsNull() *Author           { q.q.W().PredNull("updated_ts", "is_null"); return q }
+func (w *AuthorWhere) UpdatedTsIsNotNull() *AuthorWhere {
+	w.w.PredNull("updated_ts", "is_not_null")
+	return w
+}
+func (q *Author) UpdatedTsIsNotNull() *Author {
+	q.q.W().PredNull("updated_ts", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) UpdatedTsEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("updated_ts", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UpdatedTsEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("updated_ts", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UpdatedTsNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("updated_ts", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UpdatedTsNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("updated_ts", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UpdatedTsGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("updated_ts", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UpdatedTsGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("updated_ts", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UpdatedTsGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("updated_ts", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UpdatedTsGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("updated_ts", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UpdatedTsLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("updated_ts", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UpdatedTsLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("updated_ts", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UpdatedTsLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("updated_ts", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UpdatedTsLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("updated_ts", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) IsCloseEq(v bool) *AuthorWhere    { w.w.Pred("is_close", "eq", v); return w }
 func (q *Author) IsCloseEq(v bool) *Author              { q.q.W().Pred("is_close", "eq", v); return q }
 func (w *AuthorWhere) IsCloseNotEq(v bool) *AuthorWhere { w.w.Pred("is_close", "not_eq", v); return w }
 func (q *Author) IsCloseNotEq(v bool) *Author           { q.q.W().Pred("is_close", "not_eq", v); return q }
-func (w *AuthorWhere) IsDisplayEq(v bool) *AuthorWhere  { w.w.Pred("is_display", "eq", v); return w }
-func (q *Author) IsDisplayEq(v bool) *Author            { q.q.W().Pred("is_display", "eq", v); return q }
+func (w *AuthorWhere) IsCloseIsNull() *AuthorWhere      { w.w.PredNull("is_close", "is_null"); return w }
+func (q *Author) IsCloseIsNull() *Author                { q.q.W().PredNull("is_close", "is_null"); return q }
+func (w *AuthorWhere) IsCloseIsNotNull() *AuthorWhere {
+	w.w.PredNull("is_close", "is_not_null")
+	return w
+}
+func (q *Author) IsCloseIsNotNull() *Author { q.q.W().PredNull("is_close", "is_not_null"); return q }
+func (w *AuthorWhere) IsCloseEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("is_close", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) IsCloseEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("is_close", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) IsCloseNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("is_close", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) IsCloseNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("is_close", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) IsDisplayEq(v bool) *AuthorWhere { w.w.Pred("is_display", "eq", v); return w }
+func (q *Author) IsDisplayEq(v bool) *Author           { q.q.W().Pred("is_display", "eq", v); return q }
 func (w *AuthorWhere) IsDisplayNotEq(v bool) *AuthorWhere {
 	w.w.Pred("is_display", "not_eq", v)
 	return w
 }
-func (q *Author) IsDisplayNotEq(v bool) *Author { q.q.W().Pred("is_display", "not_eq", v); return q }
+func (q *Author) IsDisplayNotEq(v bool) *Author      { q.q.W().Pred("is_display", "not_eq", v); return q }
+func (w *AuthorWhere) IsDisplayIsNull() *AuthorWhere { w.w.PredNull("is_display", "is_null"); return w }
+func (q *Author) IsDisplayIsNull() *Author           { q.q.W().PredNull("is_display", "is_null"); return q }
+func (w *AuthorWhere) IsDisplayIsNotNull() *AuthorWhere {
+	w.w.PredNull("is_display", "is_not_null")
+	return w
+}
+func (q *Author) IsDisplayIsNotNull() *Author {
+	q.q.W().PredNull("is_display", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) IsDisplayEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("is_display", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) IsDisplayEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("is_display", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) IsDisplayNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("is_display", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) IsDisplayNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("is_display", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) DisplayStartDtEq(v time.Time) *AuthorWhere {
 	w.w.Pred("display_start_dt", "eq", v)
 	return w
@@ -1079,6 +1404,54 @@ func (w *AuthorWhere) DisplayStartDtIsNotNull() *AuthorWhere {
 }
 func (q *Author) DisplayStartDtIsNotNull() *Author {
 	q.q.W().PredNull("display_start_dt", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) DisplayStartDtEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("display_start_dt", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DisplayStartDtEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("display_start_dt", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DisplayStartDtNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("display_start_dt", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DisplayStartDtNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("display_start_dt", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DisplayStartDtGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("display_start_dt", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DisplayStartDtGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("display_start_dt", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DisplayStartDtGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("display_start_dt", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DisplayStartDtGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("display_start_dt", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DisplayStartDtLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("display_start_dt", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DisplayStartDtLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("display_start_dt", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DisplayStartDtLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("display_start_dt", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DisplayStartDtLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("display_start_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) DisplayEndDtEq(v time.Time) *AuthorWhere {
@@ -1169,13 +1542,84 @@ func (q *Author) DisplayEndDtIsNotNull() *Author {
 	q.q.W().PredNull("display_end_dt", "is_not_null")
 	return q
 }
+func (w *AuthorWhere) DisplayEndDtEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("display_end_dt", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DisplayEndDtEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("display_end_dt", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DisplayEndDtNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("display_end_dt", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DisplayEndDtNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("display_end_dt", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DisplayEndDtGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("display_end_dt", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DisplayEndDtGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("display_end_dt", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DisplayEndDtGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("display_end_dt", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DisplayEndDtGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("display_end_dt", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DisplayEndDtLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("display_end_dt", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DisplayEndDtLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("display_end_dt", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DisplayEndDtLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("display_end_dt", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) DisplayEndDtLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("display_end_dt", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) IsAlldayEq(v bool) *AuthorWhere { w.w.Pred("is_allday", "eq", v); return w }
 func (q *Author) IsAlldayEq(v bool) *Author           { q.q.W().Pred("is_allday", "eq", v); return q }
 func (w *AuthorWhere) IsAlldayNotEq(v bool) *AuthorWhere {
 	w.w.Pred("is_allday", "not_eq", v)
 	return w
 }
-func (q *Author) IsAlldayNotEq(v bool) *Author { q.q.W().Pred("is_allday", "not_eq", v); return q }
+func (q *Author) IsAlldayNotEq(v bool) *Author      { q.q.W().Pred("is_allday", "not_eq", v); return q }
+func (w *AuthorWhere) IsAlldayIsNull() *AuthorWhere { w.w.PredNull("is_allday", "is_null"); return w }
+func (q *Author) IsAlldayIsNull() *Author           { q.q.W().PredNull("is_allday", "is_null"); return q }
+func (w *AuthorWhere) IsAlldayIsNotNull() *AuthorWhere {
+	w.w.PredNull("is_allday", "is_not_null")
+	return w
+}
+func (q *Author) IsAlldayIsNotNull() *Author { q.q.W().PredNull("is_allday", "is_not_null"); return q }
+func (w *AuthorWhere) IsAlldayEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("is_allday", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) IsAlldayEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("is_allday", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) IsAlldayNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("is_allday", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) IsAlldayNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("is_allday", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) TargetClubReaderCountEq(v int32) *AuthorWhere {
 	w.w.Pred("target_club_reader_count", "eq", v)
 	return w
@@ -1248,6 +1692,70 @@ func (q *Author) TargetClubReaderCountBetween(lo, hi int32) *Author {
 	q.q.W().PredList("target_club_reader_count", "between", []any{lo, hi})
 	return q
 }
+func (w *AuthorWhere) TargetClubReaderCountIsNull() *AuthorWhere {
+	w.w.PredNull("target_club_reader_count", "is_null")
+	return w
+}
+func (q *Author) TargetClubReaderCountIsNull() *Author {
+	q.q.W().PredNull("target_club_reader_count", "is_null")
+	return q
+}
+func (w *AuthorWhere) TargetClubReaderCountIsNotNull() *AuthorWhere {
+	w.w.PredNull("target_club_reader_count", "is_not_null")
+	return w
+}
+func (q *Author) TargetClubReaderCountIsNotNull() *Author {
+	q.q.W().PredNull("target_club_reader_count", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) TargetClubReaderCountEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("target_club_reader_count", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) TargetClubReaderCountEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("target_club_reader_count", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) TargetClubReaderCountNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("target_club_reader_count", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) TargetClubReaderCountNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("target_club_reader_count", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) TargetClubReaderCountGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("target_club_reader_count", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) TargetClubReaderCountGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("target_club_reader_count", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) TargetClubReaderCountGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("target_club_reader_count", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) TargetClubReaderCountGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("target_club_reader_count", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) TargetClubReaderCountLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("target_club_reader_count", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) TargetClubReaderCountLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("target_club_reader_count", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) TargetClubReaderCountLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("target_club_reader_count", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) TargetClubReaderCountLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("target_club_reader_count", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) SuccessCountEq(v int32) *AuthorWhere {
 	w.w.Pred("success_count", "eq", v)
 	return w
@@ -1303,6 +1811,67 @@ func (w *AuthorWhere) SuccessCountBetween(lo, hi int32) *AuthorWhere {
 }
 func (q *Author) SuccessCountBetween(lo, hi int32) *Author {
 	q.q.W().PredList("success_count", "between", []any{lo, hi})
+	return q
+}
+func (w *AuthorWhere) SuccessCountIsNull() *AuthorWhere {
+	w.w.PredNull("success_count", "is_null")
+	return w
+}
+func (q *Author) SuccessCountIsNull() *Author { q.q.W().PredNull("success_count", "is_null"); return q }
+func (w *AuthorWhere) SuccessCountIsNotNull() *AuthorWhere {
+	w.w.PredNull("success_count", "is_not_null")
+	return w
+}
+func (q *Author) SuccessCountIsNotNull() *Author {
+	q.q.W().PredNull("success_count", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) SuccessCountEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("success_count", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) SuccessCountEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("success_count", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) SuccessCountNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("success_count", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) SuccessCountNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("success_count", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) SuccessCountGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("success_count", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) SuccessCountGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("success_count", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) SuccessCountGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("success_count", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) SuccessCountGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("success_count", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) SuccessCountLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("success_count", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) SuccessCountLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("success_count", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) SuccessCountLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("success_count", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) SuccessCountLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("success_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) ReaderCountEq(v int32) *AuthorWhere {
@@ -1362,6 +1931,67 @@ func (q *Author) ReaderCountBetween(lo, hi int32) *Author {
 	q.q.W().PredList("reader_count", "between", []any{lo, hi})
 	return q
 }
+func (w *AuthorWhere) ReaderCountIsNull() *AuthorWhere {
+	w.w.PredNull("reader_count", "is_null")
+	return w
+}
+func (q *Author) ReaderCountIsNull() *Author { q.q.W().PredNull("reader_count", "is_null"); return q }
+func (w *AuthorWhere) ReaderCountIsNotNull() *AuthorWhere {
+	w.w.PredNull("reader_count", "is_not_null")
+	return w
+}
+func (q *Author) ReaderCountIsNotNull() *Author {
+	q.q.W().PredNull("reader_count", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) ReaderCountEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("reader_count", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ReaderCountEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("reader_count", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ReaderCountNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("reader_count", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ReaderCountNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("reader_count", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ReaderCountGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("reader_count", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ReaderCountGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("reader_count", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ReaderCountGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("reader_count", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ReaderCountGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("reader_count", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ReaderCountLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("reader_count", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ReaderCountLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("reader_count", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ReaderCountLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("reader_count", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ReaderCountLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("reader_count", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) ReadCountEq(v int32) *AuthorWhere { w.w.Pred("read_count", "eq", v); return w }
 func (q *Author) ReadCountEq(v int32) *Author           { q.q.W().Pred("read_count", "eq", v); return q }
 func (w *AuthorWhere) ReadCountNotEq(v int32) *AuthorWhere {
@@ -1399,6 +2029,64 @@ func (w *AuthorWhere) ReadCountBetween(lo, hi int32) *AuthorWhere {
 }
 func (q *Author) ReadCountBetween(lo, hi int32) *Author {
 	q.q.W().PredList("read_count", "between", []any{lo, hi})
+	return q
+}
+func (w *AuthorWhere) ReadCountIsNull() *AuthorWhere { w.w.PredNull("read_count", "is_null"); return w }
+func (q *Author) ReadCountIsNull() *Author           { q.q.W().PredNull("read_count", "is_null"); return q }
+func (w *AuthorWhere) ReadCountIsNotNull() *AuthorWhere {
+	w.w.PredNull("read_count", "is_not_null")
+	return w
+}
+func (q *Author) ReadCountIsNotNull() *Author {
+	q.q.W().PredNull("read_count", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) ReadCountEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("read_count", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ReadCountEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("read_count", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ReadCountNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("read_count", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ReadCountNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("read_count", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ReadCountGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("read_count", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ReadCountGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("read_count", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ReadCountGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("read_count", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ReadCountGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("read_count", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ReadCountLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("read_count", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ReadCountLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("read_count", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ReadCountLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("read_count", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ReadCountLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("read_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) PhotoUrlEq(v string) *AuthorWhere { w.w.Pred("photo_url", "eq", v); return w }
@@ -1464,7 +2152,23 @@ func (w *AuthorWhere) PhotoUrlIsNotNull() *AuthorWhere {
 	w.w.PredNull("photo_url", "is_not_null")
 	return w
 }
-func (q *Author) PhotoUrlIsNotNull() *Author             { q.q.W().PredNull("photo_url", "is_not_null"); return q }
+func (q *Author) PhotoUrlIsNotNull() *Author { q.q.W().PredNull("photo_url", "is_not_null"); return q }
+func (w *AuthorWhere) PhotoUrlEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("photo_url", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) PhotoUrlEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("photo_url", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PhotoUrlNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("photo_url", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) PhotoUrlNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("photo_url", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) UserSeqEq(v int64) *AuthorWhere    { w.w.Pred("user_seq", "eq", v); return w }
 func (q *Author) UserSeqEq(v int64) *Author              { q.q.W().Pred("user_seq", "eq", v); return q }
 func (w *AuthorWhere) UserSeqNotEq(v int64) *AuthorWhere { w.w.Pred("user_seq", "not_eq", v); return w }
@@ -1499,6 +2203,61 @@ func (w *AuthorWhere) UserSeqBetween(lo, hi int64) *AuthorWhere {
 }
 func (q *Author) UserSeqBetween(lo, hi int64) *Author {
 	q.q.W().PredList("user_seq", "between", []any{lo, hi})
+	return q
+}
+func (w *AuthorWhere) UserSeqIsNull() *AuthorWhere { w.w.PredNull("user_seq", "is_null"); return w }
+func (q *Author) UserSeqIsNull() *Author           { q.q.W().PredNull("user_seq", "is_null"); return q }
+func (w *AuthorWhere) UserSeqIsNotNull() *AuthorWhere {
+	w.w.PredNull("user_seq", "is_not_null")
+	return w
+}
+func (q *Author) UserSeqIsNotNull() *Author { q.q.W().PredNull("user_seq", "is_not_null"); return q }
+func (w *AuthorWhere) UserSeqEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("user_seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UserSeqEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("user_seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UserSeqNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("user_seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UserSeqNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("user_seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UserSeqGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("user_seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UserSeqGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("user_seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UserSeqGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("user_seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UserSeqGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("user_seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UserSeqLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("user_seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UserSeqLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("user_seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UserSeqLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("user_seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UserSeqLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("user_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) ServiceSeqEq(v int64) *AuthorWhere { w.w.Pred("service_seq", "eq", v); return w }
@@ -1544,6 +2303,67 @@ func (w *AuthorWhere) ServiceSeqBetween(lo, hi int64) *AuthorWhere {
 }
 func (q *Author) ServiceSeqBetween(lo, hi int64) *Author {
 	q.q.W().PredList("service_seq", "between", []any{lo, hi})
+	return q
+}
+func (w *AuthorWhere) ServiceSeqIsNull() *AuthorWhere {
+	w.w.PredNull("service_seq", "is_null")
+	return w
+}
+func (q *Author) ServiceSeqIsNull() *Author { q.q.W().PredNull("service_seq", "is_null"); return q }
+func (w *AuthorWhere) ServiceSeqIsNotNull() *AuthorWhere {
+	w.w.PredNull("service_seq", "is_not_null")
+	return w
+}
+func (q *Author) ServiceSeqIsNotNull() *Author {
+	q.q.W().PredNull("service_seq", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) ServiceSeqEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceSeqEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceSeqNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceSeqNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceSeqGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceSeqGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceSeqGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceSeqGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceSeqLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceSeqLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceSeqLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceSeqLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) ServiceRegionSeqEq(v int64) *AuthorWhere {
@@ -1618,6 +2438,70 @@ func (q *Author) ServiceRegionSeqBetween(lo, hi int64) *Author {
 	q.q.W().PredList("service_region_seq", "between", []any{lo, hi})
 	return q
 }
+func (w *AuthorWhere) ServiceRegionSeqIsNull() *AuthorWhere {
+	w.w.PredNull("service_region_seq", "is_null")
+	return w
+}
+func (q *Author) ServiceRegionSeqIsNull() *Author {
+	q.q.W().PredNull("service_region_seq", "is_null")
+	return q
+}
+func (w *AuthorWhere) ServiceRegionSeqIsNotNull() *AuthorWhere {
+	w.w.PredNull("service_region_seq", "is_not_null")
+	return w
+}
+func (q *Author) ServiceRegionSeqIsNotNull() *Author {
+	q.q.W().PredNull("service_region_seq", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) ServiceRegionSeqEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_region_seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceRegionSeqEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_region_seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceRegionSeqNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_region_seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceRegionSeqNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_region_seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceRegionSeqGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_region_seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceRegionSeqGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_region_seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceRegionSeqGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_region_seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceRegionSeqGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_region_seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceRegionSeqLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_region_seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceRegionSeqLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_region_seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceRegionSeqLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_region_seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceRegionSeqLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_region_seq", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) ServiceMemberSeqEq(v int64) *AuthorWhere {
 	w.w.Pred("service_member_seq", "eq", v)
 	return w
@@ -1690,6 +2574,70 @@ func (q *Author) ServiceMemberSeqBetween(lo, hi int64) *Author {
 	q.q.W().PredList("service_member_seq", "between", []any{lo, hi})
 	return q
 }
+func (w *AuthorWhere) ServiceMemberSeqIsNull() *AuthorWhere {
+	w.w.PredNull("service_member_seq", "is_null")
+	return w
+}
+func (q *Author) ServiceMemberSeqIsNull() *Author {
+	q.q.W().PredNull("service_member_seq", "is_null")
+	return q
+}
+func (w *AuthorWhere) ServiceMemberSeqIsNotNull() *AuthorWhere {
+	w.w.PredNull("service_member_seq", "is_not_null")
+	return w
+}
+func (q *Author) ServiceMemberSeqIsNotNull() *Author {
+	q.q.W().PredNull("service_member_seq", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) ServiceMemberSeqEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_member_seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceMemberSeqEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_member_seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceMemberSeqNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_member_seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceMemberSeqNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_member_seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceMemberSeqGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_member_seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceMemberSeqGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_member_seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceMemberSeqGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_member_seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceMemberSeqGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_member_seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceMemberSeqLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_member_seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceMemberSeqLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_member_seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) ServiceMemberSeqLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("service_member_seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) ServiceMemberSeqLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("service_member_seq", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) StartDtEq(v time.Time) *AuthorWhere { w.w.Pred("start_dt", "eq", v); return w }
 func (q *Author) StartDtEq(v time.Time) *Author           { q.q.W().Pred("start_dt", "eq", v); return q }
 func (w *AuthorWhere) StartDtNotEq(v time.Time) *AuthorWhere {
@@ -1729,6 +2677,61 @@ func (q *Author) StartDtBetween(lo, hi time.Time) *Author {
 	q.q.W().PredList("start_dt", "between", []any{lo, hi})
 	return q
 }
+func (w *AuthorWhere) StartDtIsNull() *AuthorWhere { w.w.PredNull("start_dt", "is_null"); return w }
+func (q *Author) StartDtIsNull() *Author           { q.q.W().PredNull("start_dt", "is_null"); return q }
+func (w *AuthorWhere) StartDtIsNotNull() *AuthorWhere {
+	w.w.PredNull("start_dt", "is_not_null")
+	return w
+}
+func (q *Author) StartDtIsNotNull() *Author { q.q.W().PredNull("start_dt", "is_not_null"); return q }
+func (w *AuthorWhere) StartDtEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("start_dt", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) StartDtEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("start_dt", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) StartDtNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("start_dt", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) StartDtNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("start_dt", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) StartDtGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("start_dt", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) StartDtGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("start_dt", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) StartDtGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("start_dt", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) StartDtGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("start_dt", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) StartDtLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("start_dt", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) StartDtLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("start_dt", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) StartDtLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("start_dt", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) StartDtLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("start_dt", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) EndDtEq(v time.Time) *AuthorWhere    { w.w.Pred("end_dt", "eq", v); return w }
 func (q *Author) EndDtEq(v time.Time) *Author              { q.q.W().Pred("end_dt", "eq", v); return q }
 func (w *AuthorWhere) EndDtNotEq(v time.Time) *AuthorWhere { w.w.Pred("end_dt", "not_eq", v); return w }
@@ -1763,6 +2766,58 @@ func (w *AuthorWhere) EndDtBetween(lo, hi time.Time) *AuthorWhere {
 }
 func (q *Author) EndDtBetween(lo, hi time.Time) *Author {
 	q.q.W().PredList("end_dt", "between", []any{lo, hi})
+	return q
+}
+func (w *AuthorWhere) EndDtIsNull() *AuthorWhere    { w.w.PredNull("end_dt", "is_null"); return w }
+func (q *Author) EndDtIsNull() *Author              { q.q.W().PredNull("end_dt", "is_null"); return q }
+func (w *AuthorWhere) EndDtIsNotNull() *AuthorWhere { w.w.PredNull("end_dt", "is_not_null"); return w }
+func (q *Author) EndDtIsNotNull() *Author           { q.q.W().PredNull("end_dt", "is_not_null"); return q }
+func (w *AuthorWhere) EndDtEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("end_dt", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) EndDtEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("end_dt", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) EndDtNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("end_dt", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) EndDtNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("end_dt", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) EndDtGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("end_dt", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) EndDtGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("end_dt", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) EndDtGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("end_dt", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) EndDtGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("end_dt", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) EndDtLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("end_dt", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) EndDtLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("end_dt", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) EndDtLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("end_dt", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) EndDtLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("end_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) UuidEq(v string) *AuthorWhere    { w.w.Pred("uuid", "eq", v); return w }
@@ -1802,6 +2857,22 @@ func (w *AuthorWhere) UuidIsNull() *AuthorWhere           { w.w.PredNull("uuid",
 func (q *Author) UuidIsNull() *Author                     { q.q.W().PredNull("uuid", "is_null"); return q }
 func (w *AuthorWhere) UuidIsNotNull() *AuthorWhere        { w.w.PredNull("uuid", "is_not_null"); return w }
 func (q *Author) UuidIsNotNull() *Author                  { q.q.W().PredNull("uuid", "is_not_null"); return q }
+func (w *AuthorWhere) UuidEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("uuid", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UuidEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("uuid", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UuidNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("uuid", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) UuidNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("uuid", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) IsSingleWorkEq(v bool) *AuthorWhere {
 	w.w.Pred("is_single_work", "eq", v)
 	return w
@@ -1813,6 +2884,38 @@ func (w *AuthorWhere) IsSingleWorkNotEq(v bool) *AuthorWhere {
 }
 func (q *Author) IsSingleWorkNotEq(v bool) *Author {
 	q.q.W().Pred("is_single_work", "not_eq", v)
+	return q
+}
+func (w *AuthorWhere) IsSingleWorkIsNull() *AuthorWhere {
+	w.w.PredNull("is_single_work", "is_null")
+	return w
+}
+func (q *Author) IsSingleWorkIsNull() *Author {
+	q.q.W().PredNull("is_single_work", "is_null")
+	return q
+}
+func (w *AuthorWhere) IsSingleWorkIsNotNull() *AuthorWhere {
+	w.w.PredNull("is_single_work", "is_not_null")
+	return w
+}
+func (q *Author) IsSingleWorkIsNotNull() *Author {
+	q.q.W().PredNull("is_single_work", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) IsSingleWorkEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("is_single_work", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) IsSingleWorkEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("is_single_work", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) IsSingleWorkNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("is_single_work", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) IsSingleWorkNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("is_single_work", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) LikeCountEq(v int32) *AuthorWhere { w.w.Pred("like_count", "eq", v); return w }
@@ -1852,6 +2955,64 @@ func (w *AuthorWhere) LikeCountBetween(lo, hi int32) *AuthorWhere {
 }
 func (q *Author) LikeCountBetween(lo, hi int32) *Author {
 	q.q.W().PredList("like_count", "between", []any{lo, hi})
+	return q
+}
+func (w *AuthorWhere) LikeCountIsNull() *AuthorWhere { w.w.PredNull("like_count", "is_null"); return w }
+func (q *Author) LikeCountIsNull() *Author           { q.q.W().PredNull("like_count", "is_null"); return q }
+func (w *AuthorWhere) LikeCountIsNotNull() *AuthorWhere {
+	w.w.PredNull("like_count", "is_not_null")
+	return w
+}
+func (q *Author) LikeCountIsNotNull() *Author {
+	q.q.W().PredNull("like_count", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) LikeCountEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("like_count", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) LikeCountEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("like_count", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) LikeCountNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("like_count", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) LikeCountNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("like_count", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) LikeCountGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("like_count", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) LikeCountGtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("like_count", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) LikeCountGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("like_count", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) LikeCountGteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("like_count", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) LikeCountLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("like_count", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) LikeCountLtCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("like_count", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) LikeCountLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("like_count", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) LikeCountLteCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("like_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) AesHexEmailEq(v string) *AuthorWhere {
@@ -1896,6 +3057,22 @@ func (q *Author) AesHexEmailIsNotNull() *Author {
 	q.q.W().PredNull("aes_hex_email", "is_not_null")
 	return q
 }
+func (w *AuthorWhere) AesHexEmailEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("aes_hex_email", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) AesHexEmailEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("aes_hex_email", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) AesHexEmailNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("aes_hex_email", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) AesHexEmailNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("aes_hex_email", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) AesHexPhoneEq(v string) *AuthorWhere {
 	w.w.Pred("aes_hex_phone", "eq", v)
 	return w
@@ -1938,6 +3115,22 @@ func (q *Author) AesHexPhoneIsNotNull() *Author {
 	q.q.W().PredNull("aes_hex_phone", "is_not_null")
 	return q
 }
+func (w *AuthorWhere) AesHexPhoneEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("aes_hex_phone", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) AesHexPhoneEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("aes_hex_phone", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) AesHexPhoneNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("aes_hex_phone", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) AesHexPhoneNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("aes_hex_phone", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) IpEq(v string) *AuthorWhere    { w.w.Pred("ip", "eq", v); return w }
 func (q *Author) IpEq(v string) *Author              { q.q.W().Pred("ip", "eq", v); return q }
 func (w *AuthorWhere) IpNotEq(v string) *AuthorWhere { w.w.Pred("ip", "not_eq", v); return w }
@@ -1955,10 +3148,26 @@ func (q *Author) IpNotIn(vs []string) *Author {
 	q.q.W().PredList("ip", "not_in", orm.Anys(vs))
 	return q
 }
-func (w *AuthorWhere) IpIsNull() *AuthorWhere       { w.w.PredNull("ip", "is_null"); return w }
-func (q *Author) IpIsNull() *Author                 { q.q.W().PredNull("ip", "is_null"); return q }
-func (w *AuthorWhere) IpIsNotNull() *AuthorWhere    { w.w.PredNull("ip", "is_not_null"); return w }
-func (q *Author) IpIsNotNull() *Author              { q.q.W().PredNull("ip", "is_not_null"); return q }
+func (w *AuthorWhere) IpIsNull() *AuthorWhere    { w.w.PredNull("ip", "is_null"); return w }
+func (q *Author) IpIsNull() *Author              { q.q.W().PredNull("ip", "is_null"); return q }
+func (w *AuthorWhere) IpIsNotNull() *AuthorWhere { w.w.PredNull("ip", "is_not_null"); return w }
+func (q *Author) IpIsNotNull() *Author           { q.q.W().PredNull("ip", "is_not_null"); return q }
+func (w *AuthorWhere) IpEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("ip", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) IpEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("ip", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) IpNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("ip", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Author) IpNotEqCol(ref orm.ColRef) *Author {
+	q.q.W().PredCol("ip", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) GzExtendIsNull() *AuthorWhere { w.w.PredNull("gz_extend", "is_null"); return w }
 func (q *Author) GzExtendIsNull() *Author           { q.q.W().PredNull("gz_extend", "is_null"); return q }
 func (w *AuthorWhere) GzExtendIsNotNull() *AuthorWhere {

@@ -73,6 +73,16 @@ func (w *W) PredNull(col, op string) {
 	w.G.Items = append(w.G.Items, ir.Item{Pred: &ir.Pred{Conn: w.conn(), Column: col, Op: op}})
 }
 
+// ColRef names a column of another entity in the same statement for
+// column-to-column predicates: Path "" is the parent (inside on()/where() of a
+// join child) or the root; At("service") / At("campaign/service") walks joins.
+type ColRef struct {
+	Path   string
+	Column string
+}
+
+func (c ColRef) At(path string) ColRef { return ColRef{Path: path, Column: c.Column} }
+
 func (w *W) PredCol(col, op, path, refCol string) {
 	w.G.Items = append(w.G.Items, ir.Item{Pred: &ir.Pred{Conn: w.conn(), Column: col, Op: op, Ref: &ir.ColRef{Path: path, Column: refCol}}})
 }
@@ -202,7 +212,19 @@ type Row struct {
 	dirty  []ir.Assign
 	dvals  []any
 	encErr error // first codec error from DirtyStyled; surfaces from UpdateRow
+	extra  map[string]any // selectExpr / select<Col>As outputs, by output name
 }
+
+// SetExtra records a computed or aliased output column (generated scanners call it).
+func (r *Row) SetExtra(name string, v any) {
+	if r.extra == nil {
+		r.extra = map[string]any{}
+	}
+	r.extra[name] = v
+}
+
+// Extra returns a selectExpr / select<Col>As output by name (nil when absent).
+func (r *Row) Extra(name string) any { return r.extra[name] }
 
 func (r *Row) Loaded() bool { return r.loaded }
 
