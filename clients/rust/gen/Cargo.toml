@@ -4,7 +4,7 @@ version = "0.0.1"
 edition = "2021"
 publish = false
 description = "Generated entities for the orm engine (ormgen gen --lang rust)"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 
 [dependencies]
 orm = { path = "../orm" }
