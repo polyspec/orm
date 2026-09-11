@@ -203,6 +203,78 @@ func (q *Q) IfParent(col string, v any) {
 	q.Node.IfParent = &ir.IfParent{Column: col, P: q.Req.P(v)}
 }
 
+// OnDuplicate* mirror Set*/Plus/Minus into the insert's ON DUPLICATE KEY UPDATE list.
+func (q *Q) OnDuplicate(col string, v any) {
+	i := q.Req.P(v)
+	q.Req.IR.OnDuplicate = append(q.Req.IR.OnDuplicate, ir.Assign{Column: col, P: &i})
+}
+
+// OnDuplicateStyled encodes like SetStyled; nil stays a NULL assignment.
+func (q *Q) OnDuplicateStyled(col string, v any, styles []string) {
+	enc, err := Encode(styles, v)
+	if err != nil {
+		if q.Req.Err == nil {
+			q.Req.Err = err
+		}
+		return
+	}
+	if enc == nil {
+		q.Req.IR.OnDuplicate = append(q.Req.IR.OnDuplicate, ir.Assign{Column: col, Null: true})
+		return
+	}
+	q.OnDuplicate(col, enc)
+}
+
+func (q *Q) OnDuplicateExpr(col, frag string, binds ...any) {
+	ps := make([]int, 0, len(binds))
+	for _, v := range binds {
+		ps = append(ps, q.Req.P(v))
+	}
+	q.Req.IR.OnDuplicate = append(q.Req.IR.OnDuplicate, ir.Assign{Column: col, Expr: frag, Ps: ps})
+}
+
+func (q *Q) OnDuplicatePlus(col string, v any) {
+	i := q.Req.P(v)
+	q.Req.IR.OnDuplicate = append(q.Req.IR.OnDuplicate, ir.Assign{Column: col, PlusP: &i})
+}
+
+func (q *Q) OnDuplicateMinus(col string, v any) {
+	i := q.Req.P(v)
+	q.Req.IR.OnDuplicate = append(q.Req.IR.OnDuplicate, ir.Assign{Column: col, MinusP: &i})
+}
+
+// OnDuplicateSetAll copies the assignments made so far (the PK/auto columns
+// named in exclude aside) so a duplicate key updates the row to the same
+// values. Copies share the params: the plan binds each value twice.
+func (q *Q) OnDuplicateSetAll(exclude ...string) {
+	skip := map[string]bool{}
+	for _, c := range exclude {
+		skip[c] = true
+	}
+	for _, a := range q.Req.IR.Set {
+		if !skip[a.Column] {
+			q.Req.IR.OnDuplicate = append(q.Req.IR.OnDuplicate, a)
+		}
+	}
+}
+
+// MovePKToWhere turns a draft into an update of the other assigned columns
+// when the PK was assigned a value: that assignment becomes WHERE pk = value
+// and the value is returned. ok is false (and nothing changes) when the PK is
+// not in set[] — the insert branch of save.
+func (q *Q) MovePKToWhere(pk string) (v any, ok bool) {
+	for i, a := range q.Req.IR.Set {
+		if a.Column != pk || a.P == nil {
+			continue
+		}
+		v = q.Req.Params[*a.P]
+		q.Req.IR.Set = append(q.Req.IR.Set[:i:i], q.Req.IR.Set[i+1:]...)
+		q.W().Pred(pk, "eq", v)
+		return v, true
+	}
+	return nil, false
+}
+
 // Row is embedded in every generated row struct: it remembers where the row
 // came from and which columns were changed through Set* so Update sends only those.
 type Row struct {
@@ -220,6 +292,7 @@ type Row struct {
 	hidden   map[string]bool // drop_child_key columns
 	flat     []string        // one-relations whose columns merge into this row's array form
 	rels     map[string]bool // relations that were loaded (even when null/empty)
+	cascade  []string        // loaded relations whose rows belong to this row (children[].cascade), in child order
 }
 
 // SetProjection records what the row's assemble node selected (generated scanners call it).
@@ -242,6 +315,9 @@ func (r *Row) SetProjection(a *plan.Assemble) {
 		if ch.Flatten {
 			r.flat = append(r.flat, ch.Rel)
 		}
+		if ch.Cascade {
+			r.cascade = append(r.cascade, ch.Rel)
+		}
 	}
 }
 
@@ -250,6 +326,9 @@ func (r *Row) Selected() []string      { return r.selected }
 func (r *Row) Hidden(name string) bool { return r.hidden[name] }
 func (r *Row) Flat() []string          { return r.flat }
 func (r *Row) RelLoaded(rel string) bool { return r.rels[rel] }
+
+// Cascades lists the loaded relations DeleteCascade removes before this row, in load order.
+func (r *Row) Cascades() []string { return r.cascade }
 
 // FormatTime renders a datetime the way every language's array form does.
 func FormatTime(t time.Time) string { return t.Format("2006-01-02 15:04:05.000000") }
