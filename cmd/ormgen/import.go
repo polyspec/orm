@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/maxkwon/orm/engine/schema"
 )
@@ -43,15 +44,26 @@ type impTable struct {
 
 func importCmd(args []string) {
 	fs := flag.NewFlagSet("import", flag.ExitOnError)
-	dsn := fs.String("dsn", "", "go-sql-driver DSN (required)")
+	dsn := fs.String("dsn", "", "DSN/URL (required)")
+	driver := fs.String("driver", "", "mysql|postgres (default: inferred from the DSN)")
 	out := fs.String("out", "", "output .mmd path (required)")
 	tables := fs.String("tables", "", "comma-separated subset of tables")
 	fs.Parse(args)
 	if *dsn == "" || *out == "" {
-		fmt.Fprintln(os.Stderr, "usage: ormgen import --dsn <dsn> --out schema/app.mmd [--tables a,b]")
+		fmt.Fprintln(os.Stderr, "usage: ormgen import --dsn <dsn> [--driver mysql|postgres] --out schema/app.mmd [--tables a,b]")
 		os.Exit(2)
 	}
-	db, err := sql.Open("mysql", *dsn)
+	if *driver == "" {
+		*driver = "mysql"
+		if strings.HasPrefix(*dsn, "postgres://") || strings.HasPrefix(*dsn, "postgresql://") || strings.Contains(*dsn, "host=") {
+			*driver = "postgres"
+		}
+	}
+	sqlDriver := map[string]string{"mysql": "mysql", "postgres": "pgx"}[*driver]
+	if sqlDriver == "" {
+		fail(fmt.Errorf("driver %q: want mysql or postgres", *driver))
+	}
+	db, err := sql.Open(sqlDriver, *dsn)
 	if err != nil {
 		fail(err)
 	}
@@ -63,7 +75,7 @@ func importCmd(args []string) {
 			only[strings.TrimSpace(t)] = true
 		}
 	}
-	ts, err := readTables(db, only)
+	ts, err := readTables(db, *driver, only)
 	if err != nil {
 		fail(err)
 	}
@@ -88,7 +100,10 @@ func fail(err error) {
 	os.Exit(1)
 }
 
-func readTables(db *sql.DB, only map[string]bool) ([]impTable, error) {
+func readTables(db *sql.DB, driver string, only map[string]bool) ([]impTable, error) {
+	if driver == "postgres" {
+		return readTablesPG(db, only)
+	}
 	rows, err := db.Query(`SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, COLUMN_KEY, COLUMN_COMMENT
 		FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, ORDINAL_POSITION`)
 	if err != nil {
@@ -328,4 +343,166 @@ func isNumber(s string) bool {
 		}
 	}
 	return true
+}
+
+// readTablesPG is the PostgreSQL half of the importer: information_schema for
+// columns (assembled back into a MySQL-shaped type text so one renderer serves
+// both) and pg_index for keys and indexes.
+func readTablesPG(db *sql.DB, only map[string]bool) ([]impTable, error) {
+	rows, err := db.Query(`SELECT c.table_name, c.column_name, c.data_type, c.character_maximum_length,
+		       c.numeric_precision, c.numeric_scale, c.datetime_precision, c.udt_name,
+		       c.is_nullable, c.column_default, c.is_identity, coalesce(d.description, '')
+		  FROM information_schema.columns c
+		  JOIN information_schema.tables t ON t.table_schema = c.table_schema AND t.table_name = c.table_name AND t.table_type = 'BASE TABLE'
+		  LEFT JOIN pg_catalog.pg_class cl ON cl.relname = c.table_name
+		  LEFT JOIN pg_catalog.pg_description d ON d.objoid = cl.oid AND d.objsubid = c.ordinal_position
+		 WHERE c.table_schema = current_schema()
+		 ORDER BY c.table_name, c.ordinal_position`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	byName := map[string]*impTable{}
+	var order []string
+	for rows.Next() {
+		var table, dataType, udt, nullable, identity, comment string
+		var charLen, numPrec, numScale, dtPrec sql.NullInt64
+		var def sql.NullString
+		var c impColumn
+		if err := rows.Scan(&table, &c.Name, &dataType, &charLen, &numPrec, &numScale, &dtPrec, &udt, &nullable, &def, &identity, &comment); err != nil {
+			return nil, err
+		}
+		if only != nil && !only[table] {
+			continue
+		}
+		c.Type = pgTypeText(dataType, udt, charLen, numPrec, numScale, dtPrec)
+		c.Nullable = nullable == "YES"
+		c.Comment = comment
+		switch {
+		case identity == "YES" || (def.Valid && strings.HasPrefix(def.String, "nextval(")):
+			c.Extra = "auto_increment"
+			c.Default = "\x00"
+		case def.Valid:
+			c.Default = pgDefaultText(def.String)
+		default:
+			c.Default = "\x00"
+		}
+		tb := byName[table]
+		if tb == nil {
+			tb = &impTable{Name: table}
+			byName[table] = tb
+			order = append(order, table)
+		}
+		tb.Columns = append(tb.Columns, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	irows, err := db.Query(`SELECT cl.relname AS table_name, ic.relname AS index_name, ix.indisunique, ix.indisprimary,
+		       am.amname, a.attname, k.ord
+		  FROM pg_class cl
+		  JOIN pg_namespace n ON n.oid = cl.relnamespace AND n.nspname = current_schema()
+		  JOIN pg_index ix ON ix.indrelid = cl.oid
+		  JOIN pg_class ic ON ic.oid = ix.indexrelid
+		  JOIN pg_am am ON am.oid = ic.relam
+		  JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ord) ON true
+		  JOIN pg_attribute a ON a.attrelid = cl.oid AND a.attnum = k.attnum
+		 ORDER BY cl.relname, ic.relname, k.ord`)
+	if err != nil {
+		return nil, err
+	}
+	defer irows.Close()
+	for irows.Next() {
+		var table, name, am, col string
+		var unique, primary bool
+		var ord int
+		if err := irows.Scan(&table, &name, &unique, &primary, &am, &col, &ord); err != nil {
+			return nil, err
+		}
+		tb := byName[table]
+		if tb == nil {
+			continue
+		}
+		if primary {
+			for i := range tb.Columns {
+				if tb.Columns[i].Name == col {
+					tb.Columns[i].Key = "PRI"
+				}
+			}
+			continue
+		}
+		if n := len(tb.Indexes); n > 0 && tb.Indexes[n-1].Name == name {
+			tb.Indexes[n-1].Columns = append(tb.Indexes[n-1].Columns, col)
+			continue
+		}
+		tb.Indexes = append(tb.Indexes, impIndex{Name: name, Unique: unique, Fulltext: am == "gin", Columns: []string{col}})
+	}
+	sort.Strings(order)
+	out := make([]impTable, 0, len(order))
+	for _, n := range order {
+		out = append(out, *byName[n])
+	}
+	return out, irows.Err()
+}
+
+// pgTypeText renders a PostgreSQL column as the DB type text the diagram uses
+// (the manifest maps it to a canonical type either way).
+func pgTypeText(dataType, udt string, charLen, numPrec, numScale, dtPrec sql.NullInt64) string {
+	switch dataType {
+	case "character varying", "character":
+		if charLen.Valid {
+			return fmt.Sprintf("varchar(%d)", charLen.Int64)
+		}
+		return "text"
+	case "integer":
+		return "int"
+	case "smallint":
+		return "smallint"
+	case "bigint":
+		return "bigint"
+	case "boolean":
+		return "tinyint"
+	case "double precision", "real":
+		return "double"
+	case "numeric":
+		if numPrec.Valid {
+			return fmt.Sprintf("decimal(%d,%d)", numPrec.Int64, numScale.Int64)
+		}
+		return "decimal"
+	case "timestamp without time zone", "timestamp with time zone":
+		if dtPrec.Valid && dtPrec.Int64 > 0 {
+			return fmt.Sprintf("datetime(%d)", dtPrec.Int64)
+		}
+		return "datetime"
+	case "date":
+		return "date"
+	case "time without time zone", "time with time zone":
+		return "time"
+	case "bytea":
+		return "blob"
+	case "json", "jsonb":
+		return "json"
+	case "inet":
+		return "varbinary(16)"
+	case "text":
+		return "text"
+	}
+	return udt
+}
+
+// pgDefaultText strips PostgreSQL's cast suffixes so the diagram shows the value.
+func pgDefaultText(d string) string {
+	if i := strings.Index(d, "::"); i > 0 {
+		d = d[:i]
+	}
+	d = strings.Trim(d, "'")
+	switch strings.ToLower(d) {
+	case "now()", "current_timestamp":
+		return "CURRENT_TIMESTAMP"
+	case "true":
+		return "1"
+	case "false":
+		return "0"
+	}
+	return d
 }
