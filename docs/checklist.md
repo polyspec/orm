@@ -37,8 +37,8 @@
 - [x] T1.14~T1.16, T1.18 ormd 컴파일 전용 데몬, PHP 트랜스포트(영속 UDS+APCu), PHP 실행기(PDO, FETCH_NUM 위치형), PHP 생성기
 - [x] T1.19~T1.20 Rust 런타임(전용 스레드 wasmtime, sqlx, `Tx: Clone`)·생성기. F2 종결(sqlx 고유 비용), F3(sqlx `try_get` 실패를 흐름 제어로 쓰지 않음)
 - [x] T1.21 `tests/conformance` 하네스(러너 3 + `check run/compare/record`) · T1.22 `ormgen tokens` · T1.23 데모 `examples/thin-slice` · T1.24 Rust 컴파일 시간(5테이블 check 0.25s)
-- [ ] T1.3 `ormgen import --dsn` → **S5 T5.10으로 이동** (150테이블 게이트 T2.15의 선행)
-- [ ] T1.4 `ormgen validate --dsn` → **S5 T5.1로 통합**
+- [x] T1.3 `ormgen import --dsn` (S5 T5.10에서 완료)
+- [x] T1.4 `ormgen validate --dsn` (S5 T5.1에서 완료)
 - [ ] T1.17 PHP `__call` 파서 → **S4 T4.7로 이동** (v3 문법은 생성 메서드를 쓰므로 호환층 전용)
 
 ---
@@ -91,9 +91,9 @@
 
 ### 4-A 엔진 — 레인 E
 - [ ] T4.1 조인 잔여: 다단 조인 alias 충돌 검증(`COLUMN_ALIAS_CONFLICT` 실제 케이스), 조인 하위 관계 키 고유성, 조인 컬럼 `select<Col>As` 네임스페이스 (join/leftJoin/on/where/nav/조인 하위 관계는 S1·S2에 있음)
-- [ ] T4.2 집계 확장: `countDistinct<Col>`, `groupBy` + `count`(그룹 수), `min<Col>`/`max<Col>`, `having`(그룹 술어) — dsl.md에 토큰 추가
-- [ ] T4.3 `%% predicate` 이름 붙인 술어 그룹 → 생성 메서드(`whereActive()` 식) — 매니페스트에 파싱은 있음
-- [ ] T4.4 `Query.raw` 루트(신뢰 코드 전용, `{self}`/`{alias:x}` 치환) + `orderByExpr`/`groupByExpr` 검증
+- [x] T4.2 엔진: `countDistinct<Col>`, `groupBy`+`count` = 그룹 수(`orm_g`), `min<Col>`/`max<Col>`, `having`(루트 전용) — 골든 통과; 3언어 노출은 T4.5
+- [x] T4.3 엔진: `%% predicate` = expr 조각(백틱 컬럼 검증, `?` = arity) → `predicates{expr, arity}`; 생성 메서드 3언어(T4.5)
+- [x] T4.4 엔진: `kind: raw` 루트(`{table}` 치환, `?` = ps, role `raw`) — `rawAll` 3언어(T4.5)
 
 ### 4-B 생성기·실행기 — 레인 E(템플릿) → G ∥ P ∥ R
 - [x] T4.5 G/P/R(병렬 레인, docs/lanes/s4.md): 집계 터미널, `having`, `raw`/`rawAll`, 이름 붙인 술어 메서드 — **3언어 병합, 적합성 40 × 3 동일**
@@ -114,9 +114,9 @@
 - [~] T5.2 `docs/errors.yaml` + `ormgen errors --lang go|php|rust` 완료 → 상수 파일 체크인·사용·드라이버 에러 매핑은 레인(docs/lanes/s5.md)
 
 ### 5-B 런타임 — 레인 G ∥ P ∥ R
-- [ ] T5.3 **P** `on_query(sql, binds, duration, plan_id, err)` 훅 통일(plan_id 추가) + 로깅 예제
-- [ ] T5.3b **P** 문장당 고정 비용 감축(perf.md §6b: Go +6µs, PHP +9µs, Rust +16µs): IR 형태 키를 전체 JSON 직렬화 없이 생성(호출 지점별 형태 캐시), Rust `Vec<Val>` 중간 단계 없이 typed 직접 디코드 → 3행 쿼리 네이티브 대비 ≤+5%
-- [ ] T5.4 **P** PHP `EMULATE_PREPARES` 결정: 서버 prepared(native) vs 에뮬레이션 실측(PK·100행·IN 확장) 후 하나로 고정, `ip`/JSON 타입 반환 확인
+- [~] T5.3 `on_query(sql, binds, duration, plan_id, err)` — Go 완료(plan_id 16자리 hex, 비밀 `$SECRET` 마스킹), PHP·Rust 레인 진행 중
+- [~] T5.3b 고정 비용: Go 66µs vs 네이티브 61µs(+8%, 이전 +13%; IR 해시 무직렬화, 스캔 셀 재사용, 플랜별 스캔 팩트 캐시). ≤+5%는 typed 직접 스캔(생성기 재설계) 필요 → S7 후보. PHP·Rust 레인 진행 중
+- [~] T5.4 PHP `EMULATE_PREPARES` 실측·결정 — PHP 레인 진행 중
 - [~] T5.5 `orm.toml` 스펙 `docs/config.md` 작성 → 로더 3언어(절대경로·symlink 금지 검증, schema_hash 부팅 검사)는 레인
 
 ### 5-C 배포 — 레인 V
