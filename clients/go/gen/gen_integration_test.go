@@ -438,7 +438,7 @@ func TestAggregatesHavingRawPredicates(t *testing.T) {
 	if err != nil || empty == nil || len(empty) != 0 {
 		t.Errorf("raw empty: %#v %v", empty, err)
 	}
-	// placeholder/bind mismatch is an engine error
+	// placeholder/bind mismatch is an engine error (ormgen:ignore — the mismatch is the point)
 	if _, err := gen.NewBattle().Raw("SELECT seq FROM {table} WHERE seq = ?").RawAll(ctx, db); err == nil || !strings.Contains(err.Error(), "IR_INVALID") {
 		t.Errorf("raw arity: %v", err)
 	}
