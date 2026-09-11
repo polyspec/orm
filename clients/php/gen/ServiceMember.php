@@ -226,6 +226,8 @@ final class ServiceMember extends Q
     public function orderByUserSeqDesc(): static { $this->order('user_seq', true); return $this; }
     public function groupByUserSeq(): static { $this->node['group_by'][] = 'user_seq'; return $this; }
     public function keyByUserSeq(): static { $this->node['key_by'] = 'user_seq'; return $this; }
+    /** Group predicates after groupBy<Col>(); the closure gets the same Where builder, aggregates via expr('COUNT(*) > ?', [n]). */
+    public function having(\Closure $fn): static { $fn(new ServiceMemberWhere($this->havingW())); return $this; }
     public function orderByExpr(string $frag, bool $desc = false): static { $this->orderExpr($frag, $desc); return $this; }
     public function limit(int $offset, int $count): static { $this->node['limit'] = ['offset' => $offset, 'count' => $count]; return $this; }
     public function distinct(): static { $this->node['distinct'] = true; return $this; }
@@ -299,6 +301,26 @@ final class ServiceMember extends Q
     public function avgServiceSeq(Db $db): float { return (float) $this->runScalar($db, 'avg', 'service_seq'); }
     public function sumUserSeq(Db $db): float { return (float) $this->runScalar($db, 'sum', 'user_seq'); }
     public function avgUserSeq(Db $db): float { return (float) $this->runScalar($db, 'avg', 'user_seq'); }
+    public function countDistinctSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'seq'); }
+    /** MIN(seq); null when no rows match. */
+    public function minSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'seq'); return $v === null ? null : (int) $v; }
+    /** MAX(seq); null when no rows match. */
+    public function maxSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'seq'); return $v === null ? null : (int) $v; }
+    public function countDistinctServiceSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'service_seq'); }
+    /** MIN(service_seq); null when no rows match. */
+    public function minServiceSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'service_seq'); return $v === null ? null : (int) $v; }
+    /** MAX(service_seq); null when no rows match. */
+    public function maxServiceSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'service_seq'); return $v === null ? null : (int) $v; }
+    public function countDistinctUserSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'user_seq'); }
+    /** MIN(user_seq); null when no rows match. */
+    public function minUserSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'user_seq'); return $v === null ? null : (int) $v; }
+    /** MAX(user_seq); null when no rows match. */
+    public function maxUserSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'user_seq'); return $v === null ? null : (int) $v; }
+
+    // ---- raw root (trusted code only): {table} = this entity's table, ? bound from $binds in order ----
+    public function raw(string $sql, array $binds = []): static { $this->setRaw($sql, $binds); return $this; }
+    /** Runs the raw() statement; rows keyed by the driver's column names, values as PDO gives them (no codec). @return list<array<string, mixed>> */
+    public function rawAll(Db $db): array { return $this->runRaw($db); }
 
     public function paginate(Db $db, int $page, int $per): Page
     {
