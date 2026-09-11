@@ -1,0 +1,100 @@
+//! Ordered map keyed by PK (or key_by), and the paginate result.
+
+use indexmap::IndexMap;
+
+use crate::value::Val;
+
+/// Collection key: an integer or a string, whichever the key column yields.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Key {
+    I(i64),
+    S(String),
+}
+
+impl Key {
+    pub fn of(v: &Val) -> Key {
+        match v {
+            Val::I64(x) => Key::I(*x),
+            other => Key::S(other.as_string()),
+        }
+    }
+
+    pub fn as_i64(&self) -> i64 {
+        match self {
+            Key::I(x) => *x,
+            Key::S(s) => s.parse().unwrap_or(0),
+        }
+    }
+}
+
+impl std::fmt::Display for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Key::I(x) => write!(f, "{x}"),
+            Key::S(s) => write!(f, "{s}"),
+        }
+    }
+}
+
+/// Never null from a terminal: `all()` on no rows returns an empty collection.
+#[derive(Debug, Clone)]
+pub struct Collection<T> {
+    items: IndexMap<Key, T>,
+}
+
+impl<T> Default for Collection<T> {
+    fn default() -> Self {
+        Collection { items: IndexMap::new() }
+    }
+}
+
+impl<T> Collection<T> {
+    pub fn with_capacity(n: usize) -> Self {
+        Collection { items: IndexMap::with_capacity(n) }
+    }
+
+    pub fn put(&mut self, k: Key, v: T) {
+        self.items.insert(k, v);
+    }
+
+    pub fn get(&self, k: &Key) -> Option<&T> {
+        self.items.get(k)
+    }
+
+    pub fn first(&self) -> Option<&T> {
+        self.items.values().next()
+    }
+
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&Key, &T)> {
+        self.items.iter()
+    }
+
+    pub fn to_vec(self) -> Vec<T> {
+        self.items.into_values().collect()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a Collection<T> {
+    type Item = (&'a Key, &'a T);
+    type IntoIter = indexmap::map::Iter<'a, Key, T>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.iter()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Page<T> {
+    pub items: Collection<T>,
+    pub total: i64,
+    pub pages: i64,
+    pub current: i64,
+    pub per: i64,
+}
