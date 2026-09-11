@@ -101,7 +101,10 @@ func reNumber(v any) any {
 }
 
 func TestCodecErrors(t *testing.T) {
-	for _, c := range []struct{ styles []string; raw, code string }{
+	for _, c := range []struct {
+		styles    []string
+		raw, code string
+	}{
 		{[]string{"json"}, "{bad", "CODEC_DECODE"},
 		{[]string{"serialize"}, "O:8:\"stdClass\":0:{}", "CODEC_UNSUPPORTED"},
 		{[]string{"serialize"}, "a:1:{i:0;", "CODEC_DECODE"},
