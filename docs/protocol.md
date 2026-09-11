@@ -64,6 +64,7 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 - 관계마다 step 하나(`role: relation`), 부모 step 뒤에 온다(중첩·조인 하위 관계도 같은 규칙, paginate는 main → 관계… → `count`).
 - `step.parent = {step, column, index, if_parent?{column, index, param}}`: 실행기는 부모 step의 행에서 `index` 위치 값을 **null 제외·처음 본 순서로 dedup**하고, `if_parent`가 있으면 `params[param]`과 같은 부모 행만 쓴다. 값이 0개면 **질의하지 않고** 빈 결과로 둔다.
 - SQL의 `parent` 슬롯은 `?` 하나다. 실행기가 그 자리를 N개 `?`로 바꾼다. N은 값 개수를 **2의 거듭제곱으로 올림**(마지막 값 반복으로 패딩) — prepared statement 캐시가 크기 등급당 하나만 갖도록. 세 언어 동일.
+- **사용자 IN 목록도 같은 규칙**: `in`/`not_in` 술어의 값은 빌더가 IR을 만들기 전에 2의 거듭제곱으로 패딩한다(마지막 값 반복 — 중복은 IN/NOT IN 결과를 바꾸지 않는다). 패딩이 없으면 목록 길이마다 플랜과 서버측 prepared statement가 따로 생겨 개수가 길이에 비례해 늘어난다(MySQL `max_prepared_stmt_count` 기본 16382). 세 언어의 빌더가 같은 자리에서 같은 규칙으로 패딩하므로 문장·바인드가 동일하다.
 - 부착: `children[]`의 `kind one` = 자식 행 중 첫 행(자식 ORDER가 있으면 planner가 per-parent 1 window로 이미 잘라 옴), `many` = `key_index` 값으로 키 맵(행 순서 유지, 중복 키는 last-wins). `if_parent`를 통과 못한 부모는 null/빈 컬렉션.
 - `limit_per_parent n`: `SELECT <출력 컬럼> FROM (… , ROW_NUMBER() OVER (PARTITION BY right ORDER BY …) AS orm_rn …) AS orm_w WHERE orm_w.orm_rn <= n ORDER BY orm_w.right, orm_w.orm_rn`. 출력 컬럼 순서는 window 없는 경우와 같다.
 - `flatten`(one 전용): 배열/JSON 형태(PHP `toArray`/`['x']`, Go/Rust의 배열 변환)에서 자식 컬럼을 부모에 병합한다. 부모에 같은 이름이 있으면 부모가 이긴다. typed 접근자(`GetUser()`/`user()`)는 그대로 있다.

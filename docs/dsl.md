@@ -36,7 +36,7 @@ new X                                   ← 쿼리(행 아님)
 |---|---|---|
 | `Eq` `NotEq` | `= !=` | `isCloseEq(0)` `statusNotEq('x')` |
 | `Gt` `Gte` `Lt` `Lte` | `> >= < <=` | `endDtGt($now)` |
-| `In` `NotIn` | `IN` / `NOT IN` (빈 리스트 = 컴파일 에러 `EMPTY_IN`) | `seqIn([1,2,3])` |
+| `In` `NotIn` | `IN` / `NOT IN` (빈 리스트 = 컴파일 에러 `EMPTY_IN`). 값 개수는 2의 거듭제곱으로 패딩된다(마지막 값 반복) — 결과는 같고, 목록 길이마다 새 prepared statement가 생기지 않는다(`docs/protocol.md`) | `seqIn([1,2,3])` → 바인드 4개 |
 | `Like` `LikeBinary` | `LIKE ?` — 패턴은 호출자가 준다(`%`를 자동으로 감싸지 않음) | `nameLike("%$kw%")` |
 | `Contains` `StartsWith` `EndsWith` | `LIKE %v%` / `v%` / `%v` — `%`·`_` 이스케이프 | `nameContains($kw)` |
 | `Between` | `BETWEEN ? AND ?` | `createdTsBetween($from, $to)` |
