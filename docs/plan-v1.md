@@ -142,7 +142,7 @@ fulltext: [[name, description]]
 | `set<Col>(v)` `setRaw<Col>(expr, binds)` `plus<Col>(n)` `minus<Col>(n)` | 동일 | 동일 | 동일 |
 | `debug()` · `clone` · `sql(db)` | `->debug()`, `clone $q` | `.Debug()`, `q.Clone()` | `.debug()`, `q.clone()` |
 | **터미널** `get gets count sum avg create update save delete paginate` — 실행기를 인자로 | `->bind($db)->gets()` | `.Bind(ctx, db).Gets()` | `.bind(&db).gets().await?` |
-| `getBy<PK|unique>(…)`, `getsBy<Col>(…)`, `getCountBy<Col>(…)` 생성 | `->bind($db)->getBySeq($seq)` / `->bind($db)->getsByServiceSeq($seq)` | `.Bind(ctx, db).GetBySeq(seq)` / `.Bind(ctx, db).GetsByServiceSeq(seq)` | `.bind(&db).get_by_seq(seq).await?` / `.bind(&db).gets_by_service_seq(seq).await?` |
+| `getBy<PK\|unique>(…)`, `getsBy<Col>(…)`, `getCountBy<Col>(…)` 생성 | `->bind($db)->getBySeq($seq)` / `->bind($db)->getsByServiceSeq($seq)` | `.Bind(ctx, db).GetBySeq(seq)` / `.Bind(ctx, db).GetsByServiceSeq(seq)` | `.bind(&db).get_by_seq(seq).await?` / `.bind(&db).gets_by_service_seq(seq).await?` |
 | 트랜잭션 | `$db->transaction(function ($tx) {…})` | `orm.Transaction(ctx, db, func(tx *orm.Tx) (T, error) {…})` | `db.transaction(\|tx\| async move {…}).await?` (`Tx: Clone`) |
 | 결과 스칼라 | `$m->getSeq()`, `$m->getName($default)`, `$m['name']` | `m.Seq` / nil-safe `m.GetSeq()` | `m.seq` (nullable은 `Option`) |
 | 결과 관계 | `$m->getUser()`→null, `$m->getItems([])` | `m.GetUser()`→nil, `m.GetItems()`→빈 컬렉션 | `m.user() -> Option<&User>`, `m.items() -> &Items` |

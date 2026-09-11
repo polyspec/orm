@@ -59,6 +59,8 @@ go run ./tests/conformance/check run                                # 3 language
 ```
 
 ## Documents
+[**Online documentation**](https://polyspec.github.io/orm/) — static guides, interface diagrams and implementation status, built from `docs/` and deployed through GitHub Pages.
+
 [**공통 인터페이스**](docs/interfaces.md) · [구현 대조표](docs/interface-implementation.md) · [자동 검사](tests/interfaces/README.md) — 자료구조·수명·공개 API와 검증 상태.
 
 [**docs/usage.md**](docs/usage.md) — start here: schema, generation, connecting, querying, writing, relations, the three databases, operations.
