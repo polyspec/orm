@@ -660,6 +660,8 @@ func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 			r.Base64Extra = v
 		case "serialize_data":
 			r.SerializeData = v
+		default:
+			r.SetExtra(c.Name, v)
 		}
 	}
 	for _, ch := range a.Children {
@@ -700,6 +702,76 @@ func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 	}
 	r.Mark("battle", "seq", r.Seq)
 	return r
+}
+
+// BattleCols are column references for column-to-column predicates
+// (w.SeqEqCol(BattleCols.Seq)); .At("service") points into a joined entity.
+var BattleCols = struct {
+	Seq                   orm.ColRef
+	Name                  orm.ColRef
+	Description           orm.ColRef
+	CreatedTs             orm.ColRef
+	UpdatedTs             orm.ColRef
+	IsClose               orm.ColRef
+	IsDisplay             orm.ColRef
+	DisplayStartDt        orm.ColRef
+	DisplayEndDt          orm.ColRef
+	IsAllday              orm.ColRef
+	TargetTeamPlayerCount orm.ColRef
+	SuccessCount          orm.ColRef
+	PlayerCount           orm.ColRef
+	ReadCount             orm.ColRef
+	CoverUrl              orm.ColRef
+	UserSeq               orm.ColRef
+	ServiceSeq            orm.ColRef
+	ServiceModuleSeq      orm.ColRef
+	ServiceMemberSeq      orm.ColRef
+	StartDt               orm.ColRef
+	EndDt                 orm.ColRef
+	Uuid                  orm.ColRef
+	IsSinglePlay          orm.ColRef
+	LikeCount             orm.ColRef
+	AesHexEmail           orm.ColRef
+	AesHexPhone           orm.ColRef
+	Ip                    orm.ColRef
+	GzExtend              orm.ColRef
+	JsonSetting           orm.ColRef
+	JsonsTags             orm.ColRef
+	Base64Extra           orm.ColRef
+	SerializeData         orm.ColRef
+}{
+	Seq:                   orm.ColRef{Column: "seq"},
+	Name:                  orm.ColRef{Column: "name"},
+	Description:           orm.ColRef{Column: "description"},
+	CreatedTs:             orm.ColRef{Column: "created_ts"},
+	UpdatedTs:             orm.ColRef{Column: "updated_ts"},
+	IsClose:               orm.ColRef{Column: "is_close"},
+	IsDisplay:             orm.ColRef{Column: "is_display"},
+	DisplayStartDt:        orm.ColRef{Column: "display_start_dt"},
+	DisplayEndDt:          orm.ColRef{Column: "display_end_dt"},
+	IsAllday:              orm.ColRef{Column: "is_allday"},
+	TargetTeamPlayerCount: orm.ColRef{Column: "target_team_player_count"},
+	SuccessCount:          orm.ColRef{Column: "success_count"},
+	PlayerCount:           orm.ColRef{Column: "player_count"},
+	ReadCount:             orm.ColRef{Column: "read_count"},
+	CoverUrl:              orm.ColRef{Column: "cover_url"},
+	UserSeq:               orm.ColRef{Column: "user_seq"},
+	ServiceSeq:            orm.ColRef{Column: "service_seq"},
+	ServiceModuleSeq:      orm.ColRef{Column: "service_module_seq"},
+	ServiceMemberSeq:      orm.ColRef{Column: "service_member_seq"},
+	StartDt:               orm.ColRef{Column: "start_dt"},
+	EndDt:                 orm.ColRef{Column: "end_dt"},
+	Uuid:                  orm.ColRef{Column: "uuid"},
+	IsSinglePlay:          orm.ColRef{Column: "is_single_play"},
+	LikeCount:             orm.ColRef{Column: "like_count"},
+	AesHexEmail:           orm.ColRef{Column: "aes_hex_email"},
+	AesHexPhone:           orm.ColRef{Column: "aes_hex_phone"},
+	Ip:                    orm.ColRef{Column: "ip"},
+	GzExtend:              orm.ColRef{Column: "gz_extend"},
+	JsonSetting:           orm.ColRef{Column: "json_setting"},
+	JsonsTags:             orm.ColRef{Column: "jsons_tags"},
+	Base64Extra:           orm.ColRef{Column: "base64_extra"},
+	SerializeData:         orm.ColRef{Column: "serialize_data"},
 }
 
 // Battle builds a statement over battle: NewBattle() → chain → terminal(ctx, db).
@@ -772,6 +844,58 @@ func (q *Battle) SeqBetween(lo, hi int64) *Battle {
 	q.q.W().PredList("seq", "between", []any{lo, hi})
 	return q
 }
+func (w *BattleWhere) SeqIsNull() *BattleWhere    { w.w.PredNull("seq", "is_null"); return w }
+func (q *Battle) SeqIsNull() *Battle              { q.q.W().PredNull("seq", "is_null"); return q }
+func (w *BattleWhere) SeqIsNotNull() *BattleWhere { w.w.PredNull("seq", "is_not_null"); return w }
+func (q *Battle) SeqIsNotNull() *Battle           { q.q.W().PredNull("seq", "is_not_null"); return q }
+func (w *BattleWhere) SeqEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) SeqEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) SeqNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) SeqNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) SeqGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) SeqGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) SeqGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) SeqGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) SeqLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) SeqLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) SeqLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) SeqLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) NameEq(v string) *BattleWhere    { w.w.Pred("name", "eq", v); return w }
 func (q *Battle) NameEq(v string) *Battle              { q.q.W().Pred("name", "eq", v); return q }
 func (w *BattleWhere) NameNotEq(v string) *BattleWhere { w.w.Pred("name", "not_eq", v); return w }
@@ -805,6 +929,26 @@ func (w *BattleWhere) NameStartsWith(v string) *BattleWhere {
 func (q *Battle) NameStartsWith(v string) *Battle         { q.q.W().Pred("name", "starts_with", v); return q }
 func (w *BattleWhere) NameEndsWith(v string) *BattleWhere { w.w.Pred("name", "ends_with", v); return w }
 func (q *Battle) NameEndsWith(v string) *Battle           { q.q.W().Pred("name", "ends_with", v); return q }
+func (w *BattleWhere) NameIsNull() *BattleWhere           { w.w.PredNull("name", "is_null"); return w }
+func (q *Battle) NameIsNull() *Battle                     { q.q.W().PredNull("name", "is_null"); return q }
+func (w *BattleWhere) NameIsNotNull() *BattleWhere        { w.w.PredNull("name", "is_not_null"); return w }
+func (q *Battle) NameIsNotNull() *Battle                  { q.q.W().PredNull("name", "is_not_null"); return q }
+func (w *BattleWhere) NameEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("name", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) NameEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("name", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) NameNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) NameNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) DescriptionEq(v string) *BattleWhere {
 	w.w.Pred("description", "eq", v)
 	return w
@@ -868,6 +1012,22 @@ func (q *Battle) DescriptionIsNotNull() *Battle {
 	q.q.W().PredNull("description", "is_not_null")
 	return q
 }
+func (w *BattleWhere) DescriptionEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("description", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DescriptionEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("description", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DescriptionNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("description", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DescriptionNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("description", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) CreatedTsEq(v time.Time) *BattleWhere {
 	w.w.Pred("created_ts", "eq", v)
 	return w
@@ -923,6 +1083,64 @@ func (w *BattleWhere) CreatedTsBetween(lo, hi time.Time) *BattleWhere {
 }
 func (q *Battle) CreatedTsBetween(lo, hi time.Time) *Battle {
 	q.q.W().PredList("created_ts", "between", []any{lo, hi})
+	return q
+}
+func (w *BattleWhere) CreatedTsIsNull() *BattleWhere { w.w.PredNull("created_ts", "is_null"); return w }
+func (q *Battle) CreatedTsIsNull() *Battle           { q.q.W().PredNull("created_ts", "is_null"); return q }
+func (w *BattleWhere) CreatedTsIsNotNull() *BattleWhere {
+	w.w.PredNull("created_ts", "is_not_null")
+	return w
+}
+func (q *Battle) CreatedTsIsNotNull() *Battle {
+	q.q.W().PredNull("created_ts", "is_not_null")
+	return q
+}
+func (w *BattleWhere) CreatedTsEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("created_ts", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) CreatedTsEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("created_ts", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) CreatedTsNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("created_ts", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) CreatedTsNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("created_ts", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) CreatedTsGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("created_ts", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) CreatedTsGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("created_ts", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) CreatedTsGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("created_ts", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) CreatedTsGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("created_ts", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) CreatedTsLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("created_ts", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) CreatedTsLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("created_ts", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) CreatedTsLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("created_ts", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) CreatedTsLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("created_ts", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) UpdatedTsEq(v time.Time) *BattleWhere {
@@ -982,17 +1200,124 @@ func (q *Battle) UpdatedTsBetween(lo, hi time.Time) *Battle {
 	q.q.W().PredList("updated_ts", "between", []any{lo, hi})
 	return q
 }
+func (w *BattleWhere) UpdatedTsIsNull() *BattleWhere { w.w.PredNull("updated_ts", "is_null"); return w }
+func (q *Battle) UpdatedTsIsNull() *Battle           { q.q.W().PredNull("updated_ts", "is_null"); return q }
+func (w *BattleWhere) UpdatedTsIsNotNull() *BattleWhere {
+	w.w.PredNull("updated_ts", "is_not_null")
+	return w
+}
+func (q *Battle) UpdatedTsIsNotNull() *Battle {
+	q.q.W().PredNull("updated_ts", "is_not_null")
+	return q
+}
+func (w *BattleWhere) UpdatedTsEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("updated_ts", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UpdatedTsEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("updated_ts", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UpdatedTsNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("updated_ts", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UpdatedTsNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("updated_ts", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UpdatedTsGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("updated_ts", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UpdatedTsGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("updated_ts", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UpdatedTsGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("updated_ts", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UpdatedTsGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("updated_ts", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UpdatedTsLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("updated_ts", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UpdatedTsLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("updated_ts", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UpdatedTsLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("updated_ts", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UpdatedTsLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("updated_ts", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) IsCloseEq(v bool) *BattleWhere    { w.w.Pred("is_close", "eq", v); return w }
 func (q *Battle) IsCloseEq(v bool) *Battle              { q.q.W().Pred("is_close", "eq", v); return q }
 func (w *BattleWhere) IsCloseNotEq(v bool) *BattleWhere { w.w.Pred("is_close", "not_eq", v); return w }
 func (q *Battle) IsCloseNotEq(v bool) *Battle           { q.q.W().Pred("is_close", "not_eq", v); return q }
-func (w *BattleWhere) IsDisplayEq(v bool) *BattleWhere  { w.w.Pred("is_display", "eq", v); return w }
-func (q *Battle) IsDisplayEq(v bool) *Battle            { q.q.W().Pred("is_display", "eq", v); return q }
+func (w *BattleWhere) IsCloseIsNull() *BattleWhere      { w.w.PredNull("is_close", "is_null"); return w }
+func (q *Battle) IsCloseIsNull() *Battle                { q.q.W().PredNull("is_close", "is_null"); return q }
+func (w *BattleWhere) IsCloseIsNotNull() *BattleWhere {
+	w.w.PredNull("is_close", "is_not_null")
+	return w
+}
+func (q *Battle) IsCloseIsNotNull() *Battle { q.q.W().PredNull("is_close", "is_not_null"); return q }
+func (w *BattleWhere) IsCloseEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("is_close", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) IsCloseEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("is_close", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) IsCloseNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("is_close", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) IsCloseNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("is_close", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) IsDisplayEq(v bool) *BattleWhere { w.w.Pred("is_display", "eq", v); return w }
+func (q *Battle) IsDisplayEq(v bool) *Battle           { q.q.W().Pred("is_display", "eq", v); return q }
 func (w *BattleWhere) IsDisplayNotEq(v bool) *BattleWhere {
 	w.w.Pred("is_display", "not_eq", v)
 	return w
 }
-func (q *Battle) IsDisplayNotEq(v bool) *Battle { q.q.W().Pred("is_display", "not_eq", v); return q }
+func (q *Battle) IsDisplayNotEq(v bool) *Battle      { q.q.W().Pred("is_display", "not_eq", v); return q }
+func (w *BattleWhere) IsDisplayIsNull() *BattleWhere { w.w.PredNull("is_display", "is_null"); return w }
+func (q *Battle) IsDisplayIsNull() *Battle           { q.q.W().PredNull("is_display", "is_null"); return q }
+func (w *BattleWhere) IsDisplayIsNotNull() *BattleWhere {
+	w.w.PredNull("is_display", "is_not_null")
+	return w
+}
+func (q *Battle) IsDisplayIsNotNull() *Battle {
+	q.q.W().PredNull("is_display", "is_not_null")
+	return q
+}
+func (w *BattleWhere) IsDisplayEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("is_display", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) IsDisplayEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("is_display", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) IsDisplayNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("is_display", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) IsDisplayNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("is_display", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) DisplayStartDtEq(v time.Time) *BattleWhere {
 	w.w.Pred("display_start_dt", "eq", v)
 	return w
@@ -1079,6 +1404,54 @@ func (w *BattleWhere) DisplayStartDtIsNotNull() *BattleWhere {
 }
 func (q *Battle) DisplayStartDtIsNotNull() *Battle {
 	q.q.W().PredNull("display_start_dt", "is_not_null")
+	return q
+}
+func (w *BattleWhere) DisplayStartDtEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("display_start_dt", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DisplayStartDtEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("display_start_dt", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DisplayStartDtNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("display_start_dt", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DisplayStartDtNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("display_start_dt", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DisplayStartDtGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("display_start_dt", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DisplayStartDtGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("display_start_dt", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DisplayStartDtGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("display_start_dt", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DisplayStartDtGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("display_start_dt", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DisplayStartDtLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("display_start_dt", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DisplayStartDtLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("display_start_dt", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DisplayStartDtLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("display_start_dt", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DisplayStartDtLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("display_start_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) DisplayEndDtEq(v time.Time) *BattleWhere {
@@ -1169,13 +1542,84 @@ func (q *Battle) DisplayEndDtIsNotNull() *Battle {
 	q.q.W().PredNull("display_end_dt", "is_not_null")
 	return q
 }
+func (w *BattleWhere) DisplayEndDtEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("display_end_dt", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DisplayEndDtEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("display_end_dt", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DisplayEndDtNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("display_end_dt", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DisplayEndDtNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("display_end_dt", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DisplayEndDtGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("display_end_dt", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DisplayEndDtGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("display_end_dt", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DisplayEndDtGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("display_end_dt", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DisplayEndDtGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("display_end_dt", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DisplayEndDtLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("display_end_dt", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DisplayEndDtLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("display_end_dt", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DisplayEndDtLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("display_end_dt", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) DisplayEndDtLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("display_end_dt", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) IsAlldayEq(v bool) *BattleWhere { w.w.Pred("is_allday", "eq", v); return w }
 func (q *Battle) IsAlldayEq(v bool) *Battle           { q.q.W().Pred("is_allday", "eq", v); return q }
 func (w *BattleWhere) IsAlldayNotEq(v bool) *BattleWhere {
 	w.w.Pred("is_allday", "not_eq", v)
 	return w
 }
-func (q *Battle) IsAlldayNotEq(v bool) *Battle { q.q.W().Pred("is_allday", "not_eq", v); return q }
+func (q *Battle) IsAlldayNotEq(v bool) *Battle      { q.q.W().Pred("is_allday", "not_eq", v); return q }
+func (w *BattleWhere) IsAlldayIsNull() *BattleWhere { w.w.PredNull("is_allday", "is_null"); return w }
+func (q *Battle) IsAlldayIsNull() *Battle           { q.q.W().PredNull("is_allday", "is_null"); return q }
+func (w *BattleWhere) IsAlldayIsNotNull() *BattleWhere {
+	w.w.PredNull("is_allday", "is_not_null")
+	return w
+}
+func (q *Battle) IsAlldayIsNotNull() *Battle { q.q.W().PredNull("is_allday", "is_not_null"); return q }
+func (w *BattleWhere) IsAlldayEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("is_allday", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) IsAlldayEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("is_allday", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) IsAlldayNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("is_allday", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) IsAlldayNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("is_allday", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) TargetTeamPlayerCountEq(v int32) *BattleWhere {
 	w.w.Pred("target_team_player_count", "eq", v)
 	return w
@@ -1248,6 +1692,70 @@ func (q *Battle) TargetTeamPlayerCountBetween(lo, hi int32) *Battle {
 	q.q.W().PredList("target_team_player_count", "between", []any{lo, hi})
 	return q
 }
+func (w *BattleWhere) TargetTeamPlayerCountIsNull() *BattleWhere {
+	w.w.PredNull("target_team_player_count", "is_null")
+	return w
+}
+func (q *Battle) TargetTeamPlayerCountIsNull() *Battle {
+	q.q.W().PredNull("target_team_player_count", "is_null")
+	return q
+}
+func (w *BattleWhere) TargetTeamPlayerCountIsNotNull() *BattleWhere {
+	w.w.PredNull("target_team_player_count", "is_not_null")
+	return w
+}
+func (q *Battle) TargetTeamPlayerCountIsNotNull() *Battle {
+	q.q.W().PredNull("target_team_player_count", "is_not_null")
+	return q
+}
+func (w *BattleWhere) TargetTeamPlayerCountEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("target_team_player_count", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) TargetTeamPlayerCountEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("target_team_player_count", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) TargetTeamPlayerCountNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("target_team_player_count", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) TargetTeamPlayerCountNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("target_team_player_count", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) TargetTeamPlayerCountGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("target_team_player_count", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) TargetTeamPlayerCountGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("target_team_player_count", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) TargetTeamPlayerCountGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("target_team_player_count", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) TargetTeamPlayerCountGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("target_team_player_count", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) TargetTeamPlayerCountLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("target_team_player_count", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) TargetTeamPlayerCountLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("target_team_player_count", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) TargetTeamPlayerCountLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("target_team_player_count", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) TargetTeamPlayerCountLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("target_team_player_count", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) SuccessCountEq(v int32) *BattleWhere {
 	w.w.Pred("success_count", "eq", v)
 	return w
@@ -1303,6 +1811,67 @@ func (w *BattleWhere) SuccessCountBetween(lo, hi int32) *BattleWhere {
 }
 func (q *Battle) SuccessCountBetween(lo, hi int32) *Battle {
 	q.q.W().PredList("success_count", "between", []any{lo, hi})
+	return q
+}
+func (w *BattleWhere) SuccessCountIsNull() *BattleWhere {
+	w.w.PredNull("success_count", "is_null")
+	return w
+}
+func (q *Battle) SuccessCountIsNull() *Battle { q.q.W().PredNull("success_count", "is_null"); return q }
+func (w *BattleWhere) SuccessCountIsNotNull() *BattleWhere {
+	w.w.PredNull("success_count", "is_not_null")
+	return w
+}
+func (q *Battle) SuccessCountIsNotNull() *Battle {
+	q.q.W().PredNull("success_count", "is_not_null")
+	return q
+}
+func (w *BattleWhere) SuccessCountEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("success_count", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) SuccessCountEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("success_count", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) SuccessCountNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("success_count", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) SuccessCountNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("success_count", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) SuccessCountGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("success_count", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) SuccessCountGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("success_count", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) SuccessCountGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("success_count", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) SuccessCountGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("success_count", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) SuccessCountLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("success_count", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) SuccessCountLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("success_count", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) SuccessCountLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("success_count", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) SuccessCountLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("success_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) PlayerCountEq(v int32) *BattleWhere {
@@ -1362,6 +1931,67 @@ func (q *Battle) PlayerCountBetween(lo, hi int32) *Battle {
 	q.q.W().PredList("player_count", "between", []any{lo, hi})
 	return q
 }
+func (w *BattleWhere) PlayerCountIsNull() *BattleWhere {
+	w.w.PredNull("player_count", "is_null")
+	return w
+}
+func (q *Battle) PlayerCountIsNull() *Battle { q.q.W().PredNull("player_count", "is_null"); return q }
+func (w *BattleWhere) PlayerCountIsNotNull() *BattleWhere {
+	w.w.PredNull("player_count", "is_not_null")
+	return w
+}
+func (q *Battle) PlayerCountIsNotNull() *Battle {
+	q.q.W().PredNull("player_count", "is_not_null")
+	return q
+}
+func (w *BattleWhere) PlayerCountEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("player_count", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) PlayerCountEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("player_count", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PlayerCountNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("player_count", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) PlayerCountNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("player_count", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PlayerCountGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("player_count", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) PlayerCountGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("player_count", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PlayerCountGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("player_count", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) PlayerCountGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("player_count", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PlayerCountLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("player_count", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) PlayerCountLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("player_count", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PlayerCountLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("player_count", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) PlayerCountLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("player_count", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) ReadCountEq(v int32) *BattleWhere { w.w.Pred("read_count", "eq", v); return w }
 func (q *Battle) ReadCountEq(v int32) *Battle           { q.q.W().Pred("read_count", "eq", v); return q }
 func (w *BattleWhere) ReadCountNotEq(v int32) *BattleWhere {
@@ -1399,6 +2029,64 @@ func (w *BattleWhere) ReadCountBetween(lo, hi int32) *BattleWhere {
 }
 func (q *Battle) ReadCountBetween(lo, hi int32) *Battle {
 	q.q.W().PredList("read_count", "between", []any{lo, hi})
+	return q
+}
+func (w *BattleWhere) ReadCountIsNull() *BattleWhere { w.w.PredNull("read_count", "is_null"); return w }
+func (q *Battle) ReadCountIsNull() *Battle           { q.q.W().PredNull("read_count", "is_null"); return q }
+func (w *BattleWhere) ReadCountIsNotNull() *BattleWhere {
+	w.w.PredNull("read_count", "is_not_null")
+	return w
+}
+func (q *Battle) ReadCountIsNotNull() *Battle {
+	q.q.W().PredNull("read_count", "is_not_null")
+	return q
+}
+func (w *BattleWhere) ReadCountEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("read_count", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ReadCountEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("read_count", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ReadCountNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("read_count", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ReadCountNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("read_count", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ReadCountGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("read_count", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ReadCountGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("read_count", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ReadCountGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("read_count", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ReadCountGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("read_count", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ReadCountLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("read_count", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ReadCountLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("read_count", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ReadCountLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("read_count", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ReadCountLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("read_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) CoverUrlEq(v string) *BattleWhere { w.w.Pred("cover_url", "eq", v); return w }
@@ -1464,7 +2152,23 @@ func (w *BattleWhere) CoverUrlIsNotNull() *BattleWhere {
 	w.w.PredNull("cover_url", "is_not_null")
 	return w
 }
-func (q *Battle) CoverUrlIsNotNull() *Battle             { q.q.W().PredNull("cover_url", "is_not_null"); return q }
+func (q *Battle) CoverUrlIsNotNull() *Battle { q.q.W().PredNull("cover_url", "is_not_null"); return q }
+func (w *BattleWhere) CoverUrlEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("cover_url", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) CoverUrlEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("cover_url", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) CoverUrlNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("cover_url", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) CoverUrlNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("cover_url", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) UserSeqEq(v int64) *BattleWhere    { w.w.Pred("user_seq", "eq", v); return w }
 func (q *Battle) UserSeqEq(v int64) *Battle              { q.q.W().Pred("user_seq", "eq", v); return q }
 func (w *BattleWhere) UserSeqNotEq(v int64) *BattleWhere { w.w.Pred("user_seq", "not_eq", v); return w }
@@ -1499,6 +2203,61 @@ func (w *BattleWhere) UserSeqBetween(lo, hi int64) *BattleWhere {
 }
 func (q *Battle) UserSeqBetween(lo, hi int64) *Battle {
 	q.q.W().PredList("user_seq", "between", []any{lo, hi})
+	return q
+}
+func (w *BattleWhere) UserSeqIsNull() *BattleWhere { w.w.PredNull("user_seq", "is_null"); return w }
+func (q *Battle) UserSeqIsNull() *Battle           { q.q.W().PredNull("user_seq", "is_null"); return q }
+func (w *BattleWhere) UserSeqIsNotNull() *BattleWhere {
+	w.w.PredNull("user_seq", "is_not_null")
+	return w
+}
+func (q *Battle) UserSeqIsNotNull() *Battle { q.q.W().PredNull("user_seq", "is_not_null"); return q }
+func (w *BattleWhere) UserSeqEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("user_seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UserSeqEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("user_seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UserSeqNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("user_seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UserSeqNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("user_seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UserSeqGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("user_seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UserSeqGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("user_seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UserSeqGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("user_seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UserSeqGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("user_seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UserSeqLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("user_seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UserSeqLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("user_seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UserSeqLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("user_seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UserSeqLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("user_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) ServiceSeqEq(v int64) *BattleWhere { w.w.Pred("service_seq", "eq", v); return w }
@@ -1544,6 +2303,67 @@ func (w *BattleWhere) ServiceSeqBetween(lo, hi int64) *BattleWhere {
 }
 func (q *Battle) ServiceSeqBetween(lo, hi int64) *Battle {
 	q.q.W().PredList("service_seq", "between", []any{lo, hi})
+	return q
+}
+func (w *BattleWhere) ServiceSeqIsNull() *BattleWhere {
+	w.w.PredNull("service_seq", "is_null")
+	return w
+}
+func (q *Battle) ServiceSeqIsNull() *Battle { q.q.W().PredNull("service_seq", "is_null"); return q }
+func (w *BattleWhere) ServiceSeqIsNotNull() *BattleWhere {
+	w.w.PredNull("service_seq", "is_not_null")
+	return w
+}
+func (q *Battle) ServiceSeqIsNotNull() *Battle {
+	q.q.W().PredNull("service_seq", "is_not_null")
+	return q
+}
+func (w *BattleWhere) ServiceSeqEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceSeqEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceSeqNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceSeqNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceSeqGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceSeqGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceSeqGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceSeqGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceSeqLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceSeqLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceSeqLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceSeqLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) ServiceModuleSeqEq(v int64) *BattleWhere {
@@ -1618,6 +2438,70 @@ func (q *Battle) ServiceModuleSeqBetween(lo, hi int64) *Battle {
 	q.q.W().PredList("service_module_seq", "between", []any{lo, hi})
 	return q
 }
+func (w *BattleWhere) ServiceModuleSeqIsNull() *BattleWhere {
+	w.w.PredNull("service_module_seq", "is_null")
+	return w
+}
+func (q *Battle) ServiceModuleSeqIsNull() *Battle {
+	q.q.W().PredNull("service_module_seq", "is_null")
+	return q
+}
+func (w *BattleWhere) ServiceModuleSeqIsNotNull() *BattleWhere {
+	w.w.PredNull("service_module_seq", "is_not_null")
+	return w
+}
+func (q *Battle) ServiceModuleSeqIsNotNull() *Battle {
+	q.q.W().PredNull("service_module_seq", "is_not_null")
+	return q
+}
+func (w *BattleWhere) ServiceModuleSeqEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_module_seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceModuleSeqEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_module_seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceModuleSeqNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_module_seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceModuleSeqNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_module_seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceModuleSeqGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_module_seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceModuleSeqGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_module_seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceModuleSeqGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_module_seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceModuleSeqGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_module_seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceModuleSeqLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_module_seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceModuleSeqLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_module_seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceModuleSeqLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_module_seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceModuleSeqLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_module_seq", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) ServiceMemberSeqEq(v int64) *BattleWhere {
 	w.w.Pred("service_member_seq", "eq", v)
 	return w
@@ -1690,6 +2574,70 @@ func (q *Battle) ServiceMemberSeqBetween(lo, hi int64) *Battle {
 	q.q.W().PredList("service_member_seq", "between", []any{lo, hi})
 	return q
 }
+func (w *BattleWhere) ServiceMemberSeqIsNull() *BattleWhere {
+	w.w.PredNull("service_member_seq", "is_null")
+	return w
+}
+func (q *Battle) ServiceMemberSeqIsNull() *Battle {
+	q.q.W().PredNull("service_member_seq", "is_null")
+	return q
+}
+func (w *BattleWhere) ServiceMemberSeqIsNotNull() *BattleWhere {
+	w.w.PredNull("service_member_seq", "is_not_null")
+	return w
+}
+func (q *Battle) ServiceMemberSeqIsNotNull() *Battle {
+	q.q.W().PredNull("service_member_seq", "is_not_null")
+	return q
+}
+func (w *BattleWhere) ServiceMemberSeqEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_member_seq", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceMemberSeqEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_member_seq", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceMemberSeqNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_member_seq", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceMemberSeqNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_member_seq", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceMemberSeqGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_member_seq", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceMemberSeqGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_member_seq", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceMemberSeqGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_member_seq", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceMemberSeqGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_member_seq", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceMemberSeqLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_member_seq", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceMemberSeqLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_member_seq", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) ServiceMemberSeqLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("service_member_seq", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) ServiceMemberSeqLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("service_member_seq", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) StartDtEq(v time.Time) *BattleWhere { w.w.Pred("start_dt", "eq", v); return w }
 func (q *Battle) StartDtEq(v time.Time) *Battle           { q.q.W().Pred("start_dt", "eq", v); return q }
 func (w *BattleWhere) StartDtNotEq(v time.Time) *BattleWhere {
@@ -1729,6 +2677,61 @@ func (q *Battle) StartDtBetween(lo, hi time.Time) *Battle {
 	q.q.W().PredList("start_dt", "between", []any{lo, hi})
 	return q
 }
+func (w *BattleWhere) StartDtIsNull() *BattleWhere { w.w.PredNull("start_dt", "is_null"); return w }
+func (q *Battle) StartDtIsNull() *Battle           { q.q.W().PredNull("start_dt", "is_null"); return q }
+func (w *BattleWhere) StartDtIsNotNull() *BattleWhere {
+	w.w.PredNull("start_dt", "is_not_null")
+	return w
+}
+func (q *Battle) StartDtIsNotNull() *Battle { q.q.W().PredNull("start_dt", "is_not_null"); return q }
+func (w *BattleWhere) StartDtEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("start_dt", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) StartDtEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("start_dt", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) StartDtNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("start_dt", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) StartDtNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("start_dt", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) StartDtGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("start_dt", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) StartDtGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("start_dt", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) StartDtGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("start_dt", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) StartDtGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("start_dt", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) StartDtLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("start_dt", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) StartDtLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("start_dt", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) StartDtLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("start_dt", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) StartDtLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("start_dt", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) EndDtEq(v time.Time) *BattleWhere    { w.w.Pred("end_dt", "eq", v); return w }
 func (q *Battle) EndDtEq(v time.Time) *Battle              { q.q.W().Pred("end_dt", "eq", v); return q }
 func (w *BattleWhere) EndDtNotEq(v time.Time) *BattleWhere { w.w.Pred("end_dt", "not_eq", v); return w }
@@ -1763,6 +2766,58 @@ func (w *BattleWhere) EndDtBetween(lo, hi time.Time) *BattleWhere {
 }
 func (q *Battle) EndDtBetween(lo, hi time.Time) *Battle {
 	q.q.W().PredList("end_dt", "between", []any{lo, hi})
+	return q
+}
+func (w *BattleWhere) EndDtIsNull() *BattleWhere    { w.w.PredNull("end_dt", "is_null"); return w }
+func (q *Battle) EndDtIsNull() *Battle              { q.q.W().PredNull("end_dt", "is_null"); return q }
+func (w *BattleWhere) EndDtIsNotNull() *BattleWhere { w.w.PredNull("end_dt", "is_not_null"); return w }
+func (q *Battle) EndDtIsNotNull() *Battle           { q.q.W().PredNull("end_dt", "is_not_null"); return q }
+func (w *BattleWhere) EndDtEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("end_dt", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) EndDtEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("end_dt", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) EndDtNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("end_dt", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) EndDtNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("end_dt", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) EndDtGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("end_dt", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) EndDtGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("end_dt", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) EndDtGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("end_dt", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) EndDtGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("end_dt", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) EndDtLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("end_dt", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) EndDtLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("end_dt", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) EndDtLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("end_dt", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) EndDtLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("end_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) UuidEq(v string) *BattleWhere    { w.w.Pred("uuid", "eq", v); return w }
@@ -1802,6 +2857,22 @@ func (w *BattleWhere) UuidIsNull() *BattleWhere           { w.w.PredNull("uuid",
 func (q *Battle) UuidIsNull() *Battle                     { q.q.W().PredNull("uuid", "is_null"); return q }
 func (w *BattleWhere) UuidIsNotNull() *BattleWhere        { w.w.PredNull("uuid", "is_not_null"); return w }
 func (q *Battle) UuidIsNotNull() *Battle                  { q.q.W().PredNull("uuid", "is_not_null"); return q }
+func (w *BattleWhere) UuidEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("uuid", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UuidEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("uuid", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UuidNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("uuid", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) UuidNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("uuid", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) IsSinglePlayEq(v bool) *BattleWhere {
 	w.w.Pred("is_single_play", "eq", v)
 	return w
@@ -1813,6 +2884,38 @@ func (w *BattleWhere) IsSinglePlayNotEq(v bool) *BattleWhere {
 }
 func (q *Battle) IsSinglePlayNotEq(v bool) *Battle {
 	q.q.W().Pred("is_single_play", "not_eq", v)
+	return q
+}
+func (w *BattleWhere) IsSinglePlayIsNull() *BattleWhere {
+	w.w.PredNull("is_single_play", "is_null")
+	return w
+}
+func (q *Battle) IsSinglePlayIsNull() *Battle {
+	q.q.W().PredNull("is_single_play", "is_null")
+	return q
+}
+func (w *BattleWhere) IsSinglePlayIsNotNull() *BattleWhere {
+	w.w.PredNull("is_single_play", "is_not_null")
+	return w
+}
+func (q *Battle) IsSinglePlayIsNotNull() *Battle {
+	q.q.W().PredNull("is_single_play", "is_not_null")
+	return q
+}
+func (w *BattleWhere) IsSinglePlayEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("is_single_play", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) IsSinglePlayEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("is_single_play", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) IsSinglePlayNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("is_single_play", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) IsSinglePlayNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("is_single_play", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) LikeCountEq(v int32) *BattleWhere { w.w.Pred("like_count", "eq", v); return w }
@@ -1852,6 +2955,64 @@ func (w *BattleWhere) LikeCountBetween(lo, hi int32) *BattleWhere {
 }
 func (q *Battle) LikeCountBetween(lo, hi int32) *Battle {
 	q.q.W().PredList("like_count", "between", []any{lo, hi})
+	return q
+}
+func (w *BattleWhere) LikeCountIsNull() *BattleWhere { w.w.PredNull("like_count", "is_null"); return w }
+func (q *Battle) LikeCountIsNull() *Battle           { q.q.W().PredNull("like_count", "is_null"); return q }
+func (w *BattleWhere) LikeCountIsNotNull() *BattleWhere {
+	w.w.PredNull("like_count", "is_not_null")
+	return w
+}
+func (q *Battle) LikeCountIsNotNull() *Battle {
+	q.q.W().PredNull("like_count", "is_not_null")
+	return q
+}
+func (w *BattleWhere) LikeCountEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("like_count", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) LikeCountEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("like_count", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) LikeCountNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("like_count", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) LikeCountNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("like_count", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) LikeCountGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("like_count", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) LikeCountGtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("like_count", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) LikeCountGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("like_count", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) LikeCountGteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("like_count", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) LikeCountLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("like_count", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) LikeCountLtCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("like_count", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) LikeCountLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("like_count", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) LikeCountLteCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("like_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) AesHexEmailEq(v string) *BattleWhere {
@@ -1896,6 +3057,22 @@ func (q *Battle) AesHexEmailIsNotNull() *Battle {
 	q.q.W().PredNull("aes_hex_email", "is_not_null")
 	return q
 }
+func (w *BattleWhere) AesHexEmailEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("aes_hex_email", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) AesHexEmailEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("aes_hex_email", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) AesHexEmailNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("aes_hex_email", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) AesHexEmailNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("aes_hex_email", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) AesHexPhoneEq(v string) *BattleWhere {
 	w.w.Pred("aes_hex_phone", "eq", v)
 	return w
@@ -1938,6 +3115,22 @@ func (q *Battle) AesHexPhoneIsNotNull() *Battle {
 	q.q.W().PredNull("aes_hex_phone", "is_not_null")
 	return q
 }
+func (w *BattleWhere) AesHexPhoneEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("aes_hex_phone", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) AesHexPhoneEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("aes_hex_phone", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) AesHexPhoneNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("aes_hex_phone", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) AesHexPhoneNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("aes_hex_phone", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) IpEq(v string) *BattleWhere    { w.w.Pred("ip", "eq", v); return w }
 func (q *Battle) IpEq(v string) *Battle              { q.q.W().Pred("ip", "eq", v); return q }
 func (w *BattleWhere) IpNotEq(v string) *BattleWhere { w.w.Pred("ip", "not_eq", v); return w }
@@ -1955,10 +3148,26 @@ func (q *Battle) IpNotIn(vs []string) *Battle {
 	q.q.W().PredList("ip", "not_in", orm.Anys(vs))
 	return q
 }
-func (w *BattleWhere) IpIsNull() *BattleWhere       { w.w.PredNull("ip", "is_null"); return w }
-func (q *Battle) IpIsNull() *Battle                 { q.q.W().PredNull("ip", "is_null"); return q }
-func (w *BattleWhere) IpIsNotNull() *BattleWhere    { w.w.PredNull("ip", "is_not_null"); return w }
-func (q *Battle) IpIsNotNull() *Battle              { q.q.W().PredNull("ip", "is_not_null"); return q }
+func (w *BattleWhere) IpIsNull() *BattleWhere    { w.w.PredNull("ip", "is_null"); return w }
+func (q *Battle) IpIsNull() *Battle              { q.q.W().PredNull("ip", "is_null"); return q }
+func (w *BattleWhere) IpIsNotNull() *BattleWhere { w.w.PredNull("ip", "is_not_null"); return w }
+func (q *Battle) IpIsNotNull() *Battle           { q.q.W().PredNull("ip", "is_not_null"); return q }
+func (w *BattleWhere) IpEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("ip", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) IpEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("ip", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) IpNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("ip", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *Battle) IpNotEqCol(ref orm.ColRef) *Battle {
+	q.q.W().PredCol("ip", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) GzExtendIsNull() *BattleWhere { w.w.PredNull("gz_extend", "is_null"); return w }
 func (q *Battle) GzExtendIsNull() *Battle           { q.q.W().PredNull("gz_extend", "is_null"); return q }
 func (w *BattleWhere) GzExtendIsNotNull() *BattleWhere {

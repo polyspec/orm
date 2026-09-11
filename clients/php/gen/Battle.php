@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Orm;
 
+use Orm\ColRef;
 use Orm\Collection;
 use Orm\Db;
 use Orm\Page;
@@ -250,6 +251,43 @@ final class BattleRow extends Row
     public function getUser(): ?UserRow { return $this->relation('user'); }
 }
 
+/** Column references for column-to-column predicates (BattleCols::seq()); ->at('service') points into a joined entity. */
+final class BattleCols
+{
+    public static function seq(): ColRef { return new ColRef('seq'); }
+    public static function name(): ColRef { return new ColRef('name'); }
+    public static function description(): ColRef { return new ColRef('description'); }
+    public static function createdTs(): ColRef { return new ColRef('created_ts'); }
+    public static function updatedTs(): ColRef { return new ColRef('updated_ts'); }
+    public static function isClose(): ColRef { return new ColRef('is_close'); }
+    public static function isDisplay(): ColRef { return new ColRef('is_display'); }
+    public static function displayStartDt(): ColRef { return new ColRef('display_start_dt'); }
+    public static function displayEndDt(): ColRef { return new ColRef('display_end_dt'); }
+    public static function isAllday(): ColRef { return new ColRef('is_allday'); }
+    public static function targetTeamPlayerCount(): ColRef { return new ColRef('target_team_player_count'); }
+    public static function successCount(): ColRef { return new ColRef('success_count'); }
+    public static function playerCount(): ColRef { return new ColRef('player_count'); }
+    public static function readCount(): ColRef { return new ColRef('read_count'); }
+    public static function coverUrl(): ColRef { return new ColRef('cover_url'); }
+    public static function userSeq(): ColRef { return new ColRef('user_seq'); }
+    public static function serviceSeq(): ColRef { return new ColRef('service_seq'); }
+    public static function serviceModuleSeq(): ColRef { return new ColRef('service_module_seq'); }
+    public static function serviceMemberSeq(): ColRef { return new ColRef('service_member_seq'); }
+    public static function startDt(): ColRef { return new ColRef('start_dt'); }
+    public static function endDt(): ColRef { return new ColRef('end_dt'); }
+    public static function uuid(): ColRef { return new ColRef('uuid'); }
+    public static function isSinglePlay(): ColRef { return new ColRef('is_single_play'); }
+    public static function likeCount(): ColRef { return new ColRef('like_count'); }
+    public static function aesHexEmail(): ColRef { return new ColRef('aes_hex_email'); }
+    public static function aesHexPhone(): ColRef { return new ColRef('aes_hex_phone'); }
+    public static function ip(): ColRef { return new ColRef('ip'); }
+    public static function gzExtend(): ColRef { return new ColRef('gz_extend'); }
+    public static function jsonSetting(): ColRef { return new ColRef('json_setting'); }
+    public static function jsonsTags(): ColRef { return new ColRef('jsons_tags'); }
+    public static function base64Extra(): ColRef { return new ColRef('base64_extra'); }
+    public static function serializeData(): ColRef { return new ColRef('serialize_data'); }
+}
+
 /** Where builder for battle: predicates, or(), and(fn), relation navigation. */
 final class BattleWhere
 {
@@ -272,6 +310,14 @@ final class BattleWhere
     public function seqIn(array $vs): static { $this->w->predList('seq', 'in', array_values($vs)); return $this; }
     public function seqNotIn(array $vs): static { $this->w->predList('seq', 'not_in', array_values($vs)); return $this; }
     public function seqBetween(int $lo, int $hi): static { $this->w->predList('seq', 'between', [$lo, $hi]); return $this; }
+    public function seqIsNull(): static { $this->w->predNull('seq', 'is_null'); return $this; }
+    public function seqIsNotNull(): static { $this->w->predNull('seq', 'is_not_null'); return $this; }
+    public function seqEqCol(ColRef $ref): static { $this->w->predCol('seq', 'eq_col', $ref); return $this; }
+    public function seqNotEqCol(ColRef $ref): static { $this->w->predCol('seq', 'not_eq_col', $ref); return $this; }
+    public function seqGtCol(ColRef $ref): static { $this->w->predCol('seq', 'gt_col', $ref); return $this; }
+    public function seqGteCol(ColRef $ref): static { $this->w->predCol('seq', 'gte_col', $ref); return $this; }
+    public function seqLtCol(ColRef $ref): static { $this->w->predCol('seq', 'lt_col', $ref); return $this; }
+    public function seqLteCol(ColRef $ref): static { $this->w->predCol('seq', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w->pred('name', 'eq', $v); return $this; }
     public function nameNotEq(string $v): static { $this->w->pred('name', 'not_eq', $v); return $this; }
     public function nameIn(array $vs): static { $this->w->predList('name', 'in', array_values($vs)); return $this; }
@@ -281,6 +327,10 @@ final class BattleWhere
     public function nameContains(string $v): static { $this->w->pred('name', 'contains', $v); return $this; }
     public function nameStartsWith(string $v): static { $this->w->pred('name', 'starts_with', $v); return $this; }
     public function nameEndsWith(string $v): static { $this->w->pred('name', 'ends_with', $v); return $this; }
+    public function nameIsNull(): static { $this->w->predNull('name', 'is_null'); return $this; }
+    public function nameIsNotNull(): static { $this->w->predNull('name', 'is_not_null'); return $this; }
+    public function nameEqCol(ColRef $ref): static { $this->w->predCol('name', 'eq_col', $ref); return $this; }
+    public function nameNotEqCol(ColRef $ref): static { $this->w->predCol('name', 'not_eq_col', $ref); return $this; }
     public function descriptionEq(string $v): static { $this->w->pred('description', 'eq', $v); return $this; }
     public function descriptionNotEq(string $v): static { $this->w->pred('description', 'not_eq', $v); return $this; }
     public function descriptionLike(string $v): static { $this->w->pred('description', 'like', $v); return $this; }
@@ -290,6 +340,8 @@ final class BattleWhere
     public function descriptionEndsWith(string $v): static { $this->w->pred('description', 'ends_with', $v); return $this; }
     public function descriptionIsNull(): static { $this->w->predNull('description', 'is_null'); return $this; }
     public function descriptionIsNotNull(): static { $this->w->predNull('description', 'is_not_null'); return $this; }
+    public function descriptionEqCol(ColRef $ref): static { $this->w->predCol('description', 'eq_col', $ref); return $this; }
+    public function descriptionNotEqCol(ColRef $ref): static { $this->w->predCol('description', 'not_eq_col', $ref); return $this; }
     public function createdTsEq(string $v): static { $this->w->pred('created_ts', 'eq', $v); return $this; }
     public function createdTsNotEq(string $v): static { $this->w->pred('created_ts', 'not_eq', $v); return $this; }
     public function createdTsGt(string $v): static { $this->w->pred('created_ts', 'gt', $v); return $this; }
@@ -299,6 +351,14 @@ final class BattleWhere
     public function createdTsIn(array $vs): static { $this->w->predList('created_ts', 'in', array_values($vs)); return $this; }
     public function createdTsNotIn(array $vs): static { $this->w->predList('created_ts', 'not_in', array_values($vs)); return $this; }
     public function createdTsBetween(string $lo, string $hi): static { $this->w->predList('created_ts', 'between', [$lo, $hi]); return $this; }
+    public function createdTsIsNull(): static { $this->w->predNull('created_ts', 'is_null'); return $this; }
+    public function createdTsIsNotNull(): static { $this->w->predNull('created_ts', 'is_not_null'); return $this; }
+    public function createdTsEqCol(ColRef $ref): static { $this->w->predCol('created_ts', 'eq_col', $ref); return $this; }
+    public function createdTsNotEqCol(ColRef $ref): static { $this->w->predCol('created_ts', 'not_eq_col', $ref); return $this; }
+    public function createdTsGtCol(ColRef $ref): static { $this->w->predCol('created_ts', 'gt_col', $ref); return $this; }
+    public function createdTsGteCol(ColRef $ref): static { $this->w->predCol('created_ts', 'gte_col', $ref); return $this; }
+    public function createdTsLtCol(ColRef $ref): static { $this->w->predCol('created_ts', 'lt_col', $ref); return $this; }
+    public function createdTsLteCol(ColRef $ref): static { $this->w->predCol('created_ts', 'lte_col', $ref); return $this; }
     public function updatedTsEq(string $v): static { $this->w->pred('updated_ts', 'eq', $v); return $this; }
     public function updatedTsNotEq(string $v): static { $this->w->pred('updated_ts', 'not_eq', $v); return $this; }
     public function updatedTsGt(string $v): static { $this->w->pred('updated_ts', 'gt', $v); return $this; }
@@ -308,10 +368,26 @@ final class BattleWhere
     public function updatedTsIn(array $vs): static { $this->w->predList('updated_ts', 'in', array_values($vs)); return $this; }
     public function updatedTsNotIn(array $vs): static { $this->w->predList('updated_ts', 'not_in', array_values($vs)); return $this; }
     public function updatedTsBetween(string $lo, string $hi): static { $this->w->predList('updated_ts', 'between', [$lo, $hi]); return $this; }
+    public function updatedTsIsNull(): static { $this->w->predNull('updated_ts', 'is_null'); return $this; }
+    public function updatedTsIsNotNull(): static { $this->w->predNull('updated_ts', 'is_not_null'); return $this; }
+    public function updatedTsEqCol(ColRef $ref): static { $this->w->predCol('updated_ts', 'eq_col', $ref); return $this; }
+    public function updatedTsNotEqCol(ColRef $ref): static { $this->w->predCol('updated_ts', 'not_eq_col', $ref); return $this; }
+    public function updatedTsGtCol(ColRef $ref): static { $this->w->predCol('updated_ts', 'gt_col', $ref); return $this; }
+    public function updatedTsGteCol(ColRef $ref): static { $this->w->predCol('updated_ts', 'gte_col', $ref); return $this; }
+    public function updatedTsLtCol(ColRef $ref): static { $this->w->predCol('updated_ts', 'lt_col', $ref); return $this; }
+    public function updatedTsLteCol(ColRef $ref): static { $this->w->predCol('updated_ts', 'lte_col', $ref); return $this; }
     public function isCloseEq(bool $v): static { $this->w->pred('is_close', 'eq', $v); return $this; }
     public function isCloseNotEq(bool $v): static { $this->w->pred('is_close', 'not_eq', $v); return $this; }
+    public function isCloseIsNull(): static { $this->w->predNull('is_close', 'is_null'); return $this; }
+    public function isCloseIsNotNull(): static { $this->w->predNull('is_close', 'is_not_null'); return $this; }
+    public function isCloseEqCol(ColRef $ref): static { $this->w->predCol('is_close', 'eq_col', $ref); return $this; }
+    public function isCloseNotEqCol(ColRef $ref): static { $this->w->predCol('is_close', 'not_eq_col', $ref); return $this; }
     public function isDisplayEq(bool $v): static { $this->w->pred('is_display', 'eq', $v); return $this; }
     public function isDisplayNotEq(bool $v): static { $this->w->pred('is_display', 'not_eq', $v); return $this; }
+    public function isDisplayIsNull(): static { $this->w->predNull('is_display', 'is_null'); return $this; }
+    public function isDisplayIsNotNull(): static { $this->w->predNull('is_display', 'is_not_null'); return $this; }
+    public function isDisplayEqCol(ColRef $ref): static { $this->w->predCol('is_display', 'eq_col', $ref); return $this; }
+    public function isDisplayNotEqCol(ColRef $ref): static { $this->w->predCol('is_display', 'not_eq_col', $ref); return $this; }
     public function displayStartDtEq(string $v): static { $this->w->pred('display_start_dt', 'eq', $v); return $this; }
     public function displayStartDtNotEq(string $v): static { $this->w->pred('display_start_dt', 'not_eq', $v); return $this; }
     public function displayStartDtGt(string $v): static { $this->w->pred('display_start_dt', 'gt', $v); return $this; }
@@ -323,6 +399,12 @@ final class BattleWhere
     public function displayStartDtBetween(string $lo, string $hi): static { $this->w->predList('display_start_dt', 'between', [$lo, $hi]); return $this; }
     public function displayStartDtIsNull(): static { $this->w->predNull('display_start_dt', 'is_null'); return $this; }
     public function displayStartDtIsNotNull(): static { $this->w->predNull('display_start_dt', 'is_not_null'); return $this; }
+    public function displayStartDtEqCol(ColRef $ref): static { $this->w->predCol('display_start_dt', 'eq_col', $ref); return $this; }
+    public function displayStartDtNotEqCol(ColRef $ref): static { $this->w->predCol('display_start_dt', 'not_eq_col', $ref); return $this; }
+    public function displayStartDtGtCol(ColRef $ref): static { $this->w->predCol('display_start_dt', 'gt_col', $ref); return $this; }
+    public function displayStartDtGteCol(ColRef $ref): static { $this->w->predCol('display_start_dt', 'gte_col', $ref); return $this; }
+    public function displayStartDtLtCol(ColRef $ref): static { $this->w->predCol('display_start_dt', 'lt_col', $ref); return $this; }
+    public function displayStartDtLteCol(ColRef $ref): static { $this->w->predCol('display_start_dt', 'lte_col', $ref); return $this; }
     public function displayEndDtEq(string $v): static { $this->w->pred('display_end_dt', 'eq', $v); return $this; }
     public function displayEndDtNotEq(string $v): static { $this->w->pred('display_end_dt', 'not_eq', $v); return $this; }
     public function displayEndDtGt(string $v): static { $this->w->pred('display_end_dt', 'gt', $v); return $this; }
@@ -334,8 +416,18 @@ final class BattleWhere
     public function displayEndDtBetween(string $lo, string $hi): static { $this->w->predList('display_end_dt', 'between', [$lo, $hi]); return $this; }
     public function displayEndDtIsNull(): static { $this->w->predNull('display_end_dt', 'is_null'); return $this; }
     public function displayEndDtIsNotNull(): static { $this->w->predNull('display_end_dt', 'is_not_null'); return $this; }
+    public function displayEndDtEqCol(ColRef $ref): static { $this->w->predCol('display_end_dt', 'eq_col', $ref); return $this; }
+    public function displayEndDtNotEqCol(ColRef $ref): static { $this->w->predCol('display_end_dt', 'not_eq_col', $ref); return $this; }
+    public function displayEndDtGtCol(ColRef $ref): static { $this->w->predCol('display_end_dt', 'gt_col', $ref); return $this; }
+    public function displayEndDtGteCol(ColRef $ref): static { $this->w->predCol('display_end_dt', 'gte_col', $ref); return $this; }
+    public function displayEndDtLtCol(ColRef $ref): static { $this->w->predCol('display_end_dt', 'lt_col', $ref); return $this; }
+    public function displayEndDtLteCol(ColRef $ref): static { $this->w->predCol('display_end_dt', 'lte_col', $ref); return $this; }
     public function isAlldayEq(bool $v): static { $this->w->pred('is_allday', 'eq', $v); return $this; }
     public function isAlldayNotEq(bool $v): static { $this->w->pred('is_allday', 'not_eq', $v); return $this; }
+    public function isAlldayIsNull(): static { $this->w->predNull('is_allday', 'is_null'); return $this; }
+    public function isAlldayIsNotNull(): static { $this->w->predNull('is_allday', 'is_not_null'); return $this; }
+    public function isAlldayEqCol(ColRef $ref): static { $this->w->predCol('is_allday', 'eq_col', $ref); return $this; }
+    public function isAlldayNotEqCol(ColRef $ref): static { $this->w->predCol('is_allday', 'not_eq_col', $ref); return $this; }
     public function targetTeamPlayerCountEq(int $v): static { $this->w->pred('target_team_player_count', 'eq', $v); return $this; }
     public function targetTeamPlayerCountNotEq(int $v): static { $this->w->pred('target_team_player_count', 'not_eq', $v); return $this; }
     public function targetTeamPlayerCountGt(int $v): static { $this->w->pred('target_team_player_count', 'gt', $v); return $this; }
@@ -345,6 +437,14 @@ final class BattleWhere
     public function targetTeamPlayerCountIn(array $vs): static { $this->w->predList('target_team_player_count', 'in', array_values($vs)); return $this; }
     public function targetTeamPlayerCountNotIn(array $vs): static { $this->w->predList('target_team_player_count', 'not_in', array_values($vs)); return $this; }
     public function targetTeamPlayerCountBetween(int $lo, int $hi): static { $this->w->predList('target_team_player_count', 'between', [$lo, $hi]); return $this; }
+    public function targetTeamPlayerCountIsNull(): static { $this->w->predNull('target_team_player_count', 'is_null'); return $this; }
+    public function targetTeamPlayerCountIsNotNull(): static { $this->w->predNull('target_team_player_count', 'is_not_null'); return $this; }
+    public function targetTeamPlayerCountEqCol(ColRef $ref): static { $this->w->predCol('target_team_player_count', 'eq_col', $ref); return $this; }
+    public function targetTeamPlayerCountNotEqCol(ColRef $ref): static { $this->w->predCol('target_team_player_count', 'not_eq_col', $ref); return $this; }
+    public function targetTeamPlayerCountGtCol(ColRef $ref): static { $this->w->predCol('target_team_player_count', 'gt_col', $ref); return $this; }
+    public function targetTeamPlayerCountGteCol(ColRef $ref): static { $this->w->predCol('target_team_player_count', 'gte_col', $ref); return $this; }
+    public function targetTeamPlayerCountLtCol(ColRef $ref): static { $this->w->predCol('target_team_player_count', 'lt_col', $ref); return $this; }
+    public function targetTeamPlayerCountLteCol(ColRef $ref): static { $this->w->predCol('target_team_player_count', 'lte_col', $ref); return $this; }
     public function successCountEq(int $v): static { $this->w->pred('success_count', 'eq', $v); return $this; }
     public function successCountNotEq(int $v): static { $this->w->pred('success_count', 'not_eq', $v); return $this; }
     public function successCountGt(int $v): static { $this->w->pred('success_count', 'gt', $v); return $this; }
@@ -354,6 +454,14 @@ final class BattleWhere
     public function successCountIn(array $vs): static { $this->w->predList('success_count', 'in', array_values($vs)); return $this; }
     public function successCountNotIn(array $vs): static { $this->w->predList('success_count', 'not_in', array_values($vs)); return $this; }
     public function successCountBetween(int $lo, int $hi): static { $this->w->predList('success_count', 'between', [$lo, $hi]); return $this; }
+    public function successCountIsNull(): static { $this->w->predNull('success_count', 'is_null'); return $this; }
+    public function successCountIsNotNull(): static { $this->w->predNull('success_count', 'is_not_null'); return $this; }
+    public function successCountEqCol(ColRef $ref): static { $this->w->predCol('success_count', 'eq_col', $ref); return $this; }
+    public function successCountNotEqCol(ColRef $ref): static { $this->w->predCol('success_count', 'not_eq_col', $ref); return $this; }
+    public function successCountGtCol(ColRef $ref): static { $this->w->predCol('success_count', 'gt_col', $ref); return $this; }
+    public function successCountGteCol(ColRef $ref): static { $this->w->predCol('success_count', 'gte_col', $ref); return $this; }
+    public function successCountLtCol(ColRef $ref): static { $this->w->predCol('success_count', 'lt_col', $ref); return $this; }
+    public function successCountLteCol(ColRef $ref): static { $this->w->predCol('success_count', 'lte_col', $ref); return $this; }
     public function playerCountEq(int $v): static { $this->w->pred('player_count', 'eq', $v); return $this; }
     public function playerCountNotEq(int $v): static { $this->w->pred('player_count', 'not_eq', $v); return $this; }
     public function playerCountGt(int $v): static { $this->w->pred('player_count', 'gt', $v); return $this; }
@@ -363,6 +471,14 @@ final class BattleWhere
     public function playerCountIn(array $vs): static { $this->w->predList('player_count', 'in', array_values($vs)); return $this; }
     public function playerCountNotIn(array $vs): static { $this->w->predList('player_count', 'not_in', array_values($vs)); return $this; }
     public function playerCountBetween(int $lo, int $hi): static { $this->w->predList('player_count', 'between', [$lo, $hi]); return $this; }
+    public function playerCountIsNull(): static { $this->w->predNull('player_count', 'is_null'); return $this; }
+    public function playerCountIsNotNull(): static { $this->w->predNull('player_count', 'is_not_null'); return $this; }
+    public function playerCountEqCol(ColRef $ref): static { $this->w->predCol('player_count', 'eq_col', $ref); return $this; }
+    public function playerCountNotEqCol(ColRef $ref): static { $this->w->predCol('player_count', 'not_eq_col', $ref); return $this; }
+    public function playerCountGtCol(ColRef $ref): static { $this->w->predCol('player_count', 'gt_col', $ref); return $this; }
+    public function playerCountGteCol(ColRef $ref): static { $this->w->predCol('player_count', 'gte_col', $ref); return $this; }
+    public function playerCountLtCol(ColRef $ref): static { $this->w->predCol('player_count', 'lt_col', $ref); return $this; }
+    public function playerCountLteCol(ColRef $ref): static { $this->w->predCol('player_count', 'lte_col', $ref); return $this; }
     public function readCountEq(int $v): static { $this->w->pred('read_count', 'eq', $v); return $this; }
     public function readCountNotEq(int $v): static { $this->w->pred('read_count', 'not_eq', $v); return $this; }
     public function readCountGt(int $v): static { $this->w->pred('read_count', 'gt', $v); return $this; }
@@ -372,6 +488,14 @@ final class BattleWhere
     public function readCountIn(array $vs): static { $this->w->predList('read_count', 'in', array_values($vs)); return $this; }
     public function readCountNotIn(array $vs): static { $this->w->predList('read_count', 'not_in', array_values($vs)); return $this; }
     public function readCountBetween(int $lo, int $hi): static { $this->w->predList('read_count', 'between', [$lo, $hi]); return $this; }
+    public function readCountIsNull(): static { $this->w->predNull('read_count', 'is_null'); return $this; }
+    public function readCountIsNotNull(): static { $this->w->predNull('read_count', 'is_not_null'); return $this; }
+    public function readCountEqCol(ColRef $ref): static { $this->w->predCol('read_count', 'eq_col', $ref); return $this; }
+    public function readCountNotEqCol(ColRef $ref): static { $this->w->predCol('read_count', 'not_eq_col', $ref); return $this; }
+    public function readCountGtCol(ColRef $ref): static { $this->w->predCol('read_count', 'gt_col', $ref); return $this; }
+    public function readCountGteCol(ColRef $ref): static { $this->w->predCol('read_count', 'gte_col', $ref); return $this; }
+    public function readCountLtCol(ColRef $ref): static { $this->w->predCol('read_count', 'lt_col', $ref); return $this; }
+    public function readCountLteCol(ColRef $ref): static { $this->w->predCol('read_count', 'lte_col', $ref); return $this; }
     public function coverUrlEq(string $v): static { $this->w->pred('cover_url', 'eq', $v); return $this; }
     public function coverUrlNotEq(string $v): static { $this->w->pred('cover_url', 'not_eq', $v); return $this; }
     public function coverUrlIn(array $vs): static { $this->w->predList('cover_url', 'in', array_values($vs)); return $this; }
@@ -383,6 +507,8 @@ final class BattleWhere
     public function coverUrlEndsWith(string $v): static { $this->w->pred('cover_url', 'ends_with', $v); return $this; }
     public function coverUrlIsNull(): static { $this->w->predNull('cover_url', 'is_null'); return $this; }
     public function coverUrlIsNotNull(): static { $this->w->predNull('cover_url', 'is_not_null'); return $this; }
+    public function coverUrlEqCol(ColRef $ref): static { $this->w->predCol('cover_url', 'eq_col', $ref); return $this; }
+    public function coverUrlNotEqCol(ColRef $ref): static { $this->w->predCol('cover_url', 'not_eq_col', $ref); return $this; }
     public function userSeqEq(int $v): static { $this->w->pred('user_seq', 'eq', $v); return $this; }
     public function userSeqNotEq(int $v): static { $this->w->pred('user_seq', 'not_eq', $v); return $this; }
     public function userSeqGt(int $v): static { $this->w->pred('user_seq', 'gt', $v); return $this; }
@@ -392,6 +518,14 @@ final class BattleWhere
     public function userSeqIn(array $vs): static { $this->w->predList('user_seq', 'in', array_values($vs)); return $this; }
     public function userSeqNotIn(array $vs): static { $this->w->predList('user_seq', 'not_in', array_values($vs)); return $this; }
     public function userSeqBetween(int $lo, int $hi): static { $this->w->predList('user_seq', 'between', [$lo, $hi]); return $this; }
+    public function userSeqIsNull(): static { $this->w->predNull('user_seq', 'is_null'); return $this; }
+    public function userSeqIsNotNull(): static { $this->w->predNull('user_seq', 'is_not_null'); return $this; }
+    public function userSeqEqCol(ColRef $ref): static { $this->w->predCol('user_seq', 'eq_col', $ref); return $this; }
+    public function userSeqNotEqCol(ColRef $ref): static { $this->w->predCol('user_seq', 'not_eq_col', $ref); return $this; }
+    public function userSeqGtCol(ColRef $ref): static { $this->w->predCol('user_seq', 'gt_col', $ref); return $this; }
+    public function userSeqGteCol(ColRef $ref): static { $this->w->predCol('user_seq', 'gte_col', $ref); return $this; }
+    public function userSeqLtCol(ColRef $ref): static { $this->w->predCol('user_seq', 'lt_col', $ref); return $this; }
+    public function userSeqLteCol(ColRef $ref): static { $this->w->predCol('user_seq', 'lte_col', $ref); return $this; }
     public function serviceSeqEq(int $v): static { $this->w->pred('service_seq', 'eq', $v); return $this; }
     public function serviceSeqNotEq(int $v): static { $this->w->pred('service_seq', 'not_eq', $v); return $this; }
     public function serviceSeqGt(int $v): static { $this->w->pred('service_seq', 'gt', $v); return $this; }
@@ -401,6 +535,14 @@ final class BattleWhere
     public function serviceSeqIn(array $vs): static { $this->w->predList('service_seq', 'in', array_values($vs)); return $this; }
     public function serviceSeqNotIn(array $vs): static { $this->w->predList('service_seq', 'not_in', array_values($vs)); return $this; }
     public function serviceSeqBetween(int $lo, int $hi): static { $this->w->predList('service_seq', 'between', [$lo, $hi]); return $this; }
+    public function serviceSeqIsNull(): static { $this->w->predNull('service_seq', 'is_null'); return $this; }
+    public function serviceSeqIsNotNull(): static { $this->w->predNull('service_seq', 'is_not_null'); return $this; }
+    public function serviceSeqEqCol(ColRef $ref): static { $this->w->predCol('service_seq', 'eq_col', $ref); return $this; }
+    public function serviceSeqNotEqCol(ColRef $ref): static { $this->w->predCol('service_seq', 'not_eq_col', $ref); return $this; }
+    public function serviceSeqGtCol(ColRef $ref): static { $this->w->predCol('service_seq', 'gt_col', $ref); return $this; }
+    public function serviceSeqGteCol(ColRef $ref): static { $this->w->predCol('service_seq', 'gte_col', $ref); return $this; }
+    public function serviceSeqLtCol(ColRef $ref): static { $this->w->predCol('service_seq', 'lt_col', $ref); return $this; }
+    public function serviceSeqLteCol(ColRef $ref): static { $this->w->predCol('service_seq', 'lte_col', $ref); return $this; }
     public function serviceModuleSeqEq(int $v): static { $this->w->pred('service_module_seq', 'eq', $v); return $this; }
     public function serviceModuleSeqNotEq(int $v): static { $this->w->pred('service_module_seq', 'not_eq', $v); return $this; }
     public function serviceModuleSeqGt(int $v): static { $this->w->pred('service_module_seq', 'gt', $v); return $this; }
@@ -410,6 +552,14 @@ final class BattleWhere
     public function serviceModuleSeqIn(array $vs): static { $this->w->predList('service_module_seq', 'in', array_values($vs)); return $this; }
     public function serviceModuleSeqNotIn(array $vs): static { $this->w->predList('service_module_seq', 'not_in', array_values($vs)); return $this; }
     public function serviceModuleSeqBetween(int $lo, int $hi): static { $this->w->predList('service_module_seq', 'between', [$lo, $hi]); return $this; }
+    public function serviceModuleSeqIsNull(): static { $this->w->predNull('service_module_seq', 'is_null'); return $this; }
+    public function serviceModuleSeqIsNotNull(): static { $this->w->predNull('service_module_seq', 'is_not_null'); return $this; }
+    public function serviceModuleSeqEqCol(ColRef $ref): static { $this->w->predCol('service_module_seq', 'eq_col', $ref); return $this; }
+    public function serviceModuleSeqNotEqCol(ColRef $ref): static { $this->w->predCol('service_module_seq', 'not_eq_col', $ref); return $this; }
+    public function serviceModuleSeqGtCol(ColRef $ref): static { $this->w->predCol('service_module_seq', 'gt_col', $ref); return $this; }
+    public function serviceModuleSeqGteCol(ColRef $ref): static { $this->w->predCol('service_module_seq', 'gte_col', $ref); return $this; }
+    public function serviceModuleSeqLtCol(ColRef $ref): static { $this->w->predCol('service_module_seq', 'lt_col', $ref); return $this; }
+    public function serviceModuleSeqLteCol(ColRef $ref): static { $this->w->predCol('service_module_seq', 'lte_col', $ref); return $this; }
     public function serviceMemberSeqEq(int $v): static { $this->w->pred('service_member_seq', 'eq', $v); return $this; }
     public function serviceMemberSeqNotEq(int $v): static { $this->w->pred('service_member_seq', 'not_eq', $v); return $this; }
     public function serviceMemberSeqGt(int $v): static { $this->w->pred('service_member_seq', 'gt', $v); return $this; }
@@ -419,6 +569,14 @@ final class BattleWhere
     public function serviceMemberSeqIn(array $vs): static { $this->w->predList('service_member_seq', 'in', array_values($vs)); return $this; }
     public function serviceMemberSeqNotIn(array $vs): static { $this->w->predList('service_member_seq', 'not_in', array_values($vs)); return $this; }
     public function serviceMemberSeqBetween(int $lo, int $hi): static { $this->w->predList('service_member_seq', 'between', [$lo, $hi]); return $this; }
+    public function serviceMemberSeqIsNull(): static { $this->w->predNull('service_member_seq', 'is_null'); return $this; }
+    public function serviceMemberSeqIsNotNull(): static { $this->w->predNull('service_member_seq', 'is_not_null'); return $this; }
+    public function serviceMemberSeqEqCol(ColRef $ref): static { $this->w->predCol('service_member_seq', 'eq_col', $ref); return $this; }
+    public function serviceMemberSeqNotEqCol(ColRef $ref): static { $this->w->predCol('service_member_seq', 'not_eq_col', $ref); return $this; }
+    public function serviceMemberSeqGtCol(ColRef $ref): static { $this->w->predCol('service_member_seq', 'gt_col', $ref); return $this; }
+    public function serviceMemberSeqGteCol(ColRef $ref): static { $this->w->predCol('service_member_seq', 'gte_col', $ref); return $this; }
+    public function serviceMemberSeqLtCol(ColRef $ref): static { $this->w->predCol('service_member_seq', 'lt_col', $ref); return $this; }
+    public function serviceMemberSeqLteCol(ColRef $ref): static { $this->w->predCol('service_member_seq', 'lte_col', $ref); return $this; }
     public function startDtEq(string $v): static { $this->w->pred('start_dt', 'eq', $v); return $this; }
     public function startDtNotEq(string $v): static { $this->w->pred('start_dt', 'not_eq', $v); return $this; }
     public function startDtGt(string $v): static { $this->w->pred('start_dt', 'gt', $v); return $this; }
@@ -428,6 +586,14 @@ final class BattleWhere
     public function startDtIn(array $vs): static { $this->w->predList('start_dt', 'in', array_values($vs)); return $this; }
     public function startDtNotIn(array $vs): static { $this->w->predList('start_dt', 'not_in', array_values($vs)); return $this; }
     public function startDtBetween(string $lo, string $hi): static { $this->w->predList('start_dt', 'between', [$lo, $hi]); return $this; }
+    public function startDtIsNull(): static { $this->w->predNull('start_dt', 'is_null'); return $this; }
+    public function startDtIsNotNull(): static { $this->w->predNull('start_dt', 'is_not_null'); return $this; }
+    public function startDtEqCol(ColRef $ref): static { $this->w->predCol('start_dt', 'eq_col', $ref); return $this; }
+    public function startDtNotEqCol(ColRef $ref): static { $this->w->predCol('start_dt', 'not_eq_col', $ref); return $this; }
+    public function startDtGtCol(ColRef $ref): static { $this->w->predCol('start_dt', 'gt_col', $ref); return $this; }
+    public function startDtGteCol(ColRef $ref): static { $this->w->predCol('start_dt', 'gte_col', $ref); return $this; }
+    public function startDtLtCol(ColRef $ref): static { $this->w->predCol('start_dt', 'lt_col', $ref); return $this; }
+    public function startDtLteCol(ColRef $ref): static { $this->w->predCol('start_dt', 'lte_col', $ref); return $this; }
     public function endDtEq(string $v): static { $this->w->pred('end_dt', 'eq', $v); return $this; }
     public function endDtNotEq(string $v): static { $this->w->pred('end_dt', 'not_eq', $v); return $this; }
     public function endDtGt(string $v): static { $this->w->pred('end_dt', 'gt', $v); return $this; }
@@ -437,6 +603,14 @@ final class BattleWhere
     public function endDtIn(array $vs): static { $this->w->predList('end_dt', 'in', array_values($vs)); return $this; }
     public function endDtNotIn(array $vs): static { $this->w->predList('end_dt', 'not_in', array_values($vs)); return $this; }
     public function endDtBetween(string $lo, string $hi): static { $this->w->predList('end_dt', 'between', [$lo, $hi]); return $this; }
+    public function endDtIsNull(): static { $this->w->predNull('end_dt', 'is_null'); return $this; }
+    public function endDtIsNotNull(): static { $this->w->predNull('end_dt', 'is_not_null'); return $this; }
+    public function endDtEqCol(ColRef $ref): static { $this->w->predCol('end_dt', 'eq_col', $ref); return $this; }
+    public function endDtNotEqCol(ColRef $ref): static { $this->w->predCol('end_dt', 'not_eq_col', $ref); return $this; }
+    public function endDtGtCol(ColRef $ref): static { $this->w->predCol('end_dt', 'gt_col', $ref); return $this; }
+    public function endDtGteCol(ColRef $ref): static { $this->w->predCol('end_dt', 'gte_col', $ref); return $this; }
+    public function endDtLtCol(ColRef $ref): static { $this->w->predCol('end_dt', 'lt_col', $ref); return $this; }
+    public function endDtLteCol(ColRef $ref): static { $this->w->predCol('end_dt', 'lte_col', $ref); return $this; }
     public function uuidEq(string $v): static { $this->w->pred('uuid', 'eq', $v); return $this; }
     public function uuidNotEq(string $v): static { $this->w->pred('uuid', 'not_eq', $v); return $this; }
     public function uuidIn(array $vs): static { $this->w->predList('uuid', 'in', array_values($vs)); return $this; }
@@ -448,8 +622,14 @@ final class BattleWhere
     public function uuidEndsWith(string $v): static { $this->w->pred('uuid', 'ends_with', $v); return $this; }
     public function uuidIsNull(): static { $this->w->predNull('uuid', 'is_null'); return $this; }
     public function uuidIsNotNull(): static { $this->w->predNull('uuid', 'is_not_null'); return $this; }
+    public function uuidEqCol(ColRef $ref): static { $this->w->predCol('uuid', 'eq_col', $ref); return $this; }
+    public function uuidNotEqCol(ColRef $ref): static { $this->w->predCol('uuid', 'not_eq_col', $ref); return $this; }
     public function isSinglePlayEq(bool $v): static { $this->w->pred('is_single_play', 'eq', $v); return $this; }
     public function isSinglePlayNotEq(bool $v): static { $this->w->pred('is_single_play', 'not_eq', $v); return $this; }
+    public function isSinglePlayIsNull(): static { $this->w->predNull('is_single_play', 'is_null'); return $this; }
+    public function isSinglePlayIsNotNull(): static { $this->w->predNull('is_single_play', 'is_not_null'); return $this; }
+    public function isSinglePlayEqCol(ColRef $ref): static { $this->w->predCol('is_single_play', 'eq_col', $ref); return $this; }
+    public function isSinglePlayNotEqCol(ColRef $ref): static { $this->w->predCol('is_single_play', 'not_eq_col', $ref); return $this; }
     public function likeCountEq(int $v): static { $this->w->pred('like_count', 'eq', $v); return $this; }
     public function likeCountNotEq(int $v): static { $this->w->pred('like_count', 'not_eq', $v); return $this; }
     public function likeCountGt(int $v): static { $this->w->pred('like_count', 'gt', $v); return $this; }
@@ -459,24 +639,38 @@ final class BattleWhere
     public function likeCountIn(array $vs): static { $this->w->predList('like_count', 'in', array_values($vs)); return $this; }
     public function likeCountNotIn(array $vs): static { $this->w->predList('like_count', 'not_in', array_values($vs)); return $this; }
     public function likeCountBetween(int $lo, int $hi): static { $this->w->predList('like_count', 'between', [$lo, $hi]); return $this; }
+    public function likeCountIsNull(): static { $this->w->predNull('like_count', 'is_null'); return $this; }
+    public function likeCountIsNotNull(): static { $this->w->predNull('like_count', 'is_not_null'); return $this; }
+    public function likeCountEqCol(ColRef $ref): static { $this->w->predCol('like_count', 'eq_col', $ref); return $this; }
+    public function likeCountNotEqCol(ColRef $ref): static { $this->w->predCol('like_count', 'not_eq_col', $ref); return $this; }
+    public function likeCountGtCol(ColRef $ref): static { $this->w->predCol('like_count', 'gt_col', $ref); return $this; }
+    public function likeCountGteCol(ColRef $ref): static { $this->w->predCol('like_count', 'gte_col', $ref); return $this; }
+    public function likeCountLtCol(ColRef $ref): static { $this->w->predCol('like_count', 'lt_col', $ref); return $this; }
+    public function likeCountLteCol(ColRef $ref): static { $this->w->predCol('like_count', 'lte_col', $ref); return $this; }
     public function aesHexEmailEq(string $v): static { $this->w->pred('aes_hex_email', 'eq', $v); return $this; }
     public function aesHexEmailNotEq(string $v): static { $this->w->pred('aes_hex_email', 'not_eq', $v); return $this; }
     public function aesHexEmailIn(array $vs): static { $this->w->predList('aes_hex_email', 'in', array_values($vs)); return $this; }
     public function aesHexEmailNotIn(array $vs): static { $this->w->predList('aes_hex_email', 'not_in', array_values($vs)); return $this; }
     public function aesHexEmailIsNull(): static { $this->w->predNull('aes_hex_email', 'is_null'); return $this; }
     public function aesHexEmailIsNotNull(): static { $this->w->predNull('aes_hex_email', 'is_not_null'); return $this; }
+    public function aesHexEmailEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_email', 'eq_col', $ref); return $this; }
+    public function aesHexEmailNotEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_email', 'not_eq_col', $ref); return $this; }
     public function aesHexPhoneEq(string $v): static { $this->w->pred('aes_hex_phone', 'eq', $v); return $this; }
     public function aesHexPhoneNotEq(string $v): static { $this->w->pred('aes_hex_phone', 'not_eq', $v); return $this; }
     public function aesHexPhoneIn(array $vs): static { $this->w->predList('aes_hex_phone', 'in', array_values($vs)); return $this; }
     public function aesHexPhoneNotIn(array $vs): static { $this->w->predList('aes_hex_phone', 'not_in', array_values($vs)); return $this; }
     public function aesHexPhoneIsNull(): static { $this->w->predNull('aes_hex_phone', 'is_null'); return $this; }
     public function aesHexPhoneIsNotNull(): static { $this->w->predNull('aes_hex_phone', 'is_not_null'); return $this; }
+    public function aesHexPhoneEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_phone', 'eq_col', $ref); return $this; }
+    public function aesHexPhoneNotEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_phone', 'not_eq_col', $ref); return $this; }
     public function ipEq(string $v): static { $this->w->pred('ip', 'eq', $v); return $this; }
     public function ipNotEq(string $v): static { $this->w->pred('ip', 'not_eq', $v); return $this; }
     public function ipIn(array $vs): static { $this->w->predList('ip', 'in', array_values($vs)); return $this; }
     public function ipNotIn(array $vs): static { $this->w->predList('ip', 'not_in', array_values($vs)); return $this; }
     public function ipIsNull(): static { $this->w->predNull('ip', 'is_null'); return $this; }
     public function ipIsNotNull(): static { $this->w->predNull('ip', 'is_not_null'); return $this; }
+    public function ipEqCol(ColRef $ref): static { $this->w->predCol('ip', 'eq_col', $ref); return $this; }
+    public function ipNotEqCol(ColRef $ref): static { $this->w->predCol('ip', 'not_eq_col', $ref); return $this; }
     public function gzExtendIsNull(): static { $this->w->predNull('gz_extend', 'is_null'); return $this; }
     public function gzExtendIsNotNull(): static { $this->w->predNull('gz_extend', 'is_not_null'); return $this; }
     public function jsonSettingIsNull(): static { $this->w->predNull('json_setting', 'is_null'); return $this; }
@@ -512,6 +706,14 @@ final class Battle extends Q
     public function seqIn(array $vs): static { $this->w()->predList('seq', 'in', array_values($vs)); return $this; }
     public function seqNotIn(array $vs): static { $this->w()->predList('seq', 'not_in', array_values($vs)); return $this; }
     public function seqBetween(int $lo, int $hi): static { $this->w()->predList('seq', 'between', [$lo, $hi]); return $this; }
+    public function seqIsNull(): static { $this->w()->predNull('seq', 'is_null'); return $this; }
+    public function seqIsNotNull(): static { $this->w()->predNull('seq', 'is_not_null'); return $this; }
+    public function seqEqCol(ColRef $ref): static { $this->w()->predCol('seq', 'eq_col', $ref); return $this; }
+    public function seqNotEqCol(ColRef $ref): static { $this->w()->predCol('seq', 'not_eq_col', $ref); return $this; }
+    public function seqGtCol(ColRef $ref): static { $this->w()->predCol('seq', 'gt_col', $ref); return $this; }
+    public function seqGteCol(ColRef $ref): static { $this->w()->predCol('seq', 'gte_col', $ref); return $this; }
+    public function seqLtCol(ColRef $ref): static { $this->w()->predCol('seq', 'lt_col', $ref); return $this; }
+    public function seqLteCol(ColRef $ref): static { $this->w()->predCol('seq', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w()->pred('name', 'eq', $v); return $this; }
     public function nameNotEq(string $v): static { $this->w()->pred('name', 'not_eq', $v); return $this; }
     public function nameIn(array $vs): static { $this->w()->predList('name', 'in', array_values($vs)); return $this; }
@@ -521,6 +723,10 @@ final class Battle extends Q
     public function nameContains(string $v): static { $this->w()->pred('name', 'contains', $v); return $this; }
     public function nameStartsWith(string $v): static { $this->w()->pred('name', 'starts_with', $v); return $this; }
     public function nameEndsWith(string $v): static { $this->w()->pred('name', 'ends_with', $v); return $this; }
+    public function nameIsNull(): static { $this->w()->predNull('name', 'is_null'); return $this; }
+    public function nameIsNotNull(): static { $this->w()->predNull('name', 'is_not_null'); return $this; }
+    public function nameEqCol(ColRef $ref): static { $this->w()->predCol('name', 'eq_col', $ref); return $this; }
+    public function nameNotEqCol(ColRef $ref): static { $this->w()->predCol('name', 'not_eq_col', $ref); return $this; }
     public function descriptionEq(string $v): static { $this->w()->pred('description', 'eq', $v); return $this; }
     public function descriptionNotEq(string $v): static { $this->w()->pred('description', 'not_eq', $v); return $this; }
     public function descriptionLike(string $v): static { $this->w()->pred('description', 'like', $v); return $this; }
@@ -530,6 +736,8 @@ final class Battle extends Q
     public function descriptionEndsWith(string $v): static { $this->w()->pred('description', 'ends_with', $v); return $this; }
     public function descriptionIsNull(): static { $this->w()->predNull('description', 'is_null'); return $this; }
     public function descriptionIsNotNull(): static { $this->w()->predNull('description', 'is_not_null'); return $this; }
+    public function descriptionEqCol(ColRef $ref): static { $this->w()->predCol('description', 'eq_col', $ref); return $this; }
+    public function descriptionNotEqCol(ColRef $ref): static { $this->w()->predCol('description', 'not_eq_col', $ref); return $this; }
     public function createdTsEq(string $v): static { $this->w()->pred('created_ts', 'eq', $v); return $this; }
     public function createdTsNotEq(string $v): static { $this->w()->pred('created_ts', 'not_eq', $v); return $this; }
     public function createdTsGt(string $v): static { $this->w()->pred('created_ts', 'gt', $v); return $this; }
@@ -539,6 +747,14 @@ final class Battle extends Q
     public function createdTsIn(array $vs): static { $this->w()->predList('created_ts', 'in', array_values($vs)); return $this; }
     public function createdTsNotIn(array $vs): static { $this->w()->predList('created_ts', 'not_in', array_values($vs)); return $this; }
     public function createdTsBetween(string $lo, string $hi): static { $this->w()->predList('created_ts', 'between', [$lo, $hi]); return $this; }
+    public function createdTsIsNull(): static { $this->w()->predNull('created_ts', 'is_null'); return $this; }
+    public function createdTsIsNotNull(): static { $this->w()->predNull('created_ts', 'is_not_null'); return $this; }
+    public function createdTsEqCol(ColRef $ref): static { $this->w()->predCol('created_ts', 'eq_col', $ref); return $this; }
+    public function createdTsNotEqCol(ColRef $ref): static { $this->w()->predCol('created_ts', 'not_eq_col', $ref); return $this; }
+    public function createdTsGtCol(ColRef $ref): static { $this->w()->predCol('created_ts', 'gt_col', $ref); return $this; }
+    public function createdTsGteCol(ColRef $ref): static { $this->w()->predCol('created_ts', 'gte_col', $ref); return $this; }
+    public function createdTsLtCol(ColRef $ref): static { $this->w()->predCol('created_ts', 'lt_col', $ref); return $this; }
+    public function createdTsLteCol(ColRef $ref): static { $this->w()->predCol('created_ts', 'lte_col', $ref); return $this; }
     public function updatedTsEq(string $v): static { $this->w()->pred('updated_ts', 'eq', $v); return $this; }
     public function updatedTsNotEq(string $v): static { $this->w()->pred('updated_ts', 'not_eq', $v); return $this; }
     public function updatedTsGt(string $v): static { $this->w()->pred('updated_ts', 'gt', $v); return $this; }
@@ -548,10 +764,26 @@ final class Battle extends Q
     public function updatedTsIn(array $vs): static { $this->w()->predList('updated_ts', 'in', array_values($vs)); return $this; }
     public function updatedTsNotIn(array $vs): static { $this->w()->predList('updated_ts', 'not_in', array_values($vs)); return $this; }
     public function updatedTsBetween(string $lo, string $hi): static { $this->w()->predList('updated_ts', 'between', [$lo, $hi]); return $this; }
+    public function updatedTsIsNull(): static { $this->w()->predNull('updated_ts', 'is_null'); return $this; }
+    public function updatedTsIsNotNull(): static { $this->w()->predNull('updated_ts', 'is_not_null'); return $this; }
+    public function updatedTsEqCol(ColRef $ref): static { $this->w()->predCol('updated_ts', 'eq_col', $ref); return $this; }
+    public function updatedTsNotEqCol(ColRef $ref): static { $this->w()->predCol('updated_ts', 'not_eq_col', $ref); return $this; }
+    public function updatedTsGtCol(ColRef $ref): static { $this->w()->predCol('updated_ts', 'gt_col', $ref); return $this; }
+    public function updatedTsGteCol(ColRef $ref): static { $this->w()->predCol('updated_ts', 'gte_col', $ref); return $this; }
+    public function updatedTsLtCol(ColRef $ref): static { $this->w()->predCol('updated_ts', 'lt_col', $ref); return $this; }
+    public function updatedTsLteCol(ColRef $ref): static { $this->w()->predCol('updated_ts', 'lte_col', $ref); return $this; }
     public function isCloseEq(bool $v): static { $this->w()->pred('is_close', 'eq', $v); return $this; }
     public function isCloseNotEq(bool $v): static { $this->w()->pred('is_close', 'not_eq', $v); return $this; }
+    public function isCloseIsNull(): static { $this->w()->predNull('is_close', 'is_null'); return $this; }
+    public function isCloseIsNotNull(): static { $this->w()->predNull('is_close', 'is_not_null'); return $this; }
+    public function isCloseEqCol(ColRef $ref): static { $this->w()->predCol('is_close', 'eq_col', $ref); return $this; }
+    public function isCloseNotEqCol(ColRef $ref): static { $this->w()->predCol('is_close', 'not_eq_col', $ref); return $this; }
     public function isDisplayEq(bool $v): static { $this->w()->pred('is_display', 'eq', $v); return $this; }
     public function isDisplayNotEq(bool $v): static { $this->w()->pred('is_display', 'not_eq', $v); return $this; }
+    public function isDisplayIsNull(): static { $this->w()->predNull('is_display', 'is_null'); return $this; }
+    public function isDisplayIsNotNull(): static { $this->w()->predNull('is_display', 'is_not_null'); return $this; }
+    public function isDisplayEqCol(ColRef $ref): static { $this->w()->predCol('is_display', 'eq_col', $ref); return $this; }
+    public function isDisplayNotEqCol(ColRef $ref): static { $this->w()->predCol('is_display', 'not_eq_col', $ref); return $this; }
     public function displayStartDtEq(string $v): static { $this->w()->pred('display_start_dt', 'eq', $v); return $this; }
     public function displayStartDtNotEq(string $v): static { $this->w()->pred('display_start_dt', 'not_eq', $v); return $this; }
     public function displayStartDtGt(string $v): static { $this->w()->pred('display_start_dt', 'gt', $v); return $this; }
@@ -563,6 +795,12 @@ final class Battle extends Q
     public function displayStartDtBetween(string $lo, string $hi): static { $this->w()->predList('display_start_dt', 'between', [$lo, $hi]); return $this; }
     public function displayStartDtIsNull(): static { $this->w()->predNull('display_start_dt', 'is_null'); return $this; }
     public function displayStartDtIsNotNull(): static { $this->w()->predNull('display_start_dt', 'is_not_null'); return $this; }
+    public function displayStartDtEqCol(ColRef $ref): static { $this->w()->predCol('display_start_dt', 'eq_col', $ref); return $this; }
+    public function displayStartDtNotEqCol(ColRef $ref): static { $this->w()->predCol('display_start_dt', 'not_eq_col', $ref); return $this; }
+    public function displayStartDtGtCol(ColRef $ref): static { $this->w()->predCol('display_start_dt', 'gt_col', $ref); return $this; }
+    public function displayStartDtGteCol(ColRef $ref): static { $this->w()->predCol('display_start_dt', 'gte_col', $ref); return $this; }
+    public function displayStartDtLtCol(ColRef $ref): static { $this->w()->predCol('display_start_dt', 'lt_col', $ref); return $this; }
+    public function displayStartDtLteCol(ColRef $ref): static { $this->w()->predCol('display_start_dt', 'lte_col', $ref); return $this; }
     public function displayEndDtEq(string $v): static { $this->w()->pred('display_end_dt', 'eq', $v); return $this; }
     public function displayEndDtNotEq(string $v): static { $this->w()->pred('display_end_dt', 'not_eq', $v); return $this; }
     public function displayEndDtGt(string $v): static { $this->w()->pred('display_end_dt', 'gt', $v); return $this; }
@@ -574,8 +812,18 @@ final class Battle extends Q
     public function displayEndDtBetween(string $lo, string $hi): static { $this->w()->predList('display_end_dt', 'between', [$lo, $hi]); return $this; }
     public function displayEndDtIsNull(): static { $this->w()->predNull('display_end_dt', 'is_null'); return $this; }
     public function displayEndDtIsNotNull(): static { $this->w()->predNull('display_end_dt', 'is_not_null'); return $this; }
+    public function displayEndDtEqCol(ColRef $ref): static { $this->w()->predCol('display_end_dt', 'eq_col', $ref); return $this; }
+    public function displayEndDtNotEqCol(ColRef $ref): static { $this->w()->predCol('display_end_dt', 'not_eq_col', $ref); return $this; }
+    public function displayEndDtGtCol(ColRef $ref): static { $this->w()->predCol('display_end_dt', 'gt_col', $ref); return $this; }
+    public function displayEndDtGteCol(ColRef $ref): static { $this->w()->predCol('display_end_dt', 'gte_col', $ref); return $this; }
+    public function displayEndDtLtCol(ColRef $ref): static { $this->w()->predCol('display_end_dt', 'lt_col', $ref); return $this; }
+    public function displayEndDtLteCol(ColRef $ref): static { $this->w()->predCol('display_end_dt', 'lte_col', $ref); return $this; }
     public function isAlldayEq(bool $v): static { $this->w()->pred('is_allday', 'eq', $v); return $this; }
     public function isAlldayNotEq(bool $v): static { $this->w()->pred('is_allday', 'not_eq', $v); return $this; }
+    public function isAlldayIsNull(): static { $this->w()->predNull('is_allday', 'is_null'); return $this; }
+    public function isAlldayIsNotNull(): static { $this->w()->predNull('is_allday', 'is_not_null'); return $this; }
+    public function isAlldayEqCol(ColRef $ref): static { $this->w()->predCol('is_allday', 'eq_col', $ref); return $this; }
+    public function isAlldayNotEqCol(ColRef $ref): static { $this->w()->predCol('is_allday', 'not_eq_col', $ref); return $this; }
     public function targetTeamPlayerCountEq(int $v): static { $this->w()->pred('target_team_player_count', 'eq', $v); return $this; }
     public function targetTeamPlayerCountNotEq(int $v): static { $this->w()->pred('target_team_player_count', 'not_eq', $v); return $this; }
     public function targetTeamPlayerCountGt(int $v): static { $this->w()->pred('target_team_player_count', 'gt', $v); return $this; }
@@ -585,6 +833,14 @@ final class Battle extends Q
     public function targetTeamPlayerCountIn(array $vs): static { $this->w()->predList('target_team_player_count', 'in', array_values($vs)); return $this; }
     public function targetTeamPlayerCountNotIn(array $vs): static { $this->w()->predList('target_team_player_count', 'not_in', array_values($vs)); return $this; }
     public function targetTeamPlayerCountBetween(int $lo, int $hi): static { $this->w()->predList('target_team_player_count', 'between', [$lo, $hi]); return $this; }
+    public function targetTeamPlayerCountIsNull(): static { $this->w()->predNull('target_team_player_count', 'is_null'); return $this; }
+    public function targetTeamPlayerCountIsNotNull(): static { $this->w()->predNull('target_team_player_count', 'is_not_null'); return $this; }
+    public function targetTeamPlayerCountEqCol(ColRef $ref): static { $this->w()->predCol('target_team_player_count', 'eq_col', $ref); return $this; }
+    public function targetTeamPlayerCountNotEqCol(ColRef $ref): static { $this->w()->predCol('target_team_player_count', 'not_eq_col', $ref); return $this; }
+    public function targetTeamPlayerCountGtCol(ColRef $ref): static { $this->w()->predCol('target_team_player_count', 'gt_col', $ref); return $this; }
+    public function targetTeamPlayerCountGteCol(ColRef $ref): static { $this->w()->predCol('target_team_player_count', 'gte_col', $ref); return $this; }
+    public function targetTeamPlayerCountLtCol(ColRef $ref): static { $this->w()->predCol('target_team_player_count', 'lt_col', $ref); return $this; }
+    public function targetTeamPlayerCountLteCol(ColRef $ref): static { $this->w()->predCol('target_team_player_count', 'lte_col', $ref); return $this; }
     public function successCountEq(int $v): static { $this->w()->pred('success_count', 'eq', $v); return $this; }
     public function successCountNotEq(int $v): static { $this->w()->pred('success_count', 'not_eq', $v); return $this; }
     public function successCountGt(int $v): static { $this->w()->pred('success_count', 'gt', $v); return $this; }
@@ -594,6 +850,14 @@ final class Battle extends Q
     public function successCountIn(array $vs): static { $this->w()->predList('success_count', 'in', array_values($vs)); return $this; }
     public function successCountNotIn(array $vs): static { $this->w()->predList('success_count', 'not_in', array_values($vs)); return $this; }
     public function successCountBetween(int $lo, int $hi): static { $this->w()->predList('success_count', 'between', [$lo, $hi]); return $this; }
+    public function successCountIsNull(): static { $this->w()->predNull('success_count', 'is_null'); return $this; }
+    public function successCountIsNotNull(): static { $this->w()->predNull('success_count', 'is_not_null'); return $this; }
+    public function successCountEqCol(ColRef $ref): static { $this->w()->predCol('success_count', 'eq_col', $ref); return $this; }
+    public function successCountNotEqCol(ColRef $ref): static { $this->w()->predCol('success_count', 'not_eq_col', $ref); return $this; }
+    public function successCountGtCol(ColRef $ref): static { $this->w()->predCol('success_count', 'gt_col', $ref); return $this; }
+    public function successCountGteCol(ColRef $ref): static { $this->w()->predCol('success_count', 'gte_col', $ref); return $this; }
+    public function successCountLtCol(ColRef $ref): static { $this->w()->predCol('success_count', 'lt_col', $ref); return $this; }
+    public function successCountLteCol(ColRef $ref): static { $this->w()->predCol('success_count', 'lte_col', $ref); return $this; }
     public function playerCountEq(int $v): static { $this->w()->pred('player_count', 'eq', $v); return $this; }
     public function playerCountNotEq(int $v): static { $this->w()->pred('player_count', 'not_eq', $v); return $this; }
     public function playerCountGt(int $v): static { $this->w()->pred('player_count', 'gt', $v); return $this; }
@@ -603,6 +867,14 @@ final class Battle extends Q
     public function playerCountIn(array $vs): static { $this->w()->predList('player_count', 'in', array_values($vs)); return $this; }
     public function playerCountNotIn(array $vs): static { $this->w()->predList('player_count', 'not_in', array_values($vs)); return $this; }
     public function playerCountBetween(int $lo, int $hi): static { $this->w()->predList('player_count', 'between', [$lo, $hi]); return $this; }
+    public function playerCountIsNull(): static { $this->w()->predNull('player_count', 'is_null'); return $this; }
+    public function playerCountIsNotNull(): static { $this->w()->predNull('player_count', 'is_not_null'); return $this; }
+    public function playerCountEqCol(ColRef $ref): static { $this->w()->predCol('player_count', 'eq_col', $ref); return $this; }
+    public function playerCountNotEqCol(ColRef $ref): static { $this->w()->predCol('player_count', 'not_eq_col', $ref); return $this; }
+    public function playerCountGtCol(ColRef $ref): static { $this->w()->predCol('player_count', 'gt_col', $ref); return $this; }
+    public function playerCountGteCol(ColRef $ref): static { $this->w()->predCol('player_count', 'gte_col', $ref); return $this; }
+    public function playerCountLtCol(ColRef $ref): static { $this->w()->predCol('player_count', 'lt_col', $ref); return $this; }
+    public function playerCountLteCol(ColRef $ref): static { $this->w()->predCol('player_count', 'lte_col', $ref); return $this; }
     public function readCountEq(int $v): static { $this->w()->pred('read_count', 'eq', $v); return $this; }
     public function readCountNotEq(int $v): static { $this->w()->pred('read_count', 'not_eq', $v); return $this; }
     public function readCountGt(int $v): static { $this->w()->pred('read_count', 'gt', $v); return $this; }
@@ -612,6 +884,14 @@ final class Battle extends Q
     public function readCountIn(array $vs): static { $this->w()->predList('read_count', 'in', array_values($vs)); return $this; }
     public function readCountNotIn(array $vs): static { $this->w()->predList('read_count', 'not_in', array_values($vs)); return $this; }
     public function readCountBetween(int $lo, int $hi): static { $this->w()->predList('read_count', 'between', [$lo, $hi]); return $this; }
+    public function readCountIsNull(): static { $this->w()->predNull('read_count', 'is_null'); return $this; }
+    public function readCountIsNotNull(): static { $this->w()->predNull('read_count', 'is_not_null'); return $this; }
+    public function readCountEqCol(ColRef $ref): static { $this->w()->predCol('read_count', 'eq_col', $ref); return $this; }
+    public function readCountNotEqCol(ColRef $ref): static { $this->w()->predCol('read_count', 'not_eq_col', $ref); return $this; }
+    public function readCountGtCol(ColRef $ref): static { $this->w()->predCol('read_count', 'gt_col', $ref); return $this; }
+    public function readCountGteCol(ColRef $ref): static { $this->w()->predCol('read_count', 'gte_col', $ref); return $this; }
+    public function readCountLtCol(ColRef $ref): static { $this->w()->predCol('read_count', 'lt_col', $ref); return $this; }
+    public function readCountLteCol(ColRef $ref): static { $this->w()->predCol('read_count', 'lte_col', $ref); return $this; }
     public function coverUrlEq(string $v): static { $this->w()->pred('cover_url', 'eq', $v); return $this; }
     public function coverUrlNotEq(string $v): static { $this->w()->pred('cover_url', 'not_eq', $v); return $this; }
     public function coverUrlIn(array $vs): static { $this->w()->predList('cover_url', 'in', array_values($vs)); return $this; }
@@ -623,6 +903,8 @@ final class Battle extends Q
     public function coverUrlEndsWith(string $v): static { $this->w()->pred('cover_url', 'ends_with', $v); return $this; }
     public function coverUrlIsNull(): static { $this->w()->predNull('cover_url', 'is_null'); return $this; }
     public function coverUrlIsNotNull(): static { $this->w()->predNull('cover_url', 'is_not_null'); return $this; }
+    public function coverUrlEqCol(ColRef $ref): static { $this->w()->predCol('cover_url', 'eq_col', $ref); return $this; }
+    public function coverUrlNotEqCol(ColRef $ref): static { $this->w()->predCol('cover_url', 'not_eq_col', $ref); return $this; }
     public function userSeqEq(int $v): static { $this->w()->pred('user_seq', 'eq', $v); return $this; }
     public function userSeqNotEq(int $v): static { $this->w()->pred('user_seq', 'not_eq', $v); return $this; }
     public function userSeqGt(int $v): static { $this->w()->pred('user_seq', 'gt', $v); return $this; }
@@ -632,6 +914,14 @@ final class Battle extends Q
     public function userSeqIn(array $vs): static { $this->w()->predList('user_seq', 'in', array_values($vs)); return $this; }
     public function userSeqNotIn(array $vs): static { $this->w()->predList('user_seq', 'not_in', array_values($vs)); return $this; }
     public function userSeqBetween(int $lo, int $hi): static { $this->w()->predList('user_seq', 'between', [$lo, $hi]); return $this; }
+    public function userSeqIsNull(): static { $this->w()->predNull('user_seq', 'is_null'); return $this; }
+    public function userSeqIsNotNull(): static { $this->w()->predNull('user_seq', 'is_not_null'); return $this; }
+    public function userSeqEqCol(ColRef $ref): static { $this->w()->predCol('user_seq', 'eq_col', $ref); return $this; }
+    public function userSeqNotEqCol(ColRef $ref): static { $this->w()->predCol('user_seq', 'not_eq_col', $ref); return $this; }
+    public function userSeqGtCol(ColRef $ref): static { $this->w()->predCol('user_seq', 'gt_col', $ref); return $this; }
+    public function userSeqGteCol(ColRef $ref): static { $this->w()->predCol('user_seq', 'gte_col', $ref); return $this; }
+    public function userSeqLtCol(ColRef $ref): static { $this->w()->predCol('user_seq', 'lt_col', $ref); return $this; }
+    public function userSeqLteCol(ColRef $ref): static { $this->w()->predCol('user_seq', 'lte_col', $ref); return $this; }
     public function serviceSeqEq(int $v): static { $this->w()->pred('service_seq', 'eq', $v); return $this; }
     public function serviceSeqNotEq(int $v): static { $this->w()->pred('service_seq', 'not_eq', $v); return $this; }
     public function serviceSeqGt(int $v): static { $this->w()->pred('service_seq', 'gt', $v); return $this; }
@@ -641,6 +931,14 @@ final class Battle extends Q
     public function serviceSeqIn(array $vs): static { $this->w()->predList('service_seq', 'in', array_values($vs)); return $this; }
     public function serviceSeqNotIn(array $vs): static { $this->w()->predList('service_seq', 'not_in', array_values($vs)); return $this; }
     public function serviceSeqBetween(int $lo, int $hi): static { $this->w()->predList('service_seq', 'between', [$lo, $hi]); return $this; }
+    public function serviceSeqIsNull(): static { $this->w()->predNull('service_seq', 'is_null'); return $this; }
+    public function serviceSeqIsNotNull(): static { $this->w()->predNull('service_seq', 'is_not_null'); return $this; }
+    public function serviceSeqEqCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'eq_col', $ref); return $this; }
+    public function serviceSeqNotEqCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'not_eq_col', $ref); return $this; }
+    public function serviceSeqGtCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'gt_col', $ref); return $this; }
+    public function serviceSeqGteCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'gte_col', $ref); return $this; }
+    public function serviceSeqLtCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'lt_col', $ref); return $this; }
+    public function serviceSeqLteCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'lte_col', $ref); return $this; }
     public function serviceModuleSeqEq(int $v): static { $this->w()->pred('service_module_seq', 'eq', $v); return $this; }
     public function serviceModuleSeqNotEq(int $v): static { $this->w()->pred('service_module_seq', 'not_eq', $v); return $this; }
     public function serviceModuleSeqGt(int $v): static { $this->w()->pred('service_module_seq', 'gt', $v); return $this; }
@@ -650,6 +948,14 @@ final class Battle extends Q
     public function serviceModuleSeqIn(array $vs): static { $this->w()->predList('service_module_seq', 'in', array_values($vs)); return $this; }
     public function serviceModuleSeqNotIn(array $vs): static { $this->w()->predList('service_module_seq', 'not_in', array_values($vs)); return $this; }
     public function serviceModuleSeqBetween(int $lo, int $hi): static { $this->w()->predList('service_module_seq', 'between', [$lo, $hi]); return $this; }
+    public function serviceModuleSeqIsNull(): static { $this->w()->predNull('service_module_seq', 'is_null'); return $this; }
+    public function serviceModuleSeqIsNotNull(): static { $this->w()->predNull('service_module_seq', 'is_not_null'); return $this; }
+    public function serviceModuleSeqEqCol(ColRef $ref): static { $this->w()->predCol('service_module_seq', 'eq_col', $ref); return $this; }
+    public function serviceModuleSeqNotEqCol(ColRef $ref): static { $this->w()->predCol('service_module_seq', 'not_eq_col', $ref); return $this; }
+    public function serviceModuleSeqGtCol(ColRef $ref): static { $this->w()->predCol('service_module_seq', 'gt_col', $ref); return $this; }
+    public function serviceModuleSeqGteCol(ColRef $ref): static { $this->w()->predCol('service_module_seq', 'gte_col', $ref); return $this; }
+    public function serviceModuleSeqLtCol(ColRef $ref): static { $this->w()->predCol('service_module_seq', 'lt_col', $ref); return $this; }
+    public function serviceModuleSeqLteCol(ColRef $ref): static { $this->w()->predCol('service_module_seq', 'lte_col', $ref); return $this; }
     public function serviceMemberSeqEq(int $v): static { $this->w()->pred('service_member_seq', 'eq', $v); return $this; }
     public function serviceMemberSeqNotEq(int $v): static { $this->w()->pred('service_member_seq', 'not_eq', $v); return $this; }
     public function serviceMemberSeqGt(int $v): static { $this->w()->pred('service_member_seq', 'gt', $v); return $this; }
@@ -659,6 +965,14 @@ final class Battle extends Q
     public function serviceMemberSeqIn(array $vs): static { $this->w()->predList('service_member_seq', 'in', array_values($vs)); return $this; }
     public function serviceMemberSeqNotIn(array $vs): static { $this->w()->predList('service_member_seq', 'not_in', array_values($vs)); return $this; }
     public function serviceMemberSeqBetween(int $lo, int $hi): static { $this->w()->predList('service_member_seq', 'between', [$lo, $hi]); return $this; }
+    public function serviceMemberSeqIsNull(): static { $this->w()->predNull('service_member_seq', 'is_null'); return $this; }
+    public function serviceMemberSeqIsNotNull(): static { $this->w()->predNull('service_member_seq', 'is_not_null'); return $this; }
+    public function serviceMemberSeqEqCol(ColRef $ref): static { $this->w()->predCol('service_member_seq', 'eq_col', $ref); return $this; }
+    public function serviceMemberSeqNotEqCol(ColRef $ref): static { $this->w()->predCol('service_member_seq', 'not_eq_col', $ref); return $this; }
+    public function serviceMemberSeqGtCol(ColRef $ref): static { $this->w()->predCol('service_member_seq', 'gt_col', $ref); return $this; }
+    public function serviceMemberSeqGteCol(ColRef $ref): static { $this->w()->predCol('service_member_seq', 'gte_col', $ref); return $this; }
+    public function serviceMemberSeqLtCol(ColRef $ref): static { $this->w()->predCol('service_member_seq', 'lt_col', $ref); return $this; }
+    public function serviceMemberSeqLteCol(ColRef $ref): static { $this->w()->predCol('service_member_seq', 'lte_col', $ref); return $this; }
     public function startDtEq(string $v): static { $this->w()->pred('start_dt', 'eq', $v); return $this; }
     public function startDtNotEq(string $v): static { $this->w()->pred('start_dt', 'not_eq', $v); return $this; }
     public function startDtGt(string $v): static { $this->w()->pred('start_dt', 'gt', $v); return $this; }
@@ -668,6 +982,14 @@ final class Battle extends Q
     public function startDtIn(array $vs): static { $this->w()->predList('start_dt', 'in', array_values($vs)); return $this; }
     public function startDtNotIn(array $vs): static { $this->w()->predList('start_dt', 'not_in', array_values($vs)); return $this; }
     public function startDtBetween(string $lo, string $hi): static { $this->w()->predList('start_dt', 'between', [$lo, $hi]); return $this; }
+    public function startDtIsNull(): static { $this->w()->predNull('start_dt', 'is_null'); return $this; }
+    public function startDtIsNotNull(): static { $this->w()->predNull('start_dt', 'is_not_null'); return $this; }
+    public function startDtEqCol(ColRef $ref): static { $this->w()->predCol('start_dt', 'eq_col', $ref); return $this; }
+    public function startDtNotEqCol(ColRef $ref): static { $this->w()->predCol('start_dt', 'not_eq_col', $ref); return $this; }
+    public function startDtGtCol(ColRef $ref): static { $this->w()->predCol('start_dt', 'gt_col', $ref); return $this; }
+    public function startDtGteCol(ColRef $ref): static { $this->w()->predCol('start_dt', 'gte_col', $ref); return $this; }
+    public function startDtLtCol(ColRef $ref): static { $this->w()->predCol('start_dt', 'lt_col', $ref); return $this; }
+    public function startDtLteCol(ColRef $ref): static { $this->w()->predCol('start_dt', 'lte_col', $ref); return $this; }
     public function endDtEq(string $v): static { $this->w()->pred('end_dt', 'eq', $v); return $this; }
     public function endDtNotEq(string $v): static { $this->w()->pred('end_dt', 'not_eq', $v); return $this; }
     public function endDtGt(string $v): static { $this->w()->pred('end_dt', 'gt', $v); return $this; }
@@ -677,6 +999,14 @@ final class Battle extends Q
     public function endDtIn(array $vs): static { $this->w()->predList('end_dt', 'in', array_values($vs)); return $this; }
     public function endDtNotIn(array $vs): static { $this->w()->predList('end_dt', 'not_in', array_values($vs)); return $this; }
     public function endDtBetween(string $lo, string $hi): static { $this->w()->predList('end_dt', 'between', [$lo, $hi]); return $this; }
+    public function endDtIsNull(): static { $this->w()->predNull('end_dt', 'is_null'); return $this; }
+    public function endDtIsNotNull(): static { $this->w()->predNull('end_dt', 'is_not_null'); return $this; }
+    public function endDtEqCol(ColRef $ref): static { $this->w()->predCol('end_dt', 'eq_col', $ref); return $this; }
+    public function endDtNotEqCol(ColRef $ref): static { $this->w()->predCol('end_dt', 'not_eq_col', $ref); return $this; }
+    public function endDtGtCol(ColRef $ref): static { $this->w()->predCol('end_dt', 'gt_col', $ref); return $this; }
+    public function endDtGteCol(ColRef $ref): static { $this->w()->predCol('end_dt', 'gte_col', $ref); return $this; }
+    public function endDtLtCol(ColRef $ref): static { $this->w()->predCol('end_dt', 'lt_col', $ref); return $this; }
+    public function endDtLteCol(ColRef $ref): static { $this->w()->predCol('end_dt', 'lte_col', $ref); return $this; }
     public function uuidEq(string $v): static { $this->w()->pred('uuid', 'eq', $v); return $this; }
     public function uuidNotEq(string $v): static { $this->w()->pred('uuid', 'not_eq', $v); return $this; }
     public function uuidIn(array $vs): static { $this->w()->predList('uuid', 'in', array_values($vs)); return $this; }
@@ -688,8 +1018,14 @@ final class Battle extends Q
     public function uuidEndsWith(string $v): static { $this->w()->pred('uuid', 'ends_with', $v); return $this; }
     public function uuidIsNull(): static { $this->w()->predNull('uuid', 'is_null'); return $this; }
     public function uuidIsNotNull(): static { $this->w()->predNull('uuid', 'is_not_null'); return $this; }
+    public function uuidEqCol(ColRef $ref): static { $this->w()->predCol('uuid', 'eq_col', $ref); return $this; }
+    public function uuidNotEqCol(ColRef $ref): static { $this->w()->predCol('uuid', 'not_eq_col', $ref); return $this; }
     public function isSinglePlayEq(bool $v): static { $this->w()->pred('is_single_play', 'eq', $v); return $this; }
     public function isSinglePlayNotEq(bool $v): static { $this->w()->pred('is_single_play', 'not_eq', $v); return $this; }
+    public function isSinglePlayIsNull(): static { $this->w()->predNull('is_single_play', 'is_null'); return $this; }
+    public function isSinglePlayIsNotNull(): static { $this->w()->predNull('is_single_play', 'is_not_null'); return $this; }
+    public function isSinglePlayEqCol(ColRef $ref): static { $this->w()->predCol('is_single_play', 'eq_col', $ref); return $this; }
+    public function isSinglePlayNotEqCol(ColRef $ref): static { $this->w()->predCol('is_single_play', 'not_eq_col', $ref); return $this; }
     public function likeCountEq(int $v): static { $this->w()->pred('like_count', 'eq', $v); return $this; }
     public function likeCountNotEq(int $v): static { $this->w()->pred('like_count', 'not_eq', $v); return $this; }
     public function likeCountGt(int $v): static { $this->w()->pred('like_count', 'gt', $v); return $this; }
@@ -699,24 +1035,38 @@ final class Battle extends Q
     public function likeCountIn(array $vs): static { $this->w()->predList('like_count', 'in', array_values($vs)); return $this; }
     public function likeCountNotIn(array $vs): static { $this->w()->predList('like_count', 'not_in', array_values($vs)); return $this; }
     public function likeCountBetween(int $lo, int $hi): static { $this->w()->predList('like_count', 'between', [$lo, $hi]); return $this; }
+    public function likeCountIsNull(): static { $this->w()->predNull('like_count', 'is_null'); return $this; }
+    public function likeCountIsNotNull(): static { $this->w()->predNull('like_count', 'is_not_null'); return $this; }
+    public function likeCountEqCol(ColRef $ref): static { $this->w()->predCol('like_count', 'eq_col', $ref); return $this; }
+    public function likeCountNotEqCol(ColRef $ref): static { $this->w()->predCol('like_count', 'not_eq_col', $ref); return $this; }
+    public function likeCountGtCol(ColRef $ref): static { $this->w()->predCol('like_count', 'gt_col', $ref); return $this; }
+    public function likeCountGteCol(ColRef $ref): static { $this->w()->predCol('like_count', 'gte_col', $ref); return $this; }
+    public function likeCountLtCol(ColRef $ref): static { $this->w()->predCol('like_count', 'lt_col', $ref); return $this; }
+    public function likeCountLteCol(ColRef $ref): static { $this->w()->predCol('like_count', 'lte_col', $ref); return $this; }
     public function aesHexEmailEq(string $v): static { $this->w()->pred('aes_hex_email', 'eq', $v); return $this; }
     public function aesHexEmailNotEq(string $v): static { $this->w()->pred('aes_hex_email', 'not_eq', $v); return $this; }
     public function aesHexEmailIn(array $vs): static { $this->w()->predList('aes_hex_email', 'in', array_values($vs)); return $this; }
     public function aesHexEmailNotIn(array $vs): static { $this->w()->predList('aes_hex_email', 'not_in', array_values($vs)); return $this; }
     public function aesHexEmailIsNull(): static { $this->w()->predNull('aes_hex_email', 'is_null'); return $this; }
     public function aesHexEmailIsNotNull(): static { $this->w()->predNull('aes_hex_email', 'is_not_null'); return $this; }
+    public function aesHexEmailEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_email', 'eq_col', $ref); return $this; }
+    public function aesHexEmailNotEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_email', 'not_eq_col', $ref); return $this; }
     public function aesHexPhoneEq(string $v): static { $this->w()->pred('aes_hex_phone', 'eq', $v); return $this; }
     public function aesHexPhoneNotEq(string $v): static { $this->w()->pred('aes_hex_phone', 'not_eq', $v); return $this; }
     public function aesHexPhoneIn(array $vs): static { $this->w()->predList('aes_hex_phone', 'in', array_values($vs)); return $this; }
     public function aesHexPhoneNotIn(array $vs): static { $this->w()->predList('aes_hex_phone', 'not_in', array_values($vs)); return $this; }
     public function aesHexPhoneIsNull(): static { $this->w()->predNull('aes_hex_phone', 'is_null'); return $this; }
     public function aesHexPhoneIsNotNull(): static { $this->w()->predNull('aes_hex_phone', 'is_not_null'); return $this; }
+    public function aesHexPhoneEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_phone', 'eq_col', $ref); return $this; }
+    public function aesHexPhoneNotEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_phone', 'not_eq_col', $ref); return $this; }
     public function ipEq(string $v): static { $this->w()->pred('ip', 'eq', $v); return $this; }
     public function ipNotEq(string $v): static { $this->w()->pred('ip', 'not_eq', $v); return $this; }
     public function ipIn(array $vs): static { $this->w()->predList('ip', 'in', array_values($vs)); return $this; }
     public function ipNotIn(array $vs): static { $this->w()->predList('ip', 'not_in', array_values($vs)); return $this; }
     public function ipIsNull(): static { $this->w()->predNull('ip', 'is_null'); return $this; }
     public function ipIsNotNull(): static { $this->w()->predNull('ip', 'is_not_null'); return $this; }
+    public function ipEqCol(ColRef $ref): static { $this->w()->predCol('ip', 'eq_col', $ref); return $this; }
+    public function ipNotEqCol(ColRef $ref): static { $this->w()->predCol('ip', 'not_eq_col', $ref); return $this; }
     public function gzExtendIsNull(): static { $this->w()->predNull('gz_extend', 'is_null'); return $this; }
     public function gzExtendIsNotNull(): static { $this->w()->predNull('gz_extend', 'is_not_null'); return $this; }
     public function jsonSettingIsNull(): static { $this->w()->predNull('json_setting', 'is_null'); return $this; }

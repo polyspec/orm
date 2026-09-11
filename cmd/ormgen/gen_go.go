@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/maxkwon/orm/engine/ir"
 	"github.com/maxkwon/orm/engine/schema"
 )
 
@@ -82,34 +83,23 @@ func opsFor(c *schema.Col) []opDef {
 	return out
 }
 
-// allowed mirrors ir.OpAllowed without importing ir (keeps ormgen independent of the compiler's package graph).
-func allowed(c *schema.Col, op string) bool {
-	if len(c.Styles) > 0 && c.Type != "inet" {
-		if c.Styles[0] == "aes" {
-			return op == "eq" || op == "not_eq" || op == "in" || op == "not_in" || op == "is_null" || op == "is_not_null"
-		}
-		return op == "is_null" || op == "is_not_null"
+// allowed is the engine's own table (engine/ir): the generator never redefines it.
+func allowed(c *schema.Col, op string) bool { return ir.OpAllowed(c, op) }
+
+// colOpsFor lists the column-to-column comparison suffixes a column supports
+// (the comparison ops it allows, minus styled columns).
+func colOpsFor(c *schema.Col) []opDef {
+	if len(appStyles(c)) > 0 {
+		return nil
 	}
-	byType := map[string][]string{
-		"i32":    {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
-		"string": {"eq", "not_eq", "in", "not_in", "like", "like_binary", "contains", "starts_with", "ends_with", "is_null", "is_not_null"},
-		"text":   {"eq", "not_eq", "like", "like_binary", "contains", "starts_with", "ends_with", "is_null", "is_not_null"},
-		"enum":   {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"}, "bool": {"eq", "not_eq", "is_null", "is_not_null"},
-		"inet": {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"}, "bytes": {"is_null", "is_not_null"}, "json": {"is_null", "is_not_null"}, "point": {"is_null", "is_not_null"},
-	}
-	for _, k := range []string{"i64", "f64", "decimal", "date", "time", "datetime"} {
-		byType[k] = byType["i32"]
-	}
-	ops := byType[c.Type]
-	if !c.Nullable && (op == "is_null" || op == "is_not_null") {
-		return false
-	}
-	for _, o := range ops {
-		if o == op {
-			return true
+	var out []opDef
+	for _, o := range opsFor(c) {
+		switch o.Op {
+		case "eq", "not_eq", "gt", "gte", "lt", "lte":
+			out = append(out, opDef{Suffix: o.Suffix + "Col", Op: o.Op + "_col", Kind: "col"})
 		}
 	}
-	return false
+	return out
 }
 
 type goEntity struct {
@@ -129,6 +119,7 @@ type goCol struct {
 	Name, Field, Type, ColType string
 	Nullable, Lazy, PK, Auto   bool
 	Ops                        []opDef
+	ColOps                     []opDef  // <col><Op>Col(ref) comparisons
 	Styles                     []string // executor-side codec stages (docs/codec.md); the field is then `any`
 }
 
@@ -163,7 +154,7 @@ func parentOf(m *schema.Manifest, e *schema.Entity, col string) string {
 func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 	ge := goEntity{Name: e.Name, Type: pascal(e.Name), Table: e.Table, PK: e.PK[0], Auto: e.Auto != ""}
 	for _, c := range e.Columns {
-		gc := goCol{Name: c.Name, Field: pascal(c.Name), Type: goType(c), ColType: c.Type, Nullable: c.Nullable, Lazy: c.Lazy, PK: c.PK, Auto: c.Auto, Ops: opsFor(c), Styles: appStyles(c)}
+		gc := goCol{Name: c.Name, Field: pascal(c.Name), Type: goType(c), ColType: c.Type, Nullable: c.Nullable, Lazy: c.Lazy, PK: c.PK, Auto: c.Auto, Ops: opsFor(c), ColOps: colOpsFor(c), Styles: appStyles(c)}
 		if len(gc.Styles) > 0 {
 			gc.Nullable = false // `any` carries nil itself
 		}
@@ -338,6 +329,8 @@ func scan{{.Type}}(vals []any, a *plan.Assemble, rs *orm.Rows) *{{.Type}}Row {
 			r.{{.Field}} = {{conv .Type}}
 {{- end}}
 {{- end}}
+		default:
+			r.SetExtra(c.Name, v)
 		}
 	}
 	for _, ch := range a.Children {
@@ -361,6 +354,18 @@ func scan{{.Type}}(vals []any, a *plan.Assemble, rs *orm.Rows) *{{.Type}}Row {
 	}
 	r.Mark({{printf "%q" .Name}}, {{printf "%q" .PK}}, r.{{pascal .PK}})
 	return r
+}
+
+// {{.Type}}Cols are column references for column-to-column predicates
+// (w.SeqEqCol({{.Type}}Cols.Seq)); .At("service") points into a joined entity.
+var {{.Type}}Cols = struct {
+{{- range .Cols}}
+	{{.Field}} orm.ColRef
+{{- end}}
+}{
+{{- range .Cols}}
+	{{.Field}}: orm.ColRef{Column: {{printf "%q" .Name}}},
+{{- end}}
 }
 
 // {{.Type}} builds a statement over {{.Table}}: New{{.Type}}() → chain → terminal(ctx, db).
@@ -393,8 +398,12 @@ func (q *{{$.Type}}) {{$c.Field}}{{.Suffix}}(lo, hi {{$c.Type}}) *{{$.Type}} { q
 {{- else}}
 func (w *{{$.Type}}Where) {{$c.Field}}{{.Suffix}}() *{{$.Type}}Where { w.w.PredNull({{printf "%q" $c.Name}}, {{printf "%q" .Op}}); return w }
 func (q *{{$.Type}}) {{$c.Field}}{{.Suffix}}() *{{$.Type}} { q.q.W().PredNull({{printf "%q" $c.Name}}, {{printf "%q" .Op}}); return q }
-{{- end}}
 {{- end}}{{end}}
+{{- range $c.ColOps}}
+func (w *{{$.Type}}Where) {{$c.Field}}{{.Suffix}}(ref orm.ColRef) *{{$.Type}}Where { w.w.PredCol({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, ref.Path, ref.Column); return w }
+func (q *{{$.Type}}) {{$c.Field}}{{.Suffix}}(ref orm.ColRef) *{{$.Type}} { q.q.W().PredCol({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, ref.Path, ref.Column); return q }
+{{- end}}
+{{- end}}
 {{- range .Fulltext}}
 func (w *{{$.Type}}Where) {{ftName .}}Match(v string) *{{$.Type}}Where { w.w.Match([]string{ {{quoteList .}} }, false, v); return w }
 func (w *{{$.Type}}Where) {{ftName .}}MatchBoolean(v string) *{{$.Type}}Where { w.w.Match([]string{ {{quoteList .}} }, true, v); return w }

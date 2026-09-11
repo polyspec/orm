@@ -291,6 +291,26 @@ func main() {
 		}, nil
 	})
 
+	run("eq_col_where", func() (any, error) {
+		// service.seq = a.service_module_seq → battles 1..9 only (seq 10 has service 11, module 1)
+		c, err := gen.NewBattle().
+			JoinService(gen.NewService().Where(func(w *gen.ServiceWhere) { w.SeqEqCol(gen.BattleCols.ServiceModuleSeq) })).
+			SeqIn([]int64{1, 2, 10}).OrderBySeqAsc().All(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		return keys(c), nil
+	})
+	run("expr_where", func() (any, error) {
+		return gen.NewBattle().ServiceSeqEq(7).Expr("DAYOFMONTH(`start_dt`) = ?", 1).Count(ctx, db)
+	})
+	run("select_expr", func() (any, error) {
+		b, err := gen.NewBattle().SelectExpr("tag", "CONCAT(`name`, '!')").SeqEq(42).One(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"seq": b.Seq, "tag": b.Extra("tag")}, nil
+	})
 	run("codec_roundtrip", func() (any, error) {
 		value := map[string]any{"a": int64(1), "b": []any{int64(1), int64(2), map[string]any{"c": "한글/slash"}}, "d": nil, "e": true, "f": 1.5}
 		ip := "10.1.2.3"

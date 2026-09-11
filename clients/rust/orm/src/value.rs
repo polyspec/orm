@@ -55,6 +55,12 @@ pub enum Val {
     Json(serde_json::Value),
 }
 
+impl Default for Val {
+    fn default() -> Self {
+        Val::Null
+    }
+}
+
 impl Val {
     pub fn is_null(&self) -> bool {
         matches!(self, Val::Null)
