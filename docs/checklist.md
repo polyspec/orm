@@ -102,7 +102,7 @@
 
 ### 4-C 검증 — 레인 V
 - [x] T4.8 적합성 벡터 +13(S3 6 + S4 4 + 조인 3: `join_fulltext_or` R9 fulltext OR 탐색, `join_two_groups` 조인 2개의 ON/WHERE, `join_multi_level` 2단 조인 별칭) → **43 × 3언어 × 3 DB 동일**
-- [ ] T4.9 `docs/examples/complex-query.md`를 실행 가능한 예제로 승격(3언어 실행, 플랜 덤프 비교)
+- [x] T4.9 `examples/complex`(3언어, 같은 JSON, 토큰 49개 동일): 조인 on/where + 루트 or 그룹 + 탐색 + 3단 관계 옵션 + 집계/having. `docs/examples/*.md`(example schema)는 임포트 전까지 설명용으로 남김 — README에 명시
 
 ---
 

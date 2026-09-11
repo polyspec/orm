@@ -17,6 +17,10 @@ name = "conformance"
 path = "src/conformance.rs"
 
 [[bin]]
+name = "complex"
+path = "../../../examples/complex/rust/main.rs"
+
+[[bin]]
 name = "demo"
 path = "../../../examples/thin-slice/rust/main.rs"
 
