@@ -35,6 +35,8 @@ pub type OnQuery = Box<dyn Fn(&str, &[Param], std::time::Duration, u64, Option<&
 
 /// The masked form of a secret bind in the hook payload and in `sql()`.
 pub const SECRET_MASK: &str = "$SECRET";
+/// Executor-supplied timestamps (`now` slots) are shown to hooks as this, so logs and recorded vectors stay deterministic.
+pub const NOW_MASK: &str = "$NOW";
 
 /// Executor configuration: declared, never discovered.
 pub struct Config {
@@ -312,6 +314,10 @@ fn masked(st: &Step, args: &[Param], n_parent: usize) -> Vec<Param> {
                 out.push(Param::Str(SECRET_MASK.into()));
                 i += 1;
             }
+            "now" => {
+                out.push(Param::Str(NOW_MASK.into()));
+                i += 1;
+            }
             _ => {
                 out.push(args[i].clone());
                 i += 1;
@@ -418,7 +424,7 @@ impl Db {
     fn emit(&self, st: &Step, sql: &str, args: &[Param], n_parent: usize, start: std::time::Instant, err: Option<&Error>) {
         if let Some(h) = &self.cfg.on_query {
             let d = start.elapsed();
-            if st.bind_slots.iter().any(|b| b.from == "secret") {
+            if st.bind_slots.iter().any(|b| b.from == "secret" || b.from == "now") {
                 h(sql, &masked(st, args, n_parent), d, st.plan_id, err);
             } else {
                 h(sql, args, d, st.plan_id, err);
@@ -976,6 +982,7 @@ pub fn sql(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Sql> {
         match b.from.as_str() {
             "param" => binds.push(param_arg(b, &req.params)?),
             "secret" => binds.push(Param::Str(SECRET_MASK.into())),
+            "now" => binds.push(Param::Str(NOW_MASK.into())),
             other => return Err(Error::Config(format!("bind from {other}"))),
         }
     }

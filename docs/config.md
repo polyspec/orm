@@ -7,9 +7,12 @@ or relative path is a startup error (`CONFIG`).
 schema = "/srv/app/schema/schema.json"      # the manifest the client was generated from; its schema_hash is checked once at startup
 
 [db]
+driver = "mysql"            # mysql (default) | postgres | sqlite — also the engine dialect (ormd -dialect / wasm orm_load_dialect)
 dsn = "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true"   # Go
 # dsn = "mysql:unix_socket=/tmp/mysql.sock;dbname=orm_bench;charset=utf8mb4"          # PHP (PDO)
 # dsn = "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock"                      # Rust (sqlx)
+# postgres: "postgres://user@host:5432/db?sslmode=disable" (Go/Rust) / "pgsql:host=…;dbname=…;user=…" (PHP)
+# sqlite:   "file:/abs/path.sqlite?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)" (Go) / "sqlite:///abs/path.sqlite" (Rust) / "/abs/path.sqlite" (PHP)
 user = "root"
 password = ""
 pool = 8
@@ -30,4 +33,4 @@ on_query = false            # log every statement (sql, binds with secrets maske
 
 Checks at startup (all three): `schema` exists and its `schema_hash` equals the generated client's
 (`SCHEMA_HASH_MISMATCH` otherwise — no watching, no reload); `ormd`/`engine` paths exist and are absolute;
-`secrets.aes` or `aes_env` present when the schema has aes columns.
+`secrets.aes` or `aes_env` present when the schema has aes columns; `[db].user/password` only with mysql DSNs (other drivers carry the user in the URL); the daemon/engine dialect must equal `[db].driver` (`CONFIG` otherwise).
