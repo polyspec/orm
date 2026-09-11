@@ -19,7 +19,9 @@ import (
 	"github.com/maxkwon/orm/engine/plan"
 )
 
-func codecErr(code, format string, a ...any) error { return &ir.Error{Code: code, Msg: fmt.Sprintf(format, a...)} }
+func codecErr(code, format string, a ...any) error {
+	return &ir.Error{Code: code, Msg: fmt.Sprintf(format, a...)}
+}
 
 // Decode turns a stored cell (string/[]byte/nil) into the JSON-like value model:
 // nil, bool, int64, float64, string, []any, map[string]any.
@@ -270,7 +272,9 @@ type phpParser struct {
 	i int
 }
 
-func (p *phpParser) fail(msg string) error { return codecErr("CODEC_DECODE", "serialize: %s at %d", msg, p.i) }
+func (p *phpParser) fail(msg string) error {
+	return codecErr("CODEC_DECODE", "serialize: %s at %d", msg, p.i)
+}
 
 func (p *phpParser) expect(c byte) error {
 	if p.i >= len(p.b) || p.b[p.i] != c {
