@@ -43,7 +43,7 @@ go run ./tests/conformance/check run                                # 3 language
 ```
 
 ## Documents
-`docs/dsl.md` grammar · `docs/schema.md` Mermaid dialect, import, validate · `docs/protocol.md` IR/Plan ·
+`examples/thin-slice` (same statement in three languages) · `examples/complex` (joins, groups, three relation levels, aggregates — identical JSON in three languages) · `docs/dsl.md` grammar · `docs/schema.md` Mermaid dialect, import, validate · `docs/protocol.md` IR/Plan ·
 `docs/codec.md` column styles · `docs/dialects.md` MySQL/PostgreSQL/SQLite · `docs/config.md` orm.toml ·
 `docs/errors.yaml` codes · `docs/perf.md` measurements and gates · `docs/checklist.md` work plan · `docs/lanes/` parallel lane specs.
 
