@@ -47,15 +47,15 @@ impl BattleRow {
     pub const ENTITY: &'static str = "battle";
     pub const PK: &'static str = "seq";
 
-    pub(crate) fn from_row(vals: &[Val], a: &orm::plan::Assemble) -> Self {
+    pub(crate) fn from_row(vals: &mut [Val], a: &orm::plan::Assemble) -> Self {
         let mut r = Self::default();
         r.loaded = true;
         for c in &a.columns {
-            let v = &vals[c.index];
+            let v = &mut vals[c.index];
             match c.name.as_str() {
                 "seq" => r.seq = v.as_i64(),
-                "name" => r.name = v.as_string(),
-                "description" => r.description = if v.is_null() { None } else { Some(v.as_string()) },
+                "name" => r.name = v.take_string(),
+                "description" => r.description = if v.is_null() { None } else { Some(v.take_string()) },
                 "created_ts" => r.created_ts = v.as_datetime(),
                 "updated_ts" => r.updated_ts = v.as_datetime(),
                 "is_close" => r.is_close = v.as_bool(),
@@ -67,18 +67,18 @@ impl BattleRow {
                 "success_count" => r.success_count = v.as_i64() as i32,
                 "player_count" => r.player_count = v.as_i64() as i32,
                 "read_count" => r.read_count = v.as_i64() as i32,
-                "cover_url" => r.cover_url = if v.is_null() { None } else { Some(v.as_string()) },
+                "cover_url" => r.cover_url = if v.is_null() { None } else { Some(v.take_string()) },
                 "user_seq" => r.user_seq = v.as_i64(),
                 "service_seq" => r.service_seq = v.as_i64(),
                 "service_module_seq" => r.service_module_seq = v.as_i64(),
                 "service_member_seq" => r.service_member_seq = v.as_i64(),
                 "start_dt" => r.start_dt = v.as_datetime(),
                 "end_dt" => r.end_dt = v.as_datetime(),
-                "uuid" => r.uuid = if v.is_null() { None } else { Some(v.as_string()) },
+                "uuid" => r.uuid = if v.is_null() { None } else { Some(v.take_string()) },
                 "is_single_play" => r.is_single_play = v.as_bool(),
                 "like_count" => r.like_count = v.as_i64() as i32,
-                "aes_hex_email" => r.aes_hex_email = if v.is_null() { None } else { Some(v.as_string()) },
-                "aes_hex_phone" => r.aes_hex_phone = if v.is_null() { None } else { Some(v.as_string()) },
+                "aes_hex_email" => r.aes_hex_email = if v.is_null() { None } else { Some(v.take_string()) },
+                "aes_hex_phone" => r.aes_hex_phone = if v.is_null() { None } else { Some(v.take_string()) },
                 _ => {}
             }
         }
@@ -1061,13 +1061,13 @@ impl Battle {
 
     // ---- terminals ----
     pub async fn one(mut self, ex: &impl Exec) -> Result<Option<BattleRow>> {
-        let rows = db::select(ex, &mut self.q.req, "one").await?;
-        Ok(rows.data.first().map(|v| BattleRow::from_row(v, &rows.assemble)))
+        let mut rows = db::select(ex, &mut self.q.req, "one").await?;
+        Ok(rows.data.first_mut().map(|v| BattleRow::from_row(v, &rows.assemble)))
     }
 
     pub async fn all(mut self, ex: &impl Exec) -> Result<Collection<BattleRow>> {
-        let rows = db::select(ex, &mut self.q.req, "all").await?;
-        Ok(collect(&rows))
+        let mut rows = db::select(ex, &mut self.q.req, "all").await?;
+        Ok(collect(&mut rows))
     }
 
     pub async fn count(mut self, ex: &impl Exec) -> Result<i64> {
@@ -1097,9 +1097,9 @@ impl Battle {
     pub async fn paginate(mut self, ex: &impl Exec, page: u32, per: u32) -> Result<Page<BattleRow>> {
         let page = page.max(1);
         self.q.node().limit = Some(orm::ir::Limit { offset: (page - 1) * per, count: per });
-        let (rows, total) = db::paginate(ex, &mut self.q.req).await?;
+        let (mut rows, total) = db::paginate(ex, &mut self.q.req).await?;
         let pages = (total + per as i64 - 1) / per as i64;
-        Ok(Page { items: collect(&rows), total, pages, current: page as i64, per: per as i64 })
+        Ok(Page { items: collect(&mut rows), total, pages, current: page as i64, per: per as i64 })
     }
 
     pub async fn insert(mut self, ex: &impl Exec) -> Result<Option<BattleRow>> {
@@ -1114,10 +1114,11 @@ impl Battle {
 
 impl Default for Battle { fn default() -> Self { Self::new() } }
 
-fn collect(rows: &db::Rows) -> Collection<BattleRow> {
+fn collect(rows: &mut db::Rows) -> Collection<BattleRow> {
     let mut c = Collection::with_capacity(rows.data.len());
-    for v in &rows.data {
-        c.put(Key::of(&v[0]), BattleRow::from_row(v, &rows.assemble));
+    for v in &mut rows.data {
+        let k = Key::of(&v[0]);
+        c.put(k, BattleRow::from_row(v, &rows.assemble));
     }
     c
 }
