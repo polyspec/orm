@@ -110,7 +110,7 @@
 
 ### 5-A 도구 — 레인 E
 - [x] T5.10 `ormgen import --dsn`(information_schema → `.mmd`, 결정적·멱등, 이름 기반 FK 추론, 인덱스→`%%`, `=now`, 기존 파일의 라벨/lazy/bool/스타일/predicate 이어받기) — orm_bench 임포트 = 손으로 쓴 매니페스트와 타입·관계·인덱스 동일. **150-table fixture는 로컬에 없음** → T2.15(150테이블 게이트)는 사용자가 DB 접근을 주면 실행
-- [ ] T5.1 **P** `ormgen validate --dsn`(`.mmd` ↔ `schema.json` ↔ 라이브 DB) + 각 클라이언트 초기화 시 `schema_hash` 부팅 검사 1회(불일치 = 즉시 에러, 감시 없음)
+- [~] T5.1 `ormgen validate --dsn`(매니페스트 ↔ 라이브 DB: 테이블·컬럼·타입·NULL·auto·스타일·PK, exit 1) 완료 → 클라이언트 `schema_hash` 부팅 검사 1회는 레인(S5)
 - [~] T5.2 `docs/errors.yaml` 작성(엔진/실행기/드라이버 출처 표기) → `ormgen errors --lang` enum 생성 + 각 실행기가 DEADLOCK/DUPLICATE_KEY 매핑은 레인
 
 ### 5-B 런타임 — 레인 G ∥ P ∥ R
