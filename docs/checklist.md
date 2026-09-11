@@ -114,9 +114,9 @@
 - [~] T5.2 `docs/errors.yaml` + `ormgen errors --lang go|php|rust` 완료 → 상수 파일 체크인·사용·드라이버 에러 매핑은 레인(docs/lanes/s5.md)
 
 ### 5-B 런타임 — 레인 G ∥ P ∥ R
-- [~] T5.3 `on_query(sql, binds, duration, plan_id, err)` — Go 완료(plan_id 16자리 hex, 비밀 `$SECRET` 마스킹), PHP·Rust 레인 진행 중
-- [~] T5.3b 고정 비용: Go 66µs vs 네이티브 61µs(+8%, 이전 +13%; IR 해시 무직렬화, 스캔 셀 재사용, 플랜별 스캔 팩트 캐시). ≤+5%는 typed 직접 스캔(생성기 재설계) 필요 → S7 후보. PHP·Rust 레인 진행 중
-- [~] T5.4 PHP `EMULATE_PREPARES` 실측·결정 — PHP 레인 진행 중
+- [~] T5.3 `on_query(sql, binds, duration, plan_id, err)` — Go·PHP 완료(plan_id 16자리 hex, 비밀 `$SECRET` 마스킹), Rust 레인 진행 중
+- [~] T5.3b 고정 비용: Go 66µs vs 네이티브 61µs(+8%, 이전 +13%; IR 해시 무직렬화, 스캔 셀 재사용, 플랜별 스캔 팩트 캐시). ≤+5%는 typed 직접 스캔(생성기 재설계) 필요 → S7 후보. PHP 62µs vs 56µs(+11%, 이전 +16%; 빌더 시그니처 로컬 캐시). Rust 레인 진행 중
+- [x] T5.4 PHP `EMULATE_PREPARES = true` 결정: 콜드(prepare+execute, PHP-FPM 현실) PK 72→48µs, IN(8) 107→75, 100행 460→382; 웜 PK는 33→49로 손해. 타입 동일, 러너 출력 동일 (`clients/php/tests/bench_emulate.php`)
 - [~] T5.5 `orm.toml` 스펙 `docs/config.md` 작성 → 로더 3언어(절대경로·symlink 금지 검증, schema_hash 부팅 검사)는 레인
 
 ### 5-C 배포 — 레인 V
