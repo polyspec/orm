@@ -96,6 +96,14 @@ func code(err error) any {
 	return err.Error()
 }
 
+// dsn is ORM_MYSQL_DSN_GO when set (CI), else the local socket.
+func dsn() string {
+	if v := os.Getenv("ORM_MYSQL_DSN_GO"); v != "" {
+		return v
+	}
+	return "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true"
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: runner_go <schema.json>")
@@ -113,11 +121,17 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	db, err := orm.Open("mysql", "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true", eng, orm.Config{
-		AESKey: "bench-salt",
+	const aesKey = "bench-salt"
+	db, err := orm.Open("mysql", dsn(), eng, orm.Config{
+		AESKey: aesKey,
 		OnQuery: func(e orm.Event) {
 			binds := make([]any, len(e.Args))
 			for i, a := range e.Args {
+				// The hook masks secret binds ($SECRET); the vectors record the
+				// value actually bound, which this runner configured itself.
+				if a == orm.Secret {
+					a = aesKey
+				}
 				binds[i] = norm(a)
 			}
 			log = append(log, stmt{SQL: e.SQL, Binds: binds})
@@ -126,7 +140,9 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	gen.Init(eng)
+	if err := gen.Init(eng); err != nil {
+		fail(err)
+	}
 	ctx := context.Background()
 	out := map[string]vector{}
 
@@ -297,7 +313,7 @@ func main() {
 		return map[string]any{
 			"inserted": created.Seq > 0, "email": created.AesHexEmail,
 			"after_update": map[string]any{"name": again.Name, "like_count": again.LikeCount},
-			"stale": stale, "left": left,
+			"stale":        stale, "left": left,
 		}, nil
 	})
 

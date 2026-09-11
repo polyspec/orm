@@ -758,7 +758,7 @@ func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
 			}
 		}
 	}
-	r.SetProjection(a)
+	r.SetProjection(rs.Projection(a))
 	r.Mark("author", "seq", r.Seq)
 	return r
 }
