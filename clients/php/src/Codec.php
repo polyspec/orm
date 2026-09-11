@@ -13,7 +13,7 @@ final class Codec
             return null;
         }
         if (!is_string($raw)) {
-            throw new OrmException('CODEC_DECODE', 'cell is not a string');
+            throw new OrmException(Code::CODEC_DECODE, 'cell is not a string');
         }
         $v = $raw;
         for ($i = count($styles) - 1; $i >= 0; $i--) {
@@ -21,22 +21,22 @@ final class Codec
                 case 'gz':
                     $v = @gzuncompress($v);
                     if ($v === false) {
-                        throw new OrmException('CODEC_DECODE', 'gz: bad zlib stream');
+                        throw new OrmException(Code::CODEC_DECODE, 'gz: bad zlib stream');
                     }
                     break;
                 case 'base64':
                     $v = base64_decode(trim($v), true);
                     if ($v === false) {
-                        throw new OrmException('CODEC_DECODE', 'base64: bad input');
+                        throw new OrmException(Code::CODEC_DECODE, 'base64: bad input');
                     }
                     break;
                 case 'serialize':
                     if (preg_match('/^(O|C|r|R):/', $v) === 1 || str_contains($v, ';O:') || str_contains($v, ';C:')) {
-                        throw new OrmException('CODEC_UNSUPPORTED', 'serialize: objects and references are not supported');
+                        throw new OrmException(Code::CODEC_UNSUPPORTED, 'serialize: objects and references are not supported');
                     }
                     $v = @unserialize($v, ['allowed_classes' => false]);
                     if ($v === false && $raw !== serialize(false)) {
-                        throw new OrmException('CODEC_DECODE', 'serialize: bad format');
+                        throw new OrmException(Code::CODEC_DECODE, 'serialize: bad format');
                     }
                     $v = self::normalize($v);
                     break;
@@ -45,11 +45,11 @@ final class Codec
                     try {
                         $v = json_decode($v, true, 512, JSON_THROW_ON_ERROR);
                     } catch (\JsonException $e) {
-                        throw new OrmException('CODEC_DECODE', 'json: ' . $e->getMessage());
+                        throw new OrmException(Code::CODEC_DECODE, 'json: ' . $e->getMessage());
                     }
                     break;
                 default:
-                    throw new OrmException('CODEC_UNSUPPORTED', "style {$styles[$i]}");
+                    throw new OrmException(Code::CODEC_UNSUPPORTED, "style {$styles[$i]}");
             }
         }
         return $v;
@@ -78,7 +78,7 @@ final class Codec
                     $cur = gzcompress($cur, 9);
                     break;
                 default:
-                    throw new OrmException('CODEC_UNSUPPORTED', "style $st");
+                    throw new OrmException(Code::CODEC_UNSUPPORTED, "style $st");
             }
         }
         return $cur;

@@ -9,13 +9,30 @@ namespace Orm;
  */
 class Db
 {
+    /**
+     * Decided by measurement (clients/php/tests/bench_emulate.php, S5, p50 µs, off → on):
+     * cold (prepare + execute, what a PHP-FPM request pays once per statement shape since
+     * PDOStatements do not outlive the request): pk 72 → 48, IN(8) 107 → 75, 100 rows 460 → 382;
+     * warm (statement reused in-process): pk 33 → 49, IN(8) 75 → 84, 100 rows 435 → 400.
+     * Web requests run most shapes once, so emulation wins; a CLI loop re-running one small
+     * statement pays ~15µs more per execution (the server re-parses the text protocol query).
+     * Types are unchanged: mysqlnd returns native ints/floats, INET6_NTOA strings and JSON text
+     * in both modes (the conformance runner prints identical output). The DSN must carry
+     * charset=utf8mb4: the client-side quoting uses the connection charset.
+     */
+    public const EMULATE_PREPARES = true;
+
     /** @var array<string, \PDOStatement> */
     private array $stmts = [];
+    /** @var list<int> positions of secret slots in the last args() result (masked in the on_query hook) */
+    private array $secretPos = [];
+    /** whether the last args() result holds a bool (PDO would send it as '' / '1'; exec() sends 0 / 1) */
+    private bool $hasBool = false;
 
     public function __construct(public readonly \PDO $pdo)
     {
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, false);
+        $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, self::EMULATE_PREPARES);
         $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
     }
 
@@ -26,7 +43,11 @@ class Db
             \PDO::ATTR_PERSISTENT => $persistent,
             \Pdo\Mysql::ATTR_FOUND_ROWS => true,
         ];
-        return new self(new \PDO($dsn, $user, $password, $opts));
+        try {
+            return new self(new \PDO($dsn, $user, $password, $opts));
+        } catch (\PDOException $e) {
+            throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
+        }
     }
 
     public function db(): Db
@@ -59,6 +80,9 @@ class Db
                 if ($this->pdo->inTransaction()) {
                     $this->pdo->rollBack();
                 }
+                if ($e instanceof \PDOException) {
+                    $e = OrmException::fromDriver($e);
+                }
                 if (!self::isDeadlock($e)) {
                     throw $e;
                 }
@@ -71,8 +95,7 @@ class Db
 
     public static function isDeadlock(\Throwable $e): bool
     {
-        $m = $e->getMessage();
-        return str_contains($m, '1213') || str_contains($m, '40001') || stripos($m, 'deadlock') !== false;
+        return $e instanceof OrmException && $e->code_ === Code::DEADLOCK;
     }
 
     // ---- execution ----
@@ -84,7 +107,9 @@ class Db
     private function args(array $step, array $params, array $parentVals = [], bool $maskSecrets = false): array
     {
         $out = [];
-        foreach ($step['bind_slots'] as $b) {
+        $this->secretPos = [];
+        $this->hasBool = false;
+        foreach ($step['bind_slots'] ?? [] as $b) {
             switch ($b['from']) {
                 case 'parent':
                     foreach ($parentVals as $v) {
@@ -95,6 +120,8 @@ class Db
                     $v = $params[$b['param']];
                     if (!empty($b['transform'])) {
                         $v = Transform::apply($b['transform'], (string) $v);
+                    } elseif (is_bool($v)) {
+                        $this->hasBool = true;
                     }
                     $out[] = $v;
                     break;
@@ -105,12 +132,13 @@ class Db
                     }
                     $key = Orm::config()->aesKey;
                     if (($b['name'] ?? '') !== 'aes' || $key === '') {
-                        throw new OrmException('CONFIG', "secret {$b['name']} not configured");
+                        throw new OrmException(Code::CONFIG, "secret {$b['name']} not configured");
                     }
+                    $this->secretPos[] = count($out);
                     $out[] = $key;
                     break;
                 default:
-                    throw new OrmException('INTERNAL', "bind from {$b['from']}");
+                    throw new OrmException(Code::INTERNAL, "bind from {$b['from']}");
             }
         }
         return $out;
@@ -126,15 +154,32 @@ class Db
         return ['sql' => $step['sql'], 'binds' => $this->args($step, $params, [], true)];
     }
 
-    private function emit(string $sql, array $args, float $start, ?\Throwable $err): void
+    /** execute() with bools as 0/1 (PDO binds false as '' otherwise, which strict MySQL rejects for an int column). */
+    private function exec(\PDOStatement $st, array $args): void
+    {
+        if ($this->hasBool) {
+            foreach ($args as $i => $v) {
+                if (is_bool($v)) {
+                    $args[$i] = (int) $v;
+                }
+            }
+        }
+        $st->execute($args);
+    }
+
+    /** The on_query hook: (sql, binds with secrets masked, seconds, plan id, error). */
+    private function emit(string $sql, array $args, float $start, string $planId, ?\Throwable $err): void
     {
         $hook = Orm::config()->onQuery;
         if ($hook !== null) {
-            $hook($sql, $args, microtime(true) - $start, $err);
+            foreach ($this->secretPos as $i) {
+                $args[$i] = '$SECRET';
+            }
+            $hook($sql, $args, microtime(true) - $start, $planId, $err);
         }
     }
 
-    /** @return array{0: list<list<mixed>>, 1: array} rows (positional) and the assemble node */
+    /** @return list<list<mixed>> rows (positional); styled cells decoded */
     public function query(array $step, array $params, ?string $sql = null, array $parentVals = []): array
     {
         $sql ??= $step['sql'];
@@ -142,29 +187,29 @@ class Db
         $args = $this->args($step, $params, $parentVals);
         $start = microtime(true);
         try {
-            $st->execute($args);
+            $this->exec($st, $args);
             $rows = $st->fetchAll(\PDO::FETCH_NUM);
             $st->closeCursor();
-        } catch (\Throwable $e) {
-            $this->emit($sql, $args, $start, $e);
+        } catch (\PDOException $e) {
+            $e = OrmException::fromDriver($e);
+            $this->emit($sql, $args, $start, $step['plan_id'], $e);
             throw $e;
         }
-        $this->emit($sql, $args, $start, null);
-        if (Codec::hasStyled($step['assemble'])) {
+        $this->emit($sql, $args, $start, $step['plan_id'], null);
+        if ($step['styled']) {
             foreach ($rows as &$vals) {
                 Codec::decodeRow($vals, $step['assemble']);
             }
             unset($vals);
         }
-        return [$rows, $step['assemble']];
+        return $rows;
     }
 
     /** Runs a select plan: the main step, then every relation step bound to its parent's rows. */
     public function runPlan(array $plan, array $params): Rows
     {
         $st0 = $plan['steps'][0];
-        [$data] = $this->query($st0, $params);
-        $rows = new Rows($plan, $st0['assemble'], $data, $params);
+        $rows = new Rows($plan, $st0['assemble'], $this->query($st0, $params), $params);
         foreach ($plan['steps'] as $st) {
             if (($st['role'] ?? '') !== 'relation') {
                 continue;
@@ -175,7 +220,7 @@ class Db
             $sr = ['data' => [], 'byKey' => []];
             if ($vals !== []) {
                 [$sql, $vals] = self::expandIn($st, $vals);
-                [$sr['data']] = $this->query($st, $params, $sql, $vals);
+                $sr['data'] = $this->query($st, $params, $sql, $vals);
                 $ci = self::childIndex($plan, $st['id']);
                 foreach ($sr['data'] as $j => $row) {
                     $sr['byKey'][$row[$ci]][] = $j;
@@ -253,7 +298,7 @@ class Db
                 return $i;
             }
         }
-        throw new OrmException('INTERNAL', "relation step $id without a child spec");
+        throw new OrmException(Code::INTERNAL, "relation step $id without a child spec");
     }
 
     /** Compares a row value with a bound value regardless of representation (bool/int/string). */
@@ -278,14 +323,15 @@ class Db
         $args = $this->args($step, $params);
         $start = microtime(true);
         try {
-            $st->execute($args);
+            $this->exec($st, $args);
             $rows = $st->fetchAll(\PDO::FETCH_ASSOC);
             $st->closeCursor();
-        } catch (\Throwable $e) {
-            $this->emit($step['sql'], $args, $start, $e);
+        } catch (\PDOException $e) {
+            $e = OrmException::fromDriver($e);
+            $this->emit($step['sql'], $args, $start, $step['plan_id'], $e);
             throw $e;
         }
-        $this->emit($step['sql'], $args, $start, null);
+        $this->emit($step['sql'], $args, $start, $step['plan_id'], null);
         return $rows;
     }
 
@@ -295,14 +341,15 @@ class Db
         $args = $this->args($step, $params);
         $start = microtime(true);
         try {
-            $st->execute($args);
+            $this->exec($st, $args);
             $v = $st->fetchColumn();
             $st->closeCursor();
-        } catch (\Throwable $e) {
-            $this->emit($step['sql'], $args, $start, $e);
+        } catch (\PDOException $e) {
+            $e = OrmException::fromDriver($e);
+            $this->emit($step['sql'], $args, $start, $step['plan_id'], $e);
             throw $e;
         }
-        $this->emit($step['sql'], $args, $start, null);
+        $this->emit($step['sql'], $args, $start, $step['plan_id'], null);
         return $v;
     }
 
@@ -313,16 +360,17 @@ class Db
         $args = $this->args($step, $params);
         $start = microtime(true);
         try {
-            $st->execute($args);
+            $this->exec($st, $args);
             $affected = $st->rowCount();
             $id = $insert ? $this->pdo->lastInsertId() : null;
-        } catch (\Throwable $e) {
-            $this->emit($step['sql'], $args, $start, $e);
+        } catch (\PDOException $e) {
+            $e = OrmException::fromDriver($e);
+            $this->emit($step['sql'], $args, $start, $step['plan_id'], $e);
             throw $e;
         }
-        $this->emit($step['sql'], $args, $start, null);
+        $this->emit($step['sql'], $args, $start, $step['plan_id'], null);
         if ($optimistic && $affected === 0) {
-            throw new OrmException('OPTIMISTIC_LOCK', 'row changed since it was read');
+            throw new OrmException(Code::OPTIMISTIC_LOCK, 'row changed since it was read');
         }
         return [$id, $affected];
     }

@@ -122,13 +122,13 @@ final class {{.Type}}Where
     public function __construct(private W $w) {}
 
     public function or(): static { $this->w->orConn(); return $this; }
-    public function and(\Closure $fn): static { $g = &$this->w->group(); $fn(new self(new W($this->w->req, $g))); return $this; }
+    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
 {{- range .Predicates}}
     public function {{.Method}}({{.Params}}): static { $this->w->expr({{phpStr .Expr}}, [{{.Args}}]); return $this; }
 {{- end}}
 {{- range .Rels}}
-    public function {{camel .Name}}(\Closure $fn): static { $g = &$this->w->nav('{{.Name}}'); $fn(new {{.TargetType}}Where(new W($this->w->req, $g))); return $this; }
+    public function {{camel .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w->nav('{{.Name}}'))); $this->w->req->end(); return $this; }
 {{- end}}
 {{range .Cols}}{{$c := .}}{{range .Ops}}
 {{- if eq .Kind "one"}}
@@ -157,13 +157,13 @@ final class {{.Type}} extends Q
 
     // ---- WHERE ----
     public function or(): static { $this->orConn(); return $this; }
-    public function and(\Closure $fn): static { $g = &$this->w()->group(); $fn(new {{.Type}}Where(new W($this->req, $g))); return $this; }
+    public function and(\Closure $fn): static { $fn(new {{.Type}}Where($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
 {{- range .Predicates}}
     public function {{.Method}}({{.Params}}): static { $this->w()->expr({{phpStr .Expr}}, [{{.Args}}]); return $this; }
 {{- end}}
 {{- range .Rels}}
-    public function {{camel .Name}}(\Closure $fn): static { $g = &$this->w()->nav('{{.Name}}'); $fn(new {{.TargetType}}Where(new W($this->req, $g))); return $this; }
+    public function {{camel .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w()->nav('{{.Name}}'))); $this->req->end(); return $this; }
 {{- end}}
 {{range .Cols}}{{$c := .}}{{range .Ops}}
 {{- if eq .Kind "one"}}
@@ -198,36 +198,36 @@ final class {{.Type}} extends Q
 {{- end}}
 
     // ---- columns ----
-    public function selectAll(): static { $c = &$this->columns(); $c['mode'] = 'all'; return $this; }
-    public function selectNone(): static { $c = &$this->columns(); $c['mode'] = 'none'; return $this; }
-    public function selectExpr(string $name, string $frag): static { $c = &$this->columns(); $c['expr'][$name] = $frag; return $this; }
+    public function selectAll(): static { $this->colMode('all'); return $this; }
+    public function selectNone(): static { $this->colMode('none'); return $this; }
+    public function selectExpr(string $name, string $frag): static { $this->colExpr($name, $frag); return $this; }
 {{- range .Cols}}
-    public function select{{.Field}}(): static { $c = &$this->columns(); $c['add'][] = '{{.Name}}'; return $this; }
-    public function unselect{{.Field}}(): static { $c = &$this->columns(); $c['remove'][] = '{{.Name}}'; return $this; }
-    public function select{{.Field}}As(string $name): static { $c = &$this->columns(); $c['as'][$name] = '{{.Name}}'; return $this; }
+    public function select{{.Field}}(): static { $this->colAdd('{{.Name}}'); return $this; }
+    public function unselect{{.Field}}(): static { $this->colRemove('{{.Name}}'); return $this; }
+    public function select{{.Field}}As(string $name): static { $this->colAs($name, '{{.Name}}'); return $this; }
 {{- end}}
 
     // ---- order, group, limit ----
 {{- range .Cols}}
     public function orderBy{{.Field}}Asc(): static { $this->order('{{.Name}}', false); return $this; }
     public function orderBy{{.Field}}Desc(): static { $this->order('{{.Name}}', true); return $this; }
-    public function groupBy{{.Field}}(): static { $this->node['group_by'][] = '{{.Name}}'; return $this; }
-    public function keyBy{{.Field}}(): static { $this->node['key_by'] = '{{.Name}}'; return $this; }
+    public function groupBy{{.Field}}(): static { $this->groupBy('{{.Name}}'); return $this; }
+    public function keyBy{{.Field}}(): static { $this->opt('key_by', '{{.Name}}'); return $this; }
 {{- end}}
     /** Group predicates after groupBy<Col>(); the closure gets the same Where builder, aggregates via expr('COUNT(*) > ?', [n]). */
     public function having(\Closure $fn): static { $fn(new {{.Type}}Where($this->havingW())); return $this; }
     public function orderByExpr(string $frag, bool $desc = false): static { $this->orderExpr($frag, $desc); return $this; }
-    public function limit(int $offset, int $count): static { $this->node['limit'] = ['offset' => $offset, 'count' => $count]; return $this; }
-    public function distinct(): static { $this->node['distinct'] = true; return $this; }
+    public function limit(int $offset, int $count): static { $this->setLimit($offset, $count); return $this; }
+    public function distinct(): static { $this->opt('distinct', true); return $this; }
 {{- range .Indexes}}
-    public function forceIndex{{pascal .}}(): static { $this->node['force_index'] = '{{.}}'; return $this; }
+    public function forceIndex{{pascal .}}(): static { $this->opt('force_index', '{{.}}'); return $this; }
 {{- end}}
 
     // ---- relation-child options ----
-    public function flatten(): static { $this->node['flatten'] = true; return $this; }
-    public function limitPerParent(int $n): static { $this->node['limit_per_parent'] = $n; return $this; }
-    public function dropChildKey(): static { $this->node['drop_child_key'] = true; return $this; }
-    public function noCascadeDelete(): static { $this->node['no_cascade_delete'] = true; return $this; }
+    public function flatten(): static { $this->opt('flatten', true); return $this; }
+    public function limitPerParent(int $n): static { $this->opt('limit_per_parent', $n); return $this; }
+    public function dropChildKey(): static { $this->opt('drop_child_key', true); return $this; }
+    public function noCascadeDelete(): static { $this->opt('no_cascade_delete', true); return $this; }
 {{- range .ParentCols}}{{if eq .ColType "i32" "i64" "bool" "string" "enum"}}
     public function ifParent{{.Field}}Eq({{.PhpType}} $v): static { $this->ifParent('{{.Name}}', $v); return $this; }
 {{- end}}{{end}}
@@ -352,6 +352,8 @@ func genPHP(m *schema.Manifest, outDir, namespace string) error {
 	}
 	var boot bytes.Buffer
 	boot.WriteString("<?php\n// Code generated by ormgen; DO NOT EDIT.\ndeclare(strict_types=1);\n\nnamespace " + namespace + ";\n\nuse Orm\\Registry;\n\n")
+	// The hash this code was generated from; Orm::init compares it once with schema.json and ormd.
+	fmt.Fprintf(&boot, "Registry::generated('%s');\n", m.SchemaHash)
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		ge := buildGoEntity(m, e)
