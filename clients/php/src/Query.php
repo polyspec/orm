@@ -158,12 +158,33 @@ class W
     /** @param list<mixed> $vs */
     public function predList(string $col, string $op, array $vs): void
     {
+        $vs = self::padIn($op, $vs);
         $ps = [];
         foreach ($vs as $v) {
             $ps[] = $this->req->p($v);
         }
         $this->g['items'][] = ['pred' => $this->conn() + ['column' => $col, 'op' => $op, 'ps' => $ps]];
         $this->req->sig .= "|l$col\x1f$op\x1f" . implode(',', $ps);
+    }
+
+    /**
+     * Rounds an IN list up to a power of two by repeating its last value. A repeated
+     * value cannot change what IN or NOT IN match, and it keeps the number of distinct
+     * statements logarithmic in the list length instead of linear: without it every
+     * length mints its own plan and its own server-side prepared statement (MySQL's
+     * max_prepared_stmt_count is 16382 by default). Relation IN lists are bucketed the
+     * same way when the executor expands them.
+     */
+    private static function padIn(string $op, array $vs): array
+    {
+        if (($op !== 'in' && $op !== 'not_in') || count($vs) < 2) {
+            return $vs;
+        }
+        $n = 1;
+        while ($n < count($vs)) {
+            $n <<= 1;
+        }
+        return array_pad($vs, $n, $vs[count($vs) - 1]);
     }
 
     public function predNull(string $col, string $op): void

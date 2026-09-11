@@ -62,11 +62,38 @@ func (w *W) Pred(col, op string, v any) {
 }
 
 func (w *W) PredList(col, op string, vs []any) {
+	vs = padIn(op, vs)
 	ps := make([]int, 0, len(vs))
 	for _, v := range vs {
 		ps = append(ps, w.Req.P(v))
 	}
 	w.G.Items = append(w.G.Items, ir.Item{Pred: &ir.Pred{Conn: w.conn(), Column: col, Op: op, Ps: ps}})
+}
+
+// padIn rounds an IN list up to a power of two by repeating its last value.
+// A repeated value cannot change what IN or NOT IN match, and it keeps the
+// number of distinct statements logarithmic in the list length instead of
+// linear: without it every length mints its own plan and its own server-side
+// prepared statement (MySQL's max_prepared_stmt_count is 16382 by default).
+// Relation IN lists are bucketed the same way when the executor expands them.
+func padIn(op string, vs []any) []any {
+	if op != "in" && op != "not_in" || len(vs) < 2 {
+		return vs
+	}
+	n := 1
+	for n < len(vs) {
+		n <<= 1
+	}
+	if n == len(vs) {
+		return vs
+	}
+	out := make([]any, n)
+	copy(out, vs)
+	last := vs[len(vs)-1]
+	for i := len(vs); i < n; i++ {
+		out[i] = last
+	}
+	return out
 }
 
 func (w *W) PredNull(col, op string) {

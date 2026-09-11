@@ -78,6 +78,25 @@ impl std::io::Write for Fnv {
     }
 }
 
+/// Rounds an IN list up to a power of two by repeating its last value. A repeated
+/// value cannot change what IN or NOT IN match, and it keeps the number of distinct
+/// statements logarithmic in the list length instead of linear: without it every
+/// length mints its own plan and its own server-side prepared statement (MySQL's
+/// max_prepared_stmt_count is 16382 by default). Relation IN lists are bucketed the
+/// same way when the executor expands them.
+fn pad_in(op: &str, mut vs: Vec<Param>) -> Vec<Param> {
+    if (op != "in" && op != "not_in") || vs.len() < 2 {
+        return vs;
+    }
+    let mut n = 1;
+    while n < vs.len() {
+        n <<= 1;
+    }
+    let last = vs[vs.len() - 1].clone();
+    vs.resize(n, last);
+    vs
+}
+
 /// A column of another entity in the same statement, for column-to-column
 /// predicates: path "" is the parent (inside on()/where() of a join child) or
 /// the root; `.at("service")` / `.at("campaign/service")` walks joins.
@@ -284,7 +303,7 @@ impl<'a> W<'a> {
 
     pub fn pred_list(&mut self, col: &str, op: &str, vs: Vec<Param>) {
         let conn = self.conn();
-        let ps = vs.into_iter().map(|v| self.p(v)).collect();
+        let ps = pad_in(op, vs).into_iter().map(|v| self.p(v)).collect();
         self.g.items.push(Item::Pred { pred: Pred { conn, column: col.into(), op: op.into(), ps, ..Default::default() } });
     }
 
