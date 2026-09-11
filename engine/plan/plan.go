@@ -54,6 +54,11 @@ type BindSlot struct {
 	// value (aes/hex/ip on PostgreSQL/SQLite): the executor applies them to
 	// the bound value before sending it (write order). Empty on MySQL.
 	HostStyles []string `json:"host_styles,omitempty"`
+	// ColType is the canonical type of the column this value is compared with
+	// or assigned to (only date/time/datetime are carried): executors whose
+	// language has no datetime type normalise exactly these, never a bare string
+	// that merely looks like a timestamp.
+	ColType string `json:"col_type,omitempty"`
 }
 
 // Assemble maps result columns positionally and describes how rows attach.
