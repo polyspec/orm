@@ -133,7 +133,7 @@
 - [ ] T6.3 **P** G/R 호스트측 AES 코덱(MySQL 키 폴딩, AES-128-ECB, PKCS7) + 벡터(MySQL `AES_ENCRYPT` 산출물과 바이트 일치), `ip` 16B packed, `point` 정책 → T2.6
 - [x] T6.4 드라이버 추상 3언어(Go: pgx stdlib·modernc sqlite / Rust: sqlx feature + Pool enum + PG 파라미터 타입 서버 조회 / PHP: pdo_pgsql·pdo_sqlite + 타입 바인딩), `$n` 재번호, RETURNING, 에러 매핑, `[db].driver`, ormd `-dialect` 검사, hook `$SECRET`·`$NOW` 마스킹, 슬롯 `col_type`
 - [~] T6.5 로컬 PostgreSQL 17(`deploy/local-postgres.md`)·SQLite에 bench 시드 + AES 시더 적재; **3언어 × 3 DB 각 40/40 동일**(`vectors.postgres.json`·`vectors.sqlite.json`은 방언별 기록, 결과는 MySQL과 동일하고 `sql_dump`만 방언 텍스트)
-- [ ] T6.6 E `ormgen import --dsn postgres://…`(information_schema 차이 흡수) → T5.10
+- [x] T6.6 `ormgen import --driver postgres`(+`validate --driver postgres`): PG 타입·identity·GIN을 정규 표기로 되돌림 — orm_bench 임포트 결과가 손으로 쓴 매니페스트와 타입·관계·인덱스 0 차이(MySQL 전용 `unsigned`/`onupdate` 제외)
 - [x] T6.7 `docs/dialects.md` 차이표 + 레인 스펙 `docs/lanes/s6.md`
 
 ---

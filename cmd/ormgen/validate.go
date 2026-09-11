@@ -19,11 +19,12 @@ import (
 
 func validateCmd(args []string) {
 	fs := flag.NewFlagSet("validate", flag.ExitOnError)
-	dsn := fs.String("dsn", "", "go-sql-driver DSN (required)")
+	dsn := fs.String("dsn", "", "DSN/URL (required)")
+	driver := fs.String("driver", "", "mysql|postgres (default: inferred from the DSN)")
 	schemaPath := fs.String("schema", "", "schema.json (required)")
 	fs.Parse(args)
 	if *dsn == "" || *schemaPath == "" {
-		fmt.Fprintln(os.Stderr, "usage: ormgen validate --dsn <dsn> --schema schema/schema.json")
+		fmt.Fprintln(os.Stderr, "usage: ormgen validate --dsn <dsn> [--driver mysql|postgres] --schema schema/schema.json")
 		os.Exit(2)
 	}
 	js, err := os.ReadFile(*schemaPath)
@@ -34,12 +35,22 @@ func validateCmd(args []string) {
 	if err != nil {
 		fail(err)
 	}
-	db, err := sql.Open("mysql", *dsn)
+	if *driver == "" {
+		*driver = "mysql"
+		if strings.HasPrefix(*dsn, "postgres://") || strings.HasPrefix(*dsn, "postgresql://") || strings.Contains(*dsn, "host=") {
+			*driver = "postgres"
+		}
+	}
+	sqlDriver := map[string]string{"mysql": "mysql", "postgres": "pgx"}[*driver]
+	if sqlDriver == "" {
+		fail(fmt.Errorf("driver %q: want mysql or postgres", *driver))
+	}
+	db, err := sql.Open(sqlDriver, *dsn)
 	if err != nil {
 		fail(err)
 	}
 	defer db.Close()
-	live, err := readTables(db, nil)
+	live, err := readTables(db, *driver, nil)
 	if err != nil {
 		fail(err)
 	}

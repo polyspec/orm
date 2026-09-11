@@ -148,12 +148,13 @@ ormgen check    --lang php                                                   # �
 ## 5. 검증 에러 (빌드 실패)
 컬럼명 규칙(`_and_/_or_/_with_` 포함, 연산자 접미어로 끝남 `_eq/_gt/…`, 키워드와 동일, `__`), 관계 이름 충돌·예약어, 관계선의 FK 컬럼이 자식 엔티티에 없음, `%% index` 컬럼 미존재, 복합 UK와 컬럼 UK 중복, `-> table.column` 대상 없음, FK 컬럼인데 관계선도 `->`도 없음(경고).
 
-## 4. 임포트 (`ormgen import --dsn … --out schema/app.mmd [--tables a,b]`)
+## 4. 임포트 (`ormgen import --dsn … [--driver mysql|postgres] --out schema/app.mmd [--tables a,b]`)
 살아 있는 MySQL의 `information_schema`를 읽어 다이어그램을 쓴다. 결정적(테이블 알파벳순·컬럼 ordinal순)이라 바뀐 게 없으면 재실행 diff가 0이다.
 - 타입: `COLUMN_TYPE` 그대로, `unsigned`는 속성으로(`is_*` tinyint는 bool이라 생략), `decimal(13,3)`→`decimal(13_3)`, `enum('a','b')`→`enum(a_b)`.
 - 속성: `?`(NULL), `=값`(`CURRENT_TIMESTAMP*`→`=now`), `onupdate`, `auto`.
 - 관계선: FK 제약이 없어도 `<역할>_<테이블>_seq` 이름으로 부모를 추론(앞 단어를 하나씩 떼며 테이블명과 맞춘다: `updated_user_seq`→`user`).
 - 인덱스: 복합 unique→`%% unique`, fulltext→`%% fulltext`, 복합/비FK 단일 인덱스→`%% index … 이름`, 단일 컬럼 unique→컬럼 줄 `UK`, FK 단일 인덱스는 생략(자동).
+- PostgreSQL(`--driver postgres`, `postgres://…` DSN이면 자동): `information_schema.columns` + `pg_index`를 읽어 같은 다이어그램을 만든다. 타입은 정규 타입으로 되돌려 적는다(`character varying(191)`→`varchar(191)`, `boolean`→`tinyint`, `numeric(p,s)`→`decimal(p,s)`, `timestamp(6)`→`datetime(6)`, `inet`→`varbinary(16)`, `jsonb`→`json`), identity/`nextval`→`auto`, GIN 인덱스→`%% fulltext`. MySQL에만 있는 `unsigned`·`onupdate`는 나오지 않으므로, 같은 DB를 MySQL과 PostgreSQL에서 각각 임포트하면 그 두 속성만 다르다(정규 타입·관계·인덱스는 동일 — 로컬 orm_bench로 확인).
 - `--out`이 이미 있으면 DB가 모르는 사실을 이어받는다: 관계 라벨 재정의 `(child / parent)`, 컬럼 속성 `lazy`/`bool`/`int`/명시 스타일, `%% predicate` 줄. 그 외는 DB가 진실이다.
 
 
