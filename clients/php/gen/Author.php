@@ -304,6 +304,8 @@ final class AuthorWhere
     public function or(): static { $this->w->orConn(); return $this; }
     public function and(\Closure $fn): static { $g = &$this->w->group(); $fn(new self(new W($this->w->req, $g))); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
+    public function startedAfter(mixed $a0): static { $this->w->expr('`start_dt` > ?', [$a0]); return $this; }
+    public function visible(): static { $this->w->expr('`is_close` = 0 AND `is_display` = 1', []); return $this; }
     public function service(\Closure $fn): static { $g = &$this->w->nav('service'); $fn(new ServiceWhere(new W($this->w->req, $g))); return $this; }
     public function serviceMember(\Closure $fn): static { $g = &$this->w->nav('service_member'); $fn(new ServiceMemberWhere(new W($this->w->req, $g))); return $this; }
     public function serviceRegion(\Closure $fn): static { $g = &$this->w->nav('service_region'); $fn(new ServiceRegionWhere(new W($this->w->req, $g))); return $this; }
@@ -717,6 +719,8 @@ final class Author extends Q
     public function or(): static { $this->orConn(); return $this; }
     public function and(\Closure $fn): static { $g = &$this->w()->group(); $fn(new AuthorWhere(new W($this->req, $g))); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
+    public function startedAfter(mixed $a0): static { $this->w()->expr('`start_dt` > ?', [$a0]); return $this; }
+    public function visible(): static { $this->w()->expr('`is_close` = 0 AND `is_display` = 1', []); return $this; }
     public function service(\Closure $fn): static { $g = &$this->w()->nav('service'); $fn(new ServiceWhere(new W($this->req, $g))); return $this; }
     public function serviceMember(\Closure $fn): static { $g = &$this->w()->nav('service_member'); $fn(new ServiceMemberWhere(new W($this->req, $g))); return $this; }
     public function serviceRegion(\Closure $fn): static { $g = &$this->w()->nav('service_region'); $fn(new ServiceRegionWhere(new W($this->req, $g))); return $this; }
@@ -1374,6 +1378,8 @@ final class Author extends Q
     public function orderBySerializeDataDesc(): static { $this->order('serialize_data', true); return $this; }
     public function groupBySerializeData(): static { $this->node['group_by'][] = 'serialize_data'; return $this; }
     public function keyBySerializeData(): static { $this->node['key_by'] = 'serialize_data'; return $this; }
+    /** Group predicates after groupBy<Col>(); the closure gets the same Where builder, aggregates via expr('COUNT(*) > ?', [n]). */
+    public function having(\Closure $fn): static { $fn(new AuthorWhere($this->havingW())); return $this; }
     public function orderByExpr(string $frag, bool $desc = false): static { $this->orderExpr($frag, $desc); return $this; }
     public function limit(int $offset, int $count): static { $this->node['limit'] = ['offset' => $offset, 'count' => $count]; return $this; }
     public function distinct(): static { $this->node['distinct'] = true; return $this; }
@@ -1603,6 +1609,141 @@ final class Author extends Q
     public function avgLikeCount(Db $db): float { return (float) $this->runScalar($db, 'avg', 'like_count'); }
     public function sumPrice(Db $db): float { return (float) $this->runScalar($db, 'sum', 'price'); }
     public function avgPrice(Db $db): float { return (float) $this->runScalar($db, 'avg', 'price'); }
+    public function countDistinctSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'seq'); }
+    /** MIN(seq); null when no rows match. */
+    public function minSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'seq'); return $v === null ? null : (int) $v; }
+    /** MAX(seq); null when no rows match. */
+    public function maxSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'seq'); return $v === null ? null : (int) $v; }
+    public function countDistinctName(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'name'); }
+    /** MIN(name); null when no rows match. */
+    public function minName(Db $db): ?string { $v = $this->runScalar($db, 'min', 'name'); return $v === null ? null : (string) $v; }
+    /** MAX(name); null when no rows match. */
+    public function maxName(Db $db): ?string { $v = $this->runScalar($db, 'max', 'name'); return $v === null ? null : (string) $v; }
+    public function countDistinctDescription(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'description'); }
+    /** MIN(description); null when no rows match. */
+    public function minDescription(Db $db): ?string { $v = $this->runScalar($db, 'min', 'description'); return $v === null ? null : (string) $v; }
+    /** MAX(description); null when no rows match. */
+    public function maxDescription(Db $db): ?string { $v = $this->runScalar($db, 'max', 'description'); return $v === null ? null : (string) $v; }
+    public function countDistinctCreatedTs(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'created_ts'); }
+    /** MIN(created_ts); null when no rows match. */
+    public function minCreatedTs(Db $db): ?string { $v = $this->runScalar($db, 'min', 'created_ts'); return $v === null ? null : (string) $v; }
+    /** MAX(created_ts); null when no rows match. */
+    public function maxCreatedTs(Db $db): ?string { $v = $this->runScalar($db, 'max', 'created_ts'); return $v === null ? null : (string) $v; }
+    public function countDistinctUpdatedTs(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'updated_ts'); }
+    /** MIN(updated_ts); null when no rows match. */
+    public function minUpdatedTs(Db $db): ?string { $v = $this->runScalar($db, 'min', 'updated_ts'); return $v === null ? null : (string) $v; }
+    /** MAX(updated_ts); null when no rows match. */
+    public function maxUpdatedTs(Db $db): ?string { $v = $this->runScalar($db, 'max', 'updated_ts'); return $v === null ? null : (string) $v; }
+    public function countDistinctIsClose(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'is_close'); }
+    /** MIN(is_close); null when no rows match. */
+    public function minIsClose(Db $db): ?bool { $v = $this->runScalar($db, 'min', 'is_close'); return $v === null ? null : (bool) $v; }
+    /** MAX(is_close); null when no rows match. */
+    public function maxIsClose(Db $db): ?bool { $v = $this->runScalar($db, 'max', 'is_close'); return $v === null ? null : (bool) $v; }
+    public function countDistinctIsDisplay(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'is_display'); }
+    /** MIN(is_display); null when no rows match. */
+    public function minIsDisplay(Db $db): ?bool { $v = $this->runScalar($db, 'min', 'is_display'); return $v === null ? null : (bool) $v; }
+    /** MAX(is_display); null when no rows match. */
+    public function maxIsDisplay(Db $db): ?bool { $v = $this->runScalar($db, 'max', 'is_display'); return $v === null ? null : (bool) $v; }
+    public function countDistinctDisplayStartDt(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'display_start_dt'); }
+    /** MIN(display_start_dt); null when no rows match. */
+    public function minDisplayStartDt(Db $db): ?string { $v = $this->runScalar($db, 'min', 'display_start_dt'); return $v === null ? null : (string) $v; }
+    /** MAX(display_start_dt); null when no rows match. */
+    public function maxDisplayStartDt(Db $db): ?string { $v = $this->runScalar($db, 'max', 'display_start_dt'); return $v === null ? null : (string) $v; }
+    public function countDistinctDisplayEndDt(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'display_end_dt'); }
+    /** MIN(display_end_dt); null when no rows match. */
+    public function minDisplayEndDt(Db $db): ?string { $v = $this->runScalar($db, 'min', 'display_end_dt'); return $v === null ? null : (string) $v; }
+    /** MAX(display_end_dt); null when no rows match. */
+    public function maxDisplayEndDt(Db $db): ?string { $v = $this->runScalar($db, 'max', 'display_end_dt'); return $v === null ? null : (string) $v; }
+    public function countDistinctIsAllday(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'is_allday'); }
+    /** MIN(is_allday); null when no rows match. */
+    public function minIsAllday(Db $db): ?bool { $v = $this->runScalar($db, 'min', 'is_allday'); return $v === null ? null : (bool) $v; }
+    /** MAX(is_allday); null when no rows match. */
+    public function maxIsAllday(Db $db): ?bool { $v = $this->runScalar($db, 'max', 'is_allday'); return $v === null ? null : (bool) $v; }
+    public function countDistinctTargetClubReaderCount(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'target_club_reader_count'); }
+    /** MIN(target_club_reader_count); null when no rows match. */
+    public function minTargetClubReaderCount(Db $db): ?int { $v = $this->runScalar($db, 'min', 'target_club_reader_count'); return $v === null ? null : (int) $v; }
+    /** MAX(target_club_reader_count); null when no rows match. */
+    public function maxTargetClubReaderCount(Db $db): ?int { $v = $this->runScalar($db, 'max', 'target_club_reader_count'); return $v === null ? null : (int) $v; }
+    public function countDistinctSuccessCount(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'success_count'); }
+    /** MIN(success_count); null when no rows match. */
+    public function minSuccessCount(Db $db): ?int { $v = $this->runScalar($db, 'min', 'success_count'); return $v === null ? null : (int) $v; }
+    /** MAX(success_count); null when no rows match. */
+    public function maxSuccessCount(Db $db): ?int { $v = $this->runScalar($db, 'max', 'success_count'); return $v === null ? null : (int) $v; }
+    public function countDistinctReaderCount(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'reader_count'); }
+    /** MIN(reader_count); null when no rows match. */
+    public function minReaderCount(Db $db): ?int { $v = $this->runScalar($db, 'min', 'reader_count'); return $v === null ? null : (int) $v; }
+    /** MAX(reader_count); null when no rows match. */
+    public function maxReaderCount(Db $db): ?int { $v = $this->runScalar($db, 'max', 'reader_count'); return $v === null ? null : (int) $v; }
+    public function countDistinctReadCount(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'read_count'); }
+    /** MIN(read_count); null when no rows match. */
+    public function minReadCount(Db $db): ?int { $v = $this->runScalar($db, 'min', 'read_count'); return $v === null ? null : (int) $v; }
+    /** MAX(read_count); null when no rows match. */
+    public function maxReadCount(Db $db): ?int { $v = $this->runScalar($db, 'max', 'read_count'); return $v === null ? null : (int) $v; }
+    public function countDistinctPhotoUrl(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'photo_url'); }
+    /** MIN(photo_url); null when no rows match. */
+    public function minPhotoUrl(Db $db): ?string { $v = $this->runScalar($db, 'min', 'photo_url'); return $v === null ? null : (string) $v; }
+    /** MAX(photo_url); null when no rows match. */
+    public function maxPhotoUrl(Db $db): ?string { $v = $this->runScalar($db, 'max', 'photo_url'); return $v === null ? null : (string) $v; }
+    public function countDistinctUserSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'user_seq'); }
+    /** MIN(user_seq); null when no rows match. */
+    public function minUserSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'user_seq'); return $v === null ? null : (int) $v; }
+    /** MAX(user_seq); null when no rows match. */
+    public function maxUserSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'user_seq'); return $v === null ? null : (int) $v; }
+    public function countDistinctServiceSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'service_seq'); }
+    /** MIN(service_seq); null when no rows match. */
+    public function minServiceSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'service_seq'); return $v === null ? null : (int) $v; }
+    /** MAX(service_seq); null when no rows match. */
+    public function maxServiceSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'service_seq'); return $v === null ? null : (int) $v; }
+    public function countDistinctServiceRegionSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'service_region_seq'); }
+    /** MIN(service_region_seq); null when no rows match. */
+    public function minServiceRegionSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'service_region_seq'); return $v === null ? null : (int) $v; }
+    /** MAX(service_region_seq); null when no rows match. */
+    public function maxServiceRegionSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'service_region_seq'); return $v === null ? null : (int) $v; }
+    public function countDistinctServiceMemberSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'service_member_seq'); }
+    /** MIN(service_member_seq); null when no rows match. */
+    public function minServiceMemberSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'service_member_seq'); return $v === null ? null : (int) $v; }
+    /** MAX(service_member_seq); null when no rows match. */
+    public function maxServiceMemberSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'service_member_seq'); return $v === null ? null : (int) $v; }
+    public function countDistinctStartDt(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'start_dt'); }
+    /** MIN(start_dt); null when no rows match. */
+    public function minStartDt(Db $db): ?string { $v = $this->runScalar($db, 'min', 'start_dt'); return $v === null ? null : (string) $v; }
+    /** MAX(start_dt); null when no rows match. */
+    public function maxStartDt(Db $db): ?string { $v = $this->runScalar($db, 'max', 'start_dt'); return $v === null ? null : (string) $v; }
+    public function countDistinctEndDt(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'end_dt'); }
+    /** MIN(end_dt); null when no rows match. */
+    public function minEndDt(Db $db): ?string { $v = $this->runScalar($db, 'min', 'end_dt'); return $v === null ? null : (string) $v; }
+    /** MAX(end_dt); null when no rows match. */
+    public function maxEndDt(Db $db): ?string { $v = $this->runScalar($db, 'max', 'end_dt'); return $v === null ? null : (string) $v; }
+    public function countDistinctUuid(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'uuid'); }
+    /** MIN(uuid); null when no rows match. */
+    public function minUuid(Db $db): ?string { $v = $this->runScalar($db, 'min', 'uuid'); return $v === null ? null : (string) $v; }
+    /** MAX(uuid); null when no rows match. */
+    public function maxUuid(Db $db): ?string { $v = $this->runScalar($db, 'max', 'uuid'); return $v === null ? null : (string) $v; }
+    public function countDistinctIsSingleWork(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'is_single_work'); }
+    /** MIN(is_single_work); null when no rows match. */
+    public function minIsSingleWork(Db $db): ?bool { $v = $this->runScalar($db, 'min', 'is_single_work'); return $v === null ? null : (bool) $v; }
+    /** MAX(is_single_work); null when no rows match. */
+    public function maxIsSingleWork(Db $db): ?bool { $v = $this->runScalar($db, 'max', 'is_single_work'); return $v === null ? null : (bool) $v; }
+    public function countDistinctLikeCount(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'like_count'); }
+    /** MIN(like_count); null when no rows match. */
+    public function minLikeCount(Db $db): ?int { $v = $this->runScalar($db, 'min', 'like_count'); return $v === null ? null : (int) $v; }
+    /** MAX(like_count); null when no rows match. */
+    public function maxLikeCount(Db $db): ?int { $v = $this->runScalar($db, 'max', 'like_count'); return $v === null ? null : (int) $v; }
+    public function countDistinctPrice(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'price'); }
+    /** MIN(price); null when no rows match. */
+    public function minPrice(Db $db): ?float { $v = $this->runScalar($db, 'min', 'price'); return $v === null ? null : (float) $v; }
+    /** MAX(price); null when no rows match. */
+    public function maxPrice(Db $db): ?float { $v = $this->runScalar($db, 'max', 'price'); return $v === null ? null : (float) $v; }
+    public function countDistinctIp(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'ip'); }
+    /** MIN(ip); null when no rows match. */
+    public function minIp(Db $db): ?string { $v = $this->runScalar($db, 'min', 'ip'); return $v === null ? null : (string) $v; }
+    /** MAX(ip); null when no rows match. */
+    public function maxIp(Db $db): ?string { $v = $this->runScalar($db, 'max', 'ip'); return $v === null ? null : (string) $v; }
+
+    // ---- raw root (trusted code only): {table} = this entity's table, ? bound from $binds in order ----
+    public function raw(string $sql, array $binds = []): static { $this->setRaw($sql, $binds); return $this; }
+    /** Runs the raw() statement; rows keyed by the driver's column names, values as PDO gives them (no codec). @return list<array<string, mixed>> */
+    public function rawAll(Db $db): array { return $this->runRaw($db); }
 
     public function paginate(Db $db, int $page, int $per): Page
     {
