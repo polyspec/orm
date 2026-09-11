@@ -74,22 +74,30 @@ fn keys(c: &Collection<BattleRow>) -> Value {
     Value::Array(c.iter().map(|(k, _)| json!(k.as_i64())).collect())
 }
 
+/// The test DSN: `ORM_MYSQL_URL_RUST` when set (CI), else the local socket.
+fn connect_opts() -> MySqlConnectOptions {
+    match std::env::var("ORM_MYSQL_URL_RUST") {
+        Ok(url) => url.parse().expect("ORM_MYSQL_URL_RUST is a mysql:// URL"),
+        Err(_) => MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench"),
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
     let wasm = std::fs::read(&args[1]).expect("wasm");
     let schema = std::fs::read(&args[2]).expect("schema.json");
     let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, cache_dir: None }).expect("engine"));
-    gen::init(engine.clone());
+    gen::init(engine.clone()).expect("schema hash");
 
     let log: Log = Arc::new(Mutex::new(Vec::new()));
     let mask = Arc::new(Mutex::new(Mask::default()));
     let (log_h, mask_h) = (log.clone(), mask.clone());
-    let on_query = Box::new(move |sql: &str, params: &[Param], _: std::time::Duration, _: Option<&orm::Error>| {
+    let on_query = Box::new(move |sql: &str, params: &[Param], _: std::time::Duration, _: u64, _: Option<&orm::Error>| {
         let m = mask_h.lock().unwrap().clone();
         log_h.lock().unwrap().push(json!({"sql": sql, "binds": params.iter().map(|p| norm(p, &m)).collect::<Vec<_>>()}));
     });
-    let opts = MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench");
+    let opts = connect_opts();
     let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), on_query: Some(on_query) }).await.expect("connect");
 
     let mut out: Vec<(String, Value)> = Vec::new();
