@@ -23,6 +23,8 @@ pub struct ServiceMemberRow {
     hidden: Vec<String>,
     flat: Vec<String>,
     rels: Vec<String>,
+    // loaded relations whose rows belong to this row (children[].cascade): delete_cascade removes them first
+    cascade: Vec<String>,
     loaded: bool,
 }
 
@@ -42,6 +44,7 @@ impl ServiceMemberRow {
         for ch in &a.children {
             r.rels.push(ch.rel.clone());
             if ch.flatten { r.flat.push(ch.rel.clone()); }
+            if ch.cascade { r.cascade.push(ch.rel.clone()); }
         }
         for c in &a.columns {
             let v = &mut vals[c.index];
@@ -162,6 +165,40 @@ impl ServiceMemberRow {
         let pk: Param = self.seq.clone().into();
         q.w().pred(Self::PK, "eq", pk);
         db::write(ex, &mut q.req, "delete").await.map(|_| ())
+    }
+
+    /// Depth-first: deletes the rows of every loaded relation that belongs to this row
+    /// (children[].cascade: the related rows hold this row's PK as their FK and
+    /// no_cascade_delete was not set), each through its own delete_cascade in collection
+    /// order, then this row. Parent-direction relations (the FK is on this row) are never deleted.
+    /// One DELETE … WHERE pk = ? per row. On a Db the whole walk runs in one transaction.
+    pub async fn delete_cascade(&self, ex: &impl Exec) -> Result<()> {
+        if !self.loaded { return Err(orm::Error::Config("delete_cascade on a row that was not loaded".into())); }
+        match ex.tx() {
+            Some(tx) => self.delete_cascade_in(tx).await,
+            None => ex.db().transaction(|tx| async move { self.delete_cascade_in(&tx).await }).await,
+        }
+    }
+
+    /// The walk itself. Boxed: rows cascade into rows of other entities, which cascade back.
+    pub fn delete_cascade_in<'a>(&'a self, tx: &'a db::Tx) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + 'a>> {
+        Box::pin(async move {
+            for rel in &self.cascade {
+                match rel.as_str() {
+                    "battles" => {
+                        for (_, r) in self.battles_.iter() { r.delete_cascade_in(tx).await?; }
+                    }
+                    "service" => {
+                        if let Some(r) = self.service_.as_deref() { r.delete_cascade_in(tx).await?; }
+                    }
+                    "user" => {
+                        if let Some(r) = self.user_.as_deref() { r.delete_cascade_in(tx).await?; }
+                    }
+                    _ => {}
+                }
+            }
+            self.delete(tx).await
+        })
     }
 }
 
@@ -358,6 +395,7 @@ impl ServiceMember {
     pub fn flatten(mut self) -> Self { self.q.node().flatten = true; self }
     pub fn limit_per_parent(mut self, n: u32) -> Self { self.q.node().limit_per_parent = n; self }
     pub fn drop_child_key(mut self) -> Self { self.q.node().drop_child_key = true; self }
+    pub fn no_cascade_delete(mut self) -> Self { self.q.node().no_cascade_delete = true; self }
     pub fn if_parent_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("seq", v); self }
     pub fn if_parent_name_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("name", v.into()); self }
     pub fn if_parent_is_close_eq(mut self, v: bool) -> Self { self.q.if_parent("is_close", v); self }
@@ -378,7 +416,8 @@ impl ServiceMember {
     pub fn if_parent_aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_email", v.into()); self }
     pub fn if_parent_aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_phone", v.into()); self }
 
-    // ---- insert draft ----
+    // ---- insert/update draft (set_<pk> only decides save: INSERT rejects it, UPDATE cannot change it) ----
+    pub fn set_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("seq", v); self }
     pub fn set_service_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("service_seq", v); self }
     pub fn set_service_seq_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("service_seq", frag, binds); self }
     pub fn set_user_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("user_seq", v); self }
@@ -389,6 +428,18 @@ impl ServiceMember {
     pub fn minus_service_seq(mut self, v: i64) -> Self { self.q.minus("service_seq", v); self }
     pub fn plus_user_seq(mut self, v: i64) -> Self { self.q.plus("user_seq", v); self }
     pub fn minus_user_seq(mut self, v: i64) -> Self { self.q.minus("user_seq", v); self }
+
+    // ---- insert: ON DUPLICATE KEY UPDATE assignments (never the PK/auto column) ----
+    pub fn on_duplicate_set_service_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.on_duplicate_set("service_seq", v); self }
+    pub fn on_duplicate_set_service_seq_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("service_seq", frag, binds); self }
+    pub fn on_duplicate_set_user_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.on_duplicate_set("user_seq", v); self }
+    pub fn on_duplicate_set_user_seq_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("user_seq", frag, binds); self }
+    pub fn on_duplicate_plus_service_seq(mut self, v: i64) -> Self { self.q.on_duplicate_plus("service_seq", v); self }
+    pub fn on_duplicate_minus_service_seq(mut self, v: i64) -> Self { self.q.on_duplicate_minus("service_seq", v); self }
+    pub fn on_duplicate_plus_user_seq(mut self, v: i64) -> Self { self.q.on_duplicate_plus("user_seq", v); self }
+    pub fn on_duplicate_minus_user_seq(mut self, v: i64) -> Self { self.q.on_duplicate_minus("user_seq", v); self }
+    /// Copies every set_* assignment made so far (except the PK/auto column) into ON DUPLICATE KEY UPDATE.
+    pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&["seq"]); self }
 
     // ---- terminals ----
     pub async fn one(mut self, ex: &impl Exec) -> Result<Option<ServiceMemberRow>> {
@@ -423,6 +474,36 @@ impl ServiceMember {
     pub async fn insert(mut self, ex: &impl Exec) -> Result<Option<ServiceMemberRow>> {
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
         ServiceMember::new().seq_eq(id as i64).one(ex).await
+    }
+
+    /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
+    pub async fn save(mut self, ex: &impl Exec) -> Result<Option<ServiceMemberRow>> {
+        match self.q.take_set("seq") {
+            Some(pk) => {
+                self.q.w().pred("seq", "eq", pk.clone());
+                db::write(ex, &mut self.q.req, "update").await?;
+                let mut q = ServiceMember::new();
+                q.q.w().pred("seq", "eq", pk);
+                q.one(ex).await
+            }
+            None => self.insert(ex).await,
+        }
+    }
+
+    /// UPDATE set_*/plus_*/minus_*/set_*_expr WHERE the query's predicates; returns the affected count.
+    /// The engine rejects a missing where (IR_INVALID).
+    pub async fn update(mut self, ex: &impl Exec) -> Result<u64> {
+        Ok(db::write(ex, &mut self.q.req, "update").await?.1)
+    }
+
+    /// DELETE WHERE the query's predicates; returns the affected count. The engine rejects a missing where.
+    pub async fn delete(mut self, ex: &impl Exec) -> Result<u64> {
+        Ok(db::write(ex, &mut self.q.req, "delete").await?.1)
+    }
+
+    /// The main statement (kind all) and its binds without executing; secret slots read "$SECRET".
+    pub async fn sql(mut self, ex: &impl Exec) -> Result<db::Sql> {
+        db::sql(ex, &mut self.q.req, "all")
     }
 
     pub async fn one_by_seq(self, ex: &impl Exec, v: i64) -> Result<Option<ServiceMemberRow>> {
