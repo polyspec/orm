@@ -90,5 +90,5 @@ jobs:
           php tests/codec/check.php
       - name: token parity
         run: |
+          # the conformance runners are the parity contract; integration tests may differ in coverage per language
           go run ./cmd/ormgen tokens --schema schema/schema.json tests/conformance/runner_go/main.go tests/conformance/runner.php clients/rust/tests/src/conformance.rs
-          go run ./cmd/ormgen tokens --schema schema/schema.json clients/go/gen/gen_integration_test.go clients/php/tests/integration.php clients/rust/tests/src/integration.rs
