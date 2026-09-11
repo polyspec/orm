@@ -28,7 +28,8 @@ $sock = $argv[1] ?? die("usage: runner.php /abs/ormd.sock /abs/schema.json\n");
 $schema = $argv[2] ?? die("schema.json required\n");
 
 $log = [];
-$maskSeq = 0;
+/** @var list<int> PKs created by the running vector; every bind equal to one prints as $SEQ */
+$maskSeqs = [];
 $maskTs = '';
 
 function fmtTime(string $s): string
@@ -38,8 +39,8 @@ function fmtTime(string $s): string
 
 function norm(mixed $v): mixed
 {
-    global $maskSeq, $maskTs;
-    if (is_int($v) && $maskSeq !== 0 && $v === $maskSeq) {
+    global $maskSeqs, $maskTs;
+    if (is_int($v) && in_array($v, $maskSeqs, true)) {
         return '$SEQ';
     }
     if (is_string($v) && $maskTs !== '' && $v === $maskTs) {
@@ -61,8 +62,10 @@ Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt',
 $db = Db::mysql('mysql:unix_socket=/tmp/mysql.sock;dbname=orm_bench;charset=utf8mb4', 'root', '');
 
 $out = [];
-$run = function (string $name, \Closure $fn) use (&$out, &$log): void {
+$run = function (string $name, \Closure $fn) use (&$out, &$log, &$maskSeqs, &$maskTs): void {
     $log = [];
+    $maskSeqs = [];
+    $maskTs = '';
     try {
         $res = $fn();
     } catch (OrmException $e) {
@@ -131,19 +134,23 @@ $run('op_not_allowed_error', function () use ($db) {
     $q->w()->pred('seq', 'like', 'x');
     return $q->runScalar($db, 'count');
 });
-$run('write_cycle', function () use ($db, &$log, &$maskSeq, &$maskTs) {
+// Statements logged before the created row was known are re-masked once its seq/updated_ts are.
+$remask = function (array $seqs, string $ts) use (&$log, &$maskSeqs, &$maskTs): void {
+    $maskSeqs = $seqs;
+    $maskTs = $ts;
+    foreach ($log as &$st) {
+        $st['binds'] = array_map('norm', $st['binds']);
+    }
+    unset($st);
+};
+$run('write_cycle', function () use ($db, $remask) {
     $created = $db->transaction(fn(Tx $tx) => (new Battle)
         ->setName('conf-write')
         ->setUserSeq(1)->setServiceSeq(999)->setServiceModuleSeq(1)->setServiceMemberSeq(1)
         ->setStartDt('2026-06-01 00:00:00')->setEndDt('2026-12-31 00:00:00')
         ->setAesHexEmail('w@example.com')
         ->insert($tx));
-    $maskSeq = $created->getSeq();
-    $maskTs = $created->getUpdatedTs();
-    foreach ($log as &$st) {
-        $st['binds'] = array_map('norm', $st['binds']);
-    }
-    unset($st);
+    $remask([$created->getSeq()], $created->getUpdatedTs());
     $created->setName('conf-write-2')->setLikeCount(5)->updateOptimistic($db);
     $again = (new Battle)->oneBySeq($db, $created->getSeq());
     try {
@@ -195,7 +202,7 @@ $run('paginate_relations', function () use ($db) {
 });
 $run('key_by_column', fn() => (new Service)->seqEq(7)->relationsMembers((new ServiceMember)->orderBySeqAsc()->limitPerParent(3)->keyByUserSeq())->one($db)->toArray());
 $run('key_by_unselected', fn() => (new Service)->seqEq(7)->relationsModules((new ServiceModule)->selectNone()->keyByName())->one($db)->toArray());
-$run('types_roundtrip', function () use ($db, &$log, &$maskSeq, &$maskTs) {
+$run('types_roundtrip', function () use ($db, $remask) {
     $dt = '2026-06-01 12:34:56.123456';
     $created = $db->transaction(fn(Tx $tx) => (new Battle)
         ->setName('conf-types')
@@ -203,12 +210,7 @@ $run('types_roundtrip', function () use ($db, &$log, &$maskSeq, &$maskTs) {
         ->setStartDt($dt)->setEndDt($dt)->setDisplayStartDt($dt)->setIsDisplay(true)->setTargetTeamPlayerCount(2147483647)->setReadCount(4294967295)->setPrice(12345.678)
         ->setJsonSetting(['k' => []])->setJsonsTags([])->setSerializeData('')
         ->insert($tx));
-    $maskSeq = $created->getSeq();
-    $maskTs = $created->getUpdatedTs();
-    foreach ($log as &$st) {
-        $st['binds'] = array_map('norm', $st['binds']);
-    }
-    unset($st);
+    $remask([$created->getSeq()], $created->getUpdatedTs());
     $b = (new Battle)->selectJsonSetting()->selectJsonsTags()->selectSerializeData()->seqEq($created->getSeq())->one($db);
     $b->delete($db);
     return [
@@ -229,7 +231,79 @@ $run('key_by_fn_to_array', function () use ($db) {
     return $items;
 });
 $run('drop_child_key_to_array', fn() => (new User)->seqEq(5)->relationsBattles((new Battle)->selectNone()->orderBySeqAsc()->limitPerParent(2)->dropChildKey())->one($db)->toArray());
-$run('codec_roundtrip', function () use ($db, &$log, &$maskSeq, &$maskTs) {
+$fks = fn(Battle $q): Battle => $q
+    ->setUserSeq(1)->setServiceSeq(999)->setServiceModuleSeq(1)->setServiceMemberSeq(1)
+    ->setStartDt('2026-06-01 00:00:00')->setEndDt('2026-12-31 00:00:00');
+$run('upsert', function () use ($db, $fks, $remask) {
+    $a = null;
+    $b = $db->transaction(function (Tx $tx) use ($fks, &$a) {
+        $a = $fks((new Battle)->setUuid('conf-upsert')->setName('u1')->setReadCount(1))->insert($tx);
+        $b = $fks((new Battle)->setUuid('conf-upsert')->setName('u2')->setReadCount(1))
+            ->onDuplicateSetName('u2')->onDuplicatePlusReadCount(5)
+            ->insert($tx);
+        $b->delete($tx);
+        return $b;
+    });
+    $remask([$a->getSeq()], $b->getUpdatedTs());
+    return ['same_seq' => $a->getSeq() === $b->getSeq(), 'name' => $b->getName(), 'read_count' => $b->getReadCount()];
+});
+$run('upsert_set_all', function () use ($db, $fks, $remask) {
+    $a = null;
+    $b = $db->transaction(function (Tx $tx) use ($fks, &$a) {
+        $a = $fks((new Battle)->setUuid('conf-upsert')->setName('u1')->setReadCount(1))->insert($tx);
+        $b = $fks((new Battle)->setUuid('conf-upsert')->setName('u3')->setReadCount(9))->onDuplicateSetAll()->insert($tx);
+        $b->delete($tx);
+        return $b;
+    });
+    $remask([$a->getSeq()], $b->getUpdatedTs());
+    return ['same_seq' => $a->getSeq() === $b->getSeq(), 'name' => $b->getName(), 'read_count' => $b->getReadCount()];
+});
+$run('save_branch', function () use ($db, $fks, $remask) {
+    $r = $db->transaction(fn(Tx $tx) => $fks((new Battle)->setName('conf-save'))->save($tx));
+    $remask([$r->getSeq()], $r->getUpdatedTs());
+    // save() re-reads the row after its UPDATE; that SELECT is the read-back.
+    $after = (new Battle)->setSeq($r->getSeq())->setName('conf-save-2')->save($db);
+    $after->delete($db);
+    return ['inserted' => $r->getSeq() > 0, 'after' => $after->getName()];
+});
+$run('bulk_update_plus_minus', function () use ($db, $fks, $remask) {
+    $r = $db->transaction(fn(Tx $tx) => $fks((new Battle)->setReadCount(3)->setName('conf-bulk'))->insert($tx));
+    $remask([$r->getSeq()], $r->getUpdatedTs());
+    $seq = $r->getSeq();
+    $read = fn(): int => (new Battle)->oneBySeq($db, $seq)->getReadCount();
+    (new Battle)->seqEq($seq)->plusReadCount(2)->update($db);
+    $afterPlus = $read();
+    (new Battle)->seqEq($seq)->minusReadCount(10)->update($db);
+    $afterMinus = $read();
+    (new Battle)->seqEq($seq)->setReadCountExpr('`read_count` * ? + 1', [2])->update($db);
+    $afterExpr = $read();
+    $deleted = (new Battle)->seqEq($seq)->delete($db);
+    return ['after_plus' => $afterPlus, 'after_minus' => $afterMinus, 'after_expr' => $afterExpr, 'deleted' => $deleted];
+});
+$run('delete_cascade_order', function () use ($db, $remask) {
+    [$s, $mod, $seqs] = $db->transaction(function (Tx $tx) {
+        $s = (new Service)->setName('conf-svc')->insert($tx);
+        $m1 = (new ServiceMember)->setServiceSeq($s->getSeq())->setUserSeq(1)->insert($tx);
+        $m2 = (new ServiceMember)->setServiceSeq($s->getSeq())->setUserSeq(2)->insert($tx);
+        $mod = (new ServiceModule)->setServiceSeq($s->getSeq())->setName('conf-mod')->insert($tx);
+        return [$s, $mod, [$s->getSeq(), $m1->getSeq(), $m2->getSeq(), $mod->getSeq()]];
+    });
+    $remask($seqs, '');
+    (new Service)->seqEq($s->getSeq())
+        ->relationsMembers((new ServiceMember)->orderBySeqAsc())
+        ->relationsModules((new ServiceModule)->noCascadeDelete())
+        ->one($db)
+        ->deleteCascade($db);
+    $left = [
+        'members_left' => (new ServiceMember)->serviceSeqEq($s->getSeq())->count($db),
+        'modules_left' => (new ServiceModule)->serviceSeqEq($s->getSeq())->count($db),
+        'service_left' => (new Service)->seqEq($s->getSeq())->count($db),
+    ];
+    (new ServiceModule)->seqEq($mod->getSeq())->delete($db);
+    return $left;
+});
+$run('sql_dump', fn() => (new Battle)->serviceSeqEq(7)->selectAesHexEmail()->limit(0, 1)->sql($db));
+$run('codec_roundtrip', function () use ($db, $remask) {
     $value = ['a' => 1, 'b' => [1, 2, ['c' => '한글/slash']], 'd' => null, 'e' => true, 'f' => 1.5];
     $created = $db->transaction(fn(Tx $tx) => (new Battle)
         ->setName('conf-codec')
@@ -237,12 +311,7 @@ $run('codec_roundtrip', function () use ($db, &$log, &$maskSeq, &$maskTs) {
         ->setStartDt('2026-06-01 00:00:00')->setEndDt('2026-12-31 00:00:00')
         ->setJsonSetting($value)->setJsonsTags(['x', 'y'])->setBase64Extra($value)->setSerializeData($value)->setGzExtend($value)->setIp('10.1.2.3')
         ->insert($tx));
-    $maskSeq = $created->getSeq();
-    $maskTs = $created->getUpdatedTs();
-    foreach ($log as &$st) {
-        $st['binds'] = array_map('norm', $st['binds']);
-    }
-    unset($st);
+    $remask([$created->getSeq()], $created->getUpdatedTs());
     $b = (new Battle)->selectJsonSetting()->selectJsonsTags()->selectBase64Extra()->selectSerializeData()->selectGzExtend()->seqEq($created->getSeq())->one($db);
     $b->delete($db);
     return ['json_setting' => $b->getJsonSetting(), 'jsons_tags' => $b->getJsonsTags(), 'base64_extra' => $b->getBase64Extra(), 'serialize_data' => $b->getSerializeData(), 'gz_extend' => $b->getGzExtend(), 'ip' => $b->getIp()];
