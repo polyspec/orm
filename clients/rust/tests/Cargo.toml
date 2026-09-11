@@ -1,0 +1,20 @@
+[package]
+name = "orm-tests"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "integration"
+path = "src/integration.rs"
+
+[[bin]]
+name = "client_bench"
+path = "src/client_bench.rs"
+
+[dependencies]
+orm = { path = "../orm" }
+gen = { path = "../gen" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "mysql"] }
+chrono = { version = "0.4", default-features = false, features = ["std"] }
