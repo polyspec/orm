@@ -6,8 +6,8 @@
 ## 현재 위치 (2026-09-11)
 - **S0 완료** (측정·결정 R1~R3, F1~F3 — `docs/perf.md`).
 - **S1 완료** (thin slice: 엔진·생성기·3언어 실행기, 적합성 하네스, `ormgen tokens`, 데모).
-- **S2 완료**(T2.15 150테이블 게이트만 example DB 대기), **S3 완료**(병렬 레인 3개로 이식·병합), **S4 엔진 완료**·언어 레인 진행 중(docs/lanes/s4.md).
-- 적합성 벡터 **36개 × 3언어 바이트 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
+- **S2 완료**(T2.15 150테이블 게이트만 example DB 대기), **S3 완료**, **S4 완료**(PHP `__call` 호환층 T4.6만 남음), **S5 언어 레인 진행 중**(docs/lanes/s5.md), **S6 엔진 완료**(dialect PG/SQLite, ddl).
+- 적합성 벡터 **40개 × 3언어 바이트 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
 
 ## 병렬 레인 (어떻게 나눠 일하는가)
 | 레인 | 담당 | 다른 레인과의 경계 |
@@ -96,12 +96,12 @@
 - [ ] T4.4 `Query.raw` 루트(신뢰 코드 전용, `{self}`/`{alias:x}` 치환) + `orderByExpr`/`groupByExpr` 검증
 
 ### 4-B 생성기·실행기 — 레인 E(템플릿) → G ∥ P ∥ R
-- [~] T4.5 G/P/R(병렬 레인, docs/lanes/s4.md): 집계 터미널, `having`, `raw`/`rawAll`, 이름 붙인 술어 메서드 — **Go·PHP 병합 완료(40 × 2 동일)**, Rust 진행 중
+- [x] T4.5 G/P/R(병렬 레인, docs/lanes/s4.md): 집계 터미널, `having`, `raw`/`rawAll`, 이름 붙인 술어 메서드 — **3언어 병합, 적합성 40 × 3 동일**
 - [ ] T4.6 **P** P: compatibility `__call` 호환층 — `condition*/and*/or*/on*`, op-first(`gtEndDt`), 무접두 `x(v)`, 배열→In·null→IsNull, `relation((new Y)->matchAWithB()->aliasR())`, `joinAWithB`, `addColumnX/addAllColumns`, `parentNode→flatten`, `groupLimit→limitPerParent`, `keyNameX→keyByX`, `fetchKey→keyByFn`, `deleteLock→noCascadeDelete`, `get/gets→one/all`, `getsByAAndB`, `and('(')…condition(')')`(모델 내 균형만, 경계 초과는 `PAREN_ACROSS_MODELS`) — 같은 IR 생성, 적합성으로 검증
-- [ ] T4.7 `ormgen check --lang php`(example application 실코드 스캔: 레거시 이름·expr 백틱 컬럼·PAREN_ACROSS_MODELS 목록) / `--lang go`(expr 문자열 analyzer)
+- [~] T4.7 `ormgen check --lang php` 완료 → example application 스캔 결과 `docs/checklist.md`(6,752 파일: relation 7,306·match 7,259·alias 5,877·and/or/condition 4,032·괄호 토큰 720·brace-call 64·raw 조각 63·delete(true) 354·duplication 23; 모델 경계를 넘는 괄호 후보 59 파일) — `--lang go` expr analyzer는 남음
 
 ### 4-C 검증 — 레인 V
-- [ ] T4.8 적합성 벡터 +15(R9 조인+OR fulltext, 조인 두 그룹, 다단 조인 R8, 조인 하위 relation R6, 집계 5종, raw 루트, computed 컬럼 `ST_Y`, expr 바인드, having)
+- [~] T4.8 적합성 벡터: +10 완료(S3 6 + S4 4 → 40) — 남은 것: R9 조인+OR fulltext(이제 fulltext 인덱스 있음), 조인 두 그룹, 다단 조인 R8, computed 컬럼 `ST_Y`
 - [ ] T4.9 `docs/examples/complex-query.md`를 실행 가능한 예제로 승격(3언어 실행, 플랜 덤프 비교)
 
 ---
