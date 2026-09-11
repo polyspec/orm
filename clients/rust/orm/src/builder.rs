@@ -40,10 +40,41 @@ impl Req {
         q
     }
 
-    /// IR bytes with n_params set (the plan-cache key and the engine input).
+    /// IR bytes with n_params set (the engine input on a plan-cache miss).
     pub fn shape(&mut self) -> Vec<u8> {
         self.ir.n_params = self.params.len();
         serde_json::to_vec(&self.ir).expect("ir serializes")
+    }
+
+    /// The plan-cache key: FNV-1a 64 over the same bytes `shape()` would produce, streamed
+    /// through the hasher without allocating them.
+    pub fn shape_key(&mut self) -> u64 {
+        self.ir.n_params = self.params.len();
+        let mut h = Fnv(FNV_OFFSET);
+        serde_json::to_writer(&mut h, &self.ir).expect("ir serializes");
+        h.0
+    }
+}
+
+const FNV_OFFSET: u64 = 0xcbf29ce484222325;
+const FNV_PRIME: u64 = 0x100000001b3;
+
+/// FNV-1a 64 as an `io::Write` sink: hashes every byte serde writes, allocation-free.
+struct Fnv(u64);
+
+impl std::io::Write for Fnv {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let mut h = self.0;
+        for &b in buf {
+            h ^= b as u64;
+            h = h.wrapping_mul(FNV_PRIME);
+        }
+        self.0 = h;
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
 }
 
