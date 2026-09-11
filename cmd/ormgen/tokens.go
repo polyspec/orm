@@ -149,6 +149,9 @@ func tokenize(v *vocabulary, path string, src string) []string {
 		switch lang {
 		case "go":
 			canon = lowerFirst(name)
+			if strings.ToUpper(name) == name { // Go initialisms: SQL → sql
+				canon = strings.ToLower(name)
+			}
 		case "rs":
 			canon = snakeToCamel(name)
 		default:
