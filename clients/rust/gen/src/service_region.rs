@@ -360,30 +360,31 @@ impl ServiceRegion {
     pub fn where_(mut self, f: impl FnOnce(ServiceRegionWhere<'_>) -> ServiceRegionWhere<'_>) -> Self { { let w = self.q.w(); f(ServiceRegionWhere { w }); } self }
     pub fn relation(mut self, child: impl AsRef<Q>) -> Self {
         let c = child.as_ref();
-        let rel = match c.entity() {
-            "service" => "service",
+        match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
+            ("service", "service_seq", "seq") => { self.q.relation("service", c); self },
+            ("service", "", "") => { self.q.relation("service", c); self },
             _ => panic!("no one-to-one relation from service_region"),
-        };
-        self.q.relation(rel, c); self
+        }
     }
     pub fn relations(mut self, child: impl AsRef<Q>) -> Self {
         let c = child.as_ref();
-        let rel = match c.entity() {
-            "author" => "authors",
+        match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
+            ("author", "seq", "service_region_seq") => { self.q.relation("authors", c); self },
+            ("author", "", "") => { self.q.relation("authors", c); self },
             _ => panic!("no one-to-many relation from service_region"),
-        };
-        self.q.relation(rel, c); self
+        }
     }
     pub fn join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "inner") }
     pub fn left_join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "left") }
     fn join_target(mut self, child: impl AsRef<Q>, kind: &str) -> Self {
         let c = child.as_ref();
-        let rel = match c.entity() {
-            "author" => "authors",
-            "service" => "service",
+        match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
+            ("author", "seq", "service_region_seq") => { self.q.join("authors", kind, c); self },
+            ("author", "", "") => { self.q.join("authors", kind, c); self },
+            ("service", "service_seq", "seq") => { self.q.join("service", kind, c); self },
+            ("service", "", "") => { self.q.join("service", kind, c); self },
             _ => panic!("no relation from service_region"),
-        };
-        self.q.join(rel, kind, c); self
+        }
     }
 
 
@@ -394,6 +395,11 @@ impl ServiceRegion {
     pub fn join_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "inner", &child.as_ref().q); self }
     pub fn left_join_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "left", &child.as_ref().q); self }
     pub fn relation_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.relation("service", &child.as_ref().q); self }
+
+    pub fn match_service_region_seq_with_seq(mut self) -> Self { self.q.set_link("service_region_seq", "seq"); self }
+    pub fn on_service_region_seq_with_seq(mut self) -> Self { self.q.set_link("service_region_seq", "seq"); self }
+    pub fn match_seq_with_service_seq(mut self) -> Self { self.q.set_link("seq", "service_seq"); self }
+    pub fn on_seq_with_service_seq(mut self) -> Self { self.q.set_link("seq", "service_seq"); self }
 
     // ---- columns ----
     pub fn select_all(mut self) -> Self { self.q.columns().mode = "all".into(); self }

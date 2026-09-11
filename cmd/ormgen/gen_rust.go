@@ -100,6 +100,7 @@ type rustRel struct {
 	Name, Ident, Target, TargetType, Kind string
 	Left, Right                           string
 	Pair                                  bool
+	Default                               bool
 }
 
 // rustPred is a manifest predicate: `visible()` / `started_after(a0)`, one argument per `?`.
@@ -120,6 +121,7 @@ type rustData struct {
 	Preds                         []rustPred
 	ParentCols                    []rustCol
 	Rels                          []rustRel
+	Links                         []goLink
 	Indexes                       []string
 	Fulltext                      [][]string
 	UpdatedTs                     string
@@ -552,35 +554,41 @@ impl {{.Type}} {
     pub fn where_(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { { let w = self.q.w(); f({{.Type}}Where { w }); } self }
     pub fn relation(mut self, child: impl AsRef<Q>) -> Self {
         let c = child.as_ref();
-        let rel = match c.entity() {
+        match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
 {{- range .Rels}}{{- if eq .Kind "one"}}
-            {{printf "%q" .Target}} => {{printf "%q" .Name}},
+            ({{printf "%q" .Target}}, {{printf "%q" .Left}}, {{printf "%q" .Right}}) => { self.q.relation({{printf "%q" .Name}}, c); self },
+{{- if .Default}}
+            ({{printf "%q" .Target}}, "", "") => { self.q.relation({{printf "%q" .Name}}, c); self },
+{{- end}}
 {{- end}}{{- end}}
             _ => panic!("no one-to-one relation from {{.Name}}"),
-        };
-        self.q.relation(rel, c); self
+        }
     }
     pub fn relations(mut self, child: impl AsRef<Q>) -> Self {
         let c = child.as_ref();
-        let rel = match c.entity() {
+        match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
 {{- range .Rels}}{{- if eq .Kind "many"}}
-            {{printf "%q" .Target}} => {{printf "%q" .Name}},
+            ({{printf "%q" .Target}}, {{printf "%q" .Left}}, {{printf "%q" .Right}}) => { self.q.relation({{printf "%q" .Name}}, c); self },
+{{- if .Default}}
+            ({{printf "%q" .Target}}, "", "") => { self.q.relation({{printf "%q" .Name}}, c); self },
+{{- end}}
 {{- end}}{{- end}}
             _ => panic!("no one-to-many relation from {{.Name}}"),
-        };
-        self.q.relation(rel, c); self
+        }
     }
     pub fn join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "inner") }
     pub fn left_join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "left") }
     fn join_target(mut self, child: impl AsRef<Q>, kind: &str) -> Self {
         let c = child.as_ref();
-        let rel = match c.entity() {
+        match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
 {{- range .Rels}}
-            {{printf "%q" .Target}} => {{printf "%q" .Name}},
+            ({{printf "%q" .Target}}, {{printf "%q" .Left}}, {{printf "%q" .Right}}) => { self.q.join({{printf "%q" .Name}}, kind, c); self },
+{{- if .Default}}
+            ({{printf "%q" .Target}}, "", "") => { self.q.join({{printf "%q" .Name}}, kind, c); self },
+{{- end}}
 {{- end}}
             _ => panic!("no relation from {{.Name}}"),
-        };
-        self.q.join(rel, kind, c); self
+        }
     }
 {{range .Rels}}
 {{if .Pair}}
@@ -592,6 +600,10 @@ impl {{.Type}} {
     pub fn relations_{{ident .Left}}_with_{{ident .Right}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.relation("{{.Name}}", &child.as_ref().q); self }
 {{- end}}
 {{- end}}
+{{- end}}
+{{range .Links}}
+    pub fn {{opSnake .Match}}(mut self) -> Self { self.q.set_link({{printf "%q" .Left}}, {{printf "%q" .Right}}); self }
+    pub fn {{opSnake .On}}(mut self) -> Self { self.q.set_link({{printf "%q" .Left}}, {{printf "%q" .Right}}); self }
 {{- end}}
 
     // ---- columns ----
@@ -873,7 +885,7 @@ func genRust(m *schema.Manifest, outDir string) error {
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		ge := buildGoEntity(m, e)
-		d := rustData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs, SchemaHash: m.SchemaHash}
+		d := rustData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs, SchemaHash: m.SchemaHash, Links: ge.Links}
 		for _, c := range ge.Cols {
 			col := e.Column(c.Name)
 			rc := rustCol{goCol: c, RType: rustType(col), Ident: rustIdent(c.Name)}
@@ -932,7 +944,7 @@ func genRust(m *schema.Manifest, outDir string) error {
 			pairs[r.Left+"\x1f"+r.Right]++
 		}
 		for _, r := range ge.Rels {
-			d.Rels = append(d.Rels, rustRel{Name: r.Name, Ident: rustIdent(r.Name), Target: r.Target, TargetType: r.TargetType, Kind: r.Kind, Left: r.Left, Right: r.Right, Pair: pairs[r.Left+"\x1f"+r.Right] == 1})
+			d.Rels = append(d.Rels, rustRel{Name: r.Name, Ident: rustIdent(r.Name), Target: r.Target, TargetType: r.TargetType, Kind: r.Kind, Left: r.Left, Right: r.Right, Pair: pairs[r.Left+"\x1f"+r.Right] == 1, Default: r.Default})
 		}
 		var buf bytes.Buffer
 		if err := rustTmpl.Execute(&buf, d); err != nil {

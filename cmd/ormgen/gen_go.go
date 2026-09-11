@@ -119,6 +119,7 @@ type goEntity struct {
 	EqCols            []goCol // columns that support the default equality predicate (getsBy/getCountBy)
 	UniqueFinders     []goFinder
 	Rels              []goRel
+	Links             []goLink
 	Indexes           []string
 	Fulltext          [][]string
 	UpdatedTs         string
@@ -173,7 +174,10 @@ type goRel struct {
 	Name, Method, Target, TargetType, Kind string
 	Left, Right                            string // this.Left = target.Right (the PHP compat layer resolves matchAWithB against them)
 	Pair                                   bool
+	Default                                bool
 }
+
+type goLink struct{ Left, Right, Match, On string }
 
 // parentOf returns the first entity related to e that has column col (ifParent targets).
 func parentOf(m *schema.Manifest, e *schema.Entity, col string) string {
@@ -248,13 +252,30 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 	}
 	sort.Strings(names)
 	pairs := map[string]int{}
+	targetKinds := map[string]int{}
 	for _, n := range names {
 		r := e.Relations[n]
 		pairs[r.Left+"\x1f"+r.Right]++
+		targetKinds[r.Target+"\x1f"+r.Kind]++
 	}
 	for _, n := range names {
 		r := e.Relations[n]
-		ge.Rels = append(ge.Rels, goRel{Name: n, Method: pascal(n), Target: r.Target, TargetType: pascal(r.Target), Kind: r.Kind, Left: r.Left, Right: r.Right, Pair: pairs[r.Left+"\x1f"+r.Right] == 1})
+		ge.Rels = append(ge.Rels, goRel{Name: n, Method: pascal(n), Target: r.Target, TargetType: pascal(r.Target), Kind: r.Kind, Left: r.Left, Right: r.Right, Pair: pairs[r.Left+"\x1f"+r.Right] == 1, Default: targetKinds[r.Target+"\x1f"+r.Kind] == 1})
+	}
+	linkPairs := map[string]bool{}
+	for _, pn := range m.Order {
+		pe := m.Entities[pn]
+		for _, r := range pe.Relations {
+			if r.Target != e.Name {
+				continue
+			}
+			key := r.Left + "\x1f" + r.Right
+			if linkPairs[key] {
+				continue
+			}
+			linkPairs[key] = true
+			ge.Links = append(ge.Links, goLink{Left: r.Left, Right: r.Right, Match: "Match" + pascal(r.Left) + "With" + pascal(r.Right), On: "On" + pascal(r.Left) + "With" + pascal(r.Right)})
+		}
 	}
 	for n := range e.Indexes {
 		ge.Indexes = append(ge.Indexes, n)
@@ -669,22 +690,25 @@ func (q *{{.Type}}Query) Raw(sql string, binds ...any) *{{.Type}}Query { q.q.Raw
 // the relation name from the parent and child entities.
 func (q *{{.Type}}Query) Relation(child any) *{{.Type}}Query {
 {{- range .Rels}}{{- if eq .Kind "one"}}
-	if c, ok := child.(*{{.TargetType}}Query); ok { q.q.Relation("{{.Name}}", c.q); return q }
+	if c, ok := child.(*{{.TargetType}}Query); ok { if c.q.LinkLeft != "" && (c.q.LinkLeft != "{{.Left}}" || c.q.LinkRight != "{{.Right}}") { q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}; return q }; q.q.Relation("{{.Name}}", c.q); return q }
 {{- end}}{{- end}}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 func (q *{{.Type}}Query) Relations(child any) *{{.Type}}Query {
 {{- range .Rels}}{{- if eq .Kind "many"}}
-	if c, ok := child.(*{{.TargetType}}Query); ok { q.q.Relation("{{.Name}}", c.q); return q }
+	if c, ok := child.(*{{.TargetType}}Query); ok { if c.q.LinkLeft != "" && (c.q.LinkLeft != "{{.Left}}" || c.q.LinkRight != "{{.Right}}") { q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}; return q }; q.q.Relation("{{.Name}}", c.q); return q }
 {{- end}}{{- end}}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 func (q *{{.Type}}Query) Join(child any) *{{.Type}}Query { return q.joinTarget(child, "inner") }
 func (q *{{.Type}}Query) LeftJoin(child any) *{{.Type}}Query { return q.joinTarget(child, "left") }
 func (q *{{.Type}}Query) joinTarget(child any, kind string) *{{.Type}}Query {
 {{- range .Rels}}
-	if c, ok := child.(*{{.TargetType}}Query); ok { q.q.Join("{{.Name}}", kind, c.q); return q }
+	if c, ok := child.(*{{.TargetType}}Query); ok { if c.q.LinkLeft != "" && (c.q.LinkLeft != "{{.Left}}" || c.q.LinkRight != "{{.Right}}") { q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}; return q }; q.q.Join("{{.Name}}", kind, c.q); return q }
 {{- end}}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 {{range .Rels}}
@@ -697,6 +721,10 @@ func (q *{{$.Type}}Query) Relation{{pascal .Left}}With{{pascal .Right}}(child *{
 func (q *{{$.Type}}Query) Relations{{pascal .Left}}With{{pascal .Right}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Relation("{{.Name}}", child.q); return q }
 {{- end}}
 {{- end}}
+{{- end}}
+{{range .Links}}
+func (q *{{$.Type}}Query) {{.Match}}() *{{$.Type}}Query { q.q.SetLink("{{.Left}}", "{{.Right}}"); return q }
+func (q *{{$.Type}}Query) {{.On}}() *{{$.Type}}Query { q.q.SetLink("{{.Left}}", "{{.Right}}"); return q }
 {{- end}}
 // Columns.
 func (q *{{.Type}}Query) SelectAll() *{{.Type}}Query { q.q.Columns().Mode = "all"; return q }

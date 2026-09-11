@@ -137,15 +137,22 @@ impl ColRef {
 /// Query builder core. Generated types wrap this and move `self` through the chain.
 pub struct Q {
     pub req: Req,
+    pub link_left: String,
+    pub link_right: String,
     pending_or: bool,
 }
 
 impl Q {
     pub fn new(schema_hash: &str, entity: &str) -> Q {
-        Q { req: Req::new(schema_hash, entity), pending_or: false }
+        Q { req: Req::new(schema_hash, entity), link_left: String::new(), link_right: String::new(), pending_or: false }
     }
 
     pub fn entity(&self) -> &str { &self.req.ir.query.entity }
+
+    pub fn set_link(&mut self, left: &str, right: &str) {
+        self.link_left = left.into();
+        self.link_right = right.into();
+    }
 
     pub fn node(&mut self) -> &mut Query {
         &mut self.req.ir.query

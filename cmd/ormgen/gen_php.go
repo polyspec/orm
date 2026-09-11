@@ -233,10 +233,10 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new {{.Type}}Where($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new {{.Type}}Where($this->w())); return $this; }
-    public function relation(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'one'), $child); return $this; }
-    public function relations(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'many'), $child); return $this; }
-    public function join(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
-    public function leftJoin(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
+    public function relation(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, 'one'), $child); return $this; }
+    public function relations(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, 'many'), $child); return $this; }
+    public function join(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, null), 'inner', $child); return $this; }
+    public function leftJoin(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, null), 'left', $child); return $this; }
 {{range .Rels}}
 {{if .Pair}}
     public function join{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { $this->attachJoin('{{.Name}}', 'inner', $child); return $this; }
@@ -247,6 +247,11 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
     public function relations{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { $this->attachRelation('{{.Name}}', $child); return $this; }
 {{- end}}
 {{- end}}
+{{- end}}
+
+{{range .Links}}
+    public function {{camel .Match}}(): static { $this->setLink('{{.Left}}', '{{.Right}}'); return $this; }
+    public function {{camel .On}}(): static { $this->setLink('{{.Left}}', '{{.Right}}'); return $this; }
 {{- end}}
 
     // ---- columns ----
@@ -475,6 +480,7 @@ type phpTmplData struct {
 	Numeric                                            []phpCol
 	ParentCols                                         []phpCol
 	Rels                                               []goRel
+	Links                                              []goLink
 	Indexes                                            []string
 	Fulltext                                           [][]string
 	Protected                                          []string // PK and auto columns: never assigned by onDuplicateSetAll
@@ -493,7 +499,7 @@ func genPHP(m *schema.Manifest, outDir, namespace string) error {
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		ge := buildGoEntity(m, e)
-		d := phpTmplData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Namespace: namespace, Rels: ge.Rels, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs}
+		d := phpTmplData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Namespace: namespace, Rels: ge.Rels, Links: ge.Links, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs}
 		for _, c := range ge.Cols {
 			sc := e.Column(c.Name)
 			pc := phpCol{goCol: c, PhpType: phpType(sc), Agg: (len(sc.Styles) == 0 || sc.Styles[0] == "ip") && sc.Type != "json" && sc.Type != "bytes"}
