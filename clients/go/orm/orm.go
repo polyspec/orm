@@ -16,9 +16,6 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/jackc/pgx/v5/pgconn"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	sqlite "modernc.org/sqlite"
 
 	"github.com/polyspec/orm/engine"
 	"github.com/polyspec/orm/engine/ir"
@@ -66,9 +63,13 @@ type DB struct {
 // be the dialect the engine compiles for (docs/dialects.md): the plans are
 // dialect-specific text.
 func Open(driver, dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
-	sqlDriver, ok := sqlDrivers[driver]
+	sqlDriver, ok := lookupDriver(driver)
 	if !ok {
-		return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("driver %q: want mysql, postgres or sqlite", driver)}
+		msg := fmt.Sprintf("driver %q is not registered", driver)
+		if driver == "postgres" || driver == "sqlite" {
+			msg += fmt.Sprintf(`: import _ "github.com/polyspec/orm/clients/go/orm/%s"`, driver)
+		}
+		return nil, &ir.Error{Code: CodeConfig, Msg: msg}
 	}
 	if eng.P.D.Name() != driver {
 		return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("driver %s but the engine compiles for %s", driver, eng.P.D.Name())}
@@ -86,8 +87,32 @@ func Open(driver, dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
 	return &DB{SQL: s, Eng: eng, cfg: cfg, driver: driver, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
 }
 
-// sqlDrivers maps our driver names to the registered database/sql drivers.
-var sqlDrivers = map[string]string{"mysql": "mysql", "postgres": "pgx", "sqlite": "sqlite"}
+// Drivers beyond MySQL live in their own packages so a MySQL-only program does
+// not link PostgreSQL and SQLite (together ~8MB and a package init that parses
+// /etc/services): import github.com/polyspec/orm/clients/go/orm/pg or .../sqlite
+// for its side effect, exactly as database/sql drivers are imported.
+var (
+	driverMu   sync.RWMutex
+	sqlDrivers = map[string]string{"mysql": "mysql"}
+	errMappers = map[string]func(error) error{"mysql": mapMySQLErr}
+)
+
+// RegisterDriver teaches Open a driver name, the database/sql driver behind it,
+// and how to turn that driver's errors into the codes docs/errors.yaml names.
+// The driver packages call it from init().
+func RegisterDriver(name, sqlDriver string, mapErr func(error) error) {
+	driverMu.Lock()
+	defer driverMu.Unlock()
+	sqlDrivers[name] = sqlDriver
+	errMappers[name] = mapErr
+}
+
+func lookupDriver(name string) (string, bool) {
+	driverMu.RLock()
+	defer driverMu.RUnlock()
+	d, ok := sqlDrivers[name]
+	return d, ok
+}
 
 // Driver is the database this DB talks to (mysql | postgres | sqlite).
 func (d *DB) Driver() string { return d.driver }
@@ -210,36 +235,28 @@ func mapDriverErr(err error) error {
 	if err == nil {
 		return nil
 	}
+	driverMu.RLock()
+	mappers := errMappers
+	driverMu.RUnlock()
+	for _, m := range mappers {
+		if mapped := m(err); mapped != err {
+			return mapped
+		}
+	}
+	return err
+}
+
+func mapMySQLErr(err error) error {
 	var me *mysql.MySQLError
-	if errors.As(err, &me) {
-		state := string(me.SQLState[:])
-		switch {
-		case me.Number == 1213 || state == "40001":
-			return &ir.Error{Code: CodeDeadlock, Msg: me.Error()}
-		case me.Number == 1062 || (me.Number == 0 && state == "23000"):
-			return &ir.Error{Code: CodeDuplicateKey, Msg: me.Error()}
-		}
+	if !errors.As(err, &me) {
 		return err
 	}
-	var pe *pgconn.PgError
-	if errors.As(err, &pe) {
-		switch pe.Code {
-		case "40P01", "40001": // deadlock_detected, serialization_failure
-			return &ir.Error{Code: CodeDeadlock, Msg: pe.Error()}
-		case "23505": // unique_violation
-			return &ir.Error{Code: CodeDuplicateKey, Msg: pe.Error()}
-		}
-		return err
-	}
-	var se *sqlite.Error
-	if errors.As(err, &se) {
-		switch se.Code() {
-		case 5, 6, 261, 262: // SQLITE_BUSY / SQLITE_LOCKED and their extended forms: the other writer wins, re-run
-			return &ir.Error{Code: CodeDeadlock, Msg: se.Error()}
-		case 2067, 1555: // SQLITE_CONSTRAINT_UNIQUE / _PRIMARYKEY
-			return &ir.Error{Code: CodeDuplicateKey, Msg: se.Error()}
-		}
-		return err
+	state := string(me.SQLState[:])
+	switch {
+	case me.Number == 1213 || state == "40001":
+		return &ir.Error{Code: CodeDeadlock, Msg: me.Error()}
+	case me.Number == 1062 || (me.Number == 0 && state == "23000"):
+		return &ir.Error{Code: CodeDuplicateKey, Msg: me.Error()}
 	}
 	return err
 }
