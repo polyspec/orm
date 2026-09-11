@@ -101,6 +101,9 @@ Go 1.27, Rust 1.98.1(sqlx 0.9, wasmtime 48), PHP 8.5.10(mysqlnd, msgpack, APCu).
 | 의존성 포함 첫 dev 빌드 | 38.6s (sqlx·wasmtime·tokio가 대부분) |
 5 테이블에서 문제 없음. 150 테이블(T2.15)에서 선형 외삽 시 release 증분 ≈ 40s — 그때 `--tables` 분할 여부를 결정한다.
 
+### PHP prepared 방식 (S5 T5.4)
+`PDO::ATTR_EMULATE_PREPARES = true`로 고정. 근거(p50, off → on): 콜드(prepare+execute, 요청마다 형태를 처음 보는 PHP-FPM의 현실) PK 72→48µs, IN(8) 107→75µs, 100행 460→382µs; 웜(같은 statement 재실행) PK 33→49µs, 100행 435→400µs. 웹 요청은 대부분 형태를 한 번 실행하므로 콜드가 결정 기준이다. 타입(ip 문자열·JSON·실수·불리언)과 적합성 출력은 두 모드에서 동일.
+
 ## 7. S0 결정 요약
 | ID | 결정 | 근거 |
 |---|---|---|
