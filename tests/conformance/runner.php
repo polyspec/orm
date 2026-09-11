@@ -10,6 +10,8 @@ use App\Orm\BattleCols;
 use App\Orm\BattleRow;
 use App\Orm\BattleWhere;
 use App\Orm\Service;
+use App\Orm\ServiceMember;
+use App\Orm\ServiceMemberRow;
 use App\Orm\ServiceWhere;
 use App\Orm\User;
 use App\Orm\UserWhere;
@@ -166,6 +168,18 @@ $run('select_expr', function () use ($db) {
     $b = (new Battle)->selectExpr('tag', "CONCAT(`name`, '!')")->seqEq(42)->one($db);
     return ['seq' => $b->getSeq(), 'tag' => $b['tag']];
 });
+$run('key_by_fn_to_array', function () use ($db) {
+    $c = (new ServiceMember)->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 2)
+        ->relationUser((new User)->flatten())
+        ->keyByFn(fn(ServiceMemberRow $m) => 'u' . $m->getUserSeq())
+        ->all($db);
+    $items = [];
+    foreach ($c as $k => $m) {
+        $items[] = [(string) $k, $m->toArray()];
+    }
+    return $items;
+});
+$run('drop_child_key_to_array', fn() => (new User)->seqEq(5)->relationsBattles((new Battle)->selectNone()->orderBySeqAsc()->limitPerParent(2)->dropChildKey())->one($db)->toArray());
 $run('codec_roundtrip', function () use ($db, &$log, &$maskSeq, &$maskTs) {
     $value = ['a' => 1, 'b' => [1, 2, ['c' => '한글/slash']], 'd' => null, 'e' => true, 'f' => 1.5];
     $created = $db->transaction(fn(Tx $tx) => (new Battle)
