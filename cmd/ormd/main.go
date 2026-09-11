@@ -2,7 +2,7 @@
 // link it in-process (PHP). It never touches a database.
 //
 // Framing: 4-byte big-endian length + payload, both directions.
-// Request : {"op":"compile","ir":{...}} | {"op":"hash"}
+// Request : {"op":"compile","ir":{...}} | {"op":"hash"}   (hash answers {"schema_hash", "dialect"})
 // Response: {"plan":{...}} | {"schema_hash":"…"} | {"error":{"code":..,"msg":..}}
 package main
 
@@ -130,7 +130,8 @@ func handle(eng *engine.Engine, frame []byte) []byte {
 		out = append(out, '}')
 		return out
 	case "hash":
-		return []byte(`{"schema_hash":"` + eng.M.SchemaHash + `"}`)
+		// the client checks both at startup: its generated hash and the dialect its PDO driver speaks
+		return []byte(`{"schema_hash":"` + eng.M.SchemaHash + `","dialect":"` + eng.P.D.Name() + `"}`)
 	default:
 		return engine.ErrorJSON(&ir.Error{Code: "OP_UNKNOWN", Msg: req.Op})
 	}
