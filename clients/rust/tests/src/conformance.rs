@@ -13,10 +13,23 @@ use sqlx::mysql::MySqlConnectOptions;
 
 type Log = Arc<Mutex<Vec<Value>>>;
 
+/// Row identity of a write vector: every created seq binds as "$SEQ", the read updated_ts as "$TS".
 #[derive(Default, Clone)]
 struct Mask {
-    seq: i64,
+    seqs: Vec<i64>,
     ts: Option<chrono::NaiveDateTime>,
+}
+
+/// Installs the mask for the statements to come and re-masks the ones already logged
+/// (the INSERTs and their re-reads ran before the created row was known).
+fn mask_created(mask: &Arc<Mutex<Mask>>, log: &Log, m: Mask) {
+    for st in log.lock().unwrap().iter_mut() {
+        for b in st["binds"].as_array_mut().unwrap() {
+            if m.seqs.iter().any(|s| *b == json!(s)) { *b = json!("$SEQ"); }
+            if m.ts.as_ref().map(|t| *b == json!(fmt_time(t))).unwrap_or(false) { *b = json!("$TS"); }
+        }
+    }
+    *mask.lock().unwrap() = m;
 }
 
 fn fmt_time(t: &chrono::NaiveDateTime) -> String {
@@ -31,7 +44,7 @@ fn norm(p: &Param, m: &Mask) -> Value {
     match p {
         Param::Null => Value::Null,
         Param::Bool(b) => json!(b),
-        Param::I64(x) if m.seq != 0 && *x == m.seq => json!("$SEQ"),
+        Param::I64(x) if m.seqs.contains(x) => json!("$SEQ"),
         Param::I64(x) => json!(x),
         Param::F64(x) => json!(x),
         Param::Str(s) => json!(s),
@@ -93,6 +106,10 @@ async fn main() {
         }};
     }
     let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11).unwrap().and_hms_opt(0, 0, 0).unwrap();
+    let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
+    let end = chrono::NaiveDate::from_ymd_opt(2026, 12, 31).unwrap().and_hms_opt(0, 0, 0).unwrap();
+    // FKs and dts every write vector sets (user 1, service 999, module 1, member 1; 2026-06-01 .. 2026-12-31)
+    let fks = |q: Battle| q.set_user_seq(1).set_service_seq(999).set_service_module_seq(1).set_service_member_seq(1).set_start_dt(start).set_end_dt(end);
 
     run!("pk_one", async { Ok(row(Battle::new().seq_eq(42).one(&db).await?.as_ref())) }.await);
     run!("pk_one_by", async { Ok(row(Battle::new().one_by_seq(&db, 42).await?.as_ref())) }.await);
@@ -150,8 +167,6 @@ async fn main() {
         Ok(json!(orm::db::scalar(&db, &mut q.req, "count").await?.as_i64()))
     }.await);
     run!("write_cycle", async {
-        let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
-        let end = chrono::NaiveDate::from_ymd_opt(2026, 12, 31).unwrap().and_hms_opt(0, 0, 0).unwrap();
         let created = db.transaction(|tx| async move {
             Battle::new()
                 .set_name("conf-write")
@@ -160,17 +175,7 @@ async fn main() {
                 .set_aes_hex_email(Some("w@example.com"))
                 .insert(&tx).await
         }).await?.unwrap();
-        *mask.lock().unwrap() = Mask { seq: created.seq, ts: Some(created.updated_ts) };
-        {
-            // the INSERT's own log entries were recorded before the mask existed: re-mask them
-            let m = mask.lock().unwrap().clone();
-            for st in log.lock().unwrap().iter_mut() {
-                for b in st["binds"].as_array_mut().unwrap() {
-                    if *b == json!(m.seq) { *b = json!("$SEQ"); }
-                    if *b == json!(fmt_time(m.ts.as_ref().unwrap())) { *b = json!("$TS"); }
-                }
-            }
-        }
+        mask_created(&mask, &log, Mask { seqs: vec![created.seq], ts: Some(created.updated_ts) });
         let mut c = created.clone();
         c.set_name("conf-write-2").set_like_count(5);
         c.update_optimistic(&db).await?;
@@ -230,16 +235,7 @@ async fn main() {
                 .set_json_setting(json!({"k": []})).set_jsons_tags(json!([])).set_serialize_data(json!(""))
                 .insert(&tx).await
         }).await?.unwrap();
-        *mask.lock().unwrap() = Mask { seq: created.seq, ts: Some(created.updated_ts) };
-        {
-            let m = mask.lock().unwrap().clone();
-            for st in log.lock().unwrap().iter_mut() {
-                for b in st["binds"].as_array_mut().unwrap() {
-                    if *b == json!(m.seq) { *b = json!("$SEQ"); }
-                    if *b == json!(fmt_time(m.ts.as_ref().unwrap())) { *b = json!("$TS"); }
-                }
-            }
-        }
+        mask_created(&mask, &log, Mask { seqs: vec![created.seq], ts: Some(created.updated_ts) });
         let b = Battle::new().select_json_setting().select_jsons_tags().select_serialize_data().seq_eq(created.seq).one(&db).await?.unwrap();
         b.delete(&db).await?;
         Ok(json!({
@@ -259,10 +255,73 @@ async fn main() {
         let u = User::new().seq_eq(5).relations_battles(Battle::new().select_none().order_by_seq_asc().limit_per_parent(2).drop_child_key()).one(&db).await?.unwrap();
         Ok(u.to_map())
     }.await);
+    run!("upsert", async {
+        let (a, b) = db.transaction(|tx| async move {
+            let a = fks(Battle::new().set_uuid(Some("conf-upsert")).set_name("u1").set_read_count(1)).insert(&tx).await?.unwrap();
+            let b = fks(Battle::new().set_uuid(Some("conf-upsert")).set_name("u2").set_read_count(1))
+                .on_duplicate_set_name("u2").on_duplicate_plus_read_count(5)
+                .insert(&tx).await?.unwrap();
+            b.delete(&tx).await?;
+            Ok((a, b))
+        }).await?;
+        mask_created(&mask, &log, Mask { seqs: vec![a.seq], ts: Some(a.updated_ts) });
+        Ok(json!({"same_seq": a.seq == b.seq, "name": b.name, "read_count": b.read_count}))
+    }.await);
+    run!("upsert_set_all", async {
+        let (a, b) = db.transaction(|tx| async move {
+            let a = fks(Battle::new().set_uuid(Some("conf-upsert")).set_name("u1").set_read_count(1)).insert(&tx).await?.unwrap();
+            let b = fks(Battle::new().set_uuid(Some("conf-upsert")).set_name("u3").set_read_count(9)).on_duplicate_set_all().insert(&tx).await?.unwrap();
+            b.delete(&tx).await?;
+            Ok((a, b))
+        }).await?;
+        mask_created(&mask, &log, Mask { seqs: vec![a.seq], ts: Some(a.updated_ts) });
+        Ok(json!({"same_seq": a.seq == b.seq, "name": b.name, "read_count": b.read_count}))
+    }.await);
+    run!("save_branch", async {
+        let r = db.transaction(|tx| async move { fks(Battle::new().set_name("conf-save")).save(&tx).await }).await?.unwrap();
+        mask_created(&mask, &log, Mask { seqs: vec![r.seq], ts: Some(r.updated_ts) });
+        let after = Battle::new().set_seq(r.seq).set_name("conf-save-2").save(&db).await?.unwrap();
+        after.delete(&db).await?;
+        Ok(json!({"inserted": r.seq > 0, "after": after.name}))
+    }.await);
+    run!("bulk_update_plus_minus", async {
+        let r = db.transaction(|tx| async move { fks(Battle::new().set_read_count(3).set_name("conf-bulk")).insert(&tx).await }).await?.unwrap();
+        mask_created(&mask, &log, Mask { seqs: vec![r.seq], ts: Some(r.updated_ts) });
+        Battle::new().seq_eq(r.seq).plus_read_count(2).update(&db).await?;
+        let after_plus = Battle::new().one_by_seq(&db, r.seq).await?.unwrap().read_count;
+        Battle::new().seq_eq(r.seq).minus_read_count(10).update(&db).await?;
+        let after_minus = Battle::new().one_by_seq(&db, r.seq).await?.unwrap().read_count;
+        Battle::new().seq_eq(r.seq).set_read_count_expr("`read_count` * ? + 1", vec![2.into()]).update(&db).await?;
+        let after_expr = Battle::new().one_by_seq(&db, r.seq).await?.unwrap().read_count;
+        let deleted = Battle::new().seq_eq(r.seq).delete(&db).await?;
+        Ok(json!({"after_plus": after_plus, "after_minus": after_minus, "after_expr": after_expr, "deleted": deleted}))
+    }.await);
+    run!("delete_cascade_order", async {
+        let (s, m1, m2, md) = db.transaction(|tx| async move {
+            let s = Service::new().set_name("conf-svc").insert(&tx).await?.unwrap();
+            let m1 = ServiceMember::new().set_service_seq(s.seq).set_user_seq(1).insert(&tx).await?.unwrap();
+            let m2 = ServiceMember::new().set_service_seq(s.seq).set_user_seq(2).insert(&tx).await?.unwrap();
+            let md = ServiceModule::new().set_service_seq(s.seq).set_name("conf-mod").insert(&tx).await?.unwrap();
+            Ok((s.seq, m1.seq, m2.seq, md.seq))
+        }).await?;
+        mask_created(&mask, &log, Mask { seqs: vec![s, m1, m2, md], ts: None });
+        Service::new().seq_eq(s)
+            .relations_members(ServiceMember::new().order_by_seq_asc())
+            .relations_modules(ServiceModule::new().no_cascade_delete())
+            .one(&db).await?.unwrap()
+            .delete_cascade(&db).await?;
+        let members_left = ServiceMember::new().service_seq_eq(s).count(&db).await?;
+        let modules_left = ServiceModule::new().service_seq_eq(s).count(&db).await?;
+        let service_left = Service::new().seq_eq(s).count(&db).await?;
+        ServiceModule::new().seq_eq(md).delete(&db).await?;
+        Ok(json!({"members_left": members_left, "modules_left": modules_left, "service_left": service_left}))
+    }.await);
+    run!("sql_dump", async {
+        let s = Battle::new().service_seq_eq(7).select_aes_hex_email().limit(0, 1).sql(&db).await?;
+        Ok(json!({"sql": s.sql, "binds": s.binds.iter().map(|p| norm(p, &Mask::default())).collect::<Vec<_>>()}))
+    }.await);
     run!("codec_roundtrip", async {
         let value = json!({"a": 1, "b": [1, 2, {"c": "한글/slash"}], "d": null, "e": true, "f": 1.5});
-        let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
-        let end = chrono::NaiveDate::from_ymd_opt(2026, 12, 31).unwrap().and_hms_opt(0, 0, 0).unwrap();
         let v = value.clone();
         let created = db.transaction(|tx| { let v = v.clone(); async move {
             Battle::new()
@@ -272,16 +331,7 @@ async fn main() {
                 .set_json_setting(v.clone()).set_jsons_tags(json!(["x", "y"])).set_base64_extra(v.clone()).set_serialize_data(v.clone()).set_gz_extend(v).set_ip(Some("10.1.2.3"))
                 .insert(&tx).await
         }}).await?.unwrap();
-        *mask.lock().unwrap() = Mask { seq: created.seq, ts: Some(created.updated_ts) };
-        {
-            let m = mask.lock().unwrap().clone();
-            for st in log.lock().unwrap().iter_mut() {
-                for b in st["binds"].as_array_mut().unwrap() {
-                    if *b == json!(m.seq) { *b = json!("$SEQ"); }
-                    if *b == json!(fmt_time(m.ts.as_ref().unwrap())) { *b = json!("$TS"); }
-                }
-            }
-        }
+        mask_created(&mask, &log, Mask { seqs: vec![created.seq], ts: Some(created.updated_ts) });
         let b = Battle::new().select_json_setting().select_jsons_tags().select_base64_extra().select_serialize_data().select_gz_extend().seq_eq(created.seq).one(&db).await?.unwrap();
         b.delete(&db).await?;
         Ok(json!({"json_setting": b.json_setting, "jsons_tags": b.jsons_tags, "base64_extra": b.base64_extra, "serialize_data": b.serialize_data, "gz_extend": b.gz_extend, "ip": b.ip}))
