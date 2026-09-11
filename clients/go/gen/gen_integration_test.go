@@ -4,12 +4,12 @@ package gen_test
 // Skips when the socket is absent. This is the Go half of the S1 demo.
 
 import (
-	"regexp"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -552,6 +552,9 @@ func TestSchemaHashCheck(t *testing.T) {
 // TestOpenConfig: orm.toml loads per docs/config.md; a relative path, a
 // symlink, an unknown key and an unset aes_env are CONFIG errors.
 func TestOpenConfig(t *testing.T) {
+	if testDriver() != "mysql" {
+		t.Skip("the config fixtures are MySQL DSNs")
+	}
 	d := dsn(t)
 	dir := t.TempDir()
 	write := func(name, body string) string {
@@ -631,6 +634,9 @@ func TestDuplicateKey(t *testing.T) {
 
 // TestOnQueryEvent: the hook carries the plan id (stable per shape) and masks secret binds.
 func TestOnQueryEvent(t *testing.T) {
+	if testDriver() != "mysql" {
+		t.Skip("secret slots exist only where AES runs in SQL (MySQL)")
+	}
 	db := open(t)
 	ctx := context.Background()
 	var events []orm.Event
