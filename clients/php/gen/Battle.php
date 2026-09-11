@@ -12,13 +12,16 @@ use Orm\Db;
 use Orm\Page;
 use Orm\Q;
 use Orm\Row;
+use Orm\Registry;
 use Orm\W;
 
 /** One row of battle. */
-final class BattleRow extends Row
+final class BattleRow extends Row implements BattleRowInterface
 {
     public static function entity(): string { return 'battle'; }
     public static function pk(): string { return 'seq'; }
+    protected static function versionColumn(): ?string { return 'updated_ts'; }
+    public function updateOptimistic(): void { $this->terminalArity(func_num_args()); $this->doUpdate($this->terminalDb(), true); }
     public static function columns(): array
     {
         return ['seq' => 'i64', 'name' => 'string', 'description' => 'text', 'created_ts' => 'datetime', 'updated_ts' => 'datetime', 'is_close' => 'bool', 'is_display' => 'bool', 'display_start_dt' => 'datetime', 'display_end_dt' => 'datetime', 'is_allday' => 'bool', 'target_team_player_count' => 'i64', 'success_count' => 'i64', 'player_count' => 'i64', 'read_count' => 'i64', 'cover_url' => 'string', 'user_seq' => 'i64', 'service_seq' => 'i64', 'service_module_seq' => 'i64', 'service_member_seq' => 'i64', 'start_dt' => 'datetime', 'end_dt' => 'datetime', 'uuid' => 'string', 'is_single_play' => 'bool', 'like_count' => 'i64', 'aes_hex_email' => 'string', 'aes_hex_phone' => 'string', 'price' => 'decimal', 'ip' => 'inet', 'gz_extend' => 'styled', 'json_setting' => 'styled', 'jsons_tags' => 'styled', 'base64_extra' => 'styled', 'serialize_data' => 'styled'];
@@ -32,230 +35,230 @@ final class BattleRow extends Row
     public function getSeq(mixed $default = null): int
     {
         $v = $this->col('seq');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? 0) : $v;
     }
 
     public function getName(mixed $default = null): string
     {
         $v = $this->col('name');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? '') : $v;
     }
     public function setName(string $v): static { return $this->setCol('name', $v); }
 
     public function getDescription(mixed $default = null): ?string
     {
         $v = $this->col('description');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setDescription(?string $v): static { return $this->setCol('description', $v); }
 
     public function getCreatedTs(mixed $default = null): string
     {
         $v = $this->col('created_ts');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? '') : $v;
     }
     public function setCreatedTs(string $v): static { return $this->setCol('created_ts', $v); }
 
     public function getUpdatedTs(mixed $default = null): string
     {
         $v = $this->col('updated_ts');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? '') : $v;
     }
     public function setUpdatedTs(string $v): static { return $this->setCol('updated_ts', $v); }
 
     public function getIsClose(mixed $default = null): bool
     {
         $v = $this->col('is_close');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? false) : $v;
     }
     public function setIsClose(bool $v): static { return $this->setCol('is_close', $v); }
 
     public function getIsDisplay(mixed $default = null): bool
     {
         $v = $this->col('is_display');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? false) : $v;
     }
     public function setIsDisplay(bool $v): static { return $this->setCol('is_display', $v); }
 
     public function getDisplayStartDt(mixed $default = null): ?string
     {
         $v = $this->col('display_start_dt');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setDisplayStartDt(?string $v): static { return $this->setCol('display_start_dt', $v); }
 
     public function getDisplayEndDt(mixed $default = null): ?string
     {
         $v = $this->col('display_end_dt');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setDisplayEndDt(?string $v): static { return $this->setCol('display_end_dt', $v); }
 
     public function getIsAllday(mixed $default = null): bool
     {
         $v = $this->col('is_allday');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? false) : $v;
     }
     public function setIsAllday(bool $v): static { return $this->setCol('is_allday', $v); }
 
     public function getTargetTeamPlayerCount(mixed $default = null): int
     {
         $v = $this->col('target_team_player_count');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? 0) : $v;
     }
     public function setTargetTeamPlayerCount(int $v): static { return $this->setCol('target_team_player_count', $v); }
 
     public function getSuccessCount(mixed $default = null): int
     {
         $v = $this->col('success_count');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? 0) : $v;
     }
     public function setSuccessCount(int $v): static { return $this->setCol('success_count', $v); }
 
     public function getPlayerCount(mixed $default = null): int
     {
         $v = $this->col('player_count');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? 0) : $v;
     }
     public function setPlayerCount(int $v): static { return $this->setCol('player_count', $v); }
 
     public function getReadCount(mixed $default = null): int
     {
         $v = $this->col('read_count');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? 0) : $v;
     }
     public function setReadCount(int $v): static { return $this->setCol('read_count', $v); }
 
     public function getCoverUrl(mixed $default = null): ?string
     {
         $v = $this->col('cover_url');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setCoverUrl(?string $v): static { return $this->setCol('cover_url', $v); }
 
     public function getUserSeq(mixed $default = null): int
     {
         $v = $this->col('user_seq');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? 0) : $v;
     }
     public function setUserSeq(int $v): static { return $this->setCol('user_seq', $v); }
 
     public function getServiceSeq(mixed $default = null): int
     {
         $v = $this->col('service_seq');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? 0) : $v;
     }
     public function setServiceSeq(int $v): static { return $this->setCol('service_seq', $v); }
 
     public function getServiceModuleSeq(mixed $default = null): int
     {
         $v = $this->col('service_module_seq');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? 0) : $v;
     }
     public function setServiceModuleSeq(int $v): static { return $this->setCol('service_module_seq', $v); }
 
     public function getServiceMemberSeq(mixed $default = null): int
     {
         $v = $this->col('service_member_seq');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? 0) : $v;
     }
     public function setServiceMemberSeq(int $v): static { return $this->setCol('service_member_seq', $v); }
 
     public function getStartDt(mixed $default = null): string
     {
         $v = $this->col('start_dt');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? '') : $v;
     }
     public function setStartDt(string $v): static { return $this->setCol('start_dt', $v); }
 
     public function getEndDt(mixed $default = null): string
     {
         $v = $this->col('end_dt');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? '') : $v;
     }
     public function setEndDt(string $v): static { return $this->setCol('end_dt', $v); }
 
     public function getUuid(mixed $default = null): ?string
     {
         $v = $this->col('uuid');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setUuid(?string $v): static { return $this->setCol('uuid', $v); }
 
     public function getIsSinglePlay(mixed $default = null): bool
     {
         $v = $this->col('is_single_play');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? false) : $v;
     }
     public function setIsSinglePlay(bool $v): static { return $this->setCol('is_single_play', $v); }
 
     public function getLikeCount(mixed $default = null): int
     {
         $v = $this->col('like_count');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? 0) : $v;
     }
     public function setLikeCount(int $v): static { return $this->setCol('like_count', $v); }
 
     public function getAesHexEmail(mixed $default = null): ?string
     {
         $v = $this->col('aes_hex_email');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setAesHexEmail(?string $v): static { return $this->setCol('aes_hex_email', $v); }
 
     public function getAesHexPhone(mixed $default = null): ?string
     {
         $v = $this->col('aes_hex_phone');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setAesHexPhone(?string $v): static { return $this->setCol('aes_hex_phone', $v); }
 
     public function getPrice(mixed $default = null): ?float
     {
         $v = $this->col('price');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setPrice(?float $v): static { return $this->setCol('price', $v); }
 
     public function getIp(mixed $default = null): ?string
     {
         $v = $this->col('ip');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setIp(?string $v): static { return $this->setCol('ip', $v); }
 
     public function getGzExtend(mixed $default = null): mixed
     {
         $v = $this->col('gz_extend');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setGzExtend(mixed $v): static { return $this->setStyled('gz_extend', $v, ['serialize', 'gz']); }
 
     public function getJsonSetting(mixed $default = null): mixed
     {
         $v = $this->col('json_setting');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setJsonSetting(mixed $v): static { return $this->setStyled('json_setting', $v, ['json']); }
 
     public function getJsonsTags(mixed $default = null): mixed
     {
         $v = $this->col('jsons_tags');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setJsonsTags(mixed $v): static { return $this->setStyled('jsons_tags', $v, ['jsons']); }
 
     public function getBase64Extra(mixed $default = null): mixed
     {
         $v = $this->col('base64_extra');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setBase64Extra(mixed $v): static { return $this->setStyled('base64_extra', $v, ['serialize', 'base64']); }
 
     public function getSerializeData(mixed $default = null): mixed
     {
         $v = $this->col('serialize_data');
-        return $v === null ? $default : $v;
+        return $v === null ? ($default ?? null) : $v;
     }
     public function setSerializeData(mixed $v): static { return $this->setStyled('serialize_data', $v, ['serialize']); }
 
@@ -303,7 +306,7 @@ final class BattleCols
     public static function serializeData(): ColRef { return new ColRef('serialize_data'); }
 }
 
-/** Where builder for battle: predicates, or(), and(fn), relation navigation. Unknown names go to the compatibility layer (docs/dsl.md §6). */
+/** Where builder for battle: predicates, or(), and(fn), relation navigation. Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
 final class BattleWhere
 {
     use CompatWhere;
@@ -325,6 +328,7 @@ final class BattleWhere
     public function user(\Closure $fn): static { $fn(new UserWhere($this->w->nav('user'))); $this->w->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w->pred('seq', 'eq', $v); return $this; }
+    public function seq(int $v): static { return $this->seqEq($v); }
     public function seqNotEq(int $v): static { $this->w->pred('seq', 'not_eq', $v); return $this; }
     public function seqGt(int $v): static { $this->w->pred('seq', 'gt', $v); return $this; }
     public function seqGte(int $v): static { $this->w->pred('seq', 'gte', $v); return $this; }
@@ -342,6 +346,7 @@ final class BattleWhere
     public function seqLtCol(ColRef $ref): static { $this->w->predCol('seq', 'lt_col', $ref); return $this; }
     public function seqLteCol(ColRef $ref): static { $this->w->predCol('seq', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w->pred('name', 'eq', $v); return $this; }
+    public function name(string $v): static { return $this->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w->pred('name', 'not_eq', $v); return $this; }
     public function nameIn(array $vs): static { $this->w->predList('name', 'in', array_values($vs)); return $this; }
     public function nameNotIn(array $vs): static { $this->w->predList('name', 'not_in', array_values($vs)); return $this; }
@@ -355,6 +360,7 @@ final class BattleWhere
     public function nameEqCol(ColRef $ref): static { $this->w->predCol('name', 'eq_col', $ref); return $this; }
     public function nameNotEqCol(ColRef $ref): static { $this->w->predCol('name', 'not_eq_col', $ref); return $this; }
     public function descriptionEq(string $v): static { $this->w->pred('description', 'eq', $v); return $this; }
+    public function description(string $v): static { return $this->descriptionEq($v); }
     public function descriptionNotEq(string $v): static { $this->w->pred('description', 'not_eq', $v); return $this; }
     public function descriptionLike(string $v): static { $this->w->pred('description', 'like', $v); return $this; }
     public function descriptionLikeBinary(string $v): static { $this->w->pred('description', 'like_binary', $v); return $this; }
@@ -366,6 +372,7 @@ final class BattleWhere
     public function descriptionEqCol(ColRef $ref): static { $this->w->predCol('description', 'eq_col', $ref); return $this; }
     public function descriptionNotEqCol(ColRef $ref): static { $this->w->predCol('description', 'not_eq_col', $ref); return $this; }
     public function createdTsEq(string $v): static { $this->w->pred('created_ts', 'eq', $v); return $this; }
+    public function createdTs(string $v): static { return $this->createdTsEq($v); }
     public function createdTsNotEq(string $v): static { $this->w->pred('created_ts', 'not_eq', $v); return $this; }
     public function createdTsGt(string $v): static { $this->w->pred('created_ts', 'gt', $v); return $this; }
     public function createdTsGte(string $v): static { $this->w->pred('created_ts', 'gte', $v); return $this; }
@@ -383,6 +390,7 @@ final class BattleWhere
     public function createdTsLtCol(ColRef $ref): static { $this->w->predCol('created_ts', 'lt_col', $ref); return $this; }
     public function createdTsLteCol(ColRef $ref): static { $this->w->predCol('created_ts', 'lte_col', $ref); return $this; }
     public function updatedTsEq(string $v): static { $this->w->pred('updated_ts', 'eq', $v); return $this; }
+    public function updatedTs(string $v): static { return $this->updatedTsEq($v); }
     public function updatedTsNotEq(string $v): static { $this->w->pred('updated_ts', 'not_eq', $v); return $this; }
     public function updatedTsGt(string $v): static { $this->w->pred('updated_ts', 'gt', $v); return $this; }
     public function updatedTsGte(string $v): static { $this->w->pred('updated_ts', 'gte', $v); return $this; }
@@ -400,18 +408,21 @@ final class BattleWhere
     public function updatedTsLtCol(ColRef $ref): static { $this->w->predCol('updated_ts', 'lt_col', $ref); return $this; }
     public function updatedTsLteCol(ColRef $ref): static { $this->w->predCol('updated_ts', 'lte_col', $ref); return $this; }
     public function isCloseEq(bool $v): static { $this->w->pred('is_close', 'eq', $v); return $this; }
+    public function isClose(bool $v): static { return $this->isCloseEq($v); }
     public function isCloseNotEq(bool $v): static { $this->w->pred('is_close', 'not_eq', $v); return $this; }
     public function isCloseIsNull(): static { $this->w->predNull('is_close', 'is_null'); return $this; }
     public function isCloseIsNotNull(): static { $this->w->predNull('is_close', 'is_not_null'); return $this; }
     public function isCloseEqCol(ColRef $ref): static { $this->w->predCol('is_close', 'eq_col', $ref); return $this; }
     public function isCloseNotEqCol(ColRef $ref): static { $this->w->predCol('is_close', 'not_eq_col', $ref); return $this; }
     public function isDisplayEq(bool $v): static { $this->w->pred('is_display', 'eq', $v); return $this; }
+    public function isDisplay(bool $v): static { return $this->isDisplayEq($v); }
     public function isDisplayNotEq(bool $v): static { $this->w->pred('is_display', 'not_eq', $v); return $this; }
     public function isDisplayIsNull(): static { $this->w->predNull('is_display', 'is_null'); return $this; }
     public function isDisplayIsNotNull(): static { $this->w->predNull('is_display', 'is_not_null'); return $this; }
     public function isDisplayEqCol(ColRef $ref): static { $this->w->predCol('is_display', 'eq_col', $ref); return $this; }
     public function isDisplayNotEqCol(ColRef $ref): static { $this->w->predCol('is_display', 'not_eq_col', $ref); return $this; }
     public function displayStartDtEq(string $v): static { $this->w->pred('display_start_dt', 'eq', $v); return $this; }
+    public function displayStartDt(string $v): static { return $this->displayStartDtEq($v); }
     public function displayStartDtNotEq(string $v): static { $this->w->pred('display_start_dt', 'not_eq', $v); return $this; }
     public function displayStartDtGt(string $v): static { $this->w->pred('display_start_dt', 'gt', $v); return $this; }
     public function displayStartDtGte(string $v): static { $this->w->pred('display_start_dt', 'gte', $v); return $this; }
@@ -429,6 +440,7 @@ final class BattleWhere
     public function displayStartDtLtCol(ColRef $ref): static { $this->w->predCol('display_start_dt', 'lt_col', $ref); return $this; }
     public function displayStartDtLteCol(ColRef $ref): static { $this->w->predCol('display_start_dt', 'lte_col', $ref); return $this; }
     public function displayEndDtEq(string $v): static { $this->w->pred('display_end_dt', 'eq', $v); return $this; }
+    public function displayEndDt(string $v): static { return $this->displayEndDtEq($v); }
     public function displayEndDtNotEq(string $v): static { $this->w->pred('display_end_dt', 'not_eq', $v); return $this; }
     public function displayEndDtGt(string $v): static { $this->w->pred('display_end_dt', 'gt', $v); return $this; }
     public function displayEndDtGte(string $v): static { $this->w->pred('display_end_dt', 'gte', $v); return $this; }
@@ -446,12 +458,14 @@ final class BattleWhere
     public function displayEndDtLtCol(ColRef $ref): static { $this->w->predCol('display_end_dt', 'lt_col', $ref); return $this; }
     public function displayEndDtLteCol(ColRef $ref): static { $this->w->predCol('display_end_dt', 'lte_col', $ref); return $this; }
     public function isAlldayEq(bool $v): static { $this->w->pred('is_allday', 'eq', $v); return $this; }
+    public function isAllday(bool $v): static { return $this->isAlldayEq($v); }
     public function isAlldayNotEq(bool $v): static { $this->w->pred('is_allday', 'not_eq', $v); return $this; }
     public function isAlldayIsNull(): static { $this->w->predNull('is_allday', 'is_null'); return $this; }
     public function isAlldayIsNotNull(): static { $this->w->predNull('is_allday', 'is_not_null'); return $this; }
     public function isAlldayEqCol(ColRef $ref): static { $this->w->predCol('is_allday', 'eq_col', $ref); return $this; }
     public function isAlldayNotEqCol(ColRef $ref): static { $this->w->predCol('is_allday', 'not_eq_col', $ref); return $this; }
     public function targetTeamPlayerCountEq(int $v): static { $this->w->pred('target_team_player_count', 'eq', $v); return $this; }
+    public function targetTeamPlayerCount(int $v): static { return $this->targetTeamPlayerCountEq($v); }
     public function targetTeamPlayerCountNotEq(int $v): static { $this->w->pred('target_team_player_count', 'not_eq', $v); return $this; }
     public function targetTeamPlayerCountGt(int $v): static { $this->w->pred('target_team_player_count', 'gt', $v); return $this; }
     public function targetTeamPlayerCountGte(int $v): static { $this->w->pred('target_team_player_count', 'gte', $v); return $this; }
@@ -469,6 +483,7 @@ final class BattleWhere
     public function targetTeamPlayerCountLtCol(ColRef $ref): static { $this->w->predCol('target_team_player_count', 'lt_col', $ref); return $this; }
     public function targetTeamPlayerCountLteCol(ColRef $ref): static { $this->w->predCol('target_team_player_count', 'lte_col', $ref); return $this; }
     public function successCountEq(int $v): static { $this->w->pred('success_count', 'eq', $v); return $this; }
+    public function successCount(int $v): static { return $this->successCountEq($v); }
     public function successCountNotEq(int $v): static { $this->w->pred('success_count', 'not_eq', $v); return $this; }
     public function successCountGt(int $v): static { $this->w->pred('success_count', 'gt', $v); return $this; }
     public function successCountGte(int $v): static { $this->w->pred('success_count', 'gte', $v); return $this; }
@@ -486,6 +501,7 @@ final class BattleWhere
     public function successCountLtCol(ColRef $ref): static { $this->w->predCol('success_count', 'lt_col', $ref); return $this; }
     public function successCountLteCol(ColRef $ref): static { $this->w->predCol('success_count', 'lte_col', $ref); return $this; }
     public function playerCountEq(int $v): static { $this->w->pred('player_count', 'eq', $v); return $this; }
+    public function playerCount(int $v): static { return $this->playerCountEq($v); }
     public function playerCountNotEq(int $v): static { $this->w->pred('player_count', 'not_eq', $v); return $this; }
     public function playerCountGt(int $v): static { $this->w->pred('player_count', 'gt', $v); return $this; }
     public function playerCountGte(int $v): static { $this->w->pred('player_count', 'gte', $v); return $this; }
@@ -503,6 +519,7 @@ final class BattleWhere
     public function playerCountLtCol(ColRef $ref): static { $this->w->predCol('player_count', 'lt_col', $ref); return $this; }
     public function playerCountLteCol(ColRef $ref): static { $this->w->predCol('player_count', 'lte_col', $ref); return $this; }
     public function readCountEq(int $v): static { $this->w->pred('read_count', 'eq', $v); return $this; }
+    public function readCount(int $v): static { return $this->readCountEq($v); }
     public function readCountNotEq(int $v): static { $this->w->pred('read_count', 'not_eq', $v); return $this; }
     public function readCountGt(int $v): static { $this->w->pred('read_count', 'gt', $v); return $this; }
     public function readCountGte(int $v): static { $this->w->pred('read_count', 'gte', $v); return $this; }
@@ -520,6 +537,7 @@ final class BattleWhere
     public function readCountLtCol(ColRef $ref): static { $this->w->predCol('read_count', 'lt_col', $ref); return $this; }
     public function readCountLteCol(ColRef $ref): static { $this->w->predCol('read_count', 'lte_col', $ref); return $this; }
     public function coverUrlEq(string $v): static { $this->w->pred('cover_url', 'eq', $v); return $this; }
+    public function coverUrl(string $v): static { return $this->coverUrlEq($v); }
     public function coverUrlNotEq(string $v): static { $this->w->pred('cover_url', 'not_eq', $v); return $this; }
     public function coverUrlIn(array $vs): static { $this->w->predList('cover_url', 'in', array_values($vs)); return $this; }
     public function coverUrlNotIn(array $vs): static { $this->w->predList('cover_url', 'not_in', array_values($vs)); return $this; }
@@ -533,6 +551,7 @@ final class BattleWhere
     public function coverUrlEqCol(ColRef $ref): static { $this->w->predCol('cover_url', 'eq_col', $ref); return $this; }
     public function coverUrlNotEqCol(ColRef $ref): static { $this->w->predCol('cover_url', 'not_eq_col', $ref); return $this; }
     public function userSeqEq(int $v): static { $this->w->pred('user_seq', 'eq', $v); return $this; }
+    public function userSeq(int $v): static { return $this->userSeqEq($v); }
     public function userSeqNotEq(int $v): static { $this->w->pred('user_seq', 'not_eq', $v); return $this; }
     public function userSeqGt(int $v): static { $this->w->pred('user_seq', 'gt', $v); return $this; }
     public function userSeqGte(int $v): static { $this->w->pred('user_seq', 'gte', $v); return $this; }
@@ -550,6 +569,7 @@ final class BattleWhere
     public function userSeqLtCol(ColRef $ref): static { $this->w->predCol('user_seq', 'lt_col', $ref); return $this; }
     public function userSeqLteCol(ColRef $ref): static { $this->w->predCol('user_seq', 'lte_col', $ref); return $this; }
     public function serviceSeqEq(int $v): static { $this->w->pred('service_seq', 'eq', $v); return $this; }
+    public function serviceSeq(int $v): static { return $this->serviceSeqEq($v); }
     public function serviceSeqNotEq(int $v): static { $this->w->pred('service_seq', 'not_eq', $v); return $this; }
     public function serviceSeqGt(int $v): static { $this->w->pred('service_seq', 'gt', $v); return $this; }
     public function serviceSeqGte(int $v): static { $this->w->pred('service_seq', 'gte', $v); return $this; }
@@ -567,6 +587,7 @@ final class BattleWhere
     public function serviceSeqLtCol(ColRef $ref): static { $this->w->predCol('service_seq', 'lt_col', $ref); return $this; }
     public function serviceSeqLteCol(ColRef $ref): static { $this->w->predCol('service_seq', 'lte_col', $ref); return $this; }
     public function serviceModuleSeqEq(int $v): static { $this->w->pred('service_module_seq', 'eq', $v); return $this; }
+    public function serviceModuleSeq(int $v): static { return $this->serviceModuleSeqEq($v); }
     public function serviceModuleSeqNotEq(int $v): static { $this->w->pred('service_module_seq', 'not_eq', $v); return $this; }
     public function serviceModuleSeqGt(int $v): static { $this->w->pred('service_module_seq', 'gt', $v); return $this; }
     public function serviceModuleSeqGte(int $v): static { $this->w->pred('service_module_seq', 'gte', $v); return $this; }
@@ -584,6 +605,7 @@ final class BattleWhere
     public function serviceModuleSeqLtCol(ColRef $ref): static { $this->w->predCol('service_module_seq', 'lt_col', $ref); return $this; }
     public function serviceModuleSeqLteCol(ColRef $ref): static { $this->w->predCol('service_module_seq', 'lte_col', $ref); return $this; }
     public function serviceMemberSeqEq(int $v): static { $this->w->pred('service_member_seq', 'eq', $v); return $this; }
+    public function serviceMemberSeq(int $v): static { return $this->serviceMemberSeqEq($v); }
     public function serviceMemberSeqNotEq(int $v): static { $this->w->pred('service_member_seq', 'not_eq', $v); return $this; }
     public function serviceMemberSeqGt(int $v): static { $this->w->pred('service_member_seq', 'gt', $v); return $this; }
     public function serviceMemberSeqGte(int $v): static { $this->w->pred('service_member_seq', 'gte', $v); return $this; }
@@ -601,6 +623,7 @@ final class BattleWhere
     public function serviceMemberSeqLtCol(ColRef $ref): static { $this->w->predCol('service_member_seq', 'lt_col', $ref); return $this; }
     public function serviceMemberSeqLteCol(ColRef $ref): static { $this->w->predCol('service_member_seq', 'lte_col', $ref); return $this; }
     public function startDtEq(string $v): static { $this->w->pred('start_dt', 'eq', $v); return $this; }
+    public function startDt(string $v): static { return $this->startDtEq($v); }
     public function startDtNotEq(string $v): static { $this->w->pred('start_dt', 'not_eq', $v); return $this; }
     public function startDtGt(string $v): static { $this->w->pred('start_dt', 'gt', $v); return $this; }
     public function startDtGte(string $v): static { $this->w->pred('start_dt', 'gte', $v); return $this; }
@@ -618,6 +641,7 @@ final class BattleWhere
     public function startDtLtCol(ColRef $ref): static { $this->w->predCol('start_dt', 'lt_col', $ref); return $this; }
     public function startDtLteCol(ColRef $ref): static { $this->w->predCol('start_dt', 'lte_col', $ref); return $this; }
     public function endDtEq(string $v): static { $this->w->pred('end_dt', 'eq', $v); return $this; }
+    public function endDt(string $v): static { return $this->endDtEq($v); }
     public function endDtNotEq(string $v): static { $this->w->pred('end_dt', 'not_eq', $v); return $this; }
     public function endDtGt(string $v): static { $this->w->pred('end_dt', 'gt', $v); return $this; }
     public function endDtGte(string $v): static { $this->w->pred('end_dt', 'gte', $v); return $this; }
@@ -635,6 +659,7 @@ final class BattleWhere
     public function endDtLtCol(ColRef $ref): static { $this->w->predCol('end_dt', 'lt_col', $ref); return $this; }
     public function endDtLteCol(ColRef $ref): static { $this->w->predCol('end_dt', 'lte_col', $ref); return $this; }
     public function uuidEq(string $v): static { $this->w->pred('uuid', 'eq', $v); return $this; }
+    public function uuid(string $v): static { return $this->uuidEq($v); }
     public function uuidNotEq(string $v): static { $this->w->pred('uuid', 'not_eq', $v); return $this; }
     public function uuidIn(array $vs): static { $this->w->predList('uuid', 'in', array_values($vs)); return $this; }
     public function uuidNotIn(array $vs): static { $this->w->predList('uuid', 'not_in', array_values($vs)); return $this; }
@@ -648,12 +673,14 @@ final class BattleWhere
     public function uuidEqCol(ColRef $ref): static { $this->w->predCol('uuid', 'eq_col', $ref); return $this; }
     public function uuidNotEqCol(ColRef $ref): static { $this->w->predCol('uuid', 'not_eq_col', $ref); return $this; }
     public function isSinglePlayEq(bool $v): static { $this->w->pred('is_single_play', 'eq', $v); return $this; }
+    public function isSinglePlay(bool $v): static { return $this->isSinglePlayEq($v); }
     public function isSinglePlayNotEq(bool $v): static { $this->w->pred('is_single_play', 'not_eq', $v); return $this; }
     public function isSinglePlayIsNull(): static { $this->w->predNull('is_single_play', 'is_null'); return $this; }
     public function isSinglePlayIsNotNull(): static { $this->w->predNull('is_single_play', 'is_not_null'); return $this; }
     public function isSinglePlayEqCol(ColRef $ref): static { $this->w->predCol('is_single_play', 'eq_col', $ref); return $this; }
     public function isSinglePlayNotEqCol(ColRef $ref): static { $this->w->predCol('is_single_play', 'not_eq_col', $ref); return $this; }
     public function likeCountEq(int $v): static { $this->w->pred('like_count', 'eq', $v); return $this; }
+    public function likeCount(int $v): static { return $this->likeCountEq($v); }
     public function likeCountNotEq(int $v): static { $this->w->pred('like_count', 'not_eq', $v); return $this; }
     public function likeCountGt(int $v): static { $this->w->pred('like_count', 'gt', $v); return $this; }
     public function likeCountGte(int $v): static { $this->w->pred('like_count', 'gte', $v); return $this; }
@@ -671,6 +698,7 @@ final class BattleWhere
     public function likeCountLtCol(ColRef $ref): static { $this->w->predCol('like_count', 'lt_col', $ref); return $this; }
     public function likeCountLteCol(ColRef $ref): static { $this->w->predCol('like_count', 'lte_col', $ref); return $this; }
     public function aesHexEmailEq(string $v): static { $this->w->pred('aes_hex_email', 'eq', $v); return $this; }
+    public function aesHexEmail(string $v): static { return $this->aesHexEmailEq($v); }
     public function aesHexEmailNotEq(string $v): static { $this->w->pred('aes_hex_email', 'not_eq', $v); return $this; }
     public function aesHexEmailIn(array $vs): static { $this->w->predList('aes_hex_email', 'in', array_values($vs)); return $this; }
     public function aesHexEmailNotIn(array $vs): static { $this->w->predList('aes_hex_email', 'not_in', array_values($vs)); return $this; }
@@ -679,6 +707,7 @@ final class BattleWhere
     public function aesHexEmailEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_email', 'eq_col', $ref); return $this; }
     public function aesHexEmailNotEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_email', 'not_eq_col', $ref); return $this; }
     public function aesHexPhoneEq(string $v): static { $this->w->pred('aes_hex_phone', 'eq', $v); return $this; }
+    public function aesHexPhone(string $v): static { return $this->aesHexPhoneEq($v); }
     public function aesHexPhoneNotEq(string $v): static { $this->w->pred('aes_hex_phone', 'not_eq', $v); return $this; }
     public function aesHexPhoneIn(array $vs): static { $this->w->predList('aes_hex_phone', 'in', array_values($vs)); return $this; }
     public function aesHexPhoneNotIn(array $vs): static { $this->w->predList('aes_hex_phone', 'not_in', array_values($vs)); return $this; }
@@ -687,6 +716,7 @@ final class BattleWhere
     public function aesHexPhoneEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_phone', 'eq_col', $ref); return $this; }
     public function aesHexPhoneNotEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_phone', 'not_eq_col', $ref); return $this; }
     public function priceEq(float $v): static { $this->w->pred('price', 'eq', $v); return $this; }
+    public function price(float $v): static { return $this->priceEq($v); }
     public function priceNotEq(float $v): static { $this->w->pred('price', 'not_eq', $v); return $this; }
     public function priceGt(float $v): static { $this->w->pred('price', 'gt', $v); return $this; }
     public function priceGte(float $v): static { $this->w->pred('price', 'gte', $v); return $this; }
@@ -704,6 +734,7 @@ final class BattleWhere
     public function priceLtCol(ColRef $ref): static { $this->w->predCol('price', 'lt_col', $ref); return $this; }
     public function priceLteCol(ColRef $ref): static { $this->w->predCol('price', 'lte_col', $ref); return $this; }
     public function ipEq(string $v): static { $this->w->pred('ip', 'eq', $v); return $this; }
+    public function ip(string $v): static { return $this->ipEq($v); }
     public function ipNotEq(string $v): static { $this->w->pred('ip', 'not_eq', $v); return $this; }
     public function ipIn(array $vs): static { $this->w->predList('ip', 'in', array_values($vs)); return $this; }
     public function ipNotIn(array $vs): static { $this->w->predList('ip', 'not_in', array_values($vs)); return $this; }
@@ -725,14 +756,14 @@ final class BattleWhere
     public function nameWithDescriptionMatchBoolean(string $v): static { $this->w->match(['name', 'description'], true, $v); return $this; }
 }
 
-/** Query over battle: new Battle → chain → terminal($db). Unknown names go to the compatibility layer (docs/dsl.md §6). */
-final class Battle extends Q
+/** Query over battle: new Battle → bind($db) → chain → terminal(). Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
+final class Battle extends Q implements BattleInterface
 {
     use CompatQuery;
 
     public const ENTITY = 'battle';
 
-    public function __construct() { parent::__construct('battle'); }
+    public function __construct(Db|\PDO|null $db = null) { parent::__construct('battle'); if ($db !== null) { $this->bind($db); } }
 
     // ---- WHERE ----
     /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
@@ -748,6 +779,7 @@ final class Battle extends Q
     public function user(\Closure $fn): static { $fn(new UserWhere($this->w()->nav('user'))); $this->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w()->pred('seq', 'eq', $v); return $this; }
+    public function seq(int $v): static { return $this->seqEq($v); }
     public function seqNotEq(int $v): static { $this->w()->pred('seq', 'not_eq', $v); return $this; }
     public function seqGt(int $v): static { $this->w()->pred('seq', 'gt', $v); return $this; }
     public function seqGte(int $v): static { $this->w()->pred('seq', 'gte', $v); return $this; }
@@ -765,6 +797,7 @@ final class Battle extends Q
     public function seqLtCol(ColRef $ref): static { $this->w()->predCol('seq', 'lt_col', $ref); return $this; }
     public function seqLteCol(ColRef $ref): static { $this->w()->predCol('seq', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w()->pred('name', 'eq', $v); return $this; }
+    public function name(string $v): static { return $this->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w()->pred('name', 'not_eq', $v); return $this; }
     public function nameIn(array $vs): static { $this->w()->predList('name', 'in', array_values($vs)); return $this; }
     public function nameNotIn(array $vs): static { $this->w()->predList('name', 'not_in', array_values($vs)); return $this; }
@@ -778,6 +811,7 @@ final class Battle extends Q
     public function nameEqCol(ColRef $ref): static { $this->w()->predCol('name', 'eq_col', $ref); return $this; }
     public function nameNotEqCol(ColRef $ref): static { $this->w()->predCol('name', 'not_eq_col', $ref); return $this; }
     public function descriptionEq(string $v): static { $this->w()->pred('description', 'eq', $v); return $this; }
+    public function description(string $v): static { return $this->descriptionEq($v); }
     public function descriptionNotEq(string $v): static { $this->w()->pred('description', 'not_eq', $v); return $this; }
     public function descriptionLike(string $v): static { $this->w()->pred('description', 'like', $v); return $this; }
     public function descriptionLikeBinary(string $v): static { $this->w()->pred('description', 'like_binary', $v); return $this; }
@@ -789,6 +823,7 @@ final class Battle extends Q
     public function descriptionEqCol(ColRef $ref): static { $this->w()->predCol('description', 'eq_col', $ref); return $this; }
     public function descriptionNotEqCol(ColRef $ref): static { $this->w()->predCol('description', 'not_eq_col', $ref); return $this; }
     public function createdTsEq(string $v): static { $this->w()->pred('created_ts', 'eq', $v); return $this; }
+    public function createdTs(string $v): static { return $this->createdTsEq($v); }
     public function createdTsNotEq(string $v): static { $this->w()->pred('created_ts', 'not_eq', $v); return $this; }
     public function createdTsGt(string $v): static { $this->w()->pred('created_ts', 'gt', $v); return $this; }
     public function createdTsGte(string $v): static { $this->w()->pred('created_ts', 'gte', $v); return $this; }
@@ -806,6 +841,7 @@ final class Battle extends Q
     public function createdTsLtCol(ColRef $ref): static { $this->w()->predCol('created_ts', 'lt_col', $ref); return $this; }
     public function createdTsLteCol(ColRef $ref): static { $this->w()->predCol('created_ts', 'lte_col', $ref); return $this; }
     public function updatedTsEq(string $v): static { $this->w()->pred('updated_ts', 'eq', $v); return $this; }
+    public function updatedTs(string $v): static { return $this->updatedTsEq($v); }
     public function updatedTsNotEq(string $v): static { $this->w()->pred('updated_ts', 'not_eq', $v); return $this; }
     public function updatedTsGt(string $v): static { $this->w()->pred('updated_ts', 'gt', $v); return $this; }
     public function updatedTsGte(string $v): static { $this->w()->pred('updated_ts', 'gte', $v); return $this; }
@@ -823,18 +859,21 @@ final class Battle extends Q
     public function updatedTsLtCol(ColRef $ref): static { $this->w()->predCol('updated_ts', 'lt_col', $ref); return $this; }
     public function updatedTsLteCol(ColRef $ref): static { $this->w()->predCol('updated_ts', 'lte_col', $ref); return $this; }
     public function isCloseEq(bool $v): static { $this->w()->pred('is_close', 'eq', $v); return $this; }
+    public function isClose(bool $v): static { return $this->isCloseEq($v); }
     public function isCloseNotEq(bool $v): static { $this->w()->pred('is_close', 'not_eq', $v); return $this; }
     public function isCloseIsNull(): static { $this->w()->predNull('is_close', 'is_null'); return $this; }
     public function isCloseIsNotNull(): static { $this->w()->predNull('is_close', 'is_not_null'); return $this; }
     public function isCloseEqCol(ColRef $ref): static { $this->w()->predCol('is_close', 'eq_col', $ref); return $this; }
     public function isCloseNotEqCol(ColRef $ref): static { $this->w()->predCol('is_close', 'not_eq_col', $ref); return $this; }
     public function isDisplayEq(bool $v): static { $this->w()->pred('is_display', 'eq', $v); return $this; }
+    public function isDisplay(bool $v): static { return $this->isDisplayEq($v); }
     public function isDisplayNotEq(bool $v): static { $this->w()->pred('is_display', 'not_eq', $v); return $this; }
     public function isDisplayIsNull(): static { $this->w()->predNull('is_display', 'is_null'); return $this; }
     public function isDisplayIsNotNull(): static { $this->w()->predNull('is_display', 'is_not_null'); return $this; }
     public function isDisplayEqCol(ColRef $ref): static { $this->w()->predCol('is_display', 'eq_col', $ref); return $this; }
     public function isDisplayNotEqCol(ColRef $ref): static { $this->w()->predCol('is_display', 'not_eq_col', $ref); return $this; }
     public function displayStartDtEq(string $v): static { $this->w()->pred('display_start_dt', 'eq', $v); return $this; }
+    public function displayStartDt(string $v): static { return $this->displayStartDtEq($v); }
     public function displayStartDtNotEq(string $v): static { $this->w()->pred('display_start_dt', 'not_eq', $v); return $this; }
     public function displayStartDtGt(string $v): static { $this->w()->pred('display_start_dt', 'gt', $v); return $this; }
     public function displayStartDtGte(string $v): static { $this->w()->pred('display_start_dt', 'gte', $v); return $this; }
@@ -852,6 +891,7 @@ final class Battle extends Q
     public function displayStartDtLtCol(ColRef $ref): static { $this->w()->predCol('display_start_dt', 'lt_col', $ref); return $this; }
     public function displayStartDtLteCol(ColRef $ref): static { $this->w()->predCol('display_start_dt', 'lte_col', $ref); return $this; }
     public function displayEndDtEq(string $v): static { $this->w()->pred('display_end_dt', 'eq', $v); return $this; }
+    public function displayEndDt(string $v): static { return $this->displayEndDtEq($v); }
     public function displayEndDtNotEq(string $v): static { $this->w()->pred('display_end_dt', 'not_eq', $v); return $this; }
     public function displayEndDtGt(string $v): static { $this->w()->pred('display_end_dt', 'gt', $v); return $this; }
     public function displayEndDtGte(string $v): static { $this->w()->pred('display_end_dt', 'gte', $v); return $this; }
@@ -869,12 +909,14 @@ final class Battle extends Q
     public function displayEndDtLtCol(ColRef $ref): static { $this->w()->predCol('display_end_dt', 'lt_col', $ref); return $this; }
     public function displayEndDtLteCol(ColRef $ref): static { $this->w()->predCol('display_end_dt', 'lte_col', $ref); return $this; }
     public function isAlldayEq(bool $v): static { $this->w()->pred('is_allday', 'eq', $v); return $this; }
+    public function isAllday(bool $v): static { return $this->isAlldayEq($v); }
     public function isAlldayNotEq(bool $v): static { $this->w()->pred('is_allday', 'not_eq', $v); return $this; }
     public function isAlldayIsNull(): static { $this->w()->predNull('is_allday', 'is_null'); return $this; }
     public function isAlldayIsNotNull(): static { $this->w()->predNull('is_allday', 'is_not_null'); return $this; }
     public function isAlldayEqCol(ColRef $ref): static { $this->w()->predCol('is_allday', 'eq_col', $ref); return $this; }
     public function isAlldayNotEqCol(ColRef $ref): static { $this->w()->predCol('is_allday', 'not_eq_col', $ref); return $this; }
     public function targetTeamPlayerCountEq(int $v): static { $this->w()->pred('target_team_player_count', 'eq', $v); return $this; }
+    public function targetTeamPlayerCount(int $v): static { return $this->targetTeamPlayerCountEq($v); }
     public function targetTeamPlayerCountNotEq(int $v): static { $this->w()->pred('target_team_player_count', 'not_eq', $v); return $this; }
     public function targetTeamPlayerCountGt(int $v): static { $this->w()->pred('target_team_player_count', 'gt', $v); return $this; }
     public function targetTeamPlayerCountGte(int $v): static { $this->w()->pred('target_team_player_count', 'gte', $v); return $this; }
@@ -892,6 +934,7 @@ final class Battle extends Q
     public function targetTeamPlayerCountLtCol(ColRef $ref): static { $this->w()->predCol('target_team_player_count', 'lt_col', $ref); return $this; }
     public function targetTeamPlayerCountLteCol(ColRef $ref): static { $this->w()->predCol('target_team_player_count', 'lte_col', $ref); return $this; }
     public function successCountEq(int $v): static { $this->w()->pred('success_count', 'eq', $v); return $this; }
+    public function successCount(int $v): static { return $this->successCountEq($v); }
     public function successCountNotEq(int $v): static { $this->w()->pred('success_count', 'not_eq', $v); return $this; }
     public function successCountGt(int $v): static { $this->w()->pred('success_count', 'gt', $v); return $this; }
     public function successCountGte(int $v): static { $this->w()->pred('success_count', 'gte', $v); return $this; }
@@ -909,6 +952,7 @@ final class Battle extends Q
     public function successCountLtCol(ColRef $ref): static { $this->w()->predCol('success_count', 'lt_col', $ref); return $this; }
     public function successCountLteCol(ColRef $ref): static { $this->w()->predCol('success_count', 'lte_col', $ref); return $this; }
     public function playerCountEq(int $v): static { $this->w()->pred('player_count', 'eq', $v); return $this; }
+    public function playerCount(int $v): static { return $this->playerCountEq($v); }
     public function playerCountNotEq(int $v): static { $this->w()->pred('player_count', 'not_eq', $v); return $this; }
     public function playerCountGt(int $v): static { $this->w()->pred('player_count', 'gt', $v); return $this; }
     public function playerCountGte(int $v): static { $this->w()->pred('player_count', 'gte', $v); return $this; }
@@ -926,6 +970,7 @@ final class Battle extends Q
     public function playerCountLtCol(ColRef $ref): static { $this->w()->predCol('player_count', 'lt_col', $ref); return $this; }
     public function playerCountLteCol(ColRef $ref): static { $this->w()->predCol('player_count', 'lte_col', $ref); return $this; }
     public function readCountEq(int $v): static { $this->w()->pred('read_count', 'eq', $v); return $this; }
+    public function readCount(int $v): static { return $this->readCountEq($v); }
     public function readCountNotEq(int $v): static { $this->w()->pred('read_count', 'not_eq', $v); return $this; }
     public function readCountGt(int $v): static { $this->w()->pred('read_count', 'gt', $v); return $this; }
     public function readCountGte(int $v): static { $this->w()->pred('read_count', 'gte', $v); return $this; }
@@ -943,6 +988,7 @@ final class Battle extends Q
     public function readCountLtCol(ColRef $ref): static { $this->w()->predCol('read_count', 'lt_col', $ref); return $this; }
     public function readCountLteCol(ColRef $ref): static { $this->w()->predCol('read_count', 'lte_col', $ref); return $this; }
     public function coverUrlEq(string $v): static { $this->w()->pred('cover_url', 'eq', $v); return $this; }
+    public function coverUrl(string $v): static { return $this->coverUrlEq($v); }
     public function coverUrlNotEq(string $v): static { $this->w()->pred('cover_url', 'not_eq', $v); return $this; }
     public function coverUrlIn(array $vs): static { $this->w()->predList('cover_url', 'in', array_values($vs)); return $this; }
     public function coverUrlNotIn(array $vs): static { $this->w()->predList('cover_url', 'not_in', array_values($vs)); return $this; }
@@ -956,6 +1002,7 @@ final class Battle extends Q
     public function coverUrlEqCol(ColRef $ref): static { $this->w()->predCol('cover_url', 'eq_col', $ref); return $this; }
     public function coverUrlNotEqCol(ColRef $ref): static { $this->w()->predCol('cover_url', 'not_eq_col', $ref); return $this; }
     public function userSeqEq(int $v): static { $this->w()->pred('user_seq', 'eq', $v); return $this; }
+    public function userSeq(int $v): static { return $this->userSeqEq($v); }
     public function userSeqNotEq(int $v): static { $this->w()->pred('user_seq', 'not_eq', $v); return $this; }
     public function userSeqGt(int $v): static { $this->w()->pred('user_seq', 'gt', $v); return $this; }
     public function userSeqGte(int $v): static { $this->w()->pred('user_seq', 'gte', $v); return $this; }
@@ -973,6 +1020,7 @@ final class Battle extends Q
     public function userSeqLtCol(ColRef $ref): static { $this->w()->predCol('user_seq', 'lt_col', $ref); return $this; }
     public function userSeqLteCol(ColRef $ref): static { $this->w()->predCol('user_seq', 'lte_col', $ref); return $this; }
     public function serviceSeqEq(int $v): static { $this->w()->pred('service_seq', 'eq', $v); return $this; }
+    public function serviceSeq(int $v): static { return $this->serviceSeqEq($v); }
     public function serviceSeqNotEq(int $v): static { $this->w()->pred('service_seq', 'not_eq', $v); return $this; }
     public function serviceSeqGt(int $v): static { $this->w()->pred('service_seq', 'gt', $v); return $this; }
     public function serviceSeqGte(int $v): static { $this->w()->pred('service_seq', 'gte', $v); return $this; }
@@ -990,6 +1038,7 @@ final class Battle extends Q
     public function serviceSeqLtCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'lt_col', $ref); return $this; }
     public function serviceSeqLteCol(ColRef $ref): static { $this->w()->predCol('service_seq', 'lte_col', $ref); return $this; }
     public function serviceModuleSeqEq(int $v): static { $this->w()->pred('service_module_seq', 'eq', $v); return $this; }
+    public function serviceModuleSeq(int $v): static { return $this->serviceModuleSeqEq($v); }
     public function serviceModuleSeqNotEq(int $v): static { $this->w()->pred('service_module_seq', 'not_eq', $v); return $this; }
     public function serviceModuleSeqGt(int $v): static { $this->w()->pred('service_module_seq', 'gt', $v); return $this; }
     public function serviceModuleSeqGte(int $v): static { $this->w()->pred('service_module_seq', 'gte', $v); return $this; }
@@ -1007,6 +1056,7 @@ final class Battle extends Q
     public function serviceModuleSeqLtCol(ColRef $ref): static { $this->w()->predCol('service_module_seq', 'lt_col', $ref); return $this; }
     public function serviceModuleSeqLteCol(ColRef $ref): static { $this->w()->predCol('service_module_seq', 'lte_col', $ref); return $this; }
     public function serviceMemberSeqEq(int $v): static { $this->w()->pred('service_member_seq', 'eq', $v); return $this; }
+    public function serviceMemberSeq(int $v): static { return $this->serviceMemberSeqEq($v); }
     public function serviceMemberSeqNotEq(int $v): static { $this->w()->pred('service_member_seq', 'not_eq', $v); return $this; }
     public function serviceMemberSeqGt(int $v): static { $this->w()->pred('service_member_seq', 'gt', $v); return $this; }
     public function serviceMemberSeqGte(int $v): static { $this->w()->pred('service_member_seq', 'gte', $v); return $this; }
@@ -1024,6 +1074,7 @@ final class Battle extends Q
     public function serviceMemberSeqLtCol(ColRef $ref): static { $this->w()->predCol('service_member_seq', 'lt_col', $ref); return $this; }
     public function serviceMemberSeqLteCol(ColRef $ref): static { $this->w()->predCol('service_member_seq', 'lte_col', $ref); return $this; }
     public function startDtEq(string $v): static { $this->w()->pred('start_dt', 'eq', $v); return $this; }
+    public function startDt(string $v): static { return $this->startDtEq($v); }
     public function startDtNotEq(string $v): static { $this->w()->pred('start_dt', 'not_eq', $v); return $this; }
     public function startDtGt(string $v): static { $this->w()->pred('start_dt', 'gt', $v); return $this; }
     public function startDtGte(string $v): static { $this->w()->pred('start_dt', 'gte', $v); return $this; }
@@ -1041,6 +1092,7 @@ final class Battle extends Q
     public function startDtLtCol(ColRef $ref): static { $this->w()->predCol('start_dt', 'lt_col', $ref); return $this; }
     public function startDtLteCol(ColRef $ref): static { $this->w()->predCol('start_dt', 'lte_col', $ref); return $this; }
     public function endDtEq(string $v): static { $this->w()->pred('end_dt', 'eq', $v); return $this; }
+    public function endDt(string $v): static { return $this->endDtEq($v); }
     public function endDtNotEq(string $v): static { $this->w()->pred('end_dt', 'not_eq', $v); return $this; }
     public function endDtGt(string $v): static { $this->w()->pred('end_dt', 'gt', $v); return $this; }
     public function endDtGte(string $v): static { $this->w()->pred('end_dt', 'gte', $v); return $this; }
@@ -1058,6 +1110,7 @@ final class Battle extends Q
     public function endDtLtCol(ColRef $ref): static { $this->w()->predCol('end_dt', 'lt_col', $ref); return $this; }
     public function endDtLteCol(ColRef $ref): static { $this->w()->predCol('end_dt', 'lte_col', $ref); return $this; }
     public function uuidEq(string $v): static { $this->w()->pred('uuid', 'eq', $v); return $this; }
+    public function uuid(string $v): static { return $this->uuidEq($v); }
     public function uuidNotEq(string $v): static { $this->w()->pred('uuid', 'not_eq', $v); return $this; }
     public function uuidIn(array $vs): static { $this->w()->predList('uuid', 'in', array_values($vs)); return $this; }
     public function uuidNotIn(array $vs): static { $this->w()->predList('uuid', 'not_in', array_values($vs)); return $this; }
@@ -1071,12 +1124,14 @@ final class Battle extends Q
     public function uuidEqCol(ColRef $ref): static { $this->w()->predCol('uuid', 'eq_col', $ref); return $this; }
     public function uuidNotEqCol(ColRef $ref): static { $this->w()->predCol('uuid', 'not_eq_col', $ref); return $this; }
     public function isSinglePlayEq(bool $v): static { $this->w()->pred('is_single_play', 'eq', $v); return $this; }
+    public function isSinglePlay(bool $v): static { return $this->isSinglePlayEq($v); }
     public function isSinglePlayNotEq(bool $v): static { $this->w()->pred('is_single_play', 'not_eq', $v); return $this; }
     public function isSinglePlayIsNull(): static { $this->w()->predNull('is_single_play', 'is_null'); return $this; }
     public function isSinglePlayIsNotNull(): static { $this->w()->predNull('is_single_play', 'is_not_null'); return $this; }
     public function isSinglePlayEqCol(ColRef $ref): static { $this->w()->predCol('is_single_play', 'eq_col', $ref); return $this; }
     public function isSinglePlayNotEqCol(ColRef $ref): static { $this->w()->predCol('is_single_play', 'not_eq_col', $ref); return $this; }
     public function likeCountEq(int $v): static { $this->w()->pred('like_count', 'eq', $v); return $this; }
+    public function likeCount(int $v): static { return $this->likeCountEq($v); }
     public function likeCountNotEq(int $v): static { $this->w()->pred('like_count', 'not_eq', $v); return $this; }
     public function likeCountGt(int $v): static { $this->w()->pred('like_count', 'gt', $v); return $this; }
     public function likeCountGte(int $v): static { $this->w()->pred('like_count', 'gte', $v); return $this; }
@@ -1094,6 +1149,7 @@ final class Battle extends Q
     public function likeCountLtCol(ColRef $ref): static { $this->w()->predCol('like_count', 'lt_col', $ref); return $this; }
     public function likeCountLteCol(ColRef $ref): static { $this->w()->predCol('like_count', 'lte_col', $ref); return $this; }
     public function aesHexEmailEq(string $v): static { $this->w()->pred('aes_hex_email', 'eq', $v); return $this; }
+    public function aesHexEmail(string $v): static { return $this->aesHexEmailEq($v); }
     public function aesHexEmailNotEq(string $v): static { $this->w()->pred('aes_hex_email', 'not_eq', $v); return $this; }
     public function aesHexEmailIn(array $vs): static { $this->w()->predList('aes_hex_email', 'in', array_values($vs)); return $this; }
     public function aesHexEmailNotIn(array $vs): static { $this->w()->predList('aes_hex_email', 'not_in', array_values($vs)); return $this; }
@@ -1102,6 +1158,7 @@ final class Battle extends Q
     public function aesHexEmailEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_email', 'eq_col', $ref); return $this; }
     public function aesHexEmailNotEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_email', 'not_eq_col', $ref); return $this; }
     public function aesHexPhoneEq(string $v): static { $this->w()->pred('aes_hex_phone', 'eq', $v); return $this; }
+    public function aesHexPhone(string $v): static { return $this->aesHexPhoneEq($v); }
     public function aesHexPhoneNotEq(string $v): static { $this->w()->pred('aes_hex_phone', 'not_eq', $v); return $this; }
     public function aesHexPhoneIn(array $vs): static { $this->w()->predList('aes_hex_phone', 'in', array_values($vs)); return $this; }
     public function aesHexPhoneNotIn(array $vs): static { $this->w()->predList('aes_hex_phone', 'not_in', array_values($vs)); return $this; }
@@ -1110,6 +1167,7 @@ final class Battle extends Q
     public function aesHexPhoneEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_phone', 'eq_col', $ref); return $this; }
     public function aesHexPhoneNotEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_phone', 'not_eq_col', $ref); return $this; }
     public function priceEq(float $v): static { $this->w()->pred('price', 'eq', $v); return $this; }
+    public function price(float $v): static { return $this->priceEq($v); }
     public function priceNotEq(float $v): static { $this->w()->pred('price', 'not_eq', $v); return $this; }
     public function priceGt(float $v): static { $this->w()->pred('price', 'gt', $v); return $this; }
     public function priceGte(float $v): static { $this->w()->pred('price', 'gte', $v); return $this; }
@@ -1127,6 +1185,7 @@ final class Battle extends Q
     public function priceLtCol(ColRef $ref): static { $this->w()->predCol('price', 'lt_col', $ref); return $this; }
     public function priceLteCol(ColRef $ref): static { $this->w()->predCol('price', 'lte_col', $ref); return $this; }
     public function ipEq(string $v): static { $this->w()->pred('ip', 'eq', $v); return $this; }
+    public function ip(string $v): static { return $this->ipEq($v); }
     public function ipNotEq(string $v): static { $this->w()->pred('ip', 'not_eq', $v); return $this; }
     public function ipIn(array $vs): static { $this->w()->predList('ip', 'in', array_values($vs)); return $this; }
     public function ipNotIn(array $vs): static { $this->w()->predList('ip', 'not_in', array_values($vs)); return $this; }
@@ -1404,6 +1463,7 @@ final class Battle extends Q
     /** Group predicates after groupBy<Col>(); the closure gets the same Where builder, aggregates via expr('COUNT(*) > ?', [n]). */
     public function having(\Closure $fn): static { $fn(new BattleWhere($this->havingW())); return $this; }
     public function orderByExpr(string $frag, bool $desc = false): static { $this->orderExpr($frag, $desc); return $this; }
+    public function groupByExpr(string $expr, string $as): static { $this->groupExpr($expr, $as); return $this; }
     public function limit(int $offset, int $count): static { $this->setLimit($offset, $count); return $this; }
     public function distinct(): static { $this->opt('distinct', true); return $this; }
     public function forceIndexIk(): static { $this->opt('force_index', 'ik'); return $this; }
@@ -1598,201 +1658,654 @@ final class Battle extends Q
     public function onDuplicateMinusPrice(float $v): static { $this->onDuplicateMinus('price', $v); return $this; }
 
     // ---- terminals ----
-    public function one(Db $db): ?BattleRow
+    public function one(): ?BattleRow
     {
+        $this->terminalArity(func_num_args());
+        $db = $this->terminalDb();
         $rows = $this->runQuery($db, 'one');
         return $rows->data === [] ? null : BattleRow::fromRow($rows->data[0], $rows->asm, $rows);
     }
 
-    public function all(Db $db): Collection
+    public function all(): Collection
     {
+        $this->terminalArity(func_num_args());
+        $db = $this->terminalDb();
+        $this->compatRootKey();
         return Collection::fromRows($this->runQuery($db, 'all'), BattleRow::class, $this->keyFn);
     }
 
-    public function count(Db $db): int { return (int) $this->runScalar($db, 'count'); }
-    public function sumSeq(Db $db): float { return (float) $this->runScalar($db, 'sum', 'seq'); }
-    public function avgSeq(Db $db): float { return (float) $this->runScalar($db, 'avg', 'seq'); }
-    public function sumTargetTeamPlayerCount(Db $db): float { return (float) $this->runScalar($db, 'sum', 'target_team_player_count'); }
-    public function avgTargetTeamPlayerCount(Db $db): float { return (float) $this->runScalar($db, 'avg', 'target_team_player_count'); }
-    public function sumSuccessCount(Db $db): float { return (float) $this->runScalar($db, 'sum', 'success_count'); }
-    public function avgSuccessCount(Db $db): float { return (float) $this->runScalar($db, 'avg', 'success_count'); }
-    public function sumPlayerCount(Db $db): float { return (float) $this->runScalar($db, 'sum', 'player_count'); }
-    public function avgPlayerCount(Db $db): float { return (float) $this->runScalar($db, 'avg', 'player_count'); }
-    public function sumReadCount(Db $db): float { return (float) $this->runScalar($db, 'sum', 'read_count'); }
-    public function avgReadCount(Db $db): float { return (float) $this->runScalar($db, 'avg', 'read_count'); }
-    public function sumUserSeq(Db $db): float { return (float) $this->runScalar($db, 'sum', 'user_seq'); }
-    public function avgUserSeq(Db $db): float { return (float) $this->runScalar($db, 'avg', 'user_seq'); }
-    public function sumServiceSeq(Db $db): float { return (float) $this->runScalar($db, 'sum', 'service_seq'); }
-    public function avgServiceSeq(Db $db): float { return (float) $this->runScalar($db, 'avg', 'service_seq'); }
-    public function sumServiceModuleSeq(Db $db): float { return (float) $this->runScalar($db, 'sum', 'service_module_seq'); }
-    public function avgServiceModuleSeq(Db $db): float { return (float) $this->runScalar($db, 'avg', 'service_module_seq'); }
-    public function sumServiceMemberSeq(Db $db): float { return (float) $this->runScalar($db, 'sum', 'service_member_seq'); }
-    public function avgServiceMemberSeq(Db $db): float { return (float) $this->runScalar($db, 'avg', 'service_member_seq'); }
-    public function sumLikeCount(Db $db): float { return (float) $this->runScalar($db, 'sum', 'like_count'); }
-    public function avgLikeCount(Db $db): float { return (float) $this->runScalar($db, 'avg', 'like_count'); }
-    public function sumPrice(Db $db): float { return (float) $this->runScalar($db, 'sum', 'price'); }
-    public function avgPrice(Db $db): float { return (float) $this->runScalar($db, 'avg', 'price'); }
-    public function countDistinctSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'seq'); }
+    /** Preferred collection terminal; all() remains available for compatibility. */
+    public function gets(): Collection
+    {
+        $this->terminalArity(func_num_args());
+        return $this->all();
+    }
+
+    /** Preferred single-row terminal; one() remains available for compatibility. */
+    public function get(): ?BattleRow
+    {
+        $this->terminalArity(func_num_args());
+        return $this->one();
+    }
+
+
+    /** Applies seq = value and runs the collection terminal. */
+    public function getsBySeq(int $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->seq($value)->gets();
+    }
+
+    /** Applies name = value and runs the collection terminal. */
+    public function getsByName(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->name($value)->gets();
+    }
+
+    /** Applies description = value and runs the collection terminal. */
+    public function getsByDescription(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->description($value)->gets();
+    }
+
+    /** Applies created_ts = value and runs the collection terminal. */
+    public function getsByCreatedTs(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->createdTs($value)->gets();
+    }
+
+    /** Applies updated_ts = value and runs the collection terminal. */
+    public function getsByUpdatedTs(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->updatedTs($value)->gets();
+    }
+
+    /** Applies is_close = value and runs the collection terminal. */
+    public function getsByIsClose(bool $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->isClose($value)->gets();
+    }
+
+    /** Applies is_display = value and runs the collection terminal. */
+    public function getsByIsDisplay(bool $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->isDisplay($value)->gets();
+    }
+
+    /** Applies display_start_dt = value and runs the collection terminal. */
+    public function getsByDisplayStartDt(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->displayStartDt($value)->gets();
+    }
+
+    /** Applies display_end_dt = value and runs the collection terminal. */
+    public function getsByDisplayEndDt(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->displayEndDt($value)->gets();
+    }
+
+    /** Applies is_allday = value and runs the collection terminal. */
+    public function getsByIsAllday(bool $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->isAllday($value)->gets();
+    }
+
+    /** Applies target_team_player_count = value and runs the collection terminal. */
+    public function getsByTargetTeamPlayerCount(int $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->targetTeamPlayerCount($value)->gets();
+    }
+
+    /** Applies success_count = value and runs the collection terminal. */
+    public function getsBySuccessCount(int $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->successCount($value)->gets();
+    }
+
+    /** Applies player_count = value and runs the collection terminal. */
+    public function getsByPlayerCount(int $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->playerCount($value)->gets();
+    }
+
+    /** Applies read_count = value and runs the collection terminal. */
+    public function getsByReadCount(int $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->readCount($value)->gets();
+    }
+
+    /** Applies cover_url = value and runs the collection terminal. */
+    public function getsByCoverUrl(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->coverUrl($value)->gets();
+    }
+
+    /** Applies user_seq = value and runs the collection terminal. */
+    public function getsByUserSeq(int $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->userSeq($value)->gets();
+    }
+
+    /** Applies service_seq = value and runs the collection terminal. */
+    public function getsByServiceSeq(int $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->serviceSeq($value)->gets();
+    }
+
+    /** Applies service_module_seq = value and runs the collection terminal. */
+    public function getsByServiceModuleSeq(int $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->serviceModuleSeq($value)->gets();
+    }
+
+    /** Applies service_member_seq = value and runs the collection terminal. */
+    public function getsByServiceMemberSeq(int $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->serviceMemberSeq($value)->gets();
+    }
+
+    /** Applies start_dt = value and runs the collection terminal. */
+    public function getsByStartDt(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->startDt($value)->gets();
+    }
+
+    /** Applies end_dt = value and runs the collection terminal. */
+    public function getsByEndDt(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->endDt($value)->gets();
+    }
+
+    /** Applies uuid = value and runs the collection terminal. */
+    public function getsByUuid(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->uuid($value)->gets();
+    }
+
+    /** Applies is_single_play = value and runs the collection terminal. */
+    public function getsByIsSinglePlay(bool $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->isSinglePlay($value)->gets();
+    }
+
+    /** Applies like_count = value and runs the collection terminal. */
+    public function getsByLikeCount(int $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->likeCount($value)->gets();
+    }
+
+    /** Applies aes_hex_email = value and runs the collection terminal. */
+    public function getsByAesHexEmail(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->aesHexEmail($value)->gets();
+    }
+
+    /** Applies aes_hex_phone = value and runs the collection terminal. */
+    public function getsByAesHexPhone(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->aesHexPhone($value)->gets();
+    }
+
+    /** Applies price = value and runs the collection terminal. */
+    public function getsByPrice(float $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->price($value)->gets();
+    }
+
+    /** Applies ip = value and runs the collection terminal. */
+    public function getsByIp(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->ip($value)->gets();
+    }
+
+    public function count(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count'); }
+
+    /** Preferred scalar count terminal; count() remains available as a compatibility alias. */
+    public function getCount(): int { $this->terminalArity(func_num_args()); return $this->count(); }
+
+
+    /** Applies seq = value and runs the scalar count terminal. */
+    public function getCountBySeq(int $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->seq($value)->getCount();
+    }
+
+    /** Applies name = value and runs the scalar count terminal. */
+    public function getCountByName(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->name($value)->getCount();
+    }
+
+    /** Applies description = value and runs the scalar count terminal. */
+    public function getCountByDescription(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->description($value)->getCount();
+    }
+
+    /** Applies created_ts = value and runs the scalar count terminal. */
+    public function getCountByCreatedTs(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->createdTs($value)->getCount();
+    }
+
+    /** Applies updated_ts = value and runs the scalar count terminal. */
+    public function getCountByUpdatedTs(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->updatedTs($value)->getCount();
+    }
+
+    /** Applies is_close = value and runs the scalar count terminal. */
+    public function getCountByIsClose(bool $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->isClose($value)->getCount();
+    }
+
+    /** Applies is_display = value and runs the scalar count terminal. */
+    public function getCountByIsDisplay(bool $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->isDisplay($value)->getCount();
+    }
+
+    /** Applies display_start_dt = value and runs the scalar count terminal. */
+    public function getCountByDisplayStartDt(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->displayStartDt($value)->getCount();
+    }
+
+    /** Applies display_end_dt = value and runs the scalar count terminal. */
+    public function getCountByDisplayEndDt(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->displayEndDt($value)->getCount();
+    }
+
+    /** Applies is_allday = value and runs the scalar count terminal. */
+    public function getCountByIsAllday(bool $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->isAllday($value)->getCount();
+    }
+
+    /** Applies target_team_player_count = value and runs the scalar count terminal. */
+    public function getCountByTargetTeamPlayerCount(int $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->targetTeamPlayerCount($value)->getCount();
+    }
+
+    /** Applies success_count = value and runs the scalar count terminal. */
+    public function getCountBySuccessCount(int $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->successCount($value)->getCount();
+    }
+
+    /** Applies player_count = value and runs the scalar count terminal. */
+    public function getCountByPlayerCount(int $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->playerCount($value)->getCount();
+    }
+
+    /** Applies read_count = value and runs the scalar count terminal. */
+    public function getCountByReadCount(int $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->readCount($value)->getCount();
+    }
+
+    /** Applies cover_url = value and runs the scalar count terminal. */
+    public function getCountByCoverUrl(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->coverUrl($value)->getCount();
+    }
+
+    /** Applies user_seq = value and runs the scalar count terminal. */
+    public function getCountByUserSeq(int $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->userSeq($value)->getCount();
+    }
+
+    /** Applies service_seq = value and runs the scalar count terminal. */
+    public function getCountByServiceSeq(int $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->serviceSeq($value)->getCount();
+    }
+
+    /** Applies service_module_seq = value and runs the scalar count terminal. */
+    public function getCountByServiceModuleSeq(int $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->serviceModuleSeq($value)->getCount();
+    }
+
+    /** Applies service_member_seq = value and runs the scalar count terminal. */
+    public function getCountByServiceMemberSeq(int $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->serviceMemberSeq($value)->getCount();
+    }
+
+    /** Applies start_dt = value and runs the scalar count terminal. */
+    public function getCountByStartDt(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->startDt($value)->getCount();
+    }
+
+    /** Applies end_dt = value and runs the scalar count terminal. */
+    public function getCountByEndDt(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->endDt($value)->getCount();
+    }
+
+    /** Applies uuid = value and runs the scalar count terminal. */
+    public function getCountByUuid(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->uuid($value)->getCount();
+    }
+
+    /** Applies is_single_play = value and runs the scalar count terminal. */
+    public function getCountByIsSinglePlay(bool $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->isSinglePlay($value)->getCount();
+    }
+
+    /** Applies like_count = value and runs the scalar count terminal. */
+    public function getCountByLikeCount(int $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->likeCount($value)->getCount();
+    }
+
+    /** Applies aes_hex_email = value and runs the scalar count terminal. */
+    public function getCountByAesHexEmail(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->aesHexEmail($value)->getCount();
+    }
+
+    /** Applies aes_hex_phone = value and runs the scalar count terminal. */
+    public function getCountByAesHexPhone(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->aesHexPhone($value)->getCount();
+    }
+
+    /** Applies price = value and runs the scalar count terminal. */
+    public function getCountByPrice(float $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->price($value)->getCount();
+    }
+
+    /** Applies ip = value and runs the scalar count terminal. */
+    public function getCountByIp(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->ip($value)->getCount();
+    }
+
+    /** Returns one row per group_by value; row_count is available through getRowCount()/['row_count']. */
+    public function getsCount(): Collection
+    {
+        $this->terminalArity(func_num_args());
+        $db = $this->terminalDb();
+        if (empty($this->req->ir['group_by']) && empty($this->req->ir['group_by_expr'])) {
+            throw new \Orm\OrmException(\Orm\Code::IR_INVALID, static::ENTITY . ': getsCount() needs groupBy()');
+        }
+        $this->compatRootKey();
+        return Collection::fromRows($this->runQuery($db, 'group_count'), Registry::row(static::ENTITY), $this->keyFn);
+    }
+    public function sumSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'seq'); }
+    public function avgSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'seq'); }
+    public function sumTargetTeamPlayerCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'target_team_player_count'); }
+    public function avgTargetTeamPlayerCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'target_team_player_count'); }
+    public function sumSuccessCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'success_count'); }
+    public function avgSuccessCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'success_count'); }
+    public function sumPlayerCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'player_count'); }
+    public function avgPlayerCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'player_count'); }
+    public function sumReadCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'read_count'); }
+    public function avgReadCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'read_count'); }
+    public function sumUserSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'user_seq'); }
+    public function avgUserSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'user_seq'); }
+    public function sumServiceSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'service_seq'); }
+    public function avgServiceSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'service_seq'); }
+    public function sumServiceModuleSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'service_module_seq'); }
+    public function avgServiceModuleSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'service_module_seq'); }
+    public function sumServiceMemberSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'service_member_seq'); }
+    public function avgServiceMemberSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'service_member_seq'); }
+    public function sumLikeCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'like_count'); }
+    public function avgLikeCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'like_count'); }
+    public function sumPrice(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'price'); }
+    public function avgPrice(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'price'); }
+    public function countDistinctSeq(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'seq'); }
     /** MIN(seq); null when no rows match. */
-    public function minSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'seq'); return $v === null ? null : (int) $v; }
+    public function minSeq(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'seq'); return $v === null ? null : (int) $v; }
     /** MAX(seq); null when no rows match. */
-    public function maxSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'seq'); return $v === null ? null : (int) $v; }
-    public function countDistinctName(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'name'); }
+    public function maxSeq(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'seq'); return $v === null ? null : (int) $v; }
+    public function countDistinctName(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'name'); }
     /** MIN(name); null when no rows match. */
-    public function minName(Db $db): ?string { $v = $this->runScalar($db, 'min', 'name'); return $v === null ? null : (string) $v; }
+    public function minName(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'name'); return $v === null ? null : (string) $v; }
     /** MAX(name); null when no rows match. */
-    public function maxName(Db $db): ?string { $v = $this->runScalar($db, 'max', 'name'); return $v === null ? null : (string) $v; }
-    public function countDistinctDescription(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'description'); }
+    public function maxName(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'name'); return $v === null ? null : (string) $v; }
+    public function countDistinctDescription(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'description'); }
     /** MIN(description); null when no rows match. */
-    public function minDescription(Db $db): ?string { $v = $this->runScalar($db, 'min', 'description'); return $v === null ? null : (string) $v; }
+    public function minDescription(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'description'); return $v === null ? null : (string) $v; }
     /** MAX(description); null when no rows match. */
-    public function maxDescription(Db $db): ?string { $v = $this->runScalar($db, 'max', 'description'); return $v === null ? null : (string) $v; }
-    public function countDistinctCreatedTs(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'created_ts'); }
+    public function maxDescription(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'description'); return $v === null ? null : (string) $v; }
+    public function countDistinctCreatedTs(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'created_ts'); }
     /** MIN(created_ts); null when no rows match. */
-    public function minCreatedTs(Db $db): ?string { $v = $this->runScalar($db, 'min', 'created_ts'); return $v === null ? null : (string) $v; }
+    public function minCreatedTs(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'created_ts'); return $v === null ? null : (string) $v; }
     /** MAX(created_ts); null when no rows match. */
-    public function maxCreatedTs(Db $db): ?string { $v = $this->runScalar($db, 'max', 'created_ts'); return $v === null ? null : (string) $v; }
-    public function countDistinctUpdatedTs(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'updated_ts'); }
+    public function maxCreatedTs(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'created_ts'); return $v === null ? null : (string) $v; }
+    public function countDistinctUpdatedTs(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'updated_ts'); }
     /** MIN(updated_ts); null when no rows match. */
-    public function minUpdatedTs(Db $db): ?string { $v = $this->runScalar($db, 'min', 'updated_ts'); return $v === null ? null : (string) $v; }
+    public function minUpdatedTs(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'updated_ts'); return $v === null ? null : (string) $v; }
     /** MAX(updated_ts); null when no rows match. */
-    public function maxUpdatedTs(Db $db): ?string { $v = $this->runScalar($db, 'max', 'updated_ts'); return $v === null ? null : (string) $v; }
-    public function countDistinctIsClose(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'is_close'); }
+    public function maxUpdatedTs(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'updated_ts'); return $v === null ? null : (string) $v; }
+    public function countDistinctIsClose(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'is_close'); }
     /** MIN(is_close); null when no rows match. */
-    public function minIsClose(Db $db): ?bool { $v = $this->runScalar($db, 'min', 'is_close'); return $v === null ? null : (bool) $v; }
+    public function minIsClose(): ?bool { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'is_close'); return $v === null ? null : (bool) $v; }
     /** MAX(is_close); null when no rows match. */
-    public function maxIsClose(Db $db): ?bool { $v = $this->runScalar($db, 'max', 'is_close'); return $v === null ? null : (bool) $v; }
-    public function countDistinctIsDisplay(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'is_display'); }
+    public function maxIsClose(): ?bool { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'is_close'); return $v === null ? null : (bool) $v; }
+    public function countDistinctIsDisplay(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'is_display'); }
     /** MIN(is_display); null when no rows match. */
-    public function minIsDisplay(Db $db): ?bool { $v = $this->runScalar($db, 'min', 'is_display'); return $v === null ? null : (bool) $v; }
+    public function minIsDisplay(): ?bool { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'is_display'); return $v === null ? null : (bool) $v; }
     /** MAX(is_display); null when no rows match. */
-    public function maxIsDisplay(Db $db): ?bool { $v = $this->runScalar($db, 'max', 'is_display'); return $v === null ? null : (bool) $v; }
-    public function countDistinctDisplayStartDt(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'display_start_dt'); }
+    public function maxIsDisplay(): ?bool { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'is_display'); return $v === null ? null : (bool) $v; }
+    public function countDistinctDisplayStartDt(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'display_start_dt'); }
     /** MIN(display_start_dt); null when no rows match. */
-    public function minDisplayStartDt(Db $db): ?string { $v = $this->runScalar($db, 'min', 'display_start_dt'); return $v === null ? null : (string) $v; }
+    public function minDisplayStartDt(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'display_start_dt'); return $v === null ? null : (string) $v; }
     /** MAX(display_start_dt); null when no rows match. */
-    public function maxDisplayStartDt(Db $db): ?string { $v = $this->runScalar($db, 'max', 'display_start_dt'); return $v === null ? null : (string) $v; }
-    public function countDistinctDisplayEndDt(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'display_end_dt'); }
+    public function maxDisplayStartDt(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'display_start_dt'); return $v === null ? null : (string) $v; }
+    public function countDistinctDisplayEndDt(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'display_end_dt'); }
     /** MIN(display_end_dt); null when no rows match. */
-    public function minDisplayEndDt(Db $db): ?string { $v = $this->runScalar($db, 'min', 'display_end_dt'); return $v === null ? null : (string) $v; }
+    public function minDisplayEndDt(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'display_end_dt'); return $v === null ? null : (string) $v; }
     /** MAX(display_end_dt); null when no rows match. */
-    public function maxDisplayEndDt(Db $db): ?string { $v = $this->runScalar($db, 'max', 'display_end_dt'); return $v === null ? null : (string) $v; }
-    public function countDistinctIsAllday(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'is_allday'); }
+    public function maxDisplayEndDt(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'display_end_dt'); return $v === null ? null : (string) $v; }
+    public function countDistinctIsAllday(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'is_allday'); }
     /** MIN(is_allday); null when no rows match. */
-    public function minIsAllday(Db $db): ?bool { $v = $this->runScalar($db, 'min', 'is_allday'); return $v === null ? null : (bool) $v; }
+    public function minIsAllday(): ?bool { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'is_allday'); return $v === null ? null : (bool) $v; }
     /** MAX(is_allday); null when no rows match. */
-    public function maxIsAllday(Db $db): ?bool { $v = $this->runScalar($db, 'max', 'is_allday'); return $v === null ? null : (bool) $v; }
-    public function countDistinctTargetTeamPlayerCount(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'target_team_player_count'); }
+    public function maxIsAllday(): ?bool { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'is_allday'); return $v === null ? null : (bool) $v; }
+    public function countDistinctTargetTeamPlayerCount(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'target_team_player_count'); }
     /** MIN(target_team_player_count); null when no rows match. */
-    public function minTargetTeamPlayerCount(Db $db): ?int { $v = $this->runScalar($db, 'min', 'target_team_player_count'); return $v === null ? null : (int) $v; }
+    public function minTargetTeamPlayerCount(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'target_team_player_count'); return $v === null ? null : (int) $v; }
     /** MAX(target_team_player_count); null when no rows match. */
-    public function maxTargetTeamPlayerCount(Db $db): ?int { $v = $this->runScalar($db, 'max', 'target_team_player_count'); return $v === null ? null : (int) $v; }
-    public function countDistinctSuccessCount(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'success_count'); }
+    public function maxTargetTeamPlayerCount(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'target_team_player_count'); return $v === null ? null : (int) $v; }
+    public function countDistinctSuccessCount(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'success_count'); }
     /** MIN(success_count); null when no rows match. */
-    public function minSuccessCount(Db $db): ?int { $v = $this->runScalar($db, 'min', 'success_count'); return $v === null ? null : (int) $v; }
+    public function minSuccessCount(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'success_count'); return $v === null ? null : (int) $v; }
     /** MAX(success_count); null when no rows match. */
-    public function maxSuccessCount(Db $db): ?int { $v = $this->runScalar($db, 'max', 'success_count'); return $v === null ? null : (int) $v; }
-    public function countDistinctPlayerCount(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'player_count'); }
+    public function maxSuccessCount(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'success_count'); return $v === null ? null : (int) $v; }
+    public function countDistinctPlayerCount(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'player_count'); }
     /** MIN(player_count); null when no rows match. */
-    public function minPlayerCount(Db $db): ?int { $v = $this->runScalar($db, 'min', 'player_count'); return $v === null ? null : (int) $v; }
+    public function minPlayerCount(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'player_count'); return $v === null ? null : (int) $v; }
     /** MAX(player_count); null when no rows match. */
-    public function maxPlayerCount(Db $db): ?int { $v = $this->runScalar($db, 'max', 'player_count'); return $v === null ? null : (int) $v; }
-    public function countDistinctReadCount(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'read_count'); }
+    public function maxPlayerCount(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'player_count'); return $v === null ? null : (int) $v; }
+    public function countDistinctReadCount(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'read_count'); }
     /** MIN(read_count); null when no rows match. */
-    public function minReadCount(Db $db): ?int { $v = $this->runScalar($db, 'min', 'read_count'); return $v === null ? null : (int) $v; }
+    public function minReadCount(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'read_count'); return $v === null ? null : (int) $v; }
     /** MAX(read_count); null when no rows match. */
-    public function maxReadCount(Db $db): ?int { $v = $this->runScalar($db, 'max', 'read_count'); return $v === null ? null : (int) $v; }
-    public function countDistinctCoverUrl(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'cover_url'); }
+    public function maxReadCount(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'read_count'); return $v === null ? null : (int) $v; }
+    public function countDistinctCoverUrl(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'cover_url'); }
     /** MIN(cover_url); null when no rows match. */
-    public function minCoverUrl(Db $db): ?string { $v = $this->runScalar($db, 'min', 'cover_url'); return $v === null ? null : (string) $v; }
+    public function minCoverUrl(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'cover_url'); return $v === null ? null : (string) $v; }
     /** MAX(cover_url); null when no rows match. */
-    public function maxCoverUrl(Db $db): ?string { $v = $this->runScalar($db, 'max', 'cover_url'); return $v === null ? null : (string) $v; }
-    public function countDistinctUserSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'user_seq'); }
+    public function maxCoverUrl(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'cover_url'); return $v === null ? null : (string) $v; }
+    public function countDistinctUserSeq(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'user_seq'); }
     /** MIN(user_seq); null when no rows match. */
-    public function minUserSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'user_seq'); return $v === null ? null : (int) $v; }
+    public function minUserSeq(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'user_seq'); return $v === null ? null : (int) $v; }
     /** MAX(user_seq); null when no rows match. */
-    public function maxUserSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'user_seq'); return $v === null ? null : (int) $v; }
-    public function countDistinctServiceSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'service_seq'); }
+    public function maxUserSeq(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'user_seq'); return $v === null ? null : (int) $v; }
+    public function countDistinctServiceSeq(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'service_seq'); }
     /** MIN(service_seq); null when no rows match. */
-    public function minServiceSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'service_seq'); return $v === null ? null : (int) $v; }
+    public function minServiceSeq(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'service_seq'); return $v === null ? null : (int) $v; }
     /** MAX(service_seq); null when no rows match. */
-    public function maxServiceSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'service_seq'); return $v === null ? null : (int) $v; }
-    public function countDistinctServiceModuleSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'service_module_seq'); }
+    public function maxServiceSeq(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'service_seq'); return $v === null ? null : (int) $v; }
+    public function countDistinctServiceModuleSeq(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'service_module_seq'); }
     /** MIN(service_module_seq); null when no rows match. */
-    public function minServiceModuleSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'service_module_seq'); return $v === null ? null : (int) $v; }
+    public function minServiceModuleSeq(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'service_module_seq'); return $v === null ? null : (int) $v; }
     /** MAX(service_module_seq); null when no rows match. */
-    public function maxServiceModuleSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'service_module_seq'); return $v === null ? null : (int) $v; }
-    public function countDistinctServiceMemberSeq(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'service_member_seq'); }
+    public function maxServiceModuleSeq(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'service_module_seq'); return $v === null ? null : (int) $v; }
+    public function countDistinctServiceMemberSeq(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'service_member_seq'); }
     /** MIN(service_member_seq); null when no rows match. */
-    public function minServiceMemberSeq(Db $db): ?int { $v = $this->runScalar($db, 'min', 'service_member_seq'); return $v === null ? null : (int) $v; }
+    public function minServiceMemberSeq(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'service_member_seq'); return $v === null ? null : (int) $v; }
     /** MAX(service_member_seq); null when no rows match. */
-    public function maxServiceMemberSeq(Db $db): ?int { $v = $this->runScalar($db, 'max', 'service_member_seq'); return $v === null ? null : (int) $v; }
-    public function countDistinctStartDt(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'start_dt'); }
+    public function maxServiceMemberSeq(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'service_member_seq'); return $v === null ? null : (int) $v; }
+    public function countDistinctStartDt(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'start_dt'); }
     /** MIN(start_dt); null when no rows match. */
-    public function minStartDt(Db $db): ?string { $v = $this->runScalar($db, 'min', 'start_dt'); return $v === null ? null : (string) $v; }
+    public function minStartDt(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'start_dt'); return $v === null ? null : (string) $v; }
     /** MAX(start_dt); null when no rows match. */
-    public function maxStartDt(Db $db): ?string { $v = $this->runScalar($db, 'max', 'start_dt'); return $v === null ? null : (string) $v; }
-    public function countDistinctEndDt(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'end_dt'); }
+    public function maxStartDt(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'start_dt'); return $v === null ? null : (string) $v; }
+    public function countDistinctEndDt(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'end_dt'); }
     /** MIN(end_dt); null when no rows match. */
-    public function minEndDt(Db $db): ?string { $v = $this->runScalar($db, 'min', 'end_dt'); return $v === null ? null : (string) $v; }
+    public function minEndDt(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'end_dt'); return $v === null ? null : (string) $v; }
     /** MAX(end_dt); null when no rows match. */
-    public function maxEndDt(Db $db): ?string { $v = $this->runScalar($db, 'max', 'end_dt'); return $v === null ? null : (string) $v; }
-    public function countDistinctUuid(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'uuid'); }
+    public function maxEndDt(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'end_dt'); return $v === null ? null : (string) $v; }
+    public function countDistinctUuid(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'uuid'); }
     /** MIN(uuid); null when no rows match. */
-    public function minUuid(Db $db): ?string { $v = $this->runScalar($db, 'min', 'uuid'); return $v === null ? null : (string) $v; }
+    public function minUuid(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'uuid'); return $v === null ? null : (string) $v; }
     /** MAX(uuid); null when no rows match. */
-    public function maxUuid(Db $db): ?string { $v = $this->runScalar($db, 'max', 'uuid'); return $v === null ? null : (string) $v; }
-    public function countDistinctIsSinglePlay(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'is_single_play'); }
+    public function maxUuid(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'uuid'); return $v === null ? null : (string) $v; }
+    public function countDistinctIsSinglePlay(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'is_single_play'); }
     /** MIN(is_single_play); null when no rows match. */
-    public function minIsSinglePlay(Db $db): ?bool { $v = $this->runScalar($db, 'min', 'is_single_play'); return $v === null ? null : (bool) $v; }
+    public function minIsSinglePlay(): ?bool { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'is_single_play'); return $v === null ? null : (bool) $v; }
     /** MAX(is_single_play); null when no rows match. */
-    public function maxIsSinglePlay(Db $db): ?bool { $v = $this->runScalar($db, 'max', 'is_single_play'); return $v === null ? null : (bool) $v; }
-    public function countDistinctLikeCount(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'like_count'); }
+    public function maxIsSinglePlay(): ?bool { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'is_single_play'); return $v === null ? null : (bool) $v; }
+    public function countDistinctLikeCount(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'like_count'); }
     /** MIN(like_count); null when no rows match. */
-    public function minLikeCount(Db $db): ?int { $v = $this->runScalar($db, 'min', 'like_count'); return $v === null ? null : (int) $v; }
+    public function minLikeCount(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'like_count'); return $v === null ? null : (int) $v; }
     /** MAX(like_count); null when no rows match. */
-    public function maxLikeCount(Db $db): ?int { $v = $this->runScalar($db, 'max', 'like_count'); return $v === null ? null : (int) $v; }
-    public function countDistinctPrice(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'price'); }
+    public function maxLikeCount(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'like_count'); return $v === null ? null : (int) $v; }
+    public function countDistinctPrice(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'price'); }
     /** MIN(price); null when no rows match. */
-    public function minPrice(Db $db): ?float { $v = $this->runScalar($db, 'min', 'price'); return $v === null ? null : (float) $v; }
+    public function minPrice(): ?float { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'price'); return $v === null ? null : (float) $v; }
     /** MAX(price); null when no rows match. */
-    public function maxPrice(Db $db): ?float { $v = $this->runScalar($db, 'max', 'price'); return $v === null ? null : (float) $v; }
-    public function countDistinctIp(Db $db): int { return (int) $this->runScalar($db, 'count_distinct', 'ip'); }
+    public function maxPrice(): ?float { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'price'); return $v === null ? null : (float) $v; }
+    public function countDistinctIp(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'ip'); }
     /** MIN(ip); null when no rows match. */
-    public function minIp(Db $db): ?string { $v = $this->runScalar($db, 'min', 'ip'); return $v === null ? null : (string) $v; }
+    public function minIp(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'ip'); return $v === null ? null : (string) $v; }
     /** MAX(ip); null when no rows match. */
-    public function maxIp(Db $db): ?string { $v = $this->runScalar($db, 'max', 'ip'); return $v === null ? null : (string) $v; }
+    public function maxIp(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'ip'); return $v === null ? null : (string) $v; }
 
     // ---- raw root (trusted code only): {table} = this entity's table, ? bound from $binds in order ----
     public function raw(string $sql, array $binds = []): static { $this->setRaw($sql, $binds); return $this; }
     /** Runs the raw() statement; rows keyed by the driver's column names, values as PDO gives them (no codec). @return list<array<string, mixed>> */
-    public function rawAll(Db $db): array { return $this->runRaw($db); }
+    public function rawAll(): array { $this->terminalArity(func_num_args()); return $this->runRaw($this->terminalDb()); }
 
-    public function paginate(Db $db, int $page, int $per): Page
+    public function paginate(int $page, int $per): Page
     {
+        $this->terminalArity(func_num_args(), 2);
+        $db = $this->terminalDb();
+        if ($per <= 0) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'per must be positive'); }
+        $this->compatRootKey();
         [$rows, $total] = $this->runPaginate($db, $page, $per);
         return new Page(Collection::fromRows($rows, BattleRow::class, $this->keyFn), $total, intdiv($total + $per - 1, $per), max(1, $page), $per);
     }
 
-    public function insert(Db $db): ?BattleRow
+    public function insert(): ?BattleRow
     {
+        $this->terminalArity(func_num_args());
+        $db = $this->terminalDb();
         $id = $this->runInsert($db);
-        return (new Battle)->seqEq((int) $id)->one($db);
+        return (new Battle)($db)->seqEq((int) $id)->one();
     }
 
     /** UPDATE by PK when setSeq was called (the other set columns), else INSERT; returns the re-read row. */
-    public function save(Db $db): ?BattleRow
+    public function save(): ?BattleRow
     {
+        $this->terminalArity(func_num_args());
+        $db = $this->terminalDb();
         [, $key] = $this->runSave($db, 'seq');
-        return (new Battle)->seqEq((int) $key)->one($db);
+        return (new Battle)($db)->seqEq((int) $key)->one();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
-    public function update(Db $db): int { return $this->runWrite($db, 'update'); }
+    public function update(): int { $this->terminalArity(func_num_args()); return $this->runWrite($this->terminalDb(), 'update'); }
     /** DELETE WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
-    public function delete(Db $db): int { return $this->runWrite($db, 'delete'); }
+    public function delete(): int { $this->terminalArity(func_num_args()); return $this->runWrite($this->terminalDb(), 'delete'); }
     /** The main statement as the all() terminal would run it, without executing; secret slots read "$SECRET". @return array{sql: string, binds: list<mixed>} */
-    public function sql(Db $db): array { return $this->runSql($db); }
+    public function sql(): array { $this->terminalArity(func_num_args()); return $this->runSql($this->terminalDb()); }
 
-    public function oneBySeq(Db $db, int $v): ?BattleRow { return $this->seqEq($v)->one($db); }
+    public function oneBySeq(int $value): ?BattleRow
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->seqEq($value)->one();
+    }
+    public function getBySeq(int $value): ?BattleRow
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->seqEq($value)->get();
+    }
+
+    /** Applies the equality predicates for the declared unique key and runs the single-row terminal. */
+    public function getByUuid(string $v0): ?BattleRow
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->uuid($v0)->get();
+    }
+
 }

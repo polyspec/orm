@@ -1,4 +1,4 @@
--- S0 bench schema: subset of `battle` + two aes_hex columns (compatibility style).
+-- S0 bench schema: subset of `battle` + two aes_hex columns.
 CREATE DATABASE IF NOT EXISTS orm_bench DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE orm_bench;
 DROP TABLE IF EXISTS battle;

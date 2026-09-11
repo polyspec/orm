@@ -38,6 +38,14 @@ func pascal(s string) string {
 	return b.String()
 }
 
+func finderMethod(cols []string) string {
+	parts := make([]string, len(cols))
+	for i, col := range cols {
+		parts[i] = pascal(col)
+	}
+	return strings.Join(parts, "And")
+}
+
 func goType(c *schema.Col) string {
 	if len(appStyles(c)) > 0 {
 		return "any"
@@ -108,6 +116,8 @@ type goEntity struct {
 	Auto              bool
 	AutoCol           string
 	Cols              []goCol
+	EqCols            []goCol // columns that support the default equality predicate (getsBy/getCountBy)
+	UniqueFinders     []goFinder
 	Rels              []goRel
 	Indexes           []string
 	Fulltext          [][]string
@@ -139,6 +149,13 @@ type goCol struct {
 	Ops                        []opDef
 	ColOps                     []opDef  // <col><Op>Col(ref) comparisons
 	Styles                     []string // executor-side codec stages (docs/codec.md); the field is then `any`
+}
+
+// goFinder is a finite, schema-declared finder shortcut for a unique key.
+// Single-column equality finders are represented by EqCols.
+type goFinder struct {
+	Method string
+	Fields []goCol
 }
 
 // appStyles is the part of a column's style stack the executor handles (aes/hex/ip stay in SQL).
@@ -178,6 +195,9 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 			gc.Nullable = false // `any` carries nil itself
 		}
 		ge.Cols = append(ge.Cols, gc)
+		if allowed(c, "eq") {
+			ge.EqCols = append(ge.EqCols, gc)
+		}
 		if c.Name == e.PK[0] {
 			ge.PKType = gc.Type
 		}
@@ -186,6 +206,30 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 		}
 		if aggregable(c) {
 			ge.Aggs = append(ge.Aggs, gc)
+		}
+	}
+	byName := make(map[string]goCol, len(ge.Cols))
+	for _, c := range ge.Cols {
+		byName[c.Name] = c
+	}
+	seenUnique := map[string]bool{}
+	for _, cols := range e.Unique {
+		key := strings.Join(cols, "\x1f")
+		if seenUnique[key] || len(cols) == 0 || (len(cols) == 1 && cols[0] == ge.PK) {
+			continue
+		}
+		seenUnique[key] = true
+		fields := make([]goCol, 0, len(cols))
+		for _, name := range cols {
+			c, ok := byName[name]
+			if !ok || !allowed(e.Column(name), "eq") {
+				fields = nil
+				break
+			}
+			fields = append(fields, c)
+		}
+		if len(fields) > 0 {
+			ge.UniqueFinders = append(ge.UniqueFinders, goFinder{Method: finderMethod(cols), Fields: fields})
 		}
 	}
 	pnames := make([]string, 0, len(e.Predicates))
@@ -296,6 +340,21 @@ var goTmpl = template.Must(template.New("go").Funcs(template.FuncMap{
 		}
 		return b.String()
 	},
+	"finderParams": func(fields []goCol) string {
+		parts := make([]string, len(fields))
+		for i, c := range fields {
+			parts[i] = fmt.Sprintf("v%d %s", i, c.Type)
+		}
+		return strings.Join(parts, ", ")
+	},
+	"finderChain": func(fields []goCol) string {
+		var b strings.Builder
+		b.WriteString("q")
+		for i, c := range fields {
+			fmt.Fprintf(&b, ".%s(v%d)", c.Field, i)
+		}
+		return b.String()
+	},
 	"styleList": func(styles []string) string {
 		q := make([]string, len(styles))
 		for i, s := range styles {
@@ -370,19 +429,24 @@ func (r *{{$.Type}}Row) Get{{.Method}}() *orm.Collection[{{.TargetType}}Row] { i
 {{- end}}
 
 // Update writes the columns changed through Set*.
-func (r *{{.Type}}Row) Update(ctx context.Context, ex orm.Exec) error { return r.UpdateRow(ctx, ex, "", nil) }
+func (r *{{.Type}}Row) Update() error { ctx, ex, err := r.Binding.Resolve(); if err != nil { return err }; return r.UpdateRow(ctx, ex, "", nil) }
 {{- if .UpdatedTs}}
 
 // UpdateOptimistic fails with OPTIMISTIC_LOCK when {{.UpdatedTs}} changed since the row was read.
-func (r *{{.Type}}Row) UpdateOptimistic(ctx context.Context, ex orm.Exec) error { return r.UpdateRow(ctx, ex, {{printf "%q" .UpdatedTs}}, r.{{pascal .UpdatedTs}}) }
+func (r *{{.Type}}Row) UpdateOptimistic() error { ctx, ex, err := r.Binding.Resolve(); if err != nil { return err }; return r.UpdateRow(ctx, ex, {{printf "%q" .UpdatedTs}}, r.OriginalVersion()) }
 {{- end}}
 
-func (r *{{.Type}}Row) Delete(ctx context.Context, ex orm.Exec) error { return r.DeleteRow(ctx, ex) }
+func (r *{{.Type}}Row) Delete() error { ctx, ex, err := r.Binding.Resolve(); if err != nil { return err }; return r.DeleteRow(ctx, ex) }
 
 // DeleteCascade deletes the loaded relations this row owns (the assemble's
 // cascade children, in load order, each row through its own DeleteCascade)
 // and then this row. A bare DB runs the whole walk in one transaction.
-func (r *{{.Type}}Row) DeleteCascade(ctx context.Context, ex orm.Exec) error {
+func (r *{{.Type}}Row) DeleteCascade() error {
+	ctx, ex, err := r.Binding.Resolve(); if err != nil { return err }
+	return r.deleteCascade(ctx, ex)
+}
+
+func (r *{{.Type}}Row) deleteCascade(ctx context.Context, ex orm.Exec) error {
 	return orm.InTx(ctx, ex, func(ex orm.Exec) error {
 		for _, rel := range r.Cascades() {
 			switch rel {
@@ -390,13 +454,13 @@ func (r *{{.Type}}Row) DeleteCascade(ctx context.Context, ex orm.Exec) error {
 			case {{printf "%q" .Name}}:
 {{- if eq .Kind "one"}}
 				if r.{{.Method}} != nil {
-					if err := r.{{.Method}}.DeleteCascade(ctx, ex); err != nil {
+					if err := r.{{.Method}}.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
 {{- else}}
 				for _, child := range r.Get{{.Method}}().All() {
-					if err := child.DeleteCascade(ctx, ex); err != nil {
+					if err := child.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
@@ -412,6 +476,7 @@ func (r *{{.Type}}Row) DeleteCascade(ctx context.Context, ex orm.Exec) error {
 // children (same row) and its relation children (rows of later steps).
 func scan{{.Type}}(vals []any, a *plan.Assemble, rs *orm.Rows) *{{.Type}}Row {
 	r := &{{.Type}}Row{}
+	r.Binding = rs.Binding
 	for _, c := range a.Columns {
 		v := vals[c.Index]
 		switch c.Name {
@@ -448,6 +513,9 @@ func scan{{.Type}}(vals []any, a *plan.Assemble, rs *orm.Rows) *{{.Type}}Row {
 	}
 	r.SetProjection(rs.Projection(a))
 	r.Mark({{printf "%q" .Name}}, {{printf "%q" .PK}}, r.{{pascal .PK}})
+{{- if .UpdatedTs}}
+	if r.Has({{printf "%q" .UpdatedTs}}) { r.SnapshotVersion(r.{{pascal .UpdatedTs}}) }
+{{- end}}
 	return r
 }
 
@@ -506,19 +574,27 @@ var {{.Type}}Cols = struct {
 {{- end}}
 }
 
-// {{.Type}} builds a statement over {{.Table}}: New{{.Type}}() → chain → terminal(ctx, db).
-type {{.Type}} struct {
+// {{.Type}}Query builds a statement over {{.Table}}: {{.Type}}() → Bind(ctx, db) → chain → terminal().
+type {{.Type}}Query struct {
+	binding orm.Binding
 	q     *orm.Q
 	keyFn func(*{{.Type}}Row) orm.Key // KeyByFn: client-side keying of the root collection
 }
 
 // KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
-func (q *{{.Type}}) KeyByFn(fn func(*{{.Type}}Row) orm.Key) *{{.Type}} { q.keyFn = fn; return q }
+func (q *{{.Type}}Query) KeyByFn(fn func(*{{.Type}}Row) orm.Key) *{{.Type}}Query { q.keyFn = fn; return q }
 
 // Req exposes the underlying request (debugging, plan inspection).
-func (q *{{.Type}}) Req() *orm.Req { return q.q.Req }
+func (q *{{.Type}}Query) Req() *orm.Req { return q.q.Req }
 
-func New{{.Type}}() *{{.Type}} { return &{{.Type}}{q: orm.NewQ(mustEngine(), {{printf "%q" .Name}})} }
+// {{.Type}} starts a query over {{.Table}}.
+func {{.Type}}() *{{.Type}}Query { return &{{.Type}}Query{q: orm.NewQ(mustEngine(), {{printf "%q" .Name}})} }
+
+// Bind selects the context and pool or transaction for this query.
+func (q *{{.Type}}Query) Bind(ctx context.Context, ex orm.Exec) *{{.Type}}Query { q.binding = orm.NewBinding(ctx, ex); return q }
+
+// Bind selects the context and pool or transaction for this loaded row.
+func (r *{{.Type}}Row) Bind(ctx context.Context, ex orm.Exec) *{{.Type}}Row { r.Binding = orm.NewBinding(ctx, ex); return r }
 
 // {{.Type}}Where edits one WHERE/ON group of {{.Table}}.
 type {{.Type}}Where struct{ w *orm.W }
@@ -532,121 +608,127 @@ func (w *{{$.Type}}Where) {{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}
 {{range .Cols}}{{$c := .}}{{range .Ops}}
 {{- if eq .Kind "one"}}
 func (w *{{$.Type}}Where) {{$c.Field}}{{.Suffix}}(v {{$c.Type}}) *{{$.Type}}Where { w.w.Pred({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, v); return w }
-func (q *{{$.Type}}) {{$c.Field}}{{.Suffix}}(v {{$c.Type}}) *{{$.Type}} { q.q.W().Pred({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, v); return q }
+func (q *{{$.Type}}Query) {{$c.Field}}{{.Suffix}}(v {{$c.Type}}) *{{$.Type}}Query { q.q.W().Pred({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, v); return q }
+{{- if eq .Op "eq"}}
+func (w *{{$.Type}}Where) {{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Where { return w.{{$c.Field}}Eq(v) }
+func (q *{{$.Type}}Query) {{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Query { return q.{{$c.Field}}Eq(v) }
+{{- end}}
 {{- else if eq .Kind "list"}}
 func (w *{{$.Type}}Where) {{$c.Field}}{{.Suffix}}(vs []{{$c.Type}}) *{{$.Type}}Where { w.w.PredList({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, orm.Anys(vs)); return w }
-func (q *{{$.Type}}) {{$c.Field}}{{.Suffix}}(vs []{{$c.Type}}) *{{$.Type}} { q.q.W().PredList({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, orm.Anys(vs)); return q }
+func (q *{{$.Type}}Query) {{$c.Field}}{{.Suffix}}(vs []{{$c.Type}}) *{{$.Type}}Query { q.q.W().PredList({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, orm.Anys(vs)); return q }
 {{- else if eq .Kind "pair"}}
 func (w *{{$.Type}}Where) {{$c.Field}}{{.Suffix}}(lo, hi {{$c.Type}}) *{{$.Type}}Where { w.w.PredList({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, []any{lo, hi}); return w }
-func (q *{{$.Type}}) {{$c.Field}}{{.Suffix}}(lo, hi {{$c.Type}}) *{{$.Type}} { q.q.W().PredList({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, []any{lo, hi}); return q }
+func (q *{{$.Type}}Query) {{$c.Field}}{{.Suffix}}(lo, hi {{$c.Type}}) *{{$.Type}}Query { q.q.W().PredList({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, []any{lo, hi}); return q }
 {{- else}}
 func (w *{{$.Type}}Where) {{$c.Field}}{{.Suffix}}() *{{$.Type}}Where { w.w.PredNull({{printf "%q" $c.Name}}, {{printf "%q" .Op}}); return w }
-func (q *{{$.Type}}) {{$c.Field}}{{.Suffix}}() *{{$.Type}} { q.q.W().PredNull({{printf "%q" $c.Name}}, {{printf "%q" .Op}}); return q }
+func (q *{{$.Type}}Query) {{$c.Field}}{{.Suffix}}() *{{$.Type}}Query { q.q.W().PredNull({{printf "%q" $c.Name}}, {{printf "%q" .Op}}); return q }
 {{- end}}{{end}}
 {{- range $c.ColOps}}
 func (w *{{$.Type}}Where) {{$c.Field}}{{.Suffix}}(ref orm.ColRef) *{{$.Type}}Where { w.w.PredCol({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, ref.Path, ref.Column); return w }
-func (q *{{$.Type}}) {{$c.Field}}{{.Suffix}}(ref orm.ColRef) *{{$.Type}} { q.q.W().PredCol({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, ref.Path, ref.Column); return q }
+func (q *{{$.Type}}Query) {{$c.Field}}{{.Suffix}}(ref orm.ColRef) *{{$.Type}}Query { q.q.W().PredCol({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, ref.Path, ref.Column); return q }
 {{- end}}
 {{- end}}
 {{- range .Fulltext}}
 func (w *{{$.Type}}Where) {{ftName .}}Match(v string) *{{$.Type}}Where { w.w.Match([]string{ {{quoteList .}} }, false, v); return w }
 func (w *{{$.Type}}Where) {{ftName .}}MatchBoolean(v string) *{{$.Type}}Where { w.w.Match([]string{ {{quoteList .}} }, true, v); return w }
-func (q *{{$.Type}}) {{ftName .}}Match(v string) *{{$.Type}} { q.q.W().Match([]string{ {{quoteList .}} }, false, v); return q }
-func (q *{{$.Type}}) {{ftName .}}MatchBoolean(v string) *{{$.Type}} { q.q.W().Match([]string{ {{quoteList .}} }, true, v); return q }
+func (q *{{$.Type}}Query) {{ftName .}}Match(v string) *{{$.Type}}Query { q.q.W().Match([]string{ {{quoteList .}} }, false, v); return q }
+func (q *{{$.Type}}Query) {{ftName .}}MatchBoolean(v string) *{{$.Type}}Query { q.q.W().Match([]string{ {{quoteList .}} }, true, v); return q }
 {{- end}}
 {{- range .Preds}}
 
 // {{.Method}} is the manifest predicate {{.Name}}: {{.Expr}}
 func (w *{{$.Type}}Where) {{.Method}}({{predParams .Arity}}) *{{$.Type}}Where { w.w.Expr({{printf "%q" .Expr}}{{predArgs .Arity}}); return w }
-func (q *{{$.Type}}) {{.Method}}({{predParams .Arity}}) *{{$.Type}} { q.q.W().Expr({{printf "%q" .Expr}}{{predArgs .Arity}}); return q }
+func (q *{{$.Type}}Query) {{.Method}}({{predParams .Arity}}) *{{$.Type}}Query { q.q.W().Expr({{printf "%q" .Expr}}{{predArgs .Arity}}); return q }
 {{- end}}
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *{{.Type}}) Or() *{{.Type}} { q.q.Or(); return q }
-func (q *{{.Type}}) And(fn func(*{{.Type}}Where)) *{{.Type}} { q.q.W().And(func(x *orm.W) { fn(&{{.Type}}Where{w: x}) }); return q }
-func (q *{{.Type}}) Expr(frag string, binds ...any) *{{.Type}} { q.q.W().Expr(frag, binds...); return q }
+func (q *{{.Type}}Query) Or() *{{.Type}}Query { q.q.Or(); return q }
+func (q *{{.Type}}Query) And(fn func(*{{.Type}}Where)) *{{.Type}}Query { q.q.W().And(func(x *orm.W) { fn(&{{.Type}}Where{w: x}) }); return q }
+func (q *{{.Type}}Query) Expr(frag string, binds ...any) *{{.Type}}Query { q.q.W().Expr(frag, binds...); return q }
 {{- range .Rels}}
-func (q *{{$.Type}}) {{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}} { q.q.W().Nav({{printf "%q" .Name}}, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
+func (q *{{$.Type}}Query) {{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().Nav({{printf "%q" .Name}}, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
 {{- end}}
 
 // Join children: On = ON clause, Where = parent WHERE group. Bare predicates on a join child are rejected by the engine.
-func (q *{{.Type}}) On(fn func(*{{.Type}}Where)) *{{.Type}} { fn(&{{.Type}}Where{w: q.q.OnW()}); return q }
-func (q *{{.Type}}) Where(fn func(*{{.Type}}Where)) *{{.Type}} { fn(&{{.Type}}Where{w: q.q.W()}); return q }
+func (q *{{.Type}}Query) On(fn func(*{{.Type}}Where)) *{{.Type}}Query { fn(&{{.Type}}Where{w: q.q.OnW()}); return q }
+func (q *{{.Type}}Query) Where(fn func(*{{.Type}}Where)) *{{.Type}}Query { fn(&{{.Type}}Where{w: q.q.W()}); return q }
 
 // Having is the group predicate after GroupBy<Col>: the same builder as where; aggregates go through Expr("COUNT(*) > ?", n).
-func (q *{{.Type}}) Having(fn func(*{{.Type}}Where)) *{{.Type}} { fn(&{{.Type}}Where{w: q.q.HavingW()}); return q }
+func (q *{{.Type}}Query) Having(fn func(*{{.Type}}Where)) *{{.Type}}Query { fn(&{{.Type}}Where{w: q.q.HavingW()}); return q }
 
 // Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
-func (q *{{.Type}}) Raw(sql string, binds ...any) *{{.Type}} { q.q.Raw(sql, binds...); return q }
+func (q *{{.Type}}Query) Raw(sql string, binds ...any) *{{.Type}}Query { q.q.Raw(sql, binds...); return q }
 {{range .Rels}}
-func (q *{{$.Type}}) Join{{.Method}}(child *{{.TargetType}}) *{{$.Type}} { q.q.Join({{printf "%q" .Name}}, "inner", child.q); return q }
-func (q *{{$.Type}}) LeftJoin{{.Method}}(child *{{.TargetType}}) *{{$.Type}} { q.q.Join({{printf "%q" .Name}}, "left", child.q); return q }
+func (q *{{$.Type}}Query) Join{{.Method}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Join({{printf "%q" .Name}}, "inner", child.q); return q }
+func (q *{{$.Type}}Query) LeftJoin{{.Method}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Join({{printf "%q" .Name}}, "left", child.q); return q }
 {{- if eq .Kind "one"}}
-func (q *{{$.Type}}) Relation{{.Method}}(child *{{.TargetType}}) *{{$.Type}} { q.q.Relation({{printf "%q" .Name}}, child.q); return q }
+func (q *{{$.Type}}Query) Relation{{.Method}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Relation({{printf "%q" .Name}}, child.q); return q }
 {{- else}}
-func (q *{{$.Type}}) Relations{{.Method}}(child *{{.TargetType}}) *{{$.Type}} { q.q.Relation({{printf "%q" .Name}}, child.q); return q }
+func (q *{{$.Type}}Query) Relations{{.Method}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Relation({{printf "%q" .Name}}, child.q); return q }
 {{- end}}
 {{- end}}
 
 // Columns.
-func (q *{{.Type}}) SelectAll() *{{.Type}} { q.q.Columns().Mode = "all"; return q }
-func (q *{{.Type}}) SelectNone() *{{.Type}} { q.q.Columns().Mode = "none"; return q }
-func (q *{{.Type}}) SelectExpr(name, frag string) *{{.Type}} { c := q.q.Columns(); if c.Expr == nil { c.Expr = map[string]string{} }; c.Expr[name] = frag; return q }
+func (q *{{.Type}}Query) SelectAll() *{{.Type}}Query { q.q.Columns().Mode = "all"; return q }
+func (q *{{.Type}}Query) SelectNone() *{{.Type}}Query { q.q.Columns().Mode = "none"; return q }
+func (q *{{.Type}}Query) SelectExpr(name, frag string) *{{.Type}}Query { c := q.q.Columns(); if c.Expr == nil { c.Expr = map[string]string{} }; c.Expr[name] = frag; return q }
 {{- range .Cols}}
-func (q *{{$.Type}}) Select{{.Field}}() *{{$.Type}} { c := q.q.Columns(); c.Add = append(c.Add, {{printf "%q" .Name}}); return q }
-func (q *{{$.Type}}) Unselect{{.Field}}() *{{$.Type}} { c := q.q.Columns(); c.Remove = append(c.Remove, {{printf "%q" .Name}}); return q }
-func (q *{{$.Type}}) Select{{.Field}}As(name string) *{{$.Type}} { c := q.q.Columns(); if c.As == nil { c.As = map[string]string{} }; c.As[name] = {{printf "%q" .Name}}; return q }
+func (q *{{$.Type}}Query) Select{{.Field}}() *{{$.Type}}Query { c := q.q.Columns(); c.Add = append(c.Add, {{printf "%q" .Name}}); return q }
+func (q *{{$.Type}}Query) Unselect{{.Field}}() *{{$.Type}}Query { c := q.q.Columns(); c.Remove = append(c.Remove, {{printf "%q" .Name}}); return q }
+func (q *{{$.Type}}Query) Select{{.Field}}As(name string) *{{$.Type}}Query { c := q.q.Columns(); if c.As == nil { c.As = map[string]string{} }; c.As[name] = {{printf "%q" .Name}}; return q }
 {{- end}}
 
 // Order, group, limit.
 {{- range .Cols}}
-func (q *{{$.Type}}) OrderBy{{.Field}}Asc() *{{$.Type}} { q.q.Order({{printf "%q" .Name}}, false); return q }
-func (q *{{$.Type}}) OrderBy{{.Field}}Desc() *{{$.Type}} { q.q.Order({{printf "%q" .Name}}, true); return q }
-func (q *{{$.Type}}) GroupBy{{.Field}}() *{{$.Type}} { q.q.Node.GroupBy = append(q.q.Node.GroupBy, {{printf "%q" .Name}}); return q }
-func (q *{{$.Type}}) KeyBy{{.Field}}() *{{$.Type}} { q.q.Node.KeyBy = {{printf "%q" .Name}}; return q }
+func (q *{{$.Type}}Query) OrderBy{{.Field}}Asc() *{{$.Type}}Query { q.q.Order({{printf "%q" .Name}}, false); return q }
+func (q *{{$.Type}}Query) OrderBy{{.Field}}Desc() *{{$.Type}}Query { q.q.Order({{printf "%q" .Name}}, true); return q }
+func (q *{{$.Type}}Query) GroupBy{{.Field}}() *{{$.Type}}Query { q.q.Node.GroupBy = append(q.q.Node.GroupBy, {{printf "%q" .Name}}); return q }
+func (q *{{$.Type}}Query) KeyBy{{.Field}}() *{{$.Type}}Query { q.q.Node.KeyBy = {{printf "%q" .Name}}; return q }
 {{- end}}
-func (q *{{.Type}}) OrderByExpr(frag string, desc bool) *{{.Type}} { q.q.OrderExpr(frag, desc); return q }
-func (q *{{.Type}}) Limit(offset, count int) *{{.Type}} { q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}; return q }
-func (q *{{.Type}}) Distinct() *{{.Type}} { q.q.Node.Distinct = true; return q }
+func (q *{{.Type}}Query) OrderByExpr(frag string, desc bool) *{{.Type}}Query { q.q.OrderExpr(frag, desc); return q }
+func (q *{{.Type}}Query) GroupByExpr(expr, as string) *{{.Type}}Query { q.q.GroupByExpr(expr, as); return q }
+func (q *{{.Type}}Query) Limit(offset, count int) *{{.Type}}Query { q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}; return q }
+func (q *{{.Type}}Query) Distinct() *{{.Type}}Query { q.q.Node.Distinct = true; return q }
 {{- range .Indexes}}
-func (q *{{$.Type}}) ForceIndex{{pascal .}}() *{{$.Type}} { q.q.Node.ForceIdx = {{printf "%q" .}}; return q }
+func (q *{{$.Type}}Query) ForceIndex{{pascal .}}() *{{$.Type}}Query { q.q.Node.ForceIdx = {{printf "%q" .}}; return q }
 {{- end}}
 
 // Relation-child options.
-func (q *{{.Type}}) Flatten() *{{.Type}} { q.q.Node.Flatten = true; return q }
-func (q *{{.Type}}) LimitPerParent(n int) *{{.Type}} { q.q.Node.LimitPerParent = n; return q }
-func (q *{{.Type}}) DropChildKey() *{{.Type}} { q.q.Node.DropChildKey = true; return q }
-func (q *{{.Type}}) NoCascadeDelete() *{{.Type}} { q.q.Node.NoCascadeDelete = true; return q }
+func (q *{{.Type}}Query) Flatten() *{{.Type}}Query { q.q.Node.Flatten = true; return q }
+func (q *{{.Type}}Query) LimitPerParent(n int) *{{.Type}}Query { q.q.Node.LimitPerParent = n; return q }
+func (q *{{.Type}}Query) DropChildKey() *{{.Type}}Query { q.q.Node.DropChildKey = true; return q }
+func (q *{{.Type}}Query) NoCascadeDelete() *{{.Type}}Query { q.q.Node.NoCascadeDelete = true; return q }
 {{- range .ParentCols}}{{if eq .ColType "i32" "i64" "bool" "string" "enum"}}
-func (q *{{$.Type}}) IfParent{{.Field}}Eq(v {{.Type}}) *{{$.Type}} { q.q.IfParent({{printf "%q" .Name}}, v); return q }
+func (q *{{$.Type}}Query) IfParent{{.Field}}Eq(v {{.Type}}) *{{$.Type}}Query { q.q.IfParent({{printf "%q" .Name}}, v); return q }
 {{- end}}{{end}}
 
 // Insert draft. The auto PK is settable too: Save takes it as the update key.
 {{- range .Cols}}
-func (q *{{$.Type}}) Set{{.Field}}(v {{.Type}}) *{{$.Type}} { {{if .Styles}}q.q.SetStyled({{printf "%q" .Name}}, v, {{styleList .Styles}}){{else}}q.q.Set({{printf "%q" .Name}}, v){{end}}; return q }
+func (q *{{$.Type}}Query) Set{{.Field}}(v {{.Type}}) *{{$.Type}}Query { {{if .Styles}}q.q.SetStyled({{printf "%q" .Name}}, v, {{styleList .Styles}}){{else}}q.q.Set({{printf "%q" .Name}}, v){{end}}; return q }
 {{- if .Nullable}}
-func (q *{{$.Type}}) Set{{.Field}}Null() *{{$.Type}} { q.q.SetNull({{printf "%q" .Name}}); return q }
+func (q *{{$.Type}}Query) Set{{.Field}}Null() *{{$.Type}}Query { q.q.SetNull({{printf "%q" .Name}}); return q }
 {{- end}}
-func (q *{{$.Type}}) Set{{.Field}}Expr(frag string, binds ...any) *{{$.Type}} { q.q.SetExpr({{printf "%q" .Name}}, frag, binds...); return q }
+func (q *{{$.Type}}Query) Set{{.Field}}Expr(frag string, binds ...any) *{{$.Type}}Query { q.q.SetExpr({{printf "%q" .Name}}, frag, binds...); return q }
 {{- end}}
 {{- range .Numeric}}
-func (q *{{$.Type}}) Plus{{.Field}}(v {{.Type}}) *{{$.Type}} { q.q.Plus({{printf "%q" .Name}}, v); return q }
-func (q *{{$.Type}}) Minus{{.Field}}(v {{.Type}}) *{{$.Type}} { q.q.Minus({{printf "%q" .Name}}, v); return q }
+func (q *{{$.Type}}Query) Plus{{.Field}}(v {{.Type}}) *{{$.Type}}Query { q.q.Plus({{printf "%q" .Name}}, v); return q }
+func (q *{{$.Type}}Query) Minus{{.Field}}(v {{.Type}}) *{{$.Type}}Query { q.q.Minus({{printf "%q" .Name}}, v); return q }
 {{- end}}
 
 // ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
 {{- range .Cols}}{{if not (or .PK .Auto)}}
-func (q *{{$.Type}}) OnDuplicateSet{{.Field}}(v {{.Type}}) *{{$.Type}} { {{if .Styles}}q.q.OnDuplicateStyled({{printf "%q" .Name}}, v, {{styleList .Styles}}){{else}}q.q.OnDuplicate({{printf "%q" .Name}}, v){{end}}; return q }
-func (q *{{$.Type}}) OnDuplicateSet{{.Field}}Expr(frag string, binds ...any) *{{$.Type}} { q.q.OnDuplicateExpr({{printf "%q" .Name}}, frag, binds...); return q }
+func (q *{{$.Type}}Query) OnDuplicateSet{{.Field}}(v {{.Type}}) *{{$.Type}}Query { {{if .Styles}}q.q.OnDuplicateStyled({{printf "%q" .Name}}, v, {{styleList .Styles}}){{else}}q.q.OnDuplicate({{printf "%q" .Name}}, v){{end}}; return q }
+func (q *{{$.Type}}Query) OnDuplicateSet{{.Field}}Expr(frag string, binds ...any) *{{$.Type}}Query { q.q.OnDuplicateExpr({{printf "%q" .Name}}, frag, binds...); return q }
 {{- end}}{{end}}
 {{- range .Numeric}}{{if not (or .PK .Auto)}}
-func (q *{{$.Type}}) OnDuplicatePlus{{.Field}}(v {{.Type}}) *{{$.Type}} { q.q.OnDuplicatePlus({{printf "%q" .Name}}, v); return q }
-func (q *{{$.Type}}) OnDuplicateMinus{{.Field}}(v {{.Type}}) *{{$.Type}} { q.q.OnDuplicateMinus({{printf "%q" .Name}}, v); return q }
+func (q *{{$.Type}}Query) OnDuplicatePlus{{.Field}}(v {{.Type}}) *{{$.Type}}Query { q.q.OnDuplicatePlus({{printf "%q" .Name}}, v); return q }
+func (q *{{$.Type}}Query) OnDuplicateMinus{{.Field}}(v {{.Type}}) *{{$.Type}}Query { q.q.OnDuplicateMinus({{printf "%q" .Name}}, v); return q }
 {{- end}}{{end}}
-func (q *{{.Type}}) OnDuplicateSetAll() *{{.Type}} { q.q.OnDuplicateSetAll({{printf "%q" .PK}}{{if .Auto}}, {{printf "%q" .AutoCol}}{{end}}); return q }
+func (q *{{.Type}}Query) OnDuplicateSetAll() *{{.Type}}Query { q.q.OnDuplicateSetAll({{printf "%q" .PK}}{{if .Auto}}, {{printf "%q" .AutoCol}}{{end}}); return q }
 
 // Terminals.
-func (q *{{.Type}}) One(ctx context.Context, ex orm.Exec) (*{{.Type}}Row, error) {
+func (q *{{.Type}}Query) One() (*{{.Type}}Row, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
 	q.q.Req.IR.Kind = "one"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil || len(rows.Data) == 0 {
@@ -655,7 +737,8 @@ func (q *{{.Type}}) One(ctx context.Context, ex orm.Exec) (*{{.Type}}Row, error)
 	return scan{{.Type}}(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *{{.Type}}) All(ctx context.Context, ex orm.Exec) (*orm.Collection[{{.Type}}Row], error) {
+func (q *{{.Type}}Query) All() (*orm.Collection[{{.Type}}Row], error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
 	q.q.Req.IR.Kind = "all"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil {
@@ -664,6 +747,22 @@ func (q *{{.Type}}) All(ctx context.Context, ex orm.Exec) (*orm.Collection[{{.Ty
 	return collect{{.Type}}(rows, q.keyFn), nil
 }
 
+// Get is the preferred single-row terminal. One is kept as a compatibility alias.
+func (q *{{.Type}}Query) Get() (*{{.Type}}Row, error) {
+	return q.One()
+}
+
+// Gets is the preferred collection terminal. All is kept as a compatibility alias.
+func (q *{{.Type}}Query) Gets() (*orm.Collection[{{.Type}}Row], error) {
+	return q.All()
+}
+
+{{range .EqCols}}
+// GetsBy{{.Field}} applies {{.Name}} = v and runs the collection terminal.
+func (q *{{$.Type}}Query) GetsBy{{.Field}}(v {{.Type}}) (*orm.Collection[{{$.Type}}Row], error) {
+	return q.{{.Field}}(v).Gets()
+}
+{{end}}
 func collect{{.Type}}(rows *orm.Rows, keyFn func(*{{.Type}}Row) orm.Key) *orm.Collection[{{.Type}}Row] {
 	c := orm.NewCollection[{{.Type}}Row](len(rows.Data))
 	for _, vals := range rows.Data {
@@ -677,31 +776,59 @@ func collect{{.Type}}(rows *orm.Rows, keyFn func(*{{.Type}}Row) orm.Key) *orm.Co
 	return c
 }
 
-func (q *{{.Type}}) Count(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *{{.Type}}Query) Count() (int64, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return 0, err }
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
 }
+
+// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
+func (q *{{.Type}}Query) GetCount() (int64, error) {
+	return q.Count()
+}
+
+{{range .EqCols}}
+// GetCountBy{{.Field}} applies {{.Name}} = v and runs the scalar count terminal.
+func (q *{{$.Type}}Query) GetCountBy{{.Field}}(v {{.Type}}) (int64, error) {
+	return q.{{.Field}}(v).GetCount()
+}
+{{end}}
+// GetsCount returns one row per group_by value. The grouped columns are in the
+// row and the aggregate is available as Extra("row_count").
+func (q *{{.Type}}Query) GetsCount() (*orm.Collection[{{.Type}}Row], error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
+	q.q.Req.IR.Kind = "group_count"
+	rows, err := orm.Query(ctx, ex, q.q.Req)
+	if err != nil {
+		return nil, err
+	}
+	return collect{{.Type}}(rows, q.keyFn), nil
+}
 {{- range .Numeric}}
-func (q *{{$.Type}}) Sum{{.Field}}(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *{{$.Type}}Query) Sum{{.Field}}() (float64, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return 0, err }
 	q.q.Req.IR.Kind = "sum"; q.q.Req.IR.Agg = {{printf "%q" .Name}}
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *{{$.Type}}) Avg{{.Field}}(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *{{$.Type}}Query) Avg{{.Field}}() (float64, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return 0, err }
 	q.q.Req.IR.Kind = "avg"; q.q.Req.IR.Agg = {{printf "%q" .Name}}
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
 {{- end}}
 {{- range .Aggs}}
-func (q *{{$.Type}}) CountDistinct{{.Field}}(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *{{$.Type}}Query) CountDistinct{{.Field}}() (int64, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return 0, err }
 	q.q.Req.IR.Kind = "count_distinct"; q.q.Req.IR.Agg = {{printf "%q" .Name}}
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
 }
 // Min{{.Field}} is nil when no row matches.
-func (q *{{$.Type}}) Min{{.Field}}(ctx context.Context, ex orm.Exec) (*{{.Type}}, error) {
+func (q *{{$.Type}}Query) Min{{.Field}}() (*{{.Type}}, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
 	q.q.Req.IR.Kind = "min"; q.q.Req.IR.Agg = {{printf "%q" .Name}}
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	if err != nil || v == nil {
@@ -711,7 +838,8 @@ func (q *{{$.Type}}) Min{{.Field}}(ctx context.Context, ex orm.Exec) (*{{.Type}}
 	return &x, nil
 }
 // Max{{.Field}} is nil when no row matches.
-func (q *{{$.Type}}) Max{{.Field}}(ctx context.Context, ex orm.Exec) (*{{.Type}}, error) {
+func (q *{{$.Type}}Query) Max{{.Field}}() (*{{.Type}}, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
 	q.q.Req.IR.Kind = "max"; q.q.Req.IR.Agg = {{printf "%q" .Name}}
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	if err != nil || v == nil {
@@ -723,12 +851,15 @@ func (q *{{$.Type}}) Max{{.Field}}(ctx context.Context, ex orm.Exec) (*{{.Type}}
 {{- end}}
 
 // RawAll runs the statement given to Raw and returns its rows by column name (values as the driver gives them, no codec).
-func (q *{{.Type}}) RawAll(ctx context.Context, ex orm.Exec) ([]map[string]any, error) {
+func (q *{{.Type}}Query) RawAll() ([]map[string]any, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
 	q.q.Req.IR.Kind = "raw"
 	return orm.RawAll(ctx, ex, q.q.Req)
 }
 
-func (q *{{.Type}}) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm.Page[{{.Type}}Row], error) {
+func (q *{{.Type}}Query) Paginate(page, per int) (*orm.Page[{{.Type}}Row], error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
+	if per <= 0 { return nil, &ir.Error{Code: "IR_INVALID", Msg: "per must be positive"} }
 	if page < 1 { page = 1 }
 	q.q.Req.IR.Kind = "paginate"
 	q.q.Node.Limit = &ir.Limit{Offset: (page - 1) * per, Count: per}
@@ -740,14 +871,15 @@ func (q *{{.Type}}) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*
 	return &orm.Page[{{.Type}}Row]{Items: collect{{.Type}}(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
-func (q *{{.Type}}) Insert(ctx context.Context, ex orm.Exec) (*{{.Type}}Row, error) {
+func (q *{{.Type}}Query) Insert() (*{{.Type}}Row, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
 	q.q.Req.IR.Kind = "insert"
 	id, _, err := orm.Write(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
 	}
 {{- if .Auto}}
-	return New{{.Type}}().{{pascal .PK}}Eq({{.PKType}}(id)).One(ctx, ex)
+	return {{.Type}}().Bind(ctx, ex).{{pascal .PK}}Eq({{.PKType}}(id)).One()
 {{- else}}
 	_ = id
 	return nil, nil
@@ -756,41 +888,56 @@ func (q *{{.Type}}) Insert(ctx context.Context, ex orm.Exec) (*{{.Type}}Row, err
 
 // Save updates the other assigned columns when Set{{pascal .PK}} was called (and
 // returns the re-read row); otherwise it inserts like Insert.
-func (q *{{.Type}}) Save(ctx context.Context, ex orm.Exec) (*{{.Type}}Row, error) {
+func (q *{{.Type}}Query) Save() (*{{.Type}}Row, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
 	pk, ok := q.q.MovePKToWhere({{printf "%q" .PK}})
 	if !ok {
-		return q.Insert(ctx, ex)
+		return q.Insert()
 	}
 	q.q.Req.IR.Kind = "update"
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return New{{.Type}}().{{pascal .PK}}Eq(pk.({{.PKType}})).One(ctx, ex)
+	return {{.Type}}().Bind(ctx, ex).{{pascal .PK}}Eq(pk.({{.PKType}})).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *{{.Type}}) Update(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *{{.Type}}Query) Update() (int64, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return 0, err }
 	q.q.Req.IR.Kind = "update"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // Delete removes every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *{{.Type}}) Delete(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *{{.Type}}Query) Delete() (int64, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return 0, err }
 	q.q.Req.IR.Kind = "delete"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
-func (q *{{.Type}}) SQL(ctx context.Context, ex orm.Exec) (*orm.Statement, error) {
+func (q *{{.Type}}Query) SQL() (*orm.Statement, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
 	q.q.Req.IR.Kind = "all"
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *{{.Type}}) OneBy{{pascal .PK}}(ctx context.Context, ex orm.Exec, v {{.PKType}}) (*{{.Type}}Row, error) {
-	return q.{{pascal .PK}}Eq(v).One(ctx, ex)
+func (q *{{.Type}}Query) OneBy{{pascal .PK}}(v {{.PKType}}) (*{{.Type}}Row, error) {
+	return q.{{pascal .PK}}Eq(v).One()
 }
+
+// GetBy{{pascal .PK}} is the preferred primary-key lookup. OneBy{{pascal .PK}} is kept as a compatibility alias.
+func (q *{{.Type}}Query) GetBy{{pascal .PK}}(v {{.PKType}}) (*{{.Type}}Row, error) {
+	return q.OneBy{{pascal .PK}}(v)
+}
+{{range .UniqueFinders}}
+// GetBy{{.Method}} applies the equality predicates for the declared unique key.
+func (q *{{$.Type}}Query) GetBy{{.Method}}({{finderParams .Fields}}) (*{{$.Type}}Row, error) {
+	return {{finderChain .Fields}}.Get()
+}
+{{end}}
 `))
 
 const goInitFile = `// Code generated by ormgen; DO NOT EDIT.

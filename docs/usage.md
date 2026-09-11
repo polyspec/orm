@@ -163,46 +163,47 @@ db, err := orm.OpenConfig("/srv/app/orm.toml")   // PHP: Orm::fromConfig(...)  R
 
 ```php
 $rows = (new Battle)
-    ->serviceSeqEq(7)->isCloseEq(false)
-    ->and(fn(BattleWhere $w) => $w->isDisplayEq(true)->or()->isAlldayEq(true))
+    ->serviceSeq(7)->isClose(false)
+    ->and(fn(BattleWhere $w) => $w->isDisplay(true)->or()->isAllday(true))
     ->seqIn([6, 106, 206])
     ->orderBySeqDesc()->limit(0, 20)
-    ->all($db);
+    ->bind($db)->gets();
 ```
 ```go
-rows, err := gen.NewBattle().
-    ServiceSeqEq(7).IsCloseEq(false).
-    And(func(w *gen.BattleWhere) { w.IsDisplayEq(true).Or().IsAlldayEq(true) }).
+rows, err := gen.Battle().
+    ServiceSeq(7).IsClose(false).
+    And(func(w *gen.BattleWhere) { w.IsDisplay(true).Or().IsAllday(true) }).
     SeqIn([]int64{6, 106, 206}).
-    OrderBySeqDesc().Limit(0, 20).
-    All(ctx, db)
+    OrderBySeqDesc().Limit(0, 20).Bind(ctx, db).Gets()
 ```
 ```rust
 let rows = Battle::new()
-    .service_seq_eq(7).is_close_eq(false)
-    .and(|w| w.is_display_eq(true).or().is_allday_eq(true))
+    .service_seq(7).is_close(false)
+    .and(|w| w.is_display(true).or().is_allday(true))
     .seq_in(vec![6, 106, 206])
     .order_by_seq_desc().limit(0, 20)
-    .all(&db).await?;
+    .bind(&db).gets().await?;
 ```
 
-- 술어: `<Col>Eq NotEq Gt Gte Lt Lte In NotIn Between IsNull IsNotNull Like LikeBinary Contains StartsWith EndsWith`.
+- 술어: `<Col>(v)`는 `=`이며, 그 밖에는 `<Col>NotEq Gt Gte Lt Lte In NotIn Between IsNull IsNotNull Like LikeBinary Contains StartsWith EndsWith`를 붙인다. `Eq` 접미사는 호환 별칭으로도 제공한다.
   타입이 허용하지 않는 연산자는 **컴파일 에러**(`OPERATOR_NOT_ALLOWED`)다. `In`의 값 개수는 2의 거듭제곱으로 패딩되어
   목록 길이마다 prepared statement가 새로 생기지 않는다(결과는 동일).
 - 그룹: `and(fn)`/`or(fn)`. `or()`는 다음 술어를 OR로 잇는다. 그룹 첫머리의 `or()`는 `OR_AT_GROUP_START` 에러.
 - 컬럼 선택: `selectAll() selectNone() select<Col>() unselect<Col>() select<Col>As("이름") selectExpr("이름", "조각")`.
   `text`/`blob`/스타일 컬럼은 기본 SELECT에서 빠져 있고 `select<Col>()`로 켠다.
-- 터미널: `one` `all` `count` `countDistinct<Col>` `sum<Col>` `avg<Col>` `min<Col>` `max<Col>` `paginate(page, per)`
-  `oneBy<PK>` — 전부 실행기를 인자로 받는다. `one`은 없으면 null/nil/None, `all`은 절대 null이 아닌 빈 컬렉션.
+- 터미널: `get` `gets` `getCount` `getsCount` `countDistinct<Col>` `sum<Col>` `avg<Col>` `min<Col>` `max<Col>` `paginate(page, per)`
+  `getBy<PK>`·`getsBy<Col>`·`getCountBy<Col>` — 전부 값만 인자로 받는다. 루트에 `bind`로 연결을 묶고 Go의 컨텍스트도 이때 지정한다. 반환된 행은 루트의 연결을 물려받는다. `get`은 없으면 null/nil/None, `gets`와 `getsBy`는 절대 null이 아닌 빈 컬렉션이다. 기존 `one/all`도 호환용으로 남는다.
 - 컬렉션은 PK(또는 `keyBy<Col>`) 키의 순서 있는 맵이다: `first() count() toArray()`, 반복은 `키 => 행`.
 
 ### 집계·그룹·HAVING·raw
 
 ```php
-(new Battle)->serviceSeqEq(7)->groupByUserSeq()
-    ->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->count($db);   // 그룹 수
-(new Battle)->raw('SELECT COUNT(*) AS n FROM {table} WHERE service_seq = ?', [7])->rawAll($db);
-(new Battle)->visible()->serviceSeqEq(7)->count($db);   // %% predicate 로 선언한 술어
+(new Battle)->serviceSeq(7)->groupByUserSeq()
+    ->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->bind($db)->getCount();   // 그룹 수
+(new Battle)->serviceSeq(7)->groupByExpr('ROUND(`like_count`)', 'bucket')
+    ->bind($db)->getsCount();                                                               // 그룹별 행과 getRowCount()
+(new Battle)->raw('SELECT COUNT(*) AS n FROM {table} WHERE service_seq = ?', [7])->bind($db)->rawAll();
+(new Battle)->visible()->serviceSeq(7)->bind($db)->getCount();   // %% predicate 로 선언한 술어
 ```
 `raw`/`expr`/`setXExpr`는 신뢰 코드 전용이다. 백틱 컬럼(`` `name` ``)은 스키마로 검사하고 `?`만 값 채널이며,
 개수가 맞지 않으면 `IR_INVALID`. Go 소스는 `ormgen check --lang go`가 빌드 전에 같은 검사를 한다.
@@ -215,14 +216,14 @@ let rows = Battle::new()
 **조인(join)** 은 같은 행의 조각이다.
 
 ```php
-$rows = (new Battle)->serviceSeqEq(7)->limit(0, 20)
+$rows = (new Battle)->serviceSeq(7)->limit(0, 20)
     ->relationUser(new User)                                   // one  → $b->getUser()
     ->relationService((new Service)
         ->relationsMembers((new ServiceMember)                 // many → ->getMembers()
             ->orderBySeqDesc()->limitPerParent(3)              // 부모당 3행 (윈도 함수)
             ->keyByUserSeq()->dropChildKey()))
-    ->joinService((new Service)->where(fn(ServiceWhere $w) => $w->nameEq('service-7')))
-    ->all($db);
+    ->joinService((new Service)->where(fn(ServiceWhere $w) => $w->name('service-7')))
+    ->bind($db)->gets();
 ```
 
 | 자식에 붙이는 옵션 | 뜻 |
@@ -244,16 +245,16 @@ $rows = (new Battle)->serviceSeqEq(7)->limit(0, 20)
 ## 7. 쓰기
 
 ```php
-$row = (new Battle)->setName('x')->setUserSeq(1)->…->insert($db);   // 자동 PK면 다시 읽어 돌려준다
-$row->setName('y')->update($db);                                    // 바뀐 컬럼만 UPDATE
-$row->setName('z')->updateOptimistic($db);                          // updated_ts 불일치 → OPTIMISTIC_LOCK
-$row->delete($db);
-$row->deleteCascade($db);                                           // 로드된 소유 관계부터 깊이 우선, Db면 트랜잭션으로 감쌈
+$row = (new Battle)->setName('x')->setUserSeq(1)->…->bind($db)->insert();   // 자동 PK면 다시 읽어 돌려준다
+$row->setName('y')->bind($db)->update();                                    // 바뀐 컬럼만 UPDATE
+$row->setName('z')->bind($db)->updateOptimistic();                          // updated_ts 불일치 → OPTIMISTIC_LOCK
+$row->bind($db)->delete();
+$row->bind($db)->deleteCascade();                                           // 로드된 소유 관계부터 깊이 우선, Db면 트랜잭션으로 감쌈
 
 (new Battle)->setUuid($u)->setName('x')->…
-    ->onDuplicateSetName('x')->onDuplicatePlusReadCount(1)->insert($db);   // UPSERT
-(new Battle)->seqEq($id)->plusReadCount(1)->update($db);                   // 쿼리 단위 UPDATE, 영향 행 수 반환
-(new Battle)->seqEq($id)->delete($db);
+    ->onDuplicateSetName('x')->onDuplicatePlusReadCount(1)->bind($db)->insert();   // UPSERT
+(new Battle)->seq($id)->plusReadCount(1)->bind($db)->update();                   // 쿼리 단위 UPDATE, 영향 행 수 반환
+(new Battle)->seq($id)->bind($db)->delete();
 ```
 
 - `update`는 항상 `updated_ts`를 명시적으로 넣는다(방언 무관하게 같은 값이 되도록).
@@ -262,14 +263,14 @@ $row->deleteCascade($db);                                           // 로드된
 
 ```go
 row, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {
-    return gen.NewBattle().SetName("x").….Insert(ctx, tx)
+    return gen.Battle().SetName("x").….Bind(ctx, tx).Insert()
 })
 ```
 ```php
-$row = $db->transaction(fn(Tx $tx) => (new Battle)->setName('x')->…->insert($tx));
+$row = $db->transaction(fn(Tx $tx) => (new Battle)->setName('x')->…->bind($tx)->insert());
 ```
 ```rust
-let row = db.transaction(|tx| async move { Battle::new().set_name("x")./*…*/.insert(&tx).await }).await?;
+let row = db.transaction(|tx| async move { Battle::new().set_name("x")./*…*/.bind(&tx).insert().await }).await?;
 ```
 
 ---
@@ -281,8 +282,8 @@ let row = db.transaction(|tx| async move { Battle::new().set_name("x")./*…*/.i
 PostgreSQL·SQLite에서는 실행기가 같은 바이트를 만든다([codec.md](codec.md)).
 
 ```php
-$b->setJsonSetting(['a' => 1])->update($db);
-$b = (new Battle)->selectJsonSetting()->seqEq(42)->one($db);   // 기본 SELECT에서 빠져 있으므로 켠다
+$b->setJsonSetting(['a' => 1])->bind($db)->update();
+$b = (new Battle)->selectJsonSetting()->seq(42)->bind($db)->get();   // 기본 SELECT에서 빠져 있으므로 켠다
 $b->getJsonSetting()['a'];
 ```
 
@@ -310,7 +311,7 @@ psql … -f app.pg.sql
 | 스키마가 라이브 DB와 같은지 | `ormgen validate --dsn … --schema schema/schema.json` (다르면 exit 1) |
 | 생성물이 최신인지 | `ormgen gen …` 후 `git diff --exit-code` |
 | 문장 로그 | `Config.OnQuery` / `onQuery` / `Config { on_query }` → `(sql, binds, 시간, plan_id, err)`, 비밀은 `$SECRET`로 마스킹 |
-| 실행 없이 SQL 보기 | `->sql($db)` / `.SQL(ctx, db)` / `.sql(&db)` |
+| 실행 없이 SQL 보기 | `->bind($db)->sql()` / `.Bind(ctx, db).SQL()` / `.bind(&db).sql()` |
 | 에러 코드 상수 | `ormgen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | 배포 아티팩트 | `scripts/build-artifacts.sh` → `dist/`(버전이 파일명에, SHA256SUMS) |
 | 데몬 유닛 | `deploy/ormd.service`, `deploy/com.orm.ormd.plist` |

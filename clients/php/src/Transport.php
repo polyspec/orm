@@ -108,6 +108,7 @@ final class Transport
      */
     public function planFor(Req $req, string $kind): array
     {
+        if ($req->error !== null) { throw $req->error; }
         $key = $kind . "\x1f" . $req->sig . "\x1f" . count($req->params);
         return $this->local[$key] ?? ($this->local[$key] = $this->plan($req->shape($kind)));
     }
@@ -118,6 +119,7 @@ final class Transport
      */
     public function plan(array $ir): array
     {
+        Wire::check('IRRequest', $ir);
         $shape = json_encode($ir, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $id = hash('xxh3', $shape);
         $key = 'orm:' . $this->config->driver . ':' . $this->config->schemaHash() . ':' . $id; // plans are dialect text
@@ -128,6 +130,7 @@ final class Transport
             }
         }
         $plan = $this->decode($this->call('{"op":"compile","ir":' . $shape . '}'))['plan'];
+        Wire::check('Plan', $plan);
         // Precompute per-step data once (name→index maps, styled flag, plan id), so rows never need array_combine.
         Assemble::index($plan, $id);
         if (function_exists('apcu_store')) {

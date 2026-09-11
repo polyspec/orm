@@ -15,10 +15,10 @@ The PHP executor: generated typed builders (`App\Orm\Battle`, …) over PDO (`pd
 - `tests/` — `integration.php` (the S1 demo statements plus the S3–S6 gates, on the database
   `ORM_TEST_DRIVER` / `ORM_TEST_DSN` name), `hostcodec.php` (the host AES/hex/ip stages against
   `tests/codec/aes-vectors.json`, byte for byte, no database needed), `compat.php`
-  (compatibility layer: 50 old-style/canonical pairs with identical IR and results, plus its error
+  (PHP compatibility layer: 50 old-style/canonical pairs with identical IR and results, plus its error
   codes), the conformance runner lives in `tests/conformance/runner.php`, benches in `bench.php` /
   `bench_emulate.php`.
-- `src/Compat.php` — the compatibility `__call` compat layer (`CompatQuery` / `CompatWhere` traits the
+- `src/Compat.php` — the PHP `__call` compatibility layer (`CompatQuery` / `CompatWhere` traits the
   generated classes use); translation table in `docs/dsl.md` "PHP 호환층".
 
 ## ormd

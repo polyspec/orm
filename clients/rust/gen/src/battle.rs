@@ -2,6 +2,7 @@
 #![allow(clippy::all, dead_code, unused_imports, unused_mut)]
 
 use orm::builder::{ColRef, Q, W};
+use orm::binding::Binding;
 use orm::db::{self, Exec};
 use orm::value::{Param, Val};
 use orm::{Collection, Key, Page, Result};
@@ -9,6 +10,7 @@ use orm::{Collection, Key, Page, Result};
 /// One row of battle.
 #[derive(Debug, Clone, Default)]
 pub struct BattleRow {
+    binding: Binding,
     pub seq: i64,
     pub name: String,
     pub description: Option<String>,
@@ -46,6 +48,8 @@ pub struct BattleRow {
     service_member_: Option<Box<super::service_member::ServiceMemberRow>>,
     service_module_: Option<Box<super::service_module::ServiceModuleRow>>,
     user_: Option<Box<super::user::UserRow>>,
+    assigned: Vec<&'static str>,
+    original_version: Option<Param>,
     dirty: Vec<(&'static str, Param)>,
     enc_err: Option<(String, String)>, // (code, msg) of the first codec error; surfaces from update
     extra: std::collections::HashMap<String, Val>, // select_expr / select_<col>_as outputs, by output name
@@ -55,6 +59,8 @@ pub struct BattleRow {
 }
 
 impl BattleRow {
+    /// Rebind this loaded row to a pool or transaction.
+    pub fn bind(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
     pub const ENTITY: &'static str = "battle";
     pub const PK: &'static str = "seq";
 
@@ -65,6 +71,7 @@ impl BattleRow {
         use orm::Src as _;
         let mut r = Self::default();
         r.asm = Some(a.clone());
+        r.binding = rs.binding.clone();
         for ch in &a.children {
             match ch.rel.as_str() {
                 "service" => {
@@ -141,20 +148,29 @@ impl BattleRow {
                 other => { let v = if c.styles.is_empty() { src.val(i)? } else { src.styled(i, &c.styles)? }; r.extra.insert(other.to_owned(), v); }
             }
         }
+        if r.has("updated_ts") { r.original_version = Some(r.updated_ts.clone().into()); }
         Ok(r)
     }
     /// A select_expr / select_<col>_as output by name.
     pub fn extra(&self, name: &str) -> Option<&Val> { self.extra.get(name) }
+
+    /// The COUNT(*) value returned by a gets_count terminal.
+    pub fn has(&self, name: &str) -> bool { self.assigned.contains(&name) || self.extra.contains_key(name) || self.asm.as_ref().is_some_and(|a| a.columns.iter().any(|c| c.name == name)) }
+    pub fn rel_loaded(&self, name: &str) -> bool { self.asm.as_ref().is_some_and(|a| a.has_child(name)) }
+
+    pub fn row_count(&self) -> i64 { self.extra("row_count").map(|v| v.as_i64()).unwrap_or(0) }
 
     /// The row's array form (what PHP's toArray() and Go's ToArray() give): projected
     /// columns minus drop_child_key ones, extra outputs, loaded relations, and flattened
     /// one-relations merged in (this row's keys win).
     pub fn to_map(&self) -> serde_json::Value {
         let mut m = serde_json::Map::new();
-        let Some(a) = &self.asm else { return serde_json::Value::Object(m) };
-        for c in &a.columns {
-            if c.hidden { continue; }
-            let v = match c.name.as_str() {
+        let empty = orm::plan::Assemble::default();
+        let a = self.asm.as_deref().unwrap_or(&empty);
+        let names = a.columns.iter().map(|c| c.name.as_str()).chain(self.assigned.iter().copied());
+        for name in names {
+            if a.columns.iter().any(|c| c.name == name && c.hidden) { continue; }
+            let v = match name {
                 "seq" => serde_json::json!(self.seq),
                 "name" => serde_json::json!(self.name),
                 "description" => serde_json::json!(self.description),
@@ -190,7 +206,7 @@ impl BattleRow {
                 "serialize_data" => self.serialize_data.clone(),
                 other => self.extra.get(other).map(|v| v.to_json()).unwrap_or(serde_json::Value::Null),
             };
-            m.insert(c.name.clone(), v);
+            m.insert(name.to_owned(), v);
         }
         if a.has_child("service") {
             m.insert("service".into(), self.service_.as_ref().map(|c| c.to_map()).unwrap_or(serde_json::Value::Null));
@@ -213,205 +229,209 @@ impl BattleRow {
     }
 
     pub fn service(&self) -> Option<&super::service::ServiceRow> { self.service_.as_deref() }
+    pub fn service_mut(&mut self) -> Option<&mut super::service::ServiceRow> { self.service_.as_deref_mut() }
     pub fn service_member(&self) -> Option<&super::service_member::ServiceMemberRow> { self.service_member_.as_deref() }
+    pub fn service_member_mut(&mut self) -> Option<&mut super::service_member::ServiceMemberRow> { self.service_member_.as_deref_mut() }
     pub fn service_module(&self) -> Option<&super::service_module::ServiceModuleRow> { self.service_module_.as_deref() }
+    pub fn service_module_mut(&mut self) -> Option<&mut super::service_module::ServiceModuleRow> { self.service_module_.as_deref_mut() }
     pub fn user(&self) -> Option<&super::user::UserRow> { self.user_.as_deref() }
+    pub fn user_mut(&mut self) -> Option<&mut super::user::UserRow> { self.user_.as_deref_mut() }
 
     pub fn set_name(&mut self, v: impl Into<String>) -> &mut Self {
         let v: String = v.into();
         self.name = v.clone();
-        self.dirty.retain(|(c, _)| *c != "name");
-        self.dirty.push(("name", v.into()));
+        if !self.assigned.contains(&"name") { self.assigned.push("name"); }
+        self.mark_dirty("name", v.into());
         self
     }
     pub fn set_description(&mut self, v: Option<impl Into<String>>) -> &mut Self {
         let v: Option<String> = v.map(|x| x.into());
         self.description = v.clone();
-        self.dirty.retain(|(c, _)| *c != "description");
-        self.dirty.push(("description", v.into()));
+        if !self.assigned.contains(&"description") { self.assigned.push("description"); }
+        self.mark_dirty("description", v.into());
         self
     }
     pub fn set_created_ts(&mut self, v: chrono::NaiveDateTime) -> &mut Self {
         let v: chrono::NaiveDateTime = v.into();
         self.created_ts = v.clone();
-        self.dirty.retain(|(c, _)| *c != "created_ts");
-        self.dirty.push(("created_ts", v.into()));
+        if !self.assigned.contains(&"created_ts") { self.assigned.push("created_ts"); }
+        self.mark_dirty("created_ts", v.into());
         self
     }
     pub fn set_updated_ts(&mut self, v: chrono::NaiveDateTime) -> &mut Self {
         let v: chrono::NaiveDateTime = v.into();
         self.updated_ts = v.clone();
-        self.dirty.retain(|(c, _)| *c != "updated_ts");
-        self.dirty.push(("updated_ts", v.into()));
+        if !self.assigned.contains(&"updated_ts") { self.assigned.push("updated_ts"); }
+        self.mark_dirty("updated_ts", v.into());
         self
     }
     pub fn set_is_close(&mut self, v: bool) -> &mut Self {
         let v: bool = v.into();
         self.is_close = v.clone();
-        self.dirty.retain(|(c, _)| *c != "is_close");
-        self.dirty.push(("is_close", v.into()));
+        if !self.assigned.contains(&"is_close") { self.assigned.push("is_close"); }
+        self.mark_dirty("is_close", v.into());
         self
     }
     pub fn set_is_display(&mut self, v: bool) -> &mut Self {
         let v: bool = v.into();
         self.is_display = v.clone();
-        self.dirty.retain(|(c, _)| *c != "is_display");
-        self.dirty.push(("is_display", v.into()));
+        if !self.assigned.contains(&"is_display") { self.assigned.push("is_display"); }
+        self.mark_dirty("is_display", v.into());
         self
     }
     pub fn set_display_start_dt(&mut self, v: Option<chrono::NaiveDateTime>) -> &mut Self {
         let v: Option<chrono::NaiveDateTime> = v.map(|x| x.into());
         self.display_start_dt = v.clone();
-        self.dirty.retain(|(c, _)| *c != "display_start_dt");
-        self.dirty.push(("display_start_dt", v.into()));
+        if !self.assigned.contains(&"display_start_dt") { self.assigned.push("display_start_dt"); }
+        self.mark_dirty("display_start_dt", v.into());
         self
     }
     pub fn set_display_end_dt(&mut self, v: Option<chrono::NaiveDateTime>) -> &mut Self {
         let v: Option<chrono::NaiveDateTime> = v.map(|x| x.into());
         self.display_end_dt = v.clone();
-        self.dirty.retain(|(c, _)| *c != "display_end_dt");
-        self.dirty.push(("display_end_dt", v.into()));
+        if !self.assigned.contains(&"display_end_dt") { self.assigned.push("display_end_dt"); }
+        self.mark_dirty("display_end_dt", v.into());
         self
     }
     pub fn set_is_allday(&mut self, v: bool) -> &mut Self {
         let v: bool = v.into();
         self.is_allday = v.clone();
-        self.dirty.retain(|(c, _)| *c != "is_allday");
-        self.dirty.push(("is_allday", v.into()));
+        if !self.assigned.contains(&"is_allday") { self.assigned.push("is_allday"); }
+        self.mark_dirty("is_allday", v.into());
         self
     }
     pub fn set_target_team_player_count(&mut self, v: i64) -> &mut Self {
         let v: i64 = v.into();
         self.target_team_player_count = v.clone();
-        self.dirty.retain(|(c, _)| *c != "target_team_player_count");
-        self.dirty.push(("target_team_player_count", v.into()));
+        if !self.assigned.contains(&"target_team_player_count") { self.assigned.push("target_team_player_count"); }
+        self.mark_dirty("target_team_player_count", v.into());
         self
     }
     pub fn set_success_count(&mut self, v: i64) -> &mut Self {
         let v: i64 = v.into();
         self.success_count = v.clone();
-        self.dirty.retain(|(c, _)| *c != "success_count");
-        self.dirty.push(("success_count", v.into()));
+        if !self.assigned.contains(&"success_count") { self.assigned.push("success_count"); }
+        self.mark_dirty("success_count", v.into());
         self
     }
     pub fn set_player_count(&mut self, v: i64) -> &mut Self {
         let v: i64 = v.into();
         self.player_count = v.clone();
-        self.dirty.retain(|(c, _)| *c != "player_count");
-        self.dirty.push(("player_count", v.into()));
+        if !self.assigned.contains(&"player_count") { self.assigned.push("player_count"); }
+        self.mark_dirty("player_count", v.into());
         self
     }
     pub fn set_read_count(&mut self, v: i64) -> &mut Self {
         let v: i64 = v.into();
         self.read_count = v.clone();
-        self.dirty.retain(|(c, _)| *c != "read_count");
-        self.dirty.push(("read_count", v.into()));
+        if !self.assigned.contains(&"read_count") { self.assigned.push("read_count"); }
+        self.mark_dirty("read_count", v.into());
         self
     }
     pub fn set_cover_url(&mut self, v: Option<impl Into<String>>) -> &mut Self {
         let v: Option<String> = v.map(|x| x.into());
         self.cover_url = v.clone();
-        self.dirty.retain(|(c, _)| *c != "cover_url");
-        self.dirty.push(("cover_url", v.into()));
+        if !self.assigned.contains(&"cover_url") { self.assigned.push("cover_url"); }
+        self.mark_dirty("cover_url", v.into());
         self
     }
     pub fn set_user_seq(&mut self, v: i64) -> &mut Self {
         let v: i64 = v.into();
         self.user_seq = v.clone();
-        self.dirty.retain(|(c, _)| *c != "user_seq");
-        self.dirty.push(("user_seq", v.into()));
+        if !self.assigned.contains(&"user_seq") { self.assigned.push("user_seq"); }
+        self.mark_dirty("user_seq", v.into());
         self
     }
     pub fn set_service_seq(&mut self, v: i64) -> &mut Self {
         let v: i64 = v.into();
         self.service_seq = v.clone();
-        self.dirty.retain(|(c, _)| *c != "service_seq");
-        self.dirty.push(("service_seq", v.into()));
+        if !self.assigned.contains(&"service_seq") { self.assigned.push("service_seq"); }
+        self.mark_dirty("service_seq", v.into());
         self
     }
     pub fn set_service_module_seq(&mut self, v: i64) -> &mut Self {
         let v: i64 = v.into();
         self.service_module_seq = v.clone();
-        self.dirty.retain(|(c, _)| *c != "service_module_seq");
-        self.dirty.push(("service_module_seq", v.into()));
+        if !self.assigned.contains(&"service_module_seq") { self.assigned.push("service_module_seq"); }
+        self.mark_dirty("service_module_seq", v.into());
         self
     }
     pub fn set_service_member_seq(&mut self, v: i64) -> &mut Self {
         let v: i64 = v.into();
         self.service_member_seq = v.clone();
-        self.dirty.retain(|(c, _)| *c != "service_member_seq");
-        self.dirty.push(("service_member_seq", v.into()));
+        if !self.assigned.contains(&"service_member_seq") { self.assigned.push("service_member_seq"); }
+        self.mark_dirty("service_member_seq", v.into());
         self
     }
     pub fn set_start_dt(&mut self, v: chrono::NaiveDateTime) -> &mut Self {
         let v: chrono::NaiveDateTime = v.into();
         self.start_dt = v.clone();
-        self.dirty.retain(|(c, _)| *c != "start_dt");
-        self.dirty.push(("start_dt", v.into()));
+        if !self.assigned.contains(&"start_dt") { self.assigned.push("start_dt"); }
+        self.mark_dirty("start_dt", v.into());
         self
     }
     pub fn set_end_dt(&mut self, v: chrono::NaiveDateTime) -> &mut Self {
         let v: chrono::NaiveDateTime = v.into();
         self.end_dt = v.clone();
-        self.dirty.retain(|(c, _)| *c != "end_dt");
-        self.dirty.push(("end_dt", v.into()));
+        if !self.assigned.contains(&"end_dt") { self.assigned.push("end_dt"); }
+        self.mark_dirty("end_dt", v.into());
         self
     }
     pub fn set_uuid(&mut self, v: Option<impl Into<String>>) -> &mut Self {
         let v: Option<String> = v.map(|x| x.into());
         self.uuid = v.clone();
-        self.dirty.retain(|(c, _)| *c != "uuid");
-        self.dirty.push(("uuid", v.into()));
+        if !self.assigned.contains(&"uuid") { self.assigned.push("uuid"); }
+        self.mark_dirty("uuid", v.into());
         self
     }
     pub fn set_is_single_play(&mut self, v: bool) -> &mut Self {
         let v: bool = v.into();
         self.is_single_play = v.clone();
-        self.dirty.retain(|(c, _)| *c != "is_single_play");
-        self.dirty.push(("is_single_play", v.into()));
+        if !self.assigned.contains(&"is_single_play") { self.assigned.push("is_single_play"); }
+        self.mark_dirty("is_single_play", v.into());
         self
     }
     pub fn set_like_count(&mut self, v: i64) -> &mut Self {
         let v: i64 = v.into();
         self.like_count = v.clone();
-        self.dirty.retain(|(c, _)| *c != "like_count");
-        self.dirty.push(("like_count", v.into()));
+        if !self.assigned.contains(&"like_count") { self.assigned.push("like_count"); }
+        self.mark_dirty("like_count", v.into());
         self
     }
     pub fn set_aes_hex_email(&mut self, v: Option<impl Into<String>>) -> &mut Self {
         let v: Option<String> = v.map(|x| x.into());
         self.aes_hex_email = v.clone();
-        self.dirty.retain(|(c, _)| *c != "aes_hex_email");
-        self.dirty.push(("aes_hex_email", v.into()));
+        if !self.assigned.contains(&"aes_hex_email") { self.assigned.push("aes_hex_email"); }
+        self.mark_dirty("aes_hex_email", v.into());
         self
     }
     pub fn set_aes_hex_phone(&mut self, v: Option<impl Into<String>>) -> &mut Self {
         let v: Option<String> = v.map(|x| x.into());
         self.aes_hex_phone = v.clone();
-        self.dirty.retain(|(c, _)| *c != "aes_hex_phone");
-        self.dirty.push(("aes_hex_phone", v.into()));
+        if !self.assigned.contains(&"aes_hex_phone") { self.assigned.push("aes_hex_phone"); }
+        self.mark_dirty("aes_hex_phone", v.into());
         self
     }
     pub fn set_price(&mut self, v: Option<f64>) -> &mut Self {
         let v: Option<f64> = v.map(|x| x.into());
         self.price = v.clone();
-        self.dirty.retain(|(c, _)| *c != "price");
-        self.dirty.push(("price", v.into()));
+        if !self.assigned.contains(&"price") { self.assigned.push("price"); }
+        self.mark_dirty("price", v.into());
         self
     }
     pub fn set_ip(&mut self, v: Option<impl Into<String>>) -> &mut Self {
         let v: Option<String> = v.map(|x| x.into());
         self.ip = v.clone();
-        self.dirty.retain(|(c, _)| *c != "ip");
-        self.dirty.push(("ip", v.into()));
+        if !self.assigned.contains(&"ip") { self.assigned.push("ip"); }
+        self.mark_dirty("ip", v.into());
         self
     }
     pub fn set_gz_extend(&mut self, v: serde_json::Value) -> &mut Self {
         let v: serde_json::Value = v.into();
         self.gz_extend = v.clone();
-        self.dirty.retain(|(c, _)| *c != "gz_extend");
+        if !self.assigned.contains(&"gz_extend") { self.assigned.push("gz_extend"); }
         match orm::codec::encode(&["serialize", "gz"], Some(&v)) {
-            Ok(p) => self.dirty.push(("gz_extend", p)),
+            Ok(p) => self.mark_dirty("gz_extend", p),
             Err(e) => { if self.enc_err.is_none() { self.enc_err = Some((e.code().to_string(), e.to_string())); } }
         }
         self
@@ -419,9 +439,9 @@ impl BattleRow {
     pub fn set_json_setting(&mut self, v: serde_json::Value) -> &mut Self {
         let v: serde_json::Value = v.into();
         self.json_setting = v.clone();
-        self.dirty.retain(|(c, _)| *c != "json_setting");
+        if !self.assigned.contains(&"json_setting") { self.assigned.push("json_setting"); }
         match orm::codec::encode(&["json"], Some(&v)) {
-            Ok(p) => self.dirty.push(("json_setting", p)),
+            Ok(p) => self.mark_dirty("json_setting", p),
             Err(e) => { if self.enc_err.is_none() { self.enc_err = Some((e.code().to_string(), e.to_string())); } }
         }
         self
@@ -429,9 +449,9 @@ impl BattleRow {
     pub fn set_jsons_tags(&mut self, v: serde_json::Value) -> &mut Self {
         let v: serde_json::Value = v.into();
         self.jsons_tags = v.clone();
-        self.dirty.retain(|(c, _)| *c != "jsons_tags");
+        if !self.assigned.contains(&"jsons_tags") { self.assigned.push("jsons_tags"); }
         match orm::codec::encode(&["jsons"], Some(&v)) {
-            Ok(p) => self.dirty.push(("jsons_tags", p)),
+            Ok(p) => self.mark_dirty("jsons_tags", p),
             Err(e) => { if self.enc_err.is_none() { self.enc_err = Some((e.code().to_string(), e.to_string())); } }
         }
         self
@@ -439,9 +459,9 @@ impl BattleRow {
     pub fn set_base64_extra(&mut self, v: serde_json::Value) -> &mut Self {
         let v: serde_json::Value = v.into();
         self.base64_extra = v.clone();
-        self.dirty.retain(|(c, _)| *c != "base64_extra");
+        if !self.assigned.contains(&"base64_extra") { self.assigned.push("base64_extra"); }
         match orm::codec::encode(&["serialize", "base64"], Some(&v)) {
-            Ok(p) => self.dirty.push(("base64_extra", p)),
+            Ok(p) => self.mark_dirty("base64_extra", p),
             Err(e) => { if self.enc_err.is_none() { self.enc_err = Some((e.code().to_string(), e.to_string())); } }
         }
         self
@@ -449,36 +469,46 @@ impl BattleRow {
     pub fn set_serialize_data(&mut self, v: serde_json::Value) -> &mut Self {
         let v: serde_json::Value = v.into();
         self.serialize_data = v.clone();
-        self.dirty.retain(|(c, _)| *c != "serialize_data");
+        if !self.assigned.contains(&"serialize_data") { self.assigned.push("serialize_data"); }
         match orm::codec::encode(&["serialize"], Some(&v)) {
-            Ok(p) => self.dirty.push(("serialize_data", p)),
+            Ok(p) => self.mark_dirty("serialize_data", p),
             Err(e) => { if self.enc_err.is_none() { self.enc_err = Some((e.code().to_string(), e.to_string())); } }
         }
         self
     }
 
+    fn mark_dirty(&mut self, col: &'static str, value: Param) {
+        if let Some((_, v)) = self.dirty.iter_mut().find(|(c, _)| *c == col) { *v = value; }
+        else { self.dirty.push((col, value)); }
+    }
+
     /// UPDATE the columns changed through set_*.
-    pub async fn update(&mut self, ex: &impl Exec) -> Result<()> { self.update_inner(ex, false).await }
+    pub async fn update(&mut self) -> Result<()> { let binding = self.binding.clone(); self.update_inner(binding.resolve()?, false).await }
 
     /// UPDATE with optimistic locking on updated_ts; fails with OptimisticLock when the row changed.
-    pub async fn update_optimistic(&mut self, ex: &impl Exec) -> Result<()> { self.update_inner(ex, true).await }
+    pub async fn update_optimistic(&mut self) -> Result<()> { let binding = self.binding.clone(); self.update_inner(binding.resolve()?, true).await }
 
     async fn update_inner(&mut self, ex: &impl Exec, optimistic: bool) -> Result<()> {
-        if let Some((code, msg)) = self.enc_err.take() { return Err(orm::Error::Engine { code, msg }); }
+        if let Some((code, msg)) = &self.enc_err { return Err(orm::Error::Engine { code: code.clone(), msg: msg.clone() }); }
         if self.asm.is_none() { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
+        if optimistic && self.original_version.is_none() { return Err(orm::Error::Config("optimistic update requires a loaded version column".into())); }
         if self.dirty.is_empty() { return Ok(()); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
-        for (c, v) in self.dirty.drain(..) { q.set(c, v); }
+        for (c, v) in &self.dirty { q.set(c, v.clone()); }
         let pk: Param = self.seq.clone().into();
         q.w().pred(Self::PK, "eq", pk);
         if optimistic {
-            let p = q.req.p(self.updated_ts.clone());
+            let p = q.req.p(self.original_version.as_ref().unwrap().clone());
             q.req.ir.optimistic = Some(orm::ir::Optimist { column: "updated_ts".into(), p });
         }
-        db::write(ex, &mut q.req, "update").await.map(|_| ())
+        db::write(ex, &mut q.req, "update").await?;
+        self.dirty.clear();
+        Ok(())
     }
 
-    pub async fn delete(&self, ex: &impl Exec) -> Result<()> {
+    pub async fn delete(&self) -> Result<()> { self.delete_inner(self.binding.resolve()?).await }
+
+    async fn delete_inner(&self, ex: &impl Exec) -> Result<()> {
         if self.asm.is_none() { return Err(orm::Error::Config("delete on a row that was not loaded".into())); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
         let pk: Param = self.seq.clone().into();
@@ -491,7 +521,8 @@ impl BattleRow {
     /// no_cascade_delete was not set), each through its own delete_cascade in collection
     /// order, then this row. Parent-direction relations (the FK is on this row) are never deleted.
     /// One DELETE … WHERE pk = ? per row. On a Db the whole walk runs in one transaction.
-    pub async fn delete_cascade(&self, ex: &impl Exec) -> Result<()> {
+    pub async fn delete_cascade(&self) -> Result<()> {
+        let ex = self.binding.resolve()?;
         if self.asm.is_none() { return Err(orm::Error::Config("delete_cascade on a row that was not loaded".into())); }
         match ex.tx() {
             Some(tx) => self.delete_cascade_in(tx).await,
@@ -520,7 +551,7 @@ impl BattleRow {
                     _ => {}
                 }
             }
-            self.delete(tx).await
+            self.delete_inner(tx).await
         })
     }
 }
@@ -578,6 +609,7 @@ impl<'a> BattleWhere<'a> {
     pub fn user(mut self, f: impl FnOnce(super::user::UserWhere<'_>) -> super::user::UserWhere<'_>) -> Self { self.w.nav_with("user", |w| { f(super::user::UserWhere { w }); }); self }
 
     pub fn seq_eq(mut self, v: i64) -> Self { self.w.pred("seq", "eq", v); self }
+    pub fn seq(self, v: i64) -> Self { self.seq_eq(v) }
     pub fn seq_not_eq(mut self, v: i64) -> Self { self.w.pred("seq", "not_eq", v); self }
     pub fn seq_gt(mut self, v: i64) -> Self { self.w.pred("seq", "gt", v); self }
     pub fn seq_gte(mut self, v: i64) -> Self { self.w.pred("seq", "gte", v); self }
@@ -595,6 +627,7 @@ impl<'a> BattleWhere<'a> {
     pub fn seq_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("seq", "lt_col", r); self }
     pub fn seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("seq", "lte_col", r); self }
     pub fn name_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "eq", v.into()); self }
+    pub fn name(self, v: impl Into<String>) -> Self { self.name_eq(v) }
     pub fn name_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "not_eq", v.into()); self }
     pub fn name_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("name", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn name_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("name", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -608,6 +641,7 @@ impl<'a> BattleWhere<'a> {
     pub fn name_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "eq_col", r); self }
     pub fn name_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "not_eq_col", r); self }
     pub fn description_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("description", "eq", v.into()); self }
+    pub fn description(self, v: impl Into<String>) -> Self { self.description_eq(v) }
     pub fn description_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("description", "not_eq", v.into()); self }
     pub fn description_like(mut self, v: impl Into<String>) -> Self { self.w.pred("description", "like", v.into()); self }
     pub fn description_like_binary(mut self, v: impl Into<String>) -> Self { self.w.pred("description", "like_binary", v.into()); self }
@@ -619,6 +653,7 @@ impl<'a> BattleWhere<'a> {
     pub fn description_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("description", "eq_col", r); self }
     pub fn description_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("description", "not_eq_col", r); self }
     pub fn created_ts_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("created_ts", "eq", v); self }
+    pub fn created_ts(self, v: chrono::NaiveDateTime) -> Self { self.created_ts_eq(v) }
     pub fn created_ts_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("created_ts", "not_eq", v); self }
     pub fn created_ts_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("created_ts", "gt", v); self }
     pub fn created_ts_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("created_ts", "gte", v); self }
@@ -636,6 +671,7 @@ impl<'a> BattleWhere<'a> {
     pub fn created_ts_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("created_ts", "lt_col", r); self }
     pub fn created_ts_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("created_ts", "lte_col", r); self }
     pub fn updated_ts_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("updated_ts", "eq", v); self }
+    pub fn updated_ts(self, v: chrono::NaiveDateTime) -> Self { self.updated_ts_eq(v) }
     pub fn updated_ts_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("updated_ts", "not_eq", v); self }
     pub fn updated_ts_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("updated_ts", "gt", v); self }
     pub fn updated_ts_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("updated_ts", "gte", v); self }
@@ -653,18 +689,21 @@ impl<'a> BattleWhere<'a> {
     pub fn updated_ts_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("updated_ts", "lt_col", r); self }
     pub fn updated_ts_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("updated_ts", "lte_col", r); self }
     pub fn is_close_eq(mut self, v: bool) -> Self { self.w.pred("is_close", "eq", v); self }
+    pub fn is_close(self, v: bool) -> Self { self.is_close_eq(v) }
     pub fn is_close_not_eq(mut self, v: bool) -> Self { self.w.pred("is_close", "not_eq", v); self }
     pub fn is_close_is_null(mut self) -> Self { self.w.pred_null("is_close", "is_null"); self }
     pub fn is_close_is_not_null(mut self) -> Self { self.w.pred_null("is_close", "is_not_null"); self }
     pub fn is_close_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_close", "eq_col", r); self }
     pub fn is_close_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_close", "not_eq_col", r); self }
     pub fn is_display_eq(mut self, v: bool) -> Self { self.w.pred("is_display", "eq", v); self }
+    pub fn is_display(self, v: bool) -> Self { self.is_display_eq(v) }
     pub fn is_display_not_eq(mut self, v: bool) -> Self { self.w.pred("is_display", "not_eq", v); self }
     pub fn is_display_is_null(mut self) -> Self { self.w.pred_null("is_display", "is_null"); self }
     pub fn is_display_is_not_null(mut self) -> Self { self.w.pred_null("is_display", "is_not_null"); self }
     pub fn is_display_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_display", "eq_col", r); self }
     pub fn is_display_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_display", "not_eq_col", r); self }
     pub fn display_start_dt_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_start_dt", "eq", v); self }
+    pub fn display_start_dt(self, v: chrono::NaiveDateTime) -> Self { self.display_start_dt_eq(v) }
     pub fn display_start_dt_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_start_dt", "not_eq", v); self }
     pub fn display_start_dt_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_start_dt", "gt", v); self }
     pub fn display_start_dt_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_start_dt", "gte", v); self }
@@ -682,6 +721,7 @@ impl<'a> BattleWhere<'a> {
     pub fn display_start_dt_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("display_start_dt", "lt_col", r); self }
     pub fn display_start_dt_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("display_start_dt", "lte_col", r); self }
     pub fn display_end_dt_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_end_dt", "eq", v); self }
+    pub fn display_end_dt(self, v: chrono::NaiveDateTime) -> Self { self.display_end_dt_eq(v) }
     pub fn display_end_dt_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_end_dt", "not_eq", v); self }
     pub fn display_end_dt_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_end_dt", "gt", v); self }
     pub fn display_end_dt_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_end_dt", "gte", v); self }
@@ -699,12 +739,14 @@ impl<'a> BattleWhere<'a> {
     pub fn display_end_dt_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("display_end_dt", "lt_col", r); self }
     pub fn display_end_dt_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("display_end_dt", "lte_col", r); self }
     pub fn is_allday_eq(mut self, v: bool) -> Self { self.w.pred("is_allday", "eq", v); self }
+    pub fn is_allday(self, v: bool) -> Self { self.is_allday_eq(v) }
     pub fn is_allday_not_eq(mut self, v: bool) -> Self { self.w.pred("is_allday", "not_eq", v); self }
     pub fn is_allday_is_null(mut self) -> Self { self.w.pred_null("is_allday", "is_null"); self }
     pub fn is_allday_is_not_null(mut self) -> Self { self.w.pred_null("is_allday", "is_not_null"); self }
     pub fn is_allday_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_allday", "eq_col", r); self }
     pub fn is_allday_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_allday", "not_eq_col", r); self }
     pub fn target_team_player_count_eq(mut self, v: i64) -> Self { self.w.pred("target_team_player_count", "eq", v); self }
+    pub fn target_team_player_count(self, v: i64) -> Self { self.target_team_player_count_eq(v) }
     pub fn target_team_player_count_not_eq(mut self, v: i64) -> Self { self.w.pred("target_team_player_count", "not_eq", v); self }
     pub fn target_team_player_count_gt(mut self, v: i64) -> Self { self.w.pred("target_team_player_count", "gt", v); self }
     pub fn target_team_player_count_gte(mut self, v: i64) -> Self { self.w.pred("target_team_player_count", "gte", v); self }
@@ -722,6 +764,7 @@ impl<'a> BattleWhere<'a> {
     pub fn target_team_player_count_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("target_team_player_count", "lt_col", r); self }
     pub fn target_team_player_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("target_team_player_count", "lte_col", r); self }
     pub fn success_count_eq(mut self, v: i64) -> Self { self.w.pred("success_count", "eq", v); self }
+    pub fn success_count(self, v: i64) -> Self { self.success_count_eq(v) }
     pub fn success_count_not_eq(mut self, v: i64) -> Self { self.w.pred("success_count", "not_eq", v); self }
     pub fn success_count_gt(mut self, v: i64) -> Self { self.w.pred("success_count", "gt", v); self }
     pub fn success_count_gte(mut self, v: i64) -> Self { self.w.pred("success_count", "gte", v); self }
@@ -739,6 +782,7 @@ impl<'a> BattleWhere<'a> {
     pub fn success_count_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("success_count", "lt_col", r); self }
     pub fn success_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("success_count", "lte_col", r); self }
     pub fn player_count_eq(mut self, v: i64) -> Self { self.w.pred("player_count", "eq", v); self }
+    pub fn player_count(self, v: i64) -> Self { self.player_count_eq(v) }
     pub fn player_count_not_eq(mut self, v: i64) -> Self { self.w.pred("player_count", "not_eq", v); self }
     pub fn player_count_gt(mut self, v: i64) -> Self { self.w.pred("player_count", "gt", v); self }
     pub fn player_count_gte(mut self, v: i64) -> Self { self.w.pred("player_count", "gte", v); self }
@@ -756,6 +800,7 @@ impl<'a> BattleWhere<'a> {
     pub fn player_count_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("player_count", "lt_col", r); self }
     pub fn player_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("player_count", "lte_col", r); self }
     pub fn read_count_eq(mut self, v: i64) -> Self { self.w.pred("read_count", "eq", v); self }
+    pub fn read_count(self, v: i64) -> Self { self.read_count_eq(v) }
     pub fn read_count_not_eq(mut self, v: i64) -> Self { self.w.pred("read_count", "not_eq", v); self }
     pub fn read_count_gt(mut self, v: i64) -> Self { self.w.pred("read_count", "gt", v); self }
     pub fn read_count_gte(mut self, v: i64) -> Self { self.w.pred("read_count", "gte", v); self }
@@ -773,6 +818,7 @@ impl<'a> BattleWhere<'a> {
     pub fn read_count_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("read_count", "lt_col", r); self }
     pub fn read_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("read_count", "lte_col", r); self }
     pub fn cover_url_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("cover_url", "eq", v.into()); self }
+    pub fn cover_url(self, v: impl Into<String>) -> Self { self.cover_url_eq(v) }
     pub fn cover_url_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("cover_url", "not_eq", v.into()); self }
     pub fn cover_url_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("cover_url", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn cover_url_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("cover_url", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -786,6 +832,7 @@ impl<'a> BattleWhere<'a> {
     pub fn cover_url_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("cover_url", "eq_col", r); self }
     pub fn cover_url_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("cover_url", "not_eq_col", r); self }
     pub fn user_seq_eq(mut self, v: i64) -> Self { self.w.pred("user_seq", "eq", v); self }
+    pub fn user_seq(self, v: i64) -> Self { self.user_seq_eq(v) }
     pub fn user_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("user_seq", "not_eq", v); self }
     pub fn user_seq_gt(mut self, v: i64) -> Self { self.w.pred("user_seq", "gt", v); self }
     pub fn user_seq_gte(mut self, v: i64) -> Self { self.w.pred("user_seq", "gte", v); self }
@@ -803,6 +850,7 @@ impl<'a> BattleWhere<'a> {
     pub fn user_seq_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("user_seq", "lt_col", r); self }
     pub fn user_seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("user_seq", "lte_col", r); self }
     pub fn service_seq_eq(mut self, v: i64) -> Self { self.w.pred("service_seq", "eq", v); self }
+    pub fn service_seq(self, v: i64) -> Self { self.service_seq_eq(v) }
     pub fn service_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("service_seq", "not_eq", v); self }
     pub fn service_seq_gt(mut self, v: i64) -> Self { self.w.pred("service_seq", "gt", v); self }
     pub fn service_seq_gte(mut self, v: i64) -> Self { self.w.pred("service_seq", "gte", v); self }
@@ -820,6 +868,7 @@ impl<'a> BattleWhere<'a> {
     pub fn service_seq_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("service_seq", "lt_col", r); self }
     pub fn service_seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("service_seq", "lte_col", r); self }
     pub fn service_module_seq_eq(mut self, v: i64) -> Self { self.w.pred("service_module_seq", "eq", v); self }
+    pub fn service_module_seq(self, v: i64) -> Self { self.service_module_seq_eq(v) }
     pub fn service_module_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("service_module_seq", "not_eq", v); self }
     pub fn service_module_seq_gt(mut self, v: i64) -> Self { self.w.pred("service_module_seq", "gt", v); self }
     pub fn service_module_seq_gte(mut self, v: i64) -> Self { self.w.pred("service_module_seq", "gte", v); self }
@@ -837,6 +886,7 @@ impl<'a> BattleWhere<'a> {
     pub fn service_module_seq_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("service_module_seq", "lt_col", r); self }
     pub fn service_module_seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("service_module_seq", "lte_col", r); self }
     pub fn service_member_seq_eq(mut self, v: i64) -> Self { self.w.pred("service_member_seq", "eq", v); self }
+    pub fn service_member_seq(self, v: i64) -> Self { self.service_member_seq_eq(v) }
     pub fn service_member_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("service_member_seq", "not_eq", v); self }
     pub fn service_member_seq_gt(mut self, v: i64) -> Self { self.w.pred("service_member_seq", "gt", v); self }
     pub fn service_member_seq_gte(mut self, v: i64) -> Self { self.w.pred("service_member_seq", "gte", v); self }
@@ -854,6 +904,7 @@ impl<'a> BattleWhere<'a> {
     pub fn service_member_seq_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("service_member_seq", "lt_col", r); self }
     pub fn service_member_seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("service_member_seq", "lte_col", r); self }
     pub fn start_dt_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("start_dt", "eq", v); self }
+    pub fn start_dt(self, v: chrono::NaiveDateTime) -> Self { self.start_dt_eq(v) }
     pub fn start_dt_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("start_dt", "not_eq", v); self }
     pub fn start_dt_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("start_dt", "gt", v); self }
     pub fn start_dt_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("start_dt", "gte", v); self }
@@ -871,6 +922,7 @@ impl<'a> BattleWhere<'a> {
     pub fn start_dt_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("start_dt", "lt_col", r); self }
     pub fn start_dt_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("start_dt", "lte_col", r); self }
     pub fn end_dt_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("end_dt", "eq", v); self }
+    pub fn end_dt(self, v: chrono::NaiveDateTime) -> Self { self.end_dt_eq(v) }
     pub fn end_dt_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("end_dt", "not_eq", v); self }
     pub fn end_dt_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("end_dt", "gt", v); self }
     pub fn end_dt_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("end_dt", "gte", v); self }
@@ -888,6 +940,7 @@ impl<'a> BattleWhere<'a> {
     pub fn end_dt_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("end_dt", "lt_col", r); self }
     pub fn end_dt_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("end_dt", "lte_col", r); self }
     pub fn uuid_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("uuid", "eq", v.into()); self }
+    pub fn uuid(self, v: impl Into<String>) -> Self { self.uuid_eq(v) }
     pub fn uuid_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("uuid", "not_eq", v.into()); self }
     pub fn uuid_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("uuid", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn uuid_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("uuid", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -901,12 +954,14 @@ impl<'a> BattleWhere<'a> {
     pub fn uuid_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("uuid", "eq_col", r); self }
     pub fn uuid_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("uuid", "not_eq_col", r); self }
     pub fn is_single_play_eq(mut self, v: bool) -> Self { self.w.pred("is_single_play", "eq", v); self }
+    pub fn is_single_play(self, v: bool) -> Self { self.is_single_play_eq(v) }
     pub fn is_single_play_not_eq(mut self, v: bool) -> Self { self.w.pred("is_single_play", "not_eq", v); self }
     pub fn is_single_play_is_null(mut self) -> Self { self.w.pred_null("is_single_play", "is_null"); self }
     pub fn is_single_play_is_not_null(mut self) -> Self { self.w.pred_null("is_single_play", "is_not_null"); self }
     pub fn is_single_play_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_single_play", "eq_col", r); self }
     pub fn is_single_play_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_single_play", "not_eq_col", r); self }
     pub fn like_count_eq(mut self, v: i64) -> Self { self.w.pred("like_count", "eq", v); self }
+    pub fn like_count(self, v: i64) -> Self { self.like_count_eq(v) }
     pub fn like_count_not_eq(mut self, v: i64) -> Self { self.w.pred("like_count", "not_eq", v); self }
     pub fn like_count_gt(mut self, v: i64) -> Self { self.w.pred("like_count", "gt", v); self }
     pub fn like_count_gte(mut self, v: i64) -> Self { self.w.pred("like_count", "gte", v); self }
@@ -924,6 +979,7 @@ impl<'a> BattleWhere<'a> {
     pub fn like_count_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("like_count", "lt_col", r); self }
     pub fn like_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("like_count", "lte_col", r); self }
     pub fn aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_email", "eq", v.into()); self }
+    pub fn aes_hex_email(self, v: impl Into<String>) -> Self { self.aes_hex_email_eq(v) }
     pub fn aes_hex_email_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_email", "not_eq", v.into()); self }
     pub fn aes_hex_email_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("aes_hex_email", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn aes_hex_email_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("aes_hex_email", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -932,6 +988,7 @@ impl<'a> BattleWhere<'a> {
     pub fn aes_hex_email_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_hex_email", "eq_col", r); self }
     pub fn aes_hex_email_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_hex_email", "not_eq_col", r); self }
     pub fn aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_phone", "eq", v.into()); self }
+    pub fn aes_hex_phone(self, v: impl Into<String>) -> Self { self.aes_hex_phone_eq(v) }
     pub fn aes_hex_phone_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_phone", "not_eq", v.into()); self }
     pub fn aes_hex_phone_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("aes_hex_phone", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn aes_hex_phone_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("aes_hex_phone", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -940,6 +997,7 @@ impl<'a> BattleWhere<'a> {
     pub fn aes_hex_phone_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_hex_phone", "eq_col", r); self }
     pub fn aes_hex_phone_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_hex_phone", "not_eq_col", r); self }
     pub fn price_eq(mut self, v: f64) -> Self { self.w.pred("price", "eq", v); self }
+    pub fn price(self, v: f64) -> Self { self.price_eq(v) }
     pub fn price_not_eq(mut self, v: f64) -> Self { self.w.pred("price", "not_eq", v); self }
     pub fn price_gt(mut self, v: f64) -> Self { self.w.pred("price", "gt", v); self }
     pub fn price_gte(mut self, v: f64) -> Self { self.w.pred("price", "gte", v); self }
@@ -957,6 +1015,7 @@ impl<'a> BattleWhere<'a> {
     pub fn price_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("price", "lt_col", r); self }
     pub fn price_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("price", "lte_col", r); self }
     pub fn ip_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("ip", "eq", v.into()); self }
+    pub fn ip(self, v: impl Into<String>) -> Self { self.ip_eq(v) }
     pub fn ip_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("ip", "not_eq", v.into()); self }
     pub fn ip_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("ip", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn ip_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("ip", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -978,14 +1037,17 @@ impl<'a> BattleWhere<'a> {
     pub fn name_with_description_match_boolean(mut self, v: &str) -> Self { self.w.match_(&["name", "description"], true, v); self }
 }
 
-/// Query over battle: Battle::new() → chain → terminal(&db).await.
+/// Query over battle: Battle::new() → bind(&db) → chain → terminal().await.
 pub struct Battle {
+    binding: Binding,
     pub q: Q,
     key_fn: Option<Box<dyn Fn(&BattleRow) -> Key + Send + Sync>>,
 }
 
 impl Battle {
-    pub fn new() -> Self { Self { q: Q::new(super::schema_hash(), "battle"), key_fn: None } }
+    /// Bind this query to a pool or transaction.
+    pub fn bind(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
+    pub fn new() -> Self { Self { binding: Binding::default(), q: Q::new(super::schema_hash(), "battle"), key_fn: None } }
 
     /// Keys the root collection by a function of each row (relations key by key_by_<col>).
     pub fn key_by_fn(mut self, f: impl Fn(&BattleRow) -> Key + Send + Sync + 'static) -> Self { self.key_fn = Some(Box::new(f)); self }
@@ -1002,6 +1064,7 @@ impl Battle {
     pub fn user(mut self, f: impl FnOnce(super::user::UserWhere<'_>) -> super::user::UserWhere<'_>) -> Self { self.q.w().nav_with("user", |w| { f(super::user::UserWhere { w }); }); self }
 
     pub fn seq_eq(mut self, v: i64) -> Self { self.q.w().pred("seq", "eq", v); self }
+    pub fn seq(self, v: i64) -> Self { self.seq_eq(v) }
     pub fn seq_not_eq(mut self, v: i64) -> Self { self.q.w().pred("seq", "not_eq", v); self }
     pub fn seq_gt(mut self, v: i64) -> Self { self.q.w().pred("seq", "gt", v); self }
     pub fn seq_gte(mut self, v: i64) -> Self { self.q.w().pred("seq", "gte", v); self }
@@ -1019,6 +1082,7 @@ impl Battle {
     pub fn seq_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("seq", "lt_col", r); self }
     pub fn seq_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("seq", "lte_col", r); self }
     pub fn name_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "eq", v.into()); self }
+    pub fn name(self, v: impl Into<String>) -> Self { self.name_eq(v) }
     pub fn name_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "not_eq", v.into()); self }
     pub fn name_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("name", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn name_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("name", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -1032,6 +1096,7 @@ impl Battle {
     pub fn name_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "eq_col", r); self }
     pub fn name_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "not_eq_col", r); self }
     pub fn description_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("description", "eq", v.into()); self }
+    pub fn description(self, v: impl Into<String>) -> Self { self.description_eq(v) }
     pub fn description_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("description", "not_eq", v.into()); self }
     pub fn description_like(mut self, v: impl Into<String>) -> Self { self.q.w().pred("description", "like", v.into()); self }
     pub fn description_like_binary(mut self, v: impl Into<String>) -> Self { self.q.w().pred("description", "like_binary", v.into()); self }
@@ -1043,6 +1108,7 @@ impl Battle {
     pub fn description_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("description", "eq_col", r); self }
     pub fn description_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("description", "not_eq_col", r); self }
     pub fn created_ts_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("created_ts", "eq", v); self }
+    pub fn created_ts(self, v: chrono::NaiveDateTime) -> Self { self.created_ts_eq(v) }
     pub fn created_ts_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("created_ts", "not_eq", v); self }
     pub fn created_ts_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("created_ts", "gt", v); self }
     pub fn created_ts_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("created_ts", "gte", v); self }
@@ -1060,6 +1126,7 @@ impl Battle {
     pub fn created_ts_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("created_ts", "lt_col", r); self }
     pub fn created_ts_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("created_ts", "lte_col", r); self }
     pub fn updated_ts_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("updated_ts", "eq", v); self }
+    pub fn updated_ts(self, v: chrono::NaiveDateTime) -> Self { self.updated_ts_eq(v) }
     pub fn updated_ts_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("updated_ts", "not_eq", v); self }
     pub fn updated_ts_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("updated_ts", "gt", v); self }
     pub fn updated_ts_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("updated_ts", "gte", v); self }
@@ -1077,18 +1144,21 @@ impl Battle {
     pub fn updated_ts_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("updated_ts", "lt_col", r); self }
     pub fn updated_ts_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("updated_ts", "lte_col", r); self }
     pub fn is_close_eq(mut self, v: bool) -> Self { self.q.w().pred("is_close", "eq", v); self }
+    pub fn is_close(self, v: bool) -> Self { self.is_close_eq(v) }
     pub fn is_close_not_eq(mut self, v: bool) -> Self { self.q.w().pred("is_close", "not_eq", v); self }
     pub fn is_close_is_null(mut self) -> Self { self.q.w().pred_null("is_close", "is_null"); self }
     pub fn is_close_is_not_null(mut self) -> Self { self.q.w().pred_null("is_close", "is_not_null"); self }
     pub fn is_close_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("is_close", "eq_col", r); self }
     pub fn is_close_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("is_close", "not_eq_col", r); self }
     pub fn is_display_eq(mut self, v: bool) -> Self { self.q.w().pred("is_display", "eq", v); self }
+    pub fn is_display(self, v: bool) -> Self { self.is_display_eq(v) }
     pub fn is_display_not_eq(mut self, v: bool) -> Self { self.q.w().pred("is_display", "not_eq", v); self }
     pub fn is_display_is_null(mut self) -> Self { self.q.w().pred_null("is_display", "is_null"); self }
     pub fn is_display_is_not_null(mut self) -> Self { self.q.w().pred_null("is_display", "is_not_null"); self }
     pub fn is_display_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("is_display", "eq_col", r); self }
     pub fn is_display_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("is_display", "not_eq_col", r); self }
     pub fn display_start_dt_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("display_start_dt", "eq", v); self }
+    pub fn display_start_dt(self, v: chrono::NaiveDateTime) -> Self { self.display_start_dt_eq(v) }
     pub fn display_start_dt_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("display_start_dt", "not_eq", v); self }
     pub fn display_start_dt_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("display_start_dt", "gt", v); self }
     pub fn display_start_dt_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("display_start_dt", "gte", v); self }
@@ -1106,6 +1176,7 @@ impl Battle {
     pub fn display_start_dt_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("display_start_dt", "lt_col", r); self }
     pub fn display_start_dt_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("display_start_dt", "lte_col", r); self }
     pub fn display_end_dt_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("display_end_dt", "eq", v); self }
+    pub fn display_end_dt(self, v: chrono::NaiveDateTime) -> Self { self.display_end_dt_eq(v) }
     pub fn display_end_dt_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("display_end_dt", "not_eq", v); self }
     pub fn display_end_dt_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("display_end_dt", "gt", v); self }
     pub fn display_end_dt_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("display_end_dt", "gte", v); self }
@@ -1123,12 +1194,14 @@ impl Battle {
     pub fn display_end_dt_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("display_end_dt", "lt_col", r); self }
     pub fn display_end_dt_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("display_end_dt", "lte_col", r); self }
     pub fn is_allday_eq(mut self, v: bool) -> Self { self.q.w().pred("is_allday", "eq", v); self }
+    pub fn is_allday(self, v: bool) -> Self { self.is_allday_eq(v) }
     pub fn is_allday_not_eq(mut self, v: bool) -> Self { self.q.w().pred("is_allday", "not_eq", v); self }
     pub fn is_allday_is_null(mut self) -> Self { self.q.w().pred_null("is_allday", "is_null"); self }
     pub fn is_allday_is_not_null(mut self) -> Self { self.q.w().pred_null("is_allday", "is_not_null"); self }
     pub fn is_allday_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("is_allday", "eq_col", r); self }
     pub fn is_allday_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("is_allday", "not_eq_col", r); self }
     pub fn target_team_player_count_eq(mut self, v: i64) -> Self { self.q.w().pred("target_team_player_count", "eq", v); self }
+    pub fn target_team_player_count(self, v: i64) -> Self { self.target_team_player_count_eq(v) }
     pub fn target_team_player_count_not_eq(mut self, v: i64) -> Self { self.q.w().pred("target_team_player_count", "not_eq", v); self }
     pub fn target_team_player_count_gt(mut self, v: i64) -> Self { self.q.w().pred("target_team_player_count", "gt", v); self }
     pub fn target_team_player_count_gte(mut self, v: i64) -> Self { self.q.w().pred("target_team_player_count", "gte", v); self }
@@ -1146,6 +1219,7 @@ impl Battle {
     pub fn target_team_player_count_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("target_team_player_count", "lt_col", r); self }
     pub fn target_team_player_count_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("target_team_player_count", "lte_col", r); self }
     pub fn success_count_eq(mut self, v: i64) -> Self { self.q.w().pred("success_count", "eq", v); self }
+    pub fn success_count(self, v: i64) -> Self { self.success_count_eq(v) }
     pub fn success_count_not_eq(mut self, v: i64) -> Self { self.q.w().pred("success_count", "not_eq", v); self }
     pub fn success_count_gt(mut self, v: i64) -> Self { self.q.w().pred("success_count", "gt", v); self }
     pub fn success_count_gte(mut self, v: i64) -> Self { self.q.w().pred("success_count", "gte", v); self }
@@ -1163,6 +1237,7 @@ impl Battle {
     pub fn success_count_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("success_count", "lt_col", r); self }
     pub fn success_count_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("success_count", "lte_col", r); self }
     pub fn player_count_eq(mut self, v: i64) -> Self { self.q.w().pred("player_count", "eq", v); self }
+    pub fn player_count(self, v: i64) -> Self { self.player_count_eq(v) }
     pub fn player_count_not_eq(mut self, v: i64) -> Self { self.q.w().pred("player_count", "not_eq", v); self }
     pub fn player_count_gt(mut self, v: i64) -> Self { self.q.w().pred("player_count", "gt", v); self }
     pub fn player_count_gte(mut self, v: i64) -> Self { self.q.w().pred("player_count", "gte", v); self }
@@ -1180,6 +1255,7 @@ impl Battle {
     pub fn player_count_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("player_count", "lt_col", r); self }
     pub fn player_count_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("player_count", "lte_col", r); self }
     pub fn read_count_eq(mut self, v: i64) -> Self { self.q.w().pred("read_count", "eq", v); self }
+    pub fn read_count(self, v: i64) -> Self { self.read_count_eq(v) }
     pub fn read_count_not_eq(mut self, v: i64) -> Self { self.q.w().pred("read_count", "not_eq", v); self }
     pub fn read_count_gt(mut self, v: i64) -> Self { self.q.w().pred("read_count", "gt", v); self }
     pub fn read_count_gte(mut self, v: i64) -> Self { self.q.w().pred("read_count", "gte", v); self }
@@ -1197,6 +1273,7 @@ impl Battle {
     pub fn read_count_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("read_count", "lt_col", r); self }
     pub fn read_count_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("read_count", "lte_col", r); self }
     pub fn cover_url_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("cover_url", "eq", v.into()); self }
+    pub fn cover_url(self, v: impl Into<String>) -> Self { self.cover_url_eq(v) }
     pub fn cover_url_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("cover_url", "not_eq", v.into()); self }
     pub fn cover_url_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("cover_url", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn cover_url_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("cover_url", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -1210,6 +1287,7 @@ impl Battle {
     pub fn cover_url_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("cover_url", "eq_col", r); self }
     pub fn cover_url_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("cover_url", "not_eq_col", r); self }
     pub fn user_seq_eq(mut self, v: i64) -> Self { self.q.w().pred("user_seq", "eq", v); self }
+    pub fn user_seq(self, v: i64) -> Self { self.user_seq_eq(v) }
     pub fn user_seq_not_eq(mut self, v: i64) -> Self { self.q.w().pred("user_seq", "not_eq", v); self }
     pub fn user_seq_gt(mut self, v: i64) -> Self { self.q.w().pred("user_seq", "gt", v); self }
     pub fn user_seq_gte(mut self, v: i64) -> Self { self.q.w().pred("user_seq", "gte", v); self }
@@ -1227,6 +1305,7 @@ impl Battle {
     pub fn user_seq_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("user_seq", "lt_col", r); self }
     pub fn user_seq_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("user_seq", "lte_col", r); self }
     pub fn service_seq_eq(mut self, v: i64) -> Self { self.q.w().pred("service_seq", "eq", v); self }
+    pub fn service_seq(self, v: i64) -> Self { self.service_seq_eq(v) }
     pub fn service_seq_not_eq(mut self, v: i64) -> Self { self.q.w().pred("service_seq", "not_eq", v); self }
     pub fn service_seq_gt(mut self, v: i64) -> Self { self.q.w().pred("service_seq", "gt", v); self }
     pub fn service_seq_gte(mut self, v: i64) -> Self { self.q.w().pred("service_seq", "gte", v); self }
@@ -1244,6 +1323,7 @@ impl Battle {
     pub fn service_seq_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("service_seq", "lt_col", r); self }
     pub fn service_seq_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("service_seq", "lte_col", r); self }
     pub fn service_module_seq_eq(mut self, v: i64) -> Self { self.q.w().pred("service_module_seq", "eq", v); self }
+    pub fn service_module_seq(self, v: i64) -> Self { self.service_module_seq_eq(v) }
     pub fn service_module_seq_not_eq(mut self, v: i64) -> Self { self.q.w().pred("service_module_seq", "not_eq", v); self }
     pub fn service_module_seq_gt(mut self, v: i64) -> Self { self.q.w().pred("service_module_seq", "gt", v); self }
     pub fn service_module_seq_gte(mut self, v: i64) -> Self { self.q.w().pred("service_module_seq", "gte", v); self }
@@ -1261,6 +1341,7 @@ impl Battle {
     pub fn service_module_seq_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("service_module_seq", "lt_col", r); self }
     pub fn service_module_seq_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("service_module_seq", "lte_col", r); self }
     pub fn service_member_seq_eq(mut self, v: i64) -> Self { self.q.w().pred("service_member_seq", "eq", v); self }
+    pub fn service_member_seq(self, v: i64) -> Self { self.service_member_seq_eq(v) }
     pub fn service_member_seq_not_eq(mut self, v: i64) -> Self { self.q.w().pred("service_member_seq", "not_eq", v); self }
     pub fn service_member_seq_gt(mut self, v: i64) -> Self { self.q.w().pred("service_member_seq", "gt", v); self }
     pub fn service_member_seq_gte(mut self, v: i64) -> Self { self.q.w().pred("service_member_seq", "gte", v); self }
@@ -1278,6 +1359,7 @@ impl Battle {
     pub fn service_member_seq_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("service_member_seq", "lt_col", r); self }
     pub fn service_member_seq_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("service_member_seq", "lte_col", r); self }
     pub fn start_dt_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("start_dt", "eq", v); self }
+    pub fn start_dt(self, v: chrono::NaiveDateTime) -> Self { self.start_dt_eq(v) }
     pub fn start_dt_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("start_dt", "not_eq", v); self }
     pub fn start_dt_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("start_dt", "gt", v); self }
     pub fn start_dt_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("start_dt", "gte", v); self }
@@ -1295,6 +1377,7 @@ impl Battle {
     pub fn start_dt_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("start_dt", "lt_col", r); self }
     pub fn start_dt_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("start_dt", "lte_col", r); self }
     pub fn end_dt_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("end_dt", "eq", v); self }
+    pub fn end_dt(self, v: chrono::NaiveDateTime) -> Self { self.end_dt_eq(v) }
     pub fn end_dt_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("end_dt", "not_eq", v); self }
     pub fn end_dt_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("end_dt", "gt", v); self }
     pub fn end_dt_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("end_dt", "gte", v); self }
@@ -1312,6 +1395,7 @@ impl Battle {
     pub fn end_dt_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("end_dt", "lt_col", r); self }
     pub fn end_dt_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("end_dt", "lte_col", r); self }
     pub fn uuid_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("uuid", "eq", v.into()); self }
+    pub fn uuid(self, v: impl Into<String>) -> Self { self.uuid_eq(v) }
     pub fn uuid_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("uuid", "not_eq", v.into()); self }
     pub fn uuid_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("uuid", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn uuid_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("uuid", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -1325,12 +1409,14 @@ impl Battle {
     pub fn uuid_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("uuid", "eq_col", r); self }
     pub fn uuid_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("uuid", "not_eq_col", r); self }
     pub fn is_single_play_eq(mut self, v: bool) -> Self { self.q.w().pred("is_single_play", "eq", v); self }
+    pub fn is_single_play(self, v: bool) -> Self { self.is_single_play_eq(v) }
     pub fn is_single_play_not_eq(mut self, v: bool) -> Self { self.q.w().pred("is_single_play", "not_eq", v); self }
     pub fn is_single_play_is_null(mut self) -> Self { self.q.w().pred_null("is_single_play", "is_null"); self }
     pub fn is_single_play_is_not_null(mut self) -> Self { self.q.w().pred_null("is_single_play", "is_not_null"); self }
     pub fn is_single_play_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("is_single_play", "eq_col", r); self }
     pub fn is_single_play_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("is_single_play", "not_eq_col", r); self }
     pub fn like_count_eq(mut self, v: i64) -> Self { self.q.w().pred("like_count", "eq", v); self }
+    pub fn like_count(self, v: i64) -> Self { self.like_count_eq(v) }
     pub fn like_count_not_eq(mut self, v: i64) -> Self { self.q.w().pred("like_count", "not_eq", v); self }
     pub fn like_count_gt(mut self, v: i64) -> Self { self.q.w().pred("like_count", "gt", v); self }
     pub fn like_count_gte(mut self, v: i64) -> Self { self.q.w().pred("like_count", "gte", v); self }
@@ -1348,6 +1434,7 @@ impl Battle {
     pub fn like_count_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("like_count", "lt_col", r); self }
     pub fn like_count_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("like_count", "lte_col", r); self }
     pub fn aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("aes_hex_email", "eq", v.into()); self }
+    pub fn aes_hex_email(self, v: impl Into<String>) -> Self { self.aes_hex_email_eq(v) }
     pub fn aes_hex_email_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("aes_hex_email", "not_eq", v.into()); self }
     pub fn aes_hex_email_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("aes_hex_email", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn aes_hex_email_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("aes_hex_email", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -1356,6 +1443,7 @@ impl Battle {
     pub fn aes_hex_email_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_hex_email", "eq_col", r); self }
     pub fn aes_hex_email_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_hex_email", "not_eq_col", r); self }
     pub fn aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("aes_hex_phone", "eq", v.into()); self }
+    pub fn aes_hex_phone(self, v: impl Into<String>) -> Self { self.aes_hex_phone_eq(v) }
     pub fn aes_hex_phone_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("aes_hex_phone", "not_eq", v.into()); self }
     pub fn aes_hex_phone_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("aes_hex_phone", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn aes_hex_phone_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("aes_hex_phone", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -1364,6 +1452,7 @@ impl Battle {
     pub fn aes_hex_phone_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_hex_phone", "eq_col", r); self }
     pub fn aes_hex_phone_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_hex_phone", "not_eq_col", r); self }
     pub fn price_eq(mut self, v: f64) -> Self { self.q.w().pred("price", "eq", v); self }
+    pub fn price(self, v: f64) -> Self { self.price_eq(v) }
     pub fn price_not_eq(mut self, v: f64) -> Self { self.q.w().pred("price", "not_eq", v); self }
     pub fn price_gt(mut self, v: f64) -> Self { self.q.w().pred("price", "gt", v); self }
     pub fn price_gte(mut self, v: f64) -> Self { self.q.w().pred("price", "gte", v); self }
@@ -1381,6 +1470,7 @@ impl Battle {
     pub fn price_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("price", "lt_col", r); self }
     pub fn price_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("price", "lte_col", r); self }
     pub fn ip_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("ip", "eq", v.into()); self }
+    pub fn ip(self, v: impl Into<String>) -> Self { self.ip_eq(v) }
     pub fn ip_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("ip", "not_eq", v.into()); self }
     pub fn ip_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("ip", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn ip_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("ip", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -1405,18 +1495,18 @@ impl Battle {
     pub fn on(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { { let w = self.q.on_w(); f(BattleWhere { w }); } self }
     pub fn where_(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { { let w = self.q.w(); f(BattleWhere { w }); } self }
 
-    pub fn join_service(mut self, child: super::service::Service) -> Self { self.q.join("service", "inner", child.q); self }
-    pub fn left_join_service(mut self, child: super::service::Service) -> Self { self.q.join("service", "left", child.q); self }
-    pub fn relation_service(mut self, child: super::service::Service) -> Self { self.q.relation("service", child.q); self }
-    pub fn join_service_member(mut self, child: super::service_member::ServiceMember) -> Self { self.q.join("service_member", "inner", child.q); self }
-    pub fn left_join_service_member(mut self, child: super::service_member::ServiceMember) -> Self { self.q.join("service_member", "left", child.q); self }
-    pub fn relation_service_member(mut self, child: super::service_member::ServiceMember) -> Self { self.q.relation("service_member", child.q); self }
-    pub fn join_service_module(mut self, child: super::service_module::ServiceModule) -> Self { self.q.join("service_module", "inner", child.q); self }
-    pub fn left_join_service_module(mut self, child: super::service_module::ServiceModule) -> Self { self.q.join("service_module", "left", child.q); self }
-    pub fn relation_service_module(mut self, child: super::service_module::ServiceModule) -> Self { self.q.relation("service_module", child.q); self }
-    pub fn join_user(mut self, child: super::user::User) -> Self { self.q.join("user", "inner", child.q); self }
-    pub fn left_join_user(mut self, child: super::user::User) -> Self { self.q.join("user", "left", child.q); self }
-    pub fn relation_user(mut self, child: super::user::User) -> Self { self.q.relation("user", child.q); self }
+    pub fn join_service(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "inner", &child.as_ref().q); self }
+    pub fn left_join_service(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "left", &child.as_ref().q); self }
+    pub fn relation_service(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.relation("service", &child.as_ref().q); self }
+    pub fn join_service_member(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.join("service_member", "inner", &child.as_ref().q); self }
+    pub fn left_join_service_member(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.join("service_member", "left", &child.as_ref().q); self }
+    pub fn relation_service_member(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.relation("service_member", &child.as_ref().q); self }
+    pub fn join_service_module(mut self, child: impl AsRef<super::service_module::ServiceModule>) -> Self { self.q.join("service_module", "inner", &child.as_ref().q); self }
+    pub fn left_join_service_module(mut self, child: impl AsRef<super::service_module::ServiceModule>) -> Self { self.q.join("service_module", "left", &child.as_ref().q); self }
+    pub fn relation_service_module(mut self, child: impl AsRef<super::service_module::ServiceModule>) -> Self { self.q.relation("service_module", &child.as_ref().q); self }
+    pub fn join_user(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.join("user", "inner", &child.as_ref().q); self }
+    pub fn left_join_user(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.join("user", "left", &child.as_ref().q); self }
+    pub fn relation_user(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.relation("user", &child.as_ref().q); self }
 
     // ---- columns ----
     pub fn select_all(mut self) -> Self { self.q.columns().mode = "all".into(); self }
@@ -1656,6 +1746,7 @@ impl Battle {
     pub fn group_by_serialize_data(mut self) -> Self { self.q.node().group_by.push("serialize_data".into()); self }
     pub fn key_by_serialize_data(mut self) -> Self { self.q.node().key_by = "serialize_data".into(); self }
     pub fn order_by_expr(mut self, frag: &str, desc: bool) -> Self { self.q.order_expr(frag, desc); self }
+    pub fn group_by_expr(mut self, expr: &str, as_: &str) -> Self { self.q.group_by_expr(expr, as_); self }
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
     /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
@@ -1855,7 +1946,7 @@ impl Battle {
     pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&["seq"]); self }
 
     // ---- terminals ----
-    pub async fn one(mut self, ex: &impl Exec) -> Result<Option<BattleRow>> {
+    pub async fn one(&mut self) -> Result<Option<BattleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
         Ok(match rows.take_cells().into_iter().next() {
             Some(mut src) => Some(BattleRow::from_row(&mut src, &rows.assemble, &rows)?),
@@ -1863,173 +1954,533 @@ impl Battle {
         })
     }
 
-    pub async fn all(mut self, ex: &impl Exec) -> Result<Collection<BattleRow>> {
+    pub async fn all(&mut self) -> Result<Collection<BattleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "all").await?;
         collect(&mut rows, self.key_fn.as_deref())
     }
 
-    pub async fn count(mut self, ex: &impl Exec) -> Result<i64> {
+    /// Preferred single-row terminal; one() remains available for compatibility.
+    pub async fn get(&mut self) -> Result<Option<BattleRow>> {
+        self.one().await
+    }
+
+    /// Preferred collection terminal; all() remains available for compatibility.
+    pub async fn gets(&mut self) -> Result<Collection<BattleRow>> {
+        self.all().await
+    }
+
+
+    /// Applies seq = value and runs the collection terminal.
+    pub async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("seq", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies name = value and runs the collection terminal.
+    pub async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("name", "eq", v.into());
+        self.gets().await
+    }
+
+    /// Applies description = value and runs the collection terminal.
+    pub async fn gets_by_description(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("description", "eq", v.into());
+        self.gets().await
+    }
+
+    /// Applies created_ts = value and runs the collection terminal.
+    pub async fn gets_by_created_ts(&mut self, v: chrono::NaiveDateTime) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("created_ts", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies updated_ts = value and runs the collection terminal.
+    pub async fn gets_by_updated_ts(&mut self, v: chrono::NaiveDateTime) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("updated_ts", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies is_close = value and runs the collection terminal.
+    pub async fn gets_by_is_close(&mut self, v: bool) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("is_close", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies is_display = value and runs the collection terminal.
+    pub async fn gets_by_is_display(&mut self, v: bool) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("is_display", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies display_start_dt = value and runs the collection terminal.
+    pub async fn gets_by_display_start_dt(&mut self, v: chrono::NaiveDateTime) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("display_start_dt", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies display_end_dt = value and runs the collection terminal.
+    pub async fn gets_by_display_end_dt(&mut self, v: chrono::NaiveDateTime) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("display_end_dt", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies is_allday = value and runs the collection terminal.
+    pub async fn gets_by_is_allday(&mut self, v: bool) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("is_allday", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies target_team_player_count = value and runs the collection terminal.
+    pub async fn gets_by_target_team_player_count(&mut self, v: i64) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("target_team_player_count", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies success_count = value and runs the collection terminal.
+    pub async fn gets_by_success_count(&mut self, v: i64) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("success_count", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies player_count = value and runs the collection terminal.
+    pub async fn gets_by_player_count(&mut self, v: i64) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("player_count", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies read_count = value and runs the collection terminal.
+    pub async fn gets_by_read_count(&mut self, v: i64) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("read_count", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies cover_url = value and runs the collection terminal.
+    pub async fn gets_by_cover_url(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("cover_url", "eq", v.into());
+        self.gets().await
+    }
+
+    /// Applies user_seq = value and runs the collection terminal.
+    pub async fn gets_by_user_seq(&mut self, v: i64) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("user_seq", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies service_seq = value and runs the collection terminal.
+    pub async fn gets_by_service_seq(&mut self, v: i64) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("service_seq", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies service_module_seq = value and runs the collection terminal.
+    pub async fn gets_by_service_module_seq(&mut self, v: i64) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("service_module_seq", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies service_member_seq = value and runs the collection terminal.
+    pub async fn gets_by_service_member_seq(&mut self, v: i64) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("service_member_seq", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies start_dt = value and runs the collection terminal.
+    pub async fn gets_by_start_dt(&mut self, v: chrono::NaiveDateTime) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("start_dt", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies end_dt = value and runs the collection terminal.
+    pub async fn gets_by_end_dt(&mut self, v: chrono::NaiveDateTime) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("end_dt", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies uuid = value and runs the collection terminal.
+    pub async fn gets_by_uuid(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("uuid", "eq", v.into());
+        self.gets().await
+    }
+
+    /// Applies is_single_play = value and runs the collection terminal.
+    pub async fn gets_by_is_single_play(&mut self, v: bool) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("is_single_play", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies like_count = value and runs the collection terminal.
+    pub async fn gets_by_like_count(&mut self, v: i64) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("like_count", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies aes_hex_email = value and runs the collection terminal.
+    pub async fn gets_by_aes_hex_email(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("aes_hex_email", "eq", v.into());
+        self.gets().await
+    }
+
+    /// Applies aes_hex_phone = value and runs the collection terminal.
+    pub async fn gets_by_aes_hex_phone(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("aes_hex_phone", "eq", v.into());
+        self.gets().await
+    }
+
+    /// Applies price = value and runs the collection terminal.
+    pub async fn gets_by_price(&mut self, v: f64) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("price", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies ip = value and runs the collection terminal.
+    pub async fn gets_by_ip(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("ip", "eq", v.into());
+        self.gets().await
+    }
+
+    pub async fn count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         Ok(db::scalar(ex, &mut self.q.req, "count").await?.as_i64())
     }
-    pub async fn sum_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn sum_target_team_player_count(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "target_team_player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_target_team_player_count(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "target_team_player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn sum_success_count(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "success_count".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_success_count(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "success_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn sum_player_count(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_player_count(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn sum_read_count(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "read_count".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_read_count(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "read_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn sum_user_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "user_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_user_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "user_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn sum_service_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_service_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn sum_service_module_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "service_module_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_service_module_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "service_module_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn sum_service_member_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "service_member_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_service_member_seq(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "service_member_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn sum_like_count(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_like_count(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn sum_price(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_price(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn count_distinct_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+
+    /// Preferred scalar count terminal; count() remains available as a compatibility alias.
+    pub async fn get_count(&mut self) -> Result<i64> {
+        self.count().await
+    }
+
+
+    /// Applies seq = value and runs the scalar count terminal.
+    pub async fn get_count_by_seq(&mut self, v: i64) -> Result<i64> {
+        self.q.w().pred("seq", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies name = value and runs the scalar count terminal.
+    pub async fn get_count_by_name(&mut self, v: impl Into<String>) -> Result<i64> {
+        self.q.w().pred("name", "eq", v.into());
+        self.get_count().await
+    }
+
+    /// Applies description = value and runs the scalar count terminal.
+    pub async fn get_count_by_description(&mut self, v: impl Into<String>) -> Result<i64> {
+        self.q.w().pred("description", "eq", v.into());
+        self.get_count().await
+    }
+
+    /// Applies created_ts = value and runs the scalar count terminal.
+    pub async fn get_count_by_created_ts(&mut self, v: chrono::NaiveDateTime) -> Result<i64> {
+        self.q.w().pred("created_ts", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies updated_ts = value and runs the scalar count terminal.
+    pub async fn get_count_by_updated_ts(&mut self, v: chrono::NaiveDateTime) -> Result<i64> {
+        self.q.w().pred("updated_ts", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies is_close = value and runs the scalar count terminal.
+    pub async fn get_count_by_is_close(&mut self, v: bool) -> Result<i64> {
+        self.q.w().pred("is_close", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies is_display = value and runs the scalar count terminal.
+    pub async fn get_count_by_is_display(&mut self, v: bool) -> Result<i64> {
+        self.q.w().pred("is_display", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies display_start_dt = value and runs the scalar count terminal.
+    pub async fn get_count_by_display_start_dt(&mut self, v: chrono::NaiveDateTime) -> Result<i64> {
+        self.q.w().pred("display_start_dt", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies display_end_dt = value and runs the scalar count terminal.
+    pub async fn get_count_by_display_end_dt(&mut self, v: chrono::NaiveDateTime) -> Result<i64> {
+        self.q.w().pred("display_end_dt", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies is_allday = value and runs the scalar count terminal.
+    pub async fn get_count_by_is_allday(&mut self, v: bool) -> Result<i64> {
+        self.q.w().pred("is_allday", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies target_team_player_count = value and runs the scalar count terminal.
+    pub async fn get_count_by_target_team_player_count(&mut self, v: i64) -> Result<i64> {
+        self.q.w().pred("target_team_player_count", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies success_count = value and runs the scalar count terminal.
+    pub async fn get_count_by_success_count(&mut self, v: i64) -> Result<i64> {
+        self.q.w().pred("success_count", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies player_count = value and runs the scalar count terminal.
+    pub async fn get_count_by_player_count(&mut self, v: i64) -> Result<i64> {
+        self.q.w().pred("player_count", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies read_count = value and runs the scalar count terminal.
+    pub async fn get_count_by_read_count(&mut self, v: i64) -> Result<i64> {
+        self.q.w().pred("read_count", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies cover_url = value and runs the scalar count terminal.
+    pub async fn get_count_by_cover_url(&mut self, v: impl Into<String>) -> Result<i64> {
+        self.q.w().pred("cover_url", "eq", v.into());
+        self.get_count().await
+    }
+
+    /// Applies user_seq = value and runs the scalar count terminal.
+    pub async fn get_count_by_user_seq(&mut self, v: i64) -> Result<i64> {
+        self.q.w().pred("user_seq", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies service_seq = value and runs the scalar count terminal.
+    pub async fn get_count_by_service_seq(&mut self, v: i64) -> Result<i64> {
+        self.q.w().pred("service_seq", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies service_module_seq = value and runs the scalar count terminal.
+    pub async fn get_count_by_service_module_seq(&mut self, v: i64) -> Result<i64> {
+        self.q.w().pred("service_module_seq", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies service_member_seq = value and runs the scalar count terminal.
+    pub async fn get_count_by_service_member_seq(&mut self, v: i64) -> Result<i64> {
+        self.q.w().pred("service_member_seq", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies start_dt = value and runs the scalar count terminal.
+    pub async fn get_count_by_start_dt(&mut self, v: chrono::NaiveDateTime) -> Result<i64> {
+        self.q.w().pred("start_dt", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies end_dt = value and runs the scalar count terminal.
+    pub async fn get_count_by_end_dt(&mut self, v: chrono::NaiveDateTime) -> Result<i64> {
+        self.q.w().pred("end_dt", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies uuid = value and runs the scalar count terminal.
+    pub async fn get_count_by_uuid(&mut self, v: impl Into<String>) -> Result<i64> {
+        self.q.w().pred("uuid", "eq", v.into());
+        self.get_count().await
+    }
+
+    /// Applies is_single_play = value and runs the scalar count terminal.
+    pub async fn get_count_by_is_single_play(&mut self, v: bool) -> Result<i64> {
+        self.q.w().pred("is_single_play", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies like_count = value and runs the scalar count terminal.
+    pub async fn get_count_by_like_count(&mut self, v: i64) -> Result<i64> {
+        self.q.w().pred("like_count", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies aes_hex_email = value and runs the scalar count terminal.
+    pub async fn get_count_by_aes_hex_email(&mut self, v: impl Into<String>) -> Result<i64> {
+        self.q.w().pred("aes_hex_email", "eq", v.into());
+        self.get_count().await
+    }
+
+    /// Applies aes_hex_phone = value and runs the scalar count terminal.
+    pub async fn get_count_by_aes_hex_phone(&mut self, v: impl Into<String>) -> Result<i64> {
+        self.q.w().pred("aes_hex_phone", "eq", v.into());
+        self.get_count().await
+    }
+
+    /// Applies price = value and runs the scalar count terminal.
+    pub async fn get_count_by_price(&mut self, v: f64) -> Result<i64> {
+        self.q.w().pred("price", "eq", v);
+        self.get_count().await
+    }
+
+    /// Applies ip = value and runs the scalar count terminal.
+    pub async fn get_count_by_ip(&mut self, v: impl Into<String>) -> Result<i64> {
+        self.q.w().pred("ip", "eq", v.into());
+        self.get_count().await
+    }
+
+    /// Returns one row per group_by value; the aggregate is available as extra("row_count").
+    pub async fn gets_count(&mut self) -> Result<Collection<BattleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+        let mut rows = db::select(ex, &mut self.q.req, "group_count").await?;
+        collect(&mut rows, self.key_fn.as_deref())
+    }
+    pub async fn sum_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_target_team_player_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "target_team_player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_target_team_player_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "target_team_player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_success_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "success_count".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_success_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "success_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_player_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_player_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_read_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "read_count".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_read_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "read_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_user_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "user_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_user_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "user_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_service_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_service_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_service_module_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_module_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_service_module_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_module_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_service_member_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_member_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_service_member_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_member_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_like_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_like_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_price(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_price(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn count_distinct_seq(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn min_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
     /// None when no row matches.
-    pub async fn max_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
-    pub async fn count_distinct_name(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "name".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_name(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "name".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_name(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn min_name(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
     /// None when no row matches.
-    pub async fn max_name(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
-    pub async fn count_distinct_description(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "description".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_name(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn count_distinct_description(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "description".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_description(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "description".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn min_description(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "description".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
     /// None when no row matches.
-    pub async fn max_description(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "description".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
-    pub async fn count_distinct_created_ts(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "created_ts".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_description(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "description".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn count_distinct_created_ts(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "created_ts".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_created_ts(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "created_ts".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn min_created_ts(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "created_ts".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
     /// None when no row matches.
-    pub async fn max_created_ts(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "created_ts".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
-    pub async fn count_distinct_updated_ts(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "updated_ts".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_created_ts(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "created_ts".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn count_distinct_updated_ts(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "updated_ts".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_updated_ts(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "updated_ts".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn min_updated_ts(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "updated_ts".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
     /// None when no row matches.
-    pub async fn max_updated_ts(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "updated_ts".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
-    pub async fn count_distinct_is_close(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "is_close".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_updated_ts(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "updated_ts".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn count_distinct_is_close(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "is_close".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_is_close(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_close".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    pub async fn min_is_close(&mut self) -> Result<Option<bool>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "is_close".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
     /// None when no row matches.
-    pub async fn max_is_close(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_close".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
-    pub async fn count_distinct_is_display(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "is_display".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_is_close(&mut self) -> Result<Option<bool>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "is_close".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    pub async fn count_distinct_is_display(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "is_display".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_is_display(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_display".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    pub async fn min_is_display(&mut self) -> Result<Option<bool>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "is_display".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
     /// None when no row matches.
-    pub async fn max_is_display(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_display".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
-    pub async fn count_distinct_display_start_dt(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "display_start_dt".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_is_display(&mut self) -> Result<Option<bool>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "is_display".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    pub async fn count_distinct_display_start_dt(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "display_start_dt".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_display_start_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "display_start_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn min_display_start_dt(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "display_start_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
     /// None when no row matches.
-    pub async fn max_display_start_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "display_start_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
-    pub async fn count_distinct_display_end_dt(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "display_end_dt".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_display_start_dt(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "display_start_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn count_distinct_display_end_dt(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "display_end_dt".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_display_end_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "display_end_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn min_display_end_dt(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "display_end_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
     /// None when no row matches.
-    pub async fn max_display_end_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "display_end_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
-    pub async fn count_distinct_is_allday(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "is_allday".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_display_end_dt(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "display_end_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn count_distinct_is_allday(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "is_allday".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_is_allday(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_allday".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    pub async fn min_is_allday(&mut self) -> Result<Option<bool>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "is_allday".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
     /// None when no row matches.
-    pub async fn max_is_allday(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_allday".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
-    pub async fn count_distinct_target_team_player_count(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "target_team_player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_is_allday(&mut self) -> Result<Option<bool>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "is_allday".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    pub async fn count_distinct_target_team_player_count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "target_team_player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_target_team_player_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "target_team_player_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn min_target_team_player_count(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "target_team_player_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
     /// None when no row matches.
-    pub async fn max_target_team_player_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "target_team_player_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
-    pub async fn count_distinct_success_count(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "success_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_target_team_player_count(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "target_team_player_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_success_count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "success_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_success_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "success_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn min_success_count(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "success_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
     /// None when no row matches.
-    pub async fn max_success_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "success_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
-    pub async fn count_distinct_player_count(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_success_count(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "success_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_player_count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "player_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_player_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "player_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn min_player_count(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "player_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
     /// None when no row matches.
-    pub async fn max_player_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "player_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
-    pub async fn count_distinct_read_count(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "read_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_player_count(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "player_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_read_count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "read_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_read_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "read_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn min_read_count(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "read_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
     /// None when no row matches.
-    pub async fn max_read_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "read_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
-    pub async fn count_distinct_cover_url(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "cover_url".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_read_count(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "read_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_cover_url(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "cover_url".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_cover_url(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "cover_url".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn min_cover_url(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "cover_url".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
     /// None when no row matches.
-    pub async fn max_cover_url(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "cover_url".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
-    pub async fn count_distinct_user_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "user_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_cover_url(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "cover_url".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn count_distinct_user_seq(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "user_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_user_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "user_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn min_user_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "user_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
     /// None when no row matches.
-    pub async fn max_user_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "user_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
-    pub async fn count_distinct_service_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_user_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "user_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_service_seq(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_service_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn min_service_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
     /// None when no row matches.
-    pub async fn max_service_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
-    pub async fn count_distinct_service_module_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "service_module_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_service_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_service_module_seq(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_module_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_service_module_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_module_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn min_service_module_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_module_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
     /// None when no row matches.
-    pub async fn max_service_module_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_module_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
-    pub async fn count_distinct_service_member_seq(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "service_member_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_service_module_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_module_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_service_member_seq(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_member_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_service_member_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_member_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn min_service_member_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_member_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
     /// None when no row matches.
-    pub async fn max_service_member_seq(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "service_member_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
-    pub async fn count_distinct_start_dt(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "start_dt".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_service_member_seq(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_member_seq".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_start_dt(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "start_dt".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_start_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "start_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn min_start_dt(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "start_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
     /// None when no row matches.
-    pub async fn max_start_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "start_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
-    pub async fn count_distinct_end_dt(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "end_dt".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_start_dt(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "start_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn count_distinct_end_dt(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "end_dt".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_end_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "end_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn min_end_dt(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "end_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
     /// None when no row matches.
-    pub async fn max_end_dt(mut self, ex: &impl Exec) -> Result<Option<chrono::NaiveDateTime>> { self.q.req.ir.agg = "end_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
-    pub async fn count_distinct_uuid(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "uuid".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_end_dt(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "end_dt".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    pub async fn count_distinct_uuid(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "uuid".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_uuid(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "uuid".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn min_uuid(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "uuid".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
     /// None when no row matches.
-    pub async fn max_uuid(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "uuid".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
-    pub async fn count_distinct_is_single_play(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "is_single_play".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_uuid(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "uuid".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn count_distinct_is_single_play(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "is_single_play".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_is_single_play(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_single_play".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    pub async fn min_is_single_play(&mut self) -> Result<Option<bool>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "is_single_play".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
     /// None when no row matches.
-    pub async fn max_is_single_play(mut self, ex: &impl Exec) -> Result<Option<bool>> { self.q.req.ir.agg = "is_single_play".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
-    pub async fn count_distinct_like_count(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_is_single_play(&mut self) -> Result<Option<bool>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "is_single_play".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_bool()) }) }
+    pub async fn count_distinct_like_count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_like_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "like_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn min_like_count(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "like_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
     /// None when no row matches.
-    pub async fn max_like_count(mut self, ex: &impl Exec) -> Result<Option<i64>> { self.q.req.ir.agg = "like_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
-    pub async fn count_distinct_price(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_like_count(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "like_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_price(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_price(mut self, ex: &impl Exec) -> Result<Option<f64>> { self.q.req.ir.agg = "price".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_f64()) }) }
+    pub async fn min_price(&mut self) -> Result<Option<f64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "price".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_f64()) }) }
     /// None when no row matches.
-    pub async fn max_price(mut self, ex: &impl Exec) -> Result<Option<f64>> { self.q.req.ir.agg = "price".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_f64()) }) }
-    pub async fn count_distinct_ip(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = "ip".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn max_price(&mut self) -> Result<Option<f64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "price".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_f64()) }) }
+    pub async fn count_distinct_ip(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "ip".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_ip(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "ip".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn min_ip(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "ip".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
     /// None when no row matches.
-    pub async fn max_ip(mut self, ex: &impl Exec) -> Result<Option<String>> { self.q.req.ir.agg = "ip".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn max_ip(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "ip".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
 
     /// Runs the raw() statement; rows keyed by the driver's column names in column order, cells typed by column type (no codec).
-    pub async fn raw_all(mut self, ex: &impl Exec) -> Result<Vec<indexmap::IndexMap<String, Val>>> {
+    pub async fn raw_all(&mut self) -> Result<Vec<indexmap::IndexMap<String, Val>>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         db::raw(ex, &mut self.q.req).await
     }
 
-    pub async fn paginate(mut self, ex: &impl Exec, page: u32, per: u32) -> Result<Page<BattleRow>> {
+    pub async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<BattleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+        if per == 0 { return Err(orm::Error::Engine { code: orm::codes::IR_INVALID.into(), msg: "per must be positive".into() }); }
         let page = page.max(1);
         self.q.node().limit = Some(orm::ir::Limit { offset: (page - 1) * per, count: per });
         let (mut rows, total) = db::paginate(ex, &mut self.q.req).await?;
@@ -2037,45 +2488,60 @@ impl Battle {
         Ok(Page { items: collect(&mut rows, self.key_fn.as_deref())?, total, pages, current: page as i64, per: per as i64 })
     }
 
-    pub async fn insert(mut self, ex: &impl Exec) -> Result<Option<BattleRow>> {
+    pub async fn insert(&mut self) -> Result<Option<BattleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
-        Battle::new().seq_eq(id as i64).one(ex).await
+        Battle::new().bind(ex).seq_eq(id as i64).one().await
     }
 
     /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
-    pub async fn save(mut self, ex: &impl Exec) -> Result<Option<BattleRow>> {
+    pub async fn save(&mut self) -> Result<Option<BattleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         match self.q.take_set("seq") {
             Some(pk) => {
                 self.q.w().pred("seq", "eq", pk.clone());
                 db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = Battle::new();
+                let mut q = Battle::new().bind(ex);
                 q.q.w().pred("seq", "eq", pk);
-                q.one(ex).await
+                q.one().await
             }
-            None => self.insert(ex).await,
+            None => self.insert().await,
         }
     }
 
     /// UPDATE set_*/plus_*/minus_*/set_*_expr WHERE the query's predicates; returns the affected count.
     /// The engine rejects a missing where (IR_INVALID).
-    pub async fn update(mut self, ex: &impl Exec) -> Result<u64> {
+    pub async fn update(&mut self) -> Result<u64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         Ok(db::write(ex, &mut self.q.req, "update").await?.1)
     }
 
     /// DELETE WHERE the query's predicates; returns the affected count. The engine rejects a missing where.
-    pub async fn delete(mut self, ex: &impl Exec) -> Result<u64> {
+    pub async fn delete(&mut self) -> Result<u64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         Ok(db::write(ex, &mut self.q.req, "delete").await?.1)
     }
 
     /// The main statement (kind all) and its binds without executing; secret slots read "$SECRET".
-    pub async fn sql(mut self, ex: &impl Exec) -> Result<db::Sql> {
+    pub async fn sql(&mut self) -> Result<db::Sql> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         db::sql(ex, &mut self.q.req, "all")
     }
 
-    pub async fn one_by_seq(self, ex: &impl Exec, v: i64) -> Result<Option<BattleRow>> {
-        self.seq_eq(v).one(ex).await
+    pub async fn one_by_seq(&mut self, v: i64) -> Result<Option<BattleRow>> {
+        self.q.w().pred("seq", "eq", v);
+        self.one().await
     }
+
+    /// Preferred primary-key lookup; one_by_seq remains available for compatibility.
+    pub async fn get_by_seq(&mut self, v: i64) -> Result<Option<BattleRow>> {
+        self.one_by_seq(v).await
+    }
+
+    /// Applies the equality predicates for the declared unique key and runs the single-row terminal.
+    pub async fn get_by_uuid(&mut self, v0: impl Into<String>) -> Result<Option<BattleRow>> {
+        self.q.w().pred("uuid", "eq", v0.into());
+        self.get().await
+    }
+
 }
+
+impl AsRef<Battle> for Battle { fn as_ref(&self) -> &Self { self } }
 
 impl Default for Battle { fn default() -> Self { Self::new() } }
 

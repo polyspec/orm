@@ -19,7 +19,7 @@ function bench(string $name, int $iters, callable $f): void {
 
 const COLS = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_team_player_count`, `a`.`success_count`, `a`.`player_count`, `a`.`read_count`, `a`.`cover_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_module_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_play`, `a`.`like_count`, AES_DECRYPT(UNHEX(`a`.`aes_hex_email`), ?) AS `aes_hex_email`, AES_DECRYPT(UNHEX(`a`.`aes_hex_phone`), ?) AS `aes_hex_phone`";
 
-// ---------- (i) PDO direct (compatibility's connection options) ----------
+// ---------- (i) PDO direct ----------
 $pdo = new PDO('mysql:unix_socket=/tmp/mysql.sock;dbname=orm_bench;charset=utf8mb4', 'root', '', [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false,
     PDO::ATTR_STRINGIFY_FETCHES => false, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -46,7 +46,7 @@ bench('pdo relation4 + php assembly', $iters, function ($i) use ($pdo, $stP20) {
         $st->execute(array_merge(['bench-salt', 'bench-salt'], $keys));
         foreach ($st->fetchAll() as $row) { $children[$row['user_seq']][] = $row; }
     }
-    // attach (compatibility style: parent[alias] = keyed child map)
+    // attach: parent[alias] = keyed child map
     foreach ($parents as &$p) { $p['children'] = $children[$p['user_seq']] ?? []; }
 });
 

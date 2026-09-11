@@ -1,7 +1,7 @@
 <?php
-// compatibility layer (docs/dsl.md §6 "PHP 호환층", checklist T4.6): every old-style chain below is
+// PHP compatibility layer (docs/dsl.md §6 "PHP 호환층", checklist T4.6): every dynamic chain below is
 // paired with its canonical spelling; the pair must produce byte-identical IR (Req::shape()) and the
-// same rows from MySQL. Families follow docs/checklist.md.
+// same rows from MySQL. Families follow the compatibility coverage checklist.
 // Usage: php -d apc.enable_cli=0 clients/php/tests/compat.php /abs/ormd.sock /abs/schema.json
 declare(strict_types=1);
 
@@ -72,10 +72,10 @@ function code(\Closure $fn, string $code, string $what, string $contains = ''): 
 }
 
 $now = '2026-09-11 00:00:00';
-$count = fn(Db $db) => fn(Q $q) => $q->count($db);
-$getCount = fn(Db $db) => fn(Q $q) => $q->getCount($db);
-$gets = fn(Db $db) => fn(Q $q) => $q->gets($db);
-$all = fn(Db $db) => fn(Q $q) => $q->all($db);
+$count = fn(Db $db) => fn(Q $q) => $q->bind($db)->count();
+$getCount = fn(Db $db) => fn(Q $q) => $q->bind($db)->getCount();
+$gets = fn(Db $db) => fn(Q $q) => $q->bind($db)->gets();
+$all = fn(Db $db) => fn(Q $q) => $q->bind($db)->all();
 
 // ---- 1. predicate and*/or*/condition* — implicit ops ----
 same('andX → xEq', (new Battle)->andServiceSeq(7)->andIsClose(0), (new Battle)->serviceSeqEq(7)->isCloseEq(false), 'count', $getCount($db), $count($db));
@@ -90,7 +90,7 @@ same('gt/le/ne op-first', (new Battle)->andServiceSeq(7)->andGtSeq(100)->andLeSe
     (new Battle)->serviceSeqEq(7)->seqGt(100)->seqLte(20000)->isCloseNotEq(true), 'count', $getCount($db), $count($db));
 same('ge/lt/eq op-first', (new Battle)->conditionGeSeqAndLtSeqAndEqServiceSeq(6, 5000, 7),
     (new Battle)->seqGte(6)->seqLt(5000)->serviceSeqEq(7), 'count', $getCount($db), $count($db));
-same('lk → like %v% (compatibility wraps, no escaping)', (new Battle)->andServiceSeq(7)->andLkName('battle-4'),
+same('lk → like %v% (wraps, no escaping)', (new Battle)->andServiceSeq(7)->andLkName('battle-4'),
     (new Battle)->serviceSeqEq(7)->nameLike('%battle-4%'), 'count', $getCount($db), $count($db));
 same('lb → like_binary %v%', (new Battle)->andServiceSeq(7)->conditionLbName('battle-4'),
     (new Battle)->serviceSeqEq(7)->nameLikeBinary('%battle-4%'), 'count', $getCount($db), $count($db));
@@ -130,44 +130,61 @@ same('brace-call compound name with nested parens',
     'count', $getCount($db), $count($db));
 $q1 = (new Battle)->orderBySeqAsc()->limit(0, 4);
 $q2 = (new Battle)->orderBySeqAsc()->limit(0, 4);
-$r1 = $q1->{'getsByServiceSeqAnd((IsCloseAndLtStartDt)Or(IsDisplay))'}($db, 7, 0, $now, 1);
-$r2 = $q2->serviceSeqEq(7)->and(fn(BattleWhere $w) => $w->and(fn(BattleWhere $w) => $w->isCloseEq(false)->startDtLt($now))->or(fn(BattleWhere $w) => $w->isDisplayEq(true)))->all($db);
+$r1 = $q1->bind($db)->{'getsByServiceSeqAnd((IsCloseAndLtStartDt)Or(IsDisplay))'}( 7, 0, $now, 1);
+$r2 = $q2->serviceSeqEq(7)->and(fn(BattleWhere $w) => $w->and(fn(BattleWhere $w) => $w->isCloseEq(false)->startDtLt($now))->or(fn(BattleWhere $w) => $w->isDisplayEq(true)))->bind($db)->all();
 same('getsBy with a brace-call compound name', $q1, $q2, 'all');
 check(count($r1) === 4 && $r1->toArray() === $r2->toArray(), 'getsBy brace-call rows');
 
 // ---- 5. getBy* / getsBy* / getCount* terminals ----
 $q1 = (new Battle)->orderBySeqDesc()->limit(0, 5);
 $q2 = (new Battle)->orderBySeqDesc()->limit(0, 5);
-$r1 = $q1->getsByServiceSeqAndIsClose($db, 7, 0);
-$r2 = $q2->serviceSeqEq(7)->isCloseEq(false)->all($db);
+$r1 = $q1->bind($db)->getsByServiceSeqAndIsClose(7, 0);
+$r2 = $q2->serviceSeqEq(7)->isCloseEq(false)->bind($db)->all();
 same('getsByXAndY($db, a, b) → all', $q1, $q2, 'all');
 check($r1 instanceof Collection && $r1->toArray() === $r2->toArray() && count($r1) === 5, 'getsBy rows and keys');
 $q1 = new Battle;
 $q2 = new Battle;
-$r1 = $q1->getBySeq($db, 42);
-$r2 = $q2->seqEq(42)->one($db);
+$r1 = $q1->bind($db)->getBySeq(42);
+$r2 = $q2->seqEq(42)->bind($db)->one();
 same('getByX($db, v) → one', $q1, $q2, 'one');
 check($r1 !== null && $r1->toArray() === $r2->toArray() && $r1->getName() === 'battle-42', 'getBy row');
 $q1 = (new Battle)->andIsClose(0);
 $q2 = (new Battle)->isCloseEq(false);
-$r1 = $q1->getCountByServiceSeq($db, 7);
-$r2 = $q2->serviceSeqEq(7)->count($db);
+$r1 = $q1->bind($db)->getCountByServiceSeq(7);
+$r2 = $q2->serviceSeqEq(7)->bind($db)->count();
 same('getCountByX after and*', $q1, $q2, 'count');
 check($r1 === $r2 && $r1 > 0, 'getCountBy value');
 same('getAllByX → selectAll + one', (new Battle)->andIsClose(1), (new Battle)->isCloseEq(true), 'one',
-    fn(Q $q) => $q->getAllBySeq($db, 42)?->getDescription(), fn(Q $q) => $q->selectAll()->seqEq(42)->one($db)?->getDescription());
-check((new Battle)->getsBySeq($db, 0) === null && (new Battle)->getBySeq($db, 0) === null && (new Battle)->andSeq(0)->gets($db) === null, 'gets()/get() are null when nothing matches (compatibility)');
-check((new Battle)->andServiceSeq(7)->getSumLikeCount($db) === (new Battle)->serviceSeqEq(7)->sumLikeCount($db), 'getSum<Col>($db) → sum<Col>');
-check((new Battle)->andServiceSeq(7)->getCount($db) === 1000 && (new Battle)->andServiceSeq(7)->getsCount($db) === 1000, 'getCount/getsCount → count');
-$g1 = (new Battle)->andServiceSeq(7)->orderBySeqAsc()->limit(0, 2)->getsAll($db);
-$g2 = (new Battle)->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 2)->selectAll()->all($db);
+    fn(Q $q) => $q->bind($db)->getAllBySeq(42)?->getDescription(), fn(Q $q) => $q->selectAll()->seqEq(42)->bind($db)->one()?->getDescription());
+$emptyGetsBy = (new Battle)->bind($db)->getsBySeq(0);
+check($emptyGetsBy instanceof Collection && count($emptyGetsBy) === 0 && (new Battle)->bind($db)->getBySeq(0) === null && count((new Battle)->andSeq(0)->bind($db)->gets()) === 0, 'get()/getBy() are null and gets()/getsBy() are empty collections when nothing matches');
+check((new Battle)->andServiceSeq(7)->bind($db)->getSumLikeCount() === (new Battle)->serviceSeqEq(7)->bind($db)->sumLikeCount(), 'getSum<Col>($db) → sum<Col>');
+check((new Battle)->andServiceSeq(7)->bind($db)->getCount() === 1000, 'getCount → scalar count');
+$bound = (new Battle)($db);
+check($bound->andServiceSeq(7)->getCount() === 1000, '(new Model)($db)->getCount() → bound scalar count');
+$boundCountBy = (new Battle)($db)->andIsClose(0)->getCountByServiceSeq(7);
+$explicitCountBy = (new Battle)->isClose(false)->bind($db)->getCountByServiceSeq(7);
+check($boundCountBy === $explicitCountBy && $boundCountBy > 0, 'invoke binding and bind() produce the same count');
+code(fn() => (new Battle)->bind($db)->get($db), Code::IR_INVALID, 'get accepts no executor argument');
+code(fn() => (new Battle)->bind($db)->getCountByServiceSeq(7, $db), Code::IR_INVALID, 'finder rejects extra arguments');
+code(fn() => (new Battle)->getsCount(), Code::CONFIG, 'unbound group count fails before execution');
+try {
+    (new Battle)->bind($db)->getCountByServiceSeq($db, 7);
+    check(false, 'finder accepts only a typed value');
+} catch (\TypeError) {
+    check(true, 'finder accepts only a typed value');
+}
+$grouped = (new Battle)($db)->andServiceSeq(7)->groupByUserSeq()->getsCount();
+check($grouped instanceof Collection && count($grouped) > 0 && $grouped->first()?->getRowCount() > 0, 'getsCount → grouped rows with row_count');
+$g1 = (new Battle)->andServiceSeq(7)->orderBySeqAsc()->limit(0, 2)->bind($db)->getsAll();
+$g2 = (new Battle)->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 2)->selectAll()->bind($db)->all();
 check($g1->toArray() === $g2->toArray() && str_starts_with((string) $g1->first()->getDescription(), 'desc-'), 'getsAll → selectAll + all');
 
 // ---- 6. relation / relations with match<A>With<B> + alias ----
 same('relation(match + alias) → relationRel',
     (new Battle)->relation((new User)->matchUserSeqWithSeq()->aliasUser())->andServiceSeq(7)->orderBySeqAsc()->limit(0, 3),
     (new Battle)->relationUser(new User)->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 3), 'all', $gets($db), $all($db));
-same('relationAWithB(child) name form', (new Battle)->relationUserSeqWithSeq(new User)->andSeq(42), (new Battle)->relationUser(new User)->seqEq(42), 'one', fn(Q $q) => $q->get($db), fn(Q $q) => $q->one($db));
+same('relationAWithB(child) name form', (new Battle)->relationUserSeqWithSeq(new User)->andSeq(42), (new Battle)->relationUser(new User)->seqEq(42), 'one', fn(Q $q) => $q->bind($db)->get(), fn(Q $q) => $q->bind($db)->one());
 same('relation → relations nesting with keyName/groupLimit/orderBy',
     (new Battle)->relation((new Service)->matchServiceSeqWithSeq()->aliasService()
         ->relations((new ServiceMember)->matchSeqWithServiceSeq()->aliasMembers()->orderBySeqDesc()->groupLimit(3)->keyNameUserSeq()))
@@ -175,7 +192,7 @@ same('relation → relations nesting with keyName/groupLimit/orderBy',
     (new Battle)->relationService((new Service)
         ->relationsMembers((new ServiceMember)->orderBySeqDesc()->limitPerParent(3)->keyByUserSeq()))
         ->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 4), 'all', $gets($db), $all($db));
-$rows = (new Battle)->relation((new User)->matchUserSeqWithSeq()->aliasUser())->getsByServiceSeqAndSeq($db, 7, [6, 106]);
+$rows = (new Battle)->relation((new User)->matchUserSeqWithSeq()->aliasUser())->bind($db)->getsByServiceSeqAndSeq(7, [6, 106]);
 check($rows[6]->getUserModel()->getName() === 'user-' . $rows[6]->getUserSeq() && $rows[6]->getUser() === $rows[6]->getUserModel(), 'get<Rel>Model() reaches the relation');
 same('parentNode → flatten',
     (new ServiceMember)->andServiceSeq(7)->orderBySeqAsc()->limit(0, 2)->relation((new User)->matchUserSeqWithSeq()->parentNode()),
@@ -186,10 +203,10 @@ same('possibleX(v) → ifParentXEq',
 same('matchAWithB(false) → dropChildKey; deleteLock → noCascadeDelete',
     (new Service)->andSeq(7)->relations((new ServiceMember)->matchSeqWithServiceSeq(false)->keyNameUserSeq()->deleteLock()->orderBySeqAsc()->groupLimit(2)),
     (new Service)->seqEq(7)->relationsMembers((new ServiceMember)->noCascadeDelete()->orderBySeqAsc()->limitPerParent(2)->keyByUserSeq()->dropChildKey()), 'one',
-    fn(Q $q) => $q->get($db), fn(Q $q) => $q->one($db));
+    fn(Q $q) => $q->bind($db)->get(), fn(Q $q) => $q->bind($db)->one());
 same('matchAll<A>With<B> → selectAll + match',
     (new Battle)->andSeq(42)->relation((new User)->matchAllUserSeqWithSeq()),
-    (new Battle)->seqEq(42)->relationUser((new User)->selectAll()), 'one', fn(Q $q) => $q->get($db), fn(Q $q) => $q->one($db));
+    (new Battle)->seqEq(42)->relationUser((new User)->selectAll()), 'one', fn(Q $q) => $q->bind($db)->get(), fn(Q $q) => $q->bind($db)->one());
 
 // ---- 7. join<A>With<B> / leftJoin<A>With<B>: and* on the child = where(fn), on* = on(fn) ----
 same('join child and* → where(fn); leftJoin child on* → on(fn); navigation stays canonical',
@@ -207,12 +224,12 @@ same('onAOrB compound in ON, relation off a join child',
 same('addColumnX / removeColumnX / addColumnXAliasY / format → selectExpr',
     (new Battle)->addColumnDescription()->removeColumnName()->addColumnSeqAliasBattleSeq()->addColumnSeqAliasDoubled('%s * 2')->addColumn('uuid', 'u')->andSeq(42),
     (new Battle)->selectDescription()->unselectName()->selectSeqAs('battle_seq')->selectExpr('doubled', '`seq` * 2')->selectUuidAs('u')->seqEq(42), 'one',
-    fn(Q $q) => $q->get($db), fn(Q $q) => $q->one($db));
-same('addAllColumns → selectAll', (new Battle)->addAllColumns()->andSeq(42), (new Battle)->selectAll()->seqEq(42), 'one', fn(Q $q) => $q->get($db), fn(Q $q) => $q->one($db));
+    fn(Q $q) => $q->bind($db)->get(), fn(Q $q) => $q->bind($db)->one());
+same('addAllColumns → selectAll', (new Battle)->addAllColumns()->andSeq(42), (new Battle)->selectAll()->seqEq(42), 'one', fn(Q $q) => $q->bind($db)->get(), fn(Q $q) => $q->bind($db)->one());
 same('removeAllColumns + addColumn → selectNone + select', (new Battle)->removeAllColumns()->addColumnName()->addColumns(['uuid'])->andSeq(42),
-    (new Battle)->selectNone()->selectName()->selectUuid()->seqEq(42), 'one', fn(Q $q) => $q->get($db), fn(Q $q) => $q->one($db));
+    (new Battle)->selectNone()->selectName()->selectUuid()->seqEq(42), 'one', fn(Q $q) => $q->bind($db)->get(), fn(Q $q) => $q->bind($db)->one());
 same('onlyColumns / removeColumns / addRawColumnX', (new Battle)->onlyColumns(['name'])->removeColumns(['uuid'])->addRawColumnHalf('`seq` / 2')->andSeq(42),
-    (new Battle)->selectNone()->selectName()->unselectUuid()->selectExpr('half', '`seq` / 2')->seqEq(42), 'one', fn(Q $q) => $q->get($db), fn(Q $q) => $q->one($db));
+    (new Battle)->selectNone()->selectName()->unselectUuid()->selectExpr('half', '`seq` / 2')->seqEq(42), 'one', fn(Q $q) => $q->bind($db)->get(), fn(Q $q) => $q->bind($db)->one());
 
 // ---- 9. orderBy / groupBy / forceIndex ----
 same('orderByX (no suffix = Asc), orderByXAndYDesc, orderBy(sql)',
@@ -238,13 +255,13 @@ same('or(fn) = or()->and(fn) on query and Where',
 // ---- 12. keyName / fetchKey on the root → client-side keying ----
 $k1 = (new Battle)->andServiceSeq(7)->orderBySeqAsc()->limit(0, 3)->keyNameUserSeq();
 $k2 = (new Battle)->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 3)->keyByFn(fn(Row $r) => $r->getUserSeq());
-$r1 = $k1->gets($db);
-$r2 = $k2->all($db);
+$r1 = $k1->bind($db)->gets();
+$r2 = $k2->bind($db)->all();
 same('keyName<Col> on the root', $k1, $k2, 'all');
 check($r1->keys() === $r2->keys() && $r1->keys() === array_map(fn(Row $r) => $r->getUserSeq(), array_values(iterator_to_array($r2))), 'root keyName keys the collection by the column');
-$r3 = (new Battle)->andServiceSeq(7)->orderBySeqAsc()->limit(0, 3)->fetchKey(fn(Row $r) => 'b' . $r->getSeq())->gets($db);
+$r3 = (new Battle)->andServiceSeq(7)->orderBySeqAsc()->limit(0, 3)->fetchKey(fn(Row $r) => 'b' . $r->getSeq())->bind($db)->gets();
 check($r3->keys() === ['b6', 'b106', 'b206'], 'fetchKey(fn) → keyByFn');
-$r4 = (new Battle)->andServiceSeq(7)->orderBySeqAsc()->limit(0, 2)->keyName('uuid')->gets($db);
+$r4 = (new Battle)->andServiceSeq(7)->orderBySeqAsc()->limit(0, 2)->keyName('uuid')->bind($db)->gets();
 check($r4 !== null && array_keys($r4->toArray()) === array_map(fn(array $r) => $r['uuid'], array_values($r4->toArray())), 'keyName(string)');
 
 // ---- 13. writes: create, duplication, setRaw*, delete($db, true) ----
@@ -255,51 +272,51 @@ $draft = fn(string $name) => (new Battle)
 $c1 = $draft('compat-create');
 $c2 = $draft('compat-create');
 same('create($db) → insert($db)', $c1, $c2, 'insert');
-$r1 = $c1->create($db);
-$r2 = $c2->insert($db);
+$r1 = $c1->bind($db)->create();
+$r2 = $c2->bind($db)->insert();
 check($r1 !== null && $r2 !== null && $r1->getName() === 'compat-create' && $r2->getSeq() > $r1->getSeq(), 'create inserts');
-$r1->delete($db);
-$r2->delete($db);
+$r1->bind($db)->delete();
+$r2->bind($db)->delete();
 
 $u1 = $draft('compat-u1')->setUuid('compat-upsert')->duplication((new Battle)->setName('compat-u2')->plusReadCount(5)->setDescription(null)->setNameExpr('CONCAT(`name`, ?)', ['!']));
 $u2 = $draft('compat-u1')->setUuid('compat-upsert')->onDuplicateSetName('compat-u2')->onDuplicatePlusReadCount(5)->onDuplicateSetDescription(null)->onDuplicateSetNameExpr('CONCAT(`name`, ?)', ['!']);
 same('duplication(model) → onDuplicate*', $u1, $u2, 'insert');
-$first = $u1->create($db);
-$second = $u2->insert($db);
+$first = $u1->bind($db)->create();
+$second = $u2->bind($db)->insert();
 check($first !== null && $second !== null && $second->getSeq() === $first->getSeq() && $second->getName() === 'compat-u2!' && $second->getReadCount() === 6, 'duplication updates the existing row');
 $d1 = $draft('compat-dup-arr')->setUuid('compat-upsert')->duplication(['name' => 'compat-u3', 'like_count' => 9]);
 $d2 = $draft('compat-dup-arr')->setUuid('compat-upsert')->onDuplicateSetName('compat-u3')->onDuplicateSetLikeCount(9);
 same('duplication([col => v])', $d1, $d2, 'insert');
-$third = $d1->create($db);
+$third = $d1->bind($db)->create();
 check($third->getSeq() === $first->getSeq() && $third->getName() === 'compat-u3' && $third->getLikeCount() === 9, 'duplication array applied');
 
 $s1 = (new Battle)->andSeq($first->getSeq())->setRawName('CONCAT(:a, :b)', [':a' => 'raw-', ':b' => 'x'])->plusReadCount(2);
 $s2 = (new Battle)->seqEq($first->getSeq())->setNameExpr('CONCAT(?, ?)', ['raw-', 'x'])->plusReadCount(2);
 same('setRawX(expr, named binds) → setXExpr', $s1, $s2, 'update');
-check($s1->update($db) === 1 && (new Battle)->getBySeq($db, $first->getSeq())->getName() === 'raw-x', 'setRaw applied');
-check($s2->update($db) === 1 && (new Battle)->getBySeq($db, $first->getSeq())->getReadCount() === 10, 'canonical twin applied too');
-check((new Battle)->andUuid('compat-upsert')->delete($db) === 1, 'cleanup');
+check($s1->bind($db)->update() === 1 && (new Battle)->bind($db)->getBySeq($first->getSeq())->getName() === 'raw-x', 'setRaw applied');
+check($s2->bind($db)->update() === 1 && (new Battle)->bind($db)->getBySeq($first->getSeq())->getReadCount() === 10, 'canonical twin applied too');
+check((new Battle)->andUuid('compat-upsert')->bind($db)->delete() === 1, 'cleanup');
 
 $svc = $db->transaction(function (Tx $tx) {
-    $s = (new Service)->setName('compat-cascade')->create($tx);
+    $s = (new Service)->setName('compat-cascade')->bind($tx)->create();
     foreach ([1, 2] as $u) {
-        (new ServiceMember)->setServiceSeq($s->getSeq())->setUserSeq($u)->create($tx);
+        (new ServiceMember)->setServiceSeq($s->getSeq())->setUserSeq($u)->bind($tx)->create();
     }
-    (new ServiceModule)->setServiceSeq($s->getSeq())->setName('compat-cascade-mod')->create($tx);
+    (new ServiceModule)->setServiceSeq($s->getSeq())->setName('compat-cascade-mod')->bind($tx)->create();
     return $s;
 });
 $l1 = (new Service)->relations((new ServiceMember)->matchSeqWithServiceSeq()->aliasMembers()->orderBySeqAsc()->relation((new User)->matchUserSeqWithSeq()))
     ->relations((new ServiceModule)->matchSeqWithServiceSeq()->deleteLock());
 $l2 = (new Service)->relationsMembers((new ServiceMember)->orderBySeqAsc()->relationUser(new User))->relationsModules((new ServiceModule)->noCascadeDelete());
-$loaded = $l1->getBySeq($db, $svc->getSeq());
+$loaded = $l1->bind($db)->getBySeq($svc->getSeq());
 $l2->seqEq($svc->getSeq());
 same('relation tree with deleteLock', $l1, $l2, 'one');
 $n0 = count($log);
-$loaded->delete($db, true);
+$loaded->bind($db)->delete(true);
 check(count($log) - $n0 === 3 && str_starts_with($log[$n0], 'DELETE FROM `service_member`') && str_starts_with($log[$n0 + 2], 'DELETE FROM `service`'), 'delete($db, true) = deleteCascade: members first, then the service; deleteLock keeps the modules');
-check((new ServiceMember)->andServiceSeq($svc->getSeq())->getCount($db) === 0 && (new Service)->getBySeq($db, $svc->getSeq()) === null
-    && (new ServiceModule)->andServiceSeq($svc->getSeq())->getCount($db) === 1 && (new User)->andSeq([1, 2])->getCount($db) === 2, 'delete(true) result');
-check((new ServiceModule)->andServiceSeq($svc->getSeq())->delete($db) === 1, 'cascade cleanup');
+check((new ServiceMember)->andServiceSeq($svc->getSeq())->bind($db)->getCount() === 0 && (new Service)->bind($db)->getBySeq($svc->getSeq()) === null
+    && (new ServiceModule)->andServiceSeq($svc->getSeq())->bind($db)->getCount() === 1 && (new User)->andSeq([1, 2])->bind($db)->getCount() === 2, 'delete(true) result');
+check((new ServiceModule)->andServiceSeq($svc->getSeq())->bind($db)->delete() === 1, 'cascade cleanup');
 
 // ---- 14. memoization: the same (class, name) decodes once; a second chain is identical ----
 $m1 = (new Battle)->conditionServiceSeqAndIsClose(7, 0);
@@ -307,12 +324,12 @@ $m2 = (new Battle)->conditionServiceSeqAndIsClose(7, 0);
 check(shape($m1, 'count') === shape($m2, 'count') && Compat::decode(Battle::class, 'battle', 'conditionServiceSeqAndIsClose') === Compat::decode(Battle::class, 'battle', 'conditionServiceSeqAndIsClose'), 'memoized decode is stable');
 
 // ---- 15. errors ----
-code(fn() => (new Battle)->and('(')->conditionIsDisplay(1)->leftJoinUserSeqWithSeq((new User)->onLkName('u')->condition(')'))->getCount($db),
+code(fn() => (new Battle)->and('(')->conditionIsDisplay(1)->leftJoinUserSeqWithSeq((new User)->onLkName('u')->condition(')'))->bind($db)->getCount(),
     Code::PAREN_ACROSS_MODELS, 'join child closes the parent\'s paren', "')' in the user chain closes a '(' opened in the battle chain");
-code(fn() => (new Battle)->relation((new User)->matchUserSeqWithSeq()->and('(')->conditionSeq(1))->getCount($db),
+code(fn() => (new Battle)->relation((new User)->matchUserSeqWithSeq()->and('(')->conditionSeq(1))->bind($db)->getCount(),
     Code::PAREN_ACROSS_MODELS, 'relation child attached with an open paren', "'(' opened in the user chain is still open when battle attaches it");
-code(fn() => (new Battle)->and('(')->conditionIsDisplay(1)->getCount($db), Code::PAREN_ACROSS_MODELS, 'root paren never closed', 'never closed');
-code(fn() => (new Battle)->conditionIsDisplay(1)->condition(')')->getCount($db), Code::PAREN_ACROSS_MODELS, 'root closes nothing', "closes no '('");
+code(fn() => (new Battle)->and('(')->conditionIsDisplay(1)->bind($db)->getCount(), Code::PAREN_ACROSS_MODELS, 'root paren never closed', 'never closed');
+code(fn() => (new Battle)->conditionIsDisplay(1)->condition(')')->bind($db)->getCount(), Code::PAREN_ACROSS_MODELS, 'root closes nothing', "closes no '('");
 code(fn() => (new Battle)->serviceSeqEq(7)->and(fn(BattleWhere $w) => $w->andIsClose(0)->condition(')')), Code::PAREN_ACROSS_MODELS, 'Where closure closes nothing');
 code(fn() => (new Battle)->andIsClos(1), Code::COLUMN_UNKNOWN, 'unknown column lists candidates', 'is_close, is_display');
 code(fn() => (new Battle)->andGtNope(1), Code::COLUMN_UNKNOWN, 'unknown column after an op word', 'nope');
@@ -321,7 +338,7 @@ code(fn() => (new Battle)->relation((new User)->matchSeqWithSeq()), Code::RELATI
 code(fn() => (new Battle)->relation((new User)->matchUserSeqWithSeq()->aliasOwner()->relation((new Service)->matchSeqWithSeq())), Code::RELATION_UNKNOWN, 'unknown pair deeper in the tree');
 code(fn() => (new Battle)->joinSeqWithSeq(new Service), Code::RELATION_UNKNOWN, 'join on an undeclared pair');
 code(fn() => (new Battle)->conditionServiceSeqAndIsClose(7), Code::IR_INVALID, 'argument count', 'expects 2 argument(s), 1 given');
-code(fn() => (new Battle)->andServiceSeq(7)->gets(), Code::IR_INVALID, 'gets() without the executor', 'first argument');
+code(fn() => (new Battle)->andServiceSeq(7)->gets(), Code::CONFIG, 'gets() without binding', 'bind a database');
 code(fn() => (new Battle)->andSeqWithUserSeq(new User), Code::IR_INVALID, 'column-to-column compat name is not translated', 'EqCol');
 code(fn() => (new Battle)->joinServiceSeqWithSeq(new Service, new User), Code::IR_INVALID, 'join off another joined model', 'nest the join');
 code(fn() => (new Battle)->addColumn('name', fn() => 1), Code::IR_INVALID, 'callback column', 'compute it on the rows');

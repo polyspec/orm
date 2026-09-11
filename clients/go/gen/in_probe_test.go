@@ -21,7 +21,7 @@ func TestINListIsBucketed(t *testing.T) {
 		for i := range ids {
 			ids[i] = int64(i + 1)
 		}
-		got, err := gen.NewBattle().SeqIn(ids).Count(ctx, db)
+		got, err := gen.Battle().SeqIn(ids).Bind(ctx, db).Count()
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -24,16 +24,16 @@ $db = Db::mysql(orm_test_dsn(), 'root', '');
 $now = '2026-09-11 00:00:00';
 
 $query = fn() => (new Battle)
-    ->serviceSeqEq(7)
-    ->isCloseEq(false)
+    ->serviceSeq(7)
+    ->isClose(false)
     ->and(fn(BattleWhere $w) => $w
-        ->isDisplayEq(true)
+        ->isDisplay(true)
         ->or()
-        ->and(fn(BattleWhere $w) => $w->isDisplayEq(false)->displayStartDtLt($now)))
+        ->and(fn(BattleWhere $w) => $w->isDisplay(false)->displayStartDtLt($now)))
     ->seqIn([6, 106, 206, 306, 406])
     ->orderBySeqDesc()
     ->limit(0, 3)
-    ->all($db);
+    ->bind($db)->gets();
 
 $out = [];
 foreach ($query() as $r) {

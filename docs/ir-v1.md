@@ -1,5 +1,7 @@
 # IR v1 스펙
 
+> 이전 설계 문서. 현행 구현 기준은 [공통 인터페이스](interfaces.md), [DSL](dsl.md), [프로토콜](protocol.md), [스키마](schema.md)다.
+
 목표: **스키마 1개 → 파서 1개 → spec.json(IR) → 렌더러 3개(PHP/Go/Rust)**.
 렌더러는 파싱을 하지 않는다. IR을 읽어 이름을 조합만 한다.
 
@@ -71,11 +73,11 @@ schema/*.sql  ──파서──▶  spec/*.json  ──▶ php.tmpl / go.tmpl /
 | `inet` | `string` | `netip.Addr` | `std::net::IpAddr` |
 | `enum` | `string` | `string` + const | `enum` |
 
-`timestamp`는 compatibility 관례대로 unix epoch **정수**다. MySQL `TIMESTAMP` 컬럼은 `datetime`으로 매핑한다.
+`timestamp`는 unix epoch **정수**다. MySQL `TIMESTAMP` 컬럼은 `datetime`으로 매핑한다.
 
 nullable: PHP `?T` / Go `*T` / Rust `Option<T>`. Go는 `sql.NullX`를 쓰지 않는다 — 세 언어의 모양이 갈라진다.
 
-### 2.2 dataStyle (compatibility 계승)
+### 2.2 dataStyle
 
 파이프라인 배열이다. **쓰기는 배열 순서대로, 읽기는 역순.**
 
@@ -86,7 +88,7 @@ nullable: PHP `?T` / Go `*T` / Rust `Option<T>`. Go는 `sql.NullX`를 쓰지 않
 "style": ["ip"]                // INET6_ATON / INET6_NTOA
 ```
 
-compatibility의 단일 문자열(`aes_serialize`, `aes_hex`)을 분해한 것이다. 조합이 생길 때마다 새 이름을 만들지 않아도 된다.
+단일 문자열 스타일(`aes_serialize`, `aes_hex`)을 단계별 목록으로 분해한 것이다. 조합이 생길 때마다 새 이름을 만들지 않아도 된다.
 
 | stage | 인코드 | 디코드 | 위치 |
 |---|---|---|---|
@@ -141,7 +143,7 @@ SQL 위치 stage가 있으면 SELECT 목록과 바인드가 같이 바뀌므로,
 
 `kind`: `one` | `many`. 메서드는 `withProfile()` / `WithProfile()` / `with_profile()`.
 
-로딩은 compatibility의 `getRelationsData`와 동일하다 — 부모 행들의 `local` 값을 모아 dedup 후
+로딩은 부모 행들의 `local` 값을 모아 dedup 후
 `IN (...)` 한 번. 관계당 쿼리 1개. `kind:"many"`는 foreign이 유니크하지 않으므로
 자식 PK 기준으로 전량 조회 후 앱에서 그룹핑한다.
 
@@ -155,7 +157,7 @@ SQL 위치 stage가 있으면 SELECT 목록과 바인드가 같이 바뀌므로,
 4. `style`에 `serialize` + 다중 언어 타깃 → **경고**.
 5. `primary_key`가 `columns`에 없음 → **에러**.
 
-1·2는 compatibility 런타임에서 조용히 깨지던 것을 빌드 타임으로 끌어올린 것이다.
+1·2는 런타임의 조용한 실패를 빌드 타임 검증으로 끌어올린 것이다.
 
 ## 5. 패리티 테스트
 

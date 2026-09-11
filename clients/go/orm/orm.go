@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -127,7 +128,7 @@ func CheckSchemaHash(eng *engine.Engine, generated string) error {
 	return nil
 }
 
-// Exec is what terminals take: a *DB or a *Tx.
+// Exec is the handle bound to a query: a *DB or a *Tx.
 type Exec interface {
 	DB() *DB
 	db() *DB
@@ -160,13 +161,17 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 
 // Tx is a transaction handle; it reuses the DB's prepared statements.
 type Tx struct {
-	d  *DB
-	tx *sql.Tx
+	d        *DB
+	tx       *sql.Tx
+	finished atomic.Bool
 }
 
 func (t *Tx) db() *DB { return t.d }
 
 func (t *Tx) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
+	if t.finished.Load() {
+		return nil, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
 	st, err := t.d.stmt(ctx, sqlText)
 	if err != nil {
 		return nil, err
@@ -175,8 +180,8 @@ func (t *Tx) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 }
 
 // Transaction runs fn in a transaction. An error or panic rolls back. On a
-// deadlock the whole closure is re-run in a new transaction (compatibility
-// behaviour), at most 3 attempts with 50ms·2^n + jitter between them.
+// deadlock the whole closure is re-run in a new transaction, at most 3 attempts
+// with 50ms·2^n + jitter between them.
 func Transaction[T any](ctx context.Context, d *DB, fn func(*Tx) (T, error)) (T, error) {
 	var zero T
 	var lastErr error
@@ -204,13 +209,15 @@ func runTx[T any](ctx context.Context, d *DB, fn func(*Tx) (T, error)) (v T, err
 	if err != nil {
 		return v, mapDriverErr(err)
 	}
+	ex := &Tx{d: d, tx: tx}
+	defer ex.finished.Store(true)
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
 			panic(r)
 		}
 	}()
-	v, err = fn(&Tx{d: d, tx: tx})
+	v, err = fn(ex)
 	if err != nil {
 		tx.Rollback()
 		return v, err
@@ -301,9 +308,12 @@ func (r *Req) P(v any) int {
 // Attach merges a child query built with its own Req into this request:
 // the child's params are appended and every index in its tree is shifted.
 func (r *Req) Attach(child *Req) *ir.Query {
+	if r.Err == nil {
+		r.Err = child.Err
+	}
 	off := len(r.Params)
 	r.Params = append(r.Params, child.Params...)
-	q := child.IR.Query
+	q := ir.CloneQuery(child.IR.Query)
 	shiftQuery(&q, off)
 	return &q
 }
@@ -311,6 +321,7 @@ func (r *Req) Attach(child *Req) *ir.Query {
 func shiftQuery(q *ir.Query, off int) {
 	shiftGroup(q.On, off)
 	shiftGroup(q.Where, off)
+	shiftGroup(q.Having, off)
 	for _, j := range q.Joins {
 		shiftQuery(j.Query, off)
 	}
@@ -560,6 +571,7 @@ func Transform(kind, s string) string {
 // every relation step's rows, grouped by their match column so generated
 // scanners can attach them (Related).
 type Rows struct {
+	Binding  Binding
 	Assemble *plan.Assemble
 	Data     [][]any
 	c        *cached
@@ -667,7 +679,7 @@ func runPlan(ctx context.Context, ex Exec, c *cached, r *Req) (*Rows, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := &Rows{Assemble: p.Steps[0].Assemble, Data: main, c: c, params: r.Params}
+	out := &Rows{Binding: NewBinding(ctx, ex), Assemble: p.Steps[0].Assemble, Data: main, c: c, params: r.Params}
 	for i := range p.Steps[1:] {
 		st := &p.Steps[i+1]
 		if st.Role != "relation" {
@@ -1080,6 +1092,13 @@ func KeyOf(v any) Key {
 		return Key{S: x, isStr: true}
 	case []byte:
 		return Key{S: string(x), isStr: true}
+	case bool:
+		if x {
+			return Key{S: "1", isStr: true}
+		}
+		return Key{S: "0", isStr: true}
+	case nil:
+		return Key{S: "", isStr: true}
 	}
 	return Key{S: fmt.Sprint(v), isStr: true}
 }
@@ -1089,6 +1108,14 @@ func (k Key) String() string {
 		return k.S
 	}
 	return fmt.Sprint(k.I)
+}
+
+// Value preserves the key's integer/string distinction.
+func (k Key) Value() any {
+	if k.isStr {
+		return k.S
+	}
+	return k.I
 }
 
 // Collection is an ordered map keyed by PK (or key_by). Never nil from a terminal.
@@ -1110,6 +1137,21 @@ func (c *Collection[T]) Put(k Key, v *T) {
 
 func (c *Collection[T]) Get(k Key) *T { return c.items[k] }
 func (c *Collection[T]) Len() int     { return len(c.keys) }
+
+func (c *Collection[T]) Keys() []Key { return append([]Key(nil), c.keys...) }
+
+type Entry[T any] struct {
+	Key   Key
+	Value *T
+}
+
+func (c *Collection[T]) Entries() []Entry[T] {
+	out := make([]Entry[T], 0, len(c.keys))
+	for _, k := range c.keys {
+		out = append(out, Entry[T]{Key: k, Value: c.items[k]})
+	}
+	return out
+}
 
 func (c *Collection[T]) First() *T {
 	if len(c.keys) == 0 {

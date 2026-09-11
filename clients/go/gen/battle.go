@@ -570,45 +570,67 @@ func (r *BattleRow) GetUser() *UserRow {
 }
 
 // Update writes the columns changed through Set*.
-func (r *BattleRow) Update(ctx context.Context, ex orm.Exec) error {
+func (r *BattleRow) Update() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
 	return r.UpdateRow(ctx, ex, "", nil)
 }
 
 // UpdateOptimistic fails with OPTIMISTIC_LOCK when updated_ts changed since the row was read.
-func (r *BattleRow) UpdateOptimistic(ctx context.Context, ex orm.Exec) error {
-	return r.UpdateRow(ctx, ex, "updated_ts", r.UpdatedTs)
+func (r *BattleRow) UpdateOptimistic() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
+	return r.UpdateRow(ctx, ex, "updated_ts", r.OriginalVersion())
 }
 
-func (r *BattleRow) Delete(ctx context.Context, ex orm.Exec) error { return r.DeleteRow(ctx, ex) }
+func (r *BattleRow) Delete() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
+	return r.DeleteRow(ctx, ex)
+}
 
 // DeleteCascade deletes the loaded relations this row owns (the assemble's
 // cascade children, in load order, each row through its own DeleteCascade)
 // and then this row. A bare DB runs the whole walk in one transaction.
-func (r *BattleRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
+func (r *BattleRow) DeleteCascade() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
+	return r.deleteCascade(ctx, ex)
+}
+
+func (r *BattleRow) deleteCascade(ctx context.Context, ex orm.Exec) error {
 	return orm.InTx(ctx, ex, func(ex orm.Exec) error {
 		for _, rel := range r.Cascades() {
 			switch rel {
 			case "service":
 				if r.Service != nil {
-					if err := r.Service.DeleteCascade(ctx, ex); err != nil {
+					if err := r.Service.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
 			case "service_member":
 				if r.ServiceMember != nil {
-					if err := r.ServiceMember.DeleteCascade(ctx, ex); err != nil {
+					if err := r.ServiceMember.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
 			case "service_module":
 				if r.ServiceModule != nil {
-					if err := r.ServiceModule.DeleteCascade(ctx, ex); err != nil {
+					if err := r.ServiceModule.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
 			case "user":
 				if r.User != nil {
-					if err := r.User.DeleteCascade(ctx, ex); err != nil {
+					if err := r.User.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
@@ -622,6 +644,7 @@ func (r *BattleRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
 // children (same row) and its relation children (rows of later steps).
 func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 	r := &BattleRow{}
+	r.Binding = rs.Binding
 	for _, c := range a.Columns {
 		v := vals[c.Index]
 		switch c.Name {
@@ -760,6 +783,9 @@ func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 	}
 	r.SetProjection(rs.Projection(a))
 	r.Mark("battle", "seq", r.Seq)
+	if r.Has("updated_ts") {
+		r.SnapshotVersion(r.UpdatedTs)
+	}
 	return r
 }
 
@@ -996,19 +1022,33 @@ var BattleCols = struct {
 	SerializeData:         orm.ColRef{Column: "serialize_data"},
 }
 
-// Battle builds a statement over battle: NewBattle() → chain → terminal(ctx, db).
-type Battle struct {
-	q     *orm.Q
-	keyFn func(*BattleRow) orm.Key // KeyByFn: client-side keying of the root collection
+// BattleQuery builds a statement over battle: Battle() → Bind(ctx, db) → chain → terminal().
+type BattleQuery struct {
+	binding orm.Binding
+	q       *orm.Q
+	keyFn   func(*BattleRow) orm.Key // KeyByFn: client-side keying of the root collection
 }
 
 // KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
-func (q *Battle) KeyByFn(fn func(*BattleRow) orm.Key) *Battle { q.keyFn = fn; return q }
+func (q *BattleQuery) KeyByFn(fn func(*BattleRow) orm.Key) *BattleQuery { q.keyFn = fn; return q }
 
 // Req exposes the underlying request (debugging, plan inspection).
-func (q *Battle) Req() *orm.Req { return q.q.Req }
+func (q *BattleQuery) Req() *orm.Req { return q.q.Req }
 
-func NewBattle() *Battle { return &Battle{q: orm.NewQ(mustEngine(), "battle")} }
+// Battle starts a query over battle.
+func Battle() *BattleQuery { return &BattleQuery{q: orm.NewQ(mustEngine(), "battle")} }
+
+// Bind selects the context and pool or transaction for this query.
+func (q *BattleQuery) Bind(ctx context.Context, ex orm.Exec) *BattleQuery {
+	q.binding = orm.NewBinding(ctx, ex)
+	return q
+}
+
+// Bind selects the context and pool or transaction for this loaded row.
+func (r *BattleRow) Bind(ctx context.Context, ex orm.Exec) *BattleRow {
+	r.Binding = orm.NewBinding(ctx, ex)
+	return r
+}
 
 // BattleWhere edits one WHERE/ON group of battle.
 type BattleWhere struct{ w *orm.W }
@@ -1040,27 +1080,32 @@ func (w *BattleWhere) User(fn func(*UserWhere)) *BattleWhere {
 }
 
 func (w *BattleWhere) SeqEq(v int64) *BattleWhere    { w.w.Pred("seq", "eq", v); return w }
-func (q *Battle) SeqEq(v int64) *Battle              { q.q.W().Pred("seq", "eq", v); return q }
+func (q *BattleQuery) SeqEq(v int64) *BattleQuery    { q.q.W().Pred("seq", "eq", v); return q }
+func (w *BattleWhere) Seq(v int64) *BattleWhere      { return w.SeqEq(v) }
+func (q *BattleQuery) Seq(v int64) *BattleQuery      { return q.SeqEq(v) }
 func (w *BattleWhere) SeqNotEq(v int64) *BattleWhere { w.w.Pred("seq", "not_eq", v); return w }
-func (q *Battle) SeqNotEq(v int64) *Battle           { q.q.W().Pred("seq", "not_eq", v); return q }
+func (q *BattleQuery) SeqNotEq(v int64) *BattleQuery { q.q.W().Pred("seq", "not_eq", v); return q }
 func (w *BattleWhere) SeqGt(v int64) *BattleWhere    { w.w.Pred("seq", "gt", v); return w }
-func (q *Battle) SeqGt(v int64) *Battle              { q.q.W().Pred("seq", "gt", v); return q }
+func (q *BattleQuery) SeqGt(v int64) *BattleQuery    { q.q.W().Pred("seq", "gt", v); return q }
 func (w *BattleWhere) SeqGte(v int64) *BattleWhere   { w.w.Pred("seq", "gte", v); return w }
-func (q *Battle) SeqGte(v int64) *Battle             { q.q.W().Pred("seq", "gte", v); return q }
+func (q *BattleQuery) SeqGte(v int64) *BattleQuery   { q.q.W().Pred("seq", "gte", v); return q }
 func (w *BattleWhere) SeqLt(v int64) *BattleWhere    { w.w.Pred("seq", "lt", v); return w }
-func (q *Battle) SeqLt(v int64) *Battle              { q.q.W().Pred("seq", "lt", v); return q }
+func (q *BattleQuery) SeqLt(v int64) *BattleQuery    { q.q.W().Pred("seq", "lt", v); return q }
 func (w *BattleWhere) SeqLte(v int64) *BattleWhere   { w.w.Pred("seq", "lte", v); return w }
-func (q *Battle) SeqLte(v int64) *Battle             { q.q.W().Pred("seq", "lte", v); return q }
+func (q *BattleQuery) SeqLte(v int64) *BattleQuery   { q.q.W().Pred("seq", "lte", v); return q }
 func (w *BattleWhere) SeqIn(vs []int64) *BattleWhere {
 	w.w.PredList("seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) SeqIn(vs []int64) *Battle { q.q.W().PredList("seq", "in", orm.Anys(vs)); return q }
+func (q *BattleQuery) SeqIn(vs []int64) *BattleQuery {
+	q.q.W().PredList("seq", "in", orm.Anys(vs))
+	return q
+}
 func (w *BattleWhere) SeqNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) SeqNotIn(vs []int64) *Battle {
+func (q *BattleQuery) SeqNotIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -1068,19 +1113,19 @@ func (w *BattleWhere) SeqBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("seq", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) SeqBetween(lo, hi int64) *Battle {
+func (q *BattleQuery) SeqBetween(lo, hi int64) *BattleQuery {
 	q.q.W().PredList("seq", "between", []any{lo, hi})
 	return q
 }
 func (w *BattleWhere) SeqIsNull() *BattleWhere    { w.w.PredNull("seq", "is_null"); return w }
-func (q *Battle) SeqIsNull() *Battle              { q.q.W().PredNull("seq", "is_null"); return q }
+func (q *BattleQuery) SeqIsNull() *BattleQuery    { q.q.W().PredNull("seq", "is_null"); return q }
 func (w *BattleWhere) SeqIsNotNull() *BattleWhere { w.w.PredNull("seq", "is_not_null"); return w }
-func (q *Battle) SeqIsNotNull() *Battle           { q.q.W().PredNull("seq", "is_not_null"); return q }
+func (q *BattleQuery) SeqIsNotNull() *BattleQuery { q.q.W().PredNull("seq", "is_not_null"); return q }
 func (w *BattleWhere) SeqEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) SeqEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) SeqEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1088,7 +1133,7 @@ func (w *BattleWhere) SeqNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) SeqNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) SeqNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1096,7 +1141,7 @@ func (w *BattleWhere) SeqGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) SeqGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) SeqGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1104,7 +1149,7 @@ func (w *BattleWhere) SeqGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) SeqGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) SeqGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1112,7 +1157,7 @@ func (w *BattleWhere) SeqLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) SeqLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) SeqLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1120,52 +1165,69 @@ func (w *BattleWhere) SeqLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) SeqLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) SeqLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) NameEq(v string) *BattleWhere    { w.w.Pred("name", "eq", v); return w }
-func (q *Battle) NameEq(v string) *Battle              { q.q.W().Pred("name", "eq", v); return q }
+func (q *BattleQuery) NameEq(v string) *BattleQuery    { q.q.W().Pred("name", "eq", v); return q }
+func (w *BattleWhere) Name(v string) *BattleWhere      { return w.NameEq(v) }
+func (q *BattleQuery) Name(v string) *BattleQuery      { return q.NameEq(v) }
 func (w *BattleWhere) NameNotEq(v string) *BattleWhere { w.w.Pred("name", "not_eq", v); return w }
-func (q *Battle) NameNotEq(v string) *Battle           { q.q.W().Pred("name", "not_eq", v); return q }
+func (q *BattleQuery) NameNotEq(v string) *BattleQuery { q.q.W().Pred("name", "not_eq", v); return q }
 func (w *BattleWhere) NameIn(vs []string) *BattleWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) NameIn(vs []string) *Battle { q.q.W().PredList("name", "in", orm.Anys(vs)); return q }
+func (q *BattleQuery) NameIn(vs []string) *BattleQuery {
+	q.q.W().PredList("name", "in", orm.Anys(vs))
+	return q
+}
 func (w *BattleWhere) NameNotIn(vs []string) *BattleWhere {
 	w.w.PredList("name", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) NameNotIn(vs []string) *Battle {
+func (q *BattleQuery) NameNotIn(vs []string) *BattleQuery {
 	q.q.W().PredList("name", "not_in", orm.Anys(vs))
 	return q
 }
 func (w *BattleWhere) NameLike(v string) *BattleWhere { w.w.Pred("name", "like", v); return w }
-func (q *Battle) NameLike(v string) *Battle           { q.q.W().Pred("name", "like", v); return q }
+func (q *BattleQuery) NameLike(v string) *BattleQuery { q.q.W().Pred("name", "like", v); return q }
 func (w *BattleWhere) NameLikeBinary(v string) *BattleWhere {
 	w.w.Pred("name", "like_binary", v)
 	return w
 }
-func (q *Battle) NameLikeBinary(v string) *Battle         { q.q.W().Pred("name", "like_binary", v); return q }
+func (q *BattleQuery) NameLikeBinary(v string) *BattleQuery {
+	q.q.W().Pred("name", "like_binary", v)
+	return q
+}
 func (w *BattleWhere) NameContains(v string) *BattleWhere { w.w.Pred("name", "contains", v); return w }
-func (q *Battle) NameContains(v string) *Battle           { q.q.W().Pred("name", "contains", v); return q }
+func (q *BattleQuery) NameContains(v string) *BattleQuery {
+	q.q.W().Pred("name", "contains", v)
+	return q
+}
 func (w *BattleWhere) NameStartsWith(v string) *BattleWhere {
 	w.w.Pred("name", "starts_with", v)
 	return w
 }
-func (q *Battle) NameStartsWith(v string) *Battle         { q.q.W().Pred("name", "starts_with", v); return q }
+func (q *BattleQuery) NameStartsWith(v string) *BattleQuery {
+	q.q.W().Pred("name", "starts_with", v)
+	return q
+}
 func (w *BattleWhere) NameEndsWith(v string) *BattleWhere { w.w.Pred("name", "ends_with", v); return w }
-func (q *Battle) NameEndsWith(v string) *Battle           { q.q.W().Pred("name", "ends_with", v); return q }
-func (w *BattleWhere) NameIsNull() *BattleWhere           { w.w.PredNull("name", "is_null"); return w }
-func (q *Battle) NameIsNull() *Battle                     { q.q.W().PredNull("name", "is_null"); return q }
-func (w *BattleWhere) NameIsNotNull() *BattleWhere        { w.w.PredNull("name", "is_not_null"); return w }
-func (q *Battle) NameIsNotNull() *Battle                  { q.q.W().PredNull("name", "is_not_null"); return q }
+func (q *BattleQuery) NameEndsWith(v string) *BattleQuery {
+	q.q.W().Pred("name", "ends_with", v)
+	return q
+}
+func (w *BattleWhere) NameIsNull() *BattleWhere    { w.w.PredNull("name", "is_null"); return w }
+func (q *BattleQuery) NameIsNull() *BattleQuery    { q.q.W().PredNull("name", "is_null"); return q }
+func (w *BattleWhere) NameIsNotNull() *BattleWhere { w.w.PredNull("name", "is_not_null"); return w }
+func (q *BattleQuery) NameIsNotNull() *BattleQuery { q.q.W().PredNull("name", "is_not_null"); return q }
 func (w *BattleWhere) NameEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("name", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) NameEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) NameEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("name", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1173,7 +1235,7 @@ func (w *BattleWhere) NameNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) NameNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) NameNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1181,12 +1243,17 @@ func (w *BattleWhere) DescriptionEq(v string) *BattleWhere {
 	w.w.Pred("description", "eq", v)
 	return w
 }
-func (q *Battle) DescriptionEq(v string) *Battle { q.q.W().Pred("description", "eq", v); return q }
+func (q *BattleQuery) DescriptionEq(v string) *BattleQuery {
+	q.q.W().Pred("description", "eq", v)
+	return q
+}
+func (w *BattleWhere) Description(v string) *BattleWhere { return w.DescriptionEq(v) }
+func (q *BattleQuery) Description(v string) *BattleQuery { return q.DescriptionEq(v) }
 func (w *BattleWhere) DescriptionNotEq(v string) *BattleWhere {
 	w.w.Pred("description", "not_eq", v)
 	return w
 }
-func (q *Battle) DescriptionNotEq(v string) *Battle {
+func (q *BattleQuery) DescriptionNotEq(v string) *BattleQuery {
 	q.q.W().Pred("description", "not_eq", v)
 	return q
 }
@@ -1194,12 +1261,15 @@ func (w *BattleWhere) DescriptionLike(v string) *BattleWhere {
 	w.w.Pred("description", "like", v)
 	return w
 }
-func (q *Battle) DescriptionLike(v string) *Battle { q.q.W().Pred("description", "like", v); return q }
+func (q *BattleQuery) DescriptionLike(v string) *BattleQuery {
+	q.q.W().Pred("description", "like", v)
+	return q
+}
 func (w *BattleWhere) DescriptionLikeBinary(v string) *BattleWhere {
 	w.w.Pred("description", "like_binary", v)
 	return w
 }
-func (q *Battle) DescriptionLikeBinary(v string) *Battle {
+func (q *BattleQuery) DescriptionLikeBinary(v string) *BattleQuery {
 	q.q.W().Pred("description", "like_binary", v)
 	return q
 }
@@ -1207,7 +1277,7 @@ func (w *BattleWhere) DescriptionContains(v string) *BattleWhere {
 	w.w.Pred("description", "contains", v)
 	return w
 }
-func (q *Battle) DescriptionContains(v string) *Battle {
+func (q *BattleQuery) DescriptionContains(v string) *BattleQuery {
 	q.q.W().Pred("description", "contains", v)
 	return q
 }
@@ -1215,7 +1285,7 @@ func (w *BattleWhere) DescriptionStartsWith(v string) *BattleWhere {
 	w.w.Pred("description", "starts_with", v)
 	return w
 }
-func (q *Battle) DescriptionStartsWith(v string) *Battle {
+func (q *BattleQuery) DescriptionStartsWith(v string) *BattleQuery {
 	q.q.W().Pred("description", "starts_with", v)
 	return q
 }
@@ -1223,7 +1293,7 @@ func (w *BattleWhere) DescriptionEndsWith(v string) *BattleWhere {
 	w.w.Pred("description", "ends_with", v)
 	return w
 }
-func (q *Battle) DescriptionEndsWith(v string) *Battle {
+func (q *BattleQuery) DescriptionEndsWith(v string) *BattleQuery {
 	q.q.W().Pred("description", "ends_with", v)
 	return q
 }
@@ -1231,12 +1301,15 @@ func (w *BattleWhere) DescriptionIsNull() *BattleWhere {
 	w.w.PredNull("description", "is_null")
 	return w
 }
-func (q *Battle) DescriptionIsNull() *Battle { q.q.W().PredNull("description", "is_null"); return q }
+func (q *BattleQuery) DescriptionIsNull() *BattleQuery {
+	q.q.W().PredNull("description", "is_null")
+	return q
+}
 func (w *BattleWhere) DescriptionIsNotNull() *BattleWhere {
 	w.w.PredNull("description", "is_not_null")
 	return w
 }
-func (q *Battle) DescriptionIsNotNull() *Battle {
+func (q *BattleQuery) DescriptionIsNotNull() *BattleQuery {
 	q.q.W().PredNull("description", "is_not_null")
 	return q
 }
@@ -1244,7 +1317,7 @@ func (w *BattleWhere) DescriptionEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("description", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DescriptionEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DescriptionEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("description", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1252,7 +1325,7 @@ func (w *BattleWhere) DescriptionNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("description", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DescriptionNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DescriptionNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("description", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1260,12 +1333,17 @@ func (w *BattleWhere) CreatedTsEq(v time.Time) *BattleWhere {
 	w.w.Pred("created_ts", "eq", v)
 	return w
 }
-func (q *Battle) CreatedTsEq(v time.Time) *Battle { q.q.W().Pred("created_ts", "eq", v); return q }
+func (q *BattleQuery) CreatedTsEq(v time.Time) *BattleQuery {
+	q.q.W().Pred("created_ts", "eq", v)
+	return q
+}
+func (w *BattleWhere) CreatedTs(v time.Time) *BattleWhere { return w.CreatedTsEq(v) }
+func (q *BattleQuery) CreatedTs(v time.Time) *BattleQuery { return q.CreatedTsEq(v) }
 func (w *BattleWhere) CreatedTsNotEq(v time.Time) *BattleWhere {
 	w.w.Pred("created_ts", "not_eq", v)
 	return w
 }
-func (q *Battle) CreatedTsNotEq(v time.Time) *Battle {
+func (q *BattleQuery) CreatedTsNotEq(v time.Time) *BattleQuery {
 	q.q.W().Pred("created_ts", "not_eq", v)
 	return q
 }
@@ -1273,27 +1351,39 @@ func (w *BattleWhere) CreatedTsGt(v time.Time) *BattleWhere {
 	w.w.Pred("created_ts", "gt", v)
 	return w
 }
-func (q *Battle) CreatedTsGt(v time.Time) *Battle { q.q.W().Pred("created_ts", "gt", v); return q }
+func (q *BattleQuery) CreatedTsGt(v time.Time) *BattleQuery {
+	q.q.W().Pred("created_ts", "gt", v)
+	return q
+}
 func (w *BattleWhere) CreatedTsGte(v time.Time) *BattleWhere {
 	w.w.Pred("created_ts", "gte", v)
 	return w
 }
-func (q *Battle) CreatedTsGte(v time.Time) *Battle { q.q.W().Pred("created_ts", "gte", v); return q }
+func (q *BattleQuery) CreatedTsGte(v time.Time) *BattleQuery {
+	q.q.W().Pred("created_ts", "gte", v)
+	return q
+}
 func (w *BattleWhere) CreatedTsLt(v time.Time) *BattleWhere {
 	w.w.Pred("created_ts", "lt", v)
 	return w
 }
-func (q *Battle) CreatedTsLt(v time.Time) *Battle { q.q.W().Pred("created_ts", "lt", v); return q }
+func (q *BattleQuery) CreatedTsLt(v time.Time) *BattleQuery {
+	q.q.W().Pred("created_ts", "lt", v)
+	return q
+}
 func (w *BattleWhere) CreatedTsLte(v time.Time) *BattleWhere {
 	w.w.Pred("created_ts", "lte", v)
 	return w
 }
-func (q *Battle) CreatedTsLte(v time.Time) *Battle { q.q.W().Pred("created_ts", "lte", v); return q }
+func (q *BattleQuery) CreatedTsLte(v time.Time) *BattleQuery {
+	q.q.W().Pred("created_ts", "lte", v)
+	return q
+}
 func (w *BattleWhere) CreatedTsIn(vs []time.Time) *BattleWhere {
 	w.w.PredList("created_ts", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) CreatedTsIn(vs []time.Time) *Battle {
+func (q *BattleQuery) CreatedTsIn(vs []time.Time) *BattleQuery {
 	q.q.W().PredList("created_ts", "in", orm.Anys(vs))
 	return q
 }
@@ -1301,7 +1391,7 @@ func (w *BattleWhere) CreatedTsNotIn(vs []time.Time) *BattleWhere {
 	w.w.PredList("created_ts", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) CreatedTsNotIn(vs []time.Time) *Battle {
+func (q *BattleQuery) CreatedTsNotIn(vs []time.Time) *BattleQuery {
 	q.q.W().PredList("created_ts", "not_in", orm.Anys(vs))
 	return q
 }
@@ -1309,17 +1399,20 @@ func (w *BattleWhere) CreatedTsBetween(lo, hi time.Time) *BattleWhere {
 	w.w.PredList("created_ts", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) CreatedTsBetween(lo, hi time.Time) *Battle {
+func (q *BattleQuery) CreatedTsBetween(lo, hi time.Time) *BattleQuery {
 	q.q.W().PredList("created_ts", "between", []any{lo, hi})
 	return q
 }
 func (w *BattleWhere) CreatedTsIsNull() *BattleWhere { w.w.PredNull("created_ts", "is_null"); return w }
-func (q *Battle) CreatedTsIsNull() *Battle           { q.q.W().PredNull("created_ts", "is_null"); return q }
+func (q *BattleQuery) CreatedTsIsNull() *BattleQuery {
+	q.q.W().PredNull("created_ts", "is_null")
+	return q
+}
 func (w *BattleWhere) CreatedTsIsNotNull() *BattleWhere {
 	w.w.PredNull("created_ts", "is_not_null")
 	return w
 }
-func (q *Battle) CreatedTsIsNotNull() *Battle {
+func (q *BattleQuery) CreatedTsIsNotNull() *BattleQuery {
 	q.q.W().PredNull("created_ts", "is_not_null")
 	return q
 }
@@ -1327,7 +1420,7 @@ func (w *BattleWhere) CreatedTsEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("created_ts", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) CreatedTsEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) CreatedTsEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("created_ts", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1335,7 +1428,7 @@ func (w *BattleWhere) CreatedTsNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("created_ts", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) CreatedTsNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) CreatedTsNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("created_ts", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1343,7 +1436,7 @@ func (w *BattleWhere) CreatedTsGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("created_ts", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) CreatedTsGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) CreatedTsGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("created_ts", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1351,7 +1444,7 @@ func (w *BattleWhere) CreatedTsGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("created_ts", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) CreatedTsGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) CreatedTsGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("created_ts", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1359,7 +1452,7 @@ func (w *BattleWhere) CreatedTsLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("created_ts", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) CreatedTsLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) CreatedTsLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("created_ts", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1367,7 +1460,7 @@ func (w *BattleWhere) CreatedTsLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("created_ts", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) CreatedTsLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) CreatedTsLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("created_ts", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1375,12 +1468,17 @@ func (w *BattleWhere) UpdatedTsEq(v time.Time) *BattleWhere {
 	w.w.Pred("updated_ts", "eq", v)
 	return w
 }
-func (q *Battle) UpdatedTsEq(v time.Time) *Battle { q.q.W().Pred("updated_ts", "eq", v); return q }
+func (q *BattleQuery) UpdatedTsEq(v time.Time) *BattleQuery {
+	q.q.W().Pred("updated_ts", "eq", v)
+	return q
+}
+func (w *BattleWhere) UpdatedTs(v time.Time) *BattleWhere { return w.UpdatedTsEq(v) }
+func (q *BattleQuery) UpdatedTs(v time.Time) *BattleQuery { return q.UpdatedTsEq(v) }
 func (w *BattleWhere) UpdatedTsNotEq(v time.Time) *BattleWhere {
 	w.w.Pred("updated_ts", "not_eq", v)
 	return w
 }
-func (q *Battle) UpdatedTsNotEq(v time.Time) *Battle {
+func (q *BattleQuery) UpdatedTsNotEq(v time.Time) *BattleQuery {
 	q.q.W().Pred("updated_ts", "not_eq", v)
 	return q
 }
@@ -1388,27 +1486,39 @@ func (w *BattleWhere) UpdatedTsGt(v time.Time) *BattleWhere {
 	w.w.Pred("updated_ts", "gt", v)
 	return w
 }
-func (q *Battle) UpdatedTsGt(v time.Time) *Battle { q.q.W().Pred("updated_ts", "gt", v); return q }
+func (q *BattleQuery) UpdatedTsGt(v time.Time) *BattleQuery {
+	q.q.W().Pred("updated_ts", "gt", v)
+	return q
+}
 func (w *BattleWhere) UpdatedTsGte(v time.Time) *BattleWhere {
 	w.w.Pred("updated_ts", "gte", v)
 	return w
 }
-func (q *Battle) UpdatedTsGte(v time.Time) *Battle { q.q.W().Pred("updated_ts", "gte", v); return q }
+func (q *BattleQuery) UpdatedTsGte(v time.Time) *BattleQuery {
+	q.q.W().Pred("updated_ts", "gte", v)
+	return q
+}
 func (w *BattleWhere) UpdatedTsLt(v time.Time) *BattleWhere {
 	w.w.Pred("updated_ts", "lt", v)
 	return w
 }
-func (q *Battle) UpdatedTsLt(v time.Time) *Battle { q.q.W().Pred("updated_ts", "lt", v); return q }
+func (q *BattleQuery) UpdatedTsLt(v time.Time) *BattleQuery {
+	q.q.W().Pred("updated_ts", "lt", v)
+	return q
+}
 func (w *BattleWhere) UpdatedTsLte(v time.Time) *BattleWhere {
 	w.w.Pred("updated_ts", "lte", v)
 	return w
 }
-func (q *Battle) UpdatedTsLte(v time.Time) *Battle { q.q.W().Pred("updated_ts", "lte", v); return q }
+func (q *BattleQuery) UpdatedTsLte(v time.Time) *BattleQuery {
+	q.q.W().Pred("updated_ts", "lte", v)
+	return q
+}
 func (w *BattleWhere) UpdatedTsIn(vs []time.Time) *BattleWhere {
 	w.w.PredList("updated_ts", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) UpdatedTsIn(vs []time.Time) *Battle {
+func (q *BattleQuery) UpdatedTsIn(vs []time.Time) *BattleQuery {
 	q.q.W().PredList("updated_ts", "in", orm.Anys(vs))
 	return q
 }
@@ -1416,7 +1526,7 @@ func (w *BattleWhere) UpdatedTsNotIn(vs []time.Time) *BattleWhere {
 	w.w.PredList("updated_ts", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) UpdatedTsNotIn(vs []time.Time) *Battle {
+func (q *BattleQuery) UpdatedTsNotIn(vs []time.Time) *BattleQuery {
 	q.q.W().PredList("updated_ts", "not_in", orm.Anys(vs))
 	return q
 }
@@ -1424,17 +1534,20 @@ func (w *BattleWhere) UpdatedTsBetween(lo, hi time.Time) *BattleWhere {
 	w.w.PredList("updated_ts", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) UpdatedTsBetween(lo, hi time.Time) *Battle {
+func (q *BattleQuery) UpdatedTsBetween(lo, hi time.Time) *BattleQuery {
 	q.q.W().PredList("updated_ts", "between", []any{lo, hi})
 	return q
 }
 func (w *BattleWhere) UpdatedTsIsNull() *BattleWhere { w.w.PredNull("updated_ts", "is_null"); return w }
-func (q *Battle) UpdatedTsIsNull() *Battle           { q.q.W().PredNull("updated_ts", "is_null"); return q }
+func (q *BattleQuery) UpdatedTsIsNull() *BattleQuery {
+	q.q.W().PredNull("updated_ts", "is_null")
+	return q
+}
 func (w *BattleWhere) UpdatedTsIsNotNull() *BattleWhere {
 	w.w.PredNull("updated_ts", "is_not_null")
 	return w
 }
-func (q *Battle) UpdatedTsIsNotNull() *Battle {
+func (q *BattleQuery) UpdatedTsIsNotNull() *BattleQuery {
 	q.q.W().PredNull("updated_ts", "is_not_null")
 	return q
 }
@@ -1442,7 +1555,7 @@ func (w *BattleWhere) UpdatedTsEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("updated_ts", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UpdatedTsEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UpdatedTsEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("updated_ts", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1450,7 +1563,7 @@ func (w *BattleWhere) UpdatedTsNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("updated_ts", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UpdatedTsNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UpdatedTsNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("updated_ts", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1458,7 +1571,7 @@ func (w *BattleWhere) UpdatedTsGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("updated_ts", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UpdatedTsGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UpdatedTsGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("updated_ts", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1466,7 +1579,7 @@ func (w *BattleWhere) UpdatedTsGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("updated_ts", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UpdatedTsGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UpdatedTsGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("updated_ts", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1474,7 +1587,7 @@ func (w *BattleWhere) UpdatedTsLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("updated_ts", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UpdatedTsLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UpdatedTsLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("updated_ts", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1482,26 +1595,34 @@ func (w *BattleWhere) UpdatedTsLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("updated_ts", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UpdatedTsLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UpdatedTsLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("updated_ts", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) IsCloseEq(v bool) *BattleWhere    { w.w.Pred("is_close", "eq", v); return w }
-func (q *Battle) IsCloseEq(v bool) *Battle              { q.q.W().Pred("is_close", "eq", v); return q }
+func (q *BattleQuery) IsCloseEq(v bool) *BattleQuery    { q.q.W().Pred("is_close", "eq", v); return q }
+func (w *BattleWhere) IsClose(v bool) *BattleWhere      { return w.IsCloseEq(v) }
+func (q *BattleQuery) IsClose(v bool) *BattleQuery      { return q.IsCloseEq(v) }
 func (w *BattleWhere) IsCloseNotEq(v bool) *BattleWhere { w.w.Pred("is_close", "not_eq", v); return w }
-func (q *Battle) IsCloseNotEq(v bool) *Battle           { q.q.W().Pred("is_close", "not_eq", v); return q }
-func (w *BattleWhere) IsCloseIsNull() *BattleWhere      { w.w.PredNull("is_close", "is_null"); return w }
-func (q *Battle) IsCloseIsNull() *Battle                { q.q.W().PredNull("is_close", "is_null"); return q }
+func (q *BattleQuery) IsCloseNotEq(v bool) *BattleQuery {
+	q.q.W().Pred("is_close", "not_eq", v)
+	return q
+}
+func (w *BattleWhere) IsCloseIsNull() *BattleWhere { w.w.PredNull("is_close", "is_null"); return w }
+func (q *BattleQuery) IsCloseIsNull() *BattleQuery { q.q.W().PredNull("is_close", "is_null"); return q }
 func (w *BattleWhere) IsCloseIsNotNull() *BattleWhere {
 	w.w.PredNull("is_close", "is_not_null")
 	return w
 }
-func (q *Battle) IsCloseIsNotNull() *Battle { q.q.W().PredNull("is_close", "is_not_null"); return q }
+func (q *BattleQuery) IsCloseIsNotNull() *BattleQuery {
+	q.q.W().PredNull("is_close", "is_not_null")
+	return q
+}
 func (w *BattleWhere) IsCloseEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("is_close", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) IsCloseEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) IsCloseEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("is_close", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1509,24 +1630,32 @@ func (w *BattleWhere) IsCloseNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("is_close", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) IsCloseNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) IsCloseNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("is_close", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) IsDisplayEq(v bool) *BattleWhere { w.w.Pred("is_display", "eq", v); return w }
-func (q *Battle) IsDisplayEq(v bool) *Battle           { q.q.W().Pred("is_display", "eq", v); return q }
+func (q *BattleQuery) IsDisplayEq(v bool) *BattleQuery { q.q.W().Pred("is_display", "eq", v); return q }
+func (w *BattleWhere) IsDisplay(v bool) *BattleWhere   { return w.IsDisplayEq(v) }
+func (q *BattleQuery) IsDisplay(v bool) *BattleQuery   { return q.IsDisplayEq(v) }
 func (w *BattleWhere) IsDisplayNotEq(v bool) *BattleWhere {
 	w.w.Pred("is_display", "not_eq", v)
 	return w
 }
-func (q *Battle) IsDisplayNotEq(v bool) *Battle      { q.q.W().Pred("is_display", "not_eq", v); return q }
+func (q *BattleQuery) IsDisplayNotEq(v bool) *BattleQuery {
+	q.q.W().Pred("is_display", "not_eq", v)
+	return q
+}
 func (w *BattleWhere) IsDisplayIsNull() *BattleWhere { w.w.PredNull("is_display", "is_null"); return w }
-func (q *Battle) IsDisplayIsNull() *Battle           { q.q.W().PredNull("is_display", "is_null"); return q }
+func (q *BattleQuery) IsDisplayIsNull() *BattleQuery {
+	q.q.W().PredNull("is_display", "is_null")
+	return q
+}
 func (w *BattleWhere) IsDisplayIsNotNull() *BattleWhere {
 	w.w.PredNull("is_display", "is_not_null")
 	return w
 }
-func (q *Battle) IsDisplayIsNotNull() *Battle {
+func (q *BattleQuery) IsDisplayIsNotNull() *BattleQuery {
 	q.q.W().PredNull("is_display", "is_not_null")
 	return q
 }
@@ -1534,7 +1663,7 @@ func (w *BattleWhere) IsDisplayEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("is_display", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) IsDisplayEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) IsDisplayEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("is_display", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1542,7 +1671,7 @@ func (w *BattleWhere) IsDisplayNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("is_display", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) IsDisplayNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) IsDisplayNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("is_display", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1550,15 +1679,17 @@ func (w *BattleWhere) DisplayStartDtEq(v time.Time) *BattleWhere {
 	w.w.Pred("display_start_dt", "eq", v)
 	return w
 }
-func (q *Battle) DisplayStartDtEq(v time.Time) *Battle {
+func (q *BattleQuery) DisplayStartDtEq(v time.Time) *BattleQuery {
 	q.q.W().Pred("display_start_dt", "eq", v)
 	return q
 }
+func (w *BattleWhere) DisplayStartDt(v time.Time) *BattleWhere { return w.DisplayStartDtEq(v) }
+func (q *BattleQuery) DisplayStartDt(v time.Time) *BattleQuery { return q.DisplayStartDtEq(v) }
 func (w *BattleWhere) DisplayStartDtNotEq(v time.Time) *BattleWhere {
 	w.w.Pred("display_start_dt", "not_eq", v)
 	return w
 }
-func (q *Battle) DisplayStartDtNotEq(v time.Time) *Battle {
+func (q *BattleQuery) DisplayStartDtNotEq(v time.Time) *BattleQuery {
 	q.q.W().Pred("display_start_dt", "not_eq", v)
 	return q
 }
@@ -1566,7 +1697,7 @@ func (w *BattleWhere) DisplayStartDtGt(v time.Time) *BattleWhere {
 	w.w.Pred("display_start_dt", "gt", v)
 	return w
 }
-func (q *Battle) DisplayStartDtGt(v time.Time) *Battle {
+func (q *BattleQuery) DisplayStartDtGt(v time.Time) *BattleQuery {
 	q.q.W().Pred("display_start_dt", "gt", v)
 	return q
 }
@@ -1574,7 +1705,7 @@ func (w *BattleWhere) DisplayStartDtGte(v time.Time) *BattleWhere {
 	w.w.Pred("display_start_dt", "gte", v)
 	return w
 }
-func (q *Battle) DisplayStartDtGte(v time.Time) *Battle {
+func (q *BattleQuery) DisplayStartDtGte(v time.Time) *BattleQuery {
 	q.q.W().Pred("display_start_dt", "gte", v)
 	return q
 }
@@ -1582,7 +1713,7 @@ func (w *BattleWhere) DisplayStartDtLt(v time.Time) *BattleWhere {
 	w.w.Pred("display_start_dt", "lt", v)
 	return w
 }
-func (q *Battle) DisplayStartDtLt(v time.Time) *Battle {
+func (q *BattleQuery) DisplayStartDtLt(v time.Time) *BattleQuery {
 	q.q.W().Pred("display_start_dt", "lt", v)
 	return q
 }
@@ -1590,7 +1721,7 @@ func (w *BattleWhere) DisplayStartDtLte(v time.Time) *BattleWhere {
 	w.w.Pred("display_start_dt", "lte", v)
 	return w
 }
-func (q *Battle) DisplayStartDtLte(v time.Time) *Battle {
+func (q *BattleQuery) DisplayStartDtLte(v time.Time) *BattleQuery {
 	q.q.W().Pred("display_start_dt", "lte", v)
 	return q
 }
@@ -1598,7 +1729,7 @@ func (w *BattleWhere) DisplayStartDtIn(vs []time.Time) *BattleWhere {
 	w.w.PredList("display_start_dt", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) DisplayStartDtIn(vs []time.Time) *Battle {
+func (q *BattleQuery) DisplayStartDtIn(vs []time.Time) *BattleQuery {
 	q.q.W().PredList("display_start_dt", "in", orm.Anys(vs))
 	return q
 }
@@ -1606,7 +1737,7 @@ func (w *BattleWhere) DisplayStartDtNotIn(vs []time.Time) *BattleWhere {
 	w.w.PredList("display_start_dt", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) DisplayStartDtNotIn(vs []time.Time) *Battle {
+func (q *BattleQuery) DisplayStartDtNotIn(vs []time.Time) *BattleQuery {
 	q.q.W().PredList("display_start_dt", "not_in", orm.Anys(vs))
 	return q
 }
@@ -1614,7 +1745,7 @@ func (w *BattleWhere) DisplayStartDtBetween(lo, hi time.Time) *BattleWhere {
 	w.w.PredList("display_start_dt", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) DisplayStartDtBetween(lo, hi time.Time) *Battle {
+func (q *BattleQuery) DisplayStartDtBetween(lo, hi time.Time) *BattleQuery {
 	q.q.W().PredList("display_start_dt", "between", []any{lo, hi})
 	return q
 }
@@ -1622,7 +1753,7 @@ func (w *BattleWhere) DisplayStartDtIsNull() *BattleWhere {
 	w.w.PredNull("display_start_dt", "is_null")
 	return w
 }
-func (q *Battle) DisplayStartDtIsNull() *Battle {
+func (q *BattleQuery) DisplayStartDtIsNull() *BattleQuery {
 	q.q.W().PredNull("display_start_dt", "is_null")
 	return q
 }
@@ -1630,7 +1761,7 @@ func (w *BattleWhere) DisplayStartDtIsNotNull() *BattleWhere {
 	w.w.PredNull("display_start_dt", "is_not_null")
 	return w
 }
-func (q *Battle) DisplayStartDtIsNotNull() *Battle {
+func (q *BattleQuery) DisplayStartDtIsNotNull() *BattleQuery {
 	q.q.W().PredNull("display_start_dt", "is_not_null")
 	return q
 }
@@ -1638,7 +1769,7 @@ func (w *BattleWhere) DisplayStartDtEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("display_start_dt", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DisplayStartDtEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DisplayStartDtEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("display_start_dt", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1646,7 +1777,7 @@ func (w *BattleWhere) DisplayStartDtNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("display_start_dt", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DisplayStartDtNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DisplayStartDtNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("display_start_dt", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1654,7 +1785,7 @@ func (w *BattleWhere) DisplayStartDtGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("display_start_dt", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DisplayStartDtGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DisplayStartDtGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("display_start_dt", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1662,7 +1793,7 @@ func (w *BattleWhere) DisplayStartDtGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("display_start_dt", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DisplayStartDtGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DisplayStartDtGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("display_start_dt", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1670,7 +1801,7 @@ func (w *BattleWhere) DisplayStartDtLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("display_start_dt", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DisplayStartDtLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DisplayStartDtLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("display_start_dt", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1678,7 +1809,7 @@ func (w *BattleWhere) DisplayStartDtLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("display_start_dt", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DisplayStartDtLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DisplayStartDtLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("display_start_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1686,15 +1817,17 @@ func (w *BattleWhere) DisplayEndDtEq(v time.Time) *BattleWhere {
 	w.w.Pred("display_end_dt", "eq", v)
 	return w
 }
-func (q *Battle) DisplayEndDtEq(v time.Time) *Battle {
+func (q *BattleQuery) DisplayEndDtEq(v time.Time) *BattleQuery {
 	q.q.W().Pred("display_end_dt", "eq", v)
 	return q
 }
+func (w *BattleWhere) DisplayEndDt(v time.Time) *BattleWhere { return w.DisplayEndDtEq(v) }
+func (q *BattleQuery) DisplayEndDt(v time.Time) *BattleQuery { return q.DisplayEndDtEq(v) }
 func (w *BattleWhere) DisplayEndDtNotEq(v time.Time) *BattleWhere {
 	w.w.Pred("display_end_dt", "not_eq", v)
 	return w
 }
-func (q *Battle) DisplayEndDtNotEq(v time.Time) *Battle {
+func (q *BattleQuery) DisplayEndDtNotEq(v time.Time) *BattleQuery {
 	q.q.W().Pred("display_end_dt", "not_eq", v)
 	return q
 }
@@ -1702,7 +1835,7 @@ func (w *BattleWhere) DisplayEndDtGt(v time.Time) *BattleWhere {
 	w.w.Pred("display_end_dt", "gt", v)
 	return w
 }
-func (q *Battle) DisplayEndDtGt(v time.Time) *Battle {
+func (q *BattleQuery) DisplayEndDtGt(v time.Time) *BattleQuery {
 	q.q.W().Pred("display_end_dt", "gt", v)
 	return q
 }
@@ -1710,7 +1843,7 @@ func (w *BattleWhere) DisplayEndDtGte(v time.Time) *BattleWhere {
 	w.w.Pred("display_end_dt", "gte", v)
 	return w
 }
-func (q *Battle) DisplayEndDtGte(v time.Time) *Battle {
+func (q *BattleQuery) DisplayEndDtGte(v time.Time) *BattleQuery {
 	q.q.W().Pred("display_end_dt", "gte", v)
 	return q
 }
@@ -1718,7 +1851,7 @@ func (w *BattleWhere) DisplayEndDtLt(v time.Time) *BattleWhere {
 	w.w.Pred("display_end_dt", "lt", v)
 	return w
 }
-func (q *Battle) DisplayEndDtLt(v time.Time) *Battle {
+func (q *BattleQuery) DisplayEndDtLt(v time.Time) *BattleQuery {
 	q.q.W().Pred("display_end_dt", "lt", v)
 	return q
 }
@@ -1726,7 +1859,7 @@ func (w *BattleWhere) DisplayEndDtLte(v time.Time) *BattleWhere {
 	w.w.Pred("display_end_dt", "lte", v)
 	return w
 }
-func (q *Battle) DisplayEndDtLte(v time.Time) *Battle {
+func (q *BattleQuery) DisplayEndDtLte(v time.Time) *BattleQuery {
 	q.q.W().Pred("display_end_dt", "lte", v)
 	return q
 }
@@ -1734,7 +1867,7 @@ func (w *BattleWhere) DisplayEndDtIn(vs []time.Time) *BattleWhere {
 	w.w.PredList("display_end_dt", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) DisplayEndDtIn(vs []time.Time) *Battle {
+func (q *BattleQuery) DisplayEndDtIn(vs []time.Time) *BattleQuery {
 	q.q.W().PredList("display_end_dt", "in", orm.Anys(vs))
 	return q
 }
@@ -1742,7 +1875,7 @@ func (w *BattleWhere) DisplayEndDtNotIn(vs []time.Time) *BattleWhere {
 	w.w.PredList("display_end_dt", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) DisplayEndDtNotIn(vs []time.Time) *Battle {
+func (q *BattleQuery) DisplayEndDtNotIn(vs []time.Time) *BattleQuery {
 	q.q.W().PredList("display_end_dt", "not_in", orm.Anys(vs))
 	return q
 }
@@ -1750,7 +1883,7 @@ func (w *BattleWhere) DisplayEndDtBetween(lo, hi time.Time) *BattleWhere {
 	w.w.PredList("display_end_dt", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) DisplayEndDtBetween(lo, hi time.Time) *Battle {
+func (q *BattleQuery) DisplayEndDtBetween(lo, hi time.Time) *BattleQuery {
 	q.q.W().PredList("display_end_dt", "between", []any{lo, hi})
 	return q
 }
@@ -1758,7 +1891,7 @@ func (w *BattleWhere) DisplayEndDtIsNull() *BattleWhere {
 	w.w.PredNull("display_end_dt", "is_null")
 	return w
 }
-func (q *Battle) DisplayEndDtIsNull() *Battle {
+func (q *BattleQuery) DisplayEndDtIsNull() *BattleQuery {
 	q.q.W().PredNull("display_end_dt", "is_null")
 	return q
 }
@@ -1766,7 +1899,7 @@ func (w *BattleWhere) DisplayEndDtIsNotNull() *BattleWhere {
 	w.w.PredNull("display_end_dt", "is_not_null")
 	return w
 }
-func (q *Battle) DisplayEndDtIsNotNull() *Battle {
+func (q *BattleQuery) DisplayEndDtIsNotNull() *BattleQuery {
 	q.q.W().PredNull("display_end_dt", "is_not_null")
 	return q
 }
@@ -1774,7 +1907,7 @@ func (w *BattleWhere) DisplayEndDtEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("display_end_dt", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DisplayEndDtEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DisplayEndDtEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("display_end_dt", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1782,7 +1915,7 @@ func (w *BattleWhere) DisplayEndDtNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("display_end_dt", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DisplayEndDtNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DisplayEndDtNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("display_end_dt", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1790,7 +1923,7 @@ func (w *BattleWhere) DisplayEndDtGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("display_end_dt", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DisplayEndDtGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DisplayEndDtGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("display_end_dt", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1798,7 +1931,7 @@ func (w *BattleWhere) DisplayEndDtGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("display_end_dt", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DisplayEndDtGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DisplayEndDtGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("display_end_dt", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1806,7 +1939,7 @@ func (w *BattleWhere) DisplayEndDtLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("display_end_dt", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DisplayEndDtLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DisplayEndDtLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("display_end_dt", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1814,29 +1947,40 @@ func (w *BattleWhere) DisplayEndDtLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("display_end_dt", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) DisplayEndDtLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) DisplayEndDtLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("display_end_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) IsAlldayEq(v bool) *BattleWhere { w.w.Pred("is_allday", "eq", v); return w }
-func (q *Battle) IsAlldayEq(v bool) *Battle           { q.q.W().Pred("is_allday", "eq", v); return q }
+func (q *BattleQuery) IsAlldayEq(v bool) *BattleQuery { q.q.W().Pred("is_allday", "eq", v); return q }
+func (w *BattleWhere) IsAllday(v bool) *BattleWhere   { return w.IsAlldayEq(v) }
+func (q *BattleQuery) IsAllday(v bool) *BattleQuery   { return q.IsAlldayEq(v) }
 func (w *BattleWhere) IsAlldayNotEq(v bool) *BattleWhere {
 	w.w.Pred("is_allday", "not_eq", v)
 	return w
 }
-func (q *Battle) IsAlldayNotEq(v bool) *Battle      { q.q.W().Pred("is_allday", "not_eq", v); return q }
+func (q *BattleQuery) IsAlldayNotEq(v bool) *BattleQuery {
+	q.q.W().Pred("is_allday", "not_eq", v)
+	return q
+}
 func (w *BattleWhere) IsAlldayIsNull() *BattleWhere { w.w.PredNull("is_allday", "is_null"); return w }
-func (q *Battle) IsAlldayIsNull() *Battle           { q.q.W().PredNull("is_allday", "is_null"); return q }
+func (q *BattleQuery) IsAlldayIsNull() *BattleQuery {
+	q.q.W().PredNull("is_allday", "is_null")
+	return q
+}
 func (w *BattleWhere) IsAlldayIsNotNull() *BattleWhere {
 	w.w.PredNull("is_allday", "is_not_null")
 	return w
 }
-func (q *Battle) IsAlldayIsNotNull() *Battle { q.q.W().PredNull("is_allday", "is_not_null"); return q }
+func (q *BattleQuery) IsAlldayIsNotNull() *BattleQuery {
+	q.q.W().PredNull("is_allday", "is_not_null")
+	return q
+}
 func (w *BattleWhere) IsAlldayEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("is_allday", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) IsAlldayEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) IsAlldayEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("is_allday", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1844,7 +1988,7 @@ func (w *BattleWhere) IsAlldayNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("is_allday", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) IsAlldayNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) IsAlldayNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("is_allday", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1852,15 +1996,21 @@ func (w *BattleWhere) TargetTeamPlayerCountEq(v int64) *BattleWhere {
 	w.w.Pred("target_team_player_count", "eq", v)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountEq(v int64) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountEq(v int64) *BattleQuery {
 	q.q.W().Pred("target_team_player_count", "eq", v)
 	return q
+}
+func (w *BattleWhere) TargetTeamPlayerCount(v int64) *BattleWhere {
+	return w.TargetTeamPlayerCountEq(v)
+}
+func (q *BattleQuery) TargetTeamPlayerCount(v int64) *BattleQuery {
+	return q.TargetTeamPlayerCountEq(v)
 }
 func (w *BattleWhere) TargetTeamPlayerCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("target_team_player_count", "not_eq", v)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountNotEq(v int64) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountNotEq(v int64) *BattleQuery {
 	q.q.W().Pred("target_team_player_count", "not_eq", v)
 	return q
 }
@@ -1868,7 +2018,7 @@ func (w *BattleWhere) TargetTeamPlayerCountGt(v int64) *BattleWhere {
 	w.w.Pred("target_team_player_count", "gt", v)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountGt(v int64) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountGt(v int64) *BattleQuery {
 	q.q.W().Pred("target_team_player_count", "gt", v)
 	return q
 }
@@ -1876,7 +2026,7 @@ func (w *BattleWhere) TargetTeamPlayerCountGte(v int64) *BattleWhere {
 	w.w.Pred("target_team_player_count", "gte", v)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountGte(v int64) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountGte(v int64) *BattleQuery {
 	q.q.W().Pred("target_team_player_count", "gte", v)
 	return q
 }
@@ -1884,7 +2034,7 @@ func (w *BattleWhere) TargetTeamPlayerCountLt(v int64) *BattleWhere {
 	w.w.Pred("target_team_player_count", "lt", v)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountLt(v int64) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountLt(v int64) *BattleQuery {
 	q.q.W().Pred("target_team_player_count", "lt", v)
 	return q
 }
@@ -1892,7 +2042,7 @@ func (w *BattleWhere) TargetTeamPlayerCountLte(v int64) *BattleWhere {
 	w.w.Pred("target_team_player_count", "lte", v)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountLte(v int64) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountLte(v int64) *BattleQuery {
 	q.q.W().Pred("target_team_player_count", "lte", v)
 	return q
 }
@@ -1900,7 +2050,7 @@ func (w *BattleWhere) TargetTeamPlayerCountIn(vs []int64) *BattleWhere {
 	w.w.PredList("target_team_player_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountIn(vs []int64) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("target_team_player_count", "in", orm.Anys(vs))
 	return q
 }
@@ -1908,7 +2058,7 @@ func (w *BattleWhere) TargetTeamPlayerCountNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("target_team_player_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountNotIn(vs []int64) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountNotIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("target_team_player_count", "not_in", orm.Anys(vs))
 	return q
 }
@@ -1916,7 +2066,7 @@ func (w *BattleWhere) TargetTeamPlayerCountBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("target_team_player_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountBetween(lo, hi int64) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountBetween(lo, hi int64) *BattleQuery {
 	q.q.W().PredList("target_team_player_count", "between", []any{lo, hi})
 	return q
 }
@@ -1924,7 +2074,7 @@ func (w *BattleWhere) TargetTeamPlayerCountIsNull() *BattleWhere {
 	w.w.PredNull("target_team_player_count", "is_null")
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountIsNull() *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountIsNull() *BattleQuery {
 	q.q.W().PredNull("target_team_player_count", "is_null")
 	return q
 }
@@ -1932,7 +2082,7 @@ func (w *BattleWhere) TargetTeamPlayerCountIsNotNull() *BattleWhere {
 	w.w.PredNull("target_team_player_count", "is_not_null")
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountIsNotNull() *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountIsNotNull() *BattleQuery {
 	q.q.W().PredNull("target_team_player_count", "is_not_null")
 	return q
 }
@@ -1940,7 +2090,7 @@ func (w *BattleWhere) TargetTeamPlayerCountEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("target_team_player_count", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("target_team_player_count", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1948,7 +2098,7 @@ func (w *BattleWhere) TargetTeamPlayerCountNotEqCol(ref orm.ColRef) *BattleWhere
 	w.w.PredCol("target_team_player_count", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("target_team_player_count", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1956,7 +2106,7 @@ func (w *BattleWhere) TargetTeamPlayerCountGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("target_team_player_count", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("target_team_player_count", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1964,7 +2114,7 @@ func (w *BattleWhere) TargetTeamPlayerCountGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("target_team_player_count", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("target_team_player_count", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1972,7 +2122,7 @@ func (w *BattleWhere) TargetTeamPlayerCountLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("target_team_player_count", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("target_team_player_count", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1980,7 +2130,7 @@ func (w *BattleWhere) TargetTeamPlayerCountLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("target_team_player_count", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) TargetTeamPlayerCountLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) TargetTeamPlayerCountLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("target_team_player_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1988,12 +2138,17 @@ func (w *BattleWhere) SuccessCountEq(v int64) *BattleWhere {
 	w.w.Pred("success_count", "eq", v)
 	return w
 }
-func (q *Battle) SuccessCountEq(v int64) *Battle { q.q.W().Pred("success_count", "eq", v); return q }
+func (q *BattleQuery) SuccessCountEq(v int64) *BattleQuery {
+	q.q.W().Pred("success_count", "eq", v)
+	return q
+}
+func (w *BattleWhere) SuccessCount(v int64) *BattleWhere { return w.SuccessCountEq(v) }
+func (q *BattleQuery) SuccessCount(v int64) *BattleQuery { return q.SuccessCountEq(v) }
 func (w *BattleWhere) SuccessCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("success_count", "not_eq", v)
 	return w
 }
-func (q *Battle) SuccessCountNotEq(v int64) *Battle {
+func (q *BattleQuery) SuccessCountNotEq(v int64) *BattleQuery {
 	q.q.W().Pred("success_count", "not_eq", v)
 	return q
 }
@@ -2001,27 +2156,39 @@ func (w *BattleWhere) SuccessCountGt(v int64) *BattleWhere {
 	w.w.Pred("success_count", "gt", v)
 	return w
 }
-func (q *Battle) SuccessCountGt(v int64) *Battle { q.q.W().Pred("success_count", "gt", v); return q }
+func (q *BattleQuery) SuccessCountGt(v int64) *BattleQuery {
+	q.q.W().Pred("success_count", "gt", v)
+	return q
+}
 func (w *BattleWhere) SuccessCountGte(v int64) *BattleWhere {
 	w.w.Pred("success_count", "gte", v)
 	return w
 }
-func (q *Battle) SuccessCountGte(v int64) *Battle { q.q.W().Pred("success_count", "gte", v); return q }
+func (q *BattleQuery) SuccessCountGte(v int64) *BattleQuery {
+	q.q.W().Pred("success_count", "gte", v)
+	return q
+}
 func (w *BattleWhere) SuccessCountLt(v int64) *BattleWhere {
 	w.w.Pred("success_count", "lt", v)
 	return w
 }
-func (q *Battle) SuccessCountLt(v int64) *Battle { q.q.W().Pred("success_count", "lt", v); return q }
+func (q *BattleQuery) SuccessCountLt(v int64) *BattleQuery {
+	q.q.W().Pred("success_count", "lt", v)
+	return q
+}
 func (w *BattleWhere) SuccessCountLte(v int64) *BattleWhere {
 	w.w.Pred("success_count", "lte", v)
 	return w
 }
-func (q *Battle) SuccessCountLte(v int64) *Battle { q.q.W().Pred("success_count", "lte", v); return q }
+func (q *BattleQuery) SuccessCountLte(v int64) *BattleQuery {
+	q.q.W().Pred("success_count", "lte", v)
+	return q
+}
 func (w *BattleWhere) SuccessCountIn(vs []int64) *BattleWhere {
 	w.w.PredList("success_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) SuccessCountIn(vs []int64) *Battle {
+func (q *BattleQuery) SuccessCountIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("success_count", "in", orm.Anys(vs))
 	return q
 }
@@ -2029,7 +2196,7 @@ func (w *BattleWhere) SuccessCountNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("success_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) SuccessCountNotIn(vs []int64) *Battle {
+func (q *BattleQuery) SuccessCountNotIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("success_count", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2037,7 +2204,7 @@ func (w *BattleWhere) SuccessCountBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("success_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) SuccessCountBetween(lo, hi int64) *Battle {
+func (q *BattleQuery) SuccessCountBetween(lo, hi int64) *BattleQuery {
 	q.q.W().PredList("success_count", "between", []any{lo, hi})
 	return q
 }
@@ -2045,12 +2212,15 @@ func (w *BattleWhere) SuccessCountIsNull() *BattleWhere {
 	w.w.PredNull("success_count", "is_null")
 	return w
 }
-func (q *Battle) SuccessCountIsNull() *Battle { q.q.W().PredNull("success_count", "is_null"); return q }
+func (q *BattleQuery) SuccessCountIsNull() *BattleQuery {
+	q.q.W().PredNull("success_count", "is_null")
+	return q
+}
 func (w *BattleWhere) SuccessCountIsNotNull() *BattleWhere {
 	w.w.PredNull("success_count", "is_not_null")
 	return w
 }
-func (q *Battle) SuccessCountIsNotNull() *Battle {
+func (q *BattleQuery) SuccessCountIsNotNull() *BattleQuery {
 	q.q.W().PredNull("success_count", "is_not_null")
 	return q
 }
@@ -2058,7 +2228,7 @@ func (w *BattleWhere) SuccessCountEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("success_count", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) SuccessCountEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) SuccessCountEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("success_count", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2066,7 +2236,7 @@ func (w *BattleWhere) SuccessCountNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("success_count", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) SuccessCountNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) SuccessCountNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("success_count", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2074,7 +2244,7 @@ func (w *BattleWhere) SuccessCountGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("success_count", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) SuccessCountGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) SuccessCountGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("success_count", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2082,7 +2252,7 @@ func (w *BattleWhere) SuccessCountGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("success_count", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) SuccessCountGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) SuccessCountGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("success_count", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2090,7 +2260,7 @@ func (w *BattleWhere) SuccessCountLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("success_count", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) SuccessCountLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) SuccessCountLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("success_count", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2098,7 +2268,7 @@ func (w *BattleWhere) SuccessCountLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("success_count", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) SuccessCountLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) SuccessCountLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("success_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2106,12 +2276,17 @@ func (w *BattleWhere) PlayerCountEq(v int64) *BattleWhere {
 	w.w.Pred("player_count", "eq", v)
 	return w
 }
-func (q *Battle) PlayerCountEq(v int64) *Battle { q.q.W().Pred("player_count", "eq", v); return q }
+func (q *BattleQuery) PlayerCountEq(v int64) *BattleQuery {
+	q.q.W().Pred("player_count", "eq", v)
+	return q
+}
+func (w *BattleWhere) PlayerCount(v int64) *BattleWhere { return w.PlayerCountEq(v) }
+func (q *BattleQuery) PlayerCount(v int64) *BattleQuery { return q.PlayerCountEq(v) }
 func (w *BattleWhere) PlayerCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("player_count", "not_eq", v)
 	return w
 }
-func (q *Battle) PlayerCountNotEq(v int64) *Battle {
+func (q *BattleQuery) PlayerCountNotEq(v int64) *BattleQuery {
 	q.q.W().Pred("player_count", "not_eq", v)
 	return q
 }
@@ -2119,27 +2294,39 @@ func (w *BattleWhere) PlayerCountGt(v int64) *BattleWhere {
 	w.w.Pred("player_count", "gt", v)
 	return w
 }
-func (q *Battle) PlayerCountGt(v int64) *Battle { q.q.W().Pred("player_count", "gt", v); return q }
+func (q *BattleQuery) PlayerCountGt(v int64) *BattleQuery {
+	q.q.W().Pred("player_count", "gt", v)
+	return q
+}
 func (w *BattleWhere) PlayerCountGte(v int64) *BattleWhere {
 	w.w.Pred("player_count", "gte", v)
 	return w
 }
-func (q *Battle) PlayerCountGte(v int64) *Battle { q.q.W().Pred("player_count", "gte", v); return q }
+func (q *BattleQuery) PlayerCountGte(v int64) *BattleQuery {
+	q.q.W().Pred("player_count", "gte", v)
+	return q
+}
 func (w *BattleWhere) PlayerCountLt(v int64) *BattleWhere {
 	w.w.Pred("player_count", "lt", v)
 	return w
 }
-func (q *Battle) PlayerCountLt(v int64) *Battle { q.q.W().Pred("player_count", "lt", v); return q }
+func (q *BattleQuery) PlayerCountLt(v int64) *BattleQuery {
+	q.q.W().Pred("player_count", "lt", v)
+	return q
+}
 func (w *BattleWhere) PlayerCountLte(v int64) *BattleWhere {
 	w.w.Pred("player_count", "lte", v)
 	return w
 }
-func (q *Battle) PlayerCountLte(v int64) *Battle { q.q.W().Pred("player_count", "lte", v); return q }
+func (q *BattleQuery) PlayerCountLte(v int64) *BattleQuery {
+	q.q.W().Pred("player_count", "lte", v)
+	return q
+}
 func (w *BattleWhere) PlayerCountIn(vs []int64) *BattleWhere {
 	w.w.PredList("player_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) PlayerCountIn(vs []int64) *Battle {
+func (q *BattleQuery) PlayerCountIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("player_count", "in", orm.Anys(vs))
 	return q
 }
@@ -2147,7 +2334,7 @@ func (w *BattleWhere) PlayerCountNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("player_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) PlayerCountNotIn(vs []int64) *Battle {
+func (q *BattleQuery) PlayerCountNotIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("player_count", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2155,7 +2342,7 @@ func (w *BattleWhere) PlayerCountBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("player_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) PlayerCountBetween(lo, hi int64) *Battle {
+func (q *BattleQuery) PlayerCountBetween(lo, hi int64) *BattleQuery {
 	q.q.W().PredList("player_count", "between", []any{lo, hi})
 	return q
 }
@@ -2163,12 +2350,15 @@ func (w *BattleWhere) PlayerCountIsNull() *BattleWhere {
 	w.w.PredNull("player_count", "is_null")
 	return w
 }
-func (q *Battle) PlayerCountIsNull() *Battle { q.q.W().PredNull("player_count", "is_null"); return q }
+func (q *BattleQuery) PlayerCountIsNull() *BattleQuery {
+	q.q.W().PredNull("player_count", "is_null")
+	return q
+}
 func (w *BattleWhere) PlayerCountIsNotNull() *BattleWhere {
 	w.w.PredNull("player_count", "is_not_null")
 	return w
 }
-func (q *Battle) PlayerCountIsNotNull() *Battle {
+func (q *BattleQuery) PlayerCountIsNotNull() *BattleQuery {
 	q.q.W().PredNull("player_count", "is_not_null")
 	return q
 }
@@ -2176,7 +2366,7 @@ func (w *BattleWhere) PlayerCountEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("player_count", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) PlayerCountEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) PlayerCountEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("player_count", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2184,7 +2374,7 @@ func (w *BattleWhere) PlayerCountNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("player_count", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) PlayerCountNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) PlayerCountNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("player_count", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2192,7 +2382,7 @@ func (w *BattleWhere) PlayerCountGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("player_count", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) PlayerCountGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) PlayerCountGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("player_count", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2200,7 +2390,7 @@ func (w *BattleWhere) PlayerCountGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("player_count", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) PlayerCountGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) PlayerCountGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("player_count", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2208,7 +2398,7 @@ func (w *BattleWhere) PlayerCountLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("player_count", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) PlayerCountLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) PlayerCountLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("player_count", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2216,30 +2406,50 @@ func (w *BattleWhere) PlayerCountLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("player_count", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) PlayerCountLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) PlayerCountLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("player_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) ReadCountEq(v int64) *BattleWhere { w.w.Pred("read_count", "eq", v); return w }
-func (q *Battle) ReadCountEq(v int64) *Battle           { q.q.W().Pred("read_count", "eq", v); return q }
+func (q *BattleQuery) ReadCountEq(v int64) *BattleQuery {
+	q.q.W().Pred("read_count", "eq", v)
+	return q
+}
+func (w *BattleWhere) ReadCount(v int64) *BattleWhere { return w.ReadCountEq(v) }
+func (q *BattleQuery) ReadCount(v int64) *BattleQuery { return q.ReadCountEq(v) }
 func (w *BattleWhere) ReadCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("read_count", "not_eq", v)
 	return w
 }
-func (q *Battle) ReadCountNotEq(v int64) *Battle         { q.q.W().Pred("read_count", "not_eq", v); return q }
-func (w *BattleWhere) ReadCountGt(v int64) *BattleWhere  { w.w.Pred("read_count", "gt", v); return w }
-func (q *Battle) ReadCountGt(v int64) *Battle            { q.q.W().Pred("read_count", "gt", v); return q }
+func (q *BattleQuery) ReadCountNotEq(v int64) *BattleQuery {
+	q.q.W().Pred("read_count", "not_eq", v)
+	return q
+}
+func (w *BattleWhere) ReadCountGt(v int64) *BattleWhere { w.w.Pred("read_count", "gt", v); return w }
+func (q *BattleQuery) ReadCountGt(v int64) *BattleQuery {
+	q.q.W().Pred("read_count", "gt", v)
+	return q
+}
 func (w *BattleWhere) ReadCountGte(v int64) *BattleWhere { w.w.Pred("read_count", "gte", v); return w }
-func (q *Battle) ReadCountGte(v int64) *Battle           { q.q.W().Pred("read_count", "gte", v); return q }
-func (w *BattleWhere) ReadCountLt(v int64) *BattleWhere  { w.w.Pred("read_count", "lt", v); return w }
-func (q *Battle) ReadCountLt(v int64) *Battle            { q.q.W().Pred("read_count", "lt", v); return q }
+func (q *BattleQuery) ReadCountGte(v int64) *BattleQuery {
+	q.q.W().Pred("read_count", "gte", v)
+	return q
+}
+func (w *BattleWhere) ReadCountLt(v int64) *BattleWhere { w.w.Pred("read_count", "lt", v); return w }
+func (q *BattleQuery) ReadCountLt(v int64) *BattleQuery {
+	q.q.W().Pred("read_count", "lt", v)
+	return q
+}
 func (w *BattleWhere) ReadCountLte(v int64) *BattleWhere { w.w.Pred("read_count", "lte", v); return w }
-func (q *Battle) ReadCountLte(v int64) *Battle           { q.q.W().Pred("read_count", "lte", v); return q }
+func (q *BattleQuery) ReadCountLte(v int64) *BattleQuery {
+	q.q.W().Pred("read_count", "lte", v)
+	return q
+}
 func (w *BattleWhere) ReadCountIn(vs []int64) *BattleWhere {
 	w.w.PredList("read_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) ReadCountIn(vs []int64) *Battle {
+func (q *BattleQuery) ReadCountIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("read_count", "in", orm.Anys(vs))
 	return q
 }
@@ -2247,7 +2457,7 @@ func (w *BattleWhere) ReadCountNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("read_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) ReadCountNotIn(vs []int64) *Battle {
+func (q *BattleQuery) ReadCountNotIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("read_count", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2255,17 +2465,20 @@ func (w *BattleWhere) ReadCountBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("read_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) ReadCountBetween(lo, hi int64) *Battle {
+func (q *BattleQuery) ReadCountBetween(lo, hi int64) *BattleQuery {
 	q.q.W().PredList("read_count", "between", []any{lo, hi})
 	return q
 }
 func (w *BattleWhere) ReadCountIsNull() *BattleWhere { w.w.PredNull("read_count", "is_null"); return w }
-func (q *Battle) ReadCountIsNull() *Battle           { q.q.W().PredNull("read_count", "is_null"); return q }
+func (q *BattleQuery) ReadCountIsNull() *BattleQuery {
+	q.q.W().PredNull("read_count", "is_null")
+	return q
+}
 func (w *BattleWhere) ReadCountIsNotNull() *BattleWhere {
 	w.w.PredNull("read_count", "is_not_null")
 	return w
 }
-func (q *Battle) ReadCountIsNotNull() *Battle {
+func (q *BattleQuery) ReadCountIsNotNull() *BattleQuery {
 	q.q.W().PredNull("read_count", "is_not_null")
 	return q
 }
@@ -2273,7 +2486,7 @@ func (w *BattleWhere) ReadCountEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("read_count", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ReadCountEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ReadCountEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("read_count", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2281,7 +2494,7 @@ func (w *BattleWhere) ReadCountNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("read_count", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ReadCountNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ReadCountNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("read_count", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2289,7 +2502,7 @@ func (w *BattleWhere) ReadCountGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("read_count", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ReadCountGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ReadCountGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("read_count", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2297,7 +2510,7 @@ func (w *BattleWhere) ReadCountGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("read_count", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ReadCountGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ReadCountGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("read_count", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2305,7 +2518,7 @@ func (w *BattleWhere) ReadCountLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("read_count", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ReadCountLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ReadCountLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("read_count", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2313,22 +2526,27 @@ func (w *BattleWhere) ReadCountLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("read_count", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ReadCountLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ReadCountLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("read_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) CoverUrlEq(v string) *BattleWhere { w.w.Pred("cover_url", "eq", v); return w }
-func (q *Battle) CoverUrlEq(v string) *Battle           { q.q.W().Pred("cover_url", "eq", v); return q }
+func (q *BattleQuery) CoverUrlEq(v string) *BattleQuery { q.q.W().Pred("cover_url", "eq", v); return q }
+func (w *BattleWhere) CoverUrl(v string) *BattleWhere   { return w.CoverUrlEq(v) }
+func (q *BattleQuery) CoverUrl(v string) *BattleQuery   { return q.CoverUrlEq(v) }
 func (w *BattleWhere) CoverUrlNotEq(v string) *BattleWhere {
 	w.w.Pred("cover_url", "not_eq", v)
 	return w
 }
-func (q *Battle) CoverUrlNotEq(v string) *Battle { q.q.W().Pred("cover_url", "not_eq", v); return q }
+func (q *BattleQuery) CoverUrlNotEq(v string) *BattleQuery {
+	q.q.W().Pred("cover_url", "not_eq", v)
+	return q
+}
 func (w *BattleWhere) CoverUrlIn(vs []string) *BattleWhere {
 	w.w.PredList("cover_url", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) CoverUrlIn(vs []string) *Battle {
+func (q *BattleQuery) CoverUrlIn(vs []string) *BattleQuery {
 	q.q.W().PredList("cover_url", "in", orm.Anys(vs))
 	return q
 }
@@ -2336,17 +2554,20 @@ func (w *BattleWhere) CoverUrlNotIn(vs []string) *BattleWhere {
 	w.w.PredList("cover_url", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) CoverUrlNotIn(vs []string) *Battle {
+func (q *BattleQuery) CoverUrlNotIn(vs []string) *BattleQuery {
 	q.q.W().PredList("cover_url", "not_in", orm.Anys(vs))
 	return q
 }
 func (w *BattleWhere) CoverUrlLike(v string) *BattleWhere { w.w.Pred("cover_url", "like", v); return w }
-func (q *Battle) CoverUrlLike(v string) *Battle           { q.q.W().Pred("cover_url", "like", v); return q }
+func (q *BattleQuery) CoverUrlLike(v string) *BattleQuery {
+	q.q.W().Pred("cover_url", "like", v)
+	return q
+}
 func (w *BattleWhere) CoverUrlLikeBinary(v string) *BattleWhere {
 	w.w.Pred("cover_url", "like_binary", v)
 	return w
 }
-func (q *Battle) CoverUrlLikeBinary(v string) *Battle {
+func (q *BattleQuery) CoverUrlLikeBinary(v string) *BattleQuery {
 	q.q.W().Pred("cover_url", "like_binary", v)
 	return q
 }
@@ -2354,7 +2575,7 @@ func (w *BattleWhere) CoverUrlContains(v string) *BattleWhere {
 	w.w.Pred("cover_url", "contains", v)
 	return w
 }
-func (q *Battle) CoverUrlContains(v string) *Battle {
+func (q *BattleQuery) CoverUrlContains(v string) *BattleQuery {
 	q.q.W().Pred("cover_url", "contains", v)
 	return q
 }
@@ -2362,7 +2583,7 @@ func (w *BattleWhere) CoverUrlStartsWith(v string) *BattleWhere {
 	w.w.Pred("cover_url", "starts_with", v)
 	return w
 }
-func (q *Battle) CoverUrlStartsWith(v string) *Battle {
+func (q *BattleQuery) CoverUrlStartsWith(v string) *BattleQuery {
 	q.q.W().Pred("cover_url", "starts_with", v)
 	return q
 }
@@ -2370,22 +2591,28 @@ func (w *BattleWhere) CoverUrlEndsWith(v string) *BattleWhere {
 	w.w.Pred("cover_url", "ends_with", v)
 	return w
 }
-func (q *Battle) CoverUrlEndsWith(v string) *Battle {
+func (q *BattleQuery) CoverUrlEndsWith(v string) *BattleQuery {
 	q.q.W().Pred("cover_url", "ends_with", v)
 	return q
 }
 func (w *BattleWhere) CoverUrlIsNull() *BattleWhere { w.w.PredNull("cover_url", "is_null"); return w }
-func (q *Battle) CoverUrlIsNull() *Battle           { q.q.W().PredNull("cover_url", "is_null"); return q }
+func (q *BattleQuery) CoverUrlIsNull() *BattleQuery {
+	q.q.W().PredNull("cover_url", "is_null")
+	return q
+}
 func (w *BattleWhere) CoverUrlIsNotNull() *BattleWhere {
 	w.w.PredNull("cover_url", "is_not_null")
 	return w
 }
-func (q *Battle) CoverUrlIsNotNull() *Battle { q.q.W().PredNull("cover_url", "is_not_null"); return q }
+func (q *BattleQuery) CoverUrlIsNotNull() *BattleQuery {
+	q.q.W().PredNull("cover_url", "is_not_null")
+	return q
+}
 func (w *BattleWhere) CoverUrlEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("cover_url", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) CoverUrlEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) CoverUrlEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("cover_url", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2393,27 +2620,32 @@ func (w *BattleWhere) CoverUrlNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("cover_url", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) CoverUrlNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) CoverUrlNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("cover_url", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) UserSeqEq(v int64) *BattleWhere    { w.w.Pred("user_seq", "eq", v); return w }
-func (q *Battle) UserSeqEq(v int64) *Battle              { q.q.W().Pred("user_seq", "eq", v); return q }
+func (q *BattleQuery) UserSeqEq(v int64) *BattleQuery    { q.q.W().Pred("user_seq", "eq", v); return q }
+func (w *BattleWhere) UserSeq(v int64) *BattleWhere      { return w.UserSeqEq(v) }
+func (q *BattleQuery) UserSeq(v int64) *BattleQuery      { return q.UserSeqEq(v) }
 func (w *BattleWhere) UserSeqNotEq(v int64) *BattleWhere { w.w.Pred("user_seq", "not_eq", v); return w }
-func (q *Battle) UserSeqNotEq(v int64) *Battle           { q.q.W().Pred("user_seq", "not_eq", v); return q }
-func (w *BattleWhere) UserSeqGt(v int64) *BattleWhere    { w.w.Pred("user_seq", "gt", v); return w }
-func (q *Battle) UserSeqGt(v int64) *Battle              { q.q.W().Pred("user_seq", "gt", v); return q }
-func (w *BattleWhere) UserSeqGte(v int64) *BattleWhere   { w.w.Pred("user_seq", "gte", v); return w }
-func (q *Battle) UserSeqGte(v int64) *Battle             { q.q.W().Pred("user_seq", "gte", v); return q }
-func (w *BattleWhere) UserSeqLt(v int64) *BattleWhere    { w.w.Pred("user_seq", "lt", v); return w }
-func (q *Battle) UserSeqLt(v int64) *Battle              { q.q.W().Pred("user_seq", "lt", v); return q }
-func (w *BattleWhere) UserSeqLte(v int64) *BattleWhere   { w.w.Pred("user_seq", "lte", v); return w }
-func (q *Battle) UserSeqLte(v int64) *Battle             { q.q.W().Pred("user_seq", "lte", v); return q }
+func (q *BattleQuery) UserSeqNotEq(v int64) *BattleQuery {
+	q.q.W().Pred("user_seq", "not_eq", v)
+	return q
+}
+func (w *BattleWhere) UserSeqGt(v int64) *BattleWhere  { w.w.Pred("user_seq", "gt", v); return w }
+func (q *BattleQuery) UserSeqGt(v int64) *BattleQuery  { q.q.W().Pred("user_seq", "gt", v); return q }
+func (w *BattleWhere) UserSeqGte(v int64) *BattleWhere { w.w.Pred("user_seq", "gte", v); return w }
+func (q *BattleQuery) UserSeqGte(v int64) *BattleQuery { q.q.W().Pred("user_seq", "gte", v); return q }
+func (w *BattleWhere) UserSeqLt(v int64) *BattleWhere  { w.w.Pred("user_seq", "lt", v); return w }
+func (q *BattleQuery) UserSeqLt(v int64) *BattleQuery  { q.q.W().Pred("user_seq", "lt", v); return q }
+func (w *BattleWhere) UserSeqLte(v int64) *BattleWhere { w.w.Pred("user_seq", "lte", v); return w }
+func (q *BattleQuery) UserSeqLte(v int64) *BattleQuery { q.q.W().Pred("user_seq", "lte", v); return q }
 func (w *BattleWhere) UserSeqIn(vs []int64) *BattleWhere {
 	w.w.PredList("user_seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) UserSeqIn(vs []int64) *Battle {
+func (q *BattleQuery) UserSeqIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("user_seq", "in", orm.Anys(vs))
 	return q
 }
@@ -2421,7 +2653,7 @@ func (w *BattleWhere) UserSeqNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("user_seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) UserSeqNotIn(vs []int64) *Battle {
+func (q *BattleQuery) UserSeqNotIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("user_seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2429,22 +2661,25 @@ func (w *BattleWhere) UserSeqBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("user_seq", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) UserSeqBetween(lo, hi int64) *Battle {
+func (q *BattleQuery) UserSeqBetween(lo, hi int64) *BattleQuery {
 	q.q.W().PredList("user_seq", "between", []any{lo, hi})
 	return q
 }
 func (w *BattleWhere) UserSeqIsNull() *BattleWhere { w.w.PredNull("user_seq", "is_null"); return w }
-func (q *Battle) UserSeqIsNull() *Battle           { q.q.W().PredNull("user_seq", "is_null"); return q }
+func (q *BattleQuery) UserSeqIsNull() *BattleQuery { q.q.W().PredNull("user_seq", "is_null"); return q }
 func (w *BattleWhere) UserSeqIsNotNull() *BattleWhere {
 	w.w.PredNull("user_seq", "is_not_null")
 	return w
 }
-func (q *Battle) UserSeqIsNotNull() *Battle { q.q.W().PredNull("user_seq", "is_not_null"); return q }
+func (q *BattleQuery) UserSeqIsNotNull() *BattleQuery {
+	q.q.W().PredNull("user_seq", "is_not_null")
+	return q
+}
 func (w *BattleWhere) UserSeqEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("user_seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UserSeqEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UserSeqEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("user_seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2452,7 +2687,7 @@ func (w *BattleWhere) UserSeqNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("user_seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UserSeqNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UserSeqNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("user_seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2460,7 +2695,7 @@ func (w *BattleWhere) UserSeqGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("user_seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UserSeqGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UserSeqGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("user_seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2468,7 +2703,7 @@ func (w *BattleWhere) UserSeqGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("user_seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UserSeqGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UserSeqGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("user_seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2476,7 +2711,7 @@ func (w *BattleWhere) UserSeqLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("user_seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UserSeqLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UserSeqLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("user_seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2484,36 +2719,56 @@ func (w *BattleWhere) UserSeqLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("user_seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UserSeqLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UserSeqLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("user_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) ServiceSeqEq(v int64) *BattleWhere { w.w.Pred("service_seq", "eq", v); return w }
-func (q *Battle) ServiceSeqEq(v int64) *Battle           { q.q.W().Pred("service_seq", "eq", v); return q }
+func (q *BattleQuery) ServiceSeqEq(v int64) *BattleQuery {
+	q.q.W().Pred("service_seq", "eq", v)
+	return q
+}
+func (w *BattleWhere) ServiceSeq(v int64) *BattleWhere { return w.ServiceSeqEq(v) }
+func (q *BattleQuery) ServiceSeq(v int64) *BattleQuery { return q.ServiceSeqEq(v) }
 func (w *BattleWhere) ServiceSeqNotEq(v int64) *BattleWhere {
 	w.w.Pred("service_seq", "not_eq", v)
 	return w
 }
-func (q *Battle) ServiceSeqNotEq(v int64) *Battle        { q.q.W().Pred("service_seq", "not_eq", v); return q }
+func (q *BattleQuery) ServiceSeqNotEq(v int64) *BattleQuery {
+	q.q.W().Pred("service_seq", "not_eq", v)
+	return q
+}
 func (w *BattleWhere) ServiceSeqGt(v int64) *BattleWhere { w.w.Pred("service_seq", "gt", v); return w }
-func (q *Battle) ServiceSeqGt(v int64) *Battle           { q.q.W().Pred("service_seq", "gt", v); return q }
+func (q *BattleQuery) ServiceSeqGt(v int64) *BattleQuery {
+	q.q.W().Pred("service_seq", "gt", v)
+	return q
+}
 func (w *BattleWhere) ServiceSeqGte(v int64) *BattleWhere {
 	w.w.Pred("service_seq", "gte", v)
 	return w
 }
-func (q *Battle) ServiceSeqGte(v int64) *Battle          { q.q.W().Pred("service_seq", "gte", v); return q }
+func (q *BattleQuery) ServiceSeqGte(v int64) *BattleQuery {
+	q.q.W().Pred("service_seq", "gte", v)
+	return q
+}
 func (w *BattleWhere) ServiceSeqLt(v int64) *BattleWhere { w.w.Pred("service_seq", "lt", v); return w }
-func (q *Battle) ServiceSeqLt(v int64) *Battle           { q.q.W().Pred("service_seq", "lt", v); return q }
+func (q *BattleQuery) ServiceSeqLt(v int64) *BattleQuery {
+	q.q.W().Pred("service_seq", "lt", v)
+	return q
+}
 func (w *BattleWhere) ServiceSeqLte(v int64) *BattleWhere {
 	w.w.Pred("service_seq", "lte", v)
 	return w
 }
-func (q *Battle) ServiceSeqLte(v int64) *Battle { q.q.W().Pred("service_seq", "lte", v); return q }
+func (q *BattleQuery) ServiceSeqLte(v int64) *BattleQuery {
+	q.q.W().Pred("service_seq", "lte", v)
+	return q
+}
 func (w *BattleWhere) ServiceSeqIn(vs []int64) *BattleWhere {
 	w.w.PredList("service_seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) ServiceSeqIn(vs []int64) *Battle {
+func (q *BattleQuery) ServiceSeqIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("service_seq", "in", orm.Anys(vs))
 	return q
 }
@@ -2521,7 +2776,7 @@ func (w *BattleWhere) ServiceSeqNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("service_seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) ServiceSeqNotIn(vs []int64) *Battle {
+func (q *BattleQuery) ServiceSeqNotIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("service_seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2529,7 +2784,7 @@ func (w *BattleWhere) ServiceSeqBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("service_seq", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) ServiceSeqBetween(lo, hi int64) *Battle {
+func (q *BattleQuery) ServiceSeqBetween(lo, hi int64) *BattleQuery {
 	q.q.W().PredList("service_seq", "between", []any{lo, hi})
 	return q
 }
@@ -2537,12 +2792,15 @@ func (w *BattleWhere) ServiceSeqIsNull() *BattleWhere {
 	w.w.PredNull("service_seq", "is_null")
 	return w
 }
-func (q *Battle) ServiceSeqIsNull() *Battle { q.q.W().PredNull("service_seq", "is_null"); return q }
+func (q *BattleQuery) ServiceSeqIsNull() *BattleQuery {
+	q.q.W().PredNull("service_seq", "is_null")
+	return q
+}
 func (w *BattleWhere) ServiceSeqIsNotNull() *BattleWhere {
 	w.w.PredNull("service_seq", "is_not_null")
 	return w
 }
-func (q *Battle) ServiceSeqIsNotNull() *Battle {
+func (q *BattleQuery) ServiceSeqIsNotNull() *BattleQuery {
 	q.q.W().PredNull("service_seq", "is_not_null")
 	return q
 }
@@ -2550,7 +2808,7 @@ func (w *BattleWhere) ServiceSeqEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceSeqEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceSeqEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2558,7 +2816,7 @@ func (w *BattleWhere) ServiceSeqNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceSeqNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceSeqNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2566,7 +2824,7 @@ func (w *BattleWhere) ServiceSeqGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceSeqGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceSeqGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2574,7 +2832,7 @@ func (w *BattleWhere) ServiceSeqGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceSeqGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceSeqGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2582,7 +2840,7 @@ func (w *BattleWhere) ServiceSeqLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceSeqLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceSeqLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2590,7 +2848,7 @@ func (w *BattleWhere) ServiceSeqLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceSeqLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceSeqLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2598,15 +2856,17 @@ func (w *BattleWhere) ServiceModuleSeqEq(v int64) *BattleWhere {
 	w.w.Pred("service_module_seq", "eq", v)
 	return w
 }
-func (q *Battle) ServiceModuleSeqEq(v int64) *Battle {
+func (q *BattleQuery) ServiceModuleSeqEq(v int64) *BattleQuery {
 	q.q.W().Pred("service_module_seq", "eq", v)
 	return q
 }
+func (w *BattleWhere) ServiceModuleSeq(v int64) *BattleWhere { return w.ServiceModuleSeqEq(v) }
+func (q *BattleQuery) ServiceModuleSeq(v int64) *BattleQuery { return q.ServiceModuleSeqEq(v) }
 func (w *BattleWhere) ServiceModuleSeqNotEq(v int64) *BattleWhere {
 	w.w.Pred("service_module_seq", "not_eq", v)
 	return w
 }
-func (q *Battle) ServiceModuleSeqNotEq(v int64) *Battle {
+func (q *BattleQuery) ServiceModuleSeqNotEq(v int64) *BattleQuery {
 	q.q.W().Pred("service_module_seq", "not_eq", v)
 	return q
 }
@@ -2614,7 +2874,7 @@ func (w *BattleWhere) ServiceModuleSeqGt(v int64) *BattleWhere {
 	w.w.Pred("service_module_seq", "gt", v)
 	return w
 }
-func (q *Battle) ServiceModuleSeqGt(v int64) *Battle {
+func (q *BattleQuery) ServiceModuleSeqGt(v int64) *BattleQuery {
 	q.q.W().Pred("service_module_seq", "gt", v)
 	return q
 }
@@ -2622,7 +2882,7 @@ func (w *BattleWhere) ServiceModuleSeqGte(v int64) *BattleWhere {
 	w.w.Pred("service_module_seq", "gte", v)
 	return w
 }
-func (q *Battle) ServiceModuleSeqGte(v int64) *Battle {
+func (q *BattleQuery) ServiceModuleSeqGte(v int64) *BattleQuery {
 	q.q.W().Pred("service_module_seq", "gte", v)
 	return q
 }
@@ -2630,7 +2890,7 @@ func (w *BattleWhere) ServiceModuleSeqLt(v int64) *BattleWhere {
 	w.w.Pred("service_module_seq", "lt", v)
 	return w
 }
-func (q *Battle) ServiceModuleSeqLt(v int64) *Battle {
+func (q *BattleQuery) ServiceModuleSeqLt(v int64) *BattleQuery {
 	q.q.W().Pred("service_module_seq", "lt", v)
 	return q
 }
@@ -2638,7 +2898,7 @@ func (w *BattleWhere) ServiceModuleSeqLte(v int64) *BattleWhere {
 	w.w.Pred("service_module_seq", "lte", v)
 	return w
 }
-func (q *Battle) ServiceModuleSeqLte(v int64) *Battle {
+func (q *BattleQuery) ServiceModuleSeqLte(v int64) *BattleQuery {
 	q.q.W().Pred("service_module_seq", "lte", v)
 	return q
 }
@@ -2646,7 +2906,7 @@ func (w *BattleWhere) ServiceModuleSeqIn(vs []int64) *BattleWhere {
 	w.w.PredList("service_module_seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) ServiceModuleSeqIn(vs []int64) *Battle {
+func (q *BattleQuery) ServiceModuleSeqIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("service_module_seq", "in", orm.Anys(vs))
 	return q
 }
@@ -2654,7 +2914,7 @@ func (w *BattleWhere) ServiceModuleSeqNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("service_module_seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) ServiceModuleSeqNotIn(vs []int64) *Battle {
+func (q *BattleQuery) ServiceModuleSeqNotIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("service_module_seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2662,7 +2922,7 @@ func (w *BattleWhere) ServiceModuleSeqBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("service_module_seq", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) ServiceModuleSeqBetween(lo, hi int64) *Battle {
+func (q *BattleQuery) ServiceModuleSeqBetween(lo, hi int64) *BattleQuery {
 	q.q.W().PredList("service_module_seq", "between", []any{lo, hi})
 	return q
 }
@@ -2670,7 +2930,7 @@ func (w *BattleWhere) ServiceModuleSeqIsNull() *BattleWhere {
 	w.w.PredNull("service_module_seq", "is_null")
 	return w
 }
-func (q *Battle) ServiceModuleSeqIsNull() *Battle {
+func (q *BattleQuery) ServiceModuleSeqIsNull() *BattleQuery {
 	q.q.W().PredNull("service_module_seq", "is_null")
 	return q
 }
@@ -2678,7 +2938,7 @@ func (w *BattleWhere) ServiceModuleSeqIsNotNull() *BattleWhere {
 	w.w.PredNull("service_module_seq", "is_not_null")
 	return w
 }
-func (q *Battle) ServiceModuleSeqIsNotNull() *Battle {
+func (q *BattleQuery) ServiceModuleSeqIsNotNull() *BattleQuery {
 	q.q.W().PredNull("service_module_seq", "is_not_null")
 	return q
 }
@@ -2686,7 +2946,7 @@ func (w *BattleWhere) ServiceModuleSeqEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_module_seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceModuleSeqEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceModuleSeqEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_module_seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2694,7 +2954,7 @@ func (w *BattleWhere) ServiceModuleSeqNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_module_seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceModuleSeqNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceModuleSeqNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_module_seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2702,7 +2962,7 @@ func (w *BattleWhere) ServiceModuleSeqGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_module_seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceModuleSeqGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceModuleSeqGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_module_seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2710,7 +2970,7 @@ func (w *BattleWhere) ServiceModuleSeqGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_module_seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceModuleSeqGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceModuleSeqGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_module_seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2718,7 +2978,7 @@ func (w *BattleWhere) ServiceModuleSeqLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_module_seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceModuleSeqLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceModuleSeqLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_module_seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2726,7 +2986,7 @@ func (w *BattleWhere) ServiceModuleSeqLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_module_seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceModuleSeqLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceModuleSeqLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_module_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2734,15 +2994,17 @@ func (w *BattleWhere) ServiceMemberSeqEq(v int64) *BattleWhere {
 	w.w.Pred("service_member_seq", "eq", v)
 	return w
 }
-func (q *Battle) ServiceMemberSeqEq(v int64) *Battle {
+func (q *BattleQuery) ServiceMemberSeqEq(v int64) *BattleQuery {
 	q.q.W().Pred("service_member_seq", "eq", v)
 	return q
 }
+func (w *BattleWhere) ServiceMemberSeq(v int64) *BattleWhere { return w.ServiceMemberSeqEq(v) }
+func (q *BattleQuery) ServiceMemberSeq(v int64) *BattleQuery { return q.ServiceMemberSeqEq(v) }
 func (w *BattleWhere) ServiceMemberSeqNotEq(v int64) *BattleWhere {
 	w.w.Pred("service_member_seq", "not_eq", v)
 	return w
 }
-func (q *Battle) ServiceMemberSeqNotEq(v int64) *Battle {
+func (q *BattleQuery) ServiceMemberSeqNotEq(v int64) *BattleQuery {
 	q.q.W().Pred("service_member_seq", "not_eq", v)
 	return q
 }
@@ -2750,7 +3012,7 @@ func (w *BattleWhere) ServiceMemberSeqGt(v int64) *BattleWhere {
 	w.w.Pred("service_member_seq", "gt", v)
 	return w
 }
-func (q *Battle) ServiceMemberSeqGt(v int64) *Battle {
+func (q *BattleQuery) ServiceMemberSeqGt(v int64) *BattleQuery {
 	q.q.W().Pred("service_member_seq", "gt", v)
 	return q
 }
@@ -2758,7 +3020,7 @@ func (w *BattleWhere) ServiceMemberSeqGte(v int64) *BattleWhere {
 	w.w.Pred("service_member_seq", "gte", v)
 	return w
 }
-func (q *Battle) ServiceMemberSeqGte(v int64) *Battle {
+func (q *BattleQuery) ServiceMemberSeqGte(v int64) *BattleQuery {
 	q.q.W().Pred("service_member_seq", "gte", v)
 	return q
 }
@@ -2766,7 +3028,7 @@ func (w *BattleWhere) ServiceMemberSeqLt(v int64) *BattleWhere {
 	w.w.Pred("service_member_seq", "lt", v)
 	return w
 }
-func (q *Battle) ServiceMemberSeqLt(v int64) *Battle {
+func (q *BattleQuery) ServiceMemberSeqLt(v int64) *BattleQuery {
 	q.q.W().Pred("service_member_seq", "lt", v)
 	return q
 }
@@ -2774,7 +3036,7 @@ func (w *BattleWhere) ServiceMemberSeqLte(v int64) *BattleWhere {
 	w.w.Pred("service_member_seq", "lte", v)
 	return w
 }
-func (q *Battle) ServiceMemberSeqLte(v int64) *Battle {
+func (q *BattleQuery) ServiceMemberSeqLte(v int64) *BattleQuery {
 	q.q.W().Pred("service_member_seq", "lte", v)
 	return q
 }
@@ -2782,7 +3044,7 @@ func (w *BattleWhere) ServiceMemberSeqIn(vs []int64) *BattleWhere {
 	w.w.PredList("service_member_seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) ServiceMemberSeqIn(vs []int64) *Battle {
+func (q *BattleQuery) ServiceMemberSeqIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("service_member_seq", "in", orm.Anys(vs))
 	return q
 }
@@ -2790,7 +3052,7 @@ func (w *BattleWhere) ServiceMemberSeqNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("service_member_seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) ServiceMemberSeqNotIn(vs []int64) *Battle {
+func (q *BattleQuery) ServiceMemberSeqNotIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("service_member_seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2798,7 +3060,7 @@ func (w *BattleWhere) ServiceMemberSeqBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("service_member_seq", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) ServiceMemberSeqBetween(lo, hi int64) *Battle {
+func (q *BattleQuery) ServiceMemberSeqBetween(lo, hi int64) *BattleQuery {
 	q.q.W().PredList("service_member_seq", "between", []any{lo, hi})
 	return q
 }
@@ -2806,7 +3068,7 @@ func (w *BattleWhere) ServiceMemberSeqIsNull() *BattleWhere {
 	w.w.PredNull("service_member_seq", "is_null")
 	return w
 }
-func (q *Battle) ServiceMemberSeqIsNull() *Battle {
+func (q *BattleQuery) ServiceMemberSeqIsNull() *BattleQuery {
 	q.q.W().PredNull("service_member_seq", "is_null")
 	return q
 }
@@ -2814,7 +3076,7 @@ func (w *BattleWhere) ServiceMemberSeqIsNotNull() *BattleWhere {
 	w.w.PredNull("service_member_seq", "is_not_null")
 	return w
 }
-func (q *Battle) ServiceMemberSeqIsNotNull() *Battle {
+func (q *BattleQuery) ServiceMemberSeqIsNotNull() *BattleQuery {
 	q.q.W().PredNull("service_member_seq", "is_not_null")
 	return q
 }
@@ -2822,7 +3084,7 @@ func (w *BattleWhere) ServiceMemberSeqEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_member_seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceMemberSeqEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceMemberSeqEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_member_seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2830,7 +3092,7 @@ func (w *BattleWhere) ServiceMemberSeqNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_member_seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceMemberSeqNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceMemberSeqNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_member_seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2838,7 +3100,7 @@ func (w *BattleWhere) ServiceMemberSeqGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_member_seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceMemberSeqGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceMemberSeqGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_member_seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2846,7 +3108,7 @@ func (w *BattleWhere) ServiceMemberSeqGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_member_seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceMemberSeqGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceMemberSeqGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_member_seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2854,7 +3116,7 @@ func (w *BattleWhere) ServiceMemberSeqLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_member_seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceMemberSeqLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceMemberSeqLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_member_seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2862,30 +3124,50 @@ func (w *BattleWhere) ServiceMemberSeqLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("service_member_seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) ServiceMemberSeqLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) ServiceMemberSeqLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("service_member_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) StartDtEq(v time.Time) *BattleWhere { w.w.Pred("start_dt", "eq", v); return w }
-func (q *Battle) StartDtEq(v time.Time) *Battle           { q.q.W().Pred("start_dt", "eq", v); return q }
+func (q *BattleQuery) StartDtEq(v time.Time) *BattleQuery {
+	q.q.W().Pred("start_dt", "eq", v)
+	return q
+}
+func (w *BattleWhere) StartDt(v time.Time) *BattleWhere { return w.StartDtEq(v) }
+func (q *BattleQuery) StartDt(v time.Time) *BattleQuery { return q.StartDtEq(v) }
 func (w *BattleWhere) StartDtNotEq(v time.Time) *BattleWhere {
 	w.w.Pred("start_dt", "not_eq", v)
 	return w
 }
-func (q *Battle) StartDtNotEq(v time.Time) *Battle         { q.q.W().Pred("start_dt", "not_eq", v); return q }
-func (w *BattleWhere) StartDtGt(v time.Time) *BattleWhere  { w.w.Pred("start_dt", "gt", v); return w }
-func (q *Battle) StartDtGt(v time.Time) *Battle            { q.q.W().Pred("start_dt", "gt", v); return q }
+func (q *BattleQuery) StartDtNotEq(v time.Time) *BattleQuery {
+	q.q.W().Pred("start_dt", "not_eq", v)
+	return q
+}
+func (w *BattleWhere) StartDtGt(v time.Time) *BattleWhere { w.w.Pred("start_dt", "gt", v); return w }
+func (q *BattleQuery) StartDtGt(v time.Time) *BattleQuery {
+	q.q.W().Pred("start_dt", "gt", v)
+	return q
+}
 func (w *BattleWhere) StartDtGte(v time.Time) *BattleWhere { w.w.Pred("start_dt", "gte", v); return w }
-func (q *Battle) StartDtGte(v time.Time) *Battle           { q.q.W().Pred("start_dt", "gte", v); return q }
-func (w *BattleWhere) StartDtLt(v time.Time) *BattleWhere  { w.w.Pred("start_dt", "lt", v); return w }
-func (q *Battle) StartDtLt(v time.Time) *Battle            { q.q.W().Pred("start_dt", "lt", v); return q }
+func (q *BattleQuery) StartDtGte(v time.Time) *BattleQuery {
+	q.q.W().Pred("start_dt", "gte", v)
+	return q
+}
+func (w *BattleWhere) StartDtLt(v time.Time) *BattleWhere { w.w.Pred("start_dt", "lt", v); return w }
+func (q *BattleQuery) StartDtLt(v time.Time) *BattleQuery {
+	q.q.W().Pred("start_dt", "lt", v)
+	return q
+}
 func (w *BattleWhere) StartDtLte(v time.Time) *BattleWhere { w.w.Pred("start_dt", "lte", v); return w }
-func (q *Battle) StartDtLte(v time.Time) *Battle           { q.q.W().Pred("start_dt", "lte", v); return q }
+func (q *BattleQuery) StartDtLte(v time.Time) *BattleQuery {
+	q.q.W().Pred("start_dt", "lte", v)
+	return q
+}
 func (w *BattleWhere) StartDtIn(vs []time.Time) *BattleWhere {
 	w.w.PredList("start_dt", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) StartDtIn(vs []time.Time) *Battle {
+func (q *BattleQuery) StartDtIn(vs []time.Time) *BattleQuery {
 	q.q.W().PredList("start_dt", "in", orm.Anys(vs))
 	return q
 }
@@ -2893,7 +3175,7 @@ func (w *BattleWhere) StartDtNotIn(vs []time.Time) *BattleWhere {
 	w.w.PredList("start_dt", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) StartDtNotIn(vs []time.Time) *Battle {
+func (q *BattleQuery) StartDtNotIn(vs []time.Time) *BattleQuery {
 	q.q.W().PredList("start_dt", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2901,22 +3183,25 @@ func (w *BattleWhere) StartDtBetween(lo, hi time.Time) *BattleWhere {
 	w.w.PredList("start_dt", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) StartDtBetween(lo, hi time.Time) *Battle {
+func (q *BattleQuery) StartDtBetween(lo, hi time.Time) *BattleQuery {
 	q.q.W().PredList("start_dt", "between", []any{lo, hi})
 	return q
 }
 func (w *BattleWhere) StartDtIsNull() *BattleWhere { w.w.PredNull("start_dt", "is_null"); return w }
-func (q *Battle) StartDtIsNull() *Battle           { q.q.W().PredNull("start_dt", "is_null"); return q }
+func (q *BattleQuery) StartDtIsNull() *BattleQuery { q.q.W().PredNull("start_dt", "is_null"); return q }
 func (w *BattleWhere) StartDtIsNotNull() *BattleWhere {
 	w.w.PredNull("start_dt", "is_not_null")
 	return w
 }
-func (q *Battle) StartDtIsNotNull() *Battle { q.q.W().PredNull("start_dt", "is_not_null"); return q }
+func (q *BattleQuery) StartDtIsNotNull() *BattleQuery {
+	q.q.W().PredNull("start_dt", "is_not_null")
+	return q
+}
 func (w *BattleWhere) StartDtEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("start_dt", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) StartDtEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) StartDtEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("start_dt", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2924,7 +3209,7 @@ func (w *BattleWhere) StartDtNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("start_dt", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) StartDtNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) StartDtNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("start_dt", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2932,7 +3217,7 @@ func (w *BattleWhere) StartDtGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("start_dt", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) StartDtGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) StartDtGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("start_dt", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2940,7 +3225,7 @@ func (w *BattleWhere) StartDtGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("start_dt", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) StartDtGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) StartDtGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("start_dt", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2948,7 +3233,7 @@ func (w *BattleWhere) StartDtLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("start_dt", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) StartDtLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) StartDtLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("start_dt", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2956,27 +3241,32 @@ func (w *BattleWhere) StartDtLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("start_dt", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) StartDtLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) StartDtLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("start_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) EndDtEq(v time.Time) *BattleWhere    { w.w.Pred("end_dt", "eq", v); return w }
-func (q *Battle) EndDtEq(v time.Time) *Battle              { q.q.W().Pred("end_dt", "eq", v); return q }
+func (q *BattleQuery) EndDtEq(v time.Time) *BattleQuery    { q.q.W().Pred("end_dt", "eq", v); return q }
+func (w *BattleWhere) EndDt(v time.Time) *BattleWhere      { return w.EndDtEq(v) }
+func (q *BattleQuery) EndDt(v time.Time) *BattleQuery      { return q.EndDtEq(v) }
 func (w *BattleWhere) EndDtNotEq(v time.Time) *BattleWhere { w.w.Pred("end_dt", "not_eq", v); return w }
-func (q *Battle) EndDtNotEq(v time.Time) *Battle           { q.q.W().Pred("end_dt", "not_eq", v); return q }
-func (w *BattleWhere) EndDtGt(v time.Time) *BattleWhere    { w.w.Pred("end_dt", "gt", v); return w }
-func (q *Battle) EndDtGt(v time.Time) *Battle              { q.q.W().Pred("end_dt", "gt", v); return q }
-func (w *BattleWhere) EndDtGte(v time.Time) *BattleWhere   { w.w.Pred("end_dt", "gte", v); return w }
-func (q *Battle) EndDtGte(v time.Time) *Battle             { q.q.W().Pred("end_dt", "gte", v); return q }
-func (w *BattleWhere) EndDtLt(v time.Time) *BattleWhere    { w.w.Pred("end_dt", "lt", v); return w }
-func (q *Battle) EndDtLt(v time.Time) *Battle              { q.q.W().Pred("end_dt", "lt", v); return q }
-func (w *BattleWhere) EndDtLte(v time.Time) *BattleWhere   { w.w.Pred("end_dt", "lte", v); return w }
-func (q *Battle) EndDtLte(v time.Time) *Battle             { q.q.W().Pred("end_dt", "lte", v); return q }
+func (q *BattleQuery) EndDtNotEq(v time.Time) *BattleQuery {
+	q.q.W().Pred("end_dt", "not_eq", v)
+	return q
+}
+func (w *BattleWhere) EndDtGt(v time.Time) *BattleWhere  { w.w.Pred("end_dt", "gt", v); return w }
+func (q *BattleQuery) EndDtGt(v time.Time) *BattleQuery  { q.q.W().Pred("end_dt", "gt", v); return q }
+func (w *BattleWhere) EndDtGte(v time.Time) *BattleWhere { w.w.Pred("end_dt", "gte", v); return w }
+func (q *BattleQuery) EndDtGte(v time.Time) *BattleQuery { q.q.W().Pred("end_dt", "gte", v); return q }
+func (w *BattleWhere) EndDtLt(v time.Time) *BattleWhere  { w.w.Pred("end_dt", "lt", v); return w }
+func (q *BattleQuery) EndDtLt(v time.Time) *BattleQuery  { q.q.W().Pred("end_dt", "lt", v); return q }
+func (w *BattleWhere) EndDtLte(v time.Time) *BattleWhere { w.w.Pred("end_dt", "lte", v); return w }
+func (q *BattleQuery) EndDtLte(v time.Time) *BattleQuery { q.q.W().Pred("end_dt", "lte", v); return q }
 func (w *BattleWhere) EndDtIn(vs []time.Time) *BattleWhere {
 	w.w.PredList("end_dt", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) EndDtIn(vs []time.Time) *Battle {
+func (q *BattleQuery) EndDtIn(vs []time.Time) *BattleQuery {
 	q.q.W().PredList("end_dt", "in", orm.Anys(vs))
 	return q
 }
@@ -2984,7 +3274,7 @@ func (w *BattleWhere) EndDtNotIn(vs []time.Time) *BattleWhere {
 	w.w.PredList("end_dt", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) EndDtNotIn(vs []time.Time) *Battle {
+func (q *BattleQuery) EndDtNotIn(vs []time.Time) *BattleQuery {
 	q.q.W().PredList("end_dt", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2992,19 +3282,22 @@ func (w *BattleWhere) EndDtBetween(lo, hi time.Time) *BattleWhere {
 	w.w.PredList("end_dt", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) EndDtBetween(lo, hi time.Time) *Battle {
+func (q *BattleQuery) EndDtBetween(lo, hi time.Time) *BattleQuery {
 	q.q.W().PredList("end_dt", "between", []any{lo, hi})
 	return q
 }
 func (w *BattleWhere) EndDtIsNull() *BattleWhere    { w.w.PredNull("end_dt", "is_null"); return w }
-func (q *Battle) EndDtIsNull() *Battle              { q.q.W().PredNull("end_dt", "is_null"); return q }
+func (q *BattleQuery) EndDtIsNull() *BattleQuery    { q.q.W().PredNull("end_dt", "is_null"); return q }
 func (w *BattleWhere) EndDtIsNotNull() *BattleWhere { w.w.PredNull("end_dt", "is_not_null"); return w }
-func (q *Battle) EndDtIsNotNull() *Battle           { q.q.W().PredNull("end_dt", "is_not_null"); return q }
+func (q *BattleQuery) EndDtIsNotNull() *BattleQuery {
+	q.q.W().PredNull("end_dt", "is_not_null")
+	return q
+}
 func (w *BattleWhere) EndDtEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("end_dt", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) EndDtEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) EndDtEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("end_dt", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3012,7 +3305,7 @@ func (w *BattleWhere) EndDtNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("end_dt", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) EndDtNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) EndDtNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("end_dt", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3020,7 +3313,7 @@ func (w *BattleWhere) EndDtGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("end_dt", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) EndDtGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) EndDtGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("end_dt", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -3028,7 +3321,7 @@ func (w *BattleWhere) EndDtGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("end_dt", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) EndDtGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) EndDtGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("end_dt", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -3036,7 +3329,7 @@ func (w *BattleWhere) EndDtLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("end_dt", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) EndDtLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) EndDtLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("end_dt", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -3044,52 +3337,69 @@ func (w *BattleWhere) EndDtLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("end_dt", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) EndDtLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) EndDtLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("end_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) UuidEq(v string) *BattleWhere    { w.w.Pred("uuid", "eq", v); return w }
-func (q *Battle) UuidEq(v string) *Battle              { q.q.W().Pred("uuid", "eq", v); return q }
+func (q *BattleQuery) UuidEq(v string) *BattleQuery    { q.q.W().Pred("uuid", "eq", v); return q }
+func (w *BattleWhere) Uuid(v string) *BattleWhere      { return w.UuidEq(v) }
+func (q *BattleQuery) Uuid(v string) *BattleQuery      { return q.UuidEq(v) }
 func (w *BattleWhere) UuidNotEq(v string) *BattleWhere { w.w.Pred("uuid", "not_eq", v); return w }
-func (q *Battle) UuidNotEq(v string) *Battle           { q.q.W().Pred("uuid", "not_eq", v); return q }
+func (q *BattleQuery) UuidNotEq(v string) *BattleQuery { q.q.W().Pred("uuid", "not_eq", v); return q }
 func (w *BattleWhere) UuidIn(vs []string) *BattleWhere {
 	w.w.PredList("uuid", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) UuidIn(vs []string) *Battle { q.q.W().PredList("uuid", "in", orm.Anys(vs)); return q }
+func (q *BattleQuery) UuidIn(vs []string) *BattleQuery {
+	q.q.W().PredList("uuid", "in", orm.Anys(vs))
+	return q
+}
 func (w *BattleWhere) UuidNotIn(vs []string) *BattleWhere {
 	w.w.PredList("uuid", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) UuidNotIn(vs []string) *Battle {
+func (q *BattleQuery) UuidNotIn(vs []string) *BattleQuery {
 	q.q.W().PredList("uuid", "not_in", orm.Anys(vs))
 	return q
 }
 func (w *BattleWhere) UuidLike(v string) *BattleWhere { w.w.Pred("uuid", "like", v); return w }
-func (q *Battle) UuidLike(v string) *Battle           { q.q.W().Pred("uuid", "like", v); return q }
+func (q *BattleQuery) UuidLike(v string) *BattleQuery { q.q.W().Pred("uuid", "like", v); return q }
 func (w *BattleWhere) UuidLikeBinary(v string) *BattleWhere {
 	w.w.Pred("uuid", "like_binary", v)
 	return w
 }
-func (q *Battle) UuidLikeBinary(v string) *Battle         { q.q.W().Pred("uuid", "like_binary", v); return q }
+func (q *BattleQuery) UuidLikeBinary(v string) *BattleQuery {
+	q.q.W().Pred("uuid", "like_binary", v)
+	return q
+}
 func (w *BattleWhere) UuidContains(v string) *BattleWhere { w.w.Pred("uuid", "contains", v); return w }
-func (q *Battle) UuidContains(v string) *Battle           { q.q.W().Pred("uuid", "contains", v); return q }
+func (q *BattleQuery) UuidContains(v string) *BattleQuery {
+	q.q.W().Pred("uuid", "contains", v)
+	return q
+}
 func (w *BattleWhere) UuidStartsWith(v string) *BattleWhere {
 	w.w.Pred("uuid", "starts_with", v)
 	return w
 }
-func (q *Battle) UuidStartsWith(v string) *Battle         { q.q.W().Pred("uuid", "starts_with", v); return q }
+func (q *BattleQuery) UuidStartsWith(v string) *BattleQuery {
+	q.q.W().Pred("uuid", "starts_with", v)
+	return q
+}
 func (w *BattleWhere) UuidEndsWith(v string) *BattleWhere { w.w.Pred("uuid", "ends_with", v); return w }
-func (q *Battle) UuidEndsWith(v string) *Battle           { q.q.W().Pred("uuid", "ends_with", v); return q }
-func (w *BattleWhere) UuidIsNull() *BattleWhere           { w.w.PredNull("uuid", "is_null"); return w }
-func (q *Battle) UuidIsNull() *Battle                     { q.q.W().PredNull("uuid", "is_null"); return q }
-func (w *BattleWhere) UuidIsNotNull() *BattleWhere        { w.w.PredNull("uuid", "is_not_null"); return w }
-func (q *Battle) UuidIsNotNull() *Battle                  { q.q.W().PredNull("uuid", "is_not_null"); return q }
+func (q *BattleQuery) UuidEndsWith(v string) *BattleQuery {
+	q.q.W().Pred("uuid", "ends_with", v)
+	return q
+}
+func (w *BattleWhere) UuidIsNull() *BattleWhere    { w.w.PredNull("uuid", "is_null"); return w }
+func (q *BattleQuery) UuidIsNull() *BattleQuery    { q.q.W().PredNull("uuid", "is_null"); return q }
+func (w *BattleWhere) UuidIsNotNull() *BattleWhere { w.w.PredNull("uuid", "is_not_null"); return w }
+func (q *BattleQuery) UuidIsNotNull() *BattleQuery { q.q.W().PredNull("uuid", "is_not_null"); return q }
 func (w *BattleWhere) UuidEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("uuid", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UuidEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UuidEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("uuid", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3097,7 +3407,7 @@ func (w *BattleWhere) UuidNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("uuid", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) UuidNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) UuidNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("uuid", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3105,12 +3415,17 @@ func (w *BattleWhere) IsSinglePlayEq(v bool) *BattleWhere {
 	w.w.Pred("is_single_play", "eq", v)
 	return w
 }
-func (q *Battle) IsSinglePlayEq(v bool) *Battle { q.q.W().Pred("is_single_play", "eq", v); return q }
+func (q *BattleQuery) IsSinglePlayEq(v bool) *BattleQuery {
+	q.q.W().Pred("is_single_play", "eq", v)
+	return q
+}
+func (w *BattleWhere) IsSinglePlay(v bool) *BattleWhere { return w.IsSinglePlayEq(v) }
+func (q *BattleQuery) IsSinglePlay(v bool) *BattleQuery { return q.IsSinglePlayEq(v) }
 func (w *BattleWhere) IsSinglePlayNotEq(v bool) *BattleWhere {
 	w.w.Pred("is_single_play", "not_eq", v)
 	return w
 }
-func (q *Battle) IsSinglePlayNotEq(v bool) *Battle {
+func (q *BattleQuery) IsSinglePlayNotEq(v bool) *BattleQuery {
 	q.q.W().Pred("is_single_play", "not_eq", v)
 	return q
 }
@@ -3118,7 +3433,7 @@ func (w *BattleWhere) IsSinglePlayIsNull() *BattleWhere {
 	w.w.PredNull("is_single_play", "is_null")
 	return w
 }
-func (q *Battle) IsSinglePlayIsNull() *Battle {
+func (q *BattleQuery) IsSinglePlayIsNull() *BattleQuery {
 	q.q.W().PredNull("is_single_play", "is_null")
 	return q
 }
@@ -3126,7 +3441,7 @@ func (w *BattleWhere) IsSinglePlayIsNotNull() *BattleWhere {
 	w.w.PredNull("is_single_play", "is_not_null")
 	return w
 }
-func (q *Battle) IsSinglePlayIsNotNull() *Battle {
+func (q *BattleQuery) IsSinglePlayIsNotNull() *BattleQuery {
 	q.q.W().PredNull("is_single_play", "is_not_null")
 	return q
 }
@@ -3134,7 +3449,7 @@ func (w *BattleWhere) IsSinglePlayEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("is_single_play", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) IsSinglePlayEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) IsSinglePlayEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("is_single_play", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3142,30 +3457,50 @@ func (w *BattleWhere) IsSinglePlayNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("is_single_play", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) IsSinglePlayNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) IsSinglePlayNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("is_single_play", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) LikeCountEq(v int64) *BattleWhere { w.w.Pred("like_count", "eq", v); return w }
-func (q *Battle) LikeCountEq(v int64) *Battle           { q.q.W().Pred("like_count", "eq", v); return q }
+func (q *BattleQuery) LikeCountEq(v int64) *BattleQuery {
+	q.q.W().Pred("like_count", "eq", v)
+	return q
+}
+func (w *BattleWhere) LikeCount(v int64) *BattleWhere { return w.LikeCountEq(v) }
+func (q *BattleQuery) LikeCount(v int64) *BattleQuery { return q.LikeCountEq(v) }
 func (w *BattleWhere) LikeCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("like_count", "not_eq", v)
 	return w
 }
-func (q *Battle) LikeCountNotEq(v int64) *Battle         { q.q.W().Pred("like_count", "not_eq", v); return q }
-func (w *BattleWhere) LikeCountGt(v int64) *BattleWhere  { w.w.Pred("like_count", "gt", v); return w }
-func (q *Battle) LikeCountGt(v int64) *Battle            { q.q.W().Pred("like_count", "gt", v); return q }
+func (q *BattleQuery) LikeCountNotEq(v int64) *BattleQuery {
+	q.q.W().Pred("like_count", "not_eq", v)
+	return q
+}
+func (w *BattleWhere) LikeCountGt(v int64) *BattleWhere { w.w.Pred("like_count", "gt", v); return w }
+func (q *BattleQuery) LikeCountGt(v int64) *BattleQuery {
+	q.q.W().Pred("like_count", "gt", v)
+	return q
+}
 func (w *BattleWhere) LikeCountGte(v int64) *BattleWhere { w.w.Pred("like_count", "gte", v); return w }
-func (q *Battle) LikeCountGte(v int64) *Battle           { q.q.W().Pred("like_count", "gte", v); return q }
-func (w *BattleWhere) LikeCountLt(v int64) *BattleWhere  { w.w.Pred("like_count", "lt", v); return w }
-func (q *Battle) LikeCountLt(v int64) *Battle            { q.q.W().Pred("like_count", "lt", v); return q }
+func (q *BattleQuery) LikeCountGte(v int64) *BattleQuery {
+	q.q.W().Pred("like_count", "gte", v)
+	return q
+}
+func (w *BattleWhere) LikeCountLt(v int64) *BattleWhere { w.w.Pred("like_count", "lt", v); return w }
+func (q *BattleQuery) LikeCountLt(v int64) *BattleQuery {
+	q.q.W().Pred("like_count", "lt", v)
+	return q
+}
 func (w *BattleWhere) LikeCountLte(v int64) *BattleWhere { w.w.Pred("like_count", "lte", v); return w }
-func (q *Battle) LikeCountLte(v int64) *Battle           { q.q.W().Pred("like_count", "lte", v); return q }
+func (q *BattleQuery) LikeCountLte(v int64) *BattleQuery {
+	q.q.W().Pred("like_count", "lte", v)
+	return q
+}
 func (w *BattleWhere) LikeCountIn(vs []int64) *BattleWhere {
 	w.w.PredList("like_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) LikeCountIn(vs []int64) *Battle {
+func (q *BattleQuery) LikeCountIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("like_count", "in", orm.Anys(vs))
 	return q
 }
@@ -3173,7 +3508,7 @@ func (w *BattleWhere) LikeCountNotIn(vs []int64) *BattleWhere {
 	w.w.PredList("like_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) LikeCountNotIn(vs []int64) *Battle {
+func (q *BattleQuery) LikeCountNotIn(vs []int64) *BattleQuery {
 	q.q.W().PredList("like_count", "not_in", orm.Anys(vs))
 	return q
 }
@@ -3181,17 +3516,20 @@ func (w *BattleWhere) LikeCountBetween(lo, hi int64) *BattleWhere {
 	w.w.PredList("like_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) LikeCountBetween(lo, hi int64) *Battle {
+func (q *BattleQuery) LikeCountBetween(lo, hi int64) *BattleQuery {
 	q.q.W().PredList("like_count", "between", []any{lo, hi})
 	return q
 }
 func (w *BattleWhere) LikeCountIsNull() *BattleWhere { w.w.PredNull("like_count", "is_null"); return w }
-func (q *Battle) LikeCountIsNull() *Battle           { q.q.W().PredNull("like_count", "is_null"); return q }
+func (q *BattleQuery) LikeCountIsNull() *BattleQuery {
+	q.q.W().PredNull("like_count", "is_null")
+	return q
+}
 func (w *BattleWhere) LikeCountIsNotNull() *BattleWhere {
 	w.w.PredNull("like_count", "is_not_null")
 	return w
 }
-func (q *Battle) LikeCountIsNotNull() *Battle {
+func (q *BattleQuery) LikeCountIsNotNull() *BattleQuery {
 	q.q.W().PredNull("like_count", "is_not_null")
 	return q
 }
@@ -3199,7 +3537,7 @@ func (w *BattleWhere) LikeCountEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("like_count", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) LikeCountEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) LikeCountEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("like_count", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3207,7 +3545,7 @@ func (w *BattleWhere) LikeCountNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("like_count", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) LikeCountNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) LikeCountNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("like_count", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3215,7 +3553,7 @@ func (w *BattleWhere) LikeCountGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("like_count", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) LikeCountGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) LikeCountGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("like_count", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -3223,7 +3561,7 @@ func (w *BattleWhere) LikeCountGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("like_count", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) LikeCountGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) LikeCountGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("like_count", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -3231,7 +3569,7 @@ func (w *BattleWhere) LikeCountLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("like_count", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) LikeCountLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) LikeCountLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("like_count", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -3239,7 +3577,7 @@ func (w *BattleWhere) LikeCountLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("like_count", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) LikeCountLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) LikeCountLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("like_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -3247,12 +3585,17 @@ func (w *BattleWhere) AesHexEmailEq(v string) *BattleWhere {
 	w.w.Pred("aes_hex_email", "eq", v)
 	return w
 }
-func (q *Battle) AesHexEmailEq(v string) *Battle { q.q.W().Pred("aes_hex_email", "eq", v); return q }
+func (q *BattleQuery) AesHexEmailEq(v string) *BattleQuery {
+	q.q.W().Pred("aes_hex_email", "eq", v)
+	return q
+}
+func (w *BattleWhere) AesHexEmail(v string) *BattleWhere { return w.AesHexEmailEq(v) }
+func (q *BattleQuery) AesHexEmail(v string) *BattleQuery { return q.AesHexEmailEq(v) }
 func (w *BattleWhere) AesHexEmailNotEq(v string) *BattleWhere {
 	w.w.Pred("aes_hex_email", "not_eq", v)
 	return w
 }
-func (q *Battle) AesHexEmailNotEq(v string) *Battle {
+func (q *BattleQuery) AesHexEmailNotEq(v string) *BattleQuery {
 	q.q.W().Pred("aes_hex_email", "not_eq", v)
 	return q
 }
@@ -3260,7 +3603,7 @@ func (w *BattleWhere) AesHexEmailIn(vs []string) *BattleWhere {
 	w.w.PredList("aes_hex_email", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) AesHexEmailIn(vs []string) *Battle {
+func (q *BattleQuery) AesHexEmailIn(vs []string) *BattleQuery {
 	q.q.W().PredList("aes_hex_email", "in", orm.Anys(vs))
 	return q
 }
@@ -3268,7 +3611,7 @@ func (w *BattleWhere) AesHexEmailNotIn(vs []string) *BattleWhere {
 	w.w.PredList("aes_hex_email", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) AesHexEmailNotIn(vs []string) *Battle {
+func (q *BattleQuery) AesHexEmailNotIn(vs []string) *BattleQuery {
 	q.q.W().PredList("aes_hex_email", "not_in", orm.Anys(vs))
 	return q
 }
@@ -3276,12 +3619,15 @@ func (w *BattleWhere) AesHexEmailIsNull() *BattleWhere {
 	w.w.PredNull("aes_hex_email", "is_null")
 	return w
 }
-func (q *Battle) AesHexEmailIsNull() *Battle { q.q.W().PredNull("aes_hex_email", "is_null"); return q }
+func (q *BattleQuery) AesHexEmailIsNull() *BattleQuery {
+	q.q.W().PredNull("aes_hex_email", "is_null")
+	return q
+}
 func (w *BattleWhere) AesHexEmailIsNotNull() *BattleWhere {
 	w.w.PredNull("aes_hex_email", "is_not_null")
 	return w
 }
-func (q *Battle) AesHexEmailIsNotNull() *Battle {
+func (q *BattleQuery) AesHexEmailIsNotNull() *BattleQuery {
 	q.q.W().PredNull("aes_hex_email", "is_not_null")
 	return q
 }
@@ -3289,7 +3635,7 @@ func (w *BattleWhere) AesHexEmailEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("aes_hex_email", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) AesHexEmailEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) AesHexEmailEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("aes_hex_email", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3297,7 +3643,7 @@ func (w *BattleWhere) AesHexEmailNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("aes_hex_email", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) AesHexEmailNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) AesHexEmailNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("aes_hex_email", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3305,12 +3651,17 @@ func (w *BattleWhere) AesHexPhoneEq(v string) *BattleWhere {
 	w.w.Pred("aes_hex_phone", "eq", v)
 	return w
 }
-func (q *Battle) AesHexPhoneEq(v string) *Battle { q.q.W().Pred("aes_hex_phone", "eq", v); return q }
+func (q *BattleQuery) AesHexPhoneEq(v string) *BattleQuery {
+	q.q.W().Pred("aes_hex_phone", "eq", v)
+	return q
+}
+func (w *BattleWhere) AesHexPhone(v string) *BattleWhere { return w.AesHexPhoneEq(v) }
+func (q *BattleQuery) AesHexPhone(v string) *BattleQuery { return q.AesHexPhoneEq(v) }
 func (w *BattleWhere) AesHexPhoneNotEq(v string) *BattleWhere {
 	w.w.Pred("aes_hex_phone", "not_eq", v)
 	return w
 }
-func (q *Battle) AesHexPhoneNotEq(v string) *Battle {
+func (q *BattleQuery) AesHexPhoneNotEq(v string) *BattleQuery {
 	q.q.W().Pred("aes_hex_phone", "not_eq", v)
 	return q
 }
@@ -3318,7 +3669,7 @@ func (w *BattleWhere) AesHexPhoneIn(vs []string) *BattleWhere {
 	w.w.PredList("aes_hex_phone", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) AesHexPhoneIn(vs []string) *Battle {
+func (q *BattleQuery) AesHexPhoneIn(vs []string) *BattleQuery {
 	q.q.W().PredList("aes_hex_phone", "in", orm.Anys(vs))
 	return q
 }
@@ -3326,7 +3677,7 @@ func (w *BattleWhere) AesHexPhoneNotIn(vs []string) *BattleWhere {
 	w.w.PredList("aes_hex_phone", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) AesHexPhoneNotIn(vs []string) *Battle {
+func (q *BattleQuery) AesHexPhoneNotIn(vs []string) *BattleQuery {
 	q.q.W().PredList("aes_hex_phone", "not_in", orm.Anys(vs))
 	return q
 }
@@ -3334,12 +3685,15 @@ func (w *BattleWhere) AesHexPhoneIsNull() *BattleWhere {
 	w.w.PredNull("aes_hex_phone", "is_null")
 	return w
 }
-func (q *Battle) AesHexPhoneIsNull() *Battle { q.q.W().PredNull("aes_hex_phone", "is_null"); return q }
+func (q *BattleQuery) AesHexPhoneIsNull() *BattleQuery {
+	q.q.W().PredNull("aes_hex_phone", "is_null")
+	return q
+}
 func (w *BattleWhere) AesHexPhoneIsNotNull() *BattleWhere {
 	w.w.PredNull("aes_hex_phone", "is_not_null")
 	return w
 }
-func (q *Battle) AesHexPhoneIsNotNull() *Battle {
+func (q *BattleQuery) AesHexPhoneIsNotNull() *BattleQuery {
 	q.q.W().PredNull("aes_hex_phone", "is_not_null")
 	return q
 }
@@ -3347,7 +3701,7 @@ func (w *BattleWhere) AesHexPhoneEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("aes_hex_phone", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) AesHexPhoneEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) AesHexPhoneEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("aes_hex_phone", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3355,27 +3709,32 @@ func (w *BattleWhere) AesHexPhoneNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("aes_hex_phone", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) AesHexPhoneNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) AesHexPhoneNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("aes_hex_phone", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) PriceEq(v float64) *BattleWhere    { w.w.Pred("price", "eq", v); return w }
-func (q *Battle) PriceEq(v float64) *Battle              { q.q.W().Pred("price", "eq", v); return q }
+func (q *BattleQuery) PriceEq(v float64) *BattleQuery    { q.q.W().Pred("price", "eq", v); return q }
+func (w *BattleWhere) Price(v float64) *BattleWhere      { return w.PriceEq(v) }
+func (q *BattleQuery) Price(v float64) *BattleQuery      { return q.PriceEq(v) }
 func (w *BattleWhere) PriceNotEq(v float64) *BattleWhere { w.w.Pred("price", "not_eq", v); return w }
-func (q *Battle) PriceNotEq(v float64) *Battle           { q.q.W().Pred("price", "not_eq", v); return q }
-func (w *BattleWhere) PriceGt(v float64) *BattleWhere    { w.w.Pred("price", "gt", v); return w }
-func (q *Battle) PriceGt(v float64) *Battle              { q.q.W().Pred("price", "gt", v); return q }
-func (w *BattleWhere) PriceGte(v float64) *BattleWhere   { w.w.Pred("price", "gte", v); return w }
-func (q *Battle) PriceGte(v float64) *Battle             { q.q.W().Pred("price", "gte", v); return q }
-func (w *BattleWhere) PriceLt(v float64) *BattleWhere    { w.w.Pred("price", "lt", v); return w }
-func (q *Battle) PriceLt(v float64) *Battle              { q.q.W().Pred("price", "lt", v); return q }
-func (w *BattleWhere) PriceLte(v float64) *BattleWhere   { w.w.Pred("price", "lte", v); return w }
-func (q *Battle) PriceLte(v float64) *Battle             { q.q.W().Pred("price", "lte", v); return q }
+func (q *BattleQuery) PriceNotEq(v float64) *BattleQuery {
+	q.q.W().Pred("price", "not_eq", v)
+	return q
+}
+func (w *BattleWhere) PriceGt(v float64) *BattleWhere  { w.w.Pred("price", "gt", v); return w }
+func (q *BattleQuery) PriceGt(v float64) *BattleQuery  { q.q.W().Pred("price", "gt", v); return q }
+func (w *BattleWhere) PriceGte(v float64) *BattleWhere { w.w.Pred("price", "gte", v); return w }
+func (q *BattleQuery) PriceGte(v float64) *BattleQuery { q.q.W().Pred("price", "gte", v); return q }
+func (w *BattleWhere) PriceLt(v float64) *BattleWhere  { w.w.Pred("price", "lt", v); return w }
+func (q *BattleQuery) PriceLt(v float64) *BattleQuery  { q.q.W().Pred("price", "lt", v); return q }
+func (w *BattleWhere) PriceLte(v float64) *BattleWhere { w.w.Pred("price", "lte", v); return w }
+func (q *BattleQuery) PriceLte(v float64) *BattleQuery { q.q.W().Pred("price", "lte", v); return q }
 func (w *BattleWhere) PriceIn(vs []float64) *BattleWhere {
 	w.w.PredList("price", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) PriceIn(vs []float64) *Battle {
+func (q *BattleQuery) PriceIn(vs []float64) *BattleQuery {
 	q.q.W().PredList("price", "in", orm.Anys(vs))
 	return q
 }
@@ -3383,7 +3742,7 @@ func (w *BattleWhere) PriceNotIn(vs []float64) *BattleWhere {
 	w.w.PredList("price", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) PriceNotIn(vs []float64) *Battle {
+func (q *BattleQuery) PriceNotIn(vs []float64) *BattleQuery {
 	q.q.W().PredList("price", "not_in", orm.Anys(vs))
 	return q
 }
@@ -3391,19 +3750,22 @@ func (w *BattleWhere) PriceBetween(lo, hi float64) *BattleWhere {
 	w.w.PredList("price", "between", []any{lo, hi})
 	return w
 }
-func (q *Battle) PriceBetween(lo, hi float64) *Battle {
+func (q *BattleQuery) PriceBetween(lo, hi float64) *BattleQuery {
 	q.q.W().PredList("price", "between", []any{lo, hi})
 	return q
 }
 func (w *BattleWhere) PriceIsNull() *BattleWhere    { w.w.PredNull("price", "is_null"); return w }
-func (q *Battle) PriceIsNull() *Battle              { q.q.W().PredNull("price", "is_null"); return q }
+func (q *BattleQuery) PriceIsNull() *BattleQuery    { q.q.W().PredNull("price", "is_null"); return q }
 func (w *BattleWhere) PriceIsNotNull() *BattleWhere { w.w.PredNull("price", "is_not_null"); return w }
-func (q *Battle) PriceIsNotNull() *Battle           { q.q.W().PredNull("price", "is_not_null"); return q }
+func (q *BattleQuery) PriceIsNotNull() *BattleQuery {
+	q.q.W().PredNull("price", "is_not_null")
+	return q
+}
 func (w *BattleWhere) PriceEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("price", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) PriceEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) PriceEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("price", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3411,7 +3773,7 @@ func (w *BattleWhere) PriceNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("price", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) PriceNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) PriceNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("price", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3419,7 +3781,7 @@ func (w *BattleWhere) PriceGtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("price", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) PriceGtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) PriceGtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("price", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -3427,7 +3789,7 @@ func (w *BattleWhere) PriceGteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("price", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) PriceGteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) PriceGteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("price", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -3435,7 +3797,7 @@ func (w *BattleWhere) PriceLtCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("price", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) PriceLtCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) PriceLtCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("price", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -3443,36 +3805,41 @@ func (w *BattleWhere) PriceLteCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("price", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) PriceLteCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) PriceLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("price", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) IpEq(v string) *BattleWhere    { w.w.Pred("ip", "eq", v); return w }
-func (q *Battle) IpEq(v string) *Battle              { q.q.W().Pred("ip", "eq", v); return q }
+func (q *BattleQuery) IpEq(v string) *BattleQuery    { q.q.W().Pred("ip", "eq", v); return q }
+func (w *BattleWhere) Ip(v string) *BattleWhere      { return w.IpEq(v) }
+func (q *BattleQuery) Ip(v string) *BattleQuery      { return q.IpEq(v) }
 func (w *BattleWhere) IpNotEq(v string) *BattleWhere { w.w.Pred("ip", "not_eq", v); return w }
-func (q *Battle) IpNotEq(v string) *Battle           { q.q.W().Pred("ip", "not_eq", v); return q }
+func (q *BattleQuery) IpNotEq(v string) *BattleQuery { q.q.W().Pred("ip", "not_eq", v); return q }
 func (w *BattleWhere) IpIn(vs []string) *BattleWhere {
 	w.w.PredList("ip", "in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) IpIn(vs []string) *Battle { q.q.W().PredList("ip", "in", orm.Anys(vs)); return q }
+func (q *BattleQuery) IpIn(vs []string) *BattleQuery {
+	q.q.W().PredList("ip", "in", orm.Anys(vs))
+	return q
+}
 func (w *BattleWhere) IpNotIn(vs []string) *BattleWhere {
 	w.w.PredList("ip", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Battle) IpNotIn(vs []string) *Battle {
+func (q *BattleQuery) IpNotIn(vs []string) *BattleQuery {
 	q.q.W().PredList("ip", "not_in", orm.Anys(vs))
 	return q
 }
 func (w *BattleWhere) IpIsNull() *BattleWhere    { w.w.PredNull("ip", "is_null"); return w }
-func (q *Battle) IpIsNull() *Battle              { q.q.W().PredNull("ip", "is_null"); return q }
+func (q *BattleQuery) IpIsNull() *BattleQuery    { q.q.W().PredNull("ip", "is_null"); return q }
 func (w *BattleWhere) IpIsNotNull() *BattleWhere { w.w.PredNull("ip", "is_not_null"); return w }
-func (q *Battle) IpIsNotNull() *Battle           { q.q.W().PredNull("ip", "is_not_null"); return q }
+func (q *BattleQuery) IpIsNotNull() *BattleQuery { q.q.W().PredNull("ip", "is_not_null"); return q }
 func (w *BattleWhere) IpEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("ip", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) IpEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) IpEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("ip", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3480,37 +3847,49 @@ func (w *BattleWhere) IpNotEqCol(ref orm.ColRef) *BattleWhere {
 	w.w.PredCol("ip", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Battle) IpNotEqCol(ref orm.ColRef) *Battle {
+func (q *BattleQuery) IpNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("ip", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) GzExtendIsNull() *BattleWhere { w.w.PredNull("gz_extend", "is_null"); return w }
-func (q *Battle) GzExtendIsNull() *Battle           { q.q.W().PredNull("gz_extend", "is_null"); return q }
+func (q *BattleQuery) GzExtendIsNull() *BattleQuery {
+	q.q.W().PredNull("gz_extend", "is_null")
+	return q
+}
 func (w *BattleWhere) GzExtendIsNotNull() *BattleWhere {
 	w.w.PredNull("gz_extend", "is_not_null")
 	return w
 }
-func (q *Battle) GzExtendIsNotNull() *Battle { q.q.W().PredNull("gz_extend", "is_not_null"); return q }
+func (q *BattleQuery) GzExtendIsNotNull() *BattleQuery {
+	q.q.W().PredNull("gz_extend", "is_not_null")
+	return q
+}
 func (w *BattleWhere) JsonSettingIsNull() *BattleWhere {
 	w.w.PredNull("json_setting", "is_null")
 	return w
 }
-func (q *Battle) JsonSettingIsNull() *Battle { q.q.W().PredNull("json_setting", "is_null"); return q }
+func (q *BattleQuery) JsonSettingIsNull() *BattleQuery {
+	q.q.W().PredNull("json_setting", "is_null")
+	return q
+}
 func (w *BattleWhere) JsonSettingIsNotNull() *BattleWhere {
 	w.w.PredNull("json_setting", "is_not_null")
 	return w
 }
-func (q *Battle) JsonSettingIsNotNull() *Battle {
+func (q *BattleQuery) JsonSettingIsNotNull() *BattleQuery {
 	q.q.W().PredNull("json_setting", "is_not_null")
 	return q
 }
 func (w *BattleWhere) JsonsTagsIsNull() *BattleWhere { w.w.PredNull("jsons_tags", "is_null"); return w }
-func (q *Battle) JsonsTagsIsNull() *Battle           { q.q.W().PredNull("jsons_tags", "is_null"); return q }
+func (q *BattleQuery) JsonsTagsIsNull() *BattleQuery {
+	q.q.W().PredNull("jsons_tags", "is_null")
+	return q
+}
 func (w *BattleWhere) JsonsTagsIsNotNull() *BattleWhere {
 	w.w.PredNull("jsons_tags", "is_not_null")
 	return w
 }
-func (q *Battle) JsonsTagsIsNotNull() *Battle {
+func (q *BattleQuery) JsonsTagsIsNotNull() *BattleQuery {
 	q.q.W().PredNull("jsons_tags", "is_not_null")
 	return q
 }
@@ -3518,12 +3897,15 @@ func (w *BattleWhere) Base64ExtraIsNull() *BattleWhere {
 	w.w.PredNull("base64_extra", "is_null")
 	return w
 }
-func (q *Battle) Base64ExtraIsNull() *Battle { q.q.W().PredNull("base64_extra", "is_null"); return q }
+func (q *BattleQuery) Base64ExtraIsNull() *BattleQuery {
+	q.q.W().PredNull("base64_extra", "is_null")
+	return q
+}
 func (w *BattleWhere) Base64ExtraIsNotNull() *BattleWhere {
 	w.w.PredNull("base64_extra", "is_not_null")
 	return w
 }
-func (q *Battle) Base64ExtraIsNotNull() *Battle {
+func (q *BattleQuery) Base64ExtraIsNotNull() *BattleQuery {
 	q.q.W().PredNull("base64_extra", "is_not_null")
 	return q
 }
@@ -3531,7 +3913,7 @@ func (w *BattleWhere) SerializeDataIsNull() *BattleWhere {
 	w.w.PredNull("serialize_data", "is_null")
 	return w
 }
-func (q *Battle) SerializeDataIsNull() *Battle {
+func (q *BattleQuery) SerializeDataIsNull() *BattleQuery {
 	q.q.W().PredNull("serialize_data", "is_null")
 	return q
 }
@@ -3539,7 +3921,7 @@ func (w *BattleWhere) SerializeDataIsNotNull() *BattleWhere {
 	w.w.PredNull("serialize_data", "is_not_null")
 	return w
 }
-func (q *Battle) SerializeDataIsNotNull() *Battle {
+func (q *BattleQuery) SerializeDataIsNotNull() *BattleQuery {
 	q.q.W().PredNull("serialize_data", "is_not_null")
 	return q
 }
@@ -3551,101 +3933,128 @@ func (w *BattleWhere) NameWithDescriptionMatchBoolean(v string) *BattleWhere {
 	w.w.Match([]string{"name", "description"}, true, v)
 	return w
 }
-func (q *Battle) NameWithDescriptionMatch(v string) *Battle {
+func (q *BattleQuery) NameWithDescriptionMatch(v string) *BattleQuery {
 	q.q.W().Match([]string{"name", "description"}, false, v)
 	return q
 }
-func (q *Battle) NameWithDescriptionMatchBoolean(v string) *Battle {
+func (q *BattleQuery) NameWithDescriptionMatchBoolean(v string) *BattleQuery {
 	q.q.W().Match([]string{"name", "description"}, true, v)
 	return q
 }
 
 // StartedAfter is the manifest predicate started_after: `start_dt` > ?
 func (w *BattleWhere) StartedAfter(v any) *BattleWhere { w.w.Expr("`start_dt` > ?", v); return w }
-func (q *Battle) StartedAfter(v any) *Battle           { q.q.W().Expr("`start_dt` > ?", v); return q }
+func (q *BattleQuery) StartedAfter(v any) *BattleQuery { q.q.W().Expr("`start_dt` > ?", v); return q }
 
 // Visible is the manifest predicate visible: `is_close` = FALSE AND `is_display` = TRUE
 func (w *BattleWhere) Visible() *BattleWhere {
 	w.w.Expr("`is_close` = FALSE AND `is_display` = TRUE")
 	return w
 }
-func (q *Battle) Visible() *Battle {
+func (q *BattleQuery) Visible() *BattleQuery {
 	q.q.W().Expr("`is_close` = FALSE AND `is_display` = TRUE")
 	return q
 }
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *Battle) Or() *Battle { q.q.Or(); return q }
-func (q *Battle) And(fn func(*BattleWhere)) *Battle {
+func (q *BattleQuery) Or() *BattleQuery { q.q.Or(); return q }
+func (q *BattleQuery) And(fn func(*BattleWhere)) *BattleQuery {
 	q.q.W().And(func(x *orm.W) { fn(&BattleWhere{w: x}) })
 	return q
 }
-func (q *Battle) Expr(frag string, binds ...any) *Battle { q.q.W().Expr(frag, binds...); return q }
-func (q *Battle) Service(fn func(*ServiceWhere)) *Battle {
+func (q *BattleQuery) Expr(frag string, binds ...any) *BattleQuery {
+	q.q.W().Expr(frag, binds...)
+	return q
+}
+func (q *BattleQuery) Service(fn func(*ServiceWhere)) *BattleQuery {
 	q.q.W().Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return q
 }
-func (q *Battle) ServiceMember(fn func(*ServiceMemberWhere)) *Battle {
+func (q *BattleQuery) ServiceMember(fn func(*ServiceMemberWhere)) *BattleQuery {
 	q.q.W().Nav("service_member", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return q
 }
-func (q *Battle) ServiceModule(fn func(*ServiceModuleWhere)) *Battle {
+func (q *BattleQuery) ServiceModule(fn func(*ServiceModuleWhere)) *BattleQuery {
 	q.q.W().Nav("service_module", func(x *orm.W) { fn(&ServiceModuleWhere{w: x}) })
 	return q
 }
-func (q *Battle) User(fn func(*UserWhere)) *Battle {
+func (q *BattleQuery) User(fn func(*UserWhere)) *BattleQuery {
 	q.q.W().Nav("user", func(x *orm.W) { fn(&UserWhere{w: x}) })
 	return q
 }
 
 // Join children: On = ON clause, Where = parent WHERE group. Bare predicates on a join child are rejected by the engine.
-func (q *Battle) On(fn func(*BattleWhere)) *Battle    { fn(&BattleWhere{w: q.q.OnW()}); return q }
-func (q *Battle) Where(fn func(*BattleWhere)) *Battle { fn(&BattleWhere{w: q.q.W()}); return q }
+func (q *BattleQuery) On(fn func(*BattleWhere)) *BattleQuery {
+	fn(&BattleWhere{w: q.q.OnW()})
+	return q
+}
+func (q *BattleQuery) Where(fn func(*BattleWhere)) *BattleQuery {
+	fn(&BattleWhere{w: q.q.W()})
+	return q
+}
 
 // Having is the group predicate after GroupBy<Col>: the same builder as where; aggregates go through Expr("COUNT(*) > ?", n).
-func (q *Battle) Having(fn func(*BattleWhere)) *Battle { fn(&BattleWhere{w: q.q.HavingW()}); return q }
+func (q *BattleQuery) Having(fn func(*BattleWhere)) *BattleQuery {
+	fn(&BattleWhere{w: q.q.HavingW()})
+	return q
+}
 
 // Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
-func (q *Battle) Raw(sql string, binds ...any) *Battle { q.q.Raw(sql, binds...); return q }
+func (q *BattleQuery) Raw(sql string, binds ...any) *BattleQuery { q.q.Raw(sql, binds...); return q }
 
-func (q *Battle) JoinService(child *Service) *Battle { q.q.Join("service", "inner", child.q); return q }
-func (q *Battle) LeftJoinService(child *Service) *Battle {
+func (q *BattleQuery) JoinService(child *ServiceQuery) *BattleQuery {
+	q.q.Join("service", "inner", child.q)
+	return q
+}
+func (q *BattleQuery) LeftJoinService(child *ServiceQuery) *BattleQuery {
 	q.q.Join("service", "left", child.q)
 	return q
 }
-func (q *Battle) RelationService(child *Service) *Battle { q.q.Relation("service", child.q); return q }
-func (q *Battle) JoinServiceMember(child *ServiceMember) *Battle {
+func (q *BattleQuery) RelationService(child *ServiceQuery) *BattleQuery {
+	q.q.Relation("service", child.q)
+	return q
+}
+func (q *BattleQuery) JoinServiceMember(child *ServiceMemberQuery) *BattleQuery {
 	q.q.Join("service_member", "inner", child.q)
 	return q
 }
-func (q *Battle) LeftJoinServiceMember(child *ServiceMember) *Battle {
+func (q *BattleQuery) LeftJoinServiceMember(child *ServiceMemberQuery) *BattleQuery {
 	q.q.Join("service_member", "left", child.q)
 	return q
 }
-func (q *Battle) RelationServiceMember(child *ServiceMember) *Battle {
+func (q *BattleQuery) RelationServiceMember(child *ServiceMemberQuery) *BattleQuery {
 	q.q.Relation("service_member", child.q)
 	return q
 }
-func (q *Battle) JoinServiceModule(child *ServiceModule) *Battle {
+func (q *BattleQuery) JoinServiceModule(child *ServiceModuleQuery) *BattleQuery {
 	q.q.Join("service_module", "inner", child.q)
 	return q
 }
-func (q *Battle) LeftJoinServiceModule(child *ServiceModule) *Battle {
+func (q *BattleQuery) LeftJoinServiceModule(child *ServiceModuleQuery) *BattleQuery {
 	q.q.Join("service_module", "left", child.q)
 	return q
 }
-func (q *Battle) RelationServiceModule(child *ServiceModule) *Battle {
+func (q *BattleQuery) RelationServiceModule(child *ServiceModuleQuery) *BattleQuery {
 	q.q.Relation("service_module", child.q)
 	return q
 }
-func (q *Battle) JoinUser(child *User) *Battle     { q.q.Join("user", "inner", child.q); return q }
-func (q *Battle) LeftJoinUser(child *User) *Battle { q.q.Join("user", "left", child.q); return q }
-func (q *Battle) RelationUser(child *User) *Battle { q.q.Relation("user", child.q); return q }
+func (q *BattleQuery) JoinUser(child *UserQuery) *BattleQuery {
+	q.q.Join("user", "inner", child.q)
+	return q
+}
+func (q *BattleQuery) LeftJoinUser(child *UserQuery) *BattleQuery {
+	q.q.Join("user", "left", child.q)
+	return q
+}
+func (q *BattleQuery) RelationUser(child *UserQuery) *BattleQuery {
+	q.q.Relation("user", child.q)
+	return q
+}
 
 // Columns.
-func (q *Battle) SelectAll() *Battle  { q.q.Columns().Mode = "all"; return q }
-func (q *Battle) SelectNone() *Battle { q.q.Columns().Mode = "none"; return q }
-func (q *Battle) SelectExpr(name, frag string) *Battle {
+func (q *BattleQuery) SelectAll() *BattleQuery  { q.q.Columns().Mode = "all"; return q }
+func (q *BattleQuery) SelectNone() *BattleQuery { q.q.Columns().Mode = "none"; return q }
+func (q *BattleQuery) SelectExpr(name, frag string) *BattleQuery {
 	c := q.q.Columns()
 	if c.Expr == nil {
 		c.Expr = map[string]string{}
@@ -3653,13 +4062,17 @@ func (q *Battle) SelectExpr(name, frag string) *Battle {
 	c.Expr[name] = frag
 	return q
 }
-func (q *Battle) SelectSeq() *Battle { c := q.q.Columns(); c.Add = append(c.Add, "seq"); return q }
-func (q *Battle) UnselectSeq() *Battle {
+func (q *BattleQuery) SelectSeq() *BattleQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "seq")
+	return q
+}
+func (q *BattleQuery) UnselectSeq() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "seq")
 	return q
 }
-func (q *Battle) SelectSeqAs(name string) *Battle {
+func (q *BattleQuery) SelectSeqAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3667,13 +4080,17 @@ func (q *Battle) SelectSeqAs(name string) *Battle {
 	c.As[name] = "seq"
 	return q
 }
-func (q *Battle) SelectName() *Battle { c := q.q.Columns(); c.Add = append(c.Add, "name"); return q }
-func (q *Battle) UnselectName() *Battle {
+func (q *BattleQuery) SelectName() *BattleQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "name")
+	return q
+}
+func (q *BattleQuery) UnselectName() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "name")
 	return q
 }
-func (q *Battle) SelectNameAs(name string) *Battle {
+func (q *BattleQuery) SelectNameAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3681,17 +4098,17 @@ func (q *Battle) SelectNameAs(name string) *Battle {
 	c.As[name] = "name"
 	return q
 }
-func (q *Battle) SelectDescription() *Battle {
+func (q *BattleQuery) SelectDescription() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "description")
 	return q
 }
-func (q *Battle) UnselectDescription() *Battle {
+func (q *BattleQuery) UnselectDescription() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "description")
 	return q
 }
-func (q *Battle) SelectDescriptionAs(name string) *Battle {
+func (q *BattleQuery) SelectDescriptionAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3699,17 +4116,17 @@ func (q *Battle) SelectDescriptionAs(name string) *Battle {
 	c.As[name] = "description"
 	return q
 }
-func (q *Battle) SelectCreatedTs() *Battle {
+func (q *BattleQuery) SelectCreatedTs() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "created_ts")
 	return q
 }
-func (q *Battle) UnselectCreatedTs() *Battle {
+func (q *BattleQuery) UnselectCreatedTs() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "created_ts")
 	return q
 }
-func (q *Battle) SelectCreatedTsAs(name string) *Battle {
+func (q *BattleQuery) SelectCreatedTsAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3717,17 +4134,17 @@ func (q *Battle) SelectCreatedTsAs(name string) *Battle {
 	c.As[name] = "created_ts"
 	return q
 }
-func (q *Battle) SelectUpdatedTs() *Battle {
+func (q *BattleQuery) SelectUpdatedTs() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "updated_ts")
 	return q
 }
-func (q *Battle) UnselectUpdatedTs() *Battle {
+func (q *BattleQuery) UnselectUpdatedTs() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "updated_ts")
 	return q
 }
-func (q *Battle) SelectUpdatedTsAs(name string) *Battle {
+func (q *BattleQuery) SelectUpdatedTsAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3735,17 +4152,17 @@ func (q *Battle) SelectUpdatedTsAs(name string) *Battle {
 	c.As[name] = "updated_ts"
 	return q
 }
-func (q *Battle) SelectIsClose() *Battle {
+func (q *BattleQuery) SelectIsClose() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "is_close")
 	return q
 }
-func (q *Battle) UnselectIsClose() *Battle {
+func (q *BattleQuery) UnselectIsClose() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "is_close")
 	return q
 }
-func (q *Battle) SelectIsCloseAs(name string) *Battle {
+func (q *BattleQuery) SelectIsCloseAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3753,17 +4170,17 @@ func (q *Battle) SelectIsCloseAs(name string) *Battle {
 	c.As[name] = "is_close"
 	return q
 }
-func (q *Battle) SelectIsDisplay() *Battle {
+func (q *BattleQuery) SelectIsDisplay() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "is_display")
 	return q
 }
-func (q *Battle) UnselectIsDisplay() *Battle {
+func (q *BattleQuery) UnselectIsDisplay() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "is_display")
 	return q
 }
-func (q *Battle) SelectIsDisplayAs(name string) *Battle {
+func (q *BattleQuery) SelectIsDisplayAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3771,17 +4188,17 @@ func (q *Battle) SelectIsDisplayAs(name string) *Battle {
 	c.As[name] = "is_display"
 	return q
 }
-func (q *Battle) SelectDisplayStartDt() *Battle {
+func (q *BattleQuery) SelectDisplayStartDt() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "display_start_dt")
 	return q
 }
-func (q *Battle) UnselectDisplayStartDt() *Battle {
+func (q *BattleQuery) UnselectDisplayStartDt() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "display_start_dt")
 	return q
 }
-func (q *Battle) SelectDisplayStartDtAs(name string) *Battle {
+func (q *BattleQuery) SelectDisplayStartDtAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3789,17 +4206,17 @@ func (q *Battle) SelectDisplayStartDtAs(name string) *Battle {
 	c.As[name] = "display_start_dt"
 	return q
 }
-func (q *Battle) SelectDisplayEndDt() *Battle {
+func (q *BattleQuery) SelectDisplayEndDt() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "display_end_dt")
 	return q
 }
-func (q *Battle) UnselectDisplayEndDt() *Battle {
+func (q *BattleQuery) UnselectDisplayEndDt() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "display_end_dt")
 	return q
 }
-func (q *Battle) SelectDisplayEndDtAs(name string) *Battle {
+func (q *BattleQuery) SelectDisplayEndDtAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3807,17 +4224,17 @@ func (q *Battle) SelectDisplayEndDtAs(name string) *Battle {
 	c.As[name] = "display_end_dt"
 	return q
 }
-func (q *Battle) SelectIsAllday() *Battle {
+func (q *BattleQuery) SelectIsAllday() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "is_allday")
 	return q
 }
-func (q *Battle) UnselectIsAllday() *Battle {
+func (q *BattleQuery) UnselectIsAllday() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "is_allday")
 	return q
 }
-func (q *Battle) SelectIsAlldayAs(name string) *Battle {
+func (q *BattleQuery) SelectIsAlldayAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3825,17 +4242,17 @@ func (q *Battle) SelectIsAlldayAs(name string) *Battle {
 	c.As[name] = "is_allday"
 	return q
 }
-func (q *Battle) SelectTargetTeamPlayerCount() *Battle {
+func (q *BattleQuery) SelectTargetTeamPlayerCount() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "target_team_player_count")
 	return q
 }
-func (q *Battle) UnselectTargetTeamPlayerCount() *Battle {
+func (q *BattleQuery) UnselectTargetTeamPlayerCount() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "target_team_player_count")
 	return q
 }
-func (q *Battle) SelectTargetTeamPlayerCountAs(name string) *Battle {
+func (q *BattleQuery) SelectTargetTeamPlayerCountAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3843,17 +4260,17 @@ func (q *Battle) SelectTargetTeamPlayerCountAs(name string) *Battle {
 	c.As[name] = "target_team_player_count"
 	return q
 }
-func (q *Battle) SelectSuccessCount() *Battle {
+func (q *BattleQuery) SelectSuccessCount() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "success_count")
 	return q
 }
-func (q *Battle) UnselectSuccessCount() *Battle {
+func (q *BattleQuery) UnselectSuccessCount() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "success_count")
 	return q
 }
-func (q *Battle) SelectSuccessCountAs(name string) *Battle {
+func (q *BattleQuery) SelectSuccessCountAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3861,17 +4278,17 @@ func (q *Battle) SelectSuccessCountAs(name string) *Battle {
 	c.As[name] = "success_count"
 	return q
 }
-func (q *Battle) SelectPlayerCount() *Battle {
+func (q *BattleQuery) SelectPlayerCount() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "player_count")
 	return q
 }
-func (q *Battle) UnselectPlayerCount() *Battle {
+func (q *BattleQuery) UnselectPlayerCount() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "player_count")
 	return q
 }
-func (q *Battle) SelectPlayerCountAs(name string) *Battle {
+func (q *BattleQuery) SelectPlayerCountAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3879,17 +4296,17 @@ func (q *Battle) SelectPlayerCountAs(name string) *Battle {
 	c.As[name] = "player_count"
 	return q
 }
-func (q *Battle) SelectReadCount() *Battle {
+func (q *BattleQuery) SelectReadCount() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "read_count")
 	return q
 }
-func (q *Battle) UnselectReadCount() *Battle {
+func (q *BattleQuery) UnselectReadCount() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "read_count")
 	return q
 }
-func (q *Battle) SelectReadCountAs(name string) *Battle {
+func (q *BattleQuery) SelectReadCountAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3897,17 +4314,17 @@ func (q *Battle) SelectReadCountAs(name string) *Battle {
 	c.As[name] = "read_count"
 	return q
 }
-func (q *Battle) SelectCoverUrl() *Battle {
+func (q *BattleQuery) SelectCoverUrl() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "cover_url")
 	return q
 }
-func (q *Battle) UnselectCoverUrl() *Battle {
+func (q *BattleQuery) UnselectCoverUrl() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "cover_url")
 	return q
 }
-func (q *Battle) SelectCoverUrlAs(name string) *Battle {
+func (q *BattleQuery) SelectCoverUrlAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3915,17 +4332,17 @@ func (q *Battle) SelectCoverUrlAs(name string) *Battle {
 	c.As[name] = "cover_url"
 	return q
 }
-func (q *Battle) SelectUserSeq() *Battle {
+func (q *BattleQuery) SelectUserSeq() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "user_seq")
 	return q
 }
-func (q *Battle) UnselectUserSeq() *Battle {
+func (q *BattleQuery) UnselectUserSeq() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "user_seq")
 	return q
 }
-func (q *Battle) SelectUserSeqAs(name string) *Battle {
+func (q *BattleQuery) SelectUserSeqAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3933,17 +4350,17 @@ func (q *Battle) SelectUserSeqAs(name string) *Battle {
 	c.As[name] = "user_seq"
 	return q
 }
-func (q *Battle) SelectServiceSeq() *Battle {
+func (q *BattleQuery) SelectServiceSeq() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "service_seq")
 	return q
 }
-func (q *Battle) UnselectServiceSeq() *Battle {
+func (q *BattleQuery) UnselectServiceSeq() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "service_seq")
 	return q
 }
-func (q *Battle) SelectServiceSeqAs(name string) *Battle {
+func (q *BattleQuery) SelectServiceSeqAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3951,17 +4368,17 @@ func (q *Battle) SelectServiceSeqAs(name string) *Battle {
 	c.As[name] = "service_seq"
 	return q
 }
-func (q *Battle) SelectServiceModuleSeq() *Battle {
+func (q *BattleQuery) SelectServiceModuleSeq() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "service_module_seq")
 	return q
 }
-func (q *Battle) UnselectServiceModuleSeq() *Battle {
+func (q *BattleQuery) UnselectServiceModuleSeq() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "service_module_seq")
 	return q
 }
-func (q *Battle) SelectServiceModuleSeqAs(name string) *Battle {
+func (q *BattleQuery) SelectServiceModuleSeqAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3969,17 +4386,17 @@ func (q *Battle) SelectServiceModuleSeqAs(name string) *Battle {
 	c.As[name] = "service_module_seq"
 	return q
 }
-func (q *Battle) SelectServiceMemberSeq() *Battle {
+func (q *BattleQuery) SelectServiceMemberSeq() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "service_member_seq")
 	return q
 }
-func (q *Battle) UnselectServiceMemberSeq() *Battle {
+func (q *BattleQuery) UnselectServiceMemberSeq() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "service_member_seq")
 	return q
 }
-func (q *Battle) SelectServiceMemberSeqAs(name string) *Battle {
+func (q *BattleQuery) SelectServiceMemberSeqAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3987,17 +4404,17 @@ func (q *Battle) SelectServiceMemberSeqAs(name string) *Battle {
 	c.As[name] = "service_member_seq"
 	return q
 }
-func (q *Battle) SelectStartDt() *Battle {
+func (q *BattleQuery) SelectStartDt() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "start_dt")
 	return q
 }
-func (q *Battle) UnselectStartDt() *Battle {
+func (q *BattleQuery) UnselectStartDt() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "start_dt")
 	return q
 }
-func (q *Battle) SelectStartDtAs(name string) *Battle {
+func (q *BattleQuery) SelectStartDtAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4005,13 +4422,17 @@ func (q *Battle) SelectStartDtAs(name string) *Battle {
 	c.As[name] = "start_dt"
 	return q
 }
-func (q *Battle) SelectEndDt() *Battle { c := q.q.Columns(); c.Add = append(c.Add, "end_dt"); return q }
-func (q *Battle) UnselectEndDt() *Battle {
+func (q *BattleQuery) SelectEndDt() *BattleQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "end_dt")
+	return q
+}
+func (q *BattleQuery) UnselectEndDt() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "end_dt")
 	return q
 }
-func (q *Battle) SelectEndDtAs(name string) *Battle {
+func (q *BattleQuery) SelectEndDtAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4019,13 +4440,17 @@ func (q *Battle) SelectEndDtAs(name string) *Battle {
 	c.As[name] = "end_dt"
 	return q
 }
-func (q *Battle) SelectUuid() *Battle { c := q.q.Columns(); c.Add = append(c.Add, "uuid"); return q }
-func (q *Battle) UnselectUuid() *Battle {
+func (q *BattleQuery) SelectUuid() *BattleQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "uuid")
+	return q
+}
+func (q *BattleQuery) UnselectUuid() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "uuid")
 	return q
 }
-func (q *Battle) SelectUuidAs(name string) *Battle {
+func (q *BattleQuery) SelectUuidAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4033,17 +4458,17 @@ func (q *Battle) SelectUuidAs(name string) *Battle {
 	c.As[name] = "uuid"
 	return q
 }
-func (q *Battle) SelectIsSinglePlay() *Battle {
+func (q *BattleQuery) SelectIsSinglePlay() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "is_single_play")
 	return q
 }
-func (q *Battle) UnselectIsSinglePlay() *Battle {
+func (q *BattleQuery) UnselectIsSinglePlay() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "is_single_play")
 	return q
 }
-func (q *Battle) SelectIsSinglePlayAs(name string) *Battle {
+func (q *BattleQuery) SelectIsSinglePlayAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4051,17 +4476,17 @@ func (q *Battle) SelectIsSinglePlayAs(name string) *Battle {
 	c.As[name] = "is_single_play"
 	return q
 }
-func (q *Battle) SelectLikeCount() *Battle {
+func (q *BattleQuery) SelectLikeCount() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "like_count")
 	return q
 }
-func (q *Battle) UnselectLikeCount() *Battle {
+func (q *BattleQuery) UnselectLikeCount() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "like_count")
 	return q
 }
-func (q *Battle) SelectLikeCountAs(name string) *Battle {
+func (q *BattleQuery) SelectLikeCountAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4069,17 +4494,17 @@ func (q *Battle) SelectLikeCountAs(name string) *Battle {
 	c.As[name] = "like_count"
 	return q
 }
-func (q *Battle) SelectAesHexEmail() *Battle {
+func (q *BattleQuery) SelectAesHexEmail() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "aes_hex_email")
 	return q
 }
-func (q *Battle) UnselectAesHexEmail() *Battle {
+func (q *BattleQuery) UnselectAesHexEmail() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "aes_hex_email")
 	return q
 }
-func (q *Battle) SelectAesHexEmailAs(name string) *Battle {
+func (q *BattleQuery) SelectAesHexEmailAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4087,17 +4512,17 @@ func (q *Battle) SelectAesHexEmailAs(name string) *Battle {
 	c.As[name] = "aes_hex_email"
 	return q
 }
-func (q *Battle) SelectAesHexPhone() *Battle {
+func (q *BattleQuery) SelectAesHexPhone() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "aes_hex_phone")
 	return q
 }
-func (q *Battle) UnselectAesHexPhone() *Battle {
+func (q *BattleQuery) UnselectAesHexPhone() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "aes_hex_phone")
 	return q
 }
-func (q *Battle) SelectAesHexPhoneAs(name string) *Battle {
+func (q *BattleQuery) SelectAesHexPhoneAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4105,13 +4530,17 @@ func (q *Battle) SelectAesHexPhoneAs(name string) *Battle {
 	c.As[name] = "aes_hex_phone"
 	return q
 }
-func (q *Battle) SelectPrice() *Battle { c := q.q.Columns(); c.Add = append(c.Add, "price"); return q }
-func (q *Battle) UnselectPrice() *Battle {
+func (q *BattleQuery) SelectPrice() *BattleQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "price")
+	return q
+}
+func (q *BattleQuery) UnselectPrice() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "price")
 	return q
 }
-func (q *Battle) SelectPriceAs(name string) *Battle {
+func (q *BattleQuery) SelectPriceAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4119,13 +4548,17 @@ func (q *Battle) SelectPriceAs(name string) *Battle {
 	c.As[name] = "price"
 	return q
 }
-func (q *Battle) SelectIp() *Battle { c := q.q.Columns(); c.Add = append(c.Add, "ip"); return q }
-func (q *Battle) UnselectIp() *Battle {
+func (q *BattleQuery) SelectIp() *BattleQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "ip")
+	return q
+}
+func (q *BattleQuery) UnselectIp() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "ip")
 	return q
 }
-func (q *Battle) SelectIpAs(name string) *Battle {
+func (q *BattleQuery) SelectIpAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4133,17 +4566,17 @@ func (q *Battle) SelectIpAs(name string) *Battle {
 	c.As[name] = "ip"
 	return q
 }
-func (q *Battle) SelectGzExtend() *Battle {
+func (q *BattleQuery) SelectGzExtend() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "gz_extend")
 	return q
 }
-func (q *Battle) UnselectGzExtend() *Battle {
+func (q *BattleQuery) UnselectGzExtend() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "gz_extend")
 	return q
 }
-func (q *Battle) SelectGzExtendAs(name string) *Battle {
+func (q *BattleQuery) SelectGzExtendAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4151,17 +4584,17 @@ func (q *Battle) SelectGzExtendAs(name string) *Battle {
 	c.As[name] = "gz_extend"
 	return q
 }
-func (q *Battle) SelectJsonSetting() *Battle {
+func (q *BattleQuery) SelectJsonSetting() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "json_setting")
 	return q
 }
-func (q *Battle) UnselectJsonSetting() *Battle {
+func (q *BattleQuery) UnselectJsonSetting() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "json_setting")
 	return q
 }
-func (q *Battle) SelectJsonSettingAs(name string) *Battle {
+func (q *BattleQuery) SelectJsonSettingAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4169,17 +4602,17 @@ func (q *Battle) SelectJsonSettingAs(name string) *Battle {
 	c.As[name] = "json_setting"
 	return q
 }
-func (q *Battle) SelectJsonsTags() *Battle {
+func (q *BattleQuery) SelectJsonsTags() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "jsons_tags")
 	return q
 }
-func (q *Battle) UnselectJsonsTags() *Battle {
+func (q *BattleQuery) UnselectJsonsTags() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "jsons_tags")
 	return q
 }
-func (q *Battle) SelectJsonsTagsAs(name string) *Battle {
+func (q *BattleQuery) SelectJsonsTagsAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4187,17 +4620,17 @@ func (q *Battle) SelectJsonsTagsAs(name string) *Battle {
 	c.As[name] = "jsons_tags"
 	return q
 }
-func (q *Battle) SelectBase64Extra() *Battle {
+func (q *BattleQuery) SelectBase64Extra() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "base64_extra")
 	return q
 }
-func (q *Battle) UnselectBase64Extra() *Battle {
+func (q *BattleQuery) UnselectBase64Extra() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "base64_extra")
 	return q
 }
-func (q *Battle) SelectBase64ExtraAs(name string) *Battle {
+func (q *BattleQuery) SelectBase64ExtraAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4205,17 +4638,17 @@ func (q *Battle) SelectBase64ExtraAs(name string) *Battle {
 	c.As[name] = "base64_extra"
 	return q
 }
-func (q *Battle) SelectSerializeData() *Battle {
+func (q *BattleQuery) SelectSerializeData() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "serialize_data")
 	return q
 }
-func (q *Battle) UnselectSerializeData() *Battle {
+func (q *BattleQuery) UnselectSerializeData() *BattleQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "serialize_data")
 	return q
 }
-func (q *Battle) SelectSerializeDataAs(name string) *Battle {
+func (q *BattleQuery) SelectSerializeDataAs(name string) *BattleQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4225,784 +4658,939 @@ func (q *Battle) SelectSerializeDataAs(name string) *Battle {
 }
 
 // Order, group, limit.
-func (q *Battle) OrderBySeqAsc() *Battle          { q.q.Order("seq", false); return q }
-func (q *Battle) OrderBySeqDesc() *Battle         { q.q.Order("seq", true); return q }
-func (q *Battle) GroupBySeq() *Battle             { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "seq"); return q }
-func (q *Battle) KeyBySeq() *Battle               { q.q.Node.KeyBy = "seq"; return q }
-func (q *Battle) OrderByNameAsc() *Battle         { q.q.Order("name", false); return q }
-func (q *Battle) OrderByNameDesc() *Battle        { q.q.Order("name", true); return q }
-func (q *Battle) GroupByName() *Battle            { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "name"); return q }
-func (q *Battle) KeyByName() *Battle              { q.q.Node.KeyBy = "name"; return q }
-func (q *Battle) OrderByDescriptionAsc() *Battle  { q.q.Order("description", false); return q }
-func (q *Battle) OrderByDescriptionDesc() *Battle { q.q.Order("description", true); return q }
-func (q *Battle) GroupByDescription() *Battle {
+func (q *BattleQuery) OrderBySeqAsc() *BattleQuery  { q.q.Order("seq", false); return q }
+func (q *BattleQuery) OrderBySeqDesc() *BattleQuery { q.q.Order("seq", true); return q }
+func (q *BattleQuery) GroupBySeq() *BattleQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "seq")
+	return q
+}
+func (q *BattleQuery) KeyBySeq() *BattleQuery        { q.q.Node.KeyBy = "seq"; return q }
+func (q *BattleQuery) OrderByNameAsc() *BattleQuery  { q.q.Order("name", false); return q }
+func (q *BattleQuery) OrderByNameDesc() *BattleQuery { q.q.Order("name", true); return q }
+func (q *BattleQuery) GroupByName() *BattleQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "name")
+	return q
+}
+func (q *BattleQuery) KeyByName() *BattleQuery              { q.q.Node.KeyBy = "name"; return q }
+func (q *BattleQuery) OrderByDescriptionAsc() *BattleQuery  { q.q.Order("description", false); return q }
+func (q *BattleQuery) OrderByDescriptionDesc() *BattleQuery { q.q.Order("description", true); return q }
+func (q *BattleQuery) GroupByDescription() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "description")
 	return q
 }
-func (q *Battle) KeyByDescription() *Battle     { q.q.Node.KeyBy = "description"; return q }
-func (q *Battle) OrderByCreatedTsAsc() *Battle  { q.q.Order("created_ts", false); return q }
-func (q *Battle) OrderByCreatedTsDesc() *Battle { q.q.Order("created_ts", true); return q }
-func (q *Battle) GroupByCreatedTs() *Battle {
+func (q *BattleQuery) KeyByDescription() *BattleQuery     { q.q.Node.KeyBy = "description"; return q }
+func (q *BattleQuery) OrderByCreatedTsAsc() *BattleQuery  { q.q.Order("created_ts", false); return q }
+func (q *BattleQuery) OrderByCreatedTsDesc() *BattleQuery { q.q.Order("created_ts", true); return q }
+func (q *BattleQuery) GroupByCreatedTs() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "created_ts")
 	return q
 }
-func (q *Battle) KeyByCreatedTs() *Battle       { q.q.Node.KeyBy = "created_ts"; return q }
-func (q *Battle) OrderByUpdatedTsAsc() *Battle  { q.q.Order("updated_ts", false); return q }
-func (q *Battle) OrderByUpdatedTsDesc() *Battle { q.q.Order("updated_ts", true); return q }
-func (q *Battle) GroupByUpdatedTs() *Battle {
+func (q *BattleQuery) KeyByCreatedTs() *BattleQuery       { q.q.Node.KeyBy = "created_ts"; return q }
+func (q *BattleQuery) OrderByUpdatedTsAsc() *BattleQuery  { q.q.Order("updated_ts", false); return q }
+func (q *BattleQuery) OrderByUpdatedTsDesc() *BattleQuery { q.q.Order("updated_ts", true); return q }
+func (q *BattleQuery) GroupByUpdatedTs() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "updated_ts")
 	return q
 }
-func (q *Battle) KeyByUpdatedTs() *Battle     { q.q.Node.KeyBy = "updated_ts"; return q }
-func (q *Battle) OrderByIsCloseAsc() *Battle  { q.q.Order("is_close", false); return q }
-func (q *Battle) OrderByIsCloseDesc() *Battle { q.q.Order("is_close", true); return q }
-func (q *Battle) GroupByIsClose() *Battle {
+func (q *BattleQuery) KeyByUpdatedTs() *BattleQuery     { q.q.Node.KeyBy = "updated_ts"; return q }
+func (q *BattleQuery) OrderByIsCloseAsc() *BattleQuery  { q.q.Order("is_close", false); return q }
+func (q *BattleQuery) OrderByIsCloseDesc() *BattleQuery { q.q.Order("is_close", true); return q }
+func (q *BattleQuery) GroupByIsClose() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "is_close")
 	return q
 }
-func (q *Battle) KeyByIsClose() *Battle         { q.q.Node.KeyBy = "is_close"; return q }
-func (q *Battle) OrderByIsDisplayAsc() *Battle  { q.q.Order("is_display", false); return q }
-func (q *Battle) OrderByIsDisplayDesc() *Battle { q.q.Order("is_display", true); return q }
-func (q *Battle) GroupByIsDisplay() *Battle {
+func (q *BattleQuery) KeyByIsClose() *BattleQuery         { q.q.Node.KeyBy = "is_close"; return q }
+func (q *BattleQuery) OrderByIsDisplayAsc() *BattleQuery  { q.q.Order("is_display", false); return q }
+func (q *BattleQuery) OrderByIsDisplayDesc() *BattleQuery { q.q.Order("is_display", true); return q }
+func (q *BattleQuery) GroupByIsDisplay() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "is_display")
 	return q
 }
-func (q *Battle) KeyByIsDisplay() *Battle            { q.q.Node.KeyBy = "is_display"; return q }
-func (q *Battle) OrderByDisplayStartDtAsc() *Battle  { q.q.Order("display_start_dt", false); return q }
-func (q *Battle) OrderByDisplayStartDtDesc() *Battle { q.q.Order("display_start_dt", true); return q }
-func (q *Battle) GroupByDisplayStartDt() *Battle {
+func (q *BattleQuery) KeyByIsDisplay() *BattleQuery { q.q.Node.KeyBy = "is_display"; return q }
+func (q *BattleQuery) OrderByDisplayStartDtAsc() *BattleQuery {
+	q.q.Order("display_start_dt", false)
+	return q
+}
+func (q *BattleQuery) OrderByDisplayStartDtDesc() *BattleQuery {
+	q.q.Order("display_start_dt", true)
+	return q
+}
+func (q *BattleQuery) GroupByDisplayStartDt() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "display_start_dt")
 	return q
 }
-func (q *Battle) KeyByDisplayStartDt() *Battle     { q.q.Node.KeyBy = "display_start_dt"; return q }
-func (q *Battle) OrderByDisplayEndDtAsc() *Battle  { q.q.Order("display_end_dt", false); return q }
-func (q *Battle) OrderByDisplayEndDtDesc() *Battle { q.q.Order("display_end_dt", true); return q }
-func (q *Battle) GroupByDisplayEndDt() *Battle {
+func (q *BattleQuery) KeyByDisplayStartDt() *BattleQuery {
+	q.q.Node.KeyBy = "display_start_dt"
+	return q
+}
+func (q *BattleQuery) OrderByDisplayEndDtAsc() *BattleQuery {
+	q.q.Order("display_end_dt", false)
+	return q
+}
+func (q *BattleQuery) OrderByDisplayEndDtDesc() *BattleQuery {
+	q.q.Order("display_end_dt", true)
+	return q
+}
+func (q *BattleQuery) GroupByDisplayEndDt() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "display_end_dt")
 	return q
 }
-func (q *Battle) KeyByDisplayEndDt() *Battle   { q.q.Node.KeyBy = "display_end_dt"; return q }
-func (q *Battle) OrderByIsAlldayAsc() *Battle  { q.q.Order("is_allday", false); return q }
-func (q *Battle) OrderByIsAlldayDesc() *Battle { q.q.Order("is_allday", true); return q }
-func (q *Battle) GroupByIsAllday() *Battle {
+func (q *BattleQuery) KeyByDisplayEndDt() *BattleQuery   { q.q.Node.KeyBy = "display_end_dt"; return q }
+func (q *BattleQuery) OrderByIsAlldayAsc() *BattleQuery  { q.q.Order("is_allday", false); return q }
+func (q *BattleQuery) OrderByIsAlldayDesc() *BattleQuery { q.q.Order("is_allday", true); return q }
+func (q *BattleQuery) GroupByIsAllday() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "is_allday")
 	return q
 }
-func (q *Battle) KeyByIsAllday() *Battle { q.q.Node.KeyBy = "is_allday"; return q }
-func (q *Battle) OrderByTargetTeamPlayerCountAsc() *Battle {
+func (q *BattleQuery) KeyByIsAllday() *BattleQuery { q.q.Node.KeyBy = "is_allday"; return q }
+func (q *BattleQuery) OrderByTargetTeamPlayerCountAsc() *BattleQuery {
 	q.q.Order("target_team_player_count", false)
 	return q
 }
-func (q *Battle) OrderByTargetTeamPlayerCountDesc() *Battle {
+func (q *BattleQuery) OrderByTargetTeamPlayerCountDesc() *BattleQuery {
 	q.q.Order("target_team_player_count", true)
 	return q
 }
-func (q *Battle) GroupByTargetTeamPlayerCount() *Battle {
+func (q *BattleQuery) GroupByTargetTeamPlayerCount() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "target_team_player_count")
 	return q
 }
-func (q *Battle) KeyByTargetTeamPlayerCount() *Battle {
+func (q *BattleQuery) KeyByTargetTeamPlayerCount() *BattleQuery {
 	q.q.Node.KeyBy = "target_team_player_count"
 	return q
 }
-func (q *Battle) OrderBySuccessCountAsc() *Battle  { q.q.Order("success_count", false); return q }
-func (q *Battle) OrderBySuccessCountDesc() *Battle { q.q.Order("success_count", true); return q }
-func (q *Battle) GroupBySuccessCount() *Battle {
+func (q *BattleQuery) OrderBySuccessCountAsc() *BattleQuery {
+	q.q.Order("success_count", false)
+	return q
+}
+func (q *BattleQuery) OrderBySuccessCountDesc() *BattleQuery {
+	q.q.Order("success_count", true)
+	return q
+}
+func (q *BattleQuery) GroupBySuccessCount() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "success_count")
 	return q
 }
-func (q *Battle) KeyBySuccessCount() *Battle      { q.q.Node.KeyBy = "success_count"; return q }
-func (q *Battle) OrderByPlayerCountAsc() *Battle  { q.q.Order("player_count", false); return q }
-func (q *Battle) OrderByPlayerCountDesc() *Battle { q.q.Order("player_count", true); return q }
-func (q *Battle) GroupByPlayerCount() *Battle {
+func (q *BattleQuery) KeyBySuccessCount() *BattleQuery { q.q.Node.KeyBy = "success_count"; return q }
+func (q *BattleQuery) OrderByPlayerCountAsc() *BattleQuery {
+	q.q.Order("player_count", false)
+	return q
+}
+func (q *BattleQuery) OrderByPlayerCountDesc() *BattleQuery {
+	q.q.Order("player_count", true)
+	return q
+}
+func (q *BattleQuery) GroupByPlayerCount() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "player_count")
 	return q
 }
-func (q *Battle) KeyByPlayerCount() *Battle     { q.q.Node.KeyBy = "player_count"; return q }
-func (q *Battle) OrderByReadCountAsc() *Battle  { q.q.Order("read_count", false); return q }
-func (q *Battle) OrderByReadCountDesc() *Battle { q.q.Order("read_count", true); return q }
-func (q *Battle) GroupByReadCount() *Battle {
+func (q *BattleQuery) KeyByPlayerCount() *BattleQuery     { q.q.Node.KeyBy = "player_count"; return q }
+func (q *BattleQuery) OrderByReadCountAsc() *BattleQuery  { q.q.Order("read_count", false); return q }
+func (q *BattleQuery) OrderByReadCountDesc() *BattleQuery { q.q.Order("read_count", true); return q }
+func (q *BattleQuery) GroupByReadCount() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "read_count")
 	return q
 }
-func (q *Battle) KeyByReadCount() *Battle      { q.q.Node.KeyBy = "read_count"; return q }
-func (q *Battle) OrderByCoverUrlAsc() *Battle  { q.q.Order("cover_url", false); return q }
-func (q *Battle) OrderByCoverUrlDesc() *Battle { q.q.Order("cover_url", true); return q }
-func (q *Battle) GroupByCoverUrl() *Battle {
+func (q *BattleQuery) KeyByReadCount() *BattleQuery      { q.q.Node.KeyBy = "read_count"; return q }
+func (q *BattleQuery) OrderByCoverUrlAsc() *BattleQuery  { q.q.Order("cover_url", false); return q }
+func (q *BattleQuery) OrderByCoverUrlDesc() *BattleQuery { q.q.Order("cover_url", true); return q }
+func (q *BattleQuery) GroupByCoverUrl() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "cover_url")
 	return q
 }
-func (q *Battle) KeyByCoverUrl() *Battle      { q.q.Node.KeyBy = "cover_url"; return q }
-func (q *Battle) OrderByUserSeqAsc() *Battle  { q.q.Order("user_seq", false); return q }
-func (q *Battle) OrderByUserSeqDesc() *Battle { q.q.Order("user_seq", true); return q }
-func (q *Battle) GroupByUserSeq() *Battle {
+func (q *BattleQuery) KeyByCoverUrl() *BattleQuery      { q.q.Node.KeyBy = "cover_url"; return q }
+func (q *BattleQuery) OrderByUserSeqAsc() *BattleQuery  { q.q.Order("user_seq", false); return q }
+func (q *BattleQuery) OrderByUserSeqDesc() *BattleQuery { q.q.Order("user_seq", true); return q }
+func (q *BattleQuery) GroupByUserSeq() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "user_seq")
 	return q
 }
-func (q *Battle) KeyByUserSeq() *Battle          { q.q.Node.KeyBy = "user_seq"; return q }
-func (q *Battle) OrderByServiceSeqAsc() *Battle  { q.q.Order("service_seq", false); return q }
-func (q *Battle) OrderByServiceSeqDesc() *Battle { q.q.Order("service_seq", true); return q }
-func (q *Battle) GroupByServiceSeq() *Battle {
+func (q *BattleQuery) KeyByUserSeq() *BattleQuery          { q.q.Node.KeyBy = "user_seq"; return q }
+func (q *BattleQuery) OrderByServiceSeqAsc() *BattleQuery  { q.q.Order("service_seq", false); return q }
+func (q *BattleQuery) OrderByServiceSeqDesc() *BattleQuery { q.q.Order("service_seq", true); return q }
+func (q *BattleQuery) GroupByServiceSeq() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "service_seq")
 	return q
 }
-func (q *Battle) KeyByServiceSeq() *Battle { q.q.Node.KeyBy = "service_seq"; return q }
-func (q *Battle) OrderByServiceModuleSeqAsc() *Battle {
+func (q *BattleQuery) KeyByServiceSeq() *BattleQuery { q.q.Node.KeyBy = "service_seq"; return q }
+func (q *BattleQuery) OrderByServiceModuleSeqAsc() *BattleQuery {
 	q.q.Order("service_module_seq", false)
 	return q
 }
-func (q *Battle) OrderByServiceModuleSeqDesc() *Battle {
+func (q *BattleQuery) OrderByServiceModuleSeqDesc() *BattleQuery {
 	q.q.Order("service_module_seq", true)
 	return q
 }
-func (q *Battle) GroupByServiceModuleSeq() *Battle {
+func (q *BattleQuery) GroupByServiceModuleSeq() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "service_module_seq")
 	return q
 }
-func (q *Battle) KeyByServiceModuleSeq() *Battle { q.q.Node.KeyBy = "service_module_seq"; return q }
-func (q *Battle) OrderByServiceMemberSeqAsc() *Battle {
+func (q *BattleQuery) KeyByServiceModuleSeq() *BattleQuery {
+	q.q.Node.KeyBy = "service_module_seq"
+	return q
+}
+func (q *BattleQuery) OrderByServiceMemberSeqAsc() *BattleQuery {
 	q.q.Order("service_member_seq", false)
 	return q
 }
-func (q *Battle) OrderByServiceMemberSeqDesc() *Battle {
+func (q *BattleQuery) OrderByServiceMemberSeqDesc() *BattleQuery {
 	q.q.Order("service_member_seq", true)
 	return q
 }
-func (q *Battle) GroupByServiceMemberSeq() *Battle {
+func (q *BattleQuery) GroupByServiceMemberSeq() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "service_member_seq")
 	return q
 }
-func (q *Battle) KeyByServiceMemberSeq() *Battle { q.q.Node.KeyBy = "service_member_seq"; return q }
-func (q *Battle) OrderByStartDtAsc() *Battle     { q.q.Order("start_dt", false); return q }
-func (q *Battle) OrderByStartDtDesc() *Battle    { q.q.Order("start_dt", true); return q }
-func (q *Battle) GroupByStartDt() *Battle {
+func (q *BattleQuery) KeyByServiceMemberSeq() *BattleQuery {
+	q.q.Node.KeyBy = "service_member_seq"
+	return q
+}
+func (q *BattleQuery) OrderByStartDtAsc() *BattleQuery  { q.q.Order("start_dt", false); return q }
+func (q *BattleQuery) OrderByStartDtDesc() *BattleQuery { q.q.Order("start_dt", true); return q }
+func (q *BattleQuery) GroupByStartDt() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "start_dt")
 	return q
 }
-func (q *Battle) KeyByStartDt() *Battle     { q.q.Node.KeyBy = "start_dt"; return q }
-func (q *Battle) OrderByEndDtAsc() *Battle  { q.q.Order("end_dt", false); return q }
-func (q *Battle) OrderByEndDtDesc() *Battle { q.q.Order("end_dt", true); return q }
-func (q *Battle) GroupByEndDt() *Battle {
+func (q *BattleQuery) KeyByStartDt() *BattleQuery     { q.q.Node.KeyBy = "start_dt"; return q }
+func (q *BattleQuery) OrderByEndDtAsc() *BattleQuery  { q.q.Order("end_dt", false); return q }
+func (q *BattleQuery) OrderByEndDtDesc() *BattleQuery { q.q.Order("end_dt", true); return q }
+func (q *BattleQuery) GroupByEndDt() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "end_dt")
 	return q
 }
-func (q *Battle) KeyByEndDt() *Battle              { q.q.Node.KeyBy = "end_dt"; return q }
-func (q *Battle) OrderByUuidAsc() *Battle          { q.q.Order("uuid", false); return q }
-func (q *Battle) OrderByUuidDesc() *Battle         { q.q.Order("uuid", true); return q }
-func (q *Battle) GroupByUuid() *Battle             { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "uuid"); return q }
-func (q *Battle) KeyByUuid() *Battle               { q.q.Node.KeyBy = "uuid"; return q }
-func (q *Battle) OrderByIsSinglePlayAsc() *Battle  { q.q.Order("is_single_play", false); return q }
-func (q *Battle) OrderByIsSinglePlayDesc() *Battle { q.q.Order("is_single_play", true); return q }
-func (q *Battle) GroupByIsSinglePlay() *Battle {
+func (q *BattleQuery) KeyByEndDt() *BattleQuery      { q.q.Node.KeyBy = "end_dt"; return q }
+func (q *BattleQuery) OrderByUuidAsc() *BattleQuery  { q.q.Order("uuid", false); return q }
+func (q *BattleQuery) OrderByUuidDesc() *BattleQuery { q.q.Order("uuid", true); return q }
+func (q *BattleQuery) GroupByUuid() *BattleQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "uuid")
+	return q
+}
+func (q *BattleQuery) KeyByUuid() *BattleQuery { q.q.Node.KeyBy = "uuid"; return q }
+func (q *BattleQuery) OrderByIsSinglePlayAsc() *BattleQuery {
+	q.q.Order("is_single_play", false)
+	return q
+}
+func (q *BattleQuery) OrderByIsSinglePlayDesc() *BattleQuery {
+	q.q.Order("is_single_play", true)
+	return q
+}
+func (q *BattleQuery) GroupByIsSinglePlay() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "is_single_play")
 	return q
 }
-func (q *Battle) KeyByIsSinglePlay() *Battle    { q.q.Node.KeyBy = "is_single_play"; return q }
-func (q *Battle) OrderByLikeCountAsc() *Battle  { q.q.Order("like_count", false); return q }
-func (q *Battle) OrderByLikeCountDesc() *Battle { q.q.Order("like_count", true); return q }
-func (q *Battle) GroupByLikeCount() *Battle {
+func (q *BattleQuery) KeyByIsSinglePlay() *BattleQuery    { q.q.Node.KeyBy = "is_single_play"; return q }
+func (q *BattleQuery) OrderByLikeCountAsc() *BattleQuery  { q.q.Order("like_count", false); return q }
+func (q *BattleQuery) OrderByLikeCountDesc() *BattleQuery { q.q.Order("like_count", true); return q }
+func (q *BattleQuery) GroupByLikeCount() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "like_count")
 	return q
 }
-func (q *Battle) KeyByLikeCount() *Battle         { q.q.Node.KeyBy = "like_count"; return q }
-func (q *Battle) OrderByAesHexEmailAsc() *Battle  { q.q.Order("aes_hex_email", false); return q }
-func (q *Battle) OrderByAesHexEmailDesc() *Battle { q.q.Order("aes_hex_email", true); return q }
-func (q *Battle) GroupByAesHexEmail() *Battle {
+func (q *BattleQuery) KeyByLikeCount() *BattleQuery { q.q.Node.KeyBy = "like_count"; return q }
+func (q *BattleQuery) OrderByAesHexEmailAsc() *BattleQuery {
+	q.q.Order("aes_hex_email", false)
+	return q
+}
+func (q *BattleQuery) OrderByAesHexEmailDesc() *BattleQuery {
+	q.q.Order("aes_hex_email", true)
+	return q
+}
+func (q *BattleQuery) GroupByAesHexEmail() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "aes_hex_email")
 	return q
 }
-func (q *Battle) KeyByAesHexEmail() *Battle       { q.q.Node.KeyBy = "aes_hex_email"; return q }
-func (q *Battle) OrderByAesHexPhoneAsc() *Battle  { q.q.Order("aes_hex_phone", false); return q }
-func (q *Battle) OrderByAesHexPhoneDesc() *Battle { q.q.Order("aes_hex_phone", true); return q }
-func (q *Battle) GroupByAesHexPhone() *Battle {
+func (q *BattleQuery) KeyByAesHexEmail() *BattleQuery { q.q.Node.KeyBy = "aes_hex_email"; return q }
+func (q *BattleQuery) OrderByAesHexPhoneAsc() *BattleQuery {
+	q.q.Order("aes_hex_phone", false)
+	return q
+}
+func (q *BattleQuery) OrderByAesHexPhoneDesc() *BattleQuery {
+	q.q.Order("aes_hex_phone", true)
+	return q
+}
+func (q *BattleQuery) GroupByAesHexPhone() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "aes_hex_phone")
 	return q
 }
-func (q *Battle) KeyByAesHexPhone() *Battle { q.q.Node.KeyBy = "aes_hex_phone"; return q }
-func (q *Battle) OrderByPriceAsc() *Battle  { q.q.Order("price", false); return q }
-func (q *Battle) OrderByPriceDesc() *Battle { q.q.Order("price", true); return q }
-func (q *Battle) GroupByPrice() *Battle {
+func (q *BattleQuery) KeyByAesHexPhone() *BattleQuery { q.q.Node.KeyBy = "aes_hex_phone"; return q }
+func (q *BattleQuery) OrderByPriceAsc() *BattleQuery  { q.q.Order("price", false); return q }
+func (q *BattleQuery) OrderByPriceDesc() *BattleQuery { q.q.Order("price", true); return q }
+func (q *BattleQuery) GroupByPrice() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "price")
 	return q
 }
-func (q *Battle) KeyByPrice() *Battle          { q.q.Node.KeyBy = "price"; return q }
-func (q *Battle) OrderByIpAsc() *Battle        { q.q.Order("ip", false); return q }
-func (q *Battle) OrderByIpDesc() *Battle       { q.q.Order("ip", true); return q }
-func (q *Battle) GroupByIp() *Battle           { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "ip"); return q }
-func (q *Battle) KeyByIp() *Battle             { q.q.Node.KeyBy = "ip"; return q }
-func (q *Battle) OrderByGzExtendAsc() *Battle  { q.q.Order("gz_extend", false); return q }
-func (q *Battle) OrderByGzExtendDesc() *Battle { q.q.Order("gz_extend", true); return q }
-func (q *Battle) GroupByGzExtend() *Battle {
+func (q *BattleQuery) KeyByPrice() *BattleQuery    { q.q.Node.KeyBy = "price"; return q }
+func (q *BattleQuery) OrderByIpAsc() *BattleQuery  { q.q.Order("ip", false); return q }
+func (q *BattleQuery) OrderByIpDesc() *BattleQuery { q.q.Order("ip", true); return q }
+func (q *BattleQuery) GroupByIp() *BattleQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "ip")
+	return q
+}
+func (q *BattleQuery) KeyByIp() *BattleQuery             { q.q.Node.KeyBy = "ip"; return q }
+func (q *BattleQuery) OrderByGzExtendAsc() *BattleQuery  { q.q.Order("gz_extend", false); return q }
+func (q *BattleQuery) OrderByGzExtendDesc() *BattleQuery { q.q.Order("gz_extend", true); return q }
+func (q *BattleQuery) GroupByGzExtend() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "gz_extend")
 	return q
 }
-func (q *Battle) KeyByGzExtend() *Battle          { q.q.Node.KeyBy = "gz_extend"; return q }
-func (q *Battle) OrderByJsonSettingAsc() *Battle  { q.q.Order("json_setting", false); return q }
-func (q *Battle) OrderByJsonSettingDesc() *Battle { q.q.Order("json_setting", true); return q }
-func (q *Battle) GroupByJsonSetting() *Battle {
+func (q *BattleQuery) KeyByGzExtend() *BattleQuery { q.q.Node.KeyBy = "gz_extend"; return q }
+func (q *BattleQuery) OrderByJsonSettingAsc() *BattleQuery {
+	q.q.Order("json_setting", false)
+	return q
+}
+func (q *BattleQuery) OrderByJsonSettingDesc() *BattleQuery {
+	q.q.Order("json_setting", true)
+	return q
+}
+func (q *BattleQuery) GroupByJsonSetting() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "json_setting")
 	return q
 }
-func (q *Battle) KeyByJsonSetting() *Battle     { q.q.Node.KeyBy = "json_setting"; return q }
-func (q *Battle) OrderByJsonsTagsAsc() *Battle  { q.q.Order("jsons_tags", false); return q }
-func (q *Battle) OrderByJsonsTagsDesc() *Battle { q.q.Order("jsons_tags", true); return q }
-func (q *Battle) GroupByJsonsTags() *Battle {
+func (q *BattleQuery) KeyByJsonSetting() *BattleQuery     { q.q.Node.KeyBy = "json_setting"; return q }
+func (q *BattleQuery) OrderByJsonsTagsAsc() *BattleQuery  { q.q.Order("jsons_tags", false); return q }
+func (q *BattleQuery) OrderByJsonsTagsDesc() *BattleQuery { q.q.Order("jsons_tags", true); return q }
+func (q *BattleQuery) GroupByJsonsTags() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "jsons_tags")
 	return q
 }
-func (q *Battle) KeyByJsonsTags() *Battle         { q.q.Node.KeyBy = "jsons_tags"; return q }
-func (q *Battle) OrderByBase64ExtraAsc() *Battle  { q.q.Order("base64_extra", false); return q }
-func (q *Battle) OrderByBase64ExtraDesc() *Battle { q.q.Order("base64_extra", true); return q }
-func (q *Battle) GroupByBase64Extra() *Battle {
+func (q *BattleQuery) KeyByJsonsTags() *BattleQuery { q.q.Node.KeyBy = "jsons_tags"; return q }
+func (q *BattleQuery) OrderByBase64ExtraAsc() *BattleQuery {
+	q.q.Order("base64_extra", false)
+	return q
+}
+func (q *BattleQuery) OrderByBase64ExtraDesc() *BattleQuery {
+	q.q.Order("base64_extra", true)
+	return q
+}
+func (q *BattleQuery) GroupByBase64Extra() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "base64_extra")
 	return q
 }
-func (q *Battle) KeyByBase64Extra() *Battle         { q.q.Node.KeyBy = "base64_extra"; return q }
-func (q *Battle) OrderBySerializeDataAsc() *Battle  { q.q.Order("serialize_data", false); return q }
-func (q *Battle) OrderBySerializeDataDesc() *Battle { q.q.Order("serialize_data", true); return q }
-func (q *Battle) GroupBySerializeData() *Battle {
+func (q *BattleQuery) KeyByBase64Extra() *BattleQuery { q.q.Node.KeyBy = "base64_extra"; return q }
+func (q *BattleQuery) OrderBySerializeDataAsc() *BattleQuery {
+	q.q.Order("serialize_data", false)
+	return q
+}
+func (q *BattleQuery) OrderBySerializeDataDesc() *BattleQuery {
+	q.q.Order("serialize_data", true)
+	return q
+}
+func (q *BattleQuery) GroupBySerializeData() *BattleQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "serialize_data")
 	return q
 }
-func (q *Battle) KeyBySerializeData() *Battle                { q.q.Node.KeyBy = "serialize_data"; return q }
-func (q *Battle) OrderByExpr(frag string, desc bool) *Battle { q.q.OrderExpr(frag, desc); return q }
-func (q *Battle) Limit(offset, count int) *Battle {
+func (q *BattleQuery) KeyBySerializeData() *BattleQuery { q.q.Node.KeyBy = "serialize_data"; return q }
+func (q *BattleQuery) OrderByExpr(frag string, desc bool) *BattleQuery {
+	q.q.OrderExpr(frag, desc)
+	return q
+}
+func (q *BattleQuery) GroupByExpr(expr, as string) *BattleQuery { q.q.GroupByExpr(expr, as); return q }
+func (q *BattleQuery) Limit(offset, count int) *BattleQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *Battle) Distinct() *Battle            { q.q.Node.Distinct = true; return q }
-func (q *Battle) ForceIndexIk() *Battle        { q.q.Node.ForceIdx = "ik"; return q }
-func (q *Battle) ForceIndexIxService() *Battle { q.q.Node.ForceIdx = "ix_service"; return q }
-func (q *Battle) ForceIndexIxUser() *Battle    { q.q.Node.ForceIdx = "ix_user"; return q }
+func (q *BattleQuery) Distinct() *BattleQuery            { q.q.Node.Distinct = true; return q }
+func (q *BattleQuery) ForceIndexIk() *BattleQuery        { q.q.Node.ForceIdx = "ik"; return q }
+func (q *BattleQuery) ForceIndexIxService() *BattleQuery { q.q.Node.ForceIdx = "ix_service"; return q }
+func (q *BattleQuery) ForceIndexIxUser() *BattleQuery    { q.q.Node.ForceIdx = "ix_user"; return q }
 
 // Relation-child options.
-func (q *Battle) Flatten() *Battle                     { q.q.Node.Flatten = true; return q }
-func (q *Battle) LimitPerParent(n int) *Battle         { q.q.Node.LimitPerParent = n; return q }
-func (q *Battle) DropChildKey() *Battle                { q.q.Node.DropChildKey = true; return q }
-func (q *Battle) NoCascadeDelete() *Battle             { q.q.Node.NoCascadeDelete = true; return q }
-func (q *Battle) IfParentSeqEq(v int64) *Battle        { q.q.IfParent("seq", v); return q }
-func (q *Battle) IfParentNameEq(v string) *Battle      { q.q.IfParent("name", v); return q }
-func (q *Battle) IfParentServiceSeqEq(v int64) *Battle { q.q.IfParent("service_seq", v); return q }
-func (q *Battle) IfParentUserSeqEq(v int64) *Battle    { q.q.IfParent("user_seq", v); return q }
+func (q *BattleQuery) Flatten() *BattleQuery                { q.q.Node.Flatten = true; return q }
+func (q *BattleQuery) LimitPerParent(n int) *BattleQuery    { q.q.Node.LimitPerParent = n; return q }
+func (q *BattleQuery) DropChildKey() *BattleQuery           { q.q.Node.DropChildKey = true; return q }
+func (q *BattleQuery) NoCascadeDelete() *BattleQuery        { q.q.Node.NoCascadeDelete = true; return q }
+func (q *BattleQuery) IfParentSeqEq(v int64) *BattleQuery   { q.q.IfParent("seq", v); return q }
+func (q *BattleQuery) IfParentNameEq(v string) *BattleQuery { q.q.IfParent("name", v); return q }
+func (q *BattleQuery) IfParentServiceSeqEq(v int64) *BattleQuery {
+	q.q.IfParent("service_seq", v)
+	return q
+}
+func (q *BattleQuery) IfParentUserSeqEq(v int64) *BattleQuery { q.q.IfParent("user_seq", v); return q }
 
 // Insert draft. The auto PK is settable too: Save takes it as the update key.
-func (q *Battle) SetSeq(v int64) *Battle { q.q.Set("seq", v); return q }
-func (q *Battle) SetSeqExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetSeq(v int64) *BattleQuery { q.q.Set("seq", v); return q }
+func (q *BattleQuery) SetSeqExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("seq", frag, binds...)
 	return q
 }
-func (q *Battle) SetName(v string) *Battle { q.q.Set("name", v); return q }
-func (q *Battle) SetNameExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetName(v string) *BattleQuery { q.q.Set("name", v); return q }
+func (q *BattleQuery) SetNameExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("name", frag, binds...)
 	return q
 }
-func (q *Battle) SetDescription(v string) *Battle { q.q.Set("description", v); return q }
-func (q *Battle) SetDescriptionNull() *Battle     { q.q.SetNull("description"); return q }
-func (q *Battle) SetDescriptionExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetDescription(v string) *BattleQuery { q.q.Set("description", v); return q }
+func (q *BattleQuery) SetDescriptionNull() *BattleQuery     { q.q.SetNull("description"); return q }
+func (q *BattleQuery) SetDescriptionExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("description", frag, binds...)
 	return q
 }
-func (q *Battle) SetCreatedTs(v time.Time) *Battle { q.q.Set("created_ts", v); return q }
-func (q *Battle) SetCreatedTsExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetCreatedTs(v time.Time) *BattleQuery { q.q.Set("created_ts", v); return q }
+func (q *BattleQuery) SetCreatedTsExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("created_ts", frag, binds...)
 	return q
 }
-func (q *Battle) SetUpdatedTs(v time.Time) *Battle { q.q.Set("updated_ts", v); return q }
-func (q *Battle) SetUpdatedTsExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetUpdatedTs(v time.Time) *BattleQuery { q.q.Set("updated_ts", v); return q }
+func (q *BattleQuery) SetUpdatedTsExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("updated_ts", frag, binds...)
 	return q
 }
-func (q *Battle) SetIsClose(v bool) *Battle { q.q.Set("is_close", v); return q }
-func (q *Battle) SetIsCloseExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetIsClose(v bool) *BattleQuery { q.q.Set("is_close", v); return q }
+func (q *BattleQuery) SetIsCloseExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("is_close", frag, binds...)
 	return q
 }
-func (q *Battle) SetIsDisplay(v bool) *Battle { q.q.Set("is_display", v); return q }
-func (q *Battle) SetIsDisplayExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetIsDisplay(v bool) *BattleQuery { q.q.Set("is_display", v); return q }
+func (q *BattleQuery) SetIsDisplayExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("is_display", frag, binds...)
 	return q
 }
-func (q *Battle) SetDisplayStartDt(v time.Time) *Battle { q.q.Set("display_start_dt", v); return q }
-func (q *Battle) SetDisplayStartDtNull() *Battle        { q.q.SetNull("display_start_dt"); return q }
-func (q *Battle) SetDisplayStartDtExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetDisplayStartDt(v time.Time) *BattleQuery {
+	q.q.Set("display_start_dt", v)
+	return q
+}
+func (q *BattleQuery) SetDisplayStartDtNull() *BattleQuery { q.q.SetNull("display_start_dt"); return q }
+func (q *BattleQuery) SetDisplayStartDtExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("display_start_dt", frag, binds...)
 	return q
 }
-func (q *Battle) SetDisplayEndDt(v time.Time) *Battle { q.q.Set("display_end_dt", v); return q }
-func (q *Battle) SetDisplayEndDtNull() *Battle        { q.q.SetNull("display_end_dt"); return q }
-func (q *Battle) SetDisplayEndDtExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetDisplayEndDt(v time.Time) *BattleQuery {
+	q.q.Set("display_end_dt", v)
+	return q
+}
+func (q *BattleQuery) SetDisplayEndDtNull() *BattleQuery { q.q.SetNull("display_end_dt"); return q }
+func (q *BattleQuery) SetDisplayEndDtExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("display_end_dt", frag, binds...)
 	return q
 }
-func (q *Battle) SetIsAllday(v bool) *Battle { q.q.Set("is_allday", v); return q }
-func (q *Battle) SetIsAlldayExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetIsAllday(v bool) *BattleQuery { q.q.Set("is_allday", v); return q }
+func (q *BattleQuery) SetIsAlldayExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("is_allday", frag, binds...)
 	return q
 }
-func (q *Battle) SetTargetTeamPlayerCount(v int64) *Battle {
+func (q *BattleQuery) SetTargetTeamPlayerCount(v int64) *BattleQuery {
 	q.q.Set("target_team_player_count", v)
 	return q
 }
-func (q *Battle) SetTargetTeamPlayerCountExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetTargetTeamPlayerCountExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("target_team_player_count", frag, binds...)
 	return q
 }
-func (q *Battle) SetSuccessCount(v int64) *Battle { q.q.Set("success_count", v); return q }
-func (q *Battle) SetSuccessCountExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetSuccessCount(v int64) *BattleQuery { q.q.Set("success_count", v); return q }
+func (q *BattleQuery) SetSuccessCountExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("success_count", frag, binds...)
 	return q
 }
-func (q *Battle) SetPlayerCount(v int64) *Battle { q.q.Set("player_count", v); return q }
-func (q *Battle) SetPlayerCountExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetPlayerCount(v int64) *BattleQuery { q.q.Set("player_count", v); return q }
+func (q *BattleQuery) SetPlayerCountExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("player_count", frag, binds...)
 	return q
 }
-func (q *Battle) SetReadCount(v int64) *Battle { q.q.Set("read_count", v); return q }
-func (q *Battle) SetReadCountExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetReadCount(v int64) *BattleQuery { q.q.Set("read_count", v); return q }
+func (q *BattleQuery) SetReadCountExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("read_count", frag, binds...)
 	return q
 }
-func (q *Battle) SetCoverUrl(v string) *Battle { q.q.Set("cover_url", v); return q }
-func (q *Battle) SetCoverUrlNull() *Battle     { q.q.SetNull("cover_url"); return q }
-func (q *Battle) SetCoverUrlExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetCoverUrl(v string) *BattleQuery { q.q.Set("cover_url", v); return q }
+func (q *BattleQuery) SetCoverUrlNull() *BattleQuery     { q.q.SetNull("cover_url"); return q }
+func (q *BattleQuery) SetCoverUrlExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("cover_url", frag, binds...)
 	return q
 }
-func (q *Battle) SetUserSeq(v int64) *Battle { q.q.Set("user_seq", v); return q }
-func (q *Battle) SetUserSeqExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetUserSeq(v int64) *BattleQuery { q.q.Set("user_seq", v); return q }
+func (q *BattleQuery) SetUserSeqExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("user_seq", frag, binds...)
 	return q
 }
-func (q *Battle) SetServiceSeq(v int64) *Battle { q.q.Set("service_seq", v); return q }
-func (q *Battle) SetServiceSeqExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetServiceSeq(v int64) *BattleQuery { q.q.Set("service_seq", v); return q }
+func (q *BattleQuery) SetServiceSeqExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("service_seq", frag, binds...)
 	return q
 }
-func (q *Battle) SetServiceModuleSeq(v int64) *Battle { q.q.Set("service_module_seq", v); return q }
-func (q *Battle) SetServiceModuleSeqExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetServiceModuleSeq(v int64) *BattleQuery {
+	q.q.Set("service_module_seq", v)
+	return q
+}
+func (q *BattleQuery) SetServiceModuleSeqExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("service_module_seq", frag, binds...)
 	return q
 }
-func (q *Battle) SetServiceMemberSeq(v int64) *Battle { q.q.Set("service_member_seq", v); return q }
-func (q *Battle) SetServiceMemberSeqExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetServiceMemberSeq(v int64) *BattleQuery {
+	q.q.Set("service_member_seq", v)
+	return q
+}
+func (q *BattleQuery) SetServiceMemberSeqExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("service_member_seq", frag, binds...)
 	return q
 }
-func (q *Battle) SetStartDt(v time.Time) *Battle { q.q.Set("start_dt", v); return q }
-func (q *Battle) SetStartDtExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetStartDt(v time.Time) *BattleQuery { q.q.Set("start_dt", v); return q }
+func (q *BattleQuery) SetStartDtExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("start_dt", frag, binds...)
 	return q
 }
-func (q *Battle) SetEndDt(v time.Time) *Battle { q.q.Set("end_dt", v); return q }
-func (q *Battle) SetEndDtExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetEndDt(v time.Time) *BattleQuery { q.q.Set("end_dt", v); return q }
+func (q *BattleQuery) SetEndDtExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("end_dt", frag, binds...)
 	return q
 }
-func (q *Battle) SetUuid(v string) *Battle { q.q.Set("uuid", v); return q }
-func (q *Battle) SetUuidNull() *Battle     { q.q.SetNull("uuid"); return q }
-func (q *Battle) SetUuidExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetUuid(v string) *BattleQuery { q.q.Set("uuid", v); return q }
+func (q *BattleQuery) SetUuidNull() *BattleQuery     { q.q.SetNull("uuid"); return q }
+func (q *BattleQuery) SetUuidExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("uuid", frag, binds...)
 	return q
 }
-func (q *Battle) SetIsSinglePlay(v bool) *Battle { q.q.Set("is_single_play", v); return q }
-func (q *Battle) SetIsSinglePlayExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetIsSinglePlay(v bool) *BattleQuery { q.q.Set("is_single_play", v); return q }
+func (q *BattleQuery) SetIsSinglePlayExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("is_single_play", frag, binds...)
 	return q
 }
-func (q *Battle) SetLikeCount(v int64) *Battle { q.q.Set("like_count", v); return q }
-func (q *Battle) SetLikeCountExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetLikeCount(v int64) *BattleQuery { q.q.Set("like_count", v); return q }
+func (q *BattleQuery) SetLikeCountExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("like_count", frag, binds...)
 	return q
 }
-func (q *Battle) SetAesHexEmail(v string) *Battle { q.q.Set("aes_hex_email", v); return q }
-func (q *Battle) SetAesHexEmailNull() *Battle     { q.q.SetNull("aes_hex_email"); return q }
-func (q *Battle) SetAesHexEmailExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetAesHexEmail(v string) *BattleQuery { q.q.Set("aes_hex_email", v); return q }
+func (q *BattleQuery) SetAesHexEmailNull() *BattleQuery     { q.q.SetNull("aes_hex_email"); return q }
+func (q *BattleQuery) SetAesHexEmailExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("aes_hex_email", frag, binds...)
 	return q
 }
-func (q *Battle) SetAesHexPhone(v string) *Battle { q.q.Set("aes_hex_phone", v); return q }
-func (q *Battle) SetAesHexPhoneNull() *Battle     { q.q.SetNull("aes_hex_phone"); return q }
-func (q *Battle) SetAesHexPhoneExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetAesHexPhone(v string) *BattleQuery { q.q.Set("aes_hex_phone", v); return q }
+func (q *BattleQuery) SetAesHexPhoneNull() *BattleQuery     { q.q.SetNull("aes_hex_phone"); return q }
+func (q *BattleQuery) SetAesHexPhoneExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("aes_hex_phone", frag, binds...)
 	return q
 }
-func (q *Battle) SetPrice(v float64) *Battle { q.q.Set("price", v); return q }
-func (q *Battle) SetPriceNull() *Battle      { q.q.SetNull("price"); return q }
-func (q *Battle) SetPriceExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetPrice(v float64) *BattleQuery { q.q.Set("price", v); return q }
+func (q *BattleQuery) SetPriceNull() *BattleQuery      { q.q.SetNull("price"); return q }
+func (q *BattleQuery) SetPriceExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("price", frag, binds...)
 	return q
 }
-func (q *Battle) SetIp(v string) *Battle { q.q.Set("ip", v); return q }
-func (q *Battle) SetIpNull() *Battle     { q.q.SetNull("ip"); return q }
-func (q *Battle) SetIpExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetIp(v string) *BattleQuery { q.q.Set("ip", v); return q }
+func (q *BattleQuery) SetIpNull() *BattleQuery     { q.q.SetNull("ip"); return q }
+func (q *BattleQuery) SetIpExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("ip", frag, binds...)
 	return q
 }
-func (q *Battle) SetGzExtend(v any) *Battle {
+func (q *BattleQuery) SetGzExtend(v any) *BattleQuery {
 	q.q.SetStyled("gz_extend", v, []string{"serialize", "gz"})
 	return q
 }
-func (q *Battle) SetGzExtendExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetGzExtendExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("gz_extend", frag, binds...)
 	return q
 }
-func (q *Battle) SetJsonSetting(v any) *Battle {
+func (q *BattleQuery) SetJsonSetting(v any) *BattleQuery {
 	q.q.SetStyled("json_setting", v, []string{"json"})
 	return q
 }
-func (q *Battle) SetJsonSettingExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetJsonSettingExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("json_setting", frag, binds...)
 	return q
 }
-func (q *Battle) SetJsonsTags(v any) *Battle {
+func (q *BattleQuery) SetJsonsTags(v any) *BattleQuery {
 	q.q.SetStyled("jsons_tags", v, []string{"jsons"})
 	return q
 }
-func (q *Battle) SetJsonsTagsExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetJsonsTagsExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("jsons_tags", frag, binds...)
 	return q
 }
-func (q *Battle) SetBase64Extra(v any) *Battle {
+func (q *BattleQuery) SetBase64Extra(v any) *BattleQuery {
 	q.q.SetStyled("base64_extra", v, []string{"serialize", "base64"})
 	return q
 }
-func (q *Battle) SetBase64ExtraExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetBase64ExtraExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("base64_extra", frag, binds...)
 	return q
 }
-func (q *Battle) SetSerializeData(v any) *Battle {
+func (q *BattleQuery) SetSerializeData(v any) *BattleQuery {
 	q.q.SetStyled("serialize_data", v, []string{"serialize"})
 	return q
 }
-func (q *Battle) SetSerializeDataExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) SetSerializeDataExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("serialize_data", frag, binds...)
 	return q
 }
-func (q *Battle) PlusSeq(v int64) *Battle  { q.q.Plus("seq", v); return q }
-func (q *Battle) MinusSeq(v int64) *Battle { q.q.Minus("seq", v); return q }
-func (q *Battle) PlusTargetTeamPlayerCount(v int64) *Battle {
+func (q *BattleQuery) PlusSeq(v int64) *BattleQuery  { q.q.Plus("seq", v); return q }
+func (q *BattleQuery) MinusSeq(v int64) *BattleQuery { q.q.Minus("seq", v); return q }
+func (q *BattleQuery) PlusTargetTeamPlayerCount(v int64) *BattleQuery {
 	q.q.Plus("target_team_player_count", v)
 	return q
 }
-func (q *Battle) MinusTargetTeamPlayerCount(v int64) *Battle {
+func (q *BattleQuery) MinusTargetTeamPlayerCount(v int64) *BattleQuery {
 	q.q.Minus("target_team_player_count", v)
 	return q
 }
-func (q *Battle) PlusSuccessCount(v int64) *Battle      { q.q.Plus("success_count", v); return q }
-func (q *Battle) MinusSuccessCount(v int64) *Battle     { q.q.Minus("success_count", v); return q }
-func (q *Battle) PlusPlayerCount(v int64) *Battle       { q.q.Plus("player_count", v); return q }
-func (q *Battle) MinusPlayerCount(v int64) *Battle      { q.q.Minus("player_count", v); return q }
-func (q *Battle) PlusReadCount(v int64) *Battle         { q.q.Plus("read_count", v); return q }
-func (q *Battle) MinusReadCount(v int64) *Battle        { q.q.Minus("read_count", v); return q }
-func (q *Battle) PlusUserSeq(v int64) *Battle           { q.q.Plus("user_seq", v); return q }
-func (q *Battle) MinusUserSeq(v int64) *Battle          { q.q.Minus("user_seq", v); return q }
-func (q *Battle) PlusServiceSeq(v int64) *Battle        { q.q.Plus("service_seq", v); return q }
-func (q *Battle) MinusServiceSeq(v int64) *Battle       { q.q.Minus("service_seq", v); return q }
-func (q *Battle) PlusServiceModuleSeq(v int64) *Battle  { q.q.Plus("service_module_seq", v); return q }
-func (q *Battle) MinusServiceModuleSeq(v int64) *Battle { q.q.Minus("service_module_seq", v); return q }
-func (q *Battle) PlusServiceMemberSeq(v int64) *Battle  { q.q.Plus("service_member_seq", v); return q }
-func (q *Battle) MinusServiceMemberSeq(v int64) *Battle { q.q.Minus("service_member_seq", v); return q }
-func (q *Battle) PlusLikeCount(v int64) *Battle         { q.q.Plus("like_count", v); return q }
-func (q *Battle) MinusLikeCount(v int64) *Battle        { q.q.Minus("like_count", v); return q }
-func (q *Battle) PlusPrice(v float64) *Battle           { q.q.Plus("price", v); return q }
-func (q *Battle) MinusPrice(v float64) *Battle          { q.q.Minus("price", v); return q }
+func (q *BattleQuery) PlusSuccessCount(v int64) *BattleQuery { q.q.Plus("success_count", v); return q }
+func (q *BattleQuery) MinusSuccessCount(v int64) *BattleQuery {
+	q.q.Minus("success_count", v)
+	return q
+}
+func (q *BattleQuery) PlusPlayerCount(v int64) *BattleQuery  { q.q.Plus("player_count", v); return q }
+func (q *BattleQuery) MinusPlayerCount(v int64) *BattleQuery { q.q.Minus("player_count", v); return q }
+func (q *BattleQuery) PlusReadCount(v int64) *BattleQuery    { q.q.Plus("read_count", v); return q }
+func (q *BattleQuery) MinusReadCount(v int64) *BattleQuery   { q.q.Minus("read_count", v); return q }
+func (q *BattleQuery) PlusUserSeq(v int64) *BattleQuery      { q.q.Plus("user_seq", v); return q }
+func (q *BattleQuery) MinusUserSeq(v int64) *BattleQuery     { q.q.Minus("user_seq", v); return q }
+func (q *BattleQuery) PlusServiceSeq(v int64) *BattleQuery   { q.q.Plus("service_seq", v); return q }
+func (q *BattleQuery) MinusServiceSeq(v int64) *BattleQuery  { q.q.Minus("service_seq", v); return q }
+func (q *BattleQuery) PlusServiceModuleSeq(v int64) *BattleQuery {
+	q.q.Plus("service_module_seq", v)
+	return q
+}
+func (q *BattleQuery) MinusServiceModuleSeq(v int64) *BattleQuery {
+	q.q.Minus("service_module_seq", v)
+	return q
+}
+func (q *BattleQuery) PlusServiceMemberSeq(v int64) *BattleQuery {
+	q.q.Plus("service_member_seq", v)
+	return q
+}
+func (q *BattleQuery) MinusServiceMemberSeq(v int64) *BattleQuery {
+	q.q.Minus("service_member_seq", v)
+	return q
+}
+func (q *BattleQuery) PlusLikeCount(v int64) *BattleQuery  { q.q.Plus("like_count", v); return q }
+func (q *BattleQuery) MinusLikeCount(v int64) *BattleQuery { q.q.Minus("like_count", v); return q }
+func (q *BattleQuery) PlusPrice(v float64) *BattleQuery    { q.q.Plus("price", v); return q }
+func (q *BattleQuery) MinusPrice(v float64) *BattleQuery   { q.q.Minus("price", v); return q }
 
 // ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
-func (q *Battle) OnDuplicateSetName(v string) *Battle { q.q.OnDuplicate("name", v); return q }
-func (q *Battle) OnDuplicateSetNameExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetName(v string) *BattleQuery { q.q.OnDuplicate("name", v); return q }
+func (q *BattleQuery) OnDuplicateSetNameExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("name", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetDescription(v string) *Battle {
+func (q *BattleQuery) OnDuplicateSetDescription(v string) *BattleQuery {
 	q.q.OnDuplicate("description", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetDescriptionExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetDescriptionExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("description", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetCreatedTs(v time.Time) *Battle {
+func (q *BattleQuery) OnDuplicateSetCreatedTs(v time.Time) *BattleQuery {
 	q.q.OnDuplicate("created_ts", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetCreatedTsExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetCreatedTsExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("created_ts", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetUpdatedTs(v time.Time) *Battle {
+func (q *BattleQuery) OnDuplicateSetUpdatedTs(v time.Time) *BattleQuery {
 	q.q.OnDuplicate("updated_ts", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetUpdatedTsExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetUpdatedTsExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("updated_ts", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetIsClose(v bool) *Battle { q.q.OnDuplicate("is_close", v); return q }
-func (q *Battle) OnDuplicateSetIsCloseExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetIsClose(v bool) *BattleQuery {
+	q.q.OnDuplicate("is_close", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetIsCloseExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("is_close", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetIsDisplay(v bool) *Battle { q.q.OnDuplicate("is_display", v); return q }
-func (q *Battle) OnDuplicateSetIsDisplayExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetIsDisplay(v bool) *BattleQuery {
+	q.q.OnDuplicate("is_display", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetIsDisplayExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("is_display", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetDisplayStartDt(v time.Time) *Battle {
+func (q *BattleQuery) OnDuplicateSetDisplayStartDt(v time.Time) *BattleQuery {
 	q.q.OnDuplicate("display_start_dt", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetDisplayStartDtExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetDisplayStartDtExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("display_start_dt", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetDisplayEndDt(v time.Time) *Battle {
+func (q *BattleQuery) OnDuplicateSetDisplayEndDt(v time.Time) *BattleQuery {
 	q.q.OnDuplicate("display_end_dt", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetDisplayEndDtExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetDisplayEndDtExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("display_end_dt", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetIsAllday(v bool) *Battle { q.q.OnDuplicate("is_allday", v); return q }
-func (q *Battle) OnDuplicateSetIsAlldayExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetIsAllday(v bool) *BattleQuery {
+	q.q.OnDuplicate("is_allday", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetIsAlldayExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("is_allday", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetTargetTeamPlayerCount(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateSetTargetTeamPlayerCount(v int64) *BattleQuery {
 	q.q.OnDuplicate("target_team_player_count", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetTargetTeamPlayerCountExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetTargetTeamPlayerCountExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("target_team_player_count", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetSuccessCount(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateSetSuccessCount(v int64) *BattleQuery {
 	q.q.OnDuplicate("success_count", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetSuccessCountExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetSuccessCountExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("success_count", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetPlayerCount(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateSetPlayerCount(v int64) *BattleQuery {
 	q.q.OnDuplicate("player_count", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetPlayerCountExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetPlayerCountExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("player_count", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetReadCount(v int64) *Battle { q.q.OnDuplicate("read_count", v); return q }
-func (q *Battle) OnDuplicateSetReadCountExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetReadCount(v int64) *BattleQuery {
+	q.q.OnDuplicate("read_count", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetReadCountExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("read_count", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetCoverUrl(v string) *Battle { q.q.OnDuplicate("cover_url", v); return q }
-func (q *Battle) OnDuplicateSetCoverUrlExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetCoverUrl(v string) *BattleQuery {
+	q.q.OnDuplicate("cover_url", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetCoverUrlExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("cover_url", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetUserSeq(v int64) *Battle { q.q.OnDuplicate("user_seq", v); return q }
-func (q *Battle) OnDuplicateSetUserSeqExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetUserSeq(v int64) *BattleQuery {
+	q.q.OnDuplicate("user_seq", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetUserSeqExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("user_seq", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetServiceSeq(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateSetServiceSeq(v int64) *BattleQuery {
 	q.q.OnDuplicate("service_seq", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("service_seq", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetServiceModuleSeq(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateSetServiceModuleSeq(v int64) *BattleQuery {
 	q.q.OnDuplicate("service_module_seq", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetServiceModuleSeqExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetServiceModuleSeqExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("service_module_seq", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetServiceMemberSeq(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateSetServiceMemberSeq(v int64) *BattleQuery {
 	q.q.OnDuplicate("service_member_seq", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetServiceMemberSeqExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetServiceMemberSeqExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("service_member_seq", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetStartDt(v time.Time) *Battle { q.q.OnDuplicate("start_dt", v); return q }
-func (q *Battle) OnDuplicateSetStartDtExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetStartDt(v time.Time) *BattleQuery {
+	q.q.OnDuplicate("start_dt", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetStartDtExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("start_dt", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetEndDt(v time.Time) *Battle { q.q.OnDuplicate("end_dt", v); return q }
-func (q *Battle) OnDuplicateSetEndDtExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetEndDt(v time.Time) *BattleQuery {
+	q.q.OnDuplicate("end_dt", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetEndDtExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("end_dt", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetUuid(v string) *Battle { q.q.OnDuplicate("uuid", v); return q }
-func (q *Battle) OnDuplicateSetUuidExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetUuid(v string) *BattleQuery { q.q.OnDuplicate("uuid", v); return q }
+func (q *BattleQuery) OnDuplicateSetUuidExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("uuid", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetIsSinglePlay(v bool) *Battle {
+func (q *BattleQuery) OnDuplicateSetIsSinglePlay(v bool) *BattleQuery {
 	q.q.OnDuplicate("is_single_play", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetIsSinglePlayExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetIsSinglePlayExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("is_single_play", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetLikeCount(v int64) *Battle { q.q.OnDuplicate("like_count", v); return q }
-func (q *Battle) OnDuplicateSetLikeCountExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetLikeCount(v int64) *BattleQuery {
+	q.q.OnDuplicate("like_count", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetLikeCountExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("like_count", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetAesHexEmail(v string) *Battle {
+func (q *BattleQuery) OnDuplicateSetAesHexEmail(v string) *BattleQuery {
 	q.q.OnDuplicate("aes_hex_email", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetAesHexEmailExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetAesHexEmailExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("aes_hex_email", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetAesHexPhone(v string) *Battle {
+func (q *BattleQuery) OnDuplicateSetAesHexPhone(v string) *BattleQuery {
 	q.q.OnDuplicate("aes_hex_phone", v)
 	return q
 }
-func (q *Battle) OnDuplicateSetAesHexPhoneExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetAesHexPhoneExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("aes_hex_phone", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetPrice(v float64) *Battle { q.q.OnDuplicate("price", v); return q }
-func (q *Battle) OnDuplicateSetPriceExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetPrice(v float64) *BattleQuery {
+	q.q.OnDuplicate("price", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetPriceExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("price", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetIp(v string) *Battle { q.q.OnDuplicate("ip", v); return q }
-func (q *Battle) OnDuplicateSetIpExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetIp(v string) *BattleQuery { q.q.OnDuplicate("ip", v); return q }
+func (q *BattleQuery) OnDuplicateSetIpExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("ip", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetGzExtend(v any) *Battle {
+func (q *BattleQuery) OnDuplicateSetGzExtend(v any) *BattleQuery {
 	q.q.OnDuplicateStyled("gz_extend", v, []string{"serialize", "gz"})
 	return q
 }
-func (q *Battle) OnDuplicateSetGzExtendExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetGzExtendExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("gz_extend", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetJsonSetting(v any) *Battle {
+func (q *BattleQuery) OnDuplicateSetJsonSetting(v any) *BattleQuery {
 	q.q.OnDuplicateStyled("json_setting", v, []string{"json"})
 	return q
 }
-func (q *Battle) OnDuplicateSetJsonSettingExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetJsonSettingExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("json_setting", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetJsonsTags(v any) *Battle {
+func (q *BattleQuery) OnDuplicateSetJsonsTags(v any) *BattleQuery {
 	q.q.OnDuplicateStyled("jsons_tags", v, []string{"jsons"})
 	return q
 }
-func (q *Battle) OnDuplicateSetJsonsTagsExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetJsonsTagsExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("jsons_tags", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetBase64Extra(v any) *Battle {
+func (q *BattleQuery) OnDuplicateSetBase64Extra(v any) *BattleQuery {
 	q.q.OnDuplicateStyled("base64_extra", v, []string{"serialize", "base64"})
 	return q
 }
-func (q *Battle) OnDuplicateSetBase64ExtraExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetBase64ExtraExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("base64_extra", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicateSetSerializeData(v any) *Battle {
+func (q *BattleQuery) OnDuplicateSetSerializeData(v any) *BattleQuery {
 	q.q.OnDuplicateStyled("serialize_data", v, []string{"serialize"})
 	return q
 }
-func (q *Battle) OnDuplicateSetSerializeDataExpr(frag string, binds ...any) *Battle {
+func (q *BattleQuery) OnDuplicateSetSerializeDataExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("serialize_data", frag, binds...)
 	return q
 }
-func (q *Battle) OnDuplicatePlusTargetTeamPlayerCount(v int64) *Battle {
+func (q *BattleQuery) OnDuplicatePlusTargetTeamPlayerCount(v int64) *BattleQuery {
 	q.q.OnDuplicatePlus("target_team_player_count", v)
 	return q
 }
-func (q *Battle) OnDuplicateMinusTargetTeamPlayerCount(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateMinusTargetTeamPlayerCount(v int64) *BattleQuery {
 	q.q.OnDuplicateMinus("target_team_player_count", v)
 	return q
 }
-func (q *Battle) OnDuplicatePlusSuccessCount(v int64) *Battle {
+func (q *BattleQuery) OnDuplicatePlusSuccessCount(v int64) *BattleQuery {
 	q.q.OnDuplicatePlus("success_count", v)
 	return q
 }
-func (q *Battle) OnDuplicateMinusSuccessCount(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateMinusSuccessCount(v int64) *BattleQuery {
 	q.q.OnDuplicateMinus("success_count", v)
 	return q
 }
-func (q *Battle) OnDuplicatePlusPlayerCount(v int64) *Battle {
+func (q *BattleQuery) OnDuplicatePlusPlayerCount(v int64) *BattleQuery {
 	q.q.OnDuplicatePlus("player_count", v)
 	return q
 }
-func (q *Battle) OnDuplicateMinusPlayerCount(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateMinusPlayerCount(v int64) *BattleQuery {
 	q.q.OnDuplicateMinus("player_count", v)
 	return q
 }
-func (q *Battle) OnDuplicatePlusReadCount(v int64) *Battle {
+func (q *BattleQuery) OnDuplicatePlusReadCount(v int64) *BattleQuery {
 	q.q.OnDuplicatePlus("read_count", v)
 	return q
 }
-func (q *Battle) OnDuplicateMinusReadCount(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateMinusReadCount(v int64) *BattleQuery {
 	q.q.OnDuplicateMinus("read_count", v)
 	return q
 }
-func (q *Battle) OnDuplicatePlusUserSeq(v int64) *Battle {
+func (q *BattleQuery) OnDuplicatePlusUserSeq(v int64) *BattleQuery {
 	q.q.OnDuplicatePlus("user_seq", v)
 	return q
 }
-func (q *Battle) OnDuplicateMinusUserSeq(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateMinusUserSeq(v int64) *BattleQuery {
 	q.q.OnDuplicateMinus("user_seq", v)
 	return q
 }
-func (q *Battle) OnDuplicatePlusServiceSeq(v int64) *Battle {
+func (q *BattleQuery) OnDuplicatePlusServiceSeq(v int64) *BattleQuery {
 	q.q.OnDuplicatePlus("service_seq", v)
 	return q
 }
-func (q *Battle) OnDuplicateMinusServiceSeq(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateMinusServiceSeq(v int64) *BattleQuery {
 	q.q.OnDuplicateMinus("service_seq", v)
 	return q
 }
-func (q *Battle) OnDuplicatePlusServiceModuleSeq(v int64) *Battle {
+func (q *BattleQuery) OnDuplicatePlusServiceModuleSeq(v int64) *BattleQuery {
 	q.q.OnDuplicatePlus("service_module_seq", v)
 	return q
 }
-func (q *Battle) OnDuplicateMinusServiceModuleSeq(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateMinusServiceModuleSeq(v int64) *BattleQuery {
 	q.q.OnDuplicateMinus("service_module_seq", v)
 	return q
 }
-func (q *Battle) OnDuplicatePlusServiceMemberSeq(v int64) *Battle {
+func (q *BattleQuery) OnDuplicatePlusServiceMemberSeq(v int64) *BattleQuery {
 	q.q.OnDuplicatePlus("service_member_seq", v)
 	return q
 }
-func (q *Battle) OnDuplicateMinusServiceMemberSeq(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateMinusServiceMemberSeq(v int64) *BattleQuery {
 	q.q.OnDuplicateMinus("service_member_seq", v)
 	return q
 }
-func (q *Battle) OnDuplicatePlusLikeCount(v int64) *Battle {
+func (q *BattleQuery) OnDuplicatePlusLikeCount(v int64) *BattleQuery {
 	q.q.OnDuplicatePlus("like_count", v)
 	return q
 }
-func (q *Battle) OnDuplicateMinusLikeCount(v int64) *Battle {
+func (q *BattleQuery) OnDuplicateMinusLikeCount(v int64) *BattleQuery {
 	q.q.OnDuplicateMinus("like_count", v)
 	return q
 }
-func (q *Battle) OnDuplicatePlusPrice(v float64) *Battle  { q.q.OnDuplicatePlus("price", v); return q }
-func (q *Battle) OnDuplicateMinusPrice(v float64) *Battle { q.q.OnDuplicateMinus("price", v); return q }
-func (q *Battle) OnDuplicateSetAll() *Battle              { q.q.OnDuplicateSetAll("seq", "seq"); return q }
+func (q *BattleQuery) OnDuplicatePlusPrice(v float64) *BattleQuery {
+	q.q.OnDuplicatePlus("price", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateMinusPrice(v float64) *BattleQuery {
+	q.q.OnDuplicateMinus("price", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetAll() *BattleQuery { q.q.OnDuplicateSetAll("seq", "seq"); return q }
 
 // Terminals.
-func (q *Battle) One(ctx context.Context, ex orm.Exec) (*BattleRow, error) {
+func (q *BattleQuery) One() (*BattleRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "one"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil || len(rows.Data) == 0 {
@@ -5011,13 +5599,167 @@ func (q *Battle) One(ctx context.Context, ex orm.Exec) (*BattleRow, error) {
 	return scanBattle(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *Battle) All(ctx context.Context, ex orm.Exec) (*orm.Collection[BattleRow], error) {
+func (q *BattleQuery) All() (*orm.Collection[BattleRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "all"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
 	}
 	return collectBattle(rows, q.keyFn), nil
+}
+
+// Get is the preferred single-row terminal. One is kept as a compatibility alias.
+func (q *BattleQuery) Get() (*BattleRow, error) {
+	return q.One()
+}
+
+// Gets is the preferred collection terminal. All is kept as a compatibility alias.
+func (q *BattleQuery) Gets() (*orm.Collection[BattleRow], error) {
+	return q.All()
+}
+
+// GetsBySeq applies seq = v and runs the collection terminal.
+func (q *BattleQuery) GetsBySeq(v int64) (*orm.Collection[BattleRow], error) {
+	return q.Seq(v).Gets()
+}
+
+// GetsByName applies name = v and runs the collection terminal.
+func (q *BattleQuery) GetsByName(v string) (*orm.Collection[BattleRow], error) {
+	return q.Name(v).Gets()
+}
+
+// GetsByDescription applies description = v and runs the collection terminal.
+func (q *BattleQuery) GetsByDescription(v string) (*orm.Collection[BattleRow], error) {
+	return q.Description(v).Gets()
+}
+
+// GetsByCreatedTs applies created_ts = v and runs the collection terminal.
+func (q *BattleQuery) GetsByCreatedTs(v time.Time) (*orm.Collection[BattleRow], error) {
+	return q.CreatedTs(v).Gets()
+}
+
+// GetsByUpdatedTs applies updated_ts = v and runs the collection terminal.
+func (q *BattleQuery) GetsByUpdatedTs(v time.Time) (*orm.Collection[BattleRow], error) {
+	return q.UpdatedTs(v).Gets()
+}
+
+// GetsByIsClose applies is_close = v and runs the collection terminal.
+func (q *BattleQuery) GetsByIsClose(v bool) (*orm.Collection[BattleRow], error) {
+	return q.IsClose(v).Gets()
+}
+
+// GetsByIsDisplay applies is_display = v and runs the collection terminal.
+func (q *BattleQuery) GetsByIsDisplay(v bool) (*orm.Collection[BattleRow], error) {
+	return q.IsDisplay(v).Gets()
+}
+
+// GetsByDisplayStartDt applies display_start_dt = v and runs the collection terminal.
+func (q *BattleQuery) GetsByDisplayStartDt(v time.Time) (*orm.Collection[BattleRow], error) {
+	return q.DisplayStartDt(v).Gets()
+}
+
+// GetsByDisplayEndDt applies display_end_dt = v and runs the collection terminal.
+func (q *BattleQuery) GetsByDisplayEndDt(v time.Time) (*orm.Collection[BattleRow], error) {
+	return q.DisplayEndDt(v).Gets()
+}
+
+// GetsByIsAllday applies is_allday = v and runs the collection terminal.
+func (q *BattleQuery) GetsByIsAllday(v bool) (*orm.Collection[BattleRow], error) {
+	return q.IsAllday(v).Gets()
+}
+
+// GetsByTargetTeamPlayerCount applies target_team_player_count = v and runs the collection terminal.
+func (q *BattleQuery) GetsByTargetTeamPlayerCount(v int64) (*orm.Collection[BattleRow], error) {
+	return q.TargetTeamPlayerCount(v).Gets()
+}
+
+// GetsBySuccessCount applies success_count = v and runs the collection terminal.
+func (q *BattleQuery) GetsBySuccessCount(v int64) (*orm.Collection[BattleRow], error) {
+	return q.SuccessCount(v).Gets()
+}
+
+// GetsByPlayerCount applies player_count = v and runs the collection terminal.
+func (q *BattleQuery) GetsByPlayerCount(v int64) (*orm.Collection[BattleRow], error) {
+	return q.PlayerCount(v).Gets()
+}
+
+// GetsByReadCount applies read_count = v and runs the collection terminal.
+func (q *BattleQuery) GetsByReadCount(v int64) (*orm.Collection[BattleRow], error) {
+	return q.ReadCount(v).Gets()
+}
+
+// GetsByCoverUrl applies cover_url = v and runs the collection terminal.
+func (q *BattleQuery) GetsByCoverUrl(v string) (*orm.Collection[BattleRow], error) {
+	return q.CoverUrl(v).Gets()
+}
+
+// GetsByUserSeq applies user_seq = v and runs the collection terminal.
+func (q *BattleQuery) GetsByUserSeq(v int64) (*orm.Collection[BattleRow], error) {
+	return q.UserSeq(v).Gets()
+}
+
+// GetsByServiceSeq applies service_seq = v and runs the collection terminal.
+func (q *BattleQuery) GetsByServiceSeq(v int64) (*orm.Collection[BattleRow], error) {
+	return q.ServiceSeq(v).Gets()
+}
+
+// GetsByServiceModuleSeq applies service_module_seq = v and runs the collection terminal.
+func (q *BattleQuery) GetsByServiceModuleSeq(v int64) (*orm.Collection[BattleRow], error) {
+	return q.ServiceModuleSeq(v).Gets()
+}
+
+// GetsByServiceMemberSeq applies service_member_seq = v and runs the collection terminal.
+func (q *BattleQuery) GetsByServiceMemberSeq(v int64) (*orm.Collection[BattleRow], error) {
+	return q.ServiceMemberSeq(v).Gets()
+}
+
+// GetsByStartDt applies start_dt = v and runs the collection terminal.
+func (q *BattleQuery) GetsByStartDt(v time.Time) (*orm.Collection[BattleRow], error) {
+	return q.StartDt(v).Gets()
+}
+
+// GetsByEndDt applies end_dt = v and runs the collection terminal.
+func (q *BattleQuery) GetsByEndDt(v time.Time) (*orm.Collection[BattleRow], error) {
+	return q.EndDt(v).Gets()
+}
+
+// GetsByUuid applies uuid = v and runs the collection terminal.
+func (q *BattleQuery) GetsByUuid(v string) (*orm.Collection[BattleRow], error) {
+	return q.Uuid(v).Gets()
+}
+
+// GetsByIsSinglePlay applies is_single_play = v and runs the collection terminal.
+func (q *BattleQuery) GetsByIsSinglePlay(v bool) (*orm.Collection[BattleRow], error) {
+	return q.IsSinglePlay(v).Gets()
+}
+
+// GetsByLikeCount applies like_count = v and runs the collection terminal.
+func (q *BattleQuery) GetsByLikeCount(v int64) (*orm.Collection[BattleRow], error) {
+	return q.LikeCount(v).Gets()
+}
+
+// GetsByAesHexEmail applies aes_hex_email = v and runs the collection terminal.
+func (q *BattleQuery) GetsByAesHexEmail(v string) (*orm.Collection[BattleRow], error) {
+	return q.AesHexEmail(v).Gets()
+}
+
+// GetsByAesHexPhone applies aes_hex_phone = v and runs the collection terminal.
+func (q *BattleQuery) GetsByAesHexPhone(v string) (*orm.Collection[BattleRow], error) {
+	return q.AesHexPhone(v).Gets()
+}
+
+// GetsByPrice applies price = v and runs the collection terminal.
+func (q *BattleQuery) GetsByPrice(v float64) (*orm.Collection[BattleRow], error) {
+	return q.Price(v).Gets()
+}
+
+// GetsByIp applies ip = v and runs the collection terminal.
+func (q *BattleQuery) GetsByIp(v string) (*orm.Collection[BattleRow], error) {
+	return q.Ip(v).Gets()
 }
 
 func collectBattle(rows *orm.Rows, keyFn func(*BattleRow) orm.Key) *orm.Collection[BattleRow] {
@@ -5033,144 +5775,400 @@ func collectBattle(rows *orm.Rows, keyFn func(*BattleRow) orm.Key) *orm.Collecti
 	return c
 }
 
-func (q *Battle) Count(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) Count() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
 }
-func (q *Battle) SumSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+
+// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
+func (q *BattleQuery) GetCount() (int64, error) {
+	return q.Count()
+}
+
+// GetCountBySeq applies seq = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountBySeq(v int64) (int64, error) {
+	return q.Seq(v).GetCount()
+}
+
+// GetCountByName applies name = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByName(v string) (int64, error) {
+	return q.Name(v).GetCount()
+}
+
+// GetCountByDescription applies description = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByDescription(v string) (int64, error) {
+	return q.Description(v).GetCount()
+}
+
+// GetCountByCreatedTs applies created_ts = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByCreatedTs(v time.Time) (int64, error) {
+	return q.CreatedTs(v).GetCount()
+}
+
+// GetCountByUpdatedTs applies updated_ts = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByUpdatedTs(v time.Time) (int64, error) {
+	return q.UpdatedTs(v).GetCount()
+}
+
+// GetCountByIsClose applies is_close = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByIsClose(v bool) (int64, error) {
+	return q.IsClose(v).GetCount()
+}
+
+// GetCountByIsDisplay applies is_display = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByIsDisplay(v bool) (int64, error) {
+	return q.IsDisplay(v).GetCount()
+}
+
+// GetCountByDisplayStartDt applies display_start_dt = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByDisplayStartDt(v time.Time) (int64, error) {
+	return q.DisplayStartDt(v).GetCount()
+}
+
+// GetCountByDisplayEndDt applies display_end_dt = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByDisplayEndDt(v time.Time) (int64, error) {
+	return q.DisplayEndDt(v).GetCount()
+}
+
+// GetCountByIsAllday applies is_allday = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByIsAllday(v bool) (int64, error) {
+	return q.IsAllday(v).GetCount()
+}
+
+// GetCountByTargetTeamPlayerCount applies target_team_player_count = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByTargetTeamPlayerCount(v int64) (int64, error) {
+	return q.TargetTeamPlayerCount(v).GetCount()
+}
+
+// GetCountBySuccessCount applies success_count = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountBySuccessCount(v int64) (int64, error) {
+	return q.SuccessCount(v).GetCount()
+}
+
+// GetCountByPlayerCount applies player_count = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByPlayerCount(v int64) (int64, error) {
+	return q.PlayerCount(v).GetCount()
+}
+
+// GetCountByReadCount applies read_count = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByReadCount(v int64) (int64, error) {
+	return q.ReadCount(v).GetCount()
+}
+
+// GetCountByCoverUrl applies cover_url = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByCoverUrl(v string) (int64, error) {
+	return q.CoverUrl(v).GetCount()
+}
+
+// GetCountByUserSeq applies user_seq = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByUserSeq(v int64) (int64, error) {
+	return q.UserSeq(v).GetCount()
+}
+
+// GetCountByServiceSeq applies service_seq = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByServiceSeq(v int64) (int64, error) {
+	return q.ServiceSeq(v).GetCount()
+}
+
+// GetCountByServiceModuleSeq applies service_module_seq = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByServiceModuleSeq(v int64) (int64, error) {
+	return q.ServiceModuleSeq(v).GetCount()
+}
+
+// GetCountByServiceMemberSeq applies service_member_seq = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByServiceMemberSeq(v int64) (int64, error) {
+	return q.ServiceMemberSeq(v).GetCount()
+}
+
+// GetCountByStartDt applies start_dt = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByStartDt(v time.Time) (int64, error) {
+	return q.StartDt(v).GetCount()
+}
+
+// GetCountByEndDt applies end_dt = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByEndDt(v time.Time) (int64, error) {
+	return q.EndDt(v).GetCount()
+}
+
+// GetCountByUuid applies uuid = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByUuid(v string) (int64, error) {
+	return q.Uuid(v).GetCount()
+}
+
+// GetCountByIsSinglePlay applies is_single_play = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByIsSinglePlay(v bool) (int64, error) {
+	return q.IsSinglePlay(v).GetCount()
+}
+
+// GetCountByLikeCount applies like_count = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByLikeCount(v int64) (int64, error) {
+	return q.LikeCount(v).GetCount()
+}
+
+// GetCountByAesHexEmail applies aes_hex_email = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByAesHexEmail(v string) (int64, error) {
+	return q.AesHexEmail(v).GetCount()
+}
+
+// GetCountByAesHexPhone applies aes_hex_phone = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByAesHexPhone(v string) (int64, error) {
+	return q.AesHexPhone(v).GetCount()
+}
+
+// GetCountByPrice applies price = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByPrice(v float64) (int64, error) {
+	return q.Price(v).GetCount()
+}
+
+// GetCountByIp applies ip = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByIp(v string) (int64, error) {
+	return q.Ip(v).GetCount()
+}
+
+// GetsCount returns one row per group_by value. The grouped columns are in the
+// row and the aggregate is available as Extra("row_count").
+func (q *BattleQuery) GetsCount() (*orm.Collection[BattleRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "group_count"
+	rows, err := orm.Query(ctx, ex, q.q.Req)
+	if err != nil {
+		return nil, err
+	}
+	return collectBattle(rows, q.keyFn), nil
+}
+func (q *BattleQuery) SumSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) AvgSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) AvgSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) SumTargetTeamPlayerCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) SumTargetTeamPlayerCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "target_team_player_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) AvgTargetTeamPlayerCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) AvgTargetTeamPlayerCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "target_team_player_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) SumSuccessCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) SumSuccessCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "success_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) AvgSuccessCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) AvgSuccessCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "success_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) SumPlayerCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) SumPlayerCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "player_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) AvgPlayerCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) AvgPlayerCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "player_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) SumReadCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) SumReadCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "read_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) AvgReadCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) AvgReadCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "read_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) SumUserSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) SumUserSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) AvgUserSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) AvgUserSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) SumServiceSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) SumServiceSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) AvgServiceSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) AvgServiceSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) SumServiceModuleSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) SumServiceModuleSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "service_module_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) AvgServiceModuleSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) AvgServiceModuleSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "service_module_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) SumServiceMemberSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) SumServiceMemberSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "service_member_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) AvgServiceMemberSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) AvgServiceMemberSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "service_member_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) SumLikeCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) SumLikeCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "like_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) AvgLikeCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) AvgLikeCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "like_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) SumPrice(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) SumPrice() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "price"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) AvgPrice(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *BattleQuery) AvgPrice() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "price"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Battle) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5178,7 +6176,11 @@ func (q *Battle) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int64, erro
 }
 
 // MinSeq is nil when no row matches.
-func (q *Battle) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MinSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5190,7 +6192,11 @@ func (q *Battle) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
 }
 
 // MaxSeq is nil when no row matches.
-func (q *Battle) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MaxSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5200,7 +6206,11 @@ func (q *Battle) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctName(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctName() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5208,7 +6218,11 @@ func (q *Battle) CountDistinctName(ctx context.Context, ex orm.Exec) (int64, err
 }
 
 // MinName is nil when no row matches.
-func (q *Battle) MinName(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *BattleQuery) MinName() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5220,7 +6234,11 @@ func (q *Battle) MinName(ctx context.Context, ex orm.Exec) (*string, error) {
 }
 
 // MaxName is nil when no row matches.
-func (q *Battle) MaxName(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *BattleQuery) MaxName() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5230,7 +6248,11 @@ func (q *Battle) MaxName(ctx context.Context, ex orm.Exec) (*string, error) {
 	x := orm.AsString(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctDescription(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctDescription() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "description"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5238,7 +6260,11 @@ func (q *Battle) CountDistinctDescription(ctx context.Context, ex orm.Exec) (int
 }
 
 // MinDescription is nil when no row matches.
-func (q *Battle) MinDescription(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *BattleQuery) MinDescription() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "description"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5250,7 +6276,11 @@ func (q *Battle) MinDescription(ctx context.Context, ex orm.Exec) (*string, erro
 }
 
 // MaxDescription is nil when no row matches.
-func (q *Battle) MaxDescription(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *BattleQuery) MaxDescription() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "description"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5260,7 +6290,11 @@ func (q *Battle) MaxDescription(ctx context.Context, ex orm.Exec) (*string, erro
 	x := orm.AsString(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctCreatedTs(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctCreatedTs() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "created_ts"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5268,7 +6302,11 @@ func (q *Battle) CountDistinctCreatedTs(ctx context.Context, ex orm.Exec) (int64
 }
 
 // MinCreatedTs is nil when no row matches.
-func (q *Battle) MinCreatedTs(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *BattleQuery) MinCreatedTs() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "created_ts"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5280,7 +6318,11 @@ func (q *Battle) MinCreatedTs(ctx context.Context, ex orm.Exec) (*time.Time, err
 }
 
 // MaxCreatedTs is nil when no row matches.
-func (q *Battle) MaxCreatedTs(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *BattleQuery) MaxCreatedTs() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "created_ts"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5290,7 +6332,11 @@ func (q *Battle) MaxCreatedTs(ctx context.Context, ex orm.Exec) (*time.Time, err
 	x := orm.AsTime(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctUpdatedTs(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctUpdatedTs() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "updated_ts"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5298,7 +6344,11 @@ func (q *Battle) CountDistinctUpdatedTs(ctx context.Context, ex orm.Exec) (int64
 }
 
 // MinUpdatedTs is nil when no row matches.
-func (q *Battle) MinUpdatedTs(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *BattleQuery) MinUpdatedTs() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "updated_ts"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5310,7 +6360,11 @@ func (q *Battle) MinUpdatedTs(ctx context.Context, ex orm.Exec) (*time.Time, err
 }
 
 // MaxUpdatedTs is nil when no row matches.
-func (q *Battle) MaxUpdatedTs(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *BattleQuery) MaxUpdatedTs() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "updated_ts"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5320,7 +6374,11 @@ func (q *Battle) MaxUpdatedTs(ctx context.Context, ex orm.Exec) (*time.Time, err
 	x := orm.AsTime(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctIsClose(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctIsClose() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "is_close"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5328,7 +6386,11 @@ func (q *Battle) CountDistinctIsClose(ctx context.Context, ex orm.Exec) (int64, 
 }
 
 // MinIsClose is nil when no row matches.
-func (q *Battle) MinIsClose(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *BattleQuery) MinIsClose() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "is_close"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5340,7 +6402,11 @@ func (q *Battle) MinIsClose(ctx context.Context, ex orm.Exec) (*bool, error) {
 }
 
 // MaxIsClose is nil when no row matches.
-func (q *Battle) MaxIsClose(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *BattleQuery) MaxIsClose() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "is_close"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5350,7 +6416,11 @@ func (q *Battle) MaxIsClose(ctx context.Context, ex orm.Exec) (*bool, error) {
 	x := orm.AsBool(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctIsDisplay(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctIsDisplay() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "is_display"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5358,7 +6428,11 @@ func (q *Battle) CountDistinctIsDisplay(ctx context.Context, ex orm.Exec) (int64
 }
 
 // MinIsDisplay is nil when no row matches.
-func (q *Battle) MinIsDisplay(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *BattleQuery) MinIsDisplay() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "is_display"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5370,7 +6444,11 @@ func (q *Battle) MinIsDisplay(ctx context.Context, ex orm.Exec) (*bool, error) {
 }
 
 // MaxIsDisplay is nil when no row matches.
-func (q *Battle) MaxIsDisplay(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *BattleQuery) MaxIsDisplay() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "is_display"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5380,7 +6458,11 @@ func (q *Battle) MaxIsDisplay(ctx context.Context, ex orm.Exec) (*bool, error) {
 	x := orm.AsBool(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctDisplayStartDt(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctDisplayStartDt() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "display_start_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5388,7 +6470,11 @@ func (q *Battle) CountDistinctDisplayStartDt(ctx context.Context, ex orm.Exec) (
 }
 
 // MinDisplayStartDt is nil when no row matches.
-func (q *Battle) MinDisplayStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *BattleQuery) MinDisplayStartDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "display_start_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5400,7 +6486,11 @@ func (q *Battle) MinDisplayStartDt(ctx context.Context, ex orm.Exec) (*time.Time
 }
 
 // MaxDisplayStartDt is nil when no row matches.
-func (q *Battle) MaxDisplayStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *BattleQuery) MaxDisplayStartDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "display_start_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5410,7 +6500,11 @@ func (q *Battle) MaxDisplayStartDt(ctx context.Context, ex orm.Exec) (*time.Time
 	x := orm.AsTime(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctDisplayEndDt(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctDisplayEndDt() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "display_end_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5418,7 +6512,11 @@ func (q *Battle) CountDistinctDisplayEndDt(ctx context.Context, ex orm.Exec) (in
 }
 
 // MinDisplayEndDt is nil when no row matches.
-func (q *Battle) MinDisplayEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *BattleQuery) MinDisplayEndDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "display_end_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5430,7 +6528,11 @@ func (q *Battle) MinDisplayEndDt(ctx context.Context, ex orm.Exec) (*time.Time, 
 }
 
 // MaxDisplayEndDt is nil when no row matches.
-func (q *Battle) MaxDisplayEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *BattleQuery) MaxDisplayEndDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "display_end_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5440,7 +6542,11 @@ func (q *Battle) MaxDisplayEndDt(ctx context.Context, ex orm.Exec) (*time.Time, 
 	x := orm.AsTime(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctIsAllday(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctIsAllday() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "is_allday"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5448,7 +6554,11 @@ func (q *Battle) CountDistinctIsAllday(ctx context.Context, ex orm.Exec) (int64,
 }
 
 // MinIsAllday is nil when no row matches.
-func (q *Battle) MinIsAllday(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *BattleQuery) MinIsAllday() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "is_allday"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5460,7 +6570,11 @@ func (q *Battle) MinIsAllday(ctx context.Context, ex orm.Exec) (*bool, error) {
 }
 
 // MaxIsAllday is nil when no row matches.
-func (q *Battle) MaxIsAllday(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *BattleQuery) MaxIsAllday() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "is_allday"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5470,7 +6584,11 @@ func (q *Battle) MaxIsAllday(ctx context.Context, ex orm.Exec) (*bool, error) {
 	x := orm.AsBool(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctTargetTeamPlayerCount(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctTargetTeamPlayerCount() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "target_team_player_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5478,7 +6596,11 @@ func (q *Battle) CountDistinctTargetTeamPlayerCount(ctx context.Context, ex orm.
 }
 
 // MinTargetTeamPlayerCount is nil when no row matches.
-func (q *Battle) MinTargetTeamPlayerCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MinTargetTeamPlayerCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "target_team_player_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5490,7 +6612,11 @@ func (q *Battle) MinTargetTeamPlayerCount(ctx context.Context, ex orm.Exec) (*in
 }
 
 // MaxTargetTeamPlayerCount is nil when no row matches.
-func (q *Battle) MaxTargetTeamPlayerCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MaxTargetTeamPlayerCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "target_team_player_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5500,7 +6626,11 @@ func (q *Battle) MaxTargetTeamPlayerCount(ctx context.Context, ex orm.Exec) (*in
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctSuccessCount(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctSuccessCount() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "success_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5508,7 +6638,11 @@ func (q *Battle) CountDistinctSuccessCount(ctx context.Context, ex orm.Exec) (in
 }
 
 // MinSuccessCount is nil when no row matches.
-func (q *Battle) MinSuccessCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MinSuccessCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "success_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5520,7 +6654,11 @@ func (q *Battle) MinSuccessCount(ctx context.Context, ex orm.Exec) (*int64, erro
 }
 
 // MaxSuccessCount is nil when no row matches.
-func (q *Battle) MaxSuccessCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MaxSuccessCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "success_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5530,7 +6668,11 @@ func (q *Battle) MaxSuccessCount(ctx context.Context, ex orm.Exec) (*int64, erro
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctPlayerCount(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctPlayerCount() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "player_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5538,7 +6680,11 @@ func (q *Battle) CountDistinctPlayerCount(ctx context.Context, ex orm.Exec) (int
 }
 
 // MinPlayerCount is nil when no row matches.
-func (q *Battle) MinPlayerCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MinPlayerCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "player_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5550,7 +6696,11 @@ func (q *Battle) MinPlayerCount(ctx context.Context, ex orm.Exec) (*int64, error
 }
 
 // MaxPlayerCount is nil when no row matches.
-func (q *Battle) MaxPlayerCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MaxPlayerCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "player_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5560,7 +6710,11 @@ func (q *Battle) MaxPlayerCount(ctx context.Context, ex orm.Exec) (*int64, error
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctReadCount(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctReadCount() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "read_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5568,7 +6722,11 @@ func (q *Battle) CountDistinctReadCount(ctx context.Context, ex orm.Exec) (int64
 }
 
 // MinReadCount is nil when no row matches.
-func (q *Battle) MinReadCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MinReadCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "read_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5580,7 +6738,11 @@ func (q *Battle) MinReadCount(ctx context.Context, ex orm.Exec) (*int64, error) 
 }
 
 // MaxReadCount is nil when no row matches.
-func (q *Battle) MaxReadCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MaxReadCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "read_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5590,7 +6752,11 @@ func (q *Battle) MaxReadCount(ctx context.Context, ex orm.Exec) (*int64, error) 
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctCoverUrl(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctCoverUrl() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "cover_url"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5598,7 +6764,11 @@ func (q *Battle) CountDistinctCoverUrl(ctx context.Context, ex orm.Exec) (int64,
 }
 
 // MinCoverUrl is nil when no row matches.
-func (q *Battle) MinCoverUrl(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *BattleQuery) MinCoverUrl() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "cover_url"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5610,7 +6780,11 @@ func (q *Battle) MinCoverUrl(ctx context.Context, ex orm.Exec) (*string, error) 
 }
 
 // MaxCoverUrl is nil when no row matches.
-func (q *Battle) MaxCoverUrl(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *BattleQuery) MaxCoverUrl() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "cover_url"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5620,7 +6794,11 @@ func (q *Battle) MaxCoverUrl(ctx context.Context, ex orm.Exec) (*string, error) 
 	x := orm.AsString(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctUserSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctUserSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5628,7 +6806,11 @@ func (q *Battle) CountDistinctUserSeq(ctx context.Context, ex orm.Exec) (int64, 
 }
 
 // MinUserSeq is nil when no row matches.
-func (q *Battle) MinUserSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MinUserSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5640,7 +6822,11 @@ func (q *Battle) MinUserSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
 }
 
 // MaxUserSeq is nil when no row matches.
-func (q *Battle) MaxUserSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MaxUserSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5650,7 +6836,11 @@ func (q *Battle) MaxUserSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctServiceSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctServiceSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5658,7 +6848,11 @@ func (q *Battle) CountDistinctServiceSeq(ctx context.Context, ex orm.Exec) (int6
 }
 
 // MinServiceSeq is nil when no row matches.
-func (q *Battle) MinServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MinServiceSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5670,7 +6864,11 @@ func (q *Battle) MinServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error)
 }
 
 // MaxServiceSeq is nil when no row matches.
-func (q *Battle) MaxServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MaxServiceSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5680,7 +6878,11 @@ func (q *Battle) MaxServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error)
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctServiceModuleSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctServiceModuleSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "service_module_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5688,7 +6890,11 @@ func (q *Battle) CountDistinctServiceModuleSeq(ctx context.Context, ex orm.Exec)
 }
 
 // MinServiceModuleSeq is nil when no row matches.
-func (q *Battle) MinServiceModuleSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MinServiceModuleSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "service_module_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5700,7 +6906,11 @@ func (q *Battle) MinServiceModuleSeq(ctx context.Context, ex orm.Exec) (*int64, 
 }
 
 // MaxServiceModuleSeq is nil when no row matches.
-func (q *Battle) MaxServiceModuleSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MaxServiceModuleSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "service_module_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5710,7 +6920,11 @@ func (q *Battle) MaxServiceModuleSeq(ctx context.Context, ex orm.Exec) (*int64, 
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctServiceMemberSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctServiceMemberSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "service_member_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5718,7 +6932,11 @@ func (q *Battle) CountDistinctServiceMemberSeq(ctx context.Context, ex orm.Exec)
 }
 
 // MinServiceMemberSeq is nil when no row matches.
-func (q *Battle) MinServiceMemberSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MinServiceMemberSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "service_member_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5730,7 +6948,11 @@ func (q *Battle) MinServiceMemberSeq(ctx context.Context, ex orm.Exec) (*int64, 
 }
 
 // MaxServiceMemberSeq is nil when no row matches.
-func (q *Battle) MaxServiceMemberSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MaxServiceMemberSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "service_member_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5740,7 +6962,11 @@ func (q *Battle) MaxServiceMemberSeq(ctx context.Context, ex orm.Exec) (*int64, 
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctStartDt(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctStartDt() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "start_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5748,7 +6974,11 @@ func (q *Battle) CountDistinctStartDt(ctx context.Context, ex orm.Exec) (int64, 
 }
 
 // MinStartDt is nil when no row matches.
-func (q *Battle) MinStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *BattleQuery) MinStartDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "start_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5760,7 +6990,11 @@ func (q *Battle) MinStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error
 }
 
 // MaxStartDt is nil when no row matches.
-func (q *Battle) MaxStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *BattleQuery) MaxStartDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "start_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5770,7 +7004,11 @@ func (q *Battle) MaxStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error
 	x := orm.AsTime(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctEndDt(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctEndDt() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "end_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5778,7 +7016,11 @@ func (q *Battle) CountDistinctEndDt(ctx context.Context, ex orm.Exec) (int64, er
 }
 
 // MinEndDt is nil when no row matches.
-func (q *Battle) MinEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *BattleQuery) MinEndDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "end_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5790,7 +7032,11 @@ func (q *Battle) MinEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) 
 }
 
 // MaxEndDt is nil when no row matches.
-func (q *Battle) MaxEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *BattleQuery) MaxEndDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "end_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5800,7 +7046,11 @@ func (q *Battle) MaxEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) 
 	x := orm.AsTime(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctUuid(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctUuid() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "uuid"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5808,7 +7058,11 @@ func (q *Battle) CountDistinctUuid(ctx context.Context, ex orm.Exec) (int64, err
 }
 
 // MinUuid is nil when no row matches.
-func (q *Battle) MinUuid(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *BattleQuery) MinUuid() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "uuid"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5820,7 +7074,11 @@ func (q *Battle) MinUuid(ctx context.Context, ex orm.Exec) (*string, error) {
 }
 
 // MaxUuid is nil when no row matches.
-func (q *Battle) MaxUuid(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *BattleQuery) MaxUuid() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "uuid"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5830,7 +7088,11 @@ func (q *Battle) MaxUuid(ctx context.Context, ex orm.Exec) (*string, error) {
 	x := orm.AsString(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctIsSinglePlay(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctIsSinglePlay() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "is_single_play"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5838,7 +7100,11 @@ func (q *Battle) CountDistinctIsSinglePlay(ctx context.Context, ex orm.Exec) (in
 }
 
 // MinIsSinglePlay is nil when no row matches.
-func (q *Battle) MinIsSinglePlay(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *BattleQuery) MinIsSinglePlay() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "is_single_play"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5850,7 +7116,11 @@ func (q *Battle) MinIsSinglePlay(ctx context.Context, ex orm.Exec) (*bool, error
 }
 
 // MaxIsSinglePlay is nil when no row matches.
-func (q *Battle) MaxIsSinglePlay(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *BattleQuery) MaxIsSinglePlay() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "is_single_play"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5860,7 +7130,11 @@ func (q *Battle) MaxIsSinglePlay(ctx context.Context, ex orm.Exec) (*bool, error
 	x := orm.AsBool(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctLikeCount(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctLikeCount() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "like_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5868,7 +7142,11 @@ func (q *Battle) CountDistinctLikeCount(ctx context.Context, ex orm.Exec) (int64
 }
 
 // MinLikeCount is nil when no row matches.
-func (q *Battle) MinLikeCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MinLikeCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "like_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5880,7 +7158,11 @@ func (q *Battle) MinLikeCount(ctx context.Context, ex orm.Exec) (*int64, error) 
 }
 
 // MaxLikeCount is nil when no row matches.
-func (q *Battle) MaxLikeCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *BattleQuery) MaxLikeCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "like_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5890,7 +7172,11 @@ func (q *Battle) MaxLikeCount(ctx context.Context, ex orm.Exec) (*int64, error) 
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctPrice(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctPrice() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "price"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5898,7 +7184,11 @@ func (q *Battle) CountDistinctPrice(ctx context.Context, ex orm.Exec) (int64, er
 }
 
 // MinPrice is nil when no row matches.
-func (q *Battle) MinPrice(ctx context.Context, ex orm.Exec) (*float64, error) {
+func (q *BattleQuery) MinPrice() (*float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "price"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5910,7 +7200,11 @@ func (q *Battle) MinPrice(ctx context.Context, ex orm.Exec) (*float64, error) {
 }
 
 // MaxPrice is nil when no row matches.
-func (q *Battle) MaxPrice(ctx context.Context, ex orm.Exec) (*float64, error) {
+func (q *BattleQuery) MaxPrice() (*float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "price"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5920,7 +7214,11 @@ func (q *Battle) MaxPrice(ctx context.Context, ex orm.Exec) (*float64, error) {
 	x := orm.AsFloat64(v)
 	return &x, nil
 }
-func (q *Battle) CountDistinctIp(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) CountDistinctIp() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "ip"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5928,7 +7226,11 @@ func (q *Battle) CountDistinctIp(ctx context.Context, ex orm.Exec) (int64, error
 }
 
 // MinIp is nil when no row matches.
-func (q *Battle) MinIp(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *BattleQuery) MinIp() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "ip"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5940,7 +7242,11 @@ func (q *Battle) MinIp(ctx context.Context, ex orm.Exec) (*string, error) {
 }
 
 // MaxIp is nil when no row matches.
-func (q *Battle) MaxIp(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *BattleQuery) MaxIp() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "ip"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5952,12 +7258,23 @@ func (q *Battle) MaxIp(ctx context.Context, ex orm.Exec) (*string, error) {
 }
 
 // RawAll runs the statement given to Raw and returns its rows by column name (values as the driver gives them, no codec).
-func (q *Battle) RawAll(ctx context.Context, ex orm.Exec) ([]map[string]any, error) {
+func (q *BattleQuery) RawAll() ([]map[string]any, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "raw"
 	return orm.RawAll(ctx, ex, q.q.Req)
 }
 
-func (q *Battle) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm.Page[BattleRow], error) {
+func (q *BattleQuery) Paginate(page, per int) (*orm.Page[BattleRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	if per <= 0 {
+		return nil, &ir.Error{Code: "IR_INVALID", Msg: "per must be positive"}
+	}
 	if page < 1 {
 		page = 1
 	}
@@ -5971,49 +7288,79 @@ func (q *Battle) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm
 	return &orm.Page[BattleRow]{Items: collectBattle(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
-func (q *Battle) Insert(ctx context.Context, ex orm.Exec) (*BattleRow, error) {
+func (q *BattleQuery) Insert() (*BattleRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "insert"
 	id, _, err := orm.Write(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
 	}
-	return NewBattle().SeqEq(int64(id)).One(ctx, ex)
+	return Battle().Bind(ctx, ex).SeqEq(int64(id)).One()
 }
 
 // Save updates the other assigned columns when SetSeq was called (and
 // returns the re-read row); otherwise it inserts like Insert.
-func (q *Battle) Save(ctx context.Context, ex orm.Exec) (*BattleRow, error) {
+func (q *BattleQuery) Save() (*BattleRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	pk, ok := q.q.MovePKToWhere("seq")
 	if !ok {
-		return q.Insert(ctx, ex)
+		return q.Insert()
 	}
 	q.q.Req.IR.Kind = "update"
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return NewBattle().SeqEq(pk.(int64)).One(ctx, ex)
+	return Battle().Bind(ctx, ex).SeqEq(pk.(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *Battle) Update(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) Update() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "update"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // Delete removes every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *Battle) Delete(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *BattleQuery) Delete() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "delete"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
-func (q *Battle) SQL(ctx context.Context, ex orm.Exec) (*orm.Statement, error) {
+func (q *BattleQuery) SQL() (*orm.Statement, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "all"
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *Battle) OneBySeq(ctx context.Context, ex orm.Exec, v int64) (*BattleRow, error) {
-	return q.SeqEq(v).One(ctx, ex)
+func (q *BattleQuery) OneBySeq(v int64) (*BattleRow, error) {
+	return q.SeqEq(v).One()
+}
+
+// GetBySeq is the preferred primary-key lookup. OneBySeq is kept as a compatibility alias.
+func (q *BattleQuery) GetBySeq(v int64) (*BattleRow, error) {
+	return q.OneBySeq(v)
+}
+
+// GetByUuid applies the equality predicates for the declared unique key.
+func (q *BattleQuery) GetByUuid(v0 string) (*BattleRow, error) {
+	return q.Uuid(v0).Get()
 }

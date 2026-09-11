@@ -41,7 +41,7 @@ type IfParent struct {
 //   - parent: the distinct values described by the step's ParentRef (relation IN lists; expands to N placeholders)
 //   - now:    the executor's current UTC time as "YYYY-MM-DD HH:MM:SS.ffffff" (dialects without a sub-second clock)
 //
-// Transform (executor-side, value-level): "" | "fulltext_boolean" (compatibility
+// Transform (executor-side, value-level): "" | "fulltext_boolean" (
 // "+w1 +w2*") | "like_contains" | "like_starts" | "like_ends" (escape % _ \ then wrap).
 type BindSlot struct {
 	From      string `json:"from"`

@@ -6,6 +6,8 @@ namespace App\Orm;
 
 use Orm\Registry;
 
+require_once __DIR__ . '/Interfaces.php';
+
 Registry::generated('2bdd94841cfad48c');
 Registry::register('battle', BattleRow::class);
 Registry::register('user', UserRow::class);
