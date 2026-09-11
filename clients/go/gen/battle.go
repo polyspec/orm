@@ -581,6 +581,43 @@ func (r *BattleRow) UpdateOptimistic(ctx context.Context, ex orm.Exec) error {
 
 func (r *BattleRow) Delete(ctx context.Context, ex orm.Exec) error { return r.DeleteRow(ctx, ex) }
 
+// DeleteCascade deletes the loaded relations this row owns (the assemble's
+// cascade children, in load order, each row through its own DeleteCascade)
+// and then this row. A bare DB runs the whole walk in one transaction.
+func (r *BattleRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
+	return orm.InTx(ctx, ex, func(ex orm.Exec) error {
+		for _, rel := range r.Cascades() {
+			switch rel {
+			case "service":
+				if r.Service != nil {
+					if err := r.Service.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			case "service_member":
+				if r.ServiceMember != nil {
+					if err := r.ServiceMember.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			case "service_module":
+				if r.ServiceModule != nil {
+					if err := r.ServiceModule.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			case "user":
+				if r.User != nil {
+					if err := r.User.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return r.DeleteRow(ctx, ex)
+	})
+}
+
 // scanBattle maps a positional row slice onto the struct, its joined
 // children (same row) and its relation children (rows of later steps).
 func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
@@ -4406,12 +4443,18 @@ func (q *Battle) ForceIndexIxUser() *Battle    { q.q.Node.ForceIdx = "ix_user"; 
 func (q *Battle) Flatten() *Battle                     { q.q.Node.Flatten = true; return q }
 func (q *Battle) LimitPerParent(n int) *Battle         { q.q.Node.LimitPerParent = n; return q }
 func (q *Battle) DropChildKey() *Battle                { q.q.Node.DropChildKey = true; return q }
+func (q *Battle) NoCascadeDelete() *Battle             { q.q.Node.NoCascadeDelete = true; return q }
 func (q *Battle) IfParentSeqEq(v int64) *Battle        { q.q.IfParent("seq", v); return q }
 func (q *Battle) IfParentNameEq(v string) *Battle      { q.q.IfParent("name", v); return q }
 func (q *Battle) IfParentServiceSeqEq(v int64) *Battle { q.q.IfParent("service_seq", v); return q }
 func (q *Battle) IfParentUserSeqEq(v int64) *Battle    { q.q.IfParent("user_seq", v); return q }
 
-// Insert draft.
+// Insert draft. The auto PK is settable too: Save takes it as the update key.
+func (q *Battle) SetSeq(v int64) *Battle { q.q.Set("seq", v); return q }
+func (q *Battle) SetSeqExpr(frag string, binds ...any) *Battle {
+	q.q.SetExpr("seq", frag, binds...)
+	return q
+}
 func (q *Battle) SetName(v string) *Battle { q.q.Set("name", v); return q }
 func (q *Battle) SetNameExpr(frag string, binds ...any) *Battle {
 	q.q.SetExpr("name", frag, binds...)
@@ -4628,6 +4671,300 @@ func (q *Battle) MinusLikeCount(v int64) *Battle        { q.q.Minus("like_count"
 func (q *Battle) PlusPrice(v float64) *Battle           { q.q.Plus("price", v); return q }
 func (q *Battle) MinusPrice(v float64) *Battle          { q.q.Minus("price", v); return q }
 
+// ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
+func (q *Battle) OnDuplicateSetName(v string) *Battle { q.q.OnDuplicate("name", v); return q }
+func (q *Battle) OnDuplicateSetNameExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("name", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetDescription(v string) *Battle {
+	q.q.OnDuplicate("description", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetDescriptionExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("description", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetCreatedTs(v time.Time) *Battle {
+	q.q.OnDuplicate("created_ts", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetCreatedTsExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("created_ts", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetUpdatedTs(v time.Time) *Battle {
+	q.q.OnDuplicate("updated_ts", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetUpdatedTsExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("updated_ts", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetIsClose(v bool) *Battle { q.q.OnDuplicate("is_close", v); return q }
+func (q *Battle) OnDuplicateSetIsCloseExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("is_close", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetIsDisplay(v bool) *Battle { q.q.OnDuplicate("is_display", v); return q }
+func (q *Battle) OnDuplicateSetIsDisplayExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("is_display", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetDisplayStartDt(v time.Time) *Battle {
+	q.q.OnDuplicate("display_start_dt", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetDisplayStartDtExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("display_start_dt", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetDisplayEndDt(v time.Time) *Battle {
+	q.q.OnDuplicate("display_end_dt", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetDisplayEndDtExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("display_end_dt", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetIsAllday(v bool) *Battle { q.q.OnDuplicate("is_allday", v); return q }
+func (q *Battle) OnDuplicateSetIsAlldayExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("is_allday", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetTargetTeamPlayerCount(v int32) *Battle {
+	q.q.OnDuplicate("target_team_player_count", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetTargetTeamPlayerCountExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("target_team_player_count", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetSuccessCount(v int32) *Battle {
+	q.q.OnDuplicate("success_count", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetSuccessCountExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("success_count", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetPlayerCount(v int32) *Battle {
+	q.q.OnDuplicate("player_count", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetPlayerCountExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("player_count", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetReadCount(v int64) *Battle { q.q.OnDuplicate("read_count", v); return q }
+func (q *Battle) OnDuplicateSetReadCountExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("read_count", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetCoverUrl(v string) *Battle { q.q.OnDuplicate("cover_url", v); return q }
+func (q *Battle) OnDuplicateSetCoverUrlExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("cover_url", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetUserSeq(v int64) *Battle { q.q.OnDuplicate("user_seq", v); return q }
+func (q *Battle) OnDuplicateSetUserSeqExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("user_seq", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetServiceSeq(v int64) *Battle {
+	q.q.OnDuplicate("service_seq", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("service_seq", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetServiceModuleSeq(v int64) *Battle {
+	q.q.OnDuplicate("service_module_seq", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetServiceModuleSeqExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("service_module_seq", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetServiceMemberSeq(v int64) *Battle {
+	q.q.OnDuplicate("service_member_seq", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetServiceMemberSeqExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("service_member_seq", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetStartDt(v time.Time) *Battle { q.q.OnDuplicate("start_dt", v); return q }
+func (q *Battle) OnDuplicateSetStartDtExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("start_dt", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetEndDt(v time.Time) *Battle { q.q.OnDuplicate("end_dt", v); return q }
+func (q *Battle) OnDuplicateSetEndDtExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("end_dt", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetUuid(v string) *Battle { q.q.OnDuplicate("uuid", v); return q }
+func (q *Battle) OnDuplicateSetUuidExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("uuid", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetIsSinglePlay(v bool) *Battle {
+	q.q.OnDuplicate("is_single_play", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetIsSinglePlayExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("is_single_play", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetLikeCount(v int32) *Battle { q.q.OnDuplicate("like_count", v); return q }
+func (q *Battle) OnDuplicateSetLikeCountExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("like_count", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetAesHexEmail(v string) *Battle {
+	q.q.OnDuplicate("aes_hex_email", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetAesHexEmailExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("aes_hex_email", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetAesHexPhone(v string) *Battle {
+	q.q.OnDuplicate("aes_hex_phone", v)
+	return q
+}
+func (q *Battle) OnDuplicateSetAesHexPhoneExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("aes_hex_phone", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetPrice(v float64) *Battle { q.q.OnDuplicate("price", v); return q }
+func (q *Battle) OnDuplicateSetPriceExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("price", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetIp(v string) *Battle { q.q.OnDuplicate("ip", v); return q }
+func (q *Battle) OnDuplicateSetIpExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("ip", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetGzExtend(v any) *Battle {
+	q.q.OnDuplicateStyled("gz_extend", v, []string{"serialize", "gz"})
+	return q
+}
+func (q *Battle) OnDuplicateSetGzExtendExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("gz_extend", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetJsonSetting(v any) *Battle {
+	q.q.OnDuplicateStyled("json_setting", v, []string{"json"})
+	return q
+}
+func (q *Battle) OnDuplicateSetJsonSettingExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("json_setting", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetJsonsTags(v any) *Battle {
+	q.q.OnDuplicateStyled("jsons_tags", v, []string{"jsons"})
+	return q
+}
+func (q *Battle) OnDuplicateSetJsonsTagsExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("jsons_tags", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetBase64Extra(v any) *Battle {
+	q.q.OnDuplicateStyled("base64_extra", v, []string{"serialize", "base64"})
+	return q
+}
+func (q *Battle) OnDuplicateSetBase64ExtraExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("base64_extra", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicateSetSerializeData(v any) *Battle {
+	q.q.OnDuplicateStyled("serialize_data", v, []string{"serialize"})
+	return q
+}
+func (q *Battle) OnDuplicateSetSerializeDataExpr(frag string, binds ...any) *Battle {
+	q.q.OnDuplicateExpr("serialize_data", frag, binds...)
+	return q
+}
+func (q *Battle) OnDuplicatePlusTargetTeamPlayerCount(v int32) *Battle {
+	q.q.OnDuplicatePlus("target_team_player_count", v)
+	return q
+}
+func (q *Battle) OnDuplicateMinusTargetTeamPlayerCount(v int32) *Battle {
+	q.q.OnDuplicateMinus("target_team_player_count", v)
+	return q
+}
+func (q *Battle) OnDuplicatePlusSuccessCount(v int32) *Battle {
+	q.q.OnDuplicatePlus("success_count", v)
+	return q
+}
+func (q *Battle) OnDuplicateMinusSuccessCount(v int32) *Battle {
+	q.q.OnDuplicateMinus("success_count", v)
+	return q
+}
+func (q *Battle) OnDuplicatePlusPlayerCount(v int32) *Battle {
+	q.q.OnDuplicatePlus("player_count", v)
+	return q
+}
+func (q *Battle) OnDuplicateMinusPlayerCount(v int32) *Battle {
+	q.q.OnDuplicateMinus("player_count", v)
+	return q
+}
+func (q *Battle) OnDuplicatePlusReadCount(v int64) *Battle {
+	q.q.OnDuplicatePlus("read_count", v)
+	return q
+}
+func (q *Battle) OnDuplicateMinusReadCount(v int64) *Battle {
+	q.q.OnDuplicateMinus("read_count", v)
+	return q
+}
+func (q *Battle) OnDuplicatePlusUserSeq(v int64) *Battle {
+	q.q.OnDuplicatePlus("user_seq", v)
+	return q
+}
+func (q *Battle) OnDuplicateMinusUserSeq(v int64) *Battle {
+	q.q.OnDuplicateMinus("user_seq", v)
+	return q
+}
+func (q *Battle) OnDuplicatePlusServiceSeq(v int64) *Battle {
+	q.q.OnDuplicatePlus("service_seq", v)
+	return q
+}
+func (q *Battle) OnDuplicateMinusServiceSeq(v int64) *Battle {
+	q.q.OnDuplicateMinus("service_seq", v)
+	return q
+}
+func (q *Battle) OnDuplicatePlusServiceModuleSeq(v int64) *Battle {
+	q.q.OnDuplicatePlus("service_module_seq", v)
+	return q
+}
+func (q *Battle) OnDuplicateMinusServiceModuleSeq(v int64) *Battle {
+	q.q.OnDuplicateMinus("service_module_seq", v)
+	return q
+}
+func (q *Battle) OnDuplicatePlusServiceMemberSeq(v int64) *Battle {
+	q.q.OnDuplicatePlus("service_member_seq", v)
+	return q
+}
+func (q *Battle) OnDuplicateMinusServiceMemberSeq(v int64) *Battle {
+	q.q.OnDuplicateMinus("service_member_seq", v)
+	return q
+}
+func (q *Battle) OnDuplicatePlusLikeCount(v int32) *Battle {
+	q.q.OnDuplicatePlus("like_count", v)
+	return q
+}
+func (q *Battle) OnDuplicateMinusLikeCount(v int32) *Battle {
+	q.q.OnDuplicateMinus("like_count", v)
+	return q
+}
+func (q *Battle) OnDuplicatePlusPrice(v float64) *Battle  { q.q.OnDuplicatePlus("price", v); return q }
+func (q *Battle) OnDuplicateMinusPrice(v float64) *Battle { q.q.OnDuplicateMinus("price", v); return q }
+func (q *Battle) OnDuplicateSetAll() *Battle              { q.q.OnDuplicateSetAll("seq", "seq"); return q }
+
 // Terminals.
 func (q *Battle) One(ctx context.Context, ex orm.Exec) (*BattleRow, error) {
 	q.q.Req.IR.Kind = "one"
@@ -4819,6 +5156,40 @@ func (q *Battle) Insert(ctx context.Context, ex orm.Exec) (*BattleRow, error) {
 		return nil, err
 	}
 	return NewBattle().SeqEq(int64(id)).One(ctx, ex)
+}
+
+// Save updates the other assigned columns when SetSeq was called (and
+// returns the re-read row); otherwise it inserts like Insert.
+func (q *Battle) Save(ctx context.Context, ex orm.Exec) (*BattleRow, error) {
+	pk, ok := q.q.MovePKToWhere("seq")
+	if !ok {
+		return q.Insert(ctx, ex)
+	}
+	q.q.Req.IR.Kind = "update"
+	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
+		return nil, err
+	}
+	return NewBattle().SeqEq(pk.(int64)).One(ctx, ex)
+}
+
+// Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
+func (q *Battle) Update(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "update"
+	_, affected, err := orm.Write(ctx, ex, q.q.Req)
+	return affected, err
+}
+
+// Delete removes every row the WHERE matches (the engine rejects a missing WHERE).
+func (q *Battle) Delete(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "delete"
+	_, affected, err := orm.Write(ctx, ex, q.q.Req)
+	return affected, err
+}
+
+// SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
+func (q *Battle) SQL(ctx context.Context, ex orm.Exec) (*orm.Statement, error) {
+	q.q.Req.IR.Kind = "all"
+	return orm.SQL(ctx, ex, q.q.Req)
 }
 
 func (q *Battle) OneBySeq(ctx context.Context, ex orm.Exec, v int64) (*BattleRow, error) {

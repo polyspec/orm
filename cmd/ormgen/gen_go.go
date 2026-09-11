@@ -106,6 +106,7 @@ type goEntity struct {
 	Name, Type, Table string
 	PK, PKType        string
 	Auto              bool
+	AutoCol           string
 	Cols              []goCol
 	Rels              []goRel
 	Indexes           []string
@@ -152,7 +153,7 @@ func parentOf(m *schema.Manifest, e *schema.Entity, col string) string {
 }
 
 func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
-	ge := goEntity{Name: e.Name, Type: pascal(e.Name), Table: e.Table, PK: e.PK[0], Auto: e.Auto != ""}
+	ge := goEntity{Name: e.Name, Type: pascal(e.Name), Table: e.Table, PK: e.PK[0], Auto: e.Auto != "", AutoCol: e.Auto}
 	for _, c := range e.Columns {
 		gc := goCol{Name: c.Name, Field: pascal(c.Name), Type: goType(c), ColType: c.Type, Nullable: c.Nullable, Lazy: c.Lazy, PK: c.PK, Auto: c.Auto, Ops: opsFor(c), ColOps: colOpsFor(c), Styles: appStyles(c)}
 		if len(gc.Styles) > 0 {
@@ -327,6 +328,35 @@ func (r *{{.Type}}Row) UpdateOptimistic(ctx context.Context, ex orm.Exec) error 
 {{- end}}
 
 func (r *{{.Type}}Row) Delete(ctx context.Context, ex orm.Exec) error { return r.DeleteRow(ctx, ex) }
+
+// DeleteCascade deletes the loaded relations this row owns (the assemble's
+// cascade children, in load order, each row through its own DeleteCascade)
+// and then this row. A bare DB runs the whole walk in one transaction.
+func (r *{{.Type}}Row) DeleteCascade(ctx context.Context, ex orm.Exec) error {
+	return orm.InTx(ctx, ex, func(ex orm.Exec) error {
+		for _, rel := range r.Cascades() {
+			switch rel {
+{{- range .Rels}}
+			case {{printf "%q" .Name}}:
+{{- if eq .Kind "one"}}
+				if r.{{.Method}} != nil {
+					if err := r.{{.Method}}.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+{{- else}}
+				for _, child := range r.Get{{.Method}}().All() {
+					if err := child.DeleteCascade(ctx, ex); err != nil {
+						return err
+					}
+				}
+{{- end}}
+{{- end}}
+			}
+		}
+		return r.DeleteRow(ctx, ex)
+	})
+}
 
 // scan{{.Type}} maps a positional row slice onto the struct, its joined
 // children (same row) and its relation children (rows of later steps).
@@ -524,22 +554,34 @@ func (q *{{$.Type}}) ForceIndex{{pascal .}}() *{{$.Type}} { q.q.Node.ForceIdx = 
 func (q *{{.Type}}) Flatten() *{{.Type}} { q.q.Node.Flatten = true; return q }
 func (q *{{.Type}}) LimitPerParent(n int) *{{.Type}} { q.q.Node.LimitPerParent = n; return q }
 func (q *{{.Type}}) DropChildKey() *{{.Type}} { q.q.Node.DropChildKey = true; return q }
+func (q *{{.Type}}) NoCascadeDelete() *{{.Type}} { q.q.Node.NoCascadeDelete = true; return q }
 {{- range .ParentCols}}{{if eq .ColType "i32" "i64" "bool" "string" "enum"}}
 func (q *{{$.Type}}) IfParent{{.Field}}Eq(v {{.Type}}) *{{$.Type}} { q.q.IfParent({{printf "%q" .Name}}, v); return q }
 {{- end}}{{end}}
 
-// Insert draft.
-{{- range .Cols}}{{if not .Auto}}
+// Insert draft. The auto PK is settable too: Save takes it as the update key.
+{{- range .Cols}}
 func (q *{{$.Type}}) Set{{.Field}}(v {{.Type}}) *{{$.Type}} { {{if .Styles}}q.q.SetStyled({{printf "%q" .Name}}, v, {{styleList .Styles}}){{else}}q.q.Set({{printf "%q" .Name}}, v){{end}}; return q }
 {{- if .Nullable}}
 func (q *{{$.Type}}) Set{{.Field}}Null() *{{$.Type}} { q.q.SetNull({{printf "%q" .Name}}); return q }
 {{- end}}
 func (q *{{$.Type}}) Set{{.Field}}Expr(frag string, binds ...any) *{{$.Type}} { q.q.SetExpr({{printf "%q" .Name}}, frag, binds...); return q }
-{{- end}}{{end}}
+{{- end}}
 {{- range .Numeric}}
 func (q *{{$.Type}}) Plus{{.Field}}(v {{.Type}}) *{{$.Type}} { q.q.Plus({{printf "%q" .Name}}, v); return q }
 func (q *{{$.Type}}) Minus{{.Field}}(v {{.Type}}) *{{$.Type}} { q.q.Minus({{printf "%q" .Name}}, v); return q }
 {{- end}}
+
+// ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
+{{- range .Cols}}{{if not (or .PK .Auto)}}
+func (q *{{$.Type}}) OnDuplicateSet{{.Field}}(v {{.Type}}) *{{$.Type}} { {{if .Styles}}q.q.OnDuplicateStyled({{printf "%q" .Name}}, v, {{styleList .Styles}}){{else}}q.q.OnDuplicate({{printf "%q" .Name}}, v){{end}}; return q }
+func (q *{{$.Type}}) OnDuplicateSet{{.Field}}Expr(frag string, binds ...any) *{{$.Type}} { q.q.OnDuplicateExpr({{printf "%q" .Name}}, frag, binds...); return q }
+{{- end}}{{end}}
+{{- range .Numeric}}{{if not (or .PK .Auto)}}
+func (q *{{$.Type}}) OnDuplicatePlus{{.Field}}(v {{.Type}}) *{{$.Type}} { q.q.OnDuplicatePlus({{printf "%q" .Name}}, v); return q }
+func (q *{{$.Type}}) OnDuplicateMinus{{.Field}}(v {{.Type}}) *{{$.Type}} { q.q.OnDuplicateMinus({{printf "%q" .Name}}, v); return q }
+{{- end}}{{end}}
+func (q *{{.Type}}) OnDuplicateSetAll() *{{.Type}} { q.q.OnDuplicateSetAll({{printf "%q" .PK}}{{if .Auto}}, {{printf "%q" .AutoCol}}{{end}}); return q }
 
 // Terminals.
 func (q *{{.Type}}) One(ctx context.Context, ex orm.Exec) (*{{.Type}}Row, error) {
@@ -615,6 +657,40 @@ func (q *{{.Type}}) Insert(ctx context.Context, ex orm.Exec) (*{{.Type}}Row, err
 	_ = id
 	return nil, nil
 {{- end}}
+}
+
+// Save updates the other assigned columns when Set{{pascal .PK}} was called (and
+// returns the re-read row); otherwise it inserts like Insert.
+func (q *{{.Type}}) Save(ctx context.Context, ex orm.Exec) (*{{.Type}}Row, error) {
+	pk, ok := q.q.MovePKToWhere({{printf "%q" .PK}})
+	if !ok {
+		return q.Insert(ctx, ex)
+	}
+	q.q.Req.IR.Kind = "update"
+	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
+		return nil, err
+	}
+	return New{{.Type}}().{{pascal .PK}}Eq(pk.({{.PKType}})).One(ctx, ex)
+}
+
+// Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
+func (q *{{.Type}}) Update(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "update"
+	_, affected, err := orm.Write(ctx, ex, q.q.Req)
+	return affected, err
+}
+
+// Delete removes every row the WHERE matches (the engine rejects a missing WHERE).
+func (q *{{.Type}}) Delete(ctx context.Context, ex orm.Exec) (int64, error) {
+	q.q.Req.IR.Kind = "delete"
+	_, affected, err := orm.Write(ctx, ex, q.q.Req)
+	return affected, err
+}
+
+// SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
+func (q *{{.Type}}) SQL(ctx context.Context, ex orm.Exec) (*orm.Statement, error) {
+	q.q.Req.IR.Kind = "all"
+	return orm.SQL(ctx, ex, q.q.Req)
 }
 
 func (q *{{.Type}}) OneBy{{pascal .PK}}(ctx context.Context, ex orm.Exec, v {{.PKType}}) (*{{.Type}}Row, error) {
