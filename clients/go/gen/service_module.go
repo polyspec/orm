@@ -720,6 +720,32 @@ func (q *ServiceModuleQuery) joinTarget(child any, kind string) *ServiceModuleQu
 	return q
 }
 
+func (q *ServiceModuleQuery) JoinSeqWithServiceModuleSeq(child *BattleQuery) *ServiceModuleQuery {
+	q.q.Join("battles", "inner", child.q)
+	return q
+}
+func (q *ServiceModuleQuery) LeftJoinSeqWithServiceModuleSeq(child *BattleQuery) *ServiceModuleQuery {
+	q.q.Join("battles", "left", child.q)
+	return q
+}
+func (q *ServiceModuleQuery) RelationsSeqWithServiceModuleSeq(child *BattleQuery) *ServiceModuleQuery {
+	q.q.Relation("battles", child.q)
+	return q
+}
+
+func (q *ServiceModuleQuery) JoinServiceSeqWithSeq(child *ServiceQuery) *ServiceModuleQuery {
+	q.q.Join("service", "inner", child.q)
+	return q
+}
+func (q *ServiceModuleQuery) LeftJoinServiceSeqWithSeq(child *ServiceQuery) *ServiceModuleQuery {
+	q.q.Join("service", "left", child.q)
+	return q
+}
+func (q *ServiceModuleQuery) RelationServiceSeqWithSeq(child *ServiceQuery) *ServiceModuleQuery {
+	q.q.Relation("service", child.q)
+	return q
+}
+
 // Columns.
 func (q *ServiceModuleQuery) SelectAll() *ServiceModuleQuery  { q.q.Columns().Mode = "all"; return q }
 func (q *ServiceModuleQuery) SelectNone() *ServiceModuleQuery { q.q.Columns().Mode = "none"; return q }

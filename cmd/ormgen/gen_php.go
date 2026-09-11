@@ -237,6 +237,18 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
     public function relations(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'many'), $child); return $this; }
     public function join(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
     public function leftJoin(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
+{{range .Rels}}
+{{if .Pair}}
+    public function join{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { $this->attachJoin('{{.Name}}', 'inner', $child); return $this; }
+    public function leftJoin{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { $this->attachJoin('{{.Name}}', 'left', $child); return $this; }
+{{- if eq .Kind "one"}}
+    public function relation{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { $this->attachRelation('{{.Name}}', $child); return $this; }
+{{- else}}
+    public function relations{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { $this->attachRelation('{{.Name}}', $child); return $this; }
+{{- end}}
+{{- end}}
+{{- end}}
+
     // ---- columns ----
     public function selectAll(): static { $this->colMode('all'); return $this; }
     public function selectNone(): static { $this->colMode('none'); return $this; }

@@ -208,6 +208,16 @@ final class ServiceModule extends Q implements ServiceModuleInterface
     public function relations(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'many'), $child); return $this; }
     public function join(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
     public function leftJoin(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
+
+
+    public function joinSeqWithServiceModuleSeq(Battle $child): static { $this->attachJoin('battles', 'inner', $child); return $this; }
+    public function leftJoinSeqWithServiceModuleSeq(Battle $child): static { $this->attachJoin('battles', 'left', $child); return $this; }
+    public function relationsSeqWithServiceModuleSeq(Battle $child): static { $this->attachRelation('battles', $child); return $this; }
+
+    public function joinServiceSeqWithSeq(Service $child): static { $this->attachJoin('service', 'inner', $child); return $this; }
+    public function leftJoinServiceSeqWithSeq(Service $child): static { $this->attachJoin('service', 'left', $child); return $this; }
+    public function relationServiceSeqWithSeq(Service $child): static { $this->attachRelation('service', $child); return $this; }
+
     // ---- columns ----
     public function selectAll(): static { $this->colMode('all'); return $this; }
     public function selectNone(): static { $this->colMode('none'); return $this; }

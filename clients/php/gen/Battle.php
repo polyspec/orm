@@ -1214,6 +1214,24 @@ final class Battle extends Q implements BattleInterface
     public function relations(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'many'), $child); return $this; }
     public function join(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
     public function leftJoin(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
+
+
+    public function joinServiceSeqWithSeq(Service $child): static { $this->attachJoin('service', 'inner', $child); return $this; }
+    public function leftJoinServiceSeqWithSeq(Service $child): static { $this->attachJoin('service', 'left', $child); return $this; }
+    public function relationServiceSeqWithSeq(Service $child): static { $this->attachRelation('service', $child); return $this; }
+
+    public function joinServiceMemberSeqWithSeq(ServiceMember $child): static { $this->attachJoin('service_member', 'inner', $child); return $this; }
+    public function leftJoinServiceMemberSeqWithSeq(ServiceMember $child): static { $this->attachJoin('service_member', 'left', $child); return $this; }
+    public function relationServiceMemberSeqWithSeq(ServiceMember $child): static { $this->attachRelation('service_member', $child); return $this; }
+
+    public function joinServiceModuleSeqWithSeq(ServiceModule $child): static { $this->attachJoin('service_module', 'inner', $child); return $this; }
+    public function leftJoinServiceModuleSeqWithSeq(ServiceModule $child): static { $this->attachJoin('service_module', 'left', $child); return $this; }
+    public function relationServiceModuleSeqWithSeq(ServiceModule $child): static { $this->attachRelation('service_module', $child); return $this; }
+
+    public function joinUserSeqWithSeq(User $child): static { $this->attachJoin('user', 'inner', $child); return $this; }
+    public function leftJoinUserSeqWithSeq(User $child): static { $this->attachJoin('user', 'left', $child); return $this; }
+    public function relationUserSeqWithSeq(User $child): static { $this->attachRelation('user', $child); return $this; }
+
     // ---- columns ----
     public function selectAll(): static { $this->colMode('all'); return $this; }
     public function selectNone(): static { $this->colMode('none'); return $this; }
