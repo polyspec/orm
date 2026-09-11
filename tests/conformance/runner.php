@@ -1,6 +1,8 @@
 <?php
 // Conformance runner (PHP). Same chains as runner_go/main.go and conformance.rs; prints the same document.
-// Usage: php tests/conformance/runner.php /abs/ormd.sock /abs/schema.json
+// Usage: php tests/conformance/runner.php /abs/ormd.sock /abs/schema.json [--driver mysql|postgres|sqlite] [--dsn …]
+// The defaults are the Go runner's: mysql on the local socket (ORM_MYSQL_DSN_PHP in CI), the local PostgreSQL
+// of deploy/local-postgres.md, the seeded /tmp/orm_bench.sqlite. ormd must run with the matching -dialect.
 declare(strict_types=1);
 
 require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
@@ -18,14 +20,27 @@ use App\Orm\User;
 use App\Orm\UserWhere;
 use Orm\Collection;
 use Orm\Config;
-use Orm\Db;
 use Orm\Orm;
 use Orm\OrmException;
 use Orm\Q;
 use Orm\Tx;
 
-$sock = $argv[1] ?? die("usage: runner.php /abs/ormd.sock /abs/schema.json\n");
+$sock = $argv[1] ?? die("usage: runner.php /abs/ormd.sock /abs/schema.json [--driver mysql|postgres|sqlite] [--dsn …]\n");
 $schema = $argv[2] ?? die("schema.json required\n");
+$driver = 'mysql';
+$dsn = null;
+for ($i = 3; $i < $argc; $i++) {
+    switch ($argv[$i]) {
+        case '--driver':
+            $driver = $argv[++$i] ?? die("--driver needs a value\n");
+            break;
+        case '--dsn':
+            $dsn = $argv[++$i] ?? die("--dsn needs a value\n");
+            break;
+        default:
+            die("unknown argument {$argv[$i]}\n");
+    }
+}
 
 $log = [];
 /** @var list<int> PKs created by the running vector; every bind equal to one prints as $SEQ */
@@ -39,7 +54,7 @@ function fmtTime(string $s): string
 
 function norm(mixed $v): mixed
 {
-    global $maskSeqs, $maskTs;
+    global $maskSeqs, $maskTs, $driver;
     if (is_int($v) && in_array($v, $maskSeqs, true)) {
         return '$SEQ';
     }
@@ -49,17 +64,17 @@ function norm(mixed $v): mixed
     if (is_string($v) && $v !== '' && $v[0] === "\x78" && !ctype_print($v)) { // zlib stream (gz style)
         return '$ZLIB';
     }
-    if (is_string($v) && preg_match('/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d(\.\d{6})?$/', $v)) {
-        return fmtTime($v);
+    if ($driver !== 'sqlite' && is_string($v) && preg_match('/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d(\.\d{6})?$/', $v)) {
+        return fmtTime($v); // the datetime the Go runner binds as time.Time; on SQLite every runner binds the six-digit text as it is
     }
     return $v;
 }
 
-Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt',
+Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver,
     onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log) {
         $log[] = ['sql' => $sql, 'binds' => array_map('norm', $binds)];
     }));
-$db = Db::mysql(orm_test_dsn(), 'root', '');
+$db = orm_open_db($driver, $dsn ?? orm_default_dsn($driver));
 
 $out = [];
 $run = function (string $name, \Closure $fn) use (&$out, &$log, &$maskSeqs, &$maskTs): void {
@@ -328,4 +343,5 @@ $run('codec_roundtrip', function () use ($db, $remask) {
     return ['json_setting' => $b->getJsonSetting(), 'jsons_tags' => $b->getJsonsTags(), 'base64_extra' => $b->getBase64Extra(), 'serialize_data' => $b->getSerializeData(), 'gz_extend' => $b->getGzExtend(), 'ip' => $b->getIp()];
 });
 
-echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), "\n";
+// packed ip binds (SQLite) are raw bytes: substituted rather than fatal, as Go's encoder does
+echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR), "\n";
