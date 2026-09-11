@@ -291,6 +291,68 @@ func TestPostgresAndSQLite(t *testing.T) {
 	}
 }
 
+// Joins nest by relation name and aliases are path-derived, so two levels of the
+// same target stay distinct and each keeps its own projection namespace.
+func TestJoinAliasNamespaces(t *testing.T) {
+	e := testEngine(t)
+	p := compile(t, e, `"kind":"one","entity":"battle","columns":{"mode":"none","as":{"battle_name":"name"}},"n_params":1,
+	 "where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},
+	 "joins":[{"rel":"service_member","kind":"inner","query":{"entity":"service_member","columns":{"mode":"none"},
+	     "joins":[{"rel":"service","kind":"inner","query":{"entity":"service","columns":{"mode":"none","as":{"service_name":"name"}}}},
+	              {"rel":"user","kind":"inner","query":{"entity":"user","columns":{"mode":"none","as":{"user_name":"name"}}}}]}},
+	          {"rel":"service","kind":"inner","query":{"entity":"service","columns":{"mode":"none","as":{"root_service_name":"name"}}}}]`)
+	sql := p.Steps[0].SQL
+	for _, want := range []string{
+		"`service_member`.`name` AS `service_member__battle_name`", // not present: battle's alias belongs to the root
+		"INNER JOIN `service` AS `service_member__service` ON `service_member`.`service_seq` = `service_member__service`.`seq`",
+		"INNER JOIN `user` AS `service_member__user` ON `service_member`.`user_seq` = `service_member__user`.`seq`",
+		"INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq`",
+		"`service_member__service`.`name` AS `service_member__service__service_name`",
+		"`service`.`name` AS `service__root_service_name`",
+		"`a`.`name` AS `a__battle_name`",
+	} {
+		has := strings.Contains(sql, want)
+		if want[0] == '`' && strings.HasPrefix(want, "`service_member`.`name`") {
+			if has {
+				t.Errorf("alias leaked across entities: %s", want)
+			}
+			continue
+		}
+		if !has {
+			t.Errorf("missing %q in\n%s", want, sql)
+		}
+	}
+	// the two joins of the same target are separate assemble children with distinct aliases
+	root := p.Steps[0].Assemble
+	aliases := map[string]bool{}
+	var walk func(a *plan.Assemble)
+	walk = func(a *plan.Assemble) {
+		if aliases[a.Alias] {
+			t.Errorf("duplicate alias %s", a.Alias)
+		}
+		aliases[a.Alias] = true
+		for _, ch := range a.Children {
+			if ch.Assemble != nil {
+				walk(ch.Assemble)
+			}
+		}
+	}
+	walk(root)
+	if len(aliases) != 5 {
+		t.Errorf("aliases: %v", aliases)
+	}
+	for irs, code := range map[string]string{
+		`"kind":"all","entity":"battle","columns":{"as":{"seq":"name"}}`:                    "COLUMN_ALIAS_CONFLICT",
+		`"kind":"all","entity":"battle","columns":{"expr":{"seq":"1"}}`:                     "COLUMN_ALIAS_CONFLICT",
+		`"kind":"all","entity":"battle","columns":{"as":{"tag":"name"},"expr":{"tag":"1"}}`: "COLUMN_ALIAS_CONFLICT",
+	} {
+		_, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `",` + irs + `}`))
+		if err == nil || !strings.HasPrefix(err.Error(), code) {
+			t.Errorf("%s\n got %v\n want %s", irs, err, code)
+		}
+	}
+}
+
 func TestCompileErrors(t *testing.T) {
 	e := testEngine(t)
 	h := e.M.SchemaHash
