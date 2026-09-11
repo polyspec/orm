@@ -1,0 +1,1412 @@
+{
+  "version": 1,
+  "schema": "schema/schema.json",
+  "languages": {
+    "go": {
+      "roots": [
+        "clients/go/orm",
+        "clients/go/gen",
+        "engine"
+      ],
+      "symbols": "contracts/symbols/go.json"
+    },
+    "php": {
+      "roots": [
+        "clients/php/src",
+        "clients/php/gen"
+      ],
+      "symbols": "contracts/symbols/php.json"
+    },
+    "rust": {
+      "roots": [
+        "clients/rust/orm/src",
+        "clients/rust/gen/src"
+      ],
+      "symbols": "contracts/symbols/rust.json"
+    }
+  },
+  "components": [
+    {
+      "id": "Query",
+      "fields": {
+        "binding": "Binding",
+        "request": "Request",
+        "keySelector": "Optional<Function<Row,Key>>"
+      },
+      "methods": [
+        "construct",
+        "bind",
+        "predicate",
+        "join",
+        "relation",
+        "get",
+        "gets",
+        "getCount",
+        "insert",
+        "save",
+        "update",
+        "delete",
+        "sql"
+      ],
+      "ownership": "Owns mutable query state; never represents a loaded row."
+    },
+    {
+      "id": "Where",
+      "fields": {
+        "request": "Borrow<Request>",
+        "group": "Borrow<Group>",
+        "pendingConnector": "Connector"
+      },
+      "methods": [
+        "predicate",
+        "and",
+        "or",
+        "navigate"
+      ],
+      "ownership": "Borrow is scoped to its callback; cannot execute SQL."
+    },
+    {
+      "id": "Request",
+      "fields": {
+        "ir": "RequestIR",
+        "params": "List<Value>",
+        "deferredError": "Optional<Error>"
+      },
+      "methods": [
+        "parameter",
+        "attach",
+        "shape"
+      ],
+      "ownership": "attach snapshots all child state and shifts only the snapshot."
+    },
+    {
+      "id": "RequestIR",
+      "fields": {
+        "version": "I32",
+        "schemaHash": "Text",
+        "kind": "QueryKind",
+        "root": "QueryNode",
+        "set": "List<Assignment>",
+        "onDuplicate": "List<Assignment>",
+        "optimistic": "Optional<Optimistic>",
+        "raw": "Optional<Raw>",
+        "aggregate": "Optional<Column>",
+        "parameterCount": "I64"
+      },
+      "methods": [],
+      "ownership": "Value-free compiler input."
+    },
+    {
+      "id": "QueryNode",
+      "fields": {
+        "entity": "Entity",
+        "columns": "Projection",
+        "where": "Optional<Group>",
+        "on": "Optional<Group>",
+        "having": "Optional<Group>",
+        "joins": "List<JoinEdge>",
+        "relations": "List<RelationEdge>",
+        "order": "List<Order>",
+        "groupBy": "List<GroupKey>",
+        "limit": "Optional<Limit>",
+        "options": "RelationOptions"
+      },
+      "methods": [],
+      "ownership": "Owned condition tree, including nested child nodes."
+    },
+    {
+      "id": "Binding",
+      "fields": {
+        "executor": "Optional<Executor>",
+        "control": "NativeExecutionControl"
+      },
+      "methods": [
+        "resolve"
+      ],
+      "ownership": "Independent of request IR; does not select ambient transactions."
+    },
+    {
+      "id": "Executor",
+      "fields": {},
+      "methods": [
+        "database",
+        "queryStep",
+        "writeStep"
+      ],
+      "ownership": "Adapter boundary for concrete database and pinned transaction executors."
+    },
+    {
+      "id": "Db",
+      "fields": {
+        "connection": "ConnectionResource",
+        "compiler": "Compiler",
+        "plans": "PlanCache",
+        "statements": "StatementCache",
+        "config": "RuntimeConfig"
+      },
+      "methods": [
+        "transaction",
+        "queryStep",
+        "writeStep"
+      ],
+      "ownership": "Owns connections and caches, never query predicates or row values."
+    },
+    {
+      "id": "Tx",
+      "fields": {
+        "database": "Borrow<Db>",
+        "connection": "PinnedConnection",
+        "state": "TxState"
+      },
+      "methods": [
+        "queryStep",
+        "writeStep",
+        "commit",
+        "rollback"
+      ],
+      "ownership": "Completion invalidates every retained bound query and row."
+    },
+    {
+      "id": "Row",
+      "fields": {
+        "identity": "PrimaryKey",
+        "loaded": "Bool",
+        "values": "ValueStore",
+        "projection": "Projection",
+        "dirty": "OrderedMap<Column,Assignment>",
+        "deferredError": "Optional<Error>",
+        "relations": "Map<Relation,RelatedValue>",
+        "binding": "Binding",
+        "originalVersion": "Optional<Value>"
+      },
+      "methods": [
+        "getColumn",
+        "has",
+        "setColumn",
+        "relLoaded",
+        "bind",
+        "update",
+        "updateOptimistic",
+        "delete",
+        "deleteCascade",
+        "export"
+      ],
+      "ownership": "Loaded identity, local values and pending changes have distinct roles."
+    },
+    {
+      "id": "Collection",
+      "fields": {
+        "orderedKeys": "List<Key>",
+        "items": "Map<Key,Row>"
+      },
+      "methods": [
+        "put",
+        "get",
+        "first",
+        "len",
+        "keys",
+        "entries"
+      ],
+      "ownership": "Equal keys replace in place. Integer and string keys remain distinct."
+    },
+    {
+      "id": "Page",
+      "fields": {
+        "items": "Collection<Row>",
+        "total": "I64",
+        "pages": "I64",
+        "current": "I64",
+        "per": "I64"
+      },
+      "methods": [],
+      "ownership": "per is positive and total is independent of page range."
+    },
+    {
+      "id": "Compiler",
+      "fields": {},
+      "methods": [
+        "compile"
+      ],
+      "ownership": "Accepts RequestIR and returns immutable Plan; has no executor."
+    },
+    {
+      "id": "Plan",
+      "fields": {
+        "schemaHash": "Text",
+        "kind": "QueryKind",
+        "steps": "List<Step>"
+      },
+      "methods": [],
+      "ownership": "Cached and immutable while executing."
+    },
+    {
+      "id": "Step",
+      "fields": {
+        "id": "I32",
+        "role": "StepRole",
+        "sql": "Text",
+        "bindSlots": "List<BindSlot>",
+        "parent": "Optional<ParentRef>",
+        "assemble": "Optional<Assemble>"
+      },
+      "methods": [],
+      "ownership": "Executes in plan order."
+    },
+    {
+      "id": "Assemble",
+      "fields": {
+        "entity": "Entity",
+        "columns": "List<OutColumn>",
+        "children": "List<ChildAttachment>"
+      },
+      "methods": [],
+      "ownership": "Maps positional values to rows and relation attachments."
+    },
+    {
+      "id": "ExecutionRows",
+      "fields": {
+        "binding": "Binding",
+        "plan": "Plan",
+        "params": "List<Value>",
+        "steps": "OrderedMap<StepId,StepRows>"
+      },
+      "methods": [
+        "related",
+        "stepAssemble"
+      ],
+      "ownership": "Rows inherit the root executor used by this execution."
+    },
+    {
+      "id": "Error",
+      "fields": {
+        "code": "Text",
+        "message": "Text",
+        "cause": "Optional<NativeError>"
+      },
+      "methods": [],
+      "ownership": "Errors are distinct from empty results and native defaults."
+    }
+  ],
+  "rules": [
+    {
+      "id": "Query.get",
+      "for": "entity",
+      "inputs": [],
+      "output": "Optional<Row>",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver/codec error"
+      ],
+      "state": "Query retained; only execution kind changes",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Get",
+          "signature": "receiver=*{Entity}Query func() (*{Entity}Row, error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::get",
+          "signature": "public function get(): ?App\\Orm\\{Entity}Row"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::get",
+          "signature": "pub async fn get(&mut self) -> Result<Option<{Entity}Row>>"
+        }
+      }
+    },
+    {
+      "id": "Query.gets",
+      "for": "entity",
+      "inputs": [],
+      "output": "Collection<Row>",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver/codec error"
+      ],
+      "state": "Query retained; only execution kind changes",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Gets",
+          "signature": "receiver=*{Entity}Query func() (*orm.Collection[{Entity}Row], error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::gets",
+          "signature": "public function gets(): Orm\\Collection"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::gets",
+          "signature": "pub async fn gets(&mut self) -> Result<Collection<{Entity}Row>>"
+        }
+      }
+    },
+    {
+      "id": "Query.getCount",
+      "for": "entity",
+      "inputs": [],
+      "output": "I64",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver/codec error"
+      ],
+      "state": "Query retained; only execution kind changes",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetCount",
+          "signature": "receiver=*{Entity}Query func() (int64, error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::getCount",
+          "signature": "public function getCount(): int"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::get_count",
+          "signature": "pub async fn get_count(&mut self) -> Result<i64>"
+        }
+      }
+    },
+    {
+      "id": "Query.getsCount",
+      "for": "entity",
+      "inputs": [],
+      "output": "Collection<Row>",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver/codec error"
+      ],
+      "state": "Query retained; only execution kind changes",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetsCount",
+          "signature": "receiver=*{Entity}Query func() (*orm.Collection[{Entity}Row], error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::getsCount",
+          "signature": "public function getsCount(): Orm\\Collection"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::gets_count",
+          "signature": "pub async fn gets_count(&mut self) -> Result<Collection<{Entity}Row>>"
+        }
+      }
+    },
+    {
+      "id": "Query.insert",
+      "for": "entity",
+      "inputs": [],
+      "output": "Optional<Row>",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver/codec error"
+      ],
+      "state": "Query retained; write followed by same-executor readback when a key is available",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Insert",
+          "signature": "receiver=*{Entity}Query func() (*{Entity}Row, error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::insert",
+          "signature": "public function insert(): ?App\\Orm\\{Entity}Row"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::insert",
+          "signature": "pub async fn insert(&mut self) -> Result<Option<{Entity}Row>>"
+        }
+      }
+    },
+    {
+      "id": "Query.save",
+      "for": "entity",
+      "inputs": [],
+      "output": "Optional<Row>",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver/codec error"
+      ],
+      "state": "Query retained; write followed by same-executor readback when a key is available",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Save",
+          "signature": "receiver=*{Entity}Query func() (*{Entity}Row, error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::save",
+          "signature": "public function save(): ?App\\Orm\\{Entity}Row"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::save",
+          "signature": "pub async fn save(&mut self) -> Result<Option<{Entity}Row>>"
+        }
+      }
+    },
+    {
+      "id": "Query.update",
+      "for": "entity",
+      "inputs": [],
+      "output": "I64",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver/codec error"
+      ],
+      "state": "Query retained; WHERE required",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Update",
+          "signature": "receiver=*{Entity}Query func() (int64, error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::update",
+          "signature": "public function update(): int"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::update",
+          "signature": "pub async fn update(&mut self) -> Result<u64>"
+        }
+      }
+    },
+    {
+      "id": "Query.delete",
+      "for": "entity",
+      "inputs": [],
+      "output": "I64",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver/codec error"
+      ],
+      "state": "Query retained; WHERE required",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Delete",
+          "signature": "receiver=*{Entity}Query func() (int64, error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::delete",
+          "signature": "public function delete(): int"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::delete",
+          "signature": "pub async fn delete(&mut self) -> Result<u64>"
+        }
+      }
+    },
+    {
+      "id": "Query.sql",
+      "for": "entity",
+      "inputs": [],
+      "output": "SqlStatement",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver/codec error"
+      ],
+      "state": "Query retained; secrets masked; no statement executed",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.SQL",
+          "signature": "receiver=*{Entity}Query func() (*orm.Statement, error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::sql",
+          "signature": "public function sql(): array"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::sql",
+          "signature": "pub async fn sql(&mut self) -> Result<db::Sql>"
+        }
+      }
+    },
+    {
+      "id": "Query.construct",
+      "for": "entity",
+      "inputs": [],
+      "output": "Query",
+      "errors": [],
+      "state": "No SQL",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}",
+          "signature": "func() *{Entity}Query"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::__construct",
+          "signature": "public function __construct(Orm\\Db|PDO|null $db=null): "
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::new",
+          "signature": "pub fn new() -> Self"
+        }
+      }
+    },
+    {
+      "id": "Query.bind",
+      "for": "entity",
+      "inputs": [
+        "Executor",
+        "NativeExecutionControl"
+      ],
+      "output": "Query",
+      "errors": [],
+      "state": "Replace binding; preserve IR",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Bind",
+          "signature": "receiver=*{Entity}Query func(ctx context.Context, ex orm.Exec) *{Entity}Query"
+        },
+        "php": {
+          "symbol": "clients/php/src/Query.php::Orm\\Q::bind",
+          "signature": "public function bind(Orm\\Db|PDO $db): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::bind",
+          "signature": "pub fn bind(mut self, ex: &impl Exec) -> Self"
+        }
+      }
+    },
+    {
+      "id": "Query.paginate",
+      "for": "entity",
+      "inputs": [
+        "page",
+        "per"
+      ],
+      "output": "Page<Row>",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID"
+      ],
+      "state": "Query retained; per>0, page>=1",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Paginate",
+          "signature": "receiver=*{Entity}Query func(page, per int) (*orm.Page[{Entity}Row], error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::paginate",
+          "signature": "public function paginate(int $page, int $per): Orm\\Page"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::paginate",
+          "signature": "pub async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<{Entity}Row>>"
+        }
+      }
+    },
+    {
+      "id": "Query.getsBy<Column>",
+      "for": "eq_column",
+      "inputs": [
+        "ColumnValue"
+      ],
+      "output": "Collection<Row>",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID"
+      ],
+      "state": "Append root equality; preserve joins and relations",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetsBy{Column}",
+          "signature": "receiver=*{Entity}Query func(v {type}) (*orm.Collection[{Entity}Row], error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::getsBy{Column}",
+          "signature": "public function getsBy{Column}({type} $value): Orm\\Collection"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::gets_by_{column}",
+          "signature": "pub async fn gets_by_{column}(&mut self, v: {type}) -> Result<Collection<{Entity}Row>>"
+        }
+      }
+    },
+    {
+      "id": "Query.getCountBy<Column>",
+      "for": "eq_column",
+      "inputs": [
+        "ColumnValue"
+      ],
+      "output": "I64",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID"
+      ],
+      "state": "Append root equality; preserve joins and relations",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetCountBy{Column}",
+          "signature": "receiver=*{Entity}Query func(v {type}) (int64, error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::getCountBy{Column}",
+          "signature": "public function getCountBy{Column}({type} $value): int"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::get_count_by_{column}",
+          "signature": "pub async fn get_count_by_{column}(&mut self, v: {type}) -> Result<i64>"
+        }
+      }
+    },
+    {
+      "id": "Query.<Column>Eq",
+      "for": "eq_column",
+      "inputs": [
+        "ColumnValue"
+      ],
+      "output": "Query",
+      "errors": [],
+      "state": "Append equality in this condition group",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.{Column}Eq",
+          "signature": "receiver=*{Entity}Query func(v {type}) *{Entity}Query"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::{columnCamel}Eq",
+          "signature": "public function {columnCamel}Eq({type} $v): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::{column}_eq",
+          "signature": "pub fn {column}_eq(mut self, v: {type}) -> Self"
+        }
+      }
+    },
+    {
+      "id": "Where.<Column>Eq",
+      "for": "eq_column",
+      "inputs": [
+        "ColumnValue"
+      ],
+      "output": "Where",
+      "errors": [],
+      "state": "Append equality in this condition group",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Where.{Column}Eq",
+          "signature": "receiver=*{Entity}Where func(v {type}) *{Entity}Where"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}Where::{columnCamel}Eq",
+          "signature": "public function {columnCamel}Eq({type} $v): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Where < 'a >::{column}_eq",
+          "signature": "pub fn {column}_eq(mut self, v: {type}) -> Self"
+        }
+      }
+    },
+    {
+      "id": "Query.<Column>",
+      "for": "eq_column",
+      "inputs": [
+        "ColumnValue"
+      ],
+      "output": "Query",
+      "errors": [],
+      "state": "Append equality in this condition group",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.{Column}",
+          "signature": "receiver=*{Entity}Query func(v {type}) *{Entity}Query"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::{columnCamel}",
+          "signature": "public function {columnCamel}({type} $v): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::{column}",
+          "signature": "pub fn {column}(self, v: {type}) -> Self"
+        }
+      }
+    },
+    {
+      "id": "Where.<Column>",
+      "for": "eq_column",
+      "inputs": [
+        "ColumnValue"
+      ],
+      "output": "Where",
+      "errors": [],
+      "state": "Append equality in this condition group",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Where.{Column}",
+          "signature": "receiver=*{Entity}Where func(v {type}) *{Entity}Where"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}Where::{columnCamel}",
+          "signature": "public function {columnCamel}({type} $v): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Where < 'a >::{column}",
+          "signature": "pub fn {column}(self, v: {type}) -> Self"
+        }
+      }
+    },
+    {
+      "id": "Row.bind",
+      "for": "entity",
+      "inputs": [
+        "Executor",
+        "NativeExecutionControl"
+      ],
+      "output": "Row",
+      "errors": [],
+      "state": "Preserve row identity and binding; obey row state transition contract",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.Bind",
+          "signature": "receiver=*{Entity}Row func(ctx context.Context, ex orm.Exec) *{Entity}Row"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Row::bind",
+          "signature": "public function bind(Orm\\Db|PDO $db): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::bind",
+          "signature": "pub fn bind(&mut self, ex: &impl Exec) -> &mut Self"
+        }
+      }
+    },
+    {
+      "id": "Row.update",
+      "for": "entity",
+      "inputs": [],
+      "output": "Success",
+      "errors": [
+        "CONFIG",
+        "codec/driver error"
+      ],
+      "state": "Preserve row identity and binding; obey row state transition contract",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.Update",
+          "signature": "receiver=*{Entity}Row func() error"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Row::update",
+          "signature": "public function update(): void"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::update",
+          "signature": "pub async fn update(&mut self) -> Result<()>"
+        }
+      }
+    },
+    {
+      "id": "Row.updateOptimistic",
+      "for": "versioned_entity",
+      "inputs": [],
+      "output": "Success",
+      "errors": [
+        "CONFIG",
+        "OPTIMISTIC_LOCK",
+        "codec/driver error"
+      ],
+      "state": "Preserve row identity and binding; obey row state transition contract",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.UpdateOptimistic",
+          "signature": "receiver=*{Entity}Row func() error"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}Row::updateOptimistic",
+          "signature": "public function updateOptimistic(): void"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::update_optimistic",
+          "signature": "pub async fn update_optimistic(&mut self) -> Result<()>"
+        }
+      }
+    },
+    {
+      "id": "Row.delete",
+      "for": "entity",
+      "inputs": [],
+      "output": "Success",
+      "errors": [
+        "CONFIG",
+        "driver error"
+      ],
+      "state": "Preserve row identity and binding; obey row state transition contract",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.Delete",
+          "signature": "receiver=*{Entity}Row func() error"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Row::delete",
+          "signature": "public function delete(bool $cascade=false): void"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::delete",
+          "signature": "pub async fn delete(&self) -> Result<()>"
+        }
+      }
+    },
+    {
+      "id": "Row.deleteCascade",
+      "for": "entity",
+      "inputs": [],
+      "output": "Success",
+      "errors": [
+        "CONFIG",
+        "driver error"
+      ],
+      "state": "Preserve row identity and binding; obey row state transition contract",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.DeleteCascade",
+          "signature": "receiver=*{Entity}Row func() error"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Row::deleteCascade",
+          "signature": "public function deleteCascade(): void"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::delete_cascade",
+          "signature": "pub async fn delete_cascade(&self) -> Result<()>"
+        }
+      }
+    },
+    {
+      "id": "Row.has",
+      "for": "entity",
+      "inputs": [
+        "Column"
+      ],
+      "output": "Bool",
+      "errors": [],
+      "state": "Preserve row identity and binding; obey row state transition contract",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::Row.Has",
+          "signature": "receiver=*Row func(name string) bool"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Row::has",
+          "signature": "public function has(string $col): bool"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::has",
+          "signature": "pub fn has(&self, name: &str) -> bool"
+        }
+      }
+    },
+    {
+      "id": "Row.relLoaded",
+      "for": "entity",
+      "inputs": [
+        "Relation"
+      ],
+      "output": "Bool",
+      "errors": [],
+      "state": "Preserve row identity and binding; obey row state transition contract",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/builder.go::Row.RelLoaded",
+          "signature": "receiver=*Row func(rel string) bool"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Row::relLoaded",
+          "signature": "public function relLoaded(string $name): bool"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::rel_loaded",
+          "signature": "pub fn rel_loaded(&self, name: &str) -> bool"
+        }
+      }
+    },
+    {
+      "id": "Row.export",
+      "for": "entity",
+      "inputs": [],
+      "output": "RowMap",
+      "errors": [],
+      "state": "Preserve row identity and binding; obey row state transition contract",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.ToArray",
+          "signature": "receiver=*{Entity}Row func() map[string]any"
+        },
+        "php": {
+          "symbol": "clients/php/src/Row.php::Orm\\Row::toArray",
+          "signature": "public function toArray(): array"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::to_map",
+          "signature": "pub fn to_map(&self) -> serde_json::Value"
+        }
+      }
+    }
+  ],
+  "sequences": [
+    {
+      "id": "interface_query_reuse",
+      "expected": [
+        1000,
+        2,
+        1000
+      ],
+      "statements": 3,
+      "suite": "tests/conformance",
+      "required_languages": [
+        "go",
+        "php",
+        "rust"
+      ]
+    },
+    {
+      "id": "interface_attach",
+      "expected": {
+        "a": {
+          "entity": "battle",
+          "where": {
+            "items": [
+              {
+                "pred": {
+                  "column": "service_seq",
+                  "op": "eq",
+                  "p": 0
+                }
+              }
+            ]
+          },
+          "joins": [
+            {
+              "rel": "user",
+              "kind": "inner",
+              "query": {
+                "entity": "user",
+                "where": {
+                  "items": [
+                    {
+                      "pred": {
+                        "column": "seq",
+                        "op": "in",
+                        "ps": [
+                          1,
+                          2
+                        ]
+                      }
+                    },
+                    {
+                      "group": {
+                        "items": [
+                          {
+                            "pred": {
+                              "column": "name",
+                              "op": "eq",
+                              "p": 3
+                            }
+                          },
+                          {
+                            "pred": {
+                              "conn": "or",
+                              "column": "name",
+                              "op": "eq",
+                              "p": 4
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "b": {
+          "entity": "battle",
+          "where": {
+            "items": [
+              {
+                "pred": {
+                  "column": "service_seq",
+                  "op": "eq",
+                  "p": 0
+                }
+              }
+            ]
+          },
+          "joins": [
+            {
+              "rel": "user",
+              "kind": "inner",
+              "query": {
+                "entity": "user",
+                "where": {
+                  "items": [
+                    {
+                      "pred": {
+                        "column": "seq",
+                        "op": "in",
+                        "ps": [
+                          1,
+                          2
+                        ]
+                      }
+                    },
+                    {
+                      "group": {
+                        "items": [
+                          {
+                            "pred": {
+                              "column": "name",
+                              "op": "eq",
+                              "p": 3
+                            }
+                          },
+                          {
+                            "pred": {
+                              "conn": "or",
+                              "column": "name",
+                              "op": "eq",
+                              "p": 4
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "child": {
+          "entity": "user",
+          "where": {
+            "items": [
+              {
+                "pred": {
+                  "column": "seq",
+                  "op": "in",
+                  "ps": [
+                    0,
+                    1
+                  ]
+                }
+              },
+              {
+                "group": {
+                  "items": [
+                    {
+                      "pred": {
+                        "column": "name",
+                        "op": "eq",
+                        "p": 2
+                      }
+                    },
+                    {
+                      "pred": {
+                        "conn": "or",
+                        "column": "name",
+                        "op": "eq",
+                        "p": 3
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "pred": {
+                  "column": "name",
+                  "op": "eq",
+                  "p": 4
+                }
+              }
+            ]
+          }
+        },
+        "a_params": [
+          7,
+          1,
+          2,
+          "user-1",
+          "user-2"
+        ],
+        "b_params": [
+          8,
+          1,
+          2,
+          "user-1",
+          "user-2"
+        ],
+        "child_params": [
+          1,
+          2,
+          "user-1",
+          "user-2",
+          "later"
+        ]
+      },
+      "statements": 0,
+      "suite": "tests/conformance",
+      "required_languages": [
+        "go",
+        "php",
+        "rust"
+      ]
+    },
+    {
+      "id": "interface_typed_keys",
+      "expected": [
+        [
+          1,
+          "last"
+        ],
+        [
+          "1",
+          "string"
+        ],
+        [
+          2,
+          "second"
+        ]
+      ],
+      "statements": 0,
+      "suite": "tests/conformance",
+      "required_languages": [
+        "go",
+        "php",
+        "rust"
+      ]
+    },
+    {
+      "id": "interface_invalid_page",
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "statements": 0,
+      "suite": "tests/conformance",
+      "required_languages": [
+        "go",
+        "php",
+        "rust"
+      ]
+    },
+    {
+      "id": "interface_error",
+      "expected": [
+        "CODEC_UNSUPPORTED",
+        "CODEC_UNSUPPORTED"
+      ],
+      "statements": 0,
+      "suite": "tests/conformance",
+      "required_languages": [
+        "go",
+        "php",
+        "rust"
+      ]
+    },
+    {
+      "id": "interface_row_state",
+      "expected": {
+        "before": false,
+        "assigned": true,
+        "value": "interface-final",
+        "export": {
+          "seq": 6,
+          "name": "interface-final",
+          "like_count": 5
+        },
+        "noop_statements": 0,
+        "relation_loaded": false
+      },
+      "statements": 2,
+      "suite": "tests/conformance",
+      "required_languages": [
+        "go",
+        "php",
+        "rust"
+      ]
+    },
+    {
+      "id": "interface_dirty_retry",
+      "expected": {
+        "errors": [
+          "OPTIMISTIC_LOCK",
+          "OPTIMISTIC_LOCK"
+        ],
+        "value": "interface-pending"
+      },
+      "statements": 4,
+      "suite": "tests/conformance",
+      "required_languages": [
+        "go",
+        "php",
+        "rust"
+      ]
+    },
+    {
+      "id": "finished_transaction",
+      "expected": {
+        "error": "CONFIG"
+      },
+      "statements": 0,
+      "suite": "tests/conformance",
+      "required_languages": [
+        "go",
+        "php",
+        "rust"
+      ]
+    },
+    {
+      "id": "bound_transaction_rollback",
+      "expected": {
+        "changed": 1,
+        "expired_row": "CONFIG",
+        "joined_name": "conf-user",
+        "members_left": 0,
+        "service_left": 0,
+        "user_name": "user-1"
+      },
+      "statements": 14,
+      "suite": "tests/conformance",
+      "required_languages": [
+        "go",
+        "php",
+        "rust"
+      ]
+    }
+  ],
+  "inventory_policy": {
+    "compare": "exact declarations; missing, added, moved, retyped or re-owned symbols fail",
+    "source_parsers": {
+      "go": "go/ast",
+      "php": "ReflectionClass/ReflectionMethod",
+      "rust": "syn::parse_file"
+    },
+    "runtime_bodies": "Validated by state, lifetime and execution suites, not by declaration snapshots.",
+    "update": "Change the common contract first; record candidates explicitly, review their diff, then pass all language gates.",
+    "adapters": [
+      "native constructor syntax",
+      "Go context binding",
+      "native async/error/borrow syntax",
+      "PHP compatibility methods and default getter arguments",
+      "native exported row fields and metadata accessors"
+    ]
+  },
+  "edges": [
+    {
+      "to": "Request",
+      "kind": "*--",
+      "role": "owns",
+      "from": "Query"
+    },
+    {
+      "to": "Binding",
+      "kind": "*--",
+      "role": "owns",
+      "from": "Query"
+    },
+    {
+      "to": "Request",
+      "kind": "-->",
+      "role": "borrows",
+      "from": "Where"
+    },
+    {
+      "to": "RequestIR",
+      "kind": "*--",
+      "role": "owns",
+      "from": "Request"
+    },
+    {
+      "to": "QueryNode",
+      "kind": "*--",
+      "role": "root",
+      "from": "RequestIR"
+    },
+    {
+      "to": "QueryNode",
+      "kind": "*--",
+      "role": "child snapshots",
+      "from": "QueryNode"
+    },
+    {
+      "to": "Executor",
+      "kind": "-->",
+      "role": "resolves",
+      "from": "Binding"
+    },
+    {
+      "to": "Executor",
+      "kind": "..|>",
+      "role": "implements",
+      "from": "Db"
+    },
+    {
+      "to": "Executor",
+      "kind": "..|>",
+      "role": "implements",
+      "from": "Tx"
+    },
+    {
+      "to": "Db",
+      "kind": "-->",
+      "role": "database",
+      "from": "Tx"
+    },
+    {
+      "to": "Binding",
+      "kind": "*--",
+      "role": "inherits root execution",
+      "from": "Row"
+    },
+    {
+      "to": "Collection",
+      "kind": "*--",
+      "role": "many relations",
+      "from": "Row"
+    },
+    {
+      "to": "Row",
+      "kind": "o--",
+      "role": "ordered values",
+      "from": "Collection"
+    },
+    {
+      "to": "Collection",
+      "kind": "*--",
+      "role": "items",
+      "from": "Page"
+    },
+    {
+      "to": "Plan",
+      "kind": "-->",
+      "role": "produces",
+      "from": "Compiler"
+    },
+    {
+      "to": "Step",
+      "kind": "*--",
+      "role": "ordered steps",
+      "from": "Plan"
+    },
+    {
+      "to": "Assemble",
+      "kind": "*--",
+      "role": "projection",
+      "from": "Step"
+    },
+    {
+      "to": "Plan",
+      "kind": "-->",
+      "role": "immutable plan",
+      "from": "ExecutionRows"
+    },
+    {
+      "to": "Binding",
+      "kind": "*--",
+      "role": "root binding",
+      "from": "ExecutionRows"
+    }
+  ]
+}
