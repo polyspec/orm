@@ -185,6 +185,12 @@ same('relation(match + alias) → relationRel',
     Battle::query()->relation(User::query()->matchUserSeqWithSeq()->aliasUser())->andServiceSeq(7)->orderBySeqAsc()->limit(0, 3),
     Battle::query()->relation(User::query())->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 3), 'all', $gets($db), $all($db));
 same('relationAWithB(child) name form', Battle::query()->relationUserSeqWithSeq(User::query())->andSeq(42), Battle::query()->relation(User::query())->seqEq(42), 'one', fn(Q $q) => $q->using($db)->get(), fn(Q $q) => $q->using($db)->one());
+same('generic relation + matchAWithB equals relationAWithB',
+    Battle::query()->relation(User::query()->matchUserSeqWithSeq())->andSeq(42),
+    Battle::query()->relationUserSeqWithSeq(User::query())->andSeq(42), 'one');
+same('generic leftJoin + onAWithB equals leftJoinAWithB',
+    Battle::query()->leftJoin(User::query()->onUserSeqWithSeq())->andSeq(42),
+    Battle::query()->leftJoinUserSeqWithSeq(User::query())->andSeq(42), 'all');
 same('relation → relations nesting with keyName/groupLimit/orderBy',
     Battle::query()->relation(Service::query()->matchServiceSeqWithSeq()->aliasService()
         ->relations(ServiceMember::query()->matchSeqWithServiceSeq()->aliasMembers()->orderBySeqDesc()->groupLimit(3)->keyNameUserSeq()))

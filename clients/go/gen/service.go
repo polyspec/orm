@@ -493,38 +493,74 @@ func (q *ServiceQuery) Raw(sql string, binds ...any) *ServiceQuery { q.q.Raw(sql
 // Relation attaches a declared one-to-one child query. The manifest resolves
 // the relation name from the parent and child entities.
 func (q *ServiceQuery) Relation(child any) *ServiceQuery {
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 func (q *ServiceQuery) Relations(child any) *ServiceQuery {
 	if c, ok := child.(*BattleQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "service_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Relation("battles", c.q)
 		return q
 	}
 	if c, ok := child.(*ServiceMemberQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "service_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Relation("members", c.q)
 		return q
 	}
 	if c, ok := child.(*ServiceModuleQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "service_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Relation("modules", c.q)
 		return q
 	}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 func (q *ServiceQuery) Join(child any) *ServiceQuery     { return q.joinTarget(child, "inner") }
 func (q *ServiceQuery) LeftJoin(child any) *ServiceQuery { return q.joinTarget(child, "left") }
 func (q *ServiceQuery) joinTarget(child any, kind string) *ServiceQuery {
 	if c, ok := child.(*BattleQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "service_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Join("battles", kind, c.q)
 		return q
 	}
 	if c, ok := child.(*ServiceMemberQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "service_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Join("members", kind, c.q)
 		return q
 	}
 	if c, ok := child.(*ServiceModuleQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "service_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Join("modules", kind, c.q)
 		return q
 	}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
+	return q
+}
+
+func (q *ServiceQuery) MatchServiceSeqWithSeq() *ServiceQuery {
+	q.q.SetLink("service_seq", "seq")
+	return q
+}
+func (q *ServiceQuery) OnServiceSeqWithSeq() *ServiceQuery {
+	q.q.SetLink("service_seq", "seq")
 	return q
 }
 

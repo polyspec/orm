@@ -692,16 +692,26 @@ func (q *ServiceModuleQuery) Raw(sql string, binds ...any) *ServiceModuleQuery {
 // the relation name from the parent and child entities.
 func (q *ServiceModuleQuery) Relation(child any) *ServiceModuleQuery {
 	if c, ok := child.(*ServiceQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "service_seq" || c.q.LinkRight != "seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Relation("service", c.q)
 		return q
 	}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 func (q *ServiceModuleQuery) Relations(child any) *ServiceModuleQuery {
 	if c, ok := child.(*BattleQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "service_module_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Relation("battles", c.q)
 		return q
 	}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 func (q *ServiceModuleQuery) Join(child any) *ServiceModuleQuery { return q.joinTarget(child, "inner") }
@@ -710,13 +720,22 @@ func (q *ServiceModuleQuery) LeftJoin(child any) *ServiceModuleQuery {
 }
 func (q *ServiceModuleQuery) joinTarget(child any, kind string) *ServiceModuleQuery {
 	if c, ok := child.(*BattleQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "service_module_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Join("battles", kind, c.q)
 		return q
 	}
 	if c, ok := child.(*ServiceQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "service_seq" || c.q.LinkRight != "seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Join("service", kind, c.q)
 		return q
 	}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 
@@ -743,6 +762,23 @@ func (q *ServiceModuleQuery) LeftJoinServiceSeqWithSeq(child *ServiceQuery) *Ser
 }
 func (q *ServiceModuleQuery) RelationServiceSeqWithSeq(child *ServiceQuery) *ServiceModuleQuery {
 	q.q.Relation("service", child.q)
+	return q
+}
+
+func (q *ServiceModuleQuery) MatchServiceModuleSeqWithSeq() *ServiceModuleQuery {
+	q.q.SetLink("service_module_seq", "seq")
+	return q
+}
+func (q *ServiceModuleQuery) OnServiceModuleSeqWithSeq() *ServiceModuleQuery {
+	q.q.SetLink("service_module_seq", "seq")
+	return q
+}
+func (q *ServiceModuleQuery) MatchSeqWithServiceSeq() *ServiceModuleQuery {
+	q.q.SetLink("seq", "service_seq")
+	return q
+}
+func (q *ServiceModuleQuery) OnSeqWithServiceSeq() *ServiceModuleQuery {
+	q.q.SetLink("seq", "service_seq")
 	return q
 }
 

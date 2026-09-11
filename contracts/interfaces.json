@@ -26,9 +26,9 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:282127a9b9943b28e70a5993e4118a2407f70ba9e0d0c5d5c2f8ed4c6f1ae8e2",
-    "php": "sha256:73988d4b55d0e84667e836f8707ea314f3597e88b7d66031e5f0bbfc604e3b36",
-    "rust": "sha256:4b72479be0faaca876659f52741a95ec374e047e38a4e23a2b4acbe60ce0cdee"
+    "go": "sha256:8f696135df3cb295da3977f12dd057c2db6c508858ee2734750fae5f691f6f10",
+    "php": "sha256:2db7d98522ac5171d60ead28a97d9cfa3cb260553879d8ae5a60a2d3b8d79e55",
+    "rust": "sha256:a4e04681031fcc1cbd26a5b39f26b4d4762cb8a3b64fbd9c6a1d9ec77065535c"
   },
   "components": [
     {
@@ -36,7 +36,8 @@
       "fields": {
         "binding": "Binding",
         "request": "Request",
-        "keySelector": "Optional<Function<Row,Key>>"
+        "keySelector": "Optional<Function<Row,Key>>",
+        "linkSelection": "Optional<LinkSelection>"
       },
       "methods": [
         "query",
@@ -54,6 +55,15 @@
         "sql"
       ],
       "ownership": "Owns mutable query state; never represents a loaded row."
+    },
+    {
+      "id": "LinkSelection",
+      "fields": {
+        "parentKey": "Text",
+        "childKey": "Text"
+      },
+      "methods": [],
+      "ownership": "Belongs to the child Query until relation or join consumes it."
     },
     {
       "id": "Where",
@@ -2412,6 +2422,8 @@
           "fields": [
             "Req",
             "Node",
+            "LinkLeft",
+            "LinkRight",
             "pendingOr"
           ]
         },
@@ -2425,6 +2437,7 @@
             "rootW",
             "wstack",
             "unmatchedClose",
+            "linkMatch",
             "keyFn"
           ]
         },
@@ -2432,6 +2445,8 @@
           "symbol": "clients/rust/orm/src/builder.rs::Q",
           "fields": [
             "req",
+            "link_left",
+            "link_right",
             "pending_or"
           ]
         }

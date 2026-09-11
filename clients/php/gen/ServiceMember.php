@@ -215,10 +215,10 @@ final class ServiceMember extends Q implements ServiceMemberInterface
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new ServiceMemberWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w())); return $this; }
-    public function relation(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'one'), $child); return $this; }
-    public function relations(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'many'), $child); return $this; }
-    public function join(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
-    public function leftJoin(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
+    public function relation(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, 'one'), $child); return $this; }
+    public function relations(Q $child): static { $this->attachRelation(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, 'many'), $child); return $this; }
+    public function join(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, null), 'inner', $child); return $this; }
+    public function leftJoin(Q $child): static { $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, $child->linkMatch(), null, null), 'left', $child); return $this; }
 
 
     public function joinSeqWithServiceMemberSeq(Battle $child): static { $this->attachJoin('battles', 'inner', $child); return $this; }
@@ -232,6 +232,14 @@ final class ServiceMember extends Q implements ServiceMemberInterface
     public function joinUserSeqWithSeq(User $child): static { $this->attachJoin('user', 'inner', $child); return $this; }
     public function leftJoinUserSeqWithSeq(User $child): static { $this->attachJoin('user', 'left', $child); return $this; }
     public function relationUserSeqWithSeq(User $child): static { $this->attachRelation('user', $child); return $this; }
+
+
+    public function matchServiceMemberSeqWithSeq(): static { $this->setLink('service_member_seq', 'seq'); return $this; }
+    public function onServiceMemberSeqWithSeq(): static { $this->setLink('service_member_seq', 'seq'); return $this; }
+    public function matchSeqWithUserSeq(): static { $this->setLink('seq', 'user_seq'); return $this; }
+    public function onSeqWithUserSeq(): static { $this->setLink('seq', 'user_seq'); return $this; }
+    public function matchSeqWithServiceSeq(): static { $this->setLink('seq', 'service_seq'); return $this; }
+    public function onSeqWithServiceSeq(): static { $this->setLink('seq', 'service_seq'); return $this; }
 
     // ---- columns ----
     public function selectAll(): static { $this->colMode('all'); return $this; }

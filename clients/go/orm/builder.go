@@ -16,6 +16,8 @@ import (
 type Q struct {
 	Req       *Req
 	Node      *ir.Query
+	LinkLeft  string
+	LinkRight string
 	pendingOr bool
 }
 
@@ -23,6 +25,10 @@ func NewQ(eng *engine.Engine, entity string) *Q {
 	r := NewReq(eng, "all", entity)
 	return &Q{Req: r, Node: &r.IR.Query}
 }
+
+// SetLink records the parent/child key pair selected on this child query.
+// The parent relation or join operation consumes it when resolving the manifest relation.
+func (q *Q) SetLink(left, right string) { q.LinkLeft, q.LinkRight = left, right }
 
 func (q *Q) where() *ir.Group {
 	if q.Node.Where == nil {

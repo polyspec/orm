@@ -254,6 +254,8 @@ class Q
     private array $wstack = [];
     /** ')' tokens of this chain that closed nothing — a '(' of another model; reported as PAREN_ACROSS_MODELS when the chain is attached or run */
     private int $unmatchedClose = 0;
+    /** parent/child key pair selected by matchXWithY/onXWithY on this child */
+    private ?array $linkMatch = null;
     /** keyByFn: client-side keying of the root collection (relations key by keyBy<Col>) */
     public ?\Closure $keyFn = null;
 
@@ -373,6 +375,17 @@ class Q
     {
         $this->parenCheck($child);
         $this->node['relations'][] = ['rel' => $rel, 'query' => $this->req->attach($child->req, "|R$rel")];
+    }
+
+    /** Stores the parent/child key pair selected on this child query. */
+    public function setLink(string $left, string $right): void
+    {
+        $this->linkMatch = [$left, $right];
+    }
+
+    public function linkMatch(): ?array
+    {
+        return $this->linkMatch;
     }
 
     // ---- columns ----

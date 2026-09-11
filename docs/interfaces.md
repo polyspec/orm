@@ -80,6 +80,7 @@ classDiagram
         Request request
         Binding binding
         Optional~KeySelector~ keySelector
+        Optional~LinkSelection~ linkSelection
         using(executor, control) Query
         predicate(column, op, values) Query
         and(callback) Query
@@ -89,6 +90,10 @@ classDiagram
         get() Result~OptionalRow~
         gets() Result~Collection~
         getCount() Result~I64~
+    }
+    class LinkSelection {
+        String parentKey
+        String childKey
     }
     class Request {
         RequestIR ir
@@ -537,6 +542,8 @@ classDiagram
 ## 11. 생성기·스키마·확장 경계 — IF-32 ~ IF-34
 
 **IF-32:** SchemaManifest는 엔티티·테이블·컬럼 타입·nullable·PK·unique·index·fulltext·relation·style·named predicate·schema hash를 가진다. generated Query/Where/Row와 컬럼 참조는 동일 Manifest로 생성한다. 한 언어만 별도 스키마를 유지하지 않는다.
+
+**IF-33:** 관계 자식 Query는 `matchAKeyWithBKey()` 또는 `onAKeyWithBKey()`로 부모 키와 자식 키를 `LinkSelection(parentKey, childKey)`에 기록한다. 부모의 `relation/relations/join/leftJoin`은 자식 엔티티와 이 선택을 함께 사용해 Manifest의 단일 관계를 해석한다. 두 방식은 같은 링크 상태와 같은 IR을 만든다. Go·Rust·PHP 생성기는 이 메서드와 필드를 같은 생성 규칙에서 받으며, 계약 검사는 세 언어의 심볼·시그니처·레코드 구조를 비교한다.
 
 **IF-33:** ormgen의 공개 작업은 build, gen, ddl, import, validate, errors, tokens, check다. schema build와 타입·관계 검증은 DB 실행과 분리한다. generated 파일은 템플릿에서 재생성하며 수동 수정으로 계약 차이를 숨기지 않는다. 같은 입력의 생성 결과는 재현 가능해야 한다.
 

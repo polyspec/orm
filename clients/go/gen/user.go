@@ -425,32 +425,54 @@ func (q *UserQuery) Raw(sql string, binds ...any) *UserQuery { q.q.Raw(sql, bind
 // Relation attaches a declared one-to-one child query. The manifest resolves
 // the relation name from the parent and child entities.
 func (q *UserQuery) Relation(child any) *UserQuery {
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 func (q *UserQuery) Relations(child any) *UserQuery {
 	if c, ok := child.(*BattleQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "user_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Relation("battles", c.q)
 		return q
 	}
 	if c, ok := child.(*ServiceMemberQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "user_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Relation("service_members", c.q)
 		return q
 	}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 func (q *UserQuery) Join(child any) *UserQuery     { return q.joinTarget(child, "inner") }
 func (q *UserQuery) LeftJoin(child any) *UserQuery { return q.joinTarget(child, "left") }
 func (q *UserQuery) joinTarget(child any, kind string) *UserQuery {
 	if c, ok := child.(*BattleQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "user_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Join("battles", kind, c.q)
 		return q
 	}
 	if c, ok := child.(*ServiceMemberQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "user_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Join("service_members", kind, c.q)
 		return q
 	}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
+
+func (q *UserQuery) MatchUserSeqWithSeq() *UserQuery { q.q.SetLink("user_seq", "seq"); return q }
+func (q *UserQuery) OnUserSeqWithSeq() *UserQuery    { q.q.SetLink("user_seq", "seq"); return q }
 
 // Columns.
 func (q *UserQuery) SelectAll() *UserQuery  { q.q.Columns().Mode = "all"; return q }
