@@ -1,12 +1,13 @@
 /bin/
+/dist/
 /target/
 /bench/rust/target/
+/clients/rust/target/
 /bench/php/vendor/
 *.dylib
 *.so
-*.wasm
 *.h
+*.wasm
 /docs/perf-raw/
 /tests/conformance/out/
 /tests/codec/out/
-/clients/rust/target/
