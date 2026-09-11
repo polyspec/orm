@@ -3,7 +3,7 @@
     "description": "PHP executor of the orm compiler: generated typed builders over PDO, plans compiled by ormd",
     "type": "library",
     "version": "0.0.1",
-    "license": "proprietary",
+    "license": "MIT",
     "require": {
         "php": ">=8.2",
         "ext-pdo": "*",
