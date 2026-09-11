@@ -14,12 +14,19 @@ pub struct Step {
     pub id: u32,
     pub role: String,
     pub sql: String,
+    /// `null` from the engine when the statement binds nothing (a Go nil slice).
+    #[serde(default, deserialize_with = "null_as_empty")]
     pub bind_slots: Vec<BindSlot>,
     #[serde(default)]
     pub assemble: Option<std::sync::Arc<Assemble>>,
     /// Relation steps: where the IN values come from.
     #[serde(default)]
     pub parent: Option<ParentRef>,
+}
+
+/// Go marshals a nil slice as `null`; read it as an empty list.
+fn null_as_empty<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(d: D) -> std::result::Result<Vec<T>, D::Error> {
+    Ok(Option::<Vec<T>>::deserialize(d)?.unwrap_or_default())
 }
 
 #[derive(Deserialize, Debug, Clone)]
