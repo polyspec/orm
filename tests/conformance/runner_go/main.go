@@ -695,6 +695,37 @@ func main() {
 			Raw("SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?", 7, false).
 			RawAll(ctx, db)
 	})
+	run("join_fulltext_or", func() (any, error) {
+		// R9 shape: a join whose child carries its own where, plus a root group mixing
+		// a fulltext predicate with navigation into the joined entity
+		return gen.NewBattle().
+			JoinService(gen.NewService().Where(func(w *gen.ServiceWhere) { w.SeqEq(7) })).
+			IsCloseEq(false).
+			And(func(w *gen.BattleWhere) {
+				w.NameWithDescriptionMatchBoolean("battle").Or().Service(func(s *gen.ServiceWhere) { s.NameEq("service-999") })
+			}).
+			Count(ctx, db)
+	})
+	run("join_two_groups", func() (any, error) {
+		// two joined entities, each with its own on() and where(), and an IN at the root
+		return gen.NewBattle().
+			JoinService(gen.NewService().On(func(w *gen.ServiceWhere) { w.NameEq("service-7") }).Where(func(w *gen.ServiceWhere) { w.SeqGt(0) })).
+			LeftJoinUser(gen.NewUser().Where(func(w *gen.UserWhere) { w.NameContains("user-4") })).
+			SeqIn([]int64{6, 106, 206, 406}).
+			Count(ctx, db)
+	})
+	run("join_multi_level", func() (any, error) {
+		// two levels of joins off one child: aliases are path-derived and each keeps its own columns
+		b, err := gen.NewBattle().SelectNone().SeqEq(6).
+			JoinServiceMember(gen.NewServiceMember().SelectNone().
+				JoinUser(gen.NewUser().SelectNone()).
+				JoinService(gen.NewService().SelectNone())).
+			One(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		return b.ToArray(), nil
+	})
 	run("codec_roundtrip", func() (any, error) {
 		value := map[string]any{"a": int64(1), "b": []any{int64(1), int64(2), map[string]any{"c": "한글/slash"}}, "d": nil, "e": true, "f": 1.5}
 		ip := "10.1.2.3"

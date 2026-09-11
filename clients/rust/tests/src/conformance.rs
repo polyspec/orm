@@ -380,6 +380,27 @@ async fn main() {
             .raw_all(&db).await?;
         Ok(Value::Array(rows.iter().map(|r| Value::Object(r.iter().map(|(k, v)| (k.clone(), v.to_json())).collect())).collect()))
     }.await);
+    run!("join_fulltext_or", async {
+        Ok(json!(Battle::new()
+            .join_service(Service::new().where_(|w| w.seq_eq(7)))
+            .is_close_eq(false)
+            .and(|w| w.name_with_description_match_boolean("battle").or().service(|s| s.name_eq("service-999")))
+            .count(&db).await?))
+    }.await);
+    run!("join_two_groups", async {
+        Ok(json!(Battle::new()
+            .join_service(Service::new().on(|w| w.name_eq("service-7")).where_(|w| w.seq_gt(0)))
+            .left_join_user(User::new().where_(|w| w.name_contains("user-4")))
+            .seq_in(vec![6, 106, 206, 406])
+            .count(&db).await?))
+    }.await);
+    run!("join_multi_level", async {
+        Ok(Battle::new().select_none().seq_eq(6)
+            .join_service_member(ServiceMember::new().select_none()
+                .join_user(User::new().select_none())
+                .join_service(Service::new().select_none()))
+            .one(&db).await?.unwrap().to_map())
+    }.await);
     run!("codec_roundtrip", async {
         let value = json!({"a": 1, "b": [1, 2, {"c": "한글/slash"}], "d": null, "e": true, "f": 1.5});
         let v = value.clone();
