@@ -22,14 +22,14 @@ impl ServiceRow {
     pub const ENTITY: &'static str = "service";
     pub const PK: &'static str = "seq";
 
-    pub(crate) fn from_row(vals: &[Val], a: &orm::plan::Assemble) -> Self {
+    pub(crate) fn from_row(vals: &mut [Val], a: &orm::plan::Assemble) -> Self {
         let mut r = Self::default();
         r.loaded = true;
         for c in &a.columns {
-            let v = &vals[c.index];
+            let v = &mut vals[c.index];
             match c.name.as_str() {
                 "seq" => r.seq = v.as_i64(),
-                "name" => r.name = v.as_string(),
+                "name" => r.name = v.take_string(),
                 _ => {}
             }
         }
@@ -194,13 +194,13 @@ impl Service {
 
     // ---- terminals ----
     pub async fn one(mut self, ex: &impl Exec) -> Result<Option<ServiceRow>> {
-        let rows = db::select(ex, &mut self.q.req, "one").await?;
-        Ok(rows.data.first().map(|v| ServiceRow::from_row(v, &rows.assemble)))
+        let mut rows = db::select(ex, &mut self.q.req, "one").await?;
+        Ok(rows.data.first_mut().map(|v| ServiceRow::from_row(v, &rows.assemble)))
     }
 
     pub async fn all(mut self, ex: &impl Exec) -> Result<Collection<ServiceRow>> {
-        let rows = db::select(ex, &mut self.q.req, "all").await?;
-        Ok(collect(&rows))
+        let mut rows = db::select(ex, &mut self.q.req, "all").await?;
+        Ok(collect(&mut rows))
     }
 
     pub async fn count(mut self, ex: &impl Exec) -> Result<i64> {
@@ -212,9 +212,9 @@ impl Service {
     pub async fn paginate(mut self, ex: &impl Exec, page: u32, per: u32) -> Result<Page<ServiceRow>> {
         let page = page.max(1);
         self.q.node().limit = Some(orm::ir::Limit { offset: (page - 1) * per, count: per });
-        let (rows, total) = db::paginate(ex, &mut self.q.req).await?;
+        let (mut rows, total) = db::paginate(ex, &mut self.q.req).await?;
         let pages = (total + per as i64 - 1) / per as i64;
-        Ok(Page { items: collect(&rows), total, pages, current: page as i64, per: per as i64 })
+        Ok(Page { items: collect(&mut rows), total, pages, current: page as i64, per: per as i64 })
     }
 
     pub async fn insert(mut self, ex: &impl Exec) -> Result<Option<ServiceRow>> {
@@ -229,10 +229,11 @@ impl Service {
 
 impl Default for Service { fn default() -> Self { Self::new() } }
 
-fn collect(rows: &db::Rows) -> Collection<ServiceRow> {
+fn collect(rows: &mut db::Rows) -> Collection<ServiceRow> {
     let mut c = Collection::with_capacity(rows.data.len());
-    for v in &rows.data {
-        c.put(Key::of(&v[0]), ServiceRow::from_row(v, &rows.assemble));
+    for v in &mut rows.data {
+        let k = Key::of(&v[0]);
+        c.put(k, ServiceRow::from_row(v, &rows.assemble));
     }
     c
 }

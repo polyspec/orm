@@ -16,7 +16,7 @@ pub struct Step {
     pub sql: String,
     pub bind_slots: Vec<BindSlot>,
     #[serde(default)]
-    pub assemble: Option<Assemble>,
+    pub assemble: Option<std::sync::Arc<Assemble>>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
