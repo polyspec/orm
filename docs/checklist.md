@@ -7,7 +7,7 @@
 - **S0 완료** (측정·결정 R1~R3, F1~F3 — `docs/perf.md`).
 - **S1 완료** (thin slice: 엔진·생성기·3언어 실행기, 적합성 하네스, `ormgen tokens`, 데모).
 - **S2 완료**(T2.15 150테이블 게이트만 example DB 대기), **S3 완료**, **S4 완료**(PHP 호환층 포함), **S5 언어 레인 진행 중**(docs/lanes/s5.md), **S6 엔진 완료**(dialect PG/SQLite, ddl).
-- 적합성 벡터 **40개 × 3언어 바이트 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
+- 적합성 벡터 **43개 × 3언어 × 3 DB 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
 
 ## 병렬 레인 (어떻게 나눠 일하는가)
 | 레인 | 담당 | 다른 레인과의 경계 |
@@ -101,7 +101,7 @@
 - [~] T4.7 `ormgen check --lang php` 완료 → example application 스캔 결과 `docs/checklist.md`(6,752 파일: relation 7,306·match 7,259·alias 5,877·and/or/condition 4,032·괄호 토큰 720·brace-call 64·raw 조각 63·delete(true) 354·duplication 23; 모델 경계를 넘는 괄호 후보 59 파일) — `--lang go` expr analyzer는 남음
 
 ### 4-C 검증 — 레인 V
-- [~] T4.8 적합성 벡터: +10 완료(S3 6 + S4 4 → 40) — 남은 것: R9 조인+OR fulltext(이제 fulltext 인덱스 있음), 조인 두 그룹, 다단 조인 R8, computed 컬럼 `ST_Y`
+- [x] T4.8 적합성 벡터 +13(S3 6 + S4 4 + 조인 3: `join_fulltext_or` R9 fulltext OR 탐색, `join_two_groups` 조인 2개의 ON/WHERE, `join_multi_level` 2단 조인 별칭) → **43 × 3언어 × 3 DB 동일**
 - [ ] T4.9 `docs/examples/complex-query.md`를 실행 가능한 예제로 승격(3언어 실행, 플랜 덤프 비교)
 
 ---
@@ -132,7 +132,7 @@
 - [x] T6.2 E `dialect/sqlite`: `?`, `"quote"`, `LIKE … ESCAPE`, `INDEXED BY`, `ON CONFLICT`, `RETURNING`; `like_binary`·fulltext는 `OPERATOR_NOT_ALLOWED`로 거부(dialect `Supports`), 모든 스타일 app-side — 골든 통과
 - [x] T6.3 (위 S6 항목에서 완료: 3언어 호스트 AES/HEX/IP, `aes-vectors.json` 바이트 일치)
 - [x] T6.4 드라이버 추상 3언어(Go: pgx stdlib·modernc sqlite / Rust: sqlx feature + Pool enum + PG 파라미터 타입 서버 조회 / PHP: pdo_pgsql·pdo_sqlite + 타입 바인딩), `$n` 재번호, RETURNING, 에러 매핑, `[db].driver`, ormd `-dialect` 검사, hook `$SECRET`·`$NOW` 마스킹, 슬롯 `col_type`
-- [~] T6.5 로컬 PostgreSQL 17(`deploy/local-postgres.md`)·SQLite에 bench 시드 + AES 시더 적재; **3언어 × 3 DB 각 40/40 동일**(`vectors.postgres.json`·`vectors.sqlite.json`은 방언별 기록, 결과는 MySQL과 동일하고 `sql_dump`만 방언 텍스트)
+- [x] T6.5 로컬 PostgreSQL 17·SQLite에 bench 시드 + AES 시더; **3언어 × 3 DB 각 43/43 동일**(방언별 기대값 파일, 벡터 선언은 `vectors.json` 한 곳)
 - [x] T6.6 `ormgen import --driver postgres`(+`validate --driver postgres`): PG 타입·identity·GIN을 정규 표기로 되돌림 — orm_bench 임포트 결과가 손으로 쓴 매니페스트와 타입·관계·인덱스 0 차이(MySQL 전용 `unsigned`/`onupdate` 제외)
 - [x] T6.7 `docs/dialects.md` 차이표 + 레인 스펙 `docs/lanes/s6.md`
 

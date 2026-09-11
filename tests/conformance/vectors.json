@@ -1538,6 +1538,77 @@
       }
     },
     {
+      "name": "join_fulltext_or",
+      "chain": "Battle.joinService(Service.where(seqEq 7)).isCloseEq(false).and(w =\u003e w.nameWithDescriptionMatchBoolean('battle').or().service(s =\u003e s.nameEq('service-999'))).count — R9: the fulltext branch does the filtering (the nav branch is false); SQLite rejects fulltext, PostgreSQL uses tsquery, so each dialect records its own count",
+      "expect": {
+        "result": 857,
+        "statements": [
+          {
+            "binds": [
+              false,
+              "+battle*",
+              "service-999",
+              7
+            ],
+            "sql": "SELECT COUNT(*) FROM `battle` AS `a` INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq` WHERE `a`.`is_close` = ? AND (MATCH(`a`.`name`, `a`.`description`) AGAINST (? IN BOOLEAN MODE) OR (`service`.`name` = ?)) AND (`service`.`seq` = ?)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "join_two_groups",
+      "chain": "Battle.joinService(Service.on(nameEq).where(seqGt)).leftJoinUser(User.where(nameContains)).seqIn([...]).count — two joined entities with their own ON and WHERE groups",
+      "expect": {
+        "result": 1,
+        "statements": [
+          {
+            "binds": [
+              "service-7",
+              6,
+              106,
+              206,
+              406,
+              0,
+              "%user-4%"
+            ],
+            "sql": "SELECT COUNT(*) FROM `battle` AS `a` INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq` AND `service`.`name` = ? LEFT JOIN `user` AS `user` ON `a`.`user_seq` = `user`.`seq` WHERE `a`.`seq` IN (?, ?, ?, ?) AND (`service`.`seq` \u003e ?) AND (`user`.`name` LIKE ?)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "join_multi_level",
+      "chain": "Battle.selectNone().seqEq(6).joinServiceMember(ServiceMember.selectNone().joinUser(User.selectNone()).joinService(Service.selectNone())).one → toArray — two join levels, path-derived aliases",
+      "expect": {
+        "result": {
+          "seq": 6,
+          "service_member": {
+            "seq": 7,
+            "service": {
+              "seq": 7
+            },
+            "service_seq": 7,
+            "user": {
+              "seq": 7
+            },
+            "user_seq": 7
+          },
+          "service_member_seq": 7,
+          "service_module_seq": 7,
+          "service_seq": 7,
+          "user_seq": 7
+        },
+        "statements": [
+          {
+            "binds": [
+              6
+            ],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_module_seq` AS `a__service_module_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `service_member`.`seq` AS `service_member__seq`, `service_member`.`service_seq` AS `service_member__service_seq`, `service_member`.`user_seq` AS `service_member__user_seq`, `service_member__user`.`seq` AS `service_member__user__seq`, `service_member__service`.`seq` AS `service_member__service__seq` FROM `battle` AS `a` INNER JOIN `service_member` AS `service_member` ON `a`.`service_member_seq` = `service_member`.`seq` INNER JOIN `user` AS `service_member__user` ON `service_member`.`user_seq` = `service_member__user`.`seq` INNER JOIN `service` AS `service_member__service` ON `service_member`.`service_seq` = `service_member__service`.`seq` WHERE `a`.`seq` = ? LIMIT 0, 1"
+          }
+        ]
+      }
+    },
+    {
       "name": "codec_roundtrip",
       "chain": "transaction(tx =\u003e Battle.setName('conf-codec').set…().setJsonSetting(v).setJsonsTags(['x','y']).setBase64Extra(v).setSerializeData(v).setGzExtend(v).setIp('10.1.2.3').insert(tx)); Battle.selectJsonSetting().selectJsonsTags().selectBase64Extra().selectSerializeData().selectGzExtend().seqEq(seq).one; row.delete — styled columns round-trip (docs/codec.md); gz bind masked as $ZLIB",
       "expect": {

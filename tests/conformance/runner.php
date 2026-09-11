@@ -329,6 +329,24 @@ $run('predicate_named', fn() => [
     'started_after' => (new Battle)->startedAfter('2026-01-01 00:00:00')->serviceSeqEq(7)->count($db),
 ]);
 $run('raw_root', fn() => (new Battle)->raw('SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?', [7, false])->rawAll($db));
+$run('join_fulltext_or', fn() => (new Battle)
+    ->joinService((new Service)->where(fn(ServiceWhere $w) => $w->seqEq(7)))
+    ->isCloseEq(false)
+    ->and(fn(BattleWhere $w) => $w
+        ->nameWithDescriptionMatchBoolean('battle')
+        ->or()
+        ->service(fn(ServiceWhere $s) => $s->nameEq('service-999')))
+    ->count($db));
+$run('join_two_groups', fn() => (new Battle)
+    ->joinService((new Service)->on(fn(ServiceWhere $w) => $w->nameEq('service-7'))->where(fn(ServiceWhere $w) => $w->seqGt(0)))
+    ->leftJoinUser((new User)->where(fn(UserWhere $w) => $w->nameContains('user-4')))
+    ->seqIn([6, 106, 206, 406])
+    ->count($db));
+$run('join_multi_level', fn() => (new Battle)->selectNone()->seqEq(6)
+    ->joinServiceMember((new ServiceMember)->selectNone()
+        ->joinUser((new User)->selectNone())
+        ->joinService((new Service)->selectNone()))
+    ->one($db)->toArray());
 $run('codec_roundtrip', function () use ($db, $remask) {
     $value = ['a' => 1, 'b' => [1, 2, ['c' => '한글/slash']], 'd' => null, 'e' => true, 'f' => 1.5];
     $created = $db->transaction(fn(Tx $tx) => (new Battle)
