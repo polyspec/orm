@@ -491,15 +491,15 @@ func (q *Service) IfParentNameEq(v string) *Service    { q.q.IfParent("name", v)
 func (q *Service) IfParentIsCloseEq(v bool) *Service   { q.q.IfParent("is_close", v); return q }
 func (q *Service) IfParentIsDisplayEq(v bool) *Service { q.q.IfParent("is_display", v); return q }
 func (q *Service) IfParentIsAlldayEq(v bool) *Service  { q.q.IfParent("is_allday", v); return q }
-func (q *Service) IfParentTargetTeamPlayerCountEq(v int32) *Service {
+func (q *Service) IfParentTargetTeamPlayerCountEq(v int64) *Service {
 	q.q.IfParent("target_team_player_count", v)
 	return q
 }
-func (q *Service) IfParentSuccessCountEq(v int32) *Service {
+func (q *Service) IfParentSuccessCountEq(v int64) *Service {
 	q.q.IfParent("success_count", v)
 	return q
 }
-func (q *Service) IfParentPlayerCountEq(v int32) *Service { q.q.IfParent("player_count", v); return q }
+func (q *Service) IfParentPlayerCountEq(v int64) *Service { q.q.IfParent("player_count", v); return q }
 func (q *Service) IfParentReadCountEq(v int64) *Service   { q.q.IfParent("read_count", v); return q }
 func (q *Service) IfParentCoverUrlEq(v string) *Service   { q.q.IfParent("cover_url", v); return q }
 func (q *Service) IfParentUserSeqEq(v int64) *Service     { q.q.IfParent("user_seq", v); return q }
@@ -517,7 +517,7 @@ func (q *Service) IfParentIsSinglePlayEq(v bool) *Service {
 	q.q.IfParent("is_single_play", v)
 	return q
 }
-func (q *Service) IfParentLikeCountEq(v int32) *Service { q.q.IfParent("like_count", v); return q }
+func (q *Service) IfParentLikeCountEq(v int64) *Service { q.q.IfParent("like_count", v); return q }
 func (q *Service) IfParentAesHexEmailEq(v string) *Service {
 	q.q.IfParent("aes_hex_email", v)
 	return q

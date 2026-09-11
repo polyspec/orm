@@ -109,7 +109,7 @@
 ## 단계 5 — S5 하드닝·배포  [1.5주]  (T4.x 후, 대부분 **P**)
 
 ### 5-A 도구 — 레인 E
-- [ ] T5.10 **P** `ormgen import --dsn`(information_schema → `.mmd`, 멱등, 접두어→style, FK→관계선, 인덱스→`%%`, `CURRENT_TIMESTAMP%`, collation) → 150-table fixture 임포트 → T2.15 게이트 실행
+- [x] T5.10 `ormgen import --dsn`(information_schema → `.mmd`, 결정적·멱등, 이름 기반 FK 추론, 인덱스→`%%`, `=now`, 기존 파일의 라벨/lazy/bool/스타일/predicate 이어받기) — orm_bench 임포트 = 손으로 쓴 매니페스트와 타입·관계·인덱스 동일. **150-table fixture는 로컬에 없음** → T2.15(150테이블 게이트)는 사용자가 DB 접근을 주면 실행
 - [ ] T5.1 **P** `ormgen validate --dsn`(`.mmd` ↔ `schema.json` ↔ 라이브 DB) + 각 클라이언트 초기화 시 `schema_hash` 부팅 검사 1회(불일치 = 즉시 에러, 감시 없음)
 - [ ] T5.2 **P** `docs/errors.yaml` → 3언어 enum 생성(`CODEC_*` 포함), 드라이버 에러 원본 보존(Deadlock·DuplicateKey만 매핑)
 

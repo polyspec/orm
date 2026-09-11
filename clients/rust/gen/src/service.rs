@@ -311,9 +311,9 @@ impl Service {
     pub fn if_parent_is_close_eq(mut self, v: bool) -> Self { self.q.if_parent("is_close", v); self }
     pub fn if_parent_is_display_eq(mut self, v: bool) -> Self { self.q.if_parent("is_display", v); self }
     pub fn if_parent_is_allday_eq(mut self, v: bool) -> Self { self.q.if_parent("is_allday", v); self }
-    pub fn if_parent_target_team_player_count_eq(mut self, v: i32) -> Self { self.q.if_parent("target_team_player_count", v); self }
-    pub fn if_parent_success_count_eq(mut self, v: i32) -> Self { self.q.if_parent("success_count", v); self }
-    pub fn if_parent_player_count_eq(mut self, v: i32) -> Self { self.q.if_parent("player_count", v); self }
+    pub fn if_parent_target_team_player_count_eq(mut self, v: i64) -> Self { self.q.if_parent("target_team_player_count", v); self }
+    pub fn if_parent_success_count_eq(mut self, v: i64) -> Self { self.q.if_parent("success_count", v); self }
+    pub fn if_parent_player_count_eq(mut self, v: i64) -> Self { self.q.if_parent("player_count", v); self }
     pub fn if_parent_read_count_eq(mut self, v: i64) -> Self { self.q.if_parent("read_count", v); self }
     pub fn if_parent_cover_url_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("cover_url", v.into()); self }
     pub fn if_parent_user_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("user_seq", v); self }
@@ -322,7 +322,7 @@ impl Service {
     pub fn if_parent_service_member_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("service_member_seq", v); self }
     pub fn if_parent_uuid_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("uuid", v.into()); self }
     pub fn if_parent_is_single_play_eq(mut self, v: bool) -> Self { self.q.if_parent("is_single_play", v); self }
-    pub fn if_parent_like_count_eq(mut self, v: i32) -> Self { self.q.if_parent("like_count", v); self }
+    pub fn if_parent_like_count_eq(mut self, v: i64) -> Self { self.q.if_parent("like_count", v); self }
     pub fn if_parent_aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_email", v.into()); self }
     pub fn if_parent_aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_phone", v.into()); self }
 

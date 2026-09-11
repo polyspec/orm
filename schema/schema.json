@@ -1,5 +1,5 @@
 {
-  "schema_hash": "7b5909e7d91d7770",
+  "schema_hash": "01de65d5f6ace3cd",
   "order": [
     "battle",
     "user",
@@ -85,21 +85,24 @@
         },
         {
           "name": "target_team_player_count",
-          "type": "i32",
+          "type": "i64",
           "raw": "int",
-          "default": "0"
+          "default": "0",
+          "unsigned": true
         },
         {
           "name": "success_count",
-          "type": "i32",
+          "type": "i64",
           "raw": "int",
-          "default": "0"
+          "default": "0",
+          "unsigned": true
         },
         {
           "name": "player_count",
-          "type": "i32",
+          "type": "i64",
           "raw": "int",
-          "default": "0"
+          "default": "0",
+          "unsigned": true
         },
         {
           "name": "read_count",
@@ -183,9 +186,10 @@
         },
         {
           "name": "like_count",
-          "type": "i32",
+          "type": "i64",
           "raw": "int",
-          "default": "0"
+          "default": "0",
+          "unsigned": true
         },
         {
           "name": "aes_hex_email",
