@@ -441,12 +441,23 @@ final class Compat
     /**
      * The relation of $parent that a child selects: target = the child's entity, the
      * matchAWithB pair = (left, right) of the manifest relation, alias<Name> = the relation name
-     * when the pair fits several. No match given → the default pair (child pk, <child>_<pk>).
+     * when the pair fits several. No match given → the unique target relation, or the default pair when ambiguous.
      */
     public static function resolveRelation(string $parent, string $child, ?array $match, ?string $alias, ?string $kind): string
     {
         $rels = Registry::row($parent)::relations();
         if ($match === null) {
+            $target = array_filter($rels, fn(array $r): bool => $r['target'] === $child);
+            if (count($target) === 1) {
+                $name = array_key_first($target);
+                if ($kind !== null && $target[$name]['kind'] !== $kind) {
+                    $want = $kind === 'one' ? 'relation' : 'relations';
+                    $is = $target[$name]['kind'] === 'one' ? 'relation (1:1)' : 'relations (1:N)';
+                    $declared = implode(', ', array_map(fn(string $n, array $r) => "$n ({$r['kind']} {$r['target']} on {$r['left']} = {$r['right']})", array_keys($rels), $rels));
+                    throw new OrmException(Code::RELATION_UNKNOWN, "$parent.$name is $is, not $want; declared: $declared");
+                }
+                return $name;
+            }
             $pk = Registry::row($child)::pk();
             $match = [$pk, $child . '_' . $pk];
         }
