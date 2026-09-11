@@ -114,7 +114,13 @@ class W
 
     public function pred(string $col, string $op, mixed $v): void
     {
-        $this->g['items'][] = ['pred' => $this->conn() + ['column' => $col, 'op' => $op, 'p' => $this->req->p($v)]];
+        $this->predAt($col, $op, $this->req->p($v));
+    }
+
+    /** A predicate over an already-registered param (save reuses the PK assignment's slot as its where). */
+    public function predAt(string $col, string $op, int $p): void
+    {
+        $this->g['items'][] = ['pred' => $this->conn() + ['column' => $col, 'op' => $op, 'p' => $p]];
     }
 
     /** @param list<mixed> $vs */
@@ -238,6 +244,22 @@ class Q
         $this->node['order'][] = ['expr' => $frag, 'desc' => $desc];
     }
 
+    // ---- assignments: set[] (insert/update) and on_duplicate[] (insert) share one shape ----
+
+    private function assignValue(string $col, mixed $v): array
+    {
+        return $v === null ? ['column' => $col, 'null' => true] : ['column' => $col, 'p' => $this->req->p($v)];
+    }
+
+    private function assignExpr(string $col, string $frag, array $binds): array
+    {
+        $ps = [];
+        foreach ($binds as $v) {
+            $ps[] = $this->req->p($v);
+        }
+        return ['column' => $col, 'expr' => $frag, 'ps' => $ps];
+    }
+
     /** Encodes $v with the column's styles (docs/codec.md) before binding it. */
     public function setStyled(string $col, mixed $v, array $styles): void
     {
@@ -246,20 +268,12 @@ class Q
 
     public function set(string $col, mixed $v): void
     {
-        if ($v === null) {
-            $this->req->ir['set'][] = ['column' => $col, 'null' => true];
-            return;
-        }
-        $this->req->ir['set'][] = ['column' => $col, 'p' => $this->req->p($v)];
+        $this->req->ir['set'][] = $this->assignValue($col, $v);
     }
 
     public function setExpr(string $col, string $frag, array $binds): void
     {
-        $ps = [];
-        foreach ($binds as $v) {
-            $ps[] = $this->req->p($v);
-        }
-        $this->req->ir['set'][] = ['column' => $col, 'expr' => $frag, 'ps' => $ps];
+        $this->req->ir['set'][] = $this->assignExpr($col, $frag, $binds);
     }
 
     public function plus(string $col, int|float $v): void
@@ -270,6 +284,55 @@ class Q
     public function minus(string $col, int|float $v): void
     {
         $this->req->ir['set'][] = ['column' => $col, 'minus_p' => $this->req->p($v)];
+    }
+
+    public function onDuplicateStyled(string $col, mixed $v, array $styles): void
+    {
+        $this->onDuplicate($col, Codec::encode($styles, $v));
+    }
+
+    public function onDuplicate(string $col, mixed $v): void
+    {
+        $this->req->ir['on_duplicate'][] = $this->assignValue($col, $v);
+    }
+
+    public function onDuplicateExpr(string $col, string $frag, array $binds): void
+    {
+        $this->req->ir['on_duplicate'][] = $this->assignExpr($col, $frag, $binds);
+    }
+
+    public function onDuplicatePlus(string $col, int|float $v): void
+    {
+        $this->req->ir['on_duplicate'][] = ['column' => $col, 'plus_p' => $this->req->p($v)];
+    }
+
+    public function onDuplicateMinus(string $col, int|float $v): void
+    {
+        $this->req->ir['on_duplicate'][] = ['column' => $col, 'minus_p' => $this->req->p($v)];
+    }
+
+    /**
+     * Copies the set[] assignments made so far into on_duplicate, except $skip (the PK/auto
+     * columns the engine refuses). Each value is registered again as its own param, exactly as
+     * calling the onDuplicateSet* methods would; set* calls made after this one are not mirrored.
+     * @param list<string> $skip
+     */
+    public function onDuplicateAll(array $skip): void
+    {
+        foreach ($this->req->ir['set'] ?? [] as $a) {
+            if (in_array($a['column'], $skip, true)) {
+                continue;
+            }
+            foreach (['p', 'plus_p', 'minus_p'] as $k) {
+                if (isset($a[$k])) {
+                    $a[$k] = $this->req->p($this->req->params[$a[$k]]);
+                }
+            }
+            if (isset($a['ps'])) {
+                $a['ps'] = array_map(fn(int $i) => $this->req->p($this->req->params[$i]), $a['ps']);
+            }
+            $this->req->ir['on_duplicate'][] = $a;
+        }
     }
 
     public function ifParent(string $col, mixed $v): void
@@ -322,6 +385,43 @@ class Q
         $plan = $this->plan('insert');
         [$id] = $ex->write($plan['steps'][0], $this->req->params, true, false);
         return $id;
+    }
+
+    /** UPDATE set[] / DELETE by the query's where (the engine rejects a missing where). @return int affected rows */
+    public function runWrite(Db $ex, string $kind): int
+    {
+        $plan = $this->plan($kind);
+        [, $affected] = $ex->write($plan['steps'][0], $this->req->params, false, false);
+        return $affected;
+    }
+
+    /**
+     * save: when the draft sets the PK, UPDATE the other set[] columns WHERE pk = that value
+     * (the assignment's param slot becomes the where); otherwise INSERT.
+     * @return array{0: bool, 1: mixed} whether it was an update, and the key to re-read by (the PK value, or the insert id)
+     */
+    public function runSave(Db $ex, string $pk): array
+    {
+        foreach ($this->req->ir['set'] ?? [] as $i => $a) {
+            if ($a['column'] !== $pk) {
+                continue;
+            }
+            if (!isset($a['p'])) {
+                throw new OrmException('IR_INVALID', "save: $pk must be set to a value");
+            }
+            unset($this->req->ir['set'][$i]);
+            $this->req->ir['set'] = array_values($this->req->ir['set']);
+            $this->w()->predAt($pk, 'eq', $a['p']);
+            $this->runWrite($ex, 'update');
+            return [true, $this->req->params[$a['p']]];
+        }
+        return [false, $this->runInsert($ex)];
+    }
+
+    /** The main step's SQL and resolved binds without executing (the plan is compiled and cached as usual). */
+    public function runSql(Db $ex): array
+    {
+        return $ex->sqlOf($this->plan('all')['steps'][0], $this->req->params);
     }
 }
 
