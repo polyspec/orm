@@ -17,6 +17,7 @@ use Orm\Config;
 use Orm\Db;
 use Orm\Orm;
 use Orm\OrmException;
+use Orm\Q;
 use Orm\Tx;
 
 $sock = $argv[1] ?? die("usage: integration.php /abs/ormd.sock /abs/schema.json\n");
@@ -217,6 +218,53 @@ check($a2->getName() === "dl-php-$last" && $b2->getName() === "dl-php-$last", 'f
 $rowA->delete($db);
 $rowB->delete($db);
 check((new Battle)->seqIn([$rowA->getSeq(), $rowB->getSeq()])->count($db) === 0, 'deadlock rows cleaned up');
+
+// ---- S4: countDistinct/min/max, having, named predicates, raw root ----
+check((new Battle)->serviceSeqEq(7)->minSeq($db) === 6 && (new Battle)->serviceSeqEq(7)->maxSeq($db) === 99906, 'min/max return the column type (int)');
+check((new Battle)->seqEq(0)->minSeq($db) === null && (new Battle)->seqEq(0)->maxStartDt($db) === null, 'min/max are null when no rows match');
+check(preg_match('/^\d{4}-\d\d-\d\d /', (string) (new Battle)->serviceSeqEq(7)->minStartDt($db)) === 1, 'min of a datetime column is its string form');
+check((new Battle)->seqEq(0)->maxIp($db) === null && (new Battle)->seqEq(0)->countDistinctIp($db) === 0, 'ip-styled column has the aggregate terminals (engine allows ip); null/0 when no rows');
+$du = (new Battle)->serviceSeqEq(7)->countDistinctUserSeq($db);
+check($du > 0 && $du <= 1000 && (new Battle)->seqEq(0)->countDistinctUserSeq($db) === 0, 'countDistinct is an int, 0 when no rows');
+$groups = (new Battle)->serviceSeqEq(7)->groupByUserSeq()->count($db);
+check($groups === $du, 'count with groupBy is the number of groups');
+$multi = (new Battle)->serviceSeqEq(7)->groupByUserSeq()->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->count($db);
+$single = (new Battle)->serviceSeqEq(7)->groupByUserSeq()->having(fn(BattleWhere $w) => $w->expr('COUNT(*) = ?', [1]))->count($db);
+check($multi + $single === $groups && $multi > 0, 'having filters the groups (' . $multi . ' multi + ' . $single . ' single)');
+check(str_contains((new Battle)->serviceSeqEq(7)->groupByUserSeq()->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->sql($db)['sql'], ' HAVING '), 'having is rendered');
+try {
+    (new Battle)->serviceSeqEq(7)->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->count($db);
+    check(false, 'having without groupBy should throw');
+} catch (OrmException $e) {
+    check($e->code_ === 'IR_INVALID', 'having without groupBy → IR_INVALID');
+}
+try {
+    (new Q('battle'))->runScalar($db, 'min', 'aes_hex_email');
+    check(false, 'min on a styled column should throw');
+} catch (OrmException $e) {
+    check($e->code_ === 'OPERATOR_NOT_ALLOWED', 'min on a styled column → OPERATOR_NOT_ALLOWED (no method is generated for it)');
+}
+
+$vis = (new Battle)->visible()->serviceSeqEq(7)->count($db);
+check($vis > 0 && $vis === (new Battle)->serviceSeqEq(7)->isCloseEq(false)->isDisplayEq(true)->count($db), 'visible() = is_close = 0 AND is_display = 1');
+$since = '2026-01-01 00:00:00';
+$sa = (new Battle)->startedAfter($since)->serviceSeqEq(7)->count($db);
+check($sa === (new Battle)->startDtGt($since)->serviceSeqEq(7)->count($db), 'startedAfter($v) binds its one argument');
+$either = (new Battle)->serviceSeqEq(7)->and(fn(BattleWhere $w) => $w->visible()->or()->startedAfter($since))->count($db);
+check($either >= max($vis, $sa) && $either <= $vis + $sa, 'named predicates on the Where builder, with or()');
+check(str_contains((new Battle)->visible()->sql($db)['sql'], '(`a`.`is_close` = 0 AND `a`.`is_display` = 1)'), 'predicate fragment reaches the SQL with its columns alias-resolved');
+
+$raw = (new Battle)->raw('SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?', [7, 0])->rawAll($db);
+check(count($raw) === 1 && array_keys($raw[0]) === ['n', 'm'] && $raw[0]['n'] === (new Battle)->serviceSeqEq(7)->isCloseEq(false)->count($db) && is_int($raw[0]['m']), 'rawAll: one row keyed by column name, ints as ints');
+$raw2 = (new Battle)->raw('SELECT seq, name FROM {table} WHERE seq IN (?, ?) ORDER BY seq', [42, 6])->rawAll($db);
+check(count($raw2) === 2 && $raw2[0]['seq'] === 6 && $raw2[1]['name'] === 'battle-42', 'rawAll: rows in statement order, binds in order');
+check((new Battle)->raw('SELECT seq FROM {table} WHERE seq = ?', [0])->rawAll($db) === [], 'rawAll: empty list when nothing matches');
+try {
+    (new Battle)->raw('SELECT seq FROM {table} WHERE seq = ?', [])->rawAll($db);
+    check(false, 'raw with a placeholder/bind mismatch should throw');
+} catch (OrmException $e) {
+    check($e->code_ === 'IR_INVALID', 'raw placeholder/bind mismatch → IR_INVALID');
+}
 
 // ---- error surface ----
 try {
