@@ -183,41 +183,41 @@ check($g1->toArray() === $g2->toArray() && str_starts_with((string) $g1->first()
 // ---- 6. relation / relations with match<A>With<B> + alias ----
 same('relation(match + alias) → relationRel',
     Battle::query()->relation(User::query()->matchUserSeqWithSeq()->aliasUser())->andServiceSeq(7)->orderBySeqAsc()->limit(0, 3),
-    Battle::query()->relationUser(User::query())->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 3), 'all', $gets($db), $all($db));
-same('relationAWithB(child) name form', Battle::query()->relationUserSeqWithSeq(User::query())->andSeq(42), Battle::query()->relationUser(User::query())->seqEq(42), 'one', fn(Q $q) => $q->using($db)->get(), fn(Q $q) => $q->using($db)->one());
+    Battle::query()->relation(User::query())->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 3), 'all', $gets($db), $all($db));
+same('relationAWithB(child) name form', Battle::query()->relationUserSeqWithSeq(User::query())->andSeq(42), Battle::query()->relation(User::query())->seqEq(42), 'one', fn(Q $q) => $q->using($db)->get(), fn(Q $q) => $q->using($db)->one());
 same('relation → relations nesting with keyName/groupLimit/orderBy',
     Battle::query()->relation(Service::query()->matchServiceSeqWithSeq()->aliasService()
         ->relations(ServiceMember::query()->matchSeqWithServiceSeq()->aliasMembers()->orderBySeqDesc()->groupLimit(3)->keyNameUserSeq()))
         ->andServiceSeq(7)->orderBySeqAsc()->limit(0, 4),
-    Battle::query()->relationService(Service::query()
-        ->relationsMembers(ServiceMember::query()->orderBySeqDesc()->limitPerParent(3)->keyByUserSeq()))
+    Battle::query()->relation(Service::query()
+        ->relations(ServiceMember::query()->orderBySeqDesc()->limitPerParent(3)->keyByUserSeq()))
         ->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 4), 'all', $gets($db), $all($db));
 $rows = Battle::query()->relation(User::query()->matchUserSeqWithSeq()->aliasUser())->using($db)->getsByServiceSeqAndSeq(7, [6, 106]);
 check($rows[6]->getUserModel()->getName() === 'user-' . $rows[6]->getUserSeq() && $rows[6]->getUser() === $rows[6]->getUserModel(), 'get<Rel>Model() reaches the relation');
 same('parentNode → flatten',
     ServiceMember::query()->andServiceSeq(7)->orderBySeqAsc()->limit(0, 2)->relation(User::query()->matchUserSeqWithSeq()->parentNode()),
-    ServiceMember::query()->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 2)->relationUser(User::query()->flatten()), 'all', $gets($db), $all($db));
+    ServiceMember::query()->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 2)->relation(User::query()->flatten()), 'all', $gets($db), $all($db));
 same('possibleX(v) → ifParentXEq',
     Battle::query()->andSeq([7, 8, 14])->orderBySeqAsc()->relation(User::query()->possibleIsClose(true)->matchUserSeqWithSeq()),
-    Battle::query()->seqIn([7, 8, 14])->orderBySeqAsc()->relationUser(User::query()->ifParentIsCloseEq(true)), 'all', $gets($db), $all($db));
+    Battle::query()->seqIn([7, 8, 14])->orderBySeqAsc()->relation(User::query()->ifParentIsCloseEq(true)), 'all', $gets($db), $all($db));
 same('matchAWithB(false) → dropChildKey; deleteLock → noCascadeDelete',
     Service::query()->andSeq(7)->relations(ServiceMember::query()->matchSeqWithServiceSeq(false)->keyNameUserSeq()->deleteLock()->orderBySeqAsc()->groupLimit(2)),
-    Service::query()->seqEq(7)->relationsMembers(ServiceMember::query()->noCascadeDelete()->orderBySeqAsc()->limitPerParent(2)->keyByUserSeq()->dropChildKey()), 'one',
+    Service::query()->seqEq(7)->relations(ServiceMember::query()->noCascadeDelete()->orderBySeqAsc()->limitPerParent(2)->keyByUserSeq()->dropChildKey()), 'one',
     fn(Q $q) => $q->using($db)->get(), fn(Q $q) => $q->using($db)->one());
 same('matchAll<A>With<B> → selectAll + match',
     Battle::query()->andSeq(42)->relation(User::query()->matchAllUserSeqWithSeq()),
-    Battle::query()->seqEq(42)->relationUser(User::query()->selectAll()), 'one', fn(Q $q) => $q->using($db)->get(), fn(Q $q) => $q->using($db)->one());
+    Battle::query()->seqEq(42)->relation(User::query()->selectAll()), 'one', fn(Q $q) => $q->using($db)->get(), fn(Q $q) => $q->using($db)->one());
 
 // ---- 7. join<A>With<B> / leftJoin<A>With<B>: and* on the child = where(fn), on* = on(fn) ----
 same('join child and* → where(fn); leftJoin child on* → on(fn); navigation stays canonical',
     Battle::query()->joinServiceSeqWithSeq(Service::query()->andName('service-7'))->leftJoinUserSeqWithSeq(User::query()->onLkName('user'))->andIsClose(0)
         ->and(fn(BattleWhere $w) => $w->isDisplayEq(true)->or()->service(fn(ServiceWhere $s) => $s->seqGt(1000))),
-    Battle::query()->joinService(Service::query()->where(fn(ServiceWhere $w) => $w->nameEq('service-7')))->leftJoinUser(User::query()->on(fn(UserWhere $w) => $w->nameLike('%user%')))->isCloseEq(false)
+    Battle::query()->join(Service::query()->where(fn(ServiceWhere $w) => $w->nameEq('service-7')))->leftJoin(User::query()->on(fn(UserWhere $w) => $w->nameLike('%user%')))->isCloseEq(false)
         ->and(fn(BattleWhere $w) => $w->isDisplayEq(true)->or()->service(fn(ServiceWhere $s) => $s->seqGt(1000))),
     'count', $getCount($db), $count($db));
 same('onAOrB compound in ON, relation off a join child',
     Battle::query()->andSeq([6, 106])->orderBySeqAsc()->joinServiceSeqWithSeq(Service::query()->onSeqOrName(7, 'x')->relations(ServiceModule::query()->matchSeqWithServiceSeq()->aliasModules())),
-    Battle::query()->seqIn([6, 106])->orderBySeqAsc()->joinService(Service::query()->on(fn(ServiceWhere $w) => $w->seqEq(7)->or()->nameEq('x'))->relationsModules(ServiceModule::query())),
+    Battle::query()->seqIn([6, 106])->orderBySeqAsc()->join(Service::query()->on(fn(ServiceWhere $w) => $w->seqEq(7)->or()->nameEq('x'))->relations(ServiceModule::query())),
     'all', $gets($db), $all($db));
 
 // ---- 8. columns: addColumn* / addAllColumns / removeAllColumns / removeColumn* ----
@@ -307,7 +307,7 @@ $svc = $db->transaction(function (Tx $tx) {
 });
 $l1 = Service::query()->relations(ServiceMember::query()->matchSeqWithServiceSeq()->aliasMembers()->orderBySeqAsc()->relation(User::query()->matchUserSeqWithSeq()))
     ->relations(ServiceModule::query()->matchSeqWithServiceSeq()->deleteLock());
-$l2 = Service::query()->relationsMembers(ServiceMember::query()->orderBySeqAsc()->relationUser(User::query()))->relationsModules(ServiceModule::query()->noCascadeDelete());
+$l2 = Service::query()->relations(ServiceMember::query()->orderBySeqAsc()->relation(User::query()))->relations(ServiceModule::query()->noCascadeDelete());
 $loaded = $l1->using($db)->getBySeq($svc->getSeq());
 $l2->seqEq($svc->getSeq());
 same('relation tree with deleteLock', $l1, $l2, 'one');

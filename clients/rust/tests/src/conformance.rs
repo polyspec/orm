@@ -156,8 +156,8 @@ async fn main() {
     }.await);
     run!("interface_attach", async {
         let child=user::query().seq_in(vec![1,2]).and(|w|w.name("user-1").or().name("user-2"));
-        let a=battle::query().service_seq(7).join_user(&child);
-        let b=battle::query().service_seq(8).join_user(&child);
+        let a=battle::query().service_seq(7).join(&child);
+        let b=battle::query().service_seq(8).join(&child);
         let child=child.name("later");
         Ok(json!({"a":a.q.req.ir.query,"b":b.q.req.ir.query,"child":child.q.req.ir.query,
             "a_params":a.q.req.params.iter().map(|p|norm(p,&Mask::default())).collect::<Vec<_>>(),
@@ -175,7 +175,7 @@ async fn main() {
     run!("interface_error", async {
         let mut child=user::query();
         child.q.defer_err(orm::codec::encode(&["unsupported"],Some(&json!("x"))).unwrap_err());
-        let mut q=battle::query().using(&db).join_user(child);
+        let mut q=battle::query().using(&db).join(child);
         let first=q.sql().await.err().map(|e|e.code().to_owned());let second=q.sql().await.err().map(|e|e.code().to_owned());
         Ok(json!([first,second]))
     }.await);
@@ -237,15 +237,15 @@ async fn main() {
         let value=observed.lock().unwrap().take().unwrap();Ok(value)
     }.await);
     run!("interface_nested_keys", async {
-        let mut r=service::query().using(&db).relations_members(service_member::query().order_by_seq_asc().limit_per_parent(1)).get_by_seq(7).await?.unwrap();
+        let mut r=service::query().using(&db).relations(service_member::query().order_by_seq_asc().limit_per_parent(1)).get_by_seq(7).await?.unwrap();
         let members=r.members_mut();let first=members.first().unwrap().clone();members.put(orm::Key::I(1),first.clone());members.put(orm::Key::S("1".into()),first);
         r.to_map()
     }.await);
     run!("unbound_terminal", async { Ok(json!(battle::query().get_count_by_service_seq(7).await?)) }.await);
     run!("bound_count_finder", async {
         Ok(json!(battle::query().using(&db)
-            .join_service(service::query().where_(|w| w.name("service-7")))
-            .relation_user(user::query()).get_count_by_service_seq(7).await?))
+            .join(service::query().where_(|w| w.name("service-7")))
+            .relation(user::query()).get_count_by_service_seq(7).await?))
     }.await);
     run!("finished_transaction", async {
         let mut q = db.transaction(|tx| async move { Ok(battle::query().using(&tx)) }).await?;
@@ -261,7 +261,7 @@ async fn main() {
                 s.set_name("conf-bound").update().await?;
                 let m = service_member::query().using(&tx).set_service_seq(s.seq).set_user_seq(1).insert().await?.unwrap();
                 let parent = service::query().using(db).using(&tx)
-                    .relations_members(service_member::query().using(db).join_user(user::query())).get_by_seq(s.seq).await?.unwrap();
+                    .relations(service_member::query().using(db).join(user::query())).get_by_seq(s.seq).await?.unwrap();
                 if parent.name != "conf-bound" || parent.members().len() != 1 {
                     return Err(orm::Error::Config("bound relation missing".into()));
                 }
@@ -320,22 +320,22 @@ async fn main() {
     }.await);
     run!("join_nav_count", async {
         Ok(json!(battle::query()
-            .join_service(service::query().where_(|w| w.name("service-7")))
-            .left_join_user(user::query().on(|w| w.name_contains("user")))
+            .join(service::query().where_(|w| w.name("service-7")))
+            .left_join(user::query().on(|w| w.name_contains("user")))
             .is_close(false)
             .and(|w| w.is_display(true).or().service(|s| s.seq_gt(1000)))
             .using(&db).get_count()
             .await?))
     }.await);
     run!("join_row", async {
-        let b = battle::query().join_service(service::query().where_(|w| w.seq(7))).seq(6).using(&db).get().await?.unwrap();
+        let b = battle::query().join(service::query().where_(|w| w.seq(7))).seq(6).using(&db).get().await?.unwrap();
         let s = b.service().unwrap();
         Ok(json!({"seq": b.seq, "service": {"seq": s.seq, "name": s.name}}))
     }.await);
     run!("root_finder_join_relation", async {
         let c = battle::query().select_none()
-            .join_service(service::query().where_(|w| w.name("service-7")))
-            .relation_user(user::query()).order_by_seq_asc().limit(0, 2)
+            .join(service::query().where_(|w| w.name("service-7")))
+            .relation(user::query()).order_by_seq_asc().limit(0, 2)
             .using(&db).gets_by_service_seq(7).await?;
         Ok(Value::Array(c.iter().map(|(_, b)| json!({
             "seq": b.seq,
@@ -385,7 +385,7 @@ async fn main() {
 
     run!("eq_col_where", async {
         Ok(keys(&battle::query()
-            .join_service(service::query().where_(|w| w.seq_eq_col(battle::cols::service_module_seq())))
+            .join(service::query().where_(|w| w.seq_eq_col(battle::cols::service_module_seq())))
             .seq_in(vec![1, 2, 10]).order_by_seq_asc().using(&db).gets().await?))
     }.await);
     run!("expr_where", async { Ok(json!(battle::query().service_seq(7).expr("LENGTH(`name`) > ?", vec![8.into()]).using(&db).get_count().await?)) }.await);
@@ -395,25 +395,25 @@ async fn main() {
     }.await);
     run!("relation_four_levels", async {
         Ok(battle::query().select_none().seq(7)
-            .relation_service(service::query()
-                .relations_members(service_member::query().order_by_seq_asc().limit_per_parent(2)
-                    .relation_user(user::query()
-                        .relations_battles(battle::query().select_none().order_by_seq_asc().limit_per_parent(1)))))
+            .relation(service::query()
+                .relations(service_member::query().order_by_seq_asc().limit_per_parent(2)
+                    .relation(user::query()
+                        .relations(battle::query().select_none().order_by_seq_asc().limit_per_parent(1)))))
             .using(&db).get().await?.unwrap().to_map()?)
     }.await);
-    run!("relation_one_ordered", async { Ok(battle::query().select_none().seq(7).relation_service(service::query().order_by_seq_desc()).using(&db).get().await?.unwrap().to_map()?) }.await);
+    run!("relation_one_ordered", async { Ok(battle::query().select_none().seq(7).relation(service::query().order_by_seq_desc()).using(&db).get().await?.unwrap().to_map()?) }.await);
     run!("relation_if_parent", async {
-        let c = battle::query().select_none().seq_in(vec![7, 8, 14]).order_by_seq_asc().relation_user(user::query().if_parent_is_close_eq(true)).using(&db).gets().await?;
+        let c = battle::query().select_none().seq_in(vec![7, 8, 14]).order_by_seq_asc().relation(user::query().if_parent_is_close_eq(true)).using(&db).gets().await?;
         Ok(Value::Array(c.iter().map(|(_, b)| b.to_map()).collect::<orm::Result<Vec<_>>>()?))
     }.await);
-    run!("relation_empty_parents", async { Ok(keys(&battle::query().seq(0).relation_user(user::query()).using(&db).gets().await?)) }.await);
-    run!("relation_off_join", async { Ok(battle::query().select_none().seq(8).join_service(service::query().relations_modules(service_module::query())).using(&db).get().await?.unwrap().to_map()?) }.await);
+    run!("relation_empty_parents", async { Ok(keys(&battle::query().seq(0).relation(user::query()).using(&db).gets().await?)) }.await);
+    run!("relation_off_join", async { Ok(battle::query().select_none().seq(8).join(service::query().relations(service_module::query())).using(&db).get().await?.unwrap().to_map()?) }.await);
     run!("paginate_relations", async {
-        let p = battle::query().select_none().service_seq(7).order_by_seq_asc().relation_user(user::query()).using(&db).paginate(1, 3).await?;
+        let p = battle::query().select_none().service_seq(7).order_by_seq_asc().relation(user::query()).using(&db).paginate(1, 3).await?;
         Ok(json!({"total": p.total, "items": p.items.iter().map(|(_, b)| b.to_map()).collect::<orm::Result<Vec<_>>>()?}))
     }.await);
-    run!("key_by_column", async { Ok(service::query().seq(7).relations_members(service_member::query().order_by_seq_asc().limit_per_parent(3).key_by_user_seq()).using(&db).get().await?.unwrap().to_map()?) }.await);
-    run!("key_by_unselected", async { Ok(service::query().seq(7).relations_modules(service_module::query().select_none().key_by_name()).using(&db).get().await?.unwrap().to_map()?) }.await);
+    run!("key_by_column", async { Ok(service::query().seq(7).relations(service_member::query().order_by_seq_asc().limit_per_parent(3).key_by_user_seq()).using(&db).get().await?.unwrap().to_map()?) }.await);
+    run!("key_by_unselected", async { Ok(service::query().seq(7).relations(service_module::query().select_none().key_by_name()).using(&db).get().await?.unwrap().to_map()?) }.await);
     run!("types_roundtrip", async {
         let dt = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_micro_opt(12, 34, 56, 123456).unwrap();
         let created = db.transaction(|tx| async move {
@@ -435,13 +435,13 @@ async fn main() {
     }.await);
     run!("key_by_fn_to_array", async {
         let c = service_member::query().service_seq(7).order_by_seq_asc().limit(0, 2)
-            .relation_user(user::query().flatten())
+            .relation(user::query().flatten())
             .key_by_fn(|m| Key::S(format!("u{}", m.user_seq)))
             .using(&db).gets().await?;
         Ok(Value::Array(c.iter().map(|(k, m)| Ok(json!([k.to_string(), m.to_map()?]))).collect::<orm::Result<Vec<_>>>()?))
     }.await);
     run!("drop_child_key_to_array", async {
-        let u = user::query().seq(5).relations_battles(battle::query().select_none().order_by_seq_asc().limit_per_parent(2).drop_child_key()).using(&db).get().await?.unwrap();
+        let u = user::query().seq(5).relations(battle::query().select_none().order_by_seq_asc().limit_per_parent(2).drop_child_key()).using(&db).get().await?.unwrap();
         u.to_map()
     }.await);
     let fks = |q: Battle| q.set_user_seq(1).set_service_seq(999).set_service_module_seq(1).set_service_member_seq(1).set_start_dt(start).set_end_dt(end);
@@ -498,8 +498,8 @@ async fn main() {
         }).await?;
         mask_created(&mask, &log, Mask { seqs: vec![s, m1, m2, md], ts: None });
         service::query().seq(s)
-            .relations_members(service_member::query().order_by_seq_asc())
-            .relations_modules(service_module::query().no_cascade_delete())
+            .relations(service_member::query().order_by_seq_asc())
+            .relations(service_module::query().no_cascade_delete())
             .using(&db).get().await?.unwrap()
             .using(&db).delete_cascade().await?;
         let members_left = service_member::query().service_seq(s).using(&db).get_count().await?;
@@ -536,23 +536,23 @@ async fn main() {
     }.await);
     run!("join_fulltext_or", async {
         Ok(json!(battle::query()
-            .join_service(service::query().where_(|w| w.seq(7)))
+            .join(service::query().where_(|w| w.seq(7)))
             .is_close(false)
             .and(|w| w.name_with_description_match_boolean("battle").or().service(|s| s.name("service-999")))
             .using(&db).get_count().await?))
     }.await);
     run!("join_two_groups", async {
         Ok(json!(battle::query()
-            .join_service(service::query().on(|w| w.name("service-7")).where_(|w| w.seq_gt(0)))
-            .left_join_user(user::query().where_(|w| w.name_contains("user-4")))
+            .join(service::query().on(|w| w.name("service-7")).where_(|w| w.seq_gt(0)))
+            .left_join(user::query().where_(|w| w.name_contains("user-4")))
             .seq_in(vec![6, 106, 206, 406])
             .using(&db).get_count().await?))
     }.await);
     run!("join_multi_level", async {
         Ok(battle::query().select_none().seq(6)
-            .join_service_member(service_member::query().select_none()
-                .join_user(user::query().select_none())
-                .join_service(service::query().select_none()))
+            .join(service_member::query().select_none()
+                .join(user::query().select_none())
+                .join(service::query().select_none()))
             .using(&db).get().await?.unwrap().to_map()?)
     }.await);
     run!("codec_roundtrip", async {

@@ -229,8 +229,8 @@ func main() {
 	})
 	run("interface_attach", func() (any, error) {
 		child := gen.User().SeqIn([]int64{1, 2}).And(func(w *gen.UserWhere) { w.Name("user-1").Or().Name("user-2") })
-		a := gen.Battle().ServiceSeq(7).JoinUser(child)
-		b := gen.Battle().ServiceSeq(8).JoinUser(child)
+		a := gen.Battle().ServiceSeq(7).Join(child)
+		b := gen.Battle().ServiceSeq(8).Join(child)
 		child.Name("later")
 		return map[string]any{"a": a.Req().IR.Query, "b": b.Req().IR.Query, "child": child.Req().IR.Query,
 			"a_params": a.Req().Params, "b_params": b.Req().Params, "child_params": child.Req().Params}, nil
@@ -256,7 +256,7 @@ func main() {
 	run("interface_error", func() (any, error) {
 		child := gen.User()
 		_, child.Req().Err = orm.Encode([]string{"unsupported"}, "x")
-		q := gen.Battle().Using(ctx, db).JoinUser(child)
+		q := gen.Battle().Using(ctx, db).Join(child)
 		_, first := q.SQL()
 		_, second := q.SQL()
 		return []any{code(first), code(second)}, nil
@@ -382,7 +382,7 @@ func main() {
 		return result, nil
 	})
 	run("interface_nested_keys", func() (any, error) {
-		r, err := gen.Service().Using(ctx, db).RelationsMembers(gen.ServiceMember().OrderBySeqAsc().LimitPerParent(1)).GetBySeq(7)
+		r, err := gen.Service().Using(ctx, db).Relations(gen.ServiceMember().OrderBySeqAsc().LimitPerParent(1)).GetBySeq(7)
 		if err != nil {
 			return nil, err
 		}
@@ -397,8 +397,8 @@ func main() {
 	})
 	run("bound_count_finder", func() (any, error) {
 		return gen.Battle().Using(ctx, db).
-			JoinService(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
-			RelationUser(gen.User()).GetCountByServiceSeq(7)
+			Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
+			Relation(gen.User()).GetCountByServiceSeq(7)
 	})
 	run("finished_transaction", func() (any, error) {
 		q, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleQuery, error) {
@@ -429,7 +429,7 @@ func main() {
 				return false, err
 			}
 			parent, err := gen.Service().Using(ctx, db).Using(ctx, tx).
-				RelationsMembers(gen.ServiceMember().Using(ctx, db).JoinUser(gen.User())).GetBySeq(s.Seq)
+				Relations(gen.ServiceMember().Using(ctx, db).Join(gen.User())).GetBySeq(s.Seq)
 			if err != nil {
 				return false, err
 			}
@@ -539,15 +539,15 @@ func main() {
 	})
 	run("join_nav_count", func() (any, error) {
 		return gen.Battle().
-			JoinService(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
-			LeftJoinUser(gen.User().On(func(w *gen.UserWhere) { w.NameContains("user") })).
+			Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
+			LeftJoin(gen.User().On(func(w *gen.UserWhere) { w.NameContains("user") })).
 			IsClose(false).
 			And(func(w *gen.BattleWhere) {
 				w.IsDisplay(true).Or().Service(func(s *gen.ServiceWhere) { s.SeqGt(1000) })
 			}).Using(ctx, db).GetCount()
 	})
 	run("join_row", func() (any, error) {
-		b, err := gen.Battle().JoinService(gen.Service().Where(func(w *gen.ServiceWhere) { w.Seq(7) })).Seq(6).Using(ctx, db).Get()
+		b, err := gen.Battle().Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.Seq(7) })).Seq(6).Using(ctx, db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -555,8 +555,8 @@ func main() {
 	})
 	run("root_finder_join_relation", func() (any, error) {
 		c, err := gen.Battle().SelectNone().
-			JoinService(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
-			RelationUser(gen.User()).OrderBySeqAsc().Limit(0, 2).Using(ctx, db).GetsByServiceSeq(7)
+			Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
+			Relation(gen.User()).OrderBySeqAsc().Limit(0, 2).Using(ctx, db).GetsByServiceSeq(7)
 		if err != nil {
 			return nil, err
 		}
@@ -629,7 +629,7 @@ func main() {
 	run("eq_col_where", func() (any, error) {
 		// service.seq = a.service_module_seq → battles 1..9 only (seq 10 has service 11, module 1)
 		c, err := gen.Battle().
-			JoinService(gen.Service().Where(func(w *gen.ServiceWhere) { w.SeqEqCol(gen.BattleCols.ServiceModuleSeq) })).
+			Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.SeqEqCol(gen.BattleCols.ServiceModuleSeq) })).
 			SeqIn([]int64{1, 2, 10}).OrderBySeqAsc().Using(ctx, db).Gets()
 		if err != nil {
 			return nil, err
@@ -649,10 +649,10 @@ func main() {
 	run("relation_four_levels", func() (any, error) {
 		// battle → service → members (2 per service) → user → battles (1 per user): four relation steps
 		b, err := gen.Battle().SelectNone().Seq(7).
-			RelationService(gen.Service().
-				RelationsMembers(gen.ServiceMember().OrderBySeqAsc().LimitPerParent(2).
-					RelationUser(gen.User().
-						RelationsBattles(gen.Battle().SelectNone().OrderBySeqAsc().LimitPerParent(1))))).Using(ctx, db).Get()
+			Relation(gen.Service().
+				Relations(gen.ServiceMember().OrderBySeqAsc().LimitPerParent(2).
+					Relation(gen.User().
+						Relations(gen.Battle().SelectNone().OrderBySeqAsc().LimitPerParent(1))))).Using(ctx, db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -660,14 +660,14 @@ func main() {
 	})
 	run("relation_one_ordered", func() (any, error) {
 		// a one-relation with an ORDER is fetched through a per-parent window of 1
-		b, err := gen.Battle().SelectNone().Seq(7).RelationService(gen.Service().OrderBySeqDesc()).Using(ctx, db).Get()
+		b, err := gen.Battle().SelectNone().Seq(7).Relation(gen.Service().OrderBySeqDesc()).Using(ctx, db).Get()
 		if err != nil {
 			return nil, err
 		}
 		return b.ToArray()
 	})
 	run("relation_if_parent", func() (any, error) {
-		c, err := gen.Battle().SelectNone().SeqIn([]int64{7, 8, 14}).OrderBySeqAsc().RelationUser(gen.User().IfParentIsCloseEq(true)).Using(ctx, db).Gets()
+		c, err := gen.Battle().SelectNone().SeqIn([]int64{7, 8, 14}).OrderBySeqAsc().Relation(gen.User().IfParentIsCloseEq(true)).Using(ctx, db).Gets()
 		if err != nil {
 			return nil, err
 		}
@@ -682,21 +682,21 @@ func main() {
 		return items, nil
 	})
 	run("relation_empty_parents", func() (any, error) {
-		c, err := gen.Battle().Seq(0).RelationUser(gen.User()).Using(ctx, db).Gets()
+		c, err := gen.Battle().Seq(0).Relation(gen.User()).Using(ctx, db).Gets()
 		if err != nil {
 			return nil, err
 		}
 		return keys(c), nil
 	})
 	run("relation_off_join", func() (any, error) {
-		b, err := gen.Battle().SelectNone().Seq(8).JoinService(gen.Service().RelationsModules(gen.ServiceModule())).Using(ctx, db).Get()
+		b, err := gen.Battle().SelectNone().Seq(8).Join(gen.Service().Relations(gen.ServiceModule())).Using(ctx, db).Get()
 		if err != nil {
 			return nil, err
 		}
 		return b.ToArray()
 	})
 	run("paginate_relations", func() (any, error) {
-		p, err := gen.Battle().SelectNone().ServiceSeq(7).OrderBySeqAsc().RelationUser(gen.User()).Using(ctx, db).Paginate(1, 3)
+		p, err := gen.Battle().SelectNone().ServiceSeq(7).OrderBySeqAsc().Relation(gen.User()).Using(ctx, db).Paginate(1, 3)
 		if err != nil {
 			return nil, err
 		}
@@ -711,7 +711,7 @@ func main() {
 		return map[string]any{"total": p.Total, "items": items}, nil
 	})
 	run("key_by_column", func() (any, error) {
-		s, err := gen.Service().Seq(7).RelationsMembers(gen.ServiceMember().OrderBySeqAsc().LimitPerParent(3).KeyByUserSeq()).Using(ctx, db).Get()
+		s, err := gen.Service().Seq(7).Relations(gen.ServiceMember().OrderBySeqAsc().LimitPerParent(3).KeyByUserSeq()).Using(ctx, db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -719,7 +719,7 @@ func main() {
 	})
 	run("key_by_unselected", func() (any, error) {
 		// key_by on a column outside the projection: the planner selects it for keying
-		s, err := gen.Service().Seq(7).RelationsModules(gen.ServiceModule().SelectNone().KeyByName()).Using(ctx, db).Get()
+		s, err := gen.Service().Seq(7).Relations(gen.ServiceModule().SelectNone().KeyByName()).Using(ctx, db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -754,7 +754,7 @@ func main() {
 	run("key_by_fn_to_array", func() (any, error) {
 		// root keyed by a function; flattened user columns merge into the member's array form
 		c, err := gen.ServiceMember().ServiceSeq(7).OrderBySeqAsc().Limit(0, 2).
-			RelationUser(gen.User().Flatten()).
+			Relation(gen.User().Flatten()).
 			KeyByFn(func(m *gen.ServiceMemberRow) orm.Key { return orm.KeyOf(fmt.Sprintf("u%d", m.UserSeq)) }).Using(ctx, db).Gets()
 		if err != nil {
 			return nil, err
@@ -770,7 +770,7 @@ func main() {
 		return items, nil
 	})
 	run("drop_child_key_to_array", func() (any, error) {
-		u, err := gen.User().Seq(5).RelationsBattles(gen.Battle().SelectNone().OrderBySeqAsc().LimitPerParent(2).DropChildKey()).Using(ctx, db).Get()
+		u, err := gen.User().Seq(5).Relations(gen.Battle().SelectNone().OrderBySeqAsc().LimitPerParent(2).DropChildKey()).Using(ctx, db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -905,8 +905,8 @@ func main() {
 		}
 		maskRows(time.Time{}, made.service.Seq, made.members[0].Seq, made.members[1].Seq, made.module.Seq)
 		svc, err := gen.Service().Seq(made.service.Seq).
-			RelationsMembers(gen.ServiceMember().OrderBySeqAsc()).
-			RelationsModules(gen.ServiceModule().NoCascadeDelete()).Using(ctx, db).Get()
+			Relations(gen.ServiceMember().OrderBySeqAsc()).
+			Relations(gen.ServiceModule().NoCascadeDelete()).Using(ctx, db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -980,7 +980,7 @@ func main() {
 		// R9 shape: a join whose child carries its own where, plus a root group mixing
 		// a fulltext predicate with navigation into the joined entity
 		return gen.Battle().
-			JoinService(gen.Service().Where(func(w *gen.ServiceWhere) { w.Seq(7) })).
+			Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.Seq(7) })).
 			IsClose(false).
 			And(func(w *gen.BattleWhere) {
 				w.NameWithDescriptionMatchBoolean("battle").Or().Service(func(s *gen.ServiceWhere) { s.Name("service-999") })
@@ -989,16 +989,16 @@ func main() {
 	run("join_two_groups", func() (any, error) {
 		// two joined entities, each with its own on() and where(), and an IN at the root
 		return gen.Battle().
-			JoinService(gen.Service().On(func(w *gen.ServiceWhere) { w.Name("service-7") }).Where(func(w *gen.ServiceWhere) { w.SeqGt(0) })).
-			LeftJoinUser(gen.User().Where(func(w *gen.UserWhere) { w.NameContains("user-4") })).
+			Join(gen.Service().On(func(w *gen.ServiceWhere) { w.Name("service-7") }).Where(func(w *gen.ServiceWhere) { w.SeqGt(0) })).
+			LeftJoin(gen.User().Where(func(w *gen.UserWhere) { w.NameContains("user-4") })).
 			SeqIn([]int64{6, 106, 206, 406}).Using(ctx, db).GetCount()
 	})
 	run("join_multi_level", func() (any, error) {
 		// two levels of joins off one child: aliases are path-derived and each keeps its own columns
 		b, err := gen.Battle().SelectNone().Seq(6).
-			JoinServiceMember(gen.ServiceMember().SelectNone().
-				JoinUser(gen.User().SelectNone()).
-				JoinService(gen.Service().SelectNone())).Using(ctx, db).Get()
+			Join(gen.ServiceMember().SelectNone().
+				Join(gen.User().SelectNone()).
+				Join(gen.Service().SelectNone())).Using(ctx, db).Get()
 		if err != nil {
 			return nil, err
 		}

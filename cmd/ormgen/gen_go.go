@@ -658,16 +658,29 @@ func (q *{{.Type}}Query) Having(fn func(*{{.Type}}Where)) *{{.Type}}Query { fn(&
 
 // Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
 func (q *{{.Type}}Query) Raw(sql string, binds ...any) *{{.Type}}Query { q.q.Raw(sql, binds...); return q }
-{{range .Rels}}
-func (q *{{$.Type}}Query) Join{{.Method}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Join({{printf "%q" .Name}}, "inner", child.q); return q }
-func (q *{{$.Type}}Query) LeftJoin{{.Method}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Join({{printf "%q" .Name}}, "left", child.q); return q }
-{{- if eq .Kind "one"}}
-func (q *{{$.Type}}Query) Relation{{.Method}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Relation({{printf "%q" .Name}}, child.q); return q }
-{{- else}}
-func (q *{{$.Type}}Query) Relations{{.Method}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Relation({{printf "%q" .Name}}, child.q); return q }
-{{- end}}
-{{- end}}
 
+// Relation attaches a declared one-to-one child query. The manifest resolves
+// the relation name from the parent and child entities.
+func (q *{{.Type}}Query) Relation(child any) *{{.Type}}Query {
+{{- range .Rels}}{{- if eq .Kind "one"}}
+	if c, ok := child.(*{{.TargetType}}Query); ok { q.q.Relation("{{.Name}}", c.q); return q }
+{{- end}}{{- end}}
+	return q
+}
+func (q *{{.Type}}Query) Relations(child any) *{{.Type}}Query {
+{{- range .Rels}}{{- if eq .Kind "many"}}
+	if c, ok := child.(*{{.TargetType}}Query); ok { q.q.Relation("{{.Name}}", c.q); return q }
+{{- end}}{{- end}}
+	return q
+}
+func (q *{{.Type}}Query) Join(child any) *{{.Type}}Query { return q.joinTarget(child, "inner") }
+func (q *{{.Type}}Query) LeftJoin(child any) *{{.Type}}Query { return q.joinTarget(child, "left") }
+func (q *{{.Type}}Query) joinTarget(child any, kind string) *{{.Type}}Query {
+{{- range .Rels}}
+	if c, ok := child.(*{{.TargetType}}Query); ok { q.q.Join("{{.Name}}", kind, c.q); return q }
+{{- end}}
+	return q
+}
 // Columns.
 func (q *{{.Type}}Query) SelectAll() *{{.Type}}Query { q.q.Columns().Mode = "all"; return q }
 func (q *{{.Type}}Query) SelectNone() *{{.Type}}Query { q.q.Columns().Mode = "none"; return q }

@@ -422,28 +422,33 @@ func (q *UserQuery) Having(fn func(*UserWhere)) *UserQuery {
 // Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
 func (q *UserQuery) Raw(sql string, binds ...any) *UserQuery { q.q.Raw(sql, binds...); return q }
 
-func (q *UserQuery) JoinBattles(child *BattleQuery) *UserQuery {
-	q.q.Join("battles", "inner", child.q)
+// Relation attaches a declared one-to-one child query. The manifest resolves
+// the relation name from the parent and child entities.
+func (q *UserQuery) Relation(child any) *UserQuery {
 	return q
 }
-func (q *UserQuery) LeftJoinBattles(child *BattleQuery) *UserQuery {
-	q.q.Join("battles", "left", child.q)
+func (q *UserQuery) Relations(child any) *UserQuery {
+	if c, ok := child.(*BattleQuery); ok {
+		q.q.Relation("battles", c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceMemberQuery); ok {
+		q.q.Relation("service_members", c.q)
+		return q
+	}
 	return q
 }
-func (q *UserQuery) RelationsBattles(child *BattleQuery) *UserQuery {
-	q.q.Relation("battles", child.q)
-	return q
-}
-func (q *UserQuery) JoinServiceMembers(child *ServiceMemberQuery) *UserQuery {
-	q.q.Join("service_members", "inner", child.q)
-	return q
-}
-func (q *UserQuery) LeftJoinServiceMembers(child *ServiceMemberQuery) *UserQuery {
-	q.q.Join("service_members", "left", child.q)
-	return q
-}
-func (q *UserQuery) RelationsServiceMembers(child *ServiceMemberQuery) *UserQuery {
-	q.q.Relation("service_members", child.q)
+func (q *UserQuery) Join(child any) *UserQuery     { return q.joinTarget(child, "inner") }
+func (q *UserQuery) LeftJoin(child any) *UserQuery { return q.joinTarget(child, "left") }
+func (q *UserQuery) joinTarget(child any, kind string) *UserQuery {
+	if c, ok := child.(*BattleQuery); ok {
+		q.q.Join("battles", kind, c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceMemberQuery); ok {
+		q.q.Join("service_members", kind, c.q)
+		return q
+	}
 	return q
 }
 

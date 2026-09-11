@@ -178,8 +178,8 @@ func TestReadPaths(t *testing.T) {
 
 	// join + nav + on/where placement
 	cnt, err := gen.Battle().
-		JoinService(gen.Service().Where(func(w *gen.ServiceWhere) { w.NameEq("service-7") })).
-		LeftJoinUser(gen.User().On(func(w *gen.UserWhere) { w.NameContains("user") })).
+		Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.NameEq("service-7") })).
+		LeftJoin(gen.User().On(func(w *gen.UserWhere) { w.NameContains("user") })).
 		IsCloseEq(false).
 		And(func(w *gen.BattleWhere) {
 			w.IsDisplayEq(true).Or().Service(func(s *gen.ServiceWhere) { s.SeqGt(1000) })
@@ -203,7 +203,7 @@ func TestReadPaths(t *testing.T) {
 	}
 
 	// join result access
-	j, err := gen.Battle().JoinService(gen.Service().Where(func(w *gen.ServiceWhere) { w.SeqEq(7) })).SeqEq(6).Using(ctx, db).One()
+	j, err := gen.Battle().Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.SeqEq(7) })).SeqEq(6).Using(ctx, db).One()
 	if err != nil || j == nil || j.GetService() == nil || j.GetService().Name != "service-7" {
 		t.Errorf("joined row access: %v %+v", err, j)
 	}
@@ -216,8 +216,8 @@ func TestRootFinderKeepsJoinAndRelation(t *testing.T) {
 	query := func() (*orm.Collection[gen.BattleRow], error) {
 		return gen.Battle().
 			SelectNone().
-			JoinService(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
-			RelationUser(gen.User()).
+			Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
+			Relation(gen.User()).
 			OrderBySeqAsc().Limit(0, 2).Using(ctx, db).GetsByServiceSeq(7)
 	}
 	var direct []orm.Event
@@ -231,8 +231,8 @@ func TestRootFinderKeepsJoinAndRelation(t *testing.T) {
 	db.Cfg().OnQuery = func(e orm.Event) { chained = append(chained, e) }
 	want, err := gen.Battle().
 		SelectNone().
-		JoinService(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
-		RelationUser(gen.User()).
+		Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
+		Relation(gen.User()).
 		ServiceSeq(7).
 		OrderBySeqAsc().Limit(0, 2).Using(ctx, db).Gets()
 	if err != nil {
@@ -260,8 +260,8 @@ func TestRootFinderKeepsJoinAndRelation(t *testing.T) {
 	countQuery := func() *gen.BattleQuery {
 		return gen.Battle().
 			SelectNone().
-			JoinService(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
-			RelationUser(gen.User())
+			Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
+			Relation(gen.User())
 	}
 	var directCountEvents []orm.Event
 	db.Cfg().OnQuery = func(e orm.Event) { directCountEvents = append(directCountEvents, e) }
@@ -298,9 +298,9 @@ func TestRelationPaths(t *testing.T) {
 	// one relation off the root, many off a nested one, key_by + limit_per_parent + drop_child_key
 	rows, err := gen.Battle().
 		ServiceSeqEq(7).OrderBySeqAsc().Limit(0, 5).
-		RelationUser(gen.User()).
-		RelationService(gen.Service().
-			RelationsMembers(gen.ServiceMember().OrderBySeqDesc().LimitPerParent(3).KeyByUserSeq().DropChildKey())).Using(ctx, db).All()
+		Relation(gen.User()).
+		Relation(gen.Service().
+			Relations(gen.ServiceMember().OrderBySeqDesc().LimitPerParent(3).KeyByUserSeq().DropChildKey())).Using(ctx, db).All()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,8 +329,8 @@ func TestRelationPaths(t *testing.T) {
 	stmts = nil
 	rows, err = gen.Battle().
 		SeqIn([]int64{7, 8, 14}).OrderBySeqAsc().
-		RelationUser(gen.User().IfParentIsCloseEq(true).RelationsBattles(gen.Battle().OrderBySeqAsc().LimitPerParent(2))).
-		JoinService(gen.Service().RelationsModules(gen.ServiceModule())).Using(ctx, db).All()
+		Relation(gen.User().IfParentIsCloseEq(true).Relations(gen.Battle().OrderBySeqAsc().LimitPerParent(2))).
+		Join(gen.Service().Relations(gen.ServiceModule())).Using(ctx, db).All()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,21 +351,21 @@ func TestRelationPaths(t *testing.T) {
 
 	// no parents → relation steps are skipped, collections stay empty (never nil)
 	stmts = nil
-	none, err := gen.Battle().SeqEq(0).RelationUser(gen.User()).Using(ctx, db).All()
+	none, err := gen.Battle().SeqEq(0).Relation(gen.User()).Using(ctx, db).All()
 	if err != nil || none.Len() != 0 || len(stmts) != 1 {
 		t.Errorf("empty parents: len=%d statements=%d err=%v", none.Len(), len(stmts), err)
 	}
-	one, err := gen.Battle().SeqEq(42).RelationService(gen.Service().RelationsMembers(gen.ServiceMember().LimitPerParent(1))).Using(ctx, db).One()
+	one, err := gen.Battle().SeqEq(42).Relation(gen.Service().Relations(gen.ServiceMember().LimitPerParent(1))).Using(ctx, db).One()
 	if err != nil || one == nil || one.Service == nil || one.Service.GetMembers().Len() != 1 {
 		t.Errorf("one + relation: %+v %v", one, err)
 	}
 	// flatten: typed access is unchanged (array/JSON forms merge the child's columns)
-	m, err := gen.ServiceMember().ServiceSeqEq(7).OrderBySeqAsc().Limit(0, 2).RelationUser(gen.User().Flatten()).Using(ctx, db).All()
+	m, err := gen.ServiceMember().ServiceSeqEq(7).OrderBySeqAsc().Limit(0, 2).Relation(gen.User().Flatten()).Using(ctx, db).All()
 	if err != nil || m.First().GetUser() == nil || m.First().User.Name != fmt.Sprintf("user-%d", m.First().UserSeq) {
 		t.Errorf("flatten: %v %+v", err, m.First())
 	}
 	// paginate keeps relations
-	page, err := gen.Battle().ServiceSeqEq(7).OrderBySeqAsc().RelationUser(gen.User()).Using(ctx, db).Paginate(1, 4)
+	page, err := gen.Battle().ServiceSeqEq(7).OrderBySeqAsc().Relation(gen.User()).Using(ctx, db).Paginate(1, 4)
 	if err != nil || page.Total != 1000 || page.Items.Len() != 4 || page.Items.First().GetUser() == nil {
 		t.Errorf("paginate + relation: %+v %v", page, err)
 	}

@@ -1504,20 +1504,37 @@ impl Battle {
     // ---- join children: on() = ON, where_() = parent WHERE group ----
     pub fn on(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { { let w = self.q.on_w(); f(BattleWhere { w }); } self }
     pub fn where_(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { { let w = self.q.w(); f(BattleWhere { w }); } self }
-
-    pub fn join_service(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "inner", &child.as_ref().q); self }
-    pub fn left_join_service(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "left", &child.as_ref().q); self }
-    pub fn relation_service(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.relation("service", &child.as_ref().q); self }
-    pub fn join_service_member(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.join("service_member", "inner", &child.as_ref().q); self }
-    pub fn left_join_service_member(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.join("service_member", "left", &child.as_ref().q); self }
-    pub fn relation_service_member(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.relation("service_member", &child.as_ref().q); self }
-    pub fn join_service_module(mut self, child: impl AsRef<super::service_module::ServiceModule>) -> Self { self.q.join("service_module", "inner", &child.as_ref().q); self }
-    pub fn left_join_service_module(mut self, child: impl AsRef<super::service_module::ServiceModule>) -> Self { self.q.join("service_module", "left", &child.as_ref().q); self }
-    pub fn relation_service_module(mut self, child: impl AsRef<super::service_module::ServiceModule>) -> Self { self.q.relation("service_module", &child.as_ref().q); self }
-    pub fn join_user(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.join("user", "inner", &child.as_ref().q); self }
-    pub fn left_join_user(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.join("user", "left", &child.as_ref().q); self }
-    pub fn relation_user(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.relation("user", &child.as_ref().q); self }
-
+    pub fn relation(mut self, child: impl AsRef<Q>) -> Self {
+        let c = child.as_ref();
+        let rel = match c.entity() {
+            "service" => "service",
+            "service_member" => "service_member",
+            "service_module" => "service_module",
+            "user" => "user",
+            _ => panic!("no one-to-one relation from battle"),
+        };
+        self.q.relation(rel, c); self
+    }
+    pub fn relations(mut self, child: impl AsRef<Q>) -> Self {
+        let c = child.as_ref();
+        let rel = match c.entity() {
+            _ => panic!("no one-to-many relation from battle"),
+        };
+        self.q.relation(rel, c); self
+    }
+    pub fn join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "inner") }
+    pub fn left_join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "left") }
+    fn join_target(mut self, child: impl AsRef<Q>, kind: &str) -> Self {
+        let c = child.as_ref();
+        let rel = match c.entity() {
+            "service" => "service",
+            "service_member" => "service_member",
+            "service_module" => "service_module",
+            "user" => "user",
+            _ => panic!("no relation from battle"),
+        };
+        self.q.join(rel, kind, c); self
+    }
     // ---- columns ----
     pub fn select_all(mut self) -> Self { self.q.columns().mode = "all".into(); self }
     pub fn select_none(mut self) -> Self { self.q.columns().mode = "none".into(); self }
@@ -2552,6 +2569,7 @@ impl Battle {
 }
 
 impl AsRef<Battle> for Battle { fn as_ref(&self) -> &Self { self } }
+impl AsRef<Q> for Battle { fn as_ref(&self) -> &Q { &self.q } }
 
 impl Default for Battle { fn default() -> Self { query() } }
 

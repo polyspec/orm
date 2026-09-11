@@ -233,16 +233,10 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new {{.Type}}Where($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new {{.Type}}Where($this->w())); return $this; }
-{{range .Rels}}
-    public function join{{.Method}}({{.TargetType}} $child): static { $this->attachJoin('{{.Name}}', 'inner', $child); return $this; }
-    public function leftJoin{{.Method}}({{.TargetType}} $child): static { $this->attachJoin('{{.Name}}', 'left', $child); return $this; }
-{{- if eq .Kind "one"}}
-    public function relation{{.Method}}({{.TargetType}} $child): static { $this->attachRelation('{{.Name}}', $child); return $this; }
-{{- else}}
-    public function relations{{.Method}}({{.TargetType}} $child): static { $this->attachRelation('{{.Name}}', $child); return $this; }
-{{- end}}
-{{- end}}
-
+    public function relation(Q $child): static { $this->attachRelation(Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'one'), $child); return $this; }
+    public function relations(Q $child): static { $this->attachRelation(Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, 'many'), $child); return $this; }
+    public function join(Q $child): static { $this->attachJoin(Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
+    public function leftJoin(Q $child): static { $this->attachJoin(Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
     // ---- columns ----
     public function selectAll(): static { $this->colMode('all'); return $this; }
     public function selectNone(): static { $this->colMode('none'); return $this; }

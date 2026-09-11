@@ -688,28 +688,35 @@ func (q *ServiceModuleQuery) Raw(sql string, binds ...any) *ServiceModuleQuery {
 	return q
 }
 
-func (q *ServiceModuleQuery) JoinBattles(child *BattleQuery) *ServiceModuleQuery {
-	q.q.Join("battles", "inner", child.q)
+// Relation attaches a declared one-to-one child query. The manifest resolves
+// the relation name from the parent and child entities.
+func (q *ServiceModuleQuery) Relation(child any) *ServiceModuleQuery {
+	if c, ok := child.(*ServiceQuery); ok {
+		q.q.Relation("service", c.q)
+		return q
+	}
 	return q
 }
-func (q *ServiceModuleQuery) LeftJoinBattles(child *BattleQuery) *ServiceModuleQuery {
-	q.q.Join("battles", "left", child.q)
+func (q *ServiceModuleQuery) Relations(child any) *ServiceModuleQuery {
+	if c, ok := child.(*BattleQuery); ok {
+		q.q.Relation("battles", c.q)
+		return q
+	}
 	return q
 }
-func (q *ServiceModuleQuery) RelationsBattles(child *BattleQuery) *ServiceModuleQuery {
-	q.q.Relation("battles", child.q)
-	return q
+func (q *ServiceModuleQuery) Join(child any) *ServiceModuleQuery { return q.joinTarget(child, "inner") }
+func (q *ServiceModuleQuery) LeftJoin(child any) *ServiceModuleQuery {
+	return q.joinTarget(child, "left")
 }
-func (q *ServiceModuleQuery) JoinService(child *ServiceQuery) *ServiceModuleQuery {
-	q.q.Join("service", "inner", child.q)
-	return q
-}
-func (q *ServiceModuleQuery) LeftJoinService(child *ServiceQuery) *ServiceModuleQuery {
-	q.q.Join("service", "left", child.q)
-	return q
-}
-func (q *ServiceModuleQuery) RelationService(child *ServiceQuery) *ServiceModuleQuery {
-	q.q.Relation("service", child.q)
+func (q *ServiceModuleQuery) joinTarget(child any, kind string) *ServiceModuleQuery {
+	if c, ok := child.(*BattleQuery); ok {
+		q.q.Join("battles", kind, c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceQuery); ok {
+		q.q.Join("service", kind, c.q)
+		return q
+	}
 	return q
 }
 
