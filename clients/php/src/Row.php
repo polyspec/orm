@@ -133,11 +133,17 @@ abstract class Row implements \ArrayAccess
         return $this->rel[$name] ?? null;
     }
 
-    /** compatibility-style getX()/getX($default): getters declared by the generated class win; this is the fallback. */
+    /**
+     * compatibility-style getX()/getX($default): getters declared by the generated class win; this is the fallback.
+     * A relation is also reachable by compatibility's default key, get<Rel>Model() / get<Rel>Models().
+     */
     public function __call(string $name, array $args): mixed
     {
         if (str_starts_with($name, 'get')) {
             $col = Names::snake(substr($name, 3));
+            if (!array_key_exists($col, $this->rel) && preg_match('/^(.*)_models?$/', $col, $m) === 1 && array_key_exists($m[1], $this->rel)) {
+                $col = $m[1];
+            }
             if (isset($this->rel[$col]) || array_key_exists($col, $this->rel)) {
                 return $this->rel[$col] ?? ($args[0] ?? null);
             }
@@ -241,8 +247,13 @@ abstract class Row implements \ArrayAccess
         return $this;
     }
 
-    public function delete(Db $ex): void
+    /** DELETE this row by PK; with $cascade (compatibility delete(true)) the owned relations go first — see deleteCascade(). */
+    public function delete(Db $ex, bool $cascade = false): void
     {
+        if ($cascade) {
+            $this->deleteCascade($ex);
+            return;
+        }
         if (!$this->loaded) {
             throw new OrmException(Code::INTERNAL, 'delete on a row that was not loaded');
         }
@@ -430,5 +441,10 @@ final class Names
     public static function snake(string $s): string
     {
         return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $s));
+    }
+
+    public static function pascal(string $s): string
+    {
+        return str_replace('_', '', ucwords($s, '_'));
     }
 }
