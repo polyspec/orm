@@ -5,11 +5,11 @@ require __DIR__ . '/autoload.php';
 use App\Orm\Battle; use Orm\Config; use Orm\Db; use Orm\Orm;
 [$sock, $schema, $iters] = [$argv[1], $argv[2], (int)($argv[3] ?? 3000)];
 Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt'));
-$db = Db::mysql('mysql:unix_socket=/tmp/mysql.sock;dbname=orm_bench;charset=utf8mb4', 'root', '');
+$db = Db::mysql(orm_test_dsn(), 'root', '');
 function stats(string $name, array $s): void { sort($s); $n = count($s); $p = fn($q) => $s[(int)(($n-1)*$q)];
     printf("%-30s n=%-6d mean=%8.0fns p50=%8dns p90=%8dns p99=%8dns\n", $name, $n, array_sum($s)/$n, $p(.5), $p(.9), $p(.99)); }
 function bench(string $name, int $iters, callable $f): void { for ($i=0;$i<200;$i++) $f($i); $s=[]; for ($i=0;$i<$iters;$i++){ $t=hrtime(true); $f($i); $s[]=hrtime(true)-$t; } stats($name,$s); }
 bench('client pk one', $iters, function ($i) use ($db) { $r = (new Battle)->seqEq($i % 100000 + 1)->one($db); if ($r === null) throw new RuntimeException('no row'); });
 bench('client list100', $iters, function ($i) use ($db) { $c = (new Battle)->serviceSeqEq($i % 100 + 1)->isCloseEq(false)->orderBySeqDesc()->limit(0, 100)->all($db); if (count($c) === 0) throw new RuntimeException('empty'); });
 bench('client list100 + getName x100', $iters, function ($i) use ($db) { $c = (new Battle)->serviceSeqEq($i % 100 + 1)->isCloseEq(false)->orderBySeqDesc()->limit(0, 100)->all($db); foreach ($c as $r) { $r->getName(); } });
-bench('plan cache hit (no db)', $iters, function ($i) { $q = (new Battle)->serviceSeqEq($i)->isCloseEq(false)->orderBySeqDesc()->limit(0, 100); $q->req->ir['kind'] = 'all'; Orm::transport()->plan($q->req->shape()); });
+bench('plan cache hit (no db)', $iters, function ($i) { $q = (new Battle)->serviceSeqEq($i)->isCloseEq(false)->orderBySeqDesc()->limit(0, 100); Orm::transport()->planFor($q->req, 'all'); });
