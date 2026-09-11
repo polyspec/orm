@@ -7,14 +7,14 @@ package orm
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"math/rand/v2"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-sql-driver/mysql"
 
 	"github.com/maxkwon/orm/engine"
 	"github.com/maxkwon/orm/engine/ir"
@@ -28,12 +28,17 @@ type Config struct {
 }
 
 // Event is emitted for every executed statement when Config.OnQuery is set.
+// The same payload in every language: (sql, binds, duration, plan_id, err).
 type Event struct {
 	SQL      string
-	Args     []any
+	Args     []any // the binds, with every secret slot rendered as Secret ("$SECRET")
 	Duration time.Duration
+	PlanID   string // plan cache key (FNV-1a 64 of the IR shape) as 16 hex digits: group logs by statement shape
 	Err      error
 }
+
+// Secret replaces a secret bind (the AES key) wherever binds are shown.
+const Secret = "$SECRET"
 
 // DB wraps *sql.DB with the compiler, the plan cache and the statement cache.
 type DB struct {
@@ -41,25 +46,36 @@ type DB struct {
 	Eng *engine.Engine
 	cfg Config
 
-	plans sync.Map // uint64 shape hash -> *plan.Plan
-	stmMu sync.Mutex
-	stmts map[string]*sql.Stmt
+	planMu sync.RWMutex
+	plans  map[uint64]*cached // shape key -> compiled plan plus the per-step facts derived from it
+	stmMu  sync.Mutex
+	stmts  map[string]*sql.Stmt
 }
 
 // Open connects with database/sql. The DSN must enable clientFoundRows (needed
 // for optimistic locking) — Open refuses DSNs without it rather than guessing.
 func Open(driver, dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
 	if driver == "mysql" && !strings.Contains(dsn, "clientFoundRows=true") {
-		return nil, errors.New("orm: mysql DSN must include clientFoundRows=true")
+		return nil, &ir.Error{Code: CodeConfig, Msg: "mysql DSN must include clientFoundRows=true"}
 	}
 	s, err := sql.Open(driver, dsn)
 	if err != nil {
-		return nil, err
+		return nil, &ir.Error{Code: CodeConfig, Msg: err.Error()}
 	}
 	if err := s.Ping(); err != nil {
-		return nil, err
+		return nil, mapDriverErr(err)
 	}
-	return &DB{SQL: s, Eng: eng, cfg: cfg, stmts: map[string]*sql.Stmt{}}, nil
+	return &DB{SQL: s, Eng: eng, cfg: cfg, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
+}
+
+// CheckSchemaHash compares the hash the generated package was produced from
+// with the manifest the engine loaded. Generated Init calls it exactly once at
+// startup; there is no watching and no reload — regenerate and restart.
+func CheckSchemaHash(eng *engine.Engine, generated string) error {
+	if eng.M.SchemaHash != generated {
+		return &ir.Error{Code: CodeSchemaHashMismatch, Msg: fmt.Sprintf("generated client is from schema %s, the engine loaded %s: run ormgen gen again", generated, eng.M.SchemaHash)}
+	}
+	return nil
 }
 
 // Exec is what terminals take: a *DB or a *Tx.
@@ -80,7 +96,7 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	}
 	st, err := d.SQL.PrepareContext(ctx, sqlText)
 	if err != nil {
-		return nil, err
+		return nil, mapDriverErr(err)
 	}
 	d.stmMu.Lock()
 	if prev, ok := d.stmts[sqlText]; ok {
@@ -137,7 +153,7 @@ func Transaction[T any](ctx context.Context, d *DB, fn func(*Tx) (T, error)) (T,
 func runTx[T any](ctx context.Context, d *DB, fn func(*Tx) (T, error)) (v T, err error) {
 	tx, err := d.SQL.BeginTx(ctx, nil)
 	if err != nil {
-		return v, err
+		return v, mapDriverErr(err)
 	}
 	defer func() {
 		if r := recover(); r != nil {
@@ -151,20 +167,48 @@ func runTx[T any](ctx context.Context, d *DB, fn func(*Tx) (T, error)) (v T, err
 		return v, err
 	}
 	if err := tx.Commit(); err != nil {
-		return v, err
+		return v, mapDriverErr(err)
 	}
 	return v, nil
 }
 
 // Err codes surfaced by the executor (engine codes pass through unchanged).
 var (
-	ErrOptimisticLock = &ir.Error{Code: "OPTIMISTIC_LOCK", Msg: "row changed since it was read"}
+	ErrOptimisticLock = &ir.Error{Code: CodeOptimisticLock, Msg: "row changed since it was read"}
 )
 
-// IsDeadlock reports MySQL 1213 / SQLSTATE 40001 style errors (driver-agnostic by message).
+// mapDriverErr turns the driver errors the catalog names (docs/errors.yaml,
+// origin driver) into *ir.Error: MySQL 1213 / SQLSTATE 40001 → DEADLOCK,
+// 1062 → DUPLICATE_KEY (SQLSTATE 23000 only when the driver gives no number:
+// 23000 also covers foreign-key and not-null violations). The driver's own
+// message is kept as Msg. Every other error passes through unchanged.
+func mapDriverErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	var me *mysql.MySQLError
+	if !errors.As(err, &me) {
+		return err
+	}
+	state := string(me.SQLState[:])
+	switch {
+	case me.Number == 1213 || state == "40001":
+		return &ir.Error{Code: CodeDeadlock, Msg: me.Error()}
+	case me.Number == 1062 || (me.Number == 0 && state == "23000"):
+		return &ir.Error{Code: CodeDuplicateKey, Msg: me.Error()}
+	}
+	return err
+}
+
+// IsDeadlock reports a DEADLOCK error: the mapped code, or for errors that did
+// not pass through the executor (a foreign driver), the message.
 func IsDeadlock(err error) bool {
 	if err == nil {
 		return false
+	}
+	var e *ir.Error
+	if errors.As(err, &e) {
+		return e.Code == CodeDeadlock
 	}
 	s := err.Error()
 	return strings.Contains(s, "1213") || strings.Contains(s, "40001") || strings.Contains(strings.ToLower(s), "deadlock")
@@ -240,21 +284,64 @@ func shiftGroup(g *ir.Group, off int) {
 	}
 }
 
+// cached is one plan-cache entry: the compiled plan and the facts every
+// execution needs from it, derived once here instead of per statement or per row.
+type cached struct {
+	key   uint64
+	id    string // PlanID(key)
+	plan  *plan.Plan
+	scans map[*plan.Step]*scanInfo
+	projs map[*plan.Assemble]*Projection
+}
+
+// scanInfo is what runSelect needs to read one step's rows.
+type scanInfo struct {
+	n      int           // width of a positional row (the node's columns plus its joins')
+	styled []plan.OutCol // columns with executor-side codec stages
+}
+
+func newCached(key uint64, p *plan.Plan) *cached {
+	c := &cached{key: key, id: PlanID(key), plan: p, scans: map[*plan.Step]*scanInfo{}, projs: map[*plan.Assemble]*Projection{}}
+	var walk func(a *plan.Assemble)
+	walk = func(a *plan.Assemble) {
+		c.projs[a] = NewProjection(a)
+		for _, ch := range a.Children {
+			if ch.Kind == "join" {
+				walk(ch.Assemble)
+			}
+		}
+	}
+	for i := range p.Steps {
+		st := &p.Steps[i]
+		if st.Assemble == nil {
+			continue
+		}
+		c.scans[st] = &scanInfo{n: countCols(st.Assemble), styled: styledCols(st.Assemble)}
+		walk(st.Assemble)
+	}
+	return c
+}
+
 // Plan compiles (or fetches from cache) the plan for the request's shape.
 func (d *DB) Plan(r *Req) (*plan.Plan, error) {
+	c, err := d.plan(r)
+	if err != nil {
+		return nil, err
+	}
+	return c.plan, nil
+}
+
+func (d *DB) plan(r *Req) (*cached, error) {
 	if r.Err != nil {
 		return nil, r.Err
 	}
 	r.IR.NParams = len(r.Params)
-	shape, err := json.Marshal(&r.IR)
-	if err != nil {
-		return nil, err
-	}
-	h := fnv.New64a()
-	h.Write(shape)
-	key := h.Sum64()
-	if p, ok := d.plans.Load(key); ok {
-		return p.(*plan.Plan), nil
+	key := shapeKey(&r.IR)
+	d.planMu.RLock()
+	c, ok := d.plans[key]
+	d.planMu.RUnlock()
+	if ok {
+		return c, nil
 	}
 	if err := ir.Validate(d.Eng.M, &r.IR); err != nil {
 		return nil, err
@@ -263,33 +350,43 @@ func (d *DB) Plan(r *Req) (*plan.Plan, error) {
 	if err != nil {
 		return nil, err
 	}
-	d.plans.Store(key, p)
-	return p, nil
+	c = newCached(key, p)
+	d.planMu.Lock()
+	if prev, ok := d.plans[key]; ok {
+		c = prev
+	} else {
+		d.plans[key] = c
+	}
+	d.planMu.Unlock()
+	return c, nil
 }
 
-// args resolves a step's bind slots against the request's params.
-func (d *DB) args(st *plan.Step, r *Req, parentVals []any) ([]any, error) {
-	out := make([]any, 0, len(st.BindSlots))
+// args resolves a step's bind slots against the request's params. secrets
+// lists the positions that hold a secret (nil when there is none) so the
+// on_query hook can mask exactly those.
+func (d *DB) args(st *plan.Step, r *Req, parentVals []any) (out []any, secrets []int, err error) {
+	out = make([]any, 0, len(st.BindSlots))
 	for _, b := range st.BindSlots {
 		switch b.From {
 		case "param":
 			v, err := paramValue(&b, r)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			out = append(out, v)
 		case "secret":
 			if b.Name != "aes" || d.cfg.AESKey == "" {
-				return nil, fmt.Errorf("orm: secret %q not configured", b.Name)
+				return nil, nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("secret %q not configured", b.Name)}
 			}
+			secrets = append(secrets, len(out))
 			out = append(out, d.cfg.AESKey)
 		case "parent":
 			out = append(out, parentVals...)
 		default:
-			return nil, fmt.Errorf("orm: bind from %q", b.From)
+			return nil, nil, &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf("bind from %q", b.From)}
 		}
 	}
-	return out, nil
+	return out, secrets, nil
 }
 
 // paramValue is a param slot's bound value: the request's param after the slot's transform.
@@ -330,9 +427,9 @@ func SQL(ctx context.Context, ex Exec, r *Req) (*Statement, error) {
 			}
 			out.Binds = append(out.Binds, v)
 		case "secret":
-			out.Binds = append(out.Binds, "$SECRET")
+			out.Binds = append(out.Binds, Secret)
 		default:
-			return nil, fmt.Errorf("orm: bind from %q in a main step", b.From)
+			return nil, &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf("bind from %q in a main step", b.From)}
 		}
 	}
 	return out, nil
@@ -378,8 +475,19 @@ func Transform(kind, s string) string {
 type Rows struct {
 	Assemble *plan.Assemble
 	Data     [][]any
+	c        *cached
 	steps    map[int]*stepRows
 	params   []any
+}
+
+// Projection is the assembly facts of one node, shared by every row scanned
+// from it (generated scanners pass it to Row.SetProjection).
+func (r *Rows) Projection(a *plan.Assemble) *Projection {
+	p := r.c.projs[a]
+	if p == nil {
+		panic("orm: assemble node outside the plan")
+	}
+	return p
 }
 
 type stepRows struct {
@@ -437,10 +545,21 @@ func scalarKey(v any) string {
 	return fmt.Sprint(v)
 }
 
-func (d *DB) emit(sqlText string, args []any, start time.Time, err error) {
-	if d.cfg.OnQuery != nil {
-		d.cfg.OnQuery(Event{SQL: sqlText, Args: args, Duration: time.Since(start), Err: err})
+// emit delivers one executed statement to the on_query hook. Secret binds are
+// masked in a copy; the args the driver saw are never handed out.
+func (d *DB) emit(c *cached, sqlText string, args []any, secrets []int, start time.Time, err error) {
+	if d.cfg.OnQuery == nil {
+		return
 	}
+	if len(secrets) > 0 {
+		masked := make([]any, len(args))
+		copy(masked, args)
+		for _, i := range secrets {
+			masked[i] = Secret
+		}
+		args = masked
+	}
+	d.cfg.OnQuery(Event{SQL: sqlText, Args: args, Duration: time.Since(start), PlanID: c.id, Err: err})
 }
 
 // Query runs the main select step and every relation step of the plan and
@@ -448,23 +567,27 @@ func (d *DB) emit(sqlText string, args []any, start time.Time, err error) {
 // time.Time / bool / nil.
 func Query(ctx context.Context, ex Exec, r *Req) (*Rows, error) {
 	d := ex.db()
-	p, err := d.Plan(r)
+	c, err := d.plan(r)
 	if err != nil {
 		return nil, err
 	}
-	return runPlan(ctx, ex, p, r)
+	return runPlan(ctx, ex, c, r)
 }
 
-func runPlan(ctx context.Context, ex Exec, p *plan.Plan, r *Req) (*Rows, error) {
-	main, err := runSelect(ctx, ex, &p.Steps[0], r, nil)
+func runPlan(ctx context.Context, ex Exec, c *cached, r *Req) (*Rows, error) {
+	p := c.plan
+	main, err := runSelect(ctx, ex, c, &p.Steps[0], r, nil)
 	if err != nil {
 		return nil, err
 	}
-	out := &Rows{Assemble: p.Steps[0].Assemble, Data: main, steps: map[int]*stepRows{}, params: r.Params}
+	out := &Rows{Assemble: p.Steps[0].Assemble, Data: main, c: c, params: r.Params}
 	for i := range p.Steps[1:] {
 		st := &p.Steps[i+1]
 		if st.Role != "relation" {
 			continue
+		}
+		if out.steps == nil {
+			out.steps = map[int]*stepRows{}
 		}
 		parents := out.Data
 		if st.Parent.Step != 0 {
@@ -473,7 +596,7 @@ func runPlan(ctx context.Context, ex Exec, p *plan.Plan, r *Req) (*Rows, error) 
 		sr := &stepRows{step: st, byKey: map[Key][]int{}}
 		vals := parentValues(st.Parent, parents, r.Params)
 		if len(vals) > 0 {
-			if sr.data, err = runSelect(ctx, ex, st, r, vals); err != nil {
+			if sr.data, err = runSelect(ctx, ex, c, st, r, vals); err != nil {
 				return nil, err
 			}
 			ci := childIndex(p, st)
@@ -566,13 +689,29 @@ func expandIn(st *plan.Step, vals []any) (string, []any) {
 	return sb.String(), padded
 }
 
-func runSelect(ctx context.Context, ex Exec, st *plan.Step, r *Req, parentVals []any) ([][]any, error) {
+// cell receives one column from database/sql. Scanning into *any makes the
+// driver's []byte cloned once by database/sql and once more by the string
+// conversion; a Scanner gets the driver's buffer itself and copies it exactly
+// once. Every other driver value (int64, float64, bool, time.Time, nil) is
+// kept as it is.
+type cell struct{ v any }
+
+func (c *cell) Scan(src any) error {
+	if b, ok := src.([]byte); ok {
+		c.v = string(b)
+		return nil
+	}
+	c.v = src
+	return nil
+}
+
+func runSelect(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req, parentVals []any) ([][]any, error) {
 	d := ex.db()
 	sqlText := st.SQL
 	if parentVals != nil {
 		sqlText, parentVals = expandIn(st, parentVals)
 	}
-	args, err := d.args(st, r, parentVals)
+	args, secrets, err := d.args(st, r, parentVals)
 	if err != nil {
 		return nil, err
 	}
@@ -582,38 +721,49 @@ func runSelect(ctx context.Context, ex Exec, st *plan.Step, r *Req, parentVals [
 	}
 	start := time.Now()
 	rows, err := stmt.QueryContext(ctx, args...)
-	d.emit(sqlText, args, start, err)
+	err = mapDriverErr(err)
+	d.emit(c, sqlText, args, secrets, start, err)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	n := countCols(st.Assemble)
-	styled := styledCols(st.Assemble)
+	si := c.scans[st]
+	n := si.n
+	// One set of scan targets for the whole result; each row's values are
+	// copied out into a slice carved from a block that grows with the result.
+	cells := make([]cell, n)
+	ptrs := make([]any, n)
+	for i := range cells {
+		ptrs[i] = &cells[i]
+	}
+	var block []any
+	chunk := 4
 	var out [][]any
 	for rows.Next() {
-		vals := make([]any, n)
-		ptrs := make([]any, n)
-		for i := range vals {
-			ptrs[i] = &vals[i]
-		}
 		if err := rows.Scan(ptrs...); err != nil {
-			return nil, err
+			return nil, mapDriverErr(err)
 		}
-		for i, v := range vals {
-			if b, ok := v.([]byte); ok {
-				vals[i] = string(b)
+		if len(block) < n {
+			block = make([]any, n*chunk)
+			if chunk < 64 {
+				chunk *= 2
 			}
 		}
-		for _, c := range styled {
-			dv, err := Decode(c.Styles, vals[c.Index])
+		vals := block[:n:n]
+		block = block[n:]
+		for i := range cells {
+			vals[i] = cells[i].v
+		}
+		for _, sc := range si.styled {
+			dv, err := Decode(sc.Styles, vals[sc.Index])
 			if err != nil {
-				return nil, fmt.Errorf("%s.%s: %w", st.Assemble.Entity, c.Name, err)
+				return nil, fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.Name, err)
 			}
-			vals[c.Index] = dv
+			vals[sc.Index] = dv
 		}
 		out = append(out, vals)
 	}
-	return out, rows.Err()
+	return out, mapDriverErr(rows.Err())
 }
 
 // countCols is the width of one positional row: the node's columns plus its joins'.
@@ -630,12 +780,12 @@ func countCols(a *plan.Assemble) int {
 // Scalar runs a count/count_distinct/sum/avg/min/max step (nil when the aggregate is NULL).
 func Scalar(ctx context.Context, ex Exec, r *Req) (any, error) {
 	d := ex.db()
-	p, err := d.Plan(r)
+	c, err := d.plan(r)
 	if err != nil {
 		return nil, err
 	}
-	st := &p.Steps[0]
-	args, err := d.args(st, r, nil)
+	st := &c.plan.Steps[0]
+	args, secrets, err := d.args(st, r, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -643,26 +793,23 @@ func Scalar(ctx context.Context, ex Exec, r *Req) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	var v any
+	var v cell
 	start := time.Now()
-	err = stmt.QueryRowContext(ctx, args...).Scan(&v)
-	d.emit(st.SQL, args, start, err)
-	if b, ok := v.([]byte); ok {
-		v = string(b)
-	}
-	return v, err
+	err = mapDriverErr(stmt.QueryRowContext(ctx, args...).Scan(&v))
+	d.emit(c, st.SQL, args, secrets, start, err)
+	return v.v, err
 }
 
 // RawAll runs a kind-raw request and returns its rows keyed by the driver's
 // column names, values as the driver gives them ([]byte → string, no codec).
 func RawAll(ctx context.Context, ex Exec, r *Req) ([]map[string]any, error) {
 	d := ex.db()
-	p, err := d.Plan(r)
+	c, err := d.plan(r)
 	if err != nil {
 		return nil, err
 	}
-	st := &p.Steps[0]
-	args, err := d.args(st, r, nil)
+	st := &c.plan.Steps[0]
+	args, secrets, err := d.args(st, r, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -672,45 +819,44 @@ func RawAll(ctx context.Context, ex Exec, r *Req) ([]map[string]any, error) {
 	}
 	start := time.Now()
 	rows, err := stmt.QueryContext(ctx, args...)
-	d.emit(st.SQL, args, start, err)
+	err = mapDriverErr(err)
+	d.emit(c, st.SQL, args, secrets, start, err)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	names, err := rows.Columns()
 	if err != nil {
-		return nil, err
+		return nil, mapDriverErr(err)
+	}
+	cells := make([]cell, len(names))
+	ptrs := make([]any, len(names))
+	for i := range cells {
+		ptrs[i] = &cells[i]
 	}
 	out := []map[string]any{}
 	for rows.Next() {
-		vals := make([]any, len(names))
-		ptrs := make([]any, len(names))
-		for i := range vals {
-			ptrs[i] = &vals[i]
-		}
 		if err := rows.Scan(ptrs...); err != nil {
-			return nil, err
+			return nil, mapDriverErr(err)
 		}
 		m := make(map[string]any, len(names))
-		for i, v := range vals {
-			if b, ok := v.([]byte); ok {
-				v = string(b)
-			}
-			m[names[i]] = v
+		for i := range cells {
+			m[names[i]] = cells[i].v
 		}
 		out = append(out, m)
 	}
-	return out, rows.Err()
+	return out, mapDriverErr(rows.Err())
 }
 
 // Paginate runs the main step (with its relations) and the count step.
 func Paginate(ctx context.Context, ex Exec, r *Req) (*Rows, int64, error) {
 	d := ex.db()
-	p, err := d.Plan(r)
+	c, err := d.plan(r)
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := runPlan(ctx, ex, p, r)
+	p := c.plan
+	rows, err := runPlan(ctx, ex, c, r)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -720,7 +866,7 @@ func Paginate(ctx context.Context, ex Exec, r *Req) (*Rows, int64, error) {
 			st = &p.Steps[i]
 		}
 	}
-	args, err := d.args(st, r, nil)
+	args, secrets, err := d.args(st, r, nil)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -730,8 +876,8 @@ func Paginate(ctx context.Context, ex Exec, r *Req) (*Rows, int64, error) {
 	}
 	var total int64
 	start := time.Now()
-	err = stmt.QueryRowContext(ctx, args...).Scan(&total)
-	d.emit(st.SQL, args, start, err)
+	err = mapDriverErr(stmt.QueryRowContext(ctx, args...).Scan(&total))
+	d.emit(c, st.SQL, args, secrets, start, err)
 	return rows, total, err
 }
 
@@ -739,12 +885,12 @@ func Paginate(ctx context.Context, ex Exec, r *Req) (*Rows, int64, error) {
 // update with optimistic locking it returns ErrOptimisticLock when no row matched.
 func Write(ctx context.Context, ex Exec, r *Req) (lastID, affected int64, err error) {
 	d := ex.db()
-	p, err := d.Plan(r)
+	c, err := d.plan(r)
 	if err != nil {
 		return 0, 0, err
 	}
-	st := &p.Steps[0]
-	args, err := d.args(st, r, nil)
+	st := &c.plan.Steps[0]
+	args, secrets, err := d.args(st, r, nil)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -754,7 +900,8 @@ func Write(ctx context.Context, ex Exec, r *Req) (lastID, affected int64, err er
 	}
 	start := time.Now()
 	res, err := stmt.ExecContext(ctx, args...)
-	d.emit(st.SQL, args, start, err)
+	err = mapDriverErr(err)
+	d.emit(c, st.SQL, args, secrets, start, err)
 	if err != nil {
 		return 0, 0, err
 	}
