@@ -26,9 +26,9 @@ type AuthorRow struct {
 	DisplayStartDt        *time.Time
 	DisplayEndDt          *time.Time
 	IsAllday              bool
-	TargetClubReaderCount int32
-	SuccessCount          int32
-	ReaderCount           int32
+	TargetClubReaderCount int64
+	SuccessCount          int64
+	ReaderCount           int64
 	ReadCount             int64
 	PhotoUrl              *string
 	UserSeq               int64
@@ -39,7 +39,7 @@ type AuthorRow struct {
 	EndDt                 time.Time
 	Uuid                  *string
 	IsSingleWork          bool
-	LikeCount             int32
+	LikeCount             int64
 	AesHexEmail           *string
 	AesHexPhone           *string
 	Price                 *float64
@@ -200,45 +200,45 @@ func (r *AuthorRow) SetIsAllday(v bool) *AuthorRow {
 }
 
 // GetTargetClubReaderCount is nil-safe.
-func (r *AuthorRow) GetTargetClubReaderCount() int32 {
+func (r *AuthorRow) GetTargetClubReaderCount() int64 {
 	if r == nil {
-		var zero int32
+		var zero int64
 		return zero
 	}
 	return r.TargetClubReaderCount
 }
 
-func (r *AuthorRow) SetTargetClubReaderCount(v int32) *AuthorRow {
+func (r *AuthorRow) SetTargetClubReaderCount(v int64) *AuthorRow {
 	r.TargetClubReaderCount = v
 	r.Dirty("target_club_reader_count", v)
 	return r
 }
 
 // GetSuccessCount is nil-safe.
-func (r *AuthorRow) GetSuccessCount() int32 {
+func (r *AuthorRow) GetSuccessCount() int64 {
 	if r == nil {
-		var zero int32
+		var zero int64
 		return zero
 	}
 	return r.SuccessCount
 }
 
-func (r *AuthorRow) SetSuccessCount(v int32) *AuthorRow {
+func (r *AuthorRow) SetSuccessCount(v int64) *AuthorRow {
 	r.SuccessCount = v
 	r.Dirty("success_count", v)
 	return r
 }
 
 // GetReaderCount is nil-safe.
-func (r *AuthorRow) GetReaderCount() int32 {
+func (r *AuthorRow) GetReaderCount() int64 {
 	if r == nil {
-		var zero int32
+		var zero int64
 		return zero
 	}
 	return r.ReaderCount
 }
 
-func (r *AuthorRow) SetReaderCount(v int32) *AuthorRow {
+func (r *AuthorRow) SetReaderCount(v int64) *AuthorRow {
 	r.ReaderCount = v
 	r.Dirty("reader_count", v)
 	return r
@@ -395,15 +395,15 @@ func (r *AuthorRow) SetIsSingleWork(v bool) *AuthorRow {
 }
 
 // GetLikeCount is nil-safe.
-func (r *AuthorRow) GetLikeCount() int32 {
+func (r *AuthorRow) GetLikeCount() int64 {
 	if r == nil {
-		var zero int32
+		var zero int64
 		return zero
 	}
 	return r.LikeCount
 }
 
-func (r *AuthorRow) SetLikeCount(v int32) *AuthorRow {
+func (r *AuthorRow) SetLikeCount(v int64) *AuthorRow {
 	r.LikeCount = v
 	r.Dirty("like_count", v)
 	return r
@@ -618,11 +618,11 @@ func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
 		case "is_allday":
 			r.IsAllday = orm.AsBool(v)
 		case "target_club_reader_count":
-			r.TargetClubReaderCount = int32(orm.AsInt64(v))
+			r.TargetClubReaderCount = orm.AsInt64(v)
 		case "success_count":
-			r.SuccessCount = int32(orm.AsInt64(v))
+			r.SuccessCount = orm.AsInt64(v)
 		case "reader_count":
-			r.ReaderCount = int32(orm.AsInt64(v))
+			r.ReaderCount = orm.AsInt64(v)
 		case "read_count":
 			r.ReadCount = orm.AsInt64(v)
 		case "photo_url":
@@ -650,7 +650,7 @@ func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
 		case "is_single_work":
 			r.IsSingleWork = orm.AsBool(v)
 		case "like_count":
-			r.LikeCount = int32(orm.AsInt64(v))
+			r.LikeCount = orm.AsInt64(v)
 		case "aes_hex_email":
 			if v != nil {
 				x := orm.AsString(v)
@@ -1811,75 +1811,75 @@ func (q *Author) IsAlldayNotEqCol(ref orm.ColRef) *Author {
 	q.q.W().PredCol("is_allday", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
-func (w *AuthorWhere) TargetClubReaderCountEq(v int32) *AuthorWhere {
+func (w *AuthorWhere) TargetClubReaderCountEq(v int64) *AuthorWhere {
 	w.w.Pred("target_club_reader_count", "eq", v)
 	return w
 }
-func (q *Author) TargetClubReaderCountEq(v int32) *Author {
+func (q *Author) TargetClubReaderCountEq(v int64) *Author {
 	q.q.W().Pred("target_club_reader_count", "eq", v)
 	return q
 }
-func (w *AuthorWhere) TargetClubReaderCountNotEq(v int32) *AuthorWhere {
+func (w *AuthorWhere) TargetClubReaderCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("target_club_reader_count", "not_eq", v)
 	return w
 }
-func (q *Author) TargetClubReaderCountNotEq(v int32) *Author {
+func (q *Author) TargetClubReaderCountNotEq(v int64) *Author {
 	q.q.W().Pred("target_club_reader_count", "not_eq", v)
 	return q
 }
-func (w *AuthorWhere) TargetClubReaderCountGt(v int32) *AuthorWhere {
+func (w *AuthorWhere) TargetClubReaderCountGt(v int64) *AuthorWhere {
 	w.w.Pred("target_club_reader_count", "gt", v)
 	return w
 }
-func (q *Author) TargetClubReaderCountGt(v int32) *Author {
+func (q *Author) TargetClubReaderCountGt(v int64) *Author {
 	q.q.W().Pred("target_club_reader_count", "gt", v)
 	return q
 }
-func (w *AuthorWhere) TargetClubReaderCountGte(v int32) *AuthorWhere {
+func (w *AuthorWhere) TargetClubReaderCountGte(v int64) *AuthorWhere {
 	w.w.Pred("target_club_reader_count", "gte", v)
 	return w
 }
-func (q *Author) TargetClubReaderCountGte(v int32) *Author {
+func (q *Author) TargetClubReaderCountGte(v int64) *Author {
 	q.q.W().Pred("target_club_reader_count", "gte", v)
 	return q
 }
-func (w *AuthorWhere) TargetClubReaderCountLt(v int32) *AuthorWhere {
+func (w *AuthorWhere) TargetClubReaderCountLt(v int64) *AuthorWhere {
 	w.w.Pred("target_club_reader_count", "lt", v)
 	return w
 }
-func (q *Author) TargetClubReaderCountLt(v int32) *Author {
+func (q *Author) TargetClubReaderCountLt(v int64) *Author {
 	q.q.W().Pred("target_club_reader_count", "lt", v)
 	return q
 }
-func (w *AuthorWhere) TargetClubReaderCountLte(v int32) *AuthorWhere {
+func (w *AuthorWhere) TargetClubReaderCountLte(v int64) *AuthorWhere {
 	w.w.Pred("target_club_reader_count", "lte", v)
 	return w
 }
-func (q *Author) TargetClubReaderCountLte(v int32) *Author {
+func (q *Author) TargetClubReaderCountLte(v int64) *Author {
 	q.q.W().Pred("target_club_reader_count", "lte", v)
 	return q
 }
-func (w *AuthorWhere) TargetClubReaderCountIn(vs []int32) *AuthorWhere {
+func (w *AuthorWhere) TargetClubReaderCountIn(vs []int64) *AuthorWhere {
 	w.w.PredList("target_club_reader_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) TargetClubReaderCountIn(vs []int32) *Author {
+func (q *Author) TargetClubReaderCountIn(vs []int64) *Author {
 	q.q.W().PredList("target_club_reader_count", "in", orm.Anys(vs))
 	return q
 }
-func (w *AuthorWhere) TargetClubReaderCountNotIn(vs []int32) *AuthorWhere {
+func (w *AuthorWhere) TargetClubReaderCountNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("target_club_reader_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) TargetClubReaderCountNotIn(vs []int32) *Author {
+func (q *Author) TargetClubReaderCountNotIn(vs []int64) *Author {
 	q.q.W().PredList("target_club_reader_count", "not_in", orm.Anys(vs))
 	return q
 }
-func (w *AuthorWhere) TargetClubReaderCountBetween(lo, hi int32) *AuthorWhere {
+func (w *AuthorWhere) TargetClubReaderCountBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("target_club_reader_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) TargetClubReaderCountBetween(lo, hi int32) *Author {
+func (q *Author) TargetClubReaderCountBetween(lo, hi int64) *Author {
 	q.q.W().PredList("target_club_reader_count", "between", []any{lo, hi})
 	return q
 }
@@ -1947,60 +1947,60 @@ func (q *Author) TargetClubReaderCountLteCol(ref orm.ColRef) *Author {
 	q.q.W().PredCol("target_club_reader_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
-func (w *AuthorWhere) SuccessCountEq(v int32) *AuthorWhere {
+func (w *AuthorWhere) SuccessCountEq(v int64) *AuthorWhere {
 	w.w.Pred("success_count", "eq", v)
 	return w
 }
-func (q *Author) SuccessCountEq(v int32) *Author { q.q.W().Pred("success_count", "eq", v); return q }
-func (w *AuthorWhere) SuccessCountNotEq(v int32) *AuthorWhere {
+func (q *Author) SuccessCountEq(v int64) *Author { q.q.W().Pred("success_count", "eq", v); return q }
+func (w *AuthorWhere) SuccessCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("success_count", "not_eq", v)
 	return w
 }
-func (q *Author) SuccessCountNotEq(v int32) *Author {
+func (q *Author) SuccessCountNotEq(v int64) *Author {
 	q.q.W().Pred("success_count", "not_eq", v)
 	return q
 }
-func (w *AuthorWhere) SuccessCountGt(v int32) *AuthorWhere {
+func (w *AuthorWhere) SuccessCountGt(v int64) *AuthorWhere {
 	w.w.Pred("success_count", "gt", v)
 	return w
 }
-func (q *Author) SuccessCountGt(v int32) *Author { q.q.W().Pred("success_count", "gt", v); return q }
-func (w *AuthorWhere) SuccessCountGte(v int32) *AuthorWhere {
+func (q *Author) SuccessCountGt(v int64) *Author { q.q.W().Pred("success_count", "gt", v); return q }
+func (w *AuthorWhere) SuccessCountGte(v int64) *AuthorWhere {
 	w.w.Pred("success_count", "gte", v)
 	return w
 }
-func (q *Author) SuccessCountGte(v int32) *Author { q.q.W().Pred("success_count", "gte", v); return q }
-func (w *AuthorWhere) SuccessCountLt(v int32) *AuthorWhere {
+func (q *Author) SuccessCountGte(v int64) *Author { q.q.W().Pred("success_count", "gte", v); return q }
+func (w *AuthorWhere) SuccessCountLt(v int64) *AuthorWhere {
 	w.w.Pred("success_count", "lt", v)
 	return w
 }
-func (q *Author) SuccessCountLt(v int32) *Author { q.q.W().Pred("success_count", "lt", v); return q }
-func (w *AuthorWhere) SuccessCountLte(v int32) *AuthorWhere {
+func (q *Author) SuccessCountLt(v int64) *Author { q.q.W().Pred("success_count", "lt", v); return q }
+func (w *AuthorWhere) SuccessCountLte(v int64) *AuthorWhere {
 	w.w.Pred("success_count", "lte", v)
 	return w
 }
-func (q *Author) SuccessCountLte(v int32) *Author { q.q.W().Pred("success_count", "lte", v); return q }
-func (w *AuthorWhere) SuccessCountIn(vs []int32) *AuthorWhere {
+func (q *Author) SuccessCountLte(v int64) *Author { q.q.W().Pred("success_count", "lte", v); return q }
+func (w *AuthorWhere) SuccessCountIn(vs []int64) *AuthorWhere {
 	w.w.PredList("success_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) SuccessCountIn(vs []int32) *Author {
+func (q *Author) SuccessCountIn(vs []int64) *Author {
 	q.q.W().PredList("success_count", "in", orm.Anys(vs))
 	return q
 }
-func (w *AuthorWhere) SuccessCountNotIn(vs []int32) *AuthorWhere {
+func (w *AuthorWhere) SuccessCountNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("success_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) SuccessCountNotIn(vs []int32) *Author {
+func (q *Author) SuccessCountNotIn(vs []int64) *Author {
 	q.q.W().PredList("success_count", "not_in", orm.Anys(vs))
 	return q
 }
-func (w *AuthorWhere) SuccessCountBetween(lo, hi int32) *AuthorWhere {
+func (w *AuthorWhere) SuccessCountBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("success_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) SuccessCountBetween(lo, hi int32) *Author {
+func (q *Author) SuccessCountBetween(lo, hi int64) *Author {
 	q.q.W().PredList("success_count", "between", []any{lo, hi})
 	return q
 }
@@ -2065,60 +2065,60 @@ func (q *Author) SuccessCountLteCol(ref orm.ColRef) *Author {
 	q.q.W().PredCol("success_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
-func (w *AuthorWhere) ReaderCountEq(v int32) *AuthorWhere {
+func (w *AuthorWhere) ReaderCountEq(v int64) *AuthorWhere {
 	w.w.Pred("reader_count", "eq", v)
 	return w
 }
-func (q *Author) ReaderCountEq(v int32) *Author { q.q.W().Pred("reader_count", "eq", v); return q }
-func (w *AuthorWhere) ReaderCountNotEq(v int32) *AuthorWhere {
+func (q *Author) ReaderCountEq(v int64) *Author { q.q.W().Pred("reader_count", "eq", v); return q }
+func (w *AuthorWhere) ReaderCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("reader_count", "not_eq", v)
 	return w
 }
-func (q *Author) ReaderCountNotEq(v int32) *Author {
+func (q *Author) ReaderCountNotEq(v int64) *Author {
 	q.q.W().Pred("reader_count", "not_eq", v)
 	return q
 }
-func (w *AuthorWhere) ReaderCountGt(v int32) *AuthorWhere {
+func (w *AuthorWhere) ReaderCountGt(v int64) *AuthorWhere {
 	w.w.Pred("reader_count", "gt", v)
 	return w
 }
-func (q *Author) ReaderCountGt(v int32) *Author { q.q.W().Pred("reader_count", "gt", v); return q }
-func (w *AuthorWhere) ReaderCountGte(v int32) *AuthorWhere {
+func (q *Author) ReaderCountGt(v int64) *Author { q.q.W().Pred("reader_count", "gt", v); return q }
+func (w *AuthorWhere) ReaderCountGte(v int64) *AuthorWhere {
 	w.w.Pred("reader_count", "gte", v)
 	return w
 }
-func (q *Author) ReaderCountGte(v int32) *Author { q.q.W().Pred("reader_count", "gte", v); return q }
-func (w *AuthorWhere) ReaderCountLt(v int32) *AuthorWhere {
+func (q *Author) ReaderCountGte(v int64) *Author { q.q.W().Pred("reader_count", "gte", v); return q }
+func (w *AuthorWhere) ReaderCountLt(v int64) *AuthorWhere {
 	w.w.Pred("reader_count", "lt", v)
 	return w
 }
-func (q *Author) ReaderCountLt(v int32) *Author { q.q.W().Pred("reader_count", "lt", v); return q }
-func (w *AuthorWhere) ReaderCountLte(v int32) *AuthorWhere {
+func (q *Author) ReaderCountLt(v int64) *Author { q.q.W().Pred("reader_count", "lt", v); return q }
+func (w *AuthorWhere) ReaderCountLte(v int64) *AuthorWhere {
 	w.w.Pred("reader_count", "lte", v)
 	return w
 }
-func (q *Author) ReaderCountLte(v int32) *Author { q.q.W().Pred("reader_count", "lte", v); return q }
-func (w *AuthorWhere) ReaderCountIn(vs []int32) *AuthorWhere {
+func (q *Author) ReaderCountLte(v int64) *Author { q.q.W().Pred("reader_count", "lte", v); return q }
+func (w *AuthorWhere) ReaderCountIn(vs []int64) *AuthorWhere {
 	w.w.PredList("reader_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ReaderCountIn(vs []int32) *Author {
+func (q *Author) ReaderCountIn(vs []int64) *Author {
 	q.q.W().PredList("reader_count", "in", orm.Anys(vs))
 	return q
 }
-func (w *AuthorWhere) ReaderCountNotIn(vs []int32) *AuthorWhere {
+func (w *AuthorWhere) ReaderCountNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("reader_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ReaderCountNotIn(vs []int32) *Author {
+func (q *Author) ReaderCountNotIn(vs []int64) *Author {
 	q.q.W().PredList("reader_count", "not_in", orm.Anys(vs))
 	return q
 }
-func (w *AuthorWhere) ReaderCountBetween(lo, hi int32) *AuthorWhere {
+func (w *AuthorWhere) ReaderCountBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("reader_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) ReaderCountBetween(lo, hi int32) *Author {
+func (q *Author) ReaderCountBetween(lo, hi int64) *Author {
 	q.q.W().PredList("reader_count", "between", []any{lo, hi})
 	return q
 }
@@ -3109,42 +3109,42 @@ func (q *Author) IsSingleWorkNotEqCol(ref orm.ColRef) *Author {
 	q.q.W().PredCol("is_single_work", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
-func (w *AuthorWhere) LikeCountEq(v int32) *AuthorWhere { w.w.Pred("like_count", "eq", v); return w }
-func (q *Author) LikeCountEq(v int32) *Author           { q.q.W().Pred("like_count", "eq", v); return q }
-func (w *AuthorWhere) LikeCountNotEq(v int32) *AuthorWhere {
+func (w *AuthorWhere) LikeCountEq(v int64) *AuthorWhere { w.w.Pred("like_count", "eq", v); return w }
+func (q *Author) LikeCountEq(v int64) *Author           { q.q.W().Pred("like_count", "eq", v); return q }
+func (w *AuthorWhere) LikeCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("like_count", "not_eq", v)
 	return w
 }
-func (q *Author) LikeCountNotEq(v int32) *Author         { q.q.W().Pred("like_count", "not_eq", v); return q }
-func (w *AuthorWhere) LikeCountGt(v int32) *AuthorWhere  { w.w.Pred("like_count", "gt", v); return w }
-func (q *Author) LikeCountGt(v int32) *Author            { q.q.W().Pred("like_count", "gt", v); return q }
-func (w *AuthorWhere) LikeCountGte(v int32) *AuthorWhere { w.w.Pred("like_count", "gte", v); return w }
-func (q *Author) LikeCountGte(v int32) *Author           { q.q.W().Pred("like_count", "gte", v); return q }
-func (w *AuthorWhere) LikeCountLt(v int32) *AuthorWhere  { w.w.Pred("like_count", "lt", v); return w }
-func (q *Author) LikeCountLt(v int32) *Author            { q.q.W().Pred("like_count", "lt", v); return q }
-func (w *AuthorWhere) LikeCountLte(v int32) *AuthorWhere { w.w.Pred("like_count", "lte", v); return w }
-func (q *Author) LikeCountLte(v int32) *Author           { q.q.W().Pred("like_count", "lte", v); return q }
-func (w *AuthorWhere) LikeCountIn(vs []int32) *AuthorWhere {
+func (q *Author) LikeCountNotEq(v int64) *Author         { q.q.W().Pred("like_count", "not_eq", v); return q }
+func (w *AuthorWhere) LikeCountGt(v int64) *AuthorWhere  { w.w.Pred("like_count", "gt", v); return w }
+func (q *Author) LikeCountGt(v int64) *Author            { q.q.W().Pred("like_count", "gt", v); return q }
+func (w *AuthorWhere) LikeCountGte(v int64) *AuthorWhere { w.w.Pred("like_count", "gte", v); return w }
+func (q *Author) LikeCountGte(v int64) *Author           { q.q.W().Pred("like_count", "gte", v); return q }
+func (w *AuthorWhere) LikeCountLt(v int64) *AuthorWhere  { w.w.Pred("like_count", "lt", v); return w }
+func (q *Author) LikeCountLt(v int64) *Author            { q.q.W().Pred("like_count", "lt", v); return q }
+func (w *AuthorWhere) LikeCountLte(v int64) *AuthorWhere { w.w.Pred("like_count", "lte", v); return w }
+func (q *Author) LikeCountLte(v int64) *Author           { q.q.W().Pred("like_count", "lte", v); return q }
+func (w *AuthorWhere) LikeCountIn(vs []int64) *AuthorWhere {
 	w.w.PredList("like_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) LikeCountIn(vs []int32) *Author {
+func (q *Author) LikeCountIn(vs []int64) *Author {
 	q.q.W().PredList("like_count", "in", orm.Anys(vs))
 	return q
 }
-func (w *AuthorWhere) LikeCountNotIn(vs []int32) *AuthorWhere {
+func (w *AuthorWhere) LikeCountNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("like_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) LikeCountNotIn(vs []int32) *Author {
+func (q *Author) LikeCountNotIn(vs []int64) *Author {
 	q.q.W().PredList("like_count", "not_in", orm.Anys(vs))
 	return q
 }
-func (w *AuthorWhere) LikeCountBetween(lo, hi int32) *AuthorWhere {
+func (w *AuthorWhere) LikeCountBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("like_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) LikeCountBetween(lo, hi int32) *Author {
+func (q *Author) LikeCountBetween(lo, hi int64) *Author {
 	q.q.W().PredList("like_count", "between", []any{lo, hi})
 	return q
 }
@@ -4460,7 +4460,7 @@ func (q *Author) SetIsAlldayExpr(frag string, binds ...any) *Author {
 	q.q.SetExpr("is_allday", frag, binds...)
 	return q
 }
-func (q *Author) SetTargetClubReaderCount(v int32) *Author {
+func (q *Author) SetTargetClubReaderCount(v int64) *Author {
 	q.q.Set("target_club_reader_count", v)
 	return q
 }
@@ -4468,12 +4468,12 @@ func (q *Author) SetTargetClubReaderCountExpr(frag string, binds ...any) *Author
 	q.q.SetExpr("target_club_reader_count", frag, binds...)
 	return q
 }
-func (q *Author) SetSuccessCount(v int32) *Author { q.q.Set("success_count", v); return q }
+func (q *Author) SetSuccessCount(v int64) *Author { q.q.Set("success_count", v); return q }
 func (q *Author) SetSuccessCountExpr(frag string, binds ...any) *Author {
 	q.q.SetExpr("success_count", frag, binds...)
 	return q
 }
-func (q *Author) SetReaderCount(v int32) *Author { q.q.Set("reader_count", v); return q }
+func (q *Author) SetReaderCount(v int64) *Author { q.q.Set("reader_count", v); return q }
 func (q *Author) SetReaderCountExpr(frag string, binds ...any) *Author {
 	q.q.SetExpr("reader_count", frag, binds...)
 	return q
@@ -4530,7 +4530,7 @@ func (q *Author) SetIsSingleWorkExpr(frag string, binds ...any) *Author {
 	q.q.SetExpr("is_single_work", frag, binds...)
 	return q
 }
-func (q *Author) SetLikeCount(v int32) *Author { q.q.Set("like_count", v); return q }
+func (q *Author) SetLikeCount(v int64) *Author { q.q.Set("like_count", v); return q }
 func (q *Author) SetLikeCountExpr(frag string, binds ...any) *Author {
 	q.q.SetExpr("like_count", frag, binds...)
 	return q
@@ -4601,18 +4601,18 @@ func (q *Author) SetSerializeDataExpr(frag string, binds ...any) *Author {
 }
 func (q *Author) PlusSeq(v int64) *Author  { q.q.Plus("seq", v); return q }
 func (q *Author) MinusSeq(v int64) *Author { q.q.Minus("seq", v); return q }
-func (q *Author) PlusTargetClubReaderCount(v int32) *Author {
+func (q *Author) PlusTargetClubReaderCount(v int64) *Author {
 	q.q.Plus("target_club_reader_count", v)
 	return q
 }
-func (q *Author) MinusTargetClubReaderCount(v int32) *Author {
+func (q *Author) MinusTargetClubReaderCount(v int64) *Author {
 	q.q.Minus("target_club_reader_count", v)
 	return q
 }
-func (q *Author) PlusSuccessCount(v int32) *Author      { q.q.Plus("success_count", v); return q }
-func (q *Author) MinusSuccessCount(v int32) *Author     { q.q.Minus("success_count", v); return q }
-func (q *Author) PlusReaderCount(v int32) *Author       { q.q.Plus("reader_count", v); return q }
-func (q *Author) MinusReaderCount(v int32) *Author      { q.q.Minus("reader_count", v); return q }
+func (q *Author) PlusSuccessCount(v int64) *Author      { q.q.Plus("success_count", v); return q }
+func (q *Author) MinusSuccessCount(v int64) *Author     { q.q.Minus("success_count", v); return q }
+func (q *Author) PlusReaderCount(v int64) *Author       { q.q.Plus("reader_count", v); return q }
+func (q *Author) MinusReaderCount(v int64) *Author      { q.q.Minus("reader_count", v); return q }
 func (q *Author) PlusReadCount(v int64) *Author         { q.q.Plus("read_count", v); return q }
 func (q *Author) MinusReadCount(v int64) *Author        { q.q.Minus("read_count", v); return q }
 func (q *Author) PlusUserSeq(v int64) *Author           { q.q.Plus("user_seq", v); return q }
@@ -4623,8 +4623,8 @@ func (q *Author) PlusServiceRegionSeq(v int64) *Author  { q.q.Plus("service_regi
 func (q *Author) MinusServiceRegionSeq(v int64) *Author { q.q.Minus("service_region_seq", v); return q }
 func (q *Author) PlusServiceMemberSeq(v int64) *Author  { q.q.Plus("service_member_seq", v); return q }
 func (q *Author) MinusServiceMemberSeq(v int64) *Author { q.q.Minus("service_member_seq", v); return q }
-func (q *Author) PlusLikeCount(v int32) *Author         { q.q.Plus("like_count", v); return q }
-func (q *Author) MinusLikeCount(v int32) *Author        { q.q.Minus("like_count", v); return q }
+func (q *Author) PlusLikeCount(v int64) *Author         { q.q.Plus("like_count", v); return q }
+func (q *Author) MinusLikeCount(v int64) *Author        { q.q.Minus("like_count", v); return q }
 func (q *Author) PlusPrice(v float64) *Author           { q.q.Plus("price", v); return q }
 func (q *Author) MinusPrice(v float64) *Author          { q.q.Minus("price", v); return q }
 
