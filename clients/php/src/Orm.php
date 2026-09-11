@@ -26,21 +26,26 @@ final class Orm
         if ($file !== $generated) {
             throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "generated code is from $generated, {$config->schemaPath} is $file");
         }
-        $daemon = self::transport()->hash();
-        if ($daemon !== $generated) {
-            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "generated code is from $generated, ormd at {$config->socket} loaded $daemon");
+        $daemon = self::transport()->info();
+        if ($daemon['schema_hash'] !== $generated) {
+            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "generated code is from $generated, ormd at {$config->socket} loaded {$daemon['schema_hash']}");
+        }
+        // The plans are dialect text (docs/dialects.md): ormd must compile for the database the PDO driver speaks.
+        if ($daemon['dialect'] !== $config->driver) {
+            throw new OrmException(Code::CONFIG, "ormd at {$config->socket} compiles for {$daemon['dialect']} but the driver is {$config->driver}: start ormd with -dialect {$config->driver}");
         }
     }
 
     /**
      * Loads orm.toml (docs/config.md), installs it with init() and opens the database.
-     * Paths must be absolute, exist and not be symlinks; anything else is CONFIG.
+     * `[db].driver` (mysql, the default | postgres | sqlite) selects the PDO driver; ormd must run with
+     * the same `-dialect`. Paths must be absolute, exist and not be symlinks; anything else is CONFIG.
      */
     public static function fromConfig(string $path): Db
     {
         $cfg = Toml::parseFile($path);
         // docs/config.md is the whole vocabulary; a key outside it is a typo, not an extension (strict, like Go).
-        $known = ['schema' => true, 'db' => ['dsn', 'user', 'password', 'pool'], 'secrets' => ['aes', 'aes_env'], 'engine' => ['wasm', 'cache_dir'], 'ormd' => ['socket'], 'debug' => ['on_query']];
+        $known = ['schema' => true, 'db' => ['driver', 'dsn', 'user', 'password', 'pool'], 'secrets' => ['aes', 'aes_env'], 'engine' => ['wasm', 'cache_dir'], 'ormd' => ['socket'], 'debug' => ['on_query']];
         foreach ($cfg as $k => $v) {
             if (!isset($known[$k])) {
                 throw new OrmException(Code::CONFIG, "$path: unknown key $k");
@@ -56,23 +61,35 @@ final class Orm
         $schemaPath = self::pathOf($cfg, '', 'schema');
         $socket = self::pathOf($cfg, 'ormd', 'socket');
         $db = $cfg['db'] ?? throw new OrmException(Code::CONFIG, "$path: [db] is required");
+        $driver = $db['driver'] ?? 'mysql';
+        if (!in_array($driver, Db::DRIVERS, true)) {
+            throw new OrmException(Code::CONFIG, "$path: db.driver must be mysql, postgres or sqlite");
+        }
         $dsn = $db['dsn'] ?? throw new OrmException(Code::CONFIG, "$path: db.dsn is required");
         $user = $db['user'] ?? null;
         $password = $db['password'] ?? null;
         if (!is_string($dsn) || ($user !== null && !is_string($user)) || ($password !== null && !is_string($password))) {
             throw new OrmException(Code::CONFIG, "$path: db.dsn, db.user and db.password must be strings");
         }
-        // [db].user/password apply only when the DSN carries none (PDO accepts user=/password= keys); a conflict is CONFIG.
-        $inDsn = self::dsnCredentials($dsn);
-        if (isset($inDsn['user'])) {
-            if ($user !== null && $user !== $inDsn['user']) {
-                throw new OrmException(Code::CONFIG, "$path: db.user ($user) conflicts with the user in db.dsn ({$inDsn['user']})");
+        if ($driver === 'sqlite') {
+            // db.dsn is the database file; SQLite has no credentials.
+            if ($user !== null || $password !== null) {
+                throw new OrmException(Code::CONFIG, "$path: db.user and db.password do not apply to sqlite");
             }
-            $user = $inDsn['user'];
-        } elseif ($user === null) {
-            throw new OrmException(Code::CONFIG, "$path: db.user is required (the DSN names no user)");
+            $dsn = self::pathOf($cfg, 'db', 'dsn');
+        } else {
+            // [db].user/password apply only when the DSN carries none (PDO accepts user=/password= keys); a conflict is CONFIG.
+            $inDsn = self::dsnCredentials($dsn);
+            if (isset($inDsn['user'])) {
+                if ($user !== null && $user !== $inDsn['user']) {
+                    throw new OrmException(Code::CONFIG, "$path: db.user ($user) conflicts with the user in db.dsn ({$inDsn['user']})");
+                }
+                $user = $inDsn['user'];
+            } elseif ($user === null) {
+                throw new OrmException(Code::CONFIG, "$path: db.user is required (the DSN names no user)");
+            }
+            $password ??= $inDsn['password'] ?? '';
         }
-        $password ??= $inDsn['password'] ?? '';
         $secrets = $cfg['secrets'] ?? [];
         $aesKey = '';
         if (isset($secrets['aes'], $secrets['aes_env'])) {
@@ -96,12 +113,16 @@ final class Orm
                     json_encode($binds, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $err === null ? '' : ' ! ' . $err->getMessage()));
             };
         }
-        $config = new Config(socket: $socket, schemaPath: $schemaPath, aesKey: $aesKey, onQuery: $onQuery);
+        $config = new Config(socket: $socket, schemaPath: $schemaPath, aesKey: $aesKey, onQuery: $onQuery, driver: $driver);
         if ($aesKey === '' && $config->hasSecretColumns()) {
             throw new OrmException(Code::CONFIG, "$path: the schema has aes columns; secrets.aes or secrets.aes_env is required");
         }
         self::init($config);
-        return Db::mysql($dsn, $user, $password);
+        return match ($driver) {
+            'mysql' => Db::mysql($dsn, $user, $password),
+            'postgres' => Db::postgres($dsn, $user, $password),
+            'sqlite' => Db::sqlite($dsn),
+        };
     }
 
     /** @return array{user?: string, password?: string} the user=/password= keys of a PDO DSN */
@@ -172,9 +193,14 @@ final class Config
          * — binds have secret slots masked as "$SECRET"; $planId is the plan cache key suffix (same for every statement of one shape)
          */
         public readonly ?\Closure $onQuery = null,
+        /** the database the Db speaks (mysql | postgres | sqlite); ormd must compile for the same dialect */
+        public readonly string $driver = 'mysql',
     ) {
         if (!str_starts_with($socket, '/') || !str_starts_with($schemaPath, '/')) {
             throw new OrmException(Code::CONFIG, 'socket and schemaPath must be absolute');
+        }
+        if (!in_array($driver, Db::DRIVERS, true)) {
+            throw new OrmException(Code::CONFIG, "driver $driver: want mysql, postgres or sqlite");
         }
     }
 
@@ -224,14 +250,36 @@ final class OrmException extends \RuntimeException
     }
 
     /**
-     * The driver errors docs/errors.yaml maps to a code: MySQL 1213 / SQLSTATE 40001 → DEADLOCK,
-     * MySQL 1062 (or SQLSTATE 23000 without a driver code) → DUPLICATE_KEY. Every other driver
-     * error is returned unchanged; the driver's message is kept in the OrmException text.
+     * The driver errors docs/errors.yaml maps to a code, per driver:
+     * MySQL 1213 / SQLSTATE 40001 → DEADLOCK, 1062 (or SQLSTATE 23000 without a driver code) → DUPLICATE_KEY;
+     * PostgreSQL SQLSTATE 40P01 (deadlock_detected) / 40001 (serialization_failure) → DEADLOCK, 23505 (unique_violation) → DUPLICATE_KEY;
+     * SQLite 5 / 6 (SQLITE_BUSY / SQLITE_LOCKED: the other writer wins, re-run) and their extended forms 261 / 262 → DEADLOCK,
+     * SQLITE_CONSTRAINT_UNIQUE 2067 / _PRIMARYKEY 1555 → DUPLICATE_KEY — pdo_sqlite reports the primary code 19 with the
+     * message "UNIQUE constraint failed: …", which is mapped the same way.
+     * Every other driver error is returned unchanged; the driver's message is kept in the OrmException text.
      */
-    public static function fromDriver(\PDOException $e): \Throwable
+    public static function fromDriver(\PDOException $e, string $driver = 'mysql'): \Throwable
     {
         $state = (string) ($e->errorInfo[0] ?? $e->getCode());
         $num = $e->errorInfo[1] ?? null;
+        switch ($driver) {
+            case 'postgres':
+                if ($state === '40P01' || $state === '40001') {
+                    return new self(Code::DEADLOCK, $e->getMessage(), $e);
+                }
+                if ($state === '23505') {
+                    return new self(Code::DUPLICATE_KEY, $e->getMessage(), $e);
+                }
+                return $e;
+            case 'sqlite':
+                if ($num === 5 || $num === 6 || $num === 261 || $num === 262) {
+                    return new self(Code::DEADLOCK, $e->getMessage(), $e);
+                }
+                if ($num === 2067 || $num === 1555 || ($num === 19 && str_starts_with((string) ($e->errorInfo[2] ?? ''), 'UNIQUE constraint failed'))) {
+                    return new self(Code::DUPLICATE_KEY, $e->getMessage(), $e);
+                }
+                return $e;
+        }
         if ($num === 1213 || $state === '40001') {
             return new self(Code::DEADLOCK, $e->getMessage(), $e);
         }
