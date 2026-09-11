@@ -239,18 +239,18 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
     public function leftJoin(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { return $this->compatJoin($child, null, true, $m[0], $m[1], 'leftJoin'); } $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
 {{range .Rels}}
 {{if .Pair}}
-    public function join{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { $this->attachJoin('{{.Name}}', 'inner', $child); return $this; }
-    public function leftJoin{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { $this->attachJoin('{{.Name}}', 'left', $child); return $this; }
+    public function join{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('{{.Name}}', 'inner', $child); return $this; }
+    public function leftJoin{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'leftJoin expects one child query'); } $this->attachJoin('{{.Name}}', 'left', $child); return $this; }
 {{- if eq .Kind "one"}}
-    public function relation{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { $this->attachRelation('{{.Name}}', $child); return $this; }
+    public function relation{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relation expects one child query'); } $this->attachRelation('{{.Name}}', $child); return $this; }
 {{- else}}
-    public function relations{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { $this->attachRelation('{{.Name}}', $child); return $this; }
+    public function relations{{pascal .Left}}With{{pascal .Right}}({{.TargetType}} $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relations expects one child query'); } $this->attachRelation('{{.Name}}', $child); return $this; }
 {{- end}}
 {{- end}}
 {{- end}}
 
 {{range .Links}}
-    public function {{camel .Match}}(): static { $this->setLink('{{.Left}}', '{{.Right}}'); return $this; }
+    public function {{camel .Match}}(bool $keep = true): static { $this->setLink('{{.Left}}', '{{.Right}}'); $this->compatMatch('{{.Left}}', '{{.Right}}', $keep); return $this; }
     public function {{camel .On}}(): static { $this->setLink('{{.Left}}', '{{.Right}}'); return $this; }
 {{- end}}
 

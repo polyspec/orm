@@ -210,18 +210,18 @@ final class ServiceRegion extends Q implements ServiceRegionInterface
     public function leftJoin(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { return $this->compatJoin($child, null, true, $m[0], $m[1], 'leftJoin'); } $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
 
 
-    public function joinSeqWithServiceRegionSeq(Author $child): static { $this->attachJoin('authors', 'inner', $child); return $this; }
-    public function leftJoinSeqWithServiceRegionSeq(Author $child): static { $this->attachJoin('authors', 'left', $child); return $this; }
-    public function relationsSeqWithServiceRegionSeq(Author $child): static { $this->attachRelation('authors', $child); return $this; }
+    public function joinSeqWithServiceRegionSeq(Author $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('authors', 'inner', $child); return $this; }
+    public function leftJoinSeqWithServiceRegionSeq(Author $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'leftJoin expects one child query'); } $this->attachJoin('authors', 'left', $child); return $this; }
+    public function relationsSeqWithServiceRegionSeq(Author $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relations expects one child query'); } $this->attachRelation('authors', $child); return $this; }
 
-    public function joinServiceSeqWithSeq(Service $child): static { $this->attachJoin('service', 'inner', $child); return $this; }
-    public function leftJoinServiceSeqWithSeq(Service $child): static { $this->attachJoin('service', 'left', $child); return $this; }
-    public function relationServiceSeqWithSeq(Service $child): static { $this->attachRelation('service', $child); return $this; }
+    public function joinServiceSeqWithSeq(Service $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('service', 'inner', $child); return $this; }
+    public function leftJoinServiceSeqWithSeq(Service $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'leftJoin expects one child query'); } $this->attachJoin('service', 'left', $child); return $this; }
+    public function relationServiceSeqWithSeq(Service $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relation expects one child query'); } $this->attachRelation('service', $child); return $this; }
 
 
-    public function matchServiceRegionSeqWithSeq(): static { $this->setLink('service_region_seq', 'seq'); return $this; }
+    public function matchServiceRegionSeqWithSeq(bool $keep = true): static { $this->setLink('service_region_seq', 'seq'); $this->compatMatch('service_region_seq', 'seq', $keep); return $this; }
     public function onServiceRegionSeqWithSeq(): static { $this->setLink('service_region_seq', 'seq'); return $this; }
-    public function matchSeqWithServiceSeq(): static { $this->setLink('seq', 'service_seq'); return $this; }
+    public function matchSeqWithServiceSeq(bool $keep = true): static { $this->setLink('seq', 'service_seq'); $this->compatMatch('seq', 'service_seq', $keep); return $this; }
     public function onSeqWithServiceSeq(): static { $this->setLink('seq', 'service_seq'); return $this; }
 
     // ---- columns ----
