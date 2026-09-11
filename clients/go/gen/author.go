@@ -700,8 +700,163 @@ func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
 			}
 		}
 	}
+	r.SetProjection(a)
 	r.Mark("author", "seq", r.Seq)
 	return r
+}
+
+// ToArray is the row's array form (what PHP's toArray() and Rust's to_map() give):
+// projected columns minus drop_child_key ones, extra outputs, loaded relations,
+// and flattened one-relations merged in (this row's keys win).
+func (r *AuthorRow) ToArray() map[string]any {
+	m := make(map[string]any, len(r.Selected()))
+	for _, name := range r.Selected() {
+		if r.Hidden(name) {
+			continue
+		}
+		switch name {
+		case "seq":
+			m[name] = r.Seq
+		case "name":
+			m[name] = r.Name
+		case "description":
+			m[name] = func() any {
+				if r.Description == nil {
+					return nil
+				}
+				return *r.Description
+			}()
+		case "created_ts":
+			m[name] = orm.FormatTime(r.CreatedTs)
+		case "updated_ts":
+			m[name] = orm.FormatTime(r.UpdatedTs)
+		case "is_close":
+			m[name] = r.IsClose
+		case "is_display":
+			m[name] = r.IsDisplay
+		case "display_start_dt":
+			m[name] = func() any {
+				if r.DisplayStartDt == nil {
+					return nil
+				}
+				return orm.FormatTime(*r.DisplayStartDt)
+			}()
+		case "display_end_dt":
+			m[name] = func() any {
+				if r.DisplayEndDt == nil {
+					return nil
+				}
+				return orm.FormatTime(*r.DisplayEndDt)
+			}()
+		case "is_allday":
+			m[name] = r.IsAllday
+		case "target_club_reader_count":
+			m[name] = r.TargetClubReaderCount
+		case "success_count":
+			m[name] = r.SuccessCount
+		case "reader_count":
+			m[name] = r.ReaderCount
+		case "read_count":
+			m[name] = r.ReadCount
+		case "photo_url":
+			m[name] = func() any {
+				if r.PhotoUrl == nil {
+					return nil
+				}
+				return *r.PhotoUrl
+			}()
+		case "user_seq":
+			m[name] = r.UserSeq
+		case "service_seq":
+			m[name] = r.ServiceSeq
+		case "service_region_seq":
+			m[name] = r.ServiceRegionSeq
+		case "service_member_seq":
+			m[name] = r.ServiceMemberSeq
+		case "start_dt":
+			m[name] = orm.FormatTime(r.StartDt)
+		case "end_dt":
+			m[name] = orm.FormatTime(r.EndDt)
+		case "uuid":
+			m[name] = func() any {
+				if r.Uuid == nil {
+					return nil
+				}
+				return *r.Uuid
+			}()
+		case "is_single_work":
+			m[name] = r.IsSingleWork
+		case "like_count":
+			m[name] = r.LikeCount
+		case "aes_hex_email":
+			m[name] = func() any {
+				if r.AesHexEmail == nil {
+					return nil
+				}
+				return *r.AesHexEmail
+			}()
+		case "aes_hex_phone":
+			m[name] = func() any {
+				if r.AesHexPhone == nil {
+					return nil
+				}
+				return *r.AesHexPhone
+			}()
+		case "ip":
+			m[name] = func() any {
+				if r.Ip == nil {
+					return nil
+				}
+				return *r.Ip
+			}()
+		case "gz_extend":
+			m[name] = r.GzExtend
+		case "json_setting":
+			m[name] = r.JsonSetting
+		case "jsons_tags":
+			m[name] = r.JsonsTags
+		case "base64_extra":
+			m[name] = r.Base64Extra
+		case "serialize_data":
+			m[name] = r.SerializeData
+		default:
+			m[name] = r.Extra(name)
+		}
+	}
+	if r.RelLoaded("service") {
+		if r.Service != nil {
+			m["service"] = r.Service.ToArray()
+		} else {
+			m["service"] = nil
+		}
+	}
+	if r.RelLoaded("service_member") {
+		if r.ServiceMember != nil {
+			m["service_member"] = r.ServiceMember.ToArray()
+		} else {
+			m["service_member"] = nil
+		}
+	}
+	if r.RelLoaded("service_region") {
+		if r.ServiceRegion != nil {
+			m["service_region"] = r.ServiceRegion.ToArray()
+		} else {
+			m["service_region"] = nil
+		}
+	}
+	if r.RelLoaded("user") {
+		if r.User != nil {
+			m["user"] = r.User.ToArray()
+		} else {
+			m["user"] = nil
+		}
+	}
+	for _, rel := range r.Flat() {
+		if child, ok := m[rel].(map[string]any); ok {
+			orm.MergeFlat(m, child)
+		}
+	}
+	return m
 }
 
 // AuthorCols are column references for column-to-column predicates
@@ -775,7 +930,13 @@ var AuthorCols = struct {
 }
 
 // Author builds a statement over author: NewAuthor() → chain → terminal(ctx, db).
-type Author struct{ q *orm.Q }
+type Author struct {
+	q     *orm.Q
+	keyFn func(*AuthorRow) orm.Key // KeyByFn: client-side keying of the root collection
+}
+
+// KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
+func (q *Author) KeyByFn(fn func(*AuthorRow) orm.Key) *Author { q.keyFn = fn; return q }
 
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *Author) Req() *orm.Req { return q.q.Req }
@@ -4336,13 +4497,17 @@ func (q *Author) All(ctx context.Context, ex orm.Exec) (*orm.Collection[AuthorRo
 	if err != nil {
 		return nil, err
 	}
-	return collectAuthor(rows), nil
+	return collectAuthor(rows, q.keyFn), nil
 }
 
-func collectAuthor(rows *orm.Rows) *orm.Collection[AuthorRow] {
+func collectAuthor(rows *orm.Rows, keyFn func(*AuthorRow) orm.Key) *orm.Collection[AuthorRow] {
 	c := orm.NewCollection[AuthorRow](len(rows.Data))
 	for _, vals := range rows.Data {
 		r := scanAuthor(vals, rows.Assemble, rows)
+		if keyFn != nil {
+			c.Put(keyFn(r), r)
+			continue
+		}
 		c.Put(orm.KeyOf(vals[0]), r)
 	}
 	return c
@@ -4485,7 +4650,7 @@ func (q *Author) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm
 		return nil, err
 	}
 	pages := (total + int64(per) - 1) / int64(per)
-	return &orm.Page[AuthorRow]{Items: collectAuthor(rows), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
+	return &orm.Page[AuthorRow]{Items: collectAuthor(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
 func (q *Author) Insert(ctx context.Context, ex orm.Exec) (*AuthorRow, error) {

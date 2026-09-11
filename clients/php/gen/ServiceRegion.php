@@ -259,7 +259,7 @@ final class ServiceRegion extends Q
 
     public function all(Db $db): Collection
     {
-        return Collection::fromRows($this->runQuery($db, 'all'), ServiceRegionRow::class);
+        return Collection::fromRows($this->runQuery($db, 'all'), ServiceRegionRow::class, $this->keyFn);
     }
 
     public function count(Db $db): int { return (int) $this->runScalar($db, 'count'); }
@@ -271,7 +271,7 @@ final class ServiceRegion extends Q
     public function paginate(Db $db, int $page, int $per): Page
     {
         [$rows, $total] = $this->runPaginate($db, $page, $per);
-        return new Page(Collection::fromRows($rows, ServiceRegionRow::class), $total, intdiv($total + $per - 1, $per), max(1, $page), $per);
+        return new Page(Collection::fromRows($rows, ServiceRegionRow::class, $this->keyFn), $total, intdiv($total + $per - 1, $per), max(1, $page), $per);
     }
 
     public function insert(Db $db): ?ServiceRegionRow
