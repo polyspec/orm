@@ -739,7 +739,7 @@ func (q *ServiceModule) IfParentPlayerCountEq(v int32) *ServiceModule {
 	q.q.IfParent("player_count", v)
 	return q
 }
-func (q *ServiceModule) IfParentReadCountEq(v int32) *ServiceModule {
+func (q *ServiceModule) IfParentReadCountEq(v int64) *ServiceModule {
 	q.q.IfParent("read_count", v)
 	return q
 }

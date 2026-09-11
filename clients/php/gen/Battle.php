@@ -19,7 +19,7 @@ final class BattleRow extends Row
     public static function pk(): string { return 'seq'; }
     public static function columns(): array
     {
-        return ['seq' => 'i64', 'name' => 'string', 'description' => 'text', 'created_ts' => 'datetime', 'updated_ts' => 'datetime', 'is_close' => 'bool', 'is_display' => 'bool', 'display_start_dt' => 'datetime', 'display_end_dt' => 'datetime', 'is_allday' => 'bool', 'target_team_player_count' => 'i32', 'success_count' => 'i32', 'player_count' => 'i32', 'read_count' => 'i32', 'cover_url' => 'string', 'user_seq' => 'i64', 'service_seq' => 'i64', 'service_module_seq' => 'i64', 'service_member_seq' => 'i64', 'start_dt' => 'datetime', 'end_dt' => 'datetime', 'uuid' => 'string', 'is_single_play' => 'bool', 'like_count' => 'i32', 'aes_hex_email' => 'string', 'aes_hex_phone' => 'string', 'ip' => 'inet', 'gz_extend' => 'styled', 'json_setting' => 'styled', 'jsons_tags' => 'styled', 'base64_extra' => 'styled', 'serialize_data' => 'styled'];
+        return ['seq' => 'i64', 'name' => 'string', 'description' => 'text', 'created_ts' => 'datetime', 'updated_ts' => 'datetime', 'is_close' => 'bool', 'is_display' => 'bool', 'display_start_dt' => 'datetime', 'display_end_dt' => 'datetime', 'is_allday' => 'bool', 'target_team_player_count' => 'i32', 'success_count' => 'i32', 'player_count' => 'i32', 'read_count' => 'i64', 'cover_url' => 'string', 'user_seq' => 'i64', 'service_seq' => 'i64', 'service_module_seq' => 'i64', 'service_member_seq' => 'i64', 'start_dt' => 'datetime', 'end_dt' => 'datetime', 'uuid' => 'string', 'is_single_play' => 'bool', 'like_count' => 'i32', 'aes_hex_email' => 'string', 'aes_hex_phone' => 'string', 'price' => 'decimal', 'ip' => 'inet', 'gz_extend' => 'styled', 'json_setting' => 'styled', 'jsons_tags' => 'styled', 'base64_extra' => 'styled', 'serialize_data' => 'styled'];
     }
 
     public function getSeq(mixed $default = null): int
@@ -203,6 +203,13 @@ final class BattleRow extends Row
     }
     public function setAesHexPhone(?string $v): static { return $this->setCol('aes_hex_phone', $v); }
 
+    public function getPrice(mixed $default = null): ?float
+    {
+        $v = $this->col('price');
+        return $v === null ? $default : $v;
+    }
+    public function setPrice(?float $v): static { return $this->setCol('price', $v); }
+
     public function getIp(mixed $default = null): ?string
     {
         $v = $this->col('ip');
@@ -280,6 +287,7 @@ final class BattleCols
     public static function likeCount(): ColRef { return new ColRef('like_count'); }
     public static function aesHexEmail(): ColRef { return new ColRef('aes_hex_email'); }
     public static function aesHexPhone(): ColRef { return new ColRef('aes_hex_phone'); }
+    public static function price(): ColRef { return new ColRef('price'); }
     public static function ip(): ColRef { return new ColRef('ip'); }
     public static function gzExtend(): ColRef { return new ColRef('gz_extend'); }
     public static function jsonSetting(): ColRef { return new ColRef('json_setting'); }
@@ -663,6 +671,23 @@ final class BattleWhere
     public function aesHexPhoneIsNotNull(): static { $this->w->predNull('aes_hex_phone', 'is_not_null'); return $this; }
     public function aesHexPhoneEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_phone', 'eq_col', $ref); return $this; }
     public function aesHexPhoneNotEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_phone', 'not_eq_col', $ref); return $this; }
+    public function priceEq(float $v): static { $this->w->pred('price', 'eq', $v); return $this; }
+    public function priceNotEq(float $v): static { $this->w->pred('price', 'not_eq', $v); return $this; }
+    public function priceGt(float $v): static { $this->w->pred('price', 'gt', $v); return $this; }
+    public function priceGte(float $v): static { $this->w->pred('price', 'gte', $v); return $this; }
+    public function priceLt(float $v): static { $this->w->pred('price', 'lt', $v); return $this; }
+    public function priceLte(float $v): static { $this->w->pred('price', 'lte', $v); return $this; }
+    public function priceIn(array $vs): static { $this->w->predList('price', 'in', array_values($vs)); return $this; }
+    public function priceNotIn(array $vs): static { $this->w->predList('price', 'not_in', array_values($vs)); return $this; }
+    public function priceBetween(float $lo, float $hi): static { $this->w->predList('price', 'between', [$lo, $hi]); return $this; }
+    public function priceIsNull(): static { $this->w->predNull('price', 'is_null'); return $this; }
+    public function priceIsNotNull(): static { $this->w->predNull('price', 'is_not_null'); return $this; }
+    public function priceEqCol(ColRef $ref): static { $this->w->predCol('price', 'eq_col', $ref); return $this; }
+    public function priceNotEqCol(ColRef $ref): static { $this->w->predCol('price', 'not_eq_col', $ref); return $this; }
+    public function priceGtCol(ColRef $ref): static { $this->w->predCol('price', 'gt_col', $ref); return $this; }
+    public function priceGteCol(ColRef $ref): static { $this->w->predCol('price', 'gte_col', $ref); return $this; }
+    public function priceLtCol(ColRef $ref): static { $this->w->predCol('price', 'lt_col', $ref); return $this; }
+    public function priceLteCol(ColRef $ref): static { $this->w->predCol('price', 'lte_col', $ref); return $this; }
     public function ipEq(string $v): static { $this->w->pred('ip', 'eq', $v); return $this; }
     public function ipNotEq(string $v): static { $this->w->pred('ip', 'not_eq', $v); return $this; }
     public function ipIn(array $vs): static { $this->w->predList('ip', 'in', array_values($vs)); return $this; }
@@ -1059,6 +1084,23 @@ final class Battle extends Q
     public function aesHexPhoneIsNotNull(): static { $this->w()->predNull('aes_hex_phone', 'is_not_null'); return $this; }
     public function aesHexPhoneEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_phone', 'eq_col', $ref); return $this; }
     public function aesHexPhoneNotEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_phone', 'not_eq_col', $ref); return $this; }
+    public function priceEq(float $v): static { $this->w()->pred('price', 'eq', $v); return $this; }
+    public function priceNotEq(float $v): static { $this->w()->pred('price', 'not_eq', $v); return $this; }
+    public function priceGt(float $v): static { $this->w()->pred('price', 'gt', $v); return $this; }
+    public function priceGte(float $v): static { $this->w()->pred('price', 'gte', $v); return $this; }
+    public function priceLt(float $v): static { $this->w()->pred('price', 'lt', $v); return $this; }
+    public function priceLte(float $v): static { $this->w()->pred('price', 'lte', $v); return $this; }
+    public function priceIn(array $vs): static { $this->w()->predList('price', 'in', array_values($vs)); return $this; }
+    public function priceNotIn(array $vs): static { $this->w()->predList('price', 'not_in', array_values($vs)); return $this; }
+    public function priceBetween(float $lo, float $hi): static { $this->w()->predList('price', 'between', [$lo, $hi]); return $this; }
+    public function priceIsNull(): static { $this->w()->predNull('price', 'is_null'); return $this; }
+    public function priceIsNotNull(): static { $this->w()->predNull('price', 'is_not_null'); return $this; }
+    public function priceEqCol(ColRef $ref): static { $this->w()->predCol('price', 'eq_col', $ref); return $this; }
+    public function priceNotEqCol(ColRef $ref): static { $this->w()->predCol('price', 'not_eq_col', $ref); return $this; }
+    public function priceGtCol(ColRef $ref): static { $this->w()->predCol('price', 'gt_col', $ref); return $this; }
+    public function priceGteCol(ColRef $ref): static { $this->w()->predCol('price', 'gte_col', $ref); return $this; }
+    public function priceLtCol(ColRef $ref): static { $this->w()->predCol('price', 'lt_col', $ref); return $this; }
+    public function priceLteCol(ColRef $ref): static { $this->w()->predCol('price', 'lte_col', $ref); return $this; }
     public function ipEq(string $v): static { $this->w()->pred('ip', 'eq', $v); return $this; }
     public function ipNotEq(string $v): static { $this->w()->pred('ip', 'not_eq', $v); return $this; }
     public function ipIn(array $vs): static { $this->w()->predList('ip', 'in', array_values($vs)); return $this; }
@@ -1177,6 +1219,9 @@ final class Battle extends Q
     public function selectAesHexPhone(): static { $c = &$this->columns(); $c['add'][] = 'aes_hex_phone'; return $this; }
     public function unselectAesHexPhone(): static { $c = &$this->columns(); $c['remove'][] = 'aes_hex_phone'; return $this; }
     public function selectAesHexPhoneAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'aes_hex_phone'; return $this; }
+    public function selectPrice(): static { $c = &$this->columns(); $c['add'][] = 'price'; return $this; }
+    public function unselectPrice(): static { $c = &$this->columns(); $c['remove'][] = 'price'; return $this; }
+    public function selectPriceAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'price'; return $this; }
     public function selectIp(): static { $c = &$this->columns(); $c['add'][] = 'ip'; return $this; }
     public function unselectIp(): static { $c = &$this->columns(); $c['remove'][] = 'ip'; return $this; }
     public function selectIpAs(string $name): static { $c = &$this->columns(); $c['as'][$name] = 'ip'; return $this; }
@@ -1301,6 +1346,10 @@ final class Battle extends Q
     public function orderByAesHexPhoneDesc(): static { $this->order('aes_hex_phone', true); return $this; }
     public function groupByAesHexPhone(): static { $this->node['group_by'][] = 'aes_hex_phone'; return $this; }
     public function keyByAesHexPhone(): static { $this->node['key_by'] = 'aes_hex_phone'; return $this; }
+    public function orderByPriceAsc(): static { $this->order('price', false); return $this; }
+    public function orderByPriceDesc(): static { $this->order('price', true); return $this; }
+    public function groupByPrice(): static { $this->node['group_by'][] = 'price'; return $this; }
+    public function keyByPrice(): static { $this->node['key_by'] = 'price'; return $this; }
     public function orderByIpAsc(): static { $this->order('ip', false); return $this; }
     public function orderByIpDesc(): static { $this->order('ip', true); return $this; }
     public function groupByIp(): static { $this->node['group_by'][] = 'ip'; return $this; }
@@ -1392,6 +1441,8 @@ final class Battle extends Q
     public function setAesHexEmailExpr(string $frag, array $binds = []): static { $this->setExpr('aes_hex_email', $frag, $binds); return $this; }
     public function setAesHexPhone(?string $v): static { $this->set('aes_hex_phone', $v); return $this; }
     public function setAesHexPhoneExpr(string $frag, array $binds = []): static { $this->setExpr('aes_hex_phone', $frag, $binds); return $this; }
+    public function setPrice(?float $v): static { $this->set('price', $v); return $this; }
+    public function setPriceExpr(string $frag, array $binds = []): static { $this->setExpr('price', $frag, $binds); return $this; }
     public function setIp(?string $v): static { $this->set('ip', $v); return $this; }
     public function setIpExpr(string $frag, array $binds = []): static { $this->setExpr('ip', $frag, $binds); return $this; }
     public function setGzExtend(mixed $v): static { $this->setStyled('gz_extend', $v, ['serialize', 'gz']); return $this; }
@@ -1424,6 +1475,8 @@ final class Battle extends Q
     public function minusServiceMemberSeq(int $v): static { $this->minus('service_member_seq', $v); return $this; }
     public function plusLikeCount(int $v): static { $this->plus('like_count', $v); return $this; }
     public function minusLikeCount(int $v): static { $this->minus('like_count', $v); return $this; }
+    public function plusPrice(float $v): static { $this->plus('price', $v); return $this; }
+    public function minusPrice(float $v): static { $this->minus('price', $v); return $this; }
 
     // ---- terminals ----
     public function one(Db $db): ?BattleRow
@@ -1458,6 +1511,8 @@ final class Battle extends Q
     public function avgServiceMemberSeq(Db $db): float { return (float) $this->runScalar($db, 'avg', 'service_member_seq'); }
     public function sumLikeCount(Db $db): float { return (float) $this->runScalar($db, 'sum', 'like_count'); }
     public function avgLikeCount(Db $db): float { return (float) $this->runScalar($db, 'avg', 'like_count'); }
+    public function sumPrice(Db $db): float { return (float) $this->runScalar($db, 'sum', 'price'); }
+    public function avgPrice(Db $db): float { return (float) $this->runScalar($db, 'avg', 'price'); }
 
     public function paginate(Db $db, int $page, int $per): Page
     {

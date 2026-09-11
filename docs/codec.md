@@ -24,6 +24,7 @@ PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하�
 - **쓰기(json)**: 맵 키는 Go/Rust에서 정렬, PHP는 삽입 순서. 바이트는 다를 수 있고 값은 같다. 슬래시·비ASCII는 이스케이프하지 않는다(PHP는 `JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE`로 맞춘다).
 
 ## 경계 사례 (compatibility와 다른 점은 굵게)
+- **PHP는 빈 객체와 빈 리스트를 구분하지 못한다**(둘 다 빈 배열). 빈 PHP 배열은 JSON `[]` / serialize `a:0:{}`로 저장되고 세 언어 모두 **빈 리스트**로 읽는다. PHP에서 JSON 스타일에 빈 객체를 저장하려면 `new \stdClass`를 넘긴다(읽을 때는 다시 빈 배열). Go/Rust가 쓴 `{}`를 PHP가 읽으면 빈 배열이다.
 - NULL, 빈 문자열 → `null`.
 - `json`/`jsons`: **`[]`·`{}`·`0`·`""`는 그 값 그대로**(compatibility는 falsy 본문을 null로 바꾼다 — 버그로 보고 재현하지 않음). 파싱 실패 → 에러 `CODEC_DECODE` (compatibility는 조용히 null).
 - `serialize` 계열: 형식 오류 → `CODEC_DECODE`. `O:`(객체)·`C:`·참조(`R:`/`r:`) → `CODEC_UNSUPPORTED` (compatibility `curlfile_serialize`는 범위 밖, S7).
