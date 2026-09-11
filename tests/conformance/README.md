@@ -15,7 +15,8 @@ datetimes as `YYYY-MM-DD HH:MM:SS[.ffffff]`, nulls as null).
 
 | file | role |
 |---|---|
-| `vectors.json` | vector names, canonical chains, recorded expectations |
+| `vectors.json` | vector names, canonical chains, MySQL expectations — **the only place a vector is declared** |
+| `vectors.postgres.json`, `vectors.sqlite.json` | the same vectors' expectations on the other databases (`check … -driver postgres`); results equal MySQL's except where the dialect differs (`sql_dump` text, fulltext semantics, operators SQLite rejects) |
 | `runner_go/main.go` | Go runner (in-process engine) |
 | `runner.php` | PHP runner (ormd compile, PDO execute) |
 | `clients/rust/tests/src/conformance.rs` | Rust runner (wasmtime engine, sqlx) |
@@ -25,9 +26,14 @@ datetimes as `YYYY-MM-DD HH:MM:SS[.ffffff]`, nulls as null).
 
 ```sh
 go build -o bin/ormd ./cmd/ormd                       # once
+GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o bin/ormengine.wasm ./engine/wasm
 (cd clients/rust && cargo build --release)            # once
-go run ./tests/conformance/check run                  # runs all three, compares
+go run ./tests/conformance/check run                  # MySQL: runs all three, compares
+go run ./tests/conformance/check run -driver postgres -dsn 'postgres://…'   # same on PostgreSQL
+go run ./tests/conformance/check run -driver sqlite  -dsn 'file:/abs.sqlite' # and SQLite
 ```
+`-langs go,php` limits which runners execute; `check record -driver <db> out/<db>/go.json` refreshes
+that database's expectations after a deliberate change.
 
 `check run` starts `ormd` on `tests/conformance/out/ormd.sock` for the PHP
 runner and blocks on its "listening" line before proceeding — no polling.
