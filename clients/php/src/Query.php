@@ -4,7 +4,10 @@ declare(strict_types=1);
 namespace Orm;
 
 /**
- * Req: the value-free IR under construction plus its params.
+ * Req: the value-free IR under construction plus its params and its signature —
+ * every builder call that changes the IR appends a token to `sig`, so a repeated
+ * shape is found in the per-request plan cache without encoding the IR again
+ * (the signature determines the IR; the IR bytes remain the cross-worker key).
  * Q / W: untyped cores of the generated query and where builders.
  */
 final class Req
@@ -12,15 +15,18 @@ final class Req
     public array $ir;
     /** @var list<mixed> */
     public array $params = [];
+    /** shape signature: entity, then one token per IR mutation in call order */
+    public string $sig;
 
-    public function __construct(string $kind, string $entity)
+    public function __construct(string $entity)
     {
         $this->ir = [
             'ir_version' => 1,
             'schema_hash' => Orm::config()->schemaHash(),
-            'kind' => $kind,
+            'kind' => '',
             'entity' => $entity,
         ];
+        $this->sig = $entity;
     }
 
     public function p(mixed $v): int
@@ -29,8 +35,20 @@ final class Req
         return count($this->params) - 1;
     }
 
-    /** Merge a child query into this request: append its params, shift its indices. */
-    public function attach(Req $child): array
+    /** Closes the group opened by the last W::group()/nav() (the generated and()/nav closures call it). */
+    public function end(): void
+    {
+        $this->sig .= ')';
+    }
+
+    /** Length-prefixed user text for the signature (fragments, aliases, raw SQL). */
+    public static function str(string $s): string
+    {
+        return strlen($s) . ':' . $s;
+    }
+
+    /** Merge a child query into this request: append its params, shift its indices, append its signature. */
+    public function attach(Req $child, string $token): array
     {
         $off = count($this->params);
         foreach ($child->params as $v) {
@@ -39,6 +57,7 @@ final class Req
         $q = $child->ir;
         unset($q['ir_version'], $q['schema_hash'], $q['kind']);
         self::shiftQuery($q, $off);
+        $this->sig .= $token . '{' . $child->sig . '}';
         return $q;
     }
 
@@ -81,10 +100,11 @@ final class Req
         }
     }
 
-    /** The IR with n_params set, ready to hash/compile. */
-    public function shape(): array
+    /** The IR with kind and n_params set, ready to hash/compile. */
+    public function shape(string $kind): array
     {
         $ir = $this->ir;
+        $ir['kind'] = $kind;
         $ir['n_params'] = count($this->params);
         return $ir;
     }
@@ -102,6 +122,7 @@ class W
     {
         if ($this->pendingOr) {
             $this->pendingOr = false;
+            $this->req->sig .= '|o';
             return ['conn' => 'or'];
         }
         return [];
@@ -121,6 +142,7 @@ class W
     public function predAt(string $col, string $op, int $p): void
     {
         $this->g['items'][] = ['pred' => $this->conn() + ['column' => $col, 'op' => $op, 'p' => $p]];
+        $this->req->sig .= "|p$col\x1f$op\x1f$p";
     }
 
     /** @param list<mixed> $vs */
@@ -131,22 +153,27 @@ class W
             $ps[] = $this->req->p($v);
         }
         $this->g['items'][] = ['pred' => $this->conn() + ['column' => $col, 'op' => $op, 'ps' => $ps]];
+        $this->req->sig .= "|l$col\x1f$op\x1f" . implode(',', $ps);
     }
 
     public function predNull(string $col, string $op): void
     {
         $this->g['items'][] = ['pred' => $this->conn() + ['column' => $col, 'op' => $op]];
+        $this->req->sig .= "|z$col\x1f$op";
     }
 
     public function predCol(string $col, string $op, ColRef $ref): void
     {
         $this->g['items'][] = ['pred' => $this->conn() + ['column' => $col, 'op' => $op, 'ref' => ['path' => $ref->path, 'column' => $ref->column]]];
+        $this->req->sig .= "|c$col\x1f$op\x1f" . Req::str($ref->path) . $ref->column;
     }
 
     /** @param list<string> $cols */
     public function match(array $cols, bool $boolean, string $v): void
     {
-        $this->g['items'][] = ['pred' => $this->conn() + ['op' => $boolean ? 'match_boolean' : 'match', 'match' => $cols, 'p' => $this->req->p($v)]];
+        $p = $this->req->p($v);
+        $this->g['items'][] = ['pred' => $this->conn() + ['op' => $boolean ? 'match_boolean' : 'match', 'match' => $cols, 'p' => $p]];
+        $this->req->sig .= '|m' . ($boolean ? 'b' : 'n') . implode(',', $cols) . "\x1f$p";
     }
 
     public function expr(string $frag, array $binds): void
@@ -156,20 +183,23 @@ class W
             $ps[] = $this->req->p($v);
         }
         $this->g['items'][] = ['pred' => $this->conn() + ['expr' => $frag, 'ps' => $ps]];
+        $this->req->sig .= '|e' . Req::str($frag) . implode(',', $ps);
     }
 
-    /** Opens a parenthesised group; returns a reference to it for a nested W. */
-    public function &group(): array
+    /** Opens a parenthesised group; returns the W over it. The caller ends it with $req->end(). */
+    public function group(): W
     {
         $this->g['items'][] = ['group' => $this->conn() + ['items' => []]];
-        return $this->g['items'][count($this->g['items']) - 1]['group'];
+        $this->req->sig .= '|(';
+        return new W($this->req, $this->g['items'][count($this->g['items']) - 1]['group']);
     }
 
-    /** Descends into a joined relation; returns a reference to the nav group. */
-    public function &nav(string $rel): array
+    /** Descends into a joined relation; returns the W over the nav group. The caller ends it with $req->end(). */
+    public function nav(string $rel): W
     {
         $this->g['items'][] = ['nav' => $this->conn() + ['rel' => $rel, 'group' => ['items' => []]]];
-        return $this->g['items'][count($this->g['items']) - 1]['nav']['group'];
+        $this->req->sig .= "|n$rel(";
+        return new W($this->req, $this->g['items'][count($this->g['items']) - 1]['nav']['group']);
     }
 }
 
@@ -185,7 +215,7 @@ class Q
 
     public function __construct(string $entity)
     {
-        $this->req = new Req('all', $entity);
+        $this->req = new Req($entity);
         $this->node = &$this->req->ir;
     }
 
@@ -210,6 +240,7 @@ class Q
     public function onW(): W
     {
         $this->node['on'] ??= ['items' => []];
+        $this->req->sig .= '|O';
         return new W($this->req, $this->node['on']);
     }
 
@@ -217,6 +248,7 @@ class Q
     public function havingW(): W
     {
         $this->node['having'] ??= ['items' => []];
+        $this->req->sig .= '|H';
         return new W($this->req, $this->node['having']);
     }
 
@@ -228,6 +260,7 @@ class Q
             $ps[] = $this->req->p($v);
         }
         $this->req->ir['raw'] = ['sql' => $sql, 'ps' => $ps];
+        $this->req->sig .= '|raw' . Req::str($sql) . implode(',', $ps);
     }
 
     public function orConn(): void
@@ -237,43 +270,99 @@ class Q
 
     public function join(string $rel, string $kind, Q $child): void
     {
-        $this->node['joins'][] = ['rel' => $rel, 'kind' => $kind, 'query' => $this->req->attach($child->req)];
+        $this->node['joins'][] = ['rel' => $rel, 'kind' => $kind, 'query' => $this->req->attach($child->req, "|J$rel\x1f$kind")];
     }
 
     public function relation(string $rel, Q $child): void
     {
-        $this->node['relations'][] = ['rel' => $rel, 'query' => $this->req->attach($child->req)];
+        $this->node['relations'][] = ['rel' => $rel, 'query' => $this->req->attach($child->req, "|R$rel")];
     }
 
-    public function &columns(): array
+    // ---- columns ----
+
+    public function colMode(string $mode): void
     {
-        $this->node['columns'] ??= [];
-        return $this->node['columns'];
+        $this->node['columns']['mode'] = $mode;
+        $this->req->sig .= "|cm$mode";
     }
+
+    public function colAdd(string $col): void
+    {
+        $this->node['columns']['add'][] = $col;
+        $this->req->sig .= "|ca$col";
+    }
+
+    public function colRemove(string $col): void
+    {
+        $this->node['columns']['remove'][] = $col;
+        $this->req->sig .= "|cr$col";
+    }
+
+    public function colAs(string $name, string $col): void
+    {
+        $this->node['columns']['as'][$name] = $col;
+        $this->req->sig .= '|cs' . Req::str($name) . $col;
+    }
+
+    public function colExpr(string $name, string $frag): void
+    {
+        $this->node['columns']['expr'][$name] = $frag;
+        $this->req->sig .= '|ce' . Req::str($name) . Req::str($frag);
+    }
+
+    // ---- order, group, limit, flags ----
 
     public function order(string $col, bool $desc): void
     {
         $this->node['order'][] = ['column' => $col, 'desc' => $desc];
+        $this->req->sig .= '|>' . ($desc ? 'd' : 'a') . $col;
     }
 
     public function orderExpr(string $frag, bool $desc): void
     {
         $this->node['order'][] = ['expr' => $frag, 'desc' => $desc];
+        $this->req->sig .= '|>x' . ($desc ? 'd' : 'a') . Req::str($frag);
+    }
+
+    public function groupBy(string $col): void
+    {
+        $this->node['group_by'][] = $col;
+        $this->req->sig .= "|g$col";
+    }
+
+    public function setLimit(int $offset, int $count): void
+    {
+        $this->node['limit'] = ['offset' => $offset, 'count' => $count];
+        $this->req->sig .= "|L$offset,$count";
+    }
+
+    /** A scalar option of this node: key_by, distinct, force_index, flatten, limit_per_parent, drop_child_key, no_cascade_delete. */
+    public function opt(string $key, int|string|bool $v): void
+    {
+        $this->node[$key] = $v;
+        $this->req->sig .= "|:$key\x1f$v";
     }
 
     // ---- assignments: set[] (insert/update) and on_duplicate[] (insert) share one shape ----
 
-    private function assignValue(string $col, mixed $v): array
+    private function assignValue(string $col, mixed $v, string $tok): array
     {
-        return $v === null ? ['column' => $col, 'null' => true] : ['column' => $col, 'p' => $this->req->p($v)];
+        if ($v === null) {
+            $this->req->sig .= "|$tok$col\x1fN";
+            return ['column' => $col, 'null' => true];
+        }
+        $p = $this->req->p($v);
+        $this->req->sig .= "|$tok$col\x1f$p";
+        return ['column' => $col, 'p' => $p];
     }
 
-    private function assignExpr(string $col, string $frag, array $binds): array
+    private function assignExpr(string $col, string $frag, array $binds, string $tok): array
     {
         $ps = [];
         foreach ($binds as $v) {
             $ps[] = $this->req->p($v);
         }
+        $this->req->sig .= "|$tok$col\x1f" . Req::str($frag) . implode(',', $ps);
         return ['column' => $col, 'expr' => $frag, 'ps' => $ps];
     }
 
@@ -285,22 +374,26 @@ class Q
 
     public function set(string $col, mixed $v): void
     {
-        $this->req->ir['set'][] = $this->assignValue($col, $v);
+        $this->req->ir['set'][] = $this->assignValue($col, $v, 's');
     }
 
     public function setExpr(string $col, string $frag, array $binds): void
     {
-        $this->req->ir['set'][] = $this->assignExpr($col, $frag, $binds);
+        $this->req->ir['set'][] = $this->assignExpr($col, $frag, $binds, 'sx');
     }
 
     public function plus(string $col, int|float $v): void
     {
-        $this->req->ir['set'][] = ['column' => $col, 'plus_p' => $this->req->p($v)];
+        $p = $this->req->p($v);
+        $this->req->ir['set'][] = ['column' => $col, 'plus_p' => $p];
+        $this->req->sig .= "|s+$col\x1f$p";
     }
 
     public function minus(string $col, int|float $v): void
     {
-        $this->req->ir['set'][] = ['column' => $col, 'minus_p' => $this->req->p($v)];
+        $p = $this->req->p($v);
+        $this->req->ir['set'][] = ['column' => $col, 'minus_p' => $p];
+        $this->req->sig .= "|s-$col\x1f$p";
     }
 
     public function onDuplicateStyled(string $col, mixed $v, array $styles): void
@@ -310,22 +403,26 @@ class Q
 
     public function onDuplicate(string $col, mixed $v): void
     {
-        $this->req->ir['on_duplicate'][] = $this->assignValue($col, $v);
+        $this->req->ir['on_duplicate'][] = $this->assignValue($col, $v, 'd');
     }
 
     public function onDuplicateExpr(string $col, string $frag, array $binds): void
     {
-        $this->req->ir['on_duplicate'][] = $this->assignExpr($col, $frag, $binds);
+        $this->req->ir['on_duplicate'][] = $this->assignExpr($col, $frag, $binds, 'dx');
     }
 
     public function onDuplicatePlus(string $col, int|float $v): void
     {
-        $this->req->ir['on_duplicate'][] = ['column' => $col, 'plus_p' => $this->req->p($v)];
+        $p = $this->req->p($v);
+        $this->req->ir['on_duplicate'][] = ['column' => $col, 'plus_p' => $p];
+        $this->req->sig .= "|d+$col\x1f$p";
     }
 
     public function onDuplicateMinus(string $col, int|float $v): void
     {
-        $this->req->ir['on_duplicate'][] = ['column' => $col, 'minus_p' => $this->req->p($v)];
+        $p = $this->req->p($v);
+        $this->req->ir['on_duplicate'][] = ['column' => $col, 'minus_p' => $p];
+        $this->req->sig .= "|d-$col\x1f$p";
     }
 
     /**
@@ -350,19 +447,29 @@ class Q
             }
             $this->req->ir['on_duplicate'][] = $a;
         }
+        $this->req->sig .= '|dall';
     }
 
     public function ifParent(string $col, mixed $v): void
     {
-        $this->node['if_parent'] = ['column' => $col, 'p' => $this->req->p($v)];
+        $p = $this->req->p($v);
+        $this->node['if_parent'] = ['column' => $col, 'p' => $p];
+        $this->req->sig .= "|if$col\x1f$p";
+    }
+
+    /** updateOptimistic: the UPDATE also matches $col = its value as read. */
+    public function optimistic(string $col, mixed $v): void
+    {
+        $p = $this->req->p($v);
+        $this->req->ir['optimistic'] = ['column' => $col, 'p' => $p];
+        $this->req->sig .= "|opt$col\x1f$p";
     }
 
     // ---- terminals (generated classes wrap these with typed results) ----
 
     protected function plan(string $kind): array
     {
-        $this->req->ir['kind'] = $kind;
-        return Orm::transport()->plan($this->req->shape());
+        return Orm::transport()->planFor($this->req, $kind);
     }
 
     /** Runs the select plan (main step + relation steps). */
@@ -375,6 +482,7 @@ class Q
     {
         if ($agg !== null) {
             $this->req->ir['agg'] = $agg;
+            $this->req->sig .= "|agg$agg";
         }
         $plan = $this->plan($kind);
         return $ex->scalar($plan['steps'][0], $this->req->params);
@@ -384,7 +492,7 @@ class Q
     public function runPaginate(Db $ex, int $page, int $per): array
     {
         $page = max(1, $page);
-        $this->node['limit'] = ['offset' => ($page - 1) * $per, 'count' => $per];
+        $this->setLimit(($page - 1) * $per, $per);
         $plan = $this->plan('paginate');
         $rows = $ex->runPlan($plan, $this->req->params);
         $total = 0;
@@ -424,10 +532,11 @@ class Q
                 continue;
             }
             if (!isset($a['p'])) {
-                throw new OrmException('IR_INVALID', "save: $pk must be set to a value");
+                throw new OrmException(Code::IR_INVALID, "save: $pk must be set to a value");
             }
             unset($this->req->ir['set'][$i]);
             $this->req->ir['set'] = array_values($this->req->ir['set']);
+            $this->req->sig .= "|save$i";
             $this->w()->predAt($pk, 'eq', $a['p']);
             $this->runWrite($ex, 'update');
             return [true, $this->req->params[$a['p']]];
@@ -461,4 +570,3 @@ final class ColRef
         return new self($this->column, $path);
     }
 }
-
