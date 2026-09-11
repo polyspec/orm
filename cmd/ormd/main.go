@@ -1,11 +1,9 @@
-// ormd serves the engine over a Unix domain socket for hosts that cannot
-// link it in-process (PHP). Framing: 4-byte big-endian length + payload.
+// ormd serves the compiler over a Unix domain socket for hosts that cannot
+// link it in-process (PHP). It never touches a database.
 //
-// S0 scope: "compile" frames only. Execution frames (query/tx) arrive in S1
-// when ormd gains the Go executor.
-//
-// Request : {"op":"compile","ir":{...}}
-// Response: {"plan":{...}} | {"error":{"code":..,"msg":..}}
+// Framing: 4-byte big-endian length + payload, both directions.
+// Request : {"op":"compile","ir":{...}} | {"op":"hash"}
+// Response: {"plan":{...}} | {"schema_hash":"…"} | {"error":{"code":..,"msg":..}}
 package main
 
 import (
@@ -23,6 +21,7 @@ import (
 	"syscall"
 
 	"github.com/maxkwon/orm/engine"
+	"github.com/maxkwon/orm/engine/ir"
 )
 
 const maxFrame = 16 << 20
@@ -33,11 +32,21 @@ type request struct {
 }
 
 func main() {
-	sock := flag.String("socket", "", "unix socket path (required)")
+	sock := flag.String("socket", "", "unix socket path (required, absolute)")
+	schemaPath := flag.String("schema", "", "schema.json path (required)")
+	dialect := flag.String("dialect", "mysql", "sql dialect")
 	flag.Parse()
-	if *sock == "" {
-		fmt.Fprintln(os.Stderr, "ormd: -socket is required")
+	if *sock == "" || *schemaPath == "" {
+		fmt.Fprintln(os.Stderr, "ormd: -socket and -schema are required")
 		os.Exit(2)
+	}
+	js, err := os.ReadFile(*schemaPath)
+	if err != nil {
+		log.Fatalf("ormd: %v", err)
+	}
+	eng, err := engine.LoadJSON(js, *dialect)
+	if err != nil {
+		log.Fatalf("ormd: %v", err)
 	}
 	if err := os.Remove(*sock); err != nil && !errors.Is(err, os.ErrNotExist) {
 		log.Fatalf("ormd: remove stale socket: %v", err)
@@ -49,7 +58,7 @@ func main() {
 	if err := os.Chmod(*sock, 0o600); err != nil {
 		log.Fatalf("ormd: chmod: %v", err)
 	}
-	log.Printf("ormd: listening on %s", *sock)
+	log.Printf("ormd: schema %s (hash %s), listening on %s", *schemaPath, eng.M.SchemaHash, *sock)
 
 	go func() {
 		c := make(chan os.Signal, 1)
@@ -69,18 +78,18 @@ func main() {
 			log.Printf("ormd: accept: %v", err)
 			continue
 		}
-		go serve(conn)
+		go serve(eng, conn)
 	}
 }
 
-func serve(conn net.Conn) {
+func serve(eng *engine.Engine, conn net.Conn) {
 	defer conn.Close()
 	r := bufio.NewReaderSize(conn, 64<<10)
 	w := bufio.NewWriterSize(conn, 64<<10)
 	var hdr [4]byte
 	for {
 		if _, err := io.ReadFull(r, hdr[:]); err != nil {
-			return // peer closed; nothing to roll back in S0
+			return
 		}
 		n := binary.BigEndian.Uint32(hdr[:])
 		if n > maxFrame {
@@ -90,7 +99,7 @@ func serve(conn net.Conn) {
 		if _, err := io.ReadFull(r, buf); err != nil {
 			return
 		}
-		resp := handle(buf)
+		resp := handle(eng, buf)
 		binary.BigEndian.PutUint32(hdr[:], uint32(len(resp)))
 		if _, err := w.Write(hdr[:]); err != nil {
 			return
@@ -104,14 +113,14 @@ func serve(conn net.Conn) {
 	}
 }
 
-func handle(frame []byte) []byte {
+func handle(eng *engine.Engine, frame []byte) []byte {
 	var req request
 	if err := json.Unmarshal(frame, &req); err != nil {
-		return engine.ErrorJSON(&engine.Error{Code: "FRAME_INVALID", Msg: err.Error()})
+		return engine.ErrorJSON(&ir.Error{Code: "FRAME_INVALID", Msg: err.Error()})
 	}
 	switch req.Op {
 	case "compile":
-		plan, err := engine.Compile(req.IR)
+		plan, err := eng.Compile(req.IR)
 		if err != nil {
 			return engine.ErrorJSON(err)
 		}
@@ -120,11 +129,9 @@ func handle(frame []byte) []byte {
 		out = append(out, plan...)
 		out = append(out, '}')
 		return out
-	case "exec":
-		return handleExec(frame)
-	case "exec_rel4":
-		return handleRel4(frame)
+	case "hash":
+		return []byte(`{"schema_hash":"` + eng.M.SchemaHash + `"}`)
 	default:
-		return engine.ErrorJSON(&engine.Error{Code: "OP_UNKNOWN", Msg: req.Op})
+		return engine.ErrorJSON(&ir.Error{Code: "OP_UNKNOWN", Msg: req.Op})
 	}
 }
