@@ -312,7 +312,7 @@ func TestDeadlockRetry(t *testing.T) {
 	// updates close the lock cycle; only the first attempt synchronises.
 	var locked sync.WaitGroup
 	locked.Add(2)
-	writer := func(tag int32, first, second int64) error {
+	writer := func(tag int64, first, second int64) error {
 		attempt := 0
 		_, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (struct{}, error) {
 			attempt++
