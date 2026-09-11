@@ -37,6 +37,9 @@ type Dialect interface {
 	// HandlesStyle reports whether a column style stage is applied in SQL here
 	// (MySQL: aes/hex/ip); the rest of the stack is left to the executor.
 	HandlesStyle(style string) bool
+	// HostNow reports that the database has no sub-second clock function, so
+	// timestamps written by the ORM (updated_ts) come from the executor (a `now` slot).
+	HostNow() bool
 }
 
 // QuoteWith is a helper for dialects using a single quote character.

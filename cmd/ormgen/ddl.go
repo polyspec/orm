@@ -66,6 +66,9 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 			}
 			if c.Default != nil {
 				switch {
+				case *c.Default == "now" && dialect == "sqlite":
+					// text timestamps with six fraction digits, the form the executor binds and compares
+					line += " DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now') || '000')"
 				case *c.Default == "now":
 					line += " DEFAULT CURRENT_TIMESTAMP"
 					if dialect == "mysql" && c.Precision > 0 {

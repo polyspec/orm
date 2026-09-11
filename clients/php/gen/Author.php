@@ -305,7 +305,7 @@ final class AuthorWhere
     public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
     public function startedAfter(mixed $a0): static { $this->w->expr('`start_dt` > ?', [$a0]); return $this; }
-    public function visible(): static { $this->w->expr('`is_close` = 0 AND `is_display` = 1', []); return $this; }
+    public function visible(): static { $this->w->expr('`is_close` = FALSE AND `is_display` = TRUE', []); return $this; }
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w->nav('service'))); $this->w->req->end(); return $this; }
     public function serviceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w->nav('service_member'))); $this->w->req->end(); return $this; }
     public function serviceRegion(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w->nav('service_region'))); $this->w->req->end(); return $this; }
@@ -722,7 +722,7 @@ final class Author extends Q
     public function and(\Closure $fn): static { $fn(new AuthorWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
     public function startedAfter(mixed $a0): static { $this->w()->expr('`start_dt` > ?', [$a0]); return $this; }
-    public function visible(): static { $this->w()->expr('`is_close` = 0 AND `is_display` = 1', []); return $this; }
+    public function visible(): static { $this->w()->expr('`is_close` = FALSE AND `is_display` = TRUE', []); return $this; }
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w()->nav('service'))); $this->req->end(); return $this; }
     public function serviceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->nav('service_member'))); $this->req->end(); return $this; }
     public function serviceRegion(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->nav('service_region'))); $this->req->end(); return $this; }
