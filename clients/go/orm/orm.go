@@ -174,6 +174,7 @@ func IsDeadlock(err error) bool {
 type Req struct {
 	IR     ir.Request
 	Params []any
+	Err    error // first deferred builder error (codec encode); surfaces from the terminal
 }
 
 // NewReq starts a request for an entity against the engine's schema.
@@ -241,6 +242,9 @@ func shiftGroup(g *ir.Group, off int) {
 
 // Plan compiles (or fetches from cache) the plan for the request's shape.
 func (d *DB) Plan(r *Req) (*plan.Plan, error) {
+	if r.Err != nil {
+		return nil, r.Err
+	}
 	r.IR.NParams = len(r.Params)
 	shape, err := json.Marshal(&r.IR)
 	if err != nil {
@@ -531,6 +535,7 @@ func runSelect(ctx context.Context, ex Exec, st *plan.Step, r *Req, parentVals [
 	}
 	defer rows.Close()
 	n := countCols(st.Assemble)
+	styled := styledCols(st.Assemble)
 	var out [][]any
 	for rows.Next() {
 		vals := make([]any, n)
@@ -545,6 +550,13 @@ func runSelect(ctx context.Context, ex Exec, st *plan.Step, r *Req, parentVals [
 			if b, ok := v.([]byte); ok {
 				vals[i] = string(b)
 			}
+		}
+		for _, c := range styled {
+			dv, err := Decode(c.Styles, vals[c.Index])
+			if err != nil {
+				return nil, fmt.Errorf("%s.%s: %w", st.Assemble.Entity, c.Name, err)
+			}
+			vals[c.Index] = dv
 		}
 		out = append(out, vals)
 	}

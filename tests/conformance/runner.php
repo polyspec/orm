@@ -41,6 +41,9 @@ function norm(mixed $v): mixed
     if (is_string($v) && $maskTs !== '' && $v === $maskTs) {
         return '$TS';
     }
+    if (is_string($v) && $v !== '' && $v[0] === "\x78" && !ctype_print($v)) { // zlib stream (gz style)
+        return '$ZLIB';
+    }
     if (is_string($v) && preg_match('/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d(\.\d{6})?$/', $v)) {
         return fmtTime($v);
     }
@@ -152,6 +155,25 @@ $run('write_cycle', function () use ($db, &$log, &$maskSeq, &$maskTs) {
         'after_update' => ['name' => $again->getName(), 'like_count' => $again->getLikeCount()],
         'stale' => $stale, 'left' => $left,
     ];
+});
+
+$run('codec_roundtrip', function () use ($db, &$log, &$maskSeq, &$maskTs) {
+    $value = ['a' => 1, 'b' => [1, 2, ['c' => '한글/slash']], 'd' => null, 'e' => true, 'f' => 1.5];
+    $created = $db->transaction(fn(Tx $tx) => (new Battle)
+        ->setName('conf-codec')
+        ->setUserSeq(1)->setServiceSeq(999)->setServiceModuleSeq(1)->setServiceMemberSeq(1)
+        ->setStartDt('2026-06-01 00:00:00')->setEndDt('2026-12-31 00:00:00')
+        ->setJsonSetting($value)->setJsonsTags(['x', 'y'])->setBase64Extra($value)->setSerializeData($value)->setGzExtend($value)->setIp('10.1.2.3')
+        ->insert($tx));
+    $maskSeq = $created->getSeq();
+    $maskTs = $created->getUpdatedTs();
+    foreach ($log as &$st) {
+        $st['binds'] = array_map('norm', $st['binds']);
+    }
+    unset($st);
+    $b = (new Battle)->selectJsonSetting()->selectJsonsTags()->selectBase64Extra()->selectSerializeData()->selectGzExtend()->seqEq($created->getSeq())->one($db);
+    $b->delete($db);
+    return ['json_setting' => $b->getJsonSetting(), 'jsons_tags' => $b->getJsonsTags(), 'base64_extra' => $b->getBase64Extra(), 'serialize_data' => $b->getSerializeData(), 'gz_extend' => $b->getGzExtend(), 'ip' => $b->getIp()];
 });
 
 echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), "\n";

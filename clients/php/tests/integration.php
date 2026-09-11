@@ -99,6 +99,8 @@ check(count($rows[7]->getUser()->getBattles()) === 2, 'nested many under one, li
 check(count($rows[8]->getService()->getModules()) === 1 && $rows[8]->getService()->getModules()->first()->getServiceSeq() === $rows[8]->getServiceSeq(), 'relation off a join');
 $n0 = count($log);
 check(count((new Battle)->seqEq(0)->relationUser(new User)->all($db)) === 0 && count($log) - $n0 === 1, 'no parents → relation step skipped');
+$one = (new Battle)->seqEq(42)->relationService((new Service)->relationsMembers((new ServiceMember)->limitPerParent(1)))->one($db);
+check($one !== null && count($one->getService()->getMembers()) === 1, 'one + relation');
 $m = (new ServiceMember)->serviceSeqEq(7)->orderBySeqAsc()->limit(0, 2)->relationUser((new User)->flatten())->all($db)->first();
 check($m['name'] === 'user-' . $m->getUserSeq() && $m->getName() === 'user-' . $m->getUserSeq() && $m->toArray()['name'] === $m['name'], 'flatten merges child columns into the parent');
 $page = (new Battle)->serviceSeqEq(7)->orderBySeqAsc()->relationUser(new User)->paginate($db, 1, 4);

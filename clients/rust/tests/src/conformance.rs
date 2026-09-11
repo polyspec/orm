@@ -35,6 +35,7 @@ fn norm(p: &Param, m: &Mask) -> Value {
         Param::I64(x) => json!(x),
         Param::F64(x) => json!(x),
         Param::Str(s) => json!(s),
+        Param::Bytes(b) if b.first() == Some(&0x78) => json!("$ZLIB"), // zlib stream (gz style)
         Param::Bytes(b) => json!(String::from_utf8_lossy(b)),
         Param::DateTime(t) if m.ts.as_ref() == Some(t) => json!("$TS"),
         Param::DateTime(t) => json!(fmt_time(t)),
@@ -186,6 +187,34 @@ async fn main() {
             "after_update": {"name": again.name, "like_count": again.like_count},
             "stale": stale, "left": left,
         }))
+    }.await);
+
+    run!("codec_roundtrip", async {
+        let value = json!({"a": 1, "b": [1, 2, {"c": "한글/slash"}], "d": null, "e": true, "f": 1.5});
+        let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
+        let end = chrono::NaiveDate::from_ymd_opt(2026, 12, 31).unwrap().and_hms_opt(0, 0, 0).unwrap();
+        let v = value.clone();
+        let created = db.transaction(|tx| { let v = v.clone(); async move {
+            Battle::new()
+                .set_name("conf-codec")
+                .set_user_seq(1).set_service_seq(999).set_service_module_seq(1).set_service_member_seq(1)
+                .set_start_dt(start).set_end_dt(end)
+                .set_json_setting(v.clone()).set_jsons_tags(json!(["x", "y"])).set_base64_extra(v.clone()).set_serialize_data(v.clone()).set_gz_extend(v).set_ip(Some("10.1.2.3"))
+                .insert(&tx).await
+        }}).await?.unwrap();
+        *mask.lock().unwrap() = Mask { seq: created.seq, ts: Some(created.updated_ts) };
+        {
+            let m = mask.lock().unwrap().clone();
+            for st in log.lock().unwrap().iter_mut() {
+                for b in st["binds"].as_array_mut().unwrap() {
+                    if *b == json!(m.seq) { *b = json!("$SEQ"); }
+                    if *b == json!(fmt_time(m.ts.as_ref().unwrap())) { *b = json!("$TS"); }
+                }
+            }
+        }
+        let b = Battle::new().select_json_setting().select_jsons_tags().select_base64_extra().select_serialize_data().select_gz_extend().seq_eq(created.seq).one(&db).await?.unwrap();
+        b.delete(&db).await?;
+        Ok(json!({"json_setting": b.json_setting, "jsons_tags": b.jsons_tags, "base64_extra": b.base64_extra, "serialize_data": b.serialize_data, "gz_extend": b.gz_extend, "ip": b.ip}))
     }.await);
 
     println!("{}", serde_json::to_string_pretty(&Value::Object(out.into_iter().collect())).unwrap());

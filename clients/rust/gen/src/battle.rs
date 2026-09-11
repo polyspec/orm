@@ -35,11 +35,18 @@ pub struct BattleRow {
     pub like_count: i32,
     pub aes_hex_email: Option<String>,
     pub aes_hex_phone: Option<String>,
+    pub ip: Option<String>,
+    pub gz_extend: serde_json::Value,
+    pub json_setting: serde_json::Value,
+    pub jsons_tags: serde_json::Value,
+    pub base64_extra: serde_json::Value,
+    pub serialize_data: serde_json::Value,
     service_: Option<Box<super::service::ServiceRow>>,
     service_member_: Option<Box<super::service_member::ServiceMemberRow>>,
     service_module_: Option<Box<super::service_module::ServiceModuleRow>>,
     user_: Option<Box<super::user::UserRow>>,
     dirty: Vec<(&'static str, Param)>,
+    enc_err: Option<(String, String)>, // (code, msg) of the first codec error; surfaces from update
     loaded: bool,
 }
 
@@ -81,6 +88,12 @@ impl BattleRow {
                 "like_count" => r.like_count = v.as_i64() as i32,
                 "aes_hex_email" => r.aes_hex_email = if v.is_null() { None } else { Some(v.take_string()) },
                 "aes_hex_phone" => r.aes_hex_phone = if v.is_null() { None } else { Some(v.take_string()) },
+                "ip" => r.ip = if v.is_null() { None } else { Some(v.take_string()) },
+                "gz_extend" => r.gz_extend = v.take_json().unwrap_or_default(),
+                "json_setting" => r.json_setting = v.take_json().unwrap_or_default(),
+                "jsons_tags" => r.jsons_tags = v.take_json().unwrap_or_default(),
+                "base64_extra" => r.base64_extra = v.take_json().unwrap_or_default(),
+                "serialize_data" => r.serialize_data = v.take_json().unwrap_or_default(),
                 _ => {}
             }
         }
@@ -304,6 +317,63 @@ impl BattleRow {
         self.dirty.push(("aes_hex_phone", v.into()));
         self
     }
+    pub fn set_ip(&mut self, v: Option<impl Into<String>>) -> &mut Self {
+        let v: Option<String> = v.map(|x| x.into());
+        self.ip = v.clone();
+        self.dirty.retain(|(c, _)| *c != "ip");
+        self.dirty.push(("ip", v.into()));
+        self
+    }
+    pub fn set_gz_extend(&mut self, v: serde_json::Value) -> &mut Self {
+        let v: serde_json::Value = v.into();
+        self.gz_extend = v.clone();
+        self.dirty.retain(|(c, _)| *c != "gz_extend");
+        match orm::codec::encode(&["serialize", "gz"], Some(&v)) {
+            Ok(p) => self.dirty.push(("gz_extend", p)),
+            Err(e) => { if self.enc_err.is_none() { self.enc_err = Some((e.code().to_string(), e.to_string())); } }
+        }
+        self
+    }
+    pub fn set_json_setting(&mut self, v: serde_json::Value) -> &mut Self {
+        let v: serde_json::Value = v.into();
+        self.json_setting = v.clone();
+        self.dirty.retain(|(c, _)| *c != "json_setting");
+        match orm::codec::encode(&["json"], Some(&v)) {
+            Ok(p) => self.dirty.push(("json_setting", p)),
+            Err(e) => { if self.enc_err.is_none() { self.enc_err = Some((e.code().to_string(), e.to_string())); } }
+        }
+        self
+    }
+    pub fn set_jsons_tags(&mut self, v: serde_json::Value) -> &mut Self {
+        let v: serde_json::Value = v.into();
+        self.jsons_tags = v.clone();
+        self.dirty.retain(|(c, _)| *c != "jsons_tags");
+        match orm::codec::encode(&["jsons"], Some(&v)) {
+            Ok(p) => self.dirty.push(("jsons_tags", p)),
+            Err(e) => { if self.enc_err.is_none() { self.enc_err = Some((e.code().to_string(), e.to_string())); } }
+        }
+        self
+    }
+    pub fn set_base64_extra(&mut self, v: serde_json::Value) -> &mut Self {
+        let v: serde_json::Value = v.into();
+        self.base64_extra = v.clone();
+        self.dirty.retain(|(c, _)| *c != "base64_extra");
+        match orm::codec::encode(&["serialize", "base64"], Some(&v)) {
+            Ok(p) => self.dirty.push(("base64_extra", p)),
+            Err(e) => { if self.enc_err.is_none() { self.enc_err = Some((e.code().to_string(), e.to_string())); } }
+        }
+        self
+    }
+    pub fn set_serialize_data(&mut self, v: serde_json::Value) -> &mut Self {
+        let v: serde_json::Value = v.into();
+        self.serialize_data = v.clone();
+        self.dirty.retain(|(c, _)| *c != "serialize_data");
+        match orm::codec::encode(&["serialize"], Some(&v)) {
+            Ok(p) => self.dirty.push(("serialize_data", p)),
+            Err(e) => { if self.enc_err.is_none() { self.enc_err = Some((e.code().to_string(), e.to_string())); } }
+        }
+        self
+    }
 
     /// UPDATE the columns changed through set_*.
     pub async fn update(&mut self, ex: &impl Exec) -> Result<()> { self.update_inner(ex, false).await }
@@ -312,6 +382,7 @@ impl BattleRow {
     pub async fn update_optimistic(&mut self, ex: &impl Exec) -> Result<()> { self.update_inner(ex, true).await }
 
     async fn update_inner(&mut self, ex: &impl Exec, optimistic: bool) -> Result<()> {
+        if let Some((code, msg)) = self.enc_err.take() { return Err(orm::Error::Engine { code, msg }); }
         if !self.loaded { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
         if self.dirty.is_empty() { return Ok(()); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
@@ -554,6 +625,22 @@ impl<'a> BattleWhere<'a> {
     pub fn aes_hex_phone_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("aes_hex_phone", "not_in", vs.into_iter().map(Into::into).collect()); self }
     pub fn aes_hex_phone_is_null(mut self) -> Self { self.w.pred_null("aes_hex_phone", "is_null"); self }
     pub fn aes_hex_phone_is_not_null(mut self) -> Self { self.w.pred_null("aes_hex_phone", "is_not_null"); self }
+    pub fn ip_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("ip", "eq", v.into()); self }
+    pub fn ip_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("ip", "not_eq", v.into()); self }
+    pub fn ip_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("ip", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn ip_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("ip", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn ip_is_null(mut self) -> Self { self.w.pred_null("ip", "is_null"); self }
+    pub fn ip_is_not_null(mut self) -> Self { self.w.pred_null("ip", "is_not_null"); self }
+    pub fn gz_extend_is_null(mut self) -> Self { self.w.pred_null("gz_extend", "is_null"); self }
+    pub fn gz_extend_is_not_null(mut self) -> Self { self.w.pred_null("gz_extend", "is_not_null"); self }
+    pub fn json_setting_is_null(mut self) -> Self { self.w.pred_null("json_setting", "is_null"); self }
+    pub fn json_setting_is_not_null(mut self) -> Self { self.w.pred_null("json_setting", "is_not_null"); self }
+    pub fn jsons_tags_is_null(mut self) -> Self { self.w.pred_null("jsons_tags", "is_null"); self }
+    pub fn jsons_tags_is_not_null(mut self) -> Self { self.w.pred_null("jsons_tags", "is_not_null"); self }
+    pub fn base64_extra_is_null(mut self) -> Self { self.w.pred_null("base64_extra", "is_null"); self }
+    pub fn base64_extra_is_not_null(mut self) -> Self { self.w.pred_null("base64_extra", "is_not_null"); self }
+    pub fn serialize_data_is_null(mut self) -> Self { self.w.pred_null("serialize_data", "is_null"); self }
+    pub fn serialize_data_is_not_null(mut self) -> Self { self.w.pred_null("serialize_data", "is_not_null"); self }
 }
 
 /// Query over battle: Battle::new() → chain → terminal(&db).await.
@@ -779,6 +866,22 @@ impl Battle {
     pub fn aes_hex_phone_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("aes_hex_phone", "not_in", vs.into_iter().map(Into::into).collect()); self }
     pub fn aes_hex_phone_is_null(mut self) -> Self { self.q.w().pred_null("aes_hex_phone", "is_null"); self }
     pub fn aes_hex_phone_is_not_null(mut self) -> Self { self.q.w().pred_null("aes_hex_phone", "is_not_null"); self }
+    pub fn ip_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("ip", "eq", v.into()); self }
+    pub fn ip_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("ip", "not_eq", v.into()); self }
+    pub fn ip_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("ip", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn ip_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("ip", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn ip_is_null(mut self) -> Self { self.q.w().pred_null("ip", "is_null"); self }
+    pub fn ip_is_not_null(mut self) -> Self { self.q.w().pred_null("ip", "is_not_null"); self }
+    pub fn gz_extend_is_null(mut self) -> Self { self.q.w().pred_null("gz_extend", "is_null"); self }
+    pub fn gz_extend_is_not_null(mut self) -> Self { self.q.w().pred_null("gz_extend", "is_not_null"); self }
+    pub fn json_setting_is_null(mut self) -> Self { self.q.w().pred_null("json_setting", "is_null"); self }
+    pub fn json_setting_is_not_null(mut self) -> Self { self.q.w().pred_null("json_setting", "is_not_null"); self }
+    pub fn jsons_tags_is_null(mut self) -> Self { self.q.w().pred_null("jsons_tags", "is_null"); self }
+    pub fn jsons_tags_is_not_null(mut self) -> Self { self.q.w().pred_null("jsons_tags", "is_not_null"); self }
+    pub fn base64_extra_is_null(mut self) -> Self { self.q.w().pred_null("base64_extra", "is_null"); self }
+    pub fn base64_extra_is_not_null(mut self) -> Self { self.q.w().pred_null("base64_extra", "is_not_null"); self }
+    pub fn serialize_data_is_null(mut self) -> Self { self.q.w().pred_null("serialize_data", "is_null"); self }
+    pub fn serialize_data_is_not_null(mut self) -> Self { self.q.w().pred_null("serialize_data", "is_not_null"); self }
 
     // ---- join children: on() = ON, where_() = parent WHERE group ----
     pub fn on(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { { let w = self.q.on_w(); f(BattleWhere { w }); } self }
@@ -879,6 +982,24 @@ impl Battle {
     pub fn select_aes_hex_phone(mut self) -> Self { self.q.columns().add.push("aes_hex_phone".into()); self }
     pub fn unselect_aes_hex_phone(mut self) -> Self { self.q.columns().remove.push("aes_hex_phone".into()); self }
     pub fn select_aes_hex_phone_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "aes_hex_phone".into()); self }
+    pub fn select_ip(mut self) -> Self { self.q.columns().add.push("ip".into()); self }
+    pub fn unselect_ip(mut self) -> Self { self.q.columns().remove.push("ip".into()); self }
+    pub fn select_ip_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "ip".into()); self }
+    pub fn select_gz_extend(mut self) -> Self { self.q.columns().add.push("gz_extend".into()); self }
+    pub fn unselect_gz_extend(mut self) -> Self { self.q.columns().remove.push("gz_extend".into()); self }
+    pub fn select_gz_extend_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "gz_extend".into()); self }
+    pub fn select_json_setting(mut self) -> Self { self.q.columns().add.push("json_setting".into()); self }
+    pub fn unselect_json_setting(mut self) -> Self { self.q.columns().remove.push("json_setting".into()); self }
+    pub fn select_json_setting_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "json_setting".into()); self }
+    pub fn select_jsons_tags(mut self) -> Self { self.q.columns().add.push("jsons_tags".into()); self }
+    pub fn unselect_jsons_tags(mut self) -> Self { self.q.columns().remove.push("jsons_tags".into()); self }
+    pub fn select_jsons_tags_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "jsons_tags".into()); self }
+    pub fn select_base64_extra(mut self) -> Self { self.q.columns().add.push("base64_extra".into()); self }
+    pub fn unselect_base64_extra(mut self) -> Self { self.q.columns().remove.push("base64_extra".into()); self }
+    pub fn select_base64_extra_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "base64_extra".into()); self }
+    pub fn select_serialize_data(mut self) -> Self { self.q.columns().add.push("serialize_data".into()); self }
+    pub fn unselect_serialize_data(mut self) -> Self { self.q.columns().remove.push("serialize_data".into()); self }
+    pub fn select_serialize_data_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "serialize_data".into()); self }
 
     // ---- order, group, limit ----
     pub fn order_by_seq_asc(mut self) -> Self { self.q.order("seq", false); self }
@@ -985,6 +1106,30 @@ impl Battle {
     pub fn order_by_aes_hex_phone_desc(mut self) -> Self { self.q.order("aes_hex_phone", true); self }
     pub fn group_by_aes_hex_phone(mut self) -> Self { self.q.node().group_by.push("aes_hex_phone".into()); self }
     pub fn key_by_aes_hex_phone(mut self) -> Self { self.q.node().key_by = "aes_hex_phone".into(); self }
+    pub fn order_by_ip_asc(mut self) -> Self { self.q.order("ip", false); self }
+    pub fn order_by_ip_desc(mut self) -> Self { self.q.order("ip", true); self }
+    pub fn group_by_ip(mut self) -> Self { self.q.node().group_by.push("ip".into()); self }
+    pub fn key_by_ip(mut self) -> Self { self.q.node().key_by = "ip".into(); self }
+    pub fn order_by_gz_extend_asc(mut self) -> Self { self.q.order("gz_extend", false); self }
+    pub fn order_by_gz_extend_desc(mut self) -> Self { self.q.order("gz_extend", true); self }
+    pub fn group_by_gz_extend(mut self) -> Self { self.q.node().group_by.push("gz_extend".into()); self }
+    pub fn key_by_gz_extend(mut self) -> Self { self.q.node().key_by = "gz_extend".into(); self }
+    pub fn order_by_json_setting_asc(mut self) -> Self { self.q.order("json_setting", false); self }
+    pub fn order_by_json_setting_desc(mut self) -> Self { self.q.order("json_setting", true); self }
+    pub fn group_by_json_setting(mut self) -> Self { self.q.node().group_by.push("json_setting".into()); self }
+    pub fn key_by_json_setting(mut self) -> Self { self.q.node().key_by = "json_setting".into(); self }
+    pub fn order_by_jsons_tags_asc(mut self) -> Self { self.q.order("jsons_tags", false); self }
+    pub fn order_by_jsons_tags_desc(mut self) -> Self { self.q.order("jsons_tags", true); self }
+    pub fn group_by_jsons_tags(mut self) -> Self { self.q.node().group_by.push("jsons_tags".into()); self }
+    pub fn key_by_jsons_tags(mut self) -> Self { self.q.node().key_by = "jsons_tags".into(); self }
+    pub fn order_by_base64_extra_asc(mut self) -> Self { self.q.order("base64_extra", false); self }
+    pub fn order_by_base64_extra_desc(mut self) -> Self { self.q.order("base64_extra", true); self }
+    pub fn group_by_base64_extra(mut self) -> Self { self.q.node().group_by.push("base64_extra".into()); self }
+    pub fn key_by_base64_extra(mut self) -> Self { self.q.node().key_by = "base64_extra".into(); self }
+    pub fn order_by_serialize_data_asc(mut self) -> Self { self.q.order("serialize_data", false); self }
+    pub fn order_by_serialize_data_desc(mut self) -> Self { self.q.order("serialize_data", true); self }
+    pub fn group_by_serialize_data(mut self) -> Self { self.q.node().group_by.push("serialize_data".into()); self }
+    pub fn key_by_serialize_data(mut self) -> Self { self.q.node().key_by = "serialize_data".into(); self }
     pub fn order_by_expr(mut self, frag: &str, desc: bool) -> Self { self.q.order_expr(frag, desc); self }
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
@@ -1052,6 +1197,18 @@ impl Battle {
     pub fn set_aes_hex_email_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("aes_hex_email", frag, binds); self }
     pub fn set_aes_hex_phone(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("aes_hex_phone", v); self }
     pub fn set_aes_hex_phone_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("aes_hex_phone", frag, binds); self }
+    pub fn set_ip(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("ip", v); self }
+    pub fn set_ip_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("ip", frag, binds); self }
+    pub fn set_gz_extend(mut self, v: serde_json::Value) -> Self { let v: serde_json::Value = v.into(); match orm::codec::encode(&["serialize", "gz"], Some(&v)) { Ok(p) => self.q.set("gz_extend", p), Err(e) => self.q.defer_err(e) }; self }
+    pub fn set_gz_extend_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("gz_extend", frag, binds); self }
+    pub fn set_json_setting(mut self, v: serde_json::Value) -> Self { let v: serde_json::Value = v.into(); match orm::codec::encode(&["json"], Some(&v)) { Ok(p) => self.q.set("json_setting", p), Err(e) => self.q.defer_err(e) }; self }
+    pub fn set_json_setting_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("json_setting", frag, binds); self }
+    pub fn set_jsons_tags(mut self, v: serde_json::Value) -> Self { let v: serde_json::Value = v.into(); match orm::codec::encode(&["jsons"], Some(&v)) { Ok(p) => self.q.set("jsons_tags", p), Err(e) => self.q.defer_err(e) }; self }
+    pub fn set_jsons_tags_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("jsons_tags", frag, binds); self }
+    pub fn set_base64_extra(mut self, v: serde_json::Value) -> Self { let v: serde_json::Value = v.into(); match orm::codec::encode(&["serialize", "base64"], Some(&v)) { Ok(p) => self.q.set("base64_extra", p), Err(e) => self.q.defer_err(e) }; self }
+    pub fn set_base64_extra_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("base64_extra", frag, binds); self }
+    pub fn set_serialize_data(mut self, v: serde_json::Value) -> Self { let v: serde_json::Value = v.into(); match orm::codec::encode(&["serialize"], Some(&v)) { Ok(p) => self.q.set("serialize_data", p), Err(e) => self.q.defer_err(e) }; self }
+    pub fn set_serialize_data_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("serialize_data", frag, binds); self }
     pub fn plus_seq(mut self, v: i64) -> Self { self.q.plus("seq", v); self }
     pub fn minus_seq(mut self, v: i64) -> Self { self.q.minus("seq", v); self }
     pub fn plus_target_team_player_count(mut self, v: i32) -> Self { self.q.plus("target_team_player_count", v); self }

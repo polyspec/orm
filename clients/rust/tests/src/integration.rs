@@ -99,6 +99,11 @@ async fn main() {
     let n0 = statements.load(Ordering::Relaxed);
     let none = Battle::new().seq_eq(0).relation_user(User::new()).all(&db).await.expect("empty");
     check!(fails, none.is_empty() && statements.load(Ordering::Relaxed) - n0 == 1, "no parents → relation step skipped");
+    let one = Battle::new().seq_eq(42).relation_service(Service::new().relations_members(ServiceMember::new().limit_per_parent(1))).one(&db).await.expect("one").expect("row 42");
+    check!(fails, one.service().map(|s| s.members().len()) == Some(1), "one + relation");
+    // flatten: typed access is unchanged (array/JSON forms merge the child's columns)
+    let m = ServiceMember::new().service_seq_eq(7).order_by_seq_asc().limit(0, 2).relation_user(User::new().flatten()).all(&db).await.expect("flatten");
+    check!(fails, m.first().and_then(|m| m.user()).map(|u| u.name.starts_with("user-")) == Some(true), "flatten");
     let page = Battle::new().service_seq_eq(7).order_by_seq_asc().relation_user(User::new()).paginate(&db, 1, 4).await.expect("paginate");
     check!(fails, page.total == 1000 && page.items.len() == 4 && page.items.first().and_then(|b| b.user()).is_some(), "paginate keeps relations");
 

@@ -7,6 +7,8 @@ use crate::value::Param;
 pub struct Req {
     pub ir: Request,
     pub params: Vec<Param>,
+    /// First deferred builder error (codec encode); surfaces from the terminal.
+    pub err: Option<crate::Error>,
 }
 
 impl Req {
@@ -20,6 +22,7 @@ impl Req {
                 ..Default::default()
             },
             params: Vec::new(),
+            err: None,
         }
     }
 
@@ -57,6 +60,13 @@ impl Q {
 
     pub fn node(&mut self) -> &mut Query {
         &mut self.req.ir.query
+    }
+
+    /// Keeps the first builder error for the terminal to return.
+    pub fn defer_err(&mut self, e: crate::Error) {
+        if self.req.err.is_none() {
+            self.req.err = Some(e);
+        }
     }
 
     /// A W over the root WHERE group, carrying the pending connector.

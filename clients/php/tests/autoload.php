@@ -14,6 +14,7 @@ spl_autoload_register(function (string $class) use ($root): void {
                 $prefix === 'Orm\\' && in_array($rel, ['Db', 'Tx', 'Transform'], true) => $dir . 'Db.php',
                 $prefix === 'Orm\\' && in_array($rel, ['Orm', 'Config', 'OrmException'], true) => $dir . 'Orm.php',
                 $prefix === 'Orm\\' && in_array($rel, ['Transport', 'Assemble'], true) => $dir . 'Transport.php',
+                $prefix === 'Orm\\' && $rel === 'Codec' => $dir . 'Codec.php',
                 $prefix === 'App\\Orm\\' => $dir . preg_replace('/(Row|Where)$/', '', $rel) . '.php',
                 default => null,
             };
