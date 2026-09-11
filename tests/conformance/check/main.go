@@ -178,21 +178,27 @@ func runAll(root, out string) {
 	_ = os.Remove(sock)
 }
 
+// load reads the vector list (names and chains) from vectors.json — the single
+// place a vector is declared — and, for another database, overlays the
+// expectations recorded for that dialect (vectors.<driver>.json).
 func load(root string) file {
-	b, err := os.ReadFile(filepath.Join(root, vectorsPath()))
-	if err != nil && driver != "mysql" {
-		// a new database starts from the MySQL vector list; results are recorded per driver
-		b, err = os.ReadFile(filepath.Join(root, "tests/conformance/vectors.json"))
-	}
+	b, err := os.ReadFile(filepath.Join(root, "tests/conformance/vectors.json"))
 	must(err)
 	var f file
 	must(json.Unmarshal(b, &f))
-	if driver != "mysql" {
-		if _, statErr := os.Stat(filepath.Join(root, vectorsPath())); statErr != nil {
-			for i := range f.Vectors {
-				f.Vectors[i].Expect = nil
-			}
+	if driver == "mysql" {
+		return f
+	}
+	recorded := map[string]json.RawMessage{}
+	if b, err := os.ReadFile(filepath.Join(root, vectorsPath())); err == nil {
+		var d file
+		must(json.Unmarshal(b, &d))
+		for _, v := range d.Vectors {
+			recorded[v.Name] = v.Expect
 		}
+	}
+	for i := range f.Vectors {
+		f.Vectors[i].Expect = recorded[f.Vectors[i].Name]
 	}
 	return f
 }
