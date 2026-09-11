@@ -965,4 +965,4 @@ func (d *DB) DB() *DB { return d }
 
 // Cfg is the live configuration (hooks may be swapped at runtime, e.g. by tests).
 func (d *DB) Cfg() *Config { return &d.cfg }
-func (t *Tx) DB() *DB { return t.d }
+func (t *Tx) DB() *DB      { return t.d }
