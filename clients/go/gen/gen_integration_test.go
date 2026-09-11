@@ -138,6 +138,12 @@ func TestReadPaths(t *testing.T) {
 	if err != nil || zero != 0 {
 		t.Errorf("contains escape: %d %v", zero, err)
 	}
+
+	// join result access
+	j, err := gen.NewBattle().JoinService(gen.NewService().Where(func(w *gen.ServiceWhere) { w.SeqEq(7) })).SeqEq(6).One(ctx, db)
+	if err != nil || j == nil || j.GetService() == nil || j.GetService().Name != "service-7" {
+		t.Errorf("joined row access: %v %+v", err, j)
+	}
 }
 
 func TestWritePaths(t *testing.T) {
@@ -155,7 +161,6 @@ func TestWritePaths(t *testing.T) {
 	if err != nil || created == nil || created.Seq == 0 || created.AesHexEmail == nil || *created.AesHexEmail != email {
 		t.Fatalf("insert: %v %+v", err, created)
 	}
-	defer gen.NewBattle().ServiceSeqEq(999).Count(ctx, db) // keep compiler happy about unused paths
 
 	// update dirty columns only, optimistic
 	created.SetName("go-write-2").SetLikeCount(5)
@@ -177,5 +182,13 @@ func TestWritePaths(t *testing.T) {
 	}
 	if left, _ := gen.NewBattle().SeqEq(created.Seq).Count(ctx, db); left != 0 {
 		t.Errorf("row not deleted")
+	}
+}
+
+func TestErrorSurface(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	if _, err := gen.NewBattle().SeqIn([]int64{}).Count(ctx, db); err == nil || !strings.Contains(err.Error(), "EMPTY_IN") {
+		t.Errorf("EMPTY_IN: %v", err)
 	}
 }
