@@ -285,11 +285,14 @@ func (p *Planner) relationSteps(ps *stepSet, s *scope, asm *plan.Assemble, stepI
 		if err != nil {
 			return err
 		}
+		target := p.M.Entities[rel.Target]
 		ch := &plan.Child{
 			Rel: r.Rel, Kind: rel.Kind, Step: st.ID,
 			ParentColumn: rel.Left, ParentIndex: indexOf(asm, rel.Left),
 			ChildColumn: rel.Right, ChildIndex: indexOf(st.Assemble, rel.Right),
 			KeyBy: r.Query.KeyBy, Flatten: r.Query.Flatten,
+			// owned when the target holds the FK (this row's PK on the left, a non-PK column on the right)
+			Cascade: !r.Query.NoCascadeDelete && rel.Left == s.ent.PK[0] && rel.Right != target.PK[0],
 		}
 		if r.Query.KeyBy != "" {
 			ch.KeyIndex = indexOf(st.Assemble, r.Query.KeyBy)
@@ -716,6 +719,21 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		vals = append(vals, v)
 	}
 	sql := "INSERT INTO " + p.D.Quote(ent.Table) + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(vals, ", ") + ")"
+	if len(r.OnDuplicate) > 0 {
+		var sets []string
+		for _, a := range r.OnDuplicate {
+			v, err := p.renderAssign(b, ent, ent.Column(a.Column), &a)
+			if err != nil {
+				return nil, err
+			}
+			sets = append(sets, p.D.Quote(a.Column)+" = "+v)
+		}
+		if ent.Auto != "" && !p.D.InsertReturningID() {
+			// MySQL idiom: make last insert id report the existing row on update
+			sets = append(sets, p.D.Quote(ent.Auto)+" = LAST_INSERT_ID("+p.D.Quote(ent.Auto)+")")
+		}
+		sql += p.D.Upsert(ent.PK, strings.Join(sets, ", "))
+	}
 	if p.D.InsertReturningID() && ent.Auto != "" {
 		sql += " RETURNING " + p.D.Quote(ent.Auto)
 	}

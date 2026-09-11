@@ -20,10 +20,11 @@ type Request struct {
 	SchemaHash string `json:"schema_hash"`
 	Kind       string `json:"kind"` // one all count sum avg paginate insert update delete
 	Query
-	Set        []Assign  `json:"set,omitempty"`
-	Optimistic *Optimist `json:"optimistic,omitempty"`
-	Agg        string    `json:"agg,omitempty"` // column for sum/avg
-	Debug      bool      `json:"debug,omitempty"`
+	Set         []Assign  `json:"set,omitempty"`
+	OnDuplicate []Assign  `json:"on_duplicate,omitempty"` // insert: assignments applied when the unique key already exists
+	Optimistic  *Optimist `json:"optimistic,omitempty"`
+	Agg         string    `json:"agg,omitempty"` // column for sum/avg
+	Debug       bool      `json:"debug,omitempty"`
 	// NParams is how many parameters the client holds. The engine only checks
 	// indices against it; values never reach the engine.
 	NParams int `json:"n_params"`
@@ -44,11 +45,12 @@ type Query struct {
 	ForceIdx  string      `json:"force_index,omitempty"`
 
 	// Relation-child options.
-	KeyBy          string    `json:"key_by,omitempty"`
-	Flatten        bool      `json:"flatten,omitempty"`
-	LimitPerParent int       `json:"limit_per_parent,omitempty"`
-	IfParent       *IfParent `json:"if_parent,omitempty"`
-	DropChildKey   bool      `json:"drop_child_key,omitempty"`
+	KeyBy           string    `json:"key_by,omitempty"`
+	Flatten         bool      `json:"flatten,omitempty"`
+	LimitPerParent  int       `json:"limit_per_parent,omitempty"`
+	IfParent        *IfParent `json:"if_parent,omitempty"`
+	DropChildKey    bool      `json:"drop_child_key,omitempty"`
+	NoCascadeDelete bool      `json:"no_cascade_delete,omitempty"` // deleteCascade stops at this relation
 }
 
 type Columns struct {
@@ -175,6 +177,35 @@ var opsByType = map[string][]string{
 
 var colOps = map[string]bool{"eq_col": true, "not_eq_col": true, "gt_col": true, "gte_col": true, "lt_col": true, "lte_col": true}
 
+// assign validates one set[]/on_duplicate[] assignment.
+func (v *validator) assign(ent *schema.Entity, r *Request, a *Assign) error {
+	c := ent.Column(a.Column)
+	if c == nil {
+		return errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, a.Column)
+	}
+	n := 0
+	for _, has := range []bool{a.P != nil, a.Null, a.Expr != "", a.PlusP != nil, a.MinusP != nil} {
+		if has {
+			n++
+		}
+	}
+	if n != 1 {
+		return errf("IR_INVALID", "set %s: exactly one of p/null/expr/plus_p/minus_p", a.Column)
+	}
+	if a.Null && !c.Nullable {
+		return errf("IR_INVALID", "set %s.%s to null but column is NOT NULL", r.Entity, a.Column)
+	}
+	if (a.PlusP != nil || a.MinusP != nil) && c.Type != "i32" && c.Type != "i64" && c.Type != "f64" && c.Type != "decimal" {
+		return errf("OPERATOR_NOT_ALLOWED", "plus/minus on %s.%s (%s)", r.Entity, a.Column, c.Type)
+	}
+	for _, idx := range []*int{a.P, a.PlusP, a.MinusP} {
+		if idx != nil && (*idx < 0 || *idx >= r.NParams) {
+			return errf("IR_INVALID", "param index %d out of range (n_params %d)", *idx, r.NParams)
+		}
+	}
+	return v.params(a.Ps)
+}
+
 // OpAllowed reports whether op is valid for a column of the given type/styles.
 func OpAllowed(c *schema.Col, op string) bool {
 	if colOps[op] || op == "expr" || op == "match" || op == "match_boolean" {
@@ -239,32 +270,21 @@ func Validate(m *schema.Manifest, r *Request) error {
 			return errf("IR_INVALID", "%s needs set[]", r.Kind)
 		}
 		for _, a := range r.Set {
-			c := ent.Column(a.Column)
-			if c == nil {
-				return errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, a.Column)
-			}
-			n := 0
-			for _, has := range []bool{a.P != nil, a.Null, a.Expr != "", a.PlusP != nil, a.MinusP != nil} {
-				if has {
-					n++
-				}
-			}
-			if n != 1 {
-				return errf("IR_INVALID", "set %s: exactly one of p/null/expr/plus_p/minus_p", a.Column)
-			}
-			if a.Null && !c.Nullable {
-				return errf("IR_INVALID", "set %s.%s to null but column is NOT NULL", r.Entity, a.Column)
-			}
-			if (a.PlusP != nil || a.MinusP != nil) && c.Type != "i32" && c.Type != "i64" && c.Type != "f64" && c.Type != "decimal" {
-				return errf("OPERATOR_NOT_ALLOWED", "plus/minus on %s.%s (%s)", r.Entity, a.Column, c.Type)
-			}
-			for _, idx := range []*int{a.P, a.PlusP, a.MinusP} {
-				if idx != nil && (*idx < 0 || *idx >= r.NParams) {
-					return errf("IR_INVALID", "param index %d out of range (n_params %d)", *idx, r.NParams)
-				}
-			}
-			if err := v.params(a.Ps); err != nil {
+			if err := v.assign(ent, r, &a); err != nil {
 				return err
+			}
+		}
+	}
+	if len(r.OnDuplicate) > 0 {
+		if r.Kind != "insert" {
+			return errf("IR_INVALID", "on_duplicate is only valid on insert")
+		}
+		for _, a := range r.OnDuplicate {
+			if err := v.assign(ent, r, &a); err != nil {
+				return err
+			}
+			if c := ent.Column(a.Column); c.PK || c.Auto {
+				return errf("IR_INVALID", "on_duplicate cannot assign %s.%s", r.Entity, a.Column)
 			}
 		}
 	}
@@ -386,7 +406,7 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 			return err
 		}
 	}
-	if !isRelation && (q.KeyBy != "" || q.Flatten || q.LimitPerParent > 0 || q.IfParent != nil || q.DropChildKey) {
+	if !isRelation && (q.KeyBy != "" || q.Flatten || q.LimitPerParent > 0 || q.IfParent != nil || q.DropChildKey || q.NoCascadeDelete) {
 		return errf("IR_INVALID", "relation-only options on %s", q.Entity)
 	}
 	for _, o := range q.Order {

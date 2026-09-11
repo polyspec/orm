@@ -76,15 +76,18 @@ type OutCol struct {
 //   - many: a collection keyed by KeyIndex in row order, else empty
 //   - Flatten: the child's columns also appear as the parent's in array/JSON forms
 type Child struct {
-	Rel          string    `json:"rel"`
-	Kind         string    `json:"kind"` // join | one | many
-	Step         int       `json:"step,omitempty"`
-	ParentColumn string    `json:"parent_column,omitempty"`
-	ParentIndex  int       `json:"parent_index"`
-	ChildColumn  string    `json:"child_column,omitempty"`
-	ChildIndex   int       `json:"child_index"`
-	KeyBy        string    `json:"key_by,omitempty"`
-	KeyIndex     int       `json:"key_index"`
-	Flatten      bool      `json:"flatten,omitempty"`
-	Assemble     *Assemble `json:"assemble,omitempty"`
+	Rel          string `json:"rel"`
+	Kind         string `json:"kind"` // join | one | many
+	Step         int    `json:"step,omitempty"`
+	ParentColumn string `json:"parent_column,omitempty"`
+	ParentIndex  int    `json:"parent_index"`
+	ChildColumn  string `json:"child_column,omitempty"`
+	ChildIndex   int    `json:"child_index"`
+	KeyBy        string `json:"key_by,omitempty"`
+	KeyIndex     int    `json:"key_index"`
+	Flatten      bool   `json:"flatten,omitempty"`
+	// Cascade: the related rows belong to this row (their FK points here) and
+	// no_cascade_delete was not set — deleteCascade removes them first.
+	Cascade  bool      `json:"cascade,omitempty"`
+	Assemble *Assemble `json:"assemble,omitempty"`
 }
