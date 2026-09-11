@@ -7,6 +7,7 @@ classDiagram
     class Query {
         Binding binding
         Optional_Function_Row_Key keySelector
+        Optional_LinkSelection linkSelection
         Request request
         query()
         using()
@@ -21,6 +22,10 @@ classDiagram
         update()
         delete()
         sql()
+    }
+    class LinkSelection {
+        Text childKey
+        Text parentKey
     }
     class Where {
         Borrow_Group group
@@ -189,6 +194,7 @@ classDiagram
 | 구성요소 | 책임·소유 규칙 |
 |---|---|
 | Query | Owns mutable query state; never represents a loaded row. |
+| LinkSelection | Belongs to the child Query until relation or join consumes it. |
 | Where | Borrow is scoped to its callback; cannot execute SQL. |
 | Request | attach snapshots all child state and shifts only the snapshot. |
 | RequestIR | Value-free compiler input. |
@@ -213,7 +219,10 @@ classDiagram
 |---|---|
 | Query.binding | `Binding` |
 | Query.keySelector | `Optional<Function<Row,Key>>` |
+| Query.linkSelection | `Optional<LinkSelection>` |
 | Query.request | `Request` |
+| LinkSelection.childKey | `Text` |
+| LinkSelection.parentKey | `Text` |
 | Where.group | `Borrow<Group>` |
 | Where.pendingConnector | `Connector` |
 | Where.request | `Borrow<Request>` |

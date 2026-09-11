@@ -692,16 +692,26 @@ func (q *ServiceRegionQuery) Raw(sql string, binds ...any) *ServiceRegionQuery {
 // the relation name from the parent and child entities.
 func (q *ServiceRegionQuery) Relation(child any) *ServiceRegionQuery {
 	if c, ok := child.(*ServiceQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "service_seq" || c.q.LinkRight != "seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Relation("service", c.q)
 		return q
 	}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 func (q *ServiceRegionQuery) Relations(child any) *ServiceRegionQuery {
 	if c, ok := child.(*AuthorQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "service_region_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Relation("authors", c.q)
 		return q
 	}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 func (q *ServiceRegionQuery) Join(child any) *ServiceRegionQuery { return q.joinTarget(child, "inner") }
@@ -710,13 +720,22 @@ func (q *ServiceRegionQuery) LeftJoin(child any) *ServiceRegionQuery {
 }
 func (q *ServiceRegionQuery) joinTarget(child any, kind string) *ServiceRegionQuery {
 	if c, ok := child.(*AuthorQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "seq" || c.q.LinkRight != "service_region_seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Join("authors", kind, c.q)
 		return q
 	}
 	if c, ok := child.(*ServiceQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "service_seq" || c.q.LinkRight != "seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Join("service", kind, c.q)
 		return q
 	}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 
@@ -743,6 +762,23 @@ func (q *ServiceRegionQuery) LeftJoinServiceSeqWithSeq(child *ServiceQuery) *Ser
 }
 func (q *ServiceRegionQuery) RelationServiceSeqWithSeq(child *ServiceQuery) *ServiceRegionQuery {
 	q.q.Relation("service", child.q)
+	return q
+}
+
+func (q *ServiceRegionQuery) MatchServiceRegionSeqWithSeq() *ServiceRegionQuery {
+	q.q.SetLink("service_region_seq", "seq")
+	return q
+}
+func (q *ServiceRegionQuery) OnServiceRegionSeqWithSeq() *ServiceRegionQuery {
+	q.q.SetLink("service_region_seq", "seq")
+	return q
+}
+func (q *ServiceRegionQuery) MatchSeqWithServiceSeq() *ServiceRegionQuery {
+	q.q.SetLink("seq", "service_seq")
+	return q
+}
+func (q *ServiceRegionQuery) OnSeqWithServiceSeq() *ServiceRegionQuery {
+	q.q.SetLink("seq", "service_seq")
 	return q
 }
 

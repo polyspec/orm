@@ -4022,45 +4022,80 @@ func (q *AuthorQuery) Raw(sql string, binds ...any) *AuthorQuery { q.q.Raw(sql, 
 // the relation name from the parent and child entities.
 func (q *AuthorQuery) Relation(child any) *AuthorQuery {
 	if c, ok := child.(*ServiceQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "service_seq" || c.q.LinkRight != "seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Relation("service", c.q)
 		return q
 	}
 	if c, ok := child.(*ServiceMemberQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "service_member_seq" || c.q.LinkRight != "seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Relation("service_member", c.q)
 		return q
 	}
 	if c, ok := child.(*ServiceRegionQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "service_region_seq" || c.q.LinkRight != "seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Relation("service_region", c.q)
 		return q
 	}
 	if c, ok := child.(*UserQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "user_seq" || c.q.LinkRight != "seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Relation("user", c.q)
 		return q
 	}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 func (q *AuthorQuery) Relations(child any) *AuthorQuery {
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 func (q *AuthorQuery) Join(child any) *AuthorQuery     { return q.joinTarget(child, "inner") }
 func (q *AuthorQuery) LeftJoin(child any) *AuthorQuery { return q.joinTarget(child, "left") }
 func (q *AuthorQuery) joinTarget(child any, kind string) *AuthorQuery {
 	if c, ok := child.(*ServiceQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "service_seq" || c.q.LinkRight != "seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Join("service", kind, c.q)
 		return q
 	}
 	if c, ok := child.(*ServiceMemberQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "service_member_seq" || c.q.LinkRight != "seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Join("service_member", kind, c.q)
 		return q
 	}
 	if c, ok := child.(*ServiceRegionQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "service_region_seq" || c.q.LinkRight != "seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Join("service_region", kind, c.q)
 		return q
 	}
 	if c, ok := child.(*UserQuery); ok {
+		if c.q.LinkLeft != "" && (c.q.LinkLeft != "user_seq" || c.q.LinkRight != "seq") {
+			q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "link selection does not match relation"}
+			return q
+		}
 		q.q.Join("user", kind, c.q)
 		return q
 	}
+	q.q.Req.Err = &ir.Error{Code: "RELATION_UNKNOWN", Msg: "relation target or key selection is not declared"}
 	return q
 }
 
@@ -4113,6 +4148,30 @@ func (q *AuthorQuery) LeftJoinUserSeqWithSeq(child *UserQuery) *AuthorQuery {
 }
 func (q *AuthorQuery) RelationUserSeqWithSeq(child *UserQuery) *AuthorQuery {
 	q.q.Relation("user", child.q)
+	return q
+}
+
+func (q *AuthorQuery) MatchSeqWithUserSeq() *AuthorQuery { q.q.SetLink("seq", "user_seq"); return q }
+func (q *AuthorQuery) OnSeqWithUserSeq() *AuthorQuery    { q.q.SetLink("seq", "user_seq"); return q }
+func (q *AuthorQuery) MatchSeqWithServiceSeq() *AuthorQuery {
+	q.q.SetLink("seq", "service_seq")
+	return q
+}
+func (q *AuthorQuery) OnSeqWithServiceSeq() *AuthorQuery { q.q.SetLink("seq", "service_seq"); return q }
+func (q *AuthorQuery) MatchSeqWithServiceRegionSeq() *AuthorQuery {
+	q.q.SetLink("seq", "service_region_seq")
+	return q
+}
+func (q *AuthorQuery) OnSeqWithServiceRegionSeq() *AuthorQuery {
+	q.q.SetLink("seq", "service_region_seq")
+	return q
+}
+func (q *AuthorQuery) MatchSeqWithServiceMemberSeq() *AuthorQuery {
+	q.q.SetLink("seq", "service_member_seq")
+	return q
+}
+func (q *AuthorQuery) OnSeqWithServiceMemberSeq() *AuthorQuery {
+	q.q.SetLink("seq", "service_member_seq")
 	return q
 }
 
