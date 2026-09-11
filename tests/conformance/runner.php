@@ -303,6 +303,17 @@ $run('delete_cascade_order', function () use ($db, $remask) {
     return $left;
 });
 $run('sql_dump', fn() => (new Author)->serviceSeqEq(7)->selectAesHexEmail()->limit(0, 1)->sql($db));
+$run('agg_min_max', fn() => [
+    'min' => (new Author)->serviceSeqEq(7)->minSeq($db),
+    'max' => (new Author)->serviceSeqEq(7)->maxSeq($db),
+    'distinct_users' => (new Author)->serviceSeqEq(7)->countDistinctUserSeq($db),
+]);
+$run('group_count_having', fn() => (new Author)->serviceSeqEq(7)->groupByUserSeq()->having(fn(AuthorWhere $w) => $w->expr('COUNT(*) > ?', [1]))->count($db));
+$run('predicate_named', fn() => [
+    'visible' => (new Author)->visible()->serviceSeqEq(7)->count($db),
+    'started_after' => (new Author)->startedAfter('2026-01-01 00:00:00')->serviceSeqEq(7)->count($db),
+]);
+$run('raw_root', fn() => (new Author)->raw('SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?', [7, 0])->rawAll($db));
 $run('codec_roundtrip', function () use ($db, $remask) {
     $value = ['a' => 1, 'b' => [1, 2, ['c' => '한글/slash']], 'd' => null, 'e' => true, 'f' => 1.5];
     $created = $db->transaction(fn(Tx $tx) => (new Author)
