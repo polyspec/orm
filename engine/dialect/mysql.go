@@ -16,6 +16,8 @@ func (MySQL) Limit(offset, count int) string { return fmt.Sprintf(" LIMIT %d, %d
 func (MySQL) ForceIndex(name string) string  { return " FORCE INDEX (" + QuoteWith("`", name) + ")" }
 func (MySQL) InsertReturningID() bool        { return false }
 func (MySQL) Now() string                    { return "CURRENT_TIMESTAMP" }
+func (MySQL) Supports(string) bool           { return true }
+func (MySQL) HandlesStyle(s string) bool     { return s == "aes" || s == "hex" || s == "ip" }
 
 func (MySQL) Like(col, ph string, binary bool) string {
 	if binary {

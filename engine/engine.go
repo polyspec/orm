@@ -26,6 +26,10 @@ func New(m *schema.Manifest, dialectName string) (*Engine, error) {
 	switch dialectName {
 	case "mysql", "":
 		d = dialect.MySQL{}
+	case "postgres":
+		d = dialect.Postgres{}
+	case "sqlite":
+		d = dialect.SQLite{}
 	default:
 		return nil, &ir.Error{Code: "DIALECT_UNKNOWN", Msg: dialectName}
 	}

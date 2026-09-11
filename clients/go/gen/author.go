@@ -3543,6 +3543,22 @@ func (q *Author) SerializeDataIsNotNull() *Author {
 	q.q.W().PredNull("serialize_data", "is_not_null")
 	return q
 }
+func (w *AuthorWhere) NameWithDescriptionMatch(v string) *AuthorWhere {
+	w.w.Match([]string{"name", "description"}, false, v)
+	return w
+}
+func (w *AuthorWhere) NameWithDescriptionMatchBoolean(v string) *AuthorWhere {
+	w.w.Match([]string{"name", "description"}, true, v)
+	return w
+}
+func (q *Author) NameWithDescriptionMatch(v string) *Author {
+	q.q.W().Match([]string{"name", "description"}, false, v)
+	return q
+}
+func (q *Author) NameWithDescriptionMatchBoolean(v string) *Author {
+	q.q.W().Match([]string{"name", "description"}, true, v)
+	return q
+}
 
 // StartedAfter is the manifest predicate started_after: `start_dt` > ?
 func (w *AuthorWhere) StartedAfter(v any) *AuthorWhere { w.w.Expr("`start_dt` > ?", v); return w }

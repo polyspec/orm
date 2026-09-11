@@ -708,6 +708,8 @@ final class AuthorWhere
     public function base64ExtraIsNotNull(): static { $this->w->predNull('base64_extra', 'is_not_null'); return $this; }
     public function serializeDataIsNull(): static { $this->w->predNull('serialize_data', 'is_null'); return $this; }
     public function serializeDataIsNotNull(): static { $this->w->predNull('serialize_data', 'is_not_null'); return $this; }
+    public function nameWithDescriptionMatch(string $v): static { $this->w->match(['name', 'description'], false, $v); return $this; }
+    public function nameWithDescriptionMatchBoolean(string $v): static { $this->w->match(['name', 'description'], true, $v); return $this; }
 }
 
 /** Query over author: new Author → chain → terminal($db). */
@@ -1123,6 +1125,8 @@ final class Author extends Q
     public function base64ExtraIsNotNull(): static { $this->w()->predNull('base64_extra', 'is_not_null'); return $this; }
     public function serializeDataIsNull(): static { $this->w()->predNull('serialize_data', 'is_null'); return $this; }
     public function serializeDataIsNotNull(): static { $this->w()->predNull('serialize_data', 'is_not_null'); return $this; }
+    public function nameWithDescriptionMatch(string $v): static { $this->w()->match(['name', 'description'], false, $v); return $this; }
+    public function nameWithDescriptionMatchBoolean(string $v): static { $this->w()->match(['name', 'description'], true, $v); return $this; }
 
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new AuthorWhere($this->onW())); return $this; }
