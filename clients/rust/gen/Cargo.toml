@@ -1,0 +1,9 @@
+[package]
+name = "gen"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[dependencies]
+orm = { path = "../orm" }
+chrono = { version = "0.4", default-features = false, features = ["std"] }

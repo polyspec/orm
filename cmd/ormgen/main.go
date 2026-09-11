@@ -59,6 +59,8 @@ func gen(args []string) {
 		err = genGo(m, *out)
 	case "php":
 		err = genPHP(m, *out, *ns)
+	case "rust":
+		err = genRust(m, *out)
 	default:
 		err = fmt.Errorf("lang %q not implemented", *lang)
 	}
