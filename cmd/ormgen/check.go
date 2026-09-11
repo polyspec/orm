@@ -1,4 +1,4 @@
-// ormgen check --lang php <dir>: what a compatibility codebase uses that the compat
+// ormgen check --lang php <dir>: what a PHP codebase uses that the compatibility
 // layer (docs/dsl.md §6) must translate. A report, not a linter: counts per
 // token family, the files that open/close '(' tokens across models, and expr
 // fragments with backtick column names (docs/checklist.md T4.7).
@@ -34,8 +34,9 @@ var phpFamilies = []checkFamily{
 	{"groupLimit", regexp.MustCompile(`->groupLimit\(`)},
 	{"possible*", regexp.MustCompile(`->possible[A-Z]\w*\(`)},
 	{"addColumn*/addAllColumns/removeColumn*", regexp.MustCompile(`->(?:addColumn\w*|addAllColumns|removeAllColumns|removeColumn\w*)\(`)},
-	{"getBy*/getsBy*", regexp.MustCompile(`->gets?By[A-Z]\w*\(`)},
-	{"getsBy…And… (compound)", regexp.MustCompile(`->getsBy[A-Z]\w*And[A-Z]\w*\(`)},
+	{"compound getBy*/getsBy*", regexp.MustCompile(`->gets?By[A-Z]\w*And[A-Z]\w*\(`)},
+	{"getCount/getsCount terminals", regexp.MustCompile(`->gets?Count\(`)},
+	{"compound getCountBy* terminals", regexp.MustCompile(`->getCountBy[A-Z]\w*And[A-Z]\w*\(`)},
 	{"paren tokens and('(') / condition(')')", regexp.MustCompile(`->(?:and|or|condition)\(\s*'[()]'\s*\)`)},
 	{"brace-call syntax ->{'condition(…)'}", regexp.MustCompile(`->\{'[^']*\('`)},
 	{"raw fragments (condition with SQL text)", regexp.MustCompile(`->(?:and|or|condition)\(\s*'[^']*[=<>]`)},

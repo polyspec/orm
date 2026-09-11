@@ -181,6 +181,7 @@ func TestAggregates(t *testing.T) {
 		`"kind":"max","entity":"author","agg":"like_count"`:                                                                                       "SELECT MAX(`a`.`like_count`) FROM `author` AS `a`",
 		`"kind":"count_distinct","entity":"author","agg":"user_seq"`:                                                                              "SELECT COUNT(DISTINCT `a`.`user_seq`) FROM `author` AS `a`",
 		`"kind":"count","entity":"author","group_by":["service_seq"],"n_params":1,"having":{"items":[{"pred":{"expr":"COUNT(*) > ?","ps":[0]}}]}`: "SELECT COUNT(*) FROM (SELECT 1 FROM `author` AS `a` GROUP BY `a`.`service_seq` HAVING (COUNT(*) > ?)) AS `orm_g`",
+		`"kind":"group_count","entity":"author","group_by_expr":[{"expr":"ROUND(` + "`like_count`" + `)","as":"bucket"}]`:                         "SELECT ROUND(`a`.`like_count`) AS `a__bucket`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY ROUND(`a`.`like_count`)",
 		`"kind":"all","entity":"author","columns":{"mode":"none"},"group_by":["service_seq"],"n_params":1,"having":{"items":[{"pred":{"column":"service_seq","op":"gt","p":0}}]},"order":[{"column":"service_seq","desc":false}],"limit":{"offset":0,"count":2}`: "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` GROUP BY `a`.`service_seq` HAVING `a`.`service_seq` > ? ORDER BY `a`.`service_seq` ASC LIMIT 0, 2",
 	}
 	for irs, want := range cases {
@@ -191,6 +192,8 @@ func TestAggregates(t *testing.T) {
 	}
 	for irs, code := range map[string]string{
 		`"kind":"all","entity":"author","n_params":1,"having":{"items":[{"pred":{"column":"seq","op":"gt","p":0}}]}`: "IR_INVALID: having needs group_by",
+		`"kind":"group_count","entity":"author","group_by_expr":[{"expr":"ROUND(` + "`nope`" + `)","as":"bucket"}]`:  "COLUMN_UNKNOWN",
+		`"kind":"group_count","entity":"author","group_by_expr":[{"expr":"ROUND(like_count)","as":""}]`:              "IR_INVALID",
 		`"kind":"min","entity":"author","agg":"aes_hex_email"`:                                                       "OPERATOR_NOT_ALLOWED",
 		`"kind":"max","entity":"author","agg":"nope"`:                                                                "COLUMN_UNKNOWN",
 	} {

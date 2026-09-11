@@ -18,7 +18,7 @@ type Dialect interface {
 	ForceIndex(name string) string
 	// Fulltext renders MATCH … AGAINST; boolean selects boolean mode.
 	Fulltext(cols []string, ph string, boolean bool) string
-	// FulltextValue transforms the search value (compatibility boolean-mode mangling).
+	// FulltextValue transforms the search value for boolean full-text mode.
 	FulltextValue(v string, boolean bool) string
 	// RowNumber renders ROW_NUMBER() OVER (PARTITION BY p ORDER BY o).
 	RowNumber(partition, orderBy string) string

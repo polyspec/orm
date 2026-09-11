@@ -91,6 +91,11 @@ type rustCol struct {
 	IsStr, IsJson            bool
 }
 
+type rustFinder struct {
+	Method string
+	Fields []rustCol
+}
+
 type rustRel struct {
 	Name, Ident, Target, TargetType, Kind string
 }
@@ -106,6 +111,8 @@ type rustData struct {
 	SchemaHash                    string
 	Auto                          bool
 	Cols                          []rustCol
+	EqCols                        []rustCol // columns that support the default equality predicate (gets_by/get_count_by)
+	UniqueFinders                 []rustFinder
 	Numeric                       []rustCol
 	Aggs                          []rustCol // count_distinct/min/max targets: unstyled or ip-styled, not json/bytes
 	Preds                         []rustPred
@@ -165,6 +172,29 @@ var rustTmpl = template.Must(template.New("rust").Funcs(template.FuncMap{
 		}
 		return "vec![" + strings.Join(q, ", ") + "]"
 	},
+	"finderParams": func(fields []rustCol) string {
+		parts := make([]string, len(fields))
+		for i, c := range fields {
+			t := c.RType
+			if c.IsStr {
+				t = "impl Into<String>"
+			}
+			parts[i] = fmt.Sprintf("v%d: %s", i, t)
+		}
+		return strings.Join(parts, ", ")
+	},
+	"finderChain": func(fields []rustCol) string {
+		var b strings.Builder
+		for i, c := range fields {
+			v := fmt.Sprintf("v%d", i)
+			if c.IsStr {
+				v += ".into()"
+			}
+			fmt.Fprintf(&b, "self.q.w().pred(%q, \"eq\", %s); ", c.Name, v)
+		}
+		return strings.TrimSpace(b.String())
+	},
+	"finderSnake": func(method string) string { return opSnake(method) },
 	"rsList": func(cols []string) string {
 		q := make([]string, len(cols))
 		for i, c := range cols {
@@ -176,6 +206,7 @@ var rustTmpl = template.Must(template.New("rust").Funcs(template.FuncMap{
 #![allow(clippy::all, dead_code, unused_imports, unused_mut)]
 
 use orm::builder::{ColRef, Q, W};
+use orm::binding::Binding;
 use orm::db::{self, Exec};
 use orm::value::{Param, Val};
 use orm::{Collection, Key, Page, Result};
@@ -183,6 +214,7 @@ use orm::{Collection, Key, Page, Result};
 /// One row of {{.Table}}.
 #[derive(Debug, Clone, Default)]
 pub struct {{.Type}}Row {
+    binding: Binding,
 {{- range .Cols}}
     pub {{.Ident}}: {{if .Nullable}}Option<{{.RType}}>{{else}}{{.RType}}{{end}},
 {{- end}}
@@ -193,6 +225,8 @@ pub struct {{.Type}}Row {
     {{.Ident}}_: Collection<super::{{.Target}}::{{.TargetType}}Row>,
 {{- end}}
 {{- end}}
+    assigned: Vec<&'static str>,
+    original_version: Option<Param>,
     dirty: Vec<(&'static str, Param)>,
     enc_err: Option<(String, String)>, // (code, msg) of the first codec error; surfaces from update
     extra: std::collections::HashMap<String, Val>, // select_expr / select_<col>_as outputs, by output name
@@ -202,6 +236,8 @@ pub struct {{.Type}}Row {
 }
 
 impl {{.Type}}Row {
+    /// Rebind this loaded row to a pool or transaction.
+    pub fn bind(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
     pub const ENTITY: &'static str = {{printf "%q" .Name}};
     pub const PK: &'static str = {{printf "%q" .PK}};
 
@@ -212,6 +248,7 @@ impl {{.Type}}Row {
         use orm::Src as _;
         let mut r = Self::default();
         r.asm = Some(a.clone());
+        r.binding = rs.binding.clone();
         for ch in &a.children {
             match ch.rel.as_str() {
 {{- range .Rels}}
@@ -251,26 +288,37 @@ impl {{.Type}}Row {
                 other => { let v = if c.styles.is_empty() { src.val(i)? } else { src.styled(i, &c.styles)? }; r.extra.insert(other.to_owned(), v); }
             }
         }
+{{- if .UpdatedTs}}
+        if r.has({{printf "%q" .UpdatedTs}}) { r.original_version = Some(r.{{ident .UpdatedTs}}.clone().into()); }
+{{- end}}
         Ok(r)
     }
     /// A select_expr / select_<col>_as output by name.
     pub fn extra(&self, name: &str) -> Option<&Val> { self.extra.get(name) }
+
+    /// The COUNT(*) value returned by a gets_count terminal.
+    pub fn has(&self, name: &str) -> bool { self.assigned.contains(&name) || self.extra.contains_key(name) || self.asm.as_ref().is_some_and(|a| a.columns.iter().any(|c| c.name == name)) }
+    pub fn rel_loaded(&self, name: &str) -> bool { self.asm.as_ref().is_some_and(|a| a.has_child(name)) }
+
+    pub fn row_count(&self) -> i64 { self.extra("row_count").map(|v| v.as_i64()).unwrap_or(0) }
 
     /// The row's array form (what PHP's toArray() and Go's ToArray() give): projected
     /// columns minus drop_child_key ones, extra outputs, loaded relations, and flattened
     /// one-relations merged in (this row's keys win).
     pub fn to_map(&self) -> serde_json::Value {
         let mut m = serde_json::Map::new();
-        let Some(a) = &self.asm else { return serde_json::Value::Object(m) };
-        for c in &a.columns {
-            if c.hidden { continue; }
-            let v = match c.name.as_str() {
+        let empty = orm::plan::Assemble::default();
+        let a = self.asm.as_deref().unwrap_or(&empty);
+        let names = a.columns.iter().map(|c| c.name.as_str()).chain(self.assigned.iter().copied());
+        for name in names {
+            if a.columns.iter().any(|c| c.name == name && c.hidden) { continue; }
+            let v = match name {
 {{- range .Cols}}
                 {{printf "%q" .Name}} => {{mapExpr .}},
 {{- end}}
                 other => self.extra.get(other).map(|v| v.to_json()).unwrap_or(serde_json::Value::Null),
             };
-            m.insert(c.name.clone(), v);
+            m.insert(name.to_owned(), v);
         }
 {{- range .Rels}}
         if a.has_child({{printf "%q" .Name}}) {
@@ -293,55 +341,67 @@ impl {{.Type}}Row {
 {{range .Rels}}
 {{- if eq .Kind "one"}}
     pub fn {{.Ident}}(&self) -> Option<&super::{{.Target}}::{{.TargetType}}Row> { self.{{.Ident}}_.as_deref() }
+    pub fn {{.Ident}}_mut(&mut self) -> Option<&mut super::{{.Target}}::{{.TargetType}}Row> { self.{{.Ident}}_.as_deref_mut() }
 {{- else}}
     pub fn {{.Ident}}(&self) -> &Collection<super::{{.Target}}::{{.TargetType}}Row> { &self.{{.Ident}}_ }
+    pub fn {{.Ident}}_mut(&mut self) -> &mut Collection<super::{{.Target}}::{{.TargetType}}Row> { &mut self.{{.Ident}}_ }
 {{- end}}
 {{- end}}
 {{range .Cols}}{{if not .Auto}}
     pub fn set_{{.Ident}}(&mut self, v: {{if .Nullable}}Option<{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}>{{else}}{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}{{end}}) -> &mut Self {
         let v: {{if .Nullable}}Option<{{.RType}}>{{else}}{{.RType}}{{end}} = {{if .Nullable}}v.map(|x| x.into()){{else}}v.into(){{end}};
         self.{{.Ident}} = v.clone();
-        self.dirty.retain(|(c, _)| *c != {{printf "%q" .Name}});
+        if !self.assigned.contains(&{{printf "%q" .Name}}) { self.assigned.push({{printf "%q" .Name}}); }
 {{- if .Styles}}
         match orm::codec::encode(&[{{rsList .Styles}}], {{if .Nullable}}v.as_ref(){{else}}Some(&v){{end}}) {
-            Ok(p) => self.dirty.push(({{printf "%q" .Name}}, p)),
+            Ok(p) => self.mark_dirty({{printf "%q" .Name}}, p),
             Err(e) => { if self.enc_err.is_none() { self.enc_err = Some((e.code().to_string(), e.to_string())); } }
         }
 {{- else}}
-        self.dirty.push(({{printf "%q" .Name}}, v.into()));
+        self.mark_dirty({{printf "%q" .Name}}, v.into());
 {{- end}}
         self
     }
 {{- end}}{{end}}
 
+    fn mark_dirty(&mut self, col: &'static str, value: Param) {
+        if let Some((_, v)) = self.dirty.iter_mut().find(|(c, _)| *c == col) { *v = value; }
+        else { self.dirty.push((col, value)); }
+    }
+
     /// UPDATE the columns changed through set_*.
-    pub async fn update(&mut self, ex: &impl Exec) -> Result<()> { self.update_inner(ex, false).await }
+    pub async fn update(&mut self) -> Result<()> { let binding = self.binding.clone(); self.update_inner(binding.resolve()?, false).await }
 {{- if .UpdatedTs}}
 
     /// UPDATE with optimistic locking on {{.UpdatedTs}}; fails with OptimisticLock when the row changed.
-    pub async fn update_optimistic(&mut self, ex: &impl Exec) -> Result<()> { self.update_inner(ex, true).await }
+    pub async fn update_optimistic(&mut self) -> Result<()> { let binding = self.binding.clone(); self.update_inner(binding.resolve()?, true).await }
 {{- end}}
 
     async fn update_inner(&mut self, ex: &impl Exec, optimistic: bool) -> Result<()> {
-        if let Some((code, msg)) = self.enc_err.take() { return Err(orm::Error::Engine { code, msg }); }
+        if let Some((code, msg)) = &self.enc_err { return Err(orm::Error::Engine { code: code.clone(), msg: msg.clone() }); }
         if self.asm.is_none() { return Err(orm::Error::Config("update on a row that was not loaded".into())); }
+        if optimistic && self.original_version.is_none() { return Err(orm::Error::Config("optimistic update requires a loaded version column".into())); }
         if self.dirty.is_empty() { return Ok(()); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
-        for (c, v) in self.dirty.drain(..) { q.set(c, v); }
+        for (c, v) in &self.dirty { q.set(c, v.clone()); }
         let pk: Param = self.{{ident .PK}}.clone().into();
         q.w().pred(Self::PK, "eq", pk);
 {{- if .UpdatedTs}}
         if optimistic {
-            let p = q.req.p(self.{{ident .UpdatedTs}}.clone());
+            let p = q.req.p(self.original_version.as_ref().unwrap().clone());
             q.req.ir.optimistic = Some(orm::ir::Optimist { column: {{printf "%q" .UpdatedTs}}.into(), p });
         }
 {{- else}}
         let _ = optimistic;
 {{- end}}
-        db::write(ex, &mut q.req, "update").await.map(|_| ())
+        db::write(ex, &mut q.req, "update").await?;
+        self.dirty.clear();
+        Ok(())
     }
 
-    pub async fn delete(&self, ex: &impl Exec) -> Result<()> {
+    pub async fn delete(&self) -> Result<()> { self.delete_inner(self.binding.resolve()?).await }
+
+    async fn delete_inner(&self, ex: &impl Exec) -> Result<()> {
         if self.asm.is_none() { return Err(orm::Error::Config("delete on a row that was not loaded".into())); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
         let pk: Param = self.{{ident .PK}}.clone().into();
@@ -354,7 +414,8 @@ impl {{.Type}}Row {
     /// no_cascade_delete was not set), each through its own delete_cascade in collection
     /// order, then this row. Parent-direction relations (the FK is on this row) are never deleted.
     /// One DELETE … WHERE pk = ? per row. On a Db the whole walk runs in one transaction.
-    pub async fn delete_cascade(&self, ex: &impl Exec) -> Result<()> {
+    pub async fn delete_cascade(&self) -> Result<()> {
+        let ex = self.binding.resolve()?;
         if self.asm.is_none() { return Err(orm::Error::Config("delete_cascade on a row that was not loaded".into())); }
         match ex.tx() {
             Some(tx) => self.delete_cascade_in(tx).await,
@@ -380,7 +441,7 @@ impl {{.Type}}Row {
                     _ => {}
                 }
             }
-            self.delete(tx).await
+            self.delete_inner(tx).await
         })
     }
 }
@@ -409,6 +470,9 @@ impl<'a> {{.Type}}Where<'a> {
 {{range .Cols}}{{$c := .}}{{range .Ops}}
 {{- if eq .Kind "one"}}
     pub fn {{$c.Ident}}_{{opSnake .Suffix}}(mut self, v: {{if $c.IsStr}}impl Into<String>{{else}}{{$c.RType}}{{end}}) -> Self { self.w.pred({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, {{if $c.IsStr}}v.into(){{else}}v{{end}}); self }
+{{- if eq .Op "eq"}}
+    pub fn {{$c.Ident}}(self, v: {{if $c.IsStr}}impl Into<String>{{else}}{{$c.RType}}{{end}}) -> Self { self.{{$c.Ident}}_eq(v) }
+{{- end}}
 {{- else if eq .Kind "list"}}
     pub fn {{$c.Ident}}_{{opSnake .Suffix}}(mut self, vs: Vec<{{$c.RType}}>) -> Self { self.w.pred_list({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, vs.into_iter().map(Into::into).collect()); self }
 {{- else if eq .Kind "pair"}}
@@ -426,14 +490,17 @@ impl<'a> {{.Type}}Where<'a> {
 {{- end}}
 }
 
-/// Query over {{.Table}}: {{.Type}}::new() → chain → terminal(&db).await.
+/// Query over {{.Table}}: {{.Type}}::new() → bind(&db) → chain → terminal().await.
 pub struct {{.Type}} {
+    binding: Binding,
     pub q: Q,
     key_fn: Option<Box<dyn Fn(&{{.Type}}Row) -> Key + Send + Sync>>,
 }
 
 impl {{.Type}} {
-    pub fn new() -> Self { Self { q: Q::new(super::schema_hash(), {{printf "%q" .Name}}), key_fn: None } }
+    /// Bind this query to a pool or transaction.
+    pub fn bind(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
+    pub fn new() -> Self { Self { binding: Binding::default(), q: Q::new(super::schema_hash(), {{printf "%q" .Name}}), key_fn: None } }
 
     /// Keys the root collection by a function of each row (relations key by key_by_<col>).
     pub fn key_by_fn(mut self, f: impl Fn(&{{.Type}}Row) -> Key + Send + Sync + 'static) -> Self { self.key_fn = Some(Box::new(f)); self }
@@ -451,6 +518,9 @@ impl {{.Type}} {
 {{range .Cols}}{{$c := .}}{{range .Ops}}
 {{- if eq .Kind "one"}}
     pub fn {{$c.Ident}}_{{opSnake .Suffix}}(mut self, v: {{if $c.IsStr}}impl Into<String>{{else}}{{$c.RType}}{{end}}) -> Self { self.q.w().pred({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, {{if $c.IsStr}}v.into(){{else}}v{{end}}); self }
+{{- if eq .Op "eq"}}
+    pub fn {{$c.Ident}}(self, v: {{if $c.IsStr}}impl Into<String>{{else}}{{$c.RType}}{{end}}) -> Self { self.{{$c.Ident}}_eq(v) }
+{{- end}}
 {{- else if eq .Kind "list"}}
     pub fn {{$c.Ident}}_{{opSnake .Suffix}}(mut self, vs: Vec<{{$c.RType}}>) -> Self { self.q.w().pred_list({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, vs.into_iter().map(Into::into).collect()); self }
 {{- else if eq .Kind "pair"}}
@@ -471,12 +541,12 @@ impl {{.Type}} {
     pub fn on(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { { let w = self.q.on_w(); f({{.Type}}Where { w }); } self }
     pub fn where_(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { { let w = self.q.w(); f({{.Type}}Where { w }); } self }
 {{range .Rels}}
-    pub fn join_{{.Ident}}(mut self, child: super::{{.Target}}::{{.TargetType}}) -> Self { self.q.join({{printf "%q" .Name}}, "inner", child.q); self }
-    pub fn left_join_{{.Ident}}(mut self, child: super::{{.Target}}::{{.TargetType}}) -> Self { self.q.join({{printf "%q" .Name}}, "left", child.q); self }
+    pub fn join_{{.Ident}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.join({{printf "%q" .Name}}, "inner", &child.as_ref().q); self }
+    pub fn left_join_{{.Ident}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.join({{printf "%q" .Name}}, "left", &child.as_ref().q); self }
 {{- if eq .Kind "one"}}
-    pub fn relation_{{.Ident}}(mut self, child: super::{{.Target}}::{{.TargetType}}) -> Self { self.q.relation({{printf "%q" .Name}}, child.q); self }
+    pub fn relation_{{.Ident}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.relation({{printf "%q" .Name}}, &child.as_ref().q); self }
 {{- else}}
-    pub fn relations_{{.Ident}}(mut self, child: super::{{.Target}}::{{.TargetType}}) -> Self { self.q.relation({{printf "%q" .Name}}, child.q); self }
+    pub fn relations_{{.Ident}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.relation({{printf "%q" .Name}}, &child.as_ref().q); self }
 {{- end}}
 {{- end}}
 
@@ -498,6 +568,7 @@ impl {{.Type}} {
     pub fn key_by_{{.Ident}}(mut self) -> Self { self.q.node().key_by = {{printf "%q" .Name}}.into(); self }
 {{- end}}
     pub fn order_by_expr(mut self, frag: &str, desc: bool) -> Self { self.q.order_expr(frag, desc); self }
+    pub fn group_by_expr(mut self, expr: &str, as_: &str) -> Self { self.q.group_by_expr(expr, as_); self }
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
     /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
@@ -542,7 +613,7 @@ impl {{.Type}} {
     pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&[{{rsList .KeyCols}}]); self }
 
     // ---- terminals ----
-    pub async fn one(mut self, ex: &impl Exec) -> Result<Option<{{.Type}}Row>> {
+    pub async fn one(&mut self) -> Result<Option<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
         Ok(match rows.take_cells().into_iter().next() {
             Some(mut src) => Some({{.Type}}Row::from_row(&mut src, &rows.assemble, &rows)?),
@@ -550,32 +621,68 @@ impl {{.Type}} {
         })
     }
 
-    pub async fn all(mut self, ex: &impl Exec) -> Result<Collection<{{.Type}}Row>> {
+    pub async fn all(&mut self) -> Result<Collection<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "all").await?;
         collect(&mut rows, self.key_fn.as_deref())
     }
 
-    pub async fn count(mut self, ex: &impl Exec) -> Result<i64> {
+    /// Preferred single-row terminal; one() remains available for compatibility.
+    pub async fn get(&mut self) -> Result<Option<{{.Type}}Row>> {
+        self.one().await
+    }
+
+    /// Preferred collection terminal; all() remains available for compatibility.
+    pub async fn gets(&mut self) -> Result<Collection<{{.Type}}Row>> {
+        self.all().await
+    }
+
+{{range .EqCols}}
+    /// Applies {{.Name}} = value and runs the collection terminal.
+    pub async fn gets_by_{{.Ident}}(&mut self, v: {{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}) -> Result<Collection<{{$.Type}}Row>> {
+        self.q.w().pred({{printf "%q" .Name}}, "eq", {{if .IsStr}}v.into(){{else}}v{{end}});
+        self.gets().await
+    }
+{{end}}
+    pub async fn count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         Ok(db::scalar(ex, &mut self.q.req, "count").await?.as_i64())
     }
+
+    /// Preferred scalar count terminal; count() remains available as a compatibility alias.
+    pub async fn get_count(&mut self) -> Result<i64> {
+        self.count().await
+    }
+
+{{range .EqCols}}
+    /// Applies {{.Name}} = value and runs the scalar count terminal.
+    pub async fn get_count_by_{{.Ident}}(&mut self, v: {{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}) -> Result<i64> {
+        self.q.w().pred({{printf "%q" .Name}}, "eq", {{if .IsStr}}v.into(){{else}}v{{end}});
+        self.get_count().await
+    }
+{{end}}
+    /// Returns one row per group_by value; the aggregate is available as extra("row_count").
+    pub async fn gets_count(&mut self) -> Result<Collection<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+        let mut rows = db::select(ex, &mut self.q.req, "group_count").await?;
+        collect(&mut rows, self.key_fn.as_deref())
+    }
 {{- range .Numeric}}
-    pub async fn sum_{{.Ident}}(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = {{printf "%q" .Name}}.into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_{{.Ident}}(mut self, ex: &impl Exec) -> Result<f64> { self.q.req.ir.agg = {{printf "%q" .Name}}.into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_{{.Ident}}(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = {{printf "%q" .Name}}.into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_{{.Ident}}(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = {{printf "%q" .Name}}.into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
 {{- end}}
 {{- range .Aggs}}
-    pub async fn count_distinct_{{.Ident}}(mut self, ex: &impl Exec) -> Result<i64> { self.q.req.ir.agg = {{printf "%q" .Name}}.into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    pub async fn count_distinct_{{.Ident}}(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = {{printf "%q" .Name}}.into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
-    pub async fn min_{{.Ident}}(mut self, ex: &impl Exec) -> Result<Option<{{.RType}}>> { self.q.req.ir.agg = {{printf "%q" .Name}}.into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some({{.From}}) }) }
+    pub async fn min_{{.Ident}}(&mut self) -> Result<Option<{{.RType}}>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = {{printf "%q" .Name}}.into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some({{.From}}) }) }
     /// None when no row matches.
-    pub async fn max_{{.Ident}}(mut self, ex: &impl Exec) -> Result<Option<{{.RType}}>> { self.q.req.ir.agg = {{printf "%q" .Name}}.into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some({{.From}}) }) }
+    pub async fn max_{{.Ident}}(&mut self) -> Result<Option<{{.RType}}>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = {{printf "%q" .Name}}.into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some({{.From}}) }) }
 {{- end}}
 
     /// Runs the raw() statement; rows keyed by the driver's column names in column order, cells typed by column type (no codec).
-    pub async fn raw_all(mut self, ex: &impl Exec) -> Result<Vec<indexmap::IndexMap<String, Val>>> {
+    pub async fn raw_all(&mut self) -> Result<Vec<indexmap::IndexMap<String, Val>>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         db::raw(ex, &mut self.q.req).await
     }
 
-    pub async fn paginate(mut self, ex: &impl Exec, page: u32, per: u32) -> Result<Page<{{.Type}}Row>> {
+    pub async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+        if per == 0 { return Err(orm::Error::Engine { code: orm::codes::IR_INVALID.into(), msg: "per must be positive".into() }); }
         let page = page.max(1);
         self.q.node().limit = Some(orm::ir::Limit { offset: (page - 1) * per, count: per });
         let (mut rows, total) = db::paginate(ex, &mut self.q.req).await?;
@@ -583,10 +690,10 @@ impl {{.Type}} {
         Ok(Page { items: collect(&mut rows, self.key_fn.as_deref())?, total, pages, current: page as i64, per: per as i64 })
     }
 
-    pub async fn insert(mut self, ex: &impl Exec) -> Result<Option<{{.Type}}Row>> {
+    pub async fn insert(&mut self) -> Result<Option<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
 {{- if .Auto}}
-        {{.Type}}::new().{{ident .PK}}_eq(id as {{.PKType}}).one(ex).await
+        {{.Type}}::new().bind(ex).{{ident .PK}}_eq(id as {{.PKType}}).one().await
 {{- else}}
         let _ = id;
         Ok(None)
@@ -594,39 +701,54 @@ impl {{.Type}} {
     }
 
     /// With set_{{ident .PK}}: UPDATE the other set columns WHERE {{.PK}} = that value and re-read the row; otherwise INSERT.
-    pub async fn save(mut self, ex: &impl Exec) -> Result<Option<{{.Type}}Row>> {
+    pub async fn save(&mut self) -> Result<Option<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         match self.q.take_set({{printf "%q" .PK}}) {
             Some(pk) => {
                 self.q.w().pred({{printf "%q" .PK}}, "eq", pk.clone());
                 db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = {{.Type}}::new();
+                let mut q = {{.Type}}::new().bind(ex);
                 q.q.w().pred({{printf "%q" .PK}}, "eq", pk);
-                q.one(ex).await
+                q.one().await
             }
-            None => self.insert(ex).await,
+            None => self.insert().await,
         }
     }
 
     /// UPDATE set_*/plus_*/minus_*/set_*_expr WHERE the query's predicates; returns the affected count.
     /// The engine rejects a missing where (IR_INVALID).
-    pub async fn update(mut self, ex: &impl Exec) -> Result<u64> {
+    pub async fn update(&mut self) -> Result<u64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         Ok(db::write(ex, &mut self.q.req, "update").await?.1)
     }
 
     /// DELETE WHERE the query's predicates; returns the affected count. The engine rejects a missing where.
-    pub async fn delete(mut self, ex: &impl Exec) -> Result<u64> {
+    pub async fn delete(&mut self) -> Result<u64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         Ok(db::write(ex, &mut self.q.req, "delete").await?.1)
     }
 
     /// The main statement (kind all) and its binds without executing; secret slots read "$SECRET".
-    pub async fn sql(mut self, ex: &impl Exec) -> Result<db::Sql> {
+    pub async fn sql(&mut self) -> Result<db::Sql> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         db::sql(ex, &mut self.q.req, "all")
     }
 
-    pub async fn one_by_{{ident .PK}}(self, ex: &impl Exec, v: {{.PKType}}) -> Result<Option<{{.Type}}Row>> {
-        self.{{ident .PK}}_eq(v).one(ex).await
+    pub async fn one_by_{{ident .PK}}(&mut self, v: {{.PKType}}) -> Result<Option<{{.Type}}Row>> {
+        self.q.w().pred({{printf "%q" .PK}}, "eq", v);
+        self.one().await
     }
+
+    /// Preferred primary-key lookup; one_by_{{ident .PK}} remains available for compatibility.
+    pub async fn get_by_{{ident .PK}}(&mut self, v: {{.PKType}}) -> Result<Option<{{.Type}}Row>> {
+        self.one_by_{{ident .PK}}(v).await
+    }
+{{range .UniqueFinders}}
+    /// Applies the equality predicates for the declared unique key and runs the single-row terminal.
+    pub async fn get_by_{{finderSnake .Method}}(&mut self, {{finderParams .Fields}}) -> Result<Option<{{$.Type}}Row>> {
+        {{finderChain .Fields}}
+        self.get().await
+    }
+{{end}}
 }
+
+impl AsRef<{{.Type}}> for {{.Type}} { fn as_ref(&self) -> &Self { self } }
 
 impl Default for {{.Type}} { fn default() -> Self { Self::new() } }
 
@@ -649,6 +771,8 @@ const rustLib = `// Code generated by ormgen; DO NOT EDIT.
 #![allow(clippy::all)]
 
 use std::sync::{Arc, OnceLock};
+
+pub mod interfaces;
 
 /// The manifest hash this crate was generated from (schema.json \x60schema_hash\x60).
 pub const SCHEMA_HASH: &str = %q;
@@ -713,6 +837,9 @@ func genRust(m *schema.Manifest, outDir string) error {
 			rc.IsStr = rc.RType == "String"
 			rc.IsJson = rc.RType == "serde_json::Value"
 			d.Cols = append(d.Cols, rc)
+			if allowed(col, "eq") {
+				d.EqCols = append(d.EqCols, rc)
+			}
 			if c.Name == ge.PK {
 				d.PKType = rc.RType
 			}
@@ -723,6 +850,17 @@ func genRust(m *schema.Manifest, outDir string) error {
 			if (len(col.Styles) == 0 || col.Styles[0] == "ip") && col.Type != "json" && col.Type != "bytes" {
 				d.Aggs = append(d.Aggs, rc)
 			}
+		}
+		rustByName := make(map[string]rustCol, len(d.Cols))
+		for _, c := range d.Cols {
+			rustByName[c.Name] = c
+		}
+		for _, f := range ge.UniqueFinders {
+			rf := rustFinder{Method: f.Method, Fields: make([]rustCol, 0, len(f.Fields))}
+			for _, c := range f.Fields {
+				rf.Fields = append(rf.Fields, rustByName[c.Name])
+			}
+			d.UniqueFinders = append(d.UniqueFinders, rf)
 		}
 		predNames := make([]string, 0, len(e.Predicates))
 		for n := range e.Predicates {

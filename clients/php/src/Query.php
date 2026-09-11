@@ -15,6 +15,7 @@ final class Req
     public array $ir;
     /** @var list<mixed> */
     public array $params = [];
+    public ?OrmException $error = null;
     /** shape signature: entity, then one token per IR mutation in call order */
     public string $sig;
 
@@ -50,18 +51,14 @@ final class Req
     /** Merge a child query into this request: append its params, shift its indices, append its signature. */
     public function attach(Req $child, string $token): array
     {
+        $this->error ??= $child->error;
         $off = count($this->params);
         foreach ($child->params as $v) {
             $this->params[] = $v;
         }
-        $q = $child->ir;
-        unset($q['ir_version'], $q['schema_hash'], $q['kind']);
-        if (isset($q['where'])) {
-            // The child's cached root W holds a reference to its where group; re-slot it so the copy is a plain value.
-            $where = $q['where'];
-            unset($q['where']);
-            $q['where'] = $where;
-        }
+        $q = self::copyTree($child->ir);
+        unset($q['ir_version'], $q['schema_hash'], $q['kind'], $q['n_params'],
+            $q['set'], $q['on_duplicate'], $q['optimistic'], $q['raw'], $q['agg'], $q['debug']);
         self::shiftQuery($q, $off);
         $this->sig .= $token . '{' . $child->sig . '}';
         return $q;
@@ -69,7 +66,7 @@ final class Req
 
     private static function shiftQuery(array &$q, int $off): void
     {
-        foreach (['on', 'where'] as $k) {
+        foreach (['on', 'where', 'having'] as $k) {
             if (isset($q[$k])) {
                 self::shiftGroup($q[$k], $off);
             }
@@ -84,6 +81,15 @@ final class Req
         if (isset($q['if_parent'])) {
             $q['if_parent']['p'] += $off;
         }
+    }
+
+    private static function copyTree(array $tree): array
+    {
+        $copy = [];
+        foreach ($tree as $key => $value) {
+            $copy[$key] = is_array($value) ? self::copyTree($value) : $value;
+        }
+        return $copy;
     }
 
     private static function shiftGroup(array &$g, int $off): void
@@ -237,6 +243,7 @@ class W
 /** Untyped core of a generated query builder (root, join child or relation child). */
 class Q
 {
+    use ConnectionBinding;
     public Req $req;
     /** @var array reference to the query node this builder edits */
     public array $node;
@@ -333,7 +340,7 @@ class Q
 
     /**
      * Every group opened by a '(' token must be closed by a ')' token in the same model chain:
-     * one IR group per model, so a join child cannot close its parent's parenthesis as compatibility allowed.
+     * one IR group per model, so a join child cannot close its parent's parenthesis.
      */
     private function parenCheck(?Q $child): void
     {
@@ -414,10 +421,20 @@ class Q
         $this->req->sig .= '|>x' . ($desc ? 'd' : 'a') . Req::str($frag);
     }
 
-    public function groupBy(string $col): void
+    public function groupBy(string $col, ?string $alias = null): void
     {
+        if ($alias !== null) {
+            $this->groupExpr($col, $alias);
+            return;
+        }
         $this->node['group_by'][] = $col;
         $this->req->sig .= "|g$col";
+    }
+
+    public function groupExpr(string $expr, string $alias): void
+    {
+        $this->node['group_by_expr'][] = ['expr' => $expr, 'as' => $alias];
+        $this->req->sig .= '|gx' . Req::str($expr) . Req::str($alias);
     }
 
     public function setLimit(int $offset, int $count): void
@@ -459,7 +476,8 @@ class Q
     /** Encodes $v with the column's styles (docs/codec.md) before binding it. */
     public function setStyled(string $col, mixed $v, array $styles): void
     {
-        $this->set($col, Codec::encode($styles, $v));
+        try { $this->set($col, Codec::encode($styles, $v)); }
+        catch (OrmException $e) { $this->req->error ??= $e; }
     }
 
     public function set(string $col, mixed $v): void
@@ -488,7 +506,8 @@ class Q
 
     public function onDuplicateStyled(string $col, mixed $v, array $styles): void
     {
-        $this->onDuplicate($col, Codec::encode($styles, $v));
+        try { $this->onDuplicate($col, Codec::encode($styles, $v)); }
+        catch (OrmException $e) { $this->req->error ??= $e; }
     }
 
     public function onDuplicate(string $col, mixed $v): void

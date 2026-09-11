@@ -18,6 +18,5 @@ go run ./cmd/ormgen tokens --schema schema/schema.json \
   examples/complex/go/main.go examples/complex/php/main.php examples/complex/rust/main.rs   # 49 tokens, identical
 ```
 
-`docs/examples/complex-query.md` show the same shapes
-against the example schema; they stay illustrative until that schema is imported
-(`ormgen import --dsn …`), because the tables are not in this repository.
+`docs/examples/complex-query.md` shows additional product-domain shapes. It stays illustrative
+because those example tables are not part of the benchmark schema in this repository.

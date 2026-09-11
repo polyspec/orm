@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use chrono::{NaiveDate, NaiveDateTime};
 use sqlx::mysql::{MySql, MySqlConnectOptions, MySqlPool, MySqlPoolOptions, MySqlRow};
@@ -103,6 +104,7 @@ pub struct Db {
 /// relation steps, positional rows otherwise) plus every relation step's rows grouped
 /// by their match column (see `related`).
 pub struct Rows {
+    pub binding: crate::binding::Binding,
     pub assemble: Arc<Assemble>,
     cells: Vec<Cells>,
     plan: Arc<Plan>,
@@ -372,8 +374,8 @@ impl Db {
     /// Compile (or fetch from cache) the plan for the request's shape. The cache key is
     /// FNV-1a 64 of the IR bytes (`Req::shape_key`), computed without allocating them.
     pub fn plan(&self, req: &mut Req) -> Result<Arc<Plan>> {
-        if let Some(e) = req.err.take() {
-            return Err(e);
+        if let Some(e) = &req.err {
+            return Err(e.error());
         }
         let key = req.shape_key();
         if let Some(p) = self.plans.lock().unwrap().get(&key) {
@@ -470,7 +472,8 @@ impl Db {
     {
         let mut last = None;
         for attempt in 0..3u32 {
-            let tx = Tx { inner: Arc::new(tokio::sync::Mutex::new(Some(self.begin().await?))), db: self.clone() };
+            let tx = Tx { inner: Arc::new(tokio::sync::Mutex::new(Some(self.begin().await?))), db: self.clone(), finished: Arc::new(AtomicBool::new(false)) };
+            let _scope = TxScope(tx.clone());
             match f(tx.clone()).await {
                 Ok(v) => {
                     tx.commit().await?;
@@ -512,10 +515,35 @@ pub enum TxInner {
 pub struct Tx {
     inner: Arc<tokio::sync::Mutex<Option<TxInner>>>,
     db: Db,
+    finished: Arc<AtomicBool>,
+}
+
+// The callback future may be dropped or panic while rows still retain a Tx.
+// Invalidate those handles and release the sqlx transaction on every exit path.
+struct TxScope(Tx);
+
+impl Drop for TxScope {
+    fn drop(&mut self) {
+        self.0.finished.store(true, Ordering::Release);
+        if let Ok(mut inner) = self.0.inner.try_lock() {
+            inner.take(); // sqlx queues rollback when its transaction is dropped.
+        } else {
+            let tx = self.0.clone();
+            tokio::spawn(async move { tx.rollback().await; });
+        }
+    }
 }
 
 impl Tx {
+    pub(crate) fn assert_active(&self) -> Result<()> {
+        if self.finished.load(Ordering::Acquire) {
+            return Err(Error::Config("transaction already finished".into()));
+        }
+        Ok(())
+    }
+
     async fn commit(&self) -> Result<()> {
+        self.finished.store(true, Ordering::Release);
         if let Some(t) = self.inner.lock().await.take() {
             match t {
                 TxInner::MySql(t) => t.commit().await?,
@@ -527,6 +555,7 @@ impl Tx {
     }
 
     async fn rollback(&self) {
+        self.finished.store(true, Ordering::Release);
         if let Some(t) = self.inner.lock().await.take() {
             let _ = match t {
                 TxInner::MySql(t) => t.rollback().await,
@@ -792,7 +821,7 @@ async fn run_execute(db: &Db, target: Target<'_>, st: &Step, params: &[Param]) -
     r
 }
 
-/// What terminals take: `&Db` or `&Tx`.
+/// The database or transaction selected by a query binding.
 pub trait Exec: Sync {
     fn db(&self) -> &Db;
     /// The transaction this executor runs in; None for a `Db` (each statement on its own).
@@ -832,12 +861,14 @@ impl Exec for Tx {
 
     async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<DriverRow>> {
         let mut guard = self.inner.lock().await;
+        self.assert_active()?;
         let tx = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
         run_query(&self.db, Target::Tx(tx), st, params, parent_vals).await
     }
 
     async fn execute(&self, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
         let mut guard = self.inner.lock().await;
+        self.assert_active()?;
         let tx = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
         run_execute(&self.db, Target::Tx(tx), st, params).await
     }
@@ -872,7 +903,7 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
     } else {
         positional(&raw, &asm, &db.cfg.aes_key)?.into_iter().map(Cells::Pos).collect()
     };
-    let mut rows = Rows { assemble: asm, cells, plan: plan.clone(), steps: HashMap::new(), params: Vec::new() };
+    let mut rows = Rows { binding: crate::binding::Binding::new(ex), assemble: asm, cells, plan: plan.clone(), steps: HashMap::new(), params: Vec::new() };
     for st in plan.steps.iter().skip(1) {
         if st.role != "relation" {
             continue;
@@ -895,7 +926,7 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
         }
         rows.steps.insert(st.id, sr);
     }
-    rows.params = std::mem::take(&mut req.params);
+    rows.params = req.params.clone();
     Ok(rows)
 }
 
@@ -1004,7 +1035,7 @@ mod tests {
             id: 1,
             role: "relation".into(),
             sql: sql.into(),
-            bind_slots: slots.iter().map(|f| BindSlot { from: f.to_string(), param: 0, transform: String::new(), name: String::new(), step: 0, column: String::new(), host_styles: Vec::new() }).collect(),
+            bind_slots: slots.iter().map(|f| BindSlot { from: f.to_string(), param: 0, transform: String::new(), name: String::new(), step: 0, column: String::new(), host_styles: Vec::new(), col_type: String::new() }).collect(),
             assemble: None,
             parent: None,
         }

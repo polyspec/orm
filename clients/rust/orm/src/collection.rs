@@ -36,7 +36,7 @@ impl std::fmt::Display for Key {
     }
 }
 
-/// Never null from a terminal: `all()` on no rows returns an empty collection.
+/// Never null from a terminal: `gets()` on no rows returns an empty collection.
 #[derive(Debug, Clone)]
 pub struct Collection<T> {
     items: IndexMap<Key, T>,
@@ -61,9 +61,19 @@ impl<T> Collection<T> {
         self.items.get(k)
     }
 
+    pub fn get_mut(&mut self, k: &Key) -> Option<&mut T> { self.items.get_mut(k) }
+
+    pub fn keys(&self) -> impl Iterator<Item = &Key> { self.items.keys() }
+
+    pub fn entries(&self) -> impl Iterator<Item = (&Key, &T)> { self.items.iter() }
+
     pub fn first(&self) -> Option<&T> {
         self.items.values().next()
     }
+
+    pub fn first_mut(&mut self) -> Option<&mut T> { self.items.values_mut().next() }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Key, &mut T)> { self.items.iter_mut() }
 
     pub fn len(&self) -> usize {
         self.items.len()

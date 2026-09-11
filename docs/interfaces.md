@@ -8,6 +8,7 @@
 
 | 기준 문서 | 책임 |
 |---|---|
+| [interfaces.json](../contracts/interfaces.json) | 공통 메서드·저장 필드·wire 레코드·상태 기대값과 언어별 대응 |
 | 이 문서 | 객체의 역할·관계·수명·변경 규칙, API 입력·출력·실패 조건 |
 | [dsl.md](dsl.md) | 생성 메서드 이름과 술어·조인·관계 문법 |
 | [schema.md](schema.md) | Mermaid 스키마, 컬럼·키·관계·스타일 선언 |
@@ -443,7 +444,7 @@ Deleted은 DB에서 제거됐다는 실행 결과다. v1은 tombstone이나 자�
 | IF-23 | 행 업데이트·삭제는 로드된 identity 기준이다. 조회되지 않은 행의 update/delete는 CONFIG. optimistic update는 조회 시 보관한 updated_ts를 조건으로 사용하고 0행이면 OPTIMISTIC_LOCK. setter로 바뀐 현재 값과 이 원본을 구분한다. 버전 컬럼을 조회하지 않았다면 CONFIG. 성공 후 자동 refresh는 하지 않는다. |
 | IF-24 | 1:1 관계 없음은 null, 1:N 관계 없음은 빈 Collection. 관계를 로드하지 않은 상태와 로드했지만 없는 상태는 projection metadata로 구별한다. 결과 변환은 선택·hidden·flatten·computed 규칙과 현재 값을 함께 적용한다. |
 
-미조회 컬럼은 `has(column)=false`다. typed getter는 nullable이면 null, non-nullable이면 해당 타입의 기본값을 돌려주며 `has`로 미조회를 구분한다. 조회한 SQL null은 `has=true`와 null 값이다. setter로 값을 지정한 컬럼은 조회 여부와 관계없이 `has=true`가 되고 배열·맵 변환에 포함된다. update 성공 후에도 이 상태를 유지한다. hidden 컬럼은 지정 여부와 관계없이 결과 변환에서 제외한다. JSON 출력의 정수·bool·빈 배열·빈 객체·null 구분은 코덱 적합성 검사를 따른다.
+`selectNone()`은 PK와 FK를 유지한다. 관계 바인딩에 필요한 추가 컬럼은 projection 규칙에 따라 선택한다. 그 밖의 미조회 컬럼은 `has(column)=false`다. typed getter는 nullable이면 null, non-nullable이면 해당 타입의 기본값을 돌려주며 `has`로 미조회를 구분한다. 조회한 SQL null은 `has=true`와 null 값이다. setter로 값을 지정한 컬럼은 조회 여부와 관계없이 `has=true`가 되고 배열·맵 변환에 포함된다. update 성공 후에도 이 상태를 유지한다. hidden 컬럼은 지정 여부와 관계없이 결과 변환에서 제외한다. JSON 출력의 정수·bool·빈 배열·빈 객체·null 구분은 코덱 적합성 검사를 따른다.
 
 ## 9. Collection·Key·Page — IF-25 ~ IF-27
 
@@ -483,7 +484,7 @@ classDiagram
 
 **IF-25:** Collection은 목록이나 일반 dictionary로 임의 교체할 수 없는 **키 순서를 보존하는 map**이다. 같은 키를 다시 넣으면 값만 교체하고 첫 삽입 위치를 유지한다. `first`, `keys`, 반복, entries가 같은 순서를 사용한다. 조회 결과가 없으면 유효한 빈 Collection을 반환한다.
 
-**IF-26:** Key의 타입 태그를 비교에 포함한다. 정수 `1`과 문자열 `"1"`은 다른 키다. PHP 배열의 자동 키 변환을 공통 규칙으로 삼지 않는다. 공통 손실 없는 표현은 ordered entries다. 문자열 키만 가능한 JSON object나 PHP array 변환은 키를 문자열로 표현했을 때 충돌이 없는 컬렉션에 한정한다. 충돌은 IR_INVALID로 거부하고 손실 없는 entries 변환을 사용한다. keyByFn은 Key를 반환하며 int/string 이외 값을 키로 주면 IR_INVALID다. 컬럼 keyBy는 정수·문자열 컬럼에 한정한다.
+**IF-26:** Key의 타입 태그를 비교에 포함한다. 정수 `1`과 문자열 `"1"`은 다른 키다. PHP 배열의 자동 키 변환을 공통 규칙으로 삼지 않는다. 공통 손실 없는 표현은 ordered entries다. 문자열 키만 가능한 JSON object나 PHP array 변환은 키를 문자열로 표현했을 때 충돌이 없는 컬렉션에 한정한다. 충돌은 IR_INVALID로 거부하고 손실 없는 entries 변환을 사용한다. keyByFn은 Key를 반환하며 int/string 이외 값을 키로 주면 IR_INVALID다. 컬럼 keyBy의 스칼라 키는 정수이면 정수 태그를 유지하고 다른 스칼라는 문자열 키로 변환한다. 명시적 keyByFn의 키 타입 검사와 구별한다.
 
 **IF-27:** Page는 동일한 다섯 필드를 갖는다. `items`는 Collection, `total`은 전체 결과 수, `pages = ceil(total/per)`, `current`는 정규화된 page, `per > 0`. 빈 페이지와 total 0을 구분한다. count 단계에는 row assembly를 적용하지 않는다.
 
@@ -541,7 +542,7 @@ classDiagram
 
 ## 12. 계약을 증명하는 검증
 
-검증 층은 서로 대체할 수 없다.
+[자동 검사 안내](../tests/interfaces/README.md)에 생성·대조·반례 명령을 정리한다. 검증 층은 서로 대체할 수 없다.
 
 1. **구조 검증:** Request/QueryNode의 필드·조건 트리·파라미터 인덱스·복사 독립성·Key 타입·행 상태를 직접 비교한다.
 2. **공개 API 검증:** 생성자의 역할, 터미널 인자, 반환 타입, 쿼리 재사용을 실제 컴파일·실행으로 확인한다. 토큰 비교만으로 시그니처를 증명하지 않는다.

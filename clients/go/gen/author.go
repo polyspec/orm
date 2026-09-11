@@ -570,45 +570,67 @@ func (r *AuthorRow) GetUser() *UserRow {
 }
 
 // Update writes the columns changed through Set*.
-func (r *AuthorRow) Update(ctx context.Context, ex orm.Exec) error {
+func (r *AuthorRow) Update() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
 	return r.UpdateRow(ctx, ex, "", nil)
 }
 
 // UpdateOptimistic fails with OPTIMISTIC_LOCK when updated_ts changed since the row was read.
-func (r *AuthorRow) UpdateOptimistic(ctx context.Context, ex orm.Exec) error {
-	return r.UpdateRow(ctx, ex, "updated_ts", r.UpdatedTs)
+func (r *AuthorRow) UpdateOptimistic() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
+	return r.UpdateRow(ctx, ex, "updated_ts", r.OriginalVersion())
 }
 
-func (r *AuthorRow) Delete(ctx context.Context, ex orm.Exec) error { return r.DeleteRow(ctx, ex) }
+func (r *AuthorRow) Delete() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
+	return r.DeleteRow(ctx, ex)
+}
 
 // DeleteCascade deletes the loaded relations this row owns (the assemble's
 // cascade children, in load order, each row through its own DeleteCascade)
 // and then this row. A bare DB runs the whole walk in one transaction.
-func (r *AuthorRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
+func (r *AuthorRow) DeleteCascade() error {
+	ctx, ex, err := r.Binding.Resolve()
+	if err != nil {
+		return err
+	}
+	return r.deleteCascade(ctx, ex)
+}
+
+func (r *AuthorRow) deleteCascade(ctx context.Context, ex orm.Exec) error {
 	return orm.InTx(ctx, ex, func(ex orm.Exec) error {
 		for _, rel := range r.Cascades() {
 			switch rel {
 			case "service":
 				if r.Service != nil {
-					if err := r.Service.DeleteCascade(ctx, ex); err != nil {
+					if err := r.Service.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
 			case "service_member":
 				if r.ServiceMember != nil {
-					if err := r.ServiceMember.DeleteCascade(ctx, ex); err != nil {
+					if err := r.ServiceMember.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
 			case "service_region":
 				if r.ServiceRegion != nil {
-					if err := r.ServiceRegion.DeleteCascade(ctx, ex); err != nil {
+					if err := r.ServiceRegion.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
 			case "user":
 				if r.User != nil {
-					if err := r.User.DeleteCascade(ctx, ex); err != nil {
+					if err := r.User.deleteCascade(ctx, ex); err != nil {
 						return err
 					}
 				}
@@ -622,6 +644,7 @@ func (r *AuthorRow) DeleteCascade(ctx context.Context, ex orm.Exec) error {
 // children (same row) and its relation children (rows of later steps).
 func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
 	r := &AuthorRow{}
+	r.Binding = rs.Binding
 	for _, c := range a.Columns {
 		v := vals[c.Index]
 		switch c.Name {
@@ -760,6 +783,9 @@ func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
 	}
 	r.SetProjection(rs.Projection(a))
 	r.Mark("author", "seq", r.Seq)
+	if r.Has("updated_ts") {
+		r.SnapshotVersion(r.UpdatedTs)
+	}
 	return r
 }
 
@@ -996,19 +1022,33 @@ var AuthorCols = struct {
 	SerializeData:         orm.ColRef{Column: "serialize_data"},
 }
 
-// Author builds a statement over author: NewAuthor() → chain → terminal(ctx, db).
-type Author struct {
-	q     *orm.Q
-	keyFn func(*AuthorRow) orm.Key // KeyByFn: client-side keying of the root collection
+// AuthorQuery builds a statement over author: Author() → Bind(ctx, db) → chain → terminal().
+type AuthorQuery struct {
+	binding orm.Binding
+	q       *orm.Q
+	keyFn   func(*AuthorRow) orm.Key // KeyByFn: client-side keying of the root collection
 }
 
 // KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
-func (q *Author) KeyByFn(fn func(*AuthorRow) orm.Key) *Author { q.keyFn = fn; return q }
+func (q *AuthorQuery) KeyByFn(fn func(*AuthorRow) orm.Key) *AuthorQuery { q.keyFn = fn; return q }
 
 // Req exposes the underlying request (debugging, plan inspection).
-func (q *Author) Req() *orm.Req { return q.q.Req }
+func (q *AuthorQuery) Req() *orm.Req { return q.q.Req }
 
-func NewAuthor() *Author { return &Author{q: orm.NewQ(mustEngine(), "author")} }
+// Author starts a query over author.
+func Author() *AuthorQuery { return &AuthorQuery{q: orm.NewQ(mustEngine(), "author")} }
+
+// Bind selects the context and pool or transaction for this query.
+func (q *AuthorQuery) Bind(ctx context.Context, ex orm.Exec) *AuthorQuery {
+	q.binding = orm.NewBinding(ctx, ex)
+	return q
+}
+
+// Bind selects the context and pool or transaction for this loaded row.
+func (r *AuthorRow) Bind(ctx context.Context, ex orm.Exec) *AuthorRow {
+	r.Binding = orm.NewBinding(ctx, ex)
+	return r
+}
 
 // AuthorWhere edits one WHERE/ON group of author.
 type AuthorWhere struct{ w *orm.W }
@@ -1040,27 +1080,32 @@ func (w *AuthorWhere) User(fn func(*UserWhere)) *AuthorWhere {
 }
 
 func (w *AuthorWhere) SeqEq(v int64) *AuthorWhere    { w.w.Pred("seq", "eq", v); return w }
-func (q *Author) SeqEq(v int64) *Author              { q.q.W().Pred("seq", "eq", v); return q }
+func (q *AuthorQuery) SeqEq(v int64) *AuthorQuery    { q.q.W().Pred("seq", "eq", v); return q }
+func (w *AuthorWhere) Seq(v int64) *AuthorWhere      { return w.SeqEq(v) }
+func (q *AuthorQuery) Seq(v int64) *AuthorQuery      { return q.SeqEq(v) }
 func (w *AuthorWhere) SeqNotEq(v int64) *AuthorWhere { w.w.Pred("seq", "not_eq", v); return w }
-func (q *Author) SeqNotEq(v int64) *Author           { q.q.W().Pred("seq", "not_eq", v); return q }
+func (q *AuthorQuery) SeqNotEq(v int64) *AuthorQuery { q.q.W().Pred("seq", "not_eq", v); return q }
 func (w *AuthorWhere) SeqGt(v int64) *AuthorWhere    { w.w.Pred("seq", "gt", v); return w }
-func (q *Author) SeqGt(v int64) *Author              { q.q.W().Pred("seq", "gt", v); return q }
+func (q *AuthorQuery) SeqGt(v int64) *AuthorQuery    { q.q.W().Pred("seq", "gt", v); return q }
 func (w *AuthorWhere) SeqGte(v int64) *AuthorWhere   { w.w.Pred("seq", "gte", v); return w }
-func (q *Author) SeqGte(v int64) *Author             { q.q.W().Pred("seq", "gte", v); return q }
+func (q *AuthorQuery) SeqGte(v int64) *AuthorQuery   { q.q.W().Pred("seq", "gte", v); return q }
 func (w *AuthorWhere) SeqLt(v int64) *AuthorWhere    { w.w.Pred("seq", "lt", v); return w }
-func (q *Author) SeqLt(v int64) *Author              { q.q.W().Pred("seq", "lt", v); return q }
+func (q *AuthorQuery) SeqLt(v int64) *AuthorQuery    { q.q.W().Pred("seq", "lt", v); return q }
 func (w *AuthorWhere) SeqLte(v int64) *AuthorWhere   { w.w.Pred("seq", "lte", v); return w }
-func (q *Author) SeqLte(v int64) *Author             { q.q.W().Pred("seq", "lte", v); return q }
+func (q *AuthorQuery) SeqLte(v int64) *AuthorQuery   { q.q.W().Pred("seq", "lte", v); return q }
 func (w *AuthorWhere) SeqIn(vs []int64) *AuthorWhere {
 	w.w.PredList("seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) SeqIn(vs []int64) *Author { q.q.W().PredList("seq", "in", orm.Anys(vs)); return q }
+func (q *AuthorQuery) SeqIn(vs []int64) *AuthorQuery {
+	q.q.W().PredList("seq", "in", orm.Anys(vs))
+	return q
+}
 func (w *AuthorWhere) SeqNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) SeqNotIn(vs []int64) *Author {
+func (q *AuthorQuery) SeqNotIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -1068,19 +1113,19 @@ func (w *AuthorWhere) SeqBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("seq", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) SeqBetween(lo, hi int64) *Author {
+func (q *AuthorQuery) SeqBetween(lo, hi int64) *AuthorQuery {
 	q.q.W().PredList("seq", "between", []any{lo, hi})
 	return q
 }
 func (w *AuthorWhere) SeqIsNull() *AuthorWhere    { w.w.PredNull("seq", "is_null"); return w }
-func (q *Author) SeqIsNull() *Author              { q.q.W().PredNull("seq", "is_null"); return q }
+func (q *AuthorQuery) SeqIsNull() *AuthorQuery    { q.q.W().PredNull("seq", "is_null"); return q }
 func (w *AuthorWhere) SeqIsNotNull() *AuthorWhere { w.w.PredNull("seq", "is_not_null"); return w }
-func (q *Author) SeqIsNotNull() *Author           { q.q.W().PredNull("seq", "is_not_null"); return q }
+func (q *AuthorQuery) SeqIsNotNull() *AuthorQuery { q.q.W().PredNull("seq", "is_not_null"); return q }
 func (w *AuthorWhere) SeqEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) SeqEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) SeqEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1088,7 +1133,7 @@ func (w *AuthorWhere) SeqNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) SeqNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) SeqNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1096,7 +1141,7 @@ func (w *AuthorWhere) SeqGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) SeqGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) SeqGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1104,7 +1149,7 @@ func (w *AuthorWhere) SeqGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) SeqGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) SeqGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1112,7 +1157,7 @@ func (w *AuthorWhere) SeqLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) SeqLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) SeqLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1120,52 +1165,69 @@ func (w *AuthorWhere) SeqLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) SeqLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) SeqLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) NameEq(v string) *AuthorWhere    { w.w.Pred("name", "eq", v); return w }
-func (q *Author) NameEq(v string) *Author              { q.q.W().Pred("name", "eq", v); return q }
+func (q *AuthorQuery) NameEq(v string) *AuthorQuery    { q.q.W().Pred("name", "eq", v); return q }
+func (w *AuthorWhere) Name(v string) *AuthorWhere      { return w.NameEq(v) }
+func (q *AuthorQuery) Name(v string) *AuthorQuery      { return q.NameEq(v) }
 func (w *AuthorWhere) NameNotEq(v string) *AuthorWhere { w.w.Pred("name", "not_eq", v); return w }
-func (q *Author) NameNotEq(v string) *Author           { q.q.W().Pred("name", "not_eq", v); return q }
+func (q *AuthorQuery) NameNotEq(v string) *AuthorQuery { q.q.W().Pred("name", "not_eq", v); return q }
 func (w *AuthorWhere) NameIn(vs []string) *AuthorWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) NameIn(vs []string) *Author { q.q.W().PredList("name", "in", orm.Anys(vs)); return q }
+func (q *AuthorQuery) NameIn(vs []string) *AuthorQuery {
+	q.q.W().PredList("name", "in", orm.Anys(vs))
+	return q
+}
 func (w *AuthorWhere) NameNotIn(vs []string) *AuthorWhere {
 	w.w.PredList("name", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) NameNotIn(vs []string) *Author {
+func (q *AuthorQuery) NameNotIn(vs []string) *AuthorQuery {
 	q.q.W().PredList("name", "not_in", orm.Anys(vs))
 	return q
 }
 func (w *AuthorWhere) NameLike(v string) *AuthorWhere { w.w.Pred("name", "like", v); return w }
-func (q *Author) NameLike(v string) *Author           { q.q.W().Pred("name", "like", v); return q }
+func (q *AuthorQuery) NameLike(v string) *AuthorQuery { q.q.W().Pred("name", "like", v); return q }
 func (w *AuthorWhere) NameLikeBinary(v string) *AuthorWhere {
 	w.w.Pred("name", "like_binary", v)
 	return w
 }
-func (q *Author) NameLikeBinary(v string) *Author         { q.q.W().Pred("name", "like_binary", v); return q }
+func (q *AuthorQuery) NameLikeBinary(v string) *AuthorQuery {
+	q.q.W().Pred("name", "like_binary", v)
+	return q
+}
 func (w *AuthorWhere) NameContains(v string) *AuthorWhere { w.w.Pred("name", "contains", v); return w }
-func (q *Author) NameContains(v string) *Author           { q.q.W().Pred("name", "contains", v); return q }
+func (q *AuthorQuery) NameContains(v string) *AuthorQuery {
+	q.q.W().Pred("name", "contains", v)
+	return q
+}
 func (w *AuthorWhere) NameStartsWith(v string) *AuthorWhere {
 	w.w.Pred("name", "starts_with", v)
 	return w
 }
-func (q *Author) NameStartsWith(v string) *Author         { q.q.W().Pred("name", "starts_with", v); return q }
+func (q *AuthorQuery) NameStartsWith(v string) *AuthorQuery {
+	q.q.W().Pred("name", "starts_with", v)
+	return q
+}
 func (w *AuthorWhere) NameEndsWith(v string) *AuthorWhere { w.w.Pred("name", "ends_with", v); return w }
-func (q *Author) NameEndsWith(v string) *Author           { q.q.W().Pred("name", "ends_with", v); return q }
-func (w *AuthorWhere) NameIsNull() *AuthorWhere           { w.w.PredNull("name", "is_null"); return w }
-func (q *Author) NameIsNull() *Author                     { q.q.W().PredNull("name", "is_null"); return q }
-func (w *AuthorWhere) NameIsNotNull() *AuthorWhere        { w.w.PredNull("name", "is_not_null"); return w }
-func (q *Author) NameIsNotNull() *Author                  { q.q.W().PredNull("name", "is_not_null"); return q }
+func (q *AuthorQuery) NameEndsWith(v string) *AuthorQuery {
+	q.q.W().Pred("name", "ends_with", v)
+	return q
+}
+func (w *AuthorWhere) NameIsNull() *AuthorWhere    { w.w.PredNull("name", "is_null"); return w }
+func (q *AuthorQuery) NameIsNull() *AuthorQuery    { q.q.W().PredNull("name", "is_null"); return q }
+func (w *AuthorWhere) NameIsNotNull() *AuthorWhere { w.w.PredNull("name", "is_not_null"); return w }
+func (q *AuthorQuery) NameIsNotNull() *AuthorQuery { q.q.W().PredNull("name", "is_not_null"); return q }
 func (w *AuthorWhere) NameEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("name", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) NameEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) NameEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("name", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1173,7 +1235,7 @@ func (w *AuthorWhere) NameNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) NameNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) NameNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1181,12 +1243,17 @@ func (w *AuthorWhere) DescriptionEq(v string) *AuthorWhere {
 	w.w.Pred("description", "eq", v)
 	return w
 }
-func (q *Author) DescriptionEq(v string) *Author { q.q.W().Pred("description", "eq", v); return q }
+func (q *AuthorQuery) DescriptionEq(v string) *AuthorQuery {
+	q.q.W().Pred("description", "eq", v)
+	return q
+}
+func (w *AuthorWhere) Description(v string) *AuthorWhere { return w.DescriptionEq(v) }
+func (q *AuthorQuery) Description(v string) *AuthorQuery { return q.DescriptionEq(v) }
 func (w *AuthorWhere) DescriptionNotEq(v string) *AuthorWhere {
 	w.w.Pred("description", "not_eq", v)
 	return w
 }
-func (q *Author) DescriptionNotEq(v string) *Author {
+func (q *AuthorQuery) DescriptionNotEq(v string) *AuthorQuery {
 	q.q.W().Pred("description", "not_eq", v)
 	return q
 }
@@ -1194,12 +1261,15 @@ func (w *AuthorWhere) DescriptionLike(v string) *AuthorWhere {
 	w.w.Pred("description", "like", v)
 	return w
 }
-func (q *Author) DescriptionLike(v string) *Author { q.q.W().Pred("description", "like", v); return q }
+func (q *AuthorQuery) DescriptionLike(v string) *AuthorQuery {
+	q.q.W().Pred("description", "like", v)
+	return q
+}
 func (w *AuthorWhere) DescriptionLikeBinary(v string) *AuthorWhere {
 	w.w.Pred("description", "like_binary", v)
 	return w
 }
-func (q *Author) DescriptionLikeBinary(v string) *Author {
+func (q *AuthorQuery) DescriptionLikeBinary(v string) *AuthorQuery {
 	q.q.W().Pred("description", "like_binary", v)
 	return q
 }
@@ -1207,7 +1277,7 @@ func (w *AuthorWhere) DescriptionContains(v string) *AuthorWhere {
 	w.w.Pred("description", "contains", v)
 	return w
 }
-func (q *Author) DescriptionContains(v string) *Author {
+func (q *AuthorQuery) DescriptionContains(v string) *AuthorQuery {
 	q.q.W().Pred("description", "contains", v)
 	return q
 }
@@ -1215,7 +1285,7 @@ func (w *AuthorWhere) DescriptionStartsWith(v string) *AuthorWhere {
 	w.w.Pred("description", "starts_with", v)
 	return w
 }
-func (q *Author) DescriptionStartsWith(v string) *Author {
+func (q *AuthorQuery) DescriptionStartsWith(v string) *AuthorQuery {
 	q.q.W().Pred("description", "starts_with", v)
 	return q
 }
@@ -1223,7 +1293,7 @@ func (w *AuthorWhere) DescriptionEndsWith(v string) *AuthorWhere {
 	w.w.Pred("description", "ends_with", v)
 	return w
 }
-func (q *Author) DescriptionEndsWith(v string) *Author {
+func (q *AuthorQuery) DescriptionEndsWith(v string) *AuthorQuery {
 	q.q.W().Pred("description", "ends_with", v)
 	return q
 }
@@ -1231,12 +1301,15 @@ func (w *AuthorWhere) DescriptionIsNull() *AuthorWhere {
 	w.w.PredNull("description", "is_null")
 	return w
 }
-func (q *Author) DescriptionIsNull() *Author { q.q.W().PredNull("description", "is_null"); return q }
+func (q *AuthorQuery) DescriptionIsNull() *AuthorQuery {
+	q.q.W().PredNull("description", "is_null")
+	return q
+}
 func (w *AuthorWhere) DescriptionIsNotNull() *AuthorWhere {
 	w.w.PredNull("description", "is_not_null")
 	return w
 }
-func (q *Author) DescriptionIsNotNull() *Author {
+func (q *AuthorQuery) DescriptionIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("description", "is_not_null")
 	return q
 }
@@ -1244,7 +1317,7 @@ func (w *AuthorWhere) DescriptionEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("description", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DescriptionEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DescriptionEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("description", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1252,7 +1325,7 @@ func (w *AuthorWhere) DescriptionNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("description", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DescriptionNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DescriptionNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("description", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1260,12 +1333,17 @@ func (w *AuthorWhere) CreatedTsEq(v time.Time) *AuthorWhere {
 	w.w.Pred("created_ts", "eq", v)
 	return w
 }
-func (q *Author) CreatedTsEq(v time.Time) *Author { q.q.W().Pred("created_ts", "eq", v); return q }
+func (q *AuthorQuery) CreatedTsEq(v time.Time) *AuthorQuery {
+	q.q.W().Pred("created_ts", "eq", v)
+	return q
+}
+func (w *AuthorWhere) CreatedTs(v time.Time) *AuthorWhere { return w.CreatedTsEq(v) }
+func (q *AuthorQuery) CreatedTs(v time.Time) *AuthorQuery { return q.CreatedTsEq(v) }
 func (w *AuthorWhere) CreatedTsNotEq(v time.Time) *AuthorWhere {
 	w.w.Pred("created_ts", "not_eq", v)
 	return w
 }
-func (q *Author) CreatedTsNotEq(v time.Time) *Author {
+func (q *AuthorQuery) CreatedTsNotEq(v time.Time) *AuthorQuery {
 	q.q.W().Pred("created_ts", "not_eq", v)
 	return q
 }
@@ -1273,27 +1351,39 @@ func (w *AuthorWhere) CreatedTsGt(v time.Time) *AuthorWhere {
 	w.w.Pred("created_ts", "gt", v)
 	return w
 }
-func (q *Author) CreatedTsGt(v time.Time) *Author { q.q.W().Pred("created_ts", "gt", v); return q }
+func (q *AuthorQuery) CreatedTsGt(v time.Time) *AuthorQuery {
+	q.q.W().Pred("created_ts", "gt", v)
+	return q
+}
 func (w *AuthorWhere) CreatedTsGte(v time.Time) *AuthorWhere {
 	w.w.Pred("created_ts", "gte", v)
 	return w
 }
-func (q *Author) CreatedTsGte(v time.Time) *Author { q.q.W().Pred("created_ts", "gte", v); return q }
+func (q *AuthorQuery) CreatedTsGte(v time.Time) *AuthorQuery {
+	q.q.W().Pred("created_ts", "gte", v)
+	return q
+}
 func (w *AuthorWhere) CreatedTsLt(v time.Time) *AuthorWhere {
 	w.w.Pred("created_ts", "lt", v)
 	return w
 }
-func (q *Author) CreatedTsLt(v time.Time) *Author { q.q.W().Pred("created_ts", "lt", v); return q }
+func (q *AuthorQuery) CreatedTsLt(v time.Time) *AuthorQuery {
+	q.q.W().Pred("created_ts", "lt", v)
+	return q
+}
 func (w *AuthorWhere) CreatedTsLte(v time.Time) *AuthorWhere {
 	w.w.Pred("created_ts", "lte", v)
 	return w
 }
-func (q *Author) CreatedTsLte(v time.Time) *Author { q.q.W().Pred("created_ts", "lte", v); return q }
+func (q *AuthorQuery) CreatedTsLte(v time.Time) *AuthorQuery {
+	q.q.W().Pred("created_ts", "lte", v)
+	return q
+}
 func (w *AuthorWhere) CreatedTsIn(vs []time.Time) *AuthorWhere {
 	w.w.PredList("created_ts", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) CreatedTsIn(vs []time.Time) *Author {
+func (q *AuthorQuery) CreatedTsIn(vs []time.Time) *AuthorQuery {
 	q.q.W().PredList("created_ts", "in", orm.Anys(vs))
 	return q
 }
@@ -1301,7 +1391,7 @@ func (w *AuthorWhere) CreatedTsNotIn(vs []time.Time) *AuthorWhere {
 	w.w.PredList("created_ts", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) CreatedTsNotIn(vs []time.Time) *Author {
+func (q *AuthorQuery) CreatedTsNotIn(vs []time.Time) *AuthorQuery {
 	q.q.W().PredList("created_ts", "not_in", orm.Anys(vs))
 	return q
 }
@@ -1309,17 +1399,20 @@ func (w *AuthorWhere) CreatedTsBetween(lo, hi time.Time) *AuthorWhere {
 	w.w.PredList("created_ts", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) CreatedTsBetween(lo, hi time.Time) *Author {
+func (q *AuthorQuery) CreatedTsBetween(lo, hi time.Time) *AuthorQuery {
 	q.q.W().PredList("created_ts", "between", []any{lo, hi})
 	return q
 }
 func (w *AuthorWhere) CreatedTsIsNull() *AuthorWhere { w.w.PredNull("created_ts", "is_null"); return w }
-func (q *Author) CreatedTsIsNull() *Author           { q.q.W().PredNull("created_ts", "is_null"); return q }
+func (q *AuthorQuery) CreatedTsIsNull() *AuthorQuery {
+	q.q.W().PredNull("created_ts", "is_null")
+	return q
+}
 func (w *AuthorWhere) CreatedTsIsNotNull() *AuthorWhere {
 	w.w.PredNull("created_ts", "is_not_null")
 	return w
 }
-func (q *Author) CreatedTsIsNotNull() *Author {
+func (q *AuthorQuery) CreatedTsIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("created_ts", "is_not_null")
 	return q
 }
@@ -1327,7 +1420,7 @@ func (w *AuthorWhere) CreatedTsEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("created_ts", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) CreatedTsEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) CreatedTsEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("created_ts", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1335,7 +1428,7 @@ func (w *AuthorWhere) CreatedTsNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("created_ts", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) CreatedTsNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) CreatedTsNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("created_ts", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1343,7 +1436,7 @@ func (w *AuthorWhere) CreatedTsGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("created_ts", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) CreatedTsGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) CreatedTsGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("created_ts", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1351,7 +1444,7 @@ func (w *AuthorWhere) CreatedTsGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("created_ts", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) CreatedTsGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) CreatedTsGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("created_ts", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1359,7 +1452,7 @@ func (w *AuthorWhere) CreatedTsLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("created_ts", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) CreatedTsLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) CreatedTsLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("created_ts", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1367,7 +1460,7 @@ func (w *AuthorWhere) CreatedTsLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("created_ts", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) CreatedTsLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) CreatedTsLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("created_ts", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1375,12 +1468,17 @@ func (w *AuthorWhere) UpdatedTsEq(v time.Time) *AuthorWhere {
 	w.w.Pred("updated_ts", "eq", v)
 	return w
 }
-func (q *Author) UpdatedTsEq(v time.Time) *Author { q.q.W().Pred("updated_ts", "eq", v); return q }
+func (q *AuthorQuery) UpdatedTsEq(v time.Time) *AuthorQuery {
+	q.q.W().Pred("updated_ts", "eq", v)
+	return q
+}
+func (w *AuthorWhere) UpdatedTs(v time.Time) *AuthorWhere { return w.UpdatedTsEq(v) }
+func (q *AuthorQuery) UpdatedTs(v time.Time) *AuthorQuery { return q.UpdatedTsEq(v) }
 func (w *AuthorWhere) UpdatedTsNotEq(v time.Time) *AuthorWhere {
 	w.w.Pred("updated_ts", "not_eq", v)
 	return w
 }
-func (q *Author) UpdatedTsNotEq(v time.Time) *Author {
+func (q *AuthorQuery) UpdatedTsNotEq(v time.Time) *AuthorQuery {
 	q.q.W().Pred("updated_ts", "not_eq", v)
 	return q
 }
@@ -1388,27 +1486,39 @@ func (w *AuthorWhere) UpdatedTsGt(v time.Time) *AuthorWhere {
 	w.w.Pred("updated_ts", "gt", v)
 	return w
 }
-func (q *Author) UpdatedTsGt(v time.Time) *Author { q.q.W().Pred("updated_ts", "gt", v); return q }
+func (q *AuthorQuery) UpdatedTsGt(v time.Time) *AuthorQuery {
+	q.q.W().Pred("updated_ts", "gt", v)
+	return q
+}
 func (w *AuthorWhere) UpdatedTsGte(v time.Time) *AuthorWhere {
 	w.w.Pred("updated_ts", "gte", v)
 	return w
 }
-func (q *Author) UpdatedTsGte(v time.Time) *Author { q.q.W().Pred("updated_ts", "gte", v); return q }
+func (q *AuthorQuery) UpdatedTsGte(v time.Time) *AuthorQuery {
+	q.q.W().Pred("updated_ts", "gte", v)
+	return q
+}
 func (w *AuthorWhere) UpdatedTsLt(v time.Time) *AuthorWhere {
 	w.w.Pred("updated_ts", "lt", v)
 	return w
 }
-func (q *Author) UpdatedTsLt(v time.Time) *Author { q.q.W().Pred("updated_ts", "lt", v); return q }
+func (q *AuthorQuery) UpdatedTsLt(v time.Time) *AuthorQuery {
+	q.q.W().Pred("updated_ts", "lt", v)
+	return q
+}
 func (w *AuthorWhere) UpdatedTsLte(v time.Time) *AuthorWhere {
 	w.w.Pred("updated_ts", "lte", v)
 	return w
 }
-func (q *Author) UpdatedTsLte(v time.Time) *Author { q.q.W().Pred("updated_ts", "lte", v); return q }
+func (q *AuthorQuery) UpdatedTsLte(v time.Time) *AuthorQuery {
+	q.q.W().Pred("updated_ts", "lte", v)
+	return q
+}
 func (w *AuthorWhere) UpdatedTsIn(vs []time.Time) *AuthorWhere {
 	w.w.PredList("updated_ts", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) UpdatedTsIn(vs []time.Time) *Author {
+func (q *AuthorQuery) UpdatedTsIn(vs []time.Time) *AuthorQuery {
 	q.q.W().PredList("updated_ts", "in", orm.Anys(vs))
 	return q
 }
@@ -1416,7 +1526,7 @@ func (w *AuthorWhere) UpdatedTsNotIn(vs []time.Time) *AuthorWhere {
 	w.w.PredList("updated_ts", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) UpdatedTsNotIn(vs []time.Time) *Author {
+func (q *AuthorQuery) UpdatedTsNotIn(vs []time.Time) *AuthorQuery {
 	q.q.W().PredList("updated_ts", "not_in", orm.Anys(vs))
 	return q
 }
@@ -1424,17 +1534,20 @@ func (w *AuthorWhere) UpdatedTsBetween(lo, hi time.Time) *AuthorWhere {
 	w.w.PredList("updated_ts", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) UpdatedTsBetween(lo, hi time.Time) *Author {
+func (q *AuthorQuery) UpdatedTsBetween(lo, hi time.Time) *AuthorQuery {
 	q.q.W().PredList("updated_ts", "between", []any{lo, hi})
 	return q
 }
 func (w *AuthorWhere) UpdatedTsIsNull() *AuthorWhere { w.w.PredNull("updated_ts", "is_null"); return w }
-func (q *Author) UpdatedTsIsNull() *Author           { q.q.W().PredNull("updated_ts", "is_null"); return q }
+func (q *AuthorQuery) UpdatedTsIsNull() *AuthorQuery {
+	q.q.W().PredNull("updated_ts", "is_null")
+	return q
+}
 func (w *AuthorWhere) UpdatedTsIsNotNull() *AuthorWhere {
 	w.w.PredNull("updated_ts", "is_not_null")
 	return w
 }
-func (q *Author) UpdatedTsIsNotNull() *Author {
+func (q *AuthorQuery) UpdatedTsIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("updated_ts", "is_not_null")
 	return q
 }
@@ -1442,7 +1555,7 @@ func (w *AuthorWhere) UpdatedTsEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("updated_ts", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UpdatedTsEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UpdatedTsEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("updated_ts", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1450,7 +1563,7 @@ func (w *AuthorWhere) UpdatedTsNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("updated_ts", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UpdatedTsNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UpdatedTsNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("updated_ts", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1458,7 +1571,7 @@ func (w *AuthorWhere) UpdatedTsGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("updated_ts", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UpdatedTsGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UpdatedTsGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("updated_ts", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1466,7 +1579,7 @@ func (w *AuthorWhere) UpdatedTsGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("updated_ts", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UpdatedTsGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UpdatedTsGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("updated_ts", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1474,7 +1587,7 @@ func (w *AuthorWhere) UpdatedTsLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("updated_ts", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UpdatedTsLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UpdatedTsLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("updated_ts", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1482,26 +1595,34 @@ func (w *AuthorWhere) UpdatedTsLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("updated_ts", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UpdatedTsLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UpdatedTsLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("updated_ts", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) IsCloseEq(v bool) *AuthorWhere    { w.w.Pred("is_close", "eq", v); return w }
-func (q *Author) IsCloseEq(v bool) *Author              { q.q.W().Pred("is_close", "eq", v); return q }
+func (q *AuthorQuery) IsCloseEq(v bool) *AuthorQuery    { q.q.W().Pred("is_close", "eq", v); return q }
+func (w *AuthorWhere) IsClose(v bool) *AuthorWhere      { return w.IsCloseEq(v) }
+func (q *AuthorQuery) IsClose(v bool) *AuthorQuery      { return q.IsCloseEq(v) }
 func (w *AuthorWhere) IsCloseNotEq(v bool) *AuthorWhere { w.w.Pred("is_close", "not_eq", v); return w }
-func (q *Author) IsCloseNotEq(v bool) *Author           { q.q.W().Pred("is_close", "not_eq", v); return q }
-func (w *AuthorWhere) IsCloseIsNull() *AuthorWhere      { w.w.PredNull("is_close", "is_null"); return w }
-func (q *Author) IsCloseIsNull() *Author                { q.q.W().PredNull("is_close", "is_null"); return q }
+func (q *AuthorQuery) IsCloseNotEq(v bool) *AuthorQuery {
+	q.q.W().Pred("is_close", "not_eq", v)
+	return q
+}
+func (w *AuthorWhere) IsCloseIsNull() *AuthorWhere { w.w.PredNull("is_close", "is_null"); return w }
+func (q *AuthorQuery) IsCloseIsNull() *AuthorQuery { q.q.W().PredNull("is_close", "is_null"); return q }
 func (w *AuthorWhere) IsCloseIsNotNull() *AuthorWhere {
 	w.w.PredNull("is_close", "is_not_null")
 	return w
 }
-func (q *Author) IsCloseIsNotNull() *Author { q.q.W().PredNull("is_close", "is_not_null"); return q }
+func (q *AuthorQuery) IsCloseIsNotNull() *AuthorQuery {
+	q.q.W().PredNull("is_close", "is_not_null")
+	return q
+}
 func (w *AuthorWhere) IsCloseEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("is_close", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) IsCloseEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) IsCloseEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("is_close", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1509,24 +1630,32 @@ func (w *AuthorWhere) IsCloseNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("is_close", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) IsCloseNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) IsCloseNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("is_close", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) IsDisplayEq(v bool) *AuthorWhere { w.w.Pred("is_display", "eq", v); return w }
-func (q *Author) IsDisplayEq(v bool) *Author           { q.q.W().Pred("is_display", "eq", v); return q }
+func (q *AuthorQuery) IsDisplayEq(v bool) *AuthorQuery { q.q.W().Pred("is_display", "eq", v); return q }
+func (w *AuthorWhere) IsDisplay(v bool) *AuthorWhere   { return w.IsDisplayEq(v) }
+func (q *AuthorQuery) IsDisplay(v bool) *AuthorQuery   { return q.IsDisplayEq(v) }
 func (w *AuthorWhere) IsDisplayNotEq(v bool) *AuthorWhere {
 	w.w.Pred("is_display", "not_eq", v)
 	return w
 }
-func (q *Author) IsDisplayNotEq(v bool) *Author      { q.q.W().Pred("is_display", "not_eq", v); return q }
+func (q *AuthorQuery) IsDisplayNotEq(v bool) *AuthorQuery {
+	q.q.W().Pred("is_display", "not_eq", v)
+	return q
+}
 func (w *AuthorWhere) IsDisplayIsNull() *AuthorWhere { w.w.PredNull("is_display", "is_null"); return w }
-func (q *Author) IsDisplayIsNull() *Author           { q.q.W().PredNull("is_display", "is_null"); return q }
+func (q *AuthorQuery) IsDisplayIsNull() *AuthorQuery {
+	q.q.W().PredNull("is_display", "is_null")
+	return q
+}
 func (w *AuthorWhere) IsDisplayIsNotNull() *AuthorWhere {
 	w.w.PredNull("is_display", "is_not_null")
 	return w
 }
-func (q *Author) IsDisplayIsNotNull() *Author {
+func (q *AuthorQuery) IsDisplayIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("is_display", "is_not_null")
 	return q
 }
@@ -1534,7 +1663,7 @@ func (w *AuthorWhere) IsDisplayEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("is_display", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) IsDisplayEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) IsDisplayEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("is_display", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1542,7 +1671,7 @@ func (w *AuthorWhere) IsDisplayNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("is_display", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) IsDisplayNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) IsDisplayNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("is_display", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1550,15 +1679,17 @@ func (w *AuthorWhere) DisplayStartDtEq(v time.Time) *AuthorWhere {
 	w.w.Pred("display_start_dt", "eq", v)
 	return w
 }
-func (q *Author) DisplayStartDtEq(v time.Time) *Author {
+func (q *AuthorQuery) DisplayStartDtEq(v time.Time) *AuthorQuery {
 	q.q.W().Pred("display_start_dt", "eq", v)
 	return q
 }
+func (w *AuthorWhere) DisplayStartDt(v time.Time) *AuthorWhere { return w.DisplayStartDtEq(v) }
+func (q *AuthorQuery) DisplayStartDt(v time.Time) *AuthorQuery { return q.DisplayStartDtEq(v) }
 func (w *AuthorWhere) DisplayStartDtNotEq(v time.Time) *AuthorWhere {
 	w.w.Pred("display_start_dt", "not_eq", v)
 	return w
 }
-func (q *Author) DisplayStartDtNotEq(v time.Time) *Author {
+func (q *AuthorQuery) DisplayStartDtNotEq(v time.Time) *AuthorQuery {
 	q.q.W().Pred("display_start_dt", "not_eq", v)
 	return q
 }
@@ -1566,7 +1697,7 @@ func (w *AuthorWhere) DisplayStartDtGt(v time.Time) *AuthorWhere {
 	w.w.Pred("display_start_dt", "gt", v)
 	return w
 }
-func (q *Author) DisplayStartDtGt(v time.Time) *Author {
+func (q *AuthorQuery) DisplayStartDtGt(v time.Time) *AuthorQuery {
 	q.q.W().Pred("display_start_dt", "gt", v)
 	return q
 }
@@ -1574,7 +1705,7 @@ func (w *AuthorWhere) DisplayStartDtGte(v time.Time) *AuthorWhere {
 	w.w.Pred("display_start_dt", "gte", v)
 	return w
 }
-func (q *Author) DisplayStartDtGte(v time.Time) *Author {
+func (q *AuthorQuery) DisplayStartDtGte(v time.Time) *AuthorQuery {
 	q.q.W().Pred("display_start_dt", "gte", v)
 	return q
 }
@@ -1582,7 +1713,7 @@ func (w *AuthorWhere) DisplayStartDtLt(v time.Time) *AuthorWhere {
 	w.w.Pred("display_start_dt", "lt", v)
 	return w
 }
-func (q *Author) DisplayStartDtLt(v time.Time) *Author {
+func (q *AuthorQuery) DisplayStartDtLt(v time.Time) *AuthorQuery {
 	q.q.W().Pred("display_start_dt", "lt", v)
 	return q
 }
@@ -1590,7 +1721,7 @@ func (w *AuthorWhere) DisplayStartDtLte(v time.Time) *AuthorWhere {
 	w.w.Pred("display_start_dt", "lte", v)
 	return w
 }
-func (q *Author) DisplayStartDtLte(v time.Time) *Author {
+func (q *AuthorQuery) DisplayStartDtLte(v time.Time) *AuthorQuery {
 	q.q.W().Pred("display_start_dt", "lte", v)
 	return q
 }
@@ -1598,7 +1729,7 @@ func (w *AuthorWhere) DisplayStartDtIn(vs []time.Time) *AuthorWhere {
 	w.w.PredList("display_start_dt", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) DisplayStartDtIn(vs []time.Time) *Author {
+func (q *AuthorQuery) DisplayStartDtIn(vs []time.Time) *AuthorQuery {
 	q.q.W().PredList("display_start_dt", "in", orm.Anys(vs))
 	return q
 }
@@ -1606,7 +1737,7 @@ func (w *AuthorWhere) DisplayStartDtNotIn(vs []time.Time) *AuthorWhere {
 	w.w.PredList("display_start_dt", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) DisplayStartDtNotIn(vs []time.Time) *Author {
+func (q *AuthorQuery) DisplayStartDtNotIn(vs []time.Time) *AuthorQuery {
 	q.q.W().PredList("display_start_dt", "not_in", orm.Anys(vs))
 	return q
 }
@@ -1614,7 +1745,7 @@ func (w *AuthorWhere) DisplayStartDtBetween(lo, hi time.Time) *AuthorWhere {
 	w.w.PredList("display_start_dt", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) DisplayStartDtBetween(lo, hi time.Time) *Author {
+func (q *AuthorQuery) DisplayStartDtBetween(lo, hi time.Time) *AuthorQuery {
 	q.q.W().PredList("display_start_dt", "between", []any{lo, hi})
 	return q
 }
@@ -1622,7 +1753,7 @@ func (w *AuthorWhere) DisplayStartDtIsNull() *AuthorWhere {
 	w.w.PredNull("display_start_dt", "is_null")
 	return w
 }
-func (q *Author) DisplayStartDtIsNull() *Author {
+func (q *AuthorQuery) DisplayStartDtIsNull() *AuthorQuery {
 	q.q.W().PredNull("display_start_dt", "is_null")
 	return q
 }
@@ -1630,7 +1761,7 @@ func (w *AuthorWhere) DisplayStartDtIsNotNull() *AuthorWhere {
 	w.w.PredNull("display_start_dt", "is_not_null")
 	return w
 }
-func (q *Author) DisplayStartDtIsNotNull() *Author {
+func (q *AuthorQuery) DisplayStartDtIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("display_start_dt", "is_not_null")
 	return q
 }
@@ -1638,7 +1769,7 @@ func (w *AuthorWhere) DisplayStartDtEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("display_start_dt", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DisplayStartDtEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DisplayStartDtEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("display_start_dt", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1646,7 +1777,7 @@ func (w *AuthorWhere) DisplayStartDtNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("display_start_dt", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DisplayStartDtNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DisplayStartDtNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("display_start_dt", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1654,7 +1785,7 @@ func (w *AuthorWhere) DisplayStartDtGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("display_start_dt", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DisplayStartDtGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DisplayStartDtGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("display_start_dt", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1662,7 +1793,7 @@ func (w *AuthorWhere) DisplayStartDtGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("display_start_dt", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DisplayStartDtGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DisplayStartDtGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("display_start_dt", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1670,7 +1801,7 @@ func (w *AuthorWhere) DisplayStartDtLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("display_start_dt", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DisplayStartDtLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DisplayStartDtLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("display_start_dt", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1678,7 +1809,7 @@ func (w *AuthorWhere) DisplayStartDtLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("display_start_dt", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DisplayStartDtLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DisplayStartDtLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("display_start_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1686,15 +1817,17 @@ func (w *AuthorWhere) DisplayEndDtEq(v time.Time) *AuthorWhere {
 	w.w.Pred("display_end_dt", "eq", v)
 	return w
 }
-func (q *Author) DisplayEndDtEq(v time.Time) *Author {
+func (q *AuthorQuery) DisplayEndDtEq(v time.Time) *AuthorQuery {
 	q.q.W().Pred("display_end_dt", "eq", v)
 	return q
 }
+func (w *AuthorWhere) DisplayEndDt(v time.Time) *AuthorWhere { return w.DisplayEndDtEq(v) }
+func (q *AuthorQuery) DisplayEndDt(v time.Time) *AuthorQuery { return q.DisplayEndDtEq(v) }
 func (w *AuthorWhere) DisplayEndDtNotEq(v time.Time) *AuthorWhere {
 	w.w.Pred("display_end_dt", "not_eq", v)
 	return w
 }
-func (q *Author) DisplayEndDtNotEq(v time.Time) *Author {
+func (q *AuthorQuery) DisplayEndDtNotEq(v time.Time) *AuthorQuery {
 	q.q.W().Pred("display_end_dt", "not_eq", v)
 	return q
 }
@@ -1702,7 +1835,7 @@ func (w *AuthorWhere) DisplayEndDtGt(v time.Time) *AuthorWhere {
 	w.w.Pred("display_end_dt", "gt", v)
 	return w
 }
-func (q *Author) DisplayEndDtGt(v time.Time) *Author {
+func (q *AuthorQuery) DisplayEndDtGt(v time.Time) *AuthorQuery {
 	q.q.W().Pred("display_end_dt", "gt", v)
 	return q
 }
@@ -1710,7 +1843,7 @@ func (w *AuthorWhere) DisplayEndDtGte(v time.Time) *AuthorWhere {
 	w.w.Pred("display_end_dt", "gte", v)
 	return w
 }
-func (q *Author) DisplayEndDtGte(v time.Time) *Author {
+func (q *AuthorQuery) DisplayEndDtGte(v time.Time) *AuthorQuery {
 	q.q.W().Pred("display_end_dt", "gte", v)
 	return q
 }
@@ -1718,7 +1851,7 @@ func (w *AuthorWhere) DisplayEndDtLt(v time.Time) *AuthorWhere {
 	w.w.Pred("display_end_dt", "lt", v)
 	return w
 }
-func (q *Author) DisplayEndDtLt(v time.Time) *Author {
+func (q *AuthorQuery) DisplayEndDtLt(v time.Time) *AuthorQuery {
 	q.q.W().Pred("display_end_dt", "lt", v)
 	return q
 }
@@ -1726,7 +1859,7 @@ func (w *AuthorWhere) DisplayEndDtLte(v time.Time) *AuthorWhere {
 	w.w.Pred("display_end_dt", "lte", v)
 	return w
 }
-func (q *Author) DisplayEndDtLte(v time.Time) *Author {
+func (q *AuthorQuery) DisplayEndDtLte(v time.Time) *AuthorQuery {
 	q.q.W().Pred("display_end_dt", "lte", v)
 	return q
 }
@@ -1734,7 +1867,7 @@ func (w *AuthorWhere) DisplayEndDtIn(vs []time.Time) *AuthorWhere {
 	w.w.PredList("display_end_dt", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) DisplayEndDtIn(vs []time.Time) *Author {
+func (q *AuthorQuery) DisplayEndDtIn(vs []time.Time) *AuthorQuery {
 	q.q.W().PredList("display_end_dt", "in", orm.Anys(vs))
 	return q
 }
@@ -1742,7 +1875,7 @@ func (w *AuthorWhere) DisplayEndDtNotIn(vs []time.Time) *AuthorWhere {
 	w.w.PredList("display_end_dt", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) DisplayEndDtNotIn(vs []time.Time) *Author {
+func (q *AuthorQuery) DisplayEndDtNotIn(vs []time.Time) *AuthorQuery {
 	q.q.W().PredList("display_end_dt", "not_in", orm.Anys(vs))
 	return q
 }
@@ -1750,7 +1883,7 @@ func (w *AuthorWhere) DisplayEndDtBetween(lo, hi time.Time) *AuthorWhere {
 	w.w.PredList("display_end_dt", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) DisplayEndDtBetween(lo, hi time.Time) *Author {
+func (q *AuthorQuery) DisplayEndDtBetween(lo, hi time.Time) *AuthorQuery {
 	q.q.W().PredList("display_end_dt", "between", []any{lo, hi})
 	return q
 }
@@ -1758,7 +1891,7 @@ func (w *AuthorWhere) DisplayEndDtIsNull() *AuthorWhere {
 	w.w.PredNull("display_end_dt", "is_null")
 	return w
 }
-func (q *Author) DisplayEndDtIsNull() *Author {
+func (q *AuthorQuery) DisplayEndDtIsNull() *AuthorQuery {
 	q.q.W().PredNull("display_end_dt", "is_null")
 	return q
 }
@@ -1766,7 +1899,7 @@ func (w *AuthorWhere) DisplayEndDtIsNotNull() *AuthorWhere {
 	w.w.PredNull("display_end_dt", "is_not_null")
 	return w
 }
-func (q *Author) DisplayEndDtIsNotNull() *Author {
+func (q *AuthorQuery) DisplayEndDtIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("display_end_dt", "is_not_null")
 	return q
 }
@@ -1774,7 +1907,7 @@ func (w *AuthorWhere) DisplayEndDtEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("display_end_dt", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DisplayEndDtEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DisplayEndDtEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("display_end_dt", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1782,7 +1915,7 @@ func (w *AuthorWhere) DisplayEndDtNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("display_end_dt", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DisplayEndDtNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DisplayEndDtNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("display_end_dt", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1790,7 +1923,7 @@ func (w *AuthorWhere) DisplayEndDtGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("display_end_dt", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DisplayEndDtGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DisplayEndDtGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("display_end_dt", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1798,7 +1931,7 @@ func (w *AuthorWhere) DisplayEndDtGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("display_end_dt", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DisplayEndDtGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DisplayEndDtGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("display_end_dt", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1806,7 +1939,7 @@ func (w *AuthorWhere) DisplayEndDtLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("display_end_dt", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DisplayEndDtLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DisplayEndDtLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("display_end_dt", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1814,29 +1947,40 @@ func (w *AuthorWhere) DisplayEndDtLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("display_end_dt", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) DisplayEndDtLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) DisplayEndDtLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("display_end_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) IsAlldayEq(v bool) *AuthorWhere { w.w.Pred("is_allday", "eq", v); return w }
-func (q *Author) IsAlldayEq(v bool) *Author           { q.q.W().Pred("is_allday", "eq", v); return q }
+func (q *AuthorQuery) IsAlldayEq(v bool) *AuthorQuery { q.q.W().Pred("is_allday", "eq", v); return q }
+func (w *AuthorWhere) IsAllday(v bool) *AuthorWhere   { return w.IsAlldayEq(v) }
+func (q *AuthorQuery) IsAllday(v bool) *AuthorQuery   { return q.IsAlldayEq(v) }
 func (w *AuthorWhere) IsAlldayNotEq(v bool) *AuthorWhere {
 	w.w.Pred("is_allday", "not_eq", v)
 	return w
 }
-func (q *Author) IsAlldayNotEq(v bool) *Author      { q.q.W().Pred("is_allday", "not_eq", v); return q }
+func (q *AuthorQuery) IsAlldayNotEq(v bool) *AuthorQuery {
+	q.q.W().Pred("is_allday", "not_eq", v)
+	return q
+}
 func (w *AuthorWhere) IsAlldayIsNull() *AuthorWhere { w.w.PredNull("is_allday", "is_null"); return w }
-func (q *Author) IsAlldayIsNull() *Author           { q.q.W().PredNull("is_allday", "is_null"); return q }
+func (q *AuthorQuery) IsAlldayIsNull() *AuthorQuery {
+	q.q.W().PredNull("is_allday", "is_null")
+	return q
+}
 func (w *AuthorWhere) IsAlldayIsNotNull() *AuthorWhere {
 	w.w.PredNull("is_allday", "is_not_null")
 	return w
 }
-func (q *Author) IsAlldayIsNotNull() *Author { q.q.W().PredNull("is_allday", "is_not_null"); return q }
+func (q *AuthorQuery) IsAlldayIsNotNull() *AuthorQuery {
+	q.q.W().PredNull("is_allday", "is_not_null")
+	return q
+}
 func (w *AuthorWhere) IsAlldayEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("is_allday", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) IsAlldayEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) IsAlldayEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("is_allday", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1844,7 +1988,7 @@ func (w *AuthorWhere) IsAlldayNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("is_allday", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) IsAlldayNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) IsAlldayNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("is_allday", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1852,15 +1996,21 @@ func (w *AuthorWhere) TargetClubReaderCountEq(v int64) *AuthorWhere {
 	w.w.Pred("target_club_reader_count", "eq", v)
 	return w
 }
-func (q *Author) TargetClubReaderCountEq(v int64) *Author {
+func (q *AuthorQuery) TargetClubReaderCountEq(v int64) *AuthorQuery {
 	q.q.W().Pred("target_club_reader_count", "eq", v)
 	return q
+}
+func (w *AuthorWhere) TargetClubReaderCount(v int64) *AuthorWhere {
+	return w.TargetClubReaderCountEq(v)
+}
+func (q *AuthorQuery) TargetClubReaderCount(v int64) *AuthorQuery {
+	return q.TargetClubReaderCountEq(v)
 }
 func (w *AuthorWhere) TargetClubReaderCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("target_club_reader_count", "not_eq", v)
 	return w
 }
-func (q *Author) TargetClubReaderCountNotEq(v int64) *Author {
+func (q *AuthorQuery) TargetClubReaderCountNotEq(v int64) *AuthorQuery {
 	q.q.W().Pred("target_club_reader_count", "not_eq", v)
 	return q
 }
@@ -1868,7 +2018,7 @@ func (w *AuthorWhere) TargetClubReaderCountGt(v int64) *AuthorWhere {
 	w.w.Pred("target_club_reader_count", "gt", v)
 	return w
 }
-func (q *Author) TargetClubReaderCountGt(v int64) *Author {
+func (q *AuthorQuery) TargetClubReaderCountGt(v int64) *AuthorQuery {
 	q.q.W().Pred("target_club_reader_count", "gt", v)
 	return q
 }
@@ -1876,7 +2026,7 @@ func (w *AuthorWhere) TargetClubReaderCountGte(v int64) *AuthorWhere {
 	w.w.Pred("target_club_reader_count", "gte", v)
 	return w
 }
-func (q *Author) TargetClubReaderCountGte(v int64) *Author {
+func (q *AuthorQuery) TargetClubReaderCountGte(v int64) *AuthorQuery {
 	q.q.W().Pred("target_club_reader_count", "gte", v)
 	return q
 }
@@ -1884,7 +2034,7 @@ func (w *AuthorWhere) TargetClubReaderCountLt(v int64) *AuthorWhere {
 	w.w.Pred("target_club_reader_count", "lt", v)
 	return w
 }
-func (q *Author) TargetClubReaderCountLt(v int64) *Author {
+func (q *AuthorQuery) TargetClubReaderCountLt(v int64) *AuthorQuery {
 	q.q.W().Pred("target_club_reader_count", "lt", v)
 	return q
 }
@@ -1892,7 +2042,7 @@ func (w *AuthorWhere) TargetClubReaderCountLte(v int64) *AuthorWhere {
 	w.w.Pred("target_club_reader_count", "lte", v)
 	return w
 }
-func (q *Author) TargetClubReaderCountLte(v int64) *Author {
+func (q *AuthorQuery) TargetClubReaderCountLte(v int64) *AuthorQuery {
 	q.q.W().Pred("target_club_reader_count", "lte", v)
 	return q
 }
@@ -1900,7 +2050,7 @@ func (w *AuthorWhere) TargetClubReaderCountIn(vs []int64) *AuthorWhere {
 	w.w.PredList("target_club_reader_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) TargetClubReaderCountIn(vs []int64) *Author {
+func (q *AuthorQuery) TargetClubReaderCountIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("target_club_reader_count", "in", orm.Anys(vs))
 	return q
 }
@@ -1908,7 +2058,7 @@ func (w *AuthorWhere) TargetClubReaderCountNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("target_club_reader_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) TargetClubReaderCountNotIn(vs []int64) *Author {
+func (q *AuthorQuery) TargetClubReaderCountNotIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("target_club_reader_count", "not_in", orm.Anys(vs))
 	return q
 }
@@ -1916,7 +2066,7 @@ func (w *AuthorWhere) TargetClubReaderCountBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("target_club_reader_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) TargetClubReaderCountBetween(lo, hi int64) *Author {
+func (q *AuthorQuery) TargetClubReaderCountBetween(lo, hi int64) *AuthorQuery {
 	q.q.W().PredList("target_club_reader_count", "between", []any{lo, hi})
 	return q
 }
@@ -1924,7 +2074,7 @@ func (w *AuthorWhere) TargetClubReaderCountIsNull() *AuthorWhere {
 	w.w.PredNull("target_club_reader_count", "is_null")
 	return w
 }
-func (q *Author) TargetClubReaderCountIsNull() *Author {
+func (q *AuthorQuery) TargetClubReaderCountIsNull() *AuthorQuery {
 	q.q.W().PredNull("target_club_reader_count", "is_null")
 	return q
 }
@@ -1932,7 +2082,7 @@ func (w *AuthorWhere) TargetClubReaderCountIsNotNull() *AuthorWhere {
 	w.w.PredNull("target_club_reader_count", "is_not_null")
 	return w
 }
-func (q *Author) TargetClubReaderCountIsNotNull() *Author {
+func (q *AuthorQuery) TargetClubReaderCountIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("target_club_reader_count", "is_not_null")
 	return q
 }
@@ -1940,7 +2090,7 @@ func (w *AuthorWhere) TargetClubReaderCountEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("target_club_reader_count", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) TargetClubReaderCountEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) TargetClubReaderCountEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("target_club_reader_count", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1948,7 +2098,7 @@ func (w *AuthorWhere) TargetClubReaderCountNotEqCol(ref orm.ColRef) *AuthorWhere
 	w.w.PredCol("target_club_reader_count", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) TargetClubReaderCountNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) TargetClubReaderCountNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("target_club_reader_count", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -1956,7 +2106,7 @@ func (w *AuthorWhere) TargetClubReaderCountGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("target_club_reader_count", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) TargetClubReaderCountGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) TargetClubReaderCountGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("target_club_reader_count", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1964,7 +2114,7 @@ func (w *AuthorWhere) TargetClubReaderCountGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("target_club_reader_count", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) TargetClubReaderCountGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) TargetClubReaderCountGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("target_club_reader_count", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1972,7 +2122,7 @@ func (w *AuthorWhere) TargetClubReaderCountLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("target_club_reader_count", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) TargetClubReaderCountLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) TargetClubReaderCountLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("target_club_reader_count", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -1980,7 +2130,7 @@ func (w *AuthorWhere) TargetClubReaderCountLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("target_club_reader_count", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) TargetClubReaderCountLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) TargetClubReaderCountLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("target_club_reader_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -1988,12 +2138,17 @@ func (w *AuthorWhere) SuccessCountEq(v int64) *AuthorWhere {
 	w.w.Pred("success_count", "eq", v)
 	return w
 }
-func (q *Author) SuccessCountEq(v int64) *Author { q.q.W().Pred("success_count", "eq", v); return q }
+func (q *AuthorQuery) SuccessCountEq(v int64) *AuthorQuery {
+	q.q.W().Pred("success_count", "eq", v)
+	return q
+}
+func (w *AuthorWhere) SuccessCount(v int64) *AuthorWhere { return w.SuccessCountEq(v) }
+func (q *AuthorQuery) SuccessCount(v int64) *AuthorQuery { return q.SuccessCountEq(v) }
 func (w *AuthorWhere) SuccessCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("success_count", "not_eq", v)
 	return w
 }
-func (q *Author) SuccessCountNotEq(v int64) *Author {
+func (q *AuthorQuery) SuccessCountNotEq(v int64) *AuthorQuery {
 	q.q.W().Pred("success_count", "not_eq", v)
 	return q
 }
@@ -2001,27 +2156,39 @@ func (w *AuthorWhere) SuccessCountGt(v int64) *AuthorWhere {
 	w.w.Pred("success_count", "gt", v)
 	return w
 }
-func (q *Author) SuccessCountGt(v int64) *Author { q.q.W().Pred("success_count", "gt", v); return q }
+func (q *AuthorQuery) SuccessCountGt(v int64) *AuthorQuery {
+	q.q.W().Pred("success_count", "gt", v)
+	return q
+}
 func (w *AuthorWhere) SuccessCountGte(v int64) *AuthorWhere {
 	w.w.Pred("success_count", "gte", v)
 	return w
 }
-func (q *Author) SuccessCountGte(v int64) *Author { q.q.W().Pred("success_count", "gte", v); return q }
+func (q *AuthorQuery) SuccessCountGte(v int64) *AuthorQuery {
+	q.q.W().Pred("success_count", "gte", v)
+	return q
+}
 func (w *AuthorWhere) SuccessCountLt(v int64) *AuthorWhere {
 	w.w.Pred("success_count", "lt", v)
 	return w
 }
-func (q *Author) SuccessCountLt(v int64) *Author { q.q.W().Pred("success_count", "lt", v); return q }
+func (q *AuthorQuery) SuccessCountLt(v int64) *AuthorQuery {
+	q.q.W().Pred("success_count", "lt", v)
+	return q
+}
 func (w *AuthorWhere) SuccessCountLte(v int64) *AuthorWhere {
 	w.w.Pred("success_count", "lte", v)
 	return w
 }
-func (q *Author) SuccessCountLte(v int64) *Author { q.q.W().Pred("success_count", "lte", v); return q }
+func (q *AuthorQuery) SuccessCountLte(v int64) *AuthorQuery {
+	q.q.W().Pred("success_count", "lte", v)
+	return q
+}
 func (w *AuthorWhere) SuccessCountIn(vs []int64) *AuthorWhere {
 	w.w.PredList("success_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) SuccessCountIn(vs []int64) *Author {
+func (q *AuthorQuery) SuccessCountIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("success_count", "in", orm.Anys(vs))
 	return q
 }
@@ -2029,7 +2196,7 @@ func (w *AuthorWhere) SuccessCountNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("success_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) SuccessCountNotIn(vs []int64) *Author {
+func (q *AuthorQuery) SuccessCountNotIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("success_count", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2037,7 +2204,7 @@ func (w *AuthorWhere) SuccessCountBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("success_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) SuccessCountBetween(lo, hi int64) *Author {
+func (q *AuthorQuery) SuccessCountBetween(lo, hi int64) *AuthorQuery {
 	q.q.W().PredList("success_count", "between", []any{lo, hi})
 	return q
 }
@@ -2045,12 +2212,15 @@ func (w *AuthorWhere) SuccessCountIsNull() *AuthorWhere {
 	w.w.PredNull("success_count", "is_null")
 	return w
 }
-func (q *Author) SuccessCountIsNull() *Author { q.q.W().PredNull("success_count", "is_null"); return q }
+func (q *AuthorQuery) SuccessCountIsNull() *AuthorQuery {
+	q.q.W().PredNull("success_count", "is_null")
+	return q
+}
 func (w *AuthorWhere) SuccessCountIsNotNull() *AuthorWhere {
 	w.w.PredNull("success_count", "is_not_null")
 	return w
 }
-func (q *Author) SuccessCountIsNotNull() *Author {
+func (q *AuthorQuery) SuccessCountIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("success_count", "is_not_null")
 	return q
 }
@@ -2058,7 +2228,7 @@ func (w *AuthorWhere) SuccessCountEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("success_count", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) SuccessCountEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) SuccessCountEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("success_count", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2066,7 +2236,7 @@ func (w *AuthorWhere) SuccessCountNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("success_count", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) SuccessCountNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) SuccessCountNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("success_count", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2074,7 +2244,7 @@ func (w *AuthorWhere) SuccessCountGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("success_count", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) SuccessCountGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) SuccessCountGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("success_count", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2082,7 +2252,7 @@ func (w *AuthorWhere) SuccessCountGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("success_count", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) SuccessCountGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) SuccessCountGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("success_count", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2090,7 +2260,7 @@ func (w *AuthorWhere) SuccessCountLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("success_count", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) SuccessCountLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) SuccessCountLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("success_count", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2098,7 +2268,7 @@ func (w *AuthorWhere) SuccessCountLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("success_count", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) SuccessCountLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) SuccessCountLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("success_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2106,12 +2276,17 @@ func (w *AuthorWhere) ReaderCountEq(v int64) *AuthorWhere {
 	w.w.Pred("reader_count", "eq", v)
 	return w
 }
-func (q *Author) ReaderCountEq(v int64) *Author { q.q.W().Pred("reader_count", "eq", v); return q }
+func (q *AuthorQuery) ReaderCountEq(v int64) *AuthorQuery {
+	q.q.W().Pred("reader_count", "eq", v)
+	return q
+}
+func (w *AuthorWhere) ReaderCount(v int64) *AuthorWhere { return w.ReaderCountEq(v) }
+func (q *AuthorQuery) ReaderCount(v int64) *AuthorQuery { return q.ReaderCountEq(v) }
 func (w *AuthorWhere) ReaderCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("reader_count", "not_eq", v)
 	return w
 }
-func (q *Author) ReaderCountNotEq(v int64) *Author {
+func (q *AuthorQuery) ReaderCountNotEq(v int64) *AuthorQuery {
 	q.q.W().Pred("reader_count", "not_eq", v)
 	return q
 }
@@ -2119,27 +2294,39 @@ func (w *AuthorWhere) ReaderCountGt(v int64) *AuthorWhere {
 	w.w.Pred("reader_count", "gt", v)
 	return w
 }
-func (q *Author) ReaderCountGt(v int64) *Author { q.q.W().Pred("reader_count", "gt", v); return q }
+func (q *AuthorQuery) ReaderCountGt(v int64) *AuthorQuery {
+	q.q.W().Pred("reader_count", "gt", v)
+	return q
+}
 func (w *AuthorWhere) ReaderCountGte(v int64) *AuthorWhere {
 	w.w.Pred("reader_count", "gte", v)
 	return w
 }
-func (q *Author) ReaderCountGte(v int64) *Author { q.q.W().Pred("reader_count", "gte", v); return q }
+func (q *AuthorQuery) ReaderCountGte(v int64) *AuthorQuery {
+	q.q.W().Pred("reader_count", "gte", v)
+	return q
+}
 func (w *AuthorWhere) ReaderCountLt(v int64) *AuthorWhere {
 	w.w.Pred("reader_count", "lt", v)
 	return w
 }
-func (q *Author) ReaderCountLt(v int64) *Author { q.q.W().Pred("reader_count", "lt", v); return q }
+func (q *AuthorQuery) ReaderCountLt(v int64) *AuthorQuery {
+	q.q.W().Pred("reader_count", "lt", v)
+	return q
+}
 func (w *AuthorWhere) ReaderCountLte(v int64) *AuthorWhere {
 	w.w.Pred("reader_count", "lte", v)
 	return w
 }
-func (q *Author) ReaderCountLte(v int64) *Author { q.q.W().Pred("reader_count", "lte", v); return q }
+func (q *AuthorQuery) ReaderCountLte(v int64) *AuthorQuery {
+	q.q.W().Pred("reader_count", "lte", v)
+	return q
+}
 func (w *AuthorWhere) ReaderCountIn(vs []int64) *AuthorWhere {
 	w.w.PredList("reader_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ReaderCountIn(vs []int64) *Author {
+func (q *AuthorQuery) ReaderCountIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("reader_count", "in", orm.Anys(vs))
 	return q
 }
@@ -2147,7 +2334,7 @@ func (w *AuthorWhere) ReaderCountNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("reader_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ReaderCountNotIn(vs []int64) *Author {
+func (q *AuthorQuery) ReaderCountNotIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("reader_count", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2155,7 +2342,7 @@ func (w *AuthorWhere) ReaderCountBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("reader_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) ReaderCountBetween(lo, hi int64) *Author {
+func (q *AuthorQuery) ReaderCountBetween(lo, hi int64) *AuthorQuery {
 	q.q.W().PredList("reader_count", "between", []any{lo, hi})
 	return q
 }
@@ -2163,12 +2350,15 @@ func (w *AuthorWhere) ReaderCountIsNull() *AuthorWhere {
 	w.w.PredNull("reader_count", "is_null")
 	return w
 }
-func (q *Author) ReaderCountIsNull() *Author { q.q.W().PredNull("reader_count", "is_null"); return q }
+func (q *AuthorQuery) ReaderCountIsNull() *AuthorQuery {
+	q.q.W().PredNull("reader_count", "is_null")
+	return q
+}
 func (w *AuthorWhere) ReaderCountIsNotNull() *AuthorWhere {
 	w.w.PredNull("reader_count", "is_not_null")
 	return w
 }
-func (q *Author) ReaderCountIsNotNull() *Author {
+func (q *AuthorQuery) ReaderCountIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("reader_count", "is_not_null")
 	return q
 }
@@ -2176,7 +2366,7 @@ func (w *AuthorWhere) ReaderCountEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("reader_count", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ReaderCountEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ReaderCountEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("reader_count", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2184,7 +2374,7 @@ func (w *AuthorWhere) ReaderCountNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("reader_count", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ReaderCountNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ReaderCountNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("reader_count", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2192,7 +2382,7 @@ func (w *AuthorWhere) ReaderCountGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("reader_count", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ReaderCountGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ReaderCountGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("reader_count", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2200,7 +2390,7 @@ func (w *AuthorWhere) ReaderCountGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("reader_count", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ReaderCountGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ReaderCountGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("reader_count", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2208,7 +2398,7 @@ func (w *AuthorWhere) ReaderCountLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("reader_count", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ReaderCountLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ReaderCountLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("reader_count", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2216,30 +2406,50 @@ func (w *AuthorWhere) ReaderCountLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("reader_count", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ReaderCountLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ReaderCountLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("reader_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) ReadCountEq(v int64) *AuthorWhere { w.w.Pred("read_count", "eq", v); return w }
-func (q *Author) ReadCountEq(v int64) *Author           { q.q.W().Pred("read_count", "eq", v); return q }
+func (q *AuthorQuery) ReadCountEq(v int64) *AuthorQuery {
+	q.q.W().Pred("read_count", "eq", v)
+	return q
+}
+func (w *AuthorWhere) ReadCount(v int64) *AuthorWhere { return w.ReadCountEq(v) }
+func (q *AuthorQuery) ReadCount(v int64) *AuthorQuery { return q.ReadCountEq(v) }
 func (w *AuthorWhere) ReadCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("read_count", "not_eq", v)
 	return w
 }
-func (q *Author) ReadCountNotEq(v int64) *Author         { q.q.W().Pred("read_count", "not_eq", v); return q }
-func (w *AuthorWhere) ReadCountGt(v int64) *AuthorWhere  { w.w.Pred("read_count", "gt", v); return w }
-func (q *Author) ReadCountGt(v int64) *Author            { q.q.W().Pred("read_count", "gt", v); return q }
+func (q *AuthorQuery) ReadCountNotEq(v int64) *AuthorQuery {
+	q.q.W().Pred("read_count", "not_eq", v)
+	return q
+}
+func (w *AuthorWhere) ReadCountGt(v int64) *AuthorWhere { w.w.Pred("read_count", "gt", v); return w }
+func (q *AuthorQuery) ReadCountGt(v int64) *AuthorQuery {
+	q.q.W().Pred("read_count", "gt", v)
+	return q
+}
 func (w *AuthorWhere) ReadCountGte(v int64) *AuthorWhere { w.w.Pred("read_count", "gte", v); return w }
-func (q *Author) ReadCountGte(v int64) *Author           { q.q.W().Pred("read_count", "gte", v); return q }
-func (w *AuthorWhere) ReadCountLt(v int64) *AuthorWhere  { w.w.Pred("read_count", "lt", v); return w }
-func (q *Author) ReadCountLt(v int64) *Author            { q.q.W().Pred("read_count", "lt", v); return q }
+func (q *AuthorQuery) ReadCountGte(v int64) *AuthorQuery {
+	q.q.W().Pred("read_count", "gte", v)
+	return q
+}
+func (w *AuthorWhere) ReadCountLt(v int64) *AuthorWhere { w.w.Pred("read_count", "lt", v); return w }
+func (q *AuthorQuery) ReadCountLt(v int64) *AuthorQuery {
+	q.q.W().Pred("read_count", "lt", v)
+	return q
+}
 func (w *AuthorWhere) ReadCountLte(v int64) *AuthorWhere { w.w.Pred("read_count", "lte", v); return w }
-func (q *Author) ReadCountLte(v int64) *Author           { q.q.W().Pred("read_count", "lte", v); return q }
+func (q *AuthorQuery) ReadCountLte(v int64) *AuthorQuery {
+	q.q.W().Pred("read_count", "lte", v)
+	return q
+}
 func (w *AuthorWhere) ReadCountIn(vs []int64) *AuthorWhere {
 	w.w.PredList("read_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ReadCountIn(vs []int64) *Author {
+func (q *AuthorQuery) ReadCountIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("read_count", "in", orm.Anys(vs))
 	return q
 }
@@ -2247,7 +2457,7 @@ func (w *AuthorWhere) ReadCountNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("read_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ReadCountNotIn(vs []int64) *Author {
+func (q *AuthorQuery) ReadCountNotIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("read_count", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2255,17 +2465,20 @@ func (w *AuthorWhere) ReadCountBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("read_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) ReadCountBetween(lo, hi int64) *Author {
+func (q *AuthorQuery) ReadCountBetween(lo, hi int64) *AuthorQuery {
 	q.q.W().PredList("read_count", "between", []any{lo, hi})
 	return q
 }
 func (w *AuthorWhere) ReadCountIsNull() *AuthorWhere { w.w.PredNull("read_count", "is_null"); return w }
-func (q *Author) ReadCountIsNull() *Author           { q.q.W().PredNull("read_count", "is_null"); return q }
+func (q *AuthorQuery) ReadCountIsNull() *AuthorQuery {
+	q.q.W().PredNull("read_count", "is_null")
+	return q
+}
 func (w *AuthorWhere) ReadCountIsNotNull() *AuthorWhere {
 	w.w.PredNull("read_count", "is_not_null")
 	return w
 }
-func (q *Author) ReadCountIsNotNull() *Author {
+func (q *AuthorQuery) ReadCountIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("read_count", "is_not_null")
 	return q
 }
@@ -2273,7 +2486,7 @@ func (w *AuthorWhere) ReadCountEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("read_count", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ReadCountEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ReadCountEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("read_count", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2281,7 +2494,7 @@ func (w *AuthorWhere) ReadCountNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("read_count", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ReadCountNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ReadCountNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("read_count", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2289,7 +2502,7 @@ func (w *AuthorWhere) ReadCountGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("read_count", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ReadCountGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ReadCountGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("read_count", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2297,7 +2510,7 @@ func (w *AuthorWhere) ReadCountGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("read_count", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ReadCountGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ReadCountGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("read_count", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2305,7 +2518,7 @@ func (w *AuthorWhere) ReadCountLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("read_count", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ReadCountLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ReadCountLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("read_count", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2313,22 +2526,27 @@ func (w *AuthorWhere) ReadCountLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("read_count", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ReadCountLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ReadCountLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("read_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) PhotoUrlEq(v string) *AuthorWhere { w.w.Pred("photo_url", "eq", v); return w }
-func (q *Author) PhotoUrlEq(v string) *Author           { q.q.W().Pred("photo_url", "eq", v); return q }
+func (q *AuthorQuery) PhotoUrlEq(v string) *AuthorQuery { q.q.W().Pred("photo_url", "eq", v); return q }
+func (w *AuthorWhere) PhotoUrl(v string) *AuthorWhere   { return w.PhotoUrlEq(v) }
+func (q *AuthorQuery) PhotoUrl(v string) *AuthorQuery   { return q.PhotoUrlEq(v) }
 func (w *AuthorWhere) PhotoUrlNotEq(v string) *AuthorWhere {
 	w.w.Pred("photo_url", "not_eq", v)
 	return w
 }
-func (q *Author) PhotoUrlNotEq(v string) *Author { q.q.W().Pred("photo_url", "not_eq", v); return q }
+func (q *AuthorQuery) PhotoUrlNotEq(v string) *AuthorQuery {
+	q.q.W().Pred("photo_url", "not_eq", v)
+	return q
+}
 func (w *AuthorWhere) PhotoUrlIn(vs []string) *AuthorWhere {
 	w.w.PredList("photo_url", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) PhotoUrlIn(vs []string) *Author {
+func (q *AuthorQuery) PhotoUrlIn(vs []string) *AuthorQuery {
 	q.q.W().PredList("photo_url", "in", orm.Anys(vs))
 	return q
 }
@@ -2336,17 +2554,20 @@ func (w *AuthorWhere) PhotoUrlNotIn(vs []string) *AuthorWhere {
 	w.w.PredList("photo_url", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) PhotoUrlNotIn(vs []string) *Author {
+func (q *AuthorQuery) PhotoUrlNotIn(vs []string) *AuthorQuery {
 	q.q.W().PredList("photo_url", "not_in", orm.Anys(vs))
 	return q
 }
 func (w *AuthorWhere) PhotoUrlLike(v string) *AuthorWhere { w.w.Pred("photo_url", "like", v); return w }
-func (q *Author) PhotoUrlLike(v string) *Author           { q.q.W().Pred("photo_url", "like", v); return q }
+func (q *AuthorQuery) PhotoUrlLike(v string) *AuthorQuery {
+	q.q.W().Pred("photo_url", "like", v)
+	return q
+}
 func (w *AuthorWhere) PhotoUrlLikeBinary(v string) *AuthorWhere {
 	w.w.Pred("photo_url", "like_binary", v)
 	return w
 }
-func (q *Author) PhotoUrlLikeBinary(v string) *Author {
+func (q *AuthorQuery) PhotoUrlLikeBinary(v string) *AuthorQuery {
 	q.q.W().Pred("photo_url", "like_binary", v)
 	return q
 }
@@ -2354,7 +2575,7 @@ func (w *AuthorWhere) PhotoUrlContains(v string) *AuthorWhere {
 	w.w.Pred("photo_url", "contains", v)
 	return w
 }
-func (q *Author) PhotoUrlContains(v string) *Author {
+func (q *AuthorQuery) PhotoUrlContains(v string) *AuthorQuery {
 	q.q.W().Pred("photo_url", "contains", v)
 	return q
 }
@@ -2362,7 +2583,7 @@ func (w *AuthorWhere) PhotoUrlStartsWith(v string) *AuthorWhere {
 	w.w.Pred("photo_url", "starts_with", v)
 	return w
 }
-func (q *Author) PhotoUrlStartsWith(v string) *Author {
+func (q *AuthorQuery) PhotoUrlStartsWith(v string) *AuthorQuery {
 	q.q.W().Pred("photo_url", "starts_with", v)
 	return q
 }
@@ -2370,22 +2591,28 @@ func (w *AuthorWhere) PhotoUrlEndsWith(v string) *AuthorWhere {
 	w.w.Pred("photo_url", "ends_with", v)
 	return w
 }
-func (q *Author) PhotoUrlEndsWith(v string) *Author {
+func (q *AuthorQuery) PhotoUrlEndsWith(v string) *AuthorQuery {
 	q.q.W().Pred("photo_url", "ends_with", v)
 	return q
 }
 func (w *AuthorWhere) PhotoUrlIsNull() *AuthorWhere { w.w.PredNull("photo_url", "is_null"); return w }
-func (q *Author) PhotoUrlIsNull() *Author           { q.q.W().PredNull("photo_url", "is_null"); return q }
+func (q *AuthorQuery) PhotoUrlIsNull() *AuthorQuery {
+	q.q.W().PredNull("photo_url", "is_null")
+	return q
+}
 func (w *AuthorWhere) PhotoUrlIsNotNull() *AuthorWhere {
 	w.w.PredNull("photo_url", "is_not_null")
 	return w
 }
-func (q *Author) PhotoUrlIsNotNull() *Author { q.q.W().PredNull("photo_url", "is_not_null"); return q }
+func (q *AuthorQuery) PhotoUrlIsNotNull() *AuthorQuery {
+	q.q.W().PredNull("photo_url", "is_not_null")
+	return q
+}
 func (w *AuthorWhere) PhotoUrlEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("photo_url", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) PhotoUrlEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) PhotoUrlEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("photo_url", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2393,27 +2620,32 @@ func (w *AuthorWhere) PhotoUrlNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("photo_url", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) PhotoUrlNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) PhotoUrlNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("photo_url", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) UserSeqEq(v int64) *AuthorWhere    { w.w.Pred("user_seq", "eq", v); return w }
-func (q *Author) UserSeqEq(v int64) *Author              { q.q.W().Pred("user_seq", "eq", v); return q }
+func (q *AuthorQuery) UserSeqEq(v int64) *AuthorQuery    { q.q.W().Pred("user_seq", "eq", v); return q }
+func (w *AuthorWhere) UserSeq(v int64) *AuthorWhere      { return w.UserSeqEq(v) }
+func (q *AuthorQuery) UserSeq(v int64) *AuthorQuery      { return q.UserSeqEq(v) }
 func (w *AuthorWhere) UserSeqNotEq(v int64) *AuthorWhere { w.w.Pred("user_seq", "not_eq", v); return w }
-func (q *Author) UserSeqNotEq(v int64) *Author           { q.q.W().Pred("user_seq", "not_eq", v); return q }
-func (w *AuthorWhere) UserSeqGt(v int64) *AuthorWhere    { w.w.Pred("user_seq", "gt", v); return w }
-func (q *Author) UserSeqGt(v int64) *Author              { q.q.W().Pred("user_seq", "gt", v); return q }
-func (w *AuthorWhere) UserSeqGte(v int64) *AuthorWhere   { w.w.Pred("user_seq", "gte", v); return w }
-func (q *Author) UserSeqGte(v int64) *Author             { q.q.W().Pred("user_seq", "gte", v); return q }
-func (w *AuthorWhere) UserSeqLt(v int64) *AuthorWhere    { w.w.Pred("user_seq", "lt", v); return w }
-func (q *Author) UserSeqLt(v int64) *Author              { q.q.W().Pred("user_seq", "lt", v); return q }
-func (w *AuthorWhere) UserSeqLte(v int64) *AuthorWhere   { w.w.Pred("user_seq", "lte", v); return w }
-func (q *Author) UserSeqLte(v int64) *Author             { q.q.W().Pred("user_seq", "lte", v); return q }
+func (q *AuthorQuery) UserSeqNotEq(v int64) *AuthorQuery {
+	q.q.W().Pred("user_seq", "not_eq", v)
+	return q
+}
+func (w *AuthorWhere) UserSeqGt(v int64) *AuthorWhere  { w.w.Pred("user_seq", "gt", v); return w }
+func (q *AuthorQuery) UserSeqGt(v int64) *AuthorQuery  { q.q.W().Pred("user_seq", "gt", v); return q }
+func (w *AuthorWhere) UserSeqGte(v int64) *AuthorWhere { w.w.Pred("user_seq", "gte", v); return w }
+func (q *AuthorQuery) UserSeqGte(v int64) *AuthorQuery { q.q.W().Pred("user_seq", "gte", v); return q }
+func (w *AuthorWhere) UserSeqLt(v int64) *AuthorWhere  { w.w.Pred("user_seq", "lt", v); return w }
+func (q *AuthorQuery) UserSeqLt(v int64) *AuthorQuery  { q.q.W().Pred("user_seq", "lt", v); return q }
+func (w *AuthorWhere) UserSeqLte(v int64) *AuthorWhere { w.w.Pred("user_seq", "lte", v); return w }
+func (q *AuthorQuery) UserSeqLte(v int64) *AuthorQuery { q.q.W().Pred("user_seq", "lte", v); return q }
 func (w *AuthorWhere) UserSeqIn(vs []int64) *AuthorWhere {
 	w.w.PredList("user_seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) UserSeqIn(vs []int64) *Author {
+func (q *AuthorQuery) UserSeqIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("user_seq", "in", orm.Anys(vs))
 	return q
 }
@@ -2421,7 +2653,7 @@ func (w *AuthorWhere) UserSeqNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("user_seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) UserSeqNotIn(vs []int64) *Author {
+func (q *AuthorQuery) UserSeqNotIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("user_seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2429,22 +2661,25 @@ func (w *AuthorWhere) UserSeqBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("user_seq", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) UserSeqBetween(lo, hi int64) *Author {
+func (q *AuthorQuery) UserSeqBetween(lo, hi int64) *AuthorQuery {
 	q.q.W().PredList("user_seq", "between", []any{lo, hi})
 	return q
 }
 func (w *AuthorWhere) UserSeqIsNull() *AuthorWhere { w.w.PredNull("user_seq", "is_null"); return w }
-func (q *Author) UserSeqIsNull() *Author           { q.q.W().PredNull("user_seq", "is_null"); return q }
+func (q *AuthorQuery) UserSeqIsNull() *AuthorQuery { q.q.W().PredNull("user_seq", "is_null"); return q }
 func (w *AuthorWhere) UserSeqIsNotNull() *AuthorWhere {
 	w.w.PredNull("user_seq", "is_not_null")
 	return w
 }
-func (q *Author) UserSeqIsNotNull() *Author { q.q.W().PredNull("user_seq", "is_not_null"); return q }
+func (q *AuthorQuery) UserSeqIsNotNull() *AuthorQuery {
+	q.q.W().PredNull("user_seq", "is_not_null")
+	return q
+}
 func (w *AuthorWhere) UserSeqEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("user_seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UserSeqEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UserSeqEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("user_seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2452,7 +2687,7 @@ func (w *AuthorWhere) UserSeqNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("user_seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UserSeqNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UserSeqNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("user_seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2460,7 +2695,7 @@ func (w *AuthorWhere) UserSeqGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("user_seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UserSeqGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UserSeqGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("user_seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2468,7 +2703,7 @@ func (w *AuthorWhere) UserSeqGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("user_seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UserSeqGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UserSeqGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("user_seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2476,7 +2711,7 @@ func (w *AuthorWhere) UserSeqLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("user_seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UserSeqLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UserSeqLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("user_seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2484,36 +2719,56 @@ func (w *AuthorWhere) UserSeqLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("user_seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UserSeqLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UserSeqLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("user_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) ServiceSeqEq(v int64) *AuthorWhere { w.w.Pred("service_seq", "eq", v); return w }
-func (q *Author) ServiceSeqEq(v int64) *Author           { q.q.W().Pred("service_seq", "eq", v); return q }
+func (q *AuthorQuery) ServiceSeqEq(v int64) *AuthorQuery {
+	q.q.W().Pred("service_seq", "eq", v)
+	return q
+}
+func (w *AuthorWhere) ServiceSeq(v int64) *AuthorWhere { return w.ServiceSeqEq(v) }
+func (q *AuthorQuery) ServiceSeq(v int64) *AuthorQuery { return q.ServiceSeqEq(v) }
 func (w *AuthorWhere) ServiceSeqNotEq(v int64) *AuthorWhere {
 	w.w.Pred("service_seq", "not_eq", v)
 	return w
 }
-func (q *Author) ServiceSeqNotEq(v int64) *Author        { q.q.W().Pred("service_seq", "not_eq", v); return q }
+func (q *AuthorQuery) ServiceSeqNotEq(v int64) *AuthorQuery {
+	q.q.W().Pred("service_seq", "not_eq", v)
+	return q
+}
 func (w *AuthorWhere) ServiceSeqGt(v int64) *AuthorWhere { w.w.Pred("service_seq", "gt", v); return w }
-func (q *Author) ServiceSeqGt(v int64) *Author           { q.q.W().Pred("service_seq", "gt", v); return q }
+func (q *AuthorQuery) ServiceSeqGt(v int64) *AuthorQuery {
+	q.q.W().Pred("service_seq", "gt", v)
+	return q
+}
 func (w *AuthorWhere) ServiceSeqGte(v int64) *AuthorWhere {
 	w.w.Pred("service_seq", "gte", v)
 	return w
 }
-func (q *Author) ServiceSeqGte(v int64) *Author          { q.q.W().Pred("service_seq", "gte", v); return q }
+func (q *AuthorQuery) ServiceSeqGte(v int64) *AuthorQuery {
+	q.q.W().Pred("service_seq", "gte", v)
+	return q
+}
 func (w *AuthorWhere) ServiceSeqLt(v int64) *AuthorWhere { w.w.Pred("service_seq", "lt", v); return w }
-func (q *Author) ServiceSeqLt(v int64) *Author           { q.q.W().Pred("service_seq", "lt", v); return q }
+func (q *AuthorQuery) ServiceSeqLt(v int64) *AuthorQuery {
+	q.q.W().Pred("service_seq", "lt", v)
+	return q
+}
 func (w *AuthorWhere) ServiceSeqLte(v int64) *AuthorWhere {
 	w.w.Pred("service_seq", "lte", v)
 	return w
 }
-func (q *Author) ServiceSeqLte(v int64) *Author { q.q.W().Pred("service_seq", "lte", v); return q }
+func (q *AuthorQuery) ServiceSeqLte(v int64) *AuthorQuery {
+	q.q.W().Pred("service_seq", "lte", v)
+	return q
+}
 func (w *AuthorWhere) ServiceSeqIn(vs []int64) *AuthorWhere {
 	w.w.PredList("service_seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ServiceSeqIn(vs []int64) *Author {
+func (q *AuthorQuery) ServiceSeqIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("service_seq", "in", orm.Anys(vs))
 	return q
 }
@@ -2521,7 +2776,7 @@ func (w *AuthorWhere) ServiceSeqNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("service_seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ServiceSeqNotIn(vs []int64) *Author {
+func (q *AuthorQuery) ServiceSeqNotIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("service_seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2529,7 +2784,7 @@ func (w *AuthorWhere) ServiceSeqBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("service_seq", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) ServiceSeqBetween(lo, hi int64) *Author {
+func (q *AuthorQuery) ServiceSeqBetween(lo, hi int64) *AuthorQuery {
 	q.q.W().PredList("service_seq", "between", []any{lo, hi})
 	return q
 }
@@ -2537,12 +2792,15 @@ func (w *AuthorWhere) ServiceSeqIsNull() *AuthorWhere {
 	w.w.PredNull("service_seq", "is_null")
 	return w
 }
-func (q *Author) ServiceSeqIsNull() *Author { q.q.W().PredNull("service_seq", "is_null"); return q }
+func (q *AuthorQuery) ServiceSeqIsNull() *AuthorQuery {
+	q.q.W().PredNull("service_seq", "is_null")
+	return q
+}
 func (w *AuthorWhere) ServiceSeqIsNotNull() *AuthorWhere {
 	w.w.PredNull("service_seq", "is_not_null")
 	return w
 }
-func (q *Author) ServiceSeqIsNotNull() *Author {
+func (q *AuthorQuery) ServiceSeqIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("service_seq", "is_not_null")
 	return q
 }
@@ -2550,7 +2808,7 @@ func (w *AuthorWhere) ServiceSeqEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceSeqEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceSeqEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2558,7 +2816,7 @@ func (w *AuthorWhere) ServiceSeqNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceSeqNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceSeqNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2566,7 +2824,7 @@ func (w *AuthorWhere) ServiceSeqGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceSeqGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceSeqGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2574,7 +2832,7 @@ func (w *AuthorWhere) ServiceSeqGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceSeqGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceSeqGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2582,7 +2840,7 @@ func (w *AuthorWhere) ServiceSeqLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceSeqLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceSeqLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2590,7 +2848,7 @@ func (w *AuthorWhere) ServiceSeqLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceSeqLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceSeqLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2598,15 +2856,17 @@ func (w *AuthorWhere) ServiceRegionSeqEq(v int64) *AuthorWhere {
 	w.w.Pred("service_region_seq", "eq", v)
 	return w
 }
-func (q *Author) ServiceRegionSeqEq(v int64) *Author {
+func (q *AuthorQuery) ServiceRegionSeqEq(v int64) *AuthorQuery {
 	q.q.W().Pred("service_region_seq", "eq", v)
 	return q
 }
+func (w *AuthorWhere) ServiceRegionSeq(v int64) *AuthorWhere { return w.ServiceRegionSeqEq(v) }
+func (q *AuthorQuery) ServiceRegionSeq(v int64) *AuthorQuery { return q.ServiceRegionSeqEq(v) }
 func (w *AuthorWhere) ServiceRegionSeqNotEq(v int64) *AuthorWhere {
 	w.w.Pred("service_region_seq", "not_eq", v)
 	return w
 }
-func (q *Author) ServiceRegionSeqNotEq(v int64) *Author {
+func (q *AuthorQuery) ServiceRegionSeqNotEq(v int64) *AuthorQuery {
 	q.q.W().Pred("service_region_seq", "not_eq", v)
 	return q
 }
@@ -2614,7 +2874,7 @@ func (w *AuthorWhere) ServiceRegionSeqGt(v int64) *AuthorWhere {
 	w.w.Pred("service_region_seq", "gt", v)
 	return w
 }
-func (q *Author) ServiceRegionSeqGt(v int64) *Author {
+func (q *AuthorQuery) ServiceRegionSeqGt(v int64) *AuthorQuery {
 	q.q.W().Pred("service_region_seq", "gt", v)
 	return q
 }
@@ -2622,7 +2882,7 @@ func (w *AuthorWhere) ServiceRegionSeqGte(v int64) *AuthorWhere {
 	w.w.Pred("service_region_seq", "gte", v)
 	return w
 }
-func (q *Author) ServiceRegionSeqGte(v int64) *Author {
+func (q *AuthorQuery) ServiceRegionSeqGte(v int64) *AuthorQuery {
 	q.q.W().Pred("service_region_seq", "gte", v)
 	return q
 }
@@ -2630,7 +2890,7 @@ func (w *AuthorWhere) ServiceRegionSeqLt(v int64) *AuthorWhere {
 	w.w.Pred("service_region_seq", "lt", v)
 	return w
 }
-func (q *Author) ServiceRegionSeqLt(v int64) *Author {
+func (q *AuthorQuery) ServiceRegionSeqLt(v int64) *AuthorQuery {
 	q.q.W().Pred("service_region_seq", "lt", v)
 	return q
 }
@@ -2638,7 +2898,7 @@ func (w *AuthorWhere) ServiceRegionSeqLte(v int64) *AuthorWhere {
 	w.w.Pred("service_region_seq", "lte", v)
 	return w
 }
-func (q *Author) ServiceRegionSeqLte(v int64) *Author {
+func (q *AuthorQuery) ServiceRegionSeqLte(v int64) *AuthorQuery {
 	q.q.W().Pred("service_region_seq", "lte", v)
 	return q
 }
@@ -2646,7 +2906,7 @@ func (w *AuthorWhere) ServiceRegionSeqIn(vs []int64) *AuthorWhere {
 	w.w.PredList("service_region_seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ServiceRegionSeqIn(vs []int64) *Author {
+func (q *AuthorQuery) ServiceRegionSeqIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("service_region_seq", "in", orm.Anys(vs))
 	return q
 }
@@ -2654,7 +2914,7 @@ func (w *AuthorWhere) ServiceRegionSeqNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("service_region_seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ServiceRegionSeqNotIn(vs []int64) *Author {
+func (q *AuthorQuery) ServiceRegionSeqNotIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("service_region_seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2662,7 +2922,7 @@ func (w *AuthorWhere) ServiceRegionSeqBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("service_region_seq", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) ServiceRegionSeqBetween(lo, hi int64) *Author {
+func (q *AuthorQuery) ServiceRegionSeqBetween(lo, hi int64) *AuthorQuery {
 	q.q.W().PredList("service_region_seq", "between", []any{lo, hi})
 	return q
 }
@@ -2670,7 +2930,7 @@ func (w *AuthorWhere) ServiceRegionSeqIsNull() *AuthorWhere {
 	w.w.PredNull("service_region_seq", "is_null")
 	return w
 }
-func (q *Author) ServiceRegionSeqIsNull() *Author {
+func (q *AuthorQuery) ServiceRegionSeqIsNull() *AuthorQuery {
 	q.q.W().PredNull("service_region_seq", "is_null")
 	return q
 }
@@ -2678,7 +2938,7 @@ func (w *AuthorWhere) ServiceRegionSeqIsNotNull() *AuthorWhere {
 	w.w.PredNull("service_region_seq", "is_not_null")
 	return w
 }
-func (q *Author) ServiceRegionSeqIsNotNull() *Author {
+func (q *AuthorQuery) ServiceRegionSeqIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("service_region_seq", "is_not_null")
 	return q
 }
@@ -2686,7 +2946,7 @@ func (w *AuthorWhere) ServiceRegionSeqEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_region_seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceRegionSeqEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceRegionSeqEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_region_seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2694,7 +2954,7 @@ func (w *AuthorWhere) ServiceRegionSeqNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_region_seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceRegionSeqNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceRegionSeqNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_region_seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2702,7 +2962,7 @@ func (w *AuthorWhere) ServiceRegionSeqGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_region_seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceRegionSeqGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceRegionSeqGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_region_seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2710,7 +2970,7 @@ func (w *AuthorWhere) ServiceRegionSeqGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_region_seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceRegionSeqGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceRegionSeqGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_region_seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2718,7 +2978,7 @@ func (w *AuthorWhere) ServiceRegionSeqLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_region_seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceRegionSeqLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceRegionSeqLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_region_seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2726,7 +2986,7 @@ func (w *AuthorWhere) ServiceRegionSeqLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_region_seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceRegionSeqLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceRegionSeqLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_region_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2734,15 +2994,17 @@ func (w *AuthorWhere) ServiceMemberSeqEq(v int64) *AuthorWhere {
 	w.w.Pred("service_member_seq", "eq", v)
 	return w
 }
-func (q *Author) ServiceMemberSeqEq(v int64) *Author {
+func (q *AuthorQuery) ServiceMemberSeqEq(v int64) *AuthorQuery {
 	q.q.W().Pred("service_member_seq", "eq", v)
 	return q
 }
+func (w *AuthorWhere) ServiceMemberSeq(v int64) *AuthorWhere { return w.ServiceMemberSeqEq(v) }
+func (q *AuthorQuery) ServiceMemberSeq(v int64) *AuthorQuery { return q.ServiceMemberSeqEq(v) }
 func (w *AuthorWhere) ServiceMemberSeqNotEq(v int64) *AuthorWhere {
 	w.w.Pred("service_member_seq", "not_eq", v)
 	return w
 }
-func (q *Author) ServiceMemberSeqNotEq(v int64) *Author {
+func (q *AuthorQuery) ServiceMemberSeqNotEq(v int64) *AuthorQuery {
 	q.q.W().Pred("service_member_seq", "not_eq", v)
 	return q
 }
@@ -2750,7 +3012,7 @@ func (w *AuthorWhere) ServiceMemberSeqGt(v int64) *AuthorWhere {
 	w.w.Pred("service_member_seq", "gt", v)
 	return w
 }
-func (q *Author) ServiceMemberSeqGt(v int64) *Author {
+func (q *AuthorQuery) ServiceMemberSeqGt(v int64) *AuthorQuery {
 	q.q.W().Pred("service_member_seq", "gt", v)
 	return q
 }
@@ -2758,7 +3020,7 @@ func (w *AuthorWhere) ServiceMemberSeqGte(v int64) *AuthorWhere {
 	w.w.Pred("service_member_seq", "gte", v)
 	return w
 }
-func (q *Author) ServiceMemberSeqGte(v int64) *Author {
+func (q *AuthorQuery) ServiceMemberSeqGte(v int64) *AuthorQuery {
 	q.q.W().Pred("service_member_seq", "gte", v)
 	return q
 }
@@ -2766,7 +3028,7 @@ func (w *AuthorWhere) ServiceMemberSeqLt(v int64) *AuthorWhere {
 	w.w.Pred("service_member_seq", "lt", v)
 	return w
 }
-func (q *Author) ServiceMemberSeqLt(v int64) *Author {
+func (q *AuthorQuery) ServiceMemberSeqLt(v int64) *AuthorQuery {
 	q.q.W().Pred("service_member_seq", "lt", v)
 	return q
 }
@@ -2774,7 +3036,7 @@ func (w *AuthorWhere) ServiceMemberSeqLte(v int64) *AuthorWhere {
 	w.w.Pred("service_member_seq", "lte", v)
 	return w
 }
-func (q *Author) ServiceMemberSeqLte(v int64) *Author {
+func (q *AuthorQuery) ServiceMemberSeqLte(v int64) *AuthorQuery {
 	q.q.W().Pred("service_member_seq", "lte", v)
 	return q
 }
@@ -2782,7 +3044,7 @@ func (w *AuthorWhere) ServiceMemberSeqIn(vs []int64) *AuthorWhere {
 	w.w.PredList("service_member_seq", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ServiceMemberSeqIn(vs []int64) *Author {
+func (q *AuthorQuery) ServiceMemberSeqIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("service_member_seq", "in", orm.Anys(vs))
 	return q
 }
@@ -2790,7 +3052,7 @@ func (w *AuthorWhere) ServiceMemberSeqNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("service_member_seq", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) ServiceMemberSeqNotIn(vs []int64) *Author {
+func (q *AuthorQuery) ServiceMemberSeqNotIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("service_member_seq", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2798,7 +3060,7 @@ func (w *AuthorWhere) ServiceMemberSeqBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("service_member_seq", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) ServiceMemberSeqBetween(lo, hi int64) *Author {
+func (q *AuthorQuery) ServiceMemberSeqBetween(lo, hi int64) *AuthorQuery {
 	q.q.W().PredList("service_member_seq", "between", []any{lo, hi})
 	return q
 }
@@ -2806,7 +3068,7 @@ func (w *AuthorWhere) ServiceMemberSeqIsNull() *AuthorWhere {
 	w.w.PredNull("service_member_seq", "is_null")
 	return w
 }
-func (q *Author) ServiceMemberSeqIsNull() *Author {
+func (q *AuthorQuery) ServiceMemberSeqIsNull() *AuthorQuery {
 	q.q.W().PredNull("service_member_seq", "is_null")
 	return q
 }
@@ -2814,7 +3076,7 @@ func (w *AuthorWhere) ServiceMemberSeqIsNotNull() *AuthorWhere {
 	w.w.PredNull("service_member_seq", "is_not_null")
 	return w
 }
-func (q *Author) ServiceMemberSeqIsNotNull() *Author {
+func (q *AuthorQuery) ServiceMemberSeqIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("service_member_seq", "is_not_null")
 	return q
 }
@@ -2822,7 +3084,7 @@ func (w *AuthorWhere) ServiceMemberSeqEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_member_seq", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceMemberSeqEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceMemberSeqEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_member_seq", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2830,7 +3092,7 @@ func (w *AuthorWhere) ServiceMemberSeqNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_member_seq", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceMemberSeqNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceMemberSeqNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_member_seq", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2838,7 +3100,7 @@ func (w *AuthorWhere) ServiceMemberSeqGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_member_seq", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceMemberSeqGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceMemberSeqGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_member_seq", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2846,7 +3108,7 @@ func (w *AuthorWhere) ServiceMemberSeqGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_member_seq", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceMemberSeqGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceMemberSeqGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_member_seq", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2854,7 +3116,7 @@ func (w *AuthorWhere) ServiceMemberSeqLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_member_seq", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceMemberSeqLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceMemberSeqLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_member_seq", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2862,30 +3124,50 @@ func (w *AuthorWhere) ServiceMemberSeqLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("service_member_seq", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) ServiceMemberSeqLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) ServiceMemberSeqLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("service_member_seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) StartDtEq(v time.Time) *AuthorWhere { w.w.Pred("start_dt", "eq", v); return w }
-func (q *Author) StartDtEq(v time.Time) *Author           { q.q.W().Pred("start_dt", "eq", v); return q }
+func (q *AuthorQuery) StartDtEq(v time.Time) *AuthorQuery {
+	q.q.W().Pred("start_dt", "eq", v)
+	return q
+}
+func (w *AuthorWhere) StartDt(v time.Time) *AuthorWhere { return w.StartDtEq(v) }
+func (q *AuthorQuery) StartDt(v time.Time) *AuthorQuery { return q.StartDtEq(v) }
 func (w *AuthorWhere) StartDtNotEq(v time.Time) *AuthorWhere {
 	w.w.Pred("start_dt", "not_eq", v)
 	return w
 }
-func (q *Author) StartDtNotEq(v time.Time) *Author         { q.q.W().Pred("start_dt", "not_eq", v); return q }
-func (w *AuthorWhere) StartDtGt(v time.Time) *AuthorWhere  { w.w.Pred("start_dt", "gt", v); return w }
-func (q *Author) StartDtGt(v time.Time) *Author            { q.q.W().Pred("start_dt", "gt", v); return q }
+func (q *AuthorQuery) StartDtNotEq(v time.Time) *AuthorQuery {
+	q.q.W().Pred("start_dt", "not_eq", v)
+	return q
+}
+func (w *AuthorWhere) StartDtGt(v time.Time) *AuthorWhere { w.w.Pred("start_dt", "gt", v); return w }
+func (q *AuthorQuery) StartDtGt(v time.Time) *AuthorQuery {
+	q.q.W().Pred("start_dt", "gt", v)
+	return q
+}
 func (w *AuthorWhere) StartDtGte(v time.Time) *AuthorWhere { w.w.Pred("start_dt", "gte", v); return w }
-func (q *Author) StartDtGte(v time.Time) *Author           { q.q.W().Pred("start_dt", "gte", v); return q }
-func (w *AuthorWhere) StartDtLt(v time.Time) *AuthorWhere  { w.w.Pred("start_dt", "lt", v); return w }
-func (q *Author) StartDtLt(v time.Time) *Author            { q.q.W().Pred("start_dt", "lt", v); return q }
+func (q *AuthorQuery) StartDtGte(v time.Time) *AuthorQuery {
+	q.q.W().Pred("start_dt", "gte", v)
+	return q
+}
+func (w *AuthorWhere) StartDtLt(v time.Time) *AuthorWhere { w.w.Pred("start_dt", "lt", v); return w }
+func (q *AuthorQuery) StartDtLt(v time.Time) *AuthorQuery {
+	q.q.W().Pred("start_dt", "lt", v)
+	return q
+}
 func (w *AuthorWhere) StartDtLte(v time.Time) *AuthorWhere { w.w.Pred("start_dt", "lte", v); return w }
-func (q *Author) StartDtLte(v time.Time) *Author           { q.q.W().Pred("start_dt", "lte", v); return q }
+func (q *AuthorQuery) StartDtLte(v time.Time) *AuthorQuery {
+	q.q.W().Pred("start_dt", "lte", v)
+	return q
+}
 func (w *AuthorWhere) StartDtIn(vs []time.Time) *AuthorWhere {
 	w.w.PredList("start_dt", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) StartDtIn(vs []time.Time) *Author {
+func (q *AuthorQuery) StartDtIn(vs []time.Time) *AuthorQuery {
 	q.q.W().PredList("start_dt", "in", orm.Anys(vs))
 	return q
 }
@@ -2893,7 +3175,7 @@ func (w *AuthorWhere) StartDtNotIn(vs []time.Time) *AuthorWhere {
 	w.w.PredList("start_dt", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) StartDtNotIn(vs []time.Time) *Author {
+func (q *AuthorQuery) StartDtNotIn(vs []time.Time) *AuthorQuery {
 	q.q.W().PredList("start_dt", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2901,22 +3183,25 @@ func (w *AuthorWhere) StartDtBetween(lo, hi time.Time) *AuthorWhere {
 	w.w.PredList("start_dt", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) StartDtBetween(lo, hi time.Time) *Author {
+func (q *AuthorQuery) StartDtBetween(lo, hi time.Time) *AuthorQuery {
 	q.q.W().PredList("start_dt", "between", []any{lo, hi})
 	return q
 }
 func (w *AuthorWhere) StartDtIsNull() *AuthorWhere { w.w.PredNull("start_dt", "is_null"); return w }
-func (q *Author) StartDtIsNull() *Author           { q.q.W().PredNull("start_dt", "is_null"); return q }
+func (q *AuthorQuery) StartDtIsNull() *AuthorQuery { q.q.W().PredNull("start_dt", "is_null"); return q }
 func (w *AuthorWhere) StartDtIsNotNull() *AuthorWhere {
 	w.w.PredNull("start_dt", "is_not_null")
 	return w
 }
-func (q *Author) StartDtIsNotNull() *Author { q.q.W().PredNull("start_dt", "is_not_null"); return q }
+func (q *AuthorQuery) StartDtIsNotNull() *AuthorQuery {
+	q.q.W().PredNull("start_dt", "is_not_null")
+	return q
+}
 func (w *AuthorWhere) StartDtEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("start_dt", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) StartDtEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) StartDtEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("start_dt", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2924,7 +3209,7 @@ func (w *AuthorWhere) StartDtNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("start_dt", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) StartDtNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) StartDtNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("start_dt", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -2932,7 +3217,7 @@ func (w *AuthorWhere) StartDtGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("start_dt", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) StartDtGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) StartDtGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("start_dt", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2940,7 +3225,7 @@ func (w *AuthorWhere) StartDtGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("start_dt", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) StartDtGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) StartDtGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("start_dt", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -2948,7 +3233,7 @@ func (w *AuthorWhere) StartDtLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("start_dt", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) StartDtLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) StartDtLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("start_dt", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -2956,27 +3241,32 @@ func (w *AuthorWhere) StartDtLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("start_dt", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) StartDtLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) StartDtLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("start_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) EndDtEq(v time.Time) *AuthorWhere    { w.w.Pred("end_dt", "eq", v); return w }
-func (q *Author) EndDtEq(v time.Time) *Author              { q.q.W().Pred("end_dt", "eq", v); return q }
+func (q *AuthorQuery) EndDtEq(v time.Time) *AuthorQuery    { q.q.W().Pred("end_dt", "eq", v); return q }
+func (w *AuthorWhere) EndDt(v time.Time) *AuthorWhere      { return w.EndDtEq(v) }
+func (q *AuthorQuery) EndDt(v time.Time) *AuthorQuery      { return q.EndDtEq(v) }
 func (w *AuthorWhere) EndDtNotEq(v time.Time) *AuthorWhere { w.w.Pred("end_dt", "not_eq", v); return w }
-func (q *Author) EndDtNotEq(v time.Time) *Author           { q.q.W().Pred("end_dt", "not_eq", v); return q }
-func (w *AuthorWhere) EndDtGt(v time.Time) *AuthorWhere    { w.w.Pred("end_dt", "gt", v); return w }
-func (q *Author) EndDtGt(v time.Time) *Author              { q.q.W().Pred("end_dt", "gt", v); return q }
-func (w *AuthorWhere) EndDtGte(v time.Time) *AuthorWhere   { w.w.Pred("end_dt", "gte", v); return w }
-func (q *Author) EndDtGte(v time.Time) *Author             { q.q.W().Pred("end_dt", "gte", v); return q }
-func (w *AuthorWhere) EndDtLt(v time.Time) *AuthorWhere    { w.w.Pred("end_dt", "lt", v); return w }
-func (q *Author) EndDtLt(v time.Time) *Author              { q.q.W().Pred("end_dt", "lt", v); return q }
-func (w *AuthorWhere) EndDtLte(v time.Time) *AuthorWhere   { w.w.Pred("end_dt", "lte", v); return w }
-func (q *Author) EndDtLte(v time.Time) *Author             { q.q.W().Pred("end_dt", "lte", v); return q }
+func (q *AuthorQuery) EndDtNotEq(v time.Time) *AuthorQuery {
+	q.q.W().Pred("end_dt", "not_eq", v)
+	return q
+}
+func (w *AuthorWhere) EndDtGt(v time.Time) *AuthorWhere  { w.w.Pred("end_dt", "gt", v); return w }
+func (q *AuthorQuery) EndDtGt(v time.Time) *AuthorQuery  { q.q.W().Pred("end_dt", "gt", v); return q }
+func (w *AuthorWhere) EndDtGte(v time.Time) *AuthorWhere { w.w.Pred("end_dt", "gte", v); return w }
+func (q *AuthorQuery) EndDtGte(v time.Time) *AuthorQuery { q.q.W().Pred("end_dt", "gte", v); return q }
+func (w *AuthorWhere) EndDtLt(v time.Time) *AuthorWhere  { w.w.Pred("end_dt", "lt", v); return w }
+func (q *AuthorQuery) EndDtLt(v time.Time) *AuthorQuery  { q.q.W().Pred("end_dt", "lt", v); return q }
+func (w *AuthorWhere) EndDtLte(v time.Time) *AuthorWhere { w.w.Pred("end_dt", "lte", v); return w }
+func (q *AuthorQuery) EndDtLte(v time.Time) *AuthorQuery { q.q.W().Pred("end_dt", "lte", v); return q }
 func (w *AuthorWhere) EndDtIn(vs []time.Time) *AuthorWhere {
 	w.w.PredList("end_dt", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) EndDtIn(vs []time.Time) *Author {
+func (q *AuthorQuery) EndDtIn(vs []time.Time) *AuthorQuery {
 	q.q.W().PredList("end_dt", "in", orm.Anys(vs))
 	return q
 }
@@ -2984,7 +3274,7 @@ func (w *AuthorWhere) EndDtNotIn(vs []time.Time) *AuthorWhere {
 	w.w.PredList("end_dt", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) EndDtNotIn(vs []time.Time) *Author {
+func (q *AuthorQuery) EndDtNotIn(vs []time.Time) *AuthorQuery {
 	q.q.W().PredList("end_dt", "not_in", orm.Anys(vs))
 	return q
 }
@@ -2992,19 +3282,22 @@ func (w *AuthorWhere) EndDtBetween(lo, hi time.Time) *AuthorWhere {
 	w.w.PredList("end_dt", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) EndDtBetween(lo, hi time.Time) *Author {
+func (q *AuthorQuery) EndDtBetween(lo, hi time.Time) *AuthorQuery {
 	q.q.W().PredList("end_dt", "between", []any{lo, hi})
 	return q
 }
 func (w *AuthorWhere) EndDtIsNull() *AuthorWhere    { w.w.PredNull("end_dt", "is_null"); return w }
-func (q *Author) EndDtIsNull() *Author              { q.q.W().PredNull("end_dt", "is_null"); return q }
+func (q *AuthorQuery) EndDtIsNull() *AuthorQuery    { q.q.W().PredNull("end_dt", "is_null"); return q }
 func (w *AuthorWhere) EndDtIsNotNull() *AuthorWhere { w.w.PredNull("end_dt", "is_not_null"); return w }
-func (q *Author) EndDtIsNotNull() *Author           { q.q.W().PredNull("end_dt", "is_not_null"); return q }
+func (q *AuthorQuery) EndDtIsNotNull() *AuthorQuery {
+	q.q.W().PredNull("end_dt", "is_not_null")
+	return q
+}
 func (w *AuthorWhere) EndDtEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("end_dt", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) EndDtEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) EndDtEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("end_dt", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3012,7 +3305,7 @@ func (w *AuthorWhere) EndDtNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("end_dt", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) EndDtNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) EndDtNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("end_dt", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3020,7 +3313,7 @@ func (w *AuthorWhere) EndDtGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("end_dt", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) EndDtGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) EndDtGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("end_dt", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -3028,7 +3321,7 @@ func (w *AuthorWhere) EndDtGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("end_dt", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) EndDtGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) EndDtGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("end_dt", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -3036,7 +3329,7 @@ func (w *AuthorWhere) EndDtLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("end_dt", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) EndDtLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) EndDtLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("end_dt", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -3044,52 +3337,69 @@ func (w *AuthorWhere) EndDtLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("end_dt", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) EndDtLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) EndDtLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("end_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) UuidEq(v string) *AuthorWhere    { w.w.Pred("uuid", "eq", v); return w }
-func (q *Author) UuidEq(v string) *Author              { q.q.W().Pred("uuid", "eq", v); return q }
+func (q *AuthorQuery) UuidEq(v string) *AuthorQuery    { q.q.W().Pred("uuid", "eq", v); return q }
+func (w *AuthorWhere) Uuid(v string) *AuthorWhere      { return w.UuidEq(v) }
+func (q *AuthorQuery) Uuid(v string) *AuthorQuery      { return q.UuidEq(v) }
 func (w *AuthorWhere) UuidNotEq(v string) *AuthorWhere { w.w.Pred("uuid", "not_eq", v); return w }
-func (q *Author) UuidNotEq(v string) *Author           { q.q.W().Pred("uuid", "not_eq", v); return q }
+func (q *AuthorQuery) UuidNotEq(v string) *AuthorQuery { q.q.W().Pred("uuid", "not_eq", v); return q }
 func (w *AuthorWhere) UuidIn(vs []string) *AuthorWhere {
 	w.w.PredList("uuid", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) UuidIn(vs []string) *Author { q.q.W().PredList("uuid", "in", orm.Anys(vs)); return q }
+func (q *AuthorQuery) UuidIn(vs []string) *AuthorQuery {
+	q.q.W().PredList("uuid", "in", orm.Anys(vs))
+	return q
+}
 func (w *AuthorWhere) UuidNotIn(vs []string) *AuthorWhere {
 	w.w.PredList("uuid", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) UuidNotIn(vs []string) *Author {
+func (q *AuthorQuery) UuidNotIn(vs []string) *AuthorQuery {
 	q.q.W().PredList("uuid", "not_in", orm.Anys(vs))
 	return q
 }
 func (w *AuthorWhere) UuidLike(v string) *AuthorWhere { w.w.Pred("uuid", "like", v); return w }
-func (q *Author) UuidLike(v string) *Author           { q.q.W().Pred("uuid", "like", v); return q }
+func (q *AuthorQuery) UuidLike(v string) *AuthorQuery { q.q.W().Pred("uuid", "like", v); return q }
 func (w *AuthorWhere) UuidLikeBinary(v string) *AuthorWhere {
 	w.w.Pred("uuid", "like_binary", v)
 	return w
 }
-func (q *Author) UuidLikeBinary(v string) *Author         { q.q.W().Pred("uuid", "like_binary", v); return q }
+func (q *AuthorQuery) UuidLikeBinary(v string) *AuthorQuery {
+	q.q.W().Pred("uuid", "like_binary", v)
+	return q
+}
 func (w *AuthorWhere) UuidContains(v string) *AuthorWhere { w.w.Pred("uuid", "contains", v); return w }
-func (q *Author) UuidContains(v string) *Author           { q.q.W().Pred("uuid", "contains", v); return q }
+func (q *AuthorQuery) UuidContains(v string) *AuthorQuery {
+	q.q.W().Pred("uuid", "contains", v)
+	return q
+}
 func (w *AuthorWhere) UuidStartsWith(v string) *AuthorWhere {
 	w.w.Pred("uuid", "starts_with", v)
 	return w
 }
-func (q *Author) UuidStartsWith(v string) *Author         { q.q.W().Pred("uuid", "starts_with", v); return q }
+func (q *AuthorQuery) UuidStartsWith(v string) *AuthorQuery {
+	q.q.W().Pred("uuid", "starts_with", v)
+	return q
+}
 func (w *AuthorWhere) UuidEndsWith(v string) *AuthorWhere { w.w.Pred("uuid", "ends_with", v); return w }
-func (q *Author) UuidEndsWith(v string) *Author           { q.q.W().Pred("uuid", "ends_with", v); return q }
-func (w *AuthorWhere) UuidIsNull() *AuthorWhere           { w.w.PredNull("uuid", "is_null"); return w }
-func (q *Author) UuidIsNull() *Author                     { q.q.W().PredNull("uuid", "is_null"); return q }
-func (w *AuthorWhere) UuidIsNotNull() *AuthorWhere        { w.w.PredNull("uuid", "is_not_null"); return w }
-func (q *Author) UuidIsNotNull() *Author                  { q.q.W().PredNull("uuid", "is_not_null"); return q }
+func (q *AuthorQuery) UuidEndsWith(v string) *AuthorQuery {
+	q.q.W().Pred("uuid", "ends_with", v)
+	return q
+}
+func (w *AuthorWhere) UuidIsNull() *AuthorWhere    { w.w.PredNull("uuid", "is_null"); return w }
+func (q *AuthorQuery) UuidIsNull() *AuthorQuery    { q.q.W().PredNull("uuid", "is_null"); return q }
+func (w *AuthorWhere) UuidIsNotNull() *AuthorWhere { w.w.PredNull("uuid", "is_not_null"); return w }
+func (q *AuthorQuery) UuidIsNotNull() *AuthorQuery { q.q.W().PredNull("uuid", "is_not_null"); return q }
 func (w *AuthorWhere) UuidEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("uuid", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UuidEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UuidEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("uuid", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3097,7 +3407,7 @@ func (w *AuthorWhere) UuidNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("uuid", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) UuidNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) UuidNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("uuid", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3105,12 +3415,17 @@ func (w *AuthorWhere) IsSingleWorkEq(v bool) *AuthorWhere {
 	w.w.Pred("is_single_work", "eq", v)
 	return w
 }
-func (q *Author) IsSingleWorkEq(v bool) *Author { q.q.W().Pred("is_single_work", "eq", v); return q }
+func (q *AuthorQuery) IsSingleWorkEq(v bool) *AuthorQuery {
+	q.q.W().Pred("is_single_work", "eq", v)
+	return q
+}
+func (w *AuthorWhere) IsSingleWork(v bool) *AuthorWhere { return w.IsSingleWorkEq(v) }
+func (q *AuthorQuery) IsSingleWork(v bool) *AuthorQuery { return q.IsSingleWorkEq(v) }
 func (w *AuthorWhere) IsSingleWorkNotEq(v bool) *AuthorWhere {
 	w.w.Pred("is_single_work", "not_eq", v)
 	return w
 }
-func (q *Author) IsSingleWorkNotEq(v bool) *Author {
+func (q *AuthorQuery) IsSingleWorkNotEq(v bool) *AuthorQuery {
 	q.q.W().Pred("is_single_work", "not_eq", v)
 	return q
 }
@@ -3118,7 +3433,7 @@ func (w *AuthorWhere) IsSingleWorkIsNull() *AuthorWhere {
 	w.w.PredNull("is_single_work", "is_null")
 	return w
 }
-func (q *Author) IsSingleWorkIsNull() *Author {
+func (q *AuthorQuery) IsSingleWorkIsNull() *AuthorQuery {
 	q.q.W().PredNull("is_single_work", "is_null")
 	return q
 }
@@ -3126,7 +3441,7 @@ func (w *AuthorWhere) IsSingleWorkIsNotNull() *AuthorWhere {
 	w.w.PredNull("is_single_work", "is_not_null")
 	return w
 }
-func (q *Author) IsSingleWorkIsNotNull() *Author {
+func (q *AuthorQuery) IsSingleWorkIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("is_single_work", "is_not_null")
 	return q
 }
@@ -3134,7 +3449,7 @@ func (w *AuthorWhere) IsSingleWorkEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("is_single_work", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) IsSingleWorkEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) IsSingleWorkEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("is_single_work", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3142,30 +3457,50 @@ func (w *AuthorWhere) IsSingleWorkNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("is_single_work", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) IsSingleWorkNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) IsSingleWorkNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("is_single_work", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) LikeCountEq(v int64) *AuthorWhere { w.w.Pred("like_count", "eq", v); return w }
-func (q *Author) LikeCountEq(v int64) *Author           { q.q.W().Pred("like_count", "eq", v); return q }
+func (q *AuthorQuery) LikeCountEq(v int64) *AuthorQuery {
+	q.q.W().Pred("like_count", "eq", v)
+	return q
+}
+func (w *AuthorWhere) LikeCount(v int64) *AuthorWhere { return w.LikeCountEq(v) }
+func (q *AuthorQuery) LikeCount(v int64) *AuthorQuery { return q.LikeCountEq(v) }
 func (w *AuthorWhere) LikeCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("like_count", "not_eq", v)
 	return w
 }
-func (q *Author) LikeCountNotEq(v int64) *Author         { q.q.W().Pred("like_count", "not_eq", v); return q }
-func (w *AuthorWhere) LikeCountGt(v int64) *AuthorWhere  { w.w.Pred("like_count", "gt", v); return w }
-func (q *Author) LikeCountGt(v int64) *Author            { q.q.W().Pred("like_count", "gt", v); return q }
+func (q *AuthorQuery) LikeCountNotEq(v int64) *AuthorQuery {
+	q.q.W().Pred("like_count", "not_eq", v)
+	return q
+}
+func (w *AuthorWhere) LikeCountGt(v int64) *AuthorWhere { w.w.Pred("like_count", "gt", v); return w }
+func (q *AuthorQuery) LikeCountGt(v int64) *AuthorQuery {
+	q.q.W().Pred("like_count", "gt", v)
+	return q
+}
 func (w *AuthorWhere) LikeCountGte(v int64) *AuthorWhere { w.w.Pred("like_count", "gte", v); return w }
-func (q *Author) LikeCountGte(v int64) *Author           { q.q.W().Pred("like_count", "gte", v); return q }
-func (w *AuthorWhere) LikeCountLt(v int64) *AuthorWhere  { w.w.Pred("like_count", "lt", v); return w }
-func (q *Author) LikeCountLt(v int64) *Author            { q.q.W().Pred("like_count", "lt", v); return q }
+func (q *AuthorQuery) LikeCountGte(v int64) *AuthorQuery {
+	q.q.W().Pred("like_count", "gte", v)
+	return q
+}
+func (w *AuthorWhere) LikeCountLt(v int64) *AuthorWhere { w.w.Pred("like_count", "lt", v); return w }
+func (q *AuthorQuery) LikeCountLt(v int64) *AuthorQuery {
+	q.q.W().Pred("like_count", "lt", v)
+	return q
+}
 func (w *AuthorWhere) LikeCountLte(v int64) *AuthorWhere { w.w.Pred("like_count", "lte", v); return w }
-func (q *Author) LikeCountLte(v int64) *Author           { q.q.W().Pred("like_count", "lte", v); return q }
+func (q *AuthorQuery) LikeCountLte(v int64) *AuthorQuery {
+	q.q.W().Pred("like_count", "lte", v)
+	return q
+}
 func (w *AuthorWhere) LikeCountIn(vs []int64) *AuthorWhere {
 	w.w.PredList("like_count", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) LikeCountIn(vs []int64) *Author {
+func (q *AuthorQuery) LikeCountIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("like_count", "in", orm.Anys(vs))
 	return q
 }
@@ -3173,7 +3508,7 @@ func (w *AuthorWhere) LikeCountNotIn(vs []int64) *AuthorWhere {
 	w.w.PredList("like_count", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) LikeCountNotIn(vs []int64) *Author {
+func (q *AuthorQuery) LikeCountNotIn(vs []int64) *AuthorQuery {
 	q.q.W().PredList("like_count", "not_in", orm.Anys(vs))
 	return q
 }
@@ -3181,17 +3516,20 @@ func (w *AuthorWhere) LikeCountBetween(lo, hi int64) *AuthorWhere {
 	w.w.PredList("like_count", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) LikeCountBetween(lo, hi int64) *Author {
+func (q *AuthorQuery) LikeCountBetween(lo, hi int64) *AuthorQuery {
 	q.q.W().PredList("like_count", "between", []any{lo, hi})
 	return q
 }
 func (w *AuthorWhere) LikeCountIsNull() *AuthorWhere { w.w.PredNull("like_count", "is_null"); return w }
-func (q *Author) LikeCountIsNull() *Author           { q.q.W().PredNull("like_count", "is_null"); return q }
+func (q *AuthorQuery) LikeCountIsNull() *AuthorQuery {
+	q.q.W().PredNull("like_count", "is_null")
+	return q
+}
 func (w *AuthorWhere) LikeCountIsNotNull() *AuthorWhere {
 	w.w.PredNull("like_count", "is_not_null")
 	return w
 }
-func (q *Author) LikeCountIsNotNull() *Author {
+func (q *AuthorQuery) LikeCountIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("like_count", "is_not_null")
 	return q
 }
@@ -3199,7 +3537,7 @@ func (w *AuthorWhere) LikeCountEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("like_count", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) LikeCountEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) LikeCountEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("like_count", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3207,7 +3545,7 @@ func (w *AuthorWhere) LikeCountNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("like_count", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) LikeCountNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) LikeCountNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("like_count", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3215,7 +3553,7 @@ func (w *AuthorWhere) LikeCountGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("like_count", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) LikeCountGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) LikeCountGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("like_count", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -3223,7 +3561,7 @@ func (w *AuthorWhere) LikeCountGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("like_count", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) LikeCountGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) LikeCountGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("like_count", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -3231,7 +3569,7 @@ func (w *AuthorWhere) LikeCountLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("like_count", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) LikeCountLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) LikeCountLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("like_count", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -3239,7 +3577,7 @@ func (w *AuthorWhere) LikeCountLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("like_count", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) LikeCountLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) LikeCountLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("like_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
@@ -3247,12 +3585,17 @@ func (w *AuthorWhere) AesHexEmailEq(v string) *AuthorWhere {
 	w.w.Pred("aes_hex_email", "eq", v)
 	return w
 }
-func (q *Author) AesHexEmailEq(v string) *Author { q.q.W().Pred("aes_hex_email", "eq", v); return q }
+func (q *AuthorQuery) AesHexEmailEq(v string) *AuthorQuery {
+	q.q.W().Pred("aes_hex_email", "eq", v)
+	return q
+}
+func (w *AuthorWhere) AesHexEmail(v string) *AuthorWhere { return w.AesHexEmailEq(v) }
+func (q *AuthorQuery) AesHexEmail(v string) *AuthorQuery { return q.AesHexEmailEq(v) }
 func (w *AuthorWhere) AesHexEmailNotEq(v string) *AuthorWhere {
 	w.w.Pred("aes_hex_email", "not_eq", v)
 	return w
 }
-func (q *Author) AesHexEmailNotEq(v string) *Author {
+func (q *AuthorQuery) AesHexEmailNotEq(v string) *AuthorQuery {
 	q.q.W().Pred("aes_hex_email", "not_eq", v)
 	return q
 }
@@ -3260,7 +3603,7 @@ func (w *AuthorWhere) AesHexEmailIn(vs []string) *AuthorWhere {
 	w.w.PredList("aes_hex_email", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) AesHexEmailIn(vs []string) *Author {
+func (q *AuthorQuery) AesHexEmailIn(vs []string) *AuthorQuery {
 	q.q.W().PredList("aes_hex_email", "in", orm.Anys(vs))
 	return q
 }
@@ -3268,7 +3611,7 @@ func (w *AuthorWhere) AesHexEmailNotIn(vs []string) *AuthorWhere {
 	w.w.PredList("aes_hex_email", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) AesHexEmailNotIn(vs []string) *Author {
+func (q *AuthorQuery) AesHexEmailNotIn(vs []string) *AuthorQuery {
 	q.q.W().PredList("aes_hex_email", "not_in", orm.Anys(vs))
 	return q
 }
@@ -3276,12 +3619,15 @@ func (w *AuthorWhere) AesHexEmailIsNull() *AuthorWhere {
 	w.w.PredNull("aes_hex_email", "is_null")
 	return w
 }
-func (q *Author) AesHexEmailIsNull() *Author { q.q.W().PredNull("aes_hex_email", "is_null"); return q }
+func (q *AuthorQuery) AesHexEmailIsNull() *AuthorQuery {
+	q.q.W().PredNull("aes_hex_email", "is_null")
+	return q
+}
 func (w *AuthorWhere) AesHexEmailIsNotNull() *AuthorWhere {
 	w.w.PredNull("aes_hex_email", "is_not_null")
 	return w
 }
-func (q *Author) AesHexEmailIsNotNull() *Author {
+func (q *AuthorQuery) AesHexEmailIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("aes_hex_email", "is_not_null")
 	return q
 }
@@ -3289,7 +3635,7 @@ func (w *AuthorWhere) AesHexEmailEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("aes_hex_email", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) AesHexEmailEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) AesHexEmailEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("aes_hex_email", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3297,7 +3643,7 @@ func (w *AuthorWhere) AesHexEmailNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("aes_hex_email", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) AesHexEmailNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) AesHexEmailNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("aes_hex_email", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3305,12 +3651,17 @@ func (w *AuthorWhere) AesHexPhoneEq(v string) *AuthorWhere {
 	w.w.Pred("aes_hex_phone", "eq", v)
 	return w
 }
-func (q *Author) AesHexPhoneEq(v string) *Author { q.q.W().Pred("aes_hex_phone", "eq", v); return q }
+func (q *AuthorQuery) AesHexPhoneEq(v string) *AuthorQuery {
+	q.q.W().Pred("aes_hex_phone", "eq", v)
+	return q
+}
+func (w *AuthorWhere) AesHexPhone(v string) *AuthorWhere { return w.AesHexPhoneEq(v) }
+func (q *AuthorQuery) AesHexPhone(v string) *AuthorQuery { return q.AesHexPhoneEq(v) }
 func (w *AuthorWhere) AesHexPhoneNotEq(v string) *AuthorWhere {
 	w.w.Pred("aes_hex_phone", "not_eq", v)
 	return w
 }
-func (q *Author) AesHexPhoneNotEq(v string) *Author {
+func (q *AuthorQuery) AesHexPhoneNotEq(v string) *AuthorQuery {
 	q.q.W().Pred("aes_hex_phone", "not_eq", v)
 	return q
 }
@@ -3318,7 +3669,7 @@ func (w *AuthorWhere) AesHexPhoneIn(vs []string) *AuthorWhere {
 	w.w.PredList("aes_hex_phone", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) AesHexPhoneIn(vs []string) *Author {
+func (q *AuthorQuery) AesHexPhoneIn(vs []string) *AuthorQuery {
 	q.q.W().PredList("aes_hex_phone", "in", orm.Anys(vs))
 	return q
 }
@@ -3326,7 +3677,7 @@ func (w *AuthorWhere) AesHexPhoneNotIn(vs []string) *AuthorWhere {
 	w.w.PredList("aes_hex_phone", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) AesHexPhoneNotIn(vs []string) *Author {
+func (q *AuthorQuery) AesHexPhoneNotIn(vs []string) *AuthorQuery {
 	q.q.W().PredList("aes_hex_phone", "not_in", orm.Anys(vs))
 	return q
 }
@@ -3334,12 +3685,15 @@ func (w *AuthorWhere) AesHexPhoneIsNull() *AuthorWhere {
 	w.w.PredNull("aes_hex_phone", "is_null")
 	return w
 }
-func (q *Author) AesHexPhoneIsNull() *Author { q.q.W().PredNull("aes_hex_phone", "is_null"); return q }
+func (q *AuthorQuery) AesHexPhoneIsNull() *AuthorQuery {
+	q.q.W().PredNull("aes_hex_phone", "is_null")
+	return q
+}
 func (w *AuthorWhere) AesHexPhoneIsNotNull() *AuthorWhere {
 	w.w.PredNull("aes_hex_phone", "is_not_null")
 	return w
 }
-func (q *Author) AesHexPhoneIsNotNull() *Author {
+func (q *AuthorQuery) AesHexPhoneIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("aes_hex_phone", "is_not_null")
 	return q
 }
@@ -3347,7 +3701,7 @@ func (w *AuthorWhere) AesHexPhoneEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("aes_hex_phone", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) AesHexPhoneEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) AesHexPhoneEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("aes_hex_phone", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3355,27 +3709,32 @@ func (w *AuthorWhere) AesHexPhoneNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("aes_hex_phone", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) AesHexPhoneNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) AesHexPhoneNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("aes_hex_phone", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) PriceEq(v float64) *AuthorWhere    { w.w.Pred("price", "eq", v); return w }
-func (q *Author) PriceEq(v float64) *Author              { q.q.W().Pred("price", "eq", v); return q }
+func (q *AuthorQuery) PriceEq(v float64) *AuthorQuery    { q.q.W().Pred("price", "eq", v); return q }
+func (w *AuthorWhere) Price(v float64) *AuthorWhere      { return w.PriceEq(v) }
+func (q *AuthorQuery) Price(v float64) *AuthorQuery      { return q.PriceEq(v) }
 func (w *AuthorWhere) PriceNotEq(v float64) *AuthorWhere { w.w.Pred("price", "not_eq", v); return w }
-func (q *Author) PriceNotEq(v float64) *Author           { q.q.W().Pred("price", "not_eq", v); return q }
-func (w *AuthorWhere) PriceGt(v float64) *AuthorWhere    { w.w.Pred("price", "gt", v); return w }
-func (q *Author) PriceGt(v float64) *Author              { q.q.W().Pred("price", "gt", v); return q }
-func (w *AuthorWhere) PriceGte(v float64) *AuthorWhere   { w.w.Pred("price", "gte", v); return w }
-func (q *Author) PriceGte(v float64) *Author             { q.q.W().Pred("price", "gte", v); return q }
-func (w *AuthorWhere) PriceLt(v float64) *AuthorWhere    { w.w.Pred("price", "lt", v); return w }
-func (q *Author) PriceLt(v float64) *Author              { q.q.W().Pred("price", "lt", v); return q }
-func (w *AuthorWhere) PriceLte(v float64) *AuthorWhere   { w.w.Pred("price", "lte", v); return w }
-func (q *Author) PriceLte(v float64) *Author             { q.q.W().Pred("price", "lte", v); return q }
+func (q *AuthorQuery) PriceNotEq(v float64) *AuthorQuery {
+	q.q.W().Pred("price", "not_eq", v)
+	return q
+}
+func (w *AuthorWhere) PriceGt(v float64) *AuthorWhere  { w.w.Pred("price", "gt", v); return w }
+func (q *AuthorQuery) PriceGt(v float64) *AuthorQuery  { q.q.W().Pred("price", "gt", v); return q }
+func (w *AuthorWhere) PriceGte(v float64) *AuthorWhere { w.w.Pred("price", "gte", v); return w }
+func (q *AuthorQuery) PriceGte(v float64) *AuthorQuery { q.q.W().Pred("price", "gte", v); return q }
+func (w *AuthorWhere) PriceLt(v float64) *AuthorWhere  { w.w.Pred("price", "lt", v); return w }
+func (q *AuthorQuery) PriceLt(v float64) *AuthorQuery  { q.q.W().Pred("price", "lt", v); return q }
+func (w *AuthorWhere) PriceLte(v float64) *AuthorWhere { w.w.Pred("price", "lte", v); return w }
+func (q *AuthorQuery) PriceLte(v float64) *AuthorQuery { q.q.W().Pred("price", "lte", v); return q }
 func (w *AuthorWhere) PriceIn(vs []float64) *AuthorWhere {
 	w.w.PredList("price", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) PriceIn(vs []float64) *Author {
+func (q *AuthorQuery) PriceIn(vs []float64) *AuthorQuery {
 	q.q.W().PredList("price", "in", orm.Anys(vs))
 	return q
 }
@@ -3383,7 +3742,7 @@ func (w *AuthorWhere) PriceNotIn(vs []float64) *AuthorWhere {
 	w.w.PredList("price", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) PriceNotIn(vs []float64) *Author {
+func (q *AuthorQuery) PriceNotIn(vs []float64) *AuthorQuery {
 	q.q.W().PredList("price", "not_in", orm.Anys(vs))
 	return q
 }
@@ -3391,19 +3750,22 @@ func (w *AuthorWhere) PriceBetween(lo, hi float64) *AuthorWhere {
 	w.w.PredList("price", "between", []any{lo, hi})
 	return w
 }
-func (q *Author) PriceBetween(lo, hi float64) *Author {
+func (q *AuthorQuery) PriceBetween(lo, hi float64) *AuthorQuery {
 	q.q.W().PredList("price", "between", []any{lo, hi})
 	return q
 }
 func (w *AuthorWhere) PriceIsNull() *AuthorWhere    { w.w.PredNull("price", "is_null"); return w }
-func (q *Author) PriceIsNull() *Author              { q.q.W().PredNull("price", "is_null"); return q }
+func (q *AuthorQuery) PriceIsNull() *AuthorQuery    { q.q.W().PredNull("price", "is_null"); return q }
 func (w *AuthorWhere) PriceIsNotNull() *AuthorWhere { w.w.PredNull("price", "is_not_null"); return w }
-func (q *Author) PriceIsNotNull() *Author           { q.q.W().PredNull("price", "is_not_null"); return q }
+func (q *AuthorQuery) PriceIsNotNull() *AuthorQuery {
+	q.q.W().PredNull("price", "is_not_null")
+	return q
+}
 func (w *AuthorWhere) PriceEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("price", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) PriceEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) PriceEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("price", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3411,7 +3773,7 @@ func (w *AuthorWhere) PriceNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("price", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) PriceNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) PriceNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("price", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3419,7 +3781,7 @@ func (w *AuthorWhere) PriceGtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("price", "gt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) PriceGtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) PriceGtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("price", "gt_col", ref.Path, ref.Column)
 	return q
 }
@@ -3427,7 +3789,7 @@ func (w *AuthorWhere) PriceGteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("price", "gte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) PriceGteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) PriceGteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("price", "gte_col", ref.Path, ref.Column)
 	return q
 }
@@ -3435,7 +3797,7 @@ func (w *AuthorWhere) PriceLtCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("price", "lt_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) PriceLtCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) PriceLtCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("price", "lt_col", ref.Path, ref.Column)
 	return q
 }
@@ -3443,36 +3805,41 @@ func (w *AuthorWhere) PriceLteCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("price", "lte_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) PriceLteCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) PriceLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("price", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) IpEq(v string) *AuthorWhere    { w.w.Pred("ip", "eq", v); return w }
-func (q *Author) IpEq(v string) *Author              { q.q.W().Pred("ip", "eq", v); return q }
+func (q *AuthorQuery) IpEq(v string) *AuthorQuery    { q.q.W().Pred("ip", "eq", v); return q }
+func (w *AuthorWhere) Ip(v string) *AuthorWhere      { return w.IpEq(v) }
+func (q *AuthorQuery) Ip(v string) *AuthorQuery      { return q.IpEq(v) }
 func (w *AuthorWhere) IpNotEq(v string) *AuthorWhere { w.w.Pred("ip", "not_eq", v); return w }
-func (q *Author) IpNotEq(v string) *Author           { q.q.W().Pred("ip", "not_eq", v); return q }
+func (q *AuthorQuery) IpNotEq(v string) *AuthorQuery { q.q.W().Pred("ip", "not_eq", v); return q }
 func (w *AuthorWhere) IpIn(vs []string) *AuthorWhere {
 	w.w.PredList("ip", "in", orm.Anys(vs))
 	return w
 }
-func (q *Author) IpIn(vs []string) *Author { q.q.W().PredList("ip", "in", orm.Anys(vs)); return q }
+func (q *AuthorQuery) IpIn(vs []string) *AuthorQuery {
+	q.q.W().PredList("ip", "in", orm.Anys(vs))
+	return q
+}
 func (w *AuthorWhere) IpNotIn(vs []string) *AuthorWhere {
 	w.w.PredList("ip", "not_in", orm.Anys(vs))
 	return w
 }
-func (q *Author) IpNotIn(vs []string) *Author {
+func (q *AuthorQuery) IpNotIn(vs []string) *AuthorQuery {
 	q.q.W().PredList("ip", "not_in", orm.Anys(vs))
 	return q
 }
 func (w *AuthorWhere) IpIsNull() *AuthorWhere    { w.w.PredNull("ip", "is_null"); return w }
-func (q *Author) IpIsNull() *Author              { q.q.W().PredNull("ip", "is_null"); return q }
+func (q *AuthorQuery) IpIsNull() *AuthorQuery    { q.q.W().PredNull("ip", "is_null"); return q }
 func (w *AuthorWhere) IpIsNotNull() *AuthorWhere { w.w.PredNull("ip", "is_not_null"); return w }
-func (q *Author) IpIsNotNull() *Author           { q.q.W().PredNull("ip", "is_not_null"); return q }
+func (q *AuthorQuery) IpIsNotNull() *AuthorQuery { q.q.W().PredNull("ip", "is_not_null"); return q }
 func (w *AuthorWhere) IpEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("ip", "eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) IpEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) IpEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("ip", "eq_col", ref.Path, ref.Column)
 	return q
 }
@@ -3480,37 +3847,49 @@ func (w *AuthorWhere) IpNotEqCol(ref orm.ColRef) *AuthorWhere {
 	w.w.PredCol("ip", "not_eq_col", ref.Path, ref.Column)
 	return w
 }
-func (q *Author) IpNotEqCol(ref orm.ColRef) *Author {
+func (q *AuthorQuery) IpNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("ip", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) GzExtendIsNull() *AuthorWhere { w.w.PredNull("gz_extend", "is_null"); return w }
-func (q *Author) GzExtendIsNull() *Author           { q.q.W().PredNull("gz_extend", "is_null"); return q }
+func (q *AuthorQuery) GzExtendIsNull() *AuthorQuery {
+	q.q.W().PredNull("gz_extend", "is_null")
+	return q
+}
 func (w *AuthorWhere) GzExtendIsNotNull() *AuthorWhere {
 	w.w.PredNull("gz_extend", "is_not_null")
 	return w
 }
-func (q *Author) GzExtendIsNotNull() *Author { q.q.W().PredNull("gz_extend", "is_not_null"); return q }
+func (q *AuthorQuery) GzExtendIsNotNull() *AuthorQuery {
+	q.q.W().PredNull("gz_extend", "is_not_null")
+	return q
+}
 func (w *AuthorWhere) JsonSettingIsNull() *AuthorWhere {
 	w.w.PredNull("json_setting", "is_null")
 	return w
 }
-func (q *Author) JsonSettingIsNull() *Author { q.q.W().PredNull("json_setting", "is_null"); return q }
+func (q *AuthorQuery) JsonSettingIsNull() *AuthorQuery {
+	q.q.W().PredNull("json_setting", "is_null")
+	return q
+}
 func (w *AuthorWhere) JsonSettingIsNotNull() *AuthorWhere {
 	w.w.PredNull("json_setting", "is_not_null")
 	return w
 }
-func (q *Author) JsonSettingIsNotNull() *Author {
+func (q *AuthorQuery) JsonSettingIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("json_setting", "is_not_null")
 	return q
 }
 func (w *AuthorWhere) JsonsTagsIsNull() *AuthorWhere { w.w.PredNull("jsons_tags", "is_null"); return w }
-func (q *Author) JsonsTagsIsNull() *Author           { q.q.W().PredNull("jsons_tags", "is_null"); return q }
+func (q *AuthorQuery) JsonsTagsIsNull() *AuthorQuery {
+	q.q.W().PredNull("jsons_tags", "is_null")
+	return q
+}
 func (w *AuthorWhere) JsonsTagsIsNotNull() *AuthorWhere {
 	w.w.PredNull("jsons_tags", "is_not_null")
 	return w
 }
-func (q *Author) JsonsTagsIsNotNull() *Author {
+func (q *AuthorQuery) JsonsTagsIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("jsons_tags", "is_not_null")
 	return q
 }
@@ -3518,12 +3897,15 @@ func (w *AuthorWhere) Base64ExtraIsNull() *AuthorWhere {
 	w.w.PredNull("base64_extra", "is_null")
 	return w
 }
-func (q *Author) Base64ExtraIsNull() *Author { q.q.W().PredNull("base64_extra", "is_null"); return q }
+func (q *AuthorQuery) Base64ExtraIsNull() *AuthorQuery {
+	q.q.W().PredNull("base64_extra", "is_null")
+	return q
+}
 func (w *AuthorWhere) Base64ExtraIsNotNull() *AuthorWhere {
 	w.w.PredNull("base64_extra", "is_not_null")
 	return w
 }
-func (q *Author) Base64ExtraIsNotNull() *Author {
+func (q *AuthorQuery) Base64ExtraIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("base64_extra", "is_not_null")
 	return q
 }
@@ -3531,7 +3913,7 @@ func (w *AuthorWhere) SerializeDataIsNull() *AuthorWhere {
 	w.w.PredNull("serialize_data", "is_null")
 	return w
 }
-func (q *Author) SerializeDataIsNull() *Author {
+func (q *AuthorQuery) SerializeDataIsNull() *AuthorQuery {
 	q.q.W().PredNull("serialize_data", "is_null")
 	return q
 }
@@ -3539,7 +3921,7 @@ func (w *AuthorWhere) SerializeDataIsNotNull() *AuthorWhere {
 	w.w.PredNull("serialize_data", "is_not_null")
 	return w
 }
-func (q *Author) SerializeDataIsNotNull() *Author {
+func (q *AuthorQuery) SerializeDataIsNotNull() *AuthorQuery {
 	q.q.W().PredNull("serialize_data", "is_not_null")
 	return q
 }
@@ -3551,101 +3933,128 @@ func (w *AuthorWhere) NameWithDescriptionMatchBoolean(v string) *AuthorWhere {
 	w.w.Match([]string{"name", "description"}, true, v)
 	return w
 }
-func (q *Author) NameWithDescriptionMatch(v string) *Author {
+func (q *AuthorQuery) NameWithDescriptionMatch(v string) *AuthorQuery {
 	q.q.W().Match([]string{"name", "description"}, false, v)
 	return q
 }
-func (q *Author) NameWithDescriptionMatchBoolean(v string) *Author {
+func (q *AuthorQuery) NameWithDescriptionMatchBoolean(v string) *AuthorQuery {
 	q.q.W().Match([]string{"name", "description"}, true, v)
 	return q
 }
 
 // StartedAfter is the manifest predicate started_after: `start_dt` > ?
 func (w *AuthorWhere) StartedAfter(v any) *AuthorWhere { w.w.Expr("`start_dt` > ?", v); return w }
-func (q *Author) StartedAfter(v any) *Author           { q.q.W().Expr("`start_dt` > ?", v); return q }
+func (q *AuthorQuery) StartedAfter(v any) *AuthorQuery { q.q.W().Expr("`start_dt` > ?", v); return q }
 
 // Visible is the manifest predicate visible: `is_close` = FALSE AND `is_display` = TRUE
 func (w *AuthorWhere) Visible() *AuthorWhere {
 	w.w.Expr("`is_close` = FALSE AND `is_display` = TRUE")
 	return w
 }
-func (q *Author) Visible() *Author {
+func (q *AuthorQuery) Visible() *AuthorQuery {
 	q.q.W().Expr("`is_close` = FALSE AND `is_display` = TRUE")
 	return q
 }
 
 // WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *Author) Or() *Author { q.q.Or(); return q }
-func (q *Author) And(fn func(*AuthorWhere)) *Author {
+func (q *AuthorQuery) Or() *AuthorQuery { q.q.Or(); return q }
+func (q *AuthorQuery) And(fn func(*AuthorWhere)) *AuthorQuery {
 	q.q.W().And(func(x *orm.W) { fn(&AuthorWhere{w: x}) })
 	return q
 }
-func (q *Author) Expr(frag string, binds ...any) *Author { q.q.W().Expr(frag, binds...); return q }
-func (q *Author) Service(fn func(*ServiceWhere)) *Author {
+func (q *AuthorQuery) Expr(frag string, binds ...any) *AuthorQuery {
+	q.q.W().Expr(frag, binds...)
+	return q
+}
+func (q *AuthorQuery) Service(fn func(*ServiceWhere)) *AuthorQuery {
 	q.q.W().Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return q
 }
-func (q *Author) ServiceMember(fn func(*ServiceMemberWhere)) *Author {
+func (q *AuthorQuery) ServiceMember(fn func(*ServiceMemberWhere)) *AuthorQuery {
 	q.q.W().Nav("service_member", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return q
 }
-func (q *Author) ServiceRegion(fn func(*ServiceRegionWhere)) *Author {
+func (q *AuthorQuery) ServiceRegion(fn func(*ServiceRegionWhere)) *AuthorQuery {
 	q.q.W().Nav("service_region", func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
 	return q
 }
-func (q *Author) User(fn func(*UserWhere)) *Author {
+func (q *AuthorQuery) User(fn func(*UserWhere)) *AuthorQuery {
 	q.q.W().Nav("user", func(x *orm.W) { fn(&UserWhere{w: x}) })
 	return q
 }
 
 // Join children: On = ON clause, Where = parent WHERE group. Bare predicates on a join child are rejected by the engine.
-func (q *Author) On(fn func(*AuthorWhere)) *Author    { fn(&AuthorWhere{w: q.q.OnW()}); return q }
-func (q *Author) Where(fn func(*AuthorWhere)) *Author { fn(&AuthorWhere{w: q.q.W()}); return q }
+func (q *AuthorQuery) On(fn func(*AuthorWhere)) *AuthorQuery {
+	fn(&AuthorWhere{w: q.q.OnW()})
+	return q
+}
+func (q *AuthorQuery) Where(fn func(*AuthorWhere)) *AuthorQuery {
+	fn(&AuthorWhere{w: q.q.W()})
+	return q
+}
 
 // Having is the group predicate after GroupBy<Col>: the same builder as where; aggregates go through Expr("COUNT(*) > ?", n).
-func (q *Author) Having(fn func(*AuthorWhere)) *Author { fn(&AuthorWhere{w: q.q.HavingW()}); return q }
+func (q *AuthorQuery) Having(fn func(*AuthorWhere)) *AuthorQuery {
+	fn(&AuthorWhere{w: q.q.HavingW()})
+	return q
+}
 
 // Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
-func (q *Author) Raw(sql string, binds ...any) *Author { q.q.Raw(sql, binds...); return q }
+func (q *AuthorQuery) Raw(sql string, binds ...any) *AuthorQuery { q.q.Raw(sql, binds...); return q }
 
-func (q *Author) JoinService(child *Service) *Author { q.q.Join("service", "inner", child.q); return q }
-func (q *Author) LeftJoinService(child *Service) *Author {
+func (q *AuthorQuery) JoinService(child *ServiceQuery) *AuthorQuery {
+	q.q.Join("service", "inner", child.q)
+	return q
+}
+func (q *AuthorQuery) LeftJoinService(child *ServiceQuery) *AuthorQuery {
 	q.q.Join("service", "left", child.q)
 	return q
 }
-func (q *Author) RelationService(child *Service) *Author { q.q.Relation("service", child.q); return q }
-func (q *Author) JoinServiceMember(child *ServiceMember) *Author {
+func (q *AuthorQuery) RelationService(child *ServiceQuery) *AuthorQuery {
+	q.q.Relation("service", child.q)
+	return q
+}
+func (q *AuthorQuery) JoinServiceMember(child *ServiceMemberQuery) *AuthorQuery {
 	q.q.Join("service_member", "inner", child.q)
 	return q
 }
-func (q *Author) LeftJoinServiceMember(child *ServiceMember) *Author {
+func (q *AuthorQuery) LeftJoinServiceMember(child *ServiceMemberQuery) *AuthorQuery {
 	q.q.Join("service_member", "left", child.q)
 	return q
 }
-func (q *Author) RelationServiceMember(child *ServiceMember) *Author {
+func (q *AuthorQuery) RelationServiceMember(child *ServiceMemberQuery) *AuthorQuery {
 	q.q.Relation("service_member", child.q)
 	return q
 }
-func (q *Author) JoinServiceRegion(child *ServiceRegion) *Author {
+func (q *AuthorQuery) JoinServiceRegion(child *ServiceRegionQuery) *AuthorQuery {
 	q.q.Join("service_region", "inner", child.q)
 	return q
 }
-func (q *Author) LeftJoinServiceRegion(child *ServiceRegion) *Author {
+func (q *AuthorQuery) LeftJoinServiceRegion(child *ServiceRegionQuery) *AuthorQuery {
 	q.q.Join("service_region", "left", child.q)
 	return q
 }
-func (q *Author) RelationServiceRegion(child *ServiceRegion) *Author {
+func (q *AuthorQuery) RelationServiceRegion(child *ServiceRegionQuery) *AuthorQuery {
 	q.q.Relation("service_region", child.q)
 	return q
 }
-func (q *Author) JoinUser(child *User) *Author     { q.q.Join("user", "inner", child.q); return q }
-func (q *Author) LeftJoinUser(child *User) *Author { q.q.Join("user", "left", child.q); return q }
-func (q *Author) RelationUser(child *User) *Author { q.q.Relation("user", child.q); return q }
+func (q *AuthorQuery) JoinUser(child *UserQuery) *AuthorQuery {
+	q.q.Join("user", "inner", child.q)
+	return q
+}
+func (q *AuthorQuery) LeftJoinUser(child *UserQuery) *AuthorQuery {
+	q.q.Join("user", "left", child.q)
+	return q
+}
+func (q *AuthorQuery) RelationUser(child *UserQuery) *AuthorQuery {
+	q.q.Relation("user", child.q)
+	return q
+}
 
 // Columns.
-func (q *Author) SelectAll() *Author  { q.q.Columns().Mode = "all"; return q }
-func (q *Author) SelectNone() *Author { q.q.Columns().Mode = "none"; return q }
-func (q *Author) SelectExpr(name, frag string) *Author {
+func (q *AuthorQuery) SelectAll() *AuthorQuery  { q.q.Columns().Mode = "all"; return q }
+func (q *AuthorQuery) SelectNone() *AuthorQuery { q.q.Columns().Mode = "none"; return q }
+func (q *AuthorQuery) SelectExpr(name, frag string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.Expr == nil {
 		c.Expr = map[string]string{}
@@ -3653,13 +4062,17 @@ func (q *Author) SelectExpr(name, frag string) *Author {
 	c.Expr[name] = frag
 	return q
 }
-func (q *Author) SelectSeq() *Author { c := q.q.Columns(); c.Add = append(c.Add, "seq"); return q }
-func (q *Author) UnselectSeq() *Author {
+func (q *AuthorQuery) SelectSeq() *AuthorQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "seq")
+	return q
+}
+func (q *AuthorQuery) UnselectSeq() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "seq")
 	return q
 }
-func (q *Author) SelectSeqAs(name string) *Author {
+func (q *AuthorQuery) SelectSeqAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3667,13 +4080,17 @@ func (q *Author) SelectSeqAs(name string) *Author {
 	c.As[name] = "seq"
 	return q
 }
-func (q *Author) SelectName() *Author { c := q.q.Columns(); c.Add = append(c.Add, "name"); return q }
-func (q *Author) UnselectName() *Author {
+func (q *AuthorQuery) SelectName() *AuthorQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "name")
+	return q
+}
+func (q *AuthorQuery) UnselectName() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "name")
 	return q
 }
-func (q *Author) SelectNameAs(name string) *Author {
+func (q *AuthorQuery) SelectNameAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3681,17 +4098,17 @@ func (q *Author) SelectNameAs(name string) *Author {
 	c.As[name] = "name"
 	return q
 }
-func (q *Author) SelectDescription() *Author {
+func (q *AuthorQuery) SelectDescription() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "description")
 	return q
 }
-func (q *Author) UnselectDescription() *Author {
+func (q *AuthorQuery) UnselectDescription() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "description")
 	return q
 }
-func (q *Author) SelectDescriptionAs(name string) *Author {
+func (q *AuthorQuery) SelectDescriptionAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3699,17 +4116,17 @@ func (q *Author) SelectDescriptionAs(name string) *Author {
 	c.As[name] = "description"
 	return q
 }
-func (q *Author) SelectCreatedTs() *Author {
+func (q *AuthorQuery) SelectCreatedTs() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "created_ts")
 	return q
 }
-func (q *Author) UnselectCreatedTs() *Author {
+func (q *AuthorQuery) UnselectCreatedTs() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "created_ts")
 	return q
 }
-func (q *Author) SelectCreatedTsAs(name string) *Author {
+func (q *AuthorQuery) SelectCreatedTsAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3717,17 +4134,17 @@ func (q *Author) SelectCreatedTsAs(name string) *Author {
 	c.As[name] = "created_ts"
 	return q
 }
-func (q *Author) SelectUpdatedTs() *Author {
+func (q *AuthorQuery) SelectUpdatedTs() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "updated_ts")
 	return q
 }
-func (q *Author) UnselectUpdatedTs() *Author {
+func (q *AuthorQuery) UnselectUpdatedTs() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "updated_ts")
 	return q
 }
-func (q *Author) SelectUpdatedTsAs(name string) *Author {
+func (q *AuthorQuery) SelectUpdatedTsAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3735,17 +4152,17 @@ func (q *Author) SelectUpdatedTsAs(name string) *Author {
 	c.As[name] = "updated_ts"
 	return q
 }
-func (q *Author) SelectIsClose() *Author {
+func (q *AuthorQuery) SelectIsClose() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "is_close")
 	return q
 }
-func (q *Author) UnselectIsClose() *Author {
+func (q *AuthorQuery) UnselectIsClose() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "is_close")
 	return q
 }
-func (q *Author) SelectIsCloseAs(name string) *Author {
+func (q *AuthorQuery) SelectIsCloseAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3753,17 +4170,17 @@ func (q *Author) SelectIsCloseAs(name string) *Author {
 	c.As[name] = "is_close"
 	return q
 }
-func (q *Author) SelectIsDisplay() *Author {
+func (q *AuthorQuery) SelectIsDisplay() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "is_display")
 	return q
 }
-func (q *Author) UnselectIsDisplay() *Author {
+func (q *AuthorQuery) UnselectIsDisplay() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "is_display")
 	return q
 }
-func (q *Author) SelectIsDisplayAs(name string) *Author {
+func (q *AuthorQuery) SelectIsDisplayAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3771,17 +4188,17 @@ func (q *Author) SelectIsDisplayAs(name string) *Author {
 	c.As[name] = "is_display"
 	return q
 }
-func (q *Author) SelectDisplayStartDt() *Author {
+func (q *AuthorQuery) SelectDisplayStartDt() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "display_start_dt")
 	return q
 }
-func (q *Author) UnselectDisplayStartDt() *Author {
+func (q *AuthorQuery) UnselectDisplayStartDt() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "display_start_dt")
 	return q
 }
-func (q *Author) SelectDisplayStartDtAs(name string) *Author {
+func (q *AuthorQuery) SelectDisplayStartDtAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3789,17 +4206,17 @@ func (q *Author) SelectDisplayStartDtAs(name string) *Author {
 	c.As[name] = "display_start_dt"
 	return q
 }
-func (q *Author) SelectDisplayEndDt() *Author {
+func (q *AuthorQuery) SelectDisplayEndDt() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "display_end_dt")
 	return q
 }
-func (q *Author) UnselectDisplayEndDt() *Author {
+func (q *AuthorQuery) UnselectDisplayEndDt() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "display_end_dt")
 	return q
 }
-func (q *Author) SelectDisplayEndDtAs(name string) *Author {
+func (q *AuthorQuery) SelectDisplayEndDtAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3807,17 +4224,17 @@ func (q *Author) SelectDisplayEndDtAs(name string) *Author {
 	c.As[name] = "display_end_dt"
 	return q
 }
-func (q *Author) SelectIsAllday() *Author {
+func (q *AuthorQuery) SelectIsAllday() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "is_allday")
 	return q
 }
-func (q *Author) UnselectIsAllday() *Author {
+func (q *AuthorQuery) UnselectIsAllday() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "is_allday")
 	return q
 }
-func (q *Author) SelectIsAlldayAs(name string) *Author {
+func (q *AuthorQuery) SelectIsAlldayAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3825,17 +4242,17 @@ func (q *Author) SelectIsAlldayAs(name string) *Author {
 	c.As[name] = "is_allday"
 	return q
 }
-func (q *Author) SelectTargetClubReaderCount() *Author {
+func (q *AuthorQuery) SelectTargetClubReaderCount() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "target_club_reader_count")
 	return q
 }
-func (q *Author) UnselectTargetClubReaderCount() *Author {
+func (q *AuthorQuery) UnselectTargetClubReaderCount() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "target_club_reader_count")
 	return q
 }
-func (q *Author) SelectTargetClubReaderCountAs(name string) *Author {
+func (q *AuthorQuery) SelectTargetClubReaderCountAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3843,17 +4260,17 @@ func (q *Author) SelectTargetClubReaderCountAs(name string) *Author {
 	c.As[name] = "target_club_reader_count"
 	return q
 }
-func (q *Author) SelectSuccessCount() *Author {
+func (q *AuthorQuery) SelectSuccessCount() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "success_count")
 	return q
 }
-func (q *Author) UnselectSuccessCount() *Author {
+func (q *AuthorQuery) UnselectSuccessCount() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "success_count")
 	return q
 }
-func (q *Author) SelectSuccessCountAs(name string) *Author {
+func (q *AuthorQuery) SelectSuccessCountAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3861,17 +4278,17 @@ func (q *Author) SelectSuccessCountAs(name string) *Author {
 	c.As[name] = "success_count"
 	return q
 }
-func (q *Author) SelectReaderCount() *Author {
+func (q *AuthorQuery) SelectReaderCount() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "reader_count")
 	return q
 }
-func (q *Author) UnselectReaderCount() *Author {
+func (q *AuthorQuery) UnselectReaderCount() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "reader_count")
 	return q
 }
-func (q *Author) SelectReaderCountAs(name string) *Author {
+func (q *AuthorQuery) SelectReaderCountAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3879,17 +4296,17 @@ func (q *Author) SelectReaderCountAs(name string) *Author {
 	c.As[name] = "reader_count"
 	return q
 }
-func (q *Author) SelectReadCount() *Author {
+func (q *AuthorQuery) SelectReadCount() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "read_count")
 	return q
 }
-func (q *Author) UnselectReadCount() *Author {
+func (q *AuthorQuery) UnselectReadCount() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "read_count")
 	return q
 }
-func (q *Author) SelectReadCountAs(name string) *Author {
+func (q *AuthorQuery) SelectReadCountAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3897,17 +4314,17 @@ func (q *Author) SelectReadCountAs(name string) *Author {
 	c.As[name] = "read_count"
 	return q
 }
-func (q *Author) SelectPhotoUrl() *Author {
+func (q *AuthorQuery) SelectPhotoUrl() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "photo_url")
 	return q
 }
-func (q *Author) UnselectPhotoUrl() *Author {
+func (q *AuthorQuery) UnselectPhotoUrl() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "photo_url")
 	return q
 }
-func (q *Author) SelectPhotoUrlAs(name string) *Author {
+func (q *AuthorQuery) SelectPhotoUrlAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3915,17 +4332,17 @@ func (q *Author) SelectPhotoUrlAs(name string) *Author {
 	c.As[name] = "photo_url"
 	return q
 }
-func (q *Author) SelectUserSeq() *Author {
+func (q *AuthorQuery) SelectUserSeq() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "user_seq")
 	return q
 }
-func (q *Author) UnselectUserSeq() *Author {
+func (q *AuthorQuery) UnselectUserSeq() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "user_seq")
 	return q
 }
-func (q *Author) SelectUserSeqAs(name string) *Author {
+func (q *AuthorQuery) SelectUserSeqAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3933,17 +4350,17 @@ func (q *Author) SelectUserSeqAs(name string) *Author {
 	c.As[name] = "user_seq"
 	return q
 }
-func (q *Author) SelectServiceSeq() *Author {
+func (q *AuthorQuery) SelectServiceSeq() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "service_seq")
 	return q
 }
-func (q *Author) UnselectServiceSeq() *Author {
+func (q *AuthorQuery) UnselectServiceSeq() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "service_seq")
 	return q
 }
-func (q *Author) SelectServiceSeqAs(name string) *Author {
+func (q *AuthorQuery) SelectServiceSeqAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3951,17 +4368,17 @@ func (q *Author) SelectServiceSeqAs(name string) *Author {
 	c.As[name] = "service_seq"
 	return q
 }
-func (q *Author) SelectServiceRegionSeq() *Author {
+func (q *AuthorQuery) SelectServiceRegionSeq() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "service_region_seq")
 	return q
 }
-func (q *Author) UnselectServiceRegionSeq() *Author {
+func (q *AuthorQuery) UnselectServiceRegionSeq() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "service_region_seq")
 	return q
 }
-func (q *Author) SelectServiceRegionSeqAs(name string) *Author {
+func (q *AuthorQuery) SelectServiceRegionSeqAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3969,17 +4386,17 @@ func (q *Author) SelectServiceRegionSeqAs(name string) *Author {
 	c.As[name] = "service_region_seq"
 	return q
 }
-func (q *Author) SelectServiceMemberSeq() *Author {
+func (q *AuthorQuery) SelectServiceMemberSeq() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "service_member_seq")
 	return q
 }
-func (q *Author) UnselectServiceMemberSeq() *Author {
+func (q *AuthorQuery) UnselectServiceMemberSeq() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "service_member_seq")
 	return q
 }
-func (q *Author) SelectServiceMemberSeqAs(name string) *Author {
+func (q *AuthorQuery) SelectServiceMemberSeqAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -3987,17 +4404,17 @@ func (q *Author) SelectServiceMemberSeqAs(name string) *Author {
 	c.As[name] = "service_member_seq"
 	return q
 }
-func (q *Author) SelectStartDt() *Author {
+func (q *AuthorQuery) SelectStartDt() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "start_dt")
 	return q
 }
-func (q *Author) UnselectStartDt() *Author {
+func (q *AuthorQuery) UnselectStartDt() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "start_dt")
 	return q
 }
-func (q *Author) SelectStartDtAs(name string) *Author {
+func (q *AuthorQuery) SelectStartDtAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4005,13 +4422,17 @@ func (q *Author) SelectStartDtAs(name string) *Author {
 	c.As[name] = "start_dt"
 	return q
 }
-func (q *Author) SelectEndDt() *Author { c := q.q.Columns(); c.Add = append(c.Add, "end_dt"); return q }
-func (q *Author) UnselectEndDt() *Author {
+func (q *AuthorQuery) SelectEndDt() *AuthorQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "end_dt")
+	return q
+}
+func (q *AuthorQuery) UnselectEndDt() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "end_dt")
 	return q
 }
-func (q *Author) SelectEndDtAs(name string) *Author {
+func (q *AuthorQuery) SelectEndDtAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4019,13 +4440,17 @@ func (q *Author) SelectEndDtAs(name string) *Author {
 	c.As[name] = "end_dt"
 	return q
 }
-func (q *Author) SelectUuid() *Author { c := q.q.Columns(); c.Add = append(c.Add, "uuid"); return q }
-func (q *Author) UnselectUuid() *Author {
+func (q *AuthorQuery) SelectUuid() *AuthorQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "uuid")
+	return q
+}
+func (q *AuthorQuery) UnselectUuid() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "uuid")
 	return q
 }
-func (q *Author) SelectUuidAs(name string) *Author {
+func (q *AuthorQuery) SelectUuidAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4033,17 +4458,17 @@ func (q *Author) SelectUuidAs(name string) *Author {
 	c.As[name] = "uuid"
 	return q
 }
-func (q *Author) SelectIsSingleWork() *Author {
+func (q *AuthorQuery) SelectIsSingleWork() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "is_single_work")
 	return q
 }
-func (q *Author) UnselectIsSingleWork() *Author {
+func (q *AuthorQuery) UnselectIsSingleWork() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "is_single_work")
 	return q
 }
-func (q *Author) SelectIsSingleWorkAs(name string) *Author {
+func (q *AuthorQuery) SelectIsSingleWorkAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4051,17 +4476,17 @@ func (q *Author) SelectIsSingleWorkAs(name string) *Author {
 	c.As[name] = "is_single_work"
 	return q
 }
-func (q *Author) SelectLikeCount() *Author {
+func (q *AuthorQuery) SelectLikeCount() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "like_count")
 	return q
 }
-func (q *Author) UnselectLikeCount() *Author {
+func (q *AuthorQuery) UnselectLikeCount() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "like_count")
 	return q
 }
-func (q *Author) SelectLikeCountAs(name string) *Author {
+func (q *AuthorQuery) SelectLikeCountAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4069,17 +4494,17 @@ func (q *Author) SelectLikeCountAs(name string) *Author {
 	c.As[name] = "like_count"
 	return q
 }
-func (q *Author) SelectAesHexEmail() *Author {
+func (q *AuthorQuery) SelectAesHexEmail() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "aes_hex_email")
 	return q
 }
-func (q *Author) UnselectAesHexEmail() *Author {
+func (q *AuthorQuery) UnselectAesHexEmail() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "aes_hex_email")
 	return q
 }
-func (q *Author) SelectAesHexEmailAs(name string) *Author {
+func (q *AuthorQuery) SelectAesHexEmailAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4087,17 +4512,17 @@ func (q *Author) SelectAesHexEmailAs(name string) *Author {
 	c.As[name] = "aes_hex_email"
 	return q
 }
-func (q *Author) SelectAesHexPhone() *Author {
+func (q *AuthorQuery) SelectAesHexPhone() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "aes_hex_phone")
 	return q
 }
-func (q *Author) UnselectAesHexPhone() *Author {
+func (q *AuthorQuery) UnselectAesHexPhone() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "aes_hex_phone")
 	return q
 }
-func (q *Author) SelectAesHexPhoneAs(name string) *Author {
+func (q *AuthorQuery) SelectAesHexPhoneAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4105,13 +4530,17 @@ func (q *Author) SelectAesHexPhoneAs(name string) *Author {
 	c.As[name] = "aes_hex_phone"
 	return q
 }
-func (q *Author) SelectPrice() *Author { c := q.q.Columns(); c.Add = append(c.Add, "price"); return q }
-func (q *Author) UnselectPrice() *Author {
+func (q *AuthorQuery) SelectPrice() *AuthorQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "price")
+	return q
+}
+func (q *AuthorQuery) UnselectPrice() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "price")
 	return q
 }
-func (q *Author) SelectPriceAs(name string) *Author {
+func (q *AuthorQuery) SelectPriceAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4119,13 +4548,17 @@ func (q *Author) SelectPriceAs(name string) *Author {
 	c.As[name] = "price"
 	return q
 }
-func (q *Author) SelectIp() *Author { c := q.q.Columns(); c.Add = append(c.Add, "ip"); return q }
-func (q *Author) UnselectIp() *Author {
+func (q *AuthorQuery) SelectIp() *AuthorQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "ip")
+	return q
+}
+func (q *AuthorQuery) UnselectIp() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "ip")
 	return q
 }
-func (q *Author) SelectIpAs(name string) *Author {
+func (q *AuthorQuery) SelectIpAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4133,17 +4566,17 @@ func (q *Author) SelectIpAs(name string) *Author {
 	c.As[name] = "ip"
 	return q
 }
-func (q *Author) SelectGzExtend() *Author {
+func (q *AuthorQuery) SelectGzExtend() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "gz_extend")
 	return q
 }
-func (q *Author) UnselectGzExtend() *Author {
+func (q *AuthorQuery) UnselectGzExtend() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "gz_extend")
 	return q
 }
-func (q *Author) SelectGzExtendAs(name string) *Author {
+func (q *AuthorQuery) SelectGzExtendAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4151,17 +4584,17 @@ func (q *Author) SelectGzExtendAs(name string) *Author {
 	c.As[name] = "gz_extend"
 	return q
 }
-func (q *Author) SelectJsonSetting() *Author {
+func (q *AuthorQuery) SelectJsonSetting() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "json_setting")
 	return q
 }
-func (q *Author) UnselectJsonSetting() *Author {
+func (q *AuthorQuery) UnselectJsonSetting() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "json_setting")
 	return q
 }
-func (q *Author) SelectJsonSettingAs(name string) *Author {
+func (q *AuthorQuery) SelectJsonSettingAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4169,17 +4602,17 @@ func (q *Author) SelectJsonSettingAs(name string) *Author {
 	c.As[name] = "json_setting"
 	return q
 }
-func (q *Author) SelectJsonsTags() *Author {
+func (q *AuthorQuery) SelectJsonsTags() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "jsons_tags")
 	return q
 }
-func (q *Author) UnselectJsonsTags() *Author {
+func (q *AuthorQuery) UnselectJsonsTags() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "jsons_tags")
 	return q
 }
-func (q *Author) SelectJsonsTagsAs(name string) *Author {
+func (q *AuthorQuery) SelectJsonsTagsAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4187,17 +4620,17 @@ func (q *Author) SelectJsonsTagsAs(name string) *Author {
 	c.As[name] = "jsons_tags"
 	return q
 }
-func (q *Author) SelectBase64Extra() *Author {
+func (q *AuthorQuery) SelectBase64Extra() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "base64_extra")
 	return q
 }
-func (q *Author) UnselectBase64Extra() *Author {
+func (q *AuthorQuery) UnselectBase64Extra() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "base64_extra")
 	return q
 }
-func (q *Author) SelectBase64ExtraAs(name string) *Author {
+func (q *AuthorQuery) SelectBase64ExtraAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4205,17 +4638,17 @@ func (q *Author) SelectBase64ExtraAs(name string) *Author {
 	c.As[name] = "base64_extra"
 	return q
 }
-func (q *Author) SelectSerializeData() *Author {
+func (q *AuthorQuery) SelectSerializeData() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "serialize_data")
 	return q
 }
-func (q *Author) UnselectSerializeData() *Author {
+func (q *AuthorQuery) UnselectSerializeData() *AuthorQuery {
 	c := q.q.Columns()
 	c.Remove = append(c.Remove, "serialize_data")
 	return q
 }
-func (q *Author) SelectSerializeDataAs(name string) *Author {
+func (q *AuthorQuery) SelectSerializeDataAs(name string) *AuthorQuery {
 	c := q.q.Columns()
 	if c.As == nil {
 		c.As = map[string]string{}
@@ -4225,784 +4658,939 @@ func (q *Author) SelectSerializeDataAs(name string) *Author {
 }
 
 // Order, group, limit.
-func (q *Author) OrderBySeqAsc() *Author          { q.q.Order("seq", false); return q }
-func (q *Author) OrderBySeqDesc() *Author         { q.q.Order("seq", true); return q }
-func (q *Author) GroupBySeq() *Author             { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "seq"); return q }
-func (q *Author) KeyBySeq() *Author               { q.q.Node.KeyBy = "seq"; return q }
-func (q *Author) OrderByNameAsc() *Author         { q.q.Order("name", false); return q }
-func (q *Author) OrderByNameDesc() *Author        { q.q.Order("name", true); return q }
-func (q *Author) GroupByName() *Author            { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "name"); return q }
-func (q *Author) KeyByName() *Author              { q.q.Node.KeyBy = "name"; return q }
-func (q *Author) OrderByDescriptionAsc() *Author  { q.q.Order("description", false); return q }
-func (q *Author) OrderByDescriptionDesc() *Author { q.q.Order("description", true); return q }
-func (q *Author) GroupByDescription() *Author {
+func (q *AuthorQuery) OrderBySeqAsc() *AuthorQuery  { q.q.Order("seq", false); return q }
+func (q *AuthorQuery) OrderBySeqDesc() *AuthorQuery { q.q.Order("seq", true); return q }
+func (q *AuthorQuery) GroupBySeq() *AuthorQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "seq")
+	return q
+}
+func (q *AuthorQuery) KeyBySeq() *AuthorQuery        { q.q.Node.KeyBy = "seq"; return q }
+func (q *AuthorQuery) OrderByNameAsc() *AuthorQuery  { q.q.Order("name", false); return q }
+func (q *AuthorQuery) OrderByNameDesc() *AuthorQuery { q.q.Order("name", true); return q }
+func (q *AuthorQuery) GroupByName() *AuthorQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "name")
+	return q
+}
+func (q *AuthorQuery) KeyByName() *AuthorQuery              { q.q.Node.KeyBy = "name"; return q }
+func (q *AuthorQuery) OrderByDescriptionAsc() *AuthorQuery  { q.q.Order("description", false); return q }
+func (q *AuthorQuery) OrderByDescriptionDesc() *AuthorQuery { q.q.Order("description", true); return q }
+func (q *AuthorQuery) GroupByDescription() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "description")
 	return q
 }
-func (q *Author) KeyByDescription() *Author     { q.q.Node.KeyBy = "description"; return q }
-func (q *Author) OrderByCreatedTsAsc() *Author  { q.q.Order("created_ts", false); return q }
-func (q *Author) OrderByCreatedTsDesc() *Author { q.q.Order("created_ts", true); return q }
-func (q *Author) GroupByCreatedTs() *Author {
+func (q *AuthorQuery) KeyByDescription() *AuthorQuery     { q.q.Node.KeyBy = "description"; return q }
+func (q *AuthorQuery) OrderByCreatedTsAsc() *AuthorQuery  { q.q.Order("created_ts", false); return q }
+func (q *AuthorQuery) OrderByCreatedTsDesc() *AuthorQuery { q.q.Order("created_ts", true); return q }
+func (q *AuthorQuery) GroupByCreatedTs() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "created_ts")
 	return q
 }
-func (q *Author) KeyByCreatedTs() *Author       { q.q.Node.KeyBy = "created_ts"; return q }
-func (q *Author) OrderByUpdatedTsAsc() *Author  { q.q.Order("updated_ts", false); return q }
-func (q *Author) OrderByUpdatedTsDesc() *Author { q.q.Order("updated_ts", true); return q }
-func (q *Author) GroupByUpdatedTs() *Author {
+func (q *AuthorQuery) KeyByCreatedTs() *AuthorQuery       { q.q.Node.KeyBy = "created_ts"; return q }
+func (q *AuthorQuery) OrderByUpdatedTsAsc() *AuthorQuery  { q.q.Order("updated_ts", false); return q }
+func (q *AuthorQuery) OrderByUpdatedTsDesc() *AuthorQuery { q.q.Order("updated_ts", true); return q }
+func (q *AuthorQuery) GroupByUpdatedTs() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "updated_ts")
 	return q
 }
-func (q *Author) KeyByUpdatedTs() *Author     { q.q.Node.KeyBy = "updated_ts"; return q }
-func (q *Author) OrderByIsCloseAsc() *Author  { q.q.Order("is_close", false); return q }
-func (q *Author) OrderByIsCloseDesc() *Author { q.q.Order("is_close", true); return q }
-func (q *Author) GroupByIsClose() *Author {
+func (q *AuthorQuery) KeyByUpdatedTs() *AuthorQuery     { q.q.Node.KeyBy = "updated_ts"; return q }
+func (q *AuthorQuery) OrderByIsCloseAsc() *AuthorQuery  { q.q.Order("is_close", false); return q }
+func (q *AuthorQuery) OrderByIsCloseDesc() *AuthorQuery { q.q.Order("is_close", true); return q }
+func (q *AuthorQuery) GroupByIsClose() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "is_close")
 	return q
 }
-func (q *Author) KeyByIsClose() *Author         { q.q.Node.KeyBy = "is_close"; return q }
-func (q *Author) OrderByIsDisplayAsc() *Author  { q.q.Order("is_display", false); return q }
-func (q *Author) OrderByIsDisplayDesc() *Author { q.q.Order("is_display", true); return q }
-func (q *Author) GroupByIsDisplay() *Author {
+func (q *AuthorQuery) KeyByIsClose() *AuthorQuery         { q.q.Node.KeyBy = "is_close"; return q }
+func (q *AuthorQuery) OrderByIsDisplayAsc() *AuthorQuery  { q.q.Order("is_display", false); return q }
+func (q *AuthorQuery) OrderByIsDisplayDesc() *AuthorQuery { q.q.Order("is_display", true); return q }
+func (q *AuthorQuery) GroupByIsDisplay() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "is_display")
 	return q
 }
-func (q *Author) KeyByIsDisplay() *Author            { q.q.Node.KeyBy = "is_display"; return q }
-func (q *Author) OrderByDisplayStartDtAsc() *Author  { q.q.Order("display_start_dt", false); return q }
-func (q *Author) OrderByDisplayStartDtDesc() *Author { q.q.Order("display_start_dt", true); return q }
-func (q *Author) GroupByDisplayStartDt() *Author {
+func (q *AuthorQuery) KeyByIsDisplay() *AuthorQuery { q.q.Node.KeyBy = "is_display"; return q }
+func (q *AuthorQuery) OrderByDisplayStartDtAsc() *AuthorQuery {
+	q.q.Order("display_start_dt", false)
+	return q
+}
+func (q *AuthorQuery) OrderByDisplayStartDtDesc() *AuthorQuery {
+	q.q.Order("display_start_dt", true)
+	return q
+}
+func (q *AuthorQuery) GroupByDisplayStartDt() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "display_start_dt")
 	return q
 }
-func (q *Author) KeyByDisplayStartDt() *Author     { q.q.Node.KeyBy = "display_start_dt"; return q }
-func (q *Author) OrderByDisplayEndDtAsc() *Author  { q.q.Order("display_end_dt", false); return q }
-func (q *Author) OrderByDisplayEndDtDesc() *Author { q.q.Order("display_end_dt", true); return q }
-func (q *Author) GroupByDisplayEndDt() *Author {
+func (q *AuthorQuery) KeyByDisplayStartDt() *AuthorQuery {
+	q.q.Node.KeyBy = "display_start_dt"
+	return q
+}
+func (q *AuthorQuery) OrderByDisplayEndDtAsc() *AuthorQuery {
+	q.q.Order("display_end_dt", false)
+	return q
+}
+func (q *AuthorQuery) OrderByDisplayEndDtDesc() *AuthorQuery {
+	q.q.Order("display_end_dt", true)
+	return q
+}
+func (q *AuthorQuery) GroupByDisplayEndDt() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "display_end_dt")
 	return q
 }
-func (q *Author) KeyByDisplayEndDt() *Author   { q.q.Node.KeyBy = "display_end_dt"; return q }
-func (q *Author) OrderByIsAlldayAsc() *Author  { q.q.Order("is_allday", false); return q }
-func (q *Author) OrderByIsAlldayDesc() *Author { q.q.Order("is_allday", true); return q }
-func (q *Author) GroupByIsAllday() *Author {
+func (q *AuthorQuery) KeyByDisplayEndDt() *AuthorQuery   { q.q.Node.KeyBy = "display_end_dt"; return q }
+func (q *AuthorQuery) OrderByIsAlldayAsc() *AuthorQuery  { q.q.Order("is_allday", false); return q }
+func (q *AuthorQuery) OrderByIsAlldayDesc() *AuthorQuery { q.q.Order("is_allday", true); return q }
+func (q *AuthorQuery) GroupByIsAllday() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "is_allday")
 	return q
 }
-func (q *Author) KeyByIsAllday() *Author { q.q.Node.KeyBy = "is_allday"; return q }
-func (q *Author) OrderByTargetClubReaderCountAsc() *Author {
+func (q *AuthorQuery) KeyByIsAllday() *AuthorQuery { q.q.Node.KeyBy = "is_allday"; return q }
+func (q *AuthorQuery) OrderByTargetClubReaderCountAsc() *AuthorQuery {
 	q.q.Order("target_club_reader_count", false)
 	return q
 }
-func (q *Author) OrderByTargetClubReaderCountDesc() *Author {
+func (q *AuthorQuery) OrderByTargetClubReaderCountDesc() *AuthorQuery {
 	q.q.Order("target_club_reader_count", true)
 	return q
 }
-func (q *Author) GroupByTargetClubReaderCount() *Author {
+func (q *AuthorQuery) GroupByTargetClubReaderCount() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "target_club_reader_count")
 	return q
 }
-func (q *Author) KeyByTargetClubReaderCount() *Author {
+func (q *AuthorQuery) KeyByTargetClubReaderCount() *AuthorQuery {
 	q.q.Node.KeyBy = "target_club_reader_count"
 	return q
 }
-func (q *Author) OrderBySuccessCountAsc() *Author  { q.q.Order("success_count", false); return q }
-func (q *Author) OrderBySuccessCountDesc() *Author { q.q.Order("success_count", true); return q }
-func (q *Author) GroupBySuccessCount() *Author {
+func (q *AuthorQuery) OrderBySuccessCountAsc() *AuthorQuery {
+	q.q.Order("success_count", false)
+	return q
+}
+func (q *AuthorQuery) OrderBySuccessCountDesc() *AuthorQuery {
+	q.q.Order("success_count", true)
+	return q
+}
+func (q *AuthorQuery) GroupBySuccessCount() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "success_count")
 	return q
 }
-func (q *Author) KeyBySuccessCount() *Author      { q.q.Node.KeyBy = "success_count"; return q }
-func (q *Author) OrderByReaderCountAsc() *Author  { q.q.Order("reader_count", false); return q }
-func (q *Author) OrderByReaderCountDesc() *Author { q.q.Order("reader_count", true); return q }
-func (q *Author) GroupByReaderCount() *Author {
+func (q *AuthorQuery) KeyBySuccessCount() *AuthorQuery { q.q.Node.KeyBy = "success_count"; return q }
+func (q *AuthorQuery) OrderByReaderCountAsc() *AuthorQuery {
+	q.q.Order("reader_count", false)
+	return q
+}
+func (q *AuthorQuery) OrderByReaderCountDesc() *AuthorQuery {
+	q.q.Order("reader_count", true)
+	return q
+}
+func (q *AuthorQuery) GroupByReaderCount() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "reader_count")
 	return q
 }
-func (q *Author) KeyByReaderCount() *Author     { q.q.Node.KeyBy = "reader_count"; return q }
-func (q *Author) OrderByReadCountAsc() *Author  { q.q.Order("read_count", false); return q }
-func (q *Author) OrderByReadCountDesc() *Author { q.q.Order("read_count", true); return q }
-func (q *Author) GroupByReadCount() *Author {
+func (q *AuthorQuery) KeyByReaderCount() *AuthorQuery     { q.q.Node.KeyBy = "reader_count"; return q }
+func (q *AuthorQuery) OrderByReadCountAsc() *AuthorQuery  { q.q.Order("read_count", false); return q }
+func (q *AuthorQuery) OrderByReadCountDesc() *AuthorQuery { q.q.Order("read_count", true); return q }
+func (q *AuthorQuery) GroupByReadCount() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "read_count")
 	return q
 }
-func (q *Author) KeyByReadCount() *Author      { q.q.Node.KeyBy = "read_count"; return q }
-func (q *Author) OrderByPhotoUrlAsc() *Author  { q.q.Order("photo_url", false); return q }
-func (q *Author) OrderByPhotoUrlDesc() *Author { q.q.Order("photo_url", true); return q }
-func (q *Author) GroupByPhotoUrl() *Author {
+func (q *AuthorQuery) KeyByReadCount() *AuthorQuery      { q.q.Node.KeyBy = "read_count"; return q }
+func (q *AuthorQuery) OrderByPhotoUrlAsc() *AuthorQuery  { q.q.Order("photo_url", false); return q }
+func (q *AuthorQuery) OrderByPhotoUrlDesc() *AuthorQuery { q.q.Order("photo_url", true); return q }
+func (q *AuthorQuery) GroupByPhotoUrl() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "photo_url")
 	return q
 }
-func (q *Author) KeyByPhotoUrl() *Author      { q.q.Node.KeyBy = "photo_url"; return q }
-func (q *Author) OrderByUserSeqAsc() *Author  { q.q.Order("user_seq", false); return q }
-func (q *Author) OrderByUserSeqDesc() *Author { q.q.Order("user_seq", true); return q }
-func (q *Author) GroupByUserSeq() *Author {
+func (q *AuthorQuery) KeyByPhotoUrl() *AuthorQuery      { q.q.Node.KeyBy = "photo_url"; return q }
+func (q *AuthorQuery) OrderByUserSeqAsc() *AuthorQuery  { q.q.Order("user_seq", false); return q }
+func (q *AuthorQuery) OrderByUserSeqDesc() *AuthorQuery { q.q.Order("user_seq", true); return q }
+func (q *AuthorQuery) GroupByUserSeq() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "user_seq")
 	return q
 }
-func (q *Author) KeyByUserSeq() *Author          { q.q.Node.KeyBy = "user_seq"; return q }
-func (q *Author) OrderByServiceSeqAsc() *Author  { q.q.Order("service_seq", false); return q }
-func (q *Author) OrderByServiceSeqDesc() *Author { q.q.Order("service_seq", true); return q }
-func (q *Author) GroupByServiceSeq() *Author {
+func (q *AuthorQuery) KeyByUserSeq() *AuthorQuery          { q.q.Node.KeyBy = "user_seq"; return q }
+func (q *AuthorQuery) OrderByServiceSeqAsc() *AuthorQuery  { q.q.Order("service_seq", false); return q }
+func (q *AuthorQuery) OrderByServiceSeqDesc() *AuthorQuery { q.q.Order("service_seq", true); return q }
+func (q *AuthorQuery) GroupByServiceSeq() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "service_seq")
 	return q
 }
-func (q *Author) KeyByServiceSeq() *Author { q.q.Node.KeyBy = "service_seq"; return q }
-func (q *Author) OrderByServiceRegionSeqAsc() *Author {
+func (q *AuthorQuery) KeyByServiceSeq() *AuthorQuery { q.q.Node.KeyBy = "service_seq"; return q }
+func (q *AuthorQuery) OrderByServiceRegionSeqAsc() *AuthorQuery {
 	q.q.Order("service_region_seq", false)
 	return q
 }
-func (q *Author) OrderByServiceRegionSeqDesc() *Author {
+func (q *AuthorQuery) OrderByServiceRegionSeqDesc() *AuthorQuery {
 	q.q.Order("service_region_seq", true)
 	return q
 }
-func (q *Author) GroupByServiceRegionSeq() *Author {
+func (q *AuthorQuery) GroupByServiceRegionSeq() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "service_region_seq")
 	return q
 }
-func (q *Author) KeyByServiceRegionSeq() *Author { q.q.Node.KeyBy = "service_region_seq"; return q }
-func (q *Author) OrderByServiceMemberSeqAsc() *Author {
+func (q *AuthorQuery) KeyByServiceRegionSeq() *AuthorQuery {
+	q.q.Node.KeyBy = "service_region_seq"
+	return q
+}
+func (q *AuthorQuery) OrderByServiceMemberSeqAsc() *AuthorQuery {
 	q.q.Order("service_member_seq", false)
 	return q
 }
-func (q *Author) OrderByServiceMemberSeqDesc() *Author {
+func (q *AuthorQuery) OrderByServiceMemberSeqDesc() *AuthorQuery {
 	q.q.Order("service_member_seq", true)
 	return q
 }
-func (q *Author) GroupByServiceMemberSeq() *Author {
+func (q *AuthorQuery) GroupByServiceMemberSeq() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "service_member_seq")
 	return q
 }
-func (q *Author) KeyByServiceMemberSeq() *Author { q.q.Node.KeyBy = "service_member_seq"; return q }
-func (q *Author) OrderByStartDtAsc() *Author     { q.q.Order("start_dt", false); return q }
-func (q *Author) OrderByStartDtDesc() *Author    { q.q.Order("start_dt", true); return q }
-func (q *Author) GroupByStartDt() *Author {
+func (q *AuthorQuery) KeyByServiceMemberSeq() *AuthorQuery {
+	q.q.Node.KeyBy = "service_member_seq"
+	return q
+}
+func (q *AuthorQuery) OrderByStartDtAsc() *AuthorQuery  { q.q.Order("start_dt", false); return q }
+func (q *AuthorQuery) OrderByStartDtDesc() *AuthorQuery { q.q.Order("start_dt", true); return q }
+func (q *AuthorQuery) GroupByStartDt() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "start_dt")
 	return q
 }
-func (q *Author) KeyByStartDt() *Author     { q.q.Node.KeyBy = "start_dt"; return q }
-func (q *Author) OrderByEndDtAsc() *Author  { q.q.Order("end_dt", false); return q }
-func (q *Author) OrderByEndDtDesc() *Author { q.q.Order("end_dt", true); return q }
-func (q *Author) GroupByEndDt() *Author {
+func (q *AuthorQuery) KeyByStartDt() *AuthorQuery     { q.q.Node.KeyBy = "start_dt"; return q }
+func (q *AuthorQuery) OrderByEndDtAsc() *AuthorQuery  { q.q.Order("end_dt", false); return q }
+func (q *AuthorQuery) OrderByEndDtDesc() *AuthorQuery { q.q.Order("end_dt", true); return q }
+func (q *AuthorQuery) GroupByEndDt() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "end_dt")
 	return q
 }
-func (q *Author) KeyByEndDt() *Author              { q.q.Node.KeyBy = "end_dt"; return q }
-func (q *Author) OrderByUuidAsc() *Author          { q.q.Order("uuid", false); return q }
-func (q *Author) OrderByUuidDesc() *Author         { q.q.Order("uuid", true); return q }
-func (q *Author) GroupByUuid() *Author             { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "uuid"); return q }
-func (q *Author) KeyByUuid() *Author               { q.q.Node.KeyBy = "uuid"; return q }
-func (q *Author) OrderByIsSingleWorkAsc() *Author  { q.q.Order("is_single_work", false); return q }
-func (q *Author) OrderByIsSingleWorkDesc() *Author { q.q.Order("is_single_work", true); return q }
-func (q *Author) GroupByIsSingleWork() *Author {
+func (q *AuthorQuery) KeyByEndDt() *AuthorQuery      { q.q.Node.KeyBy = "end_dt"; return q }
+func (q *AuthorQuery) OrderByUuidAsc() *AuthorQuery  { q.q.Order("uuid", false); return q }
+func (q *AuthorQuery) OrderByUuidDesc() *AuthorQuery { q.q.Order("uuid", true); return q }
+func (q *AuthorQuery) GroupByUuid() *AuthorQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "uuid")
+	return q
+}
+func (q *AuthorQuery) KeyByUuid() *AuthorQuery { q.q.Node.KeyBy = "uuid"; return q }
+func (q *AuthorQuery) OrderByIsSingleWorkAsc() *AuthorQuery {
+	q.q.Order("is_single_work", false)
+	return q
+}
+func (q *AuthorQuery) OrderByIsSingleWorkDesc() *AuthorQuery {
+	q.q.Order("is_single_work", true)
+	return q
+}
+func (q *AuthorQuery) GroupByIsSingleWork() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "is_single_work")
 	return q
 }
-func (q *Author) KeyByIsSingleWork() *Author    { q.q.Node.KeyBy = "is_single_work"; return q }
-func (q *Author) OrderByLikeCountAsc() *Author  { q.q.Order("like_count", false); return q }
-func (q *Author) OrderByLikeCountDesc() *Author { q.q.Order("like_count", true); return q }
-func (q *Author) GroupByLikeCount() *Author {
+func (q *AuthorQuery) KeyByIsSingleWork() *AuthorQuery    { q.q.Node.KeyBy = "is_single_work"; return q }
+func (q *AuthorQuery) OrderByLikeCountAsc() *AuthorQuery  { q.q.Order("like_count", false); return q }
+func (q *AuthorQuery) OrderByLikeCountDesc() *AuthorQuery { q.q.Order("like_count", true); return q }
+func (q *AuthorQuery) GroupByLikeCount() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "like_count")
 	return q
 }
-func (q *Author) KeyByLikeCount() *Author         { q.q.Node.KeyBy = "like_count"; return q }
-func (q *Author) OrderByAesHexEmailAsc() *Author  { q.q.Order("aes_hex_email", false); return q }
-func (q *Author) OrderByAesHexEmailDesc() *Author { q.q.Order("aes_hex_email", true); return q }
-func (q *Author) GroupByAesHexEmail() *Author {
+func (q *AuthorQuery) KeyByLikeCount() *AuthorQuery { q.q.Node.KeyBy = "like_count"; return q }
+func (q *AuthorQuery) OrderByAesHexEmailAsc() *AuthorQuery {
+	q.q.Order("aes_hex_email", false)
+	return q
+}
+func (q *AuthorQuery) OrderByAesHexEmailDesc() *AuthorQuery {
+	q.q.Order("aes_hex_email", true)
+	return q
+}
+func (q *AuthorQuery) GroupByAesHexEmail() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "aes_hex_email")
 	return q
 }
-func (q *Author) KeyByAesHexEmail() *Author       { q.q.Node.KeyBy = "aes_hex_email"; return q }
-func (q *Author) OrderByAesHexPhoneAsc() *Author  { q.q.Order("aes_hex_phone", false); return q }
-func (q *Author) OrderByAesHexPhoneDesc() *Author { q.q.Order("aes_hex_phone", true); return q }
-func (q *Author) GroupByAesHexPhone() *Author {
+func (q *AuthorQuery) KeyByAesHexEmail() *AuthorQuery { q.q.Node.KeyBy = "aes_hex_email"; return q }
+func (q *AuthorQuery) OrderByAesHexPhoneAsc() *AuthorQuery {
+	q.q.Order("aes_hex_phone", false)
+	return q
+}
+func (q *AuthorQuery) OrderByAesHexPhoneDesc() *AuthorQuery {
+	q.q.Order("aes_hex_phone", true)
+	return q
+}
+func (q *AuthorQuery) GroupByAesHexPhone() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "aes_hex_phone")
 	return q
 }
-func (q *Author) KeyByAesHexPhone() *Author { q.q.Node.KeyBy = "aes_hex_phone"; return q }
-func (q *Author) OrderByPriceAsc() *Author  { q.q.Order("price", false); return q }
-func (q *Author) OrderByPriceDesc() *Author { q.q.Order("price", true); return q }
-func (q *Author) GroupByPrice() *Author {
+func (q *AuthorQuery) KeyByAesHexPhone() *AuthorQuery { q.q.Node.KeyBy = "aes_hex_phone"; return q }
+func (q *AuthorQuery) OrderByPriceAsc() *AuthorQuery  { q.q.Order("price", false); return q }
+func (q *AuthorQuery) OrderByPriceDesc() *AuthorQuery { q.q.Order("price", true); return q }
+func (q *AuthorQuery) GroupByPrice() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "price")
 	return q
 }
-func (q *Author) KeyByPrice() *Author          { q.q.Node.KeyBy = "price"; return q }
-func (q *Author) OrderByIpAsc() *Author        { q.q.Order("ip", false); return q }
-func (q *Author) OrderByIpDesc() *Author       { q.q.Order("ip", true); return q }
-func (q *Author) GroupByIp() *Author           { q.q.Node.GroupBy = append(q.q.Node.GroupBy, "ip"); return q }
-func (q *Author) KeyByIp() *Author             { q.q.Node.KeyBy = "ip"; return q }
-func (q *Author) OrderByGzExtendAsc() *Author  { q.q.Order("gz_extend", false); return q }
-func (q *Author) OrderByGzExtendDesc() *Author { q.q.Order("gz_extend", true); return q }
-func (q *Author) GroupByGzExtend() *Author {
+func (q *AuthorQuery) KeyByPrice() *AuthorQuery    { q.q.Node.KeyBy = "price"; return q }
+func (q *AuthorQuery) OrderByIpAsc() *AuthorQuery  { q.q.Order("ip", false); return q }
+func (q *AuthorQuery) OrderByIpDesc() *AuthorQuery { q.q.Order("ip", true); return q }
+func (q *AuthorQuery) GroupByIp() *AuthorQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "ip")
+	return q
+}
+func (q *AuthorQuery) KeyByIp() *AuthorQuery             { q.q.Node.KeyBy = "ip"; return q }
+func (q *AuthorQuery) OrderByGzExtendAsc() *AuthorQuery  { q.q.Order("gz_extend", false); return q }
+func (q *AuthorQuery) OrderByGzExtendDesc() *AuthorQuery { q.q.Order("gz_extend", true); return q }
+func (q *AuthorQuery) GroupByGzExtend() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "gz_extend")
 	return q
 }
-func (q *Author) KeyByGzExtend() *Author          { q.q.Node.KeyBy = "gz_extend"; return q }
-func (q *Author) OrderByJsonSettingAsc() *Author  { q.q.Order("json_setting", false); return q }
-func (q *Author) OrderByJsonSettingDesc() *Author { q.q.Order("json_setting", true); return q }
-func (q *Author) GroupByJsonSetting() *Author {
+func (q *AuthorQuery) KeyByGzExtend() *AuthorQuery { q.q.Node.KeyBy = "gz_extend"; return q }
+func (q *AuthorQuery) OrderByJsonSettingAsc() *AuthorQuery {
+	q.q.Order("json_setting", false)
+	return q
+}
+func (q *AuthorQuery) OrderByJsonSettingDesc() *AuthorQuery {
+	q.q.Order("json_setting", true)
+	return q
+}
+func (q *AuthorQuery) GroupByJsonSetting() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "json_setting")
 	return q
 }
-func (q *Author) KeyByJsonSetting() *Author     { q.q.Node.KeyBy = "json_setting"; return q }
-func (q *Author) OrderByJsonsTagsAsc() *Author  { q.q.Order("jsons_tags", false); return q }
-func (q *Author) OrderByJsonsTagsDesc() *Author { q.q.Order("jsons_tags", true); return q }
-func (q *Author) GroupByJsonsTags() *Author {
+func (q *AuthorQuery) KeyByJsonSetting() *AuthorQuery     { q.q.Node.KeyBy = "json_setting"; return q }
+func (q *AuthorQuery) OrderByJsonsTagsAsc() *AuthorQuery  { q.q.Order("jsons_tags", false); return q }
+func (q *AuthorQuery) OrderByJsonsTagsDesc() *AuthorQuery { q.q.Order("jsons_tags", true); return q }
+func (q *AuthorQuery) GroupByJsonsTags() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "jsons_tags")
 	return q
 }
-func (q *Author) KeyByJsonsTags() *Author         { q.q.Node.KeyBy = "jsons_tags"; return q }
-func (q *Author) OrderByBase64ExtraAsc() *Author  { q.q.Order("base64_extra", false); return q }
-func (q *Author) OrderByBase64ExtraDesc() *Author { q.q.Order("base64_extra", true); return q }
-func (q *Author) GroupByBase64Extra() *Author {
+func (q *AuthorQuery) KeyByJsonsTags() *AuthorQuery { q.q.Node.KeyBy = "jsons_tags"; return q }
+func (q *AuthorQuery) OrderByBase64ExtraAsc() *AuthorQuery {
+	q.q.Order("base64_extra", false)
+	return q
+}
+func (q *AuthorQuery) OrderByBase64ExtraDesc() *AuthorQuery {
+	q.q.Order("base64_extra", true)
+	return q
+}
+func (q *AuthorQuery) GroupByBase64Extra() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "base64_extra")
 	return q
 }
-func (q *Author) KeyByBase64Extra() *Author         { q.q.Node.KeyBy = "base64_extra"; return q }
-func (q *Author) OrderBySerializeDataAsc() *Author  { q.q.Order("serialize_data", false); return q }
-func (q *Author) OrderBySerializeDataDesc() *Author { q.q.Order("serialize_data", true); return q }
-func (q *Author) GroupBySerializeData() *Author {
+func (q *AuthorQuery) KeyByBase64Extra() *AuthorQuery { q.q.Node.KeyBy = "base64_extra"; return q }
+func (q *AuthorQuery) OrderBySerializeDataAsc() *AuthorQuery {
+	q.q.Order("serialize_data", false)
+	return q
+}
+func (q *AuthorQuery) OrderBySerializeDataDesc() *AuthorQuery {
+	q.q.Order("serialize_data", true)
+	return q
+}
+func (q *AuthorQuery) GroupBySerializeData() *AuthorQuery {
 	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "serialize_data")
 	return q
 }
-func (q *Author) KeyBySerializeData() *Author                { q.q.Node.KeyBy = "serialize_data"; return q }
-func (q *Author) OrderByExpr(frag string, desc bool) *Author { q.q.OrderExpr(frag, desc); return q }
-func (q *Author) Limit(offset, count int) *Author {
+func (q *AuthorQuery) KeyBySerializeData() *AuthorQuery { q.q.Node.KeyBy = "serialize_data"; return q }
+func (q *AuthorQuery) OrderByExpr(frag string, desc bool) *AuthorQuery {
+	q.q.OrderExpr(frag, desc)
+	return q
+}
+func (q *AuthorQuery) GroupByExpr(expr, as string) *AuthorQuery { q.q.GroupByExpr(expr, as); return q }
+func (q *AuthorQuery) Limit(offset, count int) *AuthorQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *Author) Distinct() *Author            { q.q.Node.Distinct = true; return q }
-func (q *Author) ForceIndexIk() *Author        { q.q.Node.ForceIdx = "ik"; return q }
-func (q *Author) ForceIndexIxService() *Author { q.q.Node.ForceIdx = "ix_service"; return q }
-func (q *Author) ForceIndexIxUser() *Author    { q.q.Node.ForceIdx = "ix_user"; return q }
+func (q *AuthorQuery) Distinct() *AuthorQuery            { q.q.Node.Distinct = true; return q }
+func (q *AuthorQuery) ForceIndexIk() *AuthorQuery        { q.q.Node.ForceIdx = "ik"; return q }
+func (q *AuthorQuery) ForceIndexIxService() *AuthorQuery { q.q.Node.ForceIdx = "ix_service"; return q }
+func (q *AuthorQuery) ForceIndexIxUser() *AuthorQuery    { q.q.Node.ForceIdx = "ix_user"; return q }
 
 // Relation-child options.
-func (q *Author) Flatten() *Author                     { q.q.Node.Flatten = true; return q }
-func (q *Author) LimitPerParent(n int) *Author         { q.q.Node.LimitPerParent = n; return q }
-func (q *Author) DropChildKey() *Author                { q.q.Node.DropChildKey = true; return q }
-func (q *Author) NoCascadeDelete() *Author             { q.q.Node.NoCascadeDelete = true; return q }
-func (q *Author) IfParentSeqEq(v int64) *Author        { q.q.IfParent("seq", v); return q }
-func (q *Author) IfParentNameEq(v string) *Author      { q.q.IfParent("name", v); return q }
-func (q *Author) IfParentServiceSeqEq(v int64) *Author { q.q.IfParent("service_seq", v); return q }
-func (q *Author) IfParentUserSeqEq(v int64) *Author    { q.q.IfParent("user_seq", v); return q }
+func (q *AuthorQuery) Flatten() *AuthorQuery                { q.q.Node.Flatten = true; return q }
+func (q *AuthorQuery) LimitPerParent(n int) *AuthorQuery    { q.q.Node.LimitPerParent = n; return q }
+func (q *AuthorQuery) DropChildKey() *AuthorQuery           { q.q.Node.DropChildKey = true; return q }
+func (q *AuthorQuery) NoCascadeDelete() *AuthorQuery        { q.q.Node.NoCascadeDelete = true; return q }
+func (q *AuthorQuery) IfParentSeqEq(v int64) *AuthorQuery   { q.q.IfParent("seq", v); return q }
+func (q *AuthorQuery) IfParentNameEq(v string) *AuthorQuery { q.q.IfParent("name", v); return q }
+func (q *AuthorQuery) IfParentServiceSeqEq(v int64) *AuthorQuery {
+	q.q.IfParent("service_seq", v)
+	return q
+}
+func (q *AuthorQuery) IfParentUserSeqEq(v int64) *AuthorQuery { q.q.IfParent("user_seq", v); return q }
 
 // Insert draft. The auto PK is settable too: Save takes it as the update key.
-func (q *Author) SetSeq(v int64) *Author { q.q.Set("seq", v); return q }
-func (q *Author) SetSeqExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetSeq(v int64) *AuthorQuery { q.q.Set("seq", v); return q }
+func (q *AuthorQuery) SetSeqExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("seq", frag, binds...)
 	return q
 }
-func (q *Author) SetName(v string) *Author { q.q.Set("name", v); return q }
-func (q *Author) SetNameExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetName(v string) *AuthorQuery { q.q.Set("name", v); return q }
+func (q *AuthorQuery) SetNameExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("name", frag, binds...)
 	return q
 }
-func (q *Author) SetDescription(v string) *Author { q.q.Set("description", v); return q }
-func (q *Author) SetDescriptionNull() *Author     { q.q.SetNull("description"); return q }
-func (q *Author) SetDescriptionExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetDescription(v string) *AuthorQuery { q.q.Set("description", v); return q }
+func (q *AuthorQuery) SetDescriptionNull() *AuthorQuery     { q.q.SetNull("description"); return q }
+func (q *AuthorQuery) SetDescriptionExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("description", frag, binds...)
 	return q
 }
-func (q *Author) SetCreatedTs(v time.Time) *Author { q.q.Set("created_ts", v); return q }
-func (q *Author) SetCreatedTsExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetCreatedTs(v time.Time) *AuthorQuery { q.q.Set("created_ts", v); return q }
+func (q *AuthorQuery) SetCreatedTsExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("created_ts", frag, binds...)
 	return q
 }
-func (q *Author) SetUpdatedTs(v time.Time) *Author { q.q.Set("updated_ts", v); return q }
-func (q *Author) SetUpdatedTsExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetUpdatedTs(v time.Time) *AuthorQuery { q.q.Set("updated_ts", v); return q }
+func (q *AuthorQuery) SetUpdatedTsExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("updated_ts", frag, binds...)
 	return q
 }
-func (q *Author) SetIsClose(v bool) *Author { q.q.Set("is_close", v); return q }
-func (q *Author) SetIsCloseExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetIsClose(v bool) *AuthorQuery { q.q.Set("is_close", v); return q }
+func (q *AuthorQuery) SetIsCloseExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("is_close", frag, binds...)
 	return q
 }
-func (q *Author) SetIsDisplay(v bool) *Author { q.q.Set("is_display", v); return q }
-func (q *Author) SetIsDisplayExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetIsDisplay(v bool) *AuthorQuery { q.q.Set("is_display", v); return q }
+func (q *AuthorQuery) SetIsDisplayExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("is_display", frag, binds...)
 	return q
 }
-func (q *Author) SetDisplayStartDt(v time.Time) *Author { q.q.Set("display_start_dt", v); return q }
-func (q *Author) SetDisplayStartDtNull() *Author        { q.q.SetNull("display_start_dt"); return q }
-func (q *Author) SetDisplayStartDtExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetDisplayStartDt(v time.Time) *AuthorQuery {
+	q.q.Set("display_start_dt", v)
+	return q
+}
+func (q *AuthorQuery) SetDisplayStartDtNull() *AuthorQuery { q.q.SetNull("display_start_dt"); return q }
+func (q *AuthorQuery) SetDisplayStartDtExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("display_start_dt", frag, binds...)
 	return q
 }
-func (q *Author) SetDisplayEndDt(v time.Time) *Author { q.q.Set("display_end_dt", v); return q }
-func (q *Author) SetDisplayEndDtNull() *Author        { q.q.SetNull("display_end_dt"); return q }
-func (q *Author) SetDisplayEndDtExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetDisplayEndDt(v time.Time) *AuthorQuery {
+	q.q.Set("display_end_dt", v)
+	return q
+}
+func (q *AuthorQuery) SetDisplayEndDtNull() *AuthorQuery { q.q.SetNull("display_end_dt"); return q }
+func (q *AuthorQuery) SetDisplayEndDtExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("display_end_dt", frag, binds...)
 	return q
 }
-func (q *Author) SetIsAllday(v bool) *Author { q.q.Set("is_allday", v); return q }
-func (q *Author) SetIsAlldayExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetIsAllday(v bool) *AuthorQuery { q.q.Set("is_allday", v); return q }
+func (q *AuthorQuery) SetIsAlldayExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("is_allday", frag, binds...)
 	return q
 }
-func (q *Author) SetTargetClubReaderCount(v int64) *Author {
+func (q *AuthorQuery) SetTargetClubReaderCount(v int64) *AuthorQuery {
 	q.q.Set("target_club_reader_count", v)
 	return q
 }
-func (q *Author) SetTargetClubReaderCountExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetTargetClubReaderCountExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("target_club_reader_count", frag, binds...)
 	return q
 }
-func (q *Author) SetSuccessCount(v int64) *Author { q.q.Set("success_count", v); return q }
-func (q *Author) SetSuccessCountExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetSuccessCount(v int64) *AuthorQuery { q.q.Set("success_count", v); return q }
+func (q *AuthorQuery) SetSuccessCountExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("success_count", frag, binds...)
 	return q
 }
-func (q *Author) SetReaderCount(v int64) *Author { q.q.Set("reader_count", v); return q }
-func (q *Author) SetReaderCountExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetReaderCount(v int64) *AuthorQuery { q.q.Set("reader_count", v); return q }
+func (q *AuthorQuery) SetReaderCountExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("reader_count", frag, binds...)
 	return q
 }
-func (q *Author) SetReadCount(v int64) *Author { q.q.Set("read_count", v); return q }
-func (q *Author) SetReadCountExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetReadCount(v int64) *AuthorQuery { q.q.Set("read_count", v); return q }
+func (q *AuthorQuery) SetReadCountExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("read_count", frag, binds...)
 	return q
 }
-func (q *Author) SetPhotoUrl(v string) *Author { q.q.Set("photo_url", v); return q }
-func (q *Author) SetPhotoUrlNull() *Author     { q.q.SetNull("photo_url"); return q }
-func (q *Author) SetPhotoUrlExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetPhotoUrl(v string) *AuthorQuery { q.q.Set("photo_url", v); return q }
+func (q *AuthorQuery) SetPhotoUrlNull() *AuthorQuery     { q.q.SetNull("photo_url"); return q }
+func (q *AuthorQuery) SetPhotoUrlExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("photo_url", frag, binds...)
 	return q
 }
-func (q *Author) SetUserSeq(v int64) *Author { q.q.Set("user_seq", v); return q }
-func (q *Author) SetUserSeqExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetUserSeq(v int64) *AuthorQuery { q.q.Set("user_seq", v); return q }
+func (q *AuthorQuery) SetUserSeqExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("user_seq", frag, binds...)
 	return q
 }
-func (q *Author) SetServiceSeq(v int64) *Author { q.q.Set("service_seq", v); return q }
-func (q *Author) SetServiceSeqExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetServiceSeq(v int64) *AuthorQuery { q.q.Set("service_seq", v); return q }
+func (q *AuthorQuery) SetServiceSeqExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("service_seq", frag, binds...)
 	return q
 }
-func (q *Author) SetServiceRegionSeq(v int64) *Author { q.q.Set("service_region_seq", v); return q }
-func (q *Author) SetServiceRegionSeqExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetServiceRegionSeq(v int64) *AuthorQuery {
+	q.q.Set("service_region_seq", v)
+	return q
+}
+func (q *AuthorQuery) SetServiceRegionSeqExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("service_region_seq", frag, binds...)
 	return q
 }
-func (q *Author) SetServiceMemberSeq(v int64) *Author { q.q.Set("service_member_seq", v); return q }
-func (q *Author) SetServiceMemberSeqExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetServiceMemberSeq(v int64) *AuthorQuery {
+	q.q.Set("service_member_seq", v)
+	return q
+}
+func (q *AuthorQuery) SetServiceMemberSeqExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("service_member_seq", frag, binds...)
 	return q
 }
-func (q *Author) SetStartDt(v time.Time) *Author { q.q.Set("start_dt", v); return q }
-func (q *Author) SetStartDtExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetStartDt(v time.Time) *AuthorQuery { q.q.Set("start_dt", v); return q }
+func (q *AuthorQuery) SetStartDtExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("start_dt", frag, binds...)
 	return q
 }
-func (q *Author) SetEndDt(v time.Time) *Author { q.q.Set("end_dt", v); return q }
-func (q *Author) SetEndDtExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetEndDt(v time.Time) *AuthorQuery { q.q.Set("end_dt", v); return q }
+func (q *AuthorQuery) SetEndDtExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("end_dt", frag, binds...)
 	return q
 }
-func (q *Author) SetUuid(v string) *Author { q.q.Set("uuid", v); return q }
-func (q *Author) SetUuidNull() *Author     { q.q.SetNull("uuid"); return q }
-func (q *Author) SetUuidExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetUuid(v string) *AuthorQuery { q.q.Set("uuid", v); return q }
+func (q *AuthorQuery) SetUuidNull() *AuthorQuery     { q.q.SetNull("uuid"); return q }
+func (q *AuthorQuery) SetUuidExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("uuid", frag, binds...)
 	return q
 }
-func (q *Author) SetIsSingleWork(v bool) *Author { q.q.Set("is_single_work", v); return q }
-func (q *Author) SetIsSingleWorkExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetIsSingleWork(v bool) *AuthorQuery { q.q.Set("is_single_work", v); return q }
+func (q *AuthorQuery) SetIsSingleWorkExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("is_single_work", frag, binds...)
 	return q
 }
-func (q *Author) SetLikeCount(v int64) *Author { q.q.Set("like_count", v); return q }
-func (q *Author) SetLikeCountExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetLikeCount(v int64) *AuthorQuery { q.q.Set("like_count", v); return q }
+func (q *AuthorQuery) SetLikeCountExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("like_count", frag, binds...)
 	return q
 }
-func (q *Author) SetAesHexEmail(v string) *Author { q.q.Set("aes_hex_email", v); return q }
-func (q *Author) SetAesHexEmailNull() *Author     { q.q.SetNull("aes_hex_email"); return q }
-func (q *Author) SetAesHexEmailExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetAesHexEmail(v string) *AuthorQuery { q.q.Set("aes_hex_email", v); return q }
+func (q *AuthorQuery) SetAesHexEmailNull() *AuthorQuery     { q.q.SetNull("aes_hex_email"); return q }
+func (q *AuthorQuery) SetAesHexEmailExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("aes_hex_email", frag, binds...)
 	return q
 }
-func (q *Author) SetAesHexPhone(v string) *Author { q.q.Set("aes_hex_phone", v); return q }
-func (q *Author) SetAesHexPhoneNull() *Author     { q.q.SetNull("aes_hex_phone"); return q }
-func (q *Author) SetAesHexPhoneExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetAesHexPhone(v string) *AuthorQuery { q.q.Set("aes_hex_phone", v); return q }
+func (q *AuthorQuery) SetAesHexPhoneNull() *AuthorQuery     { q.q.SetNull("aes_hex_phone"); return q }
+func (q *AuthorQuery) SetAesHexPhoneExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("aes_hex_phone", frag, binds...)
 	return q
 }
-func (q *Author) SetPrice(v float64) *Author { q.q.Set("price", v); return q }
-func (q *Author) SetPriceNull() *Author      { q.q.SetNull("price"); return q }
-func (q *Author) SetPriceExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetPrice(v float64) *AuthorQuery { q.q.Set("price", v); return q }
+func (q *AuthorQuery) SetPriceNull() *AuthorQuery      { q.q.SetNull("price"); return q }
+func (q *AuthorQuery) SetPriceExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("price", frag, binds...)
 	return q
 }
-func (q *Author) SetIp(v string) *Author { q.q.Set("ip", v); return q }
-func (q *Author) SetIpNull() *Author     { q.q.SetNull("ip"); return q }
-func (q *Author) SetIpExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetIp(v string) *AuthorQuery { q.q.Set("ip", v); return q }
+func (q *AuthorQuery) SetIpNull() *AuthorQuery     { q.q.SetNull("ip"); return q }
+func (q *AuthorQuery) SetIpExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("ip", frag, binds...)
 	return q
 }
-func (q *Author) SetGzExtend(v any) *Author {
+func (q *AuthorQuery) SetGzExtend(v any) *AuthorQuery {
 	q.q.SetStyled("gz_extend", v, []string{"serialize", "gz"})
 	return q
 }
-func (q *Author) SetGzExtendExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetGzExtendExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("gz_extend", frag, binds...)
 	return q
 }
-func (q *Author) SetJsonSetting(v any) *Author {
+func (q *AuthorQuery) SetJsonSetting(v any) *AuthorQuery {
 	q.q.SetStyled("json_setting", v, []string{"json"})
 	return q
 }
-func (q *Author) SetJsonSettingExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetJsonSettingExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("json_setting", frag, binds...)
 	return q
 }
-func (q *Author) SetJsonsTags(v any) *Author {
+func (q *AuthorQuery) SetJsonsTags(v any) *AuthorQuery {
 	q.q.SetStyled("jsons_tags", v, []string{"jsons"})
 	return q
 }
-func (q *Author) SetJsonsTagsExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetJsonsTagsExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("jsons_tags", frag, binds...)
 	return q
 }
-func (q *Author) SetBase64Extra(v any) *Author {
+func (q *AuthorQuery) SetBase64Extra(v any) *AuthorQuery {
 	q.q.SetStyled("base64_extra", v, []string{"serialize", "base64"})
 	return q
 }
-func (q *Author) SetBase64ExtraExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetBase64ExtraExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("base64_extra", frag, binds...)
 	return q
 }
-func (q *Author) SetSerializeData(v any) *Author {
+func (q *AuthorQuery) SetSerializeData(v any) *AuthorQuery {
 	q.q.SetStyled("serialize_data", v, []string{"serialize"})
 	return q
 }
-func (q *Author) SetSerializeDataExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) SetSerializeDataExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("serialize_data", frag, binds...)
 	return q
 }
-func (q *Author) PlusSeq(v int64) *Author  { q.q.Plus("seq", v); return q }
-func (q *Author) MinusSeq(v int64) *Author { q.q.Minus("seq", v); return q }
-func (q *Author) PlusTargetClubReaderCount(v int64) *Author {
+func (q *AuthorQuery) PlusSeq(v int64) *AuthorQuery  { q.q.Plus("seq", v); return q }
+func (q *AuthorQuery) MinusSeq(v int64) *AuthorQuery { q.q.Minus("seq", v); return q }
+func (q *AuthorQuery) PlusTargetClubReaderCount(v int64) *AuthorQuery {
 	q.q.Plus("target_club_reader_count", v)
 	return q
 }
-func (q *Author) MinusTargetClubReaderCount(v int64) *Author {
+func (q *AuthorQuery) MinusTargetClubReaderCount(v int64) *AuthorQuery {
 	q.q.Minus("target_club_reader_count", v)
 	return q
 }
-func (q *Author) PlusSuccessCount(v int64) *Author      { q.q.Plus("success_count", v); return q }
-func (q *Author) MinusSuccessCount(v int64) *Author     { q.q.Minus("success_count", v); return q }
-func (q *Author) PlusReaderCount(v int64) *Author       { q.q.Plus("reader_count", v); return q }
-func (q *Author) MinusReaderCount(v int64) *Author      { q.q.Minus("reader_count", v); return q }
-func (q *Author) PlusReadCount(v int64) *Author         { q.q.Plus("read_count", v); return q }
-func (q *Author) MinusReadCount(v int64) *Author        { q.q.Minus("read_count", v); return q }
-func (q *Author) PlusUserSeq(v int64) *Author           { q.q.Plus("user_seq", v); return q }
-func (q *Author) MinusUserSeq(v int64) *Author          { q.q.Minus("user_seq", v); return q }
-func (q *Author) PlusServiceSeq(v int64) *Author        { q.q.Plus("service_seq", v); return q }
-func (q *Author) MinusServiceSeq(v int64) *Author       { q.q.Minus("service_seq", v); return q }
-func (q *Author) PlusServiceRegionSeq(v int64) *Author  { q.q.Plus("service_region_seq", v); return q }
-func (q *Author) MinusServiceRegionSeq(v int64) *Author { q.q.Minus("service_region_seq", v); return q }
-func (q *Author) PlusServiceMemberSeq(v int64) *Author  { q.q.Plus("service_member_seq", v); return q }
-func (q *Author) MinusServiceMemberSeq(v int64) *Author { q.q.Minus("service_member_seq", v); return q }
-func (q *Author) PlusLikeCount(v int64) *Author         { q.q.Plus("like_count", v); return q }
-func (q *Author) MinusLikeCount(v int64) *Author        { q.q.Minus("like_count", v); return q }
-func (q *Author) PlusPrice(v float64) *Author           { q.q.Plus("price", v); return q }
-func (q *Author) MinusPrice(v float64) *Author          { q.q.Minus("price", v); return q }
+func (q *AuthorQuery) PlusSuccessCount(v int64) *AuthorQuery { q.q.Plus("success_count", v); return q }
+func (q *AuthorQuery) MinusSuccessCount(v int64) *AuthorQuery {
+	q.q.Minus("success_count", v)
+	return q
+}
+func (q *AuthorQuery) PlusReaderCount(v int64) *AuthorQuery  { q.q.Plus("reader_count", v); return q }
+func (q *AuthorQuery) MinusReaderCount(v int64) *AuthorQuery { q.q.Minus("reader_count", v); return q }
+func (q *AuthorQuery) PlusReadCount(v int64) *AuthorQuery    { q.q.Plus("read_count", v); return q }
+func (q *AuthorQuery) MinusReadCount(v int64) *AuthorQuery   { q.q.Minus("read_count", v); return q }
+func (q *AuthorQuery) PlusUserSeq(v int64) *AuthorQuery      { q.q.Plus("user_seq", v); return q }
+func (q *AuthorQuery) MinusUserSeq(v int64) *AuthorQuery     { q.q.Minus("user_seq", v); return q }
+func (q *AuthorQuery) PlusServiceSeq(v int64) *AuthorQuery   { q.q.Plus("service_seq", v); return q }
+func (q *AuthorQuery) MinusServiceSeq(v int64) *AuthorQuery  { q.q.Minus("service_seq", v); return q }
+func (q *AuthorQuery) PlusServiceRegionSeq(v int64) *AuthorQuery {
+	q.q.Plus("service_region_seq", v)
+	return q
+}
+func (q *AuthorQuery) MinusServiceRegionSeq(v int64) *AuthorQuery {
+	q.q.Minus("service_region_seq", v)
+	return q
+}
+func (q *AuthorQuery) PlusServiceMemberSeq(v int64) *AuthorQuery {
+	q.q.Plus("service_member_seq", v)
+	return q
+}
+func (q *AuthorQuery) MinusServiceMemberSeq(v int64) *AuthorQuery {
+	q.q.Minus("service_member_seq", v)
+	return q
+}
+func (q *AuthorQuery) PlusLikeCount(v int64) *AuthorQuery  { q.q.Plus("like_count", v); return q }
+func (q *AuthorQuery) MinusLikeCount(v int64) *AuthorQuery { q.q.Minus("like_count", v); return q }
+func (q *AuthorQuery) PlusPrice(v float64) *AuthorQuery    { q.q.Plus("price", v); return q }
+func (q *AuthorQuery) MinusPrice(v float64) *AuthorQuery   { q.q.Minus("price", v); return q }
 
 // ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
-func (q *Author) OnDuplicateSetName(v string) *Author { q.q.OnDuplicate("name", v); return q }
-func (q *Author) OnDuplicateSetNameExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetName(v string) *AuthorQuery { q.q.OnDuplicate("name", v); return q }
+func (q *AuthorQuery) OnDuplicateSetNameExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("name", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetDescription(v string) *Author {
+func (q *AuthorQuery) OnDuplicateSetDescription(v string) *AuthorQuery {
 	q.q.OnDuplicate("description", v)
 	return q
 }
-func (q *Author) OnDuplicateSetDescriptionExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetDescriptionExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("description", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetCreatedTs(v time.Time) *Author {
+func (q *AuthorQuery) OnDuplicateSetCreatedTs(v time.Time) *AuthorQuery {
 	q.q.OnDuplicate("created_ts", v)
 	return q
 }
-func (q *Author) OnDuplicateSetCreatedTsExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetCreatedTsExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("created_ts", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetUpdatedTs(v time.Time) *Author {
+func (q *AuthorQuery) OnDuplicateSetUpdatedTs(v time.Time) *AuthorQuery {
 	q.q.OnDuplicate("updated_ts", v)
 	return q
 }
-func (q *Author) OnDuplicateSetUpdatedTsExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetUpdatedTsExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("updated_ts", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetIsClose(v bool) *Author { q.q.OnDuplicate("is_close", v); return q }
-func (q *Author) OnDuplicateSetIsCloseExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetIsClose(v bool) *AuthorQuery {
+	q.q.OnDuplicate("is_close", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetIsCloseExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("is_close", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetIsDisplay(v bool) *Author { q.q.OnDuplicate("is_display", v); return q }
-func (q *Author) OnDuplicateSetIsDisplayExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetIsDisplay(v bool) *AuthorQuery {
+	q.q.OnDuplicate("is_display", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetIsDisplayExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("is_display", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetDisplayStartDt(v time.Time) *Author {
+func (q *AuthorQuery) OnDuplicateSetDisplayStartDt(v time.Time) *AuthorQuery {
 	q.q.OnDuplicate("display_start_dt", v)
 	return q
 }
-func (q *Author) OnDuplicateSetDisplayStartDtExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetDisplayStartDtExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("display_start_dt", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetDisplayEndDt(v time.Time) *Author {
+func (q *AuthorQuery) OnDuplicateSetDisplayEndDt(v time.Time) *AuthorQuery {
 	q.q.OnDuplicate("display_end_dt", v)
 	return q
 }
-func (q *Author) OnDuplicateSetDisplayEndDtExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetDisplayEndDtExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("display_end_dt", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetIsAllday(v bool) *Author { q.q.OnDuplicate("is_allday", v); return q }
-func (q *Author) OnDuplicateSetIsAlldayExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetIsAllday(v bool) *AuthorQuery {
+	q.q.OnDuplicate("is_allday", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetIsAlldayExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("is_allday", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetTargetClubReaderCount(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateSetTargetClubReaderCount(v int64) *AuthorQuery {
 	q.q.OnDuplicate("target_club_reader_count", v)
 	return q
 }
-func (q *Author) OnDuplicateSetTargetClubReaderCountExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetTargetClubReaderCountExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("target_club_reader_count", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetSuccessCount(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateSetSuccessCount(v int64) *AuthorQuery {
 	q.q.OnDuplicate("success_count", v)
 	return q
 }
-func (q *Author) OnDuplicateSetSuccessCountExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetSuccessCountExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("success_count", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetReaderCount(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateSetReaderCount(v int64) *AuthorQuery {
 	q.q.OnDuplicate("reader_count", v)
 	return q
 }
-func (q *Author) OnDuplicateSetReaderCountExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetReaderCountExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("reader_count", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetReadCount(v int64) *Author { q.q.OnDuplicate("read_count", v); return q }
-func (q *Author) OnDuplicateSetReadCountExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetReadCount(v int64) *AuthorQuery {
+	q.q.OnDuplicate("read_count", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetReadCountExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("read_count", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetPhotoUrl(v string) *Author { q.q.OnDuplicate("photo_url", v); return q }
-func (q *Author) OnDuplicateSetPhotoUrlExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetPhotoUrl(v string) *AuthorQuery {
+	q.q.OnDuplicate("photo_url", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetPhotoUrlExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("photo_url", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetUserSeq(v int64) *Author { q.q.OnDuplicate("user_seq", v); return q }
-func (q *Author) OnDuplicateSetUserSeqExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetUserSeq(v int64) *AuthorQuery {
+	q.q.OnDuplicate("user_seq", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetUserSeqExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("user_seq", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetServiceSeq(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateSetServiceSeq(v int64) *AuthorQuery {
 	q.q.OnDuplicate("service_seq", v)
 	return q
 }
-func (q *Author) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetServiceSeqExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("service_seq", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetServiceRegionSeq(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateSetServiceRegionSeq(v int64) *AuthorQuery {
 	q.q.OnDuplicate("service_region_seq", v)
 	return q
 }
-func (q *Author) OnDuplicateSetServiceRegionSeqExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetServiceRegionSeqExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("service_region_seq", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetServiceMemberSeq(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateSetServiceMemberSeq(v int64) *AuthorQuery {
 	q.q.OnDuplicate("service_member_seq", v)
 	return q
 }
-func (q *Author) OnDuplicateSetServiceMemberSeqExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetServiceMemberSeqExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("service_member_seq", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetStartDt(v time.Time) *Author { q.q.OnDuplicate("start_dt", v); return q }
-func (q *Author) OnDuplicateSetStartDtExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetStartDt(v time.Time) *AuthorQuery {
+	q.q.OnDuplicate("start_dt", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetStartDtExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("start_dt", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetEndDt(v time.Time) *Author { q.q.OnDuplicate("end_dt", v); return q }
-func (q *Author) OnDuplicateSetEndDtExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetEndDt(v time.Time) *AuthorQuery {
+	q.q.OnDuplicate("end_dt", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetEndDtExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("end_dt", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetUuid(v string) *Author { q.q.OnDuplicate("uuid", v); return q }
-func (q *Author) OnDuplicateSetUuidExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetUuid(v string) *AuthorQuery { q.q.OnDuplicate("uuid", v); return q }
+func (q *AuthorQuery) OnDuplicateSetUuidExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("uuid", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetIsSingleWork(v bool) *Author {
+func (q *AuthorQuery) OnDuplicateSetIsSingleWork(v bool) *AuthorQuery {
 	q.q.OnDuplicate("is_single_work", v)
 	return q
 }
-func (q *Author) OnDuplicateSetIsSingleWorkExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetIsSingleWorkExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("is_single_work", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetLikeCount(v int64) *Author { q.q.OnDuplicate("like_count", v); return q }
-func (q *Author) OnDuplicateSetLikeCountExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetLikeCount(v int64) *AuthorQuery {
+	q.q.OnDuplicate("like_count", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetLikeCountExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("like_count", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetAesHexEmail(v string) *Author {
+func (q *AuthorQuery) OnDuplicateSetAesHexEmail(v string) *AuthorQuery {
 	q.q.OnDuplicate("aes_hex_email", v)
 	return q
 }
-func (q *Author) OnDuplicateSetAesHexEmailExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetAesHexEmailExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("aes_hex_email", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetAesHexPhone(v string) *Author {
+func (q *AuthorQuery) OnDuplicateSetAesHexPhone(v string) *AuthorQuery {
 	q.q.OnDuplicate("aes_hex_phone", v)
 	return q
 }
-func (q *Author) OnDuplicateSetAesHexPhoneExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetAesHexPhoneExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("aes_hex_phone", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetPrice(v float64) *Author { q.q.OnDuplicate("price", v); return q }
-func (q *Author) OnDuplicateSetPriceExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetPrice(v float64) *AuthorQuery {
+	q.q.OnDuplicate("price", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetPriceExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("price", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetIp(v string) *Author { q.q.OnDuplicate("ip", v); return q }
-func (q *Author) OnDuplicateSetIpExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetIp(v string) *AuthorQuery { q.q.OnDuplicate("ip", v); return q }
+func (q *AuthorQuery) OnDuplicateSetIpExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("ip", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetGzExtend(v any) *Author {
+func (q *AuthorQuery) OnDuplicateSetGzExtend(v any) *AuthorQuery {
 	q.q.OnDuplicateStyled("gz_extend", v, []string{"serialize", "gz"})
 	return q
 }
-func (q *Author) OnDuplicateSetGzExtendExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetGzExtendExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("gz_extend", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetJsonSetting(v any) *Author {
+func (q *AuthorQuery) OnDuplicateSetJsonSetting(v any) *AuthorQuery {
 	q.q.OnDuplicateStyled("json_setting", v, []string{"json"})
 	return q
 }
-func (q *Author) OnDuplicateSetJsonSettingExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetJsonSettingExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("json_setting", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetJsonsTags(v any) *Author {
+func (q *AuthorQuery) OnDuplicateSetJsonsTags(v any) *AuthorQuery {
 	q.q.OnDuplicateStyled("jsons_tags", v, []string{"jsons"})
 	return q
 }
-func (q *Author) OnDuplicateSetJsonsTagsExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetJsonsTagsExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("jsons_tags", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetBase64Extra(v any) *Author {
+func (q *AuthorQuery) OnDuplicateSetBase64Extra(v any) *AuthorQuery {
 	q.q.OnDuplicateStyled("base64_extra", v, []string{"serialize", "base64"})
 	return q
 }
-func (q *Author) OnDuplicateSetBase64ExtraExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetBase64ExtraExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("base64_extra", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicateSetSerializeData(v any) *Author {
+func (q *AuthorQuery) OnDuplicateSetSerializeData(v any) *AuthorQuery {
 	q.q.OnDuplicateStyled("serialize_data", v, []string{"serialize"})
 	return q
 }
-func (q *Author) OnDuplicateSetSerializeDataExpr(frag string, binds ...any) *Author {
+func (q *AuthorQuery) OnDuplicateSetSerializeDataExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("serialize_data", frag, binds...)
 	return q
 }
-func (q *Author) OnDuplicatePlusTargetClubReaderCount(v int64) *Author {
+func (q *AuthorQuery) OnDuplicatePlusTargetClubReaderCount(v int64) *AuthorQuery {
 	q.q.OnDuplicatePlus("target_club_reader_count", v)
 	return q
 }
-func (q *Author) OnDuplicateMinusTargetClubReaderCount(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateMinusTargetClubReaderCount(v int64) *AuthorQuery {
 	q.q.OnDuplicateMinus("target_club_reader_count", v)
 	return q
 }
-func (q *Author) OnDuplicatePlusSuccessCount(v int64) *Author {
+func (q *AuthorQuery) OnDuplicatePlusSuccessCount(v int64) *AuthorQuery {
 	q.q.OnDuplicatePlus("success_count", v)
 	return q
 }
-func (q *Author) OnDuplicateMinusSuccessCount(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateMinusSuccessCount(v int64) *AuthorQuery {
 	q.q.OnDuplicateMinus("success_count", v)
 	return q
 }
-func (q *Author) OnDuplicatePlusReaderCount(v int64) *Author {
+func (q *AuthorQuery) OnDuplicatePlusReaderCount(v int64) *AuthorQuery {
 	q.q.OnDuplicatePlus("reader_count", v)
 	return q
 }
-func (q *Author) OnDuplicateMinusReaderCount(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateMinusReaderCount(v int64) *AuthorQuery {
 	q.q.OnDuplicateMinus("reader_count", v)
 	return q
 }
-func (q *Author) OnDuplicatePlusReadCount(v int64) *Author {
+func (q *AuthorQuery) OnDuplicatePlusReadCount(v int64) *AuthorQuery {
 	q.q.OnDuplicatePlus("read_count", v)
 	return q
 }
-func (q *Author) OnDuplicateMinusReadCount(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateMinusReadCount(v int64) *AuthorQuery {
 	q.q.OnDuplicateMinus("read_count", v)
 	return q
 }
-func (q *Author) OnDuplicatePlusUserSeq(v int64) *Author {
+func (q *AuthorQuery) OnDuplicatePlusUserSeq(v int64) *AuthorQuery {
 	q.q.OnDuplicatePlus("user_seq", v)
 	return q
 }
-func (q *Author) OnDuplicateMinusUserSeq(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateMinusUserSeq(v int64) *AuthorQuery {
 	q.q.OnDuplicateMinus("user_seq", v)
 	return q
 }
-func (q *Author) OnDuplicatePlusServiceSeq(v int64) *Author {
+func (q *AuthorQuery) OnDuplicatePlusServiceSeq(v int64) *AuthorQuery {
 	q.q.OnDuplicatePlus("service_seq", v)
 	return q
 }
-func (q *Author) OnDuplicateMinusServiceSeq(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateMinusServiceSeq(v int64) *AuthorQuery {
 	q.q.OnDuplicateMinus("service_seq", v)
 	return q
 }
-func (q *Author) OnDuplicatePlusServiceRegionSeq(v int64) *Author {
+func (q *AuthorQuery) OnDuplicatePlusServiceRegionSeq(v int64) *AuthorQuery {
 	q.q.OnDuplicatePlus("service_region_seq", v)
 	return q
 }
-func (q *Author) OnDuplicateMinusServiceRegionSeq(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateMinusServiceRegionSeq(v int64) *AuthorQuery {
 	q.q.OnDuplicateMinus("service_region_seq", v)
 	return q
 }
-func (q *Author) OnDuplicatePlusServiceMemberSeq(v int64) *Author {
+func (q *AuthorQuery) OnDuplicatePlusServiceMemberSeq(v int64) *AuthorQuery {
 	q.q.OnDuplicatePlus("service_member_seq", v)
 	return q
 }
-func (q *Author) OnDuplicateMinusServiceMemberSeq(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateMinusServiceMemberSeq(v int64) *AuthorQuery {
 	q.q.OnDuplicateMinus("service_member_seq", v)
 	return q
 }
-func (q *Author) OnDuplicatePlusLikeCount(v int64) *Author {
+func (q *AuthorQuery) OnDuplicatePlusLikeCount(v int64) *AuthorQuery {
 	q.q.OnDuplicatePlus("like_count", v)
 	return q
 }
-func (q *Author) OnDuplicateMinusLikeCount(v int64) *Author {
+func (q *AuthorQuery) OnDuplicateMinusLikeCount(v int64) *AuthorQuery {
 	q.q.OnDuplicateMinus("like_count", v)
 	return q
 }
-func (q *Author) OnDuplicatePlusPrice(v float64) *Author  { q.q.OnDuplicatePlus("price", v); return q }
-func (q *Author) OnDuplicateMinusPrice(v float64) *Author { q.q.OnDuplicateMinus("price", v); return q }
-func (q *Author) OnDuplicateSetAll() *Author              { q.q.OnDuplicateSetAll("seq", "seq"); return q }
+func (q *AuthorQuery) OnDuplicatePlusPrice(v float64) *AuthorQuery {
+	q.q.OnDuplicatePlus("price", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateMinusPrice(v float64) *AuthorQuery {
+	q.q.OnDuplicateMinus("price", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetAll() *AuthorQuery { q.q.OnDuplicateSetAll("seq", "seq"); return q }
 
 // Terminals.
-func (q *Author) One(ctx context.Context, ex orm.Exec) (*AuthorRow, error) {
+func (q *AuthorQuery) One() (*AuthorRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "one"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil || len(rows.Data) == 0 {
@@ -5011,13 +5599,167 @@ func (q *Author) One(ctx context.Context, ex orm.Exec) (*AuthorRow, error) {
 	return scanAuthor(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *Author) All(ctx context.Context, ex orm.Exec) (*orm.Collection[AuthorRow], error) {
+func (q *AuthorQuery) All() (*orm.Collection[AuthorRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "all"
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
 	}
 	return collectAuthor(rows, q.keyFn), nil
+}
+
+// Get is the preferred single-row terminal. One is kept as a compatibility alias.
+func (q *AuthorQuery) Get() (*AuthorRow, error) {
+	return q.One()
+}
+
+// Gets is the preferred collection terminal. All is kept as a compatibility alias.
+func (q *AuthorQuery) Gets() (*orm.Collection[AuthorRow], error) {
+	return q.All()
+}
+
+// GetsBySeq applies seq = v and runs the collection terminal.
+func (q *AuthorQuery) GetsBySeq(v int64) (*orm.Collection[AuthorRow], error) {
+	return q.Seq(v).Gets()
+}
+
+// GetsByName applies name = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByName(v string) (*orm.Collection[AuthorRow], error) {
+	return q.Name(v).Gets()
+}
+
+// GetsByDescription applies description = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByDescription(v string) (*orm.Collection[AuthorRow], error) {
+	return q.Description(v).Gets()
+}
+
+// GetsByCreatedTs applies created_ts = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByCreatedTs(v time.Time) (*orm.Collection[AuthorRow], error) {
+	return q.CreatedTs(v).Gets()
+}
+
+// GetsByUpdatedTs applies updated_ts = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByUpdatedTs(v time.Time) (*orm.Collection[AuthorRow], error) {
+	return q.UpdatedTs(v).Gets()
+}
+
+// GetsByIsClose applies is_close = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByIsClose(v bool) (*orm.Collection[AuthorRow], error) {
+	return q.IsClose(v).Gets()
+}
+
+// GetsByIsDisplay applies is_display = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByIsDisplay(v bool) (*orm.Collection[AuthorRow], error) {
+	return q.IsDisplay(v).Gets()
+}
+
+// GetsByDisplayStartDt applies display_start_dt = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByDisplayStartDt(v time.Time) (*orm.Collection[AuthorRow], error) {
+	return q.DisplayStartDt(v).Gets()
+}
+
+// GetsByDisplayEndDt applies display_end_dt = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByDisplayEndDt(v time.Time) (*orm.Collection[AuthorRow], error) {
+	return q.DisplayEndDt(v).Gets()
+}
+
+// GetsByIsAllday applies is_allday = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByIsAllday(v bool) (*orm.Collection[AuthorRow], error) {
+	return q.IsAllday(v).Gets()
+}
+
+// GetsByTargetClubReaderCount applies target_club_reader_count = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByTargetClubReaderCount(v int64) (*orm.Collection[AuthorRow], error) {
+	return q.TargetClubReaderCount(v).Gets()
+}
+
+// GetsBySuccessCount applies success_count = v and runs the collection terminal.
+func (q *AuthorQuery) GetsBySuccessCount(v int64) (*orm.Collection[AuthorRow], error) {
+	return q.SuccessCount(v).Gets()
+}
+
+// GetsByReaderCount applies reader_count = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByReaderCount(v int64) (*orm.Collection[AuthorRow], error) {
+	return q.ReaderCount(v).Gets()
+}
+
+// GetsByReadCount applies read_count = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByReadCount(v int64) (*orm.Collection[AuthorRow], error) {
+	return q.ReadCount(v).Gets()
+}
+
+// GetsByPhotoUrl applies photo_url = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByPhotoUrl(v string) (*orm.Collection[AuthorRow], error) {
+	return q.PhotoUrl(v).Gets()
+}
+
+// GetsByUserSeq applies user_seq = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByUserSeq(v int64) (*orm.Collection[AuthorRow], error) {
+	return q.UserSeq(v).Gets()
+}
+
+// GetsByServiceSeq applies service_seq = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByServiceSeq(v int64) (*orm.Collection[AuthorRow], error) {
+	return q.ServiceSeq(v).Gets()
+}
+
+// GetsByServiceRegionSeq applies service_region_seq = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByServiceRegionSeq(v int64) (*orm.Collection[AuthorRow], error) {
+	return q.ServiceRegionSeq(v).Gets()
+}
+
+// GetsByServiceMemberSeq applies service_member_seq = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByServiceMemberSeq(v int64) (*orm.Collection[AuthorRow], error) {
+	return q.ServiceMemberSeq(v).Gets()
+}
+
+// GetsByStartDt applies start_dt = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByStartDt(v time.Time) (*orm.Collection[AuthorRow], error) {
+	return q.StartDt(v).Gets()
+}
+
+// GetsByEndDt applies end_dt = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByEndDt(v time.Time) (*orm.Collection[AuthorRow], error) {
+	return q.EndDt(v).Gets()
+}
+
+// GetsByUuid applies uuid = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByUuid(v string) (*orm.Collection[AuthorRow], error) {
+	return q.Uuid(v).Gets()
+}
+
+// GetsByIsSingleWork applies is_single_work = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByIsSingleWork(v bool) (*orm.Collection[AuthorRow], error) {
+	return q.IsSingleWork(v).Gets()
+}
+
+// GetsByLikeCount applies like_count = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByLikeCount(v int64) (*orm.Collection[AuthorRow], error) {
+	return q.LikeCount(v).Gets()
+}
+
+// GetsByAesHexEmail applies aes_hex_email = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByAesHexEmail(v string) (*orm.Collection[AuthorRow], error) {
+	return q.AesHexEmail(v).Gets()
+}
+
+// GetsByAesHexPhone applies aes_hex_phone = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByAesHexPhone(v string) (*orm.Collection[AuthorRow], error) {
+	return q.AesHexPhone(v).Gets()
+}
+
+// GetsByPrice applies price = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByPrice(v float64) (*orm.Collection[AuthorRow], error) {
+	return q.Price(v).Gets()
+}
+
+// GetsByIp applies ip = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByIp(v string) (*orm.Collection[AuthorRow], error) {
+	return q.Ip(v).Gets()
 }
 
 func collectAuthor(rows *orm.Rows, keyFn func(*AuthorRow) orm.Key) *orm.Collection[AuthorRow] {
@@ -5033,144 +5775,400 @@ func collectAuthor(rows *orm.Rows, keyFn func(*AuthorRow) orm.Key) *orm.Collecti
 	return c
 }
 
-func (q *Author) Count(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) Count() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
 }
-func (q *Author) SumSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+
+// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
+func (q *AuthorQuery) GetCount() (int64, error) {
+	return q.Count()
+}
+
+// GetCountBySeq applies seq = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountBySeq(v int64) (int64, error) {
+	return q.Seq(v).GetCount()
+}
+
+// GetCountByName applies name = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByName(v string) (int64, error) {
+	return q.Name(v).GetCount()
+}
+
+// GetCountByDescription applies description = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByDescription(v string) (int64, error) {
+	return q.Description(v).GetCount()
+}
+
+// GetCountByCreatedTs applies created_ts = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByCreatedTs(v time.Time) (int64, error) {
+	return q.CreatedTs(v).GetCount()
+}
+
+// GetCountByUpdatedTs applies updated_ts = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByUpdatedTs(v time.Time) (int64, error) {
+	return q.UpdatedTs(v).GetCount()
+}
+
+// GetCountByIsClose applies is_close = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByIsClose(v bool) (int64, error) {
+	return q.IsClose(v).GetCount()
+}
+
+// GetCountByIsDisplay applies is_display = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByIsDisplay(v bool) (int64, error) {
+	return q.IsDisplay(v).GetCount()
+}
+
+// GetCountByDisplayStartDt applies display_start_dt = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByDisplayStartDt(v time.Time) (int64, error) {
+	return q.DisplayStartDt(v).GetCount()
+}
+
+// GetCountByDisplayEndDt applies display_end_dt = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByDisplayEndDt(v time.Time) (int64, error) {
+	return q.DisplayEndDt(v).GetCount()
+}
+
+// GetCountByIsAllday applies is_allday = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByIsAllday(v bool) (int64, error) {
+	return q.IsAllday(v).GetCount()
+}
+
+// GetCountByTargetClubReaderCount applies target_club_reader_count = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByTargetClubReaderCount(v int64) (int64, error) {
+	return q.TargetClubReaderCount(v).GetCount()
+}
+
+// GetCountBySuccessCount applies success_count = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountBySuccessCount(v int64) (int64, error) {
+	return q.SuccessCount(v).GetCount()
+}
+
+// GetCountByReaderCount applies reader_count = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByReaderCount(v int64) (int64, error) {
+	return q.ReaderCount(v).GetCount()
+}
+
+// GetCountByReadCount applies read_count = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByReadCount(v int64) (int64, error) {
+	return q.ReadCount(v).GetCount()
+}
+
+// GetCountByPhotoUrl applies photo_url = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByPhotoUrl(v string) (int64, error) {
+	return q.PhotoUrl(v).GetCount()
+}
+
+// GetCountByUserSeq applies user_seq = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByUserSeq(v int64) (int64, error) {
+	return q.UserSeq(v).GetCount()
+}
+
+// GetCountByServiceSeq applies service_seq = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByServiceSeq(v int64) (int64, error) {
+	return q.ServiceSeq(v).GetCount()
+}
+
+// GetCountByServiceRegionSeq applies service_region_seq = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByServiceRegionSeq(v int64) (int64, error) {
+	return q.ServiceRegionSeq(v).GetCount()
+}
+
+// GetCountByServiceMemberSeq applies service_member_seq = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByServiceMemberSeq(v int64) (int64, error) {
+	return q.ServiceMemberSeq(v).GetCount()
+}
+
+// GetCountByStartDt applies start_dt = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByStartDt(v time.Time) (int64, error) {
+	return q.StartDt(v).GetCount()
+}
+
+// GetCountByEndDt applies end_dt = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByEndDt(v time.Time) (int64, error) {
+	return q.EndDt(v).GetCount()
+}
+
+// GetCountByUuid applies uuid = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByUuid(v string) (int64, error) {
+	return q.Uuid(v).GetCount()
+}
+
+// GetCountByIsSingleWork applies is_single_work = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByIsSingleWork(v bool) (int64, error) {
+	return q.IsSingleWork(v).GetCount()
+}
+
+// GetCountByLikeCount applies like_count = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByLikeCount(v int64) (int64, error) {
+	return q.LikeCount(v).GetCount()
+}
+
+// GetCountByAesHexEmail applies aes_hex_email = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByAesHexEmail(v string) (int64, error) {
+	return q.AesHexEmail(v).GetCount()
+}
+
+// GetCountByAesHexPhone applies aes_hex_phone = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByAesHexPhone(v string) (int64, error) {
+	return q.AesHexPhone(v).GetCount()
+}
+
+// GetCountByPrice applies price = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByPrice(v float64) (int64, error) {
+	return q.Price(v).GetCount()
+}
+
+// GetCountByIp applies ip = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByIp(v string) (int64, error) {
+	return q.Ip(v).GetCount()
+}
+
+// GetsCount returns one row per group_by value. The grouped columns are in the
+// row and the aggregate is available as Extra("row_count").
+func (q *AuthorQuery) GetsCount() (*orm.Collection[AuthorRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "group_count"
+	rows, err := orm.Query(ctx, ex, q.q.Req)
+	if err != nil {
+		return nil, err
+	}
+	return collectAuthor(rows, q.keyFn), nil
+}
+func (q *AuthorQuery) SumSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) AvgSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) AvgSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) SumTargetClubReaderCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) SumTargetClubReaderCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "target_club_reader_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) AvgTargetClubReaderCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) AvgTargetClubReaderCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "target_club_reader_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) SumSuccessCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) SumSuccessCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "success_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) AvgSuccessCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) AvgSuccessCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "success_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) SumReaderCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) SumReaderCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "reader_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) AvgReaderCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) AvgReaderCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "reader_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) SumReadCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) SumReadCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "read_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) AvgReadCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) AvgReadCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "read_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) SumUserSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) SumUserSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) AvgUserSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) AvgUserSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) SumServiceSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) SumServiceSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) AvgServiceSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) AvgServiceSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) SumServiceRegionSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) SumServiceRegionSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "service_region_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) AvgServiceRegionSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) AvgServiceRegionSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "service_region_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) SumServiceMemberSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) SumServiceMemberSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "service_member_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) AvgServiceMemberSeq(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) AvgServiceMemberSeq() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "service_member_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) SumLikeCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) SumLikeCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "like_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) AvgLikeCount(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) AvgLikeCount() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "like_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) SumPrice(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) SumPrice() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "sum"
 	q.q.Req.IR.Agg = "price"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) AvgPrice(ctx context.Context, ex orm.Exec) (float64, error) {
+func (q *AuthorQuery) AvgPrice() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "price"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }
-func (q *Author) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5178,7 +6176,11 @@ func (q *Author) CountDistinctSeq(ctx context.Context, ex orm.Exec) (int64, erro
 }
 
 // MinSeq is nil when no row matches.
-func (q *Author) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MinSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5190,7 +6192,11 @@ func (q *Author) MinSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
 }
 
 // MaxSeq is nil when no row matches.
-func (q *Author) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MaxSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5200,7 +6206,11 @@ func (q *Author) MaxSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctName(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctName() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5208,7 +6218,11 @@ func (q *Author) CountDistinctName(ctx context.Context, ex orm.Exec) (int64, err
 }
 
 // MinName is nil when no row matches.
-func (q *Author) MinName(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *AuthorQuery) MinName() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5220,7 +6234,11 @@ func (q *Author) MinName(ctx context.Context, ex orm.Exec) (*string, error) {
 }
 
 // MaxName is nil when no row matches.
-func (q *Author) MaxName(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *AuthorQuery) MaxName() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "name"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5230,7 +6248,11 @@ func (q *Author) MaxName(ctx context.Context, ex orm.Exec) (*string, error) {
 	x := orm.AsString(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctDescription(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctDescription() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "description"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5238,7 +6260,11 @@ func (q *Author) CountDistinctDescription(ctx context.Context, ex orm.Exec) (int
 }
 
 // MinDescription is nil when no row matches.
-func (q *Author) MinDescription(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *AuthorQuery) MinDescription() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "description"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5250,7 +6276,11 @@ func (q *Author) MinDescription(ctx context.Context, ex orm.Exec) (*string, erro
 }
 
 // MaxDescription is nil when no row matches.
-func (q *Author) MaxDescription(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *AuthorQuery) MaxDescription() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "description"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5260,7 +6290,11 @@ func (q *Author) MaxDescription(ctx context.Context, ex orm.Exec) (*string, erro
 	x := orm.AsString(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctCreatedTs(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctCreatedTs() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "created_ts"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5268,7 +6302,11 @@ func (q *Author) CountDistinctCreatedTs(ctx context.Context, ex orm.Exec) (int64
 }
 
 // MinCreatedTs is nil when no row matches.
-func (q *Author) MinCreatedTs(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *AuthorQuery) MinCreatedTs() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "created_ts"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5280,7 +6318,11 @@ func (q *Author) MinCreatedTs(ctx context.Context, ex orm.Exec) (*time.Time, err
 }
 
 // MaxCreatedTs is nil when no row matches.
-func (q *Author) MaxCreatedTs(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *AuthorQuery) MaxCreatedTs() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "created_ts"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5290,7 +6332,11 @@ func (q *Author) MaxCreatedTs(ctx context.Context, ex orm.Exec) (*time.Time, err
 	x := orm.AsTime(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctUpdatedTs(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctUpdatedTs() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "updated_ts"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5298,7 +6344,11 @@ func (q *Author) CountDistinctUpdatedTs(ctx context.Context, ex orm.Exec) (int64
 }
 
 // MinUpdatedTs is nil when no row matches.
-func (q *Author) MinUpdatedTs(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *AuthorQuery) MinUpdatedTs() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "updated_ts"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5310,7 +6360,11 @@ func (q *Author) MinUpdatedTs(ctx context.Context, ex orm.Exec) (*time.Time, err
 }
 
 // MaxUpdatedTs is nil when no row matches.
-func (q *Author) MaxUpdatedTs(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *AuthorQuery) MaxUpdatedTs() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "updated_ts"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5320,7 +6374,11 @@ func (q *Author) MaxUpdatedTs(ctx context.Context, ex orm.Exec) (*time.Time, err
 	x := orm.AsTime(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctIsClose(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctIsClose() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "is_close"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5328,7 +6386,11 @@ func (q *Author) CountDistinctIsClose(ctx context.Context, ex orm.Exec) (int64, 
 }
 
 // MinIsClose is nil when no row matches.
-func (q *Author) MinIsClose(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *AuthorQuery) MinIsClose() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "is_close"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5340,7 +6402,11 @@ func (q *Author) MinIsClose(ctx context.Context, ex orm.Exec) (*bool, error) {
 }
 
 // MaxIsClose is nil when no row matches.
-func (q *Author) MaxIsClose(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *AuthorQuery) MaxIsClose() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "is_close"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5350,7 +6416,11 @@ func (q *Author) MaxIsClose(ctx context.Context, ex orm.Exec) (*bool, error) {
 	x := orm.AsBool(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctIsDisplay(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctIsDisplay() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "is_display"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5358,7 +6428,11 @@ func (q *Author) CountDistinctIsDisplay(ctx context.Context, ex orm.Exec) (int64
 }
 
 // MinIsDisplay is nil when no row matches.
-func (q *Author) MinIsDisplay(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *AuthorQuery) MinIsDisplay() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "is_display"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5370,7 +6444,11 @@ func (q *Author) MinIsDisplay(ctx context.Context, ex orm.Exec) (*bool, error) {
 }
 
 // MaxIsDisplay is nil when no row matches.
-func (q *Author) MaxIsDisplay(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *AuthorQuery) MaxIsDisplay() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "is_display"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5380,7 +6458,11 @@ func (q *Author) MaxIsDisplay(ctx context.Context, ex orm.Exec) (*bool, error) {
 	x := orm.AsBool(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctDisplayStartDt(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctDisplayStartDt() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "display_start_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5388,7 +6470,11 @@ func (q *Author) CountDistinctDisplayStartDt(ctx context.Context, ex orm.Exec) (
 }
 
 // MinDisplayStartDt is nil when no row matches.
-func (q *Author) MinDisplayStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *AuthorQuery) MinDisplayStartDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "display_start_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5400,7 +6486,11 @@ func (q *Author) MinDisplayStartDt(ctx context.Context, ex orm.Exec) (*time.Time
 }
 
 // MaxDisplayStartDt is nil when no row matches.
-func (q *Author) MaxDisplayStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *AuthorQuery) MaxDisplayStartDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "display_start_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5410,7 +6500,11 @@ func (q *Author) MaxDisplayStartDt(ctx context.Context, ex orm.Exec) (*time.Time
 	x := orm.AsTime(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctDisplayEndDt(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctDisplayEndDt() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "display_end_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5418,7 +6512,11 @@ func (q *Author) CountDistinctDisplayEndDt(ctx context.Context, ex orm.Exec) (in
 }
 
 // MinDisplayEndDt is nil when no row matches.
-func (q *Author) MinDisplayEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *AuthorQuery) MinDisplayEndDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "display_end_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5430,7 +6528,11 @@ func (q *Author) MinDisplayEndDt(ctx context.Context, ex orm.Exec) (*time.Time, 
 }
 
 // MaxDisplayEndDt is nil when no row matches.
-func (q *Author) MaxDisplayEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *AuthorQuery) MaxDisplayEndDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "display_end_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5440,7 +6542,11 @@ func (q *Author) MaxDisplayEndDt(ctx context.Context, ex orm.Exec) (*time.Time, 
 	x := orm.AsTime(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctIsAllday(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctIsAllday() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "is_allday"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5448,7 +6554,11 @@ func (q *Author) CountDistinctIsAllday(ctx context.Context, ex orm.Exec) (int64,
 }
 
 // MinIsAllday is nil when no row matches.
-func (q *Author) MinIsAllday(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *AuthorQuery) MinIsAllday() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "is_allday"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5460,7 +6570,11 @@ func (q *Author) MinIsAllday(ctx context.Context, ex orm.Exec) (*bool, error) {
 }
 
 // MaxIsAllday is nil when no row matches.
-func (q *Author) MaxIsAllday(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *AuthorQuery) MaxIsAllday() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "is_allday"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5470,7 +6584,11 @@ func (q *Author) MaxIsAllday(ctx context.Context, ex orm.Exec) (*bool, error) {
 	x := orm.AsBool(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctTargetClubReaderCount(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctTargetClubReaderCount() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "target_club_reader_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5478,7 +6596,11 @@ func (q *Author) CountDistinctTargetClubReaderCount(ctx context.Context, ex orm.
 }
 
 // MinTargetClubReaderCount is nil when no row matches.
-func (q *Author) MinTargetClubReaderCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MinTargetClubReaderCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "target_club_reader_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5490,7 +6612,11 @@ func (q *Author) MinTargetClubReaderCount(ctx context.Context, ex orm.Exec) (*in
 }
 
 // MaxTargetClubReaderCount is nil when no row matches.
-func (q *Author) MaxTargetClubReaderCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MaxTargetClubReaderCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "target_club_reader_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5500,7 +6626,11 @@ func (q *Author) MaxTargetClubReaderCount(ctx context.Context, ex orm.Exec) (*in
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctSuccessCount(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctSuccessCount() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "success_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5508,7 +6638,11 @@ func (q *Author) CountDistinctSuccessCount(ctx context.Context, ex orm.Exec) (in
 }
 
 // MinSuccessCount is nil when no row matches.
-func (q *Author) MinSuccessCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MinSuccessCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "success_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5520,7 +6654,11 @@ func (q *Author) MinSuccessCount(ctx context.Context, ex orm.Exec) (*int64, erro
 }
 
 // MaxSuccessCount is nil when no row matches.
-func (q *Author) MaxSuccessCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MaxSuccessCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "success_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5530,7 +6668,11 @@ func (q *Author) MaxSuccessCount(ctx context.Context, ex orm.Exec) (*int64, erro
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctReaderCount(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctReaderCount() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "reader_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5538,7 +6680,11 @@ func (q *Author) CountDistinctReaderCount(ctx context.Context, ex orm.Exec) (int
 }
 
 // MinReaderCount is nil when no row matches.
-func (q *Author) MinReaderCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MinReaderCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "reader_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5550,7 +6696,11 @@ func (q *Author) MinReaderCount(ctx context.Context, ex orm.Exec) (*int64, error
 }
 
 // MaxReaderCount is nil when no row matches.
-func (q *Author) MaxReaderCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MaxReaderCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "reader_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5560,7 +6710,11 @@ func (q *Author) MaxReaderCount(ctx context.Context, ex orm.Exec) (*int64, error
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctReadCount(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctReadCount() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "read_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5568,7 +6722,11 @@ func (q *Author) CountDistinctReadCount(ctx context.Context, ex orm.Exec) (int64
 }
 
 // MinReadCount is nil when no row matches.
-func (q *Author) MinReadCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MinReadCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "read_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5580,7 +6738,11 @@ func (q *Author) MinReadCount(ctx context.Context, ex orm.Exec) (*int64, error) 
 }
 
 // MaxReadCount is nil when no row matches.
-func (q *Author) MaxReadCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MaxReadCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "read_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5590,7 +6752,11 @@ func (q *Author) MaxReadCount(ctx context.Context, ex orm.Exec) (*int64, error) 
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctPhotoUrl(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctPhotoUrl() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "photo_url"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5598,7 +6764,11 @@ func (q *Author) CountDistinctPhotoUrl(ctx context.Context, ex orm.Exec) (int64,
 }
 
 // MinPhotoUrl is nil when no row matches.
-func (q *Author) MinPhotoUrl(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *AuthorQuery) MinPhotoUrl() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "photo_url"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5610,7 +6780,11 @@ func (q *Author) MinPhotoUrl(ctx context.Context, ex orm.Exec) (*string, error) 
 }
 
 // MaxPhotoUrl is nil when no row matches.
-func (q *Author) MaxPhotoUrl(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *AuthorQuery) MaxPhotoUrl() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "photo_url"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5620,7 +6794,11 @@ func (q *Author) MaxPhotoUrl(ctx context.Context, ex orm.Exec) (*string, error) 
 	x := orm.AsString(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctUserSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctUserSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5628,7 +6806,11 @@ func (q *Author) CountDistinctUserSeq(ctx context.Context, ex orm.Exec) (int64, 
 }
 
 // MinUserSeq is nil when no row matches.
-func (q *Author) MinUserSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MinUserSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5640,7 +6822,11 @@ func (q *Author) MinUserSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
 }
 
 // MaxUserSeq is nil when no row matches.
-func (q *Author) MaxUserSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MaxUserSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "user_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5650,7 +6836,11 @@ func (q *Author) MaxUserSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctServiceSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctServiceSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5658,7 +6848,11 @@ func (q *Author) CountDistinctServiceSeq(ctx context.Context, ex orm.Exec) (int6
 }
 
 // MinServiceSeq is nil when no row matches.
-func (q *Author) MinServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MinServiceSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5670,7 +6864,11 @@ func (q *Author) MinServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error)
 }
 
 // MaxServiceSeq is nil when no row matches.
-func (q *Author) MaxServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MaxServiceSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "service_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5680,7 +6878,11 @@ func (q *Author) MaxServiceSeq(ctx context.Context, ex orm.Exec) (*int64, error)
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctServiceRegionSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctServiceRegionSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "service_region_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5688,7 +6890,11 @@ func (q *Author) CountDistinctServiceRegionSeq(ctx context.Context, ex orm.Exec)
 }
 
 // MinServiceRegionSeq is nil when no row matches.
-func (q *Author) MinServiceRegionSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MinServiceRegionSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "service_region_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5700,7 +6906,11 @@ func (q *Author) MinServiceRegionSeq(ctx context.Context, ex orm.Exec) (*int64, 
 }
 
 // MaxServiceRegionSeq is nil when no row matches.
-func (q *Author) MaxServiceRegionSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MaxServiceRegionSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "service_region_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5710,7 +6920,11 @@ func (q *Author) MaxServiceRegionSeq(ctx context.Context, ex orm.Exec) (*int64, 
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctServiceMemberSeq(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctServiceMemberSeq() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "service_member_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5718,7 +6932,11 @@ func (q *Author) CountDistinctServiceMemberSeq(ctx context.Context, ex orm.Exec)
 }
 
 // MinServiceMemberSeq is nil when no row matches.
-func (q *Author) MinServiceMemberSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MinServiceMemberSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "service_member_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5730,7 +6948,11 @@ func (q *Author) MinServiceMemberSeq(ctx context.Context, ex orm.Exec) (*int64, 
 }
 
 // MaxServiceMemberSeq is nil when no row matches.
-func (q *Author) MaxServiceMemberSeq(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MaxServiceMemberSeq() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "service_member_seq"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5740,7 +6962,11 @@ func (q *Author) MaxServiceMemberSeq(ctx context.Context, ex orm.Exec) (*int64, 
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctStartDt(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctStartDt() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "start_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5748,7 +6974,11 @@ func (q *Author) CountDistinctStartDt(ctx context.Context, ex orm.Exec) (int64, 
 }
 
 // MinStartDt is nil when no row matches.
-func (q *Author) MinStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *AuthorQuery) MinStartDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "start_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5760,7 +6990,11 @@ func (q *Author) MinStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error
 }
 
 // MaxStartDt is nil when no row matches.
-func (q *Author) MaxStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *AuthorQuery) MaxStartDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "start_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5770,7 +7004,11 @@ func (q *Author) MaxStartDt(ctx context.Context, ex orm.Exec) (*time.Time, error
 	x := orm.AsTime(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctEndDt(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctEndDt() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "end_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5778,7 +7016,11 @@ func (q *Author) CountDistinctEndDt(ctx context.Context, ex orm.Exec) (int64, er
 }
 
 // MinEndDt is nil when no row matches.
-func (q *Author) MinEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *AuthorQuery) MinEndDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "end_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5790,7 +7032,11 @@ func (q *Author) MinEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) 
 }
 
 // MaxEndDt is nil when no row matches.
-func (q *Author) MaxEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) {
+func (q *AuthorQuery) MaxEndDt() (*time.Time, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "end_dt"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5800,7 +7046,11 @@ func (q *Author) MaxEndDt(ctx context.Context, ex orm.Exec) (*time.Time, error) 
 	x := orm.AsTime(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctUuid(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctUuid() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "uuid"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5808,7 +7058,11 @@ func (q *Author) CountDistinctUuid(ctx context.Context, ex orm.Exec) (int64, err
 }
 
 // MinUuid is nil when no row matches.
-func (q *Author) MinUuid(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *AuthorQuery) MinUuid() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "uuid"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5820,7 +7074,11 @@ func (q *Author) MinUuid(ctx context.Context, ex orm.Exec) (*string, error) {
 }
 
 // MaxUuid is nil when no row matches.
-func (q *Author) MaxUuid(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *AuthorQuery) MaxUuid() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "uuid"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5830,7 +7088,11 @@ func (q *Author) MaxUuid(ctx context.Context, ex orm.Exec) (*string, error) {
 	x := orm.AsString(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctIsSingleWork(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctIsSingleWork() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "is_single_work"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5838,7 +7100,11 @@ func (q *Author) CountDistinctIsSingleWork(ctx context.Context, ex orm.Exec) (in
 }
 
 // MinIsSingleWork is nil when no row matches.
-func (q *Author) MinIsSingleWork(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *AuthorQuery) MinIsSingleWork() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "is_single_work"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5850,7 +7116,11 @@ func (q *Author) MinIsSingleWork(ctx context.Context, ex orm.Exec) (*bool, error
 }
 
 // MaxIsSingleWork is nil when no row matches.
-func (q *Author) MaxIsSingleWork(ctx context.Context, ex orm.Exec) (*bool, error) {
+func (q *AuthorQuery) MaxIsSingleWork() (*bool, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "is_single_work"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5860,7 +7130,11 @@ func (q *Author) MaxIsSingleWork(ctx context.Context, ex orm.Exec) (*bool, error
 	x := orm.AsBool(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctLikeCount(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctLikeCount() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "like_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5868,7 +7142,11 @@ func (q *Author) CountDistinctLikeCount(ctx context.Context, ex orm.Exec) (int64
 }
 
 // MinLikeCount is nil when no row matches.
-func (q *Author) MinLikeCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MinLikeCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "like_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5880,7 +7158,11 @@ func (q *Author) MinLikeCount(ctx context.Context, ex orm.Exec) (*int64, error) 
 }
 
 // MaxLikeCount is nil when no row matches.
-func (q *Author) MaxLikeCount(ctx context.Context, ex orm.Exec) (*int64, error) {
+func (q *AuthorQuery) MaxLikeCount() (*int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "like_count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5890,7 +7172,11 @@ func (q *Author) MaxLikeCount(ctx context.Context, ex orm.Exec) (*int64, error) 
 	x := orm.AsInt64(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctPrice(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctPrice() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "price"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5898,7 +7184,11 @@ func (q *Author) CountDistinctPrice(ctx context.Context, ex orm.Exec) (int64, er
 }
 
 // MinPrice is nil when no row matches.
-func (q *Author) MinPrice(ctx context.Context, ex orm.Exec) (*float64, error) {
+func (q *AuthorQuery) MinPrice() (*float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "price"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5910,7 +7200,11 @@ func (q *Author) MinPrice(ctx context.Context, ex orm.Exec) (*float64, error) {
 }
 
 // MaxPrice is nil when no row matches.
-func (q *Author) MaxPrice(ctx context.Context, ex orm.Exec) (*float64, error) {
+func (q *AuthorQuery) MaxPrice() (*float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "price"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5920,7 +7214,11 @@ func (q *Author) MaxPrice(ctx context.Context, ex orm.Exec) (*float64, error) {
 	x := orm.AsFloat64(v)
 	return &x, nil
 }
-func (q *Author) CountDistinctIp(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) CountDistinctIp() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "count_distinct"
 	q.q.Req.IR.Agg = "ip"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5928,7 +7226,11 @@ func (q *Author) CountDistinctIp(ctx context.Context, ex orm.Exec) (int64, error
 }
 
 // MinIp is nil when no row matches.
-func (q *Author) MinIp(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *AuthorQuery) MinIp() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "min"
 	q.q.Req.IR.Agg = "ip"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5940,7 +7242,11 @@ func (q *Author) MinIp(ctx context.Context, ex orm.Exec) (*string, error) {
 }
 
 // MaxIp is nil when no row matches.
-func (q *Author) MaxIp(ctx context.Context, ex orm.Exec) (*string, error) {
+func (q *AuthorQuery) MaxIp() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "max"
 	q.q.Req.IR.Agg = "ip"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
@@ -5952,12 +7258,23 @@ func (q *Author) MaxIp(ctx context.Context, ex orm.Exec) (*string, error) {
 }
 
 // RawAll runs the statement given to Raw and returns its rows by column name (values as the driver gives them, no codec).
-func (q *Author) RawAll(ctx context.Context, ex orm.Exec) ([]map[string]any, error) {
+func (q *AuthorQuery) RawAll() ([]map[string]any, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "raw"
 	return orm.RawAll(ctx, ex, q.q.Req)
 }
 
-func (q *Author) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm.Page[AuthorRow], error) {
+func (q *AuthorQuery) Paginate(page, per int) (*orm.Page[AuthorRow], error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	if per <= 0 {
+		return nil, &ir.Error{Code: "IR_INVALID", Msg: "per must be positive"}
+	}
 	if page < 1 {
 		page = 1
 	}
@@ -5971,49 +7288,79 @@ func (q *Author) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*orm
 	return &orm.Page[AuthorRow]{Items: collectAuthor(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
-func (q *Author) Insert(ctx context.Context, ex orm.Exec) (*AuthorRow, error) {
+func (q *AuthorQuery) Insert() (*AuthorRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "insert"
 	id, _, err := orm.Write(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
 	}
-	return NewAuthor().SeqEq(int64(id)).One(ctx, ex)
+	return Author().Bind(ctx, ex).SeqEq(int64(id)).One()
 }
 
 // Save updates the other assigned columns when SetSeq was called (and
 // returns the re-read row); otherwise it inserts like Insert.
-func (q *Author) Save(ctx context.Context, ex orm.Exec) (*AuthorRow, error) {
+func (q *AuthorQuery) Save() (*AuthorRow, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	pk, ok := q.q.MovePKToWhere("seq")
 	if !ok {
-		return q.Insert(ctx, ex)
+		return q.Insert()
 	}
 	q.q.Req.IR.Kind = "update"
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return NewAuthor().SeqEq(pk.(int64)).One(ctx, ex)
+	return Author().Bind(ctx, ex).SeqEq(pk.(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *Author) Update(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) Update() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "update"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // Delete removes every row the WHERE matches (the engine rejects a missing WHERE).
-func (q *Author) Delete(ctx context.Context, ex orm.Exec) (int64, error) {
+func (q *AuthorQuery) Delete() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
 	q.q.Req.IR.Kind = "delete"
 	_, affected, err := orm.Write(ctx, ex, q.q.Req)
 	return affected, err
 }
 
 // SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
-func (q *Author) SQL(ctx context.Context, ex orm.Exec) (*orm.Statement, error) {
+func (q *AuthorQuery) SQL() (*orm.Statement, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
 	q.q.Req.IR.Kind = "all"
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *Author) OneBySeq(ctx context.Context, ex orm.Exec, v int64) (*AuthorRow, error) {
-	return q.SeqEq(v).One(ctx, ex)
+func (q *AuthorQuery) OneBySeq(v int64) (*AuthorRow, error) {
+	return q.SeqEq(v).One()
+}
+
+// GetBySeq is the preferred primary-key lookup. OneBySeq is kept as a compatibility alias.
+func (q *AuthorQuery) GetBySeq(v int64) (*AuthorRow, error) {
+	return q.OneBySeq(v)
+}
+
+// GetByUuid applies the equality predicates for the declared unique key.
+func (q *AuthorQuery) GetByUuid(v0 string) (*AuthorRow, error) {
+	return q.Uuid(v0).Get()
 }

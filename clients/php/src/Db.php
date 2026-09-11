@@ -5,7 +5,7 @@ namespace Orm;
 
 /**
  * The PDO executor: prepared-statement cache, bind resolution, transactions
- * with deadlock re-run. Terminals take a Db or a Tx.
+ * with deadlock re-run. Queries and loaded rows bind a Db or a Tx.
  */
 class Db
 {
@@ -53,7 +53,7 @@ class Db
         $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
     }
 
-    /** Open a MySQL connection the way compatibility does (FOUND_ROWS on, persistent, utf8mb4). */
+    /** Open a MySQL connection with FOUND_ROWS, persistence, and utf8mb4 enabled. */
     public static function mysql(string $dsn, string $user, string $password, bool $persistent = true): self
     {
         $opts = [
@@ -131,7 +131,7 @@ class Db
 
     /**
      * Run $fn inside a transaction. An exception rolls back. On a deadlock the
-     * closure is re-run in a new transaction (compatibility behaviour), at most 3 times.
+     * closure is re-run in a new transaction, at most 3 times.
      * @template T
      * @param \Closure(Tx): T $fn
      * @return T
@@ -141,8 +141,9 @@ class Db
         $last = null;
         for ($attempt = 0; $attempt < 3; $attempt++) {
             $this->pdo->beginTransaction();
+            $tx = new Tx($this);
             try {
-                $v = $fn(new Tx($this));
+                $v = $fn($tx);
                 $this->pdo->commit();
                 return $v;
             } catch (\Throwable $e) {
@@ -157,6 +158,8 @@ class Db
                 }
                 $last = $e;
                 usleep((50000 << $attempt) + random_int(0, 20000));
+            } finally {
+                $tx->finish();
             }
         }
         throw $last;
@@ -376,6 +379,7 @@ class Db
     {
         $st0 = $plan['steps'][0];
         $rows = new Rows($plan, $st0['assemble'], $this->query($st0, $params), $params);
+        $rows->db = $this;
         foreach ($plan['steps'] as $st) {
             if (($st['role'] ?? '') !== 'relation') {
                 continue;
@@ -576,6 +580,17 @@ class Db
 /** A transaction handle: same executor, marks statements as inside the transaction. */
 final class Tx extends Db
 {
+    private bool $finished = false;
+
+    public function finish(): void { $this->finished = true; }
+
+    public function assertActive(): void
+    {
+        if ($this->finished) {
+            throw new OrmException(Code::CONFIG, 'transaction already finished');
+        }
+    }
+
     public function __construct(private readonly Db $outer)
     {
         parent::__construct($outer->pdo, $outer->driver());
@@ -588,6 +603,7 @@ final class Tx extends Db
 
     public function stmt(string $sql): \PDOStatement
     {
+        $this->assertActive();
         return $this->outer->stmt($sql);
     }
 }

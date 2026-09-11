@@ -8,7 +8,23 @@ pub struct Req {
     pub ir: Request,
     pub params: Vec<Param>,
     /// First deferred builder error (codec encode); surfaces from the terminal.
-    pub err: Option<crate::Error>,
+    pub err: Option<DeferredError>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DeferredError {
+    pub code: String,
+    pub message: String,
+}
+
+impl DeferredError {
+    pub fn from_error(e: crate::Error) -> Self {
+        Self { code: e.code().into(), message: e.to_string() }
+    }
+
+    pub fn error(&self) -> crate::Error {
+        crate::Error::Engine { code: self.code.clone(), msg: self.message.clone() }
+    }
 }
 
 impl Req {
@@ -32,10 +48,11 @@ impl Req {
     }
 
     /// Merge a child request: append its params and shift its indices.
-    pub fn attach(&mut self, child: Req) -> Query {
+    pub fn attach(&mut self, child: &Req) -> Query {
         let off = self.params.len();
-        self.params.extend(child.params);
-        let mut q = child.ir.query;
+        if self.err.is_none() { self.err = child.err.clone(); }
+        self.params.extend_from_slice(&child.params);
+        let mut q = child.ir.query.clone();
         q.shift(off);
         q
     }
@@ -135,7 +152,7 @@ impl Q {
     /// Keeps the first builder error for the terminal to return.
     pub fn defer_err(&mut self, e: crate::Error) {
         if self.req.err.is_none() {
-            self.req.err = Some(e);
+            self.req.err = Some(DeferredError::from_error(e));
         }
     }
 
@@ -172,13 +189,13 @@ impl Q {
         self.req.ir.raw = Some(Raw { sql: sql.into(), ps });
     }
 
-    pub fn join(&mut self, rel: &str, kind: &str, child: Q) {
-        let q = self.req.attach(child.req);
+    pub fn join(&mut self, rel: &str, kind: &str, child: &Q) {
+        let q = self.req.attach(&child.req);
         self.req.ir.query.joins.push(Join { rel: rel.into(), kind: kind.into(), query: Box::new(q) });
     }
 
-    pub fn relation(&mut self, rel: &str, child: Q) {
-        let q = self.req.attach(child.req);
+    pub fn relation(&mut self, rel: &str, child: &Q) {
+        let q = self.req.attach(&child.req);
         self.req.ir.query.relations.push(Relation { rel: rel.into(), query: Box::new(q) });
     }
 
@@ -192,6 +209,10 @@ impl Q {
 
     pub fn order_expr(&mut self, frag: &str, desc: bool) {
         self.req.ir.query.order.push(Order { column: String::new(), expr: frag.into(), desc });
+    }
+
+    pub fn group_by_expr(&mut self, expr: &str, as_: &str) {
+        self.req.ir.query.group_by_expr.push(GroupExpr { expr: expr.into(), as_: as_.into() });
     }
 
     pub fn set(&mut self, col: &str, v: impl Into<Param>) {

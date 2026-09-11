@@ -6,6 +6,8 @@ namespace Polyspec\Orm\Tests\Model;
 
 use Orm\Registry;
 
+require_once __DIR__ . '/Interfaces.php';
+
 Registry::generated('2bdd94841cfad48c');
 Registry::register('author', AuthorRow::class);
 Registry::register('user', UserRow::class);

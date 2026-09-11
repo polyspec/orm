@@ -110,7 +110,7 @@ var reservedNames = map[string]bool{
 	"one": true, "all": true, "count": true, "sum": true, "avg": true, "insert": true, "update": true,
 	"delete": true, "save": true, "debug": true, "sql": true, "clone": true, "expr": true, "paginate": true,
 	"flatten": true, "relation": true, "relations": true, "join": true, "left_join": true, "order_by": true,
-	"group_by": true, "key_by": true, "set": true, "get": true, "new": true,
+	"group_by": true, "group_by_expr": true, "key_by": true, "set": true, "get": true, "get_count": true, "gets_count": true, "new": true,
 }
 
 var opSuffixes = []string{"_eq", "_not_eq", "_gt", "_gte", "_lt", "_lte", "_in", "_not_in", "_like",
@@ -312,7 +312,7 @@ func buildColumn(dc *DColumn) (*Col, error) {
 	default:
 		return nil, fmt.Errorf("column %s: unsupported type %q", dc.Name, dc.Type)
 	}
-	// Style inference from compatibility naming: aes_hex_x, aes_x, gz_x, json_x, jsons_x, base64_x, serialize_x; column named ip.
+	// Style inference from column naming: aes_hex_x, aes_x, gz_x, json_x, jsons_x, base64_x, serialize_x; column named ip.
 	if len(c.Styles) == 0 {
 		switch {
 		case strings.HasPrefix(dc.Name, "aes_hex_"):
@@ -339,7 +339,7 @@ func buildColumn(dc *DColumn) (*Col, error) {
 	if c.Type == "json" && len(c.Styles) == 0 {
 		c.Styles = []string{"json"}
 	}
-	// Lazy by default for large or encoded columns; aes_hex stays eager (compatibility convention).
+	// Lazy by default for large or encoded columns; aes_hex stays eager.
 	if !c.Lazy && !dc.Lazy {
 		switch {
 		case c.Type == "text" || c.Type == "bytes" && c.Type != "inet":

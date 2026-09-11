@@ -167,6 +167,11 @@ func (s *shape) query(q *ir.Query) {
 		s.bool(o.Desc)
 	}
 	s.strs(q.GroupBy)
+	s.int(len(q.GroupByExpr))
+	for _, g := range q.GroupByExpr {
+		s.str(g.Expr)
+		s.str(g.As)
+	}
 	if q.Limit == nil {
 		s.byte(0)
 	} else {

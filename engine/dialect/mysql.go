@@ -5,7 +5,8 @@ import (
 	"strings"
 )
 
-// MySQL is the primary dialect. Style expressions match compatibility byte-for-byte
+// MySQL is the primary dialect. Style expressions are defined to preserve the
+// stored byte representation
 // (HEX(AES_ENCRYPT(?, ?)), AES_DECRYPT(UNHEX(col), ?), INET6_ATON/NTOA).
 type MySQL struct{}
 
@@ -35,7 +36,7 @@ func (MySQL) Fulltext(cols []string, ph string, boolean bool) string {
 	return "MATCH(" + strings.Join(cols, ", ") + ") AGAINST (" + ph + mode + ")"
 }
 
-// FulltextValue reproduces compatibility: "foo bar" → "+foo +bar*" in boolean mode.
+// FulltextValue normalizes boolean full-text input: "foo bar" → "+foo +bar*".
 func (MySQL) FulltextValue(v string, boolean bool) string {
 	if !boolean {
 		return v
