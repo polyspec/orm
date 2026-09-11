@@ -52,3 +52,6 @@ go run ./tests/conformance/check run                                # 3 language
 ## Tooling
 `ormgen build | gen | import --dsn | validate --dsn | ddl --dialect | errors --lang | tokens | check --lang php`,
 `tests/conformance/check run|compare|record`, `scripts/build-artifacts.sh`, `deploy/` service units.
+
+## License
+MIT — see [LICENSE](LICENSE).
