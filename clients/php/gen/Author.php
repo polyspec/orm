@@ -6,6 +6,8 @@ namespace Polyspec\Orm\Tests\Model;
 
 use Orm\ColRef;
 use Orm\Collection;
+use Orm\CompatQuery;
+use Orm\CompatWhere;
 use Orm\Db;
 use Orm\Page;
 use Orm\Q;
@@ -20,6 +22,11 @@ final class AuthorRow extends Row
     public static function columns(): array
     {
         return ['seq' => 'i64', 'name' => 'string', 'description' => 'text', 'created_ts' => 'datetime', 'updated_ts' => 'datetime', 'is_close' => 'bool', 'is_display' => 'bool', 'display_start_dt' => 'datetime', 'display_end_dt' => 'datetime', 'is_allday' => 'bool', 'target_club_reader_count' => 'i64', 'success_count' => 'i64', 'reader_count' => 'i64', 'read_count' => 'i64', 'photo_url' => 'string', 'user_seq' => 'i64', 'service_seq' => 'i64', 'service_region_seq' => 'i64', 'service_member_seq' => 'i64', 'start_dt' => 'datetime', 'end_dt' => 'datetime', 'uuid' => 'string', 'is_single_work' => 'bool', 'like_count' => 'i64', 'aes_hex_email' => 'string', 'aes_hex_phone' => 'string', 'price' => 'decimal', 'ip' => 'inet', 'gz_extend' => 'styled', 'json_setting' => 'styled', 'jsons_tags' => 'styled', 'base64_extra' => 'styled', 'serialize_data' => 'styled'];
+    }
+    /** @return array<string, array{kind: string, target: string, left: string, right: string}> declared relations: name => kind, target entity, this.left = target.right */
+    public static function relations(): array
+    {
+        return ['service' => ['kind' => 'one', 'target' => 'service', 'left' => 'service_seq', 'right' => 'seq'], 'service_member' => ['kind' => 'one', 'target' => 'service_member', 'left' => 'service_member_seq', 'right' => 'seq'], 'service_region' => ['kind' => 'one', 'target' => 'service_region', 'left' => 'service_region_seq', 'right' => 'seq'], 'user' => ['kind' => 'one', 'target' => 'user', 'left' => 'user_seq', 'right' => 'seq']];
     }
 
     public function getSeq(mixed $default = null): int
@@ -296,13 +303,19 @@ final class AuthorCols
     public static function serializeData(): ColRef { return new ColRef('serialize_data'); }
 }
 
-/** Where builder for author: predicates, or(), and(fn), relation navigation. */
+/** Where builder for author: predicates, or(), and(fn), relation navigation. Unknown names go to the compatibility layer (docs/dsl.md §6). */
 final class AuthorWhere
 {
+    use CompatWhere;
+
+    public const ENTITY = 'author';
+
     public function __construct(private W $w) {}
 
-    public function or(): static { $this->w->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
+    public function or(\Closure|string|null $fn = null, mixed $v = null): static { if (func_num_args() === 0) { $this->w->orConn(); return $this; } return $this->compatConn('or', $fn, $v); }
+    /** and(fn) opens a parenthesised group; and('(') / and('sql …', binds) / and('Name', v) are compat tokens. */
+    public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new self($this->w->group())); $this->w->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
     public function startedAfter(mixed $a0): static { $this->w->expr('`start_dt` > ?', [$a0]); return $this; }
     public function visible(): static { $this->w->expr('`is_close` = FALSE AND `is_display` = TRUE', []); return $this; }
@@ -712,14 +725,20 @@ final class AuthorWhere
     public function nameWithDescriptionMatchBoolean(string $v): static { $this->w->match(['name', 'description'], true, $v); return $this; }
 }
 
-/** Query over author: new Author → chain → terminal($db). */
+/** Query over author: new Author → chain → terminal($db). Unknown names go to the compatibility layer (docs/dsl.md §6). */
 final class Author extends Q
 {
+    use CompatQuery;
+
+    public const ENTITY = 'author';
+
     public function __construct() { parent::__construct('author'); }
 
     // ---- WHERE ----
-    public function or(): static { $this->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new AuthorWhere($this->w()->group())); $this->req->end(); return $this; }
+    /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
+    public function or(\Closure|string|null $fn = null, mixed $v = null): static { if (func_num_args() === 0) { $this->orConn(); return $this; } return $this->compatConn('or', $fn, $v); }
+    /** and(fn) opens a parenthesised group; and('(') / and('sql …', binds) / and('Name', v) are compat tokens. */
+    public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new AuthorWhere($this->w()->group())); $this->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
     public function startedAfter(mixed $a0): static { $this->w()->expr('`start_dt` > ?', [$a0]); return $this; }
     public function visible(): static { $this->w()->expr('`is_close` = FALSE AND `is_display` = TRUE', []); return $this; }
@@ -1132,18 +1151,18 @@ final class Author extends Q
     public function on(\Closure $fn): static { $fn(new AuthorWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new AuthorWhere($this->w())); return $this; }
 
-    public function joinService(Service $child): static { $this->join('service', 'inner', $child); return $this; }
-    public function leftJoinService(Service $child): static { $this->join('service', 'left', $child); return $this; }
-    public function relationService(Service $child): static { $this->relation('service', $child); return $this; }
-    public function joinServiceMember(ServiceMember $child): static { $this->join('service_member', 'inner', $child); return $this; }
-    public function leftJoinServiceMember(ServiceMember $child): static { $this->join('service_member', 'left', $child); return $this; }
-    public function relationServiceMember(ServiceMember $child): static { $this->relation('service_member', $child); return $this; }
-    public function joinServiceRegion(ServiceRegion $child): static { $this->join('service_region', 'inner', $child); return $this; }
-    public function leftJoinServiceRegion(ServiceRegion $child): static { $this->join('service_region', 'left', $child); return $this; }
-    public function relationServiceRegion(ServiceRegion $child): static { $this->relation('service_region', $child); return $this; }
-    public function joinUser(User $child): static { $this->join('user', 'inner', $child); return $this; }
-    public function leftJoinUser(User $child): static { $this->join('user', 'left', $child); return $this; }
-    public function relationUser(User $child): static { $this->relation('user', $child); return $this; }
+    public function joinService(Service $child): static { $this->attachJoin('service', 'inner', $child); return $this; }
+    public function leftJoinService(Service $child): static { $this->attachJoin('service', 'left', $child); return $this; }
+    public function relationService(Service $child): static { $this->attachRelation('service', $child); return $this; }
+    public function joinServiceMember(ServiceMember $child): static { $this->attachJoin('service_member', 'inner', $child); return $this; }
+    public function leftJoinServiceMember(ServiceMember $child): static { $this->attachJoin('service_member', 'left', $child); return $this; }
+    public function relationServiceMember(ServiceMember $child): static { $this->attachRelation('service_member', $child); return $this; }
+    public function joinServiceRegion(ServiceRegion $child): static { $this->attachJoin('service_region', 'inner', $child); return $this; }
+    public function leftJoinServiceRegion(ServiceRegion $child): static { $this->attachJoin('service_region', 'left', $child); return $this; }
+    public function relationServiceRegion(ServiceRegion $child): static { $this->attachRelation('service_region', $child); return $this; }
+    public function joinUser(User $child): static { $this->attachJoin('user', 'inner', $child); return $this; }
+    public function leftJoinUser(User $child): static { $this->attachJoin('user', 'left', $child); return $this; }
+    public function relationUser(User $child): static { $this->attachRelation('user', $child); return $this; }
 
     // ---- columns ----
     public function selectAll(): static { $this->colMode('all'); return $this; }

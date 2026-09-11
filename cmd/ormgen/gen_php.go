@@ -74,6 +74,8 @@ namespace {{.Namespace}};
 
 use Orm\ColRef;
 use Orm\Collection;
+use Orm\CompatQuery;
+use Orm\CompatWhere;
 use Orm\Db;
 use Orm\Page;
 use Orm\Q;
@@ -88,6 +90,11 @@ final class {{.Type}}Row extends Row
     public static function columns(): array
     {
         return [{{range $i, $c := .Cols}}{{if $i}}, {{end}}'{{$c.Name}}' => '{{if $c.Styles}}styled{{else}}{{$c.ColType}}{{end}}'{{end}}];
+    }
+    /** @return array<string, array{kind: string, target: string, left: string, right: string}> declared relations: name => kind, target entity, this.left = target.right */
+    public static function relations(): array
+    {
+        return [{{range $i, $r := .Rels}}{{if $i}}, {{end}}'{{$r.Name}}' => ['kind' => '{{$r.Kind}}', 'target' => '{{$r.Target}}', 'left' => '{{$r.Left}}', 'right' => '{{$r.Right}}']{{end}}];
     }
 {{range .Cols}}
     public function get{{.Field}}(mixed $default = null): {{if .Nullable}}?{{end}}{{.PhpType}}
@@ -116,13 +123,19 @@ final class {{.Type}}Cols
 {{- end}}
 }
 
-/** Where builder for {{.Table}}: predicates, or(), and(fn), relation navigation. */
+/** Where builder for {{.Table}}: predicates, or(), and(fn), relation navigation. Unknown names go to the compatibility layer (docs/dsl.md §6). */
 final class {{.Type}}Where
 {
+    use CompatWhere;
+
+    public const ENTITY = '{{.Name}}';
+
     public function __construct(private W $w) {}
 
-    public function or(): static { $this->w->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
+    public function or(\Closure|string|null $fn = null, mixed $v = null): static { if (func_num_args() === 0) { $this->w->orConn(); return $this; } return $this->compatConn('or', $fn, $v); }
+    /** and(fn) opens a parenthesised group; and('(') / and('sql …', binds) / and('Name', v) are compat tokens. */
+    public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new self($this->w->group())); $this->w->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
 {{- range .Predicates}}
     public function {{.Method}}({{.Params}}): static { $this->w->expr({{phpStr .Expr}}, [{{.Args}}]); return $this; }
@@ -150,14 +163,20 @@ final class {{.Type}}Where
 {{- end}}
 }
 
-/** Query over {{.Table}}: new {{.Type}} → chain → terminal($db). */
+/** Query over {{.Table}}: new {{.Type}} → chain → terminal($db). Unknown names go to the compatibility layer (docs/dsl.md §6). */
 final class {{.Type}} extends Q
 {
+    use CompatQuery;
+
+    public const ENTITY = '{{.Name}}';
+
     public function __construct() { parent::__construct('{{.Name}}'); }
 
     // ---- WHERE ----
-    public function or(): static { $this->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new {{.Type}}Where($this->w()->group())); $this->req->end(); return $this; }
+    /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
+    public function or(\Closure|string|null $fn = null, mixed $v = null): static { if (func_num_args() === 0) { $this->orConn(); return $this; } return $this->compatConn('or', $fn, $v); }
+    /** and(fn) opens a parenthesised group; and('(') / and('sql …', binds) / and('Name', v) are compat tokens. */
+    public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new {{.Type}}Where($this->w()->group())); $this->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
 {{- range .Predicates}}
     public function {{.Method}}({{.Params}}): static { $this->w()->expr({{phpStr .Expr}}, [{{.Args}}]); return $this; }
@@ -188,12 +207,12 @@ final class {{.Type}} extends Q
     public function on(\Closure $fn): static { $fn(new {{.Type}}Where($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new {{.Type}}Where($this->w())); return $this; }
 {{range .Rels}}
-    public function join{{.Method}}({{.TargetType}} $child): static { $this->join('{{.Name}}', 'inner', $child); return $this; }
-    public function leftJoin{{.Method}}({{.TargetType}} $child): static { $this->join('{{.Name}}', 'left', $child); return $this; }
+    public function join{{.Method}}({{.TargetType}} $child): static { $this->attachJoin('{{.Name}}', 'inner', $child); return $this; }
+    public function leftJoin{{.Method}}({{.TargetType}} $child): static { $this->attachJoin('{{.Name}}', 'left', $child); return $this; }
 {{- if eq .Kind "one"}}
-    public function relation{{.Method}}({{.TargetType}} $child): static { $this->relation('{{.Name}}', $child); return $this; }
+    public function relation{{.Method}}({{.TargetType}} $child): static { $this->attachRelation('{{.Name}}', $child); return $this; }
 {{- else}}
-    public function relations{{.Method}}({{.TargetType}} $child): static { $this->relation('{{.Name}}', $child); return $this; }
+    public function relations{{.Method}}({{.TargetType}} $child): static { $this->attachRelation('{{.Name}}', $child); return $this; }
 {{- end}}
 {{- end}}
 
