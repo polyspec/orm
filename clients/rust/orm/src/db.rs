@@ -1,19 +1,30 @@
 //! The sqlx executor: plan cache keyed by IR shape, statement reuse through
 //! sqlx's per-connection cache, transactions with deadlock re-run.
+//!
+//! One pool per database (`Pool`), one `Exec` surface. MySQL keeps its hot path: driver rows
+//! go undecoded to the generated `from_row`. PostgreSQL and SQLite rows are read positionally
+//! and decoded (host aes/hex/ip stages, then codec stages) before assembly, like Go does.
+//! PostgreSQL binds are typed by the server's own parameter description (pgx does the same):
+//! the first run of a statement text prepares it once with no declared types, and every bind
+//! from then on is converted to the type the server inferred for that placeholder.
 
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::future::Future;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
-use sqlx::mysql::{MySqlConnectOptions, MySqlPool, MySqlPoolOptions, MySqlRow};
-use sqlx::{Column, Row as _};
+use chrono::{NaiveDate, NaiveDateTime};
+use sqlx::mysql::{MySql, MySqlConnectOptions, MySqlPool, MySqlPoolOptions, MySqlRow};
+use sqlx::postgres::{PgConnectOptions, PgPool, PgPoolOptions, PgRow, PgTypeInfo, Postgres};
+use sqlx::sqlite::{Sqlite, SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions, SqliteRow};
+use sqlx::{Executor, SqlSafeStr as _, Statement as _, TypeInfo as _};
 
 use crate::builder::Req;
 use crate::collection::Key;
 use crate::engine::Engine;
 use crate::plan::{Assemble, BindSlot, Child, ParentRef, Plan, Step};
-use crate::row::{decode_styled, read_cell, read_row, Cells, Src};
+use crate::row::{decode_styled, read_cell, read_row, Cells, DriverRow, Src};
 use crate::value::{transform, Param, Val};
 use crate::{Error, Result};
 
@@ -31,16 +42,62 @@ pub struct Config {
     pub on_query: Option<OnQuery>,
 }
 
+/// SQLite datetimes are text with six fraction digits (docs/dialects.md); `now` slots and
+/// bound `time` values use this form so a value read back compares equal.
+const SQLITE_DATETIME: &str = "%Y-%m-%d %H:%M:%S%.6f";
+
+/// The parsed DSN of one database. `parse(driver, dsn)` is the one place the driver name is
+/// interpreted; the SQLite options carry the executor's policy (WAL, 5 s busy timeout — the
+/// same pragmas the Go runner puts in its DSN) so every reader of the file behaves alike.
+pub enum ConnectOptions {
+    MySql(MySqlConnectOptions),
+    Postgres(PgConnectOptions),
+    Sqlite(SqliteConnectOptions),
+}
+
+impl ConnectOptions {
+    pub fn parse(driver: &str, dsn: &str) -> Result<ConnectOptions> {
+        let bad = |e: sqlx::Error| Error::Config(format!("{driver} dsn: {e}"));
+        Ok(match driver {
+            "mysql" => ConnectOptions::MySql(MySqlConnectOptions::from_str(dsn).map_err(bad)?),
+            "postgres" => ConnectOptions::Postgres(PgConnectOptions::from_str(dsn).map_err(bad)?),
+            "sqlite" => ConnectOptions::Sqlite(
+                SqliteConnectOptions::from_str(dsn).map_err(bad)?.busy_timeout(std::time::Duration::from_secs(5)).journal_mode(SqliteJournalMode::Wal),
+            ),
+            other => return Err(Error::Config(format!("driver {other:?}: want mysql, postgres or sqlite"))),
+        })
+    }
+
+    /// The driver these options connect with (mysql | postgres | sqlite).
+    pub fn driver(&self) -> &'static str {
+        match self {
+            ConnectOptions::MySql(_) => "mysql",
+            ConnectOptions::Postgres(_) => "postgres",
+            ConnectOptions::Sqlite(_) => "sqlite",
+        }
+    }
+}
+
+/// The connection pool of the database this `Db` talks to.
+#[derive(Clone)]
+pub enum Pool {
+    MySql(MySqlPool),
+    Postgres(PgPool),
+    Sqlite(SqlitePool),
+}
+
 /// Cheap to clone: every field is shared. `Tx` owns a clone, so no lifetimes leak into closures.
 #[derive(Clone)]
 pub struct Db {
-    pub pool: MySqlPool,
+    pub pool: Pool,
     pub engine: Arc<Engine>,
     cfg: Arc<Config>,
     plans: Arc<Mutex<HashMap<u64, Arc<Plan>>>>,
+    /// PostgreSQL: the server-described parameter types of every statement text run so far.
+    pg_types: Arc<Mutex<HashMap<String, Arc<[PgTypeInfo]>>>>,
 }
 
-/// Rows of a select plan: the main step's rows (driver rows when the plan has no
+/// Rows of a select plan: the main step's rows (MySQL driver rows when the plan has no
 /// relation steps, positional rows otherwise) plus every relation step's rows grouped
 /// by their match column (see `related`).
 pub struct Rows {
@@ -166,8 +223,10 @@ fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'a [Val]>, p
 
 /// Rewrites the step's single `parent` placeholder into n placeholders. n is
 /// rounded up to a power of two (values padded by repetition) so the prepared
-/// statement cache holds one statement per size class.
-fn expand_in(st: &Step, mut vals: Vec<Param>) -> (String, Vec<Param>) {
+/// statement cache holds one statement per size class. On PostgreSQL the plan has one
+/// `$k` per slot in slot order: the parent slot becomes n placeholders and every later
+/// number shifts by n-1 (docs/dialects.md).
+fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (String, Vec<Param>) {
     let mut n = 1;
     while n < vals.len() {
         n <<= 1;
@@ -176,7 +235,40 @@ fn expand_in(st: &Step, mut vals: Vec<Param>) -> (String, Vec<Param>) {
     while vals.len() < n {
         vals.push(last.clone());
     }
-    let mut sql = String::with_capacity(st.sql.len() + 2 * n);
+    let mut sql = String::with_capacity(st.sql.len() + 4 * n);
+    if numbered {
+        let parent = st.bind_slots.iter().position(|b| b.from == "parent").map(|i| i + 1).unwrap_or(0);
+        let bytes = st.sql.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            if bytes[i] != b'$' {
+                // copy one UTF-8 scalar (identifiers may carry any text)
+                let ch = st.sql[i..].chars().next().unwrap();
+                sql.push(ch);
+                i += ch.len_utf8();
+                continue;
+            }
+            let mut j = i + 1;
+            while j < bytes.len() && bytes[j].is_ascii_digit() {
+                j += 1;
+            }
+            let k: usize = st.sql[i + 1..j].parse().unwrap_or(0);
+            if k == parent {
+                for m in 0..n {
+                    if m > 0 {
+                        sql.push_str(", ");
+                    }
+                    sql.push_str(&format!("${}", k + m));
+                }
+            } else if k > parent {
+                sql.push_str(&format!("${}", k + n - 1));
+            } else {
+                sql.push_str(&st.sql[i..j]);
+            }
+            i = j;
+        }
+        return (sql, vals);
+    }
     let mut slot = 0;
     for c in st.sql.chars() {
         if c != '?' {
@@ -248,9 +340,27 @@ fn child_index(plan: &Plan, id: u32) -> usize {
 }
 
 impl Db {
-    pub async fn connect(opts: MySqlConnectOptions, max_connections: u32, engine: Arc<Engine>, cfg: Config) -> Result<Db> {
-        let pool = MySqlPoolOptions::new().max_connections(max_connections).connect_with(opts.statement_cache_capacity(512)).await?;
-        Ok(Db { pool, engine, cfg: Arc::new(cfg), plans: Arc::new(Mutex::new(HashMap::new())) })
+    /// Connects the pool. The driver of `opts` must be the dialect the engine compiles for
+    /// (docs/dialects.md): the plans are dialect-specific text.
+    pub async fn connect(opts: ConnectOptions, max_connections: u32, engine: Arc<Engine>, cfg: Config) -> Result<Db> {
+        if engine.dialect != opts.driver() {
+            return Err(Error::Config(format!("driver {} but the engine compiles for {}", opts.driver(), engine.dialect)));
+        }
+        let pool = match opts {
+            ConnectOptions::MySql(o) => Pool::MySql(MySqlPoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(512)).await?),
+            ConnectOptions::Postgres(o) => Pool::Postgres(PgPoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(512)).await?),
+            ConnectOptions::Sqlite(o) => Pool::Sqlite(SqlitePoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(512)).await?),
+        };
+        Ok(Db { pool, engine, cfg: Arc::new(cfg), plans: Arc::new(Mutex::new(HashMap::new())), pg_types: Arc::new(Mutex::new(HashMap::new())) })
+    }
+
+    /// The database this Db talks to (mysql | postgres | sqlite).
+    pub fn driver(&self) -> &'static str {
+        match &self.pool {
+            Pool::MySql(_) => "mysql",
+            Pool::Postgres(_) => "postgres",
+            Pool::Sqlite(_) => "sqlite",
+        }
     }
 
     /// Compile (or fetch from cache) the plan for the request's shape. The cache key is
@@ -273,19 +383,33 @@ impl Db {
         Ok(plan)
     }
 
+    /// Resolves a step's bind slots: params (host aes/hex/ip stages applied where the slot
+    /// says so), the secret, the parent values, and `now` (UTC microsecond text). On SQLite
+    /// every datetime binds as canonical text.
     fn args(&self, st: &Step, params: &[Param], parent_vals: &[Param]) -> Result<Vec<Param>> {
         let mut out = Vec::with_capacity(st.bind_slots.len() + parent_vals.len());
         for b in &st.bind_slots {
             match b.from.as_str() {
                 "parent" => out.extend(parent_vals.iter().cloned()),
-                "param" => out.push(param_arg(b, params)?),
+                "param" => {
+                    let v = param_arg(b, params)?;
+                    out.push(if b.host_styles.is_empty() { v } else { crate::codec::host_encode(&v, &b.host_styles, &self.cfg.aes_key)? });
+                }
                 "secret" => {
                     if b.name != "aes" || self.cfg.aes_key.is_empty() {
                         return Err(Error::Config(format!("secret {} not configured", b.name)));
                     }
                     out.push(Param::Str(self.cfg.aes_key.clone()));
                 }
+                "now" => out.push(Param::Str(chrono::Utc::now().naive_utc().format(SQLITE_DATETIME).to_string())),
                 other => return Err(Error::Config(format!("bind from {other}"))),
+            }
+        }
+        if matches!(self.pool, Pool::Sqlite(_)) {
+            for v in &mut out {
+                if let Param::DateTime(t) = v {
+                    *v = Param::Str(t.format(SQLITE_DATETIME).to_string());
+                }
             }
         }
         Ok(out)
@@ -302,6 +426,36 @@ impl Db {
         }
     }
 
+    /// PostgreSQL: the parameter types the server inferred for `sql`, prepared once per
+    /// statement text (on any pool connection) and cached for every bind that follows.
+    async fn pg_types_pool(&self, pool: &PgPool, sql: &str) -> Result<Arc<[PgTypeInfo]>> {
+        if let Some(t) = self.pg_types.lock().unwrap().get(sql) {
+            return Ok(t.clone());
+        }
+        let mut conn = pool.acquire().await?;
+        let t = pg_describe(&mut *conn, sql).await?;
+        self.pg_types.lock().unwrap().insert(sql.to_owned(), t.clone());
+        Ok(t)
+    }
+
+    /// Same, prepared on a transaction's own connection.
+    async fn pg_types_conn(&self, conn: &mut sqlx::PgConnection, sql: &str) -> Result<Arc<[PgTypeInfo]>> {
+        if let Some(t) = self.pg_types.lock().unwrap().get(sql) {
+            return Ok(t.clone());
+        }
+        let t = pg_describe(conn, sql).await?;
+        self.pg_types.lock().unwrap().insert(sql.to_owned(), t.clone());
+        Ok(t)
+    }
+
+    async fn begin(&self) -> Result<TxInner> {
+        Ok(match &self.pool {
+            Pool::MySql(p) => TxInner::MySql(p.begin().await?),
+            Pool::Postgres(p) => TxInner::Postgres(p.begin().await?),
+            Pool::Sqlite(p) => TxInner::Sqlite(p.begin().await?),
+        })
+    }
+
     /// Run `f` in a transaction; on deadlock re-run it in a new transaction (max 3).
     pub async fn transaction<T, F, Fut>(&self, f: F) -> Result<T>
     where
@@ -310,7 +464,7 @@ impl Db {
     {
         let mut last = None;
         for attempt in 0..3u32 {
-            let tx = Tx { inner: Arc::new(tokio::sync::Mutex::new(Some(self.pool.begin().await?))), db: self.clone() };
+            let tx = Tx { inner: Arc::new(tokio::sync::Mutex::new(Some(self.begin().await?))), db: self.clone() };
             match f(tx.clone()).await {
                 Ok(v) => {
                     tx.commit().await?;
@@ -331,29 +485,57 @@ impl Db {
     }
 }
 
+/// Prepares `sql` with no declared parameter types so the server infers them, and returns them.
+async fn pg_describe<'e, E: Executor<'e, Database = Postgres>>(e: E, sql: &str) -> Result<Arc<[PgTypeInfo]>> {
+    let stmt = e.prepare(sqlx::AssertSqlSafe(sql.to_owned()).into_sql_str()).await?;
+    match stmt.parameters() {
+        Some(sqlx::Either::Left(types)) => Ok(Arc::from(types.to_vec())),
+        _ => Err(Error::internal("postgres did not describe the statement's parameters")),
+    }
+}
+
+/// The transaction of one pool.
+pub enum TxInner {
+    MySql(sqlx::Transaction<'static, MySql>),
+    Postgres(sqlx::Transaction<'static, Postgres>),
+    Sqlite(sqlx::Transaction<'static, Sqlite>),
+}
+
 /// A transaction handle: cheap to clone, so closures can `async move` it.
 #[derive(Clone)]
 pub struct Tx {
-    inner: Arc<tokio::sync::Mutex<Option<sqlx::Transaction<'static, sqlx::MySql>>>>,
+    inner: Arc<tokio::sync::Mutex<Option<TxInner>>>,
     db: Db,
 }
 
 impl Tx {
     async fn commit(&self) -> Result<()> {
         if let Some(t) = self.inner.lock().await.take() {
-            t.commit().await?;
+            match t {
+                TxInner::MySql(t) => t.commit().await?,
+                TxInner::Postgres(t) => t.commit().await?,
+                TxInner::Sqlite(t) => t.commit().await?,
+            }
         }
         Ok(())
     }
 
     async fn rollback(&self) {
         if let Some(t) = self.inner.lock().await.take() {
-            let _ = t.rollback().await;
+            let _ = match t {
+                TxInner::MySql(t) => t.rollback().await,
+                TxInner::Postgres(t) => t.rollback().await,
+                TxInner::Sqlite(t) => t.rollback().await,
+            };
         }
     }
 }
 
-fn bind<'q>(q: sqlx::query::Query<'q, sqlx::MySql, sqlx::mysql::MySqlArguments>, p: &'q Param) -> sqlx::query::Query<'q, sqlx::MySql, sqlx::mysql::MySqlArguments> {
+type MySqlQuery<'q> = sqlx::query::Query<'q, MySql, sqlx::mysql::MySqlArguments>;
+type PgQuery<'q> = sqlx::query::Query<'q, Postgres, sqlx::postgres::PgArguments>;
+type SqliteQuery<'q> = sqlx::query::Query<'q, Sqlite, sqlx::sqlite::SqliteArguments>;
+
+fn bind_mysql<'q>(q: MySqlQuery<'q>, p: &'q Param) -> MySqlQuery<'q> {
     match p {
         Param::Null => q.bind(Option::<i64>::None),
         Param::Bool(b) => q.bind(*b),
@@ -366,14 +548,242 @@ fn bind<'q>(q: sqlx::query::Query<'q, sqlx::MySql, sqlx::mysql::MySqlArguments>,
     }
 }
 
+/// SQLite is dynamically typed: values bind as they are (datetimes already as text, see `args`).
+fn bind_sqlite<'q>(q: SqliteQuery<'q>, p: &'q Param) -> SqliteQuery<'q> {
+    match p {
+        Param::Null => q.bind(Option::<i64>::None),
+        Param::Bool(b) => q.bind(*b),
+        Param::I64(x) => q.bind(*x),
+        Param::F64(x) => q.bind(*x),
+        Param::Str(s) => q.bind(s.as_str()),
+        Param::Bytes(b) => q.bind(b.as_slice()),
+        Param::DateTime(t) => q.bind(*t),
+        Param::Date(d) => q.bind(*d),
+    }
+}
+
+/// A datetime from the text forms an application binds (the same layouts Go's AsTime accepts).
+fn parse_datetime(s: &str) -> Option<NaiveDateTime> {
+    let s = s.trim();
+    NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S%.f")
+        .or_else(|_| NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S"))
+        .ok()
+        .or_else(|| chrono::DateTime::parse_from_rfc3339(s).ok().map(|t| t.naive_utc()))
+        .or_else(|| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok().map(|d| d.and_hms_opt(0, 0, 0).unwrap()))
+}
+
+/// Binds one PostgreSQL parameter as the type the server inferred for its placeholder
+/// (`ty`), converting the executor value the way pgx would; a value that cannot become
+/// that type is CONFIG (the statement text and the value are named).
+fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usize) -> Result<PgQuery<'q>> {
+    let name = ty.name();
+    let bad = || Error::Config(format!("postgres parameter ${} is {name}: cannot bind {p:?}", i + 1));
+    macro_rules! int {
+        ($t:ty) => {
+            match p {
+                Param::Null => q.bind(Option::<$t>::None),
+                Param::I64(x) => q.bind(<$t>::try_from(*x).map_err(|_| bad())?),
+                Param::Bool(b) => q.bind(*b as $t),
+                Param::Str(s) => q.bind(s.trim().parse::<$t>().map_err(|_| bad())?),
+                Param::F64(x) if x.fract() == 0.0 => q.bind(<$t>::try_from(*x as i64).map_err(|_| bad())?),
+                _ => return Err(bad()),
+            }
+        };
+    }
+    macro_rules! float {
+        ($t:ty) => {
+            match p {
+                Param::Null => q.bind(Option::<$t>::None),
+                Param::F64(x) => q.bind(*x as $t),
+                Param::I64(x) => q.bind(*x as $t),
+                Param::Str(s) => q.bind(s.trim().parse::<$t>().map_err(|_| bad())?),
+                _ => return Err(bad()),
+            }
+        };
+    }
+    Ok(match name {
+        "INT2" => int!(i16),
+        "INT4" => int!(i32),
+        "INT8" => int!(i64),
+        "FLOAT4" => float!(f32),
+        "FLOAT8" => float!(f64),
+        "NUMERIC" => match p {
+            Param::Null => q.bind(Option::<rust_decimal::Decimal>::None),
+            Param::F64(x) => q.bind(rust_decimal::Decimal::try_from(*x).map_err(|_| bad())?),
+            Param::I64(x) => q.bind(rust_decimal::Decimal::from(*x)),
+            Param::Str(s) => q.bind(rust_decimal::Decimal::from_str(s.trim()).map_err(|_| bad())?),
+            _ => return Err(bad()),
+        },
+        "BOOL" => match p {
+            Param::Null => q.bind(Option::<bool>::None),
+            Param::Bool(b) => q.bind(*b),
+            Param::I64(x) => q.bind(*x != 0),
+            Param::Str(s) => q.bind(matches!(s.trim(), "1" | "true" | "t" | "TRUE")),
+            _ => return Err(bad()),
+        },
+        "TEXT" | "VARCHAR" | "CHAR" | "\"CHAR\"" | "NAME" | "UNKNOWN" => match p {
+            Param::Null => q.bind(Option::<&str>::None),
+            Param::Str(s) => q.bind(s.as_str()),
+            Param::I64(x) => q.bind(x.to_string()),
+            Param::F64(x) => q.bind(x.to_string()),
+            Param::Bool(b) => q.bind(b.to_string()),
+            Param::DateTime(t) => q.bind(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
+            Param::Date(d) => q.bind(d.to_string()),
+            Param::Bytes(b) => q.bind(std::str::from_utf8(b).map_err(|_| bad())?),
+        },
+        "TIMESTAMP" => match p {
+            Param::Null => q.bind(Option::<NaiveDateTime>::None),
+            Param::DateTime(t) => q.bind(*t),
+            Param::Date(d) => q.bind(d.and_hms_opt(0, 0, 0).unwrap()),
+            Param::Str(s) => q.bind(parse_datetime(s).ok_or_else(bad)?),
+            _ => return Err(bad()),
+        },
+        "TIMESTAMPTZ" => match p {
+            Param::Null => q.bind(Option::<chrono::DateTime<chrono::Utc>>::None),
+            Param::DateTime(t) => q.bind(t.and_utc()),
+            Param::Date(d) => q.bind(d.and_hms_opt(0, 0, 0).unwrap().and_utc()),
+            Param::Str(s) => q.bind(parse_datetime(s).ok_or_else(bad)?.and_utc()),
+            _ => return Err(bad()),
+        },
+        "DATE" => match p {
+            Param::Null => q.bind(Option::<NaiveDate>::None),
+            Param::Date(d) => q.bind(*d),
+            Param::DateTime(t) => q.bind(t.date()),
+            Param::Str(s) => q.bind(parse_datetime(s).ok_or_else(bad)?.date()),
+            _ => return Err(bad()),
+        },
+        "JSONB" | "JSON" => match p {
+            Param::Null => q.bind(Option::<sqlx::types::Json<serde_json::Value>>::None),
+            Param::Str(s) => q.bind(sqlx::types::Json(serde_json::value::RawValue::from_string(s.clone()).map_err(|_| bad())?)),
+            _ => return Err(bad()),
+        },
+        "BYTEA" => match p {
+            Param::Null => q.bind(Option::<&[u8]>::None),
+            Param::Bytes(b) => q.bind(b.as_slice()),
+            Param::Str(s) => q.bind(s.as_bytes()),
+            _ => return Err(bad()),
+        },
+        "INET" => match p {
+            Param::Null => q.bind(Option::<std::net::IpAddr>::None),
+            Param::Str(s) => q.bind(s.trim().parse::<std::net::IpAddr>().map_err(|_| bad())?),
+            _ => return Err(bad()),
+        },
+        other => return Err(Error::Config(format!("postgres parameter ${} has type {other}, which the executor cannot bind", i + 1))),
+    })
+}
+
+async fn fetch_mysql<'e, E: Executor<'e, Database = MySql>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<Vec<MySqlRow>> {
+    let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
+    for a in args {
+        q = bind_mysql(q, a);
+    }
+    q.fetch_all(e).await
+}
+
+async fn exec_mysql<'e, E: Executor<'e, Database = MySql>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<(u64, u64)> {
+    let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
+    for a in args {
+        q = bind_mysql(q, a);
+    }
+    let r = q.execute(e).await?;
+    Ok((r.last_insert_id(), r.rows_affected()))
+}
+
+fn pg_query<'q>(sql: &str, args: &'q [Param], types: &[PgTypeInfo]) -> Result<PgQuery<'q>> {
+    if types.len() != args.len() {
+        return Err(Error::internal(format!("postgres described {} parameters, the plan binds {}", types.len(), args.len())));
+    }
+    let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
+    for (i, (a, ty)) in args.iter().zip(types).enumerate() {
+        q = bind_pg(q, a, ty, i)?;
+    }
+    Ok(q)
+}
+
+async fn fetch_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str, args: &[Param], types: &[PgTypeInfo], e: E) -> Result<Vec<PgRow>> {
+    Ok(pg_query(sql, args, types)?.fetch_all(e).await?)
+}
+
+async fn exec_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str, args: &[Param], types: &[PgTypeInfo], e: E) -> Result<(u64, u64)> {
+    let r = pg_query(sql, args, types)?.execute(e).await?;
+    Ok((0, r.rows_affected()))
+}
+
+async fn fetch_sqlite<'e, E: Executor<'e, Database = Sqlite>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<Vec<SqliteRow>> {
+    let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
+    for a in args {
+        q = bind_sqlite(q, a);
+    }
+    q.fetch_all(e).await
+}
+
+async fn exec_sqlite<'e, E: Executor<'e, Database = Sqlite>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<(u64, u64)> {
+    let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
+    for a in args {
+        q = bind_sqlite(q, a);
+    }
+    let r = q.execute(e).await?;
+    Ok((r.last_insert_rowid() as u64, r.rows_affected()))
+}
+
+/// Where a statement runs: the pool (each statement on its own) or a transaction's connection.
+enum Target<'a> {
+    Pool(&'a Pool),
+    Tx(&'a mut TxInner),
+}
+
 /// The statement text of a step: the plan's SQL as is, or with its `parent` placeholder expanded.
-fn statement(st: &Step, parent_vals: Vec<Param>) -> (Cow<'_, str>, Vec<Param>) {
+fn statement(st: &Step, parent_vals: Vec<Param>, numbered: bool) -> (Cow<'_, str>, Vec<Param>) {
     if parent_vals.is_empty() {
         (Cow::Borrowed(st.sql.as_str()), parent_vals)
     } else {
-        let (sql, vals) = expand_in(st, parent_vals);
+        let (sql, vals) = expand_in(st, parent_vals, numbered);
         (Cow::Owned(sql), vals)
     }
+}
+
+async fn run_query(db: &Db, target: Target<'_>, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<DriverRow>> {
+    let (sql, parent_vals) = statement(st, parent_vals, matches!(db.pool, Pool::Postgres(_)));
+    let args = db.args(st, params, &parent_vals)?;
+    let start = std::time::Instant::now();
+    let r: Result<Vec<DriverRow>> = match target {
+        Target::Pool(Pool::MySql(p)) => fetch_mysql(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
+        Target::Tx(TxInner::MySql(t)) => fetch_mysql(&sql, &args, &mut **t).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
+        Target::Pool(Pool::Postgres(p)) => match db.pg_types_pool(p, &sql).await {
+            Ok(types) => fetch_pg(&sql, &args, &types, p).await.map(|v| v.into_iter().map(DriverRow::Postgres).collect()),
+            Err(e) => Err(e),
+        },
+        Target::Tx(TxInner::Postgres(t)) => match db.pg_types_conn(&mut **t, &sql).await {
+            Ok(types) => fetch_pg(&sql, &args, &types, &mut **t).await.map(|v| v.into_iter().map(DriverRow::Postgres).collect()),
+            Err(e) => Err(e),
+        },
+        Target::Pool(Pool::Sqlite(p)) => fetch_sqlite(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from),
+        Target::Tx(TxInner::Sqlite(t)) => fetch_sqlite(&sql, &args, &mut **t).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from),
+    };
+    db.emit(st, &sql, &args, parent_vals.len(), start, r.as_ref().err());
+    r
+}
+
+async fn run_execute(db: &Db, target: Target<'_>, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
+    let args = db.args(st, params, &[])?;
+    let sql = st.sql.as_str();
+    let start = std::time::Instant::now();
+    let r: Result<(u64, u64)> = match target {
+        Target::Pool(Pool::MySql(p)) => exec_mysql(sql, &args, p).await.map_err(Error::from),
+        Target::Tx(TxInner::MySql(t)) => exec_mysql(sql, &args, &mut **t).await.map_err(Error::from),
+        Target::Pool(Pool::Postgres(p)) => match db.pg_types_pool(p, sql).await {
+            Ok(types) => exec_pg(sql, &args, &types, p).await,
+            Err(e) => Err(e),
+        },
+        Target::Tx(TxInner::Postgres(t)) => match db.pg_types_conn(&mut **t, sql).await {
+            Ok(types) => exec_pg(sql, &args, &types, &mut **t).await,
+            Err(e) => Err(e),
+        },
+        Target::Pool(Pool::Sqlite(p)) => exec_sqlite(sql, &args, p).await.map_err(Error::from),
+        Target::Tx(TxInner::Sqlite(t)) => exec_sqlite(sql, &args, &mut **t).await.map_err(Error::from),
+    };
+    db.emit(st, sql, &args, 0, start, r.as_ref().err());
+    r
 }
 
 /// What terminals take: `&Db` or `&Tx`.
@@ -382,7 +792,8 @@ pub trait Exec: Sync {
     /// The transaction this executor runs in; None for a `Db` (each statement on its own).
     fn tx(&self) -> Option<&Tx>;
     /// Runs a select step; `parent_vals` are the values for its `parent` slot (empty for the main step).
-    fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> impl Future<Output = Result<Vec<MySqlRow>>> + Send;
+    fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> impl Future<Output = Result<Vec<DriverRow>>> + Send;
+    /// Runs a write step; returns (last insert id as the driver reports it, rows affected).
     fn execute(&self, st: &Step, params: &[Param]) -> impl Future<Output = Result<(u64, u64)>> + Send;
 }
 
@@ -395,30 +806,12 @@ impl Exec for Db {
         None
     }
 
-    async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<MySqlRow>> {
-        let (sql, parent_vals) = statement(st, parent_vals);
-        let args = self.args(st, params, &parent_vals)?;
-        let mut q = sqlx::query(sqlx::AssertSqlSafe(&*sql));
-        for a in &args {
-            q = bind(q, a);
-        }
-        let start = std::time::Instant::now();
-        let r = q.fetch_all(&self.pool).await.map_err(Error::from);
-        self.emit(st, &sql, &args, parent_vals.len(), start, r.as_ref().err());
-        r
+    async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<DriverRow>> {
+        run_query(self, Target::Pool(&self.pool), st, params, parent_vals).await
     }
 
     async fn execute(&self, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
-        let args = self.args(st, params, &[])?;
-        let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.as_str()));
-        for a in &args {
-            q = bind(q, a);
-        }
-        let start = std::time::Instant::now();
-        let r = q.execute(&self.pool).await.map_err(Error::from);
-        self.emit(st, &st.sql, &args, 0, start, r.as_ref().err());
-        let r = r?;
-        Ok((r.last_insert_id(), r.rows_affected()))
+        run_execute(self, Target::Pool(&self.pool), st, params).await
     }
 }
 
@@ -431,34 +824,16 @@ impl Exec for Tx {
         Some(self)
     }
 
-    async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<MySqlRow>> {
-        let (sql, parent_vals) = statement(st, parent_vals);
-        let args = self.db.args(st, params, &parent_vals)?;
-        let mut q = sqlx::query(sqlx::AssertSqlSafe(&*sql));
-        for a in &args {
-            q = bind(q, a);
-        }
+    async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<DriverRow>> {
         let mut guard = self.inner.lock().await;
         let tx = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-        let start = std::time::Instant::now();
-        let r = q.fetch_all(&mut **tx).await.map_err(Error::from);
-        self.db.emit(st, &sql, &args, parent_vals.len(), start, r.as_ref().err());
-        r
+        run_query(&self.db, Target::Tx(tx), st, params, parent_vals).await
     }
 
     async fn execute(&self, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
-        let args = self.db.args(st, params, &[])?;
-        let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.as_str()));
-        for a in &args {
-            q = bind(q, a);
-        }
         let mut guard = self.inner.lock().await;
         let tx = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-        let start = std::time::Instant::now();
-        let r = q.execute(&mut **tx).await.map_err(Error::from);
-        self.db.emit(st, &st.sql, &args, 0, start, r.as_ref().err());
-        let r = r?;
-        Ok((r.last_insert_id(), r.rows_affected()))
+        run_execute(&self.db, Target::Tx(tx), st, params).await
     }
 }
 
@@ -469,20 +844,27 @@ pub async fn select(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Rows> {
     run_plan(ex, plan, req).await
 }
 
+/// Driver rows as decoded positional rows: cells by column type, styled cells through their
+/// host and codec stages.
+fn positional(raw: &[DriverRow], asm: &Assemble, aes_key: &str) -> Result<Vec<Vec<Val>>> {
+    let n = asm.total_columns();
+    let mut data: Vec<Vec<Val>> = raw.iter().map(|r| read_row(r, n)).collect::<Result<_>>()?;
+    decode_styled(asm, &mut data, aes_key)?;
+    Ok(data)
+}
+
 async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows> {
+    let db = ex.db();
     let st = &plan.steps[0];
     let asm = st.assemble.clone().ok_or_else(|| Error::internal("no assemble"))?;
     let raw = ex.query(st, &req.params, Vec::new()).await?;
     let has_relations = plan.steps.iter().skip(1).any(|s| s.role == "relation");
-    // Relation steps read parent values positionally and attach by key; without them the
-    // driver rows go straight to the generated struct.
-    let cells: Vec<Cells> = if has_relations {
-        let n = asm.total_columns();
-        let mut data: Vec<Vec<Val>> = raw.iter().map(|r| read_row(r, n)).collect::<Result<_>>()?;
-        decode_styled(&asm, &mut data)?;
-        data.into_iter().map(Cells::Pos).collect()
+    // Relation steps read parent values positionally and attach by key. Without them a MySQL
+    // driver row goes straight to the generated struct; PostgreSQL/SQLite rows are decoded here.
+    let cells: Vec<Cells> = if !has_relations && matches!(db.pool, Pool::MySql(_)) {
+        raw.into_iter().map(|r| Cells::Raw(r.into_mysql())).collect()
     } else {
-        raw.into_iter().map(Cells::Raw).collect()
+        positional(&raw, &asm, &db.cfg.aes_key)?.into_iter().map(Cells::Pos).collect()
     };
     let mut rows = Rows { assemble: asm, cells, plan: plan.clone(), steps: HashMap::new(), params: Vec::new() };
     for st in plan.steps.iter().skip(1) {
@@ -498,8 +880,8 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
         let mut sr = StepRows { data: Vec::new(), by_key: HashMap::new() };
         if !vals.is_empty() {
             let asm = st.assemble.as_ref().expect("relation step has an assemble");
-            sr.data = ex.query(st, &req.params, vals).await?.iter().map(|r| read_row(r, asm.total_columns())).collect::<Result<_>>()?;
-            decode_styled(asm, &mut sr.data)?;
+            let raw = ex.query(st, &req.params, vals).await?;
+            sr.data = positional(&raw, asm, &db.cfg.aes_key)?;
             let ci = child_index(&plan, st.id);
             for (j, row) in sr.data.iter().enumerate() {
                 sr.by_key.entry(Key::of(&row[ci])).or_default().push(j);
@@ -511,14 +893,19 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
     Ok(rows)
 }
 
+/// The first cell of the first row (Null when there is no row).
+fn first_cell(rows: &[DriverRow]) -> Result<Val> {
+    match rows.first() {
+        Some(r) => read_cell(r, 0),
+        None => Ok(Val::Null),
+    }
+}
+
 pub async fn scalar(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Val> {
     req.ir.kind = kind.into();
     let plan = ex.db().plan(req)?;
     let rows = ex.query(&plan.steps[0], &req.params, Vec::new()).await?;
-    Ok(match rows.first() {
-        Some(r) => read_cell(r, 0)?,
-        None => Val::Null,
-    })
+    first_cell(&rows)
 }
 
 /// Runs the request's raw statement (kind raw, step role raw, no assemble) and returns
@@ -534,7 +921,7 @@ pub async fn raw(ex: &impl Exec, req: &mut Req) -> Result<Vec<indexmap::IndexMap
         let vals = read_row(r, n)?;
         let mut m = indexmap::IndexMap::with_capacity(n);
         for (i, v) in vals.into_iter().enumerate() {
-            m.insert(r.column(i).name().to_owned(), v);
+            m.insert(r.column_name(i).to_owned(), v);
         }
         out.push(m);
     }
@@ -547,19 +934,22 @@ pub async fn paginate(ex: &impl Exec, req: &mut Req) -> Result<(Rows, i64)> {
     let rows = run_plan(ex, plan.clone(), req).await?;
     let count = plan.steps.iter().find(|s| s.role == "count").expect("paginate plan has a count step");
     let cnt = ex.query(count, &rows.params, Vec::new()).await?;
-    let total = match cnt.first() {
-        Some(r) => read_cell(r, 0)?.as_i64(),
-        None => 0,
-    };
+    let total = first_cell(&cnt)?.as_i64();
     Ok((rows, total))
 }
 
 /// insert/update/delete. Returns (last_insert_id, affected). Optimistic updates
-/// that match no row fail with OptimisticLock.
+/// that match no row fail with OptimisticLock. On PostgreSQL/SQLite an insert's id comes
+/// back as a row (`RETURNING pk`), not from the driver's last insert id.
 pub async fn write(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<(u64, u64)> {
     req.ir.kind = kind.into();
     let plan = ex.db().plan(req)?;
-    let (id, affected) = ex.execute(&plan.steps[0], &req.params).await?;
+    let st = &plan.steps[0];
+    if kind == "insert" && st.sql.contains(" RETURNING ") {
+        let rows = ex.query(st, &req.params, Vec::new()).await?;
+        return Ok((first_cell(&rows)?.as_i64() as u64, 1));
+    }
+    let (id, affected) = ex.execute(st, &req.params).await?;
     if kind == "update" && req.ir.optimistic.is_some() && affected == 0 {
         return Err(Error::OptimisticLock);
     }
@@ -595,4 +985,41 @@ pub fn sql(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Sql> {
 /// Whether a joined node's slice of the row is present (its first column is not NULL).
 pub fn join_present(src: &mut impl Src, a: &Assemble) -> bool {
     !a.columns.is_empty() && !src.is_null(a.columns[0].index)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn step(sql: &str, slots: &[&str]) -> Step {
+        Step {
+            plan_id: 0,
+            id: 1,
+            role: "relation".into(),
+            sql: sql.into(),
+            bind_slots: slots.iter().map(|f| BindSlot { from: f.to_string(), param: 0, transform: String::new(), name: String::new(), step: 0, column: String::new(), host_styles: Vec::new() }).collect(),
+            assemble: None,
+            parent: None,
+        }
+    }
+
+    #[test]
+    fn expand_in_renumbers_postgres_placeholders() {
+        let st = step(r#"SELECT "a"."seq" FROM "t" AS "a" WHERE "a"."x" = $1 AND "a"."seq" IN ($2) AND "a"."y" > $3 ORDER BY $4"#, &["param", "parent", "param", "param"]);
+        let vals = vec![Param::I64(1), Param::I64(2), Param::I64(3)];
+        let (sql, padded) = expand_in(&st, vals, true);
+        assert_eq!(sql, r#"SELECT "a"."seq" FROM "t" AS "a" WHERE "a"."x" = $1 AND "a"."seq" IN ($2, $3, $4, $5) AND "a"."y" > $6 ORDER BY $7"#);
+        assert_eq!(padded, vec![Param::I64(1), Param::I64(2), Param::I64(3), Param::I64(3)]);
+        let (sql, padded) = expand_in(&st, vec![Param::I64(9)], true);
+        assert_eq!(sql, r#"SELECT "a"."seq" FROM "t" AS "a" WHERE "a"."x" = $1 AND "a"."seq" IN ($2) AND "a"."y" > $3 ORDER BY $4"#);
+        assert_eq!(padded, vec![Param::I64(9)]);
+    }
+
+    #[test]
+    fn expand_in_question_marks() {
+        let st = step("SELECT 1 FROM t WHERE x = ? AND seq IN (?) AND y > ?", &["param", "parent", "param"]);
+        let (sql, padded) = expand_in(&st, vec![Param::I64(1), Param::I64(2), Param::I64(3)], false);
+        assert_eq!(sql, "SELECT 1 FROM t WHERE x = ? AND seq IN (?, ?, ?, ?) AND y > ?");
+        assert_eq!(padded.len(), 4);
+    }
 }

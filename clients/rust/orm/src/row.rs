@@ -1,6 +1,7 @@
-//! Row sources for the generated `from_row`: a driver row decoded cell by cell straight
+//! Row sources for the generated `from_row`: a MySQL driver row decoded cell by cell straight
 //! into typed fields (the main step of a plan without relation steps), or a positional
-//! `Vec<Val>` row (relation steps, which are grouped by key before assembly).
+//! `Vec<Val>` row (relation steps, and every PostgreSQL/SQLite row, which are read
+//! positionally like Go does and decoded — host stages, then codec stages — before assembly).
 //!
 //! Every cell is dispatched by its column type name and decoded exactly once; a decode
 //! failure is an error, never a silent NULL (F3). The typed getters coerce like `Val`'s
@@ -8,10 +9,50 @@
 
 use chrono::{NaiveDate, NaiveDateTime};
 use sqlx::mysql::MySqlRow;
+use sqlx::postgres::PgRow;
+use sqlx::sqlite::SqliteRow;
 use sqlx::{Column, Row as _, TypeInfo, ValueRef as _};
 
 use crate::value::Val;
 use crate::Result;
+
+/// One row as the driver returned it.
+pub enum DriverRow {
+    MySql(MySqlRow),
+    Postgres(PgRow),
+    Sqlite(SqliteRow),
+}
+
+impl DriverRow {
+    pub fn len(&self) -> usize {
+        match self {
+            DriverRow::MySql(r) => r.len(),
+            DriverRow::Postgres(r) => r.len(),
+            DriverRow::Sqlite(r) => r.len(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// The driver's name of column `i` (kind raw results are keyed by it).
+    pub fn column_name(&self, i: usize) -> &str {
+        match self {
+            DriverRow::MySql(r) => r.column(i).name(),
+            DriverRow::Postgres(r) => r.column(i).name(),
+            DriverRow::Sqlite(r) => r.column(i).name(),
+        }
+    }
+
+    /// The MySQL row itself (the hot path keeps it undecoded until `from_row`).
+    pub fn into_mysql(self) -> MySqlRow {
+        match self {
+            DriverRow::MySql(r) => r,
+            _ => panic!("orm: a mysql pool yields mysql rows"),
+        }
+    }
+}
 
 /// What `from_row` reads its cells from. Methods take `&mut self` so the positional
 /// source can move strings and decoded values out instead of cloning them.
@@ -36,7 +77,8 @@ pub trait Src {
 
 /// One row of a select step as handed to the generated code.
 pub enum Cells {
-    /// The driver row itself: decoded straight into the struct.
+    /// The MySQL driver row itself: decoded straight into the struct (MySQL applies every
+    /// aes/hex/ip stage in SQL, so only codec stages remain and `styled` handles them).
     Raw(MySqlRow),
     /// A positional row (styled cells already decoded).
     Pos(Vec<Val>),
@@ -87,13 +129,13 @@ impl Src for Cells {
     }
     fn styled(&mut self, i: usize, styles: &[String]) -> Result<Val> {
         match self {
-            Cells::Raw(r) => crate::codec::decode(styles, &read_cell(r, i)?),
+            Cells::Raw(r) => crate::codec::decode(styles, &read_cell_mysql(r, i)?),
             Cells::Pos(v) => Ok(std::mem::take(&mut v[i])),
         }
     }
     fn val(&mut self, i: usize) -> Result<Val> {
         match self {
-            Cells::Raw(r) => read_cell(r, i),
+            Cells::Raw(r) => read_cell_mysql(r, i),
             Cells::Pos(v) => Ok(v[i].clone()),
         }
     }
@@ -113,7 +155,7 @@ fn raw_i64(r: &MySqlRow, i: usize) -> Result<i64> {
         "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => r.try_get::<Option<i64>, _>(i)?.unwrap_or(0),
         "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => r.try_get::<Option<u64>, _>(i)?.unwrap_or(0) as i64,
         "BOOLEAN" => r.try_get::<Option<bool>, _>(i)?.unwrap_or(false) as i64,
-        _ => read_cell(r, i)?.as_i64(),
+        _ => read_cell_mysql(r, i)?.as_i64(),
     })
 }
 
@@ -121,7 +163,7 @@ fn raw_f64(r: &MySqlRow, i: usize) -> Result<f64> {
     Ok(match type_name(r, i) {
         "FLOAT" | "DOUBLE" => r.try_get::<Option<f64>, _>(i)?.unwrap_or(0.0),
         "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => r.try_get::<Option<i64>, _>(i)?.unwrap_or(0) as f64,
-        _ => read_cell(r, i)?.as_f64(),
+        _ => read_cell_mysql(r, i)?.as_f64(),
     })
 }
 
@@ -129,14 +171,14 @@ fn raw_bool(r: &MySqlRow, i: usize) -> Result<bool> {
     Ok(match type_name(r, i) {
         "BOOLEAN" => r.try_get::<Option<bool>, _>(i)?.unwrap_or(false),
         "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => r.try_get::<Option<i64>, _>(i)?.unwrap_or(0) != 0,
-        _ => read_cell(r, i)?.as_bool(),
+        _ => read_cell_mysql(r, i)?.as_bool(),
     })
 }
 
 fn raw_string(r: &MySqlRow, i: usize) -> Result<String> {
     Ok(match type_name(r, i) {
         "VARCHAR" | "CHAR" | "TEXT" | "TINYTEXT" | "MEDIUMTEXT" | "LONGTEXT" | "ENUM" | "SET" => r.try_get::<Option<String>, _>(i)?.unwrap_or_default(),
-        _ => read_cell(r, i)?.take_string(),
+        _ => read_cell_mysql(r, i)?.take_string(),
     })
 }
 
@@ -144,19 +186,27 @@ fn raw_datetime(r: &MySqlRow, i: usize) -> Result<NaiveDateTime> {
     Ok(match type_name(r, i) {
         "DATETIME" => r.try_get::<Option<NaiveDateTime>, _>(i)?.unwrap_or_default(),
         "TIMESTAMP" => r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?.map(|t| t.naive_utc()).unwrap_or_default(),
-        _ => read_cell(r, i)?.as_datetime(),
+        _ => read_cell_mysql(r, i)?.as_datetime(),
     })
 }
 
 fn raw_date(r: &MySqlRow, i: usize) -> Result<NaiveDate> {
     Ok(match type_name(r, i) {
         "DATE" => r.try_get::<Option<NaiveDate>, _>(i)?.unwrap_or_default(),
-        _ => read_cell(r, i)?.as_date(),
+        _ => read_cell_mysql(r, i)?.as_date(),
     })
 }
 
-/// Reads one cell as a `Val` by its column type name.
-pub fn read_cell(row: &MySqlRow, i: usize) -> Result<Val> {
+/// Bytes as text when they are UTF-8 (compatibility returns strings), bytes otherwise.
+fn text_or_bytes(b: Vec<u8>) -> Val {
+    match String::from_utf8(b) {
+        Ok(s) => Val::Str(s),
+        Err(e) => Val::Bytes(e.into_bytes()),
+    }
+}
+
+/// Reads one MySQL cell as a `Val` by its column type name.
+pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
     let v = match type_name(row, i) {
         "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => row.try_get::<Option<i64>, _>(i)?.map(Val::I64),
         "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => row.try_get::<Option<u64>, _>(i)?.map(|x| Val::I64(x as i64)),
@@ -170,32 +220,90 @@ pub fn read_cell(row: &MySqlRow, i: usize) -> Result<Val> {
         "BOOLEAN" => row.try_get::<Option<bool>, _>(i)?.map(Val::Bool),
         // MySQL JSON columns arrive parsed; the json style then keeps the value as is.
         "JSON" => row.try_get::<Option<serde_json::Value>, _>(i)?.map(Val::Json),
-        "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" | "VARBINARY" | "BINARY" => {
-            // AES_DECRYPT yields BLOB; treat as text when it decodes as UTF-8 (compatibility returns strings).
-            row.try_get::<Option<Vec<u8>>, _>(i)?.map(|b| match String::from_utf8(b) {
-                Ok(s) => Val::Str(s),
-                Err(e) => Val::Bytes(e.into_bytes()),
-            })
-        }
+        // AES_DECRYPT yields BLOB; treat as text when it decodes as UTF-8 (compatibility returns strings).
+        "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" | "VARBINARY" | "BINARY" => row.try_get::<Option<Vec<u8>>, _>(i)?.map(text_or_bytes),
         _ => row.try_get::<Option<String>, _>(i)?.map(Val::Str),
     };
     Ok(v.unwrap_or(Val::Null))
 }
 
+/// Reads one PostgreSQL cell by its column type: integers of every width as i64, float and
+/// numeric as f64, boolean, timestamp(tz) and date, jsonb/json parsed, bytea as text-or-bytes,
+/// inet as its text (the plans select `host(col)`, so this is for raw statements).
+pub fn read_cell_pg(row: &PgRow, i: usize) -> Result<Val> {
+    let v = match row.column(i).type_info().name() {
+        "INT2" => row.try_get::<Option<i16>, _>(i)?.map(|x| Val::I64(x as i64)),
+        "INT4" => row.try_get::<Option<i32>, _>(i)?.map(|x| Val::I64(x as i64)),
+        "INT8" => row.try_get::<Option<i64>, _>(i)?.map(Val::I64),
+        "FLOAT4" => row.try_get::<Option<f32>, _>(i)?.map(|x| Val::F64(x as f64)),
+        "FLOAT8" => row.try_get::<Option<f64>, _>(i)?.map(Val::F64),
+        "NUMERIC" => row.try_get::<Option<rust_decimal::Decimal>, _>(i)?.map(|d| Val::F64(rust_decimal::prelude::ToPrimitive::to_f64(&d).unwrap_or(0.0))),
+        "BOOL" => row.try_get::<Option<bool>, _>(i)?.map(Val::Bool),
+        "TIMESTAMP" => row.try_get::<Option<NaiveDateTime>, _>(i)?.map(Val::DateTime),
+        "TIMESTAMPTZ" => row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?.map(|t| Val::DateTime(t.naive_utc())),
+        "DATE" => row.try_get::<Option<NaiveDate>, _>(i)?.map(Val::Date),
+        "JSONB" | "JSON" => row.try_get::<Option<serde_json::Value>, _>(i)?.map(Val::Json),
+        "BYTEA" => row.try_get::<Option<Vec<u8>>, _>(i)?.map(text_or_bytes),
+        "INET" | "CIDR" => row.try_get::<Option<sqlx::types::ipnet::IpNet>, _>(i)?.map(|n| {
+            // PostgreSQL's text form: no mask on a host address
+            Val::Str(if n.prefix_len() == n.max_prefix_len() { n.addr().to_string() } else { n.to_string() })
+        }),
+        _ => row.try_get::<Option<String>, _>(i)?.map(Val::Str),
+    };
+    Ok(v.unwrap_or(Val::Null))
+}
+
+/// Reads one SQLite cell by the stored value's type (SQLite is dynamically typed): INTEGER as
+/// i64 (bool columns coerce in the typed getters), REAL, TEXT (datetimes stay text with six
+/// fraction digits), BLOB as text-or-bytes.
+pub fn read_cell_sqlite(row: &SqliteRow, i: usize) -> Result<Val> {
+    let raw = row.try_get_raw(i)?;
+    if raw.is_null() {
+        return Ok(Val::Null);
+    }
+    let ty = raw.type_info();
+    Ok(match ty.name() {
+        "INTEGER" => Val::I64(row.try_get::<i64, _>(i)?),
+        "REAL" => Val::F64(row.try_get::<f64, _>(i)?),
+        "TEXT" => Val::Str(row.try_get::<String, _>(i)?),
+        "BLOB" => text_or_bytes(row.try_get::<Vec<u8>, _>(i)?),
+        "BOOLEAN" => Val::Bool(row.try_get::<bool, _>(i)?),
+        other => return Err(crate::Error::Config(format!("sqlite column {i} holds a {other} value"))),
+    })
+}
+
+/// Reads one cell as a `Val` by its column type, whichever driver produced the row.
+pub fn read_cell(row: &DriverRow, i: usize) -> Result<Val> {
+    match row {
+        DriverRow::MySql(r) => read_cell_mysql(r, i),
+        DriverRow::Postgres(r) => read_cell_pg(r, i),
+        DriverRow::Sqlite(r) => read_cell_sqlite(r, i),
+    }
+}
+
 /// Reads one positional row of `n` cells.
-pub fn read_row(row: &MySqlRow, n: usize) -> Result<Vec<Val>> {
+pub fn read_row(row: &DriverRow, n: usize) -> Result<Vec<Val>> {
     (0..n).map(|i| read_cell(row, i)).collect()
 }
 
-/// Decodes styled cells (docs/codec.md) of every positional row of a step in place.
-pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>]) -> Result<()> {
+/// Decodes styled cells of every positional row of a step in place: the host stages a
+/// dialect left to the executor (aes/hex/ip, with the AES secret) first, then the codec
+/// stages (docs/codec.md).
+pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key: &str) -> Result<()> {
     let styled = crate::codec::styled_cols(asm);
     if styled.is_empty() {
         return Ok(());
     }
     for row in data.iter_mut() {
-        for (i, styles) in &styled {
-            row[*i] = crate::codec::decode(styles, &row[*i])?;
+        for sc in &styled {
+            let mut v = std::mem::take(&mut row[sc.index]);
+            if !sc.host.is_empty() {
+                v = crate::codec::host_decode(&v, &sc.host, aes_key)?;
+            }
+            if !sc.codec.is_empty() {
+                v = crate::codec::decode(&sc.codec, &v)?;
+            }
+            row[sc.index] = v;
         }
     }
     Ok(())
