@@ -32,12 +32,21 @@ func main() {
 	check(err)
 	var lastSQL string
 	var lastArgs []any
-	db, err := orm.Open("mysql", "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true", eng, orm.Config{
-		AESKey:  "bench-salt",
-		OnQuery: func(e orm.Event) { lastSQL, lastArgs = e.SQL, e.Args },
+	const aesKey = "bench-salt"
+	db, err := orm.Open("mysql", dsn(), eng, orm.Config{
+		AESKey: aesKey,
+		OnQuery: func(e orm.Event) {
+			lastSQL, lastArgs = e.SQL, e.Args
+			// the hook masks secret binds; the native replay below needs the real key
+			for i, a := range lastArgs {
+				if a == orm.Secret {
+					lastArgs[i] = aesKey
+				}
+			}
+		},
 	})
 	check(err)
-	gen.Init(eng)
+	check(gen.Init(eng))
 	ctx := context.Background()
 	now := time.Date(2026, 9, 11, 0, 0, 0, 0, time.UTC)
 
@@ -85,6 +94,14 @@ func main() {
 		rs.Close()
 	})
 	fmt.Fprintf(os.Stderr, "go: client p50 %dµs, native p50 %dµs (%d iterations)\n", client, native, iterations)
+}
+
+// dsn is ORM_MYSQL_DSN_GO when set (CI), else the local socket.
+func dsn() string {
+	if v := os.Getenv("ORM_MYSQL_DSN_GO"); v != "" {
+		return v
+	}
+	return "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true"
 }
 
 func p50(f func()) int64 {
