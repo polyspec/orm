@@ -6,7 +6,6 @@
 package planner
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -37,8 +36,14 @@ type builder struct {
 	n     int
 }
 
-func (b *builder) param(v json.RawMessage) string {
-	b.binds = append(b.binds, plan.BindSlot{From: "param", Value: v})
+func (b *builder) param(i int) string {
+	b.binds = append(b.binds, plan.BindSlot{From: "param", Param: i})
+	b.n++
+	return b.p.D.Placeholder(b.n)
+}
+
+func (b *builder) paramT(i int, transform string) string {
+	b.binds = append(b.binds, plan.BindSlot{From: "param", Param: i, Transform: transform})
 	b.n++
 	return b.p.D.Placeholder(b.n)
 }
@@ -395,8 +400,8 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 			return "", err
 		}
 		// expr binds are positional '?' in the fragment, in order
-		for _, v := range pr.Binds {
-			b.param(v)
+		for _, i := range pr.Ps {
+			b.param(i)
 		}
 		return "(" + e + ")", nil
 	}
@@ -406,18 +411,17 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 			cols = append(cols, p.qcol(s, c))
 		}
 		boolean := pr.Op == "match_boolean"
-		var sv string
-		if err := json.Unmarshal(pr.Value, &sv); err != nil {
-			return "", &ir.Error{Code: "IR_INVALID", Msg: "match value must be a string"}
+		transform := ""
+		if boolean {
+			transform = "fulltext_boolean"
 		}
-		mv, _ := json.Marshal(p.D.FulltextValue(sv, boolean))
-		return p.D.Fulltext(cols, b.param(mv), boolean), nil
+		return p.D.Fulltext(cols, b.paramT(*pr.P, transform), boolean), nil
 	}
 	col := s.ent.Column(pr.Column)
 	lhs := p.qcol(s, pr.Column)
 	switch pr.Op {
 	case "eq", "not_eq", "gt", "gte", "lt", "lte":
-		rhs, err := p.renderValue(b, col, pr.Value)
+		rhs, err := p.renderValue(b, col, *pr.P)
 		if err != nil {
 			return "", err
 		}
@@ -433,8 +437,8 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		return lhs + " " + cmp(strings.TrimSuffix(pr.Op, "_col")) + " " + p.qcol(rs, pr.Ref.Column), nil
 	case "in", "not_in":
 		var phs []string
-		for _, v := range pr.Values {
-			rhs, err := p.renderValue(b, col, v)
+		for _, i := range pr.Ps {
+			rhs, err := p.renderValue(b, col, i)
 			if err != nil {
 				return "", err
 			}
@@ -446,11 +450,11 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		}
 		return lhs + " " + op + " (" + strings.Join(phs, ", ") + ")", nil
 	case "between":
-		lo, err := p.renderValue(b, col, pr.Values[0])
+		lo, err := p.renderValue(b, col, pr.Ps[0])
 		if err != nil {
 			return "", err
 		}
-		hi, err := p.renderValue(b, col, pr.Values[1])
+		hi, err := p.renderValue(b, col, pr.Ps[1])
 		if err != nil {
 			return "", err
 		}
@@ -460,39 +464,29 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 	case "is_not_null":
 		return lhs + " IS NOT NULL", nil
 	case "like", "like_binary":
-		return p.D.Like(lhs, b.param(pr.Value), pr.Op == "like_binary"), nil
-	case "contains", "starts_with", "ends_with":
-		var sv string
-		if err := json.Unmarshal(pr.Value, &sv); err != nil {
-			return "", &ir.Error{Code: "IR_INVALID", Msg: pr.Op + " value must be a string"}
-		}
-		esc := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(sv)
-		switch pr.Op {
-		case "contains":
-			esc = "%" + esc + "%"
-		case "starts_with":
-			esc = esc + "%"
-		case "ends_with":
-			esc = "%" + esc
-		}
-		mv, _ := json.Marshal(esc)
-		return p.D.Like(lhs, b.param(mv), false), nil
+		return p.D.Like(lhs, b.param(*pr.P), pr.Op == "like_binary"), nil
+	case "contains":
+		return p.D.Like(lhs, b.paramT(*pr.P, "like_contains"), false), nil
+	case "starts_with":
+		return p.D.Like(lhs, b.paramT(*pr.P, "like_starts"), false), nil
+	case "ends_with":
+		return p.D.Like(lhs, b.paramT(*pr.P, "like_ends"), false), nil
 	}
 	return "", &ir.Error{Code: "OPERATOR_UNKNOWN", Msg: pr.Op}
 }
 
 // renderValue binds one value, wrapping it for SQL-side styles (aes/hex/ip) so
 // equality predicates on encrypted columns keep working (compatibility behaviour).
-func (p *Planner) renderValue(b *builder, col *schema.Col, v json.RawMessage) (string, error) {
+func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error) {
 	styles := sqlStyles(col.Styles)
 	if len(styles) == 0 {
-		return b.param(v), nil
+		return b.param(i), nil
 	}
 	first := true
 	e, _ := p.D.WriteExpr(func() string {
 		if first {
 			first = false
-			return b.param(v)
+			return b.param(i)
 		}
 		return b.secret("aes")
 	}, styles)
@@ -576,22 +570,21 @@ func (p *Planner) renderAssign(b *builder, ent *schema.Entity, col *schema.Col, 
 		if err != nil {
 			return "", err
 		}
-		for _, v := range a.Binds {
-			b.param(v)
+		for _, i := range a.Ps {
+			b.param(i)
 		}
 		return e, nil
-	case len(a.Plus) > 0:
-		return p.D.Quote(col.Name) + " + " + b.param(a.Plus), nil
-	case len(a.Minus) > 0:
+	case a.PlusP != nil:
+		return p.D.Quote(col.Name) + " + " + b.param(*a.PlusP), nil
+	case a.MinusP != nil:
 		// clamp at zero, as compatibility does
 		q := p.D.Quote(col.Name)
-		ph := b.param(a.Minus)
-		return "CASE WHEN " + q + " > " + ph + " THEN " + q + " - " + b.param(a.Minus) + " ELSE 0 END", nil
+		ph := b.param(*a.MinusP)
+		return "CASE WHEN " + q + " > " + ph + " THEN " + q + " - " + b.param(*a.MinusP) + " ELSE 0 END", nil
+	case a.Null:
+		return "NULL", nil
 	default:
-		if string(a.Value) == "null" {
-			return "NULL", nil
-		}
-		return p.renderValue(b, col, a.Value)
+		return p.renderValue(b, col, *a.P)
 	}
 }
 
@@ -616,7 +609,7 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 		return nil, err
 	}
 	if r.Optimistic != nil {
-		where += " AND " + p.qcol(root, r.Optimistic.Column) + " = " + b.param(r.Optimistic.Value)
+		where += " AND " + p.qcol(root, r.Optimistic.Column) + " = " + b.param(r.Optimistic.P)
 	}
 	sql := "UPDATE " + p.D.Quote(ent.Table) + " SET " + strings.Join(sets, ", ") + " WHERE " + where
 	return &plan.Step{ID: 0, Role: "main", SQL: sql, BindSlots: b.binds}, nil
