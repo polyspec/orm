@@ -62,8 +62,6 @@ function call($fp, string $frame): string {
 $sqlPk   = "SELECT " . COLS . " FROM `battle` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1";
 $sqlList = "SELECT " . COLS . " FROM `battle` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 100";
 
-echo "== (iii) ormd exec + msgpack (positional rows) ==\n";
-bench('ormd pk get', $iters, function ($i) use ($fp, $sqlPk) { $r = msgpack_unpack(call($fp, json_encode(['op' => 'exec', 'sql' => $sqlPk, 'binds' => ['bench-salt', 'bench-salt', $i % 100000 + 1]]))); if (count($r['rows']) !== 1) throw new RuntimeException('no row'); });
-bench('ormd list100', $iters, function ($i) use ($fp, $sqlList) { $r = msgpack_unpack(call($fp, json_encode(['op' => 'exec', 'sql' => $sqlList, 'binds' => ['bench-salt', 'bench-salt', $i % 100 + 1, 0]]))); if (count($r['rows']) === 0) throw new RuntimeException('empty'); });
-bench('ormd list100 + array_combine', $iters, function ($i) use ($fp, $sqlList) { $r = msgpack_unpack(call($fp, json_encode(['op' => 'exec', 'sql' => $sqlList, 'binds' => ['bench-salt', 'bench-salt', $i % 100 + 1, 0]]))); $o = []; foreach ($r['rows'] as $row) { $o[] = array_combine($r['columns'], $row); } });
-bench('ormd relation4 (go assembly)', $iters, function ($i) use ($fp) { $r = msgpack_unpack(call($fp, json_encode(['op' => 'exec_rel4', 'service_seq' => $i % 100 + 1]))); if (count($r['parents']['rows']) === 0) throw new RuntimeException('empty'); });
+// The S0 paths (ii)/(iii) measured an ormd that executed SQL; decision R3 removed that op
+// (docs/perf.md §5), so this file is the PDO baseline only. The client numbers come from
+// clients/php/tests/bench.php.
