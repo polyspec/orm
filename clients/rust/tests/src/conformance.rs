@@ -109,7 +109,6 @@ async fn main() {
     let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
     let end = chrono::NaiveDate::from_ymd_opt(2026, 12, 31).unwrap().and_hms_opt(0, 0, 0).unwrap();
     // FKs and dts every write vector sets (user 1, service 999, module 1, member 1; 2026-06-01 .. 2026-12-31)
-    let fks = |q: Battle| q.set_user_seq(1).set_service_seq(999).set_service_module_seq(1).set_service_member_seq(1).set_start_dt(start).set_end_dt(end);
 
     run!("pk_one", async { Ok(row(Battle::new().seq_eq(42).one(&db).await?.as_ref())) }.await);
     run!("pk_one_by", async { Ok(row(Battle::new().one_by_seq(&db, 42).await?.as_ref())) }.await);
@@ -255,6 +254,7 @@ async fn main() {
         let u = User::new().seq_eq(5).relations_battles(Battle::new().select_none().order_by_seq_asc().limit_per_parent(2).drop_child_key()).one(&db).await?.unwrap();
         Ok(u.to_map())
     }.await);
+    let fks = |q: Battle| q.set_user_seq(1).set_service_seq(999).set_service_module_seq(1).set_service_member_seq(1).set_start_dt(start).set_end_dt(end);
     run!("upsert", async {
         let (a, b) = db.transaction(|tx| async move {
             let a = fks(Battle::new().set_uuid(Some("conf-upsert")).set_name("u1").set_read_count(1)).insert(&tx).await?.unwrap();

@@ -6,8 +6,8 @@
 ## 현재 위치 (2026-09-11)
 - **S0 완료** (측정·결정 R1~R3, F1~F3 — `docs/perf.md`).
 - **S1 완료** (thin slice: 엔진·생성기·3언어 실행기, 적합성 하네스, `ormgen tokens`, 데모).
-- **S2 진행 중**: 관계(T2.1~2.3, 2.7~2.10a, 2.12a~2.14a)와 코덱(T2.6, 2.8b~2.10b, 2.17)은 완료. 남은 것: T2.15(import 선행 → S5), T2.16 잔여 5개(S3와 함께). **다음: S3 T3.1.**
-- 적합성 벡터 **30개 × 3언어 바이트 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
+- **S2 완료**(T2.15 150테이블 게이트만 example DB 대기), **S3 완료**(병렬 레인 3개로 이식·병합), **S4 엔진 완료**·언어 레인 진행 중(docs/lanes/s4.md).
+- 적합성 벡터 **36개 × 3언어 바이트 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
 
 ## 병렬 레인 (어떻게 나눠 일하는가)
 | 레인 | 담당 | 다른 레인과의 경계 |
@@ -75,15 +75,15 @@
 ## 단계 3 — S3 쓰기 long tail  [1.5주]  (T2.x 후)
 
 ### 3-A 엔진 — 레인 E
-- [ ] T3.1 `on_duplicate`(upsert: `INSERT … ON DUPLICATE KEY UPDATE`, dialect 훅) + `MutationBatch`(순서 보장 단일 tx 플랜, delete cascade 트리용) + `delete` 다중 where 검증. (`plus/minus` 0 하한·바인드, `optimistic`은 S1에 이미 있음)
-- [ ] T3.2 골든: upsert, batch, minus 0 하한, optimistic 조합
+- [x] T3.1 엔진: `on_duplicate` upsert(`ON DUPLICATE KEY UPDATE … , pk = LAST_INSERT_ID(pk)`), `no_cascade_delete` + `children[].cascade`(소유 관계만). MutationBatch는 불필요(cascade는 클라이언트가 행마다 DELETE, Db면 트랜잭션 자동)
+- [x] T3.2 골든 `TestUpsertAndCascade`
 
 ### 3-B 실행기 — 레인 G ∥ P ∥ R
-- [ ] T3.3 **P** G/P/R `save()`(PK 유무로 insert/update 분기), `insertOrUpdate`(upsert 터미널), `delete(cascade)` 로드된 관계 트리 워크(`noCascadeDelete` 정지점) → Batch 실행, `debug()`/`sql(db)` 플랜·바인드 덤프(비밀 마스킹), `clone` → T3.1
-- [ ] T3.4 데드락 동시성 테스트(2 tx 교차 갱신) 3언어 공통 → 재실행 3회 확인 → T1.13
+- [x] T3.3 G/P/R(병렬 레인, docs/lanes/s3.md): `onDuplicateSet<Col>[Expr]`, `onDuplicatePlus/Minus<Col>`, `onDuplicateSetAll`, `save`, 쿼리 `update`/`delete`(affected), 행 `deleteCascade`(깊이 우선·Db면 트랜잭션), `noCascadeDelete`, `sql(db)`(`$SECRET` 마스킹)
+- [x] T3.4 데드락 게이트 3언어(Go goroutine, PHP 자식 프로세스 2개, Rust tokio 태스크): 재실행 후 양쪽 성공 확인
 
 ### 3-C 검증 — 레인 V
-- [ ] T3.5 적합성 벡터 +10(setExpr 카운터, plus/minus·0 하한, upsert, 낙관 락 실패, delete cascade 순서, save 분기, batch 롤백)
+- [x] T3.5 적합성 벡터 +6(upsert, upsert_set_all, save_branch, bulk_update_plus_minus, delete_cascade_order, sql_dump) → **36 × 3언어 동일**
 
 ---
 
