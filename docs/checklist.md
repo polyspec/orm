@@ -110,14 +110,14 @@
 
 ### 5-A 도구 — 레인 E
 - [x] T5.10 `ormgen import --dsn`(information_schema → `.mmd`, 결정적·멱등, 이름 기반 FK 추론, 인덱스→`%%`, `=now`, 기존 파일의 라벨/lazy/bool/스타일/predicate 이어받기) — orm_bench 임포트 = 손으로 쓴 매니페스트와 타입·관계·인덱스 동일. **150-table fixture는 로컬에 없음** → T2.15(150테이블 게이트)는 사용자가 DB 접근을 주면 실행
-- [~] T5.1 `ormgen validate --dsn`(매니페스트 ↔ 라이브 DB: 테이블·컬럼·타입·NULL·auto·스타일·PK, exit 1) 완료 → 클라이언트 `schema_hash` 부팅 검사 1회는 레인(S5)
-- [~] T5.2 `docs/errors.yaml` + `ormgen errors --lang go|php|rust` 완료 → 상수 파일 체크인·사용·드라이버 에러 매핑은 레인(docs/lanes/s5.md)
+- [x] T5.1 `ormgen validate --dsn` + 3언어 `schema_hash` 부팅 검사 1회(`SCHEMA_HASH_MISMATCH`, 감시 없음)
+- [x] T5.2 `docs/errors.yaml` + `ormgen errors --lang` + 3언어 상수 파일 체크인·사용, 드라이버 매핑(1213/40001 → DEADLOCK, 1062/23000 → DUPLICATE_KEY, 원문 보존)
 
 ### 5-B 런타임 — 레인 G ∥ P ∥ R
-- [~] T5.3 `on_query(sql, binds, duration, plan_id, err)` — Go·PHP 완료(plan_id 16자리 hex, 비밀 `$SECRET` 마스킹), Rust 레인 진행 중
-- [~] T5.3b 고정 비용: Go 66µs vs 네이티브 61µs(+8%, 이전 +13%; IR 해시 무직렬화, 스캔 셀 재사용, 플랜별 스캔 팩트 캐시). ≤+5%는 typed 직접 스캔(생성기 재설계) 필요 → S7 후보. PHP 62µs vs 56µs(+11%, 이전 +16%; 빌더 시그니처 로컬 캐시). Rust 레인 진행 중
+- [x] T5.3 `on_query(sql, binds, duration, plan_id, err)` 3언어(plan_id 16자리 hex, 비밀 `$SECRET` 마스킹; 적합성 벡터도 `$SECRET`로 재기록)
+- [~] T5.3b 고정 비용: Go 66µs vs 네이티브 61µs(+8%, 이전 +13%; IR 해시 무직렬화, 스캔 셀 재사용, 플랜별 스캔 팩트 캐시). ≤+5%는 typed 직접 스캔(생성기 재설계) 필요 → S7 후보. PHP 62µs vs 56µs(+11%, 이전 +16%; 빌더 시그니처 로컬 캐시). Rust: 3행 데모 오차 범위 내(+2µs), list100 476→428µs, PK p99 210→102µs(`MySqlRow` 직접 디코드, `Vec<Val>` 제거). ≤+5% 미달 언어(Go/PHP)는 S7
 - [x] T5.4 PHP `EMULATE_PREPARES = true` 결정: 콜드(prepare+execute, PHP-FPM 현실) PK 72→48µs, IN(8) 107→75, 100행 460→382; 웜 PK는 33→49로 손해. 타입 동일, 러너 출력 동일 (`clients/php/tests/bench_emulate.php`)
-- [~] T5.5 `orm.toml` 스펙 `docs/config.md` 작성 → 로더 3언어(절대경로·symlink 금지 검증, schema_hash 부팅 검사)는 레인
+- [x] T5.5 `orm.toml` 스펙 + 로더 3언어(`orm.OpenConfig` / `Orm::fromConfig` / `Db::from_config`; 절대경로·존재·symlink 금지, 미지 키 거부, aes|aes_env)
 
 ### 5-C 배포 — 레인 V
 - [~] T5.6 `scripts/build-artifacts.sh`(wasm 단일, ormd·ormgen linux/darwin × amd64/arm64, 파일명에 0.0.1, SHA256SUMS) → composer/crates 패키징 메타데이터는 남음
