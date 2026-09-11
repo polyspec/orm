@@ -688,28 +688,35 @@ func (q *ServiceRegionQuery) Raw(sql string, binds ...any) *ServiceRegionQuery {
 	return q
 }
 
-func (q *ServiceRegionQuery) JoinAuthors(child *AuthorQuery) *ServiceRegionQuery {
-	q.q.Join("authors", "inner", child.q)
+// Relation attaches a declared one-to-one child query. The manifest resolves
+// the relation name from the parent and child entities.
+func (q *ServiceRegionQuery) Relation(child any) *ServiceRegionQuery {
+	if c, ok := child.(*ServiceQuery); ok {
+		q.q.Relation("service", c.q)
+		return q
+	}
 	return q
 }
-func (q *ServiceRegionQuery) LeftJoinAuthors(child *AuthorQuery) *ServiceRegionQuery {
-	q.q.Join("authors", "left", child.q)
+func (q *ServiceRegionQuery) Relations(child any) *ServiceRegionQuery {
+	if c, ok := child.(*AuthorQuery); ok {
+		q.q.Relation("authors", c.q)
+		return q
+	}
 	return q
 }
-func (q *ServiceRegionQuery) RelationsAuthors(child *AuthorQuery) *ServiceRegionQuery {
-	q.q.Relation("authors", child.q)
-	return q
+func (q *ServiceRegionQuery) Join(child any) *ServiceRegionQuery { return q.joinTarget(child, "inner") }
+func (q *ServiceRegionQuery) LeftJoin(child any) *ServiceRegionQuery {
+	return q.joinTarget(child, "left")
 }
-func (q *ServiceRegionQuery) JoinService(child *ServiceQuery) *ServiceRegionQuery {
-	q.q.Join("service", "inner", child.q)
-	return q
-}
-func (q *ServiceRegionQuery) LeftJoinService(child *ServiceQuery) *ServiceRegionQuery {
-	q.q.Join("service", "left", child.q)
-	return q
-}
-func (q *ServiceRegionQuery) RelationService(child *ServiceQuery) *ServiceRegionQuery {
-	q.q.Relation("service", child.q)
+func (q *ServiceRegionQuery) joinTarget(child any, kind string) *ServiceRegionQuery {
+	if c, ok := child.(*AuthorQuery); ok {
+		q.q.Join("authors", kind, c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceQuery); ok {
+		q.q.Join("service", kind, c.q)
+		return q
+	}
 	return q
 }
 

@@ -490,40 +490,41 @@ func (q *ServiceQuery) Having(fn func(*ServiceWhere)) *ServiceQuery {
 // Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
 func (q *ServiceQuery) Raw(sql string, binds ...any) *ServiceQuery { q.q.Raw(sql, binds...); return q }
 
-func (q *ServiceQuery) JoinAuthors(child *AuthorQuery) *ServiceQuery {
-	q.q.Join("authors", "inner", child.q)
+// Relation attaches a declared one-to-one child query. The manifest resolves
+// the relation name from the parent and child entities.
+func (q *ServiceQuery) Relation(child any) *ServiceQuery {
 	return q
 }
-func (q *ServiceQuery) LeftJoinAuthors(child *AuthorQuery) *ServiceQuery {
-	q.q.Join("authors", "left", child.q)
+func (q *ServiceQuery) Relations(child any) *ServiceQuery {
+	if c, ok := child.(*AuthorQuery); ok {
+		q.q.Relation("authors", c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceMemberQuery); ok {
+		q.q.Relation("members", c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceRegionQuery); ok {
+		q.q.Relation("modules", c.q)
+		return q
+	}
 	return q
 }
-func (q *ServiceQuery) RelationsAuthors(child *AuthorQuery) *ServiceQuery {
-	q.q.Relation("authors", child.q)
-	return q
-}
-func (q *ServiceQuery) JoinMembers(child *ServiceMemberQuery) *ServiceQuery {
-	q.q.Join("members", "inner", child.q)
-	return q
-}
-func (q *ServiceQuery) LeftJoinMembers(child *ServiceMemberQuery) *ServiceQuery {
-	q.q.Join("members", "left", child.q)
-	return q
-}
-func (q *ServiceQuery) RelationsMembers(child *ServiceMemberQuery) *ServiceQuery {
-	q.q.Relation("members", child.q)
-	return q
-}
-func (q *ServiceQuery) JoinModules(child *ServiceRegionQuery) *ServiceQuery {
-	q.q.Join("modules", "inner", child.q)
-	return q
-}
-func (q *ServiceQuery) LeftJoinModules(child *ServiceRegionQuery) *ServiceQuery {
-	q.q.Join("modules", "left", child.q)
-	return q
-}
-func (q *ServiceQuery) RelationsModules(child *ServiceRegionQuery) *ServiceQuery {
-	q.q.Relation("modules", child.q)
+func (q *ServiceQuery) Join(child any) *ServiceQuery     { return q.joinTarget(child, "inner") }
+func (q *ServiceQuery) LeftJoin(child any) *ServiceQuery { return q.joinTarget(child, "left") }
+func (q *ServiceQuery) joinTarget(child any, kind string) *ServiceQuery {
+	if c, ok := child.(*AuthorQuery); ok {
+		q.q.Join("authors", kind, c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceMemberQuery); ok {
+		q.q.Join("members", kind, c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceRegionQuery); ok {
+		q.q.Join("modules", kind, c.q)
+		return q
+	}
 	return q
 }
 

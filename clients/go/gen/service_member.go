@@ -760,40 +760,43 @@ func (q *ServiceMemberQuery) Raw(sql string, binds ...any) *ServiceMemberQuery {
 	return q
 }
 
-func (q *ServiceMemberQuery) JoinAuthors(child *AuthorQuery) *ServiceMemberQuery {
-	q.q.Join("authors", "inner", child.q)
+// Relation attaches a declared one-to-one child query. The manifest resolves
+// the relation name from the parent and child entities.
+func (q *ServiceMemberQuery) Relation(child any) *ServiceMemberQuery {
+	if c, ok := child.(*ServiceQuery); ok {
+		q.q.Relation("service", c.q)
+		return q
+	}
+	if c, ok := child.(*UserQuery); ok {
+		q.q.Relation("user", c.q)
+		return q
+	}
 	return q
 }
-func (q *ServiceMemberQuery) LeftJoinAuthors(child *AuthorQuery) *ServiceMemberQuery {
-	q.q.Join("authors", "left", child.q)
+func (q *ServiceMemberQuery) Relations(child any) *ServiceMemberQuery {
+	if c, ok := child.(*AuthorQuery); ok {
+		q.q.Relation("authors", c.q)
+		return q
+	}
 	return q
 }
-func (q *ServiceMemberQuery) RelationsAuthors(child *AuthorQuery) *ServiceMemberQuery {
-	q.q.Relation("authors", child.q)
-	return q
+func (q *ServiceMemberQuery) Join(child any) *ServiceMemberQuery { return q.joinTarget(child, "inner") }
+func (q *ServiceMemberQuery) LeftJoin(child any) *ServiceMemberQuery {
+	return q.joinTarget(child, "left")
 }
-func (q *ServiceMemberQuery) JoinService(child *ServiceQuery) *ServiceMemberQuery {
-	q.q.Join("service", "inner", child.q)
-	return q
-}
-func (q *ServiceMemberQuery) LeftJoinService(child *ServiceQuery) *ServiceMemberQuery {
-	q.q.Join("service", "left", child.q)
-	return q
-}
-func (q *ServiceMemberQuery) RelationService(child *ServiceQuery) *ServiceMemberQuery {
-	q.q.Relation("service", child.q)
-	return q
-}
-func (q *ServiceMemberQuery) JoinUser(child *UserQuery) *ServiceMemberQuery {
-	q.q.Join("user", "inner", child.q)
-	return q
-}
-func (q *ServiceMemberQuery) LeftJoinUser(child *UserQuery) *ServiceMemberQuery {
-	q.q.Join("user", "left", child.q)
-	return q
-}
-func (q *ServiceMemberQuery) RelationUser(child *UserQuery) *ServiceMemberQuery {
-	q.q.Relation("user", child.q)
+func (q *ServiceMemberQuery) joinTarget(child any, kind string) *ServiceMemberQuery {
+	if c, ok := child.(*AuthorQuery); ok {
+		q.q.Join("authors", kind, c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceQuery); ok {
+		q.q.Join("service", kind, c.q)
+		return q
+	}
+	if c, ok := child.(*UserQuery); ok {
+		q.q.Join("user", kind, c.q)
+		return q
+	}
 	return q
 }
 

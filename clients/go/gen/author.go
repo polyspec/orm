@@ -4018,52 +4018,49 @@ func (q *AuthorQuery) Having(fn func(*AuthorWhere)) *AuthorQuery {
 // Raw stores a hand-written SELECT as the root ({table} = this entity's table, ? = binds in order); RawAll runs it.
 func (q *AuthorQuery) Raw(sql string, binds ...any) *AuthorQuery { q.q.Raw(sql, binds...); return q }
 
-func (q *AuthorQuery) JoinService(child *ServiceQuery) *AuthorQuery {
-	q.q.Join("service", "inner", child.q)
+// Relation attaches a declared one-to-one child query. The manifest resolves
+// the relation name from the parent and child entities.
+func (q *AuthorQuery) Relation(child any) *AuthorQuery {
+	if c, ok := child.(*ServiceQuery); ok {
+		q.q.Relation("service", c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceMemberQuery); ok {
+		q.q.Relation("service_member", c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceRegionQuery); ok {
+		q.q.Relation("service_region", c.q)
+		return q
+	}
+	if c, ok := child.(*UserQuery); ok {
+		q.q.Relation("user", c.q)
+		return q
+	}
 	return q
 }
-func (q *AuthorQuery) LeftJoinService(child *ServiceQuery) *AuthorQuery {
-	q.q.Join("service", "left", child.q)
+func (q *AuthorQuery) Relations(child any) *AuthorQuery {
 	return q
 }
-func (q *AuthorQuery) RelationService(child *ServiceQuery) *AuthorQuery {
-	q.q.Relation("service", child.q)
-	return q
-}
-func (q *AuthorQuery) JoinServiceMember(child *ServiceMemberQuery) *AuthorQuery {
-	q.q.Join("service_member", "inner", child.q)
-	return q
-}
-func (q *AuthorQuery) LeftJoinServiceMember(child *ServiceMemberQuery) *AuthorQuery {
-	q.q.Join("service_member", "left", child.q)
-	return q
-}
-func (q *AuthorQuery) RelationServiceMember(child *ServiceMemberQuery) *AuthorQuery {
-	q.q.Relation("service_member", child.q)
-	return q
-}
-func (q *AuthorQuery) JoinServiceRegion(child *ServiceRegionQuery) *AuthorQuery {
-	q.q.Join("service_region", "inner", child.q)
-	return q
-}
-func (q *AuthorQuery) LeftJoinServiceRegion(child *ServiceRegionQuery) *AuthorQuery {
-	q.q.Join("service_region", "left", child.q)
-	return q
-}
-func (q *AuthorQuery) RelationServiceRegion(child *ServiceRegionQuery) *AuthorQuery {
-	q.q.Relation("service_region", child.q)
-	return q
-}
-func (q *AuthorQuery) JoinUser(child *UserQuery) *AuthorQuery {
-	q.q.Join("user", "inner", child.q)
-	return q
-}
-func (q *AuthorQuery) LeftJoinUser(child *UserQuery) *AuthorQuery {
-	q.q.Join("user", "left", child.q)
-	return q
-}
-func (q *AuthorQuery) RelationUser(child *UserQuery) *AuthorQuery {
-	q.q.Relation("user", child.q)
+func (q *AuthorQuery) Join(child any) *AuthorQuery     { return q.joinTarget(child, "inner") }
+func (q *AuthorQuery) LeftJoin(child any) *AuthorQuery { return q.joinTarget(child, "left") }
+func (q *AuthorQuery) joinTarget(child any, kind string) *AuthorQuery {
+	if c, ok := child.(*ServiceQuery); ok {
+		q.q.Join("service", kind, c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceMemberQuery); ok {
+		q.q.Join("service_member", kind, c.q)
+		return q
+	}
+	if c, ok := child.(*ServiceRegionQuery); ok {
+		q.q.Join("service_region", kind, c.q)
+		return q
+	}
+	if c, ok := child.(*UserQuery); ok {
+		q.q.Join("user", kind, c.q)
+		return q
+	}
 	return q
 }
 
