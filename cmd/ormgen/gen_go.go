@@ -231,6 +231,20 @@ var goTmpl = template.Must(template.New("go").Funcs(template.FuncMap{
 		}
 		return "orm.AsString(v)"
 	},
+	"arrayExpr": func(c goCol) string {
+		f := "r." + c.Field
+		switch {
+		case c.Type == "any":
+			return f
+		case c.Type == "time.Time" && c.Nullable:
+			return "func() any { if " + f + " == nil { return nil }; return orm.FormatTime(*" + f + ") }()"
+		case c.Type == "time.Time":
+			return "orm.FormatTime(" + f + ")"
+		case c.Nullable:
+			return "func() any { if " + f + " == nil { return nil }; return *" + f + " }()"
+		}
+		return f
+	},
 	"styleList": func(styles []string) string {
 		q := make([]string, len(styles))
 		for i, s := range styles {
@@ -352,8 +366,52 @@ func scan{{.Type}}(vals []any, a *plan.Assemble, rs *orm.Rows) *{{.Type}}Row {
 {{- end}}
 		}
 	}
+	r.SetProjection(a)
 	r.Mark({{printf "%q" .Name}}, {{printf "%q" .PK}}, r.{{pascal .PK}})
 	return r
+}
+
+// ToArray is the row's array form (what PHP's toArray() and Rust's to_map() give):
+// projected columns minus drop_child_key ones, extra outputs, loaded relations,
+// and flattened one-relations merged in (this row's keys win).
+func (r *{{.Type}}Row) ToArray() map[string]any {
+	m := make(map[string]any, len(r.Selected()))
+	for _, name := range r.Selected() {
+		if r.Hidden(name) {
+			continue
+		}
+		switch name {
+{{- range .Cols}}
+		case {{printf "%q" .Name}}:
+			m[name] = {{arrayExpr .}}
+{{- end}}
+		default:
+			m[name] = r.Extra(name)
+		}
+	}
+{{- range .Rels}}
+	if r.RelLoaded({{printf "%q" .Name}}) {
+{{- if eq .Kind "one"}}
+		if r.{{.Method}} != nil {
+			m[{{printf "%q" .Name}}] = r.{{.Method}}.ToArray()
+		} else {
+			m[{{printf "%q" .Name}}] = nil
+		}
+{{- else}}
+		mm := map[string]any{}
+		for k, v := range r.Get{{.Method}}().All() {
+			mm[k.String()] = v.ToArray()
+		}
+		m[{{printf "%q" .Name}}] = mm
+{{- end}}
+	}
+{{- end}}
+	for _, rel := range r.Flat() {
+		if child, ok := m[rel].(map[string]any); ok {
+			orm.MergeFlat(m, child)
+		}
+	}
+	return m
 }
 
 // {{.Type}}Cols are column references for column-to-column predicates
@@ -369,7 +427,13 @@ var {{.Type}}Cols = struct {
 }
 
 // {{.Type}} builds a statement over {{.Table}}: New{{.Type}}() → chain → terminal(ctx, db).
-type {{.Type}} struct{ q *orm.Q }
+type {{.Type}} struct {
+	q     *orm.Q
+	keyFn func(*{{.Type}}Row) orm.Key // KeyByFn: client-side keying of the root collection
+}
+
+// KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
+func (q *{{.Type}}) KeyByFn(fn func(*{{.Type}}Row) orm.Key) *{{.Type}} { q.keyFn = fn; return q }
 
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *{{.Type}}) Req() *orm.Req { return q.q.Req }
@@ -493,13 +557,17 @@ func (q *{{.Type}}) All(ctx context.Context, ex orm.Exec) (*orm.Collection[{{.Ty
 	if err != nil {
 		return nil, err
 	}
-	return collect{{.Type}}(rows), nil
+	return collect{{.Type}}(rows, q.keyFn), nil
 }
 
-func collect{{.Type}}(rows *orm.Rows) *orm.Collection[{{.Type}}Row] {
+func collect{{.Type}}(rows *orm.Rows, keyFn func(*{{.Type}}Row) orm.Key) *orm.Collection[{{.Type}}Row] {
 	c := orm.NewCollection[{{.Type}}Row](len(rows.Data))
 	for _, vals := range rows.Data {
 		r := scan{{.Type}}(vals, rows.Assemble, rows)
+		if keyFn != nil {
+			c.Put(keyFn(r), r)
+			continue
+		}
 		c.Put(orm.KeyOf(vals[0]), r)
 	}
 	return c
@@ -532,7 +600,7 @@ func (q *{{.Type}}) Paginate(ctx context.Context, ex orm.Exec, page, per int) (*
 		return nil, err
 	}
 	pages := (total + int64(per) - 1) / int64(per)
-	return &orm.Page[{{.Type}}Row]{Items: collect{{.Type}}(rows), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
+	return &orm.Page[{{.Type}}Row]{Items: collect{{.Type}}(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
 func (q *{{.Type}}) Insert(ctx context.Context, ex orm.Exec) (*{{.Type}}Row, error) {

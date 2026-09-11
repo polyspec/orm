@@ -174,11 +174,19 @@ class Q
     /** @var array reference to the query node this builder edits */
     public array $node;
     private bool $pendingOr = false;
+    /** keyByFn: client-side keying of the root collection (relations key by keyBy<Col>) */
+    public ?\Closure $keyFn = null;
 
     public function __construct(string $entity)
     {
         $this->req = new Req('all', $entity);
         $this->node = &$this->req->ir;
+    }
+
+    public function keyByFn(\Closure $fn): static
+    {
+        $this->keyFn = $fn;
+        return $this;
     }
 
     /** W over the root where group, carrying the pending connector. */

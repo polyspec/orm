@@ -120,8 +120,51 @@ func scanServiceRegion(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRegio
 			}
 		}
 	}
+	r.SetProjection(a)
 	r.Mark("service_region", "seq", r.Seq)
 	return r
+}
+
+// ToArray is the row's array form (what PHP's toArray() and Rust's to_map() give):
+// projected columns minus drop_child_key ones, extra outputs, loaded relations,
+// and flattened one-relations merged in (this row's keys win).
+func (r *ServiceRegionRow) ToArray() map[string]any {
+	m := make(map[string]any, len(r.Selected()))
+	for _, name := range r.Selected() {
+		if r.Hidden(name) {
+			continue
+		}
+		switch name {
+		case "seq":
+			m[name] = r.Seq
+		case "service_seq":
+			m[name] = r.ServiceSeq
+		case "name":
+			m[name] = r.Name
+		default:
+			m[name] = r.Extra(name)
+		}
+	}
+	if r.RelLoaded("authors") {
+		mm := map[string]any{}
+		for k, v := range r.GetAuthors().All() {
+			mm[k.String()] = v.ToArray()
+		}
+		m["authors"] = mm
+	}
+	if r.RelLoaded("service") {
+		if r.Service != nil {
+			m["service"] = r.Service.ToArray()
+		} else {
+			m["service"] = nil
+		}
+	}
+	for _, rel := range r.Flat() {
+		if child, ok := m[rel].(map[string]any); ok {
+			orm.MergeFlat(m, child)
+		}
+	}
+	return m
 }
 
 // ServiceRegionCols are column references for column-to-column predicates
@@ -137,7 +180,16 @@ var ServiceRegionCols = struct {
 }
 
 // ServiceRegion builds a statement over service_region: NewServiceRegion() → chain → terminal(ctx, db).
-type ServiceRegion struct{ q *orm.Q }
+type ServiceRegion struct {
+	q     *orm.Q
+	keyFn func(*ServiceRegionRow) orm.Key // KeyByFn: client-side keying of the root collection
+}
+
+// KeyByFn keys the root collection by a function of each row (relations key by keyBy<Col>).
+func (q *ServiceRegion) KeyByFn(fn func(*ServiceRegionRow) orm.Key) *ServiceRegion {
+	q.keyFn = fn
+	return q
+}
 
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *ServiceRegion) Req() *orm.Req { return q.q.Req }
@@ -764,13 +816,17 @@ func (q *ServiceRegion) All(ctx context.Context, ex orm.Exec) (*orm.Collection[S
 	if err != nil {
 		return nil, err
 	}
-	return collectServiceRegion(rows), nil
+	return collectServiceRegion(rows, q.keyFn), nil
 }
 
-func collectServiceRegion(rows *orm.Rows) *orm.Collection[ServiceRegionRow] {
+func collectServiceRegion(rows *orm.Rows, keyFn func(*ServiceRegionRow) orm.Key) *orm.Collection[ServiceRegionRow] {
 	c := orm.NewCollection[ServiceRegionRow](len(rows.Data))
 	for _, vals := range rows.Data {
 		r := scanServiceRegion(vals, rows.Assemble, rows)
+		if keyFn != nil {
+			c.Put(keyFn(r), r)
+			continue
+		}
 		c.Put(orm.KeyOf(vals[0]), r)
 	}
 	return c
@@ -817,7 +873,7 @@ func (q *ServiceRegion) Paginate(ctx context.Context, ex orm.Exec, page, per int
 		return nil, err
 	}
 	pages := (total + int64(per) - 1) / int64(per)
-	return &orm.Page[ServiceRegionRow]{Items: collectServiceRegion(rows), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
+	return &orm.Page[ServiceRegionRow]{Items: collectServiceRegion(rows, q.keyFn), Total: total, Pages: pages, Current: int64(page), Per: int64(per)}, nil
 }
 
 func (q *ServiceRegion) Insert(ctx context.Context, ex orm.Exec) (*ServiceRegionRow, error) {

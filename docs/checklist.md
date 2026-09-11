@@ -6,8 +6,8 @@
 ## 현재 위치 (2026-09-11)
 - **S0 완료** (측정·결정 R1~R3, F1~F3 — `docs/perf.md`).
 - **S1 완료** (thin slice: 엔진·생성기·3언어 실행기, 적합성 하네스, `ormgen tokens`, 데모).
-- **S2 진행 중**: 관계(T2.1~2.3, 2.7~2.10a, 2.12a~2.14a)와 코덱(T2.6, 2.8b~2.10b, 2.17)은 완료. 남은 것: T2.12b~2.14b(keyByFn·ToArray), T2.15(import 선행), T2.16(벡터 +16).
-- 적합성 벡터 **19개 × 3언어 바이트 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
+- **S2 진행 중**: 관계(T2.1~2.3, 2.7~2.10a, 2.12a~2.14a)와 코덱(T2.6, 2.8b~2.10b, 2.17)은 완료. 남은 것: T2.15(import 선행 → S5), T2.16(벡터 +14).
+- 적합성 벡터 **21개 × 3언어 바이트 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
 
 ## 병렬 레인 (어떻게 나눠 일하는가)
 | 레인 | 담당 | 다른 레인과의 경계 |
@@ -61,14 +61,14 @@
 
 ### 2-C 생성기 — 레인 E (템플릿) 후 G ∥ P ∥ R 확인
 - [x] T2.12a/13a/14a 관계 메서드·옵션(`ifParent<Col>Eq`는 부모 컬럼 합집합), 스타일 컬럼 타입(Go `any` / Rust `serde_json::Value` / PHP `mixed`)과 인코딩 setter
-- [ ] T2.12b **P** Go: `KeyByFn(fn)`, `<Col>EqCol`, `ToArray()`(flatten·hidden 반영) → T2.4
-- [ ] T2.13b **P** Rust: `key_by_fn`, `<col>_eq_col`, `to_map()` → T2.4
-- [ ] T2.14b **P** PHP: `keyByFn`, `<col>EqCol` → T2.4
+- [x] T2.12b Go: `KeyByFn(fn)`(루트 컬렉션), `<Col><Op>Col`, `ToArray()`(선택 컬럼·hidden 제외·extra·로드된 관계·flatten 병합)
+- [x] T2.13b Rust: `key_by_fn`, `<col>_<op>_col`, `to_map()` — 동일 규칙
+- [x] T2.14b PHP: `keyByFn`, `<col><Op>Col` — `toArray()`는 S2a부터 동일 규칙
 - [ ] T2.15 Rust 생성 crate 컴파일 시간 게이트(150-table fixture) → 초과 시 `--tables` 분할 문서화 → **T5.10(import) 선행**
 
 ### 2-D 검증 — 레인 V
 - [x] T2.17 코덱 벡터 3언어 통과(`go test ./clients/go/orm`, `cargo test -p orm`, `php tests/codec/check.php`: Go/Rust 산출물을 PHP가 읽어 동일)
-- [~] T2.16 적합성 벡터 +20 → 현재 +4(`codec_roundtrip`, `eq_col_where`, `expr_where`, `select_expr`). 남은 목록: R1 4단 관계, 중첩 flatten, keyBy 컬럼 미선택(자동 선택 확인), ifParent 정수·불리언, one 중복(ORDER 첫 행), limitPerParent 3, json 빈 객체·빈 배열, serialize 실수·정수 키, unsigned 상한(BIGINT UNSIGNED 최대), timestamp(6) 마이크로초, tinyint→bool, decimal, dropChildKey toArray, 조인 하위 관계, 관계 0행, paginate+관계 → T2.8~T2.14
+- [~] T2.16 적합성 벡터 +20 → 현재 +6(`codec_roundtrip`, `eq_col_where`, `expr_where`, `select_expr`, `key_by_fn_to_array`, `drop_child_key_to_array`). 남은 목록: R1 4단 관계, 중첩 flatten, keyBy 컬럼 미선택(자동 선택 확인), ifParent 정수·불리언, one 중복(ORDER 첫 행), limitPerParent 3, json 빈 객체·빈 배열, serialize 실수·정수 키, unsigned 상한(BIGINT UNSIGNED 최대), timestamp(6) 마이크로초, tinyint→bool, decimal, dropChildKey toArray, 조인 하위 관계, 관계 0행, paginate+관계 → T2.8~T2.14
 
 ---
 
