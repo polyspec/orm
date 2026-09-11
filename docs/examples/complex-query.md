@@ -1,9 +1,9 @@
-# 복잡한 쿼리 예 — 상품 검색 목록 (plan-v2 문법)
+# 복잡한 쿼리 예 — 상품 검색 목록 (dsl.md v3 문법)
 
 example application patterns을 하나로 합친 시나리오:
 - 루트 `product` — 서비스·노출 조건 + **노출 스케줄 OR 그룹** + **키워드 OR 검색(루트 + 조인 테이블 2개)**
 - 카테고리 필터 **INNER JOIN** + `groupBySeq` (M:N 필터 관용구)
-- 관계: `lang`(1:1, `parentNode`로 평탄화), `brand`(1:1) → 그 안의 `lang`(평탄화), `reviews`(1:N, **부모당 3개**, 각 리뷰의 `user` 1:1), `myOrderItem`(1:1, 로그인 사용자 것만, **부모당 1개**)
+- 관계: `lang`(1:1, `flatten`으로 평탄화), `brand`(1:1) → 그 안의 `lang`(평탄화), `reviews`(1:N, **부모당 3개**, 각 리뷰의 `user` 1:1), `myOrderItem`(1:1, 로그인 사용자 것만, **부모당 1개**)
 - 정렬 2키, 페이지네이션
 
 YAML `relations:` (product):
@@ -14,40 +14,40 @@ relations:
   reviews:     {kind: many, target: product_review,     right: product_seq}
   my_order_item: {kind: one, target: order_product_item, right: product_seq}
   categories:  {kind: many, target: product_match_category, right: product_seq}   # 조인에도 사용
+  brand_lang_all: {kind: many, target: product_brand_lang, left: product_brand_seq, right: product_brand_seq}  # 키워드 검색 조인용(동명 FK)
+  lang_all:       {kind: many, target: product_lang, right: product_seq}                                  # 키워드 검색 조인용(언어 무관)
 ```
 
 ## PHP
 ```php
-$ga1 = (new ProductBrandLang)->alias('ga1');
-$ga2 = (new ProductLang)->alias('ga2');
-
 $page = (new Product)
-    ->withLang((new ProductLang)->langId($langId)->parentNode())
-    ->withBrand((new ProductBrand)
-        ->withLang((new ProductBrandLang)->langId($langId)->parentNode()))
-    ->withReviews((new ProductReview)
-        ->isClose(0)->orderBySeqDesc()->groupLimit(3)->keyNameSeq()
-        ->withUser((new User)->removeAllColumns()->addColumnName()->addColumnProfileUrl()))
-    ->withMyOrderItem((new OrderProductItem)
-        ->serviceMemberSeq($memberSeq)->isClose(0)->orderBySeqDesc()->groupLimit(1))
+    ->relationLang((new ProductLang)->langIdEq($langId)->flatten())
+    ->relationBrand((new ProductBrand)
+        ->relationLang((new ProductBrandLang)->langIdEq($langId)->flatten()))
+    ->relationsReviews((new ProductReview)
+        ->isCloseEq(0)->orderBySeqDesc()->limitPerParent(3)->keyBySeq()
+        ->relationUser((new User)->selectNone()->selectName()->selectProfileUrl()))
+    ->relationMyOrderItem((new OrderProductItem)
+        ->serviceMemberSeqEq($memberSeq)->isCloseEq(0)->orderBySeqDesc()->limitPerParent(1))
     ->joinCategories((new ProductMatchCategory)
-        ->removeAllColumns()->inServiceModuleCategoryItemSeq($categorySeqs))
-    ->leftJoin('ga1', Product::productBrandSeq()->cmp(ProductBrandLang::productBrandSeq()), $ga1)
-    ->leftJoinLang($ga2)
-    ->serviceSeq($serviceSeq)->isClose(0)->isDisplay(1)
+        ->selectNone()
+        ->where(fn($c) => $c->serviceModuleCategoryItemSeqIn($categorySeqs)))
+    ->leftJoinBrandLangAll((new ProductBrandLang)->selectNone())
+    ->leftJoinLangAll((new ProductLang)->selectNone())
+    ->serviceSeqEq($serviceSeq)->isCloseEq(0)->isDisplayEq(1)
     ->and(fn($w) => $w
-        ->isAllday(1)
-        ->or(fn($w) => $w->isAllday(0)->leDisplayStartDt($now)->geDisplayEndDt($now)))
+        ->isAlldayEq(1)
+        ->or(fn($w) => $w->isAlldayEq(0)->displayStartDtLte($now)->displayEndDtGte($now)))
     ->and(fn($w) => $w
-        ->fulltextBooleanNameWithShortDescriptionWithContent($kw)
-        ->orPred($ga1->cols()->fulltextBooleanNameWithDescription($kw))
-        ->orPred($ga2->cols()->fulltextBooleanNameWithShortDescriptionWithContent($kw)))
+        ->nameWithShortDescriptionWithContentMatchBoolean($kw)
+        ->or()->brandLangAll(fn($b) => $b->nameWithDescriptionMatchBoolean($kw))
+        ->or()->langAll(fn($l) => $l->nameWithShortDescriptionWithContentMatchBoolean($kw)))
     ->groupBySeq()
     ->orderByLikeCountDesc()->orderBySeqDesc()
     ->paginate($db, $pageNo, 20);
 
 foreach ($page->items as $seq => $p) {
-    $p->getName();                         // lang이 parentNode로 평탄화됨 → 루트 컬럼처럼
+    $p->getName();                         // lang이 flatten으로 평탄화됨 → 루트 컬럼처럼
     $p->getBrand()?->getName();            // brand → brand.lang 평탄화
     foreach ($p->getReviews() as $reviewSeq => $r) { $r->getUser()->getName(); }
     $p->getMyOrderItem()?->getSeq();       // 없으면 null
@@ -57,30 +57,30 @@ $page->total; $page->pages;
 
 ## Go
 ```go
-ga1 := m.NewProductBrandLang().Alias("ga1")
-ga2 := m.NewProductLang().Alias("ga2")
-
 page, err := m.NewProduct().
-    WithLang(m.NewProductLang().LangId(langId).ParentNode()).
-    WithBrand(m.NewProductBrand().
-        WithLang(m.NewProductBrandLang().LangId(langId).ParentNode())).
-    WithReviews(m.NewProductReview().
-        IsClose(0).OrderBySeqDesc().GroupLimit(3).KeyNameSeq().
-        WithUser(m.NewUser().RemoveAllColumns().AddColumnName().AddColumnProfileUrl())).
-    WithMyOrderItem(m.NewOrderProductItem().
-        ServiceMemberSeq(memberSeq).IsClose(0).OrderBySeqDesc().GroupLimit(1)).
+    RelationLang(m.NewProductLang().LangIdEq(langId).Flatten()).
+    RelationBrand(m.NewProductBrand().
+        RelationLang(m.NewProductBrandLang().LangIdEq(langId).Flatten())).
+    RelationsReviews(m.NewProductReview().
+        IsCloseEq(0).OrderBySeqDesc().LimitPerParent(3).KeyBySeq().
+        RelationUser(m.NewUser().SelectNone().SelectName().SelectProfileUrl())).
+    RelationMyOrderItem(m.NewOrderProductItem().
+        ServiceMemberSeqEq(memberSeq).IsCloseEq(0).OrderBySeqDesc().LimitPerParent(1)).
     JoinCategories(m.NewProductMatchCategory().
-        RemoveAllColumns().InServiceModuleCategoryItemSeq(categorySeqs)).
-    LeftJoin("ga1", m.ProductCol.ProductBrandSeq.Cmp(m.ProductBrandLangCol.ProductBrandSeq), ga1).
-    LeftJoinLang(ga2).
-    ServiceSeq(serviceSeq).IsClose(0).IsDisplay(1).
-    And(func(w *m.ProductWhere) { w.
-        IsAllday(1).
-        Or(func(w *m.ProductWhere) { w.IsAllday(0).LeDisplayStartDt(now).GeDisplayEndDt(now) }) }).
-    And(func(w *m.ProductWhere) { w.
-        FulltextBooleanNameWithShortDescriptionWithContent(kw).
-        OrPred(ga1.Cols().FulltextBooleanNameWithDescription(kw)).
-        OrPred(ga2.Cols().FulltextBooleanNameWithShortDescriptionWithContent(kw)) }).
+        SelectNone().
+        Where(func(c *m.ProductMatchCategoryWhere) { c.ServiceModuleCategoryItemSeqIn(categorySeqs) })).
+    LeftJoinBrandLangAll(m.NewProductBrandLang().SelectNone()).
+    LeftJoinLangAll(m.NewProductLang().SelectNone()).
+    ServiceSeqEq(serviceSeq).IsCloseEq(0).IsDisplayEq(1).
+    And(func(w *m.ProductWhere) {
+        w.IsAlldayEq(1)
+        w.Or(func(w *m.ProductWhere) { w.IsAlldayEq(0).DisplayStartDtLte(now).DisplayEndDtGte(now) })
+    }).
+    And(func(w *m.ProductWhere) {
+        w.NameWithShortDescriptionWithContentMatchBoolean(kw)
+        w.Or().BrandLangAll(func(b *m.ProductBrandLangWhere) { b.NameWithDescriptionMatchBoolean(kw) })
+        w.Or().LangAll(func(l *m.ProductLangWhere) { l.NameWithShortDescriptionWithContentMatchBoolean(kw) })
+    }).
     GroupBySeq().
     OrderByLikeCountDesc().OrderBySeqDesc().
     Paginate(ctx, db, pageNo, 20)
@@ -96,30 +96,28 @@ _ = page.Total; _ = page.Pages
 
 ## Rust
 ```rust
-let ga1 = ProductBrandLang::new().alias("ga1");
-let ga2 = ProductLang::new().alias("ga2");
-
 let page = Product::new()
-    .with_lang(ProductLang::new().lang_id(lang_id).parent_node())
-    .with_brand(ProductBrand::new()
-        .with_lang(ProductBrandLang::new().lang_id(lang_id).parent_node()))
-    .with_reviews(ProductReview::new()
-        .is_close(0).order_by_seq_desc().group_limit(3).key_name_seq()
-        .with_user(User::new().remove_all_columns().add_column_name().add_column_profile_url()))
-    .with_my_order_item(OrderProductItem::new()
-        .service_member_seq(member_seq).is_close(0).order_by_seq_desc().group_limit(1))
+    .relation_lang(ProductLang::new().lang_id_eq(lang_id).flatten())
+    .relation_brand(ProductBrand::new()
+        .relation_lang(ProductBrandLang::new().lang_id_eq(lang_id).flatten()))
+    .relations_reviews(ProductReview::new()
+        .is_close_eq(0).order_by_seq_desc().limit_per_parent(3).key_by_seq()
+        .relation_user(User::new().select_none().select_name().select_profile_url()))
+    .relation_my_order_item(OrderProductItem::new()
+        .service_member_seq_eq(member_seq).is_close_eq(0).order_by_seq_desc().limit_per_parent(1))
     .join_categories(ProductMatchCategory::new()
-        .remove_all_columns().in_service_module_category_item_seq(category_seqs))
-    .left_join("ga1", Product::product_brand_seq().cmp(ProductBrandLang::product_brand_seq()), ga1.clone())
-    .left_join_lang(ga2.clone())
-    .service_seq(service_seq).is_close(0).is_display(1)
+        .select_none()
+        .where_(|c| c.service_module_category_item_seq_in(category_seqs)))
+    .left_join_brand_lang_all(ProductBrandLang::new().select_none())
+    .left_join_lang_all(ProductLang::new().select_none())
+    .service_seq_eq(service_seq).is_close_eq(0).is_display_eq(1)
     .and(|w| w
-        .is_allday(1)
-        .or(|w| w.is_allday(0).le_display_start_dt(now).ge_display_end_dt(now)))
+        .is_allday_eq(1)
+        .or(|w| w.is_allday_eq(0).display_start_dt_lte(now).display_end_dt_gte(now)))
     .and(|w| w
-        .fulltext_boolean_name_with_short_description_with_content(kw)
-        .or_pred(ga1.cols().fulltext_boolean_name_with_description(kw))
-        .or_pred(ga2.cols().fulltext_boolean_name_with_short_description_with_content(kw)))
+        .name_with_short_description_with_content_match_boolean(kw)
+        .or().brand_lang_all(|b| b.name_with_description_match_boolean(kw))
+        .or().lang_all(|l| l.name_with_short_description_with_content_match_boolean(kw)))
     .group_by_seq()
     .order_by_like_count_desc().order_by_seq_desc()
     .paginate(&db, page_no, 20).await?;
@@ -139,17 +137,17 @@ let _ = page.total; let _ = page.pages;
 
 ```
 step 0  query   (루트 + 조인)  ← paginate가 count 변형도 같이 요청
-  SELECT a.seq, a.name, …(product 기본 컬럼), ga1.seq AS c31, …, ga2.name AS c40, …
+  SELECT a.seq, a.name, …(product 기본 컬럼)      -- 조인 자식은 selectNone → PK/FK만
   FROM `product` AS `a`
   INNER JOIN `product_match_category` AS `b` ON `a`.`seq` = `b`.`product_seq`
-  LEFT  JOIN `product_brand_lang` AS `ga1` ON `a`.`product_brand_seq` = `ga1`.`product_brand_seq`
-  LEFT  JOIN `product_lang` AS `ga2` ON `a`.`seq` = `ga2`.`product_seq`
+  LEFT  JOIN `product_brand_lang` AS `brand_lang_all` ON `a`.`product_brand_seq` = `brand_lang_all`.`product_brand_seq`
+  LEFT  JOIN `product_lang` AS `lang_all` ON `a`.`seq` = `lang_all`.`product_seq`
   WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND `a`.`is_display` = ?
     AND (`b`.`service_module_category_item_seq` IN (?, ?, ?))                     -- 조인 그룹(AND)
     AND (`a`.`is_allday` = ? OR (`a`.`is_allday` = ? AND `a`.`display_start_dt` <= ? AND `a`.`display_end_dt` >= ?))
     AND (MATCH(`a`.`name`, `a`.`short_description`, `a`.`content`) AGAINST (? IN BOOLEAN MODE)
-         OR MATCH(`ga1`.`name`, `ga1`.`description`) AGAINST (? IN BOOLEAN MODE)
-         OR MATCH(`ga2`.`name`, `ga2`.`short_description`, `ga2`.`content`) AGAINST (? IN BOOLEAN MODE))
+         OR MATCH(`brand_lang_all`.`name`, `brand_lang_all`.`description`) AGAINST (? IN BOOLEAN MODE)
+         OR MATCH(`lang_all`.`name`, `lang_all`.`short_description`, `lang_all`.`content`) AGAINST (? IN BOOLEAN MODE))
   GROUP BY `a`.`seq`
   ORDER BY `a`.`like_count` DESC, `a`.`seq` DESC
   LIMIT ?, ?
@@ -198,7 +196,7 @@ step 6  query   my_order_item (ONE, group_limit 1)  bind_from: step0.seq
 - 이 플랜은 값과 무관하게 형태가 고정이라 캐시된다. 캐시 키에 `IN` 리스트 길이(카테고리 3개)가 포함된다; 관계 단계의 IN은 `LIST_EXPAND` 슬롯이라 부모 행 수와 무관하게 캐시 히트.
 
 ## compatibility 원문과 비교하면 사라지는 것
-- `->relation((new ProductLang)->matchSeqWithProductSeq()->aliasLang())` → `->withLang(...)`: 관계 방향·키·이름을 YAML이 알고 있으므로 두 토큰 삭제.
-- `->and('(')` … 조인 안의 `->condition(')')` → `->and(fn($w) => … ->orPred($ga1->cols()->…))`: 괄호 위치·조인 선언 순서 무관, 빠뜨리면 컴파일 에러.
+- `->relation((new ProductLang)->matchSeqWithProductSeq()->aliasLang())` → `->relationLang(...)`: 관계 방향·키·이름을 YAML이 알고 있으므로 두 토큰 삭제.
+- `->and('(')` … 조인 안의 `->condition(')')` → `->and(fn($w) => … ->or()->brandLangAll(fn($b) => …))`: 괄호 위치·조인 선언 순서 무관, 조인 안 된 관계로 내려가면 컴파일 에러.
 - `$productModels->and('(')` 를 체인 밖에서 나중에 호출하는 트릭 → 불필요.
 - `Pagination::getList($model, recordsPerPage:…)` → `->paginate($db, $page, 20)`.
