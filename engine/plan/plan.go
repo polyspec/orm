@@ -25,7 +25,7 @@ type Step struct {
 // "+w1 +w2*") | "like_contains" | "like_starts" | "like_ends" (escape % _ \ then wrap).
 type BindSlot struct {
 	From      string `json:"from"`
-	Param     int    `json:"param,omitempty"`
+	Param     int    `json:"param"`
 	Transform string `json:"transform,omitempty"`
 	Name      string `json:"name,omitempty"`
 	Step      int    `json:"step,omitempty"`
