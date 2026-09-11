@@ -1,5 +1,5 @@
 {
-  "schema_hash": "01de65d5f6ace3cd",
+  "schema_hash": "11e1906438fe59a9",
   "order": [
     "battle",
     "user",
@@ -335,6 +335,12 @@
           "is_close"
         ]
       },
+      "fulltext": [
+        [
+          "name",
+          "description"
+        ]
+      ],
       "timestamps": {
         "created": "created_ts",
         "updated": "updated_ts"

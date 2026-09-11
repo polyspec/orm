@@ -128,13 +128,13 @@
 ---
 
 ## 단계 6 — S6 PostgreSQL · SQLite  [2.5주]  (T5.8 후)
-- [ ] T6.1 **P** E `dialect/postgres`: `$n`, `"quote"`, `ILIKE`/`LIKE`, `ON CONFLICT`, `RETURNING`, fulltext(`tsvector`, v1 범위 결정), `ROW_NUMBER` 동일, INET 타입 직접
-- [ ] T6.2 **P** E `dialect/sqlite`: `?`, `"quote"`, `LIKE`(ci ASCII, `like_binary`는 `GLOB`), `ON CONFLICT`, `RETURNING`(3.35+), 날짜 문자열 규약
+- [x] T6.1 E `dialect/postgres`: `$n`, `"quote"`, `ILIKE`, `ON CONFLICT (unique key 추론) DO UPDATE`, `RETURNING`, `to_tsvector('simple')`/`websearch_to_tsquery`, `host()`/`::inet`, aes/hex는 app-side — 골든 통과
+- [x] T6.2 E `dialect/sqlite`: `?`, `"quote"`, `LIKE … ESCAPE`, `INDEXED BY`, `ON CONFLICT`, `RETURNING`; `like_binary`·fulltext는 `OPERATOR_NOT_ALLOWED`로 거부(dialect `Supports`), 모든 스타일 app-side — 골든 통과
 - [ ] T6.3 **P** G/R 호스트측 AES 코덱(MySQL 키 폴딩, AES-128-ECB, PKCS7) + 벡터(MySQL `AES_ENCRYPT` 산출물과 바이트 일치), `ip` 16B packed, `point` 정책 → T2.6
 - [ ] T6.4 G/P/R 드라이버 추상(Go: driver별 DSN·placeholder, Rust: sqlx feature 게이트, PHP: pdo_pgsql/pdo_sqlite) → T6.1, T6.2
 - [ ] T6.5 V docker-compose(mysql, postgres, sqlite 파일)로 적합성 전 벡터 × 3 DB 동일 결과 → T6.1~T6.4
 - [ ] T6.6 E `ormgen import --dsn postgres://…` → T5.10
-- [ ] T6.7 문서: dialect 차이표(LIKE, upsert, insert id, fulltext, 타입 매핑), 버전 하한(MySQL 8.0.2/MariaDB 10.2/PG 12/SQLite 3.25)
+- [x] T6.7 `docs/dialects.md` 차이표 + 레인 스펙 `docs/lanes/s6.md`
 
 ---
 

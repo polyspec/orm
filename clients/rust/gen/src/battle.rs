@@ -982,6 +982,8 @@ impl<'a> BattleWhere<'a> {
     pub fn base64_extra_is_not_null(mut self) -> Self { self.w.pred_null("base64_extra", "is_not_null"); self }
     pub fn serialize_data_is_null(mut self) -> Self { self.w.pred_null("serialize_data", "is_null"); self }
     pub fn serialize_data_is_not_null(mut self) -> Self { self.w.pred_null("serialize_data", "is_not_null"); self }
+    pub fn name_with_description_match(mut self, v: &str) -> Self { self.w.match_(&["name", "description"], false, v); self }
+    pub fn name_with_description_match_boolean(mut self, v: &str) -> Self { self.w.match_(&["name", "description"], true, v); self }
 }
 
 /// Query over battle: Battle::new() → chain → terminal(&db).await.
@@ -1402,6 +1404,8 @@ impl Battle {
     pub fn base64_extra_is_not_null(mut self) -> Self { self.q.w().pred_null("base64_extra", "is_not_null"); self }
     pub fn serialize_data_is_null(mut self) -> Self { self.q.w().pred_null("serialize_data", "is_null"); self }
     pub fn serialize_data_is_not_null(mut self) -> Self { self.q.w().pred_null("serialize_data", "is_not_null"); self }
+    pub fn name_with_description_match(mut self, v: &str) -> Self { self.q.w().match_(&["name", "description"], false, v); self }
+    pub fn name_with_description_match_boolean(mut self, v: &str) -> Self { self.q.w().match_(&["name", "description"], true, v); self }
 
     // ---- join children: on() = ON, where_() = parent WHERE group ----
     pub fn on(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { { let w = self.q.on_w(); f(BattleWhere { w }); } self }

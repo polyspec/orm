@@ -32,6 +32,11 @@ type Dialect interface {
 	WriteExpr(ph func() string, styles []string) (string, int)
 	// Now renders CURRENT_TIMESTAMP.
 	Now() string
+	// Supports reports whether a predicate operator exists in this dialect (false → OPERATOR_NOT_ALLOWED).
+	Supports(op string) bool
+	// HandlesStyle reports whether a column style stage is applied in SQL here
+	// (MySQL: aes/hex/ip); the rest of the stack is left to the executor.
+	HandlesStyle(style string) bool
 }
 
 // QuoteWith is a helper for dialects using a single quote character.
