@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use gen::*;
 use orm::builder::Q;
-use orm::collection::Collection;
+use orm::collection::{Collection, Key};
 use orm::db::{Config, Db};
 use orm::engine::{Engine, EngineConfig};
 use orm::value::Param;
@@ -198,6 +198,17 @@ async fn main() {
     run!("select_expr", async {
         let b = Battle::new().select_expr("tag", "CONCAT(`name`, '!')").seq_eq(42).one(&db).await?.unwrap();
         Ok(json!({"seq": b.seq, "tag": b.extra("tag").map(|v| v.as_string())}))
+    }.await);
+    run!("key_by_fn_to_array", async {
+        let c = ServiceMember::new().service_seq_eq(7).order_by_seq_asc().limit(0, 2)
+            .relation_user(User::new().flatten())
+            .key_by_fn(|m| Key::S(format!("u{}", m.user_seq)))
+            .all(&db).await?;
+        Ok(Value::Array(c.iter().map(|(k, m)| json!([k.to_string(), m.to_map()])).collect()))
+    }.await);
+    run!("drop_child_key_to_array", async {
+        let u = User::new().seq_eq(5).relations_battles(Battle::new().select_none().order_by_seq_asc().limit_per_parent(2).drop_child_key()).one(&db).await?.unwrap();
+        Ok(u.to_map())
     }.await);
     run!("codec_roundtrip", async {
         let value = json!({"a": 1, "b": [1, 2, {"c": "한글/slash"}], "d": null, "e": true, "f": 1.5});

@@ -275,7 +275,7 @@ final class ServiceMember extends Q
 
     public function all(Db $db): Collection
     {
-        return Collection::fromRows($this->runQuery($db, 'all'), ServiceMemberRow::class);
+        return Collection::fromRows($this->runQuery($db, 'all'), ServiceMemberRow::class, $this->keyFn);
     }
 
     public function count(Db $db): int { return (int) $this->runScalar($db, 'count'); }
@@ -289,7 +289,7 @@ final class ServiceMember extends Q
     public function paginate(Db $db, int $page, int $per): Page
     {
         [$rows, $total] = $this->runPaginate($db, $page, $per);
-        return new Page(Collection::fromRows($rows, ServiceMemberRow::class), $total, intdiv($total + $per - 1, $per), max(1, $page), $per);
+        return new Page(Collection::fromRows($rows, ServiceMemberRow::class, $this->keyFn), $total, intdiv($total + $per - 1, $per), max(1, $page), $per);
     }
 
     public function insert(Db $db): ?ServiceMemberRow

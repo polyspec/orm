@@ -125,6 +125,22 @@ impl Val {
         }
     }
 
+    /// The value in array/JSON form (what `to_map()` emits): datetimes as
+    /// "YYYY-MM-DD HH:MM:SS.ffffff", bytes as text, decoded styles as they are.
+    pub fn to_json(&self) -> serde_json::Value {
+        match self {
+            Val::Null => serde_json::Value::Null,
+            Val::I64(x) => serde_json::json!(x),
+            Val::F64(x) => serde_json::json!(x),
+            Val::Str(s) => serde_json::json!(s),
+            Val::Bytes(b) => serde_json::json!(String::from_utf8_lossy(b)),
+            Val::DateTime(t) => serde_json::json!(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
+            Val::Date(d) => serde_json::json!(d.to_string()),
+            Val::Bool(b) => serde_json::json!(b),
+            Val::Json(v) => v.clone(),
+        }
+    }
+
     pub fn as_datetime(&self) -> NaiveDateTime {
         match self {
             Val::DateTime(t) => *t,

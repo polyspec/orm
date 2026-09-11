@@ -311,6 +311,28 @@ func main() {
 		}
 		return map[string]any{"seq": b.Seq, "tag": b.Extra("tag")}, nil
 	})
+	run("key_by_fn_to_array", func() (any, error) {
+		// root keyed by a function; flattened user columns merge into the member's array form
+		c, err := gen.NewServiceMember().ServiceSeqEq(7).OrderBySeqAsc().Limit(0, 2).
+			RelationUser(gen.NewUser().Flatten()).
+			KeyByFn(func(m *gen.ServiceMemberRow) orm.Key { return orm.KeyOf(fmt.Sprintf("u%d", m.UserSeq)) }).
+			All(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		items := []any{}
+		for k, m := range c.All() {
+			items = append(items, []any{k.String(), m.ToArray()})
+		}
+		return items, nil
+	})
+	run("drop_child_key_to_array", func() (any, error) {
+		u, err := gen.NewUser().SeqEq(5).RelationsBattles(gen.NewBattle().SelectNone().OrderBySeqAsc().LimitPerParent(2).DropChildKey()).One(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		return u.ToArray(), nil
+	})
 	run("codec_roundtrip", func() (any, error) {
 		value := map[string]any{"a": int64(1), "b": []any{int64(1), int64(2), map[string]any{"c": "한글/slash"}}, "d": nil, "e": true, "f": 1.5}
 		ip := "10.1.2.3"
