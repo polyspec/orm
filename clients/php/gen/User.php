@@ -169,7 +169,7 @@ final class User extends Q implements UserInterface
 
 
 
-    public function matchUserSeqWithSeq(): static { $this->setLink('user_seq', 'seq'); return $this; }
+    public function matchUserSeqWithSeq(bool $keep = true): static { $this->setLink('user_seq', 'seq'); $this->compatMatch('user_seq', 'seq', $keep); return $this; }
     public function onUserSeqWithSeq(): static { $this->setLink('user_seq', 'seq'); return $this; }
 
     // ---- columns ----
