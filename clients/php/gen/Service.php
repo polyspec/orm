@@ -173,7 +173,7 @@ final class Service extends Q implements ServiceInterface
 
 
 
-    public function matchServiceSeqWithSeq(): static { $this->setLink('service_seq', 'seq'); return $this; }
+    public function matchServiceSeqWithSeq(bool $keep = true): static { $this->setLink('service_seq', 'seq'); $this->compatMatch('service_seq', 'seq', $keep); return $this; }
     public function onServiceSeqWithSeq(): static { $this->setLink('service_seq', 'seq'); return $this; }
 
     // ---- columns ----
