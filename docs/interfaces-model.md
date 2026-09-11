@@ -8,8 +8,8 @@ classDiagram
         Binding binding
         Optional_Function_Row_Key keySelector
         Request request
-        construct()
-        bind()
+        query()
+        using()
         predicate()
         join()
         relation()
@@ -107,7 +107,7 @@ classDiagram
         has()
         setColumn()
         relLoaded()
-        bind()
+        using()
         update()
         updateOptimistic()
         delete()

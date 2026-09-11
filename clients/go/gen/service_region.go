@@ -225,7 +225,7 @@ var ServiceRegionCols = struct {
 	Name:       orm.ColRef{Column: "name"},
 }
 
-// ServiceRegionQuery builds a statement over service_region: ServiceRegion() → Bind(ctx, db) → chain → terminal().
+// ServiceRegionQuery builds a statement over service_region: ServiceRegion() → Using(ctx, db) → chain → terminal().
 type ServiceRegionQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -246,14 +246,14 @@ func ServiceRegion() *ServiceRegionQuery {
 	return &ServiceRegionQuery{q: orm.NewQ(mustEngine(), "service_region")}
 }
 
-// Bind selects the context and pool or transaction for this query.
-func (q *ServiceRegionQuery) Bind(ctx context.Context, ex orm.Exec) *ServiceRegionQuery {
+// Using selects the context and pool or transaction for this query.
+func (q *ServiceRegionQuery) Using(ctx context.Context, ex orm.Exec) *ServiceRegionQuery {
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
 
-// Bind selects the context and pool or transaction for this loaded row.
-func (r *ServiceRegionRow) Bind(ctx context.Context, ex orm.Exec) *ServiceRegionRow {
+// Using selects the context and pool or transaction for this loaded row.
+func (r *ServiceRegionRow) Using(ctx context.Context, ex orm.Exec) *ServiceRegionRow {
 	r.Binding = orm.NewBinding(ctx, ex)
 	return r
 }
@@ -1292,7 +1292,7 @@ func (q *ServiceRegionQuery) Insert() (*ServiceRegionRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ServiceRegion().Bind(ctx, ex).SeqEq(int64(id)).One()
+	return ServiceRegion().Using(ctx, ex).SeqEq(int64(id)).One()
 }
 
 // Save updates the other assigned columns when SetSeq was called (and
@@ -1310,7 +1310,7 @@ func (q *ServiceRegionQuery) Save() (*ServiceRegionRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return ServiceRegion().Bind(ctx, ex).SeqEq(pk.(int64)).One()
+	return ServiceRegion().Using(ctx, ex).SeqEq(pk.(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

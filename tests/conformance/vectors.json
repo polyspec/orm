@@ -362,7 +362,7 @@
     },
     {
       "name": "bound_count_finder",
-      "chain": "Author.bind(db).joinService(Service.where(name=\"service-7\")).relationUser(User).getCountByServiceSeq(7)",
+      "chain": "Author.using(db).joinService(Service.where(name=\"service-7\")).relationUser(User).getCountByServiceSeq(7)",
       "expect": {
         "statements": [
           {
@@ -378,7 +378,7 @@
     },
     {
       "name": "finished_transaction",
-      "chain": "transaction(tx → Author.bind(tx)); getCountByServiceSeq(7) → CONFIG",
+      "chain": "transaction(tx → Author.using(tx)); getCountByServiceSeq(7) → CONFIG",
       "expect": {
         "statements": [],
         "result": {

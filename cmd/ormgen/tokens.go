@@ -34,7 +34,7 @@ func buildVocabulary(m *schema.Manifest) *vocabulary {
 		v.terminals[t] = true
 	}
 	for _, t := range []string{"and", "or", "on", "where", "expr", "limit", "distinct", "selectAll", "selectNone", "selectExpr", "orderByExpr", "groupByExpr",
-		"bind", "flatten", "limitPerParent", "dropChildKey", "noCascadeDelete", "keyByFn", "transaction", "onDuplicateSetAll", "having", "raw"} {
+		"using", "flatten", "limitPerParent", "dropChildKey", "noCascadeDelete", "keyByFn", "transaction", "onDuplicateSetAll", "having", "raw"} {
 		v.other[t] = true
 	}
 	for _, name := range m.Order {
@@ -132,8 +132,8 @@ func snakeToCamel(s string) string {
 var (
 	reCallDot  = regexp.MustCompile(`(\.|::)\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(`) // go, rust
 	reCallPHP  = regexp.MustCompile(`(->|::)\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(`) // php: `.` is string concatenation
-	reHeadPHP  = regexp.MustCompile(`\bnew\s+([A-Z][A-Za-z0-9_]*)`)
-	reHeadRust = regexp.MustCompile(`\b([A-Z][A-Za-z0-9_]*)::new\s*\(`)
+	reHeadPHP  = regexp.MustCompile(`\b([A-Z][A-Za-z0-9_]*)::query\s*\(`)
+	reHeadRust = regexp.MustCompile(`\b([a-z][a-z0-9_]*)::query\s*\(`)
 	reHeadGo   = regexp.MustCompile(`\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?([A-Z][A-Za-z0-9_]*)\s*\(\s*\)`)
 	reGoColRef = regexp.MustCompile(`\b[A-Z][A-Za-z0-9_]*Cols\.([A-Z][A-Za-z0-9_]*)\b`)
 	reComment  = regexp.MustCompile(`(?m)//[^\n]*$|/\*[\s\S]*?\*/|(?m)^\s*#[^\n]*$`)
@@ -185,6 +185,9 @@ func tokenize(v *vocabulary, path string, src string) []string {
 	}
 	for _, m := range reHead.FindAllStringSubmatchIndex(src, -1) {
 		name := src[m[2]:m[3]]
+		if lang == "rs" {
+			name = pascal(name)
+		}
 		if v.heads[name] {
 			toks = append(toks, tok{m[0], "query " + name})
 		}

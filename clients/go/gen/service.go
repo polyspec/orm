@@ -225,7 +225,7 @@ var ServiceCols = struct {
 	Name: orm.ColRef{Column: "name"},
 }
 
-// ServiceQuery builds a statement over service: Service() → Bind(ctx, db) → chain → terminal().
+// ServiceQuery builds a statement over service: Service() → Using(ctx, db) → chain → terminal().
 type ServiceQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -241,14 +241,14 @@ func (q *ServiceQuery) Req() *orm.Req { return q.q.Req }
 // Service starts a query over service.
 func Service() *ServiceQuery { return &ServiceQuery{q: orm.NewQ(mustEngine(), "service")} }
 
-// Bind selects the context and pool or transaction for this query.
-func (q *ServiceQuery) Bind(ctx context.Context, ex orm.Exec) *ServiceQuery {
+// Using selects the context and pool or transaction for this query.
+func (q *ServiceQuery) Using(ctx context.Context, ex orm.Exec) *ServiceQuery {
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
 
-// Bind selects the context and pool or transaction for this loaded row.
-func (r *ServiceRow) Bind(ctx context.Context, ex orm.Exec) *ServiceRow {
+// Using selects the context and pool or transaction for this loaded row.
+func (r *ServiceRow) Using(ctx context.Context, ex orm.Exec) *ServiceRow {
 	r.Binding = orm.NewBinding(ctx, ex)
 	return r
 }
@@ -947,7 +947,7 @@ func (q *ServiceQuery) Insert() (*ServiceRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Service().Bind(ctx, ex).SeqEq(int64(id)).One()
+	return Service().Using(ctx, ex).SeqEq(int64(id)).One()
 }
 
 // Save updates the other assigned columns when SetSeq was called (and
@@ -965,7 +965,7 @@ func (q *ServiceQuery) Save() (*ServiceRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return Service().Bind(ctx, ex).SeqEq(pk.(int64)).One()
+	return Service().Using(ctx, ex).SeqEq(pk.(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

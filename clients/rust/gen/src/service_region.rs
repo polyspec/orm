@@ -28,8 +28,8 @@ pub struct ServiceRegionRow {
 }
 
 impl ServiceRegionRow {
-    /// Rebind this loaded row to a pool or transaction.
-    pub fn bind(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
+    /// Select a pool or transaction for this loaded row.
+    pub fn using(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
     pub const ENTITY: &'static str = "service_region";
     pub const PK: &'static str = "seq";
 
@@ -278,17 +278,21 @@ impl<'a> ServiceRegionWhere<'a> {
     pub fn name_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "not_eq_col", r); self }
 }
 
-/// Query over service_region: ServiceRegion::new() → bind(&db) → chain → terminal().await.
+/// Query over service_region: query() → using(&db) → chain → terminal().await.
 pub struct ServiceRegion {
     binding: Binding,
     pub q: Q,
     key_fn: Option<Box<dyn Fn(&ServiceRegionRow) -> Key + Send + Sync>>,
 }
 
+/// Construct a query over service_region.
+pub fn query() -> ServiceRegion {
+    ServiceRegion { binding: Binding::default(), q: Q::new(super::schema_hash(), "service_region"), key_fn: None }
+}
+
 impl ServiceRegion {
-    /// Bind this query to a pool or transaction.
-    pub fn bind(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
-    pub fn new() -> Self { Self { binding: Binding::default(), q: Q::new(super::schema_hash(), "service_region"), key_fn: None } }
+    /// Select a pool or transaction for this query.
+    pub fn using(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
 
     /// Keys the root collection by a function of each row (relations key by key_by_<col>).
     pub fn key_by_fn(mut self, f: impl Fn(&ServiceRegionRow) -> Key + Send + Sync + 'static) -> Self { self.key_fn = Some(Box::new(f)); self }
@@ -557,7 +561,7 @@ impl ServiceRegion {
 
     pub async fn insert(&mut self) -> Result<Option<ServiceRegionRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
-        ServiceRegion::new().bind(ex).seq_eq(id as i64).one().await
+        super::service_region::query().using(ex).seq_eq(id as i64).one().await
     }
 
     /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
@@ -566,7 +570,7 @@ impl ServiceRegion {
             Some(pk) => {
                 self.q.w().pred("seq", "eq", pk.clone());
                 db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = ServiceRegion::new().bind(ex);
+                let mut q = super::service_region::query().using(ex);
                 q.q.w().pred("seq", "eq", pk);
                 q.one().await
             }
@@ -604,7 +608,7 @@ impl ServiceRegion {
 
 impl AsRef<ServiceRegion> for ServiceRegion { fn as_ref(&self) -> &Self { self } }
 
-impl Default for ServiceRegion { fn default() -> Self { Self::new() } }
+impl Default for ServiceRegion { fn default() -> Self { query() } }
 
 fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&ServiceRegionRow) -> Key + Send + Sync)>) -> Result<Collection<ServiceRegionRow>> {
     use orm::Src as _;
