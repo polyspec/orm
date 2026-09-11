@@ -68,9 +68,9 @@
 
 ### 1-F 적합성·데모 (T1.12, T1.18, T1.20 후)
 - [x] T1.21 `tests/conformance` 하네스 v0 (15개 벡터 × 3언어 동일): 벡터 스키마(체인 정규 토큰열, 픽스처, 기대 SQL·바인드, 기대 결과 정규 JSON: 키 타입 태그·순서 민감), 3언어 러너, docker 없이 로컬 MySQL 사용 → 벡터 10개(PK, gets, IN, null 연산자 에러, 그룹, order, limit, create, save, update)
-- [ ] T1.22 `ormgen tokens`: 생성물에서 문장 단위 정규 토큰열 추출 3-way diff → T1.12/T1.18/T1.20
-- [ ] T1.23 **데모**: 같은 문장 3파일(`examples/thin-slice/{php,go,rust}`), 같은 JSON 출력, 네이티브 대비 타이밍 한 줄 → 모든 T1
-- [ ] T1.24 Rust 생성 crate 컴파일 시간 측정(3 테이블) 기록 → T1.20
+- [x] T1.22 `ormgen tokens` (적합성 러너 99/99/99, 통합 테스트 80/80/80, 데모 13/13/13 동일): 생성물에서 문장 단위 정규 토큰열 추출 3-way diff → T1.12/T1.18/T1.20
+- [x] T1.23 **데모** (`examples/thin-slice`, JSON 바이트 동일; 고정 비용 perf.md §6b): 같은 문장 3파일(`examples/thin-slice/{php,go,rust}`), 같은 JSON 출력, 네이티브 대비 타이밍 한 줄 → 모든 T1
+- [x] T1.24 Rust 생성 crate 컴파일 시간 측정(5 테이블: check 0.25s, release 1.25s — perf.md §6c) 기록 → T1.20
 
 ---
 
@@ -131,6 +131,7 @@
 - [ ] T5.1 **P** `schema_hash` 부팅 검사(각 클라이언트 초기화 시 엔진/ormd에 1회) + `ormgen validate --dsn` CI 게이트
 - [ ] T5.2 **P** `docs/errors.yaml` → 3언어 enum 생성, 드라이버 에러 원본 보존(Deadlock·DuplicateKey만 매핑)
 - [ ] T5.3 **P** `on_query(sql, binds, duration, plan_id)` 훅 3언어, 로깅 예제
+- [ ] T5.3b **P** 문장당 고정 비용 감축(perf.md §6b: Go +6µs, PHP +9µs, Rust +16µs): IR 형태 키를 전체 JSON 직렬화 없이 생성, Rust `Vec<Val>` 중간 단계 없이 typed 직접 디코드 → 3행 쿼리에서 네이티브 대비 ≤+5%
 - [ ] T5.4 **P** 아티팩트 빌드 파이프라인: wasm(단일), ormd(linux amd64/arm64, darwin), 버전을 파일명에, 체크섬 → composer(`bin/ormd-<ver>-<os>-<arch>`), crates.io(`include_bytes!` wasm), Go 모듈 태그
 - [ ] T5.5 **P** `orm.toml` 스펙·로더 3언어(연결 DSN, ormd 소켓 절대경로, wasm 캐시 디렉터리, schema blob 경로, 디버그) — 상대경로·symlink 금지 검증
 - [ ] T5.6 **P** `ormd` systemd/launchd 유닛 예제, 소켓 퍼미션 문서

@@ -78,7 +78,7 @@ async fn main() {
     let opts = MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench");
     let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), on_query: Some(on_query) }).await.expect("connect");
 
-    let mut out = serde_json::Map::new();
+    let mut out: Vec<(String, Value)> = Vec::new();
     macro_rules! run {
         ($name:expr, $body:expr) => {{
             log.lock().unwrap().clear();
@@ -88,7 +88,7 @@ async fn main() {
                 Err(e) => json!({"error": e.code()}),
             };
             let statements = Value::Array(log.lock().unwrap().clone());
-            out.insert($name.into(), json!({"statements": statements, "result": res}));
+            out.push(($name.into(), json!({"statements": statements, "result": res})));
         }};
     }
     let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11).unwrap().and_hms_opt(0, 0, 0).unwrap();
@@ -188,5 +188,5 @@ async fn main() {
         }))
     }.await);
 
-    println!("{}", serde_json::to_string_pretty(&Value::Object(out)).unwrap());
+    println!("{}", serde_json::to_string_pretty(&Value::Object(out.into_iter().collect())).unwrap());
 }
