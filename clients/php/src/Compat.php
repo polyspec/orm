@@ -450,16 +450,12 @@ final class Compat
             $target = array_filter($rels, fn(array $r): bool => $r['target'] === $child);
             if (count($target) === 1) {
                 $name = array_key_first($target);
-                if ($kind !== null && $target[$name]['kind'] !== $kind) {
-                    $want = $kind === 'one' ? 'relation' : 'relations';
-                    $is = $target[$name]['kind'] === 'one' ? 'relation (1:1)' : 'relations (1:N)';
-                    $declared = implode(', ', array_map(fn(string $n, array $r) => "$n ({$r['kind']} {$r['target']} on {$r['left']} = {$r['right']})", array_keys($rels), $rels));
-                    throw new OrmException(Code::RELATION_UNKNOWN, "$parent.$name is $is, not $want; declared: $declared");
-                }
-                return $name;
+                $match = [$target[$name]['left'], $target[$name]['right']];
             }
-            $pk = Registry::row($child)::pk();
-            $match = [$pk, $child . '_' . $pk];
+            if ($match === null) {
+                $pk = Registry::row($child)::pk();
+                $match = [$pk, $child . '_' . $pk];
+            }
         }
         $fit = [];
         foreach ($rels as $name => $r) {
