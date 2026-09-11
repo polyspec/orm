@@ -302,7 +302,7 @@ type Row struct {
 	loaded bool
 	dirty  []ir.Assign
 	dvals  []any
-	encErr error // first codec error from DirtyStyled; surfaces from UpdateRow
+	encErr error          // first codec error from DirtyStyled; surfaces from UpdateRow
 	extra  map[string]any // selectExpr / select<Col>As outputs, by output name
 
 	// assembly facts generated scanners record for ToArray
@@ -340,9 +340,9 @@ func (r *Row) SetProjection(a *plan.Assemble) {
 }
 
 // Selected lists the projected output names; Hidden/Flat/RelLoaded expose the assembly facts.
-func (r *Row) Selected() []string      { return r.selected }
-func (r *Row) Hidden(name string) bool { return r.hidden[name] }
-func (r *Row) Flat() []string          { return r.flat }
+func (r *Row) Selected() []string        { return r.selected }
+func (r *Row) Hidden(name string) bool   { return r.hidden[name] }
+func (r *Row) Flat() []string            { return r.flat }
 func (r *Row) RelLoaded(rel string) bool { return r.rels[rel] }
 
 // Cascades lists the loaded relations DeleteCascade removes before this row, in load order.
