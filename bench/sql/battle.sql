@@ -40,7 +40,8 @@ CREATE TABLE battle (
   UNIQUE KEY uuid_UNIQUE (uuid),
   KEY ik (service_module_seq, is_close, is_display, is_allday),
   KEY ix_service (service_seq, is_close),
-  KEY ix_user (user_seq, is_close)
+  KEY ix_user (user_seq, is_close),
+  FULLTEXT KEY ft_name_description (name, description)
 ) ENGINE=InnoDB;
 
 -- 100k rows, 100 services x 1000 rows, deterministic content.

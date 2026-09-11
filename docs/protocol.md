@@ -89,3 +89,6 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 - `kind`: `count_distinct`·`min`·`max`(`agg` = 컬럼; 스타일 컬럼·json·bytes 불가). `count` + `group_by`는 **그룹 수**: `SELECT COUNT(*) FROM (SELECT 1 … GROUP BY …[ HAVING …]) AS orm_g`.
 - `having: Group`(루트 전용, `group_by` 필수): where와 같은 그룹 문법; 집계식은 `expr` 항목(`COUNT(*) > ?`)으로 쓴다. 행 select(`one/all`)와 그룹 수에 붙고 스칼라 집계에는 무시된다.
 
+### 방언 (S6)
+플랜 형식은 방언과 무관하다. 방언은 `docs/dialects.md`에 따라 식별자·플레이스홀더·LIKE·upsert·fulltext·스타일의 SQL측/앱측 분담만 바꾼다. `columns[].styles`는 "실행기가 처리할 나머지"이므로 PostgreSQL/SQLite에서는 `aes`/`hex`(그리고 SQLite의 `ip`)도 여기 나타난다. 방언이 지원하지 않는 연산자는 컴파일 시 `OPERATOR_NOT_ALLOWED`.
+

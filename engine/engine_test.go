@@ -223,6 +223,74 @@ func TestRawAndPredicates(t *testing.T) {
 	}
 }
 
+func testEngineFor(t *testing.T, dialect string) *Engine {
+	t.Helper()
+	e := testEngine(t)
+	pg, err := New(e.M, dialect)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pg
+}
+
+func TestPostgresAndSQLite(t *testing.T) {
+	pg := testEngineFor(t, "postgres")
+	p := compile(t, pg, `"kind":"all","entity":"battle","columns":{"mode":"none"},"n_params":3,
+	 "where":{"items":[{"pred":{"column":"name","op":"contains","p":0}},{"pred":{"conn":"and","column":"name","op":"like_binary","p":1}},{"pred":{"conn":"and","column":"aes_hex_email","op":"eq","p":2}}]},
+	 "order":[{"column":"seq","desc":true}],"limit":{"offset":20,"count":10},"force_index":"ik"`)
+	if want := "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"battle\" AS \"a\" WHERE \"a\".\"name\" ILIKE $1 AND \"a\".\"name\" LIKE $2 AND \"a\".\"aes_hex_email\" = $3 ORDER BY \"a\".\"seq\" DESC LIMIT 10 OFFSET 20"; p.Steps[0].SQL != want {
+		t.Errorf("postgres select:\n got  %s\n want %s", p.Steps[0].SQL, want)
+	}
+	// aes/hex are app-side on postgres: the read is the bare column and the styles reach the executor
+	p = compile(t, pg, `"kind":"one","entity":"battle","n_params":1,"where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]}`)
+	var aes, ip *plan.OutCol
+	for i := range p.Steps[0].Assemble.Columns {
+		c := &p.Steps[0].Assemble.Columns[i]
+		if c.Name == "aes_hex_email" {
+			aes = c
+		}
+		if c.Name == "ip" {
+			ip = c
+		}
+	}
+	if aes == nil || strings.Join(aes.Styles, ",") != "aes,hex" || !strings.Contains(p.Steps[0].SQL, "\"a\".\"aes_hex_email\" AS \"a__aes_hex_email\"") {
+		t.Errorf("postgres aes read: %+v", aes)
+	}
+	if ip == nil || len(ip.Styles) != 0 || !strings.Contains(p.Steps[0].SQL, "host(\"a\".\"ip\") AS \"a__ip\"") {
+		t.Errorf("postgres ip read: %+v", ip)
+	}
+	// upsert: RETURNING, ON CONFLICT on the unique key covered by the insert (uuid), no LAST_INSERT_ID idiom
+	p = compile(t, pg, `"kind":"insert","entity":"battle","n_params":3,"set":[{"column":"uuid","p":0},{"column":"name","p":1},{"column":"user_seq","p":2},{"column":"service_seq","p":2},{"column":"service_module_seq","p":2},{"column":"service_member_seq","p":2},{"column":"start_dt","p":2},{"column":"end_dt","p":2}],"on_duplicate":[{"column":"name","p":1}]`)
+	if want := "INSERT INTO \"battle\" (\"uuid\", \"name\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (\"uuid\") DO UPDATE SET \"name\" = $9 RETURNING \"seq\""; p.Steps[0].SQL != want {
+		t.Errorf("postgres upsert:\n got  %s\n want %s", p.Steps[0].SQL, want)
+	}
+	// fulltext on postgres
+	p = compile(t, pg, `"kind":"count","entity":"battle","n_params":1,"where":{"items":[{"pred":{"op":"match_boolean","match":["name","description"],"p":0}}]}`)
+	if !strings.Contains(p.Steps[0].SQL, "to_tsvector('simple', coalesce(\"a\".\"name\", '') || ' ' || coalesce(\"a\".\"description\", '')) @@ websearch_to_tsquery('simple', $1)") {
+		t.Errorf("postgres fulltext: %s", p.Steps[0].SQL)
+	}
+
+	lite := testEngineFor(t, "sqlite")
+	p = compile(t, lite, `"kind":"all","entity":"battle","columns":{"mode":"none"},"n_params":1,"where":{"items":[{"pred":{"column":"name","op":"starts_with","p":0}}]},"limit":{"offset":0,"count":5},"force_index":"ik"`)
+	if want := "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"battle\" AS \"a\" INDEXED BY \"ik\" WHERE \"a\".\"name\" LIKE ? ESCAPE '\\' LIMIT 5 OFFSET 0"; p.Steps[0].SQL != want {
+		t.Errorf("sqlite select:\n got  %s\n want %s", p.Steps[0].SQL, want)
+	}
+	for irs, code := range map[string]string{
+		`"kind":"count","entity":"battle","n_params":1,"where":{"items":[{"pred":{"column":"name","op":"like_binary","p":0}}]}`:          "OPERATOR_NOT_ALLOWED",
+		`"kind":"count","entity":"battle","n_params":1,"where":{"items":[{"pred":{"op":"match","match":["name","description"],"p":0}}]}`: "OPERATOR_NOT_ALLOWED",
+	} {
+		_, err := lite.Compile([]byte(`{"ir_version":1,"schema_hash":"` + lite.M.SchemaHash + `",` + irs + `}`))
+		if err == nil || !strings.HasPrefix(err.Error(), code) {
+			t.Errorf("sqlite %s\n got %v\n want %s", irs, err, code)
+		}
+	}
+	// the relation window survives quoting
+	p = compile(t, lite, `"kind":"all","entity":"service","n_params":1,"where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},"relations":[{"rel":"modules","query":{"entity":"service_module","limit_per_parent":2,"order":[{"column":"seq","desc":true}]}}]`)
+	if !strings.Contains(p.Steps[1].SQL, "ROW_NUMBER() OVER (PARTITION BY \"a\".\"service_seq\" ORDER BY \"a\".\"seq\" DESC) AS \"orm_rn\"") || !strings.Contains(p.Steps[1].SQL, "\"a\".\"service_seq\" IN (?)") {
+		t.Errorf("sqlite relation window: %s", p.Steps[1].SQL)
+	}
+}
+
 func TestCompileErrors(t *testing.T) {
 	e := testEngine(t)
 	h := e.M.SchemaHash

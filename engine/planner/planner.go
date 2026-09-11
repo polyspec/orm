@@ -405,9 +405,9 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 			}
 			expr = e
 		default:
-			e, _ := p.D.ReadExpr(p.qcol(s, c.column), sqlStyles(col.Styles), func() string { return b.secret("aes") })
+			e, _ := p.D.ReadExpr(p.qcol(s, c.column), p.sqlStyles(col.Styles), func() string { return b.secret("aes") })
 			expr = e
-			styles = appStyles(col.Styles)
+			styles = p.appStyles(col.Styles)
 		}
 		sb.WriteString(expr + " AS " + p.D.Quote(s.alias+"__"+c.name))
 		*outNames = append(*outNames, s.alias+"__"+c.name)
@@ -586,6 +586,9 @@ func (p *Planner) renderGroup(b *builder, s *scope, g *ir.Group, top bool) (stri
 }
 
 func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) {
+	if pr.Op != "" && !p.D.Supports(pr.Op) {
+		return "", &ir.Error{Code: "OPERATOR_NOT_ALLOWED", Msg: pr.Op + " is not available on " + p.D.Name()}
+	}
 	if pr.Expr != "" {
 		e, err := p.renderExpr(s, pr.Expr)
 		if err != nil {
@@ -670,7 +673,7 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 // renderValue binds one value, wrapping it for SQL-side styles (aes/hex/ip) so
 // equality predicates on encrypted columns keep working (compatibility behaviour).
 func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error) {
-	styles := sqlStyles(col.Styles)
+	styles := p.sqlStyles(col.Styles)
 	if len(styles) == 0 {
 		return b.param(i), nil
 	}
@@ -762,12 +765,34 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 			// MySQL idiom: make last insert id report the existing row on update
 			sets = append(sets, p.D.Quote(ent.Auto)+" = LAST_INSERT_ID("+p.D.Quote(ent.Auto)+")")
 		}
-		sql += p.D.Upsert(ent.PK, strings.Join(sets, ", "))
+		sql += p.D.Upsert(conflictTarget(ent, r.Set), strings.Join(sets, ", "))
 	}
 	if p.D.InsertReturningID() && ent.Auto != "" {
 		sql += " RETURNING " + p.D.Quote(ent.Auto)
 	}
 	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
+}
+
+// conflictTarget picks the unique key an upsert conflicts on for dialects that
+// need one named (ON CONFLICT): the first declared unique key whose columns are
+// all being inserted, else the primary key.
+func conflictTarget(ent *schema.Entity, set []ir.Assign) []string {
+	inserted := map[string]bool{}
+	for _, a := range set {
+		inserted[a.Column] = true
+	}
+	for _, uk := range ent.Unique {
+		all := true
+		for _, c := range uk {
+			if !inserted[c] {
+				all = false
+			}
+		}
+		if all {
+			return uk
+		}
+	}
+	return ent.PK
 }
 
 func (p *Planner) renderAssign(b *builder, ent *schema.Entity, col *schema.Col, a *ir.Assign) (string, error) {
@@ -856,21 +881,22 @@ func cmp(op string) string {
 	panic("cmp: " + op)
 }
 
-// sqlStyles keeps only stages the dialect handles in SQL; appStyles the rest.
-func sqlStyles(styles []string) []string {
+// sqlStyles keeps only the stages the dialect applies in SQL; appStyles the
+// rest, in write order, for the executor (docs/codec.md).
+func (p *Planner) sqlStyles(styles []string) []string {
 	var out []string
 	for _, s := range styles {
-		if s == "aes" || s == "hex" || s == "ip" {
+		if p.D.HandlesStyle(s) {
 			out = append(out, s)
 		}
 	}
 	return out
 }
 
-func appStyles(styles []string) []string {
+func (p *Planner) appStyles(styles []string) []string {
 	var out []string
 	for _, s := range styles {
-		if s != "aes" && s != "hex" && s != "ip" {
+		if !p.D.HandlesStyle(s) {
 			out = append(out, s)
 		}
 	}
