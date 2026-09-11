@@ -1,6 +1,9 @@
 <?php
 // PHP half of the S1 demo: same statements as clients/go/gen/gen_integration_test.go.
 // Usage: php clients/php/tests/integration.php /abs/ormd.sock /abs/schema.json
+// ORM_TEST_DRIVER (mysql | postgres | sqlite) and ORM_TEST_DSN select the database; ormd must run with the
+// matching -dialect. MySQL-only checks (secret slots, the driver's error numbers) are keyed by driver; the
+// deadlock interleaving is skipped on SQLite (one writer: two transactions cannot interleave row locks).
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
@@ -14,6 +17,7 @@ use App\Orm\ServiceWhere;
 use App\Orm\User;
 use App\Orm\UserWhere;
 use Orm\Code;
+use Orm\Codec;
 use Orm\Config;
 use Orm\Db;
 use Orm\Orm;
@@ -24,11 +28,15 @@ use Orm\Tx;
 
 $sock = $argv[1] ?? die("usage: integration.php /abs/ormd.sock /abs/schema.json\n");
 $schema = $argv[2] ?? die("schema.json required\n");
+$driver = orm_test_driver();
 $log = [];
 $hooked = [];
-Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt',
-    onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log, &$hooked) { $log[] = $sql; $hooked[] = [$binds, $planId, $e]; }));
-$db = Db::mysql(orm_test_dsn(), 'root', '');
+Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver,
+    onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log, &$hooked) { $log[] = orm_norm_sql($sql); $hooked[] = [$binds, $planId, $e]; }));
+$db = orm_open_db($driver, orm_test_dsn());
+check($db->driver() === $driver, 'Db::driver()');
+/** the binds sql() and the hook show for the aes select: the key twice on MySQL (AES in SQL), nothing else elsewhere (host AES) */
+$aesBinds = $driver === 'mysql' ? ['$SECRET', '$SECRET', 7] : [7];
 
 $fail = 0;
 function check(bool $ok, string $what): void { global $fail; if (!$ok) { $fail++; fwrite(STDERR, "FAIL: $what\n"); } }
@@ -143,7 +151,9 @@ $b = $draft('php-u2')->setUuid('php-upsert')->onDuplicateSetName('php-u2')->onDu
 check($a !== null && $b !== null && $b->getSeq() === $a->getSeq() && $b->getName() === 'php-u2' && $b->getReadCount() === 6, 'insert on duplicate updates and returns the existing row');
 $c = $draft('php-u3', 9)->setUuid('php-upsert')->onDuplicateSetAll()->insert($db);
 check($c->getSeq() === $a->getSeq() && $c->getName() === 'php-u3' && $c->getReadCount() === 9, 'onDuplicateSetAll mirrors the draft');
-$d = $draft('php-u4')->setUuid('php-upsert')->onDuplicateSetNameExpr('CONCAT(`name`, ?)', ['!'])->onDuplicateMinusReadCount(100)->insert($db);
+// With PDO, PostgreSQL parameters carry no type: a bare ? inside CONCAT (variadic "any") is indeterminate there, `||` is not.
+$concat = $driver === 'mysql' ? 'CONCAT(`name`, ?)' : '`name` || ?';
+$d = $draft('php-u4')->setUuid('php-upsert')->onDuplicateSetNameExpr($concat, ['!'])->onDuplicateMinusReadCount(100)->insert($db);
 check($d->getSeq() === $a->getSeq() && $d->getName() === 'php-u3!' && $d->getReadCount() === 0, 'on duplicate expr + minus clamped at 0');
 check((new Battle)->seqEq($a->getSeq())->delete($db) === 1 && (new Battle)->seqEq($a->getSeq())->count($db) === 0, 'query delete returns the affected count');
 
@@ -164,7 +174,7 @@ check((new Battle)->seqEq($r->getSeq())->delete($db) === 1, 'query delete');
 
 $n0 = count($log);
 $dump = (new Battle)->serviceSeqEq(7)->selectAesHexEmail()->limit(0, 1)->sql($db);
-check(str_starts_with($dump['sql'], 'SELECT ') && $dump['binds'] === ['$SECRET', '$SECRET', 7] && count($log) === $n0, 'sql() dumps the main statement without executing');
+check(str_starts_with($dump['sql'], 'SELECT ') && $dump['binds'] === $aesBinds && count($log) === $n0, 'sql() dumps the main statement without executing');
 
 $svc = $db->transaction(function (Tx $tx) {
     $s = (new Service)->setName('php-cascade')->insert($tx);
@@ -188,6 +198,7 @@ check((new ServiceMember)->serviceSeqEq($svc->getSeq())->count($db) === 0 && (ne
 check((new ServiceModule)->serviceSeqEq($svc->getSeq())->delete($db) === 1, 'cascade cleanup');
 
 // ---- deadlock gate: two processes, T1 updates A then B, T2 updates B then A ----
+if ($driver !== 'sqlite') {
 $rowA = $draft('dl-php-1')->insert($db);
 $rowB = $draft('dl-php-2')->insert($db);
 $procs = [];
@@ -221,6 +232,9 @@ check($a2->getName() === "dl-php-$last" && $b2->getName() === "dl-php-$last", 'f
 $rowA->delete($db);
 $rowB->delete($db);
 check((new Battle)->seqIn([$rowA->getSeq(), $rowB->getSeq()])->count($db) === 0, 'deadlock rows cleaned up');
+} else {
+    fwrite(STDERR, "skip: deadlock interleaving (SQLite has one writer; SQLITE_BUSY is mapped to DEADLOCK and re-run, but two transactions cannot interleave row locks)\n");
+}
 
 // ---- S4: countDistinct/min/max, having, named predicates, raw root ----
 check((new Battle)->serviceSeqEq(7)->minSeq($db) === 6 && (new Battle)->serviceSeqEq(7)->maxSeq($db) === 99906, 'min/max return the column type (int)');
@@ -255,7 +269,7 @@ $sa = (new Battle)->startedAfter($since)->serviceSeqEq(7)->count($db);
 check($sa === (new Battle)->startDtGt($since)->serviceSeqEq(7)->count($db), 'startedAfter($v) binds its one argument');
 $either = (new Battle)->serviceSeqEq(7)->and(fn(BattleWhere $w) => $w->visible()->or()->startedAfter($since))->count($db);
 check($either >= max($vis, $sa) && $either <= $vis + $sa, 'named predicates on the Where builder, with or()');
-check(str_contains((new Battle)->visible()->sql($db)['sql'], '(`a`.`is_close` = FALSE AND `a`.`is_display` = TRUE)'), 'predicate fragment reaches the SQL with its columns alias-resolved');
+check(str_contains(orm_norm_sql((new Battle)->visible()->sql($db)['sql']), '(`a`.`is_close` = FALSE AND `a`.`is_display` = TRUE)'), 'predicate fragment reaches the SQL with its columns alias-resolved');
 
 $raw = (new Battle)->raw('SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?', [7, 0])->rawAll($db);
 check(count($raw) === 1 && array_keys($raw[0]) === ['n', 'm'] && $raw[0]['n'] === (new Battle)->serviceSeqEq(7)->isCloseEq(false)->count($db) && is_int($raw[0]['m']), 'rawAll: one row keyed by column name, ints as ints');
@@ -285,7 +299,7 @@ $n0 = count($hooked);
 [$binds1, $plan1, $err1] = $hooked[$n0];
 [, $plan2] = $hooked[$n0 + 1];
 [, $plan3] = $hooked[$n0 + 2];
-check($binds1 === ['$SECRET', '$SECRET', 7] && $err1 === null, 'hook binds mask secret slots as $SECRET');
+check($binds1 === $aesBinds && $err1 === null, $driver === 'mysql' ? 'hook binds mask secret slots as $SECRET' : 'hook binds carry no secret (host AES)');
 check(preg_match('/^[0-9a-f]{16}$/', $plan1) === 1 && $plan1 === $plan2 && $plan1 !== $plan3, 'plan_id is the 16-hex plan key: same shape → same id, different limit → different id');
 try {
     (new Battle)->raw('SELECT no_such_column FROM {table}', [])->rawAll($db);
@@ -300,7 +314,8 @@ try {
     $draft('php-dup-2')->setUuid('php-dup-uuid')->insert($db);
     check(false, 'duplicate uuid should throw');
 } catch (OrmException $e) {
-    check($e->code_ === Code::DUPLICATE_KEY && str_contains($e->getMessage(), '1062') && $e->getPrevious() instanceof \PDOException, 'duplicate uuid → DUPLICATE_KEY with the driver message kept');
+    $driverMsg = ['mysql' => '1062', 'postgres' => '23505', 'sqlite' => 'UNIQUE'][$driver];
+    check($e->code_ === Code::DUPLICATE_KEY && str_contains($e->getMessage(), $driverMsg) && $e->getPrevious() instanceof \PDOException, 'duplicate uuid → DUPLICATE_KEY with the driver message kept');
 }
 try {
     $db->transaction(fn(Tx $tx) => $draft('php-dup-3')->setUuid('php-dup-uuid')->insert($tx));
@@ -313,17 +328,32 @@ $dup->delete($db);
 // ---- S5: schema_hash boot check ----
 Registry::generated('0000000000000000');
 try {
-    Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt'));
+    Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver));
     check(false, 'wrong generated hash should throw');
 } catch (OrmException $e) {
     check($e->code_ === Code::SCHEMA_HASH_MISMATCH, 'generated hash ≠ schema.json → SCHEMA_HASH_MISMATCH');
 }
 Registry::generated(json_decode(file_get_contents($schema), true)['schema_hash']);
+try {
+    Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver === 'mysql' ? 'sqlite' : 'mysql'));
+    check(false, 'a driver other than the ormd dialect should throw');
+} catch (OrmException $e) {
+    check($e->code_ === Code::CONFIG && str_contains($e->getMessage(), '-dialect'), 'driver ≠ ormd dialect → CONFIG');
+}
+Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver));
+try {
+    orm_open_db($driver === 'sqlite' ? 'mysql' : 'sqlite', $driver === 'sqlite' ? orm_default_dsn('mysql') : '/nonexistent/orm.sqlite');
+    check(false, 'a Db of another driver than the config should throw');
+} catch (OrmException $e) {
+    check($e->code_ === Code::CONFIG, 'Db driver ≠ configured driver → CONFIG (' . $e->getMessage() . ')');
+}
 
 // ---- S5: orm.toml ----
-$toml = function (string $schemaLine, string $extra = '') use ($sock): string {
+$toml = function (string $schemaLine, string $extra = '') use ($sock, $driver): string {
     $f = tempnam(sys_get_temp_dir(), 'orm-toml-');
-    file_put_contents($f, "$schemaLine\n[db]\ndsn = \"" . orm_test_dsn() . "\"\nuser = \"root\"\npassword = \"\"\npool = 8   # ignored by PHP\n[secrets]\naes = \"bench-salt\"\n[ormd]\nsocket = \"$sock\"\n[debug]\non_query = false\n$extra");
+    // MySQL names its user here; the PostgreSQL DSN carries user=; SQLite has none (db.dsn is the file)
+    $cred = $driver === 'mysql' ? "user = \"root\"\npassword = \"\"\n" : '';
+    file_put_contents($f, "$schemaLine\n[db]\ndriver = \"$driver\"\ndsn = \"" . orm_test_dsn() . "\"\n{$cred}pool = 8   # ignored by PHP\n[secrets]\naes = \"bench-salt\"\n[ormd]\nsocket = \"$sock\"\n[debug]\non_query = false\n$extra");
     return $f;
 };
 $bad = $toml('schema = "schema/schema.json"');
@@ -354,12 +384,39 @@ try {
     check($e->code_ === Code::CONFIG && str_contains($e->getMessage(), 'unsupported value'), 'orm.toml outside the subset → CONFIG');
 }
 unlink($bad);
+$bad = $toml("schema = \"$schema\"", "[db]\n");
+try {
+    Orm::fromConfig($bad);
+    check(false, 'a table declared twice should throw');
+} catch (OrmException $e) {
+    check($e->code_ === Code::CONFIG, 'orm.toml duplicate table → CONFIG');
+}
+unlink($bad);
+$wrongDriver = str_replace("driver = \"$driver\"", 'driver = "' . ($driver === 'mysql' ? 'sqlite' : 'mysql') . '"', file_get_contents($bad = $toml("schema = \"$schema\"")));
+file_put_contents($bad, $wrongDriver);
+try {
+    Orm::fromConfig($bad);
+    check(false, 'db.driver other than the ormd dialect should throw');
+} catch (OrmException $e) {
+    check($e->code_ === Code::CONFIG, 'orm.toml db.driver ≠ ormd dialect → CONFIG (' . $e->getMessage() . ')');
+}
+unlink($bad);
 $good = $toml("schema = \"$schema\"");
 $db2 = Orm::fromConfig($good);
 unlink($good);
-check($db2 instanceof Db && Orm::config()->onQuery === null && Orm::config()->aesKey === 'bench-salt' && (new Battle)->oneBySeq($db2, 42)->getAesHexEmail() === 'user42@example.com', 'fromConfig loads db, secrets and ormd and passes the boot check');
-Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt',
+check($db2 instanceof Db && $db2->driver() === $driver && Orm::config()->driver === $driver && Orm::config()->onQuery === null && Orm::config()->aesKey === 'bench-salt' && (new Battle)->oneBySeq($db2, 42)->getAesHexEmail() === 'user42@example.com', 'fromConfig loads db (driver), secrets and ormd and passes the boot check');
+Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver,
     onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log) { $log[] = $sql; }));
+
+// ---- S6: host-side styles round trip on this database (aes/hex in SQL on MySQL, app-side elsewhere; ip packed on SQLite) ----
+$hb = $draft('php-host')->setAesHexEmail('한글@example.com')->setAesHexPhone('')->setIp('2001:db8::1')->insert($db);
+check($hb->getAesHexEmail() === '한글@example.com' && $hb->getAesHexPhone() === '' && $hb->getIp() === '2001:db8::1', 'aes_hex and ip written by this executor read back equal (' . $driver . ')');
+$rawHex = (new Battle)->raw('SELECT aes_hex_email AS h FROM {table} WHERE seq = ?', [$hb->getSeq()])->rawAll($db)[0]['h'];
+check($rawHex === Codec::hostEncode('한글@example.com', ['aes', 'hex'], 'bench-salt'), 'the stored aes_hex bytes are the host codec\'s, which tests/codec/aes-vectors.json proves are MySQL\'s');
+check(count((new Battle)->aesHexEmailEq('한글@example.com')->seqEq($hb->getSeq())->all($db)) === 1, 'aes_hex predicate binds the host-encoded value');
+$hb->setIp('10.1.2.3')->update($db);
+check((new Battle)->oneBySeq($db, $hb->getSeq())->getIp() === '10.1.2.3', 'ip update (IPv4 packs to 4 bytes)');
+$hb->delete($db);
 
 if ($fail === 0) {
     echo "ok — " . count($log) . " statements\n";

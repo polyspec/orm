@@ -22,17 +22,34 @@ class Db
      */
     public const EMULATE_PREPARES = true;
 
+    /** the databases a Db can speak; the plans are dialect text, so ormd runs with the same `-dialect` */
+    public const DRIVERS = ['mysql', 'postgres', 'sqlite'];
+    /** what the on_query hook and sql() show in place of a secret / `now` bind */
+    public const SECRET = '$SECRET';
+    public const NOW = '$NOW';
+
     /** @var array<string, \PDOStatement> */
     private array $stmts = [];
-    /** @var list<int> positions of secret slots in the last args() result (masked in the on_query hook) */
-    private array $secretPos = [];
-    /** whether the last args() result holds a bool (PDO would send it as '' / '1'; exec() sends 0 / 1) */
-    private bool $hasBool = false;
+    /** @var array<int, string> positions in the last args() result the on_query hook masks (secret → "$SECRET", now → "$NOW") */
+    private array $masks = [];
+    /**
+     * whether the last args() result needs typed binding: a bool (PDO sends '' / '1' as text; MySQL wants 0 / 1,
+     * PostgreSQL a boolean, SQLite an integer), a Bytes (bytea / BLOB), or SQLite at all (an int bound as text
+     * compares as text against an expression without affinity: COUNT(*) > '1' is never true)
+     */
+    private bool $typed = false;
 
-    public function __construct(public readonly \PDO $pdo)
+    public function __construct(public readonly \PDO $pdo, private readonly string $driver = 'mysql')
     {
+        if (!in_array($driver, self::DRIVERS, true)) {
+            throw new OrmException(Code::CONFIG, "driver $driver: want mysql, postgres or sqlite");
+        }
+        if (($cfg = Orm::config())->driver !== $driver) {
+            throw new OrmException(Code::CONFIG, "Db speaks $driver but Orm::init was given driver {$cfg->driver}");
+        }
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, self::EMULATE_PREPARES);
+        // pdo_pgsql / pdo_sqlite prepare natively: the plan's placeholders reach the server, types come from the column
+        $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql' && self::EMULATE_PREPARES);
         $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
     }
 
@@ -44,10 +61,52 @@ class Db
             \Pdo\Mysql::ATTR_FOUND_ROWS => true,
         ];
         try {
-            return new self(new \PDO($dsn, $user, $password, $opts));
+            return new self(new \PDO($dsn, $user, $password, $opts), 'mysql');
         } catch (\PDOException $e) {
             throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
         }
+    }
+
+    /**
+     * Open a PostgreSQL connection (pdo_pgsql): `pgsql:host=…;port=…;dbname=…[;user=…]`. The user and password
+     * may come from the DSN instead. Booleans are bound as booleans, ints as ints, binary values as bytea;
+     * the rows come back typed (bool, int; numeric as text, jsonb and inet as text, bytea as a stream the codec reads).
+     */
+    public static function postgres(string $dsn, ?string $user = null, ?string $password = null, bool $persistent = true): self
+    {
+        try {
+            return new self(new \PDO($dsn, $user, $password, [\PDO::ATTR_PERSISTENT => $persistent]), 'postgres');
+        } catch (\PDOException $e) {
+            throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
+        }
+    }
+
+    /**
+     * Open a SQLite database file (pdo_sqlite; the path is absolute and declared, as every path here).
+     * busy_timeout 5s and WAL are set on open so concurrent writers wait instead of failing at once;
+     * a lock that still cannot be taken is SQLITE_BUSY, mapped to DEADLOCK and re-run by transaction().
+     * Datetimes are text with six fraction digits (docs/dialects.md); the executor binds them in that form.
+     */
+    public static function sqlite(string $path, bool $persistent = true): self
+    {
+        if (!str_starts_with($path, '/')) {
+            throw new OrmException(Code::CONFIG, "sqlite path must be absolute: $path");
+        }
+        try {
+            $pdo = new \PDO('sqlite:' . $path, null, null, [\PDO::ATTR_PERSISTENT => $persistent]);
+            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            $pdo->exec('PRAGMA busy_timeout=5000');
+            $pdo->exec('PRAGMA journal_mode=WAL');
+            return new self($pdo, 'sqlite');
+        } catch (\PDOException $e) {
+            throw new OrmException(Code::CONFIG, 'cannot open: ' . $e->getMessage(), $e);
+        }
+    }
+
+    /** The database this Db talks to (mysql | postgres | sqlite). */
+    public function driver(): string
+    {
+        return $this->driver;
     }
 
     public function db(): Db
@@ -57,7 +116,17 @@ class Db
 
     public function stmt(string $sql): \PDOStatement
     {
-        return $this->stmts[$sql] ??= $this->pdo->prepare($sql);
+        return $this->stmts[$sql] ??= $this->pdo->prepare($this->driver === 'postgres' ? self::questionMarks($sql) : $sql);
+    }
+
+    /**
+     * pdo_pgsql numbers placeholders itself and binds nothing to a `$n` it did not write, so a PostgreSQL
+     * statement is prepared from its `?` form: the plan has one `$k` per bind slot in slot order, so the
+     * positional binds line up. The dialect text is what the cache key, the hook and sql() show.
+     */
+    private static function questionMarks(string $sql): string
+    {
+        return preg_replace('/\$\d+/', '?', $sql);
     }
 
     /**
@@ -81,7 +150,7 @@ class Db
                     $this->pdo->rollBack();
                 }
                 if ($e instanceof \PDOException) {
-                    $e = OrmException::fromDriver($e);
+                    $e = OrmException::fromDriver($e, $this->driver);
                 }
                 if (!self::isDeadlock($e)) {
                     throw $e;
@@ -102,13 +171,14 @@ class Db
 
     /**
      * @param list<mixed> $params request params; @param list<mixed> $parentVals values for the step's `parent` slot
-     * @param bool $maskSecrets render secret slots as "$SECRET" (sql() dumps) instead of the configured key
+     * @param bool $dump render secret slots as "$SECRET" and now slots as "$NOW" (sql() dumps) instead of their values
      */
-    private function args(array $step, array $params, array $parentVals = [], bool $maskSecrets = false): array
+    private function args(array $step, array $params, array $parentVals = [], bool $dump = false): array
     {
         $out = [];
-        $this->secretPos = [];
-        $this->hasBool = false;
+        $this->masks = [];
+        $this->typed = $this->driver === 'sqlite';
+        $cfg = Orm::config();
         foreach ($step['bind_slots'] ?? [] as $b) {
             switch ($b['from']) {
                 case 'parent':
@@ -120,60 +190,146 @@ class Db
                     $v = $params[$b['param']];
                     if (!empty($b['transform'])) {
                         $v = Transform::apply($b['transform'], (string) $v);
-                    } elseif (is_bool($v)) {
-                        $this->hasBool = true;
+                    } elseif (!empty($b['host_styles'])) {
+                        // the stages this dialect cannot run in SQL (aes/hex on PostgreSQL, plus ip on SQLite)
+                        $v = Codec::hostEncode($v, $b['host_styles'], $cfg->aesKey);
+                        $this->typed = $this->typed || $v instanceof Bytes;
+                    } elseif (is_bool($v) || $v instanceof Bytes) {
+                        $this->typed = true;
                     }
                     $out[] = $v;
                     break;
                 case 'secret':
-                    if ($maskSecrets) {
-                        $out[] = '$SECRET';
+                    if ($dump) {
+                        $out[] = self::SECRET;
                         break;
                     }
-                    $key = Orm::config()->aesKey;
+                    $key = $cfg->aesKey;
                     if (($b['name'] ?? '') !== 'aes' || $key === '') {
                         throw new OrmException(Code::CONFIG, "secret {$b['name']} not configured");
                     }
-                    $this->secretPos[] = count($out);
+                    $this->masks[count($out)] = self::SECRET;
                     $out[] = $key;
+                    break;
+                case 'now':
+                    // dialects without a microsecond clock function (SQLite) get the timestamp from the executor;
+                    // hooks see "$NOW" so logs and recorded vectors stay deterministic
+                    if ($dump) {
+                        $out[] = self::NOW;
+                        break;
+                    }
+                    $this->masks[count($out)] = self::NOW;
+                    $out[] = self::now();
                     break;
                 default:
                     throw new OrmException(Code::INTERNAL, "bind from {$b['from']}");
             }
         }
+        if ($this->driver === 'sqlite') {
+            // SQLite stores what it is given: keep datetimes in the canonical text form every reader parses
+            // (docs/dialects.md), so a value written here reads back equal to one written by Go or Rust
+            foreach ($out as $i => $v) {
+                if ($v instanceof \DateTimeInterface) {
+                    $out[$i] = \DateTimeImmutable::createFromInterface($v)->setTimezone(self::utc())->format('Y-m-d H:i:s.u');
+                } elseif (is_string($v) && strlen($v) >= 19 && strlen($v) < 26 && preg_match('/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d(\.\d{1,5})?$/', $v)) {
+                    $out[$i] = str_pad(strlen($v) === 19 ? "$v." : $v, 26, '0');
+                }
+            }
+        }
         return $out;
     }
 
+    private static ?\DateTimeZone $utc = null;
+
+    private static function utc(): \DateTimeZone
+    {
+        return self::$utc ??= new \DateTimeZone('UTC');
+    }
+
+    /** The `now` bind: UTC with microseconds, the text form SQLite datetimes are kept in. */
+    public static function now(): string
+    {
+        return (new \DateTimeImmutable('now', self::utc()))->format('Y-m-d H:i:s.u');
+    }
+
     /**
-     * What a step would run, without running it: the SQL and its binds with secrets masked
-     * (the sql() terminal). Relation steps are not dumped, so no parent values are expanded.
+     * What a step would run, without running it: the SQL and its binds with secrets masked as "$SECRET"
+     * and now slots as "$NOW" (the sql() terminal). Relation steps are not dumped, so no parent values are expanded.
      * @return array{sql: string, binds: list<mixed>}
      */
     public function sqlOf(array $step, array $params): array
     {
-        return ['sql' => $step['sql'], 'binds' => $this->args($step, $params, [], true)];
+        return ['sql' => $step['sql'], 'binds' => array_map(static fn(mixed $v) => $v instanceof Bytes ? $v->bytes : $v, $this->args($step, $params, [], true))];
     }
 
-    /** execute() with bools as 0/1 (PDO binds false as '' otherwise, which strict MySQL rejects for an int column). */
+    /**
+     * execute() with the binds typed where the driver needs it. MySQL (emulated prepares): bools as 0/1 — PDO
+     * would interpolate false as '', which strict MySQL rejects for an int column. PostgreSQL: bools as
+     * PARAM_BOOL, Bytes as PARAM_LOB (bytea, binary format); everything else stays untyped text the server
+     * resolves from the column. SQLite: ints and bools as PARAM_INT, Bytes as PARAM_LOB, null as PARAM_NULL.
+     */
     private function exec(\PDOStatement $st, array $args): void
     {
-        if ($this->hasBool) {
+        if (!$this->typed) {
+            $st->execute($args);
+            return;
+        }
+        if ($this->driver === 'mysql') {
             foreach ($args as $i => $v) {
                 if (is_bool($v)) {
                     $args[$i] = (int) $v;
+                } elseif ($v instanceof Bytes) {
+                    $args[$i] = $v->bytes;
                 }
             }
+            $st->execute($args);
+            return;
         }
-        $st->execute($args);
+        $pg = $this->driver === 'postgres';
+        foreach ($args as $i => $v) {
+            if (is_bool($v)) {
+                $pg ? $st->bindValue($i + 1, $v, \PDO::PARAM_BOOL) : $st->bindValue($i + 1, (int) $v, \PDO::PARAM_INT);
+            } elseif ($v instanceof Bytes) {
+                $st->bindValue($i + 1, $v->bytes, \PDO::PARAM_LOB);
+            } elseif ($v === null) {
+                $st->bindValue($i + 1, null, \PDO::PARAM_NULL);
+            } elseif (is_int($v) && !$pg) {
+                $st->bindValue($i + 1, $v, \PDO::PARAM_INT);
+            } else {
+                $st->bindValue($i + 1, is_string($v) ? $v : (string) $v);
+            }
+        }
+        $st->execute();
     }
 
-    /** The on_query hook: (sql, binds with secrets masked, seconds, plan id, error). */
+    /**
+     * A statement that failed (at prepare — pdo_sqlite parses eagerly — or at execute): mapped to the catalog's
+     * code (docs/errors.yaml) and reset — pdo_sqlite leaves a statement that failed at step time un-reset, and
+     * binding to it again is SQLITE_MISUSE; the cached statement is re-run by transaction() after a DEADLOCK
+     * and by the next call of the same shape.
+     */
+    private function failed(?\PDOStatement $st, \PDOException $e): \Throwable
+    {
+        try {
+            $st?->closeCursor();
+        } catch (\PDOException) {
+            // the reset itself reports the failed step again on some drivers; the original error is the one to surface
+        }
+        return OrmException::fromDriver($e, $this->driver);
+    }
+
+    /** The on_query hook: (sql, binds with secrets masked as "$SECRET" and now slots as "$NOW", seconds, plan id, error). */
     private function emit(string $sql, array $args, float $start, string $planId, ?\Throwable $err): void
     {
         $hook = Orm::config()->onQuery;
         if ($hook !== null) {
-            foreach ($this->secretPos as $i) {
-                $args[$i] = '$SECRET';
+            foreach ($args as $i => $v) {
+                if ($v instanceof Bytes) {
+                    $args[$i] = $v->bytes;
+                }
+            }
+            foreach ($this->masks as $i => $mask) {
+                $args[$i] = $mask;
             }
             $hook($sql, $args, microtime(true) - $start, $planId, $err);
         }
@@ -183,15 +339,16 @@ class Db
     public function query(array $step, array $params, ?string $sql = null, array $parentVals = []): array
     {
         $sql ??= $step['sql'];
-        $st = $this->stmt($sql);
         $args = $this->args($step, $params, $parentVals);
         $start = microtime(true);
+        $st = null;
         try {
+            $st = $this->stmt($sql);
             $this->exec($st, $args);
             $rows = $st->fetchAll(\PDO::FETCH_NUM);
             $st->closeCursor();
         } catch (\PDOException $e) {
-            $e = OrmException::fromDriver($e);
+            $e = $this->failed($st, $e);
             $this->emit($sql, $args, $start, $step['plan_id'], $e);
             throw $e;
         }
@@ -254,7 +411,8 @@ class Db
     /**
      * Rewrites the step's single `parent` placeholder into n placeholders; n is rounded up
      * to a power of two (values padded by repetition) so the statement cache holds one
-     * statement per size class.
+     * statement per size class. On PostgreSQL ($n placeholders, one per slot in slot order) the
+     * parent slot becomes n numbered placeholders and every later number shifts by n - 1.
      * @return array{0: string, 1: list<mixed>}
      */
     private static function expandIn(array $step, array $vals): array
@@ -264,9 +422,29 @@ class Db
             $n <<= 1;
         }
         $vals = array_pad($vals, $n, $vals[count($vals) - 1]);
+        $src = $step['sql'];
+        if (str_contains($src, '$1')) {
+            $parent = -1;
+            foreach ($step['bind_slots'] as $i => $b) {
+                if ($b['from'] === 'parent') {
+                    $parent = $i + 1;
+                }
+            }
+            $sql = preg_replace_callback('/\$(\d+)/', static function (array $m) use ($parent, $n): string {
+                $k = (int) $m[1];
+                if ($k === $parent) {
+                    $out = [];
+                    for ($j = 0; $j < $n; $j++) {
+                        $out[] = '$' . ($k + $j);
+                    }
+                    return implode(', ', $out);
+                }
+                return $k > $parent ? '$' . ($k + $n - 1) : $m[0];
+            }, $src);
+            return [$sql, $vals];
+        }
         $sql = '';
         $slot = 0;
-        $src = $step['sql'];
         for ($i = 0, $len = strlen($src); $i < $len; $i++) {
             $c = $src[$i];
             if ($c !== '?') {
@@ -319,15 +497,16 @@ class Db
     /** Rows of a raw step keyed by the driver's column names; no codec, no assembly. @return list<array<string, mixed>> */
     public function rows(array $step, array $params): array
     {
-        $st = $this->stmt($step['sql']);
         $args = $this->args($step, $params);
         $start = microtime(true);
+        $st = null;
         try {
+            $st = $this->stmt($step['sql']);
             $this->exec($st, $args);
             $rows = $st->fetchAll(\PDO::FETCH_ASSOC);
             $st->closeCursor();
         } catch (\PDOException $e) {
-            $e = OrmException::fromDriver($e);
+            $e = $this->failed($st, $e);
             $this->emit($step['sql'], $args, $start, $step['plan_id'], $e);
             throw $e;
         }
@@ -337,15 +516,16 @@ class Db
 
     public function scalar(array $step, array $params): mixed
     {
-        $st = $this->stmt($step['sql']);
         $args = $this->args($step, $params);
         $start = microtime(true);
+        $st = null;
         try {
+            $st = $this->stmt($step['sql']);
             $this->exec($st, $args);
             $v = $st->fetchColumn();
             $st->closeCursor();
         } catch (\PDOException $e) {
-            $e = OrmException::fromDriver($e);
+            $e = $this->failed($st, $e);
             $this->emit($step['sql'], $args, $start, $step['plan_id'], $e);
             throw $e;
         }
@@ -356,15 +536,23 @@ class Db
     /** @return array{0: int|string|null lastInsertId, 1: int affected} */
     public function write(array $step, array $params, bool $insert, bool $optimistic): array
     {
-        $st = $this->stmt($step['sql']);
         $args = $this->args($step, $params);
         $start = microtime(true);
+        $st = null;
         try {
+            $st = $this->stmt($step['sql']);
             $this->exec($st, $args);
-            $affected = $st->rowCount();
-            $id = $insert ? $this->pdo->lastInsertId() : null;
+            if ($insert && str_contains($step['sql'], ' RETURNING ')) {
+                // PostgreSQL/SQLite: the id comes back as a row, not from the driver's last insert id
+                $id = $st->fetchColumn();
+                $st->closeCursor();
+                $affected = 1;
+            } else {
+                $affected = $st->rowCount();
+                $id = $insert ? $this->pdo->lastInsertId() : null;
+            }
         } catch (\PDOException $e) {
-            $e = OrmException::fromDriver($e);
+            $e = $this->failed($st, $e);
             $this->emit($step['sql'], $args, $start, $step['plan_id'], $e);
             throw $e;
         }
@@ -381,7 +569,7 @@ final class Tx extends Db
 {
     public function __construct(private readonly Db $outer)
     {
-        parent::__construct($outer->pdo);
+        parent::__construct($outer->pdo, $outer->driver());
     }
 
     public function db(): Db
