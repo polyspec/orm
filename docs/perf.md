@@ -72,6 +72,18 @@ Go 1.27, Rust 1.98.1(sqlx 0.9, wasmtime 48), PHP 8.5.10(mysqlnd, msgpack, APCu).
 | 100행 목록 | 446µs | 390µs | 위치형 fetch + 지연 접근(getName ×100 포함 시 410µs) |
 **PHP 게이트(≤5%) 통과.** ormd는 형태당 1회만 호출된다.
 
+### Rust 실측 (생성 클라이언트, wasmtime 엔진 스레드 + sqlx 실행, 같은 세션에서 기준선 재측정)
+| 워크로드 | sqlx 직접 | 생성 클라이언트 | 비고 |
+|---|---:|---:|---|
+| PK 단건 | 77.7µs | 78.3µs (+1%) | 플랜 캐시 히트 0.7µs 포함 |
+| 100행 목록 | 407µs | 378µs | 위치형 `Vec<Val>` → typed struct(문자열은 move) |
+| 플랜 캐시 히트(컴파일 없이) | — | 0.7µs | IR JSON 직렬화 + 해시 |
+**Rust 게이트(≤5%) 통과.** 원자료 `docs/perf-raw-rust-client.txt`, `docs/perf-raw-rust-native-2.txt`.
+
+**발견 F3 — sqlx `try_get` 실패는 셀당 포맷된 에러를 만든다.** 첫 실측은 100행 p50 615µs·p90 1.6ms(이봉 분포)였다. 원인: 정수 컬럼을 `i64`로 먼저 읽고 실패하면 `u64`로 재시도하는 디코드 경로 — unsigned 컬럼(seq·FK·카운트 12개 × 100행)마다 sqlx가 `ColumnDecode` 에러를 `format!`으로 생성했다. 타입명으로 signed/unsigned를 분기해 한 번에 읽도록 고치자 378µs로 안정(p90 396µs). 실행기 규칙: **`try_get` 실패를 흐름 제어로 쓰지 않는다.**
+
+**F2 종결 — sqlx PK 78µs는 sqlx 자체 비용**이다. 생성 클라이언트도 같은 값이고(+1%), 풀 크기 1·전용 연결에서도 변하지 않았다. Go/PDO보다 2배인 것은 sqlx의 tokio 태스크 전환 + 프로토콜 파싱 비용으로, 우리 계층이 더한 것이 아니다. 계층 손실 게이트는 통과이며, sqlx 절대치 개선은 범위 밖(S7 후보: 드라이버 교체 비교).
+
 ## 7. S0 결정 요약
 | ID | 결정 | 근거 |
 |---|---|---|
@@ -79,4 +91,5 @@ Go 1.27, Rust 1.98.1(sqlx 0.9, wasmtime 48), PHP 8.5.10(mysqlnd, msgpack, APCu).
 | R2 | PHP 와이어 = msgpack 위치형 | §3 |
 | R3 | PHP 실행 = PDO 네이티브, ormd 컴파일 전용 | §5 |
 | F1 | 모든 실행기에 prepared statement 캐시 | §4 |
-| F2 | Rust 실행기 PK 지연 재측정 항목 | §4 |
+| F2 | Rust 실행기 PK 지연 재측정 → sqlx 고유 비용으로 종결 | §4, §6 |
+| F3 | sqlx `try_get` 실패를 흐름 제어로 쓰지 않는다(셀당 에러 포맷) | §6 |

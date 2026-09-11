@@ -32,7 +32,7 @@ pub struct Db {
 
 /// Rows of one select step, positional.
 pub struct Rows {
-    pub assemble: Assemble,
+    pub assemble: Arc<Assemble>,
     pub data: Vec<Vec<Val>>,
 }
 
@@ -159,13 +159,10 @@ fn read_row(row: &MySqlRow, n: usize) -> Vec<Val> {
         let col = row.column(i);
         let t = col.type_info().name();
         let v = match t {
-            "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" | "YEAR" => {
-                match row.try_get::<Option<i64>, _>(i) {
-                    Ok(Some(x)) => Val::I64(x),
-                    Ok(None) => Val::Null,
-                    Err(_) => row.try_get::<Option<u64>, _>(i).ok().flatten().map(|x| Val::I64(x as i64)).unwrap_or(Val::Null),
-                }
-            }
+            // Signed and unsigned are dispatched by name: a failed `try_get` in sqlx
+            // builds a formatted decode error, which is far too costly per cell.
+            "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => row.try_get::<Option<i64>, _>(i).ok().flatten().map(Val::I64).unwrap_or(Val::Null),
+            "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => row.try_get::<Option<u64>, _>(i).ok().flatten().map(|x| Val::I64(x as i64)).unwrap_or(Val::Null),
             "FLOAT" | "DOUBLE" => row.try_get::<Option<f64>, _>(i).ok().flatten().map(Val::F64).unwrap_or(Val::Null),
             // NEWDECIMAL is only compatible with a decimal type in sqlx; we surface it as f64 like Go/PHP.
             "DECIMAL" => row.try_get::<Option<rust_decimal::Decimal>, _>(i).ok().flatten().map(|d| Val::F64(rust_decimal::prelude::ToPrimitive::to_f64(&d).unwrap_or(0.0))).unwrap_or(Val::Null),
@@ -205,7 +202,7 @@ impl Exec for Db {
 
     async fn query(&self, st: &Step, params: &[Param]) -> Result<Vec<MySqlRow>> {
         let args = self.args(st, params)?;
-        let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.clone()));
+        let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.as_str()));
         for a in &args {
             q = bind(q, a);
         }
@@ -217,7 +214,7 @@ impl Exec for Db {
 
     async fn execute(&self, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
         let args = self.args(st, params)?;
-        let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.clone()));
+        let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.as_str()));
         for a in &args {
             q = bind(q, a);
         }
@@ -236,7 +233,7 @@ impl Exec for Tx {
 
     async fn query(&self, st: &Step, params: &[Param]) -> Result<Vec<MySqlRow>> {
         let args = self.db.args(st, params)?;
-        let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.clone()));
+        let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.as_str()));
         for a in &args {
             q = bind(q, a);
         }
@@ -250,7 +247,7 @@ impl Exec for Tx {
 
     async fn execute(&self, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
         let args = self.db.args(st, params)?;
-        let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.clone()));
+        let mut q = sqlx::query(sqlx::AssertSqlSafe(st.sql.as_str()));
         for a in &args {
             q = bind(q, a);
         }
