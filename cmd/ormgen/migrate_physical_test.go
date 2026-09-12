@@ -15,11 +15,15 @@ import (
 )
 
 func TestPhysicalMigration(t *testing.T) {
-	b, err := os.ReadFile("../../schema/schema.json")
+	b, err := os.ReadFile("../../schema/bench.mmd")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := schema.Load(b)
+	diagram, err := schema.Parse(string(b) + "\n  %% table_comment battle \"physical battle table\"\n  %% column_comment battle name \"physical battle name\"\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := schema.Build(diagram)
 	if err != nil {
 		t.Fatal(err)
 	}
