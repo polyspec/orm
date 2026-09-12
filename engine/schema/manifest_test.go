@@ -37,6 +37,9 @@ func TestBuildExample(t *testing.T) {
 	if c := b.Column("aes_key_version"); c == nil || c.Type != "i32" || c.Nullable {
 		t.Errorf("aes_key_version: %+v", c)
 	}
+	if c := b.Column("aes_key_version"); c != nil && len(c.Styles) != 0 {
+		t.Errorf("aes_key_version must not be an AES payload column: %+v", c.Styles)
+	}
 	if c := b.Column("aes_hex_email"); c.Type != "string" || c.Len != 255 || c.Lazy || strings.Join(c.Styles, ",") != "aes,hex" {
 		t.Errorf("aes_hex_email: %+v", c)
 	}

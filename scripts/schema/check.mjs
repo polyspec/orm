@@ -10,6 +10,9 @@ for (const [entityName, entity] of Object.entries(manifest.entities ?? {})) {
   if (!version || version.nullable || !['i32', 'i64'].includes(version.type)) {
     failures.push(`${entityName}: AES columns require non-null integer aes_key_version`);
   }
+  if (version && (version.styles ?? []).length > 0) {
+    failures.push(`${entityName}: aes_key_version must not have an encoding style`);
+  }
 }
 if (failures.length) {
   console.error(failures.join('\n'));
