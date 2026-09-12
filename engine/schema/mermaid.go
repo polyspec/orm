@@ -87,9 +87,10 @@ var (
 	// parent CARD child : label
 	reRelation = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s+([|}o]{1,2}[-.]{2}[|{o]{1,2})\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$`)
 	// %% kind table (a, b) [name]
-	reDirective = regexp.MustCompile(`^%%\s*(unique|index|fulltext|timestamps|scope|predicate|table_comment|column_comment)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
-	reLabel     = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s*(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
-	reRef       = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
+	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|timestamps|scope|predicate|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
+	reLabel          = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s*(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
+	reRef            = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
+	reDirectiveIdent = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 )
 
 var styleWords = map[string]bool{"aes": true, "hex": true, "gz": true, "json": true, "jsons": true, "base64": true, "serialize": true, "ip": true, "yaml": true, "curlfile": true}
@@ -297,6 +298,19 @@ func parseDirective(m []string, line int) (*Directive, error) {
 		d.Columns = []string{parts[0]}
 		text := strings.TrimSpace(d.Raw[len(parts[0]):])
 		d.Raw = strings.Trim(text, `"`)
+	case "rename_table":
+		parts := strings.Fields(d.Raw)
+		if len(parts) != 1 || !reDirectiveIdent.MatchString(parts[0]) {
+			return nil, &ParseError{line, "%% rename_table <new_table> <old_table>"}
+		}
+		d.Name = parts[0]
+	case "rename_column":
+		parts := strings.Fields(d.Raw)
+		if len(parts) != 2 || !reDirectiveIdent.MatchString(parts[0]) || !reDirectiveIdent.MatchString(parts[1]) {
+			return nil, &ParseError{line, "%% rename_column <table> <new_column> <old_column>"}
+		}
+		d.Columns = []string{parts[0]}
+		d.Name = parts[1]
 	}
 	return d, nil
 }
