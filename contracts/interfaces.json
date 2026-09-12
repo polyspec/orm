@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:b1456a2b95b0be090fcf76ca37a80bef8b292ae01ff6ebb33f7b0f1c3bda7243",
-    "php": "sha256:3fc4172afa0f3ede8489761809e3deec6e91b6337324a2b32cc3a3701705465b",
-    "rust": "sha256:f3f84d09e32d304fb9e04ed6a1b2d87ec15d0cccf3509a4e5b8f9a7365ce5d74",
-    "typescript": "sha256:99d3ffd39b48b85a8fa6a9089d1e49d1bf5416f50c8938195ae3842397db8da9"
+    "go": "sha256:0e87274df0661e62bb400c7f5693cbd47ae2e710ab26da6b6d598420d01aa033",
+    "php": "sha256:e641c82ab2d0b7645316b14c19d8882f111793d83a637af089fa491c7b4ddda7",
+    "rust": "sha256:f9d4781a666f05cdc12c4f9da6b7e33d871b097172b765193c93c808d02e85e9",
+    "typescript": "sha256:0e919cea64c4235f5af53349a423ef2044beac1c90c58edaea17321353cdce91"
   },
   "prohibited_symbols": [
     "multi_statement"
@@ -2188,10 +2188,16 @@
       "fields": {
         "conn": "text",
         "rel": "text",
-        "group": "IRGroup"
+        "group": "IRGroup",
+        "mode": "text",
+        "count_op": "text",
+        "p": "integer"
       },
       "optional": [
-        "conn"
+        "conn",
+        "mode",
+        "count_op",
+        "p"
       ]
     },
     {
