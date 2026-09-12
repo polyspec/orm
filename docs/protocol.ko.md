@@ -1,8 +1,8 @@
-# protocol.md — IR(JSON) to Plan(JSON)
+# protocol.md — IR(JSON)에서 Plan(JSON)으로
 
-The client renders the chain from [docs/dsl.md](dsl.md) into the IR below and caches plans by shape hash. The type definitions in `engine/ir/ir.go` and `engine/plan/plan.go` are authoritative.
+클라이언트는 [docs/dsl.md](dsl.md)의 호출 체인을 아래 IR로 변환하고 형태 해시로 Plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 한다.
 
-## 1. Request
+## 1. 요청
 ```json
 {
   "ir_version": 1,
@@ -38,9 +38,9 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
       | {"conn", "op": "match|match_boolean", "match": ["name","description"], "value": "kw"}
       | {"conn", "expr": "DAYOFWEEK(`created_ts`) = ?", "binds": [1]}
 ```
-- Consecutive predicates use AND. The `or()` token sets `conn: "or"` on the next item. `and(fn)`/`or(fn)` creates a `group`. `<rel>(fn)` creates `nav`; that relation must be joined in the current statement.
+- 연속 술어는 AND를 사용한다. `or()` 토큰은 다음 항목에 `conn: "or"`를 설정한다. `and(fn)`/`or(fn)` creates a `group`. `<rel>(fn)` creates `nav`; that relation must be joined in the current statement.
 - A join child's `on` is ON. Its `where` is added to the parent WHERE in parentheses. The client does not create the terminal predicate for a join child chain (`JOIN_PREDICATE_PLACEMENT`).
-- Backtick columns in `expr` are checked and aliases are substituted for the current entity. `?` values use `binds` order.
+- `expr`의 백틱 컬럼을 검사하고 현재 엔티티 기준으로 별칭을 치환한다. `?` values use `binds` order.
 
 ## 2. Plan
 ```json
@@ -57,11 +57,11 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 }
 ```
 - `bind_slots.from`: `param` (IR values; the executor applies aes/hex/ip when `host_styles` exists, and normalizes date/time/datetime values using the client representation) · `secret` (the executor AES key) · `parent` (relation IN values from the parent rows, expanded to N values) · `now` (executor UTC microsecond text for timestamps such as SQLite `updated_ts`).
-- Result mapping uses `index`. SELECT aliases such as `alias__col` are for debug output; the executor does not inspect their names.
+- 결과는 `index`로 매핑한다. SELECT aliases such as `alias__col` are for debug output; the executor does not inspect their names.
 - `assemble.columns[].styles` are application decode stages such as gz/json/serialize. SQL stages such as aes/hex/ip are already in SQL.
 - `children[].kind`: `join` (a fragment of the same row with `assemble`) · `one`/`many` (rows from another step attached through `parent_index`/`child_index`, assembled from `steps[step].assemble`).
 
-### Relation stages (S2)
+### 관계 단계 (S2)
 - Each relation has one step with `role: relation`, after its parent step. Nested and join-child relations follow the same rule; paginate is main → relations → `count`.
 - `step.parent = {step, column, index, if_parent?{column, index, param}}`: the executor reads the parent step's `index`, removes nulls, and deduplicates in first-seen order. With `if_parent`, only parent rows equal to `params[param]` are used. No query is issued when the value set is empty.
 - A SQL `parent` slot is one `?`; the executor expands it to N placeholders. N is rounded up to a power of two by repeating the last value. All clients use the same rule.
@@ -73,24 +73,24 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 - `columns[].styles` are decoded in reverse order immediately after reading a row (`docs/codec.md`). MySQL JSON values may already be parsed by the driver.
 - `key_by` is many-only, `flatten` is one-only, and `if_parent.column` must belong to the parent entity. Violations return `IR_INVALID`.
 
-## 3. Errors
+## 3. 오류
 `{"error": {"code": "…", "msg": "…"}}` — codes: `IR_INVALID VERSION_MISMATCH SCHEMA_HASH_MISMATCH SCHEMA_INVALID SCHEMA_NOT_LOADED ENTITY_UNKNOWN COLUMN_UNKNOWN RELATION_UNKNOWN INDEX_UNKNOWN OPERATOR_UNKNOWN OPERATOR_NOT_ALLOWED OR_AT_GROUP_START EMPTY_IN ENTITY_NOT_JOINED LIMIT_IN_RELATION COLUMN_ALIAS_CONFLICT DIALECT_UNKNOWN FRAME_INVALID OP_UNKNOWN INTERNAL`. Executor codes include `OPTIMISTIC_LOCK DEADLOCK DUPLICATE_KEY JOIN_PREDICATE_PLACEMENT PAREN_ACROSS_MODELS`.
 
-## 4. Transport
+## 4. 전송
 - Go: `engine.New(manifest, "mysql").Compile(ir)` function call.
 - Rust: `ormengine.wasm` — `orm_alloc/orm_load/orm_compile/orm_free` (result `[u32 status][u32 len][bytes]`).
 - PHP: `ormd -socket /abs/path.sock -schema /abs/schema.json` — length-prefixed frames, `{"op":"compile","ir":…}` → `{"plan":…}`, `{"op":"hash"}` → `{"schema_hash":…}`.
 - Cache key = xxh3(JSON of the IR shape after removing `value/values/binds`, plus IN cardinality) + schema_hash.
 
-### Write extension (S3)
+### 쓰기 확장 (S3)
 - `on_duplicate: [Assign]` is insert-only and excludes PK/auto. The planner creates `INSERT … ON DUPLICATE KEY UPDATE a = ?, b = b + ?[, pk = LAST_INSERT_ID(pk)]`. The executor reads the row again by that id.
 - `no_cascade_delete: true` sets `children[].cascade = false`. Cascade applies only when the related row has the foreign key to the current row. `deleteCascade` removes loaded cascade relations depth first, then removes the current row. A parent-side relation is never removed.
 - `save`, query `update`/`delete`, and `sql` are executor rules without additional IR (`docs/lanes/s3.md`).
 
-### Aggregate extension (S4)
+### 집계 확장 (S4)
 - `kind`: `count_distinct`, `min`, and `max` with `agg` as the column. `count` with `group_by` returns the number of groups.
 - `group_by_expr`: `{expr, as}` entries. Backtick columns use the current entity; `as` is the output name for `getsCount`. Bind values are unsupported.
 - `having: Group` is root-only and requires `group_by` or `group_by_expr`. It uses the same group syntax and aggregate `expr` items.
 
-### Dialects (S6)
-The plan shape is independent of dialect. Dialect handling changes identifier quoting, placeholders, LIKE, upsert, fulltext, and SQL-side versus application-side style stages according to `docs/dialects.md`. Unsupported operators fail at compile time with `OPERATOR_NOT_ALLOWED`.
+### 방언 (S6)
+Plan 형태는 방언과 무관하다. Dialect handling changes identifier quoting, placeholders, LIKE, upsert, fulltext, and SQL-side versus application-side style stages according to `docs/dialects.md`. 지원하지 않는 연산자는 컴파일 시 `OPERATOR_NOT_ALLOWED`로 실패한다.
