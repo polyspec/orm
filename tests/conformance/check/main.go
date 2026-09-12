@@ -120,34 +120,22 @@ func runAll(root, out string) {
 	}
 	sock := filepath.Join(out, "ormd.sock")
 	_ = os.Remove(sock)
-	ormdArgs := []string{"-listen", "127.0.0.1:0", "-schema", schema, "-dialect", driver}
+	ormdArgs := []string{"-listen", "127.0.0.1:0", "-schema", schema, "-dialect", driver, "-ready-fd", "3"}
 	ormd := exec.Command(filepath.Join(root, "bin", "ormd"), ormdArgs...)
-	stderr, err := ormd.StderrPipe()
+	readyRead, readyWrite, err := os.Pipe()
 	must(err)
+	ormd.ExtraFiles = []*os.File{readyWrite}
+	ormd.Stderr = os.Stderr
 	must(ormd.Start())
-	sc := bufio.NewScanner(stderr)
-	endpoint := ""
-	for sc.Scan() {
-		line := sc.Text()
-		if marker := "Connect listening on "; strings.Contains(line, marker) {
-			address := line[strings.Index(line, marker)+len(marker):]
-			if slash := strings.Index(address, "/orm.compiler.v1.CompilerService/"); slash >= 0 {
-				endpoint = address[:slash]
-			}
-		}
-		if endpoint != "" {
-			break
-		}
-	}
+	must(readyWrite.Close())
+	endpoint, err := bufio.NewReader(readyRead).ReadString('\n')
+	must(readyRead.Close())
+	endpoint = strings.TrimSpace(endpoint)
 	if endpoint == "" {
 		_ = ormd.Process.Kill()
 		_ = ormd.Wait()
-		must(fmt.Errorf("ormd did not report required listeners"))
+		must(fmt.Errorf("ormd did not signal the compiler endpoint: %w", err))
 	}
-	go func() {
-		for sc.Scan() {
-		}
-	}()
 	defer func() {
 		_ = ormd.Process.Kill()
 		_ = ormd.Wait()
