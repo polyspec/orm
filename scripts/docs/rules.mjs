@@ -41,12 +41,12 @@ const links = (text, file) => [...text.matchAll(/!?(?:\[[^\]]*\])\(([^)]+)\)|\[[
 for (const source of sources) {
   const translation = translations.get(source);
   if (!translation) {
-    fail('docs.english-source', `${relative(source)} has no ${relative(source).replace(/\.md$/, '.ko.md')} translation`);
+    fail('docs.language-pair', `${relative(source)} has no ${relative(source).replace(/\.md$/, '.ko.md')} translation`);
     continue;
   }
   const english = await readFile(source, 'utf8');
   const korean = await readFile(translation, 'utf8');
-  if (koreanRatio(english) > 0.2) fail('docs.english-source', `${relative(source)} is not an English page`);
+  if (koreanRatio(english) > 0.2) fail('docs.language-pair', `${relative(source)} is not an English page`);
   if (JSON.stringify(headings(english)) !== JSON.stringify(headings(korean))) fail('docs.translation-shape', `${relative(translation)} headings differ`);
   if (JSON.stringify(fences(english)) !== JSON.stringify(fences(korean))) fail('docs.translation-shape', `${relative(translation)} code fence declarations differ`);
   if (JSON.stringify(tables(english)) !== JSON.stringify(tables(korean))) fail('docs.translation-shape', `${relative(translation)} table structure differs`);
