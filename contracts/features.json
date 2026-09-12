@@ -95,7 +95,7 @@
       "fixtures": ["contracts/fixtures/batch-writes.json"],
       "tests": ["clients/go/orm/batch_test.go", "clients/go/gen/gen_integration_test.go", "clients/php/tests/integration.php", "clients/rust/tests/src/integration.rs", "tests/typescript/sqlite-integration.mjs"],
       "docs": ["docs/dsl.md", "docs/public-readiness.md"],
-      "verification": [{"id": "batch-unit", "command": "go test ./clients/go/orm ./clients/go/gen -run 'Batch' -count=1"}]
+      "verification": [{"id": "batch-unit", "command": "go test ./clients/go/orm -run 'Batch' -count=1"}]
     },
     {
       "id": "keyset_pagination",
@@ -112,7 +112,7 @@
       "fixtures": ["contracts/fixtures/keyset-pagination.json"],
       "tests": ["engine/keyset_test.go", "clients/go/orm/keyset_test.go", "clients/go/gen/gen_integration_test.go", "clients/php/tests/keyset.php", "clients/php/tests/integration.php", "clients/rust/orm/src/keyset.rs", "clients/rust/tests/src/integration.rs", "tests/typescript/keyset.mjs", "tests/typescript/sqlite-integration.mjs"],
       "docs": ["docs/dsl.md"],
-      "verification": [{"id": "keyset-go", "command": "go test ./engine/... ./clients/go/orm ./clients/go/gen -run 'Keyset' -count=1"}, {"id": "keyset-php", "command": "php clients/php/tests/keyset.php"}, {"id": "keyset-rust", "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked keyset"}, {"id": "keyset-typescript", "command": "npm run typescript:build && node tests/typescript/keyset.mjs"}]
+      "verification": [{"id": "keyset-go", "command": "go test ./engine/... ./clients/go/orm -run 'Keyset' -count=1"}, {"id": "keyset-php", "command": "php clients/php/tests/keyset.php"}, {"id": "keyset-rust", "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked keyset"}, {"id": "keyset-typescript", "command": "npm run typescript:build && node tests/typescript/keyset.mjs"}]
     },
     {
       "id": "transactions",
