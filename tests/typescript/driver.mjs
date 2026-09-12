@@ -1,10 +1,18 @@
 import { mkdtemp, rm } from 'node:fs/promises';
+import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openSqlite } from '../../clients/typescript/dist/index.js';
+
+const originalPrepare = DatabaseSync.prototype.prepare;
+let prepareCount = 0;
+DatabaseSync.prototype.prepare = function (...args) {
+  prepareCount++;
+  return originalPrepare.apply(this, args);
+};
+const { openSqlite } = await import('../../clients/typescript/dist/index.js');
 
 const root = await mkdtemp(join(tmpdir(), 'orm-typescript-driver-'));
-const db = openSqlite(join(root, 'test.sqlite'));
+const db = openSqlite(join(root, 'test.sqlite'), 2);
 try {
   await db.execute('CREATE TABLE item (seq INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)', []);
   const inserted = await db.execute('INSERT INTO item(name) VALUES (?)', ['first']);
@@ -17,6 +25,14 @@ try {
   if (stopped.exhausted || stopped.count !== 2 || JSON.stringify(streamed) !== '[[1,"first"],[2,"second"]]') throw new Error('SQLite stream stop differs');
   const exhausted = await db.stream('SELECT seq, name FROM item ORDER BY seq', [], () => true);
   if (!exhausted.exhausted || exhausted.count !== 3) throw new Error('SQLite stream exhaustion differs');
+
+  const beforeCache = prepareCount;
+  await db.execute('SELECT 110', []);
+  await db.execute('SELECT 110', []);
+  await db.execute('SELECT 120', []);
+  await db.execute('SELECT 130', []);
+  await db.execute('SELECT 110', []);
+  if (prepareCount - beforeCache !== 4) throw new Error(`SQLite statement cache prepare count was ${prepareCount - beforeCache}, want 4`);
 
   const rollback = await db.begin();
   await rollback.execute('UPDATE item SET name = ? WHERE seq = ?', ['rollback', 1]);
