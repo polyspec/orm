@@ -59,6 +59,7 @@ classDiagram
         Entity entity
         Request request
         Binding binding
+        scope(value) Query
         where(callback) Query
         and(callback) Query
         or() Query
@@ -86,6 +87,8 @@ classDiagram
 ```
 
 각 entity occurrence는 query 객체와 Where builder 하나를 가진다. group은 predicate 또는 중첩 group을 포함한다. `or()`는 다음 항목의 연결자를 바꾼다. `and(fn)`과 `or(fn)`은 중첩 group을 만든다. relation과 join은 schema의 key mapping을 사용하며 정규 문법에서 호출자가 두 번째 mapping을 전달하지 않는다.
+
+`scope(value)`는 entity가 `%% scope`를 선언한 query에만 존재한다. 이 메서드는 parameter index를 `RequestIR.query.scope_p`에 저장하며 Where builder는 이 값을 변경할 수 없다. compiler는 root와 relation scope를 WHERE에 적용하고 join scope를 JOIN ON에 적용한다. scoped insert는 scope 컬럼을 설정한다. scoped update와 upsert는 scope 컬럼을 설정할 수 없다. scoped raw SQL은 잘못된 요청이다.
 
 ## 5. 공개 API — IF-09 ~ IF-12
 

@@ -36,6 +36,7 @@ type Request struct {
 // Query is the shape shared by the root, join children and relation children.
 type Query struct {
 	Entity      string      `json:"entity"`
+	ScopeP      *int        `json:"scope_p,omitempty"` // parameter for the entity's declared tenant scope
 	Columns     *Columns    `json:"columns,omitempty"`
 	On          *Group      `json:"on,omitempty"` // join children only
 	Where       *Group      `json:"where,omitempty"`
@@ -282,6 +283,9 @@ func Validate(m *schema.Manifest, r *Request) error {
 		return err
 	}
 	ent := m.Entities[r.Entity]
+	if r.ScopeP != nil && r.Kind == "raw" {
+		return errf("IR_INVALID", "scope cannot be applied to raw SQL")
+	}
 	switch r.Kind {
 	case "sum", "avg":
 		c := ent.Column(r.Agg)
@@ -327,6 +331,11 @@ func Validate(m *schema.Manifest, r *Request) error {
 			if err := v.assign(ent, r, &a); err != nil {
 				return err
 			}
+			if r.ScopeP != nil && a.Column == ent.Scope {
+				if r.Kind != "insert" || a.P == nil || *a.P != *r.ScopeP {
+					return errf("IR_INVALID", "scoped %s cannot assign %s.%s from a different parameter", r.Kind, r.Entity, ent.Scope)
+				}
+			}
 		}
 	}
 	if len(r.OnDuplicate) > 0 {
@@ -339,6 +348,9 @@ func Validate(m *schema.Manifest, r *Request) error {
 			}
 			if c := ent.Column(a.Column); c.PK || c.Auto {
 				return errf("IR_INVALID", "on_duplicate cannot assign %s.%s", r.Entity, a.Column)
+			}
+			if r.ScopeP != nil && a.Column == ent.Scope {
+				return errf("IR_INVALID", "scoped upsert cannot update %s.%s", r.Entity, ent.Scope)
 			}
 		}
 	}
@@ -376,6 +388,14 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 	ent, ok := v.m.Entities[q.Entity]
 	if !ok {
 		return errf("ENTITY_UNKNOWN", "%s", q.Entity)
+	}
+	if q.ScopeP != nil {
+		if ent.Scope == "" {
+			return errf("IR_INVALID", "scope is not declared for %s", q.Entity)
+		}
+		if err := v.params([]int{*q.ScopeP}); err != nil {
+			return err
+		}
 	}
 	if q.Columns != nil {
 		if q.Columns.Mode != "" && q.Columns.Mode != "all" && q.Columns.Mode != "none" {

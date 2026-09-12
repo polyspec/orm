@@ -618,7 +618,6 @@ impl<'a> AuthorWhere<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
     pub fn and(mut self, f: impl FnOnce(AuthorWhere<'_>) -> AuthorWhere<'_>) -> Self { self.w.and_with(|w| { f(AuthorWhere { w }); }); self }
 	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
-    pub fn scope(mut self, v: impl Into<Param>) -> Self { self.w.pred("service_seq", "eq", v.into()); self }
     pub fn started_after(mut self, a0: impl Into<Param>) -> Self { self.w.expr("`start_dt` > ?", vec![a0.into()]); self }
     pub fn visible(mut self) -> Self { self.w.expr("`is_close` = FALSE AND `is_display` = TRUE", vec![]); self }
     pub fn service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.w.nav_with("service", |w| { f(super::service::ServiceWhere { w }); }); self }
@@ -1096,7 +1095,7 @@ impl Author {
     pub fn or(mut self) -> Self { self.q.or(); self }
     pub fn and(mut self, f: impl FnOnce(AuthorWhere<'_>) -> AuthorWhere<'_>) -> Self { self.q.w().and_with(|w| { f(AuthorWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
-    pub fn scope(mut self, v: impl Into<Param>) -> Self { self.q.w().pred("service_seq", "eq", v.into()); self }
+    pub fn scope(mut self, v: i64) -> Self { self.q.scope(v); self }
     pub fn started_after(mut self, a0: impl Into<Param>) -> Self { self.q.w().expr("`start_dt` > ?", vec![a0.into()]); self }
     pub fn visible(mut self) -> Self { self.q.w().expr("`is_close` = FALSE AND `is_display` = TRUE", vec![]); self }
     pub fn service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.q.w().nav_with("service", |w| { f(super::service::ServiceWhere { w }); }); self }

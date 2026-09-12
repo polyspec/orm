@@ -11,6 +11,7 @@ classDiagram
         Request request
         query()
         using()
+        scope()
         predicate()
         join()
         relation()
@@ -67,6 +68,7 @@ classDiagram
         RelationOptions options
         List_Order order
         List_RelationEdge relations
+        Optional_ParameterIndex scopeParameter
         Optional_Group where
     }
     class Binding {
@@ -249,6 +251,7 @@ classDiagram
 | QueryNode.options | `RelationOptions` |
 | QueryNode.order | `List<Order>` |
 | QueryNode.relations | `List<RelationEdge>` |
+| QueryNode.scopeParameter | `Optional<ParameterIndex>` |
 | QueryNode.where | `Optional<Group>` |
 | Binding.control | `NativeExecutionControl` |
 | Binding.executor | `Optional<Executor>` |

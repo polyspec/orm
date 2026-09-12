@@ -66,6 +66,9 @@ final class Req
 
     private static function shiftQuery(array &$q, int $off): void
     {
+        if (isset($q['scope_p'])) {
+            $q['scope_p'] += $off;
+        }
         foreach (['on', 'where', 'having'] as $k) {
             if (isset($q[$k])) {
                 self::shiftGroup($q[$k], $off);
@@ -269,6 +272,13 @@ class Q
     {
         $this->keyFn = $fn;
         return $this;
+    }
+
+    public function scopeValue(mixed $value): void
+    {
+        $p = $this->req->p($value);
+        $this->node['scope_p'] = $p;
+        $this->req->sig .= "|scope\x1f$p";
     }
 
     /** W over the root where group, carrying the pending connector. */

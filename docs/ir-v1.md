@@ -174,7 +174,11 @@ terminal   gets
 
 CI performs a four-way diff and fails on any difference. Casing prevents direct source comparison, so **tokens are compared instead of generated source**.
 
-## 6. v1 scope
+## 6. Tenant scope
+
+`Query.scope_p` is an optional index into the request parameter list. It is separate from `Query.where` and is valid only when the entity manifest declares a scope column. The compiler applies it outside the user predicate group, adds it to JOIN ON for a joined entity, and includes it in each relation step. Inserts use the parameter for the scope column. Updates and upserts cannot assign that column. Raw SQL cannot use `scope_p`.
+
+## 7. v1 coverage
 
 Included: single-table predicates, order/limit/offset, CRUD, dataStyle, batch-loaded relations, and one `raw()` operation.
 Excluded: joins, subqueries, nested parentheses, aggregates, transaction helpers (v2), and fulltext.

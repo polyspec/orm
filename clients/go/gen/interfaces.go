@@ -21,6 +21,7 @@ type AuthorInterface interface {
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
 	Using(ctx context.Context, ex orm.Exec) *AuthorQuery
+	Scope(v int64) *AuthorQuery
 	Paginate(page, per int) (*orm.Page[AuthorRow], error)
 	GetsBySeq(v int64) (*orm.Collection[AuthorRow], error)
 	GetsByName(v string) (*orm.Collection[AuthorRow], error)
