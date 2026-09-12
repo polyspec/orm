@@ -4,9 +4,9 @@ declare(strict_types=1);
 namespace Orm;
 
 /**
- * A strict parser for the orm.toml subset (docs/config.md): top-level and `[table]` keys,
+ * A strict parser for the orm.toml subset (docs/config.md): top-level, `[table]`, and `[table.child]` keys,
  * basic "strings" with \\ \" \n \t escapes, decimal integers, booleans, `#` comments.
- * Anything else (dotted keys, arrays, inline tables, multi-line strings, duplicate keys)
+ * Anything else (dotted keys, arrays, inline tables, multi-line strings, duplicate keys or tables)
  * is a CONFIG error — the file is declared, not discovered.
  */
 final class Toml
@@ -36,6 +36,7 @@ final class Toml
     {
         $out = [];
         $table = null;
+        $declaredTables = [];
         foreach (preg_split('/\r?\n/', $text) as $i => $line) {
             $n = $i + 1;
             $line = self::stripComment($line);
@@ -43,14 +44,24 @@ final class Toml
                 continue;
             }
             if ($line[0] === '[') {
-                if (!preg_match('/^\[([A-Za-z0-9_-]+)\]$/', $line, $m)) {
+                if (!preg_match('/^\[([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)\]$/', $line, $m)) {
                     throw new OrmException(Code::CONFIG, "line $n: bad table header");
                 }
-                $table = $m[1];
-                if (isset($out[$table])) {
-                    throw new OrmException(Code::CONFIG, "line $n: table [$table] declared twice");
+                $path = $m[1];
+                if (isset($declaredTables[$path])) {
+                    throw new OrmException(Code::CONFIG, "line $n: table [$path] declared twice");
                 }
-                $out[$table] = [];
+                $declaredTables[$path] = true;
+                $table = explode('.', $path);
+                $target =& $out;
+                foreach ($table as $part) {
+                    if (isset($target[$part]) && !is_array($target[$part])) {
+                        throw new OrmException(Code::CONFIG, "line $n: table [$path] conflicts with key $part");
+                    }
+                    $target[$part] ??= [];
+                    $target =& $target[$part];
+                }
+                unset($target);
                 continue;
             }
             if (!preg_match('/^([A-Za-z0-9_-]+)\s*=\s*(.+)$/', $line, $m)) {
@@ -64,10 +75,15 @@ final class Toml
                 }
                 $out[$key] = $value;
             } else {
-                if (array_key_exists($key, $out[$table])) {
-                    throw new OrmException(Code::CONFIG, "line $n: key $table.$key declared twice");
+                $target =& $out;
+                foreach ($table as $part) {
+                    $target =& $target[$part];
                 }
-                $out[$table][$key] = $value;
+                if (array_key_exists($key, $target)) {
+                    throw new OrmException(Code::CONFIG, "line $n: key " . implode('.', $table) . ".$key declared twice");
+                }
+                $target[$key] = $value;
+                unset($target);
             }
         }
         return $out;

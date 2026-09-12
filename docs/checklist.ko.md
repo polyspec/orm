@@ -92,7 +92,7 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 - [ ] T7.10 `multi_statement` 관계 계획과 결과를 구현·검사한다.
 - [ ] T7.11 Go·PHP typed 직접 스캔과 성능 기준 재측정을 구현한다.
 - [x] T7.12 고정된 Rust 의존성으로 결정적인 150테이블 Rust fixture를 생성하고 컴파일했습니다.
-- [~] T7.13 AES version column 검사와 행 재암호화 도우미를 구현했다. 데이터베이스 저장, 상태 조회, 4개 클라이언트의 동등한 DB API가 남아 있다.
+- [x] T7.13 AES version column을 검사하고, write에 현재 버전을 저장하며, Go·PHP·Rust·TypeScript에 동일한 상태 조회와 transaction 행 재암호화 API를 구현했다. 실제 데이터베이스에서 반복 실행과 모든 AES 컬럼을 검사했다.
 - [x] T7.14 매니페스트, 스키마 해시, import, DDL, diff, SQLite 메타데이터에 테이블·컬럼 주석을 포함했습니다. 단위 테스트와 containerctl MySQL·PostgreSQL 테스트가 통과했습니다.
 - [x] T7.15 MySQL·PostgreSQL·SQLite의 마이그레이션 실행 잠금, 트랜잭션 처리 범위, 상세 복구 상태를 추가했습니다. 마이그레이션 잠금 안에서 도착·출발·unsafe 실제 상태를 판정합니다.
 - [x] T7.16 세미콜론 분할을 방언별 SQL 문장 분석기로 교체하고 문장별 실패 위치를 보존했습니다.

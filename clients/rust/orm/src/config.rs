@@ -1,6 +1,7 @@
 //! `orm.toml` (docs/config.md): one declared configuration, loaded by `Db::from_config`.
 //! Every path is absolute, exists and is not a symlink; anything else is `CONFIG`.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -64,6 +65,10 @@ pub struct SecretsSection {
     /// Name of the environment variable holding the AES key.
     #[serde(default)]
     pub aes_env: Option<String>,
+    #[serde(default)]
+    pub aes_keys: BTreeMap<String, String>,
+    #[serde(default)]
+    pub aes_version: Option<i32>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -159,12 +164,32 @@ impl OrmConfig {
         if cfg.secrets.aes.is_some() && cfg.secrets.aes_env.is_some() {
             return Err(cfg_err("secrets: declare aes or aes_env, not both"));
         }
+        if !cfg.secrets.aes_keys.is_empty() {
+            if cfg.secrets.aes.is_some() || cfg.secrets.aes_env.is_some() {
+                return Err(cfg_err("secrets.aes_keys is exclusive with secrets.aes and secrets.aes_env"));
+            }
+            let current = cfg.secrets.aes_version.ok_or_else(|| cfg_err("secrets.aes_version is required with secrets.aes_keys"))?;
+            if current < 1 || !cfg.secrets.aes_keys.contains_key(&current.to_string()) {
+                return Err(cfg_err(format!("secrets.aes_version {current} is not declared in secrets.aes_keys")));
+            }
+            for (version, key) in &cfg.secrets.aes_keys {
+                if version.parse::<i32>().ok().filter(|value| *value > 0).is_none() || key.is_empty() {
+                    return Err(cfg_err(format!("secrets.aes_keys.{version} is invalid")));
+                }
+            }
+        } else if cfg.secrets.aes_version.unwrap_or(1) != 1 {
+            return Err(cfg_err("secrets.aes_version requires secrets.aes_keys"));
+        }
         Ok(cfg)
     }
 
     /// The AES key: `[secrets].aes`, or the value of the `[secrets].aes_env` variable;
     /// empty when neither is declared (a statement with a secret slot then fails with CONFIG).
     pub fn aes_key(&self) -> Result<String> {
+        if !self.secrets.aes_keys.is_empty() {
+            let version = self.secrets.aes_version.ok_or_else(|| cfg_err("secrets.aes_version is required with secrets.aes_keys"))?;
+            return self.secrets.aes_keys.get(&version.to_string()).cloned().ok_or_else(|| cfg_err(format!("secrets.aes_version {version} is not declared")));
+        }
         match (&self.secrets.aes, &self.secrets.aes_env) {
             (Some(k), _) => Ok(k.clone()),
             (None, Some(var)) => std::env::var(var).map_err(|_| cfg_err(format!("secrets.aes_env: {var} is not set"))),
@@ -226,7 +251,7 @@ impl Db {
         let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, dialect: &cfg.db.driver, cache_dir: cfg.engine.cache_dir.as_deref() })?);
         let on_query = cfg.debug.on_query.then(stderr_logger);
         let options = cfg.connect_options()?;
-        let runtime = Config { aes_key, on_query };
+        let runtime = Config { aes_key, aes_version: cfg.secrets.aes_version.unwrap_or(1), on_query };
         if let Some(ormd) = &cfg.ormd {
             if let Some(endpoint) = &ormd.endpoint {
                 let compiler = Arc::new(ConnectCompiler::new(endpoint, std::time::Duration::from_millis(ormd.timeout_ms))?);
@@ -309,6 +334,11 @@ mod tests {
 
         let both = write(&d, "both.toml", &format!("schema = {:?}\n[db]\ndsn = \"mysql://root@localhost/x\"\n[secrets]\naes = \"k\"\naes_env = \"K\"\n[engine]\nwasm = {:?}\n", schema, wasm));
         assert!(OrmConfig::load(&both).unwrap_err().to_string().contains("not both"));
+
+        let versioned = write(&d, "versioned.toml", &format!("schema = {:?}\n[db]\ndsn = \"mysql://root@localhost/x\"\n[secrets]\naes_version = 2\n[secrets.aes_keys]\n1 = \"old-key\"\n2 = \"current-key\"\n[engine]\nwasm = {:?}\n", schema, wasm));
+        let versioned = OrmConfig::load(&versioned).unwrap();
+        assert_eq!(versioned.secrets.aes_version, Some(2));
+        assert_eq!(versioned.aes_key().unwrap(), "current-key");
 
         let unknown = write(&d, "unknown.toml", &format!("schema = {:?}\n[db]\ndsn = \"mysql://root@localhost/x\"\n[engine]\nwasm = {:?}\nwat = 1\n", schema, wasm));
         assert_eq!(OrmConfig::load(&unknown).unwrap_err().code(), crate::codes::CONFIG);

@@ -419,12 +419,6 @@ func (r *AuthorRow) GetAesKeyVersion() int32 {
 	return r.AesKeyVersion
 }
 
-func (r *AuthorRow) SetAesKeyVersion(v int32) *AuthorRow {
-	r.AesKeyVersion = v
-	r.Dirty("aes_key_version", v)
-	return r
-}
-
 // GetAesHexEmail is nil-safe.
 func (r *AuthorRow) GetAesHexEmail() *string {
 	if r == nil {
@@ -1082,8 +1076,17 @@ func (q *AuthorQuery) Using(ctx context.Context, ex orm.Exec) *AuthorQuery {
 	return q
 }
 
-// RotateAES re-encrypts every AES column and updates aes_key_version in one transaction.
-func (q *AuthorQuery) RotateAES(targetVersion int32, keyring orm.AESKeyring) (int, error) {
+// AESStatus returns row counts by stored AES key version.
+func (q *AuthorQuery) AESStatus(keyring orm.AESKeyring) (orm.AESRotationStatus, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return orm.AESRotationStatus{}, err
+	}
+	return ex.DB().AESStatus(ctx, ex, orm.AESRotationSpec{Table: "author", PrimaryKey: "seq", VersionColumn: "aes_key_version"}, keyring)
+}
+
+// RotateAES re-encrypts every pending AES row to the keyring current version.
+func (q *AuthorQuery) RotateAES(keyring orm.AESKeyring) (int, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return 0, err
@@ -1094,7 +1097,7 @@ func (q *AuthorQuery) RotateAES(targetVersion int32, keyring orm.AESKeyring) (in
 			{Name: "aes_hex_email", Styles: []string{"aes", "hex"}},
 			{Name: "aes_hex_phone", Styles: []string{"aes", "hex"}},
 		},
-	}, targetVersion, keyring)
+	}, keyring)
 }
 
 // Using selects the context and pool or transaction for this loaded row.
@@ -5478,11 +5481,6 @@ func (q *AuthorQuery) SetLikeCountExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("like_count", frag, binds...)
 	return q
 }
-func (q *AuthorQuery) SetAesKeyVersion(v int32) *AuthorQuery { q.q.Set("aes_key_version", v); return q }
-func (q *AuthorQuery) SetAesKeyVersionExpr(frag string, binds ...any) *AuthorQuery {
-	q.q.SetExpr("aes_key_version", frag, binds...)
-	return q
-}
 func (q *AuthorQuery) SetAesHexEmail(v string) *AuthorQuery { q.q.Set("aes_hex_email", v); return q }
 func (q *AuthorQuery) SetAesHexEmailNull() *AuthorQuery     { q.q.SetNull("aes_hex_email"); return q }
 func (q *AuthorQuery) SetAesHexEmailExpr(frag string, binds ...any) *AuthorQuery {
@@ -5588,16 +5586,8 @@ func (q *AuthorQuery) MinusServiceMemberSeq(v int64) *AuthorQuery {
 }
 func (q *AuthorQuery) PlusLikeCount(v int64) *AuthorQuery  { q.q.Plus("like_count", v); return q }
 func (q *AuthorQuery) MinusLikeCount(v int64) *AuthorQuery { q.q.Minus("like_count", v); return q }
-func (q *AuthorQuery) PlusAesKeyVersion(v int32) *AuthorQuery {
-	q.q.Plus("aes_key_version", v)
-	return q
-}
-func (q *AuthorQuery) MinusAesKeyVersion(v int32) *AuthorQuery {
-	q.q.Minus("aes_key_version", v)
-	return q
-}
-func (q *AuthorQuery) PlusPrice(v float64) *AuthorQuery  { q.q.Plus("price", v); return q }
-func (q *AuthorQuery) MinusPrice(v float64) *AuthorQuery { q.q.Minus("price", v); return q }
+func (q *AuthorQuery) PlusPrice(v float64) *AuthorQuery    { q.q.Plus("price", v); return q }
+func (q *AuthorQuery) MinusPrice(v float64) *AuthorQuery   { q.q.Minus("price", v); return q }
 
 // ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
 func (q *AuthorQuery) OnDuplicateSetName(v string) *AuthorQuery { q.q.OnDuplicate("name", v); return q }
@@ -5778,14 +5768,6 @@ func (q *AuthorQuery) OnDuplicateSetLikeCountExpr(frag string, binds ...any) *Au
 	q.q.OnDuplicateExpr("like_count", frag, binds...)
 	return q
 }
-func (q *AuthorQuery) OnDuplicateSetAesKeyVersion(v int32) *AuthorQuery {
-	q.q.OnDuplicate("aes_key_version", v)
-	return q
-}
-func (q *AuthorQuery) OnDuplicateSetAesKeyVersionExpr(frag string, binds ...any) *AuthorQuery {
-	q.q.OnDuplicateExpr("aes_key_version", frag, binds...)
-	return q
-}
 func (q *AuthorQuery) OnDuplicateSetAesHexEmail(v string) *AuthorQuery {
 	q.q.OnDuplicate("aes_hex_email", v)
 	return q
@@ -5925,14 +5907,6 @@ func (q *AuthorQuery) OnDuplicatePlusLikeCount(v int64) *AuthorQuery {
 }
 func (q *AuthorQuery) OnDuplicateMinusLikeCount(v int64) *AuthorQuery {
 	q.q.OnDuplicateMinus("like_count", v)
-	return q
-}
-func (q *AuthorQuery) OnDuplicatePlusAesKeyVersion(v int32) *AuthorQuery {
-	q.q.OnDuplicatePlus("aes_key_version", v)
-	return q
-}
-func (q *AuthorQuery) OnDuplicateMinusAesKeyVersion(v int32) *AuthorQuery {
-	q.q.OnDuplicateMinus("aes_key_version", v)
 	return q
 }
 func (q *AuthorQuery) OnDuplicatePlusPrice(v float64) *AuthorQuery {
@@ -6511,26 +6485,6 @@ func (q *AuthorQuery) AvgLikeCount() (float64, error) {
 	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "like_count"
-	v, err := orm.Scalar(ctx, ex, q.q.Req)
-	return orm.AsFloat64(v), err
-}
-func (q *AuthorQuery) SumAesKeyVersion() (float64, error) {
-	ctx, ex, err := q.binding.Resolve()
-	if err != nil {
-		return 0, err
-	}
-	q.q.Req.IR.Kind = "sum"
-	q.q.Req.IR.Agg = "aes_key_version"
-	v, err := orm.Scalar(ctx, ex, q.q.Req)
-	return orm.AsFloat64(v), err
-}
-func (q *AuthorQuery) AvgAesKeyVersion() (float64, error) {
-	ctx, ex, err := q.binding.Resolve()
-	if err != nil {
-		return 0, err
-	}
-	q.q.Req.IR.Kind = "avg"
-	q.q.Req.IR.Agg = "aes_key_version"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }

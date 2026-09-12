@@ -162,6 +162,13 @@ func signatures(d document, e *schema.Entity, lang, role string) ([]native, erro
 				c := e.Column(e.Scope)
 				expansions = append(expansions, map[string]string{"entity": e.Name, "Entity": pascal(e.Name), "type": colType(c, lang)})
 			}
+		case "aes_entity":
+			for _, c := range e.Columns {
+				if c.Name == "aes_key_version" {
+					expansions = append(expansions, base)
+					break
+				}
+			}
 		case "eq_column":
 			for _, c := range e.Columns {
 				if ir.OpAllowed(c, "eq") {
@@ -206,7 +213,7 @@ func GenerateInterfaces(m *schema.Manifest, lang, outDir, namespace string) erro
 	case "rust":
 		b.WriteString("// Code generated from contracts/interfaces.json; DO NOT EDIT.\n#![allow(unused_imports, unused_mut, async_fn_in_trait)]\nuse super::*;\nuse orm::{Collection, Page, Result};\nuse orm::db::{self, Exec};\n")
 	case "typescript":
-		b.WriteString("// Code generated from contracts/interfaces.json; DO NOT EDIT.\nimport type { Collection, Page } from '../model.js';\nimport type { Db } from '../database.js';\nimport type { Point } from '../codec.js';\nimport type { ")
+		b.WriteString("// Code generated from contracts/interfaces.json; DO NOT EDIT.\nimport type { Collection, Page } from '../model.js';\nimport type { Db } from '../database.js';\nimport type { Point } from '../codec.js';\nimport type { AesKeyring, AesRotationStatus } from '../index.js';\nimport type { ")
 		for i, entity := range m.Order {
 			if i > 0 {
 				b.WriteString(", ")

@@ -1,4 +1,4 @@
-import type { Compiler, Database, Executor, Param, Plan, PlanStep, Request } from './index.js';
+import type { AesKeyring, AesRotationSpec, AesRotationStatus, Compiler, Database, Executor, Param, Plan, PlanStep, Request } from './index.js';
 import { readFile } from 'node:fs/promises';
 import { ConnectCompiler, ConnectPlanCompiler, type CompilerTransport } from './compiler.js';
 import { loadConfig, resolveAesKey } from './config.js';
@@ -14,6 +14,7 @@ export interface DatabaseOptions {
   schemaHash: string;
   compiler: CompilerTransport;
   aesKey?: string;
+  aesVersion?: number;
   onQuery?: (event: QueryEvent) => void;
 }
 
@@ -42,9 +43,12 @@ export class Db implements Database, Executor {
     this.schemaHash = options.schemaHash;
     this.compiler = new ConnectPlanCompiler(options.compiler);
     this.aesKey = options.aesKey ?? '';
+    this.aesVersion = options.aesVersion ?? 1;
+    if (!Number.isSafeInteger(this.aesVersion) || this.aesVersion < 1) throw new OrmError('CONFIG', 'aes version must be a positive integer');
     this.onQuery = options.onQuery;
   }
   protected readonly aesKey: string;
+  protected readonly aesVersion: number;
   protected readonly onQuery?: (event: QueryEvent) => void;
   public get executor(): Executor { return this; }
   public get driver(): string { return this.connection.name; }
@@ -74,13 +78,49 @@ export class Db implements Database, Executor {
       const detail = event.error === undefined ? '' : ` error=${String(event.error)}`;
       console.error(`orm ${(event.seconds * 1000).toFixed(3)}ms ${event.sql} ${JSON.stringify(event.binds)}${detail}`);
     } : undefined;
-    const options = { schemaHash: manifest.schema_hash, compiler, aesKey, onQuery };
+    const options = { schemaHash: manifest.schema_hash, compiler, aesKey, aesVersion: config.secrets.aes_version, onQuery };
     if (config.db.driver === 'sqlite') return Db.connect(openSqlite(config.db.dsn), options);
     if (config.db.driver === 'postgres') return Db.connect(openPostgres(config.db.dsn, config.db.pool), options);
     return Db.connect(openMySql(mysqlDsn(config.db.dsn, config.db.user, config.db.password), config.db.pool), options);
   }
 
   public async close(): Promise<void> { await this.connection.close(); }
+
+  public async aesStatus(spec: AesRotationSpec, keyring: AesKeyring): Promise<AesRotationStatus> {
+    const table = this.identifier(spec.table); const version = this.identifier(spec.versionColumn);
+    const result = await this.connection.execute(`SELECT ${version}, COUNT(*) FROM ${table} GROUP BY ${version} ORDER BY ${version}`, []);
+    const versions: Record<string, number> = {}; let total = 0; let pending = 0;
+    for (const row of result.rows) {
+      const stored = Number(row[0]); const count = Number(row[1]);
+      if (!Number.isSafeInteger(stored) || stored < 1 || !Number.isSafeInteger(count)) throw new OrmError('CODEC_DECODE', 'AES status returned an invalid version or count');
+      versions[String(stored)] = count; total += count;
+      if (stored !== keyring.currentVersion) pending += count;
+    }
+    return { current: keyring.currentVersion, total, pending, versions };
+  }
+
+  public async rotateAESRows(spec: AesRotationSpec, keyring: AesKeyring): Promise<number> {
+    if (!(this instanceof Tx)) return this.transaction(transaction => transaction.rotateAESRows(spec, keyring));
+    if (spec.columns.length === 0) throw new OrmError('CONFIG', 'AES rotation columns are empty');
+    const table = this.identifier(spec.table); const primary = this.identifier(spec.primaryKey); const version = this.identifier(spec.versionColumn);
+    const columns = spec.columns.map(column => this.identifier(column.name));
+    const select = `SELECT ${primary}, ${version}, ${columns.join(', ')} FROM ${table} WHERE ${version} <> ${this.placeholder(1)} ORDER BY ${primary}`;
+    const rows = (await this.connection.execute(select, [keyring.currentVersion])).rows;
+    const sets = [...columns.map((column, index) => `${column} = ${this.placeholder(index + 1)}`), `${version} = ${this.placeholder(columns.length + 1)}`];
+    const update = `UPDATE ${table} SET ${sets.join(', ')} WHERE ${primary} = ${this.placeholder(columns.length + 2)} AND ${version} = ${this.placeholder(columns.length + 3)}`;
+    for (const values of rows) {
+      const row: Record<string, unknown> = { [spec.primaryKey]: values[0], [spec.versionColumn]: Number(values[1]) };
+      spec.columns.forEach((column, index) => { row[column.name] = values[index + 2]; });
+      const rotated = keyring.rotateRow(row, spec.versionColumn, spec.columns, keyring.currentVersion, {
+        decode: (value, styles, key) => hostDecode(value as string | Uint8Array, styles, key),
+        encode: (value, styles, key) => hostEncode(value, styles, key),
+      });
+      const params = [...spec.columns.map(column => rotated[column.name]), keyring.currentVersion, values[0], Number(values[1])] as DriverValue[];
+      const result = await this.connection.execute(update, params);
+      if (result.affected !== 1) throw new OrmError('OPTIMISTIC_LOCK', `AES rotation changed ${spec.table} primary key ${String(values[0])}`);
+    }
+    return rows.length;
+  }
   public async transaction<T>(callback: (transaction: Tx) => Promise<T>): Promise<T> {
     let last: unknown;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -99,6 +139,12 @@ export class Db implements Database, Executor {
     }
     throw last;
   }
+
+  private identifier(value: string): string {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) throw new OrmError('CONFIG', `invalid generated identifier ${value}`);
+    return this.driver === 'mysql' ? `\`${value}\`` : `"${value}"`;
+  }
+  private placeholder(position: number): string { return this.driver === 'postgres' ? `$${position}` : '?'; }
 
   public async plan(request: Request): Promise<Plan> {
     const key = canonical(request);
@@ -200,8 +246,12 @@ export class Db implements Database, Executor {
         }
         case 'secret':
           if (dump) out.push('$SECRET');
-          else if (slot.name !== 'aes' || this.aesKey === '') throw new OrmError('CONFIG', `secret ${slot.name} not configured`);
-          else out.push(this.aesKey);
+          else if (slot.name === 'aes' && this.aesKey !== '') out.push(this.aesKey);
+          else throw new OrmError('CONFIG', `secret ${slot.name} not configured`);
+          break;
+        case 'config':
+          if (slot.name === 'aes_version') out.push(this.aesVersion);
+          else throw new OrmError('CONFIG', `config value ${slot.name} not configured`);
           break;
         case 'now': out.push(dump ? '$NOW' : sqlDate(new Date())); break;
         default: throw new OrmError('INTERNAL', `bind from ${slot.from}`);
@@ -214,7 +264,7 @@ export class Db implements Database, Executor {
 export class Tx extends Db {
   public active: boolean = true;
   public constructor(private readonly transactionConnection: DriverTransaction, outer: Db) {
-    super(transactionConnection, { schemaHash: outer.schemaHash, compiler: transportUnavailable, aesKey: outer['aesKey'], onQuery: outer['onQuery'] }, outer);
+    super(transactionConnection, { schemaHash: outer.schemaHash, compiler: transportUnavailable, aesKey: outer['aesKey'], aesVersion: outer['aesVersion'], onQuery: outer['onQuery'] }, outer);
     this.compiler = outer.compiler;
   }
   public override readonly compiler: Compiler;
