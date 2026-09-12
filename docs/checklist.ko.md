@@ -88,7 +88,7 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 - [ ] T7.6 서버 streaming, 취소, 오류, 행 소유권 검사를 구현한다.
 - [x] T7.7 결정적인 정적 query precompile과 schema-hash 검사를 구현한다.
 - [x] T7.8 TypeScript 모듈, 생성 entity API와 schema hash, `orm.toml` loader, 네이티브 데이터베이스 드라이버, 구조·AST 검사, 세 데이터베이스의 58개 벡터 실행기를 구현한다.
-- [ ] T7.9 Rust `mysql_async`와 현행 driver 결과를 비교하고 기록한다.
+- [x] T7.9 동일한 SQL, bind, typed 결과, connection 수, fixture로 Rust `mysql_async` 0.37.1과 sqlx 0.9를 비교했다. 측정 항목 모두 교체 기준인 2배 개선을 충족하지 않아 sqlx를 유지한다.
 - [ ] T7.10 `multi_statement` 관계 계획과 결과를 구현·검사한다.
 - [ ] T7.11 Go·PHP typed 직접 스캔과 성능 기준 재측정을 구현한다.
 - [x] T7.12 고정된 Rust 의존성으로 결정적인 150테이블 Rust fixture를 생성하고 컴파일했습니다.

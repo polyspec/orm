@@ -88,7 +88,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [ ] T7.6 Implement server streaming, cancellation, errors, and row ownership checks.
 - [x] T7.7 Implement deterministic static query precompilation and schema-hash checks.
 - [x] T7.8 Implement the TypeScript module, generated entity APIs and schema hash, `orm.toml` loader, native database drivers, structure and AST checks, and the 58-vector database runner for all three databases.
-- [ ] T7.9 Compare Rust `mysql_async` with the current driver using recorded results.
+- [x] T7.9 Compare Rust `mysql_async` 0.37.1 with sqlx 0.9 using equal SQL, binds, typed results, connection count, and fixture. Retain sqlx because neither measured workload shows the required 2x improvement.
 - [ ] T7.10 Implement and verify the `multi_statement` relation plan.
 - [ ] T7.11 Implement typed direct scans for Go and PHP and rerun the performance gates.
 - [x] T7.12 Generate and compile the deterministic 150-table Rust fixture with the locked Rust dependency set.
