@@ -613,15 +613,16 @@ func (d *DB) plan(ctx context.Context, r *Req) (*cached, error) {
 	if r.Err != nil {
 		return nil, r.Err
 	}
-	r.IR.NParams = len(r.Params)
-	key := shapeKey(&r.IR)
+	request := r.IR
+	request.NParams = len(r.Params)
+	key := shapeKey(&request)
 	d.planMu.RLock()
 	c, ok := d.plans[key]
 	d.planMu.RUnlock()
 	if ok {
 		return c, nil
 	}
-	p, err := d.compiler.Compile(ctx, &r.IR)
+	p, err := d.compiler.Compile(ctx, &request)
 	if err != nil {
 		return nil, err
 	}
