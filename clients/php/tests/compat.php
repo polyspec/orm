@@ -346,7 +346,7 @@ code(fn() => Battle::query()->joinSeqWithSeq(Service::query()), Code::RELATION_U
 code(fn() => Battle::query()->conditionServiceSeqAndIsClose(7), Code::IR_INVALID, 'argument count', 'expects 2 argument(s), 1 given');
 code(fn() => Battle::query()->andServiceSeq(7)->gets(), Code::CONFIG, 'gets() without binding', 'bind a database');
 code(fn() => Battle::query()->andSeqWithUserSeq(User::query()), Code::IR_INVALID, 'column-to-column compat name is not translated', 'EqCol');
-code(fn() => Battle::query()->joinServiceSeqWithSeq(Service::query(), User::query()), Code::IR_INVALID, 'join off another joined model', 'nest the join');
+code(fn() => Battle::query()->joinServiceSeqWithSeq(Service::query(), User::query()), Code::IR_INVALID, 'generated join rejects a second target', 'join expects one child query');
 code(fn() => Battle::query()->addColumn('name', fn() => 1), Code::IR_INVALID, 'callback column', 'compute it on the rows');
 try {
     Battle::query()->frobnicate(1);
