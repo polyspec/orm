@@ -101,7 +101,7 @@ When the same parent is referenced twice (`user_seq`, `updated_user_seq`), draw 
 %% rename_column <table> <new_col> <old_col> # migration rename
 ```
 
-Rename directives are migration metadata. `ormgen diff` never infers a rename from similar names. A target directive generates the forward `RENAME`; the same structured plan generates the reverse `RENAME` for rollback. Keep the directive in later schema versions so a live database source does not treat the old name as a new object.
+Rename directives are migration metadata. `ormgen diff` never infers a rename from similar names. A target directive generates the forward `RENAME`; the same structured plan generates the reverse `RENAME` for rollback. Keep the directive in later schema versions. If the current table or column name already exists, a repeated diff is a no-op. Missing, duplicate, self-referencing, and ambiguous rename sources fail during schema validation or diff generation.
 
 Table and column comments are schema data. `ormgen ddl` emits MySQL comments,
 PostgreSQL `COMMENT ON` statements, and SQLite rows in `orm_schema_comments`.

@@ -65,6 +65,9 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 	if dialect == "mysql" {
 		quote = func(s string) string { return "`" + s + "`" }
 	}
+	if err := validateRenameSources(from, to); err != nil {
+		return "", err
+	}
 	changes := make([]schemaChange, 0)
 	pairs := matchDiffEntities(from, to)
 	for _, pair := range pairs {
@@ -82,17 +85,21 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 		case !newOK:
 			changes = append(changes, schemaChange{sql: "DROP TABLE " + quote(oldEnt.Table) + ";", destructive: true})
 		default:
+			var tableRename string
 			if oldEnt.Table != newEnt.Table {
 				if newEnt.RenamedFrom != oldEnt.Name && oldEnt.RenamedFrom != newEnt.Name {
 					return "", fmt.Errorf("table rename %s -> %s requires explicit migration", oldEnt.Table, newEnt.Table)
 				}
-				changes = append(changes, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s RENAME TO %s;", quote(oldEnt.Table), quote(newEnt.Table))})
+				tableRename = fmt.Sprintf("ALTER TABLE %s RENAME TO %s;", quote(oldEnt.Table), quote(newEnt.Table))
 			}
 			drops, adds, err := diffIndexesAndForeignKeys(from, to, oldEnt, newEnt, dialect, quote)
 			if err != nil {
 				return "", err
 			}
 			changes = append(changes, drops...)
+			if tableRename != "" {
+				changes = append(changes, schemaChange{sql: tableRename})
+			}
 			oldCols, newCols := map[string]*schema.Col{}, map[string]*schema.Col{}
 			for _, c := range oldEnt.Columns {
 				oldCols[c.Name] = c
@@ -167,6 +174,32 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 		b.WriteByte('\n')
 	}
 	return b.String(), nil
+}
+
+func validateRenameSources(from, to *schema.Manifest) error {
+	for _, next := range to.Entities {
+		old := from.Entities[next.Name]
+		alreadyRenamed := old != nil
+		if next.RenamedFrom != "" && !alreadyRenamed {
+			old = from.Entities[next.RenamedFrom]
+			if old == nil {
+				return fmt.Errorf("table %s rename source %s does not exist", next.Name, next.RenamedFrom)
+			}
+		}
+		if old == nil {
+			continue
+		}
+		oldColumns := map[string]bool{}
+		for _, column := range old.Columns {
+			oldColumns[column.Name] = true
+		}
+		for _, column := range next.Columns {
+			if column.RenamedFrom != "" && !oldColumns[column.Name] && !oldColumns[column.RenamedFrom] {
+				return fmt.Errorf("column %s.%s rename source %s does not exist", next.Name, column.Name, column.RenamedFrom)
+			}
+		}
+	}
+	return nil
 }
 
 func matchDiffEntities(from, to *schema.Manifest) []diffEntityPair {
@@ -391,7 +424,7 @@ func diffIndexesAndForeignKeys(from, to *schema.Manifest, oldEnt, newEnt *schema
 	for _, key := range fkKeys {
 		o, ook := oldFKs[key]
 		n, nok := newFKs[key]
-		if ook && nok && o == n {
+		if ook && nok && (o == n || dialect == "sqlite" && foreignKeysEqualWithoutName(o, n)) {
 			continue
 		}
 		if dialect == "sqlite" {
@@ -409,6 +442,10 @@ func diffIndexesAndForeignKeys(from, to *schema.Manifest, oldEnt, newEnt *schema
 		}
 	}
 	return append(foreignDrops, indexDrops...), append(indexAdds, foreignAdds...), nil
+}
+
+func foreignKeysEqualWithoutName(left, right diffForeignKey) bool {
+	return left.column == right.column && left.target == right.target && left.targetCol == right.targetCol && left.onDelete == right.onDelete
 }
 
 func entityIndexes(e *schema.Entity) map[string]diffIndex {
@@ -472,7 +509,7 @@ func dropIndex(table string, index diffIndex, dialect string, quote func(string)
 		}
 	}
 	name := index.name
-	if dialect == "postgres" && index.kind != "unique" {
+	if dialect != "mysql" && index.kind != "unique" {
 		name = table + "_" + name
 	}
 	if dialect == "mysql" {
@@ -494,7 +531,7 @@ func createIndex(table string, index diffIndex, dialect string, quote func(strin
 		}
 	}
 	name := index.name
-	if dialect == "postgres" && index.kind != "unique" {
+	if dialect != "mysql" && index.kind != "unique" {
 		name = table + "_" + name
 	}
 	switch index.kind {

@@ -87,6 +87,7 @@ func TestPhysicalMigration(t *testing.T) {
 				t.Fatal("repeat application would not be a no-op")
 			}
 			assertPhysicalMigrationLock(t, ctx, db, tc.driver)
+			assertRenamePreservesData(t, ctx, db, tc.driver)
 			assertPhysicalConstraintDiff(t, ctx, db, tc.driver)
 			assertPhysicalStructuredPlan(t, ctx, db, tc.driver, want)
 			assertPhysicalRollback(t, ctx, db, tc.driver)

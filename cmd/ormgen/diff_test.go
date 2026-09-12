@@ -288,3 +288,59 @@ func TestRenderDiffUsesExplicitTableAndColumnRenames(t *testing.T) {
 		t.Fatalf("invalid rollback rename:\n%s", rollback)
 	}
 }
+
+func TestRenderDiffDropsChildConstraintsBeforeTableRename(t *testing.T) {
+	parent := func() *schema.Entity {
+		return &schema.Entity{Name: "owner", Table: "owner", PK: []string{"id"}, Relations: map[string]*schema.Rel{}, Columns: []*schema.Col{{Name: "id", Type: "i64", Raw: "bigint", PK: true}}}
+	}
+	oldChild := &schema.Entity{Name: "entry", Table: "entry", PK: []string{"id"}, Indexes: map[string][]string{"owner_idx": {"owner_id"}}, Columns: []*schema.Col{
+		{Name: "id", Type: "i64", Raw: "bigint", PK: true},
+		{Name: "owner_id", Type: "i64", Raw: "bigint", Ref: &schema.Ref{Entity: "owner", Column: "id"}},
+	}, Relations: map[string]*schema.Rel{"owner": {Name: "owner", Kind: "one", Target: "owner", Left: "owner_id", Right: "id"}}}
+	newChild := &schema.Entity{Name: "record", Table: "record", RenamedFrom: "entry", PK: []string{"id"}, Indexes: map[string][]string{"owner_new_idx": {"owner_id"}}, Columns: oldChild.Columns, Relations: oldChild.Relations}
+	old := &schema.Manifest{SchemaHash: "old", Order: []string{"owner", "entry"}, Entities: map[string]*schema.Entity{"owner": parent(), "entry": oldChild}}
+	now := &schema.Manifest{SchemaHash: "new", Order: []string{"owner", "record"}, Entities: map[string]*schema.Entity{"owner": parent(), "record": newChild}}
+
+	sql, err := renderDiff(old, now, "mysql", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drop := strings.Index(sql, "DROP INDEX `owner_idx` ON `entry`")
+	rename := strings.Index(sql, "ALTER TABLE `entry` RENAME TO `record`")
+	add := strings.Index(sql, "CREATE INDEX `owner_new_idx` ON `record`")
+	if drop < 0 || rename < 0 || add < 0 || !(drop < rename && rename < add) {
+		t.Fatalf("invalid renamed-table operation order: drop=%d rename=%d add=%d\n%s", drop, rename, add, sql)
+	}
+}
+
+func TestRenderDiffRejectsMissingRenameSource(t *testing.T) {
+	old := testManifest(&schema.Col{Name: "id", Type: "i64", Raw: "bigint", PK: true})
+	now := &schema.Manifest{SchemaHash: "new", Order: []string{"customer"}, Entities: map[string]*schema.Entity{
+		"customer": {Name: "customer", Table: "customer", RenamedFrom: "missing", PK: []string{"id"}, Columns: []*schema.Col{{Name: "id", Type: "i64", Raw: "bigint", PK: true}}},
+	}}
+	if _, err := renderDiff(old, now, "postgres", true); err == nil || !strings.Contains(err.Error(), "rename source") {
+		t.Fatalf("expected missing rename source error, got %v", err)
+	}
+}
+
+func TestRenderDiffRenameMetadataIsIdempotentAfterApply(t *testing.T) {
+	current := &schema.Manifest{SchemaHash: "current", Order: []string{"customer"}, Entities: map[string]*schema.Entity{
+		"customer": {Name: "customer", Table: "customer", PK: []string{"id"}, Columns: []*schema.Col{
+			{Name: "id", Type: "i64", Raw: "bigint", PK: true},
+			{Name: "display_name", Type: "string", Raw: "varchar(40)", Len: 40},
+		}},
+	}}
+	target := &schema.Manifest{SchemaHash: "target", Order: []string{"customer"}, Entities: map[string]*schema.Entity{
+		"customer": {Name: "customer", Table: "customer", RenamedFrom: "account", PK: []string{"id"}, Columns: []*schema.Col{
+			{Name: "id", Type: "i64", Raw: "bigint", PK: true},
+			{Name: "display_name", RenamedFrom: "name", Type: "string", Raw: "varchar(40)", Len: 40},
+		}},
+	}}
+	sql, err := renderDiff(current, target, "postgres", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(sql, "-- no changes") {
+		t.Fatalf("rename metadata repeat is not a no-op:\n%s", sql)
+	}
+}
