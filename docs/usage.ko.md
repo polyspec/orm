@@ -117,6 +117,30 @@ PostgreSQL dollar quote 블록을 처리합니다. 이 영역의 세미콜론은
 
 각 실행은 기본적으로 `migrations/logs` 아래에 JSON 감사 파일도 생성한다. 파일명은 `<UTC 시각>__<migration-id>.json`이며 driver, schema hash, 계획 checksum, 상태, 작업 수, 시작 시각, 종료 시각, 오류 상세를 포함한다. `--log-dir`로 다른 디렉터리를 지정할 수 있다. 적용된 migration에 대응하는 파일 로그가 없거나 DB 기록과 다르면 검증에 실패한다.
 
+실행이 중단되어 데이터베이스 이력 상태가 `applying` 또는 `failed`이면 재시도 전에 명시적
+복구를 실행한다. `ormgen apply`에는 검토한 동일 plan을 사용하고, `ormgen migrate`에는 기록된
+migration ID를 사용한다.
+
+```sh
+go run ./cmd/ormgen recover --plan migrations/20260912-schema.json \
+  --driver postgres --dsn "$ORM_DSN" --schema schema/schema.json
+go run ./cmd/ormgen recover --migration-id 20260912-initial \
+  --driver mysql --dsn "$ORM_DSN" --schema schema/schema.json
+```
+
+복구는 동일한 데이터베이스 마이그레이션 잠금을 획득하고 실제 schema를 기록된 출발·도착
+schema와 비교한다. 도착 schema와 일치하면 이력 상태를 `applied`로 변경한다. 출발 schema와
+일치하면 `retryable`로 변경하고 동일 `apply` 또는 `migrate` 명령으로 검증된 계획을 실행할 수
+있다. 파일 로그까지 일치하는 `applied` 또는 `retryable` 상태는 `noop`을 반환한다. 그 외 schema
+상태는 `MIGRATION_RECOVERY_UNSAFE`로 실패하며 migration ID, 이전 상태, 출발 hash, 도착 hash,
+실제 hash를 반환한다. 이 실패는 데이터베이스 이력을 변경하거나 파일 로그를 생성하지 않는다.
+
+| 입력 | 필수 검사 | 결과 |
+|---|---|---|
+| 구조화 plan | plan checksum, ID, 출발 hash, 도착 hash, 작업 수, 도착 manifest | `applied`, `retryable`, `noop` 중 하나 |
+| Migration ID | 기록된 출발 hash, 기록된 도착 hash, 도착 manifest | `applied`, `retryable`, `noop` 중 하나 |
+| 부분 적용 또는 외부 변경 schema | 출발·도착 schema 모두 불일치 | `MIGRATION_RECOVERY_UNSAFE`, 상태 변경 없음 |
+
 ```sh
 go run ./cmd/ormgen migrate --driver mysql --dsn "$ORM_DSN" \
   --schema schema/schema.json --migration-id 20260912-initial --dry-run

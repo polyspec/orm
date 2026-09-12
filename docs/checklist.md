@@ -94,10 +94,10 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] T7.12 Generate and compile the deterministic 150-table Rust fixture with the locked Rust dependency set.
 - [~] T7.13 Validate AES version columns and provide row rotation helpers. Add database persistence, status reporting, and equivalent database APIs for all four clients.
 - [x] T7.14 Include table and column comments in the manifest, schema hash, import, DDL, diff, and SQLite metadata. Unit and containerctl MySQL/PostgreSQL tests pass.
-- [~] T7.15 Add migration execution locking, transaction boundaries, and detailed recovery states for MySQL, PostgreSQL, and SQLite. Transaction execution, rollback reporting, and physical lock contention tests pass; explicit recovery operations remain.
+- [x] T7.15 Add migration execution locking, transaction boundaries, and detailed recovery states for MySQL, PostgreSQL, and SQLite. Recovery classifies target, source, and unsafe live states under the migration lock.
 - [x] T7.16 Replace semicolon splitting with a dialect-aware SQL statement parser and preserve statement-level failure locations.
 - [ ] T7.17 Support migration source conversion for MMD, SQL, JSON, and live DB in every direction with explicit loss checks and rollback plans.
-- [~] T7.18 Run physical comment, migration-plan apply, repeat, drift, failure, and recovery tests through containerctl for MySQL and PostgreSQL. Comment, plan apply, repeat, drift, failure detail, and lock contention pass; recovery remains.
+- [x] T7.18 Run physical comment, migration-plan apply, repeat, drift, failure, lock contention, and recovery tests through containerctl for MySQL and PostgreSQL.
 
 ## Documentation tasks
 

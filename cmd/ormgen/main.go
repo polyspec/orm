@@ -42,6 +42,8 @@ func main() {
 		planCmd(os.Args[2:])
 	case "apply":
 		applyCmd(os.Args[2:])
+	case "recover":
+		recoverCmd(os.Args[2:])
 	case "verify":
 		verifyCmd(os.Args[2:])
 	case "precompile":
@@ -65,6 +67,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "       ormgen migrate --dsn <dsn> --schema schema/schema.json [--driver mysql|postgres|sqlite] [--migration-id id] [--dry-run]")
 	fmt.Fprintln(os.Stderr, "       ormgen plan --from old.json --to new.json --dialect mysql|postgres|sqlite --out migration.json")
 	fmt.Fprintln(os.Stderr, "       ormgen apply --plan migration.json --dsn <dsn> --schema schema.json [--allow-destructive]")
+	fmt.Fprintln(os.Stderr, "       ormgen recover (--plan migration.json | --migration-id id) --dsn <dsn> --schema schema.json [--driver mysql|postgres|sqlite]")
 	fmt.Fprintln(os.Stderr, "       ormgen verify --dsn <dsn> --schema schema/schema.json [--driver mysql|postgres|sqlite]")
 	fmt.Fprintln(os.Stderr, "       ormgen precompile --schema schema.json --dialect mysql|postgres|sqlite --in request.json --out plan.json")
 	fmt.Fprintln(os.Stderr, "       ormgen check --lang php|go [--top n] [--schema schema/schema.json] <dir>...")
