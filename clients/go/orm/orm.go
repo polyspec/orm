@@ -25,8 +25,9 @@ import (
 
 // Config is the executor configuration. Paths and secrets are declared, never discovered.
 type Config struct {
-	AESKey  string // secret "aes" for aes/aes_hex columns
-	OnQuery func(Event)
+	AESKey     string // secret "aes" for aes/aes_hex columns
+	AESVersion int32  // secret "aes_version" written with AES payloads; zero selects version 1
+	OnQuery    func(Event)
 }
 
 // Event is emitted for every executed statement when Config.OnQuery is set.
@@ -491,14 +492,31 @@ func (d *DB) args(st *plan.Step, r *Req, parentVals []any) (out []any, masks map
 			}
 			out = append(out, v)
 		case "secret":
-			if b.Name != "aes" || d.cfg.AESKey == "" {
-				return nil, nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("secret %q not configured", b.Name)}
-			}
 			if masks == nil {
 				masks = map[int]string{}
 			}
 			masks[len(out)] = Secret
-			out = append(out, d.cfg.AESKey)
+			switch b.Name {
+			case "aes":
+				if d.cfg.AESKey == "" {
+					return nil, nil, &ir.Error{Code: CodeConfig, Msg: "secret aes not configured"}
+				}
+				out = append(out, d.cfg.AESKey)
+			default:
+				return nil, nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("secret %q not configured", b.Name)}
+			}
+		case "config":
+			if b.Name != "aes_version" {
+				return nil, nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("config value %q not configured", b.Name)}
+			}
+			version := d.cfg.AESVersion
+			if version == 0 {
+				version = 1
+			}
+			if version < 1 {
+				return nil, nil, &ir.Error{Code: CodeConfig, Msg: "aes version must be positive"}
+			}
+			out = append(out, version)
 		case "parent":
 			out = append(out, parentVals...)
 		case "now":
@@ -563,6 +581,18 @@ func SQL(ctx context.Context, ex Exec, r *Req) (*Statement, error) {
 			out.Binds = append(out.Binds, v)
 		case "secret":
 			out.Binds = append(out.Binds, Secret)
+		case "config":
+			if b.Name != "aes_version" {
+				return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("config value %q not configured", b.Name)}
+			}
+			version := ex.DB().cfg.AESVersion
+			if version == 0 {
+				version = 1
+			}
+			if version < 1 {
+				return nil, &ir.Error{Code: CodeConfig, Msg: "aes version must be positive"}
+			}
+			out.Binds = append(out.Binds, version)
 		case "now":
 			out.Binds = append(out.Binds, Now)
 		default:

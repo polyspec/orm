@@ -134,6 +134,8 @@ type rustData struct {
 	UpdatedTs                     string
 	Scope, ScopeType              string
 	KeyCols                       []string // PK/auto columns: never copied into on_duplicate
+	AESCols                       []goCol
+	AESVersion                    string
 }
 
 func opSnake(suffix string) string {
@@ -361,7 +363,7 @@ impl {{.Type}}Row {
     pub fn {{.Ident}}_mut(&mut self) -> &mut Collection<super::{{.Target}}::{{.TargetType}}Row> { &mut self.{{.Ident}}_ }
 {{- end}}
 {{- end}}
-{{range .Cols}}{{if not .Auto}}
+{{range .Cols}}{{if and (not .Auto) (not .Managed)}}
     pub fn set_{{.Ident}}(&mut self, v: {{if .Nullable}}Option<{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}>{{else}}{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}{{end}}) -> &mut Self {
         let v: {{if .Nullable}}Option<{{.RType}}>{{else}}{{.RType}}{{end}} = {{if .Nullable}}v.map(|x| x.into()){{else}}v.into(){{end}};
         self.{{.Ident}} = v.clone();
@@ -523,6 +525,22 @@ pub fn query() -> {{.Type}} {
 impl {{.Type}} {
     /// Select a pool or transaction for this query.
     pub fn using(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
+{{- if .AESCols}}
+    pub async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus> {
+        let binding = self.binding.clone();
+        orm::aes_rotation::aes_status(binding.resolve()?, &orm::aes_rotation::AesRotationSpec {
+            table: {{printf "%q" .Table}}.into(), primary_key: {{printf "%q" .PK}}.into(), version_column: {{printf "%q" .AESVersion}}.into(), columns: vec![],
+        }, keyring).await
+    }
+
+    pub async fn rotate_aes(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<u64> {
+        let binding = self.binding.clone();
+        orm::aes_rotation::rotate_aes_rows(binding.resolve()?, &orm::aes_rotation::AesRotationSpec {
+            table: {{printf "%q" .Table}}.into(), primary_key: {{printf "%q" .PK}}.into(), version_column: {{printf "%q" .AESVersion}}.into(),
+            columns: vec![{{range .AESCols}}orm::aes_rotation::AesRotationColumn { name: {{printf "%q" .Name}}.into(), styles: vec![{{range .Styles}}{{printf "%q" .}}.into(),{{end}}] },{{end}}],
+        }, keyring).await
+    }
+{{- end}}
 
     /// Keys the root collection by a function of each row (relations key by key_by_<col>).
     pub fn key_by_fn(mut self, f: impl Fn(&{{.Type}}Row) -> Key + Send + Sync + 'static) -> Self { self.key_fn = Some(Box::new(f)); self }
@@ -659,9 +677,9 @@ impl {{.Type}} {
 {{- end}}{{end}}
 
     // ---- insert/update draft (set_<pk> only decides save: INSERT rejects it, UPDATE cannot change it) ----
-{{- range .Cols}}{{if or (not .Auto) .PK}}
+{{- range .Cols}}{{if and (or (not .Auto) .PK) (not .Managed)}}
     pub fn set_{{.Ident}}(mut self, v: {{if .Nullable}}Option<{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}>{{else}}{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}{{end}}) -> Self { let v: {{if .Nullable}}Option<{{.RType}}>{{else}}{{.RType}}{{end}} = {{if .Nullable}}v.map(|x| x.into()){{else}}v.into(){{end}}; {{if .Styles}}match orm::codec::encode(&[{{rsList .Styles}}], {{if .Nullable}}v.as_ref(){{else}}Some(&v){{end}}) { Ok(p) => self.q.set({{printf "%q" .Name}}, p), Err(e) => self.q.defer_err(e) }{{else}}self.q.set({{printf "%q" .Name}}, v){{end}}; self }
-{{- end}}{{if not .Auto}}
+{{- end}}{{if and (not .Auto) (not .Managed)}}
     pub fn set_{{.Ident}}_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr({{printf "%q" .Name}}, frag, binds); self }
 {{- end}}{{end}}
 {{- range .Numeric}}
@@ -670,7 +688,7 @@ impl {{.Type}} {
 {{- end}}
 
     // ---- insert: ON DUPLICATE KEY UPDATE assignments (never the PK/auto column) ----
-{{- range .Cols}}{{if not (or .Auto .PK)}}
+{{- range .Cols}}{{if and (not (or .Auto .PK)) (not .Managed)}}
     pub fn on_duplicate_set_{{.Ident}}(mut self, v: {{if .Nullable}}Option<{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}>{{else}}{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}{{end}}) -> Self { let v: {{if .Nullable}}Option<{{.RType}}>{{else}}{{.RType}}{{end}} = {{if .Nullable}}v.map(|x| x.into()){{else}}v.into(){{end}}; {{if .Styles}}match orm::codec::encode(&[{{rsList .Styles}}], {{if .Nullable}}v.as_ref(){{else}}Some(&v){{end}}) { Ok(p) => self.q.on_duplicate_set({{printf "%q" .Name}}, p), Err(e) => self.q.defer_err(e) }{{else}}self.q.on_duplicate_set({{printf "%q" .Name}}, v){{end}}; self }
     pub fn on_duplicate_set_{{.Ident}}_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr({{printf "%q" .Name}}, frag, binds); self }
 {{- end}}{{end}}
@@ -898,7 +916,7 @@ func genRust(m *schema.Manifest, outDir string) error {
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		ge := buildGoEntity(m, e)
-		d := rustData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs, SchemaHash: m.SchemaHash, Links: ge.Links, Scope: ge.Scope}
+		d := rustData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs, SchemaHash: m.SchemaHash, Links: ge.Links, Scope: ge.Scope, AESCols: ge.AESCols, AESVersion: ge.AESVersion}
 		if ge.Scope != "" {
 			d.ScopeType = rustType(e.Column(ge.Scope))
 		}

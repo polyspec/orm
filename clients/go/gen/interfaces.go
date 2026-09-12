@@ -15,6 +15,8 @@ type AuthorInterface interface {
 	Gets() (*orm.Collection[AuthorRow], error)
 	GetCount() (int64, error)
 	GetsCount() (*orm.Collection[AuthorRow], error)
+	AESStatus(keyring orm.AESKeyring) (orm.AESRotationStatus, error)
+	RotateAES(keyring orm.AESKeyring) (int, error)
 	Insert() (*AuthorRow, error)
 	Save() (*AuthorRow, error)
 	Update() (int64, error)

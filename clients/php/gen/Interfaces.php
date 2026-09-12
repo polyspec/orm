@@ -9,6 +9,8 @@ public function get(): ?\Polyspec\Orm\Tests\Model\AuthorRow;
 public function gets(): \Orm\Collection;
 public function getCount(): int;
 public function getsCount(): \Orm\Collection;
+public function aesStatus(\Orm\AesKeyring $keyring): \Orm\AesRotationStatus;
+public function rotateAES(\Orm\AesKeyring $keyring): int;
 public function insert(): ?\Polyspec\Orm\Tests\Model\AuthorRow;
 public function save(): ?\Polyspec\Orm\Tests\Model\AuthorRow;
 public function update(): int;

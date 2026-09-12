@@ -377,6 +377,10 @@ func checkRules(lang string, actual Symbols, rules []Rule, m *schema.Manifest) [
 				if ent.Scope != "" {
 					maps = append(maps, map[string]string{"entity": name, "Entity": pascal(name), "type": columnType(ent.Column(ent.Scope), lang)})
 				}
+			} else if rule.For == "aes_entity" {
+				if ent.Column("aes_key_version") != nil {
+					maps = append(maps, base)
+				}
 			} else if rule.For == "eq_column" {
 				for _, col := range ent.Columns {
 					if !ir.OpAllowed(col, "eq") {

@@ -9,6 +9,8 @@ async fn get(&mut self) -> Result<Option<AuthorRow>>;
 async fn gets(&mut self) -> Result<Collection<AuthorRow>>;
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<AuthorRow>>;
+async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus>;
+async fn rotate_aes(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<u64>;
 async fn insert(&mut self) -> Result<Option<AuthorRow>>;
 async fn save(&mut self) -> Result<Option<AuthorRow>>;
 async fn update(&mut self) -> Result<u64>;
@@ -139,6 +141,8 @@ async fn get(&mut self) -> Result<Option<AuthorRow>> { Author::get(self).await }
 async fn gets(&mut self) -> Result<Collection<AuthorRow>> { Author::gets(self).await }
 async fn get_count(&mut self) -> Result<i64> { Author::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<AuthorRow>> { Author::gets_count(self).await }
+async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus> { Author::aes_status(self,keyring).await }
+async fn rotate_aes(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<u64> { Author::rotate_aes(self,keyring).await }
 async fn insert(&mut self) -> Result<Option<AuthorRow>> { Author::insert(self).await }
 async fn save(&mut self) -> Result<Option<AuthorRow>> { Author::save(self).await }
 async fn update(&mut self) -> Result<u64> { Author::update(self).await }

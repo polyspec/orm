@@ -92,7 +92,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [ ] T7.10 Implement and verify the `multi_statement` relation plan.
 - [ ] T7.11 Implement typed direct scans for Go and PHP and rerun the performance gates.
 - [x] T7.12 Generate and compile the deterministic 150-table Rust fixture with the locked Rust dependency set.
-- [~] T7.13 Validate AES version columns and provide row rotation helpers. Add database persistence, status reporting, and equivalent database APIs for all four clients.
+- [x] T7.13 Validate AES version columns, persist the current version on writes, and provide equivalent status and transactional row-rotation APIs in Go, PHP, Rust, and TypeScript. Verify repeat execution and all AES columns on physical databases.
 - [x] T7.14 Include table and column comments in the manifest, schema hash, import, DDL, diff, and SQLite metadata. Unit and containerctl MySQL/PostgreSQL tests pass.
 - [x] T7.15 Add migration execution locking, transaction boundaries, and detailed recovery states for MySQL, PostgreSQL, and SQLite. Recovery classifies target, source, and unsafe live states under the migration lock.
 - [x] T7.16 Replace semicolon splitting with a dialect-aware SQL statement parser and preserve statement-level failure locations.

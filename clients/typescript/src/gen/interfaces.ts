@@ -2,6 +2,7 @@
 import type { Collection, Page } from '../model.js';
 import type { Db } from '../database.js';
 import type { Point } from '../codec.js';
+import type { AesKeyring, AesRotationStatus } from '../index.js';
 import type { AuthorRow, UserRow, ServiceRow, ServiceRegionRow, ServiceMemberRow } from './entities.js';
 
 export interface AuthorInterface {
@@ -9,6 +10,8 @@ get(): Promise<AuthorRow | null>;
 gets(): Promise<Collection<AuthorRow>>;
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<AuthorRow>>;
+aesStatus(keyring: AesKeyring): Promise<AesRotationStatus>;
+rotateAES(keyring: AesKeyring): Promise<number>;
 insert(): Promise<AuthorRow | null>;
 save(): Promise<AuthorRow | null>;
 update(): Promise<number>;

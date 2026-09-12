@@ -1,4 +1,7 @@
-import { Db, Row, registerRow } from '../../clients/typescript/dist/index.js';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { AesKeyring, Db, Row, hostDecode, hostEncode, openSqlite, registerRow } from '../../clients/typescript/dist/index.js';
 
 class ItemRow extends Row {
   static entity() { return 'item'; }
@@ -52,4 +55,25 @@ const count = await db.execute({ schema_hash: 'hash', kind: 'count', steps: [{ i
 if (count !== 2) throw new Error('scalar execution failed');
 const write = await db.execute({ schema_hash: 'hash', kind: 'insert', steps: [{ id: 0, role: 'main', sql: 'write', bind_slots: [] }] }, []);
 if (write.affected !== 1 || write.insertId !== 8) throw new Error('write execution failed');
-console.log('typescript database: scalar, write, root, relation, and parent expansion passed');
+
+const directory = await mkdtemp(join(tmpdir(), 'orm-aes-'));
+const sqliteConnection = openSqlite(join(directory, 'rotation.sqlite'));
+const sqliteDb = new Db(sqliteConnection, { schemaHash: 'hash', compiler: transport });
+try {
+  await sqliteConnection.execute('CREATE TABLE "orm_aes_rotation_test" ("id" INTEGER PRIMARY KEY, "aes_key_version" INTEGER NOT NULL, "aes_hex_email" TEXT, "aes_hex_phone" TEXT)', []);
+  await sqliteConnection.execute('INSERT INTO "orm_aes_rotation_test" ("id", "aes_key_version", "aes_hex_email", "aes_hex_phone") VALUES (?, ?, ?, ?)', [1, 1, hostEncode('member@example.test', ['aes', 'hex'], 'rotation-key-v1'), hostEncode('01012345678', ['aes', 'hex'], 'rotation-key-v1')]);
+  const spec = { table: 'orm_aes_rotation_test', primaryKey: 'id', versionColumn: 'aes_key_version', columns: [{ name: 'aes_hex_email', styles: ['aes', 'hex'] }, { name: 'aes_hex_phone', styles: ['aes', 'hex'] }] };
+  const keyring = new AesKeyring(new Map([[1, 'rotation-key-v1'], [2, 'rotation-key-v2']]), 2);
+  const before = await sqliteDb.aesStatus(spec, keyring);
+  const changed = await sqliteDb.rotateAESRows(spec, keyring);
+  const after = await sqliteDb.aesStatus(spec, keyring);
+  const repeated = await sqliteDb.rotateAESRows(spec, keyring);
+  if (before.total !== 1 || before.pending !== 1 || before.versions['1'] !== 1) throw new Error('AES source status differs');
+  if (changed !== 1 || after.pending !== 0 || after.versions['2'] !== 1 || repeated !== 0) throw new Error('AES rotation is not idempotent');
+  const stored = (await sqliteConnection.execute('SELECT "aes_key_version", "aes_hex_email", "aes_hex_phone" FROM "orm_aes_rotation_test" WHERE "id" = 1', [])).rows[0];
+  if (Number(stored[0]) !== 2 || hostDecode(stored[1], ['aes', 'hex'], 'rotation-key-v2') !== 'member@example.test' || hostDecode(stored[2], ['aes', 'hex'], 'rotation-key-v2') !== '01012345678') throw new Error('AES rotated values differ');
+} finally {
+  await sqliteDb.close();
+  await rm(directory, { recursive: true, force: true });
+}
+console.log('typescript database: scalar, write, root, relation, parent expansion, and AES rotation passed');
