@@ -255,6 +255,8 @@ func ddlType(c *schema.Col, dialect string) (string, error) {
 			return "jsonb", nil
 		case "inet":
 			return "inet", nil
+		case "point":
+			return "point", nil
 		}
 	case "sqlite":
 		switch c.Type {
@@ -264,6 +266,8 @@ func ddlType(c *schema.Col, dialect string) (string, error) {
 			return "REAL", nil
 		case "bytes", "inet":
 			return "BLOB", nil
+		case "point":
+			return "TEXT", nil
 		default:
 			return "TEXT", nil
 		}

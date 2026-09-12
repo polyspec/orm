@@ -588,6 +588,7 @@ pub fn host_encode(v: &Param, styles: &[String], aes_key: &str) -> Result<Param>
         Param::F64(x) => x.to_string().into_bytes(),
         Param::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string().into_bytes(),
         Param::Date(d) => d.to_string().into_bytes(),
+        Param::Point(p) => crate::point_text(*p)?.into_bytes(),
     };
     for st in styles {
         cur = match st.as_str() {

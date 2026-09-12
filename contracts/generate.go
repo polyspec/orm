@@ -82,6 +82,8 @@ func colType(c *schema.Col, lang string) string {
 			return "bool"
 		case "date", "datetime":
 			return "time.Time"
+		case "point":
+			return "orm.Point"
 		default:
 			return "string"
 		}
@@ -94,6 +96,8 @@ func colType(c *schema.Col, lang string) string {
 			return "float"
 		case "bool":
 			return "bool"
+		case "point":
+			return "array"
 		default:
 			return "string"
 		}
@@ -111,6 +115,8 @@ func colType(c *schema.Col, lang string) string {
 		return "chrono::NaiveDate"
 	case "datetime":
 		return "chrono::NaiveDateTime"
+	case "point":
+		return "orm::Point"
 	default:
 		return "impl Into<String>"
 	}

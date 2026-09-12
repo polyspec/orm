@@ -74,6 +74,18 @@ if ($canon(Codec::decode(['yaml'], "1: value\n")) !== '{"1":"value"}') {
     $fail++;
     fwrite(STDERR, "YAML integer map key: expected string key\n");
 }
+if ($canon(Codec::point('POINT(1.25 -2)')) !== '[1.25,-2]' || $canon(Codec::point('(1.25,-2)')) !== '[1.25,-2]' || Codec::pointText([1.25, -2]) !== 'POINT(1.25 -2)') {
+    $fail++;
+    fwrite(STDERR, "point conversion failed\n");
+}
+if (Codec::pointText([-0.0, 0.0]) !== 'POINT(0 0)') { $fail++; fwrite(STDERR, "point negative zero normalization failed\n"); }
+foreach ([
+    ['invalid point text', fn() => Codec::point('POINT(1)'), Code::CODEC_DECODE],
+    ['non-finite point', fn() => Codec::pointText([1.0, NAN]), Code::CODEC_ENCODE],
+] as [$name, $operation, $code]) {
+    try { $operation(); $fail++; fwrite(STDERR, "$name: expected $code\n"); }
+    catch (OrmException $e) { if ($e->code_ !== $code) { $fail++; fwrite(STDERR, "$name: {$e->code_} want $code\n"); } }
+}
 $langs = 0;
 foreach (glob("$root/out/*.json") as $file) {
     $lang = basename($file, '.json');

@@ -4,7 +4,18 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/engine/schema"
 )
+
+func TestPointColumnTypeMappings(t *testing.T) {
+	c := &schema.Col{Type: "point"}
+	for lang, want := range map[string]string{"go": "orm.Point", "php": "array", "rust": "orm::Point"} {
+		if got := colType(c, lang); got != want {
+			t.Errorf("%s point type=%q want %q", lang, got, want)
+		}
+	}
+}
 
 func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 	base, err := load()
