@@ -27,11 +27,12 @@ export default defineConfig({
   ],
   // VitePress leaves the 404 app shell empty; preserve the rendered document for no-JS readers.
   transformHtml(html, _file, { page, content }) {
-    const korean = page.endsWith('.ko.md');
-    const stem = korean ? page.slice(0, -'.ko.md'.length) : page.replace(/\.md$/, '');
+    const korean = page.startsWith('ko/') || page.endsWith('.ko.md');
+    const stem = page.startsWith('ko/') ? page.slice('ko/'.length).replace(/\.md$/, '') : (korean ? page.slice(0, -'.ko.md'.length) : page.replace(/\.md$/, ''));
     const pair = korean ? stem : `ko/${stem}`;
-    const link = `${base}${pair}`;
-    const switcher = `<nav class="orm-language-switch"><a href="${link}">${korean ? 'English' : '한국어'}</a></nav>`;
+    const link = `${base}${pair}.html`;
+    const sourcePair = korean ? path.join(docs, `${stem}.md`) : path.join(docs, `${stem}.ko.md`);
+    const switcher = existsSync(sourcePair) ? `<nav class="orm-language-switch"><a href="${link}">${korean ? 'English' : '한국어'}</a></nav>` : '';
     const body = html.replace('<div id="app"></div>', `${switcher}<div id="app"></div>`);
     return page === '404.md' ? body.replace('<div id="app"></div>', `<div id="app"></div><noscript>${content}</noscript>`) : body;
   },
@@ -99,7 +100,19 @@ export default defineConfig({
             const href = token.attrGet('href');
             if (!href || /^(?:[a-z]+:|\/\/|#)/i.test(href)) continue;
             const [name, suffix = ''] = href.split(/(?=[?#])/s, 2);
-            const target = path.resolve(href.startsWith('/') ? docs : path.dirname(state.env.path), '.' + (href.startsWith('/') ? name : '/' + name));
+            const koreanPage = state.env.relativePath.startsWith('ko/') || state.env.path.endsWith('.ko.md');
+            let target = path.resolve(href.startsWith('/') ? docs : path.dirname(state.env.path), '.' + (href.startsWith('/') ? name : '/' + name));
+            if (koreanPage && !existsSync(target)) target = path.resolve(docs, name);
+            if (!koreanPage && target.startsWith(docs + path.sep) && target.endsWith('.ko.md')) {
+              const relative = path.relative(docs, target).split(path.sep).map(encodeURIComponent).join('/');
+              token.attrSet('href', `/ko/${relative.slice(0, -'.ko.md'.length)}.html${suffix}`);
+              continue;
+            }
+            if (koreanPage && target.startsWith(docs + path.sep) && target.endsWith('.md')) {
+              const relative = path.relative(docs, target).split(path.sep).map(encodeURIComponent).join('/');
+              token.attrSet('href', `../${relative.replace(/\.md$/, '.html')}${suffix}`);
+              continue;
+            }
             if (target.startsWith(docs + path.sep) && (target.endsWith('.md') || !path.extname(target))) continue;
             if (!target.startsWith(root + path.sep) || !existsSync(target)) throw new Error(`${state.env.relativePath}: missing source link ${href}`);
             const kind = statSync(target).isDirectory() ? 'tree' : 'blob';
