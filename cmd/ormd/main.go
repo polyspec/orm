@@ -1,4 +1,4 @@
-// ormd serves the compiler through Connect HTTP and the legacy Unix socket.
+// ormd serves the compiler through Connect HTTP and the PHP Unix-socket transport.
 // It never accesses a database.
 //
 // Framing: 4-byte big-endian length + payload, both directions.

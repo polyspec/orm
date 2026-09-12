@@ -23,7 +23,7 @@ pub struct OrmConfig {
     pub secrets: SecretsSection,
     /// The wasm engine (Rust only).
     pub engine: EngineSection,
-    /// The shared compiler service. A missing endpoint keeps the compatibility WASM path.
+    /// The shared Connect compiler service. When omitted, Rust uses its native WASM compiler.
     #[serde(default)]
     pub ormd: Option<OrmdSection>,
     #[serde(default)]
