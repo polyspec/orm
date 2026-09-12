@@ -53,7 +53,7 @@ export interface Request {
   kind: 'all' | 'count';
   entity: string;
   where?: Group;
-  relations?: Relation[];
+  joins?: Join[];
   n_params: number;
 }
 
@@ -69,12 +69,19 @@ export interface Item {
 export interface Predicate {
   conn?: 'or';
   column: string;
-  op: 'eq';
-  p: number;
+  op: 'eq' | 'in';
+  p?: number;
+  ps?: number[];
 }
 
 export interface Relation {
   rel: string;
+  query: { entity: string; where?: Group };
+}
+
+export interface Join {
+  rel: string;
+  kind: 'inner' | 'left';
   query: { entity: string; where?: Group };
 }
 
@@ -123,6 +130,14 @@ export class Where {
   public isCloseEq(value: boolean): this { return this.eq('is_close', value); }
   public isDisplayEq(value: boolean): this { return this.eq('is_display', value); }
   public isAlldayEq(value: boolean): this { return this.eq('is_allday', value); }
+  public seqIn(values: readonly number[]): this { return this.in('seq', values); }
+  public name(value: string): this { return this.eq('name', value); }
+  public and(callback: (where: Where) => void): this {
+    const group: Group = { items: [] };
+    this.group.items.push({ group });
+    callback(new Where(group, this.params));
+    return this;
+  }
 
   private pendingOr = false;
 
@@ -132,6 +147,12 @@ export class Where {
     if (this.pendingOr) item.pred!.conn = 'or';
     this.pendingOr = false;
     this.group.items.push(item);
+    return this;
+  }
+
+  private in(column: string, values: readonly Param[]): this {
+    const ps = values.map(value => this.params.push(value) - 1);
+    this.group.items.push({ pred: { column, op: 'in', ps } });
     return this;
   }
 }
@@ -165,6 +186,8 @@ export class BattleQuery {
   public isCloseEq(value: boolean): this { return this.condition('is_close', value); }
   public isDisplayEq(value: boolean): this { return this.condition('is_display', value); }
   public isAlldayEq(value: boolean): this { return this.condition('is_allday', value); }
+  public seqIn(values: readonly number[]): this { return this.in('seq', values); }
+  public name(value: string): this { return this.condition('name', value); }
 
   public and(callback: (where: Where) => void): this {
     const group: Group = { items: [] };
@@ -184,9 +207,11 @@ export class BattleQuery {
       query.where = { items: [] };
       callback(new Where(query.where, this.params));
     }
-    this.request.relations = [...(this.request.relations ?? []), { rel, query }];
+    this.request.joins = [...(this.request.joins ?? []), { rel, kind: 'inner', query }];
     return this;
   }
+
+  public join(rel: string, callback?: (where: Where) => void): this { return this.relation(rel, callback); }
 
   public get(): Promise<BattleRow | null> {
     return this.execute('get') as Promise<BattleRow | null>;
@@ -201,6 +226,7 @@ export class BattleQuery {
   }
 
   public requestShape(): Request { return structuredClone(this.request); }
+  public parameters(): Param[] { return [...this.params]; }
 
   private pendingOr = false;
 
@@ -215,6 +241,12 @@ export class BattleQuery {
     if (this.pendingOr) pred.conn = 'or';
     this.pendingOr = false;
     this.where().items.push({ pred });
+    return this;
+  }
+
+  private in(column: string, values: readonly Param[]): this {
+    const ps = values.map(value => this.params.push(value) - 1);
+    this.where().items.push({ pred: { column, op: 'in', ps } });
     return this;
   }
 
