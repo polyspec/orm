@@ -161,18 +161,18 @@ S7 specified implementationspecified document workspecified eacheach completespe
 
 ### Feature development
 
-- [ ] T7.1 protobuf/Connect specified specified Go·PHP·Rust·TypeScript specified implementation
+- [ ] T7.1 Implement the typed protobuf/Connect path for Go, PHP, Rust, and TypeScript and run shared conformance vectors
 - [x] T7.3 `ormgen diff` implementation, specified change specified specified specified specified add
-- [~] T7.4 `scope` specified·NULL specified Columns check·Go/PHP/Rust generation API implementation; IR specified specified·DB specified specified·TypeScript all generationspecified not started
-- [ ] T7.5 `point`, `yaml`, `curlfile` specified common codec implementation
-- [ ] T7.6 specified specified API implementation
+- [~] T7.4 `scope` directive, non-null column validation, and Go/PHP/Rust generation are implemented; automatic IR application, database isolation tests, and the TypeScript entity set remain
+- [ ] T7.5 Implement common `point`, `yaml`, and `curlfile` codecs with cross-language vectors
+- [ ] T7.6 Implement the server streaming API with cancellation and row ownership checks
 - [x] T7.7 `ormgen precompile` implementation, specified·schema specified specified specified Verification specified add
-- [~] T7.8 TypeScript common specified Structure·call order draftspecified specified·AST check add; all specified generation specified specified Executionspecified not started
+- [~] T7.8 TypeScript common structure, call order, compiler, and AST checks are implemented; common vector execution remains
 - [ ] T7.9 `mysql_async`specified specifiedRow Rust specified specified
 - [ ] T7.10 `multi_statement` specified implementationspecified relation Stage result specified
 - [ ] T7.11 Go·PHP typed directly specified specified specified specified criteriavalue specified
 - [ ] T7.12 150specified Rust generation crate fixturespecified specified specified specified
-- [~] T7.13 AES specified specified Columns checkspecified Go·PHP·Rust·TypeScript Row specified Structure specified Go specified specified complete; Go DB Row specified·transaction specified·each language DB API·state specified not started
+- [~] T7.13 AES version-column validation and row rotation helpers exist for Go/PHP/Rust/TypeScript; Go row persistence, transaction APIs, status reporting, and cross-language database checks remain
 
 ### Documentation maintenance
 
