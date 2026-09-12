@@ -101,7 +101,7 @@ final class CompilerBridge
                 $items[] = new Item(['group' => self::group($value['group'], "$path.items[$i].group")]);
             } elseif (isset($value['nav'])) {
                 $n = $value['nav'];
-                $items[] = new Item(['navigation' => new Navigation(['connector' => (string) ($n['conn'] ?? ''), 'relation' => (string) $n['rel'], 'group' => self::group($n['group'], "$path.items[$i].navigation.group"), 'mode' => (string) ($n['mode'] ?? '')])]);
+                $items[] = new Item(['navigation' => new Navigation(['connector' => (string) ($n['conn'] ?? ''), 'relation' => (string) $n['rel'], 'group' => self::group($n['group'], "$path.items[$i].navigation.group"), 'mode' => (string) ($n['mode'] ?? ''), 'count_operator' => (string) ($n['count_op'] ?? ''), 'count_parameter' => isset($n['p']) ? (int) $n['p'] : null])]);
             } else throw new OrmException(Code::IR_INVALID, "$path.items[$i] must contain exactly one value");
         }
         return new Group(['connector' => (string) ($g['conn'] ?? ''), 'items' => $items]);
