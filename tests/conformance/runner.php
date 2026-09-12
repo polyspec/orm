@@ -348,7 +348,7 @@ $run('write_cycle', function () use ($db, $remask) {
         ->using($tx)->insert());
     $remask([$created->getSeq()], $created->getUpdatedTs());
     $created->setName('conf-write-2')->setLikeCount(5)->using($db)->updateOptimistic();
-    $again = Author::query()->using($db)->oneBySeq($created->getSeq());
+    $again = Author::query()->using($db)->getBySeq($created->getSeq());
     try {
         $created->setName('stale')->using($db)->updateOptimistic();
         $stale = null;
@@ -466,7 +466,7 @@ $run('bulk_update_plus_minus', function () use ($db, $fks, $remask) {
     $r = $db->transaction(fn(Tx $tx) => $fks(Author::query()->setReadCount(3)->setName('conf-bulk'))->using($tx)->insert());
     $remask([$r->getSeq()], $r->getUpdatedTs());
     $seq = $r->getSeq();
-    $read = fn(): int => Author::query()->using($db)->oneBySeq($seq)->getReadCount();
+    $read = fn(): int => Author::query()->using($db)->getBySeq($seq)->getReadCount();
     Author::query()->seq($seq)->plusReadCount(2)->using($db)->update();
     $afterPlus = $read();
     Author::query()->seq($seq)->minusReadCount(10)->using($db)->update();
