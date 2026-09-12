@@ -54,6 +54,7 @@ fn norm(p: &Param, m: &Mask) -> Value {
         Param::DateTime(t) if m.ts.as_ref() == Some(t) => json!("$TS"),
         Param::DateTime(t) => json!(fmt_time(t)),
         Param::Date(d) => json!(d.to_string()),
+        Param::Point(point) => json!(point),
     }
 }
 
