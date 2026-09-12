@@ -17,7 +17,7 @@
 
 ## P8: 정확성과 안전성
 
-- [ ] P8.1 Schema migration diff가 index, unique constraint, full-text index, foreign key, delete action, nullability, default, type, comment를 처리한다. PostgreSQL은 필요한 `ALTER COLUMN` operation을 모두 생성한다.
+- [x] P8.1 Schema migration diff가 index, unique constraint, full-text index, foreign key, delete action, nullability, default, type, comment를 처리한다. PostgreSQL은 필요한 `ALTER COLUMN` operation을 모두 생성한다.
 - [ ] P8.2 명시적인 table·column rename 선언이 데이터를 보존하고 결정적인 forward·rollback plan을 생성한다.
 - [ ] P8.3 SQLite가 지원하는 구조 변경은 검증된 table rebuild로 처리하고 안전하지 않은 rebuild는 실행 전에 거부한다.
 - [ ] P8.4 복합 primary·foreign key가 schema import, planning, generated API, identity, CRUD, relation, pagination, AES rotation에서 동작한다. 지원하지 않는 선언은 schema build 중 실패한다.

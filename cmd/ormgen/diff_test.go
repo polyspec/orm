@@ -175,6 +175,26 @@ func TestRenderDDLOrdersForeignKeyParentsBeforeChildrenAndDropsChildrenFirst(t *
 	}
 }
 
+func TestRenderDDLOrdersNamedIndexes(t *testing.T) {
+	m := testManifest(
+		&schema.Col{Name: "id", Type: "i64", Raw: "bigint", PK: true},
+		&schema.Col{Name: "a", Type: "string", Raw: "text"},
+		&schema.Col{Name: "m", Type: "string", Raw: "text"},
+		&schema.Col{Name: "z", Type: "string", Raw: "text"},
+	)
+	m.Entities["thing"].Indexes = map[string][]string{"z_idx": {"z"}, "a_idx": {"a"}, "m_idx": {"m"}}
+	sql, err := renderDDL(m, "postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := strings.Index(sql, `"thing_a_idx"`)
+	middle := strings.Index(sql, `"thing_m_idx"`)
+	z := strings.Index(sql, `"thing_z_idx"`)
+	if a < 0 || middle < 0 || z < 0 || !(a < middle && middle < z) {
+		t.Fatalf("indexes are not sorted:\n%s", sql)
+	}
+}
+
 func TestRenderDiffChangesForeignKeyDeleteAction(t *testing.T) {
 	manifest := func(action string) *schema.Manifest {
 		parent := &schema.Entity{Name: "account", Table: "account", PK: []string{"id"}, Relations: map[string]*schema.Rel{}, Columns: []*schema.Col{{Name: "id", Type: "i64", Raw: "bigint", PK: true}}}
