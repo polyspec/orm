@@ -5,7 +5,9 @@
 
 > This document records the initial approved design. Current implementation and operation use
 > [plan-v2.md](plan-v2.md), [checklist.md](checklist.md), [usage.md](usage.md), and the source code take precedence.
-> Mermaid is now the schema format, and PHP execution uses native PDO while `ormd` is compile-only.
+> Mermaid is the schema format. The default client paths are PHP over Unix socket,
+> Go in-process, Rust through WASM, and TypeScript through Connect/Protobuf.
+> `ormd` is compiler-only; database execution remains in each native client.
 
 ## Context
 
@@ -33,16 +35,19 @@ The following defects changed the architecture.
 ### Design principles (user rules)
 1. **Polling and timers are not the main mechanism.** No periodic runtime work: plan caches fill on request, `ormd` is request-response only, failed PHP UDS streams reconnect immediately without a retry loop, and schema changes produce a `schema_hash` mismatch. Deadlock retry explicitly starts a new transaction after InnoDB rolls back the whole transaction and is limited to three attempts.
 2. **No symlinks; paths are declarative or follow fixed discovery.** Declare `.so`, `.wasm`, socket, and schema blob paths as absolute paths (`orm.toml`: `engine.library`, `ormd.socket`, `schema.blob`) or use fixed locations (`Cargo OUT_DIR`, `composer vendor/bin/ormd`). Include the version in filenames; do not assume relative paths.
-3. **Use one declared execution path per client.** Fix one execution-path method per client in S0 and do not retain alternatives. An undeclared relation alias is a validation error. Schema mismatches, unknown columns, and unbalanced parentheses fail directly. The only intentional alternative is `ormgen gen --no-or-prefix`, a generation option decided once for the S2 compile-time check, not a runtime execution path.
+3. **Use one declared execution path per client.** The supported paths are PHP Unix socket,
+   Go in-process, Rust WASM, and TypeScript Connect/Protobuf. These are client-specific
+   execution paths, not fallbacks. An undeclared relation alias is a validation error.
+   Schema mismatches, unknown columns, and unbalanced parentheses fail directly.
 
 ### Confirmed decisions
 | Item | Decision |
 |---|---|
 | Engine language and role | Go, **compiler only**: schema validation → IR normalization → Plan (step SQL, bind slots, assembly specification) |
-| Schema | YAML (`schema/*.yaml`) is the source. Runtime uses a compiled blob. Existing MySQL schemas are imported with `ormgen import --dsn` |
-| Executor | Native per client: Go `database/sql` (in-process engine), Rust `sqlx`, PHP `PDO`. Each is approximately 500–800 lines for plan running, assembly, and codecs |
-| Engine execution path | Go: function call. Rust: choose exactly one of `libloading` (prebuilt `.so`, no cgo at build time) and wasmtime (compile-only `.wasm`) in S0. PHP: `ormd` (compile-only daemon with no database access) over a persistent UDS stream (`STREAM_CLIENT_PERSISTENT`) with a bounded process-local plan cache. All paths are declared in `orm.toml` |
-| Wire format | v1 JSON with proto-JSON-compatible field names. Use protobuf/Connect only when measurement requires it |
+| Schema | Mermaid (`schema/*.mmd`) is the source. Runtime uses the generated manifest. Existing schemas are imported with `ormgen import --dsn` |
+| Executor | Native per client: Go `database/sql`, Rust `sqlx`, PHP `PDO`, and TypeScript database drivers. Each client runs the plan and owns its database connection, assembly, and codecs |
+| Engine execution path | PHP uses `ormd` over Unix socket, Go calls the compiler in-process, Rust loads the compiler through WASM, and TypeScript uses Connect/Protobuf. The selected path is fixed by the client implementation |
+| Wire format | Protobuf messages over Connect are the common interoperable path. PHP Unix socket, Go in-process, and Rust WASM are the declared client paths |
 | Target DB | MySQL ≥8.0.2 / MariaDB ≥10.2 first; PostgreSQL ≥12 and SQLite ≥3.25 in S6. Dialect interface from S1 |
 | Performance | Hot path = native driver + cached SQL (zero engine overhead). Measure and document cold-path cost once per shape in S0 |
 

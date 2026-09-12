@@ -5,7 +5,9 @@
 
 > 이 문서는 초기 승인안의 역사적 기록입니다. 현재 구현과 운영 기준은
 > [plan-v2.md](plan-v2.md), [checklist.md](checklist.md), [usage.md](usage.md)와 코드가 우선합니다.
-> 특히 스키마는 Mermaid로 확정됐고, PHP 실행은 PDO 네이티브·`ormd` 컴파일 전용으로 정리됐습니다.
+> 스키마는 Mermaid를 사용합니다. 기본 client 경로는 PHP Unix socket,
+> Go in-process, Rust WASM, TypeScript Connect/Protobuf입니다.
+> `ormd`는 compiler 전용이고 database 실행은 각 native client가 담당합니다.
 
 ## Context
 
@@ -33,16 +35,19 @@
 ### 설계 원칙 (사용자 규칙)
 1. **폴링/타이머는 메인 메커니즘이 아니다.** 런타임에 주기 작업 없음: 플랜 캐시는 요청 시 채움, `ormd`는 요청-응답만, PHP UDS 스트림은 실패 시 즉시 재연결(재시도 루프 없음), 스키마 변경은 `schema_hash` 불일치 에러로 즉시 드러남(감시 없음). 데드락 재시도는 InnoDB가 트랜잭션을 통째로 롤백하는 상황에서 트랜잭션을 명시적으로 재실행하는 방식이며 최대 3회로 한정한다.
 2. **symlink 금지, 경로는 선언적/발견적으로 해석.** `.so`/`.wasm`/소켓/스키마 blob 경로는 설정에 절대경로로 선언하거나(`orm.toml`: `engine.library`, `ormd.socket`, `schema.blob`) 정해진 발견 규칙(Cargo `OUT_DIR` 내 프리빌드, composer `vendor/bin/ormd` 아래 고정 위치)으로 찾는다. 버전 symlink(`lib.so.1 → lib.so`) 없이 파일명에 버전 포함, 상대경로 가정 없음.
-3. **언어별 선언 경로 하나를 사용한다.** 언어별 호출 구간 방식은 S0에서 **하나로 확정**하고 대안 경로를 코드에 남기지 않는다. 선언되지 않은 관계 alias는 **검증 에러**다. 스키마 불일치·컬럼 미지·괄호 불균형은 조용한 우회 없이 에러다. 유일한 의도적 대안은 `ormgen gen --no-or-prefix`(S2 컴파일 시간 검사 단계에서 한 번 결정하는 생성 옵션이며 런타임 실행 경로가 아님)다.
+3. **언어별 선언 경로 하나를 사용한다.** 지원 경로는 PHP Unix socket,
+   Go in-process, Rust WASM, TypeScript Connect/Protobuf다. 이 경로들은
+   client별 고정 경로이며 fallback이 아니다. 선언되지 않은 관계 alias는
+   검증 에러다. 스키마 불일치·컬럼 미지·괄호 불균형은 에러다.
 
 ### 확정 결정
 | 항목 | 결정 |
 |---|---|
 | 엔진 언어·역할 | Go, **컴파일러 전용**: 스키마 검증 → IR 정규화 → Plan(단계별 SQL·바인드 슬롯·조립 명세) |
-| 스키마 | YAML(`schema/*.yaml`) = 소스. 런타임은 컴파일된 blob. `ormgen import --dsn`으로 기존 MySQL에서 생성 |
-| 실행기 | 언어별 네이티브: Go `database/sql`(in-process 엔진), Rust `sqlx`, PHP `PDO`. 각 ≈500–800줄(플랜 러너·조립·코덱) |
-| 엔진 호출 구간 | Go: 함수 호출. Rust: S0에서 `libloading`(프리빌드 `.so`, 빌드 시 cgo 불필요)과 wasmtime(컴파일 전용 `.wasm`) 중 **하나만 확정**. PHP: `ormd`(컴파일 전용 데몬, DB 접근 없음)에 **영속 UDS 스트림**(`STREAM_CLIENT_PERSISTENT`) + **제한된 process-local plan cache**. 경로는 모두 설정 선언(`orm.toml`) |
-| 와이어 | v1 JSON(proto-JSON 호환 필드명). protobuf/Connect는 측정이 요구할 때만 |
+| 스키마 | Mermaid(`schema/*.mmd`) = 소스. 런타임은 생성된 manifest를 사용한다. `ormgen import --dsn`으로 기존 schema를 가져온다 |
+| 실행기 | Go `database/sql`, Rust `sqlx`, PHP `PDO`, TypeScript database driver가 각각 plan 실행·조립·codec을 담당한다 |
+| 엔진 호출 구간 | PHP는 Unix socket의 `ormd`, Go는 in-process compiler, Rust는 WASM compiler, TypeScript는 Connect/Protobuf를 사용한다. client별 경로를 고정한다 |
+| 와이어 | 공통 연동 경로는 Protobuf message와 Connect다. PHP Unix socket, Go in-process, Rust WASM은 선언된 client 경로다 |
 | 대상 DB | MySQL ≥8.0.2 / MariaDB ≥10.2 먼저; PostgreSQL ≥12, SQLite ≥3.25는 S6. Dialect 인터페이스는 S1부터 |
 | 성능 | 핫패스 = 네이티브 드라이버 + 캐시 SQL (엔진 오버헤드 0). 콜드패스(형태당 1회) 비용을 S0에서 실측·문서화 |
 
