@@ -174,7 +174,7 @@ Query events expose the normalized SQL, bind count, duration, plan identifier, a
 
 The generator reads the schema manifest and emits the declared methods, fields, relations, column references, and error types. It must not emit a method for an undeclared column, relation, or operator. Generated code is checked against the manifest and the interface symbol list.
 
-The regular API uses declared relation methods such as `relation<Rel>`, `relations<Rel>`, `join<Rel>`, and `leftJoin<Rel>`. PHP compatibility parsing may accept legacy names, but it converts them to the same request IR and cannot add a logical operation unavailable to the other clients.
+The regular API uses declared relation methods such as `relation<Rel>`, `relations<Rel>`, `join<Rel>`, and `leftJoin<Rel>`. Undeclared method names fail during language-level method lookup.
 
 ## 12. Verification
 
