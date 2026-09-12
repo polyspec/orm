@@ -9,16 +9,14 @@ import {
   type GetMetadataResponse,
   type Plan,
 } from './gen/proto/orm/compiler/v1/compiler_pb.js';
+import type { Compiler, Plan as NativePlan, Request } from './index.js';
+import { planFromProto, requestToProto } from './compiler_bridge.js';
+import { CompilerError } from './compiler_error.js';
+
+export { CompilerError } from './compiler_error.js';
 
 export function compileRequest(init: MessageInitShape<typeof CompileRequestSchema>): CompileRequest {
   return create(CompileRequestSchema, init);
-}
-
-export class CompilerError extends Error {
-  public constructor(public readonly code: string, message: string) {
-    super(`${code}: ${message}`);
-    this.name = 'CompilerError';
-  }
 }
 
 export interface CompilerTransport {
@@ -47,5 +45,12 @@ export class ConnectCompiler implements CompilerTransport {
 
   public metadata(): Promise<GetMetadataResponse> {
     return this.client.getMetadata(create(GetMetadataRequestSchema), { signal: AbortSignal.timeout(this.timeoutMs) });
+  }
+}
+
+export class ConnectPlanCompiler implements Compiler {
+  public constructor(private readonly transport: CompilerTransport) {}
+  public async compile(request: Request): Promise<NativePlan> {
+    return planFromProto(await this.transport.compile(requestToProto(request)));
   }
 }
