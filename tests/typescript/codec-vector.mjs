@@ -1,7 +1,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { CodecError, decodeCodec, encodeCodec, parsePoint, pointText } from '../../clients/typescript/dist/index.js';
+import { CodecError, decodeCodec, encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from '../../clients/typescript/dist/index.js';
 
 const vectors = JSON.parse(await readFile('tests/codec/vectors.json', 'utf8')).vectors;
+const aesVectors = JSON.parse(await readFile('tests/codec/aes-vectors.json', 'utf8')).vectors;
 const canonical = value => {
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
@@ -67,6 +68,19 @@ for (const [name, operation, code] of [
       failures++;
     }
   }
+}
+
+for (const vector of aesVectors) {
+  const encoded = hostEncode(vector.plain, ['aes', 'hex'], vector.key);
+  if (encoded !== vector.hex) { console.error(`aes ${JSON.stringify(vector.plain)}: ${encoded} want ${vector.hex}`); failures++; }
+  const decoded = hostDecode(vector.hex, ['aes', 'hex'], vector.key);
+  if (decoded !== vector.plain) { console.error(`aes decode ${vector.hex}: ${decoded} want ${vector.plain}`); failures++; }
+}
+for (const address of ['10.1.2.3', '2001:db8::1', '::1', '::ffff:10.1.2.3']) {
+  const encoded = hostEncode(address, ['ip'], '');
+  const decoded = hostDecode(encoded, ['ip'], '');
+  const expected = address === '::ffff:10.1.2.3' ? '10.1.2.3' : address;
+  if (decoded !== expected) { console.error(`ip ${address}: ${decoded} want ${expected}`); failures++; }
 }
 
 if (!same(decodeCodec(['yaml'], '1: value\n'), { 1: 'value' })) {
