@@ -923,8 +923,11 @@ impl Db {
     }
 
     async fn begin(&self, options: TransactionOptions) -> Result<TxInner> {
+        if options.timeout_ms > 0 && self.driver() != "postgres" {
+            return Err(Error::Engine { code: crate::codes::CAPABILITY_UNSUPPORTED.into(), msg: "transaction timeout_ms is supported only by postgres".into() });
+        }
         let level = options.isolation.sql_name();
-        Ok(match &self.pool {
+        let mut tx = match &self.pool {
             Pool::MySql(p) => {
                 // `Pool::begin_with` can only execute the statement that starts the
                 // transaction. MySQL requires SET TRANSACTION to run immediately
@@ -972,7 +975,14 @@ impl Db {
                 }
                 TxInner::Sqlite(p.begin().await?)
             }
-        })
+        };
+        if options.timeout_ms > 0 {
+            if let TxInner::Postgres(inner) = &mut tx {
+                let statement = format!("SET LOCAL statement_timeout = {}", options.timeout_ms);
+                sqlx::raw_sql(sqlx::AssertSqlSafe(statement).into_sql_str()).execute(&mut **inner).await?;
+            }
+        }
+        Ok(tx)
     }
 
     /// Run `f` once in a transaction. An error rolls back the transaction.
@@ -1058,6 +1068,7 @@ pub struct TransactionOptions {
     pub max_attempts: u32,
     pub isolation: IsolationLevel,
     pub read_only: bool,
+    pub timeout_ms: u64,
 }
 
 impl Default for TransactionOptions {
@@ -1067,6 +1078,7 @@ impl Default for TransactionOptions {
             max_attempts: 3,
             isolation: IsolationLevel::Default,
             read_only: false,
+            timeout_ms: 0,
         }
     }
 }

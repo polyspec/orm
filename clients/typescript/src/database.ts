@@ -155,10 +155,13 @@ export class Db implements Database, Executor {
     return rows.length;
   }
   public async transaction<T>(callback: (transaction: Tx) => Promise<T>, options: TransactionOptions = {}): Promise<T> {
+    const timeoutMs = options.timeoutMs ?? 0;
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) throw new OrmError('CONFIG', 'transaction timeout_ms must not be negative');
+    if (timeoutMs > 0 && this.driver !== 'postgres') throw new OrmError('CAPABILITY_UNSUPPORTED', 'transaction timeout_ms is supported only by postgres');
     const attempts = options.retryDeadlocks ? Math.max(1, options.maxAttempts ?? 3) : 1;
     let last: unknown;
     for (let attempt = 0; attempt < attempts; attempt++) {
-      const connection = await this.connection.begin({ isolation: options.isolation ?? 'default', readOnly: options.readOnly ?? false });
+      const connection = await this.connection.begin({ isolation: options.isolation ?? 'default', readOnly: options.readOnly ?? false, timeoutMs });
       const transaction = new Tx(connection, this);
       try {
         const result = await callback(transaction);
