@@ -567,10 +567,12 @@ class Db
             $pr = $st['parent'];
             $parents = $pr['step'] === 0 ? $rows->data : $rows->steps[$pr['step']]['data'];
             $vals = self::parentValues($pr, $parents, $params);
-            $sr = ['data' => [], 'byKey' => []];
-            if ($vals !== []) {
-                [$sql, $vals] = self::expandIn($st, $vals);
-                $sr['data'] = $this->query($st, $params, $sql, $vals);
+        $sr = ['data' => [], 'byKey' => []];
+        if ($vals !== []) {
+                foreach (self::relationChunks($st, $vals, $this->driver) as $chunk) {
+                    [$sql, $chunk] = self::expandIn($st, $chunk);
+                    $sr['data'] = array_merge($sr['data'], $this->query($st, $params, $sql, $chunk));
+                }
                 $keys = self::childKeys($plan, $st['id']);
                 foreach ($sr['data'] as $j => $row) {
                     $key = self::rowKey($row, $keys);
@@ -666,6 +668,30 @@ class Db
             $slot++;
         }
         return [$sql, $vals];
+    }
+
+    /** Split relation values before power-of-two padding reaches a driver bind limit. */
+    private static function relationChunks(array $step, array $vals, string $driver): array
+    {
+        $width = count($step['parent']['keys'] ?? []);
+        if ($width === 0 || count($vals) % $width !== 0) {
+            throw new OrmException(Code::IR_INVALID, "relation {$step['id']} has invalid parent key values");
+        }
+        $nonParent = count(array_filter($step['bind_slots'] ?? [], static fn(array $bind): bool => ($bind['from'] ?? '') !== 'parent'));
+        $limit = $driver === 'sqlite' ? 999 : 65535;
+        $maxTuples = intdiv($limit - $nonParent, $width);
+        if ($maxTuples < 1) {
+            throw new OrmException(Code::IR_INVALID, "relation {$step['id']} needs " . ($nonParent + $width) . " bind parameters but $driver permits $limit");
+        }
+        $chunkTuples = 1;
+        while ($chunkTuples * 2 <= $maxTuples) $chunkTuples *= 2;
+        $tuples = intdiv(count($vals), $width);
+        $out = [];
+        for ($start = 0; $start < $tuples; $start += $chunkTuples) {
+            $count = min($chunkTuples, $tuples - $start);
+            $out[] = array_slice($vals, $start * $width, $count * $width);
+        }
+        return $out;
     }
 
     /** The match column of a relation step, from the child spec that references it. */
