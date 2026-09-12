@@ -1708,9 +1708,14 @@ func BatchWrite(ctx context.Context, ex Exec, requests []*Req, kind string, opti
 				if err != nil {
 					return err
 				}
-				result.Affected += affected
 				if kind == "insert" {
+					// INSERT and upsert have driver-specific row counts: MySQL
+					// reports 2 for an updated duplicate while PostgreSQL and
+					// SQLite report 1. The public count is one successful request.
+					result.Affected++
 					result.Inserted++
+				} else {
+					result.Affected += affected
 				}
 			}
 		}

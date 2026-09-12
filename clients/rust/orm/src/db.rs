@@ -1500,8 +1500,14 @@ async fn batch_write_target(ex: &impl Exec, requests: &mut [Req], kind: &str, op
         for request in chunk {
             result.attempted += 1;
             let (_, affected) = write(ex, request, kind).await?;
-            result.affected += affected;
-            if kind == "insert" { result.inserted += 1; }
+            if kind == "insert" {
+                // MySQL reports 2 for an upsert that updates a duplicate
+                // while PostgreSQL and SQLite report 1. Expose one per request.
+                result.affected += 1;
+                result.inserted += 1;
+            } else {
+                result.affected += affected;
+            }
         }
     }
     Ok(result)

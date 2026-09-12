@@ -112,7 +112,7 @@ Finder는 equality 술어를 적용한 뒤 해당 terminal을 호출한다. 데�
 
 ### 2.7 Batch write
 
-Batch write는 typed query draft와 하나의 transaction을 사용한다. `batchInsert`, `batchUpsert`, `batchUpdate`, `batchDelete`는 entity별 query 목록과 양수 chunk size를 받는다. 결과는 `attempted`, `affected`, `inserted`를 포함한다. 오류가 발생하면 전체 batch를 rollback하며, 전달된 transaction은 재사용한다.
+Batch write는 typed query draft와 하나의 transaction을 사용한다. `batchInsert`, `batchUpsert`, `batchUpdate`, `batchDelete`는 entity별 query 목록과 양수 chunk size를 받는다. 결과는 `attempted`, `affected`, `inserted`를 포함한다. insert와 upsert의 `affected`는 database driver별 duplicate update 결과 차이를 제거하기 위해 성공한 request마다 1을 반환한다. `inserted`는 성공한 insert request 수다. update와 delete의 `affected`는 driver가 반환한 row count다. 오류가 발생하면 전체 batch를 rollback하며, 전달된 transaction은 재사용한다.
 
 ### 2.8 행
 
