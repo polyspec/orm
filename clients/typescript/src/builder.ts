@@ -1,6 +1,7 @@
 import type { Assignment, Group, Item, Param, Predicate, QueryKind, Request, RequestQuery } from './index.js';
 import type { Db } from './database.js';
 import { OrmError } from './runtime_error.js';
+import { encode, type CodecValue } from './codec.js';
 
 export class ColumnReference {
   public constructor(public readonly column: string, public readonly path = '') {}
@@ -121,14 +122,17 @@ export class QueryCore {
   public noCascadeDelete(): this { this.request.ir.no_cascade_delete = true; return this; }
   public raw(sql: string, values: readonly Param[] = []): this { this.request.ir.raw = { sql, ps: values.map(value => this.request.parameter(value)) }; return this; }
   public set(column: string, value: Param): this { return this.assignment('set', { column, p: this.request.parameter(value) }); }
+  public setEncoded(column: string, value: unknown, styles: readonly string[]): this { return this.set(column, encode(styles, value as CodecValue)); }
   public setNull(column: string): this { return this.assignment('set', { column, null: true }); }
   public setExpression(column: string, expression: string, values: readonly Param[] = []): this { return this.assignment('set', { column, expr: expression, ps: values.map(value => this.request.parameter(value)) }); }
   public plus(column: string, value: Param): this { return this.assignment('set', { column, plus_p: this.request.parameter(value) }); }
   public minus(column: string, value: Param): this { return this.assignment('set', { column, minus_p: this.request.parameter(value) }); }
   public duplicate(column: string, value: Param): this { return this.assignment('on_duplicate', { column, p: this.request.parameter(value) }); }
+  public duplicateEncoded(column: string, value: unknown, styles: readonly string[]): this { return this.duplicate(column, encode(styles, value as CodecValue)); }
   public duplicateExpression(column: string, expression: string, values: readonly Param[] = []): this { return this.assignment('on_duplicate', { column, expr: expression, ps: values.map(value => this.request.parameter(value)) }); }
   public duplicatePlus(column: string, value: Param): this { return this.assignment('on_duplicate', { column, plus_p: this.request.parameter(value) }); }
   public duplicateMinus(column: string, value: Param): this { return this.assignment('on_duplicate', { column, minus_p: this.request.parameter(value) }); }
+  public duplicateAll(skip: readonly string[] = []): this { const blocked=new Set(skip); this.request.ir.on_duplicate=(this.request.ir.set??[]).filter(value=>!blocked.has(value.column)).map(value=>structuredClone(value)); return this; }
   public optimistic(column: string, value: Param): this { this.request.ir.optimistic = { column, p: this.request.parameter(value) }; return this; }
   private assignment(target: 'set' | 'on_duplicate', assignment: Assignment): this { (this.request.ir[target] ??= []).push(assignment); return this; }
   public requestShape(kind: QueryKind = this.request.ir.kind): Request { return this.request.shape(kind); }

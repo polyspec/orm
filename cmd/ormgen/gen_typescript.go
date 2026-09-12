@@ -119,6 +119,36 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		}
 		fmt.Fprintf(&b, "  public and(callback: (where: %sWhere) => void): this { this.where().and(core=>callback(new %sWhere(core))); return this; }\n", ge.Type, ge.Type)
 		writeTSPredicates(&b, ge, "this")
+		for _, c := range ge.Cols {
+			typ := tsType(e.Column(c.Name))
+			fmt.Fprintf(&b, "  public select%s(): this { return this.select(%s); }\n  public omit%s(): this { return this.omit(%s); }\n", c.Field, tsString(c.Name), c.Field, tsString(c.Name))
+			fmt.Fprintf(&b, "  public orderBy%sAsc(): this { return this.orderBy(%s); }\n  public orderBy%sDesc(): this { return this.orderBy(%s,true); }\n", c.Field, tsString(c.Name), c.Field, tsString(c.Name))
+			fmt.Fprintf(&b, "  public groupBy%s(): this { return this.groupBy(%s); }\n  public keyBy%s(): this { return this.keyBy(%s); }\n", c.Field, tsString(c.Name), c.Field, tsString(c.Name))
+			if len(c.Styles) > 0 {
+				styles := make([]string, len(c.Styles))
+				for i, style := range c.Styles {
+					styles[i] = tsString(style)
+				}
+				fmt.Fprintf(&b, "  public set%s(value: %s): this { return this.setEncoded(%s,value,[%s]); }\n  public onDuplicateSet%s(value: %s): this { return this.duplicateEncoded(%s,value,[%s]); }\n", c.Field, typ, tsString(c.Name), strings.Join(styles, ","), c.Field, typ, tsString(c.Name), strings.Join(styles, ","))
+			} else {
+				fmt.Fprintf(&b, "  public set%s(value: %s): this { return this.set(%s,value); }\n  public onDuplicateSet%s(value: %s): this { return this.duplicate(%s,value); }\n", c.Field, typ, tsString(c.Name), c.Field, typ, tsString(c.Name))
+			}
+			if c.Nullable {
+				fmt.Fprintf(&b, "  public set%sNull(): this { return this.setNull(%s); }\n", c.Field, tsString(c.Name))
+			}
+		}
+		for _, c := range ge.Numeric {
+			fmt.Fprintf(&b, "  public plus%s(value: number): this { return this.plus(%s,value); }\n  public minus%s(value: number): this { return this.minus(%s,value); }\n", c.Field, tsString(c.Name), c.Field, tsString(c.Name))
+			fmt.Fprintf(&b, "  public onDuplicatePlus%s(value: number): this { return this.duplicatePlus(%s,value); }\n  public onDuplicateMinus%s(value: number): this { return this.duplicateMinus(%s,value); }\n", c.Field, tsString(c.Name), c.Field, tsString(c.Name))
+			fmt.Fprintf(&b, "  public async sum%s(): Promise<number | null> { this.request.ir.agg=%s; const value=await this.terminal('sum'); return value===null?null:Number(value); }\n  public async avg%s(): Promise<number | null> { this.request.ir.agg=%s; const value=await this.terminal('avg'); return value===null?null:Number(value); }\n", c.Field, tsString(c.Name), c.Field, tsString(c.Name))
+		}
+		for _, c := range ge.Aggs {
+			fmt.Fprintf(&b, "  public async min%s(): Promise<unknown> { this.request.ir.agg=%s; return this.terminal('min'); }\n  public async max%s(): Promise<unknown> { this.request.ir.agg=%s; return this.terminal('max'); }\n  public async countDistinct%s(): Promise<number> { this.request.ir.agg=%s; return Number(await this.terminal('count_distinct')); }\n", c.Field, tsString(c.Name), c.Field, tsString(c.Name), c.Field, tsString(c.Name))
+		}
+		for _, c := range ge.ParentCols {
+			fmt.Fprintf(&b, "  public ifParent%sEq(value: unknown): this { return this.ifParent(%s,value); }\n", c.Field, tsString(c.Name))
+		}
+		b.WriteString("  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }\n  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }\n")
 		for _, rel := range ge.Rels {
 			fmt.Fprintf(&b, "  public %s(callback: (where: %sWhere) => void): this { this.where().navigate(%s,core=>callback(new %sWhere(core))); return this; }\n", tsMethod(rel.Name), rel.TargetType, tsString(rel.Name), rel.TargetType)
 		}
