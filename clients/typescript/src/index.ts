@@ -1,6 +1,52 @@
 export type Param = unknown;
 type Terminal = 'get' | 'gets' | 'count';
 
+export interface AesRotationColumn {
+  name: string;
+  styles: readonly string[];
+}
+
+export interface AesRowCodec {
+  decode(value: unknown, styles: readonly string[], key: string): unknown;
+  encode(value: unknown, styles: readonly string[], key: string): unknown;
+}
+
+export class AesKeyring {
+  private readonly keys: ReadonlyMap<number, string>;
+  public constructor(keys: ReadonlyMap<number, string>, public readonly currentVersion: number) {
+    if (currentVersion < 1 || !keys.has(currentVersion)) throw new Error(`AES version ${currentVersion} is not declared`);
+    for (const [version, key] of keys) {
+      if (version < 1 || key.length === 0) throw new Error(`AES version ${version} has no key`);
+    }
+    this.keys = new Map(keys);
+  }
+
+  public versions(): number[] { return [...this.keys.keys()].sort((a, b) => a - b); }
+
+  public rotateRow(
+    row: Readonly<Record<string, unknown>>,
+    versionColumn: string,
+    columns: readonly AesRotationColumn[],
+    targetVersion: number,
+    codec: AesRowCodec,
+  ): Record<string, unknown> {
+    const oldVersion = row[versionColumn];
+    if (typeof oldVersion !== 'number' || !Number.isInteger(oldVersion)) throw new Error('AES row version must be an integer');
+    const oldKey = this.keys.get(oldVersion);
+    const newKey = this.keys.get(targetVersion);
+    if (oldKey === undefined) throw new Error(`AES version ${oldVersion} is not declared`);
+    if (newKey === undefined) throw new Error(`AES target version ${targetVersion} is not declared`);
+    const out = { ...row };
+    for (const column of columns) {
+      if (!(column.name in row)) throw new Error(`AES column ${column.name} is missing`);
+      const plain = codec.decode(row[column.name], column.styles, oldKey);
+      out[column.name] = codec.encode(plain, column.styles, newKey);
+    }
+    out[versionColumn] = targetVersion;
+    return out;
+  }
+}
+
 export interface Request {
   ir_version: 1;
   schema_hash: string;

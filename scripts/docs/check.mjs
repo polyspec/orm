@@ -10,7 +10,11 @@ assert.equal(prepared.base, base, 'Rebuild with the same VITEPRESS_BASE before c
 const pages = (await files(dist)).filter(file => file.endsWith('.html'));
 assert.ok(pages.length > 1, 'No static pages were built');
 for (const source of (await files(docs)).filter(file => file.endsWith('.md'))) {
-  const target = path.join(dist, path.relative(docs, source).replace(/\.md$/, '.html'));
+  const relativeSource = path.relative(docs, source).split(path.sep).join('/');
+  const relativePage = relativeSource.endsWith('.ko.md')
+    ? `ko/${relativeSource.slice(0, -'.ko.md'.length)}.html`
+    : relativeSource.replace(/\.md$/, '.html');
+  const target = path.join(dist, relativePage);
   assert.ok(pages.includes(target), `Missing HTML for ${source}`);
 }
 

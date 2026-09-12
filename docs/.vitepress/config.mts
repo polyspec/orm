@@ -27,7 +27,13 @@ export default defineConfig({
   ],
   // VitePress leaves the 404 app shell empty; preserve the rendered document for no-JS readers.
   transformHtml(html, _file, { page, content }) {
-    return page === '404.md' ? html.replace('<div id="app"></div>', `<div id="app"></div><noscript>${content}</noscript>`) : html;
+    const korean = page.endsWith('.ko.md');
+    const stem = korean ? page.slice(0, -'.ko.md'.length) : page.replace(/\.md$/, '');
+    const pair = korean ? stem : `ko/${stem}`;
+    const link = `${base}${pair}`;
+    const switcher = `<nav class="orm-language-switch"><a href="${link}">${korean ? 'English' : '한국어'}</a></nav>`;
+    const body = html.replace('<div id="app"></div>', `${switcher}<div id="app"></div>`);
+    return page === '404.md' ? body.replace('<div id="app"></div>', `<div id="app"></div><noscript>${content}</noscript>`) : body;
   },
   themeConfig: {
     logo: '/favicon.svg',

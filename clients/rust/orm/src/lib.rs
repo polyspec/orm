@@ -13,6 +13,7 @@ pub mod codec;
 pub mod codes;
 pub mod collection;
 pub mod config;
+pub mod aes_rotation;
 
 pub use builder::{Q, W};
 pub use collection::{Collection, Key, Page};
