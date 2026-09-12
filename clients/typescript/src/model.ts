@@ -1,6 +1,7 @@
 import type { Assemble, Child, Plan } from './index.js';
 import type { Db } from './database.js';
 import { OrmError } from './runtime_error.js';
+import { QueryCore } from './builder.js';
 
 export type Key = number | string | bigint;
 export interface RowConstructor<T extends Row = Row> {
@@ -75,12 +76,14 @@ export class Row {
   protected indexes = new Map<string, number>();
   protected relations = new Map<string, Row | Collection | null>();
   protected dirty = new Map<string, unknown>();
+  protected dirtyStyles = new Map<string, readonly string[]>();
   protected hidden = new Set<string>();
   protected extras = new Map<string, unknown>();
   protected binding?: Db;
   protected loaded = false;
   protected identity: unknown;
   protected originalVersion: unknown;
+  protected cascade: string[] = [];
 
   public static entity(): string { throw new OrmError('INTERNAL', 'row entity is not declared'); }
   public static primaryKey(): string { throw new OrmError('INTERNAL', 'row primary key is not declared'); }
@@ -125,6 +128,7 @@ export class Row {
       }
       return;
     }
+    if (child.cascade) this.cascade.push(child.rel);
     const collection = new Collection();
     for (const values of related) collection.put(asKey(values[child.key_index]), type.fromResult(values, assemble, rows));
     this.relations.set(child.rel, collection);
@@ -148,6 +152,7 @@ export class Row {
     this.dirty.set(column, value);
     return this;
   }
+  protected setStyledColumn(column: string, value: unknown, styles: readonly string[]): this { this.setColumn(column, value); this.dirtyStyles.set(column, [...styles]); return this; }
   public relation<T extends Row | Collection>(name: string): T | null { return (this.relations.get(name) as T | null | undefined) ?? null; }
   public toObject(): Record<string, unknown> {
     const out: Record<string, unknown> = {};
@@ -157,6 +162,41 @@ export class Row {
     for (const [name, value] of this.relations) out[name] = value instanceof Row ? value.toObject() : value instanceof Collection ? value.toArray() : value;
     return out;
   }
+  public async update(): Promise<void> { await this.updateRow(false); }
+  public async updateOptimistic(): Promise<void> { await this.updateRow(true); }
+  private async updateRow(optimistic: boolean): Promise<void> {
+    if (!this.loaded) throw new OrmError('CONFIG', 'update requires a loaded row');
+    if (optimistic && this.originalVersion === undefined) throw new OrmError('CONFIG', 'optimistic update requires a loaded version column');
+    if (this.dirty.size === 0) return;
+    const database = this.requiredBinding();
+    const query = new QueryCore((this.constructor as typeof Row).entity()).using(database);
+    for (const [column, value] of this.dirty) {
+      const styles = this.dirtyStyles.get(column);
+      if (styles) query.setEncoded(column, value, styles); else query.set(column, value);
+    }
+    query.predicate((this.constructor as typeof Row).primaryKey(), 'eq', this.identity);
+    if (optimistic) query.optimistic((this.constructor as typeof Row).versionColumn()!, this.originalVersion);
+    const result = await database.execute(await database.plan(query.request.shape('update')), query.request.params) as {affected:number};
+    if (optimistic && result.affected === 0) throw new OrmError('OPTIMISTIC_LOCK', 'row changed since it was read');
+    this.dirty.clear(); this.dirtyStyles.clear();
+  }
+  public async delete(): Promise<void> { await this.deleteRow(false); }
+  public async deleteCascade(): Promise<void> { await this.deleteRow(true); }
+  private async deleteRow(cascade: boolean): Promise<void> {
+    if (!this.loaded) throw new OrmError('CONFIG', 'delete requires a loaded row');
+    const database = this.requiredBinding();
+    if (cascade) {
+      for (const name of this.cascade) {
+        const related = this.relations.get(name);
+        if (related instanceof Collection) for (const row of related) await row.deleteCascade();
+        else if (related instanceof Row) await related.deleteCascade();
+      }
+    }
+    const query = new QueryCore((this.constructor as typeof Row).entity()).using(database);
+    query.predicate((this.constructor as typeof Row).primaryKey(), 'eq', this.identity);
+    await database.execute(await database.plan(query.request.shape('delete')), query.request.params);
+  }
+  private requiredBinding(): Db { if (!this.binding) throw new OrmError('CONFIG', 'row has no database'); return this.binding; }
 }
 
 export function rowCollection<T extends Row>(rows: ExecutionRows, assemble: Assemble, keyIndex?: number): Collection<T> {
