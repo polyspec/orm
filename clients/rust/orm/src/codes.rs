@@ -17,6 +17,8 @@ pub const FRAME_INVALID: &str = "FRAME_INVALID";
 pub const OP_UNKNOWN: &str = "OP_UNKNOWN";
 /// engine: structural: missing fields, wrong combination, param index out of range
 pub const IR_INVALID: &str = "IR_INVALID";
+/// engine: requested operation is not supported by the selected dialect
+pub const CAPABILITY_UNSUPPORTED: &str = "CAPABILITY_UNSUPPORTED";
 /// engine
 pub const ENTITY_UNKNOWN: &str = "ENTITY_UNKNOWN";
 /// engine
