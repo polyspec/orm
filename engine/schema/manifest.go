@@ -214,6 +214,9 @@ func buildEntity(e *DEntity) (*Entity, error) {
 	if len(ent.PK) == 0 {
 		return nil, &BuildError{e.Line, "entity " + e.Name + " has no PK"}
 	}
+	if len(ent.PK) > 1 {
+		return nil, &BuildError{e.Line, "entity " + e.Name + " has a composite primary key; common runtime support is incomplete"}
+	}
 	// Timestamps by convention; %% timestamps overrides.
 	if ent.cols["created_ts"] != nil || ent.cols["updated_ts"] != nil {
 		ent.Timestamps = &Timestamps{}
