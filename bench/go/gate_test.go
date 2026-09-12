@@ -1,9 +1,9 @@
-// The hot-path regression gate: the generated client measured against this
-// package's hand-written native statements (same SQL, same typed scan), in one
+// The hot-path regression gate compares the generated client with this
+// package's native statements (same SQL, same typed scan), in one
 // process, so the ratio is comparable on any machine. docs/perf.md §6d records
 // the absolute numbers; this test fails when a client drifts past the bound.
 //
-//	go test ./bench/go -run TestHotPathGate -v
+//	make perf-check
 package bench
 
 import (
@@ -20,13 +20,9 @@ import (
 	"github.com/polyspec/orm/engine/schema"
 )
 
-// The gate is a ratio, so it travels between machines — but only the client's
-// share of the time does. Over a unix socket the fixed cost is a large part of a
-// PK read and the ratio sits near 0.5 (the client beats this package's helper,
-// which rebuilds its scan targets per call); over TCP (CI) the round trip
-// dominates and every ratio converges toward 1. The bounds are therefore set
-// where a real regression shows in both: a client that costs a third more than
-// the same statement by hand.
+// The ratio is comparable across machines. A Unix socket emphasizes fixed
+// client cost; a TCP connection emphasizes database round-trip cost. The limits
+// detect a client cost greater than one third of the equivalent native query.
 const (
 	pkBound   = 1.35
 	listBound = 1.25
@@ -49,6 +45,9 @@ func p50(tb testing.TB, f func()) time.Duration {
 }
 
 func TestHotPathGate(t *testing.T) {
+	if os.Getenv("ORM_RUN_PERF_GATE") != "1" {
+		t.Skip("set ORM_RUN_PERF_GATE=1 to run the timing-sensitive regression check")
+	}
 	sqlDB := open(t) // skips without a local MySQL
 	ctx := context.Background()
 	js, err := os.ReadFile("../../schema/schema.json")
@@ -102,7 +101,7 @@ func TestHotPathGate(t *testing.T) {
 		fmt.Printf("%-8s native %6.1fµs  client %6.1fµs  ratio %.2f (bound %.2f)\n",
 			c.name, float64(na.Microseconds()), float64(cl.Microseconds()), ratio, c.bound)
 		if ratio > c.bound {
-			t.Errorf("%s: the client is %.2fx the native statement, bound %.2fx — explain the regression or move the bound in docs/perf.md", c.name, ratio, c.bound)
+			t.Errorf("%s: client/native ratio %.2f exceeds limit %.2f; record the cause or a measured limit change in docs/perf.md", c.name, ratio, c.bound)
 		}
 	}
 }
