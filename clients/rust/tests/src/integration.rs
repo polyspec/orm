@@ -57,6 +57,12 @@ fn norm_sql(sql: &str) -> String {
     }
 }
 
+async fn cleanup_batch(db: &Db, prefix: &str) {
+    for suffix in ["insert", "insert-2", "upsert", "rollback"] {
+        let _ = battle::query().uuid_eq(format!("{prefix}-{suffix}")).using(db).delete().await;
+    }
+}
+
 fn direct_step(sql: String, parameters: usize) -> Step {
     Step { plan_id: 0, id: 0, role: "test".into(), sql, bind_slots: (0..parameters).map(|param| BindSlot { from: "param".into(), param, transform: String::new(), name: String::new(), step: 0, column: String::new(), host_styles: vec![], col_type: String::new() }).collect(), assemble: None, parent: None }
 }
@@ -324,6 +330,44 @@ async fn main() {
     let want_binds = vec![Param::I64(7)];
     check!(fails, s.binds == want_binds, "sql binds: secrets masked, params as values");
     check!(fails, battle::query().seq_in(vec![a.seq, inserted.seq]).using(&db).delete().await.expect("query delete") == 2, "query delete: affected count");
+
+    let batch_prefix = format!("rb-{:x}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos());
+    let batch_draft = |uuid: String, name: &str, read_count: i64| battle::query()
+        .set_uuid(Some(uuid)).set_name(name)
+        .set_read_count(read_count)
+        .set_user_seq(1).set_service_seq(999).set_service_module_seq(1).set_service_member_seq(1)
+        .set_start_dt(start).set_end_dt(end);
+    cleanup_batch(&db, &batch_prefix).await;
+    let batch_inserted = battle::query().using(&db).batch_insert(vec![
+        batch_draft(format!("{batch_prefix}-insert"), "batch-1", 1),
+        batch_draft(format!("{batch_prefix}-insert-2"), "batch-2", 2),
+    ], orm::BatchOptions { chunk_size: 1 }).await.expect("batch insert");
+    check!(fails, batch_inserted.attempted == 2 && batch_inserted.affected == 2 && batch_inserted.inserted == 2, "batch insert result");
+    let batch_row = battle::query().uuid_eq(format!("{batch_prefix}-insert")).using(&db).get().await.expect("batch row").expect("batch row");
+    let mut batch_upsert = battle::query().using(&db).batch_upsert(vec![
+        batch_draft(format!("{batch_prefix}-upsert"), "upsert-1", 1),
+    ], orm::BatchOptions { chunk_size: 1 }).await.expect("batch upsert insert");
+    check!(fails, batch_upsert.attempted == 1 && batch_upsert.affected == 1 && batch_upsert.inserted == 1, "batch upsert insert result");
+    batch_upsert = battle::query().using(&db).batch_upsert(vec![
+        batch_draft(format!("{batch_prefix}-upsert"), "upsert-2", 9).on_duplicate_set_name("upsert-2"),
+    ], orm::BatchOptions { chunk_size: 1 }).await.expect("batch upsert update");
+    check!(fails, batch_upsert.attempted == 1 && batch_upsert.affected == 1, "batch upsert update result");
+    let batch_updated = battle::query().using(&db).batch_update(vec![
+        battle::query().seq_eq(batch_row.seq).set_name("batch-updated"),
+    ], orm::BatchOptions { chunk_size: 1 }).await.expect("batch update");
+    check!(fails, batch_updated.attempted == 1 && batch_updated.affected == 1, "batch update result");
+    let batch_deleted = battle::query().using(&db).batch_delete(vec![
+        battle::query().seq_eq(batch_row.seq),
+        battle::query().uuid_eq(format!("{batch_prefix}-insert-2")),
+    ], orm::BatchOptions { chunk_size: 1 }).await.expect("batch delete");
+    check!(fails, batch_deleted.attempted == 2 && batch_deleted.affected == 2, "batch delete result");
+    let batch_rollback = battle::query().using(&db).batch_insert(vec![
+        batch_draft(format!("{batch_prefix}-rollback"), "rollback-1", 1),
+        batch_draft(format!("{batch_prefix}-rollback"), "rollback-2", 2),
+    ], orm::BatchOptions { chunk_size: 1 }).await;
+    check!(fails, batch_rollback.is_err(), "batch duplicate fails");
+    check!(fails, battle::query().uuid_eq(format!("{batch_prefix}-rollback")).using(&db).get_count().await.expect("batch rollback count") == 0, "batch rollback");
+    cleanup_batch(&db, &batch_prefix).await;
 
     let (svc, m1, m2, md) = db.transaction(|tx| async move {
         let s = service::query().set_name("rust-svc").using(&tx).insert().await?.unwrap();
