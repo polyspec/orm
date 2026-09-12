@@ -1,0 +1,5 @@
+{
+  "name": "@polyspec/orm-typescript",
+  "private": true,
+  "type": "module"
+}
