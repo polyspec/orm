@@ -80,6 +80,7 @@ async fn main() {
                 Param::Bytes(b) => q.bind(b.as_slice()),
                 Param::DateTime(t) => q.bind(*t),
                 Param::Date(d) => q.bind(*d),
+                Param::Point(point) => q.bind(orm::point_text(*point).expect("valid point")),
             };
         }
         let Pool::MySql(pool) = &db.pool else { panic!("the demo runs on MySQL") };
