@@ -100,6 +100,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] T7.18 Run physical comment, migration-plan apply, repeat, drift, failure, lock contention, recovery, rollback, and rollback no-op tests through containerctl for MySQL and PostgreSQL.
 - [x] T7.19 Add AES blind-index schema declarations, keyed equality predicates, write synchronization, generated relation APIs, and cross-client MySQL, PostgreSQL, and SQLite integration tests.
 - [x] T7.20 Split oversized root `IN` predicates in Go, PHP, Rust, and TypeScript, preserve non-`IN` parameters, merge rows, sum count results, reject unsafe query shapes, and verify the generated Protobuf keyset field.
+- [ ] T7.21 Add the declarative `soft_delete` schema directive, validate its nullable datetime column, apply active-row predicates to reads and updates, convert deletes to timestamp updates, and verify all four clients on physical databases.
 
 ## Documentation tasks
 
