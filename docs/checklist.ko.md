@@ -8,7 +8,7 @@
 - **S0 완료:** `docs/perf.md`에 측정과 R1~R3, F1~F3 결정을 기록했다.
 - **S1 완료:** 엔진, 생성기, 4개 클라이언트, 적합성 하네스, `ormgen tokens`, 데모를 구현했다.
 - **S2 완료:** 관계·코덱·타입·59개 벡터·150테이블 Rust fixture 검사를 통과했다.
-- **S3~S6 완료:** 쓰기, 조인, PHP 호환층, 배포, PostgreSQL, SQLite를 구현했다. T7.11에서 남은 고정 비용 작업과 회귀 검사를 완료했다.
+- **S3~S6 완료:** 쓰기, 조인, 배포, PostgreSQL, SQLite를 구현했다. T7.11에서 남은 고정 비용 작업과 회귀 검사를 완료했다.
 - 현재 적합성 범위는 **59개 벡터 × 4개 클라이언트 × 3개 데이터베이스**다. 코덱 범위는 Go·PHP·Rust·TypeScript의 96개 벡터다.
 
 ## 공통 인터페이스 검사
@@ -61,10 +61,10 @@
 - [x] upsert, 중복 갱신, save, update, delete, cascade delete, optimistic locking, SQL hook을 구현한다.
 - [x] Go·PHP·Rust 쓰기·cascade 적합성 벡터를 실행한다.
 
-## 단계 4 — S4 조인과 호환층 [완료]
+## 단계 4 — S4 조인 [완료]
 
 - [x] 조인, alias, aggregate, raw statement, named predicate, 관계 결과 namespace를 구현한다.
-- [x] PHP 호환 파서와 모델 범위를 넘는 괄호 거부를 구현한다.
+- [x] 선언되지 않은 query method를 언어의 method lookup 단계에서 거부한다.
 - [x] `getBy`, `getsBy`, `getCountBy` finder를 값만 받는 terminal로 생성한다.
 
 ## 단계 5 — S5 강화와 배포 [완료]

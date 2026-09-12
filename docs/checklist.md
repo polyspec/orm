@@ -8,7 +8,7 @@ Rules: no polling or timers, no symlinks, one execution path, Mermaid is the sou
 - **S0 complete:** measurements and decisions R1–R3 and F1–F3 are recorded in `docs/perf.md`.
 - **S1 complete:** engine, generators, four clients, conformance harness, `ormgen tokens`, and the demo are implemented.
 - **S2 complete:** relation, codec, type, 59-vector, and 150-table Rust fixture checks pass.
-- **S3–S6 complete:** writes, joins, PHP compatibility, deployment, PostgreSQL, and SQLite support are implemented. T7.11 completed the remaining fixed-cost work and regression checks.
+- **S3–S6 complete:** writes, joins, deployment, PostgreSQL, and SQLite support are implemented. T7.11 completed the remaining fixed-cost work and regression checks.
 - Current conformance coverage is **59 vectors × 4 clients × 3 databases**. Codec coverage is 96 vectors across Go, PHP, Rust, and TypeScript.
 
 ## Common interface verification
@@ -61,10 +61,10 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [x] Implement upsert, duplicate updates, save, update, delete, cascade delete, optimistic locking, and SQL hooks.
 - [x] Run the write and cascade conformance vectors for Go, PHP, and Rust.
 
-## Stage 4 — S4 joins and compatibility [complete]
+## Stage 4 — S4 joins [complete]
 
 - [x] Implement joins, aliases, aggregates, raw statements, named predicates, and relation result namespaces.
-- [x] Implement the PHP compatibility parser and reject model-crossing parenthesis patterns.
+- [x] Reject undeclared query methods through language-level method lookup.
 - [x] Implement `getBy`, `getsBy`, and `getCountBy` finder generation with value-only terminals.
 
 ## Stage 5 — S5 hardening and deployment [complete]
