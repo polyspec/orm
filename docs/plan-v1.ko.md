@@ -60,7 +60,7 @@
 ## 아키텍처
 
 ```
-schema/*.yaml ─▶ ormgen ─┬─▶ schema.blob (엔진 내장)
+schema/*.mmd ─▶ ormgen ─┬─▶ schema.json (generated manifest)
                          ├─▶ clients/php/gen   (클래스 + 토큰표 + docblock)
                          ├─▶ clients/go/gen    (typed 메서드, 별도 모듈)
                          └─▶ clients/rust/gen  (typed 메서드, 별도 crate)
@@ -227,7 +227,7 @@ let products = product::query()
 | **S4 조인·엣지 문법** | join/leftJoin/on/다단, 조인 하위 relation, `orJoin` 스플라이스, group_limit, 집계, `Query.raw`, computed 컬럼·`lhs_expr`, PHP `->{'…'}` 호환층, Go/Rust typed 컬럼 상수 탈출구, 충돌 픽스처 | 2.5주 |
 | **S5 하드닝·배포** | `validate --dsn`, `schema_hash` 부팅 검사, `errors.yaml`→enum, `on_query` 훅, .so 빌드(linux amd64/arm64, darwin), composer/crates/Go 모듈 패키징, `ormd` systemd 유닛, `erd`, CI(MySQL × 3언어), 벤치 회귀 검사 단계 | 1.5주 |
 | **S6 PostgreSQL·SQLite** | dialect 구현, 호스트측 AES(MySQL 키 폴딩·`block_encryption_mode` 확인), docker 적합성(같은 벡터 × 3 DB), LIKE 의미 고정, `RETURNING`/`ON CONFLICT` | 2.5주 |
-| **S7 이후 과제** | protobuf/Connect, FrankenPHP in-process(배포 방식 변경 시), DDL diff/마이그레이션, 멀티테넌시 `scope`, min/max/having, point/yaml/curlfile, 서버 스트리밍 | 이후 |
+| **S7 이후 과제** | 이전 일정 기록이다. 현재 상태는 [checklist.md](checklist.md)와 [features.md](features.md)에 기록한다. | 폐기 |
 
 ## 검증
 - 단위: dialect 골든(IR→SQL+바인드), 합성 WHERE 검증 케이스(루트 열고 조인에서 닫기, 선두 OR, 빈 IN), PHP 파서 충돌 픽스처, planner 단계 그래프 골든.

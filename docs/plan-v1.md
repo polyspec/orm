@@ -60,7 +60,7 @@ The following defects changed the architecture.
 ## Architecture
 
 ```
-schema/*.yaml ─▶ ormgen ─┬─▶ schema.blob (엔진 내장)
+schema/*.mmd ─▶ ormgen ─┬─▶ schema.json (generated manifest)
                          ├─▶ clients/php/gen   (클래스 + 토큰표 + docblock)
                          ├─▶ clients/go/gen    (typed 메서드, 별도 모듈)
                          └─▶ clients/rust/gen  (typed 메서드, 별도 crate)
@@ -227,7 +227,7 @@ let products = product::query()
 | **S4 joins and edge syntax** | join/leftJoin/on/multi-level, joined relations, `orJoin` splice, group_limit, aggregates, `Query.raw`, computed columns and `lhs_expr`, PHP `->{…}` compatibility, typed Go/Rust column escape hatch, collision fixtures | 2.5 weeks |
 | **S5 hardening and release** | `validate --dsn`, `schema_hash` startup check, `errors.yaml`→enum, `on_query` hook, .so builds, composer/crates/Go module packaging, `ormd` systemd unit, `erd`, CI (MySQL × three clients), benchmark regression check | 1.5 weeks |
 | **S6 PostgreSQL and SQLite** | Dialect implementation, host AES (MySQL key folding and `block_encryption_mode` check), Docker conformance (same vectors × three DBs), fixed LIKE semantics, `RETURNING`/`ON CONFLICT` | 2.5 weeks |
-| **Post-S7 work** | protobuf/Connect, FrankenPHP in-process when deployment changes, DDL diff/migrations, multi-tenant `scope`, min/max/having, point/yaml/curlfile, server streaming | Later |
+| **Post-S7 work** | Historical schedule. Current status is maintained in [checklist.md](checklist.md) and [features.md](features.md). | Superseded |
 
 ## Verification
 - Unit: dialect golden tests (IR→SQL+binds), composite WHERE cases (open at root and close in join, leading OR, empty IN), PHP parser collision fixtures, planner step-graph golden tests.
