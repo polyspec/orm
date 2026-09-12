@@ -239,7 +239,7 @@ final class Codec
         }
     }
 
-    // ---- host stages: aes (MySQL AES_ENCRYPT bytes), hex (upper-case), ip (INET6_ATON packing) ----
+    // ---- host stages: authenticated AES envelope, hex (upper-case), ip (INET6_ATON packing) ----
 
     /** Whether a style is a host stage rather than a codec stage. */
     public static function isHostStyle(string $style): bool
@@ -248,16 +248,11 @@ final class Codec
     }
 
     /**
-     * MySQL's key derivation for aes-128-ecb: the key bytes XOR-folded into one 16-byte block.
-     * The same fold makes the host AES byte-identical to `AES_ENCRYPT(v, key)` (tests/codec/aes-vectors.json).
+     * Derives the cross-client AES-256-GCM key for the v2 envelope.
      */
-    public static function foldKey(string $key): string
+    private static function aesV2Key(string $key): string
     {
-        $k = str_repeat("\0", 16);
-        for ($i = 0, $n = strlen($key); $i < $n; $i++) {
-            $k[$i % 16] = chr(ord($k[$i % 16]) ^ ord($key[$i]));
-        }
-        return $k;
+        return hash('sha256', "polyspec/orm/aes-256-gcm/v2\0" . $key, true);
     }
 
     /**
@@ -278,8 +273,11 @@ final class Codec
                     if ($aesKey === '') {
                         throw new OrmException(Code::CONFIG, 'secret aes not configured');
                     }
-                    $cur = openssl_encrypt($cur, 'aes-128-ecb', self::foldKey($aesKey), OPENSSL_RAW_DATA); // PKCS7 padding is openssl's default
-                    if ($cur === false) {
+                    $nonce = random_bytes(12);
+                    $tag = '';
+                    $encrypted = openssl_encrypt($cur, 'aes-256-gcm', self::aesV2Key($aesKey), OPENSSL_RAW_DATA, $nonce, $tag, "ORM-AES2\0", 16);
+                    $cur = "ORM-AES2\0" . $nonce . $encrypted . $tag;
+                    if ($encrypted === false) {
                         throw new OrmException(Code::CODEC_ENCODE, 'aes: ' . (string) openssl_error_string());
                     }
                     break;
@@ -321,13 +319,20 @@ final class Codec
                     if ($aesKey === '') {
                         throw new OrmException(Code::CONFIG, 'secret aes not configured');
                     }
-                    if ($cur === '' || strlen($cur) % 16 !== 0) {
-                        throw new OrmException(Code::CODEC_DECODE, 'aes: ciphertext length ' . strlen($cur));
+                    $prefix = "ORM-AES2\0";
+                    if (!str_starts_with($cur, $prefix)) {
+                        throw new OrmException(Code::CODEC_DECODE, 'aes: unsupported ciphertext format');
                     }
-                    $cur = openssl_decrypt($cur, 'aes-128-ecb', self::foldKey($aesKey), OPENSSL_RAW_DATA);
-                    if ($cur === false) {
-                        throw new OrmException(Code::CODEC_DECODE, 'aes: bad padding'); // wrong key or corrupt data
+                    if (strlen($cur) < strlen($prefix) + 12 + 16) {
+                        throw new OrmException(Code::CODEC_DECODE, 'aes: truncated v2 envelope');
                     }
+                    $offset = strlen($prefix);
+                    $nonce = substr($cur, $offset, 12);
+                    $tag = substr($cur, -16);
+                    $ciphertext = substr($cur, $offset + 12, -16);
+                    $plain = openssl_decrypt($ciphertext, 'aes-256-gcm', self::aesV2Key($aesKey), OPENSSL_RAW_DATA, $nonce, $tag, $prefix);
+                    if ($plain === false) throw new OrmException(Code::CODEC_DECODE, 'aes: authentication failed');
+                    $cur = $plain;
                     break;
                 case 'ip':
                     return self::unpackIp($cur);
@@ -336,6 +341,11 @@ final class Codec
             }
         }
         return $cur;
+    }
+
+    public static function hostDecodeVersioned(mixed $raw, array $styles, int $version, AesKeyring $keyring): ?string
+    {
+        return self::hostDecode($raw, $styles, $keyring->key($version));
     }
 
     /** INET6_ATON: 4 bytes for IPv4 (an IPv4-mapped IPv6 address included), 16 for IPv6. */
@@ -367,13 +377,26 @@ final class Codec
      */
     public static function decodeRow(array &$vals, array $asm): void
     {
+        $config = Orm::config();
+        $hasAes = false;
+        foreach ($asm['columns'] as $c) { if (in_array('aes', $c['styles'] ?? [], true)) { $hasAes = true; break; } }
+        $keyring = $hasAes ? ($config->aesKeys === [] ? new AesKeyring([$config->aesVersion => $config->aesKey], $config->aesVersion) : new AesKeyring($config->aesKeys, $config->aesVersion)) : null;
+        $version = $config->aesVersion;
+        foreach ($asm['columns'] as $c) {
+            if (!empty($c['hidden']) && ($c['column'] ?? '') === 'aes_key_version') {
+                $version = (int) $vals[$c['index']];
+                break;
+            }
+        }
         foreach ($asm['columns'] as $c) {
             if (empty($c['styles'])) {
                 continue;
             }
             $v = $vals[$c['index']];
             if (!empty($c['host'])) {
-                $v = self::hostDecode($v, $c['host'], Orm::config()->aesKey);
+                $v = in_array('aes', $c['host'], true)
+                    ? self::hostDecodeVersioned($v, $c['host'], $version, $keyring)
+                    : self::hostDecode($v, $c['host'], $config->aesKey);
             }
             if (!empty($c['codec'])) {
                 $v = self::decode($c['codec'], $v);

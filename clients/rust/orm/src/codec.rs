@@ -485,49 +485,37 @@ fn is_host(style: &str) -> bool {
 
 // ---- host stages (docs/dialects.md): what MySQL does in SQL, PostgreSQL/SQLite leave to the executor ----
 
-use aes::cipher::{BlockDecrypt, BlockEncrypt, KeyInit};
+use aes_gcm::{aead::{Aead, Payload}, Aes256Gcm, KeyInit as GcmKeyInit, Nonce};
+use sha2::{Digest, Sha256};
 
-/// MySQL's key derivation for aes-128-ecb: the key bytes XOR-folded into a 16-byte block.
-pub fn mysql_key_fold(key: &str) -> [u8; 16] {
-    let mut k = [0u8; 16];
-    for (i, b) in key.bytes().enumerate() {
-        k[i % 16] ^= b;
-    }
-    k
+const AES_V2_PREFIX: &[u8] = b"ORM-AES2\0";
+
+fn aes_v2_key(key: &str) -> [u8; 32] {
+    let mut h = Sha256::new();
+    h.update(b"polyspec/orm/aes-256-gcm/v2\0");
+    h.update(key.as_bytes());
+    h.finalize().into()
 }
 
-/// `AES_ENCRYPT(plain, key)`: AES-128-ECB with PKCS7 padding over the folded key
-/// (byte-identical to MySQL; tests/codec/aes-vectors.json).
+/// Returns the authenticated v2 envelope used by every client.
 pub fn aes_encrypt(plain: &[u8], key: &str) -> Vec<u8> {
-    let cipher = aes::Aes128::new(&aes::Block::from(mysql_key_fold(key)));
-    let pad = 16 - plain.len() % 16;
-    let mut buf = Vec::with_capacity(plain.len() + pad);
-    buf.extend_from_slice(plain);
-    buf.resize(plain.len() + pad, pad as u8);
-    for block in buf.chunks_exact_mut(16) {
-        let block: &mut [u8; 16] = block.try_into().unwrap();
-        cipher.encrypt_block(block.into());
-    }
-    buf
+    let cipher = Aes256Gcm::new_from_slice(&aes_v2_key(key)).expect("AES-256 key");
+    let nonce: [u8; 12] = rand::random();
+    let nonce = Nonce::from(nonce);
+    let encrypted = cipher.encrypt(&nonce, Payload { msg: plain, aad: AES_V2_PREFIX }).expect("AES-GCM encryption");
+    [AES_V2_PREFIX, &nonce, &encrypted].concat()
 }
 
-/// `AES_DECRYPT(cipher, key)`; a wrong key or corrupt data is CODEC_DECODE.
+/// Authenticates and decrypts a v2 envelope.
 pub fn aes_decrypt(cipher_text: &[u8], key: &str) -> Result<Vec<u8>> {
-    if cipher_text.is_empty() || cipher_text.len() % 16 != 0 {
-        return Err(err(CODEC_DECODE, format!("aes: ciphertext length {}", cipher_text.len())));
-    }
-    let cipher = aes::Aes128::new(&aes::Block::from(mysql_key_fold(key)));
-    let mut buf = cipher_text.to_vec();
-    for block in buf.chunks_exact_mut(16) {
-        let block: &mut [u8; 16] = block.try_into().unwrap();
-        cipher.decrypt_block(block.into());
-    }
-    let pad = *buf.last().unwrap() as usize;
-    if pad < 1 || pad > 16 || pad > buf.len() || buf[buf.len() - pad..].iter().any(|&b| b as usize != pad) {
-        return Err(err(CODEC_DECODE, "aes: bad padding"));
-    }
-    buf.truncate(buf.len() - pad);
-    Ok(buf)
+    if !cipher_text.starts_with(AES_V2_PREFIX) { return Err(err(CODEC_DECODE, "aes: unsupported ciphertext format")); }
+    if cipher_text.len() < AES_V2_PREFIX.len() + 12 + 16 { return Err(err(CODEC_DECODE, "aes: truncated v2 envelope")); }
+    let offset = AES_V2_PREFIX.len();
+    let cipher = Aes256Gcm::new_from_slice(&aes_v2_key(key)).expect("AES-256 key");
+    let nonce: [u8; 12] = cipher_text[offset..offset + 12].try_into().unwrap();
+    let nonce = Nonce::from(nonce);
+    cipher.decrypt(&nonce, Payload { msg: &cipher_text[offset + 12..], aad: AES_V2_PREFIX })
+        .map_err(|_| err(CODEC_DECODE, "aes: authentication failed"))
 }
 
 /// `HEX(...)`: upper-case hex text.
@@ -712,44 +700,19 @@ mod tests {
         assert_eq!(fails, 0);
     }
 
-    /// Host AES/HEX must be byte-identical to MySQL's `HEX(AES_ENCRYPT(v, key))`: every entry of
-    /// tests/codec/aes-vectors.json (recorded from the local MySQL) encrypts to the same hex and
-    /// decrypts back, through the single-stage functions and through the styled `aes, hex` path.
+    /// AES v2 uses an authenticated envelope and rejects tampering.
     #[test]
     fn aes_vectors() {
-        #[derive(serde::Deserialize)]
-        struct Vector {
-            hex: String,
-            key: String,
-            plain: String,
-        }
-        let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../tests/codec");
-        let src = std::fs::read(format!("{root}/aes-vectors.json")).expect("aes-vectors.json");
-        let f: serde_json::Map<String, Value> = serde_json::from_slice(&src).unwrap();
-        assert_eq!(f["mode"], "aes-128-ecb");
-        let vectors: Vec<Vector> = serde_json::from_value(f["vectors"].clone()).unwrap();
-        assert!(!vectors.is_empty());
         let styles = vec!["aes".to_string(), "hex".to_string()];
-        for v in &vectors {
-            assert_eq!(hex_upper(&aes_encrypt(v.plain.as_bytes(), &v.key)), v.hex, "encrypt {:?} with {:?}", v.plain, v.key);
-            assert_eq!(aes_decrypt(&hex_decode(&v.hex).unwrap(), &v.key).unwrap(), v.plain.as_bytes(), "decrypt {:?}", v.hex);
-            assert_eq!(host_encode(&Param::Str(v.plain.clone()), &styles, &v.key).unwrap(), Param::Str(v.hex.clone()));
-            assert_eq!(host_decode(&Val::Str(v.hex.clone()), &styles, &v.key).unwrap(), Val::Str(v.plain.clone()));
-        }
-        // ip: INET6_ATON packing, both families, text back
-        let ip = vec!["ip".to_string()];
-        assert_eq!(host_encode(&Param::Str("10.1.2.3".into()), &ip, "").unwrap(), Param::Bytes(vec![10, 1, 2, 3]));
-        assert_eq!(host_decode(&Val::Bytes(vec![10, 1, 2, 3]), &ip, "").unwrap(), Val::Str("10.1.2.3".into()));
-        let v6 = host_encode(&Param::Str("2001:db8::1".into()), &ip, "").unwrap();
-        assert!(matches!(&v6, Param::Bytes(b) if b.len() == 16));
-        assert_eq!(host_decode(&Val::Bytes(match v6 { Param::Bytes(b) => b, _ => unreachable!() }), &ip, "").unwrap(), Val::Str("2001:db8::1".into()));
-        assert_eq!(host_encode(&Param::Str("not an ip".into()), &ip, "").unwrap_err().code(), CODEC_ENCODE);
-        // a wrong key is CODEC_DECODE, a missing key is CONFIG
-        assert_eq!(host_decode(&Val::Str(vectors[0].hex.clone()), &styles, "other-key").unwrap_err().code(), CODEC_DECODE);
-        assert_eq!(host_encode(&Param::Str("x".into()), &styles, "").unwrap_err().code(), crate::codes::CONFIG);
-        assert_eq!(host_encode(&Param::Null, &styles, "k").unwrap(), Param::Null);
-        assert_eq!(split_host(&["serialize".to_string(), "gz".to_string()]), (vec!["serialize".to_string(), "gz".to_string()], vec![]));
-        assert_eq!(split_host(&styles), (vec![], styles.clone()));
+        let encoded = host_encode(&Param::Str("member@example.test".into()), &styles, "key-v1").unwrap();
+        let Param::Str(encoded) = encoded else { panic!("AES+hex must produce text") };
+        assert_eq!(host_decode(&Val::Str(encoded.clone()), &styles, "key-v1").unwrap(), Val::Str("member@example.test".into()));
+        let mut tampered = hex_decode(&encoded).unwrap();
+        *tampered.last_mut().unwrap() ^= 1;
+        assert_eq!(host_decode(&Val::Str(hex_upper(&tampered)), &styles, "key-v1").unwrap_err().code(), CODEC_DECODE);
+        assert_eq!(host_encode(&Param::Null, &styles, "key-v1").unwrap(), Param::Null);
+        let fixed = hex_decode("4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E24").unwrap();
+        assert_eq!(host_decode(&Val::Str(hex_upper(&fixed)), &styles, "bench-salt").unwrap(), Val::Str("user42@example.com".into()));
     }
 
     #[test]

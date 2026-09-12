@@ -44,6 +44,14 @@ export class AesKeyring {
 
   public versions(): number[] { return [...this.keys.keys()].sort((a, b) => a - b); }
 
+  public key(version: number): string {
+    const key = this.keys.get(version);
+    if (key === undefined) throw new Error(`AES version ${version} is not declared`);
+    return key;
+  }
+
+  public keyMap(): ReadonlyMap<number, string> { return new Map(this.keys); }
+
   public rotateRow(
     row: Readonly<Record<string, unknown>>,
     versionColumn: string,

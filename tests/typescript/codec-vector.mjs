@@ -72,9 +72,10 @@ for (const [name, operation, code] of [
 
 for (const vector of aesVectors) {
   const encoded = hostEncode(vector.plain, ['aes', 'hex'], vector.key);
-  if (encoded !== vector.hex) { console.error(`aes ${JSON.stringify(vector.plain)}: ${encoded} want ${vector.hex}`); failures++; }
-  const decoded = hostDecode(vector.hex, ['aes', 'hex'], vector.key);
-  if (decoded !== vector.plain) { console.error(`aes decode ${vector.hex}: ${decoded} want ${vector.plain}`); failures++; }
+  const decoded = hostDecode(encoded, ['aes', 'hex'], vector.key);
+  if (decoded !== vector.plain) { console.error(`aes round trip ${JSON.stringify(vector.plain)}: ${decoded}`); failures++; }
+  const fixedDecoded = hostDecode(vector.envelope_hex, ['aes', 'hex'], vector.key);
+  if (fixedDecoded !== vector.plain) { console.error(`aes fixed vector: ${fixedDecoded} want ${vector.plain}`); failures++; }
 }
 for (const address of ['10.1.2.3', '2001:db8::1', '::1', '::ffff:10.1.2.3']) {
   const encoded = hostEncode(address, ['ip'], '');

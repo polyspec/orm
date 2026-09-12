@@ -14,7 +14,7 @@ use sqlx::sqlite::SqliteRow;
 use sqlx::{Column, Row as _, TypeInfo, ValueRef as _};
 
 use crate::value::Val;
-use crate::Result;
+use crate::{Error, Result};
 
 /// One row as the driver returned it.
 pub enum DriverRow {
@@ -78,8 +78,8 @@ pub trait Src {
 
 /// One row of a select step as handed to the generated code.
 pub enum Cells {
-    /// The MySQL driver row itself: decoded straight into the struct (MySQL applies every
-    /// aes/hex/ip stage in SQL, so only codec stages remain and `styled` handles them).
+    /// The MySQL driver row itself: decoded straight into the struct when no host AES stage is
+    /// present. AES rows use the positional path so the stored key version can be selected.
     Raw(MySqlRow),
     /// A positional row (styled cells already decoded).
     Pos(Vec<Val>),
@@ -221,7 +221,7 @@ pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
         "BOOLEAN" => row.try_get::<Option<bool>, _>(i)?.map(Val::Bool),
         // MySQL JSON columns arrive parsed; the json style then keeps the value as is.
         "JSON" => row.try_get::<Option<serde_json::Value>, _>(i)?.map(Val::Json),
-        // AES_DECRYPT yields BLOB; treat it as text when it decodes as UTF-8.
+        // Authenticated AES envelopes are BLOB values; decode them as text when possible.
         "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" | "VARBINARY" | "BINARY" => row.try_get::<Option<Vec<u8>>, _>(i)?.map(text_or_bytes),
         _ => row.try_get::<Option<String>, _>(i)?.map(Val::Str),
     };
@@ -290,16 +290,18 @@ pub fn read_row(row: &DriverRow, n: usize) -> Result<Vec<Val>> {
 /// Decodes styled cells of every positional row of a step in place: the host stages a
 /// dialect left to the executor (aes/hex/ip, with the AES secret) first, then the codec
 /// stages (docs/codec.md).
-pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key: &str) -> Result<()> {
+pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_keys: &std::collections::BTreeMap<i32, String>) -> Result<()> {
     let styled = crate::codec::styled_cols(asm);
     if styled.is_empty() {
         return Ok(());
     }
     for row in data.iter_mut() {
+        let version = asm.columns.iter().find(|c| c.hidden && c.column == "aes_key_version").map(|c| row[c.index].as_i64()).unwrap_or(1) as i32;
         for sc in &styled {
             let mut v = std::mem::take(&mut row[sc.index]);
             if !sc.host.is_empty() {
-                v = crate::codec::host_decode(&v, &sc.host, aes_key)?;
+                let key = if sc.host.iter().any(|style| style == "aes") { aes_keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config(format!("AES version {version} is not declared")))? } else { aes_keys.values().next().map(String::as_str).unwrap_or("") };
+                v = crate::codec::host_decode(&v, &sc.host, key)?;
             }
             if !sc.codec.is_empty() {
                 v = crate::codec::decode(&sc.codec, &v)?;

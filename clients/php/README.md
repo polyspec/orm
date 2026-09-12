@@ -73,7 +73,7 @@ Same plans shape, dialect text (docs/dialects.md); what the PHP executor does di
   and pads every datetime-shaped string (`YYYY-MM-DD HH:MM:SS[.f…]`) to six fraction digits, the
   canonical text form every executor writes and reads. `updated_ts` on UPDATE is the `now` slot
   (UTC, microseconds).
-- Host stages: `bind_slots[].host_styles` (aes = MySQL key fold + AES-128-ECB/PKCS7 via openssl,
+- Host stages: `bind_slots[].host_styles` (aes = authenticated AES-256-GCM v2 via openssl,
   hex upper-case, ip = INET6_ATON packing) are applied before binding; `columns[].styles` carrying
   them are decoded before the codec stages. `tests/codec/aes-vectors.json` is checked byte for byte.
 - Rows: pdo_pgsql gives bool/int natively, numeric/jsonb/inet as text (cast by column type, as on

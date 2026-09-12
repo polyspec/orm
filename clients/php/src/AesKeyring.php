@@ -37,6 +37,11 @@ final class AesKeyring
         return $versions;
     }
 
+    public function key(int $version): string
+    {
+        return $this->keys[$version] ?? throw new OrmException(Code::CONFIG, "AES version $version is not declared");
+    }
+
     /**
      * Returns a copy after every AES column succeeds. The database caller
      * must persist the returned columns and version in one transaction.

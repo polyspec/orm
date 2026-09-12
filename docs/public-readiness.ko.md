@@ -25,7 +25,7 @@
   - [x] P8.4b Go, PHP, Rust, TypeScript가 key type, 전체 key finder, 순서가 있는 row identity, 부분 key save 거부, composite collection key, composite AES rotation 조건을 생성한다.
   - [x] P8.4c 생성된 insert/update/delete/save/paginate가 rollback과 key 구성요소 하나를 공유하는 행을 포함한 MySQL, PostgreSQL, SQLite 물리 테스트를 네 client에서 통과한다. CI는 `scripts/client-db-test.sh`로 같은 시나리오를 실행한다.
 - [ ] P8.5 공개 encryption이 모든 client에서 인증된 version ciphertext를 사용한다. 조회는 숨겨진 row key version을 선택하고, 여러 version을 함께 읽을 수 있고, 변조 데이터는 실패하며, rotation은 row의 모든 AES column을 제한된 재개 가능 batch로 처리한다.
-- [ ] P8.6 암호화 데이터의 equality search는 명시적인 blind-index column을 요구한다. 기존 ECB 데이터는 명시적인 변환 경로를 사용하며 새 schema에는 생성하지 않는다.
+- [ ] P8.6 암호화 데이터의 equality search는 명시적인 blind-index column을 요구한다. Runtime은 인증된 AES v2 ciphertext만 허용한다.
 - [ ] P8.7 Relation과 `IN` parameter가 각 데이터베이스 제한에 맞게 결정적으로 분할되고 row order, key type, relation attachment, error를 보존한다.
 - [ ] P8.8 Plan 및 prepared-statement cache가 설정 가능한 제한, 결정적 eviction, close 처리, 모든 client의 pressure test를 제공한다.
 

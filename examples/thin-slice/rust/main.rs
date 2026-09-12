@@ -35,7 +35,7 @@ async fn main() {
         *last_h.lock().unwrap() = (sql.to_owned(), params.to_vec());
     });
     let opts = connect_opts();
-    let db = Db::connect(opts, 1, engine, Config { aes_key: "bench-salt".into(), aes_version: 1, on_query: Some(on_query) }).await.expect("connect");
+    let db = Db::connect(opts, 1, engine, Config { aes_key: "bench-salt".into(), aes_version: 1, aes_keys: [(1, "bench-salt".into())].into_iter().collect(), on_query: Some(on_query) }).await.expect("connect");
     let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11).unwrap().and_hms_opt(0, 0, 0).unwrap();
 
     let query = || async {
