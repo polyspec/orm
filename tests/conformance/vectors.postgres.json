@@ -2355,6 +2355,14 @@
           }
         ]
       }
+    },
+    {
+      "name": "aes_status",
+      "chain": "Battle.using(db).aesStatus(keyring)",
+      "expect": {
+        "result": {"current": 1, "pending": 0, "total": 100000, "versions": {"1": 100000}},
+        "statements": []
+      }
     }
   ]
 }

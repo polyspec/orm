@@ -95,7 +95,7 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 
 `contracts/interfaces.json`은 네 전송 구현의 service 경로, 작업 이름, request·response type, 오류, 언어별 symbol을 정의한다. Protobuf 검사는 interface method나 구현 선언이 누락되면 실패한다. Runtime symbol snapshot은 생성된 Protobuf 파일을 제외하며, 해당 파일은 `proto/generated.sha256.json`이 모두 검사한다.
 
-Go·PHP·Rust·TypeScript database executor는 설정된 `CompilerTransport`로 plan cache miss를 compile한다. 시작 단계에서 schema hash, dialect, IR version metadata 불일치를 거부한다. 기본 compiler 경로는 Go in-process, Rust WASM, PHP Unix socket, TypeScript Connect/Protobuf다. Connect는 네 client가 구현하는 공통 compiler service 경로이기도 하다. 네 executor는 각자 선언된 compiler 구현으로 MySQL·PostgreSQL·SQLite 벡터 59개를 통과한다.
+Go·PHP·Rust·TypeScript database executor는 설정된 `CompilerTransport`로 plan cache miss를 compile한다. 시작 단계에서 schema hash, dialect, IR version metadata 불일치를 거부한다. 기본 compiler 경로는 Go in-process, Rust WASM, PHP Unix socket, TypeScript Connect/Protobuf다. Connect는 네 client가 구현하는 공통 compiler service 경로이기도 하다. 네 executor는 각자 선언된 compiler 구현으로 MySQL·PostgreSQL·SQLite 벡터 63개를 통과한다.
 
 Cache key는 schema hash, request 형태, IN cardinality로 구성한다. Parameter 값은 제외한다.
 

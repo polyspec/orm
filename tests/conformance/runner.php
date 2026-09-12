@@ -21,6 +21,7 @@ use App\Orm\User;
 use App\Orm\UserWhere;
 use Orm\Collection;
 use Orm\Config;
+use Orm\AesKeyring;
 use Orm\Orm;
 use Orm\OrmException;
 use Orm\Q;
@@ -548,6 +549,7 @@ $run('keyset_pages', function () use ($db) {
     $second = Service::query()->orderBySeqAsc()->using($db)->getsAfter($first->nextCursor, 3);
     return ['first' => $first->items->keys(), 'second' => $second->items->keys(), 'has_cursor' => $first->nextCursor !== ''];
 });
+$run('aes_status', fn() => Battle::query()->using($db)->aesStatus(new AesKeyring([1 => 'bench-salt', 2 => 'bench-salt-v2'], 1)));
 $run('codec_roundtrip', function () use ($db, $remask) {
     $value = ['a' => 1, 'b' => [1, 2, ['c' => '한글/slash']], 'd' => null, 'e' => true, 'f' => 1.5];
     $created = $db->transaction(fn(Tx $tx) => Battle::query()

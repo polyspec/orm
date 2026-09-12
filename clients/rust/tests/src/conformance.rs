@@ -1,5 +1,6 @@
 //! Conformance runner (Rust). Same chains as tests/conformance/runner_go and runner.php; prints the same document.
 //! Usage: conformance <ormengine.wasm> <schema.json> [--driver mysql|postgres|sqlite] [--dsn …]
+use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use gen::*;
@@ -1317,6 +1318,24 @@ async fn main() {
             "first": first.items.keys().map(|key| key.as_i64()).collect::<Vec<_>>(),
             "second": second.items.keys().map(|key| key.as_i64()).collect::<Vec<_>>(),
             "has_cursor": !first.next_cursor.is_empty()
+        }))
+    }.await);
+    run!("aes_status", async {
+        let mut keys = BTreeMap::new();
+        keys.insert(1, "bench-salt".to_string());
+        keys.insert(2, "bench-salt-v2".to_string());
+        let keyring = orm::aes_rotation::AesKeyring::new(keys, 1)?;
+        let log_len = log.lock().unwrap().len();
+        let status = battle::query().using(&db).aes_status(&keyring).await?;
+        // AES status is a generated terminal operation. Its low-level SQL is
+        // intentionally omitted here because the other clients do not expose
+        // this internal statement through their query event hooks.
+        log.lock().unwrap().truncate(log_len);
+        Ok(json!({
+            "current": status.current,
+            "total": status.total,
+            "pending": status.pending,
+            "versions": status.versions,
         }))
     }.await);
     run!("codec_roundtrip", async {

@@ -7,9 +7,9 @@
 
 - **S0 완료:** `docs/perf.md`에 측정과 R1~R3, F1~F3 결정을 기록했다.
 - **S1 완료:** 엔진, 생성기, 4개 클라이언트, 적합성 하네스, `ormgen tokens`, 데모를 구현했다.
-- **S2 완료:** 관계·코덱·타입·59개 벡터·150테이블 Rust fixture 검사를 통과했다.
+- **S2 완료:** 관계·코덱·타입·63개 벡터·150테이블 Rust fixture 검사를 통과했다.
 - **S7 진행 중:** 네 클라이언트의 root `IN` parameter 분할과 keyset transport 필드를 구현했다. 증거가 기록될 때까지 migration, transaction, relation, package, 최종 검증 작업은 미완료로 유지한다.
-- 현재 적합성 범위는 **59개 벡터 × 4개 클라이언트 × 3개 데이터베이스**다. 코덱 범위는 Go·PHP·Rust·TypeScript의 96개 벡터다.
+- 현재 적합성 범위는 **63개 벡터 × 4개 클라이언트 × 3개 데이터베이스**다. 코덱 범위는 Go·PHP·Rust·TypeScript의 96개 벡터다.
 
 ## 공통 인터페이스 검사
 
@@ -81,13 +81,13 @@
 
 S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료해야 닫는다. Go·PHP·Rust·TypeScript에서 같은 논리 구조를 제공할 수 없으면 미완료로 유지한다.
 
-- [x] T7.1 Go·PHP·Rust·TypeScript의 typed Protobuf message, Connect compiler server, `CompilerTransport`를 구현하고 네 클라이언트가 MySQL·PostgreSQL·SQLite에서 데이터베이스 벡터 59개를 통과한다.
+- [x] T7.1 Go·PHP·Rust·TypeScript의 typed Protobuf message, Connect compiler server, `CompilerTransport`를 구현하고 네 클라이언트가 MySQL·PostgreSQL·SQLite에서 데이터베이스 벡터 63개를 통과한다.
 - [x] T7.3 결정적인 `ormgen diff`와 destructive change 검사를 구현한다.
 - [x] T7.4 네 클라이언트에 query 수준 `scope_p`, planner 강제 적용, 생성 메서드, MySQL·PostgreSQL·SQLite tenant isolation 검사를 구현한다.
 - [x] T7.5 Go·PHP·Rust·TypeScript에 `curlfile`, YAML 1.2, `point` 변환을 구현한다. MySQL·PostgreSQL·SQLite에서 `point` DDL과 SQL을 검사한다.
 - [x] T7.6 데이터베이스 행 streaming, 취소, 오류, 행 소유권 검사를 구현한다.
 - [x] T7.7 결정적인 정적 query precompile과 schema-hash 검사를 구현한다.
-- [x] T7.8 TypeScript 모듈, 생성 entity API와 schema hash, `orm.toml` loader, 네이티브 데이터베이스 드라이버, 구조·AST 검사, 세 데이터베이스의 59개 벡터 실행기를 구현한다.
+- [x] T7.8 TypeScript 모듈, 생성 entity API와 schema hash, `orm.toml` loader, 네이티브 데이터베이스 드라이버, 구조·AST 검사, 세 데이터베이스의 63개 벡터 실행기를 구현한다.
 - [x] T7.9 동일한 SQL, bind, typed 결과, connection 수, fixture로 Rust `mysql_async` 0.37.1과 sqlx 0.9를 비교했다. 측정 항목 모두 교체 기준인 2배 개선을 충족하지 않아 sqlx를 유지한다.
 - [x] T7.10 지원 데이터베이스가 동일하고 안전한 매개변수 실행 구조를 제공할 수 없으므로 모든 공개 API에서 `multi_statement`를 제외하고 IR 필드와 생성 심볼을 거부한다.
 - [x] T7.11 Go typed 스캔 생성, PHP positional hydration 검증, native projection 불일치 수정, Go·PHP 성능 검사를 완료한다.

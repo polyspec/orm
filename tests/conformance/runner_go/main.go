@@ -1086,6 +1086,14 @@ func main() {
 		}
 		return map[string]any{"first": servicePageKeys(first), "second": servicePageKeys(second), "has_cursor": first.NextCursor != ""}, nil
 	})
+	run("aes_status", func() (any, error) {
+		keyring, err := orm.NewAESKeyring(map[int32]string{1: "bench-salt", 2: "bench-salt-v2"}, 1)
+		if err != nil {
+			return nil, err
+		}
+		status, err := gen.Battle().Using(ctx, db).AESStatus(keyring)
+		return map[string]any{"current": status.Current, "pending": status.Pending, "total": status.Total, "versions": status.Versions}, err
+	})
 	run("codec_roundtrip", func() (any, error) {
 		value := map[string]any{"a": int64(1), "b": []any{int64(1), int64(2), map[string]any{"c": "한글/slash"}}, "d": nil, "e": true, "f": 1.5}
 		ip := "10.1.2.3"
