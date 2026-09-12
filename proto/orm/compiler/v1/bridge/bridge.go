@@ -129,6 +129,13 @@ func queryFromProto(in *compilerv1.QueryNode, path string) (*ir.Query, error) {
 	if in.IfParent != nil {
 		out.IfParent = &ir.IfParent{Column: in.IfParent.Column, P: int(in.IfParent.Parameter)}
 	}
+	if in.Keyset != nil {
+		values := make([]int, len(in.Keyset.Values))
+		for index, value := range in.Keyset.Values {
+			values[index] = int(value)
+		}
+		out.Keyset = &ir.Keyset{Direction: in.Keyset.Direction, Values: values}
+	}
 	return out, nil
 }
 
@@ -202,6 +209,17 @@ func queryToProto(in *ir.Query, path string) (*compilerv1.QueryNode, error) {
 			return nil, err
 		}
 		out.IfParent = &compilerv1.IfParent{Column: in.IfParent.Column, Parameter: parameter}
+	}
+	if in.Keyset != nil {
+		values := make([]uint32, len(in.Keyset.Values))
+		for index, value := range in.Keyset.Values {
+			converted, err := uint32Value(value, fmt.Sprintf("%s.keyset.values[%d]", path, index))
+			if err != nil {
+				return nil, err
+			}
+			values[index] = converted
+		}
+		out.Keyset = &compilerv1.Keyset{Direction: in.Keyset.Direction, Values: values}
 	}
 	return out, nil
 }
