@@ -1079,6 +1079,446 @@ export class AuthorQuery extends QueryCore {
   public serializeDataIsNotNull(): this { this.predicateNull('serialize_data','is_not_null'); return this; }
   public nameWithDescriptionMatch(value: string): this { this.match(['name','description'],value); return this; }
   public nameWithDescriptionMatchBoolean(value: string): this { this.match(['name','description'],value,true); return this; }
+  public selectSeq(): this { return this.select('seq'); }
+  public omitSeq(): this { return this.omit('seq'); }
+  public orderBySeqAsc(): this { return this.orderBy('seq'); }
+  public orderBySeqDesc(): this { return this.orderBy('seq',true); }
+  public groupBySeq(): this { return this.groupBy('seq'); }
+  public keyBySeq(): this { return this.keyBy('seq'); }
+  public setSeq(value: number): this { return this.set('seq',value); }
+  public onDuplicateSetSeq(value: number): this { return this.duplicate('seq',value); }
+  public selectName(): this { return this.select('name'); }
+  public omitName(): this { return this.omit('name'); }
+  public orderByNameAsc(): this { return this.orderBy('name'); }
+  public orderByNameDesc(): this { return this.orderBy('name',true); }
+  public groupByName(): this { return this.groupBy('name'); }
+  public keyByName(): this { return this.keyBy('name'); }
+  public setName(value: string): this { return this.set('name',value); }
+  public onDuplicateSetName(value: string): this { return this.duplicate('name',value); }
+  public selectDescription(): this { return this.select('description'); }
+  public omitDescription(): this { return this.omit('description'); }
+  public orderByDescriptionAsc(): this { return this.orderBy('description'); }
+  public orderByDescriptionDesc(): this { return this.orderBy('description',true); }
+  public groupByDescription(): this { return this.groupBy('description'); }
+  public keyByDescription(): this { return this.keyBy('description'); }
+  public setDescription(value: string | null): this { return this.set('description',value); }
+  public onDuplicateSetDescription(value: string | null): this { return this.duplicate('description',value); }
+  public setDescriptionNull(): this { return this.setNull('description'); }
+  public selectCreatedTs(): this { return this.select('created_ts'); }
+  public omitCreatedTs(): this { return this.omit('created_ts'); }
+  public orderByCreatedTsAsc(): this { return this.orderBy('created_ts'); }
+  public orderByCreatedTsDesc(): this { return this.orderBy('created_ts',true); }
+  public groupByCreatedTs(): this { return this.groupBy('created_ts'); }
+  public keyByCreatedTs(): this { return this.keyBy('created_ts'); }
+  public setCreatedTs(value: string | Date): this { return this.set('created_ts',value); }
+  public onDuplicateSetCreatedTs(value: string | Date): this { return this.duplicate('created_ts',value); }
+  public selectUpdatedTs(): this { return this.select('updated_ts'); }
+  public omitUpdatedTs(): this { return this.omit('updated_ts'); }
+  public orderByUpdatedTsAsc(): this { return this.orderBy('updated_ts'); }
+  public orderByUpdatedTsDesc(): this { return this.orderBy('updated_ts',true); }
+  public groupByUpdatedTs(): this { return this.groupBy('updated_ts'); }
+  public keyByUpdatedTs(): this { return this.keyBy('updated_ts'); }
+  public setUpdatedTs(value: string | Date): this { return this.set('updated_ts',value); }
+  public onDuplicateSetUpdatedTs(value: string | Date): this { return this.duplicate('updated_ts',value); }
+  public selectIsClose(): this { return this.select('is_close'); }
+  public omitIsClose(): this { return this.omit('is_close'); }
+  public orderByIsCloseAsc(): this { return this.orderBy('is_close'); }
+  public orderByIsCloseDesc(): this { return this.orderBy('is_close',true); }
+  public groupByIsClose(): this { return this.groupBy('is_close'); }
+  public keyByIsClose(): this { return this.keyBy('is_close'); }
+  public setIsClose(value: boolean): this { return this.set('is_close',value); }
+  public onDuplicateSetIsClose(value: boolean): this { return this.duplicate('is_close',value); }
+  public selectIsDisplay(): this { return this.select('is_display'); }
+  public omitIsDisplay(): this { return this.omit('is_display'); }
+  public orderByIsDisplayAsc(): this { return this.orderBy('is_display'); }
+  public orderByIsDisplayDesc(): this { return this.orderBy('is_display',true); }
+  public groupByIsDisplay(): this { return this.groupBy('is_display'); }
+  public keyByIsDisplay(): this { return this.keyBy('is_display'); }
+  public setIsDisplay(value: boolean): this { return this.set('is_display',value); }
+  public onDuplicateSetIsDisplay(value: boolean): this { return this.duplicate('is_display',value); }
+  public selectDisplayStartDt(): this { return this.select('display_start_dt'); }
+  public omitDisplayStartDt(): this { return this.omit('display_start_dt'); }
+  public orderByDisplayStartDtAsc(): this { return this.orderBy('display_start_dt'); }
+  public orderByDisplayStartDtDesc(): this { return this.orderBy('display_start_dt',true); }
+  public groupByDisplayStartDt(): this { return this.groupBy('display_start_dt'); }
+  public keyByDisplayStartDt(): this { return this.keyBy('display_start_dt'); }
+  public setDisplayStartDt(value: string | Date | null): this { return this.set('display_start_dt',value); }
+  public onDuplicateSetDisplayStartDt(value: string | Date | null): this { return this.duplicate('display_start_dt',value); }
+  public setDisplayStartDtNull(): this { return this.setNull('display_start_dt'); }
+  public selectDisplayEndDt(): this { return this.select('display_end_dt'); }
+  public omitDisplayEndDt(): this { return this.omit('display_end_dt'); }
+  public orderByDisplayEndDtAsc(): this { return this.orderBy('display_end_dt'); }
+  public orderByDisplayEndDtDesc(): this { return this.orderBy('display_end_dt',true); }
+  public groupByDisplayEndDt(): this { return this.groupBy('display_end_dt'); }
+  public keyByDisplayEndDt(): this { return this.keyBy('display_end_dt'); }
+  public setDisplayEndDt(value: string | Date | null): this { return this.set('display_end_dt',value); }
+  public onDuplicateSetDisplayEndDt(value: string | Date | null): this { return this.duplicate('display_end_dt',value); }
+  public setDisplayEndDtNull(): this { return this.setNull('display_end_dt'); }
+  public selectIsAllday(): this { return this.select('is_allday'); }
+  public omitIsAllday(): this { return this.omit('is_allday'); }
+  public orderByIsAlldayAsc(): this { return this.orderBy('is_allday'); }
+  public orderByIsAlldayDesc(): this { return this.orderBy('is_allday',true); }
+  public groupByIsAllday(): this { return this.groupBy('is_allday'); }
+  public keyByIsAllday(): this { return this.keyBy('is_allday'); }
+  public setIsAllday(value: boolean): this { return this.set('is_allday',value); }
+  public onDuplicateSetIsAllday(value: boolean): this { return this.duplicate('is_allday',value); }
+  public selectTargetClubReaderCount(): this { return this.select('target_club_reader_count'); }
+  public omitTargetClubReaderCount(): this { return this.omit('target_club_reader_count'); }
+  public orderByTargetClubReaderCountAsc(): this { return this.orderBy('target_club_reader_count'); }
+  public orderByTargetClubReaderCountDesc(): this { return this.orderBy('target_club_reader_count',true); }
+  public groupByTargetClubReaderCount(): this { return this.groupBy('target_club_reader_count'); }
+  public keyByTargetClubReaderCount(): this { return this.keyBy('target_club_reader_count'); }
+  public setTargetClubReaderCount(value: number): this { return this.set('target_club_reader_count',value); }
+  public onDuplicateSetTargetClubReaderCount(value: number): this { return this.duplicate('target_club_reader_count',value); }
+  public selectSuccessCount(): this { return this.select('success_count'); }
+  public omitSuccessCount(): this { return this.omit('success_count'); }
+  public orderBySuccessCountAsc(): this { return this.orderBy('success_count'); }
+  public orderBySuccessCountDesc(): this { return this.orderBy('success_count',true); }
+  public groupBySuccessCount(): this { return this.groupBy('success_count'); }
+  public keyBySuccessCount(): this { return this.keyBy('success_count'); }
+  public setSuccessCount(value: number): this { return this.set('success_count',value); }
+  public onDuplicateSetSuccessCount(value: number): this { return this.duplicate('success_count',value); }
+  public selectReaderCount(): this { return this.select('reader_count'); }
+  public omitReaderCount(): this { return this.omit('reader_count'); }
+  public orderByReaderCountAsc(): this { return this.orderBy('reader_count'); }
+  public orderByReaderCountDesc(): this { return this.orderBy('reader_count',true); }
+  public groupByReaderCount(): this { return this.groupBy('reader_count'); }
+  public keyByReaderCount(): this { return this.keyBy('reader_count'); }
+  public setReaderCount(value: number): this { return this.set('reader_count',value); }
+  public onDuplicateSetReaderCount(value: number): this { return this.duplicate('reader_count',value); }
+  public selectReadCount(): this { return this.select('read_count'); }
+  public omitReadCount(): this { return this.omit('read_count'); }
+  public orderByReadCountAsc(): this { return this.orderBy('read_count'); }
+  public orderByReadCountDesc(): this { return this.orderBy('read_count',true); }
+  public groupByReadCount(): this { return this.groupBy('read_count'); }
+  public keyByReadCount(): this { return this.keyBy('read_count'); }
+  public setReadCount(value: number): this { return this.set('read_count',value); }
+  public onDuplicateSetReadCount(value: number): this { return this.duplicate('read_count',value); }
+  public selectPhotoUrl(): this { return this.select('photo_url'); }
+  public omitPhotoUrl(): this { return this.omit('photo_url'); }
+  public orderByPhotoUrlAsc(): this { return this.orderBy('photo_url'); }
+  public orderByPhotoUrlDesc(): this { return this.orderBy('photo_url',true); }
+  public groupByPhotoUrl(): this { return this.groupBy('photo_url'); }
+  public keyByPhotoUrl(): this { return this.keyBy('photo_url'); }
+  public setPhotoUrl(value: string | null): this { return this.set('photo_url',value); }
+  public onDuplicateSetPhotoUrl(value: string | null): this { return this.duplicate('photo_url',value); }
+  public setPhotoUrlNull(): this { return this.setNull('photo_url'); }
+  public selectUserSeq(): this { return this.select('user_seq'); }
+  public omitUserSeq(): this { return this.omit('user_seq'); }
+  public orderByUserSeqAsc(): this { return this.orderBy('user_seq'); }
+  public orderByUserSeqDesc(): this { return this.orderBy('user_seq',true); }
+  public groupByUserSeq(): this { return this.groupBy('user_seq'); }
+  public keyByUserSeq(): this { return this.keyBy('user_seq'); }
+  public setUserSeq(value: number): this { return this.set('user_seq',value); }
+  public onDuplicateSetUserSeq(value: number): this { return this.duplicate('user_seq',value); }
+  public selectServiceSeq(): this { return this.select('service_seq'); }
+  public omitServiceSeq(): this { return this.omit('service_seq'); }
+  public orderByServiceSeqAsc(): this { return this.orderBy('service_seq'); }
+  public orderByServiceSeqDesc(): this { return this.orderBy('service_seq',true); }
+  public groupByServiceSeq(): this { return this.groupBy('service_seq'); }
+  public keyByServiceSeq(): this { return this.keyBy('service_seq'); }
+  public setServiceSeq(value: number): this { return this.set('service_seq',value); }
+  public onDuplicateSetServiceSeq(value: number): this { return this.duplicate('service_seq',value); }
+  public selectServiceRegionSeq(): this { return this.select('service_region_seq'); }
+  public omitServiceRegionSeq(): this { return this.omit('service_region_seq'); }
+  public orderByServiceRegionSeqAsc(): this { return this.orderBy('service_region_seq'); }
+  public orderByServiceRegionSeqDesc(): this { return this.orderBy('service_region_seq',true); }
+  public groupByServiceRegionSeq(): this { return this.groupBy('service_region_seq'); }
+  public keyByServiceRegionSeq(): this { return this.keyBy('service_region_seq'); }
+  public setServiceRegionSeq(value: number): this { return this.set('service_region_seq',value); }
+  public onDuplicateSetServiceRegionSeq(value: number): this { return this.duplicate('service_region_seq',value); }
+  public selectServiceMemberSeq(): this { return this.select('service_member_seq'); }
+  public omitServiceMemberSeq(): this { return this.omit('service_member_seq'); }
+  public orderByServiceMemberSeqAsc(): this { return this.orderBy('service_member_seq'); }
+  public orderByServiceMemberSeqDesc(): this { return this.orderBy('service_member_seq',true); }
+  public groupByServiceMemberSeq(): this { return this.groupBy('service_member_seq'); }
+  public keyByServiceMemberSeq(): this { return this.keyBy('service_member_seq'); }
+  public setServiceMemberSeq(value: number): this { return this.set('service_member_seq',value); }
+  public onDuplicateSetServiceMemberSeq(value: number): this { return this.duplicate('service_member_seq',value); }
+  public selectStartDt(): this { return this.select('start_dt'); }
+  public omitStartDt(): this { return this.omit('start_dt'); }
+  public orderByStartDtAsc(): this { return this.orderBy('start_dt'); }
+  public orderByStartDtDesc(): this { return this.orderBy('start_dt',true); }
+  public groupByStartDt(): this { return this.groupBy('start_dt'); }
+  public keyByStartDt(): this { return this.keyBy('start_dt'); }
+  public setStartDt(value: string | Date): this { return this.set('start_dt',value); }
+  public onDuplicateSetStartDt(value: string | Date): this { return this.duplicate('start_dt',value); }
+  public selectEndDt(): this { return this.select('end_dt'); }
+  public omitEndDt(): this { return this.omit('end_dt'); }
+  public orderByEndDtAsc(): this { return this.orderBy('end_dt'); }
+  public orderByEndDtDesc(): this { return this.orderBy('end_dt',true); }
+  public groupByEndDt(): this { return this.groupBy('end_dt'); }
+  public keyByEndDt(): this { return this.keyBy('end_dt'); }
+  public setEndDt(value: string | Date): this { return this.set('end_dt',value); }
+  public onDuplicateSetEndDt(value: string | Date): this { return this.duplicate('end_dt',value); }
+  public selectUuid(): this { return this.select('uuid'); }
+  public omitUuid(): this { return this.omit('uuid'); }
+  public orderByUuidAsc(): this { return this.orderBy('uuid'); }
+  public orderByUuidDesc(): this { return this.orderBy('uuid',true); }
+  public groupByUuid(): this { return this.groupBy('uuid'); }
+  public keyByUuid(): this { return this.keyBy('uuid'); }
+  public setUuid(value: string | null): this { return this.set('uuid',value); }
+  public onDuplicateSetUuid(value: string | null): this { return this.duplicate('uuid',value); }
+  public setUuidNull(): this { return this.setNull('uuid'); }
+  public selectIsSingleWork(): this { return this.select('is_single_work'); }
+  public omitIsSingleWork(): this { return this.omit('is_single_work'); }
+  public orderByIsSingleWorkAsc(): this { return this.orderBy('is_single_work'); }
+  public orderByIsSingleWorkDesc(): this { return this.orderBy('is_single_work',true); }
+  public groupByIsSingleWork(): this { return this.groupBy('is_single_work'); }
+  public keyByIsSingleWork(): this { return this.keyBy('is_single_work'); }
+  public setIsSingleWork(value: boolean): this { return this.set('is_single_work',value); }
+  public onDuplicateSetIsSingleWork(value: boolean): this { return this.duplicate('is_single_work',value); }
+  public selectLikeCount(): this { return this.select('like_count'); }
+  public omitLikeCount(): this { return this.omit('like_count'); }
+  public orderByLikeCountAsc(): this { return this.orderBy('like_count'); }
+  public orderByLikeCountDesc(): this { return this.orderBy('like_count',true); }
+  public groupByLikeCount(): this { return this.groupBy('like_count'); }
+  public keyByLikeCount(): this { return this.keyBy('like_count'); }
+  public setLikeCount(value: number): this { return this.set('like_count',value); }
+  public onDuplicateSetLikeCount(value: number): this { return this.duplicate('like_count',value); }
+  public selectAesKeyVersion(): this { return this.select('aes_key_version'); }
+  public omitAesKeyVersion(): this { return this.omit('aes_key_version'); }
+  public orderByAesKeyVersionAsc(): this { return this.orderBy('aes_key_version'); }
+  public orderByAesKeyVersionDesc(): this { return this.orderBy('aes_key_version',true); }
+  public groupByAesKeyVersion(): this { return this.groupBy('aes_key_version'); }
+  public keyByAesKeyVersion(): this { return this.keyBy('aes_key_version'); }
+  public setAesKeyVersion(value: number): this { return this.set('aes_key_version',value); }
+  public onDuplicateSetAesKeyVersion(value: number): this { return this.duplicate('aes_key_version',value); }
+  public selectAesHexEmail(): this { return this.select('aes_hex_email'); }
+  public omitAesHexEmail(): this { return this.omit('aes_hex_email'); }
+  public orderByAesHexEmailAsc(): this { return this.orderBy('aes_hex_email'); }
+  public orderByAesHexEmailDesc(): this { return this.orderBy('aes_hex_email',true); }
+  public groupByAesHexEmail(): this { return this.groupBy('aes_hex_email'); }
+  public keyByAesHexEmail(): this { return this.keyBy('aes_hex_email'); }
+  public setAesHexEmail(value: string | null): this { return this.set('aes_hex_email',value); }
+  public onDuplicateSetAesHexEmail(value: string | null): this { return this.duplicate('aes_hex_email',value); }
+  public setAesHexEmailNull(): this { return this.setNull('aes_hex_email'); }
+  public selectAesHexPhone(): this { return this.select('aes_hex_phone'); }
+  public omitAesHexPhone(): this { return this.omit('aes_hex_phone'); }
+  public orderByAesHexPhoneAsc(): this { return this.orderBy('aes_hex_phone'); }
+  public orderByAesHexPhoneDesc(): this { return this.orderBy('aes_hex_phone',true); }
+  public groupByAesHexPhone(): this { return this.groupBy('aes_hex_phone'); }
+  public keyByAesHexPhone(): this { return this.keyBy('aes_hex_phone'); }
+  public setAesHexPhone(value: string | null): this { return this.set('aes_hex_phone',value); }
+  public onDuplicateSetAesHexPhone(value: string | null): this { return this.duplicate('aes_hex_phone',value); }
+  public setAesHexPhoneNull(): this { return this.setNull('aes_hex_phone'); }
+  public selectPrice(): this { return this.select('price'); }
+  public omitPrice(): this { return this.omit('price'); }
+  public orderByPriceAsc(): this { return this.orderBy('price'); }
+  public orderByPriceDesc(): this { return this.orderBy('price',true); }
+  public groupByPrice(): this { return this.groupBy('price'); }
+  public keyByPrice(): this { return this.keyBy('price'); }
+  public setPrice(value: number | null): this { return this.set('price',value); }
+  public onDuplicateSetPrice(value: number | null): this { return this.duplicate('price',value); }
+  public setPriceNull(): this { return this.setNull('price'); }
+  public selectIp(): this { return this.select('ip'); }
+  public omitIp(): this { return this.omit('ip'); }
+  public orderByIpAsc(): this { return this.orderBy('ip'); }
+  public orderByIpDesc(): this { return this.orderBy('ip',true); }
+  public groupByIp(): this { return this.groupBy('ip'); }
+  public keyByIp(): this { return this.keyBy('ip'); }
+  public setIp(value: string | null): this { return this.set('ip',value); }
+  public onDuplicateSetIp(value: string | null): this { return this.duplicate('ip',value); }
+  public setIpNull(): this { return this.setNull('ip'); }
+  public selectGzExtend(): this { return this.select('gz_extend'); }
+  public omitGzExtend(): this { return this.omit('gz_extend'); }
+  public orderByGzExtendAsc(): this { return this.orderBy('gz_extend'); }
+  public orderByGzExtendDesc(): this { return this.orderBy('gz_extend',true); }
+  public groupByGzExtend(): this { return this.groupBy('gz_extend'); }
+  public keyByGzExtend(): this { return this.keyBy('gz_extend'); }
+  public setGzExtend(value: unknown | null): this { return this.setEncoded('gz_extend',value,['serialize','gz']); }
+  public onDuplicateSetGzExtend(value: unknown | null): this { return this.duplicateEncoded('gz_extend',value,['serialize','gz']); }
+  public selectJsonSetting(): this { return this.select('json_setting'); }
+  public omitJsonSetting(): this { return this.omit('json_setting'); }
+  public orderByJsonSettingAsc(): this { return this.orderBy('json_setting'); }
+  public orderByJsonSettingDesc(): this { return this.orderBy('json_setting',true); }
+  public groupByJsonSetting(): this { return this.groupBy('json_setting'); }
+  public keyByJsonSetting(): this { return this.keyBy('json_setting'); }
+  public setJsonSetting(value: unknown | null): this { return this.setEncoded('json_setting',value,['json']); }
+  public onDuplicateSetJsonSetting(value: unknown | null): this { return this.duplicateEncoded('json_setting',value,['json']); }
+  public selectJsonsTags(): this { return this.select('jsons_tags'); }
+  public omitJsonsTags(): this { return this.omit('jsons_tags'); }
+  public orderByJsonsTagsAsc(): this { return this.orderBy('jsons_tags'); }
+  public orderByJsonsTagsDesc(): this { return this.orderBy('jsons_tags',true); }
+  public groupByJsonsTags(): this { return this.groupBy('jsons_tags'); }
+  public keyByJsonsTags(): this { return this.keyBy('jsons_tags'); }
+  public setJsonsTags(value: unknown | null): this { return this.setEncoded('jsons_tags',value,['jsons']); }
+  public onDuplicateSetJsonsTags(value: unknown | null): this { return this.duplicateEncoded('jsons_tags',value,['jsons']); }
+  public selectBase64Extra(): this { return this.select('base64_extra'); }
+  public omitBase64Extra(): this { return this.omit('base64_extra'); }
+  public orderByBase64ExtraAsc(): this { return this.orderBy('base64_extra'); }
+  public orderByBase64ExtraDesc(): this { return this.orderBy('base64_extra',true); }
+  public groupByBase64Extra(): this { return this.groupBy('base64_extra'); }
+  public keyByBase64Extra(): this { return this.keyBy('base64_extra'); }
+  public setBase64Extra(value: unknown | null): this { return this.setEncoded('base64_extra',value,['serialize','base64']); }
+  public onDuplicateSetBase64Extra(value: unknown | null): this { return this.duplicateEncoded('base64_extra',value,['serialize','base64']); }
+  public selectSerializeData(): this { return this.select('serialize_data'); }
+  public omitSerializeData(): this { return this.omit('serialize_data'); }
+  public orderBySerializeDataAsc(): this { return this.orderBy('serialize_data'); }
+  public orderBySerializeDataDesc(): this { return this.orderBy('serialize_data',true); }
+  public groupBySerializeData(): this { return this.groupBy('serialize_data'); }
+  public keyBySerializeData(): this { return this.keyBy('serialize_data'); }
+  public setSerializeData(value: unknown | null): this { return this.setEncoded('serialize_data',value,['serialize']); }
+  public onDuplicateSetSerializeData(value: unknown | null): this { return this.duplicateEncoded('serialize_data',value,['serialize']); }
+  public plusSeq(value: number): this { return this.plus('seq',value); }
+  public minusSeq(value: number): this { return this.minus('seq',value); }
+  public onDuplicatePlusSeq(value: number): this { return this.duplicatePlus('seq',value); }
+  public onDuplicateMinusSeq(value: number): this { return this.duplicateMinus('seq',value); }
+  public async sumSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusTargetClubReaderCount(value: number): this { return this.plus('target_club_reader_count',value); }
+  public minusTargetClubReaderCount(value: number): this { return this.minus('target_club_reader_count',value); }
+  public onDuplicatePlusTargetClubReaderCount(value: number): this { return this.duplicatePlus('target_club_reader_count',value); }
+  public onDuplicateMinusTargetClubReaderCount(value: number): this { return this.duplicateMinus('target_club_reader_count',value); }
+  public async sumTargetClubReaderCount(): Promise<number | null> { this.request.ir.agg='target_club_reader_count'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgTargetClubReaderCount(): Promise<number | null> { this.request.ir.agg='target_club_reader_count'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusSuccessCount(value: number): this { return this.plus('success_count',value); }
+  public minusSuccessCount(value: number): this { return this.minus('success_count',value); }
+  public onDuplicatePlusSuccessCount(value: number): this { return this.duplicatePlus('success_count',value); }
+  public onDuplicateMinusSuccessCount(value: number): this { return this.duplicateMinus('success_count',value); }
+  public async sumSuccessCount(): Promise<number | null> { this.request.ir.agg='success_count'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgSuccessCount(): Promise<number | null> { this.request.ir.agg='success_count'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusReaderCount(value: number): this { return this.plus('reader_count',value); }
+  public minusReaderCount(value: number): this { return this.minus('reader_count',value); }
+  public onDuplicatePlusReaderCount(value: number): this { return this.duplicatePlus('reader_count',value); }
+  public onDuplicateMinusReaderCount(value: number): this { return this.duplicateMinus('reader_count',value); }
+  public async sumReaderCount(): Promise<number | null> { this.request.ir.agg='reader_count'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgReaderCount(): Promise<number | null> { this.request.ir.agg='reader_count'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusReadCount(value: number): this { return this.plus('read_count',value); }
+  public minusReadCount(value: number): this { return this.minus('read_count',value); }
+  public onDuplicatePlusReadCount(value: number): this { return this.duplicatePlus('read_count',value); }
+  public onDuplicateMinusReadCount(value: number): this { return this.duplicateMinus('read_count',value); }
+  public async sumReadCount(): Promise<number | null> { this.request.ir.agg='read_count'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgReadCount(): Promise<number | null> { this.request.ir.agg='read_count'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusUserSeq(value: number): this { return this.plus('user_seq',value); }
+  public minusUserSeq(value: number): this { return this.minus('user_seq',value); }
+  public onDuplicatePlusUserSeq(value: number): this { return this.duplicatePlus('user_seq',value); }
+  public onDuplicateMinusUserSeq(value: number): this { return this.duplicateMinus('user_seq',value); }
+  public async sumUserSeq(): Promise<number | null> { this.request.ir.agg='user_seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgUserSeq(): Promise<number | null> { this.request.ir.agg='user_seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusServiceSeq(value: number): this { return this.plus('service_seq',value); }
+  public minusServiceSeq(value: number): this { return this.minus('service_seq',value); }
+  public onDuplicatePlusServiceSeq(value: number): this { return this.duplicatePlus('service_seq',value); }
+  public onDuplicateMinusServiceSeq(value: number): this { return this.duplicateMinus('service_seq',value); }
+  public async sumServiceSeq(): Promise<number | null> { this.request.ir.agg='service_seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgServiceSeq(): Promise<number | null> { this.request.ir.agg='service_seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusServiceRegionSeq(value: number): this { return this.plus('service_region_seq',value); }
+  public minusServiceRegionSeq(value: number): this { return this.minus('service_region_seq',value); }
+  public onDuplicatePlusServiceRegionSeq(value: number): this { return this.duplicatePlus('service_region_seq',value); }
+  public onDuplicateMinusServiceRegionSeq(value: number): this { return this.duplicateMinus('service_region_seq',value); }
+  public async sumServiceRegionSeq(): Promise<number | null> { this.request.ir.agg='service_region_seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgServiceRegionSeq(): Promise<number | null> { this.request.ir.agg='service_region_seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusServiceMemberSeq(value: number): this { return this.plus('service_member_seq',value); }
+  public minusServiceMemberSeq(value: number): this { return this.minus('service_member_seq',value); }
+  public onDuplicatePlusServiceMemberSeq(value: number): this { return this.duplicatePlus('service_member_seq',value); }
+  public onDuplicateMinusServiceMemberSeq(value: number): this { return this.duplicateMinus('service_member_seq',value); }
+  public async sumServiceMemberSeq(): Promise<number | null> { this.request.ir.agg='service_member_seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgServiceMemberSeq(): Promise<number | null> { this.request.ir.agg='service_member_seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusLikeCount(value: number): this { return this.plus('like_count',value); }
+  public minusLikeCount(value: number): this { return this.minus('like_count',value); }
+  public onDuplicatePlusLikeCount(value: number): this { return this.duplicatePlus('like_count',value); }
+  public onDuplicateMinusLikeCount(value: number): this { return this.duplicateMinus('like_count',value); }
+  public async sumLikeCount(): Promise<number | null> { this.request.ir.agg='like_count'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgLikeCount(): Promise<number | null> { this.request.ir.agg='like_count'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusAesKeyVersion(value: number): this { return this.plus('aes_key_version',value); }
+  public minusAesKeyVersion(value: number): this { return this.minus('aes_key_version',value); }
+  public onDuplicatePlusAesKeyVersion(value: number): this { return this.duplicatePlus('aes_key_version',value); }
+  public onDuplicateMinusAesKeyVersion(value: number): this { return this.duplicateMinus('aes_key_version',value); }
+  public async sumAesKeyVersion(): Promise<number | null> { this.request.ir.agg='aes_key_version'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgAesKeyVersion(): Promise<number | null> { this.request.ir.agg='aes_key_version'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusPrice(value: number): this { return this.plus('price',value); }
+  public minusPrice(value: number): this { return this.minus('price',value); }
+  public onDuplicatePlusPrice(value: number): this { return this.duplicatePlus('price',value); }
+  public onDuplicateMinusPrice(value: number): this { return this.duplicateMinus('price',value); }
+  public async sumPrice(): Promise<number | null> { this.request.ir.agg='price'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgPrice(): Promise<number | null> { this.request.ir.agg='price'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public async minSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('min'); }
+  public async maxSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('max'); }
+  public async countDistinctSeq(): Promise<number> { this.request.ir.agg='seq'; return Number(await this.terminal('count_distinct')); }
+  public async minName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('min'); }
+  public async maxName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('max'); }
+  public async countDistinctName(): Promise<number> { this.request.ir.agg='name'; return Number(await this.terminal('count_distinct')); }
+  public async minDescription(): Promise<unknown> { this.request.ir.agg='description'; return this.terminal('min'); }
+  public async maxDescription(): Promise<unknown> { this.request.ir.agg='description'; return this.terminal('max'); }
+  public async countDistinctDescription(): Promise<number> { this.request.ir.agg='description'; return Number(await this.terminal('count_distinct')); }
+  public async minCreatedTs(): Promise<unknown> { this.request.ir.agg='created_ts'; return this.terminal('min'); }
+  public async maxCreatedTs(): Promise<unknown> { this.request.ir.agg='created_ts'; return this.terminal('max'); }
+  public async countDistinctCreatedTs(): Promise<number> { this.request.ir.agg='created_ts'; return Number(await this.terminal('count_distinct')); }
+  public async minUpdatedTs(): Promise<unknown> { this.request.ir.agg='updated_ts'; return this.terminal('min'); }
+  public async maxUpdatedTs(): Promise<unknown> { this.request.ir.agg='updated_ts'; return this.terminal('max'); }
+  public async countDistinctUpdatedTs(): Promise<number> { this.request.ir.agg='updated_ts'; return Number(await this.terminal('count_distinct')); }
+  public async minIsClose(): Promise<unknown> { this.request.ir.agg='is_close'; return this.terminal('min'); }
+  public async maxIsClose(): Promise<unknown> { this.request.ir.agg='is_close'; return this.terminal('max'); }
+  public async countDistinctIsClose(): Promise<number> { this.request.ir.agg='is_close'; return Number(await this.terminal('count_distinct')); }
+  public async minIsDisplay(): Promise<unknown> { this.request.ir.agg='is_display'; return this.terminal('min'); }
+  public async maxIsDisplay(): Promise<unknown> { this.request.ir.agg='is_display'; return this.terminal('max'); }
+  public async countDistinctIsDisplay(): Promise<number> { this.request.ir.agg='is_display'; return Number(await this.terminal('count_distinct')); }
+  public async minDisplayStartDt(): Promise<unknown> { this.request.ir.agg='display_start_dt'; return this.terminal('min'); }
+  public async maxDisplayStartDt(): Promise<unknown> { this.request.ir.agg='display_start_dt'; return this.terminal('max'); }
+  public async countDistinctDisplayStartDt(): Promise<number> { this.request.ir.agg='display_start_dt'; return Number(await this.terminal('count_distinct')); }
+  public async minDisplayEndDt(): Promise<unknown> { this.request.ir.agg='display_end_dt'; return this.terminal('min'); }
+  public async maxDisplayEndDt(): Promise<unknown> { this.request.ir.agg='display_end_dt'; return this.terminal('max'); }
+  public async countDistinctDisplayEndDt(): Promise<number> { this.request.ir.agg='display_end_dt'; return Number(await this.terminal('count_distinct')); }
+  public async minIsAllday(): Promise<unknown> { this.request.ir.agg='is_allday'; return this.terminal('min'); }
+  public async maxIsAllday(): Promise<unknown> { this.request.ir.agg='is_allday'; return this.terminal('max'); }
+  public async countDistinctIsAllday(): Promise<number> { this.request.ir.agg='is_allday'; return Number(await this.terminal('count_distinct')); }
+  public async minTargetClubReaderCount(): Promise<unknown> { this.request.ir.agg='target_club_reader_count'; return this.terminal('min'); }
+  public async maxTargetClubReaderCount(): Promise<unknown> { this.request.ir.agg='target_club_reader_count'; return this.terminal('max'); }
+  public async countDistinctTargetClubReaderCount(): Promise<number> { this.request.ir.agg='target_club_reader_count'; return Number(await this.terminal('count_distinct')); }
+  public async minSuccessCount(): Promise<unknown> { this.request.ir.agg='success_count'; return this.terminal('min'); }
+  public async maxSuccessCount(): Promise<unknown> { this.request.ir.agg='success_count'; return this.terminal('max'); }
+  public async countDistinctSuccessCount(): Promise<number> { this.request.ir.agg='success_count'; return Number(await this.terminal('count_distinct')); }
+  public async minReaderCount(): Promise<unknown> { this.request.ir.agg='reader_count'; return this.terminal('min'); }
+  public async maxReaderCount(): Promise<unknown> { this.request.ir.agg='reader_count'; return this.terminal('max'); }
+  public async countDistinctReaderCount(): Promise<number> { this.request.ir.agg='reader_count'; return Number(await this.terminal('count_distinct')); }
+  public async minReadCount(): Promise<unknown> { this.request.ir.agg='read_count'; return this.terminal('min'); }
+  public async maxReadCount(): Promise<unknown> { this.request.ir.agg='read_count'; return this.terminal('max'); }
+  public async countDistinctReadCount(): Promise<number> { this.request.ir.agg='read_count'; return Number(await this.terminal('count_distinct')); }
+  public async minPhotoUrl(): Promise<unknown> { this.request.ir.agg='photo_url'; return this.terminal('min'); }
+  public async maxPhotoUrl(): Promise<unknown> { this.request.ir.agg='photo_url'; return this.terminal('max'); }
+  public async countDistinctPhotoUrl(): Promise<number> { this.request.ir.agg='photo_url'; return Number(await this.terminal('count_distinct')); }
+  public async minUserSeq(): Promise<unknown> { this.request.ir.agg='user_seq'; return this.terminal('min'); }
+  public async maxUserSeq(): Promise<unknown> { this.request.ir.agg='user_seq'; return this.terminal('max'); }
+  public async countDistinctUserSeq(): Promise<number> { this.request.ir.agg='user_seq'; return Number(await this.terminal('count_distinct')); }
+  public async minServiceSeq(): Promise<unknown> { this.request.ir.agg='service_seq'; return this.terminal('min'); }
+  public async maxServiceSeq(): Promise<unknown> { this.request.ir.agg='service_seq'; return this.terminal('max'); }
+  public async countDistinctServiceSeq(): Promise<number> { this.request.ir.agg='service_seq'; return Number(await this.terminal('count_distinct')); }
+  public async minServiceRegionSeq(): Promise<unknown> { this.request.ir.agg='service_region_seq'; return this.terminal('min'); }
+  public async maxServiceRegionSeq(): Promise<unknown> { this.request.ir.agg='service_region_seq'; return this.terminal('max'); }
+  public async countDistinctServiceRegionSeq(): Promise<number> { this.request.ir.agg='service_region_seq'; return Number(await this.terminal('count_distinct')); }
+  public async minServiceMemberSeq(): Promise<unknown> { this.request.ir.agg='service_member_seq'; return this.terminal('min'); }
+  public async maxServiceMemberSeq(): Promise<unknown> { this.request.ir.agg='service_member_seq'; return this.terminal('max'); }
+  public async countDistinctServiceMemberSeq(): Promise<number> { this.request.ir.agg='service_member_seq'; return Number(await this.terminal('count_distinct')); }
+  public async minStartDt(): Promise<unknown> { this.request.ir.agg='start_dt'; return this.terminal('min'); }
+  public async maxStartDt(): Promise<unknown> { this.request.ir.agg='start_dt'; return this.terminal('max'); }
+  public async countDistinctStartDt(): Promise<number> { this.request.ir.agg='start_dt'; return Number(await this.terminal('count_distinct')); }
+  public async minEndDt(): Promise<unknown> { this.request.ir.agg='end_dt'; return this.terminal('min'); }
+  public async maxEndDt(): Promise<unknown> { this.request.ir.agg='end_dt'; return this.terminal('max'); }
+  public async countDistinctEndDt(): Promise<number> { this.request.ir.agg='end_dt'; return Number(await this.terminal('count_distinct')); }
+  public async minUuid(): Promise<unknown> { this.request.ir.agg='uuid'; return this.terminal('min'); }
+  public async maxUuid(): Promise<unknown> { this.request.ir.agg='uuid'; return this.terminal('max'); }
+  public async countDistinctUuid(): Promise<number> { this.request.ir.agg='uuid'; return Number(await this.terminal('count_distinct')); }
+  public async minIsSingleWork(): Promise<unknown> { this.request.ir.agg='is_single_work'; return this.terminal('min'); }
+  public async maxIsSingleWork(): Promise<unknown> { this.request.ir.agg='is_single_work'; return this.terminal('max'); }
+  public async countDistinctIsSingleWork(): Promise<number> { this.request.ir.agg='is_single_work'; return Number(await this.terminal('count_distinct')); }
+  public async minLikeCount(): Promise<unknown> { this.request.ir.agg='like_count'; return this.terminal('min'); }
+  public async maxLikeCount(): Promise<unknown> { this.request.ir.agg='like_count'; return this.terminal('max'); }
+  public async countDistinctLikeCount(): Promise<number> { this.request.ir.agg='like_count'; return Number(await this.terminal('count_distinct')); }
+  public async minAesKeyVersion(): Promise<unknown> { this.request.ir.agg='aes_key_version'; return this.terminal('min'); }
+  public async maxAesKeyVersion(): Promise<unknown> { this.request.ir.agg='aes_key_version'; return this.terminal('max'); }
+  public async countDistinctAesKeyVersion(): Promise<number> { this.request.ir.agg='aes_key_version'; return Number(await this.terminal('count_distinct')); }
+  public async minPrice(): Promise<unknown> { this.request.ir.agg='price'; return this.terminal('min'); }
+  public async maxPrice(): Promise<unknown> { this.request.ir.agg='price'; return this.terminal('max'); }
+  public async countDistinctPrice(): Promise<number> { this.request.ir.agg='price'; return Number(await this.terminal('count_distinct')); }
+  public async minIp(): Promise<unknown> { this.request.ir.agg='ip'; return this.terminal('min'); }
+  public async maxIp(): Promise<unknown> { this.request.ir.agg='ip'; return this.terminal('max'); }
+  public async countDistinctIp(): Promise<number> { this.request.ir.agg='ip'; return Number(await this.terminal('count_distinct')); }
+  public ifParentSeqEq(value: unknown): this { return this.ifParent('seq',value); }
+  public ifParentNameEq(value: unknown): this { return this.ifParent('name',value); }
+  public ifParentServiceSeqEq(value: unknown): this { return this.ifParent('service_seq',value); }
+  public ifParentUserSeqEq(value: unknown): this { return this.ifParent('user_seq',value); }
+  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
+  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
   public service(callback: (where: ServiceWhere) => void): this { this.where().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
   public serviceMember(callback: (where: ServiceMemberWhere) => void): this { this.where().navigate('service_member',core=>callback(new ServiceMemberWhere(core))); return this; }
   public serviceRegion(callback: (where: ServiceRegionWhere) => void): this { this.where().navigate('service_region',core=>callback(new ServiceRegionWhere(core))); return this; }
@@ -1291,6 +1731,70 @@ export class UserQuery extends QueryCore {
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public selectSeq(): this { return this.select('seq'); }
+  public omitSeq(): this { return this.omit('seq'); }
+  public orderBySeqAsc(): this { return this.orderBy('seq'); }
+  public orderBySeqDesc(): this { return this.orderBy('seq',true); }
+  public groupBySeq(): this { return this.groupBy('seq'); }
+  public keyBySeq(): this { return this.keyBy('seq'); }
+  public setSeq(value: number): this { return this.set('seq',value); }
+  public onDuplicateSetSeq(value: number): this { return this.duplicate('seq',value); }
+  public selectName(): this { return this.select('name'); }
+  public omitName(): this { return this.omit('name'); }
+  public orderByNameAsc(): this { return this.orderBy('name'); }
+  public orderByNameDesc(): this { return this.orderBy('name',true); }
+  public groupByName(): this { return this.groupBy('name'); }
+  public keyByName(): this { return this.keyBy('name'); }
+  public setName(value: string): this { return this.set('name',value); }
+  public onDuplicateSetName(value: string): this { return this.duplicate('name',value); }
+  public plusSeq(value: number): this { return this.plus('seq',value); }
+  public minusSeq(value: number): this { return this.minus('seq',value); }
+  public onDuplicatePlusSeq(value: number): this { return this.duplicatePlus('seq',value); }
+  public onDuplicateMinusSeq(value: number): this { return this.duplicateMinus('seq',value); }
+  public async sumSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public async minSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('min'); }
+  public async maxSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('max'); }
+  public async countDistinctSeq(): Promise<number> { this.request.ir.agg='seq'; return Number(await this.terminal('count_distinct')); }
+  public async minName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('min'); }
+  public async maxName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('max'); }
+  public async countDistinctName(): Promise<number> { this.request.ir.agg='name'; return Number(await this.terminal('count_distinct')); }
+  public ifParentSeqEq(value: unknown): this { return this.ifParent('seq',value); }
+  public ifParentNameEq(value: unknown): this { return this.ifParent('name',value); }
+  public ifParentDescriptionEq(value: unknown): this { return this.ifParent('description',value); }
+  public ifParentCreatedTsEq(value: unknown): this { return this.ifParent('created_ts',value); }
+  public ifParentUpdatedTsEq(value: unknown): this { return this.ifParent('updated_ts',value); }
+  public ifParentIsCloseEq(value: unknown): this { return this.ifParent('is_close',value); }
+  public ifParentIsDisplayEq(value: unknown): this { return this.ifParent('is_display',value); }
+  public ifParentDisplayStartDtEq(value: unknown): this { return this.ifParent('display_start_dt',value); }
+  public ifParentDisplayEndDtEq(value: unknown): this { return this.ifParent('display_end_dt',value); }
+  public ifParentIsAlldayEq(value: unknown): this { return this.ifParent('is_allday',value); }
+  public ifParentTargetClubReaderCountEq(value: unknown): this { return this.ifParent('target_club_reader_count',value); }
+  public ifParentSuccessCountEq(value: unknown): this { return this.ifParent('success_count',value); }
+  public ifParentReaderCountEq(value: unknown): this { return this.ifParent('reader_count',value); }
+  public ifParentReadCountEq(value: unknown): this { return this.ifParent('read_count',value); }
+  public ifParentPhotoUrlEq(value: unknown): this { return this.ifParent('photo_url',value); }
+  public ifParentUserSeqEq(value: unknown): this { return this.ifParent('user_seq',value); }
+  public ifParentServiceSeqEq(value: unknown): this { return this.ifParent('service_seq',value); }
+  public ifParentServiceRegionSeqEq(value: unknown): this { return this.ifParent('service_region_seq',value); }
+  public ifParentServiceMemberSeqEq(value: unknown): this { return this.ifParent('service_member_seq',value); }
+  public ifParentStartDtEq(value: unknown): this { return this.ifParent('start_dt',value); }
+  public ifParentEndDtEq(value: unknown): this { return this.ifParent('end_dt',value); }
+  public ifParentUuidEq(value: unknown): this { return this.ifParent('uuid',value); }
+  public ifParentIsSingleWorkEq(value: unknown): this { return this.ifParent('is_single_work',value); }
+  public ifParentLikeCountEq(value: unknown): this { return this.ifParent('like_count',value); }
+  public ifParentAesKeyVersionEq(value: unknown): this { return this.ifParent('aes_key_version',value); }
+  public ifParentAesHexEmailEq(value: unknown): this { return this.ifParent('aes_hex_email',value); }
+  public ifParentAesHexPhoneEq(value: unknown): this { return this.ifParent('aes_hex_phone',value); }
+  public ifParentPriceEq(value: unknown): this { return this.ifParent('price',value); }
+  public ifParentIpEq(value: unknown): this { return this.ifParent('ip',value); }
+  public ifParentGzExtendEq(value: unknown): this { return this.ifParent('gz_extend',value); }
+  public ifParentJsonSettingEq(value: unknown): this { return this.ifParent('json_setting',value); }
+  public ifParentJsonsTagsEq(value: unknown): this { return this.ifParent('jsons_tags',value); }
+  public ifParentBase64ExtraEq(value: unknown): this { return this.ifParent('base64_extra',value); }
+  public ifParentSerializeDataEq(value: unknown): this { return this.ifParent('serialize_data',value); }
+  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
+  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
   public authors(callback: (where: AuthorWhere) => void): this { this.where().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
   public serviceMembers(callback: (where: ServiceMemberWhere) => void): this { this.where().navigate('service_members',core=>callback(new ServiceMemberWhere(core))); return this; }
   private resolveRelation(child: QueryCore, expected?: 'one'|'many'): string { const entity=child.request.ir.entity; const link=child.linkSelection; const candidates=this.relationDefinitions().filter(value=>value.target===entity&&(!expected||value.kind===expected)&&(!link||(value.left===link.parentKey&&value.right===link.childKey))); if(candidates.length!==1) throw new OrmError('IR_INVALID', `relation from ${this.request.ir.entity} to ${entity} is ${candidates.length===0?'not declared':'ambiguous'}; select a key pair`); return candidates[0]!.name; }
@@ -1403,6 +1907,70 @@ export class ServiceQuery extends QueryCore {
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public selectSeq(): this { return this.select('seq'); }
+  public omitSeq(): this { return this.omit('seq'); }
+  public orderBySeqAsc(): this { return this.orderBy('seq'); }
+  public orderBySeqDesc(): this { return this.orderBy('seq',true); }
+  public groupBySeq(): this { return this.groupBy('seq'); }
+  public keyBySeq(): this { return this.keyBy('seq'); }
+  public setSeq(value: number): this { return this.set('seq',value); }
+  public onDuplicateSetSeq(value: number): this { return this.duplicate('seq',value); }
+  public selectName(): this { return this.select('name'); }
+  public omitName(): this { return this.omit('name'); }
+  public orderByNameAsc(): this { return this.orderBy('name'); }
+  public orderByNameDesc(): this { return this.orderBy('name',true); }
+  public groupByName(): this { return this.groupBy('name'); }
+  public keyByName(): this { return this.keyBy('name'); }
+  public setName(value: string): this { return this.set('name',value); }
+  public onDuplicateSetName(value: string): this { return this.duplicate('name',value); }
+  public plusSeq(value: number): this { return this.plus('seq',value); }
+  public minusSeq(value: number): this { return this.minus('seq',value); }
+  public onDuplicatePlusSeq(value: number): this { return this.duplicatePlus('seq',value); }
+  public onDuplicateMinusSeq(value: number): this { return this.duplicateMinus('seq',value); }
+  public async sumSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public async minSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('min'); }
+  public async maxSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('max'); }
+  public async countDistinctSeq(): Promise<number> { this.request.ir.agg='seq'; return Number(await this.terminal('count_distinct')); }
+  public async minName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('min'); }
+  public async maxName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('max'); }
+  public async countDistinctName(): Promise<number> { this.request.ir.agg='name'; return Number(await this.terminal('count_distinct')); }
+  public ifParentSeqEq(value: unknown): this { return this.ifParent('seq',value); }
+  public ifParentNameEq(value: unknown): this { return this.ifParent('name',value); }
+  public ifParentDescriptionEq(value: unknown): this { return this.ifParent('description',value); }
+  public ifParentCreatedTsEq(value: unknown): this { return this.ifParent('created_ts',value); }
+  public ifParentUpdatedTsEq(value: unknown): this { return this.ifParent('updated_ts',value); }
+  public ifParentIsCloseEq(value: unknown): this { return this.ifParent('is_close',value); }
+  public ifParentIsDisplayEq(value: unknown): this { return this.ifParent('is_display',value); }
+  public ifParentDisplayStartDtEq(value: unknown): this { return this.ifParent('display_start_dt',value); }
+  public ifParentDisplayEndDtEq(value: unknown): this { return this.ifParent('display_end_dt',value); }
+  public ifParentIsAlldayEq(value: unknown): this { return this.ifParent('is_allday',value); }
+  public ifParentTargetClubReaderCountEq(value: unknown): this { return this.ifParent('target_club_reader_count',value); }
+  public ifParentSuccessCountEq(value: unknown): this { return this.ifParent('success_count',value); }
+  public ifParentReaderCountEq(value: unknown): this { return this.ifParent('reader_count',value); }
+  public ifParentReadCountEq(value: unknown): this { return this.ifParent('read_count',value); }
+  public ifParentPhotoUrlEq(value: unknown): this { return this.ifParent('photo_url',value); }
+  public ifParentUserSeqEq(value: unknown): this { return this.ifParent('user_seq',value); }
+  public ifParentServiceSeqEq(value: unknown): this { return this.ifParent('service_seq',value); }
+  public ifParentServiceRegionSeqEq(value: unknown): this { return this.ifParent('service_region_seq',value); }
+  public ifParentServiceMemberSeqEq(value: unknown): this { return this.ifParent('service_member_seq',value); }
+  public ifParentStartDtEq(value: unknown): this { return this.ifParent('start_dt',value); }
+  public ifParentEndDtEq(value: unknown): this { return this.ifParent('end_dt',value); }
+  public ifParentUuidEq(value: unknown): this { return this.ifParent('uuid',value); }
+  public ifParentIsSingleWorkEq(value: unknown): this { return this.ifParent('is_single_work',value); }
+  public ifParentLikeCountEq(value: unknown): this { return this.ifParent('like_count',value); }
+  public ifParentAesKeyVersionEq(value: unknown): this { return this.ifParent('aes_key_version',value); }
+  public ifParentAesHexEmailEq(value: unknown): this { return this.ifParent('aes_hex_email',value); }
+  public ifParentAesHexPhoneEq(value: unknown): this { return this.ifParent('aes_hex_phone',value); }
+  public ifParentPriceEq(value: unknown): this { return this.ifParent('price',value); }
+  public ifParentIpEq(value: unknown): this { return this.ifParent('ip',value); }
+  public ifParentGzExtendEq(value: unknown): this { return this.ifParent('gz_extend',value); }
+  public ifParentJsonSettingEq(value: unknown): this { return this.ifParent('json_setting',value); }
+  public ifParentJsonsTagsEq(value: unknown): this { return this.ifParent('jsons_tags',value); }
+  public ifParentBase64ExtraEq(value: unknown): this { return this.ifParent('base64_extra',value); }
+  public ifParentSerializeDataEq(value: unknown): this { return this.ifParent('serialize_data',value); }
+  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
+  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
   public authors(callback: (where: AuthorWhere) => void): this { this.where().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
   public members(callback: (where: ServiceMemberWhere) => void): this { this.where().navigate('members',core=>callback(new ServiceMemberWhere(core))); return this; }
   public modules(callback: (where: ServiceRegionWhere) => void): this { this.where().navigate('modules',core=>callback(new ServiceRegionWhere(core))); return this; }
@@ -1552,6 +2120,87 @@ export class ServiceRegionQuery extends QueryCore {
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public selectSeq(): this { return this.select('seq'); }
+  public omitSeq(): this { return this.omit('seq'); }
+  public orderBySeqAsc(): this { return this.orderBy('seq'); }
+  public orderBySeqDesc(): this { return this.orderBy('seq',true); }
+  public groupBySeq(): this { return this.groupBy('seq'); }
+  public keyBySeq(): this { return this.keyBy('seq'); }
+  public setSeq(value: number): this { return this.set('seq',value); }
+  public onDuplicateSetSeq(value: number): this { return this.duplicate('seq',value); }
+  public selectServiceSeq(): this { return this.select('service_seq'); }
+  public omitServiceSeq(): this { return this.omit('service_seq'); }
+  public orderByServiceSeqAsc(): this { return this.orderBy('service_seq'); }
+  public orderByServiceSeqDesc(): this { return this.orderBy('service_seq',true); }
+  public groupByServiceSeq(): this { return this.groupBy('service_seq'); }
+  public keyByServiceSeq(): this { return this.keyBy('service_seq'); }
+  public setServiceSeq(value: number): this { return this.set('service_seq',value); }
+  public onDuplicateSetServiceSeq(value: number): this { return this.duplicate('service_seq',value); }
+  public selectName(): this { return this.select('name'); }
+  public omitName(): this { return this.omit('name'); }
+  public orderByNameAsc(): this { return this.orderBy('name'); }
+  public orderByNameDesc(): this { return this.orderBy('name',true); }
+  public groupByName(): this { return this.groupBy('name'); }
+  public keyByName(): this { return this.keyBy('name'); }
+  public setName(value: string): this { return this.set('name',value); }
+  public onDuplicateSetName(value: string): this { return this.duplicate('name',value); }
+  public plusSeq(value: number): this { return this.plus('seq',value); }
+  public minusSeq(value: number): this { return this.minus('seq',value); }
+  public onDuplicatePlusSeq(value: number): this { return this.duplicatePlus('seq',value); }
+  public onDuplicateMinusSeq(value: number): this { return this.duplicateMinus('seq',value); }
+  public async sumSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusServiceSeq(value: number): this { return this.plus('service_seq',value); }
+  public minusServiceSeq(value: number): this { return this.minus('service_seq',value); }
+  public onDuplicatePlusServiceSeq(value: number): this { return this.duplicatePlus('service_seq',value); }
+  public onDuplicateMinusServiceSeq(value: number): this { return this.duplicateMinus('service_seq',value); }
+  public async sumServiceSeq(): Promise<number | null> { this.request.ir.agg='service_seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgServiceSeq(): Promise<number | null> { this.request.ir.agg='service_seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public async minSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('min'); }
+  public async maxSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('max'); }
+  public async countDistinctSeq(): Promise<number> { this.request.ir.agg='seq'; return Number(await this.terminal('count_distinct')); }
+  public async minServiceSeq(): Promise<unknown> { this.request.ir.agg='service_seq'; return this.terminal('min'); }
+  public async maxServiceSeq(): Promise<unknown> { this.request.ir.agg='service_seq'; return this.terminal('max'); }
+  public async countDistinctServiceSeq(): Promise<number> { this.request.ir.agg='service_seq'; return Number(await this.terminal('count_distinct')); }
+  public async minName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('min'); }
+  public async maxName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('max'); }
+  public async countDistinctName(): Promise<number> { this.request.ir.agg='name'; return Number(await this.terminal('count_distinct')); }
+  public ifParentSeqEq(value: unknown): this { return this.ifParent('seq',value); }
+  public ifParentNameEq(value: unknown): this { return this.ifParent('name',value); }
+  public ifParentDescriptionEq(value: unknown): this { return this.ifParent('description',value); }
+  public ifParentCreatedTsEq(value: unknown): this { return this.ifParent('created_ts',value); }
+  public ifParentUpdatedTsEq(value: unknown): this { return this.ifParent('updated_ts',value); }
+  public ifParentIsCloseEq(value: unknown): this { return this.ifParent('is_close',value); }
+  public ifParentIsDisplayEq(value: unknown): this { return this.ifParent('is_display',value); }
+  public ifParentDisplayStartDtEq(value: unknown): this { return this.ifParent('display_start_dt',value); }
+  public ifParentDisplayEndDtEq(value: unknown): this { return this.ifParent('display_end_dt',value); }
+  public ifParentIsAlldayEq(value: unknown): this { return this.ifParent('is_allday',value); }
+  public ifParentTargetClubReaderCountEq(value: unknown): this { return this.ifParent('target_club_reader_count',value); }
+  public ifParentSuccessCountEq(value: unknown): this { return this.ifParent('success_count',value); }
+  public ifParentReaderCountEq(value: unknown): this { return this.ifParent('reader_count',value); }
+  public ifParentReadCountEq(value: unknown): this { return this.ifParent('read_count',value); }
+  public ifParentPhotoUrlEq(value: unknown): this { return this.ifParent('photo_url',value); }
+  public ifParentUserSeqEq(value: unknown): this { return this.ifParent('user_seq',value); }
+  public ifParentServiceSeqEq(value: unknown): this { return this.ifParent('service_seq',value); }
+  public ifParentServiceRegionSeqEq(value: unknown): this { return this.ifParent('service_region_seq',value); }
+  public ifParentServiceMemberSeqEq(value: unknown): this { return this.ifParent('service_member_seq',value); }
+  public ifParentStartDtEq(value: unknown): this { return this.ifParent('start_dt',value); }
+  public ifParentEndDtEq(value: unknown): this { return this.ifParent('end_dt',value); }
+  public ifParentUuidEq(value: unknown): this { return this.ifParent('uuid',value); }
+  public ifParentIsSingleWorkEq(value: unknown): this { return this.ifParent('is_single_work',value); }
+  public ifParentLikeCountEq(value: unknown): this { return this.ifParent('like_count',value); }
+  public ifParentAesKeyVersionEq(value: unknown): this { return this.ifParent('aes_key_version',value); }
+  public ifParentAesHexEmailEq(value: unknown): this { return this.ifParent('aes_hex_email',value); }
+  public ifParentAesHexPhoneEq(value: unknown): this { return this.ifParent('aes_hex_phone',value); }
+  public ifParentPriceEq(value: unknown): this { return this.ifParent('price',value); }
+  public ifParentIpEq(value: unknown): this { return this.ifParent('ip',value); }
+  public ifParentGzExtendEq(value: unknown): this { return this.ifParent('gz_extend',value); }
+  public ifParentJsonSettingEq(value: unknown): this { return this.ifParent('json_setting',value); }
+  public ifParentJsonsTagsEq(value: unknown): this { return this.ifParent('jsons_tags',value); }
+  public ifParentBase64ExtraEq(value: unknown): this { return this.ifParent('base64_extra',value); }
+  public ifParentSerializeDataEq(value: unknown): this { return this.ifParent('serialize_data',value); }
+  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
+  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
   public authors(callback: (where: AuthorWhere) => void): this { this.where().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
   public service(callback: (where: ServiceWhere) => void): this { this.where().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
   public joinSeqWithServiceRegionSeq(child: AuthorQuery): this { return this.attachJoin('authors',child,'inner'); }
@@ -1720,6 +2369,93 @@ export class ServiceMemberQuery extends QueryCore {
   public userSeqGteCol(reference: ColumnReference): this { this.predicateColumn('user_seq','gte_col',reference); return this; }
   public userSeqLtCol(reference: ColumnReference): this { this.predicateColumn('user_seq','lt_col',reference); return this; }
   public userSeqLteCol(reference: ColumnReference): this { this.predicateColumn('user_seq','lte_col',reference); return this; }
+  public selectSeq(): this { return this.select('seq'); }
+  public omitSeq(): this { return this.omit('seq'); }
+  public orderBySeqAsc(): this { return this.orderBy('seq'); }
+  public orderBySeqDesc(): this { return this.orderBy('seq',true); }
+  public groupBySeq(): this { return this.groupBy('seq'); }
+  public keyBySeq(): this { return this.keyBy('seq'); }
+  public setSeq(value: number): this { return this.set('seq',value); }
+  public onDuplicateSetSeq(value: number): this { return this.duplicate('seq',value); }
+  public selectServiceSeq(): this { return this.select('service_seq'); }
+  public omitServiceSeq(): this { return this.omit('service_seq'); }
+  public orderByServiceSeqAsc(): this { return this.orderBy('service_seq'); }
+  public orderByServiceSeqDesc(): this { return this.orderBy('service_seq',true); }
+  public groupByServiceSeq(): this { return this.groupBy('service_seq'); }
+  public keyByServiceSeq(): this { return this.keyBy('service_seq'); }
+  public setServiceSeq(value: number): this { return this.set('service_seq',value); }
+  public onDuplicateSetServiceSeq(value: number): this { return this.duplicate('service_seq',value); }
+  public selectUserSeq(): this { return this.select('user_seq'); }
+  public omitUserSeq(): this { return this.omit('user_seq'); }
+  public orderByUserSeqAsc(): this { return this.orderBy('user_seq'); }
+  public orderByUserSeqDesc(): this { return this.orderBy('user_seq',true); }
+  public groupByUserSeq(): this { return this.groupBy('user_seq'); }
+  public keyByUserSeq(): this { return this.keyBy('user_seq'); }
+  public setUserSeq(value: number): this { return this.set('user_seq',value); }
+  public onDuplicateSetUserSeq(value: number): this { return this.duplicate('user_seq',value); }
+  public plusSeq(value: number): this { return this.plus('seq',value); }
+  public minusSeq(value: number): this { return this.minus('seq',value); }
+  public onDuplicatePlusSeq(value: number): this { return this.duplicatePlus('seq',value); }
+  public onDuplicateMinusSeq(value: number): this { return this.duplicateMinus('seq',value); }
+  public async sumSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusServiceSeq(value: number): this { return this.plus('service_seq',value); }
+  public minusServiceSeq(value: number): this { return this.minus('service_seq',value); }
+  public onDuplicatePlusServiceSeq(value: number): this { return this.duplicatePlus('service_seq',value); }
+  public onDuplicateMinusServiceSeq(value: number): this { return this.duplicateMinus('service_seq',value); }
+  public async sumServiceSeq(): Promise<number | null> { this.request.ir.agg='service_seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgServiceSeq(): Promise<number | null> { this.request.ir.agg='service_seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusUserSeq(value: number): this { return this.plus('user_seq',value); }
+  public minusUserSeq(value: number): this { return this.minus('user_seq',value); }
+  public onDuplicatePlusUserSeq(value: number): this { return this.duplicatePlus('user_seq',value); }
+  public onDuplicateMinusUserSeq(value: number): this { return this.duplicateMinus('user_seq',value); }
+  public async sumUserSeq(): Promise<number | null> { this.request.ir.agg='user_seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgUserSeq(): Promise<number | null> { this.request.ir.agg='user_seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public async minSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('min'); }
+  public async maxSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('max'); }
+  public async countDistinctSeq(): Promise<number> { this.request.ir.agg='seq'; return Number(await this.terminal('count_distinct')); }
+  public async minServiceSeq(): Promise<unknown> { this.request.ir.agg='service_seq'; return this.terminal('min'); }
+  public async maxServiceSeq(): Promise<unknown> { this.request.ir.agg='service_seq'; return this.terminal('max'); }
+  public async countDistinctServiceSeq(): Promise<number> { this.request.ir.agg='service_seq'; return Number(await this.terminal('count_distinct')); }
+  public async minUserSeq(): Promise<unknown> { this.request.ir.agg='user_seq'; return this.terminal('min'); }
+  public async maxUserSeq(): Promise<unknown> { this.request.ir.agg='user_seq'; return this.terminal('max'); }
+  public async countDistinctUserSeq(): Promise<number> { this.request.ir.agg='user_seq'; return Number(await this.terminal('count_distinct')); }
+  public ifParentSeqEq(value: unknown): this { return this.ifParent('seq',value); }
+  public ifParentNameEq(value: unknown): this { return this.ifParent('name',value); }
+  public ifParentDescriptionEq(value: unknown): this { return this.ifParent('description',value); }
+  public ifParentCreatedTsEq(value: unknown): this { return this.ifParent('created_ts',value); }
+  public ifParentUpdatedTsEq(value: unknown): this { return this.ifParent('updated_ts',value); }
+  public ifParentIsCloseEq(value: unknown): this { return this.ifParent('is_close',value); }
+  public ifParentIsDisplayEq(value: unknown): this { return this.ifParent('is_display',value); }
+  public ifParentDisplayStartDtEq(value: unknown): this { return this.ifParent('display_start_dt',value); }
+  public ifParentDisplayEndDtEq(value: unknown): this { return this.ifParent('display_end_dt',value); }
+  public ifParentIsAlldayEq(value: unknown): this { return this.ifParent('is_allday',value); }
+  public ifParentTargetClubReaderCountEq(value: unknown): this { return this.ifParent('target_club_reader_count',value); }
+  public ifParentSuccessCountEq(value: unknown): this { return this.ifParent('success_count',value); }
+  public ifParentReaderCountEq(value: unknown): this { return this.ifParent('reader_count',value); }
+  public ifParentReadCountEq(value: unknown): this { return this.ifParent('read_count',value); }
+  public ifParentPhotoUrlEq(value: unknown): this { return this.ifParent('photo_url',value); }
+  public ifParentUserSeqEq(value: unknown): this { return this.ifParent('user_seq',value); }
+  public ifParentServiceSeqEq(value: unknown): this { return this.ifParent('service_seq',value); }
+  public ifParentServiceRegionSeqEq(value: unknown): this { return this.ifParent('service_region_seq',value); }
+  public ifParentServiceMemberSeqEq(value: unknown): this { return this.ifParent('service_member_seq',value); }
+  public ifParentStartDtEq(value: unknown): this { return this.ifParent('start_dt',value); }
+  public ifParentEndDtEq(value: unknown): this { return this.ifParent('end_dt',value); }
+  public ifParentUuidEq(value: unknown): this { return this.ifParent('uuid',value); }
+  public ifParentIsSingleWorkEq(value: unknown): this { return this.ifParent('is_single_work',value); }
+  public ifParentLikeCountEq(value: unknown): this { return this.ifParent('like_count',value); }
+  public ifParentAesKeyVersionEq(value: unknown): this { return this.ifParent('aes_key_version',value); }
+  public ifParentAesHexEmailEq(value: unknown): this { return this.ifParent('aes_hex_email',value); }
+  public ifParentAesHexPhoneEq(value: unknown): this { return this.ifParent('aes_hex_phone',value); }
+  public ifParentPriceEq(value: unknown): this { return this.ifParent('price',value); }
+  public ifParentIpEq(value: unknown): this { return this.ifParent('ip',value); }
+  public ifParentGzExtendEq(value: unknown): this { return this.ifParent('gz_extend',value); }
+  public ifParentJsonSettingEq(value: unknown): this { return this.ifParent('json_setting',value); }
+  public ifParentJsonsTagsEq(value: unknown): this { return this.ifParent('jsons_tags',value); }
+  public ifParentBase64ExtraEq(value: unknown): this { return this.ifParent('base64_extra',value); }
+  public ifParentSerializeDataEq(value: unknown): this { return this.ifParent('serialize_data',value); }
+  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
+  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
   public authors(callback: (where: AuthorWhere) => void): this { this.where().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
   public service(callback: (where: ServiceWhere) => void): this { this.where().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
   public user(callback: (where: UserWhere) => void): this { this.where().navigate('user',core=>callback(new UserWhere(core))); return this; }
