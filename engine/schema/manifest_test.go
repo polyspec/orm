@@ -146,6 +146,16 @@ func TestRenameDirectivesRejectAmbiguousSources(t *testing.T) {
 	}
 }
 
+func TestCompositePrimaryKeyFailsBeforeGeneration(t *testing.T) {
+	diagram, err := Parse("erDiagram\n membership {\n bigint tenant_id PK\n bigint user_id PK\n }\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Build(diagram); err == nil || !strings.Contains(err.Error(), "composite primary key") || !strings.Contains(err.Error(), "membership") {
+		t.Fatalf("expected composite-key support gate, got %v", err)
+	}
+}
+
 func TestScopeDirectiveRequiresNonNullTenantColumn(t *testing.T) {
 	good := mustBuild(t, "erDiagram\n tenant {\n bigint id PK \"auto\"\n bigint account_id\n }\n %% scope tenant account_id\n")
 	if got := good.Entities["tenant"].Scope; got != "account_id" {
