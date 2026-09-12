@@ -118,3 +118,27 @@ func TestRelationCountUsesCorrelatedSubquery(t *testing.T) {
 		t.Fatalf("count predicate SQL differs: %s", plan.Steps[0].SQL)
 	}
 }
+
+func TestRelationExistenceAllowsEmptyFilter(t *testing.T) {
+	d, err := schema.Parse(`erDiagram
+ account {
+ bigint id PK
+ }
+ item {
+ bigint id PK
+ bigint account_id FK
+ }
+ account ||--o{ item : "account_id (account / items)"
+`)
+	if err != nil { t.Fatal(err) }
+	m, err := schema.Build(d)
+	if err != nil { t.Fatal(err) }
+	nav := &ir.Nav{Rel: "items", Mode: "exists", Group: &ir.Group{}}
+	req := &ir.Request{IRVersion: ir.Version, SchemaHash: m.SchemaHash, Kind: "all", Query: ir.Query{Entity: "account", Where: &ir.Group{Items: []ir.Item{{Nav: nav}}}}}
+	if err := ir.Validate(m, req); err != nil { t.Fatalf("empty existence filter was rejected: %v", err) }
+	plan, err := (&Planner{M: m, D: dialect.SQLite{}}).Compile(req)
+	if err != nil { t.Fatal(err) }
+	if !strings.Contains(plan.Steps[0].SQL, `EXISTS (SELECT 1 FROM "item" AS "exists__items" WHERE "exists__items"."account_id" = "a"."id")`) {
+		t.Fatalf("empty existence filter generated invalid SQL: %s", plan.Steps[0].SQL)
+	}
+}
