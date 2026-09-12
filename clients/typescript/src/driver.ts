@@ -3,6 +3,17 @@ import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection }
 import pg from 'pg';
 import { OrmError } from './runtime_error.js';
 
+pg.types.setTypeParser(20, value => {
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed)) throw new OrmError('DRIVER', `postgres int8 is outside the TypeScript safe integer range: ${value}`);
+  return parsed;
+});
+pg.types.setTypeParser(1700, value => Number(value));
+pg.types.setTypeParser(1082, value => value);
+pg.types.setTypeParser(1114, value => value);
+pg.types.setTypeParser(114, value => value);
+pg.types.setTypeParser(3802, value => value);
+
 export type DriverName = 'mysql' | 'postgres' | 'sqlite';
 export type DriverValue = null | boolean | number | string | bigint | Uint8Array | Date;
 
@@ -128,11 +139,19 @@ class SqliteTx extends SqliteDriver implements DriverTransaction {
   public async rollback(): Promise<void> { this.connection.exec('ROLLBACK'); this.finish(); }
 }
 
-export function openMySql(uri: string): DriverConnection {
-  return new MySqlDriver(mysql.createPool({ uri, connectionLimit: 10, namedPlaceholders: false }), true);
+export function openMySql(uri: string, pool = 10): DriverConnection {
+  return new MySqlDriver(mysql.createPool({
+    uri,
+    connectionLimit: pool,
+    namedPlaceholders: false,
+    timezone: 'Z',
+    dateStrings: true,
+    decimalNumbers: true,
+    jsonStrings: true,
+  }), true);
 }
-export function openPostgres(connectionString: string): DriverConnection {
-  return new PostgresDriver(new pg.Pool({ connectionString, max: 10 }), true);
+export function openPostgres(connectionString: string, pool = 10): DriverConnection {
+  return new PostgresDriver(new pg.Pool({ connectionString, max: pool }), true);
 }
 export function openSqlite(path: string): DriverConnection {
   if (!path.startsWith('/')) throw new OrmError('CONFIG', `sqlite path must be absolute: ${path}`);
