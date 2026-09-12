@@ -2324,6 +2324,37 @@
           }
         ]
       }
+    },
+    {
+      "name": "keyset_pages",
+      "chain": "Service.orderBySeqAsc().getsAfter(\"\",3); cursor -\u003e Service.orderBySeqAsc().getsAfter(cursor,3)",
+      "expect": {
+        "result": {
+          "first": [
+            1,
+            2,
+            3
+          ],
+          "has_cursor": true,
+          "second": [
+            4,
+            5,
+            6
+          ]
+        },
+        "statements": [
+          {
+            "binds": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"service\" AS \"a\" ORDER BY \"a\".\"seq\" ASC LIMIT 3 OFFSET 0"
+          },
+          {
+            "binds": [
+              3
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"service\" AS \"a\" WHERE ((\"a\".\"seq\" \u003e ?)) ORDER BY \"a\".\"seq\" ASC LIMIT 3 OFFSET 0"
+          }
+        ]
+      }
     }
   ]
 }
