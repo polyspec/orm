@@ -408,8 +408,10 @@ func safeMigrationID(id string) string {
 	return b.String()
 }
 
-func migrationLogPath(dir, id string) string {
-	return filepath.Join(dir, safeMigrationID(id)+".json")
+func migrationLogPath(dir string, log migrationLog) string {
+	stamp := strings.ReplaceAll(log.StartedAt, ":", "")
+	stamp = strings.ReplaceAll(stamp, "-", "")
+	return filepath.Join(dir, stamp+"__"+safeMigrationID(log.MigrationID)+".json")
 }
 
 func writeMigrationLog(dir string, log migrationLog) error {
@@ -438,25 +440,31 @@ func writeMigrationLog(dir string, log migrationLog) error {
 	if err != nil {
 		return fmt.Errorf("MIGRATION_LOG_WRITE: migration_id=%s: %w", log.MigrationID, err)
 	}
-	if err := os.Rename(tmpName, migrationLogPath(dir, log.MigrationID)); err != nil {
+	if err := os.Rename(tmpName, migrationLogPath(dir, log)); err != nil {
 		return fmt.Errorf("MIGRATION_LOG_WRITE: migration_id=%s: %w", log.MigrationID, err)
 	}
 	return nil
 }
 
 func verifyMigrationLog(dir string, r migrationRecord, driver string) error {
-	b, err := os.ReadFile(migrationLogPath(dir, r.MigrationID))
+	paths, err := filepath.Glob(filepath.Join(dir, "*__"+safeMigrationID(r.MigrationID)+".json"))
 	if err != nil {
-		return fmt.Errorf("MIGRATION_LOG_READ: migration_id=%s: %w", r.MigrationID, err)
+		return fmt.Errorf("MIGRATION_LOG_READ: migration_id=%s: find logs: %w", r.MigrationID, err)
 	}
-	var l migrationLog
-	if err := json.Unmarshal(b, &l); err != nil {
-		return fmt.Errorf("MIGRATION_LOG_READ: migration_id=%s invalid JSON: %w", r.MigrationID, err)
+	for _, path := range paths {
+		b, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return fmt.Errorf("MIGRATION_LOG_READ: migration_id=%s file=%s: %w", r.MigrationID, path, readErr)
+		}
+		var l migrationLog
+		if err := json.Unmarshal(b, &l); err != nil {
+			return fmt.Errorf("MIGRATION_LOG_READ: migration_id=%s file=%s invalid JSON: %w", r.MigrationID, path, err)
+		}
+		if l.MigrationID == r.MigrationID && l.Driver == driver && l.FromHash == r.FromHash && l.ToHash == r.ToHash && l.Checksum == r.Checksum && l.Status == r.Status && l.Operations == r.Operations {
+			return nil
+		}
 	}
-	if l.MigrationID != r.MigrationID || l.Driver != driver || l.FromHash != r.FromHash || l.ToHash != r.ToHash || l.Checksum != r.Checksum || l.Status != r.Status || l.Operations != r.Operations {
-		return fmt.Errorf("MIGRATION_LOG_CONFLICT: migration_id=%s database and file records differ", r.MigrationID)
-	}
-	return nil
+	return fmt.Errorf("MIGRATION_LOG_CONFLICT: migration_id=%s database record has no matching file log", r.MigrationID)
 }
 
 func schemaMatches(want, live *schema.Manifest, driver string) bool {
