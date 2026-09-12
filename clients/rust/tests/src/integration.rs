@@ -1660,6 +1660,38 @@ async fn main() {
         .await
         .expect("relation count predicate");
     check!(fails, relation_count == 2, "relation count predicate");
+    let m2m_account = account::query()
+        .set_name("m2m-account")
+        .using(&db)
+        .insert()
+        .await
+        .expect("many-to-many account insert")
+        .expect("many-to-many account row");
+    let m2m_project = project::query()
+        .set_name("m2m-project")
+        .using(&db)
+        .insert()
+        .await
+        .expect("many-to-many project insert")
+        .expect("many-to-many project row");
+    account_project::query()
+        .set_account_seq(m2m_account.seq)
+        .set_project_seq(m2m_project.seq)
+        .using(&db)
+        .insert()
+        .await
+        .expect("many-to-many through insert");
+    let linked = account::query()
+        .seq_eq(m2m_account.seq)
+        .relations(project::query())
+        .using(&db)
+        .gets()
+        .await
+        .expect("many-to-many relation");
+    check!(fails, linked.len() == 1 && linked.first().unwrap().projects().len() == 1 && linked.first().unwrap().projects().first().unwrap().seq == m2m_project.seq, "many-to-many relation uses through entity");
+    account_project::query().account_seq_eq(m2m_account.seq).using(&db).delete().await.expect("many-to-many through cleanup");
+    project::query().seq_eq(m2m_project.seq).using(&db).delete().await.expect("many-to-many project cleanup");
+    account::query().seq_eq(m2m_account.seq).using(&db).delete().await.expect("many-to-many account cleanup");
     let rolled_back = db
         .transaction(|tx| async move {
             composite_account::query()

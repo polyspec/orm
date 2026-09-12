@@ -7,7 +7,7 @@ use std::sync::{Arc, OnceLock};
 pub mod interfaces;
 
 /// The manifest hash this crate was generated from (schema.json `schema_hash`).
-pub const SCHEMA_HASH: &str = "5fb139132942a42b";
+pub const SCHEMA_HASH: &str = "bcda5a01f985861d";
 
 static ENGINE: OnceLock<Arc<orm::Engine>> = OnceLock::new();
 
@@ -57,3 +57,12 @@ pub use composite_membership::{CompositeMembershipRow, CompositeMembershipWhere,
 
 pub mod soft_record;
 pub use soft_record::{SoftRecordRow, SoftRecordWhere, SoftRecord};
+
+pub mod account;
+pub use account::{AccountRow, AccountWhere, Account};
+
+pub mod project;
+pub use project::{ProjectRow, ProjectWhere, Project};
+
+pub mod account_project;
+pub use account_project::{AccountProjectRow, AccountProjectWhere, AccountProject};
