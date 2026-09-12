@@ -209,7 +209,7 @@ node tests/typescript/common-vector.mjs
 
 ## 4. 연결
 
-네 클라이언트가 함께 사용하는 compiler service를 하나 실행한다. 서비스는 schema hash, dialect, IR version을 검사하고 Connect를 통해 typed Protobuf plan을 반환한다. 데이터베이스 문장 실행과 row 데이터는 각 클라이언트 프로세스에서 처리한다.
+compiler 구현은 언어별로 다르다. Go는 in-process compiler, Rust는 WASM, PHP는 Unix socket `ormd` transport를 기본 사용한다. Connect/Protobuf는 공통 compiler service 경로이며 TypeScript의 기본 경로다. 이 서비스는 schema hash, dialect, IR version을 검사하고 typed plan을 반환한다. 데이터베이스 문장 실행과 row 데이터는 각 client process에서 처리한다.
 
 ```sh
 bin/ormd -listen 127.0.0.1:8080 -schema /srv/app/schema/schema.json -dialect mysql
