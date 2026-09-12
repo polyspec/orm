@@ -9,21 +9,18 @@ go build -o "$OUT/ormd" ./cmd/ormd
 npm run typescript:build >/dev/null
 (cd clients/rust && PATH="$HOME/.cargo/bin:$PATH" cargo build -p orm-tests --bin compiler_connect >/dev/null)
 
-"$OUT/ormd" -listen 127.0.0.1:0 -schema schema/schema.json >"$OUT/server.out" 2>"$OUT/server.log" &
+ready_pipe="$OUT/ready.pipe"
+rm -f "$ready_pipe"
+mkfifo "$ready_pipe"
+exec 3<>"$ready_pipe"
+rm -f "$ready_pipe"
+
+"$OUT/ormd" -listen 127.0.0.1:0 -schema schema/schema.json -ready-fd 4 4>&3 >"$OUT/server.out" 2>"$OUT/server.log" &
 server_pid=$!
-cleanup() { kill "$server_pid" >/dev/null 2>&1 || true; }
+cleanup() { exec 3>&-; kill "$server_pid" >/dev/null 2>&1 || true; }
 trap cleanup EXIT INT TERM
 
-attempt=0
-while ! grep -q 'Connect listening on http://' "$OUT/server.log"; do
-  attempt=$((attempt + 1))
-  if [ "$attempt" -ge 100 ]; then
-    cat "$OUT/server.log" >&2
-    exit 1
-  fi
-  sleep 0.05
-done
-endpoint=$(sed -n 's|.*Connect listening on \(http://[^/]*\)/.*|\1|p' "$OUT/server.log")
+IFS= read -r endpoint <&3
 test -n "$endpoint"
 
 go run ./tests/proto/runner_go "$endpoint" >"$OUT/go.json"
