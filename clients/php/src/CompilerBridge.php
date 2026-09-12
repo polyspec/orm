@@ -125,7 +125,7 @@ final class CompilerBridge
         $out = ['id'=>$step->getId(), 'role'=>$step->getRole(), 'sql'=>$step->getSql(), 'bind_slots'=>array_map(fn(BindSlot $v) => ['from'=>$v->getSource(),'param'=>$v->getParameter(),'transform'=>$v->getTransform(),'name'=>$v->getName(),'step'=>$v->getStep(),'column'=>$v->getColumn(),'host_styles'=>iterator_to_array($v->getHostStyles()),'col_type'=>$v->getColumnType()], iterator_to_array($step->getBinds()))];
         if ($step->hasAssemble()) $out['assemble'] = self::assemble($step->getAssemble());
         if ($step->hasParent()) {
-            $p=$step->getParent(); $out['parent']=['step'=>$p->getStep(),'column'=>$p->getColumn(),'index'=>$p->getIndex()];
+            $p=$step->getParent(); $out['parent']=['step'=>$p->getStep(),'keys'=>self::keys($p->getKeys())];
             if ($p->hasIfParent()) { $v=$p->getIfParent(); $out['parent']['if_parent']=['column'=>$v->getColumn(),'index'=>$v->getIndex(),'param'=>$v->getParameter()]; }
         }
         return $out;
@@ -134,8 +134,11 @@ final class CompilerBridge
     /** @return array<string,mixed> */
     private static function assemble(WireAssemble $a): array
     {
-        return ['entity'=>$a->getEntity(),'alias'=>$a->getAlias(),'columns'=>array_map(fn(OutputColumn $v)=>['index'=>$v->getIndex(),'name'=>$v->getName(),'column'=>$v->getColumn(),'type'=>$v->getType(),'styles'=>iterator_to_array($v->getStyles()),'hidden'=>$v->getHidden()],iterator_to_array($a->getColumns())),'children'=>array_map(function(Child $v){$out=['rel'=>$v->getRelation(),'kind'=>$v->getKind(),'step'=>$v->getStep(),'parent_column'=>$v->getParentColumn(),'parent_index'=>$v->getParentIndex(),'child_column'=>$v->getChildColumn(),'child_index'=>$v->getChildIndex(),'key_by'=>$v->getKeyBy(),'key_index'=>$v->getKeyIndex(),'flatten'=>$v->getFlatten(),'cascade'=>$v->getCascade()];if($v->hasAssemble())$out['assemble']=self::assemble($v->getAssemble());return $out;},iterator_to_array($a->getChildren()))];
+        return ['entity'=>$a->getEntity(),'alias'=>$a->getAlias(),'columns'=>array_map(fn(OutputColumn $v)=>['index'=>$v->getIndex(),'name'=>$v->getName(),'column'=>$v->getColumn(),'type'=>$v->getType(),'styles'=>iterator_to_array($v->getStyles()),'hidden'=>$v->getHidden()],iterator_to_array($a->getColumns())),'children'=>array_map(function(Child $v){$out=['rel'=>$v->getRelation(),'kind'=>$v->getKind(),'step'=>$v->getStep(),'parent_keys'=>self::keys($v->getParentKeys()),'child_keys'=>self::keys($v->getChildKeys()),'key'=>self::keys($v->getKey()),'flatten'=>$v->getFlatten(),'cascade'=>$v->getCascade()];if($v->hasAssemble())$out['assemble']=self::assemble($v->getAssemble());return $out;},iterator_to_array($a->getChildren()))];
     }
+
+    /** @return list<array{column:string,index:int}> */
+    private static function keys(iterable $values): array { $out=[]; foreach($values as $v)$out[]=['column'=>$v->getColumn(),'index'=>$v->getIndex()]; return $out; }
 
     private static function uint(mixed $value, string $path): int { if (!is_int($value) || $value < 0 || $value > 0xffffffff) throw new OrmException(Code::IR_INVALID, "$path is outside uint32"); return $value; }
     /** @param list<mixed> $values @return list<int> */

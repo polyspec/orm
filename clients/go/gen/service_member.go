@@ -209,7 +209,8 @@ func scanServiceMember(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceMembe
 			rows := rs.Related(ch, vals)
 			c := orm.NewCollection[AuthorRow](len(rows))
 			for _, row := range rows {
-				c.Put(orm.KeyOf(row[ch.KeyIndex]), scanAuthor(row, rs.StepAssemble(ch), rs))
+				key, _ := orm.KeyFromRow(row, ch.Key)
+				c.Put(key, scanAuthor(row, rs.StepAssemble(ch), rs))
 			}
 			r.Authors = c
 		case "service":

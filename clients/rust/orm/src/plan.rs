@@ -37,10 +37,15 @@ fn null_as_empty<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(d: D) ->
 pub struct ParentRef {
     pub step: u32,
     #[serde(default)]
-    pub column: String,
-    pub index: usize,
+    pub keys: Vec<KeyRef>,
     #[serde(default)]
     pub if_parent: Option<IfParent>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct KeyRef {
+    pub column: String,
+    pub index: usize,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -104,17 +109,11 @@ pub struct Child {
     #[serde(default)]
     pub step: u32,
     #[serde(default)]
-    pub parent_column: String,
+    pub parent_keys: Vec<KeyRef>,
     #[serde(default)]
-    pub parent_index: usize,
+    pub child_keys: Vec<KeyRef>,
     #[serde(default)]
-    pub child_column: String,
-    #[serde(default)]
-    pub child_index: usize,
-    #[serde(default)]
-    pub key_by: String,
-    #[serde(default)]
-    pub key_index: usize,
+    pub key: Vec<KeyRef>,
     #[serde(default)]
     pub flatten: bool,
     /// The related rows hold this row's PK as their FK and no_cascade_delete was

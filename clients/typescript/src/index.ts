@@ -159,10 +159,11 @@ export interface Plan {
 export interface PlanStep { id:number; role:string; sql:string; bind_slots:BindSlot[]; assemble?:Assemble; parent?:ParentReference; }
 export interface BindSlot { from:string; param:number; transform:string; name:string; step:number; column:string; host_styles:string[]; col_type:string; }
 export interface PlanIfParent { column:string; index:number; param:number; }
-export interface ParentReference { step:number; column:string; index:number; if_parent?:PlanIfParent; }
+export interface KeyReference { column:string; index:number; }
+export interface ParentReference { step:number; keys:KeyReference[]; if_parent?:PlanIfParent; }
 export interface Assemble { entity:string; alias:string; columns:OutputColumn[]; children:Child[]; }
 export interface OutputColumn { index:number; name:string; column:string; type:string; styles:string[]; hidden:boolean; }
-export interface Child { rel:string; kind:string; step:number; parent_column:string; parent_index:number; child_column:string; child_index:number; key_by:string; key_index:number; flatten:boolean; cascade:boolean; assemble?:Assemble; }
+export interface Child { rel:string; kind:string; step:number; parent_keys:KeyReference[]; child_keys:KeyReference[]; key:KeyReference[]; flatten:boolean; cascade:boolean; assemble?:Assemble; }
 
 export interface Compiler {
   compile(request: Request): Promise<Plan>;
