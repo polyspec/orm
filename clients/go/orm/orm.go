@@ -308,10 +308,23 @@ func Transaction[T any](ctx context.Context, d *DB, fn func(*Tx) (T, error)) (T,
 	return TransactionWithOptions(ctx, d, TransactionOptions{}, fn)
 }
 
-// TransactionOptions controls transaction retry. Retry is disabled by default.
+// IsolationLevel is the portable transaction isolation name.
+type IsolationLevel string
+
+const (
+	IsolationDefault         IsolationLevel = ""
+	IsolationReadUncommitted IsolationLevel = "read_uncommitted"
+	IsolationReadCommitted   IsolationLevel = "read_committed"
+	IsolationRepeatableRead  IsolationLevel = "repeatable_read"
+	IsolationSerializable    IsolationLevel = "serializable"
+)
+
+// TransactionOptions controls transaction mode and retry. Retry is disabled by default.
 type TransactionOptions struct {
 	RetryDeadlocks bool
 	MaxAttempts    int
+	Isolation      IsolationLevel
+	ReadOnly       bool
 }
 
 // TransactionWithOptions runs a transaction with an explicit retry policy.
@@ -326,7 +339,7 @@ func TransactionWithOptions[T any](ctx context.Context, d *DB, options Transacti
 		}
 	}
 	for attempt := 0; attempt < attempts; attempt++ {
-		v, err := runTx(ctx, d, fn)
+		v, err := runTx(ctx, d, options, fn)
 		if err == nil {
 			return v, nil
 		}
@@ -344,8 +357,12 @@ func TransactionWithOptions[T any](ctx context.Context, d *DB, options Transacti
 	return zero, lastErr
 }
 
-func runTx[T any](ctx context.Context, d *DB, fn func(*Tx) (T, error)) (v T, err error) {
-	tx, err := d.SQL.BeginTx(ctx, nil)
+func runTx[T any](ctx context.Context, d *DB, options TransactionOptions, fn func(*Tx) (T, error)) (v T, err error) {
+	txOptions, err := sqlTransactionOptions(d.driver, options)
+	if err != nil {
+		return v, err
+	}
+	tx, err := d.SQL.BeginTx(ctx, txOptions)
 	if err != nil {
 		return v, mapDriverErr(err)
 	}
@@ -366,6 +383,27 @@ func runTx[T any](ctx context.Context, d *DB, fn func(*Tx) (T, error)) (v T, err
 		return v, mapDriverErr(err)
 	}
 	return v, nil
+}
+
+func sqlTransactionOptions(driver string, options TransactionOptions) (*sql.TxOptions, error) {
+	if driver == "sqlite" && (options.Isolation != IsolationDefault || options.ReadOnly) {
+		return nil, &ir.Error{Code: CodeConfig, Msg: "sqlite does not support transaction isolation or read-only mode"}
+	}
+	level := sql.LevelDefault
+	switch options.Isolation {
+	case IsolationDefault:
+	case IsolationReadUncommitted:
+		level = sql.LevelReadUncommitted
+	case IsolationReadCommitted:
+		level = sql.LevelReadCommitted
+	case IsolationRepeatableRead:
+		level = sql.LevelRepeatableRead
+	case IsolationSerializable:
+		level = sql.LevelSerializable
+	default:
+		return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("unsupported transaction isolation %q", options.Isolation)}
+	}
+	return &sql.TxOptions{Isolation: level, ReadOnly: options.ReadOnly}, nil
 }
 
 // Err codes surfaced by the executor (engine codes pass through unchanged).

@@ -577,11 +577,33 @@ impl Db {
         Ok(t)
     }
 
-    async fn begin(&self) -> Result<TxInner> {
+    async fn begin(&self, options: TransactionOptions) -> Result<TxInner> {
+        let level = options.isolation.sql_name();
         Ok(match &self.pool {
-            Pool::MySql(p) => TxInner::MySql(p.begin().await?),
-            Pool::Postgres(p) => TxInner::Postgres(p.begin().await?),
-            Pool::Sqlite(p) => TxInner::Sqlite(p.begin().await?),
+            Pool::MySql(p) => {
+                if options.isolation != IsolationLevel::Default {
+                    return Err(Error::Config("mysql sqlx executor does not support per-transaction isolation options".into()));
+                }
+                let statement = if options.read_only { "START TRANSACTION READ ONLY" } else { "START TRANSACTION" };
+                TxInner::MySql(p.begin_with(sqlx::AssertSqlSafe(statement).into_sql_str()).await?)
+            }
+            Pool::Postgres(p) => {
+                let statement = if options.isolation == IsolationLevel::Default && !options.read_only {
+                    "BEGIN".to_owned()
+                } else {
+                    let mut statement = String::from("BEGIN");
+                    if let Some(level) = level { statement.push_str(" ISOLATION LEVEL "); statement.push_str(level); }
+                    if options.read_only { statement.push_str(" READ ONLY"); }
+                    statement
+                };
+                TxInner::Postgres(p.begin_with(sqlx::AssertSqlSafe(statement).into_sql_str()).await?)
+            }
+            Pool::Sqlite(p) => {
+                if options.isolation != IsolationLevel::Default || options.read_only {
+                    return Err(Error::Config("sqlite does not support transaction isolation or read-only mode".into()));
+                }
+                TxInner::Sqlite(p.begin().await?)
+            }
         })
     }
 
@@ -603,7 +625,7 @@ impl Db {
         let attempts = if options.retry_deadlocks { options.max_attempts.max(1) } else { 1 };
         let mut last = None;
         for attempt in 0..attempts {
-            let tx = Tx { inner: Arc::new(tokio::sync::Mutex::new(Some(self.begin().await?))), db: self.clone(), finished: Arc::new(AtomicBool::new(false)) };
+            let tx = Tx { inner: Arc::new(tokio::sync::Mutex::new(Some(self.begin(options).await?))), db: self.clone(), finished: Arc::new(AtomicBool::new(false)) };
             let _scope = TxScope(tx.clone());
             match f(tx.clone()).await {
                 Ok(v) => {
@@ -625,15 +647,38 @@ impl Db {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IsolationLevel {
+    Default,
+    ReadUncommitted,
+    ReadCommitted,
+    RepeatableRead,
+    Serializable,
+}
+
+impl IsolationLevel {
+    fn sql_name(self) -> Option<&'static str> {
+        Some(match self {
+            Self::Default => return None,
+            Self::ReadUncommitted => "READ UNCOMMITTED",
+            Self::ReadCommitted => "READ COMMITTED",
+            Self::RepeatableRead => "REPEATABLE READ",
+            Self::Serializable => "SERIALIZABLE",
+        })
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct TransactionOptions {
     pub retry_deadlocks: bool,
     pub max_attempts: u32,
+    pub isolation: IsolationLevel,
+    pub read_only: bool,
 }
 
 impl Default for TransactionOptions {
     fn default() -> Self {
-        Self { retry_deadlocks: false, max_attempts: 3 }
+        Self { retry_deadlocks: false, max_attempts: 3, isolation: IsolationLevel::Default, read_only: false }
     }
 }
 

@@ -136,6 +136,8 @@ binding은 실행 context와 database 또는 transaction 참조 하나를 포함
 
 transaction을 만든 코드가 소유권을 가진다. commit과 rollback은 binding을 종료한다. 이후 해당 transaction의 query와 row는 실행을 거부한다. transaction은 `savepoint(name)`, `rollbackTo(name)`, `releaseSavepoint(name)`을 제공한다. 이름은 `[A-Za-z_][A-Za-z0-9_]*`와 일치해야 하며 잘못된 이름은 `CONFIG`로 거부한다. 이 작업은 바깥 transaction을 종료하지 않는다.
 
+`TransactionOptions`는 `isolation`(`default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`)과 `readOnly`를 받는다. Go는 이를 `database/sql.TxOptions`로 전달하고 PHP·TypeScript는 `BEGIN` 전에 transaction 설정을 실행한다. Rust는 driver가 지원하는 범위에서 sqlx로 설정한다. SQLite는 명시적인 isolation과 read-only 옵션을 거부한다. Rust MySQL executor는 sqlx pool API가 pool session 상태를 변경하지 않고 transaction별 isolation을 설정할 수 없어 isolation을 거부한다. 지원하지 않는 mode는 `CONFIG`를 반환한다.
+
 오류는 안정된 code와 원래 driver message를 보존한다. 취소 시 transaction을 해제하고 client 객체에 활성 connection을 남기지 않는다.
 
 `transaction`은 기본적으로 callback을 한 번 실행한다. deadlock 재시도는 기본 비활성화다. 호출자는 `TransactionOptions`의 `retryDeadlocks`와 `maxAttempts`를 지정할 수 있다. 재시도마다 새 transaction을 만들고 callback 전체를 다시 실행한다. 재시도를 활성화하면 callback은 여러 번 실행되어도 안전해야 한다.

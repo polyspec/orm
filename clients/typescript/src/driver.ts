@@ -18,6 +18,8 @@ pg.types.setTypeParser(114, value => value);
 pg.types.setTypeParser(3802, value => value);
 
 export type DriverName = 'mysql' | 'postgres' | 'sqlite';
+export type DriverIsolation = 'default' | 'read_uncommitted' | 'read_committed' | 'repeatable_read' | 'serializable';
+export interface DriverTransactionOptions { isolation?: DriverIsolation; readOnly?: boolean; }
 export type DriverValue = null | boolean | number | string | bigint | Uint8Array | Date;
 
 export interface DriverResult {
@@ -34,7 +36,7 @@ export interface DriverConnection {
   readonly name: DriverName;
   execute(sql: string, params: readonly DriverValue[]): Promise<DriverResult>;
   stream(sql: string, params: readonly DriverValue[], visit: DriverRowVisitor): Promise<DriverStreamResult>;
-  begin(): Promise<DriverTransaction>;
+  begin(options?: DriverTransactionOptions): Promise<DriverTransaction>;
   close(): Promise<void>;
 }
 
@@ -102,10 +104,16 @@ class MySqlDriver implements DriverConnection {
       borrowed?.release();
     }
   }
-  public async begin(): Promise<DriverTransaction> {
+  public async begin(options: DriverTransactionOptions = {}): Promise<DriverTransaction> {
     if (!('getConnection' in this.connection)) throw new OrmError('CONFIG', 'nested transactions are not supported');
     const connection = await this.connection.getConnection();
-    await connection.beginTransaction();
+    try {
+      await configureTransaction(connection, this.name, options);
+      await connection.beginTransaction();
+    } catch (error) {
+      connection.release();
+      throw error;
+    }
     return new MySqlTx(connection);
   }
   public async close(): Promise<void> { if (this.owner && 'end' in this.connection) await this.connection.end(); }
@@ -160,10 +168,16 @@ class PostgresDriver implements DriverConnection {
       borrowed?.release();
     }
   }
-  public async begin(): Promise<DriverTransaction> {
+  public async begin(options: DriverTransactionOptions = {}): Promise<DriverTransaction> {
     if (!(this.connection instanceof pg.Pool)) throw new OrmError('CONFIG', 'nested transactions are not supported');
     const connection: pg.PoolClient = await this.connection.connect();
-    await connection.query('BEGIN');
+    try {
+      await configureTransaction(connection, this.name, options);
+      await connection.query('BEGIN');
+    } catch (error) {
+      connection.release();
+      throw error;
+    }
     return new PostgresTx(connection);
   }
   public async close(): Promise<void> { if (this.owner && 'end' in this.connection) await this.connection.end(); }
@@ -226,13 +240,20 @@ class SqliteDriver implements DriverConnection {
       throw driverError(this.name, error);
     }
   }
-  public async begin(): Promise<DriverTransaction> {
+  public async begin(options: DriverTransactionOptions = {}): Promise<DriverTransaction> {
     if (this.transaction) throw new OrmError('CONFIG', 'nested transactions are not supported');
+    if (options.isolation !== undefined && options.isolation !== 'default' || options.readOnly) throw new OrmError('CONFIG', 'sqlite does not support transaction isolation or read-only mode');
     this.connection.exec('BEGIN IMMEDIATE');
     return new SqliteTx(this.connection);
   }
   public async close(): Promise<void> { if (this.owner) this.connection.close(); }
   protected finish(): void { this.active = false; }
+}
+
+async function configureTransaction(connection: { query(sql: string): Promise<unknown> }, driver: DriverName, options: DriverTransactionOptions): Promise<void> {
+  const isolation = options.isolation ?? 'default';
+  if (isolation !== 'default') await connection.query(`SET TRANSACTION ISOLATION LEVEL ${isolation.replaceAll('_', ' ').toUpperCase()}`);
+  if (options.readOnly) await connection.query('SET TRANSACTION READ ONLY');
 }
 class SqliteTx extends SqliteDriver implements DriverTransaction {
   public constructor(connection: DatabaseSync) { super(connection, false, true); }
