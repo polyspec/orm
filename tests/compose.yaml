@@ -1,0 +1,57 @@
+name: orm-physical
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: orm_test
+    expose:
+      - "3306"
+    labels:
+      containerctl.internal: "true"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: orm
+      POSTGRES_PASSWORD: orm
+      POSTGRES_DB: orm_test
+    expose:
+      - "5432"
+    labels:
+      containerctl.internal: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orm -d orm_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  go-physical:
+    image: golang:1.27-bookworm
+    depends_on:
+      mysql:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ..:/workspace
+      - ../.runtime/db-tests:/results
+    environment:
+      ORM_MIGRATION_MYSQL_DSN: root@tcp(orm-physical-mysql.container.test:3306)/orm_test?parseTime=true
+      ORM_MIGRATION_POSTGRES_DSN: postgres://orm:orm@orm-physical-postgres.container.test:5432/orm_test?sslmode=disable
+    command:
+      - sh
+      - -lc
+      - >-
+        set +e;
+        cd /workspace;
+        go test -tags physical ./cmd/ormgen -run TestPhysicalMigration -count=1 > /results/go.log 2>&1;
+        code=$$?;
+        printf '%s' "$$code" > /results/go.exit;
+        exit "$$code"
