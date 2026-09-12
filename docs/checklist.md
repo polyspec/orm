@@ -7,7 +7,7 @@ Rules: no polling or timers, no symlinks, one execution path, Mermaid is the sou
 
 - **S0 complete:** measurements and decisions R1–R3 and F1–F3 are recorded in `docs/perf.md`.
 - **S1 complete:** engine, generators, four clients, conformance harness, `ormgen tokens`, and the demo are implemented.
-- **S2 complete:** relation, codec, type, 58-vector, and 150-table Rust fixture checks pass.
+- **S2 complete:** relation, codec, type, 59-vector, and 150-table Rust fixture checks pass.
 - **S3–S6 complete:** writes, joins, PHP compatibility, deployment, PostgreSQL, and SQLite support are implemented. T7.11 completed the remaining fixed-cost work and regression checks.
 - Current conformance coverage is **59 vectors × 4 clients × 3 databases**. Codec coverage is 96 vectors across Go, PHP, Rust, and TypeScript.
 
@@ -77,7 +77,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [x] Implement both dialects, their placeholders, quoting, returning clauses, full-text rules, AES/HEX/IP handling, and database configuration.
 - [x] Run the four-client database vectors on MySQL, PostgreSQL, and SQLite.
 
-## Stage 7 — S7 additional features [in progress]
+## Stage 7 — S7 additional features [complete]
 
 Every S7 item requires implementation, tests, documentation, and static publication. A feature stays open if the same logical structure cannot be provided in Go, PHP, Rust, and TypeScript.
 
@@ -120,4 +120,4 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] G3 Verify write and relation vectors for all implemented clients.
 - [x] G4 Run generated symbol, schema, and CI checks.
 - [x] G5 Verify the GitHub Actions build.
-- [ ] G7 Close only after T7.1–T7.18 and T7.D1–T7.D10 meet their completion conditions.
+- [x] G7 T7.1–T7.18 and T7.D1–T7.D10 meet their completion conditions; local checks, GitHub CI, and GitHub Pages deployment pass.

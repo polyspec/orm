@@ -2,7 +2,7 @@
 
 Reference: [Common interface v1](interfaces.md), [machine specification](../contracts/interfaces.json), and [generated model](interfaces-model.md). Reproduction commands and check coverage are in the [verification guide](../tests/interfaces/README.md).
 
-Local and [GitHub CI](https://github.com/polyspec/orm/actions/runs/34649545210) verification on 2026-09-12: **58 scenarios × Go, PHP, Rust, and TypeScript × MySQL, PostgreSQL, and SQLite match**. Common input and output, stored fields, 25 wire records, native declarations, and source-change counterexamples are checked separately.
+Local and [GitHub CI](https://github.com/polyspec/orm/actions/runs/34690294938) verification on 2026-09-12: **59 scenarios × Go, PHP, Rust, and TypeScript × MySQL, PostgreSQL, and SQLite match**. Common input and output, stored fields, 25 wire records, native declarations, and source-change counterexamples are checked separately.
 
 | Interface | Implementation and verification |
 |---|---|
@@ -25,4 +25,4 @@ Local and [GitHub CI](https://github.com/polyspec/orm/actions/runs/34649545210) 
 
 Structure checks compare common methods and stored fields first, then check missing, added, and changed native declarations. A SHA-256 symbol list is fixed in `contracts/interfaces.json`; changing declarations without updating the specification fails. `owners` restricts all fields by role, so updating only the symbol list cannot add arbitrary state fields. Language-version syntax such as PHP's default readonly setter form is normalized; explicit access changes remain visible. Seven source-change counterexamples per language and 165 PHP wire-field/shape counterexamples are checked.
 
-These results verify the listed interfaces and scenarios. They do not prove equivalence of every function body or every possible input. The 150-table Rust build check is not complete. Overall progress is tracked in the [checklist](checklist.md).
+These results verify the listed interfaces and scenarios. They do not prove equivalence of every function body or every possible input. The deterministic 150-table Rust build check also passes. Overall progress is tracked in the [checklist](checklist.md).

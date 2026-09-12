@@ -2,7 +2,7 @@
 
 기준: [공통 인터페이스 v1](interfaces.md), [기계 명세](../contracts/interfaces.json), [생성 도표](interfaces-model.md). 재현 명령과 검사 범위는 [검사 안내](../tests/interfaces/README.md)에 있다.
 
-2026-09-12 로컬 및 [GitHub CI](https://github.com/polyspec/orm/actions/runs/34649545210) 검증: **58개 시나리오 × Go·PHP·Rust·TypeScript × MySQL·PostgreSQL·SQLite 일치**. 공통 입력·출력, 저장 필드, 25개 wire 레코드, 네이티브 선언과 소스 변경 반례를 별도로 검사한다.
+2026-09-12 로컬 및 [GitHub CI](https://github.com/polyspec/orm/actions/runs/34690294938) 검증: **59개 시나리오 × Go·PHP·Rust·TypeScript × MySQL·PostgreSQL·SQLite 일치**. 공통 입력·출력, 저장 필드, 25개 wire 레코드, 네이티브 선언과 소스 변경 반례를 별도로 검사한다.
 
 | 인터페이스 | 구현과 검증 |
 |---|---|
@@ -23,6 +23,6 @@
 | IF-33 | manifest 기반 인터페이스·도표 생성, 생성 drift·구조·실행 검사를 `make interface-check`, `make check`, CI에 연결 |
 | IF-34 | PHP 값 인자 guard와 동적 호환층. PHP integration·compat 검사 |
 
-구조 검사는 공통 메서드와 저장 필드를 먼저 대조하고, 전체 네이티브 선언의 누락·추가·변경을 검사한다. 심볼 목록의 SHA-256도 `contracts/interfaces.json`에 고정하므로 목록을 다시 기록한 뒤 인터페이스 갱신을 생략하면 실패한다. `owners`는 역할별 필드 전체를 제한하므로 심볼 목록만 다시 기록해도 임의의 상태 필드를 추가할 수 없다. PHP의 기본 readonly setter 표기처럼 언어 버전이 자동 자동 추가하는 표현은 정규화하며 명시적인 접근 제한 변경은 보존한다. 각 언어의 소스를 직접 바꾸는 7개 반례와 PHP wire 필드/형태 반례 165개도 검출한다.
+구조 검사는 공통 메서드와 저장 필드를 먼저 대조하고, 전체 네이티브 선언의 누락·추가·변경을 검사한다. 심볼 목록의 SHA-256도 `contracts/interfaces.json`에 고정하므로 목록을 다시 기록한 뒤 인터페이스 갱신을 생략하면 실패한다. `owners`는 역할별 필드 전체를 제한하므로 심볼 목록만 다시 기록해도 임의의 상태 필드를 추가할 수 없다. PHP의 기본 readonly setter 표기처럼 언어 버전이 자동으로 추가하는 표현은 정규화하며 명시적인 접근 제한 변경은 보존한다. 각 언어의 소스를 직접 바꾸는 7개 반례와 PHP wire 필드/형태 반례 165개도 검출한다.
 
-이 결과는 명시한 인터페이스과 시나리오의 검증이다. 함수 본문 전체의 등가성이나 모든 입력에 대한 증명으로 확대하지 않는다. 150테이블 Rust 빌드 검사는 아직 완료로 표시하지 않는다. 전체 진행 상태는 [체크리스트](checklist.md)에서 관리한다.
+이 결과는 명시한 인터페이스와 시나리오의 검증이다. 함수 본문 전체의 등가성이나 모든 입력에 대한 증명으로 확대하지 않는다. 결정적 150테이블 Rust 빌드 검사도 통과한다. 전체 진행 상태는 [체크리스트](checklist.ko.md)에서 관리한다.
