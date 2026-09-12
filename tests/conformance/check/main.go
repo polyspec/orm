@@ -11,7 +11,7 @@
 // differ per dialect, results must not.
 //
 // `run` starts one ormd process. Connect clients share its HTTP endpoint; the
-// PHP compatibility executor also uses its legacy socket during T7.1 migration.
+// The PHP executor uses its Unix-socket compiler transport during conformance.
 package main
 
 import (
