@@ -92,6 +92,32 @@ func migrateCmd(args []string) {
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_INTROSPECT: driver=%s: %w", *driver, err))
 	}
+	previous, found, err := migrationByID(ctx, db, *driver, *id)
+	if err != nil {
+		fail(err)
+	}
+	if found {
+		switch previous.Status {
+		case "applied":
+			if previous.ToHash != want.SchemaHash {
+				fail(fmt.Errorf("MIGRATION_HISTORY_CONFLICT: migration_id=%s recorded_to=%s requested_to=%s", *id, previous.ToHash, want.SchemaHash))
+			}
+			if !schemaMatches(want, live, *driver) {
+				fail(fmt.Errorf("MIGRATION_DRIFT: migration_id=%s status=applied expected_schema_hash=%s actual_schema_hash=%s", *id, want.SchemaHash, live.SchemaHash))
+			}
+			if err := verifyMigrationLog(*logDir, previous, *driver); err != nil {
+				fail(err)
+			}
+			fmt.Printf("migration_id=%s status=noop operations=0 schema_hash=%s\n", *id, want.SchemaHash)
+			return
+		case "retryable":
+			// Recomputed plan fields are checked below before execution.
+		case "queued", "applying", "failed":
+			fail(fmt.Errorf("MIGRATION_RECOVERY_REQUIRED: migration_id=%s status=%s run ormgen recover with --migration-id and the same target schema", *id, previous.Status))
+		default:
+			fail(fmt.Errorf("MIGRATION_STATE_INVALID: migration_id=%s status=%s", *id, previous.Status))
+		}
+	}
 	var sqlText string
 	if len(live.Entities) == 0 {
 		sqlText, err = renderCreateDDL(want, *driver)
@@ -103,40 +129,33 @@ func migrateCmd(args []string) {
 	}
 	operations := countSQLStatements(sqlText)
 	checksum := checksumText(sqlText)
-	previous, found, err := appliedMigration(ctx, db, *driver, *id)
-	if err != nil {
-		fail(err)
-	}
 	if found {
-		if previous.ToHash != want.SchemaHash || previous.FromHash != live.SchemaHash || previous.Checksum != checksum {
-			fail(fmt.Errorf("MIGRATION_HISTORY_CONFLICT: migration_id=%s recorded_from=%s requested_from=%s recorded_to=%s requested_to=%s recorded_plan_checksum=%s requested_plan_checksum=%s", *id, previous.FromHash, live.SchemaHash, previous.ToHash, want.SchemaHash, previous.Checksum, checksum))
+		if previous.FromHash != live.SchemaHash || previous.ToHash != want.SchemaHash || previous.Checksum != checksum || previous.Operations != operations {
+			fail(fmt.Errorf("MIGRATION_HISTORY_CONFLICT: migration_id=%s recorded_from=%s requested_from=%s recorded_to=%s requested_to=%s recorded_plan_checksum=%s requested_plan_checksum=%s recorded_operations=%d requested_operations=%d", *id, previous.FromHash, live.SchemaHash, previous.ToHash, want.SchemaHash, previous.Checksum, checksum, previous.Operations, operations))
 		}
-		if !schemaMatches(want, live, *driver) {
-			fail(fmt.Errorf("MIGRATION_DRIFT: migration_id=%s expected_schema_hash=%s actual_schema_hash=%s", *id, want.SchemaHash, live.SchemaHash))
-		}
-		if err := verifyMigrationLog(*logDir, previous, *driver); err != nil {
-			fail(err)
-		}
-		fmt.Printf("migration_id=%s status=noop operations=0 schema_hash=%s\n", *id, want.SchemaHash)
-		return
 	}
 	if *dryRun {
 		fmt.Printf("migration_id=%s status=planned from_schema_hash=%s to_schema_hash=%s operations=%d\n%s", *id, live.SchemaHash, want.SchemaHash, operations, sqlText)
 		return
 	}
 
-	record := migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "applying", Operations: operations}
+	record := migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "queued", Operations: operations}
 	startedAt := time.Now().UTC()
 	if err := writeMigrationLog(*logDir, migrationLogFromRecord(record, *driver, startedAt, time.Time{})); err != nil {
 		fail(err)
 	}
-	if err := insertMigration(ctx, db, *driver, record); err != nil {
-		_ = writeMigrationLog(*logDir, migrationLogFromRecord(record, *driver, startedAt, time.Now().UTC()).withError(err.Error()))
-		fail(err)
+	expectedStatus := "queued"
+	if found {
+		expectedStatus = "retryable"
+	} else {
+		if err := insertMigration(ctx, db, *driver, record); err != nil {
+			_ = writeMigrationLog(*logDir, migrationLogFromRecord(record, *driver, startedAt, time.Now().UTC()).withError(err.Error()))
+			fail(err)
+		}
 	}
-	if err := executeMigration(ctx, db, *driver, sqlText); err != nil {
+	if err := executeClaimedMigration(ctx, db, *driver, *id, expectedStatus, sqlText); err != nil {
 		detail := fmt.Sprintf("operation execution failed: %v", err)
-		_ = updateMigration(ctx, db, *driver, *id, "failed", detail)
+		_ = markMigrationFailed(ctx, db, *driver, *id, detail)
 		_ = writeMigrationLog(*logDir, migrationLogFromRecord(migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "failed", Operations: operations}, *driver, startedAt, time.Now().UTC()).withError(detail))
 		fail(fmt.Errorf("MIGRATION_APPLY_FAILED: migration_id=%s from=%s to=%s: %w", *id, live.SchemaHash, want.SchemaHash, err))
 	}
@@ -345,7 +364,15 @@ func ensureMigrationTable(ctx context.Context, db *sql.DB, driver string) error 
 	return nil
 }
 
-func appliedMigration(ctx context.Context, db *sql.DB, driver, id string) (migrationRecord, bool, error) {
+type migrationRow interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+type migrationExec interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
+
+func migrationByID(ctx context.Context, db migrationRow, driver, id string) (migrationRecord, bool, error) {
 	q := "SELECT migration_id,name,from_schema_hash,to_schema_hash,plan_checksum,status,operations FROM orm_schema_migrations WHERE migration_id=" + placeholder(driver, 1)
 	var r migrationRecord
 	err := db.QueryRowContext(ctx, q, id).Scan(&r.MigrationID, &r.Name, &r.FromHash, &r.ToHash, &r.Checksum, &r.Status, &r.Operations)
@@ -354,6 +381,14 @@ func appliedMigration(ctx context.Context, db *sql.DB, driver, id string) (migra
 	}
 	if err != nil {
 		return r, false, fmt.Errorf("MIGRATION_HISTORY_READ: migration_id=%s: %w", id, err)
+	}
+	return r, true, nil
+}
+
+func appliedMigration(ctx context.Context, db *sql.DB, driver, id string) (migrationRecord, bool, error) {
+	r, found, err := migrationByID(ctx, db, driver, id)
+	if err != nil || !found {
+		return r, found, err
 	}
 	if r.Status != "applied" {
 		return r, false, fmt.Errorf("MIGRATION_PARTIAL: migration_id=%s status=%s", id, r.Status)
@@ -375,9 +410,51 @@ func insertMigration(ctx context.Context, db *sql.DB, driver string, r migration
 }
 
 func updateMigration(ctx context.Context, db *sql.DB, driver, id, status, detail string) error {
+	return updateMigrationOn(ctx, db, driver, id, status, detail)
+}
+
+func updateMigrationOn(ctx context.Context, db migrationExec, driver, id, status, detail string) error {
 	q := "UPDATE orm_schema_migrations SET status=" + placeholder(driver, 1) + ", error_detail=" + placeholder(driver, 2) + ", finished_at=CURRENT_TIMESTAMP WHERE migration_id=" + placeholder(driver, 3)
 	_, err := db.ExecContext(ctx, q, status, detail, id)
 	return err
+}
+
+func transitionMigration(ctx context.Context, db migrationExec, driver, id, from, to, detail string) error {
+	q := "UPDATE orm_schema_migrations SET status=" + placeholder(driver, 1) + ", error_detail=" + placeholder(driver, 2)
+	if to == "applying" {
+		q += ", started_at=CURRENT_TIMESTAMP, finished_at=NULL"
+	} else {
+		q += ", finished_at=CURRENT_TIMESTAMP"
+	}
+	q += " WHERE migration_id=" + placeholder(driver, 3) + " AND status=" + placeholder(driver, 4)
+	result, err := db.ExecContext(ctx, q, to, detail, id, from)
+	if err != nil {
+		return fmt.Errorf("MIGRATION_HISTORY_WRITE: migration_id=%s transition=%s_to_%s: %w", id, from, to, err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("MIGRATION_HISTORY_WRITE: migration_id=%s transition=%s_to_%s rows: %w", id, from, to, err)
+	}
+	if rows != 1 {
+		return fmt.Errorf("MIGRATION_STATE_CHANGED: migration_id=%s expected_status=%s requested_status=%s affected_rows=%d", id, from, to, rows)
+	}
+	return nil
+}
+
+func markMigrationFailed(ctx context.Context, db migrationExec, driver, id, detail string) error {
+	q := "UPDATE orm_schema_migrations SET status=" + placeholder(driver, 1) + ", error_detail=" + placeholder(driver, 2) + ", finished_at=CURRENT_TIMESTAMP WHERE migration_id=" + placeholder(driver, 3) + " AND status IN (" + placeholder(driver, 4) + "," + placeholder(driver, 5) + "," + placeholder(driver, 6) + ")"
+	result, err := db.ExecContext(ctx, q, "failed", detail, id, "queued", "retryable", "applying")
+	if err != nil {
+		return fmt.Errorf("MIGRATION_HISTORY_WRITE: migration_id=%s mark_failed: %w", id, err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("MIGRATION_HISTORY_WRITE: migration_id=%s mark_failed rows: %w", id, err)
+	}
+	if rows != 1 {
+		return fmt.Errorf("MIGRATION_STATE_CHANGED: migration_id=%s failure status was not written affected_rows=%d", id, rows)
+	}
+	return nil
 }
 
 func placeholder(driver string, n int) string {
@@ -388,6 +465,31 @@ func placeholder(driver string, n int) string {
 }
 
 func executeMigration(ctx context.Context, db *sql.DB, driver, text string) error {
+	return withMigrationLock(ctx, db, driver, func(conn *sql.Conn) error {
+		for i, stmt := range splitSQL(text) {
+			if _, err := conn.ExecContext(ctx, stmt); err != nil {
+				return fmt.Errorf("operation=%d statement=%q: %w", i+1, stmt, err)
+			}
+		}
+		return nil
+	})
+}
+
+func executeClaimedMigration(ctx context.Context, db *sql.DB, driver, migrationID, expectedStatus, text string) error {
+	return withMigrationLock(ctx, db, driver, func(conn *sql.Conn) error {
+		if err := transitionMigration(ctx, conn, driver, migrationID, expectedStatus, "applying", ""); err != nil {
+			return err
+		}
+		for i, stmt := range splitSQL(text) {
+			if _, err := conn.ExecContext(ctx, stmt); err != nil {
+				return fmt.Errorf("operation=%d statement=%q: %w", i+1, stmt, err)
+			}
+		}
+		return nil
+	})
+}
+
+func withMigrationLock(ctx context.Context, db *sql.DB, driver string, run func(*sql.Conn) error) error {
 	conn, err := db.Conn(ctx)
 	if err != nil {
 		return fmt.Errorf("MIGRATION_LOCK: reserve connection: %w", err)
@@ -445,10 +547,8 @@ func executeMigration(ctx context.Context, db *sql.DB, driver, text string) erro
 		}
 		return fmt.Errorf("%w; rollback issued", base)
 	}
-	for i, stmt := range splitSQL(text) {
-		if _, err := conn.ExecContext(ctx, stmt); err != nil {
-			return failTx(fmt.Errorf("operation=%d statement=%q: %w", i+1, stmt, err))
-		}
+	if err := run(conn); err != nil {
+		return failTx(err)
 	}
 	if _, err := conn.ExecContext(ctx, "COMMIT"); err != nil {
 		return failTx(fmt.Errorf("transaction commit: %w", err))
