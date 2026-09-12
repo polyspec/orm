@@ -145,7 +145,9 @@ Style adjustment — **ordering comparisons have no meaning for encoded columns.
 
 Loading collects and deduplicates the parent rows' `local` values, then runs one `IN (...)` query per relation. For `kind:"many"`, `foreign` is not unique, so all matching rows are read by child primary key and grouped in the client.
 
-Joins are absent from v1. Relations use **separate queries and batch loading** only.
+Navigation predicates use `mode:"exists"`, `mode:"not_exists"`, or `mode:"count"` in an `IRNav` item. Count mode also requires `count_op` (`eq`, `not_eq`, `gt`, `gte`, `lt`, or `lte`) and parameter index `p`. The planner emits a correlated subquery and applies target soft-delete filtering.
+
+Relation loading uses **separate queries and batch loading**. Joins are represented separately in the query IR.
 
 ## 4. Validation (the parser fails the build)
 

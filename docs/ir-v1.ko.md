@@ -147,7 +147,9 @@ SQL 위치 stage가 있으면 SELECT 목록과 바인드가 같이 바뀌므로,
 `IN (...)` 한 번. 관계당 쿼리 1개. `kind:"many"`는 foreign이 유니크하지 않으므로
 자식 PK 기준으로 전량 조회 후 앱에서 그룹핑한다.
 
-조인은 v1에 없다. 관계는 **별도 쿼리 + 배치 로딩**만이다.
+navigation predicate는 `IRNav` item에서 `mode:"exists"`, `mode:"not_exists"`, `mode:"count"`를 사용한다. count mode에는 `count_op`(`eq`, `not_eq`, `gt`, `gte`, `lt`, `lte`)와 parameter index `p`가 필요하다. planner는 correlated subquery를 생성하고 대상 soft-delete 조건을 적용한다.
+
+관계 로딩은 **별도 쿼리 + 배치 로딩**을 사용한다. 조인은 query IR에서 별도로 표현한다.
 
 ## 4. 검증 (파서가 빌드를 깨뜨린다)
 
