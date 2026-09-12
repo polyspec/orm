@@ -20,9 +20,8 @@ try {
   if (error.code !== 'ENOENT') throw error;
 }
 
-const headings = text => text.split('\n').filter(line => /^(#{1,6})\s+/.test(line)).map(line => line.replace(/^(#{1,6})\s+/, '$1 '));
-const fences = text => text.split('\n').filter(line => /^\s*```/.test(line)).map(line => line.trim());
-const links = text => [...text.matchAll(/!?(?:\[[^\]]*\])\(([^)]+)\)|\[[^\]]*\]\[([^\]]+)\]/g)].map(match => match[1] || match[2]);
+const headings = text => text.split('\n').filter(line => /^(#{1,6})\s+/.test(line)).map(line => line.match(/^(#{1,6})\s+/)[1].length);
+const fences = text => [...text.matchAll(/(^|\n)\s*```([^\n]*)\n([\s\S]*?)(?:\n\s*)?```/g)].map(match => [match[2].trim(), match[3].replace(/\r\n/g, '\n')]);
 const tables = text => text.split('\n').filter(line => /^\s*\|/.test(line)).map(line => line.split('|').length - 2);
 const stripCode = text => text.replace(/```[\s\S]*?```/g, '');
 const koreanRatio = text => {
@@ -31,6 +30,13 @@ const koreanRatio = text => {
   const latin = (body.match(/[A-Za-z]/g) || []).length;
   return korean / Math.max(1, korean + latin);
 };
+const normalizeLink = (href, file) => {
+  const value = href.trim().split(/[?#]/, 1)[0];
+  if (/^(?:[a-z]+:|\/\/)/i.test(value) || value === '') return value;
+  const target = path.posix.normalize(path.posix.join(path.posix.dirname(relative(file)), value));
+  return target.replace(/\.ko\.md$/, '.md').replace(/^\.\//, '');
+};
+const links = (text, file) => [...text.matchAll(/!?(?:\[[^\]]*\])\(([^)]+)\)|\[[^\]]*\]\[([^\]]+)\]/g)].map(match => normalizeLink(match[1] || match[2], file));
 
 for (const source of sources) {
   const translation = translations.get(source);
@@ -44,7 +50,7 @@ for (const source of sources) {
   if (JSON.stringify(headings(english)) !== JSON.stringify(headings(korean))) fail('docs.translation-shape', `${relative(translation)} headings differ`);
   if (JSON.stringify(fences(english)) !== JSON.stringify(fences(korean))) fail('docs.translation-shape', `${relative(translation)} code fence declarations differ`);
   if (JSON.stringify(tables(english)) !== JSON.stringify(tables(korean))) fail('docs.translation-shape', `${relative(translation)} table structure differs`);
-  if (JSON.stringify(links(english)) !== JSON.stringify(links(korean))) fail('docs.translation-shape', `${relative(translation)} link targets differ`);
+  if (JSON.stringify(links(english, source)) !== JSON.stringify(links(korean, translation))) fail('docs.translation-shape', `${relative(translation)} link targets differ`);
 }
 
 const style = rules.rules.find(rule => rule.id === 'docs.writing-style');

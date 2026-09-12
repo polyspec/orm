@@ -1,4 +1,4 @@
-.PHONY: docs-dev docs-build docs-check docs-static-check docs-verify-idempotent
+.PHONY: docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check
 
 docs-dev:
 	npm run docs:dev
@@ -14,3 +14,6 @@ docs-static-check:
 
 docs-verify-idempotent:
 	npm run docs:verify-idempotent
+
+docs-rules-check:
+	npm run docs:rules-check
