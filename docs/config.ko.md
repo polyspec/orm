@@ -1,6 +1,6 @@
 # `orm.toml` 설정 (S5 T5.5)
 
-모든 경로는 절대 경로로 선언한다. 자동 검색, symlink, 폴백을 사용하지 않는다. 경로가 없거나 상대 경로이면 시작 단계에서 `CONFIG` 오류를 반환한다.
+모든 경로는 절대 경로로 선언한다. 자동 검색과 symlink를 사용하지 않는다. 경로가 없거나 상대 경로이면 시작 단계에서 `CONFIG` 오류를 반환한다.
 
 ```toml
 schema = "/srv/app/schema/schema.json"      # the manifest the client was generated from; its schema_hash is checked once at startup

@@ -168,7 +168,7 @@ relation 결과는 schema에 따라 한 행 또는 collection이다. collection 
 
 ## 10. 설정·오류·코덱·이벤트 — IF-28 ~ IF-31
 
-설정은 dialect, DSN, schema 파일, executor, AES key version map, query event hook을 선택한다. fallback database를 선택하거나 request 경로를 조용히 변경하지 않는다.
+설정은 dialect, DSN, schema 파일, executor, AES key version map, query event hook을 선택한다. 다른 database를 선택하거나 request 경로를 조용히 변경하지 않는다.
 
 오류는 [errors.yaml](errors.yaml)의 code를 사용한다. codec style은 schema 선언이다. AES version column은 NULL 불가 정수 평문 메타데이터이며 encoding style을 사용하지 않고 기본 projection에서 제외한다. AES rotation은 모든 AES payload 컬럼과 version을 하나의 transaction에서 갱신한다.
 
