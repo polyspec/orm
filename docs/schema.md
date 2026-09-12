@@ -99,6 +99,7 @@ When the same parent is referenced twice (`user_seq`, `updated_user_seq`), draw 
 %% predicate <table> <name> : <expr 조각>   # 재사용 술어 → `<name>(args…)` 메서드. 백틱 컬럼은 검증, `?`마다 인자 하나
 %% scope <table> <column>                 # query API와 IR에 독립된 tenant scope 생성
 %% soft_delete <table> <column>            # nullable datetime; reads exclude non-NULL rows and delete writes the current timestamp
+%% many_to_many <source> <target> <source_relation> <target_relation> through <through_entity>
 %% table_comment <table> "database table comment"
 %% column_comment <table> <column> "database column comment"
 %% rename_table <new_table> <old_table>      # migration rename
@@ -111,6 +112,8 @@ Table and column comments are schema data. `ormgen ddl` emits MySQL comments,
 PostgreSQL `COMMENT ON` statements, and SQLite rows in `orm_schema_comments`.
 `ormgen import` reads the same database metadata and writes these directives.
 Changing a comment changes the schema hash and produces an idempotent migration.
+
+`many_to_many` declares both typed relation names in one directive. The through entity must have one column referencing every source primary-key component and one column referencing every target primary-key component. These FK columns must form the through entity's primary key. Relation loading uses the target table with a through-table subquery and preserves the declared key order.
 
 ### 2.4 Optional declarations (default rules)
 - A PK named `seq` with `auto` can be written as `bigint seq PK "auto"`.

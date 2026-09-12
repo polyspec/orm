@@ -215,6 +215,37 @@ func TestCompositePrimaryAndForeignKeysPreserveOrderedPairs(t *testing.T) {
 	}
 }
 
+func TestManyToManyDirectiveBuildsOrderedThroughRelations(t *testing.T) {
+	d, err := Parse(`erDiagram
+ account {
+ bigint id PK
+ }
+ project {
+ bigint id PK
+ }
+ account_project {
+ bigint account_id PK "-> account.id"
+ bigint project_id PK "-> project.id"
+ }
+ %% many_to_many account project projects accounts through account_project
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := m.Entities["account"].Relations["projects"]
+	if r == nil || r.Kind != "many" || r.Target != "project" || r.Through != "account_project" || len(r.Keys) != 1 || r.Keys[0].Local != "id" || r.Keys[0].Target != "account_id" || len(r.ThroughKeys) != 1 || r.ThroughKeys[0].Local != "project_id" || r.ThroughKeys[0].Target != "id" {
+		t.Fatalf("unexpected forward many-to-many relation: %#v", r)
+	}
+	reverse := m.Entities["project"].Relations["accounts"]
+	if reverse == nil || reverse.Through != "account_project" || reverse.Keys[0].Target != "project_id" || reverse.ThroughKeys[0].Local != "account_id" {
+		t.Fatalf("unexpected reverse many-to-many relation: %#v", reverse)
+	}
+}
+
 func TestScopeDirectiveRequiresNonNullTenantColumn(t *testing.T) {
 	good := mustBuild(t, "erDiagram\n tenant {\n bigint id PK \"auto\"\n bigint account_id\n }\n %% scope tenant account_id\n")
 	if got := good.Entities["tenant"].Scope; got != "account_id" {
