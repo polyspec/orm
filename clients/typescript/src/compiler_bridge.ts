@@ -53,6 +53,7 @@ function query(value: RequestQuery, path: string): any {
     dropChildKey:value.drop_child_key??false, noCascadeDelete:value.no_cascade_delete??false,
     scopeParameter:value.scope_p === undefined ? undefined : uint(value.scope_p,`${path}.scope_parameter`),
     lock:value.lock,
+    keyset:value.keyset ? { direction:value.keyset.direction, values:value.keyset.values.map((p,i)=>uint(p,`${path}.keyset.values[${i}]`)) } : undefined,
   };
 }
 

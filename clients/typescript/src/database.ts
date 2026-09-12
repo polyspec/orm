@@ -1,5 +1,5 @@
 import { AesKeyring } from './index.js';
-import type { AesRotationSpec, AesRotationStatus, BatchOptions, BatchRequest, BatchResult, Compiler, Database, Executor, Param, Plan, PlanStep, Request, StreamResult, TransactionOptions } from './index.js';
+import type { AesRotationSpec, AesRotationStatus, BatchOptions, BatchRequest, BatchResult, Compiler, Database, Executor, Group, Param, Plan, PlanStep, Request, StreamResult, TransactionOptions } from './index.js';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { ConnectCompiler, ConnectPlanCompiler, type CompilerTransport } from './compiler.js';
@@ -252,11 +252,51 @@ export class Db implements Database, Executor {
     }
   }
 
+  /** Executes a generated request and applies driver bind-limit rules before SQL execution. */
+  public async executeRequest(request: Request, params: Param[]): Promise<unknown> {
+    const plan = await this.plan(request);
+    const parts = rootINParts(request, plan, this.driver, params);
+    if (parts.length <= 1) return this.execute(plan, params);
+    if (request.kind === 'count') {
+      let total = 0;
+      for (const part of parts) total += Number(await this.execute(await this.plan(part), params));
+      return total;
+    }
+    if (request.kind !== 'one' && request.kind !== 'all') throw new OrmError('IR_INVALID', `root IN splitting does not support query kind ${request.kind}`);
+    const first = await this.select(await this.plan(parts[0]!), params);
+    for (const part of parts.slice(1)) {
+      const next = await this.select(await this.plan(part), params);
+      first.data.push(...next.data);
+      for (const step of first.plan.steps) {
+        if (step.role !== 'relation') continue;
+        first.setStep(step.id, [...first.stepData(step.id), ...next.stepData(step.id)], childKeys(first.plan, step.id));
+      }
+    }
+    return request.kind === 'one' ? rowCollection(first, requiredAssemble(first.plan.steps[0]!)).first() ?? null : rowCollection(first, requiredAssemble(first.plan.steps[0]!));
+  }
+
   /** Executes a row plan and retains raw rows for generated keyset cursors. */
   public async executeRows(plan: Plan, params: Param[]): Promise<ExecutionRows> {
     if (this.closed) throw new OrmError('CONFIG', 'database is closed');
     if (plan.schema_hash !== this.schemaHash || plan.kind !== 'all') throw new OrmError('CONFIG', 'keyset row plan does not match this database');
     return this.select(plan, params);
+  }
+
+  public async executeRowsRequest(request: Request, params: Param[]): Promise<ExecutionRows> {
+    const plan = await this.plan(request);
+    const parts = rootINParts(request, plan, this.driver, params);
+    if (parts.length === 1) return this.executeRows(plan, params);
+    if (request.kind !== 'all') throw new OrmError('IR_INVALID', `root IN row execution requires kind all, got ${request.kind}`);
+    const first = await this.select(await this.plan(parts[0]!), params);
+    for (const part of parts.slice(1)) {
+      const next = await this.select(await this.plan(part), params);
+      first.data.push(...next.data);
+      for (const step of first.plan.steps) {
+        if (step.role !== 'relation') continue;
+        first.setStep(step.id, [...first.stepData(step.id), ...next.stepData(step.id)], childKeys(first.plan, step.id));
+      }
+    }
+    return first;
   }
 
   public async stream<T extends Row>(plan: Plan, params: Param[], visit: (row: T) => boolean | Promise<boolean>): Promise<StreamResult> {
@@ -451,4 +491,32 @@ function decodeAssembly(row: unknown[], assemble: ReturnType<typeof requiredAsse
 function parentValues(step: PlanStep, parents: unknown[][], params: readonly Param[]): Param[] { const ref=step.parent!; const seen=new Set<string>(); const out:Param[]=[]; for(const row of parents){if(ref.if_parent&&scalarKey(row[ref.if_parent.index])!==scalarKey(params[ref.if_parent.param]))continue;const key=rowKey(row,ref.keys);if(key===undefined||seen.has(key))continue;seen.add(key);for(const part of ref.keys)out.push(row[part.index] as Param);}return out; }
 function expandParent(step: PlanStep, source: Param[]): {sql:string;values:Param[]} { const width=step.parent?.keys.length??0;if(width===0||source.length%width!==0)throw new OrmError('INTERNAL',`relation step ${step.id} has invalid parent keys`);const tuples=source.length/width;let size=1;while(size<tuples)size<<=1;const values=[...source];while(values.length<size*width)values.push(...source.slice((tuples-1)*width,tuples*width));const replacement=(start:number,format:(n:number)=>string)=>Array.from({length:size},(_,tuple)=>Array.from({length:width},(_,part)=>format(start+tuple*width+part)).join(', ')).join(width===1?', ': '), (');const parentSlot=step.bind_slots.findIndex(slot=>slot.from==='parent');if(parentSlot<0)throw new OrmError('INTERNAL',`relation step ${step.id} has no parent bind`);if(step.sql.includes('$1')){const parent=parentSlot+1;return{sql:step.sql.replace(/\$(\d+)/g,(_,raw)=>{const n=Number(raw);if(n===parent)return replacement(n,i=>`$${i}`);return `$${n>parent?n+size*width-1:n}`;}),values};}let slot=0;return{sql:step.sql.replace(/\?/g,()=>step.bind_slots[slot++]?.from==='parent'?replacement(0,()=>'?'):'?'),values}; }
 function relationChunks(step: PlanStep, values: Param[], driver: string): Param[][] { const width=step.parent?.keys.length??0;if(width===0||values.length%width!==0)throw new OrmError('IR_INVALID',`relation step ${step.id} has invalid parent keys`);const nonParent=step.bind_slots.filter(slot=>slot.from!=='parent').length;const limit=driver==='sqlite'?999:65535;const max=Math.floor((limit-nonParent)/width);if(max<1)throw new OrmError('IR_INVALID',`relation step ${step.id} needs ${nonParent+width} bind parameters but ${driver} permits ${limit}`);let size=1;while(size*2<=max)size*=2;const tuples=values.length/width;const out:Param[][]=[];for(let start=0;start<tuples;start+=size)out.push(values.slice(start*width,Math.min(start+size,tuples)*width));return out; }
+function rootINParts(request: Request, plan: Plan, driver: string, params: readonly Param[]): Request[] {
+  const main = plan.steps[0]; if (!main) throw new OrmError('INTERNAL', 'plan has no root step');
+  const limit = driver === 'sqlite' ? 999 : 65535;
+  if (main.bind_slots.length > limit && (request.limit || request.order?.length || request.distinct || request.group_by?.length || request.group_by_expr?.length || request.having || request.keyset)) throw new OrmError('IR_INVALID', `root query requires ${main.bind_slots.length} bind parameters but ${driver} permits ${limit}; root IN cannot be split with ordering, limiting, grouping, distinct, or keyset semantics`);
+  if (request.limit || request.order?.length || request.distinct || request.group_by?.length || request.group_by_expr?.length || request.having || request.keyset) return [request];
+  const predicates: Array<{ op?: string; ps?: number[] }> = []; collectINPredicates(request.where, predicates);
+  const target = predicates.filter(value => value.op === 'in' && main.bind_slots.length > limit).sort((left, right) => (right.ps?.length ?? 0) - (left.ps?.length ?? 0))[0];
+  if (!target) {
+    if (main.bind_slots.length > (driver === 'sqlite' ? 999 : 65535) && predicates.some(value => value.op === 'not_in')) throw new OrmError('IR_INVALID', `root NOT IN requires ${main.bind_slots.length} bind parameters but ${driver} permits ${driver === 'sqlite' ? 999 : 65535}; exclusion semantics are not split`);
+    return [request];
+  }
+  const available = limit - (main.bind_slots.length - (target.ps?.length ?? 0));
+  if (available < 1) throw new OrmError('IR_INVALID', `root IN has no bind capacity on ${driver}`);
+  let size = 1; while (size * 2 <= available) size *= 2;
+  const unique: number[] = []; const seen = new Set<string>();
+  for (const index of target.ps ?? []) { const key = canonical(params[index]); if (!seen.has(key)) { seen.add(key); unique.push(index); } }
+  const parts: Request[] = [];
+  for (let start = 0; start < unique.length; start += size) {
+    const part = structuredClone(request) as Request;
+    const values = unique.slice(start, start + size);
+    let ordinal = 0;
+    if (!replaceINOrdinal(part.where, predicates.indexOf(target), values, () => ordinal++)) throw new OrmError('INTERNAL', 'root IN target disappeared while cloning request');
+    parts.push(part);
+  }
+  return parts;
+}
+function collectINPredicates(group: Group | undefined, out: Array<{ op?: string; ps?: number[] }>): void { for (const item of group?.items ?? []) { if (item.pred && (item.pred.op === 'in' || item.pred.op === 'not_in')) out.push(item.pred); collectINPredicates(item.group, out); if (item.nav) collectINPredicates(item.nav.group, out); } }
+function replaceINOrdinal(group: Group | undefined, target: number, values: number[], ordinal: () => number): boolean { for (const item of group?.items ?? []) { if (item.pred && (item.pred.op === 'in' || item.pred.op === 'not_in') && ordinal() === target) { item.pred.ps = [...values]; return true; } if (replaceINOrdinal(item.group, target, values, ordinal)) return true; if (item.nav && replaceINOrdinal(item.nav.group, target, values, ordinal)) return true; } return false; }
 function childKeys(plan: Plan,id:number):import('./index.js').KeyReference[] { const find=(assemble:ReturnType<typeof requiredAssemble>):import('./index.js').KeyReference[]|undefined=>{for(const child of assemble.children){if(child.kind!=='join'&&child.step===id)return child.child_keys;if(child.assemble){const found=find(child.assemble);if(found)return found;}}};for(const step of plan.steps)if(step.assemble){const found=find(step.assemble);if(found)return found;}throw new OrmError('INTERNAL',`relation step ${id} has no child attachment`); }

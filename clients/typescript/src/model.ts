@@ -101,6 +101,7 @@ export class ExecutionRows {
     });
     this.steps.set(id, { data, byKey });
   }
+  public stepData(id: number): unknown[][] { return [...(this.steps.get(id)?.data ?? [])]; }
 }
 
 export class Row {

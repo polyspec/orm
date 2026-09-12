@@ -302,6 +302,7 @@ type QueryNode struct {
 	NoCascadeDelete   bool                   `protobuf:"varint,19,opt,name=no_cascade_delete,json=noCascadeDelete,proto3" json:"no_cascade_delete,omitempty"`
 	ScopeParameter    *uint32                `protobuf:"varint,20,opt,name=scope_parameter,json=scopeParameter,proto3,oneof" json:"scope_parameter,omitempty"`
 	Lock              string                 `protobuf:"bytes,21,opt,name=lock,proto3" json:"lock,omitempty"`
+	Keyset            *Keyset                `protobuf:"bytes,22,opt,name=keyset,proto3" json:"keyset,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -481,6 +482,13 @@ func (x *QueryNode) GetLock() string {
 		return x.Lock
 	}
 	return ""
+}
+
+func (x *QueryNode) GetKeyset() *Keyset {
+	if x != nil {
+		return x.Keyset
+	}
+	return nil
 }
 
 type Projection struct {
@@ -671,6 +679,58 @@ func (x *Relation) GetQuery() *QueryNode {
 	return nil
 }
 
+type Keyset struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Direction     string                 `protobuf:"bytes,1,opt,name=direction,proto3" json:"direction,omitempty"`
+	Values        []uint32               `protobuf:"varint,2,rep,packed,name=values,proto3" json:"values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Keyset) Reset() {
+	*x = Keyset{}
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Keyset) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Keyset) ProtoMessage() {}
+
+func (x *Keyset) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Keyset.ProtoReflect.Descriptor instead.
+func (*Keyset) Descriptor() ([]byte, []int) {
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Keyset) GetDirection() string {
+	if x != nil {
+		return x.Direction
+	}
+	return ""
+}
+
+func (x *Keyset) GetValues() []uint32 {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
 type Group struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Connector     string                 `protobuf:"bytes,1,opt,name=connector,proto3" json:"connector,omitempty"`
@@ -681,7 +741,7 @@ type Group struct {
 
 func (x *Group) Reset() {
 	*x = Group{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[5]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -693,7 +753,7 @@ func (x *Group) String() string {
 func (*Group) ProtoMessage() {}
 
 func (x *Group) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[5]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -706,7 +766,7 @@ func (x *Group) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Group.ProtoReflect.Descriptor instead.
 func (*Group) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{5}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Group) GetConnector() string {
@@ -737,7 +797,7 @@ type Item struct {
 
 func (x *Item) Reset() {
 	*x = Item{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[6]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -749,7 +809,7 @@ func (x *Item) String() string {
 func (*Item) ProtoMessage() {}
 
 func (x *Item) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[6]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -762,7 +822,7 @@ func (x *Item) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Item.ProtoReflect.Descriptor instead.
 func (*Item) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{6}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Item) GetValue() isItem_Value {
@@ -832,7 +892,7 @@ type Navigation struct {
 
 func (x *Navigation) Reset() {
 	*x = Navigation{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[7]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -844,7 +904,7 @@ func (x *Navigation) String() string {
 func (*Navigation) ProtoMessage() {}
 
 func (x *Navigation) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[7]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -857,7 +917,7 @@ func (x *Navigation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Navigation.ProtoReflect.Descriptor instead.
 func (*Navigation) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{7}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Navigation) GetConnector() string {
@@ -897,7 +957,7 @@ type Predicate struct {
 
 func (x *Predicate) Reset() {
 	*x = Predicate{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[8]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -909,7 +969,7 @@ func (x *Predicate) String() string {
 func (*Predicate) ProtoMessage() {}
 
 func (x *Predicate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[8]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -922,7 +982,7 @@ func (x *Predicate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Predicate.ProtoReflect.Descriptor instead.
 func (*Predicate) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{8}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Predicate) GetConnector() string {
@@ -991,7 +1051,7 @@ type ColumnReference struct {
 
 func (x *ColumnReference) Reset() {
 	*x = ColumnReference{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[9]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1003,7 +1063,7 @@ func (x *ColumnReference) String() string {
 func (*ColumnReference) ProtoMessage() {}
 
 func (x *ColumnReference) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[9]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1016,7 +1076,7 @@ func (x *ColumnReference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ColumnReference.ProtoReflect.Descriptor instead.
 func (*ColumnReference) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{9}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ColumnReference) GetPath() string {
@@ -1044,7 +1104,7 @@ type Order struct {
 
 func (x *Order) Reset() {
 	*x = Order{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[10]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1056,7 +1116,7 @@ func (x *Order) String() string {
 func (*Order) ProtoMessage() {}
 
 func (x *Order) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[10]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1069,7 +1129,7 @@ func (x *Order) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Order.ProtoReflect.Descriptor instead.
 func (*Order) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{10}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *Order) GetColumn() string {
@@ -1103,7 +1163,7 @@ type GroupExpression struct {
 
 func (x *GroupExpression) Reset() {
 	*x = GroupExpression{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[11]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1115,7 +1175,7 @@ func (x *GroupExpression) String() string {
 func (*GroupExpression) ProtoMessage() {}
 
 func (x *GroupExpression) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[11]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1128,7 +1188,7 @@ func (x *GroupExpression) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupExpression.ProtoReflect.Descriptor instead.
 func (*GroupExpression) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{11}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GroupExpression) GetExpression() string {
@@ -1155,7 +1215,7 @@ type Limit struct {
 
 func (x *Limit) Reset() {
 	*x = Limit{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[12]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1167,7 +1227,7 @@ func (x *Limit) String() string {
 func (*Limit) ProtoMessage() {}
 
 func (x *Limit) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[12]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1180,7 +1240,7 @@ func (x *Limit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Limit.ProtoReflect.Descriptor instead.
 func (*Limit) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{12}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Limit) GetOffset() uint32 {
@@ -1207,7 +1267,7 @@ type IfParent struct {
 
 func (x *IfParent) Reset() {
 	*x = IfParent{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[13]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1219,7 +1279,7 @@ func (x *IfParent) String() string {
 func (*IfParent) ProtoMessage() {}
 
 func (x *IfParent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[13]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1232,7 +1292,7 @@ func (x *IfParent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IfParent.ProtoReflect.Descriptor instead.
 func (*IfParent) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{13}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *IfParent) GetColumn() string {
@@ -1264,7 +1324,7 @@ type Assignment struct {
 
 func (x *Assignment) Reset() {
 	*x = Assignment{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[14]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1276,7 +1336,7 @@ func (x *Assignment) String() string {
 func (*Assignment) ProtoMessage() {}
 
 func (x *Assignment) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[14]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1289,7 +1349,7 @@ func (x *Assignment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Assignment.ProtoReflect.Descriptor instead.
 func (*Assignment) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{14}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Assignment) GetColumn() string {
@@ -1351,7 +1411,7 @@ type Optimistic struct {
 
 func (x *Optimistic) Reset() {
 	*x = Optimistic{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[15]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1363,7 +1423,7 @@ func (x *Optimistic) String() string {
 func (*Optimistic) ProtoMessage() {}
 
 func (x *Optimistic) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[15]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1376,7 +1436,7 @@ func (x *Optimistic) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Optimistic.ProtoReflect.Descriptor instead.
 func (*Optimistic) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{15}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *Optimistic) GetColumn() string {
@@ -1403,7 +1463,7 @@ type Raw struct {
 
 func (x *Raw) Reset() {
 	*x = Raw{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[16]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1415,7 +1475,7 @@ func (x *Raw) String() string {
 func (*Raw) ProtoMessage() {}
 
 func (x *Raw) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[16]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1428,7 +1488,7 @@ func (x *Raw) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Raw.ProtoReflect.Descriptor instead.
 func (*Raw) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{16}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *Raw) GetSql() string {
@@ -1458,7 +1518,7 @@ type CompileResponse struct {
 
 func (x *CompileResponse) Reset() {
 	*x = CompileResponse{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[17]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1470,7 +1530,7 @@ func (x *CompileResponse) String() string {
 func (*CompileResponse) ProtoMessage() {}
 
 func (x *CompileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[17]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1483,7 +1543,7 @@ func (x *CompileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompileResponse.ProtoReflect.Descriptor instead.
 func (*CompileResponse) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{17}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CompileResponse) GetResult() isCompileResponse_Result {
@@ -1538,7 +1598,7 @@ type Plan struct {
 
 func (x *Plan) Reset() {
 	*x = Plan{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[18]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1550,7 +1610,7 @@ func (x *Plan) String() string {
 func (*Plan) ProtoMessage() {}
 
 func (x *Plan) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[18]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1563,7 +1623,7 @@ func (x *Plan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Plan.ProtoReflect.Descriptor instead.
 func (*Plan) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{18}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *Plan) GetSchemaHash() string {
@@ -1601,7 +1661,7 @@ type PlanStep struct {
 
 func (x *PlanStep) Reset() {
 	*x = PlanStep{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[19]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1613,7 +1673,7 @@ func (x *PlanStep) String() string {
 func (*PlanStep) ProtoMessage() {}
 
 func (x *PlanStep) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[19]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1626,7 +1686,7 @@ func (x *PlanStep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlanStep.ProtoReflect.Descriptor instead.
 func (*PlanStep) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{19}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *PlanStep) GetId() uint32 {
@@ -1687,7 +1747,7 @@ type BindSlot struct {
 
 func (x *BindSlot) Reset() {
 	*x = BindSlot{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[20]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1699,7 +1759,7 @@ func (x *BindSlot) String() string {
 func (*BindSlot) ProtoMessage() {}
 
 func (x *BindSlot) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[20]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1712,7 +1772,7 @@ func (x *BindSlot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BindSlot.ProtoReflect.Descriptor instead.
 func (*BindSlot) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{20}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *BindSlot) GetSource() string {
@@ -1781,7 +1841,7 @@ type KeyReference struct {
 
 func (x *KeyReference) Reset() {
 	*x = KeyReference{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[21]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1793,7 +1853,7 @@ func (x *KeyReference) String() string {
 func (*KeyReference) ProtoMessage() {}
 
 func (x *KeyReference) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[21]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1806,7 +1866,7 @@ func (x *KeyReference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeyReference.ProtoReflect.Descriptor instead.
 func (*KeyReference) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{21}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *KeyReference) GetColumn() string {
@@ -1834,7 +1894,7 @@ type ParentReference struct {
 
 func (x *ParentReference) Reset() {
 	*x = ParentReference{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[22]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1846,7 +1906,7 @@ func (x *ParentReference) String() string {
 func (*ParentReference) ProtoMessage() {}
 
 func (x *ParentReference) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[22]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1859,7 +1919,7 @@ func (x *ParentReference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParentReference.ProtoReflect.Descriptor instead.
 func (*ParentReference) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{22}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ParentReference) GetStep() uint32 {
@@ -1894,7 +1954,7 @@ type ParentCondition struct {
 
 func (x *ParentCondition) Reset() {
 	*x = ParentCondition{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[23]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1906,7 +1966,7 @@ func (x *ParentCondition) String() string {
 func (*ParentCondition) ProtoMessage() {}
 
 func (x *ParentCondition) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[23]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1919,7 +1979,7 @@ func (x *ParentCondition) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParentCondition.ProtoReflect.Descriptor instead.
 func (*ParentCondition) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{23}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ParentCondition) GetColumn() string {
@@ -1956,7 +2016,7 @@ type Assemble struct {
 
 func (x *Assemble) Reset() {
 	*x = Assemble{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[24]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1968,7 +2028,7 @@ func (x *Assemble) String() string {
 func (*Assemble) ProtoMessage() {}
 
 func (x *Assemble) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[24]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1981,7 +2041,7 @@ func (x *Assemble) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Assemble.ProtoReflect.Descriptor instead.
 func (*Assemble) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{24}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *Assemble) GetEntity() string {
@@ -2033,7 +2093,7 @@ type OutputColumn struct {
 
 func (x *OutputColumn) Reset() {
 	*x = OutputColumn{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[25]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2045,7 +2105,7 @@ func (x *OutputColumn) String() string {
 func (*OutputColumn) ProtoMessage() {}
 
 func (x *OutputColumn) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[25]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2058,7 +2118,7 @@ func (x *OutputColumn) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OutputColumn.ProtoReflect.Descriptor instead.
 func (*OutputColumn) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{25}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *OutputColumn) GetIndex() uint32 {
@@ -2120,7 +2180,7 @@ type Child struct {
 
 func (x *Child) Reset() {
 	*x = Child{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[26]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2132,7 +2192,7 @@ func (x *Child) String() string {
 func (*Child) ProtoMessage() {}
 
 func (x *Child) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[26]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2145,7 +2205,7 @@ func (x *Child) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Child.ProtoReflect.Descriptor instead.
 func (*Child) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{26}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *Child) GetRelation() string {
@@ -2221,7 +2281,7 @@ type CompileError struct {
 
 func (x *CompileError) Reset() {
 	*x = CompileError{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[27]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2233,7 +2293,7 @@ func (x *CompileError) String() string {
 func (*CompileError) ProtoMessage() {}
 
 func (x *CompileError) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[27]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2246,7 +2306,7 @@ func (x *CompileError) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompileError.ProtoReflect.Descriptor instead.
 func (*CompileError) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{27}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *CompileError) GetCode() string {
@@ -2271,7 +2331,7 @@ type GetMetadataRequest struct {
 
 func (x *GetMetadataRequest) Reset() {
 	*x = GetMetadataRequest{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[28]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2283,7 +2343,7 @@ func (x *GetMetadataRequest) String() string {
 func (*GetMetadataRequest) ProtoMessage() {}
 
 func (x *GetMetadataRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[28]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2296,7 +2356,7 @@ func (x *GetMetadataRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMetadataRequest.ProtoReflect.Descriptor instead.
 func (*GetMetadataRequest) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{28}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{29}
 }
 
 type GetMetadataResponse struct {
@@ -2310,7 +2370,7 @@ type GetMetadataResponse struct {
 
 func (x *GetMetadataResponse) Reset() {
 	*x = GetMetadataResponse{}
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[29]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2322,7 +2382,7 @@ func (x *GetMetadataResponse) String() string {
 func (*GetMetadataResponse) ProtoMessage() {}
 
 func (x *GetMetadataResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[29]
+	mi := &file_proto_orm_compiler_v1_compiler_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2335,7 +2395,7 @@ func (x *GetMetadataResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMetadataResponse.ProtoReflect.Descriptor instead.
 func (*GetMetadataResponse) Descriptor() ([]byte, []int) {
-	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{29}
+	return file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GetMetadataResponse) GetSchemaHash() string {
@@ -2380,7 +2440,7 @@ const file_proto_orm_compiler_v1_compiler_proto_rawDesc = "" +
 	"\x0fparameter_count\x18\t \x01(\rR\x0eparameterCount\x12\x1c\n" +
 	"\taggregate\x18\n" +
 	" \x01(\tR\taggregate\x12\x14\n" +
-	"\x05debug\x18\v \x01(\bR\x05debug\"\x87\a\n" +
+	"\x05debug\x18\v \x01(\bR\x05debug\"\xb8\a\n" +
 	"\tQueryNode\x12\x16\n" +
 	"\x06entity\x18\x01 \x01(\tR\x06entity\x125\n" +
 	"\acolumns\x18\x02 \x01(\v2\x1b.orm.compiler.v1.ProjectionR\acolumns\x12&\n" +
@@ -2404,7 +2464,8 @@ const file_proto_orm_compiler_v1_compiler_proto_rawDesc = "" +
 	"\x0edrop_child_key\x18\x12 \x01(\bR\fdropChildKey\x12*\n" +
 	"\x11no_cascade_delete\x18\x13 \x01(\bR\x0fnoCascadeDelete\x12,\n" +
 	"\x0fscope_parameter\x18\x14 \x01(\rH\x00R\x0escopeParameter\x88\x01\x01\x12\x12\n" +
-	"\x04lock\x18\x15 \x01(\tR\x04lockB\x12\n" +
+	"\x04lock\x18\x15 \x01(\tR\x04lock\x12/\n" +
+	"\x06keyset\x18\x16 \x01(\v2\x17.orm.compiler.v1.KeysetR\x06keysetB\x12\n" +
 	"\x10_scope_parameter\"\xb3\x03\n" +
 	"\n" +
 	"Projection\x124\n" +
@@ -2429,7 +2490,10 @@ const file_proto_orm_compiler_v1_compiler_proto_rawDesc = "" +
 	"\x05query\x18\x03 \x01(\v2\x1a.orm.compiler.v1.QueryNodeR\x05query\"X\n" +
 	"\bRelation\x12\x1a\n" +
 	"\brelation\x18\x01 \x01(\tR\brelation\x120\n" +
-	"\x05query\x18\x02 \x01(\v2\x1a.orm.compiler.v1.QueryNodeR\x05query\"R\n" +
+	"\x05query\x18\x02 \x01(\v2\x1a.orm.compiler.v1.QueryNodeR\x05query\">\n" +
+	"\x06Keyset\x12\x1c\n" +
+	"\tdirection\x18\x01 \x01(\tR\tdirection\x12\x16\n" +
+	"\x06values\x18\x02 \x03(\rR\x06values\"R\n" +
 	"\x05Group\x12\x1c\n" +
 	"\tconnector\x18\x01 \x01(\tR\tconnector\x12+\n" +
 	"\x05items\x18\x02 \x03(\v2\x15.orm.compiler.v1.ItemR\x05items\"\xba\x01\n" +
@@ -2615,7 +2679,7 @@ func file_proto_orm_compiler_v1_compiler_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_orm_compiler_v1_compiler_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_proto_orm_compiler_v1_compiler_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
+var file_proto_orm_compiler_v1_compiler_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_proto_orm_compiler_v1_compiler_proto_goTypes = []any{
 	(QueryKind)(0),              // 0: orm.compiler.v1.QueryKind
 	(Projection_Mode)(0),        // 1: orm.compiler.v1.Projection.Mode
@@ -2624,87 +2688,89 @@ var file_proto_orm_compiler_v1_compiler_proto_goTypes = []any{
 	(*Projection)(nil),          // 4: orm.compiler.v1.Projection
 	(*Join)(nil),                // 5: orm.compiler.v1.Join
 	(*Relation)(nil),            // 6: orm.compiler.v1.Relation
-	(*Group)(nil),               // 7: orm.compiler.v1.Group
-	(*Item)(nil),                // 8: orm.compiler.v1.Item
-	(*Navigation)(nil),          // 9: orm.compiler.v1.Navigation
-	(*Predicate)(nil),           // 10: orm.compiler.v1.Predicate
-	(*ColumnReference)(nil),     // 11: orm.compiler.v1.ColumnReference
-	(*Order)(nil),               // 12: orm.compiler.v1.Order
-	(*GroupExpression)(nil),     // 13: orm.compiler.v1.GroupExpression
-	(*Limit)(nil),               // 14: orm.compiler.v1.Limit
-	(*IfParent)(nil),            // 15: orm.compiler.v1.IfParent
-	(*Assignment)(nil),          // 16: orm.compiler.v1.Assignment
-	(*Optimistic)(nil),          // 17: orm.compiler.v1.Optimistic
-	(*Raw)(nil),                 // 18: orm.compiler.v1.Raw
-	(*CompileResponse)(nil),     // 19: orm.compiler.v1.CompileResponse
-	(*Plan)(nil),                // 20: orm.compiler.v1.Plan
-	(*PlanStep)(nil),            // 21: orm.compiler.v1.PlanStep
-	(*BindSlot)(nil),            // 22: orm.compiler.v1.BindSlot
-	(*KeyReference)(nil),        // 23: orm.compiler.v1.KeyReference
-	(*ParentReference)(nil),     // 24: orm.compiler.v1.ParentReference
-	(*ParentCondition)(nil),     // 25: orm.compiler.v1.ParentCondition
-	(*Assemble)(nil),            // 26: orm.compiler.v1.Assemble
-	(*OutputColumn)(nil),        // 27: orm.compiler.v1.OutputColumn
-	(*Child)(nil),               // 28: orm.compiler.v1.Child
-	(*CompileError)(nil),        // 29: orm.compiler.v1.CompileError
-	(*GetMetadataRequest)(nil),  // 30: orm.compiler.v1.GetMetadataRequest
-	(*GetMetadataResponse)(nil), // 31: orm.compiler.v1.GetMetadataResponse
-	nil,                         // 32: orm.compiler.v1.Projection.AliasesEntry
-	nil,                         // 33: orm.compiler.v1.Projection.ExpressionsEntry
+	(*Keyset)(nil),              // 7: orm.compiler.v1.Keyset
+	(*Group)(nil),               // 8: orm.compiler.v1.Group
+	(*Item)(nil),                // 9: orm.compiler.v1.Item
+	(*Navigation)(nil),          // 10: orm.compiler.v1.Navigation
+	(*Predicate)(nil),           // 11: orm.compiler.v1.Predicate
+	(*ColumnReference)(nil),     // 12: orm.compiler.v1.ColumnReference
+	(*Order)(nil),               // 13: orm.compiler.v1.Order
+	(*GroupExpression)(nil),     // 14: orm.compiler.v1.GroupExpression
+	(*Limit)(nil),               // 15: orm.compiler.v1.Limit
+	(*IfParent)(nil),            // 16: orm.compiler.v1.IfParent
+	(*Assignment)(nil),          // 17: orm.compiler.v1.Assignment
+	(*Optimistic)(nil),          // 18: orm.compiler.v1.Optimistic
+	(*Raw)(nil),                 // 19: orm.compiler.v1.Raw
+	(*CompileResponse)(nil),     // 20: orm.compiler.v1.CompileResponse
+	(*Plan)(nil),                // 21: orm.compiler.v1.Plan
+	(*PlanStep)(nil),            // 22: orm.compiler.v1.PlanStep
+	(*BindSlot)(nil),            // 23: orm.compiler.v1.BindSlot
+	(*KeyReference)(nil),        // 24: orm.compiler.v1.KeyReference
+	(*ParentReference)(nil),     // 25: orm.compiler.v1.ParentReference
+	(*ParentCondition)(nil),     // 26: orm.compiler.v1.ParentCondition
+	(*Assemble)(nil),            // 27: orm.compiler.v1.Assemble
+	(*OutputColumn)(nil),        // 28: orm.compiler.v1.OutputColumn
+	(*Child)(nil),               // 29: orm.compiler.v1.Child
+	(*CompileError)(nil),        // 30: orm.compiler.v1.CompileError
+	(*GetMetadataRequest)(nil),  // 31: orm.compiler.v1.GetMetadataRequest
+	(*GetMetadataResponse)(nil), // 32: orm.compiler.v1.GetMetadataResponse
+	nil,                         // 33: orm.compiler.v1.Projection.AliasesEntry
+	nil,                         // 34: orm.compiler.v1.Projection.ExpressionsEntry
 }
 var file_proto_orm_compiler_v1_compiler_proto_depIdxs = []int32{
 	0,  // 0: orm.compiler.v1.CompileRequest.kind:type_name -> orm.compiler.v1.QueryKind
 	3,  // 1: orm.compiler.v1.CompileRequest.root:type_name -> orm.compiler.v1.QueryNode
-	16, // 2: orm.compiler.v1.CompileRequest.set:type_name -> orm.compiler.v1.Assignment
-	16, // 3: orm.compiler.v1.CompileRequest.on_duplicate:type_name -> orm.compiler.v1.Assignment
-	17, // 4: orm.compiler.v1.CompileRequest.optimistic:type_name -> orm.compiler.v1.Optimistic
-	18, // 5: orm.compiler.v1.CompileRequest.raw:type_name -> orm.compiler.v1.Raw
+	17, // 2: orm.compiler.v1.CompileRequest.set:type_name -> orm.compiler.v1.Assignment
+	17, // 3: orm.compiler.v1.CompileRequest.on_duplicate:type_name -> orm.compiler.v1.Assignment
+	18, // 4: orm.compiler.v1.CompileRequest.optimistic:type_name -> orm.compiler.v1.Optimistic
+	19, // 5: orm.compiler.v1.CompileRequest.raw:type_name -> orm.compiler.v1.Raw
 	4,  // 6: orm.compiler.v1.QueryNode.columns:type_name -> orm.compiler.v1.Projection
-	7,  // 7: orm.compiler.v1.QueryNode.on:type_name -> orm.compiler.v1.Group
-	7,  // 8: orm.compiler.v1.QueryNode.where:type_name -> orm.compiler.v1.Group
-	7,  // 9: orm.compiler.v1.QueryNode.having:type_name -> orm.compiler.v1.Group
+	8,  // 7: orm.compiler.v1.QueryNode.on:type_name -> orm.compiler.v1.Group
+	8,  // 8: orm.compiler.v1.QueryNode.where:type_name -> orm.compiler.v1.Group
+	8,  // 9: orm.compiler.v1.QueryNode.having:type_name -> orm.compiler.v1.Group
 	5,  // 10: orm.compiler.v1.QueryNode.joins:type_name -> orm.compiler.v1.Join
 	6,  // 11: orm.compiler.v1.QueryNode.relations:type_name -> orm.compiler.v1.Relation
-	12, // 12: orm.compiler.v1.QueryNode.order:type_name -> orm.compiler.v1.Order
-	13, // 13: orm.compiler.v1.QueryNode.group_by_expression:type_name -> orm.compiler.v1.GroupExpression
-	14, // 14: orm.compiler.v1.QueryNode.limit:type_name -> orm.compiler.v1.Limit
-	15, // 15: orm.compiler.v1.QueryNode.if_parent:type_name -> orm.compiler.v1.IfParent
-	1,  // 16: orm.compiler.v1.Projection.mode:type_name -> orm.compiler.v1.Projection.Mode
-	32, // 17: orm.compiler.v1.Projection.aliases:type_name -> orm.compiler.v1.Projection.AliasesEntry
-	33, // 18: orm.compiler.v1.Projection.expressions:type_name -> orm.compiler.v1.Projection.ExpressionsEntry
-	3,  // 19: orm.compiler.v1.Join.query:type_name -> orm.compiler.v1.QueryNode
-	3,  // 20: orm.compiler.v1.Relation.query:type_name -> orm.compiler.v1.QueryNode
-	8,  // 21: orm.compiler.v1.Group.items:type_name -> orm.compiler.v1.Item
-	10, // 22: orm.compiler.v1.Item.predicate:type_name -> orm.compiler.v1.Predicate
-	7,  // 23: orm.compiler.v1.Item.group:type_name -> orm.compiler.v1.Group
-	9,  // 24: orm.compiler.v1.Item.navigation:type_name -> orm.compiler.v1.Navigation
-	7,  // 25: orm.compiler.v1.Navigation.group:type_name -> orm.compiler.v1.Group
-	11, // 26: orm.compiler.v1.Predicate.reference:type_name -> orm.compiler.v1.ColumnReference
-	20, // 27: orm.compiler.v1.CompileResponse.plan:type_name -> orm.compiler.v1.Plan
-	29, // 28: orm.compiler.v1.CompileResponse.error:type_name -> orm.compiler.v1.CompileError
-	0,  // 29: orm.compiler.v1.Plan.kind:type_name -> orm.compiler.v1.QueryKind
-	21, // 30: orm.compiler.v1.Plan.steps:type_name -> orm.compiler.v1.PlanStep
-	22, // 31: orm.compiler.v1.PlanStep.binds:type_name -> orm.compiler.v1.BindSlot
-	26, // 32: orm.compiler.v1.PlanStep.assemble:type_name -> orm.compiler.v1.Assemble
-	24, // 33: orm.compiler.v1.PlanStep.parent:type_name -> orm.compiler.v1.ParentReference
-	25, // 34: orm.compiler.v1.ParentReference.if_parent:type_name -> orm.compiler.v1.ParentCondition
-	23, // 35: orm.compiler.v1.ParentReference.keys:type_name -> orm.compiler.v1.KeyReference
-	27, // 36: orm.compiler.v1.Assemble.columns:type_name -> orm.compiler.v1.OutputColumn
-	28, // 37: orm.compiler.v1.Assemble.children:type_name -> orm.compiler.v1.Child
-	23, // 38: orm.compiler.v1.Assemble.key:type_name -> orm.compiler.v1.KeyReference
-	26, // 39: orm.compiler.v1.Child.assemble:type_name -> orm.compiler.v1.Assemble
-	23, // 40: orm.compiler.v1.Child.parent_keys:type_name -> orm.compiler.v1.KeyReference
-	23, // 41: orm.compiler.v1.Child.child_keys:type_name -> orm.compiler.v1.KeyReference
-	23, // 42: orm.compiler.v1.Child.key:type_name -> orm.compiler.v1.KeyReference
-	2,  // 43: orm.compiler.v1.CompilerService.Compile:input_type -> orm.compiler.v1.CompileRequest
-	30, // 44: orm.compiler.v1.CompilerService.GetMetadata:input_type -> orm.compiler.v1.GetMetadataRequest
-	19, // 45: orm.compiler.v1.CompilerService.Compile:output_type -> orm.compiler.v1.CompileResponse
-	31, // 46: orm.compiler.v1.CompilerService.GetMetadata:output_type -> orm.compiler.v1.GetMetadataResponse
-	45, // [45:47] is the sub-list for method output_type
-	43, // [43:45] is the sub-list for method input_type
-	43, // [43:43] is the sub-list for extension type_name
-	43, // [43:43] is the sub-list for extension extendee
-	0,  // [0:43] is the sub-list for field type_name
+	13, // 12: orm.compiler.v1.QueryNode.order:type_name -> orm.compiler.v1.Order
+	14, // 13: orm.compiler.v1.QueryNode.group_by_expression:type_name -> orm.compiler.v1.GroupExpression
+	15, // 14: orm.compiler.v1.QueryNode.limit:type_name -> orm.compiler.v1.Limit
+	16, // 15: orm.compiler.v1.QueryNode.if_parent:type_name -> orm.compiler.v1.IfParent
+	7,  // 16: orm.compiler.v1.QueryNode.keyset:type_name -> orm.compiler.v1.Keyset
+	1,  // 17: orm.compiler.v1.Projection.mode:type_name -> orm.compiler.v1.Projection.Mode
+	33, // 18: orm.compiler.v1.Projection.aliases:type_name -> orm.compiler.v1.Projection.AliasesEntry
+	34, // 19: orm.compiler.v1.Projection.expressions:type_name -> orm.compiler.v1.Projection.ExpressionsEntry
+	3,  // 20: orm.compiler.v1.Join.query:type_name -> orm.compiler.v1.QueryNode
+	3,  // 21: orm.compiler.v1.Relation.query:type_name -> orm.compiler.v1.QueryNode
+	9,  // 22: orm.compiler.v1.Group.items:type_name -> orm.compiler.v1.Item
+	11, // 23: orm.compiler.v1.Item.predicate:type_name -> orm.compiler.v1.Predicate
+	8,  // 24: orm.compiler.v1.Item.group:type_name -> orm.compiler.v1.Group
+	10, // 25: orm.compiler.v1.Item.navigation:type_name -> orm.compiler.v1.Navigation
+	8,  // 26: orm.compiler.v1.Navigation.group:type_name -> orm.compiler.v1.Group
+	12, // 27: orm.compiler.v1.Predicate.reference:type_name -> orm.compiler.v1.ColumnReference
+	21, // 28: orm.compiler.v1.CompileResponse.plan:type_name -> orm.compiler.v1.Plan
+	30, // 29: orm.compiler.v1.CompileResponse.error:type_name -> orm.compiler.v1.CompileError
+	0,  // 30: orm.compiler.v1.Plan.kind:type_name -> orm.compiler.v1.QueryKind
+	22, // 31: orm.compiler.v1.Plan.steps:type_name -> orm.compiler.v1.PlanStep
+	23, // 32: orm.compiler.v1.PlanStep.binds:type_name -> orm.compiler.v1.BindSlot
+	27, // 33: orm.compiler.v1.PlanStep.assemble:type_name -> orm.compiler.v1.Assemble
+	25, // 34: orm.compiler.v1.PlanStep.parent:type_name -> orm.compiler.v1.ParentReference
+	26, // 35: orm.compiler.v1.ParentReference.if_parent:type_name -> orm.compiler.v1.ParentCondition
+	24, // 36: orm.compiler.v1.ParentReference.keys:type_name -> orm.compiler.v1.KeyReference
+	28, // 37: orm.compiler.v1.Assemble.columns:type_name -> orm.compiler.v1.OutputColumn
+	29, // 38: orm.compiler.v1.Assemble.children:type_name -> orm.compiler.v1.Child
+	24, // 39: orm.compiler.v1.Assemble.key:type_name -> orm.compiler.v1.KeyReference
+	27, // 40: orm.compiler.v1.Child.assemble:type_name -> orm.compiler.v1.Assemble
+	24, // 41: orm.compiler.v1.Child.parent_keys:type_name -> orm.compiler.v1.KeyReference
+	24, // 42: orm.compiler.v1.Child.child_keys:type_name -> orm.compiler.v1.KeyReference
+	24, // 43: orm.compiler.v1.Child.key:type_name -> orm.compiler.v1.KeyReference
+	2,  // 44: orm.compiler.v1.CompilerService.Compile:input_type -> orm.compiler.v1.CompileRequest
+	31, // 45: orm.compiler.v1.CompilerService.GetMetadata:input_type -> orm.compiler.v1.GetMetadataRequest
+	20, // 46: orm.compiler.v1.CompilerService.Compile:output_type -> orm.compiler.v1.CompileResponse
+	32, // 47: orm.compiler.v1.CompilerService.GetMetadata:output_type -> orm.compiler.v1.GetMetadataResponse
+	46, // [46:48] is the sub-list for method output_type
+	44, // [44:46] is the sub-list for method input_type
+	44, // [44:44] is the sub-list for extension type_name
+	44, // [44:44] is the sub-list for extension extendee
+	0,  // [0:44] is the sub-list for field type_name
 }
 
 func init() { file_proto_orm_compiler_v1_compiler_proto_init() }
@@ -2713,14 +2779,14 @@ func file_proto_orm_compiler_v1_compiler_proto_init() {
 		return
 	}
 	file_proto_orm_compiler_v1_compiler_proto_msgTypes[1].OneofWrappers = []any{}
-	file_proto_orm_compiler_v1_compiler_proto_msgTypes[6].OneofWrappers = []any{
+	file_proto_orm_compiler_v1_compiler_proto_msgTypes[7].OneofWrappers = []any{
 		(*Item_Predicate)(nil),
 		(*Item_Group)(nil),
 		(*Item_Navigation)(nil),
 	}
-	file_proto_orm_compiler_v1_compiler_proto_msgTypes[8].OneofWrappers = []any{}
-	file_proto_orm_compiler_v1_compiler_proto_msgTypes[14].OneofWrappers = []any{}
-	file_proto_orm_compiler_v1_compiler_proto_msgTypes[17].OneofWrappers = []any{
+	file_proto_orm_compiler_v1_compiler_proto_msgTypes[9].OneofWrappers = []any{}
+	file_proto_orm_compiler_v1_compiler_proto_msgTypes[15].OneofWrappers = []any{}
+	file_proto_orm_compiler_v1_compiler_proto_msgTypes[18].OneofWrappers = []any{
 		(*CompileResponse_Plan)(nil),
 		(*CompileResponse_Error)(nil),
 	}
@@ -2730,7 +2796,7 @@ func file_proto_orm_compiler_v1_compiler_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_orm_compiler_v1_compiler_proto_rawDesc), len(file_proto_orm_compiler_v1_compiler_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   32,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

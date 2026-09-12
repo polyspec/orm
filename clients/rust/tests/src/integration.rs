@@ -323,6 +323,29 @@ async fn main() {
             == 1000,
         "count"
     );
+    let large_ids: Vec<i64> = (1..=1000).collect();
+    check!(
+        fails,
+        battle::query()
+            .seq_in(large_ids.clone())
+            .using(&db)
+            .get_count()
+            .await
+            .unwrap()
+            == 1000,
+        "large root IN count is chunked"
+    );
+    check!(
+        fails,
+        battle::query()
+            .seq_in(large_ids)
+            .using(&db)
+            .gets()
+            .await
+            .map(|rows| rows.len() == 1000)
+            .unwrap_or(false),
+        "large root IN rows are merged"
+    );
     check!(
         fails,
         battle::query()

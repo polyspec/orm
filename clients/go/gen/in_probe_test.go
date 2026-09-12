@@ -38,3 +38,42 @@ func TestINListIsBucketed(t *testing.T) {
 		}
 	}
 }
+
+func TestLargeRootINIsChunkedForSQLite(t *testing.T) {
+	if testDriver() != "sqlite" {
+		t.Skip("requires the SQLite physical fixture")
+	}
+	db := open(t)
+	ctx := context.Background()
+	ids := make([]int64, 1000)
+	for i := range ids {
+		ids[i] = int64(i + 1)
+	}
+	if _, err := gen.Battle().SeqIn(ids).Using(ctx, db).GetCount(); err != nil {
+		t.Fatalf("large root IN failed on SQLite: %v", err)
+	}
+}
+
+func TestLargeRootINRowsAndCount(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	ids := make([]int64, 1000)
+	for i := range ids {
+		ids[i] = int64(i + 1)
+	}
+	count, err := gen.Battle().SeqIn(ids).Using(ctx, db).GetCount()
+	if err != nil || count != 1000 {
+		t.Fatalf("large root IN count=%d err=%v, want 1000", count, err)
+	}
+	rows, err := gen.Battle().SeqIn(ids).Using(ctx, db).Gets()
+	if err != nil {
+		t.Fatalf("large root IN rows failed: %v", err)
+	}
+	if rows == nil || rows.Len() != 1000 {
+		got := 0
+		if rows != nil {
+			got = rows.Len()
+		}
+		t.Fatalf("large root IN rows=%d, want 1000", got)
+	}
+}
