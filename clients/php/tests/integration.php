@@ -10,6 +10,9 @@ require __DIR__ . '/autoload.php';
 
 use App\Orm\Battle;
 use App\Orm\BattleWhere;
+use App\Orm\Account;
+use App\Orm\AccountProject;
+use App\Orm\Project;
 use App\Orm\CompositeAccount;
 use App\Orm\CompositeMembership;
 use App\Orm\CompositeMembershipWhere;
@@ -580,6 +583,18 @@ $relationAccounts = CompositeAccount::query()->tenantId($tenantId)->hasMembershi
 check($relationAccounts === 2, 'relation exists predicate');
 $relationCount = CompositeAccount::query()->tenantId($tenantId)->countMembershipsEq(1, static function (CompositeMembershipWhere $w): void {})->using($db)->getCount();
 check($relationCount === 2, 'relation count predicate');
+$m2mAvailable = true;
+try { $db->pdo->query('SELECT 1 FROM account LIMIT 0'); } catch (\PDOException) { $m2mAvailable = false; }
+if ($m2mAvailable) {
+    $m2mAccount = Account::query()->setName('m2m-account')->using($db)->insert();
+    $m2mProject = Project::query()->setName('m2m-project')->using($db)->insert();
+    AccountProject::query()->setAccountSeq($m2mAccount->getSeq())->setProjectSeq($m2mProject->getSeq())->using($db)->insert();
+    $linked = Account::query()->seq($m2mAccount->getSeq())->relationsSeqWithSeq(Project::query())->using($db)->gets();
+    check(count($linked) === 1 && count($linked->first()->getProjects()) === 1 && $linked->first()->getProjects()->first()->getSeq() === $m2mProject->getSeq(), 'many-to-many relation uses through entity');
+    AccountProject::query()->accountSeq($m2mAccount->getSeq())->using($db)->delete();
+    Project::query()->seq($m2mProject->getSeq())->using($db)->delete();
+    Account::query()->seq($m2mAccount->getSeq())->using($db)->delete();
+}
 $compositeRollback = new \RuntimeException('composite rollback');
 try {
     $db->transaction(function (Tx $tx) use ($tenantId, $compositeRollback): void {

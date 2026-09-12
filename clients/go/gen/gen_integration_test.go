@@ -591,6 +591,35 @@ func TestCompositeCRUDRelationsAndPagination(t *testing.T) {
 	}
 }
 
+func TestManyToManyPhysical(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	if _, err := gen.Account().Using(ctx, db).GetCount(); err != nil {
+		t.Skipf("many-to-many fixture is not installed: %v", err)
+	}
+	account, err := gen.Account().SetName("m2m-account").Using(ctx, db).Insert()
+	if err != nil || account == nil {
+		t.Fatalf("many-to-many account insert: row=%#v err=%v", account, err)
+	}
+	project, err := gen.Project().SetName("m2m-project").Using(ctx, db).Insert()
+	if err != nil || project == nil {
+		t.Fatalf("many-to-many project insert: row=%#v err=%v", project, err)
+	}
+	_, err = gen.AccountProject().SetAccountSeq(account.Seq).SetProjectSeq(project.Seq).Using(ctx, db).Insert()
+	if err != nil {
+		t.Fatalf("many-to-many through insert: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = gen.AccountProject().AccountSeqEq(account.Seq).Using(context.Background(), db).Delete()
+		_, _ = gen.Project().SeqEq(project.Seq).Using(context.Background(), db).Delete()
+		_, _ = gen.Account().SeqEq(account.Seq).Using(context.Background(), db).Delete()
+	})
+	linked, err := gen.Account().SeqEq(account.Seq).Relations(gen.Project()).Using(ctx, db).Gets()
+	if err != nil || linked.Len() != 1 || linked.First().GetProjects().Len() != 1 || linked.First().GetProjects().First().Seq != project.Seq {
+		t.Fatalf("many-to-many relation: rows=%#v err=%v", linked, err)
+	}
+}
+
 func TestSoftDeletePhysical(t *testing.T) {
 	db := open(t)
 	ctx := context.Background()

@@ -4,7 +4,7 @@ import type { Collection, Page } from '../model.js';
 import type { Db } from '../database.js';
 import type { Point } from '../codec.js';
 import type { AesKeyring, AesRotationStatus, StreamResult } from '../index.js';
-import type { BattleRow, UserRow, ServiceRow, ServiceModuleRow, ServiceMemberRow, CompositeAccountRow, CompositeMembershipRow, SoftRecordRow } from './entities.js';
+import type { BattleRow, UserRow, ServiceRow, ServiceModuleRow, ServiceMemberRow, CompositeAccountRow, CompositeMembershipRow, SoftRecordRow, AccountRow, ProjectRow, AccountProjectRow } from './entities.js';
 
 export interface BattleInterface {
 get(): Promise<BattleRow | null>;
@@ -417,6 +417,111 @@ deletedAt(value: string | Date): this;
 }
 
 export interface SoftRecordRowInterface {
+using(database: Db): this;
+update(): Promise<void>;
+delete(): Promise<void>;
+deleteCascade(): Promise<void>;
+has(column: string): boolean;
+relLoaded(relation: string): boolean;
+toObject(): Record<string, unknown>;
+}
+
+export interface AccountInterface {
+get(): Promise<AccountRow | null>;
+gets(): Promise<Collection<AccountRow>>;
+stream(visitor: (row: AccountRow) => boolean | Promise<boolean>): Promise<StreamResult>;
+getCount(): Promise<number>;
+getsCount(): Promise<Collection<AccountRow>>;
+insert(): Promise<AccountRow | null>;
+save(): Promise<AccountRow | null>;
+update(): Promise<number>;
+delete(): Promise<number>;
+sql(): Promise<{ sql: string; binds: unknown[]; }>;
+using(database: Db): this;
+paginate(page: number, per: number): Promise<Page<AccountRow>>;
+getsAfter(cursor: string, per: number): Promise<KeysetPage<AccountRow>>;
+getsBefore(cursor: string, per: number): Promise<KeysetPage<AccountRow>>;
+getsBySeq(value: number): Promise<Collection<AccountRow>>;
+getsByName(value: string): Promise<Collection<AccountRow>>;
+getCountBySeq(value: number): Promise<number>;
+getCountByName(value: string): Promise<number>;
+seqEq(value: number): this;
+nameEq(value: string): this;
+seq(value: number): this;
+name(value: string): this;
+}
+
+export interface AccountRowInterface {
+using(database: Db): this;
+update(): Promise<void>;
+delete(): Promise<void>;
+deleteCascade(): Promise<void>;
+has(column: string): boolean;
+relLoaded(relation: string): boolean;
+toObject(): Record<string, unknown>;
+}
+
+export interface ProjectInterface {
+get(): Promise<ProjectRow | null>;
+gets(): Promise<Collection<ProjectRow>>;
+stream(visitor: (row: ProjectRow) => boolean | Promise<boolean>): Promise<StreamResult>;
+getCount(): Promise<number>;
+getsCount(): Promise<Collection<ProjectRow>>;
+insert(): Promise<ProjectRow | null>;
+save(): Promise<ProjectRow | null>;
+update(): Promise<number>;
+delete(): Promise<number>;
+sql(): Promise<{ sql: string; binds: unknown[]; }>;
+using(database: Db): this;
+paginate(page: number, per: number): Promise<Page<ProjectRow>>;
+getsAfter(cursor: string, per: number): Promise<KeysetPage<ProjectRow>>;
+getsBefore(cursor: string, per: number): Promise<KeysetPage<ProjectRow>>;
+getsBySeq(value: number): Promise<Collection<ProjectRow>>;
+getsByName(value: string): Promise<Collection<ProjectRow>>;
+getCountBySeq(value: number): Promise<number>;
+getCountByName(value: string): Promise<number>;
+seqEq(value: number): this;
+nameEq(value: string): this;
+seq(value: number): this;
+name(value: string): this;
+}
+
+export interface ProjectRowInterface {
+using(database: Db): this;
+update(): Promise<void>;
+delete(): Promise<void>;
+deleteCascade(): Promise<void>;
+has(column: string): boolean;
+relLoaded(relation: string): boolean;
+toObject(): Record<string, unknown>;
+}
+
+export interface AccountProjectInterface {
+get(): Promise<AccountProjectRow | null>;
+gets(): Promise<Collection<AccountProjectRow>>;
+stream(visitor: (row: AccountProjectRow) => boolean | Promise<boolean>): Promise<StreamResult>;
+getCount(): Promise<number>;
+getsCount(): Promise<Collection<AccountProjectRow>>;
+insert(): Promise<AccountProjectRow | null>;
+save(): Promise<AccountProjectRow | null>;
+update(): Promise<number>;
+delete(): Promise<number>;
+sql(): Promise<{ sql: string; binds: unknown[]; }>;
+using(database: Db): this;
+paginate(page: number, per: number): Promise<Page<AccountProjectRow>>;
+getsAfter(cursor: string, per: number): Promise<KeysetPage<AccountProjectRow>>;
+getsBefore(cursor: string, per: number): Promise<KeysetPage<AccountProjectRow>>;
+getsByAccountSeq(value: number): Promise<Collection<AccountProjectRow>>;
+getsByProjectSeq(value: number): Promise<Collection<AccountProjectRow>>;
+getCountByAccountSeq(value: number): Promise<number>;
+getCountByProjectSeq(value: number): Promise<number>;
+accountSeqEq(value: number): this;
+projectSeqEq(value: number): this;
+accountSeq(value: number): this;
+projectSeq(value: number): this;
+}
+
+export interface AccountProjectRowInterface {
 using(database: Db): this;
 update(): Promise<void>;
 delete(): Promise<void>;

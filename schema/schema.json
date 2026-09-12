@@ -1,5 +1,5 @@
 {
-  "schema_hash": "5fb139132942a42b",
+  "schema_hash": "bcda5a01f985861d",
   "order": [
     "battle",
     "user",
@@ -8,9 +8,88 @@
     "service_member",
     "composite_account",
     "composite_membership",
-    "soft_record"
+    "soft_record",
+    "account",
+    "project",
+    "account_project"
   ],
   "entities": {
+    "account": {
+      "name": "account",
+      "table": "account",
+      "pk": [
+        "seq"
+      ],
+      "auto": "seq",
+      "columns": [
+        {
+          "name": "seq",
+          "type": "i64",
+          "raw": "bigint",
+          "auto": true,
+          "pk": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "raw": "varchar(191)",
+          "len": 191
+        }
+      ],
+      "relations": {
+        "projects": {
+          "name": "projects",
+          "kind": "many",
+          "target": "project",
+          "keys": [
+            {
+              "local": "seq",
+              "target": "account_seq"
+            }
+          ],
+          "through": "account_project",
+          "through_keys": [
+            {
+              "local": "project_seq",
+              "target": "seq"
+            }
+          ]
+        }
+      }
+    },
+    "account_project": {
+      "name": "account_project",
+      "table": "account_project",
+      "pk": [
+        "account_seq",
+        "project_seq"
+      ],
+      "columns": [
+        {
+          "name": "account_seq",
+          "type": "i64",
+          "raw": "bigint",
+          "ref": {
+            "entity": "account",
+            "column": "seq"
+          },
+          "pk": true,
+          "fk": true
+        },
+        {
+          "name": "project_seq",
+          "type": "i64",
+          "raw": "bigint",
+          "ref": {
+            "entity": "project",
+            "column": "seq"
+          },
+          "pk": true,
+          "fk": true
+        }
+      ],
+      "relations": {}
+    },
     "battle": {
       "name": "battle",
       "table": "battle",
@@ -506,6 +585,49 @@
             }
           ],
           "on_delete": "cascade"
+        }
+      }
+    },
+    "project": {
+      "name": "project",
+      "table": "project",
+      "pk": [
+        "seq"
+      ],
+      "auto": "seq",
+      "columns": [
+        {
+          "name": "seq",
+          "type": "i64",
+          "raw": "bigint",
+          "auto": true,
+          "pk": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "raw": "varchar(191)",
+          "len": 191
+        }
+      ],
+      "relations": {
+        "accounts": {
+          "name": "accounts",
+          "kind": "many",
+          "target": "account",
+          "keys": [
+            {
+              "local": "seq",
+              "target": "project_seq"
+            }
+          ],
+          "through": "account_project",
+          "through_keys": [
+            {
+              "local": "account_seq",
+              "target": "seq"
+            }
+          ]
         }
       }
     },
