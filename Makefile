@@ -6,7 +6,7 @@ check: feature-check docs-rules-check docs-check docs-verify-idempotent interfac
 
 feature-check:
 	node scripts/features/build.mjs --check
-	node scripts/features/check.mjs
+	node scripts/features/check.mjs --run
 
 feature-docs:
 	node scripts/features/build.mjs

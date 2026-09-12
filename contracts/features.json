@@ -16,7 +16,8 @@
       "clients": {"go": "pass", "php": "pass", "rust": "pass", "typescript": "pass"},
       "fixtures": ["schema/schema.json", "bench/sql/battle.sqlite.sql"],
       "tests": ["cmd/ormgen", "engine"],
-      "docs": ["docs/schema.md", "docs/usage.md"]
+      "docs": ["docs/schema.md", "docs/usage.md"],
+      "verification": [{"id": "schema-unit", "command": "go test ./engine/... ./cmd/ormgen/... -count=1"}]
     },
     {
       "id": "composite_keys",
@@ -32,7 +33,8 @@
       "clients": {"go": "pass", "php": "pass", "rust": "pass", "typescript": "pass"},
       "fixtures": ["schema/schema.json"],
       "tests": ["clients/go/orm/composite_identity_test.go", "clients/php/tests/integration.php", "clients/rust/tests/src/integration.rs", "tests/typescript/sqlite-integration.mjs"],
-      "docs": ["docs/schema.md", "docs/dsl.md"]
+      "docs": ["docs/schema.md", "docs/dsl.md"],
+      "verification": [{"id": "composite-unit", "command": "go test ./engine/... ./cmd/ormgen/... ./clients/go/orm -run 'Composite|composite' -count=1"}]
     },
     {
       "id": "authenticated_encryption",
@@ -48,7 +50,8 @@
       "clients": {"go": "pass", "php": "pass", "rust": "pass", "typescript": "pass"},
       "fixtures": ["tests/codec/aes-vectors.json"],
       "tests": ["clients/go/orm/codec_test.go", "clients/go/orm/aes_rotation_test.go", "clients/php/tests/hostcodec.php", "tests/typescript/codec-vector.mjs"],
-      "docs": ["docs/codec.md", "docs/config.md"]
+      "docs": ["docs/codec.md", "docs/config.md"],
+      "verification": [{"id": "codec-unit", "command": "go test ./clients/go/orm -run 'Codec|AES|Rotation' -count=1"}]
     },
     {
       "id": "parameter_chunking",
@@ -64,7 +67,8 @@
       "clients": {"go": "partial", "php": "partial", "rust": "partial", "typescript": "partial"},
       "fixtures": [],
       "tests": ["clients/go/orm/relation_keys_test.go", "clients/rust/orm/src/db.rs"],
-      "docs": ["docs/protocol.md", "docs/dialects.md"]
+      "docs": ["docs/protocol.md", "docs/dialects.md"],
+      "verification": [{"id": "parameter-unit", "command": "go test ./clients/go/orm -run 'Relation|INList|CompositeParent' -count=1"}]
     },
     {
       "id": "batch_writes",
@@ -80,7 +84,8 @@
       "clients": {"go": "pass", "php": "pass", "rust": "pass", "typescript": "pass"},
       "fixtures": ["contracts/fixtures/batch-writes.json"],
       "tests": ["clients/go/orm/batch_test.go", "clients/go/gen/gen_integration_test.go", "clients/php/tests/integration.php", "clients/rust/tests/src/integration.rs", "tests/typescript/sqlite-integration.mjs"],
-      "docs": ["docs/dsl.md", "docs/public-readiness.md"]
+      "docs": ["docs/dsl.md", "docs/public-readiness.md"],
+      "verification": [{"id": "batch-unit", "command": "go test ./clients/go/orm ./clients/go/gen -run 'Batch' -count=1"}]
     },
     {
       "id": "keyset_pagination",
@@ -96,7 +101,8 @@
       "clients": {"go": "planned", "php": "planned", "rust": "planned", "typescript": "planned"},
       "fixtures": [],
       "tests": [],
-      "docs": ["docs/dsl.md"]
+      "docs": ["docs/dsl.md"],
+      "verification": []
     },
     {
       "id": "transactions",
@@ -112,7 +118,8 @@
       "clients": {"go": "partial", "php": "partial", "rust": "partial", "typescript": "partial"},
       "fixtures": [],
       "tests": ["clients/go/orm/transaction_savepoint_test.go", "tests/typescript/transaction.mjs", "clients/php/tests/integration.php", "clients/rust/tests/src/integration.rs"],
-      "docs": ["docs/dsl.md", "docs/errors.yaml"]
+      "docs": ["docs/dsl.md", "docs/errors.yaml"],
+      "verification": [{"id": "transaction-unit", "command": "go test ./clients/go/orm -run 'Transaction|Savepoint' -count=1"}]
     },
     {
       "id": "precompiled_plans",
@@ -128,7 +135,8 @@
       "clients": {"go": "pass", "php": "pass", "rust": "pass", "typescript": "pass"},
       "fixtures": ["contracts/interfaces.json"],
       "tests": ["clients/go/orm/plan_bundle_test.go", "clients/php/tests/integration.php", "tests/typescript/database.mjs", "clients/rust/orm/src/db.rs"],
-      "docs": ["docs/protocol.md", "docs/config.md"]
+      "docs": ["docs/protocol.md", "docs/config.md"],
+      "verification": [{"id": "plan-unit", "command": "go test ./clients/go/orm -run 'PlanBundle' -count=1"}]
     },
     {
       "id": "constraints_and_relations",
@@ -144,7 +152,8 @@
       "clients": {"go": "partial", "php": "partial", "rust": "partial", "typescript": "partial"},
       "fixtures": ["schema/schema.json"],
       "tests": ["engine/engine_test.go", "clients/php/tests/integration.php", "clients/rust/tests/src/integration.rs", "tests/typescript/sqlite-integration.mjs"],
-      "docs": ["docs/schema.md", "docs/dsl.md"]
+      "docs": ["docs/schema.md", "docs/dsl.md"],
+      "verification": [{"id": "relation-unit", "command": "go test ./engine/... -run 'Relation|Join|Scope|Composite' -count=1"}]
     },
     {
       "id": "conformance_verification",
@@ -160,7 +169,8 @@
       "clients": {"go": "pass", "php": "pass", "rust": "pass", "typescript": "pass"},
       "fixtures": ["tests/conformance/vectors.json", "tests/conformance/vectors.postgres.json", "tests/conformance/vectors.sqlite.json"],
       "tests": ["tests/conformance/check/main.go", "tests/conformance/runner_go/main.go", "tests/conformance/runner.php", "tests/conformance/runner_typescript.mjs", "clients/rust/tests/src/conformance.rs"],
-      "docs": ["tests/conformance/README.md", "docs/public-readiness.md"]
+      "docs": ["tests/conformance/README.md", "docs/public-readiness.md"],
+      "verification": [{"id": "conformance-unit", "command": "go test ./tests/conformance/check ./tests/conformance/runner_go -count=1"}]
     }
   ]
 }

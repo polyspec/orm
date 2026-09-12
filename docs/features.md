@@ -15,4 +15,4 @@ The executable source is [contracts/features.json](../contracts/features.json). 
 | constraints_and_relations | Constraints and relation predicates | partial | go: partial<br>php: partial<br>rust: partial<br>typescript: partial |
 | conformance_verification | Cross-client conformance verification | partial | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 
-Run make feature-check to validate the manifest and every referenced path. An implemented feature requires tests and paired documentation; partial and planned are incomplete.
+Run make feature-check to validate paths and execute every verification command declared for non-planned features. An implemented feature requires tests and paired documentation; partial and planned are incomplete.
