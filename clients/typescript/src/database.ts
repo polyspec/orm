@@ -43,6 +43,7 @@ export class Db implements Database, Executor {
   private readonly plans = new Map<string, Plan>();
   private readonly planOrder: string[] = [];
   private readonly planCacheSize: number;
+  private closed = false;
   public constructor(
     protected readonly connection: DriverConnection,
     options: DatabaseOptions,
@@ -104,7 +105,13 @@ export class Db implements Database, Executor {
     return Db.connect(openMySql(mysqlDsn(config.db.dsn, config.db.user, config.db.password), config.db.pool, config.db.statement_cache_size), options);
   }
 
-  public async close(): Promise<void> { await this.connection.close(); }
+  public async close(): Promise<void> {
+    if (this.closed) return;
+    this.closed = true;
+    this.plans.clear();
+    this.planOrder.length = 0;
+    await this.connection.close();
+  }
 
   public async aesStatus(spec: AesRotationSpec, keyring: AesKeyring): Promise<AesRotationStatus> {
     const table = this.identifier(spec.table); const version = this.identifier(spec.versionColumn);
@@ -174,6 +181,7 @@ export class Db implements Database, Executor {
   private placeholder(position: number): string { return this.driver === 'postgres' ? `$${position}` : '?'; }
 
   public async plan(request: Request): Promise<Plan> {
+    if (this.closed) throw new OrmError('CONFIG', 'database is closed');
     const key = canonical(request);
     const cached = this.plans.get(key);
     if (cached) return cached;
@@ -215,6 +223,7 @@ export class Db implements Database, Executor {
   }
 
   public async execute(plan: Plan, params: Param[]): Promise<unknown> {
+    if (this.closed) throw new OrmError('CONFIG', 'database is closed');
     if (plan.schema_hash !== this.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `plan schema ${plan.schema_hash} but client schema is ${this.schemaHash}`);
     if (plan.steps.length === 0) throw new OrmError('INTERNAL', 'plan has no steps');
     switch (plan.kind) {

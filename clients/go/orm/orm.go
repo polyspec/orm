@@ -146,6 +146,10 @@ func open(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler 
 // It is idempotent and returns the first close error, if any.
 func (d *DB) Close() error {
 	d.closeOnce.Do(func() {
+		d.planMu.Lock()
+		d.plans = map[uint64]*cached{}
+		d.planOrder = nil
+		d.planMu.Unlock()
 		d.stmMu.Lock()
 		for key, st := range d.stmts {
 			if err := st.Close(); err != nil && d.closeErr == nil {

@@ -41,7 +41,7 @@
 | 엔진 언어·역할 | Go, **컴파일러 전용**: 스키마 검증 → IR 정규화 → Plan(단계별 SQL·바인드 슬롯·조립 명세) |
 | 스키마 | YAML(`schema/*.yaml`) = 소스. 런타임은 컴파일된 blob. `ormgen import --dsn`으로 기존 MySQL에서 생성 |
 | 실행기 | 언어별 네이티브: Go `database/sql`(in-process 엔진), Rust `sqlx`, PHP `PDO`. 각 ≈500–800줄(플랜 러너·조립·코덱) |
-| 엔진 호출 구간 | Go: 함수 호출. Rust: S0에서 `libloading`(프리빌드 `.so`, 빌드 시 cgo 불필요)과 wasmtime(컴파일 전용 `.wasm`) 중 **하나만 확정**. PHP: `ormd`(컴파일 전용 데몬, DB 접근 없음)에 **영속 UDS 스트림**(`STREAM_CLIENT_PERSISTENT`) + **APCu 플랜 캐시**. 경로는 모두 설정 선언(`orm.toml`) |
+| 엔진 호출 구간 | Go: 함수 호출. Rust: S0에서 `libloading`(프리빌드 `.so`, 빌드 시 cgo 불필요)과 wasmtime(컴파일 전용 `.wasm`) 중 **하나만 확정**. PHP: `ormd`(컴파일 전용 데몬, DB 접근 없음)에 **영속 UDS 스트림**(`STREAM_CLIENT_PERSISTENT`) + **제한된 process-local plan cache**. 경로는 모두 설정 선언(`orm.toml`) |
 | 와이어 | v1 JSON(proto-JSON 호환 필드명). protobuf/Connect는 측정이 요구할 때만 |
 | 대상 DB | MySQL ≥8.0.2 / MariaDB ≥10.2 먼저; PostgreSQL ≥12, SQLite ≥3.25는 S6. Dialect 인터페이스는 S1부터 |
 | 성능 | 핫패스 = 네이티브 드라이버 + 캐시 SQL (엔진 오버헤드 0). 콜드패스(형태당 1회) 비용을 S0에서 실측·문서화 |
@@ -63,7 +63,7 @@ schema/*.yaml ─▶ ormgen ─┬─▶ schema.blob (엔진 내장)
             ┌── engine (Go 패키지, 순수·무상태) ──┐
   IR(JSON) ─▶ 검증 → planner → dialect → Plan{steps, bind_slots, assemble} ─▶
             └──────────────────────────────────┘
-   Go: in-process      Rust: S0에서 확정한 단일 호출 구간      PHP: ormd(UDS 영속) + APCu
+   Go: in-process      Rust: S0에서 확정한 단일 호출 구간      PHP: ormd(UDS 영속) + bounded process-local cache
 
    각 언어 실행기: 플랜 캐시(형태 해시) → 네이티브 드라이버 실행 → 결과 트리 조립 → typed 모델
 ```
@@ -81,7 +81,7 @@ engine/  schema/ ir/ planner/ dialect/{mysql,postgres,sqlite} plan/ api/(Compile
 engine/ffi/                  c-shared 빌드 (orm_compile(req,len,&resp,&len), orm_free) — Rust용
 clients/go/orm/              Db/Tx, Collection, 플랜 캐시, 러너, 조립  |  clients/go/gen/  (별도 module)
 clients/rust/orm/            동일 (sqlx, IndexMap)                     |  clients/rust/gen/ (별도 crate)
-clients/php/src/             Query/Model/Collection, __call 파서, Transport(Uds), APCu 캐시 | gen/
+clients/php/src/             Query/Model/Collection, __call parser, Transport(UDS), bounded plan cache | gen/
 schema/                      예시·임포트 매니페스트 (battle, battle_player, user, company_store, product 등)
 tests/conformance/*.json     체인·픽스처·기대 SQL/바인드/결과 (3언어 공통)
 tests/codec/*.json           스타일 코덱 벡터 (docker MySQL 산출물)
@@ -206,7 +206,7 @@ let products = product::query()
 - 공통: 플랜 캐시(형태 해시→Plan, 요청 시 채움·만료 타이머 없음, `schema_hash` 변경 시 키가 달라져 자연 무효화), 단계 러너(bind_from·LIST_EXPAND), 결과 트리 조립(ONE/MANY/JOIN 링크, parent_node, possible, strip), 호스트측 코덱(gz=zlib, json, jsons, serialize 읽기, base64, 인증된 AES), `on_query(sql, binds, duration)` 훅, `debug()` SQL 덤프(바인드 마스킹), 호출자가 활성화하는 데드락 재시도, `Page`. 설정은 `orm.toml` 한 파일(연결 DSN·엔진 경로·소켓 경로·스키마 blob 경로 전부 명시).
 - Go: `Collection[T]`(슬라이스+인덱스, 순서 유지), in-process 엔진, 행을 typed struct로 직접 스캔.
 - Rust: `IndexMap`, sqlx(mysql feature 우선), `Tx: Clone` 핸들, 생성 crate 별도(`--tables`, 모듈=테이블).
-- PHP: PDO, `ArrayAccess`+magic getter 모델, `__call` 파서, APCu 플랜 캐시, 영속 UDS 트랜스포트, `Pagination` 호환 `paginate()`.
+- PHP: PDO, `ArrayAccess`+magic getter 모델, `__call` 파서, 제한된 process-local plan cache, 영속 UDS 트랜스포트, `Pagination` 호환 `paginate()`.
 
 ## ormgen
 - `import --dsn … --schema service --out schema/` (멱등, 수동 필드 보존) · `validate --dsn`(라이브 information_schema와 diff, CI 검사 단계) · `gen --lang php,go,rust [--tables …] [--no-or-prefix]` · `tokens`(정규화된 문장 토큰열 덤프) · `erd --mermaid [--tables --depth]`(YAML `relations/ref` → `erDiagram`, FK 거리 부분 그래프; S5).
@@ -215,7 +215,7 @@ let products = product::query()
 ## 마일스톤 (1인 + AI, ≈15–16주)
 | # | 산출물 | 기간 |
 |---|---|---|
-| **S0 스파이크** | 손으로 쓴 SQL 2개(PK 단건·100행)를 Go c-shared `orm_compile`로 반환. Go in-process 호출 비용, Rust `libloading` vs wasmtime(컴파일 전용 wasm) 호출 구간 비용, PHP 영속 UDS 왕복 + APCu 히트 경로, 3언어 네이티브 드라이버 기준선. **결정: Rust 호출 구간 방식, PHP 데몬 방식 확정.** 결과는 `docs/perf.md` | 3일 |
+| **S0 스파이크** | 손으로 쓴 SQL 2개(PK 단건·100행)를 Go c-shared `orm_compile`로 반환. Go in-process 호출 비용, Rust `libloading` vs wasmtime(컴파일 전용 wasm) 호출 구간 비용, PHP 영속 UDS 왕복 + local cache 히트 경로, 3언어 네이티브 드라이버 기준선. **결정: Rust 호출 구간 방식, PHP 데몬 방식 확정.** 결과는 `docs/perf.md` | 3일 |
 | **S1 thin slice** | `ormgen import`(3 테이블), YAML 검증, MySQL dialect(SELECT/INSERT/UPDATE, 전체 술어, order/limit, 괄호 그룹), `Compile→Plan`, 3언어 플랜 캐시·러너, Go/PHP/Rust 생성기+실행기, 터미널 `get gets create save update`, 네이티브 `transaction`, 적합성 벡터 10개 + 토큰열 diff. **데모: 같은 문장 3파일, 같은 JSON 출력, 네이티브 대비 타이밍** | 3.5주 |
 | **S2 관계·코덱** | ONE/MANY 단계 그래프, alias/keyName/parentNode/possible/stripKey, 결과 트리 조립, 컬렉션 타입, 코덱(json/jsons/gz/base64/serialize 읽기; MySQL AES·ip는 SQL), `addColumnX/addAllColumns`, 타입별 연산자표, Rust 컴파일 시간 검사 단계 | 3주 |
 | **S3 쓰기 long tail** | dirty 추적, plus/minus/setRaw, `duplication`(upsert), 낙관 락, `delete(true)`→Batch, 데드락 클로저 재실행, `paginate`, `debug/sql`, clone | 1.5주 |

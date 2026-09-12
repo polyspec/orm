@@ -41,7 +41,7 @@ The following defects changed the architecture.
 | Engine language and role | Go, **compiler only**: schema validation → IR normalization → Plan (step SQL, bind slots, assembly specification) |
 | Schema | YAML (`schema/*.yaml`) is the source. Runtime uses a compiled blob. Existing MySQL schemas are imported with `ormgen import --dsn` |
 | Executor | Native per client: Go `database/sql` (in-process engine), Rust `sqlx`, PHP `PDO`. Each is approximately 500–800 lines for plan running, assembly, and codecs |
-| Engine execution path | Go: function call. Rust: choose exactly one of `libloading` (prebuilt `.so`, no cgo at build time) and wasmtime (compile-only `.wasm`) in S0. PHP: `ormd` (compile-only daemon with no database access) over a persistent UDS stream (`STREAM_CLIENT_PERSISTENT`) with APCu plan cache. All paths are declared in `orm.toml` |
+| Engine execution path | Go: function call. Rust: choose exactly one of `libloading` (prebuilt `.so`, no cgo at build time) and wasmtime (compile-only `.wasm`) in S0. PHP: `ormd` (compile-only daemon with no database access) over a persistent UDS stream (`STREAM_CLIENT_PERSISTENT`) with a bounded process-local plan cache. All paths are declared in `orm.toml` |
 | Wire format | v1 JSON with proto-JSON-compatible field names. Use protobuf/Connect only when measurement requires it |
 | Target DB | MySQL ≥8.0.2 / MariaDB ≥10.2 first; PostgreSQL ≥12 and SQLite ≥3.25 in S6. Dialect interface from S1 |
 | Performance | Hot path = native driver + cached SQL (zero engine overhead). Measure and document cold-path cost once per shape in S0 |
@@ -63,7 +63,7 @@ schema/*.yaml ─▶ ormgen ─┬─▶ schema.blob (엔진 내장)
             ┌── engine (Go 패키지, 순수·무상태) ──┐
   IR(JSON) ─▶ 검증 → planner → dialect → Plan{steps, bind_slots, assemble} ─▶
             └──────────────────────────────────┘
-   Go: in-process      Rust: S0에서 확정한 단일 호출 구간      PHP: ormd(UDS 영속) + APCu
+   Go: in-process      Rust: S0에서 확정한 단일 호출 구간      PHP: ormd(UDS 영속) + bounded process-local cache
 
    각 언어 실행기: 플랜 캐시(형태 해시) → 네이티브 드라이버 실행 → 결과 트리 조립 → typed 모델
 ```
@@ -81,7 +81,7 @@ engine/  schema/ ir/ planner/ dialect/{mysql,postgres,sqlite} plan/ api/(Compile
 engine/ffi/                  c-shared 빌드 (orm_compile(req,len,&resp,&len), orm_free) — Rust용
 clients/go/orm/              Db/Tx, Collection, 플랜 캐시, 러너, 조립  |  clients/go/gen/  (별도 module)
 clients/rust/orm/            동일 (sqlx, IndexMap)                     |  clients/rust/gen/ (별도 crate)
-clients/php/src/             Query/Model/Collection, __call 파서, Transport(Uds), APCu 캐시 | gen/
+clients/php/src/             Query/Model/Collection, __call parser, Transport(UDS), bounded plan cache | gen/
 schema/                      예시·임포트 매니페스트 (battle, battle_player, user, company_store, product 등)
 tests/conformance/*.json     체인·픽스처·기대 SQL/바인드/결과 (3언어 공통)
 tests/codec/*.json           스타일 코덱 벡터 (docker MySQL 산출물)
@@ -206,7 +206,7 @@ let products = product::query()
 - Common: plan cache (shape hash→Plan, filled on request; no expiry timer; schema hash changes naturally invalidate the key), step runner (`bind_from`, `LIST_EXPAND`), result-tree assembly (ONE/MANY/JOIN links, parent_node, possible, strip), host codecs (gz=zlib, json, jsons, serialize read, base64, authenticated AES), `on_query(sql, binds, duration)` hook, `debug()` SQL dump with masked binds, caller-enabled deadlock retry, and `Page`. One `orm.toml` declares DSN, engine path, socket path, and schema blob path.
 - Go: `Collection[T]` (slice plus index, order retained), in-process engine, direct typed-struct row scan.
 - Rust: `IndexMap`, sqlx (mysql feature first), `Tx: Clone` handle, separate generated crate (`--tables`, one module per table).
-- PHP: PDO, `ArrayAccess` plus magic-getter models, `__call` parser, APCu plan cache, persistent UDS transport, and `Pagination`-compatible `paginate()`.
+- PHP: PDO, `ArrayAccess` plus magic-getter models, `__call` parser, bounded process-local plan cache, persistent UDS transport, and `Pagination`-compatible `paginate()`.
 
 ## ormgen
 - `import --dsn … --schema service --out schema/` (deterministic, preserves manual fields) · `validate --dsn` (diff against live information_schema, CI check) · `gen --lang php,go,rust [--tables …] [--no-or-prefix]` · `tokens` (normalized statement token stream) · `erd --mermaid [--tables --depth]` (YAML relations/ref → `erDiagram`, FK-distance subgraph; S5).
@@ -215,7 +215,7 @@ let products = product::query()
 ## Milestones (one engineer + AI, ≈15–16 weeks)
 | # | Deliverable | Duration |
 |---|---|---|
-| **S0 spike** | Return two hand-written SQL queries (single PK row and 100 rows) through Go c-shared `orm_compile`. Measure Go in-process cost, Rust `libloading` versus wasmtime path cost, PHP persistent UDS round trip plus APCu hit, and native baselines for three clients. **Decision: finalize Rust path and PHP daemon path.** Result: `docs/perf.md` | 3 days |
+| **S0 spike** | Return two hand-written SQL queries (single PK row and 100 rows) through Go c-shared `orm_compile`. Measure Go in-process cost, Rust `libloading` versus wasmtime path cost, PHP persistent UDS round trip plus local cache hit, and native baselines for three clients. **Decision: finalize Rust path and PHP daemon path.** Result: `docs/perf.md` | 3 days |
 | **S1 thin slice** | `ormgen import` (three tables), YAML validation, MySQL dialect (SELECT/INSERT/UPDATE, all predicates, order/limit, parenthesized groups), `Compile→Plan`, three-client plan caches and runners, Go/PHP/Rust generators and executors, terminals `get gets create save update`, native `transaction`, ten conformance vectors, and token diff. **Demo: same statement in three files, same JSON output, timing versus native** | 3.5 weeks |
 | **S2 relations and codecs** | ONE/MANY step graph, alias/keyName/parentNode/possible/stripKey, result-tree assembly, collection types, codecs (json/jsons/gz/base64/serialize read; MySQL AES/ip in SQL), `addColumnX/addAllColumns`, type operator table, Rust compile-time check | 3 weeks |
 | **S3 write long tail** | Dirty tracking, plus/minus/setRaw, `duplication` (upsert), optimistic locking, `delete(true)`→Batch, deadlock closure retry, `paginate`, `debug/sql`, clone | 1.5 weeks |

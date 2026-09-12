@@ -548,6 +548,13 @@ try {
 } catch (OrmException $e) {
     check($e->code_ === Code::CONFIG, 'PHP statement cache close error');
 }
+Orm::transport()->close();
+try {
+    Orm::transport()->planFor(Battle::query()->req, 'all');
+    check(false, 'closed PHP compiler transport accepted a plan');
+} catch (OrmException $e) {
+    check($e->code_ === Code::CONFIG, 'PHP plan cache close error');
+}
 
 if ($fail === 0) {
     echo "ok — " . count($log) . " statements\n";

@@ -1,7 +1,7 @@
 # perf.md — S0 스파이크 실측과 결정
 
 측정 환경: Apple M3 Pro, macOS, MySQL 8.4.11 로컬 유닉스 소켓(`/tmp/mysql.sock`), `orm_bench.battle` 10만 행(`aes_hex_*` 2컬럼),
-Go 1.27, Rust 1.98.1(sqlx 0.9, wasmtime 48), PHP 8.5.10(mysqlnd, msgpack, APCu). 단일 연결, p50 기준. 원자료: `docs/perf-raw-*.txt`.
+Go 1.27, Rust 1.98.1(sqlx 0.9, wasmtime 48), PHP 8.5.10(mysqlnd, msgpack). 단일 연결, p50 기준. 원자료: `docs/perf-raw-*.txt`. 아래 PHP plan-cache 수치는 과거 APCu 측정이며 현재 runtime 의존성이 아니다.
 
 ## 1. 엔진 컴파일 비용 (Go in-process, JSON in → JSON out)
 | 워크로드 | ns/op | allocs |
@@ -18,7 +18,7 @@ Go 1.27, Rust 1.98.1(sqlx 0.9, wasmtime 48), PHP 8.5.10(mysqlnd, msgpack, APCu).
 | Rust `libloading` (.dylib 2.7MB) | 11.4µs | 5.4µs | dlopen 366ms(1회), Go 런타임·시그널이 호스트 프로세스에 탑재 |
 | Rust `wasmtime` (.wasm 4.6MB) | 50.6µs | 24.0µs | 모듈 컴파일 390ms(디스크 캐시 후 22ms), 인스턴스화 1.9ms, 런타임 탑재 없음 |
 | PHP 영속 UDS → ormd | 26.5µs | 17.4µs | 와이어 오버헤드 ≈12–15µs; 요청당 새 connect면 +22µs |
-| PHP APCu 히트(xxh3 + fetch) | 0.25µs | | 캐시된 플랜 `json_decode` 8.3µs → 배열로 저장해 디코드 회피 |
+| PHP local cache 히트 | 0.25µs | 과거 APCu benchmark; 현재 runtime은 같은 bounded local lookup을 APCu 없이 사용 | 캐시된 플랜 `json_decode` 8.3µs → 배열로 저장해 디코드 회피 |
 
 **결정 R1 — Rust 호출 경로 = wasmtime.** 두 경로 모두 예산(형태당 ≤2ms) 대비 100배 여유. 4.4배 느린 것은 콜드패스뿐이고, FFI는 Go 런타임을 tokio 프로세스에 넣는 운영 위험(시그널·스레드·366ms dlopen)이 있다. 아티팩트 하나로 모든 OS/arch, 4번째 언어(TS/엣지)에도 같은 파일.
 
@@ -65,7 +65,7 @@ Go 1.27, Rust 1.98.1(sqlx 0.9, wasmtime 48), PHP 8.5.10(mysqlnd, msgpack, APCu).
 | 플랜 캐시 히트(컴파일 없이) | — | 1.7µs / 14 allocs | IR JSON 직렬화 + FNV |
 손실 0(측정 오차 안). 할당 수는 2배(위치형 `[]any` 스캔 → struct) — CPU에 영향 없음, 필요 시 S5에서 typed 스캔으로 줄인다. **G0/G1 Go 검사 통과.**
 
-### PHP 실측 (생성 클라이언트, ormd 컴파일 + PDO 실행, APCu 플랜 캐시)
+### PHP 실측 (생성 클라이언트, ormd 컴파일 + PDO 실행, 과거 APCu benchmark)
 | 워크로드 | PDO 직접 | 생성 클라이언트 | 비고 |
 |---|---:|---:|---|
 | PK 단건 | 30.5µs | 31.4µs (+3%) | 플랜 캐시 히트 1.8µs 포함 |
