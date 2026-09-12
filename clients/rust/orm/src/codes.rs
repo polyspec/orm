@@ -55,7 +55,7 @@ pub const JOIN_PREDICATE_PLACEMENT: &str = "JOIN_PREDICATE_PLACEMENT";
 pub const PAREN_ACROSS_MODELS: &str = "PAREN_ACROSS_MODELS";
 /// executor: 
 pub const INTERNAL: &str = "INTERNAL";
-/// driver: MySQL 1213 / SQLSTATE 40001 — transaction() re-runs the closure up to 3 times before surfacing it
+/// driver: MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions
 pub const DEADLOCK: &str = "DEADLOCK";
 /// driver: MySQL 1062 / SQLSTATE 23000
 pub const DUPLICATE_KEY: &str = "DUPLICATE_KEY";

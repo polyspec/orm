@@ -556,14 +556,24 @@ impl Db {
         })
     }
 
-    /// Run `f` in a transaction; on deadlock re-run it in a new transaction (max 3).
+    /// Run `f` once in a transaction. An error rolls back the transaction.
     pub async fn transaction<T, F, Fut>(&self, f: F) -> Result<T>
     where
         F: Fn(Tx) -> Fut,
         Fut: Future<Output = Result<T>>,
     {
+        self.transaction_with_options(f, TransactionOptions::default()).await
+    }
+
+    /// Run `f` with an explicit deadlock retry policy.
+    pub async fn transaction_with_options<T, F, Fut>(&self, f: F, options: TransactionOptions) -> Result<T>
+    where
+        F: Fn(Tx) -> Fut,
+        Fut: Future<Output = Result<T>>,
+    {
+        let attempts = if options.retry_deadlocks { options.max_attempts.max(1) } else { 1 };
         let mut last = None;
-        for attempt in 0..3u32 {
+        for attempt in 0..attempts {
             let tx = Tx { inner: Arc::new(tokio::sync::Mutex::new(Some(self.begin().await?))), db: self.clone(), finished: Arc::new(AtomicBool::new(false)) };
             let _scope = TxScope(tx.clone());
             match f(tx.clone()).await {
@@ -573,7 +583,7 @@ impl Db {
                 }
                 Err(e) => {
                     tx.rollback().await;
-                    if !e.is_deadlock() {
+                    if !options.retry_deadlocks || !e.is_deadlock() {
                         return Err(e);
                     }
                     last = Some(e);
@@ -583,6 +593,18 @@ impl Db {
             }
         }
         Err(last.unwrap())
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct TransactionOptions {
+    pub retry_deadlocks: bool,
+    pub max_attempts: u32,
+}
+
+impl Default for TransactionOptions {
+    fn default() -> Self {
+        Self { retry_deadlocks: false, max_attempts: 3 }
     }
 }
 

@@ -28,6 +28,11 @@ export interface StreamResult {
   count: number;
 }
 
+export interface TransactionOptions {
+  retryDeadlocks?: boolean;
+  maxAttempts?: number;
+}
+
 export interface AesRowCodec {
   decode(value: unknown, styles: readonly string[], key: string): unknown;
   encode(value: unknown, styles: readonly string[], key: string): unknown;

@@ -4,9 +4,21 @@ declare(strict_types=1);
 namespace Orm;
 
 /**
- * The PDO executor: prepared-statement cache, bind resolution, transactions
- * with deadlock re-run. Queries and loaded rows bind a Db or a Tx.
+ * The PDO executor: prepared-statement cache, bind resolution, and transactions.
+ * Queries and loaded rows bind a Db or a Tx.
  */
+final class TransactionOptions
+{
+    public function __construct(
+        public readonly bool $retryDeadlocks = false,
+        public readonly int $maxAttempts = 3,
+    ) {
+        if ($this->maxAttempts < 1) {
+            throw new OrmException(Code::CONFIG, 'transaction maxAttempts must be at least 1');
+        }
+    }
+}
+
 class Db
 {
     /**
@@ -142,16 +154,18 @@ class Db
     }
 
     /**
-     * Run $fn inside a transaction. An exception rolls back. On a deadlock the
-     * closure is re-run in a new transaction, at most 3 times.
+     * Run $fn once inside a transaction. An exception rolls back.
      * @template T
      * @param \Closure(Tx): T $fn
+     * @param TransactionOptions|null $options
      * @return T
      */
-    public function transaction(\Closure $fn): mixed
+    public function transaction(\Closure $fn, ?TransactionOptions $options = null): mixed
     {
+        $options ??= new TransactionOptions();
         $last = null;
-        for ($attempt = 0; $attempt < 3; $attempt++) {
+        $attempts = $options->retryDeadlocks ? $options->maxAttempts : 1;
+        for ($attempt = 0; $attempt < $attempts; $attempt++) {
             $this->pdo->beginTransaction();
             $tx = new Tx($this);
             try {
@@ -165,7 +179,7 @@ class Db
                 if ($e instanceof \PDOException) {
                     $e = OrmException::fromDriver($e, $this->driver);
                 }
-                if (!self::isDeadlock($e)) {
+                if (!$options->retryDeadlocks || !self::isDeadlock($e)) {
                     throw $e;
                 }
                 $last = $e;
