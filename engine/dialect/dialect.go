@@ -26,7 +26,7 @@ type Dialect interface {
 	InsertReturningID() bool
 	// Upsert renders the ON DUPLICATE/ON CONFLICT clause for the given conflict columns and assignments.
 	Upsert(conflict []string, assigns string) string
-	// ReadExpr wraps a column read for a style pipeline (e.g. AES_DECRYPT(UNHEX(col), ?)); returns expr and how many binds it consumed.
+	// ReadExpr wraps SQL-side stages for a style pipeline and returns the bind count.
 	ReadExpr(col, colType string, styles []string, ph func() string) (string, int)
 	// WriteExpr wraps a bound value for a style pipeline on write.
 	WriteExpr(ph func() string, colType string, styles []string) (string, int)

@@ -1,7 +1,5 @@
 <?php
-// Host-side codec stages (S6): the PHP AES must produce exactly MySQL's HEX(AES_ENCRYPT(v, key)) bytes —
-// every entry of tests/codec/aes-vectors.json (recorded from the local MySQL) byte for byte, both ways —
-// and ip must pack like INET6_ATON. Needs no database and no ormd.
+// Host-side codec stages: AES uses the authenticated v2 envelope and ip packs like INET6_ATON.
 // Usage: php clients/php/tests/hostcodec.php
 declare(strict_types=1);
 
@@ -15,22 +13,18 @@ use Orm\OrmException;
 $fail = 0;
 function check(bool $ok, string $what): void { global $fail; if (!$ok) { $fail++; fwrite(STDERR, "FAIL: $what\n"); } }
 
-$file = dirname(__DIR__, 3) . '/tests/codec/aes-vectors.json';
-$f = json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
-check($f['mode'] === 'aes-128-ecb', "vectors were generated with {$f['mode']}");
 $n = 0;
-foreach ($f['vectors'] as $v) {
-    $enc = Codec::hostEncode($v['plain'], ['aes', 'hex'], $v['key']);
-    check($enc === $v['hex'], "encode key {$v['key']} plain {$v['plain']}: got " . var_export($enc, true) . " want {$v['hex']}");
-    $dec = Codec::hostDecode($v['hex'], ['aes', 'hex'], $v['key']);
-    check($dec === $v['plain'], "decode key {$v['key']}: got " . var_export($dec, true));
-    // the same bytes without hex are a Bytes value (a bytea/BLOB bind), lower-case hex decodes too
+$fixed = '4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E24';
+check(Codec::hostDecode($fixed, ['aes', 'hex'], 'bench-salt') === 'user42@example.com', 'shared fixed AES v2 vector');
+foreach ([['plain' => 'member@example.test', 'key' => 'key-v1'], ['plain' => '한글 텍스트', 'key' => 'key-v2']] as $v) {
     $raw = Codec::hostEncode($v['plain'], ['aes'], $v['key']);
-    check($raw instanceof Bytes && strtoupper(bin2hex($raw->bytes)) === $v['hex'], "raw aes bytes for key {$v['key']}");
-    check(Codec::hostDecode(strtolower($v['hex']), ['aes', 'hex'], $v['key']) === $v['plain'], 'lower-case hex decodes');
+    check($raw instanceof Bytes && str_starts_with($raw->bytes, "ORM-AES2\0"), 'AES v2 envelope prefix');
+    check(Codec::hostDecode($raw->bytes, ['aes'], $v['key']) === $v['plain'], 'AES v2 round trip');
+    $tampered = $raw->bytes; $tampered[strlen($tampered) - 1] = chr(ord($tampered[strlen($tampered) - 1]) ^ 1);
+    try { Codec::hostDecode($tampered, ['aes'], $v['key']); check(false, 'tampered AES must fail'); }
+    catch (OrmException $e) { check($e->code_ === Code::CODEC_DECODE, 'tampered AES → CODEC_DECODE'); }
     $n++;
 }
-check($n === 8, "8 vectors checked ($n)");
 
 foreach (['00', 'zz', '', 'EC026C86BF1C78E3660CCC20789EDF0D00'] as $bad) {
     try {
@@ -41,7 +35,7 @@ foreach (['00', 'zz', '', 'EC026C86BF1C78E3660CCC20789EDF0D00'] as $bad) {
     }
 }
 try {
-    Codec::hostDecode('EC026C86BF1C78E3660CCC20789EDF0D', ['aes', 'hex'], 'wrong-key');
+    Codec::hostDecode((string) Codec::hostEncode('value', ['aes', 'hex'], 'key'), ['aes', 'hex'], 'wrong-key');
     check(false, 'a wrong key must fail (padding check)');
 } catch (OrmException $e) {
     check($e->code_ === Code::CODEC_DECODE, 'wrong key → CODEC_DECODE');
@@ -53,8 +47,6 @@ try {
     check($e->code_ === Code::CONFIG, 'no key → CONFIG');
 }
 check(Codec::hostEncode(null, ['aes', 'hex'], 'k') === null && Codec::hostDecode(null, ['aes', 'hex'], 'k') === null, 'null passes through');
-check(Codec::foldKey('0123456789abcdef') === '0123456789abcdef' && Codec::foldKey('k') === "k\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 'key fold: 16 bytes stay, shorter keys are zero-padded');
-check(Codec::foldKey('a-much-longer-key-than-sixteen-bytes') === (Codec::foldKey('a-much-longer-ke') ^ 'y-than-sixteen-b' ^ "ytes\0\0\0\0\0\0\0\0\0\0\0\0"), 'key fold: longer keys XOR block-wise');
 
 $ip = Codec::hostEncode('10.1.2.3', ['ip'], '');
 check($ip instanceof Bytes && $ip->bytes === "\x0a\x01\x02\x03", 'ipv4 packs to 4 bytes');
@@ -83,7 +75,7 @@ try {
 }
 
 if ($fail === 0) {
-    echo "ok — $n aes vectors byte-identical to MySQL, ip packing checked\n";
+    echo "ok — $n authenticated AES vectors and IP packing checked\n";
     exit(0);
 }
 exit(1);

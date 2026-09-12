@@ -14,7 +14,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 | insert id | `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`) | `RETURNING pk` | `RETURNING pk` |
 | upsert (`onDuplicate…`) | `ON DUPLICATE KEY UPDATE` (any unique key) | `ON CONFLICT (cols) DO UPDATE SET` — conflict target = the first declared unique key fully covered by the inserted columns, else the PK | same as PostgreSQL |
 | `limitPerParent` | `ROW_NUMBER() OVER (…)` | same | same (3.25+) |
-| `aes`/`hex` styles | in SQL: `HEX(AES_ENCRYPT(?, ?))` / `AES_DECRYPT(UNHEX(col), ?)` | app-side (executor: host AES — MySQL key folding, AES-128-ECB, PKCS7; bytes identical to MySQL's) | app-side |
+| `aes`/`hex` styles | 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환 | 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환 | 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환 |
 | `ip` style | `INET6_ATON` / `INET6_NTOA` | `(?)::inet` / `host(col)` | app-side (16-byte packed) |
 | `point` type | `POINT(x y)` bind; `ST_PointFromText(?)` / `ST_AsText(col)` | `(x,y)` bind; `CAST(? AS text)::point` / `(col)::text` | `POINT(x y)` text |
 | `NOW` | `CURRENT_TIMESTAMP` | same | same |
@@ -39,6 +39,7 @@ import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 �
 - SQLite datetime은 UTC 기준 여섯 자리 소수의 text다.
 - Boolean은 PostgreSQL `boolean`, SQLite INTEGER 0/1이다. fragment와 raw에는 boolean을 bind한다.
 - `bind_slots[].col_type`은 `date`, `time`, `datetime`, `point` 대상을 기록한다. 실행기는 SQLite 시간 값을 정규화하고 typed point를 bind 전에 `POINT(x y)`로 변환한다.
-- `bind_slots[].host_styles`와 `columns[].styles`는 executor가 처리할 host stage를 기록한다.
-- seed는 database별 SQL을 실행한 후 `go run ./bench/seedaes`로 AES 값을 채운다.
+- `bind_slots[].host_styles`와 `columns[].styles`는 실행기가 처리할 host stage를 기록한다. AES는 `docs/codec.md`에 정의한 `ORM-AES2\0` authenticated ciphertext format, 12바이트 random nonce, AES-256-GCM, version key derivation을 사용한다.
+- AES column에는 `aes_key_version`이 필요하다. 읽기는 저장된 version으로 `secrets.aes_keys`에서 key를 선택한다. key가 없거나 ciphertext가 유효하지 않으면 `CONFIG` 또는 `CODEC_DECODE`를 반환하며 current key를 사용하지 않는다.
+- seed는 database별 SQL을 실행한 후 `go run ./bench/seedaes`로 인증된 host 형식의 AES 값을 채운다.
 - conformance vector의 결과는 세 database에서 같아야 한다. `sql_dump`는 방언 SQL을 반환한다.

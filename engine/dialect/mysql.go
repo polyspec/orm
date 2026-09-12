@@ -7,7 +7,7 @@ import (
 
 // MySQL is the primary dialect. Style expressions are defined to preserve the
 // stored byte representation
-// (HEX(AES_ENCRYPT(?, ?)), AES_DECRYPT(UNHEX(col), ?), INET6_ATON/NTOA).
+// AES is host-side; hex and IP packing remain SQL-side.
 type MySQL struct{}
 
 func (MySQL) Name() string                   { return "mysql" }
@@ -19,7 +19,10 @@ func (MySQL) InsertReturningID() bool        { return false }
 func (MySQL) Now() string                    { return "CURRENT_TIMESTAMP" }
 func (MySQL) Supports(string) bool           { return true }
 func (MySQL) HostNow() bool                  { return false }
-func (MySQL) HandlesStyle(s string) bool     { return s == "aes" || s == "hex" || s == "ip" }
+
+// AES is host-side so row version metadata can select the key before decode.
+// hex and ip remain SQL-side because they do not depend on a secret.
+func (MySQL) HandlesStyle(s string) bool { return s == "hex" || s == "ip" }
 
 func (MySQL) Like(col, ph string, binary bool) string {
 	if binary {
@@ -60,9 +63,8 @@ func (MySQL) Upsert(_ []string, assigns string) string {
 	return " ON DUPLICATE KEY UPDATE " + assigns
 }
 
-// ReadExpr: styles are applied on write in order and undone on read in
-// reverse. Only SQL-side stages appear here; app-side stages (gz/json/…)
-// are the executor's job.
+// ReadExpr applies SQL-side stages. AES is handled by the executor so it can
+// select the key from the row's version metadata.
 func (MySQL) ReadExpr(col, colType string, styles []string, ph func() string) (string, int) {
 	if colType == "point" {
 		col = "ST_AsText(" + col + ")"
@@ -72,9 +74,6 @@ func (MySQL) ReadExpr(col, colType string, styles []string, ph func() string) (s
 		switch styles[i] {
 		case "hex":
 			expr = "UNHEX(" + expr + ")"
-		case "aes":
-			expr = "AES_DECRYPT(" + expr + ", " + ph() + ")"
-			binds++
 		case "ip":
 			expr = "INET6_NTOA(" + expr + ")"
 		}
@@ -89,9 +88,6 @@ func (MySQL) WriteExpr(ph func() string, colType string, styles []string) (strin
 	}
 	for _, s := range styles {
 		switch s {
-		case "aes":
-			expr = "AES_ENCRYPT(" + expr + ", " + ph() + ")"
-			binds++
 		case "hex":
 			expr = "HEX(" + expr + ")"
 		case "ip":

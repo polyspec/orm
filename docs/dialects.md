@@ -15,7 +15,7 @@ Executors still see the same plan shape: steps, bind slots, assemble.
 | insert id | `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`) | `RETURNING pk` | `RETURNING pk` |
 | upsert (`onDuplicate…`) | `ON DUPLICATE KEY UPDATE` (any unique key) | `ON CONFLICT (cols) DO UPDATE SET` — conflict target = the first declared unique key fully covered by the inserted columns, else the PK | same as PostgreSQL |
 | `limitPerParent` | `ROW_NUMBER() OVER (…)` | same | same (3.25+) |
-| `aes`/`hex` styles | in SQL: `HEX(AES_ENCRYPT(?, ?))` / `AES_DECRYPT(UNHEX(col), ?)` | app-side (executor: host AES — MySQL key folding, AES-128-ECB, PKCS7; bytes identical to MySQL's) | app-side |
+| `aes`/`hex` styles | app-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present | app-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present | app-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present |
 | `ip` style | `INET6_ATON` / `INET6_NTOA` | `(?)::inet` / `host(col)` | app-side (16-byte packed) |
 | `point` type | `POINT(x y)` bind; `ST_PointFromText(?)` / `ST_AsText(col)` | `(x,y)` bind; `CAST(? AS text)::point` / `(col)::text` | `POINT(x y)` text |
 | `NOW` | `CURRENT_TIMESTAMP` | same | same |
@@ -45,6 +45,7 @@ same with sqlx features, PHP with the PDO extension that is installed.
 - SQLite datetimes are text with six fraction digits (`YYYY-MM-DD HH:MM:SS.ffffff`, UTC); the executor binds `time` values in that form and the DDL defaults produce it, so a value read back compares equal.
 - Booleans: PostgreSQL `boolean`, SQLite INTEGER 0/1 (read back as bool by column type); bind bools, not integers, in fragments/raw.
 - `bind_slots[].col_type` names a `date`, `time`, `datetime`, or `point` target. Executors normalize SQLite time values and convert typed points to `POINT(x y)` before binding.
-- aes/hex/ip host stages: `bind_slots[].host_styles` names the stages the executor applies to a bound value; `columns[].styles` carries them on read. Host AES = MySQL key folding + AES-128-ECB/PKCS7 (byte-identical, `tests/codec/aes-vectors.json`).
-- Seeds: `bench/sql/seed.pg.sql`, `bench/sql/seed.sqlite.sql`, then `go run ./bench/seedaes` fills the aes columns with the same bytes MySQL's `AES_ENCRYPT` produced.
+- aes/hex/ip host stages: `bind_slots[].host_styles` names the stages the executor applies to a bound value; `columns[].styles` carries them on read. AES uses the `ORM-AES2\0` authenticated ciphertext format, a random 12-byte nonce, AES-256-GCM, and the versioned key derivation defined in `docs/codec.md`.
+- `aes_key_version` is required for AES columns. Reads select the key from `secrets.aes_keys` using that stored version. A missing key or invalid ciphertext fails with `CONFIG` or `CODEC_DECODE`; no current-key fallback is used.
+- Seeds: `bench/sql/seed.pg.sql`, `bench/sql/seed.sqlite.sql`, then `go run ./bench/seedaes` fills the AES columns using the authenticated host format.
 - Conformance: `tests/conformance/vectors.postgres.json` / `vectors.sqlite.json` are recorded per dialect; every vector's **result** is identical to MySQL except `sql_dump`, whose result is the dialect's own SQL text.

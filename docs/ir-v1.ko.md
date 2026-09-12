@@ -84,7 +84,7 @@ nullable은 PHP `?T`, Go `*T`, Rust `Option<T>`, TypeScript `T | null`을 사용
 ```json
 "style": ["json"]              // json_encode
 "style": ["serialize","gz"]    // serialize → gzcompress
-"style": ["aes","hex"]         // AES_ENCRYPT → HEX
+"style": ["aes","hex"]         // 인증된 AES ciphertext → HEX
 "style": ["ip"]                // INET6_ATON / INET6_NTOA
 ```
 
@@ -98,7 +98,7 @@ nullable은 PHP `?T`, Go `*T`, Rust `Option<T>`, TypeScript `T | null`을 사용
 | `gz` | gzip | gunzip | app |
 | `base64` | b64 | 〃 | app |
 | `hex` | hex | unhex | app |
-| `aes` | `AES_ENCRYPT(?, :__key)` | `AES_DECRYPT(col, :__key)` | **SQL** |
+| `aes` | host AES-256-GCM v2 ciphertext | host AES-256-GCM v2 ciphertext decode | **host** |
 | `ip` | `INET6_ATON(?)` | `INET6_NTOA(col)` | **SQL** |
 | `point` | `ST_PointFromText(?)` | `ST_AsText(col)` | **MySQL은 SQL, PostgreSQL·SQLite는 typed text 변환** |
 

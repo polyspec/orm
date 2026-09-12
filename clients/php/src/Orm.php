@@ -105,6 +105,7 @@ final class Orm
         $secrets = $cfg['secrets'] ?? [];
         $aesKey = '';
         $aesVersion = 1;
+        $aesKeys = [];
         if (isset($secrets['aes'], $secrets['aes_env'])) {
             throw new OrmException(Code::CONFIG, "$path: secrets.aes and secrets.aes_env are exclusive");
         }
@@ -136,6 +137,7 @@ final class Orm
             }
             $keyring = new AesKeyring($keys, $aesVersion);
             $aesKey = $keys[$keyring->currentVersion];
+            $aesKeys = $keys;
         } elseif (isset($secrets['aes_version']) && $secrets['aes_version'] !== 1) {
             throw new OrmException(Code::CONFIG, "$path: secrets.aes_version requires secrets.aes_keys");
         }
@@ -146,7 +148,7 @@ final class Orm
                     json_encode($binds, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $err === null ? '' : ' ! ' . $err->getMessage()));
             };
         }
-        $config = new Config(socket: $socket, schemaPath: $schemaPath, aesKey: $aesKey, aesVersion: $aesVersion, onQuery: $onQuery, driver: $driver, endpoint: $endpoint, timeoutSeconds: $timeoutMs / 1000);
+        $config = new Config(socket: $socket, schemaPath: $schemaPath, aesKey: $aesKey, aesVersion: $aesVersion, aesKeys: $aesKeys, onQuery: $onQuery, driver: $driver, endpoint: $endpoint, timeoutSeconds: $timeoutMs / 1000);
         if ($aesKey === '' && $config->hasSecretColumns()) {
             throw new OrmException(Code::CONFIG, "$path: the schema has aes columns; secrets.aes or secrets.aes_env is required");
         }
@@ -222,6 +224,8 @@ final class Config
         public readonly string $aesKey = '',
         /** version stored in aes_key_version with new AES values */
         public readonly int $aesVersion = 1,
+        /** @var array<int,string> all declared versions for mixed-version reads */
+        public readonly array $aesKeys = [],
         /**
          * called for every executed statement:
          * fn(string $sql, array $binds, float $seconds, string $planId, ?\Throwable $err)

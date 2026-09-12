@@ -156,7 +156,7 @@ func (fc *FileConfig) AESKey() (string, error) {
 	return v, nil
 }
 
-// AESKeyring returns the declared version map. Legacy aes and aes_env settings
+// AESKeyring returns the declared version map. Single-key settings create version 1.
 // use version 1.
 func (fc *FileConfig) AESKeyring() (AESKeyring, error) {
 	if len(fc.Secrets.AESKeys) == 0 {
@@ -262,7 +262,15 @@ func OpenConfigContext(ctx context.Context, path string) (*DB, error) {
 	if version == 0 {
 		version = 1
 	}
-	cfg := Config{AESKey: key, AESVersion: version}
+	keyring, err := fc.AESKeyring()
+	if err != nil {
+		return nil, err
+	}
+	keys := make(map[int32]string, len(keyring.keys))
+	for v, k := range keyring.keys {
+		keys[v] = k
+	}
+	cfg := Config{AESKey: key, AESVersion: version, AESKeys: keys}
 	if fc.Debug.OnQuery {
 		cfg.OnQuery = LogQuery
 	}

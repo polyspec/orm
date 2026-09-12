@@ -40,7 +40,7 @@ Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', d
 $db = orm_open_db($driver, orm_test_dsn());
 check($db->driver() === $driver, 'Db::driver()');
 /** the binds sql() and the hook show for the aes select: the key twice on MySQL (AES in SQL), nothing else elsewhere (host AES) */
-$aesBinds = $driver === 'mysql' ? ['$SECRET', '$SECRET', 7] : [7];
+$aesBinds = [7];
 
 $fail = 0;
 function check(bool $ok, string $what): void { global $fail; if (!$ok) { $fail++; fwrite(STDERR, "FAIL: $what\n"); } }
@@ -329,7 +329,7 @@ Battle::query()->serviceSeq(8)->selectAesHexEmail()->limit(0, 2)->using($db)->ge
 [$binds1, $plan1, $err1] = $hooked[$n0];
 [, $plan2] = $hooked[$n0 + 1];
 [, $plan3] = $hooked[$n0 + 2];
-check($binds1 === $aesBinds && $err1 === null, $driver === 'mysql' ? 'hook binds mask secret slots as $SECRET' : 'hook binds carry no secret (host AES)');
+check($binds1 === $aesBinds && $err1 === null, 'hook binds carry no AES secret');
 check(preg_match('/^[0-9a-f]{16}$/', $plan1) === 1 && $plan1 === $plan2 && $plan1 !== $plan3, 'plan_id is the 16-hex plan key: same shape → same id, different limit → different id');
 try {
     Battle::query()->raw('SELECT no_such_column FROM {table}', [])->using($db)->rawAll();

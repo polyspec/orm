@@ -9,7 +9,7 @@
 //! from then on is converted to the type the server inferred for that placeholder.
 
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -48,6 +48,7 @@ pub const NOW_MASK: &str = "$NOW";
 pub struct Config {
     pub aes_key: String,
     pub aes_version: i32,
+    pub aes_keys: BTreeMap<i32, String>,
     pub on_query: Option<OnQuery>,
 }
 
@@ -1082,13 +1083,13 @@ where
         params: req.params.clone(),
     };
     let db = ex.db();
-    let mysql = matches!(db.pool, Pool::MySql(_));
+    let mysql = matches!(db.pool, Pool::MySql(_)) && !assemble_has_aes(&assemble);
     let mut decode = |raw: DriverRow| -> Result<bool> {
         let cells = if mysql {
             Cells::Raw(raw.into_mysql())
         } else {
             let mut data = vec![read_row(&raw, assemble.total_columns())?];
-            decode_styled(&assemble, &mut data, &db.cfg.aes_key)?;
+            decode_styled(&assemble, &mut data, &db.cfg.aes_keys)?;
             Cells::Pos(data.pop().expect("one stream row"))
         };
         visit(cells, &context)
@@ -1106,10 +1107,10 @@ where
 
 /// Driver rows as decoded positional rows: cells by column type, styled cells through their
 /// host and codec stages.
-fn positional(raw: &[DriverRow], asm: &Assemble, aes_key: &str) -> Result<Vec<Vec<Val>>> {
+fn positional(raw: &[DriverRow], asm: &Assemble, aes_keys: &BTreeMap<i32, String>) -> Result<Vec<Vec<Val>>> {
     let n = asm.total_columns();
     let mut data: Vec<Vec<Val>> = raw.iter().map(|r| read_row(r, n)).collect::<Result<_>>()?;
-    decode_styled(asm, &mut data, aes_key)?;
+    decode_styled(asm, &mut data, aes_keys)?;
     Ok(data)
 }
 
@@ -1121,10 +1122,10 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
     let has_relations = plan.steps.iter().skip(1).any(|s| s.role == "relation");
     // Relation steps read parent values positionally and attach by key. Without them a MySQL
     // driver row goes straight to the generated struct; PostgreSQL/SQLite rows are decoded here.
-    let cells: Vec<Cells> = if !has_relations && matches!(db.pool, Pool::MySql(_)) {
+    let cells: Vec<Cells> = if !has_relations && matches!(db.pool, Pool::MySql(_)) && !assemble_has_aes(&asm) {
         raw.into_iter().map(|r| Cells::Raw(r.into_mysql())).collect()
     } else {
-        positional(&raw, &asm, &db.cfg.aes_key)?.into_iter().map(Cells::Pos).collect()
+        positional(&raw, &asm, &db.cfg.aes_keys)?.into_iter().map(Cells::Pos).collect()
     };
     let mut rows = Rows { binding: crate::binding::Binding::new(ex), assemble: asm, cells, plan: plan.clone(), steps: HashMap::new(), params: Vec::new() };
     for st in plan.steps.iter().skip(1) {
@@ -1141,7 +1142,7 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
         if !vals.is_empty() {
             let asm = st.assemble.as_ref().expect("relation step has an assemble");
             let raw = ex.query(st, &req.params, vals).await?;
-            sr.data = positional(&raw, asm, &db.cfg.aes_key)?;
+            sr.data = positional(&raw, asm, &db.cfg.aes_keys)?;
             let keys = child_keys(&plan, st.id);
             for (j, row) in sr.data.iter().enumerate() {
                 if let Some(key) = Key::of_row(row, &keys) { sr.by_key.entry(key).or_default().push(j); }
@@ -1151,6 +1152,11 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
     }
     rows.params = req.params.clone();
     Ok(rows)
+}
+
+fn assemble_has_aes(asm: &Assemble) -> bool {
+    asm.columns.iter().any(|c| c.styles.iter().any(|style| style == "aes"))
+        || asm.children.iter().filter_map(|child| child.assemble.as_deref()).any(assemble_has_aes)
 }
 
 /// The first cell of the first row (Null when there is no row).

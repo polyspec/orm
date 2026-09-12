@@ -55,8 +55,8 @@ SELECT CONCAT('battle-', i), CONCAT('desc-', i, ' ', REPEAT('x', 200)),
   i % 7 = 0, i % 3 <> 0, '2026-01-01', '2027-01-01', i % 2,
   2, i % 7, i % 11, i % 1000, CONCAT('https://cdn/', i, '.jpg'), i % 5000 + 1, i % 100 + 1,
   i % 10 + 1, i % 5000 + 1, '2026-06-01', '2026-12-31', UUID(), i % 4 = 0, i % 97, 1,
-  HEX(AES_ENCRYPT(CONCAT('user', i, '@example.com'), 'bench-salt')),
-  HEX(AES_ENCRYPT(CONCAT('010-', LPAD(i, 8, '0')), 'bench-salt'))
+  NULL,
+  NULL
 FROM n;
 ANALYZE TABLE battle;
 SELECT COUNT(*) AS rows_, MIN(seq), MAX(seq) FROM battle;

@@ -25,8 +25,9 @@ import (
 
 // Config is the executor configuration. Paths and secrets are declared, never discovered.
 type Config struct {
-	AESKey     string // secret "aes" for aes/aes_hex columns
-	AESVersion int32  // secret "aes_version" written with AES payloads; zero selects version 1
+	AESKey     string           // secret "aes" for aes/aes_hex columns
+	AESVersion int32            // secret "aes_version" written with AES payloads; zero selects version 1
+	AESKeys    map[int32]string // all declared versions used to decode mixed-version rows
 	OnQuery    func(Event)
 }
 
@@ -109,6 +110,12 @@ func open(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler 
 	}
 	if err := s.Ping(); err != nil {
 		return nil, mapDriverErr(err)
+	}
+	if cfg.AESVersion == 0 {
+		cfg.AESVersion = 1
+	}
+	if len(cfg.AESKeys) == 0 && cfg.AESKey != "" {
+		cfg.AESKeys = map[int32]string{cfg.AESVersion: cfg.AESKey}
 	}
 	return &DB{SQL: s, Eng: eng, compiler: compiler, cfg: cfg, driver: driver, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
 }
@@ -811,6 +818,13 @@ func QueryDirect[T any](ctx context.Context, ex Exec, r *Req, accepts func(*plan
 		return nil, false, nil
 	}
 	st := &c.plan.Steps[0]
+	for _, col := range st.Assemble.Columns {
+		for _, style := range col.Styles {
+			if style == "aes" {
+				return nil, false, nil
+			}
+		}
+	}
 	args, masks, err := d.args(st, r, nil)
 	if err != nil {
 		return nil, true, err
@@ -1117,7 +1131,15 @@ func runSelect(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req, p
 		for i := range cells {
 			vals[i] = cells[i].v
 		}
-		if err := decodeSelectedRow(vals, si, st, d.cfg.AESKey); err != nil {
+		var keyring AESKeyring
+		if assembleHasAES(st.Assemble) {
+			var keyErr error
+			keyring, keyErr = d.aesKeyring()
+			if keyErr != nil {
+				return nil, keyErr
+			}
+		}
+		if err := decodeSelectedRow(vals, si, st, keyring); err != nil {
 			return nil, err
 		}
 		out = append(out, vals)
@@ -1125,13 +1147,24 @@ func runSelect(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req, p
 	return out, mapDriverErr(rows.Err())
 }
 
-func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, aesKey string) error {
+func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyring) error {
+	version := int32(1)
+	for _, col := range st.Assemble.Columns {
+		if col.Hidden && col.Column == "aes_key_version" {
+			var err error
+			version, err = rowVersion(vals[col.Index])
+			if err != nil {
+				return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, col.Name, err)
+			}
+			break
+		}
+	}
 	for _, sc := range si.styled {
 		codec, host := splitHost(sc.Styles)
 		v := vals[sc.Index]
 		var err error
 		if len(host) > 0 {
-			if v, err = hostDecode(v, host, aesKey); err != nil {
+			if v, err = HostDecodeVersioned(v, host, version, keyring); err != nil {
 				return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.Name, err)
 			}
 		}
@@ -1182,7 +1215,15 @@ func streamSelect(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req
 		for i := range cells {
 			vals[i] = cells[i].v
 		}
-		if err = decodeSelectedRow(vals, si, st, d.cfg.AESKey); err != nil {
+		var keyring AESKeyring
+		if assembleHasAES(st.Assemble) {
+			var keyErr error
+			keyring, keyErr = d.aesKeyring()
+			if keyErr != nil {
+				return result, keyErr
+			}
+		}
+		if err = decodeSelectedRow(vals, si, st, keyring); err != nil {
 			break
 		}
 		result.Count++
@@ -1199,6 +1240,25 @@ func streamSelect(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req
 	}
 	d.emit(c, st.SQL, args, masks, start, err)
 	return result, err
+}
+
+func assembleHasAES(asm *plan.Assemble) bool {
+	if asm == nil {
+		return false
+	}
+	for _, col := range asm.Columns {
+		for _, style := range col.Styles {
+			if style == "aes" {
+				return true
+			}
+		}
+	}
+	for _, child := range asm.Children {
+		if assembleHasAES(child.Assemble) {
+			return true
+		}
+	}
+	return false
 }
 
 // countCols is the width of one positional row: the node's columns plus its joins'.
