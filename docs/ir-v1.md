@@ -1,25 +1,25 @@
-# IR v1 스펙
+# IR v1 specification
 
-> 이전 설계 문서. 현행 구현 기준은 [공통 인터페이스](interfaces.md), [DSL](dsl.md), [프로토콜](protocol.md), [스키마](schema.md)다.
+> Legacy design document. Current implementation references are [common interface](interfaces.md), [DSL](dsl.md), [protocol](protocol.md), and [schema](schema.md).
 
-목표: **스키마 1개 → 파서 1개 → spec.json(IR) → 렌더러 3개(PHP/Go/Rust)**.
-렌더러는 파싱을 하지 않는다. IR을 읽어 이름을 조합만 한다.
+Goal: **one schema → one parser → spec.json (IR) → four renderers (PHP/Go/Rust/TypeScript)**.
+Renderers do not parse. They read the IR and compose names.
 
 ```
 schema/*.sql  ──파서──▶  spec/*.json  ──▶ php.tmpl / go.tmpl / rust.tmpl
 ```
 
-## 0. 불변 규칙
+## 0. Immutable rules
 
-1. **연산자는 위치로 고정한다.** IR에는 항상 `{op, column}` 쌍으로만 존재한다.
-   문자열 `gt_created_ts`는 IR 어디에도 나타나지 않는다. 렌더 시점에 조합될 뿐이다.
-2. **정규 토큰(canonical token)** 은 `op:column` 이다. 세 렌더러의 토큰 집합은 항상 같아야 한다.
-3. 케이싱은 렌더러가 언어 관례대로 변환한다.
+1. **Operators are positional.** The IR contains operators only as `{op, column}` pairs.
+   The string `gt_created_ts` never appears in the IR. It is composed during rendering.
+2. The **canonical token** is `op:column`. All four renderers must expose the same token set.
+3. Each renderer applies its language casing convention.
    `{op:"gt", column:"created_ts"}` → `gtCreatedTs` / `GtCreatedTs` / `gt_created_ts`
 
-## 1. 파일 단위
+## 1. File units
 
-테이블 하나 = spec 파일 하나.
+One table equals one spec file.
 
 ```json
 {
@@ -34,9 +34,9 @@ schema/*.sql  ──파서──▶  spec/*.json  ──▶ php.tmpl / go.tmpl /
 }
 ```
 
-`entity`는 snake_case 단수. 렌더러가 `User` / `user` / `user::` 로 변환한다.
+`entity` is a singular snake_case name. Renderers convert it to `User` / `user` / `user::`.
 
-## 2. 컬럼
+## 2. Columns
 
 ```json
 {
@@ -51,35 +51,35 @@ schema/*.sql  ──파서──▶  spec/*.json  ──▶ php.tmpl / go.tmpl /
 }
 ```
 
-`ops`는 파서가 타입/스타일로부터 **계산해서 박아 넣는다.** 렌더러는 판단하지 않는다.
+The parser **calculates and writes** `ops` from the type and styles. Renderers do not decide it.
 
-### 2.1 정규 타입
+### 2.1 Normalized types
 
-| IR type | PHP | Go | Rust |
+| IR type | PHP | Go | Rust | TypeScript |
 |---|---|---|---|
-| `i32` | `int` | `int32` | `i32` |
-| `i64` | `int` | `int64` | `i64` |
-| `f64` | `float` | `float64` | `f64` |
-| `decimal` | `string` | `decimal.Decimal` | `rust_decimal::Decimal` |
-| `bool` | `bool` | `bool` | `bool` |
-| `string` | `string` | `string` | `String` |
-| `text` | `string` | `string` | `String` |
-| `bytes` | `string` | `[]byte` | `Vec<u8>` |
-| `date` | `string` | `time.Time` | `chrono::NaiveDate` |
-| `datetime` | `string` | `time.Time` | `chrono::NaiveDateTime` |
-| `timestamp` | `int` | `int64` | `i64` |
-| `json` | `array` | `json.RawMessage` | `serde_json::Value` |
-| `point` | `array{float,float}` | `[2]float64` | `(f64, f64)` |
-| `inet` | `string` | `netip.Addr` | `std::net::IpAddr` |
-| `enum` | `string` | `string` + const | `enum` |
+| `i32` | `int` | `int32` | `i32` | `number` |
+| `i64` | `int` | `int64` | `i64` | `number` |
+| `f64` | `float` | `float64` | `f64` | `number` |
+| `decimal` | `string` | `decimal.Decimal` | `rust_decimal::Decimal` | `string` |
+| `bool` | `bool` | `bool` | `bool` | `boolean` |
+| `string` | `string` | `string` | `String` | `string` |
+| `text` | `string` | `string` | `String` | `string` |
+| `bytes` | `string` | `[]byte` | `Vec<u8>` | `Uint8Array` |
+| `date` | `string` | `time.Time` | `chrono::NaiveDate` | `string` |
+| `datetime` | `string` | `time.Time` | `chrono::NaiveDateTime` | `string` |
+| `timestamp` | `int` | `int64` | `i64` | `number` |
+| `json` | `array` | `json.RawMessage` | `serde_json::Value` | `unknown` |
+| `point` | `array{float,float}` | `[2]float64` | `(f64, f64)` | `[number, number]` |
+| `inet` | `string` | `netip.Addr` | `std::net::IpAddr` | `string` |
+| `enum` | `string` | `string` + const | `enum` | string union |
 
-`timestamp`는 unix epoch **정수**다. MySQL `TIMESTAMP` 컬럼은 `datetime`으로 매핑한다.
+`timestamp` is a Unix epoch **integer**. A MySQL `TIMESTAMP` column maps to `datetime`.
 
-nullable: PHP `?T` / Go `*T` / Rust `Option<T>`. Go는 `sql.NullX`를 쓰지 않는다 — 세 언어의 모양이 갈라진다.
+For nullable values use PHP `?T`, Go `*T`, and Rust `Option<T>`. Go does not use `sql.NullX`; that would make the client shapes differ.
 
 ### 2.2 dataStyle
 
-파이프라인 배열이다. **쓰기는 배열 순서대로, 읽기는 역순.**
+Styles are a pipeline array. **Write in array order and read in reverse order.**
 
 ```json
 "style": ["json"]              // json_encode
@@ -88,13 +88,13 @@ nullable: PHP `?T` / Go `*T` / Rust `Option<T>`. Go는 `sql.NullX`를 쓰지 않
 "style": ["ip"]                // INET6_ATON / INET6_NTOA
 ```
 
-단일 문자열 스타일(`aes_serialize`, `aes_hex`)을 단계별 목록으로 분해한 것이다. 조합이 생길 때마다 새 이름을 만들지 않아도 된다.
+A single style name such as `aes_serialize` or `aes_hex` is represented as a list of stages. New combined names are unnecessary.
 
-| stage | 인코드 | 디코드 | 위치 |
+| stage | encode | decode | location |
 |---|---|---|---|
 | `json` | `json_encode` | `json_decode` | app |
 | `yaml` | yaml dump | yaml parse | app |
-| `serialize` | 언어별 직렬화 | 〃 | app |
+| `serialize` | language serialization | same | app |
 | `gz` | gzip | gunzip | app |
 | `base64` | b64 | 〃 | app |
 | `hex` | hex | unhex | app |
@@ -102,13 +102,13 @@ nullable: PHP `?T` / Go `*T` / Rust `Option<T>`. Go는 `sql.NullX`를 쓰지 않
 | `ip` | `INET6_ATON(?)` | `INET6_NTOA(col)` | **SQL** |
 | `point` | `ST_PointFromText(?)` | `ST_AsText(col)` | **SQL** |
 
-`serialize`는 언어 간 호환이 안 된다(PHP `serialize()` ↔ Go/Rust). 세 언어가 같은 테이블을 읽는다면 파서가 **경고**를 낸다. `json`을 쓰라는 뜻이다.
+`serialize` is not portable between languages (PHP `serialize()` and Go/Rust). The parser emits a **warning** when multiple clients read the same table; use `json` instead.
 
-SQL 위치 stage가 있으면 SELECT 목록과 바인드가 같이 바뀌므로, 렌더러는 컬럼 표현식을 항상 `select_expr` / `bind_expr` 로 받는다.
+An SQL-side stage changes both the SELECT list and binds, so renderers always receive column expressions as `select_expr` / `bind_expr`.
 
-### 2.3 ops 결정 규칙
+### 2.3 Operator selection rules
 
-기본 매트릭스:
+Default matrix:
 
 | type | ops |
 |---|---|
@@ -119,16 +119,16 @@ SQL 위치 stage가 있으면 SELECT 목록과 바인드가 같이 바뀌므로,
 | `inet` | `eq ne in is_null` |
 | `json bytes point` | `is_null` |
 
-스타일 보정 — **인코딩된 컬럼에 순서 비교는 무의미하다.**
+Style adjustment — **ordering comparisons have no meaning for encoded columns.**
 
-- `["aes"]`, `["aes","hex"]` : deterministic(MySQL 기본 ECB)이라 `eq ne in is_null` 유지, 나머지 제거
-- `["gz"]`, `["base64"]`, `["serialize"]`, `["json"]` : `is_null` 만
-- `["ip"]` : `eq ne in is_null` (`INET6_ATON` 결과는 정렬 가능하므로 `gt/lt`는 v2에서 검토)
-- `nullable: false` 면 `is_null` 제거
+- `["aes"]`, `["aes","hex"]`: deterministic (MySQL default ECB), so retain `eq ne in is_null` and remove the rest.
+- `["gz"]`, `["base64"]`, `["serialize"]`, `["json"]`: retain only `is_null`.
+- `["ip"]`: `eq ne in is_null` (`gt/lt` may be considered in v2 because `INET6_ATON` results can be ordered).
+- Remove `is_null` when `nullable: false`.
 
-`lk`=LIKE, `lb`=LIKE BINARY. `fulltext`는 v2.
+`lk` means LIKE and `lb` means LIKE BINARY. `fulltext` is deferred to v2.
 
-## 3. 관계
+## 3. Relations
 
 ```json
 {
@@ -141,27 +141,25 @@ SQL 위치 stage가 있으면 SELECT 목록과 바인드가 같이 바뀌므로,
 }
 ```
 
-`kind`: `one` | `many`. 메서드는 `withProfile()` / `WithProfile()` / `with_profile()`.
+`kind` is `one` or `many`. Methods are `withProfile()` / `WithProfile()` / `with_profile()`.
 
-로딩은 부모 행들의 `local` 값을 모아 dedup 후
-`IN (...)` 한 번. 관계당 쿼리 1개. `kind:"many"`는 foreign이 유니크하지 않으므로
-자식 PK 기준으로 전량 조회 후 앱에서 그룹핑한다.
+Loading collects and deduplicates the parent rows' `local` values, then runs one `IN (...)` query per relation. For `kind:"many"`, `foreign` is not unique, so all matching rows are read by child primary key and grouped in the client.
 
-조인은 v1에 없다. 관계는 **별도 쿼리 + 배치 로딩**만이다.
+Joins are absent from v1. Relations use **separate queries and batch loading** only.
 
-## 4. 검증 (파서가 빌드를 깨뜨린다)
+## 4. Validation (the parser fails the build)
 
-1. 컬럼명에 `_and_` / `_or_` 포함 → **에러**. PHP `__call` 파서가 두 조건으로 쪼갠다.
-2. 컬럼명이 op 토큰 + `_` 로 시작(`gt_`, `eq_`, `lk_`, `in_`, `between_` …) → **에러**.
-3. 컬럼명이 예약 접두어(`get`, `gets`, `set`, `order`, `with`, `match`)와 충돌 → **에러**.
-4. `style`에 `serialize` + 다중 언어 타깃 → **경고**.
-5. `primary_key`가 `columns`에 없음 → **에러**.
+1. A column name containing `_and_` or `_or_` is an **error** because the PHP `__call` parser splits it into two conditions.
+2. A column name beginning with an operator token and `_` (`gt_`, `eq_`, `lk_`, `in_`, `between_`, …) is an **error**.
+3. A column name colliding with a reserved prefix (`get`, `gets`, `set`, `order`, `with`, `match`) is an **error**.
+4. `serialize` in `style` with multiple language targets is a **warning**.
+5. A `primary_key` missing from `columns` is an **error**.
 
-1·2는 런타임의 조용한 실패를 빌드 타임 검증으로 끌어올린 것이다.
+Rules 1 and 2 convert silent runtime failures into build-time validation.
 
-## 5. 패리티 테스트
+## 5. Parity tests
 
-각 렌더러는 `--dump-tokens` 로 정규 토큰 집합을 출력한다.
+Each renderer prints its canonical token set with `--dump-tokens`.
 
 ```
 predicate  gt:created_ts
@@ -174,10 +172,9 @@ terminal   get
 terminal   gets
 ```
 
-CI에서 3-way diff. 하나라도 다르면 실패. 케이싱이 달라 문자열 비교가 안 되므로
-**생성된 소스가 아니라 토큰을 비교한다.**
+CI performs a four-way diff and fails on any difference. Casing prevents direct source comparison, so **tokens are compared instead of generated source**.
 
-## 6. v1 범위
+## 6. v1 scope
 
-포함: 단일 테이블 술어, order/limit/offset, CRUD, dataStyle, 배치 로딩 관계, `raw()` 1개.
-제외: 조인, 서브쿼리, 괄호 중첩, 집계, 트랜잭션 헬퍼(v2), fulltext.
+Included: single-table predicates, order/limit/offset, CRUD, dataStyle, batch-loaded relations, and one `raw()` operation.
+Excluded: joins, subqueries, nested parentheses, aggregates, transaction helpers (v2), and fulltext.
