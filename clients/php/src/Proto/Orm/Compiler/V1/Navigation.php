@@ -26,6 +26,10 @@ class Navigation extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>.orm.compiler.v1.Group group = 3;</code>
      */
     protected $group = null;
+    /**
+     * Generated from protobuf field <code>string mode = 4;</code>
+     */
+    protected $mode = '';
 
     /**
      * Constructor.
@@ -36,6 +40,7 @@ class Navigation extends \Google\Protobuf\Internal\Message
      *     @type string $connector
      *     @type string $relation
      *     @type \Orm\Compiler\V1\Group $group
+     *     @type string $mode
      * }
      */
     public function __construct($data = null)
@@ -115,6 +120,28 @@ class Navigation extends \Google\Protobuf\Internal\Message
     public function setGroup(\Orm\Compiler\V1\Group|null $var)
     {
         $this->group = $var;
+
+        return $this;
+    }
+
+    /**
+     * Generated from protobuf field <code>string mode = 4;</code>
+     * @return string
+     */
+    public function getMode()
+    {
+        return $this->mode;
+    }
+
+    /**
+     * Generated from protobuf field <code>string mode = 4;</code>
+     * @param string $var
+     * @return $this
+     */
+    public function setMode(string $var)
+    {
+        GPBUtil::checkString($var, true);
+        $this->mode = $var;
 
         return $this;
     }

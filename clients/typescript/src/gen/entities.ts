@@ -697,9 +697,17 @@ export class BattleWhere {
   public nameWithDescriptionMatch(value: string): this { this.core.match(['name','description'],value); return this; }
   public nameWithDescriptionMatchBoolean(value: string): this { this.core.match(['name','description'],value,true); return this; }
   public service(callback: (where: ServiceWhere) => void): this { this.core.navigate('service',core=>callback(new ServiceWhere(core))); return this; }
+  public hasService(callback: (where: ServiceWhere) => void): this { this.core.navigateMode('service','exists',core=>callback(new ServiceWhere(core))); return this; }
+  public notHasService(callback: (where: ServiceWhere) => void): this { this.core.navigateMode('service','not_exists',core=>callback(new ServiceWhere(core))); return this; }
   public serviceMember(callback: (where: ServiceMemberWhere) => void): this { this.core.navigate('service_member',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public hasServiceMember(callback: (where: ServiceMemberWhere) => void): this { this.core.navigateMode('service_member','exists',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public notHasServiceMember(callback: (where: ServiceMemberWhere) => void): this { this.core.navigateMode('service_member','not_exists',core=>callback(new ServiceMemberWhere(core))); return this; }
   public serviceModule(callback: (where: ServiceModuleWhere) => void): this { this.core.navigate('service_module',core=>callback(new ServiceModuleWhere(core))); return this; }
+  public hasServiceModule(callback: (where: ServiceModuleWhere) => void): this { this.core.navigateMode('service_module','exists',core=>callback(new ServiceModuleWhere(core))); return this; }
+  public notHasServiceModule(callback: (where: ServiceModuleWhere) => void): this { this.core.navigateMode('service_module','not_exists',core=>callback(new ServiceModuleWhere(core))); return this; }
   public user(callback: (where: UserWhere) => void): this { this.core.navigate('user',core=>callback(new UserWhere(core))); return this; }
+  public hasUser(callback: (where: UserWhere) => void): this { this.core.navigateMode('user','exists',core=>callback(new UserWhere(core))); return this; }
+  public notHasUser(callback: (where: UserWhere) => void): this { this.core.navigateMode('user','not_exists',core=>callback(new UserWhere(core))); return this; }
 }
 
 export class BattleQuery extends QueryCore implements BattleInterface {
@@ -1720,9 +1728,17 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
   public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
   public service(callback: (where: ServiceWhere) => void): this { this.whereCore().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
+  public hasService(callback: (where: ServiceWhere) => void): this { this.whereCore().navigateMode('service','exists',core=>callback(new ServiceWhere(core))); return this; }
+  public notHasService(callback: (where: ServiceWhere) => void): this { this.whereCore().navigateMode('service','not_exists',core=>callback(new ServiceWhere(core))); return this; }
   public serviceMember(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigate('service_member',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public hasServiceMember(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateMode('service_member','exists',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public notHasServiceMember(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateMode('service_member','not_exists',core=>callback(new ServiceMemberWhere(core))); return this; }
   public serviceModule(callback: (where: ServiceModuleWhere) => void): this { this.whereCore().navigate('service_module',core=>callback(new ServiceModuleWhere(core))); return this; }
+  public hasServiceModule(callback: (where: ServiceModuleWhere) => void): this { this.whereCore().navigateMode('service_module','exists',core=>callback(new ServiceModuleWhere(core))); return this; }
+  public notHasServiceModule(callback: (where: ServiceModuleWhere) => void): this { this.whereCore().navigateMode('service_module','not_exists',core=>callback(new ServiceModuleWhere(core))); return this; }
   public user(callback: (where: UserWhere) => void): this { this.whereCore().navigate('user',core=>callback(new UserWhere(core))); return this; }
+  public hasUser(callback: (where: UserWhere) => void): this { this.whereCore().navigateMode('user','exists',core=>callback(new UserWhere(core))); return this; }
+  public notHasUser(callback: (where: UserWhere) => void): this { this.whereCore().navigateMode('user','not_exists',core=>callback(new UserWhere(core))); return this; }
   public joinServiceSeqWithSeq(child: ServiceQuery): this { return this.attachJoin('service',child,'inner'); }
   public leftJoinServiceSeqWithSeq(child: ServiceQuery): this { return this.attachJoin('service',child,'left'); }
   public relationServiceSeqWithSeq(child: ServiceQuery): this { return this.attachRelation('service',child); }
@@ -1907,7 +1923,11 @@ export class UserWhere {
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
   public battles(callback: (where: BattleWhere) => void): this { this.core.navigate('battles',core=>callback(new BattleWhere(core))); return this; }
+  public hasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','exists',core=>callback(new BattleWhere(core))); return this; }
+  public notHasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','not_exists',core=>callback(new BattleWhere(core))); return this; }
   public serviceMembers(callback: (where: ServiceMemberWhere) => void): this { this.core.navigate('service_members',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public hasServiceMembers(callback: (where: ServiceMemberWhere) => void): this { this.core.navigateMode('service_members','exists',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public notHasServiceMembers(callback: (where: ServiceMemberWhere) => void): this { this.core.navigateMode('service_members','not_exists',core=>callback(new ServiceMemberWhere(core))); return this; }
 }
 
 export class UserQuery extends QueryCore implements UserInterface {
@@ -2026,7 +2046,11 @@ export class UserQuery extends QueryCore implements UserInterface {
   public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
   public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
   public battles(callback: (where: BattleWhere) => void): this { this.whereCore().navigate('battles',core=>callback(new BattleWhere(core))); return this; }
+  public hasBattles(callback: (where: BattleWhere) => void): this { this.whereCore().navigateMode('battles','exists',core=>callback(new BattleWhere(core))); return this; }
+  public notHasBattles(callback: (where: BattleWhere) => void): this { this.whereCore().navigateMode('battles','not_exists',core=>callback(new BattleWhere(core))); return this; }
   public serviceMembers(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigate('service_members',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public hasServiceMembers(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateMode('service_members','exists',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public notHasServiceMembers(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateMode('service_members','not_exists',core=>callback(new ServiceMemberWhere(core))); return this; }
   public joinSeqWithUserSeqToBattle(child: BattleQuery): this { return this.attachJoin('battles',child,'inner'); }
   public leftJoinSeqWithUserSeqToBattle(child: BattleQuery): this { return this.attachJoin('battles',child,'left'); }
   public relationsSeqWithUserSeqToBattle(child: BattleQuery): this { return this.attachRelation('battles',child); }
@@ -2112,8 +2136,14 @@ export class ServiceWhere {
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
   public battles(callback: (where: BattleWhere) => void): this { this.core.navigate('battles',core=>callback(new BattleWhere(core))); return this; }
+  public hasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','exists',core=>callback(new BattleWhere(core))); return this; }
+  public notHasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','not_exists',core=>callback(new BattleWhere(core))); return this; }
   public members(callback: (where: ServiceMemberWhere) => void): this { this.core.navigate('members',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public hasMembers(callback: (where: ServiceMemberWhere) => void): this { this.core.navigateMode('members','exists',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public notHasMembers(callback: (where: ServiceMemberWhere) => void): this { this.core.navigateMode('members','not_exists',core=>callback(new ServiceMemberWhere(core))); return this; }
   public modules(callback: (where: ServiceModuleWhere) => void): this { this.core.navigate('modules',core=>callback(new ServiceModuleWhere(core))); return this; }
+  public hasModules(callback: (where: ServiceModuleWhere) => void): this { this.core.navigateMode('modules','exists',core=>callback(new ServiceModuleWhere(core))); return this; }
+  public notHasModules(callback: (where: ServiceModuleWhere) => void): this { this.core.navigateMode('modules','not_exists',core=>callback(new ServiceModuleWhere(core))); return this; }
 }
 
 export class ServiceQuery extends QueryCore implements ServiceInterface {
@@ -2232,8 +2262,14 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
   public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
   public battles(callback: (where: BattleWhere) => void): this { this.whereCore().navigate('battles',core=>callback(new BattleWhere(core))); return this; }
+  public hasBattles(callback: (where: BattleWhere) => void): this { this.whereCore().navigateMode('battles','exists',core=>callback(new BattleWhere(core))); return this; }
+  public notHasBattles(callback: (where: BattleWhere) => void): this { this.whereCore().navigateMode('battles','not_exists',core=>callback(new BattleWhere(core))); return this; }
   public members(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigate('members',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public hasMembers(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateMode('members','exists',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public notHasMembers(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateMode('members','not_exists',core=>callback(new ServiceMemberWhere(core))); return this; }
   public modules(callback: (where: ServiceModuleWhere) => void): this { this.whereCore().navigate('modules',core=>callback(new ServiceModuleWhere(core))); return this; }
+  public hasModules(callback: (where: ServiceModuleWhere) => void): this { this.whereCore().navigateMode('modules','exists',core=>callback(new ServiceModuleWhere(core))); return this; }
+  public notHasModules(callback: (where: ServiceModuleWhere) => void): this { this.whereCore().navigateMode('modules','not_exists',core=>callback(new ServiceModuleWhere(core))); return this; }
   public joinSeqWithServiceSeqToBattle(child: BattleQuery): this { return this.attachJoin('battles',child,'inner'); }
   public leftJoinSeqWithServiceSeqToBattle(child: BattleQuery): this { return this.attachJoin('battles',child,'left'); }
   public relationsSeqWithServiceSeqToBattle(child: BattleQuery): this { return this.attachRelation('battles',child); }
@@ -2341,7 +2377,11 @@ export class ServiceModuleWhere {
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
   public battles(callback: (where: BattleWhere) => void): this { this.core.navigate('battles',core=>callback(new BattleWhere(core))); return this; }
+  public hasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','exists',core=>callback(new BattleWhere(core))); return this; }
+  public notHasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','not_exists',core=>callback(new BattleWhere(core))); return this; }
   public service(callback: (where: ServiceWhere) => void): this { this.core.navigate('service',core=>callback(new ServiceWhere(core))); return this; }
+  public hasService(callback: (where: ServiceWhere) => void): this { this.core.navigateMode('service','exists',core=>callback(new ServiceWhere(core))); return this; }
+  public notHasService(callback: (where: ServiceWhere) => void): this { this.core.navigateMode('service','not_exists',core=>callback(new ServiceWhere(core))); return this; }
 }
 
 export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterface {
@@ -2497,7 +2537,11 @@ export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterf
   public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
   public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
   public battles(callback: (where: BattleWhere) => void): this { this.whereCore().navigate('battles',core=>callback(new BattleWhere(core))); return this; }
+  public hasBattles(callback: (where: BattleWhere) => void): this { this.whereCore().navigateMode('battles','exists',core=>callback(new BattleWhere(core))); return this; }
+  public notHasBattles(callback: (where: BattleWhere) => void): this { this.whereCore().navigateMode('battles','not_exists',core=>callback(new BattleWhere(core))); return this; }
   public service(callback: (where: ServiceWhere) => void): this { this.whereCore().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
+  public hasService(callback: (where: ServiceWhere) => void): this { this.whereCore().navigateMode('service','exists',core=>callback(new ServiceWhere(core))); return this; }
+  public notHasService(callback: (where: ServiceWhere) => void): this { this.whereCore().navigateMode('service','not_exists',core=>callback(new ServiceWhere(core))); return this; }
   public joinSeqWithServiceModuleSeq(child: BattleQuery): this { return this.attachJoin('battles',child,'inner'); }
   public leftJoinSeqWithServiceModuleSeq(child: BattleQuery): this { return this.attachJoin('battles',child,'left'); }
   public relationsSeqWithServiceModuleSeq(child: BattleQuery): this { return this.attachRelation('battles',child); }
@@ -2611,8 +2655,14 @@ export class ServiceMemberWhere {
   public userSeqLtCol(reference: ColumnReference): this { this.core.predicateColumn('user_seq','lt_col',reference); return this; }
   public userSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('user_seq','lte_col',reference); return this; }
   public battles(callback: (where: BattleWhere) => void): this { this.core.navigate('battles',core=>callback(new BattleWhere(core))); return this; }
+  public hasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','exists',core=>callback(new BattleWhere(core))); return this; }
+  public notHasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','not_exists',core=>callback(new BattleWhere(core))); return this; }
   public service(callback: (where: ServiceWhere) => void): this { this.core.navigate('service',core=>callback(new ServiceWhere(core))); return this; }
+  public hasService(callback: (where: ServiceWhere) => void): this { this.core.navigateMode('service','exists',core=>callback(new ServiceWhere(core))); return this; }
+  public notHasService(callback: (where: ServiceWhere) => void): this { this.core.navigateMode('service','not_exists',core=>callback(new ServiceWhere(core))); return this; }
   public user(callback: (where: UserWhere) => void): this { this.core.navigate('user',core=>callback(new UserWhere(core))); return this; }
+  public hasUser(callback: (where: UserWhere) => void): this { this.core.navigateMode('user','exists',core=>callback(new UserWhere(core))); return this; }
+  public notHasUser(callback: (where: UserWhere) => void): this { this.core.navigateMode('user','not_exists',core=>callback(new UserWhere(core))); return this; }
 }
 
 export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterface {
@@ -2778,8 +2828,14 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
   public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
   public battles(callback: (where: BattleWhere) => void): this { this.whereCore().navigate('battles',core=>callback(new BattleWhere(core))); return this; }
+  public hasBattles(callback: (where: BattleWhere) => void): this { this.whereCore().navigateMode('battles','exists',core=>callback(new BattleWhere(core))); return this; }
+  public notHasBattles(callback: (where: BattleWhere) => void): this { this.whereCore().navigateMode('battles','not_exists',core=>callback(new BattleWhere(core))); return this; }
   public service(callback: (where: ServiceWhere) => void): this { this.whereCore().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
+  public hasService(callback: (where: ServiceWhere) => void): this { this.whereCore().navigateMode('service','exists',core=>callback(new ServiceWhere(core))); return this; }
+  public notHasService(callback: (where: ServiceWhere) => void): this { this.whereCore().navigateMode('service','not_exists',core=>callback(new ServiceWhere(core))); return this; }
   public user(callback: (where: UserWhere) => void): this { this.whereCore().navigate('user',core=>callback(new UserWhere(core))); return this; }
+  public hasUser(callback: (where: UserWhere) => void): this { this.whereCore().navigateMode('user','exists',core=>callback(new UserWhere(core))); return this; }
+  public notHasUser(callback: (where: UserWhere) => void): this { this.whereCore().navigateMode('user','not_exists',core=>callback(new UserWhere(core))); return this; }
   public joinSeqWithServiceMemberSeq(child: BattleQuery): this { return this.attachJoin('battles',child,'inner'); }
   public leftJoinSeqWithServiceMemberSeq(child: BattleQuery): this { return this.attachJoin('battles',child,'left'); }
   public relationsSeqWithServiceMemberSeq(child: BattleQuery): this { return this.attachRelation('battles',child); }
@@ -2894,6 +2950,8 @@ export class CompositeAccountWhere {
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
   public memberships(callback: (where: CompositeMembershipWhere) => void): this { this.core.navigate('memberships',core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public hasMemberships(callback: (where: CompositeMembershipWhere) => void): this { this.core.navigateMode('memberships','exists',core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public notHasMemberships(callback: (where: CompositeMembershipWhere) => void): this { this.core.navigateMode('memberships','not_exists',core=>callback(new CompositeMembershipWhere(core))); return this; }
 }
 
 export class CompositeAccountQuery extends QueryCore implements CompositeAccountInterface {
@@ -3016,6 +3074,8 @@ export class CompositeAccountQuery extends QueryCore implements CompositeAccount
   public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
   public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
   public memberships(callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().navigate('memberships',core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public hasMemberships(callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().navigateMode('memberships','exists',core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public notHasMemberships(callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().navigateMode('memberships','not_exists',core=>callback(new CompositeMembershipWhere(core))); return this; }
   public joinTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeMembershipQuery): this { return this.attachJoin('memberships',child,'inner'); }
   public leftJoinTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeMembershipQuery): this { return this.attachJoin('memberships',child,'left'); }
   public relationsTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeMembershipQuery): this { return this.attachRelation('memberships',child); }
@@ -3121,6 +3181,8 @@ export class CompositeMembershipWhere {
   public roleEqCol(reference: ColumnReference): this { this.core.predicateColumn('role','eq_col',reference); return this; }
   public roleNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('role','not_eq_col',reference); return this; }
   public account(callback: (where: CompositeAccountWhere) => void): this { this.core.navigate('account',core=>callback(new CompositeAccountWhere(core))); return this; }
+  public hasAccount(callback: (where: CompositeAccountWhere) => void): this { this.core.navigateMode('account','exists',core=>callback(new CompositeAccountWhere(core))); return this; }
+  public notHasAccount(callback: (where: CompositeAccountWhere) => void): this { this.core.navigateMode('account','not_exists',core=>callback(new CompositeAccountWhere(core))); return this; }
 }
 
 export class CompositeMembershipQuery extends QueryCore implements CompositeMembershipInterface {
@@ -3243,6 +3305,8 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
   public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
   public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
   public account(callback: (where: CompositeAccountWhere) => void): this { this.whereCore().navigate('account',core=>callback(new CompositeAccountWhere(core))); return this; }
+  public hasAccount(callback: (where: CompositeAccountWhere) => void): this { this.whereCore().navigateMode('account','exists',core=>callback(new CompositeAccountWhere(core))); return this; }
+  public notHasAccount(callback: (where: CompositeAccountWhere) => void): this { this.whereCore().navigateMode('account','not_exists',core=>callback(new CompositeAccountWhere(core))); return this; }
   public joinTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeAccountQuery): this { return this.attachJoin('account',child,'inner'); }
   public leftJoinTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeAccountQuery): this { return this.attachJoin('account',child,'left'); }
   public relationTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeAccountQuery): this { return this.attachRelation('account',child); }

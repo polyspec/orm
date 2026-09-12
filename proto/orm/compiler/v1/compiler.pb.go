@@ -886,6 +886,7 @@ type Navigation struct {
 	Connector     string                 `protobuf:"bytes,1,opt,name=connector,proto3" json:"connector,omitempty"`
 	Relation      string                 `protobuf:"bytes,2,opt,name=relation,proto3" json:"relation,omitempty"`
 	Group         *Group                 `protobuf:"bytes,3,opt,name=group,proto3" json:"group,omitempty"`
+	Mode          string                 `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -939,6 +940,13 @@ func (x *Navigation) GetGroup() *Group {
 		return x.Group
 	}
 	return nil
+}
+
+func (x *Navigation) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
 }
 
 type Predicate struct {
@@ -2503,12 +2511,13 @@ const file_proto_orm_compiler_v1_compiler_proto_rawDesc = "" +
 	"\n" +
 	"navigation\x18\x03 \x01(\v2\x1b.orm.compiler.v1.NavigationH\x00R\n" +
 	"navigationB\a\n" +
-	"\x05value\"t\n" +
+	"\x05value\"\x88\x01\n" +
 	"\n" +
 	"Navigation\x12\x1c\n" +
 	"\tconnector\x18\x01 \x01(\tR\tconnector\x12\x1a\n" +
 	"\brelation\x18\x02 \x01(\tR\brelation\x12,\n" +
-	"\x05group\x18\x03 \x01(\v2\x16.orm.compiler.v1.GroupR\x05group\"\xb3\x02\n" +
+	"\x05group\x18\x03 \x01(\v2\x16.orm.compiler.v1.GroupR\x05group\x12\x12\n" +
+	"\x04mode\x18\x04 \x01(\tR\x04mode\"\xb3\x02\n" +
 	"\tPredicate\x12\x1c\n" +
 	"\tconnector\x18\x01 \x01(\tR\tconnector\x12\x16\n" +
 	"\x06column\x18\x02 \x01(\tR\x06column\x12\x1a\n" +

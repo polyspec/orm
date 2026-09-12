@@ -320,12 +320,36 @@ func (w *ServiceWhere) Battles(fn func(*BattleWhere)) *ServiceWhere {
 	w.w.Nav("battles", func(x *orm.W) { fn(&BattleWhere{w: x}) })
 	return w
 }
+func (w *ServiceWhere) HasBattles(fn func(*BattleWhere)) *ServiceWhere {
+	w.w.NavMode("battles", "exists", func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) NotHasBattles(fn func(*BattleWhere)) *ServiceWhere {
+	w.w.NavMode("battles", "not_exists", func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return w
+}
 func (w *ServiceWhere) Members(fn func(*ServiceMemberWhere)) *ServiceWhere {
 	w.w.Nav("members", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return w
 }
+func (w *ServiceWhere) HasMembers(fn func(*ServiceMemberWhere)) *ServiceWhere {
+	w.w.NavMode("members", "exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) NotHasMembers(fn func(*ServiceMemberWhere)) *ServiceWhere {
+	w.w.NavMode("members", "not_exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return w
+}
 func (w *ServiceWhere) Modules(fn func(*ServiceModuleWhere)) *ServiceWhere {
 	w.w.Nav("modules", func(x *orm.W) { fn(&ServiceModuleWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) HasModules(fn func(*ServiceModuleWhere)) *ServiceWhere {
+	w.w.NavMode("modules", "exists", func(x *orm.W) { fn(&ServiceModuleWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) NotHasModules(fn func(*ServiceModuleWhere)) *ServiceWhere {
+	w.w.NavMode("modules", "not_exists", func(x *orm.W) { fn(&ServiceModuleWhere{w: x}) })
 	return w
 }
 
@@ -513,12 +537,36 @@ func (q *ServiceQuery) Battles(fn func(*BattleWhere)) *ServiceQuery {
 	q.q.W().Nav("battles", func(x *orm.W) { fn(&BattleWhere{w: x}) })
 	return q
 }
+func (q *ServiceQuery) HasBattles(fn func(*BattleWhere)) *ServiceQuery {
+	q.q.W().NavMode("battles", "exists", func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) NotHasBattles(fn func(*BattleWhere)) *ServiceQuery {
+	q.q.W().NavMode("battles", "not_exists", func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return q
+}
 func (q *ServiceQuery) Members(fn func(*ServiceMemberWhere)) *ServiceQuery {
 	q.q.W().Nav("members", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return q
 }
+func (q *ServiceQuery) HasMembers(fn func(*ServiceMemberWhere)) *ServiceQuery {
+	q.q.W().NavMode("members", "exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) NotHasMembers(fn func(*ServiceMemberWhere)) *ServiceQuery {
+	q.q.W().NavMode("members", "not_exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return q
+}
 func (q *ServiceQuery) Modules(fn func(*ServiceModuleWhere)) *ServiceQuery {
 	q.q.W().Nav("modules", func(x *orm.W) { fn(&ServiceModuleWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) HasModules(fn func(*ServiceModuleWhere)) *ServiceQuery {
+	q.q.W().NavMode("modules", "exists", func(x *orm.W) { fn(&ServiceModuleWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) NotHasModules(fn func(*ServiceModuleWhere)) *ServiceQuery {
+	q.q.W().NavMode("modules", "not_exists", func(x *orm.W) { fn(&ServiceModuleWhere{w: x}) })
 	return q
 }
 

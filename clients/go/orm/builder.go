@@ -150,8 +150,14 @@ func (w *W) And(fn func(*W)) {
 
 // Nav descends into a joined relation.
 func (w *W) Nav(rel string, fn func(*W)) {
+	w.NavMode(rel, "", fn)
+}
+
+// NavMode adds a relation navigation predicate. mode is empty for a joined
+// navigation, or exists/not_exists for a correlated relation predicate.
+func (w *W) NavMode(rel, mode string, fn func(*W)) {
 	g := &ir.Group{}
-	w.G.Items = append(w.G.Items, ir.Item{Nav: &ir.Nav{Conn: w.conn(), Rel: rel, Group: g}})
+	w.G.Items = append(w.G.Items, ir.Item{Nav: &ir.Nav{Conn: w.conn(), Rel: rel, Group: g, Mode: mode}})
 	fn(NewW(w.Req, g))
 }
 

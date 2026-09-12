@@ -350,9 +350,17 @@ final class BattleWhere
     public function startedAfter(mixed $a0): static { $this->w->expr('`start_dt` > ?', [$a0]); return $this; }
     public function visible(): static { $this->w->expr('`is_close` = FALSE AND `is_display` = TRUE', []); return $this; }
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w->nav('service'))); $this->w->req->end(); return $this; }
+    public function hasService(\Closure $fn): static { $fn(new ServiceWhere($this->w->navMode('service', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasService(\Closure $fn): static { $fn(new ServiceWhere($this->w->navMode('service', 'not_exists'))); $this->w->req->end(); return $this; }
     public function serviceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w->nav('service_member'))); $this->w->req->end(); return $this; }
+    public function hasServiceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w->navMode('service_member', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasServiceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w->navMode('service_member', 'not_exists'))); $this->w->req->end(); return $this; }
     public function serviceModule(\Closure $fn): static { $fn(new ServiceModuleWhere($this->w->nav('service_module'))); $this->w->req->end(); return $this; }
+    public function hasServiceModule(\Closure $fn): static { $fn(new ServiceModuleWhere($this->w->navMode('service_module', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasServiceModule(\Closure $fn): static { $fn(new ServiceModuleWhere($this->w->navMode('service_module', 'not_exists'))); $this->w->req->end(); return $this; }
     public function user(\Closure $fn): static { $fn(new UserWhere($this->w->nav('user'))); $this->w->req->end(); return $this; }
+    public function hasUser(\Closure $fn): static { $fn(new UserWhere($this->w->navMode('user', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasUser(\Closure $fn): static { $fn(new UserWhere($this->w->navMode('user', 'not_exists'))); $this->w->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }
@@ -859,9 +867,17 @@ final class Battle extends Q implements BattleInterface
     public function startedAfter(mixed $a0): static { $this->w()->expr('`start_dt` > ?', [$a0]); return $this; }
     public function visible(): static { $this->w()->expr('`is_close` = FALSE AND `is_display` = TRUE', []); return $this; }
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w()->nav('service'))); $this->req->end(); return $this; }
+    public function hasService(\Closure $fn): static { $fn(new ServiceWhere($this->w()->navMode('service', 'exists'))); $this->req->end(); return $this; }
+    public function notHasService(\Closure $fn): static { $fn(new ServiceWhere($this->w()->navMode('service', 'not_exists'))); $this->req->end(); return $this; }
     public function serviceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->nav('service_member'))); $this->req->end(); return $this; }
+    public function hasServiceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->navMode('service_member', 'exists'))); $this->req->end(); return $this; }
+    public function notHasServiceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->navMode('service_member', 'not_exists'))); $this->req->end(); return $this; }
     public function serviceModule(\Closure $fn): static { $fn(new ServiceModuleWhere($this->w()->nav('service_module'))); $this->req->end(); return $this; }
+    public function hasServiceModule(\Closure $fn): static { $fn(new ServiceModuleWhere($this->w()->navMode('service_module', 'exists'))); $this->req->end(); return $this; }
+    public function notHasServiceModule(\Closure $fn): static { $fn(new ServiceModuleWhere($this->w()->navMode('service_module', 'not_exists'))); $this->req->end(); return $this; }
     public function user(\Closure $fn): static { $fn(new UserWhere($this->w()->nav('user'))); $this->req->end(); return $this; }
+    public function hasUser(\Closure $fn): static { $fn(new UserWhere($this->w()->navMode('user', 'exists'))); $this->req->end(); return $this; }
+    public function notHasUser(\Closure $fn): static { $fn(new UserWhere($this->w()->navMode('user', 'not_exists'))); $this->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w()->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }

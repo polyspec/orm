@@ -163,6 +163,7 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		writeTSPredicates(&b, ge, "this.core")
 		for _, rel := range ge.Rels {
 			fmt.Fprintf(&b, "  public %s(callback: (where: %sWhere) => void): this { this.core.navigate(%s,core=>callback(new %sWhere(core))); return this; }\n", tsMethod(rel.Name), rel.TargetType, tsString(rel.Name), rel.TargetType)
+			fmt.Fprintf(&b, "  public has%s(callback: (where: %sWhere) => void): this { this.core.navigateMode(%s,'exists',core=>callback(new %sWhere(core))); return this; }\n  public notHas%s(callback: (where: %sWhere) => void): this { this.core.navigateMode(%s,'not_exists',core=>callback(new %sWhere(core))); return this; }\n", rel.Method, rel.TargetType, tsString(rel.Name), rel.TargetType, rel.Method, rel.TargetType, tsString(rel.Name), rel.TargetType)
 		}
 		b.WriteString("}\n\n")
 
@@ -226,6 +227,7 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		b.WriteString("  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }\n  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }\n")
 		for _, rel := range ge.Rels {
 			fmt.Fprintf(&b, "  public %s(callback: (where: %sWhere) => void): this { this.whereCore().navigate(%s,core=>callback(new %sWhere(core))); return this; }\n", tsMethod(rel.Name), rel.TargetType, tsString(rel.Name), rel.TargetType)
+			fmt.Fprintf(&b, "  public has%s(callback: (where: %sWhere) => void): this { this.whereCore().navigateMode(%s,'exists',core=>callback(new %sWhere(core))); return this; }\n  public notHas%s(callback: (where: %sWhere) => void): this { this.whereCore().navigateMode(%s,'not_exists',core=>callback(new %sWhere(core))); return this; }\n", rel.Method, rel.TargetType, tsString(rel.Name), rel.TargetType, rel.Method, rel.TargetType, tsString(rel.Name), rel.TargetType)
 		}
 		for _, rel := range ge.Rels {
 			suffix := rel.Suffix

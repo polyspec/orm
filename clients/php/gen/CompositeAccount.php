@@ -81,6 +81,8 @@ final class CompositeAccountWhere
     public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
     public function memberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->nav('memberships'))); $this->w->req->end(); return $this; }
+    public function hasMemberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->navMode('memberships', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasMemberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->navMode('memberships', 'not_exists'))); $this->w->req->end(); return $this; }
 
     public function tenantIdEq(int $v): static { $this->w->pred('tenant_id', 'eq', $v); return $this; }
     public function tenantId(int $v): static { return $this->tenantIdEq($v); }
@@ -147,6 +149,8 @@ final class CompositeAccount extends Q implements CompositeAccountInterface
     public function and(\Closure $fn): static { $fn(new CompositeAccountWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
     public function memberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->nav('memberships'))); $this->req->end(); return $this; }
+    public function hasMemberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->navMode('memberships', 'exists'))); $this->req->end(); return $this; }
+    public function notHasMemberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->navMode('memberships', 'not_exists'))); $this->req->end(); return $this; }
 
     public function tenantIdEq(int $v): static { $this->w()->pred('tenant_id', 'eq', $v); return $this; }
     public function tenantId(int $v): static { return $this->tenantIdEq($v); }

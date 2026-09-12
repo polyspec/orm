@@ -172,6 +172,8 @@ pub struct Navigation {
     pub relation: ::prost::alloc::string::String,
     #[prost(message, optional, tag="3")]
     pub group: ::core::option::Option<Group>,
+    #[prost(string, tag="4")]
+    pub mode: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Predicate {
