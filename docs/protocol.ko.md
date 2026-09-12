@@ -89,7 +89,7 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 
 `contracts/interfaces.json`은 네 전송 구현의 service 경로, 작업 이름, request·response type, 오류, 언어별 symbol을 정의한다. Protobuf 검사는 interface method나 구현 선언이 누락되면 실패한다. Runtime symbol snapshot은 생성된 Protobuf 파일을 제외하며, 해당 파일은 `proto/generated.sha256.json`이 모두 검사한다.
 
-Go와 Rust database executor는 plan cache miss를 모두 `CompilerTransport`로 compile한다. 시작 단계에서 schema hash, dialect, IR version metadata 불일치를 거부한다. 두 executor의 SQLite DB vector 58개가 Connect 경로를 통과했다. PHP는 길이 prefix Unix socket을 사용하고 TypeScript에는 database executor가 없다. 이 미완료 경로는 전송 완료 조건을 충족하지 않는다. 네 executor가 Connect를 사용하고 네 언어에서 DB vector 58개가 통과하면 T7.1이 완료된다.
+Go·PHP·Rust database executor는 plan cache miss를 모두 `CompilerTransport`로 compile한다. 시작 단계에서 schema hash, dialect, IR version metadata 불일치를 거부한다. 세 executor의 SQLite DB vector 58개가 Connect 경로를 통과했다. PHP의 길이 prefix Unix socket은 기존 호출자 전환을 위한 호환 기능으로만 유지한다. TypeScript에는 database executor가 없다. TypeScript executor가 Connect를 사용하고 네 언어에서 DB vector 58개가 통과하면 T7.1이 완료된다.
 
 Cache key는 schema hash, request 형태, IN cardinality로 구성한다. Parameter 값은 제외한다.
 
