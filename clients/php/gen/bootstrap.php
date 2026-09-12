@@ -8,9 +8,11 @@ use Orm\Registry;
 
 require_once __DIR__ . '/Interfaces.php';
 
-Registry::generated('794a20b6a27c5797');
+Registry::generated('b1c0032faa9fe8df');
 Registry::register('battle', BattleRow::class);
 Registry::register('user', UserRow::class);
 Registry::register('service', ServiceRow::class);
 Registry::register('service_module', ServiceModuleRow::class);
 Registry::register('service_member', ServiceMemberRow::class);
+Registry::register('composite_account', CompositeAccountRow::class);
+Registry::register('composite_membership', CompositeMembershipRow::class);

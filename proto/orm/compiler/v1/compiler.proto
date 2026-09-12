@@ -148,7 +148,7 @@ message ParentReference {
   repeated KeyReference keys = 5;
 }
 message ParentCondition { string column = 1; uint32 index = 2; uint32 parameter = 3; }
-message Assemble { string entity = 1; string alias = 2; repeated OutputColumn columns = 3; repeated Child children = 4; }
+message Assemble { string entity = 1; string alias = 2; repeated OutputColumn columns = 3; repeated Child children = 4; repeated KeyReference key = 5; }
 message OutputColumn {
   uint32 index = 1;
   string name = 2;

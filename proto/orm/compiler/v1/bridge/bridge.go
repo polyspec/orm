@@ -393,7 +393,7 @@ func assembleToProto(in *planmodel.Assemble) *compilerv1.Assemble {
 	if in == nil {
 		return nil
 	}
-	out := &compilerv1.Assemble{Entity: in.Entity, Alias: in.Alias}
+	out := &compilerv1.Assemble{Entity: in.Entity, Alias: in.Alias, Key: keyRefsToProto(in.Key)}
 	for _, value := range in.Columns {
 		out.Columns = append(out.Columns, &compilerv1.OutputColumn{Index: uint32(value.Index), Name: value.Name, Column: value.Column, Type: value.Type, Styles: append([]string(nil), value.Styles...), Hidden: value.Hidden})
 	}
@@ -407,7 +407,7 @@ func assembleFromProto(in *compilerv1.Assemble) *planmodel.Assemble {
 	if in == nil {
 		return nil
 	}
-	out := &planmodel.Assemble{Entity: in.Entity, Alias: in.Alias, Columns: make([]planmodel.OutCol, 0, len(in.Columns))}
+	out := &planmodel.Assemble{Entity: in.Entity, Alias: in.Alias, Columns: make([]planmodel.OutCol, 0, len(in.Columns)), Key: keyRefsFromProto(in.Key)}
 	for _, value := range in.Columns {
 		out.Columns = append(out.Columns, planmodel.OutCol{Index: int(value.Index), Name: value.Name, Column: value.Column, Type: value.Type, Styles: append([]string(nil), value.Styles...), Hidden: value.Hidden})
 	}

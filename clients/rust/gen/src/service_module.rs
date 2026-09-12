@@ -667,7 +667,7 @@ fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&ServiceModuleRow) -> Ke
     let cells = rows.take_cells();
     let mut c = Collection::with_capacity(cells.len());
     for mut src in cells {
-        let key_values = vec![src.val(rows.assemble.columns.iter().find(|column| column.name == "seq").expect("primary key is projected").index)?,];
+        let key_values = rows.assemble.key.iter().map(|reference| src.val(reference.index)).collect::<Result<Vec<_>>>()?;
         let k = Key::of_values(&key_values);
         let r = ServiceModuleRow::from_row(&mut src, &rows.assemble, rows)?;
         let k = match key_fn { Some(f) => f(&r), None => k };

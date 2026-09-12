@@ -10,6 +10,8 @@ require __DIR__ . '/autoload.php';
 
 use App\Orm\Battle;
 use App\Orm\BattleWhere;
+use App\Orm\CompositeAccount;
+use App\Orm\CompositeMembership;
 use App\Orm\Service;
 use App\Orm\ServiceMember;
 use App\Orm\ServiceModule;
@@ -455,6 +457,40 @@ check(count(Battle::query()->aesHexEmail('한글@example.com')->seq($hb->getSeq(
 $hb->setIp('10.1.2.3')->using($db)->update();
 check(Battle::query()->using($db)->getBySeq($hb->getSeq())->getIp() === '10.1.2.3', 'ip update (IPv4 packs to 4 bytes)');
 $hb->using($db)->delete();
+
+// ---- Composite primary and foreign keys ----
+$tenantId = 910008;
+CompositeMembership::query()->tenantIdEq($tenantId)->using($db)->delete();
+CompositeAccount::query()->tenantIdEq($tenantId)->using($db)->delete();
+foreach ([11, 12] as $accountId) {
+    $account = CompositeAccount::query()->setTenantId($tenantId)->setAccountId($accountId)->setName("account-$accountId")->using($db)->insert();
+    $member = CompositeMembership::query()->setTenantId($tenantId)->setAccountId($accountId)->setRole('reader')->using($db)->insert();
+    check($account?->getTenantId() === $tenantId && $account->getAccountId() === $accountId && $member !== null, 'composite insert returns the complete identity');
+}
+$first = CompositeMembership::query()->using($db)->getByTenantIdAndAccountId($tenantId, 11);
+check($first !== null, 'composite primary-key finder');
+$first->setRole('owner')->using($db)->update();
+$second = CompositeMembership::query()->setTenantId($tenantId)->setAccountId(12)->setRole('editor')->using($db)->save();
+check($second?->getRole() === 'editor', 'composite save uses every key component');
+$page = CompositeMembership::query()->tenantIdEq($tenantId)->orderByTenantIdAsc()->orderByAccountIdAsc()->using($db)->paginate(1, 1);
+check($page->total === 2 && count($page->items) === 1 && $page->items->first()?->getAccountId() === 11, 'composite pagination preserves complete order');
+$accounts = CompositeAccount::query()->tenantIdEq($tenantId)->orderByAccountIdAsc()->relations(CompositeMembership::query())->using($db)->gets();
+check(count($accounts) === 2 && count($accounts->first()?->getMemberships()) === 1, 'composite relation uses every key component');
+$compositeRollback = new \RuntimeException('composite rollback');
+try {
+    $db->transaction(function (Tx $tx) use ($tenantId, $compositeRollback): void {
+        CompositeAccount::query()->setTenantId($tenantId)->setAccountId(13)->setName('rollback')->using($tx)->insert();
+        CompositeMembership::query()->setTenantId($tenantId)->setAccountId(13)->setRole('rollback')->using($tx)->insert();
+        throw $compositeRollback;
+    });
+} catch (\RuntimeException $error) {
+    if ($error !== $compositeRollback) { throw $error; }
+}
+check(CompositeAccount::query()->tenantIdEq($tenantId)->accountIdEq(13)->using($db)->getCount() === 0, 'composite transaction rollback removes both rows');
+$first->using($db)->delete();
+check(CompositeMembership::query()->tenantIdEq($tenantId)->using($db)->getCount() === 1, 'composite row delete uses every key component');
+CompositeMembership::query()->tenantIdEq($tenantId)->using($db)->delete();
+CompositeAccount::query()->tenantIdEq($tenantId)->using($db)->delete();
 
 // ---- S7: versioned AES database rotation ----
 $rotationTable = 'orm_aes_rotation_test';

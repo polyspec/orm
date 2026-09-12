@@ -198,6 +198,14 @@ func TestAggregates(t *testing.T) {
 			t.Errorf("%s\n got  %s\n want %s", irs, p.Steps[0].SQL, want)
 		}
 	}
+	grouped := compile(t, e, `"kind":"group_count","entity":"battle","group_by":["service_seq"],"group_by_expr":[{"expr":"ROUND(`+"`like_count`"+`)","as":"bucket"}]`)
+	if got := grouped.Steps[0].Assemble.Key; len(got) != 2 || got[0].Column != "service_seq" || got[0].Index != 0 || got[1].Column != "bucket" || got[1].Index != 1 {
+		t.Fatalf("group_count collection key = %#v", got)
+	}
+	rows := compile(t, e, `"kind":"all","entity":"composite_account"`)
+	if got := rows.Steps[0].Assemble.Key; len(got) != 2 || got[0].Column != "tenant_id" || got[1].Column != "account_id" {
+		t.Fatalf("composite row collection key = %#v", got)
+	}
 	for irs, code := range map[string]string{
 		`"kind":"all","entity":"battle","n_params":1,"having":{"items":[{"pred":{"column":"seq","op":"gt","p":0}}]}`: "IR_INVALID: having needs group_by",
 		`"kind":"group_count","entity":"battle","group_by_expr":[{"expr":"ROUND(` + "`nope`" + `)","as":"bucket"}]`:  "COLUMN_UNKNOWN",

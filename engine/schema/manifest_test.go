@@ -205,6 +205,9 @@ func TestBuildErrors(t *testing.T) {
 		"erDiagram\n a { bigint seq PK\n varchar(3) b_seq FK }\n b { bigint seq PK }\n b ||--o{ a : \"b_seq (or / x)\"": "reserved DSL word",
 		"erDiagram\n a { bigint seq PK\n bigint item FK }\n b { bigint seq PK }\n b ||--o{ a : \"item (item / x)\"":     "collides with a column",
 		"erDiagram\n a { whatever seq PK }":                                                                             "unsupported type",
+		"erDiagram\n a { bigint seq PK\n varchar name }":                                                                "varchar requires a positive length",
+		"erDiagram\n a { bigint seq PK\n varchar(0) name }":                                                             "varchar requires a positive length",
+		"erDiagram\n a { bigint seq PK\n char code }":                                                                   "char requires a positive length",
 	}
 	for src, want := range cases {
 		d, err := Parse(ml(src))

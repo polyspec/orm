@@ -1,11 +1,13 @@
 {
-  "schema_hash": "794a20b6a27c5797",
+  "schema_hash": "b1c0032faa9fe8df",
   "order": [
     "battle",
     "user",
     "service",
     "service_module",
-    "service_member"
+    "service_member",
+    "composite_account",
+    "composite_membership"
   ],
   "entities": {
     "battle": {
@@ -379,6 +381,108 @@
         }
       },
       "scope": "service_seq"
+    },
+    "composite_account": {
+      "name": "composite_account",
+      "table": "composite_account",
+      "pk": [
+        "tenant_id",
+        "account_id"
+      ],
+      "columns": [
+        {
+          "name": "tenant_id",
+          "type": "i64",
+          "raw": "bigint",
+          "pk": true
+        },
+        {
+          "name": "account_id",
+          "type": "i64",
+          "raw": "bigint",
+          "pk": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "raw": "varchar(191)",
+          "len": 191
+        }
+      ],
+      "relations": {
+        "memberships": {
+          "name": "memberships",
+          "kind": "many",
+          "target": "composite_membership",
+          "keys": [
+            {
+              "local": "tenant_id",
+              "target": "tenant_id"
+            },
+            {
+              "local": "account_id",
+              "target": "account_id"
+            }
+          ],
+          "on_delete": "cascade"
+        }
+      }
+    },
+    "composite_membership": {
+      "name": "composite_membership",
+      "table": "composite_membership",
+      "pk": [
+        "tenant_id",
+        "account_id"
+      ],
+      "columns": [
+        {
+          "name": "tenant_id",
+          "type": "i64",
+          "raw": "bigint",
+          "ref": {
+            "entity": "composite_account",
+            "column": "tenant_id"
+          },
+          "pk": true,
+          "fk": true
+        },
+        {
+          "name": "account_id",
+          "type": "i64",
+          "raw": "bigint",
+          "ref": {
+            "entity": "composite_account",
+            "column": "account_id"
+          },
+          "pk": true,
+          "fk": true
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "raw": "varchar(191)",
+          "len": 191
+        }
+      ],
+      "relations": {
+        "account": {
+          "name": "account",
+          "kind": "one",
+          "target": "composite_account",
+          "keys": [
+            {
+              "local": "tenant_id",
+              "target": "tenant_id"
+            },
+            {
+              "local": "account_id",
+              "target": "account_id"
+            }
+          ],
+          "on_delete": "cascade"
+        }
+      }
     },
     "service": {
       "name": "service",

@@ -121,9 +121,9 @@ func TestPlanToProtoPreservesEveryField(t *testing.T) {
 	input := &planmodel.Plan{SchemaHash: "schema", Kind: "paginate", Steps: []planmodel.Step{{
 		ID: 2, Role: "relation", SQL: "SELECT ?", BindSlots: []planmodel.BindSlot{{From: "param", Param: 3, Transform: "like_contains", Name: "aes", Step: 1, Column: "title", HostStyles: []string{"aes", "hex"}, ColType: "datetime"}},
 		Parent: &planmodel.ParentRef{Step: 1, Keys: []planmodel.KeyRef{{Column: "service_seq", Index: 4}}, IfParent: &planmodel.IfParent{Column: "is_display", Index: 5, Param: 6}},
-		Assemble: &planmodel.Assemble{Entity: "battle", Alias: "b", Columns: []planmodel.OutCol{{Index: 0, Name: "id", Column: "seq", Type: "i64", Styles: []string{"hex"}, Hidden: true}}, Children: []*planmodel.Child{{
+		Assemble: &planmodel.Assemble{Entity: "battle", Alias: "b", Columns: []planmodel.OutCol{{Index: 0, Name: "id", Column: "seq", Type: "i64", Styles: []string{"hex"}, Hidden: true}}, Key: []planmodel.KeyRef{{Column: "id", Index: 0}}, Children: []*planmodel.Child{{
 			Rel: "user", Kind: "join", Step: 3, ParentKeys: []planmodel.KeyRef{{Column: "user_seq", Index: 1}}, ChildKeys: []planmodel.KeyRef{{Column: "seq", Index: 2}}, Key: []planmodel.KeyRef{{Column: "seq", Index: 3}}, Flatten: true, Cascade: true,
-			Assemble: &planmodel.Assemble{Entity: "user", Alias: "u", Columns: []planmodel.OutCol{}},
+			Assemble: &planmodel.Assemble{Entity: "user", Alias: "u", Columns: []planmodel.OutCol{{Index: 1, Name: "seq", Column: "seq", Type: "i64"}}, Key: []planmodel.KeyRef{{Column: "seq", Index: 1}}},
 		}}},
 	}}}
 
@@ -146,8 +146,11 @@ func TestPlanToProtoPreservesEveryField(t *testing.T) {
 	if column.Index != 0 || column.Name != "id" || column.Column != "seq" || column.Type != "i64" || !reflect.DeepEqual(column.Styles, []string{"hex"}) || !column.Hidden {
 		t.Fatalf("column=%#v", column)
 	}
+	if len(step.Assemble.Key) != 1 || step.Assemble.Key[0].Column != "id" || step.Assemble.Key[0].Index != 0 {
+		t.Fatalf("assembly key=%#v", step.Assemble.Key)
+	}
 	child := step.Assemble.Children[0]
-	if child.Relation != "user" || child.Kind != "join" || child.Step != 3 || len(child.ParentKeys) != 1 || child.ParentKeys[0].Column != "user_seq" || child.ParentKeys[0].Index != 1 || len(child.ChildKeys) != 1 || child.ChildKeys[0].Column != "seq" || child.ChildKeys[0].Index != 2 || len(child.Key) != 1 || child.Key[0].Column != "seq" || child.Key[0].Index != 3 || !child.Flatten || !child.Cascade || child.Assemble == nil || child.Assemble.Entity != "user" || child.Assemble.Alias != "u" || len(child.Assemble.Columns) != 0 {
+	if child.Relation != "user" || child.Kind != "join" || child.Step != 3 || len(child.ParentKeys) != 1 || child.ParentKeys[0].Column != "user_seq" || child.ParentKeys[0].Index != 1 || len(child.ChildKeys) != 1 || child.ChildKeys[0].Column != "seq" || child.ChildKeys[0].Index != 2 || len(child.Key) != 1 || child.Key[0].Column != "seq" || child.Key[0].Index != 3 || !child.Flatten || !child.Cascade || child.Assemble == nil || child.Assemble.Entity != "user" || child.Assemble.Alias != "u" || len(child.Assemble.Columns) != 1 || len(child.Assemble.Key) != 1 || child.Assemble.Key[0].Index != 1 {
 		t.Fatalf("child=%#v", child)
 	}
 	roundTrip, err := compilerbridge.PlanFromProto(got)

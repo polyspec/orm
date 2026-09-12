@@ -10,7 +10,7 @@ import (
 )
 
 func TestGoGeneratorEmitsFixedDefaultScanner(t *testing.T) {
-	diagram, err := schema.Parse("erDiagram\n  item {\n    bigint id PK\n    varchar name\n    text detail \"lazy\"\n    datetime created_at\n  }\n")
+	diagram, err := schema.Parse("erDiagram\n  item {\n    bigint id PK\n    varchar(191) name\n    text detail \"lazy\"\n    datetime created_at\n  }\n")
 	if err != nil {
 		t.Fatal(err)
 	}

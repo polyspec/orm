@@ -51,6 +51,7 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
      "bind_slots": [{"from": "secret", "name": "aes"}, {"from": "param", "value": 5}, …],
      "assemble": {"entity": "battle", "alias": "a",
                   "columns": [{"index": 0, "name": "seq", "column": "seq", "type": "i64"}, {"index": 23, "name": "aes_hex_email", "column": "aes_hex_email", "type": "string"}],
+                  "key": [{"column": "seq", "index": 0}],
                   "children": [{"rel": "campaign", "kind": "join", "assemble": {…}}]}},
     {"id": 1, "role": "count", "sql": "SELECT COUNT(*) FROM …", "bind_slots": […]}
   ]
@@ -59,6 +60,7 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 - `bind_slots.from`: `param`은 IR 값이며 실행기가 `host_styles`의 aes/hex/ip 처리와 date/time/datetime 정규화를 적용한다. `secret`은 실행기 AES 키, `parent`는 부모 행에서 읽어 확장한 관계 값, `now`는 SQLite `updated_ts` 등에 사용하는 실행기 UTC 마이크로초 문자열이다.
 - 결과는 `index`로 매핑한다. `alias__col` 같은 SELECT 별칭은 디버그 출력에만 사용하며 실행기는 별칭을 해석하지 않는다.
 - `assemble.columns[].styles`는 gz/json/serialize 같은 애플리케이션 디코딩 단계다. aes/hex/ip 같은 SQL 단계는 SQL에 포함된다.
+- `assemble.key`는 순서가 있는 collection 식별자다. 일반 행은 모든 primary key 구성요소를 사용한다. `group_count` 행은 각 `group_by` 컬럼 다음에 각 `group_by_expr` 별칭을 사용한다.
 - `children[].kind`: `join`은 같은 행의 `assemble`을 저장한다. `one`과 `many`는 순서가 있는 `parent_keys`와 `child_keys` 배열로 다른 단계의 행을 연결한다.
 
 ### 관계 단계 (S2)

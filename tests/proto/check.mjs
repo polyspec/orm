@@ -19,6 +19,7 @@ for (const required of [
   'message ParentReference',
   'message ParentCondition',
   'message Assemble',
+  'repeated KeyReference key = 5',
   'message OutputColumn',
   'message Child',
   'oneof value',

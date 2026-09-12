@@ -987,7 +987,9 @@ func collect{{.Type}}(rows *orm.Rows, keyFn func(*{{.Type}}Row) orm.Key) *orm.Co
 			c.Put(keyFn(r), r)
 			continue
 		}
-		c.Put(orm.KeyFromValues([]any{ {{fieldValues .PKCols "r."}} }), r)
+		key, ok := orm.KeyFromRow(vals, rows.Assemble.Key)
+		if !ok { panic("assembly collection key contains null") }
+		c.Put(key, r)
 	}
 	return c
 }
@@ -1097,6 +1099,9 @@ func (q *{{.Type}}Query) Paginate(page, per int) (*orm.Page[{{.Type}}Row], error
 
 func (q *{{.Type}}Query) Insert() (*{{.Type}}Row, error) {
 	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
+{{- if not .Auto}}
+	keys, err := q.q.AssignedKeyValues([]string{ {{quoteList .PKNames}} }); if err != nil { return nil, err }
+{{- end}}
 	q.q.Req.IR.Kind = "insert"
 	id, _, err := orm.Write(ctx, ex, q.q.Req)
 	if err != nil {
@@ -1106,7 +1111,7 @@ func (q *{{.Type}}Query) Insert() (*{{.Type}}Row, error) {
 	return {{.Type}}().Using(ctx, ex).{{pascal .PK}}Eq({{.PKType}}(id)).One()
 {{- else}}
 	_ = id
-	return nil, nil
+	return {{.Type}}().Using(ctx, ex){{range $i, $c := .PKCols}}.{{$c.Field}}Eq(keys[{{$i}}].({{$c.Type}})){{end}}.One()
 {{- end}}
 }
 

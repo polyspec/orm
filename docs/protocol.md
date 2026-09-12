@@ -51,6 +51,7 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
      "bind_slots": [{"from": "secret", "name": "aes"}, {"from": "param", "value": 5}, …],
      "assemble": {"entity": "battle", "alias": "a",
                   "columns": [{"index": 0, "name": "seq", "column": "seq", "type": "i64"}, {"index": 23, "name": "aes_hex_email", "column": "aes_hex_email", "type": "string"}],
+                  "key": [{"column": "seq", "index": 0}],
                   "children": [{"rel": "campaign", "kind": "join", "assemble": {…}}]}},
     {"id": 1, "role": "count", "sql": "SELECT COUNT(*) FROM …", "bind_slots": […]}
   ]
@@ -59,6 +60,7 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 - `bind_slots.from`: `param` (IR values; the executor applies aes/hex/ip when `host_styles` exists, and normalizes date/time/datetime values using the client representation) · `secret` (the executor AES key) · `parent` (relation IN values from the parent rows, expanded to N values) · `now` (executor UTC microsecond text for timestamps such as SQLite `updated_ts`).
 - Result mapping uses `index`. SELECT aliases such as `alias__col` are for debug output; the executor does not inspect their names.
 - `assemble.columns[].styles` are application decode stages such as gz/json/serialize. SQL stages such as aes/hex/ip are already in SQL.
+- `assemble.key` is the ordered collection identity. A regular row uses every primary-key component. A `group_count` row uses each `group_by` column followed by each `group_by_expr` alias.
 - `children[].kind`: `join` stores a same-row `assemble`; `one` and `many` attach rows from another step by ordered `parent_keys` and `child_keys` arrays.
 
 ### Relation stages (S2)

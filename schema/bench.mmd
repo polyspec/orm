@@ -53,6 +53,16 @@ erDiagram
     bigint        service_seq FK
     bigint        user_seq    FK
   }
+  composite_account {
+    bigint        tenant_id PK
+    bigint        account_id PK
+    varchar(191)  name
+  }
+  composite_membership {
+    bigint        tenant_id PK, FK
+    bigint        account_id PK, FK
+    varchar(191)  role
+  }
 
   user           ||--o{ battle         : user_seq
   service        ||--o{ battle         : service_seq
@@ -61,6 +71,7 @@ erDiagram
   service        ||--o{ service_module : service_seq
   service        ||--o{ service_member : service_seq
   user           ||--o{ service_member : user_seq
+  composite_account ||--o{ composite_membership : "(tenant_id, account_id) (account / memberships) cascade"
 
   %% index battle (service_module_seq, is_close, is_display, is_allday) ik
   %% index battle (service_seq, is_close) ix_service

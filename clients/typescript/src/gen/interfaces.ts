@@ -3,7 +3,7 @@ import type { Collection, Page } from '../model.js';
 import type { Db } from '../database.js';
 import type { Point } from '../codec.js';
 import type { AesKeyring, AesRotationStatus, StreamResult } from '../index.js';
-import type { BattleRow, UserRow, ServiceRow, ServiceModuleRow, ServiceMemberRow } from './entities.js';
+import type { BattleRow, UserRow, ServiceRow, ServiceModuleRow, ServiceMemberRow, CompositeAccountRow, CompositeMembershipRow } from './entities.js';
 
 export interface BattleInterface {
 get(): Promise<BattleRow | null>;
@@ -281,6 +281,80 @@ userSeq(value: number): this;
 }
 
 export interface ServiceMemberRowInterface {
+using(database: Db): this;
+update(): Promise<void>;
+delete(): Promise<void>;
+deleteCascade(): Promise<void>;
+has(column: string): boolean;
+relLoaded(relation: string): boolean;
+toObject(): Record<string, unknown>;
+}
+
+export interface CompositeAccountInterface {
+get(): Promise<CompositeAccountRow | null>;
+gets(): Promise<Collection<CompositeAccountRow>>;
+stream(visitor: (row: CompositeAccountRow) => boolean | Promise<boolean>): Promise<StreamResult>;
+getCount(): Promise<number>;
+getsCount(): Promise<Collection<CompositeAccountRow>>;
+insert(): Promise<CompositeAccountRow | null>;
+save(): Promise<CompositeAccountRow | null>;
+update(): Promise<number>;
+delete(): Promise<number>;
+sql(): Promise<{ sql: string; binds: unknown[]; }>;
+using(database: Db): this;
+paginate(page: number, per: number): Promise<Page<CompositeAccountRow>>;
+getsByTenantId(value: number): Promise<Collection<CompositeAccountRow>>;
+getsByAccountId(value: number): Promise<Collection<CompositeAccountRow>>;
+getsByName(value: string): Promise<Collection<CompositeAccountRow>>;
+getCountByTenantId(value: number): Promise<number>;
+getCountByAccountId(value: number): Promise<number>;
+getCountByName(value: string): Promise<number>;
+tenantIdEq(value: number): this;
+accountIdEq(value: number): this;
+nameEq(value: string): this;
+tenantId(value: number): this;
+accountId(value: number): this;
+name(value: string): this;
+}
+
+export interface CompositeAccountRowInterface {
+using(database: Db): this;
+update(): Promise<void>;
+delete(): Promise<void>;
+deleteCascade(): Promise<void>;
+has(column: string): boolean;
+relLoaded(relation: string): boolean;
+toObject(): Record<string, unknown>;
+}
+
+export interface CompositeMembershipInterface {
+get(): Promise<CompositeMembershipRow | null>;
+gets(): Promise<Collection<CompositeMembershipRow>>;
+stream(visitor: (row: CompositeMembershipRow) => boolean | Promise<boolean>): Promise<StreamResult>;
+getCount(): Promise<number>;
+getsCount(): Promise<Collection<CompositeMembershipRow>>;
+insert(): Promise<CompositeMembershipRow | null>;
+save(): Promise<CompositeMembershipRow | null>;
+update(): Promise<number>;
+delete(): Promise<number>;
+sql(): Promise<{ sql: string; binds: unknown[]; }>;
+using(database: Db): this;
+paginate(page: number, per: number): Promise<Page<CompositeMembershipRow>>;
+getsByTenantId(value: number): Promise<Collection<CompositeMembershipRow>>;
+getsByAccountId(value: number): Promise<Collection<CompositeMembershipRow>>;
+getsByRole(value: string): Promise<Collection<CompositeMembershipRow>>;
+getCountByTenantId(value: number): Promise<number>;
+getCountByAccountId(value: number): Promise<number>;
+getCountByRole(value: string): Promise<number>;
+tenantIdEq(value: number): this;
+accountIdEq(value: number): this;
+roleEq(value: string): this;
+tenantId(value: number): this;
+accountId(value: number): this;
+role(value: string): this;
+}
+
+export interface CompositeMembershipRowInterface {
 using(database: Db): this;
 update(): Promise<void>;
 delete(): Promise<void>;

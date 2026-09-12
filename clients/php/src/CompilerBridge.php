@@ -134,7 +134,7 @@ final class CompilerBridge
     /** @return array<string,mixed> */
     private static function assemble(WireAssemble $a): array
     {
-        return ['entity'=>$a->getEntity(),'alias'=>$a->getAlias(),'columns'=>array_map(fn(OutputColumn $v)=>['index'=>$v->getIndex(),'name'=>$v->getName(),'column'=>$v->getColumn(),'type'=>$v->getType(),'styles'=>iterator_to_array($v->getStyles()),'hidden'=>$v->getHidden()],iterator_to_array($a->getColumns())),'children'=>array_map(function(Child $v){$out=['rel'=>$v->getRelation(),'kind'=>$v->getKind(),'step'=>$v->getStep(),'parent_keys'=>self::keys($v->getParentKeys()),'child_keys'=>self::keys($v->getChildKeys()),'key'=>self::keys($v->getKey()),'flatten'=>$v->getFlatten(),'cascade'=>$v->getCascade()];if($v->hasAssemble())$out['assemble']=self::assemble($v->getAssemble());return $out;},iterator_to_array($a->getChildren()))];
+        return ['entity'=>$a->getEntity(),'alias'=>$a->getAlias(),'columns'=>array_map(fn(OutputColumn $v)=>['index'=>$v->getIndex(),'name'=>$v->getName(),'column'=>$v->getColumn(),'type'=>$v->getType(),'styles'=>iterator_to_array($v->getStyles()),'hidden'=>$v->getHidden()],iterator_to_array($a->getColumns())),'children'=>array_map(function(Child $v){$out=['rel'=>$v->getRelation(),'kind'=>$v->getKind(),'step'=>$v->getStep(),'parent_keys'=>self::keys($v->getParentKeys()),'child_keys'=>self::keys($v->getChildKeys()),'key'=>self::keys($v->getKey()),'flatten'=>$v->getFlatten(),'cascade'=>$v->getCascade()];if($v->hasAssemble())$out['assemble']=self::assemble($v->getAssemble());return $out;},iterator_to_array($a->getChildren())),'key'=>self::keys($a->getKey())];
     }
 
     /** @return list<array{column:string,index:int}> */

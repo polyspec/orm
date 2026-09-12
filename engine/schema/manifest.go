@@ -293,13 +293,14 @@ func buildColumn(dc *DColumn) (*Col, error) {
 		}
 	case "varchar", "char":
 		c.Type = "string"
-		if arg != "" {
-			n, err := strconv.Atoi(arg)
-			if err != nil {
-				return nil, fmt.Errorf("column %s: length %q", dc.Name, arg)
-			}
-			c.Len = n
+		if arg == "" {
+			return nil, fmt.Errorf("column %s: %s requires a positive length", dc.Name, base)
 		}
+		n, err := strconv.Atoi(arg)
+		if err != nil || n < 1 {
+			return nil, fmt.Errorf("column %s: %s requires a positive length, got %q", dc.Name, base, arg)
+		}
+		c.Len = n
 	case "text", "tinytext", "mediumtext", "longtext":
 		c.Type = "text"
 	case "blob", "tinyblob", "mediumblob", "longblob", "varbinary", "binary":
