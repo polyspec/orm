@@ -88,3 +88,13 @@ func (Postgres) WriteExpr(ph func() string, colType string, styles []string) (st
 }
 
 func (Postgres) HostNow() bool { return false }
+func (Postgres) RowLock(mode string) (string, bool) {
+	switch mode {
+	case "update":
+		return " FOR UPDATE", true
+	case "share":
+		return " FOR SHARE", true
+	default:
+		return "", false
+	}
+}

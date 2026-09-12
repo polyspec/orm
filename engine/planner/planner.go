@@ -349,6 +349,13 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			case q.Limit != nil:
 				sb.WriteString(p.D.Limit(q.Limit.Offset, q.Limit.Count))
 			}
+			if q.Lock != "" {
+				lock, ok := p.D.RowLock(q.Lock)
+				if !ok {
+					return nil, fmt.Errorf("CAPABILITY_UNSUPPORTED: %s row lock %q", p.D.Name(), q.Lock)
+				}
+				sb.WriteString(lock)
+			}
 		}
 	}
 	st := &plan.Step{Role: "main", SQL: sb.String(), BindSlots: b.binds}

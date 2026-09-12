@@ -98,6 +98,35 @@ func TestSelectAll(t *testing.T) {
 	}
 }
 
+func TestRowLock(t *testing.T) {
+	e := testEngine(t)
+	p := compile(t, e, `"kind":"all","entity":"battle","lock":"update","limit":{"offset":0,"count":1}`)
+	if !strings.HasSuffix(p.Steps[0].SQL, " LIMIT 0, 1 FOR UPDATE") {
+		t.Fatalf("mysql row lock: %s", p.Steps[0].SQL)
+	}
+
+	src, err := os.ReadFile("../schema/bench.mmd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	diagram, err := schema.Parse(string(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := schema.Build(diagram)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqliteEngine, err := New(m, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	full := `{"ir_version":1,"schema_hash":"` + sqliteEngine.M.SchemaHash + `","n_params":0,"kind":"all","entity":"battle","lock":"share"}`
+	if _, err := sqliteEngine.Compile([]byte(full)); err == nil || !strings.Contains(err.Error(), "CAPABILITY_UNSUPPORTED") {
+		t.Fatalf("sqlite row lock error: %v", err)
+	}
+}
+
 func TestJoinAndNav(t *testing.T) {
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"count","entity":"battle",

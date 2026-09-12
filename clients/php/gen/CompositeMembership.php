@@ -240,6 +240,8 @@ final class CompositeMembership extends Q implements CompositeMembershipInterfac
     public function orderByExpr(string $frag, bool $desc = false): static { $this->orderExpr($frag, $desc); return $this; }
     public function groupByExpr(string $expr, string $as): static { $this->groupExpr($expr, $as); return $this; }
     public function limit(int $offset, int $count): static { $this->setLimit($offset, $count); return $this; }
+    public function forUpdate(): static { $this->lock('update'); return $this; }
+    public function forShare(): static { $this->lock('share'); return $this; }
     public function distinct(): static { $this->opt('distinct', true); return $this; }
 
     // ---- relation-child options ----

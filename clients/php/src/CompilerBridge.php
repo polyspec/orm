@@ -77,6 +77,10 @@ final class CompilerBridge
         if (isset($q['limit'])) $data['limit'] = new Limit(['offset' => self::uint($q['limit']['offset'], "$path.limit.offset"), 'count' => self::uint($q['limit']['count'], "$path.limit.count")]);
         if (isset($q['if_parent'])) $data['if_parent'] = new IfParent(['column' => (string) $q['if_parent']['column'], 'parameter' => self::uint($q['if_parent']['p'], "$path.if_parent.parameter")]);
         if (array_key_exists('scope_p', $q)) $data['scope_parameter'] = self::uint($q['scope_p'], "$path.scope_parameter");
+        if (array_key_exists('lock', $q)) {
+            if (!is_string($q['lock'])) throw new OrmException(Code::IR_INVALID, "$path.lock must be a string");
+            $data['lock'] = $q['lock'];
+        }
         return new QueryNode($data);
     }
 

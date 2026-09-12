@@ -727,7 +727,9 @@ func (q *ServiceQuery) Limit(offset, count int) *ServiceQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *ServiceQuery) Distinct() *ServiceQuery { q.q.Node.Distinct = true; return q }
+func (q *ServiceQuery) ForUpdate() *ServiceQuery { q.q.Lock("update"); return q }
+func (q *ServiceQuery) ForShare() *ServiceQuery  { q.q.Lock("share"); return q }
+func (q *ServiceQuery) Distinct() *ServiceQuery  { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
 func (q *ServiceQuery) Flatten() *ServiceQuery                 { q.q.Node.Flatten = true; return q }

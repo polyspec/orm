@@ -943,7 +943,9 @@ func (q *ServiceModuleQuery) Limit(offset, count int) *ServiceModuleQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *ServiceModuleQuery) Distinct() *ServiceModuleQuery { q.q.Node.Distinct = true; return q }
+func (q *ServiceModuleQuery) ForUpdate() *ServiceModuleQuery { q.q.Lock("update"); return q }
+func (q *ServiceModuleQuery) ForShare() *ServiceModuleQuery  { q.q.Lock("share"); return q }
+func (q *ServiceModuleQuery) Distinct() *ServiceModuleQuery  { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
 func (q *ServiceModuleQuery) Flatten() *ServiceModuleQuery { q.q.Node.Flatten = true; return q }

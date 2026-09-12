@@ -400,6 +400,7 @@ Battle::query()->seq($id)->using($db)->delete();
 - Transactions use each language native transaction API. The callback runs once by default. Deadlock retry requires `TransactionOptions` with `retryDeadlocks` enabled and is limited by `maxAttempts` (default 3).
 - A transaction can use `savepoint(name)`, `rollbackTo(name)`, and `releaseSavepoint(name)` without ending the outer transaction. Savepoint names use `[A-Za-z_][A-Za-z0-9_]*`; invalid names fail with `CONFIG` before SQL execution.
 - `TransactionOptions` can select `isolation` and `readOnly`. The supported names are `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, and `serializable`. SQLite rejects explicit isolation and read-only options. Rust with MySQL applies isolation on the same retained pool connection before starting the transaction. Unsupported modes return `CONFIG`.
+- Root row queries provide `forUpdate()` and `forShare()` (`ForUpdate()` and `ForShare()` in Go; `for_update()` and `for_share()` in Rust). MySQL and PostgreSQL execute the selected row lock. SQLite returns `CAPABILITY_UNSUPPORTED`.
 
 ```go
 row, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {

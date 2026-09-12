@@ -621,7 +621,9 @@ func (q *UserQuery) Limit(offset, count int) *UserQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *UserQuery) Distinct() *UserQuery { q.q.Node.Distinct = true; return q }
+func (q *UserQuery) ForUpdate() *UserQuery { q.q.Lock("update"); return q }
+func (q *UserQuery) ForShare() *UserQuery  { q.q.Lock("share"); return q }
+func (q *UserQuery) Distinct() *UserQuery  { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
 func (q *UserQuery) Flatten() *UserQuery                   { q.q.Node.Flatten = true; return q }

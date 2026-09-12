@@ -62,6 +62,7 @@ message QueryNode {
   bool drop_child_key = 18;
   bool no_cascade_delete = 19;
   optional uint32 scope_parameter = 20;
+  string lock = 21;
 }
 
 message Projection {
