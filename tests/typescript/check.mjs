@@ -1,0 +1,24 @@
+import ts from 'typescript';
+import { readFile } from 'node:fs/promises';
+
+const file = 'clients/typescript/src/index.ts';
+const source = await readFile(file, 'utf8');
+const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+const declarations = new Map();
+for (const node of ast.statements) {
+  if (ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node) || ts.isFunctionDeclaration(node)) {
+    const name = node.name?.text;
+    if (name) declarations.set(name, node);
+  }
+}
+for (const name of ['Request', 'Group', 'Predicate', 'Relation', 'Plan', 'Compiler', 'Executor', 'Database', 'BattleRow', 'Where', 'BattleQuery']) {
+  if (!declarations.has(name)) throw new Error(`${file}: missing declaration ${name}`);
+}
+const query = declarations.get('BattleQuery');
+const methods = query.members.filter(ts.isMethodDeclaration).map(node => node.name.getText(ast));
+const required = ['using', 'serviceSeqEq', 'isCloseEq', 'isDisplayEq', 'isAlldayEq', 'and', 'or', 'relation', 'get', 'gets', 'getCount'];
+for (const name of required) if (!methods.includes(name)) throw new Error(`${file}: BattleQuery missing method ${name}`);
+const positions = required.map(name => methods.indexOf(name));
+if (positions.some((position, i) => i > 0 && position <= positions[i - 1])) throw new Error(`${file}: method order differs from the common query flow`);
+if (!declarations.has('Battle') || !ts.isFunctionDeclaration(declarations.get('Battle'))) throw new Error(`${file}: missing Battle factory`);
+console.log(`typescript: ${file} declarations and query flow passed`);
