@@ -709,12 +709,21 @@ final class BattleWhere
     public function aesKeyVersionEq(int $v): static { $this->w->pred('aes_key_version', 'eq', $v); return $this; }
     public function aesKeyVersion(int $v): static { return $this->aesKeyVersionEq($v); }
     public function aesKeyVersionNotEq(int $v): static { $this->w->pred('aes_key_version', 'not_eq', $v); return $this; }
+    public function aesKeyVersionGt(int $v): static { $this->w->pred('aes_key_version', 'gt', $v); return $this; }
+    public function aesKeyVersionGte(int $v): static { $this->w->pred('aes_key_version', 'gte', $v); return $this; }
+    public function aesKeyVersionLt(int $v): static { $this->w->pred('aes_key_version', 'lt', $v); return $this; }
+    public function aesKeyVersionLte(int $v): static { $this->w->pred('aes_key_version', 'lte', $v); return $this; }
     public function aesKeyVersionIn(array $vs): static { $this->w->predList('aes_key_version', 'in', array_values($vs)); return $this; }
     public function aesKeyVersionNotIn(array $vs): static { $this->w->predList('aes_key_version', 'not_in', array_values($vs)); return $this; }
+    public function aesKeyVersionBetween(int $lo, int $hi): static { $this->w->predList('aes_key_version', 'between', [$lo, $hi]); return $this; }
     public function aesKeyVersionIsNull(): static { $this->w->predNull('aes_key_version', 'is_null'); return $this; }
     public function aesKeyVersionIsNotNull(): static { $this->w->predNull('aes_key_version', 'is_not_null'); return $this; }
     public function aesKeyVersionEqCol(ColRef $ref): static { $this->w->predCol('aes_key_version', 'eq_col', $ref); return $this; }
     public function aesKeyVersionNotEqCol(ColRef $ref): static { $this->w->predCol('aes_key_version', 'not_eq_col', $ref); return $this; }
+    public function aesKeyVersionGtCol(ColRef $ref): static { $this->w->predCol('aes_key_version', 'gt_col', $ref); return $this; }
+    public function aesKeyVersionGteCol(ColRef $ref): static { $this->w->predCol('aes_key_version', 'gte_col', $ref); return $this; }
+    public function aesKeyVersionLtCol(ColRef $ref): static { $this->w->predCol('aes_key_version', 'lt_col', $ref); return $this; }
+    public function aesKeyVersionLteCol(ColRef $ref): static { $this->w->predCol('aes_key_version', 'lte_col', $ref); return $this; }
     public function aesHexEmailEq(string $v): static { $this->w->pred('aes_hex_email', 'eq', $v); return $this; }
     public function aesHexEmail(string $v): static { return $this->aesHexEmailEq($v); }
     public function aesHexEmailNotEq(string $v): static { $this->w->pred('aes_hex_email', 'not_eq', $v); return $this; }
@@ -1171,12 +1180,21 @@ final class Battle extends Q implements BattleInterface
     public function aesKeyVersionEq(int $v): static { $this->w()->pred('aes_key_version', 'eq', $v); return $this; }
     public function aesKeyVersion(int $v): static { return $this->aesKeyVersionEq($v); }
     public function aesKeyVersionNotEq(int $v): static { $this->w()->pred('aes_key_version', 'not_eq', $v); return $this; }
+    public function aesKeyVersionGt(int $v): static { $this->w()->pred('aes_key_version', 'gt', $v); return $this; }
+    public function aesKeyVersionGte(int $v): static { $this->w()->pred('aes_key_version', 'gte', $v); return $this; }
+    public function aesKeyVersionLt(int $v): static { $this->w()->pred('aes_key_version', 'lt', $v); return $this; }
+    public function aesKeyVersionLte(int $v): static { $this->w()->pred('aes_key_version', 'lte', $v); return $this; }
     public function aesKeyVersionIn(array $vs): static { $this->w()->predList('aes_key_version', 'in', array_values($vs)); return $this; }
     public function aesKeyVersionNotIn(array $vs): static { $this->w()->predList('aes_key_version', 'not_in', array_values($vs)); return $this; }
+    public function aesKeyVersionBetween(int $lo, int $hi): static { $this->w()->predList('aes_key_version', 'between', [$lo, $hi]); return $this; }
     public function aesKeyVersionIsNull(): static { $this->w()->predNull('aes_key_version', 'is_null'); return $this; }
     public function aesKeyVersionIsNotNull(): static { $this->w()->predNull('aes_key_version', 'is_not_null'); return $this; }
     public function aesKeyVersionEqCol(ColRef $ref): static { $this->w()->predCol('aes_key_version', 'eq_col', $ref); return $this; }
     public function aesKeyVersionNotEqCol(ColRef $ref): static { $this->w()->predCol('aes_key_version', 'not_eq_col', $ref); return $this; }
+    public function aesKeyVersionGtCol(ColRef $ref): static { $this->w()->predCol('aes_key_version', 'gt_col', $ref); return $this; }
+    public function aesKeyVersionGteCol(ColRef $ref): static { $this->w()->predCol('aes_key_version', 'gte_col', $ref); return $this; }
+    public function aesKeyVersionLtCol(ColRef $ref): static { $this->w()->predCol('aes_key_version', 'lt_col', $ref); return $this; }
+    public function aesKeyVersionLteCol(ColRef $ref): static { $this->w()->predCol('aes_key_version', 'lte_col', $ref); return $this; }
     public function aesHexEmailEq(string $v): static { $this->w()->pred('aes_hex_email', 'eq', $v); return $this; }
     public function aesHexEmail(string $v): static { return $this->aesHexEmailEq($v); }
     public function aesHexEmailNotEq(string $v): static { $this->w()->pred('aes_hex_email', 'not_eq', $v); return $this; }
@@ -2318,6 +2336,11 @@ final class Battle extends Q implements BattleInterface
     public function minLikeCount(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'like_count'); return $v === null ? null : (int) $v; }
     /** MAX(like_count); null when no rows match. */
     public function maxLikeCount(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'like_count'); return $v === null ? null : (int) $v; }
+    public function countDistinctAesKeyVersion(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'aes_key_version'); }
+    /** MIN(aes_key_version); null when no rows match. */
+    public function minAesKeyVersion(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'aes_key_version'); return $v === null ? null : (int) $v; }
+    /** MAX(aes_key_version); null when no rows match. */
+    public function maxAesKeyVersion(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'aes_key_version'); return $v === null ? null : (int) $v; }
     public function countDistinctPrice(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'price'); }
     /** MIN(price); null when no rows match. */
     public function minPrice(): ?float { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'price'); return $v === null ? null : (float) $v; }

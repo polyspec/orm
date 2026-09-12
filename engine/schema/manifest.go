@@ -318,7 +318,7 @@ func buildColumn(dc *DColumn) (*Col, error) {
 		switch {
 		case strings.HasPrefix(dc.Name, "aes_hex_"):
 			c.Styles = []string{"aes", "hex"}
-		case strings.HasPrefix(dc.Name, "aes_"):
+		case strings.HasPrefix(dc.Name, "aes_") && dc.Name != "aes_key_version":
 			c.Styles = []string{"aes"}
 		case strings.HasPrefix(dc.Name, "gz_"):
 			c.Styles = []string{"serialize", "gz"}

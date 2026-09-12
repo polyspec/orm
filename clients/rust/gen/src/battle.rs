@@ -999,12 +999,21 @@ impl<'a> BattleWhere<'a> {
     pub fn aes_key_version_eq(mut self, v: i32) -> Self { self.w.pred("aes_key_version", "eq", v); self }
     pub fn aes_key_version(self, v: i32) -> Self { self.aes_key_version_eq(v) }
     pub fn aes_key_version_not_eq(mut self, v: i32) -> Self { self.w.pred("aes_key_version", "not_eq", v); self }
+    pub fn aes_key_version_gt(mut self, v: i32) -> Self { self.w.pred("aes_key_version", "gt", v); self }
+    pub fn aes_key_version_gte(mut self, v: i32) -> Self { self.w.pred("aes_key_version", "gte", v); self }
+    pub fn aes_key_version_lt(mut self, v: i32) -> Self { self.w.pred("aes_key_version", "lt", v); self }
+    pub fn aes_key_version_lte(mut self, v: i32) -> Self { self.w.pred("aes_key_version", "lte", v); self }
     pub fn aes_key_version_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("aes_key_version", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn aes_key_version_not_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("aes_key_version", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn aes_key_version_between(mut self, lo: i32, hi: i32) -> Self { self.w.pred_list("aes_key_version", "between", vec![lo.into(), hi.into()]); self }
     pub fn aes_key_version_is_null(mut self) -> Self { self.w.pred_null("aes_key_version", "is_null"); self }
     pub fn aes_key_version_is_not_null(mut self) -> Self { self.w.pred_null("aes_key_version", "is_not_null"); self }
     pub fn aes_key_version_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_key_version", "eq_col", r); self }
     pub fn aes_key_version_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_key_version", "not_eq_col", r); self }
+    pub fn aes_key_version_gt_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_key_version", "gt_col", r); self }
+    pub fn aes_key_version_gte_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_key_version", "gte_col", r); self }
+    pub fn aes_key_version_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_key_version", "lt_col", r); self }
+    pub fn aes_key_version_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_key_version", "lte_col", r); self }
     pub fn aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_email", "eq", v.into()); self }
     pub fn aes_hex_email(self, v: impl Into<String>) -> Self { self.aes_hex_email_eq(v) }
     pub fn aes_hex_email_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_email", "not_eq", v.into()); self }
@@ -1468,12 +1477,21 @@ impl Battle {
     pub fn aes_key_version_eq(mut self, v: i32) -> Self { self.q.w().pred("aes_key_version", "eq", v); self }
     pub fn aes_key_version(self, v: i32) -> Self { self.aes_key_version_eq(v) }
     pub fn aes_key_version_not_eq(mut self, v: i32) -> Self { self.q.w().pred("aes_key_version", "not_eq", v); self }
+    pub fn aes_key_version_gt(mut self, v: i32) -> Self { self.q.w().pred("aes_key_version", "gt", v); self }
+    pub fn aes_key_version_gte(mut self, v: i32) -> Self { self.q.w().pred("aes_key_version", "gte", v); self }
+    pub fn aes_key_version_lt(mut self, v: i32) -> Self { self.q.w().pred("aes_key_version", "lt", v); self }
+    pub fn aes_key_version_lte(mut self, v: i32) -> Self { self.q.w().pred("aes_key_version", "lte", v); self }
     pub fn aes_key_version_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("aes_key_version", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn aes_key_version_not_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("aes_key_version", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn aes_key_version_between(mut self, lo: i32, hi: i32) -> Self { self.q.w().pred_list("aes_key_version", "between", vec![lo.into(), hi.into()]); self }
     pub fn aes_key_version_is_null(mut self) -> Self { self.q.w().pred_null("aes_key_version", "is_null"); self }
     pub fn aes_key_version_is_not_null(mut self) -> Self { self.q.w().pred_null("aes_key_version", "is_not_null"); self }
     pub fn aes_key_version_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_key_version", "eq_col", r); self }
     pub fn aes_key_version_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_key_version", "not_eq_col", r); self }
+    pub fn aes_key_version_gt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_key_version", "gt_col", r); self }
+    pub fn aes_key_version_gte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_key_version", "gte_col", r); self }
+    pub fn aes_key_version_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_key_version", "lt_col", r); self }
+    pub fn aes_key_version_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_key_version", "lte_col", r); self }
     pub fn aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("aes_hex_email", "eq", v.into()); self }
     pub fn aes_hex_email(self, v: impl Into<String>) -> Self { self.aes_hex_email_eq(v) }
     pub fn aes_hex_email_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("aes_hex_email", "not_eq", v.into()); self }
@@ -2582,6 +2600,11 @@ impl Battle {
     pub async fn min_like_count(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "like_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
     /// None when no row matches.
     pub async fn max_like_count(&mut self) -> Result<Option<i64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "like_count".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64()) }) }
+    pub async fn count_distinct_aes_key_version(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "aes_key_version".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_aes_key_version(&mut self) -> Result<Option<i32>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "aes_key_version".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64() as i32) }) }
+    /// None when no row matches.
+    pub async fn max_aes_key_version(&mut self) -> Result<Option<i32>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "aes_key_version".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64() as i32) }) }
     pub async fn count_distinct_price(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
     pub async fn min_price(&mut self) -> Result<Option<f64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "price".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_f64()) }) }

@@ -1091,7 +1091,6 @@ func (q *BattleQuery) RotateAES(targetVersion int32, keyring orm.AESKeyring) (in
 	return ex.DB().RotateAESRows(ctx, ex, orm.AESRotationSpec{
 		Table: "battle", PrimaryKey: "seq", VersionColumn: "aes_key_version",
 		Columns: []orm.AESRotationColumn{
-			{Name: "aes_key_version", Styles: []string{"aes"}},
 			{Name: "aes_hex_email", Styles: []string{"aes", "hex"}},
 			{Name: "aes_hex_phone", Styles: []string{"aes", "hex"}},
 		},
@@ -3654,6 +3653,38 @@ func (q *BattleQuery) AesKeyVersionNotEq(v int32) *BattleQuery {
 	q.q.W().Pred("aes_key_version", "not_eq", v)
 	return q
 }
+func (w *BattleWhere) AesKeyVersionGt(v int32) *BattleWhere {
+	w.w.Pred("aes_key_version", "gt", v)
+	return w
+}
+func (q *BattleQuery) AesKeyVersionGt(v int32) *BattleQuery {
+	q.q.W().Pred("aes_key_version", "gt", v)
+	return q
+}
+func (w *BattleWhere) AesKeyVersionGte(v int32) *BattleWhere {
+	w.w.Pred("aes_key_version", "gte", v)
+	return w
+}
+func (q *BattleQuery) AesKeyVersionGte(v int32) *BattleQuery {
+	q.q.W().Pred("aes_key_version", "gte", v)
+	return q
+}
+func (w *BattleWhere) AesKeyVersionLt(v int32) *BattleWhere {
+	w.w.Pred("aes_key_version", "lt", v)
+	return w
+}
+func (q *BattleQuery) AesKeyVersionLt(v int32) *BattleQuery {
+	q.q.W().Pred("aes_key_version", "lt", v)
+	return q
+}
+func (w *BattleWhere) AesKeyVersionLte(v int32) *BattleWhere {
+	w.w.Pred("aes_key_version", "lte", v)
+	return w
+}
+func (q *BattleQuery) AesKeyVersionLte(v int32) *BattleQuery {
+	q.q.W().Pred("aes_key_version", "lte", v)
+	return q
+}
 func (w *BattleWhere) AesKeyVersionIn(vs []int32) *BattleWhere {
 	w.w.PredList("aes_key_version", "in", orm.Anys(vs))
 	return w
@@ -3668,6 +3699,14 @@ func (w *BattleWhere) AesKeyVersionNotIn(vs []int32) *BattleWhere {
 }
 func (q *BattleQuery) AesKeyVersionNotIn(vs []int32) *BattleQuery {
 	q.q.W().PredList("aes_key_version", "not_in", orm.Anys(vs))
+	return q
+}
+func (w *BattleWhere) AesKeyVersionBetween(lo, hi int32) *BattleWhere {
+	w.w.PredList("aes_key_version", "between", []any{lo, hi})
+	return w
+}
+func (q *BattleQuery) AesKeyVersionBetween(lo, hi int32) *BattleQuery {
+	q.q.W().PredList("aes_key_version", "between", []any{lo, hi})
 	return q
 }
 func (w *BattleWhere) AesKeyVersionIsNull() *BattleWhere {
@@ -3700,6 +3739,38 @@ func (w *BattleWhere) AesKeyVersionNotEqCol(ref orm.ColRef) *BattleWhere {
 }
 func (q *BattleQuery) AesKeyVersionNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("aes_key_version", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) AesKeyVersionGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("aes_key_version", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) AesKeyVersionGtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("aes_key_version", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) AesKeyVersionGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("aes_key_version", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) AesKeyVersionGteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("aes_key_version", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) AesKeyVersionLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("aes_key_version", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) AesKeyVersionLtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("aes_key_version", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) AesKeyVersionLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("aes_key_version", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) AesKeyVersionLteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("aes_key_version", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) AesHexEmailEq(v string) *BattleWhere {
@@ -7490,6 +7561,48 @@ func (q *BattleQuery) MaxLikeCount() (*int64, error) {
 		return nil, err
 	}
 	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *BattleQuery) CountDistinctAesKeyVersion() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "aes_key_version"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinAesKeyVersion is nil when no row matches.
+func (q *BattleQuery) MinAesKeyVersion() (*int32, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "aes_key_version"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := int32(orm.AsInt64(v))
+	return &x, nil
+}
+
+// MaxAesKeyVersion is nil when no row matches.
+func (q *BattleQuery) MaxAesKeyVersion() (*int32, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "aes_key_version"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := int32(orm.AsInt64(v))
 	return &x, nil
 }
 func (q *BattleQuery) CountDistinctPrice() (int64, error) {
