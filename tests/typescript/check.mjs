@@ -18,6 +18,7 @@ const query = declarations.get('BattleQuery');
 const methods = query.members.filter(ts.isMethodDeclaration).map(node => node.name.getText(ast));
 const required = ['using', 'serviceSeqEq', 'isCloseEq', 'isDisplayEq', 'isAlldayEq', 'and', 'or', 'relation', 'get', 'gets', 'getCount'];
 for (const name of required) if (!methods.includes(name)) throw new Error(`${file}: BattleQuery missing method ${name}`);
+if (!methods.includes('scope')) throw new Error(`${file}: BattleQuery missing method scope`);
 const positions = required.map(name => methods.indexOf(name));
 if (positions.some((position, i) => i > 0 && position <= positions[i - 1])) throw new Error(`${file}: method order differs from the common query flow`);
 if (!declarations.has('Battle') || !ts.isFunctionDeclaration(declarations.get('Battle'))) throw new Error(`${file}: missing Battle factory`);
