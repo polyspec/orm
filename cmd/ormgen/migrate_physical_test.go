@@ -87,9 +87,70 @@ func TestPhysicalMigration(t *testing.T) {
 			}
 			assertPhysicalMigrationLock(t, ctx, db, tc.driver)
 			assertPhysicalStructuredPlan(t, ctx, db, tc.driver, want)
+			assertPhysicalRollback(t, ctx, db, tc.driver)
 			assertPhysicalPoint(t, ctx, db, tc.driver)
 			assertPhysicalScope(t, ctx, db, tc.driver)
 		})
+	}
+}
+
+func assertPhysicalRollback(t *testing.T, ctx context.Context, db *sql.DB, driver string) {
+	t.Helper()
+	q := func(s string) string {
+		if driver == "mysql" {
+			return "`" + s + "`"
+		}
+		return `"` + s + `"`
+	}
+	for _, table := range []string{"rollback_probe", "migration_failure_probe", "migration_probe"} {
+		if _, err := db.ExecContext(ctx, "DROP TABLE IF EXISTS "+q(table)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := db.ExecContext(ctx, "DROP TABLE IF EXISTS orm_schema_migrations"); err != nil {
+		t.Fatal(err)
+	}
+	base := buildPhysicalManifest(t, "erDiagram\n  rollback_probe {\n    bigint seq PK\n    varchar(32) name\n  }\n")
+	target := buildPhysicalManifest(t, "erDiagram\n  rollback_probe {\n    bigint seq PK\n    varchar(32) name\n    text note \"?\"\n  }\n")
+	create, err := renderCreateDDL(base, driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := executeMigration(ctx, db, driver, create); err != nil {
+		t.Fatal(err)
+	}
+	diff, err := renderDiff(base, target, driver, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := testMigrationPlan(base, target, driver, diff)
+	plan.MigrationID = "20260912-physical-rollback-" + driver
+	plan.Name = "physical rollback"
+	if err := executeMigration(ctx, db, driver, planSQL(plan.Operations)); err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureMigrationTable(ctx, db, driver); err != nil {
+		t.Fatal(err)
+	}
+	record := migrationRecord{MigrationID: plan.MigrationID, Name: plan.Name, FromHash: plan.FromHash, ToHash: plan.ToHash, Checksum: plan.Checksum, Status: "applied", Operations: len(plan.Operations)}
+	if err := insertMigration(ctx, db, driver, record); err != nil {
+		t.Fatal(err)
+	}
+	logDir := t.TempDir()
+	status, err := rollbackMigration(ctx, db, plan, logDir)
+	if err != nil || status != "rolled_back" {
+		t.Fatalf("physical rollback status=%s err=%v", status, err)
+	}
+	live, err := liveManifest(db, driver)
+	if err != nil || !schemaMatches(base, live, driver) {
+		t.Fatalf("physical rollback schema mismatch: %s err=%v", manifestMismatch(base, live), err)
+	}
+	status, err = rollbackMigration(ctx, db, plan, logDir)
+	if err != nil || status != "noop" {
+		t.Fatalf("physical rollback repeat status=%s err=%v", status, err)
+	}
+	if _, err := db.ExecContext(ctx, "DROP TABLE IF EXISTS "+q("rollback_probe")); err != nil {
+		t.Fatal(err)
 	}
 }
 

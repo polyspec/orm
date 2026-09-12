@@ -7,6 +7,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -18,15 +20,19 @@ import (
 )
 
 type migrationPlanFile struct {
-	Version     int              `json:"version"`
-	MigrationID string           `json:"migration_id"`
-	Name        string           `json:"name"`
-	Driver      string           `json:"driver"`
-	FromHash    string           `json:"from_schema_hash"`
-	FromSchema  *schema.Manifest `json:"from_schema"`
-	ToHash      string           `json:"to_schema_hash"`
-	Checksum    string           `json:"plan_checksum"`
-	Operations  []planOperation  `json:"operations"`
+	Version              int              `json:"version"`
+	MigrationID          string           `json:"migration_id"`
+	Name                 string           `json:"name"`
+	Driver               string           `json:"driver"`
+	FromHash             string           `json:"from_schema_hash"`
+	FromSchema           *schema.Manifest `json:"from_schema"`
+	ToHash               string           `json:"to_schema_hash"`
+	ToSchema             *schema.Manifest `json:"to_schema"`
+	Checksum             string           `json:"plan_checksum"`
+	Operations           []planOperation  `json:"operations"`
+	RollbackChecksum     string           `json:"rollback_checksum"`
+	RollbackOperations   []planOperation  `json:"rollback_operations"`
+	RollbackDataLossRisk bool             `json:"rollback_data_loss_risk"`
 }
 
 type planOperation struct {
@@ -46,6 +52,11 @@ func planCmd(args []string) {
 	if *fromPath == "" || *toPath == "" || *out == "" {
 		fail(fmt.Errorf("MIGRATION_CONFIG: --from, --to and --out are required"))
 	}
+	resolvedID, err := migrationPlanID(*out, *id)
+	if err != nil {
+		fail(err)
+	}
+	*id = resolvedID
 	from, err := loadSchemaSource(*fromPath, *dialect)
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_SOURCE: from: %w", err))
@@ -58,16 +69,16 @@ func planCmd(args []string) {
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_PLAN: %w", err))
 	}
-	operations := make([]planOperation, 0)
-	for _, statement := range splitSQL(sqlText) {
-		upper := strings.ToUpper(statement)
-		operations = append(operations, planOperation{SQL: statement + ";", Destructive: strings.Contains(upper, "DROP TABLE") || strings.Contains(upper, "DROP COLUMN") || strings.Contains(upper, "MODIFY COLUMN") || strings.Contains(upper, "ALTER COLUMN")})
+	rollbackText, err := renderDiff(to, from, *dialect, true)
+	if err != nil {
+		fail(fmt.Errorf("MIGRATION_ROLLBACK_PLAN: %w", err))
 	}
-	if *id == "" {
-		*id = "schema-" + to.SchemaHash
-	}
-	plan := migrationPlanFile{Version: 1, MigrationID: *id, Name: *name, Driver: *dialect, FromHash: from.SchemaHash, FromSchema: from, ToHash: to.SchemaHash, Operations: operations}
+	operations := planOperations(sqlText)
+	rollbackOperations := planOperations(rollbackText)
+	plan := migrationPlanFile{Version: 1, MigrationID: *id, Name: *name, Driver: *dialect, FromHash: from.SchemaHash, FromSchema: from, ToHash: to.SchemaHash, ToSchema: to, Operations: operations, RollbackOperations: rollbackOperations}
 	plan.Checksum = checksumText(planSQL(operations))
+	plan.RollbackChecksum = checksumText(planSQL(rollbackOperations))
+	plan.RollbackDataLossRisk = hasDestructive(operations) || hasDestructive(rollbackOperations)
 	b, err := json.MarshalIndent(plan, "", "  ")
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_PLAN: encode: %w", err))
@@ -75,6 +86,60 @@ func planCmd(args []string) {
 	if err := os.WriteFile(*out, append(b, '\n'), 0o644); err != nil {
 		fail(fmt.Errorf("MIGRATION_PLAN: write %s: %w", *out, err))
 	}
+}
+
+var migrationPlanName = regexp.MustCompile(`^[0-9]{8}-[a-z0-9][a-z0-9._-]*$`)
+
+func migrationPlanID(out, requested string) (string, error) {
+	base := filepath.Base(out)
+	if filepath.Ext(base) != ".json" {
+		return "", fmt.Errorf("MIGRATION_FILE_NAME: plan file must use YYYYMMDD-name.json: %s", base)
+	}
+	fileID := strings.TrimSuffix(base, ".json")
+	if !migrationPlanName.MatchString(fileID) {
+		return "", fmt.Errorf("MIGRATION_FILE_NAME: plan file must use YYYYMMDD-name.json: %s", base)
+	}
+	if _, err := time.Parse("20060102", fileID[:8]); err != nil {
+		return "", fmt.Errorf("MIGRATION_FILE_NAME: invalid YYYYMMDD date in %s", base)
+	}
+	if requested != "" && requested != fileID {
+		return "", fmt.Errorf("MIGRATION_FILE_NAME: migration_id=%s must match plan filename id=%s", requested, fileID)
+	}
+	return fileID, nil
+}
+
+func planOperations(sqlText string) []planOperation {
+	operations := make([]planOperation, 0)
+	for _, statement := range splitSQL(sqlText) {
+		upper := strings.ToUpper(statement)
+		operations = append(operations, planOperation{SQL: statement + ";", Destructive: strings.Contains(upper, "DROP TABLE") || strings.Contains(upper, "DROP COLUMN") || strings.Contains(upper, "MODIFY COLUMN") || strings.Contains(upper, "ALTER COLUMN")})
+	}
+	return operations
+}
+
+func validatePlanOperations(label string, operations []planOperation, checksum string) error {
+	if checksumText(planSQL(operations)) != checksum {
+		return fmt.Errorf("%s: plan checksum mismatch", label)
+	}
+	for i, operation := range operations {
+		classified := planOperations(operation.SQL)
+		if len(classified) != 1 {
+			return fmt.Errorf("%s: operation=%d must contain exactly one SQL statement", label, i+1)
+		}
+		if operation.Destructive != classified[0].Destructive {
+			return fmt.Errorf("%s: operation=%d destructive flag mismatch", label, i+1)
+		}
+	}
+	return nil
+}
+
+func hasDestructive(operations []planOperation) bool {
+	for _, operation := range operations {
+		if operation.Destructive {
+			return true
+		}
+	}
+	return false
 }
 
 func planSQL(operations []planOperation) string {
@@ -154,8 +219,13 @@ func applyCmd(args []string) {
 	if *driver != plan.Driver || (*driver != "mysql" && *driver != "postgres" && *driver != "sqlite") {
 		fail(fmt.Errorf("MIGRATION_CONFIG: plan driver=%s does not match requested driver=%s", plan.Driver, *driver))
 	}
-	if checksumText(planSQL(plan.Operations)) != plan.Checksum {
-		fail(fmt.Errorf("MIGRATION_PLAN: plan checksum mismatch"))
+	if err := validatePlanOperations("MIGRATION_PLAN", plan.Operations, plan.Checksum); err != nil {
+		fail(err)
+	}
+	if plan.ToSchema != nil || len(plan.RollbackOperations) > 0 || plan.RollbackChecksum != "" {
+		if err := validateRollbackPlan(plan); err != nil {
+			fail(err)
+		}
 	}
 	for _, operation := range plan.Operations {
 		if operation.Destructive && !*allow {
@@ -205,7 +275,7 @@ func applyCmd(args []string) {
 			}
 			fmt.Printf("migration_id=%s status=noop operations=0 schema_hash=%s\n", plan.MigrationID, plan.ToHash)
 			return
-		case "retryable":
+		case "retryable", "rolled_back":
 			// The source check below must pass before this row can return to applying.
 		case "queued", "applying", "failed":
 			fail(fmt.Errorf("MIGRATION_RECOVERY_REQUIRED: migration_id=%s status=%s run ormgen recover with the same plan and target schema", plan.MigrationID, previous.Status))
@@ -229,7 +299,7 @@ func applyCmd(args []string) {
 	}
 	expectedStatus := "queued"
 	if found {
-		expectedStatus = "retryable"
+		expectedStatus = previous.Status
 	} else {
 		if err := insertMigration(ctx, db, *driver, record); err != nil {
 			fail(err)
