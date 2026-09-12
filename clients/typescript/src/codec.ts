@@ -1,10 +1,98 @@
 import { deflateSync, inflateSync } from 'node:zlib';
+import { createCipheriv, createDecipheriv } from 'node:crypto';
+import { isIP } from 'node:net';
 import { isScalar, parseDocument, stringify as stringifyYaml, visit } from 'yaml';
 
 export type UploadFileValue = { $type: 'upload_file'; path: string; mime: string; name: string };
 export type Point = readonly [number, number];
 export type CodecValue = null | boolean | number | string | CodecValue[] | { [key: string]: CodecValue };
 export type EncodedValue = string | Uint8Array | null;
+
+export function hostEncode(value: unknown, styles: readonly string[], aesKey: string): string | Uint8Array | null {
+  if (value === null) return null;
+  let current: Buffer<ArrayBufferLike> = Buffer.isBuffer(value) || value instanceof Uint8Array ? Buffer.from(value) : Buffer.from(String(value));
+  let textResult = false;
+  for (const style of styles) {
+    switch (style) {
+      case 'aes': {
+        if (aesKey === '') throw new CodecError('CODEC_ENCODE', 'secret aes not configured');
+        const cipher = createCipheriv('aes-128-ecb', foldAesKey(aesKey), null);
+        current = Buffer.concat([cipher.update(current), cipher.final()]);
+        textResult = false;
+        break;
+      }
+      case 'hex': current = Buffer.from(current.toString('hex').toUpperCase()); textResult = true; break;
+      case 'ip': current = packIp(current.toString()); textResult = false; break;
+      default: throw new CodecError('CODEC_UNSUPPORTED', `host style ${style}`);
+    }
+  }
+  return textResult ? current.toString() : new Uint8Array(current);
+}
+
+export function hostDecode(raw: string | Uint8Array | null, styles: readonly string[], aesKey: string): string | null {
+  if (raw === null) return null;
+  let current: Buffer<ArrayBufferLike> = typeof raw === 'string' ? Buffer.from(raw) : Buffer.from(raw);
+  for (let index = styles.length - 1; index >= 0; index--) {
+    switch (styles[index]) {
+      case 'hex': {
+        const source = current.toString().trim();
+        if (source.length % 2 !== 0 || !/^[0-9a-f]*$/i.test(source)) throw new CodecError('CODEC_DECODE', 'hex: odd length or non-hex input');
+        current = Buffer.from(source, 'hex');
+        break;
+      }
+      case 'aes': {
+        if (aesKey === '') throw new CodecError('CODEC_DECODE', 'secret aes not configured');
+        if (current.length === 0 || current.length % 16 !== 0) throw new CodecError('CODEC_DECODE', `aes: ciphertext length ${current.length}`);
+        try {
+          const decipher = createDecipheriv('aes-128-ecb', foldAesKey(aesKey), null);
+          current = Buffer.concat([decipher.update(current), decipher.final()]);
+        } catch { throw new CodecError('CODEC_DECODE', 'aes: bad padding'); }
+        break;
+      }
+      case 'ip': return unpackIp(current);
+      default: throw new CodecError('CODEC_UNSUPPORTED', `host style ${styles[index]}`);
+    }
+  }
+  return current.toString('utf8');
+}
+
+function foldAesKey(key: string): Buffer {
+  const folded = Buffer.alloc(16);
+  const source = Buffer.from(key);
+  for (let index = 0; index < source.length; index++) folded[index % 16] ^= source[index]!;
+  return folded;
+}
+
+function packIp(value: string): Buffer {
+  const source = value.trim();
+  const version = isIP(source);
+  if (version === 4) return Buffer.from(source.split('.').map(Number));
+  if (version !== 6) throw new CodecError('CODEC_ENCODE', `ip: ${JSON.stringify(source)} is not an address`);
+  const halves = source.split('::');
+  if (halves.length > 2) throw new CodecError('CODEC_ENCODE', `ip: ${JSON.stringify(source)} is not an address`);
+  const parse = (part: string): number[] => part === '' ? [] : part.split(':').flatMap(token => {
+    if (token.includes('.')) { const bytes=token.split('.').map(Number); return [(bytes[0]!<<8)|bytes[1]!, (bytes[2]!<<8)|bytes[3]!]; }
+    return [Number.parseInt(token,16)];
+  });
+  const left=parse(halves[0]!), right=parse(halves[1]??'');
+  const groups=halves.length===2?[...left,...Array(8-left.length-right.length).fill(0),...right]:left;
+  if(groups.length!==8)throw new CodecError('CODEC_ENCODE',`ip: ${JSON.stringify(source)} is not an address`);
+  const out=Buffer.alloc(16);groups.forEach((group,index)=>out.writeUInt16BE(group,index*2));
+  if(out.subarray(0,12).equals(Buffer.from([0,0,0,0,0,0,0,0,0,0,255,255])))return out.subarray(12);
+  return out;
+}
+
+function unpackIp(value: Buffer): string {
+  if(value.length===4)return [...value].join('.');
+  if(value.length!==16)throw new CodecError('CODEC_DECODE',`ip: byte length ${value.length}`);
+  const groups=Array.from({length:8},(_,index)=>value.readUInt16BE(index*2));
+  let bestStart=-1,bestLength=0;
+  for(let index=0;index<groups.length;){if(groups[index]!==0){index++;continue;}let end=index;while(end<groups.length&&groups[end]===0)end++;if(end-index>bestLength&&end-index>=2){bestStart=index;bestLength=end-index;}index=end;}
+  if(bestStart<0)return groups.map(group=>group.toString(16)).join(':');
+  const left=groups.slice(0,bestStart).map(group=>group.toString(16)).join(':');
+  const right=groups.slice(bestStart+bestLength).map(group=>group.toString(16)).join(':');
+  return `${left}::${right}`;
+}
 
 export class CodecError extends Error {
   public constructor(public readonly code: 'CODEC_DECODE' | 'CODEC_ENCODE' | 'CODEC_UNSUPPORTED', message: string) {
