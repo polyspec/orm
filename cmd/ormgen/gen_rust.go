@@ -495,6 +495,8 @@ impl<'a> {{.Type}}Where<'a> {
 {{- end}}
 {{- range .Rels}}
     pub fn {{.Ident}}(mut self, f: impl FnOnce(super::{{.Target}}::{{.TargetType}}Where<'_>) -> super::{{.Target}}::{{.TargetType}}Where<'_>) -> Self { self.w.nav_with({{printf "%q" .Name}}, |w| { f(super::{{.Target}}::{{.TargetType}}Where { w }); }); self }
+    pub fn has_{{.Ident}}(mut self, f: impl FnOnce(super::{{.Target}}::{{.TargetType}}Where<'_>) -> super::{{.Target}}::{{.TargetType}}Where<'_>) -> Self { self.w.nav_with_mode({{printf "%q" .Name}}, "exists", |w| { f(super::{{.Target}}::{{.TargetType}}Where { w }); }); self }
+    pub fn not_has_{{.Ident}}(mut self, f: impl FnOnce(super::{{.Target}}::{{.TargetType}}Where<'_>) -> super::{{.Target}}::{{.TargetType}}Where<'_>) -> Self { self.w.nav_with_mode({{printf "%q" .Name}}, "not_exists", |w| { f(super::{{.Target}}::{{.TargetType}}Where { w }); }); self }
 {{- end}}
 {{range .Cols}}{{$c := .}}{{range .Ops}}
 {{- if eq .Kind "one"}}
@@ -567,6 +569,8 @@ impl {{.Type}} {
 {{- end}}
 {{- range .Rels}}
     pub fn {{.Ident}}(mut self, f: impl FnOnce(super::{{.Target}}::{{.TargetType}}Where<'_>) -> super::{{.Target}}::{{.TargetType}}Where<'_>) -> Self { self.q.w().nav_with({{printf "%q" .Name}}, |w| { f(super::{{.Target}}::{{.TargetType}}Where { w }); }); self }
+    pub fn has_{{.Ident}}(mut self, f: impl FnOnce(super::{{.Target}}::{{.TargetType}}Where<'_>) -> super::{{.Target}}::{{.TargetType}}Where<'_>) -> Self { self.q.w().nav_with_mode({{printf "%q" .Name}}, "exists", |w| { f(super::{{.Target}}::{{.TargetType}}Where { w }); }); self }
+    pub fn not_has_{{.Ident}}(mut self, f: impl FnOnce(super::{{.Target}}::{{.TargetType}}Where<'_>) -> super::{{.Target}}::{{.TargetType}}Where<'_>) -> Self { self.q.w().nav_with_mode({{printf "%q" .Name}}, "not_exists", |w| { f(super::{{.Target}}::{{.TargetType}}Where { w }); }); self }
 {{- end}}
 {{range .Cols}}{{$c := .}}{{range .Ops}}
 {{- if eq .Kind "one"}}

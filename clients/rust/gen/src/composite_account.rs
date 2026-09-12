@@ -220,6 +220,8 @@ impl<'a> CompositeAccountWhere<'a> {
     pub fn and(mut self, f: impl FnOnce(CompositeAccountWhere<'_>) -> CompositeAccountWhere<'_>) -> Self { self.w.and_with(|w| { f(CompositeAccountWhere { w }); }); self }
 	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
     pub fn memberships(mut self, f: impl FnOnce(super::composite_membership::CompositeMembershipWhere<'_>) -> super::composite_membership::CompositeMembershipWhere<'_>) -> Self { self.w.nav_with("memberships", |w| { f(super::composite_membership::CompositeMembershipWhere { w }); }); self }
+    pub fn has_memberships(mut self, f: impl FnOnce(super::composite_membership::CompositeMembershipWhere<'_>) -> super::composite_membership::CompositeMembershipWhere<'_>) -> Self { self.w.nav_with_mode("memberships", "exists", |w| { f(super::composite_membership::CompositeMembershipWhere { w }); }); self }
+    pub fn not_has_memberships(mut self, f: impl FnOnce(super::composite_membership::CompositeMembershipWhere<'_>) -> super::composite_membership::CompositeMembershipWhere<'_>) -> Self { self.w.nav_with_mode("memberships", "not_exists", |w| { f(super::composite_membership::CompositeMembershipWhere { w }); }); self }
 
     pub fn tenant_id_eq(mut self, v: i64) -> Self { self.w.pred("tenant_id", "eq", v); self }
     pub fn tenant_id(self, v: i64) -> Self { self.tenant_id_eq(v) }
@@ -297,6 +299,8 @@ impl CompositeAccount {
     pub fn and(mut self, f: impl FnOnce(CompositeAccountWhere<'_>) -> CompositeAccountWhere<'_>) -> Self { self.q.w().and_with(|w| { f(CompositeAccountWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
     pub fn memberships(mut self, f: impl FnOnce(super::composite_membership::CompositeMembershipWhere<'_>) -> super::composite_membership::CompositeMembershipWhere<'_>) -> Self { self.q.w().nav_with("memberships", |w| { f(super::composite_membership::CompositeMembershipWhere { w }); }); self }
+    pub fn has_memberships(mut self, f: impl FnOnce(super::composite_membership::CompositeMembershipWhere<'_>) -> super::composite_membership::CompositeMembershipWhere<'_>) -> Self { self.q.w().nav_with_mode("memberships", "exists", |w| { f(super::composite_membership::CompositeMembershipWhere { w }); }); self }
+    pub fn not_has_memberships(mut self, f: impl FnOnce(super::composite_membership::CompositeMembershipWhere<'_>) -> super::composite_membership::CompositeMembershipWhere<'_>) -> Self { self.q.w().nav_with_mode("memberships", "not_exists", |w| { f(super::composite_membership::CompositeMembershipWhere { w }); }); self }
 
     pub fn tenant_id_eq(mut self, v: i64) -> Self { self.q.w().pred("tenant_id", "eq", v); self }
     pub fn tenant_id(self, v: i64) -> Self { self.tenant_id_eq(v) }

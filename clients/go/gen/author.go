@@ -1370,16 +1370,48 @@ func (w *AuthorWhere) Service(fn func(*ServiceWhere)) *AuthorWhere {
 	w.w.Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return w
 }
+func (w *AuthorWhere) HasService(fn func(*ServiceWhere)) *AuthorWhere {
+	w.w.NavMode("service", "exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
+func (w *AuthorWhere) NotHasService(fn func(*ServiceWhere)) *AuthorWhere {
+	w.w.NavMode("service", "not_exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
 func (w *AuthorWhere) ServiceMember(fn func(*ServiceMemberWhere)) *AuthorWhere {
 	w.w.Nav("service_member", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return w
+}
+func (w *AuthorWhere) HasServiceMember(fn func(*ServiceMemberWhere)) *AuthorWhere {
+	w.w.NavMode("service_member", "exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return w
+}
+func (w *AuthorWhere) NotHasServiceMember(fn func(*ServiceMemberWhere)) *AuthorWhere {
+	w.w.NavMode("service_member", "not_exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return w
 }
 func (w *AuthorWhere) ServiceRegion(fn func(*ServiceRegionWhere)) *AuthorWhere {
 	w.w.Nav("service_region", func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
 	return w
 }
+func (w *AuthorWhere) HasServiceRegion(fn func(*ServiceRegionWhere)) *AuthorWhere {
+	w.w.NavMode("service_region", "exists", func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return w
+}
+func (w *AuthorWhere) NotHasServiceRegion(fn func(*ServiceRegionWhere)) *AuthorWhere {
+	w.w.NavMode("service_region", "not_exists", func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return w
+}
 func (w *AuthorWhere) User(fn func(*UserWhere)) *AuthorWhere {
 	w.w.Nav("user", func(x *orm.W) { fn(&UserWhere{w: x}) })
+	return w
+}
+func (w *AuthorWhere) HasUser(fn func(*UserWhere)) *AuthorWhere {
+	w.w.NavMode("user", "exists", func(x *orm.W) { fn(&UserWhere{w: x}) })
+	return w
+}
+func (w *AuthorWhere) NotHasUser(fn func(*UserWhere)) *AuthorWhere {
+	w.w.NavMode("user", "not_exists", func(x *orm.W) { fn(&UserWhere{w: x}) })
 	return w
 }
 
@@ -4625,16 +4657,48 @@ func (q *AuthorQuery) Service(fn func(*ServiceWhere)) *AuthorQuery {
 	q.q.W().Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return q
 }
+func (q *AuthorQuery) HasService(fn func(*ServiceWhere)) *AuthorQuery {
+	q.q.W().NavMode("service", "exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
+func (q *AuthorQuery) NotHasService(fn func(*ServiceWhere)) *AuthorQuery {
+	q.q.W().NavMode("service", "not_exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
 func (q *AuthorQuery) ServiceMember(fn func(*ServiceMemberWhere)) *AuthorQuery {
 	q.q.W().Nav("service_member", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return q
+}
+func (q *AuthorQuery) HasServiceMember(fn func(*ServiceMemberWhere)) *AuthorQuery {
+	q.q.W().NavMode("service_member", "exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return q
+}
+func (q *AuthorQuery) NotHasServiceMember(fn func(*ServiceMemberWhere)) *AuthorQuery {
+	q.q.W().NavMode("service_member", "not_exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return q
 }
 func (q *AuthorQuery) ServiceRegion(fn func(*ServiceRegionWhere)) *AuthorQuery {
 	q.q.W().Nav("service_region", func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
 	return q
 }
+func (q *AuthorQuery) HasServiceRegion(fn func(*ServiceRegionWhere)) *AuthorQuery {
+	q.q.W().NavMode("service_region", "exists", func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return q
+}
+func (q *AuthorQuery) NotHasServiceRegion(fn func(*ServiceRegionWhere)) *AuthorQuery {
+	q.q.W().NavMode("service_region", "not_exists", func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return q
+}
 func (q *AuthorQuery) User(fn func(*UserWhere)) *AuthorQuery {
 	q.q.W().Nav("user", func(x *orm.W) { fn(&UserWhere{w: x}) })
+	return q
+}
+func (q *AuthorQuery) HasUser(fn func(*UserWhere)) *AuthorQuery {
+	q.q.W().NavMode("user", "exists", func(x *orm.W) { fn(&UserWhere{w: x}) })
+	return q
+}
+func (q *AuthorQuery) NotHasUser(fn func(*UserWhere)) *AuthorQuery {
+	q.q.W().NavMode("user", "not_exists", func(x *orm.W) { fn(&UserWhere{w: x}) })
 	return q
 }
 

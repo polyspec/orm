@@ -81,6 +81,8 @@ final class CompositeMembershipWhere
     public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
     public function account(\Closure $fn): static { $fn(new CompositeAccountWhere($this->w->nav('account'))); $this->w->req->end(); return $this; }
+    public function hasAccount(\Closure $fn): static { $fn(new CompositeAccountWhere($this->w->navMode('account', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasAccount(\Closure $fn): static { $fn(new CompositeAccountWhere($this->w->navMode('account', 'not_exists'))); $this->w->req->end(); return $this; }
 
     public function tenantIdEq(int $v): static { $this->w->pred('tenant_id', 'eq', $v); return $this; }
     public function tenantId(int $v): static { return $this->tenantIdEq($v); }
@@ -147,6 +149,8 @@ final class CompositeMembership extends Q implements CompositeMembershipInterfac
     public function and(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
     public function account(\Closure $fn): static { $fn(new CompositeAccountWhere($this->w()->nav('account'))); $this->req->end(); return $this; }
+    public function hasAccount(\Closure $fn): static { $fn(new CompositeAccountWhere($this->w()->navMode('account', 'exists'))); $this->req->end(); return $this; }
+    public function notHasAccount(\Closure $fn): static { $fn(new CompositeAccountWhere($this->w()->navMode('account', 'not_exists'))); $this->req->end(); return $this; }
 
     public function tenantIdEq(int $v): static { $this->w()->pred('tenant_id', 'eq', $v); return $this; }
     public function tenantId(int $v): static { return $this->tenantIdEq($v); }

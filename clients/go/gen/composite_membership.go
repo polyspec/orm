@@ -306,6 +306,14 @@ func (w *CompositeMembershipWhere) Account(fn func(*CompositeAccountWhere)) *Com
 	w.w.Nav("account", func(x *orm.W) { fn(&CompositeAccountWhere{w: x}) })
 	return w
 }
+func (w *CompositeMembershipWhere) HasAccount(fn func(*CompositeAccountWhere)) *CompositeMembershipWhere {
+	w.w.NavMode("account", "exists", func(x *orm.W) { fn(&CompositeAccountWhere{w: x}) })
+	return w
+}
+func (w *CompositeMembershipWhere) NotHasAccount(fn func(*CompositeAccountWhere)) *CompositeMembershipWhere {
+	w.w.NavMode("account", "not_exists", func(x *orm.W) { fn(&CompositeAccountWhere{w: x}) })
+	return w
+}
 
 func (w *CompositeMembershipWhere) TenantIdEq(v int64) *CompositeMembershipWhere {
 	w.w.Pred("tenant_id", "eq", v)
@@ -710,6 +718,14 @@ func (q *CompositeMembershipQuery) Expr(frag string, binds ...any) *CompositeMem
 }
 func (q *CompositeMembershipQuery) Account(fn func(*CompositeAccountWhere)) *CompositeMembershipQuery {
 	q.q.W().Nav("account", func(x *orm.W) { fn(&CompositeAccountWhere{w: x}) })
+	return q
+}
+func (q *CompositeMembershipQuery) HasAccount(fn func(*CompositeAccountWhere)) *CompositeMembershipQuery {
+	q.q.W().NavMode("account", "exists", func(x *orm.W) { fn(&CompositeAccountWhere{w: x}) })
+	return q
+}
+func (q *CompositeMembershipQuery) NotHasAccount(fn func(*CompositeAccountWhere)) *CompositeMembershipQuery {
+	q.q.W().NavMode("account", "not_exists", func(x *orm.W) { fn(&CompositeAccountWhere{w: x}) })
 	return q
 }
 

@@ -890,8 +890,12 @@ func (p *Planner) renderGroup(b *builder, s *scope, g *ir.Group, top bool) (stri
 			text, err = p.renderGroup(b, s, it.Group, false)
 		case it.Nav != nil:
 			conn = it.Nav.Conn
-			js := s.joins[it.Nav.Rel]
-			text, err = p.renderGroup(b, js, it.Nav.Group, false)
+			if it.Nav.Mode == "" {
+				js := s.joins[it.Nav.Rel]
+				text, err = p.renderGroup(b, js, it.Nav.Group, false)
+			} else {
+				text, err = p.renderExistence(b, s, it.Nav)
+			}
 		}
 		if err != nil {
 			return "", err
@@ -910,6 +914,32 @@ func (p *Planner) renderGroup(b *builder, s *scope, g *ir.Group, top bool) (stri
 		out = "(" + out + ")"
 	}
 	return out, nil
+}
+
+func (p *Planner) renderExistence(b *builder, parent *scope, nav *ir.Nav) (string, error) {
+	rel := parent.ent.Relations[nav.Rel]
+	if rel == nil {
+		return "", &ir.Error{Code: "RELATION_UNKNOWN", Msg: parent.ent.Name + "." + nav.Rel}
+	}
+	target := p.M.Entities[rel.Target]
+	child := &scope{ent: target, alias: "exists__" + nav.Rel, q: &ir.Query{Entity: target.Name}, joins: map[string]*scope{}, parent: parent}
+	conditions := make([]string, 0, len(rel.Keys)+1)
+	for _, key := range rel.Keys {
+		conditions = append(conditions, p.qcol(child, key.Target)+" = "+p.qcol(parent, key.Local))
+	}
+	if target.SoftDelete != "" {
+		conditions = append(conditions, p.qcol(child, target.SoftDelete)+" IS NULL")
+	}
+	group, err := p.renderGroup(b, child, nav.Group, false)
+	if err != nil {
+		return "", err
+	}
+	conditions = append(conditions, group)
+	keyword := "EXISTS"
+	if nav.Mode == "not_exists" {
+		keyword = "NOT EXISTS"
+	}
+	return keyword + " (SELECT 1 FROM " + p.D.Quote(target.Table) + " AS " + p.D.Quote(child.alias) + " WHERE " + strings.Join(conditions, " AND ") + ")", nil
 }
 
 func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) {

@@ -289,8 +289,24 @@ func (w *UserWhere) Authors(fn func(*AuthorWhere)) *UserWhere {
 	w.w.Nav("authors", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
 	return w
 }
+func (w *UserWhere) HasAuthors(fn func(*AuthorWhere)) *UserWhere {
+	w.w.NavMode("authors", "exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return w
+}
+func (w *UserWhere) NotHasAuthors(fn func(*AuthorWhere)) *UserWhere {
+	w.w.NavMode("authors", "not_exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return w
+}
 func (w *UserWhere) ServiceMembers(fn func(*ServiceMemberWhere)) *UserWhere {
 	w.w.Nav("service_members", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return w
+}
+func (w *UserWhere) HasServiceMembers(fn func(*ServiceMemberWhere)) *UserWhere {
+	w.w.NavMode("service_members", "exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return w
+}
+func (w *UserWhere) NotHasServiceMembers(fn func(*ServiceMemberWhere)) *UserWhere {
+	w.w.NavMode("service_members", "not_exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return w
 }
 
@@ -454,8 +470,24 @@ func (q *UserQuery) Authors(fn func(*AuthorWhere)) *UserQuery {
 	q.q.W().Nav("authors", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
 	return q
 }
+func (q *UserQuery) HasAuthors(fn func(*AuthorWhere)) *UserQuery {
+	q.q.W().NavMode("authors", "exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return q
+}
+func (q *UserQuery) NotHasAuthors(fn func(*AuthorWhere)) *UserQuery {
+	q.q.W().NavMode("authors", "not_exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return q
+}
 func (q *UserQuery) ServiceMembers(fn func(*ServiceMemberWhere)) *UserQuery {
 	q.q.W().Nav("service_members", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return q
+}
+func (q *UserQuery) HasServiceMembers(fn func(*ServiceMemberWhere)) *UserQuery {
+	q.q.W().NavMode("service_members", "exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return q
+}
+func (q *UserQuery) NotHasServiceMembers(fn func(*ServiceMemberWhere)) *UserQuery {
+	q.q.W().NavMode("service_members", "not_exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return q
 }
 

@@ -29,7 +29,7 @@ function group(value: Group | undefined, path: string): any {
       if (count !== 1) throw new CompilerError('IR_INVALID', `${itemPath} must contain exactly one value`);
       if (item.pred) return { value: { case: 'predicate', value: { connector:item.pred.conn??'', column:item.pred.column??'', operator:item.pred.op??'', parameter:item.pred.p === undefined ? undefined : uint(item.pred.p,`${itemPath}.predicate.parameter`), parameters:(item.pred.ps??[]).map((p,i)=>uint(p,`${itemPath}.predicate.parameters[${i}]`)), reference:item.pred.ref, expression:item.pred.expr??'', matchColumns:item.pred.match??[] } } };
       if (item.group) return { value: { case: 'group', value: group(item.group, `${itemPath}.group`) } };
-      return { value: { case: 'navigation', value: { connector:item.nav!.conn??'', relation:item.nav!.rel, group:group(item.nav!.group,`${itemPath}.navigation.group`) } } };
+      return { value: { case: 'navigation', value: { connector:item.nav!.conn??'', relation:item.nav!.rel, group:group(item.nav!.group,`${itemPath}.navigation.group`), mode:item.nav!.mode??'' } } };
     }),
   };
 }
