@@ -1053,6 +1053,20 @@ func main() {
 		count, err := gen.Service().SeqEq(7).CountMembersEq(50, func(*gen.ServiceMemberWhere) {}).Using(ctx, db).GetCount()
 		return map[string]any{"exists": exists, "count": count}, err
 	})
+	run("batch_insert_delete", func() (any, error) {
+		names := []string{"conformance-batch-a", "conformance-batch-b"}
+		if _, err := gen.Service().NameIn(names).Using(ctx, db).Delete(); err != nil {
+			return nil, err
+		}
+		result, err := gen.Service().Using(ctx, db).BatchInsert([]*gen.ServiceQuery{
+			gen.Service().SetName(names[0]), gen.Service().SetName(names[1]),
+		}, orm.BatchOptions{ChunkSize: 1})
+		if err != nil {
+			return nil, err
+		}
+		deleted, err := gen.Service().NameIn(names).Using(ctx, db).Delete()
+		return map[string]any{"attempted": result.Attempted, "affected": result.Affected, "inserted": result.Inserted, "deleted": deleted}, err
+	})
 	run("codec_roundtrip", func() (any, error) {
 		value := map[string]any{"a": int64(1), "b": []any{int64(1), int64(2), map[string]any{"c": "한글/slash"}}, "d": nil, "e": true, "f": 1.5}
 		ip := "10.1.2.3"

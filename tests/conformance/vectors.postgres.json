@@ -2284,6 +2284,46 @@
           }
         ]
       }
+    },
+    {
+      "name": "batch_insert_delete",
+      "chain": "Service.batchInsert([Service.setName(a), Service.setName(b)], chunkSize=1); Service.nameIn([a,b]).delete",
+      "expect": {
+        "result": {
+          "affected": 2,
+          "attempted": 2,
+          "deleted": 2,
+          "inserted": 2
+        },
+        "statements": [
+          {
+            "binds": [
+              "conformance-batch-a",
+              "conformance-batch-b"
+            ],
+            "sql": "DELETE FROM \"service\" WHERE \"service\".\"name\" IN ($1, $2)"
+          },
+          {
+            "binds": [
+              "conformance-batch-a"
+            ],
+            "sql": "INSERT INTO \"service\" (\"name\") VALUES ($1) RETURNING \"seq\""
+          },
+          {
+            "binds": [
+              "conformance-batch-b"
+            ],
+            "sql": "INSERT INTO \"service\" (\"name\") VALUES ($1) RETURNING \"seq\""
+          },
+          {
+            "binds": [
+              "conformance-batch-a",
+              "conformance-batch-b"
+            ],
+            "sql": "DELETE FROM \"service\" WHERE \"service\".\"name\" IN ($1, $2)"
+          }
+        ]
+      }
     }
   ]
 }
