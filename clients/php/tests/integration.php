@@ -23,6 +23,7 @@ use Orm\Codec;
 use Orm\Config;
 use Orm\Db;
 use Orm\AesKeyring;
+use Orm\BatchOptions;
 use Orm\Orm;
 use Orm\OrmException;
 use Orm\Q;
@@ -53,6 +54,11 @@ foreach (['all', 'count', 'one'] as $i => $kind) {
 }
 $planCache = (new \ReflectionProperty(\Orm\Transport::class, 'local'))->getValue(Orm::transport());
 check(count($planCache) === 2 && !array_key_exists("all\x1fbattle\x1f0", $planCache), 'PHP plan cache bound and oldest eviction');
+$emptyBatch = $db->batchWrite([], 'insert', new BatchOptions(1));
+check($emptyBatch->attempted === 0 && $emptyBatch->affected === 0 && $emptyBatch->inserted === 0, 'PHP empty batch result');
+$invalidBatchRejected = false;
+try { $db->batchWrite([], 'merge'); } catch (OrmException $e) { $invalidBatchRejected = $e->code_ === Code::CONFIG; }
+check($invalidBatchRejected, 'PHP invalid batch kind rejection');
 // A precompiled plan loaded for the same request shape is returned from the local cache.
 $bundleQuery = new Q('battle');
 $bundleRequest = $bundleQuery->req;

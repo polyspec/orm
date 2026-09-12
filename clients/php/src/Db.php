@@ -24,6 +24,19 @@ final class TransactionOptions
     }
 }
 
+final class BatchOptions
+{
+    public function __construct(public readonly int $chunkSize = 1000)
+    {
+        if ($this->chunkSize < 1) throw new OrmException(Code::CONFIG, 'batch chunkSize must be positive');
+    }
+}
+
+final class BatchResult
+{
+    public function __construct(public readonly int $attempted, public readonly int $affected, public readonly int $inserted) {}
+}
+
 class Db
 {
     /**
@@ -839,6 +852,32 @@ class Db
             throw new OrmException(Code::OPTIMISTIC_LOCK, 'row changed since it was read');
         }
         return [$id, $affected];
+    }
+
+    /**
+     * Execute homogeneous generated write requests in one transaction. Each
+     * request contains the validated plan step and its typed parameters.
+     * @param list<array{step: array, params: list<mixed>}> $requests
+     */
+    public function batchWrite(array $requests, string $kind, ?BatchOptions $options = null): BatchResult
+    {
+        if (!in_array($kind, ['insert', 'update', 'delete'], true)) throw new OrmException(Code::CONFIG, "batch kind $kind is not supported");
+        if ($requests === []) return new BatchResult(0, 0, 0);
+        $options ??= new BatchOptions();
+        $run = function (Tx $tx) use ($requests, $kind, $options): BatchResult {
+            $attempted = 0; $affected = 0; $inserted = 0;
+            foreach (array_chunk($requests, $options->chunkSize) as $chunk) {
+                foreach ($chunk as $request) {
+                    $attempted++;
+                    [, $count] = $tx->write($request['step'], $request['params'], $kind === 'insert', false);
+                    $affected += $count;
+                    if ($kind === 'insert') $inserted++;
+                }
+            }
+            return new BatchResult($attempted, $affected, $inserted);
+        };
+        if ($this instanceof Tx) return $run($this);
+        return $this->transaction($run);
     }
 }
 
