@@ -12,6 +12,7 @@ use App\Orm\Battle;
 use App\Orm\BattleWhere;
 use App\Orm\CompositeAccount;
 use App\Orm\CompositeMembership;
+use App\Orm\CompositeMembershipWhere;
 use App\Orm\Service;
 use App\Orm\ServiceMember;
 use App\Orm\ServiceModule;
@@ -575,6 +576,10 @@ $page = CompositeMembership::query()->tenantIdEq($tenantId)->orderByTenantIdAsc(
 check($page->total === 2 && count($page->items) === 1 && $page->items->first()?->getAccountId() === 11, 'composite pagination preserves complete order');
 $accounts = CompositeAccount::query()->tenantIdEq($tenantId)->orderByAccountIdAsc()->relationsTenantIdWithTenantIdAndAccountIdWithAccountId(CompositeMembership::query())->using($db)->gets();
 check(count($accounts) === 2 && count($accounts->first()?->getMemberships()) === 1, 'composite relation uses every key component');
+$relationAccounts = CompositeAccount::query()->tenantId($tenantId)->hasMemberships(static function (CompositeMembershipWhere $w): void {})->using($db)->getCount();
+check($relationAccounts === 2, 'relation exists predicate');
+$relationCount = CompositeAccount::query()->tenantId($tenantId)->countMembershipsEq(1, static function (CompositeMembershipWhere $w): void {})->using($db)->getCount();
+check($relationCount === 2, 'relation count predicate');
 $compositeRollback = new \RuntimeException('composite rollback');
 try {
     $db->transaction(function (Tx $tx) use ($tenantId, $compositeRollback): void {
