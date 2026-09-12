@@ -24,5 +24,5 @@ go run ./cmd/ormgen gen --schema "$WORK/schema.json" --lang rust --out "$WORK/ge
 sed "s|path = \"../orm\"|path = \"$ROOT/clients/rust/orm\"|" "$WORK/gen/Cargo.toml" > "$WORK/Cargo.toml"
 mv "$WORK/Cargo.toml" "$WORK/gen/Cargo.toml"
 cp clients/rust/Cargo.lock "$WORK/gen/Cargo.lock"
-cargo check --locked --manifest-path "$WORK/gen/Cargo.toml"
+CARGO_TARGET_DIR="$ROOT/clients/rust/target/rust-150" cargo check --locked --manifest-path "$WORK/gen/Cargo.toml"
 printf '%s\n' "rust-150: 150 generated entities compiled"
