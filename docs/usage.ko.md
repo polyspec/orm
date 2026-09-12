@@ -73,7 +73,7 @@ go run ./cmd/ormgen ddl --schema schema/schema.json --dialect postgres --out cre
 go run ./cmd/ormgen ddl --schema schema/schema.json --dialect sqlite --out create.sqlite.sql
 ```
 
-선택한 SQL 파일은 해당 DB의 migration 도구나 client로 적용한다. `ormgen ddl`은 SQL 파일을 생성하며 DB에 연결하지 않는다.
+선택한 SQL 파일은 해당 DB의 migration 도구나 client로 적용한다. `ormgen ddl`은 SQL 파일을 생성하며 DB에 연결하지 않는다. 멱등적인 DB 적용에는 실제 DB를 대상으로 `ormgen migrate`를 사용한다.
 
 마이그레이션은 이전 manifest를 보관하고 Mermaid schema를 수정한 뒤 새 manifest와 diff를 생성한다.
 
@@ -84,7 +84,16 @@ go run ./cmd/ormgen diff --from schema/schema.previous.json --to schema/schema.j
   --dialect mysql --out migration.mysql.sql
 ```
 
-적용 전에 SQL을 검토한다. 테이블 삭제, 컬럼 삭제, 컬럼 정의 변경에는 `--allow-destructive`가 필요하다. rename은 안전 여부를 추정할 수 없으므로 명시적인 migration으로 작성한다. 도구는 migration을 직접 적용하거나 rollback SQL을 생성하지 않는다. 이전 schema를 보관하고 migration 검토 과정에서 rollback SQL을 작성한다.
+생성된 SQL을 적용하기 전에 검토한다. `ormgen diff`에서 테이블 삭제, 컬럼 삭제, 컬럼 정의 변경에는 `--allow-destructive`가 필요하며 migration 명령은 이 변경을 거부한다. rename은 안전 여부를 추정할 수 없으므로 명시적인 migration으로 작성한다.
+
+`ormgen migrate`는 실제 스키마를 읽고 `orm_schema_migrations`를 생성한 뒤 계획을 계산하고 지원되는 비파괴 변경을 적용한다. 적용 후 실제 스키마를 검증하고 결과를 기록한다. 같은 `migration-id`를 다시 실행하면 기록된 migration과 실제 스키마가 일치할 때만 no-op이 된다. `--dry-run`은 DB를 변경하지 않고 계획을 출력한다.
+
+```sh
+go run ./cmd/ormgen migrate --driver mysql --dsn "$ORM_DSN" \
+  --schema schema/schema.json --migration-id 20260912-initial --dry-run
+go run ./cmd/ormgen migrate --driver mysql --dsn "$ORM_DSN" \
+  --schema schema/schema.json --migration-id 20260912-initial
+```
 
 ---
 
