@@ -128,6 +128,14 @@ go run ./cmd/ormgen gen --schema schema/schema.json --lang rust --out clients/ru
 엔티티마다 쿼리 타입·Row 타입·Where 빌더·컬럼 참조가 생긴다. 스키마를 바꾸면 **다시 생성하고 다시 배포**한다.
 생성물과 엔진의 `schema_hash`가 다르면 시작할 때 `SCHEMA_HASH_MISMATCH`로 즉시 멈춘다(감시·자동 리로드 없음).
 
+TypeScript 패키지는 다음 명령으로 타입, 패키지 빌드, 공통 벡터를 검사한다.
+
+```sh
+npm run typescript:check
+npm run typescript:build
+node tests/typescript/common-vector.mjs
+```
+
 ---
 
 ## 4. 연결
