@@ -117,7 +117,8 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		if ge.Scope != "" {
 			fmt.Fprintf(&b, "  public override scope(value: %s): this { return super.scope(value); }\n", tsType(e.Column(ge.Scope)))
 		}
-		fmt.Fprintf(&b, "  public and(callback: (where: %sWhere) => void): this { this.where().and(core=>callback(new %sWhere(core))); return this; }\n", ge.Type, ge.Type)
+		fmt.Fprintf(&b, "  public and(callback: (where: %sWhere) => void): this { this.whereCore().and(core=>callback(new %sWhere(core))); return this; }\n", ge.Type, ge.Type)
+		fmt.Fprintf(&b, "  public on(callback: (where: %sWhere) => void): this { return this.onGroup(core=>callback(new %sWhere(core))); }\n  public where(callback: (where: %sWhere) => void): this { callback(new %sWhere(this.whereCore())); return this; }\n  public having(callback: (where: %sWhere) => void): this { return this.havingGroup(core=>callback(new %sWhere(core))); }\n", ge.Type, ge.Type, ge.Type, ge.Type, ge.Type, ge.Type)
 		writeTSPredicates(&b, ge, "this")
 		for _, c := range ge.Cols {
 			typ := tsType(e.Column(c.Name))
@@ -150,7 +151,7 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		}
 		b.WriteString("  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }\n  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }\n")
 		for _, rel := range ge.Rels {
-			fmt.Fprintf(&b, "  public %s(callback: (where: %sWhere) => void): this { this.where().navigate(%s,core=>callback(new %sWhere(core))); return this; }\n", tsMethod(rel.Name), rel.TargetType, tsString(rel.Name), rel.TargetType)
+			fmt.Fprintf(&b, "  public %s(callback: (where: %sWhere) => void): this { this.whereCore().navigate(%s,core=>callback(new %sWhere(core))); return this; }\n", tsMethod(rel.Name), rel.TargetType, tsString(rel.Name), rel.TargetType)
 		}
 		for _, rel := range ge.Rels {
 			if rel.Pair {

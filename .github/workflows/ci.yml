@@ -108,6 +108,8 @@ jobs:
           php clients/php/tests/compat.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
       - name: conformance (3 languages identical)
         run: go run ./tests/conformance/check run
+      - name: TypeScript SQLite database execution
+        run: make ts-db-check
       - name: conformance on postgres and sqlite (3 languages; results identical to MySQL, statements per dialect)
         run: |
           go run ./tests/conformance/check run -driver postgres -langs go -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable'
