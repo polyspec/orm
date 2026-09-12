@@ -139,7 +139,8 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 			lines = append(lines, "  "+foreignKeyClause(fk, m, q))
 		}
 		if dialect == "mysql" {
-			for ixName, cols := range e.Indexes {
+			for _, ixName := range sortedIndexNames(e.Indexes) {
+				cols := e.Indexes[ixName]
 				lines = append(lines, "  KEY "+q(ixName)+" ("+joinQuoted(cols, q)+")")
 			}
 			for _, cols := range e.Fulltext {
@@ -171,7 +172,8 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 			}
 		}
 		if dialect != "mysql" {
-			for ixName, cols := range e.Indexes {
+			for _, ixName := range sortedIndexNames(e.Indexes) {
+				cols := e.Indexes[ixName]
 				sb.WriteString(fmt.Sprintf("CREATE INDEX %s ON %s (%s);\n", q(e.Table+"_"+ixName), q(e.Table), joinQuoted(cols, q)))
 			}
 			if dialect == "postgres" {
@@ -186,6 +188,15 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 		}
 	}
 	return sb.String(), nil
+}
+
+func sortedIndexNames(indexes map[string][]string) []string {
+	names := make([]string, 0, len(indexes))
+	for name := range indexes {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // ddlEntityOrder returns a stable parent-before-child order for inline foreign

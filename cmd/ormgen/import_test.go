@@ -43,3 +43,35 @@ func TestRenderMermaidUsesImportedForeignKeyTargetAndDeleteAction(t *testing.T) 
 		t.Fatalf("foreign key action not restored: %#v", relation)
 	}
 }
+
+func TestPostgresFulltextColumnsParsesGeneratedIndexDefinition(t *testing.T) {
+	definition := `CREATE INDEX item_ft_name_body ON public.item USING gin (to_tsvector('simple'::regconfig, (((COALESCE(name, ''::character varying))::text || ' '::text) || COALESCE(body, ''::text))))`
+	got, err := postgresFulltextColumns(definition)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"name", "body"}
+	if len(got) != len(want) {
+		t.Fatalf("columns=%v want=%v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("columns=%v want=%v", got, want)
+		}
+	}
+}
+
+func TestPostgresFulltextColumnsRejectsUnknownExpression(t *testing.T) {
+	if _, err := postgresFulltextColumns(`CREATE INDEX custom ON item USING gin (jsonb_path_ops(data))`); err == nil {
+		t.Fatal("expected unsupported expression error")
+	}
+}
+
+func TestPostgresLogicalIndexNameRemovesGeneratedTablePrefix(t *testing.T) {
+	if got := postgresLogicalIndexName("migration_item", "migration_item_new_code_idx", false); got != "new_code_idx" {
+		t.Fatalf("logical index name=%q", got)
+	}
+	if got := postgresLogicalIndexName("migration_item", "uq_migration_item_code", true); got != "uq_migration_item_code" {
+		t.Fatalf("unique constraint name=%q", got)
+	}
+}
