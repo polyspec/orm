@@ -450,7 +450,7 @@ impl CompositeAccount {
     pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&["tenant_id", "account_id"]); self }
 
     // ---- terminals ----
-    pub async fn one(&mut self) -> Result<Option<CompositeAccountRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn get(&mut self) -> Result<Option<CompositeAccountRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
         Ok(match rows.take_cells().into_iter().next() {
             Some(mut src) => Some(CompositeAccountRow::from_row(&mut src, &rows.assemble, &rows)?),
@@ -458,19 +458,9 @@ impl CompositeAccount {
         })
     }
 
-    pub async fn all(&mut self) -> Result<Collection<CompositeAccountRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn gets(&mut self) -> Result<Collection<CompositeAccountRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "all").await?;
         collect(&mut rows, self.key_fn.as_deref())
-    }
-
-    /// Preferred single-row terminal; one() remains available for compatibility.
-    pub async fn get(&mut self) -> Result<Option<CompositeAccountRow>> {
-        self.one().await
-    }
-
-    /// Preferred collection terminal; all() remains available for compatibility.
-    pub async fn gets(&mut self) -> Result<Collection<CompositeAccountRow>> {
-        self.all().await
     }
 
     /// Visits independently owned rows without accumulating the complete result.
@@ -503,13 +493,8 @@ impl CompositeAccount {
         self.gets().await
     }
 
-    pub async fn count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn get_count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         Ok(db::scalar(ex, &mut self.q.req, "count").await?.as_i64())
-    }
-
-    /// Preferred scalar count terminal; count() remains available as a compatibility alias.
-    pub async fn get_count(&mut self) -> Result<i64> {
-        self.count().await
     }
 
 
@@ -576,7 +561,7 @@ impl CompositeAccount {
         let _ = id;
         let mut query = super::composite_account::query().using(ex);
         for (column, value) in ["tenant_id", "account_id"].iter().zip(keys) { query.q.w().pred(column, "eq", value); }
-        query.one().await
+        query.get().await
     }
 
     /// With set_tenant_id: UPDATE the other set columns WHERE tenant_id = that value and re-read the row; otherwise INSERT.
@@ -586,7 +571,7 @@ impl CompositeAccount {
                 db::write(ex, &mut self.q.req, "update").await?;
                 let mut q = super::composite_account::query().using(ex);
                 for (column, value) in ["tenant_id", "account_id"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.one().await
+                q.get().await
             }
             None => self.insert().await,
         }
@@ -608,14 +593,9 @@ impl CompositeAccount {
         db::sql(ex, &mut self.q.req, "all").await
     }
 
-    pub async fn one_by_tenant_id(&mut self, v: i64) -> Result<Option<CompositeAccountRow>> {
-        self.q.w().pred("tenant_id", "eq", v);
-        self.one().await
-    }
-
-    /// Preferred primary-key lookup; one_by_tenant_id remains available for compatibility.
     pub async fn get_by_tenant_id(&mut self, v: i64) -> Result<Option<CompositeAccountRow>> {
-        self.one_by_tenant_id(v).await
+        self.q.w().pred("tenant_id", "eq", v);
+        self.get().await
     }
     pub async fn get_by_tenant_id_and_account_id(&mut self, v0: i64, v1: i64) -> Result<Option<CompositeAccountRow>> {
         self.q.w().pred("tenant_id", "eq", v0); self.q.w().pred("account_id", "eq", v1);

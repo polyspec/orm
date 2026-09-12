@@ -39,9 +39,9 @@ function p50(int $iters, \Closure $f): float
 }
 
 $cases = [
-    'pk one' => fn(Db $db, int $i) => Battle::query()->seqEq($i % 100000 + 1)->using($db)->one(),
-    '100 rows' => fn(Db $db, int $i) => Battle::query()->serviceSeqEq($i % 100 + 1)->isCloseEq(false)->orderBySeqDesc()->limit(0, 100)->using($db)->all(),
-    'IN(8)' => fn(Db $db, int $i) => Battle::query()->seqIn([$i % 1000 + 1, 6, 106, 206, 306, 406, 506, 606])->orderBySeqAsc()->using($db)->all(),
+    'pk get' => fn(Db $db, int $i) => Battle::query()->seqEq($i % 100000 + 1)->using($db)->get(),
+    '100 rows' => fn(Db $db, int $i) => Battle::query()->serviceSeqEq($i % 100 + 1)->isCloseEq(false)->orderBySeqDesc()->limit(0, 100)->using($db)->gets(),
+    'IN(8)' => fn(Db $db, int $i) => Battle::query()->seqIn([$i % 1000 + 1, 6, 106, 206, 306, 406, 506, 606])->orderBySeqAsc()->using($db)->gets(),
 ];
 
 printf("%-12s %-8s %10s %10s\n", 'case', 'emulate', 'warm p50', 'cold p50');
@@ -63,7 +63,7 @@ foreach ($order as $emulate) {
         });
         printf("%-12s %-8s %8.1fµs %8.1fµs\n", $name, $emulate ? 'on' : 'off', $warm, $cold);
     }
-    $r = Battle::query()->selectJsonSetting()->selectIp()->selectPrice()->seqEq($probe->getSeq())->using($db)->one();
+    $r = Battle::query()->selectJsonSetting()->selectIp()->selectPrice()->seqEq($probe->getSeq())->using($db)->get();
     $raw = Battle::query()->raw('SELECT ip, json_setting, price, is_close, like_count FROM {table} WHERE seq = ?', [$probe->getSeq()])->using($db)->rawAll()[0];
     printf("types (emulate %s): ip=%s json_setting=%s price=%s is_close=%s | raw: %s\n", $emulate ? 'on' : 'off',
         var_export($r->getIp(), true), json_encode($r->getJsonSetting()), var_export($r->getPrice(), true), var_export($r->getIsClose(), true), json_encode($raw));

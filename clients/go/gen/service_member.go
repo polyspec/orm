@@ -1239,7 +1239,7 @@ func (q *ServiceMemberQuery) OnDuplicateSetAll() *ServiceMemberQuery {
 }
 
 // Terminals.
-func (q *ServiceMemberQuery) One() (*ServiceMemberRow, error) {
+func (q *ServiceMemberQuery) Get() (*ServiceMemberRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
@@ -1258,7 +1258,7 @@ func (q *ServiceMemberQuery) One() (*ServiceMemberRow, error) {
 	return scanServiceMember(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *ServiceMemberQuery) All() (*orm.Collection[ServiceMemberRow], error) {
+func (q *ServiceMemberQuery) Gets() (*orm.Collection[ServiceMemberRow], error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
@@ -1275,16 +1275,6 @@ func (q *ServiceMemberQuery) All() (*orm.Collection[ServiceMemberRow], error) {
 		return nil, err
 	}
 	return collectServiceMember(rows, q.keyFn), nil
-}
-
-// Get is the preferred single-row terminal. One is kept as a compatibility alias.
-func (q *ServiceMemberQuery) Get() (*ServiceMemberRow, error) {
-	return q.One()
-}
-
-// Gets is the preferred collection terminal. All is kept as a compatibility alias.
-func (q *ServiceMemberQuery) Gets() (*orm.Collection[ServiceMemberRow], error) {
-	return q.All()
 }
 
 // Stream visits independently owned rows without accumulating the complete result.
@@ -1347,7 +1337,7 @@ func collectServiceMemberDirect(rows []*ServiceMemberRow, keyFn func(*ServiceMem
 	return c
 }
 
-func (q *ServiceMemberQuery) Count() (int64, error) {
+func (q *ServiceMemberQuery) GetCount() (int64, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return 0, err
@@ -1355,11 +1345,6 @@ func (q *ServiceMemberQuery) Count() (int64, error) {
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
-}
-
-// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
-func (q *ServiceMemberQuery) GetCount() (int64, error) {
-	return q.Count()
 }
 
 // GetCountBySeq applies seq = v and runs the scalar count terminal.
@@ -1619,7 +1604,7 @@ func (q *ServiceMemberQuery) Insert() (*ServiceMemberRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ServiceMember().Using(ctx, ex).SeqEq(int64(id)).One()
+	return ServiceMember().Using(ctx, ex).SeqEq(int64(id)).Get()
 }
 
 // Save updates when every primary-key column was assigned and inserts when none was assigned.
@@ -1639,7 +1624,7 @@ func (q *ServiceMemberQuery) Save() (*ServiceMemberRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return ServiceMember().Using(ctx, ex).SeqEq(keys[0].(int64)).One()
+	return ServiceMember().Using(ctx, ex).SeqEq(keys[0].(int64)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
@@ -1674,11 +1659,6 @@ func (q *ServiceMemberQuery) SQL() (*orm.Statement, error) {
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *ServiceMemberQuery) OneBySeq(v int64) (*ServiceMemberRow, error) {
-	return q.SeqEq(v).One()
-}
-
-// GetBySeq is the preferred primary-key lookup. OneBySeq is kept as a compatibility alias.
 func (q *ServiceMemberQuery) GetBySeq(v int64) (*ServiceMemberRow, error) {
-	return q.OneBySeq(v)
+	return q.SeqEq(v).Get()
 }

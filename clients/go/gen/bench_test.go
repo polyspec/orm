@@ -17,7 +17,7 @@ func BenchmarkClientPKGet(b *testing.B) {
 	ctx := context.Background()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		r, err := gen.Battle().SeqEq(int64(i%100000+1)).Using(ctx, db).One()
+		r, err := gen.Battle().SeqEq(int64(i%100000+1)).Using(ctx, db).Get()
 		if err != nil || r == nil {
 			b.Fatal(err)
 		}
@@ -30,7 +30,7 @@ func BenchmarkClientList100(b *testing.B) {
 	ctx := context.Background()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		rows, err := gen.Battle().ServiceSeqEq(int64(i%100+1)).IsCloseEq(false).OrderBySeqDesc().Limit(0, 100).Using(ctx, db).All()
+		rows, err := gen.Battle().ServiceSeqEq(int64(i%100+1)).IsCloseEq(false).OrderBySeqDesc().Limit(0, 100).Using(ctx, db).Gets()
 		if err != nil || rows.Len() == 0 {
 			b.Fatalf("%v %d", err, rows.Len())
 		}

@@ -14,12 +14,9 @@ The PHP executor: generated typed builders (`App\Orm\Battle`, …) over PDO (`pd
   schema hash the code was generated from.
 - `tests/` — `integration.php` (the S1 demo statements plus the S3–S6 gates, on the database
   `ORM_TEST_DRIVER` / `ORM_TEST_DSN` name), `hostcodec.php` (the host AES/hex/ip stages against
-  `tests/codec/aes-vectors.json`, byte for byte, no database needed), `compat.php`
-  (PHP compatibility layer: 50 old-style/canonical pairs with identical IR and results, plus its error
-  codes), the conformance runner lives in `tests/conformance/runner.php`, benches in `bench.php` /
+  `tests/codec/aes-vectors.json`, byte for byte, no database needed), the conformance runner lives in
+  `tests/conformance/runner.php`, benches in `bench.php` /
   `bench_emulate.php`.
-- `src/Compat.php` — the PHP `__call` compatibility layer (`CompatQuery` / `CompatWhere` traits the
-  generated classes use); translation table in `docs/dsl.md` "PHP 호환층".
 
 ## ormd
 PHP cannot link the engine, so the plans come from the compile daemon over a Unix socket:
@@ -87,14 +84,13 @@ Same plans shape, dialect text (docs/dialects.md); what the PHP executor does di
 `PDOException` except, per driver: MySQL 1213 / SQLSTATE 40001 (`Code::DEADLOCK`, re-run by
 `Db::transaction`) and 1062 (`Code::DUPLICATE_KEY`); PostgreSQL SQLSTATE 40P01 / 40001
 (`DEADLOCK`) and 23505 (`DUPLICATE_KEY`); SQLite 5 / 6 busy/locked and their extended forms
-(`DEADLOCK`, re-run) and the unique / primary-key constraint (`DUPLICATE_KEY`; pdo_sqlite reports
+(`DEADLOCK`) and the unique / primary-key constraint (`DUPLICATE_KEY`; pdo_sqlite reports
 the primary code 19 with "UNIQUE constraint failed"). The driver message is kept.
 
 ## Tests
     go build -o bin/ormd ./cmd/ormd
     bin/ormd -socket "$PWD/bin/ormd.sock" -schema schema/schema.json &
     php -d apc.enable_cli=0 clients/php/tests/integration.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
-    php -d apc.enable_cli=0 clients/php/tests/compat.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
     php -d apc.enable_cli=0 tests/conformance/runner.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
 
 The tests connect with `ORM_MYSQL_DSN_PHP` when set (user `root`, no password), else

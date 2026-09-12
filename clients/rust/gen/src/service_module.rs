@@ -491,7 +491,7 @@ impl ServiceModule {
     pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&["seq"]); self }
 
     // ---- terminals ----
-    pub async fn one(&mut self) -> Result<Option<ServiceModuleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn get(&mut self) -> Result<Option<ServiceModuleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
         Ok(match rows.take_cells().into_iter().next() {
             Some(mut src) => Some(ServiceModuleRow::from_row(&mut src, &rows.assemble, &rows)?),
@@ -499,19 +499,9 @@ impl ServiceModule {
         })
     }
 
-    pub async fn all(&mut self) -> Result<Collection<ServiceModuleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn gets(&mut self) -> Result<Collection<ServiceModuleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "all").await?;
         collect(&mut rows, self.key_fn.as_deref())
-    }
-
-    /// Preferred single-row terminal; one() remains available for compatibility.
-    pub async fn get(&mut self) -> Result<Option<ServiceModuleRow>> {
-        self.one().await
-    }
-
-    /// Preferred collection terminal; all() remains available for compatibility.
-    pub async fn gets(&mut self) -> Result<Collection<ServiceModuleRow>> {
-        self.all().await
     }
 
     /// Visits independently owned rows without accumulating the complete result.
@@ -544,13 +534,8 @@ impl ServiceModule {
         self.gets().await
     }
 
-    pub async fn count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn get_count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         Ok(db::scalar(ex, &mut self.q.req, "count").await?.as_i64())
-    }
-
-    /// Preferred scalar count terminal; count() remains available as a compatibility alias.
-    pub async fn get_count(&mut self) -> Result<i64> {
-        self.count().await
     }
 
 
@@ -613,7 +598,7 @@ impl ServiceModule {
 
     pub async fn insert(&mut self) -> Result<Option<ServiceModuleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
-        super::service_module::query().using(ex).seq_eq(id as i64).one().await
+        super::service_module::query().using(ex).seq_eq(id as i64).get().await
     }
 
     /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
@@ -623,7 +608,7 @@ impl ServiceModule {
                 db::write(ex, &mut self.q.req, "update").await?;
                 let mut q = super::service_module::query().using(ex);
                 for (column, value) in ["seq"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.one().await
+                q.get().await
             }
             None => self.insert().await,
         }
@@ -645,14 +630,9 @@ impl ServiceModule {
         db::sql(ex, &mut self.q.req, "all").await
     }
 
-    pub async fn one_by_seq(&mut self, v: i64) -> Result<Option<ServiceModuleRow>> {
-        self.q.w().pred("seq", "eq", v);
-        self.one().await
-    }
-
-    /// Preferred primary-key lookup; one_by_seq remains available for compatibility.
     pub async fn get_by_seq(&mut self, v: i64) -> Result<Option<ServiceModuleRow>> {
-        self.one_by_seq(v).await
+        self.q.w().pred("seq", "eq", v);
+        self.get().await
     }
 
 }

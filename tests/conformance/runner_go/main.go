@@ -647,7 +647,7 @@ func main() {
 		if err := created.Using(ctx, db).UpdateOptimistic(); err != nil {
 			return nil, err
 		}
-		again, err := gen.Battle().Using(ctx, db).OneBySeq(created.Seq)
+		again, err := gen.Battle().Using(ctx, db).GetBySeq(created.Seq)
 		if err != nil {
 			return nil, err
 		}
@@ -885,7 +885,7 @@ func main() {
 		}
 		maskRows(created.UpdatedTs, created.Seq)
 		readCount := func() (int64, error) {
-			b, err := gen.Battle().Using(ctx, db).OneBySeq(created.Seq)
+			b, err := gen.Battle().Using(ctx, db).GetBySeq(created.Seq)
 			if err != nil {
 				return 0, err
 			}

@@ -1019,7 +1019,7 @@ func (q *CompositeMembershipQuery) OnDuplicateSetAll() *CompositeMembershipQuery
 }
 
 // Terminals.
-func (q *CompositeMembershipQuery) One() (*CompositeMembershipRow, error) {
+func (q *CompositeMembershipQuery) Get() (*CompositeMembershipRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
@@ -1038,7 +1038,7 @@ func (q *CompositeMembershipQuery) One() (*CompositeMembershipRow, error) {
 	return scanCompositeMembership(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *CompositeMembershipQuery) All() (*orm.Collection[CompositeMembershipRow], error) {
+func (q *CompositeMembershipQuery) Gets() (*orm.Collection[CompositeMembershipRow], error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
@@ -1055,16 +1055,6 @@ func (q *CompositeMembershipQuery) All() (*orm.Collection[CompositeMembershipRow
 		return nil, err
 	}
 	return collectCompositeMembership(rows, q.keyFn), nil
-}
-
-// Get is the preferred single-row terminal. One is kept as a compatibility alias.
-func (q *CompositeMembershipQuery) Get() (*CompositeMembershipRow, error) {
-	return q.One()
-}
-
-// Gets is the preferred collection terminal. All is kept as a compatibility alias.
-func (q *CompositeMembershipQuery) Gets() (*orm.Collection[CompositeMembershipRow], error) {
-	return q.All()
 }
 
 // Stream visits independently owned rows without accumulating the complete result.
@@ -1127,7 +1117,7 @@ func collectCompositeMembershipDirect(rows []*CompositeMembershipRow, keyFn func
 	return c
 }
 
-func (q *CompositeMembershipQuery) Count() (int64, error) {
+func (q *CompositeMembershipQuery) GetCount() (int64, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return 0, err
@@ -1135,11 +1125,6 @@ func (q *CompositeMembershipQuery) Count() (int64, error) {
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
-}
-
-// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
-func (q *CompositeMembershipQuery) GetCount() (int64, error) {
-	return q.Count()
 }
 
 // GetCountByTenantId applies tenant_id = v and runs the scalar count terminal.
@@ -1384,7 +1369,7 @@ func (q *CompositeMembershipQuery) Insert() (*CompositeMembershipRow, error) {
 		return nil, err
 	}
 	_ = id
-	return CompositeMembership().Using(ctx, ex).TenantIdEq(keys[0].(int64)).AccountIdEq(keys[1].(int64)).One()
+	return CompositeMembership().Using(ctx, ex).TenantIdEq(keys[0].(int64)).AccountIdEq(keys[1].(int64)).Get()
 }
 
 // Save updates when every primary-key column was assigned and inserts when none was assigned.
@@ -1404,7 +1389,7 @@ func (q *CompositeMembershipQuery) Save() (*CompositeMembershipRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return CompositeMembership().Using(ctx, ex).TenantIdEq(keys[0].(int64)).AccountIdEq(keys[1].(int64)).One()
+	return CompositeMembership().Using(ctx, ex).TenantIdEq(keys[0].(int64)).AccountIdEq(keys[1].(int64)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
@@ -1439,13 +1424,8 @@ func (q *CompositeMembershipQuery) SQL() (*orm.Statement, error) {
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *CompositeMembershipQuery) OneByTenantId(v int64) (*CompositeMembershipRow, error) {
-	return q.TenantIdEq(v).One()
-}
-
-// GetByTenantId is the preferred primary-key lookup. OneByTenantId is kept as a compatibility alias.
 func (q *CompositeMembershipQuery) GetByTenantId(v int64) (*CompositeMembershipRow, error) {
-	return q.OneByTenantId(v)
+	return q.TenantIdEq(v).Get()
 }
 
 // GetByTenantIdAndAccountId applies every primary-key component in declared order.

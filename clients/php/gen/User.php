@@ -6,8 +6,6 @@ namespace App\Orm;
 
 use Orm\ColRef;
 use Orm\Collection;
-use Orm\CompatQuery;
-use Orm\CompatWhere;
 use Orm\Db;
 use Orm\Page;
 use Orm\Q;
@@ -61,19 +59,15 @@ final class UserCols
     public static function name(): ColRef { return new ColRef('name'); }
 }
 
-/** Where builder for user: predicates, or(), and(fn), relation navigation. Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
+/** Where builder for user: typed predicates, or(), and(fn), and relation navigation. */
 final class UserWhere
 {
-    use CompatWhere;
-
     public const ENTITY = 'user';
 
     public function __construct(private W $w) {}
 
-    /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
-    public function or(\Closure|string|null $fn = null, mixed $v = null): static { if (func_num_args() === 0) { $this->w->orConn(); return $this; } return $this->compatConn('or', $fn, $v); }
-    /** and(fn) opens a parenthesised group; and('(') / and('sql …', binds) / and('Name', v) are compat tokens. */
-    public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new self($this->w->group())); $this->w->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
+    public function or(): static { $this->w->orConn(); return $this; }
+    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
     public function battles(\Closure $fn): static { $fn(new BattleWhere($this->w->nav('battles'))); $this->w->req->end(); return $this; }
     public function serviceMembers(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w->nav('service_members'))); $this->w->req->end(); return $this; }
@@ -112,21 +106,17 @@ final class UserWhere
     public function nameNotEqCol(ColRef $ref): static { $this->w->predCol('name', 'not_eq_col', $ref); return $this; }
 }
 
-/** Query over user: User::query() → using($db) → chain → terminal(). Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
+/** Query over user: User::query() → using($db) → typed chain → terminal(). */
 final class User extends Q implements UserInterface
 {
-    use CompatQuery;
-
     public const ENTITY = 'user';
 
     private function __construct() { parent::__construct('user'); }
     public static function query(): static { return new static(); }
 
     // ---- WHERE ----
-    /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
-    public function or(\Closure|string|null $fn = null, mixed $v = null): static { if (func_num_args() === 0) { $this->orConn(); return $this; } return $this->compatConn('or', $fn, $v); }
-    /** and(fn) opens a parenthesised group; and('(') / and('sql …', binds) / and('Name', v) are compat tokens. */
-    public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new UserWhere($this->w()->group())); $this->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
+    public function or(): static { $this->orConn(); return $this; }
+    public function and(\Closure $fn): static { $fn(new UserWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
     public function battles(\Closure $fn): static { $fn(new BattleWhere($this->w()->nav('battles'))); $this->req->end(); return $this; }
     public function serviceMembers(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->nav('service_members'))); $this->req->end(); return $this; }
@@ -167,16 +157,12 @@ final class User extends Q implements UserInterface
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new UserWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new UserWhere($this->w())); return $this; }
-    public function relation(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { $child->compatMatch($m[0], $m[1], null); } return $this->compatRelation($child, false, null, null, 'relation'); }
-    public function relations(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { $child->compatMatch($m[0], $m[1], null); } return $this->compatRelation($child, true, null, null, 'relations'); }
-    public function join(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { return $this->compatJoin($child, null, false, $m[0], $m[1], 'join'); } $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
-    public function leftJoin(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { return $this->compatJoin($child, null, true, $m[0], $m[1], 'leftJoin'); } $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
 
 
 
 
 
-    public function matchUserSeqWithSeq(bool $keep = true): static { $this->setLink('user_seq', 'seq'); $this->compatMatch('user_seq', 'seq', $keep); return $this; }
+    public function matchUserSeqWithSeq(): static { $this->setLink('user_seq', 'seq'); return $this; }
     public function onUserSeqWithSeq(): static { $this->setLink('user_seq', 'seq'); return $this; }
 
     // ---- columns ----
@@ -246,7 +232,7 @@ final class User extends Q implements UserInterface
     public function onDuplicateSetNameExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('name', $frag, $binds); return $this; }
 
     // ---- terminals ----
-    public function one(): ?UserRow
+    public function get(): ?UserRow
     {
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
@@ -254,19 +240,11 @@ final class User extends Q implements UserInterface
         return $rows->data === [] ? null : UserRow::fromRow($rows->data[0], $rows->asm, $rows);
     }
 
-    public function all(): Collection
-    {
-        $this->terminalArity(func_num_args());
-        $db = $this->terminalDb();
-        $this->compatRootKey();
-        return Collection::fromRows($this->runQuery($db, 'all'), UserRow::class, $this->keyFn);
-    }
-
-    /** Preferred collection terminal; all() remains available for compatibility. */
     public function gets(): Collection
     {
         $this->terminalArity(func_num_args());
-        return $this->all();
+        $db = $this->terminalDb();
+        return Collection::fromRows($this->runQuery($db, 'all'), UserRow::class, $this->keyFn);
     }
 
     /** Visits independently owned rows without accumulating the complete result. */
@@ -278,13 +256,6 @@ final class User extends Q implements UserInterface
         return $db->streamPlan($plan, $this->req->params, static function (array $values, Rows $rows) use ($visit): bool {
             return (bool) $visit(UserRow::fromRow($values, $rows->asm, $rows));
         });
-    }
-
-    /** Preferred single-row terminal; one() remains available for compatibility. */
-    public function get(): ?UserRow
-    {
-        $this->terminalArity(func_num_args());
-        return $this->one();
     }
 
 
@@ -302,10 +273,7 @@ final class User extends Q implements UserInterface
         return $this->name($value)->gets();
     }
 
-    public function count(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count'); }
-
-    /** Preferred scalar count terminal; count() remains available as a compatibility alias. */
-    public function getCount(): int { $this->terminalArity(func_num_args()); return $this->count(); }
+    public function getCount(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count'); }
 
 
     /** Applies seq = value and runs the scalar count terminal. */
@@ -330,7 +298,6 @@ final class User extends Q implements UserInterface
         if (empty($this->req->ir['group_by']) && empty($this->req->ir['group_by_expr'])) {
             throw new \Orm\OrmException(\Orm\Code::IR_INVALID, static::ENTITY . ': getsCount() needs groupBy()');
         }
-        $this->compatRootKey();
         return Collection::fromRows($this->runQuery($db, 'group_count'), Registry::row(static::ENTITY), $this->keyFn);
     }
     public function sumSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'seq'); }
@@ -356,7 +323,6 @@ final class User extends Q implements UserInterface
         $this->terminalArity(func_num_args(), 2);
         $db = $this->terminalDb();
         if ($per <= 0) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'per must be positive'); }
-        $this->compatRootKey();
         [$rows, $total] = $this->runPaginate($db, $page, $per);
         return new Page(Collection::fromRows($rows, UserRow::class, $this->keyFn), $total, intdiv($total + $per - 1, $per), max(1, $page), $per);
     }
@@ -366,7 +332,7 @@ final class User extends Q implements UserInterface
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
         $id = $this->runInsert($db);
-        return User::query()->using($db)->seqEq((int) $id)->one();
+        return User::query()->using($db)->seqEq((int) $id)->get();
     }
 
     /** UPDATE when every primary-key column was assigned; otherwise INSERT. */
@@ -376,7 +342,7 @@ final class User extends Q implements UserInterface
         $db = $this->terminalDb();
         [$updated, $keys] = $this->runSave($db, ['seq']);
         if (!$updated) { $keys = [(int) $keys[0]]; }
-        return User::query()->using($db)->seqEq($keys[0])->one();
+        return User::query()->using($db)->seqEq($keys[0])->get();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
@@ -386,11 +352,6 @@ final class User extends Q implements UserInterface
     /** The main statement as the all() terminal would run it, without executing; secret slots read "$SECRET". @return array{sql: string, binds: list<mixed>} */
     public function sql(): array { $this->terminalArity(func_num_args()); return $this->runSql($this->terminalDb()); }
 
-    public function oneBySeq(int $value): ?UserRow
-    {
-        $this->terminalArity(func_num_args(), 1);
-        return $this->seqEq($value)->one();
-    }
     public function getBySeq(int $value): ?UserRow
     {
         $this->terminalArity(func_num_args(), 1);
