@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/polyspec/orm/engine/schema"
@@ -125,10 +126,12 @@ type ColRef struct {
 
 // Nav descends into a joined relation inside a group.
 type Nav struct {
-	Conn  string `json:"conn,omitempty"`
-	Rel   string `json:"rel"`
-	Group *Group `json:"group"`
-	Mode  string `json:"mode,omitempty"` // "" = joined navigation, exists, or not_exists
+	Conn    string `json:"conn,omitempty"`
+	Rel     string `json:"rel"`
+	Group   *Group `json:"group"`
+	Mode    string `json:"mode,omitempty"`     // "" = joined navigation, exists, or not_exists
+	CountOp string `json:"count_op,omitempty"` // count mode: eq, not_eq, gt, gte, lt, lte
+	P       *int   `json:"p,omitempty"`        // count comparison parameter
 }
 
 type Order struct {
@@ -628,8 +631,16 @@ func (v *validator) group(ent *schema.Entity, g *Group, joined map[string]*Join,
 				}
 				target = v.m.Entities[j.Query.Entity]
 			} else {
-				if it.Nav.Mode != "exists" && it.Nav.Mode != "not_exists" {
+				if it.Nav.Mode != "exists" && it.Nav.Mode != "not_exists" && it.Nav.Mode != "count" {
 					return errf("IR_INVALID", "navigation mode %q", it.Nav.Mode)
+				}
+				if it.Nav.Mode == "count" {
+					if it.Nav.P == nil || !slices.Contains([]string{"eq", "not_eq", "gt", "gte", "lt", "lte"}, it.Nav.CountOp) {
+						return errf("IR_INVALID", "count navigation needs a comparison operator and parameter")
+					}
+					if err := v.params([]int{*it.Nav.P}); err != nil {
+						return err
+					}
 				}
 				rel := ent.Relations[it.Nav.Rel]
 				if rel == nil {

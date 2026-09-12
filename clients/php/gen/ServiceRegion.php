@@ -83,9 +83,21 @@ final class ServiceRegionWhere
     public function authors(\Closure $fn): static { $fn(new AuthorWhere($this->w->nav('authors'))); $this->w->req->end(); return $this; }
     public function hasAuthors(\Closure $fn): static { $fn(new AuthorWhere($this->w->navMode('authors', 'exists'))); $this->w->req->end(); return $this; }
     public function notHasAuthors(\Closure $fn): static { $fn(new AuthorWhere($this->w->navMode('authors', 'not_exists'))); $this->w->req->end(); return $this; }
+    public function countAuthorsEq(int $value, \Closure $fn): static { $fn(new AuthorWhere($this->w->navCount('authors', 'eq', $value))); $this->w->req->end(); return $this; }
+    public function countAuthorsGte(int $value, \Closure $fn): static { $fn(new AuthorWhere($this->w->navCount('authors', 'gte', $value))); $this->w->req->end(); return $this; }
+    public function countAuthorsGt(int $value, \Closure $fn): static { $fn(new AuthorWhere($this->w->navCount('authors', 'gt', $value))); $this->w->req->end(); return $this; }
+    public function countAuthorsLte(int $value, \Closure $fn): static { $fn(new AuthorWhere($this->w->navCount('authors', 'lte', $value))); $this->w->req->end(); return $this; }
+    public function countAuthorsLt(int $value, \Closure $fn): static { $fn(new AuthorWhere($this->w->navCount('authors', 'lt', $value))); $this->w->req->end(); return $this; }
+    public function countAuthorsNotEq(int $value, \Closure $fn): static { $fn(new AuthorWhere($this->w->navCount('authors', 'not_eq', $value))); $this->w->req->end(); return $this; }
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w->nav('service'))); $this->w->req->end(); return $this; }
     public function hasService(\Closure $fn): static { $fn(new ServiceWhere($this->w->navMode('service', 'exists'))); $this->w->req->end(); return $this; }
     public function notHasService(\Closure $fn): static { $fn(new ServiceWhere($this->w->navMode('service', 'not_exists'))); $this->w->req->end(); return $this; }
+    public function countServiceEq(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w->navCount('service', 'eq', $value))); $this->w->req->end(); return $this; }
+    public function countServiceGte(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w->navCount('service', 'gte', $value))); $this->w->req->end(); return $this; }
+    public function countServiceGt(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w->navCount('service', 'gt', $value))); $this->w->req->end(); return $this; }
+    public function countServiceLte(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w->navCount('service', 'lte', $value))); $this->w->req->end(); return $this; }
+    public function countServiceLt(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w->navCount('service', 'lt', $value))); $this->w->req->end(); return $this; }
+    public function countServiceNotEq(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w->navCount('service', 'not_eq', $value))); $this->w->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }
@@ -154,9 +166,21 @@ final class ServiceRegion extends Q implements ServiceRegionInterface
     public function authors(\Closure $fn): static { $fn(new AuthorWhere($this->w()->nav('authors'))); $this->req->end(); return $this; }
     public function hasAuthors(\Closure $fn): static { $fn(new AuthorWhere($this->w()->navMode('authors', 'exists'))); $this->req->end(); return $this; }
     public function notHasAuthors(\Closure $fn): static { $fn(new AuthorWhere($this->w()->navMode('authors', 'not_exists'))); $this->req->end(); return $this; }
+    public function countAuthorsEq(int $value, \Closure $fn): static { $fn(new AuthorWhere($this->w()->navCount('authors', 'eq', $value))); $this->req->end(); return $this; }
+    public function countAuthorsGte(int $value, \Closure $fn): static { $fn(new AuthorWhere($this->w()->navCount('authors', 'gte', $value))); $this->req->end(); return $this; }
+    public function countAuthorsGt(int $value, \Closure $fn): static { $fn(new AuthorWhere($this->w()->navCount('authors', 'gt', $value))); $this->req->end(); return $this; }
+    public function countAuthorsLte(int $value, \Closure $fn): static { $fn(new AuthorWhere($this->w()->navCount('authors', 'lte', $value))); $this->req->end(); return $this; }
+    public function countAuthorsLt(int $value, \Closure $fn): static { $fn(new AuthorWhere($this->w()->navCount('authors', 'lt', $value))); $this->req->end(); return $this; }
+    public function countAuthorsNotEq(int $value, \Closure $fn): static { $fn(new AuthorWhere($this->w()->navCount('authors', 'not_eq', $value))); $this->req->end(); return $this; }
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w()->nav('service'))); $this->req->end(); return $this; }
     public function hasService(\Closure $fn): static { $fn(new ServiceWhere($this->w()->navMode('service', 'exists'))); $this->req->end(); return $this; }
     public function notHasService(\Closure $fn): static { $fn(new ServiceWhere($this->w()->navMode('service', 'not_exists'))); $this->req->end(); return $this; }
+    public function countServiceEq(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w()->navCount('service', 'eq', $value))); $this->req->end(); return $this; }
+    public function countServiceGte(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w()->navCount('service', 'gte', $value))); $this->req->end(); return $this; }
+    public function countServiceGt(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w()->navCount('service', 'gt', $value))); $this->req->end(); return $this; }
+    public function countServiceLte(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w()->navCount('service', 'lte', $value))); $this->req->end(); return $this; }
+    public function countServiceLt(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w()->navCount('service', 'lt', $value))); $this->req->end(); return $this; }
+    public function countServiceNotEq(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w()->navCount('service', 'not_eq', $value))); $this->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w()->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }

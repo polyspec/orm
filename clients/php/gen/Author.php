@@ -352,15 +352,39 @@ final class AuthorWhere
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w->nav('service'))); $this->w->req->end(); return $this; }
     public function hasService(\Closure $fn): static { $fn(new ServiceWhere($this->w->navMode('service', 'exists'))); $this->w->req->end(); return $this; }
     public function notHasService(\Closure $fn): static { $fn(new ServiceWhere($this->w->navMode('service', 'not_exists'))); $this->w->req->end(); return $this; }
+    public function countServiceEq(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w->navCount('service', 'eq', $value))); $this->w->req->end(); return $this; }
+    public function countServiceGte(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w->navCount('service', 'gte', $value))); $this->w->req->end(); return $this; }
+    public function countServiceGt(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w->navCount('service', 'gt', $value))); $this->w->req->end(); return $this; }
+    public function countServiceLte(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w->navCount('service', 'lte', $value))); $this->w->req->end(); return $this; }
+    public function countServiceLt(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w->navCount('service', 'lt', $value))); $this->w->req->end(); return $this; }
+    public function countServiceNotEq(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w->navCount('service', 'not_eq', $value))); $this->w->req->end(); return $this; }
     public function serviceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w->nav('service_member'))); $this->w->req->end(); return $this; }
     public function hasServiceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w->navMode('service_member', 'exists'))); $this->w->req->end(); return $this; }
     public function notHasServiceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w->navMode('service_member', 'not_exists'))); $this->w->req->end(); return $this; }
+    public function countServiceMemberEq(int $value, \Closure $fn): static { $fn(new ServiceMemberWhere($this->w->navCount('service_member', 'eq', $value))); $this->w->req->end(); return $this; }
+    public function countServiceMemberGte(int $value, \Closure $fn): static { $fn(new ServiceMemberWhere($this->w->navCount('service_member', 'gte', $value))); $this->w->req->end(); return $this; }
+    public function countServiceMemberGt(int $value, \Closure $fn): static { $fn(new ServiceMemberWhere($this->w->navCount('service_member', 'gt', $value))); $this->w->req->end(); return $this; }
+    public function countServiceMemberLte(int $value, \Closure $fn): static { $fn(new ServiceMemberWhere($this->w->navCount('service_member', 'lte', $value))); $this->w->req->end(); return $this; }
+    public function countServiceMemberLt(int $value, \Closure $fn): static { $fn(new ServiceMemberWhere($this->w->navCount('service_member', 'lt', $value))); $this->w->req->end(); return $this; }
+    public function countServiceMemberNotEq(int $value, \Closure $fn): static { $fn(new ServiceMemberWhere($this->w->navCount('service_member', 'not_eq', $value))); $this->w->req->end(); return $this; }
     public function serviceRegion(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w->nav('service_region'))); $this->w->req->end(); return $this; }
     public function hasServiceRegion(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w->navMode('service_region', 'exists'))); $this->w->req->end(); return $this; }
     public function notHasServiceRegion(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w->navMode('service_region', 'not_exists'))); $this->w->req->end(); return $this; }
+    public function countServiceRegionEq(int $value, \Closure $fn): static { $fn(new ServiceRegionWhere($this->w->navCount('service_region', 'eq', $value))); $this->w->req->end(); return $this; }
+    public function countServiceRegionGte(int $value, \Closure $fn): static { $fn(new ServiceRegionWhere($this->w->navCount('service_region', 'gte', $value))); $this->w->req->end(); return $this; }
+    public function countServiceRegionGt(int $value, \Closure $fn): static { $fn(new ServiceRegionWhere($this->w->navCount('service_region', 'gt', $value))); $this->w->req->end(); return $this; }
+    public function countServiceRegionLte(int $value, \Closure $fn): static { $fn(new ServiceRegionWhere($this->w->navCount('service_region', 'lte', $value))); $this->w->req->end(); return $this; }
+    public function countServiceRegionLt(int $value, \Closure $fn): static { $fn(new ServiceRegionWhere($this->w->navCount('service_region', 'lt', $value))); $this->w->req->end(); return $this; }
+    public function countServiceRegionNotEq(int $value, \Closure $fn): static { $fn(new ServiceRegionWhere($this->w->navCount('service_region', 'not_eq', $value))); $this->w->req->end(); return $this; }
     public function user(\Closure $fn): static { $fn(new UserWhere($this->w->nav('user'))); $this->w->req->end(); return $this; }
     public function hasUser(\Closure $fn): static { $fn(new UserWhere($this->w->navMode('user', 'exists'))); $this->w->req->end(); return $this; }
     public function notHasUser(\Closure $fn): static { $fn(new UserWhere($this->w->navMode('user', 'not_exists'))); $this->w->req->end(); return $this; }
+    public function countUserEq(int $value, \Closure $fn): static { $fn(new UserWhere($this->w->navCount('user', 'eq', $value))); $this->w->req->end(); return $this; }
+    public function countUserGte(int $value, \Closure $fn): static { $fn(new UserWhere($this->w->navCount('user', 'gte', $value))); $this->w->req->end(); return $this; }
+    public function countUserGt(int $value, \Closure $fn): static { $fn(new UserWhere($this->w->navCount('user', 'gt', $value))); $this->w->req->end(); return $this; }
+    public function countUserLte(int $value, \Closure $fn): static { $fn(new UserWhere($this->w->navCount('user', 'lte', $value))); $this->w->req->end(); return $this; }
+    public function countUserLt(int $value, \Closure $fn): static { $fn(new UserWhere($this->w->navCount('user', 'lt', $value))); $this->w->req->end(); return $this; }
+    public function countUserNotEq(int $value, \Closure $fn): static { $fn(new UserWhere($this->w->navCount('user', 'not_eq', $value))); $this->w->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }
@@ -869,15 +893,39 @@ final class Author extends Q implements AuthorInterface
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w()->nav('service'))); $this->req->end(); return $this; }
     public function hasService(\Closure $fn): static { $fn(new ServiceWhere($this->w()->navMode('service', 'exists'))); $this->req->end(); return $this; }
     public function notHasService(\Closure $fn): static { $fn(new ServiceWhere($this->w()->navMode('service', 'not_exists'))); $this->req->end(); return $this; }
+    public function countServiceEq(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w()->navCount('service', 'eq', $value))); $this->req->end(); return $this; }
+    public function countServiceGte(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w()->navCount('service', 'gte', $value))); $this->req->end(); return $this; }
+    public function countServiceGt(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w()->navCount('service', 'gt', $value))); $this->req->end(); return $this; }
+    public function countServiceLte(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w()->navCount('service', 'lte', $value))); $this->req->end(); return $this; }
+    public function countServiceLt(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w()->navCount('service', 'lt', $value))); $this->req->end(); return $this; }
+    public function countServiceNotEq(int $value, \Closure $fn): static { $fn(new ServiceWhere($this->w()->navCount('service', 'not_eq', $value))); $this->req->end(); return $this; }
     public function serviceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->nav('service_member'))); $this->req->end(); return $this; }
     public function hasServiceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->navMode('service_member', 'exists'))); $this->req->end(); return $this; }
     public function notHasServiceMember(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->navMode('service_member', 'not_exists'))); $this->req->end(); return $this; }
+    public function countServiceMemberEq(int $value, \Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->navCount('service_member', 'eq', $value))); $this->req->end(); return $this; }
+    public function countServiceMemberGte(int $value, \Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->navCount('service_member', 'gte', $value))); $this->req->end(); return $this; }
+    public function countServiceMemberGt(int $value, \Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->navCount('service_member', 'gt', $value))); $this->req->end(); return $this; }
+    public function countServiceMemberLte(int $value, \Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->navCount('service_member', 'lte', $value))); $this->req->end(); return $this; }
+    public function countServiceMemberLt(int $value, \Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->navCount('service_member', 'lt', $value))); $this->req->end(); return $this; }
+    public function countServiceMemberNotEq(int $value, \Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->navCount('service_member', 'not_eq', $value))); $this->req->end(); return $this; }
     public function serviceRegion(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->nav('service_region'))); $this->req->end(); return $this; }
     public function hasServiceRegion(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->navMode('service_region', 'exists'))); $this->req->end(); return $this; }
     public function notHasServiceRegion(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->navMode('service_region', 'not_exists'))); $this->req->end(); return $this; }
+    public function countServiceRegionEq(int $value, \Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->navCount('service_region', 'eq', $value))); $this->req->end(); return $this; }
+    public function countServiceRegionGte(int $value, \Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->navCount('service_region', 'gte', $value))); $this->req->end(); return $this; }
+    public function countServiceRegionGt(int $value, \Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->navCount('service_region', 'gt', $value))); $this->req->end(); return $this; }
+    public function countServiceRegionLte(int $value, \Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->navCount('service_region', 'lte', $value))); $this->req->end(); return $this; }
+    public function countServiceRegionLt(int $value, \Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->navCount('service_region', 'lt', $value))); $this->req->end(); return $this; }
+    public function countServiceRegionNotEq(int $value, \Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->navCount('service_region', 'not_eq', $value))); $this->req->end(); return $this; }
     public function user(\Closure $fn): static { $fn(new UserWhere($this->w()->nav('user'))); $this->req->end(); return $this; }
     public function hasUser(\Closure $fn): static { $fn(new UserWhere($this->w()->navMode('user', 'exists'))); $this->req->end(); return $this; }
     public function notHasUser(\Closure $fn): static { $fn(new UserWhere($this->w()->navMode('user', 'not_exists'))); $this->req->end(); return $this; }
+    public function countUserEq(int $value, \Closure $fn): static { $fn(new UserWhere($this->w()->navCount('user', 'eq', $value))); $this->req->end(); return $this; }
+    public function countUserGte(int $value, \Closure $fn): static { $fn(new UserWhere($this->w()->navCount('user', 'gte', $value))); $this->req->end(); return $this; }
+    public function countUserGt(int $value, \Closure $fn): static { $fn(new UserWhere($this->w()->navCount('user', 'gt', $value))); $this->req->end(); return $this; }
+    public function countUserLte(int $value, \Closure $fn): static { $fn(new UserWhere($this->w()->navCount('user', 'lte', $value))); $this->req->end(); return $this; }
+    public function countUserLt(int $value, \Closure $fn): static { $fn(new UserWhere($this->w()->navCount('user', 'lt', $value))); $this->req->end(); return $this; }
+    public function countUserNotEq(int $value, \Closure $fn): static { $fn(new UserWhere($this->w()->navCount('user', 'not_eq', $value))); $this->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w()->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }

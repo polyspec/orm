@@ -328,6 +328,30 @@ func (w *ServiceWhere) NotHasAuthors(fn func(*AuthorWhere)) *ServiceWhere {
 	w.w.NavMode("authors", "not_exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
 	return w
 }
+func (w *ServiceWhere) CountAuthorsEq(v int64, fn func(*AuthorWhere)) *ServiceWhere {
+	w.w.NavCount("authors", "eq", v, func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountAuthorsGte(v int64, fn func(*AuthorWhere)) *ServiceWhere {
+	w.w.NavCount("authors", "gte", v, func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountAuthorsGt(v int64, fn func(*AuthorWhere)) *ServiceWhere {
+	w.w.NavCount("authors", "gt", v, func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountAuthorsLte(v int64, fn func(*AuthorWhere)) *ServiceWhere {
+	w.w.NavCount("authors", "lte", v, func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountAuthorsLt(v int64, fn func(*AuthorWhere)) *ServiceWhere {
+	w.w.NavCount("authors", "lt", v, func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountAuthorsNotEq(v int64, fn func(*AuthorWhere)) *ServiceWhere {
+	w.w.NavCount("authors", "not_eq", v, func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return w
+}
 func (w *ServiceWhere) Members(fn func(*ServiceMemberWhere)) *ServiceWhere {
 	w.w.Nav("members", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return w
@@ -340,6 +364,30 @@ func (w *ServiceWhere) NotHasMembers(fn func(*ServiceMemberWhere)) *ServiceWhere
 	w.w.NavMode("members", "not_exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return w
 }
+func (w *ServiceWhere) CountMembersEq(v int64, fn func(*ServiceMemberWhere)) *ServiceWhere {
+	w.w.NavCount("members", "eq", v, func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountMembersGte(v int64, fn func(*ServiceMemberWhere)) *ServiceWhere {
+	w.w.NavCount("members", "gte", v, func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountMembersGt(v int64, fn func(*ServiceMemberWhere)) *ServiceWhere {
+	w.w.NavCount("members", "gt", v, func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountMembersLte(v int64, fn func(*ServiceMemberWhere)) *ServiceWhere {
+	w.w.NavCount("members", "lte", v, func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountMembersLt(v int64, fn func(*ServiceMemberWhere)) *ServiceWhere {
+	w.w.NavCount("members", "lt", v, func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountMembersNotEq(v int64, fn func(*ServiceMemberWhere)) *ServiceWhere {
+	w.w.NavCount("members", "not_eq", v, func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return w
+}
 func (w *ServiceWhere) Modules(fn func(*ServiceRegionWhere)) *ServiceWhere {
 	w.w.Nav("modules", func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
 	return w
@@ -350,6 +398,30 @@ func (w *ServiceWhere) HasModules(fn func(*ServiceRegionWhere)) *ServiceWhere {
 }
 func (w *ServiceWhere) NotHasModules(fn func(*ServiceRegionWhere)) *ServiceWhere {
 	w.w.NavMode("modules", "not_exists", func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountModulesEq(v int64, fn func(*ServiceRegionWhere)) *ServiceWhere {
+	w.w.NavCount("modules", "eq", v, func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountModulesGte(v int64, fn func(*ServiceRegionWhere)) *ServiceWhere {
+	w.w.NavCount("modules", "gte", v, func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountModulesGt(v int64, fn func(*ServiceRegionWhere)) *ServiceWhere {
+	w.w.NavCount("modules", "gt", v, func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountModulesLte(v int64, fn func(*ServiceRegionWhere)) *ServiceWhere {
+	w.w.NavCount("modules", "lte", v, func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountModulesLt(v int64, fn func(*ServiceRegionWhere)) *ServiceWhere {
+	w.w.NavCount("modules", "lt", v, func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) CountModulesNotEq(v int64, fn func(*ServiceRegionWhere)) *ServiceWhere {
+	w.w.NavCount("modules", "not_eq", v, func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
 	return w
 }
 
@@ -545,6 +617,30 @@ func (q *ServiceQuery) NotHasAuthors(fn func(*AuthorWhere)) *ServiceQuery {
 	q.q.W().NavMode("authors", "not_exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
 	return q
 }
+func (q *ServiceQuery) CountAuthorsEq(v int64, fn func(*AuthorWhere)) *ServiceQuery {
+	q.q.W().NavCount("authors", "eq", v, func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountAuthorsGte(v int64, fn func(*AuthorWhere)) *ServiceQuery {
+	q.q.W().NavCount("authors", "gte", v, func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountAuthorsGt(v int64, fn func(*AuthorWhere)) *ServiceQuery {
+	q.q.W().NavCount("authors", "gt", v, func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountAuthorsLte(v int64, fn func(*AuthorWhere)) *ServiceQuery {
+	q.q.W().NavCount("authors", "lte", v, func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountAuthorsLt(v int64, fn func(*AuthorWhere)) *ServiceQuery {
+	q.q.W().NavCount("authors", "lt", v, func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountAuthorsNotEq(v int64, fn func(*AuthorWhere)) *ServiceQuery {
+	q.q.W().NavCount("authors", "not_eq", v, func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return q
+}
 func (q *ServiceQuery) Members(fn func(*ServiceMemberWhere)) *ServiceQuery {
 	q.q.W().Nav("members", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return q
@@ -557,6 +653,30 @@ func (q *ServiceQuery) NotHasMembers(fn func(*ServiceMemberWhere)) *ServiceQuery
 	q.q.W().NavMode("members", "not_exists", func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
 	return q
 }
+func (q *ServiceQuery) CountMembersEq(v int64, fn func(*ServiceMemberWhere)) *ServiceQuery {
+	q.q.W().NavCount("members", "eq", v, func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountMembersGte(v int64, fn func(*ServiceMemberWhere)) *ServiceQuery {
+	q.q.W().NavCount("members", "gte", v, func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountMembersGt(v int64, fn func(*ServiceMemberWhere)) *ServiceQuery {
+	q.q.W().NavCount("members", "gt", v, func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountMembersLte(v int64, fn func(*ServiceMemberWhere)) *ServiceQuery {
+	q.q.W().NavCount("members", "lte", v, func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountMembersLt(v int64, fn func(*ServiceMemberWhere)) *ServiceQuery {
+	q.q.W().NavCount("members", "lt", v, func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountMembersNotEq(v int64, fn func(*ServiceMemberWhere)) *ServiceQuery {
+	q.q.W().NavCount("members", "not_eq", v, func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+	return q
+}
 func (q *ServiceQuery) Modules(fn func(*ServiceRegionWhere)) *ServiceQuery {
 	q.q.W().Nav("modules", func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
 	return q
@@ -567,6 +687,30 @@ func (q *ServiceQuery) HasModules(fn func(*ServiceRegionWhere)) *ServiceQuery {
 }
 func (q *ServiceQuery) NotHasModules(fn func(*ServiceRegionWhere)) *ServiceQuery {
 	q.q.W().NavMode("modules", "not_exists", func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountModulesEq(v int64, fn func(*ServiceRegionWhere)) *ServiceQuery {
+	q.q.W().NavCount("modules", "eq", v, func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountModulesGte(v int64, fn func(*ServiceRegionWhere)) *ServiceQuery {
+	q.q.W().NavCount("modules", "gte", v, func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountModulesGt(v int64, fn func(*ServiceRegionWhere)) *ServiceQuery {
+	q.q.W().NavCount("modules", "gt", v, func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountModulesLte(v int64, fn func(*ServiceRegionWhere)) *ServiceQuery {
+	q.q.W().NavCount("modules", "lte", v, func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountModulesLt(v int64, fn func(*ServiceRegionWhere)) *ServiceQuery {
+	q.q.W().NavCount("modules", "lt", v, func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) CountModulesNotEq(v int64, fn func(*ServiceRegionWhere)) *ServiceQuery {
+	q.q.W().NavCount("modules", "not_eq", v, func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
 	return q
 }
 

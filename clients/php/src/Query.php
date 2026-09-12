@@ -146,6 +146,9 @@ final class Req
             } elseif (isset($it['group'])) {
                 self::shiftGroup($it['group'], $off);
             } elseif (isset($it['nav'])) {
+                if (isset($it['nav']['p'])) {
+                    $it['nav']['p'] += $off;
+                }
                 self::shiftGroup($it['nav']['group'], $off);
             }
         }
@@ -277,6 +280,13 @@ class W
     {
         $this->g['items'][] = ['nav' => $this->conn() + ['rel' => $rel, 'group' => ['items' => []], 'mode' => $mode]];
         $this->req->sig .= "|n$rel:$mode(";
+        return new W($this->req, $this->g['items'][count($this->g['items']) - 1]['nav']['group']);
+    }
+
+    public function navCount(string $rel, string $op, mixed $value): W
+    {
+        $this->g['items'][] = ['nav' => $this->conn() + ['rel' => $rel, 'group' => ['items' => []], 'mode' => 'count', 'count_op' => $op, 'p' => $this->req->p($value)]];
+        $this->req->sig .= "|n$rel:count:$op(";
         return new W($this->req, $this->g['items'][count($this->g['items']) - 1]['nav']['group']);
     }
 }

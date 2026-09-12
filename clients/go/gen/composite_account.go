@@ -310,6 +310,30 @@ func (w *CompositeAccountWhere) NotHasMemberships(fn func(*CompositeMembershipWh
 	w.w.NavMode("memberships", "not_exists", func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
 	return w
 }
+func (w *CompositeAccountWhere) CountMembershipsEq(v int64, fn func(*CompositeMembershipWhere)) *CompositeAccountWhere {
+	w.w.NavCount("memberships", "eq", v, func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+	return w
+}
+func (w *CompositeAccountWhere) CountMembershipsGte(v int64, fn func(*CompositeMembershipWhere)) *CompositeAccountWhere {
+	w.w.NavCount("memberships", "gte", v, func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+	return w
+}
+func (w *CompositeAccountWhere) CountMembershipsGt(v int64, fn func(*CompositeMembershipWhere)) *CompositeAccountWhere {
+	w.w.NavCount("memberships", "gt", v, func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+	return w
+}
+func (w *CompositeAccountWhere) CountMembershipsLte(v int64, fn func(*CompositeMembershipWhere)) *CompositeAccountWhere {
+	w.w.NavCount("memberships", "lte", v, func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+	return w
+}
+func (w *CompositeAccountWhere) CountMembershipsLt(v int64, fn func(*CompositeMembershipWhere)) *CompositeAccountWhere {
+	w.w.NavCount("memberships", "lt", v, func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+	return w
+}
+func (w *CompositeAccountWhere) CountMembershipsNotEq(v int64, fn func(*CompositeMembershipWhere)) *CompositeAccountWhere {
+	w.w.NavCount("memberships", "not_eq", v, func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+	return w
+}
 
 func (w *CompositeAccountWhere) TenantIdEq(v int64) *CompositeAccountWhere {
 	w.w.Pred("tenant_id", "eq", v)
@@ -714,6 +738,30 @@ func (q *CompositeAccountQuery) HasMemberships(fn func(*CompositeMembershipWhere
 }
 func (q *CompositeAccountQuery) NotHasMemberships(fn func(*CompositeMembershipWhere)) *CompositeAccountQuery {
 	q.q.W().NavMode("memberships", "not_exists", func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+	return q
+}
+func (q *CompositeAccountQuery) CountMembershipsEq(v int64, fn func(*CompositeMembershipWhere)) *CompositeAccountQuery {
+	q.q.W().NavCount("memberships", "eq", v, func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+	return q
+}
+func (q *CompositeAccountQuery) CountMembershipsGte(v int64, fn func(*CompositeMembershipWhere)) *CompositeAccountQuery {
+	q.q.W().NavCount("memberships", "gte", v, func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+	return q
+}
+func (q *CompositeAccountQuery) CountMembershipsGt(v int64, fn func(*CompositeMembershipWhere)) *CompositeAccountQuery {
+	q.q.W().NavCount("memberships", "gt", v, func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+	return q
+}
+func (q *CompositeAccountQuery) CountMembershipsLte(v int64, fn func(*CompositeMembershipWhere)) *CompositeAccountQuery {
+	q.q.W().NavCount("memberships", "lte", v, func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+	return q
+}
+func (q *CompositeAccountQuery) CountMembershipsLt(v int64, fn func(*CompositeMembershipWhere)) *CompositeAccountQuery {
+	q.q.W().NavCount("memberships", "lt", v, func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+	return q
+}
+func (q *CompositeAccountQuery) CountMembershipsNotEq(v int64, fn func(*CompositeMembershipWhere)) *CompositeAccountQuery {
+	q.q.W().NavCount("memberships", "not_eq", v, func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
 	return q
 }
 

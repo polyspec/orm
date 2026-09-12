@@ -90,7 +90,7 @@ message Item {
     Navigation navigation = 3;
   }
 }
-message Navigation { string connector = 1; string relation = 2; Group group = 3; string mode = 4; }
+message Navigation { string connector = 1; string relation = 2; Group group = 3; string mode = 4; string count_operator = 5; optional uint32 count_parameter = 6; }
 message Predicate {
   string connector = 1;
   string column = 2;

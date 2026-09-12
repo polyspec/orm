@@ -699,15 +699,39 @@ export class AuthorWhere {
   public service(callback: (where: ServiceWhere) => void): this { this.core.navigate('service',core=>callback(new ServiceWhere(core))); return this; }
   public hasService(callback: (where: ServiceWhere) => void): this { this.core.navigateMode('service','exists',core=>callback(new ServiceWhere(core))); return this; }
   public notHasService(callback: (where: ServiceWhere) => void): this { this.core.navigateMode('service','not_exists',core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceEq(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','eq',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceGte(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','gte',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceGt(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','gt',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceLte(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','lte',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceLt(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','lt',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceNotEq(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','not_eq',value,core=>callback(new ServiceWhere(core))); return this; }
   public serviceMember(callback: (where: ServiceMemberWhere) => void): this { this.core.navigate('service_member',core=>callback(new ServiceMemberWhere(core))); return this; }
   public hasServiceMember(callback: (where: ServiceMemberWhere) => void): this { this.core.navigateMode('service_member','exists',core=>callback(new ServiceMemberWhere(core))); return this; }
   public notHasServiceMember(callback: (where: ServiceMemberWhere) => void): this { this.core.navigateMode('service_member','not_exists',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMemberEq(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('service_member','eq',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMemberGte(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('service_member','gte',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMemberGt(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('service_member','gt',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMemberLte(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('service_member','lte',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMemberLt(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('service_member','lt',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMemberNotEq(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('service_member','not_eq',value,core=>callback(new ServiceMemberWhere(core))); return this; }
   public serviceRegion(callback: (where: ServiceRegionWhere) => void): this { this.core.navigate('service_region',core=>callback(new ServiceRegionWhere(core))); return this; }
   public hasServiceRegion(callback: (where: ServiceRegionWhere) => void): this { this.core.navigateMode('service_region','exists',core=>callback(new ServiceRegionWhere(core))); return this; }
   public notHasServiceRegion(callback: (where: ServiceRegionWhere) => void): this { this.core.navigateMode('service_region','not_exists',core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countServiceRegionEq(value: number, callback: (where: ServiceRegionWhere) => void): this { this.core.navigateCount('service_region','eq',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countServiceRegionGte(value: number, callback: (where: ServiceRegionWhere) => void): this { this.core.navigateCount('service_region','gte',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countServiceRegionGt(value: number, callback: (where: ServiceRegionWhere) => void): this { this.core.navigateCount('service_region','gt',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countServiceRegionLte(value: number, callback: (where: ServiceRegionWhere) => void): this { this.core.navigateCount('service_region','lte',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countServiceRegionLt(value: number, callback: (where: ServiceRegionWhere) => void): this { this.core.navigateCount('service_region','lt',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countServiceRegionNotEq(value: number, callback: (where: ServiceRegionWhere) => void): this { this.core.navigateCount('service_region','not_eq',value,core=>callback(new ServiceRegionWhere(core))); return this; }
   public user(callback: (where: UserWhere) => void): this { this.core.navigate('user',core=>callback(new UserWhere(core))); return this; }
   public hasUser(callback: (where: UserWhere) => void): this { this.core.navigateMode('user','exists',core=>callback(new UserWhere(core))); return this; }
   public notHasUser(callback: (where: UserWhere) => void): this { this.core.navigateMode('user','not_exists',core=>callback(new UserWhere(core))); return this; }
+  public countUserEq(value: number, callback: (where: UserWhere) => void): this { this.core.navigateCount('user','eq',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserGte(value: number, callback: (where: UserWhere) => void): this { this.core.navigateCount('user','gte',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserGt(value: number, callback: (where: UserWhere) => void): this { this.core.navigateCount('user','gt',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserLte(value: number, callback: (where: UserWhere) => void): this { this.core.navigateCount('user','lte',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserLt(value: number, callback: (where: UserWhere) => void): this { this.core.navigateCount('user','lt',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserNotEq(value: number, callback: (where: UserWhere) => void): this { this.core.navigateCount('user','not_eq',value,core=>callback(new UserWhere(core))); return this; }
 }
 
 export class AuthorQuery extends QueryCore implements AuthorInterface {
@@ -1730,15 +1754,39 @@ export class AuthorQuery extends QueryCore implements AuthorInterface {
   public service(callback: (where: ServiceWhere) => void): this { this.whereCore().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
   public hasService(callback: (where: ServiceWhere) => void): this { this.whereCore().navigateMode('service','exists',core=>callback(new ServiceWhere(core))); return this; }
   public notHasService(callback: (where: ServiceWhere) => void): this { this.whereCore().navigateMode('service','not_exists',core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceEq(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','eq',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceGte(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','gte',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceGt(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','gt',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceLte(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','lte',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceLt(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','lt',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceNotEq(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','not_eq',value,core=>callback(new ServiceWhere(core))); return this; }
   public serviceMember(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigate('service_member',core=>callback(new ServiceMemberWhere(core))); return this; }
   public hasServiceMember(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateMode('service_member','exists',core=>callback(new ServiceMemberWhere(core))); return this; }
   public notHasServiceMember(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateMode('service_member','not_exists',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMemberEq(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('service_member','eq',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMemberGte(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('service_member','gte',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMemberGt(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('service_member','gt',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMemberLte(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('service_member','lte',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMemberLt(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('service_member','lt',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMemberNotEq(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('service_member','not_eq',value,core=>callback(new ServiceMemberWhere(core))); return this; }
   public serviceRegion(callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigate('service_region',core=>callback(new ServiceRegionWhere(core))); return this; }
   public hasServiceRegion(callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateMode('service_region','exists',core=>callback(new ServiceRegionWhere(core))); return this; }
   public notHasServiceRegion(callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateMode('service_region','not_exists',core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countServiceRegionEq(value: number, callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateCount('service_region','eq',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countServiceRegionGte(value: number, callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateCount('service_region','gte',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countServiceRegionGt(value: number, callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateCount('service_region','gt',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countServiceRegionLte(value: number, callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateCount('service_region','lte',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countServiceRegionLt(value: number, callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateCount('service_region','lt',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countServiceRegionNotEq(value: number, callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateCount('service_region','not_eq',value,core=>callback(new ServiceRegionWhere(core))); return this; }
   public user(callback: (where: UserWhere) => void): this { this.whereCore().navigate('user',core=>callback(new UserWhere(core))); return this; }
   public hasUser(callback: (where: UserWhere) => void): this { this.whereCore().navigateMode('user','exists',core=>callback(new UserWhere(core))); return this; }
   public notHasUser(callback: (where: UserWhere) => void): this { this.whereCore().navigateMode('user','not_exists',core=>callback(new UserWhere(core))); return this; }
+  public countUserEq(value: number, callback: (where: UserWhere) => void): this { this.whereCore().navigateCount('user','eq',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserGte(value: number, callback: (where: UserWhere) => void): this { this.whereCore().navigateCount('user','gte',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserGt(value: number, callback: (where: UserWhere) => void): this { this.whereCore().navigateCount('user','gt',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserLte(value: number, callback: (where: UserWhere) => void): this { this.whereCore().navigateCount('user','lte',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserLt(value: number, callback: (where: UserWhere) => void): this { this.whereCore().navigateCount('user','lt',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserNotEq(value: number, callback: (where: UserWhere) => void): this { this.whereCore().navigateCount('user','not_eq',value,core=>callback(new UserWhere(core))); return this; }
   public joinServiceSeqWithSeq(child: ServiceQuery): this { return this.attachJoin('service',child,'inner'); }
   public leftJoinServiceSeqWithSeq(child: ServiceQuery): this { return this.attachJoin('service',child,'left'); }
   public relationServiceSeqWithSeq(child: ServiceQuery): this { return this.attachRelation('service',child); }
@@ -1925,9 +1973,21 @@ export class UserWhere {
   public authors(callback: (where: AuthorWhere) => void): this { this.core.navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
   public hasAuthors(callback: (where: AuthorWhere) => void): this { this.core.navigateMode('authors','exists',core=>callback(new AuthorWhere(core))); return this; }
   public notHasAuthors(callback: (where: AuthorWhere) => void): this { this.core.navigateMode('authors','not_exists',core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsEq(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','eq',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGte(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','gte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGt(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','gt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLte(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','lte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLt(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','lt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsNotEq(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','not_eq',value,core=>callback(new AuthorWhere(core))); return this; }
   public serviceMembers(callback: (where: ServiceMemberWhere) => void): this { this.core.navigate('service_members',core=>callback(new ServiceMemberWhere(core))); return this; }
   public hasServiceMembers(callback: (where: ServiceMemberWhere) => void): this { this.core.navigateMode('service_members','exists',core=>callback(new ServiceMemberWhere(core))); return this; }
   public notHasServiceMembers(callback: (where: ServiceMemberWhere) => void): this { this.core.navigateMode('service_members','not_exists',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMembersEq(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('service_members','eq',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMembersGte(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('service_members','gte',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMembersGt(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('service_members','gt',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMembersLte(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('service_members','lte',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMembersLt(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('service_members','lt',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMembersNotEq(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('service_members','not_eq',value,core=>callback(new ServiceMemberWhere(core))); return this; }
 }
 
 export class UserQuery extends QueryCore implements UserInterface {
@@ -2048,9 +2108,21 @@ export class UserQuery extends QueryCore implements UserInterface {
   public authors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
   public hasAuthors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigateMode('authors','exists',core=>callback(new AuthorWhere(core))); return this; }
   public notHasAuthors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigateMode('authors','not_exists',core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsEq(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','eq',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGte(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','gte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGt(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','gt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLte(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','lte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLt(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','lt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsNotEq(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','not_eq',value,core=>callback(new AuthorWhere(core))); return this; }
   public serviceMembers(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigate('service_members',core=>callback(new ServiceMemberWhere(core))); return this; }
   public hasServiceMembers(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateMode('service_members','exists',core=>callback(new ServiceMemberWhere(core))); return this; }
   public notHasServiceMembers(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateMode('service_members','not_exists',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMembersEq(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('service_members','eq',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMembersGte(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('service_members','gte',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMembersGt(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('service_members','gt',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMembersLte(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('service_members','lte',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMembersLt(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('service_members','lt',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countServiceMembersNotEq(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('service_members','not_eq',value,core=>callback(new ServiceMemberWhere(core))); return this; }
   public joinSeqWithUserSeqToAuthor(child: AuthorQuery): this { return this.attachJoin('authors',child,'inner'); }
   public leftJoinSeqWithUserSeqToAuthor(child: AuthorQuery): this { return this.attachJoin('authors',child,'left'); }
   public relationsSeqWithUserSeqToAuthor(child: AuthorQuery): this { return this.attachRelation('authors',child); }
@@ -2138,12 +2210,30 @@ export class ServiceWhere {
   public authors(callback: (where: AuthorWhere) => void): this { this.core.navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
   public hasAuthors(callback: (where: AuthorWhere) => void): this { this.core.navigateMode('authors','exists',core=>callback(new AuthorWhere(core))); return this; }
   public notHasAuthors(callback: (where: AuthorWhere) => void): this { this.core.navigateMode('authors','not_exists',core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsEq(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','eq',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGte(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','gte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGt(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','gt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLte(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','lte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLt(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','lt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsNotEq(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','not_eq',value,core=>callback(new AuthorWhere(core))); return this; }
   public members(callback: (where: ServiceMemberWhere) => void): this { this.core.navigate('members',core=>callback(new ServiceMemberWhere(core))); return this; }
   public hasMembers(callback: (where: ServiceMemberWhere) => void): this { this.core.navigateMode('members','exists',core=>callback(new ServiceMemberWhere(core))); return this; }
   public notHasMembers(callback: (where: ServiceMemberWhere) => void): this { this.core.navigateMode('members','not_exists',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countMembersEq(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('members','eq',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countMembersGte(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('members','gte',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countMembersGt(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('members','gt',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countMembersLte(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('members','lte',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countMembersLt(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('members','lt',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countMembersNotEq(value: number, callback: (where: ServiceMemberWhere) => void): this { this.core.navigateCount('members','not_eq',value,core=>callback(new ServiceMemberWhere(core))); return this; }
   public modules(callback: (where: ServiceRegionWhere) => void): this { this.core.navigate('modules',core=>callback(new ServiceRegionWhere(core))); return this; }
   public hasModules(callback: (where: ServiceRegionWhere) => void): this { this.core.navigateMode('modules','exists',core=>callback(new ServiceRegionWhere(core))); return this; }
   public notHasModules(callback: (where: ServiceRegionWhere) => void): this { this.core.navigateMode('modules','not_exists',core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countModulesEq(value: number, callback: (where: ServiceRegionWhere) => void): this { this.core.navigateCount('modules','eq',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countModulesGte(value: number, callback: (where: ServiceRegionWhere) => void): this { this.core.navigateCount('modules','gte',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countModulesGt(value: number, callback: (where: ServiceRegionWhere) => void): this { this.core.navigateCount('modules','gt',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countModulesLte(value: number, callback: (where: ServiceRegionWhere) => void): this { this.core.navigateCount('modules','lte',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countModulesLt(value: number, callback: (where: ServiceRegionWhere) => void): this { this.core.navigateCount('modules','lt',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countModulesNotEq(value: number, callback: (where: ServiceRegionWhere) => void): this { this.core.navigateCount('modules','not_eq',value,core=>callback(new ServiceRegionWhere(core))); return this; }
 }
 
 export class ServiceQuery extends QueryCore implements ServiceInterface {
@@ -2264,12 +2354,30 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public authors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
   public hasAuthors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigateMode('authors','exists',core=>callback(new AuthorWhere(core))); return this; }
   public notHasAuthors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigateMode('authors','not_exists',core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsEq(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','eq',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGte(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','gte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGt(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','gt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLte(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','lte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLt(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','lt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsNotEq(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','not_eq',value,core=>callback(new AuthorWhere(core))); return this; }
   public members(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigate('members',core=>callback(new ServiceMemberWhere(core))); return this; }
   public hasMembers(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateMode('members','exists',core=>callback(new ServiceMemberWhere(core))); return this; }
   public notHasMembers(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateMode('members','not_exists',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countMembersEq(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('members','eq',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countMembersGte(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('members','gte',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countMembersGt(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('members','gt',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countMembersLte(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('members','lte',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countMembersLt(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('members','lt',value,core=>callback(new ServiceMemberWhere(core))); return this; }
+  public countMembersNotEq(value: number, callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigateCount('members','not_eq',value,core=>callback(new ServiceMemberWhere(core))); return this; }
   public modules(callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigate('modules',core=>callback(new ServiceRegionWhere(core))); return this; }
   public hasModules(callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateMode('modules','exists',core=>callback(new ServiceRegionWhere(core))); return this; }
   public notHasModules(callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateMode('modules','not_exists',core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countModulesEq(value: number, callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateCount('modules','eq',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countModulesGte(value: number, callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateCount('modules','gte',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countModulesGt(value: number, callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateCount('modules','gt',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countModulesLte(value: number, callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateCount('modules','lte',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countModulesLt(value: number, callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateCount('modules','lt',value,core=>callback(new ServiceRegionWhere(core))); return this; }
+  public countModulesNotEq(value: number, callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigateCount('modules','not_eq',value,core=>callback(new ServiceRegionWhere(core))); return this; }
   public joinSeqWithServiceSeqToAuthor(child: AuthorQuery): this { return this.attachJoin('authors',child,'inner'); }
   public leftJoinSeqWithServiceSeqToAuthor(child: AuthorQuery): this { return this.attachJoin('authors',child,'left'); }
   public relationsSeqWithServiceSeqToAuthor(child: AuthorQuery): this { return this.attachRelation('authors',child); }
@@ -2379,9 +2487,21 @@ export class ServiceRegionWhere {
   public authors(callback: (where: AuthorWhere) => void): this { this.core.navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
   public hasAuthors(callback: (where: AuthorWhere) => void): this { this.core.navigateMode('authors','exists',core=>callback(new AuthorWhere(core))); return this; }
   public notHasAuthors(callback: (where: AuthorWhere) => void): this { this.core.navigateMode('authors','not_exists',core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsEq(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','eq',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGte(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','gte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGt(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','gt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLte(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','lte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLt(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','lt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsNotEq(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','not_eq',value,core=>callback(new AuthorWhere(core))); return this; }
   public service(callback: (where: ServiceWhere) => void): this { this.core.navigate('service',core=>callback(new ServiceWhere(core))); return this; }
   public hasService(callback: (where: ServiceWhere) => void): this { this.core.navigateMode('service','exists',core=>callback(new ServiceWhere(core))); return this; }
   public notHasService(callback: (where: ServiceWhere) => void): this { this.core.navigateMode('service','not_exists',core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceEq(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','eq',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceGte(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','gte',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceGt(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','gt',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceLte(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','lte',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceLt(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','lt',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceNotEq(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','not_eq',value,core=>callback(new ServiceWhere(core))); return this; }
 }
 
 export class ServiceRegionQuery extends QueryCore implements ServiceRegionInterface {
@@ -2539,9 +2659,21 @@ export class ServiceRegionQuery extends QueryCore implements ServiceRegionInterf
   public authors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
   public hasAuthors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigateMode('authors','exists',core=>callback(new AuthorWhere(core))); return this; }
   public notHasAuthors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigateMode('authors','not_exists',core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsEq(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','eq',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGte(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','gte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGt(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','gt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLte(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','lte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLt(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','lt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsNotEq(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','not_eq',value,core=>callback(new AuthorWhere(core))); return this; }
   public service(callback: (where: ServiceWhere) => void): this { this.whereCore().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
   public hasService(callback: (where: ServiceWhere) => void): this { this.whereCore().navigateMode('service','exists',core=>callback(new ServiceWhere(core))); return this; }
   public notHasService(callback: (where: ServiceWhere) => void): this { this.whereCore().navigateMode('service','not_exists',core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceEq(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','eq',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceGte(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','gte',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceGt(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','gt',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceLte(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','lte',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceLt(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','lt',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceNotEq(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','not_eq',value,core=>callback(new ServiceWhere(core))); return this; }
   public joinSeqWithServiceRegionSeq(child: AuthorQuery): this { return this.attachJoin('authors',child,'inner'); }
   public leftJoinSeqWithServiceRegionSeq(child: AuthorQuery): this { return this.attachJoin('authors',child,'left'); }
   public relationsSeqWithServiceRegionSeq(child: AuthorQuery): this { return this.attachRelation('authors',child); }
@@ -2657,12 +2789,30 @@ export class ServiceMemberWhere {
   public authors(callback: (where: AuthorWhere) => void): this { this.core.navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
   public hasAuthors(callback: (where: AuthorWhere) => void): this { this.core.navigateMode('authors','exists',core=>callback(new AuthorWhere(core))); return this; }
   public notHasAuthors(callback: (where: AuthorWhere) => void): this { this.core.navigateMode('authors','not_exists',core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsEq(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','eq',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGte(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','gte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGt(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','gt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLte(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','lte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLt(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','lt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsNotEq(value: number, callback: (where: AuthorWhere) => void): this { this.core.navigateCount('authors','not_eq',value,core=>callback(new AuthorWhere(core))); return this; }
   public service(callback: (where: ServiceWhere) => void): this { this.core.navigate('service',core=>callback(new ServiceWhere(core))); return this; }
   public hasService(callback: (where: ServiceWhere) => void): this { this.core.navigateMode('service','exists',core=>callback(new ServiceWhere(core))); return this; }
   public notHasService(callback: (where: ServiceWhere) => void): this { this.core.navigateMode('service','not_exists',core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceEq(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','eq',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceGte(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','gte',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceGt(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','gt',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceLte(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','lte',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceLt(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','lt',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceNotEq(value: number, callback: (where: ServiceWhere) => void): this { this.core.navigateCount('service','not_eq',value,core=>callback(new ServiceWhere(core))); return this; }
   public user(callback: (where: UserWhere) => void): this { this.core.navigate('user',core=>callback(new UserWhere(core))); return this; }
   public hasUser(callback: (where: UserWhere) => void): this { this.core.navigateMode('user','exists',core=>callback(new UserWhere(core))); return this; }
   public notHasUser(callback: (where: UserWhere) => void): this { this.core.navigateMode('user','not_exists',core=>callback(new UserWhere(core))); return this; }
+  public countUserEq(value: number, callback: (where: UserWhere) => void): this { this.core.navigateCount('user','eq',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserGte(value: number, callback: (where: UserWhere) => void): this { this.core.navigateCount('user','gte',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserGt(value: number, callback: (where: UserWhere) => void): this { this.core.navigateCount('user','gt',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserLte(value: number, callback: (where: UserWhere) => void): this { this.core.navigateCount('user','lte',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserLt(value: number, callback: (where: UserWhere) => void): this { this.core.navigateCount('user','lt',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserNotEq(value: number, callback: (where: UserWhere) => void): this { this.core.navigateCount('user','not_eq',value,core=>callback(new UserWhere(core))); return this; }
 }
 
 export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterface {
@@ -2830,12 +2980,30 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public authors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
   public hasAuthors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigateMode('authors','exists',core=>callback(new AuthorWhere(core))); return this; }
   public notHasAuthors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigateMode('authors','not_exists',core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsEq(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','eq',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGte(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','gte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsGt(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','gt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLte(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','lte',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsLt(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','lt',value,core=>callback(new AuthorWhere(core))); return this; }
+  public countAuthorsNotEq(value: number, callback: (where: AuthorWhere) => void): this { this.whereCore().navigateCount('authors','not_eq',value,core=>callback(new AuthorWhere(core))); return this; }
   public service(callback: (where: ServiceWhere) => void): this { this.whereCore().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
   public hasService(callback: (where: ServiceWhere) => void): this { this.whereCore().navigateMode('service','exists',core=>callback(new ServiceWhere(core))); return this; }
   public notHasService(callback: (where: ServiceWhere) => void): this { this.whereCore().navigateMode('service','not_exists',core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceEq(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','eq',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceGte(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','gte',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceGt(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','gt',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceLte(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','lte',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceLt(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','lt',value,core=>callback(new ServiceWhere(core))); return this; }
+  public countServiceNotEq(value: number, callback: (where: ServiceWhere) => void): this { this.whereCore().navigateCount('service','not_eq',value,core=>callback(new ServiceWhere(core))); return this; }
   public user(callback: (where: UserWhere) => void): this { this.whereCore().navigate('user',core=>callback(new UserWhere(core))); return this; }
   public hasUser(callback: (where: UserWhere) => void): this { this.whereCore().navigateMode('user','exists',core=>callback(new UserWhere(core))); return this; }
   public notHasUser(callback: (where: UserWhere) => void): this { this.whereCore().navigateMode('user','not_exists',core=>callback(new UserWhere(core))); return this; }
+  public countUserEq(value: number, callback: (where: UserWhere) => void): this { this.whereCore().navigateCount('user','eq',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserGte(value: number, callback: (where: UserWhere) => void): this { this.whereCore().navigateCount('user','gte',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserGt(value: number, callback: (where: UserWhere) => void): this { this.whereCore().navigateCount('user','gt',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserLte(value: number, callback: (where: UserWhere) => void): this { this.whereCore().navigateCount('user','lte',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserLt(value: number, callback: (where: UserWhere) => void): this { this.whereCore().navigateCount('user','lt',value,core=>callback(new UserWhere(core))); return this; }
+  public countUserNotEq(value: number, callback: (where: UserWhere) => void): this { this.whereCore().navigateCount('user','not_eq',value,core=>callback(new UserWhere(core))); return this; }
   public joinSeqWithServiceMemberSeq(child: AuthorQuery): this { return this.attachJoin('authors',child,'inner'); }
   public leftJoinSeqWithServiceMemberSeq(child: AuthorQuery): this { return this.attachJoin('authors',child,'left'); }
   public relationsSeqWithServiceMemberSeq(child: AuthorQuery): this { return this.attachRelation('authors',child); }
@@ -2952,6 +3120,12 @@ export class CompositeAccountWhere {
   public memberships(callback: (where: CompositeMembershipWhere) => void): this { this.core.navigate('memberships',core=>callback(new CompositeMembershipWhere(core))); return this; }
   public hasMemberships(callback: (where: CompositeMembershipWhere) => void): this { this.core.navigateMode('memberships','exists',core=>callback(new CompositeMembershipWhere(core))); return this; }
   public notHasMemberships(callback: (where: CompositeMembershipWhere) => void): this { this.core.navigateMode('memberships','not_exists',core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public countMembershipsEq(value: number, callback: (where: CompositeMembershipWhere) => void): this { this.core.navigateCount('memberships','eq',value,core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public countMembershipsGte(value: number, callback: (where: CompositeMembershipWhere) => void): this { this.core.navigateCount('memberships','gte',value,core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public countMembershipsGt(value: number, callback: (where: CompositeMembershipWhere) => void): this { this.core.navigateCount('memberships','gt',value,core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public countMembershipsLte(value: number, callback: (where: CompositeMembershipWhere) => void): this { this.core.navigateCount('memberships','lte',value,core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public countMembershipsLt(value: number, callback: (where: CompositeMembershipWhere) => void): this { this.core.navigateCount('memberships','lt',value,core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public countMembershipsNotEq(value: number, callback: (where: CompositeMembershipWhere) => void): this { this.core.navigateCount('memberships','not_eq',value,core=>callback(new CompositeMembershipWhere(core))); return this; }
 }
 
 export class CompositeAccountQuery extends QueryCore implements CompositeAccountInterface {
@@ -3076,6 +3250,12 @@ export class CompositeAccountQuery extends QueryCore implements CompositeAccount
   public memberships(callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().navigate('memberships',core=>callback(new CompositeMembershipWhere(core))); return this; }
   public hasMemberships(callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().navigateMode('memberships','exists',core=>callback(new CompositeMembershipWhere(core))); return this; }
   public notHasMemberships(callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().navigateMode('memberships','not_exists',core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public countMembershipsEq(value: number, callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().navigateCount('memberships','eq',value,core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public countMembershipsGte(value: number, callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().navigateCount('memberships','gte',value,core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public countMembershipsGt(value: number, callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().navigateCount('memberships','gt',value,core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public countMembershipsLte(value: number, callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().navigateCount('memberships','lte',value,core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public countMembershipsLt(value: number, callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().navigateCount('memberships','lt',value,core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public countMembershipsNotEq(value: number, callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().navigateCount('memberships','not_eq',value,core=>callback(new CompositeMembershipWhere(core))); return this; }
   public joinTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeMembershipQuery): this { return this.attachJoin('memberships',child,'inner'); }
   public leftJoinTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeMembershipQuery): this { return this.attachJoin('memberships',child,'left'); }
   public relationsTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeMembershipQuery): this { return this.attachRelation('memberships',child); }
@@ -3183,6 +3363,12 @@ export class CompositeMembershipWhere {
   public account(callback: (where: CompositeAccountWhere) => void): this { this.core.navigate('account',core=>callback(new CompositeAccountWhere(core))); return this; }
   public hasAccount(callback: (where: CompositeAccountWhere) => void): this { this.core.navigateMode('account','exists',core=>callback(new CompositeAccountWhere(core))); return this; }
   public notHasAccount(callback: (where: CompositeAccountWhere) => void): this { this.core.navigateMode('account','not_exists',core=>callback(new CompositeAccountWhere(core))); return this; }
+  public countAccountEq(value: number, callback: (where: CompositeAccountWhere) => void): this { this.core.navigateCount('account','eq',value,core=>callback(new CompositeAccountWhere(core))); return this; }
+  public countAccountGte(value: number, callback: (where: CompositeAccountWhere) => void): this { this.core.navigateCount('account','gte',value,core=>callback(new CompositeAccountWhere(core))); return this; }
+  public countAccountGt(value: number, callback: (where: CompositeAccountWhere) => void): this { this.core.navigateCount('account','gt',value,core=>callback(new CompositeAccountWhere(core))); return this; }
+  public countAccountLte(value: number, callback: (where: CompositeAccountWhere) => void): this { this.core.navigateCount('account','lte',value,core=>callback(new CompositeAccountWhere(core))); return this; }
+  public countAccountLt(value: number, callback: (where: CompositeAccountWhere) => void): this { this.core.navigateCount('account','lt',value,core=>callback(new CompositeAccountWhere(core))); return this; }
+  public countAccountNotEq(value: number, callback: (where: CompositeAccountWhere) => void): this { this.core.navigateCount('account','not_eq',value,core=>callback(new CompositeAccountWhere(core))); return this; }
 }
 
 export class CompositeMembershipQuery extends QueryCore implements CompositeMembershipInterface {
@@ -3307,6 +3493,12 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
   public account(callback: (where: CompositeAccountWhere) => void): this { this.whereCore().navigate('account',core=>callback(new CompositeAccountWhere(core))); return this; }
   public hasAccount(callback: (where: CompositeAccountWhere) => void): this { this.whereCore().navigateMode('account','exists',core=>callback(new CompositeAccountWhere(core))); return this; }
   public notHasAccount(callback: (where: CompositeAccountWhere) => void): this { this.whereCore().navigateMode('account','not_exists',core=>callback(new CompositeAccountWhere(core))); return this; }
+  public countAccountEq(value: number, callback: (where: CompositeAccountWhere) => void): this { this.whereCore().navigateCount('account','eq',value,core=>callback(new CompositeAccountWhere(core))); return this; }
+  public countAccountGte(value: number, callback: (where: CompositeAccountWhere) => void): this { this.whereCore().navigateCount('account','gte',value,core=>callback(new CompositeAccountWhere(core))); return this; }
+  public countAccountGt(value: number, callback: (where: CompositeAccountWhere) => void): this { this.whereCore().navigateCount('account','gt',value,core=>callback(new CompositeAccountWhere(core))); return this; }
+  public countAccountLte(value: number, callback: (where: CompositeAccountWhere) => void): this { this.whereCore().navigateCount('account','lte',value,core=>callback(new CompositeAccountWhere(core))); return this; }
+  public countAccountLt(value: number, callback: (where: CompositeAccountWhere) => void): this { this.whereCore().navigateCount('account','lt',value,core=>callback(new CompositeAccountWhere(core))); return this; }
+  public countAccountNotEq(value: number, callback: (where: CompositeAccountWhere) => void): this { this.whereCore().navigateCount('account','not_eq',value,core=>callback(new CompositeAccountWhere(core))); return this; }
   public joinTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeAccountQuery): this { return this.attachJoin('account',child,'inner'); }
   public leftJoinTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeAccountQuery): this { return this.attachJoin('account',child,'left'); }
   public relationTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeAccountQuery): this { return this.attachRelation('account',child); }

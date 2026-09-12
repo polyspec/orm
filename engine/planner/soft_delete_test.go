@@ -86,3 +86,35 @@ func TestRelationExistenceUsesCorrelatedSubquery(t *testing.T) {
 		t.Fatalf("existence predicate SQL differs: %s", plan.Steps[0].SQL)
 	}
 }
+
+func TestRelationCountUsesCorrelatedSubquery(t *testing.T) {
+	d, err := schema.Parse(`erDiagram
+ account {
+ bigint id PK
+ }
+ item {
+ bigint id PK
+ bigint account_id FK
+ }
+ account ||--o{ item : "account_id (account / items)"
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := schema.Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	param := 0
+	req := &ir.Request{IRVersion: ir.Version, SchemaHash: m.SchemaHash, Kind: "all", NParams: 1, Query: ir.Query{Entity: "account", Where: &ir.Group{Items: []ir.Item{{Nav: &ir.Nav{Rel: "items", Mode: "count", CountOp: "gte", P: &param, Group: &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "id", Op: "gt", P: &param}}}}}}}}}}
+	if err := ir.Validate(m, req); err != nil {
+		t.Fatalf("count predicate was rejected by IR validation: %v", err)
+	}
+	plan, err := (&Planner{M: m, D: dialect.SQLite{}}).Compile(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(plan.Steps[0].SQL, `SELECT COUNT(*) FROM "item" AS "exists__items"`) || !strings.Contains(plan.Steps[0].SQL, `>= ?`) {
+		t.Fatalf("count predicate SQL differs: %s", plan.Steps[0].SQL)
+	}
+}
