@@ -34,8 +34,9 @@ type Entity struct {
 	Fulltext    [][]string            `json:"fulltext,omitempty"`
 	Checks      []Check               `json:"checks,omitempty"`
 	Timestamps  *Timestamps           `json:"timestamps,omitempty"`
-	Predicates  map[string]*Predicate `json:"predicates,omitempty"` // %% predicate → generated <name>(args…) methods
-	Scope       string                `json:"scope,omitempty"`      // %% scope <table> <column>
+	Predicates  map[string]*Predicate `json:"predicates,omitempty"`  // %% predicate → generated <name>(args…) methods
+	Scope       string                `json:"scope,omitempty"`       // %% scope <table> <column>
+	SoftDelete  string                `json:"soft_delete,omitempty"` // %% soft_delete <table> <nullable datetime column>
 	Line        int                   `json:"-"`
 
 	cols map[string]*Col
@@ -543,6 +544,18 @@ func (m *Manifest) addDirective(x *Directive) error {
 			return &BuildError{x.Line, "scope column " + x.Columns[0] + " must be an integer or string"}
 		}
 		ent.Scope = x.Columns[0]
+	case "soft_delete":
+		if ent.SoftDelete != "" {
+			return &BuildError{x.Line, "soft_delete declared twice for " + ent.Name}
+		}
+		c := ent.Column(x.Columns[0])
+		if c == nil {
+			return &BuildError{x.Line, "soft_delete column " + x.Columns[0] + " is unknown"}
+		}
+		if c.Type != "datetime" || !c.Nullable {
+			return &BuildError{x.Line, "soft_delete column " + x.Columns[0] + " must be a nullable datetime"}
+		}
+		ent.SoftDelete = x.Columns[0]
 	case "blind_index":
 		encrypted := ent.Column(x.Columns[0])
 		index := ent.Column(x.Columns[1])

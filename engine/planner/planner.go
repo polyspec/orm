@@ -287,6 +287,9 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 		}
 		where = append(where, clause)
 	}
+	if root.ent.SoftDelete != "" {
+		where = append(where, p.qcol(root, root.ent.SoftDelete)+" IS NULL")
+	}
 	if q.Where != nil && len(q.Where.Items) > 0 {
 		s, err := p.renderGroup(b, root, q.Where, rc == nil && q.ScopeP == nil)
 		if err != nil {
@@ -1360,6 +1363,9 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 		}
 		where = scope + " AND " + where
 	}
+	if ent.SoftDelete != "" {
+		where += " AND " + p.qcol(root, ent.SoftDelete) + " IS NULL"
+	}
 	sql := "UPDATE " + p.D.Quote(ent.Table) + " SET " + strings.Join(sets, ", ") + " WHERE " + where
 	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
 }
@@ -1378,6 +1384,14 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 			return nil, e
 		}
 		where = scope + " AND " + where
+	}
+	if ent.SoftDelete != "" {
+		where += " AND " + p.qcol(root, ent.SoftDelete) + " IS NULL"
+		now := p.D.Now()
+		if p.D.HostNow() {
+			now = b.now()
+		}
+		return &plan.Step{Role: "main", SQL: "UPDATE " + p.D.Quote(ent.Table) + " SET " + p.D.Quote(ent.SoftDelete) + " = " + now + " WHERE " + where, BindSlots: b.binds}, nil
 	}
 	sql := "DELETE FROM " + p.D.Quote(ent.Table) + " WHERE " + where
 	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
