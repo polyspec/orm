@@ -63,10 +63,11 @@ async function closeReadable(readable: Readable | undefined): Promise<void> {
 }
 
 function driverError(name: DriverName, error: unknown): OrmError {
-  const source = error as { code?: string; errno?: number; message?: string };
+  const source = error as { code?: string; errno?: number; errcode?: number; message?: string };
   const duplicate = source.code === 'ER_DUP_ENTRY' || source.code === '23505' || source.code === 'SQLITE_CONSTRAINT_UNIQUE';
+  const foreignKey = source.code === 'ER_NO_REFERENCED_ROW_2' || source.code === 'ER_ROW_IS_REFERENCED_2' || source.code === '23503' || source.code === 'SQLITE_CONSTRAINT_FOREIGNKEY' || source.errcode === 787 || source.errcode === 1811 || /foreign key/i.test(source.message ?? '');
   const deadlock = source.code === 'ER_LOCK_DEADLOCK' || source.code === '40P01' || source.code === 'SQLITE_BUSY';
-  return new OrmError(duplicate ? 'DUPLICATE' : deadlock ? 'DEADLOCK' : 'DRIVER', `${name}: ${source.message ?? String(error)}`, error);
+  return new OrmError(duplicate ? 'DUPLICATE' : foreignKey ? 'FOREIGN_KEY' : deadlock ? 'DEADLOCK' : 'DRIVER', `${name}: ${source.message ?? String(error)}`, error);
 }
 
 type MySqlExecutor = MySqlPool | MySqlConnection;
