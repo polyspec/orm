@@ -31,6 +31,8 @@ export interface StreamResult {
 export interface TransactionOptions {
   retryDeadlocks?: boolean;
   maxAttempts?: number;
+  isolation?: 'default' | 'read_uncommitted' | 'read_committed' | 'repeatable_read' | 'serializable';
+  readOnly?: boolean;
 }
 
 export interface AesRowCodec {
