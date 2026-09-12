@@ -66,7 +66,7 @@ type DRelation struct {
 }
 
 type Directive struct {
-	Kind    string // unique, index, fulltext, blind_index, timestamps, predicate
+	Kind    string // unique, index, fulltext, check, blind_index, timestamps, predicate
 	Table   string
 	Columns []string
 	Name    string
@@ -88,7 +88,7 @@ var (
 	// parent CARD child : label
 	reRelation = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s+([|}o]{1,2}[-.]{2}[|{o]{1,2})\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$`)
 	// %% kind table (a, b) [name]
-	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|blind_index|timestamps|scope|predicate|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
+	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|check|blind_index|timestamps|scope|predicate|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
 	reRelationNames  = regexp.MustCompile(`^(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
 	reRef            = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
 	reDirectiveIdent = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
@@ -291,6 +291,13 @@ func parseDirective(m []string, line int) (*Directive, error) {
 		if d.Kind != "index" && d.Name != "" {
 			return nil, &ParseError{line, fmt.Sprintf("%%%% %s: only index takes a name", d.Kind)}
 		}
+	case "check":
+		name, body, ok := strings.Cut(d.Raw, ":")
+		if !ok || !reDirectiveIdent.MatchString(strings.TrimSpace(name)) || strings.TrimSpace(body) == "" {
+			return nil, &ParseError{line, "%% check <table> <name> : <expression>"}
+		}
+		d.Name = strings.TrimSpace(name)
+		d.Raw = strings.TrimSpace(body)
 	case "timestamps":
 		d.Columns = strings.Fields(d.Raw)
 		if len(d.Columns) != 2 {

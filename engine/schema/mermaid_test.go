@@ -107,6 +107,30 @@ func TestParseExample(t *testing.T) {
 	}
 }
 
+func TestCheckDirectiveParsesAndValidatesColumns(t *testing.T) {
+	d, err := Parse("erDiagram\n item {\n integer id PK\n integer quantity\n }\n %% check item positive_quantity : `quantity` >= 0\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(d.Directives) != 1 || d.Directives[0].Kind != "check" || d.Directives[0].Name != "positive_quantity" || d.Directives[0].Raw != "`quantity` >= 0" {
+		t.Fatalf("check directive: %+v", d.Directives)
+	}
+	m, err := Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m.Entities["item"].Checks) != 1 || m.Entities["item"].Checks[0].Expr != "`quantity` >= 0" {
+		t.Fatalf("manifest checks: %+v", m.Entities["item"].Checks)
+	}
+	bad, err := Parse("erDiagram\n item {\n integer id PK\n }\n %% check item valid : `missing` > 0\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = Build(bad); err == nil || !strings.Contains(err.Error(), "unknown column") {
+		t.Fatalf("unknown CHECK column accepted: %v", err)
+	}
+}
+
 func TestParseCompositeRelationLabel(t *testing.T) {
 	d, err := Parse("erDiagram\n parent ||--o{ child : \"(tenant_id, parent_id) (parent / children) cascade\"\n")
 	if err != nil {
