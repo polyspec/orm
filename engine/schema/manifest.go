@@ -528,6 +528,39 @@ func (m *Manifest) addDirective(x *Directive) error {
 }
 
 func (m *Manifest) validate(allowMissingAESVersion bool) error {
+	renamedTables := map[string]string{}
+	for _, name := range m.Order {
+		e := m.Entities[name]
+		if e.RenamedFrom != "" {
+			if e.RenamedFrom == e.Name {
+				return &BuildError{e.Line, "rename_table source equals target " + e.Name}
+			}
+			if target := renamedTables[e.RenamedFrom]; target != "" {
+				return &BuildError{e.Line, fmt.Sprintf("rename_table source %s is used by %s and %s", e.RenamedFrom, target, e.Name)}
+			}
+			renamedTables[e.RenamedFrom] = e.Name
+		}
+		targetColumns := map[string]bool{}
+		for _, c := range e.Columns {
+			targetColumns[c.Name] = true
+		}
+		renamedColumns := map[string]string{}
+		for _, c := range e.Columns {
+			if c.RenamedFrom == "" {
+				continue
+			}
+			if c.RenamedFrom == c.Name {
+				return &BuildError{c.Line, "rename_column source equals target " + e.Name + "." + c.Name}
+			}
+			if targetColumns[c.RenamedFrom] {
+				return &BuildError{c.Line, fmt.Sprintf("rename_column source %s.%s remains a target column", e.Name, c.RenamedFrom)}
+			}
+			if target := renamedColumns[c.RenamedFrom]; target != "" {
+				return &BuildError{c.Line, fmt.Sprintf("rename_column source %s.%s is used by %s and %s", e.Name, c.RenamedFrom, target, c.Name)}
+			}
+			renamedColumns[c.RenamedFrom] = c.Name
+		}
+	}
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		for _, c := range e.Columns {
