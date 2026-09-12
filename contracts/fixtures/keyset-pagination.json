@@ -1,0 +1,22 @@
+{
+  "feature": "keyset_pagination",
+  "cases": [
+    {
+      "id": "composite-order-after-before",
+      "operation": "order by name desc, seq asc; fetch after and before with per=2",
+      "expected": {
+        "boundary": "lexicographic and exclusive",
+        "order": "stable after reversing before rows",
+        "cursor": "versioned typed values with matching order"
+      }
+    },
+    {
+      "id": "invalid-cursor",
+      "operation": "decode a changed or order-mismatched cursor",
+      "expected": {
+        "error": "CURSOR_INVALID",
+        "sql": "not executed"
+      }
+    }
+  ]
+}

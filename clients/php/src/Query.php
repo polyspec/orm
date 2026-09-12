@@ -406,6 +406,32 @@ class Q
         $this->req->sig .= "|L$offset,$count";
     }
 
+    /** Configures a validated root keyset boundary and its positive page size. */
+    public function keyset(string $direction, string $cursor, int $per, array $primaryKeys): void
+    {
+        if ($direction !== 'after' && $direction !== 'before') throw new OrmException(Code::CURSOR_INVALID, 'keyset direction must be after or before');
+        if ($per < 1) throw new OrmException(Code::IR_INVALID, 'keyset limit must be positive');
+        $this->node['order'] ??= [];
+        if ($this->node['order'] === []) foreach ($primaryKeys as $column) $this->order($column, false);
+        $seen = [];
+        foreach ($this->node['order'] as $item) {
+            if (empty($item['column']) || !empty($item['expr'])) throw new OrmException(Code::CURSOR_INVALID, 'keyset order must use table columns');
+            if (isset($seen[$item['column']])) throw new OrmException(Code::CURSOR_INVALID, 'keyset order contains duplicate column ' . $item['column']);
+            $seen[$item['column']] = true;
+        }
+        foreach ($primaryKeys as $column) if (!isset($seen[$column])) { $this->order($column, false); $seen[$column] = true; }
+        $this->setLimit(0, $per);
+        if ($cursor === '') { unset($this->node['keyset']); return; }
+        if ($direction !== 'after' && $direction !== 'before') throw new OrmException(Code::CURSOR_INVALID, 'keyset direction must be after or before');
+        $decoded = KeysetCursor::decode($cursor);
+        $normalize = static fn(array $item): array => ['column' => $item['column'] ?? '', 'expr' => $item['expr'] ?? '', 'desc' => (bool)($item['desc'] ?? false)];
+        if (array_map($normalize, $decoded['order']) !== array_map($normalize, $this->node['order'])) throw new OrmException(Code::CURSOR_INVALID, 'cursor order does not match query order');
+        $indexes = [];
+        foreach ($decoded['values'] as $value) $indexes[] = $this->req->p($value);
+        $this->node['keyset'] = ['direction' => $direction, 'values' => $indexes];
+        $this->req->sig .= '|keyset' . $direction . implode(',', $indexes);
+    }
+
     /** A scalar option of this node: key_by, distinct, force_index, flatten, limit_per_parent, drop_child_key, no_cascade_delete. */
     public function opt(string $key, int|string|bool $v): void
     {

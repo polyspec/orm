@@ -29,7 +29,9 @@ pub struct Step {
 }
 
 /// Go marshals a nil slice as `null`; read it as an empty list.
-fn null_as_empty<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(d: D) -> std::result::Result<Vec<T>, D::Error> {
+fn null_as_empty<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(
+    d: D,
+) -> std::result::Result<Vec<T>, D::Error> {
     Ok(Option::<Vec<T>>::deserialize(d)?.unwrap_or_default())
 }
 
@@ -128,12 +130,21 @@ pub struct Child {
 
 impl Assemble {
     pub fn index_of(&self, name: &str) -> Option<usize> {
-        self.columns.iter().find(|c| c.name == name).map(|c| c.index)
+        self.columns
+            .iter()
+            .find(|c| c.name == name)
+            .map(|c| c.index)
     }
 
     /// Width of one positional row: this node's columns plus its joins'.
     pub fn total_columns(&self) -> usize {
-        self.columns.len() + self.children.iter().filter_map(|c| c.assemble.as_ref()).map(|a| a.total_columns()).sum::<usize>()
+        self.columns.len()
+            + self
+                .children
+                .iter()
+                .filter_map(|c| c.assemble.as_ref())
+                .map(|a| a.total_columns())
+                .sum::<usize>()
     }
 
     /// Whether this node loads relation `rel` (a join or a relation child).

@@ -2,29 +2,33 @@
 //! value-free IR requests; this crate compiles them through the wasm engine
 //! (cached by IR shape), runs the plan with sqlx and maps positional rows.
 
-pub mod engine;
-pub mod ir;
-pub mod plan;
-pub mod row;
+pub mod aes_rotation;
 pub mod builder;
-pub mod db;
-pub mod value;
 pub mod codec;
 pub mod codes;
 pub mod collection;
 pub mod config;
-pub mod aes_rotation;
+pub mod db;
+pub mod engine;
+pub mod ir;
+pub mod keyset;
+pub mod plan;
+pub mod row;
+pub mod value;
 pub mod compiler_proto {
     include!("gen/orm/compiler/v1/orm.compiler.v1.rs");
 }
-pub mod compiler_transport;
 pub mod compiler_bridge;
+pub mod compiler_transport;
 
 pub use builder::{Q, W};
-pub use collection::{Collection, Key, Page};
-pub use config::OrmConfig;
+pub use collection::{Collection, Key, KeysetPage, Page};
 pub use compiler_transport::{CompilerTransport, ConnectCompiler};
-pub use db::{batch_write, BatchOptions, BatchResult, ConnectOptions, Db, Exec, IsolationLevel, Pool, TransactionOptions, Tx};
+pub use config::OrmConfig;
+pub use db::{
+    batch_write, BatchOptions, BatchResult, ConnectOptions, Db, Exec, IsolationLevel, Pool,
+    TransactionOptions, Tx,
+};
 pub use engine::Engine;
 pub use row::{Cells, Src};
 pub use value::{parse_point, point_text, Param, Point};
@@ -47,7 +51,11 @@ impl std::fmt::Display for Error {
         match self {
             Error::Engine { code, msg } => write!(f, "{code}: {msg}"),
             Error::Sqlx(e) => write!(f, "sqlx: {e}"),
-            Error::OptimisticLock => write!(f, "{}: row changed since it was read", codes::OPTIMISTIC_LOCK),
+            Error::OptimisticLock => write!(
+                f,
+                "{}: row changed since it was read",
+                codes::OPTIMISTIC_LOCK
+            ),
             Error::Config(m) => write!(f, "{}: {m}", codes::CONFIG),
         }
     }
@@ -68,7 +76,9 @@ impl From<sqlx::Error> for Error {
             // message text is localized, the way pgx renders it)
             let mapped = if let Some(m) = d.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
                 match (m.number(), m.code()) {
-                    (1213, _) | (_, Some("40001")) => Some((codes::DEADLOCK, m.message().to_owned())),
+                    (1213, _) | (_, Some("40001")) => {
+                        Some((codes::DEADLOCK, m.message().to_owned()))
+                    }
                     (1062, _) => Some((codes::DUPLICATE_KEY, m.message().to_owned())),
                     _ => None,
                 }
@@ -91,7 +101,10 @@ impl From<sqlx::Error> for Error {
                 None
             };
             if let Some((code, msg)) = mapped {
-                return Error::Engine { code: code.into(), msg };
+                return Error::Engine {
+                    code: code.into(),
+                    msg,
+                };
             }
         }
         Error::Sqlx(e)
@@ -115,7 +128,10 @@ impl Error {
     }
 
     pub(crate) fn internal(msg: impl Into<String>) -> Error {
-        Error::Engine { code: codes::INTERNAL.into(), msg: msg.into() }
+        Error::Engine {
+            code: codes::INTERNAL.into(),
+            msg: msg.into(),
+        }
     }
 }
 

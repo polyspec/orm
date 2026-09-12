@@ -180,6 +180,11 @@ func (p *Planner) buildScopes(q *ir.Query, alias string, parent *scope) *scope {
 func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *relCtx) (*plan.Step, error) {
 	b := &builder{p: p}
 	root := p.buildScopes(q, "a", nil)
+	if rc == nil && q.Keyset != nil {
+		if err := p.prepareKeyset(root.ent, q); err != nil {
+			return nil, err
+		}
+	}
 	if rc != nil {
 		root.extra = append(root.extra, rc.childKeys...)
 		if q.KeyBy != "" {
@@ -288,6 +293,13 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			return nil, err
 		}
 		where = append(where, s)
+	}
+	if rc == nil && q.Keyset != nil {
+		boundary, err := p.renderKeyset(b, root, q)
+		if err != nil {
+			return nil, err
+		}
+		where = append(where, boundary)
 	}
 	if err := p.collectJoinWhere(b, root, &where); err != nil {
 		return nil, err
@@ -481,13 +493,91 @@ func (p *Planner) renderOrder(root *scope, q *ir.Query) (string, error) {
 		} else {
 			sb.WriteString(p.qcol(root, o.Column))
 		}
-		if o.Desc {
+		desc := o.Desc
+		if q.Keyset != nil && q.Keyset.Direction == "before" {
+			desc = !desc
+		}
+		if desc {
 			sb.WriteString(" DESC")
 		} else {
 			sb.WriteString(" ASC")
 		}
 	}
 	return sb.String(), nil
+}
+
+func (p *Planner) prepareKeyset(ent *schema.Entity, q *ir.Query) error {
+	if q.Keyset.Direction != "after" && q.Keyset.Direction != "before" {
+		return &ir.Error{Code: "CURSOR_INVALID", Msg: "keyset direction must be after or before"}
+	}
+	if q.Limit == nil || q.Limit.Count < 1 || q.Limit.Offset != 0 {
+		return &ir.Error{Code: "IR_INVALID", Msg: "keyset requires a positive limit count and zero offset"}
+	}
+	seen := map[string]bool{}
+	for _, o := range q.Order {
+		if o.Expr != "" || o.Column == "" {
+			return &ir.Error{Code: "CURSOR_INVALID", Msg: "keyset order must use non-null table columns"}
+		}
+		col := ent.Column(o.Column)
+		if col == nil {
+			return &ir.Error{Code: "COLUMN_UNKNOWN", Msg: ent.Name + "." + o.Column}
+		}
+		if col.Nullable || len(col.Styles) > 0 {
+			return &ir.Error{Code: "CURSOR_INVALID", Msg: ent.Name + "." + o.Column + " cannot be used as a keyset order column"}
+		}
+		if seen[o.Column] {
+			return &ir.Error{Code: "CURSOR_INVALID", Msg: "keyset order contains duplicate column " + o.Column}
+		}
+		seen[o.Column] = true
+	}
+	for _, name := range ent.PK {
+		if !seen[name] {
+			q.Order = append(q.Order, ir.Order{Column: name})
+			seen[name] = true
+		}
+	}
+	if len(q.Keyset.Values) != len(q.Order) {
+		return &ir.Error{Code: "CURSOR_INVALID", Msg: fmt.Sprintf("keyset has %d values for %d order columns", len(q.Keyset.Values), len(q.Order))}
+	}
+	return nil
+}
+
+func (p *Planner) renderKeyset(b *builder, root *scope, q *ir.Query) (string, error) {
+	terms := make([]string, 0, len(q.Order))
+	for i, order := range q.Order {
+		parts := make([]string, 0, i+1)
+		for j := 0; j < i; j++ {
+			previous := q.Order[j]
+			if previous.Expr != "" {
+				return "", &ir.Error{Code: "CURSOR_INVALID", Msg: "keyset does not support expression order"}
+			}
+			col := root.ent.Column(previous.Column)
+			value, err := p.renderValue(b, col, q.Keyset.Values[j])
+			if err != nil {
+				return "", err
+			}
+			parts = append(parts, p.qcol(root, previous.Column)+" = "+value)
+		}
+		col := root.ent.Column(order.Column)
+		value, err := p.renderValue(b, col, q.Keyset.Values[i])
+		if err != nil {
+			return "", err
+		}
+		op := "gt"
+		if order.Desc {
+			op = "lt"
+		}
+		if q.Keyset.Direction == "before" {
+			if op == "gt" {
+				op = "lt"
+			} else {
+				op = "gt"
+			}
+		}
+		parts = append(parts, p.qcol(root, order.Column)+" "+cmp(op)+" "+value)
+		terms = append(terms, "("+strings.Join(parts, " AND ")+")")
+	}
+	return "(" + strings.Join(terms, " OR ") + ")", nil
 }
 
 func (p *Planner) renderGroupBy(root *scope, q *ir.Query) (string, error) {

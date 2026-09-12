@@ -32,7 +32,7 @@ Each item requires:
 ## P9: common ORM operations
 
 - [x] P9.1 Batch insert, upsert, update by primary key, and delete by primary key use typed inputs, bounded chunks, one transaction, and deterministic affected-row results. Go, PHP, Rust, and TypeScript pass the rollback and result tests on MySQL, PostgreSQL, and SQLite.
-- [ ] P9.2 Keyset pagination uses generated typed cursors, a total composite order, versioned cursor encoding, validation, forward/backward traversal, and duplicate-page tests.
+- [x] P9.2 Keyset pagination uses generated typed cursors, a total composite order, versioned cursor encoding, validation, forward/backward traversal, and duplicate-page tests.
 - [x] P9.3 Transaction callbacks do not retry by default. An explicit retry policy controls deadlock retries and documents callback requirements. Go, PHP, Rust, and TypeScript tests verify the default and opt-in paths.
 - [ ] P9.4 Transaction options cover isolation, read-only mode, nested savepoints, query timeout/cancellation, and supported row locks. Unsupported database modes return exact capability errors.
   - [x] P9.4a Root `forUpdate` and `forShare` row locks use the common IR and are executed by MySQL/PostgreSQL; SQLite returns `CAPABILITY_UNSUPPORTED`. This sub-item does not complete P9.4 because timeout/cancellation remains.

@@ -27,7 +27,9 @@ impl Key {
         let mut out = String::new();
         for reference in refs {
             let value = &row[reference.index];
-            if value.is_null() { return None; }
+            if value.is_null() {
+                return None;
+            }
             let part = value.as_string();
             out.push_str(&format!("{}:{}", part.len(), part));
         }
@@ -35,7 +37,9 @@ impl Key {
     }
 
     pub fn of_values(values: &[Val]) -> Key {
-        if values.len() == 1 { return Key::of(&values[0]); }
+        if values.len() == 1 {
+            return Key::of(&values[0]);
+        }
         let mut out = String::new();
         for value in values {
             let part = value.as_string();
@@ -74,10 +78,15 @@ pub trait RowExport {
 impl<T: RowExport> Collection<T> {
     pub fn to_map(&self) -> crate::Result<serde_json::Value> {
         let mut out = serde_json::Map::new();
-        for (key,row) in self.iter() {
-            let key=key.to_string();
-            if out.contains_key(&key) { return Err(crate::Error::Engine { code:"IR_INVALID".into(), msg:"array conversion loses key type; use entries".into() }); }
-            out.insert(key,row.to_map()?);
+        for (key, row) in self.iter() {
+            let key = key.to_string();
+            if out.contains_key(&key) {
+                return Err(crate::Error::Engine {
+                    code: "IR_INVALID".into(),
+                    msg: "array conversion loses key type; use entries".into(),
+                });
+            }
+            out.insert(key, row.to_map()?);
         }
         Ok(serde_json::Value::Object(out))
     }
@@ -85,13 +94,17 @@ impl<T: RowExport> Collection<T> {
 
 impl<T> Default for Collection<T> {
     fn default() -> Self {
-        Collection { items: IndexMap::new() }
+        Collection {
+            items: IndexMap::new(),
+        }
     }
 }
 
 impl<T> Collection<T> {
     pub fn with_capacity(n: usize) -> Self {
-        Collection { items: IndexMap::with_capacity(n) }
+        Collection {
+            items: IndexMap::with_capacity(n),
+        }
     }
 
     pub fn put(&mut self, k: Key, v: T) {
@@ -102,19 +115,29 @@ impl<T> Collection<T> {
         self.items.get(k)
     }
 
-    pub fn get_mut(&mut self, k: &Key) -> Option<&mut T> { self.items.get_mut(k) }
+    pub fn get_mut(&mut self, k: &Key) -> Option<&mut T> {
+        self.items.get_mut(k)
+    }
 
-    pub fn keys(&self) -> impl Iterator<Item = &Key> { self.items.keys() }
+    pub fn keys(&self) -> impl Iterator<Item = &Key> {
+        self.items.keys()
+    }
 
-    pub fn entries(&self) -> impl Iterator<Item = (&Key, &T)> { self.items.iter() }
+    pub fn entries(&self) -> impl Iterator<Item = (&Key, &T)> {
+        self.items.iter()
+    }
 
     pub fn first(&self) -> Option<&T> {
         self.items.values().next()
     }
 
-    pub fn first_mut(&mut self) -> Option<&mut T> { self.items.values_mut().next() }
+    pub fn first_mut(&mut self) -> Option<&mut T> {
+        self.items.values_mut().next()
+    }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Key, &mut T)> { self.items.iter_mut() }
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Key, &mut T)> {
+        self.items.iter_mut()
+    }
 
     pub fn len(&self) -> usize {
         self.items.len()
@@ -148,4 +171,11 @@ pub struct Page<T> {
     pub pages: i64,
     pub current: i64,
     pub per: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct KeysetPage<T> {
+    pub items: Collection<T>,
+    pub next_cursor: String,
+    pub previous_cursor: String,
 }

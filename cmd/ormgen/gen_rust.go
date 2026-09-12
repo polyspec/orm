@@ -723,6 +723,25 @@ impl {{.Type}} {
         collect(&mut rows, self.key_fn.as_deref())
     }
 
+    pub async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<{{.Type}}Row>> {
+        self.q.keyset("after", cursor, per, &[{{rsList .KeyCols}}])?;
+        let binding = self.binding.clone(); let ex = binding.resolve()?;
+        let mut rows = db::select(ex, &mut self.q.req, "all").await?;
+        let (next_cursor, previous_cursor) = rows.keyset_cursors(&self.q.req.ir.query.order)?;
+        let items = collect(&mut rows, self.key_fn.as_deref())?;
+        Ok(orm::KeysetPage { items, next_cursor, previous_cursor })
+    }
+
+    pub async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<{{.Type}}Row>> {
+        self.q.keyset("before", cursor, per, &[{{rsList .KeyCols}}])?;
+        let binding = self.binding.clone(); let ex = binding.resolve()?;
+        let mut rows = db::select(ex, &mut self.q.req, "all").await?;
+        rows.reverse_main();
+        let (next_cursor, previous_cursor) = rows.keyset_cursors(&self.q.req.ir.query.order)?;
+        let items = collect(&mut rows, self.key_fn.as_deref())?;
+        Ok(orm::KeysetPage { items, next_cursor, previous_cursor })
+    }
+
     /// Visits independently owned rows without accumulating the complete result.
     pub async fn stream(&mut self, visit: impl FnMut({{.Type}}Row) -> bool) -> Result<db::StreamResult> {
         let mut visit = visit;

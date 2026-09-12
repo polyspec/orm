@@ -44,7 +44,10 @@ func CloneQuery(q Query) Query {
 	out.Order = slices.Clone(q.Order)
 	out.GroupBy = slices.Clone(q.GroupBy)
 	out.GroupByExpr = slices.Clone(q.GroupByExpr)
-	out.Limit, out.IfParent = clonePtr(q.Limit), clonePtr(q.IfParent)
+	out.Limit, out.IfParent, out.Keyset = clonePtr(q.Limit), clonePtr(q.IfParent), clonePtr(q.Keyset)
+	if q.Keyset != nil {
+		out.Keyset.Values = slices.Clone(q.Keyset.Values)
+	}
 	return out
 }
 

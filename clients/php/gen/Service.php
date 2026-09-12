@@ -10,6 +10,7 @@ use Orm\BatchOptions;
 use Orm\BatchResult;
 use Orm\Db;
 use Orm\Page;
+use Orm\KeysetPage;
 use Orm\Q;
 use Orm\Row;
 use Orm\Registry;
@@ -341,6 +342,25 @@ final class Service extends Q implements ServiceInterface
         if ($per <= 0) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'per must be positive'); }
         [$rows, $total] = $this->runPaginate($db, $page, $per);
         return new Page(Collection::fromRows($rows, ServiceRow::class, $this->keyFn), $total, intdiv($total + $per - 1, $per), max(1, $page), $per);
+    }
+
+    public function getsAfter(string $cursor, int $per): KeysetPage
+    {
+        $this->terminalArity(func_num_args(), 2);
+        $db = $this->terminalDb();
+        $this->keyset('after', $cursor, $per, ['seq']);
+        $rows = $this->runQuery($db, 'all');
+        return KeysetPage::fromRows($rows, Collection::fromRows($rows, ServiceRow::class, $this->keyFn), $this->req->ir['order'] ?? []);
+    }
+
+    public function getsBefore(string $cursor, int $per): KeysetPage
+    {
+        $this->terminalArity(func_num_args(), 2);
+        $db = $this->terminalDb();
+        $this->keyset('before', $cursor, $per, ['seq']);
+        $rows = $this->runQuery($db, 'all');
+        $rows->reverseMain();
+        return KeysetPage::fromRows($rows, Collection::fromRows($rows, ServiceRow::class, $this->keyFn), $this->req->ir['order'] ?? []);
     }
 
     public function insert(): ?ServiceRow

@@ -6,35 +6,68 @@ pub type Point = (f64, f64);
 
 pub fn point_text(point: Point) -> crate::Result<String> {
     if !point.0.is_finite() || !point.1.is_finite() {
-        return Err(crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: "point coordinates must be finite".into() });
+        return Err(crate::Error::Engine {
+            code: crate::codes::CODEC_ENCODE.into(),
+            msg: "point coordinates must be finite".into(),
+        });
     }
-    Ok(format!("POINT({} {})", point_number(point.0), point_number(point.1)))
+    Ok(format!(
+        "POINT({} {})",
+        point_number(point.0),
+        point_number(point.1)
+    ))
 }
 
 pub(crate) fn postgres_point_text(point: Point) -> crate::Result<String> {
     point_text(point)?;
-    Ok(format!("({},{})", point_number(point.0), point_number(point.1)))
+    Ok(format!(
+        "({},{})",
+        point_number(point.0),
+        point_number(point.1)
+    ))
 }
 
-fn point_number(value: f64) -> String { if value == 0.0 { "0".into() } else { value.to_string() } }
+fn point_number(value: f64) -> String {
+    if value == 0.0 {
+        "0".into()
+    } else {
+        value.to_string()
+    }
+}
 
 pub fn parse_point(value: &str) -> crate::Result<Point> {
     let value = value.trim();
-    let body = if value.len() >= 7 && value[..6].eq_ignore_ascii_case("POINT(") && value.ends_with(')') {
-        &value[6..value.len() - 1]
-    } else if value.starts_with('(') && value.ends_with(')') {
-        &value[1..value.len() - 1]
-    } else {
-        value
-    };
-    let parts: Vec<&str> = body.split(|c: char| c == ',' || c.is_whitespace()).filter(|s| !s.is_empty()).collect();
+    let body =
+        if value.len() >= 7 && value[..6].eq_ignore_ascii_case("POINT(") && value.ends_with(')') {
+            &value[6..value.len() - 1]
+        } else if value.starts_with('(') && value.ends_with(')') {
+            &value[1..value.len() - 1]
+        } else {
+            value
+        };
+    let parts: Vec<&str> = body
+        .split(|c: char| c == ',' || c.is_whitespace())
+        .filter(|s| !s.is_empty())
+        .collect();
     if parts.len() != 2 {
-        return Err(crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("point requires two coordinates: {value:?}") });
+        return Err(crate::Error::Engine {
+            code: crate::codes::CODEC_DECODE.into(),
+            msg: format!("point requires two coordinates: {value:?}"),
+        });
     }
-    let x = parts[0].parse::<f64>().map_err(|_| crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("point coordinate 0 is invalid: {:?}", parts[0]) })?;
-    let y = parts[1].parse::<f64>().map_err(|_| crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("point coordinate 1 is invalid: {:?}", parts[1]) })?;
+    let x = parts[0].parse::<f64>().map_err(|_| crate::Error::Engine {
+        code: crate::codes::CODEC_DECODE.into(),
+        msg: format!("point coordinate 0 is invalid: {:?}", parts[0]),
+    })?;
+    let y = parts[1].parse::<f64>().map_err(|_| crate::Error::Engine {
+        code: crate::codes::CODEC_DECODE.into(),
+        msg: format!("point coordinate 1 is invalid: {:?}", parts[1]),
+    })?;
     if !x.is_finite() || !y.is_finite() {
-        return Err(crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "point coordinates must be finite".into() });
+        return Err(crate::Error::Engine {
+            code: crate::codes::CODEC_DECODE.into(),
+            msg: "point coordinates must be finite".into(),
+        });
     }
     Ok((x, y))
 }
@@ -49,8 +82,14 @@ mod point_tests {
         assert_eq!(parse_point("(1.25,-2)").unwrap(), (1.25, -2.0));
         assert_eq!(point_text((1.25, -2.0)).unwrap(), "POINT(1.25 -2)");
         assert_eq!(point_text((-0.0, 0.0)).unwrap(), "POINT(0 0)");
-        assert_eq!(parse_point("POINT(1)").unwrap_err().code(), crate::codes::CODEC_DECODE);
-        assert_eq!(point_text((1.0, f64::NAN)).unwrap_err().code(), crate::codes::CODEC_ENCODE);
+        assert_eq!(
+            parse_point("POINT(1)").unwrap_err().code(),
+            crate::codes::CODEC_DECODE
+        );
+        assert_eq!(
+            point_text((1.0, f64::NAN)).unwrap_err().code(),
+            crate::codes::CODEC_ENCODE
+        );
     }
 }
 
@@ -86,7 +125,9 @@ impl From<u64> for Param {
 }
 
 impl From<Point> for Param {
-    fn from(point: Point) -> Self { Param::Point(point) }
+    fn from(point: Point) -> Self {
+        Param::Point(point)
+    }
 }
 
 impl<T: Into<Param>> From<Option<T>> for Param {
@@ -238,5 +279,7 @@ pub fn transform(kind: &str, s: &str) -> String {
 }
 
 fn esc(s: &str) -> String {
-    s.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_")
+    s.replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
 }

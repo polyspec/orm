@@ -49,7 +49,8 @@ type Query struct {
 	Limit       *Limit      `json:"limit,omitempty"`
 	Distinct    bool        `json:"distinct,omitempty"`
 	ForceIdx    string      `json:"force_index,omitempty"`
-	Lock        string      `json:"lock,omitempty"` // update or share; root row-select only
+	Lock        string      `json:"lock,omitempty"`   // update or share; root row-select only
+	Keyset      *Keyset     `json:"keyset,omitempty"` // root keyset boundary; values reference Request.Params
 
 	// Relation-child options.
 	KeyBy           string    `json:"key_by,omitempty"`
@@ -58,6 +59,14 @@ type Query struct {
 	IfParent        *IfParent `json:"if_parent,omitempty"`
 	DropChildKey    bool      `json:"drop_child_key,omitempty"`
 	NoCascadeDelete bool      `json:"no_cascade_delete,omitempty"` // deleteCascade stops at this relation
+}
+
+// Keyset is a value-free cursor boundary. Order is taken from Query.Order;
+// Values contains parameter indexes in that same order. The planner appends
+// missing primary-key columns to make the ordering total.
+type Keyset struct {
+	Direction string `json:"direction"` // after | before
+	Values    []int  `json:"values"`
 }
 
 type Columns struct {
@@ -501,6 +510,14 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 	}
 	if q.IfParent != nil {
 		if err := v.params([]int{q.IfParent.P}); err != nil {
+			return err
+		}
+	}
+	if q.Keyset != nil {
+		if isJoin || isRelation {
+			return errf("IR_INVALID", "keyset is only valid on the root query")
+		}
+		if err := v.params(q.Keyset.Values); err != nil {
 			return err
 		}
 	}

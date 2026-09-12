@@ -1,6 +1,16 @@
 {
   "manifest_version": 1,
   "contract_version": "0.0.1",
+  "source": {
+    "read_order": [
+      "contracts/features.json",
+      "contracts/interfaces.json",
+      "docs/protocol.md",
+      "docs/dsl.md",
+      "docs/features.md"
+    ],
+    "path_rule": "All paths in this file are repository-relative. Read every referenced fixture, test, document, and verification command before changing a feature."
+  },
   "features": [
     {
       "id": "schema_migrations",
@@ -91,18 +101,18 @@
       "id": "keyset_pagination",
       "title": "Typed keyset pagination",
       "title_ko": "Typed keyset pagination",
-      "status": "planned",
+      "status": "implemented",
       "description": "Provide versioned cursors, total composite ordering, validation, and forward and backward traversal.",
       "description_ko": "version cursor, 완전한 composite order, validation, forward 및 backward traversal을 제공한다.",
       "inputs": {"type": "KeysetRequest", "fields": ["order", "cursor", "direction", "limit"]},
       "outputs": {"type": "KeysetPage", "fields": ["items", "next_cursor", "previous_cursor"]},
       "state": ["validate order", "decode cursor", "apply boundary predicate", "fetch page", "encode cursors"],
       "errors": [{"code": "CURSOR_INVALID", "when": "cursor version, order, or value types do not match"}],
-      "clients": {"go": "planned", "php": "planned", "rust": "planned", "typescript": "planned"},
-      "fixtures": [],
-      "tests": [],
+      "clients": {"go": "pass", "php": "pass", "rust": "pass", "typescript": "pass"},
+      "fixtures": ["contracts/fixtures/keyset-pagination.json"],
+      "tests": ["engine/keyset_test.go", "clients/go/orm/keyset_test.go", "clients/go/gen/gen_integration_test.go", "clients/php/tests/keyset.php", "clients/php/tests/integration.php", "clients/rust/orm/src/keyset.rs", "clients/rust/tests/src/integration.rs", "tests/typescript/keyset.mjs", "tests/typescript/sqlite-integration.mjs"],
       "docs": ["docs/dsl.md"],
-      "verification": []
+      "verification": [{"id": "keyset-go", "command": "go test ./engine/... ./clients/go/orm ./clients/go/gen -run 'Keyset' -count=1"}, {"id": "keyset-php", "command": "php clients/php/tests/keyset.php"}, {"id": "keyset-rust", "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked keyset"}, {"id": "keyset-typescript", "command": "npm run typescript:build && node tests/typescript/keyset.mjs"}]
     },
     {
       "id": "transactions",
