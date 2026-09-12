@@ -77,10 +77,21 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 `{"error": {"code": "…", "msg": "…"}}` — codes: `IR_INVALID VERSION_MISMATCH SCHEMA_HASH_MISMATCH SCHEMA_INVALID SCHEMA_NOT_LOADED ENTITY_UNKNOWN COLUMN_UNKNOWN RELATION_UNKNOWN INDEX_UNKNOWN OPERATOR_UNKNOWN OPERATOR_NOT_ALLOWED OR_AT_GROUP_START EMPTY_IN ENTITY_NOT_JOINED LIMIT_IN_RELATION COLUMN_ALIAS_CONFLICT DIALECT_UNKNOWN FRAME_INVALID OP_UNKNOWN INTERNAL`. Executor codes include `OPTIMISTIC_LOCK DEADLOCK DUPLICATE_KEY JOIN_PREDICATE_PLACEMENT PAREN_ACROSS_MODELS`.
 
 ## 4. 전송
-- Go: `engine.New(manifest, "mysql").Compile(ir)` function call.
-- Rust: `ormengine.wasm` — `orm_alloc/orm_load/orm_compile/orm_free` (result `[u32 status][u32 len][bytes]`).
-- PHP: `ormd -socket /abs/path.sock -schema /abs/schema.json` — length-prefixed frames, `{"op":"compile","ir":…}` → `{"plan":…}`, `{"op":"hash"}` → `{"schema_hash":…}`.
-- Cache key = xxh3(JSON of the IR shape after removing `value/values/binds`, plus IN cardinality) + schema_hash.
+
+공통 compiler service는 `proto/orm/compiler/v1/compiler.proto`의 `orm.compiler.v1.CompilerService`다.
+
+| RPC | Connect 경로 | 입력 | 출력 |
+|---|---|---|---|
+| Compile | `/orm.compiler.v1.CompilerService/Compile` | `CompileRequest` | `CompileResponse.plan` 또는 `CompileResponse.error` |
+| GetMetadata | `/orm.compiler.v1.CompilerService/GetMetadata` | `GetMetadataRequest` | schema hash, dialect, IR version |
+
+`ormd -listen 127.0.0.1:8080 -schema schema/schema.json`은 binary Protobuf를 사용하는 Connect unary request를 처리한다. Go·PHP·Rust·TypeScript는 같은 두 작업을 가진 `CompilerTransport`와 `ConnectCompiler`를 제공한다. `make proto-check`는 scope를 포함한 request를 네 구현으로 실행하고 정규화한 전체 결과를 비교한다.
+
+`contracts/interfaces.json`은 네 전송 구현의 service 경로, 작업 이름, request·response type, 오류, 언어별 symbol을 정의한다. Protobuf 검사는 interface method나 구현 선언이 누락되면 실패한다. Runtime symbol snapshot은 생성된 Protobuf 파일을 제외하며, 해당 파일은 `proto/generated.sha256.json`이 모두 검사한다.
+
+기존 Go in-process compiler, Rust WASM compiler, PHP 길이 prefix Unix socket compiler는 T7.1 전환 중 database executor에서 계속 사용한다. 이 상태는 전송 완료 조건을 충족하지 않는다. Executor가 Connect를 사용하고 네 언어에서 DB vector 58개가 통과하면 T7.1이 완료된다.
+
+Cache key는 schema hash, request 형태, IN cardinality로 구성한다. Parameter 값은 제외한다.
 
 ### 쓰기 확장 (S3)
 - `on_duplicate: [Assign]` is insert-only and excludes PK/auto. The planner creates `INSERT … ON DUPLICATE KEY UPDATE a = ?, b = b + ?[, pk = LAST_INSERT_ID(pk)]`. The executor reads the row again by that id.

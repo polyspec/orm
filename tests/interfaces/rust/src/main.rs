@@ -103,6 +103,7 @@ fn visit(root: &Path, dir: &Path, out: &mut BTreeMap<String, String>) {
     let mut paths: Vec<_> = fs::read_dir(dir).unwrap().map(|x| x.unwrap().path()).collect();
     paths.sort();
     for p in paths {
+        if p.strip_prefix(root).is_ok_and(|relative| relative.starts_with("clients/rust/orm/src/gen")) { continue; }
         if p.is_dir() { visit(root, &p, out); }
         else if p.extension().is_some_and(|x| x == "rs") {
             let source = fs::read_to_string(&p).unwrap();
