@@ -114,10 +114,8 @@ func gen(args []string) {
 		fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
 		os.Exit(1)
 	}
-	if *lang != "typescript" {
-		if err := contracts.GenerateInterfaces(m, *lang, *out, *ns); err != nil {
-			fail(err)
-		}
+	if err := contracts.GenerateInterfaces(m, *lang, *out, *ns); err != nil {
+		fail(err)
 	}
 	fmt.Printf("ormgen: %d entities → %s (%s)\n", len(m.Order), *out, *lang)
 }

@@ -75,7 +75,7 @@ func main() {
 	must(err)
 	var m Manifest
 	readJSON(filepath.Join(abs, "contracts/interfaces.json"), &m)
-	if m.Version != 1 || len(m.Languages) != 3 || len(m.SymbolHashes) != 3 || len(m.Components) == 0 || len(m.Sequences) == 0 {
+	if m.Version != 1 || len(m.Languages) != 4 || len(m.SymbolHashes) != 4 || len(m.Components) == 0 || len(m.Sequences) == 0 {
 		fatal("invalid interface manifest")
 	}
 	diagram, err := contracts.Diagram()
@@ -105,7 +105,7 @@ func main() {
 	must(err)
 	rust := buildRust(abs)
 	failed := false
-	for _, lang := range []string{"go", "php", "rust"} {
+	for _, lang := range []string{"go", "php", "rust", "typescript"} {
 		config := m.Languages[lang]
 		actual, err := extract(abs, lang, config.Roots, rust, abs)
 		must(err)
@@ -245,6 +245,8 @@ func extract(root, lang string, roots []string, rust, toolRoot string) (Symbols,
 	var cmd *exec.Cmd
 	if lang == "php" {
 		cmd = exec.Command("php", append([]string{filepath.Join(toolRoot, "tests/interfaces/php.php"), root}, roots...)...)
+	} else if lang == "typescript" {
+		cmd = exec.Command("node", append([]string{filepath.Join(toolRoot, "tests/interfaces/typescript.mjs"), root}, roots...)...)
 	} else {
 		cmd = exec.Command(rust, append([]string{root}, roots...)...)
 	}
@@ -432,6 +434,20 @@ func columnType(c *schema.Col, lang string) string {
 			return "float"
 		case "bool":
 			return "bool"
+		default:
+			return "string"
+		}
+	}
+	if lang == "typescript" {
+		switch t {
+		case "i32", "i64", "f64", "decimal":
+			return "number"
+		case "bool":
+			return "boolean"
+		case "date", "datetime":
+			return "string | Date"
+		case "point":
+			return "Point"
 		default:
 			return "string"
 		}

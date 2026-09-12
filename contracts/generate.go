@@ -104,6 +104,20 @@ func colType(c *schema.Col, lang string) string {
 			return "string"
 		}
 	}
+	if lang == "typescript" {
+		switch c.Type {
+		case "i32", "i64", "f64", "decimal":
+			return "number"
+		case "bool":
+			return "boolean"
+		case "date", "datetime":
+			return "string | Date"
+		case "point":
+			return "Point"
+		default:
+			return "string"
+		}
+	}
 	switch c.Type {
 	case "i32":
 		return "i32"
@@ -191,6 +205,15 @@ func GenerateInterfaces(m *schema.Manifest, lang, outDir, namespace string) erro
 		fmt.Fprintf(&b, "\\Orm\\Wire::register(json_decode('%s', true, 512, JSON_THROW_ON_ERROR));\n", quoted)
 	case "rust":
 		b.WriteString("// Code generated from contracts/interfaces.json; DO NOT EDIT.\n#![allow(unused_imports, unused_mut, async_fn_in_trait)]\nuse super::*;\nuse orm::{Collection, Page, Result};\nuse orm::db::{self, Exec};\n")
+	case "typescript":
+		b.WriteString("// Code generated from contracts/interfaces.json; DO NOT EDIT.\nimport type { Collection, Page } from '../model.js';\nimport type { Db } from '../database.js';\nimport type { Point } from '../codec.js';\nimport type { ")
+		for i, entity := range m.Order {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			fmt.Fprintf(&b, "%sRow", pascal(entity))
+		}
+		b.WriteString(" } from './entities.js';\n")
 	default:
 		return fmt.Errorf("unsupported language %q", lang)
 	}
@@ -275,6 +298,19 @@ func GenerateInterfaces(m *schema.Manifest, lang, outDir, namespace string) erro
 					fmt.Fprintf(&b, "%s { %s::%s(%s)%s }\n", sig, name, method, strings.Join(args, ","), await)
 				}
 				b.WriteString("}\n")
+			case "typescript":
+				fmt.Fprintf(&b, "\nexport interface %sInterface {\n", name)
+				for _, n := range sigs {
+					tail := n.Symbol[strings.LastIndex(n.Symbol, "::")+2:]
+					if !strings.Contains(tail, ".") {
+						continue
+					}
+					sig := strings.TrimPrefix(n.Signature, "public ")
+					sig = strings.TrimPrefix(sig, "override ")
+					sig = strings.TrimPrefix(sig, "async ")
+					fmt.Fprintf(&b, "%s;\n", strings.TrimSuffix(sig, ";"))
+				}
+				b.WriteString("}\n")
 			}
 		}
 	}
@@ -289,6 +325,9 @@ func GenerateInterfaces(m *schema.Manifest, lang, outDir, namespace string) erro
 	}
 	if lang == "rust" {
 		path = filepath.Join(outDir, "src/interfaces.rs")
+	}
+	if lang == "typescript" {
+		path = filepath.Join(outDir, "interfaces.ts")
 	}
 	return os.WriteFile(path, body, 0644)
 }

@@ -1,4 +1,4 @@
-# CI (docs/checklist.md T5.8): engine, the three clients, conformance and codec vectors against
+# CI (docs/checklist.md T5.8): engine, the four clients, conformance and codec vectors against
 # MySQL, PostgreSQL and SQLite, the fragment analyzer, token parity and the hot-path gate.
 name: ci
 on:
@@ -88,7 +88,7 @@ jobs:
           GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o bin/ormengine.wasm ./engine/wasm
       - name: generated clients are current
         run: |
-          for l in go php rust; do go run ./cmd/ormgen gen --schema schema/schema.json --lang $l --out clients/$l/gen; done
+          for l in go php rust typescript; do go run ./cmd/ormgen gen --schema schema/schema.json --lang $l --out clients/$l/gen; done
           git diff --exit-code -- clients/go/gen clients/php/gen clients/rust/gen
       - name: go client
         run: go test ./clients/go/...

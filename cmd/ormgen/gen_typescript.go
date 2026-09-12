@@ -34,6 +34,24 @@ func tsType(c *schema.Col) string {
 	return t
 }
 
+func tsPredicateType(c goCol) string {
+	if len(c.Styles) > 0 {
+		return "unknown"
+	}
+	switch c.ColType {
+	case "i32", "i64", "f64", "decimal":
+		return "number"
+	case "bool":
+		return "boolean"
+	case "date", "datetime":
+		return "string | Date"
+	case "point":
+		return "Point"
+	default:
+		return "string"
+	}
+}
+
 func tsString(s string) string {
 	return "'" + strings.NewReplacer("\\", "\\\\", "'", "\\'", "\n", "\\n", "\r", "\\r").Replace(s) + "'"
 }
@@ -56,11 +74,20 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 	b.WriteString("import { Collection, Page, Row, registerRow } from '../model.js';\n")
 	b.WriteString("import type { Point } from '../codec.js';\n\n")
 	b.WriteString("import { OrmError } from '../runtime_error.js';\n\n")
+	b.WriteString("import type { ")
+	for i, entity := range m.Order {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		name := pascal(entity)
+		fmt.Fprintf(&b, "%sInterface, %sRowInterface", name, name)
+	}
+	b.WriteString(" } from './interfaces.js';\n\n")
 
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		ge := buildGoEntity(m, e)
-		fmt.Fprintf(&b, "export class %sRow extends Row {\n", ge.Type)
+		fmt.Fprintf(&b, "export class %sRow extends Row implements %sRowInterface {\n", ge.Type, ge.Type)
 		fmt.Fprintf(&b, "  public static override entity(): string { return %s; }\n", tsString(ge.Name))
 		fmt.Fprintf(&b, "  public static override primaryKey(): string { return %s; }\n", tsString(ge.PK))
 		if ge.UpdatedTs != "" {
@@ -122,7 +149,7 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		}
 		b.WriteString("}\n\n")
 
-		fmt.Fprintf(&b, "export class %sQuery extends QueryCore {\n  public constructor() { super(%s); }\n", ge.Type, tsString(ge.Name))
+		fmt.Fprintf(&b, "export class %sQuery extends QueryCore implements %sInterface {\n  public constructor() { super(%s); }\n", ge.Type, ge.Type, tsString(ge.Name))
 		if ge.Scope != "" {
 			fmt.Fprintf(&b, "  public override scope(value: %s): this { return super.scope(value); }\n", tsType(e.Column(ge.Scope)))
 		}
@@ -196,7 +223,7 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		b.WriteString("  public async update(): Promise<number> { return this.writeAffected('update'); }\n  public async delete(): Promise<number> { return this.writeAffected('delete'); }\n  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }\n")
 		b.WriteString("  public async paginate(page: number, per: number): Promise<Page<" + ge.Type + "Row>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new Error('paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<" + ge.Type + "Row>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }\n")
 		for _, c := range ge.EqCols {
-			typ := tsType(e.Column(c.Name))
+			typ := tsPredicateType(c)
 			field := c.Field
 			fmt.Fprintf(&b, "  public async getBy%s(value: %s): Promise<%sRow | null> { this.predicate(%s,'eq',value); return this.get(); }\n", field, typ, ge.Type, tsString(c.Name))
 			fmt.Fprintf(&b, "  public async getsBy%s(value: %s): Promise<Collection<%sRow>> { this.predicate(%s,'eq',value); return this.gets(); }\n", field, typ, ge.Type, tsString(c.Name))
@@ -220,14 +247,14 @@ func writeTSPredicates(b *bytes.Buffer, ge goEntity, target string) {
 		fmt.Fprintf(b, "  public %s(%s): this { %s.expression(%s,[%s]); return this; }\n", tsMethod(p.Name), strings.Join(args, ","), target, tsString(p.Expr), strings.Join(vals, ","))
 	}
 	for _, c := range ge.Cols {
-		typ := "unknown"
+		typ := tsPredicateType(c)
 		for _, op := range c.Ops {
 			method := tsMethod(c.Name) + op.Suffix
 			switch op.Kind {
 			case "one":
 				fmt.Fprintf(b, "  public %s(value: %s): this { %s.predicate(%s,%s,value); return this; }\n", method, typ, target, tsString(c.Name), tsString(op.Op))
 			case "list":
-				fmt.Fprintf(b, "  public %s(values: readonly %s[]): this { %s.predicateList(%s,%s,values); return this; }\n", method, typ, target, tsString(c.Name), tsString(op.Op))
+				fmt.Fprintf(b, "  public %s(values: readonly (%s)[]): this { %s.predicateList(%s,%s,values); return this; }\n", method, typ, target, tsString(c.Name), tsString(op.Op))
 			case "pair":
 				fmt.Fprintf(b, "  public %s(low: %s, high: %s): this { %s.predicateList(%s,%s,[low,high]); return this; }\n", method, typ, typ, target, tsString(c.Name), tsString(op.Op))
 			case "none":
