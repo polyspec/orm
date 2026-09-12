@@ -1,6 +1,6 @@
 # `orm.toml` configuration (S5 T5.5)
 
-Every path is absolute and declared; nothing is discovered, no symlinks, no fallbacks. A missing
+Every path is absolute and declared; nothing is discovered and symlinks are rejected. A missing
 or relative path is a startup error (`CONFIG`).
 
 ```toml

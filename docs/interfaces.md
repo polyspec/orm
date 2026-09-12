@@ -168,7 +168,7 @@ The integer key `7` and text key `"7"` are different keys. Composite keys encode
 
 ## 10. Configuration, errors, codecs, and events — IF-28 to IF-31
 
-Configuration selects the dialect, DSN, schema file, executor, AES key version map, and query event hook. It does not select a fallback database or silently change the request path.
+Configuration selects the dialect, DSN, schema file, executor, AES key version map, and query event hook. It does not select another database or silently change the request path.
 
 Errors use the codes in [errors.yaml](errors.yaml). Codec styles are schema declarations. The AES version column is non-null integer plaintext metadata with no encoding style and is excluded from the default projection. AES rotation updates all AES payload columns and the version in one transaction.
 
