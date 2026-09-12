@@ -88,6 +88,28 @@ Review the generated SQL before applying it. Table removal, column removal, and 
 
 `ormgen migrate` reads the live schema, creates `orm_schema_migrations`, computes a plan, applies supported non-destructive changes, verifies the live schema, and records the result. Repeating the same `migration-id` is a no-op only when the recorded migration and live schema match. Use `--dry-run` to print the plan without changing the database.
 
+### 2.2 Schema source matrix
+
+The commands below use one schema source loader. `<source>` accepts `schema.mmd`, `schema.json`, an SQL file created by `ormgen ddl` or `ormgen diff`, or `db:<dsn>`. Use `--driver` or `--dialect` to select the database format.
+
+| Input | DDL | diff SQL | structured plan | database migration |
+|---|---|---|---|---|
+| Mermaid `.mmd` | `ddl --schema` | `diff --from/--to` | `plan --from/--to` | `migrate --schema` |
+| manifest `.json` | `ddl --schema` | `diff --from/--to` | `plan --from/--to` | `migrate --schema` |
+| ORM `.sql` | `ddl --schema` | `diff --from/--to` | `plan --from/--to` | `migrate --schema` |
+| live `db:<dsn>` | `ddl --schema` | `diff --from/--to` | `plan --from/--to` | `migrate --schema` |
+
+```sh
+go run ./cmd/ormgen diff --from 'db:/var/lib/app.sqlite' --to schema/app.mmd \
+  --dialect sqlite --out migrations/20260912-app.sql
+go run ./cmd/ormgen plan --from schema/previous.json --to migrations/20260912-app.sql \
+  --dialect sqlite --migration-id 20260912-app --out migrations/20260912-app.json
+go run ./cmd/ormgen migrate --driver sqlite --dsn /var/lib/app.sqlite \
+  --schema migrations/20260912-app.sql --migration-id 20260912-app
+```
+
+`ormgen ddl` and `ormgen diff` include `orm-schema-v1` metadata with the target manifest and hash. This metadata preserves scope, codec styles, named predicates, and relation options when SQL is used as a later schema source. SQL without this metadata fails with `MIGRATION_SOURCE_LOSS`; the command does not infer missing ORM metadata. A `db:<dsn>` source is read-only. Database writes still require `migrate` or `apply` and use migration locks, history records, file logs, source checks, and post-apply verification.
+
 Create a structured plan and apply that exact plan after review:
 
 ```sh
