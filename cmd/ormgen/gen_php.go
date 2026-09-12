@@ -465,11 +465,14 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
     {
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
+{{- if not .Auto}}
+        $keys = $this->assignedKeyValues([{{phpList .PKNames}}]);
+{{- end}}
         $id = $this->runInsert($db);
 {{- if .Auto}}
         return {{.Type}}::query()->using($db)->{{camel .PK}}Eq((int) $id)->one();
 {{- else}}
-        return null;
+        return {{.Type}}::query()->using($db){{range $i, $c := .PKCols}}->{{camel $c.Name}}Eq($keys[{{$i}}]){{end}}->one();
 {{- end}}
     }
 

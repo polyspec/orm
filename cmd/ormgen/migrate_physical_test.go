@@ -116,12 +116,12 @@ func assertPhysicalCompositeKeys(t *testing.T, ctx context.Context, db *sql.DB, 
   composite_account {
     bigint tenant_id PK
     bigint id PK
-    varchar name
+    varchar(191) name
   }
   composite_membership {
     bigint tenant_id PK,FK
     bigint account_id PK,FK
-    varchar role
+    varchar(191) role
   }
   composite_account ||--o{ composite_membership : "(tenant_id, account_id) (account / memberships) cascade"
 `)

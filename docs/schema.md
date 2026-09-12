@@ -60,7 +60,9 @@ erDiagram
 
 ### 2.1 Column lines — `type name [PK|FK|UK] ["comment"]`
 This follows Mermaid syntax. `PK`, `FK`, and `UK` are Mermaid keywords. Mark every primary-key column with `PK`; declaration order defines composite-key order. Composite unique keys use `%% unique` below.
+Generated composite-key types and complete-key finders preserve this order. An insert into an entity without an automatic key requires every primary-key value and reads the inserted row with all key predicates. `save` rejects a partial primary key before execution.
 Use the database type directly (`bigint`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum('a','b')`). The manifest normalizes it to types such as i64, string, and datetime.
+`varchar` and `char` require a positive length. Schema build rejects a missing, zero, or invalid length before DDL generation.
 
 The comment string is a space-separated **attribute list**. With no comment, the column is NOT NULL, has no default, and is ordinary.
 | Attribute | Meaning |

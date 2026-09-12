@@ -220,20 +220,10 @@ export function rowCollection<T extends Row>(rows: ExecutionRows, assemble: Asse
   if (!type) throw new OrmError('INTERNAL', `row type ${assemble.entity} is not registered`);
   const collection = new Collection<T>();
   for (const values of rows.data) {
-    const key = keyIndex === undefined ? identityKey(values, assemble, type.primaryKeys()) : asKey(values[keyIndex]);
+    const key = keyIndex === undefined ? rowCollectionKey(values, assemble.key) : asKey(values[keyIndex]);
     collection.put(key, type.fromResult(values, assemble, rows) as T);
   }
   return collection;
-}
-
-function identityKey(values: readonly unknown[], assemble: Assemble, keys: readonly string[]): Key {
-  const parts = keys.map(key => {
-    const column = assemble.columns.find(value => value.name === key);
-    if (!column) throw new OrmError('INTERNAL', `primary key ${key} is missing from the assembly`);
-    return values[column.index];
-  });
-  if (parts.length === 1) return asKey(parts[0]);
-  return parts.map(part => { const value=scalarKey(part); return `${value.length}:${value}`; }).join('');
 }
 
 export function rowFromResult<T extends Row>(rows: ExecutionRows, assemble: Assemble, values: unknown[]): T {

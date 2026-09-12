@@ -30,6 +30,10 @@ class Assemble extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>repeated .orm.compiler.v1.Child children = 4;</code>
      */
     private $children;
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference key = 5;</code>
+     */
+    private $key;
 
     /**
      * Constructor.
@@ -41,6 +45,7 @@ class Assemble extends \Google\Protobuf\Internal\Message
      *     @type string $alias
      *     @type \Orm\Compiler\V1\OutputColumn[] $columns
      *     @type \Orm\Compiler\V1\Child[] $children
+     *     @type \Orm\Compiler\V1\KeyReference[] $key
      * }
      */
     public function __construct($data = null)
@@ -133,6 +138,28 @@ class Assemble extends \Google\Protobuf\Internal\Message
     {
         $arr = GPBUtil::checkRepeatedField($var, \Google\Protobuf\Internal\GPBType::MESSAGE, \Orm\Compiler\V1\Child::class);
         $this->children = $arr;
+
+        return $this;
+    }
+
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference key = 5;</code>
+     * @return RepeatedField<\Orm\Compiler\V1\KeyReference>
+     */
+    public function getKey()
+    {
+        return $this->key;
+    }
+
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference key = 5;</code>
+     * @param \Orm\Compiler\V1\KeyReference[] $var
+     * @return $this
+     */
+    public function setKey(array|RepeatedField $var)
+    {
+        $arr = GPBUtil::checkRepeatedField($var, \Google\Protobuf\Internal\GPBType::MESSAGE, \Orm\Compiler\V1\KeyReference::class);
+        $this->key = $arr;
 
         return $this;
     }

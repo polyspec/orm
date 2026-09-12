@@ -158,7 +158,7 @@ A relation result is either one row or a collection according to the schema. Col
 | `Key` | logical type tag and value |
 | `Page<T>` | page, per-page count, total count, rows |
 
-The integer key `7` and text key `"7"` are different keys. A collection preserves database order unless an explicit order or key policy changes it. A page preserves the root result order and relation attachment order.
+The integer key `7` and text key `"7"` are different keys. Composite keys encode each typed component with its length, so `("1", "23")` and `("12", "3")` cannot collide. The plan records the ordered collection identity in `Assemble.key`. Regular rows use every primary-key component; grouped count rows use their group columns and expression aliases. A collection preserves database order unless an explicit order or key policy changes it. A page preserves the root result order and relation attachment order.
 
 ## 10. Configuration, errors, codecs, and events — IF-28 to IF-31
 

@@ -67,3 +67,19 @@ CREATE TABLE "service_member" (
   "service_seq" INTEGER NOT NULL,
   "user_seq" INTEGER NOT NULL
 );
+
+DROP TABLE IF EXISTS "composite_membership";
+DROP TABLE IF EXISTS "composite_account";
+CREATE TABLE "composite_account" (
+  "tenant_id" INTEGER NOT NULL,
+  "account_id" INTEGER NOT NULL,
+  "name" TEXT NOT NULL,
+  PRIMARY KEY ("tenant_id", "account_id")
+);
+CREATE TABLE "composite_membership" (
+  "tenant_id" INTEGER NOT NULL,
+  "account_id" INTEGER NOT NULL,
+  "role" TEXT NOT NULL,
+  PRIMARY KEY ("tenant_id", "account_id"),
+  CONSTRAINT "fk_composite_membership_tenant_id_account_id" FOREIGN KEY ("tenant_id", "account_id") REFERENCES "composite_account" ("tenant_id", "account_id") ON DELETE CASCADE
+);

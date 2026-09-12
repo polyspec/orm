@@ -342,6 +342,8 @@ pub struct Assemble {
     pub columns: ::prost::alloc::vec::Vec<OutputColumn>,
     #[prost(message, repeated, tag="4")]
     pub children: ::prost::alloc::vec::Vec<Child>,
+    #[prost(message, repeated, tag="5")]
+    pub key: ::prost::alloc::vec::Vec<KeyReference>,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct OutputColumn {

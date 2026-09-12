@@ -39,6 +39,24 @@ try {
 }
 expect(count($partial->req->ir['set']) === 2 && !isset($partial->req->ir['where']), 'partial composite save changed the request');
 
+$completeInsert = clone $partial;
+$completeInsert->req = clone $request;
+$completeInsert->req->ir['set'] = [
+    ['column' => 'tenant_id', 'p' => 0],
+    ['column' => 'account_id', 'p' => 1],
+    ['column' => 'name', 'p' => 2],
+];
+$completeInsert->req->params = [7, 11, 'created'];
+expect($completeInsert->assignedKeyValues(['tenant_id', 'account_id']) === [7, 11], 'composite insert key order differs');
+expect(count($completeInsert->req->ir['set']) === 3 && !isset($completeInsert->req->ir['where']), 'composite insert key inspection changed the request');
+try {
+    $partial->assignedKeyValues(['tenant_id', 'account_id']);
+    throw new RuntimeException('partial composite insert was accepted');
+} catch (\Orm\OrmException $error) {
+    expect($error->code_ === \Orm\Code::IR_INVALID, 'partial composite insert returned the wrong error');
+}
+expect(count($partial->req->ir['set']) === 2 && !isset($partial->req->ir['where']), 'partial composite insert changed the request');
+
 $expand = (new ReflectionClass(Db::class))->getMethod('expandIn');
 $base = [
     'parent' => ['keys' => $refs],

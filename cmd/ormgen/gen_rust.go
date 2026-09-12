@@ -798,12 +798,17 @@ impl {{.Type}} {
     }
 
     pub async fn insert(&mut self) -> Result<Option<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+{{- if not .Auto}}
+        let keys = self.q.set_values(&[{{rsList .KeyCols}}])?;
+{{- end}}
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
 {{- if .Auto}}
         super::{{.Name}}::query().using(ex).{{ident .PK}}_eq(id as {{.PKType}}).one().await
 {{- else}}
         let _ = id;
-        Ok(None)
+        let mut query = super::{{.Name}}::query().using(ex);
+        for (column, value) in [{{rsList .KeyCols}}].iter().zip(keys) { query.q.w().pred(column, "eq", value); }
+        query.one().await
 {{- end}}
     }
 
@@ -870,7 +875,7 @@ fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&{{.Type}}Row) -> Key + 
     let cells = rows.take_cells();
     let mut c = Collection::with_capacity(cells.len());
     for mut src in cells {
-        let key_values = vec![{{range .PKCols}}src.val(rows.assemble.columns.iter().find(|column| column.name == {{printf "%q" .Name}}).expect("primary key is projected").index)?,{{end}}];
+        let key_values = rows.assemble.key.iter().map(|reference| src.val(reference.index)).collect::<Result<Vec<_>>>()?;
         let k = Key::of_values(&key_values);
         let r = {{.Type}}Row::from_row(&mut src, &rows.assemble, rows)?;
         let k = match key_fn { Some(f) => f(&r), None => k };

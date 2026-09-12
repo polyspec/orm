@@ -83,6 +83,8 @@ pub struct Assemble {
     pub alias: String,
     pub columns: Vec<OutCol>,
     #[serde(default)]
+    pub key: Vec<KeyRef>,
+    #[serde(default)]
     pub children: Vec<Child>,
 }
 

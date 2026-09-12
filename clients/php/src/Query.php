@@ -645,6 +645,20 @@ class Q
         return $id;
     }
 
+    /** @param non-empty-list<string> $keys @return list<mixed> */
+    public function assignedKeyValues(array $keys): array
+    {
+        $values = [];
+        foreach ($keys as $key) {
+            $assignment = null;
+            foreach ($this->req->ir['set'] ?? [] as $candidate) { if ($candidate['column'] === $key) { $assignment = $candidate; break; } }
+            if ($assignment === null) { throw new OrmException(Code::IR_INVALID, 'insert requires every non-auto primary-key column'); }
+            if (!isset($assignment['p'])) { throw new OrmException(Code::IR_INVALID, 'insert primary-key assignments must use values'); }
+            $values[] = $this->req->params[$assignment['p']];
+        }
+        return $values;
+    }
+
     /** UPDATE set[] / DELETE by the query's where (the engine rejects a missing where). @return int affected rows */
     public function runWrite(Db $ex, string $kind): int
     {

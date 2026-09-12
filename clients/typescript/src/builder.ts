@@ -161,6 +161,15 @@ export class QueryCore {
     await this.writeAffected('update');
     return selected.map(assignment => this.request.params[assignment.p!]);
   }
+  protected assignedKeyValues(primaryKeys: readonly string[]): unknown[] {
+    const assignments = this.request.ir.set ?? [];
+    return primaryKeys.map(key => {
+      const assignment = assignments.find(value => value.column === key);
+      if (!assignment) throw new OrmError('IR_INVALID', 'insert requires every non-auto primary-key column');
+      if (assignment.p === undefined) throw new OrmError('IR_INVALID', 'insert primary-key assignments must use values');
+      return this.request.params[assignment.p];
+    });
+  }
   protected async statement(): Promise<{sql:string;binds:unknown[]}> { if(this.request.deferredError)throw this.request.deferredError; const database=this.binding.resolve(); const plan=await database.plan(this.request.shape('all')); return database.sql(plan.steps[0]!,this.request.params); }
 }
 

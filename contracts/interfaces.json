@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:0594e034e85b181ae5be62b988f5a27c965e90d8023ff05e67f52558344e6dda",
-    "php": "sha256:6bf3a7f82764e435218cbc59080e34796d0daab3798a8ac2c4341f7eece650fc",
-    "rust": "sha256:c06cd24d449c9d15cff15620d60629748272972b01a95d23300ceab0a8c84436",
-    "typescript": "sha256:ca772d7c53df09f5bf1aefea07747debe63c59b5370718df3dedce8e8d91ea70"
+    "go": "sha256:42660c343d4760a3ff22eefacf63663925fbf89c4f12717317cb71fe8b6bc560",
+    "php": "sha256:49bc63765d61469de06f948cd6a38671e3e6d41b348c3b136a8b8d975ef1b7e0",
+    "rust": "sha256:f65a06af6c6cbca3c053f0de0e50f547a591857b3717b732046155786c693f2e",
+    "typescript": "sha256:44f6914898eda31be61f4b070da4e3be9ddbcd991bfff1f7a7a108e699c61fae"
   },
   "prohibited_symbols": [
     "multi_statement"
@@ -2331,7 +2331,8 @@
         "entity": "text",
         "alias": "text",
         "columns": "list<PlanOutCol>",
-        "children": "list<PlanChild>"
+        "children": "list<PlanChild>",
+        "key": "list<PlanKeyRef>"
       },
       "optional": [
         "children"
