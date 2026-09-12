@@ -4147,7 +4147,7 @@
   "clients/rust/orm/src/config.rs::EngineSection#field.cache_dir": "Option \u003c PathBuf \u003e",
   "clients/rust/orm/src/config.rs::EngineSection#field.wasm": "PathBuf",
   "clients/rust/orm/src/config.rs::EngineSection#wire": "{\"cache_dir\":\"PathBuf\",\"wasm\":\"PathBuf\"}",
-  "clients/rust/orm/src/config.rs::OrmConfig": "pub struct OrmConfig  { # [doc = \" The manifest the client was generated from (its hash is checked once by `gen::init`).\"] pub schema : PathBuf , pub db : DbSection , # [serde (default)] pub secrets : SecretsSection , # [doc = \" The wasm engine (Rust only).\"] pub engine : EngineSection , # [doc = \" The shared compiler service. A missing endpoint keeps the compatibility WASM path.\"] # [serde (default)] pub ormd : Option \u003c OrmdSection \u003e , # [serde (default)] pub debug : DebugSection , }",
+  "clients/rust/orm/src/config.rs::OrmConfig": "pub struct OrmConfig  { # [doc = \" The manifest the client was generated from (its hash is checked once by `gen::init`).\"] pub schema : PathBuf , pub db : DbSection , # [serde (default)] pub secrets : SecretsSection , # [doc = \" The wasm engine (Rust only).\"] pub engine : EngineSection , # [doc = \" The shared Connect compiler service. When omitted, Rust uses its native WASM compiler.\"] # [serde (default)] pub ormd : Option \u003c OrmdSection \u003e , # [serde (default)] pub debug : DebugSection , }",
   "clients/rust/orm/src/config.rs::OrmConfig#field.db": "DbSection",
   "clients/rust/orm/src/config.rs::OrmConfig#field.debug": "DebugSection",
   "clients/rust/orm/src/config.rs::OrmConfig#field.engine": "EngineSection",
