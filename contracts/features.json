@@ -432,9 +432,9 @@
       "id": "transactions",
       "title": "Transaction options",
       "title_ko": "Transaction option",
-      "status": "partial",
-      "description": "Expose opt-in retry, isolation, read-only mode, savepoints, row locks, and timeoutMs with capability errors. PostgreSQL applies timeoutMs as a transaction-local statement timeout; MySQL and SQLite reject it. The common contract declares no in-flight cancellation operation because the four clients cannot provide the same driver behavior.",
-      "description_ko": "명시적 retry, isolation, read-only, savepoint, row lock과 timeoutMs, capability error를 제공한다. PostgreSQL은 timeoutMs를 transaction 로컬 statement timeout으로 적용하고 MySQL·SQLite는 거부한다. 네 client가 동일한 driver 동작을 제공할 수 없으므로 공통 계약에 실행 중 cancellation operation을 선언하지 않는다.",
+      "status": "implemented",
+      "description": "Expose opt-in retry, isolation, read-only mode, savepoints, row locks, and timeoutMs with capability errors. PostgreSQL applies timeoutMs as a transaction-local statement timeout; MySQL and SQLite reject it. The common interface declares no in-flight cancellation operation because the four clients cannot provide the same driver behavior.",
+      "description_ko": "명시적 retry, isolation, read-only, savepoint, row lock과 timeoutMs, capability error를 제공한다. PostgreSQL은 timeoutMs를 transaction 로컬 statement timeout으로 적용하고 MySQL·SQLite는 거부한다. 네 client가 동일한 driver 동작을 제공할 수 없으므로 공통 interface에 실행 중 cancellation operation을 선언하지 않는다.",
       "inputs": {
         "type": "TransactionOptions",
         "fields": [
@@ -491,6 +491,10 @@
           "id": "transaction-unit",
           "command": "go test ./clients/go/orm -run 'Transaction|Savepoint' -count=1"
         }
+      ],
+      "public_constraints": [
+        "The common API declares no in-flight cancellation operation because the four clients cannot provide identical driver behavior.",
+        "The interface manifest prohibits query_cancel, transaction_cancel, and in_flight_cancellation symbols."
       ]
     },
     {
