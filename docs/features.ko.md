@@ -1,6 +1,6 @@
-# Feature contract
+# 기능 정의
 
-실행 정본은 [contracts/features.json](../contracts/features.json)이다. 먼저 매니페스트의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, client 지원 상태, fixture, test, paired document, 실제 검증 명령을 정의한다.
+실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, client 지원 상태, fixture, test, paired document, 실제 검증 명령을 정의한다.
 
 | ID | 기능 | 상태 | Client 지원 |
 |---|---|---|---|
@@ -10,7 +10,7 @@
 | parameter_chunking | IN 및 relation parameter limit | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | batch_writes | Typed batch write | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | keyset_pagination | Typed keyset pagination | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| transactions | Transaction option | partial | go: partial<br>php: partial<br>rust: partial<br>typescript: partial |
+| transactions | Transaction option | implemented | go: partial<br>php: partial<br>rust: partial<br>typescript: partial |
 | precompiled_plans | Precompiled plan bundle | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | constraints_and_relations | Constraint 및 relation predicate | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | conformance_verification | Cross-client conformance verification | partial | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
@@ -23,7 +23,7 @@
 - `parameter_chunking`: database limit에 따라 relation parameter tuple과 큰 root IN 목록을 분할하면서 결과 순서와 relation 조립을 보존한다. 안전하게 분할할 수 없는 root query 형태는 명시적 오류로 거부한다.
 - `batch_writes`: typed insert, upsert, primary-key update, primary-key delete request를 제한된 chunk와 하나의 transaction으로 실행하고 결정적인 count를 반환한다.
 - `keyset_pagination`: version cursor, 완전한 composite order, validation, forward 및 backward traversal을 제공한다.
-- `transactions`: 명시적 retry, isolation, read-only, savepoint, row lock과 timeoutMs, capability error를 제공한다. PostgreSQL은 timeoutMs를 transaction 로컬 statement timeout으로 적용하고 MySQL·SQLite는 거부한다. 네 client가 동일한 driver 동작을 제공할 수 없으므로 공통 계약에 실행 중 cancellation operation을 선언하지 않는다.
+- `transactions`: 명시적 retry, isolation, read-only, savepoint, row lock과 timeoutMs, capability error를 제공한다. PostgreSQL은 timeoutMs를 transaction 로컬 statement timeout으로 적용하고 MySQL·SQLite는 거부한다. 네 client가 동일한 driver 동작을 제공할 수 없으므로 공통 interface에 실행 중 cancellation operation을 선언하지 않는다.
 - `precompiled_plans`: 검증된 plan bundle을 로드하고 일치하는 request를 compiler 호출 없이 실행한다.
 - `constraints_and_relations`: CHECK, index, foreign-key, soft-delete, relation existence, relation count, many-to-many through metadata를 planner와 migration system에서 보존한다. 생성 client가 MySQL·PostgreSQL·SQLite에서 선언된 operation을 실행한다.
 - `conformance_verification`: 공통 input vector를 Go, PHP, Rust, TypeScript에서 실행하고 database별 normalized result를 비교한다.
