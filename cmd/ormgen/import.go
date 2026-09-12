@@ -45,12 +45,18 @@ type impForeignKey struct {
 	OnDelete      string
 }
 
+type impCheck struct {
+	Name string
+	Expr string
+}
+
 type impTable struct {
 	Name        string
 	Comment     string
 	Columns     []impColumn
 	Indexes     []impIndex
 	ForeignKeys []impForeignKey
+	Checks      []impCheck
 }
 
 func importCmd(args []string) {
@@ -226,6 +232,31 @@ func readTables(db *sql.DB, driver string, only map[string]bool) ([]impTable, er
 		fk.TargetColumns = append(fk.TargetColumns, targetColumn)
 	}
 	if err := frows.Err(); err != nil {
+		return nil, err
+	}
+	checks, err := db.Query(`SELECT tc.TABLE_NAME, tc.CONSTRAINT_NAME, cc.CHECK_CLAUSE
+		FROM information_schema.TABLE_CONSTRAINTS tc
+		JOIN information_schema.CHECK_CONSTRAINTS cc ON cc.CONSTRAINT_SCHEMA=tc.CONSTRAINT_SCHEMA AND cc.CONSTRAINT_NAME=tc.CONSTRAINT_NAME
+		WHERE tc.CONSTRAINT_SCHEMA=DATABASE() AND tc.CONSTRAINT_TYPE='CHECK'
+		ORDER BY tc.TABLE_NAME, tc.CONSTRAINT_NAME`)
+	if err != nil {
+		return nil, err
+	}
+	for checks.Next() {
+		var table, name, expr string
+		if err := checks.Scan(&table, &name, &expr); err != nil {
+			checks.Close()
+			return nil, err
+		}
+		if tb := byName[table]; tb != nil {
+			tb.Checks = append(tb.Checks, impCheck{Name: name, Expr: expr})
+		}
+	}
+	if err := checks.Err(); err != nil {
+		checks.Close()
+		return nil, err
+	}
+	if err := checks.Close(); err != nil {
 		return nil, err
 	}
 	sort.Strings(order)
@@ -421,6 +452,9 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 			default:
 				directives = append(directives, fmt.Sprintf("  %%%% index %s %s %s", t.Name, cols, ix.Name))
 			}
+		}
+		for _, check := range t.Checks {
+			directives = append(directives, fmt.Sprintf("  %%%% check %s %s : %s", t.Name, check.Name, check.Expr))
 		}
 	}
 	if len(rels) > 0 {
@@ -644,6 +678,35 @@ func readTablesPG(db *sql.DB, only map[string]bool) ([]impTable, error) {
 		return nil, err
 	}
 	if err := frows.Close(); err != nil {
+		return nil, err
+	}
+	crows, err := db.Query(`SELECT child.relname, con.conname, pg_get_constraintdef(con.oid)
+		FROM pg_constraint con
+		JOIN pg_class child ON child.oid=con.conrelid
+		JOIN pg_namespace n ON n.oid=child.relnamespace AND n.nspname=current_schema()
+		WHERE con.contype='c' ORDER BY child.relname, con.conname`)
+	if err != nil {
+		return nil, err
+	}
+	for crows.Next() {
+		var table, name, definition string
+		if err := crows.Scan(&table, &name, &definition); err != nil {
+			crows.Close()
+			return nil, err
+		}
+		expr := strings.TrimSpace(definition)
+		if len(expr) >= 5 && strings.EqualFold(expr[:5], "CHECK") {
+			expr = strings.TrimSpace(expr[5:])
+		}
+		if tb := byName[table]; tb != nil {
+			tb.Checks = append(tb.Checks, impCheck{Name: name, Expr: expr})
+		}
+	}
+	if err := crows.Err(); err != nil {
+		crows.Close()
+		return nil, err
+	}
+	if err := crows.Close(); err != nil {
 		return nil, err
 	}
 	grows, err := db.Query(`SELECT cl.relname, ic.relname, pg_get_indexdef(ic.oid)
