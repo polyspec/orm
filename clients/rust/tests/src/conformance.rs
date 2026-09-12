@@ -1301,6 +1301,15 @@ async fn main() {
         let count = service::query().seq_eq(7).count_members_eq(50, |w| w).using(&db).get_count().await?;
         Ok(json!({"exists": exists, "count": count}))
     }.await);
+    run!("batch_insert_delete", async {
+        let names = vec!["conformance-batch-a".to_string(), "conformance-batch-b".to_string()];
+        service::query().name_in(names.clone()).using(&db).delete().await?;
+        let result = service::query().using(&db).batch_insert(vec![
+            service::query().set_name(names[0].clone()), service::query().set_name(names[1].clone()),
+        ], orm::db::BatchOptions { chunk_size: 1 }).await?;
+        let deleted = service::query().name_in(names).using(&db).delete().await?;
+        Ok(json!({"attempted": result.attempted, "affected": result.affected, "inserted": result.inserted, "deleted": deleted}))
+    }.await);
     run!("codec_roundtrip", async {
         let value = json!({"a": 1, "b": [1, 2, {"c": "한글/slash"}], "d": null, "e": true, "f": 1.5});
         let v = value.clone();
