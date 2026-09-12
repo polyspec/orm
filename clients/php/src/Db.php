@@ -249,7 +249,7 @@ class Db
     private function configureTransaction(TransactionOptions $options): void
     {
         if ($this->driver === 'sqlite' && ($options->isolation !== 'default' || $options->readOnly)) {
-            throw new OrmException(Code::CONFIG, 'sqlite does not support transaction isolation or read-only mode');
+            throw new OrmException(Code::CAPABILITY_UNSUPPORTED, 'sqlite does not support transaction isolation or read-only mode');
         }
         if ($options->isolation !== 'default') {
             $level = strtoupper(str_replace('_', ' ', $options->isolation));
