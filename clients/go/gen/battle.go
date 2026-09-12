@@ -1280,6 +1280,7 @@ func (q *BattleQuery) RotateAES(keyring orm.AESKeyring) (int, error) {
 	}
 	return ex.DB().RotateAESRows(ctx, ex, orm.AESRotationSpec{
 		Table: "battle", PrimaryKeys: []string{"seq"}, VersionColumn: "aes_key_version",
+		BatchSize: 1000,
 		Columns: []orm.AESRotationColumn{
 			{Name: "aes_hex_email", Styles: []string{"aes", "hex"}},
 			{Name: "aes_hex_phone", Styles: []string{"aes", "hex"}},
