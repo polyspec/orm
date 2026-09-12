@@ -429,10 +429,15 @@ func testMigrationManifest(t *testing.T, source string) *schema.Manifest {
 }
 
 func testMigrationPlan(from, to *schema.Manifest, driver, sqlText string) migrationPlanFile {
-	plan := migrationPlanFile{Version: 1, MigrationID: "20260912-recovery", Name: "recovery", Driver: driver, FromHash: from.SchemaHash, FromSchema: from, ToHash: to.SchemaHash}
-	for _, statement := range splitSQL(sqlText) {
-		plan.Operations = append(plan.Operations, planOperation{SQL: statement + ";"})
-	}
+	plan := migrationPlanFile{Version: 1, MigrationID: "20260912-recovery", Name: "recovery", Driver: driver, FromHash: from.SchemaHash, FromSchema: from, ToHash: to.SchemaHash, ToSchema: to}
+	plan.Operations = planOperations(sqlText)
 	plan.Checksum = checksumText(planSQL(plan.Operations))
+	rollbackText, err := renderDiff(to, from, driver, true)
+	if err != nil {
+		panic(err)
+	}
+	plan.RollbackOperations = planOperations(rollbackText)
+	plan.RollbackChecksum = checksumText(planSQL(plan.RollbackOperations))
+	plan.RollbackDataLossRisk = hasDestructive(plan.Operations) || hasDestructive(plan.RollbackOperations)
 	return plan
 }

@@ -96,8 +96,8 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] T7.14 Include table and column comments in the manifest, schema hash, import, DDL, diff, and SQLite metadata. Unit and containerctl MySQL/PostgreSQL tests pass.
 - [x] T7.15 Add migration execution locking, transaction boundaries, and detailed recovery states for MySQL, PostgreSQL, and SQLite. Recovery classifies target, source, and unsafe live states under the migration lock.
 - [x] T7.16 Replace semicolon splitting with a dialect-aware SQL statement parser and preserve statement-level failure locations.
-- [~] T7.17 Accept MMD, manifest JSON, metadata-bearing ORM SQL, and live DB schema sources for DDL, diff, structured plans, verification, recovery, and idempotent database migration. SQL loss checks pass; rollback plan generation and execution remain.
-- [x] T7.18 Run physical comment, migration-plan apply, repeat, drift, failure, lock contention, and recovery tests through containerctl for MySQL and PostgreSQL.
+- [x] T7.17 Accept MMD, manifest JSON, metadata-bearing ORM SQL, and live DB schema sources for DDL, diff, structured plans, verification, recovery, idempotent database migration, and verified rollback execution.
+- [x] T7.18 Run physical comment, migration-plan apply, repeat, drift, failure, lock contention, recovery, rollback, and rollback no-op tests through containerctl for MySQL and PostgreSQL.
 
 ## Documentation tasks
 
