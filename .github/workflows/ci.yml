@@ -62,8 +62,8 @@ jobs:
           ini-values: apc.enable_cli=1
       - name: install PHP dependencies
         run: composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
-      - name: executable feature and documentation contracts
-        run: make feature-check docs-rules-check docs-check docs-verify-idempotent
+      - name: executable feature, documentation, and package contracts
+        run: make feature-check docs-rules-check docs-check docs-verify-idempotent package-check
       - name: decoder fuzz smoke checks
         run: make fuzz-check
       - name: load bench schema (mysql, postgres, sqlite)
@@ -82,7 +82,7 @@ jobs:
       - name: complete Go test suite
         run: go test ./...
       - name: typescript common structure
-        run: npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs && node tests/typescript/compiler-bridge.mjs && node tests/typescript/driver.mjs && node tests/typescript/database.mjs && node tests/typescript/codec-vector.mjs && node tests/typescript/transaction.mjs && node tests/typescript/keyset.mjs
+        run: npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs && node tests/typescript/compiler-bridge.mjs && node tests/typescript/driver.mjs && node tests/typescript/database.mjs && node tests/typescript/root-in.mjs && node tests/typescript/codec-vector.mjs && node tests/typescript/transaction.mjs && node tests/typescript/keyset.mjs
       - name: schema AES version rule
         run: npm run schema:check
       - name: protobuf compiler wire check
