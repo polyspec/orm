@@ -140,7 +140,7 @@ transaction을 만든 코드가 소유권을 가진다. commit과 rollback은 bi
 
 root row select는 `forUpdate()`와 `forShare()`를 제공한다(Go: `ForUpdate()`와 `ForShare()`, Rust: `for_update()`와 `for_share()`). request는 공통 IR에 `lock`을 저장한다. MySQL과 PostgreSQL은 order와 limit 뒤에 선택한 lock 절을 추가한다. SQLite는 두 mode를 모두 `CAPABILITY_UNSUPPORTED`로 거부하며 client가 row lock을 대체하지 않는다.
 
-오류는 안정된 code와 원래 driver message를 보존한다. 취소 시 transaction을 해제하고 client 객체에 활성 connection을 남기지 않는다.
+오류는 안정된 code와 원래 driver message를 보존한다. PHP PDO에 이식 가능한 실행 중 statement 취소 기능이 없으므로 공통 query timeout/cancellation API는 아직 공개하지 않는다. 이는 P9.4 미완료 조건이며 네 client의 동작이 같아질 때까지 지원을 주장하지 않는다.
 
 `transaction`은 기본적으로 callback을 한 번 실행한다. deadlock 재시도는 기본 비활성화다. 호출자는 `TransactionOptions`의 `retryDeadlocks`와 `maxAttempts`를 지정할 수 있다. 재시도마다 새 transaction을 만들고 callback 전체를 다시 실행한다. 재시도를 활성화하면 callback은 여러 번 실행되어도 안전해야 한다.
 
