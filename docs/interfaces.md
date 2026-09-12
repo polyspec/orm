@@ -140,7 +140,7 @@ Transaction ownership belongs to the code that created the transaction. Commit a
 
 Root row selects expose `forUpdate()` and `forShare()` (Go: `ForUpdate()` and `ForShare()`, Rust: `for_update()` and `for_share()`). The request stores `lock` in the common IR. MySQL and PostgreSQL append the selected lock clause after ordering and limits. SQLite rejects either mode with `CAPABILITY_UNSUPPORTED`; the client does not emulate a row lock.
 
-Errors preserve their stable code and the original driver message. Cancellation releases the transaction and does not leave an active connection in a client-owned object.
+Errors preserve their stable code and the original driver message. A common query timeout/cancellation API is not public yet because PHP PDO has no portable in-flight statement cancellation. It remains a P9.4 requirement; no client claims support until all four clients have the same behavior.
 
 `transaction` executes its callback once by default. Deadlock retry is disabled by default. The caller may pass `TransactionOptions` with `retryDeadlocks` and `maxAttempts`; each retry creates a new transaction and re-executes the complete callback. The callback must be safe to execute more than once when retry is enabled.
 
