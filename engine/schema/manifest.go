@@ -740,6 +740,29 @@ func (m *Manifest) validate(allowMissingAESVersion bool) error {
 			if _, ok := m.Entities[r.Target]; !ok {
 				return &BuildError{e.Line, "relation target missing: " + r.Target}
 			}
+			if r.Through != "" {
+				through, ok := m.Entities[r.Through]
+				if !ok {
+					return &BuildError{e.Line, fmt.Sprintf("relation %s.%s through entity missing: %s", e.Name, rn, r.Through)}
+				}
+				if r.Kind != "many" || len(r.Keys) != len(e.PK) || len(r.ThroughKeys) == 0 {
+					return &BuildError{e.Line, fmt.Sprintf("relation %s.%s has invalid through metadata", e.Name, rn)}
+				}
+				for _, key := range r.Keys {
+					if e.Column(key.Local) == nil || through.Column(key.Target) == nil {
+						return &BuildError{e.Line, fmt.Sprintf("relation %s.%s has an invalid source through key", e.Name, rn)}
+					}
+				}
+				target := m.Entities[r.Target]
+				if len(r.ThroughKeys) != len(target.PK) {
+					return &BuildError{e.Line, fmt.Sprintf("relation %s.%s has an invalid target through key count", e.Name, rn)}
+				}
+				for _, key := range r.ThroughKeys {
+					if through.Column(key.Local) == nil || target.Column(key.Target) == nil {
+						return &BuildError{e.Line, fmt.Sprintf("relation %s.%s has an invalid target through key", e.Name, rn)}
+					}
+				}
+			}
 		}
 		for _, c := range e.Columns {
 			if c.Ref != nil {
