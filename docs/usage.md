@@ -103,7 +103,7 @@ The plan stores the source manifest, target hash, ordered operations, destructiv
 Comments are included in the manifest and migration comparison. Use `%% table_comment` and `%% column_comment` in the Mermaid source. The importer reads database comments, and the DDL generator emits dialect-specific comment statements.
 
 Migration statements execute inside one database transaction. On statement failure,
-the runner records the statement number, SQL text, driver error, and rollback result.
+the runner records the statement number, SQL text, driver error, and whether rollback was issued.
 Database engines that implicitly commit DDL retain their engine-specific DDL behavior.
 
 Migration execution uses one reserved database connection. MySQL acquires a database-specific
