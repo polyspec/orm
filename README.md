@@ -1,6 +1,6 @@
-# orm — one grammar, three languages, one compiler
+# orm 0.0.1
 
-A schema-driven fluent query grammar for **Go, PHP and Rust** that compiles through a single Go engine
+A schema-driven fluent query grammar for **Go, PHP, Rust, and TypeScript** that compiles through a single Go engine
 into database plans and executes on each language's native driver. Version 0.0.1.
 
 ```php
@@ -18,10 +18,14 @@ let battles = battle::query().using(&db).service_seq(7).is_close(false)
     .and(|w| w.is_display(true).or().is_allday(true))
     .relation(user::query()).order_by_seq_desc().limit(0, 20).gets().await?;
 ```
-The three chains produce the same SQL, the same binds and the same results — checked byte for byte by
-`tests/conformance` (58 vectors) and `ormgen tokens`.
+```typescript
+const battles = await Battle().using(db).serviceSeq(7).isClose(false)
+    .and(w => w.isDisplay(true).or().isAllday(true))
+    .relation(User()).orderBySeqDesc().limit(0, 20).gets();
+```
+The four chains produce the same SQL, binds, and results. `tests/conformance` checks 58 vectors on MySQL, PostgreSQL, and SQLite.
 
-For a direct finder, the same `getsBy` token is generated in all three clients:
+For a direct finder, the same `getsBy` token is generated in all four clients:
 
 ```php
 $battles = Battle::query()->using($db)->getsByServiceSeq(7);
@@ -32,6 +36,9 @@ battles, err := gen.Battle().Using(ctx, db).GetsByServiceSeq(7)
 ```rust
 let battles = battle::query().using(&db).gets_by_service_seq(7).await?;
 ```
+```typescript
+const battles = await Battle().using(db).getsByServiceSeq(7);
+```
 `getBy` is the one-row form for a primary or unique key; `getCountBy` is the scalar count form.
 `getsBy<Field>` and `getCountBy<Field>` are root-table equality shortcuts; index declarations affect the database plan, not whether the shortcut exists. For multiple predicates, keep the same root query and chain the columns before `gets` or `getCount`.
 
@@ -40,22 +47,21 @@ let battles = battle::query().using(&db).gets_by_service_seq(7).await?;
 ## How it works
 - **Schema**: one hand-written Mermaid `erDiagram` (`schema/*.mmd`) → `ormgen build` → `schema.json` (manifest with `schema_hash`).
 - **Engine** (`engine/`, Go, compiler only): JSON IR → Plan (SQL text + bind slots + positional assembly). Never executes. Plans are value-free and cached per statement shape in every client.
-- **Executors**: Go `database/sql` in-process; PHP `PDO` + `ormd` (compile daemon over a unix socket, plans cached in APCu); Rust `sqlx` + the engine as wasm (wasmtime on a dedicated thread). Row data never crosses a language boundary.
-- **Databases**: MySQL 8 / MariaDB first; PostgreSQL 12+ and SQLite 3.35+ through the same plans (`docs/dialects.md`) — the conformance vectors produce identical results on all three.
-- **Generated code**: `ormgen gen --lang go|php|rust` emits typed builders, rows and relation accessors per entity.
+- **Executors**: Go `database/sql`, PHP `PDO`, Rust `sqlx`, and TypeScript native drivers execute database plans. All clients use Connect and Protobuf to compile plans. Row data remains in the client process.
+- **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.35+ use the same request and result rules (`docs/dialects.md`).
+- **Generated code**: `ormgen gen --lang go|php|rust|typescript` emits typed builders, rows, and relation accessors per entity.
 
 ## Quick start (MySQL 8.x, local socket)
 ```sh
 mysql -uroot orm_bench < bench/sql/battle.sql                       # bench schema + 100k rows
 go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
 for l in go php rust; do go run ./cmd/ormgen gen --schema schema/schema.json --lang $l --out clients/$l/gen; done
+go run ./cmd/ormgen gen --schema schema/schema.json --lang typescript --out clients/typescript/src/gen
 go build -o bin/ormd ./cmd/ormd
-GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o bin/ormengine.wasm ./engine/wasm
-go test ./...                                                       # engine + Go client
-bin/ormd -socket /abs/ormd.sock -schema schema/schema.json &        # PHP compile daemon
-php clients/php/tests/integration.php /abs/ormd.sock /abs/schema/schema.json
-(cd clients/rust && cargo build --release) && clients/rust/target/release/integration bin/ormengine.wasm schema/schema.json
-go run ./tests/conformance/check run                                # 3 languages, identical output
+go test ./...
+npm run typescript:check && npm run typescript:build
+(cd clients/rust && cargo test --release -p orm)
+go run ./tests/conformance/check run                                # starts Connect compiler and checks 4 clients
 ```
 
 ## Documents
@@ -65,7 +71,7 @@ go run ./tests/conformance/check run                                # 3 language
 
 [**docs/usage.md**](docs/usage.md) — start here: schema, generation, connecting, querying, writing, relations, the three databases, operations.
 
-`examples/thin-slice` (same statement in three languages) · `examples/complex` (joins, groups, three relation levels, aggregates — identical JSON in three languages) · `docs/dsl.md` grammar · `docs/schema.md` Mermaid dialect, import, validate · `docs/protocol.md` IR/Plan ·
+`examples/thin-slice` · `examples/complex` · `docs/dsl.md` grammar · `docs/schema.md` Mermaid dialect, import, validate · `docs/protocol.md` IR/Plan ·
 `docs/codec.md` column styles · `docs/dialects.md` MySQL/PostgreSQL/SQLite · `docs/config.md` orm.toml ·
 `docs/errors.yaml` codes · `docs/perf.md` measurements and gates · `docs/checklist.md` work plan · `docs/lanes/` parallel lane specs.
 

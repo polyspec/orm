@@ -2,7 +2,7 @@
 
 기준: [공통 인터페이스 v1](interfaces.md), [기계 명세](../contracts/interfaces.json), [생성 도표](interfaces-model.md). 재현 명령과 검사 범위는 [검사 안내](../tests/interfaces/README.md)에 있다.
 
-2026-09-12 로컬 및 [GitHub CI](https://github.com/polyspec/orm/actions/runs/34649545210) 검증: **58개 시나리오 × Go·PHP·Rust × MySQL·PostgreSQL·SQLite 일치**. 공통 입력·출력, 저장 필드, 25개 wire 레코드, 네이티브 선언과 소스 변경 반례를 별도로 검사한다. TypeScript는 미구현이다.
+2026-09-12 로컬 및 [GitHub CI](https://github.com/polyspec/orm/actions/runs/34649545210) 검증: **58개 시나리오 × Go·PHP·Rust·TypeScript × MySQL·PostgreSQL·SQLite 일치**. 공통 입력·출력, 저장 필드, 25개 wire 레코드, 네이티브 선언과 소스 변경 반례를 별도로 검사한다.
 
 | 인터페이스 | 구현과 검증 |
 |---|---|

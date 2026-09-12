@@ -6,17 +6,17 @@ Rules: no polling or timers, no symlinks, one execution path, Mermaid is the sou
 ## Current status (2026-09-12)
 
 - **S0 complete:** measurements and decisions R1–R3 and F1–F3 are recorded in `docs/perf.md`.
-- **S1 complete:** engine, generators, three clients, conformance harness, `ormgen tokens`, and the demo are implemented.
+- **S1 complete:** engine, generators, four clients, conformance harness, `ormgen tokens`, and the demo are implemented.
 - **S2 complete except T2.15:** relation, codec, type, and 58-vector checks pass; the 150-table Rust fixture is pending.
-- **S3–S6 complete:** writes, joins, PHP compatibility, deployment, PostgreSQL, and SQLite support are implemented. TypeScript execution and fixed-cost optimization remain incomplete.
-- Current conformance coverage is **58 vectors × 3 clients × 3 databases**. Codec coverage is 96 vectors across Go, PHP, Rust, and TypeScript. TypeScript database execution remains incomplete.
+- **S3–S6 complete:** writes, joins, PHP compatibility, deployment, PostgreSQL, and SQLite support are implemented. Fixed-cost optimization remains incomplete.
+- Current conformance coverage is **58 vectors × 4 clients × 3 databases**. Codec coverage is 96 vectors across Go, PHP, Rust, and TypeScript.
 
 ## Common interface verification
 
 - [x] I1 Define common structure, ownership, and state transitions in `interfaces.md`, `contracts/interfaces.json`, and Mermaid diagrams.
-- [x] I2 Generate and compare Go, PHP, and Rust Query and Row interfaces. Check the TypeScript structure draft.
+- [x] I2 Generate and compare Go, PHP, Rust, and TypeScript Query and Row interfaces.
 - [x] I3 Compare 25 Request and Plan records. Check AST, reflection, and source-change counterexamples.
-- [~] I4 Verify binding, query reuse, child copies, error preservation, dirty state, original versions, typed keys, and pagination. TypeScript execution vectors remain.
+- [~] I4 Verify binding, query reuse, child copies, error preservation, dirty state, original versions, typed keys, and pagination in all four clients.
 - [x] I5 Run generated-artifact, structure, state, document, and example checks in CI.
 - [x] I6 Verify identity after direct native primary-key changes and reject nested collection key collisions.
 
@@ -47,7 +47,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 
 ## Stage 1 — S1 thin slice [complete]
 
-- [x] Implement Mermaid parsing, schema build, IR v1, planner v1, MySQL dialect, FFI/WASM entry points, and the three clients.
+- [x] Implement Mermaid parsing, schema build, IR v1, planner v1, MySQL dialect, FFI/WASM entry points, and the four clients.
 - [x] Add conformance runners, token comparison, generated errors, and the thin-slice example.
 
 ## Stage 2 — S2 relations and codecs [complete; T2.15 pending]
@@ -75,19 +75,19 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 ## Stage 6 — S6 PostgreSQL and SQLite [complete]
 
 - [x] Implement both dialects, their placeholders, quoting, returning clauses, full-text rules, AES/HEX/IP handling, and database configuration.
-- [x] Run the three-client database vectors where the required database is available.
+- [x] Run the four-client database vectors on MySQL, PostgreSQL, and SQLite.
 
 ## Stage 7 — S7 additional features [in progress]
 
 Every S7 item requires implementation, tests, documentation, and static publication. A feature stays open if the same logical structure cannot be provided in Go, PHP, Rust, and TypeScript.
 
-- [~] T7.1 Generate typed Protobuf messages for Go, PHP, Rust, and TypeScript; provide the Connect compiler server and `CompilerTransport` implementations; and run the shared compiler transport vector. The Go, PHP, and Rust executors use Connect and pass all 58 SQLite database vectors. Implementing the TypeScript database executor and running the full database matrix remain.
+- [x] T7.1 Generate typed Protobuf messages for Go, PHP, Rust, and TypeScript; provide the Connect compiler server and `CompilerTransport` implementations; and pass 58 database vectors on MySQL, PostgreSQL, and SQLite in all four clients.
 - [x] T7.3 Implement deterministic `ormgen diff` and destructive-change checks.
-- [~] T7.4 Implement query-level `scope_p`, planner enforcement, generated methods, and tenant-isolation tests on MySQL, PostgreSQL, and SQLite. Complete the TypeScript database runner.
+- [x] T7.4 Implement query-level `scope_p`, planner enforcement, generated methods, and tenant-isolation tests on MySQL, PostgreSQL, and SQLite in all four clients.
 - [x] T7.5 Implement `curlfile`, YAML 1.2, and `point` conversions in Go, PHP, Rust, and TypeScript. Verify `point` DDL and SQL on MySQL, PostgreSQL, and SQLite.
 - [ ] T7.6 Implement server streaming, cancellation, errors, and row ownership checks.
 - [x] T7.7 Implement deterministic static query precompilation and schema-hash checks.
-- [~] T7.8 Implement TypeScript structure and AST checks. Type checking, package build, AST checks, `interface_attach`, and 96 shared codec vectors pass; the complete TypeScript runner and database vector execution remain.
+- [x] T7.8 Implement the TypeScript module, generated entity APIs and schema hash, `orm.toml` loader, native database drivers, structure and AST checks, and the 58-vector database runner for all three databases.
 - [ ] T7.9 Compare Rust `mysql_async` with the current driver using recorded results.
 - [ ] T7.10 Implement and verify the `multi_statement` relation plan.
 - [ ] T7.11 Implement typed direct scans for Go and PHP and rerun the performance gates.

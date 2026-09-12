@@ -1,10 +1,13 @@
 import type { Compiler, Database, Executor, Param, Plan, PlanStep, Request } from './index.js';
+import { readFile } from 'node:fs/promises';
 import { ConnectCompiler, ConnectPlanCompiler, type CompilerTransport } from './compiler.js';
+import { loadConfig, resolveAesKey } from './config.js';
 import { decode, hostDecode, hostEncode, parsePoint, pointText } from './codec.js';
 import type { DriverConnection, DriverTransaction, DriverValue } from './driver.js';
 import { openMySql, openPostgres, openSqlite } from './driver.js';
 import { ExecutionRows, Page, rowCollection, scalarKey } from './model.js';
 import { OrmError } from './runtime_error.js';
+import { generatedSchemaHash } from './registry.js';
 
 export interface QueryEvent { sql: string; binds: readonly unknown[]; seconds: number; error?: unknown; }
 export interface DatabaseOptions {
@@ -12,6 +15,19 @@ export interface DatabaseOptions {
   compiler: CompilerTransport;
   aesKey?: string;
   onQuery?: (event: QueryEvent) => void;
+}
+
+function mysqlDsn(dsn: string, user?: string, password?: string): string {
+  let url: URL;
+  try { url = new URL(dsn); } catch (error) { throw new OrmError('CONFIG', `db.dsn must be a MySQL URL: ${(error as Error).message}`); }
+  if (url.protocol !== 'mysql:') throw new OrmError('CONFIG', 'db.dsn must use mysql://');
+  const declaredUser = decodeURIComponent(url.username);
+  if (declaredUser !== '' && user !== undefined && declaredUser !== user) throw new OrmError('CONFIG', `db.user ${user} conflicts with the user in db.dsn ${declaredUser}`);
+  if (declaredUser === '' && user === undefined) throw new OrmError('CONFIG', 'db.user is required when db.dsn has no user');
+  if (declaredUser === '') url.username = user!;
+  if (url.password === '' && password !== undefined) url.password = password;
+  else if (url.password !== '' && password !== undefined && decodeURIComponent(url.password) !== password) throw new OrmError('CONFIG', 'db.password conflicts with the password in db.dsn');
+  return url.toString();
 }
 
 export class Db implements Database, Executor {
@@ -43,6 +59,26 @@ export class Db implements Database, Executor {
   public static mysql(uri: string, options: DatabaseOptions): Promise<Db> { return Db.connect(openMySql(uri), options); }
   public static postgres(uri: string, options: DatabaseOptions): Promise<Db> { return Db.connect(openPostgres(uri), options); }
   public static sqlite(path: string, options: DatabaseOptions): Promise<Db> { return Db.connect(openSqlite(path), options); }
+
+  public static async fromConfig(path: string): Promise<Db> {
+    const config = await loadConfig(path);
+    const manifest = JSON.parse(await readFile(config.schema, 'utf8')) as { schema_hash?: unknown; entities?: Record<string, { columns?: Array<{ styles?: string[] }> }> };
+    if (typeof manifest.schema_hash !== 'string' || manifest.schema_hash === '') throw new OrmError('CONFIG', `${config.schema}: schema_hash is required`);
+    const generated = generatedSchemaHash();
+    if (generated !== manifest.schema_hash) throw new OrmError('SCHEMA_HASH_MISMATCH', `generated from ${generated} but ${config.schema} contains ${manifest.schema_hash}`);
+    const aesKey = resolveAesKey(config);
+    const hasAes = Object.values(manifest.entities ?? {}).some(entity => (entity.columns ?? []).some(column => column.styles?.includes('aes')));
+    if (hasAes && aesKey === '') throw new OrmError('CONFIG', 'the schema has aes columns but secrets.aes or secrets.aes_env is not declared');
+    const compiler = new ConnectCompiler(config.ormd.endpoint, config.ormd.timeout_ms);
+    const onQuery = config.debug.on_query ? (event: QueryEvent) => {
+      const detail = event.error === undefined ? '' : ` error=${String(event.error)}`;
+      console.error(`orm ${(event.seconds * 1000).toFixed(3)}ms ${event.sql} ${JSON.stringify(event.binds)}${detail}`);
+    } : undefined;
+    const options = { schemaHash: manifest.schema_hash, compiler, aesKey, onQuery };
+    if (config.db.driver === 'sqlite') return Db.connect(openSqlite(config.db.dsn), options);
+    if (config.db.driver === 'postgres') return Db.connect(openPostgres(config.db.dsn, config.db.pool), options);
+    return Db.connect(openMySql(mysqlDsn(config.db.dsn, config.db.user, config.db.password), config.db.pool), options);
+  }
 
   public async close(): Promise<void> { await this.connection.close(); }
   public async transaction<T>(callback: (transaction: Tx) => Promise<T>): Promise<T> {
@@ -158,6 +194,7 @@ export class Db implements Database, Executor {
           if (slot.host_styles.length > 0) value = hostEncode(value, slot.host_styles, this.aesKey);
           if (slot.col_type === 'point' && value !== null) value = this.driver === 'postgres' ? postgresPoint(value) : pointText(parsePoint(value as string));
           if (this.driver === 'sqlite' && value instanceof Date) value = sqlDate(value);
+          if (this.driver === 'postgres' && value instanceof Date) value = sqlDate(value).replace(/\.000000$/, '');
           out.push(value);
           break;
         }

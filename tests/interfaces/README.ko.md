@@ -31,9 +31,10 @@ go run ./tests/interfaces/check --results tests/conformance/out/sqlite
 승인된 인터페이스 변경 후 계약 출력을 다시 생성한다.
 
 ```sh
-for lang in go php rust typescript; do
+for lang in go php rust; do
   go run ./cmd/ormgen gen --schema schema/schema.json --lang "$lang" --out "clients/$lang/gen"
 done
+go run ./cmd/ormgen gen --schema schema/schema.json --lang typescript --out clients/typescript/src/gen
 go run ./tests/interfaces/check --generate --record --self-test
 ```
 

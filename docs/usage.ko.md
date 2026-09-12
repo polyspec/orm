@@ -1,6 +1,6 @@
 # 사용법
 
-스키마 한 벌(Mermaid)에서 Go·PHP·Rust 클라이언트를 생성하고, 같은 문장을 세 언어에서 같은 SQL로 실행한다.
+하나의 Mermaid 스키마에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
 대상 DB는 MySQL 8(기본), PostgreSQL 12+, SQLite 3.35+.
 
 문법의 전체 목록은 [dsl.md](dsl.md), 다이어그램 문법은 [schema.md](schema.md), IR/Plan 명세은 [protocol.md](protocol.md),
@@ -16,6 +16,7 @@
 | MySQL 8.0.2+ / MariaDB 10.2+ | 1차 대상. PostgreSQL 12+, SQLite 3.35+도 같은 플랜으로 동작 |
 | PHP 8.4+ (`pdo_mysql`, `apcu`) | PHP 클라이언트를 쓸 때만. `pdo_pgsql`/`pdo_sqlite`는 해당 DB를 쓸 때 |
 | Rust 1.98+ | Rust 클라이언트를 쓸 때만 |
+| Node.js 22.12+ | TypeScript 클라이언트를 쓸 때만 |
 
 ```sh
 git clone https://github.com/polyspec/orm && cd orm
@@ -186,6 +187,7 @@ go run ./cmd/ormgen migrate --driver mysql --dsn "$ORM_DSN" \
 go run ./cmd/ormgen gen --schema schema/schema.json --lang go   --out clients/go/gen
 go run ./cmd/ormgen gen --schema schema/schema.json --lang php  --out clients/php/gen
 go run ./cmd/ormgen gen --schema schema/schema.json --lang rust --out clients/rust/gen
+go run ./cmd/ormgen gen --schema schema/schema.json --lang typescript --out clients/typescript/src/gen
 ```
 
 엔티티마다 쿼리 타입·Row 타입·Where 빌더·컬럼 참조가 생긴다. 스키마를 바꾸면 **다시 생성하고 다시 배포**한다.
@@ -203,62 +205,62 @@ node tests/typescript/common-vector.mjs
 
 ## 4. 연결
 
-### Go — 엔진이 프로세스 안에 있다
-
-```go
-import (
-    "github.com/polyspec/orm/clients/go/gen"
-    "github.com/polyspec/orm/clients/go/orm"
-    "github.com/polyspec/orm/engine"
-    "github.com/polyspec/orm/engine/schema"
-
-    _ "github.com/polyspec/orm/clients/go/orm/pg"     // PostgreSQL을 쓸 때만
-    _ "github.com/polyspec/orm/clients/go/orm/sqlite" // SQLite를 쓸 때만
-)
-
-js, _ := os.ReadFile("schema/schema.json")
-m, _ := schema.Load(js)
-eng, _ := engine.New(m, "mysql")                       // 방언 = 드라이버와 같아야 한다
-db, err := orm.Open("mysql", dsn, eng, orm.Config{AESKey: "…"})
-if err := gen.Init(eng); err != nil { … }              // schema_hash 확인 1회
-```
-
-DSN에 `parseTime=true&clientFoundRows=true`가 필요하다(낙관적 잠금이 `clientFoundRows`에 의존).
-
-### PHP — 컴파일 데몬 + PDO
+네 클라이언트가 함께 사용하는 compiler service를 하나 실행한다. 서비스는 schema hash, dialect, IR version을 검사하고 Connect를 통해 typed Protobuf plan을 반환한다. 데이터베이스 문장 실행과 row 데이터는 각 클라이언트 프로세스에서 처리한다.
 
 ```sh
-bin/ormd -socket /run/orm/ormd.sock -schema /srv/app/schema/schema.json &   # 호스트당 1개
+bin/ormd -listen 127.0.0.1:8080 -schema /srv/app/schema/schema.json -dialect mysql
 ```
+
+### Go
+
+```go
+js, _ := os.ReadFile("schema/schema.json")
+m, _ := schema.Load(js)
+eng, _ := engine.New(m, "mysql")
+compiler, _ := orm.NewConnectCompiler("http://127.0.0.1:8080", 5*time.Second)
+db, err := orm.OpenWithCompiler(ctx, "mysql", dsn, eng, compiler, orm.Config{AESKey: "…"})
+if err := gen.Init(eng); err != nil { … }
+```
+
+MySQL DSN에는 `parseTime=true&clientFoundRows=true`가 필요하다. optimistic update가 `clientFoundRows`를 사용한다.
+
+### PHP
+
 ```php
 use Orm\{Config, Db, Orm};
 
-Orm::init(new Config(socket: '/run/orm/ormd.sock', schemaPath: '/srv/app/schema/schema.json', aesKey: '…'));
+Orm::init(new Config(socket: '/unused', schemaPath: '/srv/app/schema/schema.json', aesKey: '…', endpoint: 'http://127.0.0.1:8080'));
 $db = Db::mysql('mysql:unix_socket=/tmp/mysql.sock;dbname=app;charset=utf8mb4', 'user', 'pass');
-// Db::postgres('pgsql:host=…;dbname=…;user=…') / Db::sqlite('/abs/app.sqlite')
 ```
 
-`ormd`는 IR을 플랜으로 컴파일만 한다(DB에 접속하지 않는다). 플랜은 APCu에 캐시되어 문장 형태당 한 번만 왕복한다.
-
-### Rust — 엔진이 wasm
+### Rust
 
 ```rust
-use orm::db::{Config, ConnectOptions, Db};
-use orm::engine::{Engine, EngineConfig};
-
 let engine = Arc::new(Engine::new(EngineConfig {
     wasm: &std::fs::read("bin/ormengine.wasm")?,
     schema_json: &std::fs::read("schema/schema.json")?,
-    ..Default::default()                       // dialect: "mysql" | "postgres" | "sqlite"
+    ..Default::default()
 })?);
-gen::init(engine.clone())?;                    // schema_hash 확인 1회
-let db = Db::connect(ConnectOptions::parse("mysql", url)?, 8, engine,
-                     Config { aes_key: "…".into(), on_query: None }).await?;
+gen::init(engine.clone())?;
+let compiler = Arc::new(ConnectCompiler::new("http://127.0.0.1:8080", Duration::from_secs(5))?);
+let db = Db::connect_with_compiler(ConnectOptions::parse("mysql", url)?, 8, engine,
+                                  compiler, Config { aes_key: "…".into(), on_query: None }).await?;
 ```
 
-### 설정 파일로 한 번에
+### TypeScript
 
-세 언어 모두 `orm.toml` 하나를 읽는 생성자가 있다([config.md](config.md)). 경로는 절대경로여야 하고 symlink는 거부한다.
+```typescript
+import { ConnectCompiler, Db } from '@polyspec/orm-typescript';
+
+const compiler = new ConnectCompiler('http://127.0.0.1:8080');
+const db = await Db.mysql(dsn, { schemaHash, compiler, aesKey: '…' });
+```
+
+각 클라이언트는 요청 형태별로 plan을 캐시한다. compiler는 데이터베이스 row를 받지 않고 애플리케이션 데이터베이스에 연결하지 않는다.
+
+### 하나의 설정 파일
+
+네 클라이언트는 하나의 `orm.toml` 파일에서 선언된 연결 필드를 읽는다([config.md](config.md)). 경로는 절대 경로여야 하며 symlink는 거부한다.
 
 ```toml
 schema = "/srv/app/schema/schema.json"
@@ -275,14 +277,14 @@ wasm = "/srv/app/bin/ormengine.wasm"
 cache_dir = "/var/cache/orm"
 ```
 ```go
-db, err := orm.OpenConfig("/srv/app/orm.toml")   // PHP: Orm::fromConfig(...)  Rust: Db::from_config(...).await
+db, err := orm.OpenConfig("/srv/app/orm.toml")   // PHP: Orm::fromConfig(...)  Rust: Db::from_config(...).await  TypeScript: await Db.fromConfig(...)
 ```
 
 ---
 
 ## 5. 읽기
 
-토큰은 세 언어가 같고 표기만 다르다(PHP `camelCase` / Go `PascalCase` / Rust `snake_case`).
+토큰은 네 언어가 같고 표기만 다르다(PHP·TypeScript `camelCase` / Go `PascalCase` / Rust `snake_case`).
 
 ```php
 $rows = Battle::query()
@@ -306,6 +308,14 @@ let rows = battle::query()
     .seq_in(vec![6, 106, 206])
     .order_by_seq_desc().limit(0, 20)
     .using(&db).gets().await?;
+```
+```typescript
+const rows = await Battle()
+    .serviceSeq(7).isClose(false)
+    .and(w => w.isDisplay(true).or().isAllday(true))
+    .seqIn([6, 106, 206])
+    .orderBySeqDesc().limit(0, 20)
+    .using(db).gets();
 ```
 
 - 술어: `<Col>(v)`는 `=`이며, 그 밖에는 `<Col>NotEq Gt Gte Lt Lte In NotIn Between IsNull IsNotNull Like LikeBinary Contains StartsWith EndsWith`를 붙인다. `Eq` 접미사는 호환 별칭으로도 제공한다.
@@ -468,4 +478,4 @@ go run ./tests/conformance/check run -driver postgres -dsn 'postgres://…'
 go run ./cmd/ormgen tokens --schema schema/schema.json a.go b.php c.rs   # 세 파일의 토큰열이 같은지
 ```
 
-예제: [`examples/thin-slice`](../examples/thin-slice)(세 언어, 같은 JSON), [`examples/complex`](../examples/complex)(조인·그룹·3단 관계·집계).
+예제: [`examples/thin-slice`](../examples/thin-slice)(네 언어, 같은 JSON), [`examples/complex`](../examples/complex)(조인·그룹·3단 관계·집계).

@@ -27,9 +27,10 @@ go run ./tests/interfaces/check --results tests/conformance/out/sqlite
 Regenerate contract outputs after an approved interface change:
 
 ```sh
-for lang in go php rust typescript; do
+for lang in go php rust; do
   go run ./cmd/ormgen gen --schema schema/schema.json --lang "$lang" --out "clients/$lang/gen"
 done
+go run ./cmd/ormgen gen --schema schema/schema.json --lang typescript --out clients/typescript/src/gen
 go run ./tests/interfaces/check --generate --record --self-test
 ```
 

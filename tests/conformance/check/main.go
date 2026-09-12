@@ -58,7 +58,7 @@ func main() {
 	fs := flag.NewFlagSet("check", flag.ExitOnError)
 	fs.StringVar(&driver, "driver", "mysql", "mysql|postgres|sqlite")
 	fs.StringVar(&dsn, "dsn", "", "database DSN/URL for the runners (driver-specific; empty = each runner's default)")
-	fs.StringVar(&langs, "langs", "go,php,rust", "runners to execute")
+	fs.StringVar(&langs, "langs", "go,php,rust,typescript", "runners to execute")
 	fs.Parse(os.Args[2:])
 	root, err := os.Getwd()
 	must(err)
@@ -92,7 +92,7 @@ func driverDir() string {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: check run [-driver d -dsn x -langs go,php,rust] | check compare [-driver d] <lang>.json... | check record [-driver d] <out.json>")
+	fmt.Fprintln(os.Stderr, "usage: check run [-driver d -dsn x -langs go,php,rust,typescript] | check compare [-driver d] <lang>.json... | check record [-driver d] <out.json>")
 	os.Exit(2)
 }
 
@@ -161,6 +161,14 @@ func runAll(root, out string) {
 			args = append(args, "--dsn", dsn)
 		}
 		capture(filepath.Join(out, "rust.json"), exec.Command(filepath.Join(root, "clients", "rust", "target", "release", "conformance"), args...))
+	}
+	if want["typescript"] {
+		args := []string{"tests/conformance/runner_typescript.mjs", "--compiler", endpoint, "--driver", driver}
+		if dsn != "" {
+			args = append(args, "--dsn", dsn)
+		}
+		args = append(args, schema)
+		capture(filepath.Join(out, "typescript.json"), exec.Command("node", args...))
 	}
 	if !want["php"] {
 		return

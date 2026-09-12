@@ -56,6 +56,6 @@ Go `gen.Battle()`은 `*gen.BattleQuery`를 반환한다. Go는 실행기와 함�
 
 ## 구현 상태
 
-구현 클라이언트는 **Go, PHP, Rust, TypeScript**다. TypeScript는 현재 공통 query 구조를 제공하며 모든 생성 entity 지원이 필요하다. 검사 범위와 잔여 작업은 [구현 대조표](interface-implementation.md), [체크리스트](checklist.md), [S7 작업 목록](s7.md)에 기록한다.
+구현 클라이언트는 **Go, PHP, Rust, TypeScript**다. 네 클라이언트가 생성 entity API와 네이티브 데이터베이스 실행을 제공한다. 검사 범위와 잔여 작업은 [구현 대조표](interface-implementation.md), [체크리스트](checklist.md), [S7 작업 목록](s7.md)에 기록한다.
 
 [DSL](dsl.md) · [스키마](schema.md) · [IR / Plan](protocol.md) · [복합 query 예제](examples/complex-query.md) · [문서 빌드와 배포](docs-development.md) · [English](index.md)

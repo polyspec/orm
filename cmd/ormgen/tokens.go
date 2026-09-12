@@ -1,5 +1,5 @@
 // ormgen tokens: parity lint. Extracts the statement tokens (heads, predicates,
-// joins, terminals, …) from Go/PHP/Rust sources, maps each language's spelling
+// joins, terminals, …) from Go/PHP/Rust/TypeScript sources, maps each language's spelling
 // back to the canonical camelCase token, and diffs the sequences. Sources that
 // express the same statements must produce identical token streams.
 //
@@ -179,6 +179,8 @@ func tokenize(v *vocabulary, path string, src string) []string {
 		reHead, reCall = reHeadRust, reCallDot
 	case "go":
 		reHead, reCall = reHeadGo, reCallDot
+	case "js", "mjs", "ts":
+		reHead, reCall = reHeadGo, reCallDot
 	default:
 		fmt.Fprintf(os.Stderr, "ormgen tokens: %s: unknown language\n", path)
 		os.Exit(2)
@@ -274,7 +276,7 @@ func tokens(args []string) {
 	}
 	fs.Parse(flags)
 	if *schemaPath == "" || len(files) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: ormgen tokens --schema schema/schema.json [--print] <file.go> <file.php> <file.rs>…")
+		fmt.Fprintln(os.Stderr, "usage: ormgen tokens --schema schema/schema.json [--print] <file.go> <file.php> <file.rs> <file.ts|mjs>…")
 		os.Exit(2)
 	}
 	js, err := os.ReadFile(*schemaPath)
