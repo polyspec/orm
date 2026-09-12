@@ -15,6 +15,7 @@ async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
 fn using(self, ex: &impl Exec) -> Self;
+fn scope(self, v: i64) -> Self;
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<BattleRow>>;
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<BattleRow>>;
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>>;
@@ -144,6 +145,7 @@ async fn update(&mut self) -> Result<u64> { Battle::update(self).await }
 async fn delete(&mut self) -> Result<u64> { Battle::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { Battle::sql(self).await }
 fn using(mut self, ex: &impl Exec) -> Self { Battle::using(self,ex) }
+fn scope(mut self, v: i64) -> Self { Battle::scope(self,v) }
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<BattleRow>> { Battle::paginate(self,page,per).await }
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<BattleRow>> { Battle::gets_by_seq(self,v).await }
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> { Battle::gets_by_name(self,v).await }

@@ -154,6 +154,11 @@ impl Q {
         self.link_right = right.into();
     }
 
+    pub fn scope(&mut self, value: impl Into<Param>) {
+        let p = self.req.p(value);
+        self.req.ir.query.scope_p = Some(p);
+    }
+
     pub fn node(&mut self) -> &mut Query {
         &mut self.req.ir.query
     }
@@ -381,5 +386,22 @@ impl<'a> W<'a> {
         self.g.items.push(Item::Nav { nav: Nav { conn, rel: rel.into(), group: Group::default() } });
         let Some(Item::Nav { nav }) = self.g.items.last_mut() else { unreachable!() };
         f(W { params: &mut *self.params, g: &mut nav.group, pending_or: false });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn attach_shifts_scope_parameter() {
+        let mut child = Req::new("schema", "battle");
+        child.params.push(Param::I64(7));
+        child.ir.query.scope_p = Some(0);
+        let mut parent = Req::new("schema", "service");
+        parent.params.push(Param::I64(9));
+        let attached = parent.attach(&child);
+        assert_eq!(attached.scope_p, Some(1));
+        assert_eq!(child.ir.query.scope_p, Some(0));
     }
 }

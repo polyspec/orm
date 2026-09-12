@@ -43,6 +43,8 @@ func TestAttachSnapshotsAllParameterLocations(t *testing.T) {
 		return &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "seq", Op: "eq", P: &i}}}}
 	}
 	child.Params = []any{int64(1), int64(2), int64(3), int64(4)}
+	scope := 0
+	child.IR.ScopeP = &scope
 	child.IR.On, child.IR.Where, child.IR.Having = group(0), group(1), group(2)
 	child.IR.IfParent = &ir.IfParent{Column: "seq", P: 3}
 	child.Err = &ir.Error{Code: CodeCodecUnsupported, Msg: "fixture"}
@@ -57,7 +59,7 @@ func TestAttachSnapshotsAllParameterLocations(t *testing.T) {
 		t.Fatal("parents share a condition")
 	}
 	for off, q := range map[int]*ir.Query{1: a, 2: b} {
-		if *q.On.Items[0].Pred.P != off || *q.Where.Items[0].Pred.P != off+1 || *q.Having.Items[0].Pred.P != off+2 || q.IfParent.P != off+3 {
+		if q.ScopeP == nil || *q.ScopeP != off || *q.On.Items[0].Pred.P != off || *q.Where.Items[0].Pred.P != off+1 || *q.Having.Items[0].Pred.P != off+2 || q.IfParent.P != off+3 {
 			t.Fatalf("wrong parameter indices at offset %d", off)
 		}
 	}

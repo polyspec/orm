@@ -55,6 +55,7 @@ export interface Request {
   schema_hash: string;
   kind: 'all' | 'count';
   entity: string;
+  scope_p?: number;
   where?: Group;
   joins?: Join[];
   n_params: number;
@@ -129,7 +130,6 @@ export class Where {
   }
 
   public serviceSeqEq(value: number): this { return this.eq('service_seq', value); }
-  public scope(value: number): this { return this.eq('service_seq', value); }
   public isCloseEq(value: boolean): this { return this.eq('is_close', value); }
   public isDisplayEq(value: boolean): this { return this.eq('is_display', value); }
   public isAlldayEq(value: boolean): this { return this.eq('is_allday', value); }
@@ -184,7 +184,8 @@ export class BattleQuery {
   public serviceSeqEq(value: number): this { return this.condition('service_seq', value); }
   public scope(value: number): this {
     if (this.request.entity !== 'battle') throw new Error(`scope is not declared for ${this.request.entity}`);
-    return this.condition('service_seq', value);
+    this.request.scope_p = this.params.push(value) - 1;
+    return this;
   }
   public isCloseEq(value: boolean): this { return this.condition('is_close', value); }
   public isDisplayEq(value: boolean): this { return this.condition('is_display', value); }

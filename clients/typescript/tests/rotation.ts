@@ -20,4 +20,4 @@ if (result.aes_key_version !== 2 || result.aes_hex_email !== 'email:old:old:new'
 }
 
 const scoped = new BattleQuery().scope(7).requestShape();
-if (scoped.where?.items.length !== 1 || scoped.where.items[0].pred?.column !== 'service_seq') throw new Error('scope() did not add the tenant predicate');
+if (scoped.scope_p !== 0) throw new Error('scope() did not set the tenant parameter');

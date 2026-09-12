@@ -94,7 +94,7 @@ When the same parent is referenced twice (`user_seq`, `updated_user_seq`), draw 
 %% fulltext <table> (<col>, …)              # FULLTEXT → `<a>With<b>Match…()` 생성
 %% timestamps <table> created_ts updated_ts # 자동 타임스탬프 컬럼 지정(기본: 이름이 created_ts/updated_ts면 자동)
 %% predicate <table> <name> : <expr 조각>   # 재사용 술어 → `<name>(args…)` 메서드. 백틱 컬럼은 검증, `?`마다 인자 하나
-%% scope <table> <column>                 # query API에 scope(value) 조건 생성
+%% scope <table> <column>                 # query API와 IR에 독립된 tenant scope 생성
 %% table_comment <table> "database table comment"
 %% column_comment <table> <column> "database column comment"
 ```

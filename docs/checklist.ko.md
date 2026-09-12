@@ -83,7 +83,7 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 
 - [ ] T7.1 4개 클라이언트의 typed protobuf/Connect 경로와 공통 벡터를 구현한다.
 - [x] T7.3 결정적인 `ormgen diff`와 destructive change 검사를 구현한다.
-- [~] T7.4 `scope` 검사와 생성 메서드를 구현했다. IR 적용, tenant isolation DB 검사, TypeScript 실행이 남아 있다.
+- [~] T7.4 query 수준 `scope_p`, planner 강제 적용, 생성 메서드, MySQL·PostgreSQL·SQLite tenant isolation 검사를 구현했다. TypeScript database runner가 남아 있다.
 - [x] T7.5 Go·PHP·Rust·TypeScript에 `curlfile`, YAML 1.2, `point` 변환을 구현한다. MySQL·PostgreSQL·SQLite에서 `point` DDL과 SQL을 검사한다.
 - [ ] T7.6 서버 streaming, 취소, 오류, 행 소유권 검사를 구현한다.
 - [x] T7.7 결정적인 정적 query precompile과 schema-hash 검사를 구현한다.

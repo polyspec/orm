@@ -7,6 +7,7 @@ package planner
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -248,8 +249,15 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	if rc != nil {
 		where = append(where, p.qcol(root, rc.right)+" IN ("+b.parentList(rc.parentStep)+")")
 	}
+	if q.ScopeP != nil {
+		clause, err := p.scopeClause(b, root)
+		if err != nil {
+			return nil, err
+		}
+		where = append(where, clause)
+	}
 	if q.Where != nil && len(q.Where.Items) > 0 {
-		s, err := p.renderGroup(b, root, q.Where, rc == nil)
+		s, err := p.renderGroup(b, root, q.Where, rc == nil && q.ScopeP == nil)
 		if err != nil {
 			return nil, err
 		}
@@ -610,6 +618,13 @@ func (p *Planner) renderJoins(b *builder, sb *strings.Builder, s *scope) error {
 		}
 		sb.WriteString(kw + p.D.Quote(js.ent.Table) + " AS " + p.D.Quote(js.alias) + " ON " +
 			p.qcol(s, rel.Left) + " = " + p.qcol(js, rel.Right))
+		if j.Query.ScopeP != nil {
+			scope, err := p.scopeClause(b, js)
+			if err != nil {
+				return err
+			}
+			sb.WriteString(" AND " + scope)
+		}
 		if j.Query.On != nil && len(j.Query.On.Items) > 0 {
 			on, err := p.renderGroup(b, js, j.Query.On, true)
 			if err != nil {
@@ -640,6 +655,18 @@ func (p *Planner) collectJoinWhere(b *builder, s *scope, where *[]string) error 
 		}
 	}
 	return nil
+}
+
+func (p *Planner) scopeClause(b *builder, s *scope) (string, error) {
+	if s.q.ScopeP == nil {
+		return "", nil
+	}
+	col := s.ent.Column(s.ent.Scope)
+	value, err := p.renderValue(b, col, *s.q.ScopeP)
+	if err != nil {
+		return "", err
+	}
+	return p.qcol(s, s.ent.Scope) + " = " + value, nil
 }
 
 // renderGroup writes a group; top omits the outer parentheses.
@@ -858,8 +885,12 @@ func (p *Planner) renderExpr(s *scope, frag string) (string, error) {
 func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
+	set := slices.Clone(r.Set)
+	if r.ScopeP != nil && !assigned(set, ent.Scope) {
+		set = append(set, ir.Assign{Column: ent.Scope, P: r.ScopeP})
+	}
 	var cols, vals []string
-	for _, a := range r.Set {
+	for _, a := range set {
 		col := ent.Column(a.Column)
 		if col.Auto {
 			return nil, &ir.Error{Code: "IR_INVALID", Msg: "cannot set auto column " + a.Column}
@@ -885,7 +916,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 			// MySQL idiom: make last insert id report the existing row on update
 			sets = append(sets, p.D.Quote(ent.Auto)+" = LAST_INSERT_ID("+p.D.Quote(ent.Auto)+")")
 		}
-		sql += p.D.Upsert(conflictTarget(ent, r.Set), strings.Join(sets, ", "))
+		sql += p.D.Upsert(conflictTarget(ent, set), strings.Join(sets, ", "))
 	}
 	if p.D.InsertReturningID() && ent.Auto != "" {
 		sql += " RETURNING " + p.D.Quote(ent.Auto)
@@ -978,12 +1009,19 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 			sets = append(sets, p.D.Quote(ts.Updated)+" = "+now)
 		}
 	}
-	where, err := p.renderGroup(b, root, r.Where, true)
+	where, err := p.renderGroup(b, root, r.Where, r.ScopeP == nil)
 	if err != nil {
 		return nil, err
 	}
 	if r.Optimistic != nil {
 		where += " AND " + p.qcol(root, r.Optimistic.Column) + " = " + b.param(r.Optimistic.P)
+	}
+	if r.ScopeP != nil {
+		scope, e := p.scopeClause(b, root)
+		if e != nil {
+			return nil, e
+		}
+		where = scope + " AND " + where
 	}
 	sql := "UPDATE " + p.D.Quote(ent.Table) + " SET " + strings.Join(sets, ", ") + " WHERE " + where
 	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
@@ -993,9 +1031,16 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
 	root := p.buildScopes(&r.Query, ent.Table, nil)
-	where, err := p.renderGroup(b, root, r.Where, true)
+	where, err := p.renderGroup(b, root, r.Where, r.ScopeP == nil)
 	if err != nil {
 		return nil, err
+	}
+	if r.ScopeP != nil {
+		scope, e := p.scopeClause(b, root)
+		if e != nil {
+			return nil, e
+		}
+		where = scope + " AND " + where
 	}
 	sql := "DELETE FROM " + p.D.Quote(ent.Table) + " WHERE " + where
 	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
