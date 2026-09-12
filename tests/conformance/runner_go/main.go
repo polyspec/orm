@@ -1054,11 +1054,11 @@ func main() {
 		return b.ToArray()
 	})
 	run("relation_predicates", func() (any, error) {
-		exists, err := gen.Service().SeqEq(7).HasMembers(func(*gen.ServiceMemberWhere) {}).Using(ctx, db).GetCount()
+		exists, err := gen.Service().Seq(7).HasMembers(func(*gen.ServiceMemberWhere) {}).Using(ctx, db).GetCount()
 		if err != nil {
 			return nil, err
 		}
-		count, err := gen.Service().SeqEq(7).CountMembersEq(50, func(*gen.ServiceMemberWhere) {}).Using(ctx, db).GetCount()
+		count, err := gen.Service().Seq(7).CountMembersEq(50, func(*gen.ServiceMemberWhere) {}).Using(ctx, db).GetCount()
 		return map[string]any{"exists": exists, "count": count}, err
 	})
 	run("batch_insert_delete", func() (any, error) {
