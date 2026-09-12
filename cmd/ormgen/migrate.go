@@ -388,10 +388,21 @@ func placeholder(driver string, n int) string {
 }
 
 func executeMigration(ctx context.Context, db *sql.DB, text string) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("transaction begin: %w", err)
+	}
 	for i, stmt := range splitSQL(text) {
-		if _, err := db.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("operation=%d statement=%q: %w", i+1, stmt, err)
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
+				return fmt.Errorf("operation=%d statement=%q: %w; rollback failed: %v", i+1, stmt, err, rollbackErr)
+			}
+			return fmt.Errorf("operation=%d statement=%q: %w; transaction rolled back", i+1, stmt, err)
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("transaction commit: %w", err)
 	}
 	return nil
 }
