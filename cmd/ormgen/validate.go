@@ -27,19 +27,15 @@ func validateCmd(args []string) {
 		fmt.Fprintln(os.Stderr, "usage: ormgen validate --dsn <dsn> [--driver mysql|postgres] --schema schema/schema.json")
 		os.Exit(2)
 	}
-	js, err := os.ReadFile(*schemaPath)
-	if err != nil {
-		fail(err)
-	}
-	m, err := schema.Load(js)
-	if err != nil {
-		fail(err)
-	}
 	if *driver == "" {
 		*driver = "mysql"
 		if strings.HasPrefix(*dsn, "postgres://") || strings.HasPrefix(*dsn, "postgresql://") || strings.Contains(*dsn, "host=") {
 			*driver = "postgres"
 		}
+	}
+	m, err := loadSchemaSource(*schemaPath, *driver)
+	if err != nil {
+		fail(err)
 	}
 	sqlDriver := map[string]string{"mysql": "mysql", "postgres": "pgx"}[*driver]
 	if sqlDriver == "" {

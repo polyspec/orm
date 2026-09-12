@@ -54,7 +54,7 @@ func migrateCmd(args []string) {
 	fs := flag.NewFlagSet("migrate", flag.ExitOnError)
 	dsn := fs.String("dsn", "", "database DSN or SQLite path (required)")
 	driver := fs.String("driver", "mysql", "mysql|postgres|sqlite")
-	schemaPath := fs.String("schema", "", "target schema.json (required)")
+	schemaPath := fs.String("schema", "", "target .mmd, .json, ormgen .sql, or db:<dsn> (required)")
 	id := fs.String("migration-id", "initial", "stable migration identifier")
 	name := fs.String("name", "schema sync", "migration name")
 	logDir := fs.String("log-dir", "migrations/logs", "directory for migration JSON logs")
@@ -66,11 +66,7 @@ func migrateCmd(args []string) {
 	if *driver != "mysql" && *driver != "postgres" && *driver != "sqlite" {
 		fail(fmt.Errorf("MIGRATION_CONFIG: unsupported driver %q", *driver))
 	}
-	b, err := os.ReadFile(*schemaPath)
-	if err != nil {
-		fail(fmt.Errorf("MIGRATION_SOURCE: read %s: %w", *schemaPath, err))
-	}
-	want, err := schema.Load(b)
+	want, err := loadSchemaSource(*schemaPath, *driver)
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_SOURCE: %w", err))
 	}
