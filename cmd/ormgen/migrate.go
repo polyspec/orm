@@ -777,7 +777,7 @@ func sqliteTypeMatches(want, live string) bool {
 	case "f64":
 		return want == "f64" || want == "decimal"
 	case "text":
-		return want == "string" || want == "text" || want == "json" || want == "datetime" || want == "date" || want == "time" || want == "enum"
+		return want == "string" || want == "text" || want == "json" || want == "datetime" || want == "date" || want == "time" || want == "enum" || want == "point"
 	case "bytes":
 		return want == "bytes" || want == "inet"
 	default:

@@ -16,6 +16,7 @@ Planner는 database별 SQL 요소를 방언에 요청한다. IR과 plan 형식�
 | `limitPerParent` | `ROW_NUMBER() OVER (…)` | same | same (3.25+) |
 | `aes`/`hex` styles | in SQL: `HEX(AES_ENCRYPT(?, ?))` / `AES_DECRYPT(UNHEX(col), ?)` | app-side (executor: host AES — MySQL key folding, AES-128-ECB, PKCS7; bytes identical to MySQL's) | app-side |
 | `ip` style | `INET6_ATON` / `INET6_NTOA` | `(?)::inet` / `host(col)` | app-side (16-byte packed) |
+| `point` type | `POINT(x y)` bind; `ST_PointFromText(?)` / `ST_AsText(col)` | `(x,y)` bind; `CAST(? AS text)::point` / `(col)::text` | `POINT(x y)` text |
 | `NOW` | `CURRENT_TIMESTAMP` | same | same |
 
 Executor 결과는 PostgreSQL parent IN list 확장 후 `$n` 재번호화, app-side AES/inet codec, database별 DSN/driver 선택이다.
@@ -37,7 +38,7 @@ import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 �
 - 사용자 fragment의 `?`는 bind 순서에 따라 방언 placeholder로 변경한다. 개수와 bind 개수가 다르면 `IR_INVALID`다.
 - SQLite datetime은 UTC 기준 여섯 자리 소수의 text다.
 - Boolean은 PostgreSQL `boolean`, SQLite INTEGER 0/1이다. fragment와 raw에는 boolean을 bind한다.
-- `bind_slots[].col_type`은 date/time/datetime 대상의 type을 기록한다.
+- `bind_slots[].col_type`은 `date`, `time`, `datetime`, `point` 대상을 기록한다. 실행기는 SQLite 시간 값을 정규화하고 typed point를 bind 전에 `POINT(x y)`로 변환한다.
 - `bind_slots[].host_styles`와 `columns[].styles`는 executor가 처리할 host stage를 기록한다.
 - seed는 database별 SQL을 실행한 후 `go run ./bench/seedaes`로 AES 값을 채운다.
 - conformance vector의 결과는 세 database에서 같아야 한다. `sql_dump`는 방언 SQL을 반환한다.

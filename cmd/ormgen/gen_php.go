@@ -25,6 +25,9 @@ func camel(s string) string {
 }
 
 func phpType(c *schema.Col) string {
+	if c.Type == "point" {
+		return "array"
+	}
 	if len(appStyles(c)) > 0 {
 		return "mixed"
 	}
@@ -117,12 +120,18 @@ final class {{.Type}}Row extends Row implements {{.Type}}RowInterface
         return [{{range $i, $r := .Rels}}{{if $i}}, {{end}}'{{$r.Name}}' => ['kind' => '{{$r.Kind}}', 'target' => '{{$r.Target}}', 'left' => '{{$r.Left}}', 'right' => '{{$r.Right}}']{{end}}];
     }
 {{range .Cols}}
+{{- if .IsPoint}}
+    /** @return {{if .Nullable}}array{float,float}|null{{else}}array{float,float}{{end}} */
+{{- end}}
     public function get{{.Field}}(mixed $default = null): {{if .Nullable}}?{{end}}{{.PhpType}}
     {
         $v = $this->col('{{.Name}}');
-        return $v === null ? ($default ?? {{if .Nullable}}null{{else if eq .PhpType "int"}}0{{else if eq .PhpType "float"}}0.0{{else if eq .PhpType "bool"}}false{{else if eq .PhpType "string"}}''{{else}}null{{end}}) : $v;
+        return $v === null ? ($default ?? {{if .Nullable}}null{{else if eq .PhpType "int"}}0{{else if eq .PhpType "float"}}0.0{{else if eq .PhpType "bool"}}false{{else if eq .PhpType "string"}}''{{else if .IsPoint}}[0.0, 0.0]{{else}}null{{end}}) : {{if .IsPoint}}\Orm\Codec::point($v){{else}}$v{{end}};
     }
 {{- if not .Auto}}
+{{- if .IsPoint}}
+    /** @param {{if .Nullable}}array{float|int,float|int}|null{{else}}array{float|int,float|int}{{end}} $v */
+{{- end}}
     public function set{{.Field}}({{if .Nullable}}?{{end}}{{.PhpType}} $v): static { return $this->{{if .Styles}}setStyled('{{.Name}}', $v, [{{phpList .Styles}}]){{else}}setCol('{{.Name}}', $v){{end}}; }
 {{- end}}
 {{end}}
@@ -298,6 +307,9 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
 
     // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
 {{- range .Cols}}
+{{- if .IsPoint}}
+    /** @param {{if .Nullable}}array{float|int,float|int}|null{{else}}array{float|int,float|int}{{end}} $v */
+{{- end}}
     public function set{{.Field}}({{if .Nullable}}?{{end}}{{.PhpType}} $v): static { $this->{{if .Styles}}setStyled('{{.Name}}', $v, [{{phpList .Styles}}]){{else}}set('{{.Name}}', $v){{end}}; return $this; }
     public function set{{.Field}}Expr(string $frag, array $binds = []): static { $this->setExpr('{{.Name}}', $frag, $binds); return $this; }
 {{- end}}
@@ -309,6 +321,9 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
     // ---- insert: ON DUPLICATE KEY UPDATE (never the PK/auto columns; the engine refuses them) ----
     public function onDuplicateSetAll(): static { $this->onDuplicateAll([{{phpList .Protected}}]); return $this; }
 {{- range .Cols}}{{if not (or .Auto .PK)}}
+{{- if .IsPoint}}
+    /** @param {{if .Nullable}}array{float|int,float|int}|null{{else}}array{float|int,float|int}{{end}} $v */
+{{- end}}
     public function onDuplicateSet{{.Field}}({{if .Nullable}}?{{end}}{{.PhpType}} $v): static { $this->{{if .Styles}}onDuplicateStyled('{{.Name}}', $v, [{{phpList .Styles}}]){{else}}onDuplicate('{{.Name}}', $v){{end}}; return $this; }
     public function onDuplicateSet{{.Field}}Expr(string $frag, array $binds = []): static { $this->onDuplicateExpr('{{.Name}}', $frag, $binds); return $this; }
 {{- end}}{{end}}
@@ -465,6 +480,7 @@ type phpCol struct {
 	goCol
 	PhpType string
 	Agg     bool // countDistinct/min/max target (engine rule): styles empty or leading with ip, and not json/bytes
+	IsPoint bool
 }
 
 type phpFinder struct {
@@ -511,7 +527,7 @@ func genPHP(m *schema.Manifest, outDir, namespace string) error {
 		}
 		for _, c := range ge.Cols {
 			sc := e.Column(c.Name)
-			pc := phpCol{goCol: c, PhpType: phpType(sc), Agg: (len(sc.Styles) == 0 || sc.Styles[0] == "ip") && sc.Type != "json" && sc.Type != "bytes"}
+			pc := phpCol{goCol: c, PhpType: phpType(sc), Agg: (len(sc.Styles) == 0 || sc.Styles[0] == "ip") && sc.Type != "json" && sc.Type != "bytes", IsPoint: sc.Type == "point"}
 			d.Cols = append(d.Cols, pc)
 			if allowed(sc, "eq") {
 				d.EqCols = append(d.EqCols, pc)

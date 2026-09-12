@@ -35,6 +35,8 @@ PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하�
 
 `yaml`은 YAML 1.2 문서 하나를 저장한다. 출력 값은 공통 값 모델을 사용한다. 매핑 키는 문자열이며 정수 YAML 키는 PHP 배열과의 호환을 위해 십진 문자열로 변환한다. 중복 키, 다중 문서, alias, anchor, 명시적 tag, 유한하지 않은 실수, collection 키, 따옴표 없는 boolean·null·실수 키는 `CODEC_DECODE`를 반환한다. YAML 출력 텍스트는 클라이언트마다 다를 수 있으므로 클라이언트 간 검사는 디코딩 값을 비교한다.
 
+`point`는 스타일이 아닌 컬럼 타입이다. 공개 값은 `[x, y]`이며 Go는 `orm.Point`, PHP는 `array{float,float}`, Rust는 `orm::Point`, TypeScript는 `Point`를 사용한다. `parsePoint`·`parse_point`·`Codec::point`는 `POINT(x y)`와 PostgreSQL 출력 `(x,y)`를 입력받는다. 쓰기 변환은 `POINT(x y)`를 생성한다. 좌표가 두 개가 아니면 `CODEC_DECODE`, 출력 좌표가 유한하지 않으면 `CODEC_ENCODE`를 반환한다.
+
 ## 사례
 - **PHP는 빈 객체와 빈 리스트를 구분하지 못한다**(둘 다 빈 배열). 빈 PHP 배열은 JSON `[]` / serialize `a:0:{}`로 저장되고 세 언어 모두 **빈 리스트**로 읽는다. PHP에서 JSON 스타일에 빈 객체를 저장하려면 `new \stdClass`를 넘긴다(읽을 때는 다시 빈 배열). Go/Rust가 쓴 `{}`를 PHP가 읽으면 빈 배열이다.
 - NULL, 빈 문자열 → `null`.
@@ -42,6 +44,7 @@ PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하�
 - `serialize` 계열: 형식 오류 → `CODEC_DECODE`. `O:`(객체)·`C:`·참조(`R:`/`r:`) → `CODEC_UNSUPPORTED`.
 - 잘못된 공개 업로드 레코드는 `CODEC_ENCODE`, 잘못된 저장 업로드 마커는 `CODEC_DECODE`다. 첫 위치가 아닌 `curlfile` 단계는 `CODEC_UNSUPPORTED`다.
 - YAML 파싱·값 모델 오류는 `CODEC_DECODE`, YAML 인코딩 오류는 `CODEC_ENCODE`다. 첫 위치가 아닌 `yaml` 단계는 `CODEC_UNSUPPORTED`다.
+- 잘못된 point 입력은 `CODEC_DECODE`를 반환한다. NaN 또는 무한 값이 포함된 point 출력은 `CODEC_ENCODE`를 반환한다.
 - 실수: PHP `serialize_precision=-1`과 같은 최단 왕복 표기(`d:1.5;`). 정수 범위를 넘는 실수는 지수 표기.
 - 문자열 길이는 **바이트** 길이(`s:6:"한";`).
 - 압축 바이트는 zlib 구현마다 다를 수 있으므로 `gz`는 **왕복 일치**만 보장한다(다른 언어가 쓴 바이트도 읽는다).

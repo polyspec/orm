@@ -203,6 +203,9 @@ class Db
                     if ($this->driver === 'sqlite' && !empty($b['col_type'])) {
                         $v = $this->sqliteTime($v);
                     }
+                    if (($b['col_type'] ?? '') === 'point' && $v !== null) {
+                        $v = $this->driver === 'postgres' ? Codec::postgresPointText($v) : Codec::pointText($v);
+                    }
                     $out[] = $v;
                     break;
                 case 'secret':

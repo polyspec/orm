@@ -21,7 +21,7 @@ pub use config::OrmConfig;
 pub use db::{ConnectOptions, Db, Exec, Pool, Tx};
 pub use engine::Engine;
 pub use row::{Cells, Src};
-pub use value::Param;
+pub use value::{parse_point, point_text, Param, Point};
 
 /// Every failure surfaces as one of these; engine codes pass through unchanged.
 #[derive(Debug)]

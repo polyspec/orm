@@ -25,6 +25,9 @@ func rustIdent(s string) string {
 }
 
 func rustType(c *schema.Col) string {
+	if c.Type == "point" {
+		return "orm::Point"
+	}
 	if len(appStyles(c)) > 0 {
 		return "serde_json::Value"
 	}
@@ -60,6 +63,8 @@ func rustFrom(t string) string {
 		return "v.as_datetime()"
 	case "chrono::NaiveDate":
 		return "v.as_date()"
+	case "orm::Point":
+		return "orm::parse_point(&v.as_string()).unwrap_or_default()"
 	case "serde_json::Value":
 		return "v.take_json().unwrap_or_default()"
 	}
@@ -81,6 +86,8 @@ func rustRead(t string) string {
 		return "src.datetime(i)?"
 	case "chrono::NaiveDate":
 		return "src.date(i)?"
+	case "orm::Point":
+		return "src.point(i)?"
 	}
 	return "src.string(i)?"
 }
@@ -159,6 +166,8 @@ var rustTmpl = template.Must(template.New("rust").Funcs(template.FuncMap{
 			return f + ".map(|d| serde_json::json!(d.to_string())).unwrap_or(serde_json::Value::Null)"
 		case c.RType == "chrono::NaiveDate":
 			return "serde_json::json!(" + f + ".to_string())"
+		case c.RType == "orm::Point":
+			return "serde_json::json!([" + f + ".0, " + f + ".1])"
 		}
 		return "serde_json::json!(" + f + ")"
 	},

@@ -84,7 +84,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [ ] T7.1 Implement the typed protobuf/Connect path for all four clients and run shared vectors.
 - [x] T7.3 Implement deterministic `ormgen diff` and destructive-change checks.
 - [~] T7.4 Implement `scope` validation and generated methods. Add IR application, tenant-isolation database tests, and TypeScript execution.
-- [~] T7.5 Implemented common `curlfile` and YAML 1.2 codecs with 96 shared vectors and strict invalid-input tests. `point` remains.
+- [x] T7.5 Implement `curlfile`, YAML 1.2, and `point` conversions in Go, PHP, Rust, and TypeScript. Verify `point` DDL and SQL on MySQL, PostgreSQL, and SQLite.
 - [ ] T7.6 Implement server streaming, cancellation, errors, and row ownership checks.
 - [x] T7.7 Implement deterministic static query precompilation and schema-hash checks.
 - [~] T7.8 Implement TypeScript structure and AST checks. Type checking, package build, AST checks, `interface_attach`, and 96 shared codec vectors pass; the complete TypeScript runner and database vector execution remain.
