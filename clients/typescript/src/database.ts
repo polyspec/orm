@@ -51,6 +51,8 @@ export class Db implements Database, Executor {
     this.schemaHash = options.schemaHash;
 	this.planCacheSize = options.planCacheSize ?? 256;
 	if (!Number.isSafeInteger(this.planCacheSize) || this.planCacheSize < 1) throw new OrmError('CONFIG', 'plan cache size must be a positive integer');
+    const statementCacheSize = options.statementCacheSize ?? 256;
+    if (!Number.isSafeInteger(statementCacheSize) || statementCacheSize < 1) throw new OrmError('CONFIG', 'statement cache size must be a positive integer');
     this.compiler = new ConnectPlanCompiler(options.compiler);
     this.aesKey = options.aesKey ?? '';
     this.blindIndexKey = options.blindIndexKey ?? '';
@@ -74,9 +76,9 @@ export class Db implements Database, Executor {
     if (metadata.irVersion !== 1) throw new OrmError('VERSION_MISMATCH', `client IR version 1 but compiler uses ${metadata.irVersion}`);
     return new Db(connection, options);
   }
-  public static mysql(uri: string, options: DatabaseOptions): Promise<Db> { return Db.connect(openMySql(uri), options); }
-  public static postgres(uri: string, options: DatabaseOptions): Promise<Db> { return Db.connect(openPostgres(uri), options); }
-  public static sqlite(path: string, options: DatabaseOptions): Promise<Db> { return Db.connect(openSqlite(path), options); }
+  public static mysql(uri: string, options: DatabaseOptions): Promise<Db> { return Db.connect(openMySql(uri, 10, options.statementCacheSize), options); }
+  public static postgres(uri: string, options: DatabaseOptions): Promise<Db> { return Db.connect(openPostgres(uri, 10, options.statementCacheSize), options); }
+  public static sqlite(path: string, options: DatabaseOptions): Promise<Db> { return Db.connect(openSqlite(path, options.statementCacheSize), options); }
 
   public static async fromConfig(path: string): Promise<Db> {
     const config = await loadConfig(path);
@@ -97,9 +99,9 @@ export class Db implements Database, Executor {
     } : undefined;
     const aesKeys = config.secrets.aes_keys === undefined ? undefined : new Map(Object.entries(config.secrets.aes_keys).map(([version, key]) => [Number(version), key] as const));
     const options = { schemaHash: manifest.schema_hash, compiler, aesKey, blindIndexKey, aesVersion: config.secrets.aes_version, aesKeys, onQuery, planCacheSize: config.db.plan_cache_size, statementCacheSize: config.db.statement_cache_size };
-    if (config.db.driver === 'sqlite') return Db.connect(openSqlite(config.db.dsn), options);
-    if (config.db.driver === 'postgres') return Db.connect(openPostgres(config.db.dsn, config.db.pool), options);
-    return Db.connect(openMySql(mysqlDsn(config.db.dsn, config.db.user, config.db.password), config.db.pool), options);
+    if (config.db.driver === 'sqlite') return Db.connect(openSqlite(config.db.dsn, config.db.statement_cache_size), options);
+    if (config.db.driver === 'postgres') return Db.connect(openPostgres(config.db.dsn, config.db.pool, config.db.statement_cache_size), options);
+    return Db.connect(openMySql(mysqlDsn(config.db.dsn, config.db.user, config.db.password), config.db.pool, config.db.statement_cache_size), options);
   }
 
   public async close(): Promise<void> { await this.connection.close(); }
