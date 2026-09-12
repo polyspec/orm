@@ -87,11 +87,156 @@ func TestPhysicalMigration(t *testing.T) {
 				t.Fatal("repeat application would not be a no-op")
 			}
 			assertPhysicalMigrationLock(t, ctx, db, tc.driver)
+			assertPhysicalConstraintDiff(t, ctx, db, tc.driver)
 			assertPhysicalStructuredPlan(t, ctx, db, tc.driver, want)
 			assertPhysicalRollback(t, ctx, db, tc.driver)
 			assertPhysicalPoint(t, ctx, db, tc.driver)
 			assertPhysicalScope(t, ctx, db, tc.driver)
 		})
+	}
+}
+
+func assertPhysicalConstraintDiff(t *testing.T, ctx context.Context, db *sql.DB, driver string) {
+	t.Helper()
+	q := func(s string) string {
+		if driver == "mysql" {
+			return "`" + s + "`"
+		}
+		return `"` + s + `"`
+	}
+	if _, err := db.ExecContext(ctx, "DROP TABLE IF EXISTS "+q("migration_item")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, "DROP TABLE IF EXISTS "+q("migration_owner")); err != nil {
+		t.Fatal(err)
+	}
+	base := buildPhysicalManifest(t, `erDiagram
+  migration_owner {
+    bigint id PK
+  }
+  migration_item {
+    bigint id PK
+    bigint owner_id FK
+    varchar(20) code "?"
+    text body "?"
+  }
+  migration_owner ||--o{ migration_item : owner_id
+  %% index migration_item (owner_id) old_owner_idx
+  %% unique migration_item (code)
+  %% fulltext migration_item (body)
+`)
+	target := buildPhysicalManifest(t, `erDiagram
+  migration_owner {
+    bigint id PK
+  }
+  migration_item {
+    bigint id PK
+    bigint owner_id FK
+    varchar(40) code "='active'"
+    text body "?"
+  }
+  migration_owner ||--o{ migration_item : owner_id cascade
+  %% index migration_item (code) new_code_idx
+  %% unique migration_item (owner_id, code)
+  %% fulltext migration_item (code, body)
+`)
+	create, err := renderCreateDDL(base, driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := executeMigration(ctx, db, driver, create); err != nil {
+		t.Fatal(err)
+	}
+	forward, err := renderDiff(base, target, driver, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := executeMigration(ctx, db, driver, forward); err != nil {
+		t.Fatalf("apply constraint diff: %v\n%s", err, forward)
+	}
+	assertPhysicalConstraintState(t, ctx, db, driver, true)
+
+	rollback, err := renderDiff(target, base, driver, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := executeMigration(ctx, db, driver, rollback); err != nil {
+		t.Fatalf("rollback constraint diff: %v\n%s", err, rollback)
+	}
+	assertPhysicalConstraintState(t, ctx, db, driver, false)
+	if _, err := db.ExecContext(ctx, "DROP TABLE "+q("migration_item")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, "DROP TABLE "+q("migration_owner")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func assertPhysicalConstraintState(t *testing.T, ctx context.Context, db *sql.DB, driver string, target bool) {
+	t.Helper()
+	indexNames := []string{"old_owner_idx", "uq_migration_item_code", "ft_body"}
+	deleteRule := "RESTRICT"
+	columnLimit := int64(20)
+	nullable := "YES"
+	defaultValue := ""
+	if target {
+		indexNames = []string{"new_code_idx", "uq_migration_item_owner_id_code", "ft_code_body"}
+		deleteRule = "CASCADE"
+		columnLimit = 40
+		nullable = "NO"
+		defaultValue = "active"
+	}
+	for _, name := range indexNames {
+		var count int
+		if driver == "mysql" {
+			if err := db.QueryRowContext(ctx, `SELECT COUNT(DISTINCT INDEX_NAME) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='migration_item' AND INDEX_NAME=?`, name).Scan(&count); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			physicalName := name
+			if strings.HasPrefix(name, "ft_") || strings.HasSuffix(name, "_idx") {
+				physicalName = "migration_item_" + name
+			}
+			if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM pg_indexes WHERE schemaname=current_schema() AND tablename='migration_item' AND indexname=$1`, physicalName).Scan(&count); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if count != 1 {
+			t.Fatalf("%s index %s count=%d", driver, name, count)
+		}
+	}
+	var gotRule string
+	if driver == "mysql" {
+		if err := db.QueryRowContext(ctx, `SELECT DELETE_RULE FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='migration_item' AND CONSTRAINT_NAME='fk_migration_item_owner_id'`).Scan(&gotRule); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		if err := db.QueryRowContext(ctx, `SELECT CASE confdeltype WHEN 'c' THEN 'CASCADE' WHEN 'n' THEN 'SET NULL' ELSE 'RESTRICT' END FROM pg_constraint WHERE conrelid='migration_item'::regclass AND conname='fk_migration_item_owner_id'`).Scan(&gotRule); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if gotRule != deleteRule {
+		t.Fatalf("%s delete rule=%s want=%s", driver, gotRule, deleteRule)
+	}
+	var gotLimit sql.NullInt64
+	var gotNullable string
+	var gotDefault sql.NullString
+	query := `SELECT CHARACTER_MAXIMUM_LENGTH, IS_NULLABLE, COLUMN_DEFAULT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='migration_item' AND COLUMN_NAME='code'`
+	if driver == "postgres" {
+		query = `SELECT character_maximum_length, is_nullable, column_default FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='migration_item' AND column_name='code'`
+	}
+	if err := db.QueryRowContext(ctx, query).Scan(&gotLimit, &gotNullable, &gotDefault); err != nil {
+		t.Fatal(err)
+	}
+	if !gotLimit.Valid || gotLimit.Int64 != columnLimit || gotNullable != nullable {
+		t.Fatalf("%s code metadata limit=%v nullable=%s", driver, gotLimit, gotNullable)
+	}
+	gotDefaultValue := ""
+	if gotDefault.Valid {
+		gotDefaultValue = strings.Trim(strings.Split(gotDefault.String, "::")[0], "'")
+	}
+	if gotDefaultValue != defaultValue {
+		t.Fatalf("%s code default=%q want=%q", driver, gotDefaultValue, defaultValue)
 	}
 }
 

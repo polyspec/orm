@@ -202,3 +202,40 @@ func TestRenderDiffChangesForeignKeyDeleteAction(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderDiffOrdersForeignKeysAndIndexesForMySQL(t *testing.T) {
+	manifest := func(indexName string) *schema.Manifest {
+		parent := &schema.Entity{Name: "account", Table: "account", PK: []string{"id"}, Relations: map[string]*schema.Rel{}, Columns: []*schema.Col{{Name: "id", Type: "i64", Raw: "bigint", PK: true}}}
+		child := &schema.Entity{
+			Name: "thing", Table: "thing", PK: []string{"id"}, Indexes: map[string][]string{indexName: {"account_id"}},
+			Columns: []*schema.Col{
+				{Name: "id", Type: "i64", Raw: "bigint", PK: true},
+				{Name: "account_id", Type: "i64", Raw: "bigint", FK: true, Ref: &schema.Ref{Entity: "account", Column: "id"}},
+			},
+			Relations: map[string]*schema.Rel{"account": {Name: "account", Kind: "one", Target: "account", Left: "account_id", Right: "id"}},
+		}
+		return &schema.Manifest{SchemaHash: indexName, Order: []string{"account", "thing"}, Entities: map[string]*schema.Entity{"account": parent, "thing": child}}
+	}
+	old := manifest("old_account_idx")
+	now := manifest("new_account_idx")
+	now.Entities["thing"].Relations["account"].OnDelete = "cascade"
+
+	sql, err := renderDiff(old, now, "mysql", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	positions := []int{
+		strings.Index(sql, "DROP FOREIGN KEY"),
+		strings.Index(sql, "DROP INDEX `old_account_idx`"),
+		strings.Index(sql, "CREATE INDEX `new_account_idx`"),
+		strings.Index(sql, "ADD CONSTRAINT `fk_thing_account_id`"),
+	}
+	for _, position := range positions {
+		if position < 0 {
+			t.Fatalf("missing ordered operation: %v\n%s", positions, sql)
+		}
+	}
+	if !(positions[0] < positions[1] && positions[1] < positions[2] && positions[2] < positions[3]) {
+		t.Fatalf("invalid operation order: %v\n%s", positions, sql)
+	}
+}
