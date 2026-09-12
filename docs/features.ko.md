@@ -25,7 +25,7 @@
 - `keyset_pagination`: version cursor, 완전한 composite order, validation, forward 및 backward traversal을 제공한다.
 - `transactions`: 명시적 retry, isolation, read-only, savepoint, row lock, timeout, cancellation과 capability error를 제공한다.
 - `precompiled_plans`: 검증된 plan bundle을 로드하고 일치하는 request를 compiler 호출 없이 실행한다.
-- `constraints_and_relations`: CHECK, index, foreign-key, many-to-many, existence, count, soft-delete metadata를 planner와 migration system에서 보존한다.
+- `constraints_and_relations`: CHECK, index, foreign-key, soft-delete metadata를 planner와 migration system에서 보존한다. many-to-many와 relation predicate는 미완료 상태다.
 - `conformance_verification`: 공통 input vector를 Go, PHP, Rust, TypeScript에서 실행하고 database별 normalized result를 비교한다.
 
 make feature-check는 경로를 검사하고 planned가 아닌 기능의 검증 명령을 실제 실행한다. implemented 항목은 test와 paired document가 필요하다. partial과 planned는 미완료 상태다.

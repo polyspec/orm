@@ -108,6 +108,13 @@ func TestBuildExample(t *testing.T) {
 	}
 }
 
+func TestSoftDeleteDirectiveStoresValidatedColumn(t *testing.T) {
+	m := mustBuild(t, "erDiagram\n account {\n bigint id PK\n datetime deleted_at \"?\"\n }\n %% soft_delete account deleted_at\n")
+	if got := m.Entities["account"].SoftDelete; got != "deleted_at" {
+		t.Fatalf("soft delete column = %q, want deleted_at", got)
+	}
+}
+
 func TestAllowedColumnNames(t *testing.T) {
 	for _, n := range []string{"order_number", "get_dt", "condition_type", "withdraw_count", "android_app_url", "origin_price", "brand_name", "seq_no", "is_win"} {
 		if err := checkColumnName(n); err != nil {
