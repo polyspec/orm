@@ -19,6 +19,8 @@ export interface DatabaseOptions {
   aesVersion?: number;
   aesKeys?: ReadonlyMap<number, string>;
   onQuery?: (event: QueryEvent) => void;
+  planCacheSize?: number;
+  statementCacheSize?: number;
 }
 
 function mysqlDsn(dsn: string, user?: string, password?: string): string {
@@ -38,12 +40,16 @@ export class Db implements Database, Executor {
   public readonly compiler: Compiler;
   public readonly schemaHash: string;
   private readonly plans = new Map<string, Plan>();
+  private readonly planOrder: string[] = [];
+  private readonly planCacheSize: number;
   public constructor(
     protected readonly connection: DriverConnection,
     options: DatabaseOptions,
     protected readonly root: Db | undefined = undefined,
   ) {
     this.schemaHash = options.schemaHash;
+	this.planCacheSize = options.planCacheSize ?? 256;
+	if (!Number.isSafeInteger(this.planCacheSize) || this.planCacheSize < 1) throw new OrmError('CONFIG', 'plan cache size must be a positive integer');
     this.compiler = new ConnectPlanCompiler(options.compiler);
     this.aesKey = options.aesKey ?? '';
     this.blindIndexKey = options.blindIndexKey ?? '';
@@ -89,7 +95,7 @@ export class Db implements Database, Executor {
       console.error(`orm ${(event.seconds * 1000).toFixed(3)}ms ${event.sql} ${JSON.stringify(event.binds)}${detail}`);
     } : undefined;
     const aesKeys = config.secrets.aes_keys === undefined ? undefined : new Map(Object.entries(config.secrets.aes_keys).map(([version, key]) => [Number(version), key] as const));
-    const options = { schemaHash: manifest.schema_hash, compiler, aesKey, blindIndexKey, aesVersion: config.secrets.aes_version, aesKeys, onQuery };
+    const options = { schemaHash: manifest.schema_hash, compiler, aesKey, blindIndexKey, aesVersion: config.secrets.aes_version, aesKeys, onQuery, planCacheSize: config.db.plan_cache_size, statementCacheSize: config.db.statement_cache_size };
     if (config.db.driver === 'sqlite') return Db.connect(openSqlite(config.db.dsn), options);
     if (config.db.driver === 'postgres') return Db.connect(openPostgres(config.db.dsn, config.db.pool), options);
     return Db.connect(openMySql(mysqlDsn(config.db.dsn, config.db.user, config.db.password), config.db.pool), options);
@@ -170,6 +176,11 @@ export class Db implements Database, Executor {
     if (cached) return cached;
     const plan = await this.compiler.compile(request);
     this.plans.set(key, plan);
+    this.planOrder.push(key);
+    while (this.planOrder.length > this.planCacheSize) {
+      const oldest = this.planOrder.shift();
+      if (oldest !== undefined) this.plans.delete(oldest);
+    }
     return plan;
   }
 

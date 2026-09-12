@@ -48,7 +48,7 @@ final class Orm
     {
         $cfg = Toml::parseFile($path);
         // docs/config.md is the whole vocabulary; a key outside it is a typo, not an extension (strict, like Go).
-        $known = ['schema' => true, 'db' => ['driver', 'dsn', 'user', 'password', 'pool'], 'secrets' => ['aes', 'aes_env', 'aes_keys', 'aes_version', 'blind_index', 'blind_index_env'], 'engine' => ['wasm', 'cache_dir'], 'ormd' => ['endpoint', 'timeout_ms', 'socket'], 'debug' => ['on_query']];
+        $known = ['schema' => true, 'db' => ['driver', 'dsn', 'user', 'password', 'pool', 'plan_cache_size', 'statement_cache_size'], 'secrets' => ['aes', 'aes_env', 'aes_keys', 'aes_version', 'blind_index', 'blind_index_env'], 'engine' => ['wasm', 'cache_dir'], 'ormd' => ['endpoint', 'timeout_ms', 'socket'], 'debug' => ['on_query']];
         foreach ($cfg as $k => $v) {
             if (!isset($known[$k])) {
                 throw new OrmException(Code::CONFIG, "$path: unknown key $k");
@@ -80,6 +80,11 @@ final class Orm
         $dsn = $db['dsn'] ?? throw new OrmException(Code::CONFIG, "$path: db.dsn is required");
         $user = $db['user'] ?? null;
         $password = $db['password'] ?? null;
+		$planCacheSize = $db['plan_cache_size'] ?? 256;
+		$statementCacheSize = $db['statement_cache_size'] ?? 256;
+		if (!is_int($planCacheSize) || $planCacheSize < 1 || !is_int($statementCacheSize) || $statementCacheSize < 1) {
+			throw new OrmException(Code::CONFIG, "$path: db cache sizes must be positive integers");
+		}
         if (!is_string($dsn) || ($user !== null && !is_string($user)) || ($password !== null && !is_string($password))) {
             throw new OrmException(Code::CONFIG, "$path: db.dsn, db.user and db.password must be strings");
         }
@@ -159,7 +164,7 @@ final class Orm
                     json_encode($binds, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $err === null ? '' : ' ! ' . $err->getMessage()));
             };
         }
-        $config = new Config(socket: $socket, schemaPath: $schemaPath, aesKey: $aesKey, blindIndexKey: $blindIndexKey, aesVersion: $aesVersion, aesKeys: $aesKeys, onQuery: $onQuery, driver: $driver, endpoint: $endpoint, timeoutSeconds: $timeoutMs / 1000);
+        $config = new Config(socket: $socket, schemaPath: $schemaPath, aesKey: $aesKey, blindIndexKey: $blindIndexKey, aesVersion: $aesVersion, aesKeys: $aesKeys, onQuery: $onQuery, driver: $driver, endpoint: $endpoint, timeoutSeconds: $timeoutMs / 1000, planCacheSize: $planCacheSize, statementCacheSize: $statementCacheSize);
         if ($aesKey === '' && $config->hasSecretColumns()) {
             throw new OrmException(Code::CONFIG, "$path: the schema has aes columns; secrets.aes or secrets.aes_env is required");
         }
@@ -254,6 +259,8 @@ final class Config
         public readonly ?string $endpoint = null,
         /** Compiler request timeout in seconds. */
         public readonly float $timeoutSeconds = 5.0,
+        public readonly int $planCacheSize = 256,
+        public readonly int $statementCacheSize = 256,
     ) {
         if (!str_starts_with($schemaPath, '/')) {
             throw new OrmException(Code::CONFIG, 'schemaPath must be absolute');
@@ -273,6 +280,9 @@ final class Config
         if ($aesVersion < 1) {
             throw new OrmException(Code::CONFIG, 'aesVersion must be positive');
         }
+		if ($planCacheSize < 1 || $statementCacheSize < 1) {
+			throw new OrmException(Code::CONFIG, 'cache sizes must be positive');
+		}
     }
 
     private ?array $manifest = null;

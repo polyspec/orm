@@ -26,11 +26,13 @@ import (
 
 // Config is the executor configuration. Paths and secrets are declared, never discovered.
 type Config struct {
-	AESKey        string           // secret "aes" for aes/aes_hex columns
-	BlindIndexKey string           // stable secret "blind_index" for encrypted equality indexes
-	AESVersion    int32            // secret "aes_version" written with AES payloads; zero selects version 1
-	AESKeys       map[int32]string // all declared versions used to decode mixed-version rows
-	OnQuery       func(Event)
+	AESKey             string           // secret "aes" for aes/aes_hex columns
+	BlindIndexKey      string           // stable secret "blind_index" for encrypted equality indexes
+	AESVersion         int32            // secret "aes_version" written with AES payloads; zero selects version 1
+	AESKeys            map[int32]string // all declared versions used to decode mixed-version rows
+	PlanCacheSize      int              // maximum number of compiled plans; zero uses the default
+	StatementCacheSize int              // maximum number of prepared statements; zero uses the default
+	OnQuery            func(Event)
 }
 
 // Event is emitted for every executed statement when Config.OnQuery is set.
@@ -57,11 +59,17 @@ type DB struct {
 	cfg      Config
 	driver   string
 
-	planMu sync.RWMutex
-	plans  map[uint64]*cached // shape key -> compiled plan plus the per-step facts derived from it
-	stmMu  sync.Mutex
-	stmts  map[string]*sql.Stmt
+	planMu    sync.RWMutex
+	plans     map[uint64]*cached // shape key -> compiled plan plus the per-step facts derived from it
+	planOrder []uint64
+	stmMu     sync.Mutex
+	stmts     map[string]*sql.Stmt
+	stmtOrder []string
+	closeOnce sync.Once
+	closeErr  error
 }
+
+const defaultCacheSize = 256
 
 // Open connects with database/sql. The DSN must enable clientFoundRows (needed
 // for optimistic locking) — Open refuses DSNs without it rather than guessing.
@@ -82,6 +90,18 @@ func OpenWithCompiler(ctx context.Context, driver, dsn string, eng *engine.Engin
 }
 
 func open(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler planCompiler, cfg Config) (*DB, error) {
+	if cfg.PlanCacheSize == 0 {
+		cfg.PlanCacheSize = defaultCacheSize
+	}
+	if cfg.StatementCacheSize == 0 {
+		cfg.StatementCacheSize = defaultCacheSize
+	}
+	if cfg.PlanCacheSize < 1 {
+		return nil, &ir.Error{Code: CodeConfig, Msg: "plan cache size must be positive"}
+	}
+	if cfg.StatementCacheSize < 1 {
+		return nil, &ir.Error{Code: CodeConfig, Msg: "statement cache size must be positive"}
+	}
 	sqlDriver, ok := lookupDriver(driver)
 	if !ok {
 		msg := fmt.Sprintf("driver %q is not registered", driver)
@@ -120,6 +140,26 @@ func open(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler 
 		cfg.AESKeys = map[int32]string{cfg.AESVersion: cfg.AESKey}
 	}
 	return &DB{SQL: s, Eng: eng, compiler: compiler, cfg: cfg, driver: driver, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
+}
+
+// Close releases cached statements and the underlying database connection.
+// It is idempotent and returns the first close error, if any.
+func (d *DB) Close() error {
+	d.closeOnce.Do(func() {
+		d.stmMu.Lock()
+		for key, st := range d.stmts {
+			if err := st.Close(); err != nil && d.closeErr == nil {
+				d.closeErr = fmt.Errorf("close statement %q: %w", key, err)
+			}
+		}
+		d.stmts = map[string]*sql.Stmt{}
+		d.stmtOrder = nil
+		d.stmMu.Unlock()
+		if err := d.SQL.Close(); err != nil && d.closeErr == nil {
+			d.closeErr = err
+		}
+	})
+	return d.closeErr
 }
 
 // Drivers beyond MySQL live in their own packages so a MySQL-only program does
@@ -189,6 +229,15 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 		return prev, nil
 	}
 	d.stmts[sqlText] = st
+	d.stmtOrder = append(d.stmtOrder, sqlText)
+	for len(d.stmtOrder) > d.cfg.StatementCacheSize {
+		oldest := d.stmtOrder[0]
+		d.stmtOrder = d.stmtOrder[1:]
+		if old, exists := d.stmts[oldest]; exists {
+			delete(d.stmts, oldest)
+			_ = old.Close()
+		}
+	}
 	d.stmMu.Unlock()
 	return st, nil
 }
@@ -488,6 +537,12 @@ func (d *DB) plan(ctx context.Context, r *Req) (*cached, error) {
 		c = prev
 	} else {
 		d.plans[key] = c
+		d.planOrder = append(d.planOrder, key)
+		for len(d.planOrder) > d.cfg.PlanCacheSize {
+			oldest := d.planOrder[0]
+			d.planOrder = d.planOrder[1:]
+			delete(d.plans, oldest)
+		}
 	}
 	d.planMu.Unlock()
 	return c, nil

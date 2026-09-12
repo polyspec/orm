@@ -14,6 +14,8 @@ final class Transport
     private $fp = null;
     /** @var array<string, array> plans by Req signature (this request only) */
     private array $local = [];
+    /** @var list<string> */
+    private array $localOrder = [];
     private ?CompilerTransport $compiler;
 
     public function __construct(private readonly Config $config)
@@ -118,7 +120,15 @@ final class Transport
     {
         if ($req->error !== null) { throw $req->error; }
         $key = $kind . "\x1f" . $req->sig . "\x1f" . count($req->params);
-        return $this->local[$key] ?? ($this->local[$key] = $this->plan($req->shape($kind)));
+        if (isset($this->local[$key])) return $this->local[$key];
+        $plan = $this->plan($req->shape($kind));
+        $this->local[$key] = $plan;
+        $this->localOrder[] = $key;
+        while (count($this->localOrder) > Orm::config()->planCacheSize) {
+            $oldest = array_shift($this->localOrder);
+            if ($oldest !== null) unset($this->local[$oldest]);
+        }
+        return $plan;
     }
 
     /**
