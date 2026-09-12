@@ -293,7 +293,7 @@ func Diagram() ([]byte, error) {
 		return nil, err
 	}
 	var b bytes.Buffer
-	b.WriteString("# 공통 구성요소\n\n<!-- Generated from contracts/interfaces.json; DO NOT EDIT. -->\n\n```mermaid\nclassDiagram\n")
+	b.WriteString("# Common components\n\n<!-- Generated from contracts/interfaces.json; DO NOT EDIT. -->\n\n```mermaid\nclassDiagram\n")
 	for _, c := range d.Components {
 		fmt.Fprintf(&b, "    class %s {\n", c.ID)
 		keys := make([]string, 0, len(c.Fields))
