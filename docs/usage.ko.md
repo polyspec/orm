@@ -88,6 +88,18 @@ go run ./cmd/ormgen diff --from schema/schema.previous.json --to schema/schema.j
 
 `ormgen migrate`는 실제 스키마를 읽고 `orm_schema_migrations`를 생성한 뒤 계획을 계산하고 지원되는 비파괴 변경을 적용한다. 적용 후 실제 스키마를 검증하고 결과를 기록한다. 같은 `migration-id`를 다시 실행하면 기록된 migration과 실제 스키마가 일치할 때만 no-op이 된다. `--dry-run`은 DB를 변경하지 않고 계획을 출력한다.
 
+구조화된 plan을 생성하고 검토한 동일 plan을 적용한다.
+
+```sh
+go run ./cmd/ormgen plan --from schema/previous.json --to schema/schema.json \
+  --dialect postgres --out migrations/20260912-schema.json
+go run ./cmd/ormgen apply --plan migrations/20260912-schema.json \
+  --dsn "$ORM_DSN" --schema schema/schema.json
+go run ./cmd/ormgen verify --dsn "$ORM_DSN" --schema schema/schema.json
+```
+
+plan에는 source manifest, target hash, 순서가 고정된 작업, destructive 표시, plan checksum이 저장된다. `apply`는 실행 전에 실제 source schema를 검사하며 `--allow-destructive`를 명시하지 않은 destructive 작업을 거부한다.
+
 각 실행은 기본적으로 `migrations/logs` 아래에 JSON 감사 파일도 생성한다. 파일명은 `<UTC 시각>__<migration-id>.json`이며 driver, schema hash, 계획 checksum, 상태, 작업 수, 시작 시각, 종료 시각, 오류 상세를 포함한다. `--log-dir`로 다른 디렉터리를 지정할 수 있다. 적용된 migration에 대응하는 파일 로그가 없거나 DB 기록과 다르면 검증에 실패한다.
 
 ```sh
