@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:0e87274df0661e62bb400c7f5693cbd47ae2e710ab26da6b6d598420d01aa033",
-    "php": "sha256:e641c82ab2d0b7645316b14c19d8882f111793d83a637af089fa491c7b4ddda7",
-    "rust": "sha256:f9d4781a666f05cdc12c4f9da6b7e33d871b097172b765193c93c808d02e85e9",
-    "typescript": "sha256:0e919cea64c4235f5af53349a423ef2044beac1c90c58edaea17321353cdce91"
+    "go": "sha256:bcfb22a7c59bdd7ba5ad8524893ff16c8422f76cd5df91a23bd4f778b53f5b3c",
+    "php": "sha256:05b36d4afd4234b349e5306a5133a5502bd7aa2bbeaece3a0a87f0c9135e8128",
+    "rust": "sha256:9a1ac32a475ba9a4d3bb1342db40c5d95f080f0b8495ca701d0ecbd4062ee6cd",
+    "typescript": "sha256:c4deaa08e6d38ec692d42010ad41762dd3c5babc845ddb39684240d11f018272"
   },
   "prohibited_symbols": [
     "multi_statement"
@@ -897,9 +897,17 @@
     {
       "id": "Query.getsAfter",
       "for": "entity",
-      "inputs": ["Cursor", "PositiveLimit"],
+      "inputs": [
+        "Cursor",
+        "PositiveLimit"
+      ],
       "output": "KeysetPage<Row>",
-      "errors": ["CURSOR_INVALID", "IR_INVALID", "CONFIG", "driver/codec error"],
+      "errors": [
+        "CURSOR_INVALID",
+        "IR_INVALID",
+        "CONFIG",
+        "driver/codec error"
+      ],
       "state": "Uses the typed cursor and stable primary-key order; returns rows and boundary cursors",
       "native": {
         "go": {
@@ -923,9 +931,17 @@
     {
       "id": "Query.getsBefore",
       "for": "entity",
-      "inputs": ["Cursor", "PositiveLimit"],
+      "inputs": [
+        "Cursor",
+        "PositiveLimit"
+      ],
       "output": "KeysetPage<Row>",
-      "errors": ["CURSOR_INVALID", "IR_INVALID", "CONFIG", "driver/codec error"],
+      "errors": [
+        "CURSOR_INVALID",
+        "IR_INVALID",
+        "CONFIG",
+        "driver/codec error"
+      ],
       "state": "Uses the typed cursor and stable primary-key order; returns rows and boundary cursors in request order",
       "native": {
         "go": {
