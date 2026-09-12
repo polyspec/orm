@@ -30,11 +30,13 @@ type FileConfig struct {
 }
 
 type DBConfig struct {
-	Driver   string `toml:"driver"` // mysql (default) | postgres | sqlite — also the engine dialect
-	DSN      string `toml:"dsn"`
-	User     string `toml:"user"`
-	Password string `toml:"password"`
-	Pool     int    `toml:"pool"`
+	Driver             string `toml:"driver"` // mysql (default) | postgres | sqlite — also the engine dialect
+	DSN                string `toml:"dsn"`
+	User               string `toml:"user"`
+	Password           string `toml:"password"`
+	Pool               int    `toml:"pool"`
+	PlanCacheSize      int    `toml:"plan_cache_size"`
+	StatementCacheSize int    `toml:"statement_cache_size"`
 }
 
 // SecretsConfig names the AES and blind-index keys: literally or by environment variable.
@@ -109,6 +111,9 @@ func LoadConfig(path string) (*FileConfig, error) {
 	}
 	if fc.DB.Pool < 0 {
 		return nil, configErr("%s: db.pool must not be negative", path)
+	}
+	if fc.DB.PlanCacheSize < 0 || fc.DB.StatementCacheSize < 0 {
+		return nil, configErr("%s: db cache sizes must not be negative", path)
 	}
 	if fc.Secrets.AES != "" && fc.Secrets.AESEnv != "" {
 		return nil, configErr("%s: secrets.aes and secrets.aes_env are exclusive", path)
@@ -306,7 +311,7 @@ func OpenConfigContext(ctx context.Context, path string) (*DB, error) {
 	for v, k := range keyring.keys {
 		keys[v] = k
 	}
-	cfg := Config{AESKey: key, BlindIndexKey: blindKey, AESVersion: version, AESKeys: keys}
+	cfg := Config{AESKey: key, BlindIndexKey: blindKey, AESVersion: version, AESKeys: keys, PlanCacheSize: fc.DB.PlanCacheSize, StatementCacheSize: fc.DB.StatementCacheSize}
 	if fc.Debug.OnQuery {
 		cfg.OnQuery = LogQuery
 	}
