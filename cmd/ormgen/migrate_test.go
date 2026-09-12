@@ -147,7 +147,7 @@ func TestExecuteMigrationRollsBackSQLiteOnStatementFailure(t *testing.T) {
 	}
 	defer db.Close()
 	err = executeMigration(context.Background(), db, "sqlite", "CREATE TABLE first (id INTEGER); CREATE TABLE broken (id INTEGER;)")
-	if err == nil || !strings.Contains(err.Error(), "transaction rolled back") || !strings.Contains(err.Error(), "operation=2") {
+	if err == nil || !strings.Contains(err.Error(), "rollback issued") || !strings.Contains(err.Error(), "operation=2") {
 		t.Fatalf("error = %v", err)
 	}
 	var count int
