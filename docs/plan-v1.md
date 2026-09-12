@@ -197,7 +197,7 @@ let products = product::query()
 - `engine/schema`: YAML loading, validation, compiled blob, type/style operator table, relation defaults (left=parent PK, right=`<parent>_<pk>`), and `schema_hash`.
 - `engine/ir`: JSON → IR, composite WHERE stream validation, and alias uniqueness.
 - `engine/planner`: step graph (root → joined SELECT → recursive relation IN stages), group_limit subqueries, and assembly specification.
-- `engine/dialect`: `Quote Placeholder Like(ci) Upsert InsertReturning Fulltext RowNumber ForceIndex Now StyleExpr(style, read|write)`. MySQL uses `HEX(AES_ENCRYPT(?,?))`/`AES_DECRYPT(UNHEX(col),?)` and `INET6_ATON/NTOA`; LIKE case behavior comes from column collation. PG/SQLite (S6) use host AES (MySQL key folding, ECB, PKCS7) and `ILIKE`/`LOWER()`.
+- `engine/dialect`: `Quote Placeholder Like(ci) Upsert InsertReturning Fulltext RowNumber ForceIndex Now StyleExpr(style, read|write)`. AES-256-GCM v2 is processed by every client host; MySQL keeps only SQL-side `HEX/UNHEX` and `INET6_ATON/NTOA`; LIKE case behavior comes from column collation.
 - `engine/api`: `Compile(ir) → Plan`, `Explain`, `Tokens`. Pure, stateless, and concurrency-safe.
 - `engine/ffi`: `orm_compile/orm_free` c-shared (Linux amd64/arm64, macOS). `GOMAXPROCS=1` and minimal signal handling.
 - `cmd/ormd`: length-prefixed JSON frames over UDS, stateless and PHP-only.

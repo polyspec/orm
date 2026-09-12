@@ -251,7 +251,13 @@ impl Db {
         let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, dialect: &cfg.db.driver, cache_dir: cfg.engine.cache_dir.as_deref() })?);
         let on_query = cfg.debug.on_query.then(stderr_logger);
         let options = cfg.connect_options()?;
-        let runtime = Config { aes_key, aes_version: cfg.secrets.aes_version.unwrap_or(1), on_query };
+        let aes_version = cfg.secrets.aes_version.unwrap_or(1);
+        let aes_keys = if cfg.secrets.aes_keys.is_empty() {
+            std::collections::BTreeMap::from([(aes_version, aes_key.clone())])
+        } else {
+            cfg.secrets.aes_keys.iter().filter_map(|(version, key)| version.parse::<i32>().ok().map(|v| (v, key.clone()))).collect()
+        };
+        let runtime = Config { aes_key, aes_version, aes_keys, on_query };
         if let Some(ormd) = &cfg.ormd {
             if let Some(endpoint) = &ormd.endpoint {
                 let compiler = Arc::new(ConnectCompiler::new(endpoint, std::time::Duration::from_millis(ormd.timeout_ms))?);

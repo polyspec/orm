@@ -1,7 +1,13 @@
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 컬럼 스타일은 매니페스트 `styles: [...]`에 **쓰기 순서**로 기록된다(`gz_*` → `["serialize","gz"]`: 직렬화한 뒤 압축). 읽기는 역순.
-`aes`·`hex`·`ip`는 SQL 함수(`AES_ENCRYPT/HEX`, `INET6_ATON`)로 처리되어 실행기에 도달하지 않는다(`docs/protocol.md`). 나머지는 **실행기 코덱**이다. Go·PHP·Rust·TypeScript는 같은 96개 벡터 파일을 decode하고 동일한 정규화 값을 생성한다. 결정적 encoding은 TypeScript의 PHP serialize 정수형 실수 한 경우를 제외하고 byte가 같다. JavaScript는 `2`와 `2.0`을 같은 `number`로 표현하므로 TypeScript는 해당 값을 정수로 다시 encode한다.
+`aes`·`hex`·`ip`는 host stage이고 나머지는 실행기 codec이다. Go·PHP·Rust·TypeScript는 같은 인증된 AES v2 형식과 정규화 값을 사용한다. 결정적 encoding은 TypeScript의 PHP serialize 정수형 실수 한 경우를 제외하고 byte가 같다. JavaScript는 `2`와 `2.0`을 같은 `number`로 표현하므로 TypeScript는 해당 값을 정수로 다시 encode한다.
+
+### AES v2
+
+`aes`는 `ORM-AES2\0 || nonce || ciphertext || tag`를 저장한다. nonce는 12바이트 random 값이고 tag는 AES-256-GCM 인증 tag다. associated data는 `ORM-AES2\0`이다. AES key는 SHA-256(`polyspec/orm/aes-256-gcm/v2\0`와 설정 key bytes의 결합)이다. `aes_hex`는 AES 처리 후 uppercase hex를 적용한다.
+
+모든 AES column은 같은 entity의 non-null integer `aes_key_version` column을 가진다. 새 write는 `secrets.aes_version`을 사용한다. read는 row에 저장된 version으로 `secrets.aes_keys[version]`을 선택한다. version이 없거나 인증에 실패하면 작업을 중단한다. runtime은 이전 ECB 형식을 decode하지 않는다.
 
 | 스타일 | 쓰기(값 → 저장 바이트) | 읽기(저장 바이트 → 값) | 기준 |
 |---|---|---|---|

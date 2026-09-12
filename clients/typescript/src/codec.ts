@@ -1,5 +1,5 @@
 import { deflateSync, inflateSync } from 'node:zlib';
-import { createCipheriv, createDecipheriv } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
 import { isScalar, parseDocument, stringify as stringifyYaml, visit } from 'yaml';
 
@@ -16,8 +16,11 @@ export function hostEncode(value: unknown, styles: readonly string[], aesKey: st
     switch (style) {
       case 'aes': {
         if (aesKey === '') throw new CodecError('CODEC_ENCODE', 'secret aes not configured');
-        const cipher = createCipheriv('aes-128-ecb', foldAesKey(aesKey), null);
-        current = Buffer.concat([cipher.update(current), cipher.final()]);
+        const nonce = randomBytes(12);
+        const cipher = createCipheriv('aes-256-gcm', aesV2Key(aesKey), nonce);
+        cipher.setAAD(Buffer.from('ORM-AES2\0'));
+        const encrypted = Buffer.concat([cipher.update(current), cipher.final()]);
+        current = Buffer.concat([Buffer.from('ORM-AES2\0'), nonce, encrypted, cipher.getAuthTag()]);
         textResult = false;
         break;
       }
@@ -42,11 +45,16 @@ export function hostDecode(raw: string | Uint8Array | null, styles: readonly str
       }
       case 'aes': {
         if (aesKey === '') throw new CodecError('CODEC_DECODE', 'secret aes not configured');
-        if (current.length === 0 || current.length % 16 !== 0) throw new CodecError('CODEC_DECODE', `aes: ciphertext length ${current.length}`);
+        const prefix = Buffer.from('ORM-AES2\0');
+        if (!current.subarray(0, prefix.length).equals(prefix)) throw new CodecError('CODEC_DECODE', 'aes: unsupported ciphertext format');
+        if (current.length < prefix.length + 12 + 16) throw new CodecError('CODEC_DECODE', 'aes: truncated v2 envelope');
         try {
-          const decipher = createDecipheriv('aes-128-ecb', foldAesKey(aesKey), null);
-          current = Buffer.concat([decipher.update(current), decipher.final()]);
-        } catch { throw new CodecError('CODEC_DECODE', 'aes: bad padding'); }
+          const nonce = current.subarray(prefix.length, prefix.length + 12);
+          const decipher = createDecipheriv('aes-256-gcm', aesV2Key(aesKey), nonce);
+          decipher.setAAD(prefix);
+          decipher.setAuthTag(current.subarray(-16));
+          current = Buffer.concat([decipher.update(current.subarray(prefix.length + 12, -16)), decipher.final()]);
+        } catch { throw new CodecError('CODEC_DECODE', 'aes: authentication failed'); }
         break;
       }
       case 'ip': return unpackIp(current);
@@ -56,12 +64,10 @@ export function hostDecode(raw: string | Uint8Array | null, styles: readonly str
   return current.toString('utf8');
 }
 
-function foldAesKey(key: string): Buffer {
-  const folded = Buffer.alloc(16);
-  const source = Buffer.from(key);
-  for (let index = 0; index < source.length; index++) folded[index % 16] ^= source[index]!;
-  return folded;
+function aesV2Key(key: string): Buffer {
+  return createHash('sha256').update('polyspec/orm/aes-256-gcm/v2\0', 'utf8').update(key, 'utf8').digest();
 }
+
 
 function packIp(value: string): Buffer {
   const source = value.trim();

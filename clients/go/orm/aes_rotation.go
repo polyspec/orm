@@ -17,6 +17,23 @@ type AESKeyring struct {
 	current int32
 }
 
+func (d *DB) aesKeyring() (AESKeyring, error) {
+	keys := d.cfg.AESKeys
+	if len(keys) == 0 && d.cfg.AESKey != "" {
+		keys = map[int32]string{d.cfg.AESVersion: d.cfg.AESKey}
+	}
+	return NewAESKeyring(keys, d.cfg.AESVersion)
+}
+
+// HostDecodeVersioned decodes an AES value with the row's stored version.
+func HostDecodeVersioned(raw any, styles []string, version int32, keyring AESKeyring) (any, error) {
+	key, ok := keyring.keys[version]
+	if !ok {
+		return nil, fmt.Errorf("aes key version %d is not declared", version)
+	}
+	return hostDecode(raw, styles, key)
+}
+
 // NewAESKeyring validates a non-empty key for every declared version and a
 // current version that is present in the key list.
 func NewAESKeyring(keys map[int32]string, current int32) (AESKeyring, error) {

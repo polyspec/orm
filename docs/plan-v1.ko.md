@@ -197,7 +197,7 @@ let products = product::query()
 - `engine/schema`: YAML 로드·검증·컴파일 blob, 연산자 허용표(타입·스타일별), 관계 기본키(left=부모 PK, right=`<parent>_<pk>`), `schema_hash`.
 - `engine/ir`: JSON → IR, 합성 WHERE 스트림 검증, alias 유일성.
 - `engine/planner`: 단계 그래프(루트 → 조인 포함 SELECT → 관계별 IN 단계 재귀), group_limit 서브쿼리, 조립 명세.
-- `engine/dialect`: `Quote Placeholder Like(ci) Upsert InsertReturning Fulltext RowNumber ForceIndex Now StyleExpr(style, read|write)`. MySQL: `HEX(AES_ENCRYPT(?,?))`/`AES_DECRYPT(UNHEX(col),?)`, `INET6_ATON/NTOA`. `LIKE`는 컬럼 collation으로 ci 결정. PG/SQLite(S6): 호스트측 AES(MySQL 키 폴딩 재현, ECB, PKCS7), `ILIKE`/`LOWER()`.
+- `engine/dialect`: `Quote Placeholder Like(ci) Upsert InsertReturning Fulltext RowNumber ForceIndex Now StyleExpr(style, read|write)`. AES-256-GCM v2는 모든 client host에서 처리한다. MySQL은 SQL-side `HEX/UNHEX`와 `INET6_ATON/NTOA`만 사용한다. `LIKE`는 column collation으로 ci를 결정한다.
 - `engine/api`: `Compile(ir) → Plan`, `Explain`, `Tokens`. 순수 함수, 무상태, 동시성 안전.
 - `engine/ffi`: `orm_compile/orm_free` c-shared(Linux amd64/arm64, macOS). `GOMAXPROCS=1`, 시그널 최소화.
 - `cmd/ormd`: length-prefixed JSON 프레임, UDS, 무상태(PHP 전용).

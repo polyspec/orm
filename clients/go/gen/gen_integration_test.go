@@ -803,11 +803,8 @@ func TestDuplicateKey(t *testing.T) {
 	}
 }
 
-// TestOnQueryEvent: the hook carries the plan id (stable per shape) and masks secret binds.
+// TestOnQueryEvent: the hook carries the plan id and never exposes AES keys.
 func TestOnQueryEvent(t *testing.T) {
-	if testDriver() != "mysql" {
-		t.Skip("secret slots exist only where AES runs in SQL (MySQL)")
-	}
 	db := open(t)
 	ctx := context.Background()
 	var events []orm.Event
@@ -841,7 +838,7 @@ func TestOnQueryEvent(t *testing.T) {
 			}
 		}
 	}
-	if masked == 0 {
-		t.Error("the aes select binds the key: expected $SECRET in the event")
+	if masked != 0 {
+		t.Error("the host AES path must not emit secret binds")
 	}
 }

@@ -1,69 +1,72 @@
 package orm
 
-// Host-side stages for the styles a dialect cannot apply in SQL
-// (docs/dialects.md): aes (MySQL-compatible AES_ENCRYPT), hex (upper-case),
-// ip (INET6_ATON packing). MySQL never reaches these; PostgreSQL uses them
-// for aes/hex, SQLite for all three.
+// Host-side stages for styles that require executor processing. AES uses the
+// authenticated v2 envelope; hex and ip use the common byte representation.
 
 import (
+	"bytes"
 	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"net"
 	"strings"
 )
 
-// mysqlKeyFold reproduces MySQL's AES key derivation for aes-128-ecb: the key
-// bytes are XOR-folded into a 16-byte block.
-func mysqlKeyFold(key string) []byte {
-	k := make([]byte, 16)
-	for i := 0; i < len(key); i++ {
-		k[i%16] ^= key[i]
-	}
-	return k
-}
+var aesV2Prefix = []byte("ORM-AES2\x00")
 
-// AESEncrypt is HEX-free AES_ENCRYPT(plain, key): AES-128-ECB with PKCS7 padding.
+// AESEncrypt returns the authenticated v2 envelope used by every client.
 func AESEncrypt(plain []byte, key string) ([]byte, error) {
-	block, err := aes.NewCipher(mysqlKeyFold(key))
+	block, err := aes.NewCipher(aesV2Key(key))
 	if err != nil {
 		return nil, err
 	}
-	pad := 16 - len(plain)%16
-	buf := make([]byte, len(plain)+pad)
-	copy(buf, plain)
-	for i := len(plain); i < len(buf); i++ {
-		buf[i] = byte(pad)
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
 	}
-	for i := 0; i < len(buf); i += 16 {
-		block.Encrypt(buf[i:i+16], buf[i:i+16])
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, fmt.Errorf("aes: nonce generation: %w", err)
 	}
-	return buf, nil
+	out := append([]byte{}, aesV2Prefix...)
+	out = append(out, nonce...)
+	out = append(out, gcm.Seal(nil, nonce, plain, aesV2Prefix)...)
+	return out, nil
 }
 
-// AESDecrypt is AES_DECRYPT(cipher, key); a wrong key or corrupt data is CODEC_DECODE.
-func AESDecrypt(cipher []byte, key string) ([]byte, error) {
-	if len(cipher) == 0 || len(cipher)%16 != 0 {
-		return nil, codecErr(CodeCodecDecode, "aes: ciphertext length %d", len(cipher))
+// AESDecrypt authenticates and decrypts a v2 envelope.
+func AESDecrypt(ciphertext []byte, key string) ([]byte, error) {
+	if len(ciphertext) < len(aesV2Prefix) || !bytes.HasPrefix(ciphertext, aesV2Prefix) {
+		return nil, codecErr(CodeCodecDecode, "aes: unsupported ciphertext format")
 	}
-	block, err := aes.NewCipher(mysqlKeyFold(key))
+	block, err := aes.NewCipher(aesV2Key(key))
 	if err != nil {
 		return nil, err
 	}
-	buf := make([]byte, len(cipher))
-	for i := 0; i < len(buf); i += 16 {
-		block.Decrypt(buf[i:i+16], cipher[i:i+16])
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
 	}
-	pad := int(buf[len(buf)-1])
-	if pad < 1 || pad > 16 || pad > len(buf) {
-		return nil, codecErr(CodeCodecDecode, "aes: bad padding")
+	start := len(aesV2Prefix)
+	if len(ciphertext) < start+gcm.NonceSize()+gcm.Overhead() {
+		return nil, codecErr(CodeCodecDecode, "aes: truncated v2 envelope")
 	}
-	for _, b := range buf[len(buf)-pad:] {
-		if int(b) != pad {
-			return nil, codecErr(CodeCodecDecode, "aes: bad padding")
-		}
+	nonce := ciphertext[start : start+gcm.NonceSize()]
+	plain, err := gcm.Open(nil, nonce, ciphertext[start+gcm.NonceSize():], aesV2Prefix)
+	if err != nil {
+		return nil, codecErr(CodeCodecDecode, "aes: authentication failed")
 	}
-	return buf[:len(buf)-pad], nil
+	return plain, nil
+}
+
+func aesV2Key(key string) []byte {
+	h := sha256.New()
+	h.Write([]byte("polyspec/orm/aes-256-gcm/v2\x00"))
+	h.Write([]byte(key))
+	return h.Sum(nil)
 }
 
 // packIP is INET6_ATON: 4 bytes for IPv4, 16 for IPv6.
@@ -88,7 +91,7 @@ func unpackIP(b []byte) (string, error) {
 }
 
 // HostEncode applies the executor-side stages of a bound value in write order
-// (also used by bench/seedaes to fill aes columns on databases without AES_ENCRYPT).
+// (also used by bench/seedaes to fill AES columns in database fixtures).
 func HostEncode(v any, styles []string, aesKey string) (any, error) {
 	if v == nil {
 		return nil, nil
