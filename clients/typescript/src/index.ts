@@ -1,6 +1,6 @@
 export type Param = unknown;
 
-export { CodecError, decode as decodeCodec, encode as encodeCodec, parsePoint, pointText } from './codec.js';
+export { CodecError, decode as decodeCodec, encode as encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from './codec.js';
 export type { CodecValue, EncodedValue, Point, UploadFileValue } from './codec.js';
 
 export interface AesRotationColumn {
