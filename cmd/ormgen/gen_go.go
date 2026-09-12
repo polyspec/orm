@@ -128,6 +128,8 @@ type goEntity struct {
 	Aggs              []goCol  // countDistinct/min/max targets: not styled (ip aside), not json/bytes — the engine's rule
 	Preds             []goPred // manifest predicates, by name
 	ParentCols        []goCol  // columns of every entity that has a relation to this one (ifParent<Col>Eq targets)
+	AESVersion        string
+	AESCols           []goCol
 }
 
 // goPred is one `%% predicate` of the entity: <Method>(v…) adds expr(Expr, v…) with Arity binds.
@@ -206,6 +208,12 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 		}
 		if c.Name == e.PK[0] {
 			ge.PKType = gc.Type
+		}
+		if len(c.Styles) > 0 && c.Styles[0] == "aes" {
+			ge.AESCols = append(ge.AESCols, goCol{Name: c.Name, Styles: append([]string(nil), c.Styles...)})
+		}
+		if c.Name == "aes_key_version" {
+			ge.AESVersion = c.Name
 		}
 		if c.Type == "i32" || c.Type == "i64" || c.Type == "f64" || c.Type == "decimal" {
 			ge.Numeric = append(ge.Numeric, gc)
@@ -629,6 +637,21 @@ func {{.Type}}() *{{.Type}}Query { return &{{.Type}}Query{q: orm.NewQ(mustEngine
 
 // Using selects the context and pool or transaction for this query.
 func (q *{{.Type}}Query) Using(ctx context.Context, ex orm.Exec) *{{.Type}}Query { q.binding = orm.NewBinding(ctx, ex); return q }
+
+{{- if .AESCols}}
+// RotateAES re-encrypts every AES column and updates aes_key_version in one transaction.
+func (q *{{.Type}}Query) RotateAES(targetVersion int32, keyring orm.AESKeyring) (int, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return 0, err }
+	return ex.DB().RotateAESRows(ctx, ex, orm.AESRotationSpec{
+		Table: {{printf "%q" .Table}}, PrimaryKey: {{printf "%q" .PK}}, VersionColumn: {{printf "%q" .AESVersion}},
+		Columns: []orm.AESRotationColumn{
+{{- range .AESCols}}
+			{Name: {{printf "%q" .Name}}, Styles: {{styleList .Styles}}},
+{{- end}}
+		},
+	}, targetVersion, keyring)
+}
+{{- end}}
 
 // Using selects the context and pool or transaction for this loaded row.
 func (r *{{.Type}}Row) Using(ctx context.Context, ex orm.Exec) *{{.Type}}Row { r.Binding = orm.NewBinding(ctx, ex); return r }
