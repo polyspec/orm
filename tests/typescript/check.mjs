@@ -18,6 +18,7 @@ const query = declarations.get('AuthorQuery');
 const methods = query.members.filter(ts.isMethodDeclaration).map(node => node.name.getText(ast));
 const required = ['using', 'serviceSeqEq', 'isCloseEq', 'isDisplayEq', 'isAlldayEq', 'and', 'or', 'relation', 'get', 'gets', 'getCount'];
 for (const name of required) if (!methods.includes(name)) throw new Error(`${file}: AuthorQuery missing method ${name}`);
+if (!methods.includes('scope')) throw new Error(`${file}: AuthorQuery missing method scope`);
 const positions = required.map(name => methods.indexOf(name));
 if (positions.some((position, i) => i > 0 && position <= positions[i - 1])) throw new Error(`${file}: method order differs from the common query flow`);
 if (!declarations.has('Author') || !ts.isFunctionDeclaration(declarations.get('Author'))) throw new Error(`${file}: missing Author factory`);
