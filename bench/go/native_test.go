@@ -58,10 +58,27 @@ type battle struct {
 }
 
 func scan(rows *sql.Rows, b *battle) error {
-	return rows.Scan(&b.Seq, &b.Name, &b.CreatedTs, &b.UpdatedTs, &b.IsClose, &b.IsDisplay, &b.DisplayStart, &b.DisplayEnd,
+	if err := rows.Scan(&b.Seq, &b.Name, &b.CreatedTs, &b.UpdatedTs, &b.IsClose, &b.IsDisplay, &b.DisplayStart, &b.DisplayEnd,
 		&b.IsAllday, &b.TargetTeamPlayerCount, &b.SuccessCount, &b.PlayerCount, &b.ReadCount, &b.CoverURL, &b.UserSeq,
 		&b.ServiceSeq, &b.ServiceModuleSeq, &b.ServiceMemberSeq, &b.StartDt, &b.EndDt, &b.UUID, &b.IsSinglePlay, &b.LikeCount,
-		&b.Email, &b.Phone, &b.Price, &b.IP)
+		&b.Email, &b.Phone, &b.Price, &b.IP); err != nil {
+		return err
+	}
+	keyring, err := orm.NewAESKeyring(map[int32]string{1: "bench-salt"}, 1)
+	if err != nil {
+		return err
+	}
+	for name, value := range map[string]*sql.NullString{"aes_hex_email": &b.Email, "aes_hex_phone": &b.Phone} {
+		if !value.Valid {
+			continue
+		}
+		plain, err := orm.HostDecodeVersioned(value.String, []string{"aes", "hex"}, 1, keyring)
+		if err != nil {
+			return fmt.Errorf("native %s decode: %w", name, err)
+		}
+		value.String = plain.(string)
+	}
+	return nil
 }
 
 // stmt caches prepared statements per SQL text (one round trip per query).
