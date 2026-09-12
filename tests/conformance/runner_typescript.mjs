@@ -203,7 +203,7 @@ try {
   await run('write_cycle', async () => {
     const created = await db.transaction(tx => Battle().setName('conf-write').setUserSeq(1).setServiceSeq(999).setServiceModuleSeq(1).setServiceMemberSeq(1).setStartDt(dt('2026-06-01 00:00:00')).setEndDt(dt('2026-12-31 00:00:00')).setAesHexEmail('w@example.com').using(tx).insert());
     maskRows(created.getUpdatedTs(), created.getSeq()); created.setName('conf-write-2').setLikeCount(5); await created.using(db).updateOptimistic();
-    const again = await Battle().using(db).oneBySeq(created.getSeq()); created.setName('stale'); let stale;
+    const again = await Battle().using(db).getBySeq(created.getSeq()); created.setName('stale'); let stale;
     try { await created.using(db).updateOptimistic(); } catch (error) { stale = code(error); }
     await again.delete(); return { inserted: created.getSeq() > 0, email: created.getAesHexEmail(), after_update: { name: again.getName(), like_count: again.getLikeCount() }, stale, left: await Battle().seq(created.getSeq()).using(db).getCount() };
   });
@@ -244,7 +244,7 @@ try {
   });
   await run('bulk_update_plus_minus', async () => {
     const row = await db.transaction(tx => fks(Battle().setReadCount(3).setName('conf-bulk')).using(tx).insert()); maskRows(row.getUpdatedTs(), row.getSeq());
-    const read = async () => (await Battle().using(db).oneBySeq(row.getSeq())).getReadCount();
+    const read = async () => (await Battle().using(db).getBySeq(row.getSeq())).getReadCount();
     await Battle().seq(row.getSeq()).plusReadCount(2).using(db).update(); const afterPlus = await read();
     await Battle().seq(row.getSeq()).minusReadCount(10).using(db).update(); const afterMinus = await read();
     await Battle().seq(row.getSeq()).setReadCountExpr('`read_count` * ? + 1', [2]).using(db).update(); const afterExpr = await read();
