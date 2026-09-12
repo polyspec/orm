@@ -796,7 +796,7 @@ impl {{.Type}} {
 
     /// The main statement (kind all) and its binds without executing; secret slots read "$SECRET".
     pub async fn sql(&mut self) -> Result<db::Sql> { let binding = self.binding.clone(); let ex = binding.resolve()?;
-        db::sql(ex, &mut self.q.req, "all")
+        db::sql(ex, &mut self.q.req, "all").await
     }
 
     pub async fn one_by_{{ident .PK}}(&mut self, v: {{.PKType}}) -> Result<Option<{{.Type}}Row>> {

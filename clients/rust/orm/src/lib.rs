@@ -18,6 +18,7 @@ pub mod compiler_proto {
     include!("gen/orm/compiler/v1/orm.compiler.v1.rs");
 }
 pub mod compiler_transport;
+pub mod compiler_bridge;
 
 pub use builder::{Q, W};
 pub use collection::{Collection, Key, Page};
