@@ -682,17 +682,9 @@ class Q
 		$size = 1;
 		while ($size * 2 <= $available) $size *= 2;
 		$unique = array_values($targetPredicate['ps'] ?? []);
-		// predList pads only the tail with the last value. Remove that padding
-		// without collapsing intentional duplicate values in the caller's list.
-		while (count($unique) > 1) {
-			$last = count($unique) - 1;
-			if (($req->params[$unique[$last]] ?? null) !== ($req->params[$unique[$last - 1]] ?? null)) break;
-			array_pop($unique);
-		}
 		$parts = [];
 		for ($offset = 0, $total = count($unique); $offset < $total; $offset += $size) {
 			$chunk = array_values(array_slice($unique, $offset, $size));
-			while (count($chunk) < $size) $chunk[] = $chunk[count($chunk) - 1];
 			$part = $req->copy();
 			$where = $part->ir['where'] ?? null;
 			if ($where === null) throw new OrmException(Code::INTERNAL, 'root IN target disappeared while cloning request');
