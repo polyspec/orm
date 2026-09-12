@@ -20,7 +20,7 @@ Local and [GitHub CI](https://github.com/polyspec/orm/actions/runs/34649545210) 
 | IF-25, IF-26 | Typed keys, duplicate positions, and entries. `interface_typed_keys`. Map/array conversion in every language returns IR_INVALID on key collisions. `interface_nested_keys` checks propagation from nested relation collisions to parent conversion |
 | IF-27 | Declaration comparison for five Page fields, `interface_invalid_page`, and existing pagination vectors |
 | IF-28, IF-30, IF-31 | Configuration, 96 codec cases, AES, hook masking, and statement order |
-| IF-33 | Manifest-based interface and diagram generation, generation drift, structure, and execution checks connected to CI |
+| IF-33 | Manifest-based interface and diagram generation, generation drift, structure, and execution checks connected to `make interface-check`, `make check`, and CI |
 | IF-34 | PHP value argument guards and the dynamic compatibility layer. PHP integration and compatibility checks |
 
 Structure checks compare common methods and stored fields first, then check missing, added, and changed native declarations. A SHA-256 symbol list is fixed in `contracts/interfaces.json`; changing declarations without updating the specification fails. `owners` restricts all fields by role, so updating only the symbol list cannot add arbitrary state fields. Language-version syntax such as PHP's default readonly setter form is normalized; explicit access changes remain visible. Seven source-change counterexamples per language and 165 PHP wire-field/shape counterexamples are checked.
