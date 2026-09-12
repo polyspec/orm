@@ -88,6 +88,28 @@ go run ./cmd/ormgen diff --from schema/schema.previous.json --to schema/schema.j
 
 `ormgen migrate`는 실제 스키마를 읽고 `orm_schema_migrations`를 생성한 뒤 계획을 계산하고 지원되는 비파괴 변경을 적용한다. 적용 후 실제 스키마를 검증하고 결과를 기록한다. 같은 `migration-id`를 다시 실행하면 기록된 migration과 실제 스키마가 일치할 때만 no-op이 된다. `--dry-run`은 DB를 변경하지 않고 계획을 출력한다.
 
+### 2.2 Schema 입력 행렬
+
+아래 명령은 하나의 schema source loader를 사용한다. `<source>`에는 `schema.mmd`, `schema.json`, `ormgen ddl` 또는 `ormgen diff`가 생성한 SQL 파일, `db:<dsn>`을 지정한다. `--driver` 또는 `--dialect`로 database 형식을 선택한다.
+
+| 입력 | DDL | diff SQL | 구조화 plan | database migration |
+|---|---|---|---|---|
+| Mermaid `.mmd` | `ddl --schema` | `diff --from/--to` | `plan --from/--to` | `migrate --schema` |
+| manifest `.json` | `ddl --schema` | `diff --from/--to` | `plan --from/--to` | `migrate --schema` |
+| ORM `.sql` | `ddl --schema` | `diff --from/--to` | `plan --from/--to` | `migrate --schema` |
+| 실제 `db:<dsn>` | `ddl --schema` | `diff --from/--to` | `plan --from/--to` | `migrate --schema` |
+
+```sh
+go run ./cmd/ormgen diff --from 'db:/var/lib/app.sqlite' --to schema/app.mmd \
+  --dialect sqlite --out migrations/20260912-app.sql
+go run ./cmd/ormgen plan --from schema/previous.json --to migrations/20260912-app.sql \
+  --dialect sqlite --migration-id 20260912-app --out migrations/20260912-app.json
+go run ./cmd/ormgen migrate --driver sqlite --dsn /var/lib/app.sqlite \
+  --schema migrations/20260912-app.sql --migration-id 20260912-app
+```
+
+`ormgen ddl`과 `ormgen diff`는 target manifest와 hash를 포함한 `orm-schema-v1` metadata를 추가한다. SQL을 이후 schema 입력으로 사용할 때 이 metadata가 scope, codec style, named predicate, relation option을 보존한다. 이 metadata가 없는 SQL은 `MIGRATION_SOURCE_LOSS`로 실패하며 누락된 ORM metadata를 추정하지 않는다. `db:<dsn>` 입력은 조회만 수행한다. Database 변경은 `migrate` 또는 `apply`로만 실행하며 migration lock, history record, file log, source 검사, 적용 후 검증을 사용한다.
+
 구조화된 plan을 생성하고 검토한 동일 plan을 적용한다.
 
 ```sh
