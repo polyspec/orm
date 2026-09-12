@@ -4,6 +4,7 @@
 use crate::ir::*;
 use crate::value::Param;
 
+#[derive(Clone)]
 pub struct Req {
     pub ir: Request,
     pub params: Vec<Param>,

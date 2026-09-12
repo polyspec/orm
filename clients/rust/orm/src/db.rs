@@ -1477,6 +1477,54 @@ pub async fn write(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<(u64, u6
     Ok((id, affected))
 }
 
+/// Bounds one homogeneous batch while preserving one transaction boundary.
+#[derive(Clone, Copy, Debug)]
+pub struct BatchOptions {
+    pub chunk_size: usize,
+}
+
+impl Default for BatchOptions {
+    fn default() -> Self { Self { chunk_size: 1000 } }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct BatchResult {
+    pub attempted: usize,
+    pub affected: u64,
+    pub inserted: u64,
+}
+
+async fn batch_write_target(ex: &impl Exec, requests: &mut [Req], kind: &str, options: BatchOptions) -> Result<BatchResult> {
+    let mut result = BatchResult::default();
+    for chunk in requests.chunks_mut(options.chunk_size.max(1)) {
+        for request in chunk {
+            result.attempted += 1;
+            let (_, affected) = write(ex, request, kind).await?;
+            result.affected += affected;
+            if kind == "insert" { result.inserted += 1; }
+        }
+    }
+    Ok(result)
+}
+
+/// Executes typed generated requests in one transaction. A transaction
+/// supplied by the caller is reused; a pool executor creates one transaction.
+pub async fn batch_write(ex: &impl Exec, mut requests: Vec<Req>, kind: &str, options: BatchOptions) -> Result<BatchResult> {
+    if !matches!(kind, "insert" | "update" | "delete") {
+        return Err(Error::Config(format!("batch kind {kind:?} is not supported")));
+    }
+    if requests.is_empty() { return Ok(BatchResult::default()); }
+    if ex.tx().is_some() {
+        return batch_write_target(ex, &mut requests, kind, options).await;
+    }
+    let kind = kind.to_owned();
+    ex.db().transaction(|tx| {
+        let mut requests = requests.clone();
+        let kind = kind.clone();
+        async move { batch_write_target(&tx, &mut requests, &kind, options).await }
+    }).await
+}
+
 /// The main statement of a query, rendered but not executed (`sql(&db)`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sql {
