@@ -13,6 +13,7 @@
     "docs:static-check": "node scripts/docs/check.mjs",
     "docs:verify-idempotent": "node scripts/docs/idempotent.mjs",
     "docs:rules-check": "node scripts/docs/rules.mjs",
+    "schema:check": "node scripts/schema/check.mjs",
     "typescript:check": "tsc -p clients/typescript/tsconfig.json --noEmit"
   },
   "devDependencies": {
