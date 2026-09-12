@@ -433,15 +433,14 @@
       "title": "Transaction options",
       "title_ko": "Transaction option",
       "status": "partial",
-      "description": "Expose opt-in retry, isolation, read-only mode, savepoints, row locks, timeout, and cancellation with capability errors.",
-      "description_ko": "명시적 retry, isolation, read-only, savepoint, row lock, timeout, cancellation과 capability error를 제공한다.",
+      "description": "Expose opt-in retry, isolation, read-only mode, savepoints, and row locks with capability errors. Query timeout and cancellation are not public until all clients provide the same behavior.",
+      "description_ko": "명시적 retry, isolation, read-only, savepoint, row lock과 capability error를 제공한다. 모든 client가 같은 동작을 제공할 때까지 query timeout과 cancellation은 공개하지 않는다.",
       "inputs": {
         "type": "TransactionOptions",
         "fields": [
           "retry",
           "isolation",
           "read_only",
-          "timeout",
           "lock"
         ]
       },
