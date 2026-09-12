@@ -23,7 +23,7 @@ const battles = await Battle().using(db).serviceSeq(7).isClose(false)
     .and(w => w.isDisplay(true).or().isAllday(true))
     .relation(User()).orderBySeqDesc().limit(0, 20).gets();
 ```
-The four chains produce the same SQL, binds, and results. `tests/conformance` checks 58 vectors on MySQL, PostgreSQL, and SQLite.
+The four chains produce the same SQL, binds, and results. `tests/conformance` checks the common vectors on MySQL, PostgreSQL, and SQLite.
 
 For a direct finder, the same `getsBy` token is generated in all four clients:
 
@@ -46,8 +46,8 @@ const battles = await Battle().using(db).getsByServiceSeq(7);
 
 ## How it works
 - **Schema**: one hand-written Mermaid `erDiagram` (`schema/*.mmd`) → `ormgen build` → `schema.json` (manifest with `schema_hash`).
-- **Engine** (`engine/`, Go, compiler only): JSON IR → Plan (SQL text + bind slots + positional assembly). Never executes. Plans are value-free and cached per statement shape in every client.
-- **Executors**: Go `database/sql`, PHP `PDO`, Rust `sqlx`, and TypeScript native drivers execute database plans. All clients use Connect and Protobuf to compile plans. Row data remains in the client process.
+- **Engine** (`engine/`, Go, compiler only): JSON IR → Plan (SQL text + bind slots + positional assembly). Never executes. Plans are value-free and cached per statement shape in every client. The default compiler path is Go in-process, Rust WASM, and PHP Unix socket. TypeScript uses the common Connect/Protobuf compiler service.
+- **Executors**: Go `database/sql`, PHP `PDO`, Rust `sqlx`, and TypeScript native drivers execute database plans. Connect/Protobuf is the common compiler service path; it is also TypeScript's default path. Row data remains in the client process.
 - **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.35+ use the same request and result rules (`docs/dialects.md`).
 - **Generated code**: `ormgen gen --lang go|php|rust|typescript` emits typed builders, rows, and relation accessors per entity.
 
@@ -66,6 +66,8 @@ go run ./tests/conformance/check run                                # starts Con
 
 ## Documents
 [**Online documentation**](https://polyspec.github.io/orm/) — static guides, interface diagrams and implementation status, built from `docs/` and deployed through GitHub Pages.
+
+[**한국어 README**](README.ko.md)
 
 [**공통 인터페이스**](docs/interfaces.md) · [구현 대조표](docs/interface-implementation.md) · [자동 검사](tests/interfaces/README.md) — 자료구조·수명·공개 API와 검증 상태.
 
