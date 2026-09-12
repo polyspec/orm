@@ -3671,6 +3671,7 @@
   "clients/go/orm/orm.go::open": "func(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler planCompiler, cfg Config) (*DB, error)",
   "clients/go/orm/orm.go::paramValue": "func(b *plan.BindSlot, r *Req) (any, error)",
   "clients/go/orm/orm.go::parentValues": "func(pr *plan.ParentRef, parents [][]any, params []any) []any",
+  "clients/go/orm/orm.go::relationChunks": "func(st *plan.Step, vals []any, driver string) ([][]any, error)",
   "clients/go/orm/orm.go::runPlan": "func(ctx context.Context, ex Exec, c *cached, r *Req) (*Rows, error)",
   "clients/go/orm/orm.go::runSelect": "func(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req, parentVals []any) ([][]any, error)",
   "clients/go/orm/orm.go::runTx": "func[T any](ctx context.Context, d *DB, fn func(*Tx) (T, error)) (v T, err error)",

@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:3ec728d7c236e2220941d9a045e1fb0eeb6b986974e99e70b23457ed67df8850",
-    "php": "sha256:5a83316ec0aeacb23e6e3d75e720483e9ea7588918b92c5055ac3717926ffa86",
-    "rust": "sha256:f14ea396fb15f8b07c351fcdeca04c2c2cee30494c3138f120e133612bc513cd",
-    "typescript": "sha256:8a2bcc7d4a93f962101f7e6df30bfcc520f624937c0d3a14e63b9950f2e8e2cd"
+    "go": "sha256:3d799ddf714a3b07aad3503b58c4b03bd5893f6a72585f7b09040c8162f58cbc",
+    "php": "sha256:b85ef81e1bc59fd647b84f97afc1435ab77ed5107cb2d3fe2102d6ace8e66ca6",
+    "rust": "sha256:3b671cf0ade0208b8334c02d5bf8ed0e91b9ccb545550658784b72588891d32f",
+    "typescript": "sha256:d916d51b36ede8ba06800913de40bafbf3b337db279a0426972c612e063b4822"
   },
   "prohibited_symbols": [
     "multi_statement"
