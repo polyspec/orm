@@ -23,7 +23,11 @@ use sqlx::{Executor, SqlSafeStr as _, Statement as _, TypeInfo as _};
 
 use crate::builder::Req;
 use crate::collection::Key;
+use crate::compiler_bridge::{plan_from_proto, request_to_proto};
+use crate::compiler_proto::GetMetadataResponse;
+use crate::compiler_transport::CompilerTransport;
 use crate::engine::Engine;
+use crate::ir;
 use crate::plan::{Assemble, BindSlot, Child, ParentRef, Plan, Step};
 use crate::row::{decode_styled, read_cell, read_row, Cells, DriverRow, Src};
 use crate::value::{transform, Param, Val};
@@ -94,10 +98,49 @@ pub enum Pool {
 pub struct Db {
     pub pool: Pool,
     pub engine: Arc<Engine>,
+    compiler: Arc<dyn PlanCompiler>,
     cfg: Arc<Config>,
     plans: Arc<Mutex<HashMap<u64, Arc<Plan>>>>,
     /// PostgreSQL: the server-described parameter types of every statement text run so far.
     pg_types: Arc<Mutex<HashMap<String, Arc<[PgTypeInfo]>>>>,
+}
+
+#[async_trait::async_trait]
+trait PlanCompiler: Send + Sync {
+    async fn compile(&self, request: &ir::Request) -> Result<Plan>;
+    async fn metadata(&self) -> Result<GetMetadataResponse>;
+}
+
+struct TransportPlanCompiler {
+    transport: Arc<dyn CompilerTransport>,
+}
+
+#[async_trait::async_trait]
+impl PlanCompiler for TransportPlanCompiler {
+    async fn compile(&self, request: &ir::Request) -> Result<Plan> {
+        plan_from_proto(self.transport.compile(request_to_proto(request)?).await?)
+    }
+
+    async fn metadata(&self) -> Result<GetMetadataResponse> {
+        self.transport.metadata().await
+    }
+}
+
+struct WasmPlanCompiler {
+    engine: Arc<Engine>,
+}
+
+#[async_trait::async_trait]
+impl PlanCompiler for WasmPlanCompiler {
+    async fn compile(&self, request: &ir::Request) -> Result<Plan> {
+        let body = serde_json::to_vec(request).map_err(|error| Error::internal(error.to_string()))?;
+        let output = self.engine.compile(&body)?;
+        serde_json::from_slice(&output).map_err(|error| Error::internal(error.to_string()))
+    }
+
+    async fn metadata(&self) -> Result<GetMetadataResponse> {
+        Ok(GetMetadataResponse { schema_hash: self.engine.schema_hash.clone(), dialect: self.engine.dialect.clone(), ir_version: 1 })
+    }
 }
 
 /// Rows of a select plan: the main step's rows (MySQL driver rows when the plan has no
@@ -352,15 +395,33 @@ impl Db {
     /// Connects the pool. The driver of `opts` must be the dialect the engine compiles for
     /// (docs/dialects.md): the plans are dialect-specific text.
     pub async fn connect(opts: ConnectOptions, max_connections: u32, engine: Arc<Engine>, cfg: Config) -> Result<Db> {
-        if engine.dialect != opts.driver() {
-            return Err(Error::Config(format!("driver {} but the engine compiles for {}", opts.driver(), engine.dialect)));
+        let compiler: Arc<dyn PlanCompiler> = Arc::new(WasmPlanCompiler { engine: engine.clone() });
+        Self::connect_with_plan_compiler(opts, max_connections, engine, compiler, cfg).await
+    }
+
+    /// Connects the pool and compiles every plan-cache miss through the typed compiler transport.
+    pub async fn connect_with_compiler(opts: ConnectOptions, max_connections: u32, engine: Arc<Engine>, compiler: Arc<dyn CompilerTransport>, cfg: Config) -> Result<Db> {
+        let compiler: Arc<dyn PlanCompiler> = Arc::new(TransportPlanCompiler { transport: compiler });
+        Self::connect_with_plan_compiler(opts, max_connections, engine, compiler, cfg).await
+    }
+
+    async fn connect_with_plan_compiler(opts: ConnectOptions, max_connections: u32, engine: Arc<Engine>, compiler: Arc<dyn PlanCompiler>, cfg: Config) -> Result<Db> {
+        let metadata = compiler.metadata().await?;
+        if metadata.schema_hash != engine.schema_hash {
+            return Err(Error::Engine { code: crate::codes::SCHEMA_HASH_MISMATCH.into(), msg: format!("client schema {} but compiler loaded {}", engine.schema_hash, metadata.schema_hash) });
+        }
+        if metadata.dialect != opts.driver() {
+            return Err(Error::Config(format!("driver {} but the compiler uses {}", opts.driver(), metadata.dialect)));
+        }
+        if metadata.ir_version != 1 {
+            return Err(Error::Engine { code: crate::codes::VERSION_MISMATCH.into(), msg: format!("client IR version 1 but compiler uses {}", metadata.ir_version) });
         }
         let pool = match opts {
             ConnectOptions::MySql(o) => Pool::MySql(MySqlPoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(512)).await?),
             ConnectOptions::Postgres(o) => Pool::Postgres(PgPoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(512)).await?),
             ConnectOptions::Sqlite(o) => Pool::Sqlite(SqlitePoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(512)).await?),
         };
-        Ok(Db { pool, engine, cfg: Arc::new(cfg), plans: Arc::new(Mutex::new(HashMap::new())), pg_types: Arc::new(Mutex::new(HashMap::new())) })
+        Ok(Db { pool, engine, compiler, cfg: Arc::new(cfg), plans: Arc::new(Mutex::new(HashMap::new())), pg_types: Arc::new(Mutex::new(HashMap::new())) })
     }
 
     /// The database this Db talks to (mysql | postgres | sqlite).
@@ -374,7 +435,7 @@ impl Db {
 
     /// Compile (or fetch from cache) the plan for the request's shape. The cache key is
     /// FNV-1a 64 of the IR bytes (`Req::shape_key`), computed without allocating them.
-    pub fn plan(&self, req: &mut Req) -> Result<Arc<Plan>> {
+    pub async fn plan(&self, req: &mut Req) -> Result<Arc<Plan>> {
         if let Some(e) = &req.err {
             return Err(e.error());
         }
@@ -382,8 +443,8 @@ impl Db {
         if let Some(p) = self.plans.lock().unwrap().get(&key) {
             return Ok(p.clone());
         }
-        let body = self.engine.compile(&req.shape())?;
-        let mut plan: Plan = serde_json::from_slice(&body).map_err(|e| Error::internal(e.to_string()))?;
+        req.ir.n_params = req.params.len();
+        let mut plan = self.compiler.compile(&req.ir).await?;
         for st in &mut plan.steps {
             st.plan_id = key;
         }
@@ -892,7 +953,7 @@ impl Exec for Tx {
 /// Run the select plan of a request: the main step, then every relation step.
 pub async fn select(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Rows> {
     req.ir.kind = kind.into();
-    let plan = ex.db().plan(req)?;
+    let plan = ex.db().plan(req).await?;
     run_plan(ex, plan, req).await
 }
 
@@ -955,7 +1016,7 @@ fn first_cell(rows: &[DriverRow]) -> Result<Val> {
 
 pub async fn scalar(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Val> {
     req.ir.kind = kind.into();
-    let plan = ex.db().plan(req)?;
+    let plan = ex.db().plan(req).await?;
     let rows = ex.query(&plan.steps[0], &req.params, Vec::new()).await?;
     first_cell(&rows)
 }
@@ -965,7 +1026,7 @@ pub async fn scalar(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Val> {
 /// column type like any positional row (no codec, no assembly).
 pub async fn raw(ex: &impl Exec, req: &mut Req) -> Result<Vec<indexmap::IndexMap<String, Val>>> {
     req.ir.kind = "raw".into();
-    let plan = ex.db().plan(req)?;
+    let plan = ex.db().plan(req).await?;
     let rows = ex.query(&plan.steps[0], &req.params, Vec::new()).await?;
     let mut out = Vec::with_capacity(rows.len());
     for r in &rows {
@@ -982,7 +1043,7 @@ pub async fn raw(ex: &impl Exec, req: &mut Req) -> Result<Vec<indexmap::IndexMap
 
 pub async fn paginate(ex: &impl Exec, req: &mut Req) -> Result<(Rows, i64)> {
     req.ir.kind = "paginate".into();
-    let plan = ex.db().plan(req)?;
+    let plan = ex.db().plan(req).await?;
     let rows = run_plan(ex, plan.clone(), req).await?;
     let count = plan.steps.iter().find(|s| s.role == "count").expect("paginate plan has a count step");
     let cnt = ex.query(count, &rows.params, Vec::new()).await?;
@@ -995,7 +1056,7 @@ pub async fn paginate(ex: &impl Exec, req: &mut Req) -> Result<(Rows, i64)> {
 /// back as a row (`RETURNING pk`), not from the driver's last insert id.
 pub async fn write(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<(u64, u64)> {
     req.ir.kind = kind.into();
-    let plan = ex.db().plan(req)?;
+    let plan = ex.db().plan(req).await?;
     let st = &plan.steps[0];
     if kind == "insert" && st.sql.contains(" RETURNING ") {
         let rows = ex.query(st, &req.params, Vec::new()).await?;
@@ -1019,9 +1080,9 @@ pub struct Sql {
 }
 
 /// Compiles (or fetches) the plan for `kind` and returns its main step without executing.
-pub fn sql(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Sql> {
+pub async fn sql(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Sql> {
     req.ir.kind = kind.into();
-    let plan = ex.db().plan(req)?;
+    let plan = ex.db().plan(req).await?;
     let st = &plan.steps[0];
     let mut binds = Vec::with_capacity(st.bind_slots.len());
     for b in &st.bind_slots {

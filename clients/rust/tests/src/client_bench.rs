@@ -42,6 +42,6 @@ async fn main() {
     stats("client list100", s);
 
     let mut s = Vec::new();
-    for i in 0..iters { let t = Instant::now(); let mut q = battle::query().service_seq_eq(i as i64).is_close_eq(false).order_by_seq_desc().limit(0, 100); q.q.req.ir.kind = "all".into(); let _ = db.plan(&mut q.q.req).unwrap(); s.push(t.elapsed().as_nanos() as u64); }
+    for i in 0..iters { let t = Instant::now(); let mut q = battle::query().service_seq_eq(i as i64).is_close_eq(false).order_by_seq_desc().limit(0, 100); q.q.req.ir.kind = "all".into(); let _ = db.plan(&mut q.q.req).await.unwrap(); s.push(t.elapsed().as_nanos() as u64); }
     stats("plan cache hit (no db)", s);
 }

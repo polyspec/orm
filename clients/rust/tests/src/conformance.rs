@@ -81,17 +81,19 @@ fn keys(c: &Collection<BattleRow>) -> Value {
 struct Target {
     driver: String,
     dsn: Option<String>,
+    compiler: Option<String>,
 }
 
 impl Target {
     fn parse(args: &[String]) -> Target {
-        let mut t = Target { driver: "mysql".into(), dsn: None };
+        let mut t = Target { driver: "mysql".into(), dsn: None, compiler: None };
         let mut i = 0;
         while i < args.len() {
             match args[i].as_str() {
                 "--driver" => t.driver = args[i + 1].clone(),
                 "--dsn" => t.dsn = Some(args[i + 1].clone()),
-                other => panic!("unknown argument {other}; usage: conformance <wasm> <schema.json> [--driver mysql|postgres|sqlite] [--dsn …]"),
+                "--compiler" => t.compiler = Some(args[i + 1].clone()),
+                other => panic!("unknown argument {other}; usage: conformance <wasm> <schema.json> --compiler <http-endpoint> [--driver mysql|postgres|sqlite] [--dsn …]"),
             }
             i += 2;
         }
@@ -127,7 +129,8 @@ async fn main() {
         log_h.lock().unwrap().push(json!({"sql": sql, "binds": params.iter().map(|p| norm(p, &m)).collect::<Vec<_>>()}));
     });
     let opts = target.connect_opts();
-    let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), on_query: Some(on_query) }).await.expect("connect");
+    let compiler = Arc::new(orm::ConnectCompiler::new(target.compiler.as_deref().expect("--compiler is required"), std::time::Duration::from_secs(5)).expect("compiler"));
+    let db = Db::connect_with_compiler(opts, 4, engine, compiler, Config { aes_key: "bench-salt".into(), on_query: Some(on_query) }).await.expect("connect");
 
     let mut out: Vec<(String, Value)> = Vec::new();
     macro_rules! run {
