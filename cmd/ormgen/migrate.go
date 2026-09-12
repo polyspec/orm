@@ -306,6 +306,31 @@ func readTablesSQLite(db *sql.DB) ([]impTable, error) {
 		if err := idx.Close(); err != nil {
 			return nil, err
 		}
+		fks, err := db.Query("PRAGMA foreign_key_list('" + qname + "')")
+		if err != nil {
+			return nil, err
+		}
+		byID := map[int]int{}
+		for fks.Next() {
+			var id, seq int
+			var target, column, targetColumn, onUpdate, onDelete, match string
+			if err := fks.Scan(&id, &seq, &target, &column, &targetColumn, &onUpdate, &onDelete, &match); err != nil {
+				fks.Close()
+				return nil, err
+			}
+			position, ok := byID[id]
+			if !ok {
+				position = len(t.ForeignKeys)
+				byID[id] = position
+				t.ForeignKeys = append(t.ForeignKeys, impForeignKey{Name: fmt.Sprintf("fk_%s_%d", name, id), Target: target, OnDelete: importDeleteAction(onDelete)})
+			}
+			fk := &t.ForeignKeys[position]
+			fk.Columns = append(fk.Columns, column)
+			fk.TargetColumns = append(fk.TargetColumns, targetColumn)
+		}
+		if err := fks.Close(); err != nil {
+			return nil, err
+		}
 		out = append(out, t)
 	}
 	if err := rows.Err(); err != nil {
