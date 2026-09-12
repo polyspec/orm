@@ -1,5 +1,6 @@
 /bin/
 /dist/
+/clients/typescript/dist/
 /target/
 /bench/rust/target/
 /clients/rust/target/
