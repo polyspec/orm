@@ -27,14 +27,14 @@ aes_version = 2               # current version for new writes and rotation
 1 = "old-key"
 2 = "current-key"
 
-[engine]                    # optional legacy compiler settings
+[engine]                    # Rust native compiler settings
 wasm = "/srv/app/bin/ormengine.wasm"
 cache_dir = "/var/cache/orm"
 
-[ormd]                      # compiler transport
+[ormd]                      # PHP Unix socket or common Connect compiler service
 endpoint = "http://127.0.0.1:8080"
 timeout_ms = 5000
-socket = "/run/orm/ormd.sock" # optional legacy PHP compiler transport
+socket = "/run/orm/ormd.sock" # PHP default compiler transport
 
 [debug]
 on_query = false            # log every statement (sql, binds with secrets masked, duration, plan id)
@@ -45,6 +45,8 @@ Checks at startup (all four): `schema` exists and its `schema_hash` equals the g
 an AES key configuration present when the schema has AES columns; `[db].user/password` only with mysql DSNs (other drivers carry the user in the URL); the compiler dialect and IR version must equal `[db].driver` and the client IR version (`CONFIG` or `VERSION_MISMATCH` otherwise). Go, PHP, Rust, and TypeScript use `[ormd].endpoint` for plan compilation.
 
 `aes`, `aes_env`, and `aes_keys` are mutually exclusive. The single-key forms use version 1. A versioned configuration requires a positive `aes_version`, a non-empty key for that version, and positive integer keys under `[secrets.aes_keys]`. New AES-table rows and updates that assign every AES column store `aes_version` in `aes_key_version`. See [S7](s7.md) for status and rotation operations.
+
+Compiler defaults are language-specific: PHP uses the declared Unix socket, Go uses its in-process compiler, and Rust uses the declared WASM compiler. Connect/Protobuf is the common compiler service path; TypeScript uses it by default. An explicit `[ormd].endpoint` selects Connect/Protobuf where supported.
 
 `fromConfig` opens the configured database; it does not install a default query connection.
 Select it for a root query with Go `Using(ctx, db)`, PHP `using($db)`, Rust `using(&db)`, or TypeScript `using(db)`.
