@@ -1,10 +1,10 @@
-# schema.md — 스키마 소스는 Mermaid erDiagram 하나
+# schema.md — One Mermaid erDiagram is the schema source
 
-사람이 쓰는 파일은 `schema/*.mmd`(Mermaid `erDiagram`)뿐이다. GitHub·IDE·아티팩트에서 그대로 그림으로 렌더되고,
-`ormgen`이 이 파일을 파싱해 관계·kind·인덱스·스타일을 갖춘 **매니페스트(`schema.json`, 생성물)** 를 만든다. 매니페스트는 손으로 편집하지 않는다.
-기존 DB가 있으면 `ormgen import --dsn … --out schema/service.mmd`가 이 파일을 만들어 준다(FK → 관계선, 인덱스 → `%%` 지시문).
+The only human-maintained files are `schema/*.mmd` (Mermaid `erDiagram`). GitHub, IDEs, and build artifacts render them as diagrams,
+and `ormgen` parses them into a **manifest (`schema.json`, a generated file)** containing relations, kinds, indexes, and styles. Do not edit the manifest.
+For an existing database, `ormgen import --dsn … --out schema/service.mmd` creates this file (FKs become relation lines and indexes become `%%` directives).
 
-## 1. 예
+## 1. Example
 
 ```mermaid
 erDiagram
@@ -56,38 +56,38 @@ erDiagram
   %% scope battle service_seq
 ```
 
-## 2. 규칙
+## 2. Rules
 
-### 2.1 컬럼 줄 — `타입 이름 [PK|FK|UK] ["주석"]`
-Mermaid 표준 그대로다. `PK`/`FK`/`UK`는 Mermaid 키워드(`PK, FK`처럼 복수 가능, 여러 컬럼에 `PK`면 복합 PK, 여러 컬럼에 같은 `UK`는 아래 `%% unique`로).
-타입은 DB 타입을 그대로 쓴다(`bigint`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum('a','b')`). 매니페스트가 정규 타입(i64/string/datetime/…)으로 바꾼다.
+### 2.1 Column lines — `type name [PK|FK|UK] ["comment"]`
+This follows Mermaid syntax. `PK`, `FK`, and `UK` are Mermaid keywords; repeated `PK` marks a composite key and repeated `UK` is represented by `%% unique` below.
+Use the database type directly (`bigint`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum('a','b')`). The manifest normalizes it to types such as i64, string, and datetime.
 
-주석 문자열은 공백으로 나눈 **속성 목록**이다. 없으면 NOT NULL, 기본값 없음, 일반 컬럼.
-| 속성 | 의미 |
+The comment string is a space-separated **attribute list**. With no comment, the column is NOT NULL, has no default, and is ordinary.
+| Attribute | Meaning |
 |---|---|
-| `?` | NULL 허용 |
-| `=값` | DEFAULT. `=0`, `='ko'`, `=now`(CURRENT_TIMESTAMP), `=null` |
-| `onupdate` | ON UPDATE CURRENT_TIMESTAMP (`updated_ts`용) |
+| `?` | Nullable |
+| `=value` | DEFAULT, such as `=0`, `='ko'`, `=now` (CURRENT_TIMESTAMP), or `=null` |
+| `onupdate` | ON UPDATE CURRENT_TIMESTAMP (for `updated_ts`) |
 | `auto` | AUTO_INCREMENT |
-| `unsigned` | UNSIGNED (임포터가 채움; 손으로 쓸 땐 생략 가능) |
-| `bool` | tinyint를 bool로 노출 |
-| `lazy` | 기본 SELECT에서 제외(`selectX()`로 옵트인). text/blob 계열은 지정 없어도 lazy |
-| `aes` `hex` `gz` `json` `jsons` `base64` `serialize` `ip` | dataStyle 파이프라인(순서대로 쓰기, 역순 읽기). 컬럼명 접두어(`aes_hex_*`, `gz_*`, `json_*`)와 컬럼명 `ip`에서 자동 추론되므로 보통 생략 |
-| `-> table.column` | FK 대상 명시(관계선 없이 FK만 둘 때). 관계선이 있으면 불필요 |
-| `%…%` 나머지 | 설명(문서용). 속성으로 해석되지 않는 단어는 설명으로 취급 |
+| `unsigned` | UNSIGNED (added by import; optional when written manually) |
+| `bool` | Expose tinyint as bool |
+| `lazy` | Exclude from the default SELECT; opt in with `selectX()`. Text/blob types are lazy by default |
+| `aes` `hex` `gz` `json` `jsons` `base64` `serialize` `ip` | dataStyle pipeline (write in order, read in reverse). Usually inferred from prefixes such as `aes_hex_*`, `gz_*`, `json_*`, and the column name `ip` |
+| `-> table.column` | Explicit FK target when no relation line exists; unnecessary with a relation line |
+| Other `%…%` | Documentation text; words that are not attributes are treated as descriptions |
 
-### 2.2 관계선 — `부모 ||--o{ 자식 : "fk컬럼 (자식측이름 / 부모측이름)"`
-| 표기 | kind | 생성되는 토큰 |
+### 2.2 Relation lines — `parent ||--o{ child : "fk_column (child_name / parent_name)"`
+| Notation | Kind | Generated tokens |
 |---|---|---|
-| `\|\|--o{` (1 : 0..N) | 자식→부모 **one**, 부모→자식 **many** | 자식: `relation<Parent>` / `join<Parent>`, 부모: `relations<Children>` / `join<Children>` |
-| `\|\|--\|\|`, `\|\|--o\|` (1 : 0..1) | 양쪽 **one** | 양쪽 `relation…` |
-| `}o--o{` (N : M) | 직접 지원 안 함 — 조인 테이블을 엔티티로 그린다(`a_match_b` 관례) |
+| `\|\|--o{` (1 : 0..N) | Child→parent **one**, parent→child **many** | Child: `relation<Parent>` / `join<Parent>`; parent: `relations<Children>` / `join<Children>` |
+| `\|\|--\|\|`, `\|\|--o\|` (1 : 0..1) | **one** on both sides | `relation…` on both sides |
+| `}o--o{` (N : M) | Unsupported directly; model a join table as an entity (`a_match_b`) |
 
-라벨: 첫 단어는 자식의 FK 컬럼. 괄호 안 `(자식측 / 부모측)`은 관계 이름 재정의이며 생략 가능.
-이름 기본값: 자식측 = FK 컬럼에서 `_seq` 제거(`service_seq`→`service`, `updated_user_seq`→`updated_user`), 부모측 = 자식 테이블명에서 부모 테이블명 접두어를 떼고 복수형(`battle_item`→`items`, `product_review`→`reviews`, 접두어가 없으면 테이블명 복수형 `battles`).
-같은 부모를 두 번 참조하면(`user_seq`, `updated_user_seq`) 관계선을 두 줄 긋는다. 이름 충돌은 `ormgen`이 에러로 알린다.
+Label: the first word is the child FK column. `(child / parent)` in parentheses overrides relation names and is optional.
+Default names: child side removes `_seq` from the FK (`service_seq`→`service`, `updated_user_seq`→`updated_user`); parent side removes the parent-table prefix from the child table and pluralizes (`battle_item`→`items`, `product_review`→`reviews`, or `battles` without a prefix).
+When the same parent is referenced twice (`user_seq`, `updated_user_seq`), draw two relation lines. `ormgen` reports name collisions as errors.
 
-### 2.3 `%%` 지시문 (Mermaid는 주석으로 무시, ormgen만 읽음)
+### 2.3 `%%` directives (Mermaid ignores them as comments; only ormgen reads them)
 ```
 %% unique   <table> (<col>, …)              # 복합 UNIQUE. 단일 컬럼은 컬럼 줄의 UK로
 %% index    <table> (<col>, …)  [이름]      # 복합 인덱스. 단일 컬럼 인덱스는 FK면 자동, 아니면 여기
@@ -97,26 +97,26 @@ Mermaid 표준 그대로다. `PK`/`FK`/`UK`는 Mermaid 키워드(`PK, FK`처럼 
 %% scope <table> <column>                 # query API에 scope(value) 조건 생성
 ```
 
-### 2.4 생략 가능한 것 (기본 규칙)
-- PK가 `seq`이고 `auto`면 `bigint seq PK "auto"` 한 줄.
-- `created_ts`/`updated_ts`는 이름만으로 타임스탬프 컬럼.
-- `is_*` tinyint는 `bool` 없이도 bool로 노출(임포터 기본; 끄려면 `int` 속성).
-- text/blob/스타일 컬럼은 자동 lazy(`aes_hex_*`만 예외로 기본 포함).
-- FK 컬럼이 `<table>_seq`이고 관계선이 있으면 `-> table.seq` 불필요.
+### 2.4 Optional declarations (default rules)
+- A PK named `seq` with `auto` can be written as `bigint seq PK "auto"`.
+- `created_ts` and `updated_ts` are timestamp columns by name.
+- `is_*` tinyint columns are exposed as bool without `bool`; use `int` to disable this import default.
+- Text, blob, and styled columns are lazy by default; `aes_hex_*` is the exception.
+- `-> table.seq` is unnecessary when an FK is `<table>_seq` and has a relation line.
 
-### 2.5 표준 Mermaid가 못 담는 것과 그 자리 (CREATE문 대체 범위)
-| CREATE문 요소 | 자리 |
+### 2.5 Data outside standard Mermaid and its location (CREATE replacement scope)
+| CREATE element | Location |
 |---|---|
-| 테이블·컬럼·타입·PK/FK/UK·관계·카디널리티 | 표준 Mermaid |
-| NULL/NOT NULL, DEFAULT, AUTO_INCREMENT, ON UPDATE, lazy, 스타일, FK 대상 | 컬럼 주석 문자열(렌더러는 글자로 표시) |
-| 복합 UNIQUE, INDEX(순서 포함), FULLTEXT, 타임스탬프 지정, 재사용 술어 | `%%` 지시문(렌더러는 무시) |
-| FK 참조 동작 | 관계선 라벨 속성 `cascade`/`setnull` (기본 RESTRICT) |
-| 3 DB 방언 차이 | 파일에 없음. 타입 어휘를 고정하고 `ormgen ddl --dialect mysql\|postgres\|sqlite`가 방언별 CREATE문을 생성 |
-| CHECK, 파티션, 콜레이션·엔진 옵션, 뷰·트리거·함수·시퀀스·확장 | 다루지 않음(ORM 범위 밖). 마이그레이션 SQL에 직접 |
+| Tables, columns, types, PK/FK/UK, relations, cardinality | Standard Mermaid |
+| NULL/NOT NULL, DEFAULT, AUTO_INCREMENT, ON UPDATE, lazy, styles, FK target | Column comment string (rendered as text) |
+| Composite UNIQUE, INDEX order, FULLTEXT, timestamps, reusable predicates | `%%` directives (ignored by renderers) |
+| FK actions | `cascade`/`setnull` relation-label attributes (RESTRICT by default) |
+| Three database dialect differences | Not stored in the file; fixed type vocabulary and `ormgen ddl --dialect mysql\|postgres\|sqlite` generate dialect-specific CREATE statements |
+| CHECK, partitions, collation/engine options, views, triggers, functions, sequences, extensions | Unsupported by the ORM; write them in migration SQL |
 
-타입 문자열에 쉼표는 Mermaid 문법상 불가 → `decimal(13_3)`, `enum(a_b_c)`처럼 `_`로 쓴다(ormgen이 해석). 방언별 매핑 규칙표(정규 타입 → DDL)는 `docs/dialects.md`(S6)에 둔다.
+Commas are invalid in Mermaid type strings; use `_` such as `decimal(13_3)` and `enum(a_b_c)`; ormgen interprets them. Dialect mapping from normalized types to DDL is in `docs/dialects.md` (S6).
 
-## 3. 매니페스트 (생성물, `schema.json`)
+## 3. Manifest (generated `schema.json`)
 ```json
 {
   "schema_hash": "…",
@@ -135,9 +135,9 @@ Mermaid 표준 그대로다. `PK`/`FK`/`UK`는 Mermaid 키워드(`PK, FK`처럼 
   }
 }
 ```
-이 파일은 커밋하되 편집하지 않는다. `ormgen validate`가 `.mmd`↔`schema.json`↔라이브 DB 세 방향의 불일치를 에러로 낸다.
+Commit this file but do not edit the generated manifest. `ormgen validate` reports mismatches among `.mmd`, `schema.json`, and the live database.
 
-## 4. 명령
+## 4. Commands
 ```
 ormgen import   --dsn mysql://… --schema service --out schema/service.mmd   # DB → Mermaid (멱등: 라벨의 이름 재정의·주석 속성 보존)
 ormgen build    schema/*.mmd --out schema/schema.json                       # Mermaid → 매니페스트 (검증 포함)
@@ -147,14 +147,14 @@ ormgen gen      --lang php,go,rust                                           # �
 ormgen check    --lang php                                                   # 소스 코드 ↔ 매니페스트 (레거시 이름·expr 컬럼)
 ```
 
-## 5. 검증 에러 (빌드 실패)
-컬럼명 규칙(`_and_/_or_/_with_` 포함, 연산자 접미어로 끝남 `_eq/_gt/…`, 키워드와 동일, `__`), 관계 이름 충돌·예약어, 관계선의 FK 컬럼이 자식 엔티티에 없음, `%% index` 컬럼 미존재, 복합 UK와 컬럼 UK 중복, `-> table.column` 대상 없음, FK 컬럼인데 관계선도 `->`도 없음(경고).
+## 5. Validation errors (build failure)
+Validation covers column naming (`_and_`, `_or_`, `_with_`, operator suffixes such as `_eq` and `_gt`, keywords, and `__`), relation collisions and reserved words, missing child FK columns, missing `%% index` columns, duplicate composite and column UKs, missing `-> table.column` targets, and FK columns without a relation line or `->` target (warning).
 
-## 4. 임포트 (`ormgen import --dsn … [--driver mysql|postgres] --out schema/app.mmd [--tables a,b]`)
-살아 있는 MySQL의 `information_schema`를 읽어 다이어그램을 쓴다. 결정적(테이블 알파벳순·컬럼 ordinal순)이라 바뀐 게 없으면 재실행 diff가 0이다.
-- 타입: `COLUMN_TYPE` 그대로, `unsigned`는 속성으로(`is_*` tinyint는 bool이라 생략), `decimal(13,3)`→`decimal(13_3)`, `enum('a','b')`→`enum(a_b)`.
-- 속성: `?`(NULL), `=값`(`CURRENT_TIMESTAMP*`→`=now`), `onupdate`, `auto`.
-- 관계선: FK 제약이 없어도 `<역할>_<테이블>_seq` 이름으로 부모를 추론(앞 단어를 하나씩 떼며 테이블명과 맞춘다: `updated_user_seq`→`user`).
-- 인덱스: 복합 unique→`%% unique`, fulltext→`%% fulltext`, 복합/비FK 단일 인덱스→`%% index … 이름`, 단일 컬럼 unique→컬럼 줄 `UK`, FK 단일 인덱스는 생략(자동).
-- PostgreSQL(`--driver postgres`, `postgres://…` DSN이면 자동): `information_schema.columns` + `pg_index`를 읽어 같은 다이어그램을 만든다. 타입은 정규 타입으로 되돌려 적는다(`character varying(191)`→`varchar(191)`, `boolean`→`tinyint`, `numeric(p,s)`→`decimal(p,s)`, `timestamp(6)`→`datetime(6)`, `inet`→`varbinary(16)`, `jsonb`→`json`), identity/`nextval`→`auto`, GIN 인덱스→`%% fulltext`. MySQL에만 있는 `unsigned`·`onupdate`는 나오지 않으므로, 같은 DB를 MySQL과 PostgreSQL에서 각각 임포트하면 그 두 속성만 다르다(정규 타입·관계·인덱스는 동일 — 로컬 orm_bench로 확인).
-- `--out`이 이미 있으면 DB가 모르는 사실을 이어받는다: 관계 라벨 재정의 `(child / parent)`, 컬럼 속성 `lazy`/`bool`/`int`/명시 스타일, `%% predicate` 줄. 그 외는 DB가 진실이다.
+## 4. Import (`ormgen import --dsn … [--driver mysql|postgres] --out schema/app.mmd [--tables a,b]`)
+The importer reads MySQL `information_schema` and writes the diagram. It is deterministic (alphabetical tables and ordinal columns), so an unchanged database produces zero diff on repeat.
+- Types use `COLUMN_TYPE`; `unsigned` is an attribute, `is_*` tinyint omits bool, `decimal(13,3)` becomes `decimal(13_3)`, and `enum('a','b')` becomes `enum(a_b)`.
+- Attributes include `?` (NULL), `=value` (`CURRENT_TIMESTAMP*` becomes `=now`), `onupdate`, and `auto`.
+- Relation lines infer the parent from `<role>_<table>_seq` even without an FK constraint, removing leading words until the table matches (`updated_user_seq`→`user`).
+- Indexes use `%% unique` for composite unique, `%% fulltext` for fulltext, `%% index … name` for composite or non-FK single indexes, `UK` on a column for single-column unique, and omit single FK indexes because they are automatic.
+- PostgreSQL (`--driver postgres`, or a `postgres://` DSN) reads `information_schema.columns` and `pg_index` and writes the same diagram. It normalizes types (`character varying(191)`→`varchar(191)`, `boolean`→`tinyint`, `numeric(p,s)`→`decimal(p,s)`, `timestamp(6)`→`datetime(6)`, `inet`→`varbinary(16)`, `jsonb`→`json`), maps identity/`nextval` to `auto`, and maps GIN indexes to `%% fulltext`. MySQL-only `unsigned` and `onupdate` are absent; other normalized types, relations, and indexes remain the same.
+- When `--out` already exists, the importer preserves details unavailable from the database: relation-label overrides `(child / parent)`, `lazy`/`bool`/`int` and explicit column styles, and `%% predicate` lines. The database is authoritative for everything else.
