@@ -1298,8 +1298,8 @@ async fn main() {
         .await
     );
     run!("relation_predicates", async {
-        let exists = service::query().seq_eq(7).has_members(|w| w).using(&db).get_count().await?;
-        let count = service::query().seq_eq(7).count_members_eq(50, |w| w).using(&db).get_count().await?;
+        let exists = service::query().seq(7).has_members(|w| w).using(&db).get_count().await?;
+        let count = service::query().seq(7).count_members_eq(50, |w| w).using(&db).get_count().await?;
         Ok(json!({"exists": exists, "count": count}))
     }.await);
     run!("batch_insert_delete", async {
@@ -1321,9 +1321,10 @@ async fn main() {
         }))
     }.await);
     run!("aes_status", async {
-        let mut keys = BTreeMap::new();
-        keys.insert(1, "bench-salt".to_string());
-        keys.insert(2, "bench-salt-v2".to_string());
+        let keys = BTreeMap::from([
+            (1, "bench-salt".to_string()),
+            (2, "bench-salt-v2".to_string()),
+        ]);
         let keyring = orm::aes_rotation::AesKeyring::new(keys, 1)?;
         let log_len = log.lock().unwrap().len();
         let status = battle::query().using(&db).aes_status(&keyring).await?;
