@@ -23,7 +23,7 @@
 - `parameter_chunking`: database limit에 따라 relation parameter tuple과 큰 root IN 목록을 분할하면서 결과 순서와 relation 조립을 보존한다. 안전하게 분할할 수 없는 root query 형태는 명시적 오류로 거부한다.
 - `batch_writes`: typed insert, upsert, primary-key update, primary-key delete request를 제한된 chunk와 하나의 transaction으로 실행하고 결정적인 count를 반환한다.
 - `keyset_pagination`: version cursor, 완전한 composite order, validation, forward 및 backward traversal을 제공한다.
-- `transactions`: 명시적 retry, isolation, read-only, savepoint, row lock, timeout, cancellation과 capability error를 제공한다.
+- `transactions`: 명시적 retry, isolation, read-only, savepoint, row lock과 capability error를 제공한다. 모든 client가 같은 동작을 제공할 때까지 query timeout과 cancellation은 공개하지 않는다.
 - `precompiled_plans`: 검증된 plan bundle을 로드하고 일치하는 request를 compiler 호출 없이 실행한다.
 - `constraints_and_relations`: CHECK, index, foreign-key, soft-delete, relation existence, relation count, many-to-many through metadata를 planner와 migration system에서 보존한다. 생성 client가 MySQL·PostgreSQL·SQLite에서 선언된 operation을 실행한다.
 - `conformance_verification`: 공통 input vector를 Go, PHP, Rust, TypeScript에서 실행하고 database별 normalized result를 비교한다.
