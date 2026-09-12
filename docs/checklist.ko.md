@@ -87,7 +87,7 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 - [ ] T7.5 `point`, `yaml`, `curlfile` 공통 코덱과 벡터를 구현한다.
 - [ ] T7.6 서버 streaming, 취소, 오류, 행 소유권 검사를 구현한다.
 - [x] T7.7 결정적인 정적 query precompile과 schema-hash 검사를 구현한다.
-- [~] T7.8 TypeScript 구조·AST 검사를 구현했다. 타입 검사, 패키지 빌드, AST 검사와 공통 `interface_attach` 벡터가 통과하며 전체 TypeScript 실행기와 데이터베이스 벡터 실행이 남아 있다.
+- [~] T7.8 TypeScript 구조·AST 검사를 구현했다. 타입 검사, 패키지 빌드, AST 검사, `interface_attach`, 공통 codec 벡터 60개가 통과하며 전체 TypeScript 실행기와 데이터베이스 벡터 실행이 남아 있다.
 - [ ] T7.9 Rust `mysql_async`와 현행 driver 결과를 비교하고 기록한다.
 - [ ] T7.10 `multi_statement` 관계 계획과 결과를 구현·검사한다.
 - [ ] T7.11 Go·PHP typed 직접 스캔과 성능 기준 재측정을 구현한다.

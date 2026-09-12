@@ -1,7 +1,7 @@
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 컬럼 스타일은 매니페스트 `styles: [...]`에 **쓰기 순서**로 기록된다(`gz_*` → `["serialize","gz"]`: 직렬화한 뒤 압축). 읽기는 역순.
-`aes`·`hex`·`ip`는 SQL 함수(`AES_ENCRYPT/HEX`, `INET6_ATON`)로 처리되어 실행기에 도달하지 않는다(`docs/protocol.md`). 나머지는 **실행기 코덱**이며 구현된 Go·PHP·Rust 실행기가 같은 바이트와 값을 생성한다. TypeScript 코덱은 아직 구현하지 않았다.
+`aes`·`hex`·`ip`는 SQL 함수(`AES_ENCRYPT/HEX`, `INET6_ATON`)로 처리되어 실행기에 도달하지 않는다(`docs/protocol.md`). 나머지는 **실행기 코덱**이다. Go·PHP·Rust·TypeScript는 같은 60개 벡터 파일을 decode하고 동일한 정규화 값을 생성한다. 결정적 encoding은 TypeScript의 PHP serialize 정수형 실수 한 경우를 제외하고 byte가 같다. JavaScript는 `2`와 `2.0`을 같은 `number`로 표현하므로 TypeScript는 해당 값을 정수로 다시 encode한다.
 
 | 스타일 | 쓰기(값 → 저장 바이트) | 읽기(저장 바이트 → 값) | 기준 |
 |---|---|---|---|
@@ -14,7 +14,7 @@
 스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵.
 | | Go | Rust | PHP | TypeScript |
 |---|---|---|---|---|
-| 필드 타입 | `any` | `serde_json::Value` (nullable이면 `Option<…>`) | `mixed` (array/스칼라/null) | `unknown` |
+| 필드 타입 | `any` | `serde_json::Value` (nullable이면 `Option<…>`) | `mixed` (array/스칼라/null) | `CodecValue` |
 | 리스트 | `[]any` | `Value::Array` | list 배열 | `unknown[]` |
 | 맵 | `map[string]any` | `Value::Object` (키 정렬) | 연관 배열(삽입 순서) | `Record<string, unknown>` |
 
@@ -36,7 +36,7 @@ PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하�
 `vectors.json`은 `php tests/codec/gen.php`로 생성한다: 스타일별로 값과 저장 바이트(base64). 각 언어 러너는
 1. 저장 바이트를 읽어 정규 JSON(키 정렬)이 `value`와 같은지,
 2. `value`를 써서 `serialize`/`base64`는 바이트가 같은지, `gz`/`json`은 자기 자신과 PHP가 다시 읽어 값이 같은지
-확인한다. DB 왕복은 적합성 벡터(`tests/conformance`, `codec_roundtrip`)가 맡는다: 각 언어가 스타일 컬럼에 쓰고 세 언어가 같은 값을 읽는다.
+확인한다. TypeScript는 같은 파일을 `node tests/typescript/codec-vector.mjs`로 실행한다. DB 왕복은 적합성 벡터(`tests/conformance`, `codec_roundtrip`)가 맡는다: 각 언어가 스타일 컬럼에 쓰고 구현된 언어가 같은 값을 읽는다.
 
 ## 생성 코드
 - 읽기: 실행기가 위치형 행을 읽은 직후 `assemble.columns[].styles`에 따라 셀을 디코드한다(생성 코드는 값을 그대로 받는다).

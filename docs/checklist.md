@@ -87,7 +87,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [ ] T7.5 Implement common `point`, `yaml`, and `curlfile` codecs with shared vectors.
 - [ ] T7.6 Implement server streaming, cancellation, errors, and row ownership checks.
 - [x] T7.7 Implement deterministic static query precompilation and schema-hash checks.
-- [~] T7.8 Implement TypeScript structure and AST checks. Type checking, package build, AST checks, and the shared `interface_attach` vector pass; the complete TypeScript runner and database vector execution remain.
+- [~] T7.8 Implement TypeScript structure and AST checks. Type checking, package build, AST checks, `interface_attach`, and 60 shared codec vectors pass; the complete TypeScript runner and database vector execution remain.
 - [ ] T7.9 Compare Rust `mysql_async` with the current driver using recorded results.
 - [ ] T7.10 Implement and verify the `multi_statement` relation plan.
 - [ ] T7.11 Implement typed direct scans for Go and PHP and rerun the performance gates.

@@ -1,6 +1,9 @@
 export type Param = unknown;
 type Terminal = 'get' | 'gets' | 'count';
 
+export { CodecError, decode as decodeCodec, encode as encodeCodec } from './codec.js';
+export type { CodecValue, EncodedValue } from './codec.js';
+
 export interface AesRotationColumn {
   name: string;
   styles: readonly string[];

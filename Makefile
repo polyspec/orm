@@ -8,7 +8,7 @@ db-test:
 	./scripts/db-test.sh
 
 ts-check:
-	npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs
+	npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs && node tests/typescript/codec-vector.mjs
 
 schema-check:
 	npm run schema:check
