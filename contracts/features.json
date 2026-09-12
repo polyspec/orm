@@ -433,15 +433,16 @@
       "title": "Transaction options",
       "title_ko": "Transaction option",
       "status": "partial",
-      "description": "Expose opt-in retry, isolation, read-only mode, savepoints, and row locks with capability errors. Query timeout and cancellation are not public until all clients provide the same behavior.",
-      "description_ko": "명시적 retry, isolation, read-only, savepoint, row lock과 capability error를 제공한다. 모든 client가 같은 동작을 제공할 때까지 query timeout과 cancellation은 공개하지 않는다.",
+      "description": "Expose opt-in retry, isolation, read-only mode, savepoints, row locks, and timeoutMs with capability errors. PostgreSQL applies timeoutMs as a transaction-local statement timeout; MySQL and SQLite reject it. In-flight cancellation remains language-native.",
+      "description_ko": "명시적 retry, isolation, read-only, savepoint, row lock과 timeoutMs, capability error를 제공한다. PostgreSQL은 timeoutMs를 transaction 로컬 statement timeout으로 적용하고 MySQL·SQLite는 거부한다. 실행 중 cancellation은 언어별 방식을 사용한다.",
       "inputs": {
         "type": "TransactionOptions",
         "fields": [
           "retry",
           "isolation",
           "read_only",
-          "lock"
+          "lock",
+          "timeout_ms"
         ]
       },
       "outputs": {

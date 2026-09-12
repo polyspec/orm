@@ -14,6 +14,7 @@ final class TransactionOptions
         public readonly int $maxAttempts = 3,
         public readonly string $isolation = 'default',
         public readonly bool $readOnly = false,
+        public readonly int $timeoutMs = 0,
     ) {
         if ($this->maxAttempts < 1) {
             throw new OrmException(Code::CONFIG, 'transaction maxAttempts must be at least 1');
@@ -21,6 +22,7 @@ final class TransactionOptions
         if (!in_array($this->isolation, ['default', 'read_uncommitted', 'read_committed', 'repeatable_read', 'serializable'], true)) {
             throw new OrmException(Code::CONFIG, "unsupported transaction isolation {$this->isolation}");
         }
+        if ($this->timeoutMs < 0) throw new OrmException(Code::CONFIG, 'transaction timeout_ms must not be negative');
     }
 }
 
@@ -218,13 +220,20 @@ class Db
     public function transaction(\Closure $fn, ?TransactionOptions $options = null): mixed
     {
         $options ??= new TransactionOptions();
+        if ($options->timeoutMs > 0 && $this->driver !== 'postgres') {
+            throw new OrmException(Code::CAPABILITY_UNSUPPORTED, 'transaction timeout_ms is supported only by postgres');
+        }
         $last = null;
         $attempts = $options->retryDeadlocks ? $options->maxAttempts : 1;
         for ($attempt = 0; $attempt < $attempts; $attempt++) {
-            $this->configureTransaction($options);
+            if ($this->driver !== 'postgres') $this->configureTransaction($options);
             $this->pdo->beginTransaction();
             $tx = new Tx($this);
             try {
+                if ($this->driver === 'postgres') $this->configureTransaction($options);
+                if ($options->timeoutMs > 0) {
+                    $this->pdo->exec('SET LOCAL statement_timeout = ' . $options->timeoutMs);
+                }
                 $v = $fn($tx);
                 $this->pdo->commit();
                 return $v;

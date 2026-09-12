@@ -231,6 +231,45 @@ async fn main() {
             "mysql transaction isolation applies on the transaction connection"
         );
     }
+    if driver == "sqlite" {
+        let timeout = db
+            .transaction_with_options(
+                |_tx| async { Ok::<_, orm::Error>(()) },
+                orm::TransactionOptions {
+                    timeout_ms: 1,
+                    ..Default::default()
+                },
+            )
+            .await;
+        check!(
+            fails,
+            matches!(timeout, Err(ref e) if e.code() == orm::codes::CAPABILITY_UNSUPPORTED),
+            "SQLite transaction timeout capability error"
+        );
+    }
+    if driver == "postgres" {
+        let timeout = db
+            .transaction_with_options(
+                |tx| async move {
+                    battle::query()
+                        .raw("SELECT pg_sleep(0.1)", vec![])
+                        .using(&tx)
+                        .raw_all()
+                        .await
+                        .map(|_| ())
+                },
+                orm::TransactionOptions {
+                    timeout_ms: 1,
+                    ..Default::default()
+                },
+            )
+            .await;
+        check!(
+            fails,
+            timeout.is_err(),
+            "PostgreSQL transaction timeout was enforced"
+        );
+    }
 
     // ---- reads ----
     let b = battle::query()
