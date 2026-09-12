@@ -5,7 +5,7 @@ uds compile pk                     n=20000   mean=   19243ns p50=  17375ns p90= 
 error path: {"error":{"code":"SCHEMA_HASH_MISMATCH","msg":"x"}}
 == per-request connect (non-persistent) x2000 ==
 connect+compile pk+close           n=2000    mean=   50551ns p50=  39125ns p90=  89584ns p99= 167375ns max=  289417ns
-== APCu plan-cache hit path ==
+== Historical APCu plan-cache hit path ==
 xxh3(ir)+apcu_fetch                n=20000   mean=     290ns p50=    250ns p90=    292ns p99=    666ns max=   18292ns
 json_decode(plan 1.9KB)            n=20000   mean=    8641ns p50=   8250ns p90=   8917ns p99=  16875ns max=  108583ns
 == result decode: 100 rows x 20 cols ==

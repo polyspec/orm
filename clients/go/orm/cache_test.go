@@ -29,6 +29,12 @@ func TestStatementCacheEvictsOldestAndCloseIsIdempotent(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
+	db.planMu.RLock()
+	if len(db.plans) != 0 || len(db.planOrder) != 0 {
+		db.planMu.RUnlock()
+		t.Fatal("plan cache was not cleared on close")
+	}
+	db.planMu.RUnlock()
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
