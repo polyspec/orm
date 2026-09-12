@@ -99,10 +99,10 @@ func assertPhysicalMigrationLock(t *testing.T, ctx context.Context, db *sql.DB, 
 	defer holder.Close()
 	if driver == "mysql" {
 		var acquired int
-		if err := holder.QueryRowContext(ctx, "SELECT GET_LOCK(CONCAT('polyspec.orm:', DATABASE()), 0)").Scan(&acquired); err != nil || acquired != 1 {
+		if err := holder.QueryRowContext(ctx, "SELECT GET_LOCK(CONCAT('orm:', LEFT(SHA2(DATABASE(), 256), 60)), 0)").Scan(&acquired); err != nil || acquired != 1 {
 			t.Fatalf("acquire mysql test lock: acquired=%d err=%v", acquired, err)
 		}
-		defer holder.ExecContext(context.Background(), "SELECT RELEASE_LOCK(CONCAT('polyspec.orm:', DATABASE()))")
+		defer holder.ExecContext(context.Background(), "SELECT RELEASE_LOCK(CONCAT('orm:', LEFT(SHA2(DATABASE(), 256), 60)))")
 	} else {
 		if _, err := holder.ExecContext(ctx, "SELECT pg_advisory_lock(hashtext(current_database()), hashtext('polyspec.orm.migration'))"); err != nil {
 			t.Fatal(err)

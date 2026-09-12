@@ -397,7 +397,7 @@ func executeMigration(ctx context.Context, db *sql.DB, driver, text string) erro
 	switch driver {
 	case "mysql":
 		var acquired sql.NullInt64
-		if err := conn.QueryRowContext(ctx, "SELECT GET_LOCK(CONCAT('polyspec.orm:', DATABASE()), 0)").Scan(&acquired); err != nil {
+		if err := conn.QueryRowContext(ctx, "SELECT GET_LOCK(CONCAT('orm:', LEFT(SHA2(DATABASE(), 256), 60)), 0)").Scan(&acquired); err != nil {
 			return fmt.Errorf("MIGRATION_LOCK: mysql GET_LOCK: %w", err)
 		}
 		if !acquired.Valid || acquired.Int64 != 1 {
@@ -405,7 +405,7 @@ func executeMigration(ctx context.Context, db *sql.DB, driver, text string) erro
 		}
 		release = func() error {
 			var released sql.NullInt64
-			if err := conn.QueryRowContext(context.Background(), "SELECT RELEASE_LOCK(CONCAT('polyspec.orm:', DATABASE()))").Scan(&released); err != nil {
+			if err := conn.QueryRowContext(context.Background(), "SELECT RELEASE_LOCK(CONCAT('orm:', LEFT(SHA2(DATABASE(), 256), 60)))").Scan(&released); err != nil {
 				return err
 			}
 			if !released.Valid || released.Int64 != 1 {
@@ -443,7 +443,7 @@ func executeMigration(ctx context.Context, db *sql.DB, driver, text string) erro
 		if rollbackErr != nil || releaseErr != nil {
 			return fmt.Errorf("%w; rollback_error=%v; lock_release_error=%v", base, rollbackErr, releaseErr)
 		}
-		return fmt.Errorf("%w; transaction rolled back", base)
+		return fmt.Errorf("%w; rollback issued", base)
 	}
 	for i, stmt := range splitSQL(text) {
 		if _, err := conn.ExecContext(ctx, stmt); err != nil {
