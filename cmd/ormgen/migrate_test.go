@@ -139,3 +139,22 @@ func TestSplitSQLPreservesQuotedSemicolons(t *testing.T) {
 		t.Fatalf("quoted content lost: %#v", got)
 	}
 }
+
+func TestExecuteMigrationRollsBackSQLiteOnStatementFailure(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	err = executeMigration(context.Background(), db, "CREATE TABLE first (id INTEGER); CREATE TABLE broken (id INTEGER;)")
+	if err == nil || !strings.Contains(err.Error(), "transaction rolled back") || !strings.Contains(err.Error(), "operation=2") {
+		t.Fatalf("error = %v", err)
+	}
+	var count int
+	if err := db.QueryRow(`SELECT count(*) FROM sqlite_master WHERE type='table' AND name='first'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatal("failed migration left first table behind")
+	}
+}

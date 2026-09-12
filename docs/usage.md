@@ -102,6 +102,10 @@ The plan stores the source manifest, target hash, ordered operations, destructiv
 
 Comments are included in the manifest and migration comparison. Use `%% table_comment` and `%% column_comment` in the Mermaid source. The importer reads database comments, and the DDL generator emits dialect-specific comment statements.
 
+Migration statements execute inside one database transaction. On statement failure,
+the runner records the statement number, SQL text, driver error, and rollback result.
+Database engines that implicitly commit DDL retain their engine-specific DDL behavior.
+
 Each execution also writes a JSON audit file under `migrations/logs` by default. The filename is `<UTC timestamp>__<migration-id>.json`; it contains the driver, schema hashes, plan checksum, status, operation count, start time, finish time, and error detail. Use `--log-dir` to select another directory. An applied migration fails verification if no file log matches its database record.
 
 ```sh
