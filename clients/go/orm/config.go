@@ -51,7 +51,8 @@ type EngineConfig struct {
 	CacheDir string `toml:"cache_dir"`
 }
 
-// OrmdConfig is the PHP client's compile daemon; the Go client only validates the path.
+// OrmdConfig declares the optional Connect compiler endpoint used by clients that
+// compile through the shared compiler service.
 type OrmdConfig struct {
 	Endpoint  string `toml:"endpoint"`
 	TimeoutMS int    `toml:"timeout_ms"`
@@ -224,8 +225,8 @@ func OpenConfig(path string) (*DB, error) {
 	return OpenConfigContext(context.Background(), path)
 }
 
-// OpenConfigContext loads orm.toml and uses the declared Connect compiler.
-// A missing endpoint keeps the pre-Connect in-process behavior for compatibility.
+// OpenConfigContext loads orm.toml and uses the declared compiler implementation.
+// Without an endpoint, Go uses its native in-process compiler.
 func OpenConfigContext(ctx context.Context, path string) (*DB, error) {
 	fc, err := LoadConfig(path)
 	if err != nil {
