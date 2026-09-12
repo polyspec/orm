@@ -72,7 +72,7 @@ async fn main() {
     // ---- S6: the driver must be the engine's dialect ----
     let other = if driver == "mysql" { "sqlite" } else { "mysql" };
     let other_dsn = if other == "mysql" { "mysql://root@localhost/x" } else { "sqlite::memory:" };
-    match Db::connect(ConnectOptions::parse(other, other_dsn).unwrap(), 1, engine.clone(), Config { aes_key: String::new(), aes_version: 1, aes_keys: BTreeMap::new(), on_query: None }).await {
+    match Db::connect(ConnectOptions::parse(other, other_dsn).unwrap(), 1, engine.clone(), Config { aes_key: String::new(), blind_index_key: String::new(), aes_version: 1, aes_keys: BTreeMap::new(), on_query: None }).await {
         Err(e) if e.code() == orm::codes::CONFIG
             && e.to_string().contains("driver")
             && e.to_string().contains("compiler uses") => {}
@@ -97,12 +97,14 @@ async fn main() {
         last_plan_h.store(plan_id, Ordering::Relaxed);
         if binds.iter().any(|b| *b == Param::Str("bench-salt".into())) { leaked_h.store(true, Ordering::Relaxed); }
     });
-    let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), aes_version: 1, aes_keys: [(1, "bench-salt".into())].into_iter().collect(), on_query: Some(on_query) }).await.expect("connect");
+    let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), aes_version: 1, aes_keys: [(1, "bench-salt".into())].into_iter().collect(), on_query: Some(on_query) }).await.expect("connect");
 
     // ---- reads ----
     let b = battle::query().using(&db).get_by_seq(42).await.expect("one").expect("row 42");
     check!(fails, b.seq == 42 && b.name == "battle-42" && b.aes_hex_email.as_deref() == Some("user42@example.com"), "one by pk + aes decode");
     check!(fails, b.description.is_none(), "lazy column not loaded by default");
+    let indexed = battle::query().using(&db).gets_by_aes_hex_email("user42@example.com").await.expect("blind index query");
+    check!(fails, indexed.first().map(|row| row.seq) == Some(42), "AES equality uses blind index");
     check!(fails, b.is_close && !b.is_display, "bool coercion (42: closed, not displayed)");
 
     let b2 = battle::query().select_description().seq_eq(42).using(&db).get().await.unwrap().unwrap();
@@ -445,7 +447,7 @@ async fn main() {
     let dir = std::env::temp_dir().join(format!("orm-rust-it-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("tmp dir");
     let (wasm_abs, schema_abs) = (std::path::absolute(&args[1]).unwrap(), std::path::absolute(&args[2]).unwrap());
-    let toml = |schema: &str| format!("schema = {schema:?}\n[db]\ndriver = {driver:?}\ndsn = {dsn:?}\npool = 2\n[secrets]\naes = \"bench-salt\"\n[engine]\nwasm = {:?}\n[debug]\non_query = false\n", wasm_abs);
+    let toml = |schema: &str| format!("schema = {schema:?}\n[db]\ndriver = {driver:?}\ndsn = {dsn:?}\npool = 2\n[secrets]\naes = \"bench-salt\"\nblind_index = \"bench-blind-index\"\n[engine]\nwasm = {:?}\n[debug]\non_query = false\n", wasm_abs);
     let bad = dir.join("relative.toml");
     std::fs::write(&bad, toml("schema/schema.json")).unwrap();
     match Db::from_config(&bad).await {

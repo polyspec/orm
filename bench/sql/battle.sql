@@ -30,6 +30,8 @@ CREATE TABLE battle (
   aes_key_version int NOT NULL DEFAULT 1,
   aes_hex_email varchar(255) NULL,
   aes_hex_phone varchar(255) NULL,
+  email_blind_index char(64) NULL,
+  phone_blind_index char(64) NULL,
   price decimal(13,3) NULL,
   ip varbinary(16) NULL,
   gz_extend blob NULL,
@@ -42,6 +44,8 @@ CREATE TABLE battle (
   KEY ik (service_module_seq, is_close, is_display, is_allday),
   KEY ix_service (service_seq, is_close),
   KEY ix_user (user_seq, is_close),
+  KEY ix_email_blind_index (email_blind_index),
+  KEY ix_phone_blind_index (phone_blind_index),
   FULLTEXT KEY ft_name_description (name, description)
 ) ENGINE=InnoDB;
 
@@ -49,12 +53,14 @@ CREATE TABLE battle (
 SET SESSION cte_max_recursion_depth = 200000;
 INSERT INTO battle (name, description, is_close, is_display, display_start_dt, display_end_dt, is_allday,
   target_team_player_count, success_count, player_count, read_count, cover_url, user_seq, service_seq,
-  service_module_seq, service_member_seq, start_dt, end_dt, uuid, is_single_play, like_count, aes_key_version, aes_hex_email, aes_hex_phone)
+  service_module_seq, service_member_seq, start_dt, end_dt, uuid, is_single_play, like_count, aes_key_version, aes_hex_email, aes_hex_phone, email_blind_index, phone_blind_index)
 WITH RECURSIVE n AS (SELECT 1 AS i UNION ALL SELECT i + 1 FROM n WHERE i < 100000)
 SELECT CONCAT('battle-', i), CONCAT('desc-', i, ' ', REPEAT('x', 200)),
   i % 7 = 0, i % 3 <> 0, '2026-01-01', '2027-01-01', i % 2,
   2, i % 7, i % 11, i % 1000, CONCAT('https://cdn/', i, '.jpg'), i % 5000 + 1, i % 100 + 1,
   i % 10 + 1, i % 5000 + 1, '2026-06-01', '2026-12-31', UUID(), i % 4 = 0, i % 97, 1,
+  NULL,
+  NULL,
   NULL,
   NULL
 FROM n;

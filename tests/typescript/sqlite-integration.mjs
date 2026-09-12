@@ -17,6 +17,7 @@ const options = {
   schemaHash: schema.schema_hash,
   compiler: new ConnectCompiler(endpoint),
   aesKey: 'bench-salt',
+  blindIndexKey: 'bench-blind-index',
   onQuery: event => statements.push({ sql: event.sql, binds: event.binds }),
 };
 const db = await Db[driver](dsn, options);
@@ -26,6 +27,8 @@ try {
   if (count !== expectedCount) throw new Error(`count=${count}, want ${expectedCount}`);
   const row = await Battle().using(db).getBySeq(42);
   if (row?.getSeq() !== 42 || row.getName() !== 'battle-42') throw new Error('single-row assembly failed');
+  const indexed = await Battle().using(db).getByAesHexEmail('user42@example.com');
+  if (indexed?.getSeq() !== 42) throw new Error('AES equality did not use blind index');
   const rows = await Battle().using(db).serviceSeq(7).isClose(false).orderBySeqDesc().limit(0, 5).gets();
   const expectedKeys = expected('list_order_limit').map(entry => entry[0]);
   if (rows.length !== expectedKeys.length || rows.keys().join(',') !== expectedKeys.join(',')) throw new Error(`ordered collection=${rows.keys().join(',')}`);
@@ -87,7 +90,7 @@ if (driver === 'sqlite') {
   const configRoot = await mkdtemp(join(tmpdir(), 'orm-typescript-config-'));
   try {
   const configPath = join(configRoot, 'orm.toml');
-  await writeFile(configPath, `schema = ${JSON.stringify(resolve('schema/schema.json'))}\n[db]\ndriver = "sqlite"\ndsn = ${JSON.stringify(resolve(dsn))}\npool = 1\n[secrets]\naes_version = 2\n[secrets.aes_keys]\n1 = "old-key"\n2 = "bench-salt"\n[ormd]\nendpoint = ${JSON.stringify(endpoint)}\ntimeout_ms = 5000\n`);
+  await writeFile(configPath, `schema = ${JSON.stringify(resolve('schema/schema.json'))}\n[db]\ndriver = "sqlite"\ndsn = ${JSON.stringify(resolve(dsn))}\npool = 1\n[secrets]\nblind_index = "bench-blind-index"\naes_version = 2\n[secrets.aes_keys]\n1 = "old-key"\n2 = "bench-salt"\n[ormd]\nendpoint = ${JSON.stringify(endpoint)}\ntimeout_ms = 5000\n`);
   const configured = await Db.fromConfig(configPath);
   try {
     if (await Battle().using(configured).getCountByServiceSeq(7) !== expected('bound_count_finder')) throw new Error('orm.toml query result differs');

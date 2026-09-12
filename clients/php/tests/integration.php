@@ -35,7 +35,7 @@ $schema = $argv[2] ?? die("schema.json required\n");
 $driver = orm_test_driver();
 $log = [];
 $hooked = [];
-Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver,
+Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index', driver: $driver,
     onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log, &$hooked) { $log[] = orm_norm_sql($sql); $hooked[] = [$binds, $planId, $e]; }));
 $db = orm_open_db($driver, orm_test_dsn());
 check($db->driver() === $driver, 'Db::driver()');
@@ -49,8 +49,9 @@ function check(bool $ok, string $what): void { global $fail; if (!$ok) { $fail++
 $b = Battle::query()->using($db)->getBySeq(42);
 check($b !== null && $b->getSeq() === 42 && $b->getName() === 'battle-42' && $b->getAesHexEmail() === 'user42@example.com', 'one by pk + aes decode');
 check($b->getDescription() === null && $b['name'] === 'battle-42', 'lazy column null by default; ArrayAccess');
+check(Battle::query()->using($db)->getsByAesHexEmail('user42@example.com')->first()?->getSeq() === 42, 'AES equality uses blind index');
 check($b->getIsClose() === true && $b->getIsDisplay() === false, 'bool coercion (42: closed, not displayed)');
-check($b->getMemo('dflt') === 'dflt', 'getX(default) for unknown column');
+check($b->getDescription('dflt') === 'dflt', 'getX(default) for lazy column');
 
 $b2 = Battle::query()->selectDescription()->seq(42)->using($db)->get();
 check(str_starts_with((string) $b2->getDescription(), 'desc-42'), 'select lazy column');
@@ -74,8 +75,8 @@ check(Battle::query()->serviceSeq(7)->using($db)->getCount() === 1000, 'count');
 check(Battle::query()->serviceSeq(7)->using($db)->sumLikeCount() > 0, 'sum');
 
 $cnt = Battle::query()
-    ->join(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))
-    ->leftJoin(User::query()->on(fn(UserWhere $w) => $w->nameContains('user')))
+    ->joinServiceSeqWithSeq(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))
+    ->leftJoinUserSeqWithSeq(User::query()->on(fn(UserWhere $w) => $w->nameContains('user')))
     ->isClose(false)
     ->and(fn(BattleWhere $w) => $w->isDisplay(true)->or()->service(fn(ServiceWhere $s) => $s->seqGt(1000)))
     ->using($db)->getCount();
@@ -86,7 +87,7 @@ check($page->total === 1000 && $page->pages === 100 && count($page->items) === 1
 check(Battle::query()->nameContains('%')->using($db)->getCount() === 0, 'contains escapes %');
 
 // join result access
-$j = Battle::query()->join(Service::query()->where(fn(ServiceWhere $w) => $w->seq(7)))->seq(6)->using($db)->get();
+$j = Battle::query()->joinServiceSeqWithSeq(Service::query()->where(fn(ServiceWhere $w) => $w->seq(7)))->seq(6)->using($db)->get();
 check($j !== null && $j->getService() !== null && $j->getService()->getName() === 'service-7' && $j['service']['name'] === 'service-7', 'joined row access');
 
 $streamed = [];
@@ -100,7 +101,7 @@ check(Battle::query()->serviceSeq(7)->using($db)->getCount() > 0, 'stream cursor
 $streamResult = Battle::query()->serviceSeq(7)->orderBySeqAsc()->limit(0, 4)->using($db)->stream(fn($row): bool => true);
 check($streamResult->state === StreamResult::EXHAUSTED && $streamResult->count === 4, 'stream exhaustion');
 try {
-    Battle::query()->relation(User::query())->using($db)->stream(fn($row): bool => true);
+    Battle::query()->relationUserSeqWithSeq(User::query())->using($db)->stream(fn($row): bool => true);
     check(false, 'relation stream must fail');
 } catch (OrmException $e) {
     check($e->code_ === Code::IR_INVALID, 'relation stream error code');
@@ -116,9 +117,9 @@ try {
 $n0 = count($log);
 $rows = Battle::query()
     ->serviceSeq(7)->orderBySeqAsc()->limit(0, 5)
-    ->relation(User::query())
-    ->relation(Service::query()
-        ->relations(ServiceMember::query()->orderBySeqDesc()->limitPerParent(3)->keyByUserSeq()->dropChildKey()))
+    ->relationUserSeqWithSeq(User::query())
+    ->relationServiceSeqWithSeq(Service::query()
+        ->relationsSeqWithServiceSeqToServiceMember(ServiceMember::query()->orderBySeqDesc()->limitPerParent(3)->keyByUserSeq()->dropChildKey()))
     ->using($db)->gets();
 check(count($rows) === 5 && count($log) - $n0 === 4, 'relation statements: main, user, service, members');
 foreach ($rows as $b) {
@@ -130,19 +131,19 @@ foreach ($rows as $b) {
 }
 $rows = Battle::query()
     ->seqIn([7, 8, 14])->orderBySeqAsc()
-    ->relation(User::query()->ifParentIsCloseEq(true)->relations(Battle::query()->orderBySeqAsc()->limitPerParent(2)))
-    ->join(Service::query()->relations(ServiceModule::query()))
+    ->relationUserSeqWithSeq(User::query()->ifParentIsCloseEq(true)->relationsSeqWithUserSeqToBattle(Battle::query()->orderBySeqAsc()->limitPerParent(2)))
+    ->joinServiceSeqWithSeq(Service::query()->relationsSeqWithServiceSeqToServiceModule(ServiceModule::query()))
     ->using($db)->gets();
 check($rows[7]->getUser() !== null && $rows[14]->getUser() !== null && $rows[8]->getUser() === null, 'if_parent loads only closed battles\' users');
 check(count($rows[7]->getUser()->getBattles()) === 2, 'nested many under one, limit_per_parent');
 check(count($rows[8]->getService()->getModules()) === 1 && $rows[8]->getService()->getModules()->first()->getServiceSeq() === $rows[8]->getServiceSeq(), 'relation off a join');
 $n0 = count($log);
-check(count(Battle::query()->seq(0)->relation(User::query())->using($db)->gets()) === 0 && count($log) - $n0 === 1, 'no parents → relation step skipped');
-$one = Battle::query()->seq(42)->relation(Service::query()->relations(ServiceMember::query()->limitPerParent(1)))->using($db)->get();
+check(count(Battle::query()->seq(0)->relationUserSeqWithSeq(User::query())->using($db)->gets()) === 0 && count($log) - $n0 === 1, 'no parents → relation step skipped');
+$one = Battle::query()->seq(42)->relationServiceSeqWithSeq(Service::query()->relationsSeqWithServiceSeqToServiceMember(ServiceMember::query()->limitPerParent(1)))->using($db)->get();
 check($one !== null && count($one->getService()->getMembers()) === 1, 'one + relation');
-$m = ServiceMember::query()->serviceSeq(7)->orderBySeqAsc()->limit(0, 2)->relation(User::query()->flatten())->using($db)->gets()->first();
-check($m['name'] === 'user-' . $m->getUserSeq() && $m->getName() === 'user-' . $m->getUserSeq() && $m->toArray()['name'] === $m['name'], 'flatten merges child columns into the parent');
-$page = Battle::query()->serviceSeq(7)->orderBySeqAsc()->relation(User::query())->using($db)->paginate(1, 4);
+$m = ServiceMember::query()->serviceSeq(7)->orderBySeqAsc()->limit(0, 2)->relationUserSeqWithSeq(User::query()->flatten())->using($db)->gets()->first();
+check($m['name'] === 'user-' . $m->getUserSeq() && $m->toArray()['name'] === $m['name'], 'flatten merges child columns into the parent');
+$page = Battle::query()->serviceSeq(7)->orderBySeqAsc()->relationUserSeqWithSeq(User::query())->using($db)->paginate(1, 4);
 check($page->total === 1000 && count($page->items) === 4 && $page->items->first()->getUser() !== null, 'paginate keeps relations');
 
 // ---- writes ----
@@ -212,8 +213,8 @@ $svc = $db->transaction(function (Tx $tx) {
     return $s;
 });
 $loaded = Service::query()->seq($svc->getSeq())
-    ->relations(ServiceMember::query()->orderBySeqAsc()->relation(User::query()))
-    ->relations(ServiceModule::query()->noCascadeDelete())
+    ->relationsSeqWithServiceSeqToServiceMember(ServiceMember::query()->orderBySeqAsc()->relationUserSeqWithSeq(User::query()))
+    ->relationsSeqWithServiceSeqToServiceModule(ServiceModule::query()->noCascadeDelete())
     ->using($db)->get();
 $n0 = count($log);
 $loaded->using($db)->deleteCascade();
@@ -358,14 +359,14 @@ $dup->using($db)->delete();
 // ---- S5: schema_hash boot check ----
 Registry::generated('0000000000000000');
 try {
-    Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver));
+    Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index', driver: $driver));
     check(false, 'wrong generated hash should throw');
 } catch (OrmException $e) {
     check($e->code_ === Code::SCHEMA_HASH_MISMATCH, 'generated hash ≠ schema.json → SCHEMA_HASH_MISMATCH');
 }
 Registry::generated(json_decode(file_get_contents($schema), true)['schema_hash']);
 try {
-    Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver === 'mysql' ? 'sqlite' : 'mysql'));
+    Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index', driver: $driver === 'mysql' ? 'sqlite' : 'mysql'));
     check(false, 'a driver other than the ormd dialect should throw');
 } catch (OrmException $e) {
     check(
@@ -375,7 +376,7 @@ try {
         'driver ≠ ormd dialect → CONFIG'
     );
 }
-Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver));
+Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index', driver: $driver));
 try {
     orm_open_db($driver === 'sqlite' ? 'mysql' : 'sqlite', $driver === 'sqlite' ? orm_default_dsn('mysql') : '/nonexistent/orm.sqlite');
     check(false, 'a Db of another driver than the config should throw');
@@ -387,8 +388,8 @@ try {
 $toml = function (string $schemaLine, string $extra = '') use ($sock, $driver): string {
     $f = tempnam(sys_get_temp_dir(), 'orm-toml-');
     // MySQL names its user here; the PostgreSQL DSN carries user=; SQLite has none (db.dsn is the file)
-    $cred = $driver === 'mysql' ? "user = \"root\"\npassword = \"\"\n" : '';
-    file_put_contents($f, "$schemaLine\n[db]\ndriver = \"$driver\"\ndsn = \"" . orm_test_dsn() . "\"\n{$cred}pool = 8   # ignored by PHP\n[secrets]\naes = \"bench-salt\"\n[ormd]\nsocket = \"$sock\"\n[debug]\non_query = false\n$extra");
+    $cred = $driver === 'mysql' ? "user = \"root\"\npassword = \"\"\n" : ($driver === 'postgres' ? "user = \"maxkwon\"\n" : '');
+    file_put_contents($f, "$schemaLine\n[db]\ndriver = \"$driver\"\ndsn = \"" . orm_test_dsn() . "\"\n{$cred}pool = 8   # ignored by PHP\n[secrets]\naes = \"bench-salt\"\nblind_index = \"bench-blind-index\"\n[ormd]\nsocket = \"$sock\"\n[debug]\non_query = false\n$extra");
     return $f;
 };
 $bad = $toml('schema = "schema/schema.json"');
@@ -441,18 +442,19 @@ $db2 = Orm::fromConfig($good);
 unlink($good);
 check($db2 instanceof Db && $db2->driver() === $driver && Orm::config()->driver === $driver && Orm::config()->onQuery === null && Orm::config()->aesKey === 'bench-salt' && Battle::query()->using($db2)->getBySeq(42)->getAesHexEmail() === 'user42@example.com', 'fromConfig loads db (driver), secrets and ormd and passes the boot check');
 $versioned = $toml("schema = \"$schema\"");
-file_put_contents($versioned, str_replace("aes = \"bench-salt\"", "aes_version = 2\n[secrets.aes_keys]\n1 = \"old-key\"\n2 = \"bench-salt\"", file_get_contents($versioned)));
+file_put_contents($versioned, str_replace("aes = \"bench-salt\"\nblind_index", "aes_version = 2\nblind_index", file_get_contents($versioned)));
+file_put_contents($versioned, str_replace("blind_index = \"bench-blind-index\"", "blind_index = \"bench-blind-index\"\n[secrets.aes_keys]\n1 = \"old-key\"\n2 = \"bench-salt\"", file_get_contents($versioned)));
 $db3 = Orm::fromConfig($versioned);
 unlink($versioned);
 check($db3 instanceof Db && Orm::config()->aesKey === 'bench-salt' && Orm::config()->aesVersion === 2, 'fromConfig loads [secrets.aes_keys] and aes_version');
-Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver,
+Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index', driver: $driver,
     onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log) { $log[] = $sql; }));
 
 // ---- S6: host-side styles round trip on this database (aes/hex in SQL on MySQL, app-side elsewhere; ip packed on SQLite) ----
 $hb = $draft('php-host')->setAesHexEmail('한글@example.com')->setAesHexPhone('')->setIp('2001:db8::1')->using($db)->insert();
 check($hb->getAesHexEmail() === '한글@example.com' && $hb->getAesHexPhone() === '' && $hb->getIp() === '2001:db8::1', 'aes_hex and ip written by this executor read back equal (' . $driver . ')');
 $rawHex = Battle::query()->raw('SELECT aes_hex_email AS h FROM {table} WHERE seq = ?', [$hb->getSeq()])->using($db)->rawAll()[0]['h'];
-check($rawHex === Codec::hostEncode('한글@example.com', ['aes', 'hex'], 'bench-salt'), 'the stored aes_hex bytes are the host codec\'s, which tests/codec/aes-vectors.json proves are MySQL\'s');
+check(Codec::hostDecode($rawHex, ['aes', 'hex'], 'bench-salt') === '한글@example.com', 'the stored aes_hex value decodes with the host codec');
 check(count(Battle::query()->aesHexEmail('한글@example.com')->seq($hb->getSeq())->using($db)->gets()) === 1, 'aes_hex predicate binds the host-encoded value');
 $hb->setIp('10.1.2.3')->using($db)->update();
 check(Battle::query()->using($db)->getBySeq($hb->getSeq())->getIp() === '10.1.2.3', 'ip update (IPv4 packs to 4 bytes)');
@@ -474,7 +476,7 @@ $second = CompositeMembership::query()->setTenantId($tenantId)->setAccountId(12)
 check($second?->getRole() === 'editor', 'composite save uses every key component');
 $page = CompositeMembership::query()->tenantIdEq($tenantId)->orderByTenantIdAsc()->orderByAccountIdAsc()->using($db)->paginate(1, 1);
 check($page->total === 2 && count($page->items) === 1 && $page->items->first()?->getAccountId() === 11, 'composite pagination preserves complete order');
-$accounts = CompositeAccount::query()->tenantIdEq($tenantId)->orderByAccountIdAsc()->relations(CompositeMembership::query())->using($db)->gets();
+$accounts = CompositeAccount::query()->tenantIdEq($tenantId)->orderByAccountIdAsc()->relationsTenantIdWithTenantIdAndAccountIdWithAccountId(CompositeMembership::query())->using($db)->gets();
 check(count($accounts) === 2 && count($accounts->first()?->getMemberships()) === 1, 'composite relation uses every key component');
 $compositeRollback = new \RuntimeException('composite rollback');
 try {

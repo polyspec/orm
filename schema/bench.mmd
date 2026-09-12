@@ -26,7 +26,9 @@ erDiagram
     int           like_count                   "=0 unsigned"
     int           aes_key_version              "=1"
     varchar(255)  aes_hex_email                "?"
+    char(64)      email_blind_index            "? lazy"
     varchar(255)  aes_hex_phone                "?"
+    char(64)      phone_blind_index            "? lazy"
     decimal(13_3) price                        "?"
     varbinary(16) ip                           "?"
     blob          gz_extend                    "?"
@@ -76,6 +78,10 @@ erDiagram
   %% index battle (service_module_seq, is_close, is_display, is_allday) ik
   %% index battle (service_seq, is_close) ix_service
   %% index battle (user_seq, is_close) ix_user
+  %% index battle (email_blind_index) ix_email_blind_index
+  %% index battle (phone_blind_index) ix_phone_blind_index
+  %% blind_index battle aes_hex_email email_blind_index
+  %% blind_index battle aes_hex_phone phone_blind_index
   %% scope battle service_seq
   %% fulltext battle (name, description)
   %% predicate battle visible : `is_close` = FALSE AND `is_display` = TRUE

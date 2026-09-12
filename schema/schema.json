@@ -1,5 +1,5 @@
 {
-  "schema_hash": "b1c0032faa9fe8df",
+  "schema_hash": "e37cee16c4377321",
   "order": [
     "battle",
     "user",
@@ -209,7 +209,16 @@
           "styles": [
             "aes",
             "hex"
-          ]
+          ],
+          "blind_index": "email_blind_index"
+        },
+        {
+          "name": "email_blind_index",
+          "type": "string",
+          "raw": "char(64)",
+          "nullable": true,
+          "lazy": true,
+          "len": 64
         },
         {
           "name": "aes_hex_phone",
@@ -220,7 +229,16 @@
           "styles": [
             "aes",
             "hex"
-          ]
+          ],
+          "blind_index": "phone_blind_index"
+        },
+        {
+          "name": "phone_blind_index",
+          "type": "string",
+          "raw": "char(64)",
+          "nullable": true,
+          "lazy": true,
+          "len": 64
         },
         {
           "name": "price",
@@ -350,6 +368,12 @@
           "is_close",
           "is_display",
           "is_allday"
+        ],
+        "ix_email_blind_index": [
+          "email_blind_index"
+        ],
+        "ix_phone_blind_index": [
+          "phone_blind_index"
         ],
         "ix_service": [
           "service_seq",

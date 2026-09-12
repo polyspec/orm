@@ -804,7 +804,6 @@ func (q *ServiceModuleQuery) RelationsSeqWithServiceModuleSeq(child *BattleQuery
 	q.q.Relation("battles", child.q)
 	return q
 }
-
 func (q *ServiceModuleQuery) JoinServiceSeqWithSeq(child *ServiceQuery) *ServiceModuleQuery {
 	q.q.Join("service", "inner", child.q)
 	return q
@@ -1036,8 +1035,16 @@ func (q *ServiceModuleQuery) IfParentAesHexEmailEq(v string) *ServiceModuleQuery
 	q.q.IfParent("aes_hex_email", v)
 	return q
 }
+func (q *ServiceModuleQuery) IfParentEmailBlindIndexEq(v string) *ServiceModuleQuery {
+	q.q.IfParent("email_blind_index", v)
+	return q
+}
 func (q *ServiceModuleQuery) IfParentAesHexPhoneEq(v string) *ServiceModuleQuery {
 	q.q.IfParent("aes_hex_phone", v)
+	return q
+}
+func (q *ServiceModuleQuery) IfParentPhoneBlindIndexEq(v string) *ServiceModuleQuery {
+	q.q.IfParent("phone_blind_index", v)
 	return q
 }
 

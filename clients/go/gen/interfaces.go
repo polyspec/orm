@@ -52,7 +52,9 @@ type BattleInterface interface {
 	GetsByLikeCount(v int64) (*orm.Collection[BattleRow], error)
 	GetsByAesKeyVersion(v int32) (*orm.Collection[BattleRow], error)
 	GetsByAesHexEmail(v string) (*orm.Collection[BattleRow], error)
+	GetsByEmailBlindIndex(v string) (*orm.Collection[BattleRow], error)
 	GetsByAesHexPhone(v string) (*orm.Collection[BattleRow], error)
+	GetsByPhoneBlindIndex(v string) (*orm.Collection[BattleRow], error)
 	GetsByPrice(v float64) (*orm.Collection[BattleRow], error)
 	GetsByIp(v string) (*orm.Collection[BattleRow], error)
 	GetCountBySeq(v int64) (int64, error)
@@ -81,7 +83,9 @@ type BattleInterface interface {
 	GetCountByLikeCount(v int64) (int64, error)
 	GetCountByAesKeyVersion(v int32) (int64, error)
 	GetCountByAesHexEmail(v string) (int64, error)
+	GetCountByEmailBlindIndex(v string) (int64, error)
 	GetCountByAesHexPhone(v string) (int64, error)
+	GetCountByPhoneBlindIndex(v string) (int64, error)
 	GetCountByPrice(v float64) (int64, error)
 	GetCountByIp(v string) (int64, error)
 	SeqEq(v int64) *BattleQuery
@@ -110,7 +114,9 @@ type BattleInterface interface {
 	LikeCountEq(v int64) *BattleQuery
 	AesKeyVersionEq(v int32) *BattleQuery
 	AesHexEmailEq(v string) *BattleQuery
+	EmailBlindIndexEq(v string) *BattleQuery
 	AesHexPhoneEq(v string) *BattleQuery
+	PhoneBlindIndexEq(v string) *BattleQuery
 	PriceEq(v float64) *BattleQuery
 	IpEq(v string) *BattleQuery
 	Seq(v int64) *BattleQuery
@@ -139,7 +145,9 @@ type BattleInterface interface {
 	LikeCount(v int64) *BattleQuery
 	AesKeyVersion(v int32) *BattleQuery
 	AesHexEmail(v string) *BattleQuery
+	EmailBlindIndex(v string) *BattleQuery
 	AesHexPhone(v string) *BattleQuery
+	PhoneBlindIndex(v string) *BattleQuery
 	Price(v float64) *BattleQuery
 	Ip(v string) *BattleQuery
 }

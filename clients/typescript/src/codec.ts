@@ -1,5 +1,5 @@
 import { deflateSync, inflateSync } from 'node:zlib';
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
 import { isScalar, parseDocument, stringify as stringifyYaml, visit } from 'yaml';
 
@@ -7,6 +7,14 @@ export type UploadFileValue = { $type: 'upload_file'; path: string; mime: string
 export type Point = readonly [number, number];
 export type CodecValue = null | boolean | number | string | CodecValue[] | { [key: string]: CodecValue };
 export type EncodedValue = string | Uint8Array | null;
+
+/** Returns the stable lowercase HMAC-SHA256 index for plaintext. */
+export function blindIndex(value: unknown, key: string): string | null {
+  if (value === null) return null;
+  if (key === '') throw new CodecError('CODEC_ENCODE', 'secret blind_index not configured');
+  const input = Buffer.isBuffer(value) || value instanceof Uint8Array ? Buffer.from(value) : Buffer.from(String(value));
+  return createHmac('sha256', key).update(input).digest('hex');
+}
 
 export function hostEncode(value: unknown, styles: readonly string[], aesKey: string): string | Uint8Array | null {
   if (value === null) return null;

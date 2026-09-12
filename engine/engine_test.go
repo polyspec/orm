@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -65,7 +66,7 @@ func TestSelectAll(t *testing.T) {
 	wantParts := []string{
 		"SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, ",
 		"UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`",
-		" FROM `battle` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`aes_hex_email` = HEX(?) AND `a`.`name` LIKE ? ORDER BY `a`.`seq` DESC LIMIT 0, 100",
+		" FROM `battle` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`email_blind_index` = ? AND `a`.`name` LIKE ? ORDER BY `a`.`seq` DESC LIMIT 0, 100",
 	}
 	for _, w := range wantParts {
 		if !strings.Contains(sql, w) {
@@ -75,7 +76,7 @@ func TestSelectAll(t *testing.T) {
 	if strings.Contains(sql, "`a`.`description`") {
 		t.Error("lazy column selected by default")
 	}
-	// binds: 2 secrets for the two aes_hex reads, then params in order (the aes_hex eq adds a secret), contains gets a transform.
+	// Binds preserve parameter order; equality on AES uses the blind-index target.
 	var kinds []string
 	for _, b := range p.Steps[0].BindSlots {
 		k := b.From
@@ -123,8 +124,11 @@ func TestWrites(t *testing.T) {
 	  {"column":"name","p":0},{"column":"aes_hex_email","p":1},{"column":"user_seq","p":2},
 	  {"column":"service_seq","p":3},{"column":"service_module_seq","p":4},{"column":"service_member_seq","p":5},
 	  {"column":"start_dt","p":6},{"column":"end_dt","p":7}]`)
-	if want := "INSERT INTO `battle` (`name`, `aes_hex_email`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_key_version`) VALUES (?, HEX(?), ?, ?, ?, ?, ?, ?, ?)"; p.Steps[0].SQL != want {
+	if want := "INSERT INTO `battle` (`name`, `aes_hex_email`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`, `email_blind_index`, `aes_key_version`) VALUES (?, HEX(?), ?, ?, ?, ?, ?, ?, ?, ?)"; p.Steps[0].SQL != want {
 		t.Errorf("insert: %s", p.Steps[0].SQL)
+	}
+	if len(p.Steps[0].BindSlots) < 9 || !slices.Equal(p.Steps[0].BindSlots[8].HostStyles, []string{"blind_index"}) {
+		t.Errorf("insert blind-index bind: %+v", p.Steps[0].BindSlots)
 	}
 	p = compile(t, e, `"kind":"update","entity":"battle","set":[{"column":"name","p":0},{"column":"like_count","plus_p":1},{"column":"read_count","minus_p":2}],
 	  "where":{"items":[{"pred":{"column":"seq","op":"eq","p":3}}]},"optimistic":{"column":"updated_ts","p":4}`)
@@ -132,7 +136,7 @@ func TestWrites(t *testing.T) {
 		t.Errorf("update: %s", p.Steps[0].SQL)
 	}
 	p = compile(t, e, `"kind":"update","entity":"battle","set":[{"column":"aes_hex_email","p":0},{"column":"aes_hex_phone","p":1}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":2}}]}`)
-	if !strings.Contains(p.Steps[0].SQL, "`aes_key_version` = ?") || p.Steps[0].BindSlots[2].Name != "aes_version" {
+	if !strings.Contains(p.Steps[0].SQL, "`aes_key_version` = ?") || !slices.ContainsFunc(p.Steps[0].BindSlots, func(b plan.BindSlot) bool { return b.From == "config" && b.Name == "aes_version" }) {
 		t.Errorf("AES update must store the configured key version: %+v", p.Steps[0])
 	}
 	p = compile(t, e, `"kind":"delete","entity":"battle","where":{"items":[{"pred":{"column":"seq","op":"in","ps":[0,1]}}]}`)
@@ -257,7 +261,7 @@ func TestPostgresAndSQLite(t *testing.T) {
 	p := compile(t, pg, `"kind":"all","entity":"battle","columns":{"mode":"none"},"n_params":3,
 	 "where":{"items":[{"pred":{"column":"name","op":"contains","p":0}},{"pred":{"conn":"and","column":"name","op":"like_binary","p":1}},{"pred":{"conn":"and","column":"aes_hex_email","op":"eq","p":2}}]},
 	 "order":[{"column":"seq","desc":true}],"limit":{"offset":20,"count":10},"force_index":"ik"`)
-	if want := "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"battle\" AS \"a\" WHERE \"a\".\"name\" ILIKE $1 AND \"a\".\"name\" LIKE $2 AND \"a\".\"aes_hex_email\" = $3 ORDER BY \"a\".\"seq\" DESC LIMIT 10 OFFSET 20"; p.Steps[0].SQL != want {
+	if want := "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"battle\" AS \"a\" WHERE \"a\".\"name\" ILIKE $1 AND \"a\".\"name\" LIKE $2 AND \"a\".\"email_blind_index\" = $3 ORDER BY \"a\".\"seq\" DESC LIMIT 10 OFFSET 20"; p.Steps[0].SQL != want {
 		t.Errorf("postgres select:\n got  %s\n want %s", p.Steps[0].SQL, want)
 	}
 	// aes/hex are app-side on postgres: the read is the bare column and the styles reach the executor

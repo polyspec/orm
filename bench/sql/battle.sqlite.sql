@@ -29,6 +29,8 @@ CREATE TABLE "battle" (
   "aes_key_version" INTEGER NOT NULL DEFAULT 1,
   "aes_hex_email" TEXT,
   "aes_hex_phone" TEXT,
+  "email_blind_index" TEXT,
+  "phone_blind_index" TEXT,
   "price" REAL,
   "ip" BLOB,
   "gz_extend" BLOB,
@@ -41,6 +43,8 @@ CREATE TABLE "battle" (
 CREATE INDEX "battle_ik" ON "battle" ("service_module_seq", "is_close", "is_display", "is_allday");
 CREATE INDEX "battle_ix_service" ON "battle" ("service_seq", "is_close");
 CREATE INDEX "battle_ix_user" ON "battle" ("user_seq", "is_close");
+CREATE INDEX "battle_ix_email_blind_index" ON "battle" ("email_blind_index");
+CREATE INDEX "battle_ix_phone_blind_index" ON "battle" ("phone_blind_index");
 
 DROP TABLE IF EXISTS "user";
 CREATE TABLE "user" (

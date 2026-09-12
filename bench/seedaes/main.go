@@ -23,6 +23,7 @@ func main() {
 	driver := flag.String("driver", "postgres", "postgres|sqlite")
 	dsn := flag.String("dsn", "", "database URL")
 	key := flag.String("key", "bench-salt", "aes key")
+	blindKey := flag.String("blind-index-key", "bench-blind-index", "blind index HMAC key")
 	version := flag.Int("version", 1, "AES key version")
 	flag.Parse()
 	sqlDriver := map[string]string{"mysql": "mysql", "postgres": "pgx", "sqlite": "sqlite"}[*driver]
@@ -51,7 +52,7 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	st, err := tx.PrepareContext(ctx, fmt.Sprintf("UPDATE %s SET %s = %s, %s = %s, %s = %s WHERE %s = %s", quote("battle"), quote("aes_hex_email"), ph(1), quote("aes_hex_phone"), ph(2), quote("aes_key_version"), ph(3), quote("seq"), ph(4)))
+	st, err := tx.PrepareContext(ctx, fmt.Sprintf("UPDATE %s SET %s = %s, %s = %s, %s = %s, %s = %s, %s = %s WHERE %s = %s", quote("battle"), quote("aes_hex_email"), ph(1), quote("aes_hex_phone"), ph(2), quote("email_blind_index"), ph(3), quote("phone_blind_index"), ph(4), quote("aes_key_version"), ph(5), quote("seq"), ph(6)))
 	if err != nil {
 		fail(err)
 	}
@@ -64,7 +65,11 @@ func main() {
 		if err != nil {
 			fail(err)
 		}
-		if _, err := st.ExecContext(ctx, email, phone, *version, i); err != nil {
+		emailIndex, err := orm.BlindIndex(fmt.Sprintf("user%d@example.com", i), *blindKey)
+		if err != nil { fail(err) }
+		phoneIndex, err := orm.BlindIndex(fmt.Sprintf("010-%08d", i), *blindKey)
+		if err != nil { fail(err) }
+		if _, err := st.ExecContext(ctx, email, phone, emailIndex, phoneIndex, *version, i); err != nil {
 			fail(err)
 		}
 	}

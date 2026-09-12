@@ -161,9 +161,15 @@ final class Service extends Q implements ServiceInterface
     public function on(\Closure $fn): static { $fn(new ServiceWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new ServiceWhere($this->w())); return $this; }
 
-
-
-
+    public function joinSeqWithServiceSeqToBattle(Battle $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('battles', 'inner', $child); return $this; }
+    public function leftJoinSeqWithServiceSeqToBattle(Battle $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'leftJoin expects one child query'); } $this->attachJoin('battles', 'left', $child); return $this; }
+    public function relationsSeqWithServiceSeqToBattle(Battle $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relations expects one child query'); } $this->attachRelation('battles', $child); return $this; }
+    public function joinSeqWithServiceSeqToServiceMember(ServiceMember $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('members', 'inner', $child); return $this; }
+    public function leftJoinSeqWithServiceSeqToServiceMember(ServiceMember $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'leftJoin expects one child query'); } $this->attachJoin('members', 'left', $child); return $this; }
+    public function relationsSeqWithServiceSeqToServiceMember(ServiceMember $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relations expects one child query'); } $this->attachRelation('members', $child); return $this; }
+    public function joinSeqWithServiceSeqToServiceModule(ServiceModule $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('modules', 'inner', $child); return $this; }
+    public function leftJoinSeqWithServiceSeqToServiceModule(ServiceModule $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'leftJoin expects one child query'); } $this->attachJoin('modules', 'left', $child); return $this; }
+    public function relationsSeqWithServiceSeqToServiceModule(ServiceModule $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relations expects one child query'); } $this->attachRelation('modules', $child); return $this; }
 
 
     public function matchServiceSeqWithSeq(): static { $this->setLink('service_seq', 'seq'); return $this; }
@@ -220,7 +226,9 @@ final class Service extends Q implements ServiceInterface
     public function ifParentLikeCountEq(int $v): static { $this->ifParent('like_count', $v); return $this; }
     public function ifParentAesKeyVersionEq(int $v): static { $this->ifParent('aes_key_version', $v); return $this; }
     public function ifParentAesHexEmailEq(string $v): static { $this->ifParent('aes_hex_email', $v); return $this; }
+    public function ifParentEmailBlindIndexEq(string $v): static { $this->ifParent('email_blind_index', $v); return $this; }
     public function ifParentAesHexPhoneEq(string $v): static { $this->ifParent('aes_hex_phone', $v); return $this; }
+    public function ifParentPhoneBlindIndexEq(string $v): static { $this->ifParent('phone_blind_index', $v); return $this; }
 
     // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
     public function setSeq(int $v): static { $this->set('seq', $v); return $this; }

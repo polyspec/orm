@@ -843,6 +843,20 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 	lhs := p.qcol(s, pr.Column)
 	switch pr.Op {
 	case "eq", "not_eq", "gt", "gte", "lt", "lte":
+		if slices.Contains(col.Styles, "aes") {
+			if pr.Op != "eq" && pr.Op != "not_eq" {
+				return "", &ir.Error{Code: "OPERATOR_NOT_ALLOWED", Msg: "AES columns support only equality through a declared blind index"}
+			}
+			if col.BlindIndex == "" {
+				return "", &ir.Error{Code: "IR_INVALID", Msg: s.ent.Name + "." + col.Name + " requires a declared blind index for equality search"}
+			}
+			lhs = p.qcol(s, col.BlindIndex)
+			rhs, err := p.renderBlindIndexValue(b, *pr.P)
+			if err != nil {
+				return "", err
+			}
+			return lhs + " " + cmp(pr.Op) + " " + rhs, nil
+		}
 		rhs, err := p.renderValue(b, col, *pr.P)
 		if err != nil {
 			return "", err
@@ -858,6 +872,25 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		}
 		return lhs + " " + cmp(strings.TrimSuffix(pr.Op, "_col")) + " " + p.qcol(rs, pr.Ref.Column), nil
 	case "in", "not_in":
+		if slices.Contains(col.Styles, "aes") {
+			if col.BlindIndex == "" {
+				return "", &ir.Error{Code: "IR_INVALID", Msg: s.ent.Name + "." + col.Name + " requires a declared blind index for equality search"}
+			}
+			lhs = p.qcol(s, col.BlindIndex)
+			var phs []string
+			for _, i := range pr.Ps {
+				rhs, err := p.renderBlindIndexValue(b, i)
+				if err != nil {
+					return "", err
+				}
+				phs = append(phs, rhs)
+			}
+			op := "IN"
+			if pr.Op == "not_in" {
+				op = "NOT IN"
+			}
+			return lhs + " " + op + " (" + strings.Join(phs, ", ") + ")", nil
+		}
 		var phs []string
 		for _, i := range pr.Ps {
 			rhs, err := p.renderValue(b, col, i)
@@ -929,6 +962,15 @@ func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error
 	return e, nil
 }
 
+// renderBlindIndexValue binds plaintext for executor-side keyed hashing. The
+// index key never reaches the compiler or the SQL text.
+func (p *Planner) renderBlindIndexValue(b *builder, i int) (string, error) {
+	ph := b.param(i)
+	b.binds[len(b.binds)-1].HostStyles = []string{"blind_index"}
+	b.binds[len(b.binds)-1].ColType = ""
+	return ph, nil
+}
+
 // bindType names types that executors must normalize before driver binding.
 func bindType(col *schema.Col) string {
 	if col == nil {
@@ -992,6 +1034,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
 	set := slices.Clone(r.Set)
+	set = addBlindIndexAssignments(ent, set)
 	if err := validateAESAssignments(ent, set, false); err != nil {
 		return nil, err
 	}
@@ -1017,9 +1060,11 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	}
 	sql := "INSERT INTO " + p.D.Quote(ent.Table) + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(vals, ", ") + ")"
 	if len(r.OnDuplicate) > 0 {
-		if err := validateAESAssignments(ent, r.OnDuplicate, true); err != nil {
+		duplicate := addBlindIndexAssignments(ent, slices.Clone(r.OnDuplicate))
+		if err := validateAESAssignments(ent, duplicate, true); err != nil {
 			return nil, err
 		}
+		r.OnDuplicate = duplicate
 		var sets []string
 		for _, a := range r.OnDuplicate {
 			v, err := p.renderAssign(b, ent, ent.Column(a.Column), &a)
@@ -1083,6 +1128,26 @@ func validateAESAssignments(ent *schema.Entity, set []ir.Assign, requireComplete
 	return nil
 }
 
+func addBlindIndexAssignments(ent *schema.Entity, set []ir.Assign) []ir.Assign {
+	for _, assign := range slices.Clone(set) {
+		col := ent.Column(assign.Column)
+		if col == nil || !slices.Contains(col.Styles, "aes") || col.BlindIndex == "" || assigned(set, col.BlindIndex) {
+			continue
+		}
+		set = append(set, ir.Assign{Column: col.BlindIndex, P: assign.P, Null: assign.Null})
+	}
+	return set
+}
+
+func blindIndexSource(ent *schema.Entity, target string) *schema.Col {
+	for _, col := range ent.Columns {
+		if col.BlindIndex == target {
+			return col
+		}
+	}
+	return nil
+}
+
 func assigned(set []ir.Assign, col string) bool {
 	for _, a := range set {
 		if a.Column == col {
@@ -1115,6 +1180,15 @@ func conflictTarget(ent *schema.Entity, set []ir.Assign) []string {
 }
 
 func (p *Planner) renderAssign(b *builder, ent *schema.Entity, col *schema.Col, a *ir.Assign) (string, error) {
+	if source := blindIndexSource(ent, col.Name); source != nil {
+		if a.Expr != "" || a.PlusP != nil || a.MinusP != nil {
+			return "", &ir.Error{Code: "IR_INVALID", Msg: "blind index assignment must use its AES source value"}
+		}
+		if a.Null {
+			return "NULL", nil
+		}
+		return p.renderBlindIndexValue(b, *a.P)
+	}
 	switch {
 	case a.Expr != "":
 		e, err := p.renderExpr(&scope{ent: ent, alias: ent.Table}, a.Expr)
@@ -1140,12 +1214,13 @@ func (p *Planner) renderAssign(b *builder, ent *schema.Entity, col *schema.Col, 
 func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
-	if err := validateAESAssignments(ent, r.Set, true); err != nil {
+	set := addBlindIndexAssignments(ent, slices.Clone(r.Set))
+	if err := validateAESAssignments(ent, set, true); err != nil {
 		return nil, err
 	}
 	root := p.buildScopes(&r.Query, ent.Table, nil)
 	var sets []string
-	for _, a := range r.Set {
+	for _, a := range set {
 		col := ent.Column(a.Column)
 		if col.PK || col.Auto {
 			return nil, &ir.Error{Code: "IR_INVALID", Msg: "cannot update " + a.Column}
@@ -1156,7 +1231,7 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 		}
 		sets = append(sets, p.D.Quote(a.Column)+" = "+v)
 	}
-	if version := aesVersionColumn(ent); version != "" && assignsAES(ent, r.Set) && !assigned(r.Set, version) {
+	if version := aesVersionColumn(ent); version != "" && assignsAES(ent, set) && !assigned(set, version) {
 		sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version"))
 	}
 	// The updated timestamp is always assigned explicitly: MySQL's ON UPDATE
