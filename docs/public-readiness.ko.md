@@ -27,7 +27,7 @@
 - [x] P8.5 공개 encryption이 모든 client에서 인증된 version ciphertext를 사용한다. 조회는 숨겨진 row key version을 선택하고, 여러 version을 함께 읽을 수 있고, 변조 데이터는 실패하며, rotation은 row의 모든 AES column을 제한된 재개 가능 batch로 처리한다. Go, PHP, Rust, TypeScript가 codec tamper vector와 물리 rotation test를 통과한다.
 - [x] P8.6 암호화 데이터의 equality search는 명시적인 blind-index column을 요구한다. Runtime은 인증된 AES v2 ciphertext만 허용한다. Go, PHP, Rust, TypeScript가 MySQL, PostgreSQL, SQLite 통합 테스트를 통과한다.
 - [ ] P8.7 Relation과 `IN` parameter가 각 데이터베이스 제한에 맞게 결정적으로 분할되고 row order, key type, relation attachment, error를 보존한다.
-- [ ] P8.8 Plan 및 prepared-statement cache가 설정 가능한 제한, 결정적 eviction, close 처리, 모든 client의 pressure test를 제공한다.
+- [x] P8.8 Plan 및 prepared-statement cache가 설정 가능한 제한, 결정적 eviction, close 처리, 모든 client의 pressure test를 제공한다. Go·PHP·Rust·TypeScript test가 plan eviction, statement eviction, close 처리를 검사하며 PHP SQLite 물리 통합 test가 같은 검사를 통과한다.
 
 ## P9: 공통 ORM 작업
 

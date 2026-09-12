@@ -58,7 +58,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
-          extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, apcu, msgpack
+          extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, msgpack
           ini-values: apc.enable_cli=1
       - name: install PHP dependencies
         run: composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
