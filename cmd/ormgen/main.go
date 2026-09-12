@@ -56,7 +56,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "       ormgen errors --lang go|php|rust --out <file>")
 	fmt.Fprintln(os.Stderr, "       ormgen ddl --schema schema/schema.json --dialect mysql|postgres|sqlite --out <file.sql>")
 	fmt.Fprintln(os.Stderr, "       ormgen diff --from old.json --to new.json --dialect mysql|postgres|sqlite --out <file.sql> [--allow-destructive]")
-	fmt.Fprintln(os.Stderr, "       ormgen migrate --dsn <dsn> --schema schema/schema.json [--driver mysql|postgres|sqlite] [--allow-destructive]")
+	fmt.Fprintln(os.Stderr, "       ormgen migrate --dsn <dsn> --schema schema/schema.json [--driver mysql|postgres|sqlite] [--migration-id id] [--dry-run]")
 	fmt.Fprintln(os.Stderr, "       ormgen precompile --schema schema.json --dialect mysql|postgres|sqlite --in request.json --out plan.json")
 	fmt.Fprintln(os.Stderr, "       ormgen check --lang php|go [--top n] [--schema schema/schema.json] <dir>...")
 	os.Exit(2)
