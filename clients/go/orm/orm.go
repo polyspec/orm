@@ -47,10 +47,11 @@ const Now = "$NOW"
 
 // DB wraps *sql.DB with the compiler, the plan cache and the statement cache.
 type DB struct {
-	SQL    *sql.DB
-	Eng    *engine.Engine
-	cfg    Config
-	driver string
+	SQL      *sql.DB
+	Eng      *engine.Engine
+	compiler planCompiler
+	cfg      Config
+	driver   string
 
 	planMu sync.RWMutex
 	plans  map[uint64]*cached // shape key -> compiled plan plus the per-step facts derived from it
@@ -64,6 +65,19 @@ type DB struct {
 // be the dialect the engine compiles for (docs/dialects.md): the plans are
 // dialect-specific text.
 func Open(driver, dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
+	return open(context.Background(), driver, dsn, eng, enginePlanCompiler{engine: eng}, cfg)
+}
+
+// OpenWithCompiler connects with database/sql and uses compiler for every plan
+// cache miss. Metadata must match the generated schema and database dialect.
+func OpenWithCompiler(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler CompilerTransport, cfg Config) (*DB, error) {
+	if compiler == nil {
+		return nil, &ir.Error{Code: CodeConfig, Msg: "compiler transport is required"}
+	}
+	return open(ctx, driver, dsn, eng, transportPlanCompiler{transport: compiler}, cfg)
+}
+
+func open(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler planCompiler, cfg Config) (*DB, error) {
 	sqlDriver, ok := lookupDriver(driver)
 	if !ok {
 		msg := fmt.Sprintf("driver %q is not registered", driver)
@@ -72,8 +86,18 @@ func Open(driver, dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
 		}
 		return nil, &ir.Error{Code: CodeConfig, Msg: msg}
 	}
-	if eng.P.D.Name() != driver {
-		return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("driver %s but the engine compiles for %s", driver, eng.P.D.Name())}
+	metadata, err := compiler.Metadata(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if metadata.SchemaHash != eng.M.SchemaHash {
+		return nil, &ir.Error{Code: CodeSchemaHashMismatch, Msg: fmt.Sprintf("client schema %s but compiler loaded %s", eng.M.SchemaHash, metadata.SchemaHash)}
+	}
+	if metadata.Dialect != driver {
+		return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("driver %s but the compiler uses %s", driver, metadata.Dialect)}
+	}
+	if metadata.IrVersion != ir.Version {
+		return nil, &ir.Error{Code: CodeVersionMismatch, Msg: fmt.Sprintf("client IR version %d but compiler uses %d", ir.Version, metadata.IrVersion)}
 	}
 	if driver == "mysql" && !strings.Contains(dsn, "clientFoundRows=true") {
 		return nil, &ir.Error{Code: CodeConfig, Msg: "mysql DSN must include clientFoundRows=true"}
@@ -85,7 +109,7 @@ func Open(driver, dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
 	if err := s.Ping(); err != nil {
 		return nil, mapDriverErr(err)
 	}
-	return &DB{SQL: s, Eng: eng, cfg: cfg, driver: driver, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
+	return &DB{SQL: s, Eng: eng, compiler: compiler, cfg: cfg, driver: driver, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
 }
 
 // Drivers beyond MySQL live in their own packages so a MySQL-only program does
@@ -399,15 +423,15 @@ func newCached(key uint64, p *plan.Plan) *cached {
 }
 
 // Plan compiles (or fetches from cache) the plan for the request's shape.
-func (d *DB) Plan(r *Req) (*plan.Plan, error) {
-	c, err := d.plan(r)
+func (d *DB) Plan(ctx context.Context, r *Req) (*plan.Plan, error) {
+	c, err := d.plan(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 	return c.plan, nil
 }
 
-func (d *DB) plan(r *Req) (*cached, error) {
+func (d *DB) plan(ctx context.Context, r *Req) (*cached, error) {
 	if r.Err != nil {
 		return nil, r.Err
 	}
@@ -419,10 +443,7 @@ func (d *DB) plan(r *Req) (*cached, error) {
 	if ok {
 		return c, nil
 	}
-	if err := ir.Validate(d.Eng.M, &r.IR); err != nil {
-		return nil, err
-	}
-	p, err := d.Eng.P.Compile(&r.IR)
+	p, err := d.compiler.Compile(ctx, &r.IR)
 	if err != nil {
 		return nil, err
 	}
@@ -526,7 +547,7 @@ type Statement struct {
 // SQL compiles (and caches) the request's plan and renders its main step
 // without executing anything.
 func SQL(ctx context.Context, ex Exec, r *Req) (*Statement, error) {
-	p, err := ex.db().Plan(r)
+	p, err := ex.db().Plan(ctx, r)
 	if err != nil {
 		return nil, err
 	}
@@ -684,7 +705,7 @@ func (d *DB) emit(c *cached, sqlText string, args []any, masks map[int]string, s
 // time.Time / bool / nil.
 func Query(ctx context.Context, ex Exec, r *Req) (*Rows, error) {
 	d := ex.db()
-	c, err := d.plan(r)
+	c, err := d.plan(ctx, r)
 	if err != nil {
 		return nil, err
 	}
@@ -943,7 +964,7 @@ func countCols(a *plan.Assemble) int {
 // Scalar runs a count/count_distinct/sum/avg/min/max step (nil when the aggregate is NULL).
 func Scalar(ctx context.Context, ex Exec, r *Req) (any, error) {
 	d := ex.db()
-	c, err := d.plan(r)
+	c, err := d.plan(ctx, r)
 	if err != nil {
 		return nil, err
 	}
@@ -967,7 +988,7 @@ func Scalar(ctx context.Context, ex Exec, r *Req) (any, error) {
 // column names, values as the driver gives them ([]byte → string, no codec).
 func RawAll(ctx context.Context, ex Exec, r *Req) ([]map[string]any, error) {
 	d := ex.db()
-	c, err := d.plan(r)
+	c, err := d.plan(ctx, r)
 	if err != nil {
 		return nil, err
 	}
@@ -1014,7 +1035,7 @@ func RawAll(ctx context.Context, ex Exec, r *Req) ([]map[string]any, error) {
 // Paginate runs the main step (with its relations) and the count step.
 func Paginate(ctx context.Context, ex Exec, r *Req) (*Rows, int64, error) {
 	d := ex.db()
-	c, err := d.plan(r)
+	c, err := d.plan(ctx, r)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -1048,7 +1069,7 @@ func Paginate(ctx context.Context, ex Exec, r *Req) (*Rows, int64, error) {
 // update with optimistic locking it returns ErrOptimisticLock when no row matched.
 func Write(ctx context.Context, ex Exec, r *Req) (lastID, affected int64, err error) {
 	d := ex.db()
-	c, err := d.plan(r)
+	c, err := d.plan(ctx, r)
 	if err != nil {
 		return 0, 0, err
 	}

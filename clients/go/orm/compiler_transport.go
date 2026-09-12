@@ -9,14 +9,53 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/polyspec/orm/engine"
 	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/engine/plan"
 	compilerv1 "github.com/polyspec/orm/proto/orm/compiler/v1"
+	compilerbridge "github.com/polyspec/orm/proto/orm/compiler/v1/bridge"
 	"github.com/polyspec/orm/proto/orm/compiler/v1/compilerv1connect"
 )
 
 type CompilerTransport interface {
 	Compile(context.Context, *compilerv1.CompileRequest) (*compilerv1.Plan, error)
 	Metadata(context.Context) (*compilerv1.GetMetadataResponse, error)
+}
+
+type planCompiler interface {
+	Compile(context.Context, *ir.Request) (*plan.Plan, error)
+	Metadata(context.Context) (*compilerv1.GetMetadataResponse, error)
+}
+
+type transportPlanCompiler struct{ transport CompilerTransport }
+
+func (c transportPlanCompiler) Compile(ctx context.Context, request *ir.Request) (*plan.Plan, error) {
+	wire, err := compilerbridge.RequestToProto(request)
+	if err != nil {
+		return nil, err
+	}
+	compiled, err := c.transport.Compile(ctx, wire)
+	if err != nil {
+		return nil, err
+	}
+	return compilerbridge.PlanFromProto(compiled)
+}
+
+func (c transportPlanCompiler) Metadata(ctx context.Context) (*compilerv1.GetMetadataResponse, error) {
+	return c.transport.Metadata(ctx)
+}
+
+type enginePlanCompiler struct{ engine *engine.Engine }
+
+func (c enginePlanCompiler) Compile(_ context.Context, request *ir.Request) (*plan.Plan, error) {
+	if err := ir.Validate(c.engine.M, request); err != nil {
+		return nil, err
+	}
+	return c.engine.P.Compile(request)
+}
+
+func (c enginePlanCompiler) Metadata(context.Context) (*compilerv1.GetMetadataResponse, error) {
+	return &compilerv1.GetMetadataResponse{SchemaHash: c.engine.M.SchemaHash, Dialect: c.engine.P.D.Name(), IrVersion: ir.Version}, nil
 }
 
 type ConnectCompiler struct {

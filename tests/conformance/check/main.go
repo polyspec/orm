@@ -1,4 +1,4 @@
-// Conformance checker: runs the three runners (or reads their outputs) and
+// Conformance checker: runs the client runners (or reads their outputs) and
 // compares each vector's statements and result against tests/conformance/vectors.json
 // after canonicalizing the JSON (sorted keys, shortest numbers).
 //
@@ -10,8 +10,8 @@
 // tests/conformance/vectors.<driver>.json for the other databases: statements
 // differ per dialect, results must not.
 //
-// The PHP runner needs ormd: `run` starts it on a socket under the output
-// directory and waits for its "listening" line (no polling), then stops it.
+// `run` starts one ormd process. Connect clients share its HTTP endpoint; the
+// PHP compatibility executor also uses its legacy socket during T7.1 migration.
 package main
 
 import (
@@ -118,7 +118,50 @@ func runAll(root, out string) {
 	for _, l := range strings.Split(langs, ",") {
 		want[l] = true
 	}
+	sock := filepath.Join(out, "ormd.sock")
+	_ = os.Remove(sock)
+	ormdArgs := []string{"-listen", "127.0.0.1:0", "-schema", schema, "-dialect", driver}
+	if want["php"] {
+		ormdArgs = append(ormdArgs, "-socket", sock)
+	}
+	ormd := exec.Command(filepath.Join(root, "bin", "ormd"), ormdArgs...)
+	stderr, err := ormd.StderrPipe()
+	must(err)
+	must(ormd.Start())
+	sc := bufio.NewScanner(stderr)
+	endpoint := ""
+	socketReady := !want["php"]
+	for sc.Scan() {
+		line := sc.Text()
+		if marker := "Connect listening on "; strings.Contains(line, marker) {
+			address := line[strings.Index(line, marker)+len(marker):]
+			if slash := strings.Index(address, "/orm.compiler.v1.CompilerService/"); slash >= 0 {
+				endpoint = address[:slash]
+			}
+		}
+		if strings.Contains(line, "listening on "+sock) {
+			socketReady = true
+		}
+		if endpoint != "" && socketReady {
+			break
+		}
+	}
+	if endpoint == "" || !socketReady {
+		_ = ormd.Process.Kill()
+		_ = ormd.Wait()
+		must(fmt.Errorf("ormd did not report required listeners"))
+	}
+	go func() {
+		for sc.Scan() {
+		}
+	}()
+	defer func() {
+		_ = ormd.Process.Kill()
+		_ = ormd.Wait()
+		_ = os.Remove(sock)
+	}()
 	var goArgs []string
+	goArgs = append(goArgs, "-compiler", endpoint)
 	if driver != "mysql" {
 		goArgs = append(goArgs, "-driver", driver)
 	}
@@ -141,30 +184,6 @@ func runAll(root, out string) {
 	if !want["php"] {
 		return
 	}
-
-	sock := filepath.Join(out, "ormd.sock")
-	_ = os.Remove(sock)
-	ormd := exec.Command(filepath.Join(root, "bin", "ormd"), "-socket", sock, "-schema", schema, "-dialect", driver)
-	stderr, err := ormd.StderrPipe()
-	must(err)
-	must(ormd.Start())
-	// ormd prints one line once the socket is bound; block on it (never poll the filesystem).
-	sc := bufio.NewScanner(stderr)
-	ready := false
-	for sc.Scan() {
-		if strings.Contains(sc.Text(), "listening on") {
-			ready = true
-			break
-		}
-	}
-	if !ready {
-		_ = ormd.Process.Kill()
-		must(fmt.Errorf("ormd did not report listening"))
-	}
-	go func() { // drain the rest so ormd never blocks on a full pipe
-		for sc.Scan() {
-		}
-	}()
 	phpArgs := []string{"tests/conformance/runner.php", sock, schema}
 	if driver != "mysql" {
 		phpArgs = append(phpArgs, "--driver", driver)
@@ -173,9 +192,6 @@ func runAll(root, out string) {
 		phpArgs = append(phpArgs, "--dsn", dsn)
 	}
 	capture(filepath.Join(out, "php.json"), exec.Command("php", phpArgs...))
-	must(ormd.Process.Kill())
-	_ = ormd.Wait()
-	_ = os.Remove(sock)
 }
 
 // load reads the vector list (names and chains) from vectors.json — the single
