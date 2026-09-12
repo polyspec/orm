@@ -53,7 +53,9 @@ const battles = await Battle().using(db).getsByServiceSeq(7);
 
 ## Quick start (MySQL 8.x, local socket)
 ```sh
-mysql -uroot orm_bench < bench/sql/battle.sql                       # bench schema + 100k rows
+mysql -uroot orm_bench < bench/sql/battle.sql
+mysql -uroot orm_bench < bench/sql/seed.mysql.sql                  # schema + 100k rows
+go run ./bench/seedaes -driver mysql -dsn 'root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true'
 go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
 for l in go php rust; do go run ./cmd/ormgen gen --schema schema/schema.json --lang $l --out clients/$l/gen; done
 go run ./cmd/ormgen gen --schema schema/schema.json --lang typescript --out clients/typescript/src/gen

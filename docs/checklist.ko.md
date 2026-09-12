@@ -100,9 +100,9 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 - [x] T7.18 containerctl로 MySQL·PostgreSQL의 주석, 계획 적용, 반복 실행, drift, 실패, 잠금 충돌, 복구, rollback, rollback no-op을 실제 DB에서 검증했습니다.
 - [x] T7.19 AES blind-index schema 선언, keyed equality predicate, write 동기화, 생성 관계 API를 추가하고 네 클라이언트의 MySQL·PostgreSQL·SQLite 통합 테스트를 통과한다.
 - [x] T7.20 Go·PHP·Rust·TypeScript에서 큰 root `IN` predicate를 분할하고 non-`IN` parameter를 보존하며 row를 병합하고 count를 합산한다. 안전하지 않은 query 형태를 거부하고 생성된 Protobuf keyset 필드를 검사한다.
-- [~] T7.21 선언형 `soft_delete` schema directive를 추가하고 nullable datetime column을 검증하며 read·update에 활성 행 predicate를 적용하고 delete를 timestamp update로 변환한다. unit, planner, migration 물리 검사는 통과했으며 네 client 물리 검증은 남아 있다.
-- [~] T7.22 correlated subquery 기반 relation existence·count predicate, Protobuf field, 생성 API, parameter index 이동, 쌍 문서를 추가한다. unit, bridge, client build 검사는 통과했으며 모든 client 물리 실행은 남아 있다.
-- [~] T7.23 ordered source·through·target key를 사용하는 선언형 many-to-many through relation을 추가한다. schema·planner 및 네 언어 generator 검사가 서로 다른 composite-key 폭을 포함해 통과했으며 물리 실행 검사가 남아 있다.
+- [x] T7.21 선언형 `soft_delete` schema directive, nullable datetime 검증, read·update 활성 행 predicate, delete timestamp update 변환을 구현하고 네 client를 MySQL·PostgreSQL·SQLite 물리 DB에서 검증한다.
+- [x] T7.22 correlated subquery 기반 relation existence·count predicate, Protobuf field, 생성 API, parameter index 이동, 쌍 문서와 네 client·세 database 물리 검사를 완료한다.
+- [x] T7.23 ordered source·through·target key를 사용하는 선언형 many-to-many through relation을 구현하고 네 client·세 database 물리 실행을 검증한다.
 
 ## 문서 작업
 
