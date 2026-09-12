@@ -46,6 +46,7 @@ type AuthorInterface interface {
 	GetsByUuid(v string) (*orm.Collection[AuthorRow], error)
 	GetsByIsSingleWork(v bool) (*orm.Collection[AuthorRow], error)
 	GetsByLikeCount(v int64) (*orm.Collection[AuthorRow], error)
+	GetsByAesKeyVersion(v int32) (*orm.Collection[AuthorRow], error)
 	GetsByAesHexEmail(v string) (*orm.Collection[AuthorRow], error)
 	GetsByAesHexPhone(v string) (*orm.Collection[AuthorRow], error)
 	GetsByPrice(v float64) (*orm.Collection[AuthorRow], error)
@@ -74,6 +75,7 @@ type AuthorInterface interface {
 	GetCountByUuid(v string) (int64, error)
 	GetCountByIsSingleWork(v bool) (int64, error)
 	GetCountByLikeCount(v int64) (int64, error)
+	GetCountByAesKeyVersion(v int32) (int64, error)
 	GetCountByAesHexEmail(v string) (int64, error)
 	GetCountByAesHexPhone(v string) (int64, error)
 	GetCountByPrice(v float64) (int64, error)
@@ -102,6 +104,7 @@ type AuthorInterface interface {
 	UuidEq(v string) *AuthorQuery
 	IsSingleWorkEq(v bool) *AuthorQuery
 	LikeCountEq(v int64) *AuthorQuery
+	AesKeyVersionEq(v int32) *AuthorQuery
 	AesHexEmailEq(v string) *AuthorQuery
 	AesHexPhoneEq(v string) *AuthorQuery
 	PriceEq(v float64) *AuthorQuery
@@ -130,6 +133,7 @@ type AuthorInterface interface {
 	Uuid(v string) *AuthorQuery
 	IsSingleWork(v bool) *AuthorQuery
 	LikeCount(v int64) *AuthorQuery
+	AesKeyVersion(v int32) *AuthorQuery
 	AesHexEmail(v string) *AuthorQuery
 	AesHexPhone(v string) *AuthorQuery
 	Price(v float64) *AuthorQuery

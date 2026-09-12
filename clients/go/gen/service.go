@@ -702,6 +702,10 @@ func (q *ServiceQuery) IfParentLikeCountEq(v int64) *ServiceQuery {
 	q.q.IfParent("like_count", v)
 	return q
 }
+func (q *ServiceQuery) IfParentAesKeyVersionEq(v int32) *ServiceQuery {
+	q.q.IfParent("aes_key_version", v)
+	return q
+}
 func (q *ServiceQuery) IfParentAesHexEmailEq(v string) *ServiceQuery {
 	q.q.IfParent("aes_hex_email", v)
 	return q
