@@ -232,7 +232,7 @@ pub struct ServiceWhere<'a> { pub(crate) w: W<'a> }
 impl<'a> ServiceWhere<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
     pub fn and(mut self, f: impl FnOnce(ServiceWhere<'_>) -> ServiceWhere<'_>) -> Self { self.w.and_with(|w| { f(ServiceWhere { w }); }); self }
-    pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
+	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
     pub fn battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.w.nav_with("battles", |w| { f(super::battle::BattleWhere { w }); }); self }
     pub fn members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with("members", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
     pub fn modules(mut self, f: impl FnOnce(super::service_module::ServiceModuleWhere<'_>) -> super::service_module::ServiceModuleWhere<'_>) -> Self { self.w.nav_with("modules", |w| { f(super::service_module::ServiceModuleWhere { w }); }); self }

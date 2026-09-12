@@ -85,7 +85,7 @@ var (
 	// parent CARD child : label
 	reRelation = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s+([|}o]{1,2}[-.]{2}[|{o]{1,2})\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$`)
 	// %% kind table (a, b) [name]
-	reDirective = regexp.MustCompile(`^%%\s*(unique|index|fulltext|timestamps|predicate)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
+	reDirective = regexp.MustCompile(`^%%\s*(unique|index|fulltext|timestamps|scope|predicate)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
 	reLabel     = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s*(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
 	reRef       = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
 )
@@ -269,6 +269,11 @@ func parseDirective(m []string, line int) (*Directive, error) {
 		d.Columns = strings.Fields(d.Raw)
 		if len(d.Columns) != 2 {
 			return nil, &ParseError{line, "%% timestamps <table> <created> <updated>"}
+		}
+	case "scope":
+		d.Columns = strings.Fields(d.Raw)
+		if len(d.Columns) != 1 {
+			return nil, &ParseError{line, "%% scope <table> <column>"}
 		}
 	case "predicate":
 		name, body, ok := strings.Cut(d.Raw, ":")

@@ -1,5 +1,5 @@
 {
-  "schema_hash": "2bdd94841cfad48c",
+  "schema_hash": "fad1ec79809d68e2",
   "order": [
     "battle",
     "user",
@@ -354,7 +354,8 @@
           "expr": "`is_close` = FALSE AND `is_display` = TRUE",
           "arity": 0
         }
-      }
+      },
+      "scope": "service_seq"
     },
     "service": {
       "name": "service",

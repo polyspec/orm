@@ -31,6 +31,7 @@ type Entity struct {
 	Fulltext   [][]string            `json:"fulltext,omitempty"`
 	Timestamps *Timestamps           `json:"timestamps,omitempty"`
 	Predicates map[string]*Predicate `json:"predicates,omitempty"` // %% predicate → generated <name>(args…) methods
+	Scope      string                `json:"scope,omitempty"`      // %% scope <table> <column>
 	Line       int                   `json:"-"`
 
 	cols map[string]*Col
@@ -449,6 +450,21 @@ func (m *Manifest) addDirective(x *Directive) error {
 		ent.Fulltext = append(ent.Fulltext, x.Columns)
 	case "timestamps":
 		ent.Timestamps = &Timestamps{Created: x.Columns[0], Updated: x.Columns[1]}
+	case "scope":
+		if ent.Scope != "" {
+			return &BuildError{x.Line, "scope declared twice for " + ent.Name}
+		}
+		c := ent.Column(x.Columns[0])
+		if c == nil {
+			return &BuildError{x.Line, "scope column " + x.Columns[0] + " is unknown"}
+		}
+		if c.Nullable {
+			return &BuildError{x.Line, "scope column " + x.Columns[0] + " must be NOT NULL"}
+		}
+		if c.Type != "i32" && c.Type != "i64" && c.Type != "string" && c.Type != "enum" {
+			return &BuildError{x.Line, "scope column " + x.Columns[0] + " must be an integer or string"}
+		}
+		ent.Scope = x.Columns[0]
 	case "predicate":
 		if ent.Predicates == nil {
 			ent.Predicates = map[string]*Predicate{}

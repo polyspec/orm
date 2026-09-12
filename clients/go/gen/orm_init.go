@@ -8,7 +8,7 @@ import (
 )
 
 // SchemaHash is the schema_hash of the schema.json this package was generated from.
-const SchemaHash = "2bdd94841cfad48c"
+const SchemaHash = "fad1ec79809d68e2"
 
 var eng *engine.Engine
 
