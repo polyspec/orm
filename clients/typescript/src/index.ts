@@ -337,4 +337,7 @@ export function ServiceMember(): ServiceMemberQuery { return new ServiceMemberQu
 export { CompilerError, ConnectCompiler, ConnectPlanCompiler, compileRequest } from './compiler.js';
 export { planFromProto, requestToProto } from './compiler_bridge.js';
 export type { CompilerTransport } from './compiler.js';
+export { openMySql, openPostgres, openSqlite } from './driver.js';
+export type { DriverConnection, DriverName, DriverResult, DriverTransaction, DriverValue } from './driver.js';
+export { OrmError } from './runtime_error.js';
 export * as CompilerProto from './gen/proto/orm/compiler/v1/compiler_pb.js';
