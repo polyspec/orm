@@ -174,7 +174,7 @@ query event에는 정규화 SQL, bind 수, duration, plan 식별자, 오류를 �
 
 generator는 schema manifest를 읽고 선언된 method, field, relation, column reference, error type을 출력한다. 선언되지 않은 column, relation, operator의 method를 출력하지 않는다. 생성 코드는 manifest와 interface symbol 목록으로 검사한다.
 
-정규 API는 `relation<Rel>`, `relations<Rel>`, `join<Rel>`, `leftJoin<Rel>`처럼 선언된 relation method를 사용한다. PHP 호환 파서는 legacy 이름을 받을 수 있지만 같은 request IR로 변환하며 다른 client에 없는 논리 동작을 추가할 수 없다.
+정규 API는 `relation<Rel>`, `relations<Rel>`, `join<Rel>`, `leftJoin<Rel>`처럼 선언된 relation method를 사용한다. 선언되지 않은 method 이름은 언어의 method lookup 단계에서 실패한다.
 
 ## 12. 검증
 
