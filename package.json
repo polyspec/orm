@@ -15,7 +15,8 @@
     "docs:rules-check": "node scripts/docs/rules.mjs",
     "schema:check": "node scripts/schema/check.mjs",
     "proto:check": "node tests/proto/check.mjs",
-    "typescript:check": "tsc -p clients/typescript/tsconfig.json --noEmit"
+    "typescript:check": "tsc -p clients/typescript/tsconfig.json --noEmit",
+    "typescript:build": "npm --prefix clients/typescript run build"
   },
   "devDependencies": {
     "markdown-it": "14.1.0",
