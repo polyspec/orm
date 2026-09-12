@@ -49,7 +49,9 @@
 - [ ] P10.5 MySQL·PostgreSQL·SQLite 물리 검사가 parameter limit, 모든 migration operation, batch write, keyset pagination, transaction mode, encryption 변경을 `-state` 없는 containerctl로 검사한다.
 - [ ] P10.6 Go·PHP·Rust·TypeScript가 추가된 모든 operation에서 동일한 common-vector result와 호환되는 public structure를 생성한다.
 
-## P11: 공개 저장소 파일과 패키지 검증
+## P11: 저장소 및 패키지 작업 제외
+
+이 절은 현재 구현 범위에서 제외한다. 패키지 게시, 릴리스 생성, 공개 저장소 준비, Pages 수동 배포는 수행하지 않는다. 제품 문서와 자동 기능 검사는 P8~P10에서 계속 수행한다.
 
 - [ ] P11.1 오래되거나 사실과 다른 README 및 manual 내용을 수정하고 `README.ko.md`를 추가한다.
 - [ ] P11.2 보안 신고, 기여, 행동 강령, 변경 이력 문서를 추가하고 사용자 대상 문서는 한국어 파일을 함께 작성한다.
@@ -59,4 +61,4 @@
 
 ## 완료
 
-- [ ] G8 모든 P8~P11 항목이 명시한 test를 통과하고 `make check`가 통과한다. working tree가 clean이고 local `HEAD`가 `origin/main`과 같으며 최종 GitHub CI가 성공한다.
+- [ ] G8 범위에 포함된 P8~P10 항목이 명시한 test를 통과하고 `make check`가 통과한다. working tree가 clean이고 local `HEAD`가 `origin/main`과 같다.
