@@ -161,6 +161,31 @@
             "deterministic": false
         },
         {
+            "name": "json/upload_nested",
+            "styles": [
+                "json"
+            ],
+            "value": {
+                "files": [
+                    {
+                        "$type": "upload_file",
+                        "mime": "text/plain",
+                        "name": "report.txt",
+                        "path": "/tmp/report.txt"
+                    },
+                    {
+                        "$type": "upload_file",
+                        "mime": "",
+                        "name": "raw.bin",
+                        "path": "/tmp/raw.bin"
+                    }
+                ],
+                "title": "request"
+            },
+            "encoded_b64": "eyJmaWxlcyI6W3siJHR5cGUiOiJ1cGxvYWRfZmlsZSIsIm1pbWUiOiJ0ZXh0L3BsYWluIiwibmFtZSI6InJlcG9ydC50eHQiLCJwYXRoIjoiL3RtcC9yZXBvcnQudHh0In0seyIkdHlwZSI6InVwbG9hZF9maWxlIiwibWltZSI6IiIsIm5hbWUiOiJyYXcuYmluIiwicGF0aCI6Ii90bXAvcmF3LmJpbiJ9XSwidGl0bGUiOiJyZXF1ZXN0In0=",
+            "deterministic": false
+        },
+        {
             "name": "serialize/null",
             "styles": [
                 "serialize"
@@ -318,6 +343,31 @@
                 "10": "ten"
             },
             "encoded_b64": "YTozOntpOi0zO3M6MzoibmVnIjtzOjI6IjA3IjtzOjExOiJ6ZXJvLXBhZGRlZCI7aToxMDtzOjM6InRlbiI7fQ==",
+            "deterministic": true
+        },
+        {
+            "name": "serialize/upload_nested",
+            "styles": [
+                "serialize"
+            ],
+            "value": {
+                "files": [
+                    {
+                        "$type": "upload_file",
+                        "mime": "text/plain",
+                        "name": "report.txt",
+                        "path": "/tmp/report.txt"
+                    },
+                    {
+                        "$type": "upload_file",
+                        "mime": "",
+                        "name": "raw.bin",
+                        "path": "/tmp/raw.bin"
+                    }
+                ],
+                "title": "request"
+            },
+            "encoded_b64": "YToyOntzOjU6ImZpbGVzIjthOjI6e2k6MDthOjQ6e3M6NToiJHR5cGUiO3M6MTE6InVwbG9hZF9maWxlIjtzOjQ6Im1pbWUiO3M6MTA6InRleHQvcGxhaW4iO3M6NDoibmFtZSI7czoxMDoicmVwb3J0LnR4dCI7czo0OiJwYXRoIjtzOjE1OiIvdG1wL3JlcG9ydC50eHQiO31pOjE7YTo0OntzOjU6IiR0eXBlIjtzOjExOiJ1cGxvYWRfZmlsZSI7czo0OiJtaW1lIjtzOjA6IiI7czo0OiJuYW1lIjtzOjc6InJhdy5iaW4iO3M6NDoicGF0aCI7czoxMjoiL3RtcC9yYXcuYmluIjt9fXM6NToidGl0bGUiO3M6NzoicmVxdWVzdCI7fQ==",
             "deterministic": true
         },
         {
@@ -496,6 +546,32 @@
             "deterministic": true
         },
         {
+            "name": "base64/upload_nested",
+            "styles": [
+                "serialize",
+                "base64"
+            ],
+            "value": {
+                "files": [
+                    {
+                        "$type": "upload_file",
+                        "mime": "text/plain",
+                        "name": "report.txt",
+                        "path": "/tmp/report.txt"
+                    },
+                    {
+                        "$type": "upload_file",
+                        "mime": "",
+                        "name": "raw.bin",
+                        "path": "/tmp/raw.bin"
+                    }
+                ],
+                "title": "request"
+            },
+            "encoded_b64": "WVRveU9udHpPalU2SW1acGJHVnpJanRoT2pJNmUyazZNRHRoT2pRNmUzTTZOVG9pSkhSNWNHVWlPM002TVRFNkluVndiRzloWkY5bWFXeGxJanR6T2pRNkltMXBiV1VpTzNNNk1UQTZJblJsZUhRdmNHeGhhVzRpTzNNNk5Eb2libUZ0WlNJN2N6b3hNRG9pY21Wd2IzSjBMblI0ZENJN2N6bzBPaUp3WVhSb0lqdHpPakUxT2lJdmRHMXdMM0psY0c5eWRDNTBlSFFpTzMxcE9qRTdZVG8wT250ek9qVTZJaVIwZVhCbElqdHpPakV4T2lKMWNHeHZZV1JmWm1sc1pTSTdjem8wT2lKdGFXMWxJanR6T2pBNklpSTdjem8wT2lKdVlXMWxJanR6T2pjNkluSmhkeTVpYVc0aU8zTTZORG9pY0dGMGFDSTdjem94TWpvaUwzUnRjQzl5WVhjdVltbHVJanQ5ZlhNNk5Ub2lkR2wwYkdVaU8zTTZOem9pY21WeGRXVnpkQ0k3ZlE9PQ==",
+            "deterministic": true
+        },
+        {
             "name": "gz/null",
             "styles": [
                 "serialize",
@@ -669,6 +745,233 @@
             },
             "encoded_b64": "eNpLtDK2qs600jW2LgaylPJS05WALCMrJQNzEMPQ0EqpKrUoX7cgMSUlNUXJOtPK0ACitCQ1T8m6FgBEshJH",
             "deterministic": false
+        },
+        {
+            "name": "gz/upload_nested",
+            "styles": [
+                "serialize",
+                "gz"
+            ],
+            "value": {
+                "files": [
+                    {
+                        "$type": "upload_file",
+                        "mime": "text/plain",
+                        "name": "report.txt",
+                        "path": "/tmp/report.txt"
+                    },
+                    {
+                        "$type": "upload_file",
+                        "mime": "",
+                        "name": "raw.bin",
+                        "path": "/tmp/raw.bin"
+                    }
+                ],
+                "title": "request"
+            },
+            "encoded_b64": "eNqVjtEKwjAMRf8l+LxuYyJkHyMRIxbara4ZTqT/bju7Kr75Fu654VzCFp8e9wgXbdhDTynQWMejy2QnD8fQe2wahNmZkc7H1E5Rh2C1fdMaQXgR5QzpIcOBPnBiN05SySIZOpLrCqNEiXXquxE0Nv+PiJof8yGK6V6dyqRibTfrhkNYVaLFlFe+zezTnBfbkVzD",
+            "deterministic": false
+        },
+        {
+            "name": "curlfile/null",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": null,
+            "encoded_b64": null,
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/bool_true",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": true,
+            "encoded_b64": "YjoxOw==",
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/int",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": 42,
+            "encoded_b64": "aTo0Mjs=",
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/negative_int",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": -7,
+            "encoded_b64": "aTotNzs=",
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/float",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": 1.5,
+            "encoded_b64": "ZDoxLjU7",
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/float_small",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": 0.1,
+            "encoded_b64": "ZDowLjE7",
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/integral_float",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": 2,
+            "encoded_b64": "ZDoyOw==",
+            "deterministic": false
+        },
+        {
+            "name": "curlfile/string",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": "hello",
+            "encoded_b64": "czo1OiJoZWxsbyI7",
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/unicode_slash",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": "한글/slash \"q\" \\ back",
+            "encoded_b64": "czoyMzoi7ZWc6riAL3NsYXNoICJxIiBcIGJhY2siOw==",
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/empty_string",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": "",
+            "encoded_b64": "czowOiIiOw==",
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/empty_list",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": [],
+            "encoded_b64": "YTowOnt9",
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/list",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": [
+                1,
+                "two",
+                3.5,
+                null,
+                false
+            ],
+            "encoded_b64": "YTo1OntpOjA7aToxO2k6MTtzOjM6InR3byI7aToyO2Q6My41O2k6MztOO2k6NDtiOjA7fQ==",
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/nested_map",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": {
+                "a": 1,
+                "b": [
+                    1,
+                    2,
+                    {
+                        "c": "한"
+                    }
+                ],
+                "d": null,
+                "e": true,
+                "f": 1.5
+            },
+            "encoded_b64": "YTo1OntzOjE6ImEiO2k6MTtzOjE6ImIiO2E6Mzp7aTowO2k6MTtpOjE7aToyO2k6MjthOjE6e3M6MToiYyI7czozOiLtlZwiO319czoxOiJkIjtOO3M6MToiZSI7YjoxO3M6MToiZiI7ZDoxLjU7fQ==",
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/int_keys_sparse",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": {
+                "1": "x",
+                "5": "y"
+            },
+            "encoded_b64": "YToyOntpOjE7czoxOiJ4IjtpOjU7czoxOiJ5Ijt9",
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/numeric_string_keys",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": {
+                "-3": "neg",
+                "07": "zero-padded",
+                "10": "ten"
+            },
+            "encoded_b64": "YTozOntpOi0zO3M6MzoibmVnIjtzOjI6IjA3IjtzOjExOiJ6ZXJvLXBhZGRlZCI7aToxMDtzOjM6InRlbiI7fQ==",
+            "deterministic": true
+        },
+        {
+            "name": "curlfile/upload_nested",
+            "styles": [
+                "curlfile",
+                "serialize"
+            ],
+            "value": {
+                "files": [
+                    {
+                        "$type": "upload_file",
+                        "mime": "text/plain",
+                        "name": "report.txt",
+                        "path": "/tmp/report.txt"
+                    },
+                    {
+                        "$type": "upload_file",
+                        "mime": "",
+                        "name": "raw.bin",
+                        "path": "/tmp/raw.bin"
+                    }
+                ],
+                "title": "request"
+            },
+            "encoded_b64": "YToyOntzOjU6ImZpbGVzIjthOjI6e2k6MDthOjQ6e3M6MTI6ImlzX2N1cmxfZmlsZSI7YjoxO3M6NDoibWltZSI7czoxMDoidGV4dC9wbGFpbiI7czo0OiJuYW1lIjtzOjEwOiJyZXBvcnQudHh0IjtzOjQ6InBhdGgiO3M6MTU6Ii90bXAvcmVwb3J0LnR4dCI7fWk6MTthOjQ6e3M6MTI6ImlzX2N1cmxfZmlsZSI7YjoxO3M6NDoibWltZSI7czowOiIiO3M6NDoibmFtZSI7czo3OiJyYXcuYmluIjtzOjQ6InBhdGgiO3M6MTI6Ii90bXAvcmF3LmJpbiI7fX1zOjU6InRpdGxlIjtzOjc6InJlcXVlc3QiO30=",
+            "deterministic": true
         }
     ]
 }

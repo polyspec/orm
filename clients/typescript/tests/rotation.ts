@@ -1,4 +1,7 @@
-import { AesKeyring, BattleQuery, type AesRowCodec } from '../src/index.js';
+import { AesKeyring, BattleQuery, encodeCodec, type AesRowCodec, type UploadFileValue } from '../src/index.js';
+
+const upload: UploadFileValue = { $type: 'upload_file', path: '/tmp/report.txt', mime: 'text/plain', name: 'report.txt' };
+encodeCodec(['curlfile', 'serialize'], upload);
 
 const codec: AesRowCodec = {
   decode(value, _styles, key) { return `${String(value)}:${key}`; },

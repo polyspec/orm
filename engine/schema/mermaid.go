@@ -92,7 +92,7 @@ var (
 	reRef       = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
 )
 
-var styleWords = map[string]bool{"aes": true, "hex": true, "gz": true, "json": true, "jsons": true, "base64": true, "serialize": true, "ip": true, "yaml": true}
+var styleWords = map[string]bool{"aes": true, "hex": true, "gz": true, "json": true, "jsons": true, "base64": true, "serialize": true, "ip": true, "yaml": true, "curlfile": true}
 
 // Parse reads one .mmd file. It accepts exactly the subset in docs/schema.md
 // and fails loudly on anything else — a schema file is not a place for guesses.

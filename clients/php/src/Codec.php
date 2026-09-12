@@ -48,6 +48,9 @@ final class Codec
                     }
                     $v = self::normalize($v);
                     break;
+                case 'curlfile':
+                    $v = self::restoreUploadFiles($v);
+                    break;
                 case 'json':
                 case 'jsons':
                     try {
@@ -74,14 +77,21 @@ final class Codec
             return null;
         }
         $cur = null;
+        $value = $v;
         foreach ($styles as $i => $st) {
             switch ($st) {
+                case 'curlfile':
+                    if ($i !== 0) {
+                        throw new OrmException(Code::CODEC_UNSUPPORTED, 'curlfile must be the first style');
+                    }
+                    $value = self::prepareUploadFiles($value);
+                    break;
                 case 'serialize':
-                    $cur = serialize($v);
+                    $cur = serialize($value);
                     break;
                 case 'json':
                 case 'jsons':
-                    $cur = json_encode($v, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+                    $cur = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
                     break;
                 case 'base64':
                     $cur = base64_encode($cur);
@@ -94,6 +104,46 @@ final class Codec
             }
         }
         return $styles[count($styles) - 1] === 'gz' ? new Bytes($cur) : $cur;
+    }
+
+    private static function prepareUploadFiles(mixed $value): mixed
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+        if (($value['$type'] ?? null) === 'upload_file') {
+            if (count($value) !== 4 || !is_string($value['path'] ?? null) || $value['path'] === ''
+                || !is_string($value['mime'] ?? null) || !is_string($value['name'] ?? null) || $value['name'] === '') {
+                throw new OrmException(Code::CODEC_ENCODE, 'curlfile: upload_file requires non-empty path and name plus string mime');
+            }
+            return ['is_curl_file' => true, 'mime' => $value['mime'], 'name' => $value['name'], 'path' => $value['path']];
+        }
+        foreach ($value as $key => $item) {
+            if (is_array($item)) {
+                $value[$key] = self::prepareUploadFiles($item);
+            }
+        }
+        return $value;
+    }
+
+    private static function restoreUploadFiles(mixed $value): mixed
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+        if (($value['is_curl_file'] ?? null) === true) {
+            if (count($value) !== 4 || !is_string($value['path'] ?? null) || $value['path'] === ''
+                || !is_string($value['mime'] ?? null) || !is_string($value['name'] ?? null) || $value['name'] === '') {
+                throw new OrmException(Code::CODEC_DECODE, 'curlfile: invalid stored upload file');
+            }
+            return ['$type' => 'upload_file', 'path' => $value['path'], 'mime' => $value['mime'], 'name' => $value['name']];
+        }
+        foreach ($value as $key => $item) {
+            if (is_array($item)) {
+                $value[$key] = self::restoreUploadFiles($item);
+            }
+        }
+        return $value;
     }
 
     // ---- host stages: aes (MySQL AES_ENCRYPT bytes), hex (upper-case), ip (INET6_ATON packing) ----

@@ -43,6 +43,12 @@ func TestBuildExample(t *testing.T) {
 	if c := b.Column("aes_hex_email"); c.Type != "string" || c.Len != 255 || c.Lazy || strings.Join(c.Styles, ",") != "aes,hex" {
 		t.Errorf("aes_hex_email: %+v", c)
 	}
+	if c := b.Column("curlfile_serialize_files"); c.Type != "text" || !c.Lazy || strings.Join(c.Styles, ",") != "curlfile,serialize" {
+		t.Errorf("curlfile_serialize_files: %+v", c)
+	}
+	if c := b.Column("upload_archive"); c.Type != "text" || !c.Lazy || strings.Join(c.Styles, ",") != "curlfile,serialize" {
+		t.Errorf("upload_archive: %+v", c)
+	}
 	if c := b.Column("ip"); c.Type != "inet" || c.Lazy {
 		t.Errorf("ip: %+v", c)
 	}

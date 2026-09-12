@@ -28,6 +28,11 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
     };
     let mut value: Option<Value> = None;
     for st in styles.iter().rev() {
+        if st == "curlfile" {
+            let decoded = value.take().ok_or_else(|| err(CODEC_UNSUPPORTED, "curlfile must precede serialize on write"))?;
+            value = Some(restore_upload_files(decoded)?);
+            continue;
+        }
         if value.is_some() {
             return Err(err(CODEC_DECODE, format!("style {st} after a decoded value")));
         }
@@ -59,21 +64,28 @@ pub fn encode(styles: &[&str], v: Option<&Value>) -> Result<Param> {
         return Ok(Param::Null);
     }
     let mut cur: Vec<u8> = Vec::new();
+    let mut value = v.clone();
     for (i, st) in styles.iter().enumerate() {
         match *st {
-            "serialize" => {
+            "curlfile" => {
                 if i != 0 {
-                    return Err(err(CODEC_UNSUPPORTED, "serialize must be the first style"));
+                    return Err(err(CODEC_UNSUPPORTED, "curlfile must be the first style"));
+                }
+                value = prepare_upload_files(value)?;
+            }
+            "serialize" => {
+                if i != 0 && !(i == 1 && styles[0] == "curlfile") {
+                    return Err(err(CODEC_UNSUPPORTED, "serialize must be the first encoding style"));
                 }
                 let mut s = String::new();
-                php_serialize(&mut s, v)?;
+                php_serialize(&mut s, &value)?;
                 cur = s.into_bytes();
             }
             "json" | "jsons" => {
                 if i != 0 {
                     return Err(err(CODEC_UNSUPPORTED, "json must be the first style"));
                 }
-                cur = serde_json::to_vec(v).map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
+                cur = serde_json::to_vec(&value).map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
             }
             "base64" => cur = base64::engine::general_purpose::STANDARD.encode(&cur).into_bytes(),
             "gz" => {
@@ -85,6 +97,56 @@ pub fn encode(styles: &[&str], v: Option<&Value>) -> Result<Param> {
         }
     }
     Ok(Param::Str(String::from_utf8(cur).map_err(|e| err(CODEC_ENCODE, e.to_string()))?))
+}
+
+fn prepare_upload_files(value: Value) -> Result<Value> {
+    match value {
+        Value::Array(items) => Ok(Value::Array(items.into_iter().map(prepare_upload_files).collect::<Result<_>>()?)),
+        Value::Object(mut fields) => {
+            if fields.get("$type") == Some(&Value::String("upload_file".into())) {
+                let valid = fields.len() == 4
+                    && fields.get("path").and_then(Value::as_str).is_some_and(|v| !v.is_empty())
+                    && fields.get("mime").and_then(Value::as_str).is_some()
+                    && fields.get("name").and_then(Value::as_str).is_some_and(|v| !v.is_empty());
+                if !valid {
+                    return Err(err(CODEC_ENCODE, "curlfile: upload_file requires non-empty path and name plus string mime"));
+                }
+                fields.remove("$type");
+                fields.insert("is_curl_file".into(), Value::Bool(true));
+                return Ok(Value::Object(fields));
+            }
+            for item in fields.values_mut() {
+                *item = prepare_upload_files(std::mem::take(item))?;
+            }
+            Ok(Value::Object(fields))
+        }
+        other => Ok(other),
+    }
+}
+
+fn restore_upload_files(value: Value) -> Result<Value> {
+    match value {
+        Value::Array(items) => Ok(Value::Array(items.into_iter().map(restore_upload_files).collect::<Result<_>>()?)),
+        Value::Object(mut fields) => {
+            if fields.get("is_curl_file") == Some(&Value::Bool(true)) {
+                let valid = fields.len() == 4
+                    && fields.get("path").and_then(Value::as_str).is_some_and(|v| !v.is_empty())
+                    && fields.get("mime").and_then(Value::as_str).is_some()
+                    && fields.get("name").and_then(Value::as_str).is_some_and(|v| !v.is_empty());
+                if !valid {
+                    return Err(err(CODEC_DECODE, "curlfile: invalid stored upload file"));
+                }
+                fields.remove("is_curl_file");
+                fields.insert("$type".into(), Value::String("upload_file".into()));
+                return Ok(Value::Object(fields));
+            }
+            for item in fields.values_mut() {
+                *item = restore_upload_files(std::mem::take(item))?;
+            }
+            Ok(Value::Object(fields))
+        }
+        other => Ok(other),
+    }
 }
 
 // ---- PHP serialize format ----
@@ -592,5 +654,11 @@ mod tests {
             Param::Str(s) => assert_eq!(s, "a:5:{i:-3;i:2;s:2:\"07\";i:1;i:10;i:3;s:1:\"x\";d:4;s:1:\"y\";d:1.0E+25;}"),
             other => panic!("{other:?}"),
         }
+        let invalid_public = serde_json::json!({"$type": "upload_file", "path": "", "mime": "text/plain", "name": "a.txt"});
+        assert_eq!(encode(&["curlfile", "serialize"], Some(&invalid_public)).unwrap_err().code(), CODEC_ENCODE);
+        let invalid_stored = "a:4:{s:12:\"is_curl_file\";b:1;s:4:\"mime\";s:10:\"text/plain\";s:4:\"name\";s:5:\"a.txt\";s:4:\"path\";s:0:\"\";}";
+        let styles = vec!["curlfile".to_string(), "serialize".to_string()];
+        assert_eq!(decode(&styles, &Val::Str(invalid_stored.into())).unwrap_err().code(), CODEC_DECODE);
+        assert_eq!(encode(&["serialize", "curlfile"], Some(&serde_json::json!({}))).unwrap_err().code(), CODEC_UNSUPPORTED);
     }
 }

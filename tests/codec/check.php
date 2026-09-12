@@ -7,6 +7,8 @@ declare(strict_types=1);
 require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
 
 use Orm\Codec;
+use Orm\Code;
+use Orm\OrmException;
 
 $root = __DIR__;
 $vectors = json_decode(file_get_contents("$root/vectors.json"), true, 512, JSON_THROW_ON_ERROR)['vectors'];
@@ -42,6 +44,23 @@ foreach ($vectors as $v) {
     if ($v['deterministic'] && ($enc === null ? null : base64_encode($enc)) !== $v['encoded_b64']) {
         $fail++;
         fwrite(STDERR, "php encode {$v['name']} differs\n");
+    }
+}
+$errors = [
+    ['invalid public upload file', fn() => Codec::encode(['curlfile', 'serialize'], ['$type' => 'upload_file', 'path' => '', 'mime' => 'text/plain', 'name' => 'a.txt']), Code::CODEC_ENCODE],
+    ['invalid stored upload file', fn() => Codec::decode(['curlfile', 'serialize'], 'a:4:{s:12:"is_curl_file";b:1;s:4:"mime";s:10:"text/plain";s:4:"name";s:5:"a.txt";s:4:"path";s:0:"";}'), Code::CODEC_DECODE],
+    ['invalid curlfile order', fn() => Codec::encode(['serialize', 'curlfile'], []), Code::CODEC_UNSUPPORTED],
+];
+foreach ($errors as [$name, $operation, $code]) {
+    try {
+        $operation();
+        $fail++;
+        fwrite(STDERR, "$name: expected $code\n");
+    } catch (OrmException $e) {
+        if ($e->code_ !== $code) {
+            $fail++;
+            fwrite(STDERR, "$name: {$e->code_} want $code\n");
+        }
     }
 }
 $langs = 0;

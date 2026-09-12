@@ -42,6 +42,17 @@ func Decode(styles []string, raw any) (any, error) {
 	}
 	var v any = b
 	for i := len(styles) - 1; i >= 0; i-- {
+		if styles[i] == "curlfile" {
+			if _, ok := v.([]byte); ok {
+				return nil, codecErr(CodeCodecUnsupported, "curlfile must precede serialize on write")
+			}
+			var err error
+			v, err = restoreUploadFiles(v)
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
 		cur, ok := v.([]byte)
 		if !ok {
 			return nil, codecErr(CodeCodecDecode, "style %s after a decoded value", styles[i])
@@ -89,14 +100,24 @@ func Encode(styles []string, v any) (any, error) {
 		return nil, nil
 	}
 	var cur []byte
+	value := v
 	for i, st := range styles {
 		switch st {
-		case "serialize":
+		case "curlfile":
 			if i != 0 {
-				return nil, codecErr(CodeCodecUnsupported, "serialize must be the first style")
+				return nil, codecErr(CodeCodecUnsupported, "curlfile must be the first style")
+			}
+			var err error
+			value, err = prepareUploadFiles(value)
+			if err != nil {
+				return nil, err
+			}
+		case "serialize":
+			if i != 0 && !(i == 1 && styles[0] == "curlfile") {
+				return nil, codecErr(CodeCodecUnsupported, "serialize must be the first encoding style")
 			}
 			var sb strings.Builder
-			if err := phpSerialize(&sb, v); err != nil {
+			if err := phpSerialize(&sb, value); err != nil {
 				return nil, err
 			}
 			cur = []byte(sb.String())
@@ -107,7 +128,7 @@ func Encode(styles []string, v any) (any, error) {
 			var buf bytes.Buffer
 			enc := json.NewEncoder(&buf)
 			enc.SetEscapeHTML(false)
-			if err := enc.Encode(v); err != nil {
+			if err := enc.Encode(value); err != nil {
 				return nil, codecErr(CodeCodecEncode, "json: %v", err)
 			}
 			cur = bytes.TrimRight(buf.Bytes(), "\n")
@@ -124,6 +145,78 @@ func Encode(styles []string, v any) (any, error) {
 		}
 	}
 	return string(cur), nil
+}
+
+func prepareUploadFiles(v any) (any, error) {
+	switch x := v.(type) {
+	case []any:
+		out := make([]any, len(x))
+		for i := range x {
+			var err error
+			out[i], err = prepareUploadFiles(x[i])
+			if err != nil {
+				return nil, err
+			}
+		}
+		return out, nil
+	case map[string]any:
+		if kind, ok := x["$type"]; ok && kind == "upload_file" {
+			path, pathOK := x["path"].(string)
+			mime, mimeOK := x["mime"].(string)
+			name, nameOK := x["name"].(string)
+			if len(x) != 4 || !pathOK || !mimeOK || !nameOK || path == "" || name == "" {
+				return nil, codecErr(CodeCodecEncode, "curlfile: upload_file requires non-empty path and name plus string mime")
+			}
+			return map[string]any{"is_curl_file": true, "path": path, "mime": mime, "name": name}, nil
+		}
+		out := make(map[string]any, len(x))
+		for key, value := range x {
+			var err error
+			out[key], err = prepareUploadFiles(value)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return out, nil
+	default:
+		return v, nil
+	}
+}
+
+func restoreUploadFiles(v any) (any, error) {
+	switch x := v.(type) {
+	case []any:
+		out := make([]any, len(x))
+		for i := range x {
+			var err error
+			out[i], err = restoreUploadFiles(x[i])
+			if err != nil {
+				return nil, err
+			}
+		}
+		return out, nil
+	case map[string]any:
+		if marker, ok := x["is_curl_file"]; ok && marker == true {
+			path, pathOK := x["path"].(string)
+			mime, mimeOK := x["mime"].(string)
+			name, nameOK := x["name"].(string)
+			if len(x) != 4 || !pathOK || !mimeOK || !nameOK || path == "" || name == "" {
+				return nil, codecErr(CodeCodecDecode, "curlfile: invalid stored upload file")
+			}
+			return map[string]any{"$type": "upload_file", "path": path, "mime": mime, "name": name}, nil
+		}
+		out := make(map[string]any, len(x))
+		for key, value := range x {
+			var err error
+			out[key], err = restoreUploadFiles(value)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return out, nil
+	default:
+		return v, nil
+	}
 }
 
 // jsonDecode keeps integers as int64 and everything else as the value model.
