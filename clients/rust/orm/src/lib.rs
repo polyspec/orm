@@ -24,7 +24,7 @@ pub use builder::{Q, W};
 pub use collection::{Collection, Key, Page};
 pub use config::OrmConfig;
 pub use compiler_transport::{CompilerTransport, ConnectCompiler};
-pub use db::{ConnectOptions, Db, Exec, Pool, TransactionOptions, Tx};
+pub use db::{ConnectOptions, Db, Exec, IsolationLevel, Pool, TransactionOptions, Tx};
 pub use engine::Engine;
 pub use row::{Cells, Src};
 pub use value::{parse_point, point_text, Param, Point};

@@ -361,7 +361,7 @@ async fn main() {
                     last_writer.store(id, Ordering::Relaxed);
                     Ok(())
                 }
-            }, orm::TransactionOptions { retry_deadlocks: true, max_attempts: 3 }).await
+            }, orm::TransactionOptions { retry_deadlocks: true, max_attempts: 3, ..Default::default() }).await
         })
     };
     let (r1, r2) = tokio::join!(task(1, a, b), task(2, b, a));
