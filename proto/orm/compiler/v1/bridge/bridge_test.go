@@ -70,6 +70,29 @@ func TestNavigationModeRoundTrips(t *testing.T) {
 	}
 }
 
+func TestNavigationCountRoundTrips(t *testing.T) {
+	req := &ir.Request{IRVersion: ir.Version, SchemaHash: "schema", Kind: "all", NParams: 2, Query: ir.Query{
+		Entity: "account",
+		Where:  &ir.Group{Items: []ir.Item{{Nav: &ir.Nav{Rel: "items", Mode: "count", CountOp: "gte", P: intPtr(1), Group: &ir.Group{}}}}},
+	}}
+	wire, err := RequestToProto(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nav := wire.Root.GetWhere().Items[0].GetNavigation()
+	if nav == nil || nav.GetMode() != "count" || nav.GetCountOperator() != "gte" || nav.GetCountParameter() != 1 {
+		t.Fatalf("navigation count was not encoded: %#v", nav)
+	}
+	decoded, err := RequestFromProto(wire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := decoded.Query.Where.Items[0].Nav
+	if got == nil || got.Mode != "count" || got.CountOp != "gte" || got.P == nil || *got.P != 1 {
+		t.Fatalf("navigation count was not decoded: %#v", got)
+	}
+}
+
 func intPtr(v int) *int { return &v }
 
 func TestPlanFromProtoRejectsMissingPlanData(t *testing.T) {

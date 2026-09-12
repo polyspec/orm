@@ -185,6 +185,12 @@ final class {{.Type}}Where
     public function {{camel .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w->nav('{{.Name}}'))); $this->w->req->end(); return $this; }
     public function has{{pascal .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w->navMode('{{.Name}}', 'exists'))); $this->w->req->end(); return $this; }
     public function notHas{{pascal .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w->navMode('{{.Name}}', 'not_exists'))); $this->w->req->end(); return $this; }
+    public function count{{pascal .Name}}Eq(int $value, \Closure $fn): static { $fn(new {{.TargetType}}Where($this->w->navCount('{{.Name}}', 'eq', $value))); $this->w->req->end(); return $this; }
+    public function count{{pascal .Name}}Gte(int $value, \Closure $fn): static { $fn(new {{.TargetType}}Where($this->w->navCount('{{.Name}}', 'gte', $value))); $this->w->req->end(); return $this; }
+    public function count{{pascal .Name}}Gt(int $value, \Closure $fn): static { $fn(new {{.TargetType}}Where($this->w->navCount('{{.Name}}', 'gt', $value))); $this->w->req->end(); return $this; }
+    public function count{{pascal .Name}}Lte(int $value, \Closure $fn): static { $fn(new {{.TargetType}}Where($this->w->navCount('{{.Name}}', 'lte', $value))); $this->w->req->end(); return $this; }
+    public function count{{pascal .Name}}Lt(int $value, \Closure $fn): static { $fn(new {{.TargetType}}Where($this->w->navCount('{{.Name}}', 'lt', $value))); $this->w->req->end(); return $this; }
+    public function count{{pascal .Name}}NotEq(int $value, \Closure $fn): static { $fn(new {{.TargetType}}Where($this->w->navCount('{{.Name}}', 'not_eq', $value))); $this->w->req->end(); return $this; }
 {{- end}}
 {{range .Cols}}{{$c := .}}{{range .Ops}}
 {{- if eq .Kind "one"}}
@@ -247,6 +253,12 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
     public function {{camel .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w()->nav('{{.Name}}'))); $this->req->end(); return $this; }
     public function has{{pascal .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w()->navMode('{{.Name}}', 'exists'))); $this->req->end(); return $this; }
     public function notHas{{pascal .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w()->navMode('{{.Name}}', 'not_exists'))); $this->req->end(); return $this; }
+    public function count{{pascal .Name}}Eq(int $value, \Closure $fn): static { $fn(new {{.TargetType}}Where($this->w()->navCount('{{.Name}}', 'eq', $value))); $this->req->end(); return $this; }
+    public function count{{pascal .Name}}Gte(int $value, \Closure $fn): static { $fn(new {{.TargetType}}Where($this->w()->navCount('{{.Name}}', 'gte', $value))); $this->req->end(); return $this; }
+    public function count{{pascal .Name}}Gt(int $value, \Closure $fn): static { $fn(new {{.TargetType}}Where($this->w()->navCount('{{.Name}}', 'gt', $value))); $this->req->end(); return $this; }
+    public function count{{pascal .Name}}Lte(int $value, \Closure $fn): static { $fn(new {{.TargetType}}Where($this->w()->navCount('{{.Name}}', 'lte', $value))); $this->req->end(); return $this; }
+    public function count{{pascal .Name}}Lt(int $value, \Closure $fn): static { $fn(new {{.TargetType}}Where($this->w()->navCount('{{.Name}}', 'lt', $value))); $this->req->end(); return $this; }
+    public function count{{pascal .Name}}NotEq(int $value, \Closure $fn): static { $fn(new {{.TargetType}}Where($this->w()->navCount('{{.Name}}', 'not_eq', $value))); $this->req->end(); return $this; }
 {{- end}}
 {{range .Cols}}{{$c := .}}{{range .Ops}}
 {{- if eq .Kind "one"}}

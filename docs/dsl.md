@@ -96,6 +96,7 @@ An empty `IN` list returns `EMPTY_IN`. The allowed operators depend on the colum
 | `and(fn)` / `or(fn)` | Add a nested group. |
 | `<rel>(fn)` | Add conditions to a declared joined relation. An undeclared path returns `ENTITY_NOT_JOINED`. |
 | `has<Rel>(fn)` / `notHas<Rel>(fn)` | Add an `EXISTS` or `NOT EXISTS` predicate for a declared relation. The predicate uses relation key mapping and target filters without requiring a join. |
+| `count<Rel><Op>(value, fn)` | Compare matching related row counts with `eq`, `notEq`, `gt`, `gte`, `lt`, or `lte`. The predicate uses a correlated count subquery and does not require a join. |
 | `on(fn)` / `where(fn)` | Use the same Where builder for join ON and WHERE conditions. |
 
 A leading `or()` or `or(fn)` returns `OR_AT_GROUP_START`. Two connectors without a predicate return `DANGLING_CONNECTOR`. Groups can be nested without a fixed depth.

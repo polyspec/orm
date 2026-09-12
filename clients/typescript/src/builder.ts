@@ -36,7 +36,10 @@ function shiftGroup(group: Group | undefined, offset: number): void {
       if (item.pred.p !== undefined) item.pred.p += offset;
       if (item.pred.ps) item.pred.ps = item.pred.ps.map(value => value + offset);
     } else if (item.group) shiftGroup(item.group, offset);
-    else if (item.nav) shiftGroup(item.nav.group, offset);
+    else if (item.nav) {
+      if (item.nav.p !== undefined) item.nav.p += offset;
+      shiftGroup(item.nav.group, offset);
+    }
   }
 }
 function shiftQuery(query: RequestQuery, offset: number): void {
@@ -72,6 +75,7 @@ export class WhereCore {
   public and(callback: (where: WhereCore) => void): this { const group: Group = { items: [] }; this.item({ group }); callback(new WhereCore(this.request, group)); return this; }
   public navigate(relation: string, callback: (where: WhereCore) => void): this { return this.navigateMode(relation, '', callback); }
   public navigateMode(relation: string, mode: '' | 'exists' | 'not_exists', callback: (where: WhereCore) => void): this { const group: Group = { items: [] }; this.item({ nav: { rel: relation, group, mode } }); callback(new WhereCore(this.request, group)); return this; }
+  public navigateCount(relation: string, operator: string, value: Param, callback: (where: WhereCore) => void): this { const group: Group = { items: [] }; const p = this.request.parameter(value); this.item({ nav: { rel: relation, group, mode: 'count', count_op: operator, p } }); callback(new WhereCore(this.request, group)); return this; }
 }
 
 export class Binding {

@@ -76,6 +76,7 @@ func cloneGroup(g *Group) *Group {
 		out.Items[i].Group = cloneGroup(item.Group)
 		if item.Nav != nil {
 			n := *item.Nav
+			n.P = clonePtr(n.P)
 			n.Group = cloneGroup(n.Group)
 			out.Items[i].Nav = &n
 		}
