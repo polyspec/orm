@@ -26,7 +26,7 @@
   - [x] P8.4c 생성된 insert/update/delete/save/paginate가 rollback과 key 구성요소 하나를 공유하는 행을 포함한 MySQL, PostgreSQL, SQLite 물리 테스트를 네 client에서 통과한다. CI는 `scripts/client-db-test.sh`로 같은 시나리오를 실행한다.
 - [x] P8.5 공개 encryption이 모든 client에서 인증된 version ciphertext를 사용한다. 조회는 숨겨진 row key version을 선택하고, 여러 version을 함께 읽을 수 있고, 변조 데이터는 실패하며, rotation은 row의 모든 AES column을 제한된 재개 가능 batch로 처리한다. Go, PHP, Rust, TypeScript가 codec tamper vector와 물리 rotation test를 통과한다.
 - [x] P8.6 암호화 데이터의 equality search는 명시적인 blind-index column을 요구한다. Runtime은 인증된 AES v2 ciphertext만 허용한다. Go, PHP, Rust, TypeScript가 MySQL, PostgreSQL, SQLite 통합 테스트를 통과한다.
-- [ ] P8.7 Relation과 `IN` parameter가 각 데이터베이스 제한에 맞게 결정적으로 분할되고 row order, key type, relation attachment, error를 보존한다.
+- [x] P8.7 Relation과 root positive `IN` parameter가 각 database limit에 맞게 결정적으로 분할되고 non-`IN` parameter, row 결과, relation attachment, count 결과를 보존한다. 분할할 수 없는 ordering, limiting, grouping, distinct, keyset, `NOT IN` 형태는 `IR_INVALID`로 반환한다.
 - [x] P8.8 Plan 및 prepared-statement cache가 설정 가능한 제한, 결정적 eviction, close 처리, 모든 client의 pressure test를 제공한다. Go·PHP·Rust·TypeScript test가 plan eviction, statement eviction, close 처리를 검사하며 PHP SQLite 물리 통합 test가 같은 검사를 통과한다.
 
 ## P9: 공통 ORM 작업
@@ -50,14 +50,14 @@
 - [ ] P10.5 MySQL·PostgreSQL·SQLite 물리 검사가 parameter limit, 모든 migration operation, batch write, keyset pagination, transaction mode, encryption 변경을 `-state` 없는 containerctl로 검사한다.
 - [ ] P10.6 Go·PHP·Rust·TypeScript가 추가된 모든 operation에서 동일한 common-vector result와 호환되는 public structure를 생성한다.
 
-## P11: 저장소 및 패키지 작업 제외
+## P11: source 및 package 검증
 
-이 절은 현재 구현 범위에서 제외한다. 패키지 게시, 릴리스 생성, 공개 저장소 준비, Pages 수동 배포는 수행하지 않는다. 제품 문서와 자동 기능 검사는 P8~P10에서 계속 수행한다.
+패키지 게시, 릴리스 생성, 공개 저장소 준비, Pages 수동 배포는 수행하지 않는다. source document, package metadata, 로컬 package check는 범위에 포함한다.
 
-- [ ] P11.1 오래되거나 사실과 다른 README 및 manual 내용을 수정하고 `README.ko.md`를 추가한다.
-- [ ] P11.2 보안 신고, 기여, 행동 강령, 변경 이력 문서를 추가하고 사용자 대상 문서는 한국어 파일을 함께 작성한다.
-- [ ] P11.3 Package name, description, license, repository link, runtime requirement, included file, generated-artifact rule을 완성한다.
-- [ ] P11.4 게시하지 않고 `npm pack`, Composer validation 및 package content, `cargo package`, 외부 임시 Go module을 검증한다.
+- [x] P11.1 오래되거나 사실과 다른 README 및 manual 내용을 수정하고 `README.ko.md`를 제공한다.
+- [x] P11.2 보안 신고, 기여, 행동 강령, 변경 이력 문서를 추가하고 사용자 대상 문서는 한국어 파일을 함께 작성한다.
+- [x] P11.3 Package name, description, license, repository link, runtime requirement, included file, generated-artifact rule을 완성한다.
+- [x] P11.4 게시하지 않고 TypeScript package의 `npm pack`, Composer metadata, Rust `orm` crate의 `cargo package`, 외부 임시 Go module을 검증한다.
 - [ ] P11.5 CI가 document rule, generated drift, interface check, red-test regression, physical database test, package check, 전체 test suite를 실행한다.
 
 ## 완료

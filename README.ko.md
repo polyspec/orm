@@ -58,6 +58,7 @@ npm run typescript:check && npm run typescript:build
 - [Dialect](docs/dialects.ko.md)
 - [Configuration](docs/config.ko.md)
 - [Checklist](docs/checklist.ko.md)
+- [보안 정책](SECURITY.ko.md) · [기여 안내](CONTRIBUTING.ko.md) · [행동 강령](CODE_OF_CONDUCT.ko.md) · [변경 이력](CHANGELOG.ko.md)
 
 ## License
 
