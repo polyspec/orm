@@ -29,6 +29,8 @@ CREATE TABLE "author" (
   "aes_key_version" INTEGER NOT NULL DEFAULT 1,
   "aes_hex_email" TEXT,
   "aes_hex_phone" TEXT,
+  "email_blind_index" TEXT,
+  "phone_blind_index" TEXT,
   "price" REAL,
   "ip" BLOB,
   "gz_extend" BLOB,
@@ -41,6 +43,8 @@ CREATE TABLE "author" (
 CREATE INDEX "author_ik" ON "author" ("service_region_seq", "is_close", "is_display", "is_allday");
 CREATE INDEX "author_ix_service" ON "author" ("service_seq", "is_close");
 CREATE INDEX "author_ix_user" ON "author" ("user_seq", "is_close");
+CREATE INDEX "author_ix_email_blind_index" ON "author" ("email_blind_index");
+CREATE INDEX "author_ix_phone_blind_index" ON "author" ("phone_blind_index");
 
 DROP TABLE IF EXISTS "user";
 CREATE TABLE "user" (

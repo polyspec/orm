@@ -804,7 +804,6 @@ func (q *ServiceRegionQuery) RelationsSeqWithServiceRegionSeq(child *AuthorQuery
 	q.q.Relation("authors", child.q)
 	return q
 }
-
 func (q *ServiceRegionQuery) JoinServiceSeqWithSeq(child *ServiceQuery) *ServiceRegionQuery {
 	q.q.Join("service", "inner", child.q)
 	return q
@@ -1036,8 +1035,16 @@ func (q *ServiceRegionQuery) IfParentAesHexEmailEq(v string) *ServiceRegionQuery
 	q.q.IfParent("aes_hex_email", v)
 	return q
 }
+func (q *ServiceRegionQuery) IfParentEmailBlindIndexEq(v string) *ServiceRegionQuery {
+	q.q.IfParent("email_blind_index", v)
+	return q
+}
 func (q *ServiceRegionQuery) IfParentAesHexPhoneEq(v string) *ServiceRegionQuery {
 	q.q.IfParent("aes_hex_phone", v)
+	return q
+}
+func (q *ServiceRegionQuery) IfParentPhoneBlindIndexEq(v string) *ServiceRegionQuery {
+	q.q.IfParent("phone_blind_index", v)
 	return q
 }
 

@@ -47,7 +47,9 @@ type AuthorRow struct {
 	LikeCount             int64
 	AesKeyVersion         int32
 	AesHexEmail           *string
+	EmailBlindIndex       *string
 	AesHexPhone           *string
+	PhoneBlindIndex       *string
 	Price                 *float64
 	Ip                    *string
 	GzExtend              any
@@ -439,6 +441,21 @@ func (r *AuthorRow) SetAesHexEmail(v *string) *AuthorRow {
 	return r
 }
 
+// GetEmailBlindIndex is nil-safe.
+func (r *AuthorRow) GetEmailBlindIndex() *string {
+	if r == nil {
+		var zero *string
+		return zero
+	}
+	return r.EmailBlindIndex
+}
+
+func (r *AuthorRow) SetEmailBlindIndex(v *string) *AuthorRow {
+	r.EmailBlindIndex = v
+	r.Dirty("email_blind_index", orm.Deref(v))
+	return r
+}
+
 // GetAesHexPhone is nil-safe.
 func (r *AuthorRow) GetAesHexPhone() *string {
 	if r == nil {
@@ -451,6 +468,21 @@ func (r *AuthorRow) GetAesHexPhone() *string {
 func (r *AuthorRow) SetAesHexPhone(v *string) *AuthorRow {
 	r.AesHexPhone = v
 	r.Dirty("aes_hex_phone", orm.Deref(v))
+	return r
+}
+
+// GetPhoneBlindIndex is nil-safe.
+func (r *AuthorRow) GetPhoneBlindIndex() *string {
+	if r == nil {
+		var zero *string
+		return zero
+	}
+	return r.PhoneBlindIndex
+}
+
+func (r *AuthorRow) SetPhoneBlindIndex(v *string) *AuthorRow {
+	r.PhoneBlindIndex = v
+	r.Dirty("phone_blind_index", orm.Deref(v))
 	return r
 }
 
@@ -727,10 +759,20 @@ func assignAuthorValue(r *AuthorRow, name string, v any) {
 			x := orm.AsString(v)
 			r.AesHexEmail = &x
 		}
+	case "email_blind_index":
+		if v != nil {
+			x := orm.AsString(v)
+			r.EmailBlindIndex = &x
+		}
 	case "aes_hex_phone":
 		if v != nil {
 			x := orm.AsString(v)
 			r.AesHexPhone = &x
+		}
+	case "phone_blind_index":
+		if v != nil {
+			x := orm.AsString(v)
+			r.PhoneBlindIndex = &x
 		}
 	case "price":
 		if v != nil {
@@ -1080,12 +1122,26 @@ func (r *AuthorRow) ToArray() (map[string]any, error) {
 				}
 				return *r.AesHexEmail
 			}()
+		case "email_blind_index":
+			m[name] = func() any {
+				if r.EmailBlindIndex == nil {
+					return nil
+				}
+				return *r.EmailBlindIndex
+			}()
 		case "aes_hex_phone":
 			m[name] = func() any {
 				if r.AesHexPhone == nil {
 					return nil
 				}
 				return *r.AesHexPhone
+			}()
+		case "phone_blind_index":
+			m[name] = func() any {
+				if r.PhoneBlindIndex == nil {
+					return nil
+				}
+				return *r.PhoneBlindIndex
 			}()
 		case "price":
 			m[name] = func() any {
@@ -1196,7 +1252,9 @@ var AuthorCols = struct {
 	LikeCount             orm.ColRef
 	AesKeyVersion         orm.ColRef
 	AesHexEmail           orm.ColRef
+	EmailBlindIndex       orm.ColRef
 	AesHexPhone           orm.ColRef
+	PhoneBlindIndex       orm.ColRef
 	Price                 orm.ColRef
 	Ip                    orm.ColRef
 	GzExtend              orm.ColRef
@@ -1231,7 +1289,9 @@ var AuthorCols = struct {
 	LikeCount:             orm.ColRef{Column: "like_count"},
 	AesKeyVersion:         orm.ColRef{Column: "aes_key_version"},
 	AesHexEmail:           orm.ColRef{Column: "aes_hex_email"},
+	EmailBlindIndex:       orm.ColRef{Column: "email_blind_index"},
 	AesHexPhone:           orm.ColRef{Column: "aes_hex_phone"},
+	PhoneBlindIndex:       orm.ColRef{Column: "phone_blind_index"},
 	Price:                 orm.ColRef{Column: "price"},
 	Ip:                    orm.ColRef{Column: "ip"},
 	GzExtend:              orm.ColRef{Column: "gz_extend"},
@@ -4029,6 +4089,112 @@ func (q *AuthorQuery) AesHexEmailNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("aes_hex_email", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
+func (w *AuthorWhere) EmailBlindIndexEq(v string) *AuthorWhere {
+	w.w.Pred("email_blind_index", "eq", v)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexEq(v string) *AuthorQuery {
+	q.q.W().Pred("email_blind_index", "eq", v)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndex(v string) *AuthorWhere { return w.EmailBlindIndexEq(v) }
+func (q *AuthorQuery) EmailBlindIndex(v string) *AuthorQuery { return q.EmailBlindIndexEq(v) }
+func (w *AuthorWhere) EmailBlindIndexNotEq(v string) *AuthorWhere {
+	w.w.Pred("email_blind_index", "not_eq", v)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexNotEq(v string) *AuthorQuery {
+	q.q.W().Pred("email_blind_index", "not_eq", v)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexIn(vs []string) *AuthorWhere {
+	w.w.PredList("email_blind_index", "in", orm.Anys(vs))
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexIn(vs []string) *AuthorQuery {
+	q.q.W().PredList("email_blind_index", "in", orm.Anys(vs))
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexNotIn(vs []string) *AuthorWhere {
+	w.w.PredList("email_blind_index", "not_in", orm.Anys(vs))
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexNotIn(vs []string) *AuthorQuery {
+	q.q.W().PredList("email_blind_index", "not_in", orm.Anys(vs))
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexLike(v string) *AuthorWhere {
+	w.w.Pred("email_blind_index", "like", v)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexLike(v string) *AuthorQuery {
+	q.q.W().Pred("email_blind_index", "like", v)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexLikeBinary(v string) *AuthorWhere {
+	w.w.Pred("email_blind_index", "like_binary", v)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexLikeBinary(v string) *AuthorQuery {
+	q.q.W().Pred("email_blind_index", "like_binary", v)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexContains(v string) *AuthorWhere {
+	w.w.Pred("email_blind_index", "contains", v)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexContains(v string) *AuthorQuery {
+	q.q.W().Pred("email_blind_index", "contains", v)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexStartsWith(v string) *AuthorWhere {
+	w.w.Pred("email_blind_index", "starts_with", v)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexStartsWith(v string) *AuthorQuery {
+	q.q.W().Pred("email_blind_index", "starts_with", v)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexEndsWith(v string) *AuthorWhere {
+	w.w.Pred("email_blind_index", "ends_with", v)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexEndsWith(v string) *AuthorQuery {
+	q.q.W().Pred("email_blind_index", "ends_with", v)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexIsNull() *AuthorWhere {
+	w.w.PredNull("email_blind_index", "is_null")
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexIsNull() *AuthorQuery {
+	q.q.W().PredNull("email_blind_index", "is_null")
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexIsNotNull() *AuthorWhere {
+	w.w.PredNull("email_blind_index", "is_not_null")
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexIsNotNull() *AuthorQuery {
+	q.q.W().PredNull("email_blind_index", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("email_blind_index", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexEqCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("email_blind_index", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("email_blind_index", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexNotEqCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("email_blind_index", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) AesHexPhoneEq(v string) *AuthorWhere {
 	w.w.Pred("aes_hex_phone", "eq", v)
 	return w
@@ -4093,6 +4259,112 @@ func (w *AuthorWhere) AesHexPhoneNotEqCol(ref orm.ColRef) *AuthorWhere {
 }
 func (q *AuthorQuery) AesHexPhoneNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("aes_hex_phone", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexEq(v string) *AuthorWhere {
+	w.w.Pred("phone_blind_index", "eq", v)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexEq(v string) *AuthorQuery {
+	q.q.W().Pred("phone_blind_index", "eq", v)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndex(v string) *AuthorWhere { return w.PhoneBlindIndexEq(v) }
+func (q *AuthorQuery) PhoneBlindIndex(v string) *AuthorQuery { return q.PhoneBlindIndexEq(v) }
+func (w *AuthorWhere) PhoneBlindIndexNotEq(v string) *AuthorWhere {
+	w.w.Pred("phone_blind_index", "not_eq", v)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexNotEq(v string) *AuthorQuery {
+	q.q.W().Pred("phone_blind_index", "not_eq", v)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexIn(vs []string) *AuthorWhere {
+	w.w.PredList("phone_blind_index", "in", orm.Anys(vs))
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexIn(vs []string) *AuthorQuery {
+	q.q.W().PredList("phone_blind_index", "in", orm.Anys(vs))
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexNotIn(vs []string) *AuthorWhere {
+	w.w.PredList("phone_blind_index", "not_in", orm.Anys(vs))
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexNotIn(vs []string) *AuthorQuery {
+	q.q.W().PredList("phone_blind_index", "not_in", orm.Anys(vs))
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexLike(v string) *AuthorWhere {
+	w.w.Pred("phone_blind_index", "like", v)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexLike(v string) *AuthorQuery {
+	q.q.W().Pred("phone_blind_index", "like", v)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexLikeBinary(v string) *AuthorWhere {
+	w.w.Pred("phone_blind_index", "like_binary", v)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexLikeBinary(v string) *AuthorQuery {
+	q.q.W().Pred("phone_blind_index", "like_binary", v)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexContains(v string) *AuthorWhere {
+	w.w.Pred("phone_blind_index", "contains", v)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexContains(v string) *AuthorQuery {
+	q.q.W().Pred("phone_blind_index", "contains", v)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexStartsWith(v string) *AuthorWhere {
+	w.w.Pred("phone_blind_index", "starts_with", v)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexStartsWith(v string) *AuthorQuery {
+	q.q.W().Pred("phone_blind_index", "starts_with", v)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexEndsWith(v string) *AuthorWhere {
+	w.w.Pred("phone_blind_index", "ends_with", v)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexEndsWith(v string) *AuthorQuery {
+	q.q.W().Pred("phone_blind_index", "ends_with", v)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexIsNull() *AuthorWhere {
+	w.w.PredNull("phone_blind_index", "is_null")
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexIsNull() *AuthorQuery {
+	q.q.W().PredNull("phone_blind_index", "is_null")
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexIsNotNull() *AuthorWhere {
+	w.w.PredNull("phone_blind_index", "is_not_null")
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexIsNotNull() *AuthorQuery {
+	q.q.W().PredNull("phone_blind_index", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("phone_blind_index", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexEqCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("phone_blind_index", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("phone_blind_index", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexNotEqCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("phone_blind_index", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) PriceEq(v float64) *AuthorWhere    { w.w.Pred("price", "eq", v); return w }
@@ -4478,7 +4750,6 @@ func (q *AuthorQuery) RelationServiceSeqWithSeq(child *ServiceQuery) *AuthorQuer
 	q.q.Relation("service", child.q)
 	return q
 }
-
 func (q *AuthorQuery) JoinServiceMemberSeqWithSeq(child *ServiceMemberQuery) *AuthorQuery {
 	q.q.Join("service_member", "inner", child.q)
 	return q
@@ -4491,7 +4762,6 @@ func (q *AuthorQuery) RelationServiceMemberSeqWithSeq(child *ServiceMemberQuery)
 	q.q.Relation("service_member", child.q)
 	return q
 }
-
 func (q *AuthorQuery) JoinServiceRegionSeqWithSeq(child *ServiceRegionQuery) *AuthorQuery {
 	q.q.Join("service_region", "inner", child.q)
 	return q
@@ -4504,7 +4774,6 @@ func (q *AuthorQuery) RelationServiceRegionSeqWithSeq(child *ServiceRegionQuery)
 	q.q.Relation("service_region", child.q)
 	return q
 }
-
 func (q *AuthorQuery) JoinUserSeqWithSeq(child *UserQuery) *AuthorQuery {
 	q.q.Join("user", "inner", child.q)
 	return q
@@ -5021,6 +5290,24 @@ func (q *AuthorQuery) SelectAesHexEmailAs(name string) *AuthorQuery {
 	c.As[name] = "aes_hex_email"
 	return q
 }
+func (q *AuthorQuery) SelectEmailBlindIndex() *AuthorQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "email_blind_index")
+	return q
+}
+func (q *AuthorQuery) UnselectEmailBlindIndex() *AuthorQuery {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "email_blind_index")
+	return q
+}
+func (q *AuthorQuery) SelectEmailBlindIndexAs(name string) *AuthorQuery {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "email_blind_index"
+	return q
+}
 func (q *AuthorQuery) SelectAesHexPhone() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "aes_hex_phone")
@@ -5037,6 +5324,24 @@ func (q *AuthorQuery) SelectAesHexPhoneAs(name string) *AuthorQuery {
 		c.As = map[string]string{}
 	}
 	c.As[name] = "aes_hex_phone"
+	return q
+}
+func (q *AuthorQuery) SelectPhoneBlindIndex() *AuthorQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "phone_blind_index")
+	return q
+}
+func (q *AuthorQuery) UnselectPhoneBlindIndex() *AuthorQuery {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "phone_blind_index")
+	return q
+}
+func (q *AuthorQuery) SelectPhoneBlindIndexAs(name string) *AuthorQuery {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "phone_blind_index"
 	return q
 }
 func (q *AuthorQuery) SelectPrice() *AuthorQuery {
@@ -5421,6 +5726,22 @@ func (q *AuthorQuery) GroupByAesHexEmail() *AuthorQuery {
 	return q
 }
 func (q *AuthorQuery) KeyByAesHexEmail() *AuthorQuery { q.q.Node.KeyBy = "aes_hex_email"; return q }
+func (q *AuthorQuery) OrderByEmailBlindIndexAsc() *AuthorQuery {
+	q.q.Order("email_blind_index", false)
+	return q
+}
+func (q *AuthorQuery) OrderByEmailBlindIndexDesc() *AuthorQuery {
+	q.q.Order("email_blind_index", true)
+	return q
+}
+func (q *AuthorQuery) GroupByEmailBlindIndex() *AuthorQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "email_blind_index")
+	return q
+}
+func (q *AuthorQuery) KeyByEmailBlindIndex() *AuthorQuery {
+	q.q.Node.KeyBy = "email_blind_index"
+	return q
+}
 func (q *AuthorQuery) OrderByAesHexPhoneAsc() *AuthorQuery {
 	q.q.Order("aes_hex_phone", false)
 	return q
@@ -5434,6 +5755,22 @@ func (q *AuthorQuery) GroupByAesHexPhone() *AuthorQuery {
 	return q
 }
 func (q *AuthorQuery) KeyByAesHexPhone() *AuthorQuery { q.q.Node.KeyBy = "aes_hex_phone"; return q }
+func (q *AuthorQuery) OrderByPhoneBlindIndexAsc() *AuthorQuery {
+	q.q.Order("phone_blind_index", false)
+	return q
+}
+func (q *AuthorQuery) OrderByPhoneBlindIndexDesc() *AuthorQuery {
+	q.q.Order("phone_blind_index", true)
+	return q
+}
+func (q *AuthorQuery) GroupByPhoneBlindIndex() *AuthorQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "phone_blind_index")
+	return q
+}
+func (q *AuthorQuery) KeyByPhoneBlindIndex() *AuthorQuery {
+	q.q.Node.KeyBy = "phone_blind_index"
+	return q
+}
 func (q *AuthorQuery) OrderByPriceAsc() *AuthorQuery  { q.q.Order("price", false); return q }
 func (q *AuthorQuery) OrderByPriceDesc() *AuthorQuery { q.q.Order("price", true); return q }
 func (q *AuthorQuery) GroupByPrice() *AuthorQuery {
@@ -5510,8 +5847,16 @@ func (q *AuthorQuery) Limit(offset, count int) *AuthorQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *AuthorQuery) Distinct() *AuthorQuery            { q.q.Node.Distinct = true; return q }
-func (q *AuthorQuery) ForceIndexIk() *AuthorQuery        { q.q.Node.ForceIdx = "ik"; return q }
+func (q *AuthorQuery) Distinct() *AuthorQuery     { q.q.Node.Distinct = true; return q }
+func (q *AuthorQuery) ForceIndexIk() *AuthorQuery { q.q.Node.ForceIdx = "ik"; return q }
+func (q *AuthorQuery) ForceIndexIxEmailBlindIndex() *AuthorQuery {
+	q.q.Node.ForceIdx = "ix_email_blind_index"
+	return q
+}
+func (q *AuthorQuery) ForceIndexIxPhoneBlindIndex() *AuthorQuery {
+	q.q.Node.ForceIdx = "ix_phone_blind_index"
+	return q
+}
 func (q *AuthorQuery) ForceIndexIxService() *AuthorQuery { q.q.Node.ForceIdx = "ix_service"; return q }
 func (q *AuthorQuery) ForceIndexIxUser() *AuthorQuery    { q.q.Node.ForceIdx = "ix_user"; return q }
 
@@ -5675,10 +6020,34 @@ func (q *AuthorQuery) SetAesHexEmailExpr(frag string, binds ...any) *AuthorQuery
 	q.q.SetExpr("aes_hex_email", frag, binds...)
 	return q
 }
+func (q *AuthorQuery) SetEmailBlindIndex(v string) *AuthorQuery {
+	q.q.Set("email_blind_index", v)
+	return q
+}
+func (q *AuthorQuery) SetEmailBlindIndexNull() *AuthorQuery {
+	q.q.SetNull("email_blind_index")
+	return q
+}
+func (q *AuthorQuery) SetEmailBlindIndexExpr(frag string, binds ...any) *AuthorQuery {
+	q.q.SetExpr("email_blind_index", frag, binds...)
+	return q
+}
 func (q *AuthorQuery) SetAesHexPhone(v string) *AuthorQuery { q.q.Set("aes_hex_phone", v); return q }
 func (q *AuthorQuery) SetAesHexPhoneNull() *AuthorQuery     { q.q.SetNull("aes_hex_phone"); return q }
 func (q *AuthorQuery) SetAesHexPhoneExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("aes_hex_phone", frag, binds...)
+	return q
+}
+func (q *AuthorQuery) SetPhoneBlindIndex(v string) *AuthorQuery {
+	q.q.Set("phone_blind_index", v)
+	return q
+}
+func (q *AuthorQuery) SetPhoneBlindIndexNull() *AuthorQuery {
+	q.q.SetNull("phone_blind_index")
+	return q
+}
+func (q *AuthorQuery) SetPhoneBlindIndexExpr(frag string, binds ...any) *AuthorQuery {
+	q.q.SetExpr("phone_blind_index", frag, binds...)
 	return q
 }
 func (q *AuthorQuery) SetPrice(v float64) *AuthorQuery { q.q.Set("price", v); return q }
@@ -5964,12 +6333,28 @@ func (q *AuthorQuery) OnDuplicateSetAesHexEmailExpr(frag string, binds ...any) *
 	q.q.OnDuplicateExpr("aes_hex_email", frag, binds...)
 	return q
 }
+func (q *AuthorQuery) OnDuplicateSetEmailBlindIndex(v string) *AuthorQuery {
+	q.q.OnDuplicate("email_blind_index", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetEmailBlindIndexExpr(frag string, binds ...any) *AuthorQuery {
+	q.q.OnDuplicateExpr("email_blind_index", frag, binds...)
+	return q
+}
 func (q *AuthorQuery) OnDuplicateSetAesHexPhone(v string) *AuthorQuery {
 	q.q.OnDuplicate("aes_hex_phone", v)
 	return q
 }
 func (q *AuthorQuery) OnDuplicateSetAesHexPhoneExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.OnDuplicateExpr("aes_hex_phone", frag, binds...)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetPhoneBlindIndex(v string) *AuthorQuery {
+	q.q.OnDuplicate("phone_blind_index", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetPhoneBlindIndexExpr(frag string, binds ...any) *AuthorQuery {
+	q.q.OnDuplicateExpr("phone_blind_index", frag, binds...)
 	return q
 }
 func (q *AuthorQuery) OnDuplicateSetPrice(v float64) *AuthorQuery {
@@ -6292,9 +6677,19 @@ func (q *AuthorQuery) GetsByAesHexEmail(v string) (*orm.Collection[AuthorRow], e
 	return q.AesHexEmail(v).Gets()
 }
 
+// GetsByEmailBlindIndex applies email_blind_index = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByEmailBlindIndex(v string) (*orm.Collection[AuthorRow], error) {
+	return q.EmailBlindIndex(v).Gets()
+}
+
 // GetsByAesHexPhone applies aes_hex_phone = v and runs the collection terminal.
 func (q *AuthorQuery) GetsByAesHexPhone(v string) (*orm.Collection[AuthorRow], error) {
 	return q.AesHexPhone(v).Gets()
+}
+
+// GetsByPhoneBlindIndex applies phone_blind_index = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByPhoneBlindIndex(v string) (*orm.Collection[AuthorRow], error) {
+	return q.PhoneBlindIndex(v).Gets()
 }
 
 // GetsByPrice applies price = v and runs the collection terminal.
@@ -6476,9 +6871,19 @@ func (q *AuthorQuery) GetCountByAesHexEmail(v string) (int64, error) {
 	return q.AesHexEmail(v).GetCount()
 }
 
+// GetCountByEmailBlindIndex applies email_blind_index = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByEmailBlindIndex(v string) (int64, error) {
+	return q.EmailBlindIndex(v).GetCount()
+}
+
 // GetCountByAesHexPhone applies aes_hex_phone = v and runs the scalar count terminal.
 func (q *AuthorQuery) GetCountByAesHexPhone(v string) (int64, error) {
 	return q.AesHexPhone(v).GetCount()
+}
+
+// GetCountByPhoneBlindIndex applies phone_blind_index = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByPhoneBlindIndex(v string) (int64, error) {
+	return q.PhoneBlindIndex(v).GetCount()
 }
 
 // GetCountByPrice applies price = v and runs the scalar count terminal.
@@ -7773,6 +8178,90 @@ func (q *AuthorQuery) MaxAesKeyVersion() (*int32, error) {
 		return nil, err
 	}
 	x := int32(orm.AsInt64(v))
+	return &x, nil
+}
+func (q *AuthorQuery) CountDistinctEmailBlindIndex() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "email_blind_index"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinEmailBlindIndex is nil when no row matches.
+func (q *AuthorQuery) MinEmailBlindIndex() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "email_blind_index"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// MaxEmailBlindIndex is nil when no row matches.
+func (q *AuthorQuery) MaxEmailBlindIndex() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "email_blind_index"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+func (q *AuthorQuery) CountDistinctPhoneBlindIndex() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "phone_blind_index"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinPhoneBlindIndex is nil when no row matches.
+func (q *AuthorQuery) MinPhoneBlindIndex() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "phone_blind_index"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// MaxPhoneBlindIndex is nil when no row matches.
+func (q *AuthorQuery) MaxPhoneBlindIndex() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "phone_blind_index"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
 	return &x, nil
 }
 func (q *AuthorQuery) CountDistinctPrice() (int64, error) {

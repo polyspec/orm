@@ -3,7 +3,8 @@
 //
 // Only three things are added on top of standard Mermaid:
 //   - column comment strings carry attributes:  "? =0 auto onupdate bool lazy aes hex -> user.seq"
-//   - %% directives:  %% unique|index|fulltext <table> (<cols>) [name]
+//   - %% directives:  %% unique|index|fulltext <table> (<cols>) [name], or
+//     %% blind_index <table> <encrypted_column> <index_column>
 //   - relationship labels name one FK column or an ordered list: "fk_col (child_name / parent_name)" or "(fk_a, fk_b) (child_name / parent_name)"
 package schema
 
@@ -65,7 +66,7 @@ type DRelation struct {
 }
 
 type Directive struct {
-	Kind    string // unique, index, fulltext, timestamps, predicate
+	Kind    string // unique, index, fulltext, blind_index, timestamps, predicate
 	Table   string
 	Columns []string
 	Name    string
@@ -87,7 +88,7 @@ var (
 	// parent CARD child : label
 	reRelation = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s+([|}o]{1,2}[-.]{2}[|{o]{1,2})\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$`)
 	// %% kind table (a, b) [name]
-	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|timestamps|scope|predicate|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
+	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|blind_index|timestamps|scope|predicate|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
 	reRelationNames  = regexp.MustCompile(`^(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
 	reRef            = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
 	reDirectiveIdent = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
@@ -299,6 +300,11 @@ func parseDirective(m []string, line int) (*Directive, error) {
 		d.Columns = strings.Fields(d.Raw)
 		if len(d.Columns) != 1 {
 			return nil, &ParseError{line, "%% scope <table> <column>"}
+		}
+	case "blind_index":
+		d.Columns = strings.Fields(d.Raw)
+		if len(d.Columns) != 2 || !reDirectiveIdent.MatchString(d.Columns[0]) || !reDirectiveIdent.MatchString(d.Columns[1]) {
+			return nil, &ParseError{line, "%% blind_index <table> <encrypted_column> <index_column>"}
 		}
 	case "predicate":
 		name, body, ok := strings.Cut(d.Raw, ":")

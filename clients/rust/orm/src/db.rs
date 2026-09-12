@@ -47,6 +47,7 @@ pub const NOW_MASK: &str = "$NOW";
 /// Executor configuration: declared, never discovered.
 pub struct Config {
     pub aes_key: String,
+    pub blind_index_key: String,
     pub aes_version: i32,
     pub aes_keys: BTreeMap<i32, String>,
     pub on_query: Option<OnQuery>,
@@ -489,7 +490,10 @@ impl Db {
                             other => return Err(Error::Config(format!("point parameter requires two coordinates, received {other:?}"))),
                         };
                     }
-                    out.push(if b.host_styles.is_empty() { v } else { crate::codec::host_encode(&v, &b.host_styles, &self.cfg.aes_key)? });
+                    out.push(if b.host_styles.is_empty() { v } else if b.host_styles.iter().any(|s| s == "blind_index") {
+                        if b.host_styles.len() != 1 { return Err(Error::Config("blind_index must be the only host style".into())); }
+                        if matches!(v, Param::Null) { Param::Null } else { Param::Str(crate::codec::blind_index(&v, &self.cfg.blind_index_key)?) }
+                    } else { crate::codec::host_encode(&v, &b.host_styles, &self.cfg.aes_key)? });
                 }
                 "secret" => {
                     match b.name.as_str() {

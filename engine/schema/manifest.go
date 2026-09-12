@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -65,6 +66,7 @@ type Col struct {
 	Scale       int      `json:"scale,omitempty"`
 	Enum        []string `json:"enum,omitempty"`
 	Styles      []string `json:"styles,omitempty"`
+	BlindIndex  string   `json:"blind_index,omitempty"`
 	Ref         *Ref     `json:"ref,omitempty"`
 	PK          bool     `json:"pk,omitempty"`
 	FK          bool     `json:"fk,omitempty"`
@@ -522,6 +524,46 @@ func (m *Manifest) addDirective(x *Directive) error {
 			return &BuildError{x.Line, "scope column " + x.Columns[0] + " must be an integer or string"}
 		}
 		ent.Scope = x.Columns[0]
+	case "blind_index":
+		encrypted := ent.Column(x.Columns[0])
+		index := ent.Column(x.Columns[1])
+		if encrypted == index {
+			return &BuildError{x.Line, "blind index source and target must differ"}
+		}
+		if !slices.Contains(encrypted.Styles, "aes") {
+			return &BuildError{x.Line, fmt.Sprintf("blind index source %s is not an AES column", encrypted.Name)}
+		}
+		if slices.Contains(index.Styles, "aes") {
+			return &BuildError{x.Line, fmt.Sprintf("blind index target %s must not be an AES column", index.Name)}
+		}
+		if index.Type != "string" && index.Type != "bytes" {
+			return &BuildError{x.Line, fmt.Sprintf("blind index target %s must be string or bytes", index.Name)}
+		}
+		if index.Type == "string" && index.Len < 64 {
+			return &BuildError{x.Line, fmt.Sprintf("blind index target %s must hold 64 hexadecimal characters", index.Name)}
+		}
+		if encrypted.Nullable != index.Nullable {
+			return &BuildError{x.Line, fmt.Sprintf("blind index target %s nullability must match source %s", index.Name, encrypted.Name)}
+		}
+		indexed := false
+		for _, columns := range ent.Indexes {
+			if slices.Equal(columns, []string{index.Name}) {
+				indexed = true
+				break
+			}
+		}
+		if !indexed {
+			return &BuildError{x.Line, fmt.Sprintf("blind index target %s requires a declared single-column index", index.Name)}
+		}
+		if encrypted.BlindIndex != "" {
+			return &BuildError{x.Line, fmt.Sprintf("blind index source %s is declared twice", encrypted.Name)}
+		}
+		for _, col := range ent.Columns {
+			if col.BlindIndex == index.Name {
+				return &BuildError{x.Line, fmt.Sprintf("blind index target %s is declared twice", index.Name)}
+			}
+		}
+		encrypted.BlindIndex = index.Name
 	case "predicate":
 		if ent.Predicates == nil {
 			ent.Predicates = map[string]*Predicate{}

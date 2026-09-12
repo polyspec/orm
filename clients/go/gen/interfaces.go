@@ -52,7 +52,9 @@ type AuthorInterface interface {
 	GetsByLikeCount(v int64) (*orm.Collection[AuthorRow], error)
 	GetsByAesKeyVersion(v int32) (*orm.Collection[AuthorRow], error)
 	GetsByAesHexEmail(v string) (*orm.Collection[AuthorRow], error)
+	GetsByEmailBlindIndex(v string) (*orm.Collection[AuthorRow], error)
 	GetsByAesHexPhone(v string) (*orm.Collection[AuthorRow], error)
+	GetsByPhoneBlindIndex(v string) (*orm.Collection[AuthorRow], error)
 	GetsByPrice(v float64) (*orm.Collection[AuthorRow], error)
 	GetsByIp(v string) (*orm.Collection[AuthorRow], error)
 	GetCountBySeq(v int64) (int64, error)
@@ -81,7 +83,9 @@ type AuthorInterface interface {
 	GetCountByLikeCount(v int64) (int64, error)
 	GetCountByAesKeyVersion(v int32) (int64, error)
 	GetCountByAesHexEmail(v string) (int64, error)
+	GetCountByEmailBlindIndex(v string) (int64, error)
 	GetCountByAesHexPhone(v string) (int64, error)
+	GetCountByPhoneBlindIndex(v string) (int64, error)
 	GetCountByPrice(v float64) (int64, error)
 	GetCountByIp(v string) (int64, error)
 	SeqEq(v int64) *AuthorQuery
@@ -110,7 +114,9 @@ type AuthorInterface interface {
 	LikeCountEq(v int64) *AuthorQuery
 	AesKeyVersionEq(v int32) *AuthorQuery
 	AesHexEmailEq(v string) *AuthorQuery
+	EmailBlindIndexEq(v string) *AuthorQuery
 	AesHexPhoneEq(v string) *AuthorQuery
+	PhoneBlindIndexEq(v string) *AuthorQuery
 	PriceEq(v float64) *AuthorQuery
 	IpEq(v string) *AuthorQuery
 	Seq(v int64) *AuthorQuery
@@ -139,7 +145,9 @@ type AuthorInterface interface {
 	LikeCount(v int64) *AuthorQuery
 	AesKeyVersion(v int32) *AuthorQuery
 	AesHexEmail(v string) *AuthorQuery
+	EmailBlindIndex(v string) *AuthorQuery
 	AesHexPhone(v string) *AuthorQuery
+	PhoneBlindIndex(v string) *AuthorQuery
 	Price(v float64) *AuthorQuery
 	Ip(v string) *AuthorQuery
 }

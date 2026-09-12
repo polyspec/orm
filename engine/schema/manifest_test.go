@@ -184,6 +184,27 @@ func TestScopeDirectiveRequiresNonNullTenantColumn(t *testing.T) {
 	}
 }
 
+func TestBlindIndexDirectiveRequiresDedicatedIndexedColumn(t *testing.T) {
+	good := "erDiagram\n account {\n bigint id PK\n int aes_key_version \"=1\"\n varchar(255) aes_email \"? aes\"\n char(64) email_index \"?\"\n }\n %% index account (email_index) email_index_idx\n %% blind_index account aes_email email_index\n"
+	m := mustBuild(t, good)
+	if got := m.Entities["account"].Column("aes_email").BlindIndex; got != "email_index" {
+		t.Fatalf("blind index = %q", got)
+	}
+	for _, src := range []string{
+		"erDiagram\n account {\n bigint id PK\n int aes_key_version \"=1\"\n varchar(255) aes_email \"? aes\"\n varchar(32) email_index\n }\n %% blind_index account aes_email email_index\n",
+		"erDiagram\n account {\n bigint id PK\n int aes_key_version \"=1\"\n varchar(255) aes_email \"? aes\"\n bigint email_index\n }\n %% blind_index account aes_email email_index\n",
+		"erDiagram\n account {\n bigint id PK\n int aes_key_version \"=1\"\n varchar(255) aes_email \"? aes\"\n char(64) email_index\n varchar(30) name\n }\n %% blind_index account name email_index\n",
+	} {
+		d, err := Parse(src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Build(d); err == nil || !strings.Contains(err.Error(), "blind index") {
+			t.Fatalf("expected blind index validation error, got %v", err)
+		}
+	}
+}
+
 // ml expands one-line entity blocks used for brevity in tests into the
 // multi-line form the parser (and Mermaid) require.
 func ml(src string) string {

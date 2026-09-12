@@ -200,7 +200,6 @@ final class CompositeMembership extends Q implements CompositeMembershipInterfac
     public function on(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w())); return $this; }
 
-
     public function joinTenantIdWithTenantIdAndAccountIdWithAccountId(CompositeAccount $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('account', 'inner', $child); return $this; }
     public function leftJoinTenantIdWithTenantIdAndAccountIdWithAccountId(CompositeAccount $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'leftJoin expects one child query'); } $this->attachJoin('account', 'left', $child); return $this; }
     public function relationTenantIdWithTenantIdAndAccountIdWithAccountId(CompositeAccount $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relation expects one child query'); } $this->attachRelation('account', $child); return $this; }

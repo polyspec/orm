@@ -21,6 +21,8 @@ pool = 8
 [secrets]
 # aes = "bench-salt"          # single key compatibility form; version 1
 # aes_env = "ORM_AES_KEY"     # environment variant of the single key form
+# blind_index = "bench-blind-index"      # stable HMAC key for encrypted equality search
+# blind_index_env = "ORM_BLIND_INDEX_KEY" # environment variant
 aes_version = 2               # current version for new writes and rotation
 
 [secrets.aes_keys]
@@ -45,6 +47,8 @@ Checks at startup (all four): `schema` exists and its `schema_hash` equals the g
 an AES key configuration present when the schema has AES columns; `[db].user/password` only with mysql DSNs (other drivers carry the user in the URL); the compiler dialect and IR version must equal `[db].driver` and the client IR version (`CONFIG` or `VERSION_MISMATCH` otherwise). Go, PHP, Rust, and TypeScript use `[ormd].endpoint` for plan compilation.
 
 `aes`, `aes_env`, and `aes_keys` are mutually exclusive. The single-key forms use version 1. A versioned configuration requires a positive `aes_version`, a non-empty key for that version, and positive integer keys under `[secrets.aes_keys]`. New AES-table rows and updates that assign every AES column store `aes_version` in `aes_key_version`. See [S7](s7.md) for status and rotation operations.
+
+`blind_index` and `blind_index_env` are mutually exclusive. A schema with a `blind_index` directive requires one of them. The key is independent from AES keys and remains unchanged during AES rotation. Equality predicates on the mapped AES column bind the lowercase HMAC-SHA256 value of the plaintext to the declared index column. The index column must be a declared single-column index with 64 hexadecimal characters for string storage.
 
 Compiler defaults are language-specific: PHP uses the declared Unix socket, Go uses its in-process compiler, and Rust uses the declared WASM compiler. Connect/Protobuf is the common compiler service path; TypeScript uses it by default. An explicit `[ormd].endpoint` selects Connect/Protobuf where supported.
 

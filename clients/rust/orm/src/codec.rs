@@ -480,15 +480,30 @@ pub fn split_host(styles: &[String]) -> (Vec<String>, Vec<String>) {
 }
 
 fn is_host(style: &str) -> bool {
-    matches!(style, "aes" | "hex" | "ip")
+    matches!(style, "aes" | "hex" | "ip" | "blind_index")
 }
 
 // ---- host stages (docs/dialects.md): what MySQL does in SQL, PostgreSQL/SQLite leave to the executor ----
 
 use aes_gcm::{aead::{Aead, Payload}, Aes256Gcm, KeyInit as GcmKeyInit, Nonce};
 use sha2::{Digest, Sha256};
+use hmac::{Hmac, Mac};
 
 const AES_V2_PREFIX: &[u8] = b"ORM-AES2\0";
+
+/// Returns the stable lowercase HMAC-SHA256 index for plaintext.
+pub fn blind_index(v: &Param, key: &str) -> Result<String> {
+    if key.is_empty() { return Err(Error::Config("secret blind_index not configured".into())); }
+    let plain = match v {
+        Param::Null => return Ok(String::new()),
+        Param::Str(s) => s.as_bytes().to_vec(),
+        Param::Bytes(b) => b.clone(),
+        other => format!("{other:?}").into_bytes(),
+    };
+    let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(key.as_bytes()).map_err(|_| Error::Config("invalid blind_index key".into()))?;
+    mac.update(&plain);
+    Ok(hex_upper(&mac.finalize().into_bytes()).to_ascii_lowercase())
+}
 
 fn aes_v2_key(key: &str) -> [u8; 32] {
     let mut h = Sha256::new();
@@ -580,6 +595,7 @@ pub fn host_encode(v: &Param, styles: &[String], aes_key: &str) -> Result<Param>
     };
     for st in styles {
         cur = match st.as_str() {
+            "blind_index" => return Ok(Param::Str(blind_index(v, aes_key)?)),
             "aes" => {
                 if aes_key.is_empty() {
                     return Err(Error::Config("secret aes not configured".into()));
@@ -713,6 +729,11 @@ mod tests {
         assert_eq!(host_encode(&Param::Null, &styles, "key-v1").unwrap(), Param::Null);
         let fixed = hex_decode("4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E24").unwrap();
         assert_eq!(host_decode(&Val::Str(hex_upper(&fixed)), &styles, "bench-salt").unwrap(), Val::Str("user42@example.com".into()));
+    }
+
+    #[test]
+    fn blind_index_vector() {
+        assert_eq!(blind_index(&Param::Str("member@example.test".into()), "blind-key").unwrap(), "1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8");
     }
 
     #[test]

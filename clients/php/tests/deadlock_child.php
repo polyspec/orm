@@ -15,7 +15,7 @@ use Orm\Tx;
 use Orm\TransactionOptions;
 
 [, $sock, $schema, $first, $second, $tag] = $argv;
-Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: orm_test_driver()));
+Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index', driver: orm_test_driver()));
 $db = orm_open_db(orm_test_driver(), orm_test_dsn(), persistent: false);
 
 $runs = 0;
