@@ -35,7 +35,7 @@
     "go": "sha256:f38b329be72572bd6b565b2abcf12fd971fed5b27c11fb62adcd0ef493bfc6dc",
     "php": "sha256:45e62eb361de70175616554163ac1474c4eadd59b2b498d2ea5b066dbdc71261",
     "rust": "sha256:119e396d550499bd0cbf784054ed57c2c4068ef28b741488f3c52063c19511ff",
-    "typescript": "sha256:3475ae8d134cf875c7fcb8b6f623455bada5ed2b8f28e0f8985170fecefc9da4"
+    "typescript": "sha256:0963e854a85a1d9841c12991d3c1b958f8b7329ae8caae8222421a1d5b1ee5eb"
   },
   "prohibited_symbols": [
     "multi_statement"
@@ -1705,7 +1705,7 @@
       "native constructor syntax",
       "Go context binding",
       "native async/error/borrow syntax",
-      "PHP compatibility methods and default getter arguments",
+      "PHP native getter arguments and row accessors",
       "native exported row fields and metadata accessors"
     ]
   },
