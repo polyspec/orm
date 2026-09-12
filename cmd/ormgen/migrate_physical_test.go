@@ -86,8 +86,95 @@ func TestPhysicalMigration(t *testing.T) {
 				t.Fatal("repeat application would not be a no-op")
 			}
 			assertPhysicalMigrationLock(t, ctx, db, tc.driver)
+			assertPhysicalStructuredPlan(t, ctx, db, tc.driver, want)
 		})
 	}
+}
+
+func assertPhysicalStructuredPlan(t *testing.T, ctx context.Context, db *sql.DB, driver string, existing *schema.Manifest) {
+	t.Helper()
+	resetPhysicalSchema(t, db, driver, existing)
+	if err := ensureMigrationTable(ctx, db, driver); err != nil {
+		t.Fatal(err)
+	}
+	q := func(s string) string {
+		if driver == "mysql" {
+			return "`" + s + "`"
+		}
+		return `"` + s + `"`
+	}
+	for _, name := range []string{"migration_probe", "migration_failure_probe"} {
+		if _, err := db.ExecContext(ctx, "DROP TABLE IF EXISTS "+q(name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	base := buildPhysicalManifest(t, "erDiagram\n  migration_probe {\n    bigint seq PK\n    varchar(32) name\n  }\n")
+	target := buildPhysicalManifest(t, "erDiagram\n  migration_probe {\n    bigint seq PK\n    varchar(32) name\n    text note \"?\"\n  }\n")
+	create, err := renderCreateDDL(base, driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := executeMigration(ctx, db, driver, create); err != nil {
+		t.Fatal(err)
+	}
+	diff, err := renderDiff(base, target, driver, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	operations := splitSQL(diff)
+	plan := migrationPlanFile{Version: 1, MigrationID: "physical-plan", Name: "physical plan", Driver: driver, FromHash: base.SchemaHash, FromSchema: base, ToHash: target.SchemaHash}
+	for _, statement := range operations {
+		plan.Operations = append(plan.Operations, planOperation{SQL: statement + ";"})
+	}
+	plan.Checksum = checksumText(planSQL(plan.Operations))
+	record := migrationRecord{MigrationID: plan.MigrationID, Name: plan.Name, FromHash: plan.FromHash, ToHash: plan.ToHash, Checksum: plan.Checksum, Status: "applying", Operations: len(plan.Operations)}
+	if err := insertMigration(ctx, db, driver, record); err != nil {
+		t.Fatal(err)
+	}
+	if err := executeMigration(ctx, db, driver, planSQL(plan.Operations)); err != nil {
+		t.Fatal(err)
+	}
+	if err := updateMigration(ctx, db, driver, plan.MigrationID, "applied", ""); err != nil {
+		t.Fatal(err)
+	}
+	live, err := liveManifest(db, driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if live.Entities["migration_probe"] == nil || len(live.Entities["migration_probe"].Columns) != 3 {
+		t.Fatalf("structured plan target not applied: %#v", live.Entities["migration_probe"])
+	}
+	repeat, found, err := appliedMigration(ctx, db, driver, plan.MigrationID)
+	if err != nil || !found || repeat.Checksum != plan.Checksum {
+		t.Fatalf("structured plan repeat: record=%#v found=%v err=%v", repeat, found, err)
+	}
+	if _, err := db.ExecContext(ctx, "ALTER TABLE "+q("migration_probe")+" ADD COLUMN "+q("external_drift")+" varchar(8)"); err != nil {
+		t.Fatal(err)
+	}
+	live, err = liveManifest(db, driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if schemaMatches(target, live, driver) {
+		t.Fatal("structured plan drift was not detected")
+	}
+	failureSQL := "CREATE TABLE " + q("migration_failure_probe") + " (id integer); CREATE TABLE " + q("migration_failure_probe") + " (id integer);"
+	if err := executeMigration(ctx, db, driver, failureSQL); err == nil || !strings.Contains(err.Error(), "operation=2") {
+		t.Fatalf("structured plan failure detail = %v", err)
+	}
+}
+
+func buildPhysicalManifest(t *testing.T, src string) *schema.Manifest {
+	t.Helper()
+	d, err := schema.Parse(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := schema.Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
 }
 
 func assertPhysicalMigrationLock(t *testing.T, ctx context.Context, db *sql.DB, driver string) {
