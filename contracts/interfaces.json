@@ -37,6 +37,9 @@
     "rust": "sha256:284c54f84bcdb5c11b069e0350bd91c5b7efb6c76a795d5145c719ba5047af60",
     "typescript": "sha256:27438186e38bfd2f6961d7ae4c49f1e480ab11e976a5da8245c745e049a48fb4"
   },
+  "prohibited_symbols": [
+    "multi_statement"
+  ],
   "components": [
     {
       "id": "Query",

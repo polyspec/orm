@@ -47,16 +47,17 @@ type Rule struct {
 	Native map[string]Native `json:"native"`
 }
 type Manifest struct {
-	Version      int                 `json:"version"`
-	Schema       string              `json:"schema"`
-	Languages    map[string]Language `json:"languages"`
-	SymbolHashes map[string]string   `json:"symbol_hashes"`
-	Rules        []Rule              `json:"rules"`
-	Components   []json.RawMessage   `json:"components"`
-	Sequences    []Sequence          `json:"sequences"`
-	Records      []Record            `json:"records"`
-	Storage      []Rule              `json:"storage"`
-	Owners       []Owner             `json:"owners"`
+	Version           int                 `json:"version"`
+	Schema            string              `json:"schema"`
+	Languages         map[string]Language `json:"languages"`
+	SymbolHashes      map[string]string   `json:"symbol_hashes"`
+	ProhibitedSymbols []string            `json:"prohibited_symbols"`
+	Rules             []Rule              `json:"rules"`
+	Components        []json.RawMessage   `json:"components"`
+	Sequences         []Sequence          `json:"sequences"`
+	Records           []Record            `json:"records"`
+	Storage           []Rule              `json:"storage"`
+	Owners            []Owner             `json:"owners"`
 }
 type Sequence struct {
 	ID         string `json:"id"`
@@ -75,7 +76,7 @@ func main() {
 	must(err)
 	var m Manifest
 	readJSON(filepath.Join(abs, "contracts/interfaces.json"), &m)
-	if m.Version != 1 || len(m.Languages) != 4 || len(m.SymbolHashes) != 4 || len(m.Components) == 0 || len(m.Sequences) == 0 {
+	if m.Version != 1 || len(m.Languages) != 4 || len(m.SymbolHashes) != 4 || len(m.ProhibitedSymbols) == 0 || len(m.Components) == 0 || len(m.Sequences) == 0 {
 		fatal("invalid interface manifest")
 	}
 	diagram, err := contracts.Diagram()
@@ -113,6 +114,7 @@ func main() {
 		errors = append(errors, checkRules(lang, actual, m.Storage, s)...)
 		errors = append(errors, checkRecords(lang, actual, m.Records)...)
 		errors = append(errors, checkOwners(lang, actual, m.Owners, s)...)
+		errors = append(errors, checkProhibitedSymbols(lang, actual, m.ProhibitedSymbols)...)
 		if len(errors) > 0 {
 			for _, e := range errors {
 				fmt.Fprintln(os.Stderr, e)
@@ -169,6 +171,28 @@ func main() {
 	if failed {
 		os.Exit(1)
 	}
+}
+
+func checkProhibitedSymbols(lang string, actual Symbols, prohibited []string) []string {
+	normalize := func(value string) string {
+		return strings.Map(func(r rune) rune {
+			if unicode.IsLetter(r) || unicode.IsDigit(r) {
+				return unicode.ToLower(r)
+			}
+			return -1
+		}, value)
+	}
+	var errors []string
+	for symbol, signature := range actual {
+		value := normalize(symbol + " " + signature)
+		for _, name := range prohibited {
+			if strings.Contains(value, normalize(name)) {
+				errors = append(errors, fmt.Sprintf("%s: prohibited symbol %s matches %s", lang, name, symbol))
+			}
+		}
+	}
+	sort.Strings(errors)
+	return errors
 }
 
 func fileSHA256(path string) (string, error) {

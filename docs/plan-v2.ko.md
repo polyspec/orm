@@ -30,7 +30,7 @@ PHP  앱 ── 영속 UDS ──▶ ormd (engine + Go 실행기 + 조립 + 코�
 - 와이어: S0에서 JSON vs msgpack(PHP ext) 실측 후 하나 확정.
 - 성능 검사 분리: Go/Rust 핫패스 네이티브 대비 처리량 손실 ≤5%·CPU ≤+10%. PHP는 원격 DB 단건 ≤+25%, 100행 ≤+15%, 4단 관계는 **PDO 기준선 이하**(Go 조립 > PHP 조립 가설을 S0에서 검증).
 - 뒤집는 조건(문서화): PHP가 FrankenPHP 워커 모드 → in-process 승격. PHP 주력화 또는 S0에서 "PDO+PHP 조립"이 "ormd+디코드"보다 빠르면 PHP 네이티브 실행기로 복귀.
-- S4 검토안으로 제시한 플래너 옵션 `multi_statement`는 구현하지 않았고 S7 이후 과제로 이동했다. 관계 단계 N개를 한 왕복으로 묶는 방안은 후속 설계로 남긴다.
+- 공개 API에서 `multi_statement`를 제외한다. MySQL·PostgreSQL·SQLite는 안전한 매개변수 다중 문장 실행 구조를 동일하게 제공할 수 없다.
 
 ## 2. WHERE·컬럼 문법 (Q2)
 
@@ -144,7 +144,7 @@ $battles = Battle::query()->addAllColumns()->withItems(BattleItem::query()->orde
 - S0(3일): Rust 범위 확정, PHP 와이어 확정, PHP 3경로 수치.
 - S1: PHP 측은 클라이언트(파서·매핑·트랜스포트) + `ormd`(엔진 + Go 실행기 재사용 + 프레이밍 + 커넥션 핀). Go 실행기가 먼저 완성되어야 하므로 순서 Go → ormd/PHP → Rust.
 - S2: `with<Rel>`, 결과 트리 위치 매핑, 컬럼 객체·`Pred`.
-- S4: `join<Rel>`·`join(alias, cmp, child)`, `cols()`·`orPred`, `expr`, 스키마 `predicates:`, `ormgen check --lang php` 목록. `multi_statement`는 S7 이후 과제다.
+- S4: `join<Rel>`·`join(alias, cmp, child)`, `cols()`·`orPred`, `expr`, 스키마 `predicates:`, `ormgen check --lang php` 목록. 공개 API에서 `multi_statement`를 제외한다.
 - 총 기간 변화 없음(≈15–16주). PHP 조립·코덱·데드락 구현이 빠진 만큼 `ormd` 커넥션 핀·프레이밍이 들어온다.
 
 ## 7. v1에서 그대로 유지

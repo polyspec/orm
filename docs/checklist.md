@@ -89,7 +89,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] T7.7 Implement deterministic static query precompilation and schema-hash checks.
 - [x] T7.8 Implement the TypeScript module, generated entity APIs and schema hash, `orm.toml` loader, native database drivers, structure and AST checks, and the 59-vector database runner for all three databases.
 - [x] T7.9 Compare Rust `mysql_async` 0.37.1 with sqlx 0.9 using equal SQL, binds, typed results, connection count, and fixture. Retain sqlx because neither measured workload shows the required 2x improvement.
-- [ ] T7.10 Implement and verify the `multi_statement` relation plan.
+- [x] T7.10 Exclude `multi_statement` from every public API and reject the IR field and generated symbols because the supported databases cannot provide the same safe parameterized execution structure.
 - [ ] T7.11 Implement typed direct scans for Go and PHP and rerun the performance gates.
 - [x] T7.12 Generate and compile the deterministic 150-table Rust fixture with the locked Rust dependency set.
 - [x] T7.13 Validate AES version columns, persist the current version on writes, and provide equivalent status and transactional row-rotation APIs in Go, PHP, Rust, and TypeScript. Verify repeat execution and all AES columns on physical databases.

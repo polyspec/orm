@@ -384,6 +384,7 @@ func TestCompileErrors(t *testing.T) {
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","force_index":"nope"}`:                                                                                        "INDEX_UNKNOWN",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","order":[{"expr":"DATE(` + "`nope`" + `)"}]}`:                                                                 "COLUMN_UNKNOWN",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","relations":[{"rel":"service","query":{"entity":"service","limit":{"offset":0,"count":1}}}]}`:                 "LIMIT_IN_RELATION",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","multi_statement":true}`:                                                                                      "IR_INVALID",
 	}
 	for irs, code := range cases {
 		_, err := e.Compile([]byte(irs))

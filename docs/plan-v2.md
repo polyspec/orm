@@ -30,7 +30,7 @@ PHP  앱 ── 영속 UDS ──▶ ormd (engine + Go 실행기 + 조립 + 코�
 - Wire format: choose one after measuring JSON versus msgpack (PHP extension) in S0.
 - Separate performance checks: Go/Rust throughput loss versus native ≤5% and CPU ≤+10%. PHP remote single-row ≤+25%, 100 rows ≤+15%, and four-level relations **at or below the PDO baseline** (test the Go assembly > PHP assembly hypothesis in S0).
 - Reversal condition (documented): promote PHP to in-process in FrankenPHP worker mode. Return to a PHP native executor if PHP becomes primary or S0 shows PDO+PHP assembly faster than ormd plus decode.
-- The S4 planner option `multi_statement` was not implemented and moved to post-S7 work. Combining N relation stages into one round trip remains follow-up design.
+- The public API excludes `multi_statement`. MySQL, PostgreSQL, and SQLite cannot provide the same safe parameterized multi-statement execution structure.
 
 ## 2. WHERE and column syntax (Q2)
 
@@ -144,7 +144,7 @@ These reusable conditions are declared under schema `predicates:` and generate a
 - S0 (three days): finalize Rust execution path, PHP wire format, and three PHP path measurements.
 - S1: PHP uses a client (parser, mapping, transport) plus `ormd` (engine, reused Go executor, framing, connection pinning). Go executor comes first, then ormd/PHP, then Rust.
 - S2: `with<Rel>`, positional result trees, column objects, and `Pred`.
-- S4: `join<Rel>`, `join(alias, cmp, child)`, `cols()`, `orPred`, `expr`, schema `predicates:`, and `ormgen check --lang php` output. `multi_statement` is post-S7 work.
+- S4: `join<Rel>`, `join(alias, cmp, child)`, `cols()`, `orPred`, `expr`, schema `predicates:`, and `ormgen check --lang php` output. The public API excludes `multi_statement`.
 - No total schedule change (≈15–16 weeks). PHP assembly and codecs are added alongside ormd connection pinning and framing.
 
 ## 7. Retained from v1
