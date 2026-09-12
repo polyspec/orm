@@ -49,7 +49,7 @@
 - [x] P10.3 Failure-injection test가 compiler failure, driver failure, cancellation, transaction failure, cache eviction, migration interruption, rotation interruption을 검사한다. 기존 client·migration test가 앞의 6개 실패를 검사하고, AES test가 batch 중간 database failure를 주입하여 transaction rollback과 재실행을 검사한다.
 - [x] P10.4 Concurrency test가 optimistic update, deadlock, savepoint, migration lock, AES rotation, cache access를 검사한다. Go test가 race detector에서 concurrent plan cache 접근을 검사하고, concurrent AES rotation 후 key version 혼합이 없는지 검사한다.
 - [x] P10.5 MySQL·PostgreSQL·SQLite 물리 검사가 parameter limit, migration operation, batch write, keyset pagination, transaction mode, encryption 변경을 검사한다. MySQL과 PostgreSQL은 `-state` 없는 containerctl에서 실행하고 SQLite는 같은 client runner와 FK 설정을 사용하는 file fixture에서 실행한다.
-- [ ] P10.6 Go·PHP·Rust·TypeScript가 추가된 모든 operation에서 동일한 common-vector result와 호환되는 public structure를 생성한다.
+- [x] P10.6 Go·PHP·Rust·TypeScript가 추가된 모든 operation에서 동일한 common-vector result와 호환되는 public structure를 생성한다. manifest는 canonical vector source, 세 database expectation 파일, 네 client, 63개 이상의 고유 vector를 요구한다. MySQL·PostgreSQL·SQLite 물리 실행에서 client별 63개 vector가 통과했다.
 
 ## P11: source 및 package 검증
 
