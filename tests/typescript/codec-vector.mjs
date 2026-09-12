@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { CodecError, decodeCodec, encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from '../../clients/typescript/dist/index.js';
+import { CodecError, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from '../../clients/typescript/dist/index.js';
 
 const vectors = JSON.parse(await readFile('tests/codec/vectors.json', 'utf8')).vectors;
 const aesVectors = JSON.parse(await readFile('tests/codec/aes-vectors.json', 'utf8')).vectors;
@@ -11,6 +11,7 @@ const canonical = value => {
 const same = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 const output = {};
 let failures = 0;
+if (blindIndex('member@example.test', 'blind-key') !== '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8') failures++;
 
 for (const vector of vectors) {
   const raw = vector.encoded_b64 === null ? null : Buffer.from(vector.encoded_b64, 'base64');

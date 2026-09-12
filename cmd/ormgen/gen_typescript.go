@@ -226,16 +226,14 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 			fmt.Fprintf(&b, "  public %s(callback: (where: %sWhere) => void): this { this.whereCore().navigate(%s,core=>callback(new %sWhere(core))); return this; }\n", tsMethod(rel.Name), rel.TargetType, tsString(rel.Name), rel.TargetType)
 		}
 		for _, rel := range ge.Rels {
-			if rel.Pair {
-				suffix := rel.Suffix
-				fmt.Fprintf(&b, "  public join%s(child: %sQuery): this { return this.attachJoin(%s,child,'inner'); }\n", suffix, rel.TargetType, tsString(rel.Name))
-				fmt.Fprintf(&b, "  public leftJoin%s(child: %sQuery): this { return this.attachJoin(%s,child,'left'); }\n", suffix, rel.TargetType, tsString(rel.Name))
-				method := "relation"
-				if rel.Kind == "many" {
-					method = "relations"
-				}
-				fmt.Fprintf(&b, "  public %s%s(child: %sQuery): this { return this.attachRelation(%s,child); }\n", method, suffix, rel.TargetType, tsString(rel.Name))
+			suffix := rel.Suffix
+			fmt.Fprintf(&b, "  public join%s(child: %sQuery): this { return this.attachJoin(%s,child,'inner'); }\n", suffix, rel.TargetType, tsString(rel.Name))
+			fmt.Fprintf(&b, "  public leftJoin%s(child: %sQuery): this { return this.attachJoin(%s,child,'left'); }\n", suffix, rel.TargetType, tsString(rel.Name))
+			method := "relation"
+			if rel.Kind == "many" {
+				method = "relations"
 			}
+			fmt.Fprintf(&b, "  public %s%s(child: %sQuery): this { return this.attachRelation(%s,child); }\n", method, suffix, rel.TargetType, tsString(rel.Name))
 		}
 		b.WriteString("  private resolveRelation(child: QueryCore, expected?: 'one'|'many'): string { const entity=child.request.ir.entity; const link=child.linkSelection; const candidates=this.relationDefinitions().filter(value=>value.target===entity&&(!expected||value.kind===expected)&&(!link||(value.left===link.parentKey&&value.right===link.childKey))); if(candidates.length!==1) throw new OrmError('IR_INVALID', `relation from ${this.request.ir.entity} to ${entity} is ${candidates.length===0?'not declared':'ambiguous'}; select a key pair`); return candidates[0]!.name; }\n")
 		b.WriteString("  private relationDefinitions(): ReadonlyArray<{name:string;kind:'one'|'many';target:string;left:string;right:string}> { return [")

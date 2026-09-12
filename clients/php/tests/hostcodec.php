@@ -55,6 +55,7 @@ $ip6 = Codec::hostEncode(' 2001:db8::1 ', ['ip'], '');
 check($ip6 instanceof Bytes && strlen($ip6->bytes) === 16 && Codec::hostDecode($ip6->bytes, ['ip'], '') === '2001:db8::1', 'ipv6 packs to 16 bytes, trimmed, round trip');
 $mapped = Codec::hostEncode('::ffff:10.1.2.3', ['ip'], '');
 check($mapped instanceof Bytes && $mapped->bytes === "\x0a\x01\x02\x03", 'IPv4-mapped IPv6 packs to 4 bytes like INET6_ATON');
+check(Codec::blindIndex('member@example.test', 'blind-key') === '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8', 'shared blind-index HMAC vector');
 try {
     Codec::hostEncode('not-an-ip', ['ip'], '');
     check(false, 'a bad address must fail');

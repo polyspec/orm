@@ -7,7 +7,7 @@ type Section = Record<string, unknown>;
 export interface FileConfig {
   schema: string;
   db: { driver: 'mysql' | 'postgres' | 'sqlite'; dsn: string; user?: string; password?: string; pool: number };
-  secrets: { aes?: string; aes_env?: string; aes_keys?: Readonly<Record<string, string>>; aes_version: number };
+  secrets: { aes?: string; aes_env?: string; aes_keys?: Readonly<Record<string, string>>; aes_version: number; blind_index?: string; blind_index_env?: string };
   engine: { wasm?: string; cache_dir?: string };
   ormd: { endpoint: string; timeout_ms: number; socket?: string };
   debug: { on_query: boolean };
@@ -55,7 +55,7 @@ export async function loadConfig(path: string): Promise<FileConfig> {
   const ormd = object(source.ormd, 'ormd');
   const debug = object(source.debug, 'debug');
   keys(db, ['driver', 'dsn', 'user', 'password', 'pool'], 'db.');
-  keys(secrets, ['aes', 'aes_env', 'aes_keys', 'aes_version'], 'secrets.');
+  keys(secrets, ['aes', 'aes_env', 'aes_keys', 'aes_version', 'blind_index', 'blind_index_env'], 'secrets.');
   keys(engine, ['wasm', 'cache_dir'], 'engine.');
   keys(ormd, ['endpoint', 'timeout_ms', 'socket'], 'ormd.');
   keys(debug, ['on_query'], 'debug.');
@@ -76,6 +76,9 @@ export async function loadConfig(path: string): Promise<FileConfig> {
     for (const [version, key] of Object.entries(aesKeys)) if (!/^[1-9][0-9]*$/.test(version) || typeof key !== 'string' || key === '') fail(`secrets.aes_keys.${version} is invalid`);
     if (typeof aesKeys[String(aesVersion)] !== 'string') fail(`secrets.aes_version ${aesVersion} is not declared in secrets.aes_keys`);
   } else if (secrets.aes_version !== undefined && aesVersion !== 1) fail('secrets.aes_version requires secrets.aes_keys');
+  const blindIndex = secrets.blind_index === undefined ? undefined : typeof secrets.blind_index === 'string' ? secrets.blind_index : fail('secrets.blind_index must be a string');
+  const blindIndexEnv = string(secrets.blind_index_env, 'secrets.blind_index_env');
+  if (blindIndex !== undefined && blindIndexEnv !== undefined) fail('secrets.blind_index and secrets.blind_index_env are exclusive');
   const wasm = string(engine.wasm, 'engine.wasm');
   const cacheDir = string(engine.cache_dir, 'engine.cache_dir');
   const socket = string(ormd.socket, 'ormd.socket');
@@ -85,10 +88,17 @@ export async function loadConfig(path: string): Promise<FileConfig> {
   return {
     schema,
     db: { driver: driver as FileConfig['db']['driver'], dsn, user, password, pool: integer(db.pool, 'db.pool', 8) },
-    secrets: { aes, aes_env: aesEnv, aes_keys: aesKeys as Record<string, string> | undefined, aes_version: aesVersion }, engine: { wasm, cache_dir: cacheDir },
+    secrets: { aes, aes_env: aesEnv, aes_keys: aesKeys as Record<string, string> | undefined, aes_version: aesVersion, blind_index: blindIndex, blind_index_env: blindIndexEnv }, engine: { wasm, cache_dir: cacheDir },
     ormd: { endpoint, timeout_ms: integer(ormd.timeout_ms, 'ormd.timeout_ms', 5_000), socket },
     debug: { on_query: debug.on_query === true },
   };
+}
+
+export function resolveBlindIndexKey(config: FileConfig): string {
+  if (config.secrets.blind_index_env === undefined) return config.secrets.blind_index ?? '';
+  const value = process.env[config.secrets.blind_index_env];
+  if (!value) fail(`environment variable ${config.secrets.blind_index_env} (secrets.blind_index_env) is empty`);
+  return value;
 }
 
 export function resolveAesKey(config: FileConfig): string {

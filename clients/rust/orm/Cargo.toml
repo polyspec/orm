@@ -30,5 +30,6 @@ base64 = "0.22"
 toml = "0.9"
 aes-gcm = "0.10"
 sha2 = "0.10"
+hmac = "0.12"
 serde_yaml_ng = "0.10.0"
 yaml-rust2 = { version = "0.13.0", default-features = false }

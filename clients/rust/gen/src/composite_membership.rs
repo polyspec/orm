@@ -375,7 +375,6 @@ impl CompositeMembership {
         }
     }
 
-
     pub fn join_tenant_id_with_tenant_id_and_account_id_with_account_id(mut self, child: impl AsRef<super::composite_account::CompositeAccount>) -> Self { self.q.join("account", "inner", &child.as_ref().q); self }
     pub fn left_join_tenant_id_with_tenant_id_and_account_id_with_account_id(mut self, child: impl AsRef<super::composite_account::CompositeAccount>) -> Self { self.q.join("account", "left", &child.as_ref().q); self }
     pub fn relation_tenant_id_with_tenant_id_and_account_id_with_account_id(mut self, child: impl AsRef<super::composite_account::CompositeAccount>) -> Self { self.q.relation("account", &child.as_ref().q); self }

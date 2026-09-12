@@ -292,7 +292,10 @@ class Db
                     $v = $params[$b['param']];
                     if (!empty($b['transform'])) {
                         $v = Transform::apply($b['transform'], (string) $v);
-                    } elseif (!empty($b['host_styles'])) {
+                    } elseif (in_array('blind_index', $b['host_styles'] ?? [], true)) {
+                        if (count($b['host_styles'] ?? []) !== 1) throw new OrmException(Code::CONFIG, 'blind_index must be the only host style');
+                        $v = Codec::blindIndex($v, $cfg->blindIndexKey);
+                    } elseif (!empty($b['host_styles'] ?? [])) {
                         // the stages this dialect cannot run in SQL (aes/hex on PostgreSQL, plus ip on SQLite)
                         $v = Codec::hostEncode($v, $b['host_styles'], $cfg->aesKey);
                         $this->typed = $this->typed || $v instanceof Bytes;

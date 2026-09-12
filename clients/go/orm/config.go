@@ -37,12 +37,14 @@ type DBConfig struct {
 	Pool     int    `toml:"pool"`
 }
 
-// SecretsConfig names the AES key: literally (aes) or by environment variable (aes_env).
+// SecretsConfig names the AES and blind-index keys: literally or by environment variable.
 type SecretsConfig struct {
-	AES        string            `toml:"aes"`
-	AESEnv     string            `toml:"aes_env"`
-	AESKeys    map[string]string `toml:"aes_keys"`
-	AESVersion int32             `toml:"aes_version"`
+	AES           string            `toml:"aes"`
+	AESEnv        string            `toml:"aes_env"`
+	BlindIndex    string            `toml:"blind_index"`
+	BlindIndexEnv string            `toml:"blind_index_env"`
+	AESKeys       map[string]string `toml:"aes_keys"`
+	AESVersion    int32             `toml:"aes_version"`
 }
 
 // EngineConfig is the Rust client's wasm engine; the Go client only validates the paths.
@@ -111,6 +113,9 @@ func LoadConfig(path string) (*FileConfig, error) {
 	if fc.Secrets.AES != "" && fc.Secrets.AESEnv != "" {
 		return nil, configErr("%s: secrets.aes and secrets.aes_env are exclusive", path)
 	}
+	if fc.Secrets.BlindIndex != "" && fc.Secrets.BlindIndexEnv != "" {
+		return nil, configErr("%s: secrets.blind_index and secrets.blind_index_env are exclusive", path)
+	}
 	if len(fc.Secrets.AESKeys) > 0 && (fc.Secrets.AES != "" || fc.Secrets.AESEnv != "") {
 		return nil, configErr("%s: secrets.aes_keys is exclusive with secrets.aes and secrets.aes_env", path)
 	}
@@ -135,6 +140,18 @@ func LoadConfig(path string) (*FileConfig, error) {
 		return nil, configErr("%s: ormd.timeout_ms must not be negative", path)
 	}
 	return &fc, nil
+}
+
+// BlindIndexKey resolves the stable HMAC key independently from AES rotation.
+func (fc *FileConfig) BlindIndexKey() (string, error) {
+	if fc.Secrets.BlindIndexEnv == "" {
+		return fc.Secrets.BlindIndex, nil
+	}
+	v := os.Getenv(fc.Secrets.BlindIndexEnv)
+	if v == "" {
+		return "", configErr("secrets.blind_index_env: %s is not set", fc.Secrets.BlindIndexEnv)
+	}
+	return v, nil
 }
 
 // AESKey resolves [secrets]: the literal key, or the named environment
@@ -199,6 +216,17 @@ func hasAES(m *schema.Manifest) bool {
 	return false
 }
 
+func hasBlindIndex(m *schema.Manifest) bool {
+	for _, e := range m.Entities {
+		for _, c := range e.Columns {
+			if c.BlindIndex != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // mysqlDSN applies [db].user/password to the DSN when the DSN itself carries
 // no user; a DSN that names a different user than [db].user is a CONFIG error.
 func mysqlDSN(db *DBConfig) (string, error) {
@@ -251,6 +279,13 @@ func OpenConfigContext(ctx context.Context, path string) (*DB, error) {
 	if key == "" && hasAES(eng.M) {
 		return nil, configErr("the schema has aes columns but [secrets] declares neither aes nor aes_env")
 	}
+	blindKey, err := fc.BlindIndexKey()
+	if err != nil {
+		return nil, err
+	}
+	if blindKey == "" && hasBlindIndex(eng.M) {
+		return nil, configErr("the schema has blind indexes but [secrets] declares neither blind_index nor blind_index_env")
+	}
 	dsn := fc.DB.DSN
 	if driver == "mysql" {
 		if dsn, err = mysqlDSN(&fc.DB); err != nil {
@@ -271,7 +306,7 @@ func OpenConfigContext(ctx context.Context, path string) (*DB, error) {
 	for v, k := range keyring.keys {
 		keys[v] = k
 	}
-	cfg := Config{AESKey: key, AESVersion: version, AESKeys: keys}
+	cfg := Config{AESKey: key, BlindIndexKey: blindKey, AESVersion: version, AESKeys: keys}
 	if fc.Debug.OnQuery {
 		cfg.OnQuery = LogQuery
 	}

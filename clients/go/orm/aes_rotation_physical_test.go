@@ -92,7 +92,9 @@ func testPhysicalAESRotation(t *testing.T, driver, dsn string) {
 		t.Fatalf("rotate: changed=%d err=%v", changed, err)
 	}
 	changed, err = db.RotateAESRows(ctx, db, spec, keyring)
-	if err != nil || changed != 1 { t.Fatalf("resume: changed=%d err=%v", changed, err) }
+	if err != nil || changed != 1 {
+		t.Fatalf("resume: changed=%d err=%v", changed, err)
+	}
 	after, err := db.AESStatus(ctx, db, spec, keyring)
 	if err != nil || after.Pending != 0 || after.Versions[2] != 2 {
 		t.Fatalf("after status: %#v, %v", after, err)

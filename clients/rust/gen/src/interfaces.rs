@@ -46,7 +46,9 @@ async fn gets_by_is_single_work(&mut self, v: bool) -> Result<Collection<AuthorR
 async fn gets_by_like_count(&mut self, v: i64) -> Result<Collection<AuthorRow>>;
 async fn gets_by_aes_key_version(&mut self, v: i32) -> Result<Collection<AuthorRow>>;
 async fn gets_by_aes_hex_email(&mut self, v: impl Into<String>) -> Result<Collection<AuthorRow>>;
+async fn gets_by_email_blind_index(&mut self, v: impl Into<String>) -> Result<Collection<AuthorRow>>;
 async fn gets_by_aes_hex_phone(&mut self, v: impl Into<String>) -> Result<Collection<AuthorRow>>;
+async fn gets_by_phone_blind_index(&mut self, v: impl Into<String>) -> Result<Collection<AuthorRow>>;
 async fn gets_by_price(&mut self, v: f64) -> Result<Collection<AuthorRow>>;
 async fn gets_by_ip(&mut self, v: impl Into<String>) -> Result<Collection<AuthorRow>>;
 async fn get_count_by_seq(&mut self, v: i64) -> Result<i64>;
@@ -75,7 +77,9 @@ async fn get_count_by_is_single_work(&mut self, v: bool) -> Result<i64>;
 async fn get_count_by_like_count(&mut self, v: i64) -> Result<i64>;
 async fn get_count_by_aes_key_version(&mut self, v: i32) -> Result<i64>;
 async fn get_count_by_aes_hex_email(&mut self, v: impl Into<String>) -> Result<i64>;
+async fn get_count_by_email_blind_index(&mut self, v: impl Into<String>) -> Result<i64>;
 async fn get_count_by_aes_hex_phone(&mut self, v: impl Into<String>) -> Result<i64>;
+async fn get_count_by_phone_blind_index(&mut self, v: impl Into<String>) -> Result<i64>;
 async fn get_count_by_price(&mut self, v: f64) -> Result<i64>;
 async fn get_count_by_ip(&mut self, v: impl Into<String>) -> Result<i64>;
 fn seq_eq(self, v: i64) -> Self;
@@ -104,7 +108,9 @@ fn is_single_work_eq(self, v: bool) -> Self;
 fn like_count_eq(self, v: i64) -> Self;
 fn aes_key_version_eq(self, v: i32) -> Self;
 fn aes_hex_email_eq(self, v: impl Into<String>) -> Self;
+fn email_blind_index_eq(self, v: impl Into<String>) -> Self;
 fn aes_hex_phone_eq(self, v: impl Into<String>) -> Self;
+fn phone_blind_index_eq(self, v: impl Into<String>) -> Self;
 fn price_eq(self, v: f64) -> Self;
 fn ip_eq(self, v: impl Into<String>) -> Self;
 fn seq(self, v: i64) -> Self;
@@ -133,7 +139,9 @@ fn is_single_work(self, v: bool) -> Self;
 fn like_count(self, v: i64) -> Self;
 fn aes_key_version(self, v: i32) -> Self;
 fn aes_hex_email(self, v: impl Into<String>) -> Self;
+fn email_blind_index(self, v: impl Into<String>) -> Self;
 fn aes_hex_phone(self, v: impl Into<String>) -> Self;
+fn phone_blind_index(self, v: impl Into<String>) -> Self;
 fn price(self, v: f64) -> Self;
 fn ip(self, v: impl Into<String>) -> Self;
 }
@@ -179,7 +187,9 @@ async fn gets_by_is_single_work(&mut self, v: bool) -> Result<Collection<AuthorR
 async fn gets_by_like_count(&mut self, v: i64) -> Result<Collection<AuthorRow>> { Author::gets_by_like_count(self,v).await }
 async fn gets_by_aes_key_version(&mut self, v: i32) -> Result<Collection<AuthorRow>> { Author::gets_by_aes_key_version(self,v).await }
 async fn gets_by_aes_hex_email(&mut self, v: impl Into<String>) -> Result<Collection<AuthorRow>> { Author::gets_by_aes_hex_email(self,v).await }
+async fn gets_by_email_blind_index(&mut self, v: impl Into<String>) -> Result<Collection<AuthorRow>> { Author::gets_by_email_blind_index(self,v).await }
 async fn gets_by_aes_hex_phone(&mut self, v: impl Into<String>) -> Result<Collection<AuthorRow>> { Author::gets_by_aes_hex_phone(self,v).await }
+async fn gets_by_phone_blind_index(&mut self, v: impl Into<String>) -> Result<Collection<AuthorRow>> { Author::gets_by_phone_blind_index(self,v).await }
 async fn gets_by_price(&mut self, v: f64) -> Result<Collection<AuthorRow>> { Author::gets_by_price(self,v).await }
 async fn gets_by_ip(&mut self, v: impl Into<String>) -> Result<Collection<AuthorRow>> { Author::gets_by_ip(self,v).await }
 async fn get_count_by_seq(&mut self, v: i64) -> Result<i64> { Author::get_count_by_seq(self,v).await }
@@ -208,7 +218,9 @@ async fn get_count_by_is_single_work(&mut self, v: bool) -> Result<i64> { Author
 async fn get_count_by_like_count(&mut self, v: i64) -> Result<i64> { Author::get_count_by_like_count(self,v).await }
 async fn get_count_by_aes_key_version(&mut self, v: i32) -> Result<i64> { Author::get_count_by_aes_key_version(self,v).await }
 async fn get_count_by_aes_hex_email(&mut self, v: impl Into<String>) -> Result<i64> { Author::get_count_by_aes_hex_email(self,v).await }
+async fn get_count_by_email_blind_index(&mut self, v: impl Into<String>) -> Result<i64> { Author::get_count_by_email_blind_index(self,v).await }
 async fn get_count_by_aes_hex_phone(&mut self, v: impl Into<String>) -> Result<i64> { Author::get_count_by_aes_hex_phone(self,v).await }
+async fn get_count_by_phone_blind_index(&mut self, v: impl Into<String>) -> Result<i64> { Author::get_count_by_phone_blind_index(self,v).await }
 async fn get_count_by_price(&mut self, v: f64) -> Result<i64> { Author::get_count_by_price(self,v).await }
 async fn get_count_by_ip(&mut self, v: impl Into<String>) -> Result<i64> { Author::get_count_by_ip(self,v).await }
 fn seq_eq(mut self, v: i64) -> Self { Author::seq_eq(self,v) }
@@ -237,7 +249,9 @@ fn is_single_work_eq(mut self, v: bool) -> Self { Author::is_single_work_eq(self
 fn like_count_eq(mut self, v: i64) -> Self { Author::like_count_eq(self,v) }
 fn aes_key_version_eq(mut self, v: i32) -> Self { Author::aes_key_version_eq(self,v) }
 fn aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { Author::aes_hex_email_eq(self,v) }
+fn email_blind_index_eq(mut self, v: impl Into<String>) -> Self { Author::email_blind_index_eq(self,v) }
 fn aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { Author::aes_hex_phone_eq(self,v) }
+fn phone_blind_index_eq(mut self, v: impl Into<String>) -> Self { Author::phone_blind_index_eq(self,v) }
 fn price_eq(mut self, v: f64) -> Self { Author::price_eq(self,v) }
 fn ip_eq(mut self, v: impl Into<String>) -> Self { Author::ip_eq(self,v) }
 fn seq(self, v: i64) -> Self { Author::seq(self,v) }
@@ -266,7 +280,9 @@ fn is_single_work(self, v: bool) -> Self { Author::is_single_work(self,v) }
 fn like_count(self, v: i64) -> Self { Author::like_count(self,v) }
 fn aes_key_version(self, v: i32) -> Self { Author::aes_key_version(self,v) }
 fn aes_hex_email(self, v: impl Into<String>) -> Self { Author::aes_hex_email(self,v) }
+fn email_blind_index(self, v: impl Into<String>) -> Self { Author::email_blind_index(self,v) }
 fn aes_hex_phone(self, v: impl Into<String>) -> Self { Author::aes_hex_phone(self,v) }
+fn phone_blind_index(self, v: impl Into<String>) -> Self { Author::phone_blind_index(self,v) }
 fn price(self, v: f64) -> Self { Author::price(self,v) }
 fn ip(self, v: impl Into<String>) -> Self { Author::ip(self,v) }
 }

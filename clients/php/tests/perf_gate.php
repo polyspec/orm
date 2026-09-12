@@ -22,6 +22,7 @@ Orm::init(new Config(
     socket: $argv[1],
     schemaPath: $argv[2],
     aesKey: 'bench-salt',
+    blindIndexKey: 'bench-blind-index',
     onQuery: static function (string $sql, array $binds) use (&$lastSql, &$lastArgs): void {
         $lastSql = $sql;
         $lastArgs = array_map(static fn(mixed $value): mixed => $value === '$SECRET' ? 'bench-salt' : $value, $binds);

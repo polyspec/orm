@@ -98,6 +98,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] T7.16 Replace semicolon splitting with a dialect-aware SQL statement parser and preserve statement-level failure locations.
 - [x] T7.17 Accept MMD, manifest JSON, metadata-bearing ORM SQL, and live DB schema sources for DDL, diff, structured plans, verification, recovery, idempotent database migration, and verified rollback execution.
 - [x] T7.18 Run physical comment, migration-plan apply, repeat, drift, failure, lock contention, recovery, rollback, and rollback no-op tests through containerctl for MySQL and PostgreSQL.
+- [x] T7.19 Add AES blind-index schema declarations, keyed equality predicates, write synchronization, generated relation APIs, and cross-client MySQL, PostgreSQL, and SQLite integration tests.
 
 ## Documentation tasks
 

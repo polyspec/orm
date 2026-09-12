@@ -29,6 +29,8 @@ CREATE TABLE "author" (
   "aes_key_version" bigint NOT NULL DEFAULT 1,
   "aes_hex_email" varchar(255),
   "aes_hex_phone" varchar(255),
+  "email_blind_index" char(64),
+  "phone_blind_index" char(64),
   "price" numeric(13,3),
   "ip" inet,
   "gz_extend" bytea,
@@ -41,6 +43,8 @@ CREATE TABLE "author" (
 );
 CREATE INDEX "author_ix_service" ON "author" ("service_seq", "is_close");
 CREATE INDEX "author_ix_user" ON "author" ("user_seq", "is_close");
+CREATE INDEX "author_ix_email_blind_index" ON "author" ("email_blind_index");
+CREATE INDEX "author_ix_phone_blind_index" ON "author" ("phone_blind_index");
 CREATE INDEX "author_ik" ON "author" ("service_region_seq", "is_close", "is_display", "is_allday");
 CREATE INDEX "author_ft_name_description" ON "author" USING GIN (to_tsvector('simple', coalesce("name", '') || ' ' || coalesce("description", '')));
 

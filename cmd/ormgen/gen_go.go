@@ -316,6 +316,15 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 		left, right, suffix := relationText(r)
 		ge.Rels = append(ge.Rels, goRel{Name: n, Method: pascal(n), Target: r.Target, TargetType: pascal(r.Target), Kind: r.Kind, Left: left, Right: right, Suffix: suffix, Pair: pairs[left+"\x1f"+right] == 1, Default: targetKinds[r.Target+"\x1f"+r.Kind] == 1})
 	}
+	suffixes := map[string]int{}
+	for _, r := range ge.Rels {
+		suffixes[r.Suffix]++
+	}
+	for i := range ge.Rels {
+		if suffixes[ge.Rels[i].Suffix] > 1 {
+			ge.Rels[i].Suffix += "To" + pascal(ge.Rels[i].Target)
+		}
+	}
 	linkPairs := map[string]bool{}
 	for _, pn := range m.Order {
 		pe := m.Entities[pn]
@@ -852,14 +861,12 @@ func (q *{{.Type}}Query) joinTarget(child any, kind string) *{{.Type}}Query {
 	return q
 }
 {{range .Rels}}
-{{if .Pair}}
 func (q *{{$.Type}}Query) Join{{.Suffix}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Join("{{.Name}}", "inner", child.q); return q }
 func (q *{{$.Type}}Query) LeftJoin{{.Suffix}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Join("{{.Name}}", "left", child.q); return q }
 {{- if eq .Kind "one"}}
 func (q *{{$.Type}}Query) Relation{{.Suffix}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Relation("{{.Name}}", child.q); return q }
 {{- else}}
 func (q *{{$.Type}}Query) Relations{{.Suffix}}(child *{{.TargetType}}Query) *{{$.Type}}Query { q.q.Relation("{{.Name}}", child.q); return q }
-{{- end}}
 {{- end}}
 {{- end}}
 {{range .Links}}

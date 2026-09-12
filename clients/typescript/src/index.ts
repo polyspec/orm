@@ -1,6 +1,6 @@
 export type Param = unknown;
 
-export { CodecError, decode as decodeCodec, encode as encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from './codec.js';
+export { CodecError, blindIndex, decode as decodeCodec, encode as encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from './codec.js';
 export type { CodecValue, EncodedValue, Point, UploadFileValue } from './codec.js';
 
 export interface AesRotationColumn {
@@ -201,7 +201,7 @@ export type { DriverConnection, DriverName, DriverResult, DriverStreamResult, Dr
 export { OrmError } from './runtime_error.js';
 export { Db, Tx } from './database.js';
 export type { DatabaseOptions, QueryEvent } from './database.js';
-export { loadConfig, resolveAesKey } from './config.js';
+export { loadConfig, resolveAesKey, resolveBlindIndexKey } from './config.js';
 export type { FileConfig } from './config.js';
 export { Collection, ExecutionRows, Page, Row, registerRow, rowFromResult } from './model.js';
 export { Binding, ColumnReference, QueryCore, RequestState, WhereCore } from './builder.js';

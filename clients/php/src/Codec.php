@@ -13,6 +13,14 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class Codec
 {
+    /** Returns the stable lowercase HMAC-SHA256 index for plaintext. */
+    public static function blindIndex(mixed $v, string $key): ?string
+    {
+        if ($v === null) return null;
+        if ($key === '') throw new OrmException(Code::CONFIG, 'secret blind_index not configured');
+        $plain = $v instanceof Bytes ? $v->bytes : (is_string($v) ? $v : (string) $v);
+        return hash_hmac('sha256', $plain, $key);
+    }
     /** @return array{float, float} */
     public static function point(mixed $value): array
     {

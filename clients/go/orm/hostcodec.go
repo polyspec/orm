@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -67,6 +68,29 @@ func aesV2Key(key string) []byte {
 	h.Write([]byte("polyspec/orm/aes-256-gcm/v2\x00"))
 	h.Write([]byte(key))
 	return h.Sum(nil)
+}
+
+// BlindIndex returns the stable lowercase HMAC-SHA256 index for plaintext.
+// The blind-index key is independent from the rotating AES key.
+func BlindIndex(v any, key string) (string, error) {
+	if v == nil {
+		return "", nil
+	}
+	if key == "" {
+		return "", codecErr(CodeConfig, "secret blind_index not configured")
+	}
+	var plain []byte
+	switch x := v.(type) {
+	case string:
+		plain = []byte(x)
+	case []byte:
+		plain = x
+	default:
+		plain = []byte(fmt.Sprint(x))
+	}
+	h := hmac.New(sha256.New, []byte(key))
+	_, _ = h.Write(plain)
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // packIP is INET6_ATON: 4 bytes for IPv4, 16 for IPv6.

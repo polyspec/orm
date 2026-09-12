@@ -632,14 +632,12 @@ impl {{.Type}} {
         }
     }
 {{range .Rels}}
-{{if .Pair}}
     pub fn join_{{opSnake .Suffix}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.join("{{.Name}}", "inner", &child.as_ref().q); self }
     pub fn left_join_{{opSnake .Suffix}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.join("{{.Name}}", "left", &child.as_ref().q); self }
 {{- if eq .Kind "one"}}
     pub fn relation_{{opSnake .Suffix}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.relation("{{.Name}}", &child.as_ref().q); self }
 {{- else}}
     pub fn relations_{{opSnake .Suffix}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.relation("{{.Name}}", &child.as_ref().q); self }
-{{- end}}
 {{- end}}
 {{- end}}
 {{range .Links}}
