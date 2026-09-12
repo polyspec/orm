@@ -7,18 +7,18 @@
 - **S0 완료** (측정·결정 R1~R3, F1~F3 — `docs/perf.md`).
 - **S1 완료** (thin slice: 엔진·생성기·3언어 실행기, 적합성 하네스, `ormgen tokens`, 데모).
 - **S2 구현·검증 완료**(T2.15 150테이블 게이트만 대형 스키마 fixture 대기), **S3 완료**, **S4 완료**(PHP 호환층 포함), **S5 구현·CI 검증 완료**(고정 비용 추가 개선은 S7), **S6 완료**(dialect PG/SQLite, ddl, 3언어 실행기).
-- 적합성 벡터 **58개 × 3언어 × 3 DB 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
+- 적합성 벡터 **58개 × 4언어 × 3 DB 동일**, 코덱 벡터 60개 × 3언어 통과, 토큰 패리티 diff 0.
 
-## 공통 인터페이스 정합성
+## Common interface verification
 
 - [x] I1 공통 구조·소유권·상태 전이 명세와 Mermaid 도표 (`interfaces.md`, `contracts/interfaces.json`)
 - [x] I2 manifest 기반 Go/PHP/Rust Query·Row 인터페이스 생성, 공통 입력·출력 대조
 - [x] I3 저장 필드와 Request/Plan 25개 레코드 대조, AST/Reflection·소스 변경 반례 검사
-- [x] I4 Binding·쿼리 재사용·자식 복사·오류 보존·dirty·원본 버전·typed key·페이지 벡터: 총 58 × 3언어 × 3 DB
+- [x] I4 Binding·쿼리 재사용·자식 복사·오류 보존·dirty·원본 버전·typed key·페이지 벡터: 총 58 × 4언어 × 3 DB
 - [x] I5 CI에 생성물·구조·상태 계약 검사 연결, 현재 문서·예제 동기화
 - [x] I6 native PK 직접 변경 후 identity 보존, 중첩 컬렉션 변환 충돌 검증. `interface_identity`, `interface_nested_keys` 통과. 세부 범위: [구현 대조표](interface-implementation.md)
 
-## 온라인 문서
+## Online documentation
 
 - [x] D1 기존 Markdown을 직접 사용하는 VitePress 정적 사이트, 사용법·명세·구현 상태 탐색과 로컬 검색
 - [x] D2 Mermaid 원본 유지, 빌드 시 SVG 생성, JavaScript 없는 본문·언어별 예제·도표 읽기
@@ -86,7 +86,7 @@
 
 ### 2-D 검증 — 레인 V
 - [x] T2.17 코덱 벡터 3언어 통과(`go test ./clients/go/orm`, `cargo test -p orm`, `php tests/codec/check.php`: Go/Rust 산출물을 PHP가 읽어 동일)
-- [x] T2.16 적합성 벡터 S2분 완료(관계·코덱·타입 15개) → 현재 총 **58 × 3언어 × 3 DB 동일**
+- [x] T2.16 적합성 벡터 S2분 완료(관계·코덱·타입 15개) → 현재 총 **58 × 4언어 × 3 DB 동일**
 
 ---
 
@@ -101,7 +101,7 @@
 - [x] T3.4 데드락 게이트 3언어(Go goroutine, PHP 자식 프로세스 2개, Rust tokio 태스크): 재실행 후 양쪽 성공 확인
 
 ### 3-C 검증 — 레인 V
-- [x] T3.5 적합성 벡터 +6(upsert, upsert_set_all, save_branch, bulk_update_plus_minus, delete_cascade_order, sql_dump) → **36 × 3언어 동일**
+- [x] T3.5 적합성 벡터 +6(upsert, upsert_set_all, save_branch, bulk_update_plus_minus, delete_cascade_order, sql_dump) → **36 × 4언어 동일**
 
 ---
 
@@ -119,9 +119,9 @@
 - [x] T4.7 `ormgen check --lang php` + `--lang go` 프래그먼트 analyzer(백틱 컬럼 존재·`?`/바인드 개수, `ormgen:ignore` 주석으로 의도적 음성 테스트 제외) — CI 단계로 포함
 
 ### 4-C 검증 — 레인 V
-- [x] T4.8 적합성 벡터 +13(S3 6 + S4 4 + 조인 3: `join_fulltext_or` R9 fulltext OR 탐색, `join_two_groups` 조인 2개의 ON/WHERE, `join_multi_level` 2단 조인 별칭) → **43 × 3언어 × 3 DB 동일**
+- [x] T4.8 적합성 벡터 +13(S3 6 + S4 4 + 조인 3: `join_fulltext_or` R9 fulltext OR 탐색, `join_two_groups` 조인 2개의 ON/WHERE, `join_multi_level` 2단 조인 별칭) → **43 × 4언어 × 3 DB 동일**
 - [x] T4.9 `examples/complex`(3언어, 같은 JSON, 토큰 49개 동일): 조인 on/where + 루트 or 그룹 + 탐색 + 3단 관계 옵션 + 집계/having. `docs/examples/*.md`(예시 스키마)는 설명용으로 유지 — README에 명시
-- [x] T4.10 본 엔티티 equality finder(`getsBy<Field>`, `getCountBy<Field>`)가 기존 root `join`·`relation` 단계를 보존하는지 검증: Go는 명시적 root 조건 체인과 SQL·bind·statement 수·조립된 행을 비교하고, `root_finder_join_relation`을 3언어 × 3 DB에서 동일하게 실행 → **44 × 3언어 × 3 DB 동일**
+- [x] T4.10 본 엔티티 equality finder(`getsBy<Field>`, `getCountBy<Field>`)가 기존 root `join`·`relation` 단계를 보존하는지 검증: Go는 명시적 root 조건 체인과 SQL·bind·statement 수·조립된 행을 비교하고, `root_finder_join_relation`을 4언어 × 3 DB에서 동일하게 실행 → **44 × 4언어 × 3 DB 동일**
 
 ---
 
@@ -150,15 +150,18 @@
 - [x] T6.1 E `dialect/postgres`: `$n`, `"quote"`, `ILIKE`, `ON CONFLICT (unique key 추론) DO UPDATE`, `RETURNING`, `to_tsvector('simple')`/`websearch_to_tsquery`, `host()`/`::inet`, aes/hex는 app-side — 골든 통과
 - [x] T6.2 E `dialect/sqlite`: `?`, `"quote"`, `LIKE … ESCAPE`, `INDEXED BY`, `ON CONFLICT`, `RETURNING`; `like_binary`·fulltext는 `OPERATOR_NOT_ALLOWED`로 거부(dialect `Supports`), 모든 스타일 app-side — 골든 통과
 - [x] T6.3 (위 S6 항목에서 완료: 3언어 호스트 AES/HEX/IP, `aes-vectors.json` 바이트 일치)
+- [x] T6.4 드라이버 추상 3언어(Go: pgx stdlib·modernc sqlite / Rust: sqlx feature + Pool enum + PG 파라미터 타입 서버 조회 / PHP: pdo_pgsql·pdo_sqlite + 타입 바인딩), `$n` 재번호, RETURNING, 에러 매핑, `[db].driver`, ormd `-dialect` 검사, hook `$SECRET`·`$NOW` 마스킹, 슬롯 `col_type`
+- [x] T6.5 로컬 PostgreSQL 17·SQLite에 bench 시드 + AES 시더; **4언어 × 3 DB 각 44/44 동일**(방언별 기대값 파일, 벡터 선언은 `vectors.json` 한 곳)
+- [x] T6.6 `ormgen import --driver postgres`(+`validate --driver postgres`): PG 타입·identity·GIN을 정규 표기로 되돌림 — orm_bench 임포트 결과가 손으로 쓴 매니페스트와 타입·관계·인덱스 0 차이(MySQL 전용 `unsigned`/`onupdate` 제외)
+- [x] T6.7 `docs/dialects.md` 차이표 + 레인 스펙 `docs/lanes/s6.md`
 
 ## 단계 7 — S7 후속 기능과 문서 정비  [미착수]
 
-S7 항목은 구현과 문서 작업을 각각 완료해야 한다. 구현하지 않은 항목은 완료로 표시하지 않는다. 세 언어에 같은 기능을 제공할 수 없으면 설계 검토에서 중단한다.
+S7 항목은 구현과 문서 작업을 각각 완료해야 한다. 구현하지 않은 항목은 완료로 표시하지 않는다. Go·PHP·Rust·TypeScript에 같은 기능을 제공할 수 없으면 설계 검토에서 중단한다.
 
 ### 기능 개발
 
-- [ ] T7.1 protobuf/Connect 전송 형식과 Go·PHP·Rust 클라이언트 구현
-- [ ] T7.2 FrankenPHP in-process 실행 경로 설계·구현·성능 측정
+- [ ] T7.1 protobuf/Connect 전송 형식과 Go·PHP·Rust·TypeScript 클라이언트 구현
 - [ ] T7.3 DDL diff와 마이그레이션 생성기 구현
 - [ ] T7.4 멀티테넌시 `scope`의 스키마·IR·생성 API 구현
 - [ ] T7.5 `point`, `yaml`, `curlfile` 스타일의 공통 codec 구현
@@ -169,11 +172,12 @@ S7 항목은 구현과 문서 작업을 각각 완료해야 한다. 구현하지
 - [ ] T7.10 `multi_statement` 플랜 구현과 관계 단계 결과 비교
 - [ ] T7.11 Go·PHP typed 직접 스캔 성능 개선 및 기준값 재측정
 - [ ] T7.12 150테이블 Rust 생성 crate fixture와 컴파일 시간 측정
+- [ ] T7.13 AES 키 버전 컬럼·키 목록·상태 조회·명시적 재암호화 구현
 
 ### 문서 정비
 
 - [ ] T7.D1 영어 문서 문서 구조를 `docs/*.md`로 고정
-- [ ] T7.D2 한국어 문서를 `docs/ko/*.md`로 분리하고 영어 문서과 항목을 비교
+- [ ] T7.D2 한국어 문서를 `docs/**/*.ko.md`로 배치하고 영어 문서과 항목을 비교
 - [ ] T7.D3 VitePress 언어 링크와 검색 범위 추가
 - [ ] T7.D4 문서에서 구어체·비유·의인화 표현 제거
 - [ ] T7.D5 기능별 입력·출력·오류·상태·지원 언어를 표로 작성
@@ -182,15 +186,6 @@ S7 항목은 구현과 문서 작업을 각각 완료해야 한다. 구현하지
 - [ ] T7.D8 문서 문체 검사와 번역 항목 검사기를 CI에 추가
 - [ ] T7.D9 S7 기능별 예제와 검증 명령 추가
 - [ ] T7.D10 Pages 빌드와 정적 링크 검사에 S7 문서 포함
-- [x] T6.4 드라이버 추상 3언어(Go: pgx stdlib·modernc sqlite / Rust: sqlx feature + Pool enum + PG 파라미터 타입 서버 조회 / PHP: pdo_pgsql·pdo_sqlite + 타입 바인딩), `$n` 재번호, RETURNING, 에러 매핑, `[db].driver`, ormd `-dialect` 검사, hook `$SECRET`·`$NOW` 마스킹, 슬롯 `col_type`
-- [x] T6.5 로컬 PostgreSQL 17·SQLite에 bench 시드 + AES 시더; **3언어 × 3 DB 각 44/44 동일**(방언별 기대값 파일, 벡터 선언은 `vectors.json` 한 곳)
-- [x] T6.6 `ormgen import --driver postgres`(+`validate --driver postgres`): PG 타입·identity·GIN을 정규 표기로 되돌림 — orm_bench 임포트 결과가 손으로 쓴 매니페스트와 타입·관계·인덱스 0 차이(MySQL 전용 `unsigned`/`onupdate` 제외)
-- [x] T6.7 `docs/dialects.md` 차이표 + 레인 스펙 `docs/lanes/s6.md`
-
----
-
-## 단계 7 — 이후 과제 (착수 안 함, 기록만)
-- [ ] protobuf/Connect 와이어 · FrankenPHP in-process · DDL diff/마이그레이션 생성 · 멀티테넌시 `scope` · point/yaml/curlfile 스타일 · 서버 스트리밍 · `ormgen precompile`(정적 형태 APCu 시드) · 4번째 언어 클라이언트 · sqlx 대체 드라이버 비교(`mysql_async`) · `multi_statement` 플랜(step 0만 의존하는 단계 묶음)
 
 ---
 
@@ -214,4 +209,4 @@ T2.4/T2.5 → T3.1 → T3.3 → T4.1~4.4 → T4.5/4.6 → T4.8 → T5.8 → T6.1
 - G4 (T4.8): 적합성 58/58, `ormgen check`와 토큰 패리티를 CI에서 검증
 - G5 (T5.8) ✔ [GitHub CI 실행](https://github.com/polyspec/orm/actions/runs/34649545210) 통과; 벤치 회귀 게이트 활성
 - G7 (T7.1~T7.12, T7.D1~T7.D10): 모든 기능과 문서 항목의 구현·검사·Pages 배포가 완료될 때까지 미완료
-- G6 (T6.5) ✔ 3 DB 동일 결과 (3언어 × 58 벡터)
+- G6 (T6.5) ✔ 3 DB 동일 결과 (4언어 × 58 벡터)
