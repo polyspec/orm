@@ -1,8 +1,15 @@
-.PHONY: check client-unit-check db-test perf-check interface-check token-check ts-check ts-db-check schema-check proto-check typescript-build rust-check rust-150-check rust-driver-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check
+.PHONY: check client-unit-check db-test perf-check interface-check token-check ts-check ts-db-check schema-check proto-check typescript-build rust-check rust-150-check rust-driver-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
-check: docs-rules-check docs-check docs-verify-idempotent interface-check token-check client-unit-check ts-check schema-check proto-check rust-check rust-driver-check db-test perf-check
+check: feature-check docs-rules-check docs-check docs-verify-idempotent interface-check token-check client-unit-check ts-check schema-check proto-check rust-check rust-driver-check db-test perf-check
 	go test ./...
+
+feature-check:
+	node scripts/features/build.mjs --check
+	node scripts/features/check.mjs
+
+feature-docs:
+	node scripts/features/build.mjs
 
 client-unit-check:
 	php clients/php/tests/relation_keys.php
