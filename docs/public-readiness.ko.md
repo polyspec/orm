@@ -44,7 +44,7 @@
 
 ## P10: 검증
 
-- [ ] P10.1 Model 및 property test가 schema round trip, migration operation order, cursor round trip, query cloning, codec round trip을 검사한다.
+- [x] P10.1 model 및 property test가 schema round trip, migration operation order, cursor round trip, query cloning, codec round trip을 검사한다. schema와 generator 갱신 후 대상 test와 100회 manifest round-trip property test가 통과했다.
 - [x] P10.2 fuzz test가 Mermaid, manifest, IR, SQL migration statement splitting, cursor, ciphertext decoder의 panic 및 무제한 allocation을 검사한다. 필요한 6개 fuzz target이 로컬 1초 smoke 실행을 모두 통과했다.
 - [ ] P10.3 Failure-injection test가 compiler failure, driver failure, cancellation, transaction failure, cache eviction, migration interruption, rotation interruption을 검사한다.
 - [ ] P10.4 Concurrency test가 optimistic update, deadlock, savepoint, migration lock, AES rotation, cache access를 검사한다.
