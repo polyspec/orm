@@ -1,7 +1,7 @@
 // Code generated from contracts/interfaces.json; DO NOT EDIT.
 #![allow(unused_imports, unused_mut, async_fn_in_trait)]
 use super::*;
-use orm::{Collection, Page, Result};
+use orm::{Collection, KeysetPage, Page, Result};
 use orm::db::{self, Exec};
 
 pub trait BattleInterface: Sized {
@@ -20,6 +20,8 @@ async fn sql(&mut self) -> Result<db::Sql>;
 fn using(self, ex: &impl Exec) -> Self;
 fn scope(self, v: i64) -> Self;
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<BattleRow>>;
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<BattleRow>>;
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<BattleRow>>;
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<BattleRow>>;
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>>;
 async fn gets_by_description(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>>;
@@ -161,6 +163,8 @@ async fn sql(&mut self) -> Result<db::Sql> { Battle::sql(self).await }
 fn using(mut self, ex: &impl Exec) -> Self { Battle::using(self,ex) }
 fn scope(mut self, v: i64) -> Self { Battle::scope(self,v) }
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<BattleRow>> { Battle::paginate(self,page,per).await }
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<BattleRow>> { Battle::gets_after(self,cursor,per).await }
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<BattleRow>> { Battle::gets_before(self,cursor,per).await }
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<BattleRow>> { Battle::gets_by_seq(self,v).await }
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> { Battle::gets_by_name(self,v).await }
 async fn gets_by_description(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> { Battle::gets_by_description(self,v).await }
@@ -321,6 +325,8 @@ async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
 fn using(self, ex: &impl Exec) -> Self;
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<UserRow>>;
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<UserRow>>;
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<UserRow>>;
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<UserRow>>;
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<UserRow>>;
 async fn get_count_by_seq(&mut self, v: i64) -> Result<i64>;
@@ -343,6 +349,8 @@ async fn delete(&mut self) -> Result<u64> { User::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { User::sql(self).await }
 fn using(mut self, ex: &impl Exec) -> Self { User::using(self,ex) }
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<UserRow>> { User::paginate(self,page,per).await }
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<UserRow>> { User::gets_after(self,cursor,per).await }
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<UserRow>> { User::gets_before(self,cursor,per).await }
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<UserRow>> { User::gets_by_seq(self,v).await }
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<UserRow>> { User::gets_by_name(self,v).await }
 async fn get_count_by_seq(&mut self, v: i64) -> Result<i64> { User::get_count_by_seq(self,v).await }
@@ -385,6 +393,8 @@ async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
 fn using(self, ex: &impl Exec) -> Self;
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceRow>>;
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceRow>>;
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceRow>>;
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceRow>>;
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<ServiceRow>>;
 async fn get_count_by_seq(&mut self, v: i64) -> Result<i64>;
@@ -407,6 +417,8 @@ async fn delete(&mut self) -> Result<u64> { Service::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { Service::sql(self).await }
 fn using(mut self, ex: &impl Exec) -> Self { Service::using(self,ex) }
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceRow>> { Service::paginate(self,page,per).await }
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceRow>> { Service::gets_after(self,cursor,per).await }
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceRow>> { Service::gets_before(self,cursor,per).await }
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceRow>> { Service::gets_by_seq(self,v).await }
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<ServiceRow>> { Service::gets_by_name(self,v).await }
 async fn get_count_by_seq(&mut self, v: i64) -> Result<i64> { Service::get_count_by_seq(self,v).await }
@@ -449,6 +461,8 @@ async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
 fn using(self, ex: &impl Exec) -> Self;
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceModuleRow>>;
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceModuleRow>>;
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceModuleRow>>;
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceModuleRow>>;
 async fn gets_by_service_seq(&mut self, v: i64) -> Result<Collection<ServiceModuleRow>>;
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<ServiceModuleRow>>;
@@ -475,6 +489,8 @@ async fn delete(&mut self) -> Result<u64> { ServiceModule::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { ServiceModule::sql(self).await }
 fn using(mut self, ex: &impl Exec) -> Self { ServiceModule::using(self,ex) }
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceModuleRow>> { ServiceModule::paginate(self,page,per).await }
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceModuleRow>> { ServiceModule::gets_after(self,cursor,per).await }
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceModuleRow>> { ServiceModule::gets_before(self,cursor,per).await }
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceModuleRow>> { ServiceModule::gets_by_seq(self,v).await }
 async fn gets_by_service_seq(&mut self, v: i64) -> Result<Collection<ServiceModuleRow>> { ServiceModule::gets_by_service_seq(self,v).await }
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<ServiceModuleRow>> { ServiceModule::gets_by_name(self,v).await }
@@ -521,6 +537,8 @@ async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
 fn using(self, ex: &impl Exec) -> Self;
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceMemberRow>>;
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceMemberRow>>;
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceMemberRow>>;
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceMemberRow>>;
 async fn gets_by_service_seq(&mut self, v: i64) -> Result<Collection<ServiceMemberRow>>;
 async fn gets_by_user_seq(&mut self, v: i64) -> Result<Collection<ServiceMemberRow>>;
@@ -547,6 +565,8 @@ async fn delete(&mut self) -> Result<u64> { ServiceMember::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { ServiceMember::sql(self).await }
 fn using(mut self, ex: &impl Exec) -> Self { ServiceMember::using(self,ex) }
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceMemberRow>> { ServiceMember::paginate(self,page,per).await }
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceMemberRow>> { ServiceMember::gets_after(self,cursor,per).await }
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceMemberRow>> { ServiceMember::gets_before(self,cursor,per).await }
 async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceMemberRow>> { ServiceMember::gets_by_seq(self,v).await }
 async fn gets_by_service_seq(&mut self, v: i64) -> Result<Collection<ServiceMemberRow>> { ServiceMember::gets_by_service_seq(self,v).await }
 async fn gets_by_user_seq(&mut self, v: i64) -> Result<Collection<ServiceMemberRow>> { ServiceMember::gets_by_user_seq(self,v).await }
@@ -593,6 +613,8 @@ async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
 fn using(self, ex: &impl Exec) -> Self;
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<CompositeAccountRow>>;
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<CompositeAccountRow>>;
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<CompositeAccountRow>>;
 async fn gets_by_tenant_id(&mut self, v: i64) -> Result<Collection<CompositeAccountRow>>;
 async fn gets_by_account_id(&mut self, v: i64) -> Result<Collection<CompositeAccountRow>>;
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<CompositeAccountRow>>;
@@ -619,6 +641,8 @@ async fn delete(&mut self) -> Result<u64> { CompositeAccount::delete(self).await
 async fn sql(&mut self) -> Result<db::Sql> { CompositeAccount::sql(self).await }
 fn using(mut self, ex: &impl Exec) -> Self { CompositeAccount::using(self,ex) }
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<CompositeAccountRow>> { CompositeAccount::paginate(self,page,per).await }
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<CompositeAccountRow>> { CompositeAccount::gets_after(self,cursor,per).await }
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<CompositeAccountRow>> { CompositeAccount::gets_before(self,cursor,per).await }
 async fn gets_by_tenant_id(&mut self, v: i64) -> Result<Collection<CompositeAccountRow>> { CompositeAccount::gets_by_tenant_id(self,v).await }
 async fn gets_by_account_id(&mut self, v: i64) -> Result<Collection<CompositeAccountRow>> { CompositeAccount::gets_by_account_id(self,v).await }
 async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<CompositeAccountRow>> { CompositeAccount::gets_by_name(self,v).await }
@@ -665,6 +689,8 @@ async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
 fn using(self, ex: &impl Exec) -> Self;
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<CompositeMembershipRow>>;
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<CompositeMembershipRow>>;
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<CompositeMembershipRow>>;
 async fn gets_by_tenant_id(&mut self, v: i64) -> Result<Collection<CompositeMembershipRow>>;
 async fn gets_by_account_id(&mut self, v: i64) -> Result<Collection<CompositeMembershipRow>>;
 async fn gets_by_role(&mut self, v: impl Into<String>) -> Result<Collection<CompositeMembershipRow>>;
@@ -691,6 +717,8 @@ async fn delete(&mut self) -> Result<u64> { CompositeMembership::delete(self).aw
 async fn sql(&mut self) -> Result<db::Sql> { CompositeMembership::sql(self).await }
 fn using(mut self, ex: &impl Exec) -> Self { CompositeMembership::using(self,ex) }
 async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<CompositeMembershipRow>> { CompositeMembership::paginate(self,page,per).await }
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<CompositeMembershipRow>> { CompositeMembership::gets_after(self,cursor,per).await }
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<CompositeMembershipRow>> { CompositeMembership::gets_before(self,cursor,per).await }
 async fn gets_by_tenant_id(&mut self, v: i64) -> Result<Collection<CompositeMembershipRow>> { CompositeMembership::gets_by_tenant_id(self,v).await }
 async fn gets_by_account_id(&mut self, v: i64) -> Result<Collection<CompositeMembershipRow>> { CompositeMembership::gets_by_account_id(self,v).await }
 async fn gets_by_role(&mut self, v: impl Into<String>) -> Result<Collection<CompositeMembershipRow>> { CompositeMembership::gets_by_role(self,v).await }

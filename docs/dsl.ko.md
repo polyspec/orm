@@ -40,6 +40,33 @@ Query() → using(executor) → select/join/where/relation → order/limit → g
 
 행은 별도 생성 타입이다. 행은 스키마에 따라 getter, setter, `update`, `updateOptimistic`, `delete`, `deleteCascade`를 제공한다.
 
+### Keyset pagination
+
+`getsAfter(cursor, per)`와 `getsBefore(cursor, per)`는 `KeysetPage<Row>`를 반환한다. 첫 호출에는 빈 cursor를 사용한다. query order는 테이블 column만 포함해야 하며 generator는 누락된 primary-key column을 오름차순으로 추가한다. cursor에는 정규화된 order와 typed cursor 값이 저장된다. `per`는 양수여야 하며 offset pagination과 keyset 호출을 함께 사용할 수 없다.
+
+```php
+$first = Battle::query()->orderBySeqAsc()->using($db)->getsAfter('', 20);
+$next = Battle::query()->orderBySeqAsc()->using($db)->getsAfter($first->nextCursor, 20);
+$previous = Battle::query()->orderBySeqAsc()->using($db)->getsBefore($next->previousCursor, 20);
+```
+```go
+first, err := gen.Battle().OrderBySeqAsc().Using(ctx, db).GetsAfter("", 20)
+next, err := gen.Battle().OrderBySeqAsc().Using(ctx, db).GetsAfter(first.NextCursor, 20)
+previous, err := gen.Battle().OrderBySeqAsc().Using(ctx, db).GetsBefore(next.PreviousCursor, 20)
+```
+```rust
+let first = battle::query().order_by_seq_asc().using(&db).gets_after("", 20).await?;
+let next = battle::query().order_by_seq_asc().using(&db).gets_after(&first.next_cursor, 20).await?;
+let previous = battle::query().order_by_seq_asc().using(&db).gets_before(&next.previous_cursor, 20).await?;
+```
+```ts
+const first = await Battle().orderBySeqAsc().using(db).getsAfter('', 20);
+const next = await Battle().orderBySeqAsc().using(db).getsAfter(first.nextCursor, 20);
+const previous = await Battle().orderBySeqAsc().using(db).getsBefore(next.previousCursor, 20);
+```
+
+버전, order, value type, expression order, nullable order column, 중복 order column 또는 cursor order가 잘못되면 SQL 실행 전에 `CURSOR_INVALID`를 반환한다. keyset pagination은 root query 작업이며 join과 relation은 조회 결과에 유지되지만 cursor order를 정의할 수 없다.
+
 ## 2. 토큰
 
 ### 2.1 술어 `<col><Op>(value)` — WHERE

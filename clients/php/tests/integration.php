@@ -111,6 +111,11 @@ check($cnt > 0, 'join + on/where + nav');
 
 $page = Battle::query()->serviceSeq(7)->orderBySeqAsc()->using($db)->paginate(2, 10);
 check($page->total === 1000 && $page->pages === 100 && count($page->items) === 10 && $page->items->first()->getSeq() === 1006, 'paginate');
+$firstKeyset = Battle::query()->serviceSeq(7)->orderBySeqAsc()->using($db)->getsAfter('', 2);
+$secondKeyset = Battle::query()->serviceSeq(7)->orderBySeqAsc()->using($db)->getsAfter($firstKeyset->nextCursor, 2);
+check(count($firstKeyset->items) === 2 && $firstKeyset->nextCursor !== '' && $secondKeyset->items->first()->getSeq() > $firstKeyset->items->first()->getSeq(), 'keyset after is ordered and exclusive');
+$previousKeyset = Battle::query()->serviceSeq(7)->orderBySeqAsc()->using($db)->getsBefore($secondKeyset->previousCursor, 2);
+check($previousKeyset->items->first()->getSeq() === $firstKeyset->items->first()->getSeq(), 'keyset before restores request order');
 check(Battle::query()->nameContains('%')->using($db)->getCount() === 0, 'contains escapes %');
 
 // join result access

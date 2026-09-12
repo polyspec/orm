@@ -33,20 +33,35 @@ impl Binding {
     }
 
     pub fn resolve(&self) -> Result<&BoundExec> {
-        let ex = self.0.as_ref().ok_or_else(|| Error::Config("bind a database or transaction before executing".into()))?;
-        if let BoundExec::Transaction(tx) = ex { tx.assert_active()?; }
+        let ex = self.0.as_ref().ok_or_else(|| {
+            Error::Config("bind a database or transaction before executing".into())
+        })?;
+        if let BoundExec::Transaction(tx) = ex {
+            tx.assert_active()?;
+        }
         Ok(ex)
     }
 }
 
 impl Exec for BoundExec {
     fn db(&self) -> &Db {
-        match self { Self::Database(db) => db, Self::Transaction(tx) => tx.db() }
+        match self {
+            Self::Database(db) => db,
+            Self::Transaction(tx) => tx.db(),
+        }
     }
     fn tx(&self) -> Option<&Tx> {
-        match self { Self::Database(_) => None, Self::Transaction(tx) => Some(tx) }
+        match self {
+            Self::Database(_) => None,
+            Self::Transaction(tx) => Some(tx),
+        }
     }
-    async fn query(&self, st: &Step, params: &[Param], parents: Vec<Param>) -> Result<Vec<DriverRow>> {
+    async fn query(
+        &self,
+        st: &Step,
+        params: &[Param],
+        parents: Vec<Param>,
+    ) -> Result<Vec<DriverRow>> {
         match self {
             Self::Database(db) => db.query(st, params, parents).await,
             Self::Transaction(tx) => tx.query(st, params, parents).await,

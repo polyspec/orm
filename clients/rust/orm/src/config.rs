@@ -61,7 +61,9 @@ fn default_driver() -> String {
     "mysql".into()
 }
 
-fn default_cache_size() -> usize { 256 }
+fn default_cache_size() -> usize {
+    256
+}
 
 #[derive(Deserialize, Debug, Clone, Default)]
 #[serde(deny_unknown_fields)]
@@ -100,7 +102,9 @@ pub struct OrmdSection {
     pub socket: Option<PathBuf>,
 }
 
-fn default_compiler_timeout_ms() -> u64 { 5000 }
+fn default_compiler_timeout_ms() -> u64 {
+    5000
+}
 
 #[derive(Deserialize, Debug, Clone, Default)]
 #[serde(deny_unknown_fields)]
@@ -120,7 +124,8 @@ pub fn check_path(key: &str, p: &Path) -> Result<()> {
     if !p.is_absolute() {
         return Err(cfg_err(format!("{key}: {} is not absolute", p.display())));
     }
-    let meta = std::fs::symlink_metadata(p).map_err(|e| cfg_err(format!("{key}: {}: {e}", p.display())))?;
+    let meta = std::fs::symlink_metadata(p)
+        .map_err(|e| cfg_err(format!("{key}: {}: {e}", p.display())))?;
     if meta.file_type().is_symlink() {
         return Err(cfg_err(format!("{key}: {} is a symlink", p.display())));
     }
@@ -140,8 +145,10 @@ impl OrmConfig {
     /// Parses and validates `orm.toml` at `path`: paths, `[db]` user rule, `[secrets]` exclusivity.
     pub fn load(path: impl AsRef<Path>) -> Result<OrmConfig> {
         let path = path.as_ref();
-        let text = std::fs::read_to_string(path).map_err(|e| cfg_err(format!("{}: {e}", path.display())))?;
-        let cfg: OrmConfig = toml::from_str(&text).map_err(|e| cfg_err(format!("{}: {e}", path.display())))?;
+        let text = std::fs::read_to_string(path)
+            .map_err(|e| cfg_err(format!("{}: {e}", path.display())))?;
+        let cfg: OrmConfig =
+            toml::from_str(&text).map_err(|e| cfg_err(format!("{}: {e}", path.display())))?;
         check_path("schema", &cfg.schema)?;
         check_path("engine.wasm", &cfg.engine.wasm)?;
         if let Some(dir) = &cfg.engine.cache_dir {
@@ -150,7 +157,10 @@ impl OrmConfig {
         if let Some(o) = &cfg.ormd {
             if let Some(socket) = &o.socket {
                 if !socket.is_absolute() {
-                    return Err(cfg_err(format!("ormd.socket: {} is not absolute", socket.display())));
+                    return Err(cfg_err(format!(
+                        "ormd.socket: {} is not absolute",
+                        socket.display()
+                    )));
                 }
             }
             if o.timeout_ms == 0 {
@@ -160,36 +170,59 @@ impl OrmConfig {
         if cfg.db.dsn.is_empty() {
             return Err(cfg_err("db.dsn is empty"));
         }
-		if cfg.db.plan_cache_size == 0 || cfg.db.statement_cache_size == 0 {
-			return Err(cfg_err("db cache sizes must be positive"));
-		}
+        if cfg.db.plan_cache_size == 0 || cfg.db.statement_cache_size == 0 {
+            return Err(cfg_err("db cache sizes must be positive"));
+        }
         if !matches!(cfg.db.driver.as_str(), "mysql" | "postgres" | "sqlite") {
-            return Err(cfg_err(format!("db.driver {:?}: want mysql, postgres or sqlite", cfg.db.driver)));
+            return Err(cfg_err(format!(
+                "db.driver {:?}: want mysql, postgres or sqlite",
+                cfg.db.driver
+            )));
         }
         if cfg.db.driver != "mysql" && (cfg.db.user.is_some() || cfg.db.password.is_some()) {
-            return Err(cfg_err(format!("db.user/password apply to mysql DSNs only; put the user in the {} URL", cfg.db.driver)));
+            return Err(cfg_err(format!(
+                "db.user/password apply to mysql DSNs only; put the user in the {} URL",
+                cfg.db.driver
+            )));
         }
         if let (Some(u), Some(cu)) = (url_user(&cfg.db.dsn), cfg.db.user.as_deref()) {
             if u != cu {
-                return Err(cfg_err(format!("db.user {cu:?} conflicts with the user {u:?} in db.dsn")));
+                return Err(cfg_err(format!(
+                    "db.user {cu:?} conflicts with the user {u:?} in db.dsn"
+                )));
             }
         }
         if cfg.secrets.aes.is_some() && cfg.secrets.aes_env.is_some() {
             return Err(cfg_err("secrets: declare aes or aes_env, not both"));
         }
         if cfg.secrets.blind_index.is_some() && cfg.secrets.blind_index_env.is_some() {
-            return Err(cfg_err("secrets: declare blind_index or blind_index_env, not both"));
+            return Err(cfg_err(
+                "secrets: declare blind_index or blind_index_env, not both",
+            ));
         }
         if !cfg.secrets.aes_keys.is_empty() {
             if cfg.secrets.aes.is_some() || cfg.secrets.aes_env.is_some() {
-                return Err(cfg_err("secrets.aes_keys is exclusive with secrets.aes and secrets.aes_env"));
+                return Err(cfg_err(
+                    "secrets.aes_keys is exclusive with secrets.aes and secrets.aes_env",
+                ));
             }
-            let current = cfg.secrets.aes_version.ok_or_else(|| cfg_err("secrets.aes_version is required with secrets.aes_keys"))?;
+            let current = cfg
+                .secrets
+                .aes_version
+                .ok_or_else(|| cfg_err("secrets.aes_version is required with secrets.aes_keys"))?;
             if current < 1 || !cfg.secrets.aes_keys.contains_key(&current.to_string()) {
-                return Err(cfg_err(format!("secrets.aes_version {current} is not declared in secrets.aes_keys")));
+                return Err(cfg_err(format!(
+                    "secrets.aes_version {current} is not declared in secrets.aes_keys"
+                )));
             }
             for (version, key) in &cfg.secrets.aes_keys {
-                if version.parse::<i32>().ok().filter(|value| *value > 0).is_none() || key.is_empty() {
+                if version
+                    .parse::<i32>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .is_none()
+                    || key.is_empty()
+                {
                     return Err(cfg_err(format!("secrets.aes_keys.{version} is invalid")));
                 }
             }
@@ -203,12 +236,21 @@ impl OrmConfig {
     /// empty when neither is declared (a statement with a secret slot then fails with CONFIG).
     pub fn aes_key(&self) -> Result<String> {
         if !self.secrets.aes_keys.is_empty() {
-            let version = self.secrets.aes_version.ok_or_else(|| cfg_err("secrets.aes_version is required with secrets.aes_keys"))?;
-            return self.secrets.aes_keys.get(&version.to_string()).cloned().ok_or_else(|| cfg_err(format!("secrets.aes_version {version} is not declared")));
+            let version = self
+                .secrets
+                .aes_version
+                .ok_or_else(|| cfg_err("secrets.aes_version is required with secrets.aes_keys"))?;
+            return self
+                .secrets
+                .aes_keys
+                .get(&version.to_string())
+                .cloned()
+                .ok_or_else(|| cfg_err(format!("secrets.aes_version {version} is not declared")));
         }
         match (&self.secrets.aes, &self.secrets.aes_env) {
             (Some(k), _) => Ok(k.clone()),
-            (None, Some(var)) => std::env::var(var).map_err(|_| cfg_err(format!("secrets.aes_env: {var} is not set"))),
+            (None, Some(var)) => std::env::var(var)
+                .map_err(|_| cfg_err(format!("secrets.aes_env: {var} is not set"))),
             (None, None) => Ok(String::new()),
         }
     }
@@ -217,7 +259,8 @@ impl OrmConfig {
         match (&self.secrets.blind_index, &self.secrets.blind_index_env) {
             (Some(k), _) if !k.is_empty() => Ok(k.clone()),
             (Some(_), _) => Err(cfg_err("secrets.blind_index must not be empty")),
-            (None, Some(var)) => std::env::var(var).map_err(|_| cfg_err(format!("secrets.blind_index_env: {var} is not set"))),
+            (None, Some(var)) => std::env::var(var)
+                .map_err(|_| cfg_err(format!("secrets.blind_index_env: {var} is not set"))),
             (None, None) => Ok(String::new()),
         }
     }
@@ -242,29 +285,58 @@ impl OrmConfig {
 
     /// Whether the manifest declares a column with the `aes` style (so a secret must be configured).
     fn schema_has_aes(schema_json: &[u8]) -> bool {
-        let Ok(v) = serde_json::from_slice::<serde_json::Value>(schema_json) else { return false };
-        let Some(entities) = v["entities"].as_object() else { return false };
+        let Ok(v) = serde_json::from_slice::<serde_json::Value>(schema_json) else {
+            return false;
+        };
+        let Some(entities) = v["entities"].as_object() else {
+            return false;
+        };
         entities.values().any(|e| {
-            e["columns"].as_array().map(|cols| cols.iter().any(|c| c["styles"].as_array().map(|s| s.iter().any(|x| x == "aes")).unwrap_or(false))).unwrap_or(false)
+            e["columns"]
+                .as_array()
+                .map(|cols| {
+                    cols.iter().any(|c| {
+                        c["styles"]
+                            .as_array()
+                            .map(|s| s.iter().any(|x| x == "aes"))
+                            .unwrap_or(false)
+                    })
+                })
+                .unwrap_or(false)
         })
     }
 
     fn schema_has_blind_index(schema_json: &[u8]) -> bool {
-        let Ok(v) = serde_json::from_slice::<serde_json::Value>(schema_json) else { return false };
-        let Some(entities) = v["entities"].as_object() else { return false };
-        entities.values().any(|e| e["columns"].as_array().map(|cols| cols.iter().any(|c| c.get("blind_index").is_some())).unwrap_or(false))
+        let Ok(v) = serde_json::from_slice::<serde_json::Value>(schema_json) else {
+            return false;
+        };
+        let Some(entities) = v["entities"].as_object() else {
+            return false;
+        };
+        entities.values().any(|e| {
+            e["columns"]
+                .as_array()
+                .map(|cols| cols.iter().any(|c| c.get("blind_index").is_some()))
+                .unwrap_or(false)
+        })
     }
 }
 
 /// The `[debug].on_query = true` hook: one line per statement on stderr.
 fn stderr_logger() -> OnQuery {
-    Box::new(|sql: &str, binds: &[Param], d: std::time::Duration, plan_id: u64, err: Option<&Error>| {
-        let binds: Vec<String> = binds.iter().map(|b| format!("{b:?}")).collect();
-        match err {
-            Some(e) => eprintln!("orm {plan_id:016x} {:?} {sql} [{}] error={e}", d, binds.join(", ")),
-            None => eprintln!("orm {plan_id:016x} {:?} {sql} [{}]", d, binds.join(", ")),
-        }
-    })
+    Box::new(
+        |sql: &str, binds: &[Param], d: std::time::Duration, plan_id: u64, err: Option<&Error>| {
+            let binds: Vec<String> = binds.iter().map(|b| format!("{b:?}")).collect();
+            match err {
+                Some(e) => eprintln!(
+                    "orm {plan_id:016x} {:?} {sql} [{}] error={e}",
+                    d,
+                    binds.join(", ")
+                ),
+                None => eprintln!("orm {plan_id:016x} {:?} {sql} [{}]", d, binds.join(", ")),
+            }
+        },
+    )
 }
 
 impl Db {
@@ -273,30 +345,54 @@ impl Db {
     /// `gen::init(db.engine.clone())?`, which performs the schema_hash check.
     pub async fn from_config(path: impl AsRef<Path>) -> Result<Db> {
         let cfg = OrmConfig::load(path)?;
-        let wasm = std::fs::read(&cfg.engine.wasm).map_err(|e| cfg_err(format!("engine.wasm: {e}")))?;
+        let wasm =
+            std::fs::read(&cfg.engine.wasm).map_err(|e| cfg_err(format!("engine.wasm: {e}")))?;
         let schema = std::fs::read(&cfg.schema).map_err(|e| cfg_err(format!("schema: {e}")))?;
         let aes_key = cfg.aes_key()?;
         let blind_index_key = cfg.blind_index_key()?;
         if aes_key.is_empty() && OrmConfig::schema_has_aes(&schema) {
-            return Err(cfg_err("secrets: the schema has aes columns but neither aes nor aes_env is declared"));
+            return Err(cfg_err(
+                "secrets: the schema has aes columns but neither aes nor aes_env is declared",
+            ));
         }
         if blind_index_key.is_empty() && OrmConfig::schema_has_blind_index(&schema) {
             return Err(cfg_err("secrets: the schema has blind indexes but neither blind_index nor blind_index_env is declared"));
         }
-        let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, dialect: &cfg.db.driver, cache_dir: cfg.engine.cache_dir.as_deref() })?);
+        let engine = Arc::new(Engine::new(EngineConfig {
+            wasm: &wasm,
+            schema_json: &schema,
+            dialect: &cfg.db.driver,
+            cache_dir: cfg.engine.cache_dir.as_deref(),
+        })?);
         let on_query = cfg.debug.on_query.then(stderr_logger);
         let options = cfg.connect_options()?;
         let aes_version = cfg.secrets.aes_version.unwrap_or(1);
         let aes_keys = if cfg.secrets.aes_keys.is_empty() {
             std::collections::BTreeMap::from([(aes_version, aes_key.clone())])
         } else {
-            cfg.secrets.aes_keys.iter().filter_map(|(version, key)| version.parse::<i32>().ok().map(|v| (v, key.clone()))).collect()
+            cfg.secrets
+                .aes_keys
+                .iter()
+                .filter_map(|(version, key)| version.parse::<i32>().ok().map(|v| (v, key.clone())))
+                .collect()
         };
-        let runtime = Config { aes_key, blind_index_key, aes_version, aes_keys, plan_cache_size: cfg.db.plan_cache_size, statement_cache_size: cfg.db.statement_cache_size, on_query };
+        let runtime = Config {
+            aes_key,
+            blind_index_key,
+            aes_version,
+            aes_keys,
+            plan_cache_size: cfg.db.plan_cache_size,
+            statement_cache_size: cfg.db.statement_cache_size,
+            on_query,
+        };
         if let Some(ormd) = &cfg.ormd {
             if let Some(endpoint) = &ormd.endpoint {
-                let compiler = Arc::new(ConnectCompiler::new(endpoint, std::time::Duration::from_millis(ormd.timeout_ms))?);
-                return Db::connect_with_compiler(options, cfg.db.pool, engine, compiler, runtime).await;
+                let compiler = Arc::new(ConnectCompiler::new(
+                    endpoint,
+                    std::time::Duration::from_millis(ormd.timeout_ms),
+                )?);
+                return Db::connect_with_compiler(options, cfg.db.pool, engine, compiler, runtime)
+                    .await;
             }
         }
         Db::connect(options, cfg.db.pool, engine, runtime).await
@@ -314,15 +410,25 @@ mod tests {
     }
 
     fn tmp() -> PathBuf {
-        let d = std::env::temp_dir().join(format!("orm-config-{}-{}", std::process::id(), rand::random::<u32>()));
+        let d = std::env::temp_dir().join(format!(
+            "orm-config-{}-{}",
+            std::process::id(),
+            rand::random::<u32>()
+        ));
         std::fs::create_dir_all(&d).unwrap();
         d
     }
 
     #[test]
     fn url_user_parsing() {
-        assert_eq!(url_user("mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock"), Some("root"));
-        assert_eq!(url_user("mysql://app:p%40ss@127.0.0.1:3306/db"), Some("app"));
+        assert_eq!(
+            url_user("mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock"),
+            Some("root")
+        );
+        assert_eq!(
+            url_user("mysql://app:p%40ss@127.0.0.1:3306/db"),
+            Some("app")
+        );
         assert_eq!(url_user("mysql://localhost/db?user=x"), None);
         assert_eq!(url_user("mysql://127.0.0.1:3306/db"), None);
     }
@@ -337,8 +443,19 @@ mod tests {
         assert_eq!(e.code(), crate::codes::CONFIG);
         assert!(e.to_string().contains("not absolute"), "{e}");
 
-        let missing = write(&d, "missing.toml", &format!("schema = {:?}\n[db]\ndsn = \"mysql://root@localhost/x\"\n[engine]\nwasm = {:?}\n", d.join("nope.json"), wasm));
-        assert_eq!(OrmConfig::load(&missing).unwrap_err().code(), crate::codes::CONFIG);
+        let missing = write(
+            &d,
+            "missing.toml",
+            &format!(
+                "schema = {:?}\n[db]\ndsn = \"mysql://root@localhost/x\"\n[engine]\nwasm = {:?}\n",
+                d.join("nope.json"),
+                wasm
+            ),
+        );
+        assert_eq!(
+            OrmConfig::load(&missing).unwrap_err().code(),
+            crate::codes::CONFIG
+        );
 
         #[cfg(unix)]
         {
@@ -362,19 +479,44 @@ mod tests {
         let pg = write(&d, "pg.toml", &format!("schema = {:?}\n[db]\ndriver = \"postgres\"\ndsn = \"postgres://maxkwon@localhost:5432/orm_bench\"\n[engine]\nwasm = {:?}\n", schema, wasm));
         let c = OrmConfig::load(&pg).unwrap();
         assert_eq!(c.db.driver, "postgres");
-        assert!(matches!(c.connect_options().unwrap(), ConnectOptions::Postgres(_)));
+        assert!(matches!(
+            c.connect_options().unwrap(),
+            ConnectOptions::Postgres(_)
+        ));
         let pg_user = write(&d, "pg-user.toml", &format!("schema = {:?}\n[db]\ndriver = \"postgres\"\ndsn = \"postgres://localhost/x\"\nuser = \"app\"\n[engine]\nwasm = {:?}\n", schema, wasm));
-        assert!(OrmConfig::load(&pg_user).unwrap_err().to_string().contains("mysql DSNs only"));
+        assert!(OrmConfig::load(&pg_user)
+            .unwrap_err()
+            .to_string()
+            .contains("mysql DSNs only"));
         let lite = write(&d, "lite.toml", &format!("schema = {:?}\n[db]\ndriver = \"sqlite\"\ndsn = \"sqlite:///tmp/orm_bench.sqlite\"\n[engine]\nwasm = {:?}\n", schema, wasm));
-        assert!(matches!(OrmConfig::load(&lite).unwrap().connect_options().unwrap(), ConnectOptions::Sqlite(_)));
-        let odd = write(&d, "odd.toml", &format!("schema = {:?}\n[db]\ndriver = \"oracle\"\ndsn = \"x\"\n[engine]\nwasm = {:?}\n", schema, wasm));
-        assert_eq!(OrmConfig::load(&odd).unwrap_err().code(), crate::codes::CONFIG);
+        assert!(matches!(
+            OrmConfig::load(&lite).unwrap().connect_options().unwrap(),
+            ConnectOptions::Sqlite(_)
+        ));
+        let odd = write(
+            &d,
+            "odd.toml",
+            &format!(
+                "schema = {:?}\n[db]\ndriver = \"oracle\"\ndsn = \"x\"\n[engine]\nwasm = {:?}\n",
+                schema, wasm
+            ),
+        );
+        assert_eq!(
+            OrmConfig::load(&odd).unwrap_err().code(),
+            crate::codes::CONFIG
+        );
 
         let conflict = write(&d, "conflict.toml", &format!("schema = {:?}\n[db]\ndsn = \"mysql://root@localhost/x\"\nuser = \"app\"\n[engine]\nwasm = {:?}\n", schema, wasm));
-        assert!(OrmConfig::load(&conflict).unwrap_err().to_string().contains("conflicts"));
+        assert!(OrmConfig::load(&conflict)
+            .unwrap_err()
+            .to_string()
+            .contains("conflicts"));
 
         let both = write(&d, "both.toml", &format!("schema = {:?}\n[db]\ndsn = \"mysql://root@localhost/x\"\n[secrets]\naes = \"k\"\naes_env = \"K\"\n[engine]\nwasm = {:?}\n", schema, wasm));
-        assert!(OrmConfig::load(&both).unwrap_err().to_string().contains("not both"));
+        assert!(OrmConfig::load(&both)
+            .unwrap_err()
+            .to_string()
+            .contains("not both"));
 
         let versioned = write(&d, "versioned.toml", &format!("schema = {:?}\n[db]\ndsn = \"mysql://root@localhost/x\"\n[secrets]\naes_version = 2\n[secrets.aes_keys]\n1 = \"old-key\"\n2 = \"current-key\"\n[engine]\nwasm = {:?}\n", schema, wasm));
         let versioned = OrmConfig::load(&versioned).unwrap();
@@ -382,7 +524,10 @@ mod tests {
         assert_eq!(versioned.aes_key().unwrap(), "current-key");
 
         let unknown = write(&d, "unknown.toml", &format!("schema = {:?}\n[db]\ndsn = \"mysql://root@localhost/x\"\n[engine]\nwasm = {:?}\nwat = 1\n", schema, wasm));
-        assert_eq!(OrmConfig::load(&unknown).unwrap_err().code(), crate::codes::CONFIG);
+        assert_eq!(
+            OrmConfig::load(&unknown).unwrap_err().code(),
+            crate::codes::CONFIG
+        );
         let _ = std::fs::remove_dir_all(&d);
     }
 }

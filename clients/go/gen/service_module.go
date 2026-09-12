@@ -1209,6 +1209,43 @@ func collectServiceModuleDirect(rows []*ServiceModuleRow, keyFn func(*ServiceMod
 	return c
 }
 
+// GetsAfter reads the next keyset page. An empty cursor starts at the first row.
+func (q *ServiceModuleQuery) GetsAfter(cursor string, per int) (*orm.KeysetPage[ServiceModuleRow], error) {
+	if err := q.q.Keyset("after", cursor, per, []string{"seq"}); err != nil {
+		return nil, err
+	}
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "all"
+	rows, err := orm.Query(ctx, ex, q.q.Req)
+	if err != nil {
+		return nil, err
+	}
+	items := collectServiceModule(rows, q.keyFn)
+	return orm.KeysetPageFromRows(rows, items, q.q.Req.IR.Order)
+}
+
+// GetsBefore reads the previous keyset page and restores the requested order.
+func (q *ServiceModuleQuery) GetsBefore(cursor string, per int) (*orm.KeysetPage[ServiceModuleRow], error) {
+	if err := q.q.Keyset("before", cursor, per, []string{"seq"}); err != nil {
+		return nil, err
+	}
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "all"
+	rows, err := orm.Query(ctx, ex, q.q.Req)
+	if err != nil {
+		return nil, err
+	}
+	orm.ReverseRows(rows)
+	items := collectServiceModule(rows, q.keyFn)
+	return orm.KeysetPageFromRows(rows, items, q.q.Req.IR.Order)
+}
+
 func (q *ServiceModuleQuery) GetCount() (int64, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {

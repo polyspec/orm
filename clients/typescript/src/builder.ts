@@ -2,6 +2,7 @@ import type { Assignment, Group, Item, Param, Predicate, QueryKind, Request, Req
 import type { Db } from './database.js';
 import { OrmError } from './runtime_error.js';
 import { encode, type CodecValue } from './codec.js';
+import { cursorParams, decodeKeysetCursor, sameOrder } from './keyset.js';
 
 export class ColumnReference {
   public constructor(public readonly column: string, public readonly path = '') {}
@@ -112,6 +113,23 @@ export class QueryCore {
   public groupBy(column: string): this { this.request.ir.group_by ??= []; this.request.ir.group_by.push(column); return this; }
   public groupByExpression(expression: string, alias: string): this { this.request.ir.group_by_expr ??= []; this.request.ir.group_by_expr.push({ expr: expression, as: alias }); return this; }
   public limit(offset: number, count: number): this { this.request.ir.limit = { offset: uint(offset, 'limit offset'), count: uint(count, 'limit count') }; return this; }
+  public keyset(direction: 'after'|'before', cursor: string, per: number, primaryKeys: readonly string[]): this {
+    if (direction !== 'after' && direction !== 'before') throw new OrmError('CURSOR_INVALID', 'keyset direction must be after or before');
+    if (!Number.isSafeInteger(per) || per < 1) throw new OrmError('IR_INVALID', 'keyset limit must be positive');
+    if ((this.request.ir.order ?? []).length === 0) this.request.ir.order = primaryKeys.map(column => ({ column }));
+    const order = this.request.ir.order ?? [];
+    if (order.some(item => !item.column || item.expr)) throw new OrmError('CURSOR_INVALID', 'keyset order must use table columns');
+    const seen = new Set<string>();
+    for (const item of order) { if (seen.has(item.column!)) throw new OrmError('CURSOR_INVALID', `keyset order contains duplicate column ${item.column}`); seen.add(item.column!); }
+    for (const column of primaryKeys) if (!seen.has(column)) { order.push({ column }); seen.add(column); }
+    this.request.ir.limit = { offset: 0, count: per };
+    if (cursor === '') { delete this.request.ir.keyset; return this; }
+    const decoded = decodeKeysetCursor(cursor);
+    if (!sameOrder(order, decoded.order)) throw new OrmError('CURSOR_INVALID', 'cursor order does not match query order');
+    const values = cursorParams(decoded).map(value => this.request.parameter(value));
+    this.request.ir.keyset = { direction, values };
+    return this;
+  }
   public distinct(): this { this.request.ir.distinct = true; return this; }
   public forceIndex(index: string): this { this.request.ir.force_index = index; return this; }
   public keyBy(column: string): this { this.request.ir.key_by = column; return this; }
@@ -144,6 +162,7 @@ export class QueryCore {
   public requestShape(kind: QueryKind = this.request.ir.kind): Request { return this.request.shape(kind); }
   public parameters(): Param[] { return [...this.request.params]; }
   protected async terminal(kind: QueryKind): Promise<unknown> { if (this.request.deferredError) throw this.request.deferredError; const database=this.binding.resolve(); return database.execute(await database.plan(this.request.shape(kind)), [...this.request.params]); }
+  protected async terminalRows(): Promise<import('./model.js').ExecutionRows> { if (this.request.deferredError) throw this.request.deferredError; const database=this.binding.resolve(); return database.executeRows(await database.plan(this.request.shape('all')), [...this.request.params]); }
   protected async streamRows<T extends import('./model.js').Row>(visit: (row: T) => boolean | Promise<boolean>): Promise<import('./index.js').StreamResult> { if(this.request.deferredError)throw this.request.deferredError;const database=this.binding.resolve();return database.stream<T>(await database.plan(this.request.shape('all')),[...this.request.params],visit); }
   protected async insertKey(): Promise<unknown> { return (await this.terminal('insert') as { insertId: unknown }).insertId; }
   protected async writeAffected(kind: 'update'|'delete'): Promise<number> { return (await this.terminal(kind) as { affected: number }).affected; }

@@ -20,11 +20,17 @@ pub struct DeferredError {
 
 impl DeferredError {
     pub fn from_error(e: crate::Error) -> Self {
-        Self { code: e.code().into(), message: e.to_string() }
+        Self {
+            code: e.code().into(),
+            message: e.to_string(),
+        }
     }
 
     pub fn error(&self) -> crate::Error {
-        crate::Error::Engine { code: self.code.clone(), msg: self.message.clone() }
+        crate::Error::Engine {
+            code: self.code.clone(),
+            msg: self.message.clone(),
+        }
     }
 }
 
@@ -35,7 +41,10 @@ impl Req {
                 ir_version: 1,
                 schema_hash: schema_hash.to_owned(),
                 kind: "all".into(),
-                query: Query { entity: entity.to_owned(), ..Default::default() },
+                query: Query {
+                    entity: entity.to_owned(),
+                    ..Default::default()
+                },
                 ..Default::default()
             },
             params: Vec::new(),
@@ -51,7 +60,9 @@ impl Req {
     /// Merge a child request: append its params and shift its indices.
     pub fn attach(&mut self, child: &Req) -> Query {
         let off = self.params.len();
-        if self.err.is_none() { self.err = child.err.clone(); }
+        if self.err.is_none() {
+            self.err = child.err.clone();
+        }
         self.params.extend_from_slice(&child.params);
         let mut q = child.ir.query.clone();
         q.shift(off);
@@ -126,7 +137,10 @@ pub struct ColRef {
 
 impl ColRef {
     pub const fn new(column: &'static str) -> ColRef {
-        ColRef { path: String::new(), column }
+        ColRef {
+            path: String::new(),
+            column,
+        }
     }
 
     pub fn at(mut self, path: &str) -> ColRef {
@@ -145,10 +159,17 @@ pub struct Q {
 
 impl Q {
     pub fn new(schema_hash: &str, entity: &str) -> Q {
-        Q { req: Req::new(schema_hash, entity), link_left: String::new(), link_right: String::new(), pending_or: false }
+        Q {
+            req: Req::new(schema_hash, entity),
+            link_left: String::new(),
+            link_right: String::new(),
+            pending_or: false,
+        }
     }
 
-    pub fn entity(&self) -> &str { &self.req.ir.query.entity }
+    pub fn entity(&self) -> &str {
+        &self.req.ir.query.entity
+    }
 
     pub fn set_link(&mut self, left: &str, right: &str) {
         self.link_left = left.into();
@@ -176,21 +197,33 @@ impl Q {
         let pending = std::mem::take(&mut self.pending_or);
         let req = &mut self.req;
         let g = req.ir.query.where_.get_or_insert_with(Group::default);
-        W { params: &mut req.params, g, pending_or: pending }
+        W {
+            params: &mut req.params,
+            g,
+            pending_or: pending,
+        }
     }
 
     /// A W over the ON group (join children).
     pub fn on_w(&mut self) -> W<'_> {
         let req = &mut self.req;
         let g = req.ir.query.on.get_or_insert_with(Group::default);
-        W { params: &mut req.params, g, pending_or: false }
+        W {
+            params: &mut req.params,
+            g,
+            pending_or: false,
+        }
     }
 
     /// A W over the root HAVING group (group predicates after group_by).
     pub fn having_w(&mut self) -> W<'_> {
         let req = &mut self.req;
         let g = req.ir.query.having.get_or_insert_with(Group::default);
-        W { params: &mut req.params, g, pending_or: false }
+        W {
+            params: &mut req.params,
+            g,
+            pending_or: false,
+        }
     }
 
     pub fn or(&mut self) {
@@ -201,97 +234,262 @@ impl Q {
     /// entity table, each `?` binds the next of `binds`.
     pub fn raw(&mut self, sql: &str, binds: Vec<Param>) {
         let ps = binds.into_iter().map(|b| self.req.p(b)).collect();
-        self.req.ir.raw = Some(Raw { sql: sql.into(), ps });
+        self.req.ir.raw = Some(Raw {
+            sql: sql.into(),
+            ps,
+        });
     }
 
     pub fn join(&mut self, rel: &str, kind: &str, child: &Q) {
         let q = self.req.attach(&child.req);
-        self.req.ir.query.joins.push(Join { rel: rel.into(), kind: kind.into(), query: Box::new(q) });
+        self.req.ir.query.joins.push(Join {
+            rel: rel.into(),
+            kind: kind.into(),
+            query: Box::new(q),
+        });
     }
 
     pub fn relation(&mut self, rel: &str, child: &Q) {
         let q = self.req.attach(&child.req);
-        self.req.ir.query.relations.push(Relation { rel: rel.into(), query: Box::new(q) });
+        self.req.ir.query.relations.push(Relation {
+            rel: rel.into(),
+            query: Box::new(q),
+        });
     }
 
     pub fn columns(&mut self) -> &mut Columns {
-        self.req.ir.query.columns.get_or_insert_with(Columns::default)
+        self.req
+            .ir
+            .query
+            .columns
+            .get_or_insert_with(Columns::default)
     }
 
     pub fn order(&mut self, col: &str, desc: bool) {
-        self.req.ir.query.order.push(Order { column: col.into(), expr: String::new(), desc });
+        self.req.ir.query.order.push(Order {
+            column: col.into(),
+            expr: String::new(),
+            desc,
+        });
     }
 
     pub fn order_expr(&mut self, frag: &str, desc: bool) {
-        self.req.ir.query.order.push(Order { column: String::new(), expr: frag.into(), desc });
+        self.req.ir.query.order.push(Order {
+            column: String::new(),
+            expr: frag.into(),
+            desc,
+        });
     }
 
-    pub fn lock(&mut self, mode: &str) { self.node().lock = mode.into(); }
+    pub fn keyset(
+        &mut self,
+        direction: &str,
+        cursor: &str,
+        per: u32,
+        primary_keys: &[&str],
+    ) -> crate::Result<()> {
+        if direction != "after" && direction != "before" {
+            return Err(crate::Error::Engine {
+                code: crate::codes::CURSOR_INVALID.into(),
+                msg: "keyset direction must be after or before".into(),
+            });
+        }
+        if per == 0 {
+            return Err(crate::Error::Engine {
+                code: crate::codes::IR_INVALID.into(),
+                msg: "keyset limit must be positive".into(),
+            });
+        }
+        if self.req.ir.query.order.is_empty() {
+            for key in primary_keys {
+                self.order(key, false);
+            }
+        }
+        if self
+            .req
+            .ir
+            .query
+            .order
+            .iter()
+            .any(|item| item.column.is_empty() || !item.expr.is_empty())
+        {
+            return Err(crate::Error::Engine {
+                code: crate::codes::CURSOR_INVALID.into(),
+                msg: "keyset order must use table columns".into(),
+            });
+        }
+        let mut seen = std::collections::HashSet::new();
+        for item in self.req.ir.query.order.iter() {
+            if !seen.insert(item.column.clone()) {
+                return Err(crate::Error::Engine {
+                    code: crate::codes::CURSOR_INVALID.into(),
+                    msg: format!("keyset order contains duplicate column {}", item.column),
+                });
+            }
+        }
+        for key in primary_keys {
+            if !seen.contains(*key) {
+                self.req.ir.query.order.push(Order {
+                    column: (*key).into(),
+                    expr: String::new(),
+                    desc: false,
+                });
+                seen.insert((*key).into());
+            }
+        }
+        let order = &self.req.ir.query.order;
+        self.req.ir.query.limit = Some(Limit {
+            offset: 0,
+            count: per,
+        });
+        if cursor.is_empty() {
+            self.req.ir.query.keyset = None;
+            return Ok(());
+        }
+        if direction != "after" && direction != "before" {
+            return Err(crate::Error::Engine {
+                code: crate::codes::CURSOR_INVALID.into(),
+                msg: "keyset direction must be after or before".into(),
+            });
+        }
+        let (cursor_order, params) = crate::keyset::decode(cursor)?;
+        if !crate::keyset::same_order(order, &cursor_order) {
+            return Err(crate::Error::Engine {
+                code: crate::codes::CURSOR_INVALID.into(),
+                msg: "cursor order does not match query order".into(),
+            });
+        }
+        let values = params.into_iter().map(|value| self.req.p(value)).collect();
+        self.req.ir.query.keyset = Some(Keyset {
+            direction: direction.into(),
+            values,
+        });
+        Ok(())
+    }
+
+    pub fn lock(&mut self, mode: &str) {
+        self.node().lock = mode.into();
+    }
 
     pub fn group_by_expr(&mut self, expr: &str, as_: &str) {
-        self.req.ir.query.group_by_expr.push(GroupExpr { expr: expr.into(), as_: as_.into() });
+        self.req.ir.query.group_by_expr.push(GroupExpr {
+            expr: expr.into(),
+            as_: as_.into(),
+        });
     }
 
     pub fn set(&mut self, col: &str, v: impl Into<Param>) {
         let v = v.into();
         if matches!(v, Param::Null) {
-            self.req.ir.set.push(Assign { column: col.into(), null: true, ..Default::default() });
+            self.req.ir.set.push(Assign {
+                column: col.into(),
+                null: true,
+                ..Default::default()
+            });
         } else {
             let p = self.req.p(v);
-            self.req.ir.set.push(Assign { column: col.into(), p: Some(p), ..Default::default() });
+            self.req.ir.set.push(Assign {
+                column: col.into(),
+                p: Some(p),
+                ..Default::default()
+            });
         }
     }
 
     pub fn set_expr(&mut self, col: &str, frag: &str, binds: Vec<Param>) {
         let ps = binds.into_iter().map(|b| self.req.p(b)).collect();
-        self.req.ir.set.push(Assign { column: col.into(), expr: frag.into(), ps, ..Default::default() });
+        self.req.ir.set.push(Assign {
+            column: col.into(),
+            expr: frag.into(),
+            ps,
+            ..Default::default()
+        });
     }
 
     pub fn plus(&mut self, col: &str, v: impl Into<Param>) {
         let p = self.req.p(v);
-        self.req.ir.set.push(Assign { column: col.into(), plus_p: Some(p), ..Default::default() });
+        self.req.ir.set.push(Assign {
+            column: col.into(),
+            plus_p: Some(p),
+            ..Default::default()
+        });
     }
 
     pub fn minus(&mut self, col: &str, v: impl Into<Param>) {
         let p = self.req.p(v);
-        self.req.ir.set.push(Assign { column: col.into(), minus_p: Some(p), ..Default::default() });
+        self.req.ir.set.push(Assign {
+            column: col.into(),
+            minus_p: Some(p),
+            ..Default::default()
+        });
     }
 
     pub fn if_parent(&mut self, col: &str, v: impl Into<Param>) {
         let p = self.req.p(v);
-        self.req.ir.query.if_parent = Some(IfParent { column: col.into(), p });
+        self.req.ir.query.if_parent = Some(IfParent {
+            column: col.into(),
+            p,
+        });
     }
 
     // ---- insert: ON DUPLICATE KEY UPDATE assignments ----
     pub fn on_duplicate_set(&mut self, col: &str, v: impl Into<Param>) {
         let v = v.into();
         if matches!(v, Param::Null) {
-            self.req.ir.on_duplicate.push(Assign { column: col.into(), null: true, ..Default::default() });
+            self.req.ir.on_duplicate.push(Assign {
+                column: col.into(),
+                null: true,
+                ..Default::default()
+            });
         } else {
             let p = self.req.p(v);
-            self.req.ir.on_duplicate.push(Assign { column: col.into(), p: Some(p), ..Default::default() });
+            self.req.ir.on_duplicate.push(Assign {
+                column: col.into(),
+                p: Some(p),
+                ..Default::default()
+            });
         }
     }
 
     pub fn on_duplicate_set_expr(&mut self, col: &str, frag: &str, binds: Vec<Param>) {
         let ps = binds.into_iter().map(|b| self.req.p(b)).collect();
-        self.req.ir.on_duplicate.push(Assign { column: col.into(), expr: frag.into(), ps, ..Default::default() });
+        self.req.ir.on_duplicate.push(Assign {
+            column: col.into(),
+            expr: frag.into(),
+            ps,
+            ..Default::default()
+        });
     }
 
     pub fn on_duplicate_plus(&mut self, col: &str, v: impl Into<Param>) {
         let p = self.req.p(v);
-        self.req.ir.on_duplicate.push(Assign { column: col.into(), plus_p: Some(p), ..Default::default() });
+        self.req.ir.on_duplicate.push(Assign {
+            column: col.into(),
+            plus_p: Some(p),
+            ..Default::default()
+        });
     }
 
     pub fn on_duplicate_minus(&mut self, col: &str, v: impl Into<Param>) {
         let p = self.req.p(v);
-        self.req.ir.on_duplicate.push(Assign { column: col.into(), minus_p: Some(p), ..Default::default() });
+        self.req.ir.on_duplicate.push(Assign {
+            column: col.into(),
+            minus_p: Some(p),
+            ..Default::default()
+        });
     }
 
     /// Copies every current set[] assignment except `skip` (the PK/auto columns)
     /// into on_duplicate, at call time: later set_* calls are not mirrored.
     pub fn on_duplicate_set_all(&mut self, skip: &[&str]) {
-        let copies: Vec<Assign> = self.req.ir.set.iter().filter(|a| !skip.contains(&a.column.as_str())).cloned().collect();
+        let copies: Vec<Assign> = self
+            .req
+            .ir
+            .set
+            .iter()
+            .filter(|a| !skip.contains(&a.column.as_str()))
+            .cloned()
+            .collect();
         self.req.ir.on_duplicate.extend(copies);
     }
 
@@ -299,7 +497,12 @@ impl Q {
     /// (save: the PK decides between UPDATE and INSERT). An expr/plus/minus
     /// assignment of the column is not a value and stays.
     pub fn take_set(&mut self, col: &str) -> Option<Param> {
-        let i = self.req.ir.set.iter().position(|a| a.column == col && (a.p.is_some() || a.null))?;
+        let i = self
+            .req
+            .ir
+            .set
+            .iter()
+            .position(|a| a.column == col && (a.p.is_some() || a.null))?;
         let a = self.req.ir.set.remove(i);
         Some(match a.p {
             Some(p) => self.req.params[p].clone(),
@@ -310,29 +513,75 @@ impl Q {
     /// Removes every value assignment in an ordered key. None means insert;
     /// a partial key or a non-value assignment is rejected without mutation.
     pub fn take_sets(&mut self, keys: &[&str]) -> crate::Result<Option<Vec<Param>>> {
-        if keys.is_empty() { return Err(crate::Error::Config("save requires at least one primary-key column".into())); }
-        let indexes: Vec<Option<usize>> = keys.iter().map(|key| self.req.ir.set.iter().position(|a| a.column == *key)).collect();
-        let present = indexes.iter().filter(|index| index.is_some()).count();
-        if present == 0 { return Ok(None); }
-        if present != keys.len() { return Err(crate::Error::Engine { code: crate::codes::IR_INVALID.into(), msg: "save requires every primary-key column or none".into() }); }
-        let indexes: Vec<usize> = indexes.into_iter().map(Option::unwrap).collect();
-        if indexes.iter().any(|index| self.req.ir.set[*index].p.is_none()) {
-            return Err(crate::Error::Engine { code: crate::codes::IR_INVALID.into(), msg: "save primary-key assignments must use values".into() });
+        if keys.is_empty() {
+            return Err(crate::Error::Config(
+                "save requires at least one primary-key column".into(),
+            ));
         }
-        let values: Vec<Param> = indexes.iter().map(|index| self.req.params[self.req.ir.set[*index].p.unwrap()].clone()).collect();
+        let indexes: Vec<Option<usize>> = keys
+            .iter()
+            .map(|key| self.req.ir.set.iter().position(|a| a.column == *key))
+            .collect();
+        let present = indexes.iter().filter(|index| index.is_some()).count();
+        if present == 0 {
+            return Ok(None);
+        }
+        if present != keys.len() {
+            return Err(crate::Error::Engine {
+                code: crate::codes::IR_INVALID.into(),
+                msg: "save requires every primary-key column or none".into(),
+            });
+        }
+        let indexes: Vec<usize> = indexes.into_iter().map(Option::unwrap).collect();
+        if indexes
+            .iter()
+            .any(|index| self.req.ir.set[*index].p.is_none())
+        {
+            return Err(crate::Error::Engine {
+                code: crate::codes::IR_INVALID.into(),
+                msg: "save primary-key assignments must use values".into(),
+            });
+        }
+        let values: Vec<Param> = indexes
+            .iter()
+            .map(|index| self.req.params[self.req.ir.set[*index].p.unwrap()].clone())
+            .collect();
         let remove: std::collections::BTreeSet<usize> = indexes.into_iter().collect();
-        self.req.ir.set = self.req.ir.set.iter().enumerate().filter(|(index, _)| !remove.contains(index)).map(|(_, value)| value.clone()).collect();
-        for (key, value) in keys.iter().zip(values.iter()) { self.w().pred(key, "eq", value.clone()); }
+        self.req.ir.set = self
+            .req
+            .ir
+            .set
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| !remove.contains(index))
+            .map(|(_, value)| value.clone())
+            .collect();
+        for (key, value) in keys.iter().zip(values.iter()) {
+            self.w().pred(key, "eq", value.clone());
+        }
         Ok(Some(values))
     }
 
     pub fn set_values(&self, keys: &[&str]) -> crate::Result<Vec<Param>> {
-        keys.iter().map(|key| {
-            let assignment = self.req.ir.set.iter().find(|assignment| assignment.column == *key)
-                .ok_or_else(|| crate::Error::Engine { code: crate::codes::IR_INVALID.into(), msg: "insert requires every non-auto primary-key column".into() })?;
-            let index = assignment.p.ok_or_else(|| crate::Error::Engine { code: crate::codes::IR_INVALID.into(), msg: "insert primary-key assignments must use values".into() })?;
-            Ok(self.req.params[index].clone())
-        }).collect()
+        keys.iter()
+            .map(|key| {
+                let assignment = self
+                    .req
+                    .ir
+                    .set
+                    .iter()
+                    .find(|assignment| assignment.column == *key)
+                    .ok_or_else(|| crate::Error::Engine {
+                        code: crate::codes::IR_INVALID.into(),
+                        msg: "insert requires every non-auto primary-key column".into(),
+                    })?;
+                let index = assignment.p.ok_or_else(|| crate::Error::Engine {
+                    code: crate::codes::IR_INVALID.into(),
+                    msg: "insert primary-key assignments must use values".into(),
+                })?;
+                Ok(self.req.params[index].clone())
+            })
+            .collect()
     }
 }
 
@@ -364,23 +613,57 @@ impl<'a> W<'a> {
     pub fn pred(&mut self, col: &str, op: &str, v: impl Into<Param>) {
         let conn = self.conn();
         let p = self.p(v);
-        self.g.items.push(Item::Pred { pred: Pred { conn, column: col.into(), op: op.into(), p: Some(p), ..Default::default() } });
+        self.g.items.push(Item::Pred {
+            pred: Pred {
+                conn,
+                column: col.into(),
+                op: op.into(),
+                p: Some(p),
+                ..Default::default()
+            },
+        });
     }
 
     pub fn pred_list(&mut self, col: &str, op: &str, vs: Vec<Param>) {
         let conn = self.conn();
         let ps = pad_in(op, vs).into_iter().map(|v| self.p(v)).collect();
-        self.g.items.push(Item::Pred { pred: Pred { conn, column: col.into(), op: op.into(), ps, ..Default::default() } });
+        self.g.items.push(Item::Pred {
+            pred: Pred {
+                conn,
+                column: col.into(),
+                op: op.into(),
+                ps,
+                ..Default::default()
+            },
+        });
     }
 
     pub fn pred_null(&mut self, col: &str, op: &str) {
         let conn = self.conn();
-        self.g.items.push(Item::Pred { pred: Pred { conn, column: col.into(), op: op.into(), ..Default::default() } });
+        self.g.items.push(Item::Pred {
+            pred: Pred {
+                conn,
+                column: col.into(),
+                op: op.into(),
+                ..Default::default()
+            },
+        });
     }
 
     pub fn pred_col(&mut self, col: &str, op: &str, r: ColRef) {
         let conn = self.conn();
-        self.g.items.push(Item::Pred { pred: Pred { conn, column: col.into(), op: op.into(), r#ref: Some(crate::ir::ColRef { path: r.path, column: r.column.into() }), ..Default::default() } });
+        self.g.items.push(Item::Pred {
+            pred: Pred {
+                conn,
+                column: col.into(),
+                op: op.into(),
+                r#ref: Some(crate::ir::ColRef {
+                    path: r.path,
+                    column: r.column.into(),
+                }),
+                ..Default::default()
+            },
+        });
     }
 
     pub fn match_(&mut self, cols: &[&str], boolean: bool, v: &str) {
@@ -400,23 +683,53 @@ impl<'a> W<'a> {
     pub fn expr(&mut self, frag: &str, binds: Vec<Param>) {
         let conn = self.conn();
         let ps = binds.into_iter().map(|b| self.p(b)).collect();
-        self.g.items.push(Item::Pred { pred: Pred { conn, expr: frag.into(), ps, ..Default::default() } });
+        self.g.items.push(Item::Pred {
+            pred: Pred {
+                conn,
+                expr: frag.into(),
+                ps,
+                ..Default::default()
+            },
+        });
     }
 
     /// Opens a parenthesised group and hands a W over it to `f`.
     pub fn and_with(&mut self, f: impl FnOnce(W<'_>)) {
         let conn = self.conn();
-        self.g.items.push(Item::Group { group: Group { conn, items: Vec::new() } });
-        let Some(Item::Group { group }) = self.g.items.last_mut() else { unreachable!() };
-        f(W { params: &mut *self.params, g: group, pending_or: false });
+        self.g.items.push(Item::Group {
+            group: Group {
+                conn,
+                items: Vec::new(),
+            },
+        });
+        let Some(Item::Group { group }) = self.g.items.last_mut() else {
+            unreachable!()
+        };
+        f(W {
+            params: &mut *self.params,
+            g: group,
+            pending_or: false,
+        });
     }
 
     /// Descends into a joined relation.
     pub fn nav_with(&mut self, rel: &str, f: impl FnOnce(W<'_>)) {
         let conn = self.conn();
-        self.g.items.push(Item::Nav { nav: Nav { conn, rel: rel.into(), group: Group::default() } });
-        let Some(Item::Nav { nav }) = self.g.items.last_mut() else { unreachable!() };
-        f(W { params: &mut *self.params, g: &mut nav.group, pending_or: false });
+        self.g.items.push(Item::Nav {
+            nav: Nav {
+                conn,
+                rel: rel.into(),
+                group: Group::default(),
+            },
+        });
+        let Some(Item::Nav { nav }) = self.g.items.last_mut() else {
+            unreachable!()
+        };
+        f(W {
+            params: &mut *self.params,
+            g: &mut nav.group,
+            pending_or: false,
+        });
     }
 }
 
@@ -442,7 +755,10 @@ mod tests {
         query.set("tenant_id", 7_i64);
         query.set("account_id", 11_i64);
         query.set("name", "updated");
-        let values = query.take_sets(&["tenant_id", "account_id"]).unwrap().unwrap();
+        let values = query
+            .take_sets(&["tenant_id", "account_id"])
+            .unwrap()
+            .unwrap();
         assert_eq!(values, vec![Param::I64(7), Param::I64(11)]);
         assert_eq!(query.req.ir.set.len(), 1);
         assert_eq!(query.req.ir.set[0].column, "name");

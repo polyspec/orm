@@ -1,6 +1,6 @@
 # Feature contract
 
-실행 정본은 [contracts/features.json](../contracts/features.json)이다. 각 항목은 input, output, 상태 전이, 오류, client 지원 상태, fixture, test, paired document, 실제 검증 명령을 정의한다.
+실행 정본은 [contracts/features.json](../contracts/features.json)이다. 먼저 매니페스트의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, client 지원 상태, fixture, test, paired document, 실제 검증 명령을 정의한다.
 
 | ID | 기능 | 상태 | Client 지원 |
 |---|---|---|---|
@@ -9,7 +9,7 @@
 | authenticated_encryption | Versioned authenticated encryption | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | parameter_chunking | IN 및 relation parameter limit | partial | go: partial<br>php: partial<br>rust: partial<br>typescript: partial |
 | batch_writes | Typed batch write | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| keyset_pagination | Typed keyset pagination | planned | go: planned<br>php: planned<br>rust: planned<br>typescript: planned |
+| keyset_pagination | Typed keyset pagination | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | transactions | Transaction option | partial | go: partial<br>php: partial<br>rust: partial<br>typescript: partial |
 | precompiled_plans | Precompiled plan bundle | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | constraints_and_relations | Constraint 및 relation predicate | partial | go: partial<br>php: partial<br>rust: partial<br>typescript: partial |

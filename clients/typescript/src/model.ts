@@ -2,6 +2,8 @@ import type { Assemble, Child, Plan } from './index.js';
 import type { Db } from './database.js';
 import { OrmError } from './runtime_error.js';
 import { QueryCore } from './builder.js';
+import { encodeKeysetCursor } from './keyset.js';
+import type { Order } from './index.js';
 
 export type Key = number | string | bigint;
 export interface RowConstructor<T extends Row = Row> {
@@ -51,6 +53,20 @@ export class Page<T extends Row = Row> {
   public constructor(public readonly items: Collection<T>, public readonly total: number, public readonly pages: number, public readonly current: number, public readonly per: number) {
     if (!Number.isSafeInteger(per) || per <= 0) throw new OrmError('IR_INVALID', 'paginate per must be positive');
   }
+}
+
+export class KeysetPage<T extends Row = Row> {
+  public constructor(public readonly items: Collection<T>, public readonly nextCursor: string, public readonly previousCursor: string) {}
+}
+
+export function keysetPage<T extends Row>(rows: ExecutionRows, items: Collection<T>, order: readonly Order[]): KeysetPage<T> {
+  if (rows.data.length === 0) return new KeysetPage(items, '', '');
+  const values = (row: readonly unknown[]): unknown[] => order.map(item => {
+    const column = rows.plan.steps[0]!.assemble!.columns.find(value => value.column === item.column);
+    if (!column) throw new OrmError('CURSOR_INVALID', `keyset order column is not projected: ${item.column}`);
+    return row[column.index];
+  });
+  return new KeysetPage(items, encodeKeysetCursor(order, values(rows.data[rows.data.length - 1]!)), encodeKeysetCursor(order, values(rows.data[0]!)));
 }
 
 interface StepRows { data: unknown[][]; byKey: Map<string, number[]>; }

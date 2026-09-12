@@ -1,20 +1,23 @@
 //! Column-style codecs (docs/codec.md): json/jsons, serialize, base64, gz, curlfile, yaml.
 //! Styles are listed in write order; `decode` applies them in reverse.
 
-use std::io::{Read, Write};
 use std::collections::HashSet;
+use std::io::{Read, Write};
 
 use base64::Engine as _;
 use serde_json::{Map, Value};
 use yaml_rust2::parser::{Event as YamlEvent, MarkedEventReceiver, Parser as YamlParser};
 use yaml_rust2::scanner::{Marker as YamlMarker, TScalarStyle};
 
-use crate::value::{Param, Val};
 use crate::codes::{CODEC_DECODE, CODEC_ENCODE, CODEC_UNSUPPORTED};
+use crate::value::{Param, Val};
 use crate::{Error, Result};
 
 fn err(code: &str, msg: impl Into<String>) -> Error {
-    Error::Engine { code: code.into(), msg: msg.into() }
+    Error::Engine {
+        code: code.into(),
+        msg: msg.into(),
+    }
 }
 
 /// Stored cell → JSON-like value (`Val::Json`), or `Val::Null` for NULL/empty.
@@ -22,7 +25,9 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
     let mut cur: Vec<u8> = match raw {
         Val::Null => return Ok(Val::Null),
         // already parsed by the driver (MySQL JSON column): only a bare json style applies
-        Val::Json(v) if styles.len() == 1 && (styles[0] == "json" || styles[0] == "jsons") => return Ok(Val::Json(v.clone())),
+        Val::Json(v) if styles.len() == 1 && (styles[0] == "json" || styles[0] == "jsons") => {
+            return Ok(Val::Json(v.clone()))
+        }
         Val::Str(s) if s.is_empty() => return Ok(Val::Null),
         Val::Str(s) => s.as_bytes().to_vec(),
         Val::Bytes(b) if b.is_empty() => return Ok(Val::Null),
@@ -32,29 +37,49 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
     let mut value: Option<Value> = None;
     for st in styles.iter().rev() {
         if st == "curlfile" {
-            let decoded = value.take().ok_or_else(|| err(CODEC_UNSUPPORTED, "curlfile must precede serialize on write"))?;
+            let decoded = value.take().ok_or_else(|| {
+                err(
+                    CODEC_UNSUPPORTED,
+                    "curlfile must precede serialize on write",
+                )
+            })?;
             value = Some(restore_upload_files(decoded)?);
             continue;
         }
         if value.is_some() {
-            return Err(err(CODEC_DECODE, format!("style {st} after a decoded value")));
+            return Err(err(
+                CODEC_DECODE,
+                format!("style {st} after a decoded value"),
+            ));
         }
         match st.as_str() {
             "gz" => {
                 let mut out = Vec::new();
-                flate2::read::ZlibDecoder::new(cur.as_slice()).read_to_end(&mut out).map_err(|e| err(CODEC_DECODE, format!("gz: {e}")))?;
+                flate2::read::ZlibDecoder::new(cur.as_slice())
+                    .read_to_end(&mut out)
+                    .map_err(|e| err(CODEC_DECODE, format!("gz: {e}")))?;
                 cur = out;
             }
             "base64" => {
                 let text = String::from_utf8_lossy(&cur);
-                cur = base64::engine::general_purpose::STANDARD.decode(text.trim()).map_err(|e| err(CODEC_DECODE, format!("base64: {e}")))?;
+                cur = base64::engine::general_purpose::STANDARD
+                    .decode(text.trim())
+                    .map_err(|e| err(CODEC_DECODE, format!("base64: {e}")))?;
             }
             "serialize" => value = Some(php_unserialize(&cur)?),
             "yaml" => {
                 validate_yaml_syntax(&cur)?;
-                value = Some(serde_yaml_ng::from_slice(&cur).map_err(|e| err(CODEC_DECODE, format!("yaml: {e}")))?);
+                value = Some(
+                    serde_yaml_ng::from_slice(&cur)
+                        .map_err(|e| err(CODEC_DECODE, format!("yaml: {e}")))?,
+                );
             }
-            "json" | "jsons" => value = Some(serde_json::from_slice(&cur).map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?),
+            "json" | "jsons" => {
+                value = Some(
+                    serde_json::from_slice(&cur)
+                        .map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?,
+                )
+            }
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
@@ -82,7 +107,10 @@ pub fn encode(styles: &[&str], v: Option<&Value>) -> Result<Param> {
             }
             "serialize" => {
                 if i != 0 && !(i == 1 && styles[0] == "curlfile") {
-                    return Err(err(CODEC_UNSUPPORTED, "serialize must be the first encoding style"));
+                    return Err(err(
+                        CODEC_UNSUPPORTED,
+                        "serialize must be the first encoding style",
+                    ));
                 }
                 let mut s = String::new();
                 php_serialize(&mut s, &value)?;
@@ -92,37 +120,65 @@ pub fn encode(styles: &[&str], v: Option<&Value>) -> Result<Param> {
                 if i != 0 {
                     return Err(err(CODEC_UNSUPPORTED, "yaml must be the first style"));
                 }
-                cur = serde_yaml_ng::to_string(&value).map_err(|e| err(CODEC_ENCODE, format!("yaml: {e}")))?.into_bytes();
+                cur = serde_yaml_ng::to_string(&value)
+                    .map_err(|e| err(CODEC_ENCODE, format!("yaml: {e}")))?
+                    .into_bytes();
             }
             "json" | "jsons" => {
                 if i != 0 {
                     return Err(err(CODEC_UNSUPPORTED, "json must be the first style"));
                 }
-                cur = serde_json::to_vec(&value).map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
+                cur = serde_json::to_vec(&value)
+                    .map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
             }
-            "base64" => cur = base64::engine::general_purpose::STANDARD.encode(&cur).into_bytes(),
+            "base64" => {
+                cur = base64::engine::general_purpose::STANDARD
+                    .encode(&cur)
+                    .into_bytes()
+            }
             "gz" => {
-                let mut enc = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::best());
-                enc.write_all(&cur).map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?;
-                return Ok(Param::Bytes(enc.finish().map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?));
+                let mut enc =
+                    flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::best());
+                enc.write_all(&cur)
+                    .map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?;
+                return Ok(Param::Bytes(
+                    enc.finish()
+                        .map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?,
+                ));
             }
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
-    Ok(Param::Str(String::from_utf8(cur).map_err(|e| err(CODEC_ENCODE, e.to_string()))?))
+    Ok(Param::Str(
+        String::from_utf8(cur).map_err(|e| err(CODEC_ENCODE, e.to_string()))?,
+    ))
 }
 
 fn prepare_upload_files(value: Value) -> Result<Value> {
     match value {
-        Value::Array(items) => Ok(Value::Array(items.into_iter().map(prepare_upload_files).collect::<Result<_>>()?)),
+        Value::Array(items) => Ok(Value::Array(
+            items
+                .into_iter()
+                .map(prepare_upload_files)
+                .collect::<Result<_>>()?,
+        )),
         Value::Object(mut fields) => {
             if fields.get("$type") == Some(&Value::String("upload_file".into())) {
                 let valid = fields.len() == 4
-                    && fields.get("path").and_then(Value::as_str).is_some_and(|v| !v.is_empty())
+                    && fields
+                        .get("path")
+                        .and_then(Value::as_str)
+                        .is_some_and(|v| !v.is_empty())
                     && fields.get("mime").and_then(Value::as_str).is_some()
-                    && fields.get("name").and_then(Value::as_str).is_some_and(|v| !v.is_empty());
+                    && fields
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .is_some_and(|v| !v.is_empty());
                 if !valid {
-                    return Err(err(CODEC_ENCODE, "curlfile: upload_file requires non-empty path and name plus string mime"));
+                    return Err(err(
+                        CODEC_ENCODE,
+                        "curlfile: upload_file requires non-empty path and name plus string mime",
+                    ));
                 }
                 fields.remove("$type");
                 fields.insert("is_curl_file".into(), Value::Bool(true));
@@ -139,13 +195,24 @@ fn prepare_upload_files(value: Value) -> Result<Value> {
 
 fn restore_upload_files(value: Value) -> Result<Value> {
     match value {
-        Value::Array(items) => Ok(Value::Array(items.into_iter().map(restore_upload_files).collect::<Result<_>>()?)),
+        Value::Array(items) => Ok(Value::Array(
+            items
+                .into_iter()
+                .map(restore_upload_files)
+                .collect::<Result<_>>()?,
+        )),
         Value::Object(mut fields) => {
             if fields.get("is_curl_file") == Some(&Value::Bool(true)) {
                 let valid = fields.len() == 4
-                    && fields.get("path").and_then(Value::as_str).is_some_and(|v| !v.is_empty())
+                    && fields
+                        .get("path")
+                        .and_then(Value::as_str)
+                        .is_some_and(|v| !v.is_empty())
                     && fields.get("mime").and_then(Value::as_str).is_some()
-                    && fields.get("name").and_then(Value::as_str).is_some_and(|v| !v.is_empty());
+                    && fields
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .is_some_and(|v| !v.is_empty());
                 if !valid {
                     return Err(err(CODEC_DECODE, "curlfile: invalid stored upload file"));
                 }
@@ -164,7 +231,10 @@ fn restore_upload_files(value: Value) -> Result<Value> {
 
 enum YamlFrame {
     Sequence,
-    Mapping { expecting_key: bool, keys: HashSet<String> },
+    Mapping {
+        expecting_key: bool,
+        keys: HashSet<String>,
+    },
 }
 
 #[derive(Default)]
@@ -177,12 +247,21 @@ struct YamlValidator {
 impl YamlValidator {
     fn fail(&mut self, mark: YamlMarker, message: impl AsRef<str>) {
         if self.error.is_none() {
-            self.error = Some(format!("{} at line {}, column {}", message.as_ref(), mark.line(), mark.col()));
+            self.error = Some(format!(
+                "{} at line {}, column {}",
+                message.as_ref(),
+                mark.line(),
+                mark.col()
+            ));
         }
     }
 
     fn start_node(&mut self, key: Option<(&str, TScalarStyle)>, mark: YamlMarker) {
-        if let Some(YamlFrame::Mapping { expecting_key, keys }) = self.frames.last_mut() {
+        if let Some(YamlFrame::Mapping {
+            expecting_key,
+            keys,
+        }) = self.frames.last_mut()
+        {
             if *expecting_key {
                 let Some((key, style)) = key else {
                     self.fail(mark, "map keys must be scalar strings");
@@ -191,9 +270,13 @@ impl YamlValidator {
                 let lower = key.to_ascii_lowercase();
                 let non_string_plain = style == TScalarStyle::Plain
                     && (matches!(lower.as_str(), "true" | "false" | "null" | "~")
-                        || ((key.contains('.') || key.contains('e') || key.contains('E')) && key.parse::<f64>().is_ok()));
+                        || ((key.contains('.') || key.contains('e') || key.contains('E'))
+                            && key.parse::<f64>().is_ok()));
                 if non_string_plain {
-                    self.fail(mark, "plain boolean, null, and floating-point map keys are not supported");
+                    self.fail(
+                        mark,
+                        "plain boolean, null, and floating-point map keys are not supported",
+                    );
                     return;
                 }
                 if !keys.insert(key.to_string()) {
@@ -226,7 +309,12 @@ impl MarkedEventReceiver for YamlValidator {
                     self.fail(mark, "anchors are not supported");
                 } else if tag.is_some() {
                     self.fail(mark, "explicit tags are not supported");
-                } else if style == TScalarStyle::Plain && matches!(value.to_ascii_lowercase().as_str(), ".inf" | "+.inf" | "-.inf" | ".nan") {
+                } else if style == TScalarStyle::Plain
+                    && matches!(
+                        value.to_ascii_lowercase().as_str(),
+                        ".inf" | "+.inf" | "-.inf" | ".nan"
+                    )
+                {
                     self.fail(mark, "non-finite numbers are not supported");
                 } else {
                     self.start_node(Some((&value, style)), mark);
@@ -246,7 +334,10 @@ impl MarkedEventReceiver for YamlValidator {
                     return;
                 }
                 self.start_node(None, mark);
-                self.frames.push(YamlFrame::Mapping { expecting_key: true, keys: HashSet::new() });
+                self.frames.push(YamlFrame::Mapping {
+                    expecting_key: true,
+                    keys: HashSet::new(),
+                });
             }
             YamlEvent::SequenceEnd | YamlEvent::MappingEnd => {
                 self.frames.pop();
@@ -257,9 +348,12 @@ impl MarkedEventReceiver for YamlValidator {
 }
 
 fn validate_yaml_syntax(bytes: &[u8]) -> Result<()> {
-    let source = std::str::from_utf8(bytes).map_err(|e| err(CODEC_DECODE, format!("yaml: invalid UTF-8: {e}")))?;
+    let source = std::str::from_utf8(bytes)
+        .map_err(|e| err(CODEC_DECODE, format!("yaml: invalid UTF-8: {e}")))?;
     let mut validator = YamlValidator::default();
-    YamlParser::new_from_str(source).load(&mut validator, true).map_err(|e| err(CODEC_DECODE, format!("yaml: {e}")))?;
+    YamlParser::new_from_str(source)
+        .load(&mut validator, true)
+        .map_err(|e| err(CODEC_DECODE, format!("yaml: {e}")))?;
     match validator.error {
         Some(message) => Err(err(CODEC_DECODE, format!("yaml: {message}"))),
         None => Ok(()),
@@ -309,7 +403,11 @@ fn php_serialize(out: &mut String, v: &Value) -> Result<()> {
 
 /// PHP's array-key normalization: canonical decimal integers become int keys.
 fn php_int_key(k: &str) -> Option<i64> {
-    if k.is_empty() || k == "-0" || (k.len() > 1 && k.starts_with('0')) || (k.len() > 2 && k.starts_with("-0")) {
+    if k.is_empty()
+        || k == "-0"
+        || (k.len() > 1 && k.starts_with('0'))
+        || (k.len() > 2 && k.starts_with("-0"))
+    {
         return None;
     }
     k.parse::<i64>().ok()
@@ -330,7 +428,11 @@ fn php_float(f: f64) -> String {
     if (-4..21).contains(&exp) {
         return format!("{f}"); // Display: "2", "0.1", "1.5"
     }
-    let mant = if mant.contains('.') { mant.to_string() } else { format!("{mant}.0") };
+    let mant = if mant.contains('.') {
+        mant.to_string()
+    } else {
+        format!("{mant}.0")
+    };
     format!("{mant}E{}{}", if exp < 0 { "-" } else { "+" }, exp.abs())
 }
 
@@ -363,14 +465,20 @@ impl<'a> Parser<'a> {
 
     fn until(&mut self, c: u8) -> Result<&'a str> {
         let rest = &self.b[self.i..];
-        let j = rest.iter().position(|&x| x == c).ok_or_else(|| self.fail(&format!("expected {}", c as char)))?;
+        let j = rest
+            .iter()
+            .position(|&x| x == c)
+            .ok_or_else(|| self.fail(&format!("expected {}", c as char)))?;
         let s = std::str::from_utf8(&rest[..j]).map_err(|_| self.fail("bad utf-8"))?;
         self.i += j + 1;
         Ok(s)
     }
 
     fn value(&mut self) -> Result<Value> {
-        let t = *self.b.get(self.i).ok_or_else(|| self.fail("unexpected end"))?;
+        let t = *self
+            .b
+            .get(self.i)
+            .ok_or_else(|| self.fail("unexpected end"))?;
         self.i += 1;
         match t {
             b'N' => {
@@ -382,7 +490,10 @@ impl<'a> Parser<'a> {
                 let s = self.until(b';')?;
                 match t {
                     b'b' => Ok(Value::Bool(s == "1")),
-                    b'i' => s.parse::<i64>().map(Value::from).map_err(|_| self.fail("bad int")),
+                    b'i' => s
+                        .parse::<i64>()
+                        .map(Value::from)
+                        .map_err(|_| self.fail("bad int")),
                     _ => {
                         let f = match s {
                             "INF" => f64::INFINITY,
@@ -390,18 +501,24 @@ impl<'a> Parser<'a> {
                             "NAN" => f64::NAN,
                             _ => s.parse::<f64>().map_err(|_| self.fail("bad float"))?,
                         };
-                        Ok(serde_json::Number::from_f64(f).map(Value::Number).unwrap_or(Value::Null))
+                        Ok(serde_json::Number::from_f64(f)
+                            .map(Value::Number)
+                            .unwrap_or(Value::Null))
                     }
                 }
             }
             b's' => {
                 self.expect(b':')?;
-                let n: usize = self.until(b':')?.parse().map_err(|_| self.fail("bad string length"))?;
+                let n: usize = self
+                    .until(b':')?
+                    .parse()
+                    .map_err(|_| self.fail("bad string length"))?;
                 self.expect(b'"')?;
                 if self.i + n > self.b.len() {
                     return Err(self.fail("string overruns input"));
                 }
-                let s = String::from_utf8(self.b[self.i..self.i + n].to_vec()).map_err(|_| self.fail("string is not utf-8"))?;
+                let s = String::from_utf8(self.b[self.i..self.i + n].to_vec())
+                    .map_err(|_| self.fail("string is not utf-8"))?;
                 self.i += n;
                 self.expect(b'"')?;
                 self.expect(b';')?;
@@ -409,7 +526,10 @@ impl<'a> Parser<'a> {
             }
             b'a' => {
                 self.expect(b':')?;
-                let n: usize = self.until(b':')?.parse().map_err(|_| self.fail("bad array length"))?;
+                let n: usize = self
+                    .until(b':')?
+                    .parse()
+                    .map_err(|_| self.fail("bad array length"))?;
                 self.expect(b'{')?;
                 let mut keys: Vec<String> = Vec::with_capacity(n);
                 let mut vals: Vec<Value> = Vec::with_capacity(n);
@@ -442,7 +562,13 @@ impl<'a> Parser<'a> {
                 }
                 Ok(Value::Object(m))
             }
-            b'O' | b'C' | b'r' | b'R' => Err(err(CODEC_UNSUPPORTED, format!("serialize: objects and references are not supported ({})", t as char))),
+            b'O' | b'C' | b'r' | b'R' => Err(err(
+                CODEC_UNSUPPORTED,
+                format!(
+                    "serialize: objects and references are not supported ({})",
+                    t as char
+                ),
+            )),
             other => Err(self.fail(&format!("unknown type {}", other as char))),
         }
     }
@@ -462,7 +588,11 @@ pub fn styled_cols(a: &crate::plan::Assemble) -> Vec<StyledCol> {
     for c in &a.columns {
         if !c.styles.is_empty() {
             let (codec, host) = split_host(&c.styles);
-            out.push(StyledCol { index: c.index, codec, host });
+            out.push(StyledCol {
+                index: c.index,
+                codec,
+                host,
+            });
         }
     }
     for ch in &a.children {
@@ -475,7 +605,8 @@ pub fn styled_cols(a: &crate::plan::Assemble) -> Vec<StyledCol> {
 
 /// Separates the codec stages from the host stages (aes/hex/ip), each in write order.
 pub fn split_host(styles: &[String]) -> (Vec<String>, Vec<String>) {
-    let (host, codec): (Vec<String>, Vec<String>) = styles.iter().cloned().partition(|s| is_host(s));
+    let (host, codec): (Vec<String>, Vec<String>) =
+        styles.iter().cloned().partition(|s| is_host(s));
     (codec, host)
 }
 
@@ -485,22 +616,28 @@ fn is_host(style: &str) -> bool {
 
 // ---- host stages (docs/dialects.md): what MySQL does in SQL, PostgreSQL/SQLite leave to the executor ----
 
-use aes_gcm::{aead::{Aead, Payload}, Aes256Gcm, KeyInit as GcmKeyInit, Nonce};
-use sha2::{Digest, Sha256};
+use aes_gcm::{
+    aead::{Aead, Payload},
+    Aes256Gcm, KeyInit as GcmKeyInit, Nonce,
+};
 use hmac::{Hmac, Mac};
+use sha2::{Digest, Sha256};
 
 const AES_V2_PREFIX: &[u8] = b"ORM-AES2\0";
 
 /// Returns the stable lowercase HMAC-SHA256 index for plaintext.
 pub fn blind_index(v: &Param, key: &str) -> Result<String> {
-    if key.is_empty() { return Err(Error::Config("secret blind_index not configured".into())); }
+    if key.is_empty() {
+        return Err(Error::Config("secret blind_index not configured".into()));
+    }
     let plain = match v {
         Param::Null => return Ok(String::new()),
         Param::Str(s) => s.as_bytes().to_vec(),
         Param::Bytes(b) => b.clone(),
         other => format!("{other:?}").into_bytes(),
     };
-    let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(key.as_bytes()).map_err(|_| Error::Config("invalid blind_index key".into()))?;
+    let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(key.as_bytes())
+        .map_err(|_| Error::Config("invalid blind_index key".into()))?;
     mac.update(&plain);
     Ok(hex_upper(&mac.finalize().into_bytes()).to_ascii_lowercase())
 }
@@ -517,19 +654,38 @@ pub fn aes_encrypt(plain: &[u8], key: &str) -> Vec<u8> {
     let cipher = Aes256Gcm::new_from_slice(&aes_v2_key(key)).expect("AES-256 key");
     let nonce: [u8; 12] = rand::random();
     let nonce = Nonce::from(nonce);
-    let encrypted = cipher.encrypt(&nonce, Payload { msg: plain, aad: AES_V2_PREFIX }).expect("AES-GCM encryption");
+    let encrypted = cipher
+        .encrypt(
+            &nonce,
+            Payload {
+                msg: plain,
+                aad: AES_V2_PREFIX,
+            },
+        )
+        .expect("AES-GCM encryption");
     [AES_V2_PREFIX, &nonce, &encrypted].concat()
 }
 
 /// Authenticates and decrypts a v2 envelope.
 pub fn aes_decrypt(cipher_text: &[u8], key: &str) -> Result<Vec<u8>> {
-    if !cipher_text.starts_with(AES_V2_PREFIX) { return Err(err(CODEC_DECODE, "aes: unsupported ciphertext format")); }
-    if cipher_text.len() < AES_V2_PREFIX.len() + 12 + 16 { return Err(err(CODEC_DECODE, "aes: truncated v2 envelope")); }
+    if !cipher_text.starts_with(AES_V2_PREFIX) {
+        return Err(err(CODEC_DECODE, "aes: unsupported ciphertext format"));
+    }
+    if cipher_text.len() < AES_V2_PREFIX.len() + 12 + 16 {
+        return Err(err(CODEC_DECODE, "aes: truncated v2 envelope"));
+    }
     let offset = AES_V2_PREFIX.len();
     let cipher = Aes256Gcm::new_from_slice(&aes_v2_key(key)).expect("AES-256 key");
     let nonce: [u8; 12] = cipher_text[offset..offset + 12].try_into().unwrap();
     let nonce = Nonce::from(nonce);
-    cipher.decrypt(&nonce, Payload { msg: &cipher_text[offset + 12..], aad: AES_V2_PREFIX })
+    cipher
+        .decrypt(
+            &nonce,
+            Payload {
+                msg: &cipher_text[offset + 12..],
+                aad: AES_V2_PREFIX,
+            },
+        )
         .map_err(|_| err(CODEC_DECODE, "aes: authentication failed"))
 }
 
@@ -558,7 +714,9 @@ pub fn hex_decode(s: &str) -> Result<Vec<u8>> {
             _ => Err(err(CODEC_DECODE, format!("hex: invalid byte {c:#x}"))),
         }
     };
-    s.chunks_exact(2).map(|p| Ok(nibble(p[0])? << 4 | nibble(p[1])?)).collect()
+    s.chunks_exact(2)
+        .map(|p| Ok(nibble(p[0])? << 4 | nibble(p[1])?))
+        .collect()
 }
 
 /// `INET6_ATON`: 4 bytes for IPv4, 16 for IPv6.
@@ -603,7 +761,9 @@ pub fn host_encode(v: &Param, styles: &[String], aes_key: &str) -> Result<Param>
                 aes_encrypt(&cur, aes_key)
             }
             "hex" => hex_upper(&cur).into_bytes(),
-            "ip" => pack_ip(std::str::from_utf8(&cur).map_err(|e| err(CODEC_ENCODE, format!("ip: {e}")))?)?,
+            "ip" => pack_ip(
+                std::str::from_utf8(&cur).map_err(|e| err(CODEC_ENCODE, format!("ip: {e}")))?,
+            )?,
             other => return Err(err(CODEC_UNSUPPORTED, format!("host style {other}"))),
         };
     }
@@ -658,11 +818,15 @@ mod tests {
     fn norm(v: &Value) -> Value {
         match v {
             Value::Number(n) => match n.as_f64() {
-                Some(f) if n.as_i64().is_none() && f.fract() == 0.0 && f.abs() < 9.0e15 => Value::from(f as i64),
+                Some(f) if n.as_i64().is_none() && f.fract() == 0.0 && f.abs() < 9.0e15 => {
+                    Value::from(f as i64)
+                }
                 _ => v.clone(),
             },
             Value::Array(a) => Value::Array(a.iter().map(norm).collect()),
-            Value::Object(m) => Value::Object(m.iter().map(|(k, x)| (k.clone(), norm(x))).collect()),
+            Value::Object(m) => {
+                Value::Object(m.iter().map(|(k, x)| (k.clone(), norm(x))).collect())
+            }
             _ => v.clone(),
         }
     }
@@ -685,7 +849,11 @@ mod tests {
             let got = match decode(&v.styles, &raw) {
                 Ok(Val::Json(j)) => j,
                 Ok(Val::Null) => Value::Null,
-                other => { fails += 1; eprintln!("{}: decode {:?}", v.name, other); continue; }
+                other => {
+                    fails += 1;
+                    eprintln!("{}: decode {:?}", v.name, other);
+                    continue;
+                }
             };
             if norm(&got) != norm(&v.value) {
                 fails += 1;
@@ -695,24 +863,41 @@ mod tests {
             let enc = encode(&styles, Some(&got)).unwrap();
             let enc_b64 = match &enc {
                 Param::Null => None,
-                Param::Str(s) => Some(base64::engine::general_purpose::STANDARD.encode(s.as_bytes())),
+                Param::Str(s) => {
+                    Some(base64::engine::general_purpose::STANDARD.encode(s.as_bytes()))
+                }
                 Param::Bytes(b) => Some(base64::engine::general_purpose::STANDARD.encode(b)),
                 _ => unreachable!(),
             };
-            out.insert(v.name.clone(), enc_b64.clone().map(Value::String).unwrap_or(Value::Null));
+            out.insert(
+                v.name.clone(),
+                enc_b64.clone().map(Value::String).unwrap_or(Value::Null),
+            );
             if v.deterministic && enc_b64 != v.encoded_b64 {
                 fails += 1;
                 eprintln!("{}: encoded {:?} want {:?}", v.name, enc_b64, v.encoded_b64);
             }
-            let back_raw = match enc { Param::Null => Val::Null, Param::Str(s) => Val::Str(s), Param::Bytes(b) => Val::Bytes(b), _ => unreachable!() };
+            let back_raw = match enc {
+                Param::Null => Val::Null,
+                Param::Str(s) => Val::Str(s),
+                Param::Bytes(b) => Val::Bytes(b),
+                _ => unreachable!(),
+            };
             match decode(&v.styles, &back_raw) {
                 Ok(Val::Json(j)) if norm(&j) == norm(&v.value) => {}
                 Ok(Val::Null) if v.value.is_null() => {}
-                other => { fails += 1; eprintln!("{}: round trip {:?}", v.name, other); }
+                other => {
+                    fails += 1;
+                    eprintln!("{}: round trip {:?}", v.name, other);
+                }
             }
         }
         std::fs::create_dir_all(format!("{root}/out")).unwrap();
-        std::fs::write(format!("{root}/out/rust.json"), serde_json::to_string_pretty(&Value::Object(out)).unwrap()).unwrap();
+        std::fs::write(
+            format!("{root}/out/rust.json"),
+            serde_json::to_string_pretty(&Value::Object(out)).unwrap(),
+        )
+        .unwrap();
         assert_eq!(fails, 0);
     }
 
@@ -720,27 +905,51 @@ mod tests {
     #[test]
     fn aes_vectors() {
         let styles = vec!["aes".to_string(), "hex".to_string()];
-        let encoded = host_encode(&Param::Str("member@example.test".into()), &styles, "key-v1").unwrap();
-        let Param::Str(encoded) = encoded else { panic!("AES+hex must produce text") };
-        assert_eq!(host_decode(&Val::Str(encoded.clone()), &styles, "key-v1").unwrap(), Val::Str("member@example.test".into()));
+        let encoded =
+            host_encode(&Param::Str("member@example.test".into()), &styles, "key-v1").unwrap();
+        let Param::Str(encoded) = encoded else {
+            panic!("AES+hex must produce text")
+        };
+        assert_eq!(
+            host_decode(&Val::Str(encoded.clone()), &styles, "key-v1").unwrap(),
+            Val::Str("member@example.test".into())
+        );
         let mut tampered = hex_decode(&encoded).unwrap();
         *tampered.last_mut().unwrap() ^= 1;
-        assert_eq!(host_decode(&Val::Str(hex_upper(&tampered)), &styles, "key-v1").unwrap_err().code(), CODEC_DECODE);
-        assert_eq!(host_encode(&Param::Null, &styles, "key-v1").unwrap(), Param::Null);
+        assert_eq!(
+            host_decode(&Val::Str(hex_upper(&tampered)), &styles, "key-v1")
+                .unwrap_err()
+                .code(),
+            CODEC_DECODE
+        );
+        assert_eq!(
+            host_encode(&Param::Null, &styles, "key-v1").unwrap(),
+            Param::Null
+        );
         let fixed = hex_decode("4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E24").unwrap();
-        assert_eq!(host_decode(&Val::Str(hex_upper(&fixed)), &styles, "bench-salt").unwrap(), Val::Str("user42@example.com".into()));
+        assert_eq!(
+            host_decode(&Val::Str(hex_upper(&fixed)), &styles, "bench-salt").unwrap(),
+            Val::Str("user42@example.com".into())
+        );
     }
 
     #[test]
     fn blind_index_vector() {
-        assert_eq!(blind_index(&Param::Str("member@example.test".into()), "blind-key").unwrap(), "1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8");
+        assert_eq!(
+            blind_index(&Param::Str("member@example.test".into()), "blind-key").unwrap(),
+            "1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8"
+        );
     }
 
     #[test]
     fn errors_and_keys() {
         for (styles, raw, code) in [
             (vec!["json"], "{bad", "CODEC_DECODE"),
-            (vec!["serialize"], "O:8:\"stdClass\":0:{}", "CODEC_UNSUPPORTED"),
+            (
+                vec!["serialize"],
+                "O:8:\"stdClass\":0:{}",
+                "CODEC_UNSUPPORTED",
+            ),
             (vec!["serialize"], "a:1:{i:0;", "CODEC_DECODE"),
             (vec!["serialize", "gz"], "not zlib", "CODEC_DECODE"),
             (vec!["serialize", "base64"], "@@@", "CODEC_DECODE"),
@@ -759,17 +968,43 @@ mod tests {
         }
         let v: Value = serde_json::json!({"07": 1, "-3": 2, "10": 3, "x": 4.0, "y": 1e25});
         match encode(&["serialize"], Some(&v)).unwrap() {
-            Param::Str(s) => assert_eq!(s, "a:5:{i:-3;i:2;s:2:\"07\";i:1;i:10;i:3;s:1:\"x\";d:4;s:1:\"y\";d:1.0E+25;}"),
+            Param::Str(s) => assert_eq!(
+                s,
+                "a:5:{i:-3;i:2;s:2:\"07\";i:1;i:10;i:3;s:1:\"x\";d:4;s:1:\"y\";d:1.0E+25;}"
+            ),
             other => panic!("{other:?}"),
         }
         let invalid_public = serde_json::json!({"$type": "upload_file", "path": "", "mime": "text/plain", "name": "a.txt"});
-        assert_eq!(encode(&["curlfile", "serialize"], Some(&invalid_public)).unwrap_err().code(), CODEC_ENCODE);
+        assert_eq!(
+            encode(&["curlfile", "serialize"], Some(&invalid_public))
+                .unwrap_err()
+                .code(),
+            CODEC_ENCODE
+        );
         let invalid_stored = "a:4:{s:12:\"is_curl_file\";b:1;s:4:\"mime\";s:10:\"text/plain\";s:4:\"name\";s:5:\"a.txt\";s:4:\"path\";s:0:\"\";}";
         let styles = vec!["curlfile".to_string(), "serialize".to_string()];
-        assert_eq!(decode(&styles, &Val::Str(invalid_stored.into())).unwrap_err().code(), CODEC_DECODE);
-        assert_eq!(encode(&["serialize", "curlfile"], Some(&serde_json::json!({}))).unwrap_err().code(), CODEC_UNSUPPORTED);
-        assert_eq!(encode(&["serialize", "yaml"], Some(&serde_json::json!({}))).unwrap_err().code(), CODEC_UNSUPPORTED);
+        assert_eq!(
+            decode(&styles, &Val::Str(invalid_stored.into()))
+                .unwrap_err()
+                .code(),
+            CODEC_DECODE
+        );
+        assert_eq!(
+            encode(&["serialize", "curlfile"], Some(&serde_json::json!({})))
+                .unwrap_err()
+                .code(),
+            CODEC_UNSUPPORTED
+        );
+        assert_eq!(
+            encode(&["serialize", "yaml"], Some(&serde_json::json!({})))
+                .unwrap_err()
+                .code(),
+            CODEC_UNSUPPORTED
+        );
         let yaml = vec!["yaml".to_string()];
-        assert_eq!(decode(&yaml, &Val::Str("1: value\n".into())).unwrap(), Val::Json(serde_json::json!({"1": "value"})));
+        assert_eq!(
+            decode(&yaml, &Val::Str("1: value\n".into())).unwrap(),
+            Val::Json(serde_json::json!({"1": "value"}))
+        );
     }
 }

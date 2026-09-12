@@ -47,6 +47,8 @@ final class Code
     public const ENTITY_NOT_JOINED = 'ENTITY_NOT_JOINED';
     /** engine: limit() on a relation child (use limitPerParent) */
     public const LIMIT_IN_RELATION = 'LIMIT_IN_RELATION';
+    /** engine: keyset cursor version, order, or typed value is invalid */
+    public const CURSOR_INVALID = 'CURSOR_INVALID';
     /** executor: updateOptimistic matched no row (updated_ts changed) */
     public const OPTIMISTIC_LOCK = 'OPTIMISTIC_LOCK';
     /** executor: styled column bytes could not be decoded (docs/codec.md) */

@@ -25,6 +25,7 @@ func validateRules(d document) error {
 		"I64":               {"go": "(int64,error)", "php": "int", "rust": "Result<i64>", "typescript": "Promise<number>"},
 		"AffectedRows":      {"go": "(int64,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
 		"Page<Row>":         {"go": "(*orm.Page[{Entity}Row],error)", "php": "Orm\\Page", "rust": "Result<Page<{Entity}Row>>", "typescript": "Promise<Page<{Entity}Row>>"},
+		"KeysetPage<Row>":   {"go": "(*orm.KeysetPage[{Entity}Row],error)", "php": "Orm\\KeysetPage", "rust": "Result<orm::KeysetPage<{Entity}Row>>", "typescript": "Promise<KeysetPage<{Entity}Row>>"},
 		"SqlStatement":      {"go": "(*orm.Statement,error)", "php": "array", "rust": "Result<db::Sql>", "typescript": "Promise<{sql:string;binds:unknown[];}>"},
 		"Success":           {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "Promise<void>"},
 		"Bool":              {"go": "bool", "php": "bool", "rust": "bool", "typescript": "boolean"},
@@ -102,6 +103,8 @@ func validateRules(d document) error {
 				permitted = map[string][]string{"go": {"ctxcontext.Context,exorm.Exec"}, "php": {"Orm\\Db|PDO$db"}, "rust": {"ex:&implExec"}, "typescript": {"database:Db"}}[lang]
 			case "page,per":
 				permitted = map[string][]string{"go": {"page,perint"}, "php": {"int$page,int$per"}, "rust": {"page:u32,per:u32"}, "typescript": {"page:number,per:number"}}[lang]
+			case "Cursor,PositiveLimit":
+				permitted = map[string][]string{"go": {"cursorstring,perint"}, "php": {"string$cursor,int$per"}, "rust": {"cursor:&str,per:u32"}, "typescript": {"cursor:string,per:number"}}[lang]
 			case "AESKeyring":
 				permitted = map[string][]string{"go": {"keyringorm.AESKeyring"}, "php": {"Orm\\AesKeyring$keyring"}, "rust": {"keyring:&orm::aes_rotation::AesKeyring"}, "typescript": {"keyring:AesKeyring"}}[lang]
 			case "RowVisitor":
