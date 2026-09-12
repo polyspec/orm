@@ -133,6 +133,17 @@ The ratio varies by hardware, but **approaches 1 as round-trip time increases**:
 
 `TestHotPathGate` requires `ORM_RUN_PERF_GATE=1`. This keeps the timing test out of parallel `go test ./...` package execution. `make check` and the dedicated CI step set the variable and run the test separately.
 
+## 6f. Rust MySQL driver comparison (T7.9)
+
+One release process compared sqlx 0.9 with `mysql_async` 0.37.1 using one connection per pool, identical prepared SQL and binds, the same typed four-field result, 200 warmup operations, and 1,000 measured operations. Each paired query result was equal. Environment: Apple M3 Pro, MySQL 8.4 local Unix socket, 2026-09-12.
+
+| Workload | sqlx mean | `mysql_async` mean | Ratio (`mysql_async/sqlx`) |
+|---|---:|---:|---:|
+| Primary-key row | 58.840µs | 61.825µs | 1.051 |
+| 100-row list | 1.180ms | 1.113ms | 0.943 |
+
+Run `cargo run --release --locked --bin driver_compare -- 1000` in `bench/rust`. The existing replacement rule requires a 2x measured improvement. Neither workload meets it, so the ORM retains sqlx. CI compiles this program with `make rust-driver-check`; latency is not a CI pass condition.
+
 ## 7. S0 decision summary
 | ID | Decision | Basis |
 |---|---|---|
