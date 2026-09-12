@@ -155,6 +155,17 @@ func assertPhysicalConstraintDiff(t *testing.T, ctx context.Context, db *sql.DB,
 		t.Fatalf("apply constraint diff: %v\n%s", err, forward)
 	}
 	assertPhysicalConstraintState(t, ctx, db, driver, true)
+	live, err := liveManifest(db, driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item := live.Entities["migration_item"]
+	if item == nil || len(item.Indexes["new_code_idx"]) != 1 || item.Indexes["new_code_idx"][0] != "code" || !containsColumns(item.Unique, []string{"owner_id", "code"}) || !containsColumns(item.Fulltext, []string{"code", "body"}) {
+		t.Fatalf("%s imported indexes differ: %#v", driver, item)
+	}
+	if relation := item.Relations["owner"]; relation == nil || relation.OnDelete != "cascade" {
+		t.Fatalf("%s imported foreign key differs: %#v", driver, relation)
+	}
 
 	rollback, err := renderDiff(target, base, driver, true)
 	if err != nil {
@@ -170,6 +181,25 @@ func assertPhysicalConstraintDiff(t *testing.T, ctx context.Context, db *sql.DB,
 	if _, err := db.ExecContext(ctx, "DROP TABLE "+q("migration_owner")); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func containsColumns(groups [][]string, want []string) bool {
+	for _, group := range groups {
+		if len(group) != len(want) {
+			continue
+		}
+		match := true
+		for i := range want {
+			if group[i] != want[i] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
 }
 
 func assertPhysicalConstraintState(t *testing.T, ctx context.Context, db *sql.DB, driver string, target bool) {
