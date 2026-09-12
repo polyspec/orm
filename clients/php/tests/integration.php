@@ -20,6 +20,7 @@ use Orm\Code;
 use Orm\Codec;
 use Orm\Config;
 use Orm\Db;
+use Orm\AesKeyring;
 use Orm\Orm;
 use Orm\OrmException;
 use Orm\Q;
@@ -341,7 +342,12 @@ try {
     Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver === 'mysql' ? 'sqlite' : 'mysql'));
     check(false, 'a driver other than the ormd dialect should throw');
 } catch (OrmException $e) {
-    check($e->code_ === Code::CONFIG && str_contains($e->getMessage(), '-dialect'), 'driver ≠ ormd dialect → CONFIG');
+    check(
+        $e->code_ === Code::CONFIG
+        && str_contains($e->getMessage(), 'compiles for')
+        && str_contains($e->getMessage(), 'driver is'),
+        'driver ≠ ormd dialect → CONFIG'
+    );
 }
 Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver));
 try {
@@ -408,6 +414,11 @@ $good = $toml("schema = \"$schema\"");
 $db2 = Orm::fromConfig($good);
 unlink($good);
 check($db2 instanceof Db && $db2->driver() === $driver && Orm::config()->driver === $driver && Orm::config()->onQuery === null && Orm::config()->aesKey === 'bench-salt' && Battle::query()->using($db2)->getBySeq(42)->getAesHexEmail() === 'user42@example.com', 'fromConfig loads db (driver), secrets and ormd and passes the boot check');
+$versioned = $toml("schema = \"$schema\"");
+file_put_contents($versioned, str_replace("aes = \"bench-salt\"", "aes_version = 2\n[secrets.aes_keys]\n1 = \"old-key\"\n2 = \"bench-salt\"", file_get_contents($versioned)));
+$db3 = Orm::fromConfig($versioned);
+unlink($versioned);
+check($db3 instanceof Db && Orm::config()->aesKey === 'bench-salt' && Orm::config()->aesVersion === 2, 'fromConfig loads [secrets.aes_keys] and aes_version');
 Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver,
     onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log) { $log[] = $sql; }));
 
@@ -420,6 +431,25 @@ check(count(Battle::query()->aesHexEmail('한글@example.com')->seq($hb->getSeq(
 $hb->setIp('10.1.2.3')->using($db)->update();
 check(Battle::query()->using($db)->getBySeq($hb->getSeq())->getIp() === '10.1.2.3', 'ip update (IPv4 packs to 4 bytes)');
 $hb->using($db)->delete();
+
+// ---- S7: versioned AES database rotation ----
+$rotationTable = 'orm_aes_rotation_test';
+$quote = fn(string $name): string => $driver === 'mysql' ? "`$name`" : "\"$name\"";
+$db->pdo->exec('DROP TABLE IF EXISTS ' . $quote($rotationTable));
+$db->pdo->exec('CREATE TABLE ' . $quote($rotationTable) . ' (' . $quote('id') . ' BIGINT PRIMARY KEY, ' . $quote('aes_key_version') . ' INTEGER NOT NULL, ' . $quote('aes_hex_email') . ' VARCHAR(255), ' . $quote('aes_hex_phone') . ' VARCHAR(255))');
+$seed = $db->pdo->prepare('INSERT INTO ' . $quote($rotationTable) . ' (' . $quote('id') . ', ' . $quote('aes_key_version') . ', ' . $quote('aes_hex_email') . ', ' . $quote('aes_hex_phone') . ') VALUES (?, ?, ?, ?)');
+$seed->execute([1, 1, Codec::hostEncode('member@example.test', ['aes', 'hex'], 'rotation-key-v1'), Codec::hostEncode('01012345678', ['aes', 'hex'], 'rotation-key-v1')]);
+$rotationSpec = ['table' => $rotationTable, 'primary_key' => 'id', 'version_column' => 'aes_key_version', 'columns' => [['name' => 'aes_hex_email', 'styles' => ['aes', 'hex']], ['name' => 'aes_hex_phone', 'styles' => ['aes', 'hex']]]];
+$keyring = new AesKeyring([1 => 'rotation-key-v1', 2 => 'rotation-key-v2'], 2);
+$before = $db->aesStatus($rotationSpec, $keyring);
+$changed = $db->rotateAESRows($rotationSpec, $keyring);
+$after = $db->aesStatus($rotationSpec, $keyring);
+$repeated = $db->rotateAESRows($rotationSpec, $keyring);
+$stored = $db->pdo->query('SELECT ' . $quote('aes_key_version') . ', ' . $quote('aes_hex_email') . ', ' . $quote('aes_hex_phone') . ' FROM ' . $quote($rotationTable) . ' WHERE ' . $quote('id') . ' = 1')->fetch(\PDO::FETCH_NUM);
+check($before->total === 1 && $before->pending === 1 && $before->versions[1] === 1, 'AES status reports the stored source version');
+check($changed === 1 && $after->pending === 0 && $after->versions[2] === 1 && $repeated === 0, 'AES rotation updates once and repeat is a no-op');
+check((int) $stored[0] === 2 && Codec::hostDecode($stored[1], ['aes', 'hex'], 'rotation-key-v2') === 'member@example.test' && Codec::hostDecode($stored[2], ['aes', 'hex'], 'rotation-key-v2') === '01012345678', 'AES rotation stores every AES column with the current key');
+$db->pdo->exec('DROP TABLE ' . $quote($rotationTable));
 
 if ($fail === 0) {
     echo "ok — " . count($log) . " statements\n";

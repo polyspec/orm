@@ -9,6 +9,8 @@ public function get(): ?\App\Orm\BattleRow;
 public function gets(): \Orm\Collection;
 public function getCount(): int;
 public function getsCount(): \Orm\Collection;
+public function aesStatus(\Orm\AesKeyring $keyring): \Orm\AesRotationStatus;
+public function rotateAES(\Orm\AesKeyring $keyring): int;
 public function insert(): ?\App\Orm\BattleRow;
 public function save(): ?\App\Orm\BattleRow;
 public function update(): int;

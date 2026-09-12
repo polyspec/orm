@@ -8,6 +8,20 @@ export interface AesRotationColumn {
   styles: readonly string[];
 }
 
+export interface AesRotationSpec {
+  table: string;
+  primaryKey: string;
+  versionColumn: string;
+  columns: readonly AesRotationColumn[];
+}
+
+export interface AesRotationStatus {
+  current: number;
+  total: number;
+  pending: number;
+  versions: Readonly<Record<string, number>>;
+}
+
 export interface AesRowCodec {
   decode(value: unknown, styles: readonly string[], key: string): unknown;
   encode(value: unknown, styles: readonly string[], key: string): unknown;

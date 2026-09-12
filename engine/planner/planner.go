@@ -75,6 +75,12 @@ func (b *builder) secret(name string) string {
 	return b.p.D.Placeholder(b.n)
 }
 
+func (b *builder) config(name string) string {
+	b.binds = append(b.binds, plan.BindSlot{From: "config", Name: name})
+	b.n++
+	return b.p.D.Placeholder(b.n)
+}
+
 // now is a timestamp the executor supplies (dialects without a sub-second clock function).
 func (b *builder) now() string {
 	b.binds = append(b.binds, plan.BindSlot{From: "now"})
@@ -886,6 +892,9 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
 	set := slices.Clone(r.Set)
+	if err := validateAESAssignments(ent, set, false); err != nil {
+		return nil, err
+	}
 	if r.ScopeP != nil && !assigned(set, ent.Scope) {
 		set = append(set, ir.Assign{Column: ent.Scope, P: r.ScopeP})
 	}
@@ -902,8 +911,15 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		}
 		vals = append(vals, v)
 	}
+	if version := aesVersionColumn(ent); version != "" && !assigned(set, version) {
+		cols = append(cols, p.D.Quote(version))
+		vals = append(vals, b.config("aes_version"))
+	}
 	sql := "INSERT INTO " + p.D.Quote(ent.Table) + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(vals, ", ") + ")"
 	if len(r.OnDuplicate) > 0 {
+		if err := validateAESAssignments(ent, r.OnDuplicate, true); err != nil {
+			return nil, err
+		}
 		var sets []string
 		for _, a := range r.OnDuplicate {
 			v, err := p.renderAssign(b, ent, ent.Column(a.Column), &a)
@@ -911,6 +927,9 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 				return nil, err
 			}
 			sets = append(sets, p.D.Quote(a.Column)+" = "+v)
+		}
+		if version := aesVersionColumn(ent); version != "" && assignsAES(ent, r.OnDuplicate) && !assigned(r.OnDuplicate, version) {
+			sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version"))
 		}
 		if ent.Auto != "" && !p.D.InsertReturningID() {
 			// MySQL idiom: make last insert id report the existing row on update
@@ -922,6 +941,46 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		sql += " RETURNING " + p.D.Quote(ent.Auto)
 	}
 	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
+}
+
+func aesVersionColumn(ent *schema.Entity) string {
+	for _, col := range ent.Columns {
+		if len(col.Styles) > 0 && col.Styles[0] == "aes" {
+			return "aes_key_version"
+		}
+	}
+	return ""
+}
+
+func assignsAES(ent *schema.Entity, set []ir.Assign) bool {
+	for _, assign := range set {
+		if col := ent.Column(assign.Column); col != nil && len(col.Styles) > 0 && col.Styles[0] == "aes" {
+			return true
+		}
+	}
+	return false
+}
+
+// validateAESAssignments preserves the row-level key-version invariant. The
+// version is managed by the planner. An update that changes encrypted data
+// must replace every AES column because one version describes the whole row.
+func validateAESAssignments(ent *schema.Entity, set []ir.Assign, requireComplete bool) error {
+	version := aesVersionColumn(ent)
+	if version == "" {
+		return nil
+	}
+	if assigned(set, version) {
+		return &ir.Error{Code: "IR_INVALID", Msg: version + " is managed by the AES writer"}
+	}
+	if !requireComplete || !assignsAES(ent, set) {
+		return nil
+	}
+	for _, col := range ent.Columns {
+		if len(col.Styles) > 0 && col.Styles[0] == "aes" && !assigned(set, col.Name) {
+			return &ir.Error{Code: "IR_INVALID", Msg: "AES update must assign every AES column; missing " + col.Name}
+		}
+	}
+	return nil
 }
 
 func assigned(set []ir.Assign, col string) bool {
@@ -981,6 +1040,9 @@ func (p *Planner) renderAssign(b *builder, ent *schema.Entity, col *schema.Col, 
 func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
+	if err := validateAESAssignments(ent, r.Set, true); err != nil {
+		return nil, err
+	}
 	root := p.buildScopes(&r.Query, ent.Table, nil)
 	var sets []string
 	for _, a := range r.Set {
@@ -993,6 +1055,9 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 			return nil, err
 		}
 		sets = append(sets, p.D.Quote(a.Column)+" = "+v)
+	}
+	if version := aesVersionColumn(ent); version != "" && assignsAES(ent, r.Set) && !assigned(r.Set, version) {
+		sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version"))
 	}
 	// The updated timestamp is always assigned explicitly: MySQL's ON UPDATE
 	// clause has no counterpart on the other dialects, and optimistic locking

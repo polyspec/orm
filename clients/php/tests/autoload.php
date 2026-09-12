@@ -73,6 +73,18 @@ function orm_test_dsn(): string
 /** Opens the database of the given driver: MySQL as root without a password (the bench server), the others by DSN alone. */
 function orm_open_db(string $driver, string $dsn, bool $persistent = true): \Orm\Db
 {
+    if ($driver === 'postgres' && (str_starts_with($dsn, 'postgres://') || str_starts_with($dsn, 'postgresql://'))) {
+        $url = parse_url($dsn);
+        if ($url === false || !isset($url['host'], $url['path'])) {
+            throw new \Orm\OrmException(\Orm\Code::CONFIG, "invalid PostgreSQL URL $dsn");
+        }
+        parse_str($url['query'] ?? '', $query);
+        $parts = ['host=' . $url['host'], 'port=' . ($url['port'] ?? 5432), 'dbname=' . ltrim($url['path'], '/')];
+        if (isset($url['user'])) { $parts[] = 'user=' . rawurldecode($url['user']); }
+        if (isset($url['pass'])) { $parts[] = 'password=' . rawurldecode($url['pass']); }
+        if (isset($query['sslmode'])) { $parts[] = 'sslmode=' . $query['sslmode']; }
+        $dsn = 'pgsql:' . implode(';', $parts);
+    }
     return match ($driver) {
         'mysql' => \Orm\Db::mysql($dsn, 'root', '', $persistent),
         'postgres' => \Orm\Db::postgres($dsn, null, null, $persistent),

@@ -15,6 +15,8 @@ type BattleInterface interface {
 	Gets() (*orm.Collection[BattleRow], error)
 	GetCount() (int64, error)
 	GetsCount() (*orm.Collection[BattleRow], error)
+	AESStatus(keyring orm.AESKeyring) (orm.AESRotationStatus, error)
+	RotateAES(keyring orm.AESKeyring) (int, error)
 	Insert() (*BattleRow, error)
 	Save() (*BattleRow, error)
 	Update() (int64, error)

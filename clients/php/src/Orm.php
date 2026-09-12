@@ -48,7 +48,7 @@ final class Orm
     {
         $cfg = Toml::parseFile($path);
         // docs/config.md is the whole vocabulary; a key outside it is a typo, not an extension (strict, like Go).
-        $known = ['schema' => true, 'db' => ['driver', 'dsn', 'user', 'password', 'pool'], 'secrets' => ['aes', 'aes_env'], 'engine' => ['wasm', 'cache_dir'], 'ormd' => ['endpoint', 'timeout_ms', 'socket'], 'debug' => ['on_query']];
+        $known = ['schema' => true, 'db' => ['driver', 'dsn', 'user', 'password', 'pool'], 'secrets' => ['aes', 'aes_env', 'aes_keys', 'aes_version'], 'engine' => ['wasm', 'cache_dir'], 'ormd' => ['endpoint', 'timeout_ms', 'socket'], 'debug' => ['on_query']];
         foreach ($cfg as $k => $v) {
             if (!isset($known[$k])) {
                 throw new OrmException(Code::CONFIG, "$path: unknown key $k");
@@ -104,6 +104,7 @@ final class Orm
         }
         $secrets = $cfg['secrets'] ?? [];
         $aesKey = '';
+        $aesVersion = 1;
         if (isset($secrets['aes'], $secrets['aes_env'])) {
             throw new OrmException(Code::CONFIG, "$path: secrets.aes and secrets.aes_env are exclusive");
         }
@@ -118,6 +119,26 @@ final class Orm
         if (!is_string($aesKey)) {
             throw new OrmException(Code::CONFIG, "$path: secrets.aes must be a string");
         }
+        if (isset($secrets['aes_keys'])) {
+            if (isset($secrets['aes']) || isset($secrets['aes_env']) || !is_array($secrets['aes_keys'])) {
+                throw new OrmException(Code::CONFIG, "$path: secrets.aes_keys is exclusive with secrets.aes and secrets.aes_env");
+            }
+            $aesVersion = $secrets['aes_version'] ?? throw new OrmException(Code::CONFIG, "$path: secrets.aes_version is required with secrets.aes_keys");
+            if (!is_int($aesVersion) || $aesVersion < 1) {
+                throw new OrmException(Code::CONFIG, "$path: secrets.aes_version must be a positive integer");
+            }
+            $keys = [];
+            foreach ($secrets['aes_keys'] as $version => $key) {
+                if ((!is_int($version) && !ctype_digit((string) $version)) || (int) $version < 1 || !is_string($key) || $key === '') {
+                    throw new OrmException(Code::CONFIG, "$path: invalid secrets.aes_keys entry");
+                }
+                $keys[(int) $version] = $key;
+            }
+            $keyring = new AesKeyring($keys, $aesVersion);
+            $aesKey = $keys[$keyring->currentVersion];
+        } elseif (isset($secrets['aes_version']) && $secrets['aes_version'] !== 1) {
+            throw new OrmException(Code::CONFIG, "$path: secrets.aes_version requires secrets.aes_keys");
+        }
         $onQuery = null;
         if (($cfg['debug']['on_query'] ?? false) === true) {
             $onQuery = static function (string $sql, array $binds, float $seconds, string $planId, ?\Throwable $err): void {
@@ -125,7 +146,7 @@ final class Orm
                     json_encode($binds, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $err === null ? '' : ' ! ' . $err->getMessage()));
             };
         }
-        $config = new Config(socket: $socket, schemaPath: $schemaPath, aesKey: $aesKey, onQuery: $onQuery, driver: $driver, endpoint: $endpoint, timeoutSeconds: $timeoutMs / 1000);
+        $config = new Config(socket: $socket, schemaPath: $schemaPath, aesKey: $aesKey, aesVersion: $aesVersion, onQuery: $onQuery, driver: $driver, endpoint: $endpoint, timeoutSeconds: $timeoutMs / 1000);
         if ($aesKey === '' && $config->hasSecretColumns()) {
             throw new OrmException(Code::CONFIG, "$path: the schema has aes columns; secrets.aes or secrets.aes_env is required");
         }
@@ -199,6 +220,8 @@ final class Config
         public readonly string $schemaPath,
         /** secret "aes" for aes/aes_hex columns */
         public readonly string $aesKey = '',
+        /** version stored in aes_key_version with new AES values */
+        public readonly int $aesVersion = 1,
         /**
          * called for every executed statement:
          * fn(string $sql, array $binds, float $seconds, string $planId, ?\Throwable $err)
@@ -226,6 +249,9 @@ final class Config
         }
         if ($timeoutSeconds <= 0) {
             throw new OrmException(Code::CONFIG, 'compiler timeout must be positive');
+        }
+        if ($aesVersion < 1) {
+            throw new OrmException(Code::CONFIG, 'aesVersion must be positive');
         }
     }
 

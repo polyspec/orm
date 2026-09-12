@@ -10,8 +10,9 @@ use chrono::Datelike;
 use gen::*;
 use orm::collection::Key;
 use orm::value::{Param, Val};
-use orm::db::{Config, ConnectOptions, Db};
+use orm::db::{Config, ConnectOptions, Db, Exec};
 use orm::engine::{Engine, EngineConfig};
+use orm::plan::{BindSlot, Step};
 
 macro_rules! check {
     ($fails:ident, $cond:expr, $what:expr) => {
@@ -55,6 +56,10 @@ fn norm_sql(sql: &str) -> String {
     }
 }
 
+fn direct_step(sql: String, parameters: usize) -> Step {
+    Step { plan_id: 0, id: 0, role: "test".into(), sql, bind_slots: (0..parameters).map(|param| BindSlot { from: "param".into(), param, transform: String::new(), name: String::new(), step: 0, column: String::new(), host_styles: vec![], col_type: String::new() }).collect(), assemble: None, parent: None }
+}
+
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -66,8 +71,10 @@ async fn main() {
     // ---- S6: the driver must be the engine's dialect ----
     let other = if driver == "mysql" { "sqlite" } else { "mysql" };
     let other_dsn = if other == "mysql" { "mysql://root@localhost/x" } else { "sqlite::memory:" };
-    match Db::connect(ConnectOptions::parse(other, other_dsn).unwrap(), 1, engine.clone(), Config { aes_key: String::new(), on_query: None }).await {
-        Err(e) if e.code() == orm::codes::CONFIG && e.to_string().contains("engine compiles for") => {}
+    match Db::connect(ConnectOptions::parse(other, other_dsn).unwrap(), 1, engine.clone(), Config { aes_key: String::new(), aes_version: 1, on_query: None }).await {
+        Err(e) if e.code() == orm::codes::CONFIG
+            && e.to_string().contains("driver")
+            && e.to_string().contains("compiler uses") => {}
         other => { fails += 1; eprintln!("FAIL: driver/dialect mismatch not rejected: {:?}", other.err()); }
     }
     // ---- S5 boot check: an engine whose loaded manifest has another hash is refused, and the crate stays unbound ----
@@ -89,7 +96,7 @@ async fn main() {
         last_plan_h.store(plan_id, Ordering::Relaxed);
         if binds.iter().any(|b| *b == Param::Str("bench-salt".into())) { leaked_h.store(true, Ordering::Relaxed); }
     });
-    let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), on_query: Some(on_query) }).await.expect("connect");
+    let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), aes_version: 1, on_query: Some(on_query) }).await.expect("connect");
 
     // ---- reads ----
     let b = battle::query().using(&db).one_by_seq(42).await.expect("one").expect("row 42");
@@ -347,6 +354,31 @@ async fn main() {
     check!(fails, expect > 0 && ra.like_count == expect && rb.like_count == expect, "final values are the last writer's");
     check!(fails, battle::query().seq_in(vec![a, b]).using(&db).delete().await.unwrap() == 2, "deadlock rows cleaned up");
     }
+
+    // ---- S7: versioned AES database rotation ----
+    let rotation_table = "orm_aes_rotation_test";
+    let quote = |name: &str| if driver == "mysql" { format!("`{name}`") } else { format!("\"{name}\"") };
+    let _ = db.execute(&direct_step(format!("DROP TABLE IF EXISTS {}", quote(rotation_table)), 0), &[]).await;
+    db.execute(&direct_step(format!("CREATE TABLE {} ({} BIGINT PRIMARY KEY, {} INTEGER NOT NULL, {} VARCHAR(255), {} VARCHAR(255))", quote(rotation_table), quote("id"), quote("aes_key_version"), quote("aes_hex_email"), quote("aes_hex_phone")), 0), &[]).await.expect("create AES rotation table");
+    let styles = vec!["aes".to_owned(), "hex".to_owned()];
+    let email = orm::codec::host_encode(&Param::Str("member@example.test".into()), &styles, "rotation-key-v1").expect("encode email");
+    let phone = orm::codec::host_encode(&Param::Str("01012345678".into()), &styles, "rotation-key-v1").expect("encode phone");
+    let values = if driver == "postgres" { "$1, $2, $3, $4" } else { "?, ?, ?, ?" };
+    db.execute(&direct_step(format!("INSERT INTO {} ({}, {}, {}, {}) VALUES ({values})", quote(rotation_table), quote("id"), quote("aes_key_version"), quote("aes_hex_email"), quote("aes_hex_phone")), 4), &[Param::I64(1), Param::I64(1), email, phone]).await.expect("seed AES rotation table");
+    let keyring = orm::aes_rotation::AesKeyring::new([(1, "rotation-key-v1".to_owned()), (2, "rotation-key-v2".to_owned())].into_iter().collect(), 2).expect("AES keyring");
+    let spec = orm::aes_rotation::AesRotationSpec { table: rotation_table.into(), primary_key: "id".into(), version_column: "aes_key_version".into(), columns: vec![orm::aes_rotation::AesRotationColumn { name: "aes_hex_email".into(), styles: styles.clone() }, orm::aes_rotation::AesRotationColumn { name: "aes_hex_phone".into(), styles: styles.clone() }] };
+    let before = orm::aes_rotation::aes_status(&db, &spec, &keyring).await.expect("AES status before");
+    let changed = orm::aes_rotation::rotate_aes_rows(&db, &spec, &keyring).await.expect("AES rotate");
+    let after = orm::aes_rotation::aes_status(&db, &spec, &keyring).await.expect("AES status after");
+    let repeated = orm::aes_rotation::rotate_aes_rows(&db, &spec, &keyring).await.expect("AES rotate repeat");
+    check!(fails, before.total == 1 && before.pending == 1 && before.versions.get(&1) == Some(&1), "AES status reports the stored source version");
+    check!(fails, changed == 1 && after.pending == 0 && after.versions.get(&2) == Some(&1) && repeated == 0, "AES rotation updates once and repeat is a no-op");
+    let raw = db.query(&direct_step(format!("SELECT {}, {}, {} FROM {} WHERE {} = 1", quote("aes_key_version"), quote("aes_hex_email"), quote("aes_hex_phone"), quote(rotation_table), quote("id")), 0), &[], vec![]).await.expect("read rotated AES row");
+    let stored = orm::row::read_row(&raw[0], 3).expect("decode rotated row");
+    let decoded_email = orm::codec::host_decode(&stored[1], &styles, "rotation-key-v2").expect("decode rotated email");
+    let decoded_phone = orm::codec::host_decode(&stored[2], &styles, "rotation-key-v2").expect("decode rotated phone");
+    check!(fails, stored[0].as_i64() == 2 && decoded_email == Val::Str("member@example.test".into()) && decoded_phone == Val::Str("01012345678".into()), "AES rotation stores every AES column with the current key");
+    db.execute(&direct_step(format!("DROP TABLE {}", quote(rotation_table)), 0), &[]).await.expect("drop AES rotation table");
 
     // ---- S5: on_query plan_id, secret masking, driver error mapping, orm.toml ----
     let s = battle::query().seq_eq(1).using(&db).sql().await.expect("sql");

@@ -1,4 +1,4 @@
-# `orm.toml` — one declared configuration for four clients (S5 T5.5)
+# `orm.toml` configuration (S5 T5.5)
 
 Every path is absolute and declared; nothing is discovered, no symlinks, no fallbacks. A missing
 or relative path is a startup error (`CONFIG`).
@@ -19,9 +19,13 @@ password = ""
 pool = 8
 
 [secrets]
-aes = "bench-salt"          # or aes_env = "ORM_AES_KEY"
-# aes_keys = { "1" = "old-key", "2" = "bench-salt" }  # required for key rotation
-# aes_version = 2             # current version for new writes and rotation
+# aes = "bench-salt"          # single key compatibility form; version 1
+# aes_env = "ORM_AES_KEY"     # environment variant of the single key form
+aes_version = 2               # current version for new writes and rotation
+
+[secrets.aes_keys]
+1 = "old-key"
+2 = "current-key"
 
 [engine]                    # optional legacy compiler settings
 wasm = "/srv/app/bin/ormengine.wasm"
@@ -38,7 +42,9 @@ on_query = false            # log every statement (sql, binds with secrets maske
 
 Checks at startup (all four): `schema` exists and its `schema_hash` equals the generated client's
 (`SCHEMA_HASH_MISMATCH` otherwise — no watching, no reload); declared `ormd`/`engine` paths exist and are absolute;
-`secrets.aes` or `aes_env` present when the schema has aes columns; `[db].user/password` only with mysql DSNs (other drivers carry the user in the URL); the compiler dialect and IR version must equal `[db].driver` and the client IR version (`CONFIG` or `VERSION_MISMATCH` otherwise). Go, PHP, Rust, and TypeScript use `[ormd].endpoint` for plan compilation.
+an AES key configuration present when the schema has AES columns; `[db].user/password` only with mysql DSNs (other drivers carry the user in the URL); the compiler dialect and IR version must equal `[db].driver` and the client IR version (`CONFIG` or `VERSION_MISMATCH` otherwise). Go, PHP, Rust, and TypeScript use `[ormd].endpoint` for plan compilation.
+
+`aes`, `aes_env`, and `aes_keys` are mutually exclusive. The single-key forms use version 1. A versioned configuration requires a positive `aes_version`, a non-empty key for that version, and positive integer keys under `[secrets.aes_keys]`. New AES-table rows and updates that assign every AES column store `aes_version` in `aes_key_version`. See [S7](s7.md) for status and rotation operations.
 
 `fromConfig` opens the configured database; it does not install a default query connection.
 Select it for a root query with Go `Using(ctx, db)`, PHP `using($db)`, Rust `using(&db)`, or TypeScript `using(db)`.

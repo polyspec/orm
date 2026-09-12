@@ -55,7 +55,7 @@ try {
 const configRoot = await mkdtemp(join(tmpdir(), 'orm-typescript-config-'));
 try {
   const configPath = join(configRoot, 'orm.toml');
-  await writeFile(configPath, `schema = ${JSON.stringify(resolve('schema/schema.json'))}\n[db]\ndriver = "sqlite"\ndsn = ${JSON.stringify(resolve(path))}\npool = 1\n[secrets]\naes = "bench-salt"\n[ormd]\nendpoint = ${JSON.stringify(endpoint)}\ntimeout_ms = 5000\n`);
+  await writeFile(configPath, `schema = ${JSON.stringify(resolve('schema/schema.json'))}\n[db]\ndriver = "sqlite"\ndsn = ${JSON.stringify(resolve(path))}\npool = 1\n[secrets]\naes_version = 2\n[secrets.aes_keys]\n1 = "old-key"\n2 = "bench-salt"\n[ormd]\nendpoint = ${JSON.stringify(endpoint)}\ntimeout_ms = 5000\n`);
   const configured = await Db.fromConfig(configPath);
   try {
     if (await Battle().using(configured).getCountByServiceSeq(7) !== expected('bound_count_finder')) throw new Error('orm.toml query result differs');

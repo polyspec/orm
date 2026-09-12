@@ -7,7 +7,7 @@ type Section = Record<string, unknown>;
 export interface FileConfig {
   schema: string;
   db: { driver: 'mysql' | 'postgres' | 'sqlite'; dsn: string; user?: string; password?: string; pool: number };
-  secrets: { aes?: string; aes_env?: string };
+  secrets: { aes?: string; aes_env?: string; aes_keys?: Readonly<Record<string, string>>; aes_version: number };
   engine: { wasm?: string; cache_dir?: string };
   ormd: { endpoint: string; timeout_ms: number; socket?: string };
   debug: { on_query: boolean };
@@ -55,7 +55,7 @@ export async function loadConfig(path: string): Promise<FileConfig> {
   const ormd = object(source.ormd, 'ormd');
   const debug = object(source.debug, 'debug');
   keys(db, ['driver', 'dsn', 'user', 'password', 'pool'], 'db.');
-  keys(secrets, ['aes', 'aes_env'], 'secrets.');
+  keys(secrets, ['aes', 'aes_env', 'aes_keys', 'aes_version'], 'secrets.');
   keys(engine, ['wasm', 'cache_dir'], 'engine.');
   keys(ormd, ['endpoint', 'timeout_ms', 'socket'], 'ormd.');
   keys(debug, ['on_query'], 'debug.');
@@ -69,6 +69,13 @@ export async function loadConfig(path: string): Promise<FileConfig> {
   const aes = secrets.aes === undefined ? undefined : typeof secrets.aes === 'string' ? secrets.aes : fail('secrets.aes must be a string');
   const aesEnv = string(secrets.aes_env, 'secrets.aes_env');
   if (aes !== undefined && aesEnv !== undefined) fail('secrets.aes and secrets.aes_env are exclusive');
+  const aesKeys = secrets.aes_keys === undefined ? undefined : object(secrets.aes_keys, 'secrets.aes_keys');
+  if (aesKeys !== undefined && (aes !== undefined || aesEnv !== undefined)) fail('secrets.aes_keys is exclusive with secrets.aes and secrets.aes_env');
+  const aesVersion = integer(secrets.aes_version, 'secrets.aes_version', 1);
+  if (aesKeys !== undefined) {
+    for (const [version, key] of Object.entries(aesKeys)) if (!/^[1-9][0-9]*$/.test(version) || typeof key !== 'string' || key === '') fail(`secrets.aes_keys.${version} is invalid`);
+    if (typeof aesKeys[String(aesVersion)] !== 'string') fail(`secrets.aes_version ${aesVersion} is not declared in secrets.aes_keys`);
+  } else if (secrets.aes_version !== undefined && aesVersion !== 1) fail('secrets.aes_version requires secrets.aes_keys');
   const wasm = string(engine.wasm, 'engine.wasm');
   const cacheDir = string(engine.cache_dir, 'engine.cache_dir');
   const socket = string(ormd.socket, 'ormd.socket');
@@ -78,13 +85,14 @@ export async function loadConfig(path: string): Promise<FileConfig> {
   return {
     schema,
     db: { driver: driver as FileConfig['db']['driver'], dsn, user, password, pool: integer(db.pool, 'db.pool', 8) },
-    secrets: { aes, aes_env: aesEnv }, engine: { wasm, cache_dir: cacheDir },
+    secrets: { aes, aes_env: aesEnv, aes_keys: aesKeys as Record<string, string> | undefined, aes_version: aesVersion }, engine: { wasm, cache_dir: cacheDir },
     ormd: { endpoint, timeout_ms: integer(ormd.timeout_ms, 'ormd.timeout_ms', 5_000), socket },
     debug: { on_query: debug.on_query === true },
   };
 }
 
 export function resolveAesKey(config: FileConfig): string {
+  if (config.secrets.aes_keys !== undefined) return config.secrets.aes_keys[String(config.secrets.aes_version)]!;
   if (config.secrets.aes_env === undefined) return config.secrets.aes ?? '';
   const value = process.env[config.secrets.aes_env];
   if (!value) fail(`environment variable ${config.secrets.aes_env} (secrets.aes_env) is empty`);

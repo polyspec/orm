@@ -29,7 +29,7 @@ async fn main() {
     let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, ..Default::default() }).unwrap());
     gen::init(engine.clone()).expect("schema hash");
     let opts = connect_opts();
-    let db = Db::connect(opts, 1, engine, Config { aes_key: "bench-salt".into(), on_query: None }).await.unwrap();
+    let db = Db::connect(opts, 1, engine, Config { aes_key: "bench-salt".into(), aes_version: 1, on_query: None }).await.unwrap();
 
     for _ in 0..200 { battle::query().seq_eq(1).using(&db).one().await.unwrap(); }
     let mut s = Vec::new();

@@ -177,6 +177,70 @@ class Db
         throw $last;
     }
 
+    /** @param array{table:string, primary_key:string, version_column:string, columns:list<array{name:string,styles:list<string>}>} $spec */
+    public function aesStatus(array $spec, AesKeyring $keyring): AesRotationStatus
+    {
+        $table = $this->aesIdentifier($spec['table']);
+        $version = $this->aesIdentifier($spec['version_column']);
+        $st = $this->stmt("SELECT $version, COUNT(*) FROM $table GROUP BY $version ORDER BY $version");
+        $st->execute();
+        $versions = []; $total = 0; $pending = 0;
+        while (($row = $st->fetch(\PDO::FETCH_NUM)) !== false) {
+            if ((!is_int($row[0]) && (!is_string($row[0]) || !ctype_digit($row[0])))
+                || (!is_int($row[1]) && (!is_string($row[1]) || !ctype_digit($row[1])))) {
+                throw new OrmException(Code::CODEC_DECODE, 'AES rotation status contains a non-integer value');
+            }
+            $stored = (int) $row[0]; $count = (int) $row[1];
+            if ($stored < 1 || $count < 0) {
+                throw new OrmException(Code::CODEC_DECODE, 'AES rotation status contains an invalid value');
+            }
+            $versions[$stored] = $count; $total += $count;
+            if ($stored !== $keyring->currentVersion) { $pending += $count; }
+        }
+        $st->closeCursor();
+        return new AesRotationStatus($keyring->currentVersion, $total, $pending, $versions);
+    }
+
+    /** @param array{table:string, primary_key:string, version_column:string, columns:list<array{name:string,styles:list<string>}>} $spec */
+    public function rotateAESRows(array $spec, AesKeyring $keyring): int
+    {
+        if (!($this instanceof Tx)) {
+            return $this->transaction(fn(Tx $tx): int => $tx->rotateAESRows($spec, $keyring));
+        }
+        $table = $this->aesIdentifier($spec['table']);
+        $primary = $this->aesIdentifier($spec['primary_key']);
+        $version = $this->aesIdentifier($spec['version_column']);
+        $columns = $spec['columns'];
+        if ($columns === []) { throw new OrmException(Code::CONFIG, 'AES rotation columns are empty'); }
+        $names = array_map(fn(array $column): string => $this->aesIdentifier($column['name']), $columns);
+        $select = $this->stmt("SELECT $primary, $version, " . implode(', ', $names) . " FROM $table WHERE $version <> ? ORDER BY $primary");
+        $select->execute([$keyring->currentVersion]);
+        $rows = $select->fetchAll(\PDO::FETCH_NUM);
+        $select->closeCursor();
+        $sets = array_map(fn(string $name): string => "$name = ?", $names);
+        $sets[] = "$version = ?";
+        $update = $this->stmt("UPDATE $table SET " . implode(', ', $sets) . " WHERE $primary = ? AND $version = ?");
+        $count = 0;
+        foreach ($rows as $values) {
+            $row = [$spec['primary_key'] => $values[0], $spec['version_column'] => (int) $values[1]];
+            foreach ($columns as $index => $column) { $row[$column['name']] = $values[$index + 2]; }
+            $rotated = $keyring->rotateRow($row, $spec['version_column'], $columns, $keyring->currentVersion);
+            $args = [];
+            foreach ($columns as $column) { $value = $rotated[$column['name']]; $args[] = $value instanceof Bytes ? $value->data : $value; }
+            $args[] = $keyring->currentVersion; $args[] = $values[0]; $args[] = (int) $values[1];
+            $update->execute($args);
+            if ($update->rowCount() !== 1) { throw new OrmException(Code::OPTIMISTIC_LOCK, "AES rotation changed {$spec['table']} primary key {$values[0]}"); }
+            $count++;
+        }
+        return $count;
+    }
+
+    private function aesIdentifier(string $value): string
+    {
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $value)) { throw new OrmException(Code::CONFIG, "invalid generated identifier $value"); }
+        return $this->driver === 'mysql' ? "`$value`" : "\"$value\"";
+    }
+
     public static function isDeadlock(\Throwable $e): bool
     {
         return $e instanceof OrmException && $e->code_ === Code::DEADLOCK;
@@ -225,12 +289,18 @@ class Db
                         $out[] = self::SECRET;
                         break;
                     }
-                    $key = $cfg->aesKey;
-                    if (($b['name'] ?? '') !== 'aes' || $key === '') {
+                    $this->masks[count($out)] = self::SECRET;
+                    if (($b['name'] ?? '') === 'aes' && $cfg->aesKey !== '') {
+                        $out[] = $cfg->aesKey;
+                    } else {
                         throw new OrmException(Code::CONFIG, "secret {$b['name']} not configured");
                     }
-                    $this->masks[count($out)] = self::SECRET;
-                    $out[] = $key;
+                    break;
+                case 'config':
+                    if (($b['name'] ?? '') !== 'aes_version') {
+                        throw new OrmException(Code::CONFIG, "config value {$b['name']} not configured");
+                    }
+                    $out[] = $cfg->aesVersion;
                     break;
                 case 'now':
                     // dialects without a microsecond clock function (SQLite) get the timestamp from the executor;

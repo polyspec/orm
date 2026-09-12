@@ -51,7 +51,8 @@ services:
       - >-
         set +e;
         cd /workspace;
-        /usr/local/go/bin/go test -tags physical ./cmd/ormgen -run TestPhysicalMigration -count=1 > /results/go.log 2>&1;
+        /usr/local/go/bin/go test -tags physical ./cmd/ormgen -run TestPhysicalMigration -count=1 > /results/go.log 2>&1 &&
+        /usr/local/go/bin/go test -tags physical ./clients/go/orm -run TestPhysicalAESRotation -count=1 >> /results/go.log 2>&1;
         code=$$?;
         printf '%s' "$$code" > /results/go.exit;
         exit "$$code"

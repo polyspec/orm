@@ -46,6 +46,7 @@ pub const NOW_MASK: &str = "$NOW";
 /// Executor configuration: declared, never discovered.
 pub struct Config {
     pub aes_key: String,
+    pub aes_version: i32,
     pub on_query: Option<OnQuery>,
 }
 
@@ -477,11 +478,15 @@ impl Db {
                     out.push(if b.host_styles.is_empty() { v } else { crate::codec::host_encode(&v, &b.host_styles, &self.cfg.aes_key)? });
                 }
                 "secret" => {
-                    if b.name != "aes" || self.cfg.aes_key.is_empty() {
-                        return Err(Error::Config(format!("secret {} not configured", b.name)));
+                    match b.name.as_str() {
+                        "aes" if !self.cfg.aes_key.is_empty() => out.push(Param::Str(self.cfg.aes_key.clone())),
+                        _ => return Err(Error::Config(format!("secret {} not configured", b.name))),
                     }
-                    out.push(Param::Str(self.cfg.aes_key.clone()));
                 }
+                "config" => match b.name.as_str() {
+                    "aes_version" if self.cfg.aes_version > 0 => out.push(Param::I64(self.cfg.aes_version as i64)),
+                    _ => return Err(Error::Config(format!("config value {} not configured", b.name))),
+                },
                 "now" => out.push(Param::Str(chrono::Utc::now().naive_utc().format(SQLITE_DATETIME).to_string())),
                 other => return Err(Error::Config(format!("bind from {other}"))),
             }
@@ -1089,6 +1094,10 @@ pub async fn sql(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Sql> {
         match b.from.as_str() {
             "param" => binds.push(param_arg(b, &req.params)?),
             "secret" => binds.push(Param::Str(SECRET_MASK.into())),
+            "config" => match b.name.as_str() {
+                "aes_version" if ex.db().cfg.aes_version > 0 => binds.push(Param::I64(ex.db().cfg.aes_version as i64)),
+                _ => return Err(Error::Config(format!("config value {} not configured", b.name))),
+            },
             "now" => binds.push(Param::Str(NOW_MASK.into())),
             other => return Err(Error::Config(format!("bind from {other}"))),
         }

@@ -4,30 +4,30 @@
       "name": "interface_query_reuse",
       "chain": "interface_query_reuse",
       "expect": {
-        "statements": [
-          {
-            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" WHERE \"a\".\"service_seq\" = ?",
-            "binds": [
-              7
-            ]
-          },
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"service_seq\" = ? LIMIT 2 OFFSET 0",
-            "binds": [
-              7
-            ]
-          },
-          {
-            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" WHERE \"a\".\"service_seq\" = ?",
-            "binds": [
-              7
-            ]
-          }
-        ],
         "result": [
           1000,
           2,
           1000
+        ],
+        "statements": [
+          {
+            "binds": [
+              7
+            ],
+            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" WHERE \"a\".\"service_seq\" = ?"
+          },
+          {
+            "binds": [
+              7
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"service_seq\" = ? LIMIT 2 OFFSET 0"
+          },
+          {
+            "binds": [
+              7
+            ],
+            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" WHERE \"a\".\"service_seq\" = ?"
+          }
         ]
       }
     },
@@ -35,24 +35,11 @@
       "name": "interface_attach",
       "chain": "interface_attach",
       "expect": {
-        "statements": [],
         "result": {
           "a": {
             "entity": "battle",
-            "where": {
-              "items": [
-                {
-                  "pred": {
-                    "column": "service_seq",
-                    "op": "eq",
-                    "p": 0
-                  }
-                }
-              ]
-            },
             "joins": [
               {
-                "rel": "user",
                 "kind": "inner",
                 "query": {
                   "entity": "user",
@@ -80,8 +67,8 @@
                             },
                             {
                               "pred": {
-                                "conn": "or",
                                 "column": "name",
+                                "conn": "or",
                                 "op": "eq",
                                 "p": 4
                               }
@@ -91,9 +78,21 @@
                       }
                     ]
                   }
-                }
+                },
+                "rel": "user"
               }
-            ]
+            ],
+            "where": {
+              "items": [
+                {
+                  "pred": {
+                    "column": "service_seq",
+                    "op": "eq",
+                    "p": 0
+                  }
+                }
+              ]
+            }
           },
           "a_params": [
             7,
@@ -104,20 +103,8 @@
           ],
           "b": {
             "entity": "battle",
-            "where": {
-              "items": [
-                {
-                  "pred": {
-                    "column": "service_seq",
-                    "op": "eq",
-                    "p": 0
-                  }
-                }
-              ]
-            },
             "joins": [
               {
-                "rel": "user",
                 "kind": "inner",
                 "query": {
                   "entity": "user",
@@ -145,8 +132,8 @@
                             },
                             {
                               "pred": {
-                                "conn": "or",
                                 "column": "name",
+                                "conn": "or",
                                 "op": "eq",
                                 "p": 4
                               }
@@ -156,9 +143,21 @@
                       }
                     ]
                   }
-                }
+                },
+                "rel": "user"
               }
-            ]
+            ],
+            "where": {
+              "items": [
+                {
+                  "pred": {
+                    "column": "service_seq",
+                    "op": "eq",
+                    "p": 0
+                  }
+                }
+              ]
+            }
           },
           "b_params": [
             8,
@@ -193,8 +192,8 @@
                       },
                       {
                         "pred": {
-                          "conn": "or",
                           "column": "name",
+                          "conn": "or",
                           "op": "eq",
                           "p": 3
                         }
@@ -219,14 +218,14 @@
             "user-2",
             "later"
           ]
-        }
+        },
+        "statements": []
       }
     },
     {
       "name": "interface_typed_keys",
       "chain": "interface_typed_keys",
       "expect": {
-        "statements": [],
         "result": [
           [
             1,
@@ -240,51 +239,35 @@
             2,
             "second"
           ]
-        ]
+        ],
+        "statements": []
       }
     },
     {
       "name": "interface_invalid_page",
       "chain": "interface_invalid_page",
       "expect": {
-        "statements": [],
         "result": {
           "error": "IR_INVALID"
-        }
+        },
+        "statements": []
       }
     },
     {
       "name": "interface_error",
       "chain": "interface_error",
       "expect": {
-        "statements": [],
         "result": [
           "CODEC_UNSUPPORTED",
           "CODEC_UNSUPPORTED"
-        ]
+        ],
+        "statements": []
       }
     },
     {
       "name": "interface_row_state",
       "chain": "interface_row_state",
       "expect": {
-        "statements": [
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
-            "binds": [
-              6
-            ]
-          },
-          {
-            "sql": "UPDATE \"battle\" SET \"name\" = ?, \"like_count\" = ?, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ?",
-            "binds": [
-              "interface-final",
-              5,
-              "$NOW",
-              6
-            ]
-          }
-        ],
         "result": {
           "assigned": true,
           "before": false,
@@ -300,186 +283,112 @@
           "noop_statements": 0,
           "relation_loaded": false,
           "value": "interface-final"
-        }
+        },
+        "statements": [
+          {
+            "binds": [
+              6
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              "interface-final",
+              5,
+              "$NOW",
+              6
+            ],
+            "sql": "UPDATE \"battle\" SET \"name\" = ?, \"like_count\" = ?, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ?"
+          }
+        ]
       }
     },
     {
       "name": "interface_dirty_retry",
       "chain": "interface_dirty_retry",
       "expect": {
-        "statements": [
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
-            "binds": [
-              6
-            ]
-          },
-          {
-            "sql": "UPDATE \"battle\" SET \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ?",
-            "binds": [
-              "2001-01-01 00:00:00.000000",
-              6
-            ]
-          },
-          {
-            "sql": "UPDATE \"battle\" SET \"name\" = ?, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ? AND \"battle\".\"updated_ts\" = ?",
-            "binds": [
-              "interface-pending",
-              "$NOW",
-              6,
-              "$TS"
-            ]
-          },
-          {
-            "sql": "UPDATE \"battle\" SET \"name\" = ?, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ? AND \"battle\".\"updated_ts\" = ?",
-            "binds": [
-              "interface-pending",
-              "$NOW",
-              6,
-              "$TS"
-            ]
-          }
-        ],
         "result": {
           "errors": [
             "OPTIMISTIC_LOCK",
             "OPTIMISTIC_LOCK"
           ],
           "value": "interface-pending"
-        }
+        },
+        "statements": [
+          {
+            "binds": [
+              6
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              "2001-01-01 00:00:00.000000",
+              6
+            ],
+            "sql": "UPDATE \"battle\" SET \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ?"
+          },
+          {
+            "binds": [
+              "interface-pending",
+              "$NOW",
+              6,
+              "$TS"
+            ],
+            "sql": "UPDATE \"battle\" SET \"name\" = ?, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ? AND \"battle\".\"updated_ts\" = ?"
+          },
+          {
+            "binds": [
+              "interface-pending",
+              "$NOW",
+              6,
+              "$TS"
+            ],
+            "sql": "UPDATE \"battle\" SET \"name\" = ?, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ? AND \"battle\".\"updated_ts\" = ?"
+          }
+        ]
       }
     },
     {
       "name": "unbound_terminal",
       "chain": "Battle.getCountByServiceSeq(7) → CONFIG",
       "expect": {
-        "statements": [],
         "result": {
           "error": "CONFIG"
-        }
+        },
+        "statements": []
       }
     },
     {
       "name": "bound_count_finder",
       "chain": "Battle.using(db).joinService(Service.where(name=\"service-7\")).relationUser(User).getCountByServiceSeq(7)",
       "expect": {
+        "result": 1000,
         "statements": [
           {
-            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" INNER JOIN \"service\" AS \"service\" ON \"a\".\"service_seq\" = \"service\".\"seq\" WHERE \"a\".\"service_seq\" = ? AND (\"service\".\"name\" = ?)",
             "binds": [
               7,
               "service-7"
-            ]
+            ],
+            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" INNER JOIN \"service\" AS \"service\" ON \"a\".\"service_seq\" = \"service\".\"seq\" WHERE \"a\".\"service_seq\" = ? AND (\"service\".\"name\" = ?)"
           }
-        ],
-        "result": 1000
+        ]
       }
     },
     {
       "name": "finished_transaction",
       "chain": "transaction(tx → Battle.using(tx)); getCountByServiceSeq(7) → CONFIG",
       "expect": {
-        "statements": [],
         "result": {
           "error": "CONFIG"
-        }
+        },
+        "statements": []
       }
     },
     {
       "name": "bound_transaction_rollback",
       "chain": "bind(tx) → insert/readback → relation + join → inherited row update → rollback → expired row CONFIG; bind(db) → unchanged rows",
       "expect": {
-        "statements": [
-          {
-            "sql": "INSERT INTO \"service\" (\"name\") VALUES (?) RETURNING \"seq\"",
-            "binds": [
-              "conf-bind"
-            ]
-          },
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
-            "binds": [
-              "$SEQ"
-            ]
-          },
-          {
-            "sql": "UPDATE \"service\" SET \"name\" = ? WHERE \"service\".\"seq\" = ?",
-            "binds": [
-              "conf-bound",
-              "$SEQ"
-            ]
-          },
-          {
-            "sql": "INSERT INTO \"service_member\" (\"service_seq\", \"user_seq\") VALUES (?, ?) RETURNING \"seq\"",
-            "binds": [
-              "$SEQ",
-              1
-            ]
-          },
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"user_seq\" AS \"a__user_seq\" FROM \"service_member\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
-            "binds": [
-              "$SEQ"
-            ]
-          },
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
-            "binds": [
-              "$SEQ"
-            ]
-          },
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"user\".\"seq\" AS \"user__seq\", \"user\".\"name\" AS \"user__name\" FROM \"service_member\" AS \"a\" INNER JOIN \"user\" AS \"user\" ON \"a\".\"user_seq\" = \"user\".\"seq\" WHERE \"a\".\"service_seq\" IN (?)",
-            "binds": [
-              "$SEQ"
-            ]
-          },
-          {
-            "sql": "UPDATE \"service_member\" SET \"user_seq\" = ? WHERE \"service_member\".\"seq\" = ?",
-            "binds": [
-              2,
-              "$SEQ"
-            ]
-          },
-          {
-            "sql": "UPDATE \"user\" SET \"name\" = ? WHERE \"user\".\"seq\" = ?",
-            "binds": [
-              "conf-user",
-              1
-            ]
-          },
-          {
-            "sql": "SELECT COUNT(*) FROM \"service_member\" AS \"a\" WHERE \"a\".\"user_seq\" = ? AND \"a\".\"service_seq\" = ?",
-            "binds": [
-              2,
-              "$SEQ"
-            ]
-          },
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
-            "binds": [
-              1
-            ]
-          },
-          {
-            "sql": "SELECT COUNT(*) FROM \"service_member\" AS \"a\" WHERE \"a\".\"service_seq\" = ?",
-            "binds": [
-              "$SEQ"
-            ]
-          },
-          {
-            "sql": "SELECT COUNT(*) FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" = ?",
-            "binds": [
-              "$SEQ"
-            ]
-          },
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
-            "binds": [
-              1
-            ]
-          }
-        ],
         "result": {
           "changed": 1,
           "expired_row": "CONFIG",
@@ -487,7 +396,98 @@
           "members_left": 0,
           "service_left": 0,
           "user_name": "user-1"
-        }
+        },
+        "statements": [
+          {
+            "binds": [
+              "conf-bind"
+            ],
+            "sql": "INSERT INTO \"service\" (\"name\") VALUES (?) RETURNING \"seq\""
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              "conf-bound",
+              "$SEQ"
+            ],
+            "sql": "UPDATE \"service\" SET \"name\" = ? WHERE \"service\".\"seq\" = ?"
+          },
+          {
+            "binds": [
+              "$SEQ",
+              1
+            ],
+            "sql": "INSERT INTO \"service_member\" (\"service_seq\", \"user_seq\") VALUES (?, ?) RETURNING \"seq\""
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"user_seq\" AS \"a__user_seq\" FROM \"service_member\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"user\".\"seq\" AS \"user__seq\", \"user\".\"name\" AS \"user__name\" FROM \"service_member\" AS \"a\" INNER JOIN \"user\" AS \"user\" ON \"a\".\"user_seq\" = \"user\".\"seq\" WHERE \"a\".\"service_seq\" IN (?)"
+          },
+          {
+            "binds": [
+              2,
+              "$SEQ"
+            ],
+            "sql": "UPDATE \"service_member\" SET \"user_seq\" = ? WHERE \"service_member\".\"seq\" = ?"
+          },
+          {
+            "binds": [
+              "conf-user",
+              1
+            ],
+            "sql": "UPDATE \"user\" SET \"name\" = ? WHERE \"user\".\"seq\" = ?"
+          },
+          {
+            "binds": [
+              2,
+              "$SEQ"
+            ],
+            "sql": "SELECT COUNT(*) FROM \"service_member\" AS \"a\" WHERE \"a\".\"user_seq\" = ? AND \"a\".\"service_seq\" = ?"
+          },
+          {
+            "binds": [
+              1
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "sql": "SELECT COUNT(*) FROM \"service_member\" AS \"a\" WHERE \"a\".\"service_seq\" = ?"
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "sql": "SELECT COUNT(*) FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" = ?"
+          },
+          {
+            "binds": [
+              1
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+          }
+        ]
       }
     },
     {
@@ -652,7 +652,7 @@
     },
     {
       "name": "group_or",
-      "chain": "Battle.serviceSeq(7).isClose(false).and(w => w.isDisplay(true).or().and(w => w.isDisplay(false).displayStartDtLt(now))).seqIn([6,106,206,306,406]).orderBySeqDesc().limit(0,3).gets",
+      "chain": "Battle.serviceSeq(7).isClose(false).and(w =\u003e w.isDisplay(true).or().and(w =\u003e w.isDisplay(false).displayStartDtLt(now))).seqIn([6,106,206,306,406]).orderBySeqDesc().limit(0,3).gets",
       "expect": {
         "result": [
           [
@@ -697,7 +697,7 @@
               406,
               406
             ],
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"is_close\" = ? AND (\"a\".\"is_display\" = ? OR (\"a\".\"is_display\" = ? AND \"a\".\"display_start_dt\" < ?)) AND \"a\".\"seq\" IN (?, ?, ?, ?, ?, ?, ?, ?) ORDER BY \"a\".\"seq\" DESC LIMIT 3 OFFSET 0"
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"is_close\" = ? AND (\"a\".\"is_display\" = ? OR (\"a\".\"is_display\" = ? AND \"a\".\"display_start_dt\" \u003c ?)) AND \"a\".\"seq\" IN (?, ?, ?, ?, ?, ?, ?, ?) ORDER BY \"a\".\"seq\" DESC LIMIT 3 OFFSET 0"
           }
         ]
       }
@@ -735,7 +735,7 @@
     },
     {
       "name": "join_nav_count",
-      "chain": "Battle.joinService(Service.where(w => w.name('service-7'))).leftJoinUser(User.on(w => w.nameContains('user'))).isClose(false).and(w => w.isDisplay(true).or().service(s => s.seqGt(1000))).getCount",
+      "chain": "Battle.joinService(Service.where(w =\u003e w.name('service-7'))).leftJoinUser(User.on(w =\u003e w.nameContains('user'))).isClose(false).and(w =\u003e w.isDisplay(true).or().service(s =\u003e s.seqGt(1000))).getCount",
       "expect": {
         "result": 570,
         "statements": [
@@ -747,14 +747,14 @@
               1000,
               "service-7"
             ],
-            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" INNER JOIN \"service\" AS \"service\" ON \"a\".\"service_seq\" = \"service\".\"seq\" LEFT JOIN \"user\" AS \"user\" ON \"a\".\"user_seq\" = \"user\".\"seq\" AND \"user\".\"name\" LIKE ? ESCAPE '\\' WHERE \"a\".\"is_close\" = ? AND (\"a\".\"is_display\" = ? OR (\"service\".\"seq\" > ?)) AND (\"service\".\"name\" = ?)"
+            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" INNER JOIN \"service\" AS \"service\" ON \"a\".\"service_seq\" = \"service\".\"seq\" LEFT JOIN \"user\" AS \"user\" ON \"a\".\"user_seq\" = \"user\".\"seq\" AND \"user\".\"name\" LIKE ? ESCAPE '\\' WHERE \"a\".\"is_close\" = ? AND (\"a\".\"is_display\" = ? OR (\"service\".\"seq\" \u003e ?)) AND (\"service\".\"name\" = ?)"
           }
         ]
       }
     },
     {
       "name": "join_row",
-      "chain": "Battle.joinService(Service.where(w => w.seq(7))).seq(6).get",
+      "chain": "Battle.joinService(Service.where(w =\u003e w.seq(7))).seq(6).get",
       "expect": {
         "result": {
           "seq": 6,
@@ -895,7 +895,7 @@
     },
     {
       "name": "write_cycle",
-      "chain": "transaction(tx => Battle.setName('conf-write').set…().setAesHexEmail('w@example.com').insert(tx)); row.setName('conf-write-2').setLikeCount(5).updateOptimistic; Battle.oneBySeq(seq); row.setName('stale').updateOptimistic → OPTIMISTIC_LOCK; row.delete; Battle.seq(seq).getCount",
+      "chain": "transaction(tx =\u003e Battle.setName('conf-write').set…().setAesHexEmail('w@example.com').insert(tx)); row.setName('conf-write-2').setLikeCount(5).updateOptimistic; Battle.oneBySeq(seq); row.setName('stale').updateOptimistic → OPTIMISTIC_LOCK; row.delete; Battle.seq(seq).getCount",
       "expect": {
         "result": {
           "after_update": {
@@ -917,9 +917,10 @@
               1,
               "2026-06-01 00:00:00.000000",
               "2026-12-31 00:00:00.000000",
-              "921D1B77718A93225F6948E2B91222A2"
+              "921D1B77718A93225F6948E2B91222A2",
+              1
             ],
-            "sql": "INSERT INTO \"battle\" (\"name\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_hex_email\") VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
+            "sql": "INSERT INTO \"battle\" (\"name\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_hex_email\", \"aes_key_version\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
           },
           {
             "binds": [
@@ -969,7 +970,7 @@
     },
     {
       "name": "eq_col_where",
-      "chain": "Battle.joinService(Service.where(w => w.seqEqCol(BattleCols.serviceModuleSeq))).seqIn([1,2,10]).orderBySeqAsc().gets — column-to-column predicate against the parent (path '')",
+      "chain": "Battle.joinService(Service.where(w =\u003e w.seqEqCol(BattleCols.serviceModuleSeq))).seqIn([1,2,10]).orderBySeqAsc().gets — column-to-column predicate against the parent (path '')",
       "expect": {
         "result": [
           1,
@@ -990,7 +991,7 @@
     },
     {
       "name": "expr_where",
-      "chain": "Battle.serviceSeq(7).expr('LENGTH(`name`) > ?', [8]).getCount — portable fragment (names 'battle-N' with N ≥ 100 → 999)",
+      "chain": "Battle.serviceSeq(7).expr('LENGTH(`name`) \u003e ?', [8]).getCount — portable fragment (names 'battle-N' with N ≥ 100 → 999)",
       "expect": {
         "result": 999,
         "statements": [
@@ -999,7 +1000,7 @@
               7,
               8
             ],
-            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND (LENGTH(\"a\".\"name\") > ?)"
+            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND (LENGTH(\"a\".\"name\") \u003e ?)"
           }
         ]
       }
@@ -1092,7 +1093,7 @@
             "binds": [
               8
             ],
-            "sql": "SELECT \"orm_w\".\"a__seq\", \"orm_w\".\"a__service_seq\", \"orm_w\".\"a__user_seq\" FROM (SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", ROW_NUMBER() OVER (PARTITION BY \"a\".\"service_seq\" ORDER BY \"a\".\"seq\" ASC) AS \"orm_rn\" FROM \"service_member\" AS \"a\" WHERE \"a\".\"service_seq\" IN (?)) AS \"orm_w\" WHERE \"orm_w\".\"orm_rn\" <= 2 ORDER BY \"orm_w\".\"a__service_seq\", \"orm_w\".\"orm_rn\""
+            "sql": "SELECT \"orm_w\".\"a__seq\", \"orm_w\".\"a__service_seq\", \"orm_w\".\"a__user_seq\" FROM (SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", ROW_NUMBER() OVER (PARTITION BY \"a\".\"service_seq\" ORDER BY \"a\".\"seq\" ASC) AS \"orm_rn\" FROM \"service_member\" AS \"a\" WHERE \"a\".\"service_seq\" IN (?)) AS \"orm_w\" WHERE \"orm_w\".\"orm_rn\" \u003c= 2 ORDER BY \"orm_w\".\"a__service_seq\", \"orm_w\".\"orm_rn\""
           },
           {
             "binds": [
@@ -1106,7 +1107,7 @@
               8,
               108
             ],
-            "sql": "SELECT \"orm_w\".\"a__seq\", \"orm_w\".\"a__user_seq\", \"orm_w\".\"a__service_seq\", \"orm_w\".\"a__service_module_seq\", \"orm_w\".\"a__service_member_seq\" FROM (SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", ROW_NUMBER() OVER (PARTITION BY \"a\".\"user_seq\" ORDER BY \"a\".\"seq\" ASC) AS \"orm_rn\" FROM \"battle\" AS \"a\" WHERE \"a\".\"user_seq\" IN (?, ?)) AS \"orm_w\" WHERE \"orm_w\".\"orm_rn\" <= 1 ORDER BY \"orm_w\".\"a__user_seq\", \"orm_w\".\"orm_rn\""
+            "sql": "SELECT \"orm_w\".\"a__seq\", \"orm_w\".\"a__user_seq\", \"orm_w\".\"a__service_seq\", \"orm_w\".\"a__service_module_seq\", \"orm_w\".\"a__service_member_seq\" FROM (SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", ROW_NUMBER() OVER (PARTITION BY \"a\".\"user_seq\" ORDER BY \"a\".\"seq\" ASC) AS \"orm_rn\" FROM \"battle\" AS \"a\" WHERE \"a\".\"user_seq\" IN (?, ?)) AS \"orm_w\" WHERE \"orm_w\".\"orm_rn\" \u003c= 1 ORDER BY \"orm_w\".\"a__user_seq\", \"orm_w\".\"orm_rn\""
           }
         ]
       }
@@ -1137,7 +1138,7 @@
             "binds": [
               8
             ],
-            "sql": "SELECT \"orm_w\".\"a__seq\", \"orm_w\".\"a__name\" FROM (SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", ROW_NUMBER() OVER (PARTITION BY \"a\".\"seq\" ORDER BY \"a\".\"seq\" DESC) AS \"orm_rn\" FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" IN (?)) AS \"orm_w\" WHERE \"orm_w\".\"orm_rn\" <= 1 ORDER BY \"orm_w\".\"a__seq\", \"orm_w\".\"orm_rn\""
+            "sql": "SELECT \"orm_w\".\"a__seq\", \"orm_w\".\"a__name\" FROM (SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", ROW_NUMBER() OVER (PARTITION BY \"a\".\"seq\" ORDER BY \"a\".\"seq\" DESC) AS \"orm_rn\" FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" IN (?)) AS \"orm_w\" WHERE \"orm_w\".\"orm_rn\" \u003c= 1 ORDER BY \"orm_w\".\"a__seq\", \"orm_w\".\"orm_rn\""
           }
         ]
       }
@@ -1357,7 +1358,7 @@
             "binds": [
               7
             ],
-            "sql": "SELECT \"orm_w\".\"a__seq\", \"orm_w\".\"a__service_seq\", \"orm_w\".\"a__user_seq\" FROM (SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", ROW_NUMBER() OVER (PARTITION BY \"a\".\"service_seq\" ORDER BY \"a\".\"seq\" ASC) AS \"orm_rn\" FROM \"service_member\" AS \"a\" WHERE \"a\".\"service_seq\" IN (?)) AS \"orm_w\" WHERE \"orm_w\".\"orm_rn\" <= 3 ORDER BY \"orm_w\".\"a__service_seq\", \"orm_w\".\"orm_rn\""
+            "sql": "SELECT \"orm_w\".\"a__seq\", \"orm_w\".\"a__service_seq\", \"orm_w\".\"a__user_seq\" FROM (SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", ROW_NUMBER() OVER (PARTITION BY \"a\".\"service_seq\" ORDER BY \"a\".\"seq\" ASC) AS \"orm_rn\" FROM \"service_member\" AS \"a\" WHERE \"a\".\"service_seq\" IN (?)) AS \"orm_w\" WHERE \"orm_w\".\"orm_rn\" \u003c= 3 ORDER BY \"orm_w\".\"a__service_seq\", \"orm_w\".\"orm_rn\""
           }
         ]
       }
@@ -1427,9 +1428,10 @@
               12345.678,
               "{\"k\":[]}",
               "[]",
-              "s:0:\"\";"
+              "s:0:\"\";",
+              1
             ],
-            "sql": "INSERT INTO \"battle\" (\"name\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"display_start_dt\", \"is_display\", \"target_team_player_count\", \"read_count\", \"price\", \"json_setting\", \"jsons_tags\", \"serialize_data\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
+            "sql": "INSERT INTO \"battle\" (\"name\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"display_start_dt\", \"is_display\", \"target_team_player_count\", \"read_count\", \"price\", \"json_setting\", \"jsons_tags\", \"serialize_data\", \"aes_key_version\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
           },
           {
             "binds": [
@@ -1454,7 +1456,7 @@
     },
     {
       "name": "key_by_fn_to_array",
-      "chain": "ServiceMember.serviceSeq(7).orderBySeqAsc().limit(0,2).relationUser(User.flatten()).keyByFn(m => 'u'+m.userSeq).gets → [[key, m.toArray()]] — client-side keying; flatten merges user columns (member keys win)",
+      "chain": "ServiceMember.serviceSeq(7).orderBySeqAsc().limit(0,2).relationUser(User.flatten()).keyByFn(m =\u003e 'u'+m.userSeq).gets → [[key, m.toArray()]] — client-side keying; flatten merges user columns (member keys win)",
       "expect": {
         "result": [
           [
@@ -1534,7 +1536,7 @@
             "binds": [
               5
             ],
-            "sql": "SELECT \"orm_w\".\"a__seq\", \"orm_w\".\"a__user_seq\", \"orm_w\".\"a__service_seq\", \"orm_w\".\"a__service_module_seq\", \"orm_w\".\"a__service_member_seq\" FROM (SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", ROW_NUMBER() OVER (PARTITION BY \"a\".\"user_seq\" ORDER BY \"a\".\"seq\" ASC) AS \"orm_rn\" FROM \"battle\" AS \"a\" WHERE \"a\".\"user_seq\" IN (?)) AS \"orm_w\" WHERE \"orm_w\".\"orm_rn\" <= 2 ORDER BY \"orm_w\".\"a__user_seq\", \"orm_w\".\"orm_rn\""
+            "sql": "SELECT \"orm_w\".\"a__seq\", \"orm_w\".\"a__user_seq\", \"orm_w\".\"a__service_seq\", \"orm_w\".\"a__service_module_seq\", \"orm_w\".\"a__service_member_seq\" FROM (SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", ROW_NUMBER() OVER (PARTITION BY \"a\".\"user_seq\" ORDER BY \"a\".\"seq\" ASC) AS \"orm_rn\" FROM \"battle\" AS \"a\" WHERE \"a\".\"user_seq\" IN (?)) AS \"orm_w\" WHERE \"orm_w\".\"orm_rn\" \u003c= 2 ORDER BY \"orm_w\".\"a__user_seq\", \"orm_w\".\"orm_rn\""
           }
         ]
       }
@@ -1559,9 +1561,10 @@
               1,
               1,
               "2026-06-01 00:00:00.000000",
-              "2026-12-31 00:00:00.000000"
+              "2026-12-31 00:00:00.000000",
+              1
             ],
-            "sql": "INSERT INTO \"battle\" (\"uuid\", \"name\", \"read_count\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
+            "sql": "INSERT INTO \"battle\" (\"uuid\", \"name\", \"read_count\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
           },
           {
             "binds": [
@@ -1580,10 +1583,11 @@
               1,
               "2026-06-01 00:00:00.000000",
               "2026-12-31 00:00:00.000000",
+              1,
               "u2",
               5
             ],
-            "sql": "INSERT INTO \"battle\" (\"uuid\", \"name\", \"read_count\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (\"uuid\") DO UPDATE SET \"name\" = ?, \"read_count\" = \"battle\".\"read_count\" + ? RETURNING \"seq\""
+            "sql": "INSERT INTO \"battle\" (\"uuid\", \"name\", \"read_count\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (\"uuid\") DO UPDATE SET \"name\" = ?, \"read_count\" = \"battle\".\"read_count\" + ? RETURNING \"seq\""
           },
           {
             "binds": [
@@ -1620,9 +1624,10 @@
               1,
               1,
               "2026-06-01 00:00:00.000000",
-              "2026-12-31 00:00:00.000000"
+              "2026-12-31 00:00:00.000000",
+              1
             ],
-            "sql": "INSERT INTO \"battle\" (\"uuid\", \"name\", \"read_count\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
+            "sql": "INSERT INTO \"battle\" (\"uuid\", \"name\", \"read_count\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
           },
           {
             "binds": [
@@ -1641,6 +1646,7 @@
               1,
               "2026-06-01 00:00:00.000000",
               "2026-12-31 00:00:00.000000",
+              1,
               "conf-upsert",
               "u3",
               9,
@@ -1651,7 +1657,7 @@
               "2026-06-01 00:00:00.000000",
               "2026-12-31 00:00:00.000000"
             ],
-            "sql": "INSERT INTO \"battle\" (\"uuid\", \"name\", \"read_count\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (\"uuid\") DO UPDATE SET \"uuid\" = ?, \"name\" = ?, \"read_count\" = ?, \"user_seq\" = ?, \"service_seq\" = ?, \"service_module_seq\" = ?, \"service_member_seq\" = ?, \"start_dt\" = ?, \"end_dt\" = ? RETURNING \"seq\""
+            "sql": "INSERT INTO \"battle\" (\"uuid\", \"name\", \"read_count\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (\"uuid\") DO UPDATE SET \"uuid\" = ?, \"name\" = ?, \"read_count\" = ?, \"user_seq\" = ?, \"service_seq\" = ?, \"service_module_seq\" = ?, \"service_member_seq\" = ?, \"start_dt\" = ?, \"end_dt\" = ? RETURNING \"seq\""
           },
           {
             "binds": [
@@ -1685,9 +1691,10 @@
               1,
               1,
               "2026-06-01 00:00:00.000000",
-              "2026-12-31 00:00:00.000000"
+              "2026-12-31 00:00:00.000000",
+              1
             ],
-            "sql": "INSERT INTO \"battle\" (\"name\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\") VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
+            "sql": "INSERT INTO \"battle\" (\"name\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
           },
           {
             "binds": [
@@ -1738,9 +1745,10 @@
               1,
               1,
               "2026-06-01 00:00:00.000000",
-              "2026-12-31 00:00:00.000000"
+              "2026-12-31 00:00:00.000000",
+              1
             ],
-            "sql": "INSERT INTO \"battle\" (\"read_count\", \"name\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\") VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
+            "sql": "INSERT INTO \"battle\" (\"read_count\", \"name\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
           },
           {
             "binds": [
@@ -1769,7 +1777,7 @@
               "$NOW",
               "$SEQ"
             ],
-            "sql": "UPDATE \"battle\" SET \"read_count\" = CASE WHEN \"battle\".\"read_count\" > ? THEN \"battle\".\"read_count\" - ? ELSE 0 END, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ?"
+            "sql": "UPDATE \"battle\" SET \"read_count\" = CASE WHEN \"battle\".\"read_count\" \u003e ? THEN \"battle\".\"read_count\" - ? ELSE 0 END, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ?"
           },
           {
             "binds": [
@@ -1970,7 +1978,7 @@
     },
     {
       "name": "group_count_having",
-      "chain": "Battle.serviceSeq(7).groupByUserSeq().having(w => w.expr('COUNT(*) > ?',[1])).getCount — number of groups",
+      "chain": "Battle.serviceSeq(7).groupByUserSeq().having(w =\u003e w.expr('COUNT(*) \u003e ?',[1])).getCount — number of groups",
       "expect": {
         "result": 50,
         "statements": [
@@ -1979,7 +1987,7 @@
               7,
               1
             ],
-            "sql": "SELECT COUNT(*) FROM (SELECT 1 FROM \"battle\" AS \"a\" WHERE \"a\".\"service_seq\" = ? GROUP BY \"a\".\"user_seq\" HAVING (COUNT(*) > ?)) AS \"orm_g\""
+            "sql": "SELECT COUNT(*) FROM (SELECT 1 FROM \"battle\" AS \"a\" WHERE \"a\".\"service_seq\" = ? GROUP BY \"a\".\"user_seq\" HAVING (COUNT(*) \u003e ?)) AS \"orm_g\""
           }
         ]
       }
@@ -2004,7 +2012,7 @@
               "2026-01-01 00:00:00",
               7
             ],
-            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" WHERE (\"a\".\"start_dt\" > ?) AND \"a\".\"service_seq\" = ?"
+            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" WHERE (\"a\".\"start_dt\" \u003e ?) AND \"a\".\"service_seq\" = ?"
           }
         ]
       }
@@ -2032,7 +2040,7 @@
     },
     {
       "name": "join_fulltext_or",
-      "chain": "Battle.joinService(Service.where(seqEq 7)).isClose(false).and(w => w.nameWithDescriptionMatchBoolean('battle').or().service(s => s.name('service-999'))).getCount — R9: the fulltext branch does the filtering (the nav branch is false); SQLite rejects fulltext, PostgreSQL uses tsquery, so each dialect records its own count",
+      "chain": "Battle.joinService(Service.where(seqEq 7)).isClose(false).and(w =\u003e w.nameWithDescriptionMatchBoolean('battle').or().service(s =\u003e s.name('service-999'))).getCount — R9: the fulltext branch does the filtering (the nav branch is false); SQLite rejects fulltext, PostgreSQL uses tsquery, so each dialect records its own count",
       "expect": {
         "result": {
           "error": "OPERATOR_NOT_ALLOWED"
@@ -2056,7 +2064,7 @@
               0,
               "%user-4%"
             ],
-            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" INNER JOIN \"service\" AS \"service\" ON \"a\".\"service_seq\" = \"service\".\"seq\" AND \"service\".\"name\" = ? LEFT JOIN \"user\" AS \"user\" ON \"a\".\"user_seq\" = \"user\".\"seq\" WHERE \"a\".\"seq\" IN (?, ?, ?, ?) AND (\"service\".\"seq\" > ?) AND (\"user\".\"name\" LIKE ? ESCAPE '\\')"
+            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" INNER JOIN \"service\" AS \"service\" ON \"a\".\"service_seq\" = \"service\".\"seq\" AND \"service\".\"name\" = ? LEFT JOIN \"user\" AS \"user\" ON \"a\".\"user_seq\" = \"user\".\"seq\" WHERE \"a\".\"seq\" IN (?, ?, ?, ?) AND (\"service\".\"seq\" \u003e ?) AND (\"user\".\"name\" LIKE ? ESCAPE '\\')"
           }
         ]
       }
@@ -2095,7 +2103,7 @@
     },
     {
       "name": "codec_roundtrip",
-      "chain": "transaction(tx => Battle.setName('conf-codec').set…().setJsonSetting(v).setJsonsTags(['x','y']).setBase64Extra(v).setSerializeData(v).setGzExtend(v).setIp('10.1.2.3').insert(tx)); Battle.selectJsonSetting().selectJsonsTags().selectBase64Extra().selectSerializeData().selectGzExtend().seq(seq).get; row.delete — styled columns round-trip (docs/codec.md); gz bind masked as $ZLIB",
+      "chain": "transaction(tx =\u003e Battle.setName('conf-codec').set…().setJsonSetting(v).setJsonsTags(['x','y']).setBase64Extra(v).setSerializeData(v).setGzExtend(v).setIp('10.1.2.3').insert(tx)); Battle.selectJsonSetting().selectJsonsTags().selectBase64Extra().selectSerializeData().selectGzExtend().seq(seq).get; row.delete — styled columns round-trip (docs/codec.md); gz bind masked as $ZLIB",
       "expect": {
         "result": {
           "base64_extra": {
@@ -2171,9 +2179,10 @@
               "YTo1OntzOjE6ImEiO2k6MTtzOjE6ImIiO2E6Mzp7aTowO2k6MTtpOjE7aToyO2k6MjthOjE6e3M6MToiYyI7czoxMjoi7ZWc6riAL3NsYXNoIjt9fXM6MToiZCI7TjtzOjE6ImUiO2I6MTtzOjE6ImYiO2Q6MS41O30=",
               "a:5:{s:1:\"a\";i:1;s:1:\"b\";a:3:{i:0;i:1;i:1;i:2;i:2;a:1:{s:1:\"c\";s:12:\"한글/slash\";}}s:1:\"d\";N;s:1:\"e\";b:1;s:1:\"f\";d:1.5;}",
               "$ZLIB",
-              "\n\u0001\u0002\u0003"
+              "\n\u0001\u0002\u0003",
+              1
             ],
-            "sql": "INSERT INTO \"battle\" (\"name\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"json_setting\", \"jsons_tags\", \"base64_extra\", \"serialize_data\", \"gz_extend\", \"ip\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
+            "sql": "INSERT INTO \"battle\" (\"name\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"json_setting\", \"jsons_tags\", \"base64_extra\", \"serialize_data\", \"gz_extend\", \"ip\", \"aes_key_version\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
           },
           {
             "binds": [
@@ -2198,114 +2207,117 @@
     },
     {
       "name": "interface_original_version",
+      "chain": "",
       "expect": {
-        "statements": [
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
-            "binds": [
-              6
-            ]
-          },
-          {
-            "sql": "UPDATE \"battle\" SET \"updated_ts\" = ?, \"name\" = ? WHERE \"battle\".\"seq\" = ? AND \"battle\".\"updated_ts\" = ?",
-            "binds": [
-              "2002-01-01 00:00:00.000000",
-              "interface-version",
-              6,
-              "$TS"
-            ]
-          },
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
-            "binds": [
-              6
-            ]
-          },
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
-            "binds": [
-              6
-            ]
-          }
-        ],
         "result": {
           "missing_version": "CONFIG",
           "name": "interface-version",
           "pending": "not-written",
           "version_retained": true
-        }
+        },
+        "statements": [
+          {
+            "binds": [
+              6
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              "2002-01-01 00:00:00.000000",
+              "interface-version",
+              6,
+              "$TS"
+            ],
+            "sql": "UPDATE \"battle\" SET \"updated_ts\" = ?, \"name\" = ? WHERE \"battle\".\"seq\" = ? AND \"battle\".\"updated_ts\" = ?"
+          },
+          {
+            "binds": [
+              6
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              6
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+          }
+        ]
       }
     },
     {
       "name": "interface_identity",
+      "chain": "",
       "expect": {
-        "statements": [
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
-            "binds": [
-              6
-            ]
-          },
-          {
-            "sql": "UPDATE \"battle\" SET \"name\" = ?, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ?",
-            "binds": [
-              "identity-original",
-              "$NOW",
-              6
-            ]
-          },
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
-            "binds": [
-              6
-            ]
-          },
-          {
-            "sql": "DELETE FROM \"battle\" WHERE \"battle\".\"seq\" = ?",
-            "binds": [
-              6
-            ]
-          },
-          {
-            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ?",
-            "binds": [
-              6
-            ]
-          },
-          {
-            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ?",
-            "binds": [
-              5
-            ]
-          }
-        ],
         "result": {
           "original_left": 0,
           "other_left": 1,
           "updated": "identity-original"
-        }
+        },
+        "statements": [
+          {
+            "binds": [
+              6
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              "identity-original",
+              "$NOW",
+              6
+            ],
+            "sql": "UPDATE \"battle\" SET \"name\" = ?, \"updated_ts\" = ? WHERE \"battle\".\"seq\" = ?"
+          },
+          {
+            "binds": [
+              6
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_team_player_count\" AS \"a__target_team_player_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"player_count\" AS \"a__player_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"cover_url\" AS \"a__cover_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_play\" AS \"a__is_single_play\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"ip\" AS \"a__ip\" FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              6
+            ],
+            "sql": "DELETE FROM \"battle\" WHERE \"battle\".\"seq\" = ?"
+          },
+          {
+            "binds": [
+              6
+            ],
+            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ?"
+          },
+          {
+            "binds": [
+              5
+            ],
+            "sql": "SELECT COUNT(*) FROM \"battle\" AS \"a\" WHERE \"a\".\"seq\" = ?"
+          }
+        ]
       }
     },
     {
       "name": "interface_nested_keys",
+      "chain": "",
       "expect": {
-        "statements": [
-          {
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
-            "binds": [
-              7
-            ]
-          },
-          {
-            "sql": "SELECT \"orm_w\".\"a__seq\", \"orm_w\".\"a__service_seq\", \"orm_w\".\"a__user_seq\" FROM (SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", ROW_NUMBER() OVER (PARTITION BY \"a\".\"service_seq\" ORDER BY \"a\".\"seq\" ASC) AS \"orm_rn\" FROM \"service_member\" AS \"a\" WHERE \"a\".\"service_seq\" IN (?)) AS \"orm_w\" WHERE \"orm_w\".\"orm_rn\" <= 1 ORDER BY \"orm_w\".\"a__service_seq\", \"orm_w\".\"orm_rn\"",
-            "binds": [
-              7
-            ]
-          }
-        ],
         "result": {
           "error": "IR_INVALID"
-        }
+        },
+        "statements": [
+          {
+            "binds": [
+              7
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              7
+            ],
+            "sql": "SELECT \"orm_w\".\"a__seq\", \"orm_w\".\"a__service_seq\", \"orm_w\".\"a__user_seq\" FROM (SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", ROW_NUMBER() OVER (PARTITION BY \"a\".\"service_seq\" ORDER BY \"a\".\"seq\" ASC) AS \"orm_rn\" FROM \"service_member\" AS \"a\" WHERE \"a\".\"service_seq\" IN (?)) AS \"orm_w\" WHERE \"orm_w\".\"orm_rn\" \u003c= 1 ORDER BY \"orm_w\".\"a__service_seq\", \"orm_w\".\"orm_rn\""
+          }
+        ]
       }
     }
   ]

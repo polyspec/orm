@@ -74,6 +74,7 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 	b.WriteString("import { Collection, Page, Row, registerRow } from '../model.js';\n")
 	b.WriteString("import { registerSchemaHash } from '../registry.js';\n")
 	b.WriteString("import type { Point } from '../codec.js';\n\n")
+	b.WriteString("import type { AesKeyring, AesRotationStatus } from '../index.js';\n")
 	b.WriteString("import { OrmError } from '../runtime_error.js';\n\n")
 	b.WriteString("import type { ")
 	for i, entity := range m.Order {
@@ -107,10 +108,10 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 			fmt.Fprintf(&b, "%s:%s", tsString(c.Name), tsString(kind))
 		}
 		b.WriteString("}; }\n")
-		for _, c := range e.Columns {
+		for i, c := range e.Columns {
 			field, typ := pascal(c.Name), tsType(c)
 			fmt.Fprintf(&b, "  public get%s(fallback?: %s): %s { const value=this.column(%s); return (value ?? fallback ?? null) as %s; }\n", field, typ, typ, tsString(c.Name), typ)
-			if !c.Auto {
+			if !c.Auto && !ge.Cols[i].Managed {
 				styles := appStyles(c)
 				if len(styles) > 0 {
 					quoted := make([]string, len(styles))
@@ -152,6 +153,21 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		b.WriteString("}\n\n")
 
 		fmt.Fprintf(&b, "export class %sQuery extends QueryCore implements %sInterface {\n  public constructor() { super(%s); }\n", ge.Type, ge.Type, tsString(ge.Name))
+		if len(ge.AESCols) > 0 {
+			fmt.Fprintf(&b, "  public aesStatus(keyring: AesKeyring): Promise<AesRotationStatus> { return this.binding.resolve().aesStatus({table:%s,primaryKey:%s,versionColumn:%s,columns:[]},keyring); }\n", tsString(ge.Table), tsString(ge.PK), tsString(ge.AESVersion))
+			fmt.Fprintf(&b, "  public rotateAES(keyring: AesKeyring): Promise<number> { return this.binding.resolve().rotateAESRows({table:%s,primaryKey:%s,versionColumn:%s,columns:[", tsString(ge.Table), tsString(ge.PK), tsString(ge.AESVersion))
+			for i, c := range ge.AESCols {
+				if i > 0 {
+					b.WriteString(",")
+				}
+				styles := make([]string, len(c.Styles))
+				for j, style := range c.Styles {
+					styles[j] = tsString(style)
+				}
+				fmt.Fprintf(&b, "{name:%s,styles:[%s]}", tsString(c.Name), strings.Join(styles, ","))
+			}
+			b.WriteString("]},keyring); }\n")
+		}
 		if ge.Scope != "" {
 			fmt.Fprintf(&b, "  public override scope(value: %s): this { return super.scope(value); }\n", tsType(e.Column(ge.Scope)))
 		}
@@ -164,6 +180,9 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 			fmt.Fprintf(&b, "  public select%s(): this { return this.select(%s); }\n  public omit%s(): this { return this.omit(%s); }\n", c.Field, tsString(c.Name), c.Field, tsString(c.Name))
 			fmt.Fprintf(&b, "  public orderBy%sAsc(): this { return this.orderBy(%s); }\n  public orderBy%sDesc(): this { return this.orderBy(%s,true); }\n", c.Field, tsString(c.Name), c.Field, tsString(c.Name))
 			fmt.Fprintf(&b, "  public groupBy%s(): this { return this.groupBy(%s); }\n  public keyBy%s(): this { return this.keyBy(%s); }\n", c.Field, tsString(c.Name), c.Field, tsString(c.Name))
+			if c.Managed {
+				continue
+			}
 			if len(c.Styles) > 0 {
 				styles := make([]string, len(c.Styles))
 				for i, style := range c.Styles {

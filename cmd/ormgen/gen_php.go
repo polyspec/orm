@@ -128,7 +128,7 @@ final class {{.Type}}Row extends Row implements {{.Type}}RowInterface
         $v = $this->col('{{.Name}}');
         return $v === null ? ($default ?? {{if .Nullable}}null{{else if eq .PhpType "int"}}0{{else if eq .PhpType "float"}}0.0{{else if eq .PhpType "bool"}}false{{else if eq .PhpType "string"}}''{{else if .IsPoint}}[0.0, 0.0]{{else}}null{{end}}) : {{if .IsPoint}}\Orm\Codec::point($v){{else}}$v{{end}};
     }
-{{- if not .Auto}}
+{{- if and (not .Auto) (not .Managed)}}
 {{- if .IsPoint}}
     /** @param {{if .Nullable}}array{float|int,float|int}|null{{else}}array{float|int,float|int}{{end}} $v */
 {{- end}}
@@ -204,6 +204,22 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
 
     private function __construct() { parent::__construct('{{.Name}}'); }
     public static function query(): static { return new static(); }
+{{- if .AESCols}}
+    public function aesStatus(\Orm\AesKeyring $keyring): \Orm\AesRotationStatus
+    {
+        return $this->terminalDb()->aesStatus([
+            'table' => '{{.Table}}', 'primary_key' => '{{.PK}}', 'version_column' => '{{.AESVersion}}', 'columns' => [],
+        ], $keyring);
+    }
+
+    public function rotateAES(\Orm\AesKeyring $keyring): int
+    {
+        return $this->terminalDb()->rotateAESRows([
+            'table' => '{{.Table}}', 'primary_key' => '{{.PK}}', 'version_column' => '{{.AESVersion}}',
+            'columns' => [{{range .AESCols}}['name' => '{{.Name}}', 'styles' => [{{phpList .Styles}}]],{{end}}],
+        ], $keyring);
+    }
+{{- end}}
 
     // ---- WHERE ----
     /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
@@ -303,13 +319,13 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
 {{- end}}{{end}}
 
     // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
-{{- range .Cols}}
+{{- range .Cols}}{{if not .Managed}}
 {{- if .IsPoint}}
     /** @param {{if .Nullable}}array{float|int,float|int}|null{{else}}array{float|int,float|int}{{end}} $v */
 {{- end}}
     public function set{{.Field}}({{if .Nullable}}?{{end}}{{.PhpType}} $v): static { $this->{{if .Styles}}setStyled('{{.Name}}', $v, [{{phpList .Styles}}]){{else}}set('{{.Name}}', $v){{end}}; return $this; }
     public function set{{.Field}}Expr(string $frag, array $binds = []): static { $this->setExpr('{{.Name}}', $frag, $binds); return $this; }
-{{- end}}
+{{- end}}{{end}}
 {{- range .Numeric}}
     public function plus{{.Field}}({{.PhpType}} $v): static { $this->plus('{{.Name}}', $v); return $this; }
     public function minus{{.Field}}({{.PhpType}} $v): static { $this->minus('{{.Name}}', $v); return $this; }
@@ -317,7 +333,7 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
 
     // ---- insert: ON DUPLICATE KEY UPDATE (never the PK/auto columns; the engine refuses them) ----
     public function onDuplicateSetAll(): static { $this->onDuplicateAll([{{phpList .Protected}}]); return $this; }
-{{- range .Cols}}{{if not (or .Auto .PK)}}
+{{- range .Cols}}{{if and (not (or .Auto .PK)) (not .Managed)}}
 {{- if .IsPoint}}
     /** @param {{if .Nullable}}array{float|int,float|int}|null{{else}}array{float|int,float|int}{{end}} $v */
 {{- end}}
@@ -504,6 +520,8 @@ type phpTmplData struct {
 	Fulltext                                                             [][]string
 	Protected                                                            []string // PK and auto columns: never assigned by onDuplicateSetAll
 	Predicates                                                           []phpPred
+	AESCols                                                              []goCol
+	AESVersion                                                           string
 }
 
 func genPHP(m *schema.Manifest, outDir, namespace string) error {
@@ -518,7 +536,7 @@ func genPHP(m *schema.Manifest, outDir, namespace string) error {
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		ge := buildGoEntity(m, e)
-		d := phpTmplData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Namespace: namespace, Rels: ge.Rels, Links: ge.Links, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs, Scope: ge.Scope}
+		d := phpTmplData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Namespace: namespace, Rels: ge.Rels, Links: ge.Links, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs, Scope: ge.Scope, AESCols: ge.AESCols, AESVersion: ge.AESVersion}
 		if ge.Scope != "" {
 			d.ScopeType = phpType(e.Column(ge.Scope))
 		}
@@ -532,7 +550,7 @@ func genPHP(m *schema.Manifest, outDir, namespace string) error {
 			if c.Name == ge.PK {
 				d.PKPhp = pc.PhpType
 			}
-			if c.PK || c.Auto {
+			if c.PK || c.Auto || c.Managed {
 				d.Protected = append(d.Protected, c.Name)
 			}
 		}
