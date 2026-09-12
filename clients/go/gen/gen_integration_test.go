@@ -100,7 +100,7 @@ func open(t *testing.T) *orm.DB {
 	eng := loadEngine(t)
 	var log []string
 	db, err := orm.Open(testDriver(), d, eng, orm.Config{
-		AESKey:  "bench-salt",
+		AESKey: "bench-salt", BlindIndexKey: "bench-blind-index",
 		OnQuery: func(e orm.Event) { log = append(log, normSQL(e.SQL)) },
 	})
 	if err != nil {
@@ -132,6 +132,10 @@ func TestReadPaths(t *testing.T) {
 	}
 	if b.Description != nil {
 		t.Error("lazy column must not be loaded by default")
+	}
+	indexed, err := gen.Battle().Using(ctx, db).GetsByAesHexEmail("user42@example.com")
+	if err != nil || indexed == nil || indexed.First() == nil || indexed.First().GetSeq() != 42 {
+		t.Errorf("AES equality did not use blind index: %v %v", err, indexed)
 	}
 	// data: is_close = seq%7==0, is_display = seq%3!=0 → 42: closed, not displayed
 	if b.CreatedTs.IsZero() || !b.IsClose || b.IsDisplay {
@@ -735,7 +739,7 @@ func TestOpenConfig(t *testing.T) {
 		}
 		return p
 	}
-	good := fmt.Sprintf("schema = %q\n[db]\ndsn = %q\npool = 2\n[secrets]\naes = \"bench-salt\"\n[debug]\non_query = false\n", schemaPath(t), d)
+	good := fmt.Sprintf("schema = %q\n[db]\ndsn = %q\npool = 2\n[secrets]\naes = \"bench-salt\"\nblind_index = \"bench-blind-index\"\n[debug]\non_query = false\n", schemaPath(t), d)
 	bad := map[string]string{
 		"relative": strings.Replace(good, schemaPath(t), "schema/schema.json", 1),
 		"missing":  strings.Replace(good, schemaPath(t), filepath.Join(dir, "nope.json"), 1),

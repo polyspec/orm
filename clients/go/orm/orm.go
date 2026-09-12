@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -25,10 +26,11 @@ import (
 
 // Config is the executor configuration. Paths and secrets are declared, never discovered.
 type Config struct {
-	AESKey     string           // secret "aes" for aes/aes_hex columns
-	AESVersion int32            // secret "aes_version" written with AES payloads; zero selects version 1
-	AESKeys    map[int32]string // all declared versions used to decode mixed-version rows
-	OnQuery    func(Event)
+	AESKey        string           // secret "aes" for aes/aes_hex columns
+	BlindIndexKey string           // stable secret "blind_index" for encrypted equality indexes
+	AESVersion    int32            // secret "aes_version" written with AES payloads; zero selects version 1
+	AESKeys       map[int32]string // all declared versions used to decode mixed-version rows
+	OnQuery       func(Event)
 }
 
 // Event is emitted for every executed statement when Config.OnQuery is set.
@@ -504,7 +506,16 @@ func (d *DB) args(st *plan.Step, r *Req, parentVals []any) (out []any, masks map
 				return nil, nil, err
 			}
 			if len(b.HostStyles) > 0 {
-				if v, err = HostEncode(v, b.HostStyles, d.cfg.AESKey); err != nil {
+				if slices.Contains(b.HostStyles, "blind_index") {
+					if len(b.HostStyles) != 1 {
+						return nil, nil, &ir.Error{Code: CodeConfig, Msg: "blind_index must be the only host style"}
+					}
+					if v == nil {
+						v = nil
+					} else if v, err = BlindIndex(v, d.cfg.BlindIndexKey); err != nil {
+						return nil, nil, err
+					}
+				} else if v, err = HostEncode(v, b.HostStyles, d.cfg.AESKey); err != nil {
 					return nil, nil, err
 				}
 			}

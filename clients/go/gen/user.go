@@ -521,6 +521,31 @@ func (q *UserQuery) joinTarget(child any, kind string) *UserQuery {
 	return q
 }
 
+func (q *UserQuery) JoinSeqWithUserSeqToBattle(child *BattleQuery) *UserQuery {
+	q.q.Join("battles", "inner", child.q)
+	return q
+}
+func (q *UserQuery) LeftJoinSeqWithUserSeqToBattle(child *BattleQuery) *UserQuery {
+	q.q.Join("battles", "left", child.q)
+	return q
+}
+func (q *UserQuery) RelationsSeqWithUserSeqToBattle(child *BattleQuery) *UserQuery {
+	q.q.Relation("battles", child.q)
+	return q
+}
+func (q *UserQuery) JoinSeqWithUserSeqToServiceMember(child *ServiceMemberQuery) *UserQuery {
+	q.q.Join("service_members", "inner", child.q)
+	return q
+}
+func (q *UserQuery) LeftJoinSeqWithUserSeqToServiceMember(child *ServiceMemberQuery) *UserQuery {
+	q.q.Join("service_members", "left", child.q)
+	return q
+}
+func (q *UserQuery) RelationsSeqWithUserSeqToServiceMember(child *ServiceMemberQuery) *UserQuery {
+	q.q.Relation("service_members", child.q)
+	return q
+}
+
 func (q *UserQuery) MatchUserSeqWithSeq() *UserQuery { q.q.SetLink("user_seq", "seq"); return q }
 func (q *UserQuery) OnUserSeqWithSeq() *UserQuery    { q.q.SetLink("user_seq", "seq"); return q }
 
@@ -649,8 +674,16 @@ func (q *UserQuery) IfParentAesHexEmailEq(v string) *UserQuery {
 	q.q.IfParent("aes_hex_email", v)
 	return q
 }
+func (q *UserQuery) IfParentEmailBlindIndexEq(v string) *UserQuery {
+	q.q.IfParent("email_blind_index", v)
+	return q
+}
 func (q *UserQuery) IfParentAesHexPhoneEq(v string) *UserQuery {
 	q.q.IfParent("aes_hex_phone", v)
+	return q
+}
+func (q *UserQuery) IfParentPhoneBlindIndexEq(v string) *UserQuery {
+	q.q.IfParent("phone_blind_index", v)
 	return q
 }
 

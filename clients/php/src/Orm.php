@@ -48,7 +48,7 @@ final class Orm
     {
         $cfg = Toml::parseFile($path);
         // docs/config.md is the whole vocabulary; a key outside it is a typo, not an extension (strict, like Go).
-        $known = ['schema' => true, 'db' => ['driver', 'dsn', 'user', 'password', 'pool'], 'secrets' => ['aes', 'aes_env', 'aes_keys', 'aes_version'], 'engine' => ['wasm', 'cache_dir'], 'ormd' => ['endpoint', 'timeout_ms', 'socket'], 'debug' => ['on_query']];
+        $known = ['schema' => true, 'db' => ['driver', 'dsn', 'user', 'password', 'pool'], 'secrets' => ['aes', 'aes_env', 'aes_keys', 'aes_version', 'blind_index', 'blind_index_env'], 'engine' => ['wasm', 'cache_dir'], 'ormd' => ['endpoint', 'timeout_ms', 'socket'], 'debug' => ['on_query']];
         foreach ($cfg as $k => $v) {
             if (!isset($known[$k])) {
                 throw new OrmException(Code::CONFIG, "$path: unknown key $k");
@@ -104,6 +104,7 @@ final class Orm
         }
         $secrets = $cfg['secrets'] ?? [];
         $aesKey = '';
+        $blindIndexKey = '';
         $aesVersion = 1;
         $aesKeys = [];
         if (isset($secrets['aes'], $secrets['aes_env'])) {
@@ -119,6 +120,16 @@ final class Orm
         }
         if (!is_string($aesKey)) {
             throw new OrmException(Code::CONFIG, "$path: secrets.aes must be a string");
+        }
+        if (isset($secrets['blind_index'], $secrets['blind_index_env'])) {
+            throw new OrmException(Code::CONFIG, "$path: secrets.blind_index and secrets.blind_index_env are exclusive");
+        }
+        if (isset($secrets['blind_index'])) {
+            if (!is_string($secrets['blind_index']) || $secrets['blind_index'] === '') throw new OrmException(Code::CONFIG, "$path: secrets.blind_index must be a non-empty string");
+            $blindIndexKey = $secrets['blind_index'];
+        } elseif (isset($secrets['blind_index_env'])) {
+            $blindIndexKey = (string) getenv((string) $secrets['blind_index_env']);
+            if ($blindIndexKey === '') throw new OrmException(Code::CONFIG, "$path: environment variable {$secrets['blind_index_env']} (secrets.blind_index_env) is empty");
         }
         if (isset($secrets['aes_keys'])) {
             if (isset($secrets['aes']) || isset($secrets['aes_env']) || !is_array($secrets['aes_keys'])) {
@@ -148,9 +159,12 @@ final class Orm
                     json_encode($binds, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $err === null ? '' : ' ! ' . $err->getMessage()));
             };
         }
-        $config = new Config(socket: $socket, schemaPath: $schemaPath, aesKey: $aesKey, aesVersion: $aesVersion, aesKeys: $aesKeys, onQuery: $onQuery, driver: $driver, endpoint: $endpoint, timeoutSeconds: $timeoutMs / 1000);
+        $config = new Config(socket: $socket, schemaPath: $schemaPath, aesKey: $aesKey, blindIndexKey: $blindIndexKey, aesVersion: $aesVersion, aesKeys: $aesKeys, onQuery: $onQuery, driver: $driver, endpoint: $endpoint, timeoutSeconds: $timeoutMs / 1000);
         if ($aesKey === '' && $config->hasSecretColumns()) {
             throw new OrmException(Code::CONFIG, "$path: the schema has aes columns; secrets.aes or secrets.aes_env is required");
+        }
+        if ($blindIndexKey === '' && $config->hasBlindIndexColumns()) {
+            throw new OrmException(Code::CONFIG, "$path: the schema has blind indexes; secrets.blind_index or secrets.blind_index_env is required");
         }
         self::init($config);
         return match ($driver) {
@@ -222,6 +236,8 @@ final class Config
         public readonly string $schemaPath,
         /** secret "aes" for aes/aes_hex columns */
         public readonly string $aesKey = '',
+        /** stable secret "blind_index" for encrypted equality indexes */
+        public readonly string $blindIndexKey = '',
         /** version stored in aes_key_version with new AES values */
         public readonly int $aesVersion = 1,
         /** @var array<int,string> all declared versions for mixed-version reads */
@@ -298,6 +314,12 @@ final class Config
                 }
             }
         }
+        return false;
+    }
+
+    private function hasBlindIndexColumns(): bool
+    {
+        foreach ($this->manifest()['entities'] ?? [] as $e) foreach ($e['columns'] ?? [] as $c) if (($c['blind_index'] ?? '') !== '') return true;
         return false;
     }
 }

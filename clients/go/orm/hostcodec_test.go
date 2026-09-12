@@ -41,6 +41,24 @@ func TestHostAESReadsSharedFixedVector(t *testing.T) {
 	}
 }
 
+func TestBlindIndexIsStableAndKeyed(t *testing.T) {
+	a, err := BlindIndex("member@example.test", "blind-key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := BlindIndex("member@example.test", "blind-key")
+	if err != nil || a != b || len(a) != 64 {
+		t.Fatalf("stable index = %q %v", a, err)
+	}
+	c, err := BlindIndex("member@example.test", "other-key")
+	if err != nil || a == c {
+		t.Fatalf("different key produced same index: %q", a)
+	}
+	if _, err := BlindIndex("x", ""); err == nil {
+		t.Fatal("missing blind-index key was accepted")
+	}
+}
+
 func TestHostAESDecodesByStoredVersion(t *testing.T) {
 	oldValue, err := HostEncode("old@example.test", []string{"aes"}, "old-key")
 	if err != nil {

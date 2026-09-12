@@ -4,7 +4,7 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 use App\Orm\Battle; use Orm\Config; use Orm\Db; use Orm\Orm;
 [$sock, $schema, $iters] = [$argv[1], $argv[2], (int)($argv[3] ?? 3000)];
-Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt'));
+Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
 $db = Db::mysql(orm_test_dsn(), 'root', '');
 function stats(string $name, array $s): void { sort($s); $n = count($s); $p = fn($q) => $s[(int)(($n-1)*$q)];
     printf("%-30s n=%-6d mean=%8.0fns p50=%8dns p90=%8dns p99=%8dns\n", $name, $n, array_sum($s)/$n, $p(.5), $p(.9), $p(.99)); }

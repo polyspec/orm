@@ -9,7 +9,7 @@ import { OrmError } from '../runtime_error.js';
 
 import type { BattleInterface, BattleRowInterface, UserInterface, UserRowInterface, ServiceInterface, ServiceRowInterface, ServiceModuleInterface, ServiceModuleRowInterface, ServiceMemberInterface, ServiceMemberRowInterface, CompositeAccountInterface, CompositeAccountRowInterface, CompositeMembershipInterface, CompositeMembershipRowInterface } from './interfaces.js';
 
-export const SCHEMA_HASH = 'b1c0032faa9fe8df';
+export const SCHEMA_HASH = 'e37cee16c4377321';
 registerSchemaHash(SCHEMA_HASH);
 
 export interface BattleKey { readonly seq:number; }
@@ -17,7 +17,7 @@ export class BattleRow extends Row implements BattleRowInterface {
   public static override entity(): string { return 'battle'; }
   public static override primaryKeys(): readonly string[] { return ['seq']; }
   public static override versionColumn(): string { return 'updated_ts'; }
-  public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','name':'string','description':'text','created_ts':'datetime','updated_ts':'datetime','is_close':'bool','is_display':'bool','display_start_dt':'datetime','display_end_dt':'datetime','is_allday':'bool','target_team_player_count':'i64','success_count':'i64','player_count':'i64','read_count':'i64','cover_url':'string','user_seq':'i64','service_seq':'i64','service_module_seq':'i64','service_member_seq':'i64','start_dt':'datetime','end_dt':'datetime','uuid':'string','is_single_play':'bool','like_count':'i64','aes_key_version':'i32','aes_hex_email':'string','aes_hex_phone':'string','price':'decimal','ip':'inet','gz_extend':'styled','json_setting':'styled','jsons_tags':'styled','base64_extra':'styled','serialize_data':'styled'}; }
+  public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','name':'string','description':'text','created_ts':'datetime','updated_ts':'datetime','is_close':'bool','is_display':'bool','display_start_dt':'datetime','display_end_dt':'datetime','is_allday':'bool','target_team_player_count':'i64','success_count':'i64','player_count':'i64','read_count':'i64','cover_url':'string','user_seq':'i64','service_seq':'i64','service_module_seq':'i64','service_member_seq':'i64','start_dt':'datetime','end_dt':'datetime','uuid':'string','is_single_play':'bool','like_count':'i64','aes_key_version':'i32','aes_hex_email':'string','email_blind_index':'string','aes_hex_phone':'string','phone_blind_index':'string','price':'decimal','ip':'inet','gz_extend':'styled','json_setting':'styled','jsons_tags':'styled','base64_extra':'styled','serialize_data':'styled'}; }
   public getSeq(fallback?: number): number { const value=this.column('seq'); return (value ?? fallback ?? null) as number; }
   public getName(fallback?: string): string { const value=this.column('name'); return (value ?? fallback ?? null) as string; }
   public setName(value: string): this { return this.setColumn('name',value); }
@@ -68,8 +68,12 @@ export class BattleRow extends Row implements BattleRowInterface {
   public getAesKeyVersion(fallback?: number): number { const value=this.column('aes_key_version'); return (value ?? fallback ?? null) as number; }
   public getAesHexEmail(fallback?: string | null): string | null { const value=this.column('aes_hex_email'); return (value ?? fallback ?? null) as string | null; }
   public setAesHexEmail(value: string | null): this { return this.setColumn('aes_hex_email',value); }
+  public getEmailBlindIndex(fallback?: string | null): string | null { const value=this.column('email_blind_index'); return (value ?? fallback ?? null) as string | null; }
+  public setEmailBlindIndex(value: string | null): this { return this.setColumn('email_blind_index',value); }
   public getAesHexPhone(fallback?: string | null): string | null { const value=this.column('aes_hex_phone'); return (value ?? fallback ?? null) as string | null; }
   public setAesHexPhone(value: string | null): this { return this.setColumn('aes_hex_phone',value); }
+  public getPhoneBlindIndex(fallback?: string | null): string | null { const value=this.column('phone_blind_index'); return (value ?? fallback ?? null) as string | null; }
+  public setPhoneBlindIndex(value: string | null): this { return this.setColumn('phone_blind_index',value); }
   public getPrice(fallback?: number | null): number | null { const value=this.column('price'); return (value ?? fallback ?? null) as number | null; }
   public setPrice(value: number | null): this { return this.setColumn('price',value); }
   public getIp(fallback?: string | null): string | null { const value=this.column('ip'); return (value ?? fallback ?? null) as string | null; }
@@ -199,7 +203,9 @@ export class BattleColumns {
   public static likeCount(): ColumnReference { return new ColumnReference('like_count'); }
   public static aesKeyVersion(): ColumnReference { return new ColumnReference('aes_key_version'); }
   public static aesHexEmail(): ColumnReference { return new ColumnReference('aes_hex_email'); }
+  public static emailBlindIndex(): ColumnReference { return new ColumnReference('email_blind_index'); }
   public static aesHexPhone(): ColumnReference { return new ColumnReference('aes_hex_phone'); }
+  public static phoneBlindIndex(): ColumnReference { return new ColumnReference('phone_blind_index'); }
   public static price(): ColumnReference { return new ColumnReference('price'); }
   public static ip(): ColumnReference { return new ColumnReference('ip'); }
   public static gzExtend(): ColumnReference { return new ColumnReference('gz_extend'); }
@@ -613,6 +619,20 @@ export class BattleWhere {
   public aesHexEmailIsNotNull(): this { this.core.predicateNull('aes_hex_email','is_not_null'); return this; }
   public aesHexEmailEqCol(reference: ColumnReference): this { this.core.predicateColumn('aes_hex_email','eq_col',reference); return this; }
   public aesHexEmailNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('aes_hex_email','not_eq_col',reference); return this; }
+  public emailBlindIndexEq(value: string): this { this.core.predicate('email_blind_index','eq',value); return this; }
+  public emailBlindIndex(value: string): this { return this.emailBlindIndexEq(value); }
+  public emailBlindIndexNotEq(value: string): this { this.core.predicate('email_blind_index','not_eq',value); return this; }
+  public emailBlindIndexIn(values: readonly (string)[]): this { this.core.predicateList('email_blind_index','in',values); return this; }
+  public emailBlindIndexNotIn(values: readonly (string)[]): this { this.core.predicateList('email_blind_index','not_in',values); return this; }
+  public emailBlindIndexLike(value: string): this { this.core.predicate('email_blind_index','like',value); return this; }
+  public emailBlindIndexLikeBinary(value: string): this { this.core.predicate('email_blind_index','like_binary',value); return this; }
+  public emailBlindIndexContains(value: string): this { this.core.predicate('email_blind_index','contains',value); return this; }
+  public emailBlindIndexStartsWith(value: string): this { this.core.predicate('email_blind_index','starts_with',value); return this; }
+  public emailBlindIndexEndsWith(value: string): this { this.core.predicate('email_blind_index','ends_with',value); return this; }
+  public emailBlindIndexIsNull(): this { this.core.predicateNull('email_blind_index','is_null'); return this; }
+  public emailBlindIndexIsNotNull(): this { this.core.predicateNull('email_blind_index','is_not_null'); return this; }
+  public emailBlindIndexEqCol(reference: ColumnReference): this { this.core.predicateColumn('email_blind_index','eq_col',reference); return this; }
+  public emailBlindIndexNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('email_blind_index','not_eq_col',reference); return this; }
   public aesHexPhoneEq(value: string): this { this.core.predicate('aes_hex_phone','eq',value); return this; }
   public aesHexPhone(value: string): this { return this.aesHexPhoneEq(value); }
   public aesHexPhoneNotEq(value: string): this { this.core.predicate('aes_hex_phone','not_eq',value); return this; }
@@ -622,6 +642,20 @@ export class BattleWhere {
   public aesHexPhoneIsNotNull(): this { this.core.predicateNull('aes_hex_phone','is_not_null'); return this; }
   public aesHexPhoneEqCol(reference: ColumnReference): this { this.core.predicateColumn('aes_hex_phone','eq_col',reference); return this; }
   public aesHexPhoneNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('aes_hex_phone','not_eq_col',reference); return this; }
+  public phoneBlindIndexEq(value: string): this { this.core.predicate('phone_blind_index','eq',value); return this; }
+  public phoneBlindIndex(value: string): this { return this.phoneBlindIndexEq(value); }
+  public phoneBlindIndexNotEq(value: string): this { this.core.predicate('phone_blind_index','not_eq',value); return this; }
+  public phoneBlindIndexIn(values: readonly (string)[]): this { this.core.predicateList('phone_blind_index','in',values); return this; }
+  public phoneBlindIndexNotIn(values: readonly (string)[]): this { this.core.predicateList('phone_blind_index','not_in',values); return this; }
+  public phoneBlindIndexLike(value: string): this { this.core.predicate('phone_blind_index','like',value); return this; }
+  public phoneBlindIndexLikeBinary(value: string): this { this.core.predicate('phone_blind_index','like_binary',value); return this; }
+  public phoneBlindIndexContains(value: string): this { this.core.predicate('phone_blind_index','contains',value); return this; }
+  public phoneBlindIndexStartsWith(value: string): this { this.core.predicate('phone_blind_index','starts_with',value); return this; }
+  public phoneBlindIndexEndsWith(value: string): this { this.core.predicate('phone_blind_index','ends_with',value); return this; }
+  public phoneBlindIndexIsNull(): this { this.core.predicateNull('phone_blind_index','is_null'); return this; }
+  public phoneBlindIndexIsNotNull(): this { this.core.predicateNull('phone_blind_index','is_not_null'); return this; }
+  public phoneBlindIndexEqCol(reference: ColumnReference): this { this.core.predicateColumn('phone_blind_index','eq_col',reference); return this; }
+  public phoneBlindIndexNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('phone_blind_index','not_eq_col',reference); return this; }
   public priceEq(value: number): this { this.core.predicate('price','eq',value); return this; }
   public price(value: number): this { return this.priceEq(value); }
   public priceNotEq(value: number): this { this.core.predicate('price','not_eq',value); return this; }
@@ -1075,6 +1109,20 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public aesHexEmailIsNotNull(): this { this.predicateNull('aes_hex_email','is_not_null'); return this; }
   public aesHexEmailEqCol(reference: ColumnReference): this { this.predicateColumn('aes_hex_email','eq_col',reference); return this; }
   public aesHexEmailNotEqCol(reference: ColumnReference): this { this.predicateColumn('aes_hex_email','not_eq_col',reference); return this; }
+  public emailBlindIndexEq(value: string): this { this.predicate('email_blind_index','eq',value); return this; }
+  public emailBlindIndex(value: string): this { return this.emailBlindIndexEq(value); }
+  public emailBlindIndexNotEq(value: string): this { this.predicate('email_blind_index','not_eq',value); return this; }
+  public emailBlindIndexIn(values: readonly (string)[]): this { this.predicateList('email_blind_index','in',values); return this; }
+  public emailBlindIndexNotIn(values: readonly (string)[]): this { this.predicateList('email_blind_index','not_in',values); return this; }
+  public emailBlindIndexLike(value: string): this { this.predicate('email_blind_index','like',value); return this; }
+  public emailBlindIndexLikeBinary(value: string): this { this.predicate('email_blind_index','like_binary',value); return this; }
+  public emailBlindIndexContains(value: string): this { this.predicate('email_blind_index','contains',value); return this; }
+  public emailBlindIndexStartsWith(value: string): this { this.predicate('email_blind_index','starts_with',value); return this; }
+  public emailBlindIndexEndsWith(value: string): this { this.predicate('email_blind_index','ends_with',value); return this; }
+  public emailBlindIndexIsNull(): this { this.predicateNull('email_blind_index','is_null'); return this; }
+  public emailBlindIndexIsNotNull(): this { this.predicateNull('email_blind_index','is_not_null'); return this; }
+  public emailBlindIndexEqCol(reference: ColumnReference): this { this.predicateColumn('email_blind_index','eq_col',reference); return this; }
+  public emailBlindIndexNotEqCol(reference: ColumnReference): this { this.predicateColumn('email_blind_index','not_eq_col',reference); return this; }
   public aesHexPhoneEq(value: string): this { this.predicate('aes_hex_phone','eq',value); return this; }
   public aesHexPhone(value: string): this { return this.aesHexPhoneEq(value); }
   public aesHexPhoneNotEq(value: string): this { this.predicate('aes_hex_phone','not_eq',value); return this; }
@@ -1084,6 +1132,20 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public aesHexPhoneIsNotNull(): this { this.predicateNull('aes_hex_phone','is_not_null'); return this; }
   public aesHexPhoneEqCol(reference: ColumnReference): this { this.predicateColumn('aes_hex_phone','eq_col',reference); return this; }
   public aesHexPhoneNotEqCol(reference: ColumnReference): this { this.predicateColumn('aes_hex_phone','not_eq_col',reference); return this; }
+  public phoneBlindIndexEq(value: string): this { this.predicate('phone_blind_index','eq',value); return this; }
+  public phoneBlindIndex(value: string): this { return this.phoneBlindIndexEq(value); }
+  public phoneBlindIndexNotEq(value: string): this { this.predicate('phone_blind_index','not_eq',value); return this; }
+  public phoneBlindIndexIn(values: readonly (string)[]): this { this.predicateList('phone_blind_index','in',values); return this; }
+  public phoneBlindIndexNotIn(values: readonly (string)[]): this { this.predicateList('phone_blind_index','not_in',values); return this; }
+  public phoneBlindIndexLike(value: string): this { this.predicate('phone_blind_index','like',value); return this; }
+  public phoneBlindIndexLikeBinary(value: string): this { this.predicate('phone_blind_index','like_binary',value); return this; }
+  public phoneBlindIndexContains(value: string): this { this.predicate('phone_blind_index','contains',value); return this; }
+  public phoneBlindIndexStartsWith(value: string): this { this.predicate('phone_blind_index','starts_with',value); return this; }
+  public phoneBlindIndexEndsWith(value: string): this { this.predicate('phone_blind_index','ends_with',value); return this; }
+  public phoneBlindIndexIsNull(): this { this.predicateNull('phone_blind_index','is_null'); return this; }
+  public phoneBlindIndexIsNotNull(): this { this.predicateNull('phone_blind_index','is_not_null'); return this; }
+  public phoneBlindIndexEqCol(reference: ColumnReference): this { this.predicateColumn('phone_blind_index','eq_col',reference); return this; }
+  public phoneBlindIndexNotEqCol(reference: ColumnReference): this { this.predicateColumn('phone_blind_index','not_eq_col',reference); return this; }
   public priceEq(value: number): this { this.predicate('price','eq',value); return this; }
   public price(value: number): this { return this.priceEq(value); }
   public priceNotEq(value: number): this { this.predicate('price','not_eq',value); return this; }
@@ -1390,6 +1452,17 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public setAesHexEmailExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('aes_hex_email',expression,values); }
   public onDuplicateSetAesHexEmailExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('aes_hex_email',expression,values); }
   public setAesHexEmailNull(): this { return this.setNull('aes_hex_email'); }
+  public selectEmailBlindIndex(): this { return this.select('email_blind_index'); }
+  public omitEmailBlindIndex(): this { return this.omit('email_blind_index'); }
+  public orderByEmailBlindIndexAsc(): this { return this.orderBy('email_blind_index'); }
+  public orderByEmailBlindIndexDesc(): this { return this.orderBy('email_blind_index',true); }
+  public groupByEmailBlindIndex(): this { return this.groupBy('email_blind_index'); }
+  public keyByEmailBlindIndex(): this { return this.keyBy('email_blind_index'); }
+  public setEmailBlindIndex(value: string | null): this { return this.set('email_blind_index',value); }
+  public onDuplicateSetEmailBlindIndex(value: string | null): this { return this.duplicate('email_blind_index',value); }
+  public setEmailBlindIndexExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('email_blind_index',expression,values); }
+  public onDuplicateSetEmailBlindIndexExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('email_blind_index',expression,values); }
+  public setEmailBlindIndexNull(): this { return this.setNull('email_blind_index'); }
   public selectAesHexPhone(): this { return this.select('aes_hex_phone'); }
   public omitAesHexPhone(): this { return this.omit('aes_hex_phone'); }
   public orderByAesHexPhoneAsc(): this { return this.orderBy('aes_hex_phone'); }
@@ -1401,6 +1474,17 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public setAesHexPhoneExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('aes_hex_phone',expression,values); }
   public onDuplicateSetAesHexPhoneExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('aes_hex_phone',expression,values); }
   public setAesHexPhoneNull(): this { return this.setNull('aes_hex_phone'); }
+  public selectPhoneBlindIndex(): this { return this.select('phone_blind_index'); }
+  public omitPhoneBlindIndex(): this { return this.omit('phone_blind_index'); }
+  public orderByPhoneBlindIndexAsc(): this { return this.orderBy('phone_blind_index'); }
+  public orderByPhoneBlindIndexDesc(): this { return this.orderBy('phone_blind_index',true); }
+  public groupByPhoneBlindIndex(): this { return this.groupBy('phone_blind_index'); }
+  public keyByPhoneBlindIndex(): this { return this.keyBy('phone_blind_index'); }
+  public setPhoneBlindIndex(value: string | null): this { return this.set('phone_blind_index',value); }
+  public onDuplicateSetPhoneBlindIndex(value: string | null): this { return this.duplicate('phone_blind_index',value); }
+  public setPhoneBlindIndexExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('phone_blind_index',expression,values); }
+  public onDuplicateSetPhoneBlindIndexExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('phone_blind_index',expression,values); }
+  public setPhoneBlindIndexNull(): this { return this.setNull('phone_blind_index'); }
   public selectPrice(): this { return this.select('price'); }
   public omitPrice(): this { return this.omit('price'); }
   public orderByPriceAsc(): this { return this.orderBy('price'); }
@@ -1614,6 +1698,12 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public async minAesKeyVersion(): Promise<unknown> { this.request.ir.agg='aes_key_version'; return this.terminal('min'); }
   public async maxAesKeyVersion(): Promise<unknown> { this.request.ir.agg='aes_key_version'; return this.terminal('max'); }
   public async countDistinctAesKeyVersion(): Promise<number> { this.request.ir.agg='aes_key_version'; return Number(await this.terminal('count_distinct')); }
+  public async minEmailBlindIndex(): Promise<unknown> { this.request.ir.agg='email_blind_index'; return this.terminal('min'); }
+  public async maxEmailBlindIndex(): Promise<unknown> { this.request.ir.agg='email_blind_index'; return this.terminal('max'); }
+  public async countDistinctEmailBlindIndex(): Promise<number> { this.request.ir.agg='email_blind_index'; return Number(await this.terminal('count_distinct')); }
+  public async minPhoneBlindIndex(): Promise<unknown> { this.request.ir.agg='phone_blind_index'; return this.terminal('min'); }
+  public async maxPhoneBlindIndex(): Promise<unknown> { this.request.ir.agg='phone_blind_index'; return this.terminal('max'); }
+  public async countDistinctPhoneBlindIndex(): Promise<number> { this.request.ir.agg='phone_blind_index'; return Number(await this.terminal('count_distinct')); }
   public async minPrice(): Promise<unknown> { this.request.ir.agg='price'; return this.terminal('min'); }
   public async maxPrice(): Promise<unknown> { this.request.ir.agg='price'; return this.terminal('max'); }
   public async countDistinctPrice(): Promise<number> { this.request.ir.agg='price'; return Number(await this.terminal('count_distinct')); }
@@ -1745,9 +1835,15 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public async getByAesHexEmail(value: string): Promise<BattleRow | null> { this.predicate('aes_hex_email','eq',value); return this.get(); }
   public async getsByAesHexEmail(value: string): Promise<Collection<BattleRow>> { this.predicate('aes_hex_email','eq',value); return this.gets(); }
   public async getCountByAesHexEmail(value: string): Promise<number> { this.predicate('aes_hex_email','eq',value); return this.getCount(); }
+  public async getByEmailBlindIndex(value: string): Promise<BattleRow | null> { this.predicate('email_blind_index','eq',value); return this.get(); }
+  public async getsByEmailBlindIndex(value: string): Promise<Collection<BattleRow>> { this.predicate('email_blind_index','eq',value); return this.gets(); }
+  public async getCountByEmailBlindIndex(value: string): Promise<number> { this.predicate('email_blind_index','eq',value); return this.getCount(); }
   public async getByAesHexPhone(value: string): Promise<BattleRow | null> { this.predicate('aes_hex_phone','eq',value); return this.get(); }
   public async getsByAesHexPhone(value: string): Promise<Collection<BattleRow>> { this.predicate('aes_hex_phone','eq',value); return this.gets(); }
   public async getCountByAesHexPhone(value: string): Promise<number> { this.predicate('aes_hex_phone','eq',value); return this.getCount(); }
+  public async getByPhoneBlindIndex(value: string): Promise<BattleRow | null> { this.predicate('phone_blind_index','eq',value); return this.get(); }
+  public async getsByPhoneBlindIndex(value: string): Promise<Collection<BattleRow>> { this.predicate('phone_blind_index','eq',value); return this.gets(); }
+  public async getCountByPhoneBlindIndex(value: string): Promise<number> { this.predicate('phone_blind_index','eq',value); return this.getCount(); }
   public async getByPrice(value: number): Promise<BattleRow | null> { this.predicate('price','eq',value); return this.get(); }
   public async getsByPrice(value: number): Promise<Collection<BattleRow>> { this.predicate('price','eq',value); return this.gets(); }
   public async getCountByPrice(value: number): Promise<number> { this.predicate('price','eq',value); return this.getCount(); }
@@ -1905,7 +2001,9 @@ export class UserQuery extends QueryCore implements UserInterface {
   public ifParentLikeCountEq(value: unknown): this { return this.ifParent('like_count',value); }
   public ifParentAesKeyVersionEq(value: unknown): this { return this.ifParent('aes_key_version',value); }
   public ifParentAesHexEmailEq(value: unknown): this { return this.ifParent('aes_hex_email',value); }
+  public ifParentEmailBlindIndexEq(value: unknown): this { return this.ifParent('email_blind_index',value); }
   public ifParentAesHexPhoneEq(value: unknown): this { return this.ifParent('aes_hex_phone',value); }
+  public ifParentPhoneBlindIndexEq(value: unknown): this { return this.ifParent('phone_blind_index',value); }
   public ifParentPriceEq(value: unknown): this { return this.ifParent('price',value); }
   public ifParentIpEq(value: unknown): this { return this.ifParent('ip',value); }
   public ifParentGzExtendEq(value: unknown): this { return this.ifParent('gz_extend',value); }
@@ -1917,6 +2015,12 @@ export class UserQuery extends QueryCore implements UserInterface {
   public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
   public battles(callback: (where: BattleWhere) => void): this { this.whereCore().navigate('battles',core=>callback(new BattleWhere(core))); return this; }
   public serviceMembers(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigate('service_members',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public joinSeqWithUserSeqToBattle(child: BattleQuery): this { return this.attachJoin('battles',child,'inner'); }
+  public leftJoinSeqWithUserSeqToBattle(child: BattleQuery): this { return this.attachJoin('battles',child,'left'); }
+  public relationsSeqWithUserSeqToBattle(child: BattleQuery): this { return this.attachRelation('battles',child); }
+  public joinSeqWithUserSeqToServiceMember(child: ServiceMemberQuery): this { return this.attachJoin('service_members',child,'inner'); }
+  public leftJoinSeqWithUserSeqToServiceMember(child: ServiceMemberQuery): this { return this.attachJoin('service_members',child,'left'); }
+  public relationsSeqWithUserSeqToServiceMember(child: ServiceMemberQuery): this { return this.attachRelation('service_members',child); }
   private resolveRelation(child: QueryCore, expected?: 'one'|'many'): string { const entity=child.request.ir.entity; const link=child.linkSelection; const candidates=this.relationDefinitions().filter(value=>value.target===entity&&(!expected||value.kind===expected)&&(!link||(value.left===link.parentKey&&value.right===link.childKey))); if(candidates.length!==1) throw new OrmError('IR_INVALID', `relation from ${this.request.ir.entity} to ${entity} is ${candidates.length===0?'not declared':'ambiguous'}; select a key pair`); return candidates[0]!.name; }
   private relationDefinitions(): ReadonlyArray<{name:string;kind:'one'|'many';target:string;left:string;right:string}> { return [{name:'battles',kind:'many',target:'battle',left:'seq',right:'user_seq'},{name:'service_members',kind:'many',target:'service_member',left:'seq',right:'user_seq'}]; }
   public join(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'inner'); }
@@ -2094,7 +2198,9 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public ifParentLikeCountEq(value: unknown): this { return this.ifParent('like_count',value); }
   public ifParentAesKeyVersionEq(value: unknown): this { return this.ifParent('aes_key_version',value); }
   public ifParentAesHexEmailEq(value: unknown): this { return this.ifParent('aes_hex_email',value); }
+  public ifParentEmailBlindIndexEq(value: unknown): this { return this.ifParent('email_blind_index',value); }
   public ifParentAesHexPhoneEq(value: unknown): this { return this.ifParent('aes_hex_phone',value); }
+  public ifParentPhoneBlindIndexEq(value: unknown): this { return this.ifParent('phone_blind_index',value); }
   public ifParentPriceEq(value: unknown): this { return this.ifParent('price',value); }
   public ifParentIpEq(value: unknown): this { return this.ifParent('ip',value); }
   public ifParentGzExtendEq(value: unknown): this { return this.ifParent('gz_extend',value); }
@@ -2107,6 +2213,15 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public battles(callback: (where: BattleWhere) => void): this { this.whereCore().navigate('battles',core=>callback(new BattleWhere(core))); return this; }
   public members(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigate('members',core=>callback(new ServiceMemberWhere(core))); return this; }
   public modules(callback: (where: ServiceModuleWhere) => void): this { this.whereCore().navigate('modules',core=>callback(new ServiceModuleWhere(core))); return this; }
+  public joinSeqWithServiceSeqToBattle(child: BattleQuery): this { return this.attachJoin('battles',child,'inner'); }
+  public leftJoinSeqWithServiceSeqToBattle(child: BattleQuery): this { return this.attachJoin('battles',child,'left'); }
+  public relationsSeqWithServiceSeqToBattle(child: BattleQuery): this { return this.attachRelation('battles',child); }
+  public joinSeqWithServiceSeqToServiceMember(child: ServiceMemberQuery): this { return this.attachJoin('members',child,'inner'); }
+  public leftJoinSeqWithServiceSeqToServiceMember(child: ServiceMemberQuery): this { return this.attachJoin('members',child,'left'); }
+  public relationsSeqWithServiceSeqToServiceMember(child: ServiceMemberQuery): this { return this.attachRelation('members',child); }
+  public joinSeqWithServiceSeqToServiceModule(child: ServiceModuleQuery): this { return this.attachJoin('modules',child,'inner'); }
+  public leftJoinSeqWithServiceSeqToServiceModule(child: ServiceModuleQuery): this { return this.attachJoin('modules',child,'left'); }
+  public relationsSeqWithServiceSeqToServiceModule(child: ServiceModuleQuery): this { return this.attachRelation('modules',child); }
   private resolveRelation(child: QueryCore, expected?: 'one'|'many'): string { const entity=child.request.ir.entity; const link=child.linkSelection; const candidates=this.relationDefinitions().filter(value=>value.target===entity&&(!expected||value.kind===expected)&&(!link||(value.left===link.parentKey&&value.right===link.childKey))); if(candidates.length!==1) throw new OrmError('IR_INVALID', `relation from ${this.request.ir.entity} to ${entity} is ${candidates.length===0?'not declared':'ambiguous'}; select a key pair`); return candidates[0]!.name; }
   private relationDefinitions(): ReadonlyArray<{name:string;kind:'one'|'many';target:string;left:string;right:string}> { return [{name:'battles',kind:'many',target:'battle',left:'seq',right:'service_seq'},{name:'members',kind:'many',target:'service_member',left:'seq',right:'service_seq'},{name:'modules',kind:'many',target:'service_module',left:'seq',right:'service_seq'}]; }
   public join(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'inner'); }
@@ -2339,7 +2454,9 @@ export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterf
   public ifParentLikeCountEq(value: unknown): this { return this.ifParent('like_count',value); }
   public ifParentAesKeyVersionEq(value: unknown): this { return this.ifParent('aes_key_version',value); }
   public ifParentAesHexEmailEq(value: unknown): this { return this.ifParent('aes_hex_email',value); }
+  public ifParentEmailBlindIndexEq(value: unknown): this { return this.ifParent('email_blind_index',value); }
   public ifParentAesHexPhoneEq(value: unknown): this { return this.ifParent('aes_hex_phone',value); }
+  public ifParentPhoneBlindIndexEq(value: unknown): this { return this.ifParent('phone_blind_index',value); }
   public ifParentPriceEq(value: unknown): this { return this.ifParent('price',value); }
   public ifParentIpEq(value: unknown): this { return this.ifParent('ip',value); }
   public ifParentGzExtendEq(value: unknown): this { return this.ifParent('gz_extend',value); }
@@ -2609,7 +2726,9 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public ifParentLikeCountEq(value: unknown): this { return this.ifParent('like_count',value); }
   public ifParentAesKeyVersionEq(value: unknown): this { return this.ifParent('aes_key_version',value); }
   public ifParentAesHexEmailEq(value: unknown): this { return this.ifParent('aes_hex_email',value); }
+  public ifParentEmailBlindIndexEq(value: unknown): this { return this.ifParent('email_blind_index',value); }
   public ifParentAesHexPhoneEq(value: unknown): this { return this.ifParent('aes_hex_phone',value); }
+  public ifParentPhoneBlindIndexEq(value: unknown): this { return this.ifParent('phone_blind_index',value); }
   public ifParentPriceEq(value: unknown): this { return this.ifParent('price',value); }
   public ifParentIpEq(value: unknown): this { return this.ifParent('ip',value); }
   public ifParentGzExtendEq(value: unknown): this { return this.ifParent('gz_extend',value); }

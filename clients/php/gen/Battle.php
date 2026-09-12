@@ -29,7 +29,7 @@ final class BattleRow extends Row implements BattleRowInterface
     public function updateOptimistic(): void { $this->terminalArity(func_num_args()); $this->doUpdate($this->terminalDb(), true); }
     public static function columns(): array
     {
-        return ['seq' => 'i64', 'name' => 'string', 'description' => 'text', 'created_ts' => 'datetime', 'updated_ts' => 'datetime', 'is_close' => 'bool', 'is_display' => 'bool', 'display_start_dt' => 'datetime', 'display_end_dt' => 'datetime', 'is_allday' => 'bool', 'target_team_player_count' => 'i64', 'success_count' => 'i64', 'player_count' => 'i64', 'read_count' => 'i64', 'cover_url' => 'string', 'user_seq' => 'i64', 'service_seq' => 'i64', 'service_module_seq' => 'i64', 'service_member_seq' => 'i64', 'start_dt' => 'datetime', 'end_dt' => 'datetime', 'uuid' => 'string', 'is_single_play' => 'bool', 'like_count' => 'i64', 'aes_key_version' => 'i32', 'aes_hex_email' => 'string', 'aes_hex_phone' => 'string', 'price' => 'decimal', 'ip' => 'inet', 'gz_extend' => 'styled', 'json_setting' => 'styled', 'jsons_tags' => 'styled', 'base64_extra' => 'styled', 'serialize_data' => 'styled'];
+        return ['seq' => 'i64', 'name' => 'string', 'description' => 'text', 'created_ts' => 'datetime', 'updated_ts' => 'datetime', 'is_close' => 'bool', 'is_display' => 'bool', 'display_start_dt' => 'datetime', 'display_end_dt' => 'datetime', 'is_allday' => 'bool', 'target_team_player_count' => 'i64', 'success_count' => 'i64', 'player_count' => 'i64', 'read_count' => 'i64', 'cover_url' => 'string', 'user_seq' => 'i64', 'service_seq' => 'i64', 'service_module_seq' => 'i64', 'service_member_seq' => 'i64', 'start_dt' => 'datetime', 'end_dt' => 'datetime', 'uuid' => 'string', 'is_single_play' => 'bool', 'like_count' => 'i64', 'aes_key_version' => 'i32', 'aes_hex_email' => 'string', 'email_blind_index' => 'string', 'aes_hex_phone' => 'string', 'phone_blind_index' => 'string', 'price' => 'decimal', 'ip' => 'inet', 'gz_extend' => 'styled', 'json_setting' => 'styled', 'jsons_tags' => 'styled', 'base64_extra' => 'styled', 'serialize_data' => 'styled'];
     }
     /** @return array<string, array{kind: string, target: string, left: string, right: string}> declared relations: name => kind, target entity, this.left = target.right */
     public static function relations(): array
@@ -217,12 +217,26 @@ final class BattleRow extends Row implements BattleRowInterface
     }
     public function setAesHexEmail(?string $v): static { return $this->setCol('aes_hex_email', $v); }
 
+    public function getEmailBlindIndex(mixed $default = null): ?string
+    {
+        $v = $this->col('email_blind_index');
+        return $v === null ? ($default ?? null) : $v;
+    }
+    public function setEmailBlindIndex(?string $v): static { return $this->setCol('email_blind_index', $v); }
+
     public function getAesHexPhone(mixed $default = null): ?string
     {
         $v = $this->col('aes_hex_phone');
         return $v === null ? ($default ?? null) : $v;
     }
     public function setAesHexPhone(?string $v): static { return $this->setCol('aes_hex_phone', $v); }
+
+    public function getPhoneBlindIndex(mixed $default = null): ?string
+    {
+        $v = $this->col('phone_blind_index');
+        return $v === null ? ($default ?? null) : $v;
+    }
+    public function setPhoneBlindIndex(?string $v): static { return $this->setCol('phone_blind_index', $v); }
 
     public function getPrice(mixed $default = null): ?float
     {
@@ -308,7 +322,9 @@ final class BattleCols
     public static function likeCount(): ColRef { return new ColRef('like_count'); }
     public static function aesKeyVersion(): ColRef { return new ColRef('aes_key_version'); }
     public static function aesHexEmail(): ColRef { return new ColRef('aes_hex_email'); }
+    public static function emailBlindIndex(): ColRef { return new ColRef('email_blind_index'); }
     public static function aesHexPhone(): ColRef { return new ColRef('aes_hex_phone'); }
+    public static function phoneBlindIndex(): ColRef { return new ColRef('phone_blind_index'); }
     public static function price(): ColRef { return new ColRef('price'); }
     public static function ip(): ColRef { return new ColRef('ip'); }
     public static function gzExtend(): ColRef { return new ColRef('gz_extend'); }
@@ -732,6 +748,20 @@ final class BattleWhere
     public function aesHexEmailIsNotNull(): static { $this->w->predNull('aes_hex_email', 'is_not_null'); return $this; }
     public function aesHexEmailEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_email', 'eq_col', $ref); return $this; }
     public function aesHexEmailNotEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_email', 'not_eq_col', $ref); return $this; }
+    public function emailBlindIndexEq(string $v): static { $this->w->pred('email_blind_index', 'eq', $v); return $this; }
+    public function emailBlindIndex(string $v): static { return $this->emailBlindIndexEq($v); }
+    public function emailBlindIndexNotEq(string $v): static { $this->w->pred('email_blind_index', 'not_eq', $v); return $this; }
+    public function emailBlindIndexIn(array $vs): static { $this->w->predList('email_blind_index', 'in', array_values($vs)); return $this; }
+    public function emailBlindIndexNotIn(array $vs): static { $this->w->predList('email_blind_index', 'not_in', array_values($vs)); return $this; }
+    public function emailBlindIndexLike(string $v): static { $this->w->pred('email_blind_index', 'like', $v); return $this; }
+    public function emailBlindIndexLikeBinary(string $v): static { $this->w->pred('email_blind_index', 'like_binary', $v); return $this; }
+    public function emailBlindIndexContains(string $v): static { $this->w->pred('email_blind_index', 'contains', $v); return $this; }
+    public function emailBlindIndexStartsWith(string $v): static { $this->w->pred('email_blind_index', 'starts_with', $v); return $this; }
+    public function emailBlindIndexEndsWith(string $v): static { $this->w->pred('email_blind_index', 'ends_with', $v); return $this; }
+    public function emailBlindIndexIsNull(): static { $this->w->predNull('email_blind_index', 'is_null'); return $this; }
+    public function emailBlindIndexIsNotNull(): static { $this->w->predNull('email_blind_index', 'is_not_null'); return $this; }
+    public function emailBlindIndexEqCol(ColRef $ref): static { $this->w->predCol('email_blind_index', 'eq_col', $ref); return $this; }
+    public function emailBlindIndexNotEqCol(ColRef $ref): static { $this->w->predCol('email_blind_index', 'not_eq_col', $ref); return $this; }
     public function aesHexPhoneEq(string $v): static { $this->w->pred('aes_hex_phone', 'eq', $v); return $this; }
     public function aesHexPhone(string $v): static { return $this->aesHexPhoneEq($v); }
     public function aesHexPhoneNotEq(string $v): static { $this->w->pred('aes_hex_phone', 'not_eq', $v); return $this; }
@@ -741,6 +771,20 @@ final class BattleWhere
     public function aesHexPhoneIsNotNull(): static { $this->w->predNull('aes_hex_phone', 'is_not_null'); return $this; }
     public function aesHexPhoneEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_phone', 'eq_col', $ref); return $this; }
     public function aesHexPhoneNotEqCol(ColRef $ref): static { $this->w->predCol('aes_hex_phone', 'not_eq_col', $ref); return $this; }
+    public function phoneBlindIndexEq(string $v): static { $this->w->pred('phone_blind_index', 'eq', $v); return $this; }
+    public function phoneBlindIndex(string $v): static { return $this->phoneBlindIndexEq($v); }
+    public function phoneBlindIndexNotEq(string $v): static { $this->w->pred('phone_blind_index', 'not_eq', $v); return $this; }
+    public function phoneBlindIndexIn(array $vs): static { $this->w->predList('phone_blind_index', 'in', array_values($vs)); return $this; }
+    public function phoneBlindIndexNotIn(array $vs): static { $this->w->predList('phone_blind_index', 'not_in', array_values($vs)); return $this; }
+    public function phoneBlindIndexLike(string $v): static { $this->w->pred('phone_blind_index', 'like', $v); return $this; }
+    public function phoneBlindIndexLikeBinary(string $v): static { $this->w->pred('phone_blind_index', 'like_binary', $v); return $this; }
+    public function phoneBlindIndexContains(string $v): static { $this->w->pred('phone_blind_index', 'contains', $v); return $this; }
+    public function phoneBlindIndexStartsWith(string $v): static { $this->w->pred('phone_blind_index', 'starts_with', $v); return $this; }
+    public function phoneBlindIndexEndsWith(string $v): static { $this->w->pred('phone_blind_index', 'ends_with', $v); return $this; }
+    public function phoneBlindIndexIsNull(): static { $this->w->predNull('phone_blind_index', 'is_null'); return $this; }
+    public function phoneBlindIndexIsNotNull(): static { $this->w->predNull('phone_blind_index', 'is_not_null'); return $this; }
+    public function phoneBlindIndexEqCol(ColRef $ref): static { $this->w->predCol('phone_blind_index', 'eq_col', $ref); return $this; }
+    public function phoneBlindIndexNotEqCol(ColRef $ref): static { $this->w->predCol('phone_blind_index', 'not_eq_col', $ref); return $this; }
     public function priceEq(float $v): static { $this->w->pred('price', 'eq', $v); return $this; }
     public function price(float $v): static { return $this->priceEq($v); }
     public function priceNotEq(float $v): static { $this->w->pred('price', 'not_eq', $v); return $this; }
@@ -1213,6 +1257,20 @@ final class Battle extends Q implements BattleInterface
     public function aesHexEmailIsNotNull(): static { $this->w()->predNull('aes_hex_email', 'is_not_null'); return $this; }
     public function aesHexEmailEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_email', 'eq_col', $ref); return $this; }
     public function aesHexEmailNotEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_email', 'not_eq_col', $ref); return $this; }
+    public function emailBlindIndexEq(string $v): static { $this->w()->pred('email_blind_index', 'eq', $v); return $this; }
+    public function emailBlindIndex(string $v): static { return $this->emailBlindIndexEq($v); }
+    public function emailBlindIndexNotEq(string $v): static { $this->w()->pred('email_blind_index', 'not_eq', $v); return $this; }
+    public function emailBlindIndexIn(array $vs): static { $this->w()->predList('email_blind_index', 'in', array_values($vs)); return $this; }
+    public function emailBlindIndexNotIn(array $vs): static { $this->w()->predList('email_blind_index', 'not_in', array_values($vs)); return $this; }
+    public function emailBlindIndexLike(string $v): static { $this->w()->pred('email_blind_index', 'like', $v); return $this; }
+    public function emailBlindIndexLikeBinary(string $v): static { $this->w()->pred('email_blind_index', 'like_binary', $v); return $this; }
+    public function emailBlindIndexContains(string $v): static { $this->w()->pred('email_blind_index', 'contains', $v); return $this; }
+    public function emailBlindIndexStartsWith(string $v): static { $this->w()->pred('email_blind_index', 'starts_with', $v); return $this; }
+    public function emailBlindIndexEndsWith(string $v): static { $this->w()->pred('email_blind_index', 'ends_with', $v); return $this; }
+    public function emailBlindIndexIsNull(): static { $this->w()->predNull('email_blind_index', 'is_null'); return $this; }
+    public function emailBlindIndexIsNotNull(): static { $this->w()->predNull('email_blind_index', 'is_not_null'); return $this; }
+    public function emailBlindIndexEqCol(ColRef $ref): static { $this->w()->predCol('email_blind_index', 'eq_col', $ref); return $this; }
+    public function emailBlindIndexNotEqCol(ColRef $ref): static { $this->w()->predCol('email_blind_index', 'not_eq_col', $ref); return $this; }
     public function aesHexPhoneEq(string $v): static { $this->w()->pred('aes_hex_phone', 'eq', $v); return $this; }
     public function aesHexPhone(string $v): static { return $this->aesHexPhoneEq($v); }
     public function aesHexPhoneNotEq(string $v): static { $this->w()->pred('aes_hex_phone', 'not_eq', $v); return $this; }
@@ -1222,6 +1280,20 @@ final class Battle extends Q implements BattleInterface
     public function aesHexPhoneIsNotNull(): static { $this->w()->predNull('aes_hex_phone', 'is_not_null'); return $this; }
     public function aesHexPhoneEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_phone', 'eq_col', $ref); return $this; }
     public function aesHexPhoneNotEqCol(ColRef $ref): static { $this->w()->predCol('aes_hex_phone', 'not_eq_col', $ref); return $this; }
+    public function phoneBlindIndexEq(string $v): static { $this->w()->pred('phone_blind_index', 'eq', $v); return $this; }
+    public function phoneBlindIndex(string $v): static { return $this->phoneBlindIndexEq($v); }
+    public function phoneBlindIndexNotEq(string $v): static { $this->w()->pred('phone_blind_index', 'not_eq', $v); return $this; }
+    public function phoneBlindIndexIn(array $vs): static { $this->w()->predList('phone_blind_index', 'in', array_values($vs)); return $this; }
+    public function phoneBlindIndexNotIn(array $vs): static { $this->w()->predList('phone_blind_index', 'not_in', array_values($vs)); return $this; }
+    public function phoneBlindIndexLike(string $v): static { $this->w()->pred('phone_blind_index', 'like', $v); return $this; }
+    public function phoneBlindIndexLikeBinary(string $v): static { $this->w()->pred('phone_blind_index', 'like_binary', $v); return $this; }
+    public function phoneBlindIndexContains(string $v): static { $this->w()->pred('phone_blind_index', 'contains', $v); return $this; }
+    public function phoneBlindIndexStartsWith(string $v): static { $this->w()->pred('phone_blind_index', 'starts_with', $v); return $this; }
+    public function phoneBlindIndexEndsWith(string $v): static { $this->w()->pred('phone_blind_index', 'ends_with', $v); return $this; }
+    public function phoneBlindIndexIsNull(): static { $this->w()->predNull('phone_blind_index', 'is_null'); return $this; }
+    public function phoneBlindIndexIsNotNull(): static { $this->w()->predNull('phone_blind_index', 'is_not_null'); return $this; }
+    public function phoneBlindIndexEqCol(ColRef $ref): static { $this->w()->predCol('phone_blind_index', 'eq_col', $ref); return $this; }
+    public function phoneBlindIndexNotEqCol(ColRef $ref): static { $this->w()->predCol('phone_blind_index', 'not_eq_col', $ref); return $this; }
     public function priceEq(float $v): static { $this->w()->pred('price', 'eq', $v); return $this; }
     public function price(float $v): static { return $this->priceEq($v); }
     public function priceNotEq(float $v): static { $this->w()->pred('price', 'not_eq', $v); return $this; }
@@ -1266,19 +1338,15 @@ final class Battle extends Q implements BattleInterface
     public function on(\Closure $fn): static { $fn(new BattleWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new BattleWhere($this->w())); return $this; }
 
-
     public function joinServiceSeqWithSeq(Service $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('service', 'inner', $child); return $this; }
     public function leftJoinServiceSeqWithSeq(Service $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'leftJoin expects one child query'); } $this->attachJoin('service', 'left', $child); return $this; }
     public function relationServiceSeqWithSeq(Service $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relation expects one child query'); } $this->attachRelation('service', $child); return $this; }
-
     public function joinServiceMemberSeqWithSeq(ServiceMember $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('service_member', 'inner', $child); return $this; }
     public function leftJoinServiceMemberSeqWithSeq(ServiceMember $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'leftJoin expects one child query'); } $this->attachJoin('service_member', 'left', $child); return $this; }
     public function relationServiceMemberSeqWithSeq(ServiceMember $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relation expects one child query'); } $this->attachRelation('service_member', $child); return $this; }
-
     public function joinServiceModuleSeqWithSeq(ServiceModule $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('service_module', 'inner', $child); return $this; }
     public function leftJoinServiceModuleSeqWithSeq(ServiceModule $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'leftJoin expects one child query'); } $this->attachJoin('service_module', 'left', $child); return $this; }
     public function relationServiceModuleSeqWithSeq(ServiceModule $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relation expects one child query'); } $this->attachRelation('service_module', $child); return $this; }
-
     public function joinUserSeqWithSeq(User $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('user', 'inner', $child); return $this; }
     public function leftJoinUserSeqWithSeq(User $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'leftJoin expects one child query'); } $this->attachJoin('user', 'left', $child); return $this; }
     public function relationUserSeqWithSeq(User $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relation expects one child query'); } $this->attachRelation('user', $child); return $this; }
@@ -1375,9 +1443,15 @@ final class Battle extends Q implements BattleInterface
     public function selectAesHexEmail(): static { $this->colAdd('aes_hex_email'); return $this; }
     public function unselectAesHexEmail(): static { $this->colRemove('aes_hex_email'); return $this; }
     public function selectAesHexEmailAs(string $name): static { $this->colAs($name, 'aes_hex_email'); return $this; }
+    public function selectEmailBlindIndex(): static { $this->colAdd('email_blind_index'); return $this; }
+    public function unselectEmailBlindIndex(): static { $this->colRemove('email_blind_index'); return $this; }
+    public function selectEmailBlindIndexAs(string $name): static { $this->colAs($name, 'email_blind_index'); return $this; }
     public function selectAesHexPhone(): static { $this->colAdd('aes_hex_phone'); return $this; }
     public function unselectAesHexPhone(): static { $this->colRemove('aes_hex_phone'); return $this; }
     public function selectAesHexPhoneAs(string $name): static { $this->colAs($name, 'aes_hex_phone'); return $this; }
+    public function selectPhoneBlindIndex(): static { $this->colAdd('phone_blind_index'); return $this; }
+    public function unselectPhoneBlindIndex(): static { $this->colRemove('phone_blind_index'); return $this; }
+    public function selectPhoneBlindIndexAs(string $name): static { $this->colAs($name, 'phone_blind_index'); return $this; }
     public function selectPrice(): static { $this->colAdd('price'); return $this; }
     public function unselectPrice(): static { $this->colRemove('price'); return $this; }
     public function selectPriceAs(string $name): static { $this->colAs($name, 'price'); return $this; }
@@ -1505,10 +1579,18 @@ final class Battle extends Q implements BattleInterface
     public function orderByAesHexEmailDesc(): static { $this->order('aes_hex_email', true); return $this; }
     public function groupByAesHexEmail(): static { $this->groupBy('aes_hex_email'); return $this; }
     public function keyByAesHexEmail(): static { $this->opt('key_by', 'aes_hex_email'); return $this; }
+    public function orderByEmailBlindIndexAsc(): static { $this->order('email_blind_index', false); return $this; }
+    public function orderByEmailBlindIndexDesc(): static { $this->order('email_blind_index', true); return $this; }
+    public function groupByEmailBlindIndex(): static { $this->groupBy('email_blind_index'); return $this; }
+    public function keyByEmailBlindIndex(): static { $this->opt('key_by', 'email_blind_index'); return $this; }
     public function orderByAesHexPhoneAsc(): static { $this->order('aes_hex_phone', false); return $this; }
     public function orderByAesHexPhoneDesc(): static { $this->order('aes_hex_phone', true); return $this; }
     public function groupByAesHexPhone(): static { $this->groupBy('aes_hex_phone'); return $this; }
     public function keyByAesHexPhone(): static { $this->opt('key_by', 'aes_hex_phone'); return $this; }
+    public function orderByPhoneBlindIndexAsc(): static { $this->order('phone_blind_index', false); return $this; }
+    public function orderByPhoneBlindIndexDesc(): static { $this->order('phone_blind_index', true); return $this; }
+    public function groupByPhoneBlindIndex(): static { $this->groupBy('phone_blind_index'); return $this; }
+    public function keyByPhoneBlindIndex(): static { $this->opt('key_by', 'phone_blind_index'); return $this; }
     public function orderByPriceAsc(): static { $this->order('price', false); return $this; }
     public function orderByPriceDesc(): static { $this->order('price', true); return $this; }
     public function groupByPrice(): static { $this->groupBy('price'); return $this; }
@@ -1544,6 +1626,8 @@ final class Battle extends Q implements BattleInterface
     public function limit(int $offset, int $count): static { $this->setLimit($offset, $count); return $this; }
     public function distinct(): static { $this->opt('distinct', true); return $this; }
     public function forceIndexIk(): static { $this->opt('force_index', 'ik'); return $this; }
+    public function forceIndexIxEmailBlindIndex(): static { $this->opt('force_index', 'ix_email_blind_index'); return $this; }
+    public function forceIndexIxPhoneBlindIndex(): static { $this->opt('force_index', 'ix_phone_blind_index'); return $this; }
     public function forceIndexIxService(): static { $this->opt('force_index', 'ix_service'); return $this; }
     public function forceIndexIxUser(): static { $this->opt('force_index', 'ix_user'); return $this; }
 
@@ -1608,8 +1692,12 @@ final class Battle extends Q implements BattleInterface
     public function setLikeCountExpr(string $frag, array $binds = []): static { $this->setExpr('like_count', $frag, $binds); return $this; }
     public function setAesHexEmail(?string $v): static { $this->set('aes_hex_email', $v); return $this; }
     public function setAesHexEmailExpr(string $frag, array $binds = []): static { $this->setExpr('aes_hex_email', $frag, $binds); return $this; }
+    public function setEmailBlindIndex(?string $v): static { $this->set('email_blind_index', $v); return $this; }
+    public function setEmailBlindIndexExpr(string $frag, array $binds = []): static { $this->setExpr('email_blind_index', $frag, $binds); return $this; }
     public function setAesHexPhone(?string $v): static { $this->set('aes_hex_phone', $v); return $this; }
     public function setAesHexPhoneExpr(string $frag, array $binds = []): static { $this->setExpr('aes_hex_phone', $frag, $binds); return $this; }
+    public function setPhoneBlindIndex(?string $v): static { $this->set('phone_blind_index', $v); return $this; }
+    public function setPhoneBlindIndexExpr(string $frag, array $binds = []): static { $this->setExpr('phone_blind_index', $frag, $binds); return $this; }
     public function setPrice(?float $v): static { $this->set('price', $v); return $this; }
     public function setPriceExpr(string $frag, array $binds = []): static { $this->setExpr('price', $frag, $binds); return $this; }
     public function setIp(?string $v): static { $this->set('ip', $v); return $this; }
@@ -1697,8 +1785,12 @@ final class Battle extends Q implements BattleInterface
     public function onDuplicateSetLikeCountExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('like_count', $frag, $binds); return $this; }
     public function onDuplicateSetAesHexEmail(?string $v): static { $this->onDuplicate('aes_hex_email', $v); return $this; }
     public function onDuplicateSetAesHexEmailExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('aes_hex_email', $frag, $binds); return $this; }
+    public function onDuplicateSetEmailBlindIndex(?string $v): static { $this->onDuplicate('email_blind_index', $v); return $this; }
+    public function onDuplicateSetEmailBlindIndexExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('email_blind_index', $frag, $binds); return $this; }
     public function onDuplicateSetAesHexPhone(?string $v): static { $this->onDuplicate('aes_hex_phone', $v); return $this; }
     public function onDuplicateSetAesHexPhoneExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('aes_hex_phone', $frag, $binds); return $this; }
+    public function onDuplicateSetPhoneBlindIndex(?string $v): static { $this->onDuplicate('phone_blind_index', $v); return $this; }
+    public function onDuplicateSetPhoneBlindIndexExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('phone_blind_index', $frag, $binds); return $this; }
     public function onDuplicateSetPrice(?float $v): static { $this->onDuplicate('price', $v); return $this; }
     public function onDuplicateSetPriceExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('price', $frag, $binds); return $this; }
     public function onDuplicateSetIp(?string $v): static { $this->onDuplicate('ip', $v); return $this; }
@@ -1944,11 +2036,25 @@ final class Battle extends Q implements BattleInterface
         return $this->aesHexEmail($value)->gets();
     }
 
+    /** Applies email_blind_index = value and runs the collection terminal. */
+    public function getsByEmailBlindIndex(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->emailBlindIndex($value)->gets();
+    }
+
     /** Applies aes_hex_phone = value and runs the collection terminal. */
     public function getsByAesHexPhone(string $value): Collection
     {
         $this->terminalArity(func_num_args(), 1);
         return $this->aesHexPhone($value)->gets();
+    }
+
+    /** Applies phone_blind_index = value and runs the collection terminal. */
+    public function getsByPhoneBlindIndex(string $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->phoneBlindIndex($value)->gets();
     }
 
     /** Applies price = value and runs the collection terminal. */
@@ -2150,11 +2256,25 @@ final class Battle extends Q implements BattleInterface
         return $this->aesHexEmail($value)->getCount();
     }
 
+    /** Applies email_blind_index = value and runs the scalar count terminal. */
+    public function getCountByEmailBlindIndex(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->emailBlindIndex($value)->getCount();
+    }
+
     /** Applies aes_hex_phone = value and runs the scalar count terminal. */
     public function getCountByAesHexPhone(string $value): int
     {
         $this->terminalArity(func_num_args(), 1);
         return $this->aesHexPhone($value)->getCount();
+    }
+
+    /** Applies phone_blind_index = value and runs the scalar count terminal. */
+    public function getCountByPhoneBlindIndex(string $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->phoneBlindIndex($value)->getCount();
     }
 
     /** Applies price = value and runs the scalar count terminal. */
@@ -2328,6 +2448,16 @@ final class Battle extends Q implements BattleInterface
     public function minAesKeyVersion(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'aes_key_version'); return $v === null ? null : (int) $v; }
     /** MAX(aes_key_version); null when no rows match. */
     public function maxAesKeyVersion(): ?int { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'aes_key_version'); return $v === null ? null : (int) $v; }
+    public function countDistinctEmailBlindIndex(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'email_blind_index'); }
+    /** MIN(email_blind_index); null when no rows match. */
+    public function minEmailBlindIndex(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'email_blind_index'); return $v === null ? null : (string) $v; }
+    /** MAX(email_blind_index); null when no rows match. */
+    public function maxEmailBlindIndex(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'email_blind_index'); return $v === null ? null : (string) $v; }
+    public function countDistinctPhoneBlindIndex(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'phone_blind_index'); }
+    /** MIN(phone_blind_index); null when no rows match. */
+    public function minPhoneBlindIndex(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'phone_blind_index'); return $v === null ? null : (string) $v; }
+    /** MAX(phone_blind_index); null when no rows match. */
+    public function maxPhoneBlindIndex(): ?string { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'max', 'phone_blind_index'); return $v === null ? null : (string) $v; }
     public function countDistinctPrice(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'price'); }
     /** MIN(price); null when no rows match. */
     public function minPrice(): ?float { $this->terminalArity(func_num_args()); $v = $this->runScalar($this->terminalDb(), 'min', 'price'); return $v === null ? null : (float) $v; }

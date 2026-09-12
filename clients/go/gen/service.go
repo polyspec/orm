@@ -606,6 +606,43 @@ func (q *ServiceQuery) joinTarget(child any, kind string) *ServiceQuery {
 	return q
 }
 
+func (q *ServiceQuery) JoinSeqWithServiceSeqToBattle(child *BattleQuery) *ServiceQuery {
+	q.q.Join("battles", "inner", child.q)
+	return q
+}
+func (q *ServiceQuery) LeftJoinSeqWithServiceSeqToBattle(child *BattleQuery) *ServiceQuery {
+	q.q.Join("battles", "left", child.q)
+	return q
+}
+func (q *ServiceQuery) RelationsSeqWithServiceSeqToBattle(child *BattleQuery) *ServiceQuery {
+	q.q.Relation("battles", child.q)
+	return q
+}
+func (q *ServiceQuery) JoinSeqWithServiceSeqToServiceMember(child *ServiceMemberQuery) *ServiceQuery {
+	q.q.Join("members", "inner", child.q)
+	return q
+}
+func (q *ServiceQuery) LeftJoinSeqWithServiceSeqToServiceMember(child *ServiceMemberQuery) *ServiceQuery {
+	q.q.Join("members", "left", child.q)
+	return q
+}
+func (q *ServiceQuery) RelationsSeqWithServiceSeqToServiceMember(child *ServiceMemberQuery) *ServiceQuery {
+	q.q.Relation("members", child.q)
+	return q
+}
+func (q *ServiceQuery) JoinSeqWithServiceSeqToServiceModule(child *ServiceModuleQuery) *ServiceQuery {
+	q.q.Join("modules", "inner", child.q)
+	return q
+}
+func (q *ServiceQuery) LeftJoinSeqWithServiceSeqToServiceModule(child *ServiceModuleQuery) *ServiceQuery {
+	q.q.Join("modules", "left", child.q)
+	return q
+}
+func (q *ServiceQuery) RelationsSeqWithServiceSeqToServiceModule(child *ServiceModuleQuery) *ServiceQuery {
+	q.q.Relation("modules", child.q)
+	return q
+}
+
 func (q *ServiceQuery) MatchServiceSeqWithSeq() *ServiceQuery {
 	q.q.SetLink("service_seq", "seq")
 	return q
@@ -761,8 +798,16 @@ func (q *ServiceQuery) IfParentAesHexEmailEq(v string) *ServiceQuery {
 	q.q.IfParent("aes_hex_email", v)
 	return q
 }
+func (q *ServiceQuery) IfParentEmailBlindIndexEq(v string) *ServiceQuery {
+	q.q.IfParent("email_blind_index", v)
+	return q
+}
 func (q *ServiceQuery) IfParentAesHexPhoneEq(v string) *ServiceQuery {
 	q.q.IfParent("aes_hex_phone", v)
+	return q
+}
+func (q *ServiceQuery) IfParentPhoneBlindIndexEq(v string) *ServiceQuery {
+	q.q.IfParent("phone_blind_index", v)
 	return q
 }
 

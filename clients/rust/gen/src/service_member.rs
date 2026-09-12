@@ -423,15 +423,12 @@ impl ServiceMember {
         }
     }
 
-
     pub fn join_seq_with_service_member_seq(mut self, child: impl AsRef<super::battle::Battle>) -> Self { self.q.join("battles", "inner", &child.as_ref().q); self }
     pub fn left_join_seq_with_service_member_seq(mut self, child: impl AsRef<super::battle::Battle>) -> Self { self.q.join("battles", "left", &child.as_ref().q); self }
     pub fn relations_seq_with_service_member_seq(mut self, child: impl AsRef<super::battle::Battle>) -> Self { self.q.relation("battles", &child.as_ref().q); self }
-
     pub fn join_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "inner", &child.as_ref().q); self }
     pub fn left_join_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "left", &child.as_ref().q); self }
     pub fn relation_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.relation("service", &child.as_ref().q); self }
-
     pub fn join_user_seq_with_seq(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.join("user", "inner", &child.as_ref().q); self }
     pub fn left_join_user_seq_with_seq(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.join("user", "left", &child.as_ref().q); self }
     pub fn relation_user_seq_with_seq(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.relation("user", &child.as_ref().q); self }
@@ -504,7 +501,9 @@ impl ServiceMember {
     pub fn if_parent_like_count_eq(mut self, v: i64) -> Self { self.q.if_parent("like_count", v); self }
     pub fn if_parent_aes_key_version_eq(mut self, v: i32) -> Self { self.q.if_parent("aes_key_version", v); self }
     pub fn if_parent_aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_email", v.into()); self }
+    pub fn if_parent_email_blind_index_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("email_blind_index", v.into()); self }
     pub fn if_parent_aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_phone", v.into()); self }
+    pub fn if_parent_phone_blind_index_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("phone_blind_index", v.into()); self }
 
     // ---- insert/update draft (set_<pk> only decides save: INSERT rejects it, UPDATE cannot change it) ----
     pub fn set_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("seq", v); self }

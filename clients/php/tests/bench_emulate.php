@@ -18,7 +18,7 @@ use Orm\Orm;
 [$sock, $schema, $iters] = [$argv[1], $argv[2], (int) ($argv[3] ?? 3000)];
 $order = ($argv[4] ?? 'off') === 'on' ? [true, false] : [false, true]; // which mode runs first (run both orders)
 $last = ['sql' => '', 'binds' => []];
-Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt',
+Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index',
     onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$last): void {
         $last = ['sql' => $sql, 'binds' => array_map(fn($v) => $v === '$SECRET' ? 'bench-salt' : $v, $binds)];
     }));

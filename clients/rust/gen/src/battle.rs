@@ -42,7 +42,9 @@ pub struct BattleRow {
     pub like_count: i64,
     pub aes_key_version: i32,
     pub aes_hex_email: Option<String>,
+    pub email_blind_index: Option<String>,
     pub aes_hex_phone: Option<String>,
+    pub phone_blind_index: Option<String>,
     pub price: Option<f64>,
     pub ip: Option<String>,
     pub gz_extend: serde_json::Value,
@@ -145,7 +147,9 @@ impl BattleRow {
                 "like_count" => r.like_count = src.i64(i)?,
                 "aes_key_version" => r.aes_key_version = src.i64(i)? as i32,
                 "aes_hex_email" => r.aes_hex_email = if src.is_null(i) { None } else { Some(src.string(i)?) },
+                "email_blind_index" => r.email_blind_index = if src.is_null(i) { None } else { Some(src.string(i)?) },
                 "aes_hex_phone" => r.aes_hex_phone = if src.is_null(i) { None } else { Some(src.string(i)?) },
+                "phone_blind_index" => r.phone_blind_index = if src.is_null(i) { None } else { Some(src.string(i)?) },
                 "price" => r.price = if src.is_null(i) { None } else { Some(src.f64(i)?) },
                 "ip" => r.ip = if src.is_null(i) { None } else { Some(src.string(i)?) },
                 "gz_extend" => r.gz_extend = src.json(i, &c.styles)?.unwrap_or_default(),
@@ -206,7 +210,9 @@ impl BattleRow {
                 "like_count" => serde_json::json!(self.like_count),
                 "aes_key_version" => serde_json::json!(self.aes_key_version),
                 "aes_hex_email" => serde_json::json!(self.aes_hex_email),
+                "email_blind_index" => serde_json::json!(self.email_blind_index),
                 "aes_hex_phone" => serde_json::json!(self.aes_hex_phone),
+                "phone_blind_index" => serde_json::json!(self.phone_blind_index),
                 "price" => serde_json::json!(self.price),
                 "ip" => serde_json::json!(self.ip),
                 "gz_extend" => self.gz_extend.clone(),
@@ -415,11 +421,25 @@ impl BattleRow {
         self.mark_dirty("aes_hex_email", v.into());
         self
     }
+    pub fn set_email_blind_index(&mut self, v: Option<impl Into<String>>) -> &mut Self {
+        let v: Option<String> = v.map(|x| x.into());
+        self.email_blind_index = v.clone();
+        if !self.assigned.contains(&"email_blind_index") { self.assigned.push("email_blind_index"); }
+        self.mark_dirty("email_blind_index", v.into());
+        self
+    }
     pub fn set_aes_hex_phone(&mut self, v: Option<impl Into<String>>) -> &mut Self {
         let v: Option<String> = v.map(|x| x.into());
         self.aes_hex_phone = v.clone();
         if !self.assigned.contains(&"aes_hex_phone") { self.assigned.push("aes_hex_phone"); }
         self.mark_dirty("aes_hex_phone", v.into());
+        self
+    }
+    pub fn set_phone_blind_index(&mut self, v: Option<impl Into<String>>) -> &mut Self {
+        let v: Option<String> = v.map(|x| x.into());
+        self.phone_blind_index = v.clone();
+        if !self.assigned.contains(&"phone_blind_index") { self.assigned.push("phone_blind_index"); }
+        self.mark_dirty("phone_blind_index", v.into());
         self
     }
     pub fn set_price(&mut self, v: Option<f64>) -> &mut Self {
@@ -599,7 +619,9 @@ pub mod cols {
     pub fn like_count() -> ColRef { ColRef::new("like_count") }
     pub fn aes_key_version() -> ColRef { ColRef::new("aes_key_version") }
     pub fn aes_hex_email() -> ColRef { ColRef::new("aes_hex_email") }
+    pub fn email_blind_index() -> ColRef { ColRef::new("email_blind_index") }
     pub fn aes_hex_phone() -> ColRef { ColRef::new("aes_hex_phone") }
+    pub fn phone_blind_index() -> ColRef { ColRef::new("phone_blind_index") }
     pub fn price() -> ColRef { ColRef::new("price") }
     pub fn ip() -> ColRef { ColRef::new("ip") }
     pub fn gz_extend() -> ColRef { ColRef::new("gz_extend") }
@@ -1020,6 +1042,20 @@ impl<'a> BattleWhere<'a> {
     pub fn aes_hex_email_is_not_null(mut self) -> Self { self.w.pred_null("aes_hex_email", "is_not_null"); self }
     pub fn aes_hex_email_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_hex_email", "eq_col", r); self }
     pub fn aes_hex_email_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_hex_email", "not_eq_col", r); self }
+    pub fn email_blind_index_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("email_blind_index", "eq", v.into()); self }
+    pub fn email_blind_index(self, v: impl Into<String>) -> Self { self.email_blind_index_eq(v) }
+    pub fn email_blind_index_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("email_blind_index", "not_eq", v.into()); self }
+    pub fn email_blind_index_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("email_blind_index", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn email_blind_index_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("email_blind_index", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn email_blind_index_like(mut self, v: impl Into<String>) -> Self { self.w.pred("email_blind_index", "like", v.into()); self }
+    pub fn email_blind_index_like_binary(mut self, v: impl Into<String>) -> Self { self.w.pred("email_blind_index", "like_binary", v.into()); self }
+    pub fn email_blind_index_contains(mut self, v: impl Into<String>) -> Self { self.w.pred("email_blind_index", "contains", v.into()); self }
+    pub fn email_blind_index_starts_with(mut self, v: impl Into<String>) -> Self { self.w.pred("email_blind_index", "starts_with", v.into()); self }
+    pub fn email_blind_index_ends_with(mut self, v: impl Into<String>) -> Self { self.w.pred("email_blind_index", "ends_with", v.into()); self }
+    pub fn email_blind_index_is_null(mut self) -> Self { self.w.pred_null("email_blind_index", "is_null"); self }
+    pub fn email_blind_index_is_not_null(mut self) -> Self { self.w.pred_null("email_blind_index", "is_not_null"); self }
+    pub fn email_blind_index_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("email_blind_index", "eq_col", r); self }
+    pub fn email_blind_index_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("email_blind_index", "not_eq_col", r); self }
     pub fn aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_phone", "eq", v.into()); self }
     pub fn aes_hex_phone(self, v: impl Into<String>) -> Self { self.aes_hex_phone_eq(v) }
     pub fn aes_hex_phone_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_phone", "not_eq", v.into()); self }
@@ -1029,6 +1065,20 @@ impl<'a> BattleWhere<'a> {
     pub fn aes_hex_phone_is_not_null(mut self) -> Self { self.w.pred_null("aes_hex_phone", "is_not_null"); self }
     pub fn aes_hex_phone_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_hex_phone", "eq_col", r); self }
     pub fn aes_hex_phone_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_hex_phone", "not_eq_col", r); self }
+    pub fn phone_blind_index_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("phone_blind_index", "eq", v.into()); self }
+    pub fn phone_blind_index(self, v: impl Into<String>) -> Self { self.phone_blind_index_eq(v) }
+    pub fn phone_blind_index_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("phone_blind_index", "not_eq", v.into()); self }
+    pub fn phone_blind_index_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("phone_blind_index", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn phone_blind_index_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("phone_blind_index", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn phone_blind_index_like(mut self, v: impl Into<String>) -> Self { self.w.pred("phone_blind_index", "like", v.into()); self }
+    pub fn phone_blind_index_like_binary(mut self, v: impl Into<String>) -> Self { self.w.pred("phone_blind_index", "like_binary", v.into()); self }
+    pub fn phone_blind_index_contains(mut self, v: impl Into<String>) -> Self { self.w.pred("phone_blind_index", "contains", v.into()); self }
+    pub fn phone_blind_index_starts_with(mut self, v: impl Into<String>) -> Self { self.w.pred("phone_blind_index", "starts_with", v.into()); self }
+    pub fn phone_blind_index_ends_with(mut self, v: impl Into<String>) -> Self { self.w.pred("phone_blind_index", "ends_with", v.into()); self }
+    pub fn phone_blind_index_is_null(mut self) -> Self { self.w.pred_null("phone_blind_index", "is_null"); self }
+    pub fn phone_blind_index_is_not_null(mut self) -> Self { self.w.pred_null("phone_blind_index", "is_not_null"); self }
+    pub fn phone_blind_index_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("phone_blind_index", "eq_col", r); self }
+    pub fn phone_blind_index_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("phone_blind_index", "not_eq_col", r); self }
     pub fn price_eq(mut self, v: f64) -> Self { self.w.pred("price", "eq", v); self }
     pub fn price(self, v: f64) -> Self { self.price_eq(v) }
     pub fn price_not_eq(mut self, v: f64) -> Self { self.w.pred("price", "not_eq", v); self }
@@ -1513,6 +1563,20 @@ impl Battle {
     pub fn aes_hex_email_is_not_null(mut self) -> Self { self.q.w().pred_null("aes_hex_email", "is_not_null"); self }
     pub fn aes_hex_email_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_hex_email", "eq_col", r); self }
     pub fn aes_hex_email_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_hex_email", "not_eq_col", r); self }
+    pub fn email_blind_index_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("email_blind_index", "eq", v.into()); self }
+    pub fn email_blind_index(self, v: impl Into<String>) -> Self { self.email_blind_index_eq(v) }
+    pub fn email_blind_index_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("email_blind_index", "not_eq", v.into()); self }
+    pub fn email_blind_index_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("email_blind_index", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn email_blind_index_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("email_blind_index", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn email_blind_index_like(mut self, v: impl Into<String>) -> Self { self.q.w().pred("email_blind_index", "like", v.into()); self }
+    pub fn email_blind_index_like_binary(mut self, v: impl Into<String>) -> Self { self.q.w().pred("email_blind_index", "like_binary", v.into()); self }
+    pub fn email_blind_index_contains(mut self, v: impl Into<String>) -> Self { self.q.w().pred("email_blind_index", "contains", v.into()); self }
+    pub fn email_blind_index_starts_with(mut self, v: impl Into<String>) -> Self { self.q.w().pred("email_blind_index", "starts_with", v.into()); self }
+    pub fn email_blind_index_ends_with(mut self, v: impl Into<String>) -> Self { self.q.w().pred("email_blind_index", "ends_with", v.into()); self }
+    pub fn email_blind_index_is_null(mut self) -> Self { self.q.w().pred_null("email_blind_index", "is_null"); self }
+    pub fn email_blind_index_is_not_null(mut self) -> Self { self.q.w().pred_null("email_blind_index", "is_not_null"); self }
+    pub fn email_blind_index_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("email_blind_index", "eq_col", r); self }
+    pub fn email_blind_index_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("email_blind_index", "not_eq_col", r); self }
     pub fn aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("aes_hex_phone", "eq", v.into()); self }
     pub fn aes_hex_phone(self, v: impl Into<String>) -> Self { self.aes_hex_phone_eq(v) }
     pub fn aes_hex_phone_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("aes_hex_phone", "not_eq", v.into()); self }
@@ -1522,6 +1586,20 @@ impl Battle {
     pub fn aes_hex_phone_is_not_null(mut self) -> Self { self.q.w().pred_null("aes_hex_phone", "is_not_null"); self }
     pub fn aes_hex_phone_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_hex_phone", "eq_col", r); self }
     pub fn aes_hex_phone_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_hex_phone", "not_eq_col", r); self }
+    pub fn phone_blind_index_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("phone_blind_index", "eq", v.into()); self }
+    pub fn phone_blind_index(self, v: impl Into<String>) -> Self { self.phone_blind_index_eq(v) }
+    pub fn phone_blind_index_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("phone_blind_index", "not_eq", v.into()); self }
+    pub fn phone_blind_index_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("phone_blind_index", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn phone_blind_index_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("phone_blind_index", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn phone_blind_index_like(mut self, v: impl Into<String>) -> Self { self.q.w().pred("phone_blind_index", "like", v.into()); self }
+    pub fn phone_blind_index_like_binary(mut self, v: impl Into<String>) -> Self { self.q.w().pred("phone_blind_index", "like_binary", v.into()); self }
+    pub fn phone_blind_index_contains(mut self, v: impl Into<String>) -> Self { self.q.w().pred("phone_blind_index", "contains", v.into()); self }
+    pub fn phone_blind_index_starts_with(mut self, v: impl Into<String>) -> Self { self.q.w().pred("phone_blind_index", "starts_with", v.into()); self }
+    pub fn phone_blind_index_ends_with(mut self, v: impl Into<String>) -> Self { self.q.w().pred("phone_blind_index", "ends_with", v.into()); self }
+    pub fn phone_blind_index_is_null(mut self) -> Self { self.q.w().pred_null("phone_blind_index", "is_null"); self }
+    pub fn phone_blind_index_is_not_null(mut self) -> Self { self.q.w().pred_null("phone_blind_index", "is_not_null"); self }
+    pub fn phone_blind_index_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("phone_blind_index", "eq_col", r); self }
+    pub fn phone_blind_index_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("phone_blind_index", "not_eq_col", r); self }
     pub fn price_eq(mut self, v: f64) -> Self { self.q.w().pred("price", "eq", v); self }
     pub fn price(self, v: f64) -> Self { self.price_eq(v) }
     pub fn price_not_eq(mut self, v: f64) -> Self { self.q.w().pred("price", "not_eq", v); self }
@@ -1602,19 +1680,15 @@ impl Battle {
         }
     }
 
-
     pub fn join_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "inner", &child.as_ref().q); self }
     pub fn left_join_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.join("service", "left", &child.as_ref().q); self }
     pub fn relation_service_seq_with_seq(mut self, child: impl AsRef<super::service::Service>) -> Self { self.q.relation("service", &child.as_ref().q); self }
-
     pub fn join_service_member_seq_with_seq(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.join("service_member", "inner", &child.as_ref().q); self }
     pub fn left_join_service_member_seq_with_seq(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.join("service_member", "left", &child.as_ref().q); self }
     pub fn relation_service_member_seq_with_seq(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.relation("service_member", &child.as_ref().q); self }
-
     pub fn join_service_module_seq_with_seq(mut self, child: impl AsRef<super::service_module::ServiceModule>) -> Self { self.q.join("service_module", "inner", &child.as_ref().q); self }
     pub fn left_join_service_module_seq_with_seq(mut self, child: impl AsRef<super::service_module::ServiceModule>) -> Self { self.q.join("service_module", "left", &child.as_ref().q); self }
     pub fn relation_service_module_seq_with_seq(mut self, child: impl AsRef<super::service_module::ServiceModule>) -> Self { self.q.relation("service_module", &child.as_ref().q); self }
-
     pub fn join_user_seq_with_seq(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.join("user", "inner", &child.as_ref().q); self }
     pub fn left_join_user_seq_with_seq(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.join("user", "left", &child.as_ref().q); self }
     pub fn relation_user_seq_with_seq(mut self, child: impl AsRef<super::user::User>) -> Self { self.q.relation("user", &child.as_ref().q); self }
@@ -1710,9 +1784,15 @@ impl Battle {
     pub fn select_aes_hex_email(mut self) -> Self { self.q.columns().add.push("aes_hex_email".into()); self }
     pub fn unselect_aes_hex_email(mut self) -> Self { self.q.columns().remove.push("aes_hex_email".into()); self }
     pub fn select_aes_hex_email_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "aes_hex_email".into()); self }
+    pub fn select_email_blind_index(mut self) -> Self { self.q.columns().add.push("email_blind_index".into()); self }
+    pub fn unselect_email_blind_index(mut self) -> Self { self.q.columns().remove.push("email_blind_index".into()); self }
+    pub fn select_email_blind_index_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "email_blind_index".into()); self }
     pub fn select_aes_hex_phone(mut self) -> Self { self.q.columns().add.push("aes_hex_phone".into()); self }
     pub fn unselect_aes_hex_phone(mut self) -> Self { self.q.columns().remove.push("aes_hex_phone".into()); self }
     pub fn select_aes_hex_phone_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "aes_hex_phone".into()); self }
+    pub fn select_phone_blind_index(mut self) -> Self { self.q.columns().add.push("phone_blind_index".into()); self }
+    pub fn unselect_phone_blind_index(mut self) -> Self { self.q.columns().remove.push("phone_blind_index".into()); self }
+    pub fn select_phone_blind_index_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "phone_blind_index".into()); self }
     pub fn select_price(mut self) -> Self { self.q.columns().add.push("price".into()); self }
     pub fn unselect_price(mut self) -> Self { self.q.columns().remove.push("price".into()); self }
     pub fn select_price_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "price".into()); self }
@@ -1840,10 +1920,18 @@ impl Battle {
     pub fn order_by_aes_hex_email_desc(mut self) -> Self { self.q.order("aes_hex_email", true); self }
     pub fn group_by_aes_hex_email(mut self) -> Self { self.q.node().group_by.push("aes_hex_email".into()); self }
     pub fn key_by_aes_hex_email(mut self) -> Self { self.q.node().key_by = "aes_hex_email".into(); self }
+    pub fn order_by_email_blind_index_asc(mut self) -> Self { self.q.order("email_blind_index", false); self }
+    pub fn order_by_email_blind_index_desc(mut self) -> Self { self.q.order("email_blind_index", true); self }
+    pub fn group_by_email_blind_index(mut self) -> Self { self.q.node().group_by.push("email_blind_index".into()); self }
+    pub fn key_by_email_blind_index(mut self) -> Self { self.q.node().key_by = "email_blind_index".into(); self }
     pub fn order_by_aes_hex_phone_asc(mut self) -> Self { self.q.order("aes_hex_phone", false); self }
     pub fn order_by_aes_hex_phone_desc(mut self) -> Self { self.q.order("aes_hex_phone", true); self }
     pub fn group_by_aes_hex_phone(mut self) -> Self { self.q.node().group_by.push("aes_hex_phone".into()); self }
     pub fn key_by_aes_hex_phone(mut self) -> Self { self.q.node().key_by = "aes_hex_phone".into(); self }
+    pub fn order_by_phone_blind_index_asc(mut self) -> Self { self.q.order("phone_blind_index", false); self }
+    pub fn order_by_phone_blind_index_desc(mut self) -> Self { self.q.order("phone_blind_index", true); self }
+    pub fn group_by_phone_blind_index(mut self) -> Self { self.q.node().group_by.push("phone_blind_index".into()); self }
+    pub fn key_by_phone_blind_index(mut self) -> Self { self.q.node().key_by = "phone_blind_index".into(); self }
     pub fn order_by_price_asc(mut self) -> Self { self.q.order("price", false); self }
     pub fn order_by_price_desc(mut self) -> Self { self.q.order("price", true); self }
     pub fn group_by_price(mut self) -> Self { self.q.node().group_by.push("price".into()); self }
@@ -1879,6 +1967,8 @@ impl Battle {
     /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
     pub fn having(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { { let w = self.q.having_w(); f(BattleWhere { w }); } self }
     pub fn force_index_ik(mut self) -> Self { self.q.node().force_index = "ik".into(); self }
+    pub fn force_index_ix_email_blind_index(mut self) -> Self { self.q.node().force_index = "ix_email_blind_index".into(); self }
+    pub fn force_index_ix_phone_blind_index(mut self) -> Self { self.q.node().force_index = "ix_phone_blind_index".into(); self }
     pub fn force_index_ix_service(mut self) -> Self { self.q.node().force_index = "ix_service".into(); self }
     pub fn force_index_ix_user(mut self) -> Self { self.q.node().force_index = "ix_user".into(); self }
 
@@ -1945,8 +2035,12 @@ impl Battle {
     pub fn set_like_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("like_count", frag, binds); self }
     pub fn set_aes_hex_email(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("aes_hex_email", v); self }
     pub fn set_aes_hex_email_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("aes_hex_email", frag, binds); self }
+    pub fn set_email_blind_index(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("email_blind_index", v); self }
+    pub fn set_email_blind_index_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("email_blind_index", frag, binds); self }
     pub fn set_aes_hex_phone(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("aes_hex_phone", v); self }
     pub fn set_aes_hex_phone_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("aes_hex_phone", frag, binds); self }
+    pub fn set_phone_blind_index(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("phone_blind_index", v); self }
+    pub fn set_phone_blind_index_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("phone_blind_index", frag, binds); self }
     pub fn set_price(mut self, v: Option<f64>) -> Self { let v: Option<f64> = v.map(|x| x.into()); self.q.set("price", v); self }
     pub fn set_price_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("price", frag, binds); self }
     pub fn set_ip(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("ip", v); self }
@@ -2033,8 +2127,12 @@ impl Battle {
     pub fn on_duplicate_set_like_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("like_count", frag, binds); self }
     pub fn on_duplicate_set_aes_hex_email(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.on_duplicate_set("aes_hex_email", v); self }
     pub fn on_duplicate_set_aes_hex_email_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("aes_hex_email", frag, binds); self }
+    pub fn on_duplicate_set_email_blind_index(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.on_duplicate_set("email_blind_index", v); self }
+    pub fn on_duplicate_set_email_blind_index_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("email_blind_index", frag, binds); self }
     pub fn on_duplicate_set_aes_hex_phone(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.on_duplicate_set("aes_hex_phone", v); self }
     pub fn on_duplicate_set_aes_hex_phone_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("aes_hex_phone", frag, binds); self }
+    pub fn on_duplicate_set_phone_blind_index(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.on_duplicate_set("phone_blind_index", v); self }
+    pub fn on_duplicate_set_phone_blind_index_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("phone_blind_index", frag, binds); self }
     pub fn on_duplicate_set_price(mut self, v: Option<f64>) -> Self { let v: Option<f64> = v.map(|x| x.into()); self.q.on_duplicate_set("price", v); self }
     pub fn on_duplicate_set_price_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("price", frag, binds); self }
     pub fn on_duplicate_set_ip(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.on_duplicate_set("ip", v); self }
@@ -2254,9 +2352,21 @@ impl Battle {
         self.gets().await
     }
 
+    /// Applies email_blind_index = value and runs the collection terminal.
+    pub async fn gets_by_email_blind_index(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("email_blind_index", "eq", v.into());
+        self.gets().await
+    }
+
     /// Applies aes_hex_phone = value and runs the collection terminal.
     pub async fn gets_by_aes_hex_phone(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> {
         self.q.w().pred("aes_hex_phone", "eq", v.into());
+        self.gets().await
+    }
+
+    /// Applies phone_blind_index = value and runs the collection terminal.
+    pub async fn gets_by_phone_blind_index(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("phone_blind_index", "eq", v.into());
         self.gets().await
     }
 
@@ -2433,9 +2543,21 @@ impl Battle {
         self.get_count().await
     }
 
+    /// Applies email_blind_index = value and runs the scalar count terminal.
+    pub async fn get_count_by_email_blind_index(&mut self, v: impl Into<String>) -> Result<i64> {
+        self.q.w().pred("email_blind_index", "eq", v.into());
+        self.get_count().await
+    }
+
     /// Applies aes_hex_phone = value and runs the scalar count terminal.
     pub async fn get_count_by_aes_hex_phone(&mut self, v: impl Into<String>) -> Result<i64> {
         self.q.w().pred("aes_hex_phone", "eq", v.into());
+        self.get_count().await
+    }
+
+    /// Applies phone_blind_index = value and runs the scalar count terminal.
+    pub async fn get_count_by_phone_blind_index(&mut self, v: impl Into<String>) -> Result<i64> {
+        self.q.w().pred("phone_blind_index", "eq", v.into());
         self.get_count().await
     }
 
@@ -2603,6 +2725,16 @@ impl Battle {
     pub async fn min_aes_key_version(&mut self) -> Result<Option<i32>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "aes_key_version".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64() as i32) }) }
     /// None when no row matches.
     pub async fn max_aes_key_version(&mut self) -> Result<Option<i32>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "aes_key_version".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_i64() as i32) }) }
+    pub async fn count_distinct_email_blind_index(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "email_blind_index".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_email_blind_index(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "email_blind_index".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    /// None when no row matches.
+    pub async fn max_email_blind_index(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "email_blind_index".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn count_distinct_phone_blind_index(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "phone_blind_index".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_phone_blind_index(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "phone_blind_index".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    /// None when no row matches.
+    pub async fn max_phone_blind_index(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "phone_blind_index".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
     pub async fn count_distinct_price(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
     /// None when no row matches.
     pub async fn min_price(&mut self) -> Result<Option<f64>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "price".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_f64()) }) }

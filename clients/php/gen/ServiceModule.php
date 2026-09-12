@@ -202,11 +202,9 @@ final class ServiceModule extends Q implements ServiceModuleInterface
     public function on(\Closure $fn): static { $fn(new ServiceModuleWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new ServiceModuleWhere($this->w())); return $this; }
 
-
     public function joinSeqWithServiceModuleSeq(Battle $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('battles', 'inner', $child); return $this; }
     public function leftJoinSeqWithServiceModuleSeq(Battle $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'leftJoin expects one child query'); } $this->attachJoin('battles', 'left', $child); return $this; }
     public function relationsSeqWithServiceModuleSeq(Battle $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relations expects one child query'); } $this->attachRelation('battles', $child); return $this; }
-
     public function joinServiceSeqWithSeq(Service $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('service', 'inner', $child); return $this; }
     public function leftJoinServiceSeqWithSeq(Service $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'leftJoin expects one child query'); } $this->attachJoin('service', 'left', $child); return $this; }
     public function relationServiceSeqWithSeq(Service $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relation expects one child query'); } $this->attachRelation('service', $child); return $this; }
@@ -275,7 +273,9 @@ final class ServiceModule extends Q implements ServiceModuleInterface
     public function ifParentLikeCountEq(int $v): static { $this->ifParent('like_count', $v); return $this; }
     public function ifParentAesKeyVersionEq(int $v): static { $this->ifParent('aes_key_version', $v); return $this; }
     public function ifParentAesHexEmailEq(string $v): static { $this->ifParent('aes_hex_email', $v); return $this; }
+    public function ifParentEmailBlindIndexEq(string $v): static { $this->ifParent('email_blind_index', $v); return $this; }
     public function ifParentAesHexPhoneEq(string $v): static { $this->ifParent('aes_hex_phone', $v); return $this; }
+    public function ifParentPhoneBlindIndexEq(string $v): static { $this->ifParent('phone_blind_index', $v); return $this; }
 
     // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
     public function setSeq(int $v): static { $this->set('seq', $v); return $this; }

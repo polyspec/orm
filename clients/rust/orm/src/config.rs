@@ -69,6 +69,10 @@ pub struct SecretsSection {
     pub aes_keys: BTreeMap<String, String>,
     #[serde(default)]
     pub aes_version: Option<i32>,
+    #[serde(default)]
+    pub blind_index: Option<String>,
+    #[serde(default)]
+    pub blind_index_env: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -164,6 +168,9 @@ impl OrmConfig {
         if cfg.secrets.aes.is_some() && cfg.secrets.aes_env.is_some() {
             return Err(cfg_err("secrets: declare aes or aes_env, not both"));
         }
+        if cfg.secrets.blind_index.is_some() && cfg.secrets.blind_index_env.is_some() {
+            return Err(cfg_err("secrets: declare blind_index or blind_index_env, not both"));
+        }
         if !cfg.secrets.aes_keys.is_empty() {
             if cfg.secrets.aes.is_some() || cfg.secrets.aes_env.is_some() {
                 return Err(cfg_err("secrets.aes_keys is exclusive with secrets.aes and secrets.aes_env"));
@@ -197,6 +204,15 @@ impl OrmConfig {
         }
     }
 
+    pub fn blind_index_key(&self) -> Result<String> {
+        match (&self.secrets.blind_index, &self.secrets.blind_index_env) {
+            (Some(k), _) if !k.is_empty() => Ok(k.clone()),
+            (Some(_), _) => Err(cfg_err("secrets.blind_index must not be empty")),
+            (None, Some(var)) => std::env::var(var).map_err(|_| cfg_err(format!("secrets.blind_index_env: {var} is not set"))),
+            (None, None) => Ok(String::new()),
+        }
+    }
+
     /// The sqlx connect options of `[db].driver`: the URL, with `[db].user`/`password` applied
     /// to a MySQL URL that has no user.
     pub fn connect_options(&self) -> Result<ConnectOptions> {
@@ -223,6 +239,12 @@ impl OrmConfig {
             e["columns"].as_array().map(|cols| cols.iter().any(|c| c["styles"].as_array().map(|s| s.iter().any(|x| x == "aes")).unwrap_or(false))).unwrap_or(false)
         })
     }
+
+    fn schema_has_blind_index(schema_json: &[u8]) -> bool {
+        let Ok(v) = serde_json::from_slice::<serde_json::Value>(schema_json) else { return false };
+        let Some(entities) = v["entities"].as_object() else { return false };
+        entities.values().any(|e| e["columns"].as_array().map(|cols| cols.iter().any(|c| c.get("blind_index").is_some())).unwrap_or(false))
+    }
 }
 
 /// The `[debug].on_query = true` hook: one line per statement on stderr.
@@ -245,8 +267,12 @@ impl Db {
         let wasm = std::fs::read(&cfg.engine.wasm).map_err(|e| cfg_err(format!("engine.wasm: {e}")))?;
         let schema = std::fs::read(&cfg.schema).map_err(|e| cfg_err(format!("schema: {e}")))?;
         let aes_key = cfg.aes_key()?;
+        let blind_index_key = cfg.blind_index_key()?;
         if aes_key.is_empty() && OrmConfig::schema_has_aes(&schema) {
             return Err(cfg_err("secrets: the schema has aes columns but neither aes nor aes_env is declared"));
+        }
+        if blind_index_key.is_empty() && OrmConfig::schema_has_blind_index(&schema) {
+            return Err(cfg_err("secrets: the schema has blind indexes but neither blind_index nor blind_index_env is declared"));
         }
         let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, dialect: &cfg.db.driver, cache_dir: cfg.engine.cache_dir.as_deref() })?);
         let on_query = cfg.debug.on_query.then(stderr_logger);
@@ -257,7 +283,7 @@ impl Db {
         } else {
             cfg.secrets.aes_keys.iter().filter_map(|(version, key)| version.parse::<i32>().ok().map(|v| (v, key.clone()))).collect()
         };
-        let runtime = Config { aes_key, aes_version, aes_keys, on_query };
+        let runtime = Config { aes_key, blind_index_key, aes_version, aes_keys, on_query };
         if let Some(ormd) = &cfg.ormd {
             if let Some(endpoint) = &ormd.endpoint {
                 let compiler = Arc::new(ConnectCompiler::new(endpoint, std::time::Duration::from_millis(ormd.timeout_ms))?);

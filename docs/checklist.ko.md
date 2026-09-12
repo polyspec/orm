@@ -98,6 +98,7 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 - [x] T7.16 세미콜론 분할을 방언별 SQL 문장 분석기로 교체하고 문장별 실패 위치를 보존했습니다.
 - [x] T7.17 MMD, manifest JSON, metadata가 있는 ORM SQL, 실제 DB schema를 DDL·diff·구조화 plan·검증·복구·멱등 DB migration·검증된 rollback 실행 입력으로 지원한다.
 - [x] T7.18 containerctl로 MySQL·PostgreSQL의 주석, 계획 적용, 반복 실행, drift, 실패, 잠금 충돌, 복구, rollback, rollback no-op을 실제 DB에서 검증했습니다.
+- [x] T7.19 AES blind-index schema 선언, keyed equality predicate, write 동기화, 생성 관계 API를 추가하고 네 클라이언트의 MySQL·PostgreSQL·SQLite 통합 테스트를 통과한다.
 
 ## 문서 작업
 

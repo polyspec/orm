@@ -3,6 +3,10 @@
 컬럼 스타일은 매니페스트 `styles: [...]`에 **쓰기 순서**로 기록된다(`gz_*` → `["serialize","gz"]`: 직렬화한 뒤 압축). 읽기는 역순.
 `aes`·`hex`·`ip`는 host stage이고 나머지는 실행기 codec이다. Go·PHP·Rust·TypeScript는 같은 인증된 AES v2 형식과 정규화 값을 사용한다. 결정적 encoding은 TypeScript의 PHP serialize 정수형 실수 한 경우를 제외하고 byte가 같다. JavaScript는 `2`와 `2.0`을 같은 `number`로 표현하므로 TypeScript는 해당 값을 정수로 다시 encode한다.
 
+### Blind index
+
+`%% blind_index <table> <aes_column> <index_column>`은 AES column의 equality search column을 선언한다. 대상은 nullable 상태가 일치하고 single-column index로 선언된 `char(64)`/`string` 또는 `bytes` column이어야 한다. insert와 update에서 runtime은 `secrets.blind_index`를 key로 사용한 lowercase HMAC-SHA256(plaintext)을 대상에 저장한다. AES column의 equality와 `IN` predicate는 대상 column을 사용하며 ciphertext를 비교하지 않는다. blind-index key는 AES key version과 분리되며 이 directive가 있으면 필수다.
+
 ### AES v2
 
 `aes`는 `ORM-AES2\0 || nonce || ciphertext || tag`를 저장한다. nonce는 12바이트 random 값이고 tag는 AES-256-GCM 인증 tag다. associated data는 `ORM-AES2\0`이다. AES key는 SHA-256(`polyspec/orm/aes-256-gcm/v2\0`와 설정 key bytes의 결합)이다. `aes_hex`는 AES 처리 후 uppercase hex를 적용한다.

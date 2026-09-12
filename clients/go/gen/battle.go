@@ -47,7 +47,9 @@ type BattleRow struct {
 	LikeCount             int64
 	AesKeyVersion         int32
 	AesHexEmail           *string
+	EmailBlindIndex       *string
 	AesHexPhone           *string
+	PhoneBlindIndex       *string
 	Price                 *float64
 	Ip                    *string
 	GzExtend              any
@@ -439,6 +441,21 @@ func (r *BattleRow) SetAesHexEmail(v *string) *BattleRow {
 	return r
 }
 
+// GetEmailBlindIndex is nil-safe.
+func (r *BattleRow) GetEmailBlindIndex() *string {
+	if r == nil {
+		var zero *string
+		return zero
+	}
+	return r.EmailBlindIndex
+}
+
+func (r *BattleRow) SetEmailBlindIndex(v *string) *BattleRow {
+	r.EmailBlindIndex = v
+	r.Dirty("email_blind_index", orm.Deref(v))
+	return r
+}
+
 // GetAesHexPhone is nil-safe.
 func (r *BattleRow) GetAesHexPhone() *string {
 	if r == nil {
@@ -451,6 +468,21 @@ func (r *BattleRow) GetAesHexPhone() *string {
 func (r *BattleRow) SetAesHexPhone(v *string) *BattleRow {
 	r.AesHexPhone = v
 	r.Dirty("aes_hex_phone", orm.Deref(v))
+	return r
+}
+
+// GetPhoneBlindIndex is nil-safe.
+func (r *BattleRow) GetPhoneBlindIndex() *string {
+	if r == nil {
+		var zero *string
+		return zero
+	}
+	return r.PhoneBlindIndex
+}
+
+func (r *BattleRow) SetPhoneBlindIndex(v *string) *BattleRow {
+	r.PhoneBlindIndex = v
+	r.Dirty("phone_blind_index", orm.Deref(v))
 	return r
 }
 
@@ -727,10 +759,20 @@ func assignBattleValue(r *BattleRow, name string, v any) {
 			x := orm.AsString(v)
 			r.AesHexEmail = &x
 		}
+	case "email_blind_index":
+		if v != nil {
+			x := orm.AsString(v)
+			r.EmailBlindIndex = &x
+		}
 	case "aes_hex_phone":
 		if v != nil {
 			x := orm.AsString(v)
 			r.AesHexPhone = &x
+		}
+	case "phone_blind_index":
+		if v != nil {
+			x := orm.AsString(v)
+			r.PhoneBlindIndex = &x
 		}
 	case "price":
 		if v != nil {
@@ -1080,12 +1122,26 @@ func (r *BattleRow) ToArray() (map[string]any, error) {
 				}
 				return *r.AesHexEmail
 			}()
+		case "email_blind_index":
+			m[name] = func() any {
+				if r.EmailBlindIndex == nil {
+					return nil
+				}
+				return *r.EmailBlindIndex
+			}()
 		case "aes_hex_phone":
 			m[name] = func() any {
 				if r.AesHexPhone == nil {
 					return nil
 				}
 				return *r.AesHexPhone
+			}()
+		case "phone_blind_index":
+			m[name] = func() any {
+				if r.PhoneBlindIndex == nil {
+					return nil
+				}
+				return *r.PhoneBlindIndex
 			}()
 		case "price":
 			m[name] = func() any {
@@ -1196,7 +1252,9 @@ var BattleCols = struct {
 	LikeCount             orm.ColRef
 	AesKeyVersion         orm.ColRef
 	AesHexEmail           orm.ColRef
+	EmailBlindIndex       orm.ColRef
 	AesHexPhone           orm.ColRef
+	PhoneBlindIndex       orm.ColRef
 	Price                 orm.ColRef
 	Ip                    orm.ColRef
 	GzExtend              orm.ColRef
@@ -1231,7 +1289,9 @@ var BattleCols = struct {
 	LikeCount:             orm.ColRef{Column: "like_count"},
 	AesKeyVersion:         orm.ColRef{Column: "aes_key_version"},
 	AesHexEmail:           orm.ColRef{Column: "aes_hex_email"},
+	EmailBlindIndex:       orm.ColRef{Column: "email_blind_index"},
 	AesHexPhone:           orm.ColRef{Column: "aes_hex_phone"},
+	PhoneBlindIndex:       orm.ColRef{Column: "phone_blind_index"},
 	Price:                 orm.ColRef{Column: "price"},
 	Ip:                    orm.ColRef{Column: "ip"},
 	GzExtend:              orm.ColRef{Column: "gz_extend"},
@@ -4029,6 +4089,112 @@ func (q *BattleQuery) AesHexEmailNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("aes_hex_email", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
+func (w *BattleWhere) EmailBlindIndexEq(v string) *BattleWhere {
+	w.w.Pred("email_blind_index", "eq", v)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexEq(v string) *BattleQuery {
+	q.q.W().Pred("email_blind_index", "eq", v)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndex(v string) *BattleWhere { return w.EmailBlindIndexEq(v) }
+func (q *BattleQuery) EmailBlindIndex(v string) *BattleQuery { return q.EmailBlindIndexEq(v) }
+func (w *BattleWhere) EmailBlindIndexNotEq(v string) *BattleWhere {
+	w.w.Pred("email_blind_index", "not_eq", v)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexNotEq(v string) *BattleQuery {
+	q.q.W().Pred("email_blind_index", "not_eq", v)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexIn(vs []string) *BattleWhere {
+	w.w.PredList("email_blind_index", "in", orm.Anys(vs))
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexIn(vs []string) *BattleQuery {
+	q.q.W().PredList("email_blind_index", "in", orm.Anys(vs))
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexNotIn(vs []string) *BattleWhere {
+	w.w.PredList("email_blind_index", "not_in", orm.Anys(vs))
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexNotIn(vs []string) *BattleQuery {
+	q.q.W().PredList("email_blind_index", "not_in", orm.Anys(vs))
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexLike(v string) *BattleWhere {
+	w.w.Pred("email_blind_index", "like", v)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexLike(v string) *BattleQuery {
+	q.q.W().Pred("email_blind_index", "like", v)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexLikeBinary(v string) *BattleWhere {
+	w.w.Pred("email_blind_index", "like_binary", v)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexLikeBinary(v string) *BattleQuery {
+	q.q.W().Pred("email_blind_index", "like_binary", v)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexContains(v string) *BattleWhere {
+	w.w.Pred("email_blind_index", "contains", v)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexContains(v string) *BattleQuery {
+	q.q.W().Pred("email_blind_index", "contains", v)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexStartsWith(v string) *BattleWhere {
+	w.w.Pred("email_blind_index", "starts_with", v)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexStartsWith(v string) *BattleQuery {
+	q.q.W().Pred("email_blind_index", "starts_with", v)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexEndsWith(v string) *BattleWhere {
+	w.w.Pred("email_blind_index", "ends_with", v)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexEndsWith(v string) *BattleQuery {
+	q.q.W().Pred("email_blind_index", "ends_with", v)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexIsNull() *BattleWhere {
+	w.w.PredNull("email_blind_index", "is_null")
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexIsNull() *BattleQuery {
+	q.q.W().PredNull("email_blind_index", "is_null")
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexIsNotNull() *BattleWhere {
+	w.w.PredNull("email_blind_index", "is_not_null")
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexIsNotNull() *BattleQuery {
+	q.q.W().PredNull("email_blind_index", "is_not_null")
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("email_blind_index", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexEqCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("email_blind_index", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("email_blind_index", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexNotEqCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("email_blind_index", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) AesHexPhoneEq(v string) *BattleWhere {
 	w.w.Pred("aes_hex_phone", "eq", v)
 	return w
@@ -4093,6 +4259,112 @@ func (w *BattleWhere) AesHexPhoneNotEqCol(ref orm.ColRef) *BattleWhere {
 }
 func (q *BattleQuery) AesHexPhoneNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("aes_hex_phone", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexEq(v string) *BattleWhere {
+	w.w.Pred("phone_blind_index", "eq", v)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexEq(v string) *BattleQuery {
+	q.q.W().Pred("phone_blind_index", "eq", v)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndex(v string) *BattleWhere { return w.PhoneBlindIndexEq(v) }
+func (q *BattleQuery) PhoneBlindIndex(v string) *BattleQuery { return q.PhoneBlindIndexEq(v) }
+func (w *BattleWhere) PhoneBlindIndexNotEq(v string) *BattleWhere {
+	w.w.Pred("phone_blind_index", "not_eq", v)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexNotEq(v string) *BattleQuery {
+	q.q.W().Pred("phone_blind_index", "not_eq", v)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexIn(vs []string) *BattleWhere {
+	w.w.PredList("phone_blind_index", "in", orm.Anys(vs))
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexIn(vs []string) *BattleQuery {
+	q.q.W().PredList("phone_blind_index", "in", orm.Anys(vs))
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexNotIn(vs []string) *BattleWhere {
+	w.w.PredList("phone_blind_index", "not_in", orm.Anys(vs))
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexNotIn(vs []string) *BattleQuery {
+	q.q.W().PredList("phone_blind_index", "not_in", orm.Anys(vs))
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexLike(v string) *BattleWhere {
+	w.w.Pred("phone_blind_index", "like", v)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexLike(v string) *BattleQuery {
+	q.q.W().Pred("phone_blind_index", "like", v)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexLikeBinary(v string) *BattleWhere {
+	w.w.Pred("phone_blind_index", "like_binary", v)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexLikeBinary(v string) *BattleQuery {
+	q.q.W().Pred("phone_blind_index", "like_binary", v)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexContains(v string) *BattleWhere {
+	w.w.Pred("phone_blind_index", "contains", v)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexContains(v string) *BattleQuery {
+	q.q.W().Pred("phone_blind_index", "contains", v)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexStartsWith(v string) *BattleWhere {
+	w.w.Pred("phone_blind_index", "starts_with", v)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexStartsWith(v string) *BattleQuery {
+	q.q.W().Pred("phone_blind_index", "starts_with", v)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexEndsWith(v string) *BattleWhere {
+	w.w.Pred("phone_blind_index", "ends_with", v)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexEndsWith(v string) *BattleQuery {
+	q.q.W().Pred("phone_blind_index", "ends_with", v)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexIsNull() *BattleWhere {
+	w.w.PredNull("phone_blind_index", "is_null")
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexIsNull() *BattleQuery {
+	q.q.W().PredNull("phone_blind_index", "is_null")
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexIsNotNull() *BattleWhere {
+	w.w.PredNull("phone_blind_index", "is_not_null")
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexIsNotNull() *BattleQuery {
+	q.q.W().PredNull("phone_blind_index", "is_not_null")
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("phone_blind_index", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexEqCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("phone_blind_index", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexNotEqCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("phone_blind_index", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexNotEqCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("phone_blind_index", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) PriceEq(v float64) *BattleWhere    { w.w.Pred("price", "eq", v); return w }
@@ -4478,7 +4750,6 @@ func (q *BattleQuery) RelationServiceSeqWithSeq(child *ServiceQuery) *BattleQuer
 	q.q.Relation("service", child.q)
 	return q
 }
-
 func (q *BattleQuery) JoinServiceMemberSeqWithSeq(child *ServiceMemberQuery) *BattleQuery {
 	q.q.Join("service_member", "inner", child.q)
 	return q
@@ -4491,7 +4762,6 @@ func (q *BattleQuery) RelationServiceMemberSeqWithSeq(child *ServiceMemberQuery)
 	q.q.Relation("service_member", child.q)
 	return q
 }
-
 func (q *BattleQuery) JoinServiceModuleSeqWithSeq(child *ServiceModuleQuery) *BattleQuery {
 	q.q.Join("service_module", "inner", child.q)
 	return q
@@ -4504,7 +4774,6 @@ func (q *BattleQuery) RelationServiceModuleSeqWithSeq(child *ServiceModuleQuery)
 	q.q.Relation("service_module", child.q)
 	return q
 }
-
 func (q *BattleQuery) JoinUserSeqWithSeq(child *UserQuery) *BattleQuery {
 	q.q.Join("user", "inner", child.q)
 	return q
@@ -5021,6 +5290,24 @@ func (q *BattleQuery) SelectAesHexEmailAs(name string) *BattleQuery {
 	c.As[name] = "aes_hex_email"
 	return q
 }
+func (q *BattleQuery) SelectEmailBlindIndex() *BattleQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "email_blind_index")
+	return q
+}
+func (q *BattleQuery) UnselectEmailBlindIndex() *BattleQuery {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "email_blind_index")
+	return q
+}
+func (q *BattleQuery) SelectEmailBlindIndexAs(name string) *BattleQuery {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "email_blind_index"
+	return q
+}
 func (q *BattleQuery) SelectAesHexPhone() *BattleQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "aes_hex_phone")
@@ -5037,6 +5324,24 @@ func (q *BattleQuery) SelectAesHexPhoneAs(name string) *BattleQuery {
 		c.As = map[string]string{}
 	}
 	c.As[name] = "aes_hex_phone"
+	return q
+}
+func (q *BattleQuery) SelectPhoneBlindIndex() *BattleQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "phone_blind_index")
+	return q
+}
+func (q *BattleQuery) UnselectPhoneBlindIndex() *BattleQuery {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "phone_blind_index")
+	return q
+}
+func (q *BattleQuery) SelectPhoneBlindIndexAs(name string) *BattleQuery {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "phone_blind_index"
 	return q
 }
 func (q *BattleQuery) SelectPrice() *BattleQuery {
@@ -5421,6 +5726,22 @@ func (q *BattleQuery) GroupByAesHexEmail() *BattleQuery {
 	return q
 }
 func (q *BattleQuery) KeyByAesHexEmail() *BattleQuery { q.q.Node.KeyBy = "aes_hex_email"; return q }
+func (q *BattleQuery) OrderByEmailBlindIndexAsc() *BattleQuery {
+	q.q.Order("email_blind_index", false)
+	return q
+}
+func (q *BattleQuery) OrderByEmailBlindIndexDesc() *BattleQuery {
+	q.q.Order("email_blind_index", true)
+	return q
+}
+func (q *BattleQuery) GroupByEmailBlindIndex() *BattleQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "email_blind_index")
+	return q
+}
+func (q *BattleQuery) KeyByEmailBlindIndex() *BattleQuery {
+	q.q.Node.KeyBy = "email_blind_index"
+	return q
+}
 func (q *BattleQuery) OrderByAesHexPhoneAsc() *BattleQuery {
 	q.q.Order("aes_hex_phone", false)
 	return q
@@ -5434,6 +5755,22 @@ func (q *BattleQuery) GroupByAesHexPhone() *BattleQuery {
 	return q
 }
 func (q *BattleQuery) KeyByAesHexPhone() *BattleQuery { q.q.Node.KeyBy = "aes_hex_phone"; return q }
+func (q *BattleQuery) OrderByPhoneBlindIndexAsc() *BattleQuery {
+	q.q.Order("phone_blind_index", false)
+	return q
+}
+func (q *BattleQuery) OrderByPhoneBlindIndexDesc() *BattleQuery {
+	q.q.Order("phone_blind_index", true)
+	return q
+}
+func (q *BattleQuery) GroupByPhoneBlindIndex() *BattleQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "phone_blind_index")
+	return q
+}
+func (q *BattleQuery) KeyByPhoneBlindIndex() *BattleQuery {
+	q.q.Node.KeyBy = "phone_blind_index"
+	return q
+}
 func (q *BattleQuery) OrderByPriceAsc() *BattleQuery  { q.q.Order("price", false); return q }
 func (q *BattleQuery) OrderByPriceDesc() *BattleQuery { q.q.Order("price", true); return q }
 func (q *BattleQuery) GroupByPrice() *BattleQuery {
@@ -5510,8 +5847,16 @@ func (q *BattleQuery) Limit(offset, count int) *BattleQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *BattleQuery) Distinct() *BattleQuery            { q.q.Node.Distinct = true; return q }
-func (q *BattleQuery) ForceIndexIk() *BattleQuery        { q.q.Node.ForceIdx = "ik"; return q }
+func (q *BattleQuery) Distinct() *BattleQuery     { q.q.Node.Distinct = true; return q }
+func (q *BattleQuery) ForceIndexIk() *BattleQuery { q.q.Node.ForceIdx = "ik"; return q }
+func (q *BattleQuery) ForceIndexIxEmailBlindIndex() *BattleQuery {
+	q.q.Node.ForceIdx = "ix_email_blind_index"
+	return q
+}
+func (q *BattleQuery) ForceIndexIxPhoneBlindIndex() *BattleQuery {
+	q.q.Node.ForceIdx = "ix_phone_blind_index"
+	return q
+}
 func (q *BattleQuery) ForceIndexIxService() *BattleQuery { q.q.Node.ForceIdx = "ix_service"; return q }
 func (q *BattleQuery) ForceIndexIxUser() *BattleQuery    { q.q.Node.ForceIdx = "ix_user"; return q }
 
@@ -5675,10 +6020,34 @@ func (q *BattleQuery) SetAesHexEmailExpr(frag string, binds ...any) *BattleQuery
 	q.q.SetExpr("aes_hex_email", frag, binds...)
 	return q
 }
+func (q *BattleQuery) SetEmailBlindIndex(v string) *BattleQuery {
+	q.q.Set("email_blind_index", v)
+	return q
+}
+func (q *BattleQuery) SetEmailBlindIndexNull() *BattleQuery {
+	q.q.SetNull("email_blind_index")
+	return q
+}
+func (q *BattleQuery) SetEmailBlindIndexExpr(frag string, binds ...any) *BattleQuery {
+	q.q.SetExpr("email_blind_index", frag, binds...)
+	return q
+}
 func (q *BattleQuery) SetAesHexPhone(v string) *BattleQuery { q.q.Set("aes_hex_phone", v); return q }
 func (q *BattleQuery) SetAesHexPhoneNull() *BattleQuery     { q.q.SetNull("aes_hex_phone"); return q }
 func (q *BattleQuery) SetAesHexPhoneExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("aes_hex_phone", frag, binds...)
+	return q
+}
+func (q *BattleQuery) SetPhoneBlindIndex(v string) *BattleQuery {
+	q.q.Set("phone_blind_index", v)
+	return q
+}
+func (q *BattleQuery) SetPhoneBlindIndexNull() *BattleQuery {
+	q.q.SetNull("phone_blind_index")
+	return q
+}
+func (q *BattleQuery) SetPhoneBlindIndexExpr(frag string, binds ...any) *BattleQuery {
+	q.q.SetExpr("phone_blind_index", frag, binds...)
 	return q
 }
 func (q *BattleQuery) SetPrice(v float64) *BattleQuery { q.q.Set("price", v); return q }
@@ -5964,12 +6333,28 @@ func (q *BattleQuery) OnDuplicateSetAesHexEmailExpr(frag string, binds ...any) *
 	q.q.OnDuplicateExpr("aes_hex_email", frag, binds...)
 	return q
 }
+func (q *BattleQuery) OnDuplicateSetEmailBlindIndex(v string) *BattleQuery {
+	q.q.OnDuplicate("email_blind_index", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetEmailBlindIndexExpr(frag string, binds ...any) *BattleQuery {
+	q.q.OnDuplicateExpr("email_blind_index", frag, binds...)
+	return q
+}
 func (q *BattleQuery) OnDuplicateSetAesHexPhone(v string) *BattleQuery {
 	q.q.OnDuplicate("aes_hex_phone", v)
 	return q
 }
 func (q *BattleQuery) OnDuplicateSetAesHexPhoneExpr(frag string, binds ...any) *BattleQuery {
 	q.q.OnDuplicateExpr("aes_hex_phone", frag, binds...)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetPhoneBlindIndex(v string) *BattleQuery {
+	q.q.OnDuplicate("phone_blind_index", v)
+	return q
+}
+func (q *BattleQuery) OnDuplicateSetPhoneBlindIndexExpr(frag string, binds ...any) *BattleQuery {
+	q.q.OnDuplicateExpr("phone_blind_index", frag, binds...)
 	return q
 }
 func (q *BattleQuery) OnDuplicateSetPrice(v float64) *BattleQuery {
@@ -6292,9 +6677,19 @@ func (q *BattleQuery) GetsByAesHexEmail(v string) (*orm.Collection[BattleRow], e
 	return q.AesHexEmail(v).Gets()
 }
 
+// GetsByEmailBlindIndex applies email_blind_index = v and runs the collection terminal.
+func (q *BattleQuery) GetsByEmailBlindIndex(v string) (*orm.Collection[BattleRow], error) {
+	return q.EmailBlindIndex(v).Gets()
+}
+
 // GetsByAesHexPhone applies aes_hex_phone = v and runs the collection terminal.
 func (q *BattleQuery) GetsByAesHexPhone(v string) (*orm.Collection[BattleRow], error) {
 	return q.AesHexPhone(v).Gets()
+}
+
+// GetsByPhoneBlindIndex applies phone_blind_index = v and runs the collection terminal.
+func (q *BattleQuery) GetsByPhoneBlindIndex(v string) (*orm.Collection[BattleRow], error) {
+	return q.PhoneBlindIndex(v).Gets()
 }
 
 // GetsByPrice applies price = v and runs the collection terminal.
@@ -6476,9 +6871,19 @@ func (q *BattleQuery) GetCountByAesHexEmail(v string) (int64, error) {
 	return q.AesHexEmail(v).GetCount()
 }
 
+// GetCountByEmailBlindIndex applies email_blind_index = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByEmailBlindIndex(v string) (int64, error) {
+	return q.EmailBlindIndex(v).GetCount()
+}
+
 // GetCountByAesHexPhone applies aes_hex_phone = v and runs the scalar count terminal.
 func (q *BattleQuery) GetCountByAesHexPhone(v string) (int64, error) {
 	return q.AesHexPhone(v).GetCount()
+}
+
+// GetCountByPhoneBlindIndex applies phone_blind_index = v and runs the scalar count terminal.
+func (q *BattleQuery) GetCountByPhoneBlindIndex(v string) (int64, error) {
+	return q.PhoneBlindIndex(v).GetCount()
 }
 
 // GetCountByPrice applies price = v and runs the scalar count terminal.
@@ -7773,6 +8178,90 @@ func (q *BattleQuery) MaxAesKeyVersion() (*int32, error) {
 		return nil, err
 	}
 	x := int32(orm.AsInt64(v))
+	return &x, nil
+}
+func (q *BattleQuery) CountDistinctEmailBlindIndex() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "email_blind_index"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinEmailBlindIndex is nil when no row matches.
+func (q *BattleQuery) MinEmailBlindIndex() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "email_blind_index"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// MaxEmailBlindIndex is nil when no row matches.
+func (q *BattleQuery) MaxEmailBlindIndex() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "email_blind_index"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+func (q *BattleQuery) CountDistinctPhoneBlindIndex() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "phone_blind_index"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinPhoneBlindIndex is nil when no row matches.
+func (q *BattleQuery) MinPhoneBlindIndex() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "phone_blind_index"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
+	return &x, nil
+}
+
+// MaxPhoneBlindIndex is nil when no row matches.
+func (q *BattleQuery) MaxPhoneBlindIndex() (*string, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "phone_blind_index"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := orm.AsString(v)
 	return &x, nil
 }
 func (q *BattleQuery) CountDistinctPrice() (int64, error) {

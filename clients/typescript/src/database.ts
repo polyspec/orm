@@ -2,8 +2,8 @@ import { AesKeyring } from './index.js';
 import type { AesRotationSpec, AesRotationStatus, Compiler, Database, Executor, Param, Plan, PlanStep, Request, StreamResult, TransactionOptions } from './index.js';
 import { readFile } from 'node:fs/promises';
 import { ConnectCompiler, ConnectPlanCompiler, type CompilerTransport } from './compiler.js';
-import { loadConfig, resolveAesKey } from './config.js';
-import { decode, hostDecode, hostEncode, parsePoint, pointText } from './codec.js';
+import { loadConfig, resolveAesKey, resolveBlindIndexKey } from './config.js';
+import { blindIndex, decode, hostDecode, hostEncode, parsePoint, pointText } from './codec.js';
 import type { DriverConnection, DriverTransaction, DriverValue } from './driver.js';
 import { openMySql, openPostgres, openSqlite } from './driver.js';
 import { ExecutionRows, Page, Row, rowCollection, rowFromResult, rowKey, scalarKey } from './model.js';
@@ -15,6 +15,7 @@ export interface DatabaseOptions {
   schemaHash: string;
   compiler: CompilerTransport;
   aesKey?: string;
+  blindIndexKey?: string;
   aesVersion?: number;
   aesKeys?: ReadonlyMap<number, string>;
   onQuery?: (event: QueryEvent) => void;
@@ -45,12 +46,14 @@ export class Db implements Database, Executor {
     this.schemaHash = options.schemaHash;
     this.compiler = new ConnectPlanCompiler(options.compiler);
     this.aesKey = options.aesKey ?? '';
+    this.blindIndexKey = options.blindIndexKey ?? '';
     this.aesVersion = options.aesVersion ?? 1;
     if (!Number.isSafeInteger(this.aesVersion) || this.aesVersion < 1) throw new OrmError('CONFIG', 'aes version must be a positive integer');
     this.onQuery = options.onQuery;
     this.aesKeyring = options.aesKeys === undefined && this.aesKey === '' ? undefined : new AesKeyring(options.aesKeys ?? new Map([[this.aesVersion, this.aesKey]]), this.aesVersion);
   }
   protected readonly aesKey: string;
+  protected readonly blindIndexKey: string;
   protected readonly aesVersion: number;
   protected readonly aesKeyring?: AesKeyring;
   protected readonly onQuery?: (event: QueryEvent) => void;
@@ -70,20 +73,23 @@ export class Db implements Database, Executor {
 
   public static async fromConfig(path: string): Promise<Db> {
     const config = await loadConfig(path);
-    const manifest = JSON.parse(await readFile(config.schema, 'utf8')) as { schema_hash?: unknown; entities?: Record<string, { columns?: Array<{ styles?: string[] }> }> };
+    const manifest = JSON.parse(await readFile(config.schema, 'utf8')) as { schema_hash?: unknown; entities?: Record<string, { columns?: Array<{ styles?: string[]; blind_index?: string }> }> };
     if (typeof manifest.schema_hash !== 'string' || manifest.schema_hash === '') throw new OrmError('CONFIG', `${config.schema}: schema_hash is required`);
     const generated = generatedSchemaHash();
     if (generated !== manifest.schema_hash) throw new OrmError('SCHEMA_HASH_MISMATCH', `generated from ${generated} but ${config.schema} contains ${manifest.schema_hash}`);
     const aesKey = resolveAesKey(config);
+    const blindIndexKey = resolveBlindIndexKey(config);
     const hasAes = Object.values(manifest.entities ?? {}).some(entity => (entity.columns ?? []).some(column => column.styles?.includes('aes')));
     if (hasAes && aesKey === '') throw new OrmError('CONFIG', 'the schema has aes columns but secrets.aes or secrets.aes_env is not declared');
+    const hasBlindIndex = Object.values(manifest.entities ?? {}).some(entity => (entity.columns ?? []).some(column => column.blind_index !== undefined));
+    if (hasBlindIndex && blindIndexKey === '') throw new OrmError('CONFIG', 'the schema has blind indexes but secrets.blind_index or secrets.blind_index_env is not declared');
     const compiler = new ConnectCompiler(config.ormd.endpoint, config.ormd.timeout_ms);
     const onQuery = config.debug.on_query ? (event: QueryEvent) => {
       const detail = event.error === undefined ? '' : ` error=${String(event.error)}`;
       console.error(`orm ${(event.seconds * 1000).toFixed(3)}ms ${event.sql} ${JSON.stringify(event.binds)}${detail}`);
     } : undefined;
     const aesKeys = config.secrets.aes_keys === undefined ? undefined : new Map(Object.entries(config.secrets.aes_keys).map(([version, key]) => [Number(version), key] as const));
-    const options = { schemaHash: manifest.schema_hash, compiler, aesKey, aesVersion: config.secrets.aes_version, aesKeys, onQuery };
+    const options = { schemaHash: manifest.schema_hash, compiler, aesKey, blindIndexKey, aesVersion: config.secrets.aes_version, aesKeys, onQuery };
     if (config.db.driver === 'sqlite') return Db.connect(openSqlite(config.db.dsn), options);
     if (config.db.driver === 'postgres') return Db.connect(openPostgres(config.db.dsn, config.db.pool), options);
     return Db.connect(openMySql(mysqlDsn(config.db.dsn, config.db.user, config.db.password), config.db.pool), options);
@@ -271,7 +277,10 @@ export class Db implements Database, Executor {
         case 'param': {
           let value = params[slot.param];
           if (slot.transform) value = transform(slot.transform, String(value));
-          if (slot.host_styles.length > 0) value = hostEncode(value, slot.host_styles, this.aesKey);
+          if (slot.host_styles.includes('blind_index')) {
+            if (slot.host_styles.length !== 1) throw new OrmError('CONFIG', 'blind_index must be the only host style');
+            value = blindIndex(value, this.blindIndexKey);
+          } else if (slot.host_styles.length > 0) value = hostEncode(value, slot.host_styles, this.aesKey);
           if (slot.col_type === 'point' && value !== null) value = this.driver === 'postgres' ? postgresPoint(value) : pointText(parsePoint(value as string));
           if (this.driver === 'sqlite' && value instanceof Date) value = sqlDate(value);
           if (this.driver === 'postgres' && value instanceof Date) value = sqlDate(value).replace(/\.000000$/, '');
@@ -298,7 +307,7 @@ export class Db implements Database, Executor {
 export class Tx extends Db {
   public active: boolean = true;
   public constructor(private readonly transactionConnection: DriverTransaction, outer: Db) {
-    super(transactionConnection, { schemaHash: outer.schemaHash, compiler: transportUnavailable, aesKey: outer['aesKey'], aesVersion: outer['aesVersion'], aesKeys: outer['aesKeyring']?.keyMap(), onQuery: outer['onQuery'] }, outer);
+    super(transactionConnection, { schemaHash: outer.schemaHash, compiler: transportUnavailable, aesKey: outer['aesKey'], blindIndexKey: outer['blindIndexKey'], aesVersion: outer['aesVersion'], aesKeys: outer['aesKeyring']?.keyMap(), onQuery: outer['onQuery'] }, outer);
     this.compiler = outer.compiler;
   }
   public override readonly compiler: Compiler;
