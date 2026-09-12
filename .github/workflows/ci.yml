@@ -67,6 +67,8 @@ jobs:
         run: npm run typescript:check && node tests/typescript/check.mjs
       - name: schema AES version rule
         run: npm run schema:check
+      - name: protobuf compiler wire check
+        run: npm run proto:check
       - name: artifacts
         run: |
           mkdir -p bin

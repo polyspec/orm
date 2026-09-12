@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package orm.compiler.v1;
+
+option go_package = "github.com/polyspec/orm/proto/orm/compiler/v1;compilerv1";
+
+service CompilerService {
+  rpc Compile(CompileRequest) returns (CompileResponse);
+}
+
+message CompileRequest {
+  uint32 ir_version = 1;
+  string schema_hash = 2;
+  QueryKind kind = 3;
+  QueryNode root = 4;
+  repeated Assignment set = 5;
+  repeated Assignment on_duplicate = 6;
+  Optimistic optimistic = 7;
+  Raw raw = 8;
+  uint32 parameter_count = 9;
+}
+
+enum QueryKind {
+  QUERY_KIND_UNSPECIFIED = 0;
+  QUERY_KIND_ONE = 1;
+  QUERY_KIND_ALL = 2;
+  QUERY_KIND_COUNT = 3;
+  QUERY_KIND_GROUP_COUNT = 4;
+  QUERY_KIND_COUNT_DISTINCT = 5;
+  QUERY_KIND_SUM = 6;
+  QUERY_KIND_AVG = 7;
+  QUERY_KIND_MIN = 8;
+  QUERY_KIND_MAX = 9;
+  QUERY_KIND_PAGINATE = 10;
+  QUERY_KIND_INSERT = 11;
+  QUERY_KIND_UPDATE = 12;
+  QUERY_KIND_DELETE = 13;
+  QUERY_KIND_RAW = 14;
+}
+
+message QueryNode {
+  string entity = 1;
+  Projection columns = 2;
+  Group on = 3;
+  Group where = 4;
+  Group having = 5;
+  repeated Join joins = 6;
+  repeated Relation relations = 7;
+  repeated Order order = 8;
+  repeated string group_by = 9;
+  repeated GroupExpression group_by_expression = 10;
+  Limit limit = 11;
+  bool distinct = 12;
+  string force_index = 13;
+  string key_by = 14;
+  bool flatten = 15;
+  uint32 limit_per_parent = 16;
+  IfParent if_parent = 17;
+  bool drop_child_key = 18;
+  bool no_cascade_delete = 19;
+}
+
+message Projection {
+  enum Mode { MODE_DEFAULT = 0; MODE_ALL = 1; MODE_NONE = 2; }
+  Mode mode = 1;
+  repeated string add = 2;
+  repeated string remove = 3;
+  map<string, string> aliases = 4;
+  map<string, string> expressions = 5;
+}
+message Join { string relation = 1; string kind = 2; QueryNode query = 3; }
+message Relation { string relation = 1; QueryNode query = 2; }
+message Group { repeated Item items = 1; }
+message Item { string connector = 1; Predicate predicate = 2; Group group = 3; Navigation navigation = 4; }
+message Navigation { string relation = 1; Group group = 2; }
+message Predicate {
+  string column = 1;
+  string operator = 2;
+  optional uint32 parameter = 3;
+  repeated uint32 parameters = 4;
+  ColumnReference reference = 5;
+  string expression = 6;
+  repeated string match_columns = 7;
+}
+message ColumnReference { string path = 1; string column = 2; }
+message Order { string column = 1; string expression = 2; bool descending = 3; }
+message GroupExpression { string expression = 1; string alias = 2; }
+message Limit { uint32 offset = 1; uint32 count = 2; }
+message IfParent { string column = 1; uint32 parameter = 2; }
+message Assignment {
+  string column = 1;
+  optional uint32 parameter = 2;
+  bool set_null = 3;
+  string expression = 4;
+  repeated uint32 expression_parameters = 5;
+  optional uint32 plus_parameter = 6;
+  optional uint32 minus_parameter = 7;
+}
+message Optimistic { string column = 1; uint32 parameter = 2; }
+message Raw { string sql = 1; repeated uint32 parameters = 2; }
+message CompileResponse { Plan plan = 1; CompileError error = 2; }
+message Plan { repeated PlanStep steps = 1; }
+message PlanStep { string role = 1; string sql = 2; repeated BindSlot binds = 3; }
+message BindSlot { string name = 1; string transform = 2; bool secret = 3; }
+message CompileError { string code = 1; string message = 2; }
