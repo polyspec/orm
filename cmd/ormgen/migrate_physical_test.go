@@ -9,9 +9,13 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/polyspec/orm/engine/dialect"
+	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/engine/planner"
 	"github.com/polyspec/orm/engine/schema"
 )
 
@@ -95,7 +99,87 @@ func TestPhysicalMigration(t *testing.T) {
 			assertPhysicalPoint(t, ctx, db, tc.driver)
 			assertPhysicalScope(t, ctx, db, tc.driver)
 			assertPhysicalCheckImport(t, ctx, db, tc.driver)
+			assertPhysicalSoftDelete(t, ctx, db, tc.driver)
 		})
+	}
+}
+
+func assertPhysicalSoftDelete(t *testing.T, ctx context.Context, db *sql.DB, driver string) {
+	t.Helper()
+	q := func(name string) string {
+		if driver == "mysql" {
+			return "`" + name + "`"
+		}
+		return `"` + name + `"`
+	}
+	table := "soft_delete_probe"
+	_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+q(table))
+	t.Cleanup(func() { _, _ = db.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+q(table)) })
+	m := buildPhysicalManifest(t, `erDiagram
+  soft_delete_probe {
+    bigint id PK
+    datetime deleted_at "?"
+    varchar(32) value
+  }
+  %% soft_delete soft_delete_probe deleted_at
+`)
+	ddl, err := renderCreateDDL(m, driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := executeMigration(ctx, db, driver, ddl); err != nil {
+		t.Fatalf("create soft-delete schema: %v\n%s", err, ddl)
+	}
+	if _, err := db.ExecContext(ctx, "INSERT INTO "+q(table)+" ("+q("id")+", "+q("value")+") VALUES (1, 'active')"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, "INSERT INTO "+q(table)+" ("+q("id")+", "+q("deleted_at")+", "+q("value")+") VALUES (2, CURRENT_TIMESTAMP, 'deleted')"); err != nil {
+		t.Fatal(err)
+	}
+	p := &planner.Planner{M: m, D: physicalDialect(driver)}
+	read, err := p.Compile(&ir.Request{Kind: "all", Query: ir.Query{Entity: table}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM ("+read.Steps[0].SQL+") AS orm_probe").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("%s soft-delete read count=%d, want 1", driver, count)
+	}
+	param := 0
+	remove, err := p.Compile(&ir.Request{Kind: "delete", Query: ir.Query{Entity: table, Where: &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "id", Op: "eq", P: &param}}}}}, NParams: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	args := make([]any, 0, len(remove.Steps[0].BindSlots))
+	for _, slot := range remove.Steps[0].BindSlots {
+		if slot.From == "now" {
+			args = append(args, time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
+		} else {
+			args = append(args, 1)
+		}
+	}
+	if _, err := db.ExecContext(ctx, remove.Steps[0].SQL, args...); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM ("+read.Steps[0].SQL+") AS orm_probe").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("%s soft-delete remained visible after delete: count=%d", driver, count)
+	}
+}
+
+func physicalDialect(driver string) dialect.Dialect {
+	switch driver {
+	case "mysql":
+		return dialect.MySQL{}
+	case "postgres":
+		return dialect.Postgres{}
+	default:
+		return dialect.SQLite{}
 	}
 }
 
