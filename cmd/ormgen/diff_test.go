@@ -259,3 +259,32 @@ func TestRenderDiffOrdersForeignKeysAndIndexesForMySQL(t *testing.T) {
 		t.Fatalf("invalid operation order: %v\n%s", positions, sql)
 	}
 }
+
+func TestRenderDiffUsesExplicitTableAndColumnRenames(t *testing.T) {
+	old := &schema.Manifest{SchemaHash: "old", Order: []string{"account"}, Entities: map[string]*schema.Entity{
+		"account": {Name: "account", Table: "account", PK: []string{"id"}, Columns: []*schema.Col{
+			{Name: "id", Type: "i64", Raw: "bigint", PK: true},
+			{Name: "name", Type: "string", Raw: "varchar(40)", Len: 40},
+		}},
+	}}
+	now := &schema.Manifest{SchemaHash: "new", Order: []string{"customer"}, Entities: map[string]*schema.Entity{
+		"customer": {Name: "customer", Table: "customer", RenamedFrom: "account", PK: []string{"id"}, Columns: []*schema.Col{
+			{Name: "id", Type: "i64", Raw: "bigint", PK: true},
+			{Name: "display_name", RenamedFrom: "name", Type: "string", Raw: "varchar(40)", Len: 40},
+		}},
+	}}
+	forward, err := renderDiff(old, now, "postgres", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(forward, `ALTER TABLE "account" RENAME TO "customer";`) || !strings.Contains(forward, `ALTER TABLE "customer" RENAME COLUMN "name" TO "display_name";`) || strings.Contains(forward, "DROP TABLE") {
+		t.Fatalf("invalid forward rename:\n%s", forward)
+	}
+	rollback, err := renderDiff(now, old, "postgres", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rollback, `ALTER TABLE "customer" RENAME TO "account";`) || !strings.Contains(rollback, `ALTER TABLE "account" RENAME COLUMN "display_name" TO "name";`) {
+		t.Fatalf("invalid rollback rename:\n%s", rollback)
+	}
+}

@@ -97,7 +97,11 @@ When the same parent is referenced twice (`user_seq`, `updated_user_seq`), draw 
 %% scope <table> <column>                 # query API와 IR에 독립된 tenant scope 생성
 %% table_comment <table> "database table comment"
 %% column_comment <table> <column> "database column comment"
+%% rename_table <new_table> <old_table>      # migration rename
+%% rename_column <table> <new_col> <old_col> # migration rename
 ```
+
+Rename directives are migration metadata. `ormgen diff` never infers a rename from similar names. A target directive generates the forward `RENAME`; the same structured plan generates the reverse `RENAME` for rollback. Keep the directive in later schema versions so a live database source does not treat the old name as a new object.
 
 Table and column comments are schema data. `ormgen ddl` emits MySQL comments,
 PostgreSQL `COMMENT ON` statements, and SQLite rows in `orm_schema_comments`.

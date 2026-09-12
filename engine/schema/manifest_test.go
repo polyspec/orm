@@ -121,6 +121,13 @@ func TestAllowedColumnNames(t *testing.T) {
 	}
 }
 
+func TestRenameDirectivesEnterManifest(t *testing.T) {
+	m := mustBuild(t, "erDiagram\n customer {\n bigint id PK\n varchar(40) display_name\n }\n %% rename_table customer account\n %% rename_column customer display_name name\n")
+	if m.Entities["customer"].RenamedFrom != "account" || m.Entities["customer"].Column("display_name").RenamedFrom != "name" {
+		t.Fatalf("rename metadata missing: %#v", m.Entities["customer"])
+	}
+}
+
 func TestScopeDirectiveRequiresNonNullTenantColumn(t *testing.T) {
 	good := mustBuild(t, "erDiagram\n tenant {\n bigint id PK \"auto\"\n bigint account_id\n }\n %% scope tenant account_id\n")
 	if got := good.Entities["tenant"].Scope; got != "account_id" {

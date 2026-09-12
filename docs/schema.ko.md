@@ -97,7 +97,11 @@ Mermaid 표준 그대로다. `PK`/`FK`/`UK`는 Mermaid 키워드(`PK, FK`처럼 
 %% scope <table> <column>                 # query API와 IR에 독립된 tenant scope 생성
 %% table_comment <table> "database table comment"
 %% column_comment <table> <column> "database column comment"
+%% rename_table <new_table> <old_table>      # migration rename
+%% rename_column <table> <new_col> <old_col> # migration rename
 ```
+
+Rename directive는 migration metadata다. `ormgen diff`는 비슷한 이름을 rename으로 추정하지 않는다. target directive는 정방향 `RENAME`을 생성하며 같은 구조화 plan은 rollback용 역방향 `RENAME`을 생성한다. 실제 DB source에서 이전 이름을 새 객체로 처리하지 않도록 이후 schema version에도 directive를 유지한다.
 
 테이블 주석과 컬럼 주석은 스키마 데이터입니다. `ormgen ddl`은 MySQL 주석,
 PostgreSQL `COMMENT ON` 문, SQLite의 `orm_schema_comments` 행을 생성합니다.
