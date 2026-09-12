@@ -200,7 +200,7 @@ classDiagram
 | RequestIR | Value-free compiler input. |
 | QueryNode | Owned condition tree, including nested child nodes. |
 | Binding | Independent of request IR; does not select ambient transactions. |
-| Executor | Adapter boundary for concrete database and pinned transaction executors. |
+| Executor | Adapter interface for the concrete database and pinned transaction executors. |
 | Db | Owns connections and caches, never query predicates or row values. |
 | Tx | Completion invalidates every retained bound query and row. |
 | Row | Loaded identity, local values and pending changes have distinct roles. |
