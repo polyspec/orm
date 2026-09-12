@@ -870,8 +870,14 @@ class Db
                 foreach ($chunk as $request) {
                     $attempted++;
                     [, $count] = $tx->write($request['step'], $request['params'], $kind === 'insert', false);
-                    $affected += $count;
-                    if ($kind === 'insert') $inserted++;
+                    if ($kind === 'insert') {
+                        // Drivers report different counts for an upsert
+                        // that updates a duplicate. Expose one per success.
+                        $affected++;
+                        $inserted++;
+                    } else {
+                        $affected += $count;
+                    }
                 }
             }
             return new BatchResult($attempted, $affected, $inserted);

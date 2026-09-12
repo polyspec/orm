@@ -112,7 +112,7 @@ Finder methods apply their equality predicate and call the corresponding termina
 
 ### 2.7 Batch writes
 
-Batch writes use typed query drafts and one transaction. `batchInsert`, `batchUpsert`, `batchUpdate`, and `batchDelete` accept an entity-specific query list and a positive chunk size. The result contains `attempted`, `affected`, and `inserted`. An error rolls the complete batch back; a supplied transaction is reused.
+Batch writes use typed query drafts and one transaction. `batchInsert`, `batchUpsert`, `batchUpdate`, and `batchDelete` accept an entity-specific query list and a positive chunk size. The result contains `attempted`, `affected`, and `inserted`. For insert and upsert, `affected` is one per successful request because database drivers report different duplicate-update counts; `inserted` is the number of successful insert requests. For update and delete, `affected` is the driver-reported row count. An error rolls the complete batch back; a supplied transaction is reused.
 
 ### 2.8 Rows
 

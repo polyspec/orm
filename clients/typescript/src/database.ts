@@ -390,8 +390,14 @@ export async function batchWrite(executor: Db, requests: readonly BatchRequest[]
         result.attempted++;
         const value = await target.execute(request.plan, [...request.params]);
         const write = value as { affected?: unknown };
-        result.affected += typeof write.affected === 'number' ? write.affected : 0;
-        if (kind === 'insert') result.inserted++;
+        if (kind === 'insert') {
+          // MySQL reports 2 for an upsert that updates a duplicate while
+          // PostgreSQL and SQLite report 1. Expose one per successful request.
+          result.affected++;
+          result.inserted++;
+        } else {
+          result.affected += typeof write.affected === 'number' ? write.affected : 0;
+        }
       }
     }
     return result;
