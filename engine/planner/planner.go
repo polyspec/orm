@@ -352,7 +352,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			if q.Lock != "" {
 				lock, ok := p.D.RowLock(q.Lock)
 				if !ok {
-					return nil, fmt.Errorf("CAPABILITY_UNSUPPORTED: %s row lock %q", p.D.Name(), q.Lock)
+					return nil, &ir.Error{Code: "CAPABILITY_UNSUPPORTED", Msg: fmt.Sprintf("%s row lock %q is not supported", p.D.Name(), q.Lock)}
 				}
 				sb.WriteString(lock)
 			}

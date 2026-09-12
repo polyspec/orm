@@ -125,6 +125,18 @@ func TestRowLock(t *testing.T) {
 	if _, err := sqliteEngine.Compile([]byte(full)); err == nil || !strings.Contains(err.Error(), "CAPABILITY_UNSUPPORTED") {
 		t.Fatalf("sqlite row lock error: %v", err)
 	}
+	if got := string(ErrorJSON(mustCompileError(t, sqliteEngine, full))); !strings.Contains(got, `"code":"CAPABILITY_UNSUPPORTED"`) {
+		t.Fatalf("sqlite row lock wire error: %s", got)
+	}
+}
+
+func mustCompileError(t *testing.T, e *Engine, input string) error {
+	t.Helper()
+	_, err := e.Compile([]byte(input))
+	if err == nil {
+		t.Fatal("expected compile error")
+	}
+	return err
 }
 
 func TestJoinAndNav(t *testing.T) {

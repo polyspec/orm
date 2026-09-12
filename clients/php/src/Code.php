@@ -23,6 +23,8 @@ final class Code
     public const OP_UNKNOWN = 'OP_UNKNOWN';
     /** engine: structural: missing fields, wrong combination, param index out of range */
     public const IR_INVALID = 'IR_INVALID';
+    /** engine: requested operation is not supported by the selected dialect */
+    public const CAPABILITY_UNSUPPORTED = 'CAPABILITY_UNSUPPORTED';
     /** engine */
     public const ENTITY_UNKNOWN = 'ENTITY_UNKNOWN';
     /** engine */

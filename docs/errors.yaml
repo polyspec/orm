@@ -21,6 +21,8 @@ codes:
     origin: engine
   - code: IR_INVALID              # structural: missing fields, wrong combination, param index out of range
     origin: engine
+  - code: CAPABILITY_UNSUPPORTED  # requested operation is not supported by the selected dialect
+    origin: engine
   # ---- schema references ----
   - code: ENTITY_UNKNOWN
     origin: engine
