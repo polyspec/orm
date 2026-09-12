@@ -88,6 +88,8 @@ Review the generated SQL before applying it. Table removal, column removal, and 
 
 `ormgen migrate` reads the live schema, creates `orm_schema_migrations`, computes a plan, applies supported non-destructive changes, verifies the live schema, and records the result. Repeating the same `migration-id` is a no-op only when the recorded migration and live schema match. Use `--dry-run` to print the plan without changing the database.
 
+Each execution also writes a JSON audit file under `migrations/logs` by default. The filename is `<UTC timestamp>__<migration-id>.json`; it contains the driver, schema hashes, plan checksum, status, operation count, start time, finish time, and error detail. Use `--log-dir` to select another directory. An applied migration fails verification if no file log matches its database record.
+
 ```sh
 go run ./cmd/ormgen migrate --driver mysql --dsn "$ORM_DSN" \
   --schema schema/schema.json --migration-id 20260912-initial --dry-run
