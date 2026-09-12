@@ -92,6 +92,19 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 				}
 				tableRename = fmt.Sprintf("ALTER TABLE %s RENAME TO %s;", quote(oldEnt.Table), quote(newEnt.Table))
 			}
+			if dialect == "sqlite" {
+				if err := validateSQLiteAddedColumns(oldEnt, newEnt); err != nil {
+					return "", err
+				}
+				if sqliteNeedsRebuild(from, to, oldEnt, newEnt) {
+					statement, destructive, err := renderSQLiteRebuild(from, to, oldEnt, newEnt, quote)
+					if err != nil {
+						return "", err
+					}
+					changes = append(changes, schemaChange{sql: statement, destructive: destructive})
+					continue
+				}
+			}
 			drops, adds, err := diffIndexesAndForeignKeys(from, to, oldEnt, newEnt, dialect, quote)
 			if err != nil {
 				return "", err
@@ -129,7 +142,11 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 					if o.Name != n.Name {
 						changes = append(changes, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s;", quote(newEnt.Table), quote(o.Name), quote(n.Name))})
 					}
-					if !columnChanged(o, n) {
+					changed := columnChanged(o, n)
+					if dialect == "sqlite" {
+						changed = !sqliteColumnsEquivalent(o, n)
+					}
+					if !changed {
 						break
 					}
 					stmts, err := alterColumn(newEnt.Table, o, n, dialect, quote)
@@ -174,6 +191,139 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 		b.WriteByte('\n')
 	}
 	return b.String(), nil
+}
+
+func validateSQLiteAddedColumns(old, next *schema.Entity) error {
+	for _, pair := range matchDiffColumns(old, next) {
+		previous, c := pair[0], pair[1]
+		if c == nil || previous != nil {
+			continue
+		}
+		if !c.Nullable && c.Default == nil && !c.Auto {
+			return fmt.Errorf("sqlite table %s cannot add required column %s without a default during a data-preserving migration", next.Table, c.Name)
+		}
+	}
+	return nil
+}
+
+func sqliteNeedsRebuild(from, to *schema.Manifest, old, next *schema.Entity) bool {
+	if !stringSlicesEqual(old.PK, next.PK) || !columnGroupsEqual(old.Unique, next.Unique) {
+		return true
+	}
+	for _, pair := range matchDiffColumns(old, next) {
+		if pair[0] == nil || pair[1] == nil {
+			if pair[1] == nil {
+				return true
+			}
+			continue
+		}
+		if !sqliteColumnsEquivalent(pair[0], pair[1]) {
+			return true
+		}
+	}
+	oldFKs, newFKs := entityForeignKeys(from, old), entityForeignKeys(to, next)
+	if len(oldFKs) != len(newFKs) {
+		return true
+	}
+	for column, left := range oldFKs {
+		right, ok := newFKs[column]
+		if !ok || !foreignKeysEqualWithoutName(left, right) {
+			return true
+		}
+	}
+	return false
+}
+
+func sqliteColumnsEquivalent(left, right *schema.Col) bool {
+	typeMatch := sqliteTypeMatches(right.Type, left.Type) || sqliteTypeMatches(left.Type, right.Type)
+	return typeMatch && left.Nullable == right.Nullable && normalizedDefault(left) == normalizedDefault(right) && left.Auto == right.Auto
+}
+
+func normalizedDefault(column *schema.Col) string {
+	if column.Default == nil {
+		return ""
+	}
+	return strings.Trim(*column.Default, "'\"")
+}
+
+func columnGroupsEqual(left, right [][]string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	keys := func(groups [][]string) []string {
+		out := make([]string, len(groups))
+		for i, group := range groups {
+			out[i] = strings.Join(group, "\x00")
+		}
+		sort.Strings(out)
+		return out
+	}
+	return stringSlicesEqual(keys(left), keys(right))
+}
+
+func renderSQLiteRebuild(from, to *schema.Manifest, old, next *schema.Entity, quote func(string) string) (string, bool, error) {
+	if len(next.Fulltext) > 0 {
+		return "", false, fmt.Errorf("sqlite full-text indexes require an explicit auxiliary migration")
+	}
+	temp := "__orm_rebuild_" + next.Table
+	lines := make([]string, 0, len(next.Columns)+len(next.Unique)+len(next.Columns))
+	for _, c := range next.Columns {
+		def, err := ddlColumn(c, "sqlite", quote)
+		if err != nil {
+			return "", false, err
+		}
+		lines = append(lines, "  "+def)
+	}
+	if len(next.PK) == 1 && next.Auto == next.PK[0] {
+		for i, line := range lines {
+			if strings.HasPrefix(line, "  "+quote(next.PK[0])+" ") {
+				lines[i] = "  " + quote(next.PK[0]) + " INTEGER PRIMARY KEY AUTOINCREMENT"
+			}
+		}
+	} else {
+		lines = append(lines, "  PRIMARY KEY ("+joinQuoted(next.PK, quote)+")")
+	}
+	for _, unique := range next.Unique {
+		lines = append(lines, "  CONSTRAINT "+quote("uq_"+next.Table+"_"+strings.Join(unique, "_"))+" UNIQUE ("+joinQuoted(unique, quote)+")")
+	}
+	for _, fk := range sortedForeignKeys(to, next) {
+		lines = append(lines, "  "+foreignKeyClause(fk, to, quote))
+	}
+	var targetCols, sourceCols []string
+	for _, pair := range matchDiffColumns(old, next) {
+		o, n := pair[0], pair[1]
+		if o == nil {
+			continue
+		}
+		if n == nil {
+			continue
+		}
+		targetCols = append(targetCols, quote(n.Name))
+		sourceCols = append(sourceCols, quote(o.Name))
+	}
+	var b strings.Builder
+	b.WriteString("SELECT 'orm-sqlite-rebuild table=" + old.Table + " target=" + next.Table + " temp=" + temp + "';\n")
+	b.WriteString("PRAGMA defer_foreign_keys = ON;\n")
+	b.WriteString("CREATE TABLE " + quote(temp) + " (\n" + strings.Join(lines, ",\n") + "\n);\n")
+	if len(targetCols) > 0 {
+		b.WriteString("INSERT INTO " + quote(temp) + " (" + strings.Join(targetCols, ", ") + ") SELECT " + strings.Join(sourceCols, ", ") + " FROM " + quote(old.Table) + ";\n")
+	}
+	b.WriteString("DROP TABLE " + quote(old.Table) + ";\n")
+	b.WriteString("ALTER TABLE " + quote(temp) + " RENAME TO " + quote(next.Table) + ";\n")
+	for _, name := range sortedIndexNames(next.Indexes) {
+		b.WriteString("CREATE INDEX " + quote(next.Table+"_"+name) + " ON " + quote(next.Table) + " (" + joinQuoted(next.Indexes[name], quote) + ");\n")
+	}
+	b.WriteString("CREATE TABLE IF NOT EXISTS orm_schema_comments (table_name TEXT NOT NULL, column_name TEXT NOT NULL, comment TEXT NOT NULL, PRIMARY KEY (table_name, column_name));\n")
+	b.WriteString("DELETE FROM orm_schema_comments WHERE table_name='" + sqlQuote(old.Table) + "';\n")
+	if next.Comment != "" {
+		b.WriteString("INSERT OR REPLACE INTO orm_schema_comments (table_name,column_name,comment) VALUES ('" + sqlQuote(next.Table) + "','','" + sqlQuote(next.Comment) + "');\n")
+	}
+	for _, c := range next.Columns {
+		if c.Comment != "" {
+			b.WriteString("INSERT OR REPLACE INTO orm_schema_comments (table_name,column_name,comment) VALUES ('" + sqlQuote(next.Table) + "','" + sqlQuote(c.Name) + "','" + sqlQuote(c.Comment) + "');\n")
+		}
+	}
+	return strings.TrimSpace(b.String()), true, nil
 }
 
 func validateRenameSources(from, to *schema.Manifest) error {

@@ -87,7 +87,9 @@ go run ./cmd/ormgen diff --from schema/schema.previous.json --to schema/schema.j
 
 생성된 SQL을 적용하기 전에 검토한다. `ormgen diff`에서 테이블 삭제, 컬럼 삭제, 컬럼 정의 변경에는 `--allow-destructive`가 필요하며 migration 명령은 이 변경을 거부한다. rename은 안전 여부를 추정할 수 없으므로 명시적인 migration으로 작성한다.
 
-diff는 외래키를 먼저 제거하고 해당 인덱스를 제거한 다음 컬럼을 변경하며, 인덱스를 생성한 뒤 외래키를 생성한다. 이름이 있는 인덱스, unique 제약조건, full-text 인덱스, 외래키 대상과 삭제 동작, 컬럼 타입, NULL 허용, 기본값, 코멘트를 비교한다. PostgreSQL은 `TYPE`, `SET|DROP NOT NULL`, `SET|DROP DEFAULT` 작업을 별도 문장으로 생성한다. 외래키 이름은 `fk_<table>_<column>` 형식으로 결정하고 `RESTRICT`, `CASCADE`, `SET NULL`을 명시한다. 테이블 교체가 필요한 SQLite 변경은 공개 소스 준비 계획의 검증된 rebuild plan이 구현될 때까지 오류를 반환한다.
+diff는 외래키를 먼저 제거하고 해당 인덱스를 제거한 다음 컬럼을 변경하며, 인덱스를 생성한 뒤 외래키를 생성한다. 이름이 있는 인덱스, unique 제약조건, full-text 인덱스, 외래키 대상과 삭제 동작, 컬럼 타입, NULL 허용, 기본값, 코멘트를 비교한다. PostgreSQL은 `TYPE`, `SET|DROP NOT NULL`, `SET|DROP DEFAULT` 작업을 별도 문장으로 생성한다. 외래키 이름은 `fk_<table>_<column>` 형식으로 결정하고 `RESTRICT`, `CASCADE`, `SET NULL`을 명시한다.
+
+SQLite는 column 제거·정의 변경과 primary key·unique·foreign key 변경 시 table을 rebuild한다. transaction은 예약된 임시 table을 생성하고, 이름이 같거나 명시적으로 rename된 column을 복사하고, source table을 교체하고, index와 comment를 다시 생성하고, foreign key를 검증한다. 모든 rebuild에는 `--allow-destructive`가 필요하다. default가 없는 새 필수 column, 기존 임시 객체, 기존 foreign key 위반, 의존 trigger·view가 있으면 첫 rebuild operation 전에 실패한다. 복사·constraint·검증 실패는 transaction을 rollback한다. SQLite full-text 변경에는 검토된 auxiliary migration SQL이 필요하다.
 
 `ormgen migrate`는 실제 스키마를 읽고 `orm_schema_migrations`를 생성한 뒤 계획을 계산하고 지원되는 비파괴 변경을 적용한다. 적용 후 실제 스키마를 검증하고 결과를 기록한다. 같은 `migration-id`를 다시 실행하면 기록된 migration과 실제 스키마가 일치할 때만 no-op이 된다. `--dry-run`은 DB를 변경하지 않고 계획을 출력한다.
 
