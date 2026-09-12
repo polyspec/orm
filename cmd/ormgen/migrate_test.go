@@ -94,3 +94,48 @@ func TestMigrationLogUsesTimestampAndDetectsRecordMismatch(t *testing.T) {
 		t.Fatalf("expected log conflict, got %v", err)
 	}
 }
+
+func TestCommentDDLAndDiff(t *testing.T) {
+	oldText := "erDiagram\n  account {\n    bigint seq PK\n    varchar(64) email\n  }\n  %% table_comment account \"old table\"\n  %% column_comment account email \"old email\"\n"
+	newText := strings.ReplaceAll(strings.ReplaceAll(oldText, "old table", "new table"), "old email", "new email")
+	oldD, err := schema.Parse(oldText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newD, err := schema.Parse(newText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldM, err := schema.Build(oldD)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newM, err := schema.Build(newD)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlText, err := renderDiff(oldM, newM, "sqlite", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(sqlText, "orm_schema_comments") || !strings.Contains(sqlText, "new table") || !strings.Contains(sqlText, "new email") {
+		t.Fatalf("comment diff = %s", sqlText)
+	}
+	ddl, err := renderCreateDDL(newM, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(ddl, "CREATE TABLE IF NOT EXISTS orm_schema_comments") || !strings.Contains(ddl, "new email") {
+		t.Fatalf("comment ddl = %s", ddl)
+	}
+}
+
+func TestSplitSQLPreservesQuotedSemicolons(t *testing.T) {
+	got := splitSQL("INSERT INTO x VALUES ('a;b'); -- comment ;\nDO $$ BEGIN PERFORM 'c;d'; END $$; SELECT `e;f`; /* ; */ SELECT 1;")
+	if len(got) != 4 {
+		t.Fatalf("statements = %#v", got)
+	}
+	if !strings.Contains(got[0], "a;b") || !strings.Contains(got[1], "c;d") || !strings.Contains(got[2], "e;f") {
+		t.Fatalf("quoted content lost: %#v", got)
+	}
+}

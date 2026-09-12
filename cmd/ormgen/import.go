@@ -38,6 +38,7 @@ type impIndex struct {
 
 type impTable struct {
 	Name    string
+	Comment string
 	Columns []impColumn
 	Indexes []impIndex
 }
@@ -138,6 +139,23 @@ func readTables(db *sql.DB, driver string, only map[string]bool) ([]impTable, er
 		tb.Columns = append(tb.Columns, c)
 	}
 	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	comments, err := db.Query(`SELECT TABLE_NAME, TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()`)
+	if err != nil {
+		return nil, err
+	}
+	for comments.Next() {
+		var name, comment string
+		if err := comments.Scan(&name, &comment); err != nil {
+			comments.Close()
+			return nil, err
+		}
+		if tb := byName[name]; tb != nil {
+			tb.Comment = comment
+		}
+	}
+	if err := comments.Close(); err != nil {
 		return nil, err
 	}
 	irows, err := db.Query(`SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, INDEX_TYPE, COLUMN_NAME FROM information_schema.STATISTICS
@@ -298,6 +316,14 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 			sb.WriteString(strings.TrimRight(line, " ") + "\n")
 		}
 		sb.WriteString("  }\n")
+		if t.Comment != "" {
+			directives = append(directives, fmt.Sprintf("  %%%% table_comment %s %s", t.Name, quoteDirective(t.Comment)))
+		}
+		for _, c := range t.Columns {
+			if c.Comment != "" {
+				directives = append(directives, fmt.Sprintf("  %%%% column_comment %s %s %s", t.Name, c.Name, quoteDirective(c.Comment)))
+			}
+		}
 		for _, ix := range t.Indexes {
 			cols := "(" + strings.Join(ix.Columns, ", ") + ")"
 			switch {
@@ -331,6 +357,10 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 		sb.WriteString(d + "\n")
 	}
 	return sb.String()
+}
+
+func quoteDirective(s string) string {
+	return `"` + strings.ReplaceAll(s, `"`, `\\"`) + `"`
 }
 
 func isNumber(s string) bool {
@@ -396,6 +426,26 @@ func readTablesPG(db *sql.DB, only map[string]bool) ([]impTable, error) {
 		tb.Columns = append(tb.Columns, c)
 	}
 	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	trows, err := db.Query(`SELECT c.relname, coalesce(d.description, '')
+		FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace AND n.nspname=current_schema()
+		LEFT JOIN pg_catalog.pg_description d ON d.objoid=c.oid AND d.objsubid=0
+		WHERE c.relkind='r'`)
+	if err != nil {
+		return nil, err
+	}
+	for trows.Next() {
+		var name, comment string
+		if err := trows.Scan(&name, &comment); err != nil {
+			trows.Close()
+			return nil, err
+		}
+		if tb := byName[name]; tb != nil {
+			tb.Comment = comment
+		}
+	}
+	if err := trows.Close(); err != nil {
 		return nil, err
 	}
 	irows, err := db.Query(`SELECT cl.relname AS table_name, ic.relname AS index_name, ix.indisunique, ix.indisprimary,

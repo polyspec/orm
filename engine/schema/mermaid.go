@@ -23,16 +23,18 @@ type Diagram struct {
 
 type DEntity struct {
 	Name    string
+	Comment string // database table comment from %% table_comment
 	Columns []*DColumn
 	Line    int
 }
 
 type DColumn struct {
-	Type    string // raw type text, e.g. varchar(191), decimal(13_3)
-	Name    string
-	Keys    []string // PK, FK, UK
-	Comment string   // raw comment string without quotes
-	Line    int
+	Type      string // raw type text, e.g. varchar(191), decimal(13_3)
+	Name      string
+	Keys      []string // PK, FK, UK
+	Comment   string   // raw comment string without quotes
+	DBComment string   // database column comment from %% column_comment
+	Line      int
 
 	// Parsed from Comment.
 	Nullable bool
@@ -85,7 +87,7 @@ var (
 	// parent CARD child : label
 	reRelation = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s+([|}o]{1,2}[-.]{2}[|{o]{1,2})\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$`)
 	// %% kind table (a, b) [name]
-	reDirective = regexp.MustCompile(`^%%\s*(unique|index|fulltext|timestamps|scope|predicate)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
+	reDirective = regexp.MustCompile(`^%%\s*(unique|index|fulltext|timestamps|scope|predicate|table_comment|column_comment)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
 	reLabel     = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s*(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
 	reRef       = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
 )
@@ -282,6 +284,19 @@ func parseDirective(m []string, line int) (*Directive, error) {
 		}
 		d.Name = strings.TrimSpace(name)
 		d.Raw = strings.TrimSpace(body)
+	case "table_comment":
+		if d.Raw == "" || !strings.HasPrefix(d.Raw, `"`) || !strings.HasSuffix(d.Raw, `"`) {
+			return nil, &ParseError{line, "%% table_comment <table> \"text\""}
+		}
+		d.Raw = strings.Trim(d.Raw, `"`)
+	case "column_comment":
+		parts := strings.Fields(d.Raw)
+		if len(parts) < 2 || !strings.HasPrefix(strings.TrimSpace(d.Raw[len(parts[0]):]), `"`) || !strings.HasSuffix(strings.TrimSpace(d.Raw[len(parts[0]):]), `"`) {
+			return nil, &ParseError{line, "%% column_comment <table> <column> \"text\""}
+		}
+		d.Columns = []string{parts[0]}
+		text := strings.TrimSpace(d.Raw[len(parts[0]):])
+		d.Raw = strings.Trim(text, `"`)
 	}
 	return d, nil
 }

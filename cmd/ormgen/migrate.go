@@ -213,7 +213,7 @@ func filterManagedTables(tables []impTable) []impTable {
 }
 
 func readTablesSQLite(db *sql.DB) ([]impTable, error) {
-	rows, err := db.Query(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'orm_schema_migrations' ORDER BY name`)
+	rows, err := db.Query(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'orm_schema_migrations' AND name <> 'orm_schema_comments' ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +293,40 @@ func readTablesSQLite(db *sql.DB) ([]impTable, error) {
 		}
 		out = append(out, t)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	comments, err := db.Query(`SELECT table_name, column_name, comment FROM orm_schema_comments`)
+	if err == nil {
+		byTable := make(map[string]*impTable, len(out))
+		for i := range out {
+			byTable[out[i].Name] = &out[i]
+		}
+		for comments.Next() {
+			var table, column, comment string
+			if err := comments.Scan(&table, &column, &comment); err != nil {
+				comments.Close()
+				return nil, err
+			}
+			if t := byTable[table]; t != nil {
+				if column == "" {
+					t.Comment = comment
+				} else {
+					for i := range t.Columns {
+						if t.Columns[i].Name == column {
+							t.Columns[i].Comment = comment
+						}
+					}
+				}
+			}
+		}
+		if err := comments.Close(); err != nil {
+			return nil, err
+		}
+	} else if !strings.Contains(strings.ToLower(err.Error()), "no such table") {
+		return nil, fmt.Errorf("sqlite schema comments: %w", err)
+	}
+	return out, nil
 }
 
 func ensureMigrationTable(ctx context.Context, db *sql.DB, driver string) error {
@@ -365,8 +398,15 @@ func executeMigration(ctx context.Context, db *sql.DB, text string) error {
 
 func splitSQL(text string) []string {
 	var out []string
-	for _, s := range strings.Split(text, ";") {
-		s = strings.TrimSpace(s)
+	start := 0
+	quote := byte(0)
+	lineComment, blockComment := false, false
+	var dollarTag string
+	flush := func(end int) {
+		s := strings.TrimSpace(text[start:end])
+		if s == "" {
+			return
+		}
 		for strings.HasPrefix(s, "--") {
 			if i := strings.IndexByte(s, '\n'); i >= 0 {
 				s = strings.TrimSpace(s[i+1:])
@@ -378,6 +418,80 @@ func splitSQL(text string) []string {
 			out = append(out, s)
 		}
 	}
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+		if lineComment {
+			if c == '\n' {
+				lineComment = false
+			}
+			continue
+		}
+		if blockComment {
+			if c == '*' && i+1 < len(text) && text[i+1] == '/' {
+				blockComment = false
+				i++
+			}
+			continue
+		}
+		if dollarTag != "" {
+			if strings.HasPrefix(text[i:], dollarTag) {
+				i += len(dollarTag) - 1
+				dollarTag = ""
+			}
+			continue
+		}
+		if quote != 0 {
+			if c == quote {
+				if i+1 < len(text) && text[i+1] == quote {
+					i++
+					continue
+				}
+				if i > 0 && text[i-1] == '\\' && quote == '\'' {
+					continue
+				}
+				quote = 0
+			} else if c == '\\' && quote == '\'' {
+				i++
+			}
+			continue
+		}
+		if c == '-' && i+1 < len(text) && text[i+1] == '-' {
+			lineComment = true
+			i++
+			continue
+		}
+		if c == '/' && i+1 < len(text) && text[i+1] == '*' {
+			blockComment = true
+			i++
+			continue
+		}
+		if c == '\'' || c == '"' || c == '`' {
+			quote = c
+			continue
+		}
+		if c == '$' {
+			if end := strings.IndexByte(text[i+1:], '$'); end >= 0 {
+				candidate := text[i : i+end+2]
+				valid := len(candidate) >= 2
+				for j, r := range candidate[1 : len(candidate)-1] {
+					if !(r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || j > 0 && r >= '0' && r <= '9') {
+						valid = false
+						break
+					}
+				}
+				if valid {
+					dollarTag = candidate
+					i += len(candidate) - 1
+					continue
+				}
+			}
+		}
+		if c == ';' {
+			flush(i)
+			start = i + 1
+		}
+	}
+	flush(len(text))
 	return out
 }
 
@@ -473,7 +587,7 @@ func schemaMatches(want, live *schema.Manifest, driver string) bool {
 	}
 	for name, we := range want.Entities {
 		le := live.Entities[name]
-		if le == nil || we.Table != le.Table || len(we.Columns) != len(le.Columns) {
+		if le == nil || we.Table != le.Table || we.Comment != le.Comment || len(we.Columns) != len(le.Columns) {
 			return false
 		}
 		for i, wc := range we.Columns {
@@ -482,7 +596,7 @@ func schemaMatches(want, live *schema.Manifest, driver string) bool {
 			if driver == "sqlite" {
 				typeMatch = sqliteTypeMatches(wc.Type, lc.Type)
 			}
-			if wc.Name != lc.Name || wc.Nullable != lc.Nullable || !typeMatch {
+			if wc.Name != lc.Name || wc.Comment != lc.Comment || wc.Nullable != lc.Nullable || !typeMatch {
 				return false
 			}
 		}
