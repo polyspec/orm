@@ -24,7 +24,7 @@ make docs-verify-idempotent
 
 `docs-check`는 Mermaid를 SVG로 렌더링하고 사이트를 빌드한 후 정적 검사를 실행한다. `docs-static-check`는 기존 `docs/.vitepress/dist`를 검사한다. `docs-verify-idempotent`는 같은 입력으로 두 번 빌드하고 모든 출력 바이트를 비교한다.
 
-정적 검사는 일반 파일 서버에서 각 HTML 파일을 연다. 내부 링크, 앵커, 이미지·스크립트 경로, JavaScript 없이 표시되는 본문과 도표, 검색, 모바일 메뉴를 검사한다. 존재하지 않는 경로를 앱 첫 페이지로 처리하는 기능은 사용하지 않는다. 저장소 소스와 오류 목록 링크는 실제 GitHub 파일에 연결된다.
+정적 검사는 일반 파일 서버에서 각 HTML 파일을 연다. 내부 링크, 앵커, 이미지·스크립트 경로, JavaScript 없이 표시되는 본문과 도표, 검색, 모바일 메뉴를 검사한다. 존재하지 않는 경로는 오류이며 다른 앱 경로를 제공하지 않는다. 저장소 소스와 오류 목록 링크는 실제 GitHub 파일에 연결된다.
 
 결과는 `docs/.vitepress/dist`에 생성한다. HTML, CSS, JavaScript, 검색 인덱스, SVG를 배포한다. 서버 애플리케이션과 실행 시 Mermaid 서비스는 필요하지 않다. 본문과 도표는 JavaScript 없이 읽을 수 있다. 검색, 테마, 모바일 메뉴는 JavaScript를 사용한다.
 

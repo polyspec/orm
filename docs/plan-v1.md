@@ -33,7 +33,7 @@ The following defects changed the architecture.
 ### Design principles (user rules)
 1. **Polling and timers are not the main mechanism.** No periodic runtime work: plan caches fill on request, `ormd` is request-response only, failed PHP UDS streams reconnect immediately without a retry loop, and schema changes produce a `schema_hash` mismatch. Deadlock retry explicitly starts a new transaction after InnoDB rolls back the whole transaction and is limited to three attempts.
 2. **No symlinks; paths are declarative or follow fixed discovery.** Declare `.so`, `.wasm`, socket, and schema blob paths as absolute paths (`orm.toml`: `engine.library`, `ormd.socket`, `schema.blob`) or use fixed locations (`Cargo OUT_DIR`, `composer vendor/bin/ormd`). Include the version in filenames; do not assume relative paths.
-3. **Use fallbacks only where required.** Fix one execution-path method per client in S0 and do not retain alternatives. An undeclared relation alias is a validation error, not an untyped-bag fallback. Schema mismatches, unknown columns, and unbalanced parentheses fail directly. The only intentional alternative is `ormgen gen --no-or-prefix`, a generation option decided once for the S2 compile-time check, not a runtime fallback.
+3. **Use one declared execution path per client.** Fix one execution-path method per client in S0 and do not retain alternatives. An undeclared relation alias is a validation error. Schema mismatches, unknown columns, and unbalanced parentheses fail directly. The only intentional alternative is `ormgen gen --no-or-prefix`, a generation option decided once for the S2 compile-time check, not a runtime execution path.
 
 ### Confirmed decisions
 | Item | Decision |

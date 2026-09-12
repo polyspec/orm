@@ -24,7 +24,7 @@ make docs-verify-idempotent
 
 `docs-check` renders Mermaid as SVG, builds the site, and runs the static checks. `docs-static-check` checks the existing `docs/.vitepress/dist`. `docs-verify-idempotent` builds twice from the same inputs and compares every output byte.
 
-The static check opens each HTML file through a plain file server. It checks internal links, anchors, image and script paths, no-JavaScript content and diagrams, search, and the mobile menu. It does not use an application fallback for missing paths. Repository source and error catalog links point to actual GitHub files.
+The static check opens each HTML file through a plain file server. It checks internal links, anchors, image and script paths, no-JavaScript content and diagrams, search, and the mobile menu. Missing paths are errors; it does not serve another application route. Repository source and error catalog links point to actual GitHub files.
 
 The output is `docs/.vitepress/dist`. The deployment contains HTML, CSS, JavaScript, the search index, and SVG files. It does not require a server application or a runtime Mermaid service. The body and diagrams are readable without JavaScript; search, theme, and mobile menu use JavaScript.
 
