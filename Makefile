@@ -1,11 +1,14 @@
-.PHONY: check db-test perf-check interface-check ts-check ts-db-check schema-check proto-check typescript-build rust-check rust-150-check rust-driver-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check
+.PHONY: check db-test perf-check interface-check token-check ts-check ts-db-check schema-check proto-check typescript-build rust-check rust-150-check rust-driver-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
-check: docs-rules-check docs-check docs-verify-idempotent interface-check ts-check schema-check proto-check rust-check rust-driver-check db-test perf-check
+check: docs-rules-check docs-check docs-verify-idempotent interface-check token-check ts-check schema-check proto-check rust-check rust-driver-check db-test perf-check
 	go test ./...
 
 interface-check:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" go run ./tests/interfaces/check --self-test
+
+token-check:
+	go run ./cmd/ormgen tokens --schema schema/schema.json tests/conformance/runner_go/main.go tests/conformance/runner.php clients/rust/tests/src/conformance.rs tests/conformance/runner_typescript.mjs
 
 db-test:
 	./scripts/db-test.sh
