@@ -49,6 +49,9 @@ func TestBuildExample(t *testing.T) {
 	if c := b.Column("upload_archive"); c.Type != "text" || !c.Lazy || strings.Join(c.Styles, ",") != "curlfile,serialize" {
 		t.Errorf("upload_archive: %+v", c)
 	}
+	if c := b.Column("yaml_settings"); c.Type != "text" || !c.Lazy || strings.Join(c.Styles, ",") != "yaml" {
+		t.Errorf("yaml_settings: %+v", c)
+	}
 	if c := b.Column("ip"); c.Type != "inet" || c.Lazy {
 		t.Errorf("ip: %+v", c)
 	}

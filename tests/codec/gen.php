@@ -3,6 +3,10 @@
 // Usage: php tests/codec/gen.php > tests/codec/vectors.json
 declare(strict_types=1);
 
+require dirname(__DIR__, 2) . '/clients/php/vendor/autoload.php';
+
+use Symfony\Component\Yaml\Yaml;
+
 // Map keys are sorted so Go/Rust (sorted-key encoders) produce the same serialize bytes.
 $values = [
     'null' => null,
@@ -32,6 +36,7 @@ $styles = [
     'base64' => ['serialize', 'base64'],
     'gz' => ['serialize', 'gz'],
     'curlfile' => ['curlfile', 'serialize'],
+    'yaml' => ['yaml'],
 ];
 
 function prepare_curlfiles(mixed $value): mixed
@@ -59,6 +64,7 @@ function encode(array $styles, mixed $v): ?string
         $cur = match ($st) {
             'curlfile' => $value = prepare_curlfiles($value),
             'serialize' => serialize($value),
+            'yaml' => Yaml::dump($value, 20, 2, Yaml::DUMP_EXCEPTION_ON_INVALID_TYPE | Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_NUMERIC_KEY_AS_STRING),
             'json', 'jsons' => json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
             'base64' => base64_encode($cur),
             'gz' => gzcompress($cur, 9),
@@ -78,7 +84,7 @@ foreach ($styles as $name => $chain) {
             // maps with only int keys are still maps in the value model (keys become strings) unless sequential
             'encoded_b64' => $enc === null ? null : base64_encode($enc),
             // gz bytes depend on the zlib implementation; json key order differs; JSON cannot say 2.0 vs 2
-            'deterministic' => !in_array('gz', $chain, true) && $name !== 'json' && !(is_float($v) && floor($v) === $v),
+            'deterministic' => !in_array('gz', $chain, true) && $name !== 'json' && $name !== 'yaml' && !(is_float($v) && floor($v) === $v),
         ];
     }
 }

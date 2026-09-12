@@ -1,10 +1,13 @@
-//! Column-style codecs (docs/codec.md): json/jsons, serialize, base64, gz.
+//! Column-style codecs (docs/codec.md): json/jsons, serialize, base64, gz, curlfile, yaml.
 //! Styles are listed in write order; `decode` applies them in reverse.
 
 use std::io::{Read, Write};
+use std::collections::HashSet;
 
 use base64::Engine as _;
 use serde_json::{Map, Value};
+use yaml_rust2::parser::{Event as YamlEvent, MarkedEventReceiver, Parser as YamlParser};
+use yaml_rust2::scanner::{Marker as YamlMarker, TScalarStyle};
 
 use crate::value::{Param, Val};
 use crate::codes::{CODEC_DECODE, CODEC_ENCODE, CODEC_UNSUPPORTED};
@@ -47,6 +50,10 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
                 cur = base64::engine::general_purpose::STANDARD.decode(text.trim()).map_err(|e| err(CODEC_DECODE, format!("base64: {e}")))?;
             }
             "serialize" => value = Some(php_unserialize(&cur)?),
+            "yaml" => {
+                validate_yaml_syntax(&cur)?;
+                value = Some(serde_yaml_ng::from_slice(&cur).map_err(|e| err(CODEC_DECODE, format!("yaml: {e}")))?);
+            }
             "json" | "jsons" => value = Some(serde_json::from_slice(&cur).map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?),
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
@@ -80,6 +87,12 @@ pub fn encode(styles: &[&str], v: Option<&Value>) -> Result<Param> {
                 let mut s = String::new();
                 php_serialize(&mut s, &value)?;
                 cur = s.into_bytes();
+            }
+            "yaml" => {
+                if i != 0 {
+                    return Err(err(CODEC_UNSUPPORTED, "yaml must be the first style"));
+                }
+                cur = serde_yaml_ng::to_string(&value).map_err(|e| err(CODEC_ENCODE, format!("yaml: {e}")))?.into_bytes();
             }
             "json" | "jsons" => {
                 if i != 0 {
@@ -146,6 +159,110 @@ fn restore_upload_files(value: Value) -> Result<Value> {
             Ok(Value::Object(fields))
         }
         other => Ok(other),
+    }
+}
+
+enum YamlFrame {
+    Sequence,
+    Mapping { expecting_key: bool, keys: HashSet<String> },
+}
+
+#[derive(Default)]
+struct YamlValidator {
+    documents: usize,
+    frames: Vec<YamlFrame>,
+    error: Option<String>,
+}
+
+impl YamlValidator {
+    fn fail(&mut self, mark: YamlMarker, message: impl AsRef<str>) {
+        if self.error.is_none() {
+            self.error = Some(format!("{} at line {}, column {}", message.as_ref(), mark.line(), mark.col()));
+        }
+    }
+
+    fn start_node(&mut self, key: Option<(&str, TScalarStyle)>, mark: YamlMarker) {
+        if let Some(YamlFrame::Mapping { expecting_key, keys }) = self.frames.last_mut() {
+            if *expecting_key {
+                let Some((key, style)) = key else {
+                    self.fail(mark, "map keys must be scalar strings");
+                    return;
+                };
+                let lower = key.to_ascii_lowercase();
+                let non_string_plain = style == TScalarStyle::Plain
+                    && (matches!(lower.as_str(), "true" | "false" | "null" | "~")
+                        || ((key.contains('.') || key.contains('e') || key.contains('E')) && key.parse::<f64>().is_ok()));
+                if non_string_plain {
+                    self.fail(mark, "plain boolean, null, and floating-point map keys are not supported");
+                    return;
+                }
+                if !keys.insert(key.to_string()) {
+                    self.fail(mark, format!("duplicate map key {key:?}"));
+                    return;
+                }
+                *expecting_key = false;
+            } else {
+                *expecting_key = true;
+            }
+        }
+    }
+}
+
+impl MarkedEventReceiver for YamlValidator {
+    fn on_event(&mut self, event: YamlEvent, mark: YamlMarker) {
+        if self.error.is_some() {
+            return;
+        }
+        match event {
+            YamlEvent::DocumentStart => {
+                self.documents += 1;
+                if self.documents > 1 {
+                    self.fail(mark, "multiple documents are not supported");
+                }
+            }
+            YamlEvent::Alias(_) => self.fail(mark, "aliases are not supported"),
+            YamlEvent::Scalar(value, style, anchor, tag) => {
+                if anchor != 0 {
+                    self.fail(mark, "anchors are not supported");
+                } else if tag.is_some() {
+                    self.fail(mark, "explicit tags are not supported");
+                } else if style == TScalarStyle::Plain && matches!(value.to_ascii_lowercase().as_str(), ".inf" | "+.inf" | "-.inf" | ".nan") {
+                    self.fail(mark, "non-finite numbers are not supported");
+                } else {
+                    self.start_node(Some((&value, style)), mark);
+                }
+            }
+            YamlEvent::SequenceStart(anchor, tag) => {
+                if anchor != 0 || tag.is_some() {
+                    self.fail(mark, "anchors and explicit tags are not supported");
+                    return;
+                }
+                self.start_node(None, mark);
+                self.frames.push(YamlFrame::Sequence);
+            }
+            YamlEvent::MappingStart(anchor, tag) => {
+                if anchor != 0 || tag.is_some() {
+                    self.fail(mark, "anchors and explicit tags are not supported");
+                    return;
+                }
+                self.start_node(None, mark);
+                self.frames.push(YamlFrame::Mapping { expecting_key: true, keys: HashSet::new() });
+            }
+            YamlEvent::SequenceEnd | YamlEvent::MappingEnd => {
+                self.frames.pop();
+            }
+            _ => {}
+        }
+    }
+}
+
+fn validate_yaml_syntax(bytes: &[u8]) -> Result<()> {
+    let source = std::str::from_utf8(bytes).map_err(|e| err(CODEC_DECODE, format!("yaml: invalid UTF-8: {e}")))?;
+    let mut validator = YamlValidator::default();
+    YamlParser::new_from_str(source).load(&mut validator, true).map_err(|e| err(CODEC_DECODE, format!("yaml: {e}")))?;
+    match validator.error {
+        Some(message) => Err(err(CODEC_DECODE, format!("yaml: {message}"))),
+        None => Ok(()),
     }
 }
 
@@ -642,6 +759,12 @@ mod tests {
             (vec!["serialize"], "a:1:{i:0;", "CODEC_DECODE"),
             (vec!["serialize", "gz"], "not zlib", "CODEC_DECODE"),
             (vec!["serialize", "base64"], "@@@", "CODEC_DECODE"),
+            (vec!["yaml"], "a: 1\na: 2\n", "CODEC_DECODE"),
+            (vec!["yaml"], "---\na: 1\n---\na: 2\n", "CODEC_DECODE"),
+            (vec!["yaml"], "a: &x [1]\nb: *x\n", "CODEC_DECODE"),
+            (vec!["yaml"], "a: !custom value\n", "CODEC_DECODE"),
+            (vec!["yaml"], "value: .inf\n", "CODEC_DECODE"),
+            (vec!["yaml"], "true: value\n", "CODEC_DECODE"),
         ] {
             let styles: Vec<String> = styles.into_iter().map(String::from).collect();
             match decode(&styles, &Val::Str(raw.into())) {
@@ -660,5 +783,8 @@ mod tests {
         let styles = vec!["curlfile".to_string(), "serialize".to_string()];
         assert_eq!(decode(&styles, &Val::Str(invalid_stored.into())).unwrap_err().code(), CODEC_DECODE);
         assert_eq!(encode(&["serialize", "curlfile"], Some(&serde_json::json!({}))).unwrap_err().code(), CODEC_UNSUPPORTED);
+        assert_eq!(encode(&["serialize", "yaml"], Some(&serde_json::json!({}))).unwrap_err().code(), CODEC_UNSUPPORTED);
+        let yaml = vec!["yaml".to_string()];
+        assert_eq!(decode(&yaml, &Val::Str("1: value\n".into())).unwrap(), Val::Json(serde_json::json!({"1": "value"})));
     }
 }

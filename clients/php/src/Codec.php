@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Orm;
 
+use Symfony\Component\Yaml\Yaml;
+
 /**
  * Column-style codecs (docs/codec.md). Styles are in write order; decode applies them in reverse.
  * The host stages (aes/hex/ip) are the ones a dialect leaves to the executor (docs/dialects.md):
@@ -48,6 +50,15 @@ final class Codec
                     }
                     $v = self::normalize($v);
                     break;
+                case 'yaml':
+                    try {
+                        $v = Yaml::parse($v, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE | Yaml::PARSE_EXCEPTION_ON_ALIAS);
+                        $v = self::normalize($v);
+                        self::validateYamlValue($v);
+                    } catch (\Throwable $e) {
+                        throw new OrmException(Code::CODEC_DECODE, 'yaml: ' . $e->getMessage());
+                    }
+                    break;
                 case 'curlfile':
                     $v = self::restoreUploadFiles($v);
                     break;
@@ -88,6 +99,17 @@ final class Codec
                     break;
                 case 'serialize':
                     $cur = serialize($value);
+                    break;
+                case 'yaml':
+                    if ($i !== 0) {
+                        throw new OrmException(Code::CODEC_UNSUPPORTED, 'yaml must be the first style');
+                    }
+                    try {
+                        self::validateYamlValue($value);
+                        $cur = Yaml::dump($value, 20, 2, Yaml::DUMP_EXCEPTION_ON_INVALID_TYPE | Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_NUMERIC_KEY_AS_STRING);
+                    } catch (\Throwable $e) {
+                        throw new OrmException(Code::CODEC_ENCODE, 'yaml: ' . $e->getMessage());
+                    }
                     break;
                 case 'json':
                 case 'jsons':
@@ -144,6 +166,22 @@ final class Codec
             }
         }
         return $value;
+    }
+
+    private static function validateYamlValue(mixed $value): void
+    {
+        if (is_float($value) && !is_finite($value)) {
+            throw new \InvalidArgumentException('non-finite numbers are not supported');
+        }
+        if (!is_array($value)) {
+            if ($value !== null && !is_bool($value) && !is_int($value) && !is_float($value) && !is_string($value)) {
+                throw new \InvalidArgumentException('value type is not supported');
+            }
+            return;
+        }
+        foreach ($value as $item) {
+            self::validateYamlValue($item);
+        }
     }
 
     // ---- host stages: aes (MySQL AES_ENCRYPT bytes), hex (upper-case), ip (INET6_ATON packing) ----

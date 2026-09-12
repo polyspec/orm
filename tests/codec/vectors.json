@@ -972,6 +972,191 @@
             },
             "encoded_b64": "YToyOntzOjU6ImZpbGVzIjthOjI6e2k6MDthOjQ6e3M6MTI6ImlzX2N1cmxfZmlsZSI7YjoxO3M6NDoibWltZSI7czoxMDoidGV4dC9wbGFpbiI7czo0OiJuYW1lIjtzOjEwOiJyZXBvcnQudHh0IjtzOjQ6InBhdGgiO3M6MTU6Ii90bXAvcmVwb3J0LnR4dCI7fWk6MTthOjQ6e3M6MTI6ImlzX2N1cmxfZmlsZSI7YjoxO3M6NDoibWltZSI7czowOiIiO3M6NDoibmFtZSI7czo3OiJyYXcuYmluIjtzOjQ6InBhdGgiO3M6MTI6Ii90bXAvcmF3LmJpbiI7fX1zOjU6InRpdGxlIjtzOjc6InJlcXVlc3QiO30=",
             "deterministic": true
+        },
+        {
+            "name": "yaml/null",
+            "styles": [
+                "yaml"
+            ],
+            "value": null,
+            "encoded_b64": null,
+            "deterministic": false
+        },
+        {
+            "name": "yaml/bool_true",
+            "styles": [
+                "yaml"
+            ],
+            "value": true,
+            "encoded_b64": "dHJ1ZQ==",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/int",
+            "styles": [
+                "yaml"
+            ],
+            "value": 42,
+            "encoded_b64": "NDI=",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/negative_int",
+            "styles": [
+                "yaml"
+            ],
+            "value": -7,
+            "encoded_b64": "LTc=",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/float",
+            "styles": [
+                "yaml"
+            ],
+            "value": 1.5,
+            "encoded_b64": "MS41",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/float_small",
+            "styles": [
+                "yaml"
+            ],
+            "value": 0.1,
+            "encoded_b64": "MC4x",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/integral_float",
+            "styles": [
+                "yaml"
+            ],
+            "value": 2,
+            "encoded_b64": "Mi4w",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/string",
+            "styles": [
+                "yaml"
+            ],
+            "value": "hello",
+            "encoded_b64": "aGVsbG8=",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/unicode_slash",
+            "styles": [
+                "yaml"
+            ],
+            "value": "한글/slash \"q\" \\ back",
+            "encoded_b64": "J+2VnOq4gC9zbGFzaCAicSIgXCBiYWNrJw==",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/empty_string",
+            "styles": [
+                "yaml"
+            ],
+            "value": "",
+            "encoded_b64": "Jyc=",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/empty_list",
+            "styles": [
+                "yaml"
+            ],
+            "value": [],
+            "encoded_b64": "W10=",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/list",
+            "styles": [
+                "yaml"
+            ],
+            "value": [
+                1,
+                "two",
+                3.5,
+                null,
+                false
+            ],
+            "encoded_b64": "LSAxCi0gdHdvCi0gMy41Ci0gbnVsbAotIGZhbHNlCg==",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/nested_map",
+            "styles": [
+                "yaml"
+            ],
+            "value": {
+                "a": 1,
+                "b": [
+                    1,
+                    2,
+                    {
+                        "c": "한"
+                    }
+                ],
+                "d": null,
+                "e": true,
+                "f": 1.5
+            },
+            "encoded_b64": "YTogMQpiOgogIC0gMQogIC0gMgogIC0KICAgIGM6IO2VnApkOiBudWxsCmU6IHRydWUKZjogMS41Cg==",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/int_keys_sparse",
+            "styles": [
+                "yaml"
+            ],
+            "value": {
+                "1": "x",
+                "5": "y"
+            },
+            "encoded_b64": "JzEnOiB4Cic1JzogJ3knCg==",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/numeric_string_keys",
+            "styles": [
+                "yaml"
+            ],
+            "value": {
+                "-3": "neg",
+                "07": "zero-padded",
+                "10": "ten"
+            },
+            "encoded_b64": "Jy0zJzogbmVnCicwNyc6IHplcm8tcGFkZGVkCicxMCc6IHRlbgo=",
+            "deterministic": false
+        },
+        {
+            "name": "yaml/upload_nested",
+            "styles": [
+                "yaml"
+            ],
+            "value": {
+                "files": [
+                    {
+                        "$type": "upload_file",
+                        "mime": "text/plain",
+                        "name": "report.txt",
+                        "path": "/tmp/report.txt"
+                    },
+                    {
+                        "$type": "upload_file",
+                        "mime": "",
+                        "name": "raw.bin",
+                        "path": "/tmp/raw.bin"
+                    }
+                ],
+                "title": "request"
+            },
+            "encoded_b64": "ZmlsZXM6CiAgLQogICAgJHR5cGU6IHVwbG9hZF9maWxlCiAgICBtaW1lOiB0ZXh0L3BsYWluCiAgICBuYW1lOiByZXBvcnQudHh0CiAgICBwYXRoOiAvdG1wL3JlcG9ydC50eHQKICAtCiAgICAkdHlwZTogdXBsb2FkX2ZpbGUKICAgIG1pbWU6ICcnCiAgICBuYW1lOiByYXcuYmluCiAgICBwYXRoOiAvdG1wL3Jhdy5iaW4KdGl0bGU6IHJlcXVlc3QK",
+            "deterministic": false
         }
     ]
 }
