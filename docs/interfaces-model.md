@@ -145,6 +145,15 @@ classDiagram
         I64 count
         StreamState state
     }
+    class Batch {
+        BatchOptions options
+        List_Request requests
+        BatchResult result
+        batchInsert()
+        batchUpsert()
+        batchUpdate()
+        batchDelete()
+    }
     class AESKeyring {
         I32 currentVersion
         OrderedMap_I32_Secret versions
@@ -244,6 +253,7 @@ classDiagram
 | Collection | A duplicate key replaces its value without changing order. Integer and string keys are distinct. |
 | Page | Requires a positive per value. total does not depend on the requested page. |
 | StreamResult | Reports whether the cursor was exhausted or stopped and how many independently owned rows were delivered. |
+| Batch | Executes homogeneous typed write requests in bounded chunks and one transaction. |
 | AESKeyring | Stores versioned AES keys and the current write version. |
 | AESRotationSpec | Contains generated identifiers and codec stages for one AES entity. |
 | AESRotationStatus | Contains row counts by stored AES key version. |
@@ -349,6 +359,9 @@ An underscore in a diagram type name separates nested types. The table defines t
 | Page.total | `I64` |
 | StreamResult.count | `I64` |
 | StreamResult.state | `StreamState` |
+| Batch.options | `BatchOptions` |
+| Batch.requests | `List<Request>` |
+| Batch.result | `BatchResult` |
 | AESKeyring.currentVersion | `I32` |
 | AESKeyring.versions | `OrderedMap<I32,Secret>` |
 | AESRotationSpec.columns | `List<AESRotationColumn>` |

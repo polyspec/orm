@@ -546,6 +546,17 @@ impl User {
         Ok(db::write(ex, &mut self.q.req, "delete").await?.1)
     }
 
+    /// Executes typed query drafts in one transaction with bounded chunks.
+    pub async fn batch_insert(&self, rows: Vec<User>, options: orm::BatchOptions) -> Result<orm::BatchResult> { self.batch_write(rows, "insert", options).await }
+    pub async fn batch_upsert(&self, rows: Vec<User>, options: orm::BatchOptions) -> Result<orm::BatchResult> { self.batch_write(rows, "insert", options).await }
+    pub async fn batch_update(&self, rows: Vec<User>, options: orm::BatchOptions) -> Result<orm::BatchResult> { self.batch_write(rows, "update", options).await }
+    pub async fn batch_delete(&self, rows: Vec<User>, options: orm::BatchOptions) -> Result<orm::BatchResult> { self.batch_write(rows, "delete", options).await }
+    async fn batch_write(&self, rows: Vec<User>, kind: &str, options: orm::BatchOptions) -> Result<orm::BatchResult> {
+        let binding = self.binding.clone(); let ex = binding.resolve()?;
+        let requests = rows.into_iter().map(|row| row.q.req).collect();
+        db::batch_write(ex, requests, kind, options).await
+    }
+
     /// The main statement (kind all) and its binds without executing; secret slots read "$SECRET".
     pub async fn sql(&mut self) -> Result<db::Sql> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         db::sql(ex, &mut self.q.req, "all").await

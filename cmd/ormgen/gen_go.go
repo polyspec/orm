@@ -1141,6 +1141,21 @@ func (q *{{.Type}}Query) Delete() (int64, error) {
 	return affected, err
 }
 
+// BatchInsert executes typed query drafts in one transaction with bounded chunks.
+func (q *{{.Type}}Query) BatchInsert(rows []*{{.Type}}Query, options orm.BatchOptions) (orm.BatchResult, error) { return q.batchWrite(rows, "insert", options) }
+// BatchUpsert executes typed insert drafts with their on-duplicate assignments in one transaction.
+func (q *{{.Type}}Query) BatchUpsert(rows []*{{.Type}}Query, options orm.BatchOptions) (orm.BatchResult, error) { return q.batchWrite(rows, "insert", options) }
+// BatchUpdate updates typed query drafts in one transaction.
+func (q *{{.Type}}Query) BatchUpdate(rows []*{{.Type}}Query, options orm.BatchOptions) (orm.BatchResult, error) { return q.batchWrite(rows, "update", options) }
+// BatchDelete deletes typed query drafts in one transaction.
+func (q *{{.Type}}Query) BatchDelete(rows []*{{.Type}}Query, options orm.BatchOptions) (orm.BatchResult, error) { return q.batchWrite(rows, "delete", options) }
+func (q *{{.Type}}Query) batchWrite(rows []*{{.Type}}Query, kind string, options orm.BatchOptions) (orm.BatchResult, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return orm.BatchResult{}, err }
+	requests := make([]*orm.Req, len(rows))
+	for i, row := range rows { if row == nil || row.q == nil { return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"} }; requests[i] = row.q.Req }
+	return orm.BatchWrite(ctx, ex, requests, kind, options)
+}
+
 // SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
 func (q *{{.Type}}Query) SQL() (*orm.Statement, error) {
 	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }

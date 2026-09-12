@@ -124,6 +124,18 @@ const write = await db.execute({ schema_hash: 'hash', kind: 'insert', steps: [{ 
 if (write.affected !== 1 || write.insertId !== 8) throw new Error('write execution failed');
 const emptyBatch = await batchWrite(db, [], 'insert', { chunkSize: 1 });
 if (emptyBatch.attempted !== 0 || emptyBatch.affected !== 0 || emptyBatch.inserted !== 0) throw new Error('empty batch result differs');
+const batchEvents = [];
+const batchConnection = {
+  ...connection,
+  async begin() {
+    return { name: 'sqlite', execute: connection.execute, async commit() { batchEvents.push('commit'); }, async rollback() { batchEvents.push('rollback'); }, async savepoint() {}, async rollbackTo() {}, async releaseSavepoint() {} };
+  },
+};
+const batchDb = new Db(batchConnection, { schemaHash: 'hash', compiler: transport });
+const batchPlan = { schema_hash: 'hash', kind: 'insert', steps: [{ id: 0, role: 'main', sql: 'write', bind_slots: [] }] };
+const batch = await batchWrite(batchDb, [{ plan: batchPlan, params: [] }, { plan: batchPlan, params: [] }], 'insert', { chunkSize: 1 });
+if (batch.attempted !== 2 || batch.affected !== 2 || batch.inserted !== 2 || batchEvents.join(',') !== 'commit') throw new Error('batch transaction or result differs');
+await batchDb.close();
 let invalidBatchRejected = false;
 try { await batchWrite(db, [], 'merge'); } catch (error) { invalidBatchRejected = error?.code === 'CONFIG'; }
 if (!invalidBatchRejected) throw new Error('invalid batch kind was accepted');

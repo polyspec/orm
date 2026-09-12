@@ -110,7 +110,11 @@ join 조건에서는 `child.on(fn)`을 ON에 사용하고 `child.where(fn)`을 W
 
 Finder는 equality 술어를 적용한 뒤 해당 terminal을 호출한다. 데이터베이스나 executor를 terminal에 전달하지 않는다.
 
-### 2.7 행
+### 2.7 Batch write
+
+Batch write는 typed query draft와 하나의 transaction을 사용한다. `batchInsert`, `batchUpsert`, `batchUpdate`, `batchDelete`는 entity별 query 목록과 양수 chunk size를 받는다. 결과는 `attempted`, `affected`, `inserted`를 포함한다. 오류가 발생하면 전체 batch를 rollback하며, 전달된 transaction은 재사용한다.
+
+### 2.8 행
 
 행은 저장 필드마다 생성 getter와 setter를 가진다. setter는 필드를 dirty로 표시한다. update는 행의 binding을 사용하고 optimistic locking에 필요한 원본 값을 보존한다. 관계 접근자는 선언된 행 또는 collection 타입을 반환한다.
 
