@@ -98,6 +98,7 @@ When the same parent is referenced twice (`user_seq`, `updated_user_seq`), draw 
 %% timestamps <table> created_ts updated_ts # 자동 타임스탬프 컬럼 지정(기본: 이름이 created_ts/updated_ts면 자동)
 %% predicate <table> <name> : <expr 조각>   # 재사용 술어 → `<name>(args…)` 메서드. 백틱 컬럼은 검증, `?`마다 인자 하나
 %% scope <table> <column>                 # query API와 IR에 독립된 tenant scope 생성
+%% soft_delete <table> <column>            # nullable datetime; reads exclude non-NULL rows and delete writes the current timestamp
 %% table_comment <table> "database table comment"
 %% column_comment <table> <column> "database column comment"
 %% rename_table <new_table> <old_table>      # migration rename
@@ -123,7 +124,7 @@ Changing a comment changes the schema hash and produces an idempotent migration.
 |---|---|
 | Tables, columns, types, PK/FK/UK, relations, cardinality | Standard Mermaid |
 | NULL/NOT NULL, DEFAULT, AUTO_INCREMENT, ON UPDATE, lazy, styles, FK target | Column comment string (rendered as text) |
-| Composite UNIQUE, INDEX order, FULLTEXT, timestamps, reusable predicates | `%%` directives (ignored by renderers) |
+| Composite UNIQUE, INDEX order, FULLTEXT, timestamps, reusable predicates, soft delete | `%%` directives (ignored by renderers) |
 | FK actions | `cascade`/`setnull` relation-label attributes (RESTRICT by default) |
 | Three database dialect differences | Not stored in the file; fixed type vocabulary and `ormgen ddl --dialect mysql\|postgres\|sqlite` generate dialect-specific CREATE statements |
 | CHECK, partitions, collation/engine options, views, triggers, functions, sequences, extensions | Unsupported by the ORM; write them in migration SQL |
