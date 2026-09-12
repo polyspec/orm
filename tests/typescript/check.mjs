@@ -11,7 +11,7 @@ for (const node of ast.statements) {
     if (name) declarations.set(name, node);
   }
 }
-for (const name of ['Request', 'Group', 'Predicate', 'Relation', 'Plan', 'Compiler', 'Executor', 'Database', 'AuthorRow', 'Where', 'AuthorQuery']) {
+for (const name of ['AesRotationColumn', 'AesRowCodec', 'AesKeyring', 'Request', 'Group', 'Predicate', 'Relation', 'Plan', 'Compiler', 'Executor', 'Database', 'AuthorRow', 'Where', 'AuthorQuery']) {
   if (!declarations.has(name)) throw new Error(`${file}: missing declaration ${name}`);
 }
 const query = declarations.get('AuthorQuery');
@@ -21,4 +21,7 @@ for (const name of required) if (!methods.includes(name)) throw new Error(`${fil
 const positions = required.map(name => methods.indexOf(name));
 if (positions.some((position, i) => i > 0 && position <= positions[i - 1])) throw new Error(`${file}: method order differs from the common query flow`);
 if (!declarations.has('Author') || !ts.isFunctionDeclaration(declarations.get('Author'))) throw new Error(`${file}: missing Author factory`);
+const keyring = declarations.get('AesKeyring');
+const rotation = keyring.members.filter(ts.isMethodDeclaration).map(node => node.name.getText(ast));
+for (const name of ['versions', 'rotateRow']) if (!rotation.includes(name)) throw new Error(`${file}: AesKeyring missing ${name}`);
 console.log(`typescript: ${file} declarations and query flow passed`);
