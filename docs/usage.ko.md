@@ -102,6 +102,10 @@ plan에는 source manifest, target hash, 순서가 고정된 작업, destructive
 
 주석은 매니페스트와 마이그레이션 비교에 포함됩니다. Mermaid 원본에서 `%% table_comment`와 `%% column_comment`을 사용합니다. import는 데이터베이스 주석을 읽고, DDL 생성기는 방언별 주석 문을 생성합니다.
 
+마이그레이션 문은 하나의 데이터베이스 트랜잭션에서 실행됩니다. 문장 실행이
+실패하면 실행 문장 번호, SQL 본문, 드라이버 오류, rollback 결과를 기록합니다.
+DDL을 암시적으로 commit하는 데이터베이스는 해당 데이터베이스의 DDL 동작을 따릅니다.
+
 각 실행은 기본적으로 `migrations/logs` 아래에 JSON 감사 파일도 생성한다. 파일명은 `<UTC 시각>__<migration-id>.json`이며 driver, schema hash, 계획 checksum, 상태, 작업 수, 시작 시각, 종료 시각, 오류 상세를 포함한다. `--log-dir`로 다른 디렉터리를 지정할 수 있다. 적용된 migration에 대응하는 파일 로그가 없거나 DB 기록과 다르면 검증에 실패한다.
 
 ```sh
