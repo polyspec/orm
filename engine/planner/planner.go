@@ -228,10 +228,16 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 		if err := p.selectGroupCountList(b, &sb, root, asm, &idx, &outNames); err != nil {
 			return nil, err
 		}
+		groupKeys := append([]string(nil), q.GroupBy...)
+		for _, group := range q.GroupByExpr {
+			groupKeys = append(groupKeys, group.As)
+		}
+		asm.Key = keyRefs(asm, groupKeys)
 	default:
 		if err := p.selectList(b, &sb, root, asm, &idx, &outNames); err != nil {
 			return nil, err
 		}
+		asm.Key = keyRefs(asm, root.ent.PK)
 	}
 	// Rows per parent: ROW_NUMBER() over the match column. A one-relation with an
 	// ORDER is the same thing with n = 1 (the first row by that order wins).
@@ -583,6 +589,7 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		}
 		asm.Children = append(asm.Children, child)
 	}
+	asm.Key = keyRefs(asm, s.ent.PK)
 	return nil
 }
 

@@ -1941,6 +1941,7 @@ type Assemble struct {
 	Alias         string                 `protobuf:"bytes,2,opt,name=alias,proto3" json:"alias,omitempty"`
 	Columns       []*OutputColumn        `protobuf:"bytes,3,rep,name=columns,proto3" json:"columns,omitempty"`
 	Children      []*Child               `protobuf:"bytes,4,rep,name=children,proto3" json:"children,omitempty"`
+	Key           []*KeyReference        `protobuf:"bytes,5,rep,name=key,proto3" json:"key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1999,6 +2000,13 @@ func (x *Assemble) GetColumns() []*OutputColumn {
 func (x *Assemble) GetChildren() []*Child {
 	if x != nil {
 		return x.Children
+	}
+	return nil
+}
+
+func (x *Assemble) GetKey() []*KeyReference {
+	if x != nil {
+		return x.Key
 	}
 	return nil
 }
@@ -2526,12 +2534,13 @@ const file_proto_orm_compiler_v1_compiler_proto_rawDesc = "" +
 	"\x0fParentCondition\x12\x16\n" +
 	"\x06column\x18\x01 \x01(\tR\x06column\x12\x14\n" +
 	"\x05index\x18\x02 \x01(\rR\x05index\x12\x1c\n" +
-	"\tparameter\x18\x03 \x01(\rR\tparameter\"\xa5\x01\n" +
+	"\tparameter\x18\x03 \x01(\rR\tparameter\"\xd6\x01\n" +
 	"\bAssemble\x12\x16\n" +
 	"\x06entity\x18\x01 \x01(\tR\x06entity\x12\x14\n" +
 	"\x05alias\x18\x02 \x01(\tR\x05alias\x127\n" +
 	"\acolumns\x18\x03 \x03(\v2\x1d.orm.compiler.v1.OutputColumnR\acolumns\x122\n" +
-	"\bchildren\x18\x04 \x03(\v2\x16.orm.compiler.v1.ChildR\bchildren\"\x94\x01\n" +
+	"\bchildren\x18\x04 \x03(\v2\x16.orm.compiler.v1.ChildR\bchildren\x12/\n" +
+	"\x03key\x18\x05 \x03(\v2\x1d.orm.compiler.v1.KeyReferenceR\x03key\"\x94\x01\n" +
 	"\fOutputColumn\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\rR\x05index\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -2673,19 +2682,20 @@ var file_proto_orm_compiler_v1_compiler_proto_depIdxs = []int32{
 	23, // 35: orm.compiler.v1.ParentReference.keys:type_name -> orm.compiler.v1.KeyReference
 	27, // 36: orm.compiler.v1.Assemble.columns:type_name -> orm.compiler.v1.OutputColumn
 	28, // 37: orm.compiler.v1.Assemble.children:type_name -> orm.compiler.v1.Child
-	26, // 38: orm.compiler.v1.Child.assemble:type_name -> orm.compiler.v1.Assemble
-	23, // 39: orm.compiler.v1.Child.parent_keys:type_name -> orm.compiler.v1.KeyReference
-	23, // 40: orm.compiler.v1.Child.child_keys:type_name -> orm.compiler.v1.KeyReference
-	23, // 41: orm.compiler.v1.Child.key:type_name -> orm.compiler.v1.KeyReference
-	2,  // 42: orm.compiler.v1.CompilerService.Compile:input_type -> orm.compiler.v1.CompileRequest
-	30, // 43: orm.compiler.v1.CompilerService.GetMetadata:input_type -> orm.compiler.v1.GetMetadataRequest
-	19, // 44: orm.compiler.v1.CompilerService.Compile:output_type -> orm.compiler.v1.CompileResponse
-	31, // 45: orm.compiler.v1.CompilerService.GetMetadata:output_type -> orm.compiler.v1.GetMetadataResponse
-	44, // [44:46] is the sub-list for method output_type
-	42, // [42:44] is the sub-list for method input_type
-	42, // [42:42] is the sub-list for extension type_name
-	42, // [42:42] is the sub-list for extension extendee
-	0,  // [0:42] is the sub-list for field type_name
+	23, // 38: orm.compiler.v1.Assemble.key:type_name -> orm.compiler.v1.KeyReference
+	26, // 39: orm.compiler.v1.Child.assemble:type_name -> orm.compiler.v1.Assemble
+	23, // 40: orm.compiler.v1.Child.parent_keys:type_name -> orm.compiler.v1.KeyReference
+	23, // 41: orm.compiler.v1.Child.child_keys:type_name -> orm.compiler.v1.KeyReference
+	23, // 42: orm.compiler.v1.Child.key:type_name -> orm.compiler.v1.KeyReference
+	2,  // 43: orm.compiler.v1.CompilerService.Compile:input_type -> orm.compiler.v1.CompileRequest
+	30, // 44: orm.compiler.v1.CompilerService.GetMetadata:input_type -> orm.compiler.v1.GetMetadataRequest
+	19, // 45: orm.compiler.v1.CompilerService.Compile:output_type -> orm.compiler.v1.CompileResponse
+	31, // 46: orm.compiler.v1.CompilerService.GetMetadata:output_type -> orm.compiler.v1.GetMetadataResponse
+	45, // [45:47] is the sub-list for method output_type
+	43, // [43:45] is the sub-list for method input_type
+	43, // [43:43] is the sub-list for extension type_name
+	43, // [43:43] is the sub-list for extension extendee
+	0,  // [0:43] is the sub-list for field type_name
 }
 
 func init() { file_proto_orm_compiler_v1_compiler_proto_init() }

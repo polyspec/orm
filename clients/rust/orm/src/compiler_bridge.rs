@@ -129,6 +129,7 @@ fn assemble(input: wire::Assemble) -> Result<plan::Assemble> {
     Ok(plan::Assemble {
         entity: input.entity, alias: input.alias,
         columns: input.columns.into_iter().map(|v| plan::OutCol { index: v.index as usize, name: v.name, column: v.column, typ: v.r#type, styles: v.styles, hidden: v.hidden }).collect(),
+        key: key_refs(input.key),
         children: input.children.into_iter().map(|v| Ok(plan::Child { rel: v.relation, kind: v.kind, step: v.step, parent_keys: key_refs(v.parent_keys), child_keys: key_refs(v.child_keys), key: key_refs(v.key), flatten: v.flatten, cascade: v.cascade, assemble: v.assemble.map(assemble).transpose()?.map(Arc::new) })).collect::<Result<_>>()?,
     })
 }
@@ -173,7 +174,7 @@ mod tests {
             id: 0, role: "root".into(), sql: "SELECT ?".into(),
             binds: vec![wire::BindSlot { source: "param".into(), parameter: 1, transform: "like_contains".into(), name: String::new(), step: 0, column: "name".into(), host_styles: vec!["hex".into()], column_type: "string".into() }],
             parent: Some(wire::ParentReference { step: 1, keys: vec![wire::KeyReference { column: "seq".into(), index: 2 }], if_parent: Some(wire::ParentCondition { column: "active".into(), index: 3, parameter: 4 }) }),
-            assemble: Some(wire::Assemble { entity: "battle".into(), alias: "a".into(), columns: vec![wire::OutputColumn { index: 0, name: "seq".into(), column: "seq".into(), r#type: "i64".into(), styles: vec![], hidden: false }], children: vec![wire::Child { relation: "user".into(), kind: "join".into(), step: 0, parent_keys: vec![], child_keys: vec![], key: vec![], flatten: false, cascade: false, assemble: Some(wire::Assemble { entity: "user".into(), alias: "user".into(), columns: vec![], children: vec![] }) }] }),
+            assemble: Some(wire::Assemble { entity: "battle".into(), alias: "a".into(), columns: vec![wire::OutputColumn { index: 0, name: "seq".into(), column: "seq".into(), r#type: "i64".into(), styles: vec![], hidden: false }], children: vec![wire::Child { relation: "user".into(), kind: "join".into(), step: 0, parent_keys: vec![], child_keys: vec![], key: vec![], flatten: false, cascade: false, assemble: Some(wire::Assemble { entity: "user".into(), alias: "user".into(), columns: vec![], children: vec![], key: vec![] }) }], key: vec![wire::KeyReference { column: "seq".into(), index: 0 }] }),
         }] };
         let plan = plan_from_proto(wire).unwrap();
         assert_eq!(plan.kind, "all");

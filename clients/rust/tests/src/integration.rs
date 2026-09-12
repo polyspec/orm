@@ -370,6 +370,36 @@ async fn main() {
     check!(fails, battle::query().seq_in(vec![a, b]).using(&db).delete().await.unwrap() == 2, "deadlock rows cleaned up");
     }
 
+    // ---- Composite primary and foreign keys ----
+    let tenant_id = 910009_i64;
+    composite_membership::query().tenant_id_eq(tenant_id).using(&db).delete().await.expect("clear memberships");
+    composite_account::query().tenant_id_eq(tenant_id).using(&db).delete().await.expect("clear accounts");
+    for account_id in [11_i64, 12_i64] {
+        let account = composite_account::query().set_tenant_id(tenant_id).set_account_id(account_id).set_name(format!("account-{account_id}")).using(&db).insert().await.expect("insert account").expect("account row");
+        let member = composite_membership::query().set_tenant_id(tenant_id).set_account_id(account_id).set_role("reader").using(&db).insert().await.expect("insert membership").expect("membership row");
+        check!(fails, account.tenant_id == tenant_id && account.account_id == account_id && member.account_id == account_id, "composite insert returns the complete identity");
+    }
+    let mut first = composite_membership::query().using(&db).get_by_tenant_id_and_account_id(tenant_id, 11).await.expect("composite get").expect("membership row");
+    first.set_role("owner");
+    first.update().await.expect("composite row update");
+    let second = composite_membership::query().set_tenant_id(tenant_id).set_account_id(12).set_role("editor").using(&db).save().await.expect("composite save").expect("saved membership");
+    check!(fails, second.role == "editor", "composite save uses every key component");
+    let page = composite_membership::query().tenant_id_eq(tenant_id).order_by_tenant_id_asc().order_by_account_id_asc().using(&db).paginate(1, 1).await.expect("composite page");
+    check!(fails, page.total == 2 && page.items.len() == 1 && page.items.first().map(|row| row.account_id) == Some(11), "composite pagination preserves complete order");
+    let accounts = composite_account::query().tenant_id_eq(tenant_id).order_by_account_id_asc().relations(composite_membership::query()).using(&db).all().await.expect("composite relations");
+    check!(fails, accounts.len() == 2 && accounts.first().map(|row| row.memberships().len()) == Some(1), "composite relation uses every key component");
+    let rolled_back = db.transaction(|tx| async move {
+        composite_account::query().set_tenant_id(tenant_id).set_account_id(13).set_name("rollback").using(&tx).insert().await?;
+        composite_membership::query().set_tenant_id(tenant_id).set_account_id(13).set_role("rollback").using(&tx).insert().await?;
+        Err::<(), orm::Error>(orm::Error::Engine { code: "TEST_ROLLBACK".into(), msg: "composite rollback".into() })
+    }).await;
+    check!(fails, rolled_back.as_ref().err().map(|error| error.code()) == Some("TEST_ROLLBACK"), "composite transaction returns the source error");
+    check!(fails, composite_account::query().tenant_id_eq(tenant_id).account_id_eq(13).using(&db).count().await.expect("rollback count") == 0, "composite transaction rollback removes both rows");
+    first.delete().await.expect("composite row delete");
+    check!(fails, composite_membership::query().tenant_id_eq(tenant_id).using(&db).count().await.expect("membership count") == 1, "composite row delete uses every key component");
+    composite_membership::query().tenant_id_eq(tenant_id).using(&db).delete().await.expect("remove memberships");
+    composite_account::query().tenant_id_eq(tenant_id).using(&db).delete().await.expect("remove accounts");
+
     // ---- S7: versioned AES database rotation ----
     let rotation_table = "orm_aes_rotation_test";
     let quote = |name: &str| if driver == "mysql" { format!("`{name}`") } else { format!("\"{name}\"") };

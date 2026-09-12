@@ -313,7 +313,27 @@ function sqlDate(value: Date): string { return value.toISOString().replace('T', 
 function postgresPoint(value: unknown): string { const [x,y] = parsePoint(value as string); return `(${x},${y})`; }
 function maskBinds(step: PlanStep, binds: readonly unknown[]): unknown[] { const out: unknown[]=[]; let index=0; for (const slot of step.bind_slots) { if(slot.from==='parent') { while(index<binds.length-step.bind_slots.length+1) out.push(binds[index++]); } else { out.push(slot.from==='secret'?'$SECRET':slot.from==='now'?'$NOW':binds[index]); index++; } } return out.length===binds.length?out:[...binds]; }
 function decodeRows(rows: unknown[][], assemble: ReturnType<typeof requiredAssemble>, aesKey: string): void { for (const row of rows) decodeAssembly(row, assemble, aesKey); }
-function decodeAssembly(row: unknown[], assemble: ReturnType<typeof requiredAssemble>, aesKey: string): void { for (const column of assemble.columns) { let value=row[column.index]; if(value!==null && column.styles.length) { const host=column.styles.filter(style=>style==='aes'||style==='hex'||style==='ip'); const app=column.styles.filter(style=>style!=='aes'&&style!=='hex'&&style!=='ip'); if(host.length)value=hostDecode(value as string|Uint8Array,host,aesKey); if(app.length)value=decode(app,value as string|Uint8Array); } if(value!==null && column.type==='bool') value=value===true||value===1||value==='1'||value==='t'; else if(value!==null && ['i32','i64','f64','decimal'].includes(column.type)) value=Number(value); row[column.index]=value; } for(const child of assemble.children) if(child.kind==='join'&&child.assemble) decodeAssembly(row,child.assemble,aesKey); }
+function decodeAssembly(row: unknown[], assemble: ReturnType<typeof requiredAssemble>, aesKey: string): void {
+  for (const column of assemble.columns) {
+    let value = row[column.index];
+    if (value !== null && column.styles.length) {
+      const host = column.styles.filter(style => style === 'aes' || style === 'hex' || style === 'ip');
+      const app = column.styles.filter(style => style !== 'aes' && style !== 'hex' && style !== 'ip');
+      if (host.length) value = hostDecode(value as string | Uint8Array, host, aesKey);
+      if (app.length) value = decode(app, value as string | Uint8Array);
+    }
+    if (value !== null && column.type === 'string' && value instanceof Uint8Array) {
+      try { value = new TextDecoder('utf-8', { fatal: true }).decode(value); }
+      catch (error) { throw new OrmError('CODEC_DECODE', `${assemble.entity}.${column.name}: invalid UTF-8 string: ${String(error)}`); }
+    } else if (value !== null && column.type === 'bool') {
+      value = value === true || value === 1 || value === '1' || value === 't';
+    } else if (value !== null && ['i32', 'i64', 'f64', 'decimal'].includes(column.type)) {
+      value = Number(value);
+    }
+    row[column.index] = value;
+  }
+  for (const child of assemble.children) if (child.kind === 'join' && child.assemble) decodeAssembly(row, child.assemble, aesKey);
+}
 function parentValues(step: PlanStep, parents: unknown[][], params: readonly Param[]): Param[] { const ref=step.parent!; const seen=new Set<string>(); const out:Param[]=[]; for(const row of parents){if(ref.if_parent&&scalarKey(row[ref.if_parent.index])!==scalarKey(params[ref.if_parent.param]))continue;const key=rowKey(row,ref.keys);if(key===undefined||seen.has(key))continue;seen.add(key);for(const part of ref.keys)out.push(row[part.index] as Param);}return out; }
 function expandParent(step: PlanStep, source: Param[]): {sql:string;values:Param[]} { const width=step.parent?.keys.length??0;if(width===0||source.length%width!==0)throw new OrmError('INTERNAL',`relation step ${step.id} has invalid parent keys`);const tuples=source.length/width;let size=1;while(size<tuples)size<<=1;const values=[...source];while(values.length<size*width)values.push(...source.slice((tuples-1)*width,tuples*width));const replacement=(start:number,format:(n:number)=>string)=>Array.from({length:size},(_,tuple)=>Array.from({length:width},(_,part)=>format(start+tuple*width+part)).join(', ')).join(width===1?', ': '), (');const parentSlot=step.bind_slots.findIndex(slot=>slot.from==='parent');if(parentSlot<0)throw new OrmError('INTERNAL',`relation step ${step.id} has no parent bind`);if(step.sql.includes('$1')){const parent=parentSlot+1;return{sql:step.sql.replace(/\$(\d+)/g,(_,raw)=>{const n=Number(raw);if(n===parent)return replacement(n,i=>`$${i}`);return `$${n>parent?n+size*width-1:n}`;}),values};}let slot=0;return{sql:step.sql.replace(/\?/g,()=>step.bind_slots[slot++]?.from==='parent'?replacement(0,()=>'?'):'?'),values}; }
 function childKeys(plan: Plan,id:number):import('./index.js').KeyReference[] { const find=(assemble:ReturnType<typeof requiredAssemble>):import('./index.js').KeyReference[]|undefined=>{for(const child of assemble.children){if(child.kind!=='join'&&child.step===id)return child.child_keys;if(child.assemble){const found=find(child.assemble);if(found)return found;}}};for(const step of plan.steps)if(step.assemble){const found=find(step.assemble);if(found)return found;}throw new OrmError('INTERNAL',`relation step ${id} has no child attachment`); }

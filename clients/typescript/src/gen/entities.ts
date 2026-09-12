@@ -7,9 +7,9 @@ import type { Point } from '../codec.js';
 import type { AesKeyring, AesRotationStatus, StreamResult } from '../index.js';
 import { OrmError } from '../runtime_error.js';
 
-import type { BattleInterface, BattleRowInterface, UserInterface, UserRowInterface, ServiceInterface, ServiceRowInterface, ServiceModuleInterface, ServiceModuleRowInterface, ServiceMemberInterface, ServiceMemberRowInterface } from './interfaces.js';
+import type { BattleInterface, BattleRowInterface, UserInterface, UserRowInterface, ServiceInterface, ServiceRowInterface, ServiceModuleInterface, ServiceModuleRowInterface, ServiceMemberInterface, ServiceMemberRowInterface, CompositeAccountInterface, CompositeAccountRowInterface, CompositeMembershipInterface, CompositeMembershipRowInterface } from './interfaces.js';
 
-export const SCHEMA_HASH = '794a20b6a27c5797';
+export const SCHEMA_HASH = 'b1c0032faa9fe8df';
 registerSchemaHash(SCHEMA_HASH);
 
 export interface BattleKey { readonly seq:number; }
@@ -142,6 +142,34 @@ export class ServiceMemberRow extends Row implements ServiceMemberRowInterface {
   public getBattles(): Collection<BattleRow> { return this.relation('battles') ?? new Collection(); }
   public getService(): ServiceRow | null { return this.relation('service'); }
   public getUser(): UserRow | null { return this.relation('user'); }
+}
+
+export interface CompositeAccountKey { readonly tenantId:number; readonly accountId:number; }
+export class CompositeAccountRow extends Row implements CompositeAccountRowInterface {
+  public static override entity(): string { return 'composite_account'; }
+  public static override primaryKeys(): readonly string[] { return ['tenant_id','account_id']; }
+  public static override columns(): Readonly<Record<string,string>> { return {'tenant_id':'i64','account_id':'i64','name':'string'}; }
+  public getTenantId(fallback?: number): number { const value=this.column('tenant_id'); return (value ?? fallback ?? null) as number; }
+  public setTenantId(value: number): this { return this.setColumn('tenant_id',value); }
+  public getAccountId(fallback?: number): number { const value=this.column('account_id'); return (value ?? fallback ?? null) as number; }
+  public setAccountId(value: number): this { return this.setColumn('account_id',value); }
+  public getName(fallback?: string): string { const value=this.column('name'); return (value ?? fallback ?? null) as string; }
+  public setName(value: string): this { return this.setColumn('name',value); }
+  public getMemberships(): Collection<CompositeMembershipRow> { return this.relation('memberships') ?? new Collection(); }
+}
+
+export interface CompositeMembershipKey { readonly tenantId:number; readonly accountId:number; }
+export class CompositeMembershipRow extends Row implements CompositeMembershipRowInterface {
+  public static override entity(): string { return 'composite_membership'; }
+  public static override primaryKeys(): readonly string[] { return ['tenant_id','account_id']; }
+  public static override columns(): Readonly<Record<string,string>> { return {'tenant_id':'i64','account_id':'i64','role':'string'}; }
+  public getTenantId(fallback?: number): number { const value=this.column('tenant_id'); return (value ?? fallback ?? null) as number; }
+  public setTenantId(value: number): this { return this.setColumn('tenant_id',value); }
+  public getAccountId(fallback?: number): number { const value=this.column('account_id'); return (value ?? fallback ?? null) as number; }
+  public setAccountId(value: number): this { return this.setColumn('account_id',value); }
+  public getRole(fallback?: string): string { const value=this.column('role'); return (value ?? fallback ?? null) as string; }
+  public setRole(value: string): this { return this.setColumn('role',value); }
+  public getAccount(): CompositeAccountRow | null { return this.relation('account'); }
 }
 
 export class BattleColumns {
@@ -2653,3 +2681,445 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
 }
 export function ServiceMember(): ServiceMemberQuery { return new ServiceMemberQuery(); }
 registerRow('service_member',ServiceMemberRow);
+
+export class CompositeAccountColumns {
+  public static tenantId(): ColumnReference { return new ColumnReference('tenant_id'); }
+  public static accountId(): ColumnReference { return new ColumnReference('account_id'); }
+  public static name(): ColumnReference { return new ColumnReference('name'); }
+}
+
+export class CompositeAccountWhere {
+  public constructor(private readonly core: WhereCore) {}
+  public or(): this { this.core.or(); return this; }
+  public and(callback: (where: CompositeAccountWhere) => void): this { this.core.and(core=>callback(new CompositeAccountWhere(core))); return this; }
+  public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
+  public tenantIdEq(value: number): this { this.core.predicate('tenant_id','eq',value); return this; }
+  public tenantId(value: number): this { return this.tenantIdEq(value); }
+  public tenantIdNotEq(value: number): this { this.core.predicate('tenant_id','not_eq',value); return this; }
+  public tenantIdGt(value: number): this { this.core.predicate('tenant_id','gt',value); return this; }
+  public tenantIdGte(value: number): this { this.core.predicate('tenant_id','gte',value); return this; }
+  public tenantIdLt(value: number): this { this.core.predicate('tenant_id','lt',value); return this; }
+  public tenantIdLte(value: number): this { this.core.predicate('tenant_id','lte',value); return this; }
+  public tenantIdIn(values: readonly (number)[]): this { this.core.predicateList('tenant_id','in',values); return this; }
+  public tenantIdNotIn(values: readonly (number)[]): this { this.core.predicateList('tenant_id','not_in',values); return this; }
+  public tenantIdBetween(low: number, high: number): this { this.core.predicateList('tenant_id','between',[low,high]); return this; }
+  public tenantIdIsNull(): this { this.core.predicateNull('tenant_id','is_null'); return this; }
+  public tenantIdIsNotNull(): this { this.core.predicateNull('tenant_id','is_not_null'); return this; }
+  public tenantIdEqCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','eq_col',reference); return this; }
+  public tenantIdNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','not_eq_col',reference); return this; }
+  public tenantIdGtCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','gt_col',reference); return this; }
+  public tenantIdGteCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','gte_col',reference); return this; }
+  public tenantIdLtCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','lt_col',reference); return this; }
+  public tenantIdLteCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','lte_col',reference); return this; }
+  public accountIdEq(value: number): this { this.core.predicate('account_id','eq',value); return this; }
+  public accountId(value: number): this { return this.accountIdEq(value); }
+  public accountIdNotEq(value: number): this { this.core.predicate('account_id','not_eq',value); return this; }
+  public accountIdGt(value: number): this { this.core.predicate('account_id','gt',value); return this; }
+  public accountIdGte(value: number): this { this.core.predicate('account_id','gte',value); return this; }
+  public accountIdLt(value: number): this { this.core.predicate('account_id','lt',value); return this; }
+  public accountIdLte(value: number): this { this.core.predicate('account_id','lte',value); return this; }
+  public accountIdIn(values: readonly (number)[]): this { this.core.predicateList('account_id','in',values); return this; }
+  public accountIdNotIn(values: readonly (number)[]): this { this.core.predicateList('account_id','not_in',values); return this; }
+  public accountIdBetween(low: number, high: number): this { this.core.predicateList('account_id','between',[low,high]); return this; }
+  public accountIdIsNull(): this { this.core.predicateNull('account_id','is_null'); return this; }
+  public accountIdIsNotNull(): this { this.core.predicateNull('account_id','is_not_null'); return this; }
+  public accountIdEqCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','eq_col',reference); return this; }
+  public accountIdNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','not_eq_col',reference); return this; }
+  public accountIdGtCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','gt_col',reference); return this; }
+  public accountIdGteCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','gte_col',reference); return this; }
+  public accountIdLtCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','lt_col',reference); return this; }
+  public accountIdLteCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','lte_col',reference); return this; }
+  public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.core.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.core.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.core.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.core.predicate('name','ends_with',value); return this; }
+  public nameIsNull(): this { this.core.predicateNull('name','is_null'); return this; }
+  public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
+  public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
+  public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
+  public memberships(callback: (where: CompositeMembershipWhere) => void): this { this.core.navigate('memberships',core=>callback(new CompositeMembershipWhere(core))); return this; }
+}
+
+export class CompositeAccountQuery extends QueryCore implements CompositeAccountInterface {
+  public constructor() { super('composite_account'); }
+  public and(callback: (where: CompositeAccountWhere) => void): this { this.whereCore().and(core=>callback(new CompositeAccountWhere(core))); return this; }
+  public on(callback: (where: CompositeAccountWhere) => void): this { return this.onGroup(core=>callback(new CompositeAccountWhere(core))); }
+  public where(callback: (where: CompositeAccountWhere) => void): this { callback(new CompositeAccountWhere(this.whereCore())); return this; }
+  public having(callback: (where: CompositeAccountWhere) => void): this { return this.havingGroup(core=>callback(new CompositeAccountWhere(core))); }
+  public tenantIdEq(value: number): this { this.predicate('tenant_id','eq',value); return this; }
+  public tenantId(value: number): this { return this.tenantIdEq(value); }
+  public tenantIdNotEq(value: number): this { this.predicate('tenant_id','not_eq',value); return this; }
+  public tenantIdGt(value: number): this { this.predicate('tenant_id','gt',value); return this; }
+  public tenantIdGte(value: number): this { this.predicate('tenant_id','gte',value); return this; }
+  public tenantIdLt(value: number): this { this.predicate('tenant_id','lt',value); return this; }
+  public tenantIdLte(value: number): this { this.predicate('tenant_id','lte',value); return this; }
+  public tenantIdIn(values: readonly (number)[]): this { this.predicateList('tenant_id','in',values); return this; }
+  public tenantIdNotIn(values: readonly (number)[]): this { this.predicateList('tenant_id','not_in',values); return this; }
+  public tenantIdBetween(low: number, high: number): this { this.predicateList('tenant_id','between',[low,high]); return this; }
+  public tenantIdIsNull(): this { this.predicateNull('tenant_id','is_null'); return this; }
+  public tenantIdIsNotNull(): this { this.predicateNull('tenant_id','is_not_null'); return this; }
+  public tenantIdEqCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','eq_col',reference); return this; }
+  public tenantIdNotEqCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','not_eq_col',reference); return this; }
+  public tenantIdGtCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','gt_col',reference); return this; }
+  public tenantIdGteCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','gte_col',reference); return this; }
+  public tenantIdLtCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','lt_col',reference); return this; }
+  public tenantIdLteCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','lte_col',reference); return this; }
+  public accountIdEq(value: number): this { this.predicate('account_id','eq',value); return this; }
+  public accountId(value: number): this { return this.accountIdEq(value); }
+  public accountIdNotEq(value: number): this { this.predicate('account_id','not_eq',value); return this; }
+  public accountIdGt(value: number): this { this.predicate('account_id','gt',value); return this; }
+  public accountIdGte(value: number): this { this.predicate('account_id','gte',value); return this; }
+  public accountIdLt(value: number): this { this.predicate('account_id','lt',value); return this; }
+  public accountIdLte(value: number): this { this.predicate('account_id','lte',value); return this; }
+  public accountIdIn(values: readonly (number)[]): this { this.predicateList('account_id','in',values); return this; }
+  public accountIdNotIn(values: readonly (number)[]): this { this.predicateList('account_id','not_in',values); return this; }
+  public accountIdBetween(low: number, high: number): this { this.predicateList('account_id','between',[low,high]); return this; }
+  public accountIdIsNull(): this { this.predicateNull('account_id','is_null'); return this; }
+  public accountIdIsNotNull(): this { this.predicateNull('account_id','is_not_null'); return this; }
+  public accountIdEqCol(reference: ColumnReference): this { this.predicateColumn('account_id','eq_col',reference); return this; }
+  public accountIdNotEqCol(reference: ColumnReference): this { this.predicateColumn('account_id','not_eq_col',reference); return this; }
+  public accountIdGtCol(reference: ColumnReference): this { this.predicateColumn('account_id','gt_col',reference); return this; }
+  public accountIdGteCol(reference: ColumnReference): this { this.predicateColumn('account_id','gte_col',reference); return this; }
+  public accountIdLtCol(reference: ColumnReference): this { this.predicateColumn('account_id','lt_col',reference); return this; }
+  public accountIdLteCol(reference: ColumnReference): this { this.predicateColumn('account_id','lte_col',reference); return this; }
+  public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.predicate('name','ends_with',value); return this; }
+  public nameIsNull(): this { this.predicateNull('name','is_null'); return this; }
+  public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
+  public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
+  public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }
+  public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }
+  public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
+  public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }
+  public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
+  public selectTenantId(): this { return this.select('tenant_id'); }
+  public omitTenantId(): this { return this.omit('tenant_id'); }
+  public orderByTenantIdAsc(): this { return this.orderBy('tenant_id'); }
+  public orderByTenantIdDesc(): this { return this.orderBy('tenant_id',true); }
+  public groupByTenantId(): this { return this.groupBy('tenant_id'); }
+  public keyByTenantId(): this { return this.keyBy('tenant_id'); }
+  public setTenantId(value: number): this { return this.set('tenant_id',value); }
+  public onDuplicateSetTenantId(value: number): this { return this.duplicate('tenant_id',value); }
+  public setTenantIdExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('tenant_id',expression,values); }
+  public onDuplicateSetTenantIdExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('tenant_id',expression,values); }
+  public selectAccountId(): this { return this.select('account_id'); }
+  public omitAccountId(): this { return this.omit('account_id'); }
+  public orderByAccountIdAsc(): this { return this.orderBy('account_id'); }
+  public orderByAccountIdDesc(): this { return this.orderBy('account_id',true); }
+  public groupByAccountId(): this { return this.groupBy('account_id'); }
+  public keyByAccountId(): this { return this.keyBy('account_id'); }
+  public setAccountId(value: number): this { return this.set('account_id',value); }
+  public onDuplicateSetAccountId(value: number): this { return this.duplicate('account_id',value); }
+  public setAccountIdExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('account_id',expression,values); }
+  public onDuplicateSetAccountIdExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('account_id',expression,values); }
+  public selectName(): this { return this.select('name'); }
+  public omitName(): this { return this.omit('name'); }
+  public orderByNameAsc(): this { return this.orderBy('name'); }
+  public orderByNameDesc(): this { return this.orderBy('name',true); }
+  public groupByName(): this { return this.groupBy('name'); }
+  public keyByName(): this { return this.keyBy('name'); }
+  public setName(value: string): this { return this.set('name',value); }
+  public onDuplicateSetName(value: string): this { return this.duplicate('name',value); }
+  public setNameExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('name',expression,values); }
+  public onDuplicateSetNameExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('name',expression,values); }
+  public plusTenantId(value: number): this { return this.plus('tenant_id',value); }
+  public minusTenantId(value: number): this { return this.minus('tenant_id',value); }
+  public onDuplicatePlusTenantId(value: number): this { return this.duplicatePlus('tenant_id',value); }
+  public onDuplicateMinusTenantId(value: number): this { return this.duplicateMinus('tenant_id',value); }
+  public async sumTenantId(): Promise<number | null> { this.request.ir.agg='tenant_id'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgTenantId(): Promise<number | null> { this.request.ir.agg='tenant_id'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusAccountId(value: number): this { return this.plus('account_id',value); }
+  public minusAccountId(value: number): this { return this.minus('account_id',value); }
+  public onDuplicatePlusAccountId(value: number): this { return this.duplicatePlus('account_id',value); }
+  public onDuplicateMinusAccountId(value: number): this { return this.duplicateMinus('account_id',value); }
+  public async sumAccountId(): Promise<number | null> { this.request.ir.agg='account_id'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgAccountId(): Promise<number | null> { this.request.ir.agg='account_id'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public async minTenantId(): Promise<unknown> { this.request.ir.agg='tenant_id'; return this.terminal('min'); }
+  public async maxTenantId(): Promise<unknown> { this.request.ir.agg='tenant_id'; return this.terminal('max'); }
+  public async countDistinctTenantId(): Promise<number> { this.request.ir.agg='tenant_id'; return Number(await this.terminal('count_distinct')); }
+  public async minAccountId(): Promise<unknown> { this.request.ir.agg='account_id'; return this.terminal('min'); }
+  public async maxAccountId(): Promise<unknown> { this.request.ir.agg='account_id'; return this.terminal('max'); }
+  public async countDistinctAccountId(): Promise<number> { this.request.ir.agg='account_id'; return Number(await this.terminal('count_distinct')); }
+  public async minName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('min'); }
+  public async maxName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('max'); }
+  public async countDistinctName(): Promise<number> { this.request.ir.agg='name'; return Number(await this.terminal('count_distinct')); }
+  public ifParentTenantIdEq(value: unknown): this { return this.ifParent('tenant_id',value); }
+  public ifParentAccountIdEq(value: unknown): this { return this.ifParent('account_id',value); }
+  public ifParentRoleEq(value: unknown): this { return this.ifParent('role',value); }
+  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
+  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
+  public memberships(callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().navigate('memberships',core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public joinTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeMembershipQuery): this { return this.attachJoin('memberships',child,'inner'); }
+  public leftJoinTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeMembershipQuery): this { return this.attachJoin('memberships',child,'left'); }
+  public relationsTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeMembershipQuery): this { return this.attachRelation('memberships',child); }
+  private resolveRelation(child: QueryCore, expected?: 'one'|'many'): string { const entity=child.request.ir.entity; const link=child.linkSelection; const candidates=this.relationDefinitions().filter(value=>value.target===entity&&(!expected||value.kind===expected)&&(!link||(value.left===link.parentKey&&value.right===link.childKey))); if(candidates.length!==1) throw new OrmError('IR_INVALID', `relation from ${this.request.ir.entity} to ${entity} is ${candidates.length===0?'not declared':'ambiguous'}; select a key pair`); return candidates[0]!.name; }
+  private relationDefinitions(): ReadonlyArray<{name:string;kind:'one'|'many';target:string;left:string;right:string}> { return [{name:'memberships',kind:'many',target:'composite_membership',left:'tenant_id,account_id',right:'tenant_id,account_id'}]; }
+  public join(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'inner'); }
+  public leftJoin(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'left'); }
+  public relation(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'one'),child); }
+  public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
+  public matchTenantIdWithTenantIdAndAccountIdWithAccountId(): this { return this.matchKeys('tenant_id,account_id','tenant_id,account_id'); }
+  public onTenantIdWithTenantIdAndAccountIdWithAccountId(): this { return this.matchKeys('tenant_id,account_id','tenant_id,account_id'); }
+  public async get(): Promise<CompositeAccountRow | null> { return await this.terminal('one') as CompositeAccountRow | null; }
+  public async gets(): Promise<Collection<CompositeAccountRow>> { const rows=await this.terminal('all') as Collection<CompositeAccountRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
+  public async stream(visitor: (row: CompositeAccountRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<CompositeAccountRow>(visitor); }
+  public async one(): Promise<CompositeAccountRow | null> { return this.get(); }
+  public async all(): Promise<Collection<CompositeAccountRow>> { return this.gets(); }
+  public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
+  public async getsCount(): Promise<Collection<CompositeAccountRow>> { return await this.terminal('group_count') as Collection<CompositeAccountRow>; }
+  public async insert(): Promise<CompositeAccountRow | null> { const database=this.binding.resolve(); const keys=this.assignedKeyValues(['tenant_id','account_id']); await this.insertKey(); const query=new CompositeAccountQuery().using(database); query.predicate('tenant_id','eq',keys[0]); query.predicate('account_id','eq',keys[1]); return query.get(); }
+  public async save(): Promise<CompositeAccountRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['tenant_id','account_id']); const query=new CompositeAccountQuery().using(database); query.predicate('tenant_id','eq',keys[0]); query.predicate('account_id','eq',keys[1]); return query.get(); }
+  public async update(): Promise<number> { return this.writeAffected('update'); }
+  public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
+  public async paginate(page: number, per: number): Promise<Page<CompositeAccountRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<CompositeAccountRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
+  public async getByTenantId(value: number): Promise<CompositeAccountRow | null> { this.predicate('tenant_id','eq',value); return this.get(); }
+  public async getsByTenantId(value: number): Promise<Collection<CompositeAccountRow>> { this.predicate('tenant_id','eq',value); return this.gets(); }
+  public async getCountByTenantId(value: number): Promise<number> { this.predicate('tenant_id','eq',value); return this.getCount(); }
+  public async getByAccountId(value: number): Promise<CompositeAccountRow | null> { this.predicate('account_id','eq',value); return this.get(); }
+  public async getsByAccountId(value: number): Promise<Collection<CompositeAccountRow>> { this.predicate('account_id','eq',value); return this.gets(); }
+  public async getCountByAccountId(value: number): Promise<number> { this.predicate('account_id','eq',value); return this.getCount(); }
+  public async getByName(value: string): Promise<CompositeAccountRow | null> { this.predicate('name','eq',value); return this.get(); }
+  public async getsByName(value: string): Promise<Collection<CompositeAccountRow>> { this.predicate('name','eq',value); return this.gets(); }
+  public async getCountByName(value: string): Promise<number> { this.predicate('name','eq',value); return this.getCount(); }
+  public async oneByTenantId(value: number): Promise<CompositeAccountRow | null> { return this.getByTenantId(value); }
+  public async getByTenantIdAndAccountId(value0:number,value1:number): Promise<CompositeAccountRow | null> { this.predicate('tenant_id','eq',value0); this.predicate('account_id','eq',value1); return this.get(); }
+}
+export function CompositeAccount(): CompositeAccountQuery { return new CompositeAccountQuery(); }
+registerRow('composite_account',CompositeAccountRow);
+
+export class CompositeMembershipColumns {
+  public static tenantId(): ColumnReference { return new ColumnReference('tenant_id'); }
+  public static accountId(): ColumnReference { return new ColumnReference('account_id'); }
+  public static role(): ColumnReference { return new ColumnReference('role'); }
+}
+
+export class CompositeMembershipWhere {
+  public constructor(private readonly core: WhereCore) {}
+  public or(): this { this.core.or(); return this; }
+  public and(callback: (where: CompositeMembershipWhere) => void): this { this.core.and(core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
+  public tenantIdEq(value: number): this { this.core.predicate('tenant_id','eq',value); return this; }
+  public tenantId(value: number): this { return this.tenantIdEq(value); }
+  public tenantIdNotEq(value: number): this { this.core.predicate('tenant_id','not_eq',value); return this; }
+  public tenantIdGt(value: number): this { this.core.predicate('tenant_id','gt',value); return this; }
+  public tenantIdGte(value: number): this { this.core.predicate('tenant_id','gte',value); return this; }
+  public tenantIdLt(value: number): this { this.core.predicate('tenant_id','lt',value); return this; }
+  public tenantIdLte(value: number): this { this.core.predicate('tenant_id','lte',value); return this; }
+  public tenantIdIn(values: readonly (number)[]): this { this.core.predicateList('tenant_id','in',values); return this; }
+  public tenantIdNotIn(values: readonly (number)[]): this { this.core.predicateList('tenant_id','not_in',values); return this; }
+  public tenantIdBetween(low: number, high: number): this { this.core.predicateList('tenant_id','between',[low,high]); return this; }
+  public tenantIdIsNull(): this { this.core.predicateNull('tenant_id','is_null'); return this; }
+  public tenantIdIsNotNull(): this { this.core.predicateNull('tenant_id','is_not_null'); return this; }
+  public tenantIdEqCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','eq_col',reference); return this; }
+  public tenantIdNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','not_eq_col',reference); return this; }
+  public tenantIdGtCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','gt_col',reference); return this; }
+  public tenantIdGteCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','gte_col',reference); return this; }
+  public tenantIdLtCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','lt_col',reference); return this; }
+  public tenantIdLteCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','lte_col',reference); return this; }
+  public accountIdEq(value: number): this { this.core.predicate('account_id','eq',value); return this; }
+  public accountId(value: number): this { return this.accountIdEq(value); }
+  public accountIdNotEq(value: number): this { this.core.predicate('account_id','not_eq',value); return this; }
+  public accountIdGt(value: number): this { this.core.predicate('account_id','gt',value); return this; }
+  public accountIdGte(value: number): this { this.core.predicate('account_id','gte',value); return this; }
+  public accountIdLt(value: number): this { this.core.predicate('account_id','lt',value); return this; }
+  public accountIdLte(value: number): this { this.core.predicate('account_id','lte',value); return this; }
+  public accountIdIn(values: readonly (number)[]): this { this.core.predicateList('account_id','in',values); return this; }
+  public accountIdNotIn(values: readonly (number)[]): this { this.core.predicateList('account_id','not_in',values); return this; }
+  public accountIdBetween(low: number, high: number): this { this.core.predicateList('account_id','between',[low,high]); return this; }
+  public accountIdIsNull(): this { this.core.predicateNull('account_id','is_null'); return this; }
+  public accountIdIsNotNull(): this { this.core.predicateNull('account_id','is_not_null'); return this; }
+  public accountIdEqCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','eq_col',reference); return this; }
+  public accountIdNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','not_eq_col',reference); return this; }
+  public accountIdGtCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','gt_col',reference); return this; }
+  public accountIdGteCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','gte_col',reference); return this; }
+  public accountIdLtCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','lt_col',reference); return this; }
+  public accountIdLteCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','lte_col',reference); return this; }
+  public roleEq(value: string): this { this.core.predicate('role','eq',value); return this; }
+  public role(value: string): this { return this.roleEq(value); }
+  public roleNotEq(value: string): this { this.core.predicate('role','not_eq',value); return this; }
+  public roleIn(values: readonly (string)[]): this { this.core.predicateList('role','in',values); return this; }
+  public roleNotIn(values: readonly (string)[]): this { this.core.predicateList('role','not_in',values); return this; }
+  public roleLike(value: string): this { this.core.predicate('role','like',value); return this; }
+  public roleLikeBinary(value: string): this { this.core.predicate('role','like_binary',value); return this; }
+  public roleContains(value: string): this { this.core.predicate('role','contains',value); return this; }
+  public roleStartsWith(value: string): this { this.core.predicate('role','starts_with',value); return this; }
+  public roleEndsWith(value: string): this { this.core.predicate('role','ends_with',value); return this; }
+  public roleIsNull(): this { this.core.predicateNull('role','is_null'); return this; }
+  public roleIsNotNull(): this { this.core.predicateNull('role','is_not_null'); return this; }
+  public roleEqCol(reference: ColumnReference): this { this.core.predicateColumn('role','eq_col',reference); return this; }
+  public roleNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('role','not_eq_col',reference); return this; }
+  public account(callback: (where: CompositeAccountWhere) => void): this { this.core.navigate('account',core=>callback(new CompositeAccountWhere(core))); return this; }
+}
+
+export class CompositeMembershipQuery extends QueryCore implements CompositeMembershipInterface {
+  public constructor() { super('composite_membership'); }
+  public and(callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().and(core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public on(callback: (where: CompositeMembershipWhere) => void): this { return this.onGroup(core=>callback(new CompositeMembershipWhere(core))); }
+  public where(callback: (where: CompositeMembershipWhere) => void): this { callback(new CompositeMembershipWhere(this.whereCore())); return this; }
+  public having(callback: (where: CompositeMembershipWhere) => void): this { return this.havingGroup(core=>callback(new CompositeMembershipWhere(core))); }
+  public tenantIdEq(value: number): this { this.predicate('tenant_id','eq',value); return this; }
+  public tenantId(value: number): this { return this.tenantIdEq(value); }
+  public tenantIdNotEq(value: number): this { this.predicate('tenant_id','not_eq',value); return this; }
+  public tenantIdGt(value: number): this { this.predicate('tenant_id','gt',value); return this; }
+  public tenantIdGte(value: number): this { this.predicate('tenant_id','gte',value); return this; }
+  public tenantIdLt(value: number): this { this.predicate('tenant_id','lt',value); return this; }
+  public tenantIdLte(value: number): this { this.predicate('tenant_id','lte',value); return this; }
+  public tenantIdIn(values: readonly (number)[]): this { this.predicateList('tenant_id','in',values); return this; }
+  public tenantIdNotIn(values: readonly (number)[]): this { this.predicateList('tenant_id','not_in',values); return this; }
+  public tenantIdBetween(low: number, high: number): this { this.predicateList('tenant_id','between',[low,high]); return this; }
+  public tenantIdIsNull(): this { this.predicateNull('tenant_id','is_null'); return this; }
+  public tenantIdIsNotNull(): this { this.predicateNull('tenant_id','is_not_null'); return this; }
+  public tenantIdEqCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','eq_col',reference); return this; }
+  public tenantIdNotEqCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','not_eq_col',reference); return this; }
+  public tenantIdGtCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','gt_col',reference); return this; }
+  public tenantIdGteCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','gte_col',reference); return this; }
+  public tenantIdLtCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','lt_col',reference); return this; }
+  public tenantIdLteCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','lte_col',reference); return this; }
+  public accountIdEq(value: number): this { this.predicate('account_id','eq',value); return this; }
+  public accountId(value: number): this { return this.accountIdEq(value); }
+  public accountIdNotEq(value: number): this { this.predicate('account_id','not_eq',value); return this; }
+  public accountIdGt(value: number): this { this.predicate('account_id','gt',value); return this; }
+  public accountIdGte(value: number): this { this.predicate('account_id','gte',value); return this; }
+  public accountIdLt(value: number): this { this.predicate('account_id','lt',value); return this; }
+  public accountIdLte(value: number): this { this.predicate('account_id','lte',value); return this; }
+  public accountIdIn(values: readonly (number)[]): this { this.predicateList('account_id','in',values); return this; }
+  public accountIdNotIn(values: readonly (number)[]): this { this.predicateList('account_id','not_in',values); return this; }
+  public accountIdBetween(low: number, high: number): this { this.predicateList('account_id','between',[low,high]); return this; }
+  public accountIdIsNull(): this { this.predicateNull('account_id','is_null'); return this; }
+  public accountIdIsNotNull(): this { this.predicateNull('account_id','is_not_null'); return this; }
+  public accountIdEqCol(reference: ColumnReference): this { this.predicateColumn('account_id','eq_col',reference); return this; }
+  public accountIdNotEqCol(reference: ColumnReference): this { this.predicateColumn('account_id','not_eq_col',reference); return this; }
+  public accountIdGtCol(reference: ColumnReference): this { this.predicateColumn('account_id','gt_col',reference); return this; }
+  public accountIdGteCol(reference: ColumnReference): this { this.predicateColumn('account_id','gte_col',reference); return this; }
+  public accountIdLtCol(reference: ColumnReference): this { this.predicateColumn('account_id','lt_col',reference); return this; }
+  public accountIdLteCol(reference: ColumnReference): this { this.predicateColumn('account_id','lte_col',reference); return this; }
+  public roleEq(value: string): this { this.predicate('role','eq',value); return this; }
+  public role(value: string): this { return this.roleEq(value); }
+  public roleNotEq(value: string): this { this.predicate('role','not_eq',value); return this; }
+  public roleIn(values: readonly (string)[]): this { this.predicateList('role','in',values); return this; }
+  public roleNotIn(values: readonly (string)[]): this { this.predicateList('role','not_in',values); return this; }
+  public roleLike(value: string): this { this.predicate('role','like',value); return this; }
+  public roleLikeBinary(value: string): this { this.predicate('role','like_binary',value); return this; }
+  public roleContains(value: string): this { this.predicate('role','contains',value); return this; }
+  public roleStartsWith(value: string): this { this.predicate('role','starts_with',value); return this; }
+  public roleEndsWith(value: string): this { this.predicate('role','ends_with',value); return this; }
+  public roleIsNull(): this { this.predicateNull('role','is_null'); return this; }
+  public roleIsNotNull(): this { this.predicateNull('role','is_not_null'); return this; }
+  public roleEqCol(reference: ColumnReference): this { this.predicateColumn('role','eq_col',reference); return this; }
+  public roleNotEqCol(reference: ColumnReference): this { this.predicateColumn('role','not_eq_col',reference); return this; }
+  public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }
+  public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }
+  public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
+  public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }
+  public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
+  public selectTenantId(): this { return this.select('tenant_id'); }
+  public omitTenantId(): this { return this.omit('tenant_id'); }
+  public orderByTenantIdAsc(): this { return this.orderBy('tenant_id'); }
+  public orderByTenantIdDesc(): this { return this.orderBy('tenant_id',true); }
+  public groupByTenantId(): this { return this.groupBy('tenant_id'); }
+  public keyByTenantId(): this { return this.keyBy('tenant_id'); }
+  public setTenantId(value: number): this { return this.set('tenant_id',value); }
+  public onDuplicateSetTenantId(value: number): this { return this.duplicate('tenant_id',value); }
+  public setTenantIdExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('tenant_id',expression,values); }
+  public onDuplicateSetTenantIdExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('tenant_id',expression,values); }
+  public selectAccountId(): this { return this.select('account_id'); }
+  public omitAccountId(): this { return this.omit('account_id'); }
+  public orderByAccountIdAsc(): this { return this.orderBy('account_id'); }
+  public orderByAccountIdDesc(): this { return this.orderBy('account_id',true); }
+  public groupByAccountId(): this { return this.groupBy('account_id'); }
+  public keyByAccountId(): this { return this.keyBy('account_id'); }
+  public setAccountId(value: number): this { return this.set('account_id',value); }
+  public onDuplicateSetAccountId(value: number): this { return this.duplicate('account_id',value); }
+  public setAccountIdExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('account_id',expression,values); }
+  public onDuplicateSetAccountIdExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('account_id',expression,values); }
+  public selectRole(): this { return this.select('role'); }
+  public omitRole(): this { return this.omit('role'); }
+  public orderByRoleAsc(): this { return this.orderBy('role'); }
+  public orderByRoleDesc(): this { return this.orderBy('role',true); }
+  public groupByRole(): this { return this.groupBy('role'); }
+  public keyByRole(): this { return this.keyBy('role'); }
+  public setRole(value: string): this { return this.set('role',value); }
+  public onDuplicateSetRole(value: string): this { return this.duplicate('role',value); }
+  public setRoleExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('role',expression,values); }
+  public onDuplicateSetRoleExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('role',expression,values); }
+  public plusTenantId(value: number): this { return this.plus('tenant_id',value); }
+  public minusTenantId(value: number): this { return this.minus('tenant_id',value); }
+  public onDuplicatePlusTenantId(value: number): this { return this.duplicatePlus('tenant_id',value); }
+  public onDuplicateMinusTenantId(value: number): this { return this.duplicateMinus('tenant_id',value); }
+  public async sumTenantId(): Promise<number | null> { this.request.ir.agg='tenant_id'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgTenantId(): Promise<number | null> { this.request.ir.agg='tenant_id'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusAccountId(value: number): this { return this.plus('account_id',value); }
+  public minusAccountId(value: number): this { return this.minus('account_id',value); }
+  public onDuplicatePlusAccountId(value: number): this { return this.duplicatePlus('account_id',value); }
+  public onDuplicateMinusAccountId(value: number): this { return this.duplicateMinus('account_id',value); }
+  public async sumAccountId(): Promise<number | null> { this.request.ir.agg='account_id'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgAccountId(): Promise<number | null> { this.request.ir.agg='account_id'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public async minTenantId(): Promise<unknown> { this.request.ir.agg='tenant_id'; return this.terminal('min'); }
+  public async maxTenantId(): Promise<unknown> { this.request.ir.agg='tenant_id'; return this.terminal('max'); }
+  public async countDistinctTenantId(): Promise<number> { this.request.ir.agg='tenant_id'; return Number(await this.terminal('count_distinct')); }
+  public async minAccountId(): Promise<unknown> { this.request.ir.agg='account_id'; return this.terminal('min'); }
+  public async maxAccountId(): Promise<unknown> { this.request.ir.agg='account_id'; return this.terminal('max'); }
+  public async countDistinctAccountId(): Promise<number> { this.request.ir.agg='account_id'; return Number(await this.terminal('count_distinct')); }
+  public async minRole(): Promise<unknown> { this.request.ir.agg='role'; return this.terminal('min'); }
+  public async maxRole(): Promise<unknown> { this.request.ir.agg='role'; return this.terminal('max'); }
+  public async countDistinctRole(): Promise<number> { this.request.ir.agg='role'; return Number(await this.terminal('count_distinct')); }
+  public ifParentTenantIdEq(value: unknown): this { return this.ifParent('tenant_id',value); }
+  public ifParentAccountIdEq(value: unknown): this { return this.ifParent('account_id',value); }
+  public ifParentNameEq(value: unknown): this { return this.ifParent('name',value); }
+  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
+  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
+  public account(callback: (where: CompositeAccountWhere) => void): this { this.whereCore().navigate('account',core=>callback(new CompositeAccountWhere(core))); return this; }
+  public joinTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeAccountQuery): this { return this.attachJoin('account',child,'inner'); }
+  public leftJoinTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeAccountQuery): this { return this.attachJoin('account',child,'left'); }
+  public relationTenantIdWithTenantIdAndAccountIdWithAccountId(child: CompositeAccountQuery): this { return this.attachRelation('account',child); }
+  private resolveRelation(child: QueryCore, expected?: 'one'|'many'): string { const entity=child.request.ir.entity; const link=child.linkSelection; const candidates=this.relationDefinitions().filter(value=>value.target===entity&&(!expected||value.kind===expected)&&(!link||(value.left===link.parentKey&&value.right===link.childKey))); if(candidates.length!==1) throw new OrmError('IR_INVALID', `relation from ${this.request.ir.entity} to ${entity} is ${candidates.length===0?'not declared':'ambiguous'}; select a key pair`); return candidates[0]!.name; }
+  private relationDefinitions(): ReadonlyArray<{name:string;kind:'one'|'many';target:string;left:string;right:string}> { return [{name:'account',kind:'one',target:'composite_account',left:'tenant_id,account_id',right:'tenant_id,account_id'}]; }
+  public join(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'inner'); }
+  public leftJoin(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'left'); }
+  public relation(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'one'),child); }
+  public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
+  public matchTenantIdWithTenantIdAndAccountIdWithAccountId(): this { return this.matchKeys('tenant_id,account_id','tenant_id,account_id'); }
+  public onTenantIdWithTenantIdAndAccountIdWithAccountId(): this { return this.matchKeys('tenant_id,account_id','tenant_id,account_id'); }
+  public async get(): Promise<CompositeMembershipRow | null> { return await this.terminal('one') as CompositeMembershipRow | null; }
+  public async gets(): Promise<Collection<CompositeMembershipRow>> { const rows=await this.terminal('all') as Collection<CompositeMembershipRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
+  public async stream(visitor: (row: CompositeMembershipRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<CompositeMembershipRow>(visitor); }
+  public async one(): Promise<CompositeMembershipRow | null> { return this.get(); }
+  public async all(): Promise<Collection<CompositeMembershipRow>> { return this.gets(); }
+  public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
+  public async getsCount(): Promise<Collection<CompositeMembershipRow>> { return await this.terminal('group_count') as Collection<CompositeMembershipRow>; }
+  public async insert(): Promise<CompositeMembershipRow | null> { const database=this.binding.resolve(); const keys=this.assignedKeyValues(['tenant_id','account_id']); await this.insertKey(); const query=new CompositeMembershipQuery().using(database); query.predicate('tenant_id','eq',keys[0]); query.predicate('account_id','eq',keys[1]); return query.get(); }
+  public async save(): Promise<CompositeMembershipRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['tenant_id','account_id']); const query=new CompositeMembershipQuery().using(database); query.predicate('tenant_id','eq',keys[0]); query.predicate('account_id','eq',keys[1]); return query.get(); }
+  public async update(): Promise<number> { return this.writeAffected('update'); }
+  public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
+  public async paginate(page: number, per: number): Promise<Page<CompositeMembershipRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<CompositeMembershipRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
+  public async getByTenantId(value: number): Promise<CompositeMembershipRow | null> { this.predicate('tenant_id','eq',value); return this.get(); }
+  public async getsByTenantId(value: number): Promise<Collection<CompositeMembershipRow>> { this.predicate('tenant_id','eq',value); return this.gets(); }
+  public async getCountByTenantId(value: number): Promise<number> { this.predicate('tenant_id','eq',value); return this.getCount(); }
+  public async getByAccountId(value: number): Promise<CompositeMembershipRow | null> { this.predicate('account_id','eq',value); return this.get(); }
+  public async getsByAccountId(value: number): Promise<Collection<CompositeMembershipRow>> { this.predicate('account_id','eq',value); return this.gets(); }
+  public async getCountByAccountId(value: number): Promise<number> { this.predicate('account_id','eq',value); return this.getCount(); }
+  public async getByRole(value: string): Promise<CompositeMembershipRow | null> { this.predicate('role','eq',value); return this.get(); }
+  public async getsByRole(value: string): Promise<Collection<CompositeMembershipRow>> { this.predicate('role','eq',value); return this.gets(); }
+  public async getCountByRole(value: string): Promise<number> { this.predicate('role','eq',value); return this.getCount(); }
+  public async oneByTenantId(value: number): Promise<CompositeMembershipRow | null> { return this.getByTenantId(value); }
+  public async getByTenantIdAndAccountId(value0:number,value1:number): Promise<CompositeMembershipRow | null> { this.predicate('tenant_id','eq',value0); this.predicate('account_id','eq',value1); return this.get(); }
+}
+export function CompositeMembership(): CompositeMembershipQuery { return new CompositeMembershipQuery(); }
+registerRow('composite_membership',CompositeMembershipRow);

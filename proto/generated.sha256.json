@@ -1,8 +1,8 @@
 {
   "version": 1,
   "files": {
-    "clients/php/src/Proto/GPBMetadata/Proto/Orm/Compiler/V1/Compiler.php": "0886580dcf4fa8c14b0ab40e3718dbcda3643ec91a2b8a0f71f22a31d9f42663",
-    "clients/php/src/Proto/Orm/Compiler/V1/Assemble.php": "7a5be4f6874402ad01c7e397bc135d8e2ac1c62c9277491d4704ada6bf81085f",
+    "clients/php/src/Proto/GPBMetadata/Proto/Orm/Compiler/V1/Compiler.php": "182570b1d1655f116972014908d7a8a921cdec10083617ce35d86e1e569a177c",
+    "clients/php/src/Proto/Orm/Compiler/V1/Assemble.php": "bd05f8972f787ca55e9865ed6e19349c73db8ae891766856162895ff54a6adc0",
     "clients/php/src/Proto/Orm/Compiler/V1/Assignment.php": "24892202001b086d4e2d47448a2a819c14e47be53db0526efb96f95d4602deec",
     "clients/php/src/Proto/Orm/Compiler/V1/BindSlot.php": "8dfa2e2fa39ddaf2659a9ea43775f5b1b8f37680f6f89c85c045e1add0464ac1",
     "clients/php/src/Proto/Orm/Compiler/V1/Child.php": "ae3c0fc82be1dc137ed3a8430e97b7086982ce230efbe430f734f5e07bf2d564",
@@ -34,12 +34,12 @@
     "clients/php/src/Proto/Orm/Compiler/V1/QueryNode.php": "2f2935fdfffd144955063b16388fcea0981f94ca3be3e175fc842bd101c1b5a6",
     "clients/php/src/Proto/Orm/Compiler/V1/Raw.php": "a628847f174624aa80f3ed240d6528f2e3d627f1070572eb84f84ea9bf1b1397",
     "clients/php/src/Proto/Orm/Compiler/V1/Relation.php": "b66f0e9cb004df9a286100bdd900bdcef71999963010456ed9c9bbb2fe46e70f",
-    "clients/rust/orm/src/gen/orm/compiler/v1/orm.compiler.v1.rs": "c5e822e4c2374b4cb3bee771d3806d70262ee3d0ef31b58d1867815a16ca0833",
-    "clients/typescript/src/gen/entities.ts": "076a91cfa2dd0e85c5cd928bacfea0e2c67312b7ab759ada7f33264fbc4ba4f0",
-    "clients/typescript/src/gen/interfaces.ts": "0e8f1375ba20938a9c47492711794c9f404265a7e146910ff3e2111dc0997e86",
-    "clients/typescript/src/gen/proto/orm/compiler/v1/compiler_pb.ts": "96d135c81581e8618511967eebc8a2c72075127e0a1c0ceb134e14db282eb396",
-    "proto/orm/compiler/v1/compiler.pb.go": "e7a7b20b87d52c9f8701d4978e17bf6cfdb90eb34b063513e4c237304f006eef",
-    "proto/orm/compiler/v1/compiler.proto": "c30ac161bf8fe773d0bbbca3282a695f1db69307993cf544ab76ff126601d615",
+    "clients/rust/orm/src/gen/orm/compiler/v1/orm.compiler.v1.rs": "10ee533522ab520f728a64bf2c0e3837d93a4e86bb6e18c657f5b3abae1d157b",
+    "clients/typescript/src/gen/entities.ts": "f106d19254708fe45709b2154935ab82c14cc4870f16c1947cca07244e7d5953",
+    "clients/typescript/src/gen/interfaces.ts": "569b17647bfe0833baea5ee036477e9cb391113e8a8133fe5d39e63c96074f6a",
+    "clients/typescript/src/gen/proto/orm/compiler/v1/compiler_pb.ts": "0221dbc67385ce811c7e536b0464b8de3a74cb63b2fa968db720c997c7accaaa",
+    "proto/orm/compiler/v1/compiler.pb.go": "1e4bf7d65f568bfcaf95a97176fb56ed002d75514f202136576d5cd069a77821",
+    "proto/orm/compiler/v1/compiler.proto": "ba4c2dfc541399d8adf75802ccb4540ee5e636363db88f595ea88ce9a3987c9d",
     "proto/orm/compiler/v1/compilerv1connect/compiler.connect.go": "7890977ff39db2f3afefe8c4822b731b789c0ebec5b7b61abcc099e982f96c13"
   }
 }

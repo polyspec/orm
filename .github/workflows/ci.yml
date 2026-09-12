@@ -99,19 +99,37 @@ jobs:
       - name: hot-path regression gate
         run: ORM_RUN_PERF_GATE=1 go test ./bench/go -run TestHotPathGate -count=1 -v
       - name: rust client
-        run: cd clients/rust && cargo build --release && cargo test --release -p orm && ./target/release/integration ../../bin/ormengine.wasm ../../schema/schema.json
+        run: cd clients/rust && cargo build --release && cargo test --release -p orm
       - name: rust 150-table generation
         run: make rust-150-check
       - name: php client
         run: |
           bin/ormd -socket "$PWD/bin/ormd.sock" -schema schema/schema.json 2>bin/ormd.log &
+          ormd_pid=$!
+          trap 'kill "$ormd_pid" 2>/dev/null || true; wait "$ormd_pid" 2>/dev/null || true' EXIT
           until grep -q "listening on" bin/ormd.log; do sleep 0.2; done   # CI-only wait on the daemon's own ready line
-          php clients/php/tests/integration.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
           php clients/php/tests/compat.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
+      - name: generated client integration on mysql, postgres, and sqlite
+        env:
+          ORM_CLIENT_DB_SKIP_BUILD: "1"
+        run: |
+          ORM_GO_DSN="$ORM_MYSQL_DSN_GO" \
+          ORM_PHP_DSN="$ORM_MYSQL_DSN_PHP" \
+          ORM_RUST_DSN="$ORM_MYSQL_URL_RUST" \
+          ORM_TYPESCRIPT_DSN="$ORM_MYSQL_DSN_TYPESCRIPT" \
+          ./scripts/client-db-test.sh mysql
+          ORM_GO_DSN='postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable' \
+          ORM_PHP_DSN='pgsql:host=127.0.0.1;port=5432;dbname=orm_bench;user=maxkwon' \
+          ORM_RUST_DSN='postgres://maxkwon@127.0.0.1:5432/orm_bench' \
+          ORM_TYPESCRIPT_DSN='postgres://maxkwon@127.0.0.1:5432/orm_bench' \
+          ./scripts/client-db-test.sh postgres
+          ORM_GO_DSN='file:/tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)' \
+          ORM_PHP_DSN='/tmp/orm_bench.sqlite' \
+          ORM_RUST_DSN='sqlite:///tmp/orm_bench.sqlite' \
+          ORM_TYPESCRIPT_DSN='/tmp/orm_bench.sqlite' \
+          ./scripts/client-db-test.sh sqlite
       - name: conformance (4 languages identical)
         run: go run ./tests/conformance/check run
-      - name: TypeScript SQLite database execution
-        run: make ts-db-check
       - name: conformance on postgres and sqlite (4 languages; results identical to MySQL, statements per dialect)
         run: |
           go run ./tests/conformance/check run -driver postgres -langs go -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable'
@@ -129,10 +147,6 @@ jobs:
           go run ./tests/interfaces/check --results tests/conformance/out
           go run ./tests/interfaces/check --results tests/conformance/out/postgres
           go run ./tests/interfaces/check --results tests/conformance/out/sqlite
-      - name: go integration on postgres and sqlite
-        run: |
-          ORM_TEST_DRIVER=postgres ORM_TEST_DSN='postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable' go test ./clients/go/gen/
-          ORM_TEST_DRIVER=sqlite ORM_TEST_DSN='file:/tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)' go test ./clients/go/gen/
       - name: codec vectors
         run: |
           go test ./clients/go/orm -run TestCodec

@@ -444,6 +444,70 @@ func TestWritePaths(t *testing.T) {
 	}
 }
 
+func TestCompositeCRUDRelationsAndPagination(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	const tenantID int64 = 910007
+	_, _ = gen.CompositeMembership().TenantIdEq(tenantID).Using(ctx, db).Delete()
+	_, _ = gen.CompositeAccount().TenantIdEq(tenantID).Using(ctx, db).Delete()
+	t.Cleanup(func() {
+		_, _ = gen.CompositeMembership().TenantIdEq(tenantID).Using(context.Background(), db).Delete()
+		_, _ = gen.CompositeAccount().TenantIdEq(tenantID).Using(context.Background(), db).Delete()
+	})
+	for _, accountID := range []int64{11, 12} {
+		row, err := gen.CompositeAccount().SetTenantId(tenantID).SetAccountId(accountID).SetName(fmt.Sprintf("account-%d", accountID)).Using(ctx, db).Insert()
+		if err != nil || row == nil || row.TenantId != tenantID || row.AccountId != accountID {
+			t.Fatalf("account insert %d: row=%#v err=%v", accountID, row, err)
+		}
+		member, err := gen.CompositeMembership().SetTenantId(tenantID).SetAccountId(accountID).SetRole("reader").Using(ctx, db).Insert()
+		if err != nil || member == nil {
+			t.Fatalf("membership insert %d: row=%#v err=%v", accountID, member, err)
+		}
+	}
+	first, err := gen.CompositeMembership().Using(ctx, db).GetByTenantIdAndAccountId(tenantID, 11)
+	if err != nil || first == nil {
+		t.Fatalf("composite get: row=%#v err=%v", first, err)
+	}
+	first.SetRole("owner")
+	if err := first.Update(); err != nil {
+		t.Fatal(err)
+	}
+	second, err := gen.CompositeMembership().SetTenantId(tenantID).SetAccountId(12).SetRole("editor").Using(ctx, db).Save()
+	if err != nil || second == nil || second.Role != "editor" {
+		t.Fatalf("composite save: row=%#v err=%v", second, err)
+	}
+	page, err := gen.CompositeMembership().TenantIdEq(tenantID).OrderByTenantIdAsc().OrderByAccountIdAsc().Using(ctx, db).Paginate(1, 1)
+	if err != nil || page.Total != 2 || page.Items.Len() != 1 || page.Items.First().AccountId != 11 {
+		t.Fatalf("composite page=%#v err=%v", page, err)
+	}
+	accounts, err := gen.CompositeAccount().TenantIdEq(tenantID).OrderByAccountIdAsc().Relations(gen.CompositeMembership()).Using(ctx, db).Gets()
+	if err != nil || accounts.Len() != 2 || accounts.First().GetMemberships().Len() != 1 {
+		t.Fatalf("composite relation: rows=%#v err=%v", accounts, err)
+	}
+	rollback := errors.New("composite rollback")
+	_, err = orm.Transaction(ctx, db, func(tx *orm.Tx) (struct{}, error) {
+		if _, err := gen.CompositeAccount().SetTenantId(tenantID).SetAccountId(13).SetName("rollback").Using(ctx, tx).Insert(); err != nil {
+			return struct{}{}, err
+		}
+		if _, err := gen.CompositeMembership().SetTenantId(tenantID).SetAccountId(13).SetRole("rollback").Using(ctx, tx).Insert(); err != nil {
+			return struct{}{}, err
+		}
+		return struct{}{}, rollback
+	})
+	if !errors.Is(err, rollback) {
+		t.Fatalf("composite rollback error: %v", err)
+	}
+	if count, err := gen.CompositeAccount().TenantIdEq(tenantID).AccountIdEq(13).Using(ctx, db).GetCount(); err != nil || count != 0 {
+		t.Fatalf("composite rollback: count=%d err=%v", count, err)
+	}
+	if err := first.Delete(); err != nil {
+		t.Fatal(err)
+	}
+	if count, err := gen.CompositeMembership().TenantIdEq(tenantID).Using(ctx, db).GetCount(); err != nil || count != 1 {
+		t.Fatalf("composite delete: count=%d err=%v", count, err)
+	}
+}
+
 // TestAggregatesHavingRawPredicates covers the S4 surface: countDistinct/min/max
 // terminals (nil on no rows), having after groupBy, raw root, named predicates.
 func TestAggregatesHavingRawPredicates(t *testing.T) {

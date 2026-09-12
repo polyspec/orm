@@ -71,3 +71,8 @@ INSERT INTO user (seq, name) SELECT DISTINCT user_seq, CONCAT('user-', user_seq)
 INSERT INTO service (seq, name) SELECT DISTINCT service_seq, CONCAT('service-', service_seq) FROM battle;
 INSERT INTO service_module (seq, service_seq, name) SELECT service_module_seq, MIN(service_seq), CONCAT('module-', service_module_seq) FROM battle GROUP BY service_module_seq;
 INSERT INTO service_member (seq, service_seq, user_seq) SELECT service_member_seq, MIN(service_seq), MIN(user_seq) FROM battle GROUP BY service_member_seq;
+
+DROP TABLE IF EXISTS composite_membership;
+DROP TABLE IF EXISTS composite_account;
+CREATE TABLE composite_account (tenant_id bigint NOT NULL, account_id bigint NOT NULL, name varchar(191) NOT NULL, PRIMARY KEY (tenant_id, account_id)) ENGINE=InnoDB;
+CREATE TABLE composite_membership (tenant_id bigint NOT NULL, account_id bigint NOT NULL, role varchar(191) NOT NULL, PRIMARY KEY (tenant_id, account_id), CONSTRAINT fk_composite_membership_tenant_id_account_id FOREIGN KEY (tenant_id, account_id) REFERENCES composite_account (tenant_id, account_id) ON DELETE CASCADE) ENGINE=InnoDB;

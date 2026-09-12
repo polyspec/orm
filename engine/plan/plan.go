@@ -71,6 +71,7 @@ type Assemble struct {
 	Alias    string   `json:"alias"`
 	Columns  []OutCol `json:"columns"`
 	Children []*Child `json:"children,omitempty"`
+	Key      []KeyRef `json:"key"`
 }
 
 type OutCol struct {
