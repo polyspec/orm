@@ -407,7 +407,7 @@ func main() {
 		seen := 0
 		var first *gen.BattleRow
 		var firstSeq int64
-		stopped, err := gen.Battle().Using(ctx, db).ServiceSeq(7).OrderBySeqAsc().Stream(func(row *gen.BattleRow) bool {
+		stopped, err := gen.Battle().ServiceSeq(7).OrderBySeqAsc().Using(ctx, db).Stream(func(row *gen.BattleRow) bool {
 			if first == nil {
 				first = row
 				firstSeq = row.Seq
@@ -421,12 +421,12 @@ func main() {
 		if first == nil || first.Seq != firstSeq {
 			return nil, fmt.Errorf("stream row ownership check failed")
 		}
-		exhausted, err := gen.Battle().Using(ctx, db).ServiceSeq(7).OrderBySeqAsc().Limit(0, 4).Stream(func(*gen.BattleRow) bool { return true })
+		exhausted, err := gen.Battle().ServiceSeq(7).OrderBySeqAsc().Limit(0, 4).Using(ctx, db).Stream(func(*gen.BattleRow) bool { return true })
 		if err != nil {
 			return nil, err
 		}
 		var relationErr error
-		_, relationErr = gen.Battle().Using(ctx, db).ServiceSeq(7).Relation(gen.User()).Stream(func(*gen.BattleRow) bool { return true })
+		_, relationErr = gen.Battle().ServiceSeq(7).Relation(gen.User()).Using(ctx, db).Stream(func(*gen.BattleRow) bool { return true })
 		return map[string]any{
 			"stopped":        map[string]any{"state": stopped.State, "count": stopped.Count},
 			"exhausted":      map[string]any{"state": exhausted.State, "count": exhausted.Count},
