@@ -8,7 +8,7 @@
 - **S0 완료:** `docs/perf.md`에 측정과 R1~R3, F1~F3 결정을 기록했다.
 - **S1 완료:** 엔진, 생성기, 4개 클라이언트, 적합성 하네스, `ormgen tokens`, 데모를 구현했다.
 - **S2 완료:** 관계·코덱·타입·63개 벡터·150테이블 Rust fixture 검사를 통과했다.
-- **S7 진행 중:** 네 클라이언트의 root `IN` parameter 분할과 keyset transport 필드를 구현했다. 증거가 기록될 때까지 migration, transaction, relation, package, 최종 검증 작업은 미완료로 유지한다.
+- **S7 완료:** 네 클라이언트의 root `IN` parameter 분할, keyset transport, migration, transaction, relation, package, 검증 작업을 구현했다. 기능 및 검증 문서에 증거를 기록했다.
 - 현재 적합성 범위는 **63개 벡터 × 4개 클라이언트 × 3개 데이터베이스**다. 코덱 범위는 Go·PHP·Rust·TypeScript의 96개 벡터다.
 
 ## 공통 인터페이스 검사
@@ -77,7 +77,7 @@
 - [x] 두 dialect의 placeholder, quoting, returning, full-text 규칙, AES·HEX·IP 처리, 데이터베이스 설정을 구현한다.
 - [x] MySQL·PostgreSQL·SQLite에서 4개 클라이언트 벡터를 실행한다.
 
-## 단계 7 — S7 추가 기능 [진행 중]
+## 단계 7 — S7 추가 기능 [완료]
 
 S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료해야 닫는다. Go·PHP·Rust·TypeScript에서 같은 논리 구조를 제공할 수 없으면 미완료로 유지한다.
 
@@ -125,4 +125,4 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 - [x] G3 구현된 클라이언트의 쓰기·관계 벡터를 검사한다.
 - [x] G4 생성 심볼·스키마·CI 검사를 실행한다.
 - [x] G5 GitHub Actions 빌드를 확인한다.
-- [ ] G7 모든 S7 기능, paired document, 로컬 물리 DB test, package check, 최종 repository 검증이 통과한 뒤 완료 처리한다.
+- [x] G7 모든 S7 기능, paired document, 로컬 물리 DB test, package check, 최종 repository 검증이 통과했다. commit `03ea865`의 CI run `34725432112`가 통과했다.

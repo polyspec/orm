@@ -59,8 +59,8 @@
 - [x] P11.2 보안 신고, 기여, 행동 강령, 변경 이력 문서를 추가하고 사용자 대상 문서는 한국어 파일을 함께 작성한다.
 - [x] P11.3 Package name, description, license, repository link, runtime requirement, included file, generated-artifact rule을 완성한다.
 - [x] P11.4 게시하지 않고 TypeScript package의 `npm pack`, Composer metadata, Rust `orm` crate의 `cargo package`, 외부 임시 Go module을 검증한다.
-- [ ] P11.5 CI가 document rule, generated drift, interface check, red-test regression, physical database test, package check, 전체 test suite를 실행한다.
+- [x] P11.5 CI가 document rule, generated drift, interface check, red-test regression, physical database test, package check, 전체 test suite를 실행한다. commit `03ea865`의 CI run `34725432112`가 통과했다.
 
 ## 완료
 
-- [ ] G8 범위에 포함된 P8~P10 항목이 명시한 test를 통과하고 `make check`가 통과한다. working tree가 clean이고 local `HEAD`가 `origin/main`과 같다.
+- [x] G8 범위에 포함된 P8~P10 항목이 명시한 test를 통과하고 `make check`가 통과한다. working tree가 clean이고 local `HEAD`와 `origin/main`이 commit `03ea865`에서 같다.

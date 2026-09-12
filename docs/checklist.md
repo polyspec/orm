@@ -8,7 +8,7 @@ Rules: no polling or timers, no symlinks, one execution path, Mermaid is the sou
 - **S0 complete:** measurements and decisions R1–R3 and F1–F3 are recorded in `docs/perf.md`.
 - **S1 complete:** engine, generators, four clients, conformance harness, `ormgen tokens`, and the demo are implemented.
 - **S2 complete:** relation, codec, type, 63-vector, and 150-table Rust fixture checks pass.
-- **S7 in progress:** root `IN` parameter splitting and keyset transport fields are implemented across four clients. Migration, transaction, relation, package, and final verification work remains open until its evidence is recorded.
+- **S7 complete:** root `IN` parameter splitting, keyset transport, migration, transaction, relation, package, and verification work is implemented across four clients. Evidence is recorded in the feature and verification documents.
 - Current conformance coverage is **63 vectors × 4 clients × 3 databases**. Codec coverage is 96 vectors across Go, PHP, Rust, and TypeScript.
 
 ## Common interface verification
@@ -77,7 +77,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [x] Implement both dialects, their placeholders, quoting, returning clauses, full-text rules, AES/HEX/IP handling, and database configuration.
 - [x] Run the four-client database vectors on MySQL, PostgreSQL, and SQLite.
 
-## Stage 7 — S7 additional features [in progress]
+## Stage 7 — S7 additional features [complete]
 
 Every S7 item requires implementation, tests, documentation, and static publication. A feature stays open if the same logical structure cannot be provided in Go, PHP, Rust, and TypeScript.
 
@@ -125,4 +125,4 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] G3 Verify write and relation vectors for all implemented clients.
 - [x] G4 Run generated symbol, schema, and CI checks.
 - [x] G5 Verify the GitHub Actions build.
-- [ ] G7 Close only after every S7 feature, paired document, local physical test, package check, and final repository verification has passed.
+- [x] G7 Every S7 feature, paired document, local physical test, package check, and final repository verification passed. CI run `34725432112` passed on commit `03ea865`.
