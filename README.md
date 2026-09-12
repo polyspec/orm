@@ -73,6 +73,8 @@ go run ./tests/conformance/check run                                # starts Con
 
 [**docs/usage.md**](docs/usage.md) — start here: schema, generation, connecting, querying, writing, relations, the three databases, operations.
 
+[**Security**](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Changelog](CHANGELOG.md)
+
 `examples/thin-slice` · `examples/complex` · `docs/dsl.md` grammar · `docs/schema.md` Mermaid dialect, import, validate · `docs/protocol.md` IR/Plan ·
 `docs/codec.md` column styles · `docs/dialects.md` MySQL/PostgreSQL/SQLite · `docs/config.md` orm.toml ·
 `docs/errors.yaml` codes · `docs/perf.md` measurements and gates · `docs/checklist.md` work plan · `docs/lanes/` parallel lane specs.
