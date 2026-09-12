@@ -112,6 +112,22 @@ pub struct Db {
     pg_types: Arc<Mutex<HashMap<String, Arc<[PgTypeInfo]>>>>,
 }
 
+fn canonical_json(value: serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Object(values) => {
+            let mut keys: Vec<String> = values.keys().cloned().collect();
+            keys.sort();
+            let mut out = serde_json::Map::new();
+            for key in keys {
+                out.insert(key.clone(), canonical_json(values.get(&key).cloned().unwrap_or(serde_json::Value::Null)));
+            }
+            serde_json::Value::Object(out)
+        }
+        serde_json::Value::Array(values) => serde_json::Value::Array(values.into_iter().map(canonical_json).collect()),
+        other => other,
+    }
+}
+
 #[async_trait::async_trait]
 trait PlanCompiler: Send + Sync {
     async fn compile(&self, request: &ir::Request) -> Result<Plan>;
@@ -507,15 +523,20 @@ impl Db {
         if dialect != self.driver() {
             return Err(Error::Config(format!("precompiled plan dialect {dialect} but database driver is {}", self.driver())));
         }
-        if envelope.get("request_sha256").and_then(serde_json::Value::as_str).filter(|v| !v.is_empty()).is_none() {
-            return Err(Error::Config("precompiled plan requires request_sha256".into()));
+        let request_hash = envelope.get("request_sha256").and_then(serde_json::Value::as_str).filter(|v| !v.is_empty()).ok_or_else(|| Error::Config("precompiled plan requires request_sha256".into()))?;
+        req.ir.n_params = req.params.len();
+        let request_value = serde_json::to_value(&req.ir).map_err(|e| Error::Config(format!("request JSON: {e}")))?;
+        let canonical = canonical_json(request_value);
+        use sha2::{Digest, Sha256};
+        let got = format!("{:x}", Sha256::digest(serde_json::to_vec(&canonical).map_err(|e| Error::Config(format!("canonical request JSON: {e}")))?));
+        if request_hash != got {
+            return Err(Error::Config(format!("precompiled plan request hash {request_hash} does not match request shape {got}")));
         }
         let raw_plan = envelope.get("plan").ok_or_else(|| Error::Config("precompiled plan requires plan".into()))?;
         let mut plan: Plan = serde_json::from_value(raw_plan.clone()).map_err(|e| Error::Config(format!("precompiled plan body is invalid: {e}")))?;
         if plan.schema_hash != schema || plan.kind != req.ir.kind || plan.steps.is_empty() {
             return Err(Error::Config("precompiled plan body does not match its envelope or request".into()));
         }
-        req.ir.n_params = req.params.len();
         let key = req.shape_key();
         for step in &mut plan.steps { step.plan_id = key; }
         let plan = Arc::new(plan);
@@ -1495,6 +1516,7 @@ pub fn join_present(src: &mut impl Src, a: &Assemble) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sha2::Digest;
     use std::sync::Arc;
 
     struct BundleCompiler {
@@ -1584,7 +1606,9 @@ mod tests {
         let cfg = Config { aes_key: String::new(), blind_index_key: String::new(), aes_version: 1, aes_keys: BTreeMap::new(), plan_cache_size: 2, statement_cache_size: 2, on_query: None };
         let db = Db::connect_with_compiler(opts, 1, engine.clone(), compiler, cfg).await.unwrap();
         let mut req = Req::new(&engine.schema_hash, "battle");
-        let bundle = serde_json::json!({"version":1,"schema_hash":engine.schema_hash,"dialect":"sqlite","request_sha256":"test","plan":{"schema_hash":engine.schema_hash,"kind":"all","steps":[{"id":0,"role":"main","sql":"SELECT 1"}]}});
+        let canonical = canonical_json(serde_json::to_value(&req.ir).unwrap());
+        let request_hash = format!("{:x}", sha2::Sha256::digest(serde_json::to_vec(&canonical).unwrap()));
+        let bundle = serde_json::json!({"version":1,"schema_hash":engine.schema_hash,"dialect":"sqlite","request_sha256":request_hash,"plan":{"schema_hash":engine.schema_hash,"kind":"all","steps":[{"id":0,"role":"main","sql":"SELECT 1"}]}});
         db.load_plan_bundle(&serde_json::to_vec(&bundle).unwrap(), &mut req).unwrap();
         let plan = db.plan(&mut req).await.unwrap();
         assert_eq!(plan.steps[0].sql, "SELECT 1");

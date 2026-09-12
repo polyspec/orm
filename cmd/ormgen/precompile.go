@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -46,7 +47,17 @@ func precompileCmd(args []string) {
 	if err != nil {
 		fail(err)
 	}
-	hash := sha256.Sum256(requestJSON)
+	var requestValue any
+	decoder := json.NewDecoder(bytes.NewReader(requestJSON))
+	decoder.UseNumber()
+	if err := decoder.Decode(&requestValue); err != nil {
+		fail(fmt.Errorf("request JSON: %w", err))
+	}
+	canonicalRequest, err := json.Marshal(requestValue)
+	if err != nil {
+		fail(fmt.Errorf("canonical request JSON: %w", err))
+	}
+	hash := sha256.Sum256(canonicalRequest)
 	output, err := json.MarshalIndent(precompiledPlan{
 		Version: 1, SchemaHash: eng.M.SchemaHash, Dialect: *dialect,
 		RequestSHA: hex.EncodeToString(hash[:]), Plan: plan,
