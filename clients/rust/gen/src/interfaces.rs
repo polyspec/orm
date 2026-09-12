@@ -827,3 +827,207 @@ fn has(&self, name: &str) -> bool { SoftRecordRow::has(self,name) }
 fn rel_loaded(&self, name: &str) -> bool { SoftRecordRow::rel_loaded(self,name) }
 fn to_map(&self) -> Result<serde_json::Value> { SoftRecordRow::to_map(self) }
 }
+
+pub trait AccountInterface: Sized {
+async fn get(&mut self) -> Result<Option<AccountRow>>;
+async fn gets(&mut self) -> Result<Collection<AccountRow>>;
+async fn stream(&mut self, visit: impl FnMut(AccountRow) -> bool) -> Result<db::StreamResult>;
+async fn get_count(&mut self) -> Result<i64>;
+async fn gets_count(&mut self) -> Result<Collection<AccountRow>>;
+async fn insert(&mut self) -> Result<Option<AccountRow>>;
+async fn save(&mut self) -> Result<Option<AccountRow>>;
+async fn update(&mut self) -> Result<u64>;
+async fn delete(&mut self) -> Result<u64>;
+async fn sql(&mut self) -> Result<db::Sql>;
+fn using(self, ex: &impl Exec) -> Self;
+async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<AccountRow>>;
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<AccountRow>>;
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<AccountRow>>;
+async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<AccountRow>>;
+async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<AccountRow>>;
+async fn get_count_by_seq(&mut self, v: i64) -> Result<i64>;
+async fn get_count_by_name(&mut self, v: impl Into<String>) -> Result<i64>;
+fn seq_eq(self, v: i64) -> Self;
+fn name_eq(self, v: impl Into<String>) -> Self;
+fn seq(self, v: i64) -> Self;
+fn name(self, v: impl Into<String>) -> Self;
+}
+impl AccountInterface for Account {
+async fn get(&mut self) -> Result<Option<AccountRow>> { Account::get(self).await }
+async fn gets(&mut self) -> Result<Collection<AccountRow>> { Account::gets(self).await }
+async fn stream(&mut self, visit: impl FnMut(AccountRow) -> bool) -> Result<db::StreamResult> { Account::stream(self,visit).await }
+async fn get_count(&mut self) -> Result<i64> { Account::get_count(self).await }
+async fn gets_count(&mut self) -> Result<Collection<AccountRow>> { Account::gets_count(self).await }
+async fn insert(&mut self) -> Result<Option<AccountRow>> { Account::insert(self).await }
+async fn save(&mut self) -> Result<Option<AccountRow>> { Account::save(self).await }
+async fn update(&mut self) -> Result<u64> { Account::update(self).await }
+async fn delete(&mut self) -> Result<u64> { Account::delete(self).await }
+async fn sql(&mut self) -> Result<db::Sql> { Account::sql(self).await }
+fn using(mut self, ex: &impl Exec) -> Self { Account::using(self,ex) }
+async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<AccountRow>> { Account::paginate(self,page,per).await }
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<AccountRow>> { Account::gets_after(self,cursor,per).await }
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<AccountRow>> { Account::gets_before(self,cursor,per).await }
+async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<AccountRow>> { Account::gets_by_seq(self,v).await }
+async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<AccountRow>> { Account::gets_by_name(self,v).await }
+async fn get_count_by_seq(&mut self, v: i64) -> Result<i64> { Account::get_count_by_seq(self,v).await }
+async fn get_count_by_name(&mut self, v: impl Into<String>) -> Result<i64> { Account::get_count_by_name(self,v).await }
+fn seq_eq(mut self, v: i64) -> Self { Account::seq_eq(self,v) }
+fn name_eq(mut self, v: impl Into<String>) -> Self { Account::name_eq(self,v) }
+fn seq(self, v: i64) -> Self { Account::seq(self,v) }
+fn name(self, v: impl Into<String>) -> Self { Account::name(self,v) }
+}
+
+pub trait AccountRowInterface: Sized {
+fn using(&mut self, ex: &impl Exec) -> &mut Self;
+async fn update(&mut self) -> Result<()>;
+async fn delete(&self) -> Result<()>;
+async fn delete_cascade(&self) -> Result<()>;
+fn has(&self, name: &str) -> bool;
+fn rel_loaded(&self, name: &str) -> bool;
+fn to_map(&self) -> Result<serde_json::Value>;
+}
+impl AccountRowInterface for AccountRow {
+fn using(&mut self, ex: &impl Exec) -> &mut Self { AccountRow::using(self,ex) }
+async fn update(&mut self) -> Result<()> { AccountRow::update(self).await }
+async fn delete(&self) -> Result<()> { AccountRow::delete(self).await }
+async fn delete_cascade(&self) -> Result<()> { AccountRow::delete_cascade(self).await }
+fn has(&self, name: &str) -> bool { AccountRow::has(self,name) }
+fn rel_loaded(&self, name: &str) -> bool { AccountRow::rel_loaded(self,name) }
+fn to_map(&self) -> Result<serde_json::Value> { AccountRow::to_map(self) }
+}
+
+pub trait ProjectInterface: Sized {
+async fn get(&mut self) -> Result<Option<ProjectRow>>;
+async fn gets(&mut self) -> Result<Collection<ProjectRow>>;
+async fn stream(&mut self, visit: impl FnMut(ProjectRow) -> bool) -> Result<db::StreamResult>;
+async fn get_count(&mut self) -> Result<i64>;
+async fn gets_count(&mut self) -> Result<Collection<ProjectRow>>;
+async fn insert(&mut self) -> Result<Option<ProjectRow>>;
+async fn save(&mut self) -> Result<Option<ProjectRow>>;
+async fn update(&mut self) -> Result<u64>;
+async fn delete(&mut self) -> Result<u64>;
+async fn sql(&mut self) -> Result<db::Sql>;
+fn using(self, ex: &impl Exec) -> Self;
+async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ProjectRow>>;
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ProjectRow>>;
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ProjectRow>>;
+async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ProjectRow>>;
+async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<ProjectRow>>;
+async fn get_count_by_seq(&mut self, v: i64) -> Result<i64>;
+async fn get_count_by_name(&mut self, v: impl Into<String>) -> Result<i64>;
+fn seq_eq(self, v: i64) -> Self;
+fn name_eq(self, v: impl Into<String>) -> Self;
+fn seq(self, v: i64) -> Self;
+fn name(self, v: impl Into<String>) -> Self;
+}
+impl ProjectInterface for Project {
+async fn get(&mut self) -> Result<Option<ProjectRow>> { Project::get(self).await }
+async fn gets(&mut self) -> Result<Collection<ProjectRow>> { Project::gets(self).await }
+async fn stream(&mut self, visit: impl FnMut(ProjectRow) -> bool) -> Result<db::StreamResult> { Project::stream(self,visit).await }
+async fn get_count(&mut self) -> Result<i64> { Project::get_count(self).await }
+async fn gets_count(&mut self) -> Result<Collection<ProjectRow>> { Project::gets_count(self).await }
+async fn insert(&mut self) -> Result<Option<ProjectRow>> { Project::insert(self).await }
+async fn save(&mut self) -> Result<Option<ProjectRow>> { Project::save(self).await }
+async fn update(&mut self) -> Result<u64> { Project::update(self).await }
+async fn delete(&mut self) -> Result<u64> { Project::delete(self).await }
+async fn sql(&mut self) -> Result<db::Sql> { Project::sql(self).await }
+fn using(mut self, ex: &impl Exec) -> Self { Project::using(self,ex) }
+async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ProjectRow>> { Project::paginate(self,page,per).await }
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ProjectRow>> { Project::gets_after(self,cursor,per).await }
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ProjectRow>> { Project::gets_before(self,cursor,per).await }
+async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ProjectRow>> { Project::gets_by_seq(self,v).await }
+async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<ProjectRow>> { Project::gets_by_name(self,v).await }
+async fn get_count_by_seq(&mut self, v: i64) -> Result<i64> { Project::get_count_by_seq(self,v).await }
+async fn get_count_by_name(&mut self, v: impl Into<String>) -> Result<i64> { Project::get_count_by_name(self,v).await }
+fn seq_eq(mut self, v: i64) -> Self { Project::seq_eq(self,v) }
+fn name_eq(mut self, v: impl Into<String>) -> Self { Project::name_eq(self,v) }
+fn seq(self, v: i64) -> Self { Project::seq(self,v) }
+fn name(self, v: impl Into<String>) -> Self { Project::name(self,v) }
+}
+
+pub trait ProjectRowInterface: Sized {
+fn using(&mut self, ex: &impl Exec) -> &mut Self;
+async fn update(&mut self) -> Result<()>;
+async fn delete(&self) -> Result<()>;
+async fn delete_cascade(&self) -> Result<()>;
+fn has(&self, name: &str) -> bool;
+fn rel_loaded(&self, name: &str) -> bool;
+fn to_map(&self) -> Result<serde_json::Value>;
+}
+impl ProjectRowInterface for ProjectRow {
+fn using(&mut self, ex: &impl Exec) -> &mut Self { ProjectRow::using(self,ex) }
+async fn update(&mut self) -> Result<()> { ProjectRow::update(self).await }
+async fn delete(&self) -> Result<()> { ProjectRow::delete(self).await }
+async fn delete_cascade(&self) -> Result<()> { ProjectRow::delete_cascade(self).await }
+fn has(&self, name: &str) -> bool { ProjectRow::has(self,name) }
+fn rel_loaded(&self, name: &str) -> bool { ProjectRow::rel_loaded(self,name) }
+fn to_map(&self) -> Result<serde_json::Value> { ProjectRow::to_map(self) }
+}
+
+pub trait AccountProjectInterface: Sized {
+async fn get(&mut self) -> Result<Option<AccountProjectRow>>;
+async fn gets(&mut self) -> Result<Collection<AccountProjectRow>>;
+async fn stream(&mut self, visit: impl FnMut(AccountProjectRow) -> bool) -> Result<db::StreamResult>;
+async fn get_count(&mut self) -> Result<i64>;
+async fn gets_count(&mut self) -> Result<Collection<AccountProjectRow>>;
+async fn insert(&mut self) -> Result<Option<AccountProjectRow>>;
+async fn save(&mut self) -> Result<Option<AccountProjectRow>>;
+async fn update(&mut self) -> Result<u64>;
+async fn delete(&mut self) -> Result<u64>;
+async fn sql(&mut self) -> Result<db::Sql>;
+fn using(self, ex: &impl Exec) -> Self;
+async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<AccountProjectRow>>;
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<AccountProjectRow>>;
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<AccountProjectRow>>;
+async fn gets_by_account_seq(&mut self, v: i64) -> Result<Collection<AccountProjectRow>>;
+async fn gets_by_project_seq(&mut self, v: i64) -> Result<Collection<AccountProjectRow>>;
+async fn get_count_by_account_seq(&mut self, v: i64) -> Result<i64>;
+async fn get_count_by_project_seq(&mut self, v: i64) -> Result<i64>;
+fn account_seq_eq(self, v: i64) -> Self;
+fn project_seq_eq(self, v: i64) -> Self;
+fn account_seq(self, v: i64) -> Self;
+fn project_seq(self, v: i64) -> Self;
+}
+impl AccountProjectInterface for AccountProject {
+async fn get(&mut self) -> Result<Option<AccountProjectRow>> { AccountProject::get(self).await }
+async fn gets(&mut self) -> Result<Collection<AccountProjectRow>> { AccountProject::gets(self).await }
+async fn stream(&mut self, visit: impl FnMut(AccountProjectRow) -> bool) -> Result<db::StreamResult> { AccountProject::stream(self,visit).await }
+async fn get_count(&mut self) -> Result<i64> { AccountProject::get_count(self).await }
+async fn gets_count(&mut self) -> Result<Collection<AccountProjectRow>> { AccountProject::gets_count(self).await }
+async fn insert(&mut self) -> Result<Option<AccountProjectRow>> { AccountProject::insert(self).await }
+async fn save(&mut self) -> Result<Option<AccountProjectRow>> { AccountProject::save(self).await }
+async fn update(&mut self) -> Result<u64> { AccountProject::update(self).await }
+async fn delete(&mut self) -> Result<u64> { AccountProject::delete(self).await }
+async fn sql(&mut self) -> Result<db::Sql> { AccountProject::sql(self).await }
+fn using(mut self, ex: &impl Exec) -> Self { AccountProject::using(self,ex) }
+async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<AccountProjectRow>> { AccountProject::paginate(self,page,per).await }
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<AccountProjectRow>> { AccountProject::gets_after(self,cursor,per).await }
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<AccountProjectRow>> { AccountProject::gets_before(self,cursor,per).await }
+async fn gets_by_account_seq(&mut self, v: i64) -> Result<Collection<AccountProjectRow>> { AccountProject::gets_by_account_seq(self,v).await }
+async fn gets_by_project_seq(&mut self, v: i64) -> Result<Collection<AccountProjectRow>> { AccountProject::gets_by_project_seq(self,v).await }
+async fn get_count_by_account_seq(&mut self, v: i64) -> Result<i64> { AccountProject::get_count_by_account_seq(self,v).await }
+async fn get_count_by_project_seq(&mut self, v: i64) -> Result<i64> { AccountProject::get_count_by_project_seq(self,v).await }
+fn account_seq_eq(mut self, v: i64) -> Self { AccountProject::account_seq_eq(self,v) }
+fn project_seq_eq(mut self, v: i64) -> Self { AccountProject::project_seq_eq(self,v) }
+fn account_seq(self, v: i64) -> Self { AccountProject::account_seq(self,v) }
+fn project_seq(self, v: i64) -> Self { AccountProject::project_seq(self,v) }
+}
+
+pub trait AccountProjectRowInterface: Sized {
+fn using(&mut self, ex: &impl Exec) -> &mut Self;
+async fn update(&mut self) -> Result<()>;
+async fn delete(&self) -> Result<()>;
+async fn delete_cascade(&self) -> Result<()>;
+fn has(&self, name: &str) -> bool;
+fn rel_loaded(&self, name: &str) -> bool;
+fn to_map(&self) -> Result<serde_json::Value>;
+}
+impl AccountProjectRowInterface for AccountProjectRow {
+fn using(&mut self, ex: &impl Exec) -> &mut Self { AccountProjectRow::using(self,ex) }
+async fn update(&mut self) -> Result<()> { AccountProjectRow::update(self).await }
+async fn delete(&self) -> Result<()> { AccountProjectRow::delete(self).await }
+async fn delete_cascade(&self) -> Result<()> { AccountProjectRow::delete_cascade(self).await }
+fn has(&self, name: &str) -> bool { AccountProjectRow::has(self,name) }
+fn rel_loaded(&self, name: &str) -> bool { AccountProjectRow::rel_loaded(self,name) }
+fn to_map(&self) -> Result<serde_json::Value> { AccountProjectRow::to_map(self) }
+}
