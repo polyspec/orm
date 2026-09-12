@@ -7,8 +7,8 @@ Rules: no polling or timers, no symlinks, one execution path, Mermaid is the sou
 
 - **S0 complete:** measurements and decisions R1–R3 and F1–F3 are recorded in `docs/perf.md`.
 - **S1 complete:** engine, generators, four clients, conformance harness, `ormgen tokens`, and the demo are implemented.
-- **S2 complete except T2.15:** relation, codec, type, and 58-vector checks pass; the 150-table Rust fixture is pending.
-- **S3–S6 complete:** writes, joins, PHP compatibility, deployment, PostgreSQL, and SQLite support are implemented. Fixed-cost optimization remains incomplete.
+- **S2 complete:** relation, codec, type, 58-vector, and 150-table Rust fixture checks pass.
+- **S3–S6 complete:** writes, joins, PHP compatibility, deployment, PostgreSQL, and SQLite support are implemented. Fixed-cost optimization continues in T7.11.
 - Current conformance coverage is **58 vectors × 4 clients × 3 databases**. Codec coverage is 96 vectors across Go, PHP, Rust, and TypeScript.
 
 ## Common interface verification
@@ -85,7 +85,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] T7.3 Implement deterministic `ormgen diff` and destructive-change checks.
 - [x] T7.4 Implement query-level `scope_p`, planner enforcement, generated methods, and tenant-isolation tests on MySQL, PostgreSQL, and SQLite in all four clients.
 - [x] T7.5 Implement `curlfile`, YAML 1.2, and `point` conversions in Go, PHP, Rust, and TypeScript. Verify `point` DDL and SQL on MySQL, PostgreSQL, and SQLite.
-- [ ] T7.6 Implement server streaming, cancellation, errors, and row ownership checks.
+- [ ] T7.6 Implement database row streaming, cancellation, errors, and row ownership checks.
 - [x] T7.7 Implement deterministic static query precompilation and schema-hash checks.
 - [x] T7.8 Implement the TypeScript module, generated entity APIs and schema hash, `orm.toml` loader, native database drivers, structure and AST checks, and the 58-vector database runner for all three databases.
 - [x] T7.9 Compare Rust `mysql_async` 0.37.1 with sqlx 0.9 using equal SQL, binds, typed results, connection count, and fixture. Retain sqlx because neither measured workload shows the required 2x improvement.
@@ -98,6 +98,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] T7.16 Replace semicolon splitting with a dialect-aware SQL statement parser and preserve statement-level failure locations.
 - [x] T7.17 Accept MMD, manifest JSON, metadata-bearing ORM SQL, and live DB schema sources for DDL, diff, structured plans, verification, recovery, idempotent database migration, and verified rollback execution.
 - [x] T7.18 Run physical comment, migration-plan apply, repeat, drift, failure, lock contention, recovery, rollback, and rollback no-op tests through containerctl for MySQL and PostgreSQL.
+- [ ] T7.19 After completing the other S7 features, implement the common database adapter structure, isolate Rust ORM code from sqlx types, verify a substitute adapter without sqlx, and run fault-injection and physical database tests before deciding whether to replace the default adapter.
 
 ## Documentation tasks
 
@@ -120,4 +121,4 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] G3 Verify write and relation vectors for all implemented clients.
 - [x] G4 Run generated symbol, schema, and CI checks.
 - [x] G5 Verify the GitHub Actions build.
-- [ ] G7 Close only after T7.1–T7.18 and T7.D1–T7.D10 meet their completion conditions.
+- [ ] G7 Close only after T7.1–T7.19 and T7.D1–T7.D10 meet their completion conditions.

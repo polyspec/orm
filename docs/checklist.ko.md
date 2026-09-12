@@ -7,8 +7,8 @@
 
 - **S0 완료:** `docs/perf.md`에 측정과 R1~R3, F1~F3 결정을 기록했다.
 - **S1 완료:** 엔진, 생성기, 4개 클라이언트, 적합성 하네스, `ormgen tokens`, 데모를 구현했다.
-- **S2는 T2.15를 제외하고 완료:** 관계·코덱·타입·58개 벡터 검사를 통과했다. 150테이블 Rust fixture가 남아 있다.
-- **S3~S6 완료:** 쓰기, 조인, PHP 호환층, 배포, PostgreSQL, SQLite를 구현했다. 고정 비용 최적화는 미완료다.
+- **S2 완료:** 관계·코덱·타입·58개 벡터·150테이블 Rust fixture 검사를 통과했다.
+- **S3~S6 완료:** 쓰기, 조인, PHP 호환층, 배포, PostgreSQL, SQLite를 구현했다. 고정 비용 최적화는 T7.11에서 계속한다.
 - 현재 적합성 범위는 **58개 벡터 × 4개 클라이언트 × 3개 데이터베이스**다. 코덱 범위는 Go·PHP·Rust·TypeScript의 96개 벡터다.
 
 ## 공통 인터페이스 검사
@@ -85,7 +85,7 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 - [x] T7.3 결정적인 `ormgen diff`와 destructive change 검사를 구현한다.
 - [x] T7.4 네 클라이언트에 query 수준 `scope_p`, planner 강제 적용, 생성 메서드, MySQL·PostgreSQL·SQLite tenant isolation 검사를 구현한다.
 - [x] T7.5 Go·PHP·Rust·TypeScript에 `curlfile`, YAML 1.2, `point` 변환을 구현한다. MySQL·PostgreSQL·SQLite에서 `point` DDL과 SQL을 검사한다.
-- [ ] T7.6 서버 streaming, 취소, 오류, 행 소유권 검사를 구현한다.
+- [ ] T7.6 데이터베이스 행 streaming, 취소, 오류, 행 소유권 검사를 구현한다.
 - [x] T7.7 결정적인 정적 query precompile과 schema-hash 검사를 구현한다.
 - [x] T7.8 TypeScript 모듈, 생성 entity API와 schema hash, `orm.toml` loader, 네이티브 데이터베이스 드라이버, 구조·AST 검사, 세 데이터베이스의 58개 벡터 실행기를 구현한다.
 - [x] T7.9 동일한 SQL, bind, typed 결과, connection 수, fixture로 Rust `mysql_async` 0.37.1과 sqlx 0.9를 비교했다. 측정 항목 모두 교체 기준인 2배 개선을 충족하지 않아 sqlx를 유지한다.
@@ -98,6 +98,7 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 - [x] T7.16 세미콜론 분할을 방언별 SQL 문장 분석기로 교체하고 문장별 실패 위치를 보존했습니다.
 - [x] T7.17 MMD, manifest JSON, metadata가 있는 ORM SQL, 실제 DB schema를 DDL·diff·구조화 plan·검증·복구·멱등 DB migration·검증된 rollback 실행 입력으로 지원한다.
 - [x] T7.18 containerctl로 MySQL·PostgreSQL의 주석, 계획 적용, 반복 실행, drift, 실패, 잠금 충돌, 복구, rollback, rollback no-op을 실제 DB에서 검증했습니다.
+- [ ] T7.19 나머지 S7 기능을 완료한 뒤 공통 database adapter 구조를 구현하고, Rust ORM 코드에서 sqlx 타입을 분리하고, sqlx 없는 대체 adapter를 검증하고, 오류 주입·물리 데이터베이스 테스트를 실행한 뒤 기본 adapter 교체 여부를 결정한다.
 
 ## 문서 작업
 
@@ -120,4 +121,4 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 - [x] G3 구현된 클라이언트의 쓰기·관계 벡터를 검사한다.
 - [x] G4 생성 심볼·스키마·CI 검사를 실행한다.
 - [x] G5 GitHub Actions 빌드를 확인한다.
-- [ ] G7 T7.1~T7.18과 T7.D1~T7.D10의 완료 조건을 모두 충족한 뒤 닫는다.
+- [ ] G7 T7.1~T7.19와 T7.D1~T7.D10의 완료 조건을 모두 충족한 뒤 닫는다.
