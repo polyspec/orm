@@ -398,6 +398,18 @@ async fn main() {
     }).await;
     check!(fails, rolled_back.as_ref().err().map(|error| error.code()) == Some("TEST_ROLLBACK"), "composite transaction returns the source error");
     check!(fails, composite_account::query().tenant_id_eq(tenant_id).account_id_eq(13).using(&db).get_count().await.expect("rollback count") == 0, "composite transaction rollback removes both rows");
+    let savepoint_result = db.transaction(|tx| async move {
+        tx.savepoint("rust_probe").await?;
+        composite_account::query().set_tenant_id(tenant_id).set_account_id(13).set_name("savepoint").using(&tx).insert().await?;
+        tx.rollback_to("rust_probe").await?;
+        tx.release_savepoint("rust_probe").await?;
+        match tx.savepoint("rust_probe; DROP TABLE composite_account").await {
+            Err(orm::Error::Config(message)) if message.contains("savepoint name") => Ok(()),
+            Err(error) => Err(error),
+            Ok(()) => Err(orm::Error::Config("savepoint identifier injection was accepted".into())),
+        }
+    }).await;
+    check!(fails, savepoint_result.is_ok() && composite_account::query().tenant_id_eq(tenant_id).account_id_eq(13).using(&db).get_count().await.expect("savepoint count") == 0, "savepoint rollback and identifier validation");
     first.delete().await.expect("composite row delete");
     check!(fails, composite_membership::query().tenant_id_eq(tenant_id).using(&db).get_count().await.expect("membership count") == 1, "composite row delete uses every key component");
     composite_membership::query().tenant_id_eq(tenant_id).using(&db).delete().await.expect("remove memberships");

@@ -157,6 +157,18 @@ $created = $db->transaction(function (Tx $tx) {
 });
 check($created !== null && $created->getSeq() > 0 && $created->getAesHexEmail() === 'w@example.com', 'insert in tx + aes');
 
+$db->transaction(function (Tx $tx): void {
+    $tx->savepoint('php_probe');
+    $tx->rollbackTo('php_probe');
+    $tx->releaseSavepoint('php_probe');
+    try {
+        $tx->savepoint('php_probe; DROP TABLE battle');
+        check(false, 'savepoint identifier injection was accepted');
+    } catch (OrmException $e) {
+        check($e->code_ === Code::CONFIG, 'savepoint identifier error code');
+    }
+});
+
 $created->setName('php-write-2')->setLikeCount(5)->using($db)->updateOptimistic();
 $again = Battle::query()->using($db)->getBySeq($created->getSeq());
 check($again->getName() === 'php-write-2' && $again->getLikeCount() === 5, 'dirty update');

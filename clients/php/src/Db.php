@@ -849,6 +849,20 @@ final class Tx extends Db
         $this->assertActive();
         return $this->outer->stmt($sql);
     }
+
+    public function savepoint(string $name): void { $this->control('SAVEPOINT', $name); }
+    public function rollbackTo(string $name): void { $this->control('ROLLBACK TO SAVEPOINT', $name); }
+    public function releaseSavepoint(string $name): void { $this->control('RELEASE SAVEPOINT', $name); }
+
+    private function control(string $command, string $name): void
+    {
+        $this->assertActive();
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name)) {
+            throw new OrmException(Code::CONFIG, 'savepoint name must match [A-Za-z_][A-Za-z0-9_]*');
+        }
+        try { $this->pdo->exec($command . ' ' . $name); }
+        catch (\PDOException $e) { throw OrmException::fromDriver($e, $this->driver()); }
+    }
 }
 
 final class Transform

@@ -262,6 +262,47 @@ func (t *Tx) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	return t.tx.StmtContext(ctx, st), nil
 }
 
+// Savepoint creates a named savepoint in the current transaction.
+func (t *Tx) Savepoint(ctx context.Context, name string) error {
+	return t.control(ctx, "SAVEPOINT", name)
+}
+
+// RollbackTo rolls the current transaction back to a named savepoint.
+func (t *Tx) RollbackTo(ctx context.Context, name string) error {
+	return t.control(ctx, "ROLLBACK TO SAVEPOINT", name)
+}
+
+// ReleaseSavepoint releases a named savepoint without ending the transaction.
+func (t *Tx) ReleaseSavepoint(ctx context.Context, name string) error {
+	return t.control(ctx, "RELEASE SAVEPOINT", name)
+}
+
+func (t *Tx) control(ctx context.Context, command, name string) error {
+	if t.finished.Load() {
+		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if !validSavepointName(name) {
+		return &ir.Error{Code: CodeConfig, Msg: "savepoint name must match [A-Za-z_][A-Za-z0-9_]*"}
+	}
+	if _, err := t.tx.ExecContext(ctx, command+" "+name); err != nil {
+		return mapDriverErr(err)
+	}
+	return nil
+}
+
+func validSavepointName(name string) bool {
+	if name == "" || !(name[0] == '_' || name[0] >= 'A' && name[0] <= 'Z' || name[0] >= 'a' && name[0] <= 'z') {
+		return false
+	}
+	for i := 1; i < len(name); i++ {
+		c := name[i]
+		if !(c == '_' || c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9') {
+			return false
+		}
+	}
+	return true
+}
+
 // Transaction runs fn once in a transaction. An error or panic rolls back.
 func Transaction[T any](ctx context.Context, d *DB, fn func(*Tx) (T, error)) (T, error) {
 	return TransactionWithOptions(ctx, d, TransactionOptions{}, fn)
