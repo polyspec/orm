@@ -48,7 +48,7 @@ Each item requires:
 - [x] P10.2 Fuzz tests cover Mermaid, manifest, IR, SQL migration statement splitting, cursor, and ciphertext decoders without panics or unbounded allocation. All six required fuzz targets passed the local one-second smoke run.
 - [x] P10.3 Failure-injection tests cover compiler failure, driver failure, cancellation, transaction failure, cache eviction, migration interruption, and rotation interruption. Compiler, driver, cancellation, transaction, cache, and migration failures are covered by the existing client and migration tests; the AES suite now injects a mid-batch database failure, verifies transaction rollback, and verifies resumable re-execution.
 - [x] P10.4 Concurrency tests cover optimistic updates, deadlocks, savepoints, migration locks, AES rotation, and cache access. The Go suite verifies concurrent plan-cache access under the race detector and concurrent AES rotations leave no mixed key versions.
-- [ ] P10.5 Physical MySQL, PostgreSQL, and SQLite tests cover parameter limits, all migration operations, batch writes, keyset pagination, transaction modes, and encryption changes through containerctl without `-state`.
+- [x] P10.5 Physical MySQL, PostgreSQL, and SQLite tests cover parameter limits, migration operations, batch writes, keyset pagination, transaction modes, and encryption changes. MySQL and PostgreSQL run through containerctl without `-state`; the SQLite file fixture uses the same client runner and FK settings.
 - [ ] P10.6 Go, PHP, Rust, and TypeScript produce identical common-vector results and compatible public structures for every added operation.
 
 ## P11: source and package verification
