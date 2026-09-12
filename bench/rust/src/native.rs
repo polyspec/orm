@@ -5,7 +5,7 @@ use sqlx::{MySqlPool, Row};
 use std::collections::HashMap;
 use std::time::Instant;
 
-const COLS: &str = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_team_player_count`, `a`.`success_count`, `a`.`player_count`, `a`.`read_count`, `a`.`cover_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_module_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_play`, `a`.`like_count`, AES_DECRYPT(UNHEX(`a`.`aes_hex_email`), ?) AS `aes_hex_email`, AES_DECRYPT(UNHEX(`a`.`aes_hex_phone`), ?) AS `aes_hex_phone`";
+const COLS: &str = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_team_player_count`, `a`.`success_count`, `a`.`player_count`, `a`.`read_count`, `a`.`cover_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_module_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_play`, `a`.`like_count`, `a`.`aes_hex_email`, `a`.`aes_hex_phone`";
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -42,26 +42,26 @@ fn stats(name: &str, mut s: Vec<u64>) {
 
 async fn pk_get(pool: &MySqlPool, seq: u64) -> Battle {
     let q = format!("SELECT {COLS} FROM `battle` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1");
-    let row = sqlx::query(sqlx::AssertSqlSafe(q.clone())).bind("bench-salt").bind("bench-salt").bind(seq).fetch_one(pool).await.expect("pk");
+    let row = sqlx::query(sqlx::AssertSqlSafe(q.clone())).bind(seq).fetch_one(pool).await.expect("pk");
     from_row(&row)
 }
 
 async fn list100(pool: &MySqlPool, service_seq: u64) -> Vec<Battle> {
     let q = format!("SELECT {COLS} FROM `battle` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 100");
-    let rows = sqlx::query(sqlx::AssertSqlSafe(q.clone())).bind("bench-salt").bind("bench-salt").bind(service_seq).bind(0u8).fetch_all(pool).await.expect("list");
+    let rows = sqlx::query(sqlx::AssertSqlSafe(q.clone())).bind(service_seq).bind(0u8).fetch_all(pool).await.expect("list");
     rows.iter().map(from_row).collect()
 }
 
 async fn insert(pool: &MySqlPool, i: usize) -> u64 {
-    let r = sqlx::query("INSERT INTO `battle` (`name`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_hex_email`) VALUES (?, ?, ?, ?, ?, ?, ?, HEX(AES_ENCRYPT(?, ?)))")
-        .bind(format!("bench-insert-{i}")).bind(1u64).bind(999u64).bind(1u64).bind(1u64).bind("2026-06-01").bind("2026-12-31").bind("ins@example.com").bind("bench-salt")
+    let r = sqlx::query("INSERT INTO `battle` (`name`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_hex_email`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(format!("bench-insert-{i}")).bind(1u64).bind(999u64).bind(1u64).bind(1u64).bind("2026-06-01").bind("2026-12-31").bind("ins@example.com").bind(1i32)
         .execute(pool).await.expect("insert");
     r.last_insert_id()
 }
 
 async fn relation4(pool: &MySqlPool, service_seq: u64) -> HashMap<u64, Vec<Battle>> {
     let q = format!("SELECT {COLS} FROM `battle` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 20");
-    let parents: Vec<Battle> = sqlx::query(sqlx::AssertSqlSafe(q.clone())).bind("bench-salt").bind("bench-salt").bind(service_seq).fetch_all(pool).await.expect("parents").iter().map(from_row).collect();
+    let parents: Vec<Battle> = sqlx::query(sqlx::AssertSqlSafe(q.clone())).bind(service_seq).fetch_all(pool).await.expect("parents").iter().map(from_row).collect();
     let mut keys: Vec<u64> = parents.iter().map(|p| p.user_seq).collect();
     keys.sort_unstable(); keys.dedup();
     let ph = vec!["?"; keys.len()].join(", ");

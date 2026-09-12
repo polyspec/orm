@@ -48,6 +48,10 @@ impl AesKeyring {
 
     pub fn versions(&self) -> Vec<i32> { self.keys.keys().copied().collect() }
 
+    pub fn key(&self, version: i32) -> Result<&str> {
+        self.keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config(format!("AES version {version} is not declared")))
+    }
+
     /// Returns a copy after every AES column succeeds. The caller must persist
     /// all returned columns and the version in one database transaction.
     pub fn rotate_row<D, E>(

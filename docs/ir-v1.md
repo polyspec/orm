@@ -84,7 +84,7 @@ Styles are a pipeline array. **Write in array order and read in reverse order.**
 ```json
 "style": ["json"]              // json_encode
 "style": ["serialize","gz"]    // serialize → gzcompress
-"style": ["aes","hex"]         // AES_ENCRYPT → HEX
+"style": ["aes","hex"]         // authenticated AES ciphertext → HEX
 "style": ["ip"]                // INET6_ATON / INET6_NTOA
 ```
 
@@ -98,7 +98,7 @@ A single style name such as `aes_serialize` or `aes_hex` is represented as a lis
 | `gz` | gzip | gunzip | app |
 | `base64` | b64 | 〃 | app |
 | `hex` | hex | unhex | app |
-| `aes` | `AES_ENCRYPT(?, :__key)` | `AES_DECRYPT(col, :__key)` | **SQL** |
+| `aes` | host AES-256-GCM v2 ciphertext | host AES-256-GCM v2 ciphertext decode | **host** |
 | `ip` | `INET6_ATON(?)` | `INET6_NTOA(col)` | **SQL** |
 | `point` | `ST_PointFromText(?)` | `ST_AsText(col)` | **SQL on MySQL; typed text conversion on PostgreSQL and SQLite** |
 

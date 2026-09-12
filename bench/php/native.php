@@ -4,6 +4,8 @@
 declare(strict_types=1);
 require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
 
+use Orm\Codec;
+
 $sock  = $argv[1] ?? die("socket path required\n");
 $iters = (int)($argv[2] ?? 3000);
 
@@ -19,7 +21,7 @@ function bench(string $name, int $iters, callable $f): void {
     stats($name, $s);
 }
 
-const COLS = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_team_player_count`, `a`.`success_count`, `a`.`player_count`, `a`.`read_count`, `a`.`cover_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_module_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_play`, `a`.`like_count`, AES_DECRYPT(UNHEX(`a`.`aes_hex_email`), ?) AS `aes_hex_email`, AES_DECRYPT(UNHEX(`a`.`aes_hex_phone`), ?) AS `aes_hex_phone`, `a`.`price`, INET6_NTOA(`a`.`ip`) AS `ip`";
+const COLS = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_team_player_count`, `a`.`success_count`, `a`.`player_count`, `a`.`read_count`, `a`.`cover_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_module_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_play`, `a`.`like_count`, `a`.`aes_hex_email`, `a`.`aes_hex_phone`, `a`.`price`, `a`.`ip`";
 
 // ---------- (i) PDO direct ----------
 $pdo = new PDO('mysql:unix_socket=/tmp/mysql.sock;dbname=orm_bench;charset=utf8mb4', 'root', '', [
@@ -29,13 +31,13 @@ $pdo = new PDO('mysql:unix_socket=/tmp/mysql.sock;dbname=orm_bench;charset=utf8m
 ]);
 $stPk   = $pdo->prepare("SELECT " . COLS . " FROM `battle` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1");
 $stList = $pdo->prepare("SELECT " . COLS . " FROM `battle` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 100");
-$stIns  = $pdo->prepare("INSERT INTO `battle` (`name`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_hex_email`) VALUES (?, ?, ?, ?, ?, ?, ?, HEX(AES_ENCRYPT(?, ?)))");
+$stIns  = $pdo->prepare("INSERT INTO `battle` (`name`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_hex_email`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 $stP20  = $pdo->prepare("SELECT " . COLS . " FROM `battle` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 20");
 
 echo "== (i) PDO direct ==\n";
-bench('pdo pk get', $iters, function ($i) use ($stPk) { $stPk->execute(['bench-salt', 'bench-salt', $i % 100000 + 1]); $r = $stPk->fetch(\PDO::FETCH_NUM); $stPk->closeCursor(); if (!$r) throw new RuntimeException('no row'); });
+bench('pdo pk get', $iters, function ($i) use ($stPk) { $stPk->execute([$i % 100000 + 1]); $r = $stPk->fetch(\PDO::FETCH_NUM); $stPk->closeCursor(); if (!$r) throw new RuntimeException('no row'); });
 bench('pdo list100', $iters, function ($i) use ($stList) { $stList->execute(['bench-salt', 'bench-salt', $i % 100 + 1, 0]); $rows = $stList->fetchAll(\PDO::FETCH_NUM); if (count($rows) === 0) throw new RuntimeException('empty'); });
-bench('pdo insert', 1000, function ($i) use ($stIns) { $stIns->execute(["bench-insert-$i", 1, 999, 1, 1, '2026-06-01', '2026-12-31', 'ins@example.com', 'bench-salt']); });
+bench('pdo insert', 1000, function ($i) use ($stIns) { $stIns->execute(["bench-insert-$i", 1, 999, 1, 1, '2026-06-01', '2026-12-31', (string) Codec::hostEncode('ins@example.com', ['aes', 'hex'], 'bench-salt'), 1]); });
 $pdo->exec("DELETE FROM `battle` WHERE `service_seq` = 999");
 bench('pdo relation4 + php assembly', $iters, function ($i) use ($pdo, $stP20) {
     $stP20->execute(['bench-salt', 'bench-salt', $i % 100 + 1]);

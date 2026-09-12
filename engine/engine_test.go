@@ -64,8 +64,8 @@ func TestSelectAll(t *testing.T) {
 	sql := p.Steps[0].SQL
 	wantParts := []string{
 		"SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, ",
-		"AES_DECRYPT(UNHEX(`a`.`aes_hex_email`), ?) AS `a__aes_hex_email`",
-		" FROM `battle` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`aes_hex_email` = HEX(AES_ENCRYPT(?, ?)) AND `a`.`name` LIKE ? ORDER BY `a`.`seq` DESC LIMIT 0, 100",
+		"UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`",
+		" FROM `battle` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`aes_hex_email` = HEX(?) AND `a`.`name` LIKE ? ORDER BY `a`.`seq` DESC LIMIT 0, 100",
 	}
 	for _, w := range wantParts {
 		if !strings.Contains(sql, w) {
@@ -87,12 +87,12 @@ func TestSelectAll(t *testing.T) {
 		}
 		kinds = append(kinds, k)
 	}
-	if got := strings.Join(kinds, " "); got != "secret secret p0 p1 p2 p3 p4 p5 p6 p7 p8 secret p9:like_contains" {
+	if got := strings.Join(kinds, " "); got != "p0 p1 p2 p3 p4 p5 p6 p7 p8 p9:like_contains" {
 		t.Errorf("bind kinds: %s", got)
 	}
 	asm := p.Steps[0].Assemble
-	// 27 eager columns: price and ip (INET6_NTOA in SQL) are eager, the styled gz/json/… columns are lazy
-	if asm == nil || asm.Columns[0].Name != "seq" || asm.Columns[0].Index != 0 || len(asm.Columns) != 27 || asm.Columns[26].Name != "ip" || !strings.Contains(sql, "INET6_NTOA(`a`.`ip`) AS `a__ip`") {
+	// 27 public columns plus the hidden AES version column.
+	if asm == nil || asm.Columns[0].Name != "seq" || asm.Columns[0].Index != 0 || len(asm.Columns) != 28 || asm.Columns[26].Name != "ip" || !asm.Columns[27].Hidden || !strings.Contains(sql, "INET6_NTOA(`a`.`ip`) AS `a__ip`") {
 		t.Errorf("assemble: %+v", asm)
 	}
 }
@@ -123,7 +123,7 @@ func TestWrites(t *testing.T) {
 	  {"column":"name","p":0},{"column":"aes_hex_email","p":1},{"column":"user_seq","p":2},
 	  {"column":"service_seq","p":3},{"column":"service_module_seq","p":4},{"column":"service_member_seq","p":5},
 	  {"column":"start_dt","p":6},{"column":"end_dt","p":7}]`)
-	if want := "INSERT INTO `battle` (`name`, `aes_hex_email`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_key_version`) VALUES (?, HEX(AES_ENCRYPT(?, ?)), ?, ?, ?, ?, ?, ?, ?)"; p.Steps[0].SQL != want {
+	if want := "INSERT INTO `battle` (`name`, `aes_hex_email`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_key_version`) VALUES (?, HEX(?), ?, ?, ?, ?, ?, ?, ?)"; p.Steps[0].SQL != want {
 		t.Errorf("insert: %s", p.Steps[0].SQL)
 	}
 	p = compile(t, e, `"kind":"update","entity":"battle","set":[{"column":"name","p":0},{"column":"like_count","plus_p":1},{"column":"read_count","minus_p":2}],
@@ -132,7 +132,7 @@ func TestWrites(t *testing.T) {
 		t.Errorf("update: %s", p.Steps[0].SQL)
 	}
 	p = compile(t, e, `"kind":"update","entity":"battle","set":[{"column":"aes_hex_email","p":0},{"column":"aes_hex_phone","p":1}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":2}}]}`)
-	if !strings.Contains(p.Steps[0].SQL, "`aes_key_version` = ?") || p.Steps[0].BindSlots[4].Name != "aes_version" {
+	if !strings.Contains(p.Steps[0].SQL, "`aes_key_version` = ?") || p.Steps[0].BindSlots[2].Name != "aes_version" {
 		t.Errorf("AES update must store the configured key version: %+v", p.Steps[0])
 	}
 	p = compile(t, e, `"kind":"delete","entity":"battle","where":{"items":[{"pred":{"column":"seq","op":"in","ps":[0,1]}}]}`)

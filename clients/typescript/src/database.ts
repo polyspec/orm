@@ -1,4 +1,5 @@
-import type { AesKeyring, AesRotationSpec, AesRotationStatus, Compiler, Database, Executor, Param, Plan, PlanStep, Request, StreamResult } from './index.js';
+import { AesKeyring } from './index.js';
+import type { AesRotationSpec, AesRotationStatus, Compiler, Database, Executor, Param, Plan, PlanStep, Request, StreamResult } from './index.js';
 import { readFile } from 'node:fs/promises';
 import { ConnectCompiler, ConnectPlanCompiler, type CompilerTransport } from './compiler.js';
 import { loadConfig, resolveAesKey } from './config.js';
@@ -15,6 +16,7 @@ export interface DatabaseOptions {
   compiler: CompilerTransport;
   aesKey?: string;
   aesVersion?: number;
+  aesKeys?: ReadonlyMap<number, string>;
   onQuery?: (event: QueryEvent) => void;
 }
 
@@ -46,9 +48,11 @@ export class Db implements Database, Executor {
     this.aesVersion = options.aesVersion ?? 1;
     if (!Number.isSafeInteger(this.aesVersion) || this.aesVersion < 1) throw new OrmError('CONFIG', 'aes version must be a positive integer');
     this.onQuery = options.onQuery;
+    this.aesKeyring = options.aesKeys === undefined && this.aesKey === '' ? undefined : new AesKeyring(options.aesKeys ?? new Map([[this.aesVersion, this.aesKey]]), this.aesVersion);
   }
   protected readonly aesKey: string;
   protected readonly aesVersion: number;
+  protected readonly aesKeyring?: AesKeyring;
   protected readonly onQuery?: (event: QueryEvent) => void;
   public get executor(): Executor { return this; }
   public get driver(): string { return this.connection.name; }
@@ -78,7 +82,8 @@ export class Db implements Database, Executor {
       const detail = event.error === undefined ? '' : ` error=${String(event.error)}`;
       console.error(`orm ${(event.seconds * 1000).toFixed(3)}ms ${event.sql} ${JSON.stringify(event.binds)}${detail}`);
     } : undefined;
-    const options = { schemaHash: manifest.schema_hash, compiler, aesKey, aesVersion: config.secrets.aes_version, onQuery };
+    const aesKeys = config.secrets.aes_keys === undefined ? undefined : new Map(Object.entries(config.secrets.aes_keys).map(([version, key]) => [Number(version), key] as const));
+    const options = { schemaHash: manifest.schema_hash, compiler, aesKey, aesVersion: config.secrets.aes_version, aesKeys, onQuery };
     if (config.db.driver === 'sqlite') return Db.connect(openSqlite(config.db.dsn), options);
     if (config.db.driver === 'postgres') return Db.connect(openPostgres(config.db.dsn, config.db.pool), options);
     return Db.connect(openMySql(mysqlDsn(config.db.dsn, config.db.user, config.db.password), config.db.pool), options);
@@ -200,7 +205,7 @@ export class Db implements Database, Executor {
     const started = performance.now();
     try {
       const result = await this.connection.stream(step.sql, binds as DriverValue[], async values => {
-        decodeAssembly(values, assemble, this.aesKey);
+        decodeAssembly(values, assemble, this.aesKey, this.aesKeyring);
         return visit(rowFromResult<T>(rows, assemble, values));
       });
       this.onQuery?.({ sql: step.sql, binds: maskBinds(step, binds), seconds: (performance.now() - started) / 1000 });
@@ -218,7 +223,7 @@ export class Db implements Database, Executor {
   private async select(plan: Plan, params: readonly Param[]): Promise<ExecutionRows> {
     const main = plan.steps[0]!;
     const result = await this.run(main, params);
-    decodeRows(result.rows, requiredAssemble(main), this.aesKey);
+    decodeRows(result.rows, requiredAssemble(main), this.aesKey, this.aesKeyring);
     const rows = new ExecutionRows(this, plan, params, result.rows);
     for (const step of plan.steps) {
       if (step.role !== 'relation') continue;
@@ -228,7 +233,7 @@ export class Db implements Database, Executor {
       if (values.length === 0) { rows.setStep(step.id, [], childKeys(plan, step.id)); continue; }
       const expanded = expandParent(step, values);
       const result = await this.run(step, params, expanded.sql, expanded.values);
-      decodeRows(result.rows, requiredAssemble(step), this.aesKey);
+      decodeRows(result.rows, requiredAssemble(step), this.aesKey, this.aesKeyring);
       rows.setStep(step.id, result.rows, childKeys(plan, step.id));
     }
     return rows;
@@ -291,7 +296,7 @@ export class Db implements Database, Executor {
 export class Tx extends Db {
   public active: boolean = true;
   public constructor(private readonly transactionConnection: DriverTransaction, outer: Db) {
-    super(transactionConnection, { schemaHash: outer.schemaHash, compiler: transportUnavailable, aesKey: outer['aesKey'], aesVersion: outer['aesVersion'], onQuery: outer['onQuery'] }, outer);
+    super(transactionConnection, { schemaHash: outer.schemaHash, compiler: transportUnavailable, aesKey: outer['aesKey'], aesVersion: outer['aesVersion'], aesKeys: outer['aesKeyring']?.keyMap(), onQuery: outer['onQuery'] }, outer);
     this.compiler = outer.compiler;
   }
   public override readonly compiler: Compiler;
@@ -312,14 +317,16 @@ function transform(kind: string, value: string): string { const escaped = value.
 function sqlDate(value: Date): string { return value.toISOString().replace('T', ' ').replace('Z', '').replace(/\.([0-9]{3})$/, '.$1000'); }
 function postgresPoint(value: unknown): string { const [x,y] = parsePoint(value as string); return `(${x},${y})`; }
 function maskBinds(step: PlanStep, binds: readonly unknown[]): unknown[] { const out: unknown[]=[]; let index=0; for (const slot of step.bind_slots) { if(slot.from==='parent') { while(index<binds.length-step.bind_slots.length+1) out.push(binds[index++]); } else { out.push(slot.from==='secret'?'$SECRET':slot.from==='now'?'$NOW':binds[index]); index++; } } return out.length===binds.length?out:[...binds]; }
-function decodeRows(rows: unknown[][], assemble: ReturnType<typeof requiredAssemble>, aesKey: string): void { for (const row of rows) decodeAssembly(row, assemble, aesKey); }
-function decodeAssembly(row: unknown[], assemble: ReturnType<typeof requiredAssemble>, aesKey: string): void {
+function decodeRows(rows: unknown[][], assemble: ReturnType<typeof requiredAssemble>, aesKey: string, keyring?: AesKeyring): void { for (const row of rows) decodeAssembly(row, assemble, aesKey, keyring); }
+function decodeAssembly(row: unknown[], assemble: ReturnType<typeof requiredAssemble>, aesKey: string, keyring?: AesKeyring): void {
+  let version = keyring?.currentVersion ?? 1;
+  for (const column of assemble.columns) if (column.hidden && column.column === 'aes_key_version') version = Number(row[column.index]);
   for (const column of assemble.columns) {
     let value = row[column.index];
     if (value !== null && column.styles.length) {
       const host = column.styles.filter(style => style === 'aes' || style === 'hex' || style === 'ip');
-      const app = column.styles.filter(style => style !== 'aes' && style !== 'hex' && style !== 'ip');
-      if (host.length) value = hostDecode(value as string | Uint8Array, host, aesKey);
+      const app = column.styles.filter(style => !host.some(value => value === style));
+      if (host.length) value = hostDecode(value as string | Uint8Array, host, host.includes('aes') ? keyring?.key(version) ?? aesKey : aesKey);
       if (app.length) value = decode(app, value as string | Uint8Array);
     }
     if (value !== null && column.type === 'string' && value instanceof Uint8Array) {
@@ -332,7 +339,7 @@ function decodeAssembly(row: unknown[], assemble: ReturnType<typeof requiredAsse
     }
     row[column.index] = value;
   }
-  for (const child of assemble.children) if (child.kind === 'join' && child.assemble) decodeAssembly(row, child.assemble, aesKey);
+  for (const child of assemble.children) if (child.kind === 'join' && child.assemble) decodeAssembly(row, child.assemble, aesKey, keyring);
 }
 function parentValues(step: PlanStep, parents: unknown[][], params: readonly Param[]): Param[] { const ref=step.parent!; const seen=new Set<string>(); const out:Param[]=[]; for(const row of parents){if(ref.if_parent&&scalarKey(row[ref.if_parent.index])!==scalarKey(params[ref.if_parent.param]))continue;const key=rowKey(row,ref.keys);if(key===undefined||seen.has(key))continue;seen.add(key);for(const part of ref.keys)out.push(row[part.index] as Param);}return out; }
 function expandParent(step: PlanStep, source: Param[]): {sql:string;values:Param[]} { const width=step.parent?.keys.length??0;if(width===0||source.length%width!==0)throw new OrmError('INTERNAL',`relation step ${step.id} has invalid parent keys`);const tuples=source.length/width;let size=1;while(size<tuples)size<<=1;const values=[...source];while(values.length<size*width)values.push(...source.slice((tuples-1)*width,tuples*width));const replacement=(start:number,format:(n:number)=>string)=>Array.from({length:size},(_,tuple)=>Array.from({length:width},(_,part)=>format(start+tuple*width+part)).join(', ')).join(width===1?', ': '), (');const parentSlot=step.bind_slots.findIndex(slot=>slot.from==='parent');if(parentSlot<0)throw new OrmError('INTERNAL',`relation step ${step.id} has no parent bind`);if(step.sql.includes('$1')){const parent=parentSlot+1;return{sql:step.sql.replace(/\$(\d+)/g,(_,raw)=>{const n=Number(raw);if(n===parent)return replacement(n,i=>`$${i}`);return `$${n>parent?n+size*width-1:n}`;}),values};}let slot=0;return{sql:step.sql.replace(/\?/g,()=>step.bind_slots[slot++]?.from==='parent'?replacement(0,()=>'?'):'?'),values}; }

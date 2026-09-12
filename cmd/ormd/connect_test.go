@@ -205,7 +205,7 @@ func TestCompilerConnectPreservesCompleteRequestAndPlan(t *testing.T) {
 		t.Fatalf("plan=%#v", response.Msg.GetPlan())
 	}
 	step := response.Msg.GetPlan().Steps[0]
-	if step.Assemble == nil || len(step.Assemble.Columns) == 0 || len(step.Binds) < 4 {
+	if step.Assemble == nil || len(step.Assemble.Columns) == 0 || len(step.Binds) < 2 {
 		t.Fatalf("incomplete plan=%#v", step)
 	}
 	if step.Binds[len(step.Binds)-2].Parameter != scope || step.Binds[len(step.Binds)-1].Parameter != parameter {

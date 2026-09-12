@@ -3,6 +3,7 @@
 //! The database under test is `ORM_TEST_DRIVER` (mysql default) with `ORM_TEST_DSN`
 //! (MySQL falls back to `ORM_MYSQL_URL_RUST`, then the local socket). Results are asserted
 //! as they are on every database; the SQL assertions read the statement in the MySQL spelling.
+use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -71,7 +72,7 @@ async fn main() {
     // ---- S6: the driver must be the engine's dialect ----
     let other = if driver == "mysql" { "sqlite" } else { "mysql" };
     let other_dsn = if other == "mysql" { "mysql://root@localhost/x" } else { "sqlite::memory:" };
-    match Db::connect(ConnectOptions::parse(other, other_dsn).unwrap(), 1, engine.clone(), Config { aes_key: String::new(), aes_version: 1, on_query: None }).await {
+    match Db::connect(ConnectOptions::parse(other, other_dsn).unwrap(), 1, engine.clone(), Config { aes_key: String::new(), aes_version: 1, aes_keys: BTreeMap::new(), on_query: None }).await {
         Err(e) if e.code() == orm::codes::CONFIG
             && e.to_string().contains("driver")
             && e.to_string().contains("compiler uses") => {}
@@ -96,7 +97,7 @@ async fn main() {
         last_plan_h.store(plan_id, Ordering::Relaxed);
         if binds.iter().any(|b| *b == Param::Str("bench-salt".into())) { leaked_h.store(true, Ordering::Relaxed); }
     });
-    let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), aes_version: 1, on_query: Some(on_query) }).await.expect("connect");
+    let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), aes_version: 1, aes_keys: [(1, "bench-salt".into())].into_iter().collect(), on_query: Some(on_query) }).await.expect("connect");
 
     // ---- reads ----
     let b = battle::query().using(&db).one_by_seq(42).await.expect("one").expect("row 42");
@@ -308,8 +309,8 @@ async fn main() {
     let n0 = statements.load(Ordering::Relaxed);
     let s = battle::query().service_seq_eq(7).select_aes_hex_email().limit(0, 1).using(&db).sql().await.expect("sql");
     check!(fails, s.sql.starts_with("SELECT ") && norm_sql(&s.sql).ends_with(" LIMIT 0, 1") && statements.load(Ordering::Relaxed) == n0, "sql renders without executing");
-    // MySQL decrypts in SQL (two secret slots); the other dialects decode aes/hex in the executor
-    let want_binds = if driver == "mysql" { vec![Param::Str("$SECRET".into()), Param::Str("$SECRET".into()), Param::I64(7)] } else { vec![Param::I64(7)] };
+    // AES is decoded by every client host; the SQL statement has no secret binds.
+    let want_binds = vec![Param::I64(7)];
     check!(fails, s.binds == want_binds, "sql binds: secrets masked, params as values");
     check!(fails, battle::query().seq_in(vec![a.seq, inserted.seq]).using(&db).delete().await.expect("query delete") == 2, "query delete: affected count");
 

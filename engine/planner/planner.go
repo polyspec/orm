@@ -553,7 +553,11 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 	if err != nil {
 		return err
 	}
+	hasAES := false
 	for _, c := range cols {
+		if col := s.ent.Column(c.column); col != nil && slices.Contains(col.Styles, "aes") {
+			hasAES = true
+		}
 		if *idx > 0 {
 			sb.WriteString(", ")
 		}
@@ -581,6 +585,19 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: c.name, Column: c.column, Type: typ, Styles: styles})
 		*idx++
 	}
+	if hasAES {
+		version := aesVersionCol(s.ent)
+		if version == nil {
+			return &ir.Error{Code: "SCHEMA_INVALID", Msg: s.ent.Name + ": AES column requires aes_key_version"}
+		}
+		if *idx > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(p.qcol(s, version.Name) + " AS " + p.D.Quote(s.alias+"__"+version.Name))
+		*outNames = append(*outNames, s.alias+"__"+version.Name)
+		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: version.Name, Column: version.Name, Type: version.Type, Hidden: true})
+		*idx++
+	}
 	for _, j := range s.q.Joins {
 		js := s.joins[j.Rel]
 		child := &plan.Child{Rel: j.Rel, Kind: "join", Assemble: &plan.Assemble{Entity: js.ent.Name, Alias: js.alias}}
@@ -590,6 +607,28 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		asm.Children = append(asm.Children, child)
 	}
 	asm.Key = keyRefs(asm, s.ent.PK)
+	return nil
+}
+
+// aesVersionColumn returns the required plaintext row-version metadata column
+// for an entity containing an AES payload. It is selected as a hidden output
+// so executors can choose the matching key before decoding each row.
+func aesVersionCol(e *schema.Entity) *schema.Col {
+	if e == nil {
+		return nil
+	}
+	for _, c := range e.Columns {
+		for _, style := range c.Styles {
+			if style == "aes" {
+				for _, v := range e.Columns {
+					if v.Name == "aes_key_version" {
+						return v
+					}
+				}
+				return nil
+			}
+		}
+	}
 	return nil
 }
 
@@ -858,7 +897,7 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 	return "", &ir.Error{Code: "OPERATOR_UNKNOWN", Msg: pr.Op}
 }
 
-// renderValue binds one value, wrapping it for SQL-side styles (aes/hex/ip) so
+// renderValue binds one value, wrapping it for SQL-side styles (hex/ip) so
 // equality predicates on encrypted columns keep working.
 func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error) {
 	styles := p.sqlStyles(col.Styles)

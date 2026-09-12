@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/polyspec/orm/clients/go/orm"
 )
 
 const localDSN = "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true&interpolateParams=false"
@@ -29,7 +30,7 @@ func dsn() string {
 	return localDSN
 }
 
-const listCols = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_team_player_count`, `a`.`success_count`, `a`.`player_count`, `a`.`read_count`, `a`.`cover_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_module_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_play`, `a`.`like_count`, AES_DECRYPT(UNHEX(`a`.`aes_hex_email`), ?) AS `aes_hex_email`, AES_DECRYPT(UNHEX(`a`.`aes_hex_phone`), ?) AS `aes_hex_phone`, `a`.`price`, INET6_NTOA(`a`.`ip`) AS `ip`"
+const listCols = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_team_player_count`, `a`.`success_count`, `a`.`player_count`, `a`.`read_count`, `a`.`cover_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_module_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_play`, `a`.`like_count`, `a`.`aes_hex_email`, `a`.`aes_hex_phone`, `a`.`price`, `a`.`ip`"
 
 type battle struct {
 	Seq                      int64
@@ -105,7 +106,7 @@ func open(tb testing.TB) *sql.DB {
 }
 
 func pkGet(ctx context.Context, db *sql.DB, seq int64) (*battle, error) {
-	rows, err := prep(db, "SELECT "+listCols+" FROM `battle` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1").QueryContext(ctx, "bench-salt", "bench-salt", seq)
+	rows, err := prep(db, "SELECT "+listCols+" FROM `battle` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1").QueryContext(ctx, seq)
 	if err != nil {
 		return nil, err
 	}
@@ -191,8 +192,12 @@ func listN(ctx context.Context, db *sql.DB, serviceSeq int64, n int) ([]battle, 
 }
 
 func insertOne(ctx context.Context, db *sql.DB, i int) (int64, error) {
-	res, err := prep(db, "INSERT INTO `battle` (`name`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_hex_email`) VALUES (?, ?, ?, ?, ?, ?, ?, HEX(AES_ENCRYPT(?, ?)))").ExecContext(ctx,
-		"bench-insert-"+strconv.Itoa(i), 1, 999, 1, 1, "2026-06-01", "2026-12-31", "ins@example.com", "bench-salt")
+	email, err := orm.HostEncode("ins@example.com", []string{"aes", "hex"}, "bench-salt")
+	if err != nil {
+		return 0, err
+	}
+	res, err := prep(db, "INSERT INTO `battle` (`name`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_hex_email`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").ExecContext(ctx,
+		"bench-insert-"+strconv.Itoa(i), 1, 999, 1, 1, "2026-06-01", "2026-12-31", email, 1)
 	if err != nil {
 		return 0, err
 	}
