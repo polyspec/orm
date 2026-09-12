@@ -16,6 +16,9 @@ function connection() {
         async close() {},
         async commit() { state.commits++; },
         async rollback() { state.rollbacks++; },
+        async savepoint(name) { if (name.includes(';')) throw new OrmError('CONFIG', 'invalid savepoint'); },
+        async rollbackTo() {},
+        async releaseSavepoint() {},
       };
     },
     async close() {},
@@ -55,6 +58,18 @@ const compiler = { async compile() { throw new Error('compiler is not used'); },
   if (result !== 'committed' || calls !== 2 || state.begins !== 2 || state.rollbacks !== 1 || state.commits !== 1) {
     throw new Error(`explicit transaction retry state differs: ${JSON.stringify({ result, calls, ...state })}`);
   }
+}
+
+{
+  const { root } = connection();
+  const db = new Db(root, { schemaHash: 'test', compiler });
+  await db.transaction(async tx => {
+    await tx.savepoint('probe');
+    await tx.rollbackTo('probe');
+    await tx.releaseSavepoint('probe');
+    try { await tx.savepoint('probe; DROP TABLE probe'); throw new Error('injection accepted'); }
+    catch (error) { if (!(error instanceof OrmError) || error.code !== 'CONFIG') throw error; }
+  });
 }
 
 console.log('typescript transaction retry policy passed');
