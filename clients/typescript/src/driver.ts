@@ -303,7 +303,7 @@ class SqliteDriver implements DriverConnection {
   }
   public async begin(options: DriverTransactionOptions = {}): Promise<DriverTransaction> {
     if (this.transaction) throw new OrmError('CONFIG', 'nested transactions are not supported');
-    if (options.isolation !== undefined && options.isolation !== 'default' || options.readOnly) throw new OrmError('CONFIG', 'sqlite does not support transaction isolation or read-only mode');
+    if (options.isolation !== undefined && options.isolation !== 'default' || options.readOnly) throw new OrmError('CAPABILITY_UNSUPPORTED', 'sqlite does not support transaction isolation or read-only mode');
     this.connection.exec('BEGIN IMMEDIATE');
     return new SqliteTx(this.connection);
   }

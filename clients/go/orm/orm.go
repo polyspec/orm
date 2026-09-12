@@ -393,7 +393,7 @@ func runTx[T any](ctx context.Context, d *DB, options TransactionOptions, fn fun
 
 func sqlTransactionOptions(driver string, options TransactionOptions) (*sql.TxOptions, error) {
 	if driver == "sqlite" && (options.Isolation != IsolationDefault || options.ReadOnly) {
-		return nil, &ir.Error{Code: CodeConfig, Msg: "sqlite does not support transaction isolation or read-only mode"}
+		return nil, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "sqlite does not support transaction isolation or read-only mode"}
 	}
 	level := sql.LevelDefault
 	switch options.Isolation {

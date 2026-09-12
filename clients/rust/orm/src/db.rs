@@ -965,9 +965,9 @@ impl Db {
             }
             Pool::Sqlite(p) => {
                 if options.isolation != IsolationLevel::Default || options.read_only {
-                    return Err(Error::Config(
+                    return Err(Error::Engine { code: crate::codes::CAPABILITY_UNSUPPORTED.into(), msg:
                         "sqlite does not support transaction isolation or read-only mode".into(),
-                    ));
+                    });
                 }
                 TxInner::Sqlite(p.begin().await?)
             }

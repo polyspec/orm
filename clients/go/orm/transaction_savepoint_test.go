@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/polyspec/orm/engine/ir"
 	_ "modernc.org/sqlite"
 )
 
@@ -66,6 +67,8 @@ func TestTransactionOptionsRejectUnsupportedSQLiteModes(t *testing.T) {
 	} {
 		if _, err := sqlTransactionOptions("sqlite", options); err == nil {
 			t.Fatalf("sqlite accepted unsupported transaction options: %+v", options)
+		} else if e, ok := err.(*ir.Error); !ok || e.Code != CodeCapabilityUnsupported {
+			t.Fatalf("sqlite returned the wrong capability error: %v", err)
 		}
 	}
 	if options, err := sqlTransactionOptions("postgres", TransactionOptions{Isolation: IsolationSerializable, ReadOnly: true}); err != nil || options.Isolation != sql.LevelSerializable || !options.ReadOnly {
