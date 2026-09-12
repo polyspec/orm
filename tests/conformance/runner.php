@@ -543,6 +543,11 @@ $run('batch_insert_delete', function () use ($db) {
     $deleted = Service::query()->nameIn($names)->using($db)->delete();
     return ['attempted' => $result->attempted, 'affected' => $result->affected, 'inserted' => $result->inserted, 'deleted' => $deleted];
 });
+$run('keyset_pages', function () use ($db) {
+    $first = Service::query()->orderBySeqAsc()->using($db)->getsAfter('', 3);
+    $second = Service::query()->orderBySeqAsc()->using($db)->getsAfter($first->nextCursor, 3);
+    return ['first' => $first->items->keys(), 'second' => $second->items->keys(), 'has_cursor' => $first->nextCursor !== ''];
+});
 $run('codec_roundtrip', function () use ($db, $remask) {
     $value = ['a' => 1, 'b' => [1, 2, ['c' => '한글/slash']], 'd' => null, 'e' => true, 'f' => 1.5];
     $created = $db->transaction(fn(Tx $tx) => Battle::query()

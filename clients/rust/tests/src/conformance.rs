@@ -1310,6 +1310,15 @@ async fn main() {
         let deleted = service::query().name_in(names).using(&db).delete().await?;
         Ok(json!({"attempted": result.attempted, "affected": result.affected, "inserted": result.inserted, "deleted": deleted}))
     }.await);
+    run!("keyset_pages", async {
+        let first = service::query().order_by_seq_asc().using(&db).gets_after("", 3).await?;
+        let second = service::query().order_by_seq_asc().using(&db).gets_after(&first.next_cursor, 3).await?;
+        Ok(json!({
+            "first": first.items.keys().map(|key| key.as_i64()).collect::<Vec<_>>(),
+            "second": second.items.keys().map(|key| key.as_i64()).collect::<Vec<_>>(),
+            "has_cursor": !first.next_cursor.is_empty()
+        }))
+    }.await);
     run!("codec_roundtrip", async {
         let value = json!({"a": 1, "b": [1, 2, {"c": "한글/slash"}], "d": null, "e": true, "f": 1.5});
         let v = value.clone();
