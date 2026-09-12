@@ -49,7 +49,7 @@ Each item requires:
 - [x] P10.3 Failure-injection tests cover compiler failure, driver failure, cancellation, transaction failure, cache eviction, migration interruption, and rotation interruption. Compiler, driver, cancellation, transaction, cache, and migration failures are covered by the existing client and migration tests; the AES suite now injects a mid-batch database failure, verifies transaction rollback, and verifies resumable re-execution.
 - [x] P10.4 Concurrency tests cover optimistic updates, deadlocks, savepoints, migration locks, AES rotation, and cache access. The Go suite verifies concurrent plan-cache access under the race detector and concurrent AES rotations leave no mixed key versions.
 - [x] P10.5 Physical MySQL, PostgreSQL, and SQLite tests cover parameter limits, migration operations, batch writes, keyset pagination, transaction modes, and encryption changes. MySQL and PostgreSQL run through containerctl without `-state`; the SQLite file fixture uses the same client runner and FK settings.
-- [ ] P10.6 Go, PHP, Rust, and TypeScript produce identical common-vector results and compatible public structures for every added operation.
+- [x] P10.6 Go, PHP, Rust, and TypeScript produce identical common-vector results and compatible public structures for every added operation. The manifest requires the canonical vector source, three database expectation files, all four clients, and at least 63 unique vectors; the physical MySQL, PostgreSQL, and SQLite runs passed with 63 vectors per client.
 
 ## P11: source and package verification
 
