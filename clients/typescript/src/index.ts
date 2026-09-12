@@ -50,49 +50,98 @@ export class AesKeyring {
   }
 }
 
+export type QueryKind = 'one' | 'all' | 'count' | 'group_count' | 'count_distinct' | 'sum' | 'avg' | 'min' | 'max' | 'paginate' | 'insert' | 'update' | 'delete' | 'raw';
+
 export interface Request {
   ir_version: 1;
   schema_hash: string;
-  kind: 'all' | 'count';
+  kind: QueryKind;
   entity: string;
   scope_p?: number;
+  columns?: Projection;
+  on?: Group;
   where?: Group;
+  having?: Group;
   joins?: Join[];
+  relations?: Relation[];
+  order?: Order[];
+  group_by?: string[];
+  group_by_expr?: GroupExpression[];
+  limit?: Limit;
+  distinct?: boolean;
+  force_index?: string;
+  key_by?: string;
+  flatten?: boolean;
+  limit_per_parent?: number;
+  if_parent?: IfParent;
+  drop_child_key?: boolean;
+  no_cascade_delete?: boolean;
+  set?: Assignment[];
+  on_duplicate?: Assignment[];
+  optimistic?: Optimistic;
+  raw?: Raw;
+  agg?: string;
+  debug?: boolean;
   n_params: number;
 }
 
 export interface Group {
+  conn?: string;
   items: Item[];
 }
 
 export interface Item {
   pred?: Predicate;
   group?: Group;
+  nav?: Navigation;
 }
 
 export interface Predicate {
-  conn?: 'or';
-  column: string;
-  op: 'eq' | 'in';
+  conn?: string;
+  column?: string;
+  op?: string;
   p?: number;
   ps?: number[];
+  ref?: { path: string; column: string };
+  expr?: string;
+  match?: string[];
 }
+
+export interface Navigation { conn?: string; rel: string; group: Group; }
+export interface Projection { mode?: '' | 'all' | 'none'; add?: string[]; remove?: string[]; as?: Record<string,string>; expr?: Record<string,string>; }
+export interface Order { column?: string; expr?: string; desc?: boolean; }
+export interface GroupExpression { expr: string; as: string; }
+export interface Limit { offset: number; count: number; }
+export interface IfParent { column: string; p: number; }
+export interface Assignment { column: string; p?: number; null?: boolean; expr?: string; ps?: number[]; plus_p?: number; minus_p?: number; }
+export interface Optimistic { column: string; p: number; }
+export interface Raw { sql: string; ps?: number[]; }
 
 export interface Relation {
   rel: string;
-  query: { entity: string; where?: Group };
+  query: RequestQuery;
 }
 
 export interface Join {
   rel: string;
   kind: 'inner' | 'left';
-  query: { entity: string; where?: Group };
+  query: RequestQuery;
 }
+
+export type RequestQuery = Omit<Request, 'ir_version'|'schema_hash'|'kind'|'set'|'on_duplicate'|'optimistic'|'raw'|'agg'|'debug'|'n_params'>;
 
 export interface Plan {
   schema_hash: string;
-  steps: unknown[];
+  kind: QueryKind;
+  steps: PlanStep[];
 }
+
+export interface PlanStep { id:number; role:string; sql:string; bind_slots:BindSlot[]; assemble?:Assemble; parent?:ParentReference; }
+export interface BindSlot { from:string; param:number; transform:string; name:string; step:number; column:string; host_styles:string[]; col_type:string; }
+export interface ParentReference { step:number; column:string; index:number; if_parent?:{column:string;index:number;param:number}; }
+export interface Assemble { entity:string; alias:string; columns:OutputColumn[]; children:Child[]; }
+export interface OutputColumn { index:number; name:string; column:string; type:string; styles:string[]; hidden:boolean; }
+export interface Child { rel:string; kind:string; step:number; parent_column:string; parent_index:number; child_column:string; child_index:number; key_by:string; key_index:number; flatten:boolean; cascade:boolean; assemble?:Assemble; }
 
 export interface Compiler {
   compile(request: Request): Promise<Plan>;
@@ -285,6 +334,7 @@ export function Service(): ServiceQuery { return new ServiceQuery(); }
 export function ServiceModule(): ServiceModuleQuery { return new ServiceModuleQuery(); }
 export function ServiceMember(): ServiceMemberQuery { return new ServiceMemberQuery(); }
 
-export { CompilerError, ConnectCompiler, compileRequest } from './compiler.js';
+export { CompilerError, ConnectCompiler, ConnectPlanCompiler, compileRequest } from './compiler.js';
+export { planFromProto, requestToProto } from './compiler_bridge.js';
 export type { CompilerTransport } from './compiler.js';
 export * as CompilerProto from './gen/proto/orm/compiler/v1/compiler_pb.js';
