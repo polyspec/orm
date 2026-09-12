@@ -10,6 +10,7 @@ const ids = new Set();
 const statuses = new Set(['planned', 'partial', 'implemented']);
 const clientStatuses = new Set(['planned', 'partial', 'pass', 'unsupported']);
 const clients = ['go', 'php', 'rust', 'typescript'];
+const databases = ['mysql', 'postgres', 'sqlite'];
 const runVerification = process.argv.includes('--run');
 
 const execute = (command, cwd) => new Promise((resolveRun) => {
@@ -75,6 +76,25 @@ for (const feature of manifest.features ?? []) {
     const korean = doc.replace(/\.md$/, '.ko.md');
     try { await readFile(resolve(root, korean)); }
     catch { errors.push(`${feature.id}: missing Korean document ${korean}`); }
+  }
+  if (feature.vector_contract) {
+    const contract = feature.vector_contract;
+    if (contract.source !== 'tests/conformance/vectors.json') errors.push(`${feature.id}: vector_contract source must be the canonical vector file`);
+    if (JSON.stringify(contract.required_clients) !== JSON.stringify(clients)) errors.push(`${feature.id}: vector_contract required_clients must list all clients in canonical order`);
+    if (JSON.stringify(contract.required_databases) !== JSON.stringify(databases)) errors.push(`${feature.id}: vector_contract required_databases must list all databases in canonical order`);
+    if (!Array.isArray(contract.database_expectations) || contract.database_expectations.length !== databases.length) errors.push(`${feature.id}: vector_contract must provide one expectation file per database`);
+    for (const relative of contract.database_expectations ?? []) {
+      try { await stat(resolve(root, relative)); }
+      catch { errors.push(`${feature.id}: missing vector expectation file ${relative}`); }
+    }
+    try {
+      const vectors = JSON.parse(await readFile(resolve(root, contract.source), 'utf8')).vectors;
+      const names = vectors.map(vector => vector.name);
+      if (names.length < contract.minimum_vectors) errors.push(`${feature.id}: vector count ${names.length} is below ${contract.minimum_vectors}`);
+      if (names.some(name => !name) || new Set(names).size !== names.length) errors.push(`${feature.id}: vector names must be non-empty and unique`);
+    } catch (error) {
+      errors.push(`${feature.id}: invalid vector contract source: ${error.message}`);
+    }
   }
 }
 

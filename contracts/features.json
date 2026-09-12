@@ -689,7 +689,18 @@
           "id": "conformance-unit",
           "command": "go test ./tests/conformance/check ./tests/conformance/runner_go -count=1"
         }
-      ]
+      ],
+      "vector_contract": {
+        "source": "tests/conformance/vectors.json",
+        "database_expectations": [
+          "tests/conformance/vectors.json",
+          "tests/conformance/vectors.postgres.json",
+          "tests/conformance/vectors.sqlite.json"
+        ],
+        "required_clients": ["go", "php", "rust", "typescript"],
+        "required_databases": ["mysql", "postgres", "sqlite"],
+        "minimum_vectors": 63
+      }
     }
   ]
 }
