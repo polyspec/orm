@@ -382,6 +382,8 @@ class Q
         $this->req->sig .= '|>x' . ($desc ? 'd' : 'a') . Req::str($frag);
     }
 
+    public function lock(string $mode): void { $this->node['lock'] = $mode; $this->req->sig .= "|:lock\x1f$mode"; }
+
     public function groupBy(string $col, ?string $alias = null): void
     {
         if ($alias !== null) {

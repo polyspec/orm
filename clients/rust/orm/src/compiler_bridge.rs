@@ -73,6 +73,7 @@ fn query(input: &ir::Query, path: &str) -> Result<wire::QueryNode> {
         if_parent: input.if_parent.as_ref().map(|v| -> Result<_> { Ok(wire::IfParent { column: v.column.clone(), parameter: index(v.p, &format!("{path}.if_parent.parameter"))? }) }).transpose()?,
         drop_child_key: input.drop_child_key, no_cascade_delete: input.no_cascade_delete,
         scope_parameter: input.scope_p.map(|v| index(v, &format!("{path}.scope_parameter"))).transpose()?,
+        lock: input.lock.clone(),
     })
 }
 

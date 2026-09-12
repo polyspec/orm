@@ -49,6 +49,7 @@ type Query struct {
 	Limit       *Limit      `json:"limit,omitempty"`
 	Distinct    bool        `json:"distinct,omitempty"`
 	ForceIdx    string      `json:"force_index,omitempty"`
+	Lock        string      `json:"lock,omitempty"` // update or share; root row-select only
 
 	// Relation-child options.
 	KeyBy           string    `json:"key_by,omitempty"`
@@ -281,6 +282,9 @@ func Validate(m *schema.Manifest, r *Request) error {
 	v := &validator{m: m, n: r.NParams}
 	if err := v.query(&r.Query, "", false, false); err != nil {
 		return err
+	}
+	if r.Query.Lock != "" && r.Kind != "one" && r.Kind != "all" {
+		return errf("IR_INVALID", "row lock is only valid on one or all")
 	}
 	ent := m.Entities[r.Entity]
 	if r.ScopeP != nil && r.Kind == "raw" {
@@ -534,6 +538,12 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 	}
 	if q.Limit != nil && (q.Limit.Offset < 0 || q.Limit.Count <= 0) {
 		return errf("IR_INVALID", "limit offset>=0, count>0")
+	}
+	if q.Lock != "" && q.Lock != "update" && q.Lock != "share" {
+		return errf("IR_INVALID", "lock %q: want update or share", q.Lock)
+	}
+	if q.Lock != "" && (isJoin || isRelation || q.GroupBy != nil || q.GroupByExpr != nil || q.LimitPerParent > 0) {
+		return errf("IR_INVALID", "row lock is only valid on a root row select")
 	}
 	if q.ForceIdx != "" {
 		if _, ok := ent.Indexes[q.ForceIdx]; !ok {

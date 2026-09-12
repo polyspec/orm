@@ -67,6 +67,8 @@ pub struct QueryNode {
     pub no_cascade_delete: bool,
     #[prost(uint32, optional, tag="20")]
     pub scope_parameter: ::core::option::Option<u32>,
+    #[prost(string, tag="21")]
+    pub lock: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Projection {

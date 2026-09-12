@@ -5847,6 +5847,8 @@ func (q *AuthorQuery) Limit(offset, count int) *AuthorQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
+func (q *AuthorQuery) ForUpdate() *AuthorQuery    { q.q.Lock("update"); return q }
+func (q *AuthorQuery) ForShare() *AuthorQuery     { q.q.Lock("share"); return q }
 func (q *AuthorQuery) Distinct() *AuthorQuery     { q.q.Node.Distinct = true; return q }
 func (q *AuthorQuery) ForceIndexIk() *AuthorQuery { q.q.Node.ForceIdx = "ik"; return q }
 func (q *AuthorQuery) ForceIndexIxEmailBlindIndex() *AuthorQuery {

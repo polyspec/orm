@@ -101,6 +101,7 @@ export interface RequestQuery {
   limit?: Limit;
   distinct?: boolean;
   force_index?: string;
+  lock?: 'update' | 'share';
   key_by?: string;
   flatten?: boolean;
   limit_per_parent?: number;

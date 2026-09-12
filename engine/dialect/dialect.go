@@ -40,6 +40,8 @@ type Dialect interface {
 	// HostNow reports that the database has no sub-second clock function, so
 	// timestamps written by the ORM (updated_ts) come from the executor (a `now` slot).
 	HostNow() bool
+	// RowLock renders a row lock suffix. The boolean reports dialect support.
+	RowLock(mode string) (string, bool)
 }
 
 // QuoteWith is a helper for dialects using a single quote character.

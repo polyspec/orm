@@ -138,6 +138,8 @@ Transaction ownership belongs to the code that created the transaction. Commit a
 
 `TransactionOptions` accepts `isolation` (`default`, `read_uncommitted`, `read_committed`, `repeatable_read`, or `serializable`) and `readOnly`. Go maps these to `database/sql.TxOptions`; PHP and TypeScript issue transaction settings before `BEGIN`; Rust applies MySQL settings and starts the transaction on the same retained pool connection, and applies PostgreSQL settings in the `BEGIN` statement. SQLite rejects explicit isolation and read-only options. Such unsupported modes return `CONFIG`.
 
+Root row selects expose `forUpdate()` and `forShare()` (Go: `ForUpdate()` and `ForShare()`, Rust: `for_update()` and `for_share()`). The request stores `lock` in the common IR. MySQL and PostgreSQL append the selected lock clause after ordering and limits. SQLite rejects either mode with `CAPABILITY_UNSUPPORTED`; the client does not emulate a row lock.
+
 Errors preserve their stable code and the original driver message. Cancellation releases the transaction and does not leave an active connection in a client-owned object.
 
 `transaction` executes its callback once by default. Deadlock retry is disabled by default. The caller may pass `TransactionOptions` with `retryDeadlocks` and `maxAttempts`; each retry creates a new transaction and re-executes the complete callback. The callback must be safe to execute more than once when retry is enabled.

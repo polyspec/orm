@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:0fffc9c221e572ab2aa9e3bfe317c02c1eb7350c5e6e1bda9c9c72385c8b7918",
-    "php": "sha256:96d13c4bb76231822b9fa1c110fe83dd5192870f70e45fdb555197d9a64c7a25",
-    "rust": "sha256:ab85eb09dd4246e591ea419b29ca546549c3c8c830d0c268d326df704f34125d",
-    "typescript": "sha256:70836bcdbada3adf3e573f6b2c452db0c11bdd15bf23f4dad1e080c6dd33ecbb"
+    "go": "sha256:6bcc8a26de86064805b453e74d7309c0b6a56f19be9041f843e21d9d1b910c92",
+    "php": "sha256:dcc27ed5ec97ae5f37b37401f51fd496ba8b28e1b9982a6fda76cc156285eeb7",
+    "rust": "sha256:3126533eb256313b9bb682655543e7b7fdc14535ded74bf975b0ac370fa7079b",
+    "typescript": "sha256:05248f5e110a8754fdc318cbb3fe1857e361a793a84b697e9f5ed09d3444484e"
   },
   "prohibited_symbols": [
     "multi_statement"
@@ -1938,6 +1938,7 @@
         "limit": "IRLimit",
         "distinct": "bool",
         "force_index": "text",
+        "lock": "text",
         "key_by": "text",
         "flatten": "bool",
         "limit_per_parent": "integer",
@@ -1959,6 +1960,7 @@
         "limit",
         "distinct",
         "force_index",
+        "lock",
         "key_by",
         "flatten",
         "limit_per_parent",
