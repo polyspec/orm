@@ -63,7 +63,17 @@ func TestRollbackPlanRejectsTamperedRiskAndOperations(t *testing.T) {
 		t.Fatalf("risk error=%v", err)
 	}
 	plan.RollbackDataLossRisk = true
-	plan.RollbackOperations[0].Destructive = false
+	changed := false
+	for i := range plan.RollbackOperations {
+		if plan.RollbackOperations[i].Destructive {
+			plan.RollbackOperations[i].Destructive = false
+			changed = true
+			break
+		}
+	}
+	if !changed {
+		t.Fatal("rollback plan has no destructive operation")
+	}
 	if err := validateRollbackPlan(plan); err == nil || !strings.Contains(err.Error(), "destructive flag mismatch") {
 		t.Fatalf("operation error=%v", err)
 	}
