@@ -3,12 +3,12 @@
 Legend: `[ ]` not started, `[~]` in progress, `[x]` complete. **P** marks parallel work. **→ T#** marks a prerequisite. Every item has a completion condition.
 Rules: no polling or timers, no symlinks, one execution path, Mermaid is the source for diagrams, generated artifacts are stored separately, and version 0.0.1 is fixed.
 
-## Current status (2026-09-12)
+## Current status (2026-09-13)
 
 - **S0 complete:** measurements and decisions R1–R3 and F1–F3 are recorded in `docs/perf.md`.
 - **S1 complete:** engine, generators, four clients, conformance harness, `ormgen tokens`, and the demo are implemented.
 - **S2 complete:** relation, codec, type, 59-vector, and 150-table Rust fixture checks pass.
-- **S3–S6 complete:** writes, joins, deployment, PostgreSQL, and SQLite support are implemented. T7.11 completed the remaining fixed-cost work and regression checks.
+- **S7 in progress:** root `IN` parameter splitting and keyset transport fields are implemented across four clients. Migration, transaction, relation, package, and final verification work remains open until its evidence is recorded.
 - Current conformance coverage is **59 vectors × 4 clients × 3 databases**. Codec coverage is 96 vectors across Go, PHP, Rust, and TypeScript.
 
 ## Common interface verification
@@ -77,7 +77,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [x] Implement both dialects, their placeholders, quoting, returning clauses, full-text rules, AES/HEX/IP handling, and database configuration.
 - [x] Run the four-client database vectors on MySQL, PostgreSQL, and SQLite.
 
-## Stage 7 — S7 additional features [complete]
+## Stage 7 — S7 additional features [in progress]
 
 Every S7 item requires implementation, tests, documentation, and static publication. A feature stays open if the same logical structure cannot be provided in Go, PHP, Rust, and TypeScript.
 
@@ -99,6 +99,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] T7.17 Accept MMD, manifest JSON, metadata-bearing ORM SQL, and live DB schema sources for DDL, diff, structured plans, verification, recovery, idempotent database migration, and verified rollback execution.
 - [x] T7.18 Run physical comment, migration-plan apply, repeat, drift, failure, lock contention, recovery, rollback, and rollback no-op tests through containerctl for MySQL and PostgreSQL.
 - [x] T7.19 Add AES blind-index schema declarations, keyed equality predicates, write synchronization, generated relation APIs, and cross-client MySQL, PostgreSQL, and SQLite integration tests.
+- [x] T7.20 Split oversized root `IN` predicates in Go, PHP, Rust, and TypeScript, preserve non-`IN` parameters, merge rows, sum count results, reject unsafe query shapes, and verify the generated Protobuf keyset field.
 
 ## Documentation tasks
 
@@ -121,4 +122,4 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] G3 Verify write and relation vectors for all implemented clients.
 - [x] G4 Run generated symbol, schema, and CI checks.
 - [x] G5 Verify the GitHub Actions build.
-- [x] G7 T7.1–T7.18 and T7.D1–T7.D10 meet their completion conditions; local checks, GitHub CI, and GitHub Pages deployment pass.
+- [ ] G7 Close only after every S7 feature, paired document, local physical test, package check, and final repository verification has passed.

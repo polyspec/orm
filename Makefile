@@ -1,4 +1,4 @@
-.PHONY: check client-unit-check db-test perf-check interface-check token-check ts-check ts-db-check schema-check proto-check typescript-build rust-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs
+.PHONY: check client-unit-check db-test perf-check interface-check token-check ts-check ts-db-check typescript-root-in schema-check proto-check typescript-build rust-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
 check: feature-check docs-rules-check docs-check docs-verify-idempotent interface-check token-check client-unit-check ts-check schema-check proto-check rust-check rust-driver-check db-test perf-check
@@ -34,7 +34,10 @@ perf-check:
 	./scripts/perf-test.sh
 
 ts-check:
-	npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs && node tests/typescript/compiler-bridge.mjs && node tests/typescript/driver.mjs && node tests/typescript/database.mjs && node tests/typescript/codec-vector.mjs && node tests/typescript/transaction.mjs && node tests/typescript/keyset.mjs
+	npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs && node tests/typescript/compiler-bridge.mjs && node tests/typescript/driver.mjs && node tests/typescript/database.mjs && node tests/typescript/root-in.mjs && node tests/typescript/codec-vector.mjs && node tests/typescript/transaction.mjs && node tests/typescript/keyset.mjs
+
+typescript-root-in:
+	npm run typescript:build && node tests/typescript/root-in.mjs
 
 ts-db-check:
 	./scripts/typescript/sqlite-test.sh

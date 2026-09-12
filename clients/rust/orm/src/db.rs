@@ -1883,7 +1883,17 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
         .assemble
         .clone()
         .ok_or_else(|| Error::internal("no assemble"))?;
-    let raw = ex.query(st, &req.params, Vec::new()).await?;
+    let parts = root_in_parts(req, st, db.driver())?;
+    let raw = if parts.len() == 1 {
+        ex.query(st, &req.params, Vec::new()).await?
+    } else {
+        let mut all = Vec::new();
+        for mut part in parts {
+            let part_plan = db.plan(&mut part).await?;
+            all.extend(ex.query(&part_plan.steps[0], &part.params, Vec::new()).await?);
+        }
+        all
+    };
     let has_relations = plan.steps.iter().skip(1).any(|s| s.role == "relation");
     // Relation steps read parent values positionally and attach by key. Without them a MySQL
     // driver row goes straight to the generated struct; PostgreSQL/SQLite rows are decoded here.
@@ -1987,6 +1997,94 @@ fn relation_chunks(st: &Step, vals: Vec<Param>, driver: &str) -> Result<Vec<Vec<
     Ok(chunks)
 }
 
+/// Splits one oversized positive root IN predicate into requests that stay below
+/// the driver's bind limit. The request shape is cloned so every part uses the
+/// normal compiler and statement cache. Queries whose merge semantics cannot be
+/// preserved by independent execution are rejected before SQL runs.
+fn root_in_parts(req: &Req, st: &Step, driver: &str) -> Result<Vec<Req>> {
+    let limit = if driver == "sqlite" { 999 } else { 65535 };
+    let restricted = req.ir.query.limit.is_some()
+        || !req.ir.query.order.is_empty()
+        || req.ir.query.distinct
+        || !req.ir.query.group_by.is_empty()
+        || !req.ir.query.group_by_expr.is_empty()
+        || req.ir.query.having.is_some()
+        || req.ir.query.keyset.is_some();
+    if st.bind_slots.len() > limit && restricted {
+        return Err(Error::Engine { code: crate::codes::IR_INVALID.into(), msg: format!("root query requires {} bind parameters but {driver} permits {limit}; root IN cannot be split with ordering, limiting, grouping, distinct, or keyset semantics", st.bind_slots.len()) });
+    }
+    if restricted {
+        return Ok(vec![req.clone()]);
+    }
+    let mut predicates = Vec::new();
+    collect_root_in(req.ir.query.where_.as_ref(), &mut predicates);
+    let mut target: Option<(usize, &Vec<usize>)> = None;
+    for (index, (op, ps)) in predicates.iter().enumerate() {
+        if op == "not_in" && st.bind_slots.len() > limit {
+            return Err(Error::Engine {
+                code: crate::codes::IR_INVALID.into(),
+                msg: format!("root NOT IN requires {} bind parameters but {driver} permits {limit}; exclusion semantics are not split", st.bind_slots.len()),
+            });
+        }
+        if op == "in" && st.bind_slots.len() > limit && target.map(|(_, current)| ps.len() > current.len()).unwrap_or(true) {
+            target = Some((index, ps));
+        }
+    }
+    let Some((target_index, target_params)) = target else { return Ok(vec![req.clone()]); };
+    let available = limit.saturating_sub(st.bind_slots.len() - target_params.len());
+    if available == 0 {
+        return Err(Error::Engine { code: crate::codes::IR_INVALID.into(), msg: format!("root IN has no bind capacity on {driver}") });
+    }
+    let mut size = 1usize;
+    while size.saturating_mul(2) <= available { size *= 2; }
+    let mut unique = Vec::with_capacity(target_params.len());
+    for &param in target_params {
+        if !unique.iter().any(|&prior| req.params[prior] == req.params[param]) { unique.push(param); }
+    }
+    let mut parts = Vec::new();
+    for chunk in unique.chunks(size) {
+        let mut part = req.clone();
+        let mut ordinal = 0;
+        if !replace_root_in(part.ir.query.where_.as_mut(), target_index, chunk, &mut ordinal) {
+            return Err(Error::internal("root IN target disappeared while cloning request"));
+        }
+        parts.push(part);
+    }
+    Ok(parts)
+}
+
+fn collect_root_in(group: Option<&ir::Group>, out: &mut Vec<(String, Vec<usize>)>) {
+    let Some(group) = group else { return; };
+    for item in &group.items {
+        match item {
+            ir::Item::Pred { pred } if pred.op == "in" || pred.op == "not_in" => out.push((pred.op.clone(), pred.ps.clone())),
+            ir::Item::Group { group } => collect_root_in(Some(group), out),
+            ir::Item::Nav { nav } => collect_root_in(Some(&nav.group), out),
+            _ => {}
+        }
+    }
+}
+
+fn replace_root_in(group: Option<&mut ir::Group>, target: usize, values: &[usize], ordinal: &mut usize) -> bool {
+    let Some(group) = group else { return false; };
+    for item in &mut group.items {
+        match item {
+            ir::Item::Pred { pred } if pred.op == "in" || pred.op == "not_in" => {
+                if *ordinal == target { pred.ps = values.to_vec(); return true; }
+                *ordinal += 1;
+            }
+            ir::Item::Group { group } => {
+                if replace_root_in(Some(group), target, values, ordinal) { return true; }
+            }
+            ir::Item::Nav { nav } => {
+                if replace_root_in(Some(&mut nav.group), target, values, ordinal) { return true; }
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
 fn assemble_has_aes(asm: &Assemble) -> bool {
     asm.columns
         .iter()
@@ -2009,6 +2107,23 @@ fn first_cell(rows: &[DriverRow]) -> Result<Val> {
 pub async fn scalar(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Val> {
     req.ir.kind = kind.into();
     let plan = ex.db().plan(req).await?;
+    let parts = root_in_parts(req, &plan.steps[0], ex.db().driver())?;
+    if parts.len() > 1 {
+        if kind != "count" {
+            return Err(Error::Engine {
+                code: crate::codes::IR_INVALID.into(),
+                msg: format!("root IN splitting supports count only for aggregate {kind}"),
+            });
+        }
+        let mut total = 0i64;
+        for mut part in parts {
+            part.ir.kind = kind.into();
+            let part_plan = ex.db().plan(&mut part).await?;
+            let rows = ex.query(&part_plan.steps[0], &part.params, Vec::new()).await?;
+            total += first_cell(&rows)?.as_i64();
+        }
+        return Ok(Val::I64(total));
+    }
     let rows = ex.query(&plan.steps[0], &req.params, Vec::new()).await?;
     first_cell(&rows)
 }
@@ -2299,6 +2414,39 @@ mod tests {
             r#"SELECT "a"."seq" FROM "t" AS "a" WHERE "a"."x" = $1 AND "a"."seq" IN ($2) AND "a"."y" > $3 ORDER BY $4"#
         );
         assert_eq!(padded, vec![Param::I64(9)]);
+    }
+
+    #[test]
+    fn root_in_parts_bound_sqlite_parameters_and_remove_duplicates() {
+        let mut req = Req::new("hash", "item");
+        req.params = (0..1000).map(Param::I64).collect();
+        req.params[999] = req.params[0].clone();
+        req.ir.query.where_ = Some(ir::Group {
+            conn: String::new(),
+            items: vec![ir::Item::Pred {
+                pred: ir::Pred {
+                    column: "id".into(),
+                    op: "in".into(),
+                    ps: (0..1000).collect(),
+                    ..Default::default()
+                },
+            }],
+        });
+        let step = Step {
+            plan_id: 0,
+            id: 0,
+            role: "main".into(),
+            sql: String::new(),
+            bind_slots: (0..1000).map(|index| BindSlot { from: "param".into(), param: index, transform: String::new(), name: String::new(), step: 0, column: String::new(), host_styles: Vec::new(), col_type: String::new() }).collect(),
+            assemble: None,
+            parent: None,
+        };
+        let parts = root_in_parts(&req, &step, "sqlite").unwrap();
+        assert_eq!(parts.len(), 2);
+        assert_eq!(parts[0].ir.query.where_.as_ref().unwrap().items.len(), 1);
+        let get = |part: &Req| match &part.ir.query.where_.as_ref().unwrap().items[0] { ir::Item::Pred { pred } => pred.ps.len(), _ => 0 };
+        assert_eq!(get(&parts[0]), 512);
+        assert_eq!(get(&parts[1]), 487);
     }
 
     #[test]

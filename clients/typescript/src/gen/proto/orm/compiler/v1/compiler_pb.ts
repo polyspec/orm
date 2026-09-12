@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/orm/compiler/v1/compiler.proto.
  */
 export const file_proto_orm_compiler_v1_compiler: GenFile = /*@__PURE__*/
-  fileDesc("CiRwcm90by9vcm0vY29tcGlsZXIvdjEvY29tcGlsZXIucHJvdG8SD29ybS5jb21waWxlci52MSL5AgoOQ29tcGlsZVJlcXVlc3QSEgoKaXJfdmVyc2lvbhgBIAEoDRITCgtzY2hlbWFfaGFzaBgCIAEoCRIoCgRraW5kGAMgASgOMhoub3JtLmNvbXBpbGVyLnYxLlF1ZXJ5S2luZBIoCgRyb290GAQgASgLMhoub3JtLmNvbXBpbGVyLnYxLlF1ZXJ5Tm9kZRIoCgNzZXQYBSADKAsyGy5vcm0uY29tcGlsZXIudjEuQXNzaWdubWVudBIxCgxvbl9kdXBsaWNhdGUYBiADKAsyGy5vcm0uY29tcGlsZXIudjEuQXNzaWdubWVudBIvCgpvcHRpbWlzdGljGAcgASgLMhsub3JtLmNvbXBpbGVyLnYxLk9wdGltaXN0aWMSIQoDcmF3GAggASgLMhQub3JtLmNvbXBpbGVyLnYxLlJhdxIXCg9wYXJhbWV0ZXJfY291bnQYCSABKA0SEQoJYWdncmVnYXRlGAogASgJEg0KBWRlYnVnGAsgASgIIrIFCglRdWVyeU5vZGUSDgoGZW50aXR5GAEgASgJEiwKB2NvbHVtbnMYAiABKAsyGy5vcm0uY29tcGlsZXIudjEuUHJvamVjdGlvbhIiCgJvbhgDIAEoCzIWLm9ybS5jb21waWxlci52MS5Hcm91cBIlCgV3aGVyZRgEIAEoCzIWLm9ybS5jb21waWxlci52MS5Hcm91cBImCgZoYXZpbmcYBSABKAsyFi5vcm0uY29tcGlsZXIudjEuR3JvdXASJAoFam9pbnMYBiADKAsyFS5vcm0uY29tcGlsZXIudjEuSm9pbhIsCglyZWxhdGlvbnMYByADKAsyGS5vcm0uY29tcGlsZXIudjEuUmVsYXRpb24SJQoFb3JkZXIYCCADKAsyFi5vcm0uY29tcGlsZXIudjEuT3JkZXISEAoIZ3JvdXBfYnkYCSADKAkSPQoTZ3JvdXBfYnlfZXhwcmVzc2lvbhgKIAMoCzIgLm9ybS5jb21waWxlci52MS5Hcm91cEV4cHJlc3Npb24SJQoFbGltaXQYCyABKAsyFi5vcm0uY29tcGlsZXIudjEuTGltaXQSEAoIZGlzdGluY3QYDCABKAgSEwoLZm9yY2VfaW5kZXgYDSABKAkSDgoGa2V5X2J5GA4gASgJEg8KB2ZsYXR0ZW4YDyABKAgSGAoQbGltaXRfcGVyX3BhcmVudBgQIAEoDRIsCglpZl9wYXJlbnQYESABKAsyGS5vcm0uY29tcGlsZXIudjEuSWZQYXJlbnQSFgoOZHJvcF9jaGlsZF9rZXkYEiABKAgSGQoRbm9fY2FzY2FkZV9kZWxldGUYEyABKAgSHAoPc2NvcGVfcGFyYW1ldGVyGBQgASgNSACIAQESDAoEbG9jaxgVIAEoCUISChBfc2NvcGVfcGFyYW1ldGVyIvICCgpQcm9qZWN0aW9uEi4KBG1vZGUYASABKA4yIC5vcm0uY29tcGlsZXIudjEuUHJvamVjdGlvbi5Nb2RlEgsKA2FkZBgCIAMoCRIOCgZyZW1vdmUYAyADKAkSOQoHYWxpYXNlcxgEIAMoCzIoLm9ybS5jb21waWxlci52MS5Qcm9qZWN0aW9uLkFsaWFzZXNFbnRyeRJBCgtleHByZXNzaW9ucxgFIAMoCzIsLm9ybS5jb21waWxlci52MS5Qcm9qZWN0aW9uLkV4cHJlc3Npb25zRW50cnkaLgoMQWxpYXNlc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEaMgoQRXhwcmVzc2lvbnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIjUKBE1vZGUSEAoMTU9ERV9ERUZBVUxUEAASDAoITU9ERV9BTEwQARINCglNT0RFX05PTkUQAiJRCgRKb2luEhAKCHJlbGF0aW9uGAEgASgJEgwKBGtpbmQYAiABKAkSKQoFcXVlcnkYAyABKAsyGi5vcm0uY29tcGlsZXIudjEuUXVlcnlOb2RlIkcKCFJlbGF0aW9uEhAKCHJlbGF0aW9uGAEgASgJEikKBXF1ZXJ5GAIgASgLMhoub3JtLmNvbXBpbGVyLnYxLlF1ZXJ5Tm9kZSJACgVHcm91cBIRCgljb25uZWN0b3IYASABKAkSJAoFaXRlbXMYAiADKAsyFS5vcm0uY29tcGlsZXIudjEuSXRlbSKcAQoESXRlbRIvCglwcmVkaWNhdGUYASABKAsyGi5vcm0uY29tcGlsZXIudjEuUHJlZGljYXRlSAASJwoFZ3JvdXAYAiABKAsyFi5vcm0uY29tcGlsZXIudjEuR3JvdXBIABIxCgpuYXZpZ2F0aW9uGAMgASgLMhsub3JtLmNvbXBpbGVyLnYxLk5hdmlnYXRpb25IAEIHCgV2YWx1ZSJYCgpOYXZpZ2F0aW9uEhEKCWNvbm5lY3RvchgBIAEoCRIQCghyZWxhdGlvbhgCIAEoCRIlCgVncm91cBgDIAEoCzIWLm9ybS5jb21waWxlci52MS5Hcm91cCLaAQoJUHJlZGljYXRlEhEKCWNvbm5lY3RvchgBIAEoCRIOCgZjb2x1bW4YAiABKAkSEAoIb3BlcmF0b3IYAyABKAkSFgoJcGFyYW1ldGVyGAQgASgNSACIAQESEgoKcGFyYW1ldGVycxgFIAMoDRIzCglyZWZlcmVuY2UYBiABKAsyIC5vcm0uY29tcGlsZXIudjEuQ29sdW1uUmVmZXJlbmNlEhIKCmV4cHJlc3Npb24YByABKAkSFQoNbWF0Y2hfY29sdW1ucxgIIAMoCUIMCgpfcGFyYW1ldGVyIi8KD0NvbHVtblJlZmVyZW5jZRIMCgRwYXRoGAEgASgJEg4KBmNvbHVtbhgCIAEoCSI/CgVPcmRlchIOCgZjb2x1bW4YASABKAkSEgoKZXhwcmVzc2lvbhgCIAEoCRISCgpkZXNjZW5kaW5nGAMgASgIIjQKD0dyb3VwRXhwcmVzc2lvbhISCgpleHByZXNzaW9uGAEgASgJEg0KBWFsaWFzGAIgASgJIiYKBUxpbWl0Eg4KBm9mZnNldBgBIAEoDRINCgVjb3VudBgCIAEoDSItCghJZlBhcmVudBIOCgZjb2x1bW4YASABKAkSEQoJcGFyYW1ldGVyGAIgASgNIukBCgpBc3NpZ25tZW50Eg4KBmNvbHVtbhgBIAEoCRIWCglwYXJhbWV0ZXIYAiABKA1IAIgBARIQCghzZXRfbnVsbBgDIAEoCBISCgpleHByZXNzaW9uGAQgASgJEh0KFWV4cHJlc3Npb25fcGFyYW1ldGVycxgFIAMoDRIbCg5wbHVzX3BhcmFtZXRlchgGIAEoDUgBiAEBEhwKD21pbnVzX3BhcmFtZXRlchgHIAEoDUgCiAEBQgwKCl9wYXJhbWV0ZXJCEQoPX3BsdXNfcGFyYW1ldGVyQhIKEF9taW51c19wYXJhbWV0ZXIiLwoKT3B0aW1pc3RpYxIOCgZjb2x1bW4YASABKAkSEQoJcGFyYW1ldGVyGAIgASgNIiYKA1JhdxILCgNzcWwYASABKAkSEgoKcGFyYW1ldGVycxgCIAMoDSJyCg9Db21waWxlUmVzcG9uc2USJQoEcGxhbhgBIAEoCzIVLm9ybS5jb21waWxlci52MS5QbGFuSAASLgoFZXJyb3IYAiABKAsyHS5vcm0uY29tcGlsZXIudjEuQ29tcGlsZUVycm9ySABCCAoGcmVzdWx0Im8KBFBsYW4SEwoLc2NoZW1hX2hhc2gYASABKAkSKAoEa2luZBgCIAEoDjIaLm9ybS5jb21waWxlci52MS5RdWVyeUtpbmQSKAoFc3RlcHMYAyADKAsyGS5vcm0uY29tcGlsZXIudjEuUGxhblN0ZXAiugEKCFBsYW5TdGVwEgoKAmlkGAEgASgNEgwKBHJvbGUYAiABKAkSCwoDc3FsGAMgASgJEigKBWJpbmRzGAQgAygLMhkub3JtLmNvbXBpbGVyLnYxLkJpbmRTbG90EisKCGFzc2VtYmxlGAUgASgLMhkub3JtLmNvbXBpbGVyLnYxLkFzc2VtYmxlEjAKBnBhcmVudBgGIAEoCzIgLm9ybS5jb21waWxlci52MS5QYXJlbnRSZWZlcmVuY2UilgEKCEJpbmRTbG90Eg4KBnNvdXJjZRgBIAEoCRIRCglwYXJhbWV0ZXIYAiABKA0SEQoJdHJhbnNmb3JtGAMgASgJEgwKBG5hbWUYBCABKAkSDAoEc3RlcBgFIAEoDRIOCgZjb2x1bW4YBiABKAkSEwoLaG9zdF9zdHlsZXMYByADKAkSEwoLY29sdW1uX3R5cGUYCCABKAkiLQoMS2V5UmVmZXJlbmNlEg4KBmNvbHVtbhgBIAEoCRINCgVpbmRleBgCIAEoDSKNAQoPUGFyZW50UmVmZXJlbmNlEgwKBHN0ZXAYASABKA0SMwoJaWZfcGFyZW50GAQgASgLMiAub3JtLmNvbXBpbGVyLnYxLlBhcmVudENvbmRpdGlvbhIrCgRrZXlzGAUgAygLMh0ub3JtLmNvbXBpbGVyLnYxLktleVJlZmVyZW5jZUoECAIQA0oECAMQBCJDCg9QYXJlbnRDb25kaXRpb24SDgoGY29sdW1uGAEgASgJEg0KBWluZGV4GAIgASgNEhEKCXBhcmFtZXRlchgDIAEoDSKvAQoIQXNzZW1ibGUSDgoGZW50aXR5GAEgASgJEg0KBWFsaWFzGAIgASgJEi4KB2NvbHVtbnMYAyADKAsyHS5vcm0uY29tcGlsZXIudjEuT3V0cHV0Q29sdW1uEigKCGNoaWxkcmVuGAQgAygLMhYub3JtLmNvbXBpbGVyLnYxLkNoaWxkEioKA2tleRgFIAMoCzIdLm9ybS5jb21waWxlci52MS5LZXlSZWZlcmVuY2UiaQoMT3V0cHV0Q29sdW1uEg0KBWluZGV4GAEgASgNEgwKBG5hbWUYAiABKAkSDgoGY29sdW1uGAMgASgJEgwKBHR5cGUYBCABKAkSDgoGc3R5bGVzGAUgAygJEg4KBmhpZGRlbhgGIAEoCCK7AgoFQ2hpbGQSEAoIcmVsYXRpb24YASABKAkSDAoEa2luZBgCIAEoCRIMCgRzdGVwGAMgASgNEg8KB2ZsYXR0ZW4YCiABKAgSDwoHY2FzY2FkZRgLIAEoCBIrCghhc3NlbWJsZRgMIAEoCzIZLm9ybS5jb21waWxlci52MS5Bc3NlbWJsZRIyCgtwYXJlbnRfa2V5cxgNIAMoCzIdLm9ybS5jb21waWxlci52MS5LZXlSZWZlcmVuY2USMQoKY2hpbGRfa2V5cxgOIAMoCzIdLm9ybS5jb21waWxlci52MS5LZXlSZWZlcmVuY2USKgoDa2V5GA8gAygLMh0ub3JtLmNvbXBpbGVyLnYxLktleVJlZmVyZW5jZUoECAQQBUoECAUQBkoECAYQB0oECAcQCEoECAgQCUoECAkQCiItCgxDb21waWxlRXJyb3ISDAoEY29kZRgBIAEoCRIPCgdtZXNzYWdlGAIgASgJIhQKEkdldE1ldGFkYXRhUmVxdWVzdCJPChNHZXRNZXRhZGF0YVJlc3BvbnNlEhMKC3NjaGVtYV9oYXNoGAEgASgJEg8KB2RpYWxlY3QYAiABKAkSEgoKaXJfdmVyc2lvbhgDIAEoDSriAgoJUXVlcnlLaW5kEhoKFlFVRVJZX0tJTkRfVU5TUEVDSUZJRUQQABISCg5RVUVSWV9LSU5EX09ORRABEhIKDlFVRVJZX0tJTkRfQUxMEAISFAoQUVVFUllfS0lORF9DT1VOVBADEhoKFlFVRVJZX0tJTkRfR1JPVVBfQ09VTlQQBBIdChlRVUVSWV9LSU5EX0NPVU5UX0RJU1RJTkNUEAUSEgoOUVVFUllfS0lORF9TVU0QBhISCg5RVUVSWV9LSU5EX0FWRxAHEhIKDlFVRVJZX0tJTkRfTUlOEAgSEgoOUVVFUllfS0lORF9NQVgQCRIXChNRVUVSWV9LSU5EX1BBR0lOQVRFEAoSFQoRUVVFUllfS0lORF9JTlNFUlQQCxIVChFRVUVSWV9LSU5EX1VQREFURRAMEhUKEVFVRVJZX0tJTkRfREVMRVRFEA0SEgoOUVVFUllfS0lORF9SQVcQDjK5AQoPQ29tcGlsZXJTZXJ2aWNlEkwKB0NvbXBpbGUSHy5vcm0uY29tcGlsZXIudjEuQ29tcGlsZVJlcXVlc3QaIC5vcm0uY29tcGlsZXIudjEuQ29tcGlsZVJlc3BvbnNlElgKC0dldE1ldGFkYXRhEiMub3JtLmNvbXBpbGVyLnYxLkdldE1ldGFkYXRhUmVxdWVzdBokLm9ybS5jb21waWxlci52MS5HZXRNZXRhZGF0YVJlc3BvbnNlQjpaOGdpdGh1Yi5jb20vcG9seXNwZWMvb3JtL3Byb3RvL29ybS9jb21waWxlci92MTtjb21waWxlcnYxYgZwcm90bzM");
+  fileDesc("CiRwcm90by9vcm0vY29tcGlsZXIvdjEvY29tcGlsZXIucHJvdG8SD29ybS5jb21waWxlci52MSL5AgoOQ29tcGlsZVJlcXVlc3QSEgoKaXJfdmVyc2lvbhgBIAEoDRITCgtzY2hlbWFfaGFzaBgCIAEoCRIoCgRraW5kGAMgASgOMhoub3JtLmNvbXBpbGVyLnYxLlF1ZXJ5S2luZBIoCgRyb290GAQgASgLMhoub3JtLmNvbXBpbGVyLnYxLlF1ZXJ5Tm9kZRIoCgNzZXQYBSADKAsyGy5vcm0uY29tcGlsZXIudjEuQXNzaWdubWVudBIxCgxvbl9kdXBsaWNhdGUYBiADKAsyGy5vcm0uY29tcGlsZXIudjEuQXNzaWdubWVudBIvCgpvcHRpbWlzdGljGAcgASgLMhsub3JtLmNvbXBpbGVyLnYxLk9wdGltaXN0aWMSIQoDcmF3GAggASgLMhQub3JtLmNvbXBpbGVyLnYxLlJhdxIXCg9wYXJhbWV0ZXJfY291bnQYCSABKA0SEQoJYWdncmVnYXRlGAogASgJEg0KBWRlYnVnGAsgASgIItsFCglRdWVyeU5vZGUSDgoGZW50aXR5GAEgASgJEiwKB2NvbHVtbnMYAiABKAsyGy5vcm0uY29tcGlsZXIudjEuUHJvamVjdGlvbhIiCgJvbhgDIAEoCzIWLm9ybS5jb21waWxlci52MS5Hcm91cBIlCgV3aGVyZRgEIAEoCzIWLm9ybS5jb21waWxlci52MS5Hcm91cBImCgZoYXZpbmcYBSABKAsyFi5vcm0uY29tcGlsZXIudjEuR3JvdXASJAoFam9pbnMYBiADKAsyFS5vcm0uY29tcGlsZXIudjEuSm9pbhIsCglyZWxhdGlvbnMYByADKAsyGS5vcm0uY29tcGlsZXIudjEuUmVsYXRpb24SJQoFb3JkZXIYCCADKAsyFi5vcm0uY29tcGlsZXIudjEuT3JkZXISEAoIZ3JvdXBfYnkYCSADKAkSPQoTZ3JvdXBfYnlfZXhwcmVzc2lvbhgKIAMoCzIgLm9ybS5jb21waWxlci52MS5Hcm91cEV4cHJlc3Npb24SJQoFbGltaXQYCyABKAsyFi5vcm0uY29tcGlsZXIudjEuTGltaXQSEAoIZGlzdGluY3QYDCABKAgSEwoLZm9yY2VfaW5kZXgYDSABKAkSDgoGa2V5X2J5GA4gASgJEg8KB2ZsYXR0ZW4YDyABKAgSGAoQbGltaXRfcGVyX3BhcmVudBgQIAEoDRIsCglpZl9wYXJlbnQYESABKAsyGS5vcm0uY29tcGlsZXIudjEuSWZQYXJlbnQSFgoOZHJvcF9jaGlsZF9rZXkYEiABKAgSGQoRbm9fY2FzY2FkZV9kZWxldGUYEyABKAgSHAoPc2NvcGVfcGFyYW1ldGVyGBQgASgNSACIAQESDAoEbG9jaxgVIAEoCRInCgZrZXlzZXQYFiABKAsyFy5vcm0uY29tcGlsZXIudjEuS2V5c2V0QhIKEF9zY29wZV9wYXJhbWV0ZXIi8gIKClByb2plY3Rpb24SLgoEbW9kZRgBIAEoDjIgLm9ybS5jb21waWxlci52MS5Qcm9qZWN0aW9uLk1vZGUSCwoDYWRkGAIgAygJEg4KBnJlbW92ZRgDIAMoCRI5CgdhbGlhc2VzGAQgAygLMigub3JtLmNvbXBpbGVyLnYxLlByb2plY3Rpb24uQWxpYXNlc0VudHJ5EkEKC2V4cHJlc3Npb25zGAUgAygLMiwub3JtLmNvbXBpbGVyLnYxLlByb2plY3Rpb24uRXhwcmVzc2lvbnNFbnRyeRouCgxBbGlhc2VzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ARoyChBFeHByZXNzaW9uc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiNQoETW9kZRIQCgxNT0RFX0RFRkFVTFQQABIMCghNT0RFX0FMTBABEg0KCU1PREVfTk9ORRACIlEKBEpvaW4SEAoIcmVsYXRpb24YASABKAkSDAoEa2luZBgCIAEoCRIpCgVxdWVyeRgDIAEoCzIaLm9ybS5jb21waWxlci52MS5RdWVyeU5vZGUiRwoIUmVsYXRpb24SEAoIcmVsYXRpb24YASABKAkSKQoFcXVlcnkYAiABKAsyGi5vcm0uY29tcGlsZXIudjEuUXVlcnlOb2RlIisKBktleXNldBIRCglkaXJlY3Rpb24YASABKAkSDgoGdmFsdWVzGAIgAygNIkAKBUdyb3VwEhEKCWNvbm5lY3RvchgBIAEoCRIkCgVpdGVtcxgCIAMoCzIVLm9ybS5jb21waWxlci52MS5JdGVtIpwBCgRJdGVtEi8KCXByZWRpY2F0ZRgBIAEoCzIaLm9ybS5jb21waWxlci52MS5QcmVkaWNhdGVIABInCgVncm91cBgCIAEoCzIWLm9ybS5jb21waWxlci52MS5Hcm91cEgAEjEKCm5hdmlnYXRpb24YAyABKAsyGy5vcm0uY29tcGlsZXIudjEuTmF2aWdhdGlvbkgAQgcKBXZhbHVlIlgKCk5hdmlnYXRpb24SEQoJY29ubmVjdG9yGAEgASgJEhAKCHJlbGF0aW9uGAIgASgJEiUKBWdyb3VwGAMgASgLMhYub3JtLmNvbXBpbGVyLnYxLkdyb3VwItoBCglQcmVkaWNhdGUSEQoJY29ubmVjdG9yGAEgASgJEg4KBmNvbHVtbhgCIAEoCRIQCghvcGVyYXRvchgDIAEoCRIWCglwYXJhbWV0ZXIYBCABKA1IAIgBARISCgpwYXJhbWV0ZXJzGAUgAygNEjMKCXJlZmVyZW5jZRgGIAEoCzIgLm9ybS5jb21waWxlci52MS5Db2x1bW5SZWZlcmVuY2USEgoKZXhwcmVzc2lvbhgHIAEoCRIVCg1tYXRjaF9jb2x1bW5zGAggAygJQgwKCl9wYXJhbWV0ZXIiLwoPQ29sdW1uUmVmZXJlbmNlEgwKBHBhdGgYASABKAkSDgoGY29sdW1uGAIgASgJIj8KBU9yZGVyEg4KBmNvbHVtbhgBIAEoCRISCgpleHByZXNzaW9uGAIgASgJEhIKCmRlc2NlbmRpbmcYAyABKAgiNAoPR3JvdXBFeHByZXNzaW9uEhIKCmV4cHJlc3Npb24YASABKAkSDQoFYWxpYXMYAiABKAkiJgoFTGltaXQSDgoGb2Zmc2V0GAEgASgNEg0KBWNvdW50GAIgASgNIi0KCElmUGFyZW50Eg4KBmNvbHVtbhgBIAEoCRIRCglwYXJhbWV0ZXIYAiABKA0i6QEKCkFzc2lnbm1lbnQSDgoGY29sdW1uGAEgASgJEhYKCXBhcmFtZXRlchgCIAEoDUgAiAEBEhAKCHNldF9udWxsGAMgASgIEhIKCmV4cHJlc3Npb24YBCABKAkSHQoVZXhwcmVzc2lvbl9wYXJhbWV0ZXJzGAUgAygNEhsKDnBsdXNfcGFyYW1ldGVyGAYgASgNSAGIAQESHAoPbWludXNfcGFyYW1ldGVyGAcgASgNSAKIAQFCDAoKX3BhcmFtZXRlckIRCg9fcGx1c19wYXJhbWV0ZXJCEgoQX21pbnVzX3BhcmFtZXRlciIvCgpPcHRpbWlzdGljEg4KBmNvbHVtbhgBIAEoCRIRCglwYXJhbWV0ZXIYAiABKA0iJgoDUmF3EgsKA3NxbBgBIAEoCRISCgpwYXJhbWV0ZXJzGAIgAygNInIKD0NvbXBpbGVSZXNwb25zZRIlCgRwbGFuGAEgASgLMhUub3JtLmNvbXBpbGVyLnYxLlBsYW5IABIuCgVlcnJvchgCIAEoCzIdLm9ybS5jb21waWxlci52MS5Db21waWxlRXJyb3JIAEIICgZyZXN1bHQibwoEUGxhbhITCgtzY2hlbWFfaGFzaBgBIAEoCRIoCgRraW5kGAIgASgOMhoub3JtLmNvbXBpbGVyLnYxLlF1ZXJ5S2luZBIoCgVzdGVwcxgDIAMoCzIZLm9ybS5jb21waWxlci52MS5QbGFuU3RlcCK6AQoIUGxhblN0ZXASCgoCaWQYASABKA0SDAoEcm9sZRgCIAEoCRILCgNzcWwYAyABKAkSKAoFYmluZHMYBCADKAsyGS5vcm0uY29tcGlsZXIudjEuQmluZFNsb3QSKwoIYXNzZW1ibGUYBSABKAsyGS5vcm0uY29tcGlsZXIudjEuQXNzZW1ibGUSMAoGcGFyZW50GAYgASgLMiAub3JtLmNvbXBpbGVyLnYxLlBhcmVudFJlZmVyZW5jZSKWAQoIQmluZFNsb3QSDgoGc291cmNlGAEgASgJEhEKCXBhcmFtZXRlchgCIAEoDRIRCgl0cmFuc2Zvcm0YAyABKAkSDAoEbmFtZRgEIAEoCRIMCgRzdGVwGAUgASgNEg4KBmNvbHVtbhgGIAEoCRITCgtob3N0X3N0eWxlcxgHIAMoCRITCgtjb2x1bW5fdHlwZRgIIAEoCSItCgxLZXlSZWZlcmVuY2USDgoGY29sdW1uGAEgASgJEg0KBWluZGV4GAIgASgNIo0BCg9QYXJlbnRSZWZlcmVuY2USDAoEc3RlcBgBIAEoDRIzCglpZl9wYXJlbnQYBCABKAsyIC5vcm0uY29tcGlsZXIudjEuUGFyZW50Q29uZGl0aW9uEisKBGtleXMYBSADKAsyHS5vcm0uY29tcGlsZXIudjEuS2V5UmVmZXJlbmNlSgQIAhADSgQIAxAEIkMKD1BhcmVudENvbmRpdGlvbhIOCgZjb2x1bW4YASABKAkSDQoFaW5kZXgYAiABKA0SEQoJcGFyYW1ldGVyGAMgASgNIq8BCghBc3NlbWJsZRIOCgZlbnRpdHkYASABKAkSDQoFYWxpYXMYAiABKAkSLgoHY29sdW1ucxgDIAMoCzIdLm9ybS5jb21waWxlci52MS5PdXRwdXRDb2x1bW4SKAoIY2hpbGRyZW4YBCADKAsyFi5vcm0uY29tcGlsZXIudjEuQ2hpbGQSKgoDa2V5GAUgAygLMh0ub3JtLmNvbXBpbGVyLnYxLktleVJlZmVyZW5jZSJpCgxPdXRwdXRDb2x1bW4SDQoFaW5kZXgYASABKA0SDAoEbmFtZRgCIAEoCRIOCgZjb2x1bW4YAyABKAkSDAoEdHlwZRgEIAEoCRIOCgZzdHlsZXMYBSADKAkSDgoGaGlkZGVuGAYgASgIIrsCCgVDaGlsZBIQCghyZWxhdGlvbhgBIAEoCRIMCgRraW5kGAIgASgJEgwKBHN0ZXAYAyABKA0SDwoHZmxhdHRlbhgKIAEoCBIPCgdjYXNjYWRlGAsgASgIEisKCGFzc2VtYmxlGAwgASgLMhkub3JtLmNvbXBpbGVyLnYxLkFzc2VtYmxlEjIKC3BhcmVudF9rZXlzGA0gAygLMh0ub3JtLmNvbXBpbGVyLnYxLktleVJlZmVyZW5jZRIxCgpjaGlsZF9rZXlzGA4gAygLMh0ub3JtLmNvbXBpbGVyLnYxLktleVJlZmVyZW5jZRIqCgNrZXkYDyADKAsyHS5vcm0uY29tcGlsZXIudjEuS2V5UmVmZXJlbmNlSgQIBBAFSgQIBRAGSgQIBhAHSgQIBxAISgQICBAJSgQICRAKIi0KDENvbXBpbGVFcnJvchIMCgRjb2RlGAEgASgJEg8KB21lc3NhZ2UYAiABKAkiFAoSR2V0TWV0YWRhdGFSZXF1ZXN0Ik8KE0dldE1ldGFkYXRhUmVzcG9uc2USEwoLc2NoZW1hX2hhc2gYASABKAkSDwoHZGlhbGVjdBgCIAEoCRISCgppcl92ZXJzaW9uGAMgASgNKuICCglRdWVyeUtpbmQSGgoWUVVFUllfS0lORF9VTlNQRUNJRklFRBAAEhIKDlFVRVJZX0tJTkRfT05FEAESEgoOUVVFUllfS0lORF9BTEwQAhIUChBRVUVSWV9LSU5EX0NPVU5UEAMSGgoWUVVFUllfS0lORF9HUk9VUF9DT1VOVBAEEh0KGVFVRVJZX0tJTkRfQ09VTlRfRElTVElOQ1QQBRISCg5RVUVSWV9LSU5EX1NVTRAGEhIKDlFVRVJZX0tJTkRfQVZHEAcSEgoOUVVFUllfS0lORF9NSU4QCBISCg5RVUVSWV9LSU5EX01BWBAJEhcKE1FVRVJZX0tJTkRfUEFHSU5BVEUQChIVChFRVUVSWV9LSU5EX0lOU0VSVBALEhUKEVFVRVJZX0tJTkRfVVBEQVRFEAwSFQoRUVVFUllfS0lORF9ERUxFVEUQDRISCg5RVUVSWV9LSU5EX1JBVxAOMrkBCg9Db21waWxlclNlcnZpY2USTAoHQ29tcGlsZRIfLm9ybS5jb21waWxlci52MS5Db21waWxlUmVxdWVzdBogLm9ybS5jb21waWxlci52MS5Db21waWxlUmVzcG9uc2USWAoLR2V0TWV0YWRhdGESIy5vcm0uY29tcGlsZXIudjEuR2V0TWV0YWRhdGFSZXF1ZXN0GiQub3JtLmNvbXBpbGVyLnYxLkdldE1ldGFkYXRhUmVzcG9uc2VCOlo4Z2l0aHViLmNvbS9wb2x5c3BlYy9vcm0vcHJvdG8vb3JtL2NvbXBpbGVyL3YxO2NvbXBpbGVydjFiBnByb3RvMw");
 
 /**
  * @generated from message orm.compiler.v1.CompileRequest
@@ -187,6 +187,11 @@ export type QueryNode = Message<"orm.compiler.v1.QueryNode"> & {
    * @generated from field: string lock = 21;
    */
   lock: string;
+
+  /**
+   * @generated from field: orm.compiler.v1.Keyset keyset = 22;
+   */
+  keyset?: Keyset | undefined;
 };
 
 /**
@@ -309,6 +314,28 @@ export const RelationSchema: GenMessage<Relation> = /*@__PURE__*/
   messageDesc(file_proto_orm_compiler_v1_compiler, 4);
 
 /**
+ * @generated from message orm.compiler.v1.Keyset
+ */
+export type Keyset = Message<"orm.compiler.v1.Keyset"> & {
+  /**
+   * @generated from field: string direction = 1;
+   */
+  direction: string;
+
+  /**
+   * @generated from field: repeated uint32 values = 2;
+   */
+  values: number[];
+};
+
+/**
+ * Describes the message orm.compiler.v1.Keyset.
+ * Use `create(KeysetSchema)` to create a new message.
+ */
+export const KeysetSchema: GenMessage<Keyset> = /*@__PURE__*/
+  messageDesc(file_proto_orm_compiler_v1_compiler, 5);
+
+/**
  * @generated from message orm.compiler.v1.Group
  */
 export type Group = Message<"orm.compiler.v1.Group"> & {
@@ -328,7 +355,7 @@ export type Group = Message<"orm.compiler.v1.Group"> & {
  * Use `create(GroupSchema)` to create a new message.
  */
 export const GroupSchema: GenMessage<Group> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 5);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 6);
 
 /**
  * @generated from message orm.compiler.v1.Item
@@ -363,7 +390,7 @@ export type Item = Message<"orm.compiler.v1.Item"> & {
  * Use `create(ItemSchema)` to create a new message.
  */
 export const ItemSchema: GenMessage<Item> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 6);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 7);
 
 /**
  * @generated from message orm.compiler.v1.Navigation
@@ -390,7 +417,7 @@ export type Navigation = Message<"orm.compiler.v1.Navigation"> & {
  * Use `create(NavigationSchema)` to create a new message.
  */
 export const NavigationSchema: GenMessage<Navigation> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 7);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 8);
 
 /**
  * @generated from message orm.compiler.v1.Predicate
@@ -442,7 +469,7 @@ export type Predicate = Message<"orm.compiler.v1.Predicate"> & {
  * Use `create(PredicateSchema)` to create a new message.
  */
 export const PredicateSchema: GenMessage<Predicate> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 8);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 9);
 
 /**
  * @generated from message orm.compiler.v1.ColumnReference
@@ -464,7 +491,7 @@ export type ColumnReference = Message<"orm.compiler.v1.ColumnReference"> & {
  * Use `create(ColumnReferenceSchema)` to create a new message.
  */
 export const ColumnReferenceSchema: GenMessage<ColumnReference> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 9);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 10);
 
 /**
  * @generated from message orm.compiler.v1.Order
@@ -491,7 +518,7 @@ export type Order = Message<"orm.compiler.v1.Order"> & {
  * Use `create(OrderSchema)` to create a new message.
  */
 export const OrderSchema: GenMessage<Order> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 10);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 11);
 
 /**
  * @generated from message orm.compiler.v1.GroupExpression
@@ -513,7 +540,7 @@ export type GroupExpression = Message<"orm.compiler.v1.GroupExpression"> & {
  * Use `create(GroupExpressionSchema)` to create a new message.
  */
 export const GroupExpressionSchema: GenMessage<GroupExpression> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 11);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 12);
 
 /**
  * @generated from message orm.compiler.v1.Limit
@@ -535,7 +562,7 @@ export type Limit = Message<"orm.compiler.v1.Limit"> & {
  * Use `create(LimitSchema)` to create a new message.
  */
 export const LimitSchema: GenMessage<Limit> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 12);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 13);
 
 /**
  * @generated from message orm.compiler.v1.IfParent
@@ -557,7 +584,7 @@ export type IfParent = Message<"orm.compiler.v1.IfParent"> & {
  * Use `create(IfParentSchema)` to create a new message.
  */
 export const IfParentSchema: GenMessage<IfParent> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 13);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 14);
 
 /**
  * @generated from message orm.compiler.v1.Assignment
@@ -604,7 +631,7 @@ export type Assignment = Message<"orm.compiler.v1.Assignment"> & {
  * Use `create(AssignmentSchema)` to create a new message.
  */
 export const AssignmentSchema: GenMessage<Assignment> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 14);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 15);
 
 /**
  * @generated from message orm.compiler.v1.Optimistic
@@ -626,7 +653,7 @@ export type Optimistic = Message<"orm.compiler.v1.Optimistic"> & {
  * Use `create(OptimisticSchema)` to create a new message.
  */
 export const OptimisticSchema: GenMessage<Optimistic> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 15);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 16);
 
 /**
  * @generated from message orm.compiler.v1.Raw
@@ -648,7 +675,7 @@ export type Raw = Message<"orm.compiler.v1.Raw"> & {
  * Use `create(RawSchema)` to create a new message.
  */
 export const RawSchema: GenMessage<Raw> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 16);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 17);
 
 /**
  * @generated from message orm.compiler.v1.CompileResponse
@@ -677,7 +704,7 @@ export type CompileResponse = Message<"orm.compiler.v1.CompileResponse"> & {
  * Use `create(CompileResponseSchema)` to create a new message.
  */
 export const CompileResponseSchema: GenMessage<CompileResponse> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 17);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 18);
 
 /**
  * @generated from message orm.compiler.v1.Plan
@@ -704,7 +731,7 @@ export type Plan = Message<"orm.compiler.v1.Plan"> & {
  * Use `create(PlanSchema)` to create a new message.
  */
 export const PlanSchema: GenMessage<Plan> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 18);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 19);
 
 /**
  * @generated from message orm.compiler.v1.PlanStep
@@ -746,7 +773,7 @@ export type PlanStep = Message<"orm.compiler.v1.PlanStep"> & {
  * Use `create(PlanStepSchema)` to create a new message.
  */
 export const PlanStepSchema: GenMessage<PlanStep> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 19);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 20);
 
 /**
  * @generated from message orm.compiler.v1.BindSlot
@@ -798,7 +825,7 @@ export type BindSlot = Message<"orm.compiler.v1.BindSlot"> & {
  * Use `create(BindSlotSchema)` to create a new message.
  */
 export const BindSlotSchema: GenMessage<BindSlot> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 20);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 21);
 
 /**
  * @generated from message orm.compiler.v1.KeyReference
@@ -820,7 +847,7 @@ export type KeyReference = Message<"orm.compiler.v1.KeyReference"> & {
  * Use `create(KeyReferenceSchema)` to create a new message.
  */
 export const KeyReferenceSchema: GenMessage<KeyReference> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 21);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 22);
 
 /**
  * @generated from message orm.compiler.v1.ParentReference
@@ -847,7 +874,7 @@ export type ParentReference = Message<"orm.compiler.v1.ParentReference"> & {
  * Use `create(ParentReferenceSchema)` to create a new message.
  */
 export const ParentReferenceSchema: GenMessage<ParentReference> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 22);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 23);
 
 /**
  * @generated from message orm.compiler.v1.ParentCondition
@@ -874,7 +901,7 @@ export type ParentCondition = Message<"orm.compiler.v1.ParentCondition"> & {
  * Use `create(ParentConditionSchema)` to create a new message.
  */
 export const ParentConditionSchema: GenMessage<ParentCondition> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 23);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 24);
 
 /**
  * @generated from message orm.compiler.v1.Assemble
@@ -911,7 +938,7 @@ export type Assemble = Message<"orm.compiler.v1.Assemble"> & {
  * Use `create(AssembleSchema)` to create a new message.
  */
 export const AssembleSchema: GenMessage<Assemble> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 24);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 25);
 
 /**
  * @generated from message orm.compiler.v1.OutputColumn
@@ -953,7 +980,7 @@ export type OutputColumn = Message<"orm.compiler.v1.OutputColumn"> & {
  * Use `create(OutputColumnSchema)` to create a new message.
  */
 export const OutputColumnSchema: GenMessage<OutputColumn> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 25);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 26);
 
 /**
  * @generated from message orm.compiler.v1.Child
@@ -1010,7 +1037,7 @@ export type Child = Message<"orm.compiler.v1.Child"> & {
  * Use `create(ChildSchema)` to create a new message.
  */
 export const ChildSchema: GenMessage<Child> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 26);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 27);
 
 /**
  * @generated from message orm.compiler.v1.CompileError
@@ -1032,7 +1059,7 @@ export type CompileError = Message<"orm.compiler.v1.CompileError"> & {
  * Use `create(CompileErrorSchema)` to create a new message.
  */
 export const CompileErrorSchema: GenMessage<CompileError> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 27);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 28);
 
 /**
  * @generated from message orm.compiler.v1.GetMetadataRequest
@@ -1045,7 +1072,7 @@ export type GetMetadataRequest = Message<"orm.compiler.v1.GetMetadataRequest"> &
  * Use `create(GetMetadataRequestSchema)` to create a new message.
  */
 export const GetMetadataRequestSchema: GenMessage<GetMetadataRequest> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 28);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 29);
 
 /**
  * @generated from message orm.compiler.v1.GetMetadataResponse
@@ -1072,7 +1099,7 @@ export type GetMetadataResponse = Message<"orm.compiler.v1.GetMetadataResponse">
  * Use `create(GetMetadataResponseSchema)` to create a new message.
  */
 export const GetMetadataResponseSchema: GenMessage<GetMetadataResponse> = /*@__PURE__*/
-  messageDesc(file_proto_orm_compiler_v1_compiler, 29);
+  messageDesc(file_proto_orm_compiler_v1_compiler, 30);
 
 /**
  * @generated from enum orm.compiler.v1.QueryKind

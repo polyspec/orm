@@ -63,6 +63,7 @@ message QueryNode {
   bool no_cascade_delete = 19;
   optional uint32 scope_parameter = 20;
   string lock = 21;
+  Keyset keyset = 22;
 }
 
 message Projection {
@@ -80,6 +81,7 @@ message Projection {
 
 message Join { string relation = 1; string kind = 2; QueryNode query = 3; }
 message Relation { string relation = 1; QueryNode query = 2; }
+message Keyset { string direction = 1; repeated uint32 values = 2; }
 message Group { string connector = 1; repeated Item items = 2; }
 message Item {
   oneof value {

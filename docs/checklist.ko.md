@@ -3,12 +3,12 @@
 범례: `[ ]` 미착수, `[~]` 진행 중, `[x]` 완료. **P**는 병렬 작업이다. **→ T#**는 선행 작업이다. 모든 항목은 완료 조건을 가진다.
 원칙: 폴링·타이머·symlink를 사용하지 않는다. 실행 경로는 하나로 유지한다. 도표 원본은 Mermaid로 관리한다. 생성물은 별도 경로에 저장한다. 버전은 0.0.1로 고정한다.
 
-## 현재 상태 (2026-09-12)
+## 현재 상태 (2026-09-13)
 
 - **S0 완료:** `docs/perf.md`에 측정과 R1~R3, F1~F3 결정을 기록했다.
 - **S1 완료:** 엔진, 생성기, 4개 클라이언트, 적합성 하네스, `ormgen tokens`, 데모를 구현했다.
 - **S2 완료:** 관계·코덱·타입·59개 벡터·150테이블 Rust fixture 검사를 통과했다.
-- **S3~S6 완료:** 쓰기, 조인, 배포, PostgreSQL, SQLite를 구현했다. T7.11에서 남은 고정 비용 작업과 회귀 검사를 완료했다.
+- **S7 진행 중:** 네 클라이언트의 root `IN` parameter 분할과 keyset transport 필드를 구현했다. 증거가 기록될 때까지 migration, transaction, relation, package, 최종 검증 작업은 미완료로 유지한다.
 - 현재 적합성 범위는 **59개 벡터 × 4개 클라이언트 × 3개 데이터베이스**다. 코덱 범위는 Go·PHP·Rust·TypeScript의 96개 벡터다.
 
 ## 공통 인터페이스 검사
@@ -77,7 +77,7 @@
 - [x] 두 dialect의 placeholder, quoting, returning, full-text 규칙, AES·HEX·IP 처리, 데이터베이스 설정을 구현한다.
 - [x] MySQL·PostgreSQL·SQLite에서 4개 클라이언트 벡터를 실행한다.
 
-## 단계 7 — S7 추가 기능 [완료]
+## 단계 7 — S7 추가 기능 [진행 중]
 
 S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료해야 닫는다. Go·PHP·Rust·TypeScript에서 같은 논리 구조를 제공할 수 없으면 미완료로 유지한다.
 
@@ -99,6 +99,7 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 - [x] T7.17 MMD, manifest JSON, metadata가 있는 ORM SQL, 실제 DB schema를 DDL·diff·구조화 plan·검증·복구·멱등 DB migration·검증된 rollback 실행 입력으로 지원한다.
 - [x] T7.18 containerctl로 MySQL·PostgreSQL의 주석, 계획 적용, 반복 실행, drift, 실패, 잠금 충돌, 복구, rollback, rollback no-op을 실제 DB에서 검증했습니다.
 - [x] T7.19 AES blind-index schema 선언, keyed equality predicate, write 동기화, 생성 관계 API를 추가하고 네 클라이언트의 MySQL·PostgreSQL·SQLite 통합 테스트를 통과한다.
+- [x] T7.20 Go·PHP·Rust·TypeScript에서 큰 root `IN` predicate를 분할하고 non-`IN` parameter를 보존하며 row를 병합하고 count를 합산한다. 안전하지 않은 query 형태를 거부하고 생성된 Protobuf keyset 필드를 검사한다.
 
 ## 문서 작업
 
@@ -121,4 +122,4 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 - [x] G3 구현된 클라이언트의 쓰기·관계 벡터를 검사한다.
 - [x] G4 생성 심볼·스키마·CI 검사를 실행한다.
 - [x] G5 GitHub Actions 빌드를 확인한다.
-- [x] G7 T7.1~T7.18과 T7.D1~T7.D10의 완료 조건을 충족했고 로컬 검사, GitHub CI, GitHub Pages 배포가 통과했다.
+- [ ] G7 모든 S7 기능, paired document, 로컬 물리 DB test, package check, 최종 repository 검증이 통과한 뒤 완료 처리한다.

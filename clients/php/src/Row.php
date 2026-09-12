@@ -499,6 +499,19 @@ final class Rows
 
     public function reverseMain(): void { $this->data = array_reverse($this->data); }
 
+    /** Appends rows from another root-IN chunk while preserving relation indexes. */
+    public function append(Rows $other): void
+    {
+        $this->data = array_merge($this->data, $other->data);
+        foreach ($other->steps as $id => $step) {
+            $offset = count($this->steps[$id]['data'] ?? []);
+            $this->steps[$id]['data'] = array_merge($this->steps[$id]['data'] ?? [], $step['data']);
+            foreach ($step['byKey'] as $key => $indexes) {
+                foreach ($indexes as $index) $this->steps[$id]['byKey'][$key][] = $index + $offset;
+            }
+        }
+    }
+
     /**
      * Child rows of relation $ch for one parent row: empty when the parent's value is
      * null, when the step was skipped, or when the parent fails if_parent.
