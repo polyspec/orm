@@ -127,9 +127,11 @@ MySQL 8.4, local socket, same hardware. Native means direct execution of the sam
 
 For the 100-row workload, all three implemented clients are within ±10% of native and Rust is faster because it decodes typed values directly. A single row exposes fixed per-statement cost (§6b: IR construction, hashing, plan lookup, and row mapping). Absolute values increased from S1 because `battle` gained seven columns (IP, decimal, and five styled columns) and a fulltext index, increasing SELECT width and INSERT cost. Native values from the same measurement point are compared.
 
-## 6e. Regression check (`go test ./bench/go -run TestHotPathGate`)
-In one process, measure the generated client and the hand-written native statement in `bench/go` for 300 p50 samples and compare the ratio. Current: PK 0.48x (client faster because the native helper rebuilds scan targets per call), 100 rows 1.03x. Limits are PK 1.35 and 100 rows 1.25. CI fails above a limit; the cause must be explained or the limit moved in `perf.md`. Limits are not raised silently.
-The ratio varies by hardware, but **approaches 1 as round-trip time increases**: on a local socket PK is 0.48x, while on GitHub Actions TCP (native 122µs / client 132µs) it is 1.08x. The current limits catch a client more than one third slower than the hand-written statement in both environments.
+## 6e. Regression check (`make perf-check`)
+In one process, measure the generated client and the native statement in `bench/go` for 300 p50 samples and compare the ratio. Current: PK 0.48x (the native helper rebuilds scan targets per call), 100 rows 1.03x. Limits are PK 1.35 and 100 rows 1.25. CI fails above a limit. A limit change requires measurement and an update to `perf.md`.
+The ratio varies by hardware, but **approaches 1 as round-trip time increases**: on a local socket PK is 0.48x, while on GitHub Actions TCP (native 122µs / client 132µs) it is 1.08x. The current limits detect a client more than one third slower than the equivalent native statement in both environments.
+
+`TestHotPathGate` requires `ORM_RUN_PERF_GATE=1`. This keeps the timing test out of parallel `go test ./...` package execution. `make check` and the dedicated CI step set the variable and run the test separately.
 
 ## 7. S0 decision summary
 | ID | Decision | Basis |
