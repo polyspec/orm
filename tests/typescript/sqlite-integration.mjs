@@ -60,6 +60,8 @@ try {
   if (previousKeyset.items.first()?.getSeq() !== firstKeyset.items.first()?.getSeq()) throw new Error('keyset before did not restore request order');
   const accounts = await CompositeAccount().tenantIdEq(tenantId).orderByAccountIdAsc().relations(CompositeMembership()).using(db).gets();
   if (accounts.length !== 2 || accounts.first()?.getMemberships().length !== 1) throw new Error('composite relation omitted a key component');
+  if (await CompositeAccount().tenantIdEq(tenantId).hasMemberships(() => {}).using(db).getCount() !== 2) throw new Error('relation exists predicate failed');
+  if (await CompositeAccount().tenantIdEq(tenantId).countMembershipsEq(1, () => {}).using(db).getCount() !== 2) throw new Error('relation count predicate failed');
   await first.delete();
   if (await CompositeMembership().tenantIdEq(tenantId).using(db).getCount() !== 1) throw new Error('composite row delete omitted a key component');
   await CompositeMembership().tenantIdEq(tenantId).using(db).delete();

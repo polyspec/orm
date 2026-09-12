@@ -561,6 +561,12 @@ func TestCompositeCRUDRelationsAndPagination(t *testing.T) {
 	if err != nil || accounts.Len() != 2 || accounts.First().GetMemberships().Len() != 1 {
 		t.Fatalf("composite relation: rows=%#v err=%v", accounts, err)
 	}
+	if count, err := gen.CompositeAccount().TenantIdEq(tenantID).HasMemberships(func(*gen.CompositeMembershipWhere) {}).Using(ctx, db).GetCount(); err != nil || count != 2 {
+		t.Fatalf("relation exists predicate: count=%d err=%v", count, err)
+	}
+	if count, err := gen.CompositeAccount().TenantIdEq(tenantID).CountMembershipsEq(1, func(*gen.CompositeMembershipWhere) {}).Using(ctx, db).GetCount(); err != nil || count != 2 {
+		t.Fatalf("relation count predicate: count=%d err=%v", count, err)
+	}
 	rollback := errors.New("composite rollback")
 	_, err = orm.Transaction(ctx, db, func(tx *orm.Tx) (struct{}, error) {
 		if _, err := gen.CompositeAccount().SetTenantId(tenantID).SetAccountId(13).SetName("rollback").Using(ctx, tx).Insert(); err != nil {

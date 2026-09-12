@@ -1644,6 +1644,22 @@ async fn main() {
         accounts.len() == 2 && accounts.first().map(|row| row.memberships().len()) == Some(1),
         "composite relation uses every key component"
     );
+    let exists_count = composite_account::query()
+        .tenant_id_eq(tenant_id)
+        .has_memberships(|w| w)
+        .using(&db)
+        .get_count()
+        .await
+        .expect("relation exists predicate");
+    check!(fails, exists_count == 2, "relation exists predicate");
+    let relation_count = composite_account::query()
+        .tenant_id_eq(tenant_id)
+        .count_memberships_eq(1, |w| w)
+        .using(&db)
+        .get_count()
+        .await
+        .expect("relation count predicate");
+    check!(fails, relation_count == 2, "relation count predicate");
     let rolled_back = db
         .transaction(|tx| async move {
             composite_account::query()
