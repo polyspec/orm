@@ -111,11 +111,8 @@ jobs:
         run: make rust-150-check
       - name: php client
         run: |
-          bin/ormd -socket "$PWD/bin/ormd.sock" -schema schema/schema.json 2>bin/ormd.log &
-          ormd_pid=$!
-          trap 'kill "$ormd_pid" 2>/dev/null || true; wait "$ormd_pid" 2>/dev/null || true' EXIT
-          until grep -q "listening on" bin/ormd.log; do sleep 0.2; done   # CI-only wait on the daemon's own ready line
-          php clients/php/tests/compat.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
+          php clients/php/tests/hostcodec.php
+          php clients/php/tests/compiler_bridge.php
           php clients/php/tests/keyset.php
       - name: generated client integration on mysql, postgres, and sqlite
         env:
