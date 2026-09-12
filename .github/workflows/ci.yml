@@ -62,6 +62,8 @@ jobs:
           ini-values: apc.enable_cli=1
       - name: install PHP dependencies
         run: composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
+      - name: executable feature and documentation contracts
+        run: make feature-check docs-rules-check docs-check docs-verify-idempotent
       - name: load bench schema (mysql, postgres, sqlite)
         run: |
           mysql -h 127.0.0.1 -uroot orm_bench < bench/sql/battle.sql
@@ -77,7 +79,7 @@ jobs:
       - name: complete Go test suite
         run: go test ./...
       - name: typescript common structure
-        run: npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs && node tests/typescript/compiler-bridge.mjs && node tests/typescript/driver.mjs && node tests/typescript/database.mjs && node tests/typescript/codec-vector.mjs
+        run: npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs && node tests/typescript/compiler-bridge.mjs && node tests/typescript/driver.mjs && node tests/typescript/database.mjs && node tests/typescript/codec-vector.mjs && node tests/typescript/transaction.mjs && node tests/typescript/keyset.mjs
       - name: schema AES version rule
         run: npm run schema:check
       - name: protobuf compiler wire check
@@ -109,6 +111,7 @@ jobs:
           trap 'kill "$ormd_pid" 2>/dev/null || true; wait "$ormd_pid" 2>/dev/null || true' EXIT
           until grep -q "listening on" bin/ormd.log; do sleep 0.2; done   # CI-only wait on the daemon's own ready line
           php clients/php/tests/compat.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
+          php clients/php/tests/keyset.php
       - name: generated client integration on mysql, postgres, and sqlite
         env:
           ORM_CLIENT_DB_SKIP_BUILD: "1"
