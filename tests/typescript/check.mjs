@@ -1,36 +1,55 @@
 import ts from 'typescript';
 import { readFile } from 'node:fs/promises';
 
-const file = 'clients/typescript/src/index.ts';
-const source = await readFile(file, 'utf8');
-const codecSource = await readFile('clients/typescript/src/codec.ts', 'utf8');
-const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-const declarations = new Map();
-for (const node of ast.statements) {
-  if (ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node) || ts.isFunctionDeclaration(node)) {
-    const name = node.name?.text;
-    if (name) declarations.set(name, node);
+function declarations(path, source) {
+  const ast = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const out = new Map();
+  for (const node of ast.statements) {
+    if (ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node) || ts.isFunctionDeclaration(node)) {
+      const name = node.name?.text;
+      if (name) out.set(name, node);
+    }
+  }
+  return { ast, out };
+}
+function methods(node, ast) { return new Set(node.members.filter(ts.isMethodDeclaration).map(member => member.name.getText(ast))); }
+
+const schema = JSON.parse(await readFile('schema/schema.json', 'utf8'));
+const indexPath = 'clients/typescript/src/index.ts';
+const generatedPath = 'clients/typescript/src/gen/entities.ts';
+const builderPath = 'clients/typescript/src/builder.ts';
+const modelPath = 'clients/typescript/src/model.ts';
+const indexSource = await readFile(indexPath, 'utf8');
+const generatedSource = await readFile(generatedPath, 'utf8');
+const builderSource = await readFile(builderPath, 'utf8');
+const modelSource = await readFile(modelPath, 'utf8');
+const index = declarations(indexPath, indexSource);
+const generated = declarations(generatedPath, generatedSource);
+const builder = declarations(builderPath, builderSource);
+const model = declarations(modelPath, modelSource);
+
+for (const name of ['AesRotationColumn', 'AesRowCodec', 'AesKeyring', 'Request', 'Group', 'Predicate', 'Relation', 'Plan', 'Compiler', 'Executor', 'Database']) {
+  if (!index.out.has(name)) throw new Error(`${indexPath}: missing declaration ${name}`);
+}
+for (const name of ['RequestState', 'WhereCore', 'Binding', 'QueryCore']) if (!builder.out.has(name)) throw new Error(`${builderPath}: missing declaration ${name}`);
+for (const name of ['Collection', 'Page', 'ExecutionRows', 'Row']) if (!model.out.has(name)) throw new Error(`${modelPath}: missing declaration ${name}`);
+
+for (const [entity, value] of Object.entries(schema.entities)) {
+  const type = entity.split('_').map(part => part[0].toUpperCase() + part.slice(1)).join('');
+  for (const suffix of ['Row', 'Columns', 'Where', 'Query']) if (!generated.out.has(type + suffix)) throw new Error(`${generatedPath}: missing ${type}${suffix}`);
+  if (!generated.out.has(type) || !ts.isFunctionDeclaration(generated.out.get(type))) throw new Error(`${generatedPath}: missing ${type} factory`);
+  const query = methods(generated.out.get(type + 'Query'), generated.ast);
+  for (const name of ['and', 'join', 'leftJoin', 'relation', 'relations', 'get', 'gets', 'getCount', 'getsCount', 'insert', 'update', 'delete', 'paginate']) {
+    if (!query.has(name)) throw new Error(`${generatedPath}: ${type}Query missing ${name}`);
+  }
+  if (value.scope && !query.has('scope')) throw new Error(`${generatedPath}: ${type}Query missing scope`);
+  if (!value.scope && query.has('scope')) throw new Error(`${generatedPath}: ${type}Query declares unsupported scope`);
+  const row = methods(generated.out.get(type + 'Row'), generated.ast);
+  for (const column of value.columns) {
+    const field = column.name.split('_').map(part => part[0].toUpperCase() + part.slice(1)).join('');
+    if (!row.has(`get${field}`)) throw new Error(`${generatedPath}: ${type}Row missing get${field}`);
   }
 }
-for (const name of ['AesRotationColumn', 'AesRowCodec', 'AesKeyring', 'Request', 'Group', 'Predicate', 'Relation', 'Plan', 'Compiler', 'Executor', 'Database', 'BattleRow', 'Where', 'BattleQuery', 'UserQuery', 'ServiceQuery', 'ServiceModuleQuery', 'ServiceMemberQuery']) {
-  if (!declarations.has(name)) throw new Error(`${file}: missing declaration ${name}`);
-}
-const query = declarations.get('BattleQuery');
-const methods = query.members.filter(ts.isMethodDeclaration).map(node => node.name.getText(ast));
-const required = ['using', 'serviceSeqEq', 'isCloseEq', 'isDisplayEq', 'isAlldayEq', 'and', 'or', 'relation', 'get', 'gets', 'getCount'];
-for (const name of required) if (!methods.includes(name)) throw new Error(`${file}: BattleQuery missing method ${name}`);
-if (!methods.includes('scope')) throw new Error(`${file}: BattleQuery missing method scope`);
-const positions = required.map(name => methods.indexOf(name));
-if (positions.some((position, i) => i > 0 && position <= positions[i - 1])) throw new Error(`${file}: method order differs from the common query flow`);
-if (!declarations.has('Battle') || !ts.isFunctionDeclaration(declarations.get('Battle'))) throw new Error(`${file}: missing Battle factory`);
-for (const name of ['User', 'Service', 'ServiceModule', 'ServiceMember']) {
-  if (!declarations.has(name) || !ts.isFunctionDeclaration(declarations.get(name))) throw new Error(`${file}: missing ${name} factory`);
-}
-if (!source.includes("scope is not declared for")) throw new Error(`${file}: scope guard is missing for entities without a scope directive`);
-for (const name of ['export type Point = readonly [number, number]', 'export function pointText', 'export function parsePoint']) {
-  if (!codecSource.includes(name)) throw new Error(`clients/typescript/src/codec.ts: missing ${name}`);
-}
-const keyring = declarations.get('AesKeyring');
-const rotation = keyring.members.filter(ts.isMethodDeclaration).map(node => node.name.getText(ast));
-for (const name of ['versions', 'rotateRow']) if (!rotation.includes(name)) throw new Error(`${file}: AesKeyring missing ${name}`);
-console.log(`typescript: ${file} declarations and query flow passed`);
+if (!generatedSource.startsWith('// Code generated by ormgen; DO NOT EDIT.')) throw new Error(`${generatedPath}: generated marker is missing`);
+if (generatedSource.includes('joinUser(') || generatedSource.includes('relationUser(')) throw new Error(`${generatedPath}: relation-name shortcut bypasses the common join grammar`);
+console.log(`typescript: common records and ${Object.keys(schema.entities).length} generated entities passed`);
