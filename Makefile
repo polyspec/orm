@@ -1,4 +1,4 @@
-.PHONY: check client-unit-check db-test perf-check interface-check token-check ts-check ts-db-check schema-check proto-check typescript-build rust-check rust-150-check rust-driver-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs
+.PHONY: check client-unit-check db-test perf-check interface-check token-check ts-check ts-db-check schema-check proto-check typescript-build rust-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
 check: feature-check docs-rules-check docs-check docs-verify-idempotent interface-check token-check client-unit-check ts-check schema-check proto-check rust-check rust-driver-check db-test perf-check
@@ -10,6 +10,13 @@ feature-check:
 
 feature-docs:
 	node scripts/features/build.mjs
+
+fuzz-check:
+	go test ./engine/schema -run '^$$' -fuzz FuzzParseMermaid -fuzztime=1s
+	go test ./engine/schema -run '^$$' -fuzz FuzzLoadManifest -fuzztime=1s
+	go test ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
+	go test ./clients/go/orm -run '^$$' -fuzz FuzzDecodeKeysetCursor -fuzztime=1s
+	go test ./clients/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
 
 client-unit-check:
 	php clients/php/tests/relation_keys.php && php clients/php/tests/keyset.php
