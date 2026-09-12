@@ -1,4 +1,4 @@
-import { AesKeyring, type AesRowCodec } from '../src/index.js';
+import { AesKeyring, BattleQuery, type AesRowCodec } from '../src/index.js';
 
 const codec: AesRowCodec = {
   decode(value, _styles, key) { return `${String(value)}:${key}`; },
@@ -15,3 +15,6 @@ const result = keyring.rotateRow(
 if (result.aes_key_version !== 2 || result.aes_hex_email !== 'email:old:old:new' || result.aes_hex_phone !== 'phone:old:old:new') {
   throw new Error('AES row rotation did not update every column');
 }
+
+const scoped = new BattleQuery().scope(7).requestShape();
+if (scoped.where?.items.length !== 1 || scoped.where.items[0].pred?.column !== 'service_seq') throw new Error('scope() did not add the tenant predicate');

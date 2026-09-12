@@ -119,6 +119,7 @@ export class Where {
   }
 
   public serviceSeqEq(value: number): this { return this.eq('service_seq', value); }
+  public scope(value: number): this { return this.eq('service_seq', value); }
   public isCloseEq(value: boolean): this { return this.eq('is_close', value); }
   public isDisplayEq(value: boolean): this { return this.eq('is_display', value); }
   public isAlldayEq(value: boolean): this { return this.eq('is_allday', value); }
@@ -153,6 +154,7 @@ export class BattleQuery {
   }
 
   public serviceSeqEq(value: number): this { return this.condition('service_seq', value); }
+  public scope(value: number): this { return this.condition('service_seq', value); }
   public isCloseEq(value: boolean): this { return this.condition('is_close', value); }
   public isDisplayEq(value: boolean): this { return this.condition('is_display', value); }
   public isAlldayEq(value: boolean): this { return this.condition('is_allday', value); }
