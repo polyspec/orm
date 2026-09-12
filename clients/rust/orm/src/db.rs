@@ -581,11 +581,17 @@ impl Db {
         let level = options.isolation.sql_name();
         Ok(match &self.pool {
             Pool::MySql(p) => {
-                if options.isolation != IsolationLevel::Default {
-                    return Err(Error::Config("mysql sqlx executor does not support per-transaction isolation options".into()));
+                // `Pool::begin_with` can only execute the statement that starts the
+                // transaction. MySQL requires SET TRANSACTION to run immediately
+                // before START TRANSACTION, so acquire and retain the same connection.
+                let mut conn = p.acquire().await?;
+                if let Some(level) = level {
+                    let statement = format!("SET TRANSACTION ISOLATION LEVEL {level}");
+                    sqlx::raw_sql(sqlx::AssertSqlSafe(statement).into_sql_str()).execute(&mut *conn).await?;
                 }
                 let statement = if options.read_only { "START TRANSACTION READ ONLY" } else { "START TRANSACTION" };
-                TxInner::MySql(p.begin_with(sqlx::AssertSqlSafe(statement).into_sql_str()).await?)
+                sqlx::raw_sql(statement).execute(&mut *conn).await?;
+				TxInner::MySql(MySqlOwnedTx { conn: Some(conn) })
             }
             Pool::Postgres(p) => {
                 let statement = if options.isolation == IsolationLevel::Default && !options.read_only {
@@ -692,10 +698,41 @@ async fn pg_describe<'e, E: Executor<'e, Database = Postgres>>(e: E, sql: &str) 
 }
 
 /// The transaction of one pool.
-pub enum TxInner {
-    MySql(sqlx::Transaction<'static, MySql>),
+enum TxInner {
+    MySql(MySqlOwnedTx),
     Postgres(sqlx::Transaction<'static, Postgres>),
     Sqlite(sqlx::Transaction<'static, Sqlite>),
+}
+
+/// A MySQL transaction whose pool connection is retained after the explicit
+/// `SET TRANSACTION` and `START TRANSACTION` statements.
+struct MySqlOwnedTx {
+	conn: Option<sqlx::pool::PoolConnection<MySql>>,
+}
+
+impl MySqlOwnedTx {
+	async fn commit(mut self) -> sqlx::Result<()> {
+		let mut conn = self.conn.take().expect("active MySQL transaction connection");
+		sqlx::raw_sql("COMMIT").execute(&mut *conn).await?;
+		Ok(())
+	}
+
+	async fn rollback(mut self) -> sqlx::Result<()> {
+		let mut conn = self.conn.take().expect("active MySQL transaction connection");
+		sqlx::raw_sql("ROLLBACK").execute(&mut *conn).await?;
+		Ok(())
+	}
+}
+
+impl Drop for MySqlOwnedTx {
+	fn drop(&mut self) {
+		let Some(mut conn) = self.conn.take() else { return };
+		if let Ok(handle) = tokio::runtime::Handle::try_current() {
+			handle.spawn(async move {
+			let _ = sqlx::raw_sql("ROLLBACK").execute(&mut *conn).await;
+			});
+		}
+	}
 }
 
 /// A transaction handle: cheap to clone, so closures can `async move` it.
@@ -743,7 +780,7 @@ impl Tx {
         let mut guard = self.inner.lock().await;
         let tx = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
         match tx {
-            TxInner::MySql(t) => { sqlx::query(sqlx::AssertSqlSafe(sql.clone()).into_sql_str()).execute(&mut **t).await?; }
+            TxInner::MySql(t) => { sqlx::raw_sql(sqlx::AssertSqlSafe(sql.clone()).into_sql_str()).execute(&mut **t.conn.as_mut().expect("active MySQL transaction connection")).await?; }
             TxInner::Postgres(t) => { sqlx::query(sqlx::AssertSqlSafe(sql.clone()).into_sql_str()).execute(&mut **t).await?; }
             TxInner::Sqlite(t) => { sqlx::query(sqlx::AssertSqlSafe(sql.clone()).into_sql_str()).execute(&mut **t).await?; }
         }
@@ -1060,7 +1097,7 @@ async fn run_query(db: &Db, target: Target<'_>, st: &Step, params: &[Param], par
     let start = std::time::Instant::now();
     let r: Result<Vec<DriverRow>> = match target {
         Target::Pool(Pool::MySql(p)) => fetch_mysql(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
-        Target::Tx(TxInner::MySql(t)) => fetch_mysql(&sql, &args, &mut **t).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
+		Target::Tx(TxInner::MySql(t)) => fetch_mysql(&sql, &args, &mut **t.conn.as_mut().expect("active MySQL transaction connection")).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
         Target::Pool(Pool::Postgres(p)) => match db.pg_types_pool(p, &sql).await {
             Ok(types) => fetch_pg(&sql, &args, &types, p).await.map(|v| v.into_iter().map(DriverRow::Postgres).collect()),
             Err(e) => Err(e),
@@ -1085,7 +1122,7 @@ where
     let start = std::time::Instant::now();
     let result = match target {
         Target::Pool(Pool::MySql(pool)) => stream_mysql(sql, &args, pool, visit).await,
-        Target::Tx(TxInner::MySql(tx)) => stream_mysql(sql, &args, &mut **tx, visit).await,
+		Target::Tx(TxInner::MySql(tx)) => stream_mysql(sql, &args, &mut **tx.conn.as_mut().expect("active MySQL transaction connection"), visit).await,
         Target::Pool(Pool::Postgres(pool)) => {
             let types = db.pg_types_pool(pool, sql).await?;
             stream_pg(sql, &args, &types, pool, visit).await
@@ -1107,7 +1144,7 @@ async fn run_execute(db: &Db, target: Target<'_>, st: &Step, params: &[Param]) -
     let start = std::time::Instant::now();
     let r: Result<(u64, u64)> = match target {
         Target::Pool(Pool::MySql(p)) => exec_mysql(sql, &args, p).await.map_err(Error::from),
-        Target::Tx(TxInner::MySql(t)) => exec_mysql(sql, &args, &mut **t).await.map_err(Error::from),
+		Target::Tx(TxInner::MySql(t)) => exec_mysql(sql, &args, &mut **t.conn.as_mut().expect("active MySQL transaction connection")).await.map_err(Error::from),
         Target::Pool(Pool::Postgres(p)) => match db.pg_types_pool(p, sql).await {
             Ok(types) => exec_pg(sql, &args, &types, p).await,
             Err(e) => Err(e),
