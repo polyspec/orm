@@ -167,6 +167,8 @@ export type { DriverConnection, DriverName, DriverResult, DriverTransaction, Dri
 export { OrmError } from './runtime_error.js';
 export { Db, Tx } from './database.js';
 export type { DatabaseOptions, QueryEvent } from './database.js';
+export { loadConfig, resolveAesKey } from './config.js';
+export type { FileConfig } from './config.js';
 export { Collection, ExecutionRows, Page, Row, registerRow } from './model.js';
 export { Binding, ColumnReference, QueryCore, RequestState, WhereCore } from './builder.js';
 export * from './gen/entities.js';

@@ -6,17 +6,17 @@
 ## 현재 상태 (2026-09-12)
 
 - **S0 완료:** `docs/perf.md`에 측정과 R1~R3, F1~F3 결정을 기록했다.
-- **S1 완료:** 엔진, 생성기, 3개 클라이언트, 적합성 하네스, `ormgen tokens`, 데모를 구현했다.
+- **S1 완료:** 엔진, 생성기, 4개 클라이언트, 적합성 하네스, `ormgen tokens`, 데모를 구현했다.
 - **S2는 T2.15를 제외하고 완료:** 관계·코덱·타입·58개 벡터 검사를 통과했다. 150테이블 Rust fixture가 남아 있다.
-- **S3~S6 완료:** 쓰기, 조인, PHP 호환층, 배포, PostgreSQL, SQLite를 구현했다. TypeScript 실행과 고정 비용 최적화는 미완료다.
-- 현재 적합성 범위는 **58개 벡터 × 3개 클라이언트 × 3개 데이터베이스**다. 코덱 범위는 Go·PHP·Rust·TypeScript의 96개 벡터다. TypeScript 데이터베이스 실행은 미완료다.
+- **S3~S6 완료:** 쓰기, 조인, PHP 호환층, 배포, PostgreSQL, SQLite를 구현했다. 고정 비용 최적화는 미완료다.
+- 현재 적합성 범위는 **58개 벡터 × 4개 클라이언트 × 3개 데이터베이스**다. 코덱 범위는 Go·PHP·Rust·TypeScript의 96개 벡터다.
 
 ## 공통 인터페이스 검사
 
 - [x] I1 `interfaces.md`, `contracts/interfaces.json`, Mermaid 도표에 공통 구조·소유권·상태 전이를 정의한다.
-- [x] I2 Go·PHP·Rust Query와 Row 인터페이스를 생성·대조하고 TypeScript 구조 초안을 검사한다.
+- [x] I2 Go·PHP·Rust·TypeScript Query와 Row 인터페이스를 생성하고 대조한다.
 - [x] I3 Request와 Plan 25개 레코드를 대조하고 AST·Reflection·소스 변경 반례를 검사한다.
-- [~] I4 바인딩, 쿼리 재사용, 자식 복사, 오류 보존, dirty 상태, 원본 버전, typed key, 페이지를 검사한다. TypeScript 실행 벡터가 남아 있다.
+- [~] I4 네 클라이언트의 바인딩, 쿼리 재사용, 자식 복사, 오류 보존, dirty 상태, 원본 버전, typed key, 페이지를 검사한다.
 - [x] I5 생성물·구조·상태·문서·예제 검사를 CI에서 실행한다.
 - [x] I6 native PK 직접 변경 후 identity 보존과 중첩 컬렉션 키 충돌을 검사한다.
 
@@ -47,7 +47,7 @@
 
 ## 단계 1 — S1 thin slice [완료]
 
-- [x] Mermaid 파싱, schema build, IR v1, planner v1, MySQL dialect, FFI/WASM 진입점, 3개 클라이언트를 구현한다.
+- [x] Mermaid 파싱, schema build, IR v1, planner v1, MySQL dialect, FFI/WASM 진입점, 4개 클라이언트를 구현한다.
 - [x] 적합성 실행기, 토큰 대조, 생성 오류 코드, thin-slice 예제를 추가한다.
 
 ## 단계 2 — S2 관계와 코덱 [T2.15 잔여]
@@ -75,19 +75,19 @@
 ## 단계 6 — S6 PostgreSQL과 SQLite [완료]
 
 - [x] 두 dialect의 placeholder, quoting, returning, full-text 규칙, AES·HEX·IP 처리, 데이터베이스 설정을 구현한다.
-- [x] 필요한 데이터베이스가 제공되는 환경에서 3개 클라이언트 벡터를 실행한다.
+- [x] MySQL·PostgreSQL·SQLite에서 4개 클라이언트 벡터를 실행한다.
 
 ## 단계 7 — S7 추가 기능 [진행 중]
 
 S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료해야 닫는다. Go·PHP·Rust·TypeScript에서 같은 논리 구조를 제공할 수 없으면 미완료로 유지한다.
 
-- [~] T7.1 Go·PHP·Rust·TypeScript의 typed Protobuf message, Connect compiler server, `CompilerTransport`, 공통 compiler transport vector를 구현했다. Go·PHP·Rust executor가 Connect를 사용하며 SQLite DB vector 58개를 통과했다. TypeScript database executor 구현과 전체 DB matrix 실행이 남아 있다.
+- [x] T7.1 Go·PHP·Rust·TypeScript의 typed Protobuf message, Connect compiler server, `CompilerTransport`를 구현하고 네 클라이언트가 MySQL·PostgreSQL·SQLite에서 데이터베이스 벡터 58개를 통과한다.
 - [x] T7.3 결정적인 `ormgen diff`와 destructive change 검사를 구현한다.
-- [~] T7.4 query 수준 `scope_p`, planner 강제 적용, 생성 메서드, MySQL·PostgreSQL·SQLite tenant isolation 검사를 구현했다. TypeScript database runner가 남아 있다.
+- [x] T7.4 네 클라이언트에 query 수준 `scope_p`, planner 강제 적용, 생성 메서드, MySQL·PostgreSQL·SQLite tenant isolation 검사를 구현한다.
 - [x] T7.5 Go·PHP·Rust·TypeScript에 `curlfile`, YAML 1.2, `point` 변환을 구현한다. MySQL·PostgreSQL·SQLite에서 `point` DDL과 SQL을 검사한다.
 - [ ] T7.6 서버 streaming, 취소, 오류, 행 소유권 검사를 구현한다.
 - [x] T7.7 결정적인 정적 query precompile과 schema-hash 검사를 구현한다.
-- [~] T7.8 TypeScript 구조·AST 검사를 구현했다. 타입 검사, 패키지 빌드, AST 검사, `interface_attach`, 공통 codec 벡터 96개가 통과하며 전체 TypeScript 실행기와 데이터베이스 벡터 실행이 남아 있다.
+- [x] T7.8 TypeScript 모듈, 생성 entity API와 schema hash, `orm.toml` loader, 네이티브 데이터베이스 드라이버, 구조·AST 검사, 세 데이터베이스의 58개 벡터 실행기를 구현한다.
 - [ ] T7.9 Rust `mysql_async`와 현행 driver 결과를 비교하고 기록한다.
 - [ ] T7.10 `multi_statement` 관계 계획과 결과를 구현·검사한다.
 - [ ] T7.11 Go·PHP typed 직접 스캔과 성능 기준 재측정을 구현한다.

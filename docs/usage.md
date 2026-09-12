@@ -1,6 +1,6 @@
 # Usage
 
-Generate Go, PHP, and Rust clients from one Mermaid schema and execute the same statement as the same SQL in each client.
+Generate Go, PHP, Rust, and TypeScript clients from one Mermaid schema and execute the same statement as the same SQL in each client.
 Supported databases are MySQL 8 by default, PostgreSQL 12+, and SQLite 3.35+.
 
 The complete syntax is in [dsl.md](dsl.md), diagram syntax is in [schema.md](schema.md), and the IR/Plan format is in [protocol.md](protocol.md).
@@ -16,6 +16,7 @@ Dialect differences are in [dialects.md](dialects.md), configuration is in [conf
 | MySQL 8.0.2+ / MariaDB 10.2+ | Primary target; PostgreSQL 12+ and SQLite 3.35+ use the same plan |
 | PHP 8.4+ (`pdo_mysql`, `apcu`) | Required for PHP; add `pdo_pgsql`/`pdo_sqlite` for those databases |
 | Rust 1.98+ | Required for Rust |
+| Node.js 22.12+ | Required for TypeScript |
 
 ```sh
 git clone https://github.com/polyspec/orm && cd orm
@@ -186,6 +187,7 @@ go run ./cmd/ormgen migrate --driver mysql --dsn "$ORM_DSN" \
 go run ./cmd/ormgen gen --schema schema/schema.json --lang go   --out clients/go/gen
 go run ./cmd/ormgen gen --schema schema/schema.json --lang php  --out clients/php/gen
 go run ./cmd/ormgen gen --schema schema/schema.json --lang rust --out clients/rust/gen
+go run ./cmd/ormgen gen --schema schema/schema.json --lang typescript --out clients/typescript/src/gen
 ```
 
 Each entity produces a query type, Row type, Where builder, and column references. After changing the schema, **regenerate and redeploy**.
@@ -203,62 +205,62 @@ node tests/typescript/common-vector.mjs
 
 ## 4. Connections
 
-### Go — in-process engine
-
-```go
-import (
-    "github.com/polyspec/orm/clients/go/gen"
-    "github.com/polyspec/orm/clients/go/orm"
-    "github.com/polyspec/orm/engine"
-    "github.com/polyspec/orm/engine/schema"
-
-    _ "github.com/polyspec/orm/clients/go/orm/pg"     // PostgreSQL을 쓸 때만
-    _ "github.com/polyspec/orm/clients/go/orm/sqlite" // SQLite를 쓸 때만
-)
-
-js, _ := os.ReadFile("schema/schema.json")
-m, _ := schema.Load(js)
-eng, _ := engine.New(m, "mysql")                       // 방언 = 드라이버와 같아야 한다
-db, err := orm.Open("mysql", dsn, eng, orm.Config{AESKey: "…"})
-if err := gen.Init(eng); err != nil { … }              // schema_hash 확인 1회
-```
-
-The DSN requires `parseTime=true&clientFoundRows=true` because optimistic updates depend on `clientFoundRows`.
-
-### PHP — compiler daemon and PDO
+Start one compiler service for all four clients. It validates the schema hash, dialect, and IR version and returns typed Protobuf plans through Connect. Database statements and row data remain in each client process.
 
 ```sh
-bin/ormd -socket /run/orm/ormd.sock -schema /srv/app/schema/schema.json &   # 호스트당 1개
+bin/ormd -listen 127.0.0.1:8080 -schema /srv/app/schema/schema.json -dialect mysql
 ```
+
+### Go
+
+```go
+js, _ := os.ReadFile("schema/schema.json")
+m, _ := schema.Load(js)
+eng, _ := engine.New(m, "mysql")
+compiler, _ := orm.NewConnectCompiler("http://127.0.0.1:8080", 5*time.Second)
+db, err := orm.OpenWithCompiler(ctx, "mysql", dsn, eng, compiler, orm.Config{AESKey: "…"})
+if err := gen.Init(eng); err != nil { … }
+```
+
+The MySQL DSN requires `parseTime=true&clientFoundRows=true` because optimistic updates depend on `clientFoundRows`.
+
+### PHP
+
 ```php
 use Orm\{Config, Db, Orm};
 
-Orm::init(new Config(socket: '/run/orm/ormd.sock', schemaPath: '/srv/app/schema/schema.json', aesKey: '…'));
+Orm::init(new Config(socket: '/unused', schemaPath: '/srv/app/schema/schema.json', aesKey: '…', endpoint: 'http://127.0.0.1:8080'));
 $db = Db::mysql('mysql:unix_socket=/tmp/mysql.sock;dbname=app;charset=utf8mb4', 'user', 'pass');
-// Db::postgres('pgsql:host=…;dbname=…;user=…') / Db::sqlite('/abs/app.sqlite')
 ```
 
-`ormd` only compiles IR into plans; it does not connect to the database. APCu caches plans, so each statement shape uses one round trip.
-
-### Rust — WASM engine
+### Rust
 
 ```rust
-use orm::db::{Config, ConnectOptions, Db};
-use orm::engine::{Engine, EngineConfig};
-
 let engine = Arc::new(Engine::new(EngineConfig {
     wasm: &std::fs::read("bin/ormengine.wasm")?,
     schema_json: &std::fs::read("schema/schema.json")?,
-    ..Default::default()                       // dialect: "mysql" | "postgres" | "sqlite"
+    ..Default::default()
 })?);
-gen::init(engine.clone())?;                    // schema_hash 확인 1회
-let db = Db::connect(ConnectOptions::parse("mysql", url)?, 8, engine,
-                     Config { aes_key: "…".into(), on_query: None }).await?;
+gen::init(engine.clone())?;
+let compiler = Arc::new(ConnectCompiler::new("http://127.0.0.1:8080", Duration::from_secs(5))?);
+let db = Db::connect_with_compiler(ConnectOptions::parse("mysql", url)?, 8, engine,
+                                  compiler, Config { aes_key: "…".into(), on_query: None }).await?;
 ```
+
+### TypeScript
+
+```typescript
+import { ConnectCompiler, Db } from '@polyspec/orm-typescript';
+
+const compiler = new ConnectCompiler('http://127.0.0.1:8080');
+const db = await Db.mysql(dsn, { schemaHash, compiler, aesKey: '…' });
+```
+
+Each client caches plans by request shape. The compiler does not receive database rows or connect to the application database.
 
 ### One configuration file
 
-Each client has a constructor that reads one `orm.toml` file ([config.md](config.md)). Paths must be absolute; symlinks are rejected.
+All four clients read the declared connection fields from one `orm.toml` file ([config.md](config.md)). Paths must be absolute; symlinks are rejected.
 
 ```toml
 schema = "/srv/app/schema/schema.json"
@@ -275,14 +277,14 @@ wasm = "/srv/app/bin/ormengine.wasm"
 cache_dir = "/var/cache/orm"
 ```
 ```go
-db, err := orm.OpenConfig("/srv/app/orm.toml")   // PHP: Orm::fromConfig(...)  Rust: Db::from_config(...).await
+db, err := orm.OpenConfig("/srv/app/orm.toml")   // PHP: Orm::fromConfig(...)  Rust: Db::from_config(...).await  TypeScript: await Db.fromConfig(...)
 ```
 
 ---
 
 ## 5. Reading
 
-Tokens are shared; only spelling differs (PHP `camelCase` / Go `PascalCase` / Rust `snake_case`).
+Tokens are shared; only spelling differs (PHP and TypeScript `camelCase` / Go `PascalCase` / Rust `snake_case`).
 
 ```php
 $rows = Battle::query()
@@ -306,6 +308,14 @@ let rows = battle::query()
     .seq_in(vec![6, 106, 206])
     .order_by_seq_desc().limit(0, 20)
     .using(&db).gets().await?;
+```
+```typescript
+const rows = await Battle()
+    .serviceSeq(7).isClose(false)
+    .and(w => w.isDisplay(true).or().isAllday(true))
+    .seqIn([6, 106, 206])
+    .orderBySeqDesc().limit(0, 20)
+    .using(db).gets();
 ```
 
 - Predicates: `<Col>(v)` means `=`, while other operators use `<Col>NotEq`, `Gt`, `Gte`, `Lt`, `Lte`, `In`, `NotIn`, `Between`, `IsNull`, `IsNotNull`, `Like`, `LikeBinary`, `Contains`, `StartsWith`, and `EndsWith`. The `Eq` suffix is retained as a compatibility alias.
@@ -468,4 +478,4 @@ go run ./tests/conformance/check run -driver postgres -dsn 'postgres://…'
 go run ./cmd/ormgen tokens --schema schema/schema.json a.go b.php c.rs   # 세 파일의 토큰열이 같은지
 ```
 
-Examples: [`examples/thin-slice`](../examples/thin-slice) (three clients, the same JSON) and [`examples/complex`](../examples/complex) (joins, groups, three-level relations, and aggregates).
+Examples: [`examples/thin-slice`](../examples/thin-slice) (four clients, the same JSON) and [`examples/complex`](../examples/complex) (joins, groups, three-level relations, and aggregates).

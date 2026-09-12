@@ -35,6 +35,7 @@ jobs:
       ORM_MYSQL_DSN_GO: "root@tcp(127.0.0.1:3306)/orm_bench?parseTime=true&clientFoundRows=true"
       ORM_MYSQL_DSN_PHP: "mysql:host=127.0.0.1;port=3306;dbname=orm_bench;charset=utf8mb4"
       ORM_MYSQL_URL_RUST: "mysql://root@127.0.0.1:3306/orm_bench"
+      ORM_MYSQL_DSN_TYPESCRIPT: "mysql://root@127.0.0.1:3306/orm_bench"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
@@ -88,8 +89,9 @@ jobs:
           GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o bin/ormengine.wasm ./engine/wasm
       - name: generated clients are current
         run: |
-          for l in go php rust typescript; do go run ./cmd/ormgen gen --schema schema/schema.json --lang $l --out clients/$l/gen; done
-          git diff --exit-code -- clients/go/gen clients/php/gen clients/rust/gen
+          for l in go php rust; do go run ./cmd/ormgen gen --schema schema/schema.json --lang $l --out clients/$l/gen; done
+          go run ./cmd/ormgen gen --schema schema/schema.json --lang typescript --out clients/typescript/src/gen
+          git diff --exit-code -- clients/go/gen clients/php/gen clients/rust/gen clients/typescript/src/gen
       - name: go client
         run: go test ./clients/go/...
       - name: common interfaces and native structure
@@ -106,11 +108,11 @@ jobs:
           until grep -q "listening on" bin/ormd.log; do sleep 0.2; done   # CI-only wait on the daemon's own ready line
           php clients/php/tests/integration.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
           php clients/php/tests/compat.php "$PWD/bin/ormd.sock" "$PWD/schema/schema.json"
-      - name: conformance (3 languages identical)
+      - name: conformance (4 languages identical)
         run: go run ./tests/conformance/check run
       - name: TypeScript SQLite database execution
         run: make ts-db-check
-      - name: conformance on postgres and sqlite (3 languages; results identical to MySQL, statements per dialect)
+      - name: conformance on postgres and sqlite (4 languages; results identical to MySQL, statements per dialect)
         run: |
           go run ./tests/conformance/check run -driver postgres -langs go -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable'
           go run ./tests/conformance/check run -driver postgres -langs php -dsn 'pgsql:host=127.0.0.1;port=5432;dbname=orm_bench;user=maxkwon'
@@ -118,8 +120,10 @@ jobs:
           go run ./tests/conformance/check run -driver sqlite -langs php -dsn '/tmp/orm_bench.sqlite'
           go run ./tests/conformance/check run -driver postgres -langs rust -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench'
           go run ./tests/conformance/check run -driver sqlite -langs rust -dsn 'sqlite:///tmp/orm_bench.sqlite'
-          go run ./tests/conformance/check compare -driver postgres tests/conformance/out/postgres/go.json tests/conformance/out/postgres/php.json tests/conformance/out/postgres/rust.json
-          go run ./tests/conformance/check compare -driver sqlite tests/conformance/out/sqlite/go.json tests/conformance/out/sqlite/php.json tests/conformance/out/sqlite/rust.json
+          go run ./tests/conformance/check run -driver postgres -langs typescript -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench'
+          go run ./tests/conformance/check run -driver sqlite -langs typescript -dsn '/tmp/orm_bench.sqlite'
+          go run ./tests/conformance/check compare -driver postgres tests/conformance/out/postgres/go.json tests/conformance/out/postgres/php.json tests/conformance/out/postgres/rust.json tests/conformance/out/postgres/typescript.json
+          go run ./tests/conformance/check compare -driver sqlite tests/conformance/out/sqlite/go.json tests/conformance/out/sqlite/php.json tests/conformance/out/sqlite/rust.json tests/conformance/out/sqlite/typescript.json
       - name: common state and execution contracts
         run: |
           go run ./tests/interfaces/check --results tests/conformance/out
@@ -139,7 +143,7 @@ jobs:
       - name: token parity
         run: |
           # the conformance runners are the parity contract; integration tests may differ in coverage per language
-          go run ./cmd/ormgen tokens --schema schema/schema.json tests/conformance/runner_go/main.go tests/conformance/runner.php clients/rust/tests/src/conformance.rs
+          go run ./cmd/ormgen tokens --schema schema/schema.json tests/conformance/runner_go/main.go tests/conformance/runner.php clients/rust/tests/src/conformance.rs tests/conformance/runner_typescript.mjs
       - name: physical migration recovery
         env:
           ORM_MIGRATION_MYSQL_DSN: root@tcp(127.0.0.1:3306)/orm_bench?parseTime=true

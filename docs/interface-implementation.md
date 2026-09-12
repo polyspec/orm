@@ -2,7 +2,7 @@
 
 Reference: [Common interface v1](interfaces.md), [machine specification](../contracts/interfaces.json), and [generated model](interfaces-model.md). Reproduction commands and check coverage are in the [verification guide](../tests/interfaces/README.md).
 
-Local and [GitHub CI](https://github.com/polyspec/orm/actions/runs/34649545210) verification on 2026-09-12: **58 scenarios × Go, PHP, and Rust × MySQL, PostgreSQL, and SQLite match**. Common input and output, stored fields, 25 wire records, native declarations, and source-change counterexamples are checked separately. TypeScript is not implemented.
+Local and [GitHub CI](https://github.com/polyspec/orm/actions/runs/34649545210) verification on 2026-09-12: **58 scenarios × Go, PHP, Rust, and TypeScript × MySQL, PostgreSQL, and SQLite match**. Common input and output, stored fields, 25 wire records, native declarations, and source-change counterexamples are checked separately.
 
 | Interface | Implementation and verification |
 |---|---|

@@ -60,7 +60,7 @@ func main() {
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: ormgen build <files.mmd...> --out schema/schema.json")
 	fmt.Fprintln(os.Stderr, "       ormgen gen --schema schema/schema.json --lang go|php|rust|typescript --out <directory>")
-	fmt.Fprintln(os.Stderr, "       ormgen tokens --schema schema/schema.json [--print] <file.go> <file.php> <file.rs>...")
+	fmt.Fprintln(os.Stderr, "       ormgen tokens --schema schema/schema.json [--print] <file.go> <file.php> <file.rs> <file.ts|mjs>...")
 	fmt.Fprintln(os.Stderr, "       ormgen import --dsn <dsn> --out schema/app.mmd [--tables a,b]")
 	fmt.Fprintln(os.Stderr, "       ormgen validate --dsn <dsn> --schema schema/schema.json")
 	fmt.Fprintln(os.Stderr, "       ormgen errors --lang go|php|rust --out <file>")

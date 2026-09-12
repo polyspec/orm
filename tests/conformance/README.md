@@ -1,7 +1,7 @@
 # Conformance vectors
 
-One document, three runners. Every vector is the same chain written in Go,
-PHP and Rust; each runner executes it against the local MySQL (`orm_bench`,
+One document, four runners. Every vector is the same chain written in Go,
+PHP, Rust, and TypeScript; each runner executes it against the local MySQL (`orm_bench`,
 `/tmp/mysql.sock`) and prints
 
 ```json
@@ -20,6 +20,7 @@ datetimes as `YYYY-MM-DD HH:MM:SS[.ffffff]`, nulls as null).
 | `runner_go/main.go` | Go runner (in-process engine) |
 | `runner.php` | PHP runner (ormd compile, PDO execute) |
 | `clients/rust/tests/src/conformance.rs` | Rust runner (wasmtime engine, sqlx) |
+| `runner_typescript.mjs` | TypeScript runner (Connect compiler and native database driver) |
 | `check/main.go` | orchestrator + comparator |
 
 ## Run
@@ -28,7 +29,7 @@ datetimes as `YYYY-MM-DD HH:MM:SS[.ffffff]`, nulls as null).
 go build -o bin/ormd ./cmd/ormd                       # once
 GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o bin/ormengine.wasm ./engine/wasm
 (cd clients/rust && cargo build --release)            # once
-go run ./tests/conformance/check run                  # MySQL: runs all three, compares
+go run ./tests/conformance/check run                  # MySQL: runs all four, compares
 go run ./tests/conformance/check run -driver postgres -dsn 'postgres://…'   # same on PostgreSQL
 go run ./tests/conformance/check run -driver sqlite  -dsn 'file:/abs.sqlite' # and SQLite
 ```
@@ -41,7 +42,7 @@ runner and blocks on its "listening" line before proceeding — no polling.
 ## Adding a vector
 
 1. Declare `{"name", "chain", "expect": null}` in `vectors.json`.
-2. Implement the same chain in all three runners (keep the statement order).
+2. Implement the same chain in all four runners (keep the statement order).
 3. `go run ./tests/conformance/check record tests/conformance/out/go.json`,
    review the recorded SQL/binds/result, commit.
 

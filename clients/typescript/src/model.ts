@@ -30,7 +30,20 @@ export class Collection<T extends Row = Row> implements Iterable<T> {
   public keys(): Key[] { return [...this.items.values()].map(item => item.key); }
   public entries(): Array<[Key, T]> { return [...this.items.values()].map(item => [item.key, item.value]); }
   public values(): T[] { return [...this.items.values()].map(item => item.value); }
-  public toArray(): unknown[] { return this.values().map(value => value.toObject()); }
+  public rekey(selector: (value: T) => Key): Collection<T> {
+    const result = new Collection<T>();
+    for (const value of this.values()) result.put(selector(value), value);
+    return result;
+  }
+  public toArray(): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const { key, value } of this.items.values()) {
+      const name = String(key);
+      if (Object.hasOwn(out, name)) throw new OrmError('IR_INVALID', `collection keys ${name} are not unique after object conversion`);
+      out[name] = value.toObject();
+    }
+    return out;
+  }
   public [Symbol.iterator](): Iterator<T> { return this.values()[Symbol.iterator](); }
 }
 

@@ -1,4 +1,6 @@
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { Battle, ConnectCompiler, Db, Service } from '../../clients/typescript/dist/index.js';
 
 const endpoint = process.argv[2];
@@ -50,4 +52,13 @@ try {
 } finally {
   await db.close();
 }
-console.log('typescript SQLite integration: read, join, SQL dump, write, row state, codec, and transaction passed');
+const configRoot = await mkdtemp(join(tmpdir(), 'orm-typescript-config-'));
+try {
+  const configPath = join(configRoot, 'orm.toml');
+  await writeFile(configPath, `schema = ${JSON.stringify(resolve('schema/schema.json'))}\n[db]\ndriver = "sqlite"\ndsn = ${JSON.stringify(resolve(path))}\npool = 1\n[secrets]\naes = "bench-salt"\n[ormd]\nendpoint = ${JSON.stringify(endpoint)}\ntimeout_ms = 5000\n`);
+  const configured = await Db.fromConfig(configPath);
+  try {
+    if (await Battle().using(configured).getCountByServiceSeq(7) !== expected('bound_count_finder')) throw new Error('orm.toml query result differs');
+  } finally { await configured.close(); }
+} finally { await rm(configRoot, { recursive: true, force: true }); }
+console.log('typescript SQLite integration: config, read, join, SQL dump, write, row state, codec, and transaction passed');
