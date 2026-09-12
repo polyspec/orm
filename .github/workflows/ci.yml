@@ -39,6 +39,12 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with: { go-version: "1.27" }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: install Node dependencies
+        run: npm ci
       - uses: dtolnay/rust-toolchain@stable
       # sqlx and wasmtime are most of the build; without this the job spends ~6 of its 9 minutes compiling them again
       - uses: Swatinem/rust-cache@v2
