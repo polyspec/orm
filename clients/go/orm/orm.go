@@ -1132,6 +1132,14 @@ func runSelect(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req, p
 	var block []any
 	chunk := 4
 	var out [][]any
+	var keyring AESKeyring
+	if assembleHasAES(st.Assemble) {
+		var keyErr error
+		keyring, keyErr = d.aesKeyring()
+		if keyErr != nil {
+			return nil, keyErr
+		}
+	}
 	for rows.Next() {
 		if err := rows.Scan(ptrs...); err != nil {
 			return nil, mapDriverErr(err)
@@ -1146,14 +1154,6 @@ func runSelect(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req, p
 		block = block[n:]
 		for i := range cells {
 			vals[i] = cells[i].v
-		}
-		var keyring AESKeyring
-		if assembleHasAES(st.Assemble) {
-			var keyErr error
-			keyring, keyErr = d.aesKeyring()
-			if keyErr != nil {
-				return nil, keyErr
-			}
 		}
 		if err := decodeSelectedRow(vals, si, st, keyring); err != nil {
 			return nil, err
@@ -1178,6 +1178,9 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 	for _, sc := range si.styled {
 		codec, host := splitHost(sc.Styles)
 		v := vals[sc.Index]
+		if v == nil {
+			continue
+		}
 		var err error
 		if len(host) > 0 {
 			if v, err = HostDecodeVersioned(v, host, version, keyring); err != nil {
