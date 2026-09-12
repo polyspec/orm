@@ -11,6 +11,12 @@ try {
   if (inserted.affected !== 1 || Number(inserted.insertId) !== 1) throw new Error('SQLite insert result differs');
   const selected = await db.execute('SELECT seq, name FROM item WHERE seq = ?', [1]);
   if (selected.columns.join(',') !== 'seq,name' || JSON.stringify(selected.rows) !== '[[1,"first"]]') throw new Error('SQLite positional result differs');
+  await db.execute('INSERT INTO item(name) VALUES (?), (?)', ['second', 'third']);
+  const streamed = [];
+  const stopped = await db.stream('SELECT seq, name FROM item ORDER BY seq', [], row => { streamed.push([...row]); return streamed.length < 2; });
+  if (stopped.exhausted || stopped.count !== 2 || JSON.stringify(streamed) !== '[[1,"first"],[2,"second"]]') throw new Error('SQLite stream stop differs');
+  const exhausted = await db.stream('SELECT seq, name FROM item ORDER BY seq', [], () => true);
+  if (!exhausted.exhausted || exhausted.count !== 3) throw new Error('SQLite stream exhaustion differs');
 
   const rollback = await db.begin();
   await rollback.execute('UPDATE item SET name = ? WHERE seq = ?', ['rollback', 1]);
@@ -28,4 +34,4 @@ try {
   await db.close();
   await rm(root, { recursive: true, force: true });
 }
-console.log('typescript driver: SQLite query, write, commit, rollback, and finished state passed');
+console.log('typescript driver: SQLite query, stream, write, commit, rollback, and finished state passed');

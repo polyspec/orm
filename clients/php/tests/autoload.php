@@ -13,7 +13,7 @@ spl_autoload_register(function (string $class) use ($root): void {
             $rel = substr($class, strlen($prefix));
             // Orm\Row, Orm\Collection, Orm\Page, Orm\Registry, Orm\Names live in Row.php; Orm\W/Q/Req in Query.php; Compat/CompatQuery/CompatWhere in Compat.php; Db/Tx/Transform in Db.php; Config/OrmException in Orm.php; Code.php (generated), Toml.php and Codec.php are one class each
             $file = match (true) {
-                $prefix === 'Orm\\' && in_array($rel, ['Row', 'Rows', 'Collection', 'Page', 'Registry', 'Names'], true) => $dir . 'Row.php',
+                $prefix === 'Orm\\' && in_array($rel, ['Row', 'Rows', 'Collection', 'Page', 'Registry', 'Names', 'StreamResult'], true) => $dir . 'Row.php',
                 $prefix === 'Orm\\' && in_array($rel, ['W', 'Q', 'Req', 'ColRef'], true) => $dir . 'Query.php',
                 $prefix === 'Orm\\' && in_array($rel, ['Compat', 'CompatQuery', 'CompatWhere'], true) => $dir . 'Compat.php',
                 $prefix === 'Orm\\' && in_array($rel, ['Db', 'Tx', 'Transform'], true) => $dir . 'Db.php',

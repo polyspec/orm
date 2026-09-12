@@ -723,6 +723,17 @@ impl {{.Type}} {
         self.all().await
     }
 
+    /// Visits independently owned rows without accumulating the complete result.
+    pub async fn stream(&mut self, visit: impl FnMut({{.Type}}Row) -> bool) -> Result<db::StreamResult> {
+        let mut visit = visit;
+        let binding = self.binding.clone();
+        let ex = binding.resolve()?;
+        db::stream(ex, &mut self.q.req, |mut src, rows| {
+            let row = {{.Type}}Row::from_row(&mut src, &rows.assemble, rows)?;
+            Ok(visit(row))
+        }).await
+    }
+
 {{range .EqCols}}
     /// Applies {{.Name}} = value and runs the collection terminal.
     pub async fn gets_by_{{.Ident}}(&mut self, v: {{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}) -> Result<Collection<{{$.Type}}Row>> {

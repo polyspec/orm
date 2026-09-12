@@ -7,6 +7,7 @@ namespace Polyspec\Orm\Tests\Model;
 interface AuthorInterface {
 public function get(): ?\Polyspec\Orm\Tests\Model\AuthorRow;
 public function gets(): \Orm\Collection;
+public function stream(callable $visit): \Orm\StreamResult;
 public function getCount(): int;
 public function getsCount(): \Orm\Collection;
 public function aesStatus(\Orm\AesKeyring $keyring): \Orm\AesRotationStatus;
@@ -152,6 +153,7 @@ public function toArray(): array;
 interface UserInterface {
 public function get(): ?\Polyspec\Orm\Tests\Model\UserRow;
 public function gets(): \Orm\Collection;
+public function stream(callable $visit): \Orm\StreamResult;
 public function getCount(): int;
 public function getsCount(): \Orm\Collection;
 public function insert(): ?\Polyspec\Orm\Tests\Model\UserRow;
@@ -185,6 +187,7 @@ public function toArray(): array;
 interface ServiceInterface {
 public function get(): ?\Polyspec\Orm\Tests\Model\ServiceRow;
 public function gets(): \Orm\Collection;
+public function stream(callable $visit): \Orm\StreamResult;
 public function getCount(): int;
 public function getsCount(): \Orm\Collection;
 public function insert(): ?\Polyspec\Orm\Tests\Model\ServiceRow;
@@ -218,6 +221,7 @@ public function toArray(): array;
 interface ServiceRegionInterface {
 public function get(): ?\Polyspec\Orm\Tests\Model\ServiceRegionRow;
 public function gets(): \Orm\Collection;
+public function stream(callable $visit): \Orm\StreamResult;
 public function getCount(): int;
 public function getsCount(): \Orm\Collection;
 public function insert(): ?\Polyspec\Orm\Tests\Model\ServiceRegionRow;
@@ -255,6 +259,7 @@ public function toArray(): array;
 interface ServiceMemberInterface {
 public function get(): ?\Polyspec\Orm\Tests\Model\ServiceMemberRow;
 public function gets(): \Orm\Collection;
+public function stream(callable $visit): \Orm\StreamResult;
 public function getCount(): int;
 public function getsCount(): \Orm\Collection;
 public function insert(): ?\Polyspec\Orm\Tests\Model\ServiceMemberRow;

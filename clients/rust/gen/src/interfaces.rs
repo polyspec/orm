@@ -7,6 +7,7 @@ use orm::db::{self, Exec};
 pub trait AuthorInterface: Sized {
 async fn get(&mut self) -> Result<Option<AuthorRow>>;
 async fn gets(&mut self) -> Result<Collection<AuthorRow>>;
+async fn stream(&mut self, visit: impl FnMut(AuthorRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<AuthorRow>>;
 async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus>;
@@ -139,6 +140,7 @@ fn ip(self, v: impl Into<String>) -> Self;
 impl AuthorInterface for Author {
 async fn get(&mut self) -> Result<Option<AuthorRow>> { Author::get(self).await }
 async fn gets(&mut self) -> Result<Collection<AuthorRow>> { Author::gets(self).await }
+async fn stream(&mut self, visit: impl FnMut(AuthorRow) -> bool) -> Result<db::StreamResult> { Author::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { Author::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<AuthorRow>> { Author::gets_count(self).await }
 async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus> { Author::aes_status(self,keyring).await }
@@ -293,6 +295,7 @@ fn to_map(&self) -> Result<serde_json::Value> { AuthorRow::to_map(self) }
 pub trait UserInterface: Sized {
 async fn get(&mut self) -> Result<Option<UserRow>>;
 async fn gets(&mut self) -> Result<Collection<UserRow>>;
+async fn stream(&mut self, visit: impl FnMut(UserRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<UserRow>>;
 async fn insert(&mut self) -> Result<Option<UserRow>>;
@@ -314,6 +317,7 @@ fn name(self, v: impl Into<String>) -> Self;
 impl UserInterface for User {
 async fn get(&mut self) -> Result<Option<UserRow>> { User::get(self).await }
 async fn gets(&mut self) -> Result<Collection<UserRow>> { User::gets(self).await }
+async fn stream(&mut self, visit: impl FnMut(UserRow) -> bool) -> Result<db::StreamResult> { User::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { User::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<UserRow>> { User::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<UserRow>> { User::insert(self).await }
@@ -355,6 +359,7 @@ fn to_map(&self) -> Result<serde_json::Value> { UserRow::to_map(self) }
 pub trait ServiceInterface: Sized {
 async fn get(&mut self) -> Result<Option<ServiceRow>>;
 async fn gets(&mut self) -> Result<Collection<ServiceRow>>;
+async fn stream(&mut self, visit: impl FnMut(ServiceRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<ServiceRow>>;
 async fn insert(&mut self) -> Result<Option<ServiceRow>>;
@@ -376,6 +381,7 @@ fn name(self, v: impl Into<String>) -> Self;
 impl ServiceInterface for Service {
 async fn get(&mut self) -> Result<Option<ServiceRow>> { Service::get(self).await }
 async fn gets(&mut self) -> Result<Collection<ServiceRow>> { Service::gets(self).await }
+async fn stream(&mut self, visit: impl FnMut(ServiceRow) -> bool) -> Result<db::StreamResult> { Service::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { Service::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<ServiceRow>> { Service::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<ServiceRow>> { Service::insert(self).await }
@@ -417,6 +423,7 @@ fn to_map(&self) -> Result<serde_json::Value> { ServiceRow::to_map(self) }
 pub trait ServiceRegionInterface: Sized {
 async fn get(&mut self) -> Result<Option<ServiceRegionRow>>;
 async fn gets(&mut self) -> Result<Collection<ServiceRegionRow>>;
+async fn stream(&mut self, visit: impl FnMut(ServiceRegionRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<ServiceRegionRow>>;
 async fn insert(&mut self) -> Result<Option<ServiceRegionRow>>;
@@ -442,6 +449,7 @@ fn name(self, v: impl Into<String>) -> Self;
 impl ServiceRegionInterface for ServiceRegion {
 async fn get(&mut self) -> Result<Option<ServiceRegionRow>> { ServiceRegion::get(self).await }
 async fn gets(&mut self) -> Result<Collection<ServiceRegionRow>> { ServiceRegion::gets(self).await }
+async fn stream(&mut self, visit: impl FnMut(ServiceRegionRow) -> bool) -> Result<db::StreamResult> { ServiceRegion::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { ServiceRegion::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<ServiceRegionRow>> { ServiceRegion::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<ServiceRegionRow>> { ServiceRegion::insert(self).await }
@@ -487,6 +495,7 @@ fn to_map(&self) -> Result<serde_json::Value> { ServiceRegionRow::to_map(self) }
 pub trait ServiceMemberInterface: Sized {
 async fn get(&mut self) -> Result<Option<ServiceMemberRow>>;
 async fn gets(&mut self) -> Result<Collection<ServiceMemberRow>>;
+async fn stream(&mut self, visit: impl FnMut(ServiceMemberRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<ServiceMemberRow>>;
 async fn insert(&mut self) -> Result<Option<ServiceMemberRow>>;
@@ -512,6 +521,7 @@ fn user_seq(self, v: i64) -> Self;
 impl ServiceMemberInterface for ServiceMember {
 async fn get(&mut self) -> Result<Option<ServiceMemberRow>> { ServiceMember::get(self).await }
 async fn gets(&mut self) -> Result<Collection<ServiceMemberRow>> { ServiceMember::gets(self).await }
+async fn stream(&mut self, visit: impl FnMut(ServiceMemberRow) -> bool) -> Result<db::StreamResult> { ServiceMember::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { ServiceMember::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<ServiceMemberRow>> { ServiceMember::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<ServiceMemberRow>> { ServiceMember::insert(self).await }

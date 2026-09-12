@@ -60,6 +60,25 @@ const directory = await mkdtemp(join(tmpdir(), 'orm-aes-'));
 const sqliteConnection = openSqlite(join(directory, 'rotation.sqlite'));
 const sqliteDb = new Db(sqliteConnection, { schemaHash: 'hash', compiler: transport });
 try {
+  await sqliteConnection.execute('CREATE TABLE "orm_stream_test" ("seq" INTEGER PRIMARY KEY, "name" TEXT NOT NULL)', []);
+  await sqliteConnection.execute('INSERT INTO "orm_stream_test" ("seq", "name") VALUES (?, ?), (?, ?), (?, ?)', [1, 'first', 2, 'second', 3, 'third']);
+  const streamAssembly = { entity: 'item', alias: 'a', columns: [
+    { index: 0, name: 'seq', column: 'seq', type: 'i64', styles: [], hidden: false },
+    { index: 1, name: 'name', column: 'name', type: 'string', styles: [], hidden: false },
+  ], children: [] };
+  const streamPlan = { schema_hash: 'hash', kind: 'all', steps: [{ id: 0, role: 'main', sql: 'SELECT "seq", "name" FROM "orm_stream_test" ORDER BY "seq"', bind_slots: [], assemble: streamAssembly }] };
+  const streamed = [];
+  const stopped = await sqliteDb.stream(streamPlan, [], row => { streamed.push(row); return streamed.length < 2; });
+  if (stopped.state !== 'stopped' || stopped.count !== 2 || streamed[0] === streamed[1] || streamed[0].column('seq') === streamed[1].column('seq')) throw new Error('ORM stream stop or row ownership differs');
+  const exhausted = await sqliteDb.stream(streamPlan, [], () => true);
+  if (exhausted.state !== 'exhausted' || exhausted.count !== 3) throw new Error('ORM stream exhaustion differs');
+  let relationRejected = false;
+  try { await sqliteDb.stream(plan, [], () => true); } catch (error) { relationRejected = error?.code === 'IR_INVALID'; }
+  if (!relationRejected) throw new Error('ORM relation stream was accepted');
+  let visitorFailed = false;
+  try { await sqliteDb.stream(streamPlan, [], () => { throw new Error('stream visitor error'); }); } catch (error) { visitorFailed = error?.message === 'stream visitor error'; }
+  if (!visitorFailed || Number((await sqliteConnection.execute('SELECT COUNT(*) FROM "orm_stream_test"', [])).rows[0][0]) !== 3) throw new Error('ORM stream error did not close the iterator');
+
   await sqliteConnection.execute('CREATE TABLE "orm_aes_rotation_test" ("id" INTEGER PRIMARY KEY, "aes_key_version" INTEGER NOT NULL, "aes_hex_email" TEXT, "aes_hex_phone" TEXT)', []);
   await sqliteConnection.execute('INSERT INTO "orm_aes_rotation_test" ("id", "aes_key_version", "aes_hex_email", "aes_hex_phone") VALUES (?, ?, ?, ?)', [1, 1, hostEncode('member@example.test', ['aes', 'hex'], 'rotation-key-v1'), hostEncode('01012345678', ['aes', 'hex'], 'rotation-key-v1')]);
   const spec = { table: 'orm_aes_rotation_test', primaryKey: 'id', versionColumn: 'aes_key_version', columns: [{ name: 'aes_hex_email', styles: ['aes', 'hex'] }, { name: 'aes_hex_phone', styles: ['aes', 'hex'] }] };
@@ -76,4 +95,4 @@ try {
   await sqliteDb.close();
   await rm(directory, { recursive: true, force: true });
 }
-console.log('typescript database: scalar, write, root, relation, parent expansion, and AES rotation passed');
+console.log('typescript database: scalar, write, root, relation, stream, parent expansion, and AES rotation passed');

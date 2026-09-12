@@ -22,6 +22,11 @@ export interface AesRotationStatus {
   versions: Readonly<Record<string, number>>;
 }
 
+export interface StreamResult {
+  state: 'exhausted' | 'stopped';
+  count: number;
+}
+
 export interface AesRowCodec {
   decode(value: unknown, styles: readonly string[], key: string): unknown;
   encode(value: unknown, styles: readonly string[], key: string): unknown;
@@ -177,13 +182,13 @@ export { CompilerError, ConnectCompiler, ConnectPlanCompiler, compileRequest } f
 export { planFromProto, requestToProto } from './compiler_bridge.js';
 export type { CompilerTransport } from './compiler.js';
 export { openMySql, openPostgres, openSqlite } from './driver.js';
-export type { DriverConnection, DriverName, DriverResult, DriverTransaction, DriverValue } from './driver.js';
+export type { DriverConnection, DriverName, DriverResult, DriverStreamResult, DriverTransaction, DriverValue } from './driver.js';
 export { OrmError } from './runtime_error.js';
 export { Db, Tx } from './database.js';
 export type { DatabaseOptions, QueryEvent } from './database.js';
 export { loadConfig, resolveAesKey } from './config.js';
 export type { FileConfig } from './config.js';
-export { Collection, ExecutionRows, Page, Row, registerRow } from './model.js';
+export { Collection, ExecutionRows, Page, Row, registerRow, rowFromResult } from './model.js';
 export { Binding, ColumnReference, QueryCore, RequestState, WhereCore } from './builder.js';
 export * from './gen/entities.js';
 export type { Key, RowConstructor } from './model.js';

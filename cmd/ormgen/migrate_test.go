@@ -73,6 +73,36 @@ func TestSQLiteMigrationIsIdempotentAndDetectsDrift(t *testing.T) {
 	}
 }
 
+func TestLiveManifestAllowsAddingAESVersionColumn(t *testing.T) {
+	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "aes-upgrade.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`CREATE TABLE account (seq INTEGER PRIMARY KEY, aes_hex_email varchar(255) NOT NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	live, err := liveManifest(db, "sqlite")
+	if err != nil {
+		t.Fatalf("read transitional live schema: %v", err)
+	}
+	diagram, err := schema.Parse("erDiagram\n  account {\n    integer seq PK\n    varchar(255) aes_hex_email\n    integer aes_key_version \"=1\"\n  }\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := schema.Build(diagram)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := renderDiff(live, target, "sqlite", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(plan, `ADD COLUMN "aes_key_version" INTEGER NOT NULL DEFAULT 1`) {
+		t.Fatalf("AES version migration missing: %s", plan)
+	}
+}
+
 func TestMigrationLogUsesTimestampAndDetectsRecordMismatch(t *testing.T) {
 	dir := t.TempDir()
 	started := time.Date(2026, 9, 12, 13, 30, 0, 123456789, time.UTC)
