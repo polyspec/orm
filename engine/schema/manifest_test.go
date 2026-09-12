@@ -115,6 +115,49 @@ func TestSoftDeleteDirectiveStoresValidatedColumn(t *testing.T) {
 	}
 }
 
+func TestSoftDeleteDirectiveRejectsInvalidColumns(t *testing.T) {
+	for name, src := range map[string]string{
+		"unknown": `erDiagram
+ account {
+ bigint id PK
+ }
+ %% soft_delete account missing
+`,
+		"non-null": `erDiagram
+ account {
+ bigint id PK
+ datetime deleted_at
+ }
+ %% soft_delete account deleted_at
+`,
+		"wrong-type": `erDiagram
+ account {
+ bigint id PK
+ varchar(32) deleted_at "?"
+ }
+ %% soft_delete account deleted_at
+`,
+		"duplicate": `erDiagram
+ account {
+ bigint id PK
+ datetime deleted_at "?"
+ }
+ %% soft_delete account deleted_at
+ %% soft_delete account deleted_at
+`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			d, err := Parse(src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := Build(d); err == nil {
+				t.Fatal("invalid soft-delete declaration was accepted")
+			}
+		})
+	}
+}
+
 func TestAllowedColumnNames(t *testing.T) {
 	for _, n := range []string{"order_number", "get_dt", "condition_type", "withdraw_count", "android_app_url", "origin_price", "brand_name", "seq_no", "is_win"} {
 		if err := checkColumnName(n); err != nil {
