@@ -17,6 +17,7 @@ classDiagram
         relation()
         get()
         gets()
+        stream()
         getCount()
         insert()
         save()
@@ -79,6 +80,7 @@ classDiagram
     class Executor {
         database()
         queryStep()
+        streamStep()
         writeStep()
     }
     class Db {
@@ -89,6 +91,7 @@ classDiagram
         StatementCache statements
         transaction()
         queryStep()
+        streamStep()
         writeStep()
     }
     class Tx {
@@ -137,6 +140,10 @@ classDiagram
         I64 pages
         I64 per
         I64 total
+    }
+    class StreamResult {
+        I64 count
+        StreamState state
     }
     class AESKeyring {
         I32 currentVersion
@@ -218,6 +225,7 @@ classDiagram
     Query --> AESKeyring : uses keys
     Query --> AESRotationSpec : uses generated specification
     Query --> AESRotationStatus : returns status
+    Query --> StreamResult : returns stream result
 ```
 
 | 구성요소 | 동작 및 상태 |
@@ -235,6 +243,7 @@ classDiagram
 | Row | 조회한 identity, 값, 변경 사항, relation, 실행 binding을 구분해 저장한다. |
 | Collection | 중복 key는 순서를 유지하고 값을 교체한다. integer key와 string key는 구분한다. |
 | Page | per는 양수여야 한다. total은 요청한 page와 관계없이 계산한다. |
+| StreamResult | cursor 완료 또는 중단 상태와 독립된 row를 전달한 수를 반환한다. |
 | AESKeyring | 버전별 AES key와 현재 저장 버전을 보관한다. |
 | AESRotationSpec | AES entity 하나의 생성된 식별자와 codec 단계를 보관한다. |
 | AESRotationStatus | 저장된 AES key 버전별 row 수를 보관한다. |
@@ -272,6 +281,7 @@ classDiagram
 | Query | AESKeyring | key 사용 |
 | Query | AESRotationSpec | 생성 명세 사용 |
 | Query | AESRotationStatus | 상태 반환 |
+| Query | StreamResult | stream 결과 반환 |
 
 도표의 type 이름에서 `_`는 중첩 type 구분자다. 정확한 type은 다음 표에 정의한다.
 
@@ -337,6 +347,8 @@ classDiagram
 | Page.pages | `I64` |
 | Page.per | `I64` |
 | Page.total | `I64` |
+| StreamResult.count | `I64` |
+| StreamResult.state | `StreamState` |
 | AESKeyring.currentVersion | `I32` |
 | AESKeyring.versions | `OrderedMap<I32,Secret>` |
 | AESRotationSpec.columns | `List<AESRotationColumn>` |

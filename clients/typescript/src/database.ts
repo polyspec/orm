@@ -1,11 +1,11 @@
-import type { AesKeyring, AesRotationSpec, AesRotationStatus, Compiler, Database, Executor, Param, Plan, PlanStep, Request } from './index.js';
+import type { AesKeyring, AesRotationSpec, AesRotationStatus, Compiler, Database, Executor, Param, Plan, PlanStep, Request, StreamResult } from './index.js';
 import { readFile } from 'node:fs/promises';
 import { ConnectCompiler, ConnectPlanCompiler, type CompilerTransport } from './compiler.js';
 import { loadConfig, resolveAesKey } from './config.js';
 import { decode, hostDecode, hostEncode, parsePoint, pointText } from './codec.js';
 import type { DriverConnection, DriverTransaction, DriverValue } from './driver.js';
 import { openMySql, openPostgres, openSqlite } from './driver.js';
-import { ExecutionRows, Page, rowCollection, scalarKey } from './model.js';
+import { ExecutionRows, Page, Row, rowCollection, rowFromResult, scalarKey } from './model.js';
 import { OrmError } from './runtime_error.js';
 import { generatedSchemaHash } from './registry.js';
 
@@ -181,6 +181,28 @@ export class Db implements Database, Executor {
       }
       case 'insert': case 'update': case 'delete':
         return this.write(plan.steps[0], params, plan.kind === 'insert');
+    }
+  }
+
+  public async stream<T extends Row>(plan: Plan, params: Param[], visit: (row: T) => boolean | Promise<boolean>): Promise<StreamResult> {
+    if (plan.schema_hash !== this.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `plan schema ${plan.schema_hash} but client schema is ${this.schemaHash}`);
+    if (plan.steps.slice(1).some(step => step.role === 'relation')) throw new OrmError('IR_INVALID', 'stream does not support separate relation steps; use a join or gets');
+    const step = plan.steps[0];
+    if (!step) throw new OrmError('INTERNAL', 'plan has no steps');
+    const assemble = requiredAssemble(step);
+    const binds = this.binds(step, params, []);
+    const rows = new ExecutionRows(this, plan, params, []);
+    const started = performance.now();
+    try {
+      const result = await this.connection.stream(step.sql, binds as DriverValue[], async values => {
+        decodeAssembly(values, assemble, this.aesKey);
+        return visit(rowFromResult<T>(rows, assemble, values));
+      });
+      this.onQuery?.({ sql: step.sql, binds: maskBinds(step, binds), seconds: (performance.now() - started) / 1000 });
+      return { state: result.exhausted ? 'exhausted' : 'stopped', count: result.count };
+    } catch (error) {
+      this.onQuery?.({ sql: step.sql, binds: maskBinds(step, binds), seconds: (performance.now() - started) / 1000, error });
+      throw error;
     }
   }
 

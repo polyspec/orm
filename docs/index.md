@@ -47,7 +47,7 @@ let count = battle::query().using(&db).get_count_by_service_seq(7).await?;
 ### TypeScript
 
 ```ts [TypeScript]
-const count = await Battle().serviceSeqEq(7).using(db).getCount()
+const count = await Battle().using(db).getCountByServiceSeq(7)
 ```
 
 Go `gen.Battle()` returns `*gen.BattleQuery`. Go passes `ctx` with the executor, and Rust and TypeScript use asynchronous results. Syntax follows each language; argument meaning, data structure roles, and execution rules are shared.

@@ -25,6 +25,7 @@ use Orm\Orm;
 use Orm\OrmException;
 use Orm\Q;
 use Orm\Registry;
+use Orm\StreamResult;
 use Orm\Tx;
 
 $sock = $argv[1] ?? die("usage: integration.php /abs/ormd.sock /abs/schema.json\n");
@@ -85,6 +86,29 @@ check(Battle::query()->nameContains('%')->using($db)->getCount() === 0, 'contain
 // join result access
 $j = Battle::query()->join(Service::query()->where(fn(ServiceWhere $w) => $w->seq(7)))->seq(6)->using($db)->get();
 check($j !== null && $j->getService() !== null && $j->getService()->getName() === 'service-7' && $j['service']['name'] === 'service-7', 'joined row access');
+
+$streamed = [];
+$streamResult = Battle::query()->serviceSeq(7)->orderBySeqAsc()->using($db)->stream(function ($row) use (&$streamed): bool {
+    $streamed[] = $row;
+    return count($streamed) < 3;
+});
+check($streamResult->state === StreamResult::STOPPED && $streamResult->count === 3, 'stream visitor stop');
+check(count($streamed) === 3 && $streamed[0] !== $streamed[1] && $streamed[0]->getSeq() !== $streamed[1]->getSeq(), 'stream row ownership');
+check(Battle::query()->serviceSeq(7)->using($db)->getCount() > 0, 'stream cursor closes after visitor stop');
+$streamResult = Battle::query()->serviceSeq(7)->orderBySeqAsc()->limit(0, 4)->using($db)->stream(fn($row): bool => true);
+check($streamResult->state === StreamResult::EXHAUSTED && $streamResult->count === 4, 'stream exhaustion');
+try {
+    Battle::query()->relation(User::query())->using($db)->stream(fn($row): bool => true);
+    check(false, 'relation stream must fail');
+} catch (OrmException $e) {
+    check($e->code_ === Code::IR_INVALID, 'relation stream error code');
+}
+try {
+    Battle::query()->limit(0, 2)->using($db)->stream(static function ($row): bool { throw new \RuntimeException('stream visitor error'); });
+    check(false, 'stream visitor error must propagate');
+} catch (\RuntimeException $e) {
+    check($e->getMessage() === 'stream visitor error' && Battle::query()->serviceSeq(7)->using($db)->getCount() > 0, 'stream cursor closes after visitor error');
+}
 
 // ---- relations ----
 $n0 = count($log);

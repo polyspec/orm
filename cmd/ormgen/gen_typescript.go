@@ -74,7 +74,7 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 	b.WriteString("import { Collection, Page, Row, registerRow } from '../model.js';\n")
 	b.WriteString("import { registerSchemaHash } from '../registry.js';\n")
 	b.WriteString("import type { Point } from '../codec.js';\n\n")
-	b.WriteString("import type { AesKeyring, AesRotationStatus } from '../index.js';\n")
+	b.WriteString("import type { AesKeyring, AesRotationStatus, StreamResult } from '../index.js';\n")
 	b.WriteString("import { OrmError } from '../runtime_error.js';\n\n")
 	b.WriteString("import type { ")
 	for i, entity := range m.Order {
@@ -239,6 +239,7 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		}
 		b.WriteString("  public async get(): Promise<" + ge.Type + "Row | null> { return await this.terminal('one') as " + ge.Type + "Row | null; }\n")
 		b.WriteString("  public async gets(): Promise<Collection<" + ge.Type + "Row>> { const rows=await this.terminal('all') as Collection<" + ge.Type + "Row>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }\n")
+		b.WriteString("  public async stream(visitor: (row: " + ge.Type + "Row) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<" + ge.Type + "Row>(visitor); }\n")
 		b.WriteString("  public async one(): Promise<" + ge.Type + "Row | null> { return this.get(); }\n  public async all(): Promise<Collection<" + ge.Type + "Row>> { return this.gets(); }\n")
 		b.WriteString("  public async getCount(): Promise<number> { return Number(await this.terminal('count')); }\n")
 		b.WriteString("  public async getsCount(): Promise<Collection<" + ge.Type + "Row>> { return await this.terminal('group_count') as Collection<" + ge.Type + "Row>; }\n")

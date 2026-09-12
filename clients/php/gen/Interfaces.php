@@ -7,6 +7,7 @@ namespace App\Orm;
 interface BattleInterface {
 public function get(): ?\App\Orm\BattleRow;
 public function gets(): \Orm\Collection;
+public function stream(callable $visit): \Orm\StreamResult;
 public function getCount(): int;
 public function getsCount(): \Orm\Collection;
 public function aesStatus(\Orm\AesKeyring $keyring): \Orm\AesRotationStatus;
@@ -152,6 +153,7 @@ public function toArray(): array;
 interface UserInterface {
 public function get(): ?\App\Orm\UserRow;
 public function gets(): \Orm\Collection;
+public function stream(callable $visit): \Orm\StreamResult;
 public function getCount(): int;
 public function getsCount(): \Orm\Collection;
 public function insert(): ?\App\Orm\UserRow;
@@ -185,6 +187,7 @@ public function toArray(): array;
 interface ServiceInterface {
 public function get(): ?\App\Orm\ServiceRow;
 public function gets(): \Orm\Collection;
+public function stream(callable $visit): \Orm\StreamResult;
 public function getCount(): int;
 public function getsCount(): \Orm\Collection;
 public function insert(): ?\App\Orm\ServiceRow;
@@ -218,6 +221,7 @@ public function toArray(): array;
 interface ServiceModuleInterface {
 public function get(): ?\App\Orm\ServiceModuleRow;
 public function gets(): \Orm\Collection;
+public function stream(callable $visit): \Orm\StreamResult;
 public function getCount(): int;
 public function getsCount(): \Orm\Collection;
 public function insert(): ?\App\Orm\ServiceModuleRow;
@@ -255,6 +259,7 @@ public function toArray(): array;
 interface ServiceMemberInterface {
 public function get(): ?\App\Orm\ServiceMemberRow;
 public function gets(): \Orm\Collection;
+public function stream(callable $visit): \Orm\StreamResult;
 public function getCount(): int;
 public function getsCount(): \Orm\Collection;
 public function insert(): ?\App\Orm\ServiceMemberRow;

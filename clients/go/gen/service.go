@@ -780,6 +780,22 @@ func (q *ServiceQuery) Gets() (*orm.Collection[ServiceRow], error) {
 	return q.All()
 }
 
+// Stream visits independently owned rows without accumulating the complete result.
+// Returning false stops the query and closes its database cursor.
+func (q *ServiceQuery) Stream(visit func(*ServiceRow) bool) (orm.StreamResult, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return orm.StreamResult{}, err
+	}
+	if visit == nil {
+		return orm.StreamResult{}, &ir.Error{Code: orm.CodeIrInvalid, Msg: "stream visitor is required"}
+	}
+	q.q.Req.IR.Kind = "all"
+	return orm.Stream(ctx, ex, q.q.Req, func(vals []any, rows *orm.Rows) bool {
+		return visit(scanService(vals, rows.Assemble, rows))
+	})
+}
+
 // GetsBySeq applies seq = v and runs the collection terminal.
 func (q *ServiceQuery) GetsBySeq(v int64) (*orm.Collection[ServiceRow], error) {
 	return q.Seq(v).Gets()

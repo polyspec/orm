@@ -16,6 +16,7 @@ use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use chrono::{NaiveDate, NaiveDateTime};
+use futures_util::TryStreamExt;
 use sqlx::mysql::{MySql, MySqlConnectOptions, MySqlPool, MySqlPoolOptions, MySqlRow};
 use sqlx::postgres::{PgConnectOptions, PgPool, PgPoolOptions, PgRow, PgTypeInfo, Postgres};
 use sqlx::sqlite::{Sqlite, SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions, SqliteRow};
@@ -160,6 +161,16 @@ struct StepRows {
     data: Vec<Vec<Val>>,
     by_key: HashMap<Key, Vec<usize>>,
 }
+
+/// The terminal state and delivered-row count of a database row stream.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StreamResult {
+    pub state: &'static str,
+    pub count: u64,
+}
+
+pub const STREAM_EXHAUSTED: &str = "exhausted";
+pub const STREAM_STOPPED: &str = "stopped";
 
 impl Rows {
     pub fn len(&self) -> usize {
@@ -796,6 +807,26 @@ async fn fetch_mysql<'e, E: Executor<'e, Database = MySql>>(sql: &str, args: &[P
     q.fetch_all(e).await
 }
 
+async fn stream_mysql<'e, E, F>(sql: &str, args: &[Param], e: E, visit: &mut F) -> Result<(u64, bool)>
+where
+    E: Executor<'e, Database = MySql>,
+    F: FnMut(DriverRow) -> Result<bool>,
+{
+    let mut query = sqlx::query(sqlx::AssertSqlSafe(sql));
+    for arg in args {
+        query = bind_mysql(query, arg);
+    }
+    let mut rows = query.fetch(e);
+    let mut count = 0;
+    while let Some(row) = rows.try_next().await? {
+        count += 1;
+        if !visit(DriverRow::MySql(row))? {
+            return Ok((count, false));
+        }
+    }
+    Ok((count, true))
+}
+
 async fn exec_mysql<'e, E: Executor<'e, Database = MySql>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<(u64, u64)> {
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for a in args {
@@ -820,6 +851,23 @@ async fn fetch_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str, args: &[P
     Ok(pg_query(sql, args, types)?.fetch_all(e).await?)
 }
 
+async fn stream_pg<'e, E, F>(sql: &str, args: &[Param], types: &[PgTypeInfo], e: E, visit: &mut F) -> Result<(u64, bool)>
+where
+    E: Executor<'e, Database = Postgres>,
+    F: FnMut(DriverRow) -> Result<bool>,
+{
+    let query = pg_query(sql, args, types)?;
+    let mut rows = query.fetch(e);
+    let mut count = 0;
+    while let Some(row) = rows.try_next().await? {
+        count += 1;
+        if !visit(DriverRow::Postgres(row))? {
+            return Ok((count, false));
+        }
+    }
+    Ok((count, true))
+}
+
 async fn exec_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str, args: &[Param], types: &[PgTypeInfo], e: E) -> Result<(u64, u64)> {
     let r = pg_query(sql, args, types)?.execute(e).await?;
     Ok((0, r.rows_affected()))
@@ -831,6 +879,26 @@ async fn fetch_sqlite<'e, E: Executor<'e, Database = Sqlite>>(sql: &str, args: &
         q = bind_sqlite(q, a);
     }
     q.fetch_all(e).await
+}
+
+async fn stream_sqlite<'e, E, F>(sql: &str, args: &[Param], e: E, visit: &mut F) -> Result<(u64, bool)>
+where
+    E: Executor<'e, Database = Sqlite>,
+    F: FnMut(DriverRow) -> Result<bool>,
+{
+    let mut query = sqlx::query(sqlx::AssertSqlSafe(sql));
+    for arg in args {
+        query = bind_sqlite(query, arg);
+    }
+    let mut rows = query.fetch(e);
+    let mut count = 0;
+    while let Some(row) = rows.try_next().await? {
+        count += 1;
+        if !visit(DriverRow::Sqlite(row))? {
+            return Ok((count, false));
+        }
+    }
+    Ok((count, true))
 }
 
 async fn exec_sqlite<'e, E: Executor<'e, Database = Sqlite>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<(u64, u64)> {
@@ -878,6 +946,31 @@ async fn run_query(db: &Db, target: Target<'_>, st: &Step, params: &[Param], par
     };
     db.emit(st, &sql, &args, parent_vals.len(), start, r.as_ref().err());
     r
+}
+
+async fn run_stream<F>(db: &Db, target: Target<'_>, st: &Step, params: &[Param], visit: &mut F) -> Result<(u64, bool)>
+where
+    F: FnMut(DriverRow) -> Result<bool>,
+{
+    let sql = st.sql.as_str();
+    let args = db.args(st, params, &[])?;
+    let start = std::time::Instant::now();
+    let result = match target {
+        Target::Pool(Pool::MySql(pool)) => stream_mysql(sql, &args, pool, visit).await,
+        Target::Tx(TxInner::MySql(tx)) => stream_mysql(sql, &args, &mut **tx, visit).await,
+        Target::Pool(Pool::Postgres(pool)) => {
+            let types = db.pg_types_pool(pool, sql).await?;
+            stream_pg(sql, &args, &types, pool, visit).await
+        }
+        Target::Tx(TxInner::Postgres(tx)) => {
+            let types = db.pg_types_conn(&mut **tx, sql).await?;
+            stream_pg(sql, &args, &types, &mut **tx, visit).await
+        }
+        Target::Pool(Pool::Sqlite(pool)) => stream_sqlite(sql, &args, pool, visit).await,
+        Target::Tx(TxInner::Sqlite(tx)) => stream_sqlite(sql, &args, &mut **tx, visit).await,
+    };
+    db.emit(st, sql, &args, 0, start, result.as_ref().err());
+    result
 }
 
 async fn run_execute(db: &Db, target: Target<'_>, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
@@ -960,6 +1053,53 @@ pub async fn select(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Rows> {
     req.ir.kind = kind.into();
     let plan = ex.db().plan(req).await?;
     run_plan(ex, plan, req).await
+}
+
+/// Visits independently owned rows from a single select cursor. Plans with
+/// separate relation steps are rejected; SQL joins remain part of the root row.
+pub async fn stream<F>(ex: &impl Exec, req: &mut Req, mut visit: F) -> Result<StreamResult>
+where
+    F: FnMut(Cells, &Rows) -> Result<bool>,
+{
+    req.ir.kind = "all".into();
+    let plan = ex.db().plan(req).await?;
+    if plan.steps.iter().skip(1).any(|step| step.role == "relation") {
+        return Err(Error::Engine {
+            code: crate::codes::IR_INVALID.into(),
+            msg: "stream does not support separate relation steps; use a join or gets".into(),
+        });
+    }
+    let step = &plan.steps[0];
+    let assemble = step.assemble.clone().ok_or_else(|| Error::internal("no assemble"))?;
+    let context = Rows {
+        binding: crate::binding::Binding::new(ex),
+        assemble: assemble.clone(),
+        cells: Vec::new(),
+        plan: plan.clone(),
+        steps: HashMap::new(),
+        params: req.params.clone(),
+    };
+    let db = ex.db();
+    let mysql = matches!(db.pool, Pool::MySql(_));
+    let mut decode = |raw: DriverRow| -> Result<bool> {
+        let cells = if mysql {
+            Cells::Raw(raw.into_mysql())
+        } else {
+            let mut data = vec![read_row(&raw, assemble.total_columns())?];
+            decode_styled(&assemble, &mut data, &db.cfg.aes_key)?;
+            Cells::Pos(data.pop().expect("one stream row"))
+        };
+        visit(cells, &context)
+    };
+    let (count, exhausted) = if let Some(tx) = ex.tx() {
+        let mut guard = tx.inner.lock().await;
+        tx.assert_active()?;
+        let target = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
+        run_stream(db, Target::Tx(target), step, &req.params, &mut decode).await?
+    } else {
+        run_stream(db, Target::Pool(&db.pool), step, &req.params, &mut decode).await?
+    };
+    Ok(StreamResult { state: if exhausted { STREAM_EXHAUSTED } else { STREAM_STOPPED }, count })
 }
 
 /// Driver rows as decoded positional rows: cells by column type, styled cells through their

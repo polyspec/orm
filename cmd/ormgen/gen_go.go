@@ -869,6 +869,17 @@ func (q *{{.Type}}Query) Gets() (*orm.Collection[{{.Type}}Row], error) {
 	return q.All()
 }
 
+// Stream visits independently owned rows without accumulating the complete result.
+// Returning false stops the query and closes its database cursor.
+func (q *{{.Type}}Query) Stream(visit func(*{{.Type}}Row) bool) (orm.StreamResult, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return orm.StreamResult{}, err }
+	if visit == nil { return orm.StreamResult{}, &ir.Error{Code: orm.CodeIrInvalid, Msg: "stream visitor is required"} }
+	q.q.Req.IR.Kind = "all"
+	return orm.Stream(ctx, ex, q.q.Req, func(vals []any, rows *orm.Rows) bool {
+		return visit(scan{{.Type}}(vals, rows.Assemble, rows))
+	})
+}
+
 {{range .EqCols}}
 // GetsBy{{.Field}} applies {{.Name}} = v and runs the collection terminal.
 func (q *{{$.Type}}Query) GetsBy{{.Field}}(v {{.Type}}) (*orm.Collection[{{$.Type}}Row], error) {

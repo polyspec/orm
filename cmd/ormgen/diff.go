@@ -129,7 +129,7 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 					}
 					stmt, err := alterColumn(newEnt.Table, def, dialect, quote)
 					if err != nil {
-						return "", err
+						return "", fmt.Errorf("column %s.%s changed from type=%s raw=%s nullable=%t default=%s to type=%s raw=%s nullable=%t default=%s: %w", newEnt.Table, col, o.Type, o.Raw, o.Nullable, colDefault(o), n.Type, n.Raw, n.Nullable, colDefault(n), err)
 					}
 					changes = append(changes, schemaChange{sql: stmt, destructive: true})
 				}
