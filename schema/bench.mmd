@@ -24,6 +24,7 @@ erDiagram
     varchar(36)   uuid                     UK  "?"
     tinyint       is_single_play               "=0"
     int           like_count                   "=0 unsigned"
+    int           aes_key_version              "=1"
     varchar(255)  aes_hex_email                "?"
     varchar(255)  aes_hex_phone                "?"
     decimal(13_3) price                        "?"

@@ -1,5 +1,5 @@
 {
-  "schema_hash": "fad1ec79809d68e2",
+  "schema_hash": "8561e297963fae2c",
   "order": [
     "battle",
     "user",
@@ -190,6 +190,16 @@
           "raw": "int",
           "default": "0",
           "unsigned": true
+        },
+        {
+          "name": "aes_key_version",
+          "type": "i32",
+          "raw": "int",
+          "default": "1",
+          "lazy": true,
+          "styles": [
+            "aes"
+          ]
         },
         {
           "name": "aes_hex_email",

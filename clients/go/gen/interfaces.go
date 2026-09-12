@@ -46,6 +46,7 @@ type BattleInterface interface {
 	GetsByUuid(v string) (*orm.Collection[BattleRow], error)
 	GetsByIsSinglePlay(v bool) (*orm.Collection[BattleRow], error)
 	GetsByLikeCount(v int64) (*orm.Collection[BattleRow], error)
+	GetsByAesKeyVersion(v int32) (*orm.Collection[BattleRow], error)
 	GetsByAesHexEmail(v string) (*orm.Collection[BattleRow], error)
 	GetsByAesHexPhone(v string) (*orm.Collection[BattleRow], error)
 	GetsByPrice(v float64) (*orm.Collection[BattleRow], error)
@@ -74,6 +75,7 @@ type BattleInterface interface {
 	GetCountByUuid(v string) (int64, error)
 	GetCountByIsSinglePlay(v bool) (int64, error)
 	GetCountByLikeCount(v int64) (int64, error)
+	GetCountByAesKeyVersion(v int32) (int64, error)
 	GetCountByAesHexEmail(v string) (int64, error)
 	GetCountByAesHexPhone(v string) (int64, error)
 	GetCountByPrice(v float64) (int64, error)
@@ -102,6 +104,7 @@ type BattleInterface interface {
 	UuidEq(v string) *BattleQuery
 	IsSinglePlayEq(v bool) *BattleQuery
 	LikeCountEq(v int64) *BattleQuery
+	AesKeyVersionEq(v int32) *BattleQuery
 	AesHexEmailEq(v string) *BattleQuery
 	AesHexPhoneEq(v string) *BattleQuery
 	PriceEq(v float64) *BattleQuery
@@ -130,6 +133,7 @@ type BattleInterface interface {
 	Uuid(v string) *BattleQuery
 	IsSinglePlay(v bool) *BattleQuery
 	LikeCount(v int64) *BattleQuery
+	AesKeyVersion(v int32) *BattleQuery
 	AesHexEmail(v string) *BattleQuery
 	AesHexPhone(v string) *BattleQuery
 	Price(v float64) *BattleQuery

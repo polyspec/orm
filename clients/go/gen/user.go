@@ -591,6 +591,10 @@ func (q *UserQuery) IfParentIsSinglePlayEq(v bool) *UserQuery {
 	return q
 }
 func (q *UserQuery) IfParentLikeCountEq(v int64) *UserQuery { q.q.IfParent("like_count", v); return q }
+func (q *UserQuery) IfParentAesKeyVersionEq(v int32) *UserQuery {
+	q.q.IfParent("aes_key_version", v)
+	return q
+}
 func (q *UserQuery) IfParentAesHexEmailEq(v string) *UserQuery {
 	q.q.IfParent("aes_hex_email", v)
 	return q

@@ -24,7 +24,7 @@ final class BattleRow extends Row implements BattleRowInterface
     public function updateOptimistic(): void { $this->terminalArity(func_num_args()); $this->doUpdate($this->terminalDb(), true); }
     public static function columns(): array
     {
-        return ['seq' => 'i64', 'name' => 'string', 'description' => 'text', 'created_ts' => 'datetime', 'updated_ts' => 'datetime', 'is_close' => 'bool', 'is_display' => 'bool', 'display_start_dt' => 'datetime', 'display_end_dt' => 'datetime', 'is_allday' => 'bool', 'target_team_player_count' => 'i64', 'success_count' => 'i64', 'player_count' => 'i64', 'read_count' => 'i64', 'cover_url' => 'string', 'user_seq' => 'i64', 'service_seq' => 'i64', 'service_module_seq' => 'i64', 'service_member_seq' => 'i64', 'start_dt' => 'datetime', 'end_dt' => 'datetime', 'uuid' => 'string', 'is_single_play' => 'bool', 'like_count' => 'i64', 'aes_hex_email' => 'string', 'aes_hex_phone' => 'string', 'price' => 'decimal', 'ip' => 'inet', 'gz_extend' => 'styled', 'json_setting' => 'styled', 'jsons_tags' => 'styled', 'base64_extra' => 'styled', 'serialize_data' => 'styled'];
+        return ['seq' => 'i64', 'name' => 'string', 'description' => 'text', 'created_ts' => 'datetime', 'updated_ts' => 'datetime', 'is_close' => 'bool', 'is_display' => 'bool', 'display_start_dt' => 'datetime', 'display_end_dt' => 'datetime', 'is_allday' => 'bool', 'target_team_player_count' => 'i64', 'success_count' => 'i64', 'player_count' => 'i64', 'read_count' => 'i64', 'cover_url' => 'string', 'user_seq' => 'i64', 'service_seq' => 'i64', 'service_module_seq' => 'i64', 'service_member_seq' => 'i64', 'start_dt' => 'datetime', 'end_dt' => 'datetime', 'uuid' => 'string', 'is_single_play' => 'bool', 'like_count' => 'i64', 'aes_key_version' => 'i32', 'aes_hex_email' => 'string', 'aes_hex_phone' => 'string', 'price' => 'decimal', 'ip' => 'inet', 'gz_extend' => 'styled', 'json_setting' => 'styled', 'jsons_tags' => 'styled', 'base64_extra' => 'styled', 'serialize_data' => 'styled'];
     }
     /** @return array<string, array{kind: string, target: string, left: string, right: string}> declared relations: name => kind, target entity, this.left = target.right */
     public static function relations(): array
@@ -199,6 +199,13 @@ final class BattleRow extends Row implements BattleRowInterface
     }
     public function setLikeCount(int $v): static { return $this->setCol('like_count', $v); }
 
+    public function getAesKeyVersion(mixed $default = null): int
+    {
+        $v = $this->col('aes_key_version');
+        return $v === null ? ($default ?? 0) : $v;
+    }
+    public function setAesKeyVersion(int $v): static { return $this->setCol('aes_key_version', $v); }
+
     public function getAesHexEmail(mixed $default = null): ?string
     {
         $v = $this->col('aes_hex_email');
@@ -295,6 +302,7 @@ final class BattleCols
     public static function uuid(): ColRef { return new ColRef('uuid'); }
     public static function isSinglePlay(): ColRef { return new ColRef('is_single_play'); }
     public static function likeCount(): ColRef { return new ColRef('like_count'); }
+    public static function aesKeyVersion(): ColRef { return new ColRef('aes_key_version'); }
     public static function aesHexEmail(): ColRef { return new ColRef('aes_hex_email'); }
     public static function aesHexPhone(): ColRef { return new ColRef('aes_hex_phone'); }
     public static function price(): ColRef { return new ColRef('price'); }
@@ -698,6 +706,15 @@ final class BattleWhere
     public function likeCountGteCol(ColRef $ref): static { $this->w->predCol('like_count', 'gte_col', $ref); return $this; }
     public function likeCountLtCol(ColRef $ref): static { $this->w->predCol('like_count', 'lt_col', $ref); return $this; }
     public function likeCountLteCol(ColRef $ref): static { $this->w->predCol('like_count', 'lte_col', $ref); return $this; }
+    public function aesKeyVersionEq(int $v): static { $this->w->pred('aes_key_version', 'eq', $v); return $this; }
+    public function aesKeyVersion(int $v): static { return $this->aesKeyVersionEq($v); }
+    public function aesKeyVersionNotEq(int $v): static { $this->w->pred('aes_key_version', 'not_eq', $v); return $this; }
+    public function aesKeyVersionIn(array $vs): static { $this->w->predList('aes_key_version', 'in', array_values($vs)); return $this; }
+    public function aesKeyVersionNotIn(array $vs): static { $this->w->predList('aes_key_version', 'not_in', array_values($vs)); return $this; }
+    public function aesKeyVersionIsNull(): static { $this->w->predNull('aes_key_version', 'is_null'); return $this; }
+    public function aesKeyVersionIsNotNull(): static { $this->w->predNull('aes_key_version', 'is_not_null'); return $this; }
+    public function aesKeyVersionEqCol(ColRef $ref): static { $this->w->predCol('aes_key_version', 'eq_col', $ref); return $this; }
+    public function aesKeyVersionNotEqCol(ColRef $ref): static { $this->w->predCol('aes_key_version', 'not_eq_col', $ref); return $this; }
     public function aesHexEmailEq(string $v): static { $this->w->pred('aes_hex_email', 'eq', $v); return $this; }
     public function aesHexEmail(string $v): static { return $this->aesHexEmailEq($v); }
     public function aesHexEmailNotEq(string $v): static { $this->w->pred('aes_hex_email', 'not_eq', $v); return $this; }
@@ -1151,6 +1168,15 @@ final class Battle extends Q implements BattleInterface
     public function likeCountGteCol(ColRef $ref): static { $this->w()->predCol('like_count', 'gte_col', $ref); return $this; }
     public function likeCountLtCol(ColRef $ref): static { $this->w()->predCol('like_count', 'lt_col', $ref); return $this; }
     public function likeCountLteCol(ColRef $ref): static { $this->w()->predCol('like_count', 'lte_col', $ref); return $this; }
+    public function aesKeyVersionEq(int $v): static { $this->w()->pred('aes_key_version', 'eq', $v); return $this; }
+    public function aesKeyVersion(int $v): static { return $this->aesKeyVersionEq($v); }
+    public function aesKeyVersionNotEq(int $v): static { $this->w()->pred('aes_key_version', 'not_eq', $v); return $this; }
+    public function aesKeyVersionIn(array $vs): static { $this->w()->predList('aes_key_version', 'in', array_values($vs)); return $this; }
+    public function aesKeyVersionNotIn(array $vs): static { $this->w()->predList('aes_key_version', 'not_in', array_values($vs)); return $this; }
+    public function aesKeyVersionIsNull(): static { $this->w()->predNull('aes_key_version', 'is_null'); return $this; }
+    public function aesKeyVersionIsNotNull(): static { $this->w()->predNull('aes_key_version', 'is_not_null'); return $this; }
+    public function aesKeyVersionEqCol(ColRef $ref): static { $this->w()->predCol('aes_key_version', 'eq_col', $ref); return $this; }
+    public function aesKeyVersionNotEqCol(ColRef $ref): static { $this->w()->predCol('aes_key_version', 'not_eq_col', $ref); return $this; }
     public function aesHexEmailEq(string $v): static { $this->w()->pred('aes_hex_email', 'eq', $v); return $this; }
     public function aesHexEmail(string $v): static { return $this->aesHexEmailEq($v); }
     public function aesHexEmailNotEq(string $v): static { $this->w()->pred('aes_hex_email', 'not_eq', $v); return $this; }
@@ -1320,6 +1346,9 @@ final class Battle extends Q implements BattleInterface
     public function selectLikeCount(): static { $this->colAdd('like_count'); return $this; }
     public function unselectLikeCount(): static { $this->colRemove('like_count'); return $this; }
     public function selectLikeCountAs(string $name): static { $this->colAs($name, 'like_count'); return $this; }
+    public function selectAesKeyVersion(): static { $this->colAdd('aes_key_version'); return $this; }
+    public function unselectAesKeyVersion(): static { $this->colRemove('aes_key_version'); return $this; }
+    public function selectAesKeyVersionAs(string $name): static { $this->colAs($name, 'aes_key_version'); return $this; }
     public function selectAesHexEmail(): static { $this->colAdd('aes_hex_email'); return $this; }
     public function unselectAesHexEmail(): static { $this->colRemove('aes_hex_email'); return $this; }
     public function selectAesHexEmailAs(string $name): static { $this->colAs($name, 'aes_hex_email'); return $this; }
@@ -1445,6 +1474,10 @@ final class Battle extends Q implements BattleInterface
     public function orderByLikeCountDesc(): static { $this->order('like_count', true); return $this; }
     public function groupByLikeCount(): static { $this->groupBy('like_count'); return $this; }
     public function keyByLikeCount(): static { $this->opt('key_by', 'like_count'); return $this; }
+    public function orderByAesKeyVersionAsc(): static { $this->order('aes_key_version', false); return $this; }
+    public function orderByAesKeyVersionDesc(): static { $this->order('aes_key_version', true); return $this; }
+    public function groupByAesKeyVersion(): static { $this->groupBy('aes_key_version'); return $this; }
+    public function keyByAesKeyVersion(): static { $this->opt('key_by', 'aes_key_version'); return $this; }
     public function orderByAesHexEmailAsc(): static { $this->order('aes_hex_email', false); return $this; }
     public function orderByAesHexEmailDesc(): static { $this->order('aes_hex_email', true); return $this; }
     public function groupByAesHexEmail(): static { $this->groupBy('aes_hex_email'); return $this; }
@@ -1550,6 +1583,8 @@ final class Battle extends Q implements BattleInterface
     public function setIsSinglePlayExpr(string $frag, array $binds = []): static { $this->setExpr('is_single_play', $frag, $binds); return $this; }
     public function setLikeCount(int $v): static { $this->set('like_count', $v); return $this; }
     public function setLikeCountExpr(string $frag, array $binds = []): static { $this->setExpr('like_count', $frag, $binds); return $this; }
+    public function setAesKeyVersion(int $v): static { $this->set('aes_key_version', $v); return $this; }
+    public function setAesKeyVersionExpr(string $frag, array $binds = []): static { $this->setExpr('aes_key_version', $frag, $binds); return $this; }
     public function setAesHexEmail(?string $v): static { $this->set('aes_hex_email', $v); return $this; }
     public function setAesHexEmailExpr(string $frag, array $binds = []): static { $this->setExpr('aes_hex_email', $frag, $binds); return $this; }
     public function setAesHexPhone(?string $v): static { $this->set('aes_hex_phone', $v); return $this; }
@@ -1588,6 +1623,8 @@ final class Battle extends Q implements BattleInterface
     public function minusServiceMemberSeq(int $v): static { $this->minus('service_member_seq', $v); return $this; }
     public function plusLikeCount(int $v): static { $this->plus('like_count', $v); return $this; }
     public function minusLikeCount(int $v): static { $this->minus('like_count', $v); return $this; }
+    public function plusAesKeyVersion(int $v): static { $this->plus('aes_key_version', $v); return $this; }
+    public function minusAesKeyVersion(int $v): static { $this->minus('aes_key_version', $v); return $this; }
     public function plusPrice(float $v): static { $this->plus('price', $v); return $this; }
     public function minusPrice(float $v): static { $this->minus('price', $v); return $this; }
 
@@ -1639,6 +1676,8 @@ final class Battle extends Q implements BattleInterface
     public function onDuplicateSetIsSinglePlayExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('is_single_play', $frag, $binds); return $this; }
     public function onDuplicateSetLikeCount(int $v): static { $this->onDuplicate('like_count', $v); return $this; }
     public function onDuplicateSetLikeCountExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('like_count', $frag, $binds); return $this; }
+    public function onDuplicateSetAesKeyVersion(int $v): static { $this->onDuplicate('aes_key_version', $v); return $this; }
+    public function onDuplicateSetAesKeyVersionExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('aes_key_version', $frag, $binds); return $this; }
     public function onDuplicateSetAesHexEmail(?string $v): static { $this->onDuplicate('aes_hex_email', $v); return $this; }
     public function onDuplicateSetAesHexEmailExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('aes_hex_email', $frag, $binds); return $this; }
     public function onDuplicateSetAesHexPhone(?string $v): static { $this->onDuplicate('aes_hex_phone', $v); return $this; }
@@ -1675,6 +1714,8 @@ final class Battle extends Q implements BattleInterface
     public function onDuplicateMinusServiceMemberSeq(int $v): static { $this->onDuplicateMinus('service_member_seq', $v); return $this; }
     public function onDuplicatePlusLikeCount(int $v): static { $this->onDuplicatePlus('like_count', $v); return $this; }
     public function onDuplicateMinusLikeCount(int $v): static { $this->onDuplicateMinus('like_count', $v); return $this; }
+    public function onDuplicatePlusAesKeyVersion(int $v): static { $this->onDuplicatePlus('aes_key_version', $v); return $this; }
+    public function onDuplicateMinusAesKeyVersion(int $v): static { $this->onDuplicateMinus('aes_key_version', $v); return $this; }
     public function onDuplicatePlusPrice(float $v): static { $this->onDuplicatePlus('price', $v); return $this; }
     public function onDuplicateMinusPrice(float $v): static { $this->onDuplicateMinus('price', $v); return $this; }
 
@@ -1876,6 +1917,13 @@ final class Battle extends Q implements BattleInterface
     {
         $this->terminalArity(func_num_args(), 1);
         return $this->likeCount($value)->gets();
+    }
+
+    /** Applies aes_key_version = value and runs the collection terminal. */
+    public function getsByAesKeyVersion(int $value): Collection
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->aesKeyVersion($value)->gets();
     }
 
     /** Applies aes_hex_email = value and runs the collection terminal. */
@@ -2080,6 +2128,13 @@ final class Battle extends Q implements BattleInterface
         return $this->likeCount($value)->getCount();
     }
 
+    /** Applies aes_key_version = value and runs the scalar count terminal. */
+    public function getCountByAesKeyVersion(int $value): int
+    {
+        $this->terminalArity(func_num_args(), 1);
+        return $this->aesKeyVersion($value)->getCount();
+    }
+
     /** Applies aes_hex_email = value and runs the scalar count terminal. */
     public function getCountByAesHexEmail(string $value): int
     {
@@ -2139,6 +2194,8 @@ final class Battle extends Q implements BattleInterface
     public function avgServiceMemberSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'service_member_seq'); }
     public function sumLikeCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'like_count'); }
     public function avgLikeCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'like_count'); }
+    public function sumAesKeyVersion(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'aes_key_version'); }
+    public function avgAesKeyVersion(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'aes_key_version'); }
     public function sumPrice(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'price'); }
     public function avgPrice(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'price'); }
     public function countDistinctSeq(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'seq'); }

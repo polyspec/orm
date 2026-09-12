@@ -35,6 +35,7 @@ pub struct BattleRow {
     pub uuid: Option<String>,
     pub is_single_play: bool,
     pub like_count: i64,
+    pub aes_key_version: i32,
     pub aes_hex_email: Option<String>,
     pub aes_hex_phone: Option<String>,
     pub price: Option<f64>,
@@ -137,6 +138,7 @@ impl BattleRow {
                 "uuid" => r.uuid = if src.is_null(i) { None } else { Some(src.string(i)?) },
                 "is_single_play" => r.is_single_play = src.bool(i)?,
                 "like_count" => r.like_count = src.i64(i)?,
+                "aes_key_version" => r.aes_key_version = src.i64(i)? as i32,
                 "aes_hex_email" => r.aes_hex_email = if src.is_null(i) { None } else { Some(src.string(i)?) },
                 "aes_hex_phone" => r.aes_hex_phone = if src.is_null(i) { None } else { Some(src.string(i)?) },
                 "price" => r.price = if src.is_null(i) { None } else { Some(src.f64(i)?) },
@@ -197,6 +199,7 @@ impl BattleRow {
                 "uuid" => serde_json::json!(self.uuid),
                 "is_single_play" => serde_json::json!(self.is_single_play),
                 "like_count" => serde_json::json!(self.like_count),
+                "aes_key_version" => serde_json::json!(self.aes_key_version),
                 "aes_hex_email" => serde_json::json!(self.aes_hex_email),
                 "aes_hex_phone" => serde_json::json!(self.aes_hex_phone),
                 "price" => serde_json::json!(self.price),
@@ -400,6 +403,13 @@ impl BattleRow {
         self.mark_dirty("like_count", v.into());
         self
     }
+    pub fn set_aes_key_version(&mut self, v: i32) -> &mut Self {
+        let v: i32 = v.into();
+        self.aes_key_version = v.clone();
+        if !self.assigned.contains(&"aes_key_version") { self.assigned.push("aes_key_version"); }
+        self.mark_dirty("aes_key_version", v.into());
+        self
+    }
     pub fn set_aes_hex_email(&mut self, v: Option<impl Into<String>>) -> &mut Self {
         let v: Option<String> = v.map(|x| x.into());
         self.aes_hex_email = v.clone();
@@ -589,6 +599,7 @@ pub mod cols {
     pub fn uuid() -> ColRef { ColRef::new("uuid") }
     pub fn is_single_play() -> ColRef { ColRef::new("is_single_play") }
     pub fn like_count() -> ColRef { ColRef::new("like_count") }
+    pub fn aes_key_version() -> ColRef { ColRef::new("aes_key_version") }
     pub fn aes_hex_email() -> ColRef { ColRef::new("aes_hex_email") }
     pub fn aes_hex_phone() -> ColRef { ColRef::new("aes_hex_phone") }
     pub fn price() -> ColRef { ColRef::new("price") }
@@ -985,6 +996,15 @@ impl<'a> BattleWhere<'a> {
     pub fn like_count_gte_col(mut self, r: ColRef) -> Self { self.w.pred_col("like_count", "gte_col", r); self }
     pub fn like_count_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("like_count", "lt_col", r); self }
     pub fn like_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("like_count", "lte_col", r); self }
+    pub fn aes_key_version_eq(mut self, v: i32) -> Self { self.w.pred("aes_key_version", "eq", v); self }
+    pub fn aes_key_version(self, v: i32) -> Self { self.aes_key_version_eq(v) }
+    pub fn aes_key_version_not_eq(mut self, v: i32) -> Self { self.w.pred("aes_key_version", "not_eq", v); self }
+    pub fn aes_key_version_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("aes_key_version", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn aes_key_version_not_in(mut self, vs: Vec<i32>) -> Self { self.w.pred_list("aes_key_version", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn aes_key_version_is_null(mut self) -> Self { self.w.pred_null("aes_key_version", "is_null"); self }
+    pub fn aes_key_version_is_not_null(mut self) -> Self { self.w.pred_null("aes_key_version", "is_not_null"); self }
+    pub fn aes_key_version_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_key_version", "eq_col", r); self }
+    pub fn aes_key_version_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_key_version", "not_eq_col", r); self }
     pub fn aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_email", "eq", v.into()); self }
     pub fn aes_hex_email(self, v: impl Into<String>) -> Self { self.aes_hex_email_eq(v) }
     pub fn aes_hex_email_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_email", "not_eq", v.into()); self }
@@ -1445,6 +1465,15 @@ impl Battle {
     pub fn like_count_gte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("like_count", "gte_col", r); self }
     pub fn like_count_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("like_count", "lt_col", r); self }
     pub fn like_count_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("like_count", "lte_col", r); self }
+    pub fn aes_key_version_eq(mut self, v: i32) -> Self { self.q.w().pred("aes_key_version", "eq", v); self }
+    pub fn aes_key_version(self, v: i32) -> Self { self.aes_key_version_eq(v) }
+    pub fn aes_key_version_not_eq(mut self, v: i32) -> Self { self.q.w().pred("aes_key_version", "not_eq", v); self }
+    pub fn aes_key_version_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("aes_key_version", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn aes_key_version_not_in(mut self, vs: Vec<i32>) -> Self { self.q.w().pred_list("aes_key_version", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn aes_key_version_is_null(mut self) -> Self { self.q.w().pred_null("aes_key_version", "is_null"); self }
+    pub fn aes_key_version_is_not_null(mut self) -> Self { self.q.w().pred_null("aes_key_version", "is_not_null"); self }
+    pub fn aes_key_version_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_key_version", "eq_col", r); self }
+    pub fn aes_key_version_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("aes_key_version", "not_eq_col", r); self }
     pub fn aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("aes_hex_email", "eq", v.into()); self }
     pub fn aes_hex_email(self, v: impl Into<String>) -> Self { self.aes_hex_email_eq(v) }
     pub fn aes_hex_email_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("aes_hex_email", "not_eq", v.into()); self }
@@ -1645,6 +1674,9 @@ impl Battle {
     pub fn select_like_count(mut self) -> Self { self.q.columns().add.push("like_count".into()); self }
     pub fn unselect_like_count(mut self) -> Self { self.q.columns().remove.push("like_count".into()); self }
     pub fn select_like_count_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "like_count".into()); self }
+    pub fn select_aes_key_version(mut self) -> Self { self.q.columns().add.push("aes_key_version".into()); self }
+    pub fn unselect_aes_key_version(mut self) -> Self { self.q.columns().remove.push("aes_key_version".into()); self }
+    pub fn select_aes_key_version_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "aes_key_version".into()); self }
     pub fn select_aes_hex_email(mut self) -> Self { self.q.columns().add.push("aes_hex_email".into()); self }
     pub fn unselect_aes_hex_email(mut self) -> Self { self.q.columns().remove.push("aes_hex_email".into()); self }
     pub fn select_aes_hex_email_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "aes_hex_email".into()); self }
@@ -1770,6 +1802,10 @@ impl Battle {
     pub fn order_by_like_count_desc(mut self) -> Self { self.q.order("like_count", true); self }
     pub fn group_by_like_count(mut self) -> Self { self.q.node().group_by.push("like_count".into()); self }
     pub fn key_by_like_count(mut self) -> Self { self.q.node().key_by = "like_count".into(); self }
+    pub fn order_by_aes_key_version_asc(mut self) -> Self { self.q.order("aes_key_version", false); self }
+    pub fn order_by_aes_key_version_desc(mut self) -> Self { self.q.order("aes_key_version", true); self }
+    pub fn group_by_aes_key_version(mut self) -> Self { self.q.node().group_by.push("aes_key_version".into()); self }
+    pub fn key_by_aes_key_version(mut self) -> Self { self.q.node().key_by = "aes_key_version".into(); self }
     pub fn order_by_aes_hex_email_asc(mut self) -> Self { self.q.order("aes_hex_email", false); self }
     pub fn order_by_aes_hex_email_desc(mut self) -> Self { self.q.order("aes_hex_email", true); self }
     pub fn group_by_aes_hex_email(mut self) -> Self { self.q.node().group_by.push("aes_hex_email".into()); self }
@@ -1877,6 +1913,8 @@ impl Battle {
     pub fn set_is_single_play_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("is_single_play", frag, binds); self }
     pub fn set_like_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("like_count", v); self }
     pub fn set_like_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("like_count", frag, binds); self }
+    pub fn set_aes_key_version(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.set("aes_key_version", v); self }
+    pub fn set_aes_key_version_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("aes_key_version", frag, binds); self }
     pub fn set_aes_hex_email(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("aes_hex_email", v); self }
     pub fn set_aes_hex_email_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("aes_hex_email", frag, binds); self }
     pub fn set_aes_hex_phone(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("aes_hex_phone", v); self }
@@ -1915,6 +1953,8 @@ impl Battle {
     pub fn minus_service_member_seq(mut self, v: i64) -> Self { self.q.minus("service_member_seq", v); self }
     pub fn plus_like_count(mut self, v: i64) -> Self { self.q.plus("like_count", v); self }
     pub fn minus_like_count(mut self, v: i64) -> Self { self.q.minus("like_count", v); self }
+    pub fn plus_aes_key_version(mut self, v: i32) -> Self { self.q.plus("aes_key_version", v); self }
+    pub fn minus_aes_key_version(mut self, v: i32) -> Self { self.q.minus("aes_key_version", v); self }
     pub fn plus_price(mut self, v: f64) -> Self { self.q.plus("price", v); self }
     pub fn minus_price(mut self, v: f64) -> Self { self.q.minus("price", v); self }
 
@@ -1965,6 +2005,8 @@ impl Battle {
     pub fn on_duplicate_set_is_single_play_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("is_single_play", frag, binds); self }
     pub fn on_duplicate_set_like_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.on_duplicate_set("like_count", v); self }
     pub fn on_duplicate_set_like_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("like_count", frag, binds); self }
+    pub fn on_duplicate_set_aes_key_version(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.on_duplicate_set("aes_key_version", v); self }
+    pub fn on_duplicate_set_aes_key_version_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("aes_key_version", frag, binds); self }
     pub fn on_duplicate_set_aes_hex_email(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.on_duplicate_set("aes_hex_email", v); self }
     pub fn on_duplicate_set_aes_hex_email_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("aes_hex_email", frag, binds); self }
     pub fn on_duplicate_set_aes_hex_phone(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.on_duplicate_set("aes_hex_phone", v); self }
@@ -2001,6 +2043,8 @@ impl Battle {
     pub fn on_duplicate_minus_service_member_seq(mut self, v: i64) -> Self { self.q.on_duplicate_minus("service_member_seq", v); self }
     pub fn on_duplicate_plus_like_count(mut self, v: i64) -> Self { self.q.on_duplicate_plus("like_count", v); self }
     pub fn on_duplicate_minus_like_count(mut self, v: i64) -> Self { self.q.on_duplicate_minus("like_count", v); self }
+    pub fn on_duplicate_plus_aes_key_version(mut self, v: i32) -> Self { self.q.on_duplicate_plus("aes_key_version", v); self }
+    pub fn on_duplicate_minus_aes_key_version(mut self, v: i32) -> Self { self.q.on_duplicate_minus("aes_key_version", v); self }
     pub fn on_duplicate_plus_price(mut self, v: f64) -> Self { self.q.on_duplicate_plus("price", v); self }
     pub fn on_duplicate_minus_price(mut self, v: f64) -> Self { self.q.on_duplicate_minus("price", v); self }
     /// Copies every set_* assignment made so far (except the PK/auto column) into ON DUPLICATE KEY UPDATE.
@@ -2172,6 +2216,12 @@ impl Battle {
     /// Applies like_count = value and runs the collection terminal.
     pub async fn gets_by_like_count(&mut self, v: i64) -> Result<Collection<BattleRow>> {
         self.q.w().pred("like_count", "eq", v);
+        self.gets().await
+    }
+
+    /// Applies aes_key_version = value and runs the collection terminal.
+    pub async fn gets_by_aes_key_version(&mut self, v: i32) -> Result<Collection<BattleRow>> {
+        self.q.w().pred("aes_key_version", "eq", v);
         self.gets().await
     }
 
@@ -2353,6 +2403,12 @@ impl Battle {
         self.get_count().await
     }
 
+    /// Applies aes_key_version = value and runs the scalar count terminal.
+    pub async fn get_count_by_aes_key_version(&mut self, v: i32) -> Result<i64> {
+        self.q.w().pred("aes_key_version", "eq", v);
+        self.get_count().await
+    }
+
     /// Applies aes_hex_email = value and runs the scalar count terminal.
     pub async fn get_count_by_aes_hex_email(&mut self, v: impl Into<String>) -> Result<i64> {
         self.q.w().pred("aes_hex_email", "eq", v.into());
@@ -2402,6 +2458,8 @@ impl Battle {
     pub async fn avg_service_member_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_member_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
     pub async fn sum_like_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
     pub async fn avg_like_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
+    pub async fn sum_aes_key_version(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "aes_key_version".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
+    pub async fn avg_aes_key_version(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "aes_key_version".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
     pub async fn sum_price(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
     pub async fn avg_price(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
     pub async fn count_distinct_seq(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }

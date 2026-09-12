@@ -497,6 +497,7 @@ impl ServiceMember {
     pub fn if_parent_uuid_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("uuid", v.into()); self }
     pub fn if_parent_is_single_play_eq(mut self, v: bool) -> Self { self.q.if_parent("is_single_play", v); self }
     pub fn if_parent_like_count_eq(mut self, v: i64) -> Self { self.q.if_parent("like_count", v); self }
+    pub fn if_parent_aes_key_version_eq(mut self, v: i32) -> Self { self.q.if_parent("aes_key_version", v); self }
     pub fn if_parent_aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_email", v.into()); self }
     pub fn if_parent_aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_phone", v.into()); self }
 

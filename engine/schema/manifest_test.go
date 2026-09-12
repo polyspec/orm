@@ -34,6 +34,9 @@ func TestBuildExample(t *testing.T) {
 	if c := b.Column("description"); c.Type != "text" || !c.Lazy || !c.Nullable {
 		t.Errorf("description: %+v", c)
 	}
+	if c := b.Column("aes_key_version"); c == nil || c.Type != "i32" || c.Nullable {
+		t.Errorf("aes_key_version: %+v", c)
+	}
 	if c := b.Column("aes_hex_email"); c.Type != "string" || c.Len != 255 || c.Lazy || strings.Join(c.Styles, ",") != "aes,hex" {
 		t.Errorf("aes_hex_email: %+v", c)
 	}
@@ -108,13 +111,20 @@ func TestAllowedColumnNames(t *testing.T) {
 
 func TestScopeDirectiveRequiresNonNullTenantColumn(t *testing.T) {
 	good := mustBuild(t, "erDiagram\n tenant {\n bigint id PK \"auto\"\n bigint account_id\n }\n %% scope tenant account_id\n")
-	if got := good.Entities["tenant"].Scope; got != "account_id" { t.Fatalf("scope = %q", got) }
+	if got := good.Entities["tenant"].Scope; got != "account_id" {
+		t.Fatalf("scope = %q", got)
+	}
 	for _, src := range []string{
 		"erDiagram\n tenant {\n bigint id PK \"auto\"\n bigint account_id \"?\"\n }\n %% scope tenant account_id\n",
 		"erDiagram\n tenant {\n bigint id PK \"auto\"\n text account_id\n }\n %% scope tenant account_id\n",
 	} {
-		d, err := Parse(src); if err != nil { t.Fatal(err) }
-		if _, err := Build(d); err == nil { t.Fatalf("scope validation accepted: %s", src) }
+		d, err := Parse(src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Build(d); err == nil {
+			t.Fatalf("scope validation accepted: %s", src)
+		}
 	}
 }
 
