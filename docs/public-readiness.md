@@ -26,7 +26,7 @@ Each item requires:
   - [x] P8.4c Generated insert/update/delete/save/paginate operations pass physical MySQL, PostgreSQL, and SQLite tests in all four clients, including rollback and rows that share a key component. CI runs the same scenario through `scripts/client-db-test.sh`.
 - [x] P8.5 Public encryption uses authenticated, versioned ciphertext in every client. Reads select the hidden row key version, mixed-version reads work, tampering fails, and rotation processes bounded resumable batches for every AES column in a row. Go, PHP, Rust, and TypeScript pass codec tamper vectors and physical rotation tests.
 - [x] P8.6 Equality search on encrypted data requires an explicit blind-index column. The runtime accepts only authenticated AES v2 ciphertext. Go, PHP, Rust, and TypeScript pass MySQL, PostgreSQL, and SQLite integration tests.
-- [ ] P8.7 Relation and `IN` parameters respect each database limit through deterministic chunking and preserve row order, key types, relation attachment, and errors.
+- [x] P8.7 Relation and root positive `IN` parameters respect each database limit through deterministic chunking and preserve non-`IN` parameters, row results, relation attachment, and count results. Unsafe ordering, limiting, grouping, distinct, keyset, and `NOT IN` shapes return `IR_INVALID`.
 - [x] P8.8 Plan and prepared-statement caches have configurable bounds, deterministic eviction, close behavior, and pressure tests in all clients. Go, PHP, Rust, and TypeScript tests verify plan eviction, statement eviction, and close behavior; PHP physical SQLite integration passes the same checks.
 
 ## P9: common ORM operations
@@ -50,14 +50,14 @@ Each item requires:
 - [ ] P10.5 Physical MySQL, PostgreSQL, and SQLite tests cover parameter limits, all migration operations, batch writes, keyset pagination, transaction modes, and encryption changes through containerctl without `-state`.
 - [ ] P10.6 Go, PHP, Rust, and TypeScript produce identical common-vector results and compatible public structures for every added operation.
 
-## P11: excluded repository and package work
+## P11: source and package verification
 
-This section is outside the current implementation scope. Package publication, release creation, public repository preparation, and manual Pages deployment are excluded. Product documentation and automated functional checks remain in scope under P8-P10.
+Package publication, release creation, public repository preparation, and manual Pages deployment are excluded. Source documentation, package metadata, and local package checks remain in scope.
 
-- [ ] P11.1 Correct stale or false README and manual statements and add `README.ko.md`.
-- [ ] P11.2 Add security reporting, contribution, conduct, and change-history documents with paired Korean files where the content is user-facing.
-- [ ] P11.3 Complete package names, descriptions, licenses, repository links, runtime requirements, included files, and generated-artifact rules.
-- [ ] P11.4 Verify `npm pack`, Composer validation and package contents, `cargo package`, and an external temporary Go module without publishing.
+- [x] P11.1 Correct stale or false README and manual statements and provide `README.ko.md`.
+- [x] P11.2 Add security reporting, contribution, conduct, and change-history documents with paired Korean files where the content is user-facing.
+- [x] P11.3 Complete package names, descriptions, licenses, repository links, runtime requirements, included files, and generated-artifact rules.
+- [x] P11.4 Verify the TypeScript package with `npm pack`, Composer metadata, the Rust `orm` crate with `cargo package`, and an external temporary Go module without publishing.
 - [ ] P11.5 CI runs document rules, generated drift, interface checks, red-test regressions, physical database tests, package checks, and the full test suite.
 
 ## Completion

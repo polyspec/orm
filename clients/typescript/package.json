@@ -1,6 +1,13 @@
 {
   "name": "@polyspec/orm-typescript",
   "version": "0.0.1",
+  "description": "TypeScript executor for the shared orm compiler and database plans",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/polyspec/orm.git"
+  },
+  "keywords": ["orm", "mysql", "postgres", "sqlite", "protobuf", "connect"],
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
