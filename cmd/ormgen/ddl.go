@@ -153,7 +153,7 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 			}
 			if dialect == "postgres" {
 				sb.WriteString("COMMENT ON COLUMN " + q(e.Table) + "." + q(c.Name) + " IS '" + sqlQuote(c.Comment) + "';\n")
-			} else {
+			} else if dialect == "sqlite" {
 				sb.WriteString("INSERT OR REPLACE INTO orm_schema_comments (table_name, column_name, comment) VALUES ('" + sqlQuote(e.Table) + "', '" + sqlQuote(c.Name) + "', '" + sqlQuote(c.Comment) + "');\n")
 			}
 		}
