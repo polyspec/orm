@@ -1,6 +1,6 @@
 package orm
 
-// Column-style codecs (docs/codec.md): json/jsons, serialize, base64, gz.
+// Column-style codecs (docs/codec.md): json/jsons, serialize, base64, gz, curlfile, yaml.
 // Styles are listed in write order; Decode applies them in reverse.
 
 import (
@@ -17,6 +17,7 @@ import (
 
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/plan"
+	goyaml "go.yaml.in/yaml/v3"
 )
 
 func codecErr(code, format string, a ...any) error {
@@ -79,6 +80,11 @@ func Decode(styles []string, raw any) (any, error) {
 			if err != nil {
 				return nil, err
 			}
+		case "yaml":
+			v, err = yamlDecode(cur)
+			if err != nil {
+				return nil, err
+			}
 		case "json", "jsons":
 			v, err = jsonDecode(cur)
 			if err != nil {
@@ -121,6 +127,18 @@ func Encode(styles []string, v any) (any, error) {
 				return nil, err
 			}
 			cur = []byte(sb.String())
+		case "yaml":
+			if i != 0 {
+				return nil, codecErr(CodeCodecUnsupported, "yaml must be the first style")
+			}
+			var err error
+			cur, err = goyaml.Marshal(value)
+			if err != nil {
+				return nil, codecErr(CodeCodecEncode, "yaml: %v", err)
+			}
+			if _, err := yamlDecode(cur); err != nil {
+				return nil, codecErr(CodeCodecEncode, "yaml: encoded value is outside the common value model: %v", err)
+			}
 		case "json", "jsons":
 			if i != 0 {
 				return nil, codecErr(CodeCodecUnsupported, "json must be the first style")
@@ -145,6 +163,104 @@ func Encode(styles []string, v any) (any, error) {
 		}
 	}
 	return string(cur), nil
+}
+
+func yamlDecode(b []byte) (any, error) {
+	dec := goyaml.NewDecoder(bytes.NewReader(b))
+	var doc goyaml.Node
+	if err := dec.Decode(&doc); err != nil {
+		return nil, codecErr(CodeCodecDecode, "yaml: %v", err)
+	}
+	var extra goyaml.Node
+	if err := dec.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return nil, codecErr(CodeCodecDecode, "yaml: multiple documents are not supported")
+		}
+		return nil, codecErr(CodeCodecDecode, "yaml: %v", err)
+	}
+	return yamlNode(&doc)
+}
+
+func yamlNode(node *goyaml.Node) (any, error) {
+	switch node.Kind {
+	case goyaml.DocumentNode:
+		if len(node.Content) != 1 {
+			return nil, codecErr(CodeCodecDecode, "yaml: document must contain one value")
+		}
+		return yamlNode(node.Content[0])
+	case goyaml.SequenceNode:
+		out := make([]any, len(node.Content))
+		for i, item := range node.Content {
+			var err error
+			out[i], err = yamlNode(item)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return out, nil
+	case goyaml.MappingNode:
+		out := make(map[string]any, len(node.Content)/2)
+		for i := 0; i < len(node.Content); i += 2 {
+			key, err := yamlMapKey(node.Content[i])
+			if err != nil {
+				return nil, err
+			}
+			if _, exists := out[key]; exists {
+				return nil, codecErr(CodeCodecDecode, "yaml: duplicate map key %q at line %d", key, node.Content[i].Line)
+			}
+			value, err := yamlNode(node.Content[i+1])
+			if err != nil {
+				return nil, err
+			}
+			out[key] = value
+		}
+		return out, nil
+	case goyaml.ScalarNode:
+		switch node.Tag {
+		case "!!null":
+			return nil, nil
+		case "!!bool":
+			return strings.EqualFold(node.Value, "true"), nil
+		case "!!int":
+			var value int64
+			if err := node.Decode(&value); err != nil {
+				return nil, codecErr(CodeCodecDecode, "yaml: integer at line %d: %v", node.Line, err)
+			}
+			return value, nil
+		case "!!float":
+			var value float64
+			if err := node.Decode(&value); err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
+				return nil, codecErr(CodeCodecDecode, "yaml: non-finite or invalid float at line %d", node.Line)
+			}
+			return value, nil
+		case "!!str":
+			return node.Value, nil
+		default:
+			return nil, codecErr(CodeCodecDecode, "yaml: tag %q at line %d", node.Tag, node.Line)
+		}
+	case goyaml.AliasNode:
+		return nil, codecErr(CodeCodecDecode, "yaml: aliases are not supported at line %d", node.Line)
+	default:
+		return nil, codecErr(CodeCodecDecode, "yaml: node kind %d is not supported", node.Kind)
+	}
+}
+
+func yamlMapKey(node *goyaml.Node) (string, error) {
+	if node.Kind != goyaml.ScalarNode {
+		return "", codecErr(CodeCodecDecode, "yaml: map keys must be scalar strings at line %d", node.Line)
+	}
+	switch node.Tag {
+	case "!!str":
+		return node.Value, nil
+	case "!!int":
+		var value int64
+		if err := node.Decode(&value); err != nil {
+			return "", codecErr(CodeCodecDecode, "yaml: map key integer at line %d: %v", node.Line, err)
+		}
+		return strconv.FormatInt(value, 10), nil
+	default:
+		return "", codecErr(CodeCodecDecode, "yaml: map keys must be strings or integers at line %d", node.Line)
+	}
 }
 
 func prepareUploadFiles(v any) (any, error) {

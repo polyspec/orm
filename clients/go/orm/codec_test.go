@@ -110,6 +110,12 @@ func TestCodecErrors(t *testing.T) {
 		{[]string{"serialize"}, "a:1:{i:0;", "CODEC_DECODE"},
 		{[]string{"serialize", "gz"}, "not zlib", "CODEC_DECODE"},
 		{[]string{"serialize", "base64"}, "@@@", "CODEC_DECODE"},
+		{[]string{"yaml"}, "a: 1\na: 2\n", "CODEC_DECODE"},
+		{[]string{"yaml"}, "---\na: 1\n---\na: 2\n", "CODEC_DECODE"},
+		{[]string{"yaml"}, "a: &x [1]\nb: *x\n", "CODEC_DECODE"},
+		{[]string{"yaml"}, "a: !custom value\n", "CODEC_DECODE"},
+		{[]string{"yaml"}, "value: .inf\n", "CODEC_DECODE"},
+		{[]string{"yaml"}, "true: value\n", "CODEC_DECODE"},
 	} {
 		_, err := Decode(c.styles, c.raw)
 		if err == nil || err.Error()[:len(c.code)] != c.code {
@@ -118,6 +124,9 @@ func TestCodecErrors(t *testing.T) {
 	}
 	if s, _ := Encode([]string{"serialize"}, map[string]any{"07": 1, "-3": 2, "10": 3, "x": 4.0, "y": 1e25}); s != `a:5:{i:-3;i:2;s:2:"07";i:1;i:10;i:3;s:1:"x";d:4;s:1:"y";d:1.0E+25;}` {
 		t.Errorf("php keys/floats: %s", s)
+	}
+	if got, err := Decode([]string{"yaml"}, "1: value\n"); err != nil || canon(t, got) != `{"1":"value"}` {
+		t.Errorf("yaml integer key: %v (%v)", got, err)
 	}
 	for name, operation := range map[string]func() error{
 		"invalid public upload file": func() error {
@@ -130,6 +139,10 @@ func TestCodecErrors(t *testing.T) {
 		},
 		"invalid curlfile order": func() error {
 			_, err := Encode([]string{"serialize", "curlfile"}, map[string]any{})
+			return err
+		},
+		"invalid yaml order": func() error {
+			_, err := Encode([]string{"serialize", "yaml"}, map[string]any{})
 			return err
 		},
 	} {

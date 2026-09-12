@@ -9,7 +9,7 @@
 - **S1 완료:** 엔진, 생성기, 3개 클라이언트, 적합성 하네스, `ormgen tokens`, 데모를 구현했다.
 - **S2는 T2.15를 제외하고 완료:** 관계·코덱·타입·58개 벡터 검사를 통과했다. 150테이블 Rust fixture가 남아 있다.
 - **S3~S6 완료:** 쓰기, 조인, PHP 호환층, 배포, PostgreSQL, SQLite를 구현했다. TypeScript 실행과 고정 비용 최적화는 미완료다.
-- 현재 적합성 범위는 **58개 벡터 × 3개 클라이언트 × 3개 데이터베이스**다. 코덱 범위는 Go·PHP·Rust·TypeScript의 80개 벡터다. TypeScript 데이터베이스 실행은 미완료다.
+- 현재 적합성 범위는 **58개 벡터 × 3개 클라이언트 × 3개 데이터베이스**다. 코덱 범위는 Go·PHP·Rust·TypeScript의 96개 벡터다. TypeScript 데이터베이스 실행은 미완료다.
 
 ## 공통 인터페이스 검사
 
@@ -84,10 +84,10 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 - [ ] T7.1 4개 클라이언트의 typed protobuf/Connect 경로와 공통 벡터를 구현한다.
 - [x] T7.3 결정적인 `ormgen diff`와 destructive change 검사를 구현한다.
 - [~] T7.4 `scope` 검사와 생성 메서드를 구현했다. IR 적용, tenant isolation DB 검사, TypeScript 실행이 남아 있다.
-- [~] T7.5 공통 재귀 `curlfile` 값과 공통 코덱 벡터 80개를 구현했다. `point`와 `yaml`이 남아 있다.
+- [~] T7.5 공통 `curlfile`과 YAML 1.2 코덱, 공통 벡터 96개, 잘못된 입력 검사를 구현했다. `point`가 남아 있다.
 - [ ] T7.6 서버 streaming, 취소, 오류, 행 소유권 검사를 구현한다.
 - [x] T7.7 결정적인 정적 query precompile과 schema-hash 검사를 구현한다.
-- [~] T7.8 TypeScript 구조·AST 검사를 구현했다. 타입 검사, 패키지 빌드, AST 검사, `interface_attach`, 공통 codec 벡터 80개가 통과하며 전체 TypeScript 실행기와 데이터베이스 벡터 실행이 남아 있다.
+- [~] T7.8 TypeScript 구조·AST 검사를 구현했다. 타입 검사, 패키지 빌드, AST 검사, `interface_attach`, 공통 codec 벡터 96개가 통과하며 전체 TypeScript 실행기와 데이터베이스 벡터 실행이 남아 있다.
 - [ ] T7.9 Rust `mysql_async`와 현행 driver 결과를 비교하고 기록한다.
 - [ ] T7.10 `multi_statement` 관계 계획과 결과를 구현·검사한다.
 - [ ] T7.11 Go·PHP typed 직접 스캔과 성능 기준 재측정을 구현한다.

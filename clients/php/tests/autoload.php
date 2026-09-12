@@ -2,6 +2,10 @@
 declare(strict_types=1);
 // Test autoloader: Orm\ → clients/php/src, App\Orm\ → clients/php/gen. Composer replaces this in S5.
 $root = dirname(__DIR__, 3);
+$composer = "$root/clients/php/vendor/autoload.php";
+if (is_file($composer)) {
+    require_once $composer;
+}
 spl_autoload_register(function (string $class) use ($root): void {
     $map = ['Orm\\' => "$root/clients/php/src/", 'App\\Orm\\' => "$root/clients/php/gen/"];
     foreach ($map as $prefix => $dir) {

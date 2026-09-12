@@ -44,7 +44,9 @@ jobs:
           node-version: "22"
           cache: npm
       - name: install Node dependencies
-        run: npm ci
+        run: |
+          npm ci
+          npm ci --prefix clients/typescript
       - uses: dtolnay/rust-toolchain@stable
       # sqlx and wasmtime are most of the build; without this the job spends ~6 of its 9 minutes compiling them again
       - uses: Swatinem/rust-cache@v2
@@ -57,6 +59,8 @@ jobs:
           php-version: "8.4"
           extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, apcu, msgpack
           ini-values: apc.enable_cli=1
+      - name: install PHP dependencies
+        run: composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
       - name: load bench schema (mysql, postgres, sqlite)
         run: |
           mysql -h 127.0.0.1 -uroot orm_bench < bench/sql/battle.sql
@@ -91,7 +95,7 @@ jobs:
       - name: common interfaces and native structure
         run: go run ./tests/interfaces/check --self-test
       - name: hot-path regression gate
-        run: go test ./bench/go -run TestHotPathGate -v
+        run: ORM_RUN_PERF_GATE=1 go test ./bench/go -run TestHotPathGate -count=1 -v
       - name: rust client
         run: cd clients/rust && cargo build --release && cargo test --release -p orm && ./target/release/integration ../../bin/ormengine.wasm ../../schema/schema.json
       - name: rust 150-table generation

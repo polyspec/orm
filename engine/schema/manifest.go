@@ -329,6 +329,8 @@ func buildColumn(dc *DColumn) (*Col, error) {
 			c.Styles = []string{"jsons"}
 		case strings.HasPrefix(dc.Name, "json_"):
 			c.Styles = []string{"json"}
+		case strings.HasPrefix(dc.Name, "yaml_"):
+			c.Styles = []string{"yaml"}
 		case strings.HasPrefix(dc.Name, "base64_"):
 			c.Styles = []string{"serialize", "base64"}
 		case strings.HasPrefix(dc.Name, "serialize_"):

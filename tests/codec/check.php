@@ -50,6 +50,13 @@ $errors = [
     ['invalid public upload file', fn() => Codec::encode(['curlfile', 'serialize'], ['$type' => 'upload_file', 'path' => '', 'mime' => 'text/plain', 'name' => 'a.txt']), Code::CODEC_ENCODE],
     ['invalid stored upload file', fn() => Codec::decode(['curlfile', 'serialize'], 'a:4:{s:12:"is_curl_file";b:1;s:4:"mime";s:10:"text/plain";s:4:"name";s:5:"a.txt";s:4:"path";s:0:"";}'), Code::CODEC_DECODE],
     ['invalid curlfile order', fn() => Codec::encode(['serialize', 'curlfile'], []), Code::CODEC_UNSUPPORTED],
+    ['duplicate YAML key', fn() => Codec::decode(['yaml'], "a: 1\na: 2\n"), Code::CODEC_DECODE],
+    ['multiple YAML documents', fn() => Codec::decode(['yaml'], "---\na: 1\n---\na: 2\n"), Code::CODEC_DECODE],
+    ['YAML alias', fn() => Codec::decode(['yaml'], "a: &x [1]\nb: *x\n"), Code::CODEC_DECODE],
+    ['YAML custom tag', fn() => Codec::decode(['yaml'], "a: !custom value\n"), Code::CODEC_DECODE],
+    ['YAML non-finite number', fn() => Codec::decode(['yaml'], "value: .inf\n"), Code::CODEC_DECODE],
+    ['YAML boolean map key', fn() => Codec::decode(['yaml'], "true: value\n"), Code::CODEC_DECODE],
+    ['invalid YAML order', fn() => Codec::encode(['serialize', 'yaml'], []), Code::CODEC_UNSUPPORTED],
 ];
 foreach ($errors as [$name, $operation, $code]) {
     try {
@@ -62,6 +69,10 @@ foreach ($errors as [$name, $operation, $code]) {
             fwrite(STDERR, "$name: {$e->code_} want $code\n");
         }
     }
+}
+if ($canon(Codec::decode(['yaml'], "1: value\n")) !== '{"1":"value"}') {
+    $fail++;
+    fwrite(STDERR, "YAML integer map key: expected string key\n");
 }
 $langs = 0;
 foreach (glob("$root/out/*.json") as $file) {

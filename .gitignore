@@ -18,6 +18,8 @@
 # reports produced by `ormgen check` name files in the codebase being scanned; they belong there, not here
 /docs/check-*.txt
 /node_modules/
+/clients/typescript/node_modules/
+/clients/php/vendor/
 /docs/.vitepress/cache/
 /docs/.vitepress/dist/
 /docs/.vitepress/generated/

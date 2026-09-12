@@ -1,4 +1,5 @@
 import { deflateSync, inflateSync } from 'node:zlib';
+import { isScalar, parseDocument, stringify as stringifyYaml, visit } from 'yaml';
 
 export type UploadFileValue = { $type: 'upload_file'; path: string; mime: string; name: string };
 export type CodecValue = null | boolean | number | string | CodecValue[] | { [key: string]: CodecValue };
@@ -59,6 +60,9 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
       case 'serialize':
         value = new PhpParser(current).parse();
         break;
+      case 'yaml':
+        value = decodeYaml(current);
+        break;
       case 'json':
       case 'jsons':
         try {
@@ -89,6 +93,14 @@ export function encode(styles: readonly string[], value: CodecValue): EncodedVal
         if (index !== 0 && !(index === 1 && styles[0] === 'curlfile')) throw new CodecError('CODEC_UNSUPPORTED', 'serialize must be the first encoding style');
         current = utf8.encode(phpSerialize(transformed));
         break;
+      case 'yaml':
+        if (index !== 0) throw new CodecError('CODEC_UNSUPPORTED', 'yaml must be the first style');
+        try {
+          current = utf8.encode(stringifyYaml(validateCodecValue(transformed, 'yaml encode'), { version: '1.2', schema: 'core', sortMapEntries: true }));
+        } catch (error) {
+          throw new CodecError('CODEC_ENCODE', `yaml: ${String(error)}`);
+        }
+        break;
       case 'json':
       case 'jsons':
         if (index !== 0) throw new CodecError('CODEC_UNSUPPORTED', 'json must be the first style');
@@ -113,6 +125,38 @@ export function encode(styles: readonly string[], value: CodecValue): EncodedVal
     }
   }
   return string(current, 'encode');
+}
+
+function decodeYaml(current: Uint8Array): CodecValue {
+  try {
+    const document = parseDocument(string(current, 'decode'), { version: '1.2', schema: 'core', strict: true, uniqueKeys: true, stringKeys: true });
+    if (document.errors.length > 0) throw document.errors[0];
+    if (document.warnings.length > 0) throw document.warnings[0];
+    visit(document, {
+      Pair(_key, pair) {
+        if (!isScalar(pair.key) || typeof pair.key.value !== 'string') throw new Error('map keys must be scalar strings');
+        if (pair.key.type === 'PLAIN' && /^(?:true|false|null|~|[-+]?(?:\d+\.\d*|\.\d+)(?:e[-+]?\d+)?|[-+]?\d+e[-+]?\d+|[-+]?\.(?:inf|nan))$/i.test(pair.key.source ?? '')) {
+          throw new Error('plain boolean, null, and floating-point map keys are not supported');
+        }
+      },
+    });
+    return validateCodecValue(document.toJS({ maxAliasCount: 0 }), 'yaml decode');
+  } catch (error) {
+    throw new CodecError('CODEC_DECODE', `yaml: ${String(error)}`);
+  }
+}
+
+function validateCodecValue(value: unknown, operation: string): CodecValue {
+  if (value === null || typeof value === 'boolean' || typeof value === 'string') return value;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value))) throw new Error(`${operation}: number is outside the supported range`);
+    return value;
+  }
+  if (Array.isArray(value)) return value.map(item => validateCodecValue(item, operation));
+  if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, validateCodecValue(item, operation)]));
+  }
+  throw new Error(`${operation}: value type is not supported`);
 }
 
 function prepareUploadFiles(value: CodecValue): CodecValue {
