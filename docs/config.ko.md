@@ -1,7 +1,6 @@
-# `orm.toml` — one declared configuration for four clients (S5 T5.5)
+# `orm.toml` — 네 클라이언트의 선언 설정 (S5 T5.5)
 
-Every path is absolute and declared; nothing is discovered, no symlinks, no fallbacks. A missing
-or relative path is a startup error (`CONFIG`).
+모든 경로는 절대 경로로 선언한다. 자동 검색, symlink, 폴백을 사용하지 않는다. 경로가 없거나 상대 경로이면 시작 단계에서 `CONFIG` 오류를 반환한다.
 
 ```toml
 schema = "/srv/app/schema/schema.json"      # the manifest the client was generated from; its schema_hash is checked once at startup
@@ -34,12 +33,6 @@ socket = "/run/orm/ormd.sock"
 on_query = false            # log every statement (sql, binds with secrets masked, duration, plan id)
 ```
 
-Checks at startup (all four): `schema` exists and its `schema_hash` equals the generated client's
-(`SCHEMA_HASH_MISMATCH` otherwise — no watching, no reload); `ormd`/`engine` paths exist and are absolute;
-`secrets.aes` or `aes_env` present when the schema has aes columns; `[db].user/password` only with mysql DSNs (other drivers carry the user in the URL); the daemon/engine dialect must equal `[db].driver` (`CONFIG` otherwise).
+시작 시 네 클라이언트는 `schema` 존재 여부와 생성 클라이언트의 `schema_hash` 일치를 검사한다. 불일치이면 `SCHEMA_HASH_MISMATCH`를 반환하고 감시와 재로드를 수행하지 않는다. `ormd`와 `engine` 경로는 절대 경로이며 실제 파일 또는 디렉터리여야 한다. AES 컬럼이 있으면 `secrets.aes` 또는 `aes_env`가 필요하다. `[db].user/password`는 MySQL DSN에서만 사용한다. 다른 driver는 URL에 사용자를 지정한다. daemon 또는 engine의 방언은 `[db].driver`와 같아야 한다. 위반 시 `CONFIG`를 반환한다.
 
-`fromConfig` opens the configured database; it does not install a default query connection.
-Select it for a root query with Go `Using(ctx, db)`, PHP `using($db)`, or Rust `using(&db)`.
-A transaction is bound the same way. All relation steps and loaded rows use that root binding.
-Terminals such as `getCountByServiceSeq(7)` take only values. Unbound execution and reuse of a
-finished transaction return `CONFIG`; rebind to an active handle before executing again.
+`fromConfig`는 설정된 데이터베이스를 열지만 기본 query 연결을 설치하지 않는다. 루트 query에 Go는 `Using(ctx, db)`, PHP는 `using($db)`, Rust는 `using(&db)`를 사용한다. relation 단계와 로드된 row는 루트 연결을 사용한다. `getCountByServiceSeq(7)` 같은 terminal에는 값만 전달한다. 연결하지 않은 실행과 종료된 transaction의 재사용은 `CONFIG`를 반환한다.
