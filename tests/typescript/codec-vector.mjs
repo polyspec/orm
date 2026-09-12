@@ -78,6 +78,14 @@ for (const vector of aesVectors) {
   const fixedDecoded = hostDecode(vector.envelope_hex, ['aes', 'hex'], vector.key);
   if (fixedDecoded !== vector.plain) { console.error(`aes fixed vector: ${fixedDecoded} want ${vector.plain}`); failures++; }
 }
+{
+  const encoded = hostEncode('tamper@example.test', ['aes'], 'tamper-key');
+  const tampered = new Uint8Array(encoded);
+  tampered[tampered.length - 1] ^= 1;
+  let rejected = false;
+  try { hostDecode(tampered, ['aes'], 'tamper-key'); } catch (error) { rejected = error?.code === 'CODEC_DECODE'; }
+  if (!rejected) { console.error('tampered AES ciphertext was accepted'); failures++; }
+}
 for (const address of ['10.1.2.3', '2001:db8::1', '::1', '::ffff:10.1.2.3']) {
   const encoded = hostEncode(address, ['ip'], '');
   const decoded = hostDecode(encoded, ['ip'], '');
