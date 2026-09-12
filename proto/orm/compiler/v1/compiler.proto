@@ -6,6 +6,7 @@ option go_package = "github.com/polyspec/orm/proto/orm/compiler/v1;compilerv1";
 
 service CompilerService {
   rpc Compile(CompileRequest) returns (CompileResponse);
+  rpc GetMetadata(GetMetadataRequest) returns (GetMetadataResponse);
 }
 
 message CompileRequest {
@@ -18,6 +19,8 @@ message CompileRequest {
   Optimistic optimistic = 7;
   Raw raw = 8;
   uint32 parameter_count = 9;
+  string aggregate = 10;
+  bool debug = 11;
 }
 
 enum QueryKind {
@@ -58,29 +61,42 @@ message QueryNode {
   IfParent if_parent = 17;
   bool drop_child_key = 18;
   bool no_cascade_delete = 19;
+  optional uint32 scope_parameter = 20;
 }
 
 message Projection {
-  enum Mode { MODE_DEFAULT = 0; MODE_ALL = 1; MODE_NONE = 2; }
+  enum Mode {
+    MODE_DEFAULT = 0;
+    MODE_ALL = 1;
+    MODE_NONE = 2;
+  }
   Mode mode = 1;
   repeated string add = 2;
   repeated string remove = 3;
   map<string, string> aliases = 4;
   map<string, string> expressions = 5;
 }
+
 message Join { string relation = 1; string kind = 2; QueryNode query = 3; }
 message Relation { string relation = 1; QueryNode query = 2; }
-message Group { repeated Item items = 1; }
-message Item { string connector = 1; Predicate predicate = 2; Group group = 3; Navigation navigation = 4; }
-message Navigation { string relation = 1; Group group = 2; }
+message Group { string connector = 1; repeated Item items = 2; }
+message Item {
+  oneof value {
+    Predicate predicate = 1;
+    Group group = 2;
+    Navigation navigation = 3;
+  }
+}
+message Navigation { string connector = 1; string relation = 2; Group group = 3; }
 message Predicate {
-  string column = 1;
-  string operator = 2;
-  optional uint32 parameter = 3;
-  repeated uint32 parameters = 4;
-  ColumnReference reference = 5;
-  string expression = 6;
-  repeated string match_columns = 7;
+  string connector = 1;
+  string column = 2;
+  string operator = 3;
+  optional uint32 parameter = 4;
+  repeated uint32 parameters = 5;
+  ColumnReference reference = 6;
+  string expression = 7;
+  repeated string match_columns = 8;
 }
 message ColumnReference { string path = 1; string column = 2; }
 message Order { string column = 1; string expression = 2; bool descending = 3; }
@@ -98,8 +114,57 @@ message Assignment {
 }
 message Optimistic { string column = 1; uint32 parameter = 2; }
 message Raw { string sql = 1; repeated uint32 parameters = 2; }
-message CompileResponse { Plan plan = 1; CompileError error = 2; }
-message Plan { repeated PlanStep steps = 1; }
-message PlanStep { string role = 1; string sql = 2; repeated BindSlot binds = 3; }
-message BindSlot { string name = 1; string transform = 2; bool secret = 3; }
+
+message CompileResponse {
+  oneof result {
+    Plan plan = 1;
+    CompileError error = 2;
+  }
+}
+message Plan { string schema_hash = 1; QueryKind kind = 2; repeated PlanStep steps = 3; }
+message PlanStep {
+  uint32 id = 1;
+  string role = 2;
+  string sql = 3;
+  repeated BindSlot binds = 4;
+  Assemble assemble = 5;
+  ParentReference parent = 6;
+}
+message BindSlot {
+  string source = 1;
+  uint32 parameter = 2;
+  string transform = 3;
+  string name = 4;
+  uint32 step = 5;
+  string column = 6;
+  repeated string host_styles = 7;
+  string column_type = 8;
+}
+message ParentReference { uint32 step = 1; string column = 2; uint32 index = 3; ParentCondition if_parent = 4; }
+message ParentCondition { string column = 1; uint32 index = 2; uint32 parameter = 3; }
+message Assemble { string entity = 1; string alias = 2; repeated OutputColumn columns = 3; repeated Child children = 4; }
+message OutputColumn {
+  uint32 index = 1;
+  string name = 2;
+  string column = 3;
+  string type = 4;
+  repeated string styles = 5;
+  bool hidden = 6;
+}
+message Child {
+  string relation = 1;
+  string kind = 2;
+  uint32 step = 3;
+  string parent_column = 4;
+  uint32 parent_index = 5;
+  string child_column = 6;
+  uint32 child_index = 7;
+  string key_by = 8;
+  uint32 key_index = 9;
+  bool flatten = 10;
+  bool cascade = 11;
+  Assemble assemble = 12;
+}
 message CompileError { string code = 1; string message = 2; }
+message GetMetadataRequest {}
+message GetMetadataResponse { string schema_hash = 1; string dialect = 2; uint32 ir_version = 3; }

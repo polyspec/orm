@@ -24,6 +24,10 @@ path = "../../../examples/complex/rust/main.rs"
 name = "demo"
 path = "../../../examples/thin-slice/rust/main.rs"
 
+[[bin]]
+name = "compiler_connect"
+path = "src/compiler_connect.rs"
+
 [dependencies]
 orm = { path = "../orm" }
 gen = { path = "../gen" }

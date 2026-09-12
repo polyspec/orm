@@ -20,6 +20,7 @@
     "typescript:vector": "npm run typescript:build && node tests/typescript/common-vector.mjs"
   },
   "devDependencies": {
+    "@bufbuild/protoc-gen-es": "^2.15.0",
     "@types/node": "22.20.2",
     "markdown-it": "14.1.0",
     "mermaid": "11.17.2",

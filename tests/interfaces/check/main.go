@@ -81,7 +81,8 @@ func main() {
 	diagram, err := contracts.Diagram()
 	must(err)
 	diagramPath := filepath.Join(abs, "docs/interfaces-model.md")
-	koDiagram := bytes.Replace(diagram, []byte("# Common components\n"), []byte("# 공통 구성요소\n"), 1)
+	koDiagram, err := contracts.DiagramKO()
+	must(err)
 	koDiagramPath := filepath.Join(abs, "docs/interfaces-model.ko.md")
 	if *generate {
 		must(os.WriteFile(diagramPath, diagram, 0644))

@@ -1,6 +1,6 @@
 # 공통 구성요소
 
-<!-- Generated from contracts/interfaces.json; DO NOT EDIT. -->
+<!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
 
 ```mermaid
 classDiagram
@@ -141,6 +141,10 @@ classDiagram
     class Compiler {
         compile()
     }
+    class CompilerTransport {
+        compile()
+        metadata()
+    }
     class Plan {
         QueryKind kind
         Text schemaHash
@@ -172,52 +176,77 @@ classDiagram
         Text code
         Text message
     }
-    Query *-- Request : owns
-    Query *-- Binding : owns
-    Where --> Request : borrows
-    Request *-- RequestIR : owns
-    RequestIR *-- QueryNode : root
-    QueryNode *-- QueryNode : child snapshots
-    Binding --> Executor : resolves
+    Query *-- Request : stores request
+    Query *-- Binding : stores binding
+    Where --> Request : references request
+    Request *-- RequestIR : stores IR
+    RequestIR *-- QueryNode : contains root
+    QueryNode *-- QueryNode : contains child nodes
+    Binding --> Executor : selects executor
     Db ..|> Executor : implements
     Tx ..|> Executor : implements
-    Tx --> Db : database
-    Row *-- Binding : inherits root execution
-    Row *-- Collection : many relations
-    Collection o-- Row : ordered values
-    Page *-- Collection : items
-    Compiler --> Plan : produces
-    Plan *-- Step : ordered steps
-    Step *-- Assemble : projection
-    ExecutionRows --> Plan : immutable plan
-    ExecutionRows *-- Binding : root binding
+    Tx --> Db : uses database
+    Row *-- Binding : uses root binding
+    Row *-- Collection : contains relations
+    Collection o-- Row : contains ordered rows
+    Page *-- Collection : contains items
+    Compiler --> Plan : returns
+    Plan *-- Step : contains ordered steps
+    Step *-- Assemble : maps results
+    ExecutionRows --> Plan : uses plan
+    ExecutionRows *-- Binding : uses binding
+    CompilerTransport --> Compiler : calls
 ```
 
-| 구성요소 | 책임·소유 규칙 |
+| 구성요소 | 동작 및 상태 |
 |---|---|
-| Query | Owns mutable query state; never represents a loaded row. |
-| LinkSelection | Belongs to the child Query until relation or join consumes it. |
-| Where | Borrow is scoped to its callback; cannot execute SQL. |
-| Request | attach snapshots all child state and shifts only the snapshot. |
-| RequestIR | Value-free compiler input. |
-| QueryNode | Owned condition tree, including nested child nodes. |
-| Binding | Independent of request IR; does not select ambient transactions. |
-| Executor | Adapter interface for the concrete database and pinned transaction executors. |
-| Db | Owns connections and caches, never query predicates or row values. |
-| Tx | Completion invalidates every retained bound query and row. |
-| Row | Loaded identity, local values and pending changes have distinct roles. |
-| Collection | Equal keys replace in place. Integer and string keys remain distinct. |
-| Page | per is positive and total is independent of page range. |
-| Compiler | Accepts RequestIR and returns immutable Plan; has no executor. |
-| Plan | Cached and immutable while executing. |
-| Step | Executes in plan order. |
-| Assemble | Maps positional values to rows and relation attachments. |
-| ExecutionRows | Rows inherit the root executor used by this execution. |
-| Error | Errors are distinct from empty results and native defaults. |
+| Query | 가변 query 상태를 저장한다. 조회 결과는 Row가 저장한다. |
+| LinkSelection | relation 또는 join 생성 전까지 parent key와 child key를 저장한다. |
+| Where | callback 실행 중에만 유효하다. SQL을 실행하지 않는다. |
+| Request | attach는 child 상태를 복사하고 복사본의 parameter index를 이동한다. |
+| RequestIR | parameter 값을 제외한 compiler 입력을 저장한다. |
+| QueryNode | root 또는 child 조건 tree를 저장한다. |
+| Binding | 명시한 executor를 저장한다. 현재 실행 중인 transaction을 자동 선택하지 않는다. |
+| Executor | database와 고정 transaction의 실행 작업을 정의한다. |
+| Db | connection, plan cache, statement cache, runtime 설정을 저장한다. |
+| Tx | commit 또는 rollback 후 해당 transaction을 사용하는 query와 row는 무효다. |
+| Row | 조회한 identity, 값, 변경 사항, relation, 실행 binding을 구분해 저장한다. |
+| Collection | 중복 key는 순서를 유지하고 값을 교체한다. integer key와 string key는 구분한다. |
+| Page | per는 양수여야 한다. total은 요청한 page와 관계없이 계산한다. |
+| Compiler | RequestIR을 입력받아 변경 불가능한 Plan을 반환한다. SQL을 실행하지 않는다. |
+| CompilerTransport | type이 정의된 compiler request를 전송하고 plan과 metadata를 반환한다. |
+| Plan | cache 가능한 실행 step을 저장하며 실행 중에는 변경할 수 없다. |
+| Step | SQL statement 하나, bind slot, parent 입력, 결과 mapping을 저장한다. |
+| Assemble | 결과 column과 relation 결과를 row에 mapping한다. |
+| ExecutionRows | plan, parameter, step 결과, root 실행 binding을 저장한다. |
+| Error | 실패를 빈 결과 및 기본값과 구분한다. |
 
-도표의 타입 이름에서 `_`는 중첩 타입 구분자다. 정확한 타입은 다음과 같다.
+| 시작 | 대상 | 관계 |
+|---|---|---|
+| Query | Request | request 저장 |
+| Query | Binding | binding 저장 |
+| Where | Request | request 참조 |
+| Request | RequestIR | IR 저장 |
+| RequestIR | QueryNode | root 포함 |
+| QueryNode | QueryNode | child node 포함 |
+| Binding | Executor | executor 선택 |
+| Db | Executor | 구현 |
+| Tx | Executor | 구현 |
+| Tx | Db | database 사용 |
+| Row | Binding | root binding 사용 |
+| Row | Collection | relation 포함 |
+| Collection | Row | 순서 row 포함 |
+| Page | Collection | 항목 포함 |
+| Compiler | Plan | 반환 |
+| Plan | Step | 순서 step 포함 |
+| Step | Assemble | 결과 mapping |
+| ExecutionRows | Plan | plan 사용 |
+| ExecutionRows | Binding | binding 사용 |
+| CompilerTransport | Compiler | 호출 |
 
-| 필드 | 공통 타입 |
+도표의 type 이름에서 `_`는 중첩 type 구분자다. 정확한 type은 다음 표에 정의한다.
+
+| 필드 | 공통 type |
 |---|---|
 | Query.binding | `Binding` |
 | Query.keySelector | `Optional<Function<Row,Key>>` |

@@ -21,6 +21,7 @@ schema-check:
 
 proto-check:
 	npm run proto:check
+	./scripts/proto/connect-test.sh
 
 docs-dev:
 	npm run docs:dev

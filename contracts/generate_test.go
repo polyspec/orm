@@ -64,3 +64,24 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 		t.Fatal("core Query/Where/Row rules missing")
 	}
 }
+
+func TestComponentDiagramsUseRequestedLanguage(t *testing.T) {
+	english, err := Diagram()
+	if err != nil {
+		t.Fatal(err)
+	}
+	korean, err := DiagramKO()
+	if err != nil {
+		t.Fatal(err)
+	}
+	en, ko := string(english), string(korean)
+	if !strings.Contains(en, "| Component | Behavior and state |") || strings.Contains(en, "| 구성요소 |") {
+		t.Fatal("English diagram contains an invalid table heading")
+	}
+	if !strings.Contains(ko, "| 구성요소 | 동작 및 상태 |") || strings.Contains(ko, "| Component |") {
+		t.Fatal("Korean diagram contains an invalid table heading")
+	}
+	if strings.Count(en, "    class ") != strings.Count(ko, "    class ") || strings.Count(en, "\n| ") != strings.Count(ko, "\n| ") {
+		t.Fatal("localized diagrams contain different structures")
+	}
+}

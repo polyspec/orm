@@ -10,7 +10,8 @@
         "ext-pdo_mysql": "*",
         "ext-json": "*",
         "ext-zlib": "*",
-        "symfony/yaml": "^7.4"
+        "symfony/yaml": "^7.4",
+        "google/protobuf": "^5.36"
     },
     "suggest": {
         "ext-apcu": "shares compiled plans across PHP-FPM workers (without it every process asks ormd once per statement shape)",
@@ -20,6 +21,8 @@
     },
     "autoload": {
         "psr-4": {
+            "Orm\\Compiler\\V1\\": "src/Proto/Orm/Compiler/V1/",
+            "GPBMetadata\\Proto\\Orm\\Compiler\\V1\\": "src/Proto/GPBMetadata/Proto/Orm/Compiler/V1/",
             "Orm\\": "src/"
         },
         "classmap": [
