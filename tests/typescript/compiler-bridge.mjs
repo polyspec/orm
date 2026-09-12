@@ -5,10 +5,10 @@ import { PlanSchema, QueryKind } from '../../clients/typescript/dist/gen/proto/o
 const request = requestToProto({
   ir_version:1,schema_hash:'schema',kind:'update',entity:'battle',scope_p:0,n_params:3,
   joins:[{rel:'service',kind:'left',query:{entity:'service'}}],
-  where:{items:[{nav:{rel:'service',mode:'exists',group:{items:[{pred:{column:'seq',op:'eq',p:1}}]}}}]},
+  where:{items:[{nav:{rel:'service',mode:'count',count_op:'gte',p:1,group:{items:[{pred:{column:'seq',op:'eq',p:2}}]}}}]},
   set:[{column:'name',p:2}],
 });
-if (request.parameterCount !== 3 || request.root?.scopeParameter !== 0 || request.root.joins[0]?.query?.entity !== 'service' || request.root.where?.items[0]?.value.case !== 'navigation' || request.root.where.items[0].value.value.mode !== 'exists' || request.set[0]?.parameter !== 2) throw new Error('TypeScript request bridge failed');
+if (request.parameterCount !== 3 || request.root?.scopeParameter !== 0 || request.root.joins[0]?.query?.entity !== 'service' || request.root.where?.items[0]?.value.case !== 'navigation' || request.root.where.items[0].value.value.mode !== 'count' || request.root.where.items[0].value.value.countOperator !== 'gte' || request.root.where.items[0].value.value.countParameter !== 1 || request.set[0]?.parameter !== 2) throw new Error('TypeScript request bridge failed');
 
 const plan = planFromProto(create(PlanSchema,{schemaHash:'schema',kind:QueryKind.ALL,steps:[{id:0,role:'root',sql:'SELECT ?',binds:[{source:'param',parameter:1,hostStyles:['hex'],columnType:'string'}],assemble:{entity:'battle',alias:'a',columns:[{index:0,name:'seq',column:'seq',type:'i64'}]}}]}));
 if (plan.kind !== 'all' || plan.steps[0]?.bind_slots[0]?.param !== 1 || plan.steps[0]?.bind_slots[0]?.host_styles[0] !== 'hex' || plan.steps[0]?.assemble?.columns[0]?.type !== 'i64') throw new Error('TypeScript plan bridge failed');

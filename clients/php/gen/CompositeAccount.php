@@ -83,6 +83,12 @@ final class CompositeAccountWhere
     public function memberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->nav('memberships'))); $this->w->req->end(); return $this; }
     public function hasMemberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->navMode('memberships', 'exists'))); $this->w->req->end(); return $this; }
     public function notHasMemberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->navMode('memberships', 'not_exists'))); $this->w->req->end(); return $this; }
+    public function countMembershipsEq(int $value, \Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->navCount('memberships', 'eq', $value))); $this->w->req->end(); return $this; }
+    public function countMembershipsGte(int $value, \Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->navCount('memberships', 'gte', $value))); $this->w->req->end(); return $this; }
+    public function countMembershipsGt(int $value, \Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->navCount('memberships', 'gt', $value))); $this->w->req->end(); return $this; }
+    public function countMembershipsLte(int $value, \Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->navCount('memberships', 'lte', $value))); $this->w->req->end(); return $this; }
+    public function countMembershipsLt(int $value, \Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->navCount('memberships', 'lt', $value))); $this->w->req->end(); return $this; }
+    public function countMembershipsNotEq(int $value, \Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->navCount('memberships', 'not_eq', $value))); $this->w->req->end(); return $this; }
 
     public function tenantIdEq(int $v): static { $this->w->pred('tenant_id', 'eq', $v); return $this; }
     public function tenantId(int $v): static { return $this->tenantIdEq($v); }
@@ -151,6 +157,12 @@ final class CompositeAccount extends Q implements CompositeAccountInterface
     public function memberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->nav('memberships'))); $this->req->end(); return $this; }
     public function hasMemberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->navMode('memberships', 'exists'))); $this->req->end(); return $this; }
     public function notHasMemberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->navMode('memberships', 'not_exists'))); $this->req->end(); return $this; }
+    public function countMembershipsEq(int $value, \Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->navCount('memberships', 'eq', $value))); $this->req->end(); return $this; }
+    public function countMembershipsGte(int $value, \Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->navCount('memberships', 'gte', $value))); $this->req->end(); return $this; }
+    public function countMembershipsGt(int $value, \Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->navCount('memberships', 'gt', $value))); $this->req->end(); return $this; }
+    public function countMembershipsLte(int $value, \Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->navCount('memberships', 'lte', $value))); $this->req->end(); return $this; }
+    public function countMembershipsLt(int $value, \Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->navCount('memberships', 'lt', $value))); $this->req->end(); return $this; }
+    public function countMembershipsNotEq(int $value, \Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->navCount('memberships', 'not_eq', $value))); $this->req->end(); return $this; }
 
     public function tenantIdEq(int $v): static { $this->w()->pred('tenant_id', 'eq', $v); return $this; }
     public function tenantId(int $v): static { return $this->tenantIdEq($v); }

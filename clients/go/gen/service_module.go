@@ -335,6 +335,30 @@ func (w *ServiceModuleWhere) NotHasBattles(fn func(*BattleWhere)) *ServiceModule
 	w.w.NavMode("battles", "not_exists", func(x *orm.W) { fn(&BattleWhere{w: x}) })
 	return w
 }
+func (w *ServiceModuleWhere) CountBattlesEq(v int64, fn func(*BattleWhere)) *ServiceModuleWhere {
+	w.w.NavCount("battles", "eq", v, func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) CountBattlesGte(v int64, fn func(*BattleWhere)) *ServiceModuleWhere {
+	w.w.NavCount("battles", "gte", v, func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) CountBattlesGt(v int64, fn func(*BattleWhere)) *ServiceModuleWhere {
+	w.w.NavCount("battles", "gt", v, func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) CountBattlesLte(v int64, fn func(*BattleWhere)) *ServiceModuleWhere {
+	w.w.NavCount("battles", "lte", v, func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) CountBattlesLt(v int64, fn func(*BattleWhere)) *ServiceModuleWhere {
+	w.w.NavCount("battles", "lt", v, func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) CountBattlesNotEq(v int64, fn func(*BattleWhere)) *ServiceModuleWhere {
+	w.w.NavCount("battles", "not_eq", v, func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return w
+}
 func (w *ServiceModuleWhere) Service(fn func(*ServiceWhere)) *ServiceModuleWhere {
 	w.w.Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return w
@@ -345,6 +369,30 @@ func (w *ServiceModuleWhere) HasService(fn func(*ServiceWhere)) *ServiceModuleWh
 }
 func (w *ServiceModuleWhere) NotHasService(fn func(*ServiceWhere)) *ServiceModuleWhere {
 	w.w.NavMode("service", "not_exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) CountServiceEq(v int64, fn func(*ServiceWhere)) *ServiceModuleWhere {
+	w.w.NavCount("service", "eq", v, func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) CountServiceGte(v int64, fn func(*ServiceWhere)) *ServiceModuleWhere {
+	w.w.NavCount("service", "gte", v, func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) CountServiceGt(v int64, fn func(*ServiceWhere)) *ServiceModuleWhere {
+	w.w.NavCount("service", "gt", v, func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) CountServiceLte(v int64, fn func(*ServiceWhere)) *ServiceModuleWhere {
+	w.w.NavCount("service", "lte", v, func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) CountServiceLt(v int64, fn func(*ServiceWhere)) *ServiceModuleWhere {
+	w.w.NavCount("service", "lt", v, func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) CountServiceNotEq(v int64, fn func(*ServiceWhere)) *ServiceModuleWhere {
+	w.w.NavCount("service", "not_eq", v, func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return w
 }
 
@@ -738,6 +786,30 @@ func (q *ServiceModuleQuery) NotHasBattles(fn func(*BattleWhere)) *ServiceModule
 	q.q.W().NavMode("battles", "not_exists", func(x *orm.W) { fn(&BattleWhere{w: x}) })
 	return q
 }
+func (q *ServiceModuleQuery) CountBattlesEq(v int64, fn func(*BattleWhere)) *ServiceModuleQuery {
+	q.q.W().NavCount("battles", "eq", v, func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) CountBattlesGte(v int64, fn func(*BattleWhere)) *ServiceModuleQuery {
+	q.q.W().NavCount("battles", "gte", v, func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) CountBattlesGt(v int64, fn func(*BattleWhere)) *ServiceModuleQuery {
+	q.q.W().NavCount("battles", "gt", v, func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) CountBattlesLte(v int64, fn func(*BattleWhere)) *ServiceModuleQuery {
+	q.q.W().NavCount("battles", "lte", v, func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) CountBattlesLt(v int64, fn func(*BattleWhere)) *ServiceModuleQuery {
+	q.q.W().NavCount("battles", "lt", v, func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) CountBattlesNotEq(v int64, fn func(*BattleWhere)) *ServiceModuleQuery {
+	q.q.W().NavCount("battles", "not_eq", v, func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return q
+}
 func (q *ServiceModuleQuery) Service(fn func(*ServiceWhere)) *ServiceModuleQuery {
 	q.q.W().Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return q
@@ -748,6 +820,30 @@ func (q *ServiceModuleQuery) HasService(fn func(*ServiceWhere)) *ServiceModuleQu
 }
 func (q *ServiceModuleQuery) NotHasService(fn func(*ServiceWhere)) *ServiceModuleQuery {
 	q.q.W().NavMode("service", "not_exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) CountServiceEq(v int64, fn func(*ServiceWhere)) *ServiceModuleQuery {
+	q.q.W().NavCount("service", "eq", v, func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) CountServiceGte(v int64, fn func(*ServiceWhere)) *ServiceModuleQuery {
+	q.q.W().NavCount("service", "gte", v, func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) CountServiceGt(v int64, fn func(*ServiceWhere)) *ServiceModuleQuery {
+	q.q.W().NavCount("service", "gt", v, func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) CountServiceLte(v int64, fn func(*ServiceWhere)) *ServiceModuleQuery {
+	q.q.W().NavCount("service", "lte", v, func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) CountServiceLt(v int64, fn func(*ServiceWhere)) *ServiceModuleQuery {
+	q.q.W().NavCount("service", "lt", v, func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) CountServiceNotEq(v int64, fn func(*ServiceWhere)) *ServiceModuleQuery {
+	q.q.W().NavCount("service", "not_eq", v, func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return q
 }
 

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "files": {
-    "clients/php/src/Proto/GPBMetadata/Proto/Orm/Compiler/V1/Compiler.php": "0acea96cb9a7ac31f33828853f1b022833aded25f4c56c0c3a62cd25a8fb61f3",
+    "clients/php/src/Proto/GPBMetadata/Proto/Orm/Compiler/V1/Compiler.php": "4263529c29b23f542e5aad63692ffab7c4ab5935f0d2243954489a3dac40b69a",
     "clients/php/src/Proto/Orm/Compiler/V1/Assemble.php": "bd05f8972f787ca55e9865ed6e19349c73db8ae891766856162895ff54a6adc0",
     "clients/php/src/Proto/Orm/Compiler/V1/Assignment.php": "24892202001b086d4e2d47448a2a819c14e47be53db0526efb96f95d4602deec",
     "clients/php/src/Proto/Orm/Compiler/V1/BindSlot.php": "8dfa2e2fa39ddaf2659a9ea43775f5b1b8f37680f6f89c85c045e1add0464ac1",
@@ -20,7 +20,7 @@
     "clients/php/src/Proto/Orm/Compiler/V1/KeyReference.php": "f79204934bad299686005abbb8f03333129859ccbfe87f84ab34762505b0741b",
     "clients/php/src/Proto/Orm/Compiler/V1/Keyset.php": "c65cf9d6d79cf25aba17e866bcf58ed910cbbe9ee22f72514015570d2a0b1019",
     "clients/php/src/Proto/Orm/Compiler/V1/Limit.php": "84a96a231bb508d5a04046796a4d869ca46ca3b4e56eff3a6340b0ff62bac329",
-    "clients/php/src/Proto/Orm/Compiler/V1/Navigation.php": "cc5161b94566926c949e4b7617d910183c4d510dca24b9b3486e594855d59631",
+    "clients/php/src/Proto/Orm/Compiler/V1/Navigation.php": "989c2b58bd6411f389b750a937f84fbacc1354e5f3c32abb53a560b8ccf975d5",
     "clients/php/src/Proto/Orm/Compiler/V1/Optimistic.php": "9207bb281957bf1d66b0dacd32e63392f736e28fdfc7a0da0a8d3becd5160eff",
     "clients/php/src/Proto/Orm/Compiler/V1/Order.php": "2214134a1e7d80d75eca505325efc10356ed0ee9fc2c9e389c14e531f2f751f2",
     "clients/php/src/Proto/Orm/Compiler/V1/OutputColumn.php": "c9801b449cd1bcf5edfbbc08dca7bcb5f947a4cca2b841277d4d65aa5e0f9365",
@@ -35,12 +35,12 @@
     "clients/php/src/Proto/Orm/Compiler/V1/QueryNode.php": "b4278092925e14a492cf0509c77f22085a10f6b47481be766b740cfba1f35acc",
     "clients/php/src/Proto/Orm/Compiler/V1/Raw.php": "a628847f174624aa80f3ed240d6528f2e3d627f1070572eb84f84ea9bf1b1397",
     "clients/php/src/Proto/Orm/Compiler/V1/Relation.php": "b66f0e9cb004df9a286100bdd900bdcef71999963010456ed9c9bbb2fe46e70f",
-    "clients/rust/orm/src/gen/orm/compiler/v1/orm.compiler.v1.rs": "05914f767e1fb4a9212d9ad47e1091b5ca1079e3496c198f4e4cd8c3e505088e",
-    "clients/typescript/src/gen/entities.ts": "ea2f97ecda5b9a5c0ed5449d9cb2938d2eb48fe1aa3ba3d3128197df27736063",
+    "clients/rust/orm/src/gen/orm/compiler/v1/orm.compiler.v1.rs": "6aecb6a793ad24fee0beeef2514d920686a59506699612f7ecb47cf841ada401",
+    "clients/typescript/src/gen/entities.ts": "8178e8adadb1e8c421edeeec19fe5b561d831cb95c502b8c69aeec9370dafc5c",
     "clients/typescript/src/gen/interfaces.ts": "27bf268a234280e9d35ac790e36b43f971bd868a2bacda6e04f3b8c1b4966759",
-    "clients/typescript/src/gen/proto/orm/compiler/v1/compiler_pb.ts": "d7924ffdadcb93be0cc88c54b195d0a32cfca4b603c8aad0364bdea944a0dfb6",
-    "proto/orm/compiler/v1/compiler.pb.go": "f79b0baf24e6badafa6ac390a144102a16ebd211fd1af255a781538e96d17a17",
-    "proto/orm/compiler/v1/compiler.proto": "ce8ed2fd13a2a6b131300acc5a1675b117de7f90ffd848fe8fc58412c89cd9a9",
+    "clients/typescript/src/gen/proto/orm/compiler/v1/compiler_pb.ts": "1a3ab04fc961aa5ee4d16d3007802aeb6f32e8799d8d210d3fea5f2810db84dc",
+    "proto/orm/compiler/v1/compiler.pb.go": "72c91cf47c75fdfcfcc42c5e97a1f6c6c263e4805784b4859583dabc93d00717",
+    "proto/orm/compiler/v1/compiler.proto": "c193f15523ff521881712ee8cf9bfab3d9aa433d69d5c768af63fab253c06561",
     "proto/orm/compiler/v1/compilerv1connect/compiler.connect.go": "7890977ff39db2f3afefe8c4822b731b789c0ebec5b7b61abcc099e982f96c13"
   }
 }

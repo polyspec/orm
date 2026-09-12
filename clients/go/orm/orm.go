@@ -539,6 +539,10 @@ func shiftGroup(g *ir.Group, off int) {
 		case it.Group != nil:
 			shiftGroup(it.Group, off)
 		case it.Nav != nil:
+			if it.Nav.P != nil {
+				v := *it.Nav.P + off
+				it.Nav.P = &v
+			}
 			shiftGroup(it.Nav.Group, off)
 		}
 	}
