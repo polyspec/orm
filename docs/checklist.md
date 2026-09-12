@@ -162,7 +162,7 @@ S7 항목은 구현과 문서 작업을 각각 완료해야 한다. 구현하지
 ### 기능 개발
 
 - [ ] T7.1 protobuf/Connect 전송 형식과 Go·PHP·Rust·TypeScript 클라이언트 구현
-- [ ] T7.3 DDL diff와 마이그레이션 생성기 구현
+- [x] T7.3 `ormgen diff` 구현, 파괴적 변경 명시 옵션과 결정성 테스트 추가
 - [ ] T7.4 멀티테넌시 `scope`의 스키마·IR·생성 API 구현
 - [ ] T7.5 `point`, `yaml`, `curlfile` 스타일의 공통 codec 구현
 - [ ] T7.6 서버 스트리밍 API 구현
