@@ -166,6 +166,9 @@ func applyCmd(args []string) {
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_SOURCE: target schema: %w", err))
 	}
+	if want.SchemaHash != plan.ToHash {
+		fail(fmt.Errorf("MIGRATION_PLAN: target manifest hash does not match plan expected_hash=%s actual_hash=%s", plan.ToHash, want.SchemaHash))
+	}
 	name, openDSN := sqlDriver(*driver, *dsn)
 	db, err := sql.Open(name, openDSN)
 	if err != nil {
@@ -184,6 +187,32 @@ func applyCmd(args []string) {
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_INTROSPECT: %w", err))
 	}
+	previous, found, err := migrationByID(ctx, db, *driver, plan.MigrationID)
+	if err != nil {
+		fail(err)
+	}
+	if found {
+		if err := verifyPlanRecord(plan, previous); err != nil {
+			fail(err)
+		}
+		switch previous.Status {
+		case "applied":
+			if !schemaMatches(want, live, *driver) {
+				fail(fmt.Errorf("MIGRATION_DRIFT: migration_id=%s status=applied expected_schema_hash=%s actual_schema_hash=%s", plan.MigrationID, want.SchemaHash, live.SchemaHash))
+			}
+			if err := verifyMigrationLog(*logDir, previous, *driver); err != nil {
+				fail(err)
+			}
+			fmt.Printf("migration_id=%s status=noop operations=0 schema_hash=%s\n", plan.MigrationID, plan.ToHash)
+			return
+		case "retryable":
+			// The source check below must pass before this row can return to applying.
+		case "queued", "applying", "failed":
+			fail(fmt.Errorf("MIGRATION_RECOVERY_REQUIRED: migration_id=%s status=%s run ormgen recover with the same plan and target schema", plan.MigrationID, previous.Status))
+		default:
+			fail(fmt.Errorf("MIGRATION_STATE_INVALID: migration_id=%s status=%s", plan.MigrationID, previous.Status))
+		}
+	}
 	if plan.FromSchema != nil {
 		if !schemaMatches(plan.FromSchema, live, *driver) {
 			fail(fmt.Errorf("MIGRATION_PRECONDITION: source schema does not match live database expected_hash=%s actual_hash=%s", plan.FromHash, live.SchemaHash))
@@ -191,37 +220,27 @@ func applyCmd(args []string) {
 	} else if live.SchemaHash != plan.FromHash {
 		fail(fmt.Errorf("MIGRATION_PRECONDITION: expected_from_schema_hash=%s actual_schema_hash=%s", plan.FromHash, live.SchemaHash))
 	}
-	previous, found, err := appliedMigration(ctx, db, *driver, plan.MigrationID)
-	if err != nil {
-		fail(err)
-	}
-	if found {
-		if previous.ToHash != plan.ToHash || previous.Checksum != plan.Checksum {
-			fail(fmt.Errorf("MIGRATION_HISTORY_CONFLICT: migration_id=%s recorded_to=%s requested_to=%s recorded_plan_checksum=%s requested_plan_checksum=%s", plan.MigrationID, previous.ToHash, plan.ToHash, previous.Checksum, plan.Checksum))
-		}
-		if !schemaMatches(want, live, *driver) {
-			fail(fmt.Errorf("MIGRATION_DRIFT: migration_id=%s expected_schema_hash=%s actual_schema_hash=%s", plan.MigrationID, want.SchemaHash, live.SchemaHash))
-		}
-		if err := verifyMigrationLog(*logDir, previous, *driver); err != nil {
-			fail(err)
-		}
-		fmt.Printf("migration_id=%s status=noop operations=0 schema_hash=%s\n", plan.MigrationID, plan.ToHash)
-		return
-	}
 	operations := len(plan.Operations)
 	checksum := checksumText(planSQL(plan.Operations))
-	record := migrationRecord{MigrationID: plan.MigrationID, Name: plan.Name, FromHash: plan.FromHash, ToHash: plan.ToHash, Checksum: checksum, Status: "applying", Operations: operations}
+	record := migrationRecord{MigrationID: plan.MigrationID, Name: plan.Name, FromHash: plan.FromHash, ToHash: plan.ToHash, Checksum: checksum, Status: "queued", Operations: operations}
 	startedAt := time.Now().UTC()
 	if err := writeMigrationLog(*logDir, migrationLogFromRecord(record, *driver, startedAt, time.Time{})); err != nil {
 		fail(err)
 	}
-	if err := insertMigration(ctx, db, *driver, record); err != nil {
-		fail(err)
+	expectedStatus := "queued"
+	if found {
+		expectedStatus = "retryable"
+	} else {
+		if err := insertMigration(ctx, db, *driver, record); err != nil {
+			fail(err)
+		}
 	}
-	if err := executeMigration(ctx, db, *driver, planSQL(plan.Operations)); err != nil {
+	if err := executeClaimedMigration(ctx, db, *driver, plan.MigrationID, expectedStatus, planSQL(plan.Operations)); err != nil {
 		detail := fmt.Sprintf("operation execution failed: %v", err)
-		_ = updateMigration(ctx, db, *driver, plan.MigrationID, "failed", detail)
-		_ = writeMigrationLog(*logDir, migrationLogFromRecord(record, *driver, startedAt, time.Now().UTC()).withError(detail))
+		_ = markMigrationFailed(ctx, db, *driver, plan.MigrationID, detail)
+		failedRecord := record
+		failedRecord.Status = "failed"
+		_ = writeMigrationLog(*logDir, migrationLogFromRecord(failedRecord, *driver, startedAt, time.Now().UTC()).withError(detail))
 		fail(fmt.Errorf("MIGRATION_APPLY_FAILED: migration_id=%s: %w", plan.MigrationID, err))
 	}
 	check, err := liveManifest(db, *driver)

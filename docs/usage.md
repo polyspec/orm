@@ -117,6 +117,30 @@ a statement. Execution errors report the one-based operation number and complete
 
 Each execution also writes a JSON audit file under `migrations/logs` by default. The filename is `<UTC timestamp>__<migration-id>.json`; it contains the driver, schema hashes, plan checksum, status, operation count, start time, finish time, and error detail. Use `--log-dir` to select another directory. An applied migration fails verification if no file log matches its database record.
 
+If execution stops while the database history status is `applying` or `failed`, run an explicit
+recovery before retrying. Use the exact reviewed plan for `ormgen apply`, or use the recorded
+migration ID for `ormgen migrate`:
+
+```sh
+go run ./cmd/ormgen recover --plan migrations/20260912-schema.json \
+  --driver postgres --dsn "$ORM_DSN" --schema schema/schema.json
+go run ./cmd/ormgen recover --migration-id 20260912-initial \
+  --driver mysql --dsn "$ORM_DSN" --schema schema/schema.json
+```
+
+Recovery acquires the same database migration lock and compares the live schema with the recorded
+source and target. A target match changes the history status to `applied`. A source match changes it
+to `retryable`; the same `apply` or `migrate` command can then execute the verified plan. An
+`applied` or `retryable` record with a matching file log returns `noop`. Any other schema state fails
+with `MIGRATION_RECOVERY_UNSAFE` and reports the migration ID, prior status, source hash, target
+hash, and live hash. This failure does not update database history or create a file log.
+
+| Input | Required verification | Result |
+|---|---|---|
+| Structured plan | Plan checksum, ID, source hash, target hash, operation count, target manifest | `applied`, `retryable`, or `noop` |
+| Migration ID | Recorded source hash, recorded target hash, target manifest | `applied`, `retryable`, or `noop` |
+| Partial or externally changed schema | Neither source nor target matches | `MIGRATION_RECOVERY_UNSAFE`; no state change |
+
 ```sh
 go run ./cmd/ormgen migrate --driver mysql --dsn "$ORM_DSN" \
   --schema schema/schema.json --migration-id 20260912-initial --dry-run

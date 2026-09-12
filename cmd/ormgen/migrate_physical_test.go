@@ -127,15 +127,29 @@ func assertPhysicalStructuredPlan(t *testing.T, ctx context.Context, db *sql.DB,
 		plan.Operations = append(plan.Operations, planOperation{SQL: statement + ";"})
 	}
 	plan.Checksum = checksumText(planSQL(plan.Operations))
-	record := migrationRecord{MigrationID: plan.MigrationID, Name: plan.Name, FromHash: plan.FromHash, ToHash: plan.ToHash, Checksum: plan.Checksum, Status: "applying", Operations: len(plan.Operations)}
+	record := migrationRecord{MigrationID: plan.MigrationID, Name: plan.Name, FromHash: plan.FromHash, ToHash: plan.ToHash, Checksum: plan.Checksum, Status: "failed", Operations: len(plan.Operations)}
 	if err := insertMigration(ctx, db, driver, record); err != nil {
 		t.Fatal(err)
 	}
-	if err := executeMigration(ctx, db, driver, planSQL(plan.Operations)); err != nil {
+	logDir := t.TempDir()
+	status, err := recoverMigration(ctx, db, driver, plan, target, logDir)
+	if err != nil || status != "retryable" {
+		t.Fatalf("source recovery status=%s err=%v", status, err)
+	}
+	status, err = recoverMigration(ctx, db, driver, plan, target, logDir)
+	if err != nil || status != "noop" {
+		t.Fatalf("source recovery repeat status=%s err=%v", status, err)
+	}
+	if err := executeClaimedMigration(ctx, db, driver, plan.MigrationID, "retryable", planSQL(plan.Operations)); err != nil {
 		t.Fatal(err)
 	}
-	if err := updateMigration(ctx, db, driver, plan.MigrationID, "applied", ""); err != nil {
-		t.Fatal(err)
+	status, err = recoverMigration(ctx, db, driver, plan, target, logDir)
+	if err != nil || status != "applied" {
+		t.Fatalf("target recovery status=%s err=%v", status, err)
+	}
+	status, err = recoverMigration(ctx, db, driver, plan, target, logDir)
+	if err != nil || status != "noop" {
+		t.Fatalf("target recovery repeat status=%s err=%v", status, err)
 	}
 	live, err := liveManifest(db, driver)
 	if err != nil {

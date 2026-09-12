@@ -108,6 +108,11 @@ export default defineConfig({
               token.attrSet('href', `/ko/${relative.slice(0, -'.ko.md'.length)}.html${suffix}`);
               continue;
             }
+            if (koreanPage && target.startsWith(docs + path.sep) && target.endsWith('.ko.md')) {
+              const relative = path.relative(docs, target).split(path.sep).map(encodeURIComponent).join('/');
+              token.attrSet('href', `/ko/${relative.slice(0, -'.ko.md'.length)}.html${suffix}`);
+              continue;
+            }
             if (koreanPage && target.startsWith(docs + path.sep) && target.endsWith('.md')) {
               const relative = path.relative(docs, target).split(path.sep).map(encodeURIComponent).join('/');
               token.attrSet('href', `../${relative.replace(/\.md$/, '.html')}${suffix}`);
