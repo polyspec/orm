@@ -45,10 +45,7 @@ func TestLargeRootINIsChunkedForSQLite(t *testing.T) {
 	}
 	db := open(t)
 	ctx := context.Background()
-	ids := make([]int64, 1000)
-	for i := range ids {
-		ids[i] = int64(i + 1)
-	}
+	ids := existingBattleIDs(t, db, 1000)
 	if _, err := gen.Battle().SeqIn(ids).Using(ctx, db).GetCount(); err != nil {
 		t.Fatalf("large root IN failed on SQLite: %v", err)
 	}
@@ -57,23 +54,48 @@ func TestLargeRootINIsChunkedForSQLite(t *testing.T) {
 func TestLargeRootINRowsAndCount(t *testing.T) {
 	db := open(t)
 	ctx := context.Background()
-	ids := make([]int64, 1000)
-	for i := range ids {
-		ids[i] = int64(i + 1)
-	}
+	ids := existingBattleIDs(t, db, 1000)
 	count, err := gen.Battle().SeqIn(ids).Using(ctx, db).GetCount()
-	if err != nil || count != 1000 {
-		t.Fatalf("large root IN count=%d err=%v, want 1000", count, err)
+	if err != nil || count != int64(len(ids)) {
+		t.Fatalf("large root IN count=%d err=%v, want %d", count, err, len(ids))
 	}
 	rows, err := gen.Battle().SeqIn(ids).Using(ctx, db).Gets()
 	if err != nil {
 		t.Fatalf("large root IN rows failed: %v", err)
 	}
-	if rows == nil || rows.Len() != 1000 {
+	if rows == nil || rows.Len() != len(ids) {
 		got := 0
 		if rows != nil {
 			got = rows.Len()
 		}
-		t.Fatalf("large root IN rows=%d, want 1000", got)
+		t.Fatalf("large root IN rows=%d, want %d", got, len(ids))
 	}
+}
+
+func existingBattleIDs(t *testing.T, db *orm.DB, limit int) []int64 {
+	t.Helper()
+	query := "SELECT seq FROM battle ORDER BY seq LIMIT ?"
+	if db.Driver() == "postgres" {
+		query = "SELECT seq FROM battle ORDER BY seq LIMIT $1"
+	}
+	rows, err := db.SQL.Query(query, limit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	ids := make([]int64, 0, limit)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if len(ids) < limit {
+		t.Fatalf("fixture has %d battle rows, want at least %d", len(ids), limit)
+	}
+	return ids
 }
