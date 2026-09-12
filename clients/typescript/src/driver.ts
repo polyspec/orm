@@ -152,7 +152,9 @@ class StatementNames {
       this.names.set(sql, existing);
       return existing;
     }
-    const name = `orm_${createHash('sha256').update(sql).digest('hex')}`;
+    // PostgreSQL limits prepared statement names to 63 bytes. The 59 hex
+    // characters after the prefix retain 236 bits of hash space.
+    const name = `orm_${createHash('sha256').update(sql).digest('hex').slice(0, 59)}`;
     this.names.set(sql, name);
     return name;
   }
