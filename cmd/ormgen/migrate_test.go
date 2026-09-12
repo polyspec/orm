@@ -42,7 +42,7 @@ func TestSQLiteMigrationIsIdempotentAndDetectsDrift(t *testing.T) {
 	if got := countSQLStatements(ddl); got == 0 {
 		t.Fatal("initial migration has no operations")
 	}
-	if err := executeMigration(ctx, db, ddl); err != nil {
+	if err := executeMigration(ctx, db, "sqlite", ddl); err != nil {
 		t.Fatal(err)
 	}
 	live, err = liveManifest(db, "sqlite")
@@ -146,7 +146,7 @@ func TestExecuteMigrationRollsBackSQLiteOnStatementFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	err = executeMigration(context.Background(), db, "CREATE TABLE first (id INTEGER); CREATE TABLE broken (id INTEGER;)")
+	err = executeMigration(context.Background(), db, "sqlite", "CREATE TABLE first (id INTEGER); CREATE TABLE broken (id INTEGER;)")
 	if err == nil || !strings.Contains(err.Error(), "transaction rolled back") || !strings.Contains(err.Error(), "operation=2") {
 		t.Fatalf("error = %v", err)
 	}
@@ -156,5 +156,26 @@ func TestExecuteMigrationRollsBackSQLiteOnStatementFailure(t *testing.T) {
 	}
 	if count != 0 {
 		t.Fatal("failed migration left first table behind")
+	}
+}
+
+func TestExecuteMigrationRejectsConcurrentSQLiteWriter(t *testing.T) {
+	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "locked.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	holder, err := db.Conn(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer holder.Close()
+	if _, err := holder.ExecContext(context.Background(), "BEGIN IMMEDIATE"); err != nil {
+		t.Fatal(err)
+	}
+	defer holder.ExecContext(context.Background(), "ROLLBACK")
+	err = executeMigration(context.Background(), db, "sqlite", "CREATE TABLE blocked (id INTEGER);")
+	if err == nil || !strings.Contains(err.Error(), "MIGRATION_LOCK_BUSY") {
+		t.Fatalf("expected SQLite lock error, got %v", err)
 	}
 }

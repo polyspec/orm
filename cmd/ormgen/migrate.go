@@ -134,7 +134,7 @@ func migrateCmd(args []string) {
 		_ = writeMigrationLog(*logDir, migrationLogFromRecord(record, *driver, startedAt, time.Now().UTC()).withError(err.Error()))
 		fail(err)
 	}
-	if err := executeMigration(ctx, db, sqlText); err != nil {
+	if err := executeMigration(ctx, db, *driver, sqlText); err != nil {
 		detail := fmt.Sprintf("operation execution failed: %v", err)
 		_ = updateMigration(ctx, db, *driver, *id, "failed", detail)
 		_ = writeMigrationLog(*logDir, migrationLogFromRecord(migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "failed", Operations: operations}, *driver, startedAt, time.Now().UTC()).withError(detail))
@@ -387,22 +387,74 @@ func placeholder(driver string, n int) string {
 	return "?"
 }
 
-func executeMigration(ctx context.Context, db *sql.DB, text string) error {
-	tx, err := db.BeginTx(ctx, nil)
+func executeMigration(ctx context.Context, db *sql.DB, driver, text string) error {
+	conn, err := db.Conn(ctx)
 	if err != nil {
-		return fmt.Errorf("transaction begin: %w", err)
+		return fmt.Errorf("MIGRATION_LOCK: reserve connection: %w", err)
+	}
+	defer conn.Close()
+	release := func() error { return nil }
+	switch driver {
+	case "mysql":
+		var acquired sql.NullInt64
+		if err := conn.QueryRowContext(ctx, "SELECT GET_LOCK(CONCAT('polyspec.orm:', DATABASE()), 0)").Scan(&acquired); err != nil {
+			return fmt.Errorf("MIGRATION_LOCK: mysql GET_LOCK: %w", err)
+		}
+		if !acquired.Valid || acquired.Int64 != 1 {
+			return fmt.Errorf("MIGRATION_LOCK_BUSY: mysql database migration lock was not acquired")
+		}
+		release = func() error {
+			var released sql.NullInt64
+			if err := conn.QueryRowContext(context.Background(), "SELECT RELEASE_LOCK(CONCAT('polyspec.orm:', DATABASE()))").Scan(&released); err != nil {
+				return err
+			}
+			if !released.Valid || released.Int64 != 1 {
+				return fmt.Errorf("mysql migration lock was not released")
+			}
+			return nil
+		}
+		if _, err := conn.ExecContext(ctx, "START TRANSACTION"); err != nil {
+			_ = release()
+			return fmt.Errorf("transaction begin: %w", err)
+		}
+	case "postgres":
+		if _, err := conn.ExecContext(ctx, "BEGIN"); err != nil {
+			return fmt.Errorf("transaction begin: %w", err)
+		}
+		var acquired bool
+		if err := conn.QueryRowContext(ctx, "SELECT pg_try_advisory_xact_lock(hashtext(current_database()), hashtext('polyspec.orm.migration'))").Scan(&acquired); err != nil {
+			_, _ = conn.ExecContext(context.Background(), "ROLLBACK")
+			return fmt.Errorf("MIGRATION_LOCK: postgres advisory lock: %w", err)
+		}
+		if !acquired {
+			_, _ = conn.ExecContext(context.Background(), "ROLLBACK")
+			return fmt.Errorf("MIGRATION_LOCK_BUSY: postgres database migration lock was not acquired")
+		}
+	case "sqlite":
+		if _, err := conn.ExecContext(ctx, "BEGIN IMMEDIATE"); err != nil {
+			return fmt.Errorf("MIGRATION_LOCK_BUSY: sqlite BEGIN IMMEDIATE: %w", err)
+		}
+	default:
+		return fmt.Errorf("MIGRATION_CONFIG: unsupported driver %q", driver)
+	}
+	failTx := func(base error) error {
+		_, rollbackErr := conn.ExecContext(context.Background(), "ROLLBACK")
+		releaseErr := release()
+		if rollbackErr != nil || releaseErr != nil {
+			return fmt.Errorf("%w; rollback_error=%v; lock_release_error=%v", base, rollbackErr, releaseErr)
+		}
+		return fmt.Errorf("%w; transaction rolled back", base)
 	}
 	for i, stmt := range splitSQL(text) {
-		if _, err := tx.ExecContext(ctx, stmt); err != nil {
-			rollbackErr := tx.Rollback()
-			if rollbackErr != nil {
-				return fmt.Errorf("operation=%d statement=%q: %w; rollback failed: %v", i+1, stmt, err, rollbackErr)
-			}
-			return fmt.Errorf("operation=%d statement=%q: %w; transaction rolled back", i+1, stmt, err)
+		if _, err := conn.ExecContext(ctx, stmt); err != nil {
+			return failTx(fmt.Errorf("operation=%d statement=%q: %w", i+1, stmt, err))
 		}
 	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("transaction commit: %w", err)
+	if _, err := conn.ExecContext(ctx, "COMMIT"); err != nil {
+		return failTx(fmt.Errorf("transaction commit: %w", err))
+	}
+	if err := release(); err != nil {
+		return fmt.Errorf("MIGRATION_LOCK_RELEASE: %w", err)
 	}
 	return nil
 }
