@@ -38,9 +38,9 @@ Each item requires:
   - [x] P9.4a Root `forUpdate` and `forShare` row locks use the common IR and are executed by MySQL/PostgreSQL; SQLite returns `CAPABILITY_UNSUPPORTED`. This sub-item does not complete P9.4 because timeout/cancellation remains.
 - [x] P9.5 All clients load validated precompiled plan bundles and use them without a compiler request on a matching cache hit. Go, PHP, Rust, and TypeScript validate the bundle version, schema hash, dialect, request hash, request kind, and plan body; client tests confirm a matching cache hit does not call the compiler.
 - [x] P9.6 CHECK constraints and complete index/foreign-key metadata survive Mermaid, manifest, SQL, live database import, diff, migration, and verification. SQLite unit tests and physical MySQL/PostgreSQL importer tests verify named CHECK restoration.
-- [ ] P9.7 Many-to-many traversal uses an explicit through entity and typed relation metadata in every client.
-- [ ] P9.8 Relation existence/count predicates and declarative soft-delete policy use planner-enforced predicates in reads and writes.
-  - [x] P9.8a The `soft_delete` schema directive validates a nullable datetime column and the planner excludes deleted rows and converts deletes to timestamp updates. Physical four-client verification remains open.
+- [x] P9.7 Many-to-many traversal uses an explicit through entity and typed relation metadata in every client. Fresh physical MySQL, PostgreSQL, and SQLite fixtures pass in Go, PHP, Rust, and TypeScript.
+- [x] P9.8 Relation existence/count predicates and declarative soft-delete policy use planner-enforced predicates in reads and writes. Fresh physical MySQL, PostgreSQL, and SQLite fixtures pass in Go, PHP, Rust, and TypeScript.
+  - [x] P9.8a The `soft_delete` schema directive validates a nullable datetime column and the planner excludes deleted rows and converts deletes to timestamp updates. SQLite foreign keys are enabled by every client and all physical client checks pass.
 
 ## P10: verification
 

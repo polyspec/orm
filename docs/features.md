@@ -12,7 +12,7 @@ The executable source is [contracts/features.json](../contracts/features.json). 
 | keyset_pagination | Typed keyset pagination | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | transactions | Transaction options | partial | go: partial<br>php: partial<br>rust: partial<br>typescript: partial |
 | precompiled_plans | Precompiled plan bundles | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| constraints_and_relations | Constraints and relation predicates | partial | go: partial<br>php: partial<br>rust: partial<br>typescript: partial |
+| constraints_and_relations | Constraints and relation predicates | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | conformance_verification | Cross-client conformance verification | partial | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 
 ## Current behavior
@@ -25,7 +25,7 @@ The executable source is [contracts/features.json](../contracts/features.json). 
 - `keyset_pagination`: Provide versioned cursors, total composite ordering, validation, and forward and backward traversal.
 - `transactions`: Expose opt-in retry, isolation, read-only mode, savepoints, row locks, timeout, and cancellation with capability errors.
 - `precompiled_plans`: Load a validated plan bundle and execute a matching request without a compiler call.
-- `constraints_and_relations`: Preserve CHECK, index, foreign-key, soft-delete, relation existence, relation count, and many-to-many through metadata in the planner and migration system. Generated client and physical through execution remain incomplete.
+- `constraints_and_relations`: Preserve CHECK, index, foreign-key, soft-delete, relation existence, relation count, and many-to-many through metadata in the planner and migration system. Generated clients execute the declared operations on MySQL, PostgreSQL, and SQLite.
 - `conformance_verification`: Run common input vectors through Go, PHP, Rust, and TypeScript and compare normalized results for each database.
 
 Run make feature-check to validate paths and execute every verification command declared for non-planned features. An implemented feature requires tests and paired documentation; partial and planned are incomplete.

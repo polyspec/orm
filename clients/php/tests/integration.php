@@ -318,13 +318,22 @@ $loaded = Service::query()->seq($svc->getSeq())
     ->relationsSeqWithServiceSeqToServiceModule(ServiceModule::query()->noCascadeDelete())
     ->using($db)->get();
 $n0 = count($log);
-$loaded->using($db)->deleteCascade();
+try {
+    $loaded->using($db)->deleteCascade();
+    check(false, 'noCascadeDelete must report the foreign-key restriction');
+} catch (OrmException $e) {
+    check($e->code_ === Code::FOREIGN_KEY, 'noCascadeDelete reports the foreign-key restriction');
+}
 check(count($log) - $n0 === 3
-    && str_starts_with($log[$n0], 'DELETE FROM `service_member`') && str_starts_with($log[$n0 + 1], 'DELETE FROM `service_member`') && str_starts_with($log[$n0 + 2], 'DELETE FROM `service`'),
-    'deleteCascade: owned members first, then the service; noCascadeDelete stops at modules; users (parent direction) untouched');
-check(ServiceMember::query()->serviceSeq($svc->getSeq())->using($db)->getCount() === 0 && Service::query()->seq($svc->getSeq())->using($db)->getCount() === 0
-    && ServiceModule::query()->serviceSeq($svc->getSeq())->using($db)->getCount() === 1 && User::query()->seqIn([1, 2])->using($db)->getCount() === 2, 'deleteCascade result');
+    && ServiceMember::query()->serviceSeq($svc->getSeq())->using($db)->getCount() === 2
+    && Service::query()->seq($svc->getSeq())->using($db)->getCount() === 1
+    && ServiceModule::query()->serviceSeq($svc->getSeq())->using($db)->getCount() === 1,
+    'deleteCascade failure rolls back owned members and retains the service and module');
 check(ServiceModule::query()->serviceSeq($svc->getSeq())->using($db)->delete() === 1, 'cascade cleanup');
+$loaded->using($db)->deleteCascade();
+check(ServiceMember::query()->serviceSeq($svc->getSeq())->using($db)->getCount() === 0
+    && Service::query()->seq($svc->getSeq())->using($db)->getCount() === 0
+    && User::query()->seqIn([1, 2])->using($db)->getCount() === 2, 'deleteCascade succeeds after module cleanup');
 
 // ---- deadlock gate: two processes, T1 updates A then B, T2 updates B then A ----
 if ($driver !== 'sqlite') {
@@ -488,8 +497,8 @@ try {
 // ---- S5: orm.toml ----
 $toml = function (string $schemaLine, string $extra = '') use ($sock, $driver): string {
     $f = tempnam(sys_get_temp_dir(), 'orm-toml-');
-    // MySQL names its user here; the PostgreSQL DSN carries user=; SQLite has none (db.dsn is the file)
-    $cred = $driver === 'mysql' ? "user = \"root\"\npassword = \"\"\n" : ($driver === 'postgres' ? "user = \"maxkwon\"\n" : '');
+    // MySQL uses explicit root credentials; PostgreSQL credentials remain in the DSN so the test works with any database user.
+    $cred = $driver === 'mysql' ? "user = \"root\"\npassword = \"\"\n" : '';
     file_put_contents($f, "$schemaLine\n[db]\ndriver = \"$driver\"\ndsn = \"" . orm_test_dsn() . "\"\n{$cred}pool = 8   # ignored by PHP\n[secrets]\naes = \"bench-salt\"\nblind_index = \"bench-blind-index\"\n[ormd]\nsocket = \"$sock\"\n[debug]\non_query = false\n$extra");
     return $f;
 };

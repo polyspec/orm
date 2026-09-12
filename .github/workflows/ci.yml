@@ -69,6 +69,7 @@ jobs:
       - name: load bench schema (mysql, postgres, sqlite)
         run: |
           mysql -h 127.0.0.1 -uroot orm_bench < bench/sql/battle.sql
+          mysql -h 127.0.0.1 -uroot orm_bench < bench/sql/seed.mysql.sql
           sudo apt-get install -y -q postgresql-client sqlite3 >/dev/null
           psql -h 127.0.0.1 -U maxkwon orm_bench -q -f bench/sql/battle.pg.sql
           psql -h 127.0.0.1 -U maxkwon orm_bench -q -f bench/sql/seed.pg.sql
