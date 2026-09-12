@@ -1,5 +1,5 @@
-// ormd serves the compiler over a Unix domain socket for hosts that cannot
-// link it in-process (PHP). It never touches a database.
+// ormd serves the compiler through Connect HTTP and the legacy Unix socket.
+// It never accesses a database.
 //
 // Framing: 4-byte big-endian length + payload, both directions.
 // Request : {"op":"compile","ir":{...}} | {"op":"hash"}   (hash answers {"schema_hash", "dialect"})
@@ -8,6 +8,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -16,12 +17,15 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/polyspec/orm/engine"
 	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/proto/orm/compiler/v1/compilerv1connect"
 )
 
 const maxFrame = 16 << 20
@@ -33,11 +37,12 @@ type request struct {
 
 func main() {
 	sock := flag.String("socket", "", "unix socket path (required, absolute)")
+	listen := flag.String("listen", "", "Connect HTTP listen address, for example 127.0.0.1:8080")
 	schemaPath := flag.String("schema", "", "schema.json path (required)")
 	dialect := flag.String("dialect", "mysql", "sql dialect")
 	flag.Parse()
-	if *sock == "" || *schemaPath == "" {
-		fmt.Fprintln(os.Stderr, "ormd: -socket and -schema are required")
+	if (*sock == "" && *listen == "") || *schemaPath == "" {
+		fmt.Fprintln(os.Stderr, "ormd: -schema and at least one of -listen or -socket are required")
 		os.Exit(2)
 	}
 	js, err := os.ReadFile(*schemaPath)
@@ -47,6 +52,27 @@ func main() {
 	eng, err := engine.LoadJSON(js, *dialect)
 	if err != nil {
 		log.Fatalf("ormd: %v", err)
+	}
+	var httpServer *http.Server
+	if *listen != "" {
+		path, handler := compilerv1connect.NewCompilerServiceHandler(&compilerServer{engine: eng})
+		mux := http.NewServeMux()
+		mux.Handle(path, handler)
+		httpServer = &http.Server{Addr: *listen, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+		listener, err := net.Listen("tcp", *listen)
+		if err != nil {
+			log.Fatalf("ormd: Connect listen: %v", err)
+		}
+		log.Printf("ormd: schema %s (hash %s), Connect listening on http://%s%s", *schemaPath, eng.M.SchemaHash, listener.Addr(), path)
+		go func() {
+			if err := httpServer.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Printf("ormd: Connect serve: %v", err)
+			}
+		}()
+	}
+	if *sock == "" {
+		waitForSignal(httpServer, nil, "")
+		return
 	}
 	if err := os.Remove(*sock); err != nil && !errors.Is(err, os.ErrNotExist) {
 		log.Fatalf("ormd: remove stale socket: %v", err)
@@ -60,14 +86,7 @@ func main() {
 	}
 	log.Printf("ormd: schema %s (hash %s), listening on %s", *schemaPath, eng.M.SchemaHash, *sock)
 
-	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-		<-c
-		ln.Close()
-		os.Remove(*sock)
-		os.Exit(0)
-	}()
+	go waitForSignal(httpServer, ln, *sock)
 
 	for {
 		conn, err := ln.Accept()
@@ -79,6 +98,21 @@ func main() {
 			continue
 		}
 		go serve(eng, conn)
+	}
+}
+
+func waitForSignal(server *http.Server, listener net.Listener, socket string) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	<-c
+	if server != nil {
+		_ = server.Shutdown(context.Background())
+	}
+	if listener != nil {
+		_ = listener.Close()
+	}
+	if socket != "" {
+		_ = os.Remove(socket)
 	}
 }
 

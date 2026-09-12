@@ -80,7 +80,7 @@ jobs:
       - name: schema AES version rule
         run: npm run schema:check
       - name: protobuf compiler wire check
-        run: npm run proto:check
+        run: make proto-check
       - name: artifacts
         run: |
           mkdir -p bin

@@ -26,9 +26,9 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:09d54490ab94ba30c90511270a262c38e2a79fca6e00801f6c18d6b582c18e99",
-    "php": "sha256:a76a12201e9c5c1dce105480ac9dfde1db6bc2565cc1e7000f49b8717d5a2a11",
-    "rust": "sha256:aecdbdb50962ec91f258c977c461d4c108464e547d7b719fd708aa075dd4e599"
+    "go": "sha256:6f44d22723bc95bc6af847574d6ab5251d0c322e2f69eb83e00452092e4fef61",
+    "php": "sha256:ce3a503898cc8cb4f02236730915d2db082a1967e4140a1a2d5f3c410146bdc0",
+    "rust": "sha256:954d2acb9c3d734fc0d15b0e4915908238ea8ad8d996668a47fb5e56f3ca375c"
   },
   "components": [
     {
@@ -55,7 +55,8 @@
         "delete",
         "sql"
       ],
-      "ownership": "Owns mutable query state; never represents a loaded row."
+      "ownership": "Stores mutable query state. Loaded results use Row.",
+      "ownership_ko": "가변 query 상태를 저장한다. 조회 결과는 Row가 저장한다."
     },
     {
       "id": "LinkSelection",
@@ -64,7 +65,8 @@
         "childKey": "Text"
       },
       "methods": [],
-      "ownership": "Belongs to the child Query until relation or join consumes it."
+      "ownership": "Stores parent and child keys until relation or join construction.",
+      "ownership_ko": "relation 또는 join 생성 전까지 parent key와 child key를 저장한다."
     },
     {
       "id": "Where",
@@ -79,7 +81,8 @@
         "or",
         "navigate"
       ],
-      "ownership": "Borrow is scoped to its callback; cannot execute SQL."
+      "ownership": "Valid only during its callback. Does not execute SQL.",
+      "ownership_ko": "callback 실행 중에만 유효하다. SQL을 실행하지 않는다."
     },
     {
       "id": "Request",
@@ -93,7 +96,8 @@
         "attach",
         "shape"
       ],
-      "ownership": "attach snapshots all child state and shifts only the snapshot."
+      "ownership": "attach copies child state and shifts parameter indexes in the copy.",
+      "ownership_ko": "attach는 child 상태를 복사하고 복사본의 parameter index를 이동한다."
     },
     {
       "id": "RequestIR",
@@ -110,7 +114,8 @@
         "parameterCount": "I64"
       },
       "methods": [],
-      "ownership": "Value-free compiler input."
+      "ownership": "Contains compiler input without parameter values.",
+      "ownership_ko": "parameter 값을 제외한 compiler 입력을 저장한다."
     },
     {
       "id": "QueryNode",
@@ -129,7 +134,8 @@
         "options": "RelationOptions"
       },
       "methods": [],
-      "ownership": "Owned condition tree, including nested child nodes."
+      "ownership": "Contains the root or child condition tree.",
+      "ownership_ko": "root 또는 child 조건 tree를 저장한다."
     },
     {
       "id": "Binding",
@@ -140,7 +146,8 @@
       "methods": [
         "resolve"
       ],
-      "ownership": "Independent of request IR; does not select ambient transactions."
+      "ownership": "Stores an explicit executor. Does not select an ambient transaction.",
+      "ownership_ko": "명시한 executor를 저장한다. 현재 실행 중인 transaction을 자동 선택하지 않는다."
     },
     {
       "id": "Executor",
@@ -150,7 +157,8 @@
         "queryStep",
         "writeStep"
       ],
-      "ownership": "Adapter interface for the concrete database and pinned transaction executors."
+      "ownership": "Defines database and pinned transaction execution operations.",
+      "ownership_ko": "database와 고정 transaction의 실행 작업을 정의한다."
     },
     {
       "id": "Db",
@@ -166,7 +174,8 @@
         "queryStep",
         "writeStep"
       ],
-      "ownership": "Owns connections and caches, never query predicates or row values."
+      "ownership": "Stores connections, plan cache, statement cache, and runtime configuration.",
+      "ownership_ko": "connection, plan cache, statement cache, runtime 설정을 저장한다."
     },
     {
       "id": "Tx",
@@ -181,7 +190,8 @@
         "commit",
         "rollback"
       ],
-      "ownership": "Completion invalidates every retained bound query and row."
+      "ownership": "commit or rollback invalidates queries and rows that use the transaction.",
+      "ownership_ko": "commit 또는 rollback 후 해당 transaction을 사용하는 query와 row는 무효다."
     },
     {
       "id": "Row",
@@ -208,7 +218,8 @@
         "deleteCascade",
         "export"
       ],
-      "ownership": "Loaded identity, local values and pending changes have distinct roles."
+      "ownership": "Separates loaded identity, values, pending changes, relations, and execution binding.",
+      "ownership_ko": "조회한 identity, 값, 변경 사항, relation, 실행 binding을 구분해 저장한다."
     },
     {
       "id": "Collection",
@@ -224,7 +235,8 @@
         "keys",
         "entries"
       ],
-      "ownership": "Equal keys replace in place. Integer and string keys remain distinct."
+      "ownership": "A duplicate key replaces its value without changing order. Integer and string keys are distinct.",
+      "ownership_ko": "중복 key는 순서를 유지하고 값을 교체한다. integer key와 string key는 구분한다."
     },
     {
       "id": "Page",
@@ -236,7 +248,8 @@
         "per": "I64"
       },
       "methods": [],
-      "ownership": "per is positive and total is independent of page range."
+      "ownership": "Requires a positive per value. total does not depend on the requested page.",
+      "ownership_ko": "per는 양수여야 한다. total은 요청한 page와 관계없이 계산한다."
     },
     {
       "id": "Compiler",
@@ -244,7 +257,18 @@
       "methods": [
         "compile"
       ],
-      "ownership": "Accepts RequestIR and returns immutable Plan; has no executor."
+      "ownership": "Accepts RequestIR and returns an immutable Plan. Does not execute SQL.",
+      "ownership_ko": "RequestIR을 입력받아 변경 불가능한 Plan을 반환한다. SQL을 실행하지 않는다."
+    },
+    {
+      "id": "CompilerTransport",
+      "fields": {},
+      "methods": [
+        "compile",
+        "metadata"
+      ],
+      "ownership": "Sends typed compiler requests and returns typed plans and metadata.",
+      "ownership_ko": "type이 정의된 compiler request를 전송하고 plan과 metadata를 반환한다."
     },
     {
       "id": "Plan",
@@ -254,7 +278,8 @@
         "steps": "List<Step>"
       },
       "methods": [],
-      "ownership": "Cached and immutable while executing."
+      "ownership": "Contains cached execution steps and cannot change during execution.",
+      "ownership_ko": "cache 가능한 실행 step을 저장하며 실행 중에는 변경할 수 없다."
     },
     {
       "id": "Step",
@@ -267,7 +292,8 @@
         "assemble": "Optional<Assemble>"
       },
       "methods": [],
-      "ownership": "Executes in plan order."
+      "ownership": "Contains one SQL statement, bind slots, parent input, and result mapping.",
+      "ownership_ko": "SQL statement 하나, bind slot, parent 입력, 결과 mapping을 저장한다."
     },
     {
       "id": "Assemble",
@@ -277,7 +303,8 @@
         "children": "List<ChildAttachment>"
       },
       "methods": [],
-      "ownership": "Maps positional values to rows and relation attachments."
+      "ownership": "Maps result columns and relation results to rows.",
+      "ownership_ko": "결과 column과 relation 결과를 row에 mapping한다."
     },
     {
       "id": "ExecutionRows",
@@ -291,7 +318,8 @@
         "related",
         "stepAssemble"
       ],
-      "ownership": "Rows inherit the root executor used by this execution."
+      "ownership": "Stores the plan, parameters, step results, and root execution binding.",
+      "ownership_ko": "plan, parameter, step 결과, root 실행 binding을 저장한다."
     },
     {
       "id": "Error",
@@ -301,7 +329,8 @@
         "cause": "Optional<NativeError>"
       },
       "methods": [],
-      "ownership": "Errors are distinct from empty results and native defaults."
+      "ownership": "Separates failures from empty results and default values.",
+      "ownership_ko": "실패를 빈 결과 및 기본값과 구분한다."
     }
   ],
   "rules": [
@@ -1391,116 +1420,142 @@
     {
       "to": "Request",
       "kind": "*--",
-      "role": "owns",
-      "from": "Query"
+      "role": "stores request",
+      "from": "Query",
+      "role_ko": "request 저장"
     },
     {
       "to": "Binding",
       "kind": "*--",
-      "role": "owns",
-      "from": "Query"
+      "role": "stores binding",
+      "from": "Query",
+      "role_ko": "binding 저장"
     },
     {
       "to": "Request",
       "kind": "-->",
-      "role": "borrows",
-      "from": "Where"
+      "role": "references request",
+      "from": "Where",
+      "role_ko": "request 참조"
     },
     {
       "to": "RequestIR",
       "kind": "*--",
-      "role": "owns",
-      "from": "Request"
+      "role": "stores IR",
+      "from": "Request",
+      "role_ko": "IR 저장"
     },
     {
       "to": "QueryNode",
       "kind": "*--",
-      "role": "root",
-      "from": "RequestIR"
+      "role": "contains root",
+      "from": "RequestIR",
+      "role_ko": "root 포함"
     },
     {
       "to": "QueryNode",
       "kind": "*--",
-      "role": "child snapshots",
-      "from": "QueryNode"
+      "role": "contains child nodes",
+      "from": "QueryNode",
+      "role_ko": "child node 포함"
     },
     {
       "to": "Executor",
       "kind": "-->",
-      "role": "resolves",
-      "from": "Binding"
+      "role": "selects executor",
+      "from": "Binding",
+      "role_ko": "executor 선택"
     },
     {
       "to": "Executor",
       "kind": "..|>",
       "role": "implements",
-      "from": "Db"
+      "from": "Db",
+      "role_ko": "구현"
     },
     {
       "to": "Executor",
       "kind": "..|>",
       "role": "implements",
-      "from": "Tx"
+      "from": "Tx",
+      "role_ko": "구현"
     },
     {
       "to": "Db",
       "kind": "-->",
-      "role": "database",
-      "from": "Tx"
+      "role": "uses database",
+      "from": "Tx",
+      "role_ko": "database 사용"
     },
     {
       "to": "Binding",
       "kind": "*--",
-      "role": "inherits root execution",
-      "from": "Row"
+      "role": "uses root binding",
+      "from": "Row",
+      "role_ko": "root binding 사용"
     },
     {
       "to": "Collection",
       "kind": "*--",
-      "role": "many relations",
-      "from": "Row"
+      "role": "contains relations",
+      "from": "Row",
+      "role_ko": "relation 포함"
     },
     {
       "to": "Row",
       "kind": "o--",
-      "role": "ordered values",
-      "from": "Collection"
+      "role": "contains ordered rows",
+      "from": "Collection",
+      "role_ko": "순서 row 포함"
     },
     {
       "to": "Collection",
       "kind": "*--",
-      "role": "items",
-      "from": "Page"
+      "role": "contains items",
+      "from": "Page",
+      "role_ko": "항목 포함"
     },
     {
       "to": "Plan",
       "kind": "-->",
-      "role": "produces",
-      "from": "Compiler"
+      "role": "returns",
+      "from": "Compiler",
+      "role_ko": "반환"
     },
     {
       "to": "Step",
       "kind": "*--",
-      "role": "ordered steps",
-      "from": "Plan"
+      "role": "contains ordered steps",
+      "from": "Plan",
+      "role_ko": "순서 step 포함"
     },
     {
       "to": "Assemble",
       "kind": "*--",
-      "role": "projection",
-      "from": "Step"
+      "role": "maps results",
+      "from": "Step",
+      "role_ko": "결과 mapping"
     },
     {
       "to": "Plan",
       "kind": "-->",
-      "role": "immutable plan",
-      "from": "ExecutionRows"
+      "role": "uses plan",
+      "from": "ExecutionRows",
+      "role_ko": "plan 사용"
     },
     {
       "to": "Binding",
       "kind": "*--",
-      "role": "root binding",
-      "from": "ExecutionRows"
+      "role": "uses binding",
+      "from": "ExecutionRows",
+      "role_ko": "binding 사용"
+    },
+    {
+      "to": "Compiler",
+      "kind": "-->",
+      "role": "calls",
+      "from": "CompilerTransport",
+      "role_ko": "호출"
     }
   ],
   "records": [
@@ -2686,5 +2741,54 @@
         }
       }
     }
-  ]
+  ],
+  "compiler_transport": {
+    "service": "orm.compiler.v1.CompilerService",
+    "path": "/orm.compiler.v1.CompilerService/",
+    "operations": {
+      "compile": {
+        "rpc": "Compile",
+        "input": "CompileRequest",
+        "output": "Plan",
+        "error": "CompileError"
+      },
+      "metadata": {
+        "rpc": "GetMetadata",
+        "input": "GetMetadataRequest",
+        "output": "GetMetadataResponse",
+        "error": "TransportError"
+      }
+    },
+    "native": {
+      "go": {
+        "file": "clients/go/orm/compiler_transport.go",
+        "interface": "CompilerTransport",
+        "implementation": "ConnectCompiler",
+        "compile": "Compile",
+        "metadata": "Metadata"
+      },
+      "php": {
+        "file": "clients/php/src/CompilerTransport.php",
+        "implementation_file": "clients/php/src/ConnectCompiler.php",
+        "interface": "CompilerTransport",
+        "implementation": "ConnectCompiler",
+        "compile": "compile",
+        "metadata": "metadata"
+      },
+      "rust": {
+        "file": "clients/rust/orm/src/compiler_transport.rs",
+        "interface": "CompilerTransport",
+        "implementation": "ConnectCompiler",
+        "compile": "compile",
+        "metadata": "metadata"
+      },
+      "typescript": {
+        "file": "clients/typescript/src/compiler.ts",
+        "interface": "CompilerTransport",
+        "implementation": "ConnectCompiler",
+        "compile": "compile",
+        "metadata": "metadata"
+      }
+    }
+  }
 }

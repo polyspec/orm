@@ -81,7 +81,7 @@
 
 S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료해야 닫는다. Go·PHP·Rust·TypeScript에서 같은 논리 구조를 제공할 수 없으면 미완료로 유지한다.
 
-- [ ] T7.1 4개 클라이언트의 typed protobuf/Connect 경로와 공통 벡터를 구현한다.
+- [~] T7.1 Go·PHP·Rust·TypeScript의 typed Protobuf message, Connect compiler server, `CompilerTransport`, 공통 compiler transport vector를 구현했다. 각 database executor의 전송 전환과 DB vector 58개 실행이 남아 있다.
 - [x] T7.3 결정적인 `ormgen diff`와 destructive change 검사를 구현한다.
 - [~] T7.4 query 수준 `scope_p`, planner 강제 적용, 생성 메서드, MySQL·PostgreSQL·SQLite tenant isolation 검사를 구현했다. TypeScript database runner가 남아 있다.
 - [x] T7.5 Go·PHP·Rust·TypeScript에 `curlfile`, YAML 1.2, `point` 변환을 구현한다. MySQL·PostgreSQL·SQLite에서 `point` DDL과 SQL을 검사한다.

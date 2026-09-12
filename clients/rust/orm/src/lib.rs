@@ -14,10 +14,15 @@ pub mod codes;
 pub mod collection;
 pub mod config;
 pub mod aes_rotation;
+pub mod compiler_proto {
+    include!("gen/orm/compiler/v1/orm.compiler.v1.rs");
+}
+pub mod compiler_transport;
 
 pub use builder::{Q, W};
 pub use collection::{Collection, Key, Page};
 pub use config::OrmConfig;
+pub use compiler_transport::{CompilerTransport, ConnectCompiler};
 pub use db::{ConnectOptions, Db, Exec, Pool, Tx};
 pub use engine::Engine;
 pub use row::{Cells, Src};

@@ -77,10 +77,21 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 `{"error": {"code": "…", "msg": "…"}}` — codes: `IR_INVALID VERSION_MISMATCH SCHEMA_HASH_MISMATCH SCHEMA_INVALID SCHEMA_NOT_LOADED ENTITY_UNKNOWN COLUMN_UNKNOWN RELATION_UNKNOWN INDEX_UNKNOWN OPERATOR_UNKNOWN OPERATOR_NOT_ALLOWED OR_AT_GROUP_START EMPTY_IN ENTITY_NOT_JOINED LIMIT_IN_RELATION COLUMN_ALIAS_CONFLICT DIALECT_UNKNOWN FRAME_INVALID OP_UNKNOWN INTERNAL`. Executor codes include `OPTIMISTIC_LOCK DEADLOCK DUPLICATE_KEY JOIN_PREDICATE_PLACEMENT PAREN_ACROSS_MODELS`.
 
 ## 4. Transport
-- Go: `engine.New(manifest, "mysql").Compile(ir)` function call.
-- Rust: `ormengine.wasm` — `orm_alloc/orm_load/orm_compile/orm_free` (result `[u32 status][u32 len][bytes]`).
-- PHP: `ormd -socket /abs/path.sock -schema /abs/schema.json` — length-prefixed frames, `{"op":"compile","ir":…}` → `{"plan":…}`, `{"op":"hash"}` → `{"schema_hash":…}`.
-- Cache key = xxh3(JSON of the IR shape after removing `value/values/binds`, plus IN cardinality) + schema_hash.
+
+The common compiler service is `orm.compiler.v1.CompilerService` from `proto/orm/compiler/v1/compiler.proto`.
+
+| RPC | Connect path | Input | Output |
+|---|---|---|---|
+| Compile | `/orm.compiler.v1.CompilerService/Compile` | `CompileRequest` | `CompileResponse.plan` or `CompileResponse.error` |
+| GetMetadata | `/orm.compiler.v1.CompilerService/GetMetadata` | `GetMetadataRequest` | schema hash, dialect, IR version |
+
+`ormd -listen 127.0.0.1:8080 -schema schema/schema.json` accepts Connect unary requests with binary Protobuf. Go, PHP, Rust, and TypeScript provide `CompilerTransport` and `ConnectCompiler` with the same two operations. `make proto-check` executes one scope-sensitive request through all four implementations and compares the complete normalized result.
+
+`contracts/interfaces.json` defines the service path, operation names, request and response types, errors, and native symbols for all four transports. The Protobuf check rejects missing interface methods or implementation declarations. Runtime symbol snapshots exclude generated Protobuf files; `proto/generated.sha256.json` checks every generated file instead.
+
+The existing Go in-process compiler, Rust WASM compiler, and PHP length-prefixed Unix socket compiler remain active in the database executors during T7.1 migration. They do not satisfy the completed transport requirement. T7.1 completes after the executors use Connect and the 58 database vectors pass in all four languages.
+
+The cache key is the schema hash plus the request shape and IN cardinality. Parameter values are excluded.
 
 ### Write extension (S3)
 - `on_duplicate: [Assign]` is insert-only and excludes PK/auto. The planner creates `INSERT … ON DUPLICATE KEY UPDATE a = ?, b = b + ?[, pk = LAST_INSERT_ID(pk)]`. The executor reads the row again by that id.
