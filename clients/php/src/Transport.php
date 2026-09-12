@@ -174,7 +174,7 @@ final class Transport
         if ($requestHash !== $bundle['request_sha256']) {
             throw new OrmException(Code::CONFIG, "precompiled plan request hash {$bundle['request_sha256']} does not match request shape $requestHash");
         }
-        $plan = $bundle['plan'];
+        $plan = Assemble::raw($bundle['plan']);
         if (($plan['schema_hash'] ?? null) !== $schema || ($plan['kind'] ?? null) !== $kind || count($plan['steps'] ?? []) < 1) {
             throw new OrmException(Code::CONFIG, 'precompiled plan body does not match its envelope or request');
         }
@@ -241,6 +241,31 @@ final class Transport
 
 final class Assemble
 {
+    /** Remove executor-only indexes so a plan can be validated or serialized as a public bundle. */
+    public static function raw(array $plan): array
+    {
+        foreach ($plan['steps'] ?? [] as $i => $step) {
+            unset($plan['steps'][$i]['plan_id'], $plan['steps'][$i]['styled']);
+            if (isset($plan['steps'][$i]['assemble'])) {
+                self::rawNode($plan['steps'][$i]['assemble']);
+            }
+        }
+        return $plan;
+    }
+
+    private static function rawNode(array &$a): void
+    {
+        unset($a['idx'], $a['hidden']);
+        foreach ($a['columns'] ?? [] as $i => $_) {
+            unset($a['columns'][$i]['host'], $a['columns'][$i]['codec']);
+        }
+        foreach ($a['children'] ?? [] as $i => $_) {
+            if (isset($a['children'][$i]['assemble'])) {
+                self::rawNode($a['children'][$i]['assemble']);
+            }
+        }
+    }
+
     /**
      * Stamps every step with 'plan_id' (the cache key suffix, for the on_query hook), 'styled'
      * (whether any selected column needs the codec) and adds 'idx' => [name => position] to

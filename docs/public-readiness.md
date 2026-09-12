@@ -27,7 +27,7 @@ Each item requires:
 - [x] P8.5 Public encryption uses authenticated, versioned ciphertext in every client. Reads select the hidden row key version, mixed-version reads work, tampering fails, and rotation processes bounded resumable batches for every AES column in a row. Go, PHP, Rust, and TypeScript pass codec tamper vectors and physical rotation tests.
 - [x] P8.6 Equality search on encrypted data requires an explicit blind-index column. The runtime accepts only authenticated AES v2 ciphertext. Go, PHP, Rust, and TypeScript pass MySQL, PostgreSQL, and SQLite integration tests.
 - [ ] P8.7 Relation and `IN` parameters respect each database limit through deterministic chunking and preserve row order, key types, relation attachment, and errors.
-- [ ] P8.8 Plan and prepared-statement caches have configurable bounds, deterministic eviction, close behavior, and pressure tests in all clients.
+- [x] P8.8 Plan and prepared-statement caches have configurable bounds, deterministic eviction, close behavior, and pressure tests in all clients. Go, PHP, Rust, and TypeScript tests verify plan eviction, statement eviction, and close behavior; PHP physical SQLite integration passes the same checks.
 
 ## P9: common ORM operations
 
