@@ -31,6 +31,8 @@ Encoding recursively converts it to `{"is_curl_file":true,"mime":"text/plain","n
 
 `yaml` stores one YAML 1.2 document. Output values use the common value model. Mapping keys are strings; integral YAML keys are converted to decimal strings for compatibility with PHP arrays. Duplicate keys, multiple documents, aliases, anchors, explicit tags, non-finite numbers, collection keys, and plain boolean, null, or floating-point keys return `CODEC_DECODE`. YAML output text can differ by client, so verification compares decoded values across clients.
 
+`point` is a column type, not a style. Its public value is `[x, y]`: Go `orm.Point`, PHP `array{float,float}`, Rust `orm::Point`, and TypeScript `Point`. `parsePoint`/`parse_point`/`Codec::point` accept `POINT(x y)` and PostgreSQL `(x,y)` output. The write conversion emits `POINT(x y)`. Values with a coordinate count other than two return `CODEC_DECODE`; non-finite output coordinates return `CODEC_ENCODE`.
+
 ## Cases
 - PHP cannot distinguish an empty object from an empty list. An empty PHP array is stored as JSON `[]` or serialize `a:0:{}` and is read as an empty list by all clients. Pass `new \stdClass` to write a JSON empty object.
 - NULL and an empty string are read as `null`.
@@ -38,6 +40,7 @@ Encoding recursively converts it to `{"is_curl_file":true,"mime":"text/plain","n
 - A serialize-family format failure returns `CODEC_DECODE`. `O:`, `C:`, `R:`, and `r:` return `CODEC_UNSUPPORTED`.
 - An invalid public upload record returns `CODEC_ENCODE`. An invalid stored upload marker returns `CODEC_DECODE`. A `curlfile` stage outside the first position returns `CODEC_UNSUPPORTED`.
 - A YAML parse or value-model failure returns `CODEC_DECODE`. A YAML encode failure returns `CODEC_ENCODE`. A `yaml` stage outside the first position returns `CODEC_UNSUPPORTED`.
+- Invalid point input returns `CODEC_DECODE`. Point output containing NaN or infinity returns `CODEC_ENCODE`.
 - String lengths use byte length. Compressed bytes can vary by implementation, so `gz` guarantees equal round-trip values.
 
 ## Vectors (`tests/codec`)

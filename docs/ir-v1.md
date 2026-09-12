@@ -69,7 +69,7 @@ The parser **calculates and writes** `ops` from the type and styles. Renderers d
 | `datetime` | `string` | `time.Time` | `chrono::NaiveDateTime` | `string` |
 | `timestamp` | `int` | `int64` | `i64` | `number` |
 | `json` | `array` | `json.RawMessage` | `serde_json::Value` | `unknown` |
-| `point` | `array{float,float}` | `[2]float64` | `(f64, f64)` | `[number, number]` |
+| `point` | `array{float,float}` | `orm.Point` (`[2]float64`) | `orm::Point` (`(f64, f64)`) | `Point` (`readonly [number, number]`) |
 | `inet` | `string` | `netip.Addr` | `std::net::IpAddr` | `string` |
 | `enum` | `string` | `string` + const | `enum` | string union |
 
@@ -100,7 +100,7 @@ A single style name such as `aes_serialize` or `aes_hex` is represented as a lis
 | `hex` | hex | unhex | app |
 | `aes` | `AES_ENCRYPT(?, :__key)` | `AES_DECRYPT(col, :__key)` | **SQL** |
 | `ip` | `INET6_ATON(?)` | `INET6_NTOA(col)` | **SQL** |
-| `point` | `ST_PointFromText(?)` | `ST_AsText(col)` | **SQL** |
+| `point` | `ST_PointFromText(?)` | `ST_AsText(col)` | **SQL on MySQL; typed text conversion on PostgreSQL and SQLite** |
 
 `serialize` is not portable between languages (PHP `serialize()` and Go/Rust). The parser emits a **warning** when multiple clients read the same table; use `json` instead.
 

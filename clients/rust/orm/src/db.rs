@@ -189,6 +189,7 @@ pub fn same_scalar(v: &Val, p: &Param) -> bool {
         Param::Bytes(b) => String::from_utf8_lossy(b).into_owned(),
         Param::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
         Param::Date(d) => d.to_string(),
+        Param::Point(p) => format!("{},{}", p.0, p.1),
     };
     a == b
 }
@@ -400,7 +401,18 @@ impl Db {
             match b.from.as_str() {
                 "parent" => out.extend(parent_vals.iter().cloned()),
                 "param" => {
-                    let v = param_arg(b, params)?;
+                    let mut v = param_arg(b, params)?;
+                    if b.col_type == "point" {
+                        v = match v {
+                            Param::Null => Param::Null,
+                            Param::Point(point) => Param::Str(if matches!(&self.pool, Pool::Postgres(_)) { crate::value::postgres_point_text(point)? } else { crate::point_text(point)? }),
+                            Param::Str(text) => {
+                                let point = crate::parse_point(&text)?;
+                                Param::Str(if matches!(&self.pool, Pool::Postgres(_)) { crate::value::postgres_point_text(point)? } else { crate::point_text(point)? })
+                            },
+                            other => return Err(Error::Config(format!("point parameter requires two coordinates, received {other:?}"))),
+                        };
+                    }
                     out.push(if b.host_styles.is_empty() { v } else { crate::codec::host_encode(&v, &b.host_styles, &self.cfg.aes_key)? });
                 }
                 "secret" => {
@@ -580,6 +592,7 @@ fn bind_mysql<'q>(q: MySqlQuery<'q>, p: &'q Param) -> MySqlQuery<'q> {
         Param::Bytes(b) => q.bind(b.as_slice()),
         Param::DateTime(t) => q.bind(*t),
         Param::Date(d) => q.bind(*d),
+        Param::Point(_) => unreachable!("point is converted to text before binding"),
     }
 }
 
@@ -594,6 +607,7 @@ fn bind_sqlite<'q>(q: SqliteQuery<'q>, p: &'q Param) -> SqliteQuery<'q> {
         Param::Bytes(b) => q.bind(b.as_slice()),
         Param::DateTime(t) => q.bind(*t),
         Param::Date(d) => q.bind(*d),
+        Param::Point(_) => unreachable!("point is converted to text before binding"),
     }
 }
 
@@ -665,6 +679,7 @@ fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usize) -> Resul
             Param::DateTime(t) => q.bind(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
             Param::Date(d) => q.bind(d.to_string()),
             Param::Bytes(b) => q.bind(std::str::from_utf8(b).map_err(|_| bad())?),
+            Param::Point(point) => q.bind(crate::point_text(*point)?),
         },
         "TIMESTAMP" => match p {
             Param::Null => q.bind(Option::<NaiveDateTime>::None),

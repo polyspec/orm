@@ -63,7 +63,10 @@ func (MySQL) Upsert(_ []string, assigns string) string {
 // ReadExpr: styles are applied on write in order and undone on read in
 // reverse. Only SQL-side stages appear here; app-side stages (gz/json/…)
 // are the executor's job.
-func (MySQL) ReadExpr(col string, styles []string, ph func() string) (string, int) {
+func (MySQL) ReadExpr(col, colType string, styles []string, ph func() string) (string, int) {
+	if colType == "point" {
+		col = "ST_AsText(" + col + ")"
+	}
 	expr, binds := col, 0
 	for i := len(styles) - 1; i >= 0; i-- {
 		switch styles[i] {
@@ -79,8 +82,11 @@ func (MySQL) ReadExpr(col string, styles []string, ph func() string) (string, in
 	return expr, binds
 }
 
-func (MySQL) WriteExpr(ph func() string, styles []string) (string, int) {
+func (MySQL) WriteExpr(ph func() string, colType string, styles []string) (string, int) {
 	expr, binds := ph(), 1
+	if colType == "point" {
+		expr = "ST_PointFromText(" + expr + ")"
+	}
 	for _, s := range styles {
 		switch s {
 		case "aes":

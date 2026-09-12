@@ -69,7 +69,7 @@ schema/*.sql  ──파서──▶  spec/*.json  ──▶ php.tmpl / go.tmpl /
 | `datetime` | `string` | `time.Time` | `chrono::NaiveDateTime` | `string` |
 | `timestamp` | `int` | `int64` | `i64` | `number` |
 | `json` | `array` | `json.RawMessage` | `serde_json::Value` | `unknown` |
-| `point` | `array{float,float}` | `[2]float64` | `(f64, f64)` | `[number, number]` |
+| `point` | `array{float,float}` | `orm.Point` (`[2]float64`) | `orm::Point` (`(f64, f64)`) | `Point` (`readonly [number, number]`) |
 | `inet` | `string` | `netip.Addr` | `std::net::IpAddr` | `string` |
 | `enum` | `string` | `string` + const | `enum` | string union |
 
@@ -100,7 +100,7 @@ nullable: PHP `?T` / Go `*T` / Rust `Option<T>`. Go는 `sql.NullX`를 쓰지 않
 | `hex` | hex | unhex | app |
 | `aes` | `AES_ENCRYPT(?, :__key)` | `AES_DECRYPT(col, :__key)` | **SQL** |
 | `ip` | `INET6_ATON(?)` | `INET6_NTOA(col)` | **SQL** |
-| `point` | `ST_PointFromText(?)` | `ST_AsText(col)` | **SQL** |
+| `point` | `ST_PointFromText(?)` | `ST_AsText(col)` | **MySQL은 SQL, PostgreSQL·SQLite는 typed text 변환** |
 
 `serialize`는 언어 간 호환이 안 된다(PHP `serialize()` ↔ Go/Rust). 세 언어가 같은 테이블을 읽는다면 파서가 **경고**를 표시한다. `json`을 쓰라는 뜻이다.
 

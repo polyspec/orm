@@ -47,6 +47,9 @@ func finderMethod(cols []string) string {
 }
 
 func goType(c *schema.Col) string {
+	if c.Type == "point" {
+		return "orm.Point"
+	}
 	if len(appStyles(c)) > 0 {
 		return "any"
 	}
@@ -346,6 +349,8 @@ var goTmpl = template.Must(template.New("go").Funcs(template.FuncMap{
 			return "orm.AsBool(v)"
 		case "time.Time":
 			return "orm.AsTime(v)"
+		case "orm.Point":
+			return "orm.AsPoint(v)"
 		case "any":
 			return "v"
 		}

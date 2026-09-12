@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const file = 'clients/typescript/src/index.ts';
 const source = await readFile(file, 'utf8');
+const codecSource = await readFile('clients/typescript/src/codec.ts', 'utf8');
 const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 const declarations = new Map();
 for (const node of ast.statements) {
@@ -26,6 +27,9 @@ for (const name of ['User', 'Service', 'ServiceModule', 'ServiceMember']) {
   if (!declarations.has(name) || !ts.isFunctionDeclaration(declarations.get(name))) throw new Error(`${file}: missing ${name} factory`);
 }
 if (!source.includes("scope is not declared for")) throw new Error(`${file}: scope guard is missing for entities without a scope directive`);
+for (const name of ['export type Point = readonly [number, number]', 'export function pointText', 'export function parsePoint']) {
+  if (!codecSource.includes(name)) throw new Error(`clients/typescript/src/codec.ts: missing ${name}`);
+}
 const keyring = declarations.get('AesKeyring');
 const rotation = keyring.members.filter(ts.isMethodDeclaration).map(node => node.name.getText(ast));
 for (const name of ['versions', 'rotateRow']) if (!rotation.includes(name)) throw new Error(`${file}: AesKeyring missing ${name}`);

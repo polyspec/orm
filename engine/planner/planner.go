@@ -441,7 +441,7 @@ func (p *Planner) selectGroupCountList(b *builder, sb *strings.Builder, s *scope
 		if *idx > 0 {
 			sb.WriteString(", ")
 		}
-		expr, _ := p.D.ReadExpr(p.qcol(s, name), p.sqlStyles(col.Styles), func() string { return b.secret("aes") })
+		expr, _ := p.D.ReadExpr(p.qcol(s, name), col.Type, p.sqlStyles(col.Styles), func() string { return b.secret("aes") })
 		out := s.alias + "__" + name
 		sb.WriteString(expr + " AS " + p.D.Quote(out))
 		*outNames = append(*outNames, out)
@@ -499,7 +499,7 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 			}
 			expr = e
 		default:
-			e, _ := p.D.ReadExpr(p.qcol(s, c.column), p.sqlStyles(col.Styles), func() string { return b.secret("aes") })
+			e, _ := p.D.ReadExpr(p.qcol(s, c.column), col.Type, p.sqlStyles(col.Styles), func() string { return b.secret("aes") })
 			expr = e
 			styles = p.appStyles(col.Styles)
 		}
@@ -776,10 +776,10 @@ func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error
 			host = append(host, st)
 		}
 	}
-	if len(styles) == 0 {
+	if len(styles) == 0 && col.Type != "point" {
 		ph := b.param(i)
 		b.binds[len(b.binds)-1].HostStyles = host
-		b.binds[len(b.binds)-1].ColType = timeType(col)
+		b.binds[len(b.binds)-1].ColType = bindType(col)
 		return ph, nil
 	}
 	first := true
@@ -788,21 +788,21 @@ func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error
 			first = false
 			ph := b.param(i)
 			b.binds[len(b.binds)-1].HostStyles = host
-			b.binds[len(b.binds)-1].ColType = timeType(col)
+			b.binds[len(b.binds)-1].ColType = bindType(col)
 			return ph
 		}
 		return b.secret("aes")
-	}, styles)
+	}, col.Type, styles)
 	return e, nil
 }
 
-// timeType names the column's type when it is a date/time one, else "".
-func timeType(col *schema.Col) string {
+// bindType names types that executors must normalize before driver binding.
+func bindType(col *schema.Col) string {
 	if col == nil {
 		return ""
 	}
 	switch col.Type {
-	case "date", "time", "datetime":
+	case "date", "time", "datetime", "point":
 		return col.Type
 	}
 	return ""
