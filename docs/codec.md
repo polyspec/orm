@@ -1,6 +1,6 @@
 # Codecs — reading and writing column styles (S2)
 
-Column styles are stored in the manifest `styles: [...]` in **write order** (`gz_*` → `['serialize','gz']`: serialize, then compress). Reading applies the reverse order. `aes`, `hex`, and `ip` are host stages; the remaining stages are executor codecs. All clients produce the same bytes and values.
+Column styles are stored in the manifest `styles: [...]` in **write order** (`gz_*` → `['serialize','gz']`: serialize, then compress). Reading applies the reverse order. `aes`, `hex`, and `ip` are host stages; the remaining stages are executor codecs. The implemented Go, PHP, and Rust clients produce the same bytes and values. The TypeScript codec is not implemented.
 
 | style | write (value → stored bytes) | read (stored bytes → value) | reference |
 |---|---|---|---|
@@ -11,11 +11,11 @@ Column styles are stored in the manifest `styles: [...]` in **write order** (`gz
 
 ## Value model
 Styled columns use JSON-like values: null, bool, integer (i64), float (f64), string, list, and string-keyed map.
-| | Go | Rust | PHP |
-|---|---|---|---|
-| field type | `any` | `serde_json::Value` (`Option<…>` when nullable) | `mixed` (array/scalar/null) |
-| list | `[]any` | `Value::Array` | list array |
-| map | `map[string]any` | `Value::Object` (sorted keys) | associative array (insertion order) |
+| | Go | Rust | PHP | TypeScript |
+|---|---|---|---|---|
+| field type | `any` | `serde_json::Value` (`Option<…>` when nullable) | `mixed` (array/scalar/null) | `unknown` |
+| list | `[]any` | `Value::Array` | list array | `unknown[]` |
+| map | `map[string]any` | `Value::Object` (sorted keys) | associative array (insertion order) | `Record<string, unknown>` |
 
 PHP arrays are ordered maps. An array with exactly the keys `0..n-1` is read as a list; other keys are read as a map. Serialize-family codecs preserve the key representation. Go and Rust sort JSON map keys; PHP keeps insertion order, so bytes can differ while values remain equal.
 
