@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/polyspec/orm/contracts"
 	"github.com/polyspec/orm/engine/schema"
 )
 
@@ -36,6 +37,20 @@ func TestTypeScriptGenerationIsCurrent(t *testing.T) {
 	}
 	if !bytes.Equal(got, want) {
 		t.Fatal("clients/typescript/src/gen/entities.ts differs from ormgen output")
+	}
+	if err := contracts.GenerateInterfaces(manifest, "typescript", out, ""); err != nil {
+		t.Fatal(err)
+	}
+	wantInterfaces, err := os.ReadFile(filepath.Join(out, "interfaces.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotInterfaces, err := os.ReadFile(filepath.Join(root, "clients/typescript/src/gen/interfaces.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(gotInterfaces, wantInterfaces) {
+		t.Fatal("clients/typescript/src/gen/interfaces.ts differs from contract output")
 	}
 	text := string(got)
 	for _, forbidden := range []string{"joinUser(", "relationUser("} {

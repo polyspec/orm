@@ -175,7 +175,7 @@ export class Db implements Database, Executor {
 }
 
 export class Tx extends Db {
-  public active = true;
+  public active: boolean = true;
   public constructor(private readonly transactionConnection: DriverTransaction, outer: Db) {
     super(transactionConnection, { schemaHash: outer.schemaHash, compiler: transportUnavailable, aesKey: outer['aesKey'], onQuery: outer['onQuery'] }, outer);
     this.compiler = outer.compiler;

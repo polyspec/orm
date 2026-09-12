@@ -23,12 +23,19 @@
         "clients/rust/gen/src"
       ],
       "symbols": "contracts/symbols/rust.json"
+    },
+    "typescript": {
+      "roots": [
+        "clients/typescript/src"
+      ],
+      "symbols": "contracts/symbols/typescript.json"
     }
   },
   "symbol_hashes": {
     "go": "sha256:22f908f69e1c087b8c5249315c0f42b18fea4694555f54ead0c547a9fc5593a3",
     "php": "sha256:698a0e051003b5d36dcef38d3a36e974644500b6040dc703c926a7a6de461e5f",
-    "rust": "sha256:3cddd5728635ebad1fd97795f1f8a5e37c343f2ff3eebca5e731504ba6a7dd30"
+    "rust": "sha256:3cddd5728635ebad1fd97795f1f8a5e37c343f2ff3eebca5e731504ba6a7dd30",
+    "typescript": "sha256:dc56baa50622ea63c86a16b76d1607c31c6124c8786b8d1e5618c497195fc129"
   },
   "components": [
     {
@@ -357,6 +364,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::get",
           "signature": "pub async fn get(&mut self) -> Result<Option<{Entity}Row>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.get",
+          "signature": "public async get(): Promise<{Entity}Row | null>"
         }
       }
     },
@@ -383,6 +394,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::gets",
           "signature": "pub async fn gets(&mut self) -> Result<Collection<{Entity}Row>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.gets",
+          "signature": "public async gets(): Promise<Collection<{Entity}Row>>"
         }
       }
     },
@@ -409,6 +424,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::get_count",
           "signature": "pub async fn get_count(&mut self) -> Result<i64>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getCount",
+          "signature": "public async getCount(): Promise<number>"
         }
       }
     },
@@ -435,6 +454,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::gets_count",
           "signature": "pub async fn gets_count(&mut self) -> Result<Collection<{Entity}Row>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getsCount",
+          "signature": "public async getsCount(): Promise<Collection<{Entity}Row>>"
         }
       }
     },
@@ -461,6 +484,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::insert",
           "signature": "pub async fn insert(&mut self) -> Result<Option<{Entity}Row>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.insert",
+          "signature": "public async insert(): Promise<{Entity}Row | null>"
         }
       }
     },
@@ -487,6 +514,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::save",
           "signature": "pub async fn save(&mut self) -> Result<Option<{Entity}Row>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.save",
+          "signature": "public async save(): Promise<{Entity}Row | null>"
         }
       }
     },
@@ -513,6 +544,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::update",
           "signature": "pub async fn update(&mut self) -> Result<u64>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.update",
+          "signature": "public async update(): Promise<number>"
         }
       }
     },
@@ -539,6 +574,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::delete",
           "signature": "pub async fn delete(&mut self) -> Result<u64>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.delete",
+          "signature": "public async delete(): Promise<number>"
         }
       }
     },
@@ -565,6 +604,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::sql",
           "signature": "pub async fn sql(&mut self) -> Result<db::Sql>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.sql",
+          "signature": "public async sql(): Promise<{ sql: string; binds: unknown[]; }>"
         }
       }
     },
@@ -587,6 +630,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::query",
           "signature": "pub fn query() -> {Entity}"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}",
+          "signature": "export function {Entity}(): {Entity}Query"
         }
       }
     },
@@ -612,6 +659,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::using",
           "signature": "pub fn using(mut self, ex: &impl Exec) -> Self"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::QueryCore.using",
+          "signature": "public using(database: Db): this"
         }
       }
     },
@@ -636,6 +687,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::scope",
           "signature": "pub fn scope(mut self, v: {type}) -> Self"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.scope",
+          "signature": "public override scope(value: {type}): this"
         }
       }
     },
@@ -664,6 +719,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::paginate",
           "signature": "pub async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<{Entity}Row>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.paginate",
+          "signature": "public async paginate(page: number, per: number): Promise<Page<{Entity}Row>>"
         }
       }
     },
@@ -691,6 +750,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::gets_by_{column}",
           "signature": "pub async fn gets_by_{column}(&mut self, v: {type}) -> Result<Collection<{Entity}Row>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getsBy{Column}",
+          "signature": "public async getsBy{Column}(value: {type}): Promise<Collection<{Entity}Row>>"
         }
       }
     },
@@ -718,6 +781,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::get_count_by_{column}",
           "signature": "pub async fn get_count_by_{column}(&mut self, v: {type}) -> Result<i64>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getCountBy{Column}",
+          "signature": "public async getCountBy{Column}(value: {type}): Promise<number>"
         }
       }
     },
@@ -742,6 +809,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::{column}_eq",
           "signature": "pub fn {column}_eq(mut self, v: {type}) -> Self"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.{columnCamel}Eq",
+          "signature": "public {columnCamel}Eq(value: {type}): this"
         }
       }
     },
@@ -766,6 +837,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Where < 'a >::{column}_eq",
           "signature": "pub fn {column}_eq(mut self, v: {type}) -> Self"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Where.{columnCamel}Eq",
+          "signature": "public {columnCamel}Eq(value: {type}): this"
         }
       }
     },
@@ -790,6 +865,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::{column}",
           "signature": "pub fn {column}(self, v: {type}) -> Self"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.{columnCamel}",
+          "signature": "public {columnCamel}(value: {type}): this"
         }
       }
     },
@@ -814,6 +893,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Where < 'a >::{column}",
           "signature": "pub fn {column}(self, v: {type}) -> Self"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Where.{columnCamel}",
+          "signature": "public {columnCamel}(value: {type}): this"
         }
       }
     },
@@ -839,6 +922,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::using",
           "signature": "pub fn using(&mut self, ex: &impl Exec) -> &mut Self"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row.using",
+          "signature": "public using(database: Db): this"
         }
       }
     },
@@ -864,6 +951,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::update",
           "signature": "pub async fn update(&mut self) -> Result<()>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row.update",
+          "signature": "public async update(): Promise<void>"
         }
       }
     },
@@ -890,6 +981,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::update_optimistic",
           "signature": "pub async fn update_optimistic(&mut self) -> Result<()>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row.updateOptimistic",
+          "signature": "public async updateOptimistic(): Promise<void>"
         }
       }
     },
@@ -915,6 +1010,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::delete",
           "signature": "pub async fn delete(&self) -> Result<()>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row.delete",
+          "signature": "public async delete(): Promise<void>"
         }
       }
     },
@@ -940,6 +1039,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::delete_cascade",
           "signature": "pub async fn delete_cascade(&self) -> Result<()>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row.deleteCascade",
+          "signature": "public async deleteCascade(): Promise<void>"
         }
       }
     },
@@ -964,6 +1067,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::has",
           "signature": "pub fn has(&self, name: &str) -> bool"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row.has",
+          "signature": "public has(column: string): boolean"
         }
       }
     },
@@ -988,6 +1095,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::rel_loaded",
           "signature": "pub fn rel_loaded(&self, name: &str) -> bool"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row.relLoaded",
+          "signature": "public relLoaded(relation: string): boolean"
         }
       }
     },
@@ -1012,6 +1123,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::to_map",
           "signature": "pub fn to_map(&self) -> Result<serde_json::Value>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row.toObject",
+          "signature": "public toObject(): Record<string, unknown>"
         }
       }
     }
@@ -1570,7 +1685,8 @@
       "id": "IRRequest",
       "native": {
         "go": "engine/ir/ir.go::Request",
-        "rust": "clients/rust/orm/src/ir.rs::Request"
+        "rust": "clients/rust/orm/src/ir.rs::Request",
+        "typescript": "clients/typescript/src/index.ts::Request"
       },
       "fields": {
         "ir_version": "integer",
@@ -1598,7 +1714,8 @@
       "id": "IRQuery",
       "native": {
         "go": "engine/ir/ir.go::Query",
-        "rust": "clients/rust/orm/src/ir.rs::Query"
+        "rust": "clients/rust/orm/src/ir.rs::Query",
+        "typescript": "clients/typescript/src/index.ts::RequestQuery"
       },
       "fields": {
         "entity": "text",
@@ -1648,7 +1765,8 @@
       "id": "IRColumns",
       "native": {
         "go": "engine/ir/ir.go::Columns",
-        "rust": "clients/rust/orm/src/ir.rs::Columns"
+        "rust": "clients/rust/orm/src/ir.rs::Columns",
+        "typescript": "clients/typescript/src/index.ts::Projection"
       },
       "fields": {
         "mode": "text",
@@ -1669,7 +1787,8 @@
       "id": "IRJoin",
       "native": {
         "go": "engine/ir/ir.go::Join",
-        "rust": "clients/rust/orm/src/ir.rs::Join"
+        "rust": "clients/rust/orm/src/ir.rs::Join",
+        "typescript": "clients/typescript/src/index.ts::Join"
       },
       "fields": {
         "rel": "text",
@@ -1682,7 +1801,8 @@
       "id": "IRRelation",
       "native": {
         "go": "engine/ir/ir.go::Relation",
-        "rust": "clients/rust/orm/src/ir.rs::Relation"
+        "rust": "clients/rust/orm/src/ir.rs::Relation",
+        "typescript": "clients/typescript/src/index.ts::Relation"
       },
       "fields": {
         "rel": "text",
@@ -1694,7 +1814,8 @@
       "id": "IRGroup",
       "native": {
         "go": "engine/ir/ir.go::Group",
-        "rust": "clients/rust/orm/src/ir.rs::Group"
+        "rust": "clients/rust/orm/src/ir.rs::Group",
+        "typescript": "clients/typescript/src/index.ts::Group"
       },
       "fields": {
         "conn": "text",
@@ -1708,7 +1829,8 @@
       "id": "IRItem",
       "native": {
         "go": "engine/ir/ir.go::Item",
-        "rust": "clients/rust/orm/src/ir.rs::Item"
+        "rust": "clients/rust/orm/src/ir.rs::Item",
+        "typescript": "clients/typescript/src/index.ts::Item"
       },
       "fields": {
         "pred": "IRPred",
@@ -1726,7 +1848,8 @@
       "id": "IRPred",
       "native": {
         "go": "engine/ir/ir.go::Pred",
-        "rust": "clients/rust/orm/src/ir.rs::Pred"
+        "rust": "clients/rust/orm/src/ir.rs::Pred",
+        "typescript": "clients/typescript/src/index.ts::Predicate"
       },
       "fields": {
         "conn": "text",
@@ -1753,7 +1876,8 @@
       "id": "IRColRef",
       "native": {
         "go": "engine/ir/ir.go::ColRef",
-        "rust": "clients/rust/orm/src/ir.rs::ColRef"
+        "rust": "clients/rust/orm/src/ir.rs::ColRef",
+        "typescript": "clients/typescript/src/index.ts::ColumnReferenceIR"
       },
       "fields": {
         "path": "text",
@@ -1765,7 +1889,8 @@
       "id": "IRNav",
       "native": {
         "go": "engine/ir/ir.go::Nav",
-        "rust": "clients/rust/orm/src/ir.rs::Nav"
+        "rust": "clients/rust/orm/src/ir.rs::Nav",
+        "typescript": "clients/typescript/src/index.ts::Navigation"
       },
       "fields": {
         "conn": "text",
@@ -1780,7 +1905,8 @@
       "id": "IROrder",
       "native": {
         "go": "engine/ir/ir.go::Order",
-        "rust": "clients/rust/orm/src/ir.rs::Order"
+        "rust": "clients/rust/orm/src/ir.rs::Order",
+        "typescript": "clients/typescript/src/index.ts::Order"
       },
       "fields": {
         "column": "text",
@@ -1797,7 +1923,8 @@
       "id": "IRGroupExpr",
       "native": {
         "go": "engine/ir/ir.go::GroupExpr",
-        "rust": "clients/rust/orm/src/ir.rs::GroupExpr"
+        "rust": "clients/rust/orm/src/ir.rs::GroupExpr",
+        "typescript": "clients/typescript/src/index.ts::GroupExpression"
       },
       "fields": {
         "expr": "text",
@@ -1809,7 +1936,8 @@
       "id": "IRLimit",
       "native": {
         "go": "engine/ir/ir.go::Limit",
-        "rust": "clients/rust/orm/src/ir.rs::Limit"
+        "rust": "clients/rust/orm/src/ir.rs::Limit",
+        "typescript": "clients/typescript/src/index.ts::Limit"
       },
       "fields": {
         "offset": "integer",
@@ -1821,7 +1949,8 @@
       "id": "IRIfParent",
       "native": {
         "go": "engine/ir/ir.go::IfParent",
-        "rust": "clients/rust/orm/src/ir.rs::IfParent"
+        "rust": "clients/rust/orm/src/ir.rs::IfParent",
+        "typescript": "clients/typescript/src/index.ts::IfParent"
       },
       "fields": {
         "column": "text",
@@ -1833,7 +1962,8 @@
       "id": "IRAssign",
       "native": {
         "go": "engine/ir/ir.go::Assign",
-        "rust": "clients/rust/orm/src/ir.rs::Assign"
+        "rust": "clients/rust/orm/src/ir.rs::Assign",
+        "typescript": "clients/typescript/src/index.ts::Assignment"
       },
       "fields": {
         "column": "text",
@@ -1857,7 +1987,8 @@
       "id": "IRRaw",
       "native": {
         "go": "engine/ir/ir.go::Raw",
-        "rust": "clients/rust/orm/src/ir.rs::Raw"
+        "rust": "clients/rust/orm/src/ir.rs::Raw",
+        "typescript": "clients/typescript/src/index.ts::Raw"
       },
       "fields": {
         "sql": "text",
@@ -1871,7 +2002,8 @@
       "id": "IROptimist",
       "native": {
         "go": "engine/ir/ir.go::Optimist",
-        "rust": "clients/rust/orm/src/ir.rs::Optimist"
+        "rust": "clients/rust/orm/src/ir.rs::Optimist",
+        "typescript": "clients/typescript/src/index.ts::Optimistic"
       },
       "fields": {
         "column": "text",
@@ -1883,7 +2015,8 @@
       "id": "Plan",
       "native": {
         "go": "engine/plan/plan.go::Plan",
-        "rust": "clients/rust/orm/src/plan.rs::Plan"
+        "rust": "clients/rust/orm/src/plan.rs::Plan",
+        "typescript": "clients/typescript/src/index.ts::Plan"
       },
       "fields": {
         "schema_hash": "text",
@@ -1896,7 +2029,8 @@
       "id": "PlanStep",
       "native": {
         "go": "engine/plan/plan.go::Step",
-        "rust": "clients/rust/orm/src/plan.rs::Step"
+        "rust": "clients/rust/orm/src/plan.rs::Step",
+        "typescript": "clients/typescript/src/index.ts::PlanStep"
       },
       "fields": {
         "id": "integer",
@@ -1915,7 +2049,8 @@
       "id": "PlanParent",
       "native": {
         "go": "engine/plan/plan.go::ParentRef",
-        "rust": "clients/rust/orm/src/plan.rs::ParentRef"
+        "rust": "clients/rust/orm/src/plan.rs::ParentRef",
+        "typescript": "clients/typescript/src/index.ts::ParentReference"
       },
       "fields": {
         "step": "integer",
@@ -1931,7 +2066,8 @@
       "id": "PlanIfParent",
       "native": {
         "go": "engine/plan/plan.go::IfParent",
-        "rust": "clients/rust/orm/src/plan.rs::IfParent"
+        "rust": "clients/rust/orm/src/plan.rs::IfParent",
+        "typescript": "clients/typescript/src/index.ts::PlanIfParent"
       },
       "fields": {
         "column": "text",
@@ -1944,7 +2080,8 @@
       "id": "PlanBindSlot",
       "native": {
         "go": "engine/plan/plan.go::BindSlot",
-        "rust": "clients/rust/orm/src/plan.rs::BindSlot"
+        "rust": "clients/rust/orm/src/plan.rs::BindSlot",
+        "typescript": "clients/typescript/src/index.ts::BindSlot"
       },
       "fields": {
         "from": "text",
@@ -1969,7 +2106,8 @@
       "id": "PlanAssemble",
       "native": {
         "go": "engine/plan/plan.go::Assemble",
-        "rust": "clients/rust/orm/src/plan.rs::Assemble"
+        "rust": "clients/rust/orm/src/plan.rs::Assemble",
+        "typescript": "clients/typescript/src/index.ts::Assemble"
       },
       "fields": {
         "entity": "text",
@@ -1985,7 +2123,8 @@
       "id": "PlanOutCol",
       "native": {
         "go": "engine/plan/plan.go::OutCol",
-        "rust": "clients/rust/orm/src/plan.rs::OutCol"
+        "rust": "clients/rust/orm/src/plan.rs::OutCol",
+        "typescript": "clients/typescript/src/index.ts::OutputColumn"
       },
       "fields": {
         "index": "integer",
@@ -2005,7 +2144,8 @@
       "id": "PlanChild",
       "native": {
         "go": "engine/plan/plan.go::Child",
-        "rust": "clients/rust/orm/src/plan.rs::Child"
+        "rust": "clients/rust/orm/src/plan.rs::Child",
+        "typescript": "clients/typescript/src/index.ts::Child"
       },
       "fields": {
         "rel": "text",
@@ -2048,6 +2188,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}#field.binding",
           "signature": "Binding"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::QueryCore#field.binding",
+          "signature": "Binding"
         }
       },
       "adapter": ""
@@ -2067,6 +2211,10 @@
         "rust": {
           "symbol": "clients/rust/orm/src/builder.rs::Q#field.req",
           "signature": "Req"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::QueryCore#field.request",
+          "signature": "RequestState"
         }
       },
       "adapter": ""
@@ -2086,6 +2234,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}#field.key_fn",
           "signature": "Option<Box<dyn Fn(&{Entity}Row) -> Key + Send + Sync>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::QueryCore#field.keySelector",
+          "signature": "(row: unknown) => number | string | bigint"
         }
       },
       "adapter": "Closure callback is erased in PHP and typed in native clients."
@@ -2104,6 +2256,10 @@
         },
         "rust": {
           "symbol": "clients/rust/orm/src/builder.rs::Req#field.ir",
+          "signature": "Request"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::RequestState#field.ir",
           "signature": "Request"
         }
       },
@@ -2124,6 +2280,10 @@
         "rust": {
           "symbol": "clients/rust/orm/src/builder.rs::Req#field.params",
           "signature": "Vec<Param>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::RequestState#field.params",
+          "signature": "Param[]"
         }
       },
       "adapter": ""
@@ -2143,6 +2303,10 @@
         "rust": {
           "symbol": "clients/rust/orm/src/builder.rs::Req#field.err",
           "signature": "Option<DeferredError>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::RequestState#field.deferredError",
+          "signature": "OrmError"
         }
       },
       "adapter": ""
@@ -2162,6 +2326,10 @@
         "rust": {
           "symbol": "clients/rust/orm/src/builder.rs::W#field.params",
           "signature": "&'a mut Vec<Param>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::WhereCore#field.request",
+          "signature": "RequestState"
         }
       },
       "adapter": "Rust borrows disjoint Request.params and Group; PHP g is a constructor reference."
@@ -2181,6 +2349,10 @@
         "rust": {
           "symbol": "clients/rust/orm/src/builder.rs::W#field.g",
           "signature": "&'a mut Group"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::WhereCore#field.group",
+          "signature": "Group"
         }
       },
       "adapter": ""
@@ -2200,6 +2372,10 @@
         "rust": {
           "symbol": "clients/rust/orm/src/builder.rs::W#field.pending_or",
           "signature": "bool"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::WhereCore#field.pendingConnector",
+          "signature": "'or' | undefined"
         }
       },
       "adapter": ""
@@ -2219,6 +2395,10 @@
         "rust": {
           "symbol": "clients/rust/orm/src/binding.rs::Binding#field.0",
           "signature": "Option<BoundExec>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::Binding#field.executor",
+          "signature": "Db"
         }
       },
       "adapter": ""
@@ -2238,6 +2418,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.binding",
           "signature": "Binding"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row#field.binding",
+          "signature": "Db | undefined"
         }
       },
       "adapter": ""
@@ -2257,6 +2441,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.original_version",
           "signature": "Option<Param>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row#field.originalVersion",
+          "signature": "unknown"
         }
       },
       "adapter": ""
@@ -2276,6 +2464,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.dirty",
           "signature": "Vec<(&'static str, Param)>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row#field.dirty",
+          "signature": "Map<string, unknown>"
         }
       },
       "adapter": "Go stores assignments and values in paired ordered slices; PHP ordered column map; Rust ordered pairs. State vectors enforce replacement order."
@@ -2295,6 +2487,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.enc_err",
           "signature": "Option<(String,String)>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row#field.dirtyStyles",
+          "signature": "Map<string, readonly string[]>"
         }
       },
       "adapter": ""
@@ -2314,6 +2510,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.asm",
           "signature": "Option<std::sync::Arc<orm::plan::Assemble>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row#field.indexes",
+          "signature": "Map<string, number>"
         }
       },
       "adapter": "Projection metadata is derived once from the shared Assemble record; PHP separates idx/hidden/cascade."
@@ -2333,6 +2533,10 @@
         "rust": {
           "symbol": "clients/rust/orm/src/collection.rs::Collection#field.items",
           "signature": "IndexMap<Key,T>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Collection#field.items",
+          "signature": "Map<string, { key: Key; value: T }>"
         }
       },
       "adapter": "Go ordered keys plus map; Rust IndexMap; PHP encoded key identities and typed entry values. Mixed-key vectors verify all forms."
@@ -2351,6 +2555,10 @@
         },
         "rust": {
           "symbol": "clients/rust/orm/src/collection.rs::Page#field.items",
+          "signature": "Collection<T>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Page#field.items",
           "signature": "Collection<T>"
         }
       },
@@ -2371,6 +2579,10 @@
         "rust": {
           "symbol": "clients/rust/orm/src/collection.rs::Page#field.total",
           "signature": "i64"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Page#field.total",
+          "signature": "number"
         }
       },
       "adapter": ""
@@ -2390,6 +2602,10 @@
         "rust": {
           "symbol": "clients/rust/orm/src/collection.rs::Page#field.pages",
           "signature": "i64"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Page#field.pages",
+          "signature": "number"
         }
       },
       "adapter": ""
@@ -2409,6 +2625,10 @@
         "rust": {
           "symbol": "clients/rust/orm/src/collection.rs::Page#field.current",
           "signature": "i64"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Page#field.current",
+          "signature": "number"
         }
       },
       "adapter": ""
@@ -2428,6 +2648,10 @@
         "rust": {
           "symbol": "clients/rust/orm/src/collection.rs::Page#field.per",
           "signature": "i64"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Page#field.per",
+          "signature": "number"
         }
       },
       "adapter": ""
@@ -2447,6 +2671,10 @@
         "rust": {
           "symbol": "clients/rust/orm/src/db.rs::Tx#field.finished",
           "signature": "Arc<AtomicBool>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/database.ts::Tx#field.active",
+          "signature": "boolean"
         }
       },
       "adapter": ""
@@ -2466,6 +2694,10 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.original_key",
           "signature": "Option<Param>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Row#field.identity",
+          "signature": "unknown"
         }
       }
     }
@@ -2500,6 +2732,10 @@
             "q",
             "key_fn"
           ]
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query",
+          "fields": []
         }
       }
     },
@@ -2539,6 +2775,16 @@
             "link_right",
             "pending_or"
           ]
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::QueryCore",
+          "fields": [
+            "request",
+            "binding",
+            "keySelector",
+            "linkSelection",
+            "rootWhere"
+          ]
         }
       }
     },
@@ -2564,6 +2810,12 @@
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Where",
           "fields": [
             "w"
+          ]
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Where",
+          "fields": [
+            "core"
           ]
         }
       }
@@ -2594,6 +2846,14 @@
             "params",
             "g",
             "pending_or"
+          ]
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::WhereCore",
+          "fields": [
+            "request",
+            "group",
+            "pendingConnector"
           ]
         }
       }
@@ -2626,6 +2886,14 @@
             "params",
             "err"
           ]
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::RequestState",
+          "fields": [
+            "ir",
+            "params",
+            "deferredError"
+          ]
         }
       }
     },
@@ -2650,6 +2918,12 @@
           "symbol": "clients/rust/orm/src/binding.rs::Binding",
           "fields": [
             "0"
+          ]
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/builder.ts::Binding",
+          "fields": [
+            "executor"
           ]
         }
       }
@@ -2684,6 +2958,10 @@
             "extra",
             "asm"
           ]
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Row",
+          "fields": []
         }
       }
     },
@@ -2706,6 +2984,12 @@
         },
         "rust": {
           "symbol": "clients/rust/orm/src/collection.rs::Collection",
+          "fields": [
+            "items"
+          ]
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Collection",
           "fields": [
             "items"
           ]
@@ -2738,6 +3022,16 @@
         },
         "rust": {
           "symbol": "clients/rust/orm/src/collection.rs::Page",
+          "fields": [
+            "items",
+            "total",
+            "pages",
+            "current",
+            "per"
+          ]
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Page",
           "fields": [
             "items",
             "total",

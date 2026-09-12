@@ -58,6 +58,21 @@ impl Query { pub async fn gets(&mut self) -> Result<Vec<Row>, Error> { todo!() }
 			{"gets(&mut self)", "gets(self)"},
 			{"binding: Binding", "binding: Binding, controller: String"},
 		}},
+		"typescript": {"ts", `class Binding {}
+class Row {}
+class Query {
+    private binding: Binding;
+    public async gets(): Promise<Row[]> { return []; }
+}
+`, [][2]string{
+			{"gets()", "missing()"},
+			{"gets()", "gets(db: Binding)"},
+			{"Promise<Row[]>", "Promise<Row>"},
+			{"private binding: Binding", "private binding: Row"},
+			{"public async gets", "private async gets"},
+			{"class Query", "class Other"},
+			{"private binding: Binding;", "private binding: Binding; private controller: string;"},
+		}},
 	}
 	f := fixtures[lang]
 	dir, err := os.MkdirTemp("", "orm-interface-mutation-")
