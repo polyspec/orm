@@ -411,8 +411,12 @@ func resetPhysicalSchema(t *testing.T, db *sql.DB, driver string, m *schema.Mani
 		}
 		return `"` + s + `"`
 	}
-	for i := len(m.Order) - 1; i >= 0; i-- {
-		if _, err := db.Exec("DROP TABLE IF EXISTS " + q(m.Entities[m.Order[i]].Table)); err != nil {
+	order, err := ddlEntityOrder(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := len(order) - 1; i >= 0; i-- {
+		if _, err := db.Exec("DROP TABLE IF EXISTS " + q(m.Entities[order[i]].Table)); err != nil {
 			t.Fatal(err)
 		}
 	}
