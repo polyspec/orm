@@ -10,7 +10,8 @@ $files = [];
 foreach ($dirs as $dir) {
     $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/$dir", FilesystemIterator::SKIP_DOTS));
     foreach ($it as $file) {
-        if ($file->getExtension() === 'php') { $files[] = $file->getRealPath(); }
+        $path = $file->getRealPath();
+        if ($file->getExtension() === 'php' && !str_starts_with($path, "$root/clients/php/src/Proto/")) { $files[] = $path; }
     }
 }
 sort($files);

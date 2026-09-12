@@ -284,3 +284,7 @@ export function User(): UserQuery { return new UserQuery(); }
 export function Service(): ServiceQuery { return new ServiceQuery(); }
 export function ServiceModule(): ServiceModuleQuery { return new ServiceModuleQuery(); }
 export function ServiceMember(): ServiceMemberQuery { return new ServiceMemberQuery(); }
+
+export { CompilerError, ConnectCompiler, compileRequest } from './compiler.js';
+export type { CompilerTransport } from './compiler.js';
+export * as CompilerProto from './gen/proto/orm/compiler/v1/compiler_pb.js';

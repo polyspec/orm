@@ -141,6 +141,10 @@ classDiagram
     class Compiler {
         compile()
     }
+    class CompilerTransport {
+        compile()
+        metadata()
+    }
     class Plan {
         QueryKind kind
         Text schemaHash
@@ -172,52 +176,77 @@ classDiagram
         Text code
         Text message
     }
-    Query *-- Request : owns
-    Query *-- Binding : owns
-    Where --> Request : borrows
-    Request *-- RequestIR : owns
-    RequestIR *-- QueryNode : root
-    QueryNode *-- QueryNode : child snapshots
-    Binding --> Executor : resolves
+    Query *-- Request : stores request
+    Query *-- Binding : stores binding
+    Where --> Request : references request
+    Request *-- RequestIR : stores IR
+    RequestIR *-- QueryNode : contains root
+    QueryNode *-- QueryNode : contains child nodes
+    Binding --> Executor : selects executor
     Db ..|> Executor : implements
     Tx ..|> Executor : implements
-    Tx --> Db : database
-    Row *-- Binding : inherits root execution
-    Row *-- Collection : many relations
-    Collection o-- Row : ordered values
-    Page *-- Collection : items
-    Compiler --> Plan : produces
-    Plan *-- Step : ordered steps
-    Step *-- Assemble : projection
-    ExecutionRows --> Plan : immutable plan
-    ExecutionRows *-- Binding : root binding
+    Tx --> Db : uses database
+    Row *-- Binding : uses root binding
+    Row *-- Collection : contains relations
+    Collection o-- Row : contains ordered rows
+    Page *-- Collection : contains items
+    Compiler --> Plan : returns
+    Plan *-- Step : contains ordered steps
+    Step *-- Assemble : maps results
+    ExecutionRows --> Plan : uses plan
+    ExecutionRows *-- Binding : uses binding
+    CompilerTransport --> Compiler : calls
 ```
 
-| 구성요소 | 책임·소유 규칙 |
+| Component | Behavior and state |
 |---|---|
-| Query | Owns mutable query state; never represents a loaded row. |
-| LinkSelection | Belongs to the child Query until relation or join consumes it. |
-| Where | Borrow is scoped to its callback; cannot execute SQL. |
-| Request | attach snapshots all child state and shifts only the snapshot. |
-| RequestIR | Value-free compiler input. |
-| QueryNode | Owned condition tree, including nested child nodes. |
-| Binding | Independent of request IR; does not select ambient transactions. |
-| Executor | Adapter interface for the concrete database and pinned transaction executors. |
-| Db | Owns connections and caches, never query predicates or row values. |
-| Tx | Completion invalidates every retained bound query and row. |
-| Row | Loaded identity, local values and pending changes have distinct roles. |
-| Collection | Equal keys replace in place. Integer and string keys remain distinct. |
-| Page | per is positive and total is independent of page range. |
-| Compiler | Accepts RequestIR and returns immutable Plan; has no executor. |
-| Plan | Cached and immutable while executing. |
-| Step | Executes in plan order. |
-| Assemble | Maps positional values to rows and relation attachments. |
-| ExecutionRows | Rows inherit the root executor used by this execution. |
-| Error | Errors are distinct from empty results and native defaults. |
+| Query | Stores mutable query state. Loaded results use Row. |
+| LinkSelection | Stores parent and child keys until relation or join construction. |
+| Where | Valid only during its callback. Does not execute SQL. |
+| Request | attach copies child state and shifts parameter indexes in the copy. |
+| RequestIR | Contains compiler input without parameter values. |
+| QueryNode | Contains the root or child condition tree. |
+| Binding | Stores an explicit executor. Does not select an ambient transaction. |
+| Executor | Defines database and pinned transaction execution operations. |
+| Db | Stores connections, plan cache, statement cache, and runtime configuration. |
+| Tx | commit or rollback invalidates queries and rows that use the transaction. |
+| Row | Separates loaded identity, values, pending changes, relations, and execution binding. |
+| Collection | A duplicate key replaces its value without changing order. Integer and string keys are distinct. |
+| Page | Requires a positive per value. total does not depend on the requested page. |
+| Compiler | Accepts RequestIR and returns an immutable Plan. Does not execute SQL. |
+| CompilerTransport | Sends typed compiler requests and returns typed plans and metadata. |
+| Plan | Contains cached execution steps and cannot change during execution. |
+| Step | Contains one SQL statement, bind slots, parent input, and result mapping. |
+| Assemble | Maps result columns and relation results to rows. |
+| ExecutionRows | Stores the plan, parameters, step results, and root execution binding. |
+| Error | Separates failures from empty results and default values. |
 
-도표의 타입 이름에서 `_`는 중첩 타입 구분자다. 정확한 타입은 다음과 같다.
+| From | To | Relation |
+|---|---|---|
+| Query | Request | stores request |
+| Query | Binding | stores binding |
+| Where | Request | references request |
+| Request | RequestIR | stores IR |
+| RequestIR | QueryNode | contains root |
+| QueryNode | QueryNode | contains child nodes |
+| Binding | Executor | selects executor |
+| Db | Executor | implements |
+| Tx | Executor | implements |
+| Tx | Db | uses database |
+| Row | Binding | uses root binding |
+| Row | Collection | contains relations |
+| Collection | Row | contains ordered rows |
+| Page | Collection | contains items |
+| Compiler | Plan | returns |
+| Plan | Step | contains ordered steps |
+| Step | Assemble | maps results |
+| ExecutionRows | Plan | uses plan |
+| ExecutionRows | Binding | uses binding |
+| CompilerTransport | Compiler | calls |
 
-| 필드 | 공통 타입 |
+An underscore in a diagram type name separates nested types. The table defines the exact types.
+
+| Field | Common type |
 |---|---|
 | Query.binding | `Binding` |
 | Query.keySelector | `Optional<Function<Row,Key>>` |
