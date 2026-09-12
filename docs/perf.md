@@ -1,142 +1,142 @@
-# perf.md — S0 스파이크 실측과 결정
+# perf.md — S0 measurements and decisions
 
-측정 환경: Apple M3 Pro, macOS, MySQL 8.4.11 로컬 유닉스 소켓(`/tmp/mysql.sock`), `orm_bench.battle` 10만 행(`aes_hex_*` 2컬럼),
-Go 1.27, Rust 1.98.1(sqlx 0.9, wasmtime 48), PHP 8.5.10(mysqlnd, msgpack, APCu). 단일 연결, p50 기준. 원자료: `docs/perf-raw-*.txt`.
+Measurement environment: Apple M3 Pro, macOS, MySQL 8.4.11 local Unix socket (`/tmp/mysql.sock`), `orm_bench.battle` 100,000 rows (two `aes_hex_*` columns),
+Go 1.27, Rust 1.98.1 (sqlx 0.9, wasmtime 48), PHP 8.5.10 (mysqlnd, msgpack, APCu). One connection, p50. Raw data: `docs/perf-raw-*.txt`.
 
-## 1. 엔진 컴파일 비용 (Go in-process, JSON in → JSON out)
-| 워크로드 | ns/op | allocs |
+## 1. Engine compilation cost (Go in-process, JSON in → JSON out)
+| Workload | ns/op | allocs |
 |---|---:|---:|
-| Compile list(WHERE 트리 2단 + IN 3 + order + limit, plan 1.9KB) | 10,985 | 48 |
+| Compile list (two-level WHERE tree + three IN + order + limit, 1.9KB plan) | 10,985 | 48 |
 | Compile pk | 5,033 | 13 |
 
-형태당 1회(플랜 캐시)이므로 핫패스 기여 0.
+Runs once per shape (plan cache), so the hot-path contribution is zero.
 
-## 2. 언어 경계 (콜드패스, 형태당 1회)
-| 경로 | list | pk | 비고 |
+## 2. Language execution path (cold path, once per shape)
+| Path | list | pk | Notes |
 |---|---:|---:|---|
-| Go in-process | 11.0µs | 5.0µs | 함수 호출 |
-| Rust `libloading` (.dylib 2.7MB) | 11.4µs | 5.4µs | dlopen 366ms(1회), Go 런타임·시그널이 호스트 프로세스에 탑재 |
-| Rust `wasmtime` (.wasm 4.6MB) | 50.6µs | 24.0µs | 모듈 컴파일 390ms(디스크 캐시 후 22ms), 인스턴스화 1.9ms, 런타임 탑재 없음 |
-| PHP 영속 UDS → ormd | 26.5µs | 17.4µs | 와이어 오버헤드 ≈12–15µs; 요청당 새 connect면 +22µs |
-| PHP APCu 히트(xxh3 + fetch) | 0.25µs | | 캐시된 플랜 `json_decode` 8.3µs → 배열로 저장해 디코드 회피 |
+| Go in-process | 11.0µs | 5.0µs | function call |
+| Rust `libloading` (.dylib 2.7MB) | 11.4µs | 5.4µs | dlopen 366ms (once), Go runtime and signals embedded in the host process |
+| Rust `wasmtime` (.wasm 4.6MB) | 50.6µs | 24.0µs | module compilation 390ms(디스크 after caching 22ms), instantiation 1.9ms, no runtime embedding |
+| PHP persistent UDS → ormd | 26.5µs | 17.4µs | wire overhead ≈12–15µs; +22µs with a new connect per request |
+| PHP APCu hit (xxh3 + fetch) | 0.25µs | | cached plan `json_decode` 8.3µs → array storage avoids decoding |
 
-**결정 R1 — Rust 경계 = wasmtime.** 두 경로 모두 예산(형태당 ≤2ms) 대비 100배 여유. 4.4배 느린 것은 콜드패스뿐이고, FFI는 Go 런타임을 tokio 프로세스에 넣는 운영 위험(시그널·스레드·366ms dlopen)이 있다. 아티팩트 하나로 모든 OS/arch, 4번째 언어(TS/엣지)에도 같은 파일.
+**Decision R1 — Rust execution path = wasmtime.** Both paths have a 100x margin under the budget (≤2ms per shape). The 4.4x difference occurs only on the cold path, and FFI puts the Go runtime in the tokio process, adding signal, thread, and 366ms dlopen operational risk. One artifact covers every OS and architecture, including the fourth language (TS/edge).
 
-## 3. PHP 와이어 (100행 × 20열 결과 디코드)
-| 인코딩 | bytes | 디코드 p50 |
+## 3. PHP wire format (100 rows × 20 columns result decode)
+| Encoding | bytes | Decode p50 |
 |---|---:|---:|
-| JSON 연관배열 | 33.7KB | 139.1µs |
-| JSON 위치형 | 16.9KB | 69.8µs |
-| **msgpack 위치형** | 11.6KB | **28.7µs** |
-| msgpack 연관배열 | 24.5KB | 69.9µs |
+| JSON associative array | 33.7KB | 139.1µs |
+| JSON positional | 16.9KB | 69.8µs |
+| **msgpack positional** | 11.6KB | **28.7µs** |
+| msgpack associative array | 24.5KB | 69.9µs |
 
-**결정 R2 — PHP 와이어 = msgpack + 위치형 행 + 컬럼 헤더.** 모델은 행 배열과 공유 컬럼 인덱스를 들고 있어 변환 비용 0(`array_combine`은 +60µs라 쓰지 않음).
+**Decision R2 — PHP wire = msgpack with positional rows and column headers.** The model stores row arrays and shared column indexes, so conversion cost is zero (`array_combine` would add 60µs).
 
-## 4. 네이티브 기준선 (prepared statement 재사용, 단일 연결)
-| 워크로드 | Go database/sql | Rust sqlx | PHP PDO |
+## 4. Native baseline (prepared statement reuse, one connection)
+| Workload | Go database/sql | Rust sqlx | PHP PDO |
 |---|---:|---:|---:|
-| PK 단건 (25열, AES 2) | 38.0µs | 81.4µs | 30.5µs |
-| 100행 목록 | 448µs | 472µs | 446µs |
+| Single row by PK (25 columns, AES 2) | 38.0µs | 81.4µs | 30.5µs |
+| 100-row list | 448µs | 472µs | 446µs |
 | INSERT | 175µs | 191µs | 181µs |
-| 4단 관계(부모 20 + 자식 IN 3회 ≤200행 + 조립) | 6.43ms | 6.68ms | 7.45ms |
+| Four-level relation (20 parents + 3 child IN queries, ≤200 rows + assembly) | 6.43ms | 6.68ms | 7.45ms |
 
-**발견 F1 — prepared statement 캐시는 실행기 필수.** Go에서 `QueryContext(args)`(prepare+exec+close, 왕복 3회)는 PK 100µs, 캐시 후 38µs. ormd도 같은 수정으로 112→51µs.
-**발견 F2 — sqlx PK 81µs**는 Go/PDO의 2배. 풀 체크아웃·tokio 스케줄링·per-connection 캐시 조회로 추정. S1 Rust 실행기에서 전용 연결·`persistent` 확인 후 재측정(T1.19 DoD에 추가).
+**Finding F1 — Prepared statement caching is required in the executor.** In Go, `QueryContext(args)` (prepare+exec+close, three round trips) takes 100µs for PK and 38µs after caching. ormd shows the same change from 112 to 51µs.
+**Finding F2 — sqlx PK is 81µs**, twice Go/PDO. The likely causes are pool checkout, tokio scheduling, and per-connection cache lookup. In the S1 Rust executor, verify a dedicated connection and `persistent`, then remeasure (added to T1.19 DoD).
 
-## 5. PHP 실행 위치 — 3경로 비교 (핵심 결정)
-| 워크로드 | (i) PDO 직접 + PHP 조립 | (iii) ormd 실행(prepared) + msgpack | 차이 |
+## 5. PHP execution location — three-path comparison (main decision)
+| Workload | (i) Direct PDO + PHP assembly | (iii) ormd execution (prepared) + msgpack | Difference |
 |---|---:|---:|---:|
-| PK 단건 | 30.5µs | 51.4µs | **+69%** |
-| 100행 목록 | 446µs | 1,122µs | **+152%** |
-| 100행 + 연관배열 변환 | — | 1,448µs | |
-| 4단 관계 | 7.45ms (PHP 조립) | 7.87ms (Go 조립) | **+6%** |
+| Single row by PK | 30.5µs | 51.4µs | **+69%** |
+| 100-row list | 446µs | 1,122µs | **+152%** |
+| 100 rows + associative-array conversion | — | 1,448µs | |
+| Four-level relation | 7.45ms (PHP assembly) | 7.87ms (Go assembly) | **+6%** |
 
-게이트(원격 단건 ≤+25%, 목록 ≤+15%, 4단 관계 기준선 이하)를 전부 실패. 목록의 +676µs는 홉(15µs)이 아니라 **행이 경계를 넘는 비용**(Go 제네릭 `[]any` 스캔·복사 + msgpack 인코딩 + PHP 디코드)이다. 4단 관계는 Go 조립이 PHP 조립보다 빠르지 않았다(PDO+mysqlnd의 C 디코딩이 이미 빠르고, 조립 자체는 양쪽 다 수십 µs).
-비교 기준선 (i)은 손으로 쓴 PDO 조립이므로, 이 측정은 경계 비용의 하한선으로 해석한다.
+The check (remote single row ≤+25%, list ≤+15%, four-level relation at or below baseline) failed completely. The list +676µs is **row transfer cost**, not the 15µs hop cost (Go generic `[]any` scan and copy + msgpack encoding + PHP decode). Go assembly was not faster than PHP assembly because PDO+mysqlnd already performs C decoding and assembly itself takes tens of microseconds on both sides.
+The comparison baseline (i) is hand-written PDO assembly, so this measurement is the lower bound for execution-path cost.
 
-**결정 R3 — PHP는 네이티브 실행기(PDO). `ormd`는 컴파일 전용.** plan-v2 §1의 "PHP는 ormd 사이드카가 실행" 결정을 **측정으로 철회**한다. Q1 검수의 가설("Go 조립 > PHP 조립", "홉 비용만 지불")은 실측에서 성립하지 않았다. 검수가 옳게 짚은 드리프트 위험(키 타입·`possible` 비교·`unserialize`)은 적합성 벡터에 키 타입 태그·정수 possible·serialize 픽스처를 넣어 잡는다(체크리스트 T2.16).
-뒤집는 조건(유효): 행이 경계를 넘지 않는 새 방식이 나오거나(FrankenPHP in-process로 PHP가 Go 실행기를 직접 호출), PHP가 주력화되어 조립 3벌 유지 비용이 문제될 때.
+**Decision R3 — PHP uses the native PDO executor. `ormd` is compile-only.** The plan-v2 §1 decision that PHP uses an ormd execution sidecar is **reversed by measurement**. The Q1 review hypothesis (Go assembly > PHP assembly and only hop cost) was not supported by measurement. The identified drift risks (key type tags, integer `possible`, and `unserialize`) are covered by conformance fixtures and checklist T2.16.
+Valid reversal conditions: a new method avoids row transfer, such as FrankenPHP in-process calling the Go executor directly, or PHP becomes the primary client and maintaining three assemblies becomes costly.
 
-## 6. 핫패스 게이트 — Go 실측 (S1, 생성 클라이언트)
-| 워크로드 | 네이티브(prepared) | 생성 클라이언트 | 비고 |
+## 6. Hot-path check — Go measurements (S1, generated client)
+| Workload | Native (prepared) | Generated client | Notes |
 |---|---:|---:|---|
-| PK 단건 | 38.0µs / 39 allocs | 32.9µs / 75 allocs | 플랜 캐시 히트 1.7µs 포함 |
-| 100행 목록 | 448µs / 2,176 allocs | 369µs / 4,517 allocs | typed struct 매핑 포함 |
-| 플랜 캐시 히트(컴파일 없이) | — | 1.7µs / 14 allocs | IR JSON 직렬화 + FNV |
-손실 0(측정 오차 안). 할당 수는 2배(위치형 `[]any` 스캔 → struct) — CPU에 영향 없음, 필요 시 S5에서 typed 스캔으로 줄인다. **G0/G1 Go 게이트 통과.**
+| Single row by PK | 38.0µs / 39 allocs | 32.9µs / 75 allocs | including a 1.7µs plan-cache hit |
+| 100-row list | 448µs / 2,176 allocs | 369µs / 4,517 allocs | including typed struct mapping |
+| Plan cache hit (without compilation) | — | 1.7µs / 14 allocs | IR JSON serialization + FNV |
+Measured loss is zero and within measurement error. Allocations are doubled (positional `[]any` scan to struct); this has no CPU impact and typed scanning can reduce it later. **G0/G1 Go check passed.**
 
-### PHP 실측 (생성 클라이언트, ormd 컴파일 + PDO 실행, APCu 플랜 캐시)
-| 워크로드 | PDO 직접 | 생성 클라이언트 | 비고 |
+### PHP measurements (generated client, ormd compilation + PDO execution, APCu plan cache)
+| Workload | Direct PDO | Generated client | Notes |
 |---|---:|---:|---|
-| PK 단건 | 30.5µs | 31.4µs (+3%) | 플랜 캐시 히트 1.8µs 포함 |
-| 100행 목록 | 446µs | 390µs | 위치형 fetch + 지연 접근(getName ×100 포함 시 410µs) |
-**PHP 게이트(≤5%) 통과.** ormd는 형태당 1회만 호출된다.
+| Single row by PK | 30.5µs | 31.4µs (+3%) | including a 1.8µs plan-cache hit |
+| 100-row list | 446µs | 390µs | positional fetch + lazy access (410µs including getName ×100) |
+**PHP check (≤5%) passed.** ormd is called once per shape.
 
-### Rust 실측 (생성 클라이언트, wasmtime 엔진 스레드 + sqlx 실행, 같은 세션에서 기준선 재측정)
-| 워크로드 | sqlx 직접 | 생성 클라이언트 | 비고 |
+### Rust measurements (generated client, wasmtime engine thread + sqlx execution, baseline remeasured in the same session)
+| Workload | Direct sqlx | Generated client | Notes |
 |---|---:|---:|---|
-| PK 단건 | 77.7µs | 78.3µs (+1%) | 플랜 캐시 히트 0.7µs 포함 |
-| 100행 목록 | 407µs | 378µs | 위치형 `Vec<Val>` → typed struct(문자열은 move) |
-| 플랜 캐시 히트(컴파일 없이) | — | 0.7µs | IR JSON 직렬화 + 해시 |
-**Rust 게이트(≤5%) 통과.** 원자료 `docs/perf-raw-rust-client.txt`, `docs/perf-raw-rust-native-2.txt`.
+| Single row by PK | 77.7µs | 78.3µs (+1%) | including a 0.7µs plan-cache hit |
+| 100-row list | 407µs | 378µs | positional `Vec<Val>` to typed struct (strings are moved) |
+| Plan cache hit (without compilation) | — | 0.7µs | IR JSON serialization + hash |
+**Rust check (≤5%) passed.** Raw data: `docs/perf-raw-rust-client.txt`, `docs/perf-raw-rust-native-2.txt`.
 
-**발견 F3 — sqlx `try_get` 실패는 셀당 포맷된 에러를 만든다.** 첫 실측은 100행 p50 615µs·p90 1.6ms(이봉 분포)였다. 원인: 정수 컬럼을 `i64`로 먼저 읽고 실패하면 `u64`로 재시도하는 디코드 경로 — unsigned 컬럼(seq·FK·카운트 12개 × 100행)마다 sqlx가 `ColumnDecode` 에러를 `format!`으로 생성했다. 타입명으로 signed/unsigned를 분기해 한 번에 읽도록 고치자 378µs로 안정(p90 396µs). 실행기 규칙: **`try_get` 실패를 흐름 제어로 쓰지 않는다.**
+**Finding F3 — A failed sqlx `try_get` creates a formatted error per cell.** The first measurement was 615µs p50 and 1.6ms p90 for 100 rows (bimodal distribution). Cause: integer columns were read as `i64` and retried as `u64` after failure; each of 12 unsigned columns × 100 rows caused sqlx to format a `ColumnDecode` error. Branching on the type name to read signed and unsigned values once stabilized the result at 378µs (p90 396µs). Executor rule: **do not use a failed `try_get` for flow control.**
 
-**F2 종결 — sqlx PK 78µs는 sqlx 자체 비용**이다. 생성 클라이언트도 같은 값이고(+1%), 풀 크기 1·전용 연결에서도 변하지 않았다. Go/PDO보다 2배인 것은 sqlx의 tokio 태스크 전환 + 프로토콜 파싱 비용으로, 우리 계층이 더한 것이 아니다. 계층 손실 게이트는 통과이며, sqlx 절대치 개선은 범위 밖(S7 후보: 드라이버 교체 비교).
+**F2 closed — sqlx PK at 78µs is sqlx overhead.** The generated client has the same value (+1%), unchanged with pool size 1 and a dedicated connection. The twofold difference from Go/PDO is tokio task switching and protocol parsing, rather than this layer. The layer-loss check passed; absolute sqlx improvement is out of scope (S7 candidate: driver replacement comparison).
 
-## 6b. 고정 비용 — 3행 쿼리 (S1 데모, `examples/thin-slice`)
-같은 플랜의 SQL을 같은 프로세스에서 네이티브 드라이버로 다시 실행한 값과 비교(500회 p50, 타입 매핑 없는 최소 fetch).
-| | 생성 클라이언트 | 네이티브 최소 fetch | 문장당 고정 비용 |
+## 6b. Fixed cost — three-row query (S1 demo, `examples/thin-slice`)
+Compare the same plan SQL executed again by the native driver in the same process (500 p50 samples, minimal fetch without type mapping).
+| | Generated client | Native minimal fetch | Fixed cost per statement |
 |---|---:|---:|---:|
 | Go | 66µs | 60µs | +6µs |
 | PHP | 64µs | 55µs | +9µs |
 | Rust | 107µs | 91µs | +16µs |
-행이 3개뿐이라 IR 구성·JSON 직렬화·해시·플랜 조회·typed 행 생성의 고정 비용이 상대적으로 드러난다. 100행 게이트(§6)는 통과했지만 이 고정 비용은 줄일 수 있다 — S5 항목: IR 형태 키를 전체 JSON 직렬화 없이 만들기, Rust `Vec<Val>` 중간 단계 제거(typed 직접 디코드). 데모의 "네이티브"는 typed 매핑을 하지 않으므로 §6보다 불리한 비교다.
+With only three rows, fixed costs from IR construction, JSON serialization, hashing, plan lookup, and typed-row creation are more visible. The 100-row check in §6 passed, but these fixed costs can be reduced: build the IR shape key without serializing all JSON and remove the Rust `Vec<Val>` intermediate stage. The demo native path does not perform typed mapping, so it is a less favorable comparison than §6.
 
-## 6c. Rust 생성 crate 컴파일 시간 (T1.24, 5 테이블, 2,191줄, 메서드 1,259개)
-| | 시간 |
+## 6c. Rust generated crate compile time (T1.24, five tables, 2,191 lines, 1,259 methods)
+| | Time |
 |---|---:|
-| `cargo check -p gen` (증분, 의존성 웜) | 0.25s |
-| `cargo build --release -p gen` (증분) | 1.25s |
-| 의존성 포함 첫 dev 빌드 | 38.6s (sqlx·wasmtime·tokio가 대부분) |
-5 테이블에서 문제 없음. 150 테이블(T2.15)에서 선형 외삽 시 release 증분 ≈ 40s — 그때 `--tables` 분할 여부를 결정한다.
+| `cargo check -p gen` (incremental, warm dependencies) | 0.25s |
+| `cargo build --release -p gen` (incremental) | 1.25s |
+| First dev build including dependencies | 38.6s (mostly sqlx, wasmtime, tokio) |
+No issue was observed with five tables. By linear extrapolation, the incremental release build is about 40s at 150 tables (T2.15); decide then whether to split with `--tables`.
 
-### 고정 비용 감축 결과 (S5 T5.3b)
-| | 전 | 후 | 방법 |
+### Fixed-cost reduction results (S5 T5.3b)
+| | Before | After | Method |
 |---|---:|---:|---|
-| Go 3행 데모 | +8µs (+13%) | +5µs (+8%) | IR 형태 키를 JSON 없이 해시, 플랜별 스캔 팩트 캐시, 스캔 셀 재사용(PK 82→67 allocs, list100 5,118→3,323 allocs) |
-| PHP 3행 데모 | +9µs (+16%) | +6µs (+11%) | 빌더 시그니처로 요청 내 플랜 캐시(IR 재인코딩 없음), 단계별 styled/plan_id 사전 계산 |
-| Rust 3행 데모 | +4.5µs | 오차 범위 | `MySqlRow` → typed 직접 디코드(`Vec<Val>` 제거); list100 476→428µs, PK p99 210→102µs |
-≤+5% 목표는 Rust만 도달. Go/PHP의 남은 비용은 빌더 객체 생성과 `[]any`→struct 2단 스캔이며, typed 직접 스캔은 생성기 재설계라 S7로 보낸다.
+| Go three-row demo | +8µs (+13%) | +5µs (+8%) | Hash IR shape key without JSON, cache scan facts per plan, reuse scan cells (PK 82→67 allocs, list100 5,118→3,323 allocs) |
+| PHP three-row demo | +9µs (+16%) | +6µs (+11%) | Cache the plan by builder signature (no IR re-encoding), precompute styled/plan_id values per step |
+| Rust three-row demo | +4.5µs | within error | Direct typed decode from `MySqlRow` (remove `Vec<Val>`); list100 476→428µs, PK p99 210→102µs |
+Only Rust reaches the ≤+5% target. Remaining Go/PHP cost is builder object creation and the two-stage `[]any` to struct scan; typed direct scanning requires a generator redesign and is deferred to S7.
 
 ### PHP prepared 방식 (S5 T5.4)
-`PDO::ATTR_EMULATE_PREPARES = true`로 고정. 근거(p50, off → on): 콜드(prepare+execute, 요청마다 형태를 처음 보는 PHP-FPM의 현실) PK 72→48µs, IN(8) 107→75µs, 100행 460→382µs; 웜(같은 statement 재실행) PK 33→49µs, 100행 435→400µs. 웹 요청은 대부분 형태를 한 번 실행하므로 콜드가 결정 기준이다. 타입(ip 문자열·JSON·실수·불리언)과 적합성 출력은 두 모드에서 동일.
+`PDO::ATTR_EMULATE_PREPARES = true` is fixed. Basis (p50, off → on): cold path (PHP-FPM sees a shape for the first time) PK 72→48µs, IN(8) 107→75µs, 100 rows 460→382µs; warm path PK 33→49µs, 100 rows 435→400µs. Web requests usually execute a shape once, so the cold path is the decision basis. Types (IP strings, JSON, floats, booleans) and conformance output are identical in both modes.
 
-## 6d. 재측정 (S6 종료 시점, 2026-09-11 — ip·decimal·스타일 컬럼 5개·fulltext 인덱스 추가 후)
-MySQL 8.4, 로컬 소켓, 같은 장비. 네이티브 = 각 언어의 드라이버로 같은 SQL을 직접 실행(prepared 재사용).
+## 6d. Remeasurement (S6 end, 2026-09-11 — after adding IP, decimal, five styled columns, and fulltext index)
+MySQL 8.4, local socket, same hardware. Native means direct execution of the same SQL with each language driver (prepared reuse).
 
-| 워크로드 | Go 네이티브 | Go 클라이언트 | PHP PDO | PHP 클라이언트 | Rust sqlx | Rust 클라이언트 |
+| Workload | Go native | Go client | PHP PDO | PHP client | Rust sqlx | Rust client |
 |---|---:|---:|---:|---:|---:|---:|
-| PK 단건 | 40.4µs | 44.9µs (+11%) | 29.6µs | 49.3µs (+66%)¹ | 77.3µs | 80.9µs (+5%) |
-| 100행 목록 | 382µs | 416µs (+9%) | 410µs | 425µs (+4%) | 453µs | 410µs (−9%) |
+| Single row by PK | 40.4µs | 44.9µs (+11%) | 29.6µs | 49.3µs (+66%)¹ | 77.3µs | 80.9µs (+5%) |
+| 100-row list | 382µs | 416µs (+9%) | 410µs | 425µs (+4%) | 453µs | 410µs (−9%) |
 | INSERT | 180µs | — | 128µs | — | 169µs | — |
-| 플랜 캐시 히트(DB 없이) | — | 1.1µs | — | 1.3µs | — | 0.7µs |
-| allocs/op (PK / 100행) | 39 / 2,176 | 70 / 3,326 | — | — | — | — |
+| Plan cache hit (without DB) | — | 1.1µs | — | 1.3µs | — | 0.7µs |
+| allocs/op (PK / 100 rows) | 39 / 2,176 | 70 / 3,326 | — | — | — | — |
 
-¹ PHP 클라이언트의 PK가 느린 것은 S5에서 고정한 `EMULATE_PREPARES=true` 때문이다(§T5.4: 콜드 경로 72→48µs를 얻는 대신 웜 PK는 33→49µs). 벤치는 같은 문장을 3,000번 반복하는 웜 경로라 이 선택의 손해만 보인다. 실제 요청은 대부분 형태를 한 번 실행한다.
+¹ The PHP client PK result is slower because S5 fixed `EMULATE_PREPARES=true` (see T5.4: cold path 72→48µs at the cost of warm PK 33→49µs). The benchmark repeats the same statement 3,000 times on the warm path, so it measures only that cost. Real requests usually execute each shape once.
 
-행이 많은 워크로드(100행)는 세 언어 모두 네이티브의 ±10% 안이고 Rust는 typed 직접 디코드 덕에 오히려 빠르다. 단건은 문장당 고정 비용(§6b: IR 구성·해시·플랜 조회·행 매핑)이 그대로 드러나는 크기다. S1 대비 절대값이 커진 것은 `battle`에 컬럼 7개(ip·decimal·스타일 5개)와 fulltext 인덱스가 늘어 SELECT 폭과 INSERT 비용이 커졌기 때문이며, 비교는 같은 시점의 네이티브 열끼리 읽는다.
+For the 100-row workload, all three implemented clients are within ±10% of native and Rust is faster because it decodes typed values directly. A single row exposes fixed per-statement cost (§6b: IR construction, hashing, plan lookup, and row mapping). Absolute values increased from S1 because `battle` gained seven columns (IP, decimal, and five styled columns) and a fulltext index, increasing SELECT width and INSERT cost. Native values from the same measurement point are compared.
 
-## 6e. 회귀 게이트 (`go test ./bench/go -run TestHotPathGate`)
-같은 프로세스에서 생성 클라이언트와 `bench/go`의 손으로 쓴 네이티브 문장을 각각 300회 p50으로 재고 비율을 본다(장비가 달라도 비교 가능). 현재: PK 0.48배(클라이언트가 더 빠름 — 네이티브 헬퍼가 호출마다 스캔 대상을 다시 만든다), 100행 1.03배. 한계선 PK 1.35 / 100행 1.25이며, 넘으면 CI가 실패하고 "원인을 설명하거나 perf.md에서 한계선을 옮기라"고 말한다. 한계선을 조용히 올리지 않는다.
-비율은 장비를 옮겨 다니지만 **왕복 시간이 길수록 1로 수렴한다**: 로컬 소켓에서는 PK 0.48배로 클라이언트가 더 빠르고, GitHub Actions의 TCP(네이티브 122µs / 클라이언트 132µs)에서는 1.08배가 된다. 처음 한계선을 로컬 수치(0.90)에 맞췄다가 CI에서 걸린 것이 그 증거이고, 지금 한계선은 두 환경 모두에서 "손으로 쓴 문장보다 1/3 이상 비싼 클라이언트"만 잡는다.
+## 6e. Regression check (`go test ./bench/go -run TestHotPathGate`)
+In one process, measure the generated client and the hand-written native statement in `bench/go` for 300 p50 samples and compare the ratio. Current: PK 0.48x (client faster because the native helper rebuilds scan targets per call), 100 rows 1.03x. Limits are PK 1.35 and 100 rows 1.25. CI fails above a limit; the cause must be explained or the limit moved in `perf.md`. Limits are not raised silently.
+The ratio varies by hardware, but **approaches 1 as round-trip time increases**: on a local socket PK is 0.48x, while on GitHub Actions TCP (native 122µs / client 132µs) it is 1.08x. The current limits catch a client more than one third slower than the hand-written statement in both environments.
 
-## 7. S0 결정 요약
-| ID | 결정 | 근거 |
+## 7. S0 decision summary
+| ID | Decision | Basis |
 |---|---|---|
-| R1 | Rust 경계 = wasmtime (.wasm 내장) | §2 |
-| R2 | PHP 와이어 = msgpack 위치형 | §3 |
-| R3 | PHP 실행 = PDO 네이티브, ormd 컴파일 전용 | §5 |
-| F1 | 모든 실행기에 prepared statement 캐시 | §4 |
-| F2 | Rust 실행기 PK 지연 재측정 → sqlx 고유 비용으로 종결 | §4, §6 |
-| F3 | sqlx `try_get` 실패를 흐름 제어로 쓰지 않는다(셀당 에러 포맷) | §6 |
+| R1 | Rust execution path = wasmtime (.wasm embedded) | §2 |
+| R2 | PHP wire = msgpack positional | §3 |
+| R3 | PHP execution = native PDO; ormd compile-only | §5 |
+| F1 | Prepared statement cache in every executor | §4 |
+| F2 | Remeasure Rust executor PK latency → closed as intrinsic sqlx cost | §4, §6 |
+| F3 | Do not use failed sqlx `try_get` for flow control (formatted error per cell) | §6 |
