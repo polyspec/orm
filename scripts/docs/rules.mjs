@@ -1,0 +1,63 @@
+import { readFile, readdir, stat } from 'node:fs/promises';
+import path from 'node:path';
+import { docs, root, files } from './lib.mjs';
+
+const rules = JSON.parse(await readFile(path.join(root, 'contracts/rules.json'), 'utf8'));
+if (rules.version !== 1 || !Array.isArray(rules.rules)) throw new Error('contracts/rules.json: invalid rule registry');
+
+const failures = [];
+const fail = (id, message) => failures.push(`${id}: ${message}`);
+const relative = file => path.relative(root, file).split(path.sep).join('/');
+
+const allDocs = (await files(docs)).filter(file => file.endsWith('.md') && !file.includes(`${path.sep}.vitepress${path.sep}`));
+const sources = allDocs.filter(file => !file.endsWith('.ko.md'));
+const translations = new Map(allDocs.filter(file => file.endsWith('.ko.md')).map(file => [file.slice(0, -'.ko.md'.length) + '.md', file]));
+
+try {
+  const legacyDir = path.join(docs, 'ko');
+  if ((await stat(legacyDir)).isDirectory() && (await readdir(legacyDir)).length > 0) fail('docs.english-source', 'docs/ko is not allowed');
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+}
+
+const headings = text => text.split('\n').filter(line => /^(#{1,6})\s+/.test(line)).map(line => line.replace(/^(#{1,6})\s+/, '$1 '));
+const fences = text => text.split('\n').filter(line => /^\s*```/.test(line)).map(line => line.trim());
+const links = text => [...text.matchAll(/!?(?:\[[^\]]*\])\(([^)]+)\)|\[[^\]]*\]\[([^\]]+)\]/g)].map(match => match[1] || match[2]);
+const tables = text => text.split('\n').filter(line => /^\s*\|/.test(line)).map(line => line.split('|').length - 2);
+const stripCode = text => text.replace(/```[\s\S]*?```/g, '');
+const koreanRatio = text => {
+  const body = stripCode(text).replace(/https?:\/\/\S+/g, '').replace(/`[^`]*`/g, '');
+  const korean = (body.match(/[가-힣]/g) || []).length;
+  const latin = (body.match(/[A-Za-z]/g) || []).length;
+  return korean / Math.max(1, korean + latin);
+};
+
+for (const source of sources) {
+  const translation = translations.get(source);
+  if (!translation) {
+    fail('docs.english-source', `${relative(source)} has no ${relative(source).replace(/\.md$/, '.ko.md')} translation`);
+    continue;
+  }
+  const english = await readFile(source, 'utf8');
+  const korean = await readFile(translation, 'utf8');
+  if (koreanRatio(english) > 0.2) fail('docs.english-source', `${relative(source)} is not an English page`);
+  if (JSON.stringify(headings(english)) !== JSON.stringify(headings(korean))) fail('docs.translation-shape', `${relative(translation)} headings differ`);
+  if (JSON.stringify(fences(english)) !== JSON.stringify(fences(korean))) fail('docs.translation-shape', `${relative(translation)} code fence declarations differ`);
+  if (JSON.stringify(tables(english)) !== JSON.stringify(tables(korean))) fail('docs.translation-shape', `${relative(translation)} table structure differs`);
+  if (JSON.stringify(links(english)) !== JSON.stringify(links(korean))) fail('docs.translation-shape', `${relative(translation)} link targets differ`);
+}
+
+const style = rules.rules.find(rule => rule.id === 'docs.writing-style');
+if (!style || !Array.isArray(style.forbidden_ko) || !Array.isArray(style.forbidden_en)) fail('docs.writing-style', 'style lists are missing from contracts/rules.json');
+for (const file of allDocs) {
+  const text = await readFile(file, 'utf8');
+  const terms = file.endsWith('.ko.md') ? style.forbidden_ko : style.forbidden_en;
+  for (const term of terms) if (text.includes(term)) fail('docs.writing-style', `${relative(file)} contains forbidden expression ${JSON.stringify(term)}`);
+  if (file.endsWith('.ko.md') && /(?:요|어요|해요|합니다|됩니다|있어요|없어요)[.!?]?\s*$/.test(text.replace(/```[\s\S]*?```/g, '').trim())) fail('docs.writing-style', `${relative(file)} uses an informal ending`);
+}
+
+if (failures.length) {
+  console.error(failures.join('\n'));
+  process.exit(1);
+}
+console.log(`rules: ${sources.length} English documents, ${translations.size} Korean translations passed`);
