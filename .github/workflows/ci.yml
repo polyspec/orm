@@ -64,6 +64,8 @@ jobs:
         run: composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
       - name: executable feature and documentation contracts
         run: make feature-check docs-rules-check docs-check docs-verify-idempotent
+      - name: decoder fuzz smoke checks
+        run: make fuzz-check
       - name: load bench schema (mysql, postgres, sqlite)
         run: |
           mysql -h 127.0.0.1 -uroot orm_bench < bench/sql/battle.sql
