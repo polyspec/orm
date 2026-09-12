@@ -59,7 +59,7 @@ erDiagram
 ## 2. Rules
 
 ### 2.1 Column lines — `type name [PK|FK|UK] ["comment"]`
-This follows Mermaid syntax. `PK`, `FK`, and `UK` are Mermaid keywords. Version 0.0.1 currently rejects multiple `PK` columns during schema build because the common runtime conversion is in progress under P8.4. Composite unique keys use `%% unique` below.
+This follows Mermaid syntax. `PK`, `FK`, and `UK` are Mermaid keywords. Mark every primary-key column with `PK`; declaration order defines composite-key order. Composite unique keys use `%% unique` below.
 Use the database type directly (`bigint`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum('a','b')`). The manifest normalizes it to types such as i64, string, and datetime.
 
 The comment string is a space-separated **attribute list**. With no comment, the column is NOT NULL, has no default, and is ordinary.
@@ -83,7 +83,7 @@ The comment string is a space-separated **attribute list**. With no comment, the
 | `\|\|--\|\|`, `\|\|--o\|` (1 : 0..1) | **one** on both sides | `relation…` on both sides |
 | `}o--o{` (N : M) | Unsupported directly; model a join table as an entity (`a_match_b`) |
 
-Label: the first word is the child FK column. `(child / parent)` in parentheses overrides relation names and is optional.
+Label: a single-column relation starts with the child FK column. A composite relation starts with the ordered child FK list, such as `(tenant_id, account_id)`, and must include explicit names: `(tenant_id, account_id) (account / memberships)`. The FK count must equal the parent primary-key count; each FK maps to the parent key at the same position. `(child / parent)` overrides relation names and is optional only for a single-column relation.
 Default names: child side removes `_seq` from the FK (`service_seq`→`service`, `updated_user_seq`→`updated_user`); parent side removes the parent-table prefix from the child table and pluralizes (`battle_item`→`items`, `product_review`→`reviews`, or `battles` without a prefix).
 When the same parent is referenced twice (`user_seq`, `updated_user_seq`), draw two relation lines. `ormgen` reports name collisions as errors.
 
@@ -154,7 +154,7 @@ ormgen import   --dsn mysql://… --schema service --out schema/service.mmd   # 
 ormgen build    schema/*.mmd --out schema/schema.json                       # Mermaid → 매니페스트 (검증 포함)
 ormgen validate --dsn …                                                      # 매니페스트 ↔ 라이브 DB
 ormgen ddl      --dialect mysql|postgres|sqlite [--tables …]                # 매니페스트 → CREATE문
-ormgen gen      --lang php,go,rust                                           # 매니페스트 → 클라이언트
+ormgen gen      --lang php|go|rust|typescript                                           # 매니페스트 → 클라이언트
 ormgen check    --lang php                                                   # 소스 코드 ↔ 매니페스트 (레거시 이름·expr 컬럼)
 ```
 
@@ -167,6 +167,6 @@ The importer reads MySQL `information_schema` and writes the diagram. It is dete
 - Attributes include `?` (NULL), `=value` (`CURRENT_TIMESTAMP*` becomes `=now`), `onupdate`, and `auto`.
 - Relation lines infer the parent from `<role>_<table>_seq` even without an FK constraint, removing leading words until the table matches (`updated_user_seq`→`user`).
 - Indexes use `%% unique` for composite unique, `%% fulltext` for fulltext, `%% index … name` for composite or non-FK single indexes, `UK` on a column for single-column unique, and omit single FK indexes because they are automatic.
-- MySQL and PostgreSQL read actual foreign-key targets and delete rules from their catalogs. SQLite reads `PRAGMA foreign_key_list`. Single-column references to a single-column primary key become relation lines with `cascade` or `setnull`; omitted actions use `RESTRICT`.
+- MySQL and PostgreSQL read actual foreign-key targets, ordered columns, and delete rules from their catalogs. SQLite reads `PRAGMA foreign_key_list`. Single and composite foreign keys become relation lines; composite labels use the ordered parenthesized FK list. `cascade` and `setnull` are preserved, and an omitted action uses `RESTRICT`.
 - PostgreSQL (`--driver postgres`, or a `postgres://` DSN) reads `information_schema.columns`, `pg_index`, and `pg_constraint` and writes the same diagram. It normalizes types (`character varying(191)`→`varchar(191)`, `boolean`→`tinyint`, `numeric(p,s)`→`decimal(p,s)`, `timestamp(6)`→`datetime(6)`, `inet`→`varbinary(16)`, `jsonb`→`json`), maps identity/`nextval` to `auto`, and reconstructs generated GIN full-text indexes from `pg_get_indexdef`.
 - When `--out` already exists, the importer preserves details unavailable from the database: relation-label overrides `(child / parent)`, `lazy`/`bool`/`int` and explicit column styles, and `%% predicate` lines. The database is authoritative for everything else.

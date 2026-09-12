@@ -316,21 +316,65 @@ func (q *Q) OnDuplicateSetAll(exclude ...string) {
 	}
 }
 
-// MovePKToWhere turns a draft into an update of the other assigned columns
-// when the PK was assigned a value: that assignment becomes WHERE pk = value
-// and the value is returned. ok is false (and nothing changes) when the PK is
-// not in set[] — the insert branch of save.
-func (q *Q) MovePKToWhere(pk string) (v any, ok bool) {
-	for i, a := range q.Req.IR.Set {
-		if a.Column != pk || a.P == nil {
-			continue
-		}
-		v = q.Req.Params[*a.P]
-		q.Req.IR.Set = append(q.Req.IR.Set[:i:i], q.Req.IR.Set[i+1:]...)
-		q.W().Pred(pk, "eq", v)
-		return v, true
+// MoveKeysToWhere turns a draft into an update when every primary-key column
+// was assigned. No assigned key means insert. A partial key is rejected before
+// the request is changed.
+func (q *Q) MoveKeysToWhere(keys []string) (values []any, found bool, err error) {
+	if len(keys) == 0 {
+		return nil, false, &ir.Error{Code: CodeIrInvalid, Msg: "save requires at least one primary-key column"}
 	}
-	return nil, false
+	indexes := make([]int, len(keys))
+	for i := range indexes {
+		indexes[i] = -1
+	}
+	for i, a := range q.Req.IR.Set {
+		for keyIndex, key := range keys {
+			if a.Column == key {
+				if a.P == nil {
+					return nil, false, &ir.Error{Code: CodeIrInvalid, Msg: "save primary-key assignments must use values"}
+				}
+				indexes[keyIndex] = i
+			}
+		}
+	}
+	present := 0
+	for _, index := range indexes {
+		if index >= 0 {
+			present++
+		}
+	}
+	if present == 0 {
+		return nil, false, nil
+	}
+	if present != len(keys) {
+		return nil, false, &ir.Error{Code: CodeIrInvalid, Msg: "save requires every primary-key column or none"}
+	}
+	values = make([]any, len(keys))
+	remove := make(map[int]bool, len(keys))
+	for i, index := range indexes {
+		values[i] = q.Req.Params[*q.Req.IR.Set[index].P]
+		remove[index] = true
+	}
+	set := q.Req.IR.Set[:0]
+	for i, assignment := range q.Req.IR.Set {
+		if !remove[i] {
+			set = append(set, assignment)
+		}
+	}
+	q.Req.IR.Set = set
+	for i, key := range keys {
+		q.W().Pred(key, "eq", values[i])
+	}
+	return values, true, nil
+}
+
+// MovePKToWhere is the single-key compatibility form.
+func (q *Q) MovePKToWhere(pk string) (v any, ok bool) {
+	values, ok, err := q.MoveKeysToWhere([]string{pk})
+	if err != nil || !ok {
+		return nil, false
+	}
+	return values[0], true
 }
 
 // Row is embedded in every generated row struct: it remembers where the row
@@ -338,8 +382,8 @@ func (q *Q) MovePKToWhere(pk string) (v any, ok bool) {
 type Row struct {
 	Binding  Binding
 	entity   string
-	pk       string
-	pkVal    any
+	keys     []string
+	keyVals  []any
 	loaded   bool
 	dirty    []ir.Assign
 	dvals    []any
@@ -459,8 +503,16 @@ func (r *Row) Loaded() bool { return r.loaded }
 func (r *Row) SnapshotVersion(v any) { r.version = v }
 func (r *Row) OriginalVersion() any  { return r.version }
 
-func (r *Row) Mark(entity, pk string, pkVal any) {
-	r.entity, r.pk, r.pkVal, r.loaded = entity, pk, pkVal, r.Has(pk)
+func (r *Row) Mark(entity string, keys []string, values []any) {
+	r.entity = entity
+	r.keys = slices.Clone(keys)
+	r.keyVals = slices.Clone(values)
+	r.loaded = len(keys) > 0 && len(keys) == len(values)
+	for i, key := range keys {
+		if !r.Has(key) || values[i] == nil {
+			r.loaded = false
+		}
+	}
 }
 
 func (r *Row) Dirty(col string, v any) {
@@ -513,8 +565,13 @@ func (r *Row) UpdateRow(ctx context.Context, ex Exec, optimisticCol string, opti
 		p := req.P(r.dvals[i])
 		req.IR.Set = append(req.IR.Set, ir.Assign{Column: a.Column, P: &p})
 	}
-	pk := req.P(r.pkVal)
-	req.IR.Where = &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: r.pk, Op: "eq", P: &pk}}}}
+	for i, key := range r.keys {
+		p := req.P(r.keyVals[i])
+		if req.IR.Where == nil {
+			req.IR.Where = &ir.Group{}
+		}
+		req.IR.Where.Items = append(req.IR.Where.Items, ir.Item{Pred: &ir.Pred{Column: key, Op: "eq", P: &p}})
+	}
 	if optimisticCol != "" {
 		req.IR.Optimistic = &ir.Optimist{Column: optimisticCol, P: req.P(optimisticVal)}
 	}
@@ -530,8 +587,13 @@ func (r *Row) DeleteRow(ctx context.Context, ex Exec) error {
 		return &ir.Error{Code: CodeConfig, Msg: "delete on a row that was not loaded"}
 	}
 	req := NewReq(ex.db().Eng, "delete", r.entity)
-	pk := req.P(r.pkVal)
-	req.IR.Where = &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: r.pk, Op: "eq", P: &pk}}}}
+	for i, key := range r.keys {
+		p := req.P(r.keyVals[i])
+		if req.IR.Where == nil {
+			req.IR.Where = &ir.Group{}
+		}
+		req.IR.Where.Items = append(req.IR.Where.Items, ir.Item{Pred: &ir.Pred{Column: key, Op: "eq", P: &p}})
+	}
 	_, _, err := Write(ctx, ex, req)
 	return err
 }

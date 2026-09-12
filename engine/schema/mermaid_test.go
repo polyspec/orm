@@ -90,10 +90,10 @@ func TestParseExample(t *testing.T) {
 		t.Fatalf("relations: %d", len(d.Relations))
 	}
 	r := d.Relations[1]
-	if r.Parent != "user" || r.Child != "battle" || r.FK != "updated_user_seq" || r.ChildName != "updater" || r.ParentName != "updated_battles" || r.OnDelete != "cascade" || r.Cardinality != "||--o{" {
+	if r.Parent != "user" || r.Child != "battle" || strings.Join(r.FKs, ",") != "updated_user_seq" || r.ChildName != "updater" || r.ParentName != "updated_battles" || r.OnDelete != "cascade" || r.Cardinality != "||--o{" {
 		t.Errorf("relation: %+v", r)
 	}
-	if r := d.Relations[0]; r.FK != "service_seq" || r.ChildName != "" || r.ParentName != "" {
+	if r := d.Relations[0]; strings.Join(r.FKs, ",") != "service_seq" || r.ChildName != "" || r.ParentName != "" {
 		t.Errorf("relation0: %+v", r)
 	}
 	if len(d.Directives) != 5 {
@@ -104,6 +104,17 @@ func TestParseExample(t *testing.T) {
 	}
 	if x := d.Directives[4]; x.Kind != "predicate" || x.Name != "display" || x.Raw != "`seq` > 0" {
 		t.Errorf("predicate: %+v", x)
+	}
+}
+
+func TestParseCompositeRelationLabel(t *testing.T) {
+	d, err := Parse("erDiagram\n parent ||--o{ child : \"(tenant_id, parent_id) (parent / children) cascade\"\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := d.Relations[0]
+	if strings.Join(r.FKs, ",") != "tenant_id,parent_id" || r.ChildName != "parent" || r.ParentName != "children" || r.OnDelete != "cascade" {
+		t.Fatalf("composite relation label differs: %#v", r)
 	}
 }
 

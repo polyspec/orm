@@ -303,6 +303,25 @@ impl Q {
             None => Param::Null,
         })
     }
+
+    /// Removes every value assignment in an ordered key. None means insert;
+    /// a partial key or a non-value assignment is rejected without mutation.
+    pub fn take_sets(&mut self, keys: &[&str]) -> crate::Result<Option<Vec<Param>>> {
+        if keys.is_empty() { return Err(crate::Error::Config("save requires at least one primary-key column".into())); }
+        let indexes: Vec<Option<usize>> = keys.iter().map(|key| self.req.ir.set.iter().position(|a| a.column == *key)).collect();
+        let present = indexes.iter().filter(|index| index.is_some()).count();
+        if present == 0 { return Ok(None); }
+        if present != keys.len() { return Err(crate::Error::Engine { code: crate::codes::IR_INVALID.into(), msg: "save requires every primary-key column or none".into() }); }
+        let indexes: Vec<usize> = indexes.into_iter().map(Option::unwrap).collect();
+        if indexes.iter().any(|index| self.req.ir.set[*index].p.is_none()) {
+            return Err(crate::Error::Engine { code: crate::codes::IR_INVALID.into(), msg: "save primary-key assignments must use values".into() });
+        }
+        let values: Vec<Param> = indexes.iter().map(|index| self.req.params[self.req.ir.set[*index].p.unwrap()].clone()).collect();
+        let remove: std::collections::BTreeSet<usize> = indexes.into_iter().collect();
+        self.req.ir.set = self.req.ir.set.iter().enumerate().filter(|(index, _)| !remove.contains(index)).map(|(_, value)| value.clone()).collect();
+        for (key, value) in keys.iter().zip(values.iter()) { self.w().pred(key, "eq", value.clone()); }
+        Ok(Some(values))
+    }
 }
 
 /// Group builder: borrows the params list and the group it edits (disjoint fields of Req).
@@ -403,5 +422,28 @@ mod tests {
         let attached = parent.attach(&child);
         assert_eq!(attached.scope_p, Some(1));
         assert_eq!(child.ir.query.scope_p, Some(0));
+    }
+
+    #[test]
+    fn composite_save_moves_every_key_in_order() {
+        let mut query = Q::new("schema", "membership");
+        query.set("tenant_id", 7_i64);
+        query.set("account_id", 11_i64);
+        query.set("name", "updated");
+        let values = query.take_sets(&["tenant_id", "account_id"]).unwrap().unwrap();
+        assert_eq!(values, vec![Param::I64(7), Param::I64(11)]);
+        assert_eq!(query.req.ir.set.len(), 1);
+        assert_eq!(query.req.ir.set[0].column, "name");
+        assert_eq!(query.req.ir.query.where_.as_ref().unwrap().items.len(), 2);
+    }
+
+    #[test]
+    fn composite_save_rejects_partial_key_without_mutation() {
+        let mut query = Q::new("schema", "membership");
+        query.set("tenant_id", 7_i64);
+        query.set("name", "updated");
+        assert!(query.take_sets(&["tenant_id", "account_id"]).is_err());
+        assert_eq!(query.req.ir.set.len(), 2);
+        assert!(query.req.ir.query.where_.is_none());
     }
 }

@@ -105,7 +105,7 @@ type rustFinder struct {
 
 type rustRel struct {
 	Name, Ident, Target, TargetType, Kind string
-	Left, Right                           string
+	Left, Right, Suffix                   string
 	Pair                                  bool
 	Default                               bool
 }
@@ -118,6 +118,8 @@ type rustPred struct {
 
 type rustData struct {
 	Name, Type, Table, PK, PKType string
+	PKMethod                      string
+	PKCols                        []rustCol
 	SchemaHash                    string
 	Auto                          bool
 	Cols                          []rustCol
@@ -227,6 +229,13 @@ use orm::db::{self, Exec};
 use orm::value::{Param, Val};
 use orm::{Collection, Key, Page, Result};
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct {{.Type}}Key {
+{{- range .PKCols}}
+    pub {{.Ident}}: {{.RType}},
+{{- end}}
+}
+
 /// One row of {{.Table}}.
 #[derive(Debug, Clone, Default)]
 pub struct {{.Type}}Row {
@@ -243,7 +252,7 @@ pub struct {{.Type}}Row {
 {{- end}}
     assigned: Vec<&'static str>,
     original_version: Option<Param>,
-    original_key: Option<Param>,
+    original_key: Option<Vec<Param>>,
     dirty: Vec<(&'static str, Param)>,
     enc_err: Option<(String, String)>, // (code, msg) of the first codec error; surfaces from update
     extra: std::collections::HashMap<String, Val>, // select_expr / select_<col>_as outputs, by output name
@@ -256,7 +265,7 @@ impl {{.Type}}Row {
     /// Select a pool or transaction for this loaded row.
     pub fn using(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
     pub const ENTITY: &'static str = {{printf "%q" .Name}};
-    pub const PK: &'static str = {{printf "%q" .PK}};
+    pub const PRIMARY_KEYS: &'static [&'static str] = &[{{rsList .KeyCols}}];
 
     /// Maps one row of the statement onto the struct: relation children first (rows of later
     /// steps, cloned per attachment; joins read the same row), then this node's columns,
@@ -308,7 +317,7 @@ impl {{.Type}}Row {
 {{- if .UpdatedTs}}
         if r.has({{printf "%q" .UpdatedTs}}) { r.original_version = Some(r.{{ident .UpdatedTs}}.clone().into()); }
 {{- end}}
-        if r.has(Self::PK) { r.original_key = Some(r.{{ident .PK}}.clone().into()); }
+        if Self::PRIMARY_KEYS.iter().all(|key| r.has(key)) { r.original_key = Some(vec![{{range .PKCols}}r.{{.Ident}}.clone().into(),{{end}}]); }
         Ok(r)
     }
     /// A select_expr / select_<col>_as output by name.
@@ -400,8 +409,8 @@ impl {{.Type}}Row {
         if self.dirty.is_empty() { return Ok(()); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
         for (c, v) in &self.dirty { q.set(c, v.clone()); }
-        let pk = self.original_key.clone().ok_or_else(|| orm::Error::Config("row has no loaded identity".into()))?;
-        q.w().pred(Self::PK, "eq", pk);
+        let keys = self.original_key.clone().ok_or_else(|| orm::Error::Config("row has no loaded identity".into()))?;
+        for (column, value) in Self::PRIMARY_KEYS.iter().zip(keys) { q.w().pred(column, "eq", value); }
 {{- if .UpdatedTs}}
         if optimistic {
             let p = q.req.p(self.original_version.as_ref().unwrap().clone());
@@ -420,8 +429,8 @@ impl {{.Type}}Row {
     async fn delete_inner(&self, ex: &impl Exec) -> Result<()> {
         if self.asm.is_none() { return Err(orm::Error::Config("delete on a row that was not loaded".into())); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
-        let pk = self.original_key.clone().ok_or_else(|| orm::Error::Config("row has no loaded identity".into()))?;
-        q.w().pred(Self::PK, "eq", pk);
+        let keys = self.original_key.clone().ok_or_else(|| orm::Error::Config("row has no loaded identity".into()))?;
+        for (column, value) in Self::PRIMARY_KEYS.iter().zip(keys) { q.w().pred(column, "eq", value); }
         db::write(ex, &mut q.req, "delete").await.map(|_| ())
     }
 
@@ -529,14 +538,14 @@ impl {{.Type}} {
     pub async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus> {
         let binding = self.binding.clone();
         orm::aes_rotation::aes_status(binding.resolve()?, &orm::aes_rotation::AesRotationSpec {
-            table: {{printf "%q" .Table}}.into(), primary_key: {{printf "%q" .PK}}.into(), version_column: {{printf "%q" .AESVersion}}.into(), columns: vec![],
+            table: {{printf "%q" .Table}}.into(), primary_keys: vec![{{range .KeyCols}}{{printf "%q" .}}.into(),{{end}}], version_column: {{printf "%q" .AESVersion}}.into(), columns: vec![],
         }, keyring).await
     }
 
     pub async fn rotate_aes(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<u64> {
         let binding = self.binding.clone();
         orm::aes_rotation::rotate_aes_rows(binding.resolve()?, &orm::aes_rotation::AesRotationSpec {
-            table: {{printf "%q" .Table}}.into(), primary_key: {{printf "%q" .PK}}.into(), version_column: {{printf "%q" .AESVersion}}.into(),
+            table: {{printf "%q" .Table}}.into(), primary_keys: vec![{{range .KeyCols}}{{printf "%q" .}}.into(),{{end}}], version_column: {{printf "%q" .AESVersion}}.into(),
             columns: vec![{{range .AESCols}}orm::aes_rotation::AesRotationColumn { name: {{printf "%q" .Name}}.into(), styles: vec![{{range .Styles}}{{printf "%q" .}}.into(),{{end}}] },{{end}}],
         }, keyring).await
     }
@@ -623,12 +632,12 @@ impl {{.Type}} {
     }
 {{range .Rels}}
 {{if .Pair}}
-    pub fn join_{{ident .Left}}_with_{{ident .Right}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.join("{{.Name}}", "inner", &child.as_ref().q); self }
-    pub fn left_join_{{ident .Left}}_with_{{ident .Right}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.join("{{.Name}}", "left", &child.as_ref().q); self }
+    pub fn join_{{opSnake .Suffix}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.join("{{.Name}}", "inner", &child.as_ref().q); self }
+    pub fn left_join_{{opSnake .Suffix}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.join("{{.Name}}", "left", &child.as_ref().q); self }
 {{- if eq .Kind "one"}}
-    pub fn relation_{{ident .Left}}_with_{{ident .Right}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.relation("{{.Name}}", &child.as_ref().q); self }
+    pub fn relation_{{opSnake .Suffix}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.relation("{{.Name}}", &child.as_ref().q); self }
 {{- else}}
-    pub fn relations_{{ident .Left}}_with_{{ident .Right}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.relation("{{.Name}}", &child.as_ref().q); self }
+    pub fn relations_{{opSnake .Suffix}}(mut self, child: impl AsRef<super::{{.Target}}::{{.TargetType}}>) -> Self { self.q.relation("{{.Name}}", &child.as_ref().q); self }
 {{- end}}
 {{- end}}
 {{- end}}
@@ -800,12 +809,11 @@ impl {{.Type}} {
 
     /// With set_{{ident .PK}}: UPDATE the other set columns WHERE {{.PK}} = that value and re-read the row; otherwise INSERT.
     pub async fn save(&mut self) -> Result<Option<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
-        match self.q.take_set({{printf "%q" .PK}}) {
-            Some(pk) => {
-                self.q.w().pred({{printf "%q" .PK}}, "eq", pk.clone());
+        match self.q.take_sets(&[{{rsList .KeyCols}}])? {
+            Some(keys) => {
                 db::write(ex, &mut self.q.req, "update").await?;
                 let mut q = super::{{.Name}}::query().using(ex);
-                q.q.w().pred({{printf "%q" .PK}}, "eq", pk);
+                for (column, value) in [{{rsList .KeyCols}}].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
                 q.one().await
             }
             None => self.insert().await,
@@ -837,6 +845,12 @@ impl {{.Type}} {
     pub async fn get_by_{{ident .PK}}(&mut self, v: {{.PKType}}) -> Result<Option<{{.Type}}Row>> {
         self.one_by_{{ident .PK}}(v).await
     }
+{{- if gt (len .PKCols) 1}}
+    pub async fn get_by_{{finderSnake .PKMethod}}(&mut self, {{finderParams .PKCols}}) -> Result<Option<{{.Type}}Row>> {
+        {{finderChain .PKCols}}
+        self.get().await
+    }
+{{- end}}
 {{range .UniqueFinders}}
     /// Applies the equality predicates for the declared unique key and runs the single-row terminal.
     pub async fn get_by_{{finderSnake .Method}}(&mut self, {{finderParams .Fields}}) -> Result<Option<{{$.Type}}Row>> {
@@ -856,7 +870,8 @@ fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&{{.Type}}Row) -> Key + 
     let cells = rows.take_cells();
     let mut c = Collection::with_capacity(cells.len());
     for mut src in cells {
-        let k = Key::of(&src.val(0)?);
+        let key_values = vec![{{range .PKCols}}src.val(rows.assemble.columns.iter().find(|column| column.name == {{printf "%q" .Name}}).expect("primary key is projected").index)?,{{end}}];
+        let k = Key::of_values(&key_values);
         let r = {{.Type}}Row::from_row(&mut src, &rows.assemble, rows)?;
         let k = match key_fn { Some(f) => f(&r), None => k };
         c.put(k, r);
@@ -927,7 +942,7 @@ func genRust(m *schema.Manifest, outDir string) error {
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		ge := buildGoEntity(m, e)
-		d := rustData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs, SchemaHash: m.SchemaHash, Links: ge.Links, Scope: ge.Scope, AESCols: ge.AESCols, AESVersion: ge.AESVersion}
+		d := rustData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, PKMethod: ge.PKMethod, Auto: ge.Auto, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs, SchemaHash: m.SchemaHash, Links: ge.Links, Scope: ge.Scope, AESCols: ge.AESCols, AESVersion: ge.AESVersion}
 		if ge.Scope != "" {
 			d.ScopeType = rustType(e.Column(ge.Scope))
 		}
@@ -956,6 +971,9 @@ func genRust(m *schema.Manifest, outDir string) error {
 		rustByName := make(map[string]rustCol, len(d.Cols))
 		for _, c := range d.Cols {
 			rustByName[c.Name] = c
+		}
+		for _, key := range ge.PKNames {
+			d.PKCols = append(d.PKCols, rustByName[key])
 		}
 		for _, f := range ge.UniqueFinders {
 			rf := rustFinder{Method: f.Method, Fields: make([]rustCol, 0, len(f.Fields))}
@@ -989,7 +1007,7 @@ func genRust(m *schema.Manifest, outDir string) error {
 			pairs[r.Left+"\x1f"+r.Right]++
 		}
 		for _, r := range ge.Rels {
-			d.Rels = append(d.Rels, rustRel{Name: r.Name, Ident: rustIdent(r.Name), Target: r.Target, TargetType: r.TargetType, Kind: r.Kind, Left: r.Left, Right: r.Right, Pair: pairs[r.Left+"\x1f"+r.Right] == 1, Default: r.Default})
+			d.Rels = append(d.Rels, rustRel{Name: r.Name, Ident: rustIdent(r.Name), Target: r.Target, TargetType: r.TargetType, Kind: r.Kind, Left: r.Left, Right: r.Right, Suffix: r.Suffix, Pair: pairs[r.Left+"\x1f"+r.Right] == 1, Default: r.Default})
 		}
 		var buf bytes.Buffer
 		if err := rustTmpl.Execute(&buf, d); err != nil {

@@ -4,7 +4,7 @@
 // Only three things are added on top of standard Mermaid:
 //   - column comment strings carry attributes:  "? =0 auto onupdate bool lazy aes hex -> user.seq"
 //   - %% directives:  %% unique|index|fulltext <table> (<cols>) [name]
-//   - relationship labels may name both sides:  "fk_col (child_name / parent_name)"
+//   - relationship labels name one FK column or an ordered list: "fk_col (child_name / parent_name)" or "(fk_a, fk_b) (child_name / parent_name)"
 package schema
 
 import (
@@ -58,7 +58,7 @@ type DRelation struct {
 	Line        int
 
 	// Parsed from Label.
-	FK         string
+	FKs        []string
 	ChildName  string // override for child->parent relation name
 	ParentName string // override for parent->child relation name
 	OnDelete   string // "", cascade, setnull
@@ -88,7 +88,7 @@ var (
 	reRelation = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s+([|}o]{1,2}[-.]{2}[|{o]{1,2})\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$`)
 	// %% kind table (a, b) [name]
 	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|timestamps|scope|predicate|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
-	reLabel          = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s*(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
+	reRelationNames  = regexp.MustCompile(`^(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
 	reRef            = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
 	reDirectiveIdent = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 )
@@ -232,12 +232,34 @@ func parseLabel(r *DRelation) error {
 	if r.Label == "" {
 		return fmt.Errorf("relation %s -> %s: label must name the FK column", r.Parent, r.Child)
 	}
-	m := reLabel.FindStringSubmatch(r.Label)
+	rest := r.Label
+	if strings.HasPrefix(rest, "(") {
+		close := strings.IndexByte(rest, ')')
+		if close < 0 {
+			return fmt.Errorf("relation %s -> %s: bad label %q", r.Parent, r.Child, r.Label)
+		}
+		for _, value := range strings.Split(rest[1:close], ",") {
+			value = strings.TrimSpace(value)
+			if !reDirectiveIdent.MatchString(value) {
+				return fmt.Errorf("relation %s -> %s: bad FK column %q", r.Parent, r.Child, value)
+			}
+			r.FKs = append(r.FKs, value)
+		}
+		rest = strings.TrimSpace(rest[close+1:])
+	} else {
+		fields := strings.Fields(rest)
+		if len(fields) == 0 || !reDirectiveIdent.MatchString(fields[0]) {
+			return fmt.Errorf("relation %s -> %s: bad label %q", r.Parent, r.Child, r.Label)
+		}
+		r.FKs = []string{fields[0]}
+		rest = strings.TrimSpace(strings.TrimPrefix(rest, fields[0]))
+	}
+	m := reRelationNames.FindStringSubmatch(rest)
 	if m == nil {
 		return fmt.Errorf("relation %s -> %s: bad label %q", r.Parent, r.Child, r.Label)
 	}
-	r.FK, r.ChildName, r.ParentName = m[1], m[2], m[3]
-	for _, w := range strings.Fields(m[4]) {
+	r.ChildName, r.ParentName = m[1], m[2]
+	for _, w := range strings.Fields(m[3]) {
 		switch w {
 		case "cascade", "setnull":
 			r.OnDelete = w

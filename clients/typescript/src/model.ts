@@ -7,7 +7,7 @@ export type Key = number | string | bigint;
 export interface RowConstructor<T extends Row = Row> {
   new (): T;
   entity(): string;
-  primaryKey(): string;
+  primaryKeys(): readonly string[];
   versionColumn(): string | undefined;
   columns(): Readonly<Record<string, string>>;
   fromResult(values: unknown[], assemble: Assemble, rows: ExecutionRows): T;
@@ -97,12 +97,12 @@ export class Row {
   protected extras: Map<string, unknown> = new Map();
   protected binding: Db | undefined;
   protected loaded: boolean = false;
-  protected identity: unknown;
+  protected identity: unknown[] = [];
   protected originalVersion: unknown;
   protected cascade: string[] = [];
 
   public static entity(): string { throw new OrmError('INTERNAL', 'row entity is not declared'); }
-  public static primaryKey(): string { throw new OrmError('INTERNAL', 'row primary key is not declared'); }
+  public static primaryKeys(): readonly string[] { throw new OrmError('INTERNAL', 'row primary keys are not declared'); }
   public static versionColumn(): string | undefined { return undefined; }
   public static columns(): Readonly<Record<string, string>> { return {}; }
 
@@ -114,9 +114,9 @@ export class Row {
       row.indexes.set(column.name, column.index);
       if (column.hidden) row.hidden.add(column.name);
     }
-    const pk = this.primaryKey();
-    row.loaded = row.indexes.has(pk) && row.column(pk) !== null;
-    row.identity = row.column(pk);
+    const keys = this.primaryKeys();
+    row.loaded = keys.length > 0 && keys.every(key => row.indexes.has(key) && row.column(key) !== null);
+    row.identity = keys.map(key => row.column(key));
     const version = this.versionColumn();
     if (version && row.indexes.has(version)) row.originalVersion = row.column(version);
     for (const child of assemble.children) row.attach(child, values, rows);
@@ -190,7 +190,7 @@ export class Row {
       const styles = this.dirtyStyles.get(column);
       if (styles) query.setEncoded(column, value, styles); else query.set(column, value);
     }
-    query.predicate((this.constructor as typeof Row).primaryKey(), 'eq', this.identity);
+    (this.constructor as typeof Row).primaryKeys().forEach((key, index) => query.predicate(key, 'eq', this.identity[index]));
     if (optimistic) query.optimistic((this.constructor as typeof Row).versionColumn()!, this.originalVersion);
     const result = await database.execute(await database.plan(query.request.shape('update')), query.request.params) as {affected:number};
     if (optimistic && result.affected === 0) throw new OrmError('OPTIMISTIC_LOCK', 'row changed since it was read');
@@ -209,7 +209,7 @@ export class Row {
       }
     }
     const query = new QueryCore((this.constructor as typeof Row).entity()).using(database);
-    query.predicate((this.constructor as typeof Row).primaryKey(), 'eq', this.identity);
+    (this.constructor as typeof Row).primaryKeys().forEach((key, index) => query.predicate(key, 'eq', this.identity[index]));
     await database.execute(await database.plan(query.request.shape('delete')), query.request.params);
   }
   private requiredBinding(): Db { if (!this.binding) throw new OrmError('CONFIG', 'row has no database'); return this.binding; }
@@ -219,8 +219,21 @@ export function rowCollection<T extends Row>(rows: ExecutionRows, assemble: Asse
   const type = rowTypes.get(assemble.entity);
   if (!type) throw new OrmError('INTERNAL', `row type ${assemble.entity} is not registered`);
   const collection = new Collection<T>();
-  for (const values of rows.data) collection.put(asKey(values[keyIndex ?? assemble.columns[0]!.index]), type.fromResult(values, assemble, rows) as T);
+  for (const values of rows.data) {
+    const key = keyIndex === undefined ? identityKey(values, assemble, type.primaryKeys()) : asKey(values[keyIndex]);
+    collection.put(key, type.fromResult(values, assemble, rows) as T);
+  }
   return collection;
+}
+
+function identityKey(values: readonly unknown[], assemble: Assemble, keys: readonly string[]): Key {
+  const parts = keys.map(key => {
+    const column = assemble.columns.find(value => value.name === key);
+    if (!column) throw new OrmError('INTERNAL', `primary key ${key} is missing from the assembly`);
+    return values[column.index];
+  });
+  if (parts.length === 1) return asKey(parts[0]);
+  return parts.map(part => { const value=scalarKey(part); return `${value.length}:${value}`; }).join('');
 }
 
 export function rowFromResult<T extends Row>(rows: ExecutionRows, assemble: Assemble, values: unknown[]): T {

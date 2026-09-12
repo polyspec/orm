@@ -13,6 +13,11 @@ import (
 
 var _ time.Time
 
+// ServiceModuleKey contains the complete ordered primary key of service_module.
+type ServiceModuleKey struct {
+	Seq int64
+}
+
 // ServiceModuleRow is one row of service_module.
 type ServiceModuleRow struct {
 	orm.Row
@@ -178,7 +183,7 @@ func scanServiceModuleDirect(s *orm.DirectScanner) (*ServiceModuleRow, error) {
 		return nil, err
 	}
 	r.SetProjection(s.Projection())
-	r.Mark("service_module", "seq", r.Seq)
+	r.Mark("service_module", []string{"seq"}, []any{r.Seq})
 	return r, nil
 }
 
@@ -211,7 +216,7 @@ func scanServiceModule(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceModul
 		}
 	}
 	r.SetProjection(rs.Projection(a))
-	r.Mark("service_module", "seq", r.Seq)
+	r.Mark("service_module", []string{"seq"}, []any{r.Seq})
 	return r
 }
 
@@ -1184,7 +1189,7 @@ func collectServiceModule(rows *orm.Rows, keyFn func(*ServiceModuleRow) orm.Key)
 			c.Put(keyFn(r), r)
 			continue
 		}
-		c.Put(orm.KeyOf(vals[0]), r)
+		c.Put(orm.KeyFromValues([]any{r.Seq}), r)
 	}
 	return c
 }
@@ -1195,7 +1200,7 @@ func collectServiceModuleDirect(rows []*ServiceModuleRow, keyFn func(*ServiceMod
 		if keyFn != nil {
 			c.Put(keyFn(r), r)
 		} else {
-			c.Put(orm.KeyOf(r.Seq), r)
+			c.Put(orm.KeyFromValues([]any{r.Seq}), r)
 		}
 	}
 	return c
@@ -1456,14 +1461,16 @@ func (q *ServiceModuleQuery) Insert() (*ServiceModuleRow, error) {
 	return ServiceModule().Using(ctx, ex).SeqEq(int64(id)).One()
 }
 
-// Save updates the other assigned columns when SetSeq was called (and
-// returns the re-read row); otherwise it inserts like Insert.
+// Save updates when every primary-key column was assigned and inserts when none was assigned.
 func (q *ServiceModuleQuery) Save() (*ServiceModuleRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
 	}
-	pk, ok := q.q.MovePKToWhere("seq")
+	keys, ok, err := q.q.MoveKeysToWhere([]string{"seq"})
+	if err != nil {
+		return nil, err
+	}
 	if !ok {
 		return q.Insert()
 	}
@@ -1471,7 +1478,7 @@ func (q *ServiceModuleQuery) Save() (*ServiceModuleRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return ServiceModule().Using(ctx, ex).SeqEq(pk.(int64)).One()
+	return ServiceModule().Using(ctx, ex).SeqEq(keys[0].(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

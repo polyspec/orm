@@ -13,6 +13,11 @@ import (
 
 var _ time.Time
 
+// BattleKey contains the complete ordered primary key of battle.
+type BattleKey struct {
+	Seq int64
+}
+
 // BattleRow is one row of battle.
 type BattleRow struct {
 	orm.Row
@@ -924,7 +929,7 @@ func scanBattleDirect(s *orm.DirectScanner) (*BattleRow, error) {
 		return nil, err
 	}
 	r.SetProjection(s.Projection())
-	r.Mark("battle", "seq", r.Seq)
+	r.Mark("battle", []string{"seq"}, []any{r.Seq})
 	if r.Has("updated_ts") {
 		r.SnapshotVersion(r.UpdatedTs)
 	}
@@ -976,7 +981,7 @@ func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 		}
 	}
 	r.SetProjection(rs.Projection(a))
-	r.Mark("battle", "seq", r.Seq)
+	r.Mark("battle", []string{"seq"}, []any{r.Seq})
 	if r.Has("updated_ts") {
 		r.SnapshotVersion(r.UpdatedTs)
 	}
@@ -1264,7 +1269,7 @@ func (q *BattleQuery) AESStatus(keyring orm.AESKeyring) (orm.AESRotationStatus, 
 	if err != nil {
 		return orm.AESRotationStatus{}, err
 	}
-	return ex.DB().AESStatus(ctx, ex, orm.AESRotationSpec{Table: "battle", PrimaryKey: "seq", VersionColumn: "aes_key_version"}, keyring)
+	return ex.DB().AESStatus(ctx, ex, orm.AESRotationSpec{Table: "battle", PrimaryKeys: []string{"seq"}, VersionColumn: "aes_key_version"}, keyring)
 }
 
 // RotateAES re-encrypts every pending AES row to the keyring current version.
@@ -1274,7 +1279,7 @@ func (q *BattleQuery) RotateAES(keyring orm.AESKeyring) (int, error) {
 		return 0, err
 	}
 	return ex.DB().RotateAESRows(ctx, ex, orm.AESRotationSpec{
-		Table: "battle", PrimaryKey: "seq", VersionColumn: "aes_key_version",
+		Table: "battle", PrimaryKeys: []string{"seq"}, VersionColumn: "aes_key_version",
 		Columns: []orm.AESRotationColumn{
 			{Name: "aes_hex_email", Styles: []string{"aes", "hex"}},
 			{Name: "aes_hex_phone", Styles: []string{"aes", "hex"}},
@@ -6319,7 +6324,7 @@ func collectBattle(rows *orm.Rows, keyFn func(*BattleRow) orm.Key) *orm.Collecti
 			c.Put(keyFn(r), r)
 			continue
 		}
-		c.Put(orm.KeyOf(vals[0]), r)
+		c.Put(orm.KeyFromValues([]any{r.Seq}), r)
 	}
 	return c
 }
@@ -6330,7 +6335,7 @@ func collectBattleDirect(rows []*BattleRow, keyFn func(*BattleRow) orm.Key) *orm
 		if keyFn != nil {
 			c.Put(keyFn(r), r)
 		} else {
-			c.Put(orm.KeyOf(r.Seq), r)
+			c.Put(orm.KeyFromValues([]any{r.Seq}), r)
 		}
 	}
 	return c
@@ -7909,14 +7914,16 @@ func (q *BattleQuery) Insert() (*BattleRow, error) {
 	return Battle().Using(ctx, ex).SeqEq(int64(id)).One()
 }
 
-// Save updates the other assigned columns when SetSeq was called (and
-// returns the re-read row); otherwise it inserts like Insert.
+// Save updates when every primary-key column was assigned and inserts when none was assigned.
 func (q *BattleQuery) Save() (*BattleRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
 	}
-	pk, ok := q.q.MovePKToWhere("seq")
+	keys, ok, err := q.q.MoveKeysToWhere([]string{"seq"})
+	if err != nil {
+		return nil, err
+	}
 	if !ok {
 		return q.Insert()
 	}
@@ -7924,7 +7931,7 @@ func (q *BattleQuery) Save() (*BattleRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return Battle().Using(ctx, ex).SeqEq(pk.(int64)).One()
+	return Battle().Using(ctx, ex).SeqEq(keys[0].(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
