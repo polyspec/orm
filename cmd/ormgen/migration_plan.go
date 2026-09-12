@@ -218,7 +218,7 @@ func applyCmd(args []string) {
 	if err := insertMigration(ctx, db, *driver, record); err != nil {
 		fail(err)
 	}
-	if err := executeMigration(ctx, db, planSQL(plan.Operations)); err != nil {
+	if err := executeMigration(ctx, db, *driver, planSQL(plan.Operations)); err != nil {
 		detail := fmt.Sprintf("operation execution failed: %v", err)
 		_ = updateMigration(ctx, db, *driver, plan.MigrationID, "failed", detail)
 		_ = writeMigrationLog(*logDir, migrationLogFromRecord(record, *driver, startedAt, time.Now().UTC()).withError(detail))

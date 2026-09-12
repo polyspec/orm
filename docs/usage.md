@@ -106,6 +106,15 @@ Migration statements execute inside one database transaction. On statement failu
 the runner records the statement number, SQL text, driver error, and rollback result.
 Database engines that implicitly commit DDL retain their engine-specific DDL behavior.
 
+Migration execution uses one reserved database connection. MySQL acquires a database-specific
+`GET_LOCK`, PostgreSQL acquires a transaction advisory lock, and SQLite starts with
+`BEGIN IMMEDIATE`. A competing migration fails with `MIGRATION_LOCK_BUSY` before executing
+the first planned statement. Locks are released on commit, rollback, or connection close.
+
+The SQL statement parser recognizes single-quoted strings, quoted identifiers, line comments,
+block comments, and PostgreSQL dollar-quoted blocks. Semicolons inside these regions do not end
+a statement. Execution errors report the one-based operation number and complete statement text.
+
 Each execution also writes a JSON audit file under `migrations/logs` by default. The filename is `<UTC timestamp>__<migration-id>.json`; it contains the driver, schema hashes, plan checksum, status, operation count, start time, finish time, and error detail. Use `--log-dir` to select another directory. An applied migration fails verification if no file log matches its database record.
 
 ```sh
