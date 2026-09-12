@@ -120,4 +120,4 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] G3 Verify write and relation vectors for all implemented clients.
 - [x] G4 Run generated symbol, schema, and CI checks.
 - [x] G5 Verify the GitHub Actions build.
-- [ ] G7 Close only after T7.1–T7.13 and T7.D1–T7.D10 meet their completion conditions.
+- [ ] G7 Close only after T7.1–T7.18 and T7.D1–T7.D10 meet their completion conditions.
