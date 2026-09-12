@@ -145,6 +145,15 @@ classDiagram
         I64 count
         StreamState state
     }
+    class Batch {
+        BatchOptions options
+        List_Request requests
+        BatchResult result
+        batchInsert()
+        batchUpsert()
+        batchUpdate()
+        batchDelete()
+    }
     class AESKeyring {
         I32 currentVersion
         OrderedMap_I32_Secret versions
@@ -244,6 +253,7 @@ classDiagram
 | Collection | 중복 key는 순서를 유지하고 값을 교체한다. integer key와 string key는 구분한다. |
 | Page | per는 양수여야 한다. total은 요청한 page와 관계없이 계산한다. |
 | StreamResult | cursor 완료 또는 중단 상태와 독립된 row를 전달한 수를 반환한다. |
+| Batch | 동일한 typed write request를 제한된 chunk와 하나의 transaction으로 실행한다. |
 | AESKeyring | 버전별 AES key와 현재 저장 버전을 보관한다. |
 | AESRotationSpec | AES entity 하나의 생성된 식별자와 codec 단계를 보관한다. |
 | AESRotationStatus | 저장된 AES key 버전별 row 수를 보관한다. |
@@ -349,6 +359,9 @@ classDiagram
 | Page.total | `I64` |
 | StreamResult.count | `I64` |
 | StreamResult.state | `StreamState` |
+| Batch.options | `BatchOptions` |
+| Batch.requests | `List<Request>` |
+| Batch.result | `BatchResult` |
 | AESKeyring.currentVersion | `I32` |
 | AESKeyring.versions | `OrderedMap<I32,Secret>` |
 | AESRotationSpec.columns | `List<AESRotationColumn>` |

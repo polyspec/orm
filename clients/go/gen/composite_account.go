@@ -1395,6 +1395,40 @@ func (q *CompositeAccountQuery) Delete() (int64, error) {
 	return affected, err
 }
 
+// BatchInsert executes typed query drafts in one transaction with bounded chunks.
+func (q *CompositeAccountQuery) BatchInsert(rows []*CompositeAccountQuery, options orm.BatchOptions) (orm.BatchResult, error) {
+	return q.batchWrite(rows, "insert", options)
+}
+
+// BatchUpsert executes typed insert drafts with their on-duplicate assignments in one transaction.
+func (q *CompositeAccountQuery) BatchUpsert(rows []*CompositeAccountQuery, options orm.BatchOptions) (orm.BatchResult, error) {
+	return q.batchWrite(rows, "insert", options)
+}
+
+// BatchUpdate updates typed query drafts in one transaction.
+func (q *CompositeAccountQuery) BatchUpdate(rows []*CompositeAccountQuery, options orm.BatchOptions) (orm.BatchResult, error) {
+	return q.batchWrite(rows, "update", options)
+}
+
+// BatchDelete deletes typed query drafts in one transaction.
+func (q *CompositeAccountQuery) BatchDelete(rows []*CompositeAccountQuery, options orm.BatchOptions) (orm.BatchResult, error) {
+	return q.batchWrite(rows, "delete", options)
+}
+func (q *CompositeAccountQuery) batchWrite(rows []*CompositeAccountQuery, kind string, options orm.BatchOptions) (orm.BatchResult, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return orm.BatchResult{}, err
+	}
+	requests := make([]*orm.Req, len(rows))
+	for i, row := range rows {
+		if row == nil || row.q == nil {
+			return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"}
+		}
+		requests[i] = row.q.Req
+	}
+	return orm.BatchWrite(ctx, ex, requests, kind, options)
+}
+
 // SQL renders the main statement as All would run it, without executing: secret binds show as "$SECRET".
 func (q *CompositeAccountQuery) SQL() (*orm.Statement, error) {
 	ctx, ex, err := q.binding.Resolve()
