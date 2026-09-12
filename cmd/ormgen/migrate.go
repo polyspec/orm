@@ -155,6 +155,7 @@ func liveManifest(db *sql.DB, driver string) (*schema.Manifest, error) {
 	if err != nil {
 		return nil, err
 	}
+	tables = filterManagedTables(tables)
 	if len(tables) == 0 {
 		return emptyManifest(), nil
 	}
@@ -163,6 +164,17 @@ func liveManifest(db *sql.DB, driver string) (*schema.Manifest, error) {
 		return nil, err
 	}
 	return schema.Build(d)
+}
+
+func filterManagedTables(tables []impTable) []impTable {
+	out := tables[:0]
+	for _, table := range tables {
+		if table.Name == "orm_schema_migrations" {
+			continue
+		}
+		out = append(out, table)
+	}
+	return out
 }
 
 func readTablesSQLite(db *sql.DB) ([]impTable, error) {
@@ -339,9 +351,6 @@ func countSQLStatements(text string) int { return len(splitSQL(text)) }
 func checksumText(s string) string { h := sha256.Sum256([]byte(s)); return hex.EncodeToString(h[:]) }
 
 func schemaMatches(want, live *schema.Manifest, driver string) bool {
-	if driver != "sqlite" {
-		return want.SchemaHash == live.SchemaHash
-	}
 	if len(want.Entities) != len(live.Entities) {
 		return false
 	}
@@ -352,7 +361,11 @@ func schemaMatches(want, live *schema.Manifest, driver string) bool {
 		}
 		for i, wc := range we.Columns {
 			lc := le.Columns[i]
-			if wc.Name != lc.Name || wc.Nullable != lc.Nullable || !sqliteTypeMatches(wc.Type, lc.Type) {
+			typeMatch := wc.Type == lc.Type
+			if driver == "sqlite" {
+				typeMatch = sqliteTypeMatches(wc.Type, lc.Type)
+			}
+			if wc.Name != lc.Name || wc.Nullable != lc.Nullable || !typeMatch {
 				return false
 			}
 		}
