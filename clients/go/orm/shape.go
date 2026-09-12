@@ -126,6 +126,7 @@ func (s *shape) request(r *ir.Request) {
 
 func (s *shape) query(q *ir.Query) {
 	s.str(q.Entity)
+	s.optInt(q.ScopeP)
 	if q.Columns == nil {
 		s.byte(0)
 	} else {

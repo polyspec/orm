@@ -141,6 +141,11 @@ func signatures(d document, e *schema.Entity, lang, role string) ([]native, erro
 			}
 		case "entity":
 			expansions = append(expansions, base)
+		case "scoped_entity":
+			if e.Scope != "" {
+				c := e.Column(e.Scope)
+				expansions = append(expansions, map[string]string{"entity": e.Name, "Entity": pascal(e.Name), "type": colType(c, lang)})
+			}
 		case "eq_column":
 			for _, c := range e.Columns {
 				if ir.OpAllowed(c, "eq") {

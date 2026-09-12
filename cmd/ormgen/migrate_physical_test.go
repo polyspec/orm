@@ -88,6 +88,7 @@ func TestPhysicalMigration(t *testing.T) {
 			assertPhysicalMigrationLock(t, ctx, db, tc.driver)
 			assertPhysicalStructuredPlan(t, ctx, db, tc.driver, want)
 			assertPhysicalPoint(t, ctx, db, tc.driver)
+			assertPhysicalScope(t, ctx, db, tc.driver)
 		})
 	}
 }

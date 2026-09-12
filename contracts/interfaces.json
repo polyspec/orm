@@ -26,9 +26,9 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:28aa87ef4476ee1270c16e2ec6f1d35f8181329ceb8e0ac11d2216dff49fb010",
-    "php": "sha256:e9f02e387518e04703a7b4f2f7cd5f78876ec52f6a7dbe1be80bb9d6bface5ca",
-    "rust": "sha256:83260fb45f0157064d298a14e7af673c0202935bb8fa31df7354e36be276b294"
+    "go": "sha256:c160b0150b73e3d50e1cb6df6aadad01a7240411204474f0fa9434cfc888f020",
+    "php": "sha256:711b62584cad6ccfcd841aa07eb424be99ba386ce5c3be643a02ffe6b2bf4e6d",
+    "rust": "sha256:60a77411cc09ee133ec938ba4c89a587a56c818973237aa67e2792fe307c8cc8"
   },
   "components": [
     {
@@ -42,6 +42,7 @@
       "methods": [
         "query",
         "using",
+        "scope",
         "predicate",
         "join",
         "relation",
@@ -115,6 +116,7 @@
       "id": "QueryNode",
       "fields": {
         "entity": "Entity",
+        "scopeParameter": "Optional<ParameterIndex>",
         "columns": "Projection",
         "where": "Optional<Group>",
         "on": "Optional<Group>",
@@ -581,6 +583,30 @@
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::using",
           "signature": "pub fn using(mut self, ex: &impl Exec) -> Self"
+        }
+      }
+    },
+    {
+      "id": "Query.scope",
+      "for": "scoped_entity",
+      "inputs": [
+        "ColumnValue"
+      ],
+      "output": "Query",
+      "errors": [],
+      "state": "Store scope parameter separately from the predicate tree",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Scope",
+          "signature": "receiver=*{Entity}Query func(v {type}) *{Entity}Query"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::Polyspec\\Orm\\Tests\\Model\\{Entity}::scope",
+          "signature": "public function scope({type} $v): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::scope",
+          "signature": "pub fn scope(mut self, v: {type}) -> Self"
         }
       }
     },
@@ -1514,6 +1540,7 @@
       },
       "fields": {
         "entity": "text",
+        "scope_p": "integer",
         "columns": "IRColumns",
         "on": "IRGroup",
         "where": "IRGroup",
@@ -1534,6 +1561,7 @@
         "no_cascade_delete": "bool"
       },
       "optional": [
+        "scope_p",
         "columns",
         "on",
         "where",

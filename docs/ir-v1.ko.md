@@ -2,7 +2,7 @@
 
 > 이전 설계 문서. 현행 구현 기준은 [공통 인터페이스](interfaces.md), [DSL](dsl.md), [프로토콜](protocol.md), [스키마](schema.md)다.
 
-목표: **스키마 1개 → 파서 1개 → spec.json(IR) → 렌더러 3개(PHP/Go/Rust)**.
+목표: **스키마 1개 → 파서 1개 → spec.json(IR) → 렌더러 4개(PHP/Go/Rust/TypeScript)**.
 렌더러는 파싱을 하지 않는다. IR을 읽어 이름을 조합만 한다.
 
 ```
@@ -13,7 +13,7 @@ schema/*.sql  ──파서──▶  spec/*.json  ──▶ php.tmpl / go.tmpl /
 
 1. **연산자는 위치로 고정한다.** IR에는 항상 `{op, column}` 쌍으로만 존재한다.
    문자열 `gt_created_ts`는 IR 어디에도 나타나지 않는다. 렌더 시점에 조합될 뿐이다.
-2. **정규 토큰(canonical token)** 은 `op:column` 이다. 세 렌더러의 토큰 집합은 항상 같아야 한다.
+2. **정규 토큰(canonical token)** 은 `op:column` 이다. 네 렌더러의 토큰 집합은 항상 같아야 한다.
 3. 케이싱은 렌더러가 언어 관례대로 변환한다.
    `{op:"gt", column:"created_ts"}` → `gtCreatedTs` / `GtCreatedTs` / `gt_created_ts`
 
@@ -51,7 +51,7 @@ schema/*.sql  ──파서──▶  spec/*.json  ──▶ php.tmpl / go.tmpl /
 }
 ```
 
-`ops`는 파서가 타입/스타일로부터 **계산해서 박아 넣는다.** 렌더러는 판단하지 않는다.
+`ops`는 파서가 타입과 스타일로 계산해 기록한다. 렌더러는 판단하지 않는다.
 
 ### 2.1 정규 타입
 
@@ -75,7 +75,7 @@ schema/*.sql  ──파서──▶  spec/*.json  ──▶ php.tmpl / go.tmpl /
 
 `timestamp`는 unix epoch **정수**다. MySQL `TIMESTAMP` 컬럼은 `datetime`으로 매핑한다.
 
-nullable: PHP `?T` / Go `*T` / Rust `Option<T>`. Go는 `sql.NullX`를 쓰지 않는다 — 세 언어의 모양이 갈라진다.
+nullable은 PHP `?T`, Go `*T`, Rust `Option<T>`, TypeScript `T | null`을 사용한다. Go는 `sql.NullX`를 사용하지 않는다.
 
 ### 2.2 dataStyle
 
@@ -102,7 +102,7 @@ nullable: PHP `?T` / Go `*T` / Rust `Option<T>`. Go는 `sql.NullX`를 쓰지 않
 | `ip` | `INET6_ATON(?)` | `INET6_NTOA(col)` | **SQL** |
 | `point` | `ST_PointFromText(?)` | `ST_AsText(col)` | **MySQL은 SQL, PostgreSQL·SQLite는 typed text 변환** |
 
-`serialize`는 언어 간 호환이 안 된다(PHP `serialize()` ↔ Go/Rust). 세 언어가 같은 테이블을 읽는다면 파서가 **경고**를 표시한다. `json`을 쓰라는 뜻이다.
+`serialize`는 언어 간 호환되지 않는다. 여러 언어가 같은 테이블을 조회하면 파서가 **경고**를 반환한다. 공통 데이터에는 `json`을 사용한다.
 
 SQL 위치 stage가 있으면 SELECT 목록과 바인드가 같이 바뀌므로, 렌더러는 컬럼 표현식을 항상 `select_expr` / `bind_expr` 로 받는다.
 
@@ -174,10 +174,14 @@ terminal   get
 terminal   gets
 ```
 
-CI에서 3-way diff. 하나라도 다르면 실패. 케이싱이 달라 문자열 비교가 안 되므로
+CI에서 4-way diff를 실행한다. 하나라도 다르면 실패한다. 케이싱이 달라 문자열 비교가 안 되므로
 **생성된 소스가 아니라 토큰을 비교한다.**
 
-## 6. v1 범위
+## 6. Tenant scope
+
+`Query.scope_p`는 request parameter 목록의 optional index다. `Query.where`와 분리되며 entity manifest가 scope 컬럼을 선언한 경우에만 사용할 수 있다. compiler는 사용자 predicate group 외부에 scope를 적용하고, join entity에는 JOIN ON으로 추가하며, 각 relation 단계에도 포함한다. insert는 scope 컬럼에 해당 parameter를 사용한다. update와 upsert는 scope 컬럼을 설정할 수 없다. raw SQL은 `scope_p`를 사용할 수 없다.
+
+## 7. v1 범위
 
 포함: 단일 테이블 술어, order/limit/offset, CRUD, dataStyle, 배치 로딩 관계, `raw()` 1개.
 제외: 조인, 서브쿼리, 괄호 중첩, 집계, 트랜잭션 헬퍼(v2), fulltext.

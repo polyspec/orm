@@ -38,6 +38,8 @@ pub struct Raw {
 pub struct Query {
     pub entity: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub scope_p: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub columns: Option<Columns>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub on: Option<Group>,
@@ -212,6 +214,7 @@ pub struct Optimist {
 impl Query {
     /// Shift every parameter index by `off` (used when attaching a child query).
     pub fn shift(&mut self, off: usize) {
+        if let Some(p) = self.scope_p.as_mut() { *p += off; }
         if let Some(g) = self.on.as_mut() {
             g.shift(off);
         }

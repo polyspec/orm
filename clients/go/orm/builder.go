@@ -30,6 +30,9 @@ func NewQ(eng *engine.Engine, entity string) *Q {
 // The parent relation or join operation consumes it when resolving the manifest relation.
 func (q *Q) SetLink(left, right string) { q.LinkLeft, q.LinkRight = left, right }
 
+// Scope sets the parameter for the entity's declared tenant scope.
+func (q *Q) Scope(v any) { p := q.Req.P(v); q.Node.ScopeP = &p }
+
 func (q *Q) where() *ir.Group {
 	if q.Node.Where == nil {
 		q.Node.Where = &ir.Group{}

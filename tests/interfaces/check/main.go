@@ -81,13 +81,21 @@ func main() {
 	diagram, err := contracts.Diagram()
 	must(err)
 	diagramPath := filepath.Join(abs, "docs/interfaces-model.md")
+	koDiagram := bytes.Replace(diagram, []byte("# Common components\n"), []byte("# 공통 구성요소\n"), 1)
+	koDiagramPath := filepath.Join(abs, "docs/interfaces-model.ko.md")
 	if *generate {
 		must(os.WriteFile(diagramPath, diagram, 0644))
+		must(os.WriteFile(koDiagramPath, koDiagram, 0644))
 	} else {
 		stored, err := os.ReadFile(diagramPath)
 		must(err)
 		if !bytes.Equal(stored, diagram) {
 			fatal("component diagram differs from the manifest; run with --generate")
+		}
+		storedKo, err := os.ReadFile(koDiagramPath)
+		must(err)
+		if !bytes.Equal(storedKo, koDiagram) {
+			fatal("Korean component diagram differs from the manifest; run with --generate")
 		}
 	}
 	js, err := os.ReadFile(filepath.Join(abs, m.Schema))
@@ -362,6 +370,10 @@ func checkRules(lang string, actual Symbols, rules []Rule, m *schema.Manifest) [
 				}
 			} else if rule.For == "entity" {
 				maps = append(maps, base)
+			} else if rule.For == "scoped_entity" {
+				if ent.Scope != "" {
+					maps = append(maps, map[string]string{"entity": name, "Entity": pascal(name), "type": columnType(ent.Column(ent.Scope), lang)})
+				}
 			} else if rule.For == "eq_column" {
 				for _, col := range ent.Columns {
 					if !ir.OpAllowed(col, "eq") {

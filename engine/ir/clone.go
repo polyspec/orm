@@ -9,6 +9,7 @@ import (
 // to another request. Parameter values live outside this tree.
 func CloneQuery(q Query) Query {
 	out := q
+	out.ScopeP = clonePtr(q.ScopeP)
 	if q.Columns != nil {
 		c := *q.Columns
 		c.Add, c.Remove = slices.Clone(c.Add), slices.Clone(c.Remove)

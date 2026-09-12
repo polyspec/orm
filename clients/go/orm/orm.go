@@ -319,6 +319,10 @@ func (r *Req) Attach(child *Req) *ir.Query {
 }
 
 func shiftQuery(q *ir.Query, off int) {
+	if q.ScopeP != nil {
+		v := *q.ScopeP + off
+		q.ScopeP = &v
+	}
 	shiftGroup(q.On, off)
 	shiftGroup(q.Where, off)
 	shiftGroup(q.Having, off)

@@ -166,9 +166,6 @@ final class {{.Type}}Where
     /** and(fn) opens a parenthesised group; and('(') / and('sql …', binds) / and('Name', v) are compat tokens. */
     public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new self($this->w->group())); $this->w->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
-{{- if .Scope}}
-    public function scope({{.ScopeType}} $v): static { $this->w->pred('{{.Scope}}', 'eq', $v); return $this; }
-{{- end}}
 {{- range .Predicates}}
     public function {{.Method}}({{.Params}}): static { $this->w->expr({{phpStr .Expr}}, [{{.Args}}]); return $this; }
 {{- end}}
@@ -215,7 +212,7 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
     public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new {{.Type}}Where($this->w()->group())); $this->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
 {{- if .Scope}}
-    public function scope({{.ScopeType}} $v): static { $this->w()->pred('{{.Scope}}', 'eq', $v); return $this; }
+    public function scope({{.ScopeType}} $v): static { $this->scopeValue($v); return $this; }
 {{- end}}
 {{- range .Predicates}}
     public function {{.Method}}({{.Params}}): static { $this->w()->expr({{phpStr .Expr}}, [{{.Args}}]); return $this; }

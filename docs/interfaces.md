@@ -59,6 +59,7 @@ classDiagram
         Entity entity
         Request request
         Binding binding
+        scope(value) Query
         where(callback) Query
         and(callback) Query
         or() Query
@@ -86,6 +87,8 @@ classDiagram
 ```
 
 Each entity occurrence has one query object and one Where builder. A group contains predicates or nested groups. `or()` changes the connection for the next item. `and(fn)` and `or(fn)` create nested groups. A relation or join uses schema key mapping; callers do not provide a second relation mapping in regular syntax.
+
+`scope(value)` exists only on a query whose entity declares `%% scope`. It stores a parameter index in `RequestIR.query.scope_p`; the Where builder cannot change it. The compiler applies root and relation scope in WHERE and join scope in JOIN ON. Scoped inserts assign the scope column. Scoped updates and upserts cannot assign the scope column. Scoped raw SQL is invalid.
 
 ## 5. Public API — IF-09 to IF-12
 
