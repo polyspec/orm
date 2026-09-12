@@ -42,7 +42,7 @@ func BenchmarkClientPlanCacheHit(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		q := gen.Battle().ServiceSeqEq(int64(i)).IsCloseEq(false).OrderBySeqDesc().Limit(0, 100)
-		if _, err := db.Plan(q.Req()); err != nil {
+		if _, err := db.Plan(context.Background(), q.Req()); err != nil {
 			b.Fatal(err)
 		}
 	}

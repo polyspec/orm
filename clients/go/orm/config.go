@@ -1,10 +1,12 @@
 package orm
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/go-sql-driver/mysql"
@@ -48,7 +50,9 @@ type EngineConfig struct {
 
 // OrmdConfig is the PHP client's compile daemon; the Go client only validates the path.
 type OrmdConfig struct {
-	Socket string `toml:"socket"`
+	Endpoint  string `toml:"endpoint"`
+	TimeoutMS int    `toml:"timeout_ms"`
+	Socket    string `toml:"socket"`
 }
 
 type DebugConfig struct {
@@ -111,6 +115,9 @@ func LoadConfig(path string) (*FileConfig, error) {
 			return nil, err
 		}
 	}
+	if fc.Ormd.TimeoutMS < 0 {
+		return nil, configErr("%s: ormd.timeout_ms must not be negative", path)
+	}
 	return &fc, nil
 }
 
@@ -164,6 +171,12 @@ func mysqlDSN(db *DBConfig) (string, error) {
 // connects. The generated package's Init(db.Eng) then performs the one
 // schema_hash check.
 func OpenConfig(path string) (*DB, error) {
+	return OpenConfigContext(context.Background(), path)
+}
+
+// OpenConfigContext loads orm.toml and uses the declared Connect compiler.
+// A missing endpoint keeps the pre-Connect in-process behavior for compatibility.
+func OpenConfigContext(ctx context.Context, path string) (*DB, error) {
 	fc, err := LoadConfig(path)
 	if err != nil {
 		return nil, err
@@ -172,7 +185,11 @@ func OpenConfig(path string) (*DB, error) {
 	if err != nil {
 		return nil, configErr("schema: %v", err)
 	}
-	eng, err := engine.LoadJSON(js, "mysql")
+	driver := fc.DB.Driver
+	if driver == "" {
+		driver = "mysql"
+	}
+	eng, err := engine.LoadJSON(js, driver)
 	if err != nil {
 		return nil, err
 	}
@@ -182,10 +199,6 @@ func OpenConfig(path string) (*DB, error) {
 	}
 	if key == "" && hasAES(eng.M) {
 		return nil, configErr("the schema has aes columns but [secrets] declares neither aes nor aes_env")
-	}
-	driver := fc.DB.Driver
-	if driver == "" {
-		driver = "mysql"
 	}
 	dsn := fc.DB.DSN
 	if driver == "mysql" {
@@ -199,7 +212,20 @@ func OpenConfig(path string) (*DB, error) {
 	if fc.Debug.OnQuery {
 		cfg.OnQuery = LogQuery
 	}
-	db, err := Open(driver, dsn, eng, cfg)
+	var db *DB
+	if fc.Ormd.Endpoint == "" {
+		db, err = Open(driver, dsn, eng, cfg)
+	} else {
+		timeout := fc.Ormd.TimeoutMS
+		if timeout == 0 {
+			timeout = 5000
+		}
+		compiler, compilerErr := NewConnectCompiler(fc.Ormd.Endpoint, time.Duration(timeout)*time.Millisecond)
+		if compilerErr != nil {
+			return nil, compilerErr
+		}
+		db, err = OpenWithCompiler(ctx, driver, dsn, eng, compiler, cfg)
+	}
 	if err != nil {
 		return nil, err
 	}
