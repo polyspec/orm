@@ -29,19 +29,25 @@ const (
 	gateIters = 300
 )
 
-func p50(tb testing.TB, f func()) time.Duration {
+func pairedP50(tb testing.TB, native, client func()) (time.Duration, time.Duration) {
 	tb.Helper()
 	for i := 0; i < 50; i++ {
-		f()
+		native()
+		client()
 	}
-	s := make([]time.Duration, gateIters)
-	for i := range s {
+	n := make([]time.Duration, gateIters)
+	c := make([]time.Duration, gateIters)
+	for i := range n {
 		start := time.Now()
-		f()
-		s[i] = time.Since(start)
+		native()
+		n[i] = time.Since(start)
+		start = time.Now()
+		client()
+		c[i] = time.Since(start)
 	}
-	sort.Slice(s, func(i, j int) bool { return s[i] < s[j] })
-	return s[len(s)/2]
+	sort.Slice(n, func(i, j int) bool { return n[i] < n[j] })
+	sort.Slice(c, func(i, j int) bool { return c[i] < c[j] })
+	return n[len(n)/2], c[len(c)/2]
 }
 
 func TestHotPathGate(t *testing.T) {
@@ -96,7 +102,7 @@ func TestHotPathGate(t *testing.T) {
 			bound: listBound,
 		},
 	} {
-		na, cl := p50(t, c.native), p50(t, c.client)
+		na, cl := pairedP50(t, c.native, c.client)
 		ratio := float64(cl) / float64(na)
 		fmt.Printf("%-8s native %6.1fµs  client %6.1fµs  ratio %.2f (bound %.2f)\n",
 			c.name, float64(na.Microseconds()), float64(cl.Microseconds()), ratio, c.bound)
