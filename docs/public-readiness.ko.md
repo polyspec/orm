@@ -44,7 +44,7 @@
 ## P10: 검증
 
 - [ ] P10.1 Model 및 property test가 schema round trip, migration operation order, cursor round trip, query cloning, codec round trip을 검사한다.
-- [ ] P10.2 Fuzz test가 Mermaid, manifest, IR, SQL migration statement, cursor, ciphertext decoder의 panic 및 무제한 allocation을 검사한다.
+- [ ] P10.2 Fuzz test가 Mermaid, manifest, IR, SQL migration statement splitting, cursor, ciphertext decoder의 panic 및 무제한 allocation을 검사한다. 필요한 fuzz target은 모두 추가했으며 전체 fuzz smoke 실행은 미완료다.
 - [ ] P10.3 Failure-injection test가 compiler failure, driver failure, cancellation, transaction failure, cache eviction, migration interruption, rotation interruption을 검사한다.
 - [ ] P10.4 Concurrency test가 optimistic update, deadlock, savepoint, migration lock, AES rotation, cache access를 검사한다.
 - [ ] P10.5 MySQL·PostgreSQL·SQLite 물리 검사가 parameter limit, 모든 migration operation, batch write, keyset pagination, transaction mode, encryption 변경을 `-state` 없는 containerctl로 검사한다.

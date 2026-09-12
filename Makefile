@@ -18,6 +18,7 @@ fuzz-check:
 	go test ./engine/schema -run '^$$' -fuzz FuzzParseMermaid -fuzztime=1s
 	go test ./engine/schema -run '^$$' -fuzz FuzzLoadManifest -fuzztime=1s
 	go test ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
+	go test ./cmd/ormgen -run '^$$' -fuzz FuzzSplitSQL -fuzztime=1s
 	go test ./clients/go/orm -run '^$$' -fuzz FuzzDecodeKeysetCursor -fuzztime=1s
 	go test ./clients/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
 
