@@ -33,6 +33,7 @@ export interface TransactionOptions {
   maxAttempts?: number;
   isolation?: 'default' | 'read_uncommitted' | 'read_committed' | 'repeatable_read' | 'serializable';
   readOnly?: boolean;
+  timeoutMs?: number;
 }
 
 export interface BatchOptions { chunkSize?: number; }

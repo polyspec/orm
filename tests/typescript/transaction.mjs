@@ -72,4 +72,15 @@ const compiler = { async compile() { throw new Error('compiler is not used'); },
   });
 }
 
+{
+  const { root } = connection();
+  const db = new Db(root, { schemaHash: 'test', compiler });
+  try {
+    await db.transaction(async () => {}, { timeoutMs: 1 });
+    throw new Error('SQLite transaction timeout was accepted');
+  } catch (error) {
+    if (!(error instanceof OrmError) || error.code !== 'CAPABILITY_UNSUPPORTED') throw error;
+  }
+}
+
 console.log('typescript transaction retry policy passed');

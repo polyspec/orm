@@ -64,6 +64,7 @@ func TestTransactionOptionsRejectUnsupportedSQLiteModes(t *testing.T) {
 	for _, options := range []TransactionOptions{
 		{Isolation: IsolationSerializable},
 		{ReadOnly: true},
+		{TimeoutMS: 1},
 	} {
 		if _, err := sqlTransactionOptions("sqlite", options); err == nil {
 			t.Fatalf("sqlite accepted unsupported transaction options: %+v", options)
@@ -73,5 +74,11 @@ func TestTransactionOptionsRejectUnsupportedSQLiteModes(t *testing.T) {
 	}
 	if options, err := sqlTransactionOptions("postgres", TransactionOptions{Isolation: IsolationSerializable, ReadOnly: true}); err != nil || options.Isolation != sql.LevelSerializable || !options.ReadOnly {
 		t.Fatalf("postgres transaction options were not translated: options=%+v err=%v", options, err)
+	}
+	if _, err := sqlTransactionOptions("postgres", TransactionOptions{TimeoutMS: 1}); err != nil {
+		t.Fatalf("postgres timeout was rejected: %v", err)
+	}
+	if _, err := sqlTransactionOptions("postgres", TransactionOptions{TimeoutMS: -1}); err == nil {
+		t.Fatal("negative transaction timeout was accepted")
 	}
 }

@@ -827,6 +827,21 @@ func TestDeadlockRetry(t *testing.T) {
 	}
 }
 
+func TestPostgresTransactionStatementTimeout(t *testing.T) {
+	if testDriver() != "postgres" {
+		t.Skip("PostgreSQL statement timeout is not available on this driver")
+	}
+	db := open(t)
+	ctx := context.Background()
+	_, err := orm.TransactionWithOptions(ctx, db, orm.TransactionOptions{TimeoutMS: 1}, func(tx *orm.Tx) (struct{}, error) {
+		_, err := tx.Exec(ctx, "SELECT pg_sleep(0.1)")
+		return struct{}{}, err
+	})
+	if err == nil {
+		t.Fatal("PostgreSQL transaction statement timeout was not enforced")
+	}
+}
+
 // ---- S5 hardening ----
 
 func codeOf(err error) string {
