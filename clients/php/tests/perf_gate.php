@@ -52,7 +52,7 @@ function pairedP50(Closure $client, Closure $native, int $iterations = 300): arr
 /** @return array{0: array, 1: list<mixed>, 2: PDOStatement} */
 function nativeSetup(Db $db, object $query, string $kind, string &$lastSql, array &$lastArgs): array
 {
-    $terminal = $kind === 'one' ? 'one' : 'all';
+    $terminal = $kind === 'one' ? 'get' : 'gets';
     $query->using($db)->{$terminal}();
     $plan = $db->planFor($query->req, $kind);
     return [$plan, $lastArgs, $db->pdo->prepare($lastSql)];
