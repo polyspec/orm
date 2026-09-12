@@ -947,6 +947,27 @@ func Query(ctx context.Context, ex Exec, r *Req) (*Rows, error) {
 	if err != nil {
 		return nil, err
 	}
+	if parts, splitErr := rootINParts(r, &c.plan.Steps[0], d.Driver()); splitErr != nil {
+		return nil, splitErr
+	} else if len(parts) > 1 {
+		first, err := d.plan(ctx, parts[0])
+		if err != nil {
+			return nil, err
+		}
+		var main [][]any
+		for _, part := range parts {
+			partPlan, err := d.plan(ctx, part)
+			if err != nil {
+				return nil, err
+			}
+			rows, err := runSelect(ctx, ex, partPlan, &partPlan.plan.Steps[0], part, nil)
+			if err != nil {
+				return nil, err
+			}
+			main = append(main, rows...)
+		}
+		return runPlanWithMain(ctx, ex, first, r, main)
+	}
 	return runPlan(ctx, ex, c, r)
 }
 
@@ -992,6 +1013,14 @@ func QueryDirect[T any](ctx context.Context, ex Exec, r *Req, accepts func(*plan
 	c, err := d.plan(ctx, r)
 	if err != nil {
 		return nil, true, err
+	}
+	if parts, splitErr := rootINParts(r, &c.plan.Steps[0], d.Driver()); splitErr != nil {
+		return nil, true, splitErr
+	} else if len(parts) > 1 {
+		// QueryDirect cannot merge independently scanned chunks without changing
+		// generated row assembly semantics. Query will execute the same chunks
+		// through the positional scanner instead.
+		return nil, false, nil
 	}
 	if len(c.plan.Steps) != 1 || c.plan.Steps[0].Assemble == nil || len(c.plan.Steps[0].Assemble.Children) != 0 || !accepts(c.plan.Steps[0].Assemble) {
 		return nil, false, nil
@@ -1058,12 +1087,16 @@ func Stream(ctx context.Context, ex Exec, r *Req, visit func([]any, *Rows) bool)
 }
 
 func runPlan(ctx context.Context, ex Exec, c *cached, r *Req) (*Rows, error) {
-	d := ex.db()
-	p := c.plan
-	main, err := runSelect(ctx, ex, c, &p.Steps[0], r, nil)
+	main, err := runSelect(ctx, ex, c, &c.plan.Steps[0], r, nil)
 	if err != nil {
 		return nil, err
 	}
+	return runPlanWithMain(ctx, ex, c, r, main)
+}
+
+func runPlanWithMain(ctx context.Context, ex Exec, c *cached, r *Req, main [][]any) (*Rows, error) {
+	d := ex.db()
+	p := c.plan
 	out := &Rows{Binding: NewBinding(ctx, ex), Assemble: p.Steps[0].Assemble, Data: main, c: c, params: r.Params}
 	for i := range p.Steps[1:] {
 		st := &p.Steps[i+1]
@@ -1525,6 +1558,22 @@ func Scalar(ctx context.Context, ex Exec, r *Req) (any, error) {
 	c, err := d.plan(ctx, r)
 	if err != nil {
 		return nil, err
+	}
+	if parts, splitErr := rootINParts(r, &c.plan.Steps[0], d.Driver()); splitErr != nil {
+		return nil, splitErr
+	} else if len(parts) > 1 {
+		if r.IR.Kind != "count" {
+			return nil, &ir.Error{Code: CodeIrInvalid, Msg: fmt.Sprintf("root IN splitting is only defined for count; aggregate %q would require a merge operation", r.IR.Kind)}
+		}
+		var total int64
+		for _, part := range parts {
+			v, err := Scalar(ctx, ex, part)
+			if err != nil {
+				return nil, err
+			}
+			total += AsInt64(v)
+		}
+		return total, nil
 	}
 	st := &c.plan.Steps[0]
 	args, masks, err := d.args(st, r, nil)

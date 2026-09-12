@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/polyspec/orm/engine"
+	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/plan"
 )
 
@@ -60,6 +62,46 @@ func TestRelationChunksStayWithinDriverParameterLimits(t *testing.T) {
 	}
 	if got := chunks[len(chunks)-1][len(chunks[len(chunks)-1])-1]; got != int64(599) {
 		t.Fatalf("last chunk order changed: %v", got)
+	}
+}
+
+func TestRootINPartsRespectSQLiteBindLimitAndDeduplicateValues(t *testing.T) {
+	eng, err := engine.LoadJSON(mustSchemaJSON(t), "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := NewReq(eng, "all", "battle")
+	where := &ir.Group{}
+	r.IR.Query.Where = where
+	w := NewW(r, where)
+	values := make([]any, 1000)
+	for i := range values {
+		values[i] = int64(i)
+	}
+	values[len(values)-1] = values[0]
+	ps := make([]int, 0, len(values))
+	for _, value := range values {
+		ps = append(ps, r.P(value))
+	}
+	// The builder normally creates this predicate. Keep the explicit IR here
+	// so the test checks the executor's runtime split boundary directly.
+	w.G.Items = append(w.G.Items, ir.Item{Pred: &ir.Pred{Column: "seq", Op: "in", Ps: ps}})
+	st := &plan.Step{BindSlots: make([]plan.BindSlot, len(ps))}
+	for i := range st.BindSlots {
+		st.BindSlots[i] = plan.BindSlot{From: "param", Param: i}
+	}
+	parts, err := rootINParts(r, st, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parts) != 2 {
+		t.Fatalf("parts=%d, want 2", len(parts))
+	}
+	if got := len(parts[0].IR.Query.Where.Items[0].Pred.Ps); got != 512 {
+		t.Fatalf("first part binds=%d, want 512", got)
+	}
+	if got := len(parts[1].IR.Query.Where.Items[0].Pred.Ps); got != 487 {
+		t.Fatalf("second part binds=%d, want 487 after duplicate removal", got)
 	}
 }
 

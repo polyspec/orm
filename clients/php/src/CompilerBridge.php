@@ -14,6 +14,7 @@ use Orm\Compiler\V1\GroupExpression;
 use Orm\Compiler\V1\IfParent;
 use Orm\Compiler\V1\Item;
 use Orm\Compiler\V1\Join;
+use Orm\Compiler\V1\Keyset;
 use Orm\Compiler\V1\Limit;
 use Orm\Compiler\V1\Navigation;
 use Orm\Compiler\V1\Optimistic;
@@ -81,6 +82,7 @@ final class CompilerBridge
             if (!is_string($q['lock'])) throw new OrmException(Code::IR_INVALID, "$path.lock must be a string");
             $data['lock'] = $q['lock'];
         }
+        if (isset($q['keyset'])) $data['keyset'] = new Keyset(['direction' => (string) $q['keyset']['direction'], 'values' => self::uints($q['keyset']['values'] ?? [], "$path.keyset.values")]);
         return new QueryNode($data);
     }
 

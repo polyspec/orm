@@ -98,6 +98,10 @@ class QueryNode extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>string lock = 21;</code>
      */
     protected $lock = '';
+    /**
+     * Generated from protobuf field <code>.orm.compiler.v1.Keyset keyset = 22;</code>
+     */
+    protected $keyset = null;
 
     /**
      * Constructor.
@@ -126,6 +130,7 @@ class QueryNode extends \Google\Protobuf\Internal\Message
      *     @type bool $no_cascade_delete
      *     @type int $scope_parameter
      *     @type string $lock
+     *     @type \Orm\Compiler\V1\Keyset $keyset
      * }
      */
     public function __construct($data = null)
@@ -652,6 +657,37 @@ class QueryNode extends \Google\Protobuf\Internal\Message
     {
         GPBUtil::checkString($var, true);
         $this->lock = $var;
+
+        return $this;
+    }
+
+    /**
+     * Generated from protobuf field <code>.orm.compiler.v1.Keyset keyset = 22;</code>
+     * @return \Orm\Compiler\V1\Keyset|null
+     */
+    public function getKeyset()
+    {
+        return $this->keyset;
+    }
+
+    public function hasKeyset()
+    {
+        return isset($this->keyset);
+    }
+
+    public function clearKeyset()
+    {
+        unset($this->keyset);
+    }
+
+    /**
+     * Generated from protobuf field <code>.orm.compiler.v1.Keyset keyset = 22;</code>
+     * @param \Orm\Compiler\V1\Keyset $var
+     * @return $this
+     */
+    public function setKeyset(\Orm\Compiler\V1\Keyset|null $var)
+    {
+        $this->keyset = $var;
 
         return $this;
     }

@@ -99,6 +99,10 @@ check(count($rows) === 3 && $rows->first()->getSeq() === 306, 'all + group + or 
 foreach ($rows as $seq => $r) { check($seq === $r->getSeq(), 'collection keyed by pk'); }
 
 check(Battle::query()->serviceSeq(7)->using($db)->getCount() === 1000, 'count');
+$largeIds = range(1006, 2005);
+check(Battle::query()->seqIn($largeIds)->using($db)->getCount() === 1000, 'large root IN count is chunked');
+check(count(Battle::query()->seqIn($largeIds)->using($db)->gets()) === 1000, 'large root IN rows are merged');
+check(Battle::query()->nameContains('battle')->seqIn($largeIds)->using($db)->getCount() === 1000, 'large root IN preserves other predicates');
 check(Battle::query()->serviceSeq(7)->using($db)->sumLikeCount() > 0, 'sum');
 
 $cnt = Battle::query()
