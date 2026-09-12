@@ -45,6 +45,37 @@ type Event struct {
 	Err      error
 }
 
+// TxResult, TxRows and TxRow expose database-independent transaction results.
+type TxResult interface {
+	RowsAffected() (int64, error)
+}
+
+type TxRows interface {
+	Next() bool
+	Scan(...any) error
+	Err() error
+	Close() error
+}
+
+type TxRow interface {
+	Scan(...any) error
+}
+
+type txResult struct{ result sql.Result }
+
+func (r txResult) RowsAffected() (int64, error) { return r.result.RowsAffected() }
+
+type txRows struct{ rows *sql.Rows }
+
+func (r *txRows) Next() bool             { return r.rows.Next() }
+func (r *txRows) Scan(dest ...any) error { return mapDriverErr(r.rows.Scan(dest...)) }
+func (r *txRows) Err() error             { return mapDriverErr(r.rows.Err()) }
+func (r *txRows) Close() error           { return mapDriverErr(r.rows.Close()) }
+
+type txRow struct{ row *sql.Row }
+
+func (r txRow) Scan(dest ...any) error { return mapDriverErr(r.row.Scan(dest...)) }
+
 // Secret replaces a secret bind (the AES key) wherever binds are shown.
 const Secret = "$SECRET"
 
@@ -126,6 +157,13 @@ func open(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler 
 	}
 	if driver == "mysql" && !strings.Contains(dsn, "clientFoundRows=true") {
 		return nil, &ir.Error{Code: CodeConfig, Msg: "mysql DSN must include clientFoundRows=true"}
+	}
+	if driver == "sqlite" && !strings.Contains(dsn, "_pragma=foreign_keys") {
+		separator := "?"
+		if strings.Contains(dsn, "?") {
+			separator = "&"
+		}
+		dsn += separator + "_pragma=foreign_keys(1)"
 	}
 	s, err := sql.Open(sqlDriver, dsn)
 	if err != nil {
@@ -295,6 +333,45 @@ func (t *Tx) control(ctx context.Context, command, name string) error {
 	}
 	return nil
 }
+
+// Exec executes a statement through the current ORM transaction.
+func (t *Tx) Exec(ctx context.Context, query string, args ...any) (TxResult, error) {
+	stmt, err := t.stmt(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	r, err := stmt.ExecContext(ctx, args...)
+	if err != nil {
+		return nil, mapDriverErr(err)
+	}
+	return txResult{result: r}, nil
+}
+
+// Query executes a query through the current ORM transaction.
+func (t *Tx) Query(ctx context.Context, query string, args ...any) (TxRows, error) {
+	stmt, err := t.stmt(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	r, err := stmt.QueryContext(ctx, args...)
+	if err != nil {
+		return nil, mapDriverErr(err)
+	}
+	return &txRows{rows: r}, nil
+}
+
+// QueryRow executes a single-row query through the current ORM transaction.
+func (t *Tx) QueryRow(ctx context.Context, query string, args ...any) TxRow {
+	stmt, err := t.stmt(ctx, query)
+	if err != nil {
+		return txErrorRow{err: err}
+	}
+	return txRow{row: stmt.QueryRowContext(ctx, args...)}
+}
+
+type txErrorRow struct{ err error }
+
+func (r txErrorRow) Scan(...any) error { return r.err }
 
 func validSavepointName(name string) bool {
 	if name == "" || !(name[0] == '_' || name[0] >= 'A' && name[0] <= 'Z' || name[0] >= 'a' && name[0] <= 'z') {
