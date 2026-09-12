@@ -697,11 +697,11 @@ func (r *Rows) Related(ch *plan.Child, parent []any) [][]any {
 	if ifp := sr.step.Parent.IfParent; ifp != nil && !SameScalar(parent[ifp.Index], r.params[ifp.Param]) {
 		return nil
 	}
-	pv := parent[ch.ParentIndex]
-	if pv == nil {
+	key, ok := KeyFromRow(parent, ch.ParentKeys)
+	if !ok {
 		return nil
 	}
-	idxs := sr.byKey[KeyOf(pv)]
+	idxs := sr.byKey[key]
 	out := make([][]any, len(idxs))
 	for i, j := range idxs {
 		out[i] = sr.data[j]
@@ -889,10 +889,11 @@ func runPlan(ctx context.Context, ex Exec, c *cached, r *Req) (*Rows, error) {
 			if sr.data, err = runSelect(ctx, ex, c, st, r, vals); err != nil {
 				return nil, err
 			}
-			ci := childIndex(p, st)
+			keys := childKeys(p, st)
 			for j, row := range sr.data {
-				k := KeyOf(row[ci])
-				sr.byKey[k] = append(sr.byKey[k], j)
+				if key, ok := KeyFromRow(row, keys); ok {
+					sr.byKey[key] = append(sr.byKey[key], j)
+				}
 			}
 		}
 		out.steps[st.ID] = sr
@@ -900,26 +901,26 @@ func runPlan(ctx context.Context, ex Exec, c *cached, r *Req) (*Rows, error) {
 	return out, nil
 }
 
-// childIndex finds the match column of a relation step from the child spec that references it.
-func childIndex(p *plan.Plan, st *plan.Step) int {
-	var find func(a *plan.Assemble) int
-	find = func(a *plan.Assemble) int {
+// childKeys finds the ordered match key of a relation step.
+func childKeys(p *plan.Plan, st *plan.Step) []plan.KeyRef {
+	var find func(a *plan.Assemble) []plan.KeyRef
+	find = func(a *plan.Assemble) []plan.KeyRef {
 		for _, ch := range a.Children {
 			if ch.Kind != "join" && ch.Step == st.ID {
-				return ch.ChildIndex
+				return ch.ChildKeys
 			}
 			if ch.Kind == "join" {
-				if i := find(ch.Assemble); i >= 0 {
-					return i
+				if keys := find(ch.Assemble); len(keys) > 0 {
+					return keys
 				}
 			}
 		}
-		return -1
+		return nil
 	}
 	for i := range p.Steps {
 		if p.Steps[i].Assemble != nil {
-			if idx := find(p.Steps[i].Assemble); idx >= 0 {
-				return idx
+			if keys := find(p.Steps[i].Assemble); len(keys) > 0 {
+				return keys
 			}
 		}
 	}
@@ -935,14 +936,15 @@ func parentValues(pr *plan.ParentRef, parents [][]any, params []any) []any {
 		if pr.IfParent != nil && !SameScalar(row[pr.IfParent.Index], params[pr.IfParent.Param]) {
 			continue
 		}
-		v := row[pr.Index]
-		if v == nil {
+		key, ok := KeyFromRow(row, pr.Keys)
+		if !ok {
 			continue
 		}
-		k := KeyOf(v)
-		if !seen[k] {
-			seen[k] = true
-			out = append(out, v)
+		if !seen[key] {
+			seen[key] = true
+			for _, ref := range pr.Keys {
+				out = append(out, row[ref.Index])
+			}
 		}
 	}
 	return out
@@ -952,14 +954,19 @@ func parentValues(pr *plan.ParentRef, parents [][]any, params []any) []any {
 // n is rounded up to a power of two (values are padded by repetition) so the
 // prepared-statement cache holds one statement per size class, not per size.
 func expandIn(st *plan.Step, vals []any) (string, []any) {
+	width := len(st.Parent.Keys)
+	if width == 0 || len(vals)%width != 0 {
+		panic("orm: invalid relation parent key values")
+	}
+	tuples := len(vals) / width
 	n := 1
-	for n < len(vals) {
+	for n < tuples {
 		n <<= 1
 	}
-	padded := make([]any, n)
+	padded := make([]any, n*width)
 	copy(padded, vals)
-	for i := len(vals); i < n; i++ {
-		padded[i] = vals[len(vals)-1]
+	for i := tuples; i < n; i++ {
+		copy(padded[i*width:(i+1)*width], vals[(tuples-1)*width:tuples*width])
 	}
 	var sb strings.Builder
 	if strings.Contains(st.SQL, "$1") {
@@ -984,14 +991,18 @@ func expandIn(st *plan.Step, vals []any) (string, []any) {
 			k, _ := strconv.Atoi(st.SQL[i+1 : j])
 			switch {
 			case k == parent:
-				for m := 0; m < n; m++ {
+				for m := 0; m < n*width; m++ {
 					if m > 0 {
-						sb.WriteString(", ")
+						if width > 1 && m%width == 0 {
+							sb.WriteString("), (")
+						} else {
+							sb.WriteString(", ")
+						}
 					}
 					sb.WriteString("$" + strconv.Itoa(k+m))
 				}
 			case k > parent:
-				sb.WriteString("$" + strconv.Itoa(k+n-1))
+				sb.WriteString("$" + strconv.Itoa(k+n*width-1))
 			default:
 				sb.WriteString("$" + strconv.Itoa(k))
 			}
@@ -1007,7 +1018,16 @@ func expandIn(st *plan.Step, vals []any) (string, []any) {
 			continue
 		}
 		if st.BindSlots[slot].From == "parent" {
-			sb.WriteString("?" + strings.Repeat(", ?", n-1))
+			for m := 0; m < n*width; m++ {
+				if m > 0 {
+					if width > 1 && m%width == 0 {
+						sb.WriteString("), (")
+					} else {
+						sb.WriteString(", ")
+					}
+				}
+				sb.WriteByte('?')
+			}
 		} else {
 			sb.WriteByte('?')
 		}
@@ -1371,6 +1391,27 @@ func KeyOf(v any) Key {
 		return Key{S: "", isStr: true}
 	}
 	return Key{S: fmt.Sprint(v), isStr: true}
+}
+
+// KeyFromRow creates one comparable key from an ordered set of result columns.
+// It returns false when any key component is SQL NULL.
+func KeyFromRow(row []any, refs []plan.KeyRef) (Key, bool) {
+	if len(refs) == 1 {
+		v := row[refs[0].Index]
+		return KeyOf(v), v != nil
+	}
+	var b strings.Builder
+	for _, ref := range refs {
+		v := row[ref.Index]
+		if v == nil {
+			return Key{}, false
+		}
+		part := scalarKey(v)
+		b.WriteString(strconv.Itoa(len(part)))
+		b.WriteByte(':')
+		b.WriteString(part)
+	}
+	return Key{S: b.String(), isStr: true}, true
 }
 
 func (k Key) String() string {

@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:73602f98774da4645ffff62fec59ee9f8b8efa2e746965da3cee2c110531ab9e",
-    "php": "sha256:8d3f0392a3470b0ee3e04015f93f113d758cdd4bee42dec4ae4b2764f9e3cdf7",
-    "rust": "sha256:284c54f84bcdb5c11b069e0350bd91c5b7efb6c76a795d5145c719ba5047af60",
-    "typescript": "sha256:27438186e38bfd2f6961d7ae4c49f1e480ab11e976a5da8245c745e049a48fb4"
+    "go": "sha256:d88c8a220e4b6964814b23ae2e9d989fd7ba11b9533b5ef9892c67d80623774f",
+    "php": "sha256:676fa4baaefa134b8be7e4537ee75e7505a06f084fa3dfe7acf9e3ad0b2cfe4c",
+    "rust": "sha256:437f83304199a052c7d8cc9f2f95d31c4c8f84446c0d953683d827a4869229eb",
+    "typescript": "sha256:cab05e6b29fd5247bb3a08ce353a56818807be18b344350f3a20df7a8478f0aa"
   },
   "prohibited_symbols": [
     "multi_statement"
@@ -2252,6 +2252,19 @@
       ]
     },
     {
+      "id": "PlanKeyRef",
+      "native": {
+        "go": "engine/plan/plan.go::KeyRef",
+        "rust": "clients/rust/orm/src/plan.rs::KeyRef",
+        "typescript": "clients/typescript/src/index.ts::KeyReference"
+      },
+      "fields": {
+        "column": "text",
+        "index": "integer"
+      },
+      "optional": []
+    },
+    {
       "id": "PlanParent",
       "native": {
         "go": "engine/plan/plan.go::ParentRef",
@@ -2260,8 +2273,7 @@
       },
       "fields": {
         "step": "integer",
-        "column": "text",
-        "index": "integer",
+        "keys": "list<PlanKeyRef>",
         "if_parent": "PlanIfParent"
       },
       "optional": [
@@ -2357,21 +2369,18 @@
         "rel": "text",
         "kind": "text",
         "step": "integer",
-        "parent_column": "text",
-        "parent_index": "integer",
-        "child_column": "text",
-        "child_index": "integer",
-        "key_by": "text",
-        "key_index": "integer",
+        "parent_keys": "list<PlanKeyRef>",
+        "child_keys": "list<PlanKeyRef>",
+        "key": "list<PlanKeyRef>",
         "flatten": "bool",
         "cascade": "bool",
         "assemble": "PlanAssemble"
       },
       "optional": [
         "step",
-        "parent_column",
-        "child_column",
-        "key_by",
+        "parent_keys",
+        "child_keys",
+        "key",
         "flatten",
         "cascade",
         "assemble"

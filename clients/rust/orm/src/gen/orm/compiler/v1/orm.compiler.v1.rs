@@ -308,15 +308,20 @@ pub struct BindSlot {
     pub column_type: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct KeyReference {
+    #[prost(string, tag="1")]
+    pub column: ::prost::alloc::string::String,
+    #[prost(uint32, tag="2")]
+    pub index: u32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ParentReference {
     #[prost(uint32, tag="1")]
     pub step: u32,
-    #[prost(string, tag="2")]
-    pub column: ::prost::alloc::string::String,
-    #[prost(uint32, tag="3")]
-    pub index: u32,
     #[prost(message, optional, tag="4")]
     pub if_parent: ::core::option::Option<ParentCondition>,
+    #[prost(message, repeated, tag="5")]
+    pub keys: ::prost::alloc::vec::Vec<KeyReference>,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ParentCondition {
@@ -361,24 +366,18 @@ pub struct Child {
     pub kind: ::prost::alloc::string::String,
     #[prost(uint32, tag="3")]
     pub step: u32,
-    #[prost(string, tag="4")]
-    pub parent_column: ::prost::alloc::string::String,
-    #[prost(uint32, tag="5")]
-    pub parent_index: u32,
-    #[prost(string, tag="6")]
-    pub child_column: ::prost::alloc::string::String,
-    #[prost(uint32, tag="7")]
-    pub child_index: u32,
-    #[prost(string, tag="8")]
-    pub key_by: ::prost::alloc::string::String,
-    #[prost(uint32, tag="9")]
-    pub key_index: u32,
     #[prost(bool, tag="10")]
     pub flatten: bool,
     #[prost(bool, tag="11")]
     pub cascade: bool,
     #[prost(message, optional, tag="12")]
     pub assemble: ::core::option::Option<Assemble>,
+    #[prost(message, repeated, tag="13")]
+    pub parent_keys: ::prost::alloc::vec::Vec<KeyReference>,
+    #[prost(message, repeated, tag="14")]
+    pub child_keys: ::prost::alloc::vec::Vec<KeyReference>,
+    #[prost(message, repeated, tag="15")]
+    pub key: ::prost::alloc::vec::Vec<KeyReference>,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CompileError {

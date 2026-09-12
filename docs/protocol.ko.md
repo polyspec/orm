@@ -56,22 +56,22 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
   ]
 }
 ```
-- `bind_slots.from`: `param` (IR values; the executor applies aes/hex/ip when `host_styles` exists, and normalizes date/time/datetime values using the client representation) · `secret` (the executor AES key) · `parent` (relation IN values from the parent rows, expanded to N values) · `now` (executor UTC microsecond text for timestamps such as SQLite `updated_ts`).
-- 결과는 `index`로 매핑한다. SELECT aliases such as `alias__col` are for debug output; the executor does not inspect their names.
-- `assemble.columns[].styles` are application decode stages such as gz/json/serialize. SQL stages such as aes/hex/ip are already in SQL.
-- `children[].kind`: `join` (a fragment of the same row with `assemble`) · `one`/`many` (rows from another step attached through `parent_index`/`child_index`, assembled from `steps[step].assemble`).
+- `bind_slots.from`: `param`은 IR 값이며 실행기가 `host_styles`의 aes/hex/ip 처리와 date/time/datetime 정규화를 적용한다. `secret`은 실행기 AES 키, `parent`는 부모 행에서 읽어 확장한 관계 값, `now`는 SQLite `updated_ts` 등에 사용하는 실행기 UTC 마이크로초 문자열이다.
+- 결과는 `index`로 매핑한다. `alias__col` 같은 SELECT 별칭은 디버그 출력에만 사용하며 실행기는 별칭을 해석하지 않는다.
+- `assemble.columns[].styles`는 gz/json/serialize 같은 애플리케이션 디코딩 단계다. aes/hex/ip 같은 SQL 단계는 SQL에 포함된다.
+- `children[].kind`: `join`은 같은 행의 `assemble`을 저장한다. `one`과 `many`는 순서가 있는 `parent_keys`와 `child_keys` 배열로 다른 단계의 행을 연결한다.
 
 ### 관계 단계 (S2)
-- Each relation has one step with `role: relation`, after its parent step. Nested and join-child relations follow the same rule; paginate is main → relations → `count`.
-- `step.parent = {step, column, index, if_parent?{column, index, param}}`: the executor reads the parent step's `index`, removes nulls, and deduplicates in first-seen order. With `if_parent`, only parent rows equal to `params[param]` are used. No query is issued when the value set is empty.
-- A SQL `parent` slot is one `?`; the executor expands it to N placeholders. N is rounded up to a power of two by repeating the last value. All clients use the same rule.
-- User `IN` lists use the same padding rule before the builder creates IR. This keeps one prepared statement per size class instead of one per list length.
-- `children[].kind = one` attaches the first child row; `many` creates a key map using `key_index`, retaining row order and using the last row for duplicate keys. Parents excluded by `if_parent` receive null or an empty collection.
-- `limit_per_parent n` uses a `ROW_NUMBER() OVER (PARTITION BY right ORDER BY …)` subquery. Output column order is unchanged.
-- `flatten` is one-only. It merges child columns into array/JSON output; a parent column wins on name collision. Typed accessors remain available.
-- `drop_child_key` sets `columns[].hidden = true`; the match column remains available to binding and key construction and is omitted only from array/JSON output.
-- `columns[].styles` are decoded in reverse order immediately after reading a row (`docs/codec.md`). MySQL JSON values may already be parsed by the driver.
-- `key_by` is many-only, `flatten` is one-only, and `if_parent.column` must belong to the parent entity. Violations return `IR_INVALID`.
+- 각 관계는 부모 단계 다음에 `role: relation`인 단계 하나를 사용한다. 중첩 관계와 join 하위 관계에도 같은 규칙을 적용한다. paginate 단계 순서는 main, relations, `count`다.
+- `step.parent = {step, keys:[{column,index},...], if_parent?{column,index,param}}`: 실행기는 배열 순서대로 각 부모 키 튜플을 읽고, null을 포함한 튜플을 제거하며, 처음 확인한 순서대로 중복을 제거한다. `if_parent`가 있으면 `params[param]`과 같은 부모 행만 사용한다. 남은 튜플이 없으면 쿼리를 실행하지 않는다.
+- SQL `parent` 슬롯은 플레이스홀더 하나다. 실행기는 단일 키를 N개 스칼라 플레이스홀더로 확장하고 복합 키를 N개 괄호 튜플로 확장한다. N은 마지막 완전한 튜플을 반복해 2의 거듭제곱으로 맞춘다. Go, PHP, Rust, TypeScript에 같은 규칙을 적용한다.
+- 사용자가 지정한 `IN` 목록도 빌더가 IR을 생성하기 전에 같은 패딩 규칙을 적용한다. 목록 길이별로 prepared statement가 생성되는 것을 제한한다.
+- `children[].kind = one`은 첫 번째 자식 행을 연결한다. `many`는 순서가 있는 `key` 참조로 키 맵을 생성하고 행 순서를 유지하며 중복 키에는 마지막 행을 사용한다. `if_parent`에서 제외된 부모에는 null 또는 빈 collection을 설정한다.
+- `limit_per_parent n`은 `ROW_NUMBER() OVER (PARTITION BY right ORDER BY …)` 하위 쿼리를 사용한다. 출력 컬럼 순서는 바뀌지 않는다.
+- `flatten`은 one 관계에만 사용할 수 있다. 자식 컬럼을 배열 또는 JSON 결과에 병합하고 이름이 같으면 부모 컬럼을 유지한다. 타입 accessor는 계속 사용할 수 있다.
+- `drop_child_key`는 `columns[].hidden = true`를 설정한다. 연결 컬럼은 바인딩과 키 생성에 사용되며 배열 또는 JSON 결과에서만 제외된다.
+- `columns[].styles`는 행을 읽은 직후 역순으로 디코딩한다(`docs/codec.ko.md`). MySQL 드라이버가 JSON 값을 먼저 파싱할 수 있다.
+- `key_by`는 many 관계에만, `flatten`은 one 관계에만 사용할 수 있다. `if_parent.column`은 부모 엔터티에 포함되어야 한다. 위반하면 `IR_INVALID`를 반환한다.
 
 ## 3. 오류
 `{"error": {"code": "…", "msg": "…"}}` — codes: `IR_INVALID VERSION_MISMATCH SCHEMA_HASH_MISMATCH SCHEMA_INVALID SCHEMA_NOT_LOADED ENTITY_UNKNOWN COLUMN_UNKNOWN RELATION_UNKNOWN INDEX_UNKNOWN OPERATOR_UNKNOWN OPERATOR_NOT_ALLOWED OR_AT_GROUP_START EMPTY_IN ENTITY_NOT_JOINED LIMIT_IN_RELATION COLUMN_ALIAS_CONFLICT DIALECT_UNKNOWN FRAME_INVALID OP_UNKNOWN INTERNAL`. Executor codes include `OPTIMISTIC_LOCK DEADLOCK DUPLICATE_KEY JOIN_PREDICATE_PLACEMENT PAREN_ACROSS_MODELS`.

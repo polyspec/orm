@@ -35,11 +35,11 @@ type scope struct {
 // relCtx describes the relation a step loads: which parent step/column feeds
 // its IN list and how the rows attach.
 type relCtx struct {
-	parentStep   int
-	parentAsm    *plan.Assemble
-	parentColumn string
-	right        string
-	kind         string
+	parentStep int
+	parentAsm  *plan.Assemble
+	parentKeys []string
+	childKeys  []string
+	kind       string
 }
 
 // stepSet numbers steps in build order, so a parent always precedes its relation steps.
@@ -181,7 +181,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	b := &builder{p: p}
 	root := p.buildScopes(q, "a", nil)
 	if rc != nil {
-		root.extra = append(root.extra, rc.right)
+		root.extra = append(root.extra, rc.childKeys...)
 		if q.KeyBy != "" {
 			root.extra = append(root.extra, q.KeyBy)
 		}
@@ -241,7 +241,11 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 		if order == "" {
 			order = " ORDER BY " + p.qcol(root, root.ent.PK[0]) + " ASC"
 		}
-		sb.WriteString(", ROW_NUMBER() OVER (PARTITION BY " + p.qcol(root, rc.right) + order + ") AS " + p.D.Quote("orm_rn"))
+		parts := make([]string, len(rc.childKeys))
+		for i, key := range rc.childKeys {
+			parts[i] = p.qcol(root, key)
+		}
+		sb.WriteString(", ROW_NUMBER() OVER (PARTITION BY " + strings.Join(parts, ", ") + order + ") AS " + p.D.Quote("orm_rn"))
 	}
 	sb.WriteString(" FROM " + p.D.Quote(root.ent.Table) + " AS " + p.D.Quote(root.alias))
 	if q.ForceIdx != "" {
@@ -253,7 +257,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	// WHERE = [parent IN list] AND root group AND each join's where group (declaration order).
 	var where []string
 	if rc != nil {
-		where = append(where, p.qcol(root, rc.right)+" IN ("+b.parentList(rc.parentStep)+")")
+		where = append(where, p.qcol(root, rc.childKeys[0])+" IN ("+b.parentList(rc.parentStep)+")")
 	}
 	if q.ScopeP != nil {
 		clause, err := p.scopeClause(b, root)
@@ -308,7 +312,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 				outer.WriteString(p.D.Quote("orm_w") + "." + p.D.Quote(n))
 			}
 			outer.WriteString(" FROM (" + sb.String() + ") AS " + p.D.Quote("orm_w") + " WHERE " + p.D.Quote("orm_w") + "." + p.D.Quote("orm_rn") + " <= " + strconv.Itoa(perParent))
-			outer.WriteString(" ORDER BY " + p.D.Quote("orm_w") + "." + p.D.Quote(root.alias+"__"+rc.right) + ", " + p.D.Quote("orm_w") + "." + p.D.Quote("orm_rn"))
+			outer.WriteString(" ORDER BY " + p.D.Quote("orm_w") + "." + p.D.Quote(root.alias+"__"+rc.childKeys[0]) + ", " + p.D.Quote("orm_w") + "." + p.D.Quote("orm_rn"))
 			sb = outer
 		} else {
 			order, err := p.renderOrder(root, q)
@@ -330,12 +334,14 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 		st.Role = "count"
 	case rc != nil:
 		st.Role = "relation"
-		st.Parent = &plan.ParentRef{Step: rc.parentStep, Column: rc.parentColumn, Index: indexOf(rc.parentAsm, rc.parentColumn)}
+		st.Parent = &plan.ParentRef{Step: rc.parentStep, Keys: keyRefs(rc.parentAsm, rc.parentKeys)}
 		if q.IfParent != nil {
 			st.Parent.IfParent = &plan.IfParent{Column: q.IfParent.Column, Index: indexOf(rc.parentAsm, q.IfParent.Column), Param: q.IfParent.P}
 		}
 		if q.DropChildKey {
-			asm.Columns[indexOf(asm, rc.right)].Hidden = true
+			for _, key := range rc.childKeys {
+				asm.Columns[indexOf(asm, key)].Hidden = true
+			}
 		}
 	}
 	if kind == "one" || kind == "all" || kind == "group_count" {
@@ -355,7 +361,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 func (p *Planner) relationSteps(ps *stepSet, s *scope, asm *plan.Assemble, stepID int) error {
 	for _, r := range s.q.Relations {
 		rel := s.ent.Relations[r.Rel]
-		rc := &relCtx{parentStep: stepID, parentAsm: asm, parentColumn: rel.Left, right: rel.Right, kind: rel.Kind}
+		rc := &relCtx{parentStep: stepID, parentAsm: asm, parentKeys: []string{rel.Left}, childKeys: []string{rel.Right}, kind: rel.Kind}
 		st, err := p.selectStep(ps, r.Query, "all", "", rc)
 		if err != nil {
 			return err
@@ -363,16 +369,16 @@ func (p *Planner) relationSteps(ps *stepSet, s *scope, asm *plan.Assemble, stepI
 		target := p.M.Entities[rel.Target]
 		ch := &plan.Child{
 			Rel: r.Rel, Kind: rel.Kind, Step: st.ID,
-			ParentColumn: rel.Left, ParentIndex: indexOf(asm, rel.Left),
-			ChildColumn: rel.Right, ChildIndex: indexOf(st.Assemble, rel.Right),
-			KeyBy: r.Query.KeyBy, Flatten: r.Query.Flatten,
+			ParentKeys: keyRefs(asm, []string{rel.Left}),
+			ChildKeys:  keyRefs(st.Assemble, []string{rel.Right}),
+			Flatten:    r.Query.Flatten,
 			// owned when the target holds the FK (this row's PK on the left, a non-PK column on the right)
 			Cascade: !r.Query.NoCascadeDelete && rel.Left == s.ent.PK[0] && rel.Right != target.PK[0],
 		}
 		if r.Query.KeyBy != "" {
-			ch.KeyIndex = indexOf(st.Assemble, r.Query.KeyBy)
+			ch.Key = keyRefs(st.Assemble, []string{r.Query.KeyBy})
 		} else {
-			ch.KeyIndex = indexOf(st.Assemble, p.M.Entities[st.Assemble.Entity].PK[0])
+			ch.Key = keyRefs(st.Assemble, p.M.Entities[st.Assemble.Entity].PK)
 		}
 		asm.Children = append(asm.Children, ch)
 	}
@@ -398,6 +404,14 @@ func indexOf(a *plan.Assemble, name string) int {
 		}
 	}
 	panic("planner: column " + name + " not projected in " + a.Entity)
+}
+
+func keyRefs(a *plan.Assemble, columns []string) []plan.KeyRef {
+	out := make([]plan.KeyRef, len(columns))
+	for i, column := range columns {
+		out[i] = plan.KeyRef{Column: column, Index: indexOf(a, column)}
+	}
+	return out
 }
 
 func (p *Planner) renderOrder(root *scope, q *ir.Query) (string, error) {

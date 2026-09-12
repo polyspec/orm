@@ -17,14 +17,18 @@ type Step struct {
 	Parent    *ParentRef `json:"parent,omitempty"` // relation steps: where the IN values come from
 }
 
-// ParentRef binds a relation step to the rows of an earlier step: the executor
-// collects the distinct values at Index (skipping nulls, and rows failing
-// IfParent), expands the step's single `parent` slot to that many placeholders,
-// and skips the step entirely when there are none.
+// KeyRef identifies one ordered component of a row key.
+type KeyRef struct {
+	Column string `json:"column"`
+	Index  int    `json:"index"`
+}
+
+// ParentRef binds a relation step to the rows of an earlier step. The executor
+// collects distinct non-null key tuples in Keys order and skips the step when
+// no parent key remains.
 type ParentRef struct {
 	Step     int       `json:"step"`
-	Column   string    `json:"column"`
-	Index    int       `json:"index"`
+	Keys     []KeyRef  `json:"keys"`
 	IfParent *IfParent `json:"if_parent,omitempty"`
 }
 
@@ -86,16 +90,13 @@ type OutCol struct {
 //   - many: a collection keyed by KeyIndex in row order, else empty
 //   - Flatten: the child's columns also appear as the parent's in array/JSON forms
 type Child struct {
-	Rel          string `json:"rel"`
-	Kind         string `json:"kind"` // join | one | many
-	Step         int    `json:"step,omitempty"`
-	ParentColumn string `json:"parent_column,omitempty"`
-	ParentIndex  int    `json:"parent_index"`
-	ChildColumn  string `json:"child_column,omitempty"`
-	ChildIndex   int    `json:"child_index"`
-	KeyBy        string `json:"key_by,omitempty"`
-	KeyIndex     int    `json:"key_index"`
-	Flatten      bool   `json:"flatten,omitempty"`
+	Rel        string   `json:"rel"`
+	Kind       string   `json:"kind"` // join | one | many
+	Step       int      `json:"step,omitempty"`
+	ParentKeys []KeyRef `json:"parent_keys,omitempty"`
+	ChildKeys  []KeyRef `json:"child_keys,omitempty"`
+	Key        []KeyRef `json:"key,omitempty"`
+	Flatten    bool     `json:"flatten,omitempty"`
 	// Cascade: the related rows belong to this row (their FK points here) and
 	// no_cascade_delete was not set — deleteCascade removes them first.
 	Cascade  bool      `json:"cascade,omitempty"`

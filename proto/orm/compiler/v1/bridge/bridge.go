@@ -367,7 +367,7 @@ func stepToProto(in *planmodel.Step) *compilerv1.PlanStep {
 		out.Binds = append(out.Binds, &compilerv1.BindSlot{Source: value.From, Parameter: uint32(value.Param), Transform: value.Transform, Name: value.Name, Step: uint32(value.Step), Column: value.Column, HostStyles: append([]string(nil), value.HostStyles...), ColumnType: value.ColType})
 	}
 	if in.Parent != nil {
-		out.Parent = &compilerv1.ParentReference{Step: uint32(in.Parent.Step), Column: in.Parent.Column, Index: uint32(in.Parent.Index)}
+		out.Parent = &compilerv1.ParentReference{Step: uint32(in.Parent.Step), Keys: keyRefsToProto(in.Parent.Keys)}
 		if in.Parent.IfParent != nil {
 			out.Parent.IfParent = &compilerv1.ParentCondition{Column: in.Parent.IfParent.Column, Index: uint32(in.Parent.IfParent.Index), Parameter: uint32(in.Parent.IfParent.Param)}
 		}
@@ -381,7 +381,7 @@ func stepFromProto(in *compilerv1.PlanStep) planmodel.Step {
 		out.BindSlots = append(out.BindSlots, planmodel.BindSlot{From: value.Source, Param: int(value.Parameter), Transform: value.Transform, Name: value.Name, Step: int(value.Step), Column: value.Column, HostStyles: append([]string(nil), value.HostStyles...), ColType: value.ColumnType})
 	}
 	if in.Parent != nil {
-		out.Parent = &planmodel.ParentRef{Step: int(in.Parent.Step), Column: in.Parent.Column, Index: int(in.Parent.Index)}
+		out.Parent = &planmodel.ParentRef{Step: int(in.Parent.Step), Keys: keyRefsFromProto(in.Parent.Keys)}
 		if in.Parent.IfParent != nil {
 			out.Parent.IfParent = &planmodel.IfParent{Column: in.Parent.IfParent.Column, Index: int(in.Parent.IfParent.Index), Param: int(in.Parent.IfParent.Parameter)}
 		}
@@ -398,7 +398,7 @@ func assembleToProto(in *planmodel.Assemble) *compilerv1.Assemble {
 		out.Columns = append(out.Columns, &compilerv1.OutputColumn{Index: uint32(value.Index), Name: value.Name, Column: value.Column, Type: value.Type, Styles: append([]string(nil), value.Styles...), Hidden: value.Hidden})
 	}
 	for _, value := range in.Children {
-		out.Children = append(out.Children, &compilerv1.Child{Relation: value.Rel, Kind: value.Kind, Step: uint32(value.Step), ParentColumn: value.ParentColumn, ParentIndex: uint32(value.ParentIndex), ChildColumn: value.ChildColumn, ChildIndex: uint32(value.ChildIndex), KeyBy: value.KeyBy, KeyIndex: uint32(value.KeyIndex), Flatten: value.Flatten, Cascade: value.Cascade, Assemble: assembleToProto(value.Assemble)})
+		out.Children = append(out.Children, &compilerv1.Child{Relation: value.Rel, Kind: value.Kind, Step: uint32(value.Step), ParentKeys: keyRefsToProto(value.ParentKeys), ChildKeys: keyRefsToProto(value.ChildKeys), Key: keyRefsToProto(value.Key), Flatten: value.Flatten, Cascade: value.Cascade, Assemble: assembleToProto(value.Assemble)})
 	}
 	return out
 }
@@ -412,7 +412,25 @@ func assembleFromProto(in *compilerv1.Assemble) *planmodel.Assemble {
 		out.Columns = append(out.Columns, planmodel.OutCol{Index: int(value.Index), Name: value.Name, Column: value.Column, Type: value.Type, Styles: append([]string(nil), value.Styles...), Hidden: value.Hidden})
 	}
 	for _, value := range in.Children {
-		out.Children = append(out.Children, &planmodel.Child{Rel: value.Relation, Kind: value.Kind, Step: int(value.Step), ParentColumn: value.ParentColumn, ParentIndex: int(value.ParentIndex), ChildColumn: value.ChildColumn, ChildIndex: int(value.ChildIndex), KeyBy: value.KeyBy, KeyIndex: int(value.KeyIndex), Flatten: value.Flatten, Cascade: value.Cascade, Assemble: assembleFromProto(value.Assemble)})
+		out.Children = append(out.Children, &planmodel.Child{Rel: value.Relation, Kind: value.Kind, Step: int(value.Step), ParentKeys: keyRefsFromProto(value.ParentKeys), ChildKeys: keyRefsFromProto(value.ChildKeys), Key: keyRefsFromProto(value.Key), Flatten: value.Flatten, Cascade: value.Cascade, Assemble: assembleFromProto(value.Assemble)})
+	}
+	return out
+}
+
+func keyRefsToProto(in []planmodel.KeyRef) []*compilerv1.KeyReference {
+	out := make([]*compilerv1.KeyReference, len(in))
+	for i, value := range in {
+		out[i] = &compilerv1.KeyReference{Column: value.Column, Index: uint32(value.Index)}
+	}
+	return out
+}
+
+func keyRefsFromProto(in []*compilerv1.KeyReference) []planmodel.KeyRef {
+	out := make([]planmodel.KeyRef, 0, len(in))
+	for _, value := range in {
+		if value != nil {
+			out = append(out, planmodel.KeyRef{Column: value.Column, Index: int(value.Index)})
+		}
 	}
 	return out
 }

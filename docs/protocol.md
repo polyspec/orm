@@ -59,14 +59,14 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 - `bind_slots.from`: `param` (IR values; the executor applies aes/hex/ip when `host_styles` exists, and normalizes date/time/datetime values using the client representation) · `secret` (the executor AES key) · `parent` (relation IN values from the parent rows, expanded to N values) · `now` (executor UTC microsecond text for timestamps such as SQLite `updated_ts`).
 - Result mapping uses `index`. SELECT aliases such as `alias__col` are for debug output; the executor does not inspect their names.
 - `assemble.columns[].styles` are application decode stages such as gz/json/serialize. SQL stages such as aes/hex/ip are already in SQL.
-- `children[].kind`: `join` (a fragment of the same row with `assemble`) · `one`/`many` (rows from another step attached through `parent_index`/`child_index`, assembled from `steps[step].assemble`).
+- `children[].kind`: `join` stores a same-row `assemble`; `one` and `many` attach rows from another step by ordered `parent_keys` and `child_keys` arrays.
 
 ### Relation stages (S2)
 - Each relation has one step with `role: relation`, after its parent step. Nested and join-child relations follow the same rule; paginate is main → relations → `count`.
-- `step.parent = {step, column, index, if_parent?{column, index, param}}`: the executor reads the parent step's `index`, removes nulls, and deduplicates in first-seen order. With `if_parent`, only parent rows equal to `params[param]` are used. No query is issued when the value set is empty.
-- A SQL `parent` slot is one `?`; the executor expands it to N placeholders. N is rounded up to a power of two by repeating the last value. All clients use the same rule.
+- `step.parent = {step, keys:[{column,index},...], if_parent?{column,index,param}}`: the executor reads each key tuple in array order, removes tuples containing null, and deduplicates tuples in first-seen order. With `if_parent`, only parent rows equal to `params[param]` are used. No query is issued when the tuple set is empty.
+- A SQL `parent` slot is one placeholder. The executor expands it to N scalar placeholders for one key component or N parenthesized tuples for multiple components. N is rounded up to a power of two by repeating the last complete tuple. Go, PHP, Rust, and TypeScript use the same rule.
 - User `IN` lists use the same padding rule before the builder creates IR. This keeps one prepared statement per size class instead of one per list length.
-- `children[].kind = one` attaches the first child row; `many` creates a key map using `key_index`, retaining row order and using the last row for duplicate keys. Parents excluded by `if_parent` receive null or an empty collection.
+- `children[].kind = one` attaches the first child row. `many` creates a key map from the ordered `key` references, retains row order, and uses the last row for a duplicate key. Parents excluded by `if_parent` receive null or an empty collection.
 - `limit_per_parent n` uses a `ROW_NUMBER() OVER (PARTITION BY right ORDER BY …)` subquery. Output column order is unchanged.
 - `flatten` is one-only. It merges child columns into array/JSON output; a parent column wins on name collision. Typed accessors remain available.
 - `drop_child_key` sets `columns[].hidden = true`; the match column remains available to binding and key construction and is omitted only from array/JSON output.

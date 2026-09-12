@@ -174,14 +174,16 @@ func scanUser(vals []any, a *plan.Assemble, rs *orm.Rows) *UserRow {
 			rows := rs.Related(ch, vals)
 			c := orm.NewCollection[BattleRow](len(rows))
 			for _, row := range rows {
-				c.Put(orm.KeyOf(row[ch.KeyIndex]), scanBattle(row, rs.StepAssemble(ch), rs))
+				key, _ := orm.KeyFromRow(row, ch.Key)
+				c.Put(key, scanBattle(row, rs.StepAssemble(ch), rs))
 			}
 			r.Battles = c
 		case "service_members":
 			rows := rs.Related(ch, vals)
 			c := orm.NewCollection[ServiceMemberRow](len(rows))
 			for _, row := range rows {
-				c.Put(orm.KeyOf(row[ch.KeyIndex]), scanServiceMember(row, rs.StepAssemble(ch), rs))
+				key, _ := orm.KeyFromRow(row, ch.Key)
+				c.Put(key, scanServiceMember(row, rs.StepAssemble(ch), rs))
 			}
 			r.ServiceMembers = c
 		}

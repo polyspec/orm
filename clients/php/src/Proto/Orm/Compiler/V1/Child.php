@@ -27,30 +27,6 @@ class Child extends \Google\Protobuf\Internal\Message
      */
     protected $step = 0;
     /**
-     * Generated from protobuf field <code>string parent_column = 4;</code>
-     */
-    protected $parent_column = '';
-    /**
-     * Generated from protobuf field <code>uint32 parent_index = 5;</code>
-     */
-    protected $parent_index = 0;
-    /**
-     * Generated from protobuf field <code>string child_column = 6;</code>
-     */
-    protected $child_column = '';
-    /**
-     * Generated from protobuf field <code>uint32 child_index = 7;</code>
-     */
-    protected $child_index = 0;
-    /**
-     * Generated from protobuf field <code>string key_by = 8;</code>
-     */
-    protected $key_by = '';
-    /**
-     * Generated from protobuf field <code>uint32 key_index = 9;</code>
-     */
-    protected $key_index = 0;
-    /**
      * Generated from protobuf field <code>bool flatten = 10;</code>
      */
     protected $flatten = false;
@@ -62,6 +38,18 @@ class Child extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>.orm.compiler.v1.Assemble assemble = 12;</code>
      */
     protected $assemble = null;
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference parent_keys = 13;</code>
+     */
+    private $parent_keys;
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference child_keys = 14;</code>
+     */
+    private $child_keys;
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference key = 15;</code>
+     */
+    private $key;
 
     /**
      * Constructor.
@@ -72,15 +60,12 @@ class Child extends \Google\Protobuf\Internal\Message
      *     @type string $relation
      *     @type string $kind
      *     @type int $step
-     *     @type string $parent_column
-     *     @type int $parent_index
-     *     @type string $child_column
-     *     @type int $child_index
-     *     @type string $key_by
-     *     @type int $key_index
      *     @type bool $flatten
      *     @type bool $cascade
      *     @type \Orm\Compiler\V1\Assemble $assemble
+     *     @type \Orm\Compiler\V1\KeyReference[] $parent_keys
+     *     @type \Orm\Compiler\V1\KeyReference[] $child_keys
+     *     @type \Orm\Compiler\V1\KeyReference[] $key
      * }
      */
     public function __construct($data = null)
@@ -156,138 +141,6 @@ class Child extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Generated from protobuf field <code>string parent_column = 4;</code>
-     * @return string
-     */
-    public function getParentColumn()
-    {
-        return $this->parent_column;
-    }
-
-    /**
-     * Generated from protobuf field <code>string parent_column = 4;</code>
-     * @param string $var
-     * @return $this
-     */
-    public function setParentColumn(string $var)
-    {
-        GPBUtil::checkString($var, true);
-        $this->parent_column = $var;
-
-        return $this;
-    }
-
-    /**
-     * Generated from protobuf field <code>uint32 parent_index = 5;</code>
-     * @return int
-     */
-    public function getParentIndex()
-    {
-        return $this->parent_index;
-    }
-
-    /**
-     * Generated from protobuf field <code>uint32 parent_index = 5;</code>
-     * @param int $var
-     * @return $this
-     */
-    public function setParentIndex(int $var)
-    {
-        GPBUtil::checkUint32($var);
-        $this->parent_index = $var;
-
-        return $this;
-    }
-
-    /**
-     * Generated from protobuf field <code>string child_column = 6;</code>
-     * @return string
-     */
-    public function getChildColumn()
-    {
-        return $this->child_column;
-    }
-
-    /**
-     * Generated from protobuf field <code>string child_column = 6;</code>
-     * @param string $var
-     * @return $this
-     */
-    public function setChildColumn(string $var)
-    {
-        GPBUtil::checkString($var, true);
-        $this->child_column = $var;
-
-        return $this;
-    }
-
-    /**
-     * Generated from protobuf field <code>uint32 child_index = 7;</code>
-     * @return int
-     */
-    public function getChildIndex()
-    {
-        return $this->child_index;
-    }
-
-    /**
-     * Generated from protobuf field <code>uint32 child_index = 7;</code>
-     * @param int $var
-     * @return $this
-     */
-    public function setChildIndex(int $var)
-    {
-        GPBUtil::checkUint32($var);
-        $this->child_index = $var;
-
-        return $this;
-    }
-
-    /**
-     * Generated from protobuf field <code>string key_by = 8;</code>
-     * @return string
-     */
-    public function getKeyBy()
-    {
-        return $this->key_by;
-    }
-
-    /**
-     * Generated from protobuf field <code>string key_by = 8;</code>
-     * @param string $var
-     * @return $this
-     */
-    public function setKeyBy(string $var)
-    {
-        GPBUtil::checkString($var, true);
-        $this->key_by = $var;
-
-        return $this;
-    }
-
-    /**
-     * Generated from protobuf field <code>uint32 key_index = 9;</code>
-     * @return int
-     */
-    public function getKeyIndex()
-    {
-        return $this->key_index;
-    }
-
-    /**
-     * Generated from protobuf field <code>uint32 key_index = 9;</code>
-     * @param int $var
-     * @return $this
-     */
-    public function setKeyIndex(int $var)
-    {
-        GPBUtil::checkUint32($var);
-        $this->key_index = $var;
-
-        return $this;
-    }
-
-    /**
      * Generated from protobuf field <code>bool flatten = 10;</code>
      * @return bool
      */
@@ -356,6 +209,72 @@ class Child extends \Google\Protobuf\Internal\Message
     public function setAssemble(\Orm\Compiler\V1\Assemble|null $var)
     {
         $this->assemble = $var;
+
+        return $this;
+    }
+
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference parent_keys = 13;</code>
+     * @return RepeatedField<\Orm\Compiler\V1\KeyReference>
+     */
+    public function getParentKeys()
+    {
+        return $this->parent_keys;
+    }
+
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference parent_keys = 13;</code>
+     * @param \Orm\Compiler\V1\KeyReference[] $var
+     * @return $this
+     */
+    public function setParentKeys(array|RepeatedField $var)
+    {
+        $arr = GPBUtil::checkRepeatedField($var, \Google\Protobuf\Internal\GPBType::MESSAGE, \Orm\Compiler\V1\KeyReference::class);
+        $this->parent_keys = $arr;
+
+        return $this;
+    }
+
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference child_keys = 14;</code>
+     * @return RepeatedField<\Orm\Compiler\V1\KeyReference>
+     */
+    public function getChildKeys()
+    {
+        return $this->child_keys;
+    }
+
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference child_keys = 14;</code>
+     * @param \Orm\Compiler\V1\KeyReference[] $var
+     * @return $this
+     */
+    public function setChildKeys(array|RepeatedField $var)
+    {
+        $arr = GPBUtil::checkRepeatedField($var, \Google\Protobuf\Internal\GPBType::MESSAGE, \Orm\Compiler\V1\KeyReference::class);
+        $this->child_keys = $arr;
+
+        return $this;
+    }
+
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference key = 15;</code>
+     * @return RepeatedField<\Orm\Compiler\V1\KeyReference>
+     */
+    public function getKey()
+    {
+        return $this->key;
+    }
+
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference key = 15;</code>
+     * @param \Orm\Compiler\V1\KeyReference[] $var
+     * @return $this
+     */
+    public function setKey(array|RepeatedField $var)
+    {
+        $arr = GPBUtil::checkRepeatedField($var, \Google\Protobuf\Internal\GPBType::MESSAGE, \Orm\Compiler\V1\KeyReference::class);
+        $this->key = $arr;
 
         return $this;
     }
