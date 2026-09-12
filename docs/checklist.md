@@ -93,7 +93,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [ ] T7.11 Implement typed direct scans for Go and PHP and rerun the performance gates.
 - [~] T7.12 Add and compile the deterministic 150-table Rust fixture. The fixture and reproducible check exist; Cargo compilation remains.
 - [~] T7.13 Validate AES version columns and provide row rotation helpers. Add database persistence, status reporting, and equivalent database APIs for all four clients.
-- [x] T7.14 Include table and column comments in the manifest, schema hash, import, DDL, diff, and SQLite metadata. Unit tests pass; physical database coverage remains in T7.18.
+- [~] T7.14 Include table and column comments in the manifest, schema hash, import, DDL, diff, and SQLite metadata. Unit tests pass; physical database coverage remains in T7.18.
 - [~] T7.15 Add migration execution locking, transaction boundaries, and detailed recovery states for MySQL, PostgreSQL, and SQLite.
 - [~] T7.16 Replace semicolon splitting with a dialect-aware SQL statement parser and preserve statement-level failure locations.
 - [ ] T7.17 Support migration source conversion for MMD, SQL, JSON, and live DB in every direction with explicit loss checks and rollback plans.
