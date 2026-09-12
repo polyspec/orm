@@ -51,7 +51,7 @@ func recoverCmd(args []string) {
 	if *driver != "mysql" && *driver != "postgres" && *driver != "sqlite" {
 		fail(fmt.Errorf("MIGRATION_CONFIG: unsupported driver %q", *driver))
 	}
-	want, err := loadManifestFile(*schemaPath)
+	want, err := loadSchemaSource(*schemaPath, *driver)
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_SOURCE: target schema: %w", err))
 	}

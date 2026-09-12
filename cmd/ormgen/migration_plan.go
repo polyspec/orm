@@ -36,8 +36,8 @@ type planOperation struct {
 
 func planCmd(args []string) {
 	fs := flag.NewFlagSet("plan", flag.ExitOnError)
-	fromPath := fs.String("from", "", "previous schema.json (required)")
-	toPath := fs.String("to", "", "target schema.json (required)")
+	fromPath := fs.String("from", "", "previous .mmd, .json, ormgen .sql, or db:<dsn> (required)")
+	toPath := fs.String("to", "", "target .mmd, .json, ormgen .sql, or db:<dsn> (required)")
 	dialect := fs.String("dialect", "mysql", "mysql|postgres|sqlite")
 	out := fs.String("out", "", "output migration plan JSON (required)")
 	id := fs.String("migration-id", "", "stable migration identifier")
@@ -46,11 +46,11 @@ func planCmd(args []string) {
 	if *fromPath == "" || *toPath == "" || *out == "" {
 		fail(fmt.Errorf("MIGRATION_CONFIG: --from, --to and --out are required"))
 	}
-	from, err := loadManifestFile(*fromPath)
+	from, err := loadSchemaSource(*fromPath, *dialect)
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_SOURCE: from: %w", err))
 	}
-	to, err := loadManifestFile(*toPath)
+	to, err := loadSchemaSource(*toPath, *dialect)
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_SOURCE: to: %w", err))
 	}
@@ -100,7 +100,7 @@ func verifyCmd(args []string) {
 	if *driver != "mysql" && *driver != "postgres" && *driver != "sqlite" {
 		fail(fmt.Errorf("MIGRATION_CONFIG: unsupported driver %q", *driver))
 	}
-	want, err := loadManifestFile(*schemaPath)
+	want, err := loadSchemaSource(*schemaPath, *driver)
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_SOURCE: %w", err))
 	}
@@ -162,7 +162,7 @@ func applyCmd(args []string) {
 			fail(fmt.Errorf("MIGRATION_PLAN: destructive operation requires --allow-destructive: %s", operation.SQL))
 		}
 	}
-	want, err := loadManifestFile(*schemaPath)
+	want, err := loadSchemaSource(*schemaPath, *driver)
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_SOURCE: target schema: %w", err))
 	}
