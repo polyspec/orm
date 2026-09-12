@@ -117,6 +117,7 @@ type AESRotationSpec struct {
 	PrimaryKeys   []string
 	VersionColumn string
 	Columns       []AESRotationColumn
+	BatchSize     int
 }
 
 // AESRotationStatus reports row counts by stored key version.
@@ -172,6 +173,9 @@ func (d *DB) RotateAESRows(ctx context.Context, ex Exec, spec AESRotationSpec, k
 	}
 	if spec.Table == "" || len(spec.PrimaryKeys) == 0 || spec.VersionColumn == "" || len(spec.Columns) == 0 {
 		return 0, fmt.Errorf("aes rotation specification is incomplete")
+	}
+	if spec.BatchSize <= 0 {
+		spec.BatchSize = 1000
 	}
 	for _, column := range spec.Columns {
 		if column.Name == "" || len(column.Styles) == 0 {
@@ -245,7 +249,11 @@ func (d *DB) rotationQuery(ctx context.Context, ex Exec, spec AESRotationSpec, t
 	for _, column := range spec.Columns {
 		columns = append(columns, quoteIdentifier(d.driver, column.Name))
 	}
-	query := "SELECT " + strings.Join(columns, ", ") + " FROM " + quoteIdentifier(d.driver, spec.Table) + " WHERE " + quoteIdentifier(d.driver, spec.VersionColumn) + " <> " + d.rotationPlaceholder(1) + " ORDER BY " + strings.Join(order, ", ")
+	limit := spec.BatchSize
+	if limit <= 0 {
+		limit = 1000
+	}
+	query := "SELECT " + strings.Join(columns, ", ") + " FROM " + quoteIdentifier(d.driver, spec.Table) + " WHERE " + quoteIdentifier(d.driver, spec.VersionColumn) + " <> " + d.rotationPlaceholder(1) + " ORDER BY " + strings.Join(order, ", ") + fmt.Sprintf(" LIMIT %d", limit)
 	if tx, ok := ex.(*Tx); ok {
 		return tx.tx.QueryContext(ctx, query, targetVersion)
 	}
