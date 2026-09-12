@@ -71,10 +71,14 @@ func TestPointGeneratedTypes(t *testing.T) {
 	if err := genRust(m, filepath.Join(dir, "rust")); err != nil {
 		t.Fatal(err)
 	}
+	if err := genTypeScript(m, filepath.Join(dir, "typescript")); err != nil {
+		t.Fatal(err)
+	}
 	checks := map[string][]string{
-		filepath.Join(dir, "go", "thing.go"):          {"Location *orm.Point", "SetLocation(v *orm.Point)"},
-		filepath.Join(dir, "php", "Thing.php"):        {"@return array{float,float}|null", "getLocation(mixed $default = null): ?array", "Codec::point($v)", "@param array{float|int,float|int}|null $v"},
-		filepath.Join(dir, "rust", "src", "thing.rs"): {"pub location: Option<orm::Point>", "src.point(i)?"},
+		filepath.Join(dir, "go", "thing.go"):            {"Location *orm.Point", "SetLocation(v *orm.Point)"},
+		filepath.Join(dir, "php", "Thing.php"):          {"@return array{float,float}|null", "getLocation(mixed $default = null): ?array", "Codec::point($v)", "@param array{float|int,float|int}|null $v"},
+		filepath.Join(dir, "rust", "src", "thing.rs"):   {"pub location: Option<orm::Point>", "src.point(i)?"},
+		filepath.Join(dir, "typescript", "entities.ts"): {"getLocation(fallback?: Point | null): Point | null", "setLocation(value: Point | null): this"},
 	}
 	for path, wants := range checks {
 		body, err := os.ReadFile(path)

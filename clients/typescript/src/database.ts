@@ -89,7 +89,7 @@ export class Db implements Database, Executor {
       case 'paginate': {
         const rows = await this.select(plan, params);
         const count = await this.scalar(plan.steps.find(step => step.role === 'count')!, params);
-        return { rows, total: Number(count) };
+        return { rows: rowCollection(rows, requiredAssemble(plan.steps[0])), total: Number(count) };
       }
       case 'count': case 'count_distinct': case 'sum': case 'avg': case 'min': case 'max':
         return this.scalar(plan.steps[0], params);

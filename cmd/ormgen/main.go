@@ -59,7 +59,7 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: ormgen build <files.mmd...> --out schema/schema.json")
-	fmt.Fprintln(os.Stderr, "       ormgen gen --schema schema/schema.json --lang go --out clients/go/gen")
+	fmt.Fprintln(os.Stderr, "       ormgen gen --schema schema/schema.json --lang go|php|rust|typescript --out <directory>")
 	fmt.Fprintln(os.Stderr, "       ormgen tokens --schema schema/schema.json [--print] <file.go> <file.php> <file.rs>...")
 	fmt.Fprintln(os.Stderr, "       ormgen import --dsn <dsn> --out schema/app.mmd [--tables a,b]")
 	fmt.Fprintln(os.Stderr, "       ormgen validate --dsn <dsn> --schema schema/schema.json")
@@ -81,7 +81,7 @@ func usage() {
 func gen(args []string) {
 	fs := flag.NewFlagSet("gen", flag.ExitOnError)
 	schemaPath := fs.String("schema", "", "schema.json (required)")
-	lang := fs.String("lang", "", "go|php|rust (required)")
+	lang := fs.String("lang", "", "go|php|rust|typescript (required)")
 	out := fs.String("out", "", "output directory (required)")
 	ns := fs.String("namespace", "App\\Orm", "PHP namespace")
 	fs.Parse(args)
@@ -105,6 +105,8 @@ func gen(args []string) {
 		err = genPHP(m, *out, *ns)
 	case "rust":
 		err = genRust(m, *out)
+	case "typescript":
+		err = genTypeScript(m, *out)
 	default:
 		err = fmt.Errorf("lang %q not implemented", *lang)
 	}
@@ -112,8 +114,10 @@ func gen(args []string) {
 		fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
 		os.Exit(1)
 	}
-	if err := contracts.GenerateInterfaces(m, *lang, *out, *ns); err != nil {
-		fail(err)
+	if *lang != "typescript" {
+		if err := contracts.GenerateInterfaces(m, *lang, *out, *ns); err != nil {
+			fail(err)
+		}
 	}
 	fmt.Printf("ormgen: %d entities → %s (%s)\n", len(m.Order), *out, *lang)
 }

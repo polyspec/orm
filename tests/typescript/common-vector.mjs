@@ -1,27 +1,21 @@
 import { readFile } from 'node:fs/promises';
-import { BattleQuery } from '../../clients/typescript/dist/index.js';
+import { Battle, User } from '../../clients/typescript/dist/index.js';
 
 const vectors = JSON.parse(await readFile('tests/conformance/vectors.json', 'utf8')).vectors;
 const vector = vectors.find(v => v.name === 'interface_attach');
 if (!vector) throw new Error('shared vector interface_attach is missing');
 
-const q = new BattleQuery()
-  .serviceSeqEq(7)
-  .join('user', w => w.seqIn([1, 2]).and(n => n.name('user-1').or().name('user-2')));
-const b = new BattleQuery()
-  .serviceSeqEq(8)
-  .join('user', w => w.seqIn([1, 2]).and(n => n.name('user-1').or().name('user-2')));
-const child = new BattleQuery('user')
-  .seqIn([1, 2])
-  .and(n => n.name('user-1').or().name('user-2'))
-  .name('later');
+const child = User().seqIn([1, 2]).and(w => w.name('user-1').or().name('user-2'));
+const a = Battle().serviceSeq(7).join(child);
+const b = Battle().serviceSeq(8).join(child);
+child.name('later');
 const project = query => ({ entity: query.entity, where: query.where, joins: query.joins });
-const shape = q.requestShape();
+const aShape = a.requestShape();
 const bShape = b.requestShape();
 const childShape = child.requestShape();
 const actual = {
-  a: project(shape),
-  a_params: q.parameters(),
+  a: project(aShape),
+  a_params: a.parameters(),
   b: project(bShape),
   b_params: b.parameters(),
   child: project(childShape),
