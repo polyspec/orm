@@ -233,6 +233,7 @@
   "clients/typescript/src/database.ts::mysqlDsn": "function mysqlDsn(dsn: string, user?: string, password?: string): string",
   "clients/typescript/src/database.ts::parentValues": "function parentValues(step: PlanStep, parents: unknown[][], params: readonly Param[]): Param[]",
   "clients/typescript/src/database.ts::postgresPoint": "function postgresPoint(value: unknown): string",
+  "clients/typescript/src/database.ts::relationChunks": "function relationChunks(step: PlanStep, values: Param[], driver: string): Param[][]",
   "clients/typescript/src/database.ts::requiredAssemble": "function requiredAssemble(step: PlanStep)",
   "clients/typescript/src/database.ts::sqlDate": "function sqlDate(value: Date): string",
   "clients/typescript/src/database.ts::transform": "function transform(kind: string, value: string): string",

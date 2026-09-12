@@ -3561,6 +3561,7 @@
   "clients/php/src/Db.php::Orm\\Db::postgres": "public static function postgres(string $dsn, ?string $user=null, ?string $password=null, bool $persistent=true): Orm\\Db",
   "clients/php/src/Db.php::Orm\\Db::query": "public function query(array $step, array $params, ?string $sql=null, array $parentVals=[]): array",
   "clients/php/src/Db.php::Orm\\Db::questionMarks": "private static function questionMarks(string $sql): string",
+  "clients/php/src/Db.php::Orm\\Db::relationChunks": "private static function relationChunks(array $step, array $vals, string $driver): array",
   "clients/php/src/Db.php::Orm\\Db::rotateAESRows": "public function rotateAESRows(array $spec, Orm\\AesKeyring $keyring): int",
   "clients/php/src/Db.php::Orm\\Db::rowKey": "public static function rowKey(array $row, array $refs): string|int|null",
   "clients/php/src/Db.php::Orm\\Db::rows": "public function rows(array $step, array $params): array",

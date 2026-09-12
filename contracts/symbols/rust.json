@@ -4454,6 +4454,7 @@
   "clients/rust/orm/src/db.rs::pg_query": " fn pg_query \u003c 'q \u003e (sql : \u0026 str , args : \u0026 'q [Param] , types : \u0026 [PgTypeInfo]) -\u003e Result \u003c PgQuery \u003c 'q \u003e \u003e",
   "clients/rust/orm/src/db.rs::positional": " fn positional (raw : \u0026 [DriverRow] , asm : \u0026 Assemble , aes_keys : \u0026 BTreeMap \u003c i32 , String \u003e) -\u003e Result \u003c Vec \u003c Vec \u003c Val \u003e \u003e \u003e",
   "clients/rust/orm/src/db.rs::raw": "pub async fn raw (ex : \u0026 impl Exec , req : \u0026 mut Req) -\u003e Result \u003c Vec \u003c indexmap :: IndexMap \u003c String , Val \u003e \u003e \u003e",
+  "clients/rust/orm/src/db.rs::relation_chunks": " fn relation_chunks (st : \u0026 Step , vals : Vec \u003c Param \u003e , driver : \u0026 str) -\u003e Result \u003c Vec \u003c Vec \u003c Param \u003e \u003e \u003e",
   "clients/rust/orm/src/db.rs::run_execute": " async fn run_execute (db : \u0026 Db , target : Target \u003c '_ \u003e , st : \u0026 Step , params : \u0026 [Param]) -\u003e Result \u003c (u64 , u64) \u003e",
   "clients/rust/orm/src/db.rs::run_plan": " async fn run_plan (ex : \u0026 impl Exec , plan : Arc \u003c Plan \u003e , req : \u0026 mut Req) -\u003e Result \u003c Rows \u003e",
   "clients/rust/orm/src/db.rs::run_query": " async fn run_query (db : \u0026 Db , target : Target \u003c '_ \u003e , st : \u0026 Step , params : \u0026 [Param] , parent_vals : Vec \u003c Param \u003e) -\u003e Result \u003c Vec \u003c DriverRow \u003e \u003e",
