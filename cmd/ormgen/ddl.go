@@ -150,6 +150,28 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 	return sb.String(), nil
 }
 
+// renderCreateDDL is the apply-safe form used by migrate. It never drops a
+// table and makes both tables and standalone indexes idempotent.
+func renderCreateDDL(m *schema.Manifest, dialect string) (string, error) {
+	s, err := renderDDL(m, dialect)
+	if err != nil {
+		return "", err
+	}
+	lines := strings.Split(s, "\n")
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if strings.HasPrefix(line, "DROP TABLE IF EXISTS ") {
+			continue
+		}
+		line = strings.Replace(line, "CREATE TABLE `", "CREATE TABLE IF NOT EXISTS `", 1)
+		line = strings.Replace(line, `CREATE TABLE "`, `CREATE TABLE IF NOT EXISTS "`, 1)
+		line = strings.Replace(line, "CREATE INDEX `", "CREATE INDEX IF NOT EXISTS `", 1)
+		line = strings.Replace(line, `CREATE INDEX "`, `CREATE INDEX IF NOT EXISTS "`, 1)
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n"), nil
+}
+
 func joinQuoted(cols []string, q func(string) string) string {
 	out := make([]string, len(cols))
 	for i, c := range cols {
