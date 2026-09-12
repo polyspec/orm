@@ -87,7 +87,54 @@ func TestPhysicalMigration(t *testing.T) {
 			}
 			assertPhysicalMigrationLock(t, ctx, db, tc.driver)
 			assertPhysicalStructuredPlan(t, ctx, db, tc.driver, want)
+			assertPhysicalPoint(t, ctx, db, tc.driver)
 		})
+	}
+}
+
+func assertPhysicalPoint(t *testing.T, ctx context.Context, db *sql.DB, driver string) {
+	t.Helper()
+	q := func(s string) string {
+		if driver == "mysql" {
+			return "`" + s + "`"
+		}
+		return `"` + s + `"`
+	}
+	if _, err := db.ExecContext(ctx, "DROP TABLE IF EXISTS "+q("point_probe")); err != nil {
+		t.Fatal(err)
+	}
+	m := buildPhysicalManifest(t, "erDiagram\n  point_probe {\n    bigint id PK\n    point location\n  }\n")
+	ddl, err := renderCreateDDL(m, driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := executeMigration(ctx, db, driver, ddl); err != nil {
+		t.Fatal(err)
+	}
+	insert, read := "", ""
+	if driver == "mysql" {
+		insert = "INSERT INTO `point_probe` (`id`, `location`) VALUES (?, ST_PointFromText(?))"
+		read = "SELECT ST_AsText(`location`) FROM `point_probe` WHERE `id` = ?"
+	} else {
+		insert = `INSERT INTO "point_probe" ("id", "location") VALUES ($1, CAST($2 AS text)::point)`
+		read = `SELECT ("location")::text FROM "point_probe" WHERE "id" = $1`
+	}
+	value := "POINT(1.25 -2)"
+	if driver == "postgres" {
+		value = "(1.25,-2)"
+	}
+	if _, err := db.ExecContext(ctx, insert, 1, value); err != nil {
+		t.Fatal(err)
+	}
+	var got string
+	if err := db.QueryRowContext(ctx, read, 1).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got != "POINT(1.25 -2)" && got != "(1.25,-2)" {
+		t.Fatalf("%s point result=%q", driver, got)
+	}
+	if _, err := db.ExecContext(ctx, "DROP TABLE "+q("point_probe")); err != nil {
+		t.Fatal(err)
 	}
 }
 

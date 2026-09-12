@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { CodecError, decodeCodec, encodeCodec } from '../../clients/typescript/dist/index.js';
+import { CodecError, decodeCodec, encodeCodec, parsePoint, pointText } from '../../clients/typescript/dist/index.js';
 
 const vectors = JSON.parse(await readFile('tests/codec/vectors.json', 'utf8')).vectors;
 const canonical = value => {
@@ -72,6 +72,18 @@ for (const [name, operation, code] of [
 if (!same(decodeCodec(['yaml'], '1: value\n'), { 1: 'value' })) {
   console.error('YAML integer map key: expected string key');
   failures++;
+}
+if (!same(parsePoint('POINT(1.25 -2)'), [1.25, -2]) || !same(parsePoint('(1.25,-2)'), [1.25, -2]) || pointText([1.25, -2]) !== 'POINT(1.25 -2)') {
+  console.error('point conversion failed');
+  failures++;
+}
+if (pointText([-0, 0]) !== 'POINT(0 0)') { console.error('point negative zero normalization failed'); failures++; }
+for (const [name, operation, code] of [
+  ['invalid point text', () => parsePoint('POINT(1)'), 'CODEC_DECODE'],
+  ['non-finite point', () => pointText([1, Number.NaN]), 'CODEC_ENCODE'],
+]) {
+  try { operation(); console.error(`${name}: expected ${code}`); failures++; }
+  catch (error) { if (!(error instanceof CodecError) || error.code !== code) { console.error(`${name}: ${String(error)} want ${code}`); failures++; } }
 }
 
 await writeFile('tests/codec/out/typescript.json', `${JSON.stringify(output, null, 2)}\n`);

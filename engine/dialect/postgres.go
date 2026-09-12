@@ -62,7 +62,10 @@ func (Postgres) Upsert(conflict []string, assigns string) string {
 	return " ON CONFLICT (" + strings.Join(q, ", ") + ") DO UPDATE SET " + assigns
 }
 
-func (Postgres) ReadExpr(col string, styles []string, _ func() string) (string, int) {
+func (Postgres) ReadExpr(col, colType string, styles []string, _ func() string) (string, int) {
+	if colType == "point" {
+		col = "(" + col + ")::text"
+	}
 	for _, s := range styles {
 		if s == "ip" {
 			return "host(" + col + ")", 0
@@ -71,8 +74,11 @@ func (Postgres) ReadExpr(col string, styles []string, _ func() string) (string, 
 	return col, 0
 }
 
-func (Postgres) WriteExpr(ph func() string, styles []string) (string, int) {
+func (Postgres) WriteExpr(ph func() string, colType string, styles []string) (string, int) {
 	expr := ph()
+	if colType == "point" {
+		expr = "CAST(" + expr + " AS text)::point"
+	}
 	for _, s := range styles {
 		if s == "ip" {
 			expr = "(" + expr + ")::inet"

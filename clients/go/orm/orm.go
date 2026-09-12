@@ -450,6 +450,20 @@ func (d *DB) args(st *plan.Step, r *Req, parentVals []any) (out []any, masks map
 					return nil, nil, err
 				}
 			}
+			if b.ColType == "point" && v != nil {
+				p, e := ParsePoint(v)
+				if e != nil {
+					return nil, nil, e
+				}
+				if d.driver == "postgres" {
+					v, err = postgresPointText(p)
+				} else {
+					v, err = PointText(p)
+				}
+				if err != nil {
+					return nil, nil, err
+				}
+			}
 			out = append(out, v)
 		case "secret":
 			if b.Name != "aes" || d.cfg.AESKey == "" {

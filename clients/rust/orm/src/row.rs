@@ -62,6 +62,7 @@ pub trait Src {
     fn f64(&mut self, i: usize) -> Result<f64>;
     fn bool(&mut self, i: usize) -> Result<bool>;
     fn string(&mut self, i: usize) -> Result<String>;
+    fn point(&mut self, i: usize) -> Result<crate::Point> { crate::parse_point(&self.string(i)?) }
     fn datetime(&mut self, i: usize) -> Result<NaiveDateTime>;
     fn date(&mut self, i: usize) -> Result<NaiveDate>;
     /// A styled cell after decoding (docs/codec.md): `Val::Json`, `Val::Str`, or `Val::Null` for NULL/empty.

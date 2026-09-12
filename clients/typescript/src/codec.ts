@@ -2,6 +2,7 @@ import { deflateSync, inflateSync } from 'node:zlib';
 import { isScalar, parseDocument, stringify as stringifyYaml, visit } from 'yaml';
 
 export type UploadFileValue = { $type: 'upload_file'; path: string; mime: string; name: string };
+export type Point = readonly [number, number];
 export type CodecValue = null | boolean | number | string | CodecValue[] | { [key: string]: CodecValue };
 export type EncodedValue = string | Uint8Array | null;
 
@@ -9,6 +10,27 @@ export class CodecError extends Error {
   public constructor(public readonly code: 'CODEC_DECODE' | 'CODEC_ENCODE' | 'CODEC_UNSUPPORTED', message: string) {
     super(`${code}: ${message}`);
   }
+}
+
+export function pointText(point: Point): string {
+  if (point.length !== 2 || !Number.isFinite(point[0]) || !Number.isFinite(point[1])) {
+    throw new CodecError('CODEC_ENCODE', 'point requires two finite coordinates');
+  }
+  return `POINT(${String(point[0])} ${String(point[1])})`;
+}
+
+export function parsePoint(value: string | Point): Point {
+  if (Array.isArray(value)) {
+    if (value.length === 2 && Number.isFinite(value[0]) && Number.isFinite(value[1])) return [value[0], value[1]];
+    throw new CodecError('CODEC_DECODE', 'point requires two finite coordinates');
+  }
+  const source = String(value).trim();
+  const match = /^(?:POINT\s*)?\(([^()]*)\)$/i.exec(source);
+  const parts = (match?.[1] ?? source).trim().split(/[\s,]+/).filter(Boolean);
+  if (parts.length !== 2) throw new CodecError('CODEC_DECODE', `point requires two coordinates: ${JSON.stringify(source)}`);
+  const point: Point = [Number(parts[0]), Number(parts[1])];
+  if (!Number.isFinite(point[0]) || !Number.isFinite(point[1])) throw new CodecError('CODEC_DECODE', 'point coordinates must be finite');
+  return point;
 }
 
 const utf8 = new TextEncoder();

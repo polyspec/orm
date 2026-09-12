@@ -27,9 +27,9 @@ type Dialect interface {
 	// Upsert renders the ON DUPLICATE/ON CONFLICT clause for the given conflict columns and assignments.
 	Upsert(conflict []string, assigns string) string
 	// ReadExpr wraps a column read for a style pipeline (e.g. AES_DECRYPT(UNHEX(col), ?)); returns expr and how many binds it consumed.
-	ReadExpr(col string, styles []string, ph func() string) (string, int)
+	ReadExpr(col, colType string, styles []string, ph func() string) (string, int)
 	// WriteExpr wraps a bound value for a style pipeline on write.
-	WriteExpr(ph func() string, styles []string) (string, int)
+	WriteExpr(ph func() string, colType string, styles []string) (string, int)
 	// Now renders CURRENT_TIMESTAMP.
 	Now() string
 	// Supports reports whether a predicate operator exists in this dialect (false → OPERATOR_NOT_ALLOWED).
