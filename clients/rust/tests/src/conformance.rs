@@ -249,10 +249,10 @@ async fn main() {
         let mut seen=0_u64;
         let mut first=None;
         let mut first_seq=None;
-        let stopped=battle::query().using(&db).service_seq(7).order_by_seq_asc().stream(|row|{if first.is_none(){first_seq=Some(row.seq);first=Some(row);}seen+=1;seen<3}).await?;
+        let stopped=battle::query().service_seq(7).order_by_seq_asc().using(&db).stream(|row|{if first.is_none(){first_seq=Some(row.seq);first=Some(row);}seen+=1;seen<3}).await?;
         if first.as_ref().map(|row|row.seq)!=first_seq{return Err(orm::Error::Config("stream row ownership check failed".into()))}
-        let exhausted=battle::query().using(&db).service_seq(7).order_by_seq_asc().limit(0,4).stream(|_|true).await?;
-        let relation_error=battle::query().using(&db).service_seq(7).relation(user::query()).stream(|_|true).await.err().map(|e|e.code().to_owned());
+        let exhausted=battle::query().service_seq(7).order_by_seq_asc().limit(0,4).using(&db).stream(|_|true).await?;
+        let relation_error=battle::query().service_seq(7).relation(user::query()).using(&db).stream(|_|true).await.err().map(|e|e.code().to_owned());
         Ok(json!({
             "stopped":{"state":stopped.state,"count":stopped.count},
             "exhausted":{"state":exhausted.state,"count":exhausted.count},
