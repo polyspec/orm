@@ -461,3 +461,120 @@ type SoftRecordRowInterface interface {
 }
 
 var _ SoftRecordRowInterface = (*SoftRecordRow)(nil)
+
+type AccountInterface interface {
+	Get() (*AccountRow, error)
+	Gets() (*orm.Collection[AccountRow], error)
+	Stream(visit func(*AccountRow) bool) (orm.StreamResult, error)
+	GetCount() (int64, error)
+	GetsCount() (*orm.Collection[AccountRow], error)
+	Insert() (*AccountRow, error)
+	Save() (*AccountRow, error)
+	Update() (int64, error)
+	Delete() (int64, error)
+	SQL() (*orm.Statement, error)
+	Using(ctx context.Context, ex orm.Exec) *AccountQuery
+	Paginate(page, per int) (*orm.Page[AccountRow], error)
+	GetsAfter(cursor string, per int) (*orm.KeysetPage[AccountRow], error)
+	GetsBefore(cursor string, per int) (*orm.KeysetPage[AccountRow], error)
+	GetsBySeq(v int64) (*orm.Collection[AccountRow], error)
+	GetsByName(v string) (*orm.Collection[AccountRow], error)
+	GetCountBySeq(v int64) (int64, error)
+	GetCountByName(v string) (int64, error)
+	SeqEq(v int64) *AccountQuery
+	NameEq(v string) *AccountQuery
+	Seq(v int64) *AccountQuery
+	Name(v string) *AccountQuery
+}
+
+var _ AccountInterface = (*AccountQuery)(nil)
+
+type AccountRowInterface interface {
+	Using(ctx context.Context, ex orm.Exec) *AccountRow
+	Update() error
+	Delete() error
+	DeleteCascade() error
+	Has(name string) bool
+	RelLoaded(rel string) bool
+	ToArray() (map[string]any, error)
+}
+
+var _ AccountRowInterface = (*AccountRow)(nil)
+
+type ProjectInterface interface {
+	Get() (*ProjectRow, error)
+	Gets() (*orm.Collection[ProjectRow], error)
+	Stream(visit func(*ProjectRow) bool) (orm.StreamResult, error)
+	GetCount() (int64, error)
+	GetsCount() (*orm.Collection[ProjectRow], error)
+	Insert() (*ProjectRow, error)
+	Save() (*ProjectRow, error)
+	Update() (int64, error)
+	Delete() (int64, error)
+	SQL() (*orm.Statement, error)
+	Using(ctx context.Context, ex orm.Exec) *ProjectQuery
+	Paginate(page, per int) (*orm.Page[ProjectRow], error)
+	GetsAfter(cursor string, per int) (*orm.KeysetPage[ProjectRow], error)
+	GetsBefore(cursor string, per int) (*orm.KeysetPage[ProjectRow], error)
+	GetsBySeq(v int64) (*orm.Collection[ProjectRow], error)
+	GetsByName(v string) (*orm.Collection[ProjectRow], error)
+	GetCountBySeq(v int64) (int64, error)
+	GetCountByName(v string) (int64, error)
+	SeqEq(v int64) *ProjectQuery
+	NameEq(v string) *ProjectQuery
+	Seq(v int64) *ProjectQuery
+	Name(v string) *ProjectQuery
+}
+
+var _ ProjectInterface = (*ProjectQuery)(nil)
+
+type ProjectRowInterface interface {
+	Using(ctx context.Context, ex orm.Exec) *ProjectRow
+	Update() error
+	Delete() error
+	DeleteCascade() error
+	Has(name string) bool
+	RelLoaded(rel string) bool
+	ToArray() (map[string]any, error)
+}
+
+var _ ProjectRowInterface = (*ProjectRow)(nil)
+
+type AccountProjectInterface interface {
+	Get() (*AccountProjectRow, error)
+	Gets() (*orm.Collection[AccountProjectRow], error)
+	Stream(visit func(*AccountProjectRow) bool) (orm.StreamResult, error)
+	GetCount() (int64, error)
+	GetsCount() (*orm.Collection[AccountProjectRow], error)
+	Insert() (*AccountProjectRow, error)
+	Save() (*AccountProjectRow, error)
+	Update() (int64, error)
+	Delete() (int64, error)
+	SQL() (*orm.Statement, error)
+	Using(ctx context.Context, ex orm.Exec) *AccountProjectQuery
+	Paginate(page, per int) (*orm.Page[AccountProjectRow], error)
+	GetsAfter(cursor string, per int) (*orm.KeysetPage[AccountProjectRow], error)
+	GetsBefore(cursor string, per int) (*orm.KeysetPage[AccountProjectRow], error)
+	GetsByAccountSeq(v int64) (*orm.Collection[AccountProjectRow], error)
+	GetsByProjectSeq(v int64) (*orm.Collection[AccountProjectRow], error)
+	GetCountByAccountSeq(v int64) (int64, error)
+	GetCountByProjectSeq(v int64) (int64, error)
+	AccountSeqEq(v int64) *AccountProjectQuery
+	ProjectSeqEq(v int64) *AccountProjectQuery
+	AccountSeq(v int64) *AccountProjectQuery
+	ProjectSeq(v int64) *AccountProjectQuery
+}
+
+var _ AccountProjectInterface = (*AccountProjectQuery)(nil)
+
+type AccountProjectRowInterface interface {
+	Using(ctx context.Context, ex orm.Exec) *AccountProjectRow
+	Update() error
+	Delete() error
+	DeleteCascade() error
+	Has(name string) bool
+	RelLoaded(rel string) bool
+	ToArray() (map[string]any, error)
+}
+
+var _ AccountProjectRowInterface = (*AccountProjectRow)(nil)

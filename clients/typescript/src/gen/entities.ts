@@ -8,9 +8,9 @@ import type { AesKeyring, AesRotationStatus, BatchOptions, BatchResult, BatchReq
 import { batchWrite } from '../database.js';
 import { OrmError } from '../runtime_error.js';
 
-import type { BattleInterface, BattleRowInterface, UserInterface, UserRowInterface, ServiceInterface, ServiceRowInterface, ServiceModuleInterface, ServiceModuleRowInterface, ServiceMemberInterface, ServiceMemberRowInterface, CompositeAccountInterface, CompositeAccountRowInterface, CompositeMembershipInterface, CompositeMembershipRowInterface, SoftRecordInterface, SoftRecordRowInterface } from './interfaces.js';
+import type { BattleInterface, BattleRowInterface, UserInterface, UserRowInterface, ServiceInterface, ServiceRowInterface, ServiceModuleInterface, ServiceModuleRowInterface, ServiceMemberInterface, ServiceMemberRowInterface, CompositeAccountInterface, CompositeAccountRowInterface, CompositeMembershipInterface, CompositeMembershipRowInterface, SoftRecordInterface, SoftRecordRowInterface, AccountInterface, AccountRowInterface, ProjectInterface, ProjectRowInterface, AccountProjectInterface, AccountProjectRowInterface } from './interfaces.js';
 
-export const SCHEMA_HASH = '5fb139132942a42b';
+export const SCHEMA_HASH = 'bcda5a01f985861d';
 registerSchemaHash(SCHEMA_HASH);
 
 export interface BattleKey { readonly seq:number; }
@@ -187,6 +187,39 @@ export class SoftRecordRow extends Row implements SoftRecordRowInterface {
   public setName(value: string): this { return this.setColumn('name',value); }
   public getDeletedAt(fallback?: string | Date | null): string | Date | null { const value=this.column('deleted_at'); return (value ?? fallback ?? null) as string | Date | null; }
   public setDeletedAt(value: string | Date | null): this { return this.setColumn('deleted_at',value); }
+}
+
+export interface AccountKey { readonly seq:number; }
+export class AccountRow extends Row implements AccountRowInterface {
+  public static override entity(): string { return 'account'; }
+  public static override primaryKeys(): readonly string[] { return ['seq']; }
+  public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','name':'string'}; }
+  public getSeq(fallback?: number): number { const value=this.column('seq'); return (value ?? fallback ?? null) as number; }
+  public getName(fallback?: string): string { const value=this.column('name'); return (value ?? fallback ?? null) as string; }
+  public setName(value: string): this { return this.setColumn('name',value); }
+  public getProjects(): Collection<ProjectRow> { return this.relation('projects') ?? new Collection(); }
+}
+
+export interface ProjectKey { readonly seq:number; }
+export class ProjectRow extends Row implements ProjectRowInterface {
+  public static override entity(): string { return 'project'; }
+  public static override primaryKeys(): readonly string[] { return ['seq']; }
+  public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','name':'string'}; }
+  public getSeq(fallback?: number): number { const value=this.column('seq'); return (value ?? fallback ?? null) as number; }
+  public getName(fallback?: string): string { const value=this.column('name'); return (value ?? fallback ?? null) as string; }
+  public setName(value: string): this { return this.setColumn('name',value); }
+  public getAccounts(): Collection<AccountRow> { return this.relation('accounts') ?? new Collection(); }
+}
+
+export interface AccountProjectKey { readonly accountSeq:number; readonly projectSeq:number; }
+export class AccountProjectRow extends Row implements AccountProjectRowInterface {
+  public static override entity(): string { return 'account_project'; }
+  public static override primaryKeys(): readonly string[] { return ['account_seq','project_seq']; }
+  public static override columns(): Readonly<Record<string,string>> { return {'account_seq':'i64','project_seq':'i64'}; }
+  public getAccountSeq(fallback?: number): number { const value=this.column('account_seq'); return (value ?? fallback ?? null) as number; }
+  public setAccountSeq(value: number): this { return this.setColumn('account_seq',value); }
+  public getProjectSeq(fallback?: number): number { const value=this.column('project_seq'); return (value ?? fallback ?? null) as number; }
+  public setProjectSeq(value: number): this { return this.setColumn('project_seq',value); }
 }
 
 export class BattleColumns {
@@ -3764,3 +3797,539 @@ export class SoftRecordQuery extends QueryCore implements SoftRecordInterface {
 }
 export function SoftRecord(): SoftRecordQuery { return new SoftRecordQuery(); }
 registerRow('soft_record',SoftRecordRow);
+
+export class AccountColumns {
+  public static seq(): ColumnReference { return new ColumnReference('seq'); }
+  public static name(): ColumnReference { return new ColumnReference('name'); }
+}
+
+export class AccountWhere {
+  public constructor(private readonly core: WhereCore) {}
+  public or(): this { this.core.or(); return this; }
+  public and(callback: (where: AccountWhere) => void): this { this.core.and(core=>callback(new AccountWhere(core))); return this; }
+  public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
+  public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.core.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.core.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.core.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.core.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.core.predicateList('seq','between',[low,high]); return this; }
+  public seqIsNull(): this { this.core.predicateNull('seq','is_null'); return this; }
+  public seqIsNotNull(): this { this.core.predicateNull('seq','is_not_null'); return this; }
+  public seqEqCol(reference: ColumnReference): this { this.core.predicateColumn('seq','eq_col',reference); return this; }
+  public seqNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('seq','not_eq_col',reference); return this; }
+  public seqGtCol(reference: ColumnReference): this { this.core.predicateColumn('seq','gt_col',reference); return this; }
+  public seqGteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','gte_col',reference); return this; }
+  public seqLtCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lt_col',reference); return this; }
+  public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
+  public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.core.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.core.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.core.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.core.predicate('name','ends_with',value); return this; }
+  public nameIsNull(): this { this.core.predicateNull('name','is_null'); return this; }
+  public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
+  public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
+  public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
+  public projects(callback: (where: ProjectWhere) => void): this { this.core.navigate('projects',core=>callback(new ProjectWhere(core))); return this; }
+  public hasProjects(callback: (where: ProjectWhere) => void): this { this.core.navigateMode('projects','exists',core=>callback(new ProjectWhere(core))); return this; }
+  public notHasProjects(callback: (where: ProjectWhere) => void): this { this.core.navigateMode('projects','not_exists',core=>callback(new ProjectWhere(core))); return this; }
+  public countProjectsEq(value: number, callback: (where: ProjectWhere) => void): this { this.core.navigateCount('projects','eq',value,core=>callback(new ProjectWhere(core))); return this; }
+  public countProjectsGte(value: number, callback: (where: ProjectWhere) => void): this { this.core.navigateCount('projects','gte',value,core=>callback(new ProjectWhere(core))); return this; }
+  public countProjectsGt(value: number, callback: (where: ProjectWhere) => void): this { this.core.navigateCount('projects','gt',value,core=>callback(new ProjectWhere(core))); return this; }
+  public countProjectsLte(value: number, callback: (where: ProjectWhere) => void): this { this.core.navigateCount('projects','lte',value,core=>callback(new ProjectWhere(core))); return this; }
+  public countProjectsLt(value: number, callback: (where: ProjectWhere) => void): this { this.core.navigateCount('projects','lt',value,core=>callback(new ProjectWhere(core))); return this; }
+  public countProjectsNotEq(value: number, callback: (where: ProjectWhere) => void): this { this.core.navigateCount('projects','not_eq',value,core=>callback(new ProjectWhere(core))); return this; }
+}
+
+export class AccountQuery extends QueryCore implements AccountInterface {
+  public constructor() { super('account'); }
+  public and(callback: (where: AccountWhere) => void): this { this.whereCore().and(core=>callback(new AccountWhere(core))); return this; }
+  public on(callback: (where: AccountWhere) => void): this { return this.onGroup(core=>callback(new AccountWhere(core))); }
+  public where(callback: (where: AccountWhere) => void): this { callback(new AccountWhere(this.whereCore())); return this; }
+  public having(callback: (where: AccountWhere) => void): this { return this.havingGroup(core=>callback(new AccountWhere(core))); }
+  public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.predicateList('seq','between',[low,high]); return this; }
+  public seqIsNull(): this { this.predicateNull('seq','is_null'); return this; }
+  public seqIsNotNull(): this { this.predicateNull('seq','is_not_null'); return this; }
+  public seqEqCol(reference: ColumnReference): this { this.predicateColumn('seq','eq_col',reference); return this; }
+  public seqNotEqCol(reference: ColumnReference): this { this.predicateColumn('seq','not_eq_col',reference); return this; }
+  public seqGtCol(reference: ColumnReference): this { this.predicateColumn('seq','gt_col',reference); return this; }
+  public seqGteCol(reference: ColumnReference): this { this.predicateColumn('seq','gte_col',reference); return this; }
+  public seqLtCol(reference: ColumnReference): this { this.predicateColumn('seq','lt_col',reference); return this; }
+  public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
+  public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.predicate('name','ends_with',value); return this; }
+  public nameIsNull(): this { this.predicateNull('name','is_null'); return this; }
+  public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
+  public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
+  public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }
+  public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }
+  public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
+  public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }
+  public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
+  public forUpdate(): this { return this.lock('update'); }
+  public forShare(): this { return this.lock('share'); }
+  public selectSeq(): this { return this.select('seq'); }
+  public omitSeq(): this { return this.omit('seq'); }
+  public orderBySeqAsc(): this { return this.orderBy('seq'); }
+  public orderBySeqDesc(): this { return this.orderBy('seq',true); }
+  public groupBySeq(): this { return this.groupBy('seq'); }
+  public keyBySeq(): this { return this.keyBy('seq'); }
+  public setSeq(value: number): this { return this.set('seq',value); }
+  public onDuplicateSetSeq(value: number): this { return this.duplicate('seq',value); }
+  public setSeqExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('seq',expression,values); }
+  public onDuplicateSetSeqExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('seq',expression,values); }
+  public selectName(): this { return this.select('name'); }
+  public omitName(): this { return this.omit('name'); }
+  public orderByNameAsc(): this { return this.orderBy('name'); }
+  public orderByNameDesc(): this { return this.orderBy('name',true); }
+  public groupByName(): this { return this.groupBy('name'); }
+  public keyByName(): this { return this.keyBy('name'); }
+  public setName(value: string): this { return this.set('name',value); }
+  public onDuplicateSetName(value: string): this { return this.duplicate('name',value); }
+  public setNameExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('name',expression,values); }
+  public onDuplicateSetNameExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('name',expression,values); }
+  public plusSeq(value: number): this { return this.plus('seq',value); }
+  public minusSeq(value: number): this { return this.minus('seq',value); }
+  public onDuplicatePlusSeq(value: number): this { return this.duplicatePlus('seq',value); }
+  public onDuplicateMinusSeq(value: number): this { return this.duplicateMinus('seq',value); }
+  public async sumSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public async minSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('min'); }
+  public async maxSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('max'); }
+  public async countDistinctSeq(): Promise<number> { this.request.ir.agg='seq'; return Number(await this.terminal('count_distinct')); }
+  public async minName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('min'); }
+  public async maxName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('max'); }
+  public async countDistinctName(): Promise<number> { this.request.ir.agg='name'; return Number(await this.terminal('count_distinct')); }
+  public ifParentSeqEq(value: unknown): this { return this.ifParent('seq',value); }
+  public ifParentNameEq(value: unknown): this { return this.ifParent('name',value); }
+  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
+  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
+  public projects(callback: (where: ProjectWhere) => void): this { this.whereCore().navigate('projects',core=>callback(new ProjectWhere(core))); return this; }
+  public hasProjects(callback: (where: ProjectWhere) => void): this { this.whereCore().navigateMode('projects','exists',core=>callback(new ProjectWhere(core))); return this; }
+  public notHasProjects(callback: (where: ProjectWhere) => void): this { this.whereCore().navigateMode('projects','not_exists',core=>callback(new ProjectWhere(core))); return this; }
+  public countProjectsEq(value: number, callback: (where: ProjectWhere) => void): this { this.whereCore().navigateCount('projects','eq',value,core=>callback(new ProjectWhere(core))); return this; }
+  public countProjectsGte(value: number, callback: (where: ProjectWhere) => void): this { this.whereCore().navigateCount('projects','gte',value,core=>callback(new ProjectWhere(core))); return this; }
+  public countProjectsGt(value: number, callback: (where: ProjectWhere) => void): this { this.whereCore().navigateCount('projects','gt',value,core=>callback(new ProjectWhere(core))); return this; }
+  public countProjectsLte(value: number, callback: (where: ProjectWhere) => void): this { this.whereCore().navigateCount('projects','lte',value,core=>callback(new ProjectWhere(core))); return this; }
+  public countProjectsLt(value: number, callback: (where: ProjectWhere) => void): this { this.whereCore().navigateCount('projects','lt',value,core=>callback(new ProjectWhere(core))); return this; }
+  public countProjectsNotEq(value: number, callback: (where: ProjectWhere) => void): this { this.whereCore().navigateCount('projects','not_eq',value,core=>callback(new ProjectWhere(core))); return this; }
+  public joinSeqWithSeq(child: ProjectQuery): this { return this.attachJoin('projects',child,'inner'); }
+  public leftJoinSeqWithSeq(child: ProjectQuery): this { return this.attachJoin('projects',child,'left'); }
+  public relationsSeqWithSeq(child: ProjectQuery): this { return this.attachRelation('projects',child); }
+  private resolveRelation(child: QueryCore, expected?: 'one'|'many'): string { const entity=child.request.ir.entity; const link=child.linkSelection; const candidates=this.relationDefinitions().filter(value=>value.target===entity&&(!expected||value.kind===expected)&&(!link||(value.left===link.parentKey&&value.right===link.childKey))); if(candidates.length!==1) throw new OrmError('IR_INVALID', `relation from ${this.request.ir.entity} to ${entity} is ${candidates.length===0?'not declared':'ambiguous'}; select a key pair`); return candidates[0]!.name; }
+  private relationDefinitions(): ReadonlyArray<{name:string;kind:'one'|'many';target:string;left:string;right:string}> { return [{name:'projects',kind:'many',target:'project',left:'seq',right:'seq'}]; }
+  public join(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'inner'); }
+  public leftJoin(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'left'); }
+  public relation(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'one'),child); }
+  public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
+  public matchSeqWithSeq(): this { return this.matchKeys('seq','seq'); }
+  public onSeqWithSeq(): this { return this.matchKeys('seq','seq'); }
+  public async get(): Promise<AccountRow | null> { return await this.terminal('one') as AccountRow | null; }
+  public async gets(): Promise<Collection<AccountRow>> { const rows=await this.terminal('all') as Collection<AccountRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
+  public async stream(visitor: (row: AccountRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<AccountRow>(visitor); }
+  public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
+  public async getsCount(): Promise<Collection<AccountRow>> { return await this.terminal('group_count') as Collection<AccountRow>; }
+  public async insert(): Promise<AccountRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new AccountQuery().using(database).predicate('seq','eq',key).get(); }
+  public async save(): Promise<AccountRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new AccountQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
+  public async update(): Promise<number> { return this.writeAffected('update'); }
+  public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async batchInsert(rows: readonly AccountQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpsert(rows: readonly AccountQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpdate(rows: readonly AccountQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'update', options); }
+  public async batchDelete(rows: readonly AccountQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'delete', options); }
+  private async batchWrite(rows: readonly AccountQuery[], kind: 'insert'|'update'|'delete', options: BatchOptions): Promise<BatchResult> { const database=this.binding.resolve(); const requests: BatchRequest[]=[]; for (const row of rows) { row.using(database); requests.push({ plan: await database.plan(row.requestShape(kind)), params: row.parameters() }); } return batchWrite(database, requests, kind, options); }
+  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
+  public async paginate(page: number, per: number): Promise<Page<AccountRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<AccountRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
+  public async getsAfter(cursor: string, per: number): Promise<KeysetPage<AccountRow>> { this.keyset('after',cursor,per,['seq']); const rows=await this.terminalRows(); const items=rowCollection<AccountRow>(rows, rows.plan.steps[0]!.assemble!); return keysetPage(rows,items,this.request.ir.order ?? []); }
+  public async getsBefore(cursor: string, per: number): Promise<KeysetPage<AccountRow>> { this.keyset('before',cursor,per,['seq']); const rows=await this.terminalRows(); for(let left=0,right=rows.data.length-1;left<right;left++,right--){ const value=rows.data[left]!; rows.data[left]=rows.data[right]!; rows.data[right]=value; } const items=rowCollection<AccountRow>(rows, rows.plan.steps[0]!.assemble!); return keysetPage(rows,items,this.request.ir.order ?? []); }
+  public async getBySeq(value: number): Promise<AccountRow | null> { this.predicate('seq','eq',value); return this.get(); }
+  public async getsBySeq(value: number): Promise<Collection<AccountRow>> { this.predicate('seq','eq',value); return this.gets(); }
+  public async getCountBySeq(value: number): Promise<number> { this.predicate('seq','eq',value); return this.getCount(); }
+  public async getByName(value: string): Promise<AccountRow | null> { this.predicate('name','eq',value); return this.get(); }
+  public async getsByName(value: string): Promise<Collection<AccountRow>> { this.predicate('name','eq',value); return this.gets(); }
+  public async getCountByName(value: string): Promise<number> { this.predicate('name','eq',value); return this.getCount(); }
+}
+export function Account(): AccountQuery { return new AccountQuery(); }
+registerRow('account',AccountRow);
+
+export class ProjectColumns {
+  public static seq(): ColumnReference { return new ColumnReference('seq'); }
+  public static name(): ColumnReference { return new ColumnReference('name'); }
+}
+
+export class ProjectWhere {
+  public constructor(private readonly core: WhereCore) {}
+  public or(): this { this.core.or(); return this; }
+  public and(callback: (where: ProjectWhere) => void): this { this.core.and(core=>callback(new ProjectWhere(core))); return this; }
+  public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
+  public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.core.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.core.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.core.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.core.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.core.predicateList('seq','between',[low,high]); return this; }
+  public seqIsNull(): this { this.core.predicateNull('seq','is_null'); return this; }
+  public seqIsNotNull(): this { this.core.predicateNull('seq','is_not_null'); return this; }
+  public seqEqCol(reference: ColumnReference): this { this.core.predicateColumn('seq','eq_col',reference); return this; }
+  public seqNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('seq','not_eq_col',reference); return this; }
+  public seqGtCol(reference: ColumnReference): this { this.core.predicateColumn('seq','gt_col',reference); return this; }
+  public seqGteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','gte_col',reference); return this; }
+  public seqLtCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lt_col',reference); return this; }
+  public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
+  public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.core.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.core.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.core.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.core.predicate('name','ends_with',value); return this; }
+  public nameIsNull(): this { this.core.predicateNull('name','is_null'); return this; }
+  public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
+  public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
+  public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
+  public accounts(callback: (where: AccountWhere) => void): this { this.core.navigate('accounts',core=>callback(new AccountWhere(core))); return this; }
+  public hasAccounts(callback: (where: AccountWhere) => void): this { this.core.navigateMode('accounts','exists',core=>callback(new AccountWhere(core))); return this; }
+  public notHasAccounts(callback: (where: AccountWhere) => void): this { this.core.navigateMode('accounts','not_exists',core=>callback(new AccountWhere(core))); return this; }
+  public countAccountsEq(value: number, callback: (where: AccountWhere) => void): this { this.core.navigateCount('accounts','eq',value,core=>callback(new AccountWhere(core))); return this; }
+  public countAccountsGte(value: number, callback: (where: AccountWhere) => void): this { this.core.navigateCount('accounts','gte',value,core=>callback(new AccountWhere(core))); return this; }
+  public countAccountsGt(value: number, callback: (where: AccountWhere) => void): this { this.core.navigateCount('accounts','gt',value,core=>callback(new AccountWhere(core))); return this; }
+  public countAccountsLte(value: number, callback: (where: AccountWhere) => void): this { this.core.navigateCount('accounts','lte',value,core=>callback(new AccountWhere(core))); return this; }
+  public countAccountsLt(value: number, callback: (where: AccountWhere) => void): this { this.core.navigateCount('accounts','lt',value,core=>callback(new AccountWhere(core))); return this; }
+  public countAccountsNotEq(value: number, callback: (where: AccountWhere) => void): this { this.core.navigateCount('accounts','not_eq',value,core=>callback(new AccountWhere(core))); return this; }
+}
+
+export class ProjectQuery extends QueryCore implements ProjectInterface {
+  public constructor() { super('project'); }
+  public and(callback: (where: ProjectWhere) => void): this { this.whereCore().and(core=>callback(new ProjectWhere(core))); return this; }
+  public on(callback: (where: ProjectWhere) => void): this { return this.onGroup(core=>callback(new ProjectWhere(core))); }
+  public where(callback: (where: ProjectWhere) => void): this { callback(new ProjectWhere(this.whereCore())); return this; }
+  public having(callback: (where: ProjectWhere) => void): this { return this.havingGroup(core=>callback(new ProjectWhere(core))); }
+  public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.predicateList('seq','between',[low,high]); return this; }
+  public seqIsNull(): this { this.predicateNull('seq','is_null'); return this; }
+  public seqIsNotNull(): this { this.predicateNull('seq','is_not_null'); return this; }
+  public seqEqCol(reference: ColumnReference): this { this.predicateColumn('seq','eq_col',reference); return this; }
+  public seqNotEqCol(reference: ColumnReference): this { this.predicateColumn('seq','not_eq_col',reference); return this; }
+  public seqGtCol(reference: ColumnReference): this { this.predicateColumn('seq','gt_col',reference); return this; }
+  public seqGteCol(reference: ColumnReference): this { this.predicateColumn('seq','gte_col',reference); return this; }
+  public seqLtCol(reference: ColumnReference): this { this.predicateColumn('seq','lt_col',reference); return this; }
+  public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
+  public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.predicate('name','ends_with',value); return this; }
+  public nameIsNull(): this { this.predicateNull('name','is_null'); return this; }
+  public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
+  public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
+  public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }
+  public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }
+  public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
+  public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }
+  public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
+  public forUpdate(): this { return this.lock('update'); }
+  public forShare(): this { return this.lock('share'); }
+  public selectSeq(): this { return this.select('seq'); }
+  public omitSeq(): this { return this.omit('seq'); }
+  public orderBySeqAsc(): this { return this.orderBy('seq'); }
+  public orderBySeqDesc(): this { return this.orderBy('seq',true); }
+  public groupBySeq(): this { return this.groupBy('seq'); }
+  public keyBySeq(): this { return this.keyBy('seq'); }
+  public setSeq(value: number): this { return this.set('seq',value); }
+  public onDuplicateSetSeq(value: number): this { return this.duplicate('seq',value); }
+  public setSeqExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('seq',expression,values); }
+  public onDuplicateSetSeqExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('seq',expression,values); }
+  public selectName(): this { return this.select('name'); }
+  public omitName(): this { return this.omit('name'); }
+  public orderByNameAsc(): this { return this.orderBy('name'); }
+  public orderByNameDesc(): this { return this.orderBy('name',true); }
+  public groupByName(): this { return this.groupBy('name'); }
+  public keyByName(): this { return this.keyBy('name'); }
+  public setName(value: string): this { return this.set('name',value); }
+  public onDuplicateSetName(value: string): this { return this.duplicate('name',value); }
+  public setNameExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('name',expression,values); }
+  public onDuplicateSetNameExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('name',expression,values); }
+  public plusSeq(value: number): this { return this.plus('seq',value); }
+  public minusSeq(value: number): this { return this.minus('seq',value); }
+  public onDuplicatePlusSeq(value: number): this { return this.duplicatePlus('seq',value); }
+  public onDuplicateMinusSeq(value: number): this { return this.duplicateMinus('seq',value); }
+  public async sumSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public async minSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('min'); }
+  public async maxSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('max'); }
+  public async countDistinctSeq(): Promise<number> { this.request.ir.agg='seq'; return Number(await this.terminal('count_distinct')); }
+  public async minName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('min'); }
+  public async maxName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('max'); }
+  public async countDistinctName(): Promise<number> { this.request.ir.agg='name'; return Number(await this.terminal('count_distinct')); }
+  public ifParentSeqEq(value: unknown): this { return this.ifParent('seq',value); }
+  public ifParentNameEq(value: unknown): this { return this.ifParent('name',value); }
+  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
+  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
+  public accounts(callback: (where: AccountWhere) => void): this { this.whereCore().navigate('accounts',core=>callback(new AccountWhere(core))); return this; }
+  public hasAccounts(callback: (where: AccountWhere) => void): this { this.whereCore().navigateMode('accounts','exists',core=>callback(new AccountWhere(core))); return this; }
+  public notHasAccounts(callback: (where: AccountWhere) => void): this { this.whereCore().navigateMode('accounts','not_exists',core=>callback(new AccountWhere(core))); return this; }
+  public countAccountsEq(value: number, callback: (where: AccountWhere) => void): this { this.whereCore().navigateCount('accounts','eq',value,core=>callback(new AccountWhere(core))); return this; }
+  public countAccountsGte(value: number, callback: (where: AccountWhere) => void): this { this.whereCore().navigateCount('accounts','gte',value,core=>callback(new AccountWhere(core))); return this; }
+  public countAccountsGt(value: number, callback: (where: AccountWhere) => void): this { this.whereCore().navigateCount('accounts','gt',value,core=>callback(new AccountWhere(core))); return this; }
+  public countAccountsLte(value: number, callback: (where: AccountWhere) => void): this { this.whereCore().navigateCount('accounts','lte',value,core=>callback(new AccountWhere(core))); return this; }
+  public countAccountsLt(value: number, callback: (where: AccountWhere) => void): this { this.whereCore().navigateCount('accounts','lt',value,core=>callback(new AccountWhere(core))); return this; }
+  public countAccountsNotEq(value: number, callback: (where: AccountWhere) => void): this { this.whereCore().navigateCount('accounts','not_eq',value,core=>callback(new AccountWhere(core))); return this; }
+  public joinSeqWithSeq(child: AccountQuery): this { return this.attachJoin('accounts',child,'inner'); }
+  public leftJoinSeqWithSeq(child: AccountQuery): this { return this.attachJoin('accounts',child,'left'); }
+  public relationsSeqWithSeq(child: AccountQuery): this { return this.attachRelation('accounts',child); }
+  private resolveRelation(child: QueryCore, expected?: 'one'|'many'): string { const entity=child.request.ir.entity; const link=child.linkSelection; const candidates=this.relationDefinitions().filter(value=>value.target===entity&&(!expected||value.kind===expected)&&(!link||(value.left===link.parentKey&&value.right===link.childKey))); if(candidates.length!==1) throw new OrmError('IR_INVALID', `relation from ${this.request.ir.entity} to ${entity} is ${candidates.length===0?'not declared':'ambiguous'}; select a key pair`); return candidates[0]!.name; }
+  private relationDefinitions(): ReadonlyArray<{name:string;kind:'one'|'many';target:string;left:string;right:string}> { return [{name:'accounts',kind:'many',target:'account',left:'seq',right:'seq'}]; }
+  public join(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'inner'); }
+  public leftJoin(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'left'); }
+  public relation(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'one'),child); }
+  public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
+  public matchSeqWithSeq(): this { return this.matchKeys('seq','seq'); }
+  public onSeqWithSeq(): this { return this.matchKeys('seq','seq'); }
+  public async get(): Promise<ProjectRow | null> { return await this.terminal('one') as ProjectRow | null; }
+  public async gets(): Promise<Collection<ProjectRow>> { const rows=await this.terminal('all') as Collection<ProjectRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
+  public async stream(visitor: (row: ProjectRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<ProjectRow>(visitor); }
+  public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
+  public async getsCount(): Promise<Collection<ProjectRow>> { return await this.terminal('group_count') as Collection<ProjectRow>; }
+  public async insert(): Promise<ProjectRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ProjectQuery().using(database).predicate('seq','eq',key).get(); }
+  public async save(): Promise<ProjectRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new ProjectQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
+  public async update(): Promise<number> { return this.writeAffected('update'); }
+  public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async batchInsert(rows: readonly ProjectQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpsert(rows: readonly ProjectQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpdate(rows: readonly ProjectQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'update', options); }
+  public async batchDelete(rows: readonly ProjectQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'delete', options); }
+  private async batchWrite(rows: readonly ProjectQuery[], kind: 'insert'|'update'|'delete', options: BatchOptions): Promise<BatchResult> { const database=this.binding.resolve(); const requests: BatchRequest[]=[]; for (const row of rows) { row.using(database); requests.push({ plan: await database.plan(row.requestShape(kind)), params: row.parameters() }); } return batchWrite(database, requests, kind, options); }
+  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
+  public async paginate(page: number, per: number): Promise<Page<ProjectRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<ProjectRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
+  public async getsAfter(cursor: string, per: number): Promise<KeysetPage<ProjectRow>> { this.keyset('after',cursor,per,['seq']); const rows=await this.terminalRows(); const items=rowCollection<ProjectRow>(rows, rows.plan.steps[0]!.assemble!); return keysetPage(rows,items,this.request.ir.order ?? []); }
+  public async getsBefore(cursor: string, per: number): Promise<KeysetPage<ProjectRow>> { this.keyset('before',cursor,per,['seq']); const rows=await this.terminalRows(); for(let left=0,right=rows.data.length-1;left<right;left++,right--){ const value=rows.data[left]!; rows.data[left]=rows.data[right]!; rows.data[right]=value; } const items=rowCollection<ProjectRow>(rows, rows.plan.steps[0]!.assemble!); return keysetPage(rows,items,this.request.ir.order ?? []); }
+  public async getBySeq(value: number): Promise<ProjectRow | null> { this.predicate('seq','eq',value); return this.get(); }
+  public async getsBySeq(value: number): Promise<Collection<ProjectRow>> { this.predicate('seq','eq',value); return this.gets(); }
+  public async getCountBySeq(value: number): Promise<number> { this.predicate('seq','eq',value); return this.getCount(); }
+  public async getByName(value: string): Promise<ProjectRow | null> { this.predicate('name','eq',value); return this.get(); }
+  public async getsByName(value: string): Promise<Collection<ProjectRow>> { this.predicate('name','eq',value); return this.gets(); }
+  public async getCountByName(value: string): Promise<number> { this.predicate('name','eq',value); return this.getCount(); }
+}
+export function Project(): ProjectQuery { return new ProjectQuery(); }
+registerRow('project',ProjectRow);
+
+export class AccountProjectColumns {
+  public static accountSeq(): ColumnReference { return new ColumnReference('account_seq'); }
+  public static projectSeq(): ColumnReference { return new ColumnReference('project_seq'); }
+}
+
+export class AccountProjectWhere {
+  public constructor(private readonly core: WhereCore) {}
+  public or(): this { this.core.or(); return this; }
+  public and(callback: (where: AccountProjectWhere) => void): this { this.core.and(core=>callback(new AccountProjectWhere(core))); return this; }
+  public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
+  public accountSeqEq(value: number): this { this.core.predicate('account_seq','eq',value); return this; }
+  public accountSeq(value: number): this { return this.accountSeqEq(value); }
+  public accountSeqNotEq(value: number): this { this.core.predicate('account_seq','not_eq',value); return this; }
+  public accountSeqGt(value: number): this { this.core.predicate('account_seq','gt',value); return this; }
+  public accountSeqGte(value: number): this { this.core.predicate('account_seq','gte',value); return this; }
+  public accountSeqLt(value: number): this { this.core.predicate('account_seq','lt',value); return this; }
+  public accountSeqLte(value: number): this { this.core.predicate('account_seq','lte',value); return this; }
+  public accountSeqIn(values: readonly (number)[]): this { this.core.predicateList('account_seq','in',values); return this; }
+  public accountSeqNotIn(values: readonly (number)[]): this { this.core.predicateList('account_seq','not_in',values); return this; }
+  public accountSeqBetween(low: number, high: number): this { this.core.predicateList('account_seq','between',[low,high]); return this; }
+  public accountSeqIsNull(): this { this.core.predicateNull('account_seq','is_null'); return this; }
+  public accountSeqIsNotNull(): this { this.core.predicateNull('account_seq','is_not_null'); return this; }
+  public accountSeqEqCol(reference: ColumnReference): this { this.core.predicateColumn('account_seq','eq_col',reference); return this; }
+  public accountSeqNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('account_seq','not_eq_col',reference); return this; }
+  public accountSeqGtCol(reference: ColumnReference): this { this.core.predicateColumn('account_seq','gt_col',reference); return this; }
+  public accountSeqGteCol(reference: ColumnReference): this { this.core.predicateColumn('account_seq','gte_col',reference); return this; }
+  public accountSeqLtCol(reference: ColumnReference): this { this.core.predicateColumn('account_seq','lt_col',reference); return this; }
+  public accountSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('account_seq','lte_col',reference); return this; }
+  public projectSeqEq(value: number): this { this.core.predicate('project_seq','eq',value); return this; }
+  public projectSeq(value: number): this { return this.projectSeqEq(value); }
+  public projectSeqNotEq(value: number): this { this.core.predicate('project_seq','not_eq',value); return this; }
+  public projectSeqGt(value: number): this { this.core.predicate('project_seq','gt',value); return this; }
+  public projectSeqGte(value: number): this { this.core.predicate('project_seq','gte',value); return this; }
+  public projectSeqLt(value: number): this { this.core.predicate('project_seq','lt',value); return this; }
+  public projectSeqLte(value: number): this { this.core.predicate('project_seq','lte',value); return this; }
+  public projectSeqIn(values: readonly (number)[]): this { this.core.predicateList('project_seq','in',values); return this; }
+  public projectSeqNotIn(values: readonly (number)[]): this { this.core.predicateList('project_seq','not_in',values); return this; }
+  public projectSeqBetween(low: number, high: number): this { this.core.predicateList('project_seq','between',[low,high]); return this; }
+  public projectSeqIsNull(): this { this.core.predicateNull('project_seq','is_null'); return this; }
+  public projectSeqIsNotNull(): this { this.core.predicateNull('project_seq','is_not_null'); return this; }
+  public projectSeqEqCol(reference: ColumnReference): this { this.core.predicateColumn('project_seq','eq_col',reference); return this; }
+  public projectSeqNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('project_seq','not_eq_col',reference); return this; }
+  public projectSeqGtCol(reference: ColumnReference): this { this.core.predicateColumn('project_seq','gt_col',reference); return this; }
+  public projectSeqGteCol(reference: ColumnReference): this { this.core.predicateColumn('project_seq','gte_col',reference); return this; }
+  public projectSeqLtCol(reference: ColumnReference): this { this.core.predicateColumn('project_seq','lt_col',reference); return this; }
+  public projectSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('project_seq','lte_col',reference); return this; }
+}
+
+export class AccountProjectQuery extends QueryCore implements AccountProjectInterface {
+  public constructor() { super('account_project'); }
+  public and(callback: (where: AccountProjectWhere) => void): this { this.whereCore().and(core=>callback(new AccountProjectWhere(core))); return this; }
+  public on(callback: (where: AccountProjectWhere) => void): this { return this.onGroup(core=>callback(new AccountProjectWhere(core))); }
+  public where(callback: (where: AccountProjectWhere) => void): this { callback(new AccountProjectWhere(this.whereCore())); return this; }
+  public having(callback: (where: AccountProjectWhere) => void): this { return this.havingGroup(core=>callback(new AccountProjectWhere(core))); }
+  public accountSeqEq(value: number): this { this.predicate('account_seq','eq',value); return this; }
+  public accountSeq(value: number): this { return this.accountSeqEq(value); }
+  public accountSeqNotEq(value: number): this { this.predicate('account_seq','not_eq',value); return this; }
+  public accountSeqGt(value: number): this { this.predicate('account_seq','gt',value); return this; }
+  public accountSeqGte(value: number): this { this.predicate('account_seq','gte',value); return this; }
+  public accountSeqLt(value: number): this { this.predicate('account_seq','lt',value); return this; }
+  public accountSeqLte(value: number): this { this.predicate('account_seq','lte',value); return this; }
+  public accountSeqIn(values: readonly (number)[]): this { this.predicateList('account_seq','in',values); return this; }
+  public accountSeqNotIn(values: readonly (number)[]): this { this.predicateList('account_seq','not_in',values); return this; }
+  public accountSeqBetween(low: number, high: number): this { this.predicateList('account_seq','between',[low,high]); return this; }
+  public accountSeqIsNull(): this { this.predicateNull('account_seq','is_null'); return this; }
+  public accountSeqIsNotNull(): this { this.predicateNull('account_seq','is_not_null'); return this; }
+  public accountSeqEqCol(reference: ColumnReference): this { this.predicateColumn('account_seq','eq_col',reference); return this; }
+  public accountSeqNotEqCol(reference: ColumnReference): this { this.predicateColumn('account_seq','not_eq_col',reference); return this; }
+  public accountSeqGtCol(reference: ColumnReference): this { this.predicateColumn('account_seq','gt_col',reference); return this; }
+  public accountSeqGteCol(reference: ColumnReference): this { this.predicateColumn('account_seq','gte_col',reference); return this; }
+  public accountSeqLtCol(reference: ColumnReference): this { this.predicateColumn('account_seq','lt_col',reference); return this; }
+  public accountSeqLteCol(reference: ColumnReference): this { this.predicateColumn('account_seq','lte_col',reference); return this; }
+  public projectSeqEq(value: number): this { this.predicate('project_seq','eq',value); return this; }
+  public projectSeq(value: number): this { return this.projectSeqEq(value); }
+  public projectSeqNotEq(value: number): this { this.predicate('project_seq','not_eq',value); return this; }
+  public projectSeqGt(value: number): this { this.predicate('project_seq','gt',value); return this; }
+  public projectSeqGte(value: number): this { this.predicate('project_seq','gte',value); return this; }
+  public projectSeqLt(value: number): this { this.predicate('project_seq','lt',value); return this; }
+  public projectSeqLte(value: number): this { this.predicate('project_seq','lte',value); return this; }
+  public projectSeqIn(values: readonly (number)[]): this { this.predicateList('project_seq','in',values); return this; }
+  public projectSeqNotIn(values: readonly (number)[]): this { this.predicateList('project_seq','not_in',values); return this; }
+  public projectSeqBetween(low: number, high: number): this { this.predicateList('project_seq','between',[low,high]); return this; }
+  public projectSeqIsNull(): this { this.predicateNull('project_seq','is_null'); return this; }
+  public projectSeqIsNotNull(): this { this.predicateNull('project_seq','is_not_null'); return this; }
+  public projectSeqEqCol(reference: ColumnReference): this { this.predicateColumn('project_seq','eq_col',reference); return this; }
+  public projectSeqNotEqCol(reference: ColumnReference): this { this.predicateColumn('project_seq','not_eq_col',reference); return this; }
+  public projectSeqGtCol(reference: ColumnReference): this { this.predicateColumn('project_seq','gt_col',reference); return this; }
+  public projectSeqGteCol(reference: ColumnReference): this { this.predicateColumn('project_seq','gte_col',reference); return this; }
+  public projectSeqLtCol(reference: ColumnReference): this { this.predicateColumn('project_seq','lt_col',reference); return this; }
+  public projectSeqLteCol(reference: ColumnReference): this { this.predicateColumn('project_seq','lte_col',reference); return this; }
+  public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }
+  public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }
+  public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
+  public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }
+  public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
+  public forUpdate(): this { return this.lock('update'); }
+  public forShare(): this { return this.lock('share'); }
+  public selectAccountSeq(): this { return this.select('account_seq'); }
+  public omitAccountSeq(): this { return this.omit('account_seq'); }
+  public orderByAccountSeqAsc(): this { return this.orderBy('account_seq'); }
+  public orderByAccountSeqDesc(): this { return this.orderBy('account_seq',true); }
+  public groupByAccountSeq(): this { return this.groupBy('account_seq'); }
+  public keyByAccountSeq(): this { return this.keyBy('account_seq'); }
+  public setAccountSeq(value: number): this { return this.set('account_seq',value); }
+  public onDuplicateSetAccountSeq(value: number): this { return this.duplicate('account_seq',value); }
+  public setAccountSeqExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('account_seq',expression,values); }
+  public onDuplicateSetAccountSeqExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('account_seq',expression,values); }
+  public selectProjectSeq(): this { return this.select('project_seq'); }
+  public omitProjectSeq(): this { return this.omit('project_seq'); }
+  public orderByProjectSeqAsc(): this { return this.orderBy('project_seq'); }
+  public orderByProjectSeqDesc(): this { return this.orderBy('project_seq',true); }
+  public groupByProjectSeq(): this { return this.groupBy('project_seq'); }
+  public keyByProjectSeq(): this { return this.keyBy('project_seq'); }
+  public setProjectSeq(value: number): this { return this.set('project_seq',value); }
+  public onDuplicateSetProjectSeq(value: number): this { return this.duplicate('project_seq',value); }
+  public setProjectSeqExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('project_seq',expression,values); }
+  public onDuplicateSetProjectSeqExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('project_seq',expression,values); }
+  public plusAccountSeq(value: number): this { return this.plus('account_seq',value); }
+  public minusAccountSeq(value: number): this { return this.minus('account_seq',value); }
+  public onDuplicatePlusAccountSeq(value: number): this { return this.duplicatePlus('account_seq',value); }
+  public onDuplicateMinusAccountSeq(value: number): this { return this.duplicateMinus('account_seq',value); }
+  public async sumAccountSeq(): Promise<number | null> { this.request.ir.agg='account_seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgAccountSeq(): Promise<number | null> { this.request.ir.agg='account_seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public plusProjectSeq(value: number): this { return this.plus('project_seq',value); }
+  public minusProjectSeq(value: number): this { return this.minus('project_seq',value); }
+  public onDuplicatePlusProjectSeq(value: number): this { return this.duplicatePlus('project_seq',value); }
+  public onDuplicateMinusProjectSeq(value: number): this { return this.duplicateMinus('project_seq',value); }
+  public async sumProjectSeq(): Promise<number | null> { this.request.ir.agg='project_seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgProjectSeq(): Promise<number | null> { this.request.ir.agg='project_seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public async minAccountSeq(): Promise<unknown> { this.request.ir.agg='account_seq'; return this.terminal('min'); }
+  public async maxAccountSeq(): Promise<unknown> { this.request.ir.agg='account_seq'; return this.terminal('max'); }
+  public async countDistinctAccountSeq(): Promise<number> { this.request.ir.agg='account_seq'; return Number(await this.terminal('count_distinct')); }
+  public async minProjectSeq(): Promise<unknown> { this.request.ir.agg='project_seq'; return this.terminal('min'); }
+  public async maxProjectSeq(): Promise<unknown> { this.request.ir.agg='project_seq'; return this.terminal('max'); }
+  public async countDistinctProjectSeq(): Promise<number> { this.request.ir.agg='project_seq'; return Number(await this.terminal('count_distinct')); }
+  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
+  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
+  private resolveRelation(child: QueryCore, expected?: 'one'|'many'): string { const entity=child.request.ir.entity; const link=child.linkSelection; const candidates=this.relationDefinitions().filter(value=>value.target===entity&&(!expected||value.kind===expected)&&(!link||(value.left===link.parentKey&&value.right===link.childKey))); if(candidates.length!==1) throw new OrmError('IR_INVALID', `relation from ${this.request.ir.entity} to ${entity} is ${candidates.length===0?'not declared':'ambiguous'}; select a key pair`); return candidates[0]!.name; }
+  private relationDefinitions(): ReadonlyArray<{name:string;kind:'one'|'many';target:string;left:string;right:string}> { return []; }
+  public join(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'inner'); }
+  public leftJoin(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'left'); }
+  public relation(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'one'),child); }
+  public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
+  public async get(): Promise<AccountProjectRow | null> { return await this.terminal('one') as AccountProjectRow | null; }
+  public async gets(): Promise<Collection<AccountProjectRow>> { const rows=await this.terminal('all') as Collection<AccountProjectRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
+  public async stream(visitor: (row: AccountProjectRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<AccountProjectRow>(visitor); }
+  public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
+  public async getsCount(): Promise<Collection<AccountProjectRow>> { return await this.terminal('group_count') as Collection<AccountProjectRow>; }
+  public async insert(): Promise<AccountProjectRow | null> { const database=this.binding.resolve(); const keys=this.assignedKeyValues(['account_seq','project_seq']); await this.insertKey(); const query=new AccountProjectQuery().using(database); query.predicate('account_seq','eq',keys[0]); query.predicate('project_seq','eq',keys[1]); return query.get(); }
+  public async save(): Promise<AccountProjectRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['account_seq','project_seq']); const query=new AccountProjectQuery().using(database); query.predicate('account_seq','eq',keys[0]); query.predicate('project_seq','eq',keys[1]); return query.get(); }
+  public async update(): Promise<number> { return this.writeAffected('update'); }
+  public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async batchInsert(rows: readonly AccountProjectQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpsert(rows: readonly AccountProjectQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpdate(rows: readonly AccountProjectQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'update', options); }
+  public async batchDelete(rows: readonly AccountProjectQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'delete', options); }
+  private async batchWrite(rows: readonly AccountProjectQuery[], kind: 'insert'|'update'|'delete', options: BatchOptions): Promise<BatchResult> { const database=this.binding.resolve(); const requests: BatchRequest[]=[]; for (const row of rows) { row.using(database); requests.push({ plan: await database.plan(row.requestShape(kind)), params: row.parameters() }); } return batchWrite(database, requests, kind, options); }
+  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
+  public async paginate(page: number, per: number): Promise<Page<AccountProjectRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<AccountProjectRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
+  public async getsAfter(cursor: string, per: number): Promise<KeysetPage<AccountProjectRow>> { this.keyset('after',cursor,per,['account_seq','project_seq']); const rows=await this.terminalRows(); const items=rowCollection<AccountProjectRow>(rows, rows.plan.steps[0]!.assemble!); return keysetPage(rows,items,this.request.ir.order ?? []); }
+  public async getsBefore(cursor: string, per: number): Promise<KeysetPage<AccountProjectRow>> { this.keyset('before',cursor,per,['account_seq','project_seq']); const rows=await this.terminalRows(); for(let left=0,right=rows.data.length-1;left<right;left++,right--){ const value=rows.data[left]!; rows.data[left]=rows.data[right]!; rows.data[right]=value; } const items=rowCollection<AccountProjectRow>(rows, rows.plan.steps[0]!.assemble!); return keysetPage(rows,items,this.request.ir.order ?? []); }
+  public async getByAccountSeq(value: number): Promise<AccountProjectRow | null> { this.predicate('account_seq','eq',value); return this.get(); }
+  public async getsByAccountSeq(value: number): Promise<Collection<AccountProjectRow>> { this.predicate('account_seq','eq',value); return this.gets(); }
+  public async getCountByAccountSeq(value: number): Promise<number> { this.predicate('account_seq','eq',value); return this.getCount(); }
+  public async getByProjectSeq(value: number): Promise<AccountProjectRow | null> { this.predicate('project_seq','eq',value); return this.get(); }
+  public async getsByProjectSeq(value: number): Promise<Collection<AccountProjectRow>> { this.predicate('project_seq','eq',value); return this.gets(); }
+  public async getCountByProjectSeq(value: number): Promise<number> { this.predicate('project_seq','eq',value); return this.getCount(); }
+  public async getByAccountSeqAndProjectSeq(value0:number,value1:number): Promise<AccountProjectRow | null> { this.predicate('account_seq','eq',value0); this.predicate('project_seq','eq',value1); return this.get(); }
+}
+export function AccountProject(): AccountProjectQuery { return new AccountProjectQuery(); }
+registerRow('account_project',AccountProjectRow);

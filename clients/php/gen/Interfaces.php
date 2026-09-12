@@ -431,3 +431,111 @@ public function has(string $col): bool;
 public function relLoaded(string $name): bool;
 public function toArray(): array;
 }
+
+interface AccountInterface {
+public function get(): ?\App\Orm\AccountRow;
+public function gets(): \Orm\Collection;
+public function stream(callable $visit): \Orm\StreamResult;
+public function getCount(): int;
+public function getsCount(): \Orm\Collection;
+public function insert(): ?\App\Orm\AccountRow;
+public function save(): ?\App\Orm\AccountRow;
+public function update(): int;
+public function delete(): int;
+public function sql(): array;
+public static function query(): static;
+public function using(\Orm\Db|\PDO $db): static;
+public function paginate(int $page, int $per): \Orm\Page;
+public function getsAfter(string $cursor, int $per): \Orm\KeysetPage;
+public function getsBefore(string $cursor, int $per): \Orm\KeysetPage;
+public function getsBySeq(int $value): \Orm\Collection;
+public function getsByName(string $value): \Orm\Collection;
+public function getCountBySeq(int $value): int;
+public function getCountByName(string $value): int;
+public function seqEq(int $v): static;
+public function nameEq(string $v): static;
+public function seq(int $v): static;
+public function name(string $v): static;
+}
+
+interface AccountRowInterface {
+public function using(\Orm\Db|\PDO $db): static;
+public function update(): void;
+public function delete(bool $cascade=false): void;
+public function deleteCascade(): void;
+public function has(string $col): bool;
+public function relLoaded(string $name): bool;
+public function toArray(): array;
+}
+
+interface ProjectInterface {
+public function get(): ?\App\Orm\ProjectRow;
+public function gets(): \Orm\Collection;
+public function stream(callable $visit): \Orm\StreamResult;
+public function getCount(): int;
+public function getsCount(): \Orm\Collection;
+public function insert(): ?\App\Orm\ProjectRow;
+public function save(): ?\App\Orm\ProjectRow;
+public function update(): int;
+public function delete(): int;
+public function sql(): array;
+public static function query(): static;
+public function using(\Orm\Db|\PDO $db): static;
+public function paginate(int $page, int $per): \Orm\Page;
+public function getsAfter(string $cursor, int $per): \Orm\KeysetPage;
+public function getsBefore(string $cursor, int $per): \Orm\KeysetPage;
+public function getsBySeq(int $value): \Orm\Collection;
+public function getsByName(string $value): \Orm\Collection;
+public function getCountBySeq(int $value): int;
+public function getCountByName(string $value): int;
+public function seqEq(int $v): static;
+public function nameEq(string $v): static;
+public function seq(int $v): static;
+public function name(string $v): static;
+}
+
+interface ProjectRowInterface {
+public function using(\Orm\Db|\PDO $db): static;
+public function update(): void;
+public function delete(bool $cascade=false): void;
+public function deleteCascade(): void;
+public function has(string $col): bool;
+public function relLoaded(string $name): bool;
+public function toArray(): array;
+}
+
+interface AccountProjectInterface {
+public function get(): ?\App\Orm\AccountProjectRow;
+public function gets(): \Orm\Collection;
+public function stream(callable $visit): \Orm\StreamResult;
+public function getCount(): int;
+public function getsCount(): \Orm\Collection;
+public function insert(): ?\App\Orm\AccountProjectRow;
+public function save(): ?\App\Orm\AccountProjectRow;
+public function update(): int;
+public function delete(): int;
+public function sql(): array;
+public static function query(): static;
+public function using(\Orm\Db|\PDO $db): static;
+public function paginate(int $page, int $per): \Orm\Page;
+public function getsAfter(string $cursor, int $per): \Orm\KeysetPage;
+public function getsBefore(string $cursor, int $per): \Orm\KeysetPage;
+public function getsByAccountSeq(int $value): \Orm\Collection;
+public function getsByProjectSeq(int $value): \Orm\Collection;
+public function getCountByAccountSeq(int $value): int;
+public function getCountByProjectSeq(int $value): int;
+public function accountSeqEq(int $v): static;
+public function projectSeqEq(int $v): static;
+public function accountSeq(int $v): static;
+public function projectSeq(int $v): static;
+}
+
+interface AccountProjectRowInterface {
+public function using(\Orm\Db|\PDO $db): static;
+public function update(): void;
+public function delete(bool $cascade=false): void;
+public function deleteCascade(): void;
+public function has(string $col): bool;
+public function relLoaded(string $name): bool;
+public function toArray(): array;
+}

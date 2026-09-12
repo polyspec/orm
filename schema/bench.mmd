@@ -70,6 +70,18 @@ erDiagram
     varchar(191)  name
     datetime(6)   deleted_at "?"
   }
+  account {
+    bigint        seq PK "auto"
+    varchar(191)  name
+  }
+  project {
+    bigint        seq PK "auto"
+    varchar(191)  name
+  }
+  account_project {
+    bigint        account_seq PK, FK "-> account.seq"
+    bigint        project_seq PK, FK "-> project.seq"
+  }
 
   user           ||--o{ battle         : user_seq
   service        ||--o{ battle         : service_seq
@@ -92,3 +104,4 @@ erDiagram
   %% predicate battle visible : `is_close` = FALSE AND `is_display` = TRUE
   %% predicate battle started_after : `start_dt` > ?
   %% soft_delete soft_record deleted_at
+  %% many_to_many account project projects accounts through account_project
