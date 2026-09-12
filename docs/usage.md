@@ -209,7 +209,7 @@ node tests/typescript/common-vector.mjs
 
 ## 4. Connections
 
-Start one compiler service for all four clients. It validates the schema hash, dialect, and IR version and returns typed Protobuf plans through Connect. Database statements and row data remain in each client process.
+Compiler implementations are language-specific: Go uses its in-process compiler, Rust uses WASM, and PHP uses the Unix-socket `ormd` transport by default. Connect/Protobuf is the common compiler service path and the TypeScript default. It validates the schema hash, dialect, and IR version and returns typed plans. Database statements and row data remain in each client process.
 
 ```sh
 bin/ormd -listen 127.0.0.1:8080 -schema /srv/app/schema/schema.json -dialect mysql
