@@ -122,7 +122,7 @@ func pkGet(ctx context.Context, db *sql.DB, seq int64) (*author, error) {
 }
 
 func list100(ctx context.Context, db *sql.DB, serviceSeq int64) ([]author, error) {
-	rows, err := prep(db, "SELECT "+listCols+" FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 100").QueryContext(ctx, "bench-salt", "bench-salt", serviceSeq, 0)
+	rows, err := prep(db, "SELECT "+listCols+" FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 100").QueryContext(ctx, serviceSeq, 0)
 	if err != nil {
 		return nil, err
 	}
