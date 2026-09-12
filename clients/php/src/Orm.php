@@ -28,11 +28,14 @@ final class Orm
         }
         $daemon = self::transport()->info();
         if ($daemon['schema_hash'] !== $generated) {
-            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "generated code is from $generated, ormd at {$config->socket} loaded {$daemon['schema_hash']}");
+            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "generated code is from $generated, compiler at {$config->compilerLocation()} loaded {$daemon['schema_hash']}");
         }
         // The plans are dialect text (docs/dialects.md): ormd must compile for the database the PDO driver speaks.
         if ($daemon['dialect'] !== $config->driver) {
-            throw new OrmException(Code::CONFIG, "ormd at {$config->socket} compiles for {$daemon['dialect']} but the driver is {$config->driver}: start ormd with -dialect {$config->driver}");
+            throw new OrmException(Code::CONFIG, "compiler at {$config->compilerLocation()} compiles for {$daemon['dialect']} but the driver is {$config->driver}");
+        }
+        if (($daemon['ir_version'] ?? 1) !== 1) {
+            throw new OrmException(Code::VERSION_MISMATCH, "client IR version 1 but compiler uses {$daemon['ir_version']}");
         }
     }
 
@@ -45,7 +48,7 @@ final class Orm
     {
         $cfg = Toml::parseFile($path);
         // docs/config.md is the whole vocabulary; a key outside it is a typo, not an extension (strict, like Go).
-        $known = ['schema' => true, 'db' => ['driver', 'dsn', 'user', 'password', 'pool'], 'secrets' => ['aes', 'aes_env'], 'engine' => ['wasm', 'cache_dir'], 'ormd' => ['socket'], 'debug' => ['on_query']];
+        $known = ['schema' => true, 'db' => ['driver', 'dsn', 'user', 'password', 'pool'], 'secrets' => ['aes', 'aes_env'], 'engine' => ['wasm', 'cache_dir'], 'ormd' => ['endpoint', 'timeout_ms', 'socket'], 'debug' => ['on_query']];
         foreach ($cfg as $k => $v) {
             if (!isset($known[$k])) {
                 throw new OrmException(Code::CONFIG, "$path: unknown key $k");
@@ -59,7 +62,16 @@ final class Orm
             }
         }
         $schemaPath = self::pathOf($cfg, '', 'schema');
-        $socket = self::pathOf($cfg, 'ormd', 'socket');
+        $ormd = $cfg['ormd'] ?? [];
+        $endpoint = $ormd['endpoint'] ?? null;
+        if ($endpoint !== null && !is_string($endpoint)) {
+            throw new OrmException(Code::CONFIG, "$path: ormd.endpoint must be a string");
+        }
+        $timeoutMs = $ormd['timeout_ms'] ?? 5000;
+        if (!is_int($timeoutMs) || $timeoutMs <= 0) {
+            throw new OrmException(Code::CONFIG, "$path: ormd.timeout_ms must be a positive integer");
+        }
+        $socket = $endpoint === null ? self::pathOf($cfg, 'ormd', 'socket') : (is_string($ormd['socket'] ?? null) ? $ormd['socket'] : '/unused');
         $db = $cfg['db'] ?? throw new OrmException(Code::CONFIG, "$path: [db] is required");
         $driver = $db['driver'] ?? 'mysql';
         if (!in_array($driver, Db::DRIVERS, true)) {
@@ -113,7 +125,7 @@ final class Orm
                     json_encode($binds, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $err === null ? '' : ' ! ' . $err->getMessage()));
             };
         }
-        $config = new Config(socket: $socket, schemaPath: $schemaPath, aesKey: $aesKey, onQuery: $onQuery, driver: $driver);
+        $config = new Config(socket: $socket, schemaPath: $schemaPath, aesKey: $aesKey, onQuery: $onQuery, driver: $driver, endpoint: $endpoint, timeoutSeconds: $timeoutMs / 1000);
         if ($aesKey === '' && $config->hasSecretColumns()) {
             throw new OrmException(Code::CONFIG, "$path: the schema has aes columns; secrets.aes or secrets.aes_env is required");
         }
@@ -195,17 +207,35 @@ final class Config
         public readonly ?\Closure $onQuery = null,
         /** the database the Db speaks (mysql | postgres | sqlite); ormd must compile for the same dialect */
         public readonly string $driver = 'mysql',
+        /** Connect compiler endpoint. Null enables the temporary Unix-socket compatibility path. */
+        public readonly ?string $endpoint = null,
+        /** Compiler request timeout in seconds. */
+        public readonly float $timeoutSeconds = 5.0,
     ) {
-        if (!str_starts_with($socket, '/') || !str_starts_with($schemaPath, '/')) {
-            throw new OrmException(Code::CONFIG, 'socket and schemaPath must be absolute');
+        if (!str_starts_with($schemaPath, '/')) {
+            throw new OrmException(Code::CONFIG, 'schemaPath must be absolute');
+        }
+        if ($endpoint === null && !str_starts_with($socket, '/')) {
+            throw new OrmException(Code::CONFIG, 'socket must be absolute');
         }
         if (!in_array($driver, Db::DRIVERS, true)) {
             throw new OrmException(Code::CONFIG, "driver $driver: want mysql, postgres or sqlite");
+        }
+        if ($endpoint !== null && !preg_match('#^https?://#', $endpoint)) {
+            throw new OrmException(Code::CONFIG, 'compiler endpoint must use http:// or https://');
+        }
+        if ($timeoutSeconds <= 0) {
+            throw new OrmException(Code::CONFIG, 'compiler timeout must be positive');
         }
     }
 
     private ?array $manifest = null;
     private ?string $hash = null;
+
+    public function compilerLocation(): string
+    {
+        return $this->endpoint ?? $this->socket;
+    }
 
     private function manifest(): array
     {

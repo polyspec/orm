@@ -38,7 +38,7 @@ on_query = false            # log every statement (sql, binds with secrets maske
 
 Checks at startup (all four): `schema` exists and its `schema_hash` equals the generated client's
 (`SCHEMA_HASH_MISMATCH` otherwise — no watching, no reload); `ormd`/`engine` paths exist and are absolute;
-`secrets.aes` or `aes_env` present when the schema has aes columns; `[db].user/password` only with mysql DSNs (other drivers carry the user in the URL); the compiler dialect and IR version must equal `[db].driver` and the client IR version (`CONFIG` or `VERSION_MISMATCH` otherwise). Go and Rust use `[ormd].endpoint` for plan compilation. PHP and TypeScript executor migration remains in T7.1.
+`secrets.aes` or `aes_env` present when the schema has aes columns; `[db].user/password` only with mysql DSNs (other drivers carry the user in the URL); the compiler dialect and IR version must equal `[db].driver` and the client IR version (`CONFIG` or `VERSION_MISMATCH` otherwise). Go, PHP, and Rust use `[ormd].endpoint` for plan compilation. TypeScript executor implementation remains in T7.1.
 
 `fromConfig` opens the configured database; it does not install a default query connection.
 Select it for a root query with Go `Using(ctx, db)`, PHP `using($db)`, or Rust `using(&db)`.

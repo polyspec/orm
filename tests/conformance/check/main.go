@@ -121,16 +121,12 @@ func runAll(root, out string) {
 	sock := filepath.Join(out, "ormd.sock")
 	_ = os.Remove(sock)
 	ormdArgs := []string{"-listen", "127.0.0.1:0", "-schema", schema, "-dialect", driver}
-	if want["php"] {
-		ormdArgs = append(ormdArgs, "-socket", sock)
-	}
 	ormd := exec.Command(filepath.Join(root, "bin", "ormd"), ormdArgs...)
 	stderr, err := ormd.StderrPipe()
 	must(err)
 	must(ormd.Start())
 	sc := bufio.NewScanner(stderr)
 	endpoint := ""
-	socketReady := !want["php"]
 	for sc.Scan() {
 		line := sc.Text()
 		if marker := "Connect listening on "; strings.Contains(line, marker) {
@@ -139,14 +135,11 @@ func runAll(root, out string) {
 				endpoint = address[:slash]
 			}
 		}
-		if strings.Contains(line, "listening on "+sock) {
-			socketReady = true
-		}
-		if endpoint != "" && socketReady {
+		if endpoint != "" {
 			break
 		}
 	}
-	if endpoint == "" || !socketReady {
+	if endpoint == "" {
 		_ = ormd.Process.Kill()
 		_ = ormd.Wait()
 		must(fmt.Errorf("ormd did not report required listeners"))
@@ -184,7 +177,7 @@ func runAll(root, out string) {
 	if !want["php"] {
 		return
 	}
-	phpArgs := []string{"tests/conformance/runner.php", sock, schema}
+	phpArgs := []string{"tests/conformance/runner.php", endpoint, schema}
 	if driver != "mysql" {
 		phpArgs = append(phpArgs, "--driver", driver)
 	}
