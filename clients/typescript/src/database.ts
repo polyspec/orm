@@ -184,6 +184,30 @@ export class Db implements Database, Executor {
     return plan;
   }
 
+  /** Validates and registers an ormgen precompiled plan for one request shape. */
+  public loadPlanBundle(bundle: string | Record<string, unknown>, request: Request): void {
+    let value: Record<string, unknown>;
+    if (typeof bundle === 'string') {
+      try { value = JSON.parse(bundle) as Record<string, unknown>; }
+      catch (error) { throw new OrmError('CONFIG', `precompiled plan is invalid JSON: ${(error as Error).message}`); }
+    } else value = bundle;
+    if (value.version !== 1) throw new OrmError('VERSION_MISMATCH', `precompiled plan version ${String(value.version ?? 0)} is not supported`);
+    if (value.schema_hash !== this.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `precompiled plan schema ${String(value.schema_hash ?? '')} but client schema is ${this.schemaHash}`);
+    if (value.dialect !== this.driver) throw new OrmError('CONFIG', `precompiled plan dialect ${String(value.dialect ?? '')} but database driver is ${this.driver}`);
+    if (typeof value.request_sha256 !== 'string' || value.request_sha256 === '') throw new OrmError('CONFIG', 'precompiled plan requires request_sha256');
+    const plan = value.plan as Plan | undefined;
+    if (plan === undefined || typeof plan !== 'object' || plan.schema_hash !== this.schemaHash || plan.kind !== request.kind || !Array.isArray(plan.steps) || plan.steps.length === 0) {
+      throw new OrmError('CONFIG', 'precompiled plan body does not match its envelope or request');
+    }
+    const key = canonical(request);
+    this.plans.set(key, plan);
+    this.planOrder.push(key);
+    while (this.planOrder.length > this.planCacheSize) {
+      const oldest = this.planOrder.shift();
+      if (oldest !== undefined) this.plans.delete(oldest);
+    }
+  }
+
   public async execute(plan: Plan, params: Param[]): Promise<unknown> {
     if (plan.schema_hash !== this.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `plan schema ${plan.schema_hash} but client schema is ${this.schemaHash}`);
     if (plan.steps.length === 0) throw new OrmError('INTERNAL', 'plan has no steps');

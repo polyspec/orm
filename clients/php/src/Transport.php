@@ -132,6 +132,52 @@ final class Transport
     }
 
     /**
+     * Validates and registers a plan emitted by `ormgen precompile`. The request
+     * binds the bundle to one exact shape, so later planFor() calls use the
+     * registered plan without contacting the compiler.
+     *
+     * @param array|string $bundle decoded bundle or its JSON representation
+     */
+    public function loadPlanBundle(array|string $bundle, Req $req, string $kind): void
+    {
+        if (is_string($bundle)) {
+            $bundle = json_decode($bundle, true);
+            if (!is_array($bundle)) throw new OrmException(Code::CONFIG, 'precompiled plan is invalid JSON');
+        }
+        if (($bundle['version'] ?? null) !== 1) {
+            throw new OrmException(Code::VERSION_MISMATCH, 'precompiled plan version is not supported');
+        }
+        $schema = (string) ($bundle['schema_hash'] ?? '');
+        if ($schema !== Orm::config()->schemaHash()) {
+            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "precompiled plan schema $schema but client schema is " . Orm::config()->schemaHash());
+        }
+        $dialect = (string) ($bundle['dialect'] ?? '');
+        if ($dialect !== Orm::config()->driver) {
+            throw new OrmException(Code::CONFIG, "precompiled plan dialect $dialect but database driver is " . Orm::config()->driver);
+        }
+        if (!is_string($bundle['request_sha256'] ?? null) || $bundle['request_sha256'] === '' || !is_array($bundle['plan'] ?? null)) {
+            throw new OrmException(Code::CONFIG, 'precompiled plan requires request_sha256 and plan');
+        }
+        $plan = $bundle['plan'];
+        if (($plan['schema_hash'] ?? null) !== $schema || ($plan['kind'] ?? null) !== $kind || count($plan['steps'] ?? []) < 1) {
+            throw new OrmException(Code::CONFIG, 'precompiled plan body does not match its envelope or request');
+        }
+        Wire::check('Plan', $plan);
+        $ir = $req->shape($kind);
+        $key = $kind . "\x1f" . $req->sig . "\x1f" . count($req->params);
+        $this->local[$key] = $plan;
+        $this->localOrder[] = $key;
+        while (count($this->localOrder) > Orm::config()->planCacheSize) {
+            $oldest = array_shift($this->localOrder);
+            if ($oldest !== null) unset($this->local[$oldest]);
+        }
+        $shape = json_encode($ir, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $cacheKey = 'orm:' . Orm::config()->driver . ':' . Orm::config()->schemaHash() . ':' . hash('xxh3', $shape);
+        Assemble::index($plan, hash('xxh3', $shape));
+        if (function_exists('apcu_store')) apcu_store($cacheKey, $plan);
+    }
+
+    /**
      * Compile an IR (value-free) into a plan, cached by the IR's own bytes.
      * @param array $ir  the request without params
      */
