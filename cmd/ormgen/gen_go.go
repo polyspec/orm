@@ -196,9 +196,16 @@ func relationText(m *schema.Manifest, owner *schema.Entity, r *schema.Rel) (left
 		target := m.Entities[r.Target]
 		left = strings.Join(owner.PK, ",")
 		right = strings.Join(target.PK, ",")
-		parts := make([]string, len(owner.PK))
+		parts := make([]string, 0, len(owner.PK)+len(target.PK))
 		for i, key := range owner.PK {
-			parts[i] = pascal(key) + "With" + pascal(target.PK[i])
+			part := pascal(key)
+			if i < len(target.PK) {
+				part += "With" + pascal(target.PK[i])
+			}
+			parts = append(parts, part)
+		}
+		for i := len(owner.PK); i < len(target.PK); i++ {
+			parts = append(parts, pascal(target.PK[i]))
 		}
 		return left, right, strings.Join(parts, "And")
 	}
