@@ -3,28 +3,28 @@ layout: home
 title: Go · PHP · Rust 공통 ORM
 hero:
   name: orm
-  text: 세 언어, 하나의 계약
-  tagline: 스키마에서 쿼리·행·관계 타입을 생성하고, 공통 컴파일러와 각 언어의 드라이버로 실행해요.
+  text: Common ORM Interface for Go, PHP, and Rust
+  tagline: Generate query, row, and relation types from a schema and execute them with language-specific drivers.
   actions:
     - theme: brand
-      text: 사용법 읽기
+      text: Read the guide
       link: /usage
     - theme: alt
-      text: 공통 인터페이스
+      text: Common interface
       link: /interfaces
 features:
-  - title: 같은 문법과 구조
-    details: Query, Binding, Row, Collection의 역할과 상태를 명세하고, Go·PHP·Rust 선언과 실행 결과를 검사해요.
+  - title: Common syntax and structure
+    details: The interface defines Query, Binding, Row, and Collection roles and checks Go, PHP, and Rust declarations and results.
     link: /interfaces
-  - title: 한 번 연결하고 실행
-    details: 루트 쿼리에 실행기를 바인딩해요. get·gets·getCount와 finder는 값만 받고, 관계와 조회 행이 연결을 상속해요.
+  - title: Bind before execution
+    details: Bind the executor to the root query. Terminals receive values only, and relation queries use the root executor.
     link: /dsl
-  - title: 세 데이터베이스
-    details: MySQL, PostgreSQL, SQLite에서 같은 쿼리 의미를 유지해요. SQL 표현과 지원 범위는 방언 문서에 정리해요.
+  - title: Three databases
+    details: MySQL, PostgreSQL, and SQLite preserve query semantics. SQL differences and supported features are documented by dialect.
     link: /dialects
 ---
 
-## 같은 조회, 세 언어
+## One query in three clients
 
 ### Go
 
@@ -44,12 +44,12 @@ $count = Battle::query()->using($db)->getCountByServiceSeq(7);
 let count = battle::query().using(&db).get_count_by_service_seq(7).await?;
 ```
 
-Go의 `gen.Battle()`은 `*gen.BattleQuery`를 반환해요. Go는 실행 취소와 기한을 전달하는 `ctx`를 실행기와 함께 바인딩하고, Rust는 비동기 결과를 `await`로 받아요. 생성 표기와 오류 전달은 언어에 맞추며, 인자 의미·자료구조의 역할·실행 계약은 함께 유지해요.
+Go `gen.Battle()` returns `*gen.BattleQuery`. Go passes `ctx` with the executor, and Rust uses `await` for asynchronous results. Syntax follows each language; argument meaning, data structure roles, and execution rules are shared.
 
-[사용법](usage.md)에서 연결과 조회·쓰기·관계를 시작하고, [공통 구성요소 도표](interfaces-model.md)에서 각 역할의 소유 관계를 확인할 수 있어요.
+[Read the guide](usage.md) for binding, reads, writes, and relations. See the [component diagram](interfaces-model.md) for ownership rules.
 
-## 구현과 검증 상태
+## Implementation status
 
-현재 구현 언어는 **Go·PHP·Rust**예요. TypeScript는 아직 구현하지 않았어요. 계약별 검사 범위와 남은 작업은 [구현 대조표](interface-implementation.md)와 [체크리스트](checklist.md)에 있어요.
+The implemented clients are **Go, PHP, and Rust**. TypeScript is not implemented. See the [implementation matrix](interface-implementation.md), [checklist](checklist.md), and [S7 work list](s7.md) for verification scope and remaining work.
 
-[문법](dsl.md) · [스키마](schema.md) · [IR / Plan](protocol.md) · [복잡한 쿼리 예제](examples/complex-query.md) · [문서 빌드와 배포](docs-development.md)
+[DSL](dsl.md) · [Schema](schema.md) · [IR / Plan](protocol.md) · [Complex query example](examples/complex-query.md) · [Documentation build and deployment](docs-development.md) · [한국어 문서](ko/s7.md)
