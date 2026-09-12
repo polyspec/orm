@@ -26,16 +26,16 @@
       "failure": "a table with an aes style does not contain a non-null aes_key_version column"
     },
     {
-      "id": "docs.english-source",
+      "id": "docs.language-pair",
       "source": "docs/**/*.md",
       "checker": "docs-check",
-      "failure": "an English Markdown source is missing its adjacent .ko.md translation"
+      "failure": "an English Markdown page is missing its adjacent .ko.md translation"
     },
     {
       "id": "docs.translation-shape",
       "source": "docs/**/*.md and docs/**/*.ko.md",
       "checker": "docs-check",
-      "failure": "translation headings, code fences, tables, or links differ from the English page"
+      "failure": "translation headings, code fences, tables, or links differ between the two pages"
     },
     {
       "id": "docs.writing-style",

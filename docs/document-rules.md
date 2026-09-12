@@ -1,6 +1,6 @@
 # Documentation and Change Rules
 
-English Markdown files are the source documents. The Korean translation uses the same path and adds `.ko` before `.md`.
+English and Korean pages are published as pairs. The Korean page uses the same path and adds `.ko` before `.md`.
 
 Examples:
 
@@ -9,8 +9,8 @@ Examples:
 
 The following rules are enforced by the repository checks:
 
-1. Every English Markdown source has one Korean translation.
-2. Translation headings, code fences, tables, links, and item identifiers match the English page.
+1. Every English Markdown page has one Korean translation.
+2. Translation headings, code fences, tables, links, and item identifiers match between the two pages.
 3. Manuals use direct wording with an explicit subject and object.
 4. Manuals do not use informal endings, figurative wording, personification, or ambiguous references.
 5. New comments and commit subjects contain no conversation history or unnecessary source attribution.
