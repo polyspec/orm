@@ -9,3 +9,4 @@
 | distribution | Go: module path; PHP: composer package with `bin/ormd-…` next to it; Rust: crate loading the wasm from `[engine].wasm` (optional `include_bytes!` documented) | — | a registry publish is a separate decision |
 | configuration | one `orm.toml` per deployment, absolute paths, no discovery (`docs/config.md`) | — | — |
 | drivers | Go `go-sql-driver/mysql` (MPL-2.0), Rust `sqlx` (MIT/Apache), PHP `pdo_mysql` | sqlx PK 78µs is the driver's own cost (F2) | a measured 2× win from `mysql_async` on the hot path would justify swapping `db.rs` only |
+| YAML codec | Go `go.yaml.in/yaml/v3`, PHP `symfony/yaml`, Rust `serde_yaml_ng` with `yaml-rust2` validation, TypeScript `yaml`; lock files are committed | the same 96 vectors and invalid-input cases run in all four clients | replace a library only when the shared vectors and error cases remain unchanged |

@@ -16,6 +16,7 @@ const example = `erDiagram
     varchar(255) aes_hex_email           "? aes,hex"
     text         filepart_serialize_files
     text         upload_archive          "? filepart,serialize"
+    text         yaml_settings
     int          aes_key_version         "=1"
     varbinary(16) ip                     "ip"
     varchar(36)  uuid                UK  "?"
@@ -48,7 +49,7 @@ func TestParseExample(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(d.Entities) != 2 || d.Entities[0].Name != "author" || len(d.Entities[0].Columns) != 18 {
+	if len(d.Entities) != 2 || d.Entities[0].Name != "author" || len(d.Entities[0].Columns) != 19 {
 		t.Fatalf("entities: %+v", d.Entities)
 	}
 	cols := map[string]*DColumn{}
