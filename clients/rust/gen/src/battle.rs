@@ -1088,7 +1088,7 @@ impl Battle {
     pub async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus> {
         let binding = self.binding.clone();
         orm::aes_rotation::aes_status(binding.resolve()?, &orm::aes_rotation::AesRotationSpec {
-            table: "battle".into(), primary_keys: vec!["seq".into(),], version_column: "aes_key_version".into(), columns: vec![],
+            table: "battle".into(), primary_keys: vec!["seq".into(),], version_column: "aes_key_version".into(), columns: vec![], batch_size: 1000,
         }, keyring).await
     }
 
@@ -1097,6 +1097,7 @@ impl Battle {
         orm::aes_rotation::rotate_aes_rows(binding.resolve()?, &orm::aes_rotation::AesRotationSpec {
             table: "battle".into(), primary_keys: vec!["seq".into(),], version_column: "aes_key_version".into(),
             columns: vec![orm::aes_rotation::AesRotationColumn { name: "aes_hex_email".into(), styles: vec!["aes".into(),"hex".into(),] },orm::aes_rotation::AesRotationColumn { name: "aes_hex_phone".into(), styles: vec!["aes".into(),"hex".into(),] },],
+            batch_size: 1000,
         }, keyring).await
     }
 

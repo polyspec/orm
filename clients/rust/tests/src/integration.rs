@@ -413,13 +413,14 @@ async fn main() {
     let insert = direct_step(format!("INSERT INTO {} ({}, {}, {}, {}, {}) VALUES ({values})", quote(rotation_table), quote("tenant_id"), quote("id"), quote("aes_key_version"), quote("aes_hex_email"), quote("aes_hex_phone")), 5);
     for id in [1_i64, 2_i64] { db.execute(&insert, &[Param::I64(7), Param::I64(id), Param::I64(1), email.clone(), phone.clone()]).await.expect("seed AES rotation table"); }
     let keyring = orm::aes_rotation::AesKeyring::new([(1, "rotation-key-v1".to_owned()), (2, "rotation-key-v2".to_owned())].into_iter().collect(), 2).expect("AES keyring");
-    let spec = orm::aes_rotation::AesRotationSpec { table: rotation_table.into(), primary_keys: vec!["tenant_id".into(), "id".into()], version_column: "aes_key_version".into(), columns: vec![orm::aes_rotation::AesRotationColumn { name: "aes_hex_email".into(), styles: styles.clone() }, orm::aes_rotation::AesRotationColumn { name: "aes_hex_phone".into(), styles: styles.clone() }] };
+    let spec = orm::aes_rotation::AesRotationSpec { table: rotation_table.into(), primary_keys: vec!["tenant_id".into(), "id".into()], version_column: "aes_key_version".into(), columns: vec![orm::aes_rotation::AesRotationColumn { name: "aes_hex_email".into(), styles: styles.clone() }, orm::aes_rotation::AesRotationColumn { name: "aes_hex_phone".into(), styles: styles.clone() }], batch_size: 1 };
     let before = orm::aes_rotation::aes_status(&db, &spec, &keyring).await.expect("AES status before");
     let changed = orm::aes_rotation::rotate_aes_rows(&db, &spec, &keyring).await.expect("AES rotate");
+    let resumed = orm::aes_rotation::rotate_aes_rows(&db, &spec, &keyring).await.expect("AES rotate resume");
     let after = orm::aes_rotation::aes_status(&db, &spec, &keyring).await.expect("AES status after");
     let repeated = orm::aes_rotation::rotate_aes_rows(&db, &spec, &keyring).await.expect("AES rotate repeat");
     check!(fails, before.total == 2 && before.pending == 2 && before.versions.get(&1) == Some(&2), "AES status reports the stored source version");
-    check!(fails, changed == 2 && after.pending == 0 && after.versions.get(&2) == Some(&2) && repeated == 0, "AES rotation updates every composite-key row once and repeat is a no-op");
+    check!(fails, changed == 1 && resumed == 1 && after.pending == 0 && after.versions.get(&2) == Some(&2) && repeated == 0, "AES rotation is bounded and resumable");
     let raw = db.query(&direct_step(format!("SELECT {}, {}, {} FROM {} WHERE {} = 7 AND {} = 1", quote("aes_key_version"), quote("aes_hex_email"), quote("aes_hex_phone"), quote(rotation_table), quote("tenant_id"), quote("id")), 0), &[], vec![]).await.expect("read rotated AES row");
     let stored = orm::row::read_row(&raw[0], 3).expect("decode rotated row");
     let decoded_email = orm::codec::host_decode(&stored[1], &styles, "rotation-key-v2").expect("decode rotated email");
