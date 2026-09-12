@@ -53,7 +53,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 ## Stage 2 — S2 relations and codecs [complete; T2.15 pending]
 
 - [x] Implement relation planning, relation pagination, keying, flattening, typed values, column references, codecs, and operator validation.
-- [~] T2.15 Generate and compile a deterministic 150-table Rust fixture. The fixture and `make rust-150-check` command exist; a successful Cargo result is pending.
+- [x] T2.15 Generate and compile a deterministic 150-table Rust fixture with `make rust-150-check`.
 - [x] Run the current relation, codec, type, and database vectors.
 
 ## Stage 3 — S3 writes [complete]
@@ -91,7 +91,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [ ] T7.9 Compare Rust `mysql_async` with the current driver using recorded results.
 - [ ] T7.10 Implement and verify the `multi_statement` relation plan.
 - [ ] T7.11 Implement typed direct scans for Go and PHP and rerun the performance gates.
-- [~] T7.12 Add and compile the deterministic 150-table Rust fixture. The fixture and reproducible check exist; Cargo compilation remains.
+- [x] T7.12 Generate and compile the deterministic 150-table Rust fixture with the locked Rust dependency set.
 - [~] T7.13 Validate AES version columns and provide row rotation helpers. Add database persistence, status reporting, and equivalent database APIs for all four clients.
 - [x] T7.14 Include table and column comments in the manifest, schema hash, import, DDL, diff, and SQLite metadata. Unit and containerctl MySQL/PostgreSQL tests pass.
 - [~] T7.15 Add migration execution locking, transaction boundaries, and detailed recovery states for MySQL, PostgreSQL, and SQLite. Transaction execution, rollback reporting, and physical lock contention tests pass; explicit recovery operations remain.
@@ -116,7 +116,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 
 - [x] G0 Measure client overhead against the documented limits.
 - [x] G1 Compare shared JSON and token streams.
-- [~] G2 Complete the 150-table Rust compile check. The reproducible command exists; the local Cargo toolchain is unavailable.
+- [x] G2 Complete the 150-table Rust compile check and run it in CI.
 - [x] G3 Verify write and relation vectors for all implemented clients.
 - [x] G4 Run generated symbol, schema, and CI checks.
 - [x] G5 Verify the GitHub Actions build.
