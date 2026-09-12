@@ -74,6 +74,7 @@ jobs:
           psql -h 127.0.0.1 -U maxkwon orm_bench -q -f bench/sql/seed.pg.sql
           sqlite3 /tmp/orm_bench.sqlite < bench/sql/battle.sqlite.sql
           sqlite3 /tmp/orm_bench.sqlite < bench/sql/seed.sqlite.sql
+          go run ./bench/seedaes -driver mysql -dsn 'root@tcp(127.0.0.1:3306)/orm_bench?parseTime=true'
           go run ./bench/seedaes -driver postgres -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable'
           go run ./bench/seedaes -driver sqlite -dsn 'file:/tmp/orm_bench.sqlite'
       - name: engine
