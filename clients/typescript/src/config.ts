@@ -6,7 +6,7 @@ import { OrmError } from './runtime_error.js';
 type Section = Record<string, unknown>;
 export interface FileConfig {
   schema: string;
-  db: { driver: 'mysql' | 'postgres' | 'sqlite'; dsn: string; user?: string; password?: string; pool: number };
+  db: { driver: 'mysql' | 'postgres' | 'sqlite'; dsn: string; user?: string; password?: string; pool: number; plan_cache_size: number; statement_cache_size: number };
   secrets: { aes?: string; aes_env?: string; aes_keys?: Readonly<Record<string, string>>; aes_version: number; blind_index?: string; blind_index_env?: string };
   engine: { wasm?: string; cache_dir?: string };
   ormd: { endpoint: string; timeout_ms: number; socket?: string };
@@ -54,7 +54,7 @@ export async function loadConfig(path: string): Promise<FileConfig> {
   const engine = object(source.engine, 'engine');
   const ormd = object(source.ormd, 'ormd');
   const debug = object(source.debug, 'debug');
-  keys(db, ['driver', 'dsn', 'user', 'password', 'pool'], 'db.');
+  keys(db, ['driver', 'dsn', 'user', 'password', 'pool', 'plan_cache_size', 'statement_cache_size'], 'db.');
   keys(secrets, ['aes', 'aes_env', 'aes_keys', 'aes_version', 'blind_index', 'blind_index_env'], 'secrets.');
   keys(engine, ['wasm', 'cache_dir'], 'engine.');
   keys(ormd, ['endpoint', 'timeout_ms', 'socket'], 'ormd.');
@@ -87,7 +87,7 @@ export async function loadConfig(path: string): Promise<FileConfig> {
   if (typeof debug.on_query !== 'undefined' && typeof debug.on_query !== 'boolean') fail('debug.on_query must be a boolean');
   return {
     schema,
-    db: { driver: driver as FileConfig['db']['driver'], dsn, user, password, pool: integer(db.pool, 'db.pool', 8) },
+    db: { driver: driver as FileConfig['db']['driver'], dsn, user, password, pool: integer(db.pool, 'db.pool', 8), plan_cache_size: integer(db.plan_cache_size, 'db.plan_cache_size', 256), statement_cache_size: integer(db.statement_cache_size, 'db.statement_cache_size', 256) },
     secrets: { aes, aes_env: aesEnv, aes_keys: aesKeys as Record<string, string> | undefined, aes_version: aesVersion, blind_index: blindIndex, blind_index_env: blindIndexEnv }, engine: { wasm, cache_dir: cacheDir },
     ormd: { endpoint, timeout_ms: integer(ormd.timeout_ms, 'ormd.timeout_ms', 5_000), socket },
     debug: { on_query: debug.on_query === true },

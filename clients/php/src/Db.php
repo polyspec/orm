@@ -42,6 +42,8 @@ class Db
 
     /** @var array<string, \PDOStatement> */
     private array $stmts = [];
+	private array $stmtOrder = [];
+	private bool $closed = false;
     /** @var array<int, string> positions in the last args() result the on_query hook masks (secret → "$SECRET", now → "$NOW") */
     private array $masks = [];
     /**
@@ -140,8 +142,30 @@ class Db
 
     public function stmt(string $sql): \PDOStatement
     {
-        return $this->stmts[$sql] ??= $this->pdo->prepare($this->driver === 'postgres' ? self::questionMarks($sql) : $sql);
+		if ($this->closed) throw new OrmException(Code::CONFIG, 'database is closed');
+		if (isset($this->stmts[$sql])) return $this->stmts[$sql];
+		$statement = $this->pdo->prepare($this->driver === 'postgres' ? self::questionMarks($sql) : $sql);
+		$this->stmts[$sql] = $statement;
+		$this->stmtOrder[] = $sql;
+		$limit = Orm::config()->statementCacheSize;
+		while (count($this->stmtOrder) > $limit) {
+			$oldest = array_shift($this->stmtOrder);
+			if ($oldest !== null && isset($this->stmts[$oldest])) {
+				$this->stmts[$oldest]->closeCursor();
+				unset($this->stmts[$oldest]);
+			}
+		}
+		return $statement;
     }
+
+	public function close(): void
+	{
+		if ($this->closed) return;
+		$this->closed = true;
+		foreach ($this->stmts as $statement) $statement->closeCursor();
+		$this->stmts = [];
+		$this->stmtOrder = [];
+	}
 
     /**
      * pdo_pgsql numbers placeholders itself and binds nothing to a `$n` it did not write, so a PostgreSQL

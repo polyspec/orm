@@ -9,7 +9,7 @@
 //! from then on is converted to the type the server inferred for that placeholder.
 
 use std::borrow::Cow;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::future::Future;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -50,6 +50,8 @@ pub struct Config {
     pub blind_index_key: String,
     pub aes_version: i32,
     pub aes_keys: BTreeMap<i32, String>,
+    pub plan_cache_size: usize,
+    pub statement_cache_size: usize,
     pub on_query: Option<OnQuery>,
 }
 
@@ -105,6 +107,7 @@ pub struct Db {
     compiler: Arc<dyn PlanCompiler>,
     cfg: Arc<Config>,
     plans: Arc<Mutex<HashMap<u64, Arc<Plan>>>>,
+    plan_order: Arc<Mutex<VecDeque<u64>>>,
     /// PostgreSQL: the server-described parameter types of every statement text run so far.
     pg_types: Arc<Mutex<HashMap<String, Arc<[PgTypeInfo]>>>>,
 }
@@ -422,6 +425,9 @@ impl Db {
     }
 
     async fn connect_with_plan_compiler(opts: ConnectOptions, max_connections: u32, engine: Arc<Engine>, compiler: Arc<dyn PlanCompiler>, cfg: Config) -> Result<Db> {
+		if cfg.plan_cache_size == 0 || cfg.statement_cache_size == 0 {
+			return Err(Error::Config("cache sizes must be positive".into()));
+		}
         let metadata = compiler.metadata().await?;
         if metadata.schema_hash != engine.schema_hash {
             return Err(Error::Engine { code: crate::codes::SCHEMA_HASH_MISMATCH.into(), msg: format!("client schema {} but compiler loaded {}", engine.schema_hash, metadata.schema_hash) });
@@ -433,11 +439,11 @@ impl Db {
             return Err(Error::Engine { code: crate::codes::VERSION_MISMATCH.into(), msg: format!("client IR version 1 but compiler uses {}", metadata.ir_version) });
         }
         let pool = match opts {
-            ConnectOptions::MySql(o) => Pool::MySql(MySqlPoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(512)).await?),
-            ConnectOptions::Postgres(o) => Pool::Postgres(PgPoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(512)).await?),
-            ConnectOptions::Sqlite(o) => Pool::Sqlite(SqlitePoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(512)).await?),
+            ConnectOptions::MySql(o) => Pool::MySql(MySqlPoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(cfg.statement_cache_size)).await?),
+            ConnectOptions::Postgres(o) => Pool::Postgres(PgPoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(cfg.statement_cache_size)).await?),
+            ConnectOptions::Sqlite(o) => Pool::Sqlite(SqlitePoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(cfg.statement_cache_size)).await?),
         };
-        Ok(Db { pool, engine, compiler, cfg: Arc::new(cfg), plans: Arc::new(Mutex::new(HashMap::new())), pg_types: Arc::new(Mutex::new(HashMap::new())) })
+        Ok(Db { pool, engine, compiler, cfg: Arc::new(cfg), plans: Arc::new(Mutex::new(HashMap::new())), plan_order: Arc::new(Mutex::new(VecDeque::new())), pg_types: Arc::new(Mutex::new(HashMap::new())) })
     }
 
     /// The database this Db talks to (mysql | postgres | sqlite).
@@ -465,8 +471,27 @@ impl Db {
             st.plan_id = key;
         }
         let plan = Arc::new(plan);
-        self.plans.lock().unwrap().insert(key, plan.clone());
+        let mut plans = self.plans.lock().unwrap();
+        if !plans.contains_key(&key) {
+            plans.insert(key, plan.clone());
+            let mut order = self.plan_order.lock().unwrap();
+            order.push_back(key);
+            while order.len() > self.cfg.plan_cache_size {
+                if let Some(oldest) = order.pop_front() { plans.remove(&oldest); }
+            }
+        }
         Ok(plan)
+    }
+
+    /// Closes the pool and clears compiled plans. Calling it more than once is safe.
+    pub async fn close(&self) {
+        self.plans.lock().unwrap().clear();
+        self.plan_order.lock().unwrap().clear();
+        match &self.pool {
+            Pool::MySql(pool) => pool.close().await,
+            Pool::Postgres(pool) => pool.close().await,
+            Pool::Sqlite(pool) => pool.close().await,
+        }
     }
 
     /// Resolves a step's bind slots: params (host aes/hex/ip stages applied where the slot

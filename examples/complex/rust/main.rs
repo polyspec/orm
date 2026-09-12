@@ -18,7 +18,7 @@ async fn main() {
     gen::init(engine.clone()).expect("init");
     let dsn = std::env::var("ORM_MYSQL_URL_RUST").unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into());
     let opts = ConnectOptions::parse("mysql", &dsn).expect("dsn");
-    let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), aes_version: 1, aes_keys: [(1, "bench-salt".into())].into_iter().collect(), on_query: None }).await.expect("connect");
+    let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), aes_version: 1, aes_keys: [(1, "bench-salt".into())].into_iter().collect(), plan_cache_size: 256, statement_cache_size: 256, on_query: None }).await.expect("connect");
 
     // A join carrying its own ON and WHERE, a root group mixing a predicate with
     // navigation into the joined entity, and three levels of relations with options.
