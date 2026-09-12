@@ -3,6 +3,7 @@ declare(strict_types=1);
 require $argv[1] . '/clients/php/tests/autoload.php';
 use Orm\Wire;
 use Orm\OrmException;
+use Orm\Req;
 $manifest=json_decode(file_get_contents($argv[1].'/contracts/interfaces.json'),true,512,JSON_THROW_ON_ERROR);
 $records=array_column($manifest['records'],null,'id');
 $fields=function(string $id)use(&$fields,$records):array{
@@ -34,4 +35,9 @@ foreach($records as $id=>$r){
         $bad=$valid;$bad[$key]=($type==='text')?123:'invalid';$reject($id,$bad);
     }
 }
+$reqClass=new ReflectionClass(Req::class);
+$child=$reqClass->newInstanceWithoutConstructor();$child->ir=['entity'=>'battle','scope_p'=>0];$child->params=[7];$child->error=null;$child->sig='battle';
+$parent=$reqClass->newInstanceWithoutConstructor();$parent->ir=['entity'=>'service'];$parent->params=[9];$parent->error=null;$parent->sig='service';
+$attached=$parent->attach($child,'scope-test');
+if(($attached['scope_p']??null)!==1||($child->ir['scope_p']??null)!==0){throw new RuntimeException('attach did not shift scope_p independently');}
 echo 'php: ',count($records),' records, ',$count," field/shape mutations rejected\n";

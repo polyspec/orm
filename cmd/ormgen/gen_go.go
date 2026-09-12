@@ -667,9 +667,6 @@ type {{.Type}}Where struct{ w *orm.W }
 func (w *{{.Type}}Where) Or() *{{.Type}}Where { w.w.Or(); return w }
 func (w *{{.Type}}Where) And(fn func(*{{.Type}}Where)) *{{.Type}}Where { w.w.And(func(x *orm.W) { fn(&{{.Type}}Where{w: x}) }); return w }
 func (w *{{.Type}}Where) Expr(frag string, binds ...any) *{{.Type}}Where { w.w.Expr(frag, binds...); return w }
-{{- if .Scope}}
-func (w *{{.Type}}Where) Scope(v {{.ScopeType}}) *{{.Type}}Where { w.w.Pred({{printf "%q" .Scope}}, "eq", v); return w }
-{{- end}}
 {{- range .Rels}}
 func (w *{{$.Type}}Where) {{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.Nav({{printf "%q" .Name}}, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
 {{- end}}
@@ -714,7 +711,7 @@ func (q *{{.Type}}Query) Or() *{{.Type}}Query { q.q.Or(); return q }
 func (q *{{.Type}}Query) And(fn func(*{{.Type}}Where)) *{{.Type}}Query { q.q.W().And(func(x *orm.W) { fn(&{{.Type}}Where{w: x}) }); return q }
 func (q *{{.Type}}Query) Expr(frag string, binds ...any) *{{.Type}}Query { q.q.W().Expr(frag, binds...); return q }
 {{- if .Scope}}
-func (q *{{.Type}}Query) Scope(v {{.ScopeType}}) *{{.Type}}Query { q.q.W().Pred({{printf "%q" .Scope}}, "eq", v); return q }
+func (q *{{.Type}}Query) Scope(v {{.ScopeType}}) *{{.Type}}Query { q.q.Scope(v); return q }
 {{- end}}
 {{- range .Rels}}
 func (q *{{$.Type}}Query) {{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().Nav({{printf "%q" .Name}}, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }

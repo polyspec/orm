@@ -21,6 +21,7 @@ type BattleInterface interface {
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
 	Using(ctx context.Context, ex orm.Exec) *BattleQuery
+	Scope(v int64) *BattleQuery
 	Paginate(page, per int) (*orm.Page[BattleRow], error)
 	GetsBySeq(v int64) (*orm.Collection[BattleRow], error)
 	GetsByName(v string) (*orm.Collection[BattleRow], error)
