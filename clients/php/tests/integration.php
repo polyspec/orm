@@ -541,6 +541,14 @@ check($changed === 1 && $resumed === 1 && $after->pending === 0 && $after->versi
 check((int) $stored[0] === 2 && Codec::hostDecode($stored[1], ['aes', 'hex'], 'rotation-key-v2') === 'member@example.test' && Codec::hostDecode($stored[2], ['aes', 'hex'], 'rotation-key-v2') === '01012345678', 'AES rotation stores every AES column with the current key');
 $db->pdo->exec('DROP TABLE ' . $quote($rotationTable));
 
+$db->close();
+try {
+    $db->stmt('SELECT 140');
+    check(false, 'closed PHP database accepted a statement');
+} catch (OrmException $e) {
+    check($e->code_ === Code::CONFIG, 'PHP statement cache close error');
+}
+
 if ($fail === 0) {
     echo "ok — " . count($log) . " statements\n";
     exit(0);
