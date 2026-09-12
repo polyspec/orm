@@ -1,6 +1,14 @@
 package orm
 
-import "testing"
+import (
+	"context"
+	"database/sql"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	_ "modernc.org/sqlite"
+)
 
 func TestRotateAESRowUpdatesAllAESColumnsAndVersion(t *testing.T) {
 	keys, err := NewAESKeyring(map[int32]string{1: "old", 2: "new"}, 2)
@@ -53,5 +61,54 @@ func TestRotateAESRowDoesNotReturnPartialResult(t *testing.T) {
 	}
 	if row["aes_key_version"] != int32(1) {
 		t.Fatal("input row was changed")
+	}
+}
+
+func TestRotateAESRowsRollsBackOnMidBatchFailureAndResumes(t *testing.T) {
+	sqlDB, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "rotation-failure.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sqlDB.Close()
+	ctx := context.Background()
+	if _, err := sqlDB.ExecContext(ctx, `CREATE TABLE rotation_failure (id INTEGER PRIMARY KEY, aes_key_version INTEGER NOT NULL, aes_hex_value TEXT)`); err != nil {
+		t.Fatal(err)
+	}
+	oldValue, err := HostEncode("rotation-value", []string{"aes", "hex"}, "old")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id := 1; id <= 2; id++ {
+		if _, err := sqlDB.ExecContext(ctx, `INSERT INTO rotation_failure (id, aes_key_version, aes_hex_value) VALUES (?, 1, ?)`, id, oldValue); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := sqlDB.ExecContext(ctx, `CREATE TRIGGER rotation_failure_interrupt BEFORE UPDATE ON rotation_failure WHEN OLD.id = 2 BEGIN SELECT RAISE(ABORT, 'rotation interruption'); END`); err != nil {
+		t.Fatal(err)
+	}
+	db := &DB{SQL: sqlDB, driver: "sqlite", stmts: map[string]*sql.Stmt{}}
+	keyring, err := NewAESKeyring(map[int32]string{1: "old", 2: "new"}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec := AESRotationSpec{Table: "rotation_failure", PrimaryKeys: []string{"id"}, VersionColumn: "aes_key_version", Columns: []AESRotationColumn{{Name: "aes_hex_value", Styles: []string{"aes", "hex"}}}, BatchSize: 2}
+	if changed, err := db.RotateAESRows(ctx, db, spec, keyring); err == nil || changed != 0 || !strings.Contains(err.Error(), "rotation interruption") {
+		t.Fatalf("mid-batch failure: changed=%d err=%v", changed, err)
+	}
+	var pending int
+	if err := sqlDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM rotation_failure WHERE aes_key_version = 1`).Scan(&pending); err != nil {
+		t.Fatal(err)
+	}
+	if pending != 2 {
+		t.Fatalf("failed rotation partially committed: pending=%d", pending)
+	}
+	if _, err := sqlDB.ExecContext(ctx, `DROP TRIGGER rotation_failure_interrupt`); err != nil {
+		t.Fatal(err)
+	}
+	if changed, err := db.RotateAESRows(ctx, db, spec, keyring); err != nil || changed != 2 {
+		t.Fatalf("resume: changed=%d err=%v", changed, err)
+	}
+	if changed, err := db.RotateAESRows(ctx, db, spec, keyring); err != nil || changed != 0 {
+		t.Fatalf("repeat: changed=%d err=%v", changed, err)
 	}
 }
