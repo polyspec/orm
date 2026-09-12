@@ -343,8 +343,8 @@ final class OrmException extends \RuntimeException
 
     /**
      * The driver errors docs/errors.yaml maps to a code, per driver:
-     * MySQL 1213 / SQLSTATE 40001 → DEADLOCK, 1062 (or SQLSTATE 23000 without a driver code) → DUPLICATE_KEY;
-     * PostgreSQL SQLSTATE 40P01 (deadlock_detected) / 40001 (serialization_failure) → DEADLOCK, 23505 (unique_violation) → DUPLICATE_KEY;
+     * MySQL 1213 / SQLSTATE 40001 → DEADLOCK, 1062 → DUPLICATE_KEY, 1451/1452 → FOREIGN_KEY;
+     * PostgreSQL SQLSTATE 40P01 (deadlock_detected) / 40001 (serialization_failure) → DEADLOCK, 23505 (unique_violation) → DUPLICATE_KEY, 23503 → FOREIGN_KEY;
      * SQLite 5 / 6 (SQLITE_BUSY / SQLITE_LOCKED: the other writer wins, re-run) and their extended forms 261 / 262 → DEADLOCK,
      * SQLITE_CONSTRAINT_UNIQUE 2067 / _PRIMARYKEY 1555 → DUPLICATE_KEY — pdo_sqlite reports the primary code 19 with the
      * message "UNIQUE constraint failed: …", which is mapped the same way.
@@ -362,6 +362,9 @@ final class OrmException extends \RuntimeException
                 if ($state === '23505') {
                     return new self(Code::DUPLICATE_KEY, $e->getMessage(), $e);
                 }
+                if ($state === '23503') {
+                    return new self(Code::FOREIGN_KEY, $e->getMessage(), $e);
+                }
                 return $e;
             case 'sqlite':
                 if ($num === 5 || $num === 6 || $num === 261 || $num === 262) {
@@ -370,6 +373,9 @@ final class OrmException extends \RuntimeException
                 if ($num === 2067 || $num === 1555 || ($num === 19 && str_starts_with((string) ($e->errorInfo[2] ?? ''), 'UNIQUE constraint failed'))) {
                     return new self(Code::DUPLICATE_KEY, $e->getMessage(), $e);
                 }
+                if ($num === 787 || $num === 1811 || ($num === 19 && str_starts_with((string) ($e->errorInfo[2] ?? ''), 'FOREIGN KEY constraint failed'))) {
+                    return new self(Code::FOREIGN_KEY, $e->getMessage(), $e);
+                }
                 return $e;
         }
         if ($num === 1213 || $state === '40001') {
@@ -377,6 +383,9 @@ final class OrmException extends \RuntimeException
         }
         if ($num === 1062 || ($num === null && $state === '23000')) {
             return new self(Code::DUPLICATE_KEY, $e->getMessage(), $e);
+        }
+        if ($num === 1451 || $num === 1452) {
+            return new self(Code::FOREIGN_KEY, $e->getMessage(), $e);
         }
         return $e;
     }

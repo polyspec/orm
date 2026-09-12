@@ -448,6 +448,8 @@ func mapMySQLErr(err error) error {
 		return &ir.Error{Code: CodeDeadlock, Msg: me.Error()}
 	case me.Number == 1062 || (me.Number == 0 && state == "23000"):
 		return &ir.Error{Code: CodeDuplicateKey, Msg: me.Error()}
+	case me.Number == 1451 || me.Number == 1452:
+		return &ir.Error{Code: CodeForeignKey, Msg: me.Error()}
 	}
 	return err
 }

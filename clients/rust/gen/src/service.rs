@@ -407,15 +407,15 @@ impl Service {
     }
     pub fn join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "inner") }
     pub fn left_join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "left") }
-    fn join_target(mut self, child: impl AsRef<Q>, kind: &str) -> Self {
+    fn join_target(mut self, child: impl AsRef<Q>, _kind: &str) -> Self {
         let c = child.as_ref();
         match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
-            ("author", "seq", "service_seq") => { self.q.join("authors", kind, c); self },
-            ("author", "", "") => { self.q.join("authors", kind, c); self },
-            ("service_member", "seq", "service_seq") => { self.q.join("members", kind, c); self },
-            ("service_member", "", "") => { self.q.join("members", kind, c); self },
-            ("service_region", "seq", "service_seq") => { self.q.join("modules", kind, c); self },
-            ("service_region", "", "") => { self.q.join("modules", kind, c); self },
+            ("author", "seq", "service_seq") => { self.q.join("authors", _kind, c); self },
+            ("author", "", "") => { self.q.join("authors", _kind, c); self },
+            ("service_member", "seq", "service_seq") => { self.q.join("members", _kind, c); self },
+            ("service_member", "", "") => { self.q.join("members", _kind, c); self },
+            ("service_region", "seq", "service_seq") => { self.q.join("modules", _kind, c); self },
+            ("service_region", "", "") => { self.q.join("modules", _kind, c); self },
             _ => panic!("no relation from service"),
         }
     }

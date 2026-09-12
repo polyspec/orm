@@ -368,13 +368,13 @@ impl User {
     }
     pub fn join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "inner") }
     pub fn left_join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "left") }
-    fn join_target(mut self, child: impl AsRef<Q>, kind: &str) -> Self {
+    fn join_target(mut self, child: impl AsRef<Q>, _kind: &str) -> Self {
         let c = child.as_ref();
         match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
-            ("author", "seq", "user_seq") => { self.q.join("authors", kind, c); self },
-            ("author", "", "") => { self.q.join("authors", kind, c); self },
-            ("service_member", "seq", "user_seq") => { self.q.join("service_members", kind, c); self },
-            ("service_member", "", "") => { self.q.join("service_members", kind, c); self },
+            ("author", "seq", "user_seq") => { self.q.join("authors", _kind, c); self },
+            ("author", "", "") => { self.q.join("authors", _kind, c); self },
+            ("service_member", "seq", "user_seq") => { self.q.join("service_members", _kind, c); self },
+            ("service_member", "", "") => { self.q.join("service_members", _kind, c); self },
             _ => panic!("no relation from user"),
         }
     }

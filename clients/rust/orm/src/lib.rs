@@ -65,9 +65,9 @@ impl std::error::Error for Error {}
 
 /// Driver errors: the codes the catalog names (docs/errors.yaml, origin driver) map to a
 /// shared code keeping the driver's message — MySQL 1213 / SQLSTATE 40001 → DEADLOCK, 1062 →
-/// DUPLICATE_KEY; PostgreSQL 40P01 / 40001 → DEADLOCK, 23505 → DUPLICATE_KEY; SQLite BUSY / LOCKED
+/// DUPLICATE_KEY; PostgreSQL 40P01 / 40001 → DEADLOCK, 23505 → DUPLICATE_KEY, 23503 → FOREIGN_KEY; SQLite BUSY / LOCKED
 /// (5 / 6, primary code of any extended form: the other writer wins, re-run) → DEADLOCK,
-/// 2067 / 1555 (CONSTRAINT_UNIQUE / _PRIMARYKEY) → DUPLICATE_KEY. Everything else stays `Error::Sqlx`.
+/// 2067 / 1555 (CONSTRAINT_UNIQUE / _PRIMARYKEY) → DUPLICATE_KEY, 787 / 1811 → FOREIGN_KEY. Everything else stays `Error::Sqlx`.
 impl From<sqlx::Error> for Error {
     fn from(e: sqlx::Error) -> Self {
         use sqlx::error::DatabaseError as _;
@@ -80,6 +80,7 @@ impl From<sqlx::Error> for Error {
                         Some((codes::DEADLOCK, m.message().to_owned()))
                     }
                     (1062, _) => Some((codes::DUPLICATE_KEY, m.message().to_owned())),
+                    (1451, _) | (1452, _) => Some((codes::FOREIGN_KEY, m.message().to_owned())),
                     _ => None,
                 }
             } else if let Some(p) = d.try_downcast_ref::<sqlx::postgres::PgDatabaseError>() {
@@ -87,6 +88,7 @@ impl From<sqlx::Error> for Error {
                 match p.code() {
                     "40P01" | "40001" => Some((codes::DEADLOCK, msg())),
                     "23505" => Some((codes::DUPLICATE_KEY, msg())),
+                    "23503" => Some((codes::FOREIGN_KEY, msg())),
                     _ => None,
                 }
             } else if let Some(s) = d.try_downcast_ref::<sqlx::sqlite::SqliteError>() {
@@ -95,6 +97,7 @@ impl From<sqlx::Error> for Error {
                 match (n & 0xff, n) {
                     (5, _) | (6, _) => Some((codes::DEADLOCK, s.message().to_owned())),
                     (_, 2067) | (_, 1555) => Some((codes::DUPLICATE_KEY, s.message().to_owned())),
+                    (_, 787) | (_, 1811) => Some((codes::FOREIGN_KEY, s.message().to_owned())),
                     _ => None,
                 }
             } else {

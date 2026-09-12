@@ -59,3 +59,5 @@ pub const INTERNAL: &str = "INTERNAL";
 pub const DEADLOCK: &str = "DEADLOCK";
 /// driver: MySQL 1062 / SQLSTATE 23000
 pub const DUPLICATE_KEY: &str = "DUPLICATE_KEY";
+/// driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787/1811
+pub const FOREIGN_KEY: &str = "FOREIGN_KEY";

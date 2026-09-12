@@ -751,3 +751,79 @@ fn has(&self, name: &str) -> bool { CompositeMembershipRow::has(self,name) }
 fn rel_loaded(&self, name: &str) -> bool { CompositeMembershipRow::rel_loaded(self,name) }
 fn to_map(&self) -> Result<serde_json::Value> { CompositeMembershipRow::to_map(self) }
 }
+
+pub trait SoftRecordInterface: Sized {
+async fn get(&mut self) -> Result<Option<SoftRecordRow>>;
+async fn gets(&mut self) -> Result<Collection<SoftRecordRow>>;
+async fn stream(&mut self, visit: impl FnMut(SoftRecordRow) -> bool) -> Result<db::StreamResult>;
+async fn get_count(&mut self) -> Result<i64>;
+async fn gets_count(&mut self) -> Result<Collection<SoftRecordRow>>;
+async fn insert(&mut self) -> Result<Option<SoftRecordRow>>;
+async fn save(&mut self) -> Result<Option<SoftRecordRow>>;
+async fn update(&mut self) -> Result<u64>;
+async fn delete(&mut self) -> Result<u64>;
+async fn sql(&mut self) -> Result<db::Sql>;
+fn using(self, ex: &impl Exec) -> Self;
+async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<SoftRecordRow>>;
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<SoftRecordRow>>;
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<SoftRecordRow>>;
+async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<SoftRecordRow>>;
+async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<SoftRecordRow>>;
+async fn gets_by_deleted_at(&mut self, v: chrono::NaiveDateTime) -> Result<Collection<SoftRecordRow>>;
+async fn get_count_by_seq(&mut self, v: i64) -> Result<i64>;
+async fn get_count_by_name(&mut self, v: impl Into<String>) -> Result<i64>;
+async fn get_count_by_deleted_at(&mut self, v: chrono::NaiveDateTime) -> Result<i64>;
+fn seq_eq(self, v: i64) -> Self;
+fn name_eq(self, v: impl Into<String>) -> Self;
+fn deleted_at_eq(self, v: chrono::NaiveDateTime) -> Self;
+fn seq(self, v: i64) -> Self;
+fn name(self, v: impl Into<String>) -> Self;
+fn deleted_at(self, v: chrono::NaiveDateTime) -> Self;
+}
+impl SoftRecordInterface for SoftRecord {
+async fn get(&mut self) -> Result<Option<SoftRecordRow>> { SoftRecord::get(self).await }
+async fn gets(&mut self) -> Result<Collection<SoftRecordRow>> { SoftRecord::gets(self).await }
+async fn stream(&mut self, visit: impl FnMut(SoftRecordRow) -> bool) -> Result<db::StreamResult> { SoftRecord::stream(self,visit).await }
+async fn get_count(&mut self) -> Result<i64> { SoftRecord::get_count(self).await }
+async fn gets_count(&mut self) -> Result<Collection<SoftRecordRow>> { SoftRecord::gets_count(self).await }
+async fn insert(&mut self) -> Result<Option<SoftRecordRow>> { SoftRecord::insert(self).await }
+async fn save(&mut self) -> Result<Option<SoftRecordRow>> { SoftRecord::save(self).await }
+async fn update(&mut self) -> Result<u64> { SoftRecord::update(self).await }
+async fn delete(&mut self) -> Result<u64> { SoftRecord::delete(self).await }
+async fn sql(&mut self) -> Result<db::Sql> { SoftRecord::sql(self).await }
+fn using(mut self, ex: &impl Exec) -> Self { SoftRecord::using(self,ex) }
+async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<SoftRecordRow>> { SoftRecord::paginate(self,page,per).await }
+async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<SoftRecordRow>> { SoftRecord::gets_after(self,cursor,per).await }
+async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<SoftRecordRow>> { SoftRecord::gets_before(self,cursor,per).await }
+async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<SoftRecordRow>> { SoftRecord::gets_by_seq(self,v).await }
+async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<SoftRecordRow>> { SoftRecord::gets_by_name(self,v).await }
+async fn gets_by_deleted_at(&mut self, v: chrono::NaiveDateTime) -> Result<Collection<SoftRecordRow>> { SoftRecord::gets_by_deleted_at(self,v).await }
+async fn get_count_by_seq(&mut self, v: i64) -> Result<i64> { SoftRecord::get_count_by_seq(self,v).await }
+async fn get_count_by_name(&mut self, v: impl Into<String>) -> Result<i64> { SoftRecord::get_count_by_name(self,v).await }
+async fn get_count_by_deleted_at(&mut self, v: chrono::NaiveDateTime) -> Result<i64> { SoftRecord::get_count_by_deleted_at(self,v).await }
+fn seq_eq(mut self, v: i64) -> Self { SoftRecord::seq_eq(self,v) }
+fn name_eq(mut self, v: impl Into<String>) -> Self { SoftRecord::name_eq(self,v) }
+fn deleted_at_eq(mut self, v: chrono::NaiveDateTime) -> Self { SoftRecord::deleted_at_eq(self,v) }
+fn seq(self, v: i64) -> Self { SoftRecord::seq(self,v) }
+fn name(self, v: impl Into<String>) -> Self { SoftRecord::name(self,v) }
+fn deleted_at(self, v: chrono::NaiveDateTime) -> Self { SoftRecord::deleted_at(self,v) }
+}
+
+pub trait SoftRecordRowInterface: Sized {
+fn using(&mut self, ex: &impl Exec) -> &mut Self;
+async fn update(&mut self) -> Result<()>;
+async fn delete(&self) -> Result<()>;
+async fn delete_cascade(&self) -> Result<()>;
+fn has(&self, name: &str) -> bool;
+fn rel_loaded(&self, name: &str) -> bool;
+fn to_map(&self) -> Result<serde_json::Value>;
+}
+impl SoftRecordRowInterface for SoftRecordRow {
+fn using(&mut self, ex: &impl Exec) -> &mut Self { SoftRecordRow::using(self,ex) }
+async fn update(&mut self) -> Result<()> { SoftRecordRow::update(self).await }
+async fn delete(&self) -> Result<()> { SoftRecordRow::delete(self).await }
+async fn delete_cascade(&self) -> Result<()> { SoftRecordRow::delete_cascade(self).await }
+fn has(&self, name: &str) -> bool { SoftRecordRow::has(self,name) }
+fn rel_loaded(&self, name: &str) -> bool { SoftRecordRow::rel_loaded(self,name) }
+fn to_map(&self) -> Result<serde_json::Value> { SoftRecordRow::to_map(self) }
+}

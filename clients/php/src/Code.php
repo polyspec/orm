@@ -65,4 +65,6 @@ final class Code
     public const DEADLOCK = 'DEADLOCK';
     /** driver: MySQL 1062 / SQLSTATE 23000 */
     public const DUPLICATE_KEY = 'DUPLICATE_KEY';
+    /** driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787/1811 */
+    public const FOREIGN_KEY = 'FOREIGN_KEY';
 }

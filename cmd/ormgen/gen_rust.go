@@ -635,13 +635,13 @@ impl {{.Type}} {
     }
     pub fn join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "inner") }
     pub fn left_join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "left") }
-    fn join_target(mut self, child: impl AsRef<Q>, kind: &str) -> Self {
+    fn join_target(mut self, child: impl AsRef<Q>, _kind: &str) -> Self {
         let c = child.as_ref();
         match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
 {{- range .Rels}}
-            ({{printf "%q" .Target}}, {{printf "%q" .Left}}, {{printf "%q" .Right}}) => { self.q.join({{printf "%q" .Name}}, kind, c); self },
+            ({{printf "%q" .Target}}, {{printf "%q" .Left}}, {{printf "%q" .Right}}) => { self.q.join({{printf "%q" .Name}}, _kind, c); self },
 {{- if .Default}}
-            ({{printf "%q" .Target}}, "", "") => { self.q.join({{printf "%q" .Name}}, kind, c); self },
+            ({{printf "%q" .Target}}, "", "") => { self.q.join({{printf "%q" .Name}}, _kind, c); self },
 {{- end}}
 {{- end}}
             _ => panic!("no relation from {{.Name}}"),
