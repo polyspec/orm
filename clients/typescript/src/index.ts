@@ -51,10 +51,7 @@ export class AesKeyring {
 
 export type QueryKind = 'one' | 'all' | 'count' | 'group_count' | 'count_distinct' | 'sum' | 'avg' | 'min' | 'max' | 'paginate' | 'insert' | 'update' | 'delete' | 'raw';
 
-export interface Request {
-  ir_version: 1;
-  schema_hash: string;
-  kind: QueryKind;
+export interface RequestQuery {
   entity: string;
   scope_p?: number;
   columns?: Projection;
@@ -75,6 +72,12 @@ export interface Request {
   if_parent?: IfParent;
   drop_child_key?: boolean;
   no_cascade_delete?: boolean;
+}
+
+export interface Request extends RequestQuery {
+  ir_version: 1;
+  schema_hash: string;
+  kind: QueryKind;
   set?: Assignment[];
   on_duplicate?: Assignment[];
   optimistic?: Optimistic;
@@ -95,13 +98,14 @@ export interface Item {
   nav?: Navigation;
 }
 
+export interface ColumnReferenceIR { path: string; column: string; }
 export interface Predicate {
   conn?: string;
   column?: string;
   op?: string;
   p?: number;
   ps?: number[];
-  ref?: { path: string; column: string };
+  ref?: ColumnReferenceIR;
   expr?: string;
   match?: string[];
 }
@@ -127,8 +131,6 @@ export interface Join {
   query: RequestQuery;
 }
 
-export type RequestQuery = Omit<Request, 'ir_version'|'schema_hash'|'kind'|'set'|'on_duplicate'|'optimistic'|'raw'|'agg'|'debug'|'n_params'>;
-
 export interface Plan {
   schema_hash: string;
   kind: QueryKind;
@@ -137,7 +139,8 @@ export interface Plan {
 
 export interface PlanStep { id:number; role:string; sql:string; bind_slots:BindSlot[]; assemble?:Assemble; parent?:ParentReference; }
 export interface BindSlot { from:string; param:number; transform:string; name:string; step:number; column:string; host_styles:string[]; col_type:string; }
-export interface ParentReference { step:number; column:string; index:number; if_parent?:{column:string;index:number;param:number}; }
+export interface PlanIfParent { column:string; index:number; param:number; }
+export interface ParentReference { step:number; column:string; index:number; if_parent?:PlanIfParent; }
 export interface Assemble { entity:string; alias:string; columns:OutputColumn[]; children:Child[]; }
 export interface OutputColumn { index:number; name:string; column:string; type:string; styles:string[]; hidden:boolean; }
 export interface Child { rel:string; kind:string; step:number; parent_column:string; parent_index:number; child_column:string; child_index:number; key_by:string; key_index:number; flatten:boolean; cascade:boolean; assemble?:Assemble; }

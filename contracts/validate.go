@@ -20,18 +20,18 @@ func compact(s string) string {
 func validateRules(d document) error {
 	seen := map[string]bool{}
 	outputs := map[string]map[string]string{
-		"Optional<Row>":   {"go": "(*{Entity}Row,error)", "php": "?App\\Orm\\{Entity}Row", "rust": "Result<Option<{Entity}Row>>"},
-		"Collection<Row>": {"go": "(*orm.Collection[{Entity}Row],error)", "php": "Orm\\Collection", "rust": "Result<Collection<{Entity}Row>>"},
-		"I64":             {"go": "(int64,error)", "php": "int", "rust": "Result<i64>"},
-		"AffectedRows":    {"go": "(int64,error)", "php": "int", "rust": "Result<u64>"},
-		"Page<Row>":       {"go": "(*orm.Page[{Entity}Row],error)", "php": "Orm\\Page", "rust": "Result<Page<{Entity}Row>>"},
-		"SqlStatement":    {"go": "(*orm.Statement,error)", "php": "array", "rust": "Result<db::Sql>"},
-		"Success":         {"go": "error", "php": "void", "rust": "Result<()>"},
-		"Bool":            {"go": "bool", "php": "bool", "rust": "bool"},
-		"RowMap":          {"go": "(map[string]any,error)", "php": "array", "rust": "Result<serde_json::Value>"},
-		"Query":           {"go": "*{Entity}Query", "php": "static", "rust": "Self"},
-		"Where":           {"go": "*{Entity}Where", "php": "static", "rust": "Self"},
-		"Row":             {"go": "*{Entity}Row", "php": "static", "rust": "&mutSelf"},
+		"Optional<Row>":   {"go": "(*{Entity}Row,error)", "php": "?App\\Orm\\{Entity}Row", "rust": "Result<Option<{Entity}Row>>", "typescript": "Promise<{Entity}Row|null>"},
+		"Collection<Row>": {"go": "(*orm.Collection[{Entity}Row],error)", "php": "Orm\\Collection", "rust": "Result<Collection<{Entity}Row>>", "typescript": "Promise<Collection<{Entity}Row>>"},
+		"I64":             {"go": "(int64,error)", "php": "int", "rust": "Result<i64>", "typescript": "Promise<number>"},
+		"AffectedRows":    {"go": "(int64,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
+		"Page<Row>":       {"go": "(*orm.Page[{Entity}Row],error)", "php": "Orm\\Page", "rust": "Result<Page<{Entity}Row>>", "typescript": "Promise<Page<{Entity}Row>>"},
+		"SqlStatement":    {"go": "(*orm.Statement,error)", "php": "array", "rust": "Result<db::Sql>", "typescript": "Promise<{sql:string;binds:unknown[];}>"},
+		"Success":         {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "Promise<void>"},
+		"Bool":            {"go": "bool", "php": "bool", "rust": "bool", "typescript": "boolean"},
+		"RowMap":          {"go": "(map[string]any,error)", "php": "array", "rust": "Result<serde_json::Value>", "typescript": "Record<string,unknown>"},
+		"Query":           {"go": "*{Entity}Query", "php": "static", "rust": "Self", "typescript": "this"},
+		"Where":           {"go": "*{Entity}Where", "php": "static", "rust": "Self", "typescript": "this"},
+		"Row":             {"go": "*{Entity}Row", "php": "static", "rust": "&mutSelf", "typescript": "this"},
 	}
 	for _, r := range d.Rules {
 		if seen[r.ID] {
@@ -39,7 +39,7 @@ func validateRules(d document) error {
 		}
 		seen[r.ID] = true
 		role := strings.Split(r.ID, ".")[0]
-		for _, lang := range []string{"go", "php", "rust"} {
+		for _, lang := range []string{"go", "php", "rust", "typescript"} {
 			n, ok := r.Native[lang]
 			if !ok {
 				return fmt.Errorf("%s missing %s", r.ID, lang)
@@ -56,12 +56,18 @@ func validateRules(d document) error {
 			if lang == "rust" {
 				ret = strings.TrimPrefix(ret, "->")
 			}
+			if lang == "typescript" {
+				ret = strings.TrimPrefix(ret, ":")
+			}
 			want, ok := outputs[r.Output][lang]
 			if !ok {
 				return fmt.Errorf("%s unknown output %s", r.ID, r.Output)
 			}
 			if r.ID == "Query.query" && lang == "rust" {
 				want = "{Entity}"
+			}
+			if r.ID == "Query.query" && lang == "typescript" {
+				want = "{Entity}Query"
 			}
 			if ret != want {
 				return fmt.Errorf("%s/%s return %s does not implement %s", r.ID, lang, ret, r.Output)
@@ -87,13 +93,13 @@ func validateRules(d document) error {
 			case "":
 				permitted = []string{""}
 			case "ColumnValue":
-				permitted = map[string][]string{"go": {"v{type}"}, "php": {"{type}$v", "{type}$value"}, "rust": {"v:{type}"}}[lang]
+				permitted = map[string][]string{"go": {"v{type}"}, "php": {"{type}$v", "{type}$value"}, "rust": {"v:{type}"}, "typescript": {"value:{type}"}}[lang]
 			case "Executor,NativeExecutionControl":
-				permitted = map[string][]string{"go": {"ctxcontext.Context,exorm.Exec"}, "php": {"Orm\\Db|PDO$db"}, "rust": {"ex:&implExec"}}[lang]
+				permitted = map[string][]string{"go": {"ctxcontext.Context,exorm.Exec"}, "php": {"Orm\\Db|PDO$db"}, "rust": {"ex:&implExec"}, "typescript": {"database:Db"}}[lang]
 			case "page,per":
-				permitted = map[string][]string{"go": {"page,perint"}, "php": {"int$page,int$per"}, "rust": {"page:u32,per:u32"}}[lang]
+				permitted = map[string][]string{"go": {"page,perint"}, "php": {"int$page,int$per"}, "rust": {"page:u32,per:u32"}, "typescript": {"page:number,per:number"}}[lang]
 			case "Column", "Relation":
-				permitted = map[string][]string{"go": {"namestring", "relstring"}, "php": {"string$col", "string$name"}, "rust": {"name:&str"}}[lang]
+				permitted = map[string][]string{"go": {"namestring", "relstring"}, "php": {"string$col", "string$name"}, "rust": {"name:&str"}, "typescript": {"column:string", "relation:string"}}[lang]
 			default:
 				return fmt.Errorf("%s unrecognized input contract %v", r.ID, r.Inputs)
 			}

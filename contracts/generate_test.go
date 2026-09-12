@@ -10,7 +10,7 @@ import (
 
 func TestPointColumnTypeMappings(t *testing.T) {
 	c := &schema.Col{Type: "point"}
-	for lang, want := range map[string]string{"go": "orm.Point", "php": "array", "rust": "orm::Point"} {
+	for lang, want := range map[string]string{"go": "orm.Point", "php": "array", "rust": "orm::Point", "typescript": "Point"} {
 		if got := colType(c, lang); got != want {
 			t.Errorf("%s point type=%q want %q", lang, got, want)
 		}
@@ -22,15 +22,15 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, lang := range []string{"go", "php", "rust"} {
+	for _, lang := range []string{"go", "php", "rust", "typescript"} {
 		t.Run(lang, func(t *testing.T) {
 			var d document
 			_ = json.Unmarshal(source, &d)
 			for i := range d.Rules {
 				if d.Rules[i].ID == "Query.gets" {
 					n := d.Rules[i].Native[lang]
-					old := map[string]string{"go": "*orm.Collection[{Entity}Row]", "php": "Orm\\Collection", "rust": "Collection<{Entity}Row>"}[lang]
-					n.Signature = strings.Replace(n.Signature, old, map[string]string{"go": "int64", "php": "int", "rust": "i64"}[lang], 1)
+					old := map[string]string{"go": "*orm.Collection[{Entity}Row]", "php": "Orm\\Collection", "rust": "Collection<{Entity}Row>", "typescript": "Collection<{Entity}Row>"}[lang]
+					n.Signature = strings.Replace(n.Signature, old, map[string]string{"go": "int64", "php": "int", "rust": "i64", "typescript": "number"}[lang], 1)
 					d.Rules[i].Native[lang] = n
 				}
 			}

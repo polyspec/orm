@@ -79,10 +79,10 @@ export class Binding {
 
 export class QueryCore {
   public readonly request: RequestState;
-  public binding = new Binding();
+  public binding: Binding = new Binding();
   public keySelector?: (row: unknown) => number | string | bigint;
   public linkSelection?: { parentKey: string; childKey: string };
-  private rootWhere?: WhereCore;
+  private rootWhere: WhereCore | undefined;
   public constructor(entity: string, schemaHash = '') { this.request = new RequestState(entity, schemaHash); }
   public using(database: Db): this { this.binding = new Binding(database); this.request.ir.schema_hash = database.schemaHash; return this; }
   public scope(value: Param): this { this.request.ir.scope_p = this.request.parameter(value); return this; }
