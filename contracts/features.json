@@ -565,8 +565,8 @@
       "title": "Constraints and relation predicates",
       "title_ko": "Constraint 및 relation predicate",
       "status": "partial",
-      "description": "Preserve CHECK, index, foreign-key, soft-delete, relation existence, and relation count metadata in the planner and migration system. Many-to-many remains incomplete.",
-      "description_ko": "CHECK, index, foreign-key, soft-delete, relation existence, relation count metadata를 planner와 migration system에서 보존한다. many-to-many는 미완료 상태다.",
+      "description": "Preserve CHECK, index, foreign-key, soft-delete, relation existence, relation count, and many-to-many through metadata in the planner and migration system. Generated client and physical through execution remain incomplete.",
+      "description_ko": "CHECK, index, foreign-key, soft-delete, relation existence, relation count, many-to-many through metadata를 planner와 migration system에서 보존한다. 생성 client와 물리 through 실행은 미완료 상태다.",
       "inputs": {
         "type": "RelationDefinition",
         "fields": [
