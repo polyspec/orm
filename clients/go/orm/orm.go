@@ -66,6 +66,7 @@ type DB struct {
 	stmts     map[string]*sql.Stmt
 	stmtOrder []string
 	closeOnce sync.Once
+	closed    atomic.Bool
 	closeErr  error
 }
 
@@ -146,6 +147,7 @@ func open(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler 
 // It is idempotent and returns the first close error, if any.
 func (d *DB) Close() error {
 	d.closeOnce.Do(func() {
+		d.closed.Store(true)
 		d.planMu.Lock()
 		d.plans = map[uint64]*cached{}
 		d.planOrder = nil
@@ -599,6 +601,9 @@ func (d *DB) Plan(ctx context.Context, r *Req) (*plan.Plan, error) {
 }
 
 func (d *DB) plan(ctx context.Context, r *Req) (*cached, error) {
+	if d.closed.Load() {
+		return nil, &ir.Error{Code: CodeConfig, Msg: "database is closed"}
+	}
 	if r.Err != nil {
 		return nil, r.Err
 	}
