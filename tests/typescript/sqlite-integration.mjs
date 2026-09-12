@@ -83,6 +83,41 @@ try {
   } catch (error) { if (error !== rollback) throw error; }
   if (createdSeq === undefined || await Battle().using(db).getCountBySeq(createdSeq) !== 0) throw new Error('transaction rollback state differs');
   if (await CompositeAccount().tenantIdEq(tenantId).accountIdEq(13).using(db).getCount() !== 0) throw new Error('composite transaction rollback retained rows');
+  const batchPrefix = `tb-${Date.now().toString(36)}`;
+  const batchDraft = (uuid, name, readCount = 1) => Battle()
+    .setUuid(uuid).setName(name).setReadCount(readCount)
+    .setUserSeq(1).setServiceSeq(999).setServiceModuleSeq(1).setServiceMemberSeq(1)
+    .setStartDt('2026-06-01 00:00:00.000000').setEndDt('2026-12-31 00:00:00.000000');
+  const batchCleanup = async () => {
+    for (const suffix of ['insert', 'insert-2', 'upsert', 'rollback']) await Battle().uuidEq(`${batchPrefix}-${suffix}`).using(db).delete();
+  };
+  await batchCleanup();
+  const batchInserted = await Battle().using(db).batchInsert([
+    batchDraft(`${batchPrefix}-insert`, 'batch-1'),
+    batchDraft(`${batchPrefix}-insert-2`, 'batch-2', 2),
+  ], { chunkSize: 1 });
+  if (batchInserted.attempted !== 2 || batchInserted.affected !== 2 || batchInserted.inserted !== 2) throw new Error('batch insert result differs');
+  const batchRow = await Battle().uuidEq(`${batchPrefix}-insert`).using(db).get();
+  if (!batchRow) throw new Error('batch insert row missing');
+  let batchUpsert = await Battle().using(db).batchUpsert([batchDraft(`${batchPrefix}-upsert`, 'upsert-1')], { chunkSize: 1 });
+  if (batchUpsert.attempted !== 1 || batchUpsert.affected !== 1 || batchUpsert.inserted !== 1) throw new Error('batch upsert insert result differs');
+  batchUpsert = await Battle().using(db).batchUpsert([batchDraft(`${batchPrefix}-upsert`, 'upsert-2', 9).onDuplicateSetName('upsert-2')], { chunkSize: 1 });
+  if (batchUpsert.attempted !== 1 || batchUpsert.affected !== 1) throw new Error('batch upsert update result differs');
+  const batchUpdated = await Battle().using(db).batchUpdate([Battle().seqEq(batchRow.getSeq()).setName('batch-updated')], { chunkSize: 1 });
+  if (batchUpdated.attempted !== 1 || batchUpdated.affected !== 1) throw new Error('batch update result differs');
+  const batchDeleted = await Battle().using(db).batchDelete([
+    Battle().seqEq(batchRow.getSeq()), Battle().uuidEq(`${batchPrefix}-insert-2`),
+  ], { chunkSize: 1 });
+  if (batchDeleted.attempted !== 2 || batchDeleted.affected !== 2) throw new Error('batch delete result differs');
+  let batchRollbackFailed = false;
+  try {
+    await Battle().using(db).batchInsert([
+      batchDraft(`${batchPrefix}-rollback`, 'rollback-1'),
+      batchDraft(`${batchPrefix}-rollback`, 'rollback-2', 2),
+    ], { chunkSize: 1 });
+  } catch { batchRollbackFailed = true; }
+  if (!batchRollbackFailed || await Battle().uuidEq(`${batchPrefix}-rollback`).using(db).getCount() !== 0) throw new Error('batch rollback differs');
+  await batchCleanup();
 } finally {
   await db.close();
 }

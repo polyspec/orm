@@ -224,6 +224,46 @@ $d = $draft('php-u4')->setUuid('php-upsert')->onDuplicateSetNameExpr($concat, ['
 check($d->getSeq() === $a->getSeq() && $d->getName() === 'php-u3!' && $d->getReadCount() === 0, 'on duplicate expr + minus clamped at 0');
 check(Battle::query()->seq($a->getSeq())->using($db)->delete() === 1 && Battle::query()->seq($a->getSeq())->using($db)->getCount() === 0, 'query delete returns the affected count');
 
+$batchPrefix = 'pb-' . bin2hex(random_bytes(8));
+$batchDraft = fn(string $uuid, string $name, int $readCount = 1) => $draft($name, $readCount)->setUuid($uuid);
+$batchCleanup = function () use ($db, $batchPrefix): void {
+    foreach (['insert', 'insert-2', 'upsert', 'rollback'] as $suffix) {
+        Battle::query()->uuidEq($batchPrefix . '-' . $suffix)->using($db)->delete();
+    }
+};
+$batchCleanup();
+$batchInserted = Battle::query()->using($db)->batchInsert([
+    $batchDraft($batchPrefix . '-insert', 'batch-1'),
+    $batchDraft($batchPrefix . '-insert-2', 'batch-2', 2),
+], new BatchOptions(1));
+check($batchInserted->attempted === 2 && $batchInserted->affected === 2 && $batchInserted->inserted === 2, 'batch insert result');
+$batchRow = Battle::query()->uuidEq($batchPrefix . '-insert')->using($db)->get();
+check($batchRow !== null, 'batch insert row');
+$batchUpsert = Battle::query()->using($db)->batchUpsert([$batchDraft($batchPrefix . '-upsert', 'upsert-1')], new BatchOptions(1));
+check($batchUpsert->attempted === 1 && $batchUpsert->affected === 1 && $batchUpsert->inserted === 1, 'batch upsert insert result');
+$batchUpsert = Battle::query()->using($db)->batchUpsert([
+    $batchDraft($batchPrefix . '-upsert', 'upsert-2', 9)->onDuplicateSetName('upsert-2'),
+], new BatchOptions(1));
+check($batchUpsert->attempted === 1 && $batchUpsert->affected === 1, 'batch upsert update result');
+$batchUpdated = Battle::query()->using($db)->batchUpdate([
+    Battle::query()->seqEq($batchRow->getSeq())->setName('batch-updated'),
+], new BatchOptions(1));
+check($batchUpdated->attempted === 1 && $batchUpdated->affected === 1, 'batch update result');
+$batchDeleted = Battle::query()->using($db)->batchDelete([
+    Battle::query()->seqEq($batchRow->getSeq()),
+    Battle::query()->uuidEq($batchPrefix . '-insert-2'),
+], new BatchOptions(1));
+check($batchDeleted->attempted === 2 && $batchDeleted->affected === 2, 'batch delete result');
+$batchRollbackFailed = false;
+try {
+    Battle::query()->using($db)->batchInsert([
+        $batchDraft($batchPrefix . '-rollback', 'rollback-1'),
+        $batchDraft($batchPrefix . '-rollback', 'rollback-2', 2),
+    ], new BatchOptions(1));
+} catch (\Throwable) { $batchRollbackFailed = true; }
+check($batchRollbackFailed && Battle::query()->uuidEq($batchPrefix . '-rollback')->using($db)->getCount() === 0, 'batch rollback');
+$batchCleanup();
+
 $r = $draft('php-save')->using($db)->save();
 check($r !== null && $r->getSeq() > 0 && $r->getName() === 'php-save', 'save without pk inserts');
 $r2 = Battle::query()->setSeq($r->getSeq())->setName('php-save-2')->using($db)->save();

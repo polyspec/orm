@@ -448,6 +448,79 @@ func TestWritePaths(t *testing.T) {
 	}
 }
 
+func TestBatchWrites(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	prefix := fmt.Sprintf("gb-%x", time.Now().UnixNano())
+	draft := func(uuid, name string, readCount int64) *gen.BattleQuery {
+		return gen.Battle().
+			SetUuid(uuid).SetName(name).SetReadCount(readCount).
+			SetUserSeq(1).SetServiceSeq(999).SetServiceModuleSeq(1).SetServiceMemberSeq(1).
+			SetStartDt(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)).
+			SetEndDt(time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC))
+	}
+	cleanup := func() {
+		_, _ = gen.Battle().UuidEq(prefix+"-insert").Using(ctx, db).Delete()
+		_, _ = gen.Battle().UuidEq(prefix+"-upsert").Using(ctx, db).Delete()
+		_, _ = gen.Battle().UuidEq(prefix+"-rollback").Using(ctx, db).Delete()
+	}
+	cleanup()
+	t.Cleanup(cleanup)
+
+	inserted, err := gen.Battle().Using(ctx, db).BatchInsert([]*gen.BattleQuery{
+		draft(prefix+"-insert", "batch-1", 1),
+		draft(prefix+"-insert-2", "batch-2", 2),
+	}, orm.BatchOptions{ChunkSize: 1})
+	if err != nil || inserted.Attempted != 2 || inserted.Affected != 2 || inserted.Inserted != 2 {
+		t.Fatalf("batch insert: result=%+v err=%v", inserted, err)
+	}
+	first, err := gen.Battle().UuidEq(prefix+"-insert").Using(ctx, db).Get()
+	if err != nil || first == nil {
+		t.Fatalf("batch insert row: row=%+v err=%v", first, err)
+	}
+
+	upserted, err := gen.Battle().Using(ctx, db).BatchUpsert([]*gen.BattleQuery{
+		draft(prefix+"-upsert", "upsert-1", 1),
+	}, orm.BatchOptions{ChunkSize: 1})
+	if err != nil || upserted.Attempted != 1 || upserted.Affected != 1 || upserted.Inserted != 1 {
+		t.Fatalf("batch upsert insert: result=%+v err=%v", upserted, err)
+	}
+	upserted, err = gen.Battle().Using(ctx, db).BatchUpsert([]*gen.BattleQuery{
+		draft(prefix+"-upsert", "upsert-2", 9).OnDuplicateSetName("upsert-2"),
+	}, orm.BatchOptions{ChunkSize: 1})
+	if err != nil || upserted.Attempted != 1 || upserted.Affected != 1 {
+		t.Fatalf("batch upsert update: result=%+v err=%v", upserted, err)
+	}
+	upsertRow, err := gen.Battle().UuidEq(prefix+"-upsert").Using(ctx, db).Get()
+	if err != nil || upsertRow == nil || upsertRow.Name != "upsert-2" {
+		t.Fatalf("batch upsert row: row=%+v err=%v", upsertRow, err)
+	}
+
+	updated, err := gen.Battle().Using(ctx, db).BatchUpdate([]*gen.BattleQuery{
+		gen.Battle().SeqEq(first.Seq).SetName("batch-updated"),
+	}, orm.BatchOptions{ChunkSize: 1})
+	if err != nil || updated.Attempted != 1 || updated.Affected != 1 {
+		t.Fatalf("batch update: result=%+v err=%v", updated, err)
+	}
+	deleted, err := gen.Battle().Using(ctx, db).BatchDelete([]*gen.BattleQuery{
+		gen.Battle().SeqEq(first.Seq), gen.Battle().UuidEq(prefix + "-insert-2"),
+	}, orm.BatchOptions{ChunkSize: 1})
+	if err != nil || deleted.Attempted != 2 || deleted.Affected != 2 {
+		t.Fatalf("batch delete: result=%+v err=%v", deleted, err)
+	}
+
+	_, err = gen.Battle().Using(ctx, db).BatchInsert([]*gen.BattleQuery{
+		draft(prefix+"-rollback", "rollback-1", 1),
+		draft(prefix+"-rollback", "rollback-2", 2),
+	}, orm.BatchOptions{ChunkSize: 1})
+	if err == nil {
+		t.Fatal("batch duplicate did not fail")
+	}
+	if count, countErr := gen.Battle().UuidEq(prefix+"-rollback").Using(ctx, db).GetCount(); countErr != nil || count != 0 {
+		t.Fatalf("batch rollback: count=%d err=%v", count, countErr)
+	}
+}
+
 func TestCompositeCRUDRelationsAndPagination(t *testing.T) {
 	db := open(t)
 	ctx := context.Background()
