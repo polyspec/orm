@@ -1093,6 +1093,10 @@ func (q *ServiceMemberQuery) IfParentLikeCountEq(v int64) *ServiceMemberQuery {
 	q.q.IfParent("like_count", v)
 	return q
 }
+func (q *ServiceMemberQuery) IfParentAesKeyVersionEq(v int32) *ServiceMemberQuery {
+	q.q.IfParent("aes_key_version", v)
+	return q
+}
 func (q *ServiceMemberQuery) IfParentAesHexEmailEq(v string) *ServiceMemberQuery {
 	q.q.IfParent("aes_hex_email", v)
 	return q

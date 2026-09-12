@@ -40,6 +40,7 @@ type AuthorRow struct {
 	Uuid                  *string
 	IsSingleWork          bool
 	LikeCount             int64
+	AesKeyVersion         int32
 	AesHexEmail           *string
 	AesHexPhone           *string
 	Price                 *float64
@@ -409,6 +410,21 @@ func (r *AuthorRow) SetLikeCount(v int64) *AuthorRow {
 	return r
 }
 
+// GetAesKeyVersion is nil-safe.
+func (r *AuthorRow) GetAesKeyVersion() int32 {
+	if r == nil {
+		var zero int32
+		return zero
+	}
+	return r.AesKeyVersion
+}
+
+func (r *AuthorRow) SetAesKeyVersion(v int32) *AuthorRow {
+	r.AesKeyVersion = v
+	r.Dirty("aes_key_version", v)
+	return r
+}
+
 // GetAesHexEmail is nil-safe.
 func (r *AuthorRow) GetAesHexEmail() *string {
 	if r == nil {
@@ -711,6 +727,8 @@ func scanAuthor(vals []any, a *plan.Assemble, rs *orm.Rows) *AuthorRow {
 			r.IsSingleWork = orm.AsBool(v)
 		case "like_count":
 			r.LikeCount = orm.AsInt64(v)
+		case "aes_key_version":
+			r.AesKeyVersion = int32(orm.AsInt64(v))
 		case "aes_hex_email":
 			if v != nil {
 				x := orm.AsString(v)
@@ -872,6 +890,8 @@ func (r *AuthorRow) ToArray() (map[string]any, error) {
 			m[name] = r.IsSingleWork
 		case "like_count":
 			m[name] = r.LikeCount
+		case "aes_key_version":
+			m[name] = r.AesKeyVersion
 		case "aes_hex_email":
 			m[name] = func() any {
 				if r.AesHexEmail == nil {
@@ -993,6 +1013,7 @@ var AuthorCols = struct {
 	Uuid                  orm.ColRef
 	IsSingleWork          orm.ColRef
 	LikeCount             orm.ColRef
+	AesKeyVersion         orm.ColRef
 	AesHexEmail           orm.ColRef
 	AesHexPhone           orm.ColRef
 	Price                 orm.ColRef
@@ -1027,6 +1048,7 @@ var AuthorCols = struct {
 	Uuid:                  orm.ColRef{Column: "uuid"},
 	IsSingleWork:          orm.ColRef{Column: "is_single_work"},
 	LikeCount:             orm.ColRef{Column: "like_count"},
+	AesKeyVersion:         orm.ColRef{Column: "aes_key_version"},
 	AesHexEmail:           orm.ColRef{Column: "aes_hex_email"},
 	AesHexPhone:           orm.ColRef{Column: "aes_hex_phone"},
 	Price:                 orm.ColRef{Column: "price"},
@@ -3598,6 +3620,72 @@ func (q *AuthorQuery) LikeCountLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("like_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
+func (w *AuthorWhere) AesKeyVersionEq(v int32) *AuthorWhere {
+	w.w.Pred("aes_key_version", "eq", v)
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionEq(v int32) *AuthorQuery {
+	q.q.W().Pred("aes_key_version", "eq", v)
+	return q
+}
+func (w *AuthorWhere) AesKeyVersion(v int32) *AuthorWhere { return w.AesKeyVersionEq(v) }
+func (q *AuthorQuery) AesKeyVersion(v int32) *AuthorQuery { return q.AesKeyVersionEq(v) }
+func (w *AuthorWhere) AesKeyVersionNotEq(v int32) *AuthorWhere {
+	w.w.Pred("aes_key_version", "not_eq", v)
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionNotEq(v int32) *AuthorQuery {
+	q.q.W().Pred("aes_key_version", "not_eq", v)
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionIn(vs []int32) *AuthorWhere {
+	w.w.PredList("aes_key_version", "in", orm.Anys(vs))
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionIn(vs []int32) *AuthorQuery {
+	q.q.W().PredList("aes_key_version", "in", orm.Anys(vs))
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionNotIn(vs []int32) *AuthorWhere {
+	w.w.PredList("aes_key_version", "not_in", orm.Anys(vs))
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionNotIn(vs []int32) *AuthorQuery {
+	q.q.W().PredList("aes_key_version", "not_in", orm.Anys(vs))
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionIsNull() *AuthorWhere {
+	w.w.PredNull("aes_key_version", "is_null")
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionIsNull() *AuthorQuery {
+	q.q.W().PredNull("aes_key_version", "is_null")
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionIsNotNull() *AuthorWhere {
+	w.w.PredNull("aes_key_version", "is_not_null")
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionIsNotNull() *AuthorQuery {
+	q.q.W().PredNull("aes_key_version", "is_not_null")
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("aes_key_version", "eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionEqCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("aes_key_version", "eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionNotEqCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("aes_key_version", "not_eq_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionNotEqCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("aes_key_version", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) AesHexEmailEq(v string) *AuthorWhere {
 	w.w.Pred("aes_hex_email", "eq", v)
 	return w
@@ -4620,6 +4708,24 @@ func (q *AuthorQuery) SelectLikeCountAs(name string) *AuthorQuery {
 	c.As[name] = "like_count"
 	return q
 }
+func (q *AuthorQuery) SelectAesKeyVersion() *AuthorQuery {
+	c := q.q.Columns()
+	c.Add = append(c.Add, "aes_key_version")
+	return q
+}
+func (q *AuthorQuery) UnselectAesKeyVersion() *AuthorQuery {
+	c := q.q.Columns()
+	c.Remove = append(c.Remove, "aes_key_version")
+	return q
+}
+func (q *AuthorQuery) SelectAesKeyVersionAs(name string) *AuthorQuery {
+	c := q.q.Columns()
+	if c.As == nil {
+		c.As = map[string]string{}
+	}
+	c.As[name] = "aes_key_version"
+	return q
+}
 func (q *AuthorQuery) SelectAesHexEmail() *AuthorQuery {
 	c := q.q.Columns()
 	c.Add = append(c.Add, "aes_hex_email")
@@ -5012,6 +5118,19 @@ func (q *AuthorQuery) GroupByLikeCount() *AuthorQuery {
 	return q
 }
 func (q *AuthorQuery) KeyByLikeCount() *AuthorQuery { q.q.Node.KeyBy = "like_count"; return q }
+func (q *AuthorQuery) OrderByAesKeyVersionAsc() *AuthorQuery {
+	q.q.Order("aes_key_version", false)
+	return q
+}
+func (q *AuthorQuery) OrderByAesKeyVersionDesc() *AuthorQuery {
+	q.q.Order("aes_key_version", true)
+	return q
+}
+func (q *AuthorQuery) GroupByAesKeyVersion() *AuthorQuery {
+	q.q.Node.GroupBy = append(q.q.Node.GroupBy, "aes_key_version")
+	return q
+}
+func (q *AuthorQuery) KeyByAesKeyVersion() *AuthorQuery { q.q.Node.KeyBy = "aes_key_version"; return q }
 func (q *AuthorQuery) OrderByAesHexEmailAsc() *AuthorQuery {
 	q.q.Order("aes_hex_email", false)
 	return q
@@ -5273,6 +5392,11 @@ func (q *AuthorQuery) SetLikeCountExpr(frag string, binds ...any) *AuthorQuery {
 	q.q.SetExpr("like_count", frag, binds...)
 	return q
 }
+func (q *AuthorQuery) SetAesKeyVersion(v int32) *AuthorQuery { q.q.Set("aes_key_version", v); return q }
+func (q *AuthorQuery) SetAesKeyVersionExpr(frag string, binds ...any) *AuthorQuery {
+	q.q.SetExpr("aes_key_version", frag, binds...)
+	return q
+}
 func (q *AuthorQuery) SetAesHexEmail(v string) *AuthorQuery { q.q.Set("aes_hex_email", v); return q }
 func (q *AuthorQuery) SetAesHexEmailNull() *AuthorQuery     { q.q.SetNull("aes_hex_email"); return q }
 func (q *AuthorQuery) SetAesHexEmailExpr(frag string, binds ...any) *AuthorQuery {
@@ -5378,8 +5502,16 @@ func (q *AuthorQuery) MinusServiceMemberSeq(v int64) *AuthorQuery {
 }
 func (q *AuthorQuery) PlusLikeCount(v int64) *AuthorQuery  { q.q.Plus("like_count", v); return q }
 func (q *AuthorQuery) MinusLikeCount(v int64) *AuthorQuery { q.q.Minus("like_count", v); return q }
-func (q *AuthorQuery) PlusPrice(v float64) *AuthorQuery    { q.q.Plus("price", v); return q }
-func (q *AuthorQuery) MinusPrice(v float64) *AuthorQuery   { q.q.Minus("price", v); return q }
+func (q *AuthorQuery) PlusAesKeyVersion(v int32) *AuthorQuery {
+	q.q.Plus("aes_key_version", v)
+	return q
+}
+func (q *AuthorQuery) MinusAesKeyVersion(v int32) *AuthorQuery {
+	q.q.Minus("aes_key_version", v)
+	return q
+}
+func (q *AuthorQuery) PlusPrice(v float64) *AuthorQuery  { q.q.Plus("price", v); return q }
+func (q *AuthorQuery) MinusPrice(v float64) *AuthorQuery { q.q.Minus("price", v); return q }
 
 // ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
 func (q *AuthorQuery) OnDuplicateSetName(v string) *AuthorQuery { q.q.OnDuplicate("name", v); return q }
@@ -5560,6 +5692,14 @@ func (q *AuthorQuery) OnDuplicateSetLikeCountExpr(frag string, binds ...any) *Au
 	q.q.OnDuplicateExpr("like_count", frag, binds...)
 	return q
 }
+func (q *AuthorQuery) OnDuplicateSetAesKeyVersion(v int32) *AuthorQuery {
+	q.q.OnDuplicate("aes_key_version", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateSetAesKeyVersionExpr(frag string, binds ...any) *AuthorQuery {
+	q.q.OnDuplicateExpr("aes_key_version", frag, binds...)
+	return q
+}
 func (q *AuthorQuery) OnDuplicateSetAesHexEmail(v string) *AuthorQuery {
 	q.q.OnDuplicate("aes_hex_email", v)
 	return q
@@ -5699,6 +5839,14 @@ func (q *AuthorQuery) OnDuplicatePlusLikeCount(v int64) *AuthorQuery {
 }
 func (q *AuthorQuery) OnDuplicateMinusLikeCount(v int64) *AuthorQuery {
 	q.q.OnDuplicateMinus("like_count", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicatePlusAesKeyVersion(v int32) *AuthorQuery {
+	q.q.OnDuplicatePlus("aes_key_version", v)
+	return q
+}
+func (q *AuthorQuery) OnDuplicateMinusAesKeyVersion(v int32) *AuthorQuery {
+	q.q.OnDuplicateMinus("aes_key_version", v)
 	return q
 }
 func (q *AuthorQuery) OnDuplicatePlusPrice(v float64) *AuthorQuery {
@@ -5868,6 +6016,11 @@ func (q *AuthorQuery) GetsByLikeCount(v int64) (*orm.Collection[AuthorRow], erro
 	return q.LikeCount(v).Gets()
 }
 
+// GetsByAesKeyVersion applies aes_key_version = v and runs the collection terminal.
+func (q *AuthorQuery) GetsByAesKeyVersion(v int32) (*orm.Collection[AuthorRow], error) {
+	return q.AesKeyVersion(v).Gets()
+}
+
 // GetsByAesHexEmail applies aes_hex_email = v and runs the collection terminal.
 func (q *AuthorQuery) GetsByAesHexEmail(v string) (*orm.Collection[AuthorRow], error) {
 	return q.AesHexEmail(v).Gets()
@@ -6034,6 +6187,11 @@ func (q *AuthorQuery) GetCountByIsSingleWork(v bool) (int64, error) {
 // GetCountByLikeCount applies like_count = v and runs the scalar count terminal.
 func (q *AuthorQuery) GetCountByLikeCount(v int64) (int64, error) {
 	return q.LikeCount(v).GetCount()
+}
+
+// GetCountByAesKeyVersion applies aes_key_version = v and runs the scalar count terminal.
+func (q *AuthorQuery) GetCountByAesKeyVersion(v int32) (int64, error) {
+	return q.AesKeyVersion(v).GetCount()
 }
 
 // GetCountByAesHexEmail applies aes_hex_email = v and runs the scalar count terminal.
@@ -6267,6 +6425,26 @@ func (q *AuthorQuery) AvgLikeCount() (float64, error) {
 	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "like_count"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsFloat64(v), err
+}
+func (q *AuthorQuery) SumAesKeyVersion() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
+	q.q.Req.IR.Kind = "sum"
+	q.q.Req.IR.Agg = "aes_key_version"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsFloat64(v), err
+}
+func (q *AuthorQuery) AvgAesKeyVersion() (float64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
+	q.q.Req.IR.Kind = "avg"
+	q.q.Req.IR.Agg = "aes_key_version"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }

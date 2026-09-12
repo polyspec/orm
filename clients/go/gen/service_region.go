@@ -975,6 +975,10 @@ func (q *ServiceRegionQuery) IfParentLikeCountEq(v int64) *ServiceRegionQuery {
 	q.q.IfParent("like_count", v)
 	return q
 }
+func (q *ServiceRegionQuery) IfParentAesKeyVersionEq(v int32) *ServiceRegionQuery {
+	q.q.IfParent("aes_key_version", v)
+	return q
+}
 func (q *ServiceRegionQuery) IfParentAesHexEmailEq(v string) *ServiceRegionQuery {
 	q.q.IfParent("aes_hex_email", v)
 	return q

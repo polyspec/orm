@@ -280,6 +280,7 @@ final class ServiceRegion extends Q implements ServiceRegionInterface
     public function ifParentUuidEq(string $v): static { $this->ifParent('uuid', $v); return $this; }
     public function ifParentIsSingleWorkEq(bool $v): static { $this->ifParent('is_single_work', $v); return $this; }
     public function ifParentLikeCountEq(int $v): static { $this->ifParent('like_count', $v); return $this; }
+    public function ifParentAesKeyVersionEq(int $v): static { $this->ifParent('aes_key_version', $v); return $this; }
     public function ifParentAesHexEmailEq(string $v): static { $this->ifParent('aes_hex_email', $v); return $this; }
     public function ifParentAesHexPhoneEq(string $v): static { $this->ifParent('aes_hex_phone', $v); return $this; }
 
