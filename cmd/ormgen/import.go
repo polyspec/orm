@@ -14,6 +14,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -566,11 +567,12 @@ func readTablesPG(db *sql.DB, only map[string]bool) ([]impTable, error) {
 			}
 			continue
 		}
-		if n := len(tb.Indexes); n > 0 && tb.Indexes[n-1].Name == name {
+		logicalName := postgresLogicalIndexName(table, name, unique)
+		if n := len(tb.Indexes); n > 0 && tb.Indexes[n-1].Name == logicalName {
 			tb.Indexes[n-1].Columns = append(tb.Indexes[n-1].Columns, col)
 			continue
 		}
-		tb.Indexes = append(tb.Indexes, impIndex{Name: name, Unique: unique, Fulltext: am == "gin", Columns: []string{col}})
+		tb.Indexes = append(tb.Indexes, impIndex{Name: logicalName, Unique: unique, Fulltext: am == "gin", Columns: []string{col}})
 	}
 	if err := irows.Err(); err != nil {
 		return nil, err
@@ -612,12 +614,48 @@ func readTablesPG(db *sql.DB, only map[string]bool) ([]impTable, error) {
 		fk.Columns = append(fk.Columns, column)
 		fk.TargetColumns = append(fk.TargetColumns, targetColumn)
 	}
+	if err := frows.Err(); err != nil {
+		return nil, err
+	}
+	if err := frows.Close(); err != nil {
+		return nil, err
+	}
+	grows, err := db.Query(`SELECT cl.relname, ic.relname, pg_get_indexdef(ic.oid)
+		FROM pg_class cl
+		JOIN pg_namespace n ON n.oid=cl.relnamespace AND n.nspname=current_schema()
+		JOIN pg_index ix ON ix.indrelid=cl.oid
+		JOIN pg_class ic ON ic.oid=ix.indexrelid
+		JOIN pg_am am ON am.oid=ic.relam
+		WHERE am.amname='gin'
+		ORDER BY cl.relname, ic.relname`)
+	if err != nil {
+		return nil, err
+	}
+	defer grows.Close()
+	for grows.Next() {
+		var table, name, definition string
+		if err := grows.Scan(&table, &name, &definition); err != nil {
+			return nil, err
+		}
+		tb := byName[table]
+		if tb == nil {
+			continue
+		}
+		columns, err := postgresFulltextColumns(definition)
+		if err != nil {
+			return nil, fmt.Errorf("table %s index %s: %w", table, name, err)
+		}
+		tb.Indexes = append(tb.Indexes, impIndex{Name: name, Fulltext: true, Columns: columns})
+	}
+	if err := grows.Err(); err != nil {
+		return nil, err
+	}
 	sort.Strings(order)
 	out := make([]impTable, 0, len(order))
 	for _, n := range order {
 		out = append(out, *byName[n])
 	}
-	return out, frows.Err()
+	return out, nil
 }
 
 func postgresDeleteAction(code string) string {
@@ -629,6 +667,34 @@ func postgresDeleteAction(code string) string {
 	default:
 		return ""
 	}
+}
+
+func postgresLogicalIndexName(table, physical string, unique bool) string {
+	if unique {
+		return physical
+	}
+	return strings.TrimPrefix(physical, table+"_")
+}
+
+var postgresCoalesceColumn = regexp.MustCompile(`(?i)coalesce\s*\(\s*\(?\s*"?([a-z_][a-z0-9_]*)"?\s*,`)
+
+func postgresFulltextColumns(definition string) ([]string, error) {
+	if !strings.Contains(strings.ToLower(definition), "to_tsvector") {
+		return nil, fmt.Errorf("unsupported PostgreSQL GIN expression: %s", definition)
+	}
+	matches := postgresCoalesceColumn.FindAllStringSubmatch(definition, -1)
+	columns := make([]string, 0, len(matches))
+	seen := map[string]bool{}
+	for _, match := range matches {
+		if !seen[match[1]] {
+			seen[match[1]] = true
+			columns = append(columns, match[1])
+		}
+	}
+	if len(columns) == 0 {
+		return nil, fmt.Errorf("unsupported PostgreSQL GIN expression: %s", definition)
+	}
+	return columns, nil
 }
 
 // pgTypeText renders a PostgreSQL column as the DB type text the diagram uses
