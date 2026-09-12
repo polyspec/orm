@@ -1,7 +1,10 @@
-.PHONY: check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check
+.PHONY: check ts-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check
 
-check: docs-rules-check
+check: docs-rules-check ts-check
 	go test ./...
+
+ts-check:
+	npm run typescript:check
 
 docs-dev:
 	npm run docs:dev

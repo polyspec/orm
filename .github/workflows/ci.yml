@@ -63,6 +63,8 @@ jobs:
           go run ./bench/seedaes -driver sqlite -dsn 'file:/tmp/orm_bench.sqlite'
       - name: engine
         run: go test ./engine/... ./contracts ./tests/interfaces/check && go vet ./...
+      - name: typescript common structure
+        run: npm run typescript:check && node tests/typescript/check.mjs
       - name: artifacts
         run: |
           mkdir -p bin
