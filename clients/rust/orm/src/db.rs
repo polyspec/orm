@@ -685,6 +685,26 @@ impl Tx {
         Ok(())
     }
 
+    pub async fn savepoint(&self, name: &str) -> Result<()> { self.control("SAVEPOINT", name).await }
+    pub async fn rollback_to(&self, name: &str) -> Result<()> { self.control("ROLLBACK TO SAVEPOINT", name).await }
+    pub async fn release_savepoint(&self, name: &str) -> Result<()> { self.control("RELEASE SAVEPOINT", name).await }
+
+    async fn control(&self, command: &str, name: &str) -> Result<()> {
+        self.assert_active()?;
+        if !valid_savepoint_name(name) {
+            return Err(Error::Config("savepoint name must match [A-Za-z_][A-Za-z0-9_]*".into()));
+        }
+        let sql = format!("{command} {name}");
+        let mut guard = self.inner.lock().await;
+        let tx = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
+        match tx {
+            TxInner::MySql(t) => { sqlx::query(sqlx::AssertSqlSafe(sql.clone()).into_sql_str()).execute(&mut **t).await?; }
+            TxInner::Postgres(t) => { sqlx::query(sqlx::AssertSqlSafe(sql.clone()).into_sql_str()).execute(&mut **t).await?; }
+            TxInner::Sqlite(t) => { sqlx::query(sqlx::AssertSqlSafe(sql.clone()).into_sql_str()).execute(&mut **t).await?; }
+        }
+        Ok(())
+    }
+
     async fn commit(&self) -> Result<()> {
         self.finished.store(true, Ordering::Release);
         if let Some(t) = self.inner.lock().await.take() {
@@ -707,6 +727,15 @@ impl Tx {
             };
         }
     }
+}
+
+fn valid_savepoint_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    match chars.next() {
+        Some(c) if c == '_' || c.is_ascii_alphabetic() => {}
+        _ => return false,
+    }
+    chars.all(|c| c == '_' || c.is_ascii_alphanumeric())
 }
 
 type MySqlQuery<'q> = sqlx::query::Query<'q, MySql, sqlx::mysql::MySqlArguments>;

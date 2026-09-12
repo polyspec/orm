@@ -398,6 +398,7 @@ Battle::query()->seq($id)->using($db)->delete();
 - `update` always writes `updated_ts` explicitly so the value is consistent across dialects.
 - `minus<Col>` clamps at zero. Use `set<Col>Expr('`read_count` * ? + 1', [2])` for an expression.
 - Transactions use each language native transaction API. The callback runs once by default. Deadlock retry requires `TransactionOptions` with `retryDeadlocks` enabled and is limited by `maxAttempts` (default 3).
+- A transaction can use `savepoint(name)`, `rollbackTo(name)`, and `releaseSavepoint(name)` without ending the outer transaction. Savepoint names use `[A-Za-z_][A-Za-z0-9_]*`; invalid names fail with `CONFIG` before SQL execution.
 
 ```go
 row, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {

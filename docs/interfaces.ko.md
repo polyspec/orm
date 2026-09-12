@@ -134,7 +134,7 @@ binding이 없는 terminal은 `CONFIG`다. transaction 종료 후 terminal도 `C
 
 binding은 실행 context와 database 또는 transaction 참조 하나를 포함한다. query 복사는 request 값을 공유할 수 있지만 mutable builder 상태는 공유하지 않는다. 자식 relation은 root binding을 사용한다. 로드된 row는 update와 delete에 필요한 binding을 보존한다.
 
-transaction을 만든 코드가 소유권을 가진다. commit과 rollback은 binding을 종료한다. 이후 해당 transaction의 query와 row는 실행을 거부한다. 중첩 transaction과 savepoint은 v1 범위가 아니다.
+transaction을 만든 코드가 소유권을 가진다. commit과 rollback은 binding을 종료한다. 이후 해당 transaction의 query와 row는 실행을 거부한다. transaction은 `savepoint(name)`, `rollbackTo(name)`, `releaseSavepoint(name)`을 제공한다. 이름은 `[A-Za-z_][A-Za-z0-9_]*`와 일치해야 하며 잘못된 이름은 `CONFIG`로 거부한다. 이 작업은 바깥 transaction을 종료하지 않는다.
 
 오류는 안정된 code와 원래 driver message를 보존한다. 취소 시 transaction을 해제하고 client 객체에 활성 connection을 남기지 않는다.
 
