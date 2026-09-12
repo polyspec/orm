@@ -63,6 +63,29 @@ go run ./cmd/ormgen import --dsn "root@unix(/tmp/mysql.sock)/mydb" --out schema/
 go run ./cmd/ormgen import --dsn "postgres://user@localhost:5432/mydb" --out schema/app.mmd   # PostgreSQL도 동일
 ```
 
+## 2.1 테이블 생성과 마이그레이션 생성
+
+manifest에서 데이터베이스별 `CREATE TABLE` SQL을 생성한다.
+
+```sh
+go run ./cmd/ormgen ddl --schema schema/schema.json --dialect mysql --out create.mysql.sql
+go run ./cmd/ormgen ddl --schema schema/schema.json --dialect postgres --out create.postgres.sql
+go run ./cmd/ormgen ddl --schema schema/schema.json --dialect sqlite --out create.sqlite.sql
+```
+
+선택한 SQL 파일은 해당 DB의 migration 도구나 client로 적용한다. `ormgen ddl`은 SQL 파일을 생성하며 DB에 연결하지 않는다.
+
+마이그레이션은 이전 manifest를 보관하고 Mermaid schema를 수정한 뒤 새 manifest와 diff를 생성한다.
+
+```sh
+cp schema/schema.json schema/schema.previous.json
+go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
+go run ./cmd/ormgen diff --from schema/schema.previous.json --to schema/schema.json \
+  --dialect mysql --out migration.mysql.sql
+```
+
+적용 전에 SQL을 검토한다. 테이블 삭제, 컬럼 삭제, 컬럼 정의 변경에는 `--allow-destructive`가 필요하다. rename은 안전 여부를 추정할 수 없으므로 명시적인 migration으로 작성한다. 도구는 migration을 직접 적용하거나 rollback SQL을 생성하지 않는다. 이전 schema를 보관하고 migration 검토 과정에서 rollback SQL을 작성한다.
+
 ---
 
 ## 3. 코드 생성

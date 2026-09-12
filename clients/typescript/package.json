@@ -1,5 +1,15 @@
 {
   "name": "@polyspec/orm-typescript",
-  "private": true,
-  "type": "module"
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  }
 }
