@@ -971,8 +971,42 @@ func (p *Planner) renderExistence(b *builder, parent *scope, nav *ir.Nav) (strin
 	target := p.M.Entities[rel.Target]
 	child := &scope{ent: target, alias: "exists__" + nav.Rel, q: &ir.Query{Entity: target.Name}, joins: map[string]*scope{}, parent: parent}
 	conditions := make([]string, 0, len(rel.Keys)+1)
-	for _, key := range rel.Keys {
-		conditions = append(conditions, p.qcol(child, key.Target)+" = "+p.qcol(parent, key.Local))
+	if rel.Through == "" {
+		for _, key := range rel.Keys {
+			conditions = append(conditions, p.qcol(child, key.Target)+" = "+p.qcol(parent, key.Local))
+		}
+	} else {
+		through := p.M.Entities[rel.Through]
+		if through == nil || len(rel.ThroughKeys) == 0 {
+			return "", &ir.Error{Code: "SCHEMA_INVALID", Msg: parent.ent.Name + "." + nav.Rel + " has incomplete through metadata"}
+		}
+		throughAlias := "through__" + nav.Rel
+		var targetCols, sourceCols, parentCols []string
+		for _, key := range rel.ThroughKeys {
+			targetCols = append(targetCols, p.D.Quote(throughAlias)+"."+p.D.Quote(key.Local))
+		}
+		for _, key := range rel.Keys {
+			sourceCols = append(sourceCols, p.D.Quote(throughAlias)+"."+p.D.Quote(key.Target))
+			parentCols = append(parentCols, p.qcol(parent, key.Local))
+		}
+		inner := "SELECT " + strings.Join(targetCols, ", ") + " FROM " + p.D.Quote(through.Table) + " AS " + p.D.Quote(throughAlias) + " WHERE "
+		if len(sourceCols) == 1 {
+			inner += sourceCols[0] + " = " + parentCols[0]
+		} else {
+			inner += "(" + strings.Join(sourceCols, ", ") + ") = (" + strings.Join(parentCols, ", ") + ")"
+		}
+		if through.SoftDelete != "" {
+			inner += " AND " + p.D.Quote(throughAlias) + "." + p.D.Quote(through.SoftDelete) + " IS NULL"
+		}
+		childTargetCols := make([]string, len(rel.ThroughKeys))
+		for i, key := range rel.ThroughKeys {
+			childTargetCols[i] = p.qcol(child, key.Target)
+		}
+		if len(childTargetCols) == 1 {
+			conditions = append(conditions, childTargetCols[0]+" IN ("+inner+")")
+		} else {
+			conditions = append(conditions, "("+strings.Join(childTargetCols, ", ")+") IN ("+inner+")")
+		}
 	}
 	if target.SoftDelete != "" {
 		conditions = append(conditions, p.qcol(child, target.SoftDelete)+" IS NULL")

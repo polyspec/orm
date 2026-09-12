@@ -25,7 +25,7 @@ The executable source is [contracts/features.json](../contracts/features.json). 
 - `keyset_pagination`: Provide versioned cursors, total composite ordering, validation, and forward and backward traversal.
 - `transactions`: Expose opt-in retry, isolation, read-only mode, savepoints, row locks, timeout, and cancellation with capability errors.
 - `precompiled_plans`: Load a validated plan bundle and execute a matching request without a compiler call.
-- `constraints_and_relations`: Preserve CHECK, index, foreign-key, soft-delete, relation existence, and relation count metadata in the planner and migration system. Many-to-many remains incomplete.
+- `constraints_and_relations`: Preserve CHECK, index, foreign-key, soft-delete, relation existence, relation count, and many-to-many through metadata in the planner and migration system. Generated client and physical through execution remain incomplete.
 - `conformance_verification`: Run common input vectors through Go, PHP, Rust, and TypeScript and compare normalized results for each database.
 
 Run make feature-check to validate paths and execute every verification command declared for non-planned features. An implemented feature requires tests and paired documentation; partial and planned are incomplete.

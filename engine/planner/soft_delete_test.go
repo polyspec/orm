@@ -190,3 +190,38 @@ func TestManyToManyRelationUsesThroughSubquery(t *testing.T) {
 		t.Fatalf("many-to-many relation SQL differs: %s", sql)
 	}
 }
+
+func TestManyToManyExistenceUsesThroughSubquery(t *testing.T) {
+	d, err := schema.Parse(`erDiagram
+ account {
+ bigint id PK
+ }
+ project {
+ bigint id PK
+ }
+ account_project {
+ bigint account_id PK "-> account.id"
+ bigint project_id PK "-> project.id"
+ }
+ %% many_to_many account project projects accounts through account_project
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := schema.Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := &ir.Request{IRVersion: ir.Version, SchemaHash: m.SchemaHash, Kind: "all", Query: ir.Query{Entity: "account", Where: &ir.Group{Items: []ir.Item{{Nav: &ir.Nav{Rel: "projects", Mode: "exists", Group: &ir.Group{}}}}}}}
+	if err := ir.Validate(m, req); err != nil {
+		t.Fatalf("many-to-many existence was rejected: %v", err)
+	}
+	plan, err := (&Planner{M: m, D: dialect.SQLite{}}).Compile(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sql := plan.Steps[0].SQL
+	if !strings.Contains(sql, `EXISTS (SELECT 1 FROM "project" AS "exists__projects"`) || !strings.Contains(sql, `SELECT "through__projects"."project_id" FROM "account_project" AS "through__projects"`) {
+		t.Fatalf("many-to-many existence SQL differs: %s", sql)
+	}
+}
