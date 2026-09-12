@@ -110,7 +110,7 @@ try {
   });
   assert.ok((await interactive.locator('#VPContent').innerText()).includes('getCountBy'), 'Search did not navigate to matching content');
   await interactive.goto(`${server.origin}${base}interfaces.html`);
-  await interactive.getByRole('switch', { name: '어두운 테마' }).click();
+  await interactive.getByRole('switch').first().click();
   await interactive.waitForFunction(() => document.documentElement.classList.contains('dark'));
   await interactive.setViewportSize({ width: 390, height: 844 });
   await interactive.reload();
