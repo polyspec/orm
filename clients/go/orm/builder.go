@@ -209,6 +209,9 @@ func (q *Q) OrderExpr(frag string, desc bool) {
 	q.Node.Order = append(q.Node.Order, ir.Order{Expr: frag, Desc: desc})
 }
 
+// Lock requests a database row lock for the root row select.
+func (q *Q) Lock(mode string) { q.Node.Lock = mode }
+
 func (q *Q) GroupByExpr(expr, as string) {
 	q.Node.GroupByExpr = append(q.Node.GroupByExpr, ir.GroupExpr{Expr: expr, As: as})
 }

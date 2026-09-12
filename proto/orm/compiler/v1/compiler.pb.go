@@ -301,6 +301,7 @@ type QueryNode struct {
 	DropChildKey      bool                   `protobuf:"varint,18,opt,name=drop_child_key,json=dropChildKey,proto3" json:"drop_child_key,omitempty"`
 	NoCascadeDelete   bool                   `protobuf:"varint,19,opt,name=no_cascade_delete,json=noCascadeDelete,proto3" json:"no_cascade_delete,omitempty"`
 	ScopeParameter    *uint32                `protobuf:"varint,20,opt,name=scope_parameter,json=scopeParameter,proto3,oneof" json:"scope_parameter,omitempty"`
+	Lock              string                 `protobuf:"bytes,21,opt,name=lock,proto3" json:"lock,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -473,6 +474,13 @@ func (x *QueryNode) GetScopeParameter() uint32 {
 		return *x.ScopeParameter
 	}
 	return 0
+}
+
+func (x *QueryNode) GetLock() string {
+	if x != nil {
+		return x.Lock
+	}
+	return ""
 }
 
 type Projection struct {
@@ -2372,7 +2380,7 @@ const file_proto_orm_compiler_v1_compiler_proto_rawDesc = "" +
 	"\x0fparameter_count\x18\t \x01(\rR\x0eparameterCount\x12\x1c\n" +
 	"\taggregate\x18\n" +
 	" \x01(\tR\taggregate\x12\x14\n" +
-	"\x05debug\x18\v \x01(\bR\x05debug\"\xf3\x06\n" +
+	"\x05debug\x18\v \x01(\bR\x05debug\"\x87\a\n" +
 	"\tQueryNode\x12\x16\n" +
 	"\x06entity\x18\x01 \x01(\tR\x06entity\x125\n" +
 	"\acolumns\x18\x02 \x01(\v2\x1b.orm.compiler.v1.ProjectionR\acolumns\x12&\n" +
@@ -2395,7 +2403,8 @@ const file_proto_orm_compiler_v1_compiler_proto_rawDesc = "" +
 	"\tif_parent\x18\x11 \x01(\v2\x19.orm.compiler.v1.IfParentR\bifParent\x12$\n" +
 	"\x0edrop_child_key\x18\x12 \x01(\bR\fdropChildKey\x12*\n" +
 	"\x11no_cascade_delete\x18\x13 \x01(\bR\x0fnoCascadeDelete\x12,\n" +
-	"\x0fscope_parameter\x18\x14 \x01(\rH\x00R\x0escopeParameter\x88\x01\x01B\x12\n" +
+	"\x0fscope_parameter\x18\x14 \x01(\rH\x00R\x0escopeParameter\x88\x01\x01\x12\x12\n" +
+	"\x04lock\x18\x15 \x01(\tR\x04lockB\x12\n" +
 	"\x10_scope_parameter\"\xb3\x03\n" +
 	"\n" +
 	"Projection\x124\n" +

@@ -408,6 +408,8 @@ impl Service {
     pub fn order_by_expr(mut self, frag: &str, desc: bool) -> Self { self.q.order_expr(frag, desc); self }
     pub fn group_by_expr(mut self, expr: &str, as_: &str) -> Self { self.q.group_by_expr(expr, as_); self }
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
+    pub fn for_update(mut self) -> Self { self.q.lock("update"); self }
+    pub fn for_share(mut self) -> Self { self.q.lock("share"); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
     /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
     pub fn having(mut self, f: impl FnOnce(ServiceWhere<'_>) -> ServiceWhere<'_>) -> Self { { let w = self.q.having_w(); f(ServiceWhere { w }); } self }

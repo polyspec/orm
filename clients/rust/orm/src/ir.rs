@@ -65,6 +65,8 @@ pub struct Query {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub force_index: String,
     #[serde(skip_serializing_if = "String::is_empty")]
+    pub lock: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub key_by: String,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub flatten: bool,

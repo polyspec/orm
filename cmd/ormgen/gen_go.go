@@ -893,6 +893,8 @@ func (q *{{$.Type}}Query) KeyBy{{.Field}}() *{{$.Type}}Query { q.q.Node.KeyBy = 
 func (q *{{.Type}}Query) OrderByExpr(frag string, desc bool) *{{.Type}}Query { q.q.OrderExpr(frag, desc); return q }
 func (q *{{.Type}}Query) GroupByExpr(expr, as string) *{{.Type}}Query { q.q.GroupByExpr(expr, as); return q }
 func (q *{{.Type}}Query) Limit(offset, count int) *{{.Type}}Query { q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}; return q }
+func (q *{{.Type}}Query) ForUpdate() *{{.Type}}Query { q.q.Lock("update"); return q }
+func (q *{{.Type}}Query) ForShare() *{{.Type}}Query { q.q.Lock("share"); return q }
 func (q *{{.Type}}Query) Distinct() *{{.Type}}Query { q.q.Node.Distinct = true; return q }
 {{- range .Indexes}}
 func (q *{{$.Type}}Query) ForceIndex{{pascal .}}() *{{$.Type}}Query { q.q.Node.ForceIdx = {{printf "%q" .}}; return q }

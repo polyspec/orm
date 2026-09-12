@@ -88,7 +88,7 @@ func queryFromProto(in *compilerv1.QueryNode, path string) (*ir.Query, error) {
 	if in == nil {
 		return nil, invalid("%s is nil", path)
 	}
-	out := &ir.Query{Entity: in.Entity, On: groupFromProto(in.On), Where: groupFromProto(in.Where), Having: groupFromProto(in.Having), GroupBy: append([]string(nil), in.GroupBy...), Distinct: in.Distinct, ForceIdx: in.ForceIndex, KeyBy: in.KeyBy, Flatten: in.Flatten, LimitPerParent: int(in.LimitPerParent), DropChildKey: in.DropChildKey, NoCascadeDelete: in.NoCascadeDelete}
+	out := &ir.Query{Entity: in.Entity, On: groupFromProto(in.On), Where: groupFromProto(in.Where), Having: groupFromProto(in.Having), GroupBy: append([]string(nil), in.GroupBy...), Distinct: in.Distinct, ForceIdx: in.ForceIndex, Lock: in.Lock, KeyBy: in.KeyBy, Flatten: in.Flatten, LimitPerParent: int(in.LimitPerParent), DropChildKey: in.DropChildKey, NoCascadeDelete: in.NoCascadeDelete}
 	if in.ScopeParameter != nil {
 		value := int(*in.ScopeParameter)
 		out.ScopeP = &value
@@ -136,7 +136,7 @@ func queryToProto(in *ir.Query, path string) (*compilerv1.QueryNode, error) {
 	if in == nil {
 		return nil, invalid("%s is nil", path)
 	}
-	out := &compilerv1.QueryNode{Entity: in.Entity, GroupBy: append([]string(nil), in.GroupBy...), Distinct: in.Distinct, ForceIndex: in.ForceIdx, KeyBy: in.KeyBy, Flatten: in.Flatten, DropChildKey: in.DropChildKey, NoCascadeDelete: in.NoCascadeDelete}
+	out := &compilerv1.QueryNode{Entity: in.Entity, GroupBy: append([]string(nil), in.GroupBy...), Distinct: in.Distinct, ForceIndex: in.ForceIdx, Lock: in.Lock, KeyBy: in.KeyBy, Flatten: in.Flatten, DropChildKey: in.DropChildKey, NoCascadeDelete: in.NoCascadeDelete}
 	var err error
 	if out.LimitPerParent, err = uint32Value(in.LimitPerParent, path+".limit_per_parent"); err != nil {
 		return nil, err

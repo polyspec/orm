@@ -225,6 +225,8 @@ impl Q {
         self.req.ir.query.order.push(Order { column: String::new(), expr: frag.into(), desc });
     }
 
+    pub fn lock(&mut self, mode: &str) { self.node().lock = mode.into(); }
+
     pub fn group_by_expr(&mut self, expr: &str, as_: &str) {
         self.req.ir.query.group_by_expr.push(GroupExpr { expr: expr.into(), as_: as_.into() });
     }

@@ -912,7 +912,9 @@ func (q *CompositeAccountQuery) Limit(offset, count int) *CompositeAccountQuery 
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *CompositeAccountQuery) Distinct() *CompositeAccountQuery { q.q.Node.Distinct = true; return q }
+func (q *CompositeAccountQuery) ForUpdate() *CompositeAccountQuery { q.q.Lock("update"); return q }
+func (q *CompositeAccountQuery) ForShare() *CompositeAccountQuery  { q.q.Lock("share"); return q }
+func (q *CompositeAccountQuery) Distinct() *CompositeAccountQuery  { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
 func (q *CompositeAccountQuery) Flatten() *CompositeAccountQuery { q.q.Node.Flatten = true; return q }

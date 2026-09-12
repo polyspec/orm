@@ -52,6 +52,7 @@ function query(value: RequestQuery, path: string): any {
     ifParent:value.if_parent ? {column:value.if_parent.column,parameter:uint(value.if_parent.p,`${path}.if_parent.parameter`)} : undefined,
     dropChildKey:value.drop_child_key??false, noCascadeDelete:value.no_cascade_delete??false,
     scopeParameter:value.scope_p === undefined ? undefined : uint(value.scope_p,`${path}.scope_parameter`),
+    lock:value.lock,
   };
 }
 
