@@ -108,6 +108,18 @@ class Db
      */
     public static function postgres(string $dsn, ?string $user = null, ?string $password = null, bool $persistent = true): self
     {
+        if (str_starts_with($dsn, 'postgres://') || str_starts_with($dsn, 'postgresql://')) {
+            $url = parse_url($dsn);
+            if ($url === false || !isset($url['host'], $url['path'])) {
+                throw new OrmException(Code::CONFIG, "invalid PostgreSQL URL $dsn");
+            }
+            parse_str($url['query'] ?? '', $query);
+            $parts = ['host=' . $url['host'], 'port=' . ($url['port'] ?? 5432), 'dbname=' . ltrim($url['path'], '/')];
+            if ($user === null && isset($url['user'])) $user = rawurldecode($url['user']);
+            if ($password === null && isset($url['pass'])) $password = rawurldecode($url['pass']);
+            if (isset($query['sslmode'])) $parts[] = 'sslmode=' . $query['sslmode'];
+            $dsn = 'pgsql:' . implode(';', $parts);
+        }
         try {
             return new self(new \PDO($dsn, $user, $password, [\PDO::ATTR_PERSISTENT => $persistent]), 'postgres');
         } catch (\PDOException $e) {
