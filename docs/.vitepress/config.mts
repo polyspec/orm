@@ -16,7 +16,7 @@ export default defineConfig({
   lang: 'en-US',
   base,
   cleanUrls: false,
-  // Translation sources remain beside English pages while published Korean pages use /ko/.
+  // Korean pages are published under /ko/.
   rewrites: id => id.endsWith('.ko.md') ? `ko/${id.slice(0, -'.ko.md'.length)}.md` : id,
   // Stable insertion order keeps the local search index reproducible.
   buildConcurrency: 1,
@@ -80,7 +80,7 @@ export default defineConfig({
         backButtonTitle: '검색 닫기', noResultsText: '검색 결과가 없어요.',
         footer: { selectText: '선택', navigateText: '이동', closeText: '닫기' } },
     } } } } },
-    footer: { message: 'MIT License · Go / PHP / Rust', copyright: 'polyspec · orm' },
+    footer: { message: 'MIT License · Go / PHP / Rust / TypeScript', copyright: 'polyspec · orm' },
   },
   markdown: {
     config(md) {
