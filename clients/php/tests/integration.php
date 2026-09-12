@@ -16,6 +16,7 @@ use App\Orm\Service;
 use App\Orm\ServiceMember;
 use App\Orm\ServiceModule;
 use App\Orm\ServiceWhere;
+use App\Orm\SoftRecord;
 use App\Orm\User;
 use App\Orm\UserWhere;
 use Orm\Code;
@@ -585,6 +586,10 @@ try {
     if ($error !== $compositeRollback) { throw $error; }
 }
 check(CompositeAccount::query()->tenantIdEq($tenantId)->accountIdEq(13)->using($db)->getCount() === 0, 'composite transaction rollback removes both rows');
+$soft = SoftRecord::query()->setName('soft-delete')->using($db)->insert();
+check($soft !== null && SoftRecord::query()->using($db)->getCount() === 1, 'soft-delete insert is visible');
+if ($soft !== null) $soft->delete();
+check($soft !== null && SoftRecord::query()->using($db)->getCount() === 0 && SoftRecord::query()->using($db)->getBySeq($soft->getSeq()) === null, 'soft-delete row is hidden after delete');
 $first->using($db)->delete();
 check(CompositeMembership::query()->tenantIdEq($tenantId)->using($db)->getCount() === 1, 'composite row delete uses every key component');
 CompositeMembership::query()->tenantIdEq($tenantId)->using($db)->delete();

@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { Battle, CompositeAccount, CompositeMembership, ConnectCompiler, Db, Service } from '../../clients/typescript/dist/index.js';
+import { Battle, CompositeAccount, CompositeMembership, ConnectCompiler, Db, Service, SoftRecord } from '../../clients/typescript/dist/index.js';
 
 const endpoint = process.argv[2];
 const driver = process.env.ORM_TEST_DRIVER ?? 'sqlite';
@@ -88,6 +88,10 @@ try {
   } catch (error) { if (error !== rollback) throw error; }
   if (createdSeq === undefined || await Battle().using(db).getCountBySeq(createdSeq) !== 0) throw new Error('transaction rollback state differs');
   if (await CompositeAccount().tenantIdEq(tenantId).accountIdEq(13).using(db).getCount() !== 0) throw new Error('composite transaction rollback retained rows');
+  const soft = await SoftRecord().setName('soft-delete').using(db).insert();
+  if (!soft || await SoftRecord().using(db).getCount() !== 1) throw new Error('soft-delete insert was not visible');
+  await soft.delete();
+  if (await SoftRecord().using(db).getCount() !== 0 || await SoftRecord().using(db).getBySeq(soft.getSeq()) !== null) throw new Error('soft-delete row remained visible');
   const batchPrefix = `tb-${Date.now().toString(36)}`;
   const batchDraft = (uuid, name, readCount = 1) => Battle()
     .setUuid(uuid).setName(name).setReadCount(readCount)

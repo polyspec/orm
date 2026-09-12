@@ -67,3 +67,5 @@ codes:
     origin: driver
   - code: DUPLICATE_KEY           # MySQL 1062 / SQLSTATE 23000
     origin: driver
+  - code: FOREIGN_KEY             # MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787/1811
+    origin: driver
