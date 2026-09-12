@@ -538,7 +538,7 @@ impl {{.Type}} {
     pub async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus> {
         let binding = self.binding.clone();
         orm::aes_rotation::aes_status(binding.resolve()?, &orm::aes_rotation::AesRotationSpec {
-            table: {{printf "%q" .Table}}.into(), primary_keys: vec![{{range .KeyCols}}{{printf "%q" .}}.into(),{{end}}], version_column: {{printf "%q" .AESVersion}}.into(), columns: vec![],
+            table: {{printf "%q" .Table}}.into(), primary_keys: vec![{{range .KeyCols}}{{printf "%q" .}}.into(),{{end}}], version_column: {{printf "%q" .AESVersion}}.into(), columns: vec![], batch_size: 1000,
         }, keyring).await
     }
 
@@ -547,6 +547,7 @@ impl {{.Type}} {
         orm::aes_rotation::rotate_aes_rows(binding.resolve()?, &orm::aes_rotation::AesRotationSpec {
             table: {{printf "%q" .Table}}.into(), primary_keys: vec![{{range .KeyCols}}{{printf "%q" .}}.into(),{{end}}], version_column: {{printf "%q" .AESVersion}}.into(),
             columns: vec![{{range .AESCols}}orm::aes_rotation::AesRotationColumn { name: {{printf "%q" .Name}}.into(), styles: vec![{{range .Styles}}{{printf "%q" .}}.into(),{{end}}] },{{end}}],
+            batch_size: 1000,
         }, keyring).await
     }
 {{- end}}

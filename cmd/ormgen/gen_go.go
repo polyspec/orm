@@ -747,6 +747,7 @@ func (q *{{.Type}}Query) RotateAES(keyring orm.AESKeyring) (int, error) {
 	ctx, ex, err := q.binding.Resolve(); if err != nil { return 0, err }
 	return ex.DB().RotateAESRows(ctx, ex, orm.AESRotationSpec{
 		Table: {{printf "%q" .Table}}, PrimaryKeys: []string{ {{quoteList .PKNames}} }, VersionColumn: {{printf "%q" .AESVersion}},
+		BatchSize: 1000,
 		Columns: []orm.AESRotationColumn{
 {{- range .AESCols}}
 			{Name: {{printf "%q" .Name}}, Styles: {{styleList .Styles}}},
