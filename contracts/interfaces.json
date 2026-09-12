@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:78380e751c512afc3867301dba1ae7ac482dfb345df5e338e5e534b6eeadaa7f",
-    "php": "sha256:45e6f4684b55c46d46a4ecd073840ece707eb96cd18d829da6bd5614d1372811",
-    "rust": "sha256:20520c7fcceec79178c7f5e4c8dfbf4cecb3722bb4841f342f2a856a3c153dac",
-    "typescript": "sha256:421d9bc21250ec0ba39b1598e7198ae185aae04bb9cceb6d689b5b792974dd56"
+    "go": "sha256:b1456a2b95b0be090fcf76ca37a80bef8b292ae01ff6ebb33f7b0f1c3bda7243",
+    "php": "sha256:3fc4172afa0f3ede8489761809e3deec6e91b6337324a2b32cc3a3701705465b",
+    "rust": "sha256:f3f84d09e32d304fb9e04ed6a1b2d87ec15d0cccf3509a4e5b8f9a7365ce5d74",
+    "typescript": "sha256:99d3ffd39b48b85a8fa6a9089d1e49d1bf5416f50c8938195ae3842397db8da9"
   },
   "prohibited_symbols": [
     "multi_statement"
@@ -58,6 +58,8 @@
         "relation",
         "get",
         "gets",
+        "getsAfter",
+        "getsBefore",
         "stream",
         "getCount",
         "insert",
@@ -889,6 +891,58 @@
         "typescript": {
           "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.paginate",
           "signature": "public async paginate(page: number, per: number): Promise<Page<{Entity}Row>>"
+        }
+      }
+    },
+    {
+      "id": "Query.getsAfter",
+      "for": "entity",
+      "inputs": ["Cursor", "PositiveLimit"],
+      "output": "KeysetPage<Row>",
+      "errors": ["CURSOR_INVALID", "IR_INVALID", "CONFIG", "driver/codec error"],
+      "state": "Uses the typed cursor and stable primary-key order; returns rows and boundary cursors",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetsAfter",
+          "signature": "receiver=*{Entity}Query func(cursor string, per int) (*orm.KeysetPage[{Entity}Row], error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::Polyspec\\Orm\\Tests\\Model\\{Entity}::getsAfter",
+          "signature": "public function getsAfter(string $cursor, int $per): Orm\\KeysetPage"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::gets_after",
+          "signature": "pub async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<{Entity}Row>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getsAfter",
+          "signature": "public async getsAfter(cursor: string, per: number): Promise<KeysetPage<{Entity}Row>>"
+        }
+      }
+    },
+    {
+      "id": "Query.getsBefore",
+      "for": "entity",
+      "inputs": ["Cursor", "PositiveLimit"],
+      "output": "KeysetPage<Row>",
+      "errors": ["CURSOR_INVALID", "IR_INVALID", "CONFIG", "driver/codec error"],
+      "state": "Uses the typed cursor and stable primary-key order; returns rows and boundary cursors in request order",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetsBefore",
+          "signature": "receiver=*{Entity}Query func(cursor string, per int) (*orm.KeysetPage[{Entity}Row], error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::Polyspec\\Orm\\Tests\\Model\\{Entity}::getsBefore",
+          "signature": "public function getsBefore(string $cursor, int $per): Orm\\KeysetPage"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::gets_before",
+          "signature": "pub async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<{Entity}Row>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getsBefore",
+          "signature": "public async getsBefore(cursor: string, per: number): Promise<KeysetPage<{Entity}Row>>"
         }
       }
     },
@@ -1959,6 +2013,7 @@
         "flatten": "bool",
         "limit_per_parent": "integer",
         "if_parent": "IRIfParent",
+        "keyset": "IRKeyset",
         "drop_child_key": "bool",
         "no_cascade_delete": "bool"
       },
@@ -1981,9 +2036,23 @@
         "flatten",
         "limit_per_parent",
         "if_parent",
+        "keyset",
         "drop_child_key",
         "no_cascade_delete"
       ]
+    },
+    {
+      "id": "IRKeyset",
+      "native": {
+        "go": "engine/ir/ir.go::Keyset",
+        "rust": "clients/rust/orm/src/ir.rs::Keyset",
+        "typescript": "clients/typescript/src/index.ts::Keyset"
+      },
+      "fields": {
+        "direction": "text",
+        "values": "list<integer>"
+      },
+      "optional": []
     },
     {
       "id": "IRColumns",

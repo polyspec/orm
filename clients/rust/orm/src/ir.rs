@@ -1,7 +1,7 @@
 //! Value-free IR (docs/protocol.md). Mirrors engine/ir/ir.go; serialized with
 //! the same field names so the engine validates it as-is.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Request {
@@ -66,6 +66,8 @@ pub struct Query {
     pub force_index: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub lock: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub keyset: Option<Keyset>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub key_by: String,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
@@ -81,6 +83,13 @@ pub struct Query {
     pub no_cascade_delete: bool,
 }
 
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct Keyset {
+    pub direction: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub values: Vec<usize>,
+}
+
 fn is_zero(n: &u32) -> bool {
     *n == 0
 }
@@ -93,7 +102,10 @@ pub struct Columns {
     pub add: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub remove: Vec<String>,
-    #[serde(rename = "as", skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    #[serde(
+        rename = "as",
+        skip_serializing_if = "std::collections::BTreeMap::is_empty"
+    )]
     pub as_: std::collections::BTreeMap<String, String>,
     #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub expr: std::collections::BTreeMap<String, String>,
@@ -161,14 +173,14 @@ pub struct Nav {
     pub group: Group,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Order {
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub column: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub expr: String,
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
-    pub desc: bool,
+	#[serde(default, skip_serializing_if = "String::is_empty")]
+	pub column: String,
+	#[serde(default, skip_serializing_if = "String::is_empty")]
+	pub expr: String,
+	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
+	pub desc: bool,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -216,7 +228,9 @@ pub struct Optimist {
 impl Query {
     /// Shift every parameter index by `off` (used when attaching a child query).
     pub fn shift(&mut self, off: usize) {
-        if let Some(p) = self.scope_p.as_mut() { *p += off; }
+        if let Some(p) = self.scope_p.as_mut() {
+            *p += off;
+        }
         if let Some(g) = self.on.as_mut() {
             g.shift(off);
         }

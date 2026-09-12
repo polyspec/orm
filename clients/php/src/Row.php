@@ -422,6 +422,71 @@ final class Page
     ) {}
 }
 
+final class KeysetCursor
+{
+    private const VERSION = 1;
+
+    /** @param list<array{column?: string, expr?: string, desc?: bool}> $order @param list<mixed> $values */
+    public static function encode(array $order, array $values): string
+    {
+        if ($order === [] || count($order) !== count($values)) throw new OrmException(Code::CURSOR_INVALID, 'cursor order and values have different lengths');
+        $encoded = [];
+        foreach ($values as $index => $value) {
+            if (is_bool($value)) $encoded[] = ['type' => 'bool', 'value' => $value];
+            elseif (is_int($value)) $encoded[] = ['type' => 'i64', 'value' => (string)$value];
+            elseif (is_float($value) && is_finite($value)) $encoded[] = ['type' => 'f64', 'value' => $value];
+            elseif (is_string($value)) $encoded[] = ['type' => 'string', 'value' => $value];
+            elseif ($value instanceof \DateTimeInterface) $encoded[] = ['type' => 'datetime', 'value' => (new \DateTimeImmutable($value->format('Y-m-d H:i:s.u'), $value->getTimezone()))->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u')];
+            else throw new OrmException(Code::CURSOR_INVALID, "cursor value $index has an unsupported type");
+        }
+        $json = json_encode(['version' => self::VERSION, 'order' => $order, 'values' => $encoded], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        return rtrim(strtr(base64_encode($json), '+/', '-_'), '=');
+    }
+
+    /** @return array{order: list<array<string,mixed>>, values: list<mixed>} */
+    public static function decode(string $cursor): array
+    {
+        if ($cursor === '') throw new OrmException(Code::CURSOR_INVALID, 'cursor is empty');
+        $raw = base64_decode(strtr($cursor, '-_', '+/'), true);
+        if ($raw === false) throw new OrmException(Code::CURSOR_INVALID, 'cursor is not valid base64url');
+        try { $value = json_decode($raw, true, 16, JSON_THROW_ON_ERROR); } catch (\Throwable $e) { throw new OrmException(Code::CURSOR_INVALID, 'cursor JSON is invalid: ' . $e->getMessage()); }
+        if (!is_array($value) || ($value['version'] ?? null) !== self::VERSION || !is_array($value['order'] ?? null) || !is_array($value['values'] ?? null) || count($value['order']) === 0 || count($value['order']) !== count($value['values'])) throw new OrmException(Code::CURSOR_INVALID, 'cursor version, order, or values are invalid');
+        $params = [];
+        foreach ($value['values'] as $index => $encoded) {
+            $type = $encoded['type'] ?? '';
+            $rawValue = $encoded['value'] ?? null;
+            if ($type === 'bool' && is_bool($rawValue)) $params[] = $rawValue;
+            elseif ($type === 'i64' && is_string($rawValue) && preg_match('/^-?[0-9]+$/', $rawValue)) $params[] = (int)$rawValue;
+            elseif ($type === 'f64' && is_float($rawValue) && is_finite($rawValue)) $params[] = $rawValue;
+            elseif (($type === 'string' || $type === 'datetime') && is_string($rawValue)) $params[] = $rawValue;
+            else throw new OrmException(Code::CURSOR_INVALID, "cursor value $index has an invalid representation");
+        }
+        return ['order' => $value['order'], 'values' => $params];
+    }
+}
+
+final class KeysetPage
+{
+    public function __construct(public readonly Collection $items, public readonly string $nextCursor, public readonly string $previousCursor) {}
+
+    /** @param list<array{column?: string, expr?: string, desc?: bool}> $order */
+    public static function fromRows(Rows $rows, Collection $items, array $order): self
+    {
+        if ($rows->data === []) return new self($items, '', '');
+        $values = static function (array $row) use ($rows, $order): array {
+            $out = [];
+            foreach ($order as $item) {
+                $column = $item['column'] ?? '';
+                $found = false;
+                foreach ($rows->asm['columns'] ?? [] as $meta) if (($meta['column'] ?? '') === $column) { $out[] = $row[$meta['index']]; $found = true; break; }
+                if (!$found) throw new OrmException(Code::CURSOR_INVALID, "keyset order column is not projected: $column");
+            }
+            return $out;
+        };
+        return new self($items, KeysetCursor::encode($order, $values($rows->data[count($rows->data) - 1])), KeysetCursor::encode($order, $values($rows->data[0])));
+    }
+}
+
 /** Result of a select plan: the main step's rows plus every relation step's rows grouped by match column. */
 final class Rows
 {
@@ -431,6 +496,8 @@ final class Rows
 
     /** @param list<list<mixed>> $data @param list<mixed> $params */
     public function __construct(public readonly array $plan, public readonly array $asm, public array $data, public readonly array $params) {}
+
+    public function reverseMain(): void { $this->data = array_reverse($this->data); }
 
     /**
      * Child rows of relation $ch for one parent row: empty when the parent's value is

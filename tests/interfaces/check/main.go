@@ -226,12 +226,15 @@ func must(err error) {
 	}
 }
 func compact(s string) string {
-	return strings.Map(func(r rune) rune {
+	s = strings.Map(func(r rune) rune {
 		if unicode.IsSpace(r) {
 			return -1
 		}
 		return r
 	}, s)
+	// rustfmt permits a trailing comma in a parameter list; it is syntax-only
+	// and does not change the shared method signature.
+	return strings.ReplaceAll(s, ",)", ")")
 }
 
 func differences(want, got Symbols) []string {

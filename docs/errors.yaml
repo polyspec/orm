@@ -47,6 +47,8 @@ codes:
     origin: engine
   - code: LIMIT_IN_RELATION       # limit() on a relation child (use limitPerParent)
     origin: engine
+  - code: CURSOR_INVALID           # keyset cursor version, order, or typed value is invalid
+    origin: engine
   # ---- executor ----
   - code: OPTIMISTIC_LOCK         # updateOptimistic matched no row (updated_ts changed)
     origin: executor

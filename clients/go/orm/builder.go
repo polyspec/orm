@@ -209,6 +209,65 @@ func (q *Q) OrderExpr(frag string, desc bool) {
 	q.Node.Order = append(q.Node.Order, ir.Order{Expr: frag, Desc: desc})
 }
 
+// Keyset configures a typed cursor boundary. The generated client supplies
+// the entity primary-key columns so an omitted order still has a total order.
+func (q *Q) Keyset(direction, cursor string, per int, primaryKeys []string) error {
+	if direction != "after" && direction != "before" {
+		return &ir.Error{Code: "CURSOR_INVALID", Msg: "keyset direction must be after or before"}
+	}
+	if per < 1 {
+		return &ir.Error{Code: CodeIrInvalid, Msg: "keyset limit must be positive"}
+	}
+	if len(q.Node.Order) == 0 {
+		for _, column := range primaryKeys {
+			q.Order(column, false)
+		}
+	}
+	seen := map[string]bool{}
+	for _, order := range q.Node.Order {
+		if order.Expr != "" || order.Column == "" {
+			return &ir.Error{Code: "CURSOR_INVALID", Msg: "keyset order must use table columns"}
+		}
+		if seen[order.Column] {
+			return &ir.Error{Code: "CURSOR_INVALID", Msg: "keyset order contains duplicate column " + order.Column}
+		}
+		seen[order.Column] = true
+	}
+	for _, column := range primaryKeys {
+		if !seen[column] {
+			q.Order(column, false)
+			seen[column] = true
+		}
+	}
+	q.Node.Limit = &ir.Limit{Offset: 0, Count: per}
+	if cursor == "" {
+		q.Node.Keyset = nil
+		return nil
+	}
+	decoded, err := DecodeKeysetCursor(cursor)
+	if err != nil {
+		return err
+	}
+	if len(decoded.Order) != len(q.Node.Order) {
+		return &ir.Error{Code: "CURSOR_INVALID", Msg: "cursor order does not match query order"}
+	}
+	for i := range q.Node.Order {
+		if decoded.Order[i] != q.Node.Order[i] {
+			return &ir.Error{Code: "CURSOR_INVALID", Msg: "cursor order does not match query order"}
+		}
+	}
+	params, err := cursorParams(decoded)
+	if err != nil {
+		return err
+	}
+	indices := make([]int, len(params))
+	for i, value := range params {
+		indices[i] = q.Req.P(value)
+	}
+	q.Node.Keyset = &ir.Keyset{Direction: direction, Values: indices}
+	return nil
+}
+
 // Lock requests a database row lock for the root row select.
 func (q *Q) Lock(mode string) { q.Node.Lock = mode }
 

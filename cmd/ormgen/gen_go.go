@@ -1002,6 +1002,27 @@ func collect{{.Type}}Direct(rows []*{{.Type}}Row, keyFn func(*{{.Type}}Row) orm.
 	return c
 }
 
+// GetsAfter reads the next keyset page. An empty cursor starts at the first row.
+func (q *{{.Type}}Query) GetsAfter(cursor string, per int) (*orm.KeysetPage[{{.Type}}Row], error) {
+	if err := q.q.Keyset("after", cursor, per, []string{ {{quoteList .PKNames}} }); err != nil { return nil, err }
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
+	q.q.Req.IR.Kind = "all"
+	rows, err := orm.Query(ctx, ex, q.q.Req); if err != nil { return nil, err }
+	items := collect{{.Type}}(rows, q.keyFn)
+	return orm.KeysetPageFromRows(rows, items, q.q.Req.IR.Order)
+}
+
+// GetsBefore reads the previous keyset page and restores the requested order.
+func (q *{{.Type}}Query) GetsBefore(cursor string, per int) (*orm.KeysetPage[{{.Type}}Row], error) {
+	if err := q.q.Keyset("before", cursor, per, []string{ {{quoteList .PKNames}} }); err != nil { return nil, err }
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
+	q.q.Req.IR.Kind = "all"
+	rows, err := orm.Query(ctx, ex, q.q.Req); if err != nil { return nil, err }
+	orm.ReverseRows(rows)
+	items := collect{{.Type}}(rows, q.keyFn)
+	return orm.KeysetPageFromRows(rows, items, q.q.Req.IR.Order)
+}
+
 func (q *{{.Type}}Query) GetCount() (int64, error) {
 	ctx, ex, err := q.binding.Resolve(); if err != nil { return 0, err }
 	q.q.Req.IR.Kind = "count"

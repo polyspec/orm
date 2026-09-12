@@ -12,7 +12,7 @@ feature-docs:
 	node scripts/features/build.mjs
 
 client-unit-check:
-	php clients/php/tests/relation_keys.php
+	php clients/php/tests/relation_keys.php && php clients/php/tests/keyset.php
 
 interface-check:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" go run ./tests/interfaces/check --self-test
@@ -27,7 +27,7 @@ perf-check:
 	./scripts/perf-test.sh
 
 ts-check:
-	npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs && node tests/typescript/compiler-bridge.mjs && node tests/typescript/driver.mjs && node tests/typescript/database.mjs && node tests/typescript/codec-vector.mjs && node tests/typescript/transaction.mjs
+	npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs && node tests/typescript/compiler-bridge.mjs && node tests/typescript/driver.mjs && node tests/typescript/database.mjs && node tests/typescript/codec-vector.mjs && node tests/typescript/transaction.mjs && node tests/typescript/keyset.mjs
 
 ts-db-check:
 	./scripts/typescript/sqlite-test.sh
