@@ -340,6 +340,11 @@ func buildColumn(dc *DColumn) (*Col, error) {
 	if c.Type == "json" && len(c.Styles) == 0 {
 		c.Styles = []string{"json"}
 	}
+	// The AES version is plaintext metadata. Keep it out of the default
+	// projection while retaining it in explicit rotation queries.
+	if dc.Name == "aes_key_version" {
+		c.Lazy = true
+	}
 	// Lazy by default for large or encoded columns; aes_hex stays eager.
 	if !c.Lazy && !dc.Lazy {
 		switch {

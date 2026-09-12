@@ -34,7 +34,7 @@ func TestBuildExample(t *testing.T) {
 	if c := b.Column("description"); c.Type != "text" || !c.Lazy || !c.Nullable {
 		t.Errorf("description: %+v", c)
 	}
-	if c := b.Column("aes_key_version"); c == nil || c.Type != "i32" || c.Nullable {
+	if c := b.Column("aes_key_version"); c == nil || c.Type != "i32" || c.Nullable || !c.Lazy {
 		t.Errorf("aes_key_version: %+v", c)
 	}
 	if c := b.Column("aes_key_version"); c != nil && len(c.Styles) != 0 {

@@ -172,7 +172,7 @@ S7 항목은 구현과 문서 작업을 각각 완료해야 한다. 구현하지
 - [ ] T7.10 `multi_statement` 플랜 구현과 관계 단계 결과 비교
 - [ ] T7.11 Go·PHP typed 직접 스캔 성능 개선 및 기준값 재측정
 - [ ] T7.12 150테이블 Rust 생성 crate fixture와 컴파일 시간 측정
-- [~] T7.13 AES 키 버전 컬럼 검사와 Go·PHP·Rust·TypeScript 행 재암호화 구조 및 Go 단위 테스트 완료. `aes_key_version`은 평문 메타데이터 컬럼이며 AES 스타일을 사용할 수 없다. Go DB 행 순회·트랜잭션 저장·각 언어 DB API·상태 조회는 미착수
+- [~] T7.13 AES 키 버전 컬럼 검사와 Go·PHP·Rust·TypeScript 행 재암호화 구조 및 Go 단위 테스트 완료. `aes_key_version`은 평문 메타데이터 컬럼이며 AES 스타일을 사용할 수 없고 기본 projection에서 제외한다. Go DB 행 순회·트랜잭션 저장·각 언어 DB API·상태 조회는 미착수
 
 ### 문서 정비
 
