@@ -34,6 +34,8 @@ func main() {
 		errorsCmd(os.Args[2:])
 	case "ddl":
 		ddlCmd(os.Args[2:])
+	case "diff":
+		diffCmd(os.Args[2:])
 	case "check":
 		checkCmd(os.Args[2:])
 	default:
@@ -49,6 +51,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "       ormgen validate --dsn <dsn> --schema schema/schema.json")
 	fmt.Fprintln(os.Stderr, "       ormgen errors --lang go|php|rust --out <file>")
 	fmt.Fprintln(os.Stderr, "       ormgen ddl --schema schema/schema.json --dialect mysql|postgres|sqlite --out <file.sql>")
+	fmt.Fprintln(os.Stderr, "       ormgen diff --from old.json --to new.json --dialect mysql|postgres|sqlite --out <file.sql> [--allow-destructive]")
 	fmt.Fprintln(os.Stderr, "       ormgen check --lang php|go [--top n] [--schema schema/schema.json] <dir>...")
 	os.Exit(2)
 }
