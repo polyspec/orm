@@ -64,6 +64,7 @@ erDiagram
   %% index author (service_region_seq, is_close, is_display, is_allday) ik
   %% index author (service_seq, is_close) ix_service
   %% index author (user_seq, is_close) ix_user
+  %% scope author service_seq
   %% fulltext author (name, description)
   %% predicate author visible : `is_close` = FALSE AND `is_display` = TRUE
   %% predicate author started_after : `start_dt` > ?

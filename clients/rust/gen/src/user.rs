@@ -213,7 +213,7 @@ pub struct UserWhere<'a> { pub(crate) w: W<'a> }
 impl<'a> UserWhere<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
     pub fn and(mut self, f: impl FnOnce(UserWhere<'_>) -> UserWhere<'_>) -> Self { self.w.and_with(|w| { f(UserWhere { w }); }); self }
-    pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
+	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
     pub fn authors(mut self, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.w.nav_with("authors", |w| { f(super::author::AuthorWhere { w }); }); self }
     pub fn service_members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with("service_members", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
 
