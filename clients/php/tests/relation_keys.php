@@ -20,6 +20,8 @@ $second = Db::rowKey(['12', '3'], $refs);
 expect(is_string($first) && is_string($second) && $first !== $second, 'composite row keys collide');
 expect(Db::rowKey([1, null], $refs) === null, 'null composite row key was accepted');
 expect(Db::rowKey([7], [['column' => 'id', 'index' => 0]]) === 7, 'single integer key type changed');
+expect(method_exists(\App\Orm\Battle::class, 'get') && method_exists(\App\Orm\Battle::class, 'gets') && method_exists(\App\Orm\Battle::class, 'getCount'), 'canonical terminals are missing');
+expect(!method_exists(\App\Orm\Battle::class, 'one') && !method_exists(\App\Orm\Battle::class, 'all') && !method_exists(\App\Orm\Battle::class, 'count'), 'removed terminal aliases remain public');
 
 $partial = (new ReflectionClass(Q::class))->newInstanceWithoutConstructor();
 $request = (new ReflectionClass(Req::class))->newInstanceWithoutConstructor();
@@ -68,4 +70,4 @@ expect($values === [1, 2, 1, 3, 2, 4, 2, 4], 'tuple padding differs');
 [$sql] = $expand->invoke(null, $base + ['sql' => 'SELECT 1 WHERE (a,b) IN (($1)) AND c = $2'], [1, 2, 1, 3, 2, 4]);
 expect($sql === 'SELECT 1 WHERE (a,b) IN (($1, $2), ($3, $4), ($5, $6), ($7, $8)) AND c = $9', 'numbered tuple expansion differs');
 
-echo "php relation keys: ordered tuples, null handling, and scalar compatibility passed\n";
+echo "php relation keys: ordered tuples, null handling, and canonical terminals passed\n";

@@ -31,14 +31,14 @@ async fn main() {
     let opts = connect_opts();
     let db = Db::connect(opts, 1, engine, Config { aes_key: "bench-salt".into(), aes_version: 1, aes_keys: [(1, "bench-salt".into())].into_iter().collect(), on_query: None }).await.unwrap();
 
-    for _ in 0..200 { battle::query().seq_eq(1).using(&db).one().await.unwrap(); }
+    for _ in 0..200 { battle::query().seq_eq(1).using(&db).get().await.unwrap(); }
     let mut s = Vec::new();
-    for i in 0..iters { let t = Instant::now(); let r = battle::query().seq_eq((i % 100000 + 1) as i64).using(&db).one().await.unwrap(); assert!(r.is_some()); s.push(t.elapsed().as_nanos() as u64); }
+    for i in 0..iters { let t = Instant::now(); let r = battle::query().seq_eq((i % 100000 + 1) as i64).using(&db).get().await.unwrap(); assert!(r.is_some()); s.push(t.elapsed().as_nanos() as u64); }
     stats("client pk one", s);
 
-    for _ in 0..100 { battle::query().service_seq_eq(1).is_close_eq(false).order_by_seq_desc().limit(0, 100).using(&db).all().await.unwrap(); }
+    for _ in 0..100 { battle::query().service_seq_eq(1).is_close_eq(false).order_by_seq_desc().limit(0, 100).using(&db).gets().await.unwrap(); }
     let mut s = Vec::new();
-    for i in 0..iters { let t = Instant::now(); let c = battle::query().service_seq_eq((i % 100 + 1) as i64).is_close_eq(false).order_by_seq_desc().limit(0, 100).using(&db).all().await.unwrap(); assert!(!c.is_empty()); s.push(t.elapsed().as_nanos() as u64); }
+    for i in 0..iters { let t = Instant::now(); let c = battle::query().service_seq_eq((i % 100 + 1) as i64).is_close_eq(false).order_by_seq_desc().limit(0, 100).using(&db).gets().await.unwrap(); assert!(!c.is_empty()); s.push(t.elapsed().as_nanos() as u64); }
     stats("client list100", s);
 
     let mut s = Vec::new();

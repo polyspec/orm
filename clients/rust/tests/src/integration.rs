@@ -100,12 +100,12 @@ async fn main() {
     let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), aes_version: 1, aes_keys: [(1, "bench-salt".into())].into_iter().collect(), on_query: Some(on_query) }).await.expect("connect");
 
     // ---- reads ----
-    let b = battle::query().using(&db).one_by_seq(42).await.expect("one").expect("row 42");
+    let b = battle::query().using(&db).get_by_seq(42).await.expect("one").expect("row 42");
     check!(fails, b.seq == 42 && b.name == "battle-42" && b.aes_hex_email.as_deref() == Some("user42@example.com"), "one by pk + aes decode");
     check!(fails, b.description.is_none(), "lazy column not loaded by default");
     check!(fails, b.is_close && !b.is_display, "bool coercion (42: closed, not displayed)");
 
-    let b2 = battle::query().select_description().seq_eq(42).using(&db).one().await.unwrap().unwrap();
+    let b2 = battle::query().select_description().seq_eq(42).using(&db).get().await.unwrap().unwrap();
     check!(fails, b2.description.as_deref().map(|d| d.starts_with("desc-42")).unwrap_or(false), "select lazy column");
 
     let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11).unwrap().and_hms_opt(0, 0, 0).unwrap();
@@ -116,13 +116,13 @@ async fn main() {
         .seq_in(vec![6, 106, 206, 306, 406])
         .order_by_seq_desc()
         .limit(0, 3)
-        .using(&db).all()
+        .using(&db).gets()
         .await
         .expect("all");
     check!(fails, rows.len() == 3 && rows.first().map(|r| r.seq) == Some(306), "all + group + or + in + order + limit");
     for (k, r) in &rows { check!(fails, k.as_i64() == r.seq, "collection keyed by pk"); }
 
-    check!(fails, battle::query().service_seq_eq(7).using(&db).count().await.unwrap() == 1000, "count");
+    check!(fails, battle::query().service_seq_eq(7).using(&db).get_count().await.unwrap() == 1000, "count");
     check!(fails, battle::query().service_seq_eq(7).using(&db).sum_like_count().await.unwrap() > 0.0, "sum");
 
     let cnt = battle::query()
@@ -130,16 +130,16 @@ async fn main() {
         .left_join(user::query().on(|w| w.name_contains("user")))
         .is_close_eq(false)
         .and(|w| w.is_display_eq(true).or().service(|s| s.seq_gt(1000)))
-        .using(&db).count()
+        .using(&db).get_count()
         .await
         .expect("join count");
     check!(fails, cnt > 0, "join + on/where + nav");
 
     let page = battle::query().service_seq_eq(7).order_by_seq_asc().using(&db).paginate(2, 10).await.expect("paginate");
     check!(fails, page.total == 1000 && page.pages == 100 && page.items.len() == 10 && page.items.first().map(|r| r.seq) == Some(1006), "paginate");
-    check!(fails, battle::query().name_contains("%").using(&db).count().await.unwrap() == 0, "contains escapes %");
+    check!(fails, battle::query().name_contains("%").using(&db).get_count().await.unwrap() == 0, "contains escapes %");
 
-    let j = battle::query().join(service::query().where_(|w| w.seq_eq(7))).seq_eq(6).using(&db).one().await.unwrap().unwrap();
+    let j = battle::query().join(service::query().where_(|w| w.seq_eq(7))).seq_eq(6).using(&db).get().await.unwrap().unwrap();
     check!(fails, j.service().map(|s| s.name.as_str()) == Some("service-7"), "joined row access");
 
     let mut streamed = Vec::new();
@@ -166,23 +166,23 @@ async fn main() {
     let mx = battle::query().service_seq_eq(7).using(&db).max_start_dt().await.unwrap();
     check!(fails, mx.map(|t| t.date().year() >= 2020).unwrap_or(false), "max typed (NaiveDateTime)");
     check!(fails, battle::query().service_seq_eq(7).using(&db).max_price().await.unwrap().is_none(), "max over a NULL-only column is None");
-    check!(fails, battle::query().service_seq_eq(7).group_by_user_seq().using(&db).count().await.unwrap() == 50, "count + group_by = number of groups");
-    check!(fails, battle::query().service_seq_eq(7).group_by_user_seq().having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).using(&db).count().await.unwrap() == 50, "having on group count");
-    check!(fails, battle::query().service_seq_eq(7).group_by_user_seq().having(|w| w.expr("COUNT(*) > ?", vec![1000.into()])).using(&db).count().await.unwrap() == 0, "having filters every group");
+    check!(fails, battle::query().service_seq_eq(7).group_by_user_seq().using(&db).get_count().await.unwrap() == 50, "count + group_by = number of groups");
+    check!(fails, battle::query().service_seq_eq(7).group_by_user_seq().having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).using(&db).get_count().await.unwrap() == 50, "having on group count");
+    check!(fails, battle::query().service_seq_eq(7).group_by_user_seq().having(|w| w.expr("COUNT(*) > ?", vec![1000.into()])).using(&db).get_count().await.unwrap() == 0, "having filters every group");
     // row select keeps HAVING (grouped by the PK so only_full_group_by holds): every group is one row
-    let grouped = battle::query().service_seq_eq(7).group_by_seq().having(|w| w.expr("COUNT(*) > ?", vec![0.into()])).order_by_seq_asc().limit(0, 2).using(&db).all().await.expect("having rows");
+    let grouped = battle::query().service_seq_eq(7).group_by_seq().having(|w| w.expr("COUNT(*) > ?", vec![0.into()])).order_by_seq_asc().limit(0, 2).using(&db).gets().await.expect("having rows");
     check!(fails, grouped.len() == 2 && grouped.first().map(|b| b.seq) == Some(6), "having on row select");
-    check!(fails, battle::query().service_seq_eq(7).group_by_seq().having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).limit(0, 2).using(&db).all().await.unwrap().is_empty(), "having on row select filters every group");
-    match battle::query().service_seq_eq(7).having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).using(&db).count().await {
+    check!(fails, battle::query().service_seq_eq(7).group_by_seq().having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).limit(0, 2).using(&db).gets().await.unwrap().is_empty(), "having on row select filters every group");
+    match battle::query().service_seq_eq(7).having(|w| w.expr("COUNT(*) > ?", vec![1.into()])).using(&db).get_count().await {
         Err(e) if e.code() == "IR_INVALID" => {}
         other => { fails += 1; eprintln!("FAIL: having without group_by not rejected: {:?}", other.err()); }
     }
-    let visible = battle::query().visible().service_seq_eq(7).using(&db).count().await.expect("visible");
-    check!(fails, visible == battle::query().service_seq_eq(7).is_close_eq(false).is_display_eq(true).using(&db).count().await.unwrap() && visible > 0, "predicate visible() = is_close 0 AND is_display 1");
-    check!(fails, battle::query().started_after("2026-01-01 00:00:00").service_seq_eq(7).using(&db).count().await.unwrap() == 1000, "predicate started_after(v) on the query");
-    check!(fails, battle::query().service_seq_eq(7).and(|w| w.visible().or().started_after("2999-01-01 00:00:00")).using(&db).count().await.unwrap() == visible, "predicates on the Where builder honour or()");
-    let all_visible = battle::query().visible().using(&db).count().await.unwrap();
-    check!(fails, all_visible > visible && battle::query().seq_eq(0).or().visible().using(&db).count().await.unwrap() == all_visible, "query predicate honours a pending or()");
+    let visible = battle::query().visible().service_seq_eq(7).using(&db).get_count().await.expect("visible");
+    check!(fails, visible == battle::query().service_seq_eq(7).is_close_eq(false).is_display_eq(true).using(&db).get_count().await.unwrap() && visible > 0, "predicate visible() = is_close 0 AND is_display 1");
+    check!(fails, battle::query().started_after("2026-01-01 00:00:00").service_seq_eq(7).using(&db).get_count().await.unwrap() == 1000, "predicate started_after(v) on the query");
+    check!(fails, battle::query().service_seq_eq(7).and(|w| w.visible().or().started_after("2999-01-01 00:00:00")).using(&db).get_count().await.unwrap() == visible, "predicates on the Where builder honour or()");
+    let all_visible = battle::query().visible().using(&db).get_count().await.unwrap();
+    check!(fails, all_visible > visible && battle::query().seq_eq(0).or().visible().using(&db).get_count().await.unwrap() == all_visible, "query predicate honours a pending or()");
     let rows = battle::query().raw("SELECT COUNT(*) AS n, MAX(seq) AS m, MIN(start_dt) AS d FROM {table} WHERE service_seq = ? AND is_close = ?", vec![7.into(), false.into()]).using(&db).raw_all().await.expect("raw_all");
     check!(fails, rows.len() == 1 && rows[0].keys().cloned().collect::<Vec<_>>() == vec!["n", "m", "d"], "raw_all: one row keyed by column name in column order");
     // SQLite stores datetimes as text; the other drivers type the column
@@ -201,7 +201,7 @@ async fn main() {
         .relation(user::query())
         .relation(service::query()
             .relations(service_member::query().order_by_seq_desc().limit_per_parent(3).key_by_user_seq().drop_child_key()))
-        .using(&db).all().await.expect("relations");
+        .using(&db).gets().await.expect("relations");
     check!(fails, rows.len() == 5 && statements.load(Ordering::Relaxed) - n0 == 4, "relation statements: main, user, service, members");
     for (_, b) in &rows {
         check!(fails, b.user().map(|u| u.seq == b.user_seq && u.name == format!("user-{}", b.user_seq)) == Some(true), "one relation");
@@ -212,18 +212,18 @@ async fn main() {
         .seq_in(vec![7, 8, 14]).order_by_seq_asc()
         .relation(user::query().if_parent_is_close_eq(true).relations(battle::query().order_by_seq_asc().limit_per_parent(2)))
         .join(service::query().relations(service_module::query()))
-        .using(&db).all().await.expect("if_parent");
+        .using(&db).gets().await.expect("if_parent");
     let (b7, b8, b14) = (rows.get(&Key::of(&Val::I64(7))).unwrap(), rows.get(&Key::of(&Val::I64(8))).unwrap(), rows.get(&Key::of(&Val::I64(14))).unwrap());
     check!(fails, b7.user().is_some() && b14.user().is_some() && b8.user().is_none(), "if_parent loads only closed battles' users");
     check!(fails, b7.user().unwrap().battles().len() == 2, "nested many under one, limit_per_parent");
     check!(fails, b8.service().map(|s| s.modules().len() == 1 && s.modules().first().unwrap().service_seq == b8.service_seq) == Some(true), "relation off a join");
     let n0 = statements.load(Ordering::Relaxed);
-    let none = battle::query().seq_eq(0).relation(user::query()).using(&db).all().await.expect("empty");
+    let none = battle::query().seq_eq(0).relation(user::query()).using(&db).gets().await.expect("empty");
     check!(fails, none.is_empty() && statements.load(Ordering::Relaxed) - n0 == 1, "no parents → relation step skipped");
-    let one = battle::query().seq_eq(42).relation(service::query().relations(service_member::query().limit_per_parent(1))).using(&db).one().await.expect("one").expect("row 42");
+    let one = battle::query().seq_eq(42).relation(service::query().relations(service_member::query().limit_per_parent(1))).using(&db).get().await.expect("one").expect("row 42");
     check!(fails, one.service().map(|s| s.members().len()) == Some(1), "one + relation");
     // flatten: typed access is unchanged (array/JSON forms merge the child's columns)
-    let m = service_member::query().service_seq_eq(7).order_by_seq_asc().limit(0, 2).relation(user::query().flatten()).using(&db).all().await.expect("flatten");
+    let m = service_member::query().service_seq_eq(7).order_by_seq_asc().limit(0, 2).relation(user::query().flatten()).using(&db).gets().await.expect("flatten");
     check!(fails, m.first().and_then(|m| m.user()).map(|u| u.name.starts_with("user-")) == Some(true), "flatten");
     let page = battle::query().service_seq_eq(7).order_by_seq_asc().relation(user::query()).using(&db).paginate(1, 4).await.expect("paginate");
     check!(fails, page.total == 1000 && page.items.len() == 4 && page.items.first().and_then(|b| b.user()).is_some(), "paginate keeps relations");
@@ -267,7 +267,7 @@ async fn main() {
     let mut c = created.clone();
     c.set_name("rust-write-2").set_like_count(5);
     c.using(&db).update_optimistic().await.expect("update");
-    let again = battle::query().using(&db).one_by_seq(created.seq).await.unwrap().unwrap();
+    let again = battle::query().using(&db).get_by_seq(created.seq).await.unwrap().unwrap();
     check!(fails, again.name == "rust-write-2" && again.like_count == 5, "dirty update");
     c.set_name("stale");
     match c.using(&db).update_optimistic().await {
@@ -275,9 +275,9 @@ async fn main() {
         other => { fails += 1; eprintln!("FAIL: optimistic lock not detected: {:?}", other.err()); }
     }
     again.delete().await.expect("delete");
-    check!(fails, battle::query().seq_eq(created.seq).using(&db).count().await.unwrap() == 0, "delete");
+    check!(fails, battle::query().seq_eq(created.seq).using(&db).get_count().await.unwrap() == 0, "delete");
 
-    match battle::query().seq_in(vec![]).using(&db).count().await {
+    match battle::query().seq_in(vec![]).using(&db).get_count().await {
         Err(e) if e.code() == "EMPTY_IN" => {}
         other => { fails += 1; eprintln!("FAIL: EMPTY_IN: {:?}", other.err()); }
     }
@@ -295,9 +295,9 @@ async fn main() {
     let c = draft("rust-u3").set_uuid(Some("rust-upsert")).set_read_count(9).on_duplicate_set_all().using(&db).insert().await.expect("upsert set_all").unwrap();
     check!(fails, c.seq == a.seq && c.name == "rust-u3" && c.read_count == 9, "on_duplicate_set_all copies the draft's set columns");
     let n = battle::query().seq_eq(a.seq).plus_read_count(2).using(&db).update().await.expect("query update");
-    check!(fails, n == 1 && battle::query().using(&db).one_by_seq(a.seq).await.unwrap().unwrap().read_count == 11, "query update: affected 1, plus applied");
+    check!(fails, n == 1 && battle::query().using(&db).get_by_seq(a.seq).await.unwrap().unwrap().read_count == 11, "query update: affected 1, plus applied");
     let n = battle::query().seq_eq(a.seq).minus_read_count(100).using(&db).update().await.expect("query update minus");
-    check!(fails, n == 1 && battle::query().using(&db).one_by_seq(a.seq).await.unwrap().unwrap().read_count == 0, "minus clamps at zero");
+    check!(fails, n == 1 && battle::query().using(&db).get_by_seq(a.seq).await.unwrap().unwrap().read_count == 0, "minus clamps at zero");
     let saved = battle::query().set_seq(a.seq).set_name("rust-saved").using(&db).save().await.expect("save update").unwrap();
     check!(fails, saved.seq == a.seq && saved.name == "rust-saved" && saved.uuid.as_deref() == Some("rust-upsert"), "save with pk: update + re-read");
     let inserted = draft("rust-saved-new").using(&db).save().await.expect("save insert").unwrap();
@@ -324,14 +324,14 @@ async fn main() {
     let row = service::query().seq_eq(svc)
         .relations(service_member::query().order_by_seq_asc())
         .relations(service_module::query().no_cascade_delete())
-        .using(&db).one().await.expect("service").expect("service row");
+        .using(&db).get().await.expect("service").expect("service row");
     check!(fails, row.members().len() == 2 && row.modules().len() == 1, "cascade fixture loaded");
     let n0 = statements.load(Ordering::Relaxed);
     row.delete_cascade().await.expect("delete_cascade");
     check!(fails, statements.load(Ordering::Relaxed) - n0 == 3, "delete_cascade: one DELETE per member + the service");
-    check!(fails, service_member::query().seq_in(vec![m1, m2]).using(&db).count().await.unwrap() == 0, "delete_cascade removed the members");
-    check!(fails, service::query().seq_eq(svc).using(&db).count().await.unwrap() == 0, "delete_cascade removed the service");
-    check!(fails, service_module::query().seq_eq(md).using(&db).count().await.unwrap() == 1, "no_cascade_delete kept the module");
+    check!(fails, service_member::query().seq_in(vec![m1, m2]).using(&db).get_count().await.unwrap() == 0, "delete_cascade removed the members");
+    check!(fails, service::query().seq_eq(svc).using(&db).get_count().await.unwrap() == 0, "delete_cascade removed the service");
+    check!(fails, service_module::query().seq_eq(md).using(&db).get_count().await.unwrap() == 1, "no_cascade_delete kept the module");
     check!(fails, service_module::query().seq_eq(md).using(&db).delete().await.unwrap() == 1, "module cleaned up");
 
     // ---- deadlock gate: T1 locks A then B, T2 locks B then A; the loser's closure re-runs ----
@@ -366,7 +366,7 @@ async fn main() {
     check!(fails, r1.expect("t1 join").is_ok() && r2.expect("t2 join").is_ok(), "both transactions eventually succeed");
     check!(fails, runs.load(Ordering::Relaxed) >= 3, "the deadlock loser re-ran its closure");
     let expect = last_writer.load(Ordering::Relaxed) as i64 * 10;
-    let (ra, rb) = (battle::query().using(&db).one_by_seq(a).await.unwrap().unwrap(), battle::query().using(&db).one_by_seq(b).await.unwrap().unwrap());
+    let (ra, rb) = (battle::query().using(&db).get_by_seq(a).await.unwrap().unwrap(), battle::query().using(&db).get_by_seq(b).await.unwrap().unwrap());
     check!(fails, expect > 0 && ra.like_count == expect && rb.like_count == expect, "final values are the last writer's");
     check!(fails, battle::query().seq_in(vec![a, b]).using(&db).delete().await.unwrap() == 2, "deadlock rows cleaned up");
     }
@@ -387,7 +387,7 @@ async fn main() {
     check!(fails, second.role == "editor", "composite save uses every key component");
     let page = composite_membership::query().tenant_id_eq(tenant_id).order_by_tenant_id_asc().order_by_account_id_asc().using(&db).paginate(1, 1).await.expect("composite page");
     check!(fails, page.total == 2 && page.items.len() == 1 && page.items.first().map(|row| row.account_id) == Some(11), "composite pagination preserves complete order");
-    let accounts = composite_account::query().tenant_id_eq(tenant_id).order_by_account_id_asc().relations(composite_membership::query()).using(&db).all().await.expect("composite relations");
+    let accounts = composite_account::query().tenant_id_eq(tenant_id).order_by_account_id_asc().relations(composite_membership::query()).using(&db).gets().await.expect("composite relations");
     check!(fails, accounts.len() == 2 && accounts.first().map(|row| row.memberships().len()) == Some(1), "composite relation uses every key component");
     let rolled_back = db.transaction(|tx| async move {
         composite_account::query().set_tenant_id(tenant_id).set_account_id(13).set_name("rollback").using(&tx).insert().await?;
@@ -395,9 +395,9 @@ async fn main() {
         Err::<(), orm::Error>(orm::Error::Engine { code: "TEST_ROLLBACK".into(), msg: "composite rollback".into() })
     }).await;
     check!(fails, rolled_back.as_ref().err().map(|error| error.code()) == Some("TEST_ROLLBACK"), "composite transaction returns the source error");
-    check!(fails, composite_account::query().tenant_id_eq(tenant_id).account_id_eq(13).using(&db).count().await.expect("rollback count") == 0, "composite transaction rollback removes both rows");
+    check!(fails, composite_account::query().tenant_id_eq(tenant_id).account_id_eq(13).using(&db).get_count().await.expect("rollback count") == 0, "composite transaction rollback removes both rows");
     first.delete().await.expect("composite row delete");
-    check!(fails, composite_membership::query().tenant_id_eq(tenant_id).using(&db).count().await.expect("membership count") == 1, "composite row delete uses every key component");
+    check!(fails, composite_membership::query().tenant_id_eq(tenant_id).using(&db).get_count().await.expect("membership count") == 1, "composite row delete uses every key component");
     composite_membership::query().tenant_id_eq(tenant_id).using(&db).delete().await.expect("remove memberships");
     composite_account::query().tenant_id_eq(tenant_id).using(&db).delete().await.expect("remove accounts");
 
@@ -430,7 +430,7 @@ async fn main() {
 
     // ---- S5: on_query plan_id, secret masking, driver error mapping, orm.toml ----
     let s = battle::query().seq_eq(1).using(&db).sql().await.expect("sql");
-    battle::query().seq_eq(2).using(&db).all().await.expect("all"); // same shape (kind all), another value
+    battle::query().seq_eq(2).using(&db).gets().await.expect("all"); // same shape (kind all), another value
     check!(fails, s.plan_id != 0 && last_plan.load(Ordering::Relaxed) == s.plan_id, "on_query plan_id is the plan-cache key of the statement's shape");
     check!(fails, !leaked.load(Ordering::Relaxed), "the hook never sees the AES key (secret binds masked as $SECRET)");
     let d1 = draft("rust-dup").set_uuid(Some("rust-dup")).using(&db).insert().await.expect("dup fixture").unwrap();
@@ -457,7 +457,7 @@ async fn main() {
     let db2 = Db::from_config(&good).await.expect("from_config");
     check!(fails, gen::init(db2.engine.clone()).is_ok(), "the engine from orm.toml passes the boot check");
     check!(fails, db2.driver() == driver && db2.engine.dialect == driver, "from_config: [db].driver selects the pool and the engine dialect");
-    let b = battle::query().using(&db2).one_by_seq(42).await.expect("one via from_config").expect("row 42");
+    let b = battle::query().using(&db2).get_by_seq(42).await.expect("one via from_config").expect("row 42");
     check!(fails, b.seq == 42 && b.aes_hex_email.as_deref() == Some("user42@example.com"), "from_config: [db], [engine] and [secrets] applied");
     let _ = std::fs::remove_dir_all(&dir);
 

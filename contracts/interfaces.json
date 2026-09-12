@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:4b97ef6970ca8cf7826be8457def21c3ba8785b4adec7c7d19e0ef19d3b882a9",
-    "php": "sha256:03e559eb3963bd5386b537170b12d58872ed2e87f427d8b38fdbffdc42dd16c9",
-    "rust": "sha256:e24c7caac45583b47b1199c26904b18556755918e224b2fcf7934c60f9c169bd",
-    "typescript": "sha256:81e05a00ef1bad5dda1f5647eda6fb4f7fe19acc2516677ab6b872c8ffcb5b09"
+    "go": "sha256:f38b329be72572bd6b565b2abcf12fd971fed5b27c11fb62adcd0ef493bfc6dc",
+    "php": "sha256:45e62eb361de70175616554163ac1474c4eadd59b2b498d2ea5b066dbdc71261",
+    "rust": "sha256:119e396d550499bd0cbf784054ed57c2c4068ef28b741488f3c52063c19511ff",
+    "typescript": "sha256:3475ae8d134cf875c7fcb8b6f623455bada5ed2b8f28e0f8985170fecefc9da4"
   },
   "prohibited_symbols": [
     "multi_statement"
@@ -2933,13 +2933,7 @@
         },
         "php": {
           "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}",
-          "fields": [
-            "cAlias",
-            "cDropKey",
-            "cKeyName",
-            "cMatch"
-          ],
-          "adapter": "Optional dynamic syntax parsing metadata; lowers to the common Request."
+          "fields": []
         },
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}",
@@ -2977,9 +2971,6 @@
             "node",
             "pendingOr",
             "rootW",
-            "wstack",
-            "unmatchedClose",
-            "linkMatch",
             "keyFn"
           ]
         },
@@ -3017,10 +3008,8 @@
         "php": {
           "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}Where",
           "fields": [
-            "w",
-            "cstack"
-          ],
-          "adapter": "Dynamic parenthesis tokens keep a parser stack; canonical callbacks edit the same W."
+            "w"
+          ]
         },
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Where",

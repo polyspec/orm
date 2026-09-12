@@ -6,8 +6,6 @@ namespace App\Orm;
 
 use Orm\ColRef;
 use Orm\Collection;
-use Orm\CompatQuery;
-use Orm\CompatWhere;
 use Orm\Db;
 use Orm\Page;
 use Orm\Q;
@@ -320,19 +318,15 @@ final class BattleCols
     public static function serializeData(): ColRef { return new ColRef('serialize_data'); }
 }
 
-/** Where builder for battle: predicates, or(), and(fn), relation navigation. Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
+/** Where builder for battle: typed predicates, or(), and(fn), and relation navigation. */
 final class BattleWhere
 {
-    use CompatWhere;
-
     public const ENTITY = 'battle';
 
     public function __construct(private W $w) {}
 
-    /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
-    public function or(\Closure|string|null $fn = null, mixed $v = null): static { if (func_num_args() === 0) { $this->w->orConn(); return $this; } return $this->compatConn('or', $fn, $v); }
-    /** and(fn) opens a parenthesised group; and('(') / and('sql …', binds) / and('Name', v) are compat tokens. */
-    public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new self($this->w->group())); $this->w->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
+    public function or(): static { $this->w->orConn(); return $this; }
+    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
     public function startedAfter(mixed $a0): static { $this->w->expr('`start_dt` > ?', [$a0]); return $this; }
     public function visible(): static { $this->w->expr('`is_close` = FALSE AND `is_display` = TRUE', []); return $this; }
@@ -788,11 +782,9 @@ final class BattleWhere
     public function nameWithDescriptionMatchBoolean(string $v): static { $this->w->match(['name', 'description'], true, $v); return $this; }
 }
 
-/** Query over battle: Battle::query() → using($db) → chain → terminal(). Unknown names go to the PHP compatibility layer (docs/dsl.md §6). */
+/** Query over battle: Battle::query() → using($db) → typed chain → terminal(). */
 final class Battle extends Q implements BattleInterface
 {
-    use CompatQuery;
-
     public const ENTITY = 'battle';
 
     private function __construct() { parent::__construct('battle'); }
@@ -813,10 +805,8 @@ final class Battle extends Q implements BattleInterface
     }
 
     // ---- WHERE ----
-    /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
-    public function or(\Closure|string|null $fn = null, mixed $v = null): static { if (func_num_args() === 0) { $this->orConn(); return $this; } return $this->compatConn('or', $fn, $v); }
-    /** and(fn) opens a parenthesised group; and('(') / and('sql …', binds) / and('Name', v) are compat tokens. */
-    public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new BattleWhere($this->w()->group())); $this->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
+    public function or(): static { $this->orConn(); return $this; }
+    public function and(\Closure $fn): static { $fn(new BattleWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
     public function scope(int $v): static { $this->scopeValue($v); return $this; }
     public function startedAfter(mixed $a0): static { $this->w()->expr('`start_dt` > ?', [$a0]); return $this; }
@@ -1275,10 +1265,6 @@ final class Battle extends Q implements BattleInterface
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new BattleWhere($this->onW())); return $this; }
     public function where(\Closure $fn): static { $fn(new BattleWhere($this->w())); return $this; }
-    public function relation(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { $child->compatMatch($m[0], $m[1], null); } return $this->compatRelation($child, false, null, null, 'relation'); }
-    public function relations(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { $child->compatMatch($m[0], $m[1], null); } return $this->compatRelation($child, true, null, null, 'relations'); }
-    public function join(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { return $this->compatJoin($child, null, false, $m[0], $m[1], 'join'); } $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'inner', $child); return $this; }
-    public function leftJoin(Q $child): static { $m = $child->linkMatch(); if ($m !== null) { return $this->compatJoin($child, null, true, $m[0], $m[1], 'leftJoin'); } $this->attachJoin(\Orm\Compat::resolveRelation(static::ENTITY, $child::ENTITY, null, null, null), 'left', $child); return $this; }
 
 
     public function joinServiceSeqWithSeq(Service $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'join expects one child query'); } $this->attachJoin('service', 'inner', $child); return $this; }
@@ -1298,13 +1284,13 @@ final class Battle extends Q implements BattleInterface
     public function relationUserSeqWithSeq(User $child): static { if (func_num_args() !== 1) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'relation expects one child query'); } $this->attachRelation('user', $child); return $this; }
 
 
-    public function matchSeqWithUserSeq(bool $keep = true): static { $this->setLink('seq', 'user_seq'); $this->compatMatch('seq', 'user_seq', $keep); return $this; }
+    public function matchSeqWithUserSeq(): static { $this->setLink('seq', 'user_seq'); return $this; }
     public function onSeqWithUserSeq(): static { $this->setLink('seq', 'user_seq'); return $this; }
-    public function matchSeqWithServiceSeq(bool $keep = true): static { $this->setLink('seq', 'service_seq'); $this->compatMatch('seq', 'service_seq', $keep); return $this; }
+    public function matchSeqWithServiceSeq(): static { $this->setLink('seq', 'service_seq'); return $this; }
     public function onSeqWithServiceSeq(): static { $this->setLink('seq', 'service_seq'); return $this; }
-    public function matchSeqWithServiceModuleSeq(bool $keep = true): static { $this->setLink('seq', 'service_module_seq'); $this->compatMatch('seq', 'service_module_seq', $keep); return $this; }
+    public function matchSeqWithServiceModuleSeq(): static { $this->setLink('seq', 'service_module_seq'); return $this; }
     public function onSeqWithServiceModuleSeq(): static { $this->setLink('seq', 'service_module_seq'); return $this; }
-    public function matchSeqWithServiceMemberSeq(bool $keep = true): static { $this->setLink('seq', 'service_member_seq'); $this->compatMatch('seq', 'service_member_seq', $keep); return $this; }
+    public function matchSeqWithServiceMemberSeq(): static { $this->setLink('seq', 'service_member_seq'); return $this; }
     public function onSeqWithServiceMemberSeq(): static { $this->setLink('seq', 'service_member_seq'); return $this; }
 
     // ---- columns ----
@@ -1749,7 +1735,7 @@ final class Battle extends Q implements BattleInterface
     public function onDuplicateMinusPrice(float $v): static { $this->onDuplicateMinus('price', $v); return $this; }
 
     // ---- terminals ----
-    public function one(): ?BattleRow
+    public function get(): ?BattleRow
     {
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
@@ -1757,19 +1743,11 @@ final class Battle extends Q implements BattleInterface
         return $rows->data === [] ? null : BattleRow::fromRow($rows->data[0], $rows->asm, $rows);
     }
 
-    public function all(): Collection
-    {
-        $this->terminalArity(func_num_args());
-        $db = $this->terminalDb();
-        $this->compatRootKey();
-        return Collection::fromRows($this->runQuery($db, 'all'), BattleRow::class, $this->keyFn);
-    }
-
-    /** Preferred collection terminal; all() remains available for compatibility. */
     public function gets(): Collection
     {
         $this->terminalArity(func_num_args());
-        return $this->all();
+        $db = $this->terminalDb();
+        return Collection::fromRows($this->runQuery($db, 'all'), BattleRow::class, $this->keyFn);
     }
 
     /** Visits independently owned rows without accumulating the complete result. */
@@ -1781,13 +1759,6 @@ final class Battle extends Q implements BattleInterface
         return $db->streamPlan($plan, $this->req->params, static function (array $values, Rows $rows) use ($visit): bool {
             return (bool) $visit(BattleRow::fromRow($values, $rows->asm, $rows));
         });
-    }
-
-    /** Preferred single-row terminal; one() remains available for compatibility. */
-    public function get(): ?BattleRow
-    {
-        $this->terminalArity(func_num_args());
-        return $this->one();
     }
 
 
@@ -1994,10 +1965,7 @@ final class Battle extends Q implements BattleInterface
         return $this->ip($value)->gets();
     }
 
-    public function count(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count'); }
-
-    /** Preferred scalar count terminal; count() remains available as a compatibility alias. */
-    public function getCount(): int { $this->terminalArity(func_num_args()); return $this->count(); }
+    public function getCount(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count'); }
 
 
     /** Applies seq = value and runs the scalar count terminal. */
@@ -2211,7 +2179,6 @@ final class Battle extends Q implements BattleInterface
         if (empty($this->req->ir['group_by']) && empty($this->req->ir['group_by_expr'])) {
             throw new \Orm\OrmException(\Orm\Code::IR_INVALID, static::ENTITY . ': getsCount() needs groupBy()');
         }
-        $this->compatRootKey();
         return Collection::fromRows($this->runQuery($db, 'group_count'), Registry::row(static::ENTITY), $this->keyFn);
     }
     public function sumSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'seq'); }
@@ -2382,7 +2349,6 @@ final class Battle extends Q implements BattleInterface
         $this->terminalArity(func_num_args(), 2);
         $db = $this->terminalDb();
         if ($per <= 0) { throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'per must be positive'); }
-        $this->compatRootKey();
         [$rows, $total] = $this->runPaginate($db, $page, $per);
         return new Page(Collection::fromRows($rows, BattleRow::class, $this->keyFn), $total, intdiv($total + $per - 1, $per), max(1, $page), $per);
     }
@@ -2392,7 +2358,7 @@ final class Battle extends Q implements BattleInterface
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
         $id = $this->runInsert($db);
-        return Battle::query()->using($db)->seqEq((int) $id)->one();
+        return Battle::query()->using($db)->seqEq((int) $id)->get();
     }
 
     /** UPDATE when every primary-key column was assigned; otherwise INSERT. */
@@ -2402,7 +2368,7 @@ final class Battle extends Q implements BattleInterface
         $db = $this->terminalDb();
         [$updated, $keys] = $this->runSave($db, ['seq']);
         if (!$updated) { $keys = [(int) $keys[0]]; }
-        return Battle::query()->using($db)->seqEq($keys[0])->one();
+        return Battle::query()->using($db)->seqEq($keys[0])->get();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
@@ -2412,11 +2378,6 @@ final class Battle extends Q implements BattleInterface
     /** The main statement as the all() terminal would run it, without executing; secret slots read "$SECRET". @return array{sql: string, binds: list<mixed>} */
     public function sql(): array { $this->terminalArity(func_num_args()); return $this->runSql($this->terminalDb()); }
 
-    public function oneBySeq(int $value): ?BattleRow
-    {
-        $this->terminalArity(func_num_args(), 1);
-        return $this->seqEq($value)->one();
-    }
     public function getBySeq(int $value): ?BattleRow
     {
         $this->terminalArity(func_num_args(), 1);

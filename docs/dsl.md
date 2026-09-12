@@ -1,6 +1,6 @@
 # DSL v3 — regular syntax
 
-This page defines the public query syntax. Data structures, ownership, and state transitions are defined in [the common interface](interfaces.md). PHP compatibility syntax is listed separately and is not the regular API.
+This page defines the public query syntax. Data structures, ownership, and state transitions are defined in [the common interface](interfaces.md).
 
 | Rule | Definition |
 |---|---|
@@ -59,7 +59,7 @@ Rows are separate generated types. A row provides getters, setters, `update`, `u
 | `expr(fragment, binds)` | schema-checked SQL fragment | `expr('DAYOFWEEK(`created_ts`) = ?', [1])` |
 | named predicate | schema-defined predicate group | `visible()` |
 
-An empty `IN` list returns `EMPTY_IN`. The allowed operators depend on the column type. The `Eq` suffix is a compatibility alias for the default equality method.
+An empty `IN` list returns `EMPTY_IN`. The allowed operators depend on the column type. The `Eq` suffix is the explicit equality method.
 
 ### 2.2 Groups and navigation — `<X>Where`
 
@@ -89,7 +89,7 @@ Output mapping is positional and uses `{alias, column, out_name, index}`. Join c
 
 `relation<Rel>(child)` loads one related row. `relations<Rel>(child)` loads a collection. `join<Rel>(child)` and `leftJoin<Rel>(child)` add a SQL join. Relation kind and key mapping come from the schema.
 
-Join conditions use `child.on(fn)` for ON and `child.where(fn)` for WHERE. A join may contain another declared join. The generated names are the same logical names in all clients; PHP compatibility names are not generated for regular clients.
+Join conditions use `child.on(fn)` for ON and `child.where(fn)` for WHERE. A join may contain another declared join. The generated names are the same logical names in all clients.
 
 ### 2.5 Ordering, range, and options
 
@@ -148,13 +148,7 @@ row.update().await?;
 
 Rows and queries use the same root transaction binding. A finished transaction rejects later operations with `CONFIG`.
 
-## 6. PHP compatibility layer
-
-The compatibility layer parses legacy PHP method names and converts them to the same IR. It may support `andX`, `orX`, `conditionX`, legacy relation aliases, brace calls, and legacy `getBy` names. It does not change the regular API and does not add a PHP-only logical feature.
-
-Unsupported model-crossing parenthesis expressions return `PAREN_ACROSS_MODELS` and identify the required `and(fn)`, `or(fn)`, or `orPred` rewrite.
-
-## 7. Deliberately unsupported syntax
+## 6. Deliberately unsupported syntax
 
 The regular API does not generate `relationUser`, `relationsUser`, `matchAWithB`, `aliasName`, `or<Op><Col>`, `bind(db)`, database arguments on terminals, or `new Battle`-style language-specific entry points. Generated entry points use the language's constructor or factory form while preserving the same query structure.
 

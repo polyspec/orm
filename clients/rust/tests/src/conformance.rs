@@ -386,7 +386,7 @@ async fn main() {
         let mut c = created.clone();
         c.set_name("conf-write-2").set_like_count(5);
         c.using(&db).update_optimistic().await?;
-        let again = battle::query().using(&db).one_by_seq(created.seq).await?.unwrap();
+        let again = battle::query().using(&db).get_by_seq(created.seq).await?.unwrap();
         c.set_name("stale");
         let stale = match c.using(&db).update_optimistic().await {
             Ok(()) => Value::Null,
@@ -495,7 +495,7 @@ async fn main() {
     run!("bulk_update_plus_minus", async {
         let r = db.transaction(|tx| async move { fks(battle::query().set_read_count(3).set_name("conf-bulk")).using(&tx).insert().await }).await?.unwrap();
         mask_created(&mask, &log, Mask { seqs: vec![r.seq], ts: Some(r.updated_ts) });
-        let read = |seq: i64| { let db = &db; async move { battle::query().using(db).one_by_seq(seq).await.map(|b| b.unwrap().read_count) } };
+        let read = |seq: i64| { let db = &db; async move { battle::query().using(db).get_by_seq(seq).await.map(|b| b.unwrap().read_count) } };
         battle::query().seq(r.seq).plus_read_count(2).using(&db).update().await?;
         let after_plus = read(r.seq).await?;
         // minus clamps at zero

@@ -1,6 +1,6 @@
 # DSL v3 — 정규 문법
 
-이 문서는 공개 쿼리 문법을 정의한다. 자료구조·소유권·상태 전이는 [공통 인터페이스](interfaces.md)에서 정의한다. PHP 호환 문법은 별도 항목이며 정규 API가 아니다.
+이 문서는 공개 쿼리 문법을 정의한다. 자료구조·소유권·상태 전이는 [공통 인터페이스](interfaces.md)에서 정의한다.
 
 | 규칙 | 정의 |
 |---|---|
@@ -59,7 +59,7 @@ Query() → using(executor) → select/join/where/relation → order/limit → g
 | `expr(fragment, binds)` | 스키마 검사 SQL 조각 | `expr('DAYOFWEEK(`created_ts`) = ?', [1])` |
 | named predicate | 스키마에 정의한 술어 그룹 | `visible()` |
 
-빈 `IN` 목록은 `EMPTY_IN`을 반환한다. 허용 연산자는 컬럼 타입에 따라 결정한다. `Eq` 접미사는 기본 equality 메서드의 호환 별칭이다.
+빈 `IN` 목록은 `EMPTY_IN`을 반환한다. 허용 연산자는 컬럼 타입에 따라 결정한다. `Eq` 접미사는 명시적 equality 메서드다.
 
 ### 2.2 그룹과 탐색 — `<X>Where`
 
@@ -89,7 +89,7 @@ Query() → using(executor) → select/join/where/relation → order/limit → g
 
 `relation<Rel>(child)`는 연결된 한 행을 가져온다. `relations<Rel>(child)`는 collection을 가져온다. `join<Rel>(child)`와 `leftJoin<Rel>(child)`는 SQL join을 추가한다. 관계 종류와 key 매핑은 스키마에서 정한다.
 
-join 조건에서는 `child.on(fn)`을 ON에 사용하고 `child.where(fn)`을 WHERE에 사용한다. join 안에 선언된 join을 추가할 수 있다. 생성 이름은 모든 클라이언트에서 같은 논리 이름을 사용하며 PHP 호환 이름은 정규 클라이언트에 생성하지 않는다.
+join 조건에서는 `child.on(fn)`을 ON에 사용하고 `child.where(fn)`을 WHERE에 사용한다. join 안에 선언된 join을 추가할 수 있다. 생성 이름은 모든 클라이언트에서 같은 논리 이름을 사용한다.
 
 ### 2.5 정렬·범위·옵션
 
@@ -148,13 +148,7 @@ row.update().await?;
 
 행과 쿼리는 같은 root transaction binding을 사용한다. 종료된 transaction은 이후 작업을 `CONFIG`로 거부한다.
 
-## 6. PHP 호환층
-
-호환층은 레거시 PHP 메서드 이름을 파싱해 같은 IR로 변환한다. `andX`, `orX`, `conditionX`, 레거시 relation alias, brace call, 레거시 `getBy` 이름을 지원할 수 있다. 정규 API를 변경하지 않으며 PHP 전용 논리 기능을 추가하지 않는다.
-
-모델 범위를 넘는 괄호 표현은 `PAREN_ACROSS_MODELS`를 반환하고 필요한 `and(fn)`, `or(fn)`, `orPred` 변환을 표시한다.
-
-## 7. 의도적으로 지원하지 않는 문법
+## 6. 의도적으로 지원하지 않는 문법
 
 정규 API는 `relationUser`, `relationsUser`, `matchAWithB`, `aliasName`, `or<Op><Col>`, `bind(db)`, terminal의 데이터베이스 인자, `new Battle` 방식의 언어 종속 진입점을 생성하지 않는다. 생성 진입점은 언어의 생성자 또는 factory 표기를 사용하되 쿼리 구조는 동일하게 유지한다.
 
