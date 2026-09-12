@@ -36,11 +36,20 @@ type impIndex struct {
 	Columns  []string
 }
 
+type impForeignKey struct {
+	Name          string
+	Columns       []string
+	Target        string
+	TargetColumns []string
+	OnDelete      string
+}
+
 type impTable struct {
-	Name    string
-	Comment string
-	Columns []impColumn
-	Indexes []impIndex
+	Name        string
+	Comment     string
+	Columns     []impColumn
+	Indexes     []impIndex
+	ForeignKeys []impForeignKey
 }
 
 func importCmd(args []string) {
@@ -180,6 +189,44 @@ func readTables(db *sql.DB, driver string, only map[string]bool) ([]impTable, er
 		}
 		tb.Indexes = append(tb.Indexes, impIndex{Name: name, Unique: nonUnique == 0, Fulltext: typ == "FULLTEXT", Columns: []string{col}})
 	}
+	if err := irows.Err(); err != nil {
+		return nil, err
+	}
+	if err := irows.Close(); err != nil {
+		return nil, err
+	}
+	frows, err := db.Query(`SELECT k.TABLE_NAME, k.CONSTRAINT_NAME, k.COLUMN_NAME,
+		k.REFERENCED_TABLE_NAME, k.REFERENCED_COLUMN_NAME, r.DELETE_RULE
+		FROM information_schema.KEY_COLUMN_USAGE k
+		JOIN information_schema.REFERENTIAL_CONSTRAINTS r
+		  ON r.CONSTRAINT_SCHEMA=k.CONSTRAINT_SCHEMA AND r.TABLE_NAME=k.TABLE_NAME AND r.CONSTRAINT_NAME=k.CONSTRAINT_NAME
+		WHERE k.TABLE_SCHEMA=DATABASE() AND k.REFERENCED_TABLE_NAME IS NOT NULL
+		ORDER BY k.TABLE_NAME, k.CONSTRAINT_NAME, k.ORDINAL_POSITION`)
+	if err != nil {
+		return nil, err
+	}
+	defer frows.Close()
+	for frows.Next() {
+		var table, name, column, target, targetColumn, action string
+		if err := frows.Scan(&table, &name, &column, &target, &targetColumn, &action); err != nil {
+			return nil, err
+		}
+		tb := byName[table]
+		if tb == nil {
+			continue
+		}
+		n := len(tb.ForeignKeys)
+		if n == 0 || tb.ForeignKeys[n-1].Name != name {
+			tb.ForeignKeys = append(tb.ForeignKeys, impForeignKey{Name: name, Target: target, OnDelete: importDeleteAction(action)})
+			n++
+		}
+		fk := &tb.ForeignKeys[n-1]
+		fk.Columns = append(fk.Columns, column)
+		fk.TargetColumns = append(fk.TargetColumns, targetColumn)
+	}
+	if err := frows.Err(); err != nil {
+		return nil, err
+	}
 	sort.Strings(order)
 	out := make([]impTable, 0, len(order))
 	for _, n := range order {
@@ -220,8 +267,14 @@ func mermaidType(t string) (string, bool) {
 
 func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 	tables := map[string]bool{}
+	primary := map[string][]string{}
 	for _, t := range ts {
 		tables[t.Name] = true
+		for _, c := range t.Columns {
+			if c.Key == "PRI" {
+				primary[t.Name] = append(primary[t.Name], c.Name)
+			}
+		}
 	}
 	// facts to carry over from the previous diagram
 	prevCols := map[string]*schema.DColumn{}
@@ -244,7 +297,7 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 	}
 	var sb strings.Builder
 	sb.WriteString("erDiagram\n")
-	type rel struct{ parent, child, fk string }
+	type rel struct{ parent, child, fk, onDelete string }
 	var rels []rel
 	var directives []string
 	for _, t := range ts {
@@ -255,16 +308,34 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 				single[ix.Columns[0]] = ix
 			}
 		}
+		foreignByColumn := map[string]impForeignKey{}
+		for _, fk := range t.ForeignKeys {
+			if len(fk.Columns) == 1 && len(fk.TargetColumns) == 1 {
+				foreignByColumn[fk.Columns[0]] = fk
+			}
+		}
 		for _, c := range t.Columns {
 			typ, unsigned := mermaidType(c.Type)
 			var keys []string
 			if c.Key == "PRI" {
 				keys = append(keys, "PK")
 			}
-			target := fkTarget(c.Name, tables)
+			target := ""
+			targetColumn := ""
+			onDelete := ""
+			if fk, ok := foreignByColumn[c.Name]; ok {
+				target, targetColumn, onDelete = fk.Target, fk.TargetColumns[0], fk.OnDelete
+			} else {
+				target = fkTarget(c.Name, tables)
+			}
 			if target != "" && target != t.Name && c.Key != "PRI" {
 				keys = append(keys, "FK")
-				rels = append(rels, rel{target, t.Name, c.Name})
+				if targetColumn == "" {
+					targetColumn = "seq"
+				}
+				if len(primary[target]) == 1 && primary[target][0] == targetColumn {
+					rels = append(rels, rel{target, t.Name, c.Name, onDelete})
+				}
 			}
 			if ix, ok := single[c.Name]; ok && ix.Unique && c.Key != "PRI" {
 				keys = append(keys, "UK")
@@ -348,6 +419,9 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 		if pr := prevLabels[r.parent+"/"+r.child+"/"+r.fk]; pr != nil && (pr.ChildName != "" || pr.ParentName != "") {
 			label += " (" + pr.ChildName + " / " + pr.ParentName + ")"
 		}
+		if r.onDelete != "" {
+			label += " " + r.onDelete
+		}
 		sb.WriteString(fmt.Sprintf("  %-14s ||--o{ %-14s : %s\n", r.parent, r.child, label))
 	}
 	if len(directives)+len(prevPredicates) > 0 {
@@ -357,6 +431,17 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 		sb.WriteString(d + "\n")
 	}
 	return sb.String()
+}
+
+func importDeleteAction(action string) string {
+	switch strings.ToUpper(strings.ReplaceAll(action, "_", " ")) {
+	case "CASCADE":
+		return "cascade"
+	case "SET NULL":
+		return "setnull"
+	default:
+		return ""
+	}
 }
 
 func quoteDirective(s string) string {
@@ -487,12 +572,63 @@ func readTablesPG(db *sql.DB, only map[string]bool) ([]impTable, error) {
 		}
 		tb.Indexes = append(tb.Indexes, impIndex{Name: name, Unique: unique, Fulltext: am == "gin", Columns: []string{col}})
 	}
+	if err := irows.Err(); err != nil {
+		return nil, err
+	}
+	if err := irows.Close(); err != nil {
+		return nil, err
+	}
+	frows, err := db.Query(`SELECT child.relname, con.conname, ca.attname, parent.relname, pa.attname, con.confdeltype, ck.ord
+		FROM pg_constraint con
+		JOIN pg_class child ON child.oid=con.conrelid
+		JOIN pg_namespace n ON n.oid=child.relnamespace AND n.nspname=current_schema()
+		JOIN pg_class parent ON parent.oid=con.confrelid
+		JOIN LATERAL unnest(con.conkey) WITH ORDINALITY ck(attnum, ord) ON true
+		JOIN LATERAL unnest(con.confkey) WITH ORDINALITY pk(attnum, ord) ON pk.ord=ck.ord
+		JOIN pg_attribute ca ON ca.attrelid=child.oid AND ca.attnum=ck.attnum
+		JOIN pg_attribute pa ON pa.attrelid=parent.oid AND pa.attnum=pk.attnum
+		WHERE con.contype='f'
+		ORDER BY child.relname, con.conname, ck.ord`)
+	if err != nil {
+		return nil, err
+	}
+	defer frows.Close()
+	for frows.Next() {
+		var table, name, column, target, targetColumn, action string
+		var ord int
+		if err := frows.Scan(&table, &name, &column, &target, &targetColumn, &action, &ord); err != nil {
+			return nil, err
+		}
+		tb := byName[table]
+		if tb == nil {
+			continue
+		}
+		n := len(tb.ForeignKeys)
+		if n == 0 || tb.ForeignKeys[n-1].Name != name {
+			tb.ForeignKeys = append(tb.ForeignKeys, impForeignKey{Name: name, Target: target, OnDelete: postgresDeleteAction(action)})
+			n++
+		}
+		fk := &tb.ForeignKeys[n-1]
+		fk.Columns = append(fk.Columns, column)
+		fk.TargetColumns = append(fk.TargetColumns, targetColumn)
+	}
 	sort.Strings(order)
 	out := make([]impTable, 0, len(order))
 	for _, n := range order {
 		out = append(out, *byName[n])
 	}
-	return out, irows.Err()
+	return out, frows.Err()
+}
+
+func postgresDeleteAction(code string) string {
+	switch code {
+	case "c":
+		return "cascade"
+	case "n":
+		return "setnull"
+	default:
+		return ""
+	}
 }
 
 // pgTypeText renders a PostgreSQL column as the DB type text the diagram uses

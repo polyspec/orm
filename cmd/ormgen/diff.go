@@ -291,7 +291,7 @@ type diffForeignKey struct {
 func diffIndexesAndForeignKeys(from, to *schema.Manifest, oldEnt, newEnt *schema.Entity, dialect string, quote func(string) string) ([]schemaChange, []schemaChange, error) {
 	oldIndexes := entityIndexes(oldEnt)
 	newIndexes := entityIndexes(newEnt)
-	var drops, adds []schemaChange
+	var indexDrops, indexAdds, foreignDrops, foreignAdds []schemaChange
 	keys := unionSortedKeys(oldIndexes, newIndexes)
 	for _, key := range keys {
 		o, ook := oldIndexes[key]
@@ -304,14 +304,14 @@ func diffIndexesAndForeignKeys(from, to *schema.Manifest, oldEnt, newEnt *schema
 			if err != nil {
 				return nil, nil, err
 			}
-			drops = append(drops, schemaChange{sql: stmt})
+			indexDrops = append(indexDrops, schemaChange{sql: stmt})
 		}
 		if nok {
 			stmt, err := createIndex(newEnt.Table, n, dialect, quote)
 			if err != nil {
 				return nil, nil, err
 			}
-			adds = append(adds, schemaChange{sql: stmt})
+			indexAdds = append(indexAdds, schemaChange{sql: stmt})
 		}
 	}
 
@@ -332,13 +332,13 @@ func diffIndexesAndForeignKeys(from, to *schema.Manifest, oldEnt, newEnt *schema
 			if dialect == "mysql" {
 				verb = "DROP FOREIGN KEY"
 			}
-			drops = append(drops, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s %s %s;", quote(oldEnt.Table), verb, quote(o.name))})
+			foreignDrops = append(foreignDrops, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s %s %s;", quote(oldEnt.Table), verb, quote(o.name))})
 		}
 		if nok {
-			adds = append(adds, schemaChange{sql: "ALTER TABLE " + quote(newEnt.Table) + " ADD " + foreignKeyClause(n, to, quote) + ";"})
+			foreignAdds = append(foreignAdds, schemaChange{sql: "ALTER TABLE " + quote(newEnt.Table) + " ADD " + foreignKeyClause(n, to, quote) + ";"})
 		}
 	}
-	return drops, adds, nil
+	return append(foreignDrops, indexDrops...), append(indexAdds, foreignAdds...), nil
 }
 
 func entityIndexes(e *schema.Entity) map[string]diffIndex {
@@ -386,6 +386,8 @@ func foreignKeyClause(fk diffForeignKey, m *schema.Manifest, quote func(string) 
 		stmt += " ON DELETE CASCADE"
 	case "setnull":
 		stmt += " ON DELETE SET NULL"
+	default:
+		stmt += " ON DELETE RESTRICT"
 	}
 	return stmt
 }
