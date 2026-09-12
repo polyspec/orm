@@ -133,6 +133,17 @@ MySQL 8.4, 로컬 소켓, 같은 장비. 네이티브 = 각 언어의 드라이�
 
 `TestHotPathGate`는 `ORM_RUN_PERF_GATE=1`을 요구한다. 시간 측정 검사를 병렬 `go test ./...` 패키지 실행에서 제외하기 위한 조건이다. `make check`와 CI 전용 단계가 변수를 설정하고 검사를 별도로 실행한다.
 
+## 6f. Rust MySQL driver 비교 (T7.9)
+
+하나의 release process에서 pool당 connection 1개, 동일한 prepared SQL과 bind, 동일한 4개 필드 typed 결과, warmup 200회, 측정 1,000회 조건으로 sqlx 0.9와 `mysql_async` 0.37.1을 비교했다. 각 query 결과는 같았다. 환경은 Apple M3 Pro, MySQL 8.4 로컬 Unix socket, 2026-09-12이다.
+
+| workload | sqlx 평균 | `mysql_async` 평균 | 비율(`mysql_async/sqlx`) |
+|---|---:|---:|---:|
+| primary-key 행 | 58.840µs | 61.825µs | 1.051 |
+| 100행 목록 | 1.180ms | 1.113ms | 0.943 |
+
+`bench/rust`에서 `cargo run --release --locked --bin driver_compare -- 1000`을 실행한다. 기존 교체 규칙은 2배 개선 측정값을 요구한다. 두 workload 모두 기준을 충족하지 않아 ORM은 sqlx를 유지한다. CI는 `make rust-driver-check`으로 프로그램을 컴파일하고 latency는 CI 통과 조건이 아니다.
+
 ## 7. S0 결정 요약
 | ID | 결정 | 근거 |
 |---|---|---|

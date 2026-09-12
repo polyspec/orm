@@ -12,8 +12,13 @@ path = "src/boundary.rs"
 name = "native"
 path = "src/native.rs"
 
+[[bin]]
+name = "driver_compare"
+path = "src/driver_compare.rs"
+
 [dependencies]
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql"] }
+mysql_async = { version = "0.37.1", default-features = false, features = ["minimal-rust"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 libloading = "0.9"
 wasmtime = "48"
