@@ -340,4 +340,8 @@ export type { CompilerTransport } from './compiler.js';
 export { openMySql, openPostgres, openSqlite } from './driver.js';
 export type { DriverConnection, DriverName, DriverResult, DriverTransaction, DriverValue } from './driver.js';
 export { OrmError } from './runtime_error.js';
+export { Db, Tx } from './database.js';
+export type { DatabaseOptions, QueryEvent } from './database.js';
+export { Collection, ExecutionRows, Page, Row, registerRow } from './model.js';
+export type { Key, RowConstructor } from './model.js';
 export * as CompilerProto from './gen/proto/orm/compiler/v1/compiler_pb.js';
