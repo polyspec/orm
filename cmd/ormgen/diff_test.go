@@ -158,6 +158,32 @@ func TestRenderDDLIncludesForeignKeysAndDeleteActions(t *testing.T) {
 	}
 }
 
+func TestRenderDDLAndDiffPreserveChecks(t *testing.T) {
+	m := testManifest(&schema.Col{Name: "id", Type: "i64", Raw: "bigint", PK: true}, &schema.Col{Name: "quantity", Type: "i32", Raw: "int"})
+	m.Entities["thing"].Checks = []schema.Check{{Name: "positive_quantity", Expr: "`quantity` >= 0"}}
+	ddl, err := renderDDL(m, "mysql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(ddl, "CONSTRAINT `positive_quantity` CHECK (`quantity` >= 0)") {
+		t.Fatalf("DDL omitted CHECK: %s", ddl)
+	}
+	old := testManifest(&schema.Col{Name: "id", Type: "i64", Raw: "bigint", PK: true}, &schema.Col{Name: "quantity", Type: "i32", Raw: "int"})
+	diff, err := renderDiff(old, m, "postgres", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(diff, "ADD CONSTRAINT \"positive_quantity\" CHECK (\"quantity\" >= 0);") {
+		t.Fatalf("diff omitted CHECK: %s", diff)
+	}
+	old.Entities["thing"].Checks = append([]schema.Check(nil), m.Entities["thing"].Checks...)
+	m.Entities["thing"].Checks[0].Expr = "`quantity` > 0"
+	sqlite, err := renderDiff(old, m, "sqlite", true)
+	if err != nil || !strings.Contains(sqlite, "CONSTRAINT \"positive_quantity\" CHECK (\"quantity\" > 0)") {
+		t.Fatalf("SQLite CHECK rebuild missing: err=%v sql=%s", err, sqlite)
+	}
+}
+
 func TestRenderDDLOrdersForeignKeyParentsBeforeChildrenAndDropsChildrenFirst(t *testing.T) {
 	parent := &schema.Entity{Name: "parent", Table: "parent", PK: []string{"id"}, Relations: map[string]*schema.Rel{}, Columns: []*schema.Col{{Name: "id", Type: "i64", Raw: "bigint", PK: true}}}
 	child := &schema.Entity{Name: "child", Table: "child", PK: []string{"id"}, Relations: map[string]*schema.Rel{}, Columns: []*schema.Col{
