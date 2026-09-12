@@ -220,7 +220,11 @@ impl<'a> UserWhere<'a> {
     pub fn and(mut self, f: impl FnOnce(UserWhere<'_>) -> UserWhere<'_>) -> Self { self.w.and_with(|w| { f(UserWhere { w }); }); self }
 	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
     pub fn battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.w.nav_with("battles", |w| { f(super::battle::BattleWhere { w }); }); self }
+    pub fn has_battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.w.nav_with_mode("battles", "exists", |w| { f(super::battle::BattleWhere { w }); }); self }
+    pub fn not_has_battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.w.nav_with_mode("battles", "not_exists", |w| { f(super::battle::BattleWhere { w }); }); self }
     pub fn service_members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with("service_members", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
+    pub fn has_service_members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with_mode("service_members", "exists", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
+    pub fn not_has_service_members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with_mode("service_members", "not_exists", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
 
     pub fn seq_eq(mut self, v: i64) -> Self { self.w.pred("seq", "eq", v); self }
     pub fn seq(self, v: i64) -> Self { self.seq_eq(v) }
@@ -280,7 +284,11 @@ impl User {
     pub fn and(mut self, f: impl FnOnce(UserWhere<'_>) -> UserWhere<'_>) -> Self { self.q.w().and_with(|w| { f(UserWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
     pub fn battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.q.w().nav_with("battles", |w| { f(super::battle::BattleWhere { w }); }); self }
+    pub fn has_battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.q.w().nav_with_mode("battles", "exists", |w| { f(super::battle::BattleWhere { w }); }); self }
+    pub fn not_has_battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.q.w().nav_with_mode("battles", "not_exists", |w| { f(super::battle::BattleWhere { w }); }); self }
     pub fn service_members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with("service_members", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
+    pub fn has_service_members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with_mode("service_members", "exists", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
+    pub fn not_has_service_members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with_mode("service_members", "not_exists", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
 
     pub fn seq_eq(mut self, v: i64) -> Self { self.q.w().pred("seq", "eq", v); self }
     pub fn seq(self, v: i64) -> Self { self.seq_eq(v) }

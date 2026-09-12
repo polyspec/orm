@@ -158,7 +158,7 @@ export interface Predicate {
   match?: string[];
 }
 
-export interface Navigation { conn?: string; rel: string; group: Group; }
+export interface Navigation { conn?: string; rel: string; group: Group; mode?: '' | 'exists' | 'not_exists'; }
 export interface Projection { mode?: '' | 'all' | 'none'; add?: string[]; remove?: string[]; as?: Record<string,string>; expr?: Record<string,string>; }
 export interface Order { column?: string; expr?: string; desc?: boolean; }
 export interface GroupExpression { expr: string; as: string; }

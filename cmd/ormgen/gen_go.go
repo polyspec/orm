@@ -777,6 +777,8 @@ func (w *{{.Type}}Where) And(fn func(*{{.Type}}Where)) *{{.Type}}Where { w.w.And
 func (w *{{.Type}}Where) Expr(frag string, binds ...any) *{{.Type}}Where { w.w.Expr(frag, binds...); return w }
 {{- range .Rels}}
 func (w *{{$.Type}}Where) {{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.Nav({{printf "%q" .Name}}, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
+func (w *{{$.Type}}Where) Has{{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.NavMode({{printf "%q" .Name}}, "exists", func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
+func (w *{{$.Type}}Where) NotHas{{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.NavMode({{printf "%q" .Name}}, "not_exists", func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
 {{- end}}
 {{range .Cols}}{{$c := .}}{{range .Ops}}
 {{- if eq .Kind "one"}}
@@ -823,6 +825,8 @@ func (q *{{.Type}}Query) Scope(v {{.ScopeType}}) *{{.Type}}Query { q.q.Scope(v);
 {{- end}}
 {{- range .Rels}}
 func (q *{{$.Type}}Query) {{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().Nav({{printf "%q" .Name}}, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
+func (q *{{$.Type}}Query) Has{{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().NavMode({{printf "%q" .Name}}, "exists", func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
+func (q *{{$.Type}}Query) NotHas{{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().NavMode({{printf "%q" .Name}}, "not_exists", func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
 {{- end}}
 
 // Join children: On = ON clause, Where = parent WHERE group. Bare predicates on a join child are rejected by the engine.

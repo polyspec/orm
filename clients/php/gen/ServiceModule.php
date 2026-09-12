@@ -81,7 +81,11 @@ final class ServiceModuleWhere
     public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
     public function battles(\Closure $fn): static { $fn(new BattleWhere($this->w->nav('battles'))); $this->w->req->end(); return $this; }
+    public function hasBattles(\Closure $fn): static { $fn(new BattleWhere($this->w->navMode('battles', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasBattles(\Closure $fn): static { $fn(new BattleWhere($this->w->navMode('battles', 'not_exists'))); $this->w->req->end(); return $this; }
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w->nav('service'))); $this->w->req->end(); return $this; }
+    public function hasService(\Closure $fn): static { $fn(new ServiceWhere($this->w->navMode('service', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasService(\Closure $fn): static { $fn(new ServiceWhere($this->w->navMode('service', 'not_exists'))); $this->w->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }
@@ -148,7 +152,11 @@ final class ServiceModule extends Q implements ServiceModuleInterface
     public function and(\Closure $fn): static { $fn(new ServiceModuleWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
     public function battles(\Closure $fn): static { $fn(new BattleWhere($this->w()->nav('battles'))); $this->req->end(); return $this; }
+    public function hasBattles(\Closure $fn): static { $fn(new BattleWhere($this->w()->navMode('battles', 'exists'))); $this->req->end(); return $this; }
+    public function notHasBattles(\Closure $fn): static { $fn(new BattleWhere($this->w()->navMode('battles', 'not_exists'))); $this->req->end(); return $this; }
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w()->nav('service'))); $this->req->end(); return $this; }
+    public function hasService(\Closure $fn): static { $fn(new ServiceWhere($this->w()->navMode('service', 'exists'))); $this->req->end(); return $this; }
+    public function notHasService(\Closure $fn): static { $fn(new ServiceWhere($this->w()->navMode('service', 'not_exists'))); $this->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w()->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }

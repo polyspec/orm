@@ -128,6 +128,7 @@ type Nav struct {
 	Conn  string `json:"conn,omitempty"`
 	Rel   string `json:"rel"`
 	Group *Group `json:"group"`
+	Mode  string `json:"mode,omitempty"` // "" = joined navigation, exists, or not_exists
 }
 
 type Order struct {
@@ -619,17 +620,32 @@ func (v *validator) group(ent *schema.Entity, g *Group, joined map[string]*Join,
 				return err
 			}
 		case it.Nav != nil:
-			j, ok := joined[it.Nav.Rel]
-			if !ok {
-				return errf("ENTITY_NOT_JOINED", "%s.%s is not joined in this statement", ent.Name, it.Nav.Rel)
+			var target *schema.Entity
+			if it.Nav.Mode == "" {
+				j, ok := joined[it.Nav.Rel]
+				if !ok {
+					return errf("ENTITY_NOT_JOINED", "%s.%s is not joined in this statement", ent.Name, it.Nav.Rel)
+				}
+				target = v.m.Entities[j.Query.Entity]
+			} else {
+				if it.Nav.Mode != "exists" && it.Nav.Mode != "not_exists" {
+					return errf("IR_INVALID", "navigation mode %q", it.Nav.Mode)
+				}
+				rel := ent.Relations[it.Nav.Rel]
+				if rel == nil {
+					return errf("RELATION_UNKNOWN", "%s.%s", ent.Name, it.Nav.Rel)
+				}
+				target = v.m.Entities[rel.Target]
 			}
 			if it.Nav.Group == nil || len(it.Nav.Group.Items) == 0 {
 				return errf("IR_INVALID", "empty nav group")
 			}
-			target := v.m.Entities[j.Query.Entity]
 			nested := map[string]*Join{}
-			for _, jj := range j.Query.Joins {
-				nested[jj.Rel] = jj
+			if it.Nav.Mode == "" {
+				j := joined[it.Nav.Rel]
+				for _, jj := range j.Query.Joins {
+					nested[jj.Rel] = jj
+				}
 			}
 			if err := v.group(target, it.Nav.Group, nested, false); err != nil {
 				return err

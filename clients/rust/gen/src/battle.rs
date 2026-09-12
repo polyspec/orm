@@ -641,9 +641,17 @@ impl<'a> BattleWhere<'a> {
     pub fn started_after(mut self, a0: impl Into<Param>) -> Self { self.w.expr("`start_dt` > ?", vec![a0.into()]); self }
     pub fn visible(mut self) -> Self { self.w.expr("`is_close` = FALSE AND `is_display` = TRUE", vec![]); self }
     pub fn service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.w.nav_with("service", |w| { f(super::service::ServiceWhere { w }); }); self }
+    pub fn has_service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.w.nav_with_mode("service", "exists", |w| { f(super::service::ServiceWhere { w }); }); self }
+    pub fn not_has_service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.w.nav_with_mode("service", "not_exists", |w| { f(super::service::ServiceWhere { w }); }); self }
     pub fn service_member(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with("service_member", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
+    pub fn has_service_member(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with_mode("service_member", "exists", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
+    pub fn not_has_service_member(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with_mode("service_member", "not_exists", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
     pub fn service_module(mut self, f: impl FnOnce(super::service_module::ServiceModuleWhere<'_>) -> super::service_module::ServiceModuleWhere<'_>) -> Self { self.w.nav_with("service_module", |w| { f(super::service_module::ServiceModuleWhere { w }); }); self }
+    pub fn has_service_module(mut self, f: impl FnOnce(super::service_module::ServiceModuleWhere<'_>) -> super::service_module::ServiceModuleWhere<'_>) -> Self { self.w.nav_with_mode("service_module", "exists", |w| { f(super::service_module::ServiceModuleWhere { w }); }); self }
+    pub fn not_has_service_module(mut self, f: impl FnOnce(super::service_module::ServiceModuleWhere<'_>) -> super::service_module::ServiceModuleWhere<'_>) -> Self { self.w.nav_with_mode("service_module", "not_exists", |w| { f(super::service_module::ServiceModuleWhere { w }); }); self }
     pub fn user(mut self, f: impl FnOnce(super::user::UserWhere<'_>) -> super::user::UserWhere<'_>) -> Self { self.w.nav_with("user", |w| { f(super::user::UserWhere { w }); }); self }
+    pub fn has_user(mut self, f: impl FnOnce(super::user::UserWhere<'_>) -> super::user::UserWhere<'_>) -> Self { self.w.nav_with_mode("user", "exists", |w| { f(super::user::UserWhere { w }); }); self }
+    pub fn not_has_user(mut self, f: impl FnOnce(super::user::UserWhere<'_>) -> super::user::UserWhere<'_>) -> Self { self.w.nav_with_mode("user", "not_exists", |w| { f(super::user::UserWhere { w }); }); self }
 
     pub fn seq_eq(mut self, v: i64) -> Self { self.w.pred("seq", "eq", v); self }
     pub fn seq(self, v: i64) -> Self { self.seq_eq(v) }
@@ -1162,9 +1170,17 @@ impl Battle {
     pub fn started_after(mut self, a0: impl Into<Param>) -> Self { self.q.w().expr("`start_dt` > ?", vec![a0.into()]); self }
     pub fn visible(mut self) -> Self { self.q.w().expr("`is_close` = FALSE AND `is_display` = TRUE", vec![]); self }
     pub fn service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.q.w().nav_with("service", |w| { f(super::service::ServiceWhere { w }); }); self }
+    pub fn has_service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.q.w().nav_with_mode("service", "exists", |w| { f(super::service::ServiceWhere { w }); }); self }
+    pub fn not_has_service(mut self, f: impl FnOnce(super::service::ServiceWhere<'_>) -> super::service::ServiceWhere<'_>) -> Self { self.q.w().nav_with_mode("service", "not_exists", |w| { f(super::service::ServiceWhere { w }); }); self }
     pub fn service_member(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with("service_member", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
+    pub fn has_service_member(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with_mode("service_member", "exists", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
+    pub fn not_has_service_member(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with_mode("service_member", "not_exists", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
     pub fn service_module(mut self, f: impl FnOnce(super::service_module::ServiceModuleWhere<'_>) -> super::service_module::ServiceModuleWhere<'_>) -> Self { self.q.w().nav_with("service_module", |w| { f(super::service_module::ServiceModuleWhere { w }); }); self }
+    pub fn has_service_module(mut self, f: impl FnOnce(super::service_module::ServiceModuleWhere<'_>) -> super::service_module::ServiceModuleWhere<'_>) -> Self { self.q.w().nav_with_mode("service_module", "exists", |w| { f(super::service_module::ServiceModuleWhere { w }); }); self }
+    pub fn not_has_service_module(mut self, f: impl FnOnce(super::service_module::ServiceModuleWhere<'_>) -> super::service_module::ServiceModuleWhere<'_>) -> Self { self.q.w().nav_with_mode("service_module", "not_exists", |w| { f(super::service_module::ServiceModuleWhere { w }); }); self }
     pub fn user(mut self, f: impl FnOnce(super::user::UserWhere<'_>) -> super::user::UserWhere<'_>) -> Self { self.q.w().nav_with("user", |w| { f(super::user::UserWhere { w }); }); self }
+    pub fn has_user(mut self, f: impl FnOnce(super::user::UserWhere<'_>) -> super::user::UserWhere<'_>) -> Self { self.q.w().nav_with_mode("user", "exists", |w| { f(super::user::UserWhere { w }); }); self }
+    pub fn not_has_user(mut self, f: impl FnOnce(super::user::UserWhere<'_>) -> super::user::UserWhere<'_>) -> Self { self.q.w().nav_with_mode("user", "not_exists", |w| { f(super::user::UserWhere { w }); }); self }
 
     pub fn seq_eq(mut self, v: i64) -> Self { self.q.w().pred("seq", "eq", v); self }
     pub fn seq(self, v: i64) -> Self { self.seq_eq(v) }

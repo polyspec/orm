@@ -327,8 +327,24 @@ func (w *ServiceModuleWhere) Battles(fn func(*BattleWhere)) *ServiceModuleWhere 
 	w.w.Nav("battles", func(x *orm.W) { fn(&BattleWhere{w: x}) })
 	return w
 }
+func (w *ServiceModuleWhere) HasBattles(fn func(*BattleWhere)) *ServiceModuleWhere {
+	w.w.NavMode("battles", "exists", func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) NotHasBattles(fn func(*BattleWhere)) *ServiceModuleWhere {
+	w.w.NavMode("battles", "not_exists", func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return w
+}
 func (w *ServiceModuleWhere) Service(fn func(*ServiceWhere)) *ServiceModuleWhere {
 	w.w.Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) HasService(fn func(*ServiceWhere)) *ServiceModuleWhere {
+	w.w.NavMode("service", "exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) NotHasService(fn func(*ServiceWhere)) *ServiceModuleWhere {
+	w.w.NavMode("service", "not_exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return w
 }
 
@@ -714,8 +730,24 @@ func (q *ServiceModuleQuery) Battles(fn func(*BattleWhere)) *ServiceModuleQuery 
 	q.q.W().Nav("battles", func(x *orm.W) { fn(&BattleWhere{w: x}) })
 	return q
 }
+func (q *ServiceModuleQuery) HasBattles(fn func(*BattleWhere)) *ServiceModuleQuery {
+	q.q.W().NavMode("battles", "exists", func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) NotHasBattles(fn func(*BattleWhere)) *ServiceModuleQuery {
+	q.q.W().NavMode("battles", "not_exists", func(x *orm.W) { fn(&BattleWhere{w: x}) })
+	return q
+}
 func (q *ServiceModuleQuery) Service(fn func(*ServiceWhere)) *ServiceModuleQuery {
 	q.q.W().Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) HasService(fn func(*ServiceWhere)) *ServiceModuleQuery {
+	q.q.W().NavMode("service", "exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) NotHasService(fn func(*ServiceWhere)) *ServiceModuleQuery {
+	q.q.W().NavMode("service", "not_exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return q
 }
 

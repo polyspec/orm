@@ -271,10 +271,12 @@ class W
     }
 
     /** Descends into a joined relation; returns the W over the nav group. The caller ends it with $req->end(). */
-    public function nav(string $rel): W
+    public function nav(string $rel): W { return $this->navMode($rel, ''); }
+
+    public function navMode(string $rel, string $mode): W
     {
-        $this->g['items'][] = ['nav' => $this->conn() + ['rel' => $rel, 'group' => ['items' => []]]];
-        $this->req->sig .= "|n$rel(";
+        $this->g['items'][] = ['nav' => $this->conn() + ['rel' => $rel, 'group' => ['items' => []], 'mode' => $mode]];
+        $this->req->sig .= "|n$rel:$mode(";
         return new W($this->req, $this->g['items'][count($this->g['items']) - 1]['nav']['group']);
     }
 }
