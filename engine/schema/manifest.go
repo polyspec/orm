@@ -91,11 +91,13 @@ type Ref struct {
 // Rel is one direction of a relationship line. Keys preserves the SQL column
 // pair order for joins, relation loading, and row attachment.
 type Rel struct {
-	Name     string   `json:"name"`
-	Kind     string   `json:"kind"`
-	Target   string   `json:"target"`
-	Keys     []RelKey `json:"keys"`
-	OnDelete string   `json:"on_delete,omitempty"`
+	Name        string   `json:"name"`
+	Kind        string   `json:"kind"`
+	Target      string   `json:"target"`
+	Keys        []RelKey `json:"keys"`
+	Through     string   `json:"through,omitempty"`
+	ThroughKeys []RelKey `json:"through_keys,omitempty"`
+	OnDelete    string   `json:"on_delete,omitempty"`
 }
 
 type RelKey struct {
@@ -478,7 +480,7 @@ func (m *Manifest) addDirective(x *Directive) error {
 		return &BuildError{x.Line, "%% " + x.Kind + ": unknown entity " + x.Table}
 	}
 	for _, c := range x.Columns {
-		if x.Kind != "predicate" && ent.cols[c] == nil {
+		if x.Kind != "predicate" && x.Kind != "many_to_many" && ent.cols[c] == nil {
 			return &BuildError{x.Line, fmt.Sprintf("%%%% %s %s: unknown column %s", x.Kind, x.Table, c)}
 		}
 	}
@@ -596,6 +598,52 @@ func (m *Manifest) addDirective(x *Directive) error {
 			}
 		}
 		encrypted.BlindIndex = index.Name
+	case "many_to_many":
+		if len(x.Columns) != 2 {
+			return &BuildError{x.Line, "many_to_many requires target entity and reverse relation"}
+		}
+		target, ok := m.Entities[x.Columns[0]]
+		if !ok {
+			return &BuildError{x.Line, "many_to_many target entity " + x.Columns[0] + " is unknown"}
+		}
+		through, ok := m.Entities[x.Through]
+		if !ok {
+			return &BuildError{x.Line, "many_to_many through entity " + x.Through + " is unknown"}
+		}
+		if _, dup := ent.Relations[x.Name]; dup {
+			return &BuildError{x.Line, "relation name " + ent.Name + "." + x.Name + " already used"}
+		}
+		if _, dup := target.Relations[x.Columns[1]]; dup {
+			return &BuildError{x.Line, "relation name " + target.Name + "." + x.Columns[1] + " already used"}
+		}
+		sourceKeys, targetKeys := throughForeignKeys(through, ent.Name, target.Name)
+		if len(sourceKeys) != len(ent.PK) || len(targetKeys) != len(target.PK) {
+			return &BuildError{x.Line, fmt.Sprintf("many_to_many %s.%s through %s requires one FK for every source and target PK component", ent.Name, x.Name, through.Name)}
+		}
+		if len(through.PK) != len(sourceKeys)+len(targetKeys) {
+			return &BuildError{x.Line, "many_to_many through entity primary key must contain exactly the source and target FK columns"}
+		}
+		for _, column := range append(append([]string{}, sourceKeys...), targetKeys...) {
+			if !slices.Contains(through.PK, column) {
+				return &BuildError{x.Line, "many_to_many through entity primary key must contain " + column}
+			}
+		}
+		forward := &Rel{Name: x.Name, Kind: "many", Target: target.Name, Through: through.Name}
+		for i, c := range sourceKeys {
+			forward.Keys = append(forward.Keys, RelKey{Local: ent.PK[i], Target: c})
+		}
+		for i, c := range targetKeys {
+			forward.ThroughKeys = append(forward.ThroughKeys, RelKey{Local: c, Target: target.PK[i]})
+		}
+		reverse := &Rel{Name: x.Columns[1], Kind: "many", Target: ent.Name, Through: through.Name}
+		for i, c := range targetKeys {
+			reverse.Keys = append(reverse.Keys, RelKey{Local: target.PK[i], Target: c})
+		}
+		for i, c := range sourceKeys {
+			reverse.ThroughKeys = append(reverse.ThroughKeys, RelKey{Local: c, Target: ent.PK[i]})
+		}
+		ent.Relations[x.Name] = forward
+		target.Relations[x.Columns[1]] = reverse
 	case "predicate":
 		if ent.Predicates == nil {
 			ent.Predicates = map[string]*Predicate{}
@@ -617,6 +665,22 @@ func (m *Manifest) addDirective(x *Directive) error {
 		ent.Predicates[x.Name] = &Predicate{Expr: x.Raw, Arity: strings.Count(x.Raw, "?")}
 	}
 	return nil
+}
+
+func throughForeignKeys(through *Entity, source, target string) ([]string, []string) {
+	var sourceKeys, targetKeys []string
+	for _, c := range through.Columns {
+		if c.Ref == nil {
+			continue
+		}
+		if c.Ref.Entity == source {
+			sourceKeys = append(sourceKeys, c.Name)
+		}
+		if c.Ref.Entity == target {
+			targetKeys = append(targetKeys, c.Name)
+		}
+	}
+	return sourceKeys, targetKeys
 }
 
 func (m *Manifest) validate(allowMissingAESVersion bool) error {
