@@ -1,11 +1,14 @@
-.PHONY: check db-test ts-check schema-check proto-check typescript-build rust-150-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check
+.PHONY: check db-test perf-check ts-check schema-check proto-check typescript-build rust-150-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
-check: docs-rules-check docs-check docs-verify-idempotent ts-check schema-check proto-check db-test
+check: docs-rules-check docs-check docs-verify-idempotent ts-check schema-check proto-check db-test perf-check
 	go test ./...
 
 db-test:
 	./scripts/db-test.sh
+
+perf-check:
+	ORM_RUN_PERF_GATE=1 go test ./bench/go -run TestHotPathGate -count=1 -v
 
 ts-check:
 	npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs && node tests/typescript/codec-vector.mjs
