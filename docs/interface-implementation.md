@@ -2,7 +2,7 @@
 
 Reference: [Common interface v1](interfaces.md), [machine specification](../contracts/interfaces.json), and [generated model](interfaces-model.md). Reproduction commands and check coverage are in the [verification guide](../tests/interfaces/README.md).
 
-Local verification: **59 scenarios × Go, PHP, Rust, and TypeScript × MySQL, PostgreSQL, and SQLite match**. Common input and output, stored fields, 25 wire records, native declarations, and source-change counterexamples are checked separately. The final CI run is required before completion.
+Local verification: **63 scenarios × Go, PHP, Rust, and TypeScript × MySQL, PostgreSQL, and SQLite match**. Common input and output, stored fields, 25 wire records, native declarations, and source-change counterexamples are checked separately. The final CI run is required before completion.
 
 | Interface | Implementation and verification |
 |---|---|
