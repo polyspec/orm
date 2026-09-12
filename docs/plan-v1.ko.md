@@ -145,7 +145,7 @@ fulltext: [[name, description]]
 | `getBy<PK\|unique>(…)`, `getsBy<Col>(…)`, `getCountBy<Col>(…)` 생성 | `->using($db)->getBySeq($seq)` / `->using($db)->getsByServiceSeq($seq)` | `.Using(ctx, db).GetBySeq(seq)` / `.Using(ctx, db).GetsByServiceSeq(seq)` | `.using(&db).get_by_seq(seq).await?` / `.using(&db).gets_by_service_seq(seq).await?` |
 | 트랜잭션 | `$db->transaction(function ($tx) {…})` | `orm.Transaction(ctx, db, func(tx *orm.Tx) (T, error) {…})` | `db.transaction(\|tx\| async move {…}).await?` (`Tx: Clone`) |
 | 결과 스칼라 | `$m->getSeq()`, `$m->getName($default)`, `$m['name']` | `m.Seq` / nil-safe `m.GetSeq()` | `m.seq` (nullable은 `Option`) |
-| 결과 관계 | `$m->getUser()`→null, `$m->getItems([])` | `m.GetUser()`→nil, `m.GetItems()`→빈 컬렉션 | `m.user() -> Option<&User>`, `m.items() -> &Items` |
+| 결과 관계 | `$m->getUser()`→null, `$m->getItems([])` | `m.GetUser()`→nil, `m.GetItems()`→빈 컬렉션 | `m.user() -> Option&lt;&User&gt;`, `m.items() -> &Items` |
 | 컬렉션(PK/keyName 순서 맵) | `foreach ($c as $seq => $m)`, `->first()`, `->count()`, `->toArray()` | `for k, m := range c.All()`, `c.First()`, `c.Len()`, `c.ToArray()` | `for (k, m) in &c`, `c.first()`, `c.len()`, `c.to_vec()` |
 
 규칙: `get`→null/nil/None, `gets`→빈 컬렉션(절대 null 아님); 에러/throw = rollback; 무인자 `getX()`는 존재하는 키(null 포함)와 선언된 컬럼은 값/null 반환, 미선언 키만 throw; `getX($d)`는 누락·null·`''`에 `$d`. Go `GetX()`는 protobuf-go 관례의 nil-safe 체인. Rust 쿼리 메서드는 by-value, setter는 `&mut self`; 컬렉션 키는 `orm.Key`(int|string).
