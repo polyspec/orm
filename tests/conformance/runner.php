@@ -1,6 +1,6 @@
 <?php
 // Conformance runner (PHP). Same chains as runner_go/main.go and conformance.rs; prints the same document.
-// Usage: php tests/conformance/runner.php /abs/ormd.sock /abs/schema.json [--driver mysql|postgres|sqlite] [--dsn …]
+// Usage: php tests/conformance/runner.php http://compiler /abs/schema.json [--driver mysql|postgres|sqlite] [--dsn …]
 // The defaults are the Go runner's: mysql on the local socket (ORM_MYSQL_DSN_PHP in CI), the local PostgreSQL
 // of deploy/local-postgres.md, the seeded /tmp/orm_bench.sqlite. ormd must run with the matching -dialect.
 declare(strict_types=1);
@@ -25,7 +25,7 @@ use Orm\OrmException;
 use Orm\Q;
 use Orm\Tx;
 
-$sock = $argv[1] ?? die("usage: runner.php /abs/ormd.sock /abs/schema.json [--driver mysql|postgres|sqlite] [--dsn …]\n");
+$endpoint = $argv[1] ?? die("usage: runner.php http://compiler /abs/schema.json [--driver mysql|postgres|sqlite] [--dsn …]\n");
 $schema = $argv[2] ?? die("schema.json required\n");
 $driver = 'mysql';
 $dsn = null;
@@ -70,7 +70,7 @@ function norm(mixed $v): mixed
     return $v;
 }
 
-Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: $driver,
+Orm::init(new Config(socket: '/unused', schemaPath: $schema, aesKey: 'bench-salt', driver: $driver, endpoint: $endpoint,
     onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log) {
         $log[] = ['sql' => $sql, 'binds' => array_map('norm', $binds)];
     }));
