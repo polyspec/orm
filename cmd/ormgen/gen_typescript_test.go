@@ -53,7 +53,7 @@ func TestTypeScriptGenerationIsCurrent(t *testing.T) {
 		t.Fatal("clients/typescript/src/gen/interfaces.ts differs from contract output")
 	}
 	text := string(got)
-	for _, forbidden := range []string{"joinUser(", "relationUser("} {
+	for _, forbidden := range []string{"joinUser(", "relationUser(", "oneBy"} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("generated relation-name shortcut %q is forbidden", forbidden)
 		}
