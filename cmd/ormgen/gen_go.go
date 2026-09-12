@@ -120,6 +120,7 @@ type goEntity struct {
 	Auto              bool
 	AutoCol           string
 	Cols              []goCol
+	DefaultCols       []goCol
 	EqCols            []goCol // columns that support the default equality predicate (getsBy/getCountBy)
 	UniqueFinders     []goFinder
 	Rels              []goRel
@@ -153,6 +154,7 @@ func aggregable(c *schema.Col) bool {
 type goCol struct {
 	Name, Field, Type, ColType        string
 	Nullable, Lazy, PK, Auto, Managed bool
+	Direct                            bool
 	Ops                               []opDef
 	ColOps                            []opDef  // <col><Op>Col(ref) comparisons
 	Styles                            []string // executor-side codec stages (docs/codec.md); the field is then `any`
@@ -209,10 +211,14 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 	}
 	for _, c := range e.Columns {
 		gc := goCol{Name: c.Name, Field: pascal(c.Name), Type: goType(c), ColType: c.Type, Nullable: c.Nullable, Lazy: c.Lazy, PK: c.PK, Auto: c.Auto, Managed: hasAES && c.Name == "aes_key_version", Ops: opsFor(c), ColOps: colOpsFor(c), Styles: appStyles(c)}
+		gc.Direct = len(c.Styles) == 0 && (gc.Type == "int32" || gc.Type == "int64" || gc.Type == "float64" || gc.Type == "bool" || gc.Type == "string")
 		if len(gc.Styles) > 0 {
 			gc.Nullable = false // `any` carries nil itself
 		}
 		ge.Cols = append(ge.Cols, gc)
+		if !c.Lazy {
+			ge.DefaultCols = append(ge.DefaultCols, gc)
+		}
 		if allowed(c, "eq") {
 			ge.EqCols = append(ge.EqCols, gc)
 		}
@@ -529,25 +535,69 @@ func (r *{{.Type}}Row) deleteCascade(ctx context.Context, ex orm.Exec) error {
 	})
 }
 
+func assign{{.Type}}Value(r *{{.Type}}Row, name string, v any) {
+	switch name {
+{{- range .Cols}}
+	case {{printf "%q" .Name}}:
+{{- if .Nullable}}
+		if v != nil { x := {{conv .Type}}; r.{{.Field}} = &x }
+{{- else}}
+		r.{{.Field}} = {{conv .Type}}
+{{- end}}
+{{- end}}
+	default:
+		r.SetExtra(name, v)
+	}
+}
+
+func accepts{{.Type}}Direct(a *plan.Assemble) bool {
+	if len(a.Columns) != {{len .DefaultCols}} { return false }
+{{- range $i, $c := .DefaultCols}}
+	if c := a.Columns[{{$i}}]; c.Index != {{$i}} || c.Name != {{printf "%q" $c.Name}} || c.Column != {{printf "%q" $c.Name}}{{if $c.Direct}} || len(c.Styles) != 0{{end}} { return false }
+{{- end}}
+	return true
+}
+
+func decode{{.Type}}Direct(s *orm.DirectScanner, c plan.OutCol, raw *orm.ScanValue, r *{{.Type}}Row) error {
+	v, err := s.Decode(c, raw.Value())
+	if err != nil { return err }
+	assign{{.Type}}Value(r, c.Name, v)
+	return nil
+}
+
+// scan{{.Type}}Direct scans the default flat projection into generated typed
+// fields. Codec and datetime outputs use named temporary scan values.
+func scan{{.Type}}Direct(s *orm.DirectScanner) (*{{.Type}}Row, error) {
+	a := s.Assemble()
+	_ = a
+	r := &{{.Type}}Row{}
+	r.Binding = s.Binding()
+{{- range .DefaultCols}}{{if not .Direct}}
+	var raw{{.Field}} orm.ScanValue
+{{- end}}{{end}}
+	if err := s.Scan(
+{{- range .DefaultCols}}
+		{{if .Direct}}&r.{{.Field}}{{else}}&raw{{.Field}}{{end}},
+{{- end}}
+	); err != nil { return nil, err }
+{{- range $i, $c := .DefaultCols}}{{if not $c.Direct}}
+	if err := decode{{$.Type}}Direct(s, a.Columns[{{$i}}], &raw{{$c.Field}}, r); err != nil { return nil, err }
+{{- end}}{{end}}
+	r.SetProjection(s.Projection())
+	r.Mark({{printf "%q" .Name}}, {{printf "%q" .PK}}, r.{{pascal .PK}})
+{{- if .UpdatedTs}}
+	if r.Has({{printf "%q" .UpdatedTs}}) { r.SnapshotVersion(r.{{pascal .UpdatedTs}}) }
+{{- end}}
+	return r, nil
+}
+
 // scan{{.Type}} maps a positional row slice onto the struct, its joined
 // children (same row) and its relation children (rows of later steps).
 func scan{{.Type}}(vals []any, a *plan.Assemble, rs *orm.Rows) *{{.Type}}Row {
 	r := &{{.Type}}Row{}
 	r.Binding = rs.Binding
 	for _, c := range a.Columns {
-		v := vals[c.Index]
-		switch c.Name {
-{{- range .Cols}}
-		case {{printf "%q" .Name}}:
-{{- if .Nullable}}
-			if v != nil { x := {{conv .Type}}; r.{{.Field}} = &x }
-{{- else}}
-			r.{{.Field}} = {{conv .Type}}
-{{- end}}
-{{- end}}
-		default:
-			r.SetExtra(c.Name, v)
-		}
+		assign{{.Type}}Value(r, c.Name, vals[c.Index])
 	}
 	for _, ch := range a.Children {
 		switch ch.Rel {
@@ -842,6 +892,10 @@ func (q *{{.Type}}Query) OnDuplicateSetAll() *{{.Type}}Query { q.q.OnDuplicateSe
 func (q *{{.Type}}Query) One() (*{{.Type}}Row, error) {
 	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
 	q.q.Req.IR.Kind = "one"
+	if direct, used, err := orm.QueryDirect(ctx, ex, q.q.Req, accepts{{.Type}}Direct, scan{{.Type}}Direct); used {
+		if err != nil || len(direct) == 0 { return nil, err }
+		return direct[0], nil
+	}
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil || len(rows.Data) == 0 {
 		return nil, err
@@ -852,6 +906,10 @@ func (q *{{.Type}}Query) One() (*{{.Type}}Row, error) {
 func (q *{{.Type}}Query) All() (*orm.Collection[{{.Type}}Row], error) {
 	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
 	q.q.Req.IR.Kind = "all"
+	if direct, used, err := orm.QueryDirect(ctx, ex, q.q.Req, accepts{{.Type}}Direct, scan{{.Type}}Direct); used {
+		if err != nil { return nil, err }
+		return collect{{.Type}}Direct(direct, q.keyFn), nil
+	}
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
@@ -895,6 +953,14 @@ func collect{{.Type}}(rows *orm.Rows, keyFn func(*{{.Type}}Row) orm.Key) *orm.Co
 			continue
 		}
 		c.Put(orm.KeyOf(vals[0]), r)
+	}
+	return c
+}
+
+func collect{{.Type}}Direct(rows []*{{.Type}}Row, keyFn func(*{{.Type}}Row) orm.Key) *orm.Collection[{{.Type}}Row] {
+	c := orm.NewCollection[{{.Type}}Row](len(rows))
+	for _, r := range rows {
+		if keyFn != nil { c.Put(keyFn(r), r) } else { c.Put(orm.KeyOf(r.{{pascal .PK}}), r) }
 	}
 	return c
 }

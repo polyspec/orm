@@ -125,23 +125,70 @@ func (r *ServiceModuleRow) deleteCascade(ctx context.Context, ex orm.Exec) error
 	})
 }
 
+func assignServiceModuleValue(r *ServiceModuleRow, name string, v any) {
+	switch name {
+	case "seq":
+		r.Seq = orm.AsInt64(v)
+	case "service_seq":
+		r.ServiceSeq = orm.AsInt64(v)
+	case "name":
+		r.Name = orm.AsString(v)
+	default:
+		r.SetExtra(name, v)
+	}
+}
+
+func acceptsServiceModuleDirect(a *plan.Assemble) bool {
+	if len(a.Columns) != 3 {
+		return false
+	}
+	if c := a.Columns[0]; c.Index != 0 || c.Name != "seq" || c.Column != "seq" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[1]; c.Index != 1 || c.Name != "service_seq" || c.Column != "service_seq" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[2]; c.Index != 2 || c.Name != "name" || c.Column != "name" || len(c.Styles) != 0 {
+		return false
+	}
+	return true
+}
+
+func decodeServiceModuleDirect(s *orm.DirectScanner, c plan.OutCol, raw *orm.ScanValue, r *ServiceModuleRow) error {
+	v, err := s.Decode(c, raw.Value())
+	if err != nil {
+		return err
+	}
+	assignServiceModuleValue(r, c.Name, v)
+	return nil
+}
+
+// scanServiceModuleDirect scans the default flat projection into generated typed
+// fields. Codec and datetime outputs use named temporary scan values.
+func scanServiceModuleDirect(s *orm.DirectScanner) (*ServiceModuleRow, error) {
+	a := s.Assemble()
+	_ = a
+	r := &ServiceModuleRow{}
+	r.Binding = s.Binding()
+	if err := s.Scan(
+		&r.Seq,
+		&r.ServiceSeq,
+		&r.Name,
+	); err != nil {
+		return nil, err
+	}
+	r.SetProjection(s.Projection())
+	r.Mark("service_module", "seq", r.Seq)
+	return r, nil
+}
+
 // scanServiceModule maps a positional row slice onto the struct, its joined
 // children (same row) and its relation children (rows of later steps).
 func scanServiceModule(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceModuleRow {
 	r := &ServiceModuleRow{}
 	r.Binding = rs.Binding
 	for _, c := range a.Columns {
-		v := vals[c.Index]
-		switch c.Name {
-		case "seq":
-			r.Seq = orm.AsInt64(v)
-		case "service_seq":
-			r.ServiceSeq = orm.AsInt64(v)
-		case "name":
-			r.Name = orm.AsString(v)
-		default:
-			r.SetExtra(c.Name, v)
-		}
+		assignServiceModuleValue(r, c.Name, vals[c.Index])
 	}
 	for _, ch := range a.Children {
 		switch ch.Rel {
@@ -1055,6 +1102,12 @@ func (q *ServiceModuleQuery) One() (*ServiceModuleRow, error) {
 		return nil, err
 	}
 	q.q.Req.IR.Kind = "one"
+	if direct, used, err := orm.QueryDirect(ctx, ex, q.q.Req, acceptsServiceModuleDirect, scanServiceModuleDirect); used {
+		if err != nil || len(direct) == 0 {
+			return nil, err
+		}
+		return direct[0], nil
+	}
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil || len(rows.Data) == 0 {
 		return nil, err
@@ -1068,6 +1121,12 @@ func (q *ServiceModuleQuery) All() (*orm.Collection[ServiceModuleRow], error) {
 		return nil, err
 	}
 	q.q.Req.IR.Kind = "all"
+	if direct, used, err := orm.QueryDirect(ctx, ex, q.q.Req, acceptsServiceModuleDirect, scanServiceModuleDirect); used {
+		if err != nil {
+			return nil, err
+		}
+		return collectServiceModuleDirect(direct, q.keyFn), nil
+	}
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
@@ -1125,6 +1184,18 @@ func collectServiceModule(rows *orm.Rows, keyFn func(*ServiceModuleRow) orm.Key)
 			continue
 		}
 		c.Put(orm.KeyOf(vals[0]), r)
+	}
+	return c
+}
+
+func collectServiceModuleDirect(rows []*ServiceModuleRow, keyFn func(*ServiceModuleRow) orm.Key) *orm.Collection[ServiceModuleRow] {
+	c := orm.NewCollection[ServiceModuleRow](len(rows))
+	for _, r := range rows {
+		if keyFn != nil {
+			c.Put(keyFn(r), r)
+		} else {
+			c.Put(orm.KeyOf(r.Seq), r)
+		}
 	}
 	return c
 }

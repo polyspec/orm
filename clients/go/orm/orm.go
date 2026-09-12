@@ -764,6 +764,86 @@ func Query(ctx context.Context, ex Exec, r *Req) (*Rows, error) {
 	return runPlan(ctx, ex, c, r)
 }
 
+// DirectScanner gives generated code the current database row and immutable
+// plan metadata. Generated scanners pass typed struct fields to Scan and use
+// Decode only for expression and application-codec outputs.
+type DirectScanner struct {
+	rows    *sql.Rows
+	db      *DB
+	step    *plan.Step
+	context *Rows
+}
+
+func (s *DirectScanner) Assemble() *plan.Assemble { return s.step.Assemble }
+func (s *DirectScanner) Binding() Binding         { return s.context.Binding }
+func (s *DirectScanner) Projection() *Projection  { return s.context.Projection(s.step.Assemble) }
+
+func (s *DirectScanner) Scan(dest ...any) error {
+	return mapDriverErr(s.rows.Scan(dest...))
+}
+
+func (s *DirectScanner) Decode(c plan.OutCol, value any) (any, error) {
+	codec, host := splitHost(c.Styles)
+	var err error
+	if len(host) > 0 {
+		if value, err = hostDecode(value, host, s.db.cfg.AESKey); err != nil {
+			return nil, fmt.Errorf("%s.%s: %w", s.step.Assemble.Entity, c.Name, err)
+		}
+	}
+	if len(codec) > 0 {
+		if value, err = Decode(codec, value); err != nil {
+			return nil, fmt.Errorf("%s.%s: %w", s.step.Assemble.Entity, c.Name, err)
+		}
+	}
+	return value, nil
+}
+
+// QueryDirect executes a flat select directly into generated typed rows. It
+// returns used=false without executing SQL when the plan contains joins,
+// relations, or additional steps; callers then use Query for full assembly.
+func QueryDirect[T any](ctx context.Context, ex Exec, r *Req, accepts func(*plan.Assemble) bool, scan func(*DirectScanner) (*T, error)) (out []*T, used bool, err error) {
+	d := ex.db()
+	c, err := d.plan(ctx, r)
+	if err != nil {
+		return nil, true, err
+	}
+	if len(c.plan.Steps) != 1 || c.plan.Steps[0].Assemble == nil || len(c.plan.Steps[0].Assemble.Children) != 0 || !accepts(c.plan.Steps[0].Assemble) {
+		return nil, false, nil
+	}
+	st := &c.plan.Steps[0]
+	args, masks, err := d.args(st, r, nil)
+	if err != nil {
+		return nil, true, err
+	}
+	stmt, err := ex.stmt(ctx, st.SQL)
+	if err != nil {
+		return nil, true, err
+	}
+	start := time.Now()
+	rows, err := stmt.QueryContext(ctx, args...)
+	err = mapDriverErr(err)
+	if err != nil {
+		d.emit(c, st.SQL, args, masks, start, err)
+		return nil, true, err
+	}
+	defer rows.Close()
+	context := &Rows{Binding: NewBinding(ctx, ex), Assemble: st.Assemble, c: c, params: r.Params}
+	scanner := &DirectScanner{rows: rows, db: d, step: st, context: context}
+	for rows.Next() {
+		var row *T
+		row, err = scan(scanner)
+		if err != nil {
+			break
+		}
+		out = append(out, row)
+	}
+	if err == nil {
+		err = mapDriverErr(rows.Err())
+	}
+	d.emit(c, st.SQL, args, masks, start, err)
+	return out, true, err
+}
+
 // Stream runs a single select step and delivers one independently owned row at
 // a time. Separate relation steps are rejected because they require additional
 // statements while the root cursor is open. SQL joins remain supported.
@@ -935,6 +1015,22 @@ func expandIn(st *plan.Step, vals []any) (string, []any) {
 	}
 	return sb.String(), padded
 }
+
+// ScanValue receives a column that requires application decoding or runtime
+// type conversion. Generated direct scanners use typed field pointers for all
+// other columns.
+type ScanValue struct{ v any }
+
+func (c *ScanValue) Scan(src any) error {
+	if b, ok := src.([]byte); ok {
+		c.v = string(b)
+		return nil
+	}
+	c.v = src
+	return nil
+}
+
+func (c *ScanValue) Value() any { return c.v }
 
 // cell receives one column from database/sql. Scanning into *any makes the
 // driver's []byte cloned once by database/sql and once more by the string

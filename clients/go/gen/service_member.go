@@ -138,23 +138,70 @@ func (r *ServiceMemberRow) deleteCascade(ctx context.Context, ex orm.Exec) error
 	})
 }
 
+func assignServiceMemberValue(r *ServiceMemberRow, name string, v any) {
+	switch name {
+	case "seq":
+		r.Seq = orm.AsInt64(v)
+	case "service_seq":
+		r.ServiceSeq = orm.AsInt64(v)
+	case "user_seq":
+		r.UserSeq = orm.AsInt64(v)
+	default:
+		r.SetExtra(name, v)
+	}
+}
+
+func acceptsServiceMemberDirect(a *plan.Assemble) bool {
+	if len(a.Columns) != 3 {
+		return false
+	}
+	if c := a.Columns[0]; c.Index != 0 || c.Name != "seq" || c.Column != "seq" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[1]; c.Index != 1 || c.Name != "service_seq" || c.Column != "service_seq" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[2]; c.Index != 2 || c.Name != "user_seq" || c.Column != "user_seq" || len(c.Styles) != 0 {
+		return false
+	}
+	return true
+}
+
+func decodeServiceMemberDirect(s *orm.DirectScanner, c plan.OutCol, raw *orm.ScanValue, r *ServiceMemberRow) error {
+	v, err := s.Decode(c, raw.Value())
+	if err != nil {
+		return err
+	}
+	assignServiceMemberValue(r, c.Name, v)
+	return nil
+}
+
+// scanServiceMemberDirect scans the default flat projection into generated typed
+// fields. Codec and datetime outputs use named temporary scan values.
+func scanServiceMemberDirect(s *orm.DirectScanner) (*ServiceMemberRow, error) {
+	a := s.Assemble()
+	_ = a
+	r := &ServiceMemberRow{}
+	r.Binding = s.Binding()
+	if err := s.Scan(
+		&r.Seq,
+		&r.ServiceSeq,
+		&r.UserSeq,
+	); err != nil {
+		return nil, err
+	}
+	r.SetProjection(s.Projection())
+	r.Mark("service_member", "seq", r.Seq)
+	return r, nil
+}
+
 // scanServiceMember maps a positional row slice onto the struct, its joined
 // children (same row) and its relation children (rows of later steps).
 func scanServiceMember(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceMemberRow {
 	r := &ServiceMemberRow{}
 	r.Binding = rs.Binding
 	for _, c := range a.Columns {
-		v := vals[c.Index]
-		switch c.Name {
-		case "seq":
-			r.Seq = orm.AsInt64(v)
-		case "service_seq":
-			r.ServiceSeq = orm.AsInt64(v)
-		case "user_seq":
-			r.UserSeq = orm.AsInt64(v)
-		default:
-			r.SetExtra(c.Name, v)
-		}
+		assignServiceMemberValue(r, c.Name, vals[c.Index])
 	}
 	for _, ch := range a.Children {
 		switch ch.Rel {
@@ -1192,6 +1239,12 @@ func (q *ServiceMemberQuery) One() (*ServiceMemberRow, error) {
 		return nil, err
 	}
 	q.q.Req.IR.Kind = "one"
+	if direct, used, err := orm.QueryDirect(ctx, ex, q.q.Req, acceptsServiceMemberDirect, scanServiceMemberDirect); used {
+		if err != nil || len(direct) == 0 {
+			return nil, err
+		}
+		return direct[0], nil
+	}
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil || len(rows.Data) == 0 {
 		return nil, err
@@ -1205,6 +1258,12 @@ func (q *ServiceMemberQuery) All() (*orm.Collection[ServiceMemberRow], error) {
 		return nil, err
 	}
 	q.q.Req.IR.Kind = "all"
+	if direct, used, err := orm.QueryDirect(ctx, ex, q.q.Req, acceptsServiceMemberDirect, scanServiceMemberDirect); used {
+		if err != nil {
+			return nil, err
+		}
+		return collectServiceMemberDirect(direct, q.keyFn), nil
+	}
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
@@ -1262,6 +1321,18 @@ func collectServiceMember(rows *orm.Rows, keyFn func(*ServiceMemberRow) orm.Key)
 			continue
 		}
 		c.Put(orm.KeyOf(vals[0]), r)
+	}
+	return c
+}
+
+func collectServiceMemberDirect(rows []*ServiceMemberRow, keyFn func(*ServiceMemberRow) orm.Key) *orm.Collection[ServiceMemberRow] {
+	c := orm.NewCollection[ServiceMemberRow](len(rows))
+	for _, r := range rows {
+		if keyFn != nil {
+			c.Put(keyFn(r), r)
+		} else {
+			c.Put(orm.KeyOf(r.Seq), r)
+		}
 	}
 	return c
 }

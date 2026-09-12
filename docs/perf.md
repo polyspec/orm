@@ -128,10 +128,13 @@ MySQL 8.4, local socket, same hardware. Native means direct execution of the sam
 For the 100-row workload, all three implemented clients are within ±10% of native and Rust is faster because it decodes typed values directly. A single row exposes fixed per-statement cost (§6b: IR construction, hashing, plan lookup, and row mapping). Absolute values increased from S1 because `battle` gained seven columns (IP, decimal, and five styled columns) and a fulltext index, increasing SELECT width and INSERT cost. Native values from the same measurement point are compared.
 
 ## 6e. Regression check (`make perf-check`)
-In one process, measure the generated client and the native statement in `bench/go` for 300 p50 samples and compare the ratio. Current: PK 0.48x (the native helper rebuilds scan targets per call), 100 rows 1.03x. Limits are PK 1.35 and 100 rows 1.25. CI fails above a limit. A limit change requires measurement and an update to `perf.md`.
-The ratio varies by hardware, but **approaches 1 as round-trip time increases**: on a local socket PK is 0.48x, while on GitHub Actions TCP (native 122µs / client 132µs) it is 1.08x. The current limits detect a client more than one third slower than the equivalent native statement in both environments.
+The check measures the generated client and an equivalent native result for 300 p50 samples in one process. Both sides select the same non-lazy columns, including `price` and `ip`. The PHP baseline also decodes and constructs the same generated row result. The previous Go and PHP native SQL omitted `price` and `ip`; T7.11 corrected both benchmarks.
 
-`TestHotPathGate` requires `ORM_RUN_PERF_GATE=1`. This keeps the timing test out of parallel `go test ./...` package execution. `make check` and the dedicated CI step set the variable and run the test separately.
+Three consecutive local MySQL 8.4 runs on 2026-09-12 produced median ratios of Go PK 0.48x, Go 100 rows 1.05x, PHP PK 1.12x, and PHP 100 rows 0.96x. Limits remain PK 1.35 and 100 rows 1.25. CI fails above a limit. A limit change requires measurement and an update to this document.
+
+Go uses generated typed scans for the default flat projection. Other projections and plans use positional assembly. PHP keeps the `PDO::FETCH_NUM` array as row storage; row-by-row PDO fetching measured about 511µs for 100 rows versus about 425µs for `fetchAll`, so that implementation was removed.
+
+The ratio varies by hardware and approaches 1 as round-trip time increases. `TestHotPathGate` requires `ORM_RUN_PERF_GATE=1`, and `scripts/perf-test.sh` starts an isolated compiler socket before running the Go and PHP checks. `make check` runs the script.
 
 ## 6f. Rust MySQL driver comparison (T7.9)
 
