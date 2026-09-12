@@ -250,10 +250,14 @@ export class Db implements Database, Executor {
       const parents = step.parent.step === 0 ? rows.data : rows['steps'].get(step.parent.step)?.data ?? [];
       const values = parentValues(step, parents, params);
       if (values.length === 0) { rows.setStep(step.id, [], childKeys(plan, step.id)); continue; }
-      const expanded = expandParent(step, values);
-      const result = await this.run(step, params, expanded.sql, expanded.values);
-      decodeRows(result.rows, requiredAssemble(step), this.aesKey, this.aesKeyring);
-      rows.setStep(step.id, result.rows, childKeys(plan, step.id));
+      const collected: unknown[][] = [];
+      for (const chunk of relationChunks(step, values, this.connection.name)) {
+        const expanded = expandParent(step, chunk);
+        const result = await this.run(step, params, expanded.sql, expanded.values);
+        decodeRows(result.rows, requiredAssemble(step), this.aesKey, this.aesKeyring);
+        collected.push(...result.rows);
+      }
+      rows.setStep(step.id, collected, childKeys(plan, step.id));
     }
     return rows;
   }
@@ -365,4 +369,5 @@ function decodeAssembly(row: unknown[], assemble: ReturnType<typeof requiredAsse
 }
 function parentValues(step: PlanStep, parents: unknown[][], params: readonly Param[]): Param[] { const ref=step.parent!; const seen=new Set<string>(); const out:Param[]=[]; for(const row of parents){if(ref.if_parent&&scalarKey(row[ref.if_parent.index])!==scalarKey(params[ref.if_parent.param]))continue;const key=rowKey(row,ref.keys);if(key===undefined||seen.has(key))continue;seen.add(key);for(const part of ref.keys)out.push(row[part.index] as Param);}return out; }
 function expandParent(step: PlanStep, source: Param[]): {sql:string;values:Param[]} { const width=step.parent?.keys.length??0;if(width===0||source.length%width!==0)throw new OrmError('INTERNAL',`relation step ${step.id} has invalid parent keys`);const tuples=source.length/width;let size=1;while(size<tuples)size<<=1;const values=[...source];while(values.length<size*width)values.push(...source.slice((tuples-1)*width,tuples*width));const replacement=(start:number,format:(n:number)=>string)=>Array.from({length:size},(_,tuple)=>Array.from({length:width},(_,part)=>format(start+tuple*width+part)).join(', ')).join(width===1?', ': '), (');const parentSlot=step.bind_slots.findIndex(slot=>slot.from==='parent');if(parentSlot<0)throw new OrmError('INTERNAL',`relation step ${step.id} has no parent bind`);if(step.sql.includes('$1')){const parent=parentSlot+1;return{sql:step.sql.replace(/\$(\d+)/g,(_,raw)=>{const n=Number(raw);if(n===parent)return replacement(n,i=>`$${i}`);return `$${n>parent?n+size*width-1:n}`;}),values};}let slot=0;return{sql:step.sql.replace(/\?/g,()=>step.bind_slots[slot++]?.from==='parent'?replacement(0,()=>'?'):'?'),values}; }
+function relationChunks(step: PlanStep, values: Param[], driver: string): Param[][] { const width=step.parent?.keys.length??0;if(width===0||values.length%width!==0)throw new OrmError('IR_INVALID',`relation step ${step.id} has invalid parent keys`);const nonParent=step.bind_slots.filter(slot=>slot.from!=='parent').length;const limit=driver==='sqlite'?999:65535;const max=Math.floor((limit-nonParent)/width);if(max<1)throw new OrmError('IR_INVALID',`relation step ${step.id} needs ${nonParent+width} bind parameters but ${driver} permits ${limit}`);let size=1;while(size*2<=max)size*=2;const tuples=values.length/width;const out:Param[][]=[];for(let start=0;start<tuples;start+=size)out.push(values.slice(start*width,Math.min(start+size,tuples)*width));return out; }
 function childKeys(plan: Plan,id:number):import('./index.js').KeyReference[] { const find=(assemble:ReturnType<typeof requiredAssemble>):import('./index.js').KeyReference[]|undefined=>{for(const child of assemble.children){if(child.kind!=='join'&&child.step===id)return child.child_keys;if(child.assemble){const found=find(child.assemble);if(found)return found;}}};for(const step of plan.steps)if(step.assemble){const found=find(step.assemble);if(found)return found;}throw new OrmError('INTERNAL',`relation step ${id} has no child attachment`); }

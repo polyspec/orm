@@ -1192,8 +1192,10 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
         let mut sr = StepRows { data: Vec::new(), by_key: HashMap::new() };
         if !vals.is_empty() {
             let asm = st.assemble.as_ref().expect("relation step has an assemble");
-            let raw = ex.query(st, &req.params, vals).await?;
-            sr.data = positional(&raw, asm, &db.cfg.aes_keys)?;
+            for chunk in relation_chunks(st, vals, db.driver())? {
+                let raw = ex.query(st, &req.params, chunk).await?;
+                sr.data.extend(positional(&raw, asm, &db.cfg.aes_keys)?);
+            }
             let keys = child_keys(&plan, st.id);
             for (j, row) in sr.data.iter().enumerate() {
                 if let Some(key) = Key::of_row(row, &keys) { sr.by_key.entry(key).or_default().push(j); }
@@ -1203,6 +1205,28 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
     }
     rows.params = req.params.clone();
     Ok(rows)
+}
+
+fn relation_chunks(st: &Step, vals: Vec<Param>, driver: &str) -> Result<Vec<Vec<Param>>> {
+    let width = st.parent.as_ref().map(|parent| parent.keys.len()).unwrap_or(0);
+    if width == 0 || vals.len() % width != 0 {
+        return Err(Error::Engine { code: crate::codes::IR_INVALID.into(), msg: format!("relation {} has invalid parent key values", st.id) });
+    }
+    let non_parent = st.bind_slots.iter().filter(|bind| bind.from != "parent").count();
+    let limit: usize = if driver == "sqlite" { 999 } else { 65535 };
+    let max_tuples = (limit.saturating_sub(non_parent)) / width;
+    if max_tuples == 0 {
+        return Err(Error::Engine { code: crate::codes::IR_INVALID.into(), msg: format!("relation {} needs at least {} bind parameters but {} permits {}", st.id, non_parent + width, driver, limit) });
+    }
+    let mut chunk_tuples = 1usize;
+    while chunk_tuples.saturating_mul(2) <= max_tuples { chunk_tuples *= 2; }
+    let tuples = vals.len() / width;
+    let mut chunks = Vec::with_capacity((tuples + chunk_tuples - 1) / chunk_tuples);
+    for start in (0..tuples).step_by(chunk_tuples) {
+        let end = (start + chunk_tuples).min(tuples);
+        chunks.push(vals[start * width..end * width].to_vec());
+    }
+    Ok(chunks)
 }
 
 fn assemble_has_aes(asm: &Assemble) -> bool {
@@ -1358,5 +1382,20 @@ mod tests {
         let (sql, values) = expand_in(&st, values, false);
         assert_eq!(sql, "SELECT 1 WHERE (tenant_id, parent_id) IN ((?, ?), (?, ?))");
         assert_eq!(values.len(), 4);
+    }
+
+    #[test]
+    fn relation_chunks_bound_sqlite_parameters_and_preserve_order() {
+        let mut st = step("SELECT 1 WHERE (tenant_id, parent_id) IN ((?))", &["parent", "param"]);
+        st.parent.as_mut().unwrap().keys = vec![
+            crate::plan::KeyRef { column: "tenant_id".into(), index: 0 },
+            crate::plan::KeyRef { column: "parent_id".into(), index: 1 },
+        ];
+        let values = (0..600).flat_map(|id| [Param::I64(1), Param::I64(id)]).collect();
+        let chunks = relation_chunks(&st, values, "sqlite").unwrap();
+        assert_eq!(chunks.len(), 3);
+        assert!(chunks.iter().all(|chunk| chunk.len() <= 512));
+        assert_eq!(chunks[0][0], Param::I64(1));
+        assert_eq!(chunks.last().unwrap().last(), Some(&Param::I64(599)));
     }
 }

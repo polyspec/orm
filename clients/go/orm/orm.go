@@ -970,6 +970,7 @@ func Stream(ctx context.Context, ex Exec, r *Req, visit func([]any, *Rows) bool)
 }
 
 func runPlan(ctx context.Context, ex Exec, c *cached, r *Req) (*Rows, error) {
+	d := ex.db()
 	p := c.plan
 	main, err := runSelect(ctx, ex, c, &p.Steps[0], r, nil)
 	if err != nil {
@@ -991,8 +992,16 @@ func runPlan(ctx context.Context, ex Exec, c *cached, r *Req) (*Rows, error) {
 		sr := &stepRows{step: st, byKey: map[Key][]int{}}
 		vals := parentValues(st.Parent, parents, r.Params)
 		if len(vals) > 0 {
-			if sr.data, err = runSelect(ctx, ex, c, st, r, vals); err != nil {
-				return nil, err
+			chunks, chunkErr := relationChunks(st, vals, d.Driver())
+			if chunkErr != nil {
+				return nil, chunkErr
+			}
+			for _, chunk := range chunks {
+				part, runErr := runSelect(ctx, ex, c, st, r, chunk)
+				if runErr != nil {
+					return nil, runErr
+				}
+				sr.data = append(sr.data, part...)
 			}
 			keys := childKeys(p, st)
 			for j, row := range sr.data {
@@ -1002,6 +1011,46 @@ func runPlan(ctx context.Context, ex Exec, c *cached, r *Req) (*Rows, error) {
 			}
 		}
 		out.steps[st.ID] = sr
+	}
+	return out, nil
+}
+
+// relationChunks bounds one relation query by the driver's bind limit. The
+// chunk size is the largest power of two that fits, so expandIn keeps a
+// logarithmic statement set without ever exceeding the limit.
+func relationChunks(st *plan.Step, vals []any, driver string) ([][]any, error) {
+	width := len(st.Parent.Keys)
+	if width == 0 || len(vals)%width != 0 {
+		return nil, &ir.Error{Code: CodeIrInvalid, Msg: fmt.Sprintf("relation %d has invalid parent key values", st.ID)}
+	}
+	nonParent := 0
+	for _, bind := range st.BindSlots {
+		if bind.From != "parent" {
+			nonParent++
+		}
+	}
+	limit := 65535
+	if driver == "sqlite" {
+		limit = 999
+	}
+	maxTuples := (limit - nonParent) / width
+	if maxTuples < 1 {
+		return nil, &ir.Error{Code: CodeIrInvalid, Msg: fmt.Sprintf("relation %d needs %d bind parameters but %s permits %d", st.ID, nonParent+width, driver, limit)}
+	}
+	chunkTuples := 1
+	for chunkTuples*2 <= maxTuples {
+		chunkTuples *= 2
+	}
+	tuples := len(vals) / width
+	out := make([][]any, 0, (tuples+chunkTuples-1)/chunkTuples)
+	for start := 0; start < tuples; start += chunkTuples {
+		end := start + chunkTuples
+		if end > tuples {
+			end = tuples
+		}
+		chunk := make([]any, (end-start)*width)
+		copy(chunk, vals[start*width:end*width])
+		out = append(out, chunk)
 	}
 	return out, nil
 }
