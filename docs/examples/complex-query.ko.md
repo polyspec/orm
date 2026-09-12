@@ -1,10 +1,10 @@
-# Complex query example — product search list (dsl.md v3 syntax)
+# 복잡한 쿼리 예 — 상품 검색 목록 (dsl.md v3 문법)
 
-Scenario combining multiple relations and condition patterns:
-- Root `product` — service/display conditions, a **display schedule OR group**, and **keyword OR search across the root and two joined tables**
-- Category filter with **INNER JOIN** and `groupBySeq` (M:N filter pattern)
-- Relations: `lang` (1:1, flattened with `flatten`), `brand` (1:1) with nested `lang` (flattened), `reviews` (1:N, **three per parent**) with a 1:1 `user`, and `myOrderItem` (1:1 for the logged-in user, **one per parent**)
-- Two-key ordering and pagination
+여러 관계와 조건 패턴을 하나로 합친 시나리오:
+- 루트 `product` — 서비스·노출 조건 + **노출 스케줄 OR 그룹** + **키워드 OR 검색(루트 + 조인 테이블 2개)**
+- 카테고리 필터 **INNER JOIN** + `groupBySeq` (M:N 필터 관용구)
+- 관계: `lang`(1:1, `flatten`으로 평탄화), `brand`(1:1) → 그 안의 `lang`(평탄화), `reviews`(1:N, **부모당 3개**, 각 리뷰의 `user` 1:1), `myOrderItem`(1:1, 로그인 사용자 것만, **부모당 1개**)
+- 정렬 2키, 페이지네이션
 
 YAML `relations:` (product):
 ```yaml
@@ -130,9 +130,9 @@ for (seq, p) in &page.items {
 let _ = page.total; let _ = page.pages;
 ```
 
-The three blocks correspond line by line. Other differences are language-specific syntax: `X::query()`/`m.X()`/`x::query()`, 클로저 머리(`fn($w) =>` / `func(w *m.ProductWhere) {` / `|w|`), 터미널 `paginate($db,…)` / `Paginate(ctx, db,…)` / `paginate(&db,…).await?`, 결과 접근의 null 처리(`?->` / nil-safe getter / `Option`).
+세 블록은 줄 단위로 대응한다. 다른 곳은 언어 고정 접사뿐: `X::query()`/`m.X()`/`x::query()`, 클로저 머리(`fn($w) =>` / `func(w *m.ProductWhere) {` / `|w|`), 터미널 `paginate($db,…)` / `Paginate(ctx, db,…)` / `paginate(&db,…).await?`, 결과 접근의 null 처리(`?->` / nil-safe getter / `Option`).
 
-## Plan produced by the engine (MySQL dialect)
+## 엔진이 만드는 Plan (MySQL dialect)
 
 ```
 step 0  query   (루트 + 조인)  ← paginate가 count 변형도 같이 요청
@@ -190,12 +190,12 @@ step 6  query   my_order_item (ONE, group_limit 1)  bind_from: step0.seq
   link: {kind: one, parent_column: seq, child_column: product_seq}
 ```
 
-- Seven round trips, one query per relation. `multi_statement` remains an unimplemented post-S7 candidate; steps 1, 2, 4, and 6 depend only on step 0 and could then share one round trip.
-- Steps 1 through 6 do not run when the parent has zero rows. Empty IN lists are prohibited.
-- This plan has a fixed shape independent of values and is cached. User `IN` list lengths are padded to power-of-two buckets, so each bucket has one shape; relation-stage IN uses a `LIST_EXPAND` slot and remains a cache hit regardless of parent row count.
+- 왕복 7회(관계당 1쿼리). `multi_statement`는 아직 구현하지 않은 S7 이후 후보이며, 구현되면 step 1·2·4·6은 step 0 결과만 의존하므로 한 왕복으로 묶을 수 있다.
+- 부모가 0행이면 step 1~6은 실행하지 않는다(빈 IN 금지).
+- 이 플랜은 값과 무관하게 형태가 고정이라 캐시된다. 사용자 `IN` 리스트 길이는 2의 거듭제곱 bucket으로 패딩되어 bucket마다 한 형태만 생긴다; 관계 단계의 IN은 `LIST_EXPAND` 슬롯이라 부모 행 수와 무관하게 캐시 히트.
 
-## Reductions from dynamic PHP calls to the regular syntax
-- `->relation(ProductLang::query()->matchSeqWithProductSeq()->aliasLang())` → `->relationLang(...)`: the YAML declares relation direction, keys, and names, so two tokens are removed.
-- `->and('(')` … `->condition(')')` inside a join → `->and(fn($w) => … ->or()->brandLangAll(fn($b) => …))`: parentheses and join declaration order are explicit; navigating to an unjoined relation is a compile error.
-- The later out-of-chain call `$productModels->and('(')` is unnecessary.
+## 동적 PHP 호출에서 정규 문법으로 줄어드는 것
+- `->relation(ProductLang::query()->matchSeqWithProductSeq()->aliasLang())` → `->relationLang(...)`: 관계 방향·키·이름을 YAML이 알고 있으므로 두 토큰 삭제.
+- `->and('(')` … 조인 안의 `->condition(')')` → `->and(fn($w) => … ->or()->brandLangAll(fn($b) => …))`: 괄호 위치·조인 선언 순서 무관, 조인 안 된 관계로 내려가면 컴파일 에러.
+- `$productModels->and('(')` 를 체인 밖에서 나중에 호출하는 트릭 → 불필요.
 - `Pagination::getList($model, recordsPerPage:…)` → `->using($db)->paginate($page, 20)`.
