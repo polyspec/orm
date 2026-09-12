@@ -18,7 +18,7 @@ Each item requires:
 ## P8: correctness and safety
 
 - [x] P8.1 Schema migration diff covers indexes, unique constraints, full-text indexes, foreign keys, delete actions, nullability, defaults, types, and comments. PostgreSQL emits every required `ALTER COLUMN` operation.
-- [ ] P8.2 Explicit table and column rename declarations preserve data and produce deterministic forward and rollback plans.
+- [x] P8.2 Explicit table and column rename declarations preserve data and produce deterministic forward and rollback plans.
 - [ ] P8.3 SQLite performs verified table rebuilds for supported structural changes and rejects unsafe rebuilds before execution.
 - [ ] P8.4 Composite primary and foreign keys work through schema import, planning, generated APIs, identity, CRUD, relations, pagination, and AES rotation. Unsupported declarations fail during schema build.
 - [ ] P8.5 Public encryption uses authenticated, versioned ciphertext in every client. Reads select the hidden row key version, mixed-version reads work, tampering fails, and rotation processes bounded resumable batches for every AES column in a row.

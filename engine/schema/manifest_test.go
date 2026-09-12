@@ -128,6 +128,24 @@ func TestRenameDirectivesEnterManifest(t *testing.T) {
 	}
 }
 
+func TestRenameDirectivesRejectAmbiguousSources(t *testing.T) {
+	cases := []string{
+		"erDiagram\n account {\n bigint id PK\n }\n %% rename_table account account\n",
+		"erDiagram\n first {\n bigint id PK\n }\n second {\n bigint id PK\n }\n %% rename_table first account\n %% rename_table second account\n",
+		"erDiagram\n account {\n bigint id PK\n varchar(20) first_name\n varchar(20) display_name\n }\n %% rename_column account first_name name\n %% rename_column account display_name name\n",
+		"erDiagram\n account {\n bigint id PK\n varchar(20) name\n varchar(20) display_name\n }\n %% rename_column account display_name name\n",
+	}
+	for _, src := range cases {
+		d, err := Parse(src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Build(d); err == nil || !strings.Contains(err.Error(), "rename") {
+			t.Fatalf("expected rename validation error, got %v", err)
+		}
+	}
+}
+
 func TestScopeDirectiveRequiresNonNullTenantColumn(t *testing.T) {
 	good := mustBuild(t, "erDiagram\n tenant {\n bigint id PK \"auto\"\n bigint account_id\n }\n %% scope tenant account_id\n")
 	if got := good.Entities["tenant"].Scope; got != "account_id" {
