@@ -132,6 +132,7 @@ func dsn() string {
 
 func main() {
 	args := os.Args[1:]
+	compilerEndpoint := ""
 	var rest []string
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
@@ -141,13 +142,19 @@ func main() {
 		case "-dsn":
 			dsnFlag = args[i+1]
 			i++
+		case "-compiler":
+			compilerEndpoint = args[i+1]
+			i++
 		default:
 			rest = append(rest, args[i])
 		}
 	}
 	if len(rest) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: runner_go [-driver mysql|postgres|sqlite] [-dsn …] <schema.json>")
+		fmt.Fprintln(os.Stderr, "usage: runner_go [-driver mysql|postgres|sqlite] [-dsn …] -compiler <http-endpoint> <schema.json>")
 		os.Exit(2)
+	}
+	if compilerEndpoint == "" {
+		fail(fmt.Errorf("-compiler is required"))
 	}
 	js, err := os.ReadFile(rest[0])
 	if err != nil {
@@ -162,7 +169,12 @@ func main() {
 		fail(err)
 	}
 	const aesKey = "bench-salt"
-	db, err := orm.Open(driver, dsn(), eng, orm.Config{
+	ctx := context.Background()
+	compiler, err := orm.NewConnectCompiler(compilerEndpoint, 5*time.Second)
+	if err != nil {
+		fail(err)
+	}
+	db, err := orm.OpenWithCompiler(ctx, driver, dsn(), eng, compiler, orm.Config{
 		AESKey: aesKey,
 		OnQuery: func(e orm.Event) {
 			binds := make([]any, len(e.Args))
@@ -178,7 +190,6 @@ func main() {
 	if err := gen.Init(eng); err != nil {
 		fail(err)
 	}
-	ctx := context.Background()
 	out := map[string]vector{}
 
 	run := func(name string, fn func() (any, error)) {

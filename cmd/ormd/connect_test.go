@@ -15,6 +15,7 @@ import (
 	"github.com/polyspec/orm/engine/ir"
 	planmodel "github.com/polyspec/orm/engine/plan"
 	compilerv1 "github.com/polyspec/orm/proto/orm/compiler/v1"
+	compilerbridge "github.com/polyspec/orm/proto/orm/compiler/v1/bridge"
 	"github.com/polyspec/orm/proto/orm/compiler/v1/compilerv1connect"
 )
 
@@ -84,7 +85,11 @@ func TestRequestFromProtoPreservesEveryField(t *testing.T) {
 		Optimistic:  &ir.Optimist{Column: "version", P: 9}, Raw: &ir.Raw{SQL: "SELECT ?", Ps: []int{10}},
 	}
 
-	gotJSON, err := json.Marshal(requestFromProto(input))
+	converted, err := compilerbridge.RequestFromProto(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotJSON, err := json.Marshal(converted)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,6 +99,21 @@ func TestRequestFromProtoPreservesEveryField(t *testing.T) {
 	}
 	if !bytes.Equal(gotJSON, wantJSON) {
 		t.Fatalf("request conversion mismatch\n got: %s\nwant: %s", gotJSON, wantJSON)
+	}
+	wire, err := compilerbridge.RequestToProto(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roundTripped, err := compilerbridge.RequestFromProto(wire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roundTripJSON, err := json.Marshal(roundTripped)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(roundTripJSON, wantJSON) {
+		t.Fatalf("request round trip mismatch\n got: %s\nwant: %s", roundTripJSON, wantJSON)
 	}
 }
 
@@ -107,7 +127,7 @@ func TestPlanToProtoPreservesEveryField(t *testing.T) {
 		}}},
 	}}}
 
-	got := planToProto(input)
+	got := compilerbridge.PlanToProto(input)
 	if got.SchemaHash != "schema" || got.Kind != compilerv1.QueryKind_QUERY_KIND_PAGINATE || len(got.Steps) != 1 {
 		t.Fatalf("plan header=%#v", got)
 	}
@@ -129,6 +149,15 @@ func TestPlanToProtoPreservesEveryField(t *testing.T) {
 	child := step.Assemble.Children[0]
 	if child.Relation != "user" || child.Kind != "join" || child.Step != 3 || child.ParentColumn != "user_seq" || child.ParentIndex != 1 || child.ChildColumn != "seq" || child.ChildIndex != 2 || child.KeyBy != "seq" || child.KeyIndex != 3 || !child.Flatten || !child.Cascade || child.Assemble == nil || child.Assemble.Entity != "user" || child.Assemble.Alias != "u" || len(child.Assemble.Columns) != 0 {
 		t.Fatalf("child=%#v", child)
+	}
+	roundTrip, err := compilerbridge.PlanFromProto(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inputJSON, _ := json.Marshal(input)
+	roundTripJSON, _ := json.Marshal(roundTrip)
+	if !bytes.Equal(roundTripJSON, inputJSON) {
+		t.Fatalf("plan round trip mismatch\n got: %s\nwant: %s", roundTripJSON, inputJSON)
 	}
 }
 

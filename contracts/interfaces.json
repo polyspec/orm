@@ -26,7 +26,7 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:bfae7e049c352b1dda3c1a8f843d28da847b1d13ea9474a6d08d61f3c47fa748",
+    "go": "sha256:f9b65d49fd74e480e171a308b13a8106505d9df31c3d9fe3b44389efdcd7f8e6",
     "php": "sha256:fa4c764307dd84081b283a80d2d24a00984a7a939cd36845d86ae14c7f60bc30",
     "rust": "sha256:84f68989d18a1f3db12afb30abbf8b4701861038aa7a0bed56df5adfc7260ac9"
   },
@@ -164,7 +164,7 @@
       "id": "Db",
       "fields": {
         "connection": "ConnectionResource",
-        "compiler": "Compiler",
+        "compiler": "CompilerTransport",
         "plans": "PlanCache",
         "statements": "StatementCache",
         "config": "RuntimeConfig"
@@ -1472,6 +1472,13 @@
       "role": "implements",
       "from": "Db",
       "role_ko": "구현"
+    },
+    {
+      "to": "CompilerTransport",
+      "kind": "-->",
+      "role": "compiles plans",
+      "from": "Db",
+      "role_ko": "plan 컴파일"
     },
     {
       "to": "Executor",

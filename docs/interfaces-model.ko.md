@@ -82,7 +82,7 @@ classDiagram
         writeStep()
     }
     class Db {
-        Compiler compiler
+        CompilerTransport compiler
         RuntimeConfig config
         ConnectionResource connection
         PlanCache plans
@@ -184,6 +184,7 @@ classDiagram
     QueryNode *-- QueryNode : contains child nodes
     Binding --> Executor : selects executor
     Db ..|> Executor : implements
+    Db --> CompilerTransport : compiles plans
     Tx ..|> Executor : implements
     Tx --> Db : uses database
     Row *-- Binding : uses root binding
@@ -231,6 +232,7 @@ classDiagram
 | QueryNode | QueryNode | child node 포함 |
 | Binding | Executor | executor 선택 |
 | Db | Executor | 구현 |
+| Db | CompilerTransport | plan 컴파일 |
 | Tx | Executor | 구현 |
 | Tx | Db | database 사용 |
 | Row | Binding | root binding 사용 |
@@ -284,7 +286,7 @@ classDiagram
 | QueryNode.where | `Optional<Group>` |
 | Binding.control | `NativeExecutionControl` |
 | Binding.executor | `Optional<Executor>` |
-| Db.compiler | `Compiler` |
+| Db.compiler | `CompilerTransport` |
 | Db.config | `RuntimeConfig` |
 | Db.connection | `ConnectionResource` |
 | Db.plans | `PlanCache` |

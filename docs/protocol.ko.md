@@ -89,7 +89,7 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 
 `contracts/interfaces.json`은 네 전송 구현의 service 경로, 작업 이름, request·response type, 오류, 언어별 symbol을 정의한다. Protobuf 검사는 interface method나 구현 선언이 누락되면 실패한다. Runtime symbol snapshot은 생성된 Protobuf 파일을 제외하며, 해당 파일은 `proto/generated.sha256.json`이 모두 검사한다.
 
-기존 Go in-process compiler, Rust WASM compiler, PHP 길이 prefix Unix socket compiler는 T7.1 전환 중 database executor에서 계속 사용한다. 이 상태는 전송 완료 조건을 충족하지 않는다. Executor가 Connect를 사용하고 네 언어에서 DB vector 58개가 통과하면 T7.1이 완료된다.
+Go database executor는 plan cache miss를 모두 `CompilerTransport`로 compile한다. 시작 단계에서 schema hash, dialect, IR version metadata 불일치를 거부한다. SQLite DB vector 58개가 Connect 경로를 통과했다. Rust는 WASM을 사용하고 PHP는 길이 prefix Unix socket을 사용한다. 이 호환 경로는 전송 완료 조건을 충족하지 않는다. 네 executor가 Connect를 사용하고 네 언어에서 DB vector 58개가 통과하면 T7.1이 완료된다.
 
 Cache key는 schema hash, request 형태, IN cardinality로 구성한다. Parameter 값은 제외한다.
 

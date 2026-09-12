@@ -82,7 +82,7 @@ classDiagram
         writeStep()
     }
     class Db {
-        Compiler compiler
+        CompilerTransport compiler
         RuntimeConfig config
         ConnectionResource connection
         PlanCache plans
@@ -184,6 +184,7 @@ classDiagram
     QueryNode *-- QueryNode : contains child nodes
     Binding --> Executor : selects executor
     Db ..|> Executor : implements
+    Db --> CompilerTransport : compiles plans
     Tx ..|> Executor : implements
     Tx --> Db : uses database
     Row *-- Binding : uses root binding
@@ -231,6 +232,7 @@ classDiagram
 | QueryNode | QueryNode | contains child nodes |
 | Binding | Executor | selects executor |
 | Db | Executor | implements |
+| Db | CompilerTransport | compiles plans |
 | Tx | Executor | implements |
 | Tx | Db | uses database |
 | Row | Binding | uses root binding |
@@ -284,7 +286,7 @@ An underscore in a diagram type name separates nested types. The table defines t
 | QueryNode.where | `Optional<Group>` |
 | Binding.control | `NativeExecutionControl` |
 | Binding.executor | `Optional<Executor>` |
-| Db.compiler | `Compiler` |
+| Db.compiler | `CompilerTransport` |
 | Db.config | `RuntimeConfig` |
 | Db.connection | `ConnectionResource` |
 | Db.plans | `PlanCache` |
