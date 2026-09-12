@@ -23,7 +23,7 @@ func TestLoadPlanBundleUsesRegisteredShapeWithoutCompiler(t *testing.T) {
 	compiled := &plan.Plan{SchemaHash: eng.M.SchemaHash, Kind: "all", Steps: []plan.Step{{Role: "main", SQL: "SELECT 1"}}}
 	d := &DB{Eng: eng, driver: "mysql", cfg: Config{PlanCacheSize: 2}, plans: map[uint64]*cached{}}
 	bundle, err := json.Marshal(map[string]any{
-		"version": 1, "schema_hash": eng.M.SchemaHash, "dialect": "mysql", "request_sha256": "test",
+		"version": 1, "schema_hash": eng.M.SchemaHash, "dialect": "mysql", "request_sha256": canonicalRequestSHA(r.IR),
 		"plan": compiled,
 	})
 	if err != nil {

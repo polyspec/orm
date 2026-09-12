@@ -1,4 +1,5 @@
 import { mkdtemp, rm } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AesKeyring, Db, QueryCore, Row, hostDecode, hostEncode, openSqlite, registerRow } from '../../clients/typescript/dist/index.js';
@@ -98,7 +99,8 @@ if (compositeCalls[1].sql !== 'composite-children ((?, ?), (?, ?))' || composite
 const count = await db.execute({ schema_hash: 'hash', kind: 'count', steps: [{ id: 0, role: 'count', sql: 'count', bind_slots: [] }] }, []);
 if (count !== 2) throw new Error('scalar execution failed');
 const bundleRequest = { ir_version: 1, schema_hash: 'hash', kind: 'count', entity: 'item', n_params: 0 };
-db.loadPlanBundle({ version: 1, schema_hash: 'hash', dialect: 'sqlite', request_sha256: 'test', plan: { schema_hash: 'hash', kind: 'count', steps: [{ id: 0, role: 'count', sql: 'count', bind_slots: [] }] } }, bundleRequest);
+const bundleHash = createHash('sha256').update(JSON.stringify(bundleRequest, Object.keys(bundleRequest).sort())).digest('hex');
+db.loadPlanBundle({ version: 1, schema_hash: 'hash', dialect: 'sqlite', request_sha256: bundleHash, plan: { schema_hash: 'hash', kind: 'count', steps: [{ id: 0, role: 'count', sql: 'count', bind_slots: [] }] } }, bundleRequest);
 if ((await db.plan(bundleRequest)).steps[0].sql !== 'count') throw new Error('precompiled plan was not loaded into the cache');
 const write = await db.execute({ schema_hash: 'hash', kind: 'insert', steps: [{ id: 0, role: 'main', sql: 'write', bind_slots: [] }] }, []);
 if (write.affected !== 1 || write.insertId !== 8) throw new Error('write execution failed');

@@ -1,6 +1,9 @@
 package orm
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
@@ -48,6 +51,10 @@ func (d *DB) LoadPlanBundle(bundle []byte, r *Req) error {
 	if envelope.RequestSHA == "" || len(envelope.Plan) == 0 {
 		return &ir.Error{Code: CodeConfig, Msg: "precompiled plan requires request_sha256 and plan"}
 	}
+	r.IR.NParams = len(r.Params)
+	if got := canonicalRequestSHA(r.IR); got != envelope.RequestSHA {
+		return &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("precompiled plan request hash %s does not match request shape %s", envelope.RequestSHA, got)}
+	}
 	var compiled plan.Plan
 	if err := json.Unmarshal(envelope.Plan, &compiled); err != nil {
 		return &ir.Error{Code: CodeConfig, Msg: "precompiled plan body is invalid: " + err.Error()}
@@ -58,7 +65,6 @@ func (d *DB) LoadPlanBundle(bundle []byte, r *Req) error {
 	if r.Err != nil {
 		return r.Err
 	}
-	r.IR.NParams = len(r.Params)
 	key := shapeKey(&r.IR)
 	cachedPlan := newCached(key, &compiled)
 	d.planMu.Lock()
@@ -76,4 +82,15 @@ func (d *DB) LoadPlanBundle(bundle []byte, r *Req) error {
 		}
 	}
 	return nil
+}
+
+func canonicalRequestSHA(request ir.Request) string {
+	raw, _ := json.Marshal(request)
+	var value any
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	_ = decoder.Decode(&value)
+	canonical, _ := json.Marshal(value)
+	sum := sha256.Sum256(canonical)
+	return hex.EncodeToString(sum[:])
 }
