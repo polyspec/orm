@@ -37,6 +37,32 @@ func TestCompositeParentExpansionPreservesTupleBoundaries(t *testing.T) {
 	}
 }
 
+func TestRelationChunksStayWithinDriverParameterLimits(t *testing.T) {
+	step := &plan.Step{ID: 7, Parent: &plan.ParentRef{Keys: []plan.KeyRef{{Column: "tenant_id"}, {Column: "id"}}}, BindSlots: []plan.BindSlot{{From: "parent"}, {From: "param"}}}
+	values := make([]any, 0, 1200)
+	for i := 0; i < 600; i++ {
+		values = append(values, int64(1), int64(i))
+	}
+	chunks, err := relationChunks(step, values, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(chunks) != 3 {
+		t.Fatalf("chunks=%d, want 3", len(chunks))
+	}
+	for _, chunk := range chunks {
+		if len(chunk) > 512 {
+			t.Fatalf("chunk has %d values, exceeds padded SQLite limit", len(chunk))
+		}
+	}
+	if got := chunks[0][0]; got != int64(1) {
+		t.Fatalf("first chunk order changed: %v", got)
+	}
+	if got := chunks[len(chunks)-1][len(chunks[len(chunks)-1])-1]; got != int64(599) {
+		t.Fatalf("last chunk order changed: %v", got)
+	}
+}
+
 func TestCompositeRowKeyHasNoConcatenationCollision(t *testing.T) {
 	refs := []plan.KeyRef{{Index: 0}, {Index: 1}}
 	a, _ := KeyFromRow([]any{"1", "23"}, refs)
