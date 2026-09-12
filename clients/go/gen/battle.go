@@ -1082,6 +1082,22 @@ func (q *BattleQuery) Using(ctx context.Context, ex orm.Exec) *BattleQuery {
 	return q
 }
 
+// RotateAES re-encrypts every AES column and updates aes_key_version in one transaction.
+func (q *BattleQuery) RotateAES(targetVersion int32, keyring orm.AESKeyring) (int, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
+	return ex.DB().RotateAESRows(ctx, ex, orm.AESRotationSpec{
+		Table: "battle", PrimaryKey: "seq", VersionColumn: "aes_key_version",
+		Columns: []orm.AESRotationColumn{
+			{Name: "aes_key_version", Styles: []string{"aes"}},
+			{Name: "aes_hex_email", Styles: []string{"aes", "hex"}},
+			{Name: "aes_hex_phone", Styles: []string{"aes", "hex"}},
+		},
+	}, targetVersion, keyring)
+}
+
 // Using selects the context and pool or transaction for this loaded row.
 func (r *BattleRow) Using(ctx context.Context, ex orm.Exec) *BattleRow {
 	r.Binding = orm.NewBinding(ctx, ex)
