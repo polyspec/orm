@@ -30,6 +30,14 @@ class Navigation extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>string mode = 4;</code>
      */
     protected $mode = '';
+    /**
+     * Generated from protobuf field <code>string count_operator = 5;</code>
+     */
+    protected $count_operator = '';
+    /**
+     * Generated from protobuf field <code>optional uint32 count_parameter = 6;</code>
+     */
+    protected $count_parameter = null;
 
     /**
      * Constructor.
@@ -41,6 +49,8 @@ class Navigation extends \Google\Protobuf\Internal\Message
      *     @type string $relation
      *     @type \Orm\Compiler\V1\Group $group
      *     @type string $mode
+     *     @type string $count_operator
+     *     @type int $count_parameter
      * }
      */
     public function __construct($data = null)
@@ -142,6 +152,60 @@ class Navigation extends \Google\Protobuf\Internal\Message
     {
         GPBUtil::checkString($var, true);
         $this->mode = $var;
+
+        return $this;
+    }
+
+    /**
+     * Generated from protobuf field <code>string count_operator = 5;</code>
+     * @return string
+     */
+    public function getCountOperator()
+    {
+        return $this->count_operator;
+    }
+
+    /**
+     * Generated from protobuf field <code>string count_operator = 5;</code>
+     * @param string $var
+     * @return $this
+     */
+    public function setCountOperator(string $var)
+    {
+        GPBUtil::checkString($var, true);
+        $this->count_operator = $var;
+
+        return $this;
+    }
+
+    /**
+     * Generated from protobuf field <code>optional uint32 count_parameter = 6;</code>
+     * @return int
+     */
+    public function getCountParameter()
+    {
+        return isset($this->count_parameter) ? $this->count_parameter : 0;
+    }
+
+    public function hasCountParameter()
+    {
+        return isset($this->count_parameter);
+    }
+
+    public function clearCountParameter()
+    {
+        unset($this->count_parameter);
+    }
+
+    /**
+     * Generated from protobuf field <code>optional uint32 count_parameter = 6;</code>
+     * @param int $var
+     * @return $this
+     */
+    public function setCountParameter(int $var)
+    {
+        GPBUtil::checkUint32($var);
+        $this->count_parameter = $var;
 
         return $this;
     }

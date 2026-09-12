@@ -161,6 +161,13 @@ func (w *W) NavMode(rel, mode string, fn func(*W)) {
 	fn(NewW(w.Req, g))
 }
 
+func (w *W) NavCount(rel, op string, value any, fn func(*W)) {
+	g := &ir.Group{}
+	p := w.Req.P(value)
+	w.G.Items = append(w.G.Items, ir.Item{Nav: &ir.Nav{Conn: w.conn(), Rel: rel, Group: g, Mode: "count", CountOp: op, P: &p}})
+	fn(NewW(w.Req, g))
+}
+
 // Root-level WHERE helpers on Q delegate to a W over the root where group,
 // carrying the pending connector across calls.
 func (q *Q) W() *W {
