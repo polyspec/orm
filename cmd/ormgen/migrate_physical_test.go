@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -60,7 +61,7 @@ func TestPhysicalMigration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := executeMigration(ctx, db, ddl); err != nil {
+			if err := executeMigration(ctx, db, tc.driver, ddl); err != nil {
 				t.Fatal(err)
 			}
 			live, err = liveManifest(db, tc.driver)
@@ -84,7 +85,33 @@ func TestPhysicalMigration(t *testing.T) {
 			if !schemaMatches(want, live, tc.driver) {
 				t.Fatal("repeat application would not be a no-op")
 			}
+			assertPhysicalMigrationLock(t, ctx, db, tc.driver)
 		})
+	}
+}
+
+func assertPhysicalMigrationLock(t *testing.T, ctx context.Context, db *sql.DB, driver string) {
+	t.Helper()
+	holder, err := db.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer holder.Close()
+	if driver == "mysql" {
+		var acquired int
+		if err := holder.QueryRowContext(ctx, "SELECT GET_LOCK(CONCAT('polyspec.orm:', DATABASE()), 0)").Scan(&acquired); err != nil || acquired != 1 {
+			t.Fatalf("acquire mysql test lock: acquired=%d err=%v", acquired, err)
+		}
+		defer holder.ExecContext(context.Background(), "SELECT RELEASE_LOCK(CONCAT('polyspec.orm:', DATABASE()))")
+	} else {
+		if _, err := holder.ExecContext(ctx, "SELECT pg_advisory_lock(hashtext(current_database()), hashtext('polyspec.orm.migration'))"); err != nil {
+			t.Fatal(err)
+		}
+		defer holder.ExecContext(context.Background(), "SELECT pg_advisory_unlock(hashtext(current_database()), hashtext('polyspec.orm.migration'))")
+	}
+	err = executeMigration(ctx, db, driver, "SELECT 1;")
+	if err == nil || !strings.Contains(err.Error(), "MIGRATION_LOCK_BUSY") {
+		t.Fatalf("expected lock contention error, got %v", err)
 	}
 }
 
