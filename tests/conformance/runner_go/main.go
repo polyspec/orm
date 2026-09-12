@@ -403,6 +403,36 @@ func main() {
 		members.Put(orm.KeyOf("1"), first)
 		return r.ToArray()
 	})
+	run("interface_stream", func() (any, error) {
+		seen := 0
+		var first *gen.BattleRow
+		var firstSeq int64
+		stopped, err := gen.Battle().Using(ctx, db).ServiceSeq(7).OrderBySeqAsc().Stream(func(row *gen.BattleRow) bool {
+			if first == nil {
+				first = row
+				firstSeq = row.Seq
+			}
+			seen++
+			return seen < 3
+		})
+		if err != nil {
+			return nil, err
+		}
+		if first == nil || first.Seq != firstSeq {
+			return nil, fmt.Errorf("stream row ownership check failed")
+		}
+		exhausted, err := gen.Battle().Using(ctx, db).ServiceSeq(7).OrderBySeqAsc().Limit(0, 4).Stream(func(*gen.BattleRow) bool { return true })
+		if err != nil {
+			return nil, err
+		}
+		var relationErr error
+		_, relationErr = gen.Battle().Using(ctx, db).ServiceSeq(7).Relation(gen.User()).Stream(func(*gen.BattleRow) bool { return true })
+		return map[string]any{
+			"stopped":        map[string]any{"state": stopped.State, "count": stopped.Count},
+			"exhausted":      map[string]any{"state": exhausted.State, "count": exhausted.Count},
+			"relation_error": code(relationErr),
+		}, nil
+	})
 	run("unbound_terminal", func() (any, error) {
 		return gen.Battle().GetCountByServiceSeq(7)
 	})

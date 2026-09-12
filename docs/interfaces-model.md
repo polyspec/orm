@@ -17,6 +17,7 @@ classDiagram
         relation()
         get()
         gets()
+        stream()
         getCount()
         insert()
         save()
@@ -79,6 +80,7 @@ classDiagram
     class Executor {
         database()
         queryStep()
+        streamStep()
         writeStep()
     }
     class Db {
@@ -89,6 +91,7 @@ classDiagram
         StatementCache statements
         transaction()
         queryStep()
+        streamStep()
         writeStep()
     }
     class Tx {
@@ -137,6 +140,10 @@ classDiagram
         I64 pages
         I64 per
         I64 total
+    }
+    class StreamResult {
+        I64 count
+        StreamState state
     }
     class AESKeyring {
         I32 currentVersion
@@ -218,6 +225,7 @@ classDiagram
     Query --> AESKeyring : uses keys
     Query --> AESRotationSpec : uses generated specification
     Query --> AESRotationStatus : returns status
+    Query --> StreamResult : returns stream result
 ```
 
 | Component | Behavior and state |
@@ -235,6 +243,7 @@ classDiagram
 | Row | Separates loaded identity, values, pending changes, relations, and execution binding. |
 | Collection | A duplicate key replaces its value without changing order. Integer and string keys are distinct. |
 | Page | Requires a positive per value. total does not depend on the requested page. |
+| StreamResult | Reports whether the cursor was exhausted or stopped and how many independently owned rows were delivered. |
 | AESKeyring | Stores versioned AES keys and the current write version. |
 | AESRotationSpec | Contains generated identifiers and codec stages for one AES entity. |
 | AESRotationStatus | Contains row counts by stored AES key version. |
@@ -272,6 +281,7 @@ classDiagram
 | Query | AESKeyring | uses keys |
 | Query | AESRotationSpec | uses generated specification |
 | Query | AESRotationStatus | returns status |
+| Query | StreamResult | returns stream result |
 
 An underscore in a diagram type name separates nested types. The table defines the exact types.
 
@@ -337,6 +347,8 @@ An underscore in a diagram type name separates nested types. The table defines t
 | Page.pages | `I64` |
 | Page.per | `I64` |
 | Page.total | `I64` |
+| StreamResult.count | `I64` |
+| StreamResult.state | `StreamState` |
 | AESKeyring.currentVersion | `I32` |
 | AESKeyring.versions | `OrderedMap<I32,Secret>` |
 | AESRotationSpec.columns | `List<AESRotationColumn>` |

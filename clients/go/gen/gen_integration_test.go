@@ -209,6 +209,40 @@ func TestReadPaths(t *testing.T) {
 	}
 }
 
+func TestStreamLifecycleAndRowOwnership(t *testing.T) {
+	db := open(t)
+	db.SQL.SetMaxOpenConns(1)
+	ctx := context.Background()
+	var kept []*gen.BattleRow
+	result, err := gen.Battle().ServiceSeq(7).OrderBySeqAsc().Using(ctx, db).Stream(func(row *gen.BattleRow) bool {
+		kept = append(kept, row)
+		return len(kept) < 3
+	})
+	if err != nil || result.State != orm.StreamStopped || result.Count != 3 {
+		t.Fatalf("stopped stream: result=%+v err=%v", result, err)
+	}
+	if len(kept) != 3 || kept[0] == kept[1] || kept[0].GetSeq() == kept[1].GetSeq() || kept[0].GetName() == "" {
+		t.Fatalf("stream rows are not independently owned: %#v", kept)
+	}
+	if count, err := gen.Battle().ServiceSeq(7).Using(ctx, db).GetCount(); err != nil || count == 0 {
+		t.Fatalf("cursor was not released after stop: count=%d err=%v", count, err)
+	}
+
+	result, err = gen.Battle().ServiceSeq(7).OrderBySeqAsc().Limit(0, 4).Using(ctx, db).Stream(func(*gen.BattleRow) bool { return true })
+	if err != nil || result.State != orm.StreamExhausted || result.Count != 4 {
+		t.Fatalf("exhausted stream: result=%+v err=%v", result, err)
+	}
+	if _, err := gen.Battle().Relation(gen.User()).Using(ctx, db).Stream(func(*gen.BattleRow) bool { return true }); err == nil || !strings.Contains(err.Error(), "IR_INVALID") {
+		t.Fatalf("relation stream must fail before opening a cursor: %v", err)
+	}
+
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if result, err := gen.Battle().Using(cancelled, db).Stream(func(*gen.BattleRow) bool { return true }); err == nil || !errors.Is(err, context.Canceled) || result.State != orm.StreamCancelled {
+		t.Fatalf("cancelled stream: result=%+v err=%v", result, err)
+	}
+}
+
 func TestRootFinderKeepsJoinAndRelation(t *testing.T) {
 	db := open(t)
 	ctx := context.Background()

@@ -665,7 +665,7 @@
     },
     {
       "name": "group_or",
-      "chain": "Battle.serviceSeq(7).isClose(false).and(w =\u003e w.isDisplay(true).or().and(w =\u003e w.isDisplay(false).displayStartDtLt(now))).seqIn([6,106,206,306,406]).orderBySeqDesc().limit(0,3).gets",
+      "chain": "Battle.serviceSeq(7).isClose(false).and(w => w.isDisplay(true).or().and(w => w.isDisplay(false).displayStartDtLt(now))).seqIn([6,106,206,306,406]).orderBySeqDesc().limit(0,3).gets",
       "expect": {
         "result": [
           [
@@ -712,7 +712,7 @@
               406,
               406
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_team_player_count` AS `a__target_team_player_count`, `a`.`success_count` AS `a__success_count`, `a`.`player_count` AS `a__player_count`, `a`.`read_count` AS `a__read_count`, `a`.`cover_url` AS `a__cover_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_module_seq` AS `a__service_module_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_play` AS `a__is_single_play`, `a`.`like_count` AS `a__like_count`, AES_DECRYPT(UNHEX(`a`.`aes_hex_email`), ?) AS `a__aes_hex_email`, AES_DECRYPT(UNHEX(`a`.`aes_hex_phone`), ?) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, INET6_NTOA(`a`.`ip`) AS `a__ip` FROM `battle` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` \u003c ?)) AND `a`.`seq` IN (?, ?, ?, ?, ?, ?, ?, ?) ORDER BY `a`.`seq` DESC LIMIT 0, 3"
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_team_player_count` AS `a__target_team_player_count`, `a`.`success_count` AS `a__success_count`, `a`.`player_count` AS `a__player_count`, `a`.`read_count` AS `a__read_count`, `a`.`cover_url` AS `a__cover_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_module_seq` AS `a__service_module_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_play` AS `a__is_single_play`, `a`.`like_count` AS `a__like_count`, AES_DECRYPT(UNHEX(`a`.`aes_hex_email`), ?) AS `a__aes_hex_email`, AES_DECRYPT(UNHEX(`a`.`aes_hex_phone`), ?) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, INET6_NTOA(`a`.`ip`) AS `a__ip` FROM `battle` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?, ?, ?, ?, ?, ?) ORDER BY `a`.`seq` DESC LIMIT 0, 3"
           }
         ]
       }
@@ -750,7 +750,7 @@
     },
     {
       "name": "join_nav_count",
-      "chain": "Battle.joinService(Service.where(w =\u003e w.name('service-7'))).leftJoinUser(User.on(w =\u003e w.nameContains('user'))).isClose(false).and(w =\u003e w.isDisplay(true).or().service(s =\u003e s.seqGt(1000))).getCount",
+      "chain": "Battle.joinService(Service.where(w => w.name('service-7'))).leftJoinUser(User.on(w => w.nameContains('user'))).isClose(false).and(w => w.isDisplay(true).or().service(s => s.seqGt(1000))).getCount",
       "expect": {
         "result": 570,
         "statements": [
@@ -762,14 +762,14 @@
               1000,
               "service-7"
             ],
-            "sql": "SELECT COUNT(*) FROM `battle` AS `a` INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq` LEFT JOIN `user` AS `user` ON `a`.`user_seq` = `user`.`seq` AND `user`.`name` LIKE ? WHERE `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`service`.`seq` \u003e ?)) AND (`service`.`name` = ?)"
+            "sql": "SELECT COUNT(*) FROM `battle` AS `a` INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq` LEFT JOIN `user` AS `user` ON `a`.`user_seq` = `user`.`seq` AND `user`.`name` LIKE ? WHERE `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`service`.`seq` > ?)) AND (`service`.`name` = ?)"
           }
         ]
       }
     },
     {
       "name": "join_row",
-      "chain": "Battle.joinService(Service.where(w =\u003e w.seq(7))).seq(6).get",
+      "chain": "Battle.joinService(Service.where(w => w.seq(7))).seq(6).get",
       "expect": {
         "result": {
           "seq": 6,
@@ -914,7 +914,7 @@
     },
     {
       "name": "write_cycle",
-      "chain": "transaction(tx =\u003e Battle.setName('conf-write').set…().setAesHexEmail('w@example.com').insert(tx)); row.setName('conf-write-2').setLikeCount(5).updateOptimistic; Battle.oneBySeq(seq); row.setName('stale').updateOptimistic → OPTIMISTIC_LOCK; row.delete; Battle.seq(seq).getCount",
+      "chain": "transaction(tx => Battle.setName('conf-write').set…().setAesHexEmail('w@example.com').insert(tx)); row.setName('conf-write-2').setLikeCount(5).updateOptimistic; Battle.oneBySeq(seq); row.setName('stale').updateOptimistic → OPTIMISTIC_LOCK; row.delete; Battle.seq(seq).getCount",
       "expect": {
         "result": {
           "after_update": {
@@ -992,7 +992,7 @@
     },
     {
       "name": "eq_col_where",
-      "chain": "Battle.joinService(Service.where(w =\u003e w.seqEqCol(BattleCols.serviceModuleSeq))).seqIn([1,2,10]).orderBySeqAsc().gets — column-to-column predicate against the parent (path '')",
+      "chain": "Battle.joinService(Service.where(w => w.seqEqCol(BattleCols.serviceModuleSeq))).seqIn([1,2,10]).orderBySeqAsc().gets — column-to-column predicate against the parent (path '')",
       "expect": {
         "result": [
           1,
@@ -1015,7 +1015,7 @@
     },
     {
       "name": "expr_where",
-      "chain": "Battle.serviceSeq(7).expr('LENGTH(`name`) \u003e ?', [8]).getCount — portable fragment (names 'battle-N' with N ≥ 100 → 999)",
+      "chain": "Battle.serviceSeq(7).expr('LENGTH(`name`) > ?', [8]).getCount — portable fragment (names 'battle-N' with N ≥ 100 → 999)",
       "expect": {
         "result": 999,
         "statements": [
@@ -1024,7 +1024,7 @@
               7,
               8
             ],
-            "sql": "SELECT COUNT(*) FROM `battle` AS `a` WHERE `a`.`service_seq` = ? AND (LENGTH(`a`.`name`) \u003e ?)"
+            "sql": "SELECT COUNT(*) FROM `battle` AS `a` WHERE `a`.`service_seq` = ? AND (LENGTH(`a`.`name`) > ?)"
           }
         ]
       }
@@ -1119,7 +1119,7 @@
             "binds": [
               8
             ],
-            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__user_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`user_seq` AS `a__user_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`service_seq` ORDER BY `a`.`seq` ASC) AS `orm_rn` FROM `service_member` AS `a` WHERE `a`.`service_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` \u003c= 2 ORDER BY `orm_w`.`a__service_seq`, `orm_w`.`orm_rn`"
+            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__user_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`user_seq` AS `a__user_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`service_seq` ORDER BY `a`.`seq` ASC) AS `orm_rn` FROM `service_member` AS `a` WHERE `a`.`service_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` <= 2 ORDER BY `orm_w`.`a__service_seq`, `orm_w`.`orm_rn`"
           },
           {
             "binds": [
@@ -1133,7 +1133,7 @@
               8,
               108
             ],
-            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__user_seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__service_module_seq`, `orm_w`.`a__service_member_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_module_seq` AS `a__service_module_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`user_seq` ORDER BY `a`.`seq` ASC) AS `orm_rn` FROM `battle` AS `a` WHERE `a`.`user_seq` IN (?, ?)) AS `orm_w` WHERE `orm_w`.`orm_rn` \u003c= 1 ORDER BY `orm_w`.`a__user_seq`, `orm_w`.`orm_rn`"
+            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__user_seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__service_module_seq`, `orm_w`.`a__service_member_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_module_seq` AS `a__service_module_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`user_seq` ORDER BY `a`.`seq` ASC) AS `orm_rn` FROM `battle` AS `a` WHERE `a`.`user_seq` IN (?, ?)) AS `orm_w` WHERE `orm_w`.`orm_rn` <= 1 ORDER BY `orm_w`.`a__user_seq`, `orm_w`.`orm_rn`"
           }
         ]
       }
@@ -1164,7 +1164,7 @@
             "binds": [
               8
             ],
-            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__name` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, ROW_NUMBER() OVER (PARTITION BY `a`.`seq` ORDER BY `a`.`seq` DESC) AS `orm_rn` FROM `service` AS `a` WHERE `a`.`seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` \u003c= 1 ORDER BY `orm_w`.`a__seq`, `orm_w`.`orm_rn`"
+            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__name` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, ROW_NUMBER() OVER (PARTITION BY `a`.`seq` ORDER BY `a`.`seq` DESC) AS `orm_rn` FROM `service` AS `a` WHERE `a`.`seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` <= 1 ORDER BY `orm_w`.`a__seq`, `orm_w`.`orm_rn`"
           }
         ]
       }
@@ -1386,7 +1386,7 @@
             "binds": [
               7
             ],
-            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__user_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`user_seq` AS `a__user_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`service_seq` ORDER BY `a`.`seq` ASC) AS `orm_rn` FROM `service_member` AS `a` WHERE `a`.`service_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` \u003c= 3 ORDER BY `orm_w`.`a__service_seq`, `orm_w`.`orm_rn`"
+            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__user_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`user_seq` AS `a__user_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`service_seq` ORDER BY `a`.`seq` ASC) AS `orm_rn` FROM `service_member` AS `a` WHERE `a`.`service_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` <= 3 ORDER BY `orm_w`.`a__service_seq`, `orm_w`.`orm_rn`"
           }
         ]
       }
@@ -1488,7 +1488,7 @@
     },
     {
       "name": "key_by_fn_to_array",
-      "chain": "ServiceMember.serviceSeq(7).orderBySeqAsc().limit(0,2).relationUser(User.flatten()).keyByFn(m =\u003e 'u'+m.userSeq).gets → [[key, m.toArray()]] — client-side keying; flatten merges user columns (member keys win)",
+      "chain": "ServiceMember.serviceSeq(7).orderBySeqAsc().limit(0,2).relationUser(User.flatten()).keyByFn(m => 'u'+m.userSeq).gets → [[key, m.toArray()]] — client-side keying; flatten merges user columns (member keys win)",
       "expect": {
         "result": [
           [
@@ -1568,7 +1568,7 @@
             "binds": [
               5
             ],
-            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__user_seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__service_module_seq`, `orm_w`.`a__service_member_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_module_seq` AS `a__service_module_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`user_seq` ORDER BY `a`.`seq` ASC) AS `orm_rn` FROM `battle` AS `a` WHERE `a`.`user_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` \u003c= 2 ORDER BY `orm_w`.`a__user_seq`, `orm_w`.`orm_rn`"
+            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__user_seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__service_module_seq`, `orm_w`.`a__service_member_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_module_seq` AS `a__service_module_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`user_seq` ORDER BY `a`.`seq` ASC) AS `orm_rn` FROM `battle` AS `a` WHERE `a`.`user_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` <= 2 ORDER BY `orm_w`.`a__user_seq`, `orm_w`.`orm_rn`"
           }
         ]
       }
@@ -1822,7 +1822,7 @@
               10,
               "$SEQ"
             ],
-            "sql": "UPDATE `battle` SET `read_count` = CASE WHEN `battle`.`read_count` \u003e ? THEN `battle`.`read_count` - ? ELSE 0 END, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `battle`.`seq` = ?"
+            "sql": "UPDATE `battle` SET `read_count` = CASE WHEN `battle`.`read_count` > ? THEN `battle`.`read_count` - ? ELSE 0 END, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `battle`.`seq` = ?"
           },
           {
             "binds": [
@@ -2028,7 +2028,7 @@
     },
     {
       "name": "group_count_having",
-      "chain": "Battle.serviceSeq(7).groupByUserSeq().having(w =\u003e w.expr('COUNT(*) \u003e ?',[1])).getCount — number of groups",
+      "chain": "Battle.serviceSeq(7).groupByUserSeq().having(w => w.expr('COUNT(*) > ?',[1])).getCount — number of groups",
       "expect": {
         "result": 50,
         "statements": [
@@ -2037,7 +2037,7 @@
               7,
               1
             ],
-            "sql": "SELECT COUNT(*) FROM (SELECT 1 FROM `battle` AS `a` WHERE `a`.`service_seq` = ? GROUP BY `a`.`user_seq` HAVING (COUNT(*) \u003e ?)) AS `orm_g`"
+            "sql": "SELECT COUNT(*) FROM (SELECT 1 FROM `battle` AS `a` WHERE `a`.`service_seq` = ? GROUP BY `a`.`user_seq` HAVING (COUNT(*) > ?)) AS `orm_g`"
           }
         ]
       }
@@ -2062,7 +2062,7 @@
               "2026-01-01 00:00:00",
               7
             ],
-            "sql": "SELECT COUNT(*) FROM `battle` AS `a` WHERE (`a`.`start_dt` \u003e ?) AND `a`.`service_seq` = ?"
+            "sql": "SELECT COUNT(*) FROM `battle` AS `a` WHERE (`a`.`start_dt` > ?) AND `a`.`service_seq` = ?"
           }
         ]
       }
@@ -2090,7 +2090,7 @@
     },
     {
       "name": "join_fulltext_or",
-      "chain": "Battle.joinService(Service.where(seqEq 7)).isClose(false).and(w =\u003e w.nameWithDescriptionMatchBoolean('battle').or().service(s =\u003e s.name('service-999'))).getCount — R9: the fulltext branch does the filtering (the nav branch is false); SQLite rejects fulltext, PostgreSQL uses tsquery, so each dialect records its own count",
+      "chain": "Battle.joinService(Service.where(seqEq 7)).isClose(false).and(w => w.nameWithDescriptionMatchBoolean('battle').or().service(s => s.name('service-999'))).getCount — R9: the fulltext branch does the filtering (the nav branch is false); SQLite rejects fulltext, PostgreSQL uses tsquery, so each dialect records its own count",
       "expect": {
         "result": 857,
         "statements": [
@@ -2122,7 +2122,7 @@
               0,
               "%user-4%"
             ],
-            "sql": "SELECT COUNT(*) FROM `battle` AS `a` INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq` AND `service`.`name` = ? LEFT JOIN `user` AS `user` ON `a`.`user_seq` = `user`.`seq` WHERE `a`.`seq` IN (?, ?, ?, ?) AND (`service`.`seq` \u003e ?) AND (`user`.`name` LIKE ?)"
+            "sql": "SELECT COUNT(*) FROM `battle` AS `a` INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq` AND `service`.`name` = ? LEFT JOIN `user` AS `user` ON `a`.`user_seq` = `user`.`seq` WHERE `a`.`seq` IN (?, ?, ?, ?) AND (`service`.`seq` > ?) AND (`user`.`name` LIKE ?)"
           }
         ]
       }
@@ -2161,7 +2161,7 @@
     },
     {
       "name": "codec_roundtrip",
-      "chain": "transaction(tx =\u003e Battle.setName('conf-codec').set…().setJsonSetting(v).setJsonsTags(['x','y']).setBase64Extra(v).setSerializeData(v).setGzExtend(v).setIp('10.1.2.3').insert(tx)); Battle.selectJsonSetting().selectJsonsTags().selectBase64Extra().selectSerializeData().selectGzExtend().seq(seq).get; row.delete — styled columns round-trip (docs/codec.md); gz bind masked as $ZLIB",
+      "chain": "transaction(tx => Battle.setName('conf-codec').set…().setJsonSetting(v).setJsonsTags(['x','y']).setBase64Extra(v).setSerializeData(v).setGzExtend(v).setIp('10.1.2.3').insert(tx)); Battle.selectJsonSetting().selectJsonsTags().selectBase64Extra().selectSerializeData().selectGzExtend().seq(seq).get; row.delete — styled columns round-trip (docs/codec.md); gz bind masked as $ZLIB",
       "expect": {
         "result": {
           "base64_extra": {
@@ -2384,9 +2384,44 @@
             "binds": [
               7
             ],
-            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__user_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`user_seq` AS `a__user_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`service_seq` ORDER BY `a`.`seq` ASC) AS `orm_rn` FROM `service_member` AS `a` WHERE `a`.`service_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` \u003c= 1 ORDER BY `orm_w`.`a__service_seq`, `orm_w`.`orm_rn`"
+            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__user_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`user_seq` AS `a__user_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`service_seq` ORDER BY `a`.`seq` ASC) AS `orm_rn` FROM `service_member` AS `a` WHERE `a`.`service_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` <= 1 ORDER BY `orm_w`.`a__service_seq`, `orm_w`.`orm_rn`"
           }
         ]
+      }
+    },
+    {
+      "name": "interface_stream",
+      "chain": "stream stop, exhaust, and relation rejection",
+      "expect": {
+        "statements": [
+          {
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_team_player_count` AS `a__target_team_player_count`, `a`.`success_count` AS `a__success_count`, `a`.`player_count` AS `a__player_count`, `a`.`read_count` AS `a__read_count`, `a`.`cover_url` AS `a__cover_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_module_seq` AS `a__service_module_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_play` AS `a__is_single_play`, `a`.`like_count` AS `a__like_count`, AES_DECRYPT(UNHEX(`a`.`aes_hex_email`), ?) AS `a__aes_hex_email`, AES_DECRYPT(UNHEX(`a`.`aes_hex_phone`), ?) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, INET6_NTOA(`a`.`ip`) AS `a__ip` FROM `battle` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC",
+            "binds": [
+              "$SECRET",
+              "$SECRET",
+              7
+            ]
+          },
+          {
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_team_player_count` AS `a__target_team_player_count`, `a`.`success_count` AS `a__success_count`, `a`.`player_count` AS `a__player_count`, `a`.`read_count` AS `a__read_count`, `a`.`cover_url` AS `a__cover_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_module_seq` AS `a__service_module_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_play` AS `a__is_single_play`, `a`.`like_count` AS `a__like_count`, AES_DECRYPT(UNHEX(`a`.`aes_hex_email`), ?) AS `a__aes_hex_email`, AES_DECRYPT(UNHEX(`a`.`aes_hex_phone`), ?) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, INET6_NTOA(`a`.`ip`) AS `a__ip` FROM `battle` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT 0, 4",
+            "binds": [
+              "$SECRET",
+              "$SECRET",
+              7
+            ]
+          }
+        ],
+        "result": {
+          "exhausted": {
+            "count": 4,
+            "state": "exhausted"
+          },
+          "relation_error": "IR_INVALID",
+          "stopped": {
+            "count": 3,
+            "state": "stopped"
+          }
+        }
       }
     }
   ]

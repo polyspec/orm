@@ -118,6 +118,19 @@ func runAll(root, out string) {
 	for _, l := range strings.Split(langs, ",") {
 		want[l] = true
 	}
+	build := func(cmd *exec.Cmd) {
+		cmd.Dir = root
+		cmd.Stdout = os.Stderr
+		cmd.Stderr = os.Stderr
+		fmt.Fprintf(os.Stderr, "check: %s\n", strings.Join(cmd.Args, " "))
+		must(cmd.Run())
+	}
+	if want["rust"] {
+		build(exec.Command("cargo", "build", "--locked", "--release", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"))
+	}
+	if want["typescript"] {
+		build(exec.Command("npm", "run", "build", "--prefix", "clients/typescript"))
+	}
 	sock := filepath.Join(out, "ormd.sock")
 	_ = os.Remove(sock)
 	ormdArgs := []string{"-listen", "127.0.0.1:0", "-schema", schema, "-dialect", driver, "-ready-fd", "3"}
@@ -233,7 +246,9 @@ func compare(root string, outputs []string) int {
 		results[lang] = g
 	}
 	failed := 0
+	declared := map[string]bool{}
 	for _, v := range f.Vectors {
+		declared[v.Name] = true
 		if len(v.Expect) == 0 || string(v.Expect) == "null" {
 			fmt.Printf("%-22s (no expectation recorded)\n", v.Name)
 			failed++
@@ -260,6 +275,14 @@ func compare(root string, outputs []string) int {
 		fmt.Println(line)
 		for _, d := range diffs {
 			fmt.Print(d)
+		}
+	}
+	for _, lang := range langs {
+		for name := range results[lang] {
+			if !declared[name] {
+				fmt.Printf("%-22s %s:UNDECLARED\n", name, lang)
+				failed++
+			}
 		}
 	}
 	if failed == 0 {

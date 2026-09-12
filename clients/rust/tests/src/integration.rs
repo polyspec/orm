@@ -141,6 +141,21 @@ async fn main() {
     let j = battle::query().join(service::query().where_(|w| w.seq_eq(7))).seq_eq(6).using(&db).one().await.unwrap().unwrap();
     check!(fails, j.service().map(|s| s.name.as_str()) == Some("service-7"), "joined row access");
 
+    let mut streamed = Vec::new();
+    let stream_result = battle::query().service_seq_eq(7).order_by_seq_asc().using(&db).stream(|row| {
+        streamed.push(row);
+        streamed.len() < 3
+    }).await.expect("stream stop");
+    check!(fails, stream_result.state == orm::db::STREAM_STOPPED && stream_result.count == 3, "stream visitor stop");
+    check!(fails, streamed.len() == 3 && streamed[0].seq != streamed[1].seq && !streamed[0].name.is_empty(), "stream row ownership");
+    check!(fails, battle::query().service_seq_eq(7).using(&db).get_count().await.unwrap() > 0, "stream cursor closes after visitor stop");
+    let stream_result = battle::query().service_seq_eq(7).order_by_seq_asc().limit(0, 4).using(&db).stream(|_| true).await.expect("stream exhaustion");
+    check!(fails, stream_result.state == orm::db::STREAM_EXHAUSTED && stream_result.count == 4, "stream exhaustion");
+    match battle::query().relation(user::query()).using(&db).stream(|_| true).await {
+        Err(error) if error.code() == orm::codes::IR_INVALID => {}
+        other => { fails += 1; eprintln!("FAIL: relation stream not rejected: {:?}", other.err()); }
+    }
+
     // ---- S4: count_distinct / min / max, having, named predicates, raw root ----
     check!(fails, battle::query().service_seq_eq(7).using(&db).count_distinct_user_seq().await.unwrap() == 50, "count_distinct");
     check!(fails, battle::query().service_seq_eq(7).using(&db).min_seq().await.unwrap() == Some(6), "min typed (i64)");

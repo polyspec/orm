@@ -2,12 +2,13 @@
 import type { Collection, Page } from '../model.js';
 import type { Db } from '../database.js';
 import type { Point } from '../codec.js';
-import type { AesKeyring, AesRotationStatus } from '../index.js';
+import type { AesKeyring, AesRotationStatus, StreamResult } from '../index.js';
 import type { BattleRow, UserRow, ServiceRow, ServiceModuleRow, ServiceMemberRow } from './entities.js';
 
 export interface BattleInterface {
 get(): Promise<BattleRow | null>;
 gets(): Promise<Collection<BattleRow>>;
+stream(visitor: (row: BattleRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<BattleRow>>;
 aesStatus(keyring: AesKeyring): Promise<AesRotationStatus>;
@@ -152,6 +153,7 @@ toObject(): Record<string, unknown>;
 export interface UserInterface {
 get(): Promise<UserRow | null>;
 gets(): Promise<Collection<UserRow>>;
+stream(visitor: (row: UserRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<UserRow>>;
 insert(): Promise<UserRow | null>;
@@ -184,6 +186,7 @@ toObject(): Record<string, unknown>;
 export interface ServiceInterface {
 get(): Promise<ServiceRow | null>;
 gets(): Promise<Collection<ServiceRow>>;
+stream(visitor: (row: ServiceRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<ServiceRow>>;
 insert(): Promise<ServiceRow | null>;
@@ -216,6 +219,7 @@ toObject(): Record<string, unknown>;
 export interface ServiceModuleInterface {
 get(): Promise<ServiceModuleRow | null>;
 gets(): Promise<Collection<ServiceModuleRow>>;
+stream(visitor: (row: ServiceModuleRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<ServiceModuleRow>>;
 insert(): Promise<ServiceModuleRow | null>;
@@ -252,6 +256,7 @@ toObject(): Record<string, unknown>;
 export interface ServiceMemberInterface {
 get(): Promise<ServiceMemberRow | null>;
 gets(): Promise<Collection<ServiceMemberRow>>;
+stream(visitor: (row: ServiceMemberRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<ServiceMemberRow>>;
 insert(): Promise<ServiceMemberRow | null>;

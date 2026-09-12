@@ -146,6 +146,20 @@ try {
     const row = await Service().using(db).relations(ServiceMember().orderBySeqAsc().limitPerParent(1)).getBySeq(7);
     const members = row.getMembers(), first = members.first(); members.put(1, first); members.put('1', first); return row.toObject();
   });
+  await run('interface_stream', async () => {
+    let seen = 0;
+    let first, firstSeq;
+    const stopped = await Battle().serviceSeq(7).orderBySeqAsc().using(db).stream(row => {
+      if (first === undefined) { first = row; firstSeq = row.getSeq(); }
+      return ++seen < 3;
+    });
+    if (first?.getSeq() !== firstSeq) throw new Error('stream row ownership check failed');
+    const exhausted = await Battle().serviceSeq(7).orderBySeqAsc().limit(0, 4).using(db).stream(() => true);
+    let relationError;
+    try { await Battle().serviceSeq(7).relation(User()).using(db).stream(() => true); }
+    catch (error) { relationError = code(error); }
+    return { stopped, exhausted, relation_error: relationError };
+  });
   await run('unbound_terminal', () => Battle().getCountByServiceSeq(7));
   await run('bound_count_finder', () => Battle().using(db).join(Service().where(w => w.name('service-7'))).relation(User()).getCountByServiceSeq(7));
   await run('finished_transaction', async () => {

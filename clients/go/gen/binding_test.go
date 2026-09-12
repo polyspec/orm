@@ -17,6 +17,7 @@ func TestUnboundExecution(t *testing.T) {
 	checks := map[string]func() error{
 		"get":             func() error { _, err := gen.Battle().Get(); return err },
 		"gets":            func() error { _, err := gen.Battle().Gets(); return err },
+		"stream":          func() error { _, err := gen.Battle().Stream(func(*gen.BattleRow) bool { return true }); return err },
 		"count finder":    func() error { _, err := gen.Battle().GetCountByServiceSeq(7); return err },
 		"group count":     func() error { _, err := gen.Battle().GetsCount(); return err },
 		"aggregate":       func() error { _, err := gen.Battle().MinSeq(); return err },
