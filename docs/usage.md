@@ -112,15 +112,23 @@ go run ./cmd/ormgen migrate --driver sqlite --dsn /var/lib/app.sqlite \
 
 Create a structured plan and apply that exact plan after review:
 
+Migration plan files use `YYYYMMDD-name.json`. The filename without `.json` is the migration ID. If `--migration-id` is present, it must match that value. An invalid date, a missing name, or a different ID returns `MIGRATION_FILE_NAME`.
+
 ```sh
 go run ./cmd/ormgen plan --from schema/previous.json --to schema/schema.json \
   --dialect postgres --out migrations/20260912-schema.json
 go run ./cmd/ormgen apply --plan migrations/20260912-schema.json \
   --dsn "$ORM_DSN" --schema schema/schema.json
 go run ./cmd/ormgen verify --dsn "$ORM_DSN" --schema schema/schema.json
+go run ./cmd/ormgen rollback --plan migrations/20260912-schema.json \
+  --dsn "$ORM_DSN" --allow-destructive
 ```
 
-The plan stores the source manifest, target hash, ordered operations, destructive flags, and plan checksum. `apply` checks the live source schema before execution and rejects destructive operations unless `--allow-destructive` is explicit.
+The plan stores the source and target manifests, ordered forward and rollback operations, destructive flags, and separate checksums. `apply` checks the live source schema before execution and rejects destructive operations unless `--allow-destructive` is explicit. `rollback` requires the same reviewed plan, an `applied` history row, and a live schema that matches the plan target. It executes the stored rollback operations, verifies the source schema, and changes the history status to `rolled_back`. Repeating the command returns `noop` only when the source schema and rollback file log match.
+
+Rollback restores the schema structure described by the source manifest. It does not restore rows removed by a forward operation or values removed by a rollback operation. A plan containing a destructive operation in either direction sets `rollback_data_loss_risk`; `rollback` then requires `--allow-destructive`. The command rejects modified SQL, checksums, destructive flags, and risk flags before opening the database.
+
+Rollback changes the history state from `applied` to `rolling_back`, then to `rolled_back` after schema verification. An operation or verification failure changes the claimed migration to `rollback_failed` and records the operation number, SQL statement, driver error, and final schema mismatch. A state-claim failure does not replace a state written by another migration process.
 
 Comments are included in the manifest and migration comparison. Use `%% table_comment` and `%% column_comment` in the Mermaid source. The importer reads database comments, and the DDL generator emits dialect-specific comment statements.
 
@@ -137,7 +145,7 @@ The SQL statement parser recognizes single-quoted strings, quoted identifiers, l
 block comments, and PostgreSQL dollar-quoted blocks. Semicolons inside these regions do not end
 a statement. Execution errors report the one-based operation number and complete statement text.
 
-Each execution also writes a JSON audit file under `migrations/logs` by default. The filename is `<UTC timestamp>__<migration-id>.json`; it contains the driver, schema hashes, plan checksum, status, operation count, start time, finish time, and error detail. Use `--log-dir` to select another directory. An applied migration fails verification if no file log matches its database record.
+Each apply, recovery, and rollback execution also writes a JSON audit file under `migrations/logs` by default. The filename is `<UTC timestamp>__<migration-id>.json`; it contains the driver, schema hashes, plan checksum, status, operation count, start time, finish time, and error detail. Use `--log-dir` to select another directory. An applied or rolled-back migration fails repeat verification if no file log matches its database record and direction.
 
 If execution stops while the database history status is `applying` or `failed`, run an explicit
 recovery before retrying. Use the exact reviewed plan for `ormgen apply`, or use the recorded

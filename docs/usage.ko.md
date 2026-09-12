@@ -112,15 +112,23 @@ go run ./cmd/ormgen migrate --driver sqlite --dsn /var/lib/app.sqlite \
 
 구조화된 plan을 생성하고 검토한 동일 plan을 적용한다.
 
+Migration plan 파일은 `YYYYMMDD-name.json` 형식을 사용한다. `.json`을 제외한 파일명이 migration ID다. `--migration-id`를 명시하면 이 값과 일치해야 한다. 날짜가 잘못됐거나 이름이 없거나 ID가 다르면 `MIGRATION_FILE_NAME`을 반환한다.
+
 ```sh
 go run ./cmd/ormgen plan --from schema/previous.json --to schema/schema.json \
   --dialect postgres --out migrations/20260912-schema.json
 go run ./cmd/ormgen apply --plan migrations/20260912-schema.json \
   --dsn "$ORM_DSN" --schema schema/schema.json
 go run ./cmd/ormgen verify --dsn "$ORM_DSN" --schema schema/schema.json
+go run ./cmd/ormgen rollback --plan migrations/20260912-schema.json \
+  --dsn "$ORM_DSN" --allow-destructive
 ```
 
-plan에는 source manifest, target hash, 순서가 고정된 작업, destructive 표시, plan checksum이 저장된다. `apply`는 실행 전에 실제 source schema를 검사하며 `--allow-destructive`를 명시하지 않은 destructive 작업을 거부한다.
+plan에는 source·target manifest, 순서가 고정된 정방향·rollback 작업, destructive 표시, 방향별 checksum이 저장된다. `apply`는 실행 전에 실제 source schema를 검사하며 `--allow-destructive`를 명시하지 않은 destructive 작업을 거부한다. `rollback`은 검토한 같은 plan, `applied` 상태의 DB history row, plan의 target schema와 일치하는 실제 schema를 요구한다. 저장된 rollback 작업을 실행하고 source schema를 검증한 후 history 상태를 `rolled_back`으로 변경한다. 반복 실행은 source schema와 rollback 파일 로그가 일치할 때만 `noop`을 반환한다.
+
+Rollback은 source manifest의 schema 구조를 복원한다. 정방향 작업에서 제거한 행이나 rollback 작업에서 제거한 값은 복원하지 않는다. 어느 방향이든 destructive 작업을 포함하면 plan의 `rollback_data_loss_risk`가 설정되며, `rollback` 실행에는 `--allow-destructive`가 필요하다. DB 연결 전 SQL, checksum, destructive 표시, 위험 표시의 변경 여부를 검사한다.
+
+Rollback은 history 상태를 `applied`에서 `rolling_back`으로 변경하고 schema 검증 후 `rolled_back`으로 변경한다. 작업 또는 검증 실패 시 선점한 migration을 `rollback_failed`로 변경하고 작업 번호, SQL 문장, driver 오류, 최종 schema 불일치를 기록한다. 상태 선점 실패는 다른 migration process가 저장한 상태를 변경하지 않는다.
 
 주석은 매니페스트와 마이그레이션 비교에 포함됩니다. Mermaid 원본에서 `%% table_comment`와 `%% column_comment`을 사용합니다. import는 데이터베이스 주석을 읽고, DDL 생성기는 방언별 주석 문을 생성합니다.
 
@@ -137,7 +145,7 @@ SQL 문장 분석기는 작은따옴표 문자열, 인용 식별자, 한 줄 주
 PostgreSQL dollar quote 블록을 처리합니다. 이 영역의 세미콜론은 문장 종료로 처리하지
 않습니다. 실행 오류에는 1부터 시작하는 작업 번호와 전체 SQL 문장이 포함됩니다.
 
-각 실행은 기본적으로 `migrations/logs` 아래에 JSON 감사 파일도 생성한다. 파일명은 `<UTC 시각>__<migration-id>.json`이며 driver, schema hash, 계획 checksum, 상태, 작업 수, 시작 시각, 종료 시각, 오류 상세를 포함한다. `--log-dir`로 다른 디렉터리를 지정할 수 있다. 적용된 migration에 대응하는 파일 로그가 없거나 DB 기록과 다르면 검증에 실패한다.
+각 apply, 복구, rollback 실행은 기본적으로 `migrations/logs` 아래에 JSON 감사 파일도 생성한다. 파일명은 `<UTC 시각>__<migration-id>.json`이며 driver, schema hash, 계획 checksum, 상태, 작업 수, 시작 시각, 종료 시각, 오류 상세를 포함한다. `--log-dir`로 다른 디렉터리를 지정할 수 있다. 적용 또는 rollback된 migration에 대응하는 방향별 파일 로그가 없거나 DB history와 다르면 반복 검증에 실패한다.
 
 실행이 중단되어 데이터베이스 이력 상태가 `applying` 또는 `failed`이면 재시도 전에 명시적
 복구를 실행한다. `ormgen apply`에는 검토한 동일 plan을 사용하고, `ormgen migrate`에는 기록된
