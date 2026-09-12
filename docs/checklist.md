@@ -7,9 +7,9 @@ Rules: no polling or timers, no symlinks, one execution path, Mermaid is the sou
 
 - **S0 complete:** measurements and decisions R1–R3 and F1–F3 are recorded in `docs/perf.md`.
 - **S1 complete:** engine, generators, four clients, conformance harness, `ormgen tokens`, and the demo are implemented.
-- **S2 complete:** relation, codec, type, 59-vector, and 150-table Rust fixture checks pass.
+- **S2 complete:** relation, codec, type, 63-vector, and 150-table Rust fixture checks pass.
 - **S7 in progress:** root `IN` parameter splitting and keyset transport fields are implemented across four clients. Migration, transaction, relation, package, and final verification work remains open until its evidence is recorded.
-- Current conformance coverage is **59 vectors × 4 clients × 3 databases**. Codec coverage is 96 vectors across Go, PHP, Rust, and TypeScript.
+- Current conformance coverage is **63 vectors × 4 clients × 3 databases**. Codec coverage is 96 vectors across Go, PHP, Rust, and TypeScript.
 
 ## Common interface verification
 
@@ -81,13 +81,13 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 
 Every S7 item requires implementation, tests, documentation, and static publication. A feature stays open if the same logical structure cannot be provided in Go, PHP, Rust, and TypeScript.
 
-- [x] T7.1 Generate typed Protobuf messages for Go, PHP, Rust, and TypeScript; provide the Connect compiler server and `CompilerTransport` implementations; and pass 59 database vectors on MySQL, PostgreSQL, and SQLite in all four clients.
+- [x] T7.1 Generate typed Protobuf messages for Go, PHP, Rust, and TypeScript; provide the Connect compiler server and `CompilerTransport` implementations; and pass 63 database vectors on MySQL, PostgreSQL, and SQLite in all four clients.
 - [x] T7.3 Implement deterministic `ormgen diff` and destructive-change checks.
 - [x] T7.4 Implement query-level `scope_p`, planner enforcement, generated methods, and tenant-isolation tests on MySQL, PostgreSQL, and SQLite in all four clients.
 - [x] T7.5 Implement `curlfile`, YAML 1.2, and `point` conversions in Go, PHP, Rust, and TypeScript. Verify `point` DDL and SQL on MySQL, PostgreSQL, and SQLite.
 - [x] T7.6 Implement database row streaming, cancellation, errors, and row ownership checks.
 - [x] T7.7 Implement deterministic static query precompilation and schema-hash checks.
-- [x] T7.8 Implement the TypeScript module, generated entity APIs and schema hash, `orm.toml` loader, native database drivers, structure and AST checks, and the 59-vector database runner for all three databases.
+- [x] T7.8 Implement the TypeScript module, generated entity APIs and schema hash, `orm.toml` loader, native database drivers, structure and AST checks, and the 63-vector database runner for all three databases.
 - [x] T7.9 Compare Rust `mysql_async` 0.37.1 with sqlx 0.9 using equal SQL, binds, typed results, connection count, and fixture. Retain sqlx because neither measured workload shows the required 2x improvement.
 - [x] T7.10 Exclude `multi_statement` from every public API and reject the IR field and generated symbols because the supported databases cannot provide the same safe parameterized execution structure.
 - [x] T7.11 Generate Go typed scans, verify PHP positional hydration, correct native projection drift, and run Go and PHP performance checks.

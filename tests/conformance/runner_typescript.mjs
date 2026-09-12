@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import {
   Battle, BattleColumns, Collection, ConnectCompiler, Db, OrmError, QueryCore,
-  Service, ServiceMember, ServiceModule, ServiceRow, User,
+  Service, ServiceMember, ServiceModule, ServiceRow, User, AesKeyring,
 } from '../../clients/typescript/dist/index.js';
 
 const args = process.argv.slice(2);
@@ -283,6 +283,7 @@ try {
     const second = await Service().orderBySeqAsc().using(db).getsAfter(first.nextCursor, 3);
     return { first: first.items.keys(), second: second.items.keys(), has_cursor: first.nextCursor !== '' };
   });
+  await run('aes_status', () => Battle().using(db).aesStatus(new AesKeyring(new Map([[1, 'bench-salt'], [2, 'bench-salt-v2']]), 1)));
   await run('codec_roundtrip', async () => {
     const value = { a: 1, b: [1, 2, { c: '한글/slash' }], d: null, e: true, f: 1.5 };
     const row = await db.transaction(tx => Battle().setName('conf-codec').setUserSeq(1).setServiceSeq(999).setServiceModuleSeq(1).setServiceMemberSeq(1).setStartDt(dt('2026-06-01 00:00:00')).setEndDt(dt('2026-12-31 00:00:00')).setJsonSetting(value).setJsonsTags(['x', 'y']).setBase64Extra(value).setSerializeData(value).setGzExtend(value).setIp('10.1.2.3').using(tx).insert());
