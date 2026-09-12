@@ -61,7 +61,7 @@ final class Code
     public const PAREN_ACROSS_MODELS = 'PAREN_ACROSS_MODELS';
     /** executor:  */
     public const INTERNAL = 'INTERNAL';
-    /** driver: MySQL 1213 / SQLSTATE 40001 — transaction() re-runs the closure up to 3 times before surfacing it */
+    /** driver: MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions */
     public const DEADLOCK = 'DEADLOCK';
     /** driver: MySQL 1062 / SQLSTATE 23000 */
     public const DUPLICATE_KEY = 'DUPLICATE_KEY';

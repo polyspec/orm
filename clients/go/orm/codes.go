@@ -31,6 +31,6 @@ const (
 	CodeJoinPredicatePlacement = "JOIN_PREDICATE_PLACEMENT" // executor: PHP compat layer: bare predicate on a join child (use on()/where())
 	CodeParenAcrossModels      = "PAREN_ACROSS_MODELS"      // executor: PHP compat layer: '(' opened in one model and closed in another
 	CodeInternal               = "INTERNAL"                 // executor:
-	CodeDeadlock               = "DEADLOCK"                 // driver: MySQL 1213 / SQLSTATE 40001 — transaction() re-runs the closure up to 3 times before surfacing it
+	CodeDeadlock               = "DEADLOCK"                 // driver: MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions
 	CodeDuplicateKey           = "DUPLICATE_KEY"            // driver: MySQL 1062 / SQLSTATE 23000
 )

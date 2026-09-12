@@ -347,7 +347,7 @@ async fn main() {
         let (db, barrier, runs, last_writer) = (db.clone(), barrier.clone(), runs.clone(), last_writer.clone());
         tokio::spawn(async move {
             let attempts = AtomicUsize::new(0);
-            db.transaction(|tx| {
+            db.transaction_with_options(|tx| {
                 let (barrier, runs, last_writer) = (barrier.clone(), runs.clone(), last_writer.clone());
                 let attempt = attempts.fetch_add(1, Ordering::Relaxed);
                 async move {
@@ -359,7 +359,7 @@ async fn main() {
                     last_writer.store(id, Ordering::Relaxed);
                     Ok(())
                 }
-            }).await
+            }, orm::TransactionOptions { retry_deadlocks: true, max_attempts: 3 }).await
         })
     };
     let (r1, r2) = tokio::join!(task(1, a, b), task(2, b, a));
