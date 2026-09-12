@@ -40,6 +40,7 @@ func main() {
 	listen := flag.String("listen", "", "Connect HTTP listen address, for example 127.0.0.1:8080")
 	schemaPath := flag.String("schema", "", "schema.json path (required)")
 	dialect := flag.String("dialect", "mysql", "sql dialect")
+	readyFD := flag.Int("ready-fd", -1, "write the HTTP endpoint to this file descriptor after listeners are ready")
 	flag.Parse()
 	if (*sock == "" && *listen == "") || *schemaPath == "" {
 		fmt.Fprintln(os.Stderr, "ormd: -schema and at least one of -listen or -socket are required")
@@ -54,6 +55,7 @@ func main() {
 		log.Fatalf("ormd: %v", err)
 	}
 	var httpServer *http.Server
+	var httpEndpoint string
 	if *listen != "" {
 		path, handler := compilerv1connect.NewCompilerServiceHandler(&compilerServer{engine: eng})
 		mux := http.NewServeMux()
@@ -63,7 +65,8 @@ func main() {
 		if err != nil {
 			log.Fatalf("ormd: Connect listen: %v", err)
 		}
-		log.Printf("ormd: schema %s (hash %s), Connect listening on http://%s%s", *schemaPath, eng.M.SchemaHash, listener.Addr(), path)
+		httpEndpoint = "http://" + listener.Addr().String()
+		log.Printf("ormd: schema %s (hash %s), Connect listening on %s%s", *schemaPath, eng.M.SchemaHash, httpEndpoint, path)
 		go func() {
 			if err := httpServer.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				log.Printf("ormd: Connect serve: %v", err)
@@ -71,6 +74,7 @@ func main() {
 		}()
 	}
 	if *sock == "" {
+		announceReady(*readyFD, httpEndpoint)
 		waitForSignal(httpServer, nil, "")
 		return
 	}
@@ -85,6 +89,7 @@ func main() {
 		log.Fatalf("ormd: chmod: %v", err)
 	}
 	log.Printf("ormd: schema %s (hash %s), listening on %s", *schemaPath, eng.M.SchemaHash, *sock)
+	announceReady(*readyFD, httpEndpoint)
 
 	go waitForSignal(httpServer, ln, *sock)
 
@@ -98,6 +103,22 @@ func main() {
 			continue
 		}
 		go serve(eng, conn)
+	}
+}
+
+func announceReady(fd int, endpoint string) {
+	if fd < 0 {
+		return
+	}
+	file := os.NewFile(uintptr(fd), "ready")
+	if file == nil {
+		log.Fatalf("ormd: ready fd %d is invalid", fd)
+	}
+	if _, err := fmt.Fprintln(file, endpoint); err != nil {
+		log.Fatalf("ormd: ready fd %d: %v", fd, err)
+	}
+	if err := file.Close(); err != nil {
+		log.Fatalf("ormd: close ready fd %d: %v", fd, err)
 	}
 }
 
