@@ -287,7 +287,11 @@ func readTablesSQLite(db *sql.DB) ([]impTable, error) {
 				idx.Close()
 				return nil, err
 			}
-			ix := impIndex{Name: indexName, Unique: unique != 0}
+			logicalName := indexName
+			if unique == 0 {
+				logicalName = strings.TrimPrefix(indexName, name+"_")
+			}
+			ix := impIndex{Name: logicalName, Unique: unique != 0}
 			for icols.Next() {
 				var seq, cid int
 				var col string
@@ -487,9 +491,19 @@ func placeholder(driver string, n int) string {
 
 func executeMigration(ctx context.Context, db *sql.DB, driver, text string) error {
 	return withMigrationLock(ctx, db, driver, func(conn *sql.Conn) error {
+		if driver == "sqlite" {
+			if err := preflightSQLiteRebuild(ctx, conn, text); err != nil {
+				return err
+			}
+		}
 		for i, stmt := range splitSQL(text) {
 			if _, err := conn.ExecContext(ctx, stmt); err != nil {
 				return fmt.Errorf("operation=%d statement=%q: %w", i+1, stmt, err)
+			}
+		}
+		if driver == "sqlite" {
+			if err := verifySQLiteRebuild(ctx, conn, text); err != nil {
+				return err
 			}
 		}
 		return nil
@@ -501,13 +515,128 @@ func executeClaimedMigration(ctx context.Context, db *sql.DB, driver, migrationI
 		if err := transitionMigration(ctx, conn, driver, migrationID, expectedStatus, "applying", ""); err != nil {
 			return err
 		}
+		if driver == "sqlite" {
+			if err := preflightSQLiteRebuild(ctx, conn, text); err != nil {
+				return err
+			}
+		}
 		for i, stmt := range splitSQL(text) {
 			if _, err := conn.ExecContext(ctx, stmt); err != nil {
 				return fmt.Errorf("operation=%d statement=%q: %w", i+1, stmt, err)
 			}
 		}
+		if driver == "sqlite" {
+			if err := verifySQLiteRebuild(ctx, conn, text); err != nil {
+				return err
+			}
+		}
 		return nil
 	})
+}
+
+type sqliteRebuildMarker struct {
+	table  string
+	target string
+	temp   string
+}
+
+func preflightSQLiteRebuild(ctx context.Context, conn *sql.Conn, text string) error {
+	for _, marker := range sqliteRebuildMarkers(text) {
+		var tempCount int
+		if err := conn.QueryRowContext(ctx, `SELECT count(*) FROM sqlite_master WHERE name=?`, marker.temp).Scan(&tempCount); err != nil {
+			return fmt.Errorf("SQLITE_REBUILD_PREFLIGHT: table=%s temp=%s: %w", marker.table, marker.temp, err)
+		}
+		if tempCount != 0 {
+			return fmt.Errorf("SQLITE_REBUILD_UNSAFE: table=%s temporary object %s already exists", marker.table, marker.temp)
+		}
+		rows, err := conn.QueryContext(ctx, `SELECT type, name FROM sqlite_master WHERE (type='trigger' AND tbl_name=?) OR (type='view' AND lower(coalesce(sql,'')) LIKE ?) ORDER BY type, name`, marker.table, "%"+strings.ToLower(marker.table)+"%")
+		if err != nil {
+			return fmt.Errorf("SQLITE_REBUILD_PREFLIGHT: table=%s dependencies: %w", marker.table, err)
+		}
+		var dependencies []string
+		for rows.Next() {
+			var kind, name string
+			if err := rows.Scan(&kind, &name); err != nil {
+				rows.Close()
+				return fmt.Errorf("SQLITE_REBUILD_PREFLIGHT: table=%s dependencies: %w", marker.table, err)
+			}
+			dependencies = append(dependencies, kind+":"+name)
+		}
+		if err := rows.Close(); err != nil {
+			return fmt.Errorf("SQLITE_REBUILD_PREFLIGHT: table=%s dependencies: %w", marker.table, err)
+		}
+		if len(dependencies) > 0 {
+			return fmt.Errorf("SQLITE_REBUILD_UNSAFE: table=%s dependent_objects=%s; provide reviewed auxiliary migration SQL", marker.table, strings.Join(dependencies, ","))
+		}
+		check := `PRAGMA foreign_key_check("` + strings.ReplaceAll(marker.table, `"`, `""`) + `")`
+		violations, err := conn.QueryContext(ctx, check)
+		if err != nil {
+			return fmt.Errorf("SQLITE_REBUILD_PREFLIGHT: table=%s foreign_key_check: %w", marker.table, err)
+		}
+		if violations.Next() {
+			var table, parent string
+			var rowID sql.NullInt64
+			var foreignKeyID int
+			if err := violations.Scan(&table, &rowID, &parent, &foreignKeyID); err != nil {
+				violations.Close()
+				return fmt.Errorf("SQLITE_REBUILD_PREFLIGHT: table=%s foreign_key_check: %w", marker.table, err)
+			}
+			violations.Close()
+			return fmt.Errorf("SQLITE_REBUILD_UNSAFE: table=%s foreign_key_violation rowid=%v parent=%s foreign_key_id=%d", table, rowID, parent, foreignKeyID)
+		}
+		if err := violations.Close(); err != nil {
+			return fmt.Errorf("SQLITE_REBUILD_PREFLIGHT: table=%s foreign_key_check: %w", marker.table, err)
+		}
+	}
+	return nil
+}
+
+func sqliteRebuildMarkers(text string) []sqliteRebuildMarker {
+	var markers []sqliteRebuildMarker
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		position := strings.Index(line, "orm-sqlite-rebuild ")
+		if position < 0 {
+			continue
+		}
+		values := map[string]string{}
+		payload := strings.Trim(line[position+len("orm-sqlite-rebuild "):], "'\"; ")
+		for _, field := range strings.Fields(payload) {
+			key, value, ok := strings.Cut(field, "=")
+			if ok {
+				values[key] = strings.Trim(value, "'\"; ")
+			}
+		}
+		if values["table"] != "" && values["target"] != "" && values["temp"] != "" {
+			markers = append(markers, sqliteRebuildMarker{table: values["table"], target: values["target"], temp: values["temp"]})
+		}
+	}
+	return markers
+}
+
+func verifySQLiteRebuild(ctx context.Context, conn *sql.Conn, text string) error {
+	for _, marker := range sqliteRebuildMarkers(text) {
+		check := `PRAGMA foreign_key_check("` + strings.ReplaceAll(marker.target, `"`, `""`) + `")`
+		rows, err := conn.QueryContext(ctx, check)
+		if err != nil {
+			return fmt.Errorf("SQLITE_REBUILD_VERIFY: table=%s foreign_key_check: %w", marker.target, err)
+		}
+		if rows.Next() {
+			var table, parent string
+			var rowID sql.NullInt64
+			var foreignKeyID int
+			if err := rows.Scan(&table, &rowID, &parent, &foreignKeyID); err != nil {
+				rows.Close()
+				return fmt.Errorf("SQLITE_REBUILD_VERIFY: table=%s foreign_key_check: %w", marker.target, err)
+			}
+			rows.Close()
+			return fmt.Errorf("SQLITE_REBUILD_VERIFY: table=%s foreign_key_violation rowid=%v parent=%s foreign_key_id=%d", table, rowID, parent, foreignKeyID)
+		}
+		if err := rows.Close(); err != nil {
+			return fmt.Errorf("SQLITE_REBUILD_VERIFY: table=%s foreign_key_check: %w", marker.target, err)
+		}
+	}
+	return nil
 }
 
 func withMigrationLock(ctx context.Context, db *sql.DB, driver string, run func(*sql.Conn) error) error {
