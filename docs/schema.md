@@ -59,7 +59,7 @@ erDiagram
 ## 2. Rules
 
 ### 2.1 Column lines — `type name [PK|FK|UK] ["comment"]`
-This follows Mermaid syntax. `PK`, `FK`, and `UK` are Mermaid keywords; repeated `PK` marks a composite key and repeated `UK` is represented by `%% unique` below.
+This follows Mermaid syntax. `PK`, `FK`, and `UK` are Mermaid keywords. Version 0.0.1 currently rejects multiple `PK` columns during schema build because the common runtime conversion is in progress under P8.4. Composite unique keys use `%% unique` below.
 Use the database type directly (`bigint`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum('a','b')`). The manifest normalizes it to types such as i64, string, and datetime.
 
 The comment string is a space-separated **attribute list**. With no comment, the column is NOT NULL, has no default, and is ordinary.
