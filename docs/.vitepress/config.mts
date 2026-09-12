@@ -65,6 +65,7 @@ export default defineConfig({
       { text: 'Development and verification', items: [
         { text: 'Implementation matrix', link: '/interface-implementation' },
         { text: 'Checklist', link: '/checklist' },
+        { text: 'Public source readiness', link: '/public-readiness' },
         { text: 'Performance', link: '/perf' },
         { text: 'Packaging', link: '/packaging' },
         { text: 'Documentation build and deployment', link: '/docs-development' },

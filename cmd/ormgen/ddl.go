@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/polyspec/orm/engine/schema"
@@ -55,9 +56,17 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 	if dialect == "sqlite" {
 		sb.WriteString("CREATE TABLE IF NOT EXISTS orm_schema_comments (table_name TEXT NOT NULL, column_name TEXT NOT NULL, comment TEXT NOT NULL, PRIMARY KEY (table_name, column_name));\n")
 	}
-	for _, name := range m.Order {
+	order, err := ddlEntityOrder(m)
+	if err != nil {
+		return "", err
+	}
+	for i := len(order) - 1; i >= 0; i-- {
+		e := m.Entities[order[i]]
+		sb.WriteString(fmt.Sprintf("\nDROP TABLE IF EXISTS %s;\n", q(e.Table)))
+	}
+	for _, name := range order {
 		e := m.Entities[name]
-		sb.WriteString(fmt.Sprintf("\nDROP TABLE IF EXISTS %s;\nCREATE TABLE %s (\n", q(e.Table), q(e.Table)))
+		sb.WriteString(fmt.Sprintf("\nCREATE TABLE %s (\n", q(e.Table)))
 		var lines []string
 		for _, c := range e.Columns {
 			t, err := ddlType(c, dialect)
@@ -124,7 +133,10 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 			lines = append(lines, "  PRIMARY KEY ("+strings.Join(pk, ", ")+")")
 		}
 		for _, uk := range e.Unique {
-			lines = append(lines, "  UNIQUE ("+joinQuoted(uk, q)+")")
+			lines = append(lines, "  CONSTRAINT "+q("uq_"+e.Table+"_"+strings.Join(uk, "_"))+" UNIQUE ("+joinQuoted(uk, q)+")")
+		}
+		for _, fk := range sortedForeignKeys(m, e) {
+			lines = append(lines, "  "+foreignKeyClause(fk, m, q))
 		}
 		if dialect == "mysql" {
 			for ixName, cols := range e.Indexes {
@@ -174,6 +186,76 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 		}
 	}
 	return sb.String(), nil
+}
+
+// ddlEntityOrder returns a stable parent-before-child order for inline foreign
+// keys. Cycles require deferred constraints, which this DDL form cannot apply
+// idempotently on all supported databases.
+func ddlEntityOrder(m *schema.Manifest) ([]string, error) {
+	position := make(map[string]int, len(m.Order))
+	for i, name := range m.Order {
+		position[name] = i
+	}
+	names := append([]string(nil), m.Order...)
+	for name := range m.Entities {
+		if _, ok := position[name]; !ok {
+			position[name] = len(position)
+			names = append(names, name)
+		}
+	}
+	sort.SliceStable(names, func(i, j int) bool { return position[names[i]] < position[names[j]] })
+	state := map[string]uint8{}
+	result := make([]string, 0, len(names))
+	var visit func(string) error
+	visit = func(name string) error {
+		switch state[name] {
+		case 1:
+			return fmt.Errorf("foreign key cycle includes %s; deferred cyclic constraints are required", name)
+		case 2:
+			return nil
+		}
+		state[name] = 1
+		e := m.Entities[name]
+		deps := map[string]bool{}
+		for _, c := range e.Columns {
+			if c.Ref != nil && c.Ref.Entity != name && m.Entities[c.Ref.Entity] != nil {
+				deps[c.Ref.Entity] = true
+			}
+		}
+		orderedDeps := make([]string, 0, len(deps))
+		for dep := range deps {
+			orderedDeps = append(orderedDeps, dep)
+		}
+		sort.Slice(orderedDeps, func(i, j int) bool { return position[orderedDeps[i]] < position[orderedDeps[j]] })
+		for _, dep := range orderedDeps {
+			if err := visit(dep); err != nil {
+				return err
+			}
+		}
+		state[name] = 2
+		result = append(result, name)
+		return nil
+	}
+	for _, name := range names {
+		if err := visit(name); err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func sortedForeignKeys(m *schema.Manifest, e *schema.Entity) []diffForeignKey {
+	byColumn := entityForeignKeys(m, e)
+	keys := make([]string, 0, len(byColumn))
+	for key := range byColumn {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	out := make([]diffForeignKey, 0, len(keys))
+	for _, key := range keys {
+		out = append(out, byColumn[key])
+	}
+	return out
 }
 
 func sqlQuote(s string) string { return strings.ReplaceAll(s, "'", "''") }
