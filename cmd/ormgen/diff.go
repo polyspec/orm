@@ -109,7 +109,12 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 			if err != nil {
 				return "", err
 			}
+			checkDrops, checkAdds, err := diffChecks(oldEnt, newEnt, dialect, quote)
+			if err != nil {
+				return "", err
+			}
 			changes = append(changes, drops...)
+			changes = append(changes, checkDrops...)
 			if tableRename != "" {
 				changes = append(changes, schemaChange{sql: tableRename})
 			}
@@ -169,6 +174,7 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 				changes = append(changes, schemaChange{sql: alterTableComment(newEnt.Table, newEnt.Comment, dialect, quote)})
 			}
 			changes = append(changes, adds...)
+			changes = append(changes, checkAdds...)
 		}
 	}
 	for _, c := range changes {
@@ -207,7 +213,7 @@ func validateSQLiteAddedColumns(old, next *schema.Entity) error {
 }
 
 func sqliteNeedsRebuild(from, to *schema.Manifest, old, next *schema.Entity) bool {
-	if !stringSlicesEqual(old.PK, next.PK) || !columnGroupsEqual(old.Unique, next.Unique) {
+	if !stringSlicesEqual(old.PK, next.PK) || !columnGroupsEqual(old.Unique, next.Unique) || !checksEqual(old.Checks, next.Checks) {
 		return true
 	}
 	for _, pair := range matchDiffColumns(old, next) {
@@ -232,6 +238,62 @@ func sqliteNeedsRebuild(from, to *schema.Manifest, old, next *schema.Entity) boo
 		}
 	}
 	return false
+}
+
+func checksEqual(left, right []schema.Check) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	keys := func(values []schema.Check) []string {
+		out := make([]string, len(values))
+		for i, value := range values {
+			out[i] = value.Name + "\x00" + value.Expr
+		}
+		sort.Strings(out)
+		return out
+	}
+	return stringSlicesEqual(keys(left), keys(right))
+}
+
+func diffChecks(oldEnt, newEnt *schema.Entity, dialect string, quote func(string) string) ([]schemaChange, []schemaChange, error) {
+	if dialect == "sqlite" && !checksEqual(oldEnt.Checks, newEnt.Checks) {
+		return nil, nil, fmt.Errorf("sqlite CHECK constraint changes require a verified table rebuild")
+	}
+	oldChecks, newChecks := map[string]schema.Check{}, map[string]schema.Check{}
+	for _, check := range oldEnt.Checks {
+		oldChecks[check.Name] = check
+	}
+	for _, check := range newEnt.Checks {
+		newChecks[check.Name] = check
+	}
+	names := make([]string, 0, len(oldChecks)+len(newChecks))
+	seen := map[string]bool{}
+	for name := range oldChecks {
+		names = append(names, name)
+		seen[name] = true
+	}
+	for name := range newChecks {
+		if !seen[name] {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	var drops, adds []schemaChange
+	for _, name := range names {
+		oldCheck, oldOK := oldChecks[name]
+		newCheck, newOK := newChecks[name]
+		if oldOK && (!newOK || oldCheck.Expr != newCheck.Expr) {
+			drops = append(drops, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s;", quote(oldEnt.Table), quote(name)), destructive: true})
+		}
+		if newOK && (!oldOK || oldCheck.Expr != newCheck.Expr) {
+			expr, err := quotedCheckExpression(newCheck.Expr, quote)
+			if err != nil {
+				return nil, nil, fmt.Errorf("%s check %s: %w", newEnt.Table, name, err)
+			}
+			adds = append(adds, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s CHECK (%s);", quote(newEnt.Table), quote(name), expr)})
+		}
+	}
+	return drops, adds, nil
 }
 
 func sqliteColumnsEquivalent(left, right *schema.Col) bool {
@@ -288,6 +350,13 @@ func renderSQLiteRebuild(from, to *schema.Manifest, old, next *schema.Entity, qu
 	}
 	for _, fk := range sortedForeignKeys(to, next) {
 		lines = append(lines, "  "+foreignKeyClause(fk, to, quote))
+	}
+	for _, check := range next.Checks {
+		expr, err := quotedCheckExpression(check.Expr, quote)
+		if err != nil {
+			return "", false, fmt.Errorf("%s check %s: %w", next.Table, check.Name, err)
+		}
+		lines = append(lines, "  CONSTRAINT "+quote(check.Name)+" CHECK ("+expr+")")
 	}
 	var targetCols, sourceCols []string
 	for _, pair := range matchDiffColumns(old, next) {

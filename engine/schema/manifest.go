@@ -32,12 +32,18 @@ type Entity struct {
 	Unique      [][]string            `json:"unique,omitempty"`
 	Indexes     map[string][]string   `json:"indexes,omitempty"`
 	Fulltext    [][]string            `json:"fulltext,omitempty"`
+	Checks      []Check               `json:"checks,omitempty"`
 	Timestamps  *Timestamps           `json:"timestamps,omitempty"`
 	Predicates  map[string]*Predicate `json:"predicates,omitempty"` // %% predicate → generated <name>(args…) methods
 	Scope       string                `json:"scope,omitempty"`      // %% scope <table> <column>
 	Line        int                   `json:"-"`
 
 	cols map[string]*Col
+}
+
+type Check struct {
+	Name string `json:"name"`
+	Expr string `json:"expr"`
 }
 
 // Column returns the column by name, or nil.
@@ -507,6 +513,19 @@ func (m *Manifest) addDirective(x *Directive) error {
 		ent.Indexes[name] = x.Columns
 	case "fulltext":
 		ent.Fulltext = append(ent.Fulltext, x.Columns)
+	case "check":
+		if slices.IndexFunc(ent.Checks, func(c Check) bool { return c.Name == x.Name }) >= 0 {
+			return &BuildError{x.Line, "check " + x.Name + " declared twice"}
+		}
+		if ent.Column(x.Name) != nil {
+			return &BuildError{x.Line, "check " + x.Name + " collides with a column"}
+		}
+		for _, col := range backtickNames(x.Raw) {
+			if ent.Column(col) == nil {
+				return &BuildError{x.Line, "check " + x.Name + ": unknown column `" + col + "`"}
+			}
+		}
+		ent.Checks = append(ent.Checks, Check{Name: x.Name, Expr: x.Raw})
 	case "timestamps":
 		ent.Timestamps = &Timestamps{Created: x.Columns[0], Updated: x.Columns[1]}
 	case "scope":
