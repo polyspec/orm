@@ -198,6 +198,7 @@
   "clients/typescript/src/database.ts::Db.execute": "public async execute(plan: Plan, params: Param[]): Promise\u003cunknown\u003e",
   "clients/typescript/src/database.ts::Db.fromConfig": "public static async fromConfig(path: string): Promise\u003cDb\u003e",
   "clients/typescript/src/database.ts::Db.identifier": "private identifier(value: string): string",
+  "clients/typescript/src/database.ts::Db.loadPlanBundle": "public loadPlanBundle(bundle: string | Record\u003cstring, unknown\u003e, request: Request): void",
   "clients/typescript/src/database.ts::Db.mysql": "public static mysql(uri: string, options: DatabaseOptions): Promise\u003cDb\u003e",
   "clients/typescript/src/database.ts::Db.placeholder": "private placeholder(position: number): string",
   "clients/typescript/src/database.ts::Db.plan": "public async plan(request: Request): Promise\u003cPlan\u003e",

@@ -483,6 +483,51 @@ impl Db {
         Ok(plan)
     }
 
+    /// Validates and registers a plan emitted by `ormgen precompile`. The
+    /// request binds the bundle to one exact shape; later plan() calls use the
+    /// registered plan without contacting the compiler.
+    pub fn load_plan_bundle(&self, bundle: &[u8], req: &mut Req) -> Result<()> {
+        if let Some(e) = &req.err {
+            return Err(e.error());
+        }
+        let envelope: serde_json::Value = serde_json::from_slice(bundle)
+            .map_err(|e| Error::Config(format!("precompiled plan is invalid JSON: {e}")))?;
+        let version = envelope.get("version").and_then(serde_json::Value::as_i64).unwrap_or(0);
+        if version != 1 {
+            return Err(Error::Engine { code: crate::codes::VERSION_MISMATCH.into(), msg: format!("precompiled plan version {version} is not supported") });
+        }
+        let schema = envelope.get("schema_hash").and_then(serde_json::Value::as_str).unwrap_or("");
+        if schema != self.engine.schema_hash {
+            return Err(Error::Engine { code: crate::codes::SCHEMA_HASH_MISMATCH.into(), msg: format!("precompiled plan schema {schema} but client schema is {}", self.engine.schema_hash) });
+        }
+        let dialect = envelope.get("dialect").and_then(serde_json::Value::as_str).unwrap_or("");
+        if dialect != self.driver() {
+            return Err(Error::Config(format!("precompiled plan dialect {dialect} but database driver is {}", self.driver())));
+        }
+        if envelope.get("request_sha256").and_then(serde_json::Value::as_str).filter(|v| !v.is_empty()).is_none() {
+            return Err(Error::Config("precompiled plan requires request_sha256".into()));
+        }
+        let raw_plan = envelope.get("plan").ok_or_else(|| Error::Config("precompiled plan requires plan".into()))?;
+        let mut plan: Plan = serde_json::from_value(raw_plan.clone()).map_err(|e| Error::Config(format!("precompiled plan body is invalid: {e}")))?;
+        if plan.schema_hash != schema || plan.kind != req.ir.kind || plan.steps.is_empty() {
+            return Err(Error::Config("precompiled plan body does not match its envelope or request".into()));
+        }
+        req.ir.n_params = req.params.len();
+        let key = req.shape_key();
+        for step in &mut plan.steps { step.plan_id = key; }
+        let plan = Arc::new(plan);
+        let mut plans = self.plans.lock().unwrap();
+        if !plans.contains_key(&key) {
+            plans.insert(key, plan);
+            let mut order = self.plan_order.lock().unwrap();
+            order.push_back(key);
+            while order.len() > self.cfg.plan_cache_size {
+                if let Some(oldest) = order.pop_front() { plans.remove(&oldest); }
+            }
+        }
+        Ok(())
+    }
+
     /// Closes the pool and clears compiled plans. Calling it more than once is safe.
     pub async fn close(&self) {
         self.plans.lock().unwrap().clear();

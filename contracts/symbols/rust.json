@@ -4368,6 +4368,7 @@
   "clients/rust/orm/src/db.rs::Db::connect_with_plan_compiler": " async fn connect_with_plan_compiler (opts : ConnectOptions , max_connections : u32 , engine : Arc \u003c Engine \u003e , compiler : Arc \u003c dyn PlanCompiler \u003e , cfg : Config) -\u003e Result \u003c Db \u003e",
   "clients/rust/orm/src/db.rs::Db::driver": "pub fn driver (\u0026 self) -\u003e \u0026 'static str",
   "clients/rust/orm/src/db.rs::Db::emit": " fn emit (\u0026 self , st : \u0026 Step , sql : \u0026 str , args : \u0026 [Param] , n_parent : usize , start : std :: time :: Instant , err : Option \u003c \u0026 Error \u003e)",
+  "clients/rust/orm/src/db.rs::Db::load_plan_bundle": "pub fn load_plan_bundle (\u0026 self , bundle : \u0026 [u8] , req : \u0026 mut Req) -\u003e Result \u003c () \u003e",
   "clients/rust/orm/src/db.rs::Db::pg_types_conn": " async fn pg_types_conn (\u0026 self , conn : \u0026 mut sqlx :: PgConnection , sql : \u0026 str) -\u003e Result \u003c Arc \u003c [PgTypeInfo] \u003e \u003e",
   "clients/rust/orm/src/db.rs::Db::pg_types_pool": " async fn pg_types_pool (\u0026 self , pool : \u0026 PgPool , sql : \u0026 str) -\u003e Result \u003c Arc \u003c [PgTypeInfo] \u003e \u003e",
   "clients/rust/orm/src/db.rs::Db::plan": "pub async fn plan (\u0026 self , req : \u0026 mut Req) -\u003e Result \u003c Arc \u003c Plan \u003e \u003e",
