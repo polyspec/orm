@@ -172,7 +172,7 @@ S7 specified implementationspecified document workspecified eacheach completespe
 - [ ] T7.10 `multi_statement` specified implementationspecified relation Stage result specified
 - [ ] T7.11 Go·PHP typed directly specified specified specified specified criteriavalue specified
 - [ ] T7.12 150specified Rust generation crate fixturespecified specified specified specified
-- [~] T7.13 AES version-column validation and row rotation helpers exist for Go/PHP/Rust/TypeScript; Go row persistence, transaction APIs, status reporting, and cross-language database checks remain
+- [~] T7.13 AES version-column validation and row rotation helpers exist for Go/PHP/Rust/TypeScript. `aes_key_version` is plaintext metadata and cannot use an AES style. Go row persistence, transaction APIs, status reporting, and cross-language database checks remain
 
 ### Documentation maintenance
 

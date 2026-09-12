@@ -1091,7 +1091,6 @@ func (q *AuthorQuery) RotateAES(targetVersion int32, keyring orm.AESKeyring) (in
 	return ex.DB().RotateAESRows(ctx, ex, orm.AESRotationSpec{
 		Table: "author", PrimaryKey: "seq", VersionColumn: "aes_key_version",
 		Columns: []orm.AESRotationColumn{
-			{Name: "aes_key_version", Styles: []string{"aes"}},
 			{Name: "aes_hex_email", Styles: []string{"aes", "hex"}},
 			{Name: "aes_hex_phone", Styles: []string{"aes", "hex"}},
 		},
@@ -3654,6 +3653,38 @@ func (q *AuthorQuery) AesKeyVersionNotEq(v int32) *AuthorQuery {
 	q.q.W().Pred("aes_key_version", "not_eq", v)
 	return q
 }
+func (w *AuthorWhere) AesKeyVersionGt(v int32) *AuthorWhere {
+	w.w.Pred("aes_key_version", "gt", v)
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionGt(v int32) *AuthorQuery {
+	q.q.W().Pred("aes_key_version", "gt", v)
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionGte(v int32) *AuthorWhere {
+	w.w.Pred("aes_key_version", "gte", v)
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionGte(v int32) *AuthorQuery {
+	q.q.W().Pred("aes_key_version", "gte", v)
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionLt(v int32) *AuthorWhere {
+	w.w.Pred("aes_key_version", "lt", v)
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionLt(v int32) *AuthorQuery {
+	q.q.W().Pred("aes_key_version", "lt", v)
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionLte(v int32) *AuthorWhere {
+	w.w.Pred("aes_key_version", "lte", v)
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionLte(v int32) *AuthorQuery {
+	q.q.W().Pred("aes_key_version", "lte", v)
+	return q
+}
 func (w *AuthorWhere) AesKeyVersionIn(vs []int32) *AuthorWhere {
 	w.w.PredList("aes_key_version", "in", orm.Anys(vs))
 	return w
@@ -3668,6 +3699,14 @@ func (w *AuthorWhere) AesKeyVersionNotIn(vs []int32) *AuthorWhere {
 }
 func (q *AuthorQuery) AesKeyVersionNotIn(vs []int32) *AuthorQuery {
 	q.q.W().PredList("aes_key_version", "not_in", orm.Anys(vs))
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionBetween(lo, hi int32) *AuthorWhere {
+	w.w.PredList("aes_key_version", "between", []any{lo, hi})
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionBetween(lo, hi int32) *AuthorQuery {
+	q.q.W().PredList("aes_key_version", "between", []any{lo, hi})
 	return q
 }
 func (w *AuthorWhere) AesKeyVersionIsNull() *AuthorWhere {
@@ -3700,6 +3739,38 @@ func (w *AuthorWhere) AesKeyVersionNotEqCol(ref orm.ColRef) *AuthorWhere {
 }
 func (q *AuthorQuery) AesKeyVersionNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("aes_key_version", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("aes_key_version", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionGtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("aes_key_version", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("aes_key_version", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionGteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("aes_key_version", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("aes_key_version", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionLtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("aes_key_version", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) AesKeyVersionLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("aes_key_version", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) AesKeyVersionLteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("aes_key_version", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) AesHexEmailEq(v string) *AuthorWhere {
@@ -7490,6 +7561,48 @@ func (q *AuthorQuery) MaxLikeCount() (*int64, error) {
 		return nil, err
 	}
 	x := orm.AsInt64(v)
+	return &x, nil
+}
+func (q *AuthorQuery) CountDistinctAesKeyVersion() (int64, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return 0, err
+	}
+	q.q.Req.IR.Kind = "count_distinct"
+	q.q.Req.IR.Agg = "aes_key_version"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	return orm.AsInt64(v), err
+}
+
+// MinAesKeyVersion is nil when no row matches.
+func (q *AuthorQuery) MinAesKeyVersion() (*int32, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "min"
+	q.q.Req.IR.Agg = "aes_key_version"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := int32(orm.AsInt64(v))
+	return &x, nil
+}
+
+// MaxAesKeyVersion is nil when no row matches.
+func (q *AuthorQuery) MaxAesKeyVersion() (*int32, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "max"
+	q.q.Req.IR.Agg = "aes_key_version"
+	v, err := orm.Scalar(ctx, ex, q.q.Req)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	x := int32(orm.AsInt64(v))
 	return &x, nil
 }
 func (q *AuthorQuery) CountDistinctPrice() (int64, error) {
