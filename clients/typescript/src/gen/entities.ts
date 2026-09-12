@@ -2648,4 +2648,3 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
 }
 export function ServiceMember(): ServiceMemberQuery { return new ServiceMemberQuery(); }
 registerRow('service_member',ServiceMemberRow);
-

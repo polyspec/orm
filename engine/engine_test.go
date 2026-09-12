@@ -434,7 +434,7 @@ func TestRelations(t *testing.T) {
 	if want := "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` IN (?) AND (`a`.`name` LIKE ?)"; u.SQL != want || u.Role != "relation" {
 		t.Errorf("user step:\n got  %s (%s)\n want %s", u.SQL, u.Role, want)
 	}
-	if u.Parent == nil || u.Parent.Step != 0 || u.Parent.Index != 1 || u.Parent.Column != "user_seq" || u.Parent.IfParent == nil || u.Parent.IfParent.Index != 5 || u.Parent.IfParent.Param != 1 {
+	if u.Parent == nil || u.Parent.Step != 0 || len(u.Parent.Keys) != 1 || u.Parent.Keys[0].Index != 1 || u.Parent.Keys[0].Column != "user_seq" || u.Parent.IfParent == nil || u.Parent.IfParent.Index != 5 || u.Parent.IfParent.Param != 1 {
 		t.Errorf("user parent: %+v", u.Parent)
 	}
 	if len(u.BindSlots) != 2 || u.BindSlots[0].From != "parent" || u.BindSlots[0].Step != 0 || u.BindSlots[1].Transform != "like_contains" {
@@ -445,23 +445,23 @@ func TestRelations(t *testing.T) {
 	if want := "SELECT `orm_w`.`a__seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__name` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`name` AS `a__name`, ROW_NUMBER() OVER (PARTITION BY `a`.`service_seq` ORDER BY `a`.`seq` DESC) AS `orm_rn` FROM `service_module` AS `a` WHERE `a`.`service_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` <= 3 ORDER BY `orm_w`.`a__service_seq`, `orm_w`.`orm_rn`"; m.SQL != want {
 		t.Errorf("modules step:\n got  %s\n want %s", m.SQL, want)
 	}
-	if m.Parent.Step != 0 || m.Parent.Index != 6 || !m.Assemble.Columns[1].Hidden {
+	if m.Parent.Step != 0 || len(m.Parent.Keys) != 1 || m.Parent.Keys[0].Index != 6 || !m.Assemble.Columns[1].Hidden {
 		t.Errorf("modules parent/hidden: %+v %+v", m.Parent, m.Assemble.Columns)
 	}
 	sv := p.Steps[3]
-	if !strings.Contains(sv.SQL, "ROW_NUMBER() OVER (PARTITION BY `a`.`seq` ORDER BY `a`.`seq` ASC)") || !strings.Contains(sv.SQL, "`orm_rn` <= 1") || sv.Parent.Step != 2 || sv.Parent.Index != 1 {
+	if !strings.Contains(sv.SQL, "ROW_NUMBER() OVER (PARTITION BY `a`.`seq` ORDER BY `a`.`seq` ASC)") || !strings.Contains(sv.SQL, "`orm_rn` <= 1") || sv.Parent.Step != 2 || len(sv.Parent.Keys) != 1 || sv.Parent.Keys[0].Index != 1 {
 		t.Errorf("nested service step: %s %+v", sv.SQL, sv.Parent)
 	}
 	// children wiring
 	root := main.Assemble
-	if len(root.Children) != 2 || root.Children[0].Kind != "join" || root.Children[1].Kind != "one" || root.Children[1].Step != 1 || root.Children[1].ParentIndex != 1 || root.Children[1].ChildIndex != 0 || !root.Children[1].Flatten {
+	if len(root.Children) != 2 || root.Children[0].Kind != "join" || root.Children[1].Kind != "one" || root.Children[1].Step != 1 || root.Children[1].ParentKeys[0].Index != 1 || root.Children[1].ChildKeys[0].Index != 0 || !root.Children[1].Flatten {
 		t.Errorf("root children: %+v", root.Children)
 	}
 	js := root.Children[0].Assemble
-	if len(js.Children) != 1 || js.Children[0].Kind != "many" || js.Children[0].Step != 2 || js.Children[0].ParentIndex != 6 || js.Children[0].ChildIndex != 1 || js.Children[0].KeyIndex != 2 || js.Children[0].KeyBy != "name" {
+	if len(js.Children) != 1 || js.Children[0].Kind != "many" || js.Children[0].Step != 2 || js.Children[0].ParentKeys[0].Index != 6 || js.Children[0].ChildKeys[0].Index != 1 || js.Children[0].Key[0].Index != 2 || js.Children[0].Key[0].Column != "name" {
 		t.Errorf("join children: %+v", js.Children[0])
 	}
-	if mc := p.Steps[2].Assemble.Children; len(mc) != 1 || mc[0].Kind != "one" || mc[0].Step != 3 || mc[0].ParentIndex != 1 {
+	if mc := p.Steps[2].Assemble.Children; len(mc) != 1 || mc[0].Kind != "one" || mc[0].Step != 3 || mc[0].ParentKeys[0].Index != 1 {
 		t.Errorf("modules children: %+v", mc)
 	}
 	// paginate: main, its relation, then count

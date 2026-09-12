@@ -47,8 +47,8 @@ impl ServiceRow {
                     let related = rs.related(ch, src)?;
                     let mut c = Collection::with_capacity(related.len());
                     for row in related {
+                        let k = Key::of_row(row, &ch.key).expect("relation collection key contains null");
                         let mut row = orm::Cells::Pos(row.to_vec());
-                        let k = Key::of(&row.val(ch.key_index)?);
                         c.put(k, super::battle::BattleRow::from_row(&mut row, rs.step_assemble(ch), rs)?);
                     }
                     r.battles_ = c;
@@ -57,8 +57,8 @@ impl ServiceRow {
                     let related = rs.related(ch, src)?;
                     let mut c = Collection::with_capacity(related.len());
                     for row in related {
+                        let k = Key::of_row(row, &ch.key).expect("relation collection key contains null");
                         let mut row = orm::Cells::Pos(row.to_vec());
-                        let k = Key::of(&row.val(ch.key_index)?);
                         c.put(k, super::service_member::ServiceMemberRow::from_row(&mut row, rs.step_assemble(ch), rs)?);
                     }
                     r.members_ = c;
@@ -67,8 +67,8 @@ impl ServiceRow {
                     let related = rs.related(ch, src)?;
                     let mut c = Collection::with_capacity(related.len());
                     for row in related {
+                        let k = Key::of_row(row, &ch.key).expect("relation collection key contains null");
                         let mut row = orm::Cells::Pos(row.to_vec());
-                        let k = Key::of(&row.val(ch.key_index)?);
                         c.put(k, super::service_module::ServiceModuleRow::from_row(&mut row, rs.step_assemble(ch), rs)?);
                     }
                     r.modules_ = c;

@@ -108,7 +108,7 @@ abstract class Row implements \ArrayAccess
                 $items = new Collection();
                 $cls = Registry::row($ca['entity']);
                 foreach ($related as $row) {
-                    $items[Collection::keyOf($row[$ch['key_index']])] = $cls::fromRow($row, $ca, $rows);
+                    $items[Db::rowKey($row, $ch['key'])] = $cls::fromRow($row, $ca, $rows);
                 }
                 $r->rel[$ch['rel']] = $items;
             }
@@ -465,12 +465,12 @@ final class Rows
         if ($ifp !== null && !Db::sameScalar($parent[$ifp['index']], $this->params[$ifp['param']])) {
             return [];
         }
-        $pv = $parent[$ch['parent_index'] ?? 0];
-        if ($pv === null) {
+		$key = Db::rowKey($parent, $ch['parent_keys']);
+        if ($key === null) {
             return [];
         }
         $out = [];
-        foreach ($sr['byKey'][$pv] ?? [] as $i) {
+        foreach ($sr['byKey'][$key] ?? [] as $i) {
             $out[] = $sr['data'][$i];
         }
         return $out;

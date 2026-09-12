@@ -612,7 +612,7 @@ func scan{{.Type}}(vals []any, a *plan.Assemble, rs *orm.Rows) *{{.Type}}Row {
 {{- else}}
 			rows := rs.Related(ch, vals)
 			c := orm.NewCollection[{{.TargetType}}Row](len(rows))
-			for _, row := range rows { c.Put(orm.KeyOf(row[ch.KeyIndex]), scan{{.TargetType}}(row, rs.StepAssemble(ch), rs)) }
+			for _, row := range rows { key, _ := orm.KeyFromRow(row, ch.Key); c.Put(key, scan{{.TargetType}}(row, rs.StepAssemble(ch), rs)) }
 			r.{{.Method}} = c
 {{- end}}
 {{- end}}

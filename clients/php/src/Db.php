@@ -521,9 +521,10 @@ class Db
             if ($vals !== []) {
                 [$sql, $vals] = self::expandIn($st, $vals);
                 $sr['data'] = $this->query($st, $params, $sql, $vals);
-                $ci = self::childIndex($plan, $st['id']);
+                $keys = self::childKeys($plan, $st['id']);
                 foreach ($sr['data'] as $j => $row) {
-                    $sr['byKey'][$row[$ci]][] = $j;
+                    $key = self::rowKey($row, $keys);
+                    if ($key !== null) { $sr['byKey'][$key][] = $j; }
                 }
             }
             $rows->steps[$st['id']] = $sr;
@@ -541,12 +542,12 @@ class Db
             if ($ifp !== null && !self::sameScalar($row[$ifp['index']], $params[$ifp['param']])) {
                 continue;
             }
-            $v = $row[$pr['index']];
-            if ($v === null || isset($seen[$v])) {
+            $key = self::rowKey($row, $pr['keys']);
+            if ($key === null || isset($seen[$key])) {
                 continue;
             }
-            $seen[$v] = true;
-            $out[] = $v;
+            $seen[$key] = true;
+            foreach ($pr['keys'] as $ref) { $out[] = $row[$ref['index']]; }
         }
         return $out;
     }
@@ -560,11 +561,19 @@ class Db
      */
     private static function expandIn(array $step, array $vals): array
     {
+        $width = count($step['parent']['keys'] ?? []);
+        if ($width === 0 || count($vals) % $width !== 0) {
+            throw new OrmException(Code::INTERNAL, 'invalid relation parent keys');
+        }
+        $tuples = intdiv(count($vals), $width);
         $n = 1;
-        while ($n < count($vals)) {
+        while ($n < $tuples) {
             $n <<= 1;
         }
-        $vals = array_pad($vals, $n, $vals[count($vals) - 1]);
+        $last = array_slice($vals, ($tuples - 1) * $width, $width);
+        while (count($vals) < $n * $width) {
+            array_push($vals, ...$last);
+        }
         $src = $step['sql'];
         if (str_contains($src, '$1')) {
             $parent = -1;
@@ -573,16 +582,20 @@ class Db
                     $parent = $i + 1;
                 }
             }
-            $sql = preg_replace_callback('/\$(\d+)/', static function (array $m) use ($parent, $n): string {
+            $sql = preg_replace_callback('/\$(\d+)/', static function (array $m) use ($parent, $n, $width): string {
                 $k = (int) $m[1];
                 if ($k === $parent) {
-                    $out = [];
-                    for ($j = 0; $j < $n; $j++) {
-                        $out[] = '$' . ($k + $j);
+                    $groups = [];
+                    for ($tuple = 0; $tuple < $n; $tuple++) {
+                        $parts = [];
+                        for ($part = 0; $part < $width; $part++) {
+                            $parts[] = '$' . ($k + $tuple * $width + $part);
+                        }
+                        $groups[] = implode(', ', $parts);
                     }
-                    return implode(', ', $out);
+                    return implode($width === 1 ? ', ' : '), (', $groups);
                 }
-                return $k > $parent ? '$' . ($k + $n - 1) : $m[0];
+                return $k > $parent ? '$' . ($k + $n * $width - 1) : $m[0];
             }, $src);
             return [$sql, $vals];
         }
@@ -594,19 +607,24 @@ class Db
                 $sql .= $c;
                 continue;
             }
-            $sql .= $step['bind_slots'][$slot]['from'] === 'parent' ? '?' . str_repeat(', ?', $n - 1) : '?';
+            if ($step['bind_slots'][$slot]['from'] === 'parent') {
+                $groups = array_fill(0, $n, implode(', ', array_fill(0, $width, '?')));
+                $sql .= implode($width === 1 ? ', ' : '), (', $groups);
+            } else {
+                $sql .= '?';
+            }
             $slot++;
         }
         return [$sql, $vals];
     }
 
     /** The match column of a relation step, from the child spec that references it. */
-    private static function childIndex(array $plan, int $id): int
+    private static function childKeys(array $plan, int $id): array
     {
-        $find = function (array $a) use (&$find, $id): ?int {
+        $find = function (array $a) use (&$find, $id): ?array {
             foreach ($a['children'] ?? [] as $ch) {
                 if ($ch['kind'] !== 'join' && $ch['step'] === $id) {
-                    return $ch['child_index'] ?? 0;
+                    return $ch['child_keys'];
                 }
                 if ($ch['kind'] === 'join' && ($i = $find($ch['assemble'])) !== null) {
                     return $i;
@@ -620,6 +638,25 @@ class Db
             }
         }
         throw new OrmException(Code::INTERNAL, "relation step $id without a child spec");
+    }
+
+    /** @param list<mixed> $row @param list<array{column:string,index:int}> $refs */
+    public static function rowKey(array $row, array $refs): int|string|null
+    {
+        if (count($refs) === 1) {
+            $value = $row[$refs[0]['index']];
+            return $value === null ? null : Collection::keyOf($value);
+        }
+        $out = '';
+        foreach ($refs as $ref) {
+            $value = $row[$ref['index']];
+            if ($value === null) {
+                return null;
+            }
+            $part = self::scalarKey($value);
+            $out .= strlen($part) . ':' . $part;
+        }
+        return $out;
     }
 
     /** Compares a row value with a bound value regardless of representation (bool/int/string). */
