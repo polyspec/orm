@@ -1364,11 +1364,16 @@ async fn main() {
         "cascade fixture loaded"
     );
     let n0 = statements.load(Ordering::Relaxed);
-    row.delete_cascade().await.expect("delete_cascade");
+    let restricted = row.delete_cascade().await;
+    check!(
+        fails,
+        restricted.as_ref().err().map(|error| error.code()) == Some("FOREIGN_KEY"),
+        "no_cascade_delete reports the foreign-key restriction"
+    );
     check!(
         fails,
         statements.load(Ordering::Relaxed) - n0 == 3,
-        "delete_cascade: one DELETE per member + the service"
+        "delete_cascade: attempted member deletes and the service"
     );
     check!(
         fails,
@@ -1378,8 +1383,8 @@ async fn main() {
             .get_count()
             .await
             .unwrap()
-            == 0,
-        "delete_cascade removed the members"
+            == 2,
+        "failed delete_cascade rolled back the members"
     );
     check!(
         fails,
@@ -1389,8 +1394,8 @@ async fn main() {
             .get_count()
             .await
             .unwrap()
-            == 0,
-        "delete_cascade removed the service"
+            == 1,
+        "failed delete_cascade retained the service"
     );
     check!(
         fails,
@@ -1409,10 +1414,33 @@ async fn main() {
             .seq_eq(md)
             .using(&db)
             .delete()
+        .await
+        .unwrap()
+        == 1,
+        "module cleaned up"
+    );
+    row.delete_cascade().await.expect("delete_cascade after module cleanup");
+    check!(
+        fails,
+        service_member::query()
+            .seq_in(vec![m1, m2])
+            .using(&db)
+            .get_count()
             .await
             .unwrap()
-            == 1,
-        "module cleaned up"
+            == 0,
+        "delete_cascade removed the members after cleanup"
+    );
+    check!(
+        fails,
+        service::query()
+            .seq_eq(svc)
+            .using(&db)
+            .get_count()
+            .await
+            .unwrap()
+            == 0,
+        "delete_cascade removed the service after cleanup"
     );
 
     // ---- deadlock gate: T1 locks A then B, T2 locks B then A; the loser's closure re-runs ----
@@ -1654,6 +1682,25 @@ async fn main() {
             .expect("rollback count")
             == 0,
         "composite transaction rollback removes both rows"
+    );
+    let soft = soft_record::query()
+        .set_name("soft-delete")
+        .using(&db)
+        .insert()
+        .await
+        .expect("soft-delete insert")
+        .expect("soft-delete row");
+    check!(
+        fails,
+        soft_record::query().using(&db).get_count().await.expect("soft-delete visible count") == 1,
+        "soft-delete insert is visible"
+    );
+    soft.delete().await.expect("soft-delete delete");
+    check!(
+        fails,
+        soft_record::query().using(&db).get_count().await.expect("soft-delete hidden count") == 0
+            && soft_record::query().using(&db).get_by_seq(soft.seq).await.expect("soft-delete lookup").is_none(),
+        "soft-delete row is hidden after delete"
     );
     let savepoint_result = db
         .transaction(|tx| async move {

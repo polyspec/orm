@@ -48,6 +48,9 @@ func TestSoftDeleteConvertsDeleteToTimestampedUpdate(t *testing.T) {
 	if !strings.HasPrefix(sql, `UPDATE "account" SET "deleted_at" = ?`) || !strings.Contains(sql, `"account"."deleted_at" IS NULL`) {
 		t.Fatalf("delete plan did not use guarded soft-delete update: %s", sql)
 	}
+	if len(plan.Steps[0].BindSlots) != 2 || plan.Steps[0].BindSlots[0].From != "now" || plan.Steps[0].BindSlots[1].From != "param" {
+		t.Fatalf("delete plan bind slots differ: %#v", plan.Steps[0].BindSlots)
+	}
 }
 
 func TestRelationExistenceUsesCorrelatedSubquery(t *testing.T) {

@@ -585,6 +585,30 @@ func TestCompositeCRUDRelationsAndPagination(t *testing.T) {
 	}
 }
 
+func TestSoftDeletePhysical(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	if _, err := gen.SoftRecord().Using(ctx, db).GetCount(); err != nil {
+		t.Skipf("soft_record fixture is not installed: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = gen.SoftRecord().Using(context.Background(), db).Delete()
+	})
+	soft, err := gen.SoftRecord().SetName("soft-delete").Using(ctx, db).Insert()
+	if err != nil || soft == nil {
+		t.Fatalf("soft-delete insert: row=%#v err=%v", soft, err)
+	}
+	if count, err := gen.SoftRecord().Using(ctx, db).GetCount(); err != nil || count != 1 {
+		t.Fatalf("soft-delete visible count=%d err=%v", count, err)
+	}
+	if err := soft.Delete(); err != nil {
+		t.Fatalf("soft-delete delete: %v", err)
+	}
+	if count, err := gen.SoftRecord().Using(ctx, db).GetCount(); err != nil || count != 0 {
+		t.Fatalf("soft-delete hidden count=%d err=%v", count, err)
+	}
+}
+
 // TestAggregatesHavingRawPredicates covers the S4 surface: countDistinct/min/max
 // terminals (nil on no rows), having after groupBy, raw root, named predicates.
 func TestAggregatesHavingRawPredicates(t *testing.T) {

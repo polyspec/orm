@@ -418,3 +418,46 @@ type CompositeMembershipRowInterface interface {
 }
 
 var _ CompositeMembershipRowInterface = (*CompositeMembershipRow)(nil)
+
+type SoftRecordInterface interface {
+	Get() (*SoftRecordRow, error)
+	Gets() (*orm.Collection[SoftRecordRow], error)
+	Stream(visit func(*SoftRecordRow) bool) (orm.StreamResult, error)
+	GetCount() (int64, error)
+	GetsCount() (*orm.Collection[SoftRecordRow], error)
+	Insert() (*SoftRecordRow, error)
+	Save() (*SoftRecordRow, error)
+	Update() (int64, error)
+	Delete() (int64, error)
+	SQL() (*orm.Statement, error)
+	Using(ctx context.Context, ex orm.Exec) *SoftRecordQuery
+	Paginate(page, per int) (*orm.Page[SoftRecordRow], error)
+	GetsAfter(cursor string, per int) (*orm.KeysetPage[SoftRecordRow], error)
+	GetsBefore(cursor string, per int) (*orm.KeysetPage[SoftRecordRow], error)
+	GetsBySeq(v int64) (*orm.Collection[SoftRecordRow], error)
+	GetsByName(v string) (*orm.Collection[SoftRecordRow], error)
+	GetsByDeletedAt(v time.Time) (*orm.Collection[SoftRecordRow], error)
+	GetCountBySeq(v int64) (int64, error)
+	GetCountByName(v string) (int64, error)
+	GetCountByDeletedAt(v time.Time) (int64, error)
+	SeqEq(v int64) *SoftRecordQuery
+	NameEq(v string) *SoftRecordQuery
+	DeletedAtEq(v time.Time) *SoftRecordQuery
+	Seq(v int64) *SoftRecordQuery
+	Name(v string) *SoftRecordQuery
+	DeletedAt(v time.Time) *SoftRecordQuery
+}
+
+var _ SoftRecordInterface = (*SoftRecordQuery)(nil)
+
+type SoftRecordRowInterface interface {
+	Using(ctx context.Context, ex orm.Exec) *SoftRecordRow
+	Update() error
+	Delete() error
+	DeleteCascade() error
+	Has(name string) bool
+	RelLoaded(rel string) bool
+	ToArray() (map[string]any, error)
+}
+
+var _ SoftRecordRowInterface = (*SoftRecordRow)(nil)

@@ -33,4 +33,5 @@ const (
 	CodeInternal = "INTERNAL" // executor
 	CodeDeadlock = "DEADLOCK" // driver: MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions
 	CodeDuplicateKey = "DUPLICATE_KEY" // driver: MySQL 1062 / SQLSTATE 23000
+	CodeForeignKey = "FOREIGN_KEY" // driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787/1811
 )

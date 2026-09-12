@@ -1493,6 +1493,13 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
 	root := p.buildScopes(&r.Query, ent.Table, nil)
+	var now string
+	if ent.SoftDelete != "" {
+		now = p.D.Now()
+		if p.D.HostNow() {
+			now = b.now()
+		}
+	}
 	where, err := p.renderGroup(b, root, r.Where, r.ScopeP == nil)
 	if err != nil {
 		return nil, err
@@ -1506,10 +1513,6 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 	}
 	if ent.SoftDelete != "" {
 		where += " AND " + p.qcol(root, ent.SoftDelete) + " IS NULL"
-		now := p.D.Now()
-		if p.D.HostNow() {
-			now = b.now()
-		}
 		return &plan.Step{Role: "main", SQL: "UPDATE " + p.D.Quote(ent.Table) + " SET " + p.D.Quote(ent.SoftDelete) + " = " + now + " WHERE " + where, BindSlots: b.binds}, nil
 	}
 	sql := "DELETE FROM " + p.D.Quote(ent.Table) + " WHERE " + where

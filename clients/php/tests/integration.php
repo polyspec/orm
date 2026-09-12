@@ -16,6 +16,7 @@ use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Tests\Model\ServiceMember;
 use Polyspec\Orm\Tests\Model\ServiceRegion;
 use Polyspec\Orm\Tests\Model\ServiceWhere;
+use Polyspec\Orm\Tests\Model\SoftRecord;
 use Polyspec\Orm\Tests\Model\User;
 use Polyspec\Orm\Tests\Model\UserWhere;
 use Orm\Code;
@@ -585,6 +586,10 @@ try {
     if ($error !== $compositeRollback) { throw $error; }
 }
 check(CompositeAccount::query()->tenantIdEq($tenantId)->accountIdEq(13)->using($db)->getCount() === 0, 'composite transaction rollback removes both rows');
+$soft = SoftRecord::query()->setName('soft-delete')->using($db)->insert();
+check($soft !== null && SoftRecord::query()->using($db)->getCount() === 1, 'soft-delete insert is visible');
+if ($soft !== null) $soft->delete();
+check($soft !== null && SoftRecord::query()->using($db)->getCount() === 0 && SoftRecord::query()->using($db)->getBySeq($soft->getSeq()) === null, 'soft-delete row is hidden after delete');
 $first->using($db)->delete();
 check(CompositeMembership::query()->tenantIdEq($tenantId)->using($db)->getCount() === 1, 'composite row delete uses every key component');
 CompositeMembership::query()->tenantIdEq($tenantId)->using($db)->delete();

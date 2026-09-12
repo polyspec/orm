@@ -384,11 +384,11 @@ impl CompositeAccount {
     }
     pub fn join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "inner") }
     pub fn left_join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "left") }
-    fn join_target(mut self, child: impl AsRef<Q>, kind: &str) -> Self {
+    fn join_target(mut self, child: impl AsRef<Q>, _kind: &str) -> Self {
         let c = child.as_ref();
         match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
-            ("composite_membership", "tenant_id,account_id", "tenant_id,account_id") => { self.q.join("memberships", kind, c); self },
-            ("composite_membership", "", "") => { self.q.join("memberships", kind, c); self },
+            ("composite_membership", "tenant_id,account_id", "tenant_id,account_id") => { self.q.join("memberships", _kind, c); self },
+            ("composite_membership", "", "") => { self.q.join("memberships", _kind, c); self },
             _ => panic!("no relation from composite_account"),
         }
     }

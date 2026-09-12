@@ -8,19 +8,17 @@ use orm::value::{Param, Val};
 use orm::{Collection, Key, Page, Result};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ServiceKey {
+pub struct SoftRecordKey {
     pub seq: i64,
 }
 
-/// One row of service.
+/// One row of soft_record.
 #[derive(Debug, Clone, Default)]
-pub struct ServiceRow {
+pub struct SoftRecordRow {
     binding: Binding,
     pub seq: i64,
     pub name: String,
-    authors_: Collection<super::author::AuthorRow>,
-    members_: Collection<super::service_member::ServiceMemberRow>,
-    modules_: Collection<super::service_region::ServiceRegionRow>,
+    pub deleted_at: Option<chrono::NaiveDateTime>,
     assigned: Vec<&'static str>,
     original_version: Option<Param>,
     original_key: Option<Vec<Param>>,
@@ -32,10 +30,10 @@ pub struct ServiceRow {
     asm: Option<std::sync::Arc<orm::plan::Assemble>>,
 }
 
-impl ServiceRow {
+impl SoftRecordRow {
     /// Select a pool or transaction for this loaded row.
     pub fn using(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
-    pub const ENTITY: &'static str = "service";
+    pub const ENTITY: &'static str = "soft_record";
     pub const PRIMARY_KEYS: &'static [&'static str] = &["seq"];
 
     /// Maps one row of the statement onto the struct: relation children first (rows of later
@@ -48,36 +46,6 @@ impl ServiceRow {
         r.binding = rs.binding.clone();
         for ch in &a.children {
             match ch.rel.as_str() {
-                "authors" => {
-                    let related = rs.related(ch, src)?;
-                    let mut c = Collection::with_capacity(related.len());
-                    for row in related {
-                        let k = Key::of_row(row, &ch.key).expect("relation collection key contains null");
-                        let mut row = orm::Cells::Pos(row.to_vec());
-                        c.put(k, super::author::AuthorRow::from_row(&mut row, rs.step_assemble(ch), rs)?);
-                    }
-                    r.authors_ = c;
-                }
-                "members" => {
-                    let related = rs.related(ch, src)?;
-                    let mut c = Collection::with_capacity(related.len());
-                    for row in related {
-                        let k = Key::of_row(row, &ch.key).expect("relation collection key contains null");
-                        let mut row = orm::Cells::Pos(row.to_vec());
-                        c.put(k, super::service_member::ServiceMemberRow::from_row(&mut row, rs.step_assemble(ch), rs)?);
-                    }
-                    r.members_ = c;
-                }
-                "modules" => {
-                    let related = rs.related(ch, src)?;
-                    let mut c = Collection::with_capacity(related.len());
-                    for row in related {
-                        let k = Key::of_row(row, &ch.key).expect("relation collection key contains null");
-                        let mut row = orm::Cells::Pos(row.to_vec());
-                        c.put(k, super::service_region::ServiceRegionRow::from_row(&mut row, rs.step_assemble(ch), rs)?);
-                    }
-                    r.modules_ = c;
-                }
                 _ => {}
             }
         }
@@ -86,6 +54,7 @@ impl ServiceRow {
             match c.name.as_str() {
                 "seq" => r.seq = src.i64(i)?,
                 "name" => r.name = src.string(i)?,
+                "deleted_at" => r.deleted_at = if src.is_null(i) { None } else { Some(src.datetime(i)?) },
                 other => { let v = if c.styles.is_empty() { src.val(i)? } else { src.styled(i, &c.styles)? }; r.extra.insert(other.to_owned(), v); }
             }
         }
@@ -114,18 +83,10 @@ impl ServiceRow {
             let v = match name {
                 "seq" => serde_json::json!(self.seq),
                 "name" => serde_json::json!(self.name),
+                "deleted_at" => self.deleted_at.map(|t| serde_json::json!(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string())).unwrap_or(serde_json::Value::Null),
                 other => self.extra.get(other).map(|v| v.to_json()).unwrap_or(serde_json::Value::Null),
             };
             m.insert(name.to_owned(), v);
-        }
-        if a.has_child("authors") {
-            m.insert("authors".into(), self.authors_.to_map()?);
-        }
-        if a.has_child("members") {
-            m.insert("members".into(), self.members_.to_map()?);
-        }
-        if a.has_child("modules") {
-            m.insert("modules".into(), self.modules_.to_map()?);
         }
         for ch in a.children.iter().filter(|ch| ch.flatten) {
             if let Some(serde_json::Value::Object(child)) = m.get(&ch.rel).cloned() {
@@ -135,18 +96,19 @@ impl ServiceRow {
         Ok(serde_json::Value::Object(m))
     }
 
-    pub fn authors(&self) -> &Collection<super::author::AuthorRow> { &self.authors_ }
-    pub fn authors_mut(&mut self) -> &mut Collection<super::author::AuthorRow> { &mut self.authors_ }
-    pub fn members(&self) -> &Collection<super::service_member::ServiceMemberRow> { &self.members_ }
-    pub fn members_mut(&mut self) -> &mut Collection<super::service_member::ServiceMemberRow> { &mut self.members_ }
-    pub fn modules(&self) -> &Collection<super::service_region::ServiceRegionRow> { &self.modules_ }
-    pub fn modules_mut(&mut self) -> &mut Collection<super::service_region::ServiceRegionRow> { &mut self.modules_ }
 
     pub fn set_name(&mut self, v: impl Into<String>) -> &mut Self {
         let v: String = v.into();
         self.name = v.clone();
         if !self.assigned.contains(&"name") { self.assigned.push("name"); }
         self.mark_dirty("name", v.into());
+        self
+    }
+    pub fn set_deleted_at(&mut self, v: Option<chrono::NaiveDateTime>) -> &mut Self {
+        let v: Option<chrono::NaiveDateTime> = v.map(|x| x.into());
+        self.deleted_at = v.clone();
+        if !self.assigned.contains(&"deleted_at") { self.assigned.push("deleted_at"); }
+        self.mark_dirty("deleted_at", v.into());
         self
     }
 
@@ -203,15 +165,6 @@ impl ServiceRow {
             let Some(a) = &self.asm else { return Ok(()) };
             for ch in a.children.iter().filter(|ch| ch.cascade) {
                 match ch.rel.as_str() {
-                    "authors" => {
-                        for (_, r) in self.authors_.iter() { r.delete_cascade_in(tx).await?; }
-                    }
-                    "members" => {
-                        for (_, r) in self.members_.iter() { r.delete_cascade_in(tx).await?; }
-                    }
-                    "modules" => {
-                        for (_, r) in self.modules_.iter() { r.delete_cascade_in(tx).await?; }
-                    }
                     _ => {}
                 }
             }
@@ -220,8 +173,8 @@ impl ServiceRow {
     }
 }
 
-impl orm::collection::RowExport for ServiceRow {
-    fn to_map(&self) -> Result<serde_json::Value> { ServiceRow::to_map(self) }
+impl orm::collection::RowExport for SoftRecordRow {
+    fn to_map(&self) -> Result<serde_json::Value> { SoftRecordRow::to_map(self) }
 }
 
 /// Column references for column-to-column predicates (w.seq_eq_col(cols::seq())); .at("service") points into a joined entity.
@@ -229,42 +182,16 @@ pub mod cols {
     use orm::builder::ColRef;
     pub fn seq() -> ColRef { ColRef::new("seq") }
     pub fn name() -> ColRef { ColRef::new("name") }
+    pub fn deleted_at() -> ColRef { ColRef::new("deleted_at") }
 }
 
-/// Where builder for service: predicates, or(), and(|w| …), relation navigation.
-pub struct ServiceWhere<'a> { pub(crate) w: W<'a> }
+/// Where builder for soft_record: predicates, or(), and(|w| …), relation navigation.
+pub struct SoftRecordWhere<'a> { pub(crate) w: W<'a> }
 
-impl<'a> ServiceWhere<'a> {
+impl<'a> SoftRecordWhere<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
-    pub fn and(mut self, f: impl FnOnce(ServiceWhere<'_>) -> ServiceWhere<'_>) -> Self { self.w.and_with(|w| { f(ServiceWhere { w }); }); self }
+    pub fn and(mut self, f: impl FnOnce(SoftRecordWhere<'_>) -> SoftRecordWhere<'_>) -> Self { self.w.and_with(|w| { f(SoftRecordWhere { w }); }); self }
 	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
-    pub fn authors(mut self, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.w.nav_with("authors", |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn has_authors(mut self, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.w.nav_with_mode("authors", "exists", |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn not_has_authors(mut self, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.w.nav_with_mode("authors", "not_exists", |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn count_authors_eq(mut self, value: i64, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.w.nav_with_count("authors", "eq", value, |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn count_authors_gte(mut self, value: i64, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.w.nav_with_count("authors", "gte", value, |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn count_authors_gt(mut self, value: i64, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.w.nav_with_count("authors", "gt", value, |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn count_authors_lte(mut self, value: i64, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.w.nav_with_count("authors", "lte", value, |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn count_authors_lt(mut self, value: i64, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.w.nav_with_count("authors", "lt", value, |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn count_authors_not_eq(mut self, value: i64, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.w.nav_with_count("authors", "not_eq", value, |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with("members", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn has_members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with_mode("members", "exists", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn not_has_members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with_mode("members", "not_exists", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn count_members_eq(mut self, value: i64, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with_count("members", "eq", value, |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn count_members_gte(mut self, value: i64, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with_count("members", "gte", value, |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn count_members_gt(mut self, value: i64, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with_count("members", "gt", value, |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn count_members_lte(mut self, value: i64, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with_count("members", "lte", value, |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn count_members_lt(mut self, value: i64, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with_count("members", "lt", value, |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn count_members_not_eq(mut self, value: i64, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.w.nav_with_count("members", "not_eq", value, |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn modules(mut self, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.w.nav_with("modules", |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn has_modules(mut self, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.w.nav_with_mode("modules", "exists", |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn not_has_modules(mut self, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.w.nav_with_mode("modules", "not_exists", |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn count_modules_eq(mut self, value: i64, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.w.nav_with_count("modules", "eq", value, |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn count_modules_gte(mut self, value: i64, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.w.nav_with_count("modules", "gte", value, |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn count_modules_gt(mut self, value: i64, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.w.nav_with_count("modules", "gt", value, |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn count_modules_lte(mut self, value: i64, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.w.nav_with_count("modules", "lte", value, |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn count_modules_lt(mut self, value: i64, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.w.nav_with_count("modules", "lt", value, |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn count_modules_not_eq(mut self, value: i64, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.w.nav_with_count("modules", "not_eq", value, |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
 
     pub fn seq_eq(mut self, v: i64) -> Self { self.w.pred("seq", "eq", v); self }
     pub fn seq(self, v: i64) -> Self { self.seq_eq(v) }
@@ -298,58 +225,49 @@ impl<'a> ServiceWhere<'a> {
     pub fn name_is_not_null(mut self) -> Self { self.w.pred_null("name", "is_not_null"); self }
     pub fn name_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "eq_col", r); self }
     pub fn name_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "not_eq_col", r); self }
+    pub fn deleted_at_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("deleted_at", "eq", v); self }
+    pub fn deleted_at(self, v: chrono::NaiveDateTime) -> Self { self.deleted_at_eq(v) }
+    pub fn deleted_at_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("deleted_at", "not_eq", v); self }
+    pub fn deleted_at_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("deleted_at", "gt", v); self }
+    pub fn deleted_at_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("deleted_at", "gte", v); self }
+    pub fn deleted_at_lt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("deleted_at", "lt", v); self }
+    pub fn deleted_at_lte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("deleted_at", "lte", v); self }
+    pub fn deleted_at_in(mut self, vs: Vec<chrono::NaiveDateTime>) -> Self { self.w.pred_list("deleted_at", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn deleted_at_not_in(mut self, vs: Vec<chrono::NaiveDateTime>) -> Self { self.w.pred_list("deleted_at", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn deleted_at_between(mut self, lo: chrono::NaiveDateTime, hi: chrono::NaiveDateTime) -> Self { self.w.pred_list("deleted_at", "between", vec![lo.into(), hi.into()]); self }
+    pub fn deleted_at_is_null(mut self) -> Self { self.w.pred_null("deleted_at", "is_null"); self }
+    pub fn deleted_at_is_not_null(mut self) -> Self { self.w.pred_null("deleted_at", "is_not_null"); self }
+    pub fn deleted_at_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("deleted_at", "eq_col", r); self }
+    pub fn deleted_at_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("deleted_at", "not_eq_col", r); self }
+    pub fn deleted_at_gt_col(mut self, r: ColRef) -> Self { self.w.pred_col("deleted_at", "gt_col", r); self }
+    pub fn deleted_at_gte_col(mut self, r: ColRef) -> Self { self.w.pred_col("deleted_at", "gte_col", r); self }
+    pub fn deleted_at_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("deleted_at", "lt_col", r); self }
+    pub fn deleted_at_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("deleted_at", "lte_col", r); self }
 }
 
-/// Query over service: query() → using(&db) → chain → terminal().await.
-pub struct Service {
+/// Query over soft_record: query() → using(&db) → chain → terminal().await.
+pub struct SoftRecord {
     binding: Binding,
     pub q: Q,
-    key_fn: Option<Box<dyn Fn(&ServiceRow) -> Key + Send + Sync>>,
+    key_fn: Option<Box<dyn Fn(&SoftRecordRow) -> Key + Send + Sync>>,
 }
 
-/// Construct a query over service.
-pub fn query() -> Service {
-    Service { binding: Binding::default(), q: Q::new(super::schema_hash(), "service"), key_fn: None }
+/// Construct a query over soft_record.
+pub fn query() -> SoftRecord {
+    SoftRecord { binding: Binding::default(), q: Q::new(super::schema_hash(), "soft_record"), key_fn: None }
 }
 
-impl Service {
+impl SoftRecord {
     /// Select a pool or transaction for this query.
     pub fn using(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
 
     /// Keys the root collection by a function of each row (relations key by key_by_<col>).
-    pub fn key_by_fn(mut self, f: impl Fn(&ServiceRow) -> Key + Send + Sync + 'static) -> Self { self.key_fn = Some(Box::new(f)); self }
+    pub fn key_by_fn(mut self, f: impl Fn(&SoftRecordRow) -> Key + Send + Sync + 'static) -> Self { self.key_fn = Some(Box::new(f)); self }
 
     // ---- WHERE ----
     pub fn or(mut self) -> Self { self.q.or(); self }
-    pub fn and(mut self, f: impl FnOnce(ServiceWhere<'_>) -> ServiceWhere<'_>) -> Self { self.q.w().and_with(|w| { f(ServiceWhere { w }); }); self }
+    pub fn and(mut self, f: impl FnOnce(SoftRecordWhere<'_>) -> SoftRecordWhere<'_>) -> Self { self.q.w().and_with(|w| { f(SoftRecordWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
-    pub fn authors(mut self, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.q.w().nav_with("authors", |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn has_authors(mut self, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.q.w().nav_with_mode("authors", "exists", |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn not_has_authors(mut self, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.q.w().nav_with_mode("authors", "not_exists", |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn count_authors_eq(mut self, value: i64, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.q.w().nav_with_count("authors", "eq", value, |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn count_authors_gte(mut self, value: i64, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.q.w().nav_with_count("authors", "gte", value, |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn count_authors_gt(mut self, value: i64, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.q.w().nav_with_count("authors", "gt", value, |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn count_authors_lte(mut self, value: i64, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.q.w().nav_with_count("authors", "lte", value, |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn count_authors_lt(mut self, value: i64, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.q.w().nav_with_count("authors", "lt", value, |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn count_authors_not_eq(mut self, value: i64, f: impl FnOnce(super::author::AuthorWhere<'_>) -> super::author::AuthorWhere<'_>) -> Self { self.q.w().nav_with_count("authors", "not_eq", value, |w| { f(super::author::AuthorWhere { w }); }); self }
-    pub fn members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with("members", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn has_members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with_mode("members", "exists", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn not_has_members(mut self, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with_mode("members", "not_exists", |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn count_members_eq(mut self, value: i64, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with_count("members", "eq", value, |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn count_members_gte(mut self, value: i64, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with_count("members", "gte", value, |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn count_members_gt(mut self, value: i64, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with_count("members", "gt", value, |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn count_members_lte(mut self, value: i64, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with_count("members", "lte", value, |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn count_members_lt(mut self, value: i64, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with_count("members", "lt", value, |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn count_members_not_eq(mut self, value: i64, f: impl FnOnce(super::service_member::ServiceMemberWhere<'_>) -> super::service_member::ServiceMemberWhere<'_>) -> Self { self.q.w().nav_with_count("members", "not_eq", value, |w| { f(super::service_member::ServiceMemberWhere { w }); }); self }
-    pub fn modules(mut self, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.q.w().nav_with("modules", |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn has_modules(mut self, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.q.w().nav_with_mode("modules", "exists", |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn not_has_modules(mut self, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.q.w().nav_with_mode("modules", "not_exists", |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn count_modules_eq(mut self, value: i64, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.q.w().nav_with_count("modules", "eq", value, |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn count_modules_gte(mut self, value: i64, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.q.w().nav_with_count("modules", "gte", value, |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn count_modules_gt(mut self, value: i64, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.q.w().nav_with_count("modules", "gt", value, |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn count_modules_lte(mut self, value: i64, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.q.w().nav_with_count("modules", "lte", value, |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn count_modules_lt(mut self, value: i64, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.q.w().nav_with_count("modules", "lt", value, |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
-    pub fn count_modules_not_eq(mut self, value: i64, f: impl FnOnce(super::service_region::ServiceRegionWhere<'_>) -> super::service_region::ServiceRegionWhere<'_>) -> Self { self.q.w().nav_with_count("modules", "not_eq", value, |w| { f(super::service_region::ServiceRegionWhere { w }); }); self }
 
     pub fn seq_eq(mut self, v: i64) -> Self { self.q.w().pred("seq", "eq", v); self }
     pub fn seq(self, v: i64) -> Self { self.seq_eq(v) }
@@ -383,26 +301,38 @@ impl Service {
     pub fn name_is_not_null(mut self) -> Self { self.q.w().pred_null("name", "is_not_null"); self }
     pub fn name_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "eq_col", r); self }
     pub fn name_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "not_eq_col", r); self }
+    pub fn deleted_at_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("deleted_at", "eq", v); self }
+    pub fn deleted_at(self, v: chrono::NaiveDateTime) -> Self { self.deleted_at_eq(v) }
+    pub fn deleted_at_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("deleted_at", "not_eq", v); self }
+    pub fn deleted_at_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("deleted_at", "gt", v); self }
+    pub fn deleted_at_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("deleted_at", "gte", v); self }
+    pub fn deleted_at_lt(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("deleted_at", "lt", v); self }
+    pub fn deleted_at_lte(mut self, v: chrono::NaiveDateTime) -> Self { self.q.w().pred("deleted_at", "lte", v); self }
+    pub fn deleted_at_in(mut self, vs: Vec<chrono::NaiveDateTime>) -> Self { self.q.w().pred_list("deleted_at", "in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn deleted_at_not_in(mut self, vs: Vec<chrono::NaiveDateTime>) -> Self { self.q.w().pred_list("deleted_at", "not_in", vs.into_iter().map(Into::into).collect()); self }
+    pub fn deleted_at_between(mut self, lo: chrono::NaiveDateTime, hi: chrono::NaiveDateTime) -> Self { self.q.w().pred_list("deleted_at", "between", vec![lo.into(), hi.into()]); self }
+    pub fn deleted_at_is_null(mut self) -> Self { self.q.w().pred_null("deleted_at", "is_null"); self }
+    pub fn deleted_at_is_not_null(mut self) -> Self { self.q.w().pred_null("deleted_at", "is_not_null"); self }
+    pub fn deleted_at_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("deleted_at", "eq_col", r); self }
+    pub fn deleted_at_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("deleted_at", "not_eq_col", r); self }
+    pub fn deleted_at_gt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("deleted_at", "gt_col", r); self }
+    pub fn deleted_at_gte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("deleted_at", "gte_col", r); self }
+    pub fn deleted_at_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("deleted_at", "lt_col", r); self }
+    pub fn deleted_at_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("deleted_at", "lte_col", r); self }
 
     // ---- join children: on() = ON, where_() = parent WHERE group ----
-    pub fn on(mut self, f: impl FnOnce(ServiceWhere<'_>) -> ServiceWhere<'_>) -> Self { { let w = self.q.on_w(); f(ServiceWhere { w }); } self }
-    pub fn where_(mut self, f: impl FnOnce(ServiceWhere<'_>) -> ServiceWhere<'_>) -> Self { { let w = self.q.w(); f(ServiceWhere { w }); } self }
+    pub fn on(mut self, f: impl FnOnce(SoftRecordWhere<'_>) -> SoftRecordWhere<'_>) -> Self { { let w = self.q.on_w(); f(SoftRecordWhere { w }); } self }
+    pub fn where_(mut self, f: impl FnOnce(SoftRecordWhere<'_>) -> SoftRecordWhere<'_>) -> Self { { let w = self.q.w(); f(SoftRecordWhere { w }); } self }
     pub fn relation(mut self, child: impl AsRef<Q>) -> Self {
         let c = child.as_ref();
         match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
-            _ => panic!("no one-to-one relation from service"),
+            _ => panic!("no one-to-one relation from soft_record"),
         }
     }
     pub fn relations(mut self, child: impl AsRef<Q>) -> Self {
         let c = child.as_ref();
         match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
-            ("author", "seq", "service_seq") => { self.q.relation("authors", c); self },
-            ("author", "", "") => { self.q.relation("authors", c); self },
-            ("service_member", "seq", "service_seq") => { self.q.relation("members", c); self },
-            ("service_member", "", "") => { self.q.relation("members", c); self },
-            ("service_region", "seq", "service_seq") => { self.q.relation("modules", c); self },
-            ("service_region", "", "") => { self.q.relation("modules", c); self },
-            _ => panic!("no one-to-many relation from service"),
+            _ => panic!("no one-to-many relation from soft_record"),
         }
     }
     pub fn join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "inner") }
@@ -410,28 +340,11 @@ impl Service {
     fn join_target(mut self, child: impl AsRef<Q>, _kind: &str) -> Self {
         let c = child.as_ref();
         match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
-            ("author", "seq", "service_seq") => { self.q.join("authors", _kind, c); self },
-            ("author", "", "") => { self.q.join("authors", _kind, c); self },
-            ("service_member", "seq", "service_seq") => { self.q.join("members", _kind, c); self },
-            ("service_member", "", "") => { self.q.join("members", _kind, c); self },
-            ("service_region", "seq", "service_seq") => { self.q.join("modules", _kind, c); self },
-            ("service_region", "", "") => { self.q.join("modules", _kind, c); self },
-            _ => panic!("no relation from service"),
+            _ => panic!("no relation from soft_record"),
         }
     }
 
-    pub fn join_seq_with_service_seq_to_author(mut self, child: impl AsRef<super::author::Author>) -> Self { self.q.join("authors", "inner", &child.as_ref().q); self }
-    pub fn left_join_seq_with_service_seq_to_author(mut self, child: impl AsRef<super::author::Author>) -> Self { self.q.join("authors", "left", &child.as_ref().q); self }
-    pub fn relations_seq_with_service_seq_to_author(mut self, child: impl AsRef<super::author::Author>) -> Self { self.q.relation("authors", &child.as_ref().q); self }
-    pub fn join_seq_with_service_seq_to_service_member(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.join("members", "inner", &child.as_ref().q); self }
-    pub fn left_join_seq_with_service_seq_to_service_member(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.join("members", "left", &child.as_ref().q); self }
-    pub fn relations_seq_with_service_seq_to_service_member(mut self, child: impl AsRef<super::service_member::ServiceMember>) -> Self { self.q.relation("members", &child.as_ref().q); self }
-    pub fn join_seq_with_service_seq_to_service_region(mut self, child: impl AsRef<super::service_region::ServiceRegion>) -> Self { self.q.join("modules", "inner", &child.as_ref().q); self }
-    pub fn left_join_seq_with_service_seq_to_service_region(mut self, child: impl AsRef<super::service_region::ServiceRegion>) -> Self { self.q.join("modules", "left", &child.as_ref().q); self }
-    pub fn relations_seq_with_service_seq_to_service_region(mut self, child: impl AsRef<super::service_region::ServiceRegion>) -> Self { self.q.relation("modules", &child.as_ref().q); self }
 
-    pub fn match_service_seq_with_seq(mut self) -> Self { self.q.set_link("service_seq", "seq"); self }
-    pub fn on_service_seq_with_seq(mut self) -> Self { self.q.set_link("service_seq", "seq"); self }
 
     // ---- columns ----
     pub fn select_all(mut self) -> Self { self.q.columns().mode = "all".into(); self }
@@ -443,6 +356,9 @@ impl Service {
     pub fn select_name(mut self) -> Self { self.q.columns().add.push("name".into()); self }
     pub fn unselect_name(mut self) -> Self { self.q.columns().remove.push("name".into()); self }
     pub fn select_name_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "name".into()); self }
+    pub fn select_deleted_at(mut self) -> Self { self.q.columns().add.push("deleted_at".into()); self }
+    pub fn unselect_deleted_at(mut self) -> Self { self.q.columns().remove.push("deleted_at".into()); self }
+    pub fn select_deleted_at_as(mut self, name: &str) -> Self { self.q.columns().as_.insert(name.into(), "deleted_at".into()); self }
 
     // ---- order, group, limit ----
     pub fn order_by_seq_asc(mut self) -> Self { self.q.order("seq", false); self }
@@ -453,6 +369,10 @@ impl Service {
     pub fn order_by_name_desc(mut self) -> Self { self.q.order("name", true); self }
     pub fn group_by_name(mut self) -> Self { self.q.node().group_by.push("name".into()); self }
     pub fn key_by_name(mut self) -> Self { self.q.node().key_by = "name".into(); self }
+    pub fn order_by_deleted_at_asc(mut self) -> Self { self.q.order("deleted_at", false); self }
+    pub fn order_by_deleted_at_desc(mut self) -> Self { self.q.order("deleted_at", true); self }
+    pub fn group_by_deleted_at(mut self) -> Self { self.q.node().group_by.push("deleted_at".into()); self }
+    pub fn key_by_deleted_at(mut self) -> Self { self.q.node().key_by = "deleted_at".into(); self }
     pub fn order_by_expr(mut self, frag: &str, desc: bool) -> Self { self.q.order_expr(frag, desc); self }
     pub fn group_by_expr(mut self, expr: &str, as_: &str) -> Self { self.q.group_by_expr(expr, as_); self }
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
@@ -460,7 +380,7 @@ impl Service {
     pub fn for_share(mut self) -> Self { self.q.lock("share"); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
     /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
-    pub fn having(mut self, f: impl FnOnce(ServiceWhere<'_>) -> ServiceWhere<'_>) -> Self { { let w = self.q.having_w(); f(ServiceWhere { w }); } self }
+    pub fn having(mut self, f: impl FnOnce(SoftRecordWhere<'_>) -> SoftRecordWhere<'_>) -> Self { { let w = self.q.having_w(); f(SoftRecordWhere { w }); } self }
 
     // ---- raw root (trusted code only): {table} = the entity table, ? = binds in order; run with raw_all ----
     pub fn raw(mut self, sql: &str, binds: Vec<Param>) -> Self { self.q.raw(sql, binds); self }
@@ -470,57 +390,39 @@ impl Service {
     pub fn limit_per_parent(mut self, n: u32) -> Self { self.q.node().limit_per_parent = n; self }
     pub fn drop_child_key(mut self) -> Self { self.q.node().drop_child_key = true; self }
     pub fn no_cascade_delete(mut self) -> Self { self.q.node().no_cascade_delete = true; self }
-    pub fn if_parent_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("seq", v); self }
-    pub fn if_parent_name_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("name", v.into()); self }
-    pub fn if_parent_is_close_eq(mut self, v: bool) -> Self { self.q.if_parent("is_close", v); self }
-    pub fn if_parent_is_display_eq(mut self, v: bool) -> Self { self.q.if_parent("is_display", v); self }
-    pub fn if_parent_is_allday_eq(mut self, v: bool) -> Self { self.q.if_parent("is_allday", v); self }
-    pub fn if_parent_target_club_reader_count_eq(mut self, v: i64) -> Self { self.q.if_parent("target_club_reader_count", v); self }
-    pub fn if_parent_success_count_eq(mut self, v: i64) -> Self { self.q.if_parent("success_count", v); self }
-    pub fn if_parent_reader_count_eq(mut self, v: i64) -> Self { self.q.if_parent("reader_count", v); self }
-    pub fn if_parent_read_count_eq(mut self, v: i64) -> Self { self.q.if_parent("read_count", v); self }
-    pub fn if_parent_photo_url_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("photo_url", v.into()); self }
-    pub fn if_parent_user_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("user_seq", v); self }
-    pub fn if_parent_service_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("service_seq", v); self }
-    pub fn if_parent_service_region_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("service_region_seq", v); self }
-    pub fn if_parent_service_member_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("service_member_seq", v); self }
-    pub fn if_parent_uuid_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("uuid", v.into()); self }
-    pub fn if_parent_is_single_work_eq(mut self, v: bool) -> Self { self.q.if_parent("is_single_work", v); self }
-    pub fn if_parent_like_count_eq(mut self, v: i64) -> Self { self.q.if_parent("like_count", v); self }
-    pub fn if_parent_aes_key_version_eq(mut self, v: i32) -> Self { self.q.if_parent("aes_key_version", v); self }
-    pub fn if_parent_aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_email", v.into()); self }
-    pub fn if_parent_email_blind_index_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("email_blind_index", v.into()); self }
-    pub fn if_parent_aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_phone", v.into()); self }
-    pub fn if_parent_phone_blind_index_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("phone_blind_index", v.into()); self }
 
     // ---- insert/update draft (set_<pk> only decides save: INSERT rejects it, UPDATE cannot change it) ----
     pub fn set_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("seq", v); self }
     pub fn set_name(mut self, v: impl Into<String>) -> Self { let v: String = v.into(); self.q.set("name", v); self }
     pub fn set_name_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("name", frag, binds); self }
+    pub fn set_deleted_at(mut self, v: Option<chrono::NaiveDateTime>) -> Self { let v: Option<chrono::NaiveDateTime> = v.map(|x| x.into()); self.q.set("deleted_at", v); self }
+    pub fn set_deleted_at_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("deleted_at", frag, binds); self }
     pub fn plus_seq(mut self, v: i64) -> Self { self.q.plus("seq", v); self }
     pub fn minus_seq(mut self, v: i64) -> Self { self.q.minus("seq", v); self }
 
     // ---- insert: ON DUPLICATE KEY UPDATE assignments (never the PK/auto column) ----
     pub fn on_duplicate_set_name(mut self, v: impl Into<String>) -> Self { let v: String = v.into(); self.q.on_duplicate_set("name", v); self }
     pub fn on_duplicate_set_name_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("name", frag, binds); self }
+    pub fn on_duplicate_set_deleted_at(mut self, v: Option<chrono::NaiveDateTime>) -> Self { let v: Option<chrono::NaiveDateTime> = v.map(|x| x.into()); self.q.on_duplicate_set("deleted_at", v); self }
+    pub fn on_duplicate_set_deleted_at_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("deleted_at", frag, binds); self }
     /// Copies every set_* assignment made so far (except the PK/auto column) into ON DUPLICATE KEY UPDATE.
     pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&["seq"]); self }
 
     // ---- terminals ----
-    pub async fn get(&mut self) -> Result<Option<ServiceRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn get(&mut self) -> Result<Option<SoftRecordRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
         Ok(match rows.take_cells().into_iter().next() {
-            Some(mut src) => Some(ServiceRow::from_row(&mut src, &rows.assemble, &rows)?),
+            Some(mut src) => Some(SoftRecordRow::from_row(&mut src, &rows.assemble, &rows)?),
             None => None,
         })
     }
 
-    pub async fn gets(&mut self) -> Result<Collection<ServiceRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn gets(&mut self) -> Result<Collection<SoftRecordRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "all").await?;
         collect(&mut rows, self.key_fn.as_deref())
     }
 
-    pub async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceRow>> {
+    pub async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<SoftRecordRow>> {
         self.q.keyset("after", cursor, per, &["seq"])?;
         let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "all").await?;
@@ -529,7 +431,7 @@ impl Service {
         Ok(orm::KeysetPage { items, next_cursor, previous_cursor })
     }
 
-    pub async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<ServiceRow>> {
+    pub async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<SoftRecordRow>> {
         self.q.keyset("before", cursor, per, &["seq"])?;
         let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "all").await?;
@@ -540,26 +442,32 @@ impl Service {
     }
 
     /// Visits independently owned rows without accumulating the complete result.
-    pub async fn stream(&mut self, visit: impl FnMut(ServiceRow) -> bool) -> Result<db::StreamResult> {
+    pub async fn stream(&mut self, visit: impl FnMut(SoftRecordRow) -> bool) -> Result<db::StreamResult> {
         let mut visit = visit;
         let binding = self.binding.clone();
         let ex = binding.resolve()?;
         db::stream(ex, &mut self.q.req, |mut src, rows| {
-            let row = ServiceRow::from_row(&mut src, &rows.assemble, rows)?;
+            let row = SoftRecordRow::from_row(&mut src, &rows.assemble, rows)?;
             Ok(visit(row))
         }).await
     }
 
 
     /// Applies seq = value and runs the collection terminal.
-    pub async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceRow>> {
+    pub async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<SoftRecordRow>> {
         self.q.w().pred("seq", "eq", v);
         self.gets().await
     }
 
     /// Applies name = value and runs the collection terminal.
-    pub async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<ServiceRow>> {
+    pub async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<SoftRecordRow>> {
         self.q.w().pred("name", "eq", v.into());
+        self.gets().await
+    }
+
+    /// Applies deleted_at = value and runs the collection terminal.
+    pub async fn gets_by_deleted_at(&mut self, v: chrono::NaiveDateTime) -> Result<Collection<SoftRecordRow>> {
+        self.q.w().pred("deleted_at", "eq", v);
         self.gets().await
     }
 
@@ -580,8 +488,14 @@ impl Service {
         self.get_count().await
     }
 
+    /// Applies deleted_at = value and runs the scalar count terminal.
+    pub async fn get_count_by_deleted_at(&mut self, v: chrono::NaiveDateTime) -> Result<i64> {
+        self.q.w().pred("deleted_at", "eq", v);
+        self.get_count().await
+    }
+
     /// Returns one row per group_by value; the aggregate is available as extra("row_count").
-    pub async fn gets_count(&mut self) -> Result<Collection<ServiceRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn gets_count(&mut self) -> Result<Collection<SoftRecordRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "group_count").await?;
         collect(&mut rows, self.key_fn.as_deref())
     }
@@ -597,13 +511,18 @@ impl Service {
     pub async fn min_name(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
     /// None when no row matches.
     pub async fn max_name(&mut self) -> Result<Option<String>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "name".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.take_string()) }) }
+    pub async fn count_distinct_deleted_at(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "deleted_at".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }
+    /// None when no row matches.
+    pub async fn min_deleted_at(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "deleted_at".into(); let mut v = db::scalar(ex, &mut self.q.req, "min").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
+    /// None when no row matches.
+    pub async fn max_deleted_at(&mut self) -> Result<Option<chrono::NaiveDateTime>> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "deleted_at".into(); let mut v = db::scalar(ex, &mut self.q.req, "max").await?; let v = &mut v; Ok(if v.is_null() { None } else { Some(v.as_datetime()) }) }
 
     /// Runs the raw() statement; rows keyed by the driver's column names in column order, cells typed by column type (no codec).
     pub async fn raw_all(&mut self) -> Result<Vec<indexmap::IndexMap<String, Val>>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         db::raw(ex, &mut self.q.req).await
     }
 
-    pub async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<ServiceRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<SoftRecordRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         if per == 0 { return Err(orm::Error::Engine { code: orm::codes::IR_INVALID.into(), msg: "per must be positive".into() }); }
         let page = page.max(1);
         self.q.node().limit = Some(orm::ir::Limit { offset: (page - 1) * per, count: per });
@@ -612,17 +531,17 @@ impl Service {
         Ok(Page { items: collect(&mut rows, self.key_fn.as_deref())?, total, pages, current: page as i64, per: per as i64 })
     }
 
-    pub async fn insert(&mut self) -> Result<Option<ServiceRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn insert(&mut self) -> Result<Option<SoftRecordRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
-        super::service::query().using(ex).seq_eq(id as i64).get().await
+        super::soft_record::query().using(ex).seq_eq(id as i64).get().await
     }
 
     /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
-    pub async fn save(&mut self) -> Result<Option<ServiceRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn save(&mut self) -> Result<Option<SoftRecordRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         match self.q.take_sets(&["seq"])? {
             Some(keys) => {
                 db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = super::service::query().using(ex);
+                let mut q = super::soft_record::query().using(ex);
                 for (column, value) in ["seq"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
                 q.get().await
             }
@@ -642,11 +561,11 @@ impl Service {
     }
 
     /// Executes typed query drafts in one transaction with bounded chunks.
-    pub async fn batch_insert(&self, rows: Vec<Service>, options: orm::BatchOptions) -> Result<orm::BatchResult> { self.batch_write(rows, "insert", options).await }
-    pub async fn batch_upsert(&self, rows: Vec<Service>, options: orm::BatchOptions) -> Result<orm::BatchResult> { self.batch_write(rows, "insert", options).await }
-    pub async fn batch_update(&self, rows: Vec<Service>, options: orm::BatchOptions) -> Result<orm::BatchResult> { self.batch_write(rows, "update", options).await }
-    pub async fn batch_delete(&self, rows: Vec<Service>, options: orm::BatchOptions) -> Result<orm::BatchResult> { self.batch_write(rows, "delete", options).await }
-    async fn batch_write(&self, rows: Vec<Service>, kind: &str, options: orm::BatchOptions) -> Result<orm::BatchResult> {
+    pub async fn batch_insert(&self, rows: Vec<SoftRecord>, options: orm::BatchOptions) -> Result<orm::BatchResult> { self.batch_write(rows, "insert", options).await }
+    pub async fn batch_upsert(&self, rows: Vec<SoftRecord>, options: orm::BatchOptions) -> Result<orm::BatchResult> { self.batch_write(rows, "insert", options).await }
+    pub async fn batch_update(&self, rows: Vec<SoftRecord>, options: orm::BatchOptions) -> Result<orm::BatchResult> { self.batch_write(rows, "update", options).await }
+    pub async fn batch_delete(&self, rows: Vec<SoftRecord>, options: orm::BatchOptions) -> Result<orm::BatchResult> { self.batch_write(rows, "delete", options).await }
+    async fn batch_write(&self, rows: Vec<SoftRecord>, kind: &str, options: orm::BatchOptions) -> Result<orm::BatchResult> {
         let binding = self.binding.clone(); let ex = binding.resolve()?;
         let requests = rows.into_iter().map(|row| row.q.req).collect();
         db::batch_write(ex, requests, kind, options).await
@@ -657,26 +576,26 @@ impl Service {
         db::sql(ex, &mut self.q.req, "all").await
     }
 
-    pub async fn get_by_seq(&mut self, v: i64) -> Result<Option<ServiceRow>> {
+    pub async fn get_by_seq(&mut self, v: i64) -> Result<Option<SoftRecordRow>> {
         self.q.w().pred("seq", "eq", v);
         self.get().await
     }
 
 }
 
-impl AsRef<Service> for Service { fn as_ref(&self) -> &Self { self } }
-impl AsRef<Q> for Service { fn as_ref(&self) -> &Q { &self.q } }
+impl AsRef<SoftRecord> for SoftRecord { fn as_ref(&self) -> &Self { self } }
+impl AsRef<Q> for SoftRecord { fn as_ref(&self) -> &Q { &self.q } }
 
-impl Default for Service { fn default() -> Self { query() } }
+impl Default for SoftRecord { fn default() -> Self { query() } }
 
-fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&ServiceRow) -> Key + Send + Sync)>) -> Result<Collection<ServiceRow>> {
+fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&SoftRecordRow) -> Key + Send + Sync)>) -> Result<Collection<SoftRecordRow>> {
     use orm::Src as _;
     let cells = rows.take_cells();
     let mut c = Collection::with_capacity(cells.len());
     for mut src in cells {
         let key_values = rows.assemble.key.iter().map(|reference| src.val(reference.index)).collect::<Result<Vec<_>>>()?;
         let k = Key::of_values(&key_values);
-        let r = ServiceRow::from_row(&mut src, &rows.assemble, rows)?;
+        let r = SoftRecordRow::from_row(&mut src, &rows.assemble, rows)?;
         let k = match key_fn { Some(f) => f(&r), None => k };
         c.put(k, r);
     }

@@ -32,6 +32,8 @@ func mapErr(err error) error {
 		return &ir.Error{Code: orm.CodeDeadlock, Msg: se.Error()}
 	case 2067, 1555: // SQLITE_CONSTRAINT_UNIQUE / _PRIMARYKEY
 		return &ir.Error{Code: orm.CodeDuplicateKey, Msg: se.Error()}
+	case 787, 1811: // SQLITE_CONSTRAINT_FOREIGNKEY / _VTab
+		return &ir.Error{Code: orm.CodeForeignKey, Msg: se.Error()}
 	}
 	return err
 }
