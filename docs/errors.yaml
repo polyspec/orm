@@ -56,10 +56,6 @@ codes:
     origin: executor
   - code: CONFIG                  # missing secret, bad DSN/paths, transaction misuse
     origin: executor
-  - code: JOIN_PREDICATE_PLACEMENT  # PHP compat layer: bare predicate on a join child (use on()/where())
-    origin: executor
-  - code: PAREN_ACROSS_MODELS     # PHP compat layer: '(' opened in one model and closed in another
-    origin: executor
   - code: INTERNAL
     origin: executor
   # ---- driver (mapped) ----

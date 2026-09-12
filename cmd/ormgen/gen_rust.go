@@ -710,7 +710,7 @@ impl {{.Type}} {
     pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&[{{rsList .KeyCols}}]); self }
 
     // ---- terminals ----
-    pub async fn one(&mut self) -> Result<Option<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn get(&mut self) -> Result<Option<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
         Ok(match rows.take_cells().into_iter().next() {
             Some(mut src) => Some({{.Type}}Row::from_row(&mut src, &rows.assemble, &rows)?),
@@ -718,19 +718,9 @@ impl {{.Type}} {
         })
     }
 
-    pub async fn all(&mut self) -> Result<Collection<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn gets(&mut self) -> Result<Collection<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "all").await?;
         collect(&mut rows, self.key_fn.as_deref())
-    }
-
-    /// Preferred single-row terminal; one() remains available for compatibility.
-    pub async fn get(&mut self) -> Result<Option<{{.Type}}Row>> {
-        self.one().await
-    }
-
-    /// Preferred collection terminal; all() remains available for compatibility.
-    pub async fn gets(&mut self) -> Result<Collection<{{.Type}}Row>> {
-        self.all().await
     }
 
     /// Visits independently owned rows without accumulating the complete result.
@@ -751,13 +741,8 @@ impl {{.Type}} {
         self.gets().await
     }
 {{end}}
-    pub async fn count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn get_count(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         Ok(db::scalar(ex, &mut self.q.req, "count").await?.as_i64())
-    }
-
-    /// Preferred scalar count terminal; count() remains available as a compatibility alias.
-    pub async fn get_count(&mut self) -> Result<i64> {
-        self.count().await
     }
 
 {{range .EqCols}}
@@ -804,12 +789,12 @@ impl {{.Type}} {
 {{- end}}
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
 {{- if .Auto}}
-        super::{{.Name}}::query().using(ex).{{ident .PK}}_eq(id as {{.PKType}}).one().await
+        super::{{.Name}}::query().using(ex).{{ident .PK}}_eq(id as {{.PKType}}).get().await
 {{- else}}
         let _ = id;
         let mut query = super::{{.Name}}::query().using(ex);
         for (column, value) in [{{rsList .KeyCols}}].iter().zip(keys) { query.q.w().pred(column, "eq", value); }
-        query.one().await
+        query.get().await
 {{- end}}
     }
 
@@ -820,7 +805,7 @@ impl {{.Type}} {
                 db::write(ex, &mut self.q.req, "update").await?;
                 let mut q = super::{{.Name}}::query().using(ex);
                 for (column, value) in [{{rsList .KeyCols}}].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.one().await
+                q.get().await
             }
             None => self.insert().await,
         }
@@ -842,14 +827,9 @@ impl {{.Type}} {
         db::sql(ex, &mut self.q.req, "all").await
     }
 
-    pub async fn one_by_{{ident .PK}}(&mut self, v: {{.PKType}}) -> Result<Option<{{.Type}}Row>> {
-        self.q.w().pred({{printf "%q" .PK}}, "eq", v);
-        self.one().await
-    }
-
-    /// Preferred primary-key lookup; one_by_{{ident .PK}} remains available for compatibility.
     pub async fn get_by_{{ident .PK}}(&mut self, v: {{.PKType}}) -> Result<Option<{{.Type}}Row>> {
-        self.one_by_{{ident .PK}}(v).await
+        self.q.w().pred({{printf "%q" .PK}}, "eq", v);
+        self.get().await
     }
 {{- if gt (len .PKCols) 1}}
     pub async fn get_by_{{finderSnake .PKMethod}}(&mut self, {{finderParams .PKCols}}) -> Result<Option<{{.Type}}Row>> {

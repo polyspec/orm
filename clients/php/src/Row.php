@@ -51,7 +51,7 @@ abstract class Row implements \ArrayAccess
     /** @return array<string,string> column => canonical type */
     abstract public static function columns(): array;
 
-    /** A grouped getsCount() row carries COUNT(*) under this compatibility field. */
+    /** A grouped getsCount() row carries COUNT(*) under this field. */
     public function getRowCount(mixed $default = 0): int
     {
         try {
@@ -179,32 +179,6 @@ abstract class Row implements \ArrayAccess
     protected function relation(string $name): mixed
     {
         return $this->rel[$name] ?? null;
-    }
-
-    /**
-     * Dynamic getX()/getX($default): getters declared by the generated class win; this is the fallback.
-     * A relation is also reachable through get<Rel>Model() / get<Rel>Models().
-     */
-    public function __call(string $name, array $args): mixed
-    {
-        if (str_starts_with($name, 'get')) {
-            $col = Names::snake(substr($name, 3));
-            if (!array_key_exists($col, $this->rel) && preg_match('/^(.*)_models?$/', $col, $m) === 1 && array_key_exists($m[1], $this->rel)) {
-                $col = $m[1];
-            }
-            if (isset($this->rel[$col]) || array_key_exists($col, $this->rel)) {
-                return $this->rel[$col] ?? ($args[0] ?? null);
-            }
-            if (!$this->has($col) && !isset(static::columns()[$col])) {
-                if (array_key_exists(0, $args)) {
-                    return $args[0];
-                }
-                throw new OrmException(Code::COLUMN_UNKNOWN, static::entity() . ".$col");
-            }
-            $v = $this->col($col);
-            return ($v === null || $v === '') && array_key_exists(0, $args) ? $args[0] : $v;
-        }
-        throw new \BadMethodCallException(static::class . "::$name");
     }
 
     // ---- ArrayAccess (snake_case) ----

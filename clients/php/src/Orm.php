@@ -234,7 +234,7 @@ final class Config
         public readonly ?\Closure $onQuery = null,
         /** the database the Db speaks (mysql | postgres | sqlite); ormd must compile for the same dialect */
         public readonly string $driver = 'mysql',
-        /** Connect compiler endpoint. Null enables the temporary Unix-socket compatibility path. */
+        /** Connect compiler endpoint. */
         public readonly ?string $endpoint = null,
         /** Compiler request timeout in seconds. */
         public readonly float $timeoutSeconds = 5.0,

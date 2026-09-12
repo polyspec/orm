@@ -251,14 +251,8 @@ class Q
     /** @var array reference to the query node this builder edits */
     public array $node;
     private bool $pendingOr = false;
-    /** the group the next predicate lands in: the root where, or the innermost group opened by a compat '(' token */
+    /** the group the next predicate lands in */
     private ?W $rootW = null;
-    /** @var list<W> groups enclosing $rootW, opened by the compat paren tokens (docs/dsl.md §6) */
-    private array $wstack = [];
-    /** ')' tokens of this chain that closed nothing — a '(' of another model; reported as PAREN_ACROSS_MODELS when the chain is attached or run */
-    private int $unmatchedClose = 0;
-    /** parent/child key pair selected by matchXWithY/onXWithY on this child */
-    private ?array $linkMatch = null;
     /** keyByFn: client-side keying of the root collection (relations key by keyBy<Col>) */
     public ?\Closure $keyFn = null;
 
@@ -326,76 +320,20 @@ class Q
         $this->pendingOr = true;
     }
 
-    // ---- paren tokens of the compat layer: and('(') … condition(')') nest groups exactly as and(fn) does ----
-
-    /** Opens a group in the current where group (or-connected when $or) and makes it current. */
-    public function openGroup(bool $or): void
-    {
-        $w = $this->w();
-        if ($or) {
-            $w->orConn();
-        }
-        $this->wstack[] = $w;
-        $this->rootW = $w->group();
-    }
-
-    /** Closes the innermost open group; a ')' with nothing open is remembered and reported at attach/run time. */
-    public function closeGroup(): void
-    {
-        if ($this->wstack === []) {
-            $this->unmatchedClose++;
-            return;
-        }
-        $this->req->end();
-        $this->rootW = array_pop($this->wstack);
-    }
-
-    /**
-     * Every group opened by a '(' token must be closed by a ')' token in the same model chain:
-     * one IR group per model, so a join child cannot close its parent's parenthesis.
-     */
-    private function parenCheck(?Q $child): void
-    {
-        $me = $this->req->ir['entity'];
-        if ($child !== null) {
-            $c = $child->req->ir['entity'];
-            if ($child->unmatchedClose > 0) {
-                throw new OrmException(Code::PAREN_ACROSS_MODELS, "')' in the $c chain closes a '(' opened in the $me chain; close it in $me after the join/relation call (->…(new " . Names::pascal($c) . ")->condition(')')) or rewrite the $me group as ->and(fn(\$w) => …)");
-            }
-            if ($child->wstack !== []) {
-                throw new OrmException(Code::PAREN_ACROSS_MODELS, "'(' opened in the $c chain is still open when $me attaches it; close it in $c (->condition(')')) or rewrite it as ->and(fn(\$w) => …)");
-            }
-            return;
-        }
-        if ($this->unmatchedClose > 0) {
-            throw new OrmException(Code::PAREN_ACROSS_MODELS, "')' in the $me chain closes no '(' of the same chain; every '(' … ')' pair must be in one model");
-        }
-        if ($this->wstack !== []) {
-            throw new OrmException(Code::PAREN_ACROSS_MODELS, "'(' opened in the $me chain is never closed; close it in $me (->condition(')')) — a ')' in another model's chain does not count");
-        }
-    }
-
     public function attachJoin(string $rel, string $kind, Q $child): void
     {
-        $this->parenCheck($child);
         $this->node['joins'][] = ['rel' => $rel, 'kind' => $kind, 'query' => $this->req->attach($child->req, "|J$rel\x1f$kind")];
     }
 
     public function attachRelation(string $rel, Q $child): void
     {
-        $this->parenCheck($child);
         $this->node['relations'][] = ['rel' => $rel, 'query' => $this->req->attach($child->req, "|R$rel")];
     }
 
     /** Stores the parent/child key pair selected on this child query. */
     public function setLink(string $left, string $right): void
     {
-        $this->linkMatch = [$left, $right];
-    }
-
-    public function linkMatch(): ?array
-    {
-        return $this->linkMatch;
+        $this->req->sig .= "|L$left\x1f$right";
     }
 
     // ---- columns ----
@@ -601,7 +539,6 @@ class Q
 
     protected function plan(Db $ex, string $kind): array
     {
-        $this->parenCheck(null);
         return $ex->db()->planFor($this->req, $kind);
     }
 

@@ -9,7 +9,7 @@ pub const SCHEMA_HASH_MISMATCH: &str = "SCHEMA_HASH_MISMATCH";
 pub const SCHEMA_INVALID: &str = "SCHEMA_INVALID";
 /// engine: wasm/ffi: orm_compile before orm_load
 pub const SCHEMA_NOT_LOADED: &str = "SCHEMA_NOT_LOADED";
-/// engine: 
+/// engine
 pub const DIALECT_UNKNOWN: &str = "DIALECT_UNKNOWN";
 /// engine: ormd: bad length-prefixed frame
 pub const FRAME_INVALID: &str = "FRAME_INVALID";
@@ -17,17 +17,17 @@ pub const FRAME_INVALID: &str = "FRAME_INVALID";
 pub const OP_UNKNOWN: &str = "OP_UNKNOWN";
 /// engine: structural: missing fields, wrong combination, param index out of range
 pub const IR_INVALID: &str = "IR_INVALID";
-/// engine: 
+/// engine
 pub const ENTITY_UNKNOWN: &str = "ENTITY_UNKNOWN";
-/// engine: 
+/// engine
 pub const COLUMN_UNKNOWN: &str = "COLUMN_UNKNOWN";
-/// engine: 
+/// engine
 pub const RELATION_UNKNOWN: &str = "RELATION_UNKNOWN";
 /// engine: force_index name not declared
 pub const INDEX_UNKNOWN: &str = "INDEX_UNKNOWN";
 /// engine: select<Col>As name collides with a column
 pub const COLUMN_ALIAS_CONFLICT: &str = "COLUMN_ALIAS_CONFLICT";
-/// engine: 
+/// engine
 pub const OPERATOR_UNKNOWN: &str = "OPERATOR_UNKNOWN";
 /// engine: op not valid for the column's type/style (ir.OpAllowed)
 pub const OPERATOR_NOT_ALLOWED: &str = "OPERATOR_NOT_ALLOWED";
@@ -43,17 +43,13 @@ pub const LIMIT_IN_RELATION: &str = "LIMIT_IN_RELATION";
 pub const OPTIMISTIC_LOCK: &str = "OPTIMISTIC_LOCK";
 /// executor: styled column bytes could not be decoded (docs/codec.md)
 pub const CODEC_DECODE: &str = "CODEC_DECODE";
-/// executor: 
+/// executor
 pub const CODEC_ENCODE: &str = "CODEC_ENCODE";
 /// executor: PHP objects/references in serialize, unknown style
 pub const CODEC_UNSUPPORTED: &str = "CODEC_UNSUPPORTED";
 /// executor: missing secret, bad DSN/paths, transaction misuse
 pub const CONFIG: &str = "CONFIG";
-/// executor: PHP compat layer: bare predicate on a join child (use on()/where())
-pub const JOIN_PREDICATE_PLACEMENT: &str = "JOIN_PREDICATE_PLACEMENT";
-/// executor: PHP compat layer: '(' opened in one model and closed in another
-pub const PAREN_ACROSS_MODELS: &str = "PAREN_ACROSS_MODELS";
-/// executor: 
+/// executor
 pub const INTERNAL: &str = "INTERNAL";
 /// driver: MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions
 pub const DEADLOCK: &str = "DEADLOCK";

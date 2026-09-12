@@ -15,7 +15,7 @@ final class Code
     public const SCHEMA_INVALID = 'SCHEMA_INVALID';
     /** engine: wasm/ffi: orm_compile before orm_load */
     public const SCHEMA_NOT_LOADED = 'SCHEMA_NOT_LOADED';
-    /** engine:  */
+    /** engine */
     public const DIALECT_UNKNOWN = 'DIALECT_UNKNOWN';
     /** engine: ormd: bad length-prefixed frame */
     public const FRAME_INVALID = 'FRAME_INVALID';
@@ -23,17 +23,17 @@ final class Code
     public const OP_UNKNOWN = 'OP_UNKNOWN';
     /** engine: structural: missing fields, wrong combination, param index out of range */
     public const IR_INVALID = 'IR_INVALID';
-    /** engine:  */
+    /** engine */
     public const ENTITY_UNKNOWN = 'ENTITY_UNKNOWN';
-    /** engine:  */
+    /** engine */
     public const COLUMN_UNKNOWN = 'COLUMN_UNKNOWN';
-    /** engine:  */
+    /** engine */
     public const RELATION_UNKNOWN = 'RELATION_UNKNOWN';
     /** engine: force_index name not declared */
     public const INDEX_UNKNOWN = 'INDEX_UNKNOWN';
     /** engine: select<Col>As name collides with a column */
     public const COLUMN_ALIAS_CONFLICT = 'COLUMN_ALIAS_CONFLICT';
-    /** engine:  */
+    /** engine */
     public const OPERATOR_UNKNOWN = 'OPERATOR_UNKNOWN';
     /** engine: op not valid for the column's type/style (ir.OpAllowed) */
     public const OPERATOR_NOT_ALLOWED = 'OPERATOR_NOT_ALLOWED';
@@ -49,17 +49,13 @@ final class Code
     public const OPTIMISTIC_LOCK = 'OPTIMISTIC_LOCK';
     /** executor: styled column bytes could not be decoded (docs/codec.md) */
     public const CODEC_DECODE = 'CODEC_DECODE';
-    /** executor:  */
+    /** executor */
     public const CODEC_ENCODE = 'CODEC_ENCODE';
     /** executor: PHP objects/references in serialize, unknown style */
     public const CODEC_UNSUPPORTED = 'CODEC_UNSUPPORTED';
     /** executor: missing secret, bad DSN/paths, transaction misuse */
     public const CONFIG = 'CONFIG';
-    /** executor: PHP compat layer: bare predicate on a join child (use on()/where()) */
-    public const JOIN_PREDICATE_PLACEMENT = 'JOIN_PREDICATE_PLACEMENT';
-    /** executor: PHP compat layer: '(' opened in one model and closed in another */
-    public const PAREN_ACROSS_MODELS = 'PAREN_ACROSS_MODELS';
-    /** executor:  */
+    /** executor */
     public const INTERNAL = 'INTERNAL';
     /** driver: MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions */
     public const DEADLOCK = 'DEADLOCK';
