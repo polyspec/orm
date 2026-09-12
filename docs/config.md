@@ -1,4 +1,4 @@
-# `orm.toml` — one declared configuration for the three clients (S5 T5.5)
+# `orm.toml` — one declared configuration for four clients (S5 T5.5)
 
 Every path is absolute and declared; nothing is discovered, no symlinks, no fallbacks. A missing
 or relative path is a startup error (`CONFIG`).
@@ -20,6 +20,8 @@ pool = 8
 
 [secrets]
 aes = "bench-salt"          # or aes_env = "ORM_AES_KEY"
+# aes_keys = { "1" = "old-key", "2" = "bench-salt" }  # required for key rotation
+# aes_version = 2             # current version for new writes and rotation
 
 [engine]                    # Rust only: the wasm engine and where wasmtime may cache its compilation
 wasm = "/srv/orm/bin/ormengine.wasm"
@@ -32,7 +34,7 @@ socket = "/run/orm/ormd.sock"
 on_query = false            # log every statement (sql, binds with secrets masked, duration, plan id)
 ```
 
-Checks at startup (all three): `schema` exists and its `schema_hash` equals the generated client's
+Checks at startup (all four): `schema` exists and its `schema_hash` equals the generated client's
 (`SCHEMA_HASH_MISMATCH` otherwise — no watching, no reload); `ormd`/`engine` paths exist and are absolute;
 `secrets.aes` or `aes_env` present when the schema has aes columns; `[db].user/password` only with mysql DSNs (other drivers carry the user in the URL); the daemon/engine dialect must equal `[db].driver` (`CONFIG` otherwise).
 
