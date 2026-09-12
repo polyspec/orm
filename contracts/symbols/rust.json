@@ -4465,6 +4465,7 @@
   "clients/rust/orm/src/db.rs::bind_mysql": " fn bind_mysql \u003c 'q \u003e (q : MySqlQuery \u003c 'q \u003e , p : \u0026 'q Param) -\u003e MySqlQuery \u003c 'q \u003e",
   "clients/rust/orm/src/db.rs::bind_pg": " fn bind_pg \u003c 'q \u003e (q : PgQuery \u003c 'q \u003e , p : \u0026 'q Param , ty : \u0026 PgTypeInfo , i : usize) -\u003e Result \u003c PgQuery \u003c 'q \u003e \u003e",
   "clients/rust/orm/src/db.rs::bind_sqlite": " fn bind_sqlite \u003c 'q \u003e (q : SqliteQuery \u003c 'q \u003e , p : \u0026 'q Param) -\u003e SqliteQuery \u003c 'q \u003e",
+  "clients/rust/orm/src/db.rs::canonical_json": " fn canonical_json (value : serde_json :: Value) -\u003e serde_json :: Value",
   "clients/rust/orm/src/db.rs::child_keys": " fn child_keys (plan : \u0026 Plan , id : u32) -\u003e Vec \u003c crate :: plan :: KeyRef \u003e",
   "clients/rust/orm/src/db.rs::exec_mysql": " async fn exec_mysql \u003c 'e , E : Executor \u003c 'e , Database = MySql \u003e \u003e (sql : \u0026 str , args : \u0026 [Param] , e : E) -\u003e sqlx :: Result \u003c (u64 , u64) \u003e",
   "clients/rust/orm/src/db.rs::exec_pg": " async fn exec_pg \u003c 'e , E : Executor \u003c 'e , Database = Postgres \u003e \u003e (sql : \u0026 str , args : \u0026 [Param] , types : \u0026 [PgTypeInfo] , e : E) -\u003e Result \u003c (u64 , u64) \u003e",

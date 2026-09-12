@@ -3720,6 +3720,7 @@
   "clients/go/orm/pg/pg.go::init": "func()",
   "clients/go/orm/pg/pg.go::mapErr": "func(err error) error",
   "clients/go/orm/plan_bundle.go::DB.LoadPlanBundle": "receiver=*DB func(bundle []byte, r *Req) error",
+  "clients/go/orm/plan_bundle.go::canonicalRequestSHA": "func(request ir.Request) string",
   "clients/go/orm/plan_bundle.go::planBundle": "type planBundle struct { Version int `json:\"version\"` SchemaHash string `json:\"schema_hash\"` Dialect string `json:\"dialect\"` RequestSHA string `json:\"request_sha256\"` Plan json.RawMessage `json:\"plan\"` }",
   "clients/go/orm/plan_bundle.go::planBundle#field.Dialect": "string",
   "clients/go/orm/plan_bundle.go::planBundle#field.Plan": "json.RawMessage",

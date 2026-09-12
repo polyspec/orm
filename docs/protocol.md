@@ -91,7 +91,7 @@ The common compiler service is `orm.compiler.v1.CompilerService` from `proto/orm
 
 `contracts/interfaces.json` defines the service path, operation names, request and response types, errors, and native symbols for all four transports. The Protobuf check rejects missing interface methods or implementation declarations. Runtime symbol snapshots exclude generated Protobuf files; `proto/generated.sha256.json` checks every generated file instead.
 
-The Go, PHP, Rust, and TypeScript database executors compile every plan-cache miss through `CompilerTransport`; startup rejects mismatched schema hash, dialect, and IR version metadata. Go may use its in-process compiler, Rust may use its WASM compiler, and PHP may use the Unix-socket compiler transport; Connect is the shared compiler service implementation. All four executors pass 59 vectors on MySQL, PostgreSQL, and SQLite through the declared compiler implementation.
+The Go, PHP, Rust, and TypeScript database executors compile every plan-cache miss through the configured `CompilerTransport`; startup rejects mismatched schema hash, dialect, and IR version metadata. The default compiler paths are Go in-process, Rust WASM, PHP Unix socket, and TypeScript Connect/Protobuf. Connect is also the shared compiler service implementation for all four clients. All four executors pass 59 vectors on MySQL, PostgreSQL, and SQLite through their declared compiler implementation.
 
 The cache key is the schema hash plus the request shape and IN cardinality. Parameter values are excluded.
 
