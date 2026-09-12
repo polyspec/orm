@@ -135,17 +135,17 @@ Render rule: token `fooBar` → PHP `fooBar` / Go `FooBar` / Rust `foo_bar`. Hea
 | `on(f)` join ON | `->on(fn($q) => $q->side('p1'))` | `.On(func(q *m.BattlePlayer){ q.Side("p1") })` | `.on(\|q\| q.side("p1"))` |
 | `match<A>With<B>()` (bidirectional FK generation) · `relation(x)` / `relations(x)` | Same | Same | Same |
 | `alias<Name>()` (typed alias from YAML `relations:`) · `alias("x")` (free alias for joins) | `->aliasP1()` / `->alias('ga1')` | `.AliasP1()` / `.Alias("ga1")` | `.alias_p1()` / `.alias("ga1")` |
-| `keyName<Col>()` `parentNode()` `groupLimit(n)` `possible<Col>(v)` `stripKey()` | 동일 | 동일 | 동일 |
+| `keyName<Col>()` `parentNode()` `groupLimit(n)` `possible<Col>(v)` `stripKey()` | Same | Same | Same |
 | `join<A>With<B>(x)` / `leftJoin<A>With<B>(x)` (FK pair or same-name FK generation) / `join("a","b",x)` escape hatch | Same | Same | Same |
-| `orderBy<Col>[Asc\|Desc]()` `groupBy<Col>()` `limit(o,n)` `forceIndex<Name>()` `distinct()` `orderByRaw(sql)` | 동일 | 동일 | 동일 |
-| `addAllColumns() removeAllColumns() addColumn<Col>() removeColumn<Col>() addColumnRaw(alias, fmt, cols)` | 동일 | 동일 | 동일 |
-| `set<Col>(v)` `setRaw<Col>(expr, binds)` `plus<Col>(n)` `minus<Col>(n)` | 동일 | 동일 | 동일 |
+| `orderBy<Col>[Asc\|Desc]()` `groupBy<Col>()` `limit(o,n)` `forceIndex<Name>()` `distinct()` `orderByRaw(sql)` | Same | Same | Same |
+| `addAllColumns() removeAllColumns() addColumn<Col>() removeColumn<Col>() addColumnRaw(alias, fmt, cols)` | Same | Same | Same |
+| `set<Col>(v)` `setRaw<Col>(expr, binds)` `plus<Col>(n)` `minus<Col>(n)` | Same | Same | Same |
 | `debug()` · `clone` · `sql(db)` | `->debug()`, `clone $q` | `.Debug()`, `q.Clone()` | `.debug()`, `q.clone()` |
 | **Terminal** `get gets count sum avg create update save delete paginate` — receives the executor | `->using($db)->gets()` | `.Using(ctx, db).Gets()` | `.using(&db).gets().await?` |
-| `getBy<PK|unique>(…)`, `getsBy<Col>(…)`, `getCountBy<Col>(…)` generated | `->using($db)->getBySeq($seq)` / `->using($db)->getsByServiceSeq($seq)` | `.Using(ctx, db).GetBySeq(seq)` / `.Using(ctx, db).GetsByServiceSeq(seq)` | `.using(&db).get_by_seq(seq).await?` / `.using(&db).gets_by_service_seq(seq).await?` |
+| `getBy<PK\|unique>(…)`, `getsBy<Col>(…)`, `getCountBy<Col>(…)` generated | `->using($db)->getBySeq($seq)` / `->using($db)->getsByServiceSeq($seq)` | `.Using(ctx, db).GetBySeq(seq)` / `.Using(ctx, db).GetsByServiceSeq(seq)` | `.using(&db).get_by_seq(seq).await?` / `.using(&db).gets_by_service_seq(seq).await?` |
 | Transaction | `$db->transaction(function ($tx) {…})` | `orm.Transaction(ctx, db, func(tx *orm.Tx) (T, error) {…})` | `db.transaction(\|tx\| async move {…}).await?` (`Tx: Clone`) |
 | Scalar result | `$m->getSeq()`, `$m->getName($default)`, `$m['name']` | `m.Seq` / nil-safe `m.GetSeq()` | `m.seq` (nullable uses `Option`) |
-| Relation result | `$m->getUser()`→null, `$m->getItems([])` | `m.GetUser()`→nil, `m.GetItems()`→empty collection | `m.user() -> Option<&User>`, `m.items() -> &Items` |
+| Relation result | `$m->getUser()`→null, `$m->getItems([])` | `m.GetUser()`→nil, `m.GetItems()`→empty collection | `m.user() -> Option&lt;&User&gt;`, `m.items() -> &Items` |
 | Collection (ordered map by PK/keyName) | `foreach ($c as $seq => $m)`, `->first()`, `->count()`, `->toArray()` | `for k, m := range c.All()`, `c.First()`, `c.Len()`, `c.ToArray()` | `for (k, m) in &c`, `c.first()`, `c.len()`, `c.to_vec()` |
 
 Rules: `get`→null/nil/None, `gets`→an empty collection (never null); errors/throws roll back; no-argument `getX()` returns value/null for existing keys (including null) and declared columns, and throws only for undeclared keys; `getX($d)` returns `$d` for missing, null, or `''`. Go `GetX()` follows the protobuf-go nil-safe chain convention. Rust query methods take by value, setters use `&mut self`, and collection keys are `orm.Key` (int|string).
