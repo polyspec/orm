@@ -151,11 +151,11 @@ func aggregable(c *schema.Col) bool {
 }
 
 type goCol struct {
-	Name, Field, Type, ColType string
-	Nullable, Lazy, PK, Auto   bool
-	Ops                        []opDef
-	ColOps                     []opDef  // <col><Op>Col(ref) comparisons
-	Styles                     []string // executor-side codec stages (docs/codec.md); the field is then `any`
+	Name, Field, Type, ColType        string
+	Nullable, Lazy, PK, Auto, Managed bool
+	Ops                               []opDef
+	ColOps                            []opDef  // <col><Op>Col(ref) comparisons
+	Styles                            []string // executor-side codec stages (docs/codec.md); the field is then `any`
 }
 
 // goFinder is a finite, schema-declared finder shortcut for a unique key.
@@ -200,8 +200,15 @@ func parentOf(m *schema.Manifest, e *schema.Entity, col string) string {
 
 func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 	ge := goEntity{Name: e.Name, Type: pascal(e.Name), Table: e.Table, PK: e.PK[0], Auto: e.Auto != "", AutoCol: e.Auto}
+	hasAES := false
 	for _, c := range e.Columns {
-		gc := goCol{Name: c.Name, Field: pascal(c.Name), Type: goType(c), ColType: c.Type, Nullable: c.Nullable, Lazy: c.Lazy, PK: c.PK, Auto: c.Auto, Ops: opsFor(c), ColOps: colOpsFor(c), Styles: appStyles(c)}
+		if len(c.Styles) > 0 && c.Styles[0] == "aes" {
+			hasAES = true
+			break
+		}
+	}
+	for _, c := range e.Columns {
+		gc := goCol{Name: c.Name, Field: pascal(c.Name), Type: goType(c), ColType: c.Type, Nullable: c.Nullable, Lazy: c.Lazy, PK: c.PK, Auto: c.Auto, Managed: hasAES && c.Name == "aes_key_version", Ops: opsFor(c), ColOps: colOpsFor(c), Styles: appStyles(c)}
 		if len(gc.Styles) > 0 {
 			gc.Nullable = false // `any` carries nil itself
 		}
@@ -218,7 +225,7 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 		if c.Name == "aes_key_version" {
 			ge.AESVersion = c.Name
 		}
-		if c.Type == "i32" || c.Type == "i64" || c.Type == "f64" || c.Type == "decimal" {
+		if !gc.Managed && (c.Type == "i32" || c.Type == "i64" || c.Type == "f64" || c.Type == "decimal") {
 			ge.Numeric = append(ge.Numeric, gc)
 		}
 		if aggregable(c) {
@@ -457,7 +464,7 @@ func (r *{{$.Type}}Row) Get{{.Field}}() {{if .Nullable}}*{{end}}{{.Type}} {
 	}
 	return r.{{.Field}}
 }
-{{- if not .Auto}}
+{{- if and (not .Auto) (not .Managed)}}
 
 func (r *{{$.Type}}Row) Set{{.Field}}(v {{if .Nullable}}*{{end}}{{.Type}}) *{{$.Type}}Row {
 	r.{{.Field}} = v
@@ -644,8 +651,14 @@ func {{.Type}}() *{{.Type}}Query { return &{{.Type}}Query{q: orm.NewQ(mustEngine
 func (q *{{.Type}}Query) Using(ctx context.Context, ex orm.Exec) *{{.Type}}Query { q.binding = orm.NewBinding(ctx, ex); return q }
 
 {{- if .AESCols}}
-// RotateAES re-encrypts every AES column and updates aes_key_version in one transaction.
-func (q *{{.Type}}Query) RotateAES(targetVersion int32, keyring orm.AESKeyring) (int, error) {
+// AESStatus returns row counts by stored AES key version.
+func (q *{{.Type}}Query) AESStatus(keyring orm.AESKeyring) (orm.AESRotationStatus, error) {
+	ctx, ex, err := q.binding.Resolve(); if err != nil { return orm.AESRotationStatus{}, err }
+	return ex.DB().AESStatus(ctx, ex, orm.AESRotationSpec{Table: {{printf "%q" .Table}}, PrimaryKey: {{printf "%q" .PK}}, VersionColumn: {{printf "%q" .AESVersion}}}, keyring)
+}
+
+// RotateAES re-encrypts every pending AES row to the keyring current version.
+func (q *{{.Type}}Query) RotateAES(keyring orm.AESKeyring) (int, error) {
 	ctx, ex, err := q.binding.Resolve(); if err != nil { return 0, err }
 	return ex.DB().RotateAESRows(ctx, ex, orm.AESRotationSpec{
 		Table: {{printf "%q" .Table}}, PrimaryKey: {{printf "%q" .PK}}, VersionColumn: {{printf "%q" .AESVersion}},
@@ -654,7 +667,7 @@ func (q *{{.Type}}Query) RotateAES(targetVersion int32, keyring orm.AESKeyring) 
 			{Name: {{printf "%q" .Name}}, Styles: {{styleList .Styles}}},
 {{- end}}
 		},
-	}, targetVersion, keyring)
+	}, keyring)
 }
 {{- end}}
 
@@ -802,20 +815,20 @@ func (q *{{$.Type}}Query) IfParent{{.Field}}Eq(v {{.Type}}) *{{$.Type}}Query { q
 {{- end}}{{end}}
 
 // Insert draft. The auto PK is settable too: Save takes it as the update key.
-{{- range .Cols}}
+{{- range .Cols}}{{if not .Managed}}
 func (q *{{$.Type}}Query) Set{{.Field}}(v {{.Type}}) *{{$.Type}}Query { {{if .Styles}}q.q.SetStyled({{printf "%q" .Name}}, v, {{styleList .Styles}}){{else}}q.q.Set({{printf "%q" .Name}}, v){{end}}; return q }
 {{- if .Nullable}}
 func (q *{{$.Type}}Query) Set{{.Field}}Null() *{{$.Type}}Query { q.q.SetNull({{printf "%q" .Name}}); return q }
 {{- end}}
 func (q *{{$.Type}}Query) Set{{.Field}}Expr(frag string, binds ...any) *{{$.Type}}Query { q.q.SetExpr({{printf "%q" .Name}}, frag, binds...); return q }
-{{- end}}
+{{- end}}{{end}}
 {{- range .Numeric}}
 func (q *{{$.Type}}Query) Plus{{.Field}}(v {{.Type}}) *{{$.Type}}Query { q.q.Plus({{printf "%q" .Name}}, v); return q }
 func (q *{{$.Type}}Query) Minus{{.Field}}(v {{.Type}}) *{{$.Type}}Query { q.q.Minus({{printf "%q" .Name}}, v); return q }
 {{- end}}
 
 // ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
-{{- range .Cols}}{{if not (or .PK .Auto)}}
+{{- range .Cols}}{{if and (not (or .PK .Auto)) (not .Managed)}}
 func (q *{{$.Type}}Query) OnDuplicateSet{{.Field}}(v {{.Type}}) *{{$.Type}}Query { {{if .Styles}}q.q.OnDuplicateStyled({{printf "%q" .Name}}, v, {{styleList .Styles}}){{else}}q.q.OnDuplicate({{printf "%q" .Name}}, v){{end}}; return q }
 func (q *{{$.Type}}Query) OnDuplicateSet{{.Field}}Expr(frag string, binds ...any) *{{$.Type}}Query { q.q.OnDuplicateExpr({{printf "%q" .Name}}, frag, binds...); return q }
 {{- end}}{{end}}

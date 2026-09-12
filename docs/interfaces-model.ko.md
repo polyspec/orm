@@ -138,6 +138,24 @@ classDiagram
         I64 per
         I64 total
     }
+    class AESKeyring {
+        I32 currentVersion
+        OrderedMap_I32_Secret versions
+        versions()
+        rotateRow()
+    }
+    class AESRotationSpec {
+        List_AESRotationColumn columns
+        Column primaryKey
+        Table table
+        Column versionColumn
+    }
+    class AESRotationStatus {
+        I32 current
+        I64 pending
+        I64 total
+        OrderedMap_I32_I64 versions
+    }
     class Compiler {
         compile()
     }
@@ -197,6 +215,9 @@ classDiagram
     ExecutionRows --> Plan : uses plan
     ExecutionRows *-- Binding : uses binding
     CompilerTransport --> Compiler : calls
+    Query --> AESKeyring : uses keys
+    Query --> AESRotationSpec : uses generated specification
+    Query --> AESRotationStatus : returns status
 ```
 
 | 구성요소 | 동작 및 상태 |
@@ -214,6 +235,9 @@ classDiagram
 | Row | 조회한 identity, 값, 변경 사항, relation, 실행 binding을 구분해 저장한다. |
 | Collection | 중복 key는 순서를 유지하고 값을 교체한다. integer key와 string key는 구분한다. |
 | Page | per는 양수여야 한다. total은 요청한 page와 관계없이 계산한다. |
+| AESKeyring | 버전별 AES key와 현재 저장 버전을 보관한다. |
+| AESRotationSpec | AES entity 하나의 생성된 식별자와 codec 단계를 보관한다. |
+| AESRotationStatus | 저장된 AES key 버전별 row 수를 보관한다. |
 | Compiler | RequestIR을 입력받아 변경 불가능한 Plan을 반환한다. SQL을 실행하지 않는다. |
 | CompilerTransport | type이 정의된 compiler request를 전송하고 plan과 metadata를 반환한다. |
 | Plan | cache 가능한 실행 step을 저장하며 실행 중에는 변경할 수 없다. |
@@ -245,6 +269,9 @@ classDiagram
 | ExecutionRows | Plan | plan 사용 |
 | ExecutionRows | Binding | binding 사용 |
 | CompilerTransport | Compiler | 호출 |
+| Query | AESKeyring | key 사용 |
+| Query | AESRotationSpec | 생성 명세 사용 |
+| Query | AESRotationStatus | 상태 반환 |
 
 도표의 type 이름에서 `_`는 중첩 type 구분자다. 정확한 type은 다음 표에 정의한다.
 
@@ -310,6 +337,16 @@ classDiagram
 | Page.pages | `I64` |
 | Page.per | `I64` |
 | Page.total | `I64` |
+| AESKeyring.currentVersion | `I32` |
+| AESKeyring.versions | `OrderedMap<I32,Secret>` |
+| AESRotationSpec.columns | `List<AESRotationColumn>` |
+| AESRotationSpec.primaryKey | `Column` |
+| AESRotationSpec.table | `Table` |
+| AESRotationSpec.versionColumn | `Column` |
+| AESRotationStatus.current | `I32` |
+| AESRotationStatus.pending | `I64` |
+| AESRotationStatus.total | `I64` |
+| AESRotationStatus.versions | `OrderedMap<I32,I64>` |
 | Plan.kind | `QueryKind` |
 | Plan.schemaHash | `Text` |
 | Plan.steps | `List<Step>` |

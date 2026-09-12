@@ -123,13 +123,17 @@ func TestWrites(t *testing.T) {
 	  {"column":"name","p":0},{"column":"aes_hex_email","p":1},{"column":"user_seq","p":2},
 	  {"column":"service_seq","p":3},{"column":"service_module_seq","p":4},{"column":"service_member_seq","p":5},
 	  {"column":"start_dt","p":6},{"column":"end_dt","p":7}]`)
-	if want := "INSERT INTO `battle` (`name`, `aes_hex_email`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`) VALUES (?, HEX(AES_ENCRYPT(?, ?)), ?, ?, ?, ?, ?, ?)"; p.Steps[0].SQL != want {
+	if want := "INSERT INTO `battle` (`name`, `aes_hex_email`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_key_version`) VALUES (?, HEX(AES_ENCRYPT(?, ?)), ?, ?, ?, ?, ?, ?, ?)"; p.Steps[0].SQL != want {
 		t.Errorf("insert: %s", p.Steps[0].SQL)
 	}
 	p = compile(t, e, `"kind":"update","entity":"battle","set":[{"column":"name","p":0},{"column":"like_count","plus_p":1},{"column":"read_count","minus_p":2}],
 	  "where":{"items":[{"pred":{"column":"seq","op":"eq","p":3}}]},"optimistic":{"column":"updated_ts","p":4}`)
 	if want := "UPDATE `battle` SET `name` = ?, `like_count` = `battle`.`like_count` + ?, `read_count` = CASE WHEN `battle`.`read_count` > ? THEN `battle`.`read_count` - ? ELSE 0 END, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `battle`.`seq` = ? AND `battle`.`updated_ts` = ?"; p.Steps[0].SQL != want {
 		t.Errorf("update: %s", p.Steps[0].SQL)
+	}
+	p = compile(t, e, `"kind":"update","entity":"battle","set":[{"column":"aes_hex_email","p":0},{"column":"aes_hex_phone","p":1}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":2}}]}`)
+	if !strings.Contains(p.Steps[0].SQL, "`aes_key_version` = ?") || p.Steps[0].BindSlots[4].Name != "aes_version" {
+		t.Errorf("AES update must store the configured key version: %+v", p.Steps[0])
 	}
 	p = compile(t, e, `"kind":"delete","entity":"battle","where":{"items":[{"pred":{"column":"seq","op":"in","ps":[0,1]}}]}`)
 	if want := "DELETE FROM `battle` WHERE `battle`.`seq` IN (?, ?)"; p.Steps[0].SQL != want {
@@ -145,10 +149,10 @@ func TestUpsertAndCascade(t *testing.T) {
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"insert","entity":"battle","set":[{"column":"uuid","p":0},{"column":"name","p":1},{"column":"user_seq","p":2},{"column":"service_seq","p":2},{"column":"service_module_seq","p":2},{"column":"service_member_seq","p":2},{"column":"start_dt","p":3},{"column":"end_dt","p":3}],
 	  "on_duplicate":[{"column":"name","p":1},{"column":"read_count","plus_p":4}]`)
-	if want := "INSERT INTO `battle` (`uuid`, `name`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?, `read_count` = `battle`.`read_count` + ?, `seq` = LAST_INSERT_ID(`seq`)"; p.Steps[0].SQL != want {
+	if want := "INSERT INTO `battle` (`uuid`, `name`, `user_seq`, `service_seq`, `service_module_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?, `read_count` = `battle`.`read_count` + ?, `seq` = LAST_INSERT_ID(`seq`)"; p.Steps[0].SQL != want {
 		t.Errorf("upsert:\n got  %s\n want %s", p.Steps[0].SQL, want)
 	}
-	if got := len(p.Steps[0].BindSlots); got != 10 {
+	if got := len(p.Steps[0].BindSlots); got != 11 {
 		t.Errorf("upsert binds: %d", got)
 	}
 	// cascade: service → members (owned) yes; member → user (parent) no; no_cascade_delete stops it
@@ -165,7 +169,11 @@ func TestUpsertAndCascade(t *testing.T) {
 	for irs, code := range map[string]string{
 		`"kind":"update","entity":"battle","n_params":2,"set":[{"column":"name","p":0}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":1}}]},"on_duplicate":[{"column":"name","p":0}]`: "IR_INVALID: on_duplicate is only valid on insert",
 		`"kind":"insert","entity":"battle","n_params":2,"set":[{"column":"name","p":0}],"on_duplicate":[{"column":"seq","p":1}]`:                                                                "IR_INVALID: on_duplicate cannot assign",
-		`"kind":"all","entity":"battle","no_cascade_delete":true`: "IR_INVALID: relation-only options",
+		`"kind":"update","entity":"battle","n_params":2,"set":[{"column":"aes_hex_email","p":0}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":1}}]}`:                                 "IR_INVALID: AES update must assign every AES column; missing aes_hex_phone",
+		`"kind":"update","entity":"battle","n_params":2,"set":[{"column":"aes_key_version","p":0}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":1}}]}`:                               "IR_INVALID: aes_key_version is managed by the AES writer",
+		`"kind":"insert","entity":"battle","n_params":2,"set":[{"column":"name","p":0},{"column":"aes_key_version","p":1}]`:                                                                     "IR_INVALID: aes_key_version is managed by the AES writer",
+		`"kind":"insert","entity":"battle","n_params":2,"set":[{"column":"name","p":0}],"on_duplicate":[{"column":"aes_hex_email","p":1}]`:                                                      "IR_INVALID: AES update must assign every AES column; missing aes_hex_phone",
+		`"kind":"all","entity":"battle","no_cascade_delete":true`:                                                                                                                               "IR_INVALID: relation-only options",
 	} {
 		_, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `",` + irs + `}`))
 		if err == nil || !strings.HasPrefix(err.Error(), code) {
@@ -264,7 +272,7 @@ func TestPostgresAndSQLite(t *testing.T) {
 	}
 	// upsert: RETURNING, ON CONFLICT on the unique key covered by the insert (uuid), no LAST_INSERT_ID idiom
 	p = compile(t, pg, `"kind":"insert","entity":"battle","n_params":3,"set":[{"column":"uuid","p":0},{"column":"name","p":1},{"column":"user_seq","p":2},{"column":"service_seq","p":2},{"column":"service_module_seq","p":2},{"column":"service_member_seq","p":2},{"column":"start_dt","p":2},{"column":"end_dt","p":2}],"on_duplicate":[{"column":"name","p":1}]`)
-	if want := "INSERT INTO \"battle\" (\"uuid\", \"name\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (\"uuid\") DO UPDATE SET \"name\" = $9 RETURNING \"seq\""; p.Steps[0].SQL != want {
+	if want := "INSERT INTO \"battle\" (\"uuid\", \"name\", \"user_seq\", \"service_seq\", \"service_module_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (\"uuid\") DO UPDATE SET \"name\" = $10 RETURNING \"seq\""; p.Steps[0].SQL != want {
 		t.Errorf("postgres upsert:\n got  %s\n want %s", p.Steps[0].SQL, want)
 	}
 	// fulltext on postgres

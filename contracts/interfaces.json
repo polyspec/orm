@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:22f908f69e1c087b8c5249315c0f42b18fea4694555f54ead0c547a9fc5593a3",
-    "php": "sha256:698a0e051003b5d36dcef38d3a36e974644500b6040dc703c926a7a6de461e5f",
-    "rust": "sha256:3cddd5728635ebad1fd97795f1f8a5e37c343f2ff3eebca5e731504ba6a7dd30",
-    "typescript": "sha256:aaa47840b4532a998c3bcc3ae75015792ed98f035a357ca143a857ef75e12a6b"
+    "go": "sha256:04deb8a7f44e917845d8e972691c0f56afb9870a555661e79420e1c76a766e45",
+    "php": "sha256:bacb71b2523c1b8a4e7e4910bb6b4127f2425f86b26acb241907a9345250da13",
+    "rust": "sha256:c9941fc5400e57ebb3b70d2831f908f391d851bff69a397f7ed0b2d48404e6fc",
+    "typescript": "sha256:111483f04d0110b89f596549bb5e236247a8ef7c67a5e823f655b778eb685e08"
   },
   "components": [
     {
@@ -259,6 +259,43 @@
       "ownership_ko": "per는 양수여야 한다. total은 요청한 page와 관계없이 계산한다."
     },
     {
+      "id": "AESKeyring",
+      "fields": {
+        "versions": "OrderedMap<I32,Secret>",
+        "currentVersion": "I32"
+      },
+      "methods": [
+        "versions",
+        "rotateRow"
+      ],
+      "ownership": "Stores versioned AES keys and the current write version.",
+      "ownership_ko": "버전별 AES key와 현재 저장 버전을 보관한다."
+    },
+    {
+      "id": "AESRotationSpec",
+      "fields": {
+        "table": "Table",
+        "primaryKey": "Column",
+        "versionColumn": "Column",
+        "columns": "List<AESRotationColumn>"
+      },
+      "methods": [],
+      "ownership": "Contains generated identifiers and codec stages for one AES entity.",
+      "ownership_ko": "AES entity 하나의 생성된 식별자와 codec 단계를 보관한다."
+    },
+    {
+      "id": "AESRotationStatus",
+      "fields": {
+        "current": "I32",
+        "total": "I64",
+        "pending": "I64",
+        "versions": "OrderedMap<I32,I64>"
+      },
+      "methods": [],
+      "ownership": "Contains row counts by stored AES key version.",
+      "ownership_ko": "저장된 AES key 버전별 row 수를 보관한다."
+    },
+    {
       "id": "Compiler",
       "fields": {},
       "methods": [
@@ -458,6 +495,71 @@
         "typescript": {
           "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getsCount",
           "signature": "public async getsCount(): Promise<Collection<{Entity}Row>>"
+        }
+      }
+    },
+    {
+      "id": "Query.aesStatus",
+      "for": "aes_entity",
+      "inputs": [
+        "AESKeyring"
+      ],
+      "output": "AESRotationStatus",
+      "errors": [
+        "CONFIG",
+        "AES_KEY_VERSION",
+        "driver/codec error"
+      ],
+      "state": "Reads version metadata and does not change rows",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.AESStatus",
+          "signature": "receiver=*{Entity}Query func(keyring orm.AESKeyring) (orm.AESRotationStatus, error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::aesStatus",
+          "signature": "public function aesStatus(Orm\\AesKeyring $keyring): Orm\\AesRotationStatus"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::aes_status",
+          "signature": "pub async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.aesStatus",
+          "signature": "public aesStatus(keyring: AesKeyring): Promise<AesRotationStatus>"
+        }
+      }
+    },
+    {
+      "id": "Query.rotateAES",
+      "for": "aes_entity",
+      "inputs": [
+        "AESKeyring"
+      ],
+      "output": "RowCount",
+      "errors": [
+        "CONFIG",
+        "AES_KEY_VERSION",
+        "AES_ROTATION_CONFLICT",
+        "driver/codec error"
+      ],
+      "state": "Updates all AES columns and the version column for every pending row in one transaction",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.RotateAES",
+          "signature": "receiver=*{Entity}Query func(keyring orm.AESKeyring) (int, error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::rotateAES",
+          "signature": "public function rotateAES(Orm\\AesKeyring $keyring): int"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::rotate_aes",
+          "signature": "pub async fn rotate_aes(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<u64>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.rotateAES",
+          "signature": "public rotateAES(keyring: AesKeyring): Promise<number>"
         }
       }
     },
@@ -1678,6 +1780,27 @@
       "role": "calls",
       "from": "CompilerTransport",
       "role_ko": "호출"
+    },
+    {
+      "to": "AESKeyring",
+      "kind": "-->",
+      "role": "uses keys",
+      "from": "Query",
+      "role_ko": "key 사용"
+    },
+    {
+      "to": "AESRotationSpec",
+      "kind": "-->",
+      "role": "uses generated specification",
+      "from": "Query",
+      "role_ko": "생성 명세 사용"
+    },
+    {
+      "to": "AESRotationStatus",
+      "kind": "-->",
+      "role": "returns status",
+      "from": "Query",
+      "role_ko": "상태 반환"
     }
   ],
   "records": [

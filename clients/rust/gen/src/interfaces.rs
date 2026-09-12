@@ -9,6 +9,8 @@ async fn get(&mut self) -> Result<Option<BattleRow>>;
 async fn gets(&mut self) -> Result<Collection<BattleRow>>;
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<BattleRow>>;
+async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus>;
+async fn rotate_aes(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<u64>;
 async fn insert(&mut self) -> Result<Option<BattleRow>>;
 async fn save(&mut self) -> Result<Option<BattleRow>>;
 async fn update(&mut self) -> Result<u64>;
@@ -139,6 +141,8 @@ async fn get(&mut self) -> Result<Option<BattleRow>> { Battle::get(self).await }
 async fn gets(&mut self) -> Result<Collection<BattleRow>> { Battle::gets(self).await }
 async fn get_count(&mut self) -> Result<i64> { Battle::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<BattleRow>> { Battle::gets_count(self).await }
+async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus> { Battle::aes_status(self,keyring).await }
+async fn rotate_aes(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<u64> { Battle::rotate_aes(self,keyring).await }
 async fn insert(&mut self) -> Result<Option<BattleRow>> { Battle::insert(self).await }
 async fn save(&mut self) -> Result<Option<BattleRow>> { Battle::save(self).await }
 async fn update(&mut self) -> Result<u64> { Battle::update(self).await }

@@ -1,12 +1,32 @@
 use std::collections::BTreeMap;
 
 use crate::value::Val;
+use crate::value::Param;
+use crate::db::Exec;
+use crate::plan::{BindSlot, Step};
+use crate::row::read_row;
 use crate::{Error, Result};
 
 #[derive(Debug, Clone)]
 pub struct AesRotationColumn {
     pub name: String,
     pub styles: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AesRotationSpec {
+    pub table: String,
+    pub primary_key: String,
+    pub version_column: String,
+    pub columns: Vec<AesRotationColumn>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AesRotationStatus {
+    pub current: i32,
+    pub total: i64,
+    pub pending: i64,
+    pub versions: BTreeMap<i32, i64>,
 }
 
 #[derive(Debug, Clone)]
@@ -58,4 +78,74 @@ impl AesKeyring {
         out.insert(version_column.to_owned(), Val::I64(target_version as i64));
         Ok(out)
     }
+}
+
+fn quote(driver: &str, value: &str) -> Result<String> {
+    if value.is_empty() || !value.bytes().all(|byte| byte == b'_' || byte.is_ascii_alphanumeric()) || value.as_bytes()[0].is_ascii_digit() {
+        return Err(Error::Config(format!("invalid generated identifier {value}")));
+    }
+    Ok(if driver == "mysql" { format!("`{value}`") } else { format!("\"{value}\"") })
+}
+
+fn placeholder(driver: &str, position: usize) -> String { if driver == "postgres" { format!("${position}") } else { "?".into() } }
+fn step(sql: String, binds: Vec<BindSlot>) -> Step { Step { plan_id: 0, id: 0, role: "aes_rotation".into(), sql, bind_slots: binds, assemble: None, parent: None } }
+fn parameter(position: usize) -> BindSlot { BindSlot { from: "param".into(), param: position, transform: String::new(), name: String::new(), step: 0, column: String::new(), host_styles: vec![], col_type: String::new() } }
+fn param(value: &Val) -> Result<Param> {
+    Ok(match value { Val::Null => Param::Null, Val::I64(v) => Param::I64(*v), Val::F64(v) => Param::F64(*v), Val::Str(v) => Param::Str(v.clone()), Val::Bytes(v) => Param::Bytes(v.clone()), Val::DateTime(v) => Param::DateTime(*v), Val::Date(v) => Param::Date(*v), Val::Bool(v) => Param::Bool(*v), Val::Json(v) => Param::Str(v.to_string()) })
+}
+fn val(value: Param) -> Val {
+    match value { Param::Null => Val::Null, Param::I64(v) => Val::I64(v), Param::F64(v) => Val::F64(v), Param::Str(v) => Val::Str(v), Param::Bytes(v) => Val::Bytes(v), Param::DateTime(v) => Val::DateTime(v), Param::Date(v) => Val::Date(v), Param::Bool(v) => Val::Bool(v), Param::Point(v) => Val::Str(format!("POINT({} {})", v.0, v.1)) }
+}
+fn encode(value: &Val, styles: &[String], key: &str) -> Result<Val> { Ok(val(crate::codec::host_encode(&param(value)?, styles, key)?)) }
+
+pub async fn aes_status(ex: &impl Exec, spec: &AesRotationSpec, keyring: &AesKeyring) -> Result<AesRotationStatus> {
+    let driver = ex.db().driver(); let table = quote(driver, &spec.table)?; let version = quote(driver, &spec.version_column)?;
+    let rows = ex.query(&step(format!("SELECT {version}, COUNT(*) FROM {table} GROUP BY {version} ORDER BY {version}"), vec![]), &[], vec![]).await?;
+    let mut status = AesRotationStatus { current: keyring.current_version, total: 0, pending: 0, versions: BTreeMap::new() };
+    for row in rows {
+        let values = read_row(&row, 2)?;
+        let stored_value = values[0].as_i64();
+        let count = values[1].as_i64();
+        if !(1..=i32::MAX as i64).contains(&stored_value) || count < 0 {
+            return Err(Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "AES rotation status contains an invalid value".into() });
+        }
+        let stored = stored_value as i32;
+        status.versions.insert(stored, count);
+        status.total += count;
+        if stored != status.current { status.pending += count; }
+    }
+    Ok(status)
+}
+
+pub async fn rotate_aes_rows(ex: &impl Exec, spec: &AesRotationSpec, keyring: &AesKeyring) -> Result<u64> {
+    if ex.tx().is_none() {
+        let spec = spec.clone(); let keyring = keyring.clone();
+        return ex.db().transaction(move |tx| { let spec = spec.clone(); let keyring = keyring.clone(); async move { rotate_in_transaction(&tx, &spec, &keyring).await } }).await;
+    }
+    rotate_in_transaction(ex, spec, keyring).await
+}
+
+async fn rotate_in_transaction(ex: &impl Exec, spec: &AesRotationSpec, keyring: &AesKeyring) -> Result<u64> {
+    if spec.columns.is_empty() { return Err(Error::Config("AES rotation columns are empty".into())); }
+    let driver = ex.db().driver(); let table = quote(driver, &spec.table)?; let primary = quote(driver, &spec.primary_key)?; let version = quote(driver, &spec.version_column)?;
+    let columns: Vec<String> = spec.columns.iter().map(|column| quote(driver, &column.name)).collect::<Result<_>>()?;
+    let select = step(format!("SELECT {primary}, {version}, {} FROM {table} WHERE {version} <> {} ORDER BY {primary}", columns.join(", "), placeholder(driver, 1)), vec![parameter(0)]);
+    let rows = ex.query(&select, &[Param::I64(keyring.current_version as i64)], vec![]).await?;
+    let mut sets: Vec<String> = columns.iter().enumerate().map(|(index, name)| format!("{name} = {}", placeholder(driver, index + 1))).collect();
+    sets.push(format!("{version} = {}", placeholder(driver, columns.len() + 1)));
+    let update = step(format!("UPDATE {table} SET {} WHERE {primary} = {} AND {version} = {}", sets.join(", "), placeholder(driver, columns.len() + 2), placeholder(driver, columns.len() + 3)), (0..columns.len()+3).map(parameter).collect());
+    let mut count = 0;
+    for row in rows {
+        let values = read_row(&row, columns.len() + 2)?;
+        let mut source = BTreeMap::new(); source.insert(spec.primary_key.clone(), values[0].clone()); source.insert(spec.version_column.clone(), values[1].clone());
+        for (index, column) in spec.columns.iter().enumerate() { source.insert(column.name.clone(), values[index + 2].clone()); }
+        let rotated = keyring.rotate_row(&source, &spec.version_column, &spec.columns, keyring.current_version, crate::codec::host_decode, encode)?;
+        let mut args = Vec::with_capacity(columns.len() + 3);
+        for column in &spec.columns { args.push(param(&rotated[&column.name])?); }
+        args.push(Param::I64(keyring.current_version as i64)); args.push(param(&values[0])?); args.push(Param::I64(values[1].as_i64()));
+        let (_, affected) = ex.execute(&update, &args).await?;
+        if affected != 1 { return Err(Error::Engine { code: crate::codes::OPTIMISTIC_LOCK.into(), msg: format!("AES rotation changed {} primary key {:?}", spec.table, values[0]) }); }
+        count += 1;
+    }
+    Ok(count)
 }

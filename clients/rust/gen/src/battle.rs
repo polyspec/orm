@@ -403,13 +403,6 @@ impl BattleRow {
         self.mark_dirty("like_count", v.into());
         self
     }
-    pub fn set_aes_key_version(&mut self, v: i32) -> &mut Self {
-        let v: i32 = v.into();
-        self.aes_key_version = v.clone();
-        if !self.assigned.contains(&"aes_key_version") { self.assigned.push("aes_key_version"); }
-        self.mark_dirty("aes_key_version", v.into());
-        self
-    }
     pub fn set_aes_hex_email(&mut self, v: Option<impl Into<String>>) -> &mut Self {
         let v: Option<String> = v.map(|x| x.into());
         self.aes_hex_email = v.clone();
@@ -1087,6 +1080,20 @@ pub fn query() -> Battle {
 impl Battle {
     /// Select a pool or transaction for this query.
     pub fn using(mut self, ex: &impl Exec) -> Self { self.binding = Binding::new(ex); self }
+    pub async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus> {
+        let binding = self.binding.clone();
+        orm::aes_rotation::aes_status(binding.resolve()?, &orm::aes_rotation::AesRotationSpec {
+            table: "battle".into(), primary_key: "seq".into(), version_column: "aes_key_version".into(), columns: vec![],
+        }, keyring).await
+    }
+
+    pub async fn rotate_aes(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<u64> {
+        let binding = self.binding.clone();
+        orm::aes_rotation::rotate_aes_rows(binding.resolve()?, &orm::aes_rotation::AesRotationSpec {
+            table: "battle".into(), primary_key: "seq".into(), version_column: "aes_key_version".into(),
+            columns: vec![orm::aes_rotation::AesRotationColumn { name: "aes_hex_email".into(), styles: vec!["aes".into(),"hex".into(),] },orm::aes_rotation::AesRotationColumn { name: "aes_hex_phone".into(), styles: vec!["aes".into(),"hex".into(),] },],
+        }, keyring).await
+    }
 
     /// Keys the root collection by a function of each row (relations key by key_by_<col>).
     pub fn key_by_fn(mut self, f: impl Fn(&BattleRow) -> Key + Send + Sync + 'static) -> Self { self.key_fn = Some(Box::new(f)); self }
@@ -1930,8 +1937,6 @@ impl Battle {
     pub fn set_is_single_play_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("is_single_play", frag, binds); self }
     pub fn set_like_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("like_count", v); self }
     pub fn set_like_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("like_count", frag, binds); self }
-    pub fn set_aes_key_version(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.set("aes_key_version", v); self }
-    pub fn set_aes_key_version_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("aes_key_version", frag, binds); self }
     pub fn set_aes_hex_email(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("aes_hex_email", v); self }
     pub fn set_aes_hex_email_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("aes_hex_email", frag, binds); self }
     pub fn set_aes_hex_phone(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.set("aes_hex_phone", v); self }
@@ -1970,8 +1975,6 @@ impl Battle {
     pub fn minus_service_member_seq(mut self, v: i64) -> Self { self.q.minus("service_member_seq", v); self }
     pub fn plus_like_count(mut self, v: i64) -> Self { self.q.plus("like_count", v); self }
     pub fn minus_like_count(mut self, v: i64) -> Self { self.q.minus("like_count", v); self }
-    pub fn plus_aes_key_version(mut self, v: i32) -> Self { self.q.plus("aes_key_version", v); self }
-    pub fn minus_aes_key_version(mut self, v: i32) -> Self { self.q.minus("aes_key_version", v); self }
     pub fn plus_price(mut self, v: f64) -> Self { self.q.plus("price", v); self }
     pub fn minus_price(mut self, v: f64) -> Self { self.q.minus("price", v); self }
 
@@ -2022,8 +2025,6 @@ impl Battle {
     pub fn on_duplicate_set_is_single_play_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("is_single_play", frag, binds); self }
     pub fn on_duplicate_set_like_count(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.on_duplicate_set("like_count", v); self }
     pub fn on_duplicate_set_like_count_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("like_count", frag, binds); self }
-    pub fn on_duplicate_set_aes_key_version(mut self, v: i32) -> Self { let v: i32 = v.into(); self.q.on_duplicate_set("aes_key_version", v); self }
-    pub fn on_duplicate_set_aes_key_version_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("aes_key_version", frag, binds); self }
     pub fn on_duplicate_set_aes_hex_email(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.on_duplicate_set("aes_hex_email", v); self }
     pub fn on_duplicate_set_aes_hex_email_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.on_duplicate_set_expr("aes_hex_email", frag, binds); self }
     pub fn on_duplicate_set_aes_hex_phone(mut self, v: Option<impl Into<String>>) -> Self { let v: Option<String> = v.map(|x| x.into()); self.q.on_duplicate_set("aes_hex_phone", v); self }
@@ -2060,8 +2061,6 @@ impl Battle {
     pub fn on_duplicate_minus_service_member_seq(mut self, v: i64) -> Self { self.q.on_duplicate_minus("service_member_seq", v); self }
     pub fn on_duplicate_plus_like_count(mut self, v: i64) -> Self { self.q.on_duplicate_plus("like_count", v); self }
     pub fn on_duplicate_minus_like_count(mut self, v: i64) -> Self { self.q.on_duplicate_minus("like_count", v); self }
-    pub fn on_duplicate_plus_aes_key_version(mut self, v: i32) -> Self { self.q.on_duplicate_plus("aes_key_version", v); self }
-    pub fn on_duplicate_minus_aes_key_version(mut self, v: i32) -> Self { self.q.on_duplicate_minus("aes_key_version", v); self }
     pub fn on_duplicate_plus_price(mut self, v: f64) -> Self { self.q.on_duplicate_plus("price", v); self }
     pub fn on_duplicate_minus_price(mut self, v: f64) -> Self { self.q.on_duplicate_minus("price", v); self }
     /// Copies every set_* assignment made so far (except the PK/auto column) into ON DUPLICATE KEY UPDATE.
@@ -2475,8 +2474,6 @@ impl Battle {
     pub async fn avg_service_member_seq(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "service_member_seq".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
     pub async fn sum_like_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
     pub async fn avg_like_count(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "like_count".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
-    pub async fn sum_aes_key_version(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "aes_key_version".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
-    pub async fn avg_aes_key_version(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "aes_key_version".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
     pub async fn sum_price(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "sum").await?.as_f64()) }
     pub async fn avg_price(&mut self) -> Result<f64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "price".into(); Ok(db::scalar(ex, &mut self.q.req, "avg").await?.as_f64()) }
     pub async fn count_distinct_seq(&mut self) -> Result<i64> { let binding = self.binding.clone(); let ex = binding.resolve()?; self.q.req.ir.agg = "seq".into(); Ok(db::scalar(ex, &mut self.q.req, "count_distinct").await?.as_i64()) }

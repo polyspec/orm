@@ -4,6 +4,7 @@ import { Collection, Page, Row, registerRow } from '../model.js';
 import { registerSchemaHash } from '../registry.js';
 import type { Point } from '../codec.js';
 
+import type { AesKeyring, AesRotationStatus } from '../index.js';
 import { OrmError } from '../runtime_error.js';
 
 import type { BattleInterface, BattleRowInterface, UserInterface, UserRowInterface, ServiceInterface, ServiceRowInterface, ServiceModuleInterface, ServiceModuleRowInterface, ServiceMemberInterface, ServiceMemberRowInterface } from './interfaces.js';
@@ -64,7 +65,6 @@ export class BattleRow extends Row implements BattleRowInterface {
   public getLikeCount(fallback?: number): number { const value=this.column('like_count'); return (value ?? fallback ?? null) as number; }
   public setLikeCount(value: number): this { return this.setColumn('like_count',value); }
   public getAesKeyVersion(fallback?: number): number { const value=this.column('aes_key_version'); return (value ?? fallback ?? null) as number; }
-  public setAesKeyVersion(value: number): this { return this.setColumn('aes_key_version',value); }
   public getAesHexEmail(fallback?: string | null): string | null { const value=this.column('aes_hex_email'); return (value ?? fallback ?? null) as string | null; }
   public setAesHexEmail(value: string | null): this { return this.setColumn('aes_hex_email',value); }
   public getAesHexPhone(fallback?: string | null): string | null { const value=this.column('aes_hex_phone'); return (value ?? fallback ?? null) as string | null; }
@@ -636,6 +636,8 @@ export class BattleWhere {
 
 export class BattleQuery extends QueryCore implements BattleInterface {
   public constructor() { super('battle'); }
+  public aesStatus(keyring: AesKeyring): Promise<AesRotationStatus> { return this.binding.resolve().aesStatus({table:'battle',primaryKey:'seq',versionColumn:'aes_key_version',columns:[]},keyring); }
+  public rotateAES(keyring: AesKeyring): Promise<number> { return this.binding.resolve().rotateAESRows({table:'battle',primaryKey:'seq',versionColumn:'aes_key_version',columns:[{name:'aes_hex_email',styles:['aes','hex']},{name:'aes_hex_phone',styles:['aes','hex']}]},keyring); }
   public override scope(value: number): this { return super.scope(value); }
   public and(callback: (where: BattleWhere) => void): this { this.whereCore().and(core=>callback(new BattleWhere(core))); return this; }
   public on(callback: (where: BattleWhere) => void): this { return this.onGroup(core=>callback(new BattleWhere(core))); }
@@ -1344,10 +1346,6 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public orderByAesKeyVersionDesc(): this { return this.orderBy('aes_key_version',true); }
   public groupByAesKeyVersion(): this { return this.groupBy('aes_key_version'); }
   public keyByAesKeyVersion(): this { return this.keyBy('aes_key_version'); }
-  public setAesKeyVersion(value: number): this { return this.set('aes_key_version',value); }
-  public onDuplicateSetAesKeyVersion(value: number): this { return this.duplicate('aes_key_version',value); }
-  public setAesKeyVersionExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('aes_key_version',expression,values); }
-  public onDuplicateSetAesKeyVersionExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('aes_key_version',expression,values); }
   public selectAesHexEmail(): this { return this.select('aes_hex_email'); }
   public omitAesHexEmail(): this { return this.omit('aes_hex_email'); }
   public orderByAesHexEmailAsc(): this { return this.orderBy('aes_hex_email'); }
@@ -1502,12 +1500,6 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public onDuplicateMinusLikeCount(value: number): this { return this.duplicateMinus('like_count',value); }
   public async sumLikeCount(): Promise<number | null> { this.request.ir.agg='like_count'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
   public async avgLikeCount(): Promise<number | null> { this.request.ir.agg='like_count'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
-  public plusAesKeyVersion(value: number): this { return this.plus('aes_key_version',value); }
-  public minusAesKeyVersion(value: number): this { return this.minus('aes_key_version',value); }
-  public onDuplicatePlusAesKeyVersion(value: number): this { return this.duplicatePlus('aes_key_version',value); }
-  public onDuplicateMinusAesKeyVersion(value: number): this { return this.duplicateMinus('aes_key_version',value); }
-  public async sumAesKeyVersion(): Promise<number | null> { this.request.ir.agg='aes_key_version'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
-  public async avgAesKeyVersion(): Promise<number | null> { this.request.ir.agg='aes_key_version'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
   public plusPrice(value: number): this { return this.plus('price',value); }
   public minusPrice(value: number): this { return this.minus('price',value); }
   public onDuplicatePlusPrice(value: number): this { return this.duplicatePlus('price',value); }

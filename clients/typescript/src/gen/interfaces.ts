@@ -2,6 +2,7 @@
 import type { Collection, Page } from '../model.js';
 import type { Db } from '../database.js';
 import type { Point } from '../codec.js';
+import type { AesKeyring, AesRotationStatus } from '../index.js';
 import type { BattleRow, UserRow, ServiceRow, ServiceModuleRow, ServiceMemberRow } from './entities.js';
 
 export interface BattleInterface {
@@ -9,6 +10,8 @@ get(): Promise<BattleRow | null>;
 gets(): Promise<Collection<BattleRow>>;
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<BattleRow>>;
+aesStatus(keyring: AesKeyring): Promise<AesRotationStatus>;
+rotateAES(keyring: AesKeyring): Promise<number>;
 insert(): Promise<BattleRow | null>;
 save(): Promise<BattleRow | null>;
 update(): Promise<number>;

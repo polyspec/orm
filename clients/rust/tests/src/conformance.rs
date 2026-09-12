@@ -130,7 +130,7 @@ async fn main() {
     });
     let opts = target.connect_opts();
     let compiler = Arc::new(orm::ConnectCompiler::new(target.compiler.as_deref().expect("--compiler is required"), std::time::Duration::from_secs(5)).expect("compiler"));
-    let db = Db::connect_with_compiler(opts, 4, engine, compiler, Config { aes_key: "bench-salt".into(), on_query: Some(on_query) }).await.expect("connect");
+    let db = Db::connect_with_compiler(opts, 4, engine, compiler, Config { aes_key: "bench-salt".into(), aes_version: 1, on_query: Some(on_query) }).await.expect("connect");
 
     let mut out: Vec<(String, Value)> = Vec::new();
     macro_rules! run {

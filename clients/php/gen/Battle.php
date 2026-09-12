@@ -204,7 +204,6 @@ final class BattleRow extends Row implements BattleRowInterface
         $v = $this->col('aes_key_version');
         return $v === null ? ($default ?? 0) : $v;
     }
-    public function setAesKeyVersion(int $v): static { return $this->setCol('aes_key_version', $v); }
 
     public function getAesHexEmail(mixed $default = null): ?string
     {
@@ -791,6 +790,20 @@ final class Battle extends Q implements BattleInterface
 
     private function __construct() { parent::__construct('battle'); }
     public static function query(): static { return new static(); }
+    public function aesStatus(\Orm\AesKeyring $keyring): \Orm\AesRotationStatus
+    {
+        return $this->terminalDb()->aesStatus([
+            'table' => 'battle', 'primary_key' => 'seq', 'version_column' => 'aes_key_version', 'columns' => [],
+        ], $keyring);
+    }
+
+    public function rotateAES(\Orm\AesKeyring $keyring): int
+    {
+        return $this->terminalDb()->rotateAESRows([
+            'table' => 'battle', 'primary_key' => 'seq', 'version_column' => 'aes_key_version',
+            'columns' => [['name' => 'aes_hex_email', 'styles' => ['aes', 'hex']],['name' => 'aes_hex_phone', 'styles' => ['aes', 'hex']],],
+        ], $keyring);
+    }
 
     // ---- WHERE ----
     /** or() connects the next item with OR; or(fn) = or()->and(fn); or('(') / or('sql …', binds) / or('Name', v) are compat tokens. */
@@ -1600,8 +1613,6 @@ final class Battle extends Q implements BattleInterface
     public function setIsSinglePlayExpr(string $frag, array $binds = []): static { $this->setExpr('is_single_play', $frag, $binds); return $this; }
     public function setLikeCount(int $v): static { $this->set('like_count', $v); return $this; }
     public function setLikeCountExpr(string $frag, array $binds = []): static { $this->setExpr('like_count', $frag, $binds); return $this; }
-    public function setAesKeyVersion(int $v): static { $this->set('aes_key_version', $v); return $this; }
-    public function setAesKeyVersionExpr(string $frag, array $binds = []): static { $this->setExpr('aes_key_version', $frag, $binds); return $this; }
     public function setAesHexEmail(?string $v): static { $this->set('aes_hex_email', $v); return $this; }
     public function setAesHexEmailExpr(string $frag, array $binds = []): static { $this->setExpr('aes_hex_email', $frag, $binds); return $this; }
     public function setAesHexPhone(?string $v): static { $this->set('aes_hex_phone', $v); return $this; }
@@ -1640,13 +1651,11 @@ final class Battle extends Q implements BattleInterface
     public function minusServiceMemberSeq(int $v): static { $this->minus('service_member_seq', $v); return $this; }
     public function plusLikeCount(int $v): static { $this->plus('like_count', $v); return $this; }
     public function minusLikeCount(int $v): static { $this->minus('like_count', $v); return $this; }
-    public function plusAesKeyVersion(int $v): static { $this->plus('aes_key_version', $v); return $this; }
-    public function minusAesKeyVersion(int $v): static { $this->minus('aes_key_version', $v); return $this; }
     public function plusPrice(float $v): static { $this->plus('price', $v); return $this; }
     public function minusPrice(float $v): static { $this->minus('price', $v); return $this; }
 
     // ---- insert: ON DUPLICATE KEY UPDATE (never the PK/auto columns; the engine refuses them) ----
-    public function onDuplicateSetAll(): static { $this->onDuplicateAll(['seq']); return $this; }
+    public function onDuplicateSetAll(): static { $this->onDuplicateAll(['seq', 'aes_key_version']); return $this; }
     public function onDuplicateSetName(string $v): static { $this->onDuplicate('name', $v); return $this; }
     public function onDuplicateSetNameExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('name', $frag, $binds); return $this; }
     public function onDuplicateSetDescription(?string $v): static { $this->onDuplicate('description', $v); return $this; }
@@ -1693,8 +1702,6 @@ final class Battle extends Q implements BattleInterface
     public function onDuplicateSetIsSinglePlayExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('is_single_play', $frag, $binds); return $this; }
     public function onDuplicateSetLikeCount(int $v): static { $this->onDuplicate('like_count', $v); return $this; }
     public function onDuplicateSetLikeCountExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('like_count', $frag, $binds); return $this; }
-    public function onDuplicateSetAesKeyVersion(int $v): static { $this->onDuplicate('aes_key_version', $v); return $this; }
-    public function onDuplicateSetAesKeyVersionExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('aes_key_version', $frag, $binds); return $this; }
     public function onDuplicateSetAesHexEmail(?string $v): static { $this->onDuplicate('aes_hex_email', $v); return $this; }
     public function onDuplicateSetAesHexEmailExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('aes_hex_email', $frag, $binds); return $this; }
     public function onDuplicateSetAesHexPhone(?string $v): static { $this->onDuplicate('aes_hex_phone', $v); return $this; }
@@ -1731,8 +1738,6 @@ final class Battle extends Q implements BattleInterface
     public function onDuplicateMinusServiceMemberSeq(int $v): static { $this->onDuplicateMinus('service_member_seq', $v); return $this; }
     public function onDuplicatePlusLikeCount(int $v): static { $this->onDuplicatePlus('like_count', $v); return $this; }
     public function onDuplicateMinusLikeCount(int $v): static { $this->onDuplicateMinus('like_count', $v); return $this; }
-    public function onDuplicatePlusAesKeyVersion(int $v): static { $this->onDuplicatePlus('aes_key_version', $v); return $this; }
-    public function onDuplicateMinusAesKeyVersion(int $v): static { $this->onDuplicateMinus('aes_key_version', $v); return $this; }
     public function onDuplicatePlusPrice(float $v): static { $this->onDuplicatePlus('price', $v); return $this; }
     public function onDuplicateMinusPrice(float $v): static { $this->onDuplicateMinus('price', $v); return $this; }
 
@@ -2211,8 +2216,6 @@ final class Battle extends Q implements BattleInterface
     public function avgServiceMemberSeq(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'service_member_seq'); }
     public function sumLikeCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'like_count'); }
     public function avgLikeCount(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'like_count'); }
-    public function sumAesKeyVersion(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'aes_key_version'); }
-    public function avgAesKeyVersion(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'aes_key_version'); }
     public function sumPrice(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'sum', 'price'); }
     public function avgPrice(): float { $this->terminalArity(func_num_args()); return (float) $this->runScalar($this->terminalDb(), 'avg', 'price'); }
     public function countDistinctSeq(): int { $this->terminalArity(func_num_args()); return (int) $this->runScalar($this->terminalDb(), 'count_distinct', 'seq'); }

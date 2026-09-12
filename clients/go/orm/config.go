@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -38,8 +39,10 @@ type DBConfig struct {
 
 // SecretsConfig names the AES key: literally (aes) or by environment variable (aes_env).
 type SecretsConfig struct {
-	AES    string `toml:"aes"`
-	AESEnv string `toml:"aes_env"`
+	AES        string            `toml:"aes"`
+	AESEnv     string            `toml:"aes_env"`
+	AESKeys    map[string]string `toml:"aes_keys"`
+	AESVersion int32             `toml:"aes_version"`
 }
 
 // EngineConfig is the Rust client's wasm engine; the Go client only validates the paths.
@@ -107,6 +110,18 @@ func LoadConfig(path string) (*FileConfig, error) {
 	if fc.Secrets.AES != "" && fc.Secrets.AESEnv != "" {
 		return nil, configErr("%s: secrets.aes and secrets.aes_env are exclusive", path)
 	}
+	if len(fc.Secrets.AESKeys) > 0 && (fc.Secrets.AES != "" || fc.Secrets.AESEnv != "") {
+		return nil, configErr("%s: secrets.aes_keys is exclusive with secrets.aes and secrets.aes_env", path)
+	}
+	if len(fc.Secrets.AESKeys) > 0 {
+		keys, err := fc.AESKeyring()
+		if err != nil {
+			return nil, configErr("%s: %v", path, err)
+		}
+		_ = keys
+	} else if fc.Secrets.AESVersion != 0 && fc.Secrets.AESVersion != 1 {
+		return nil, configErr("%s: secrets.aes_version requires secrets.aes_keys", path)
+	}
 	for key, p := range map[string]string{"engine.wasm": fc.Engine.Wasm, "engine.cache_dir": fc.Engine.CacheDir, "ormd.socket": fc.Ormd.Socket} {
 		if p == "" {
 			continue
@@ -124,6 +139,13 @@ func LoadConfig(path string) (*FileConfig, error) {
 // AESKey resolves [secrets]: the literal key, or the named environment
 // variable's value (CONFIG when that variable is unset or empty).
 func (fc *FileConfig) AESKey() (string, error) {
+	if len(fc.Secrets.AESKeys) > 0 {
+		keyring, err := fc.AESKeyring()
+		if err != nil {
+			return "", err
+		}
+		return keyring.keys[keyring.current], nil
+	}
 	if fc.Secrets.AESEnv == "" {
 		return fc.Secrets.AES, nil
 	}
@@ -132,6 +154,34 @@ func (fc *FileConfig) AESKey() (string, error) {
 		return "", configErr("secrets.aes_env: %s is not set", fc.Secrets.AESEnv)
 	}
 	return v, nil
+}
+
+// AESKeyring returns the declared version map. Legacy aes and aes_env settings
+// use version 1.
+func (fc *FileConfig) AESKeyring() (AESKeyring, error) {
+	if len(fc.Secrets.AESKeys) == 0 {
+		key, err := fc.AESKey()
+		if err != nil {
+			return AESKeyring{}, err
+		}
+		if key == "" {
+			return AESKeyring{}, configErr("no AES key is declared")
+		}
+		return NewAESKeyring(map[int32]string{1: key}, 1)
+	}
+	keys := make(map[int32]string, len(fc.Secrets.AESKeys))
+	for text, key := range fc.Secrets.AESKeys {
+		version, err := strconv.ParseInt(text, 10, 32)
+		if err != nil || version < 1 {
+			return AESKeyring{}, configErr("secrets.aes_keys.%s is invalid", text)
+		}
+		keys[int32(version)] = key
+	}
+	current := fc.Secrets.AESVersion
+	if current == 0 {
+		return AESKeyring{}, configErr("secrets.aes_version is required with secrets.aes_keys")
+	}
+	return NewAESKeyring(keys, current)
 }
 
 // hasAES reports whether any column of the manifest carries the aes style.
@@ -208,7 +258,11 @@ func OpenConfigContext(ctx context.Context, path string) (*DB, error) {
 	} else if fc.DB.User != "" {
 		return nil, configErr("[db].user/password apply to mysql DSNs only; put the user in the %s URL", driver)
 	}
-	cfg := Config{AESKey: key}
+	version := fc.Secrets.AESVersion
+	if version == 0 {
+		version = 1
+	}
+	cfg := Config{AESKey: key, AESVersion: version}
 	if fc.Debug.OnQuery {
 		cfg.OnQuery = LogQuery
 	}

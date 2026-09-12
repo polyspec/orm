@@ -138,6 +138,24 @@ classDiagram
         I64 per
         I64 total
     }
+    class AESKeyring {
+        I32 currentVersion
+        OrderedMap_I32_Secret versions
+        versions()
+        rotateRow()
+    }
+    class AESRotationSpec {
+        List_AESRotationColumn columns
+        Column primaryKey
+        Table table
+        Column versionColumn
+    }
+    class AESRotationStatus {
+        I32 current
+        I64 pending
+        I64 total
+        OrderedMap_I32_I64 versions
+    }
     class Compiler {
         compile()
     }
@@ -197,6 +215,9 @@ classDiagram
     ExecutionRows --> Plan : uses plan
     ExecutionRows *-- Binding : uses binding
     CompilerTransport --> Compiler : calls
+    Query --> AESKeyring : uses keys
+    Query --> AESRotationSpec : uses generated specification
+    Query --> AESRotationStatus : returns status
 ```
 
 | Component | Behavior and state |
@@ -214,6 +235,9 @@ classDiagram
 | Row | Separates loaded identity, values, pending changes, relations, and execution binding. |
 | Collection | A duplicate key replaces its value without changing order. Integer and string keys are distinct. |
 | Page | Requires a positive per value. total does not depend on the requested page. |
+| AESKeyring | Stores versioned AES keys and the current write version. |
+| AESRotationSpec | Contains generated identifiers and codec stages for one AES entity. |
+| AESRotationStatus | Contains row counts by stored AES key version. |
 | Compiler | Accepts RequestIR and returns an immutable Plan. Does not execute SQL. |
 | CompilerTransport | Sends typed compiler requests and returns typed plans and metadata. |
 | Plan | Contains cached execution steps and cannot change during execution. |
@@ -245,6 +269,9 @@ classDiagram
 | ExecutionRows | Plan | uses plan |
 | ExecutionRows | Binding | uses binding |
 | CompilerTransport | Compiler | calls |
+| Query | AESKeyring | uses keys |
+| Query | AESRotationSpec | uses generated specification |
+| Query | AESRotationStatus | returns status |
 
 An underscore in a diagram type name separates nested types. The table defines the exact types.
 
@@ -310,6 +337,16 @@ An underscore in a diagram type name separates nested types. The table defines t
 | Page.pages | `I64` |
 | Page.per | `I64` |
 | Page.total | `I64` |
+| AESKeyring.currentVersion | `I32` |
+| AESKeyring.versions | `OrderedMap<I32,Secret>` |
+| AESRotationSpec.columns | `List<AESRotationColumn>` |
+| AESRotationSpec.primaryKey | `Column` |
+| AESRotationSpec.table | `Table` |
+| AESRotationSpec.versionColumn | `Column` |
+| AESRotationStatus.current | `I32` |
+| AESRotationStatus.pending | `I64` |
+| AESRotationStatus.total | `I64` |
+| AESRotationStatus.versions | `OrderedMap<I32,I64>` |
 | Plan.kind | `QueryKind` |
 | Plan.schemaHash | `Text` |
 | Plan.steps | `List<Step>` |

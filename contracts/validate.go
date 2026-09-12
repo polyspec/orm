@@ -20,18 +20,20 @@ func compact(s string) string {
 func validateRules(d document) error {
 	seen := map[string]bool{}
 	outputs := map[string]map[string]string{
-		"Optional<Row>":   {"go": "(*{Entity}Row,error)", "php": "?App\\Orm\\{Entity}Row", "rust": "Result<Option<{Entity}Row>>", "typescript": "Promise<{Entity}Row|null>"},
-		"Collection<Row>": {"go": "(*orm.Collection[{Entity}Row],error)", "php": "Orm\\Collection", "rust": "Result<Collection<{Entity}Row>>", "typescript": "Promise<Collection<{Entity}Row>>"},
-		"I64":             {"go": "(int64,error)", "php": "int", "rust": "Result<i64>", "typescript": "Promise<number>"},
-		"AffectedRows":    {"go": "(int64,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
-		"Page<Row>":       {"go": "(*orm.Page[{Entity}Row],error)", "php": "Orm\\Page", "rust": "Result<Page<{Entity}Row>>", "typescript": "Promise<Page<{Entity}Row>>"},
-		"SqlStatement":    {"go": "(*orm.Statement,error)", "php": "array", "rust": "Result<db::Sql>", "typescript": "Promise<{sql:string;binds:unknown[];}>"},
-		"Success":         {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "Promise<void>"},
-		"Bool":            {"go": "bool", "php": "bool", "rust": "bool", "typescript": "boolean"},
-		"RowMap":          {"go": "(map[string]any,error)", "php": "array", "rust": "Result<serde_json::Value>", "typescript": "Record<string,unknown>"},
-		"Query":           {"go": "*{Entity}Query", "php": "static", "rust": "Self", "typescript": "this"},
-		"Where":           {"go": "*{Entity}Where", "php": "static", "rust": "Self", "typescript": "this"},
-		"Row":             {"go": "*{Entity}Row", "php": "static", "rust": "&mutSelf", "typescript": "this"},
+		"Optional<Row>":     {"go": "(*{Entity}Row,error)", "php": "?App\\Orm\\{Entity}Row", "rust": "Result<Option<{Entity}Row>>", "typescript": "Promise<{Entity}Row|null>"},
+		"Collection<Row>":   {"go": "(*orm.Collection[{Entity}Row],error)", "php": "Orm\\Collection", "rust": "Result<Collection<{Entity}Row>>", "typescript": "Promise<Collection<{Entity}Row>>"},
+		"I64":               {"go": "(int64,error)", "php": "int", "rust": "Result<i64>", "typescript": "Promise<number>"},
+		"AffectedRows":      {"go": "(int64,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
+		"Page<Row>":         {"go": "(*orm.Page[{Entity}Row],error)", "php": "Orm\\Page", "rust": "Result<Page<{Entity}Row>>", "typescript": "Promise<Page<{Entity}Row>>"},
+		"SqlStatement":      {"go": "(*orm.Statement,error)", "php": "array", "rust": "Result<db::Sql>", "typescript": "Promise<{sql:string;binds:unknown[];}>"},
+		"Success":           {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "Promise<void>"},
+		"Bool":              {"go": "bool", "php": "bool", "rust": "bool", "typescript": "boolean"},
+		"RowMap":            {"go": "(map[string]any,error)", "php": "array", "rust": "Result<serde_json::Value>", "typescript": "Record<string,unknown>"},
+		"Query":             {"go": "*{Entity}Query", "php": "static", "rust": "Self", "typescript": "this"},
+		"Where":             {"go": "*{Entity}Where", "php": "static", "rust": "Self", "typescript": "this"},
+		"Row":               {"go": "*{Entity}Row", "php": "static", "rust": "&mutSelf", "typescript": "this"},
+		"AESRotationStatus": {"go": "(orm.AESRotationStatus,error)", "php": "Orm\\AesRotationStatus", "rust": "Result<orm::aes_rotation::AesRotationStatus>", "typescript": "Promise<AesRotationStatus>"},
+		"RowCount":          {"go": "(int,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
 	}
 	for _, r := range d.Rules {
 		if seen[r.ID] {
@@ -80,7 +82,7 @@ func validateRules(d document) error {
 					if len(parts) == 2 {
 						args = parts[1]
 					}
-					if len(r.Errors) > 0 && role == "Query" && receiver != "&mutself" {
+					if len(r.Errors) > 0 && role == "Query" && receiver != "&mutself" && r.For != "aes_entity" {
 						return fmt.Errorf("%s must borrow query for execution", r.ID)
 					}
 				}
@@ -98,6 +100,8 @@ func validateRules(d document) error {
 				permitted = map[string][]string{"go": {"ctxcontext.Context,exorm.Exec"}, "php": {"Orm\\Db|PDO$db"}, "rust": {"ex:&implExec"}, "typescript": {"database:Db"}}[lang]
 			case "page,per":
 				permitted = map[string][]string{"go": {"page,perint"}, "php": {"int$page,int$per"}, "rust": {"page:u32,per:u32"}, "typescript": {"page:number,per:number"}}[lang]
+			case "AESKeyring":
+				permitted = map[string][]string{"go": {"keyringorm.AESKeyring"}, "php": {"Orm\\AesKeyring$keyring"}, "rust": {"keyring:&orm::aes_rotation::AesKeyring"}, "typescript": {"keyring:AesKeyring"}}[lang]
 			case "Column", "Relation":
 				permitted = map[string][]string{"go": {"namestring", "relstring"}, "php": {"string$col", "string$name"}, "rust": {"name:&str"}, "typescript": {"column:string", "relation:string"}}[lang]
 			default:

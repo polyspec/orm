@@ -419,12 +419,6 @@ func (r *BattleRow) GetAesKeyVersion() int32 {
 	return r.AesKeyVersion
 }
 
-func (r *BattleRow) SetAesKeyVersion(v int32) *BattleRow {
-	r.AesKeyVersion = v
-	r.Dirty("aes_key_version", v)
-	return r
-}
-
 // GetAesHexEmail is nil-safe.
 func (r *BattleRow) GetAesHexEmail() *string {
 	if r == nil {
@@ -1082,8 +1076,17 @@ func (q *BattleQuery) Using(ctx context.Context, ex orm.Exec) *BattleQuery {
 	return q
 }
 
-// RotateAES re-encrypts every AES column and updates aes_key_version in one transaction.
-func (q *BattleQuery) RotateAES(targetVersion int32, keyring orm.AESKeyring) (int, error) {
+// AESStatus returns row counts by stored AES key version.
+func (q *BattleQuery) AESStatus(keyring orm.AESKeyring) (orm.AESRotationStatus, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return orm.AESRotationStatus{}, err
+	}
+	return ex.DB().AESStatus(ctx, ex, orm.AESRotationSpec{Table: "battle", PrimaryKey: "seq", VersionColumn: "aes_key_version"}, keyring)
+}
+
+// RotateAES re-encrypts every pending AES row to the keyring current version.
+func (q *BattleQuery) RotateAES(keyring orm.AESKeyring) (int, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return 0, err
@@ -1094,7 +1097,7 @@ func (q *BattleQuery) RotateAES(targetVersion int32, keyring orm.AESKeyring) (in
 			{Name: "aes_hex_email", Styles: []string{"aes", "hex"}},
 			{Name: "aes_hex_phone", Styles: []string{"aes", "hex"}},
 		},
-	}, targetVersion, keyring)
+	}, keyring)
 }
 
 // Using selects the context and pool or transaction for this loaded row.
@@ -5478,11 +5481,6 @@ func (q *BattleQuery) SetLikeCountExpr(frag string, binds ...any) *BattleQuery {
 	q.q.SetExpr("like_count", frag, binds...)
 	return q
 }
-func (q *BattleQuery) SetAesKeyVersion(v int32) *BattleQuery { q.q.Set("aes_key_version", v); return q }
-func (q *BattleQuery) SetAesKeyVersionExpr(frag string, binds ...any) *BattleQuery {
-	q.q.SetExpr("aes_key_version", frag, binds...)
-	return q
-}
 func (q *BattleQuery) SetAesHexEmail(v string) *BattleQuery { q.q.Set("aes_hex_email", v); return q }
 func (q *BattleQuery) SetAesHexEmailNull() *BattleQuery     { q.q.SetNull("aes_hex_email"); return q }
 func (q *BattleQuery) SetAesHexEmailExpr(frag string, binds ...any) *BattleQuery {
@@ -5588,16 +5586,8 @@ func (q *BattleQuery) MinusServiceMemberSeq(v int64) *BattleQuery {
 }
 func (q *BattleQuery) PlusLikeCount(v int64) *BattleQuery  { q.q.Plus("like_count", v); return q }
 func (q *BattleQuery) MinusLikeCount(v int64) *BattleQuery { q.q.Minus("like_count", v); return q }
-func (q *BattleQuery) PlusAesKeyVersion(v int32) *BattleQuery {
-	q.q.Plus("aes_key_version", v)
-	return q
-}
-func (q *BattleQuery) MinusAesKeyVersion(v int32) *BattleQuery {
-	q.q.Minus("aes_key_version", v)
-	return q
-}
-func (q *BattleQuery) PlusPrice(v float64) *BattleQuery  { q.q.Plus("price", v); return q }
-func (q *BattleQuery) MinusPrice(v float64) *BattleQuery { q.q.Minus("price", v); return q }
+func (q *BattleQuery) PlusPrice(v float64) *BattleQuery    { q.q.Plus("price", v); return q }
+func (q *BattleQuery) MinusPrice(v float64) *BattleQuery   { q.q.Minus("price", v); return q }
 
 // ON DUPLICATE KEY UPDATE assignments of an insert (never the PK/auto column).
 func (q *BattleQuery) OnDuplicateSetName(v string) *BattleQuery { q.q.OnDuplicate("name", v); return q }
@@ -5778,14 +5768,6 @@ func (q *BattleQuery) OnDuplicateSetLikeCountExpr(frag string, binds ...any) *Ba
 	q.q.OnDuplicateExpr("like_count", frag, binds...)
 	return q
 }
-func (q *BattleQuery) OnDuplicateSetAesKeyVersion(v int32) *BattleQuery {
-	q.q.OnDuplicate("aes_key_version", v)
-	return q
-}
-func (q *BattleQuery) OnDuplicateSetAesKeyVersionExpr(frag string, binds ...any) *BattleQuery {
-	q.q.OnDuplicateExpr("aes_key_version", frag, binds...)
-	return q
-}
 func (q *BattleQuery) OnDuplicateSetAesHexEmail(v string) *BattleQuery {
 	q.q.OnDuplicate("aes_hex_email", v)
 	return q
@@ -5925,14 +5907,6 @@ func (q *BattleQuery) OnDuplicatePlusLikeCount(v int64) *BattleQuery {
 }
 func (q *BattleQuery) OnDuplicateMinusLikeCount(v int64) *BattleQuery {
 	q.q.OnDuplicateMinus("like_count", v)
-	return q
-}
-func (q *BattleQuery) OnDuplicatePlusAesKeyVersion(v int32) *BattleQuery {
-	q.q.OnDuplicatePlus("aes_key_version", v)
-	return q
-}
-func (q *BattleQuery) OnDuplicateMinusAesKeyVersion(v int32) *BattleQuery {
-	q.q.OnDuplicateMinus("aes_key_version", v)
 	return q
 }
 func (q *BattleQuery) OnDuplicatePlusPrice(v float64) *BattleQuery {
@@ -6511,26 +6485,6 @@ func (q *BattleQuery) AvgLikeCount() (float64, error) {
 	}
 	q.q.Req.IR.Kind = "avg"
 	q.q.Req.IR.Agg = "like_count"
-	v, err := orm.Scalar(ctx, ex, q.q.Req)
-	return orm.AsFloat64(v), err
-}
-func (q *BattleQuery) SumAesKeyVersion() (float64, error) {
-	ctx, ex, err := q.binding.Resolve()
-	if err != nil {
-		return 0, err
-	}
-	q.q.Req.IR.Kind = "sum"
-	q.q.Req.IR.Agg = "aes_key_version"
-	v, err := orm.Scalar(ctx, ex, q.q.Req)
-	return orm.AsFloat64(v), err
-}
-func (q *BattleQuery) AvgAesKeyVersion() (float64, error) {
-	ctx, ex, err := q.binding.Resolve()
-	if err != nil {
-		return 0, err
-	}
-	q.q.Req.IR.Kind = "avg"
-	q.q.Req.IR.Agg = "aes_key_version"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsFloat64(v), err
 }

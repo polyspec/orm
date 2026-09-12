@@ -1,6 +1,6 @@
-# Dialects (S6)
+# SQL dialects (S6)
 
-The planner asks the dialect for every database-specific piece; the IR and the plan format never change.
+A SQL dialect is the SQL syntax and execution rule set for one database system. In this project, `mysql`, `postgres`, and `sqlite` select identifier quoting, placeholders, type mapping, write syntax, and supported SQL functions. The planner asks the selected SQL dialect for every database-specific part; the IR and plan format do not change.
 Executors still see the same plan shape: steps, bind slots, assemble.
 
 | | MySQL 8.0.2+ / MariaDB 10.2+ | PostgreSQL 12+ | SQLite 3.35+ |
