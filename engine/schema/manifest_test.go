@@ -65,10 +65,10 @@ func TestBuildExample(t *testing.T) {
 		t.Errorf("user_seq should have no ref (no line, no ->): %+v", c)
 	}
 	// relations: derived names
-	if r := b.Relations["service"]; r == nil || r.Kind != "one" || r.Left != "service_seq" || r.Right != "seq" || r.Target != "service" {
+	if r := b.Relations["service"]; r == nil || r.Kind != "one" || len(r.Keys) != 1 || r.Keys[0].Local != "service_seq" || r.Keys[0].Target != "seq" || r.Target != "service" {
 		t.Errorf("battle.service: %+v", r)
 	}
-	if r := m.Entities["service"].Relations["battles"]; r == nil || r.Kind != "many" || r.Left != "seq" || r.Right != "service_seq" {
+	if r := m.Entities["service"].Relations["battles"]; r == nil || r.Kind != "many" || len(r.Keys) != 1 || r.Keys[0].Local != "seq" || r.Keys[0].Target != "service_seq" {
 		t.Errorf("service.battles: %+v", r)
 	}
 	if r := b.Relations["updater"]; r == nil || r.OnDelete != "cascade" {
@@ -146,13 +146,22 @@ func TestRenameDirectivesRejectAmbiguousSources(t *testing.T) {
 	}
 }
 
-func TestCompositePrimaryKeyFailsBeforeGeneration(t *testing.T) {
-	diagram, err := Parse("erDiagram\n membership {\n bigint tenant_id PK\n bigint user_id PK\n }\n")
+func TestCompositePrimaryAndForeignKeysPreserveOrderedPairs(t *testing.T) {
+	diagram, err := Parse("erDiagram\n account {\n bigint tenant_id PK\n bigint id PK\n }\n membership {\n bigint tenant_id PK, FK\n bigint account_id PK, FK\n }\n account ||--o{ membership : \"(tenant_id, account_id) (account / memberships) cascade\"\n")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Build(diagram); err == nil || !strings.Contains(err.Error(), "composite primary key") || !strings.Contains(err.Error(), "membership") {
-		t.Fatalf("expected composite-key support gate, got %v", err)
+	manifest, err := Build(diagram)
+	if err != nil {
+		t.Fatal(err)
+	}
+	relation := manifest.Entities["membership"].Relations["account"]
+	if relation == nil || relation.Kind != "one" || relation.Target != "account" || relation.OnDelete != "cascade" || len(relation.Keys) != 2 || relation.Keys[0].Local != "tenant_id" || relation.Keys[0].Target != "tenant_id" || relation.Keys[1].Local != "account_id" || relation.Keys[1].Target != "id" {
+		t.Fatalf("composite child relation differs: %#v", relation)
+	}
+	reverse := manifest.Entities["account"].Relations["memberships"]
+	if reverse == nil || len(reverse.Keys) != 2 || reverse.Keys[0].Local != "tenant_id" || reverse.Keys[0].Target != "tenant_id" || reverse.Keys[1].Local != "id" || reverse.Keys[1].Target != "account_id" {
+		t.Fatalf("composite parent relation differs: %#v", reverse)
 	}
 }
 

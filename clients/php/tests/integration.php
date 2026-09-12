@@ -460,18 +460,19 @@ $hb->using($db)->delete();
 $rotationTable = 'orm_aes_rotation_test';
 $quote = fn(string $name): string => $driver === 'mysql' ? "`$name`" : "\"$name\"";
 $db->pdo->exec('DROP TABLE IF EXISTS ' . $quote($rotationTable));
-$db->pdo->exec('CREATE TABLE ' . $quote($rotationTable) . ' (' . $quote('id') . ' BIGINT PRIMARY KEY, ' . $quote('aes_key_version') . ' INTEGER NOT NULL, ' . $quote('aes_hex_email') . ' VARCHAR(255), ' . $quote('aes_hex_phone') . ' VARCHAR(255))');
-$seed = $db->pdo->prepare('INSERT INTO ' . $quote($rotationTable) . ' (' . $quote('id') . ', ' . $quote('aes_key_version') . ', ' . $quote('aes_hex_email') . ', ' . $quote('aes_hex_phone') . ') VALUES (?, ?, ?, ?)');
-$seed->execute([1, 1, Codec::hostEncode('member@example.test', ['aes', 'hex'], 'rotation-key-v1'), Codec::hostEncode('01012345678', ['aes', 'hex'], 'rotation-key-v1')]);
-$rotationSpec = ['table' => $rotationTable, 'primary_key' => 'id', 'version_column' => 'aes_key_version', 'columns' => [['name' => 'aes_hex_email', 'styles' => ['aes', 'hex']], ['name' => 'aes_hex_phone', 'styles' => ['aes', 'hex']]]];
+$db->pdo->exec('CREATE TABLE ' . $quote($rotationTable) . ' (' . $quote('tenant_id') . ' BIGINT NOT NULL, ' . $quote('id') . ' BIGINT NOT NULL, ' . $quote('aes_key_version') . ' INTEGER NOT NULL, ' . $quote('aes_hex_email') . ' VARCHAR(255), ' . $quote('aes_hex_phone') . ' VARCHAR(255), PRIMARY KEY (' . $quote('tenant_id') . ', ' . $quote('id') . '))');
+$seed = $db->pdo->prepare('INSERT INTO ' . $quote($rotationTable) . ' (' . $quote('tenant_id') . ', ' . $quote('id') . ', ' . $quote('aes_key_version') . ', ' . $quote('aes_hex_email') . ', ' . $quote('aes_hex_phone') . ') VALUES (?, ?, ?, ?, ?)');
+$encrypted = [Codec::hostEncode('member@example.test', ['aes', 'hex'], 'rotation-key-v1'), Codec::hostEncode('01012345678', ['aes', 'hex'], 'rotation-key-v1')];
+foreach ([1, 2] as $id) { $seed->execute([7, $id, 1, ...$encrypted]); }
+$rotationSpec = ['table' => $rotationTable, 'primary_keys' => ['tenant_id', 'id'], 'version_column' => 'aes_key_version', 'columns' => [['name' => 'aes_hex_email', 'styles' => ['aes', 'hex']], ['name' => 'aes_hex_phone', 'styles' => ['aes', 'hex']]]];
 $keyring = new AesKeyring([1 => 'rotation-key-v1', 2 => 'rotation-key-v2'], 2);
 $before = $db->aesStatus($rotationSpec, $keyring);
 $changed = $db->rotateAESRows($rotationSpec, $keyring);
 $after = $db->aesStatus($rotationSpec, $keyring);
 $repeated = $db->rotateAESRows($rotationSpec, $keyring);
-$stored = $db->pdo->query('SELECT ' . $quote('aes_key_version') . ', ' . $quote('aes_hex_email') . ', ' . $quote('aes_hex_phone') . ' FROM ' . $quote($rotationTable) . ' WHERE ' . $quote('id') . ' = 1')->fetch(\PDO::FETCH_NUM);
-check($before->total === 1 && $before->pending === 1 && $before->versions[1] === 1, 'AES status reports the stored source version');
-check($changed === 1 && $after->pending === 0 && $after->versions[2] === 1 && $repeated === 0, 'AES rotation updates once and repeat is a no-op');
+$stored = $db->pdo->query('SELECT ' . $quote('aes_key_version') . ', ' . $quote('aes_hex_email') . ', ' . $quote('aes_hex_phone') . ' FROM ' . $quote($rotationTable) . ' WHERE ' . $quote('tenant_id') . ' = 7 AND ' . $quote('id') . ' = 1')->fetch(\PDO::FETCH_NUM);
+check($before->total === 2 && $before->pending === 2 && $before->versions[1] === 2, 'AES status reports the stored source version');
+check($changed === 2 && $after->pending === 0 && $after->versions[2] === 2 && $repeated === 0, 'AES rotation updates every composite-key row once and repeat is a no-op');
 check((int) $stored[0] === 2 && Codec::hostDecode($stored[1], ['aes', 'hex'], 'rotation-key-v2') === 'member@example.test' && Codec::hostDecode($stored[2], ['aes', 'hex'], 'rotation-key-v2') === '01012345678', 'AES rotation stores every AES column with the current key');
 $db->pdo->exec('DROP TABLE ' . $quote($rotationTable));
 

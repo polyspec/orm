@@ -7,6 +7,11 @@ use orm::db::{self, Exec};
 use orm::value::{Param, Val};
 use orm::{Collection, Key, Page, Result};
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct BattleKey {
+    pub seq: i64,
+}
+
 /// One row of battle.
 #[derive(Debug, Clone, Default)]
 pub struct BattleRow {
@@ -51,7 +56,7 @@ pub struct BattleRow {
     user_: Option<Box<super::user::UserRow>>,
     assigned: Vec<&'static str>,
     original_version: Option<Param>,
-    original_key: Option<Param>,
+    original_key: Option<Vec<Param>>,
     dirty: Vec<(&'static str, Param)>,
     enc_err: Option<(String, String)>, // (code, msg) of the first codec error; surfaces from update
     extra: std::collections::HashMap<String, Val>, // select_expr / select_<col>_as outputs, by output name
@@ -64,7 +69,7 @@ impl BattleRow {
     /// Select a pool or transaction for this loaded row.
     pub fn using(&mut self, ex: &impl Exec) -> &mut Self { self.binding = Binding::new(ex); self }
     pub const ENTITY: &'static str = "battle";
-    pub const PK: &'static str = "seq";
+    pub const PRIMARY_KEYS: &'static [&'static str] = &["seq"];
 
     /// Maps one row of the statement onto the struct: relation children first (rows of later
     /// steps, cloned per attachment; joins read the same row), then this node's columns,
@@ -152,7 +157,7 @@ impl BattleRow {
             }
         }
         if r.has("updated_ts") { r.original_version = Some(r.updated_ts.clone().into()); }
-        if r.has(Self::PK) { r.original_key = Some(r.seq.clone().into()); }
+        if Self::PRIMARY_KEYS.iter().all(|key| r.has(key)) { r.original_key = Some(vec![r.seq.clone().into(),]); }
         Ok(r)
     }
     /// A select_expr / select_<col>_as output by name.
@@ -500,8 +505,8 @@ impl BattleRow {
         if self.dirty.is_empty() { return Ok(()); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
         for (c, v) in &self.dirty { q.set(c, v.clone()); }
-        let pk = self.original_key.clone().ok_or_else(|| orm::Error::Config("row has no loaded identity".into()))?;
-        q.w().pred(Self::PK, "eq", pk);
+        let keys = self.original_key.clone().ok_or_else(|| orm::Error::Config("row has no loaded identity".into()))?;
+        for (column, value) in Self::PRIMARY_KEYS.iter().zip(keys) { q.w().pred(column, "eq", value); }
         if optimistic {
             let p = q.req.p(self.original_version.as_ref().unwrap().clone());
             q.req.ir.optimistic = Some(orm::ir::Optimist { column: "updated_ts".into(), p });
@@ -516,8 +521,8 @@ impl BattleRow {
     async fn delete_inner(&self, ex: &impl Exec) -> Result<()> {
         if self.asm.is_none() { return Err(orm::Error::Config("delete on a row that was not loaded".into())); }
         let mut q = Q::new(super::schema_hash(), Self::ENTITY);
-        let pk = self.original_key.clone().ok_or_else(|| orm::Error::Config("row has no loaded identity".into()))?;
-        q.w().pred(Self::PK, "eq", pk);
+        let keys = self.original_key.clone().ok_or_else(|| orm::Error::Config("row has no loaded identity".into()))?;
+        for (column, value) in Self::PRIMARY_KEYS.iter().zip(keys) { q.w().pred(column, "eq", value); }
         db::write(ex, &mut q.req, "delete").await.map(|_| ())
     }
 
@@ -1083,14 +1088,14 @@ impl Battle {
     pub async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus> {
         let binding = self.binding.clone();
         orm::aes_rotation::aes_status(binding.resolve()?, &orm::aes_rotation::AesRotationSpec {
-            table: "battle".into(), primary_key: "seq".into(), version_column: "aes_key_version".into(), columns: vec![],
+            table: "battle".into(), primary_keys: vec!["seq".into(),], version_column: "aes_key_version".into(), columns: vec![],
         }, keyring).await
     }
 
     pub async fn rotate_aes(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<u64> {
         let binding = self.binding.clone();
         orm::aes_rotation::rotate_aes_rows(binding.resolve()?, &orm::aes_rotation::AesRotationSpec {
-            table: "battle".into(), primary_key: "seq".into(), version_column: "aes_key_version".into(),
+            table: "battle".into(), primary_keys: vec!["seq".into(),], version_column: "aes_key_version".into(),
             columns: vec![orm::aes_rotation::AesRotationColumn { name: "aes_hex_email".into(), styles: vec!["aes".into(),"hex".into(),] },orm::aes_rotation::AesRotationColumn { name: "aes_hex_phone".into(), styles: vec!["aes".into(),"hex".into(),] },],
         }, keyring).await
     }
@@ -2644,12 +2649,11 @@ impl Battle {
 
     /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
     pub async fn save(&mut self) -> Result<Option<BattleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
-        match self.q.take_set("seq") {
-            Some(pk) => {
-                self.q.w().pred("seq", "eq", pk.clone());
+        match self.q.take_sets(&["seq"])? {
+            Some(keys) => {
                 db::write(ex, &mut self.q.req, "update").await?;
                 let mut q = super::battle::query().using(ex);
-                q.q.w().pred("seq", "eq", pk);
+                for (column, value) in ["seq"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
                 q.one().await
             }
             None => self.insert().await,
@@ -2700,7 +2704,8 @@ fn collect(rows: &mut db::Rows, key_fn: Option<&(dyn Fn(&BattleRow) -> Key + Sen
     let cells = rows.take_cells();
     let mut c = Collection::with_capacity(cells.len());
     for mut src in cells {
-        let k = Key::of(&src.val(0)?);
+        let key_values = vec![src.val(rows.assemble.columns.iter().find(|column| column.name == "seq").expect("primary key is projected").index)?,];
+        let k = Key::of_values(&key_values);
         let r = BattleRow::from_row(&mut src, &rows.assemble, rows)?;
         let k = match key_fn { Some(f) => f(&r), None => k };
         c.put(k, r);

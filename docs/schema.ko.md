@@ -59,7 +59,7 @@ erDiagram
 ## 2. 규칙
 
 ### 2.1 컬럼 줄 — `타입 이름 [PK|FK|UK] ["주석"]`
-Mermaid 문법을 사용한다. `PK`, `FK`, `UK`는 Mermaid keyword다. 0.0.1은 P8.4 공통 runtime 전환이 진행 중이므로 여러 `PK` column을 schema build 단계에서 거부한다. 복합 unique key는 아래 `%% unique`로 표현한다.
+Mermaid 문법을 사용한다. `PK`, `FK`, `UK`는 Mermaid keyword다. 기본키를 구성하는 모든 컬럼에 `PK`를 지정하며 선언 순서가 복합키 순서다. 복합 unique key는 아래 `%% unique`로 표현한다.
 타입은 DB 타입을 그대로 쓴다(`bigint`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum('a','b')`). 매니페스트가 정규 타입(i64/string/datetime/…)으로 바꾼다.
 
 주석 문자열은 공백으로 나눈 **속성 목록**이다. 없으면 NOT NULL, 기본값 없음, 일반 컬럼.
@@ -83,7 +83,7 @@ Mermaid 문법을 사용한다. `PK`, `FK`, `UK`는 Mermaid keyword다. 0.0.1은
 | `\|\|--\|\|`, `\|\|--o\|` (1 : 0..1) | 양쪽 **one** | 양쪽 `relation…` |
 | `}o--o{` (N : M) | 직접 지원 안 함 — 조인 테이블을 엔티티로 그린다(`a_match_b` 관례) |
 
-라벨: 첫 단어는 자식의 FK 컬럼. 괄호 안 `(자식측 / 부모측)`은 관계 이름 재정의이며 생략 가능.
+라벨: 단일 컬럼 관계는 자식 FK 컬럼으로 시작한다. 복합 관계는 `(tenant_id, account_id)`처럼 순서가 있는 자식 FK 목록으로 시작하고 `(tenant_id, account_id) (account / memberships)`처럼 관계 이름을 반드시 명시한다. FK 수는 부모 기본키 수와 같아야 하며 같은 위치의 부모 키에 대응한다. `(자식측 / 부모측)` 관계 이름은 단일 컬럼 관계에서만 생략할 수 있다.
 이름 기본값: 자식측 = FK 컬럼에서 `_seq` 제거(`service_seq`→`service`, `updated_user_seq`→`updated_user`), 부모측 = 자식 테이블명에서 부모 테이블명 접두어를 떼고 복수형(`battle_item`→`items`, `product_review`→`reviews`, 접두어가 없으면 테이블명 복수형 `battles`).
 같은 부모를 두 번 참조하면(`user_seq`, `updated_user_seq`) 관계선을 두 줄 긋는다. 이름 충돌은 `ormgen`이 오류로 표시한다.
 
@@ -154,7 +154,7 @@ ormgen import   --dsn mysql://… --schema service --out schema/service.mmd   # 
 ormgen build    schema/*.mmd --out schema/schema.json                       # Mermaid → 매니페스트 (검증 포함)
 ormgen validate --dsn …                                                      # 매니페스트 ↔ 라이브 DB
 ormgen ddl      --dialect mysql|postgres|sqlite [--tables …]                # 매니페스트 → CREATE문
-ormgen gen      --lang php,go,rust                                           # 매니페스트 → 클라이언트
+ormgen gen      --lang php|go|rust|typescript                                           # 매니페스트 → 클라이언트
 ormgen check    --lang php                                                   # 소스 코드 ↔ 매니페스트 (레거시 이름·expr 컬럼)
 ```
 
@@ -167,6 +167,6 @@ ormgen check    --lang php                                                   # �
 - 속성: `?`(NULL), `=값`(`CURRENT_TIMESTAMP*`→`=now`), `onupdate`, `auto`.
 - 관계선: FK 제약이 없어도 `<역할>_<테이블>_seq` 이름을 사용해 부모를 추론(앞 단어를 하나씩 떼며 테이블명과 맞춘다: `updated_user_seq`→`user`).
 - 인덱스: 복합 unique→`%% unique`, fulltext→`%% fulltext`, 복합/비FK 단일 인덱스→`%% index … 이름`, 단일 컬럼 unique→컬럼 줄 `UK`, FK 단일 인덱스는 생략(자동).
-- MySQL과 PostgreSQL은 카탈로그에서 실제 외래키 대상과 삭제 규칙을 읽는다. SQLite는 `PRAGMA foreign_key_list`를 읽는다. 단일 컬럼 기본키를 참조하는 단일 컬럼 외래키는 `cascade` 또는 `setnull`이 포함된 관계선이 되며, 동작을 생략하면 `RESTRICT`를 사용한다.
+- MySQL과 PostgreSQL은 카탈로그에서 실제 외래키 대상, 컬럼 순서, 삭제 규칙을 읽는다. SQLite는 `PRAGMA foreign_key_list`를 읽는다. 단일·복합 외래키를 관계선으로 생성하며 복합 라벨은 순서가 있는 괄호형 FK 목록을 사용한다. `cascade`와 `setnull`을 보존하고 생략된 동작은 `RESTRICT`를 사용한다.
 - PostgreSQL(`--driver postgres`, `postgres://…` DSN이면 자동)은 `information_schema.columns`, `pg_index`, `pg_constraint`를 읽어 같은 다이어그램을 만든다. 타입은 정규 타입으로 변환하고(`character varying(191)`→`varchar(191)`, `boolean`→`tinyint`, `numeric(p,s)`→`decimal(p,s)`, `timestamp(6)`→`datetime(6)`, `inet`→`varbinary(16)`, `jsonb`→`json`) identity/`nextval`은 `auto`로 변환하며, 생성된 GIN full-text 인덱스는 `pg_get_indexdef`에서 복원한다.
 - `--out`이 이미 있으면 DB가 모르는 사실을 이어받는다: 관계 라벨 재정의 `(child / parent)`, 컬럼 속성 `lazy`/`bool`/`int`/명시 스타일, `%% predicate` 줄. 그 외는 DB가 진실이다.

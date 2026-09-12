@@ -13,6 +13,11 @@ import (
 
 var _ time.Time
 
+// UserKey contains the complete ordered primary key of user.
+type UserKey struct {
+	Seq int64
+}
+
 // UserRow is one row of user.
 type UserRow struct {
 	orm.Row
@@ -156,7 +161,7 @@ func scanUserDirect(s *orm.DirectScanner) (*UserRow, error) {
 		return nil, err
 	}
 	r.SetProjection(s.Projection())
-	r.Mark("user", "seq", r.Seq)
+	r.Mark("user", []string{"seq"}, []any{r.Seq})
 	return r, nil
 }
 
@@ -189,7 +194,7 @@ func scanUser(vals []any, a *plan.Assemble, rs *orm.Rows) *UserRow {
 		}
 	}
 	r.SetProjection(rs.Projection(a))
-	r.Mark("user", "seq", r.Seq)
+	r.Mark("user", []string{"seq"}, []any{r.Seq})
 	return r
 }
 
@@ -754,7 +759,7 @@ func collectUser(rows *orm.Rows, keyFn func(*UserRow) orm.Key) *orm.Collection[U
 			c.Put(keyFn(r), r)
 			continue
 		}
-		c.Put(orm.KeyOf(vals[0]), r)
+		c.Put(orm.KeyFromValues([]any{r.Seq}), r)
 	}
 	return c
 }
@@ -765,7 +770,7 @@ func collectUserDirect(rows []*UserRow, keyFn func(*UserRow) orm.Key) *orm.Colle
 		if keyFn != nil {
 			c.Put(keyFn(r), r)
 		} else {
-			c.Put(orm.KeyOf(r.Seq), r)
+			c.Put(orm.KeyFromValues([]any{r.Seq}), r)
 		}
 	}
 	return c
@@ -959,14 +964,16 @@ func (q *UserQuery) Insert() (*UserRow, error) {
 	return User().Using(ctx, ex).SeqEq(int64(id)).One()
 }
 
-// Save updates the other assigned columns when SetSeq was called (and
-// returns the re-read row); otherwise it inserts like Insert.
+// Save updates when every primary-key column was assigned and inserts when none was assigned.
 func (q *UserQuery) Save() (*UserRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
 	}
-	pk, ok := q.q.MovePKToWhere("seq")
+	keys, ok, err := q.q.MoveKeysToWhere([]string{"seq"})
+	if err != nil {
+		return nil, err
+	}
 	if !ok {
 		return q.Insert()
 	}
@@ -974,7 +981,7 @@ func (q *UserQuery) Save() (*UserRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return User().Using(ctx, ex).SeqEq(pk.(int64)).One()
+	return User().Using(ctx, ex).SeqEq(keys[0].(int64)).One()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

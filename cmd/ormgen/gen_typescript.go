@@ -90,9 +90,18 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		ge := buildGoEntity(m, e)
+		fmt.Fprintf(&b, "export interface %sKey {", ge.Type)
+		for _, key := range ge.PKCols {
+			fmt.Fprintf(&b, " readonly %s:%s;", tsMethod(key.Name), tsType(e.Column(key.Name)))
+		}
+		b.WriteString(" }\n")
 		fmt.Fprintf(&b, "export class %sRow extends Row implements %sRowInterface {\n", ge.Type, ge.Type)
 		fmt.Fprintf(&b, "  public static override entity(): string { return %s; }\n", tsString(ge.Name))
-		fmt.Fprintf(&b, "  public static override primaryKey(): string { return %s; }\n", tsString(ge.PK))
+		pkNames := make([]string, len(ge.PKNames))
+		for i, key := range ge.PKNames {
+			pkNames[i] = tsString(key)
+		}
+		fmt.Fprintf(&b, "  public static override primaryKeys(): readonly string[] { return [%s]; }\n", strings.Join(pkNames, ","))
 		if ge.UpdatedTs != "" {
 			fmt.Fprintf(&b, "  public static override versionColumn(): string { return %s; }\n", tsString(ge.UpdatedTs))
 		}
@@ -137,6 +146,10 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		ge := buildGoEntity(m, e)
+		pkNames := make([]string, len(ge.PKNames))
+		for i, key := range ge.PKNames {
+			pkNames[i] = tsString(key)
+		}
 		fmt.Fprintf(&b, "export class %sColumns {\n", ge.Type)
 		for _, c := range e.Columns {
 			fmt.Fprintf(&b, "  public static %s(): ColumnReference { return new ColumnReference(%s); }\n", tsMethod(c.Name), tsString(c.Name))
@@ -154,8 +167,8 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 
 		fmt.Fprintf(&b, "export class %sQuery extends QueryCore implements %sInterface {\n  public constructor() { super(%s); }\n", ge.Type, ge.Type, tsString(ge.Name))
 		if len(ge.AESCols) > 0 {
-			fmt.Fprintf(&b, "  public aesStatus(keyring: AesKeyring): Promise<AesRotationStatus> { return this.binding.resolve().aesStatus({table:%s,primaryKey:%s,versionColumn:%s,columns:[]},keyring); }\n", tsString(ge.Table), tsString(ge.PK), tsString(ge.AESVersion))
-			fmt.Fprintf(&b, "  public rotateAES(keyring: AesKeyring): Promise<number> { return this.binding.resolve().rotateAESRows({table:%s,primaryKey:%s,versionColumn:%s,columns:[", tsString(ge.Table), tsString(ge.PK), tsString(ge.AESVersion))
+			fmt.Fprintf(&b, "  public aesStatus(keyring: AesKeyring): Promise<AesRotationStatus> { return this.binding.resolve().aesStatus({table:%s,primaryKeys:[%s],versionColumn:%s,columns:[]},keyring); }\n", tsString(ge.Table), strings.Join(pkNames, ","), tsString(ge.AESVersion))
+			fmt.Fprintf(&b, "  public rotateAES(keyring: AesKeyring): Promise<number> { return this.binding.resolve().rotateAESRows({table:%s,primaryKeys:[%s],versionColumn:%s,columns:[", tsString(ge.Table), strings.Join(pkNames, ","), tsString(ge.AESVersion))
 			for i, c := range ge.AESCols {
 				if i > 0 {
 					b.WriteString(",")
@@ -214,7 +227,7 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		}
 		for _, rel := range ge.Rels {
 			if rel.Pair {
-				suffix := pascal(rel.Left) + "With" + pascal(rel.Right)
+				suffix := rel.Suffix
 				fmt.Fprintf(&b, "  public join%s(child: %sQuery): this { return this.attachJoin(%s,child,'inner'); }\n", suffix, rel.TargetType, tsString(rel.Name))
 				fmt.Fprintf(&b, "  public leftJoin%s(child: %sQuery): this { return this.attachJoin(%s,child,'left'); }\n", suffix, rel.TargetType, tsString(rel.Name))
 				method := "relation"
@@ -244,7 +257,11 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		b.WriteString("  public async getCount(): Promise<number> { return Number(await this.terminal('count')); }\n")
 		b.WriteString("  public async getsCount(): Promise<Collection<" + ge.Type + "Row>> { return await this.terminal('group_count') as Collection<" + ge.Type + "Row>; }\n")
 		fmt.Fprintf(&b, "  public async insert(): Promise<%sRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new %sQuery().using(database).predicate(%s,'eq',key).get(); }\n", ge.Type, ge.Type, tsString(ge.PK))
-		fmt.Fprintf(&b, "  public async save(): Promise<%sRow | null> { const database=this.binding.resolve(); const key=await this.saveKey(%s); return new %sQuery().using(database).predicate(%s,'eq',key).get(); }\n", ge.Type, tsString(ge.PK), ge.Type, tsString(ge.PK))
+		fmt.Fprintf(&b, "  public async save(): Promise<%sRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys([%s]); const query=new %sQuery().using(database);", ge.Type, strings.Join(pkNames, ","), ge.Type)
+		for i, key := range ge.PKNames {
+			fmt.Fprintf(&b, " query.predicate(%s,'eq',keys[%d]);", tsString(key), i)
+		}
+		b.WriteString(" return query.get(); }\n")
 		b.WriteString("  public async update(): Promise<number> { return this.writeAffected('update'); }\n  public async delete(): Promise<number> { return this.writeAffected('delete'); }\n  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }\n")
 		b.WriteString("  public async paginate(page: number, per: number): Promise<Page<" + ge.Type + "Row>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<" + ge.Type + "Row>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }\n")
 		for _, c := range ge.EqCols {
@@ -255,11 +272,26 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 			fmt.Fprintf(&b, "  public async getCountBy%s(value: %s): Promise<number> { this.predicate(%s,'eq',value); return this.getCount(); }\n", field, typ, tsString(c.Name))
 		}
 		fmt.Fprintf(&b, "  public async oneBy%s(value: %s): Promise<%sRow | null> { return this.getBy%s(value); }\n", pascal(ge.PK), tsType(e.Column(ge.PK)), ge.Type, pascal(ge.PK))
+		if len(ge.PKCols) > 1 {
+			fmt.Fprintf(&b, "  public async getBy%s(", ge.PKMethod)
+			for i, col := range ge.PKCols {
+				if i > 0 {
+					b.WriteString(",")
+				}
+				fmt.Fprintf(&b, "value%d:%s", i, tsType(e.Column(col.Name)))
+			}
+			fmt.Fprintf(&b, "): Promise<%sRow | null> {", ge.Type)
+			for i, col := range ge.PKCols {
+				fmt.Fprintf(&b, " this.predicate(%s,'eq',value%d);", tsString(col.Name), i)
+			}
+			b.WriteString(" return this.get(); }\n")
+		}
 		b.WriteString("}\n")
 		fmt.Fprintf(&b, "export function %s(): %sQuery { return new %sQuery(); }\n", ge.Type, ge.Type, ge.Type)
 		fmt.Fprintf(&b, "registerRow(%s,%sRow);\n\n", tsString(ge.Name), ge.Type)
 	}
-	return os.WriteFile(filepath.Join(outDir, "entities.ts"), b.Bytes(), 0o644)
+	output := append(bytes.TrimRight(b.Bytes(), "\n"), '\n')
+	return os.WriteFile(filepath.Join(outDir, "entities.ts"), output, 0o644)
 }
 
 func writeTSPredicates(b *bytes.Buffer, ge goEntity, target string) {

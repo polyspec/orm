@@ -53,7 +53,7 @@ func testPhysicalAESRotation(t *testing.T, driver, dsn string) {
 	}
 	_, _ = sqlDB.ExecContext(ctx, "DROP TABLE IF EXISTS "+q(table))
 	t.Cleanup(func() { _, _ = sqlDB.ExecContext(ctx, "DROP TABLE IF EXISTS "+q(table)) })
-	if _, err := sqlDB.ExecContext(ctx, "CREATE TABLE "+q(table)+" ("+q("id")+" BIGINT PRIMARY KEY, "+q("aes_key_version")+" INTEGER NOT NULL, "+q("aes_hex_email")+" VARCHAR(255), "+q("aes_hex_phone")+" VARCHAR(255))"); err != nil {
+	if _, err := sqlDB.ExecContext(ctx, "CREATE TABLE "+q(table)+" ("+q("tenant_id")+" BIGINT NOT NULL, "+q("id")+" BIGINT NOT NULL, "+q("aes_key_version")+" INTEGER NOT NULL, "+q("aes_hex_email")+" VARCHAR(255), "+q("aes_hex_phone")+" VARCHAR(255), PRIMARY KEY ("+q("tenant_id")+", "+q("id")+"))"); err != nil {
 		t.Fatal(err)
 	}
 	oldKey, newKey := "rotation-key-v1", "rotation-key-v2"
@@ -67,29 +67,32 @@ func testPhysicalAESRotation(t *testing.T, driver, dsn string) {
 	}
 	ph := "?"
 	if driver == "postgres" {
-		ph = "$1, $2, $3, $4"
+		ph = "$1, $2, $3, $4, $5"
 	} else {
-		ph = "?, ?, ?, ?"
+		ph = "?, ?, ?, ?, ?"
 	}
-	if _, err := sqlDB.ExecContext(ctx, "INSERT INTO "+q(table)+" ("+q("id")+", "+q("aes_key_version")+", "+q("aes_hex_email")+", "+q("aes_hex_phone")+") VALUES ("+ph+")", 1, 1, email, phone); err != nil {
-		t.Fatal(err)
+	insert := "INSERT INTO " + q(table) + " (" + q("tenant_id") + ", " + q("id") + ", " + q("aes_key_version") + ", " + q("aes_hex_email") + ", " + q("aes_hex_phone") + ") VALUES (" + ph + ")"
+	for _, id := range []int64{1, 2} {
+		if _, err := sqlDB.ExecContext(ctx, insert, 7, id, 1, email, phone); err != nil {
+			t.Fatal(err)
+		}
 	}
 	db := &DB{SQL: sqlDB, driver: driver, stmts: map[string]*sql.Stmt{}}
 	keyring, err := NewAESKeyring(map[int32]string{1: oldKey, 2: newKey}, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	spec := AESRotationSpec{Table: table, PrimaryKey: "id", VersionColumn: "aes_key_version", Columns: []AESRotationColumn{{Name: "aes_hex_email", Styles: []string{"aes", "hex"}}, {Name: "aes_hex_phone", Styles: []string{"aes", "hex"}}}}
+	spec := AESRotationSpec{Table: table, PrimaryKeys: []string{"tenant_id", "id"}, VersionColumn: "aes_key_version", Columns: []AESRotationColumn{{Name: "aes_hex_email", Styles: []string{"aes", "hex"}}, {Name: "aes_hex_phone", Styles: []string{"aes", "hex"}}}}
 	before, err := db.AESStatus(ctx, db, spec, keyring)
-	if err != nil || before.Total != 1 || before.Pending != 1 || before.Versions[1] != 1 {
+	if err != nil || before.Total != 2 || before.Pending != 2 || before.Versions[1] != 2 {
 		t.Fatalf("before status: %#v, %v", before, err)
 	}
 	changed, err := db.RotateAESRows(ctx, db, spec, keyring)
-	if err != nil || changed != 1 {
+	if err != nil || changed != 2 {
 		t.Fatalf("rotate: changed=%d err=%v", changed, err)
 	}
 	after, err := db.AESStatus(ctx, db, spec, keyring)
-	if err != nil || after.Pending != 0 || after.Versions[2] != 1 {
+	if err != nil || after.Pending != 0 || after.Versions[2] != 2 {
 		t.Fatalf("after status: %#v, %v", after, err)
 	}
 	repeated, err := db.RotateAESRows(ctx, db, spec, keyring)
@@ -98,7 +101,7 @@ func testPhysicalAESRotation(t *testing.T, driver, dsn string) {
 	}
 	var storedVersion int32
 	var storedEmail, storedPhone string
-	if err := sqlDB.QueryRowContext(ctx, "SELECT "+q("aes_key_version")+", "+q("aes_hex_email")+", "+q("aes_hex_phone")+" FROM "+q(table)+" WHERE "+q("id")+" = 1").Scan(&storedVersion, &storedEmail, &storedPhone); err != nil {
+	if err := sqlDB.QueryRowContext(ctx, "SELECT "+q("aes_key_version")+", "+q("aes_hex_email")+", "+q("aes_hex_phone")+" FROM "+q(table)+" WHERE "+q("tenant_id")+" = 7 AND "+q("id")+" = 1").Scan(&storedVersion, &storedEmail, &storedPhone); err != nil {
 		t.Fatal(err)
 	}
 	for name, value := range map[string]struct{ stored, want string }{"email": {storedEmail, "member@example.test"}, "phone": {storedPhone, "01012345678"}} {

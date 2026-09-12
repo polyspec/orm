@@ -107,7 +107,7 @@ classDiagram
         Binding binding
         Optional_Error deferredError
         OrderedMap_Column_Assignment dirty
-        PrimaryKey identity
+        OrderedMap_Column_Value identity
         Bool loaded
         Optional_Value originalVersion
         Projection projection
@@ -334,7 +334,7 @@ An underscore in a diagram type name separates nested types. The table defines t
 | Row.binding | `Binding` |
 | Row.deferredError | `Optional<Error>` |
 | Row.dirty | `OrderedMap<Column,Assignment>` |
-| Row.identity | `PrimaryKey` |
+| Row.identity | `OrderedMap<Column,Value>` |
 | Row.loaded | `Bool` |
 | Row.originalVersion | `Optional<Value>` |
 | Row.projection | `Projection` |

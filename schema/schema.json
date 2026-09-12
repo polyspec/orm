@@ -1,5 +1,5 @@
 {
-  "schema_hash": "4a1b32fbfa6fc46b",
+  "schema_hash": "794a20b6a27c5797",
   "order": [
     "battle",
     "user",
@@ -296,29 +296,45 @@
           "name": "service",
           "kind": "one",
           "target": "service",
-          "left": "service_seq",
-          "right": "seq"
+          "keys": [
+            {
+              "local": "service_seq",
+              "target": "seq"
+            }
+          ]
         },
         "service_member": {
           "name": "service_member",
           "kind": "one",
           "target": "service_member",
-          "left": "service_member_seq",
-          "right": "seq"
+          "keys": [
+            {
+              "local": "service_member_seq",
+              "target": "seq"
+            }
+          ]
         },
         "service_module": {
           "name": "service_module",
           "kind": "one",
           "target": "service_module",
-          "left": "service_module_seq",
-          "right": "seq"
+          "keys": [
+            {
+              "local": "service_module_seq",
+              "target": "seq"
+            }
+          ]
         },
         "user": {
           "name": "user",
           "kind": "one",
           "target": "user",
-          "left": "user_seq",
-          "right": "seq"
+          "keys": [
+            {
+              "local": "user_seq",
+              "target": "seq"
+            }
+          ]
         }
       },
       "unique": [
@@ -391,22 +407,34 @@
           "name": "battles",
           "kind": "many",
           "target": "battle",
-          "left": "seq",
-          "right": "service_seq"
+          "keys": [
+            {
+              "local": "seq",
+              "target": "service_seq"
+            }
+          ]
         },
         "members": {
           "name": "members",
           "kind": "many",
           "target": "service_member",
-          "left": "seq",
-          "right": "service_seq"
+          "keys": [
+            {
+              "local": "seq",
+              "target": "service_seq"
+            }
+          ]
         },
         "modules": {
           "name": "modules",
           "kind": "many",
           "target": "service_module",
-          "left": "seq",
-          "right": "service_seq"
+          "keys": [
+            {
+              "local": "seq",
+              "target": "service_seq"
+            }
+          ]
         }
       }
     },
@@ -451,22 +479,34 @@
           "name": "battles",
           "kind": "many",
           "target": "battle",
-          "left": "seq",
-          "right": "service_member_seq"
+          "keys": [
+            {
+              "local": "seq",
+              "target": "service_member_seq"
+            }
+          ]
         },
         "service": {
           "name": "service",
           "kind": "one",
           "target": "service",
-          "left": "service_seq",
-          "right": "seq"
+          "keys": [
+            {
+              "local": "service_seq",
+              "target": "seq"
+            }
+          ]
         },
         "user": {
           "name": "user",
           "kind": "one",
           "target": "user",
-          "left": "user_seq",
-          "right": "seq"
+          "keys": [
+            {
+              "local": "user_seq",
+              "target": "seq"
+            }
+          ]
         }
       }
     },
@@ -507,15 +547,23 @@
           "name": "battles",
           "kind": "many",
           "target": "battle",
-          "left": "seq",
-          "right": "service_module_seq"
+          "keys": [
+            {
+              "local": "seq",
+              "target": "service_module_seq"
+            }
+          ]
         },
         "service": {
           "name": "service",
           "kind": "one",
           "target": "service",
-          "left": "service_seq",
-          "right": "seq"
+          "keys": [
+            {
+              "local": "service_seq",
+              "target": "seq"
+            }
+          ]
         }
       }
     },
@@ -546,15 +594,23 @@
           "name": "battles",
           "kind": "many",
           "target": "battle",
-          "left": "seq",
-          "right": "user_seq"
+          "keys": [
+            {
+              "local": "seq",
+              "target": "user_seq"
+            }
+          ]
         },
         "service_members": {
           "name": "service_members",
           "kind": "many",
           "target": "service_member",
-          "left": "seq",
-          "right": "user_seq"
+          "keys": [
+            {
+              "local": "seq",
+              "target": "user_seq"
+            }
+          ]
         }
       }
     }

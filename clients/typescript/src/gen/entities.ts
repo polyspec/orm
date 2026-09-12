@@ -9,12 +9,13 @@ import { OrmError } from '../runtime_error.js';
 
 import type { BattleInterface, BattleRowInterface, UserInterface, UserRowInterface, ServiceInterface, ServiceRowInterface, ServiceModuleInterface, ServiceModuleRowInterface, ServiceMemberInterface, ServiceMemberRowInterface } from './interfaces.js';
 
-export const SCHEMA_HASH = '4a1b32fbfa6fc46b';
+export const SCHEMA_HASH = '794a20b6a27c5797';
 registerSchemaHash(SCHEMA_HASH);
 
+export interface BattleKey { readonly seq:number; }
 export class BattleRow extends Row implements BattleRowInterface {
   public static override entity(): string { return 'battle'; }
-  public static override primaryKey(): string { return 'seq'; }
+  public static override primaryKeys(): readonly string[] { return ['seq']; }
   public static override versionColumn(): string { return 'updated_ts'; }
   public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','name':'string','description':'text','created_ts':'datetime','updated_ts':'datetime','is_close':'bool','is_display':'bool','display_start_dt':'datetime','display_end_dt':'datetime','is_allday':'bool','target_team_player_count':'i64','success_count':'i64','player_count':'i64','read_count':'i64','cover_url':'string','user_seq':'i64','service_seq':'i64','service_module_seq':'i64','service_member_seq':'i64','start_dt':'datetime','end_dt':'datetime','uuid':'string','is_single_play':'bool','like_count':'i64','aes_key_version':'i32','aes_hex_email':'string','aes_hex_phone':'string','price':'decimal','ip':'inet','gz_extend':'styled','json_setting':'styled','jsons_tags':'styled','base64_extra':'styled','serialize_data':'styled'}; }
   public getSeq(fallback?: number): number { const value=this.column('seq'); return (value ?? fallback ?? null) as number; }
@@ -89,9 +90,10 @@ export class BattleRow extends Row implements BattleRowInterface {
   public getUser(): UserRow | null { return this.relation('user'); }
 }
 
+export interface UserKey { readonly seq:number; }
 export class UserRow extends Row implements UserRowInterface {
   public static override entity(): string { return 'user'; }
-  public static override primaryKey(): string { return 'seq'; }
+  public static override primaryKeys(): readonly string[] { return ['seq']; }
   public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','name':'string'}; }
   public getSeq(fallback?: number): number { const value=this.column('seq'); return (value ?? fallback ?? null) as number; }
   public getName(fallback?: string): string { const value=this.column('name'); return (value ?? fallback ?? null) as string; }
@@ -100,9 +102,10 @@ export class UserRow extends Row implements UserRowInterface {
   public getServiceMembers(): Collection<ServiceMemberRow> { return this.relation('service_members') ?? new Collection(); }
 }
 
+export interface ServiceKey { readonly seq:number; }
 export class ServiceRow extends Row implements ServiceRowInterface {
   public static override entity(): string { return 'service'; }
-  public static override primaryKey(): string { return 'seq'; }
+  public static override primaryKeys(): readonly string[] { return ['seq']; }
   public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','name':'string'}; }
   public getSeq(fallback?: number): number { const value=this.column('seq'); return (value ?? fallback ?? null) as number; }
   public getName(fallback?: string): string { const value=this.column('name'); return (value ?? fallback ?? null) as string; }
@@ -112,9 +115,10 @@ export class ServiceRow extends Row implements ServiceRowInterface {
   public getModules(): Collection<ServiceModuleRow> { return this.relation('modules') ?? new Collection(); }
 }
 
+export interface ServiceModuleKey { readonly seq:number; }
 export class ServiceModuleRow extends Row implements ServiceModuleRowInterface {
   public static override entity(): string { return 'service_module'; }
-  public static override primaryKey(): string { return 'seq'; }
+  public static override primaryKeys(): readonly string[] { return ['seq']; }
   public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','service_seq':'i64','name':'string'}; }
   public getSeq(fallback?: number): number { const value=this.column('seq'); return (value ?? fallback ?? null) as number; }
   public getServiceSeq(fallback?: number): number { const value=this.column('service_seq'); return (value ?? fallback ?? null) as number; }
@@ -125,9 +129,10 @@ export class ServiceModuleRow extends Row implements ServiceModuleRowInterface {
   public getService(): ServiceRow | null { return this.relation('service'); }
 }
 
+export interface ServiceMemberKey { readonly seq:number; }
 export class ServiceMemberRow extends Row implements ServiceMemberRowInterface {
   public static override entity(): string { return 'service_member'; }
-  public static override primaryKey(): string { return 'seq'; }
+  public static override primaryKeys(): readonly string[] { return ['seq']; }
   public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','service_seq':'i64','user_seq':'i64'}; }
   public getSeq(fallback?: number): number { const value=this.column('seq'); return (value ?? fallback ?? null) as number; }
   public getServiceSeq(fallback?: number): number { const value=this.column('service_seq'); return (value ?? fallback ?? null) as number; }
@@ -636,8 +641,8 @@ export class BattleWhere {
 
 export class BattleQuery extends QueryCore implements BattleInterface {
   public constructor() { super('battle'); }
-  public aesStatus(keyring: AesKeyring): Promise<AesRotationStatus> { return this.binding.resolve().aesStatus({table:'battle',primaryKey:'seq',versionColumn:'aes_key_version',columns:[]},keyring); }
-  public rotateAES(keyring: AesKeyring): Promise<number> { return this.binding.resolve().rotateAESRows({table:'battle',primaryKey:'seq',versionColumn:'aes_key_version',columns:[{name:'aes_hex_email',styles:['aes','hex']},{name:'aes_hex_phone',styles:['aes','hex']}]},keyring); }
+  public aesStatus(keyring: AesKeyring): Promise<AesRotationStatus> { return this.binding.resolve().aesStatus({table:'battle',primaryKeys:['seq'],versionColumn:'aes_key_version',columns:[]},keyring); }
+  public rotateAES(keyring: AesKeyring): Promise<number> { return this.binding.resolve().rotateAESRows({table:'battle',primaryKeys:['seq'],versionColumn:'aes_key_version',columns:[{name:'aes_hex_email',styles:['aes','hex']},{name:'aes_hex_phone',styles:['aes','hex']}]},keyring); }
   public override scope(value: number): this { return super.scope(value); }
   public and(callback: (where: BattleWhere) => void): this { this.whereCore().and(core=>callback(new BattleWhere(core))); return this; }
   public on(callback: (where: BattleWhere) => void): this { return this.onGroup(core=>callback(new BattleWhere(core))); }
@@ -1631,7 +1636,7 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<BattleRow>> { return await this.terminal('group_count') as Collection<BattleRow>; }
   public async insert(): Promise<BattleRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new BattleQuery().using(database).predicate('seq','eq',key).get(); }
-  public async save(): Promise<BattleRow | null> { const database=this.binding.resolve(); const key=await this.saveKey('seq'); return new BattleQuery().using(database).predicate('seq','eq',key).get(); }
+  public async save(): Promise<BattleRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new BattleQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
@@ -1903,7 +1908,7 @@ export class UserQuery extends QueryCore implements UserInterface {
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<UserRow>> { return await this.terminal('group_count') as Collection<UserRow>; }
   public async insert(): Promise<UserRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new UserQuery().using(database).predicate('seq','eq',key).get(); }
-  public async save(): Promise<UserRow | null> { const database=this.binding.resolve(); const key=await this.saveKey('seq'); return new UserQuery().using(database).predicate('seq','eq',key).get(); }
+  public async save(): Promise<UserRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new UserQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
@@ -2096,7 +2101,7 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<ServiceRow>> { return await this.terminal('group_count') as Collection<ServiceRow>; }
   public async insert(): Promise<ServiceRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ServiceQuery().using(database).predicate('seq','eq',key).get(); }
-  public async save(): Promise<ServiceRow | null> { const database=this.binding.resolve(); const key=await this.saveKey('seq'); return new ServiceQuery().using(database).predicate('seq','eq',key).get(); }
+  public async save(): Promise<ServiceRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new ServiceQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
@@ -2351,7 +2356,7 @@ export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterf
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<ServiceModuleRow>> { return await this.terminal('group_count') as Collection<ServiceModuleRow>; }
   public async insert(): Promise<ServiceModuleRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ServiceModuleQuery().using(database).predicate('seq','eq',key).get(); }
-  public async save(): Promise<ServiceModuleRow | null> { const database=this.binding.resolve(); const key=await this.saveKey('seq'); return new ServiceModuleQuery().using(database).predicate('seq','eq',key).get(); }
+  public async save(): Promise<ServiceModuleRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new ServiceModuleQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
@@ -2630,7 +2635,7 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<ServiceMemberRow>> { return await this.terminal('group_count') as Collection<ServiceMemberRow>; }
   public async insert(): Promise<ServiceMemberRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ServiceMemberQuery().using(database).predicate('seq','eq',key).get(); }
-  public async save(): Promise<ServiceMemberRow | null> { const database=this.binding.resolve(); const key=await this.saveKey('seq'); return new ServiceMemberQuery().using(database).predicate('seq','eq',key).get(); }
+  public async save(): Promise<ServiceMemberRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new ServiceMemberQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }

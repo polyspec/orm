@@ -102,22 +102,27 @@ export class Db implements Database, Executor {
   public async rotateAESRows(spec: AesRotationSpec, keyring: AesKeyring): Promise<number> {
     if (!(this instanceof Tx)) return this.transaction(transaction => transaction.rotateAESRows(spec, keyring));
     if (spec.columns.length === 0) throw new OrmError('CONFIG', 'AES rotation columns are empty');
-    const table = this.identifier(spec.table); const primary = this.identifier(spec.primaryKey); const version = this.identifier(spec.versionColumn);
+    if (spec.primaryKeys.length === 0) throw new OrmError('CONFIG', 'AES rotation primary keys are empty');
+    const table = this.identifier(spec.table); const primary = spec.primaryKeys.map(key => this.identifier(key)); const version = this.identifier(spec.versionColumn);
     const columns = spec.columns.map(column => this.identifier(column.name));
-    const select = `SELECT ${primary}, ${version}, ${columns.join(', ')} FROM ${table} WHERE ${version} <> ${this.placeholder(1)} ORDER BY ${primary}`;
+    const select = `SELECT ${primary.join(', ')}, ${version}, ${columns.join(', ')} FROM ${table} WHERE ${version} <> ${this.placeholder(1)} ORDER BY ${primary.join(', ')}`;
     const rows = (await this.connection.execute(select, [keyring.currentVersion])).rows;
     const sets = [...columns.map((column, index) => `${column} = ${this.placeholder(index + 1)}`), `${version} = ${this.placeholder(columns.length + 1)}`];
-    const update = `UPDATE ${table} SET ${sets.join(', ')} WHERE ${primary} = ${this.placeholder(columns.length + 2)} AND ${version} = ${this.placeholder(columns.length + 3)}`;
+    const where = primary.map((key, index) => `${key} = ${this.placeholder(columns.length + 2 + index)}`);
+    where.push(`${version} = ${this.placeholder(columns.length + 2 + primary.length)}`);
+    const update = `UPDATE ${table} SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
     for (const values of rows) {
-      const row: Record<string, unknown> = { [spec.primaryKey]: values[0], [spec.versionColumn]: Number(values[1]) };
-      spec.columns.forEach((column, index) => { row[column.name] = values[index + 2]; });
+      const row: Record<string, unknown> = {};
+      spec.primaryKeys.forEach((key, index) => { row[key] = values[index]; });
+      row[spec.versionColumn] = Number(values[primary.length]);
+      spec.columns.forEach((column, index) => { row[column.name] = values[index + primary.length + 1]; });
       const rotated = keyring.rotateRow(row, spec.versionColumn, spec.columns, keyring.currentVersion, {
         decode: (value, styles, key) => hostDecode(value as string | Uint8Array, styles, key),
         encode: (value, styles, key) => hostEncode(value, styles, key),
       });
-      const params = [...spec.columns.map(column => rotated[column.name]), keyring.currentVersion, values[0], Number(values[1])] as DriverValue[];
+      const params = [...spec.columns.map(column => rotated[column.name]), keyring.currentVersion, ...values.slice(0, primary.length), Number(values[primary.length])] as DriverValue[];
       const result = await this.connection.execute(update, params);
-      if (result.affected !== 1) throw new OrmError('OPTIMISTIC_LOCK', `AES rotation changed ${spec.table} primary key ${String(values[0])}`);
+      if (result.affected !== 1) throw new OrmError('OPTIMISTIC_LOCK', `AES rotation changed ${spec.table} primary key ${JSON.stringify(values.slice(0, primary.length))}`);
     }
     return rows.length;
   }

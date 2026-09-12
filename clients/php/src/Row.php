@@ -41,10 +41,12 @@ abstract class Row implements \ArrayAccess
     protected array $cascade = [];
     protected bool $loaded = false;
     protected mixed $originalVersion = null;
-    protected mixed $identity = null;
+    /** @var list<mixed> */
+    protected array $identity = [];
 
     abstract public static function entity(): string;
-    abstract public static function pk(): string;
+    /** @return non-empty-list<string> */
+    abstract public static function primaryKeys(): array;
     protected static function versionColumn(): ?string { return null; }
     /** @return array<string,string> column => canonical type */
     abstract public static function columns(): array;
@@ -78,8 +80,12 @@ abstract class Row implements \ArrayAccess
         $r->vals = $vals;
         $r->idx = $asm['idx'];
         $r->hidden = $asm['hidden'] ?? [];
-        $r->loaded = $r->has(static::pk());
-        $r->identity = $r->col(static::pk());
+        $keys = static::primaryKeys();
+        $r->loaded = $keys !== [];
+        foreach ($keys as $key) {
+            if (!$r->has($key) || $r->col($key) === null) { $r->loaded = false; }
+            $r->identity[] = $r->col($key);
+        }
         $version = static::versionColumn();
         if ($version !== null && isset($r->idx[$version])) { $r->originalVersion = $r->col($version); }
         foreach ($asm['children'] ?? [] as $ch) {
@@ -277,8 +283,7 @@ abstract class Row implements \ArrayAccess
                 $q->set($col, $v);
             }
         }
-        $pk = static::pk();
-        $q->w()->pred($pk, 'eq', $this->identity);
+        foreach (static::primaryKeys() as $i => $key) { $q->w()->pred($key, 'eq', $this->identity[$i]); }
         if ($optimistic) {
             $q->optimistic(static::versionColumn(), $this->originalVersion);
         }
@@ -305,8 +310,7 @@ abstract class Row implements \ArrayAccess
             throw new OrmException(Code::CONFIG, 'delete on a row that was not loaded');
         }
         $q = new Q(static::entity());
-        $pk = static::pk();
-        $q->w()->pred($pk, 'eq', $this->identity);
+        foreach (static::primaryKeys() as $i => $key) { $q->w()->pred($key, 'eq', $this->identity[$i]); }
         $plan = $ex->db()->planFor($q->req, 'delete');
         $ex->write($plan['steps'][0], $q->req->params, false, false);
     }
@@ -382,10 +386,17 @@ final class Collection implements \ArrayAccess, \IteratorAggregate, \Countable
         $c = new self();
         foreach ($rows->data as $vals) {
             $r = $rowClass::fromRow($vals, $rows->asm, $rows);
-            $key = $keyFn === null ? $vals[0] : $keyFn($r);
+            if ($keyFn === null) {
+                $refs = [];
+                foreach ($rowClass::primaryKeys() as $name) {
+                    if (!isset($rows->asm['idx'][$name])) { throw new OrmException(Code::INTERNAL, "primary key $name is missing from the assembly"); }
+                    $refs[] = ['column' => $name, 'index' => $rows->asm['idx'][$name]];
+                }
+                $key = Db::rowKey($vals, $refs);
+            } else { $key = $keyFn($r); }
             // Expression groups can yield a scalar instead of an integer/text PK.
             // Match the native Key::of conversion; explicit key selectors stay typed.
-            if ($keyFn === null) { $key = self::keyOf($key); }
+            if ($keyFn === null && count($rowClass::primaryKeys()) === 1) { $key = self::keyOf($key); }
             $c->put($key, $r);
         }
         return $c;
