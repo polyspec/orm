@@ -150,6 +150,38 @@
 - [x] T6.1 E `dialect/postgres`: `$n`, `"quote"`, `ILIKE`, `ON CONFLICT (unique key 추론) DO UPDATE`, `RETURNING`, `to_tsvector('simple')`/`websearch_to_tsquery`, `host()`/`::inet`, aes/hex는 app-side — 골든 통과
 - [x] T6.2 E `dialect/sqlite`: `?`, `"quote"`, `LIKE … ESCAPE`, `INDEXED BY`, `ON CONFLICT`, `RETURNING`; `like_binary`·fulltext는 `OPERATOR_NOT_ALLOWED`로 거부(dialect `Supports`), 모든 스타일 app-side — 골든 통과
 - [x] T6.3 (위 S6 항목에서 완료: 3언어 호스트 AES/HEX/IP, `aes-vectors.json` 바이트 일치)
+
+## 단계 7 — S7 후속 기능과 문서 정비  [미착수]
+
+S7 항목은 구현과 문서 작업을 각각 완료해야 한다. 구현하지 않은 항목은 완료로 표시하지 않는다. 세 언어에 같은 기능을 제공할 수 없으면 설계 검토에서 중단한다.
+
+### 기능 개발
+
+- [ ] T7.1 protobuf/Connect 전송 형식과 Go·PHP·Rust 클라이언트 구현
+- [ ] T7.2 FrankenPHP in-process 실행 경로 설계·구현·성능 측정
+- [ ] T7.3 DDL diff와 마이그레이션 생성기 구현
+- [ ] T7.4 멀티테넌시 `scope`의 스키마·IR·생성 API 구현
+- [ ] T7.5 `point`, `yaml`, `curlfile` 스타일의 공통 codec 구현
+- [ ] T7.6 서버 스트리밍 API 구현
+- [ ] T7.7 `ormgen precompile`과 정적 형태 캐시 구현
+- [ ] T7.8 네 번째 언어 클라이언트 추가 또는 추가 불가 사유 기록
+- [ ] T7.9 `mysql_async`와 현행 Rust 드라이버 비교
+- [ ] T7.10 `multi_statement` 플랜 구현과 관계 단계 결과 비교
+- [ ] T7.11 Go·PHP typed 직접 스캔 성능 개선 및 기준값 재측정
+- [ ] T7.12 150테이블 Rust 생성 crate fixture와 컴파일 시간 측정
+
+### 문서 정비
+
+- [ ] T7.D1 영어 문서 문서 구조를 `docs/*.md`로 고정
+- [ ] T7.D2 한국어 문서를 `docs/ko/*.md`로 분리하고 영어 문서과 항목을 비교
+- [ ] T7.D3 VitePress 언어 링크와 검색 범위 추가
+- [ ] T7.D4 문서에서 구어체·비유·의인화 표현 제거
+- [ ] T7.D5 기능별 입력·출력·오류·상태·지원 언어를 표로 작성
+- [ ] T7.D6 구현되지 않은 기능을 별도 목록으로 표시
+- [ ] T7.D7 문서과 한국어 문서의 제목·코드·표 항목 일치 검사 추가
+- [ ] T7.D8 문서 문체 검사와 번역 항목 검사기를 CI에 추가
+- [ ] T7.D9 S7 기능별 예제와 검증 명령 추가
+- [ ] T7.D10 Pages 빌드와 정적 링크 검사에 S7 문서 포함
 - [x] T6.4 드라이버 추상 3언어(Go: pgx stdlib·modernc sqlite / Rust: sqlx feature + Pool enum + PG 파라미터 타입 서버 조회 / PHP: pdo_pgsql·pdo_sqlite + 타입 바인딩), `$n` 재번호, RETURNING, 에러 매핑, `[db].driver`, ormd `-dialect` 검사, hook `$SECRET`·`$NOW` 마스킹, 슬롯 `col_type`
 - [x] T6.5 로컬 PostgreSQL 17·SQLite에 bench 시드 + AES 시더; **3언어 × 3 DB 각 44/44 동일**(방언별 기대값 파일, 벡터 선언은 `vectors.json` 한 곳)
 - [x] T6.6 `ormgen import --driver postgres`(+`validate --driver postgres`): PG 타입·identity·GIN을 정규 표기로 되돌림 — orm_bench 임포트 결과가 손으로 쓴 매니페스트와 타입·관계·인덱스 0 차이(MySQL 전용 `unsigned`/`onupdate` 제외)
@@ -174,11 +206,12 @@
 ## 크리티컬 패스 (구현·CI 실행 확인 완료)
 T2.4/T2.5 → T3.1 → T3.3 → T4.1~4.4 → T4.5/4.6 → T4.8 → T5.8 → T6.1/6.2 → T6.4 → T6.5
 
-## 게이트(통과 못 하면 다음 단계 금지)
+## 검사 조건
 - G0 (T0.17) ✔ Go/Rust 핫패스 ≤5% 손실, PHP ≤+5%
 - G1 (T1.23) ✔ 3언어 데모 같은 JSON, `ormgen tokens` diff 0, 적합성 15/15
 - G2 (T2.15/T2.16): Rust 150테이블 `cargo check` 기록(대형 스키마 fixture 대기), 적합성 58/58 ✔, 코덱 벡터 60×3 ✔
 - G3 (T3.4/T3.5): 데드락 게이트 3/3, 적합성 45/45
 - G4 (T4.8): 적합성 58/58, `ormgen check`와 토큰 패리티를 CI에서 검증
 - G5 (T5.8) ✔ [GitHub CI 실행](https://github.com/polyspec/orm/actions/runs/34649545210) 통과; 벤치 회귀 게이트 활성
+- G7 (T7.1~T7.12, T7.D1~T7.D10): 모든 기능과 문서 항목의 구현·검사·Pages 배포가 완료될 때까지 미완료
 - G6 (T6.5) ✔ 3 DB 동일 결과 (3언어 × 58 벡터)
