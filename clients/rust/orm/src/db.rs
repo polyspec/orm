@@ -81,6 +81,7 @@ impl ConnectOptions {
                 SqliteConnectOptions::from_str(dsn)
                     .map_err(bad)?
                     .busy_timeout(std::time::Duration::from_secs(5))
+                    .foreign_keys(true)
                     .journal_mode(SqliteJournalMode::Wal),
             ),
             other => {

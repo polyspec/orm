@@ -100,9 +100,9 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] T7.18 Run physical comment, migration-plan apply, repeat, drift, failure, lock contention, recovery, rollback, and rollback no-op tests through containerctl for MySQL and PostgreSQL.
 - [x] T7.19 Add AES blind-index schema declarations, keyed equality predicates, write synchronization, generated relation APIs, and cross-client MySQL, PostgreSQL, and SQLite integration tests.
 - [x] T7.20 Split oversized root `IN` predicates in Go, PHP, Rust, and TypeScript, preserve non-`IN` parameters, merge rows, sum count results, reject unsafe query shapes, and verify the generated Protobuf keyset field.
-- [~] T7.21 Add the declarative `soft_delete` schema directive, validate its nullable datetime column, apply active-row predicates to reads and updates, convert deletes to timestamp updates, and verify all four clients on physical databases. Unit, planner, and migration physical checks pass; four-client physical verification remains open.
-- [~] T7.22 Add relation existence and count predicates with correlated subqueries, Protobuf fields, generated APIs, parameter-index shifting, and paired documentation. Unit, bridge, and client build checks pass; all-client physical execution remains open.
-- [~] T7.23 Add declarative many-to-many through relations with ordered source, through, and target keys. Schema, planner, and four-language generator coverage passes, including different composite-key widths; physical execution coverage remains open.
+- [x] T7.21 Add the declarative `soft_delete` schema directive, validate its nullable datetime column, apply active-row predicates to reads and updates, convert deletes to timestamp updates, and verify all four clients on physical MySQL, PostgreSQL, and SQLite databases.
+- [x] T7.22 Add relation existence and count predicates with correlated subqueries, Protobuf fields, generated APIs, parameter-index shifting, paired documentation, and physical execution checks for all clients and databases.
+- [x] T7.23 Add declarative many-to-many through relations with ordered source, through, and target keys. Schema, planner, generator, and physical execution checks pass for all four clients and three databases.
 
 ## Documentation tasks
 

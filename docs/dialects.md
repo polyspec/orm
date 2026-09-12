@@ -47,5 +47,5 @@ same with sqlx features, PHP with the PDO extension that is installed.
 - `bind_slots[].col_type` names a `date`, `time`, `datetime`, or `point` target. Executors normalize SQLite time values and convert typed points to `POINT(x y)` before binding.
 - aes/hex/ip host stages: `bind_slots[].host_styles` names the stages the executor applies to a bound value; `columns[].styles` carries them on read. AES uses the `ORM-AES2\0` authenticated ciphertext format, a random 12-byte nonce, AES-256-GCM, and the versioned key derivation defined in `docs/codec.md`.
 - `aes_key_version` is required for AES columns. Reads select the key from `secrets.aes_keys` using that stored version. A missing key or invalid ciphertext fails with `CONFIG` or `CODEC_DECODE`; the current key is never tried for an older version.
-- Seeds: `bench/sql/seed.pg.sql`, `bench/sql/seed.sqlite.sql`, then `go run ./bench/seedaes` fills the AES columns using the authenticated host format.
+- Seeds: `bench/sql/seed.mysql.sql`, `bench/sql/seed.pg.sql`, and `bench/sql/seed.sqlite.sql`, then `go run ./bench/seedaes` fills the AES and blind-index columns using the authenticated host format.
 - Conformance: `tests/conformance/vectors.postgres.json` / `vectors.sqlite.json` are recorded per dialect; every vector's **result** is identical to MySQL except `sql_dump`, whose result is the dialect's own SQL text.

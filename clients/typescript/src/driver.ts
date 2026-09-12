@@ -344,6 +344,7 @@ export function openPostgres(connectionString: string, pool = 10, statementCache
 export function openSqlite(path: string, statementCacheSize = 256): DriverConnection {
   if (!path.startsWith('/')) throw new OrmError('CONFIG', `sqlite path must be absolute: ${path}`);
   const connection = new DatabaseSync(path);
+  connection.exec('PRAGMA foreign_keys=ON');
   connection.exec('PRAGMA busy_timeout=5000');
   connection.exec('PRAGMA journal_mode=WAL');
   return new SqliteDriver(connection, true, false, statementCacheSize);
