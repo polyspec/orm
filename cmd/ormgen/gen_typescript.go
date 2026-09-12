@@ -74,7 +74,8 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 	b.WriteString("import { Collection, Page, Row, registerRow } from '../model.js';\n")
 	b.WriteString("import { registerSchemaHash } from '../registry.js';\n")
 	b.WriteString("import type { Point } from '../codec.js';\n\n")
-	b.WriteString("import type { AesKeyring, AesRotationStatus, StreamResult } from '../index.js';\n")
+	b.WriteString("import type { AesKeyring, AesRotationStatus, BatchOptions, BatchResult, BatchRequest, StreamResult } from '../index.js';\n")
+	b.WriteString("import { batchWrite } from '../database.js';\n")
 	b.WriteString("import { OrmError } from '../runtime_error.js';\n\n")
 	b.WriteString("import type { ")
 	for i, entity := range m.Order {
@@ -268,7 +269,9 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 			fmt.Fprintf(&b, " query.predicate(%s,'eq',keys[%d]);", tsString(key), i)
 		}
 		b.WriteString(" return query.get(); }\n")
-		b.WriteString("  public async update(): Promise<number> { return this.writeAffected('update'); }\n  public async delete(): Promise<number> { return this.writeAffected('delete'); }\n  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }\n")
+		b.WriteString("  public async update(): Promise<number> { return this.writeAffected('update'); }\n  public async delete(): Promise<number> { return this.writeAffected('delete'); }\n")
+		fmt.Fprintf(&b, "  public async batchInsert(rows: readonly %sQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }\n  public async batchUpsert(rows: readonly %sQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }\n  public async batchUpdate(rows: readonly %sQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'update', options); }\n  public async batchDelete(rows: readonly %sQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'delete', options); }\n  private async batchWrite(rows: readonly %sQuery[], kind: 'insert'|'update'|'delete', options: BatchOptions): Promise<BatchResult> { const database=this.binding.resolve(); const requests: BatchRequest[]=[]; for (const row of rows) requests.push({ plan: await database.plan(row.requestShape(kind)), params: row.parameters() }); return batchWrite(database, requests, kind, options); }\n", ge.Type, ge.Type, ge.Type, ge.Type, ge.Type)
+		b.WriteString("  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }\n")
 		b.WriteString("  public async paginate(page: number, per: number): Promise<Page<" + ge.Type + "Row>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<" + ge.Type + "Row>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }\n")
 		for _, c := range ge.EqCols {
 			typ := tsPredicateType(c)

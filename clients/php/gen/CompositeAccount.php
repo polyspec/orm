@@ -6,6 +6,8 @@ namespace App\Orm;
 
 use Orm\ColRef;
 use Orm\Collection;
+use Orm\BatchOptions;
+use Orm\BatchResult;
 use Orm\Db;
 use Orm\Page;
 use Orm\Q;
@@ -410,6 +412,22 @@ final class CompositeAccount extends Q implements CompositeAccountInterface
     public function update(): int { $this->terminalArity(func_num_args()); return $this->runWrite($this->terminalDb(), 'update'); }
     /** DELETE WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
     public function delete(): int { $this->terminalArity(func_num_args()); return $this->runWrite($this->terminalDb(), 'delete'); }
+    /** Execute typed query drafts in one transaction with bounded chunks. */
+    public function batchInsert(array $rows, ?BatchOptions $options = null): BatchResult { return $this->batchWrite($rows, 'insert', $options); }
+    public function batchUpsert(array $rows, ?BatchOptions $options = null): BatchResult { return $this->batchWrite($rows, 'insert', $options); }
+    public function batchUpdate(array $rows, ?BatchOptions $options = null): BatchResult { return $this->batchWrite($rows, 'update', $options); }
+    public function batchDelete(array $rows, ?BatchOptions $options = null): BatchResult { return $this->batchWrite($rows, 'delete', $options); }
+    /** @param list<CompositeAccount> $rows */
+    private function batchWrite(array $rows, string $kind, ?BatchOptions $options): BatchResult
+    {
+        $db = $this->terminalDb(); $requests = [];
+        foreach ($rows as $row) {
+            if (!$row instanceof CompositeAccount) throw new \Orm\OrmException(\Orm\Code::IR_INVALID, 'batch row has the wrong type');
+            $plan = $row->plan($db, $kind);
+            $requests[] = ['step' => $plan['steps'][0], 'params' => $row->req->params];
+        }
+        return $db->batchWrite($requests, $kind, $options);
+    }
     /** The main statement as the all() terminal would run it, without executing; secret slots read "$SECRET". @return array{sql: string, binds: list<mixed>} */
     public function sql(): array { $this->terminalArity(func_num_args()); return $this->runSql($this->terminalDb()); }
 

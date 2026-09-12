@@ -4,7 +4,8 @@ import { Collection, Page, Row, registerRow } from '../model.js';
 import { registerSchemaHash } from '../registry.js';
 import type { Point } from '../codec.js';
 
-import type { AesKeyring, AesRotationStatus, StreamResult } from '../index.js';
+import type { AesKeyring, AesRotationStatus, BatchOptions, BatchResult, BatchRequest, StreamResult } from '../index.js';
+import { batchWrite } from '../database.js';
 import { OrmError } from '../runtime_error.js';
 
 import type { BattleInterface, BattleRowInterface, UserInterface, UserRowInterface, ServiceInterface, ServiceRowInterface, ServiceModuleInterface, ServiceModuleRowInterface, ServiceMemberInterface, ServiceMemberRowInterface, CompositeAccountInterface, CompositeAccountRowInterface, CompositeMembershipInterface, CompositeMembershipRowInterface } from './interfaces.js';
@@ -1757,6 +1758,11 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public async save(): Promise<BattleRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new BattleQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async batchInsert(rows: readonly BattleQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpsert(rows: readonly BattleQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpdate(rows: readonly BattleQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'update', options); }
+  public async batchDelete(rows: readonly BattleQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'delete', options); }
+  private async batchWrite(rows: readonly BattleQuery[], kind: 'insert'|'update'|'delete', options: BatchOptions): Promise<BatchResult> { const database=this.binding.resolve(); const requests: BatchRequest[]=[]; for (const row of rows) requests.push({ plan: await database.plan(row.requestShape(kind)), params: row.parameters() }); return batchWrite(database, requests, kind, options); }
   public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
   public async paginate(page: number, per: number): Promise<Page<BattleRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<BattleRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
   public async getBySeq(value: number): Promise<BattleRow | null> { this.predicate('seq','eq',value); return this.get(); }
@@ -2042,6 +2048,11 @@ export class UserQuery extends QueryCore implements UserInterface {
   public async save(): Promise<UserRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new UserQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async batchInsert(rows: readonly UserQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpsert(rows: readonly UserQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpdate(rows: readonly UserQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'update', options); }
+  public async batchDelete(rows: readonly UserQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'delete', options); }
+  private async batchWrite(rows: readonly UserQuery[], kind: 'insert'|'update'|'delete', options: BatchOptions): Promise<BatchResult> { const database=this.binding.resolve(); const requests: BatchRequest[]=[]; for (const row of rows) requests.push({ plan: await database.plan(row.requestShape(kind)), params: row.parameters() }); return batchWrite(database, requests, kind, options); }
   public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
   public async paginate(page: number, per: number): Promise<Page<UserRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<UserRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
   public async getBySeq(value: number): Promise<UserRow | null> { this.predicate('seq','eq',value); return this.get(); }
@@ -2245,6 +2256,11 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public async save(): Promise<ServiceRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new ServiceQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async batchInsert(rows: readonly ServiceQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpsert(rows: readonly ServiceQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpdate(rows: readonly ServiceQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'update', options); }
+  public async batchDelete(rows: readonly ServiceQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'delete', options); }
+  private async batchWrite(rows: readonly ServiceQuery[], kind: 'insert'|'update'|'delete', options: BatchOptions): Promise<BatchResult> { const database=this.binding.resolve(); const requests: BatchRequest[]=[]; for (const row of rows) requests.push({ plan: await database.plan(row.requestShape(kind)), params: row.parameters() }); return batchWrite(database, requests, kind, options); }
   public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
   public async paginate(page: number, per: number): Promise<Page<ServiceRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<ServiceRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
   public async getBySeq(value: number): Promise<ServiceRow | null> { this.predicate('seq','eq',value); return this.get(); }
@@ -2501,6 +2517,11 @@ export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterf
   public async save(): Promise<ServiceModuleRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new ServiceModuleQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async batchInsert(rows: readonly ServiceModuleQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpsert(rows: readonly ServiceModuleQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpdate(rows: readonly ServiceModuleQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'update', options); }
+  public async batchDelete(rows: readonly ServiceModuleQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'delete', options); }
+  private async batchWrite(rows: readonly ServiceModuleQuery[], kind: 'insert'|'update'|'delete', options: BatchOptions): Promise<BatchResult> { const database=this.binding.resolve(); const requests: BatchRequest[]=[]; for (const row of rows) requests.push({ plan: await database.plan(row.requestShape(kind)), params: row.parameters() }); return batchWrite(database, requests, kind, options); }
   public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
   public async paginate(page: number, per: number): Promise<Page<ServiceModuleRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<ServiceModuleRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
   public async getBySeq(value: number): Promise<ServiceModuleRow | null> { this.predicate('seq','eq',value); return this.get(); }
@@ -2781,6 +2802,11 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public async save(): Promise<ServiceMemberRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new ServiceMemberQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async batchInsert(rows: readonly ServiceMemberQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpsert(rows: readonly ServiceMemberQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpdate(rows: readonly ServiceMemberQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'update', options); }
+  public async batchDelete(rows: readonly ServiceMemberQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'delete', options); }
+  private async batchWrite(rows: readonly ServiceMemberQuery[], kind: 'insert'|'update'|'delete', options: BatchOptions): Promise<BatchResult> { const database=this.binding.resolve(); const requests: BatchRequest[]=[]; for (const row of rows) requests.push({ plan: await database.plan(row.requestShape(kind)), params: row.parameters() }); return batchWrite(database, requests, kind, options); }
   public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
   public async paginate(page: number, per: number): Promise<Page<ServiceMemberRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<ServiceMemberRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
   public async getBySeq(value: number): Promise<ServiceMemberRow | null> { this.predicate('seq','eq',value); return this.get(); }
@@ -3000,6 +3026,11 @@ export class CompositeAccountQuery extends QueryCore implements CompositeAccount
   public async save(): Promise<CompositeAccountRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['tenant_id','account_id']); const query=new CompositeAccountQuery().using(database); query.predicate('tenant_id','eq',keys[0]); query.predicate('account_id','eq',keys[1]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async batchInsert(rows: readonly CompositeAccountQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpsert(rows: readonly CompositeAccountQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpdate(rows: readonly CompositeAccountQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'update', options); }
+  public async batchDelete(rows: readonly CompositeAccountQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'delete', options); }
+  private async batchWrite(rows: readonly CompositeAccountQuery[], kind: 'insert'|'update'|'delete', options: BatchOptions): Promise<BatchResult> { const database=this.binding.resolve(); const requests: BatchRequest[]=[]; for (const row of rows) requests.push({ plan: await database.plan(row.requestShape(kind)), params: row.parameters() }); return batchWrite(database, requests, kind, options); }
   public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
   public async paginate(page: number, per: number): Promise<Page<CompositeAccountRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<CompositeAccountRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
   public async getByTenantId(value: number): Promise<CompositeAccountRow | null> { this.predicate('tenant_id','eq',value); return this.get(); }
@@ -3220,6 +3251,11 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
   public async save(): Promise<CompositeMembershipRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['tenant_id','account_id']); const query=new CompositeMembershipQuery().using(database); query.predicate('tenant_id','eq',keys[0]); query.predicate('account_id','eq',keys[1]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async batchInsert(rows: readonly CompositeMembershipQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpsert(rows: readonly CompositeMembershipQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpdate(rows: readonly CompositeMembershipQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'update', options); }
+  public async batchDelete(rows: readonly CompositeMembershipQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'delete', options); }
+  private async batchWrite(rows: readonly CompositeMembershipQuery[], kind: 'insert'|'update'|'delete', options: BatchOptions): Promise<BatchResult> { const database=this.binding.resolve(); const requests: BatchRequest[]=[]; for (const row of rows) requests.push({ plan: await database.plan(row.requestShape(kind)), params: row.parameters() }); return batchWrite(database, requests, kind, options); }
   public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
   public async paginate(page: number, per: number): Promise<Page<CompositeMembershipRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<CompositeMembershipRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
   public async getByTenantId(value: number): Promise<CompositeMembershipRow | null> { this.predicate('tenant_id','eq',value); return this.get(); }
