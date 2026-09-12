@@ -278,7 +278,6 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 			fmt.Fprintf(&b, "  public async getsBy%s(value: %s): Promise<Collection<%sRow>> { this.predicate(%s,'eq',value); return this.gets(); }\n", field, typ, ge.Type, tsString(c.Name))
 			fmt.Fprintf(&b, "  public async getCountBy%s(value: %s): Promise<number> { this.predicate(%s,'eq',value); return this.getCount(); }\n", field, typ, tsString(c.Name))
 		}
-		fmt.Fprintf(&b, "  public async oneBy%s(value: %s): Promise<%sRow | null> { return this.getBy%s(value); }\n", pascal(ge.PK), tsType(e.Column(ge.PK)), ge.Type, pascal(ge.PK))
 		if len(ge.PKCols) > 1 {
 			fmt.Fprintf(&b, "  public async getBy%s(", ge.PKMethod)
 			for i, col := range ge.PKCols {

@@ -30,7 +30,7 @@ type vocabulary struct {
 
 func buildVocabulary(m *schema.Manifest) *vocabulary {
 	v := &vocabulary{heads: map[string]bool{}, terminals: map[string]bool{}, navs: map[string]bool{}, other: map[string]bool{}}
-	for _, t := range []string{"get", "gets", "one", "all", "count", "getCount", "getsCount", "paginate", "insert", "update", "updateOptimistic", "delete", "deleteCascade", "save", "sql", "rawAll"} {
+	for _, t := range []string{"get", "gets", "getCount", "getsCount", "paginate", "insert", "update", "updateOptimistic", "delete", "deleteCascade", "save", "sql", "rawAll"} {
 		v.terminals[t] = true
 	}
 	for _, t := range []string{"and", "or", "on", "where", "expr", "limit", "distinct", "selectAll", "selectNone", "selectExpr", "orderByExpr", "groupByExpr",
@@ -41,7 +41,6 @@ func buildVocabulary(m *schema.Manifest) *vocabulary {
 		e := m.Entities[name]
 		v.heads[pascal(e.Name)] = true
 		for _, pk := range e.PK {
-			v.terminals["oneBy"+pascal(pk)] = true
 			v.terminals["getBy"+pascal(pk)] = true
 		}
 		seenUnique := map[string]bool{}
