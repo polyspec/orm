@@ -26,9 +26,9 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:8f696135df3cb295da3977f12dd057c2db6c508858ee2734750fae5f691f6f10",
-    "php": "sha256:7bf8603b8b40db391d73e2c1b83b48e2647fb0f802da90c6a58138e0f3b1b4cd",
-    "rust": "sha256:a4e04681031fcc1cbd26a5b39f26b4d4762cb8a3b64fbd9c6a1d9ec77065535c"
+    "go": "sha256:358904224e57044ab5691c332548858ed6cd2ac7891421659db7e3d956afa41e",
+    "php": "sha256:e1b65484f43694e075cdf1af1feca4fcdd42253a643fc879cab1a9b163a22ccd",
+    "rust": "sha256:a678e2036792333e5c1ecaae231938f1e300df9a513e6e62ac08fb2fa89b691e"
   },
   "components": [
     {
