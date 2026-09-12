@@ -114,8 +114,8 @@ jobs:
           go run ./tests/conformance/check run -driver postgres -langs php -dsn 'pgsql:host=127.0.0.1;port=5432;dbname=orm_bench;user=maxkwon'
           go run ./tests/conformance/check run -driver sqlite -langs go -dsn 'file:/tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)'
           go run ./tests/conformance/check run -driver sqlite -langs php -dsn '/tmp/orm_bench.sqlite'
-          clients/rust/target/release/conformance bin/ormengine.wasm schema/schema.json --driver postgres --dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench' > tests/conformance/out/postgres/rust.json
-          clients/rust/target/release/conformance bin/ormengine.wasm schema/schema.json --driver sqlite --dsn 'sqlite:///tmp/orm_bench.sqlite' > tests/conformance/out/sqlite/rust.json
+          go run ./tests/conformance/check run -driver postgres -langs rust -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench'
+          go run ./tests/conformance/check run -driver sqlite -langs rust -dsn 'sqlite:///tmp/orm_bench.sqlite'
           go run ./tests/conformance/check compare -driver postgres tests/conformance/out/postgres/go.json tests/conformance/out/postgres/php.json tests/conformance/out/postgres/rust.json
           go run ./tests/conformance/check compare -driver sqlite tests/conformance/out/sqlite/go.json tests/conformance/out/sqlite/php.json tests/conformance/out/sqlite/rust.json
       - name: common state and execution contracts

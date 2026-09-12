@@ -172,7 +172,7 @@ func runAll(root, out string) {
 		capture(filepath.Join(out, "go.json"), exec.Command("go", append([]string{"run", "./tests/conformance/runner_go"}, append(goArgs, schema)...)...))
 	}
 	if want["rust"] {
-		args := []string{filepath.Join(root, "bin", "ormengine.wasm"), schema}
+		args := []string{filepath.Join(root, "bin", "ormengine.wasm"), schema, "--compiler", endpoint}
 		if driver != "mysql" {
 			args = append(args, "--driver", driver)
 		}

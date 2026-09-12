@@ -2661,7 +2661,7 @@ impl Battle {
 
     /// The main statement (kind all) and its binds without executing; secret slots read "$SECRET".
     pub async fn sql(&mut self) -> Result<db::Sql> { let binding = self.binding.clone(); let ex = binding.resolve()?;
-        db::sql(ex, &mut self.q.req, "all")
+        db::sql(ex, &mut self.q.req, "all").await
     }
 
     pub async fn one_by_seq(&mut self, v: i64) -> Result<Option<BattleRow>> {

@@ -81,7 +81,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 
 Every S7 item requires implementation, tests, documentation, and static publication. A feature stays open if the same logical structure cannot be provided in Go, PHP, Rust, and TypeScript.
 
-- [~] T7.1 Generate typed Protobuf messages for Go, PHP, Rust, and TypeScript; provide the Connect compiler server and `CompilerTransport` implementations; and run the shared compiler transport vector. The Go executor uses Connect and passes all 58 SQLite database vectors. Switching the Rust, PHP, and TypeScript database executors and running the full database matrix remain.
+- [~] T7.1 Generate typed Protobuf messages for Go, PHP, Rust, and TypeScript; provide the Connect compiler server and `CompilerTransport` implementations; and run the shared compiler transport vector. The Go and Rust executors use Connect and pass all 58 SQLite database vectors. Switching the PHP and TypeScript database executors and running the full database matrix remain.
 - [x] T7.3 Implement deterministic `ormgen diff` and destructive-change checks.
 - [~] T7.4 Implement query-level `scope_p`, planner enforcement, generated methods, and tenant-isolation tests on MySQL, PostgreSQL, and SQLite. Complete the TypeScript database runner.
 - [x] T7.5 Implement `curlfile`, YAML 1.2, and `point` conversions in Go, PHP, Rust, and TypeScript. Verify `point` DDL and SQL on MySQL, PostgreSQL, and SQLite.
