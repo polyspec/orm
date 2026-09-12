@@ -49,7 +49,7 @@ on_query = false            # log every statement (sql, binds with secrets maske
 
 `blind_index`와 `blind_index_env`는 함께 사용할 수 없다. `blind_index` directive가 있는 schema는 둘 중 하나를 요구한다. 이 key는 AES key와 분리되며 AES rotation 중에도 유지된다. 매핑된 AES 컬럼의 equality predicate는 plaintext의 lowercase HMAC-SHA256 값을 선언된 index 컬럼에 bind한다. index 컬럼은 single-column index로 선언되어야 하며 string 저장 시 64개의 hexadecimal 문자를 저장할 수 있어야 한다.
 
-`db.plan_cache_size`와 `db.statement_cache_size`는 양의 정수 제한값이다. 두 값의 기본값은 256이다. Go와 Rust는 제한 초과 시 먼저 삽입된 항목을 제거한다. PHP는 plan 제한을 요청 캐시에, statement 제한을 PDO statement에 적용한다. TypeScript는 plan 제한을 적용하며, 공통 prepared statement 인터페이스가 완성될 때까지 데이터베이스 드라이버의 prepared statement 정책을 사용한다. `close`는 클라이언트가 소유한 캐시를 비우고 드라이버가 제공하는 데이터베이스 자원을 닫는다.
+`db.plan_cache_size`와 `db.statement_cache_size`는 양의 정수 제한값이다. 두 값의 기본값은 256이다. Go와 Rust는 제한 초과 시 먼저 삽입된 항목을 제거한다. PHP는 plan 제한을 요청 캐시에, statement 제한을 PDO statement에 적용한다. TypeScript는 statement 제한을 mysql2에 전달하고, PostgreSQL에는 연결별 named statement 제한을 적용하며, SQLite에는 `StatementSync` 제한을 적용한다. `close`는 client가 소유한 cache를 비우고 driver가 제공하는 database 자원을 닫는다.
 
 compiler 기본 경로는 언어별로 다르다. PHP는 선언된 Unix socket, Go는 in-process compiler, Rust는 선언된 WASM compiler를 사용한다. Connect/Protobuf는 공통 compiler service 경로이며 TypeScript가 기본으로 사용한다. `[ormd].endpoint`를 지정하면 지원되는 클라이언트가 Connect/Protobuf를 사용한다.
 

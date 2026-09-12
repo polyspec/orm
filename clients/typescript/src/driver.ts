@@ -5,6 +5,7 @@ import type { PoolConnection as MySqlCoreConnection } from 'mysql2';
 import pg from 'pg';
 import QueryStream from 'pg-query-stream';
 import { OrmError } from './runtime_error.js';
+import { createHash } from 'node:crypto';
 
 pg.types.setTypeParser(20, value => {
   const parsed = Number(value);
@@ -139,14 +140,56 @@ class MySqlTx extends MySqlDriver implements DriverTransaction {
 }
 
 type PgExecutor = pg.Pool | pg.PoolClient;
+class StatementNames {
+  private readonly names = new Map<string, string>();
+  public constructor(public readonly limit: number) {
+    if (!Number.isSafeInteger(limit) || limit < 1) throw new OrmError('CONFIG', 'statement cache size must be a positive integer');
+  }
+  public name(sql: string): string {
+    const existing = this.names.get(sql);
+    if (existing !== undefined) {
+      this.names.delete(sql);
+      this.names.set(sql, existing);
+      return existing;
+    }
+    const name = `orm_${createHash('sha256').update(sql).digest('hex')}`;
+    this.names.set(sql, name);
+    return name;
+  }
+  public evicted(): string | undefined {
+    if (this.names.size <= this.limit) return undefined;
+    const oldest = this.names.entries().next().value as [string, string] | undefined;
+    if (oldest !== undefined) this.names.delete(oldest[0]);
+    return oldest?.[1];
+  }
+}
 class PostgresDriver implements DriverConnection {
   public readonly name = 'postgres' as const;
-  public constructor(protected readonly connection: PgExecutor, private readonly owner = false) {}
+  private readonly statementCacheSize: number;
+  private readonly statements = new WeakMap<object, StatementNames>();
+  public constructor(protected readonly connection: PgExecutor, private readonly owner = false, statementCacheSize = 256) {
+    if (!Number.isSafeInteger(statementCacheSize) || statementCacheSize < 1) throw new OrmError('CONFIG', 'statement cache size must be a positive integer');
+    this.statementCacheSize = statementCacheSize;
+  }
+  private statementCache(client: PgExecutor): StatementNames {
+    const key = client as object;
+    let cache = this.statements.get(key);
+    if (cache === undefined) {
+      cache = new StatementNames(this.statementCacheSize);
+      this.statements.set(key, cache);
+    }
+    return cache;
+  }
   public async execute(sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
+    const client = this.connection instanceof pg.Pool ? await this.connection.connect() : this.connection;
     try {
-      const result = await this.connection.query({ text: sql, values: [...params], rowMode: 'array' });
+      const statements = this.statementCache(client);
+      const name = statements.name(sql);
+      const result = await client.query({ name, text: sql, values: [...params], rowMode: 'array' });
+      const evicted = statements.evicted();
+      if (evicted !== undefined) await client.query(`DEALLOCATE "${evicted}"`);
       return { rows: result.rows as unknown[][], columns: result.fields.map(field => field.name), affected: result.rowCount ?? 0, insertId: result.rows[0]?.[0] as DriverResult['insertId'] ?? null };
-    } catch (error) { throw driverError(this.name, error); }
+    } catch (error) { throw driverError(this.name, error); } finally { if (this.connection instanceof pg.Pool) client.release(); }
   }
   public async stream(sql: string, params: readonly DriverValue[], visit: DriverRowVisitor): Promise<DriverStreamResult> {
     let borrowed: pg.PoolClient | undefined;
@@ -178,13 +221,13 @@ class PostgresDriver implements DriverConnection {
       connection.release();
       throw error;
     }
-    return new PostgresTx(connection);
+    return new PostgresTx(connection, undefined, this.statementCacheSize);
   }
   public async close(): Promise<void> { if (this.owner && 'end' in this.connection) await this.connection.end(); }
 }
 class PostgresTx extends PostgresDriver implements DriverTransaction {
   private active = true;
-  public constructor(private readonly tx: pg.PoolClient) { super(tx); }
+  public constructor(private readonly tx: pg.PoolClient, owner?: boolean, statementCacheSize = 256) { super(tx, owner, statementCacheSize); }
   public override async execute(sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
     if (!this.active) throw new OrmError('CONFIG', 'transaction already finished');
     return super.execute(sql, params);
@@ -205,11 +248,27 @@ class PostgresTx extends PostgresDriver implements DriverTransaction {
 class SqliteDriver implements DriverConnection {
   public readonly name = 'sqlite' as const;
   protected active = true;
-  public constructor(protected readonly connection: DatabaseSync, private readonly owner = false, private readonly transaction = false) {}
+  private readonly statements = new Map<string, ReturnType<DatabaseSync['prepare']>>();
+  private readonly statementOrder: string[] = [];
+  public constructor(protected readonly connection: DatabaseSync, private readonly owner = false, private readonly transaction = false, private readonly statementCacheSize = 256) {
+    if (!Number.isSafeInteger(statementCacheSize) || statementCacheSize < 1) throw new OrmError('CONFIG', 'statement cache size must be a positive integer');
+  }
+  private statement(sql: string): ReturnType<DatabaseSync['prepare']> {
+    const existing = this.statements.get(sql);
+    if (existing !== undefined) return existing;
+    const statement = this.connection.prepare(sql);
+    this.statements.set(sql, statement);
+    this.statementOrder.push(sql);
+    while (this.statementOrder.length > this.statementCacheSize) {
+      const oldest = this.statementOrder.shift();
+      if (oldest !== undefined) this.statements.delete(oldest);
+    }
+    return statement;
+  }
   public async execute(sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
     if (!this.active) throw new OrmError('CONFIG', 'transaction already finished');
     try {
-      const statement = this.connection.prepare(sql);
+      const statement = this.statement(sql);
       const values = params.map(value => value instanceof Date ? sqlDate(value) : typeof value === 'boolean' ? Number(value) : value);
       if (/^\s*(?:SELECT|WITH|PRAGMA)\b/i.test(sql) || /\bRETURNING\b/i.test(sql)) {
         statement.setReturnArrays(true);
@@ -224,7 +283,7 @@ class SqliteDriver implements DriverConnection {
     if (!this.active) throw new OrmError('CONFIG', 'transaction already finished');
     let visitorError: unknown;
     try {
-      const statement = this.connection.prepare(sql);
+      const statement = this.statement(sql);
       statement.setReturnArrays(true);
       const values = params.map(value => value instanceof Date ? sqlDate(value) : typeof value === 'boolean' ? Number(value) : value);
       let count = 0;
@@ -256,7 +315,7 @@ async function configureTransaction(connection: { query(sql: string): Promise<un
   if (options.readOnly) await connection.query('SET TRANSACTION READ ONLY');
 }
 class SqliteTx extends SqliteDriver implements DriverTransaction {
-  public constructor(connection: DatabaseSync) { super(connection, false, true); }
+  public constructor(connection: DatabaseSync, statementCacheSize = 256) { super(connection, false, true, statementCacheSize); }
   public async commit(): Promise<void> { this.connection.exec('COMMIT'); this.finish(); }
   public async rollback(): Promise<void> { this.connection.exec('ROLLBACK'); this.finish(); }
   public async savepoint(name: string): Promise<void> { this.assertControl(); this.connection.exec(`SAVEPOINT ${savepointName(name)}`); }
@@ -265,7 +324,7 @@ class SqliteTx extends SqliteDriver implements DriverTransaction {
   private assertControl(): void { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); }
 }
 
-export function openMySql(uri: string, pool = 10): DriverConnection {
+export function openMySql(uri: string, pool = 10, statementCacheSize = 256): DriverConnection {
   return new MySqlDriver(mysql.createPool({
     uri,
     connectionLimit: pool,
@@ -274,17 +333,18 @@ export function openMySql(uri: string, pool = 10): DriverConnection {
     dateStrings: true,
     decimalNumbers: true,
     jsonStrings: true,
+    maxPreparedStatements: statementCacheSize,
   }), true);
 }
-export function openPostgres(connectionString: string, pool = 10): DriverConnection {
-  return new PostgresDriver(new pg.Pool({ connectionString, max: pool }), true);
+export function openPostgres(connectionString: string, pool = 10, statementCacheSize = 256): DriverConnection {
+  return new PostgresDriver(new pg.Pool({ connectionString, max: pool }), true, statementCacheSize);
 }
-export function openSqlite(path: string): DriverConnection {
+export function openSqlite(path: string, statementCacheSize = 256): DriverConnection {
   if (!path.startsWith('/')) throw new OrmError('CONFIG', `sqlite path must be absolute: ${path}`);
   const connection = new DatabaseSync(path);
   connection.exec('PRAGMA busy_timeout=5000');
   connection.exec('PRAGMA journal_mode=WAL');
-  return new SqliteDriver(connection, true);
+  return new SqliteDriver(connection, true, false, statementCacheSize);
 }
 
 function sqlDate(value: Date): string {
