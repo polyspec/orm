@@ -191,7 +191,17 @@ type goRel struct {
 
 type goLink struct{ Left, Right, Match, On string }
 
-func relationText(r *schema.Rel) (left, right, suffix string) {
+func relationText(m *schema.Manifest, owner *schema.Entity, r *schema.Rel) (left, right, suffix string) {
+	if r.Through != "" {
+		target := m.Entities[r.Target]
+		left = strings.Join(owner.PK, ",")
+		right = strings.Join(target.PK, ",")
+		parts := make([]string, len(owner.PK))
+		for i, key := range owner.PK {
+			parts[i] = pascal(key) + "With" + pascal(target.PK[i])
+		}
+		return left, right, strings.Join(parts, "And")
+	}
 	leftColumns := make([]string, len(r.Keys))
 	rightColumns := make([]string, len(r.Keys))
 	parts := make([]string, len(r.Keys))
@@ -307,13 +317,13 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 	targetKinds := map[string]int{}
 	for _, n := range names {
 		r := e.Relations[n]
-		left, right, _ := relationText(r)
+		left, right, _ := relationText(m, e, r)
 		pairs[left+"\x1f"+right]++
 		targetKinds[r.Target+"\x1f"+r.Kind]++
 	}
 	for _, n := range names {
 		r := e.Relations[n]
-		left, right, suffix := relationText(r)
+		left, right, suffix := relationText(m, e, r)
 		ge.Rels = append(ge.Rels, goRel{Name: n, Method: pascal(n), Target: r.Target, TargetType: pascal(r.Target), Kind: r.Kind, Left: left, Right: right, Suffix: suffix, Pair: pairs[left+"\x1f"+right] == 1, Default: targetKinds[r.Target+"\x1f"+r.Kind] == 1})
 	}
 	suffixes := map[string]int{}
@@ -332,7 +342,7 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 			if r.Target != e.Name {
 				continue
 			}
-			left, right, suffix := relationText(r)
+			left, right, suffix := relationText(m, pe, r)
 			key := left + "\x1f" + right
 			if linkPairs[key] {
 				continue
