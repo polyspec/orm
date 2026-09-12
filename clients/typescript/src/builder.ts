@@ -134,7 +134,12 @@ export class QueryCore {
   public duplicateMinus(column: string, value: Param): this { return this.assignment('on_duplicate', { column, minus_p: this.request.parameter(value) }); }
   public duplicateAll(skip: readonly string[] = []): this { const blocked=new Set(skip); this.request.ir.on_duplicate=(this.request.ir.set??[]).filter(value=>!blocked.has(value.column)).map(value=>structuredClone(value)); return this; }
   public optimistic(column: string, value: Param): this { this.request.ir.optimistic = { column, p: this.request.parameter(value) }; return this; }
-  private assignment(target: 'set' | 'on_duplicate', assignment: Assignment): this { (this.request.ir[target] ??= []).push(assignment); return this; }
+  private assignment(target: 'set' | 'on_duplicate', assignment: Assignment): this {
+    const assignments = this.request.ir[target] ??= [];
+    const existing = assignments.findIndex(value => value.column === assignment.column);
+    if (existing < 0) assignments.push(assignment); else assignments[existing] = assignment;
+    return this;
+  }
   public requestShape(kind: QueryKind = this.request.ir.kind): Request { return this.request.shape(kind); }
   public parameters(): Param[] { return [...this.request.params]; }
   protected async terminal(kind: QueryKind): Promise<unknown> { if (this.request.deferredError) throw this.request.deferredError; const database=this.binding.resolve(); return database.execute(await database.plan(this.request.shape(kind)), [...this.request.params]); }
@@ -153,7 +158,7 @@ export class QueryCore {
     await this.writeAffected('update');
     return this.request.params[assignment.p];
   }
-  protected async statement(): Promise<{sql:string;binds:unknown[]}> { const database=this.binding.resolve(); const plan=await database.plan(this.request.shape('all')); return database.sql(plan.steps[0]!,this.request.params); }
+  protected async statement(): Promise<{sql:string;binds:unknown[]}> { if(this.request.deferredError)throw this.request.deferredError; const database=this.binding.resolve(); const plan=await database.plan(this.request.shape('all')); return database.sql(plan.steps[0]!,this.request.params); }
 }
 
 function uint(value: number, name: string): number { if (!Number.isSafeInteger(value) || value < 0 || value > 0xffffffff) throw new OrmError('IR_INVALID', `${name} is outside uint32`); return value; }

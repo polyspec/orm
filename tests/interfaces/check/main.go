@@ -151,7 +151,7 @@ func main() {
 		fmt.Printf("%s: %d native symbols inspected; shared signatures and records checked\n", lang, len(actual))
 	}
 	if *results != "" {
-		for _, lang := range []string{"go", "php", "rust"} {
+		for _, lang := range []string{"go", "php", "rust", "typescript"} {
 			var output map[string]struct {
 				Result     any               `json:"result"`
 				Statements []json.RawMessage `json:"statements"`

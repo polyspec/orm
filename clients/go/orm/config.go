@@ -17,7 +17,7 @@ import (
 )
 
 // FileConfig is orm.toml (docs/config.md): one declared configuration shared
-// by the three clients. Every path is absolute and must exist; nothing is
+// by the four clients. Every path is absolute and must exist; nothing is
 // discovered and nothing falls back.
 type FileConfig struct {
 	Schema  string        `toml:"schema"`
