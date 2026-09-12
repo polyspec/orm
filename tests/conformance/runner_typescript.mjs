@@ -269,6 +269,15 @@ try {
     exists: await Service().seq(7).hasMembers(() => {}).using(db).getCount(),
     count: await Service().seq(7).countMembersEq(50, () => {}).using(db).getCount(),
   }));
+  await run('batch_insert_delete', async () => {
+    const names = ['conformance-batch-a', 'conformance-batch-b'];
+    await Service().nameIn(names).using(db).delete();
+    const result = await Service().using(db).batchInsert([
+      Service().setName(names[0]), Service().setName(names[1]),
+    ], { chunkSize: 1 });
+    const deleted = await Service().nameIn(names).using(db).delete();
+    return { attempted: result.attempted, affected: result.affected, inserted: result.inserted, deleted };
+  });
   await run('codec_roundtrip', async () => {
     const value = { a: 1, b: [1, 2, { c: '한글/slash' }], d: null, e: true, f: 1.5 };
     const row = await db.transaction(tx => Battle().setName('conf-codec').setUserSeq(1).setServiceSeq(999).setServiceModuleSeq(1).setServiceMemberSeq(1).setStartDt(dt('2026-06-01 00:00:00')).setEndDt(dt('2026-12-31 00:00:00')).setJsonSetting(value).setJsonsTags(['x', 'y']).setBase64Extra(value).setSerializeData(value).setGzExtend(value).setIp('10.1.2.3').using(tx).insert());
