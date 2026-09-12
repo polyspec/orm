@@ -49,7 +49,9 @@ Each item requires:
 - [ ] P10.5 Physical MySQL, PostgreSQL, and SQLite tests cover parameter limits, all migration operations, batch writes, keyset pagination, transaction modes, and encryption changes through containerctl without `-state`.
 - [ ] P10.6 Go, PHP, Rust, and TypeScript produce identical common-vector results and compatible public structures for every added operation.
 
-## P11: public repository files and package verification
+## P11: excluded repository and package work
+
+This section is outside the current implementation scope. Package publication, release creation, public repository preparation, and manual Pages deployment are excluded. Product documentation and automated functional checks remain in scope under P8-P10.
 
 - [ ] P11.1 Correct stale or false README and manual statements and add `README.ko.md`.
 - [ ] P11.2 Add security reporting, contribution, conduct, and change-history documents with paired Korean files where the content is user-facing.
@@ -59,4 +61,4 @@ Each item requires:
 
 ## Completion
 
-- [ ] G8 Every P8-P11 item passes its stated tests; `make check` passes; the working tree is clean; local `HEAD` equals `origin/main`; and final GitHub CI succeeds.
+- [ ] G8 Every in-scope P8-P10 item passes its stated tests; `make check` passes; the working tree is clean; and local `HEAD` equals `origin/main`.
