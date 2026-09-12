@@ -86,16 +86,16 @@ export class QueryCore {
   public constructor(entity: string, schemaHash = '') { this.request = new RequestState(entity, schemaHash); }
   public using(database: Db): this { this.binding = new Binding(database); this.request.ir.schema_hash = database.schemaHash; return this; }
   public scope(value: Param): this { this.request.ir.scope_p = this.request.parameter(value); return this; }
-  public where(): WhereCore { this.request.ir.where ??= { items: [] }; return this.rootWhere ??= new WhereCore(this.request, this.request.ir.where); }
-  public on(callback: (where: WhereCore) => void): this { this.request.ir.on ??= { items: [] }; callback(new WhereCore(this.request, this.request.ir.on)); return this; }
-  public having(callback: (where: WhereCore) => void): this { this.request.ir.having ??= { items: [] }; callback(new WhereCore(this.request, this.request.ir.having)); return this; }
-  public predicate(column: string, operator: string, value: Param): this { this.where().predicate(column, operator, value); return this; }
-  public predicateList(column: string, operator: string, values: readonly Param[]): this { this.where().predicateList(column, operator, values); return this; }
-  public predicateNull(column: string, operator: string): this { this.where().predicateNull(column, operator); return this; }
-  public predicateColumn(column: string, operator: string, reference: ColumnReference): this { this.where().predicateColumn(column, operator, reference); return this; }
-  public expression(expression: string, values: readonly Param[] = []): this { this.where().expression(expression, values); return this; }
-  public or(): this { this.where().or(); return this; }
-  public match(columns: readonly string[], value: string, boolean = false): this { this.where().match(columns, value, boolean); return this; }
+  public whereCore(): WhereCore { this.request.ir.where ??= { items: [] }; return this.rootWhere ??= new WhereCore(this.request, this.request.ir.where); }
+  protected onGroup(callback: (where: WhereCore) => void): this { this.request.ir.on ??= { items: [] }; callback(new WhereCore(this.request, this.request.ir.on)); return this; }
+  protected havingGroup(callback: (where: WhereCore) => void): this { this.request.ir.having ??= { items: [] }; callback(new WhereCore(this.request, this.request.ir.having)); return this; }
+  public predicate(column: string, operator: string, value: Param): this { this.whereCore().predicate(column, operator, value); return this; }
+  public predicateList(column: string, operator: string, values: readonly Param[]): this { this.whereCore().predicateList(column, operator, values); return this; }
+  public predicateNull(column: string, operator: string): this { this.whereCore().predicateNull(column, operator); return this; }
+  public predicateColumn(column: string, operator: string, reference: ColumnReference): this { this.whereCore().predicateColumn(column, operator, reference); return this; }
+  public expression(expression: string, values: readonly Param[] = []): this { this.whereCore().expression(expression, values); return this; }
+  public or(): this { this.whereCore().or(); return this; }
+  public match(columns: readonly string[], value: string, boolean = false): this { this.whereCore().match(columns, value, boolean); return this; }
   protected attachJoin(relation: string, child: QueryCore, kind: 'inner' | 'left' = 'inner'): this { this.request.ir.joins ??= []; this.request.ir.joins.push({ rel: relation, kind, query: this.request.attach(child.request) }); return this; }
   protected attachRelation(relation: string, child: QueryCore): this { this.request.ir.relations ??= []; this.request.ir.relations.push({ rel: relation, query: this.request.attach(child.request) }); return this; }
   public matchKeys(parentKey: string, childKey: string): this { this.linkSelection = { parentKey, childKey }; return this; }
