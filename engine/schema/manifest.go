@@ -79,15 +79,19 @@ type Ref struct {
 	Column string `json:"column"`
 }
 
-// Rel is one direction of a relationship line. Left is the column on this
-// entity, Right the column on Target. kind one → relation<Name>, many → relations<Name>.
+// Rel is one direction of a relationship line. Keys preserves the SQL column
+// pair order for joins, relation loading, and row attachment.
 type Rel struct {
-	Name     string `json:"name"`
-	Kind     string `json:"kind"`
-	Target   string `json:"target"`
-	Left     string `json:"left"`
-	Right    string `json:"right"`
-	OnDelete string `json:"on_delete,omitempty"`
+	Name     string   `json:"name"`
+	Kind     string   `json:"kind"`
+	Target   string   `json:"target"`
+	Keys     []RelKey `json:"keys"`
+	OnDelete string   `json:"on_delete,omitempty"`
+}
+
+type RelKey struct {
+	Local  string `json:"local"`
+	Target string `json:"target"`
 }
 
 // Predicate is a reusable expr fragment declared with `%% predicate <table> <name> : <fragment>`:
@@ -213,9 +217,6 @@ func buildEntity(e *DEntity) (*Entity, error) {
 	}
 	if len(ent.PK) == 0 {
 		return nil, &BuildError{e.Line, "entity " + e.Name + " has no PK"}
-	}
-	if len(ent.PK) > 1 {
-		return nil, &BuildError{e.Line, "entity " + e.Name + " has a composite primary key; common runtime support is incomplete"}
 	}
 	// Timestamps by convention; %% timestamps overrides.
 	if ent.cols["created_ts"] != nil || ent.cols["updated_ts"] != nil {
@@ -393,24 +394,31 @@ func (m *Manifest) addRelation(r *DRelation) error {
 	if !ok {
 		return &BuildError{r.Line, "relation references unknown entity " + r.Child}
 	}
-	fk := child.cols[r.FK]
-	if fk == nil {
-		return &BuildError{r.Line, fmt.Sprintf("relation %s -> %s: FK column %s not in %s", r.Parent, r.Child, r.FK, r.Child)}
+	if len(r.FKs) != len(parent.PK) {
+		return &BuildError{r.Line, fmt.Sprintf("relation %s -> %s: %d FK columns do not match %d target PK columns", r.Parent, r.Child, len(r.FKs), len(parent.PK))}
 	}
-	if len(parent.PK) != 1 {
-		return &BuildError{r.Line, "relation target " + r.Parent + " must have a single-column PK"}
-	}
-	fk.FK = true
-	if fk.Ref == nil {
-		fk.Ref = &Ref{Entity: parent.Name, Column: parent.PK[0]}
+	for i, name := range r.FKs {
+		fk := child.cols[name]
+		if fk == nil {
+			return &BuildError{r.Line, fmt.Sprintf("relation %s -> %s: FK column %s not in %s", r.Parent, r.Child, name, r.Child)}
+		}
+		fk.FK = true
+		if fk.Ref == nil {
+			fk.Ref = &Ref{Entity: parent.Name, Column: parent.PK[i]}
+		} else if fk.Ref.Entity != parent.Name || fk.Ref.Column != parent.PK[i] {
+			return &BuildError{r.Line, fmt.Sprintf("relation %s -> %s: FK column %s references %s.%s, expected %s.%s", r.Parent, r.Child, name, fk.Ref.Entity, fk.Ref.Column, parent.Name, parent.PK[i])}
+		}
 	}
 	// Cardinality: right side of the token is the child side.
 	childMany := strings.HasSuffix(r.Cardinality, "{")
 	childName := r.ChildName
 	if childName == "" {
-		childName = strings.TrimSuffix(strings.TrimSuffix(r.FK, "_seq"), "_id")
-		if childName == r.FK {
-			return &BuildError{r.Line, fmt.Sprintf("relation %s -> %s: cannot derive a name from FK %s; write (child / parent) in the label", r.Parent, r.Child, r.FK)}
+		if len(r.FKs) != 1 {
+			return &BuildError{r.Line, fmt.Sprintf("relation %s -> %s: composite relation must name both sides", r.Parent, r.Child)}
+		}
+		childName = strings.TrimSuffix(strings.TrimSuffix(r.FKs[0], "_seq"), "_id")
+		if childName == r.FKs[0] {
+			return &BuildError{r.Line, fmt.Sprintf("relation %s -> %s: cannot derive a name from FK %s; write (child / parent) in the label", r.Parent, r.Child, r.FKs[0])}
 		}
 	}
 	parentName := r.ParentName
@@ -428,12 +436,18 @@ func (m *Manifest) addRelation(r *DRelation) error {
 	if _, dup := parent.Relations[parentName]; dup {
 		return &BuildError{r.Line, fmt.Sprintf("relation name %s.%s already used; name the sides in the label", parent.Name, parentName)}
 	}
-	child.Relations[childName] = &Rel{Name: childName, Kind: "one", Target: parent.Name, Left: r.FK, Right: parent.PK[0], OnDelete: r.OnDelete}
+	childKeys := make([]RelKey, len(r.FKs))
+	parentKeys := make([]RelKey, len(r.FKs))
+	for i := range r.FKs {
+		childKeys[i] = RelKey{Local: r.FKs[i], Target: parent.PK[i]}
+		parentKeys[i] = RelKey{Local: parent.PK[i], Target: r.FKs[i]}
+	}
+	child.Relations[childName] = &Rel{Name: childName, Kind: "one", Target: parent.Name, Keys: childKeys, OnDelete: r.OnDelete}
 	kind := "many"
 	if !childMany {
 		kind = "one"
 	}
-	parent.Relations[parentName] = &Rel{Name: parentName, Kind: kind, Target: child.Name, Left: parent.PK[0], Right: r.FK, OnDelete: r.OnDelete}
+	parent.Relations[parentName] = &Rel{Name: parentName, Kind: kind, Target: child.Name, Keys: parentKeys, OnDelete: r.OnDelete}
 	return nil
 }
 

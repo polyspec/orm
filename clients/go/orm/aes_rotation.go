@@ -97,7 +97,7 @@ type AESRotationColumn struct {
 // rejected by quoteIdentifier.
 type AESRotationSpec struct {
 	Table         string
-	PrimaryKey    string
+	PrimaryKeys   []string
 	VersionColumn string
 	Columns       []AESRotationColumn
 }
@@ -153,7 +153,7 @@ func (d *DB) RotateAESRows(ctx context.Context, ex Exec, spec AESRotationSpec, k
 	if d == nil || ex == nil {
 		return 0, fmt.Errorf("aes rotation requires a database and executor")
 	}
-	if spec.Table == "" || spec.PrimaryKey == "" || spec.VersionColumn == "" || len(spec.Columns) == 0 {
+	if spec.Table == "" || len(spec.PrimaryKeys) == 0 || spec.VersionColumn == "" || len(spec.Columns) == 0 {
 		return 0, fmt.Errorf("aes rotation specification is incomplete")
 	}
 	for _, column := range spec.Columns {
@@ -170,7 +170,7 @@ func (d *DB) RotateAESRows(ctx context.Context, ex Exec, spec AESRotationSpec, k
 		}
 		type pendingRow struct{ before, after map[string]any }
 		pending := make([]pendingRow, 0)
-		selectColumns := 2 + len(spec.Columns)
+		selectColumns := len(spec.PrimaryKeys) + 1 + len(spec.Columns)
 		for rows.Next() {
 			values := make([]any, selectColumns)
 			dest := make([]any, selectColumns)
@@ -181,9 +181,13 @@ func (d *DB) RotateAESRows(ctx context.Context, ex Exec, spec AESRotationSpec, k
 				rows.Close()
 				return err
 			}
-			row := map[string]any{spec.PrimaryKey: values[0], spec.VersionColumn: values[1]}
+			row := make(map[string]any, selectColumns)
+			for i, key := range spec.PrimaryKeys {
+				row[key] = values[i]
+			}
+			row[spec.VersionColumn] = values[len(spec.PrimaryKeys)]
 			for i, column := range spec.Columns {
-				row[column.Name] = values[i+2]
+				row[column.Name] = values[len(spec.PrimaryKeys)+1+i]
 			}
 			rotated, err := RotateAESRow(row, spec.VersionColumn, spec.Columns, keyring.current, keyring)
 			if err != nil {
@@ -214,11 +218,17 @@ func (d *DB) RotateAESRows(ctx context.Context, ex Exec, spec AESRotationSpec, k
 }
 
 func (d *DB) rotationQuery(ctx context.Context, ex Exec, spec AESRotationSpec, targetVersion int32) (*sql.Rows, error) {
-	columns := []string{quoteIdentifier(d.driver, spec.PrimaryKey), quoteIdentifier(d.driver, spec.VersionColumn)}
+	columns := make([]string, 0, len(spec.PrimaryKeys)+1+len(spec.Columns))
+	order := make([]string, len(spec.PrimaryKeys))
+	for i, key := range spec.PrimaryKeys {
+		order[i] = quoteIdentifier(d.driver, key)
+		columns = append(columns, order[i])
+	}
+	columns = append(columns, quoteIdentifier(d.driver, spec.VersionColumn))
 	for _, column := range spec.Columns {
 		columns = append(columns, quoteIdentifier(d.driver, column.Name))
 	}
-	query := "SELECT " + strings.Join(columns, ", ") + " FROM " + quoteIdentifier(d.driver, spec.Table) + " WHERE " + quoteIdentifier(d.driver, spec.VersionColumn) + " <> " + d.rotationPlaceholder(1) + " ORDER BY " + quoteIdentifier(d.driver, spec.PrimaryKey)
+	query := "SELECT " + strings.Join(columns, ", ") + " FROM " + quoteIdentifier(d.driver, spec.Table) + " WHERE " + quoteIdentifier(d.driver, spec.VersionColumn) + " <> " + d.rotationPlaceholder(1) + " ORDER BY " + strings.Join(order, ", ")
 	if tx, ok := ex.(*Tx); ok {
 		return tx.tx.QueryContext(ctx, query, targetVersion)
 	}
@@ -227,18 +237,21 @@ func (d *DB) rotationQuery(ctx context.Context, ex Exec, spec AESRotationSpec, t
 
 func (d *DB) rotationUpdate(ctx context.Context, ex Exec, spec AESRotationSpec, before, after map[string]any) error {
 	sets := make([]string, 0, len(spec.Columns)+1)
-	args := make([]any, 0, len(spec.Columns)+3)
+	args := make([]any, 0, len(spec.Columns)+len(spec.PrimaryKeys)+2)
 	for _, column := range spec.Columns {
 		sets = append(sets, quoteIdentifier(d.driver, column.Name)+" = "+d.rotationPlaceholder(len(args)+1))
 		args = append(args, after[column.Name])
 	}
 	sets = append(sets, quoteIdentifier(d.driver, spec.VersionColumn)+" = "+d.rotationPlaceholder(len(args)+1))
 	args = append(args, after[spec.VersionColumn])
-	where := quoteIdentifier(d.driver, spec.PrimaryKey) + " = " + d.rotationPlaceholder(len(args)+1)
-	args = append(args, before[spec.PrimaryKey])
-	where += " AND " + quoteIdentifier(d.driver, spec.VersionColumn) + " = " + d.rotationPlaceholder(len(args)+1)
+	conditions := make([]string, 0, len(spec.PrimaryKeys)+1)
+	for _, key := range spec.PrimaryKeys {
+		conditions = append(conditions, quoteIdentifier(d.driver, key)+" = "+d.rotationPlaceholder(len(args)+1))
+		args = append(args, before[key])
+	}
+	conditions = append(conditions, quoteIdentifier(d.driver, spec.VersionColumn)+" = "+d.rotationPlaceholder(len(args)+1))
 	args = append(args, before[spec.VersionColumn])
-	query := "UPDATE " + quoteIdentifier(d.driver, spec.Table) + " SET " + strings.Join(sets, ", ") + " WHERE " + where
+	query := "UPDATE " + quoteIdentifier(d.driver, spec.Table) + " SET " + strings.Join(sets, ", ") + " WHERE " + strings.Join(conditions, " AND ")
 	var result sql.Result
 	var err error
 	if tx, ok := ex.(*Tx); ok {

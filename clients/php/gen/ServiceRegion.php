@@ -17,11 +17,16 @@ use Orm\Rows;
 use Orm\StreamResult;
 use Orm\W;
 
+final readonly class ServiceRegionKey
+{
+    public function __construct(public int $seq) {}
+}
+
 /** One row of service_region. */
 final class ServiceRegionRow extends Row implements ServiceRegionRowInterface
 {
     public static function entity(): string { return 'service_region'; }
-    public static function pk(): string { return 'seq'; }
+    public static function primaryKeys(): array { return ['seq']; }
     public static function columns(): array
     {
         return ['seq' => 'i64', 'service_seq' => 'i64', 'name' => 'string'];
@@ -452,13 +457,14 @@ final class ServiceRegion extends Q implements ServiceRegionInterface
         return ServiceRegion::query()->using($db)->seqEq((int) $id)->one();
     }
 
-    /** UPDATE by PK when setSeq was called (the other set columns), else INSERT; returns the re-read row. */
+    /** UPDATE when every primary-key column was assigned; otherwise INSERT. */
     public function save(): ?ServiceRegionRow
     {
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
-        [, $key] = $this->runSave($db, 'seq');
-        return ServiceRegion::query()->using($db)->seqEq((int) $key)->one();
+        [$updated, $keys] = $this->runSave($db, ['seq']);
+        if (!$updated) { $keys = [(int) $keys[0]]; }
+        return ServiceRegion::query()->using($db)->seqEq($keys[0])->one();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */

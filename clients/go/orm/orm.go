@@ -1414,6 +1414,22 @@ func KeyFromRow(row []any, refs []plan.KeyRef) (Key, bool) {
 	return Key{S: b.String(), isStr: true}, true
 }
 
+// KeyFromValues creates the same collision-free collection key from values
+// already decoded into a generated row.
+func KeyFromValues(values []any) Key {
+	if len(values) == 1 {
+		return KeyOf(values[0])
+	}
+	var b strings.Builder
+	for _, value := range values {
+		part := scalarKey(value)
+		b.WriteString(strconv.Itoa(len(part)))
+		b.WriteByte(':')
+		b.WriteString(part)
+	}
+	return Key{S: b.String(), isStr: true}
+}
+
 func (k Key) String() string {
 	if k.isStr {
 		return k.S

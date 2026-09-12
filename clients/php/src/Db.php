@@ -177,7 +177,7 @@ class Db
         throw $last;
     }
 
-    /** @param array{table:string, primary_key:string, version_column:string, columns:list<array{name:string,styles:list<string>}>} $spec */
+    /** @param array{table:string, primary_keys:non-empty-list<string>, version_column:string, columns:list<array{name:string,styles:list<string>}>} $spec */
     public function aesStatus(array $spec, AesKeyring $keyring): AesRotationStatus
     {
         $table = $this->aesIdentifier($spec['table']);
@@ -201,35 +201,42 @@ class Db
         return new AesRotationStatus($keyring->currentVersion, $total, $pending, $versions);
     }
 
-    /** @param array{table:string, primary_key:string, version_column:string, columns:list<array{name:string,styles:list<string>}>} $spec */
+    /** @param array{table:string, primary_keys:non-empty-list<string>, version_column:string, columns:list<array{name:string,styles:list<string>}>} $spec */
     public function rotateAESRows(array $spec, AesKeyring $keyring): int
     {
         if (!($this instanceof Tx)) {
             return $this->transaction(fn(Tx $tx): int => $tx->rotateAESRows($spec, $keyring));
         }
         $table = $this->aesIdentifier($spec['table']);
-        $primary = $this->aesIdentifier($spec['primary_key']);
+        if (($spec['primary_keys'] ?? []) === []) { throw new OrmException(Code::CONFIG, 'AES rotation primary keys are empty'); }
+        $primary = array_map(fn(string $key): string => $this->aesIdentifier($key), $spec['primary_keys']);
         $version = $this->aesIdentifier($spec['version_column']);
         $columns = $spec['columns'];
         if ($columns === []) { throw new OrmException(Code::CONFIG, 'AES rotation columns are empty'); }
         $names = array_map(fn(array $column): string => $this->aesIdentifier($column['name']), $columns);
-        $select = $this->stmt("SELECT $primary, $version, " . implode(', ', $names) . " FROM $table WHERE $version <> ? ORDER BY $primary");
+        $select = $this->stmt("SELECT " . implode(', ', $primary) . ", $version, " . implode(', ', $names) . " FROM $table WHERE $version <> ? ORDER BY " . implode(', ', $primary));
         $select->execute([$keyring->currentVersion]);
         $rows = $select->fetchAll(\PDO::FETCH_NUM);
         $select->closeCursor();
         $sets = array_map(fn(string $name): string => "$name = ?", $names);
         $sets[] = "$version = ?";
-        $update = $this->stmt("UPDATE $table SET " . implode(', ', $sets) . " WHERE $primary = ? AND $version = ?");
+        $where = array_map(fn(string $key): string => "$key = ?", $primary);
+        $where[] = "$version = ?";
+        $update = $this->stmt("UPDATE $table SET " . implode(', ', $sets) . " WHERE " . implode(' AND ', $where));
         $count = 0;
         foreach ($rows as $values) {
-            $row = [$spec['primary_key'] => $values[0], $spec['version_column'] => (int) $values[1]];
-            foreach ($columns as $index => $column) { $row[$column['name']] = $values[$index + 2]; }
+            $row = [];
+            foreach ($spec['primary_keys'] as $index => $key) { $row[$key] = $values[$index]; }
+            $row[$spec['version_column']] = (int) $values[count($primary)];
+            foreach ($columns as $index => $column) { $row[$column['name']] = $values[$index + count($primary) + 1]; }
             $rotated = $keyring->rotateRow($row, $spec['version_column'], $columns, $keyring->currentVersion);
             $args = [];
             foreach ($columns as $column) { $value = $rotated[$column['name']]; $args[] = $value instanceof Bytes ? $value->data : $value; }
-            $args[] = $keyring->currentVersion; $args[] = $values[0]; $args[] = (int) $values[1];
+            $args[] = $keyring->currentVersion;
+            foreach (array_slice($values, 0, count($primary)) as $keyValue) { $args[] = $keyValue; }
+            $args[] = (int) $values[count($primary)];
             $update->execute($args);
-            if ($update->rowCount() !== 1) { throw new OrmException(Code::OPTIMISTIC_LOCK, "AES rotation changed {$spec['table']} primary key {$values[0]}"); }
+            if ($update->rowCount() !== 1) { throw new OrmException(Code::OPTIMISTIC_LOCK, "AES rotation changed {$spec['table']} primary key " . json_encode(array_slice($values, 0, count($primary)))); }
             $count++;
         }
         return $count;

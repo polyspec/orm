@@ -534,11 +534,11 @@ type diffIndex struct {
 }
 
 type diffForeignKey struct {
-	name      string
-	column    string
-	target    string
-	targetCol string
-	onDelete  string
+	name       string
+	columns    []string
+	target     string
+	targetCols []string
+	onDelete   string
 }
 
 func diffIndexesAndForeignKeys(from, to *schema.Manifest, oldEnt, newEnt *schema.Entity, dialect string, quote func(string) string) ([]schemaChange, []schemaChange, error) {
@@ -574,7 +574,7 @@ func diffIndexesAndForeignKeys(from, to *schema.Manifest, oldEnt, newEnt *schema
 	for _, key := range fkKeys {
 		o, ook := oldFKs[key]
 		n, nok := newFKs[key]
-		if ook && nok && (o == n || dialect == "sqlite" && foreignKeysEqualWithoutName(o, n)) {
+		if ook && nok && foreignKeysEqual(o, n, dialect != "sqlite") {
 			continue
 		}
 		if dialect == "sqlite" {
@@ -595,7 +595,11 @@ func diffIndexesAndForeignKeys(from, to *schema.Manifest, oldEnt, newEnt *schema
 }
 
 func foreignKeysEqualWithoutName(left, right diffForeignKey) bool {
-	return left.column == right.column && left.target == right.target && left.targetCol == right.targetCol && left.onDelete == right.onDelete
+	return foreignKeysEqual(left, right, false)
+}
+
+func foreignKeysEqual(left, right diffForeignKey, compareName bool) bool {
+	return (!compareName || left.name == right.name) && stringSlicesEqual(left.columns, right.columns) && left.target == right.target && stringSlicesEqual(left.targetCols, right.targetCols) && left.onDelete == right.onDelete
 }
 
 func entityIndexes(e *schema.Entity) map[string]diffIndex {
@@ -616,17 +620,40 @@ func entityIndexes(e *schema.Entity) map[string]diffIndex {
 
 func entityForeignKeys(m *schema.Manifest, e *schema.Entity) map[string]diffForeignKey {
 	out := map[string]diffForeignKey{}
-	for _, c := range e.Columns {
-		if c.Ref == nil {
-			continue
-		}
-		fk := diffForeignKey{name: "fk_" + e.Table + "_" + c.Name, column: c.Name, target: c.Ref.Entity, targetCol: c.Ref.Column}
-		for _, rel := range e.Relations {
-			if rel.Left == c.Name && rel.Target == c.Ref.Entity && rel.Right == c.Ref.Column {
-				fk.onDelete = rel.OnDelete
+	consumed := map[string]bool{}
+	for _, rel := range e.Relations {
+		columns := make([]string, len(rel.Keys))
+		targetColumns := make([]string, len(rel.Keys))
+		valid := len(rel.Keys) > 0
+		for i, key := range rel.Keys {
+			var column *schema.Col
+			for _, candidate := range e.Columns {
+				if candidate.Name == key.Local {
+					column = candidate
+					break
+				}
+			}
+			if column == nil || column.Ref == nil || column.Ref.Entity != rel.Target || column.Ref.Column != key.Target {
+				valid = false
 				break
 			}
+			columns[i], targetColumns[i] = key.Local, key.Target
 		}
+		if !valid {
+			continue
+		}
+		name := "fk_" + e.Table + "_" + strings.Join(columns, "_")
+		key := strings.Join(columns, "\x1f")
+		out[key] = diffForeignKey{name: name, columns: columns, target: rel.Target, targetCols: targetColumns, onDelete: rel.OnDelete}
+		for _, column := range columns {
+			consumed[column] = true
+		}
+	}
+	for _, c := range e.Columns {
+		if c.Ref == nil || consumed[c.Name] {
+			continue
+		}
+		fk := diffForeignKey{name: "fk_" + e.Table + "_" + c.Name, columns: []string{c.Name}, target: c.Ref.Entity, targetCols: []string{c.Ref.Column}}
 		out[c.Name] = fk
 	}
 	return out
@@ -637,7 +664,15 @@ func foreignKeyClause(fk diffForeignKey, m *schema.Manifest, quote func(string) 
 	if e := m.Entities[fk.target]; e != nil {
 		target = e.Table
 	}
-	stmt := fmt.Sprintf("CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", quote(fk.name), quote(fk.column), quote(target), quote(fk.targetCol))
+	columns := make([]string, len(fk.columns))
+	targetColumns := make([]string, len(fk.targetCols))
+	for i, column := range fk.columns {
+		columns[i] = quote(column)
+	}
+	for i, column := range fk.targetCols {
+		targetColumns[i] = quote(column)
+	}
+	stmt := fmt.Sprintf("CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", quote(fk.name), strings.Join(columns, ", "), quote(target), strings.Join(targetColumns, ", "))
 	switch fk.onDelete {
 	case "cascade":
 		stmt += " ON DELETE CASCADE"

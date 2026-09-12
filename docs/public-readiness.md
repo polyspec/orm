@@ -21,6 +21,9 @@ Each item requires:
 - [x] P8.2 Explicit table and column rename declarations preserve data and produce deterministic forward and rollback plans.
 - [x] P8.3 SQLite performs verified table rebuilds for supported structural changes and rejects unsafe rebuilds before execution.
 - [ ] P8.4 Composite primary and foreign keys work through schema import, planning, generated APIs, identity, CRUD, relations, pagination, and AES rotation. Unsupported declarations fail during schema build.
+  - [x] P8.4a Schema parsing, database import, DDL/diff generation, planning, joins, relation loading, tuple deduplication, and collision-free distinct counts preserve every key component in declared order.
+  - [x] P8.4b Go, PHP, Rust, and TypeScript generate key types, complete-key finders, ordered row identities, partial-key save rejection, composite collection keys, and composite AES rotation predicates.
+  - [ ] P8.4c Generated insert/update/delete/save/paginate operations pass physical MySQL, PostgreSQL, and SQLite tests in all four clients, including rollback and concurrent conflicting rows.
 - [ ] P8.5 Public encryption uses authenticated, versioned ciphertext in every client. Reads select the hidden row key version, mixed-version reads work, tampering fails, and rotation processes bounded resumable batches for every AES column in a row.
 - [ ] P8.6 Equality search on encrypted data requires an explicit blind-index column. Legacy ECB data has an explicit conversion path and is not generated for new schemas.
 - [ ] P8.7 Relation and `IN` parameters respect each database limit through deterministic chunking and preserve row order, key types, relation attachment, and errors.

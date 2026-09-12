@@ -89,11 +89,76 @@ func TestPhysicalMigration(t *testing.T) {
 			assertPhysicalMigrationLock(t, ctx, db, tc.driver)
 			assertRenamePreservesData(t, ctx, db, tc.driver)
 			assertPhysicalConstraintDiff(t, ctx, db, tc.driver)
+			assertPhysicalCompositeKeys(t, ctx, db, tc.driver)
 			assertPhysicalStructuredPlan(t, ctx, db, tc.driver, want)
 			assertPhysicalRollback(t, ctx, db, tc.driver)
 			assertPhysicalPoint(t, ctx, db, tc.driver)
 			assertPhysicalScope(t, ctx, db, tc.driver)
 		})
+	}
+}
+
+func assertPhysicalCompositeKeys(t *testing.T, ctx context.Context, db *sql.DB, driver string) {
+	t.Helper()
+	q := func(name string) string {
+		if driver == "mysql" {
+			return "`" + name + "`"
+		}
+		return `"` + name + `"`
+	}
+	_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+q("composite_membership"))
+	_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+q("composite_account"))
+	t.Cleanup(func() {
+		_, _ = db.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+q("composite_membership"))
+		_, _ = db.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+q("composite_account"))
+	})
+	want := buildPhysicalManifest(t, `erDiagram
+  composite_account {
+    bigint tenant_id PK
+    bigint id PK
+    varchar name
+  }
+  composite_membership {
+    bigint tenant_id PK,FK
+    bigint account_id PK,FK
+    varchar role
+  }
+  composite_account ||--o{ composite_membership : "(tenant_id, account_id) (account / memberships) cascade"
+`)
+	ddl, err := renderCreateDDL(want, driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := executeMigration(ctx, db, driver, ddl); err != nil {
+		t.Fatalf("create composite schema: %v\n%s", err, ddl)
+	}
+	if _, err := db.ExecContext(ctx, "INSERT INTO "+q("composite_account")+" ("+q("tenant_id")+", "+q("id")+", "+q("name")+") VALUES (7, 11, 'account')"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, "INSERT INTO "+q("composite_membership")+" ("+q("tenant_id")+", "+q("account_id")+", "+q("role")+") VALUES (7, 11, 'owner')"); err != nil {
+		t.Fatal(err)
+	}
+	live, err := liveManifest(db, driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entity := live.Entities["composite_membership"]
+	if entity == nil || !containsColumns([][]string{entity.PK}, []string{"tenant_id", "account_id"}) {
+		t.Fatalf("%s composite primary key differs: %#v", driver, entity)
+	}
+	var relation *schema.Rel
+	for _, candidate := range entity.Relations {
+		if candidate.Target == "composite_account" {
+			relation = candidate
+			break
+		}
+	}
+	if relation == nil || relation.OnDelete != "cascade" || len(relation.Keys) != 2 || relation.Keys[0].Local != "tenant_id" || relation.Keys[0].Target != "tenant_id" || relation.Keys[1].Local != "account_id" || relation.Keys[1].Target != "id" {
+		t.Fatalf("%s composite foreign key differs: %#v", driver, relation)
+	}
+	var count int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+q("composite_membership")+" WHERE "+q("tenant_id")+"=7 AND "+q("account_id")+"=11").Scan(&count); err != nil || count != 1 {
+		t.Fatalf("%s composite data differs: count=%d err=%v", driver, count, err)
 	}
 }
 
