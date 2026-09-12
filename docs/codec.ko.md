@@ -1,7 +1,7 @@
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 컬럼 스타일은 매니페스트 `styles: [...]`에 **쓰기 순서**로 기록된다(`gz_*` → `["serialize","gz"]`: 직렬화한 뒤 압축). 읽기는 역순.
-`aes`·`hex`·`ip`는 SQL 함수(`AES_ENCRYPT/HEX`, `INET6_ATON`)로 처리되어 실행기에 도달하지 않는다(`docs/protocol.md`). 나머지는 **실행기 코덱**이며 세 언어가 같은 바이트와 값을 생성한다.
+`aes`·`hex`·`ip`는 SQL 함수(`AES_ENCRYPT/HEX`, `INET6_ATON`)로 처리되어 실행기에 도달하지 않는다(`docs/protocol.md`). 나머지는 **실행기 코덱**이며 구현된 Go·PHP·Rust 실행기가 같은 바이트와 값을 생성한다. TypeScript 코덱은 아직 구현하지 않았다.
 
 | 스타일 | 쓰기(값 → 저장 바이트) | 읽기(저장 바이트 → 값) | 기준 |
 |---|---|---|---|
@@ -12,11 +12,11 @@
 
 ## 값 모델
 스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵.
-| | Go | Rust | PHP |
-|---|---|---|---|
-| 필드 타입 | `any` | `serde_json::Value` (nullable이면 `Option<…>`) | `mixed` (array/스칼라/null) |
-| 리스트 | `[]any` | `Value::Array` | list 배열 |
-| 맵 | `map[string]any` | `Value::Object` (키 정렬) | 연관 배열(삽입 순서) |
+| | Go | Rust | PHP | TypeScript |
+|---|---|---|---|---|
+| 필드 타입 | `any` | `serde_json::Value` (nullable이면 `Option<…>`) | `mixed` (array/스칼라/null) | `unknown` |
+| 리스트 | `[]any` | `Value::Array` | list 배열 | `unknown[]` |
+| 맵 | `map[string]any` | `Value::Object` (키 정렬) | 연관 배열(삽입 순서) | `Record<string, unknown>` |
 
 PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하다:
 - **읽기**: 키가 정확히 `0..n-1`인 배열 → 리스트, 그 외 → 맵(정수 키는 십진 문자열로).
