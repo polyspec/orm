@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:67941315331897ed183b05b76a821e49fe6227c2083a638bed307f90dc79f446",
-    "php": "sha256:25f6036f39188dad6f04f7dad51c228e7c7a0d86b4d7c345eb859cc94e4efa20",
-    "rust": "sha256:670432676cbe6641f3c4c2b37876ee3486fadce12aa6d4b1a091bd5fb64965de",
-    "typescript": "sha256:703c5bdd81a5a28bf18a2ade67dca652df7b89be6930c24c297d7899a9eac42a"
+    "go": "sha256:443c8f26c02deb40aba51e4162bf89f4c7b98e43ddc8db220d4b1f3e2a50eed7",
+    "php": "sha256:504ca5dde20e9ecb54de535f2308ab17bc7242b024d275bfe02cc3c69ad3680b",
+    "rust": "sha256:26e04fd33aa9ea4c42dedbaa2a2d9a53fc085de2c89061e7403f9fcf97ba9b94",
+    "typescript": "sha256:4692d796db29f6bf148cf43438ffb65773bebdc9f3523cbf70509b2060bc7b2c"
   },
   "prohibited_symbols": [
     "multi_statement"
@@ -273,6 +273,22 @@
       "methods": [],
       "ownership": "Reports whether the cursor was exhausted or stopped and how many independently owned rows were delivered.",
       "ownership_ko": "cursor 완료 또는 중단 상태와 독립된 row를 전달한 수를 반환한다."
+    },
+    {
+      "id": "Batch",
+      "fields": {
+        "requests": "List<Request>",
+        "options": "BatchOptions",
+        "result": "BatchResult"
+      },
+      "methods": [
+        "batchInsert",
+        "batchUpsert",
+        "batchUpdate",
+        "batchDelete"
+      ],
+      "ownership": "Executes homogeneous typed write requests in bounded chunks and one transaction.",
+      "ownership_ko": "동일한 typed write request를 제한된 chunk와 하나의 transaction으로 실행한다."
     },
     {
       "id": "AESKeyring",

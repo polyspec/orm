@@ -110,7 +110,11 @@ Use `orderBy<Col>Asc`, `orderBy<Col>Desc`, `groupBy<Col>`, `groupByExpr`, `havin
 
 Finder methods apply their equality predicate and call the corresponding terminal. The database or executor is never passed to a terminal.
 
-### 2.7 Rows
+### 2.7 Batch writes
+
+Batch writes use typed query drafts and one transaction. `batchInsert`, `batchUpsert`, `batchUpdate`, and `batchDelete` accept an entity-specific query list and a positive chunk size. The result contains `attempted`, `affected`, and `inserted`. An error rolls the complete batch back; a supplied transaction is reused.
+
+### 2.8 Rows
 
 A row has a generated getter and setter for each stored field. A setter marks the field dirty. Update operations use the row binding and preserve the original values required by optimistic locking. Relation accessors return the declared row or collection type.
 
