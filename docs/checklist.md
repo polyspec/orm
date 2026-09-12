@@ -8,7 +8,7 @@ Rules: no polling or timers, no symlinks, one execution path, Mermaid is the sou
 - **S0 complete:** measurements and decisions R1–R3 and F1–F3 are recorded in `docs/perf.md`.
 - **S1 complete:** engine, generators, four clients, conformance harness, `ormgen tokens`, and the demo are implemented.
 - **S2 complete:** relation, codec, type, 58-vector, and 150-table Rust fixture checks pass.
-- **S3–S6 complete:** writes, joins, PHP compatibility, deployment, PostgreSQL, and SQLite support are implemented. Fixed-cost optimization continues in T7.11.
+- **S3–S6 complete:** writes, joins, PHP compatibility, deployment, PostgreSQL, and SQLite support are implemented. T7.11 completed the remaining fixed-cost work and regression checks.
 - Current conformance coverage is **59 vectors × 4 clients × 3 databases**. Codec coverage is 96 vectors across Go, PHP, Rust, and TypeScript.
 
 ## Common interface verification
@@ -43,7 +43,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 ## Stage 0 — S0 baseline [complete]
 
 - [x] Record toolchain, transport, database, PHP runtime, and baseline measurements.
-- [x] Select Rust execution, PHP wire format, PDO policy, prepared statements, and performance gates.
+- [x] Select Rust execution, PHP wire format, PDO policy, prepared statements, and performance checks.
 
 ## Stage 1 — S1 thin slice [complete]
 
@@ -70,7 +70,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 ## Stage 5 — S5 hardening and deployment [complete]
 
 - [x] Implement schema import and validation, schema-hash checks, generated errors, query hooks, packages, deployment units, and CI.
-- [~] T5.3b Fixed-cost optimization: Go and PHP remain above the documented target and require typed direct-scan work.
+- [x] T5.3b Fixed-cost optimization: Go uses generated typed scans for default flat projections; PHP retains direct positional PDO rows; both pass the PK and 100-row regression checks.
 
 ## Stage 6 — S6 PostgreSQL and SQLite [complete]
 
@@ -90,7 +90,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] T7.8 Implement the TypeScript module, generated entity APIs and schema hash, `orm.toml` loader, native database drivers, structure and AST checks, and the 59-vector database runner for all three databases.
 - [x] T7.9 Compare Rust `mysql_async` 0.37.1 with sqlx 0.9 using equal SQL, binds, typed results, connection count, and fixture. Retain sqlx because neither measured workload shows the required 2x improvement.
 - [x] T7.10 Exclude `multi_statement` from every public API and reject the IR field and generated symbols because the supported databases cannot provide the same safe parameterized execution structure.
-- [ ] T7.11 Implement typed direct scans for Go and PHP and rerun the performance gates.
+- [x] T7.11 Generate Go typed scans, verify PHP positional hydration, correct native projection drift, and run Go and PHP performance checks.
 - [x] T7.12 Generate and compile the deterministic 150-table Rust fixture with the locked Rust dependency set.
 - [x] T7.13 Validate AES version columns, persist the current version on writes, and provide equivalent status and transactional row-rotation APIs in Go, PHP, Rust, and TypeScript. Verify repeat execution and all AES columns on physical databases.
 - [x] T7.14 Include table and column comments in the manifest, schema hash, import, DDL, diff, and SQLite metadata. Unit and containerctl MySQL/PostgreSQL tests pass.
@@ -112,7 +112,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] T7.D9 Add examples and reproducible commands for completed S7 features.
 - [x] T7.D10 Publish both language paths on GitHub Pages and run static checks.
 
-## Verification gates
+## Verification checks
 
 - [x] G0 Measure client overhead against the documented limits.
 - [x] G1 Compare shared JSON and token streams.

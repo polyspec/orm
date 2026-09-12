@@ -29,7 +29,7 @@ func dsn() string {
 	return localDSN
 }
 
-const listCols = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_club_reader_count`, `a`.`success_count`, `a`.`reader_count`, `a`.`read_count`, `a`.`photo_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_region_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_work`, `a`.`like_count`, AES_DECRYPT(UNHEX(`a`.`aes_hex_email`), ?) AS `aes_hex_email`, AES_DECRYPT(UNHEX(`a`.`aes_hex_phone`), ?) AS `aes_hex_phone`"
+const listCols = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_club_reader_count`, `a`.`success_count`, `a`.`reader_count`, `a`.`read_count`, `a`.`photo_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_region_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_work`, `a`.`like_count`, AES_DECRYPT(UNHEX(`a`.`aes_hex_email`), ?) AS `aes_hex_email`, AES_DECRYPT(UNHEX(`a`.`aes_hex_phone`), ?) AS `aes_hex_phone`, `a`.`price`, INET6_NTOA(`a`.`ip`) AS `ip`"
 
 type author struct {
 	Seq                      int64
@@ -52,13 +52,15 @@ type author struct {
 	IsSingleWork             bool
 	LikeCount                int32
 	Email, Phone             sql.NullString
+	Price                    sql.NullFloat64
+	IP                       sql.NullString
 }
 
 func scan(rows *sql.Rows, b *author) error {
 	return rows.Scan(&b.Seq, &b.Name, &b.CreatedTs, &b.UpdatedTs, &b.IsClose, &b.IsDisplay, &b.DisplayStart, &b.DisplayEnd,
 		&b.IsAllday, &b.TargetClubReaderCount, &b.SuccessCount, &b.ReaderCount, &b.ReadCount, &b.PhotoURL, &b.UserSeq,
 		&b.ServiceSeq, &b.ServiceRegionSeq, &b.ServiceMemberSeq, &b.StartDt, &b.EndDt, &b.UUID, &b.IsSingleWork, &b.LikeCount,
-		&b.Email, &b.Phone)
+		&b.Email, &b.Phone, &b.Price, &b.IP)
 }
 
 // stmt caches prepared statements per SQL text (one round trip per query).

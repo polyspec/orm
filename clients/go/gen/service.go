@@ -122,21 +122,64 @@ func (r *ServiceRow) deleteCascade(ctx context.Context, ex orm.Exec) error {
 	})
 }
 
+func assignServiceValue(r *ServiceRow, name string, v any) {
+	switch name {
+	case "seq":
+		r.Seq = orm.AsInt64(v)
+	case "name":
+		r.Name = orm.AsString(v)
+	default:
+		r.SetExtra(name, v)
+	}
+}
+
+func acceptsServiceDirect(a *plan.Assemble) bool {
+	if len(a.Columns) != 2 {
+		return false
+	}
+	if c := a.Columns[0]; c.Index != 0 || c.Name != "seq" || c.Column != "seq" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[1]; c.Index != 1 || c.Name != "name" || c.Column != "name" || len(c.Styles) != 0 {
+		return false
+	}
+	return true
+}
+
+func decodeServiceDirect(s *orm.DirectScanner, c plan.OutCol, raw *orm.ScanValue, r *ServiceRow) error {
+	v, err := s.Decode(c, raw.Value())
+	if err != nil {
+		return err
+	}
+	assignServiceValue(r, c.Name, v)
+	return nil
+}
+
+// scanServiceDirect scans the default flat projection into generated typed
+// fields. Codec and datetime outputs use named temporary scan values.
+func scanServiceDirect(s *orm.DirectScanner) (*ServiceRow, error) {
+	a := s.Assemble()
+	_ = a
+	r := &ServiceRow{}
+	r.Binding = s.Binding()
+	if err := s.Scan(
+		&r.Seq,
+		&r.Name,
+	); err != nil {
+		return nil, err
+	}
+	r.SetProjection(s.Projection())
+	r.Mark("service", "seq", r.Seq)
+	return r, nil
+}
+
 // scanService maps a positional row slice onto the struct, its joined
 // children (same row) and its relation children (rows of later steps).
 func scanService(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRow {
 	r := &ServiceRow{}
 	r.Binding = rs.Binding
 	for _, c := range a.Columns {
-		v := vals[c.Index]
-		switch c.Name {
-		case "seq":
-			r.Seq = orm.AsInt64(v)
-		case "name":
-			r.Name = orm.AsString(v)
-		default:
-			r.SetExtra(c.Name, v)
-		}
+		assignServiceValue(r, c.Name, vals[c.Index])
 	}
 	for _, ch := range a.Children {
 		switch ch.Rel {
@@ -750,6 +793,12 @@ func (q *ServiceQuery) One() (*ServiceRow, error) {
 		return nil, err
 	}
 	q.q.Req.IR.Kind = "one"
+	if direct, used, err := orm.QueryDirect(ctx, ex, q.q.Req, acceptsServiceDirect, scanServiceDirect); used {
+		if err != nil || len(direct) == 0 {
+			return nil, err
+		}
+		return direct[0], nil
+	}
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil || len(rows.Data) == 0 {
 		return nil, err
@@ -763,6 +812,12 @@ func (q *ServiceQuery) All() (*orm.Collection[ServiceRow], error) {
 		return nil, err
 	}
 	q.q.Req.IR.Kind = "all"
+	if direct, used, err := orm.QueryDirect(ctx, ex, q.q.Req, acceptsServiceDirect, scanServiceDirect); used {
+		if err != nil {
+			return nil, err
+		}
+		return collectServiceDirect(direct, q.keyFn), nil
+	}
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
@@ -815,6 +870,18 @@ func collectService(rows *orm.Rows, keyFn func(*ServiceRow) orm.Key) *orm.Collec
 			continue
 		}
 		c.Put(orm.KeyOf(vals[0]), r)
+	}
+	return c
+}
+
+func collectServiceDirect(rows []*ServiceRow, keyFn func(*ServiceRow) orm.Key) *orm.Collection[ServiceRow] {
+	c := orm.NewCollection[ServiceRow](len(rows))
+	for _, r := range rows {
+		if keyFn != nil {
+			c.Put(keyFn(r), r)
+		} else {
+			c.Put(orm.KeyOf(r.Seq), r)
+		}
 	}
 	return c
 }

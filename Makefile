@@ -11,7 +11,7 @@ db-test:
 	./scripts/db-test.sh
 
 perf-check:
-	ORM_RUN_PERF_GATE=1 go test ./bench/go -run TestHotPathGate -count=1 -v
+	./scripts/perf-test.sh
 
 ts-check:
 	npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs && node tests/typescript/compiler-bridge.mjs && node tests/typescript/driver.mjs && node tests/typescript/database.mjs && node tests/typescript/codec-vector.mjs
