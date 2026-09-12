@@ -1,5 +1,5 @@
 {
-  "schema_hash": "e37cee16c4377321",
+  "schema_hash": "5fb139132942a42b",
   "order": [
     "battle",
     "user",
@@ -7,7 +7,8 @@
     "service_module",
     "service_member",
     "composite_account",
-    "composite_membership"
+    "composite_membership",
+    "soft_record"
   ],
   "entities": {
     "battle": {
@@ -694,6 +695,38 @@
           ]
         }
       }
+    },
+    "soft_record": {
+      "name": "soft_record",
+      "table": "soft_record",
+      "pk": [
+        "seq"
+      ],
+      "auto": "seq",
+      "columns": [
+        {
+          "name": "seq",
+          "type": "i64",
+          "raw": "bigint",
+          "auto": true,
+          "pk": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "raw": "varchar(191)",
+          "len": 191
+        },
+        {
+          "name": "deleted_at",
+          "type": "datetime",
+          "raw": "datetime(6)",
+          "nullable": true,
+          "precision": 6
+        }
+      ],
+      "relations": {},
+      "soft_delete": "deleted_at"
     },
     "user": {
       "name": "user",

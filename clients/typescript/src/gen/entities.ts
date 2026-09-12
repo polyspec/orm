@@ -8,9 +8,9 @@ import type { AesKeyring, AesRotationStatus, BatchOptions, BatchResult, BatchReq
 import { batchWrite } from '../database.js';
 import { OrmError } from '../runtime_error.js';
 
-import type { BattleInterface, BattleRowInterface, UserInterface, UserRowInterface, ServiceInterface, ServiceRowInterface, ServiceModuleInterface, ServiceModuleRowInterface, ServiceMemberInterface, ServiceMemberRowInterface, CompositeAccountInterface, CompositeAccountRowInterface, CompositeMembershipInterface, CompositeMembershipRowInterface } from './interfaces.js';
+import type { BattleInterface, BattleRowInterface, UserInterface, UserRowInterface, ServiceInterface, ServiceRowInterface, ServiceModuleInterface, ServiceModuleRowInterface, ServiceMemberInterface, ServiceMemberRowInterface, CompositeAccountInterface, CompositeAccountRowInterface, CompositeMembershipInterface, CompositeMembershipRowInterface, SoftRecordInterface, SoftRecordRowInterface } from './interfaces.js';
 
-export const SCHEMA_HASH = 'e37cee16c4377321';
+export const SCHEMA_HASH = '5fb139132942a42b';
 registerSchemaHash(SCHEMA_HASH);
 
 export interface BattleKey { readonly seq:number; }
@@ -175,6 +175,18 @@ export class CompositeMembershipRow extends Row implements CompositeMembershipRo
   public getRole(fallback?: string): string { const value=this.column('role'); return (value ?? fallback ?? null) as string; }
   public setRole(value: string): this { return this.setColumn('role',value); }
   public getAccount(): CompositeAccountRow | null { return this.relation('account'); }
+}
+
+export interface SoftRecordKey { readonly seq:number; }
+export class SoftRecordRow extends Row implements SoftRecordRowInterface {
+  public static override entity(): string { return 'soft_record'; }
+  public static override primaryKeys(): readonly string[] { return ['seq']; }
+  public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','name':'string','deleted_at':'datetime'}; }
+  public getSeq(fallback?: number): number { const value=this.column('seq'); return (value ?? fallback ?? null) as number; }
+  public getName(fallback?: string): string { const value=this.column('name'); return (value ?? fallback ?? null) as string; }
+  public setName(value: string): this { return this.setColumn('name',value); }
+  public getDeletedAt(fallback?: string | Date | null): string | Date | null { const value=this.column('deleted_at'); return (value ?? fallback ?? null) as string | Date | null; }
+  public setDeletedAt(value: string | Date | null): this { return this.setColumn('deleted_at',value); }
 }
 
 export class BattleColumns {
@@ -3541,3 +3553,214 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
 }
 export function CompositeMembership(): CompositeMembershipQuery { return new CompositeMembershipQuery(); }
 registerRow('composite_membership',CompositeMembershipRow);
+
+export class SoftRecordColumns {
+  public static seq(): ColumnReference { return new ColumnReference('seq'); }
+  public static name(): ColumnReference { return new ColumnReference('name'); }
+  public static deletedAt(): ColumnReference { return new ColumnReference('deleted_at'); }
+}
+
+export class SoftRecordWhere {
+  public constructor(private readonly core: WhereCore) {}
+  public or(): this { this.core.or(); return this; }
+  public and(callback: (where: SoftRecordWhere) => void): this { this.core.and(core=>callback(new SoftRecordWhere(core))); return this; }
+  public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
+  public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.core.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.core.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.core.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.core.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.core.predicateList('seq','between',[low,high]); return this; }
+  public seqIsNull(): this { this.core.predicateNull('seq','is_null'); return this; }
+  public seqIsNotNull(): this { this.core.predicateNull('seq','is_not_null'); return this; }
+  public seqEqCol(reference: ColumnReference): this { this.core.predicateColumn('seq','eq_col',reference); return this; }
+  public seqNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('seq','not_eq_col',reference); return this; }
+  public seqGtCol(reference: ColumnReference): this { this.core.predicateColumn('seq','gt_col',reference); return this; }
+  public seqGteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','gte_col',reference); return this; }
+  public seqLtCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lt_col',reference); return this; }
+  public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
+  public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.core.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.core.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.core.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.core.predicate('name','ends_with',value); return this; }
+  public nameIsNull(): this { this.core.predicateNull('name','is_null'); return this; }
+  public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
+  public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
+  public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
+  public deletedAtEq(value: string | Date): this { this.core.predicate('deleted_at','eq',value); return this; }
+  public deletedAt(value: string | Date): this { return this.deletedAtEq(value); }
+  public deletedAtNotEq(value: string | Date): this { this.core.predicate('deleted_at','not_eq',value); return this; }
+  public deletedAtGt(value: string | Date): this { this.core.predicate('deleted_at','gt',value); return this; }
+  public deletedAtGte(value: string | Date): this { this.core.predicate('deleted_at','gte',value); return this; }
+  public deletedAtLt(value: string | Date): this { this.core.predicate('deleted_at','lt',value); return this; }
+  public deletedAtLte(value: string | Date): this { this.core.predicate('deleted_at','lte',value); return this; }
+  public deletedAtIn(values: readonly (string | Date)[]): this { this.core.predicateList('deleted_at','in',values); return this; }
+  public deletedAtNotIn(values: readonly (string | Date)[]): this { this.core.predicateList('deleted_at','not_in',values); return this; }
+  public deletedAtBetween(low: string | Date, high: string | Date): this { this.core.predicateList('deleted_at','between',[low,high]); return this; }
+  public deletedAtIsNull(): this { this.core.predicateNull('deleted_at','is_null'); return this; }
+  public deletedAtIsNotNull(): this { this.core.predicateNull('deleted_at','is_not_null'); return this; }
+  public deletedAtEqCol(reference: ColumnReference): this { this.core.predicateColumn('deleted_at','eq_col',reference); return this; }
+  public deletedAtNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('deleted_at','not_eq_col',reference); return this; }
+  public deletedAtGtCol(reference: ColumnReference): this { this.core.predicateColumn('deleted_at','gt_col',reference); return this; }
+  public deletedAtGteCol(reference: ColumnReference): this { this.core.predicateColumn('deleted_at','gte_col',reference); return this; }
+  public deletedAtLtCol(reference: ColumnReference): this { this.core.predicateColumn('deleted_at','lt_col',reference); return this; }
+  public deletedAtLteCol(reference: ColumnReference): this { this.core.predicateColumn('deleted_at','lte_col',reference); return this; }
+}
+
+export class SoftRecordQuery extends QueryCore implements SoftRecordInterface {
+  public constructor() { super('soft_record'); }
+  public and(callback: (where: SoftRecordWhere) => void): this { this.whereCore().and(core=>callback(new SoftRecordWhere(core))); return this; }
+  public on(callback: (where: SoftRecordWhere) => void): this { return this.onGroup(core=>callback(new SoftRecordWhere(core))); }
+  public where(callback: (where: SoftRecordWhere) => void): this { callback(new SoftRecordWhere(this.whereCore())); return this; }
+  public having(callback: (where: SoftRecordWhere) => void): this { return this.havingGroup(core=>callback(new SoftRecordWhere(core))); }
+  public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.predicateList('seq','between',[low,high]); return this; }
+  public seqIsNull(): this { this.predicateNull('seq','is_null'); return this; }
+  public seqIsNotNull(): this { this.predicateNull('seq','is_not_null'); return this; }
+  public seqEqCol(reference: ColumnReference): this { this.predicateColumn('seq','eq_col',reference); return this; }
+  public seqNotEqCol(reference: ColumnReference): this { this.predicateColumn('seq','not_eq_col',reference); return this; }
+  public seqGtCol(reference: ColumnReference): this { this.predicateColumn('seq','gt_col',reference); return this; }
+  public seqGteCol(reference: ColumnReference): this { this.predicateColumn('seq','gte_col',reference); return this; }
+  public seqLtCol(reference: ColumnReference): this { this.predicateColumn('seq','lt_col',reference); return this; }
+  public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
+  public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.predicate('name','ends_with',value); return this; }
+  public nameIsNull(): this { this.predicateNull('name','is_null'); return this; }
+  public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
+  public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
+  public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public deletedAtEq(value: string | Date): this { this.predicate('deleted_at','eq',value); return this; }
+  public deletedAt(value: string | Date): this { return this.deletedAtEq(value); }
+  public deletedAtNotEq(value: string | Date): this { this.predicate('deleted_at','not_eq',value); return this; }
+  public deletedAtGt(value: string | Date): this { this.predicate('deleted_at','gt',value); return this; }
+  public deletedAtGte(value: string | Date): this { this.predicate('deleted_at','gte',value); return this; }
+  public deletedAtLt(value: string | Date): this { this.predicate('deleted_at','lt',value); return this; }
+  public deletedAtLte(value: string | Date): this { this.predicate('deleted_at','lte',value); return this; }
+  public deletedAtIn(values: readonly (string | Date)[]): this { this.predicateList('deleted_at','in',values); return this; }
+  public deletedAtNotIn(values: readonly (string | Date)[]): this { this.predicateList('deleted_at','not_in',values); return this; }
+  public deletedAtBetween(low: string | Date, high: string | Date): this { this.predicateList('deleted_at','between',[low,high]); return this; }
+  public deletedAtIsNull(): this { this.predicateNull('deleted_at','is_null'); return this; }
+  public deletedAtIsNotNull(): this { this.predicateNull('deleted_at','is_not_null'); return this; }
+  public deletedAtEqCol(reference: ColumnReference): this { this.predicateColumn('deleted_at','eq_col',reference); return this; }
+  public deletedAtNotEqCol(reference: ColumnReference): this { this.predicateColumn('deleted_at','not_eq_col',reference); return this; }
+  public deletedAtGtCol(reference: ColumnReference): this { this.predicateColumn('deleted_at','gt_col',reference); return this; }
+  public deletedAtGteCol(reference: ColumnReference): this { this.predicateColumn('deleted_at','gte_col',reference); return this; }
+  public deletedAtLtCol(reference: ColumnReference): this { this.predicateColumn('deleted_at','lt_col',reference); return this; }
+  public deletedAtLteCol(reference: ColumnReference): this { this.predicateColumn('deleted_at','lte_col',reference); return this; }
+  public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }
+  public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }
+  public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
+  public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }
+  public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
+  public forUpdate(): this { return this.lock('update'); }
+  public forShare(): this { return this.lock('share'); }
+  public selectSeq(): this { return this.select('seq'); }
+  public omitSeq(): this { return this.omit('seq'); }
+  public orderBySeqAsc(): this { return this.orderBy('seq'); }
+  public orderBySeqDesc(): this { return this.orderBy('seq',true); }
+  public groupBySeq(): this { return this.groupBy('seq'); }
+  public keyBySeq(): this { return this.keyBy('seq'); }
+  public setSeq(value: number): this { return this.set('seq',value); }
+  public onDuplicateSetSeq(value: number): this { return this.duplicate('seq',value); }
+  public setSeqExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('seq',expression,values); }
+  public onDuplicateSetSeqExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('seq',expression,values); }
+  public selectName(): this { return this.select('name'); }
+  public omitName(): this { return this.omit('name'); }
+  public orderByNameAsc(): this { return this.orderBy('name'); }
+  public orderByNameDesc(): this { return this.orderBy('name',true); }
+  public groupByName(): this { return this.groupBy('name'); }
+  public keyByName(): this { return this.keyBy('name'); }
+  public setName(value: string): this { return this.set('name',value); }
+  public onDuplicateSetName(value: string): this { return this.duplicate('name',value); }
+  public setNameExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('name',expression,values); }
+  public onDuplicateSetNameExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('name',expression,values); }
+  public selectDeletedAt(): this { return this.select('deleted_at'); }
+  public omitDeletedAt(): this { return this.omit('deleted_at'); }
+  public orderByDeletedAtAsc(): this { return this.orderBy('deleted_at'); }
+  public orderByDeletedAtDesc(): this { return this.orderBy('deleted_at',true); }
+  public groupByDeletedAt(): this { return this.groupBy('deleted_at'); }
+  public keyByDeletedAt(): this { return this.keyBy('deleted_at'); }
+  public setDeletedAt(value: string | Date | null): this { return this.set('deleted_at',value); }
+  public onDuplicateSetDeletedAt(value: string | Date | null): this { return this.duplicate('deleted_at',value); }
+  public setDeletedAtExpr(expression: string, values: readonly unknown[] = []): this { return this.setExpression('deleted_at',expression,values); }
+  public onDuplicateSetDeletedAtExpr(expression: string, values: readonly unknown[] = []): this { return this.duplicateExpression('deleted_at',expression,values); }
+  public setDeletedAtNull(): this { return this.setNull('deleted_at'); }
+  public plusSeq(value: number): this { return this.plus('seq',value); }
+  public minusSeq(value: number): this { return this.minus('seq',value); }
+  public onDuplicatePlusSeq(value: number): this { return this.duplicatePlus('seq',value); }
+  public onDuplicateMinusSeq(value: number): this { return this.duplicateMinus('seq',value); }
+  public async sumSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('sum'); return value===null?null:Number(value); }
+  public async avgSeq(): Promise<number | null> { this.request.ir.agg='seq'; const value=await this.terminal('avg'); return value===null?null:Number(value); }
+  public async minSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('min'); }
+  public async maxSeq(): Promise<unknown> { this.request.ir.agg='seq'; return this.terminal('max'); }
+  public async countDistinctSeq(): Promise<number> { this.request.ir.agg='seq'; return Number(await this.terminal('count_distinct')); }
+  public async minName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('min'); }
+  public async maxName(): Promise<unknown> { this.request.ir.agg='name'; return this.terminal('max'); }
+  public async countDistinctName(): Promise<number> { this.request.ir.agg='name'; return Number(await this.terminal('count_distinct')); }
+  public async minDeletedAt(): Promise<unknown> { this.request.ir.agg='deleted_at'; return this.terminal('min'); }
+  public async maxDeletedAt(): Promise<unknown> { this.request.ir.agg='deleted_at'; return this.terminal('max'); }
+  public async countDistinctDeletedAt(): Promise<number> { this.request.ir.agg='deleted_at'; return Number(await this.terminal('count_distinct')); }
+  public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
+  public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
+  private resolveRelation(child: QueryCore, expected?: 'one'|'many'): string { const entity=child.request.ir.entity; const link=child.linkSelection; const candidates=this.relationDefinitions().filter(value=>value.target===entity&&(!expected||value.kind===expected)&&(!link||(value.left===link.parentKey&&value.right===link.childKey))); if(candidates.length!==1) throw new OrmError('IR_INVALID', `relation from ${this.request.ir.entity} to ${entity} is ${candidates.length===0?'not declared':'ambiguous'}; select a key pair`); return candidates[0]!.name; }
+  private relationDefinitions(): ReadonlyArray<{name:string;kind:'one'|'many';target:string;left:string;right:string}> { return []; }
+  public join(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'inner'); }
+  public leftJoin(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'left'); }
+  public relation(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'one'),child); }
+  public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
+  public async get(): Promise<SoftRecordRow | null> { return await this.terminal('one') as SoftRecordRow | null; }
+  public async gets(): Promise<Collection<SoftRecordRow>> { const rows=await this.terminal('all') as Collection<SoftRecordRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
+  public async stream(visitor: (row: SoftRecordRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<SoftRecordRow>(visitor); }
+  public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
+  public async getsCount(): Promise<Collection<SoftRecordRow>> { return await this.terminal('group_count') as Collection<SoftRecordRow>; }
+  public async insert(): Promise<SoftRecordRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new SoftRecordQuery().using(database).predicate('seq','eq',key).get(); }
+  public async save(): Promise<SoftRecordRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new SoftRecordQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
+  public async update(): Promise<number> { return this.writeAffected('update'); }
+  public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async batchInsert(rows: readonly SoftRecordQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpsert(rows: readonly SoftRecordQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
+  public async batchUpdate(rows: readonly SoftRecordQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'update', options); }
+  public async batchDelete(rows: readonly SoftRecordQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'delete', options); }
+  private async batchWrite(rows: readonly SoftRecordQuery[], kind: 'insert'|'update'|'delete', options: BatchOptions): Promise<BatchResult> { const database=this.binding.resolve(); const requests: BatchRequest[]=[]; for (const row of rows) { row.using(database); requests.push({ plan: await database.plan(row.requestShape(kind)), params: row.parameters() }); } return batchWrite(database, requests, kind, options); }
+  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
+  public async paginate(page: number, per: number): Promise<Page<SoftRecordRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new OrmError('IR_INVALID','paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<SoftRecordRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
+  public async getsAfter(cursor: string, per: number): Promise<KeysetPage<SoftRecordRow>> { this.keyset('after',cursor,per,['seq']); const rows=await this.terminalRows(); const items=rowCollection<SoftRecordRow>(rows, rows.plan.steps[0]!.assemble!); return keysetPage(rows,items,this.request.ir.order ?? []); }
+  public async getsBefore(cursor: string, per: number): Promise<KeysetPage<SoftRecordRow>> { this.keyset('before',cursor,per,['seq']); const rows=await this.terminalRows(); for(let left=0,right=rows.data.length-1;left<right;left++,right--){ const value=rows.data[left]!; rows.data[left]=rows.data[right]!; rows.data[right]=value; } const items=rowCollection<SoftRecordRow>(rows, rows.plan.steps[0]!.assemble!); return keysetPage(rows,items,this.request.ir.order ?? []); }
+  public async getBySeq(value: number): Promise<SoftRecordRow | null> { this.predicate('seq','eq',value); return this.get(); }
+  public async getsBySeq(value: number): Promise<Collection<SoftRecordRow>> { this.predicate('seq','eq',value); return this.gets(); }
+  public async getCountBySeq(value: number): Promise<number> { this.predicate('seq','eq',value); return this.getCount(); }
+  public async getByName(value: string): Promise<SoftRecordRow | null> { this.predicate('name','eq',value); return this.get(); }
+  public async getsByName(value: string): Promise<Collection<SoftRecordRow>> { this.predicate('name','eq',value); return this.gets(); }
+  public async getCountByName(value: string): Promise<number> { this.predicate('name','eq',value); return this.getCount(); }
+  public async getByDeletedAt(value: string | Date): Promise<SoftRecordRow | null> { this.predicate('deleted_at','eq',value); return this.get(); }
+  public async getsByDeletedAt(value: string | Date): Promise<Collection<SoftRecordRow>> { this.predicate('deleted_at','eq',value); return this.gets(); }
+  public async getCountByDeletedAt(value: string | Date): Promise<number> { this.predicate('deleted_at','eq',value); return this.getCount(); }
+}
+export function SoftRecord(): SoftRecordQuery { return new SoftRecordQuery(); }
+registerRow('soft_record',SoftRecordRow);

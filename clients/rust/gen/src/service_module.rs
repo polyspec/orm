@@ -413,13 +413,13 @@ impl ServiceModule {
     }
     pub fn join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "inner") }
     pub fn left_join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "left") }
-    fn join_target(mut self, child: impl AsRef<Q>, kind: &str) -> Self {
+    fn join_target(mut self, child: impl AsRef<Q>, _kind: &str) -> Self {
         let c = child.as_ref();
         match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
-            ("battle", "seq", "service_module_seq") => { self.q.join("battles", kind, c); self },
-            ("battle", "", "") => { self.q.join("battles", kind, c); self },
-            ("service", "service_seq", "seq") => { self.q.join("service", kind, c); self },
-            ("service", "", "") => { self.q.join("service", kind, c); self },
+            ("battle", "seq", "service_module_seq") => { self.q.join("battles", _kind, c); self },
+            ("battle", "", "") => { self.q.join("battles", _kind, c); self },
+            ("service", "service_seq", "seq") => { self.q.join("service", _kind, c); self },
+            ("service", "", "") => { self.q.join("service", _kind, c); self },
             _ => panic!("no relation from service_module"),
         }
     }

@@ -65,6 +65,11 @@ erDiagram
     bigint        account_id PK, FK
     varchar(191)  role
   }
+  soft_record {
+    bigint        seq PK "auto"
+    varchar(191)  name
+    datetime(6)   deleted_at "?"
+  }
 
   user           ||--o{ battle         : user_seq
   service        ||--o{ battle         : service_seq
@@ -86,3 +91,4 @@ erDiagram
   %% fulltext battle (name, description)
   %% predicate battle visible : `is_close` = FALSE AND `is_display` = TRUE
   %% predicate battle started_after : `start_dt` > ?
+  %% soft_delete soft_record deleted_at

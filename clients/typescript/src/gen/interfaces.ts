@@ -4,7 +4,7 @@ import type { Collection, Page } from '../model.js';
 import type { Db } from '../database.js';
 import type { Point } from '../codec.js';
 import type { AesKeyring, AesRotationStatus, StreamResult } from '../index.js';
-import type { BattleRow, UserRow, ServiceRow, ServiceModuleRow, ServiceMemberRow, CompositeAccountRow, CompositeMembershipRow } from './entities.js';
+import type { BattleRow, UserRow, ServiceRow, ServiceModuleRow, ServiceMemberRow, CompositeAccountRow, CompositeMembershipRow, SoftRecordRow } from './entities.js';
 
 export interface BattleInterface {
 get(): Promise<BattleRow | null>;
@@ -378,6 +378,45 @@ role(value: string): this;
 }
 
 export interface CompositeMembershipRowInterface {
+using(database: Db): this;
+update(): Promise<void>;
+delete(): Promise<void>;
+deleteCascade(): Promise<void>;
+has(column: string): boolean;
+relLoaded(relation: string): boolean;
+toObject(): Record<string, unknown>;
+}
+
+export interface SoftRecordInterface {
+get(): Promise<SoftRecordRow | null>;
+gets(): Promise<Collection<SoftRecordRow>>;
+stream(visitor: (row: SoftRecordRow) => boolean | Promise<boolean>): Promise<StreamResult>;
+getCount(): Promise<number>;
+getsCount(): Promise<Collection<SoftRecordRow>>;
+insert(): Promise<SoftRecordRow | null>;
+save(): Promise<SoftRecordRow | null>;
+update(): Promise<number>;
+delete(): Promise<number>;
+sql(): Promise<{ sql: string; binds: unknown[]; }>;
+using(database: Db): this;
+paginate(page: number, per: number): Promise<Page<SoftRecordRow>>;
+getsAfter(cursor: string, per: number): Promise<KeysetPage<SoftRecordRow>>;
+getsBefore(cursor: string, per: number): Promise<KeysetPage<SoftRecordRow>>;
+getsBySeq(value: number): Promise<Collection<SoftRecordRow>>;
+getsByName(value: string): Promise<Collection<SoftRecordRow>>;
+getsByDeletedAt(value: string | Date): Promise<Collection<SoftRecordRow>>;
+getCountBySeq(value: number): Promise<number>;
+getCountByName(value: string): Promise<number>;
+getCountByDeletedAt(value: string | Date): Promise<number>;
+seqEq(value: number): this;
+nameEq(value: string): this;
+deletedAtEq(value: string | Date): this;
+seq(value: number): this;
+name(value: string): this;
+deletedAt(value: string | Date): this;
+}
+
+export interface SoftRecordRowInterface {
 using(database: Db): this;
 update(): Promise<void>;
 delete(): Promise<void>;

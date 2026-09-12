@@ -30,6 +30,8 @@ func mapErr(err error) error {
 		return &ir.Error{Code: orm.CodeDeadlock, Msg: pe.Error()}
 	case "23505": // unique_violation
 		return &ir.Error{Code: orm.CodeDuplicateKey, Msg: pe.Error()}
+	case "23503": // foreign_key_violation
+		return &ir.Error{Code: orm.CodeForeignKey, Msg: pe.Error()}
 	}
 	return err
 }

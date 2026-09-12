@@ -1729,17 +1729,17 @@ impl Battle {
     }
     pub fn join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "inner") }
     pub fn left_join(mut self, child: impl AsRef<Q>) -> Self { self.join_target(child, "left") }
-    fn join_target(mut self, child: impl AsRef<Q>, kind: &str) -> Self {
+    fn join_target(mut self, child: impl AsRef<Q>, _kind: &str) -> Self {
         let c = child.as_ref();
         match (c.entity(), c.link_left.as_str(), c.link_right.as_str()) {
-            ("service", "service_seq", "seq") => { self.q.join("service", kind, c); self },
-            ("service", "", "") => { self.q.join("service", kind, c); self },
-            ("service_member", "service_member_seq", "seq") => { self.q.join("service_member", kind, c); self },
-            ("service_member", "", "") => { self.q.join("service_member", kind, c); self },
-            ("service_module", "service_module_seq", "seq") => { self.q.join("service_module", kind, c); self },
-            ("service_module", "", "") => { self.q.join("service_module", kind, c); self },
-            ("user", "user_seq", "seq") => { self.q.join("user", kind, c); self },
-            ("user", "", "") => { self.q.join("user", kind, c); self },
+            ("service", "service_seq", "seq") => { self.q.join("service", _kind, c); self },
+            ("service", "", "") => { self.q.join("service", _kind, c); self },
+            ("service_member", "service_member_seq", "seq") => { self.q.join("service_member", _kind, c); self },
+            ("service_member", "", "") => { self.q.join("service_member", _kind, c); self },
+            ("service_module", "service_module_seq", "seq") => { self.q.join("service_module", _kind, c); self },
+            ("service_module", "", "") => { self.q.join("service_module", _kind, c); self },
+            ("user", "user_seq", "seq") => { self.q.join("user", _kind, c); self },
+            ("user", "", "") => { self.q.join("user", _kind, c); self },
             _ => panic!("no relation from battle"),
         }
     }
