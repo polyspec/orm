@@ -399,7 +399,7 @@ Battle::query()->seq($id)->using($db)->delete();
 - `minus<Col>`는 0에서 멈춘다. `set<Col>Expr('`read_count` * ? + 1', [2])`로 식을 쓸 수 있다.
 - 트랜잭션은 각 언어의 네이티브 트랜잭션을 사용한다. callback은 기본적으로 한 번 실행한다. deadlock 재시도는 `TransactionOptions`의 `retryDeadlocks`를 활성화해야 하며 `maxAttempts`로 횟수를 제한한다(기본 3회).
 - transaction은 바깥 transaction을 종료하지 않고 `savepoint(name)`, `rollbackTo(name)`, `releaseSavepoint(name)`을 사용할 수 있다. savepoint 이름은 `[A-Za-z_][A-Za-z0-9_]*`를 사용하며 잘못된 이름은 SQL 실행 전에 `CONFIG`로 실패한다.
-- `TransactionOptions`로 `isolation`과 `readOnly`를 지정할 수 있다. 지원 이름은 `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`이다. SQLite는 명시적인 isolation과 read-only 옵션을 거부한다. Rust MySQL은 pool session 변경이 다른 사용자의 transaction에 영향을 주므로 transaction별 isolation을 거부하며 결과는 `CONFIG`다.
+- `TransactionOptions`로 `isolation`과 `readOnly`를 지정할 수 있다. 지원 이름은 `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`이다. SQLite는 명시적인 isolation과 read-only 옵션을 거부한다. Rust MySQL은 transaction 시작 전에 같은 pool connection에서 isolation을 적용한다. 지원하지 않는 mode는 `CONFIG`를 반환한다.
 
 ```go
 row, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {

@@ -136,7 +136,7 @@ A binding contains the execution context and one database or transaction referen
 
 Transaction ownership belongs to the code that created the transaction. Commit and rollback end the binding. After either operation, all queries and rows from that transaction reject execution. A transaction exposes `savepoint(name)`, `rollbackTo(name)`, and `releaseSavepoint(name)`; names must match `[A-Za-z_][A-Za-z0-9_]*`. These operations preserve the outer transaction and reject invalid names with `CONFIG`.
 
-`TransactionOptions` accepts `isolation` (`default`, `read_uncommitted`, `read_committed`, `repeatable_read`, or `serializable`) and `readOnly`. Go maps these to `database/sql.TxOptions`; PHP and TypeScript issue transaction settings before `BEGIN`; Rust applies them through sqlx where the driver supports them. SQLite rejects explicit isolation and read-only options. Rust's MySQL executor rejects per-transaction isolation because sqlx's pool API cannot set it without changing pooled session state. Such unsupported modes return `CONFIG`.
+`TransactionOptions` accepts `isolation` (`default`, `read_uncommitted`, `read_committed`, `repeatable_read`, or `serializable`) and `readOnly`. Go maps these to `database/sql.TxOptions`; PHP and TypeScript issue transaction settings before `BEGIN`; Rust applies MySQL settings and starts the transaction on the same retained pool connection, and applies PostgreSQL settings in the `BEGIN` statement. SQLite rejects explicit isolation and read-only options. Such unsupported modes return `CONFIG`.
 
 Errors preserve their stable code and the original driver message. Cancellation releases the transaction and does not leave an active connection in a client-owned object.
 

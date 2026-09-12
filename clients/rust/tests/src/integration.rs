@@ -11,7 +11,7 @@ use chrono::Datelike;
 use gen::*;
 use orm::collection::Key;
 use orm::value::{Param, Val};
-use orm::db::{Config, ConnectOptions, Db, Exec};
+use orm::db::{Config, ConnectOptions, Db, Exec, IsolationLevel};
 use orm::engine::{Engine, EngineConfig};
 use orm::plan::{BindSlot, Step};
 
@@ -98,6 +98,15 @@ async fn main() {
         if binds.iter().any(|b| *b == Param::Str("bench-salt".into())) { leaked_h.store(true, Ordering::Relaxed); }
     });
     let db = Db::connect(opts, 4, engine, Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), aes_version: 1, aes_keys: [(1, "bench-salt".into())].into_iter().collect(), plan_cache_size: 256, statement_cache_size: 256, on_query: Some(on_query) }).await.expect("connect");
+
+    // MySQL requires SET TRANSACTION before START TRANSACTION on the same connection.
+    // This verifies the Rust adapter's retained-connection path against the server.
+    if driver == "mysql" {
+        let isolation = db.transaction_with_options(|tx| async move {
+            battle::query().raw("SELECT @@transaction_isolation AS level", vec![]).using(&tx).raw_all().await
+        }, orm::TransactionOptions { isolation: IsolationLevel::RepeatableRead, ..Default::default() }).await.expect("mysql transaction isolation");
+        check!(fails, isolation.first().and_then(|row| row.get("level")).map(|v| v.as_string()) == Some("REPEATABLE-READ".into()), "mysql transaction isolation applies on the transaction connection");
+    }
 
     // ---- reads ----
     let b = battle::query().using(&db).get_by_seq(42).await.expect("one").expect("row 42");
