@@ -11,7 +11,7 @@ for (const node of ast.statements) {
     if (name) declarations.set(name, node);
   }
 }
-for (const name of ['AesRotationColumn', 'AesRowCodec', 'AesKeyring', 'Request', 'Group', 'Predicate', 'Relation', 'Plan', 'Compiler', 'Executor', 'Database', 'BattleRow', 'Where', 'BattleQuery']) {
+for (const name of ['AesRotationColumn', 'AesRowCodec', 'AesKeyring', 'Request', 'Group', 'Predicate', 'Relation', 'Plan', 'Compiler', 'Executor', 'Database', 'BattleRow', 'Where', 'BattleQuery', 'UserQuery', 'ServiceQuery', 'ServiceModuleQuery', 'ServiceMemberQuery']) {
   if (!declarations.has(name)) throw new Error(`${file}: missing declaration ${name}`);
 }
 const query = declarations.get('BattleQuery');
@@ -22,6 +22,9 @@ if (!methods.includes('scope')) throw new Error(`${file}: BattleQuery missing me
 const positions = required.map(name => methods.indexOf(name));
 if (positions.some((position, i) => i > 0 && position <= positions[i - 1])) throw new Error(`${file}: method order differs from the common query flow`);
 if (!declarations.has('Battle') || !ts.isFunctionDeclaration(declarations.get('Battle'))) throw new Error(`${file}: missing Battle factory`);
+for (const name of ['User', 'Service', 'ServiceModule', 'ServiceMember']) {
+  if (!declarations.has(name) || !ts.isFunctionDeclaration(declarations.get(name))) throw new Error(`${file}: missing ${name} factory`);
+}
 const keyring = declarations.get('AesKeyring');
 const rotation = keyring.members.filter(ts.isMethodDeclaration).map(node => node.name.getText(ast));
 for (const name of ['versions', 'rotateRow']) if (!rotation.includes(name)) throw new Error(`${file}: AesKeyring missing ${name}`);

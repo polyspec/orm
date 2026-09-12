@@ -137,15 +137,19 @@ export class Where {
 }
 
 export class BattleQuery {
-  private readonly request: Request = {
-    ir_version: 1,
-    schema_hash: '',
-    kind: 'all',
-    entity: 'battle',
-    n_params: 0,
-  };
+  private readonly request: Request;
   private readonly params: Param[] = [];
   private database?: Database;
+
+  public constructor(entity = 'battle') {
+    this.request = {
+      ir_version: 1,
+      schema_hash: '',
+      kind: 'all',
+      entity,
+      n_params: 0,
+    };
+  }
 
   public using(database: Database): this {
     this.database = database;
@@ -154,7 +158,10 @@ export class BattleQuery {
   }
 
   public serviceSeqEq(value: number): this { return this.condition('service_seq', value); }
-  public scope(value: number): this { return this.condition('service_seq', value); }
+  public scope(value: number): this {
+    if (this.request.entity !== 'battle') throw new Error(`scope is not declared for ${this.request.entity}`);
+    return this.condition('service_seq', value);
+  }
   public isCloseEq(value: boolean): this { return this.condition('is_close', value); }
   public isDisplayEq(value: boolean): this { return this.condition('is_display', value); }
   public isAlldayEq(value: boolean): this { return this.condition('is_allday', value); }
@@ -221,3 +228,23 @@ export class BattleQuery {
 }
 
 export function Battle(): BattleQuery { return new BattleQuery(); }
+
+// Generated entity entry points. The current TypeScript client shares the
+// request, relation, terminal, and execution order with the other clients.
+export class UserQuery extends BattleQuery {
+  public constructor() { super('user'); }
+}
+export class ServiceQuery extends BattleQuery {
+  public constructor() { super('service'); }
+}
+export class ServiceModuleQuery extends BattleQuery {
+  public constructor() { super('service_module'); }
+}
+export class ServiceMemberQuery extends BattleQuery {
+  public constructor() { super('service_member'); }
+}
+
+export function User(): UserQuery { return new UserQuery(); }
+export function Service(): ServiceQuery { return new ServiceQuery(); }
+export function ServiceModule(): ServiceModuleQuery { return new ServiceModuleQuery(); }
+export function ServiceMember(): ServiceMemberQuery { return new ServiceMemberQuery(); }
