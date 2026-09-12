@@ -14,7 +14,7 @@
 |---|---|
 | Go 1.27+ | 엔진·생성기·Go 클라이언트 |
 | MySQL 8.0.2+ / MariaDB 10.2+ | 1차 대상. PostgreSQL 12+, SQLite 3.35+도 같은 플랜으로 동작 |
-| PHP 8.4+ (`pdo_mysql`, `apcu`) | PHP 클라이언트를 쓸 때만. `pdo_pgsql`/`pdo_sqlite`는 해당 DB를 쓸 때 |
+| PHP 8.4+ (`pdo_mysql`) | PHP 클라이언트를 쓸 때만. `pdo_pgsql`/`pdo_sqlite`는 해당 DB를 쓸 때 |
 | Rust 1.98+ | Rust 클라이언트를 쓸 때만 |
 | Node.js 22.12+ | TypeScript 클라이언트를 쓸 때만 |
 

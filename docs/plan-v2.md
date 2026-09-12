@@ -148,4 +148,4 @@ These reusable conditions are declared under schema `predicates:` and generate a
 - No total schedule change (≈15–16 weeks). PHP assembly and codecs are added alongside ormd connection pinning and framing.
 
 ## 7. Retained from v1
-Compiler-only engine, shape-hash plan cache (Go/Rust process; PHP APCu stores **IR hash → ormd plan id**), Mermaid schema, `import/validate`, `schema_hash`, relation semantics (batch IN, keyName rekeying, parentNode merge order, first ONE row, groupLimit partition, strict possible), MutationBatch, optimistic locking, `CLIENT_FOUND_ROWS`, result and collection rules, generated error enums, codec vectors, three design principles, the S0 spike skeleton, and `--tables`.
+Compiler-only engine, shape-hash plan cache (Go/Rust process; PHP bounded process-local cache), Mermaid schema, `import/validate`, `schema_hash`, relation semantics (batch IN, keyName rekeying, parentNode merge order, first ONE row, groupLimit partition, strict possible), MutationBatch, optimistic locking, `CLIENT_FOUND_ROWS`, result and collection rules, generated error enums, codec vectors, three design principles, the S0 spike skeleton, and `--tables`.

@@ -4,7 +4,7 @@
 |---|---|---|---|
 | engine 배치 | compiler 전용, executor는 native | proxy 실행: PK +69%, 100행 +152% (perf.md §5) | 어떤 측정에서도 row 데이터 전달 비용이 발생한다 |
 | Rust runtime | 전용 thread의 wasmtime, wasm | cold compile 50µs/shape, cache hit 0.7µs; tokio process에 Go runtime 없음 (perf.md §2) | 높은 shape 변경에서 cold compile이 20µs 미만이어야 하면 변경을 검토한다 |
-| PHP runtime | 영속 Unix socket과 APCu plan cache를 사용하는 `ormd` daemon | shape당 최초 compile round trip 약 50µs; 실행 경로는 PDO만 사용 (perf.md §6) | FrankenPHP/in-process PHP는 별도 runtime 구현으로 취급한다 |
+| PHP runtime | 영속 Unix socket과 제한된 process-local plan cache를 사용하는 `ormd` daemon | cache에 없는 shape만 compile round trip을 수행하며 실행 경로는 PDO를 사용 | FrankenPHP/in-process PHP는 별도 runtime 구현으로 취급한다 |
 | artifacts | `ormengine-0.0.1.wasm`, `ormd-0.0.1-<os>-<arch>`, `ormgen-0.0.1-<os>-<arch>`, `SHA256SUMS` | — | version은 0.0.1로 유지하며 `latest` symlink를 사용하지 않는다 |
 | distribution | Go: module path; PHP: composer package와 `bin/ormd-…`; Rust: `[engine].wasm`의 wasm crate | — | registry 게시가 필요하면 별도 결정으로 처리한다 |
 | configuration | 배포마다 하나의 `orm.toml`, 절대 경로, 자동 검색 없음 (`docs/config.md`) | — | — |
