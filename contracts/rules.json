@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "api.single-source",
+      "source": "contracts/interfaces.json",
+      "checker": "contracts-check",
+      "failure": "public API symbols, fields, returns, errors, or call order differ from the common interface"
+    },
+    {
+      "id": "wire.protobuf-typed",
+      "source": "proto/orm/compiler/v1/compiler.proto",
+      "checker": "proto-check",
+      "failure": "compiler transport uses an untyped JSON or Struct payload"
+    },
+    {
+      "id": "schema.generated",
+      "source": "schema/*.mmd",
+      "checker": "schema-check",
+      "failure": "schema.json or generated clients are not reproducible from the Mermaid source"
+    },
+    {
+      "id": "aes.version-column",
+      "source": "schema/*.mmd",
+      "checker": "aes-check",
+      "failure": "a table with an aes style does not contain a non-null aes_key_version column"
+    },
+    {
+      "id": "docs.english-source",
+      "source": "docs/**/*.md",
+      "checker": "docs-check",
+      "failure": "an English Markdown source is missing its adjacent .ko.md translation"
+    },
+    {
+      "id": "docs.translation-shape",
+      "source": "docs/**/*.md and docs/**/*.ko.md",
+      "checker": "docs-check",
+      "failure": "translation headings, code fences, tables, or links differ from the English page"
+    },
+    {
+      "id": "docs.writing-style",
+      "source": "docs/document-rules.md",
+      "checker": "docs-style-check",
+      "failure": "configured informal, figurative, personifying, or ambiguous wording appears in a manual",
+      "forbidden_ko": [
+        "계약", "묶임", "진술", "남처럼", "읽힌다", "대가", "비켜서고", "1급", "산다", "단언", "부재", "퇴역", "죽은", "부여", "봉투", "게이트", "붙은", "가장자리", "이름으로", "말한다", "돈다", "회수", "센다", "자리에", "싣는다", "싣고", "두지", "낸다", "답한다", "꽂으면", "나간다", "달고", "흘린다", "흘려보낸", "보낸다", "투영", "침묵", "가리킨다", "밝힌다", "안다", "소속은", "고아", "입양", "뺏다", "뺏기", "흉내", "박다", "사건", "경계", "무는지", "물어야", "못 박다", "잽니다", "죽이나", "죽이다", "재다", "놓으라", "비싼", "유도", "덮이고", "실어"
+      ],
+      "forbidden_en": [
+        "contract", "boundary", "gate", "envelope", "orphan", "adopt", "pretend", "silence", "speaks", "knows", "dies", "kills"
+      ]
+    },
+    {
+      "id": "status.evidence",
+      "source": "docs/checklist.md",
+      "checker": "checklist-check",
+      "failure": "a checklist item is marked complete without implementation, test, documentation, and publication evidence"
+    },
+    {
+      "id": "git.subject-format",
+      "source": "git history",
+      "checker": "git-check",
+      "failure": "a new commit subject does not use type: concise English description"
+    }
+  ]
+}

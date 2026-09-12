@@ -52,4 +52,4 @@ Go `gen.Battle()` returns `*gen.BattleQuery`. Go passes `ctx` with the executor,
 
 The implemented clients are **Go, PHP, and Rust**. TypeScript is not implemented. See the [implementation matrix](interface-implementation.md), [checklist](checklist.md), and [S7 work list](s7.md) for verification scope and remaining work.
 
-[DSL](dsl.md) · [Schema](schema.md) · [IR / Plan](protocol.md) · [Complex query example](examples/complex-query.md) · [Documentation build and deployment](docs-development.md) · [한국어 문서](ko/s7.md)
+[DSL](dsl.md) · [Schema](schema.md) · [IR / Plan](protocol.md) · [Complex query example](examples/complex-query.md) · [Documentation build and deployment](docs-development.md) · [한국어 문서](s7.ko.md)
