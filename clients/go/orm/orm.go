@@ -299,7 +299,10 @@ func (t *Tx) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	if t.finished.Load() {
 		return nil, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
 	}
-	st, err := t.d.stmt(ctx, sqlText)
+	// Prepare on the active transaction connection. Preparing through DB can
+	// bind the statement to a different connection and break transaction
+	// visibility for SQLite and other connection-scoped drivers.
+	st, err := t.tx.PrepareContext(ctx, sqlText)
 	if err != nil {
 		return nil, err
 	}
