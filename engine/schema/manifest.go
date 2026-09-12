@@ -20,20 +20,21 @@ type Manifest struct {
 }
 
 type Entity struct {
-	Name       string                `json:"name"`
-	Table      string                `json:"table"`
-	Comment    string                `json:"comment,omitempty"`
-	PK         []string              `json:"pk"`
-	Auto       string                `json:"auto,omitempty"`
-	Columns    []*Col                `json:"columns"`
-	Relations  map[string]*Rel       `json:"relations"`
-	Unique     [][]string            `json:"unique,omitempty"`
-	Indexes    map[string][]string   `json:"indexes,omitempty"`
-	Fulltext   [][]string            `json:"fulltext,omitempty"`
-	Timestamps *Timestamps           `json:"timestamps,omitempty"`
-	Predicates map[string]*Predicate `json:"predicates,omitempty"` // %% predicate → generated <name>(args…) methods
-	Scope      string                `json:"scope,omitempty"`      // %% scope <table> <column>
-	Line       int                   `json:"-"`
+	Name        string                `json:"name"`
+	Table       string                `json:"table"`
+	RenamedFrom string                `json:"renamed_from,omitempty"`
+	Comment     string                `json:"comment,omitempty"`
+	PK          []string              `json:"pk"`
+	Auto        string                `json:"auto,omitempty"`
+	Columns     []*Col                `json:"columns"`
+	Relations   map[string]*Rel       `json:"relations"`
+	Unique      [][]string            `json:"unique,omitempty"`
+	Indexes     map[string][]string   `json:"indexes,omitempty"`
+	Fulltext    [][]string            `json:"fulltext,omitempty"`
+	Timestamps  *Timestamps           `json:"timestamps,omitempty"`
+	Predicates  map[string]*Predicate `json:"predicates,omitempty"` // %% predicate → generated <name>(args…) methods
+	Scope       string                `json:"scope,omitempty"`      // %% scope <table> <column>
+	Line        int                   `json:"-"`
 
 	cols map[string]*Col
 }
@@ -49,27 +50,28 @@ type Timestamps struct {
 // Col is a column with its canonical type:
 // i32 i64 f64 decimal string text bytes bool date time datetime json enum point inet
 type Col struct {
-	Name      string   `json:"name"`
-	Type      string   `json:"type"`
-	Raw       string   `json:"raw"`
-	Nullable  bool     `json:"nullable,omitempty"`
-	Default   *string  `json:"default,omitempty"`
-	Auto      bool     `json:"auto,omitempty"`
-	OnUpdate  bool     `json:"on_update,omitempty"`
-	Unsigned  bool     `json:"unsigned,omitempty"`
-	Lazy      bool     `json:"lazy,omitempty"`
-	Len       int      `json:"len,omitempty"`
-	Precision int      `json:"precision,omitempty"`
-	Scale     int      `json:"scale,omitempty"`
-	Enum      []string `json:"enum,omitempty"`
-	Styles    []string `json:"styles,omitempty"`
-	Ref       *Ref     `json:"ref,omitempty"`
-	PK        bool     `json:"pk,omitempty"`
-	FK        bool     `json:"fk,omitempty"`
-	UK        bool     `json:"uk,omitempty"`
-	Describe  string   `json:"describe,omitempty"`
-	Comment   string   `json:"comment,omitempty"`
-	Line      int      `json:"-"`
+	Name        string   `json:"name"`
+	RenamedFrom string   `json:"renamed_from,omitempty"`
+	Type        string   `json:"type"`
+	Raw         string   `json:"raw"`
+	Nullable    bool     `json:"nullable,omitempty"`
+	Default     *string  `json:"default,omitempty"`
+	Auto        bool     `json:"auto,omitempty"`
+	OnUpdate    bool     `json:"on_update,omitempty"`
+	Unsigned    bool     `json:"unsigned,omitempty"`
+	Lazy        bool     `json:"lazy,omitempty"`
+	Len         int      `json:"len,omitempty"`
+	Precision   int      `json:"precision,omitempty"`
+	Scale       int      `json:"scale,omitempty"`
+	Enum        []string `json:"enum,omitempty"`
+	Styles      []string `json:"styles,omitempty"`
+	Ref         *Ref     `json:"ref,omitempty"`
+	PK          bool     `json:"pk,omitempty"`
+	FK          bool     `json:"fk,omitempty"`
+	UK          bool     `json:"uk,omitempty"`
+	Describe    string   `json:"describe,omitempty"`
+	Comment     string   `json:"comment,omitempty"`
+	Line        int      `json:"-"`
 }
 
 type Ref struct {
@@ -458,6 +460,17 @@ func (m *Manifest) addDirective(x *Directive) error {
 		ent.Comment = x.Raw
 	case "column_comment":
 		ent.cols[x.Columns[0]].Comment = x.Raw
+	case "rename_table":
+		if ent.RenamedFrom != "" {
+			return &BuildError{x.Line, "rename_table declared twice for " + ent.Name}
+		}
+		ent.RenamedFrom = x.Name
+	case "rename_column":
+		column := ent.cols[x.Columns[0]]
+		if column.RenamedFrom != "" {
+			return &BuildError{x.Line, "rename_column declared twice for " + ent.Name + "." + column.Name}
+		}
+		column.RenamedFrom = x.Name
 	case "unique":
 		ent.Unique = append(ent.Unique, x.Columns)
 	case "index":

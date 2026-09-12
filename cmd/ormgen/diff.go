@@ -15,6 +15,11 @@ type schemaChange struct {
 	destructive bool
 }
 
+type diffEntityPair struct {
+	old  *schema.Entity
+	next *schema.Entity
+}
+
 func diffCmd(args []string) {
 	fs := flag.NewFlagSet("diff", flag.ExitOnError)
 	fromPath := fs.String("from", "", "previous .mmd, .json, ormgen .sql, or db:<dsn> (required)")
@@ -61,24 +66,13 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 		quote = func(s string) string { return "`" + s + "`" }
 	}
 	changes := make([]schemaChange, 0)
-	allNames := map[string]bool{}
-	for n := range from.Entities {
-		allNames[n] = true
-	}
-	for n := range to.Entities {
-		allNames[n] = true
-	}
-	names := make([]string, 0, len(allNames))
-	for n := range allNames {
-		names = append(names, n)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		oldEnt, oldOK := from.Entities[name]
-		newEnt, newOK := to.Entities[name]
+	pairs := matchDiffEntities(from, to)
+	for _, pair := range pairs {
+		oldEnt, newEnt := pair.old, pair.next
+		oldOK, newOK := oldEnt != nil, newEnt != nil
 		switch {
 		case !oldOK:
-			one := &schema.Manifest{SchemaHash: to.SchemaHash, Order: []string{name}, Entities: map[string]*schema.Entity{name: newEnt}}
+			one := &schema.Manifest{SchemaHash: to.SchemaHash, Order: []string{newEnt.Name}, Entities: map[string]*schema.Entity{newEnt.Name: newEnt}}
 			create, err := renderDDL(one, dialect)
 			if err != nil {
 				return "", err
@@ -89,7 +83,10 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 			changes = append(changes, schemaChange{sql: "DROP TABLE " + quote(oldEnt.Table) + ";", destructive: true})
 		default:
 			if oldEnt.Table != newEnt.Table {
-				return "", fmt.Errorf("table rename %s -> %s requires explicit migration", oldEnt.Table, newEnt.Table)
+				if newEnt.RenamedFrom != oldEnt.Name && oldEnt.RenamedFrom != newEnt.Name {
+					return "", fmt.Errorf("table rename %s -> %s requires explicit migration", oldEnt.Table, newEnt.Table)
+				}
+				changes = append(changes, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s RENAME TO %s;", quote(oldEnt.Table), quote(newEnt.Table))})
 			}
 			drops, adds, err := diffIndexesAndForeignKeys(from, to, oldEnt, newEnt, dialect, quote)
 			if err != nil {
@@ -103,21 +100,15 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 			for _, c := range newEnt.Columns {
 				newCols[c.Name] = c
 			}
-			cols := map[string]bool{}
-			for c := range oldCols {
-				cols[c] = true
-			}
-			for c := range newCols {
-				cols[c] = true
-			}
-			colNames := make([]string, 0, len(cols))
-			for c := range cols {
-				colNames = append(colNames, c)
-			}
-			sort.Strings(colNames)
-			for _, col := range colNames {
-				o, ook := oldCols[col]
-				n, nok := newCols[col]
+			for _, columns := range matchDiffColumns(oldEnt, newEnt) {
+				o, n := columns[0], columns[1]
+				ook, nok := o != nil, n != nil
+				col := ""
+				if n != nil {
+					col = n.Name
+				} else {
+					col = o.Name
+				}
 				switch {
 				case !ook:
 					def, err := ddlColumn(n, dialect, quote)
@@ -127,7 +118,13 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 					changes = append(changes, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s;", quote(newEnt.Table), def)})
 				case !nok:
 					changes = append(changes, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s;", quote(oldEnt.Table), quote(col)), destructive: true})
-				case columnChanged(o, n):
+				default:
+					if o.Name != n.Name {
+						changes = append(changes, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s;", quote(newEnt.Table), quote(o.Name), quote(n.Name))})
+					}
+					if !columnChanged(o, n) {
+						break
+					}
 					stmts, err := alterColumn(newEnt.Table, o, n, dialect, quote)
 					if err != nil {
 						return "", fmt.Errorf("column %s.%s changed from type=%s raw=%s nullable=%t default=%s to type=%s raw=%s nullable=%t default=%s: %w", newEnt.Table, col, o.Type, o.Raw, o.Nullable, colDefault(o), n.Type, n.Raw, n.Nullable, colDefault(n), err)
@@ -170,6 +167,79 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 		b.WriteByte('\n')
 	}
 	return b.String(), nil
+}
+
+func matchDiffEntities(from, to *schema.Manifest) []diffEntityPair {
+	used := map[string]bool{}
+	names := make([]string, 0, len(to.Entities))
+	for name := range to.Entities {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	pairs := make([]diffEntityPair, 0, len(from.Entities)+len(to.Entities))
+	for _, name := range names {
+		next := to.Entities[name]
+		old := from.Entities[name]
+		if old == nil && next.RenamedFrom != "" {
+			old = from.Entities[next.RenamedFrom]
+		}
+		if old == nil {
+			for _, candidate := range from.Entities {
+				if candidate.RenamedFrom == name {
+					old = candidate
+					break
+				}
+			}
+		}
+		if old != nil {
+			used[old.Name] = true
+		}
+		pairs = append(pairs, diffEntityPair{old: old, next: next})
+	}
+	oldNames := make([]string, 0)
+	for name := range from.Entities {
+		if !used[name] {
+			oldNames = append(oldNames, name)
+		}
+	}
+	sort.Strings(oldNames)
+	for _, name := range oldNames {
+		pairs = append(pairs, diffEntityPair{old: from.Entities[name]})
+	}
+	return pairs
+}
+
+func matchDiffColumns(old, next *schema.Entity) [][2]*schema.Col {
+	oldByName := map[string]*schema.Col{}
+	for _, c := range old.Columns {
+		oldByName[c.Name] = c
+	}
+	used := map[string]bool{}
+	out := make([][2]*schema.Col, 0, len(old.Columns)+len(next.Columns))
+	for _, n := range next.Columns {
+		o := oldByName[n.Name]
+		if o == nil && n.RenamedFrom != "" {
+			o = oldByName[n.RenamedFrom]
+		}
+		if o == nil {
+			for _, candidate := range old.Columns {
+				if candidate.RenamedFrom == n.Name {
+					o = candidate
+					break
+				}
+			}
+		}
+		if o != nil {
+			used[o.Name] = true
+		}
+		out = append(out, [2]*schema.Col{o, n})
+	}
+	for _, o := range old.Columns {
+		if !used[o.Name] {
+			out = append(out, [2]*schema.Col{o, nil})
+		}
+	}
+	return out
 }
 
 func removeDropStatement(s string) string {
