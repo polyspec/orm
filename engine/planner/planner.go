@@ -930,11 +930,13 @@ func (p *Planner) renderExistence(b *builder, parent *scope, nav *ir.Nav) (strin
 	if target.SoftDelete != "" {
 		conditions = append(conditions, p.qcol(child, target.SoftDelete)+" IS NULL")
 	}
-	group, err := p.renderGroup(b, child, nav.Group, false)
-	if err != nil {
-		return "", err
+	if nav.Group != nil && len(nav.Group.Items) > 0 {
+		group, err := p.renderGroup(b, child, nav.Group, false)
+		if err != nil {
+			return "", err
+		}
+		conditions = append(conditions, group)
 	}
-	conditions = append(conditions, group)
 	keyword := "EXISTS"
 	if nav.Mode == "not_exists" {
 		keyword = "NOT EXISTS"

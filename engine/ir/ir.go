@@ -648,8 +648,11 @@ func (v *validator) group(ent *schema.Entity, g *Group, joined map[string]*Join,
 				}
 				target = v.m.Entities[rel.Target]
 			}
-			if it.Nav.Group == nil || len(it.Nav.Group.Items) == 0 {
+			if it.Nav.Mode == "" && (it.Nav.Group == nil || len(it.Nav.Group.Items) == 0) {
 				return errf("IR_INVALID", "empty nav group")
+			}
+			if it.Nav.Group == nil {
+				continue
 			}
 			nested := map[string]*Join{}
 			if it.Nav.Mode == "" {
