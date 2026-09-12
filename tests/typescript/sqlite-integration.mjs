@@ -28,7 +28,26 @@ try {
   const before = statements.length;
   const statement = await Battle().using(db).serviceSeq(7).selectAesHexEmail().limit(0, 1).sql();
   if (statements.length !== before || !statement.sql.includes('aes_hex_email')) throw new Error('sql terminal executed a statement or omitted selection');
+  const rollback = new Error('rollback');
+  let createdSeq;
+  try {
+    await db.transaction(async transaction => {
+      const created = await Battle().using(transaction)
+        .setName('typescript-write').setUserSeq(1).setServiceSeq(7).setServiceModuleSeq(1).setServiceMemberSeq(1)
+        .setStartDt('2026-09-12 00:00:00.000000').setEndDt('2026-09-13 00:00:00.000000').setAesHexEmail('typescript@example.com').insert();
+      if (!created) throw new Error('insert did not read the row back');
+      createdSeq = created.getSeq();
+      created.setName('typescript-updated').setLikeCount(4);
+      await created.updateOptimistic();
+      const updated = await Battle().using(transaction).getBySeq(createdSeq);
+      if (updated?.getName() !== 'typescript-updated' || updated.getLikeCount() !== 4 || updated.getAesHexEmail() !== 'typescript@example.com') throw new Error('row update or codec round trip failed');
+      await updated.delete();
+      if (await Battle().using(transaction).getCountBySeq(createdSeq) !== 0) throw new Error('row delete failed');
+      throw rollback;
+    });
+  } catch (error) { if (error !== rollback) throw error; }
+  if (createdSeq === undefined || await Battle().using(db).getCountBySeq(createdSeq) !== 0) throw new Error('transaction rollback state differs');
 } finally {
   await db.close();
 }
-console.log('typescript SQLite integration: count, row, collection, join, and SQL dump passed');
+console.log('typescript SQLite integration: read, join, SQL dump, write, row state, codec, and transaction passed');

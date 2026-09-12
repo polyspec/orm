@@ -82,7 +82,16 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 			field, typ := pascal(c.Name), tsType(c)
 			fmt.Fprintf(&b, "  public get%s(fallback?: %s): %s { const value=this.column(%s); return (value ?? fallback ?? null) as %s; }\n", field, typ, typ, tsString(c.Name), typ)
 			if !c.Auto {
-				fmt.Fprintf(&b, "  public set%s(value: %s): this { return this.setColumn(%s,value); }\n", field, typ, tsString(c.Name))
+				styles := appStyles(c)
+				if len(styles) > 0 {
+					quoted := make([]string, len(styles))
+					for i, style := range styles {
+						quoted[i] = tsString(style)
+					}
+					fmt.Fprintf(&b, "  public set%s(value: %s): this { return this.setStyledColumn(%s,value,[%s]); }\n", field, typ, tsString(c.Name), strings.Join(quoted, ","))
+				} else {
+					fmt.Fprintf(&b, "  public set%s(value: %s): this { return this.setColumn(%s,value); }\n", field, typ, tsString(c.Name))
+				}
 			}
 		}
 		for _, rel := range ge.Rels {

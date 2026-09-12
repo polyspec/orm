@@ -68,15 +68,15 @@ export class BattleRow extends Row {
   public getIp(fallback?: string | null): string | null { const value=this.column('ip'); return (value ?? fallback ?? null) as string | null; }
   public setIp(value: string | null): this { return this.setColumn('ip',value); }
   public getGzExtend(fallback?: unknown | null): unknown | null { const value=this.column('gz_extend'); return (value ?? fallback ?? null) as unknown | null; }
-  public setGzExtend(value: unknown | null): this { return this.setColumn('gz_extend',value); }
+  public setGzExtend(value: unknown | null): this { return this.setStyledColumn('gz_extend',value,['serialize','gz']); }
   public getJsonSetting(fallback?: unknown | null): unknown | null { const value=this.column('json_setting'); return (value ?? fallback ?? null) as unknown | null; }
-  public setJsonSetting(value: unknown | null): this { return this.setColumn('json_setting',value); }
+  public setJsonSetting(value: unknown | null): this { return this.setStyledColumn('json_setting',value,['json']); }
   public getJsonsTags(fallback?: unknown | null): unknown | null { const value=this.column('jsons_tags'); return (value ?? fallback ?? null) as unknown | null; }
-  public setJsonsTags(value: unknown | null): this { return this.setColumn('jsons_tags',value); }
+  public setJsonsTags(value: unknown | null): this { return this.setStyledColumn('jsons_tags',value,['jsons']); }
   public getBase64Extra(fallback?: unknown | null): unknown | null { const value=this.column('base64_extra'); return (value ?? fallback ?? null) as unknown | null; }
-  public setBase64Extra(value: unknown | null): this { return this.setColumn('base64_extra',value); }
+  public setBase64Extra(value: unknown | null): this { return this.setStyledColumn('base64_extra',value,['serialize','base64']); }
   public getSerializeData(fallback?: unknown | null): unknown | null { const value=this.column('serialize_data'); return (value ?? fallback ?? null) as unknown | null; }
-  public setSerializeData(value: unknown | null): this { return this.setColumn('serialize_data',value); }
+  public setSerializeData(value: unknown | null): this { return this.setStyledColumn('serialize_data',value,['serialize']); }
   public getService(): ServiceRow | null { return this.relation('service'); }
   public getServiceMember(): ServiceMemberRow | null { return this.relation('service_member'); }
   public getServiceModule(): ServiceModuleRow | null { return this.relation('service_module'); }
