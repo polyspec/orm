@@ -48,6 +48,7 @@ jobs:
         run: |
           npm ci
           npm ci --prefix clients/typescript
+          npx playwright install --with-deps chromium
       - uses: dtolnay/rust-toolchain@stable
       # sqlx and wasmtime are most of the build; without this the job spends ~6 of its 9 minutes compiling them again
       - uses: Swatinem/rust-cache@v2
