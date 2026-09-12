@@ -44,7 +44,7 @@ Each item requires:
 ## P10: verification
 
 - [ ] P10.1 Model and property tests cover schema round trips, migration operation order, cursor round trips, query cloning, and codec round trips.
-- [ ] P10.2 Fuzz tests cover Mermaid, manifest, IR, SQL migration statement, cursor, and ciphertext decoders without panics or unbounded allocation.
+- [ ] P10.2 Fuzz tests cover Mermaid, manifest, IR, SQL migration statement splitting, cursor, and ciphertext decoders without panics or unbounded allocation. All required fuzz targets are present; the full fuzz smoke run remains open.
 - [ ] P10.3 Failure-injection tests cover compiler failure, driver failure, cancellation, transaction failure, cache eviction, migration interruption, and rotation interruption.
 - [ ] P10.4 Concurrency tests cover optimistic updates, deadlocks, savepoints, migration locks, AES rotation, and cache access.
 - [ ] P10.5 Physical MySQL, PostgreSQL, and SQLite tests cover parameter limits, all migration operations, batch writes, keyset pagination, transaction modes, and encryption changes through containerctl without `-state`.
