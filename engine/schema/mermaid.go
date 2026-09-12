@@ -88,7 +88,7 @@ var (
 	// parent CARD child : label
 	reRelation = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s+([|}o]{1,2}[-.]{2}[|{o]{1,2})\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$`)
 	// %% kind table (a, b) [name]
-	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|check|blind_index|timestamps|scope|predicate|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
+	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|check|blind_index|timestamps|scope|soft_delete|predicate|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
 	reRelationNames  = regexp.MustCompile(`^(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
 	reRef            = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
 	reDirectiveIdent = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
@@ -307,6 +307,11 @@ func parseDirective(m []string, line int) (*Directive, error) {
 		d.Columns = strings.Fields(d.Raw)
 		if len(d.Columns) != 1 {
 			return nil, &ParseError{line, "%% scope <table> <column>"}
+		}
+	case "soft_delete":
+		d.Columns = strings.Fields(d.Raw)
+		if len(d.Columns) != 1 {
+			return nil, &ParseError{line, "%% soft_delete <table> <nullable_datetime_column>"}
 		}
 	case "blind_index":
 		d.Columns = strings.Fields(d.Raw)

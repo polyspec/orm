@@ -98,6 +98,7 @@ Mermaid 문법을 사용한다. `PK`, `FK`, `UK`는 Mermaid keyword다. 기본�
 %% timestamps <table> created_ts updated_ts # 자동 타임스탬프 컬럼 지정(기본: 이름이 created_ts/updated_ts면 자동)
 %% predicate <table> <name> : <expr 조각>   # 재사용 술어 → `<name>(args…)` 메서드. 백틱 컬럼은 검증, `?`마다 인자 하나
 %% scope <table> <column>                 # query API와 IR에 독립된 tenant scope 생성
+%% soft_delete <table> <column>            # nullable datetime; 읽기는 NULL이 아닌 행을 제외하고 delete는 현재 시각을 기록
 %% table_comment <table> "database table comment"
 %% column_comment <table> <column> "database column comment"
 %% rename_table <new_table> <old_table>      # migration rename
@@ -123,7 +124,7 @@ PostgreSQL `COMMENT ON` 문, SQLite의 `orm_schema_comments` 행을 생성합니
 |---|---|
 | 테이블·컬럼·타입·PK/FK/UK·관계·카디널리티 | 표준 Mermaid |
 | NULL/NOT NULL, DEFAULT, AUTO_INCREMENT, ON UPDATE, lazy, 스타일, FK 대상 | 컬럼 주석 문자열(렌더러는 글자로 표시) |
-| 복합 UNIQUE, INDEX(순서 포함), FULLTEXT, 타임스탬프 지정, 재사용 술어 | `%%` 지시문(렌더러는 무시) |
+| 복합 UNIQUE, INDEX(순서 포함), FULLTEXT, 타임스탬프 지정, 재사용 술어, soft delete | `%%` 지시문(렌더러는 무시) |
 | FK 참조 동작 | 관계선 라벨 속성 `cascade`/`setnull` (기본 RESTRICT) |
 | 3 DB 방언 차이 | 파일에 없음. 타입 어휘를 고정하고 `ormgen ddl --dialect mysql\|postgres\|sqlite`가 방언별 CREATE문을 생성 |
 | CHECK, 파티션, 콜레이션·엔진 옵션, 뷰·트리거·함수·시퀀스·확장 | 다루지 않음(ORM 범위 밖). 마이그레이션 SQL에 직접 |
