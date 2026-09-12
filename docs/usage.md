@@ -1,21 +1,21 @@
-# 사용법
+# Usage
 
-스키마 한 벌(Mermaid)에서 Go·PHP·Rust 클라이언트를 생성하고, 같은 문장을 세 언어에서 같은 SQL로 실행한다.
-대상 DB는 MySQL 8(기본), PostgreSQL 12+, SQLite 3.35+.
+Generate Go, PHP, and Rust clients from one Mermaid schema and execute the same statement as the same SQL in each client.
+Supported databases are MySQL 8 by default, PostgreSQL 12+, and SQLite 3.35+.
 
-문법의 전체 목록은 [dsl.md](dsl.md), 다이어그램 문법은 [schema.md](schema.md), IR/Plan 계약은 [protocol.md](protocol.md),
-방언 차이는 [dialects.md](dialects.md), 설정은 [config.md](config.md), 에러 코드는 [errors.yaml](errors.yaml)에 있다.
+The complete syntax is in [dsl.md](dsl.md), diagram syntax is in [schema.md](schema.md), and the IR/Plan format is in [protocol.md](protocol.md).
+Dialect differences are in [dialects.md](dialects.md), configuration is in [config.md](config.md), and error codes are in [errors.yaml](errors.yaml).
 
 ---
 
-## 1. 준비
+## 1. Requirements
 
-| 필요한 것 | 비고 |
+| Requirement | Notes |
 |---|---|
-| Go 1.27+ | 엔진·생성기·Go 클라이언트 |
-| MySQL 8.0.2+ / MariaDB 10.2+ | 1차 대상. PostgreSQL 12+, SQLite 3.35+도 같은 플랜으로 동작 |
-| PHP 8.4+ (`pdo_mysql`, `apcu`) | PHP 클라이언트를 쓸 때만. `pdo_pgsql`/`pdo_sqlite`는 해당 DB를 쓸 때 |
-| Rust 1.98+ | Rust 클라이언트를 쓸 때만 |
+| Go 1.27+ | Engine, generator, and Go client |
+| MySQL 8.0.2+ / MariaDB 10.2+ | Primary target; PostgreSQL 12+ and SQLite 3.35+ use the same plan |
+| PHP 8.4+ (`pdo_mysql`, `apcu`) | Required for PHP; add `pdo_pgsql`/`pdo_sqlite` for those databases |
+| Rust 1.98+ | Required for Rust |
 
 ```sh
 git clone https://github.com/polyspec/orm && cd orm
@@ -24,9 +24,9 @@ go build ./...
 
 ---
 
-## 2. 스키마 → 매니페스트
+## 2. Schema to manifest
 
-사람이 쓰는 정의는 Mermaid `erDiagram` 하나뿐이다(`schema/bench.mmd`가 예제).
+The human-maintained definition is one Mermaid `erDiagram` (`schema/bench.mmd` is an example).
 
 ```mermaid
 erDiagram
@@ -48,15 +48,15 @@ erDiagram
   %% predicate battle visible : `is_close` = FALSE
 ```
 
-- 주석 문자열이 속성이다: `?`=NULL 허용, `=값`=기본값(`=now`), `onupdate`, `auto`, `unsigned`, `lazy`, `bool`.
-- 컬럼 이름이 스타일을 정한다: `aes_hex_*`, `gz_*`, `json_*`, `jsons_*`, `base64_*`, `serialize_*`, `ip`([codec.md](codec.md)).
-- 관계선 `부모 ||--o{ 자식 : fk컬럼`이 양쪽 관계 이름을 만든다(`battle.user`, `user.battles`).
+- Comment attributes define nullability, defaults, update timestamps, auto increment, unsigned values, lazy loading, and booleans.
+- Column names can imply styles: `aes_hex_*`, `gz_*`, `json_*`, `jsons_*`, `base64_*`, `serialize_*`, and `ip` ([codec.md](codec.md)).
+- A relation line `parent ||--o{ child : fk_column` defines names on both sides (`battle.user`, `user.battles`).
 
 ```sh
 go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
 ```
 
-기존 DB에서 시작한다면 임포트가 같은 파일을 만들어 준다(멱등, 손으로 쓴 속성 보존):
+When starting from an existing database, import creates the same file deterministically and preserves declared attributes:
 
 ```sh
 go run ./cmd/ormgen import --dsn "root@unix(/tmp/mysql.sock)/mydb" --out schema/app.mmd
@@ -65,7 +65,7 @@ go run ./cmd/ormgen import --dsn "postgres://user@localhost:5432/mydb" --out sch
 
 ---
 
-## 3. 코드 생성
+## 3. Code generation
 
 ```sh
 go run ./cmd/ormgen gen --schema schema/schema.json --lang go   --out clients/go/gen
@@ -73,14 +73,14 @@ go run ./cmd/ormgen gen --schema schema/schema.json --lang php  --out clients/ph
 go run ./cmd/ormgen gen --schema schema/schema.json --lang rust --out clients/rust/gen
 ```
 
-엔티티마다 쿼리 타입·Row 타입·Where 빌더·컬럼 참조가 생긴다. 스키마를 바꾸면 **다시 생성하고 다시 배포**한다.
-생성물과 엔진의 `schema_hash`가 다르면 시작할 때 `SCHEMA_HASH_MISMATCH`로 즉시 멈춘다(감시·자동 리로드 없음).
+Each entity produces a query type, Row type, Where builder, and column references. After changing the schema, **regenerate and redeploy**.
+A mismatch between the generated `schema_hash` and the engine hash stops startup with `SCHEMA_HASH_MISMATCH`.
 
 ---
 
-## 4. 연결
+## 4. Connections
 
-### Go — 엔진이 프로세스 안에 있다
+### Go — in-process engine
 
 ```go
 import (
@@ -100,9 +100,9 @@ db, err := orm.Open("mysql", dsn, eng, orm.Config{AESKey: "…"})
 if err := gen.Init(eng); err != nil { … }              // schema_hash 확인 1회
 ```
 
-DSN에 `parseTime=true&clientFoundRows=true`가 필요하다(낙관적 잠금이 `clientFoundRows`에 의존).
+The DSN requires `parseTime=true&clientFoundRows=true` because optimistic updates depend on `clientFoundRows`.
 
-### PHP — 컴파일 데몬 + PDO
+### PHP — compiler daemon and PDO
 
 ```sh
 bin/ormd -socket /run/orm/ormd.sock -schema /srv/app/schema/schema.json &   # 호스트당 1개
@@ -115,9 +115,9 @@ $db = Db::mysql('mysql:unix_socket=/tmp/mysql.sock;dbname=app;charset=utf8mb4', 
 // Db::postgres('pgsql:host=…;dbname=…;user=…') / Db::sqlite('/abs/app.sqlite')
 ```
 
-`ormd`는 IR을 플랜으로 컴파일만 한다(DB에 접속하지 않는다). 플랜은 APCu에 캐시되어 문장 형태당 한 번만 왕복한다.
+`ormd` only compiles IR into plans; it does not connect to the database. APCu caches plans, so each statement shape uses one round trip.
 
-### Rust — 엔진이 wasm
+### Rust — WASM engine
 
 ```rust
 use orm::db::{Config, ConnectOptions, Db};
@@ -133,9 +133,9 @@ let db = Db::connect(ConnectOptions::parse("mysql", url)?, 8, engine,
                      Config { aes_key: "…".into(), on_query: None }).await?;
 ```
 
-### 설정 파일로 한 번에
+### One configuration file
 
-세 언어 모두 `orm.toml` 하나를 읽는 생성자가 있다([config.md](config.md)). 경로는 절대경로여야 하고 symlink는 거부한다.
+Each client has a constructor that reads one `orm.toml` file ([config.md](config.md)). Paths must be absolute; symlinks are rejected.
 
 ```toml
 schema = "/srv/app/schema/schema.json"
@@ -157,9 +157,9 @@ db, err := orm.OpenConfig("/srv/app/orm.toml")   // PHP: Orm::fromConfig(...)  R
 
 ---
 
-## 5. 읽기
+## 5. Reading
 
-토큰은 세 언어가 같고 표기만 다르다(PHP `camelCase` / Go `PascalCase` / Rust `snake_case`).
+Tokens are shared; only spelling differs (PHP `camelCase` / Go `PascalCase` / Rust `snake_case`).
 
 ```php
 $rows = Battle::query()
@@ -185,18 +185,18 @@ let rows = battle::query()
     .using(&db).gets().await?;
 ```
 
-- 술어: `<Col>(v)`는 `=`이며, 그 밖에는 `<Col>NotEq Gt Gte Lt Lte In NotIn Between IsNull IsNotNull Like LikeBinary Contains StartsWith EndsWith`를 붙인다. `Eq` 접미사는 호환 별칭으로도 제공한다.
-  타입이 허용하지 않는 연산자는 **컴파일 에러**(`OPERATOR_NOT_ALLOWED`)다. `In`의 값 개수는 2의 거듭제곱으로 패딩되어
-  목록 길이마다 prepared statement가 새로 생기지 않는다(결과는 동일).
-- 그룹: `and(fn)`/`or(fn)`. `or()`는 다음 술어를 OR로 잇는다. 그룹 첫머리의 `or()`는 `OR_AT_GROUP_START` 에러.
-- 컬럼 선택: `selectAll() selectNone() select<Col>() unselect<Col>() select<Col>As("이름") selectExpr("이름", "조각")`.
-  `text`/`blob`/스타일 컬럼은 기본 SELECT에서 빠져 있고 `select<Col>()`로 켠다.
-- 터미널: `get` `gets` `getCount` `getsCount` `countDistinct<Col>` `sum<Col>` `avg<Col>` `min<Col>` `max<Col>` `paginate(page, per)`
-  `getBy<PK>`·`getsBy<Col>`·`getCountBy<Col>` — 전부 값만 인자로 받는다. 루트에 `using`으로 실행 대상을 지정하고 Go의 컨텍스트도 이때 지정한다. 반환된 행은 루트의 실행 대상을 물려받는다. `get`은 없으면 null/nil/None, `gets`와 `getsBy`는 절대 null이 아닌 빈 컬렉션이다. 기존 `one/all`도 호환용으로 남는다.
-- 컬렉션은 PK(또는 `keyBy<Col>`) 키의 순서 있는 맵이다: `first() count() toArray()`, 반복은 `키 => 행`.
-- 행·컬렉션의 맵/배열 변환은 정수 `1`과 문자열 `"1"`처럼 문자열 표현이 겹치는 키를 `IR_INVALID`로 거부한다. Go는 `values, err := rows.ToArray()`, Rust는 `let values = rows.to_map()?`, PHP는 `$values = $rows->toArray()`로 오류를 처리한다. 순서와 키 타입을 유지하려면 entries를 사용한다.
+- Predicates: `<Col>(v)` means `=`, while other operators use `<Col>NotEq`, `Gt`, `Gte`, `Lt`, `Lte`, `In`, `NotIn`, `Between`, `IsNull`, `IsNotNull`, `Like`, `LikeBinary`, `Contains`, `StartsWith`, and `EndsWith`. The `Eq` suffix is retained as a compatibility alias.
+  An operator not allowed for the type is a **compile error** (`OPERATOR_NOT_ALLOWED`). `In` values are padded to a power of two so
+  each list length does not create a new prepared statement; the result is unchanged.
+- Groups: `and(fn)` and `or(fn)`. `or()` connects the next predicate with OR. `or()` as the first group item returns `OR_AT_GROUP_START`.
+- Column selection: `selectAll()`, `selectNone()`, `select<Col>()`, `unselect<Col>()`, `select<Col>As("name")`, and `selectExpr("name", "fragment")`.
+  `text`, `blob`, and styled columns are excluded from the default SELECT and enabled with `select<Col>()`.
+- Terminals: `get`, `gets`, `getCount`, `getsCount`, `countDistinct<Col>`, `sum<Col>`, `avg<Col>`, `min<Col>`, `max<Col>`, and `paginate(page, per)`.
+  `getBy<PK>`, `getsBy<Col>`, and `getCountBy<Col>` take values only. Set the execution target with `using` at the root; Go also sets its context there. Returned rows inherit the root target. `get` returns null/nil/None when absent; `gets` and `getsBy` return non-null empty collections. `one` and `all` remain compatibility aliases.
+- A collection is an ordered map keyed by PK or `keyBy<Col>`: `first()`, `count()`, and `toArray()` are available, and iteration yields `key => row`.
+- Row and collection map/array conversion returns `IR_INVALID` for keys with the same string form, such as integer `1` and string `"1"`. Go uses `values, err := rows.ToArray()`, Rust uses `let values = rows.to_map()?`, and PHP uses `$values = $rows->toArray()`. Use entries to retain order and key types.
 
-### 집계·그룹·HAVING·raw
+### Aggregates, groups, HAVING, and raw
 
 ```php
 Battle::query()->serviceSeq(7)->groupByUserSeq()
@@ -206,15 +206,15 @@ Battle::query()->serviceSeq(7)->groupByExpr('ROUND(`like_count`)', 'bucket')
 Battle::query()->raw('SELECT COUNT(*) AS n FROM {table} WHERE service_seq = ?', [7])->using($db)->rawAll();
 Battle::query()->visible()->serviceSeq(7)->using($db)->getCount();   // %% predicate 로 선언한 술어
 ```
-`raw`/`expr`/`setXExpr`는 신뢰 코드 전용이다. 백틱 컬럼(`` `name` ``)은 스키마로 검사하고 `?`만 값 채널이며,
-개수가 맞지 않으면 `IR_INVALID`. Go 소스는 `ormgen check --lang go`가 빌드 전에 같은 검사를 한다.
+`raw`, `expr`, and `setXExpr` are for trusted code. Backtick columns such as `` `name` `` are checked against the schema and only `?` is a value channel;
+a count mismatch returns `IR_INVALID`. `ormgen check --lang go` applies the same check to Go source before the build.
 
 ---
 
-## 6. 관계와 조인
+## 6. Relations and joins
 
-**관계(relation)** 는 별도 문장이다. 부모 행의 값으로 `IN` 배치를 만들어 자식을 가져와 붙인다.
-**조인(join)** 은 같은 행의 조각이다.
+A **relation** uses a separate statement. It batches parent values into `IN` and attaches the child rows.
+A **join** is a fragment of the same row.
 
 ```php
 $rows = Battle::query()->serviceSeq(7)->limit(0, 20)
@@ -227,23 +227,23 @@ $rows = Battle::query()->serviceSeq(7)->limit(0, 20)
     ->using($db)->gets();
 ```
 
-| 자식에 붙이는 옵션 | 뜻 |
+| Child option | Meaning |
 |---|---|
-| `keyBy<Col>()` | many 컬렉션의 키 컬럼(중복은 마지막이 이김) |
-| `keyByFn(fn)` | 루트 컬렉션을 함수로 키잉 |
-| `flatten()` | one 관계의 컬럼을 부모의 배열 형태에 병합(부모 키 우선) |
-| `limitPerParent(n)` | 부모당 n행 — `ROW_NUMBER() OVER (PARTITION BY …)` |
-| `ifParent<Col>Eq(v)` | 부모 행이 조건에 맞을 때만 로드 |
-| `dropChildKey()` | 자식의 FK 컬럼을 배열 형태에서 숨김(바인딩·키에는 사용) |
-| `noCascadeDelete()` | `deleteCascade`의 정지점 |
+| `keyBy<Col>()` | Key column for a many collection; the last duplicate wins |
+| `keyByFn(fn)` | Key the root collection with a function |
+| `flatten()` | Merge one-relation columns into the parent array; parent keys win |
+| `limitPerParent(n)` | n rows per parent using `ROW_NUMBER() OVER (PARTITION BY …)` |
+| `ifParent<Col>Eq(v)` | Load only when the parent row matches |
+| `dropChildKey()` | Hide the child FK in array output; retain it for binds and keys |
+| `noCascadeDelete()` | Stop point for `deleteCascade` |
 
-조인 자식에는 `on(fn)`(ON 절)과 `where(fn)`(WHERE에 AND)이 따로 있다. 조인한 엔티티는 루트 술어에서
-탐색으로 참조한다: `->and(fn($w) => $w->service(fn($s) => $s->seqGt(10)))`.
-컬럼 대 컬럼 비교는 생성된 참조를 쓴다: `$w->seqEqCol(BattleCols::serviceModuleSeq())`.
+Join children have separate `on(fn)` (ON clause) and `where(fn)` (AND in WHERE) builders. A joined entity is referenced from a root predicate
+through navigation: `->and(fn($w) => $w->service(fn($s) => $s->seqGt(10)))`.
+Column comparisons use generated references: `$w->seqEqCol(BattleCols::serviceModuleSeq())`.
 
 ---
 
-## 7. 쓰기
+## 7. Writes
 
 ```php
 $row = Battle::query()->setName('x')->setUserSeq(1)->…->using($db)->insert();   // 자동 PK면 다시 읽어 돌려준다
@@ -258,9 +258,9 @@ Battle::query()->seq($id)->plusReadCount(1)->using($db)->update();              
 Battle::query()->seq($id)->using($db)->delete();
 ```
 
-- `update`는 항상 `updated_ts`를 명시적으로 넣는다(방언 무관하게 같은 값이 되도록).
-- `minus<Col>`는 0에서 멈춘다. `set<Col>Expr('`read_count` * ? + 1', [2])`로 식을 쓸 수 있다.
-- 트랜잭션은 각 언어의 네이티브 트랜잭션이고, 데드락(1213/40001)이면 **클로저를 새 트랜잭션으로 최대 3회 재실행**한다.
+- `update` always writes `updated_ts` explicitly so the value is consistent across dialects.
+- `minus<Col>` clamps at zero. Use `set<Col>Expr('`read_count` * ? + 1', [2])` for an expression.
+- Transactions use each language native transaction API. On deadlock (1213/40001), the closure is **re-run up to three times in a new transaction**.
 
 ```go
 row, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {
@@ -276,11 +276,11 @@ let row = db.transaction(|tx| async move { battle::query().set_name("x")./*…*/
 
 ---
 
-## 8. 스타일 컬럼
+## 8. Styled columns
 
-`gz_*`·`json_*`·`jsons_*`·`base64_*`·`serialize_*`는 저장 바이트가 아니라 **디코드된 값**으로 드나든다
-(Go `any`, Rust `serde_json::Value`, PHP `mixed`). `aes_hex_*`·`ip`는 MySQL에서 SQL 함수로 처리되고,
-PostgreSQL·SQLite에서는 실행기가 같은 바이트를 만든다([codec.md](codec.md)).
+`gz_*`, `json_*`, `jsons_*`, `base64_*`, and `serialize_*` use **decoded values**, not stored bytes, at the client output
+(Go `any`, Rust `serde_json::Value`, PHP `mixed`). MySQL handles `aes_hex_*` and `ip` with SQL functions, while
+PostgreSQL and SQLite executors produce the same bytes ([codec.md](codec.md)).
 
 ```php
 $b->setJsonSetting(['a' => 1])->using($db)->update();
@@ -290,53 +290,53 @@ $b->getJsonSetting()['a'];
 
 ---
 
-## 9. 여러 데이터베이스
+## 9. Multiple databases
 
-같은 문장이 세 DB에서 같은 결과를 낸다(문장 텍스트는 방언마다 다르다). 규칙과 예외는 [dialects.md](dialects.md).
+The same statement produces the same result on all three databases, although statement text differs by dialect. Rules and exceptions are in [dialects.md](dialects.md).
 
 ```sh
 go run ./cmd/ormgen ddl --schema schema/schema.json --dialect postgres --out app.pg.sql
 psql … -f app.pg.sql
 ```
-- Go: `orm.Open("postgres", url, eng, …)` + 드라이버 패키지 임포트, 엔진도 `engine.New(m, "postgres")`.
-- PHP: `ormd -dialect postgres`로 데몬을 띄우고 `Db::postgres(...)`. 방언이 다르면 `CONFIG` 에러.
+- Go: `orm.Open("postgres", url, eng, …)` with the driver package imported; use `engine.New(m, "postgres")`.
+- PHP: start the daemon with `ormd -dialect postgres` and use `Db::postgres(...)`. A dialect mismatch returns `CONFIG`.
 - Rust: `EngineConfig { dialect: "postgres", .. }` + `ConnectOptions::parse("postgres", url)`.
-- SQLite는 `likeBinary`와 fulltext를 거부한다(`OPERATOR_NOT_ALLOWED`).
+- SQLite rejects `likeBinary` and fulltext (`OPERATOR_NOT_ALLOWED`).
 
 ---
 
-## 10. 운영
+## 10. Operations
 
-| 하는 일 | 명령 |
+| Operation | Command |
 |---|---|
-| 스키마가 라이브 DB와 같은지 | `ormgen validate --dsn … --schema schema/schema.json` (다르면 exit 1) |
-| 생성물이 최신인지 | `ormgen gen …` 후 `git diff --exit-code` |
-| 문장 로그 | `Config.OnQuery` / `onQuery` / `Config { on_query }` → `(sql, binds, 시간, plan_id, err)`, 비밀은 `$SECRET`로 마스킹 |
-| 실행 없이 SQL 보기 | `->using($db)->sql()` / `.Using(ctx, db).SQL()` / `.using(&db).sql()` |
-| 에러 코드 상수 | `ormgen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
-| 배포 아티팩트 | `scripts/build-artifacts.sh` → `dist/`(버전이 파일명에, SHA256SUMS) |
-| 데몬 유닛 | `deploy/ormd.service`, `deploy/com.orm.ormd.plist` |
+| Compare schema with the live database | `ormgen validate --dsn … --schema schema/schema.json` (다르면 exit 1) |
+| Check generated files | `ormgen gen …` 후 `git diff --exit-code` |
+| Statement log | `Config.OnQuery` / `onQuery` / `Config { on_query }` → `(sql, binds, 시간, plan_id, err)`, 비밀은 `$SECRET`로 마스킹 |
+| View SQL without executing | `->using($db)->sql()` / `.Using(ctx, db).SQL()` / `.using(&db).sql()` |
+| Error constants | `ormgen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
+| Release artifacts | `scripts/build-artifacts.sh` → `dist/`(버전이 파일명에, SHA256SUMS) |
+| Daemon units | `deploy/ormd.service`, `deploy/com.orm.ormd.plist` |
 
 ---
 
-## 11. 자주 나는 에러
+## 11. Common errors
 
-| 코드 | 원인과 조치 |
+| Code | Cause and action |
 |---|---|
-| `SCHEMA_HASH_MISMATCH` | 생성물과 엔진이 읽은 `schema.json`이 다르다 → 다시 생성하고 같이 배포 |
-| `OPERATOR_NOT_ALLOWED` | 그 타입/스타일에 없는 연산자(스타일 컬럼은 `isNull`만, SQLite fulltext 등) |
-| `COLUMN_UNKNOWN` / `RELATION_UNKNOWN` | 스키마에 없는 이름. 다이어그램을 고치고 다시 생성 |
-| `EMPTY_IN` | 빈 배열로 `In` — 호출 전에 걸러야 한다 |
-| `OR_AT_GROUP_START` | 그룹 첫 항목이 `or()` |
-| `LIMIT_IN_RELATION` | 관계 자식의 `limit` → `limitPerParent(n)` |
-| `OPTIMISTIC_LOCK` | `updateOptimistic` 중 다른 트랜잭션이 먼저 고쳤다 → 다시 읽고 재시도 |
-| `DUPLICATE_KEY` / `DEADLOCK` | 드라이버 에러를 옮긴 것(원문 보존). 데드락은 `transaction`이 이미 3회 재실행한 뒤다 |
-| `CONFIG` | 설정·경로·드라이버 불일치. 메시지가 무엇이 빠졌는지 말한다 |
-| `CODEC_DECODE` | 스타일 컬럼의 저장 바이트가 선언된 스타일과 다르다 |
+| `SCHEMA_HASH_MISMATCH` | Generated files and the engine read different `schema.json` files; regenerate and deploy together |
+| `OPERATOR_NOT_ALLOWED` | Operator is unavailable for the type or style, such as styled columns allowing only `isNull` or SQLite fulltext |
+| `COLUMN_UNKNOWN` / `RELATION_UNKNOWN` | Name is absent from the schema; correct the diagram and regenerate |
+| `EMPTY_IN` | `In` received an empty array; validate before calling |
+| `OR_AT_GROUP_START` | The first group item is `or()` |
+| `LIMIT_IN_RELATION` | Relation child uses `limit`; use `limitPerParent(n)` |
+| `OPTIMISTIC_LOCK` | Another transaction updated the row first; read again and retry |
+| `DUPLICATE_KEY` / `DEADLOCK` | Mapped driver error with original text retained; deadlock follows the three `transaction` retries |
+| `CONFIG` | Configuration, path, or driver mismatch; the message identifies the missing value |
+| `CODEC_DECODE` | Stored bytes do not match the declared column styles |
 
 ---
 
-## 12. 확인
+## 12. Verification
 
 ```sh
 go test ./...                                            # 엔진 + Go 클라이언트 + 회귀 게이트
@@ -345,4 +345,4 @@ go run ./tests/conformance/check run -driver postgres -dsn 'postgres://…'
 go run ./cmd/ormgen tokens --schema schema/schema.json a.go b.php c.rs   # 세 파일의 토큰열이 같은지
 ```
 
-예제: [`examples/thin-slice`](../examples/thin-slice)(세 언어, 같은 JSON), [`examples/complex`](../examples/complex)(조인·그룹·3단 관계·집계).
+Examples: [`examples/thin-slice`](../examples/thin-slice) (three clients, the same JSON) and [`examples/complex`](../examples/complex) (joins, groups, three-level relations, and aggregates).
