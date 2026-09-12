@@ -2350,6 +2350,31 @@
           }
         }
       }
+    },
+    {
+      "name": "relation_predicates",
+      "chain": "Service.seq(7).hasMembers().getCount; Service.seq(7).countMembersEq(50).getCount",
+      "expect": {
+        "result": {
+          "exists": 1,
+          "count": 1
+        },
+        "statements": [
+          {
+            "sql": "SELECT COUNT(*) FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" = ? AND EXISTS (SELECT 1 FROM \"service_member\" AS \"exists__members\" WHERE \"exists__members\".\"service_seq\" = \"a\".\"seq\")",
+            "binds": [
+              7
+            ]
+          },
+          {
+            "sql": "SELECT COUNT(*) FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" = ? AND (SELECT COUNT(*) FROM \"service_member\" AS \"exists__members\" WHERE \"exists__members\".\"service_seq\" = \"a\".\"seq\") = ?",
+            "binds": [
+              7,
+              50
+            ]
+          }
+        ]
+      }
     }
   ]
 }

@@ -1296,6 +1296,11 @@ async fn main() {
         }
         .await
     );
+    run!("relation_predicates", async {
+        let exists = service::query().seq_eq(7).has_members(|w| w).using(&db).get_count().await?;
+        let count = service::query().seq_eq(7).count_members_eq(50, |w| w).using(&db).get_count().await?;
+        Ok(json!({"exists": exists, "count": count}))
+    }.await);
     run!("codec_roundtrip", async {
         let value = json!({"a": 1, "b": [1, 2, {"c": "한글/slash"}], "d": null, "e": true, "f": 1.5});
         let v = value.clone();
