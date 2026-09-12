@@ -1,11 +1,62 @@
 package main
 
 import (
+	"database/sql"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/engine/schema"
+	_ "modernc.org/sqlite"
 )
+
+func TestSQLiteImportReadsNamedAndUnnamedChecksFromPhysicalDDL(t *testing.T) {
+	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "import.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	_, err = db.Exec(`CREATE TABLE probe (
+		id INTEGER PRIMARY KEY,
+		quantity INTEGER NOT NULL,
+		label TEXT,
+		CONSTRAINT positive_quantity CHECK (quantity >= 0),
+		CHECK (length(label) <= 20)
+	)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tables, err := readTablesSQLite(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tables) != 1 || len(tables[0].Checks) != 2 {
+		t.Fatalf("tables=%#v", tables)
+	}
+	if tables[0].Checks[0] != (impCheck{Name: "positive_quantity", Expr: "quantity >= 0"}) {
+		t.Fatalf("named check=%#v", tables[0].Checks[0])
+	}
+	if tables[0].Checks[1].Name != "check_probe_2" || tables[0].Checks[1].Expr != "length(label) <= 20" {
+		t.Fatalf("unnamed check=%#v", tables[0].Checks[1])
+	}
+	source := renderMermaid(tables, nil)
+	if !strings.Contains(source, "%% check probe positive_quantity : quantity >= 0") || !strings.Contains(source, "%% check probe check_probe_2 : length(label) <= 20") {
+		t.Fatalf("check directives missing:\n%s", source)
+	}
+	diagram, err := schema.Parse(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := schema.Build(diagram); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSQLiteChecksRejectMalformedDefinition(t *testing.T) {
+	if _, err := sqliteChecks("probe", "CREATE TABLE probe (value INTEGER CHECK (value > 0"); err == nil || !strings.Contains(err.Error(), "unbalanced") {
+		t.Fatalf("error=%v", err)
+	}
+}
 
 func TestRenderMermaidUsesImportedForeignKeyTargetAndDeleteAction(t *testing.T) {
 	tables := []impTable{

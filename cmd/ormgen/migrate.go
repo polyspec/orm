@@ -228,18 +228,23 @@ func filterManagedTables(tables []impTable) []impTable {
 }
 
 func readTablesSQLite(db *sql.DB) ([]impTable, error) {
-	rows, err := db.Query(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'orm_schema_migrations' AND name <> 'orm_schema_comments' ORDER BY name`)
+	rows, err := db.Query(`SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'orm_schema_migrations' AND name <> 'orm_schema_comments' ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []impTable
 	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
+		var name, createSQL string
+		if err := rows.Scan(&name, &createSQL); err != nil {
 			return nil, err
 		}
 		t := impTable{Name: name}
+		var checkErr error
+		t.Checks, checkErr = sqliteChecks(name, createSQL)
+		if checkErr != nil {
+			return nil, checkErr
+		}
 		qname := strings.ReplaceAll(name, "'", "''")
 		cols, err := db.Query("PRAGMA table_info('" + qname + "')")
 		if err != nil {
@@ -371,6 +376,78 @@ func readTablesSQLite(db *sql.DB) ([]impTable, error) {
 		return nil, fmt.Errorf("sqlite schema comments: %w", err)
 	}
 	return out, nil
+}
+
+func sqliteChecks(table, createSQL string) ([]impCheck, error) {
+	var checks []impCheck
+	for i := 0; i < len(createSQL); i++ {
+		if createSQL[i] == '\'' || createSQL[i] == '"' || createSQL[i] == '`' {
+			quote := createSQL[i]
+			for i++; i < len(createSQL); i++ {
+				if createSQL[i] == quote {
+					if i+1 < len(createSQL) && createSQL[i+1] == quote {
+						i++
+						continue
+					}
+					break
+				}
+			}
+			continue
+		}
+		if i+5 > len(createSQL) || !strings.EqualFold(createSQL[i:i+5], "CHECK") || (i > 0 && sqliteIdentByte(createSQL[i-1])) || (i+5 < len(createSQL) && sqliteIdentByte(createSQL[i+5])) {
+			continue
+		}
+		j := i + 5
+		for j < len(createSQL) && strings.ContainsRune(" \t\r\n", rune(createSQL[j])) {
+			j++
+		}
+		if j >= len(createSQL) || createSQL[j] != '(' {
+			return nil, fmt.Errorf("table %s: sqlite CHECK expression missing opening parenthesis", table)
+		}
+		end, err := sqliteBalancedParen(createSQL, j)
+		if err != nil {
+			return nil, fmt.Errorf("table %s: sqlite CHECK expression: %w", table, err)
+		}
+		name := fmt.Sprintf("check_%s_%d", table, len(checks)+1)
+		prefix := strings.TrimSpace(createSQL[:i])
+		upper := strings.ToUpper(prefix)
+		if k := strings.LastIndex(upper, "CONSTRAINT "); k >= 0 {
+			candidate := strings.TrimSpace(prefix[k+len("CONSTRAINT "):])
+			if candidate != "" && !strings.ContainsAny(candidate, " ,()\t\r\n") {
+				name = strings.Trim(candidate, "`\"")
+			}
+		}
+		checks = append(checks, impCheck{Name: name, Expr: strings.TrimSpace(createSQL[j+1 : end])})
+		i = end
+	}
+	return checks, nil
+}
+
+func sqliteIdentByte(b byte) bool {
+	return b == '_' || b >= '0' && b <= '9' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z'
+}
+
+func sqliteBalancedParen(s string, start int) (int, error) {
+	depth := 0
+	for i := start; i < len(s); i++ {
+		switch s[i] {
+		case '\'', '"', '`':
+			quote := s[i]
+			for i++; i < len(s) && s[i] != quote; i++ {
+			}
+			if i >= len(s) {
+				return 0, fmt.Errorf("unterminated quoted value")
+			}
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return i, nil
+			}
+		}
+	}
+	return 0, fmt.Errorf("unbalanced parentheses")
 }
 
 func ensureMigrationTable(ctx context.Context, db *sql.DB, driver string) error {
