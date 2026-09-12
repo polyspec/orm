@@ -148,7 +148,7 @@
         "queryStep",
         "writeStep"
       ],
-      "ownership": "Adapter boundary for concrete database and pinned transaction executors."
+      "ownership": "Adapter interface for the concrete database and pinned transaction executors."
     },
     {
       "id": "Db",
