@@ -650,112 +650,294 @@ func (r *BattleRow) deleteCascade(ctx context.Context, ex orm.Exec) error {
 	})
 }
 
+func assignBattleValue(r *BattleRow, name string, v any) {
+	switch name {
+	case "seq":
+		r.Seq = orm.AsInt64(v)
+	case "name":
+		r.Name = orm.AsString(v)
+	case "description":
+		if v != nil {
+			x := orm.AsString(v)
+			r.Description = &x
+		}
+	case "created_ts":
+		r.CreatedTs = orm.AsTime(v)
+	case "updated_ts":
+		r.UpdatedTs = orm.AsTime(v)
+	case "is_close":
+		r.IsClose = orm.AsBool(v)
+	case "is_display":
+		r.IsDisplay = orm.AsBool(v)
+	case "display_start_dt":
+		if v != nil {
+			x := orm.AsTime(v)
+			r.DisplayStartDt = &x
+		}
+	case "display_end_dt":
+		if v != nil {
+			x := orm.AsTime(v)
+			r.DisplayEndDt = &x
+		}
+	case "is_allday":
+		r.IsAllday = orm.AsBool(v)
+	case "target_team_player_count":
+		r.TargetTeamPlayerCount = orm.AsInt64(v)
+	case "success_count":
+		r.SuccessCount = orm.AsInt64(v)
+	case "player_count":
+		r.PlayerCount = orm.AsInt64(v)
+	case "read_count":
+		r.ReadCount = orm.AsInt64(v)
+	case "cover_url":
+		if v != nil {
+			x := orm.AsString(v)
+			r.CoverUrl = &x
+		}
+	case "user_seq":
+		r.UserSeq = orm.AsInt64(v)
+	case "service_seq":
+		r.ServiceSeq = orm.AsInt64(v)
+	case "service_module_seq":
+		r.ServiceModuleSeq = orm.AsInt64(v)
+	case "service_member_seq":
+		r.ServiceMemberSeq = orm.AsInt64(v)
+	case "start_dt":
+		r.StartDt = orm.AsTime(v)
+	case "end_dt":
+		r.EndDt = orm.AsTime(v)
+	case "uuid":
+		if v != nil {
+			x := orm.AsString(v)
+			r.Uuid = &x
+		}
+	case "is_single_play":
+		r.IsSinglePlay = orm.AsBool(v)
+	case "like_count":
+		r.LikeCount = orm.AsInt64(v)
+	case "aes_key_version":
+		r.AesKeyVersion = int32(orm.AsInt64(v))
+	case "aes_hex_email":
+		if v != nil {
+			x := orm.AsString(v)
+			r.AesHexEmail = &x
+		}
+	case "aes_hex_phone":
+		if v != nil {
+			x := orm.AsString(v)
+			r.AesHexPhone = &x
+		}
+	case "price":
+		if v != nil {
+			x := orm.AsFloat64(v)
+			r.Price = &x
+		}
+	case "ip":
+		if v != nil {
+			x := orm.AsString(v)
+			r.Ip = &x
+		}
+	case "gz_extend":
+		r.GzExtend = v
+	case "json_setting":
+		r.JsonSetting = v
+	case "jsons_tags":
+		r.JsonsTags = v
+	case "base64_extra":
+		r.Base64Extra = v
+	case "serialize_data":
+		r.SerializeData = v
+	default:
+		r.SetExtra(name, v)
+	}
+}
+
+func acceptsBattleDirect(a *plan.Assemble) bool {
+	if len(a.Columns) != 27 {
+		return false
+	}
+	if c := a.Columns[0]; c.Index != 0 || c.Name != "seq" || c.Column != "seq" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[1]; c.Index != 1 || c.Name != "name" || c.Column != "name" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[2]; c.Index != 2 || c.Name != "created_ts" || c.Column != "created_ts" {
+		return false
+	}
+	if c := a.Columns[3]; c.Index != 3 || c.Name != "updated_ts" || c.Column != "updated_ts" {
+		return false
+	}
+	if c := a.Columns[4]; c.Index != 4 || c.Name != "is_close" || c.Column != "is_close" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[5]; c.Index != 5 || c.Name != "is_display" || c.Column != "is_display" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[6]; c.Index != 6 || c.Name != "display_start_dt" || c.Column != "display_start_dt" {
+		return false
+	}
+	if c := a.Columns[7]; c.Index != 7 || c.Name != "display_end_dt" || c.Column != "display_end_dt" {
+		return false
+	}
+	if c := a.Columns[8]; c.Index != 8 || c.Name != "is_allday" || c.Column != "is_allday" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[9]; c.Index != 9 || c.Name != "target_team_player_count" || c.Column != "target_team_player_count" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[10]; c.Index != 10 || c.Name != "success_count" || c.Column != "success_count" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[11]; c.Index != 11 || c.Name != "player_count" || c.Column != "player_count" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[12]; c.Index != 12 || c.Name != "read_count" || c.Column != "read_count" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[13]; c.Index != 13 || c.Name != "cover_url" || c.Column != "cover_url" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[14]; c.Index != 14 || c.Name != "user_seq" || c.Column != "user_seq" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[15]; c.Index != 15 || c.Name != "service_seq" || c.Column != "service_seq" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[16]; c.Index != 16 || c.Name != "service_module_seq" || c.Column != "service_module_seq" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[17]; c.Index != 17 || c.Name != "service_member_seq" || c.Column != "service_member_seq" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[18]; c.Index != 18 || c.Name != "start_dt" || c.Column != "start_dt" {
+		return false
+	}
+	if c := a.Columns[19]; c.Index != 19 || c.Name != "end_dt" || c.Column != "end_dt" {
+		return false
+	}
+	if c := a.Columns[20]; c.Index != 20 || c.Name != "uuid" || c.Column != "uuid" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[21]; c.Index != 21 || c.Name != "is_single_play" || c.Column != "is_single_play" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[22]; c.Index != 22 || c.Name != "like_count" || c.Column != "like_count" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[23]; c.Index != 23 || c.Name != "aes_hex_email" || c.Column != "aes_hex_email" {
+		return false
+	}
+	if c := a.Columns[24]; c.Index != 24 || c.Name != "aes_hex_phone" || c.Column != "aes_hex_phone" {
+		return false
+	}
+	if c := a.Columns[25]; c.Index != 25 || c.Name != "price" || c.Column != "price" || len(c.Styles) != 0 {
+		return false
+	}
+	if c := a.Columns[26]; c.Index != 26 || c.Name != "ip" || c.Column != "ip" {
+		return false
+	}
+	return true
+}
+
+func decodeBattleDirect(s *orm.DirectScanner, c plan.OutCol, raw *orm.ScanValue, r *BattleRow) error {
+	v, err := s.Decode(c, raw.Value())
+	if err != nil {
+		return err
+	}
+	assignBattleValue(r, c.Name, v)
+	return nil
+}
+
+// scanBattleDirect scans the default flat projection into generated typed
+// fields. Codec and datetime outputs use named temporary scan values.
+func scanBattleDirect(s *orm.DirectScanner) (*BattleRow, error) {
+	a := s.Assemble()
+	_ = a
+	r := &BattleRow{}
+	r.Binding = s.Binding()
+	var rawCreatedTs orm.ScanValue
+	var rawUpdatedTs orm.ScanValue
+	var rawDisplayStartDt orm.ScanValue
+	var rawDisplayEndDt orm.ScanValue
+	var rawStartDt orm.ScanValue
+	var rawEndDt orm.ScanValue
+	var rawAesHexEmail orm.ScanValue
+	var rawAesHexPhone orm.ScanValue
+	var rawIp orm.ScanValue
+	if err := s.Scan(
+		&r.Seq,
+		&r.Name,
+		&rawCreatedTs,
+		&rawUpdatedTs,
+		&r.IsClose,
+		&r.IsDisplay,
+		&rawDisplayStartDt,
+		&rawDisplayEndDt,
+		&r.IsAllday,
+		&r.TargetTeamPlayerCount,
+		&r.SuccessCount,
+		&r.PlayerCount,
+		&r.ReadCount,
+		&r.CoverUrl,
+		&r.UserSeq,
+		&r.ServiceSeq,
+		&r.ServiceModuleSeq,
+		&r.ServiceMemberSeq,
+		&rawStartDt,
+		&rawEndDt,
+		&r.Uuid,
+		&r.IsSinglePlay,
+		&r.LikeCount,
+		&rawAesHexEmail,
+		&rawAesHexPhone,
+		&r.Price,
+		&rawIp,
+	); err != nil {
+		return nil, err
+	}
+	if err := decodeBattleDirect(s, a.Columns[2], &rawCreatedTs, r); err != nil {
+		return nil, err
+	}
+	if err := decodeBattleDirect(s, a.Columns[3], &rawUpdatedTs, r); err != nil {
+		return nil, err
+	}
+	if err := decodeBattleDirect(s, a.Columns[6], &rawDisplayStartDt, r); err != nil {
+		return nil, err
+	}
+	if err := decodeBattleDirect(s, a.Columns[7], &rawDisplayEndDt, r); err != nil {
+		return nil, err
+	}
+	if err := decodeBattleDirect(s, a.Columns[18], &rawStartDt, r); err != nil {
+		return nil, err
+	}
+	if err := decodeBattleDirect(s, a.Columns[19], &rawEndDt, r); err != nil {
+		return nil, err
+	}
+	if err := decodeBattleDirect(s, a.Columns[23], &rawAesHexEmail, r); err != nil {
+		return nil, err
+	}
+	if err := decodeBattleDirect(s, a.Columns[24], &rawAesHexPhone, r); err != nil {
+		return nil, err
+	}
+	if err := decodeBattleDirect(s, a.Columns[26], &rawIp, r); err != nil {
+		return nil, err
+	}
+	r.SetProjection(s.Projection())
+	r.Mark("battle", "seq", r.Seq)
+	if r.Has("updated_ts") {
+		r.SnapshotVersion(r.UpdatedTs)
+	}
+	return r, nil
+}
+
 // scanBattle maps a positional row slice onto the struct, its joined
 // children (same row) and its relation children (rows of later steps).
 func scanBattle(vals []any, a *plan.Assemble, rs *orm.Rows) *BattleRow {
 	r := &BattleRow{}
 	r.Binding = rs.Binding
 	for _, c := range a.Columns {
-		v := vals[c.Index]
-		switch c.Name {
-		case "seq":
-			r.Seq = orm.AsInt64(v)
-		case "name":
-			r.Name = orm.AsString(v)
-		case "description":
-			if v != nil {
-				x := orm.AsString(v)
-				r.Description = &x
-			}
-		case "created_ts":
-			r.CreatedTs = orm.AsTime(v)
-		case "updated_ts":
-			r.UpdatedTs = orm.AsTime(v)
-		case "is_close":
-			r.IsClose = orm.AsBool(v)
-		case "is_display":
-			r.IsDisplay = orm.AsBool(v)
-		case "display_start_dt":
-			if v != nil {
-				x := orm.AsTime(v)
-				r.DisplayStartDt = &x
-			}
-		case "display_end_dt":
-			if v != nil {
-				x := orm.AsTime(v)
-				r.DisplayEndDt = &x
-			}
-		case "is_allday":
-			r.IsAllday = orm.AsBool(v)
-		case "target_team_player_count":
-			r.TargetTeamPlayerCount = orm.AsInt64(v)
-		case "success_count":
-			r.SuccessCount = orm.AsInt64(v)
-		case "player_count":
-			r.PlayerCount = orm.AsInt64(v)
-		case "read_count":
-			r.ReadCount = orm.AsInt64(v)
-		case "cover_url":
-			if v != nil {
-				x := orm.AsString(v)
-				r.CoverUrl = &x
-			}
-		case "user_seq":
-			r.UserSeq = orm.AsInt64(v)
-		case "service_seq":
-			r.ServiceSeq = orm.AsInt64(v)
-		case "service_module_seq":
-			r.ServiceModuleSeq = orm.AsInt64(v)
-		case "service_member_seq":
-			r.ServiceMemberSeq = orm.AsInt64(v)
-		case "start_dt":
-			r.StartDt = orm.AsTime(v)
-		case "end_dt":
-			r.EndDt = orm.AsTime(v)
-		case "uuid":
-			if v != nil {
-				x := orm.AsString(v)
-				r.Uuid = &x
-			}
-		case "is_single_play":
-			r.IsSinglePlay = orm.AsBool(v)
-		case "like_count":
-			r.LikeCount = orm.AsInt64(v)
-		case "aes_key_version":
-			r.AesKeyVersion = int32(orm.AsInt64(v))
-		case "aes_hex_email":
-			if v != nil {
-				x := orm.AsString(v)
-				r.AesHexEmail = &x
-			}
-		case "aes_hex_phone":
-			if v != nil {
-				x := orm.AsString(v)
-				r.AesHexPhone = &x
-			}
-		case "price":
-			if v != nil {
-				x := orm.AsFloat64(v)
-				r.Price = &x
-			}
-		case "ip":
-			if v != nil {
-				x := orm.AsString(v)
-				r.Ip = &x
-			}
-		case "gz_extend":
-			r.GzExtend = v
-		case "json_setting":
-			r.JsonSetting = v
-		case "jsons_tags":
-			r.JsonsTags = v
-		case "base64_extra":
-			r.Base64Extra = v
-		case "serialize_data":
-			r.SerializeData = v
-		default:
-			r.SetExtra(c.Name, v)
-		}
+		assignBattleValue(r, c.Name, vals[c.Index])
 	}
 	for _, ch := range a.Children {
 		switch ch.Rel {
@@ -5926,6 +6108,12 @@ func (q *BattleQuery) One() (*BattleRow, error) {
 		return nil, err
 	}
 	q.q.Req.IR.Kind = "one"
+	if direct, used, err := orm.QueryDirect(ctx, ex, q.q.Req, acceptsBattleDirect, scanBattleDirect); used {
+		if err != nil || len(direct) == 0 {
+			return nil, err
+		}
+		return direct[0], nil
+	}
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil || len(rows.Data) == 0 {
 		return nil, err
@@ -5939,6 +6127,12 @@ func (q *BattleQuery) All() (*orm.Collection[BattleRow], error) {
 		return nil, err
 	}
 	q.q.Req.IR.Kind = "all"
+	if direct, used, err := orm.QueryDirect(ctx, ex, q.q.Req, acceptsBattleDirect, scanBattleDirect); used {
+		if err != nil {
+			return nil, err
+		}
+		return collectBattleDirect(direct, q.keyFn), nil
+	}
 	rows, err := orm.Query(ctx, ex, q.q.Req)
 	if err != nil {
 		return nil, err
@@ -6126,6 +6320,18 @@ func collectBattle(rows *orm.Rows, keyFn func(*BattleRow) orm.Key) *orm.Collecti
 			continue
 		}
 		c.Put(orm.KeyOf(vals[0]), r)
+	}
+	return c
+}
+
+func collectBattleDirect(rows []*BattleRow, keyFn func(*BattleRow) orm.Key) *orm.Collection[BattleRow] {
+	c := orm.NewCollection[BattleRow](len(rows))
+	for _, r := range rows {
+		if keyFn != nil {
+			c.Put(keyFn(r), r)
+		} else {
+			c.Put(orm.KeyOf(r.Seq), r)
+		}
 	}
 	return c
 }

@@ -8,7 +8,7 @@
 - **S0 완료:** `docs/perf.md`에 측정과 R1~R3, F1~F3 결정을 기록했다.
 - **S1 완료:** 엔진, 생성기, 4개 클라이언트, 적합성 하네스, `ormgen tokens`, 데모를 구현했다.
 - **S2 완료:** 관계·코덱·타입·58개 벡터·150테이블 Rust fixture 검사를 통과했다.
-- **S3~S6 완료:** 쓰기, 조인, PHP 호환층, 배포, PostgreSQL, SQLite를 구현했다. 고정 비용 최적화는 T7.11에서 계속한다.
+- **S3~S6 완료:** 쓰기, 조인, PHP 호환층, 배포, PostgreSQL, SQLite를 구현했다. T7.11에서 남은 고정 비용 작업과 회귀 검사를 완료했다.
 - 현재 적합성 범위는 **59개 벡터 × 4개 클라이언트 × 3개 데이터베이스**다. 코덱 범위는 Go·PHP·Rust·TypeScript의 96개 벡터다.
 
 ## 공통 인터페이스 검사
@@ -70,7 +70,7 @@
 ## 단계 5 — S5 강화와 배포 [완료]
 
 - [x] schema import·validation, schema-hash 검사, 오류 코드, query hook, 패키지, 배포 unit, CI를 구현한다.
-- [~] T5.3b 고정 비용 최적화: Go·PHP가 문서 기준을 초과하므로 typed 직접 스캔 작업이 필요하다.
+- [x] T5.3b 고정 비용 최적화: Go는 기본 flat projection에 생성된 typed 스캔을 사용하고 PHP는 PDO positional 행을 직접 보관하며 두 언어가 PK·100행 회귀 검사를 통과한다.
 
 ## 단계 6 — S6 PostgreSQL과 SQLite [완료]
 
@@ -90,7 +90,7 @@ S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료
 - [x] T7.8 TypeScript 모듈, 생성 entity API와 schema hash, `orm.toml` loader, 네이티브 데이터베이스 드라이버, 구조·AST 검사, 세 데이터베이스의 59개 벡터 실행기를 구현한다.
 - [x] T7.9 동일한 SQL, bind, typed 결과, connection 수, fixture로 Rust `mysql_async` 0.37.1과 sqlx 0.9를 비교했다. 측정 항목 모두 교체 기준인 2배 개선을 충족하지 않아 sqlx를 유지한다.
 - [x] T7.10 지원 데이터베이스가 동일하고 안전한 매개변수 실행 구조를 제공할 수 없으므로 모든 공개 API에서 `multi_statement`를 제외하고 IR 필드와 생성 심볼을 거부한다.
-- [ ] T7.11 Go·PHP typed 직접 스캔과 성능 기준 재측정을 구현한다.
+- [x] T7.11 Go typed 스캔 생성, PHP positional hydration 검증, native projection 불일치 수정, Go·PHP 성능 검사를 완료한다.
 - [x] T7.12 고정된 Rust 의존성으로 결정적인 150테이블 Rust fixture를 생성하고 컴파일했습니다.
 - [x] T7.13 AES version column을 검사하고, write에 현재 버전을 저장하며, Go·PHP·Rust·TypeScript에 동일한 상태 조회와 transaction 행 재암호화 API를 구현했다. 실제 데이터베이스에서 반복 실행과 모든 AES 컬럼을 검사했다.
 - [x] T7.14 매니페스트, 스키마 해시, import, DDL, diff, SQLite 메타데이터에 테이블·컬럼 주석을 포함했습니다. 단위 테스트와 containerctl MySQL·PostgreSQL 테스트가 통과했습니다.

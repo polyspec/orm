@@ -128,10 +128,13 @@ MySQL 8.4, 로컬 소켓, 같은 장비. 네이티브 = 각 언어의 드라이�
 행이 많은 워크로드(100행)는 세 언어 모두 네이티브의 ±10% 안이고 Rust는 typed 직접 디코드 덕에 오히려 빠르다. 단건은 문장당 고정 비용(§6b: IR 구성·해시·플랜 조회·행 매핑)이 그대로 드러나는 크기다. S1 대비 절대값이 커진 것은 `battle`에 컬럼 7개(ip·decimal·스타일 5개)와 fulltext 인덱스가 늘어 SELECT 폭과 INSERT 비용이 커졌기 때문이며, 비교는 같은 시점의 네이티브 열끼리 읽는다.
 
 ## 6e. 회귀 검사 (`make perf-check`)
-같은 프로세스에서 생성 클라이언트와 `bench/go`의 네이티브 문장을 각각 300회 측정하고 p50 비율을 비교한다. 현재 값은 PK 0.48배(네이티브 헬퍼가 호출마다 스캔 대상을 다시 생성함), 100행 1.03배다. 제한은 PK 1.35, 100행 1.25다. 제한을 초과하면 CI가 실패한다. 제한 변경에는 측정 결과와 `perf.md` 수정이 필요하다.
-비율은 하드웨어에 따라 달라지며 **왕복 시간이 길수록 1에 가까워진다**. 로컬 소켓의 PK 비율은 0.48이고 GitHub Actions TCP의 비율은 1.08이다(네이티브 122µs, 클라이언트 132µs). 현재 제한은 두 환경에서 네이티브 문장보다 1/3 이상 느린 클라이언트를 검출한다.
+같은 process에서 생성 클라이언트와 동일한 native 결과를 각각 300회 측정하고 p50 비율을 비교한다. 양쪽은 `price`, `ip`를 포함한 같은 non-lazy 컬럼을 조회한다. PHP 기준선은 같은 생성 행 결과를 decode하고 구성한다. 기존 Go·PHP native SQL은 `price`, `ip`를 누락했으며 T7.11에서 두 benchmark를 수정했다.
 
-`TestHotPathGate`는 `ORM_RUN_PERF_GATE=1`을 요구한다. 시간 측정 검사를 병렬 `go test ./...` 패키지 실행에서 제외하기 위한 조건이다. `make check`와 CI 전용 단계가 변수를 설정하고 검사를 별도로 실행한다.
+2026-09-12 로컬 MySQL 8.4에서 세 번 연속 실행한 중앙 비율은 Go PK 0.48배, Go 100행 1.05배, PHP PK 1.12배, PHP 100행 0.96배다. 제한은 PK 1.35, 100행 1.25를 유지한다. 제한을 초과하면 CI가 실패한다. 제한 변경에는 측정 결과와 이 문서 수정이 필요하다.
+
+Go는 기본 flat projection에 생성 typed 스캔을 사용한다. 다른 projection과 plan은 positional assembly를 사용한다. PHP는 `PDO::FETCH_NUM` 배열을 행 저장소로 사용한다. PDO의 행별 fetch는 100행에서 약 511µs, `fetchAll`은 약 425µs로 측정되어 행별 구현을 제거했다.
+
+비율은 하드웨어에 따라 달라지며 왕복 시간이 길수록 1에 가까워진다. `TestHotPathGate`는 `ORM_RUN_PERF_GATE=1`을 요구한다. `scripts/perf-test.sh`가 독립 compiler socket을 시작한 뒤 Go·PHP 검사를 실행하고 `make check`가 이 script를 실행한다.
 
 ## 6f. Rust MySQL driver 비교 (T7.9)
 
