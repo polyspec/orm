@@ -3852,6 +3852,7 @@
   "clients/php/src/Transport.php::Orm\\Transport::$localOrder": "private array",
   "clients/php/src/Transport.php::Orm\\Transport::__construct": "public function __construct(Orm\\Config $config): ",
   "clients/php/src/Transport.php::Orm\\Transport::call": "private function call(string $frame): string",
+  "clients/php/src/Transport.php::Orm\\Transport::canonicalJson": "private static function canonicalJson(mixed $value): mixed",
   "clients/php/src/Transport.php::Orm\\Transport::conn": "private function conn(): ",
   "clients/php/src/Transport.php::Orm\\Transport::decode": "private function decode(string $body): array",
   "clients/php/src/Transport.php::Orm\\Transport::hash": "public function hash(): string",

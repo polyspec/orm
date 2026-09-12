@@ -162,12 +162,17 @@ final class Transport
         if (!is_string($bundle['request_sha256'] ?? null) || $bundle['request_sha256'] === '' || !is_array($bundle['plan'] ?? null)) {
             throw new OrmException(Code::CONFIG, 'precompiled plan requires request_sha256 and plan');
         }
+        $ir = $req->shape($kind);
+        $canonical = json_encode(self::canonicalJson($ir), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $requestHash = hash('sha256', $canonical);
+        if ($requestHash !== $bundle['request_sha256']) {
+            throw new OrmException(Code::CONFIG, "precompiled plan request hash {$bundle['request_sha256']} does not match request shape $requestHash");
+        }
         $plan = $bundle['plan'];
         if (($plan['schema_hash'] ?? null) !== $schema || ($plan['kind'] ?? null) !== $kind || count($plan['steps'] ?? []) < 1) {
             throw new OrmException(Code::CONFIG, 'precompiled plan body does not match its envelope or request');
         }
         Wire::check('Plan', $plan);
-        $ir = $req->shape($kind);
         $key = $kind . "\x1f" . $req->sig . "\x1f" . count($req->params);
         $this->local[$key] = $plan;
         $this->localOrder[] = $key;
@@ -179,6 +184,17 @@ final class Transport
         $cacheKey = 'orm:' . Orm::config()->driver . ':' . Orm::config()->schemaHash() . ':' . hash('xxh3', $shape);
         Assemble::index($plan, hash('xxh3', $shape));
         if (function_exists('apcu_store')) apcu_store($cacheKey, $plan);
+    }
+
+    private static function canonicalJson(mixed $value): mixed
+    {
+        if (!is_array($value)) return $value;
+        if (array_is_list($value)) return array_map(self::canonicalJson(...), $value);
+        $keys = array_keys($value);
+        sort($keys, SORT_STRING);
+        $out = [];
+        foreach ($keys as $key) $out[$key] = self::canonicalJson($value[$key]);
+        return $out;
     }
 
     /**

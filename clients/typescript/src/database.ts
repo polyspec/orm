@@ -1,6 +1,7 @@
 import { AesKeyring } from './index.js';
 import type { AesRotationSpec, AesRotationStatus, Compiler, Database, Executor, Param, Plan, PlanStep, Request, StreamResult, TransactionOptions } from './index.js';
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { ConnectCompiler, ConnectPlanCompiler, type CompilerTransport } from './compiler.js';
 import { loadConfig, resolveAesKey, resolveBlindIndexKey } from './config.js';
 import { blindIndex, decode, hostDecode, hostEncode, parsePoint, pointText } from './codec.js';
@@ -196,6 +197,8 @@ export class Db implements Database, Executor {
     if (request.schema_hash !== this.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `request schema ${request.schema_hash} but client schema is ${this.schemaHash}`);
     if (value.dialect !== this.driver) throw new OrmError('CONFIG', `precompiled plan dialect ${String(value.dialect ?? '')} but database driver is ${this.driver}`);
     if (typeof value.request_sha256 !== 'string' || value.request_sha256 === '') throw new OrmError('CONFIG', 'precompiled plan requires request_sha256');
+    const requestHash = createHash('sha256').update(canonical(request)).digest('hex');
+    if (requestHash !== value.request_sha256) throw new OrmError('CONFIG', `precompiled plan request hash ${value.request_sha256} does not match request shape ${requestHash}`);
     const plan = value.plan as Plan | undefined;
     if (plan === undefined || typeof plan !== 'object' || plan.schema_hash !== this.schemaHash || plan.kind !== request.kind || !Array.isArray(plan.steps) || plan.steps.length === 0) {
       throw new OrmError('CONFIG', 'precompiled plan body does not match its envelope or request');

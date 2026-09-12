@@ -43,7 +43,8 @@ check($db->driver() === $driver, 'Db::driver()');
 $bundleQuery = new Q('battle');
 $bundleRequest = $bundleQuery->req;
 $bundlePlan = Orm::transport()->plan($bundleRequest->shape('all'));
-Orm::transport()->loadPlanBundle(['version' => 1, 'schema_hash' => Orm::config()->schemaHash(), 'dialect' => $driver, 'request_sha256' => 'test', 'plan' => $bundlePlan], $bundleRequest, 'all');
+$bundleRequestHash = hash('sha256', json_encode(['entity' => 'battle', 'ir_version' => 1, 'kind' => 'all', 'n_params' => 0, 'schema_hash' => Orm::config()->schemaHash()], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+Orm::transport()->loadPlanBundle(['version' => 1, 'schema_hash' => Orm::config()->schemaHash(), 'dialect' => $driver, 'request_sha256' => $bundleRequestHash, 'plan' => $bundlePlan], $bundleRequest, 'all');
 check(Orm::transport()->planFor($bundleRequest, 'all')['kind'] === 'all', 'precompiled plan cache load');
 /** the binds sql() and the hook show for the aes select: the key twice on MySQL (AES in SQL), nothing else elsewhere (host AES) */
 $aesBinds = [7];
