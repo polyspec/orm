@@ -5,10 +5,12 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -29,6 +31,25 @@ type migrationRecord struct {
 	Operations  int
 }
 
+type migrationLog struct {
+	MigrationID string `json:"migration_id"`
+	Name        string `json:"name"`
+	Driver      string `json:"driver"`
+	FromHash    string `json:"from_schema_hash"`
+	ToHash      string `json:"to_schema_hash"`
+	Checksum    string `json:"plan_checksum"`
+	Status      string `json:"status"`
+	Operations  int    `json:"operations"`
+	ErrorDetail string `json:"error_detail,omitempty"`
+	StartedAt   string `json:"started_at"`
+	FinishedAt  string `json:"finished_at,omitempty"`
+}
+
+func (l migrationLog) withError(detail string) migrationLog {
+	l.ErrorDetail = detail
+	return l
+}
+
 func migrateCmd(args []string) {
 	fs := flag.NewFlagSet("migrate", flag.ExitOnError)
 	dsn := fs.String("dsn", "", "database DSN or SQLite path (required)")
@@ -36,6 +57,7 @@ func migrateCmd(args []string) {
 	schemaPath := fs.String("schema", "", "target schema.json (required)")
 	id := fs.String("migration-id", "initial", "stable migration identifier")
 	name := fs.String("name", "schema sync", "migration name")
+	logDir := fs.String("log-dir", "migrations/logs", "directory for migration JSON logs")
 	dryRun := fs.Bool("dry-run", false, "show the plan without changing the database")
 	fs.Parse(args)
 	if *dsn == "" || *schemaPath == "" {
@@ -92,6 +114,9 @@ func migrateCmd(args []string) {
 		if !schemaMatches(want, live, *driver) {
 			fail(fmt.Errorf("MIGRATION_DRIFT: migration_id=%s expected_schema_hash=%s actual_schema_hash=%s", *id, want.SchemaHash, live.SchemaHash))
 		}
+		if err := verifyMigrationLog(*logDir, previous, *driver); err != nil {
+			fail(err)
+		}
 		fmt.Printf("migration_id=%s status=noop operations=0 schema_hash=%s\n", *id, want.SchemaHash)
 		return
 	}
@@ -100,12 +125,19 @@ func migrateCmd(args []string) {
 		return
 	}
 
-	if err := insertMigration(ctx, db, *driver, migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "applying", Operations: operations}); err != nil {
+	record := migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "applying", Operations: operations}
+	startedAt := time.Now().UTC()
+	if err := writeMigrationLog(*logDir, migrationLogFromRecord(record, *driver, startedAt, time.Time{})); err != nil {
+		fail(err)
+	}
+	if err := insertMigration(ctx, db, *driver, record); err != nil {
+		_ = writeMigrationLog(*logDir, migrationLogFromRecord(record, *driver, startedAt, time.Now().UTC()).withError(err.Error()))
 		fail(err)
 	}
 	if err := executeMigration(ctx, db, sqlText); err != nil {
 		detail := fmt.Sprintf("operation execution failed: %v", err)
 		_ = updateMigration(ctx, db, *driver, *id, "failed", detail)
+		_ = writeMigrationLog(*logDir, migrationLogFromRecord(migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "failed", Operations: operations}, *driver, startedAt, time.Now().UTC()).withError(detail))
 		fail(fmt.Errorf("MIGRATION_APPLY_FAILED: migration_id=%s from=%s to=%s: %w", *id, live.SchemaHash, want.SchemaHash, err))
 	}
 	check, err := liveManifest(db, *driver)
@@ -120,6 +152,9 @@ func migrateCmd(args []string) {
 	}
 	if err := updateMigration(ctx, db, *driver, *id, "applied", ""); err != nil {
 		fail(fmt.Errorf("MIGRATION_HISTORY_WRITE: migration_id=%s: %w", *id, err))
+	}
+	if err := writeMigrationLog(*logDir, migrationLogFromRecord(migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "applied", Operations: operations}, *driver, startedAt, time.Now().UTC())); err != nil {
+		fail(err)
 	}
 	fmt.Printf("migration_id=%s status=applied from_schema_hash=%s to_schema_hash=%s operations=%d\n", *id, live.SchemaHash, want.SchemaHash, operations)
 }
@@ -349,6 +384,80 @@ func splitSQL(text string) []string {
 func countSQLStatements(text string) int { return len(splitSQL(text)) }
 
 func checksumText(s string) string { h := sha256.Sum256([]byte(s)); return hex.EncodeToString(h[:]) }
+
+func migrationLogFromRecord(r migrationRecord, driver string, started, finished time.Time) migrationLog {
+	l := migrationLog{MigrationID: r.MigrationID, Name: r.Name, Driver: driver, FromHash: r.FromHash, ToHash: r.ToHash, Checksum: r.Checksum, Status: r.Status, Operations: r.Operations, StartedAt: started.Format(time.RFC3339Nano)}
+	if !finished.IsZero() {
+		l.FinishedAt = finished.Format(time.RFC3339Nano)
+	}
+	return l
+}
+
+func safeMigrationID(id string) string {
+	var b strings.Builder
+	for _, r := range id {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_' || r == '.' {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte('_')
+		}
+	}
+	if b.Len() == 0 {
+		return "migration"
+	}
+	return b.String()
+}
+
+func migrationLogPath(dir, id string) string {
+	return filepath.Join(dir, safeMigrationID(id)+".json")
+}
+
+func writeMigrationLog(dir string, log migrationLog) error {
+	if dir == "" {
+		return fmt.Errorf("MIGRATION_LOG_WRITE: log directory is empty")
+	}
+	b, err := json.MarshalIndent(log, "", "  ")
+	if err != nil {
+		return fmt.Errorf("MIGRATION_LOG_WRITE: migration_id=%s: %w", log.MigrationID, err)
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("MIGRATION_LOG_WRITE: mkdir %s: %w", dir, err)
+	}
+	tmp, err := os.CreateTemp(dir, ".migration-*.tmp")
+	if err != nil {
+		return fmt.Errorf("MIGRATION_LOG_WRITE: create temporary file: %w", err)
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if err := tmp.Chmod(0o644); err == nil {
+		_, err = tmp.Write(append(b, '\n'))
+	}
+	if closeErr := tmp.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return fmt.Errorf("MIGRATION_LOG_WRITE: migration_id=%s: %w", log.MigrationID, err)
+	}
+	if err := os.Rename(tmpName, migrationLogPath(dir, log.MigrationID)); err != nil {
+		return fmt.Errorf("MIGRATION_LOG_WRITE: migration_id=%s: %w", log.MigrationID, err)
+	}
+	return nil
+}
+
+func verifyMigrationLog(dir string, r migrationRecord, driver string) error {
+	b, err := os.ReadFile(migrationLogPath(dir, r.MigrationID))
+	if err != nil {
+		return fmt.Errorf("MIGRATION_LOG_READ: migration_id=%s: %w", r.MigrationID, err)
+	}
+	var l migrationLog
+	if err := json.Unmarshal(b, &l); err != nil {
+		return fmt.Errorf("MIGRATION_LOG_READ: migration_id=%s invalid JSON: %w", r.MigrationID, err)
+	}
+	if l.MigrationID != r.MigrationID || l.Driver != driver || l.FromHash != r.FromHash || l.ToHash != r.ToHash || l.Checksum != r.Checksum || l.Status != r.Status || l.Operations != r.Operations {
+		return fmt.Errorf("MIGRATION_LOG_CONFLICT: migration_id=%s database and file records differ", r.MigrationID)
+	}
+	return nil
+}
 
 func schemaMatches(want, live *schema.Manifest, driver string) bool {
 	if len(want.Entities) != len(live.Entities) {
