@@ -420,8 +420,17 @@ type cached struct {
 
 // scanInfo is what runSelect needs to read one step's rows.
 type scanInfo struct {
-	n      int           // width of a positional row (the node's columns plus its joins')
-	styled []plan.OutCol // columns with executor-side codec stages
+	n      int             // width of a positional row (the node's columns plus its joins')
+	styled []styledScanCol // columns with executor-side codec stages
+}
+
+// styledScanCol contains the split style lists once per cached plan. Row
+// decoding must not repeat style parsing for every result row.
+type styledScanCol struct {
+	index int
+	name  string
+	codec []string
+	host  []string
 }
 
 func newCached(key uint64, p *plan.Plan) *cached {
@@ -440,7 +449,7 @@ func newCached(key uint64, p *plan.Plan) *cached {
 		if st.Assemble == nil {
 			continue
 		}
-		c.scans[st] = &scanInfo{n: countCols(st.Assemble), styled: styledCols(st.Assemble)}
+		c.scans[st] = &scanInfo{n: countCols(st.Assemble), styled: styledScanCols(st.Assemble)}
 		walk(st.Assemble)
 	}
 	return c
@@ -1176,25 +1185,41 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 		}
 	}
 	for _, sc := range si.styled {
-		codec, host := splitHost(sc.Styles)
-		v := vals[sc.Index]
+		v := vals[sc.index]
 		if v == nil {
 			continue
 		}
 		var err error
-		if len(host) > 0 {
-			if v, err = HostDecodeVersioned(v, host, version, keyring); err != nil {
-				return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.Name, err)
+		if len(sc.host) > 0 {
+			if v, err = HostDecodeVersioned(v, sc.host, version, keyring); err != nil {
+				return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.name, err)
 			}
 		}
-		if len(codec) > 0 {
-			if v, err = Decode(codec, v); err != nil {
-				return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.Name, err)
+		if len(sc.codec) > 0 {
+			if v, err = Decode(sc.codec, v); err != nil {
+				return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.name, err)
 			}
 		}
-		vals[sc.Index] = v
+		vals[sc.index] = v
 	}
 	return nil
+}
+
+func styledScanCols(a *plan.Assemble) []styledScanCol {
+	var out []styledScanCol
+	for _, c := range a.Columns {
+		if len(c.Styles) == 0 {
+			continue
+		}
+		codec, host := splitHost(c.Styles)
+		out = append(out, styledScanCol{index: c.Index, name: c.Name, codec: codec, host: host})
+	}
+	for _, ch := range a.Children {
+		if ch.Kind == "join" {
+			out = append(out, styledScanCols(ch.Assemble)...)
+		}
+	}
+	return out
 }
 
 func streamSelect(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req, visit func([]any) bool) (result StreamResult, err error) {
