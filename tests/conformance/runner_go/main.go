@@ -1045,6 +1045,14 @@ func main() {
 		}
 		return b.ToArray()
 	})
+	run("relation_predicates", func() (any, error) {
+		exists, err := gen.Service().SeqEq(7).HasMembers(func(*gen.ServiceMemberWhere) {}).Using(ctx, db).GetCount()
+		if err != nil {
+			return nil, err
+		}
+		count, err := gen.Service().SeqEq(7).CountMembersEq(50, func(*gen.ServiceMemberWhere) {}).Using(ctx, db).GetCount()
+		return map[string]any{"exists": exists, "count": count}, err
+	})
 	run("codec_roundtrip", func() (any, error) {
 		value := map[string]any{"a": int64(1), "b": []any{int64(1), int64(2), map[string]any{"c": "한글/slash"}}, "d": nil, "e": true, "f": 1.5}
 		ip := "10.1.2.3"

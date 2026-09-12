@@ -2424,5 +2424,10 @@
         }
       }
     }
+    ,{
+      "name": "relation_predicates",
+      "chain": "Service.seq(7).hasMembers().getCount; Service.seq(7).countMembersEq(50).getCount",
+      "expect": {"result": null, "statements": []}
+    }
   ]
 }

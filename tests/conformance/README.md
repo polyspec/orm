@@ -33,8 +33,12 @@ go run ./tests/conformance/check run                  # MySQL: runs all four, co
 go run ./tests/conformance/check run -driver postgres -dsn 'postgres://…'   # same on PostgreSQL
 go run ./tests/conformance/check run -driver sqlite  -dsn 'file:/abs.sqlite' # and SQLite
 ```
-`-langs go,php` limits which runners execute; `check record -driver <db> out/<db>/go.json` refreshes
-that database's expectations after a deliberate change.
+`-langs go,php` limits which runners execute. SQLite accepts one DSN per client
+when driver syntax differs: `-go-dsn file:/abs.sqlite`,
+`-rust-dsn sqlite:///abs.sqlite`, and `-php-dsn` or `-typescript-dsn`
+with `/abs.sqlite`. These flags override `-dsn` for the selected runner.
+`check record -driver <db> out/<db>/go.json` refreshes that database's
+expectations after a deliberate change.
 
 `check run` starts `ormd` on `tests/conformance/out/ormd.sock` for the PHP
 runner and blocks on its "listening" line before proceeding — no polling.
