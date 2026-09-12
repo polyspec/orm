@@ -92,6 +92,8 @@ jobs:
         run: go test ./bench/go -run TestHotPathGate -v
       - name: rust client
         run: cd clients/rust && cargo build --release && cargo test --release -p orm && ./target/release/integration ../../bin/ormengine.wasm ../../schema/schema.json
+      - name: rust 150-table generation
+        run: make rust-150-check
       - name: php client
         run: |
           bin/ormd -socket "$PWD/bin/ormd.sock" -schema schema/schema.json 2>bin/ormd.log &
