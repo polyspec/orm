@@ -39,9 +39,11 @@ type file struct {
 // driver selects the database: "mysql" (default) or postgres/sqlite. The runners get
 // it as -driver/-dsn (Go), argv (PHP/Rust) and the expectations file follows it.
 var (
-	driver string
-	dsn    string
-	langs  string
+	driver                 string
+	dsn                    string
+	goDSN, phpDSN          string
+	rustDSN, typescriptDSN string
+	langs                  string
 )
 
 func vectorsPath() string {
@@ -58,6 +60,10 @@ func main() {
 	fs := flag.NewFlagSet("check", flag.ExitOnError)
 	fs.StringVar(&driver, "driver", "mysql", "mysql|postgres|sqlite")
 	fs.StringVar(&dsn, "dsn", "", "database DSN/URL for the runners (driver-specific; empty = each runner's default)")
+	fs.StringVar(&goDSN, "go-dsn", "", "Go runner DSN; overrides -dsn")
+	fs.StringVar(&phpDSN, "php-dsn", "", "PHP runner DSN; overrides -dsn")
+	fs.StringVar(&rustDSN, "rust-dsn", "", "Rust runner DSN; overrides -dsn")
+	fs.StringVar(&typescriptDSN, "typescript-dsn", "", "TypeScript runner DSN; overrides -dsn")
 	fs.StringVar(&langs, "langs", "go,php,rust,typescript", "runners to execute")
 	fs.Parse(os.Args[2:])
 	root, err := os.Getwd()
@@ -82,6 +88,28 @@ func main() {
 	default:
 		usage()
 	}
+}
+
+func dsnFor(language string) string {
+	switch language {
+	case "go":
+		if goDSN != "" {
+			return goDSN
+		}
+	case "php":
+		if phpDSN != "" {
+			return phpDSN
+		}
+	case "rust":
+		if rustDSN != "" {
+			return rustDSN
+		}
+	case "typescript":
+		if typescriptDSN != "" {
+			return typescriptDSN
+		}
+	}
+	return dsn
 }
 
 func driverDir() string {
@@ -159,8 +187,8 @@ func runAll(root, out string) {
 	if driver != "mysql" {
 		goArgs = append(goArgs, "-driver", driver)
 	}
-	if dsn != "" {
-		goArgs = append(goArgs, "-dsn", dsn)
+	if value := dsnFor("go"); value != "" {
+		goArgs = append(goArgs, "-dsn", value)
 	}
 	if want["go"] {
 		capture(filepath.Join(out, "go.json"), exec.Command("go", append([]string{"run", "./tests/conformance/runner_go"}, append(goArgs, schema)...)...))
@@ -170,15 +198,15 @@ func runAll(root, out string) {
 		if driver != "mysql" {
 			args = append(args, "--driver", driver)
 		}
-		if dsn != "" {
-			args = append(args, "--dsn", dsn)
+		if value := dsnFor("rust"); value != "" {
+			args = append(args, "--dsn", value)
 		}
 		capture(filepath.Join(out, "rust.json"), exec.Command(filepath.Join(root, "clients", "rust", "target", "release", "conformance"), args...))
 	}
 	if want["typescript"] {
 		args := []string{"tests/conformance/runner_typescript.mjs", "--compiler", endpoint, "--driver", driver}
-		if dsn != "" {
-			args = append(args, "--dsn", dsn)
+		if value := dsnFor("typescript"); value != "" {
+			args = append(args, "--dsn", value)
 		}
 		args = append(args, schema)
 		capture(filepath.Join(out, "typescript.json"), exec.Command("node", args...))
@@ -190,8 +218,8 @@ func runAll(root, out string) {
 	if driver != "mysql" {
 		phpArgs = append(phpArgs, "--driver", driver)
 	}
-	if dsn != "" {
-		phpArgs = append(phpArgs, "--dsn", dsn)
+	if value := dsnFor("php"); value != "" {
+		phpArgs = append(phpArgs, "--dsn", value)
 	}
 	capture(filepath.Join(out, "php.json"), exec.Command("php", phpArgs...))
 }

@@ -265,6 +265,10 @@ try {
   await run('join_fulltext_or', () => Battle().join(Service().where(w => w.seq(7))).isClose(false).and(w => w.nameWithDescriptionMatchBoolean('battle').or().service(s => s.name('service-999'))).using(db).getCount());
   await run('join_two_groups', () => Battle().join(Service().on(w => w.name('service-7')).where(w => w.seqGt(0))).leftJoin(User().where(w => w.nameContains('user-4'))).seqIn([6, 106, 206, 406]).using(db).getCount());
   await run('join_multi_level', async () => (await Battle().selectNone().seq(6).join(ServiceMember().selectNone().join(User().selectNone()).join(Service().selectNone())).using(db).get()).toObject());
+  await run('relation_predicates', async () => ({
+    exists: await Service().seq(7).hasMembers(() => {}).using(db).getCount(),
+    count: await Service().seq(7).countMembersEq(50, () => {}).using(db).getCount(),
+  }));
   await run('codec_roundtrip', async () => {
     const value = { a: 1, b: [1, 2, { c: '한글/slash' }], d: null, e: true, f: 1.5 };
     const row = await db.transaction(tx => Battle().setName('conf-codec').setUserSeq(1).setServiceSeq(999).setServiceModuleSeq(1).setServiceMemberSeq(1).setStartDt(dt('2026-06-01 00:00:00')).setEndDt(dt('2026-12-31 00:00:00')).setJsonSetting(value).setJsonsTags(['x', 'y']).setBase64Extra(value).setSerializeData(value).setGzExtend(value).setIp('10.1.2.3').using(tx).insert());
