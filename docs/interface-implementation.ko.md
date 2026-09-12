@@ -20,7 +20,7 @@
 | IF-25, IF-26 | typed key·중복 위치·entries. `interface_typed_keys`. 모든 언어의 맵/배열 변환은 키 충돌 시 IR_INVALID. `interface_nested_keys`는 중첩 관계에서 발생한 충돌이 부모 행 변환까지 전달되는지 검사 |
 | IF-27 | Page 다섯 필드의 선언 대조, `interface_invalid_page`와 기존 pagination 벡터 |
 | IF-28, IF-30, IF-31 | 설정·코덱 96개·AES·hook 마스킹·실제 statement 순서 검사 |
-| IF-33 | manifest 기반 인터페이스·도표 생성, 생성 drift·구조·실행 인터페이스을 CI에 연결 |
+| IF-33 | manifest 기반 인터페이스·도표 생성, 생성 drift·구조·실행 검사를 `make interface-check`, `make check`, CI에 연결 |
 | IF-34 | PHP 값 인자 guard와 동적 호환층. PHP integration·compat 검사 |
 
 구조 검사는 공통 메서드와 저장 필드를 먼저 대조하고, 전체 네이티브 선언의 누락·추가·변경을 검사한다. 심볼 목록의 SHA-256도 `contracts/interfaces.json`에 고정하므로 목록을 다시 기록한 뒤 인터페이스 갱신을 생략하면 실패한다. `owners`는 역할별 필드 전체를 제한하므로 심볼 목록만 다시 기록해도 임의의 상태 필드를 추가할 수 없다. PHP의 기본 readonly setter 표기처럼 언어 버전이 자동 자동 추가하는 표현은 정규화하며 명시적인 접근 제한 변경은 보존한다. 각 언어의 소스를 직접 바꾸는 7개 반례와 PHP wire 필드/형태 반례 165개도 검출한다.
