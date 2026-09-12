@@ -59,8 +59,8 @@ Package publication, release creation, public repository preparation, and manual
 - [x] P11.2 Add security reporting, contribution, conduct, and change-history documents with paired Korean files where the content is user-facing.
 - [x] P11.3 Complete package names, descriptions, licenses, repository links, runtime requirements, included files, and generated-artifact rules.
 - [x] P11.4 Verify the TypeScript package with `npm pack`, Composer metadata, the Rust `orm` crate with `cargo package`, and an external temporary Go module without publishing.
-- [ ] P11.5 CI runs document rules, generated drift, interface checks, red-test regressions, physical database tests, package checks, and the full test suite.
+- [x] P11.5 CI runs document rules, generated drift, interface checks, red-test regressions, physical database tests, package checks, and the full test suite. CI run `34725432112` passed on commit `03ea865`.
 
 ## Completion
 
-- [ ] G8 Every in-scope P8-P10 item passes its stated tests; `make check` passes; the working tree is clean; and local `HEAD` equals `origin/main`.
+- [x] G8 Every in-scope P8-P10 item passes its stated tests; `make check` passes; the working tree is clean; and local `HEAD` equals `origin/main` at commit `03ea865`.
