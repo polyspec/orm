@@ -204,6 +204,14 @@ $db->transaction(function (Tx $tx): void {
         check($e->code_ === Code::CONFIG, 'savepoint identifier error code');
     }
 });
+if ($driver === 'sqlite') {
+    try {
+        $db->transaction(static function (Tx $tx): void {}, new \Orm\TransactionOptions(isolation: 'serializable'));
+        check(false, 'SQLite accepted unsupported transaction isolation');
+    } catch (OrmException $e) {
+        check($e->code_ === Code::CAPABILITY_UNSUPPORTED, 'SQLite transaction capability error code');
+    }
+}
 
 $created->setName('php-write-2')->setLikeCount(5)->using($db)->updateOptimistic();
 $again = Battle::query()->using($db)->getBySeq($created->getSeq());
