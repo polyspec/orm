@@ -401,6 +401,7 @@ Battle::query()->seq($id)->using($db)->delete();
 - transaction은 바깥 transaction을 종료하지 않고 `savepoint(name)`, `rollbackTo(name)`, `releaseSavepoint(name)`을 사용할 수 있다. savepoint 이름은 `[A-Za-z_][A-Za-z0-9_]*`를 사용하며 잘못된 이름은 SQL 실행 전에 `CONFIG`로 실패한다.
 - `TransactionOptions`로 `isolation`과 `readOnly`를 지정할 수 있다. 지원 이름은 `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`이다. SQLite는 명시적인 isolation과 read-only 옵션을 거부한다. Rust MySQL은 transaction 시작 전에 같은 pool connection에서 isolation을 적용한다. 지원하지 않는 mode는 `CONFIG`를 반환한다.
 - root row query는 `forUpdate()`와 `forShare()`를 제공한다(Go: `ForUpdate()`와 `ForShare()`, Rust: `for_update()`와 `for_share()`). MySQL과 PostgreSQL은 선택한 row lock을 실행한다. SQLite는 `CAPABILITY_UNSUPPORTED`를 반환한다.
+- 공통 query timeout/cancellation API는 아직 제공하지 않는다. PHP PDO에 이식 가능한 실행 중 statement 취소 기능이 없으므로 일부 client에만 timeout API를 공개하지 않는다.
 
 ```go
 row, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {
