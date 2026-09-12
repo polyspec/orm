@@ -35,11 +35,15 @@ type scope struct {
 // relCtx describes the relation a step loads: which parent step/column feeds
 // its IN list and how the rows attach.
 type relCtx struct {
-	parentStep int
-	parentAsm  *plan.Assemble
-	parentKeys []string
-	childKeys  []string
-	kind       string
+	parentStep        int
+	parentAsm         *plan.Assemble
+	parentKeys        []string
+	childKeys         []string
+	kind              string
+	through           *schema.Entity
+	throughName       string
+	throughParentKeys []string
+	throughKeys       []string
 }
 
 // stepSet numbers steps in build order, so a parent always precedes its relation steps.
@@ -274,10 +278,32 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	// WHERE = [parent IN list] AND root group AND each join's where group (declaration order).
 	var where []string
 	if rc != nil {
-		if len(rc.childKeys) == 1 {
+		if rc.through == nil && len(rc.childKeys) == 1 {
 			where = append(where, p.qcol(root, rc.childKeys[0])+" IN ("+b.parentList(rc.parentStep)+")")
-		} else {
+		} else if rc.through == nil {
 			where = append(where, "("+strings.Join(p.qualified(root, rc.childKeys), ", ")+") IN (("+b.parentList(rc.parentStep)+"))")
+		} else {
+			throughAlias := "through__" + rc.throughName
+			throughCols := make([]string, len(rc.throughKeys))
+			for i, column := range rc.throughKeys {
+				throughCols[i] = p.D.Quote(throughAlias) + "." + p.D.Quote(column)
+			}
+			parentCols := make([]string, len(rc.throughParentKeys))
+			for i, column := range rc.throughParentKeys {
+				parentCols[i] = p.D.Quote(throughAlias) + "." + p.D.Quote(column)
+			}
+			parentList := b.parentList(rc.parentStep)
+			inner := "SELECT " + strings.Join(throughCols, ", ") + " FROM " + p.D.Quote(rc.through.Table) + " AS " + p.D.Quote(throughAlias) + " WHERE "
+			if len(parentCols) == 1 {
+				inner += parentCols[0] + " IN (" + parentList + ")"
+			} else {
+				inner += "(" + strings.Join(parentCols, ", ") + ") IN ((" + parentList + "))"
+			}
+			if len(rc.childKeys) == 1 {
+				where = append(where, p.qcol(root, rc.childKeys[0])+" IN ("+inner+")")
+			} else {
+				where = append(where, "("+strings.Join(p.qualified(root, rc.childKeys), ", ")+") IN ("+inner+")")
+			}
 		}
 	}
 	if q.ScopeP != nil {
@@ -407,7 +433,22 @@ func (p *Planner) relationSteps(ps *stepSet, s *scope, asm *plan.Assemble, stepI
 	for _, r := range s.q.Relations {
 		rel := s.ent.Relations[r.Rel]
 		parentKeys, childKeys := relationColumns(rel)
-		rc := &relCtx{parentStep: stepID, parentAsm: asm, parentKeys: parentKeys, childKeys: childKeys, kind: rel.Kind}
+		var through *schema.Entity
+		if rel.Through != "" {
+			through = p.M.Entities[rel.Through]
+		}
+		throughKeys := make([]string, len(rel.ThroughKeys))
+		for i, key := range rel.ThroughKeys {
+			throughKeys[i] = key.Local
+		}
+		throughParentKeys := make([]string, len(rel.Keys))
+		for i, key := range rel.Keys {
+			throughParentKeys[i] = key.Target
+		}
+		if through != nil && len(throughKeys) == 0 {
+			throughKeys = nil
+		}
+		rc := &relCtx{parentStep: stepID, parentAsm: asm, parentKeys: parentKeys, childKeys: childKeys, kind: rel.Kind, through: through, throughName: rel.Name, throughParentKeys: throughParentKeys, throughKeys: throughKeys}
 		st, err := p.selectStep(ps, r.Query, "all", "", rc)
 		if err != nil {
 			return err
@@ -465,6 +506,12 @@ func relationColumns(rel *schema.Rel) ([]string, []string) {
 	target := make([]string, len(rel.Keys))
 	for i, key := range rel.Keys {
 		local[i], target[i] = key.Local, key.Target
+	}
+	if rel.Through != "" {
+		target = make([]string, len(rel.ThroughKeys))
+		for i, key := range rel.ThroughKeys {
+			target[i] = key.Target
+		}
 	}
 	return local, target
 }

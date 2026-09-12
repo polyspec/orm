@@ -66,10 +66,11 @@ type DRelation struct {
 }
 
 type Directive struct {
-	Kind    string // unique, index, fulltext, check, blind_index, timestamps, predicate
+	Kind    string // unique, index, fulltext, check, blind_index, timestamps, predicate, many_to_many
 	Table   string
 	Columns []string
 	Name    string
+	Through string
 	Raw     string
 	Line    int
 }
@@ -88,7 +89,7 @@ var (
 	// parent CARD child : label
 	reRelation = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s+([|}o]{1,2}[-.]{2}[|{o]{1,2})\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$`)
 	// %% kind table (a, b) [name]
-	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|check|blind_index|timestamps|scope|soft_delete|predicate|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
+	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|check|blind_index|timestamps|scope|soft_delete|predicate|many_to_many|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
 	reRelationNames  = regexp.MustCompile(`^(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
 	reRef            = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
 	reDirectiveIdent = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
@@ -325,6 +326,14 @@ func parseDirective(m []string, line int) (*Directive, error) {
 		}
 		d.Name = strings.TrimSpace(name)
 		d.Raw = strings.TrimSpace(body)
+	case "many_to_many":
+		parts := strings.Fields(d.Raw)
+		if len(parts) != 5 || parts[3] != "through" || !reDirectiveIdent.MatchString(parts[0]) || !reDirectiveIdent.MatchString(parts[1]) || !reDirectiveIdent.MatchString(parts[2]) || !reDirectiveIdent.MatchString(parts[4]) {
+			return nil, &ParseError{line, "%% many_to_many <target_entity> <source_relation> <target_relation> through <through_entity>"}
+		}
+		d.Columns = []string{parts[0], parts[2]}
+		d.Name = parts[1]
+		d.Through = parts[4]
 	case "table_comment":
 		if d.Raw == "" || !strings.HasPrefix(d.Raw, `"`) || !strings.HasSuffix(d.Raw, `"`) {
 			return nil, &ParseError{line, "%% table_comment <table> \"text\""}

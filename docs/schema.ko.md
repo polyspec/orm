@@ -99,6 +99,7 @@ Mermaid 문법을 사용한다. `PK`, `FK`, `UK`는 Mermaid keyword다. 기본�
 %% predicate <table> <name> : <expr 조각>   # 재사용 술어 → `<name>(args…)` 메서드. 백틱 컬럼은 검증, `?`마다 인자 하나
 %% scope <table> <column>                 # query API와 IR에 독립된 tenant scope 생성
 %% soft_delete <table> <column>            # nullable datetime; reads exclude non-NULL rows and delete writes the current timestamp
+%% many_to_many <source> <target> <source_relation> <target_relation> through <through_entity>
 %% table_comment <table> "database table comment"
 %% column_comment <table> <column> "database column comment"
 %% rename_table <new_table> <old_table>      # migration rename
@@ -111,6 +112,8 @@ Rename directive는 migration metadata다. `ormgen diff`는 비슷한 이름을 
 PostgreSQL `COMMENT ON` 문, SQLite의 `orm_schema_comments` 행을 생성합니다.
 `ormgen import`는 같은 데이터베이스 메타데이터를 읽어 이 지시문을 생성합니다.
 주석을 변경하면 스키마 해시가 변경되고 멱등 마이그레이션이 생성됩니다.
+
+`many_to_many`는 하나의 지시문으로 양쪽 typed relation 이름을 선언한다. through entity에는 source primary-key component마다 참조 column 하나와 target primary-key component마다 참조 column 하나가 있어야 하며, 이 FK column들이 through entity의 primary key를 구성해야 한다. 관계 로딩은 through table subquery로 target table을 제한하고 선언된 key 순서를 유지한다.
 
 ### 2.4 생략 가능한 것 (기본 규칙)
 - PK가 `seq`이고 `auto`면 `bigint seq PK "auto"` 한 줄.
