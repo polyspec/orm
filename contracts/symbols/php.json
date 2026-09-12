@@ -3856,6 +3856,7 @@
   "clients/php/src/Transport.php::Orm\\Transport::decode": "private function decode(string $body): array",
   "clients/php/src/Transport.php::Orm\\Transport::hash": "public function hash(): string",
   "clients/php/src/Transport.php::Orm\\Transport::info": "public function info(): array",
+  "clients/php/src/Transport.php::Orm\\Transport::loadPlanBundle": "public function loadPlanBundle(array|string $bundle, Orm\\Req $req, string $kind): void",
   "clients/php/src/Transport.php::Orm\\Transport::plan": "public function plan(array $ir): array",
   "clients/php/src/Transport.php::Orm\\Transport::planFor": "public function planFor(Orm\\Req $req, string $kind): array",
   "clients/php/src/Wire.php::Orm\\Wire": "final class Orm\\Wire extends  implements  uses ",
