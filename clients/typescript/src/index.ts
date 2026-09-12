@@ -10,7 +10,7 @@ export interface AesRotationColumn {
 
 export interface AesRotationSpec {
   table: string;
-  primaryKey: string;
+  primaryKeys: readonly string[];
   versionColumn: string;
   columns: readonly AesRotationColumn[];
 }

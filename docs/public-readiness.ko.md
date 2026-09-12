@@ -21,6 +21,9 @@
 - [x] P8.2 명시적인 table·column rename 선언이 데이터를 보존하고 결정적인 forward·rollback plan을 생성한다.
 - [x] P8.3 SQLite가 지원하는 구조 변경은 검증된 table rebuild로 처리하고 안전하지 않은 rebuild는 실행 전에 거부한다.
 - [ ] P8.4 복합 primary·foreign key가 schema import, planning, generated API, identity, CRUD, relation, pagination, AES rotation에서 동작한다. 지원하지 않는 선언은 schema build 중 실패한다.
+  - [x] P8.4a Schema parsing, database import, DDL/diff 생성, planning, join, relation 조회, tuple 중복 제거, 충돌 없는 distinct count가 선언 순서의 모든 key component를 보존한다.
+  - [x] P8.4b Go, PHP, Rust, TypeScript가 key type, 전체 key finder, 순서가 있는 row identity, 부분 key save 거부, composite collection key, composite AES rotation 조건을 생성한다.
+  - [ ] P8.4c 생성된 insert/update/delete/save/paginate가 rollback과 key 일부가 같은 동시 행을 포함한 MySQL, PostgreSQL, SQLite 물리 테스트를 네 client에서 통과한다.
 - [ ] P8.5 공개 encryption이 모든 client에서 인증된 version ciphertext를 사용한다. 조회는 숨겨진 row key version을 선택하고, 여러 version을 함께 읽을 수 있고, 변조 데이터는 실패하며, rotation은 row의 모든 AES column을 제한된 재개 가능 batch로 처리한다.
 - [ ] P8.6 암호화 데이터의 equality search는 명시적인 blind-index column을 요구한다. 기존 ECB 데이터는 명시적인 변환 경로를 사용하며 새 schema에는 생성하지 않는다.
 - [ ] P8.7 Relation과 `IN` parameter가 각 데이터베이스 제한에 맞게 결정적으로 분할되고 row order, key type, relation attachment, error를 보존한다.

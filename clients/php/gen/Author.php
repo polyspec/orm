@@ -17,11 +17,16 @@ use Orm\Rows;
 use Orm\StreamResult;
 use Orm\W;
 
+final readonly class AuthorKey
+{
+    public function __construct(public int $seq) {}
+}
+
 /** One row of author. */
 final class AuthorRow extends Row implements AuthorRowInterface
 {
     public static function entity(): string { return 'author'; }
-    public static function pk(): string { return 'seq'; }
+    public static function primaryKeys(): array { return ['seq']; }
     protected static function versionColumn(): ?string { return 'updated_ts'; }
     public function updateOptimistic(): void { $this->terminalArity(func_num_args()); $this->doUpdate($this->terminalDb(), true); }
     public static function columns(): array
@@ -795,14 +800,14 @@ final class Author extends Q implements AuthorInterface
     public function aesStatus(\Orm\AesKeyring $keyring): \Orm\AesRotationStatus
     {
         return $this->terminalDb()->aesStatus([
-            'table' => 'author', 'primary_key' => 'seq', 'version_column' => 'aes_key_version', 'columns' => [],
+            'table' => 'author', 'primary_keys' => ['seq'], 'version_column' => 'aes_key_version', 'columns' => [],
         ], $keyring);
     }
 
     public function rotateAES(\Orm\AesKeyring $keyring): int
     {
         return $this->terminalDb()->rotateAESRows([
-            'table' => 'author', 'primary_key' => 'seq', 'version_column' => 'aes_key_version',
+            'table' => 'author', 'primary_keys' => ['seq'], 'version_column' => 'aes_key_version',
             'columns' => [['name' => 'aes_hex_email', 'styles' => ['aes', 'hex']],['name' => 'aes_hex_phone', 'styles' => ['aes', 'hex']],],
         ], $keyring);
     }
@@ -2390,13 +2395,14 @@ final class Author extends Q implements AuthorInterface
         return Author::query()->using($db)->seqEq((int) $id)->one();
     }
 
-    /** UPDATE by PK when setSeq was called (the other set columns), else INSERT; returns the re-read row. */
+    /** UPDATE when every primary-key column was assigned; otherwise INSERT. */
     public function save(): ?AuthorRow
     {
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
-        [, $key] = $this->runSave($db, 'seq');
-        return Author::query()->using($db)->seqEq((int) $key)->one();
+        [$updated, $keys] = $this->runSave($db, ['seq']);
+        if (!$updated) { $keys = [(int) $keys[0]]; }
+        return Author::query()->using($db)->seqEq($keys[0])->one();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */

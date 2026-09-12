@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:0ad2d174577c5cfbc197d2cfec121ff109cde857a030f6f0194140b0afb3ecaa",
-    "php": "sha256:04864085b6208d34a3f14132db50ed0a6c0a9a1c77dd7cf89148851d38198688",
-    "rust": "sha256:d769e8c6ca0d05c756dafb560ca277cd976bc2519dfbf4c977c1aeb176894a22",
-    "typescript": "sha256:85779bfd052f732d5d46057f54a502fd7c4bfac28613021345b3aaea50fc9583"
+    "go": "sha256:0594e034e85b181ae5be62b988f5a27c965e90d8023ff05e67f52558344e6dda",
+    "php": "sha256:6bf3a7f82764e435218cbc59080e34796d0daab3798a8ac2c4341f7eece650fc",
+    "rust": "sha256:c06cd24d449c9d15cff15620d60629748272972b01a95d23300ceab0a8c84436",
+    "typescript": "sha256:ca772d7c53df09f5bf1aefea07747debe63c59b5370718df3dedce8e8d91ea70"
   },
   "prohibited_symbols": [
     "multi_statement"
@@ -209,7 +209,7 @@
     {
       "id": "Row",
       "fields": {
-        "identity": "PrimaryKey",
+        "identity": "OrderedMap<Column,Value>",
         "loaded": "Bool",
         "values": "ValueStore",
         "projection": "Projection",
@@ -2899,20 +2899,20 @@
       "for": "entity",
       "native": {
         "go": {
-          "symbol": "clients/go/orm/builder.go::Row#field.pkVal",
-          "signature": "any"
+          "symbol": "clients/go/orm/builder.go::Row#field.keyVals",
+          "signature": "[]any"
         },
         "php": {
           "symbol": "clients/php/src/Row.php::Orm\\Row::$identity",
-          "signature": "protected mixed"
+          "signature": "protected array"
         },
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.original_key",
-          "signature": "Option<Param>"
+          "signature": "Option < Vec < Param > >"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Row#field.identity",
-          "signature": "unknown"
+          "signature": "unknown[]"
         }
       }
     }

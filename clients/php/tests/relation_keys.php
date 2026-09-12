@@ -4,6 +4,8 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 
 use Orm\Db;
+use Orm\Q;
+use Orm\Req;
 
 function expect(bool $condition, string $message): void
 {
@@ -18,6 +20,24 @@ $second = Db::rowKey(['12', '3'], $refs);
 expect(is_string($first) && is_string($second) && $first !== $second, 'composite row keys collide');
 expect(Db::rowKey([1, null], $refs) === null, 'null composite row key was accepted');
 expect(Db::rowKey([7], [['column' => 'id', 'index' => 0]]) === 7, 'single integer key type changed');
+
+$partial = (new ReflectionClass(Q::class))->newInstanceWithoutConstructor();
+$request = (new ReflectionClass(Req::class))->newInstanceWithoutConstructor();
+$request->ir = ['ir_version' => 1, 'schema_hash' => 'test', 'kind' => '', 'entity' => 'membership', 'set' => [
+    ['column' => 'tenant_id', 'p' => 0],
+    ['column' => 'name', 'p' => 1],
+]];
+$request->params = [7, 'updated'];
+$request->sig = 'membership';
+$partial->req = $request;
+$fakeDb = (new ReflectionClass(Db::class))->newInstanceWithoutConstructor();
+try {
+    $partial->runSave($fakeDb, ['tenant_id', 'account_id']);
+    throw new RuntimeException('partial composite save was accepted');
+} catch (\Orm\OrmException $error) {
+    expect($error->code_ === \Orm\Code::IR_INVALID, 'partial composite save returned the wrong error');
+}
+expect(count($partial->req->ir['set']) === 2 && !isset($partial->req->ir['where']), 'partial composite save changed the request');
 
 $expand = (new ReflectionClass(Db::class))->getMethod('expandIn');
 $base = [

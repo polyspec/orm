@@ -1,20 +1,29 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { AesKeyring, Db, Row, hostDecode, hostEncode, openSqlite, registerRow } from '../../clients/typescript/dist/index.js';
+import { AesKeyring, Db, QueryCore, Row, hostDecode, hostEncode, openSqlite, registerRow } from '../../clients/typescript/dist/index.js';
 
 class ItemRow extends Row {
   static entity() { return 'item'; }
-  static primaryKey() { return 'seq'; }
+  static primaryKeys() { return ['seq']; }
   static columns() { return { seq: 'i64', name: 'string', parent_seq: 'i64' }; }
 }
 class ChildRow extends Row {
   static entity() { return 'child'; }
-  static primaryKey() { return 'seq'; }
+  static primaryKeys() { return ['seq']; }
   static columns() { return { seq: 'i64', parent_seq: 'i64', name: 'string' }; }
 }
 registerRow('item', ItemRow);
 registerRow('child', ChildRow);
+
+class CompositeSaveQuery extends QueryCore {
+  async move(keys) { return this.saveKeys(keys); }
+}
+const partialSave = new CompositeSaveQuery('membership');
+partialSave.set('tenant_id', 7).set('name', 'updated');
+let partialRejected = false;
+try { await partialSave.move(['tenant_id', 'account_id']); } catch (error) { partialRejected = error?.code === 'IR_INVALID'; }
+if (!partialRejected || partialSave.request.ir.set.length !== 2 || partialSave.request.ir.where !== undefined) throw new Error('partial composite save changed the request');
 
 const calls = [];
 const connection = {
@@ -107,17 +116,18 @@ try {
   try { await sqliteDb.stream(streamPlan, [], () => { throw new Error('stream visitor error'); }); } catch (error) { visitorFailed = error?.message === 'stream visitor error'; }
   if (!visitorFailed || Number((await sqliteConnection.execute('SELECT COUNT(*) FROM "orm_stream_test"', [])).rows[0][0]) !== 3) throw new Error('ORM stream error did not close the iterator');
 
-  await sqliteConnection.execute('CREATE TABLE "orm_aes_rotation_test" ("id" INTEGER PRIMARY KEY, "aes_key_version" INTEGER NOT NULL, "aes_hex_email" TEXT, "aes_hex_phone" TEXT)', []);
-  await sqliteConnection.execute('INSERT INTO "orm_aes_rotation_test" ("id", "aes_key_version", "aes_hex_email", "aes_hex_phone") VALUES (?, ?, ?, ?)', [1, 1, hostEncode('member@example.test', ['aes', 'hex'], 'rotation-key-v1'), hostEncode('01012345678', ['aes', 'hex'], 'rotation-key-v1')]);
-  const spec = { table: 'orm_aes_rotation_test', primaryKey: 'id', versionColumn: 'aes_key_version', columns: [{ name: 'aes_hex_email', styles: ['aes', 'hex'] }, { name: 'aes_hex_phone', styles: ['aes', 'hex'] }] };
+  await sqliteConnection.execute('CREATE TABLE "orm_aes_rotation_test" ("tenant_id" INTEGER NOT NULL, "id" INTEGER NOT NULL, "aes_key_version" INTEGER NOT NULL, "aes_hex_email" TEXT, "aes_hex_phone" TEXT, PRIMARY KEY ("tenant_id", "id"))', []);
+  const encrypted = [hostEncode('member@example.test', ['aes', 'hex'], 'rotation-key-v1'), hostEncode('01012345678', ['aes', 'hex'], 'rotation-key-v1')];
+  await sqliteConnection.execute('INSERT INTO "orm_aes_rotation_test" ("tenant_id", "id", "aes_key_version", "aes_hex_email", "aes_hex_phone") VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)', [7, 1, 1, ...encrypted, 7, 2, 1, ...encrypted]);
+  const spec = { table: 'orm_aes_rotation_test', primaryKeys: ['tenant_id', 'id'], versionColumn: 'aes_key_version', columns: [{ name: 'aes_hex_email', styles: ['aes', 'hex'] }, { name: 'aes_hex_phone', styles: ['aes', 'hex'] }] };
   const keyring = new AesKeyring(new Map([[1, 'rotation-key-v1'], [2, 'rotation-key-v2']]), 2);
   const before = await sqliteDb.aesStatus(spec, keyring);
   const changed = await sqliteDb.rotateAESRows(spec, keyring);
   const after = await sqliteDb.aesStatus(spec, keyring);
   const repeated = await sqliteDb.rotateAESRows(spec, keyring);
-  if (before.total !== 1 || before.pending !== 1 || before.versions['1'] !== 1) throw new Error('AES source status differs');
-  if (changed !== 1 || after.pending !== 0 || after.versions['2'] !== 1 || repeated !== 0) throw new Error('AES rotation is not idempotent');
-  const stored = (await sqliteConnection.execute('SELECT "aes_key_version", "aes_hex_email", "aes_hex_phone" FROM "orm_aes_rotation_test" WHERE "id" = 1', [])).rows[0];
+  if (before.total !== 2 || before.pending !== 2 || before.versions['1'] !== 2) throw new Error('AES source status differs');
+  if (changed !== 2 || after.pending !== 0 || after.versions['2'] !== 2 || repeated !== 0) throw new Error('AES rotation is not idempotent');
+  const stored = (await sqliteConnection.execute('SELECT "aes_key_version", "aes_hex_email", "aes_hex_phone" FROM "orm_aes_rotation_test" WHERE "tenant_id" = 7 AND "id" = 1', [])).rows[0];
   if (Number(stored[0]) !== 2 || hostDecode(stored[1], ['aes', 'hex'], 'rotation-key-v2') !== 'member@example.test' || hostDecode(stored[2], ['aes', 'hex'], 'rotation-key-v2') !== '01012345678') throw new Error('AES rotated values differ');
 } finally {
   await sqliteDb.close();

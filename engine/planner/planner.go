@@ -195,11 +195,20 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	var outNames []string
 	idx := 0
 	groupCount := kind == "count" && (len(q.GroupBy) > 0 || len(q.GroupByExpr) > 0) // number of groups: wrap the grouped statement
+	distinctRootCount := kind == "count" && q.Distinct && len(root.ent.PK) > 1
 	groupRows := kind == "group_count"
 	switch kind {
 	case "count":
 		if groupCount {
 			sb.WriteString("1")
+		} else if distinctRootCount {
+			sb.WriteString("DISTINCT ")
+			for i, key := range root.ent.PK {
+				if i > 0 {
+					sb.WriteString(", ")
+				}
+				sb.WriteString(p.qcol(root, key))
+			}
 		} else if q.Distinct {
 			sb.WriteString("COUNT(DISTINCT " + p.qcol(root, root.ent.PK[0]) + ")")
 		} else {
@@ -241,10 +250,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 		if order == "" {
 			order = " ORDER BY " + p.qcol(root, root.ent.PK[0]) + " ASC"
 		}
-		parts := make([]string, len(rc.childKeys))
-		for i, key := range rc.childKeys {
-			parts[i] = p.qcol(root, key)
-		}
+		parts := p.qualified(root, rc.childKeys)
 		sb.WriteString(", ROW_NUMBER() OVER (PARTITION BY " + strings.Join(parts, ", ") + order + ") AS " + p.D.Quote("orm_rn"))
 	}
 	sb.WriteString(" FROM " + p.D.Quote(root.ent.Table) + " AS " + p.D.Quote(root.alias))
@@ -257,7 +263,11 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	// WHERE = [parent IN list] AND root group AND each join's where group (declaration order).
 	var where []string
 	if rc != nil {
-		where = append(where, p.qcol(root, rc.childKeys[0])+" IN ("+b.parentList(rc.parentStep)+")")
+		if len(rc.childKeys) == 1 {
+			where = append(where, p.qcol(root, rc.childKeys[0])+" IN ("+b.parentList(rc.parentStep)+")")
+		} else {
+			where = append(where, "("+strings.Join(p.qualified(root, rc.childKeys), ", ")+") IN (("+b.parentList(rc.parentStep)+"))")
+		}
 	}
 	if q.ScopeP != nil {
 		clause, err := p.scopeClause(b, root)
@@ -295,7 +305,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			sb.WriteString(" HAVING " + h)
 		}
 	}
-	if groupCount {
+	if groupCount || distinctRootCount {
 		wrapped := "SELECT COUNT(*) FROM (" + sb.String() + ") AS " + p.D.Quote("orm_g")
 		sb.Reset()
 		sb.WriteString(wrapped)
@@ -312,7 +322,14 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 				outer.WriteString(p.D.Quote("orm_w") + "." + p.D.Quote(n))
 			}
 			outer.WriteString(" FROM (" + sb.String() + ") AS " + p.D.Quote("orm_w") + " WHERE " + p.D.Quote("orm_w") + "." + p.D.Quote("orm_rn") + " <= " + strconv.Itoa(perParent))
-			outer.WriteString(" ORDER BY " + p.D.Quote("orm_w") + "." + p.D.Quote(root.alias+"__"+rc.childKeys[0]) + ", " + p.D.Quote("orm_w") + "." + p.D.Quote("orm_rn"))
+			outer.WriteString(" ORDER BY ")
+			for i, key := range rc.childKeys {
+				if i > 0 {
+					outer.WriteString(", ")
+				}
+				outer.WriteString(p.D.Quote("orm_w") + "." + p.D.Quote(root.alias+"__"+key))
+			}
+			outer.WriteString(", " + p.D.Quote("orm_w") + "." + p.D.Quote("orm_rn"))
 			sb = outer
 		} else {
 			order, err := p.renderOrder(root, q)
@@ -361,7 +378,8 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 func (p *Planner) relationSteps(ps *stepSet, s *scope, asm *plan.Assemble, stepID int) error {
 	for _, r := range s.q.Relations {
 		rel := s.ent.Relations[r.Rel]
-		rc := &relCtx{parentStep: stepID, parentAsm: asm, parentKeys: []string{rel.Left}, childKeys: []string{rel.Right}, kind: rel.Kind}
+		parentKeys, childKeys := relationColumns(rel)
+		rc := &relCtx{parentStep: stepID, parentAsm: asm, parentKeys: parentKeys, childKeys: childKeys, kind: rel.Kind}
 		st, err := p.selectStep(ps, r.Query, "all", "", rc)
 		if err != nil {
 			return err
@@ -369,11 +387,11 @@ func (p *Planner) relationSteps(ps *stepSet, s *scope, asm *plan.Assemble, stepI
 		target := p.M.Entities[rel.Target]
 		ch := &plan.Child{
 			Rel: r.Rel, Kind: rel.Kind, Step: st.ID,
-			ParentKeys: keyRefs(asm, []string{rel.Left}),
-			ChildKeys:  keyRefs(st.Assemble, []string{rel.Right}),
+			ParentKeys: keyRefs(asm, parentKeys),
+			ChildKeys:  keyRefs(st.Assemble, childKeys),
 			Flatten:    r.Query.Flatten,
 			// owned when the target holds the FK (this row's PK on the left, a non-PK column on the right)
-			Cascade: !r.Query.NoCascadeDelete && rel.Left == s.ent.PK[0] && rel.Right != target.PK[0],
+			Cascade: !r.Query.NoCascadeDelete && slices.Equal(parentKeys, s.ent.PK) && !slices.Equal(childKeys, target.PK),
 		}
 		if r.Query.KeyBy != "" {
 			ch.Key = keyRefs(st.Assemble, []string{r.Query.KeyBy})
@@ -410,6 +428,23 @@ func keyRefs(a *plan.Assemble, columns []string) []plan.KeyRef {
 	out := make([]plan.KeyRef, len(columns))
 	for i, column := range columns {
 		out[i] = plan.KeyRef{Column: column, Index: indexOf(a, column)}
+	}
+	return out
+}
+
+func relationColumns(rel *schema.Rel) ([]string, []string) {
+	local := make([]string, len(rel.Keys))
+	target := make([]string, len(rel.Keys))
+	for i, key := range rel.Keys {
+		local[i], target[i] = key.Local, key.Target
+	}
+	return local, target
+}
+
+func (p *Planner) qualified(scope *scope, columns []string) []string {
+	out := make([]string, len(columns))
+	for i, column := range columns {
+		out[i] = p.qcol(scope, column)
 	}
 	return out
 }
@@ -600,8 +635,10 @@ func (p *Planner) projection(s *scope) ([]outCol, error) {
 	}
 	for _, r := range s.q.Relations {
 		rel := s.ent.Relations[r.Rel]
-		if !contains(base, rel.Left) {
-			base = append(base, rel.Left)
+		for _, key := range rel.Keys {
+			if !contains(base, key.Local) {
+				base = append(base, key.Local)
+			}
 		}
 		if r.Query.IfParent != nil && !contains(base, r.Query.IfParent.Column) {
 			base = append(base, r.Query.IfParent.Column)
@@ -636,8 +673,11 @@ func (p *Planner) renderJoins(b *builder, sb *strings.Builder, s *scope) error {
 		if j.Kind == "left" {
 			kw = " LEFT JOIN "
 		}
-		sb.WriteString(kw + p.D.Quote(js.ent.Table) + " AS " + p.D.Quote(js.alias) + " ON " +
-			p.qcol(s, rel.Left) + " = " + p.qcol(js, rel.Right))
+		conditions := make([]string, len(rel.Keys))
+		for i, key := range rel.Keys {
+			conditions[i] = p.qcol(s, key.Local) + " = " + p.qcol(js, key.Target)
+		}
+		sb.WriteString(kw + p.D.Quote(js.ent.Table) + " AS " + p.D.Quote(js.alias) + " ON " + strings.Join(conditions, " AND "))
 		if j.Query.ScopeP != nil {
 			scope, err := p.scopeClause(b, js)
 			if err != nil {

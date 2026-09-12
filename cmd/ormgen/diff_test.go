@@ -131,10 +131,14 @@ func TestRenderDDLIncludesForeignKeysAndDeleteActions(t *testing.T) {
 			{Name: "account_id", Type: "i64", Raw: "bigint", FK: true, Ref: &schema.Ref{Entity: "account", Column: "id"}},
 		},
 		Relations: map[string]*schema.Rel{
-			"account": {Name: "account", Kind: "one", Target: "account", Left: "account_id", Right: "id", OnDelete: "cascade"},
+			"account": {Name: "account", Kind: "one", Target: "account", Keys: []schema.RelKey{{Local: "account_id", Target: "id"}}, OnDelete: "cascade"},
 		},
 	}
 	m := &schema.Manifest{SchemaHash: "test", Order: []string{"account", "thing"}, Entities: map[string]*schema.Entity{"account": parent, "thing": child}}
+	fk := entityForeignKeys(m, child)["account_id"]
+	if fk.onDelete != "cascade" {
+		t.Fatalf("foreign key delete action=%q; foreign key=%#v", fk.onDelete, fk)
+	}
 
 	for _, tc := range []struct {
 		dialect string
@@ -204,7 +208,7 @@ func TestRenderDiffChangesForeignKeyDeleteAction(t *testing.T) {
 				{Name: "id", Type: "i64", Raw: "bigint", PK: true},
 				{Name: "account_id", Type: "i64", Raw: "bigint", FK: true, Ref: &schema.Ref{Entity: "account", Column: "id"}},
 			},
-			Relations: map[string]*schema.Rel{"account": {Name: "account", Kind: "one", Target: "account", Left: "account_id", Right: "id", OnDelete: action}},
+			Relations: map[string]*schema.Rel{"account": {Name: "account", Kind: "one", Target: "account", Keys: []schema.RelKey{{Local: "account_id", Target: "id"}}, OnDelete: action}},
 		}
 		return &schema.Manifest{SchemaHash: action, Order: []string{"account", "thing"}, Entities: map[string]*schema.Entity{"account": parent, "thing": child}}
 	}
@@ -232,7 +236,7 @@ func TestRenderDiffOrdersForeignKeysAndIndexesForMySQL(t *testing.T) {
 				{Name: "id", Type: "i64", Raw: "bigint", PK: true},
 				{Name: "account_id", Type: "i64", Raw: "bigint", FK: true, Ref: &schema.Ref{Entity: "account", Column: "id"}},
 			},
-			Relations: map[string]*schema.Rel{"account": {Name: "account", Kind: "one", Target: "account", Left: "account_id", Right: "id"}},
+			Relations: map[string]*schema.Rel{"account": {Name: "account", Kind: "one", Target: "account", Keys: []schema.RelKey{{Local: "account_id", Target: "id"}}}},
 		}
 		return &schema.Manifest{SchemaHash: indexName, Order: []string{"account", "thing"}, Entities: map[string]*schema.Entity{"account": parent, "thing": child}}
 	}
@@ -296,7 +300,7 @@ func TestRenderDiffDropsChildConstraintsBeforeTableRename(t *testing.T) {
 	oldChild := &schema.Entity{Name: "entry", Table: "entry", PK: []string{"id"}, Indexes: map[string][]string{"owner_idx": {"owner_id"}}, Columns: []*schema.Col{
 		{Name: "id", Type: "i64", Raw: "bigint", PK: true},
 		{Name: "owner_id", Type: "i64", Raw: "bigint", Ref: &schema.Ref{Entity: "owner", Column: "id"}},
-	}, Relations: map[string]*schema.Rel{"owner": {Name: "owner", Kind: "one", Target: "owner", Left: "owner_id", Right: "id"}}}
+	}, Relations: map[string]*schema.Rel{"owner": {Name: "owner", Kind: "one", Target: "owner", Keys: []schema.RelKey{{Local: "owner_id", Target: "id"}}}}}
 	newChild := &schema.Entity{Name: "record", Table: "record", RenamedFrom: "entry", PK: []string{"id"}, Indexes: map[string][]string{"owner_new_idx": {"owner_id"}}, Columns: oldChild.Columns, Relations: oldChild.Relations}
 	old := &schema.Manifest{SchemaHash: "old", Order: []string{"owner", "entry"}, Entities: map[string]*schema.Entity{"owner": parent(), "entry": oldChild}}
 	now := &schema.Manifest{SchemaHash: "new", Order: []string{"owner", "record"}, Entities: map[string]*schema.Entity{"owner": parent(), "record": newChild}}

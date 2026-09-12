@@ -44,6 +44,38 @@ func TestRenderMermaidUsesImportedForeignKeyTargetAndDeleteAction(t *testing.T) 
 	}
 }
 
+func TestRenderMermaidPreservesCompositeForeignKeyOrderAndAction(t *testing.T) {
+	tables := []impTable{
+		{Name: "account", Columns: []impColumn{{Name: "tenant_id", Type: "bigint", Key: "PRI", Default: "\x00"}, {Name: "id", Type: "bigint", Key: "PRI", Default: "\x00"}}},
+		{Name: "membership", Columns: []impColumn{{Name: "tenant_id", Type: "bigint", Key: "PRI", Default: "\x00"}, {Name: "account_id", Type: "bigint", Key: "PRI", Default: "\x00"}}, ForeignKeys: []impForeignKey{{
+			Name: "fk_membership_account", Columns: []string{"tenant_id", "account_id"}, Target: "account", TargetColumns: []string{"tenant_id", "id"}, OnDelete: "cascade",
+		}}},
+	}
+
+	source := renderMermaid(tables, nil)
+	if !strings.Contains(source, `: (tenant_id, account_id) (`) || !strings.Contains(source, `) cascade`) {
+		t.Fatalf("composite foreign key syntax missing from import:\n%s", source)
+	}
+	diagram, err := schema.Parse(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := schema.Build(diagram)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var relation *schema.Rel
+	for _, candidate := range manifest.Entities["membership"].Relations {
+		if candidate.Target == "account" {
+			relation = candidate
+			break
+		}
+	}
+	if relation == nil || relation.OnDelete != "cascade" || len(relation.Keys) != 2 || relation.Keys[0] != (schema.RelKey{Local: "tenant_id", Target: "tenant_id"}) || relation.Keys[1] != (schema.RelKey{Local: "account_id", Target: "id"}) {
+		t.Fatalf("composite relation differs: %#v\n%s", relation, source)
+	}
+}
+
 func TestPostgresFulltextColumnsParsesGeneratedIndexDefinition(t *testing.T) {
 	definition := `CREATE INDEX item_ft_name_body ON public.item USING gin (to_tsvector('simple'::regconfig, (((COALESCE(name, ''::character varying))::text || ' '::text) || COALESCE(body, ''::text))))`
 	got, err := postgresFulltextColumns(definition)

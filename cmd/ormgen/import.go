@@ -288,7 +288,7 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 			}
 		}
 		for _, r := range prev.Relations {
-			prevLabels[r.Parent+"/"+r.Child+"/"+r.FK] = r
+			prevLabels[r.Parent+"/"+r.Child+"/"+strings.Join(r.FKs, ",")] = r
 		}
 		for _, d := range prev.Directives {
 			if d.Kind == "predicate" {
@@ -298,7 +298,10 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 	}
 	var sb strings.Builder
 	sb.WriteString("erDiagram\n")
-	type rel struct{ parent, child, fk, onDelete string }
+	type rel struct {
+		parent, child, onDelete string
+		fks                     []string
+	}
 	var rels []rel
 	var directives []string
 	for _, t := range ts {
@@ -309,10 +312,20 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 				single[ix.Columns[0]] = ix
 			}
 		}
-		foreignByColumn := map[string]impForeignKey{}
+		type foreignColumn struct {
+			key   impForeignKey
+			index int
+		}
+		foreignByColumn := map[string]foreignColumn{}
 		for _, fk := range t.ForeignKeys {
-			if len(fk.Columns) == 1 && len(fk.TargetColumns) == 1 {
-				foreignByColumn[fk.Columns[0]] = fk
+			if len(fk.Columns) != len(fk.TargetColumns) {
+				continue
+			}
+			for i, column := range fk.Columns {
+				foreignByColumn[column] = foreignColumn{key: fk, index: i}
+			}
+			if fk.Target != t.Name && stringSlicesEqual(primary[fk.Target], fk.TargetColumns) {
+				rels = append(rels, rel{parent: fk.Target, child: t.Name, fks: append([]string(nil), fk.Columns...), onDelete: fk.OnDelete})
 			}
 		}
 		for _, c := range t.Columns {
@@ -324,19 +337,17 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 			target := ""
 			targetColumn := ""
 			onDelete := ""
-			if fk, ok := foreignByColumn[c.Name]; ok {
-				target, targetColumn, onDelete = fk.Target, fk.TargetColumns[0], fk.OnDelete
+			if item, ok := foreignByColumn[c.Name]; ok {
+				target, targetColumn, onDelete = item.key.Target, item.key.TargetColumns[item.index], item.key.OnDelete
 			} else {
 				target = fkTarget(c.Name, tables)
 			}
-			if target != "" && target != t.Name && c.Key != "PRI" {
+			if target != "" && target != t.Name {
 				keys = append(keys, "FK")
 				if targetColumn == "" {
 					targetColumn = "seq"
 				}
-				if len(primary[target]) == 1 && primary[target][0] == targetColumn {
-					rels = append(rels, rel{target, t.Name, c.Name, onDelete})
-				}
+				_ = onDelete
 			}
 			if ix, ok := single[c.Name]; ok && ix.Unique && c.Key != "PRI" {
 				keys = append(keys, "UK")
@@ -416,9 +427,14 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 		sb.WriteString("\n")
 	}
 	for _, r := range rels {
-		label := r.fk
-		if pr := prevLabels[r.parent+"/"+r.child+"/"+r.fk]; pr != nil && (pr.ChildName != "" || pr.ParentName != "") {
+		label := r.fks[0]
+		if len(r.fks) > 1 {
+			label = "(" + strings.Join(r.fks, ", ") + ")"
+		}
+		if pr := prevLabels[r.parent+"/"+r.child+"/"+strings.Join(r.fks, ",")]; pr != nil && (pr.ChildName != "" || pr.ParentName != "") {
 			label += " (" + pr.ChildName + " / " + pr.ParentName + ")"
+		} else if len(r.fks) > 1 {
+			label += " (" + r.parent + " / " + importPlural(r.child) + ")"
 		}
 		if r.onDelete != "" {
 			label += " " + r.onDelete
@@ -432,6 +448,16 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 		sb.WriteString(d + "\n")
 	}
 	return sb.String()
+}
+
+func importPlural(value string) string {
+	if strings.HasSuffix(value, "y") && len(value) > 1 && !strings.ContainsRune("aeiou", rune(value[len(value)-2])) {
+		return value[:len(value)-1] + "ies"
+	}
+	if strings.HasSuffix(value, "s") || strings.HasSuffix(value, "x") || strings.HasSuffix(value, "ch") || strings.HasSuffix(value, "sh") {
+		return value + "es"
+	}
+	return value + "s"
 }
 
 func importDeleteAction(action string) string {

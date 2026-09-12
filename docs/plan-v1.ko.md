@@ -149,7 +149,7 @@ fulltext: [[name, description]]
 | 컬렉션(PK/keyName 순서 맵) | `foreach ($c as $seq => $m)`, `->first()`, `->count()`, `->toArray()` | `for k, m := range c.All()`, `c.First()`, `c.Len()`, `c.ToArray()` | `for (k, m) in &c`, `c.first()`, `c.len()`, `c.to_vec()` |
 
 규칙: `get`→null/nil/None, `gets`→빈 컬렉션(절대 null 아님); 에러/throw = rollback; 무인자 `getX()`는 존재하는 키(null 포함)와 선언된 컬럼은 값/null 반환, 미선언 키만 throw; `getX($d)`는 누락·null·`''`에 `$d`. Go `GetX()`는 protobuf-go 관례의 nil-safe 체인. Rust 쿼리 메서드는 by-value, setter는 `&mut self`; 컬렉션 키는 `orm.Key`(int|string).
-PHP `__call` 호환층(패리티 덤프에는 미포함): `condition*/and*/on*` 접두어, `and('(')`/`condition(')')` 토큰, `->{'condition(AAndB)Or(C)'}` 괄호문법, 선언되지 않은 `getByAAndB`/`getsByAAndB` 복합, 배열→IN·null→IS NULL 암묵, `$model($db)` 재바인딩, `fetchValue`/`column(cb)` 후처리 훅. 본 엔티티의 단일 컬럼 `getsBy`·`getCountBy`, PK·유니크의 `getBy`는 세 언어 생성 API다.
+PHP `__call` 호환층(패리티 덤프에는 미포함): `condition*/and*/on*` 접두어, `and('(')`/`condition(')')` 토큰, `->{'condition(AAndB)Or(C)'}` 괄호문법, 선언되지 않은 `getByAAndB`/`getsByAAndB` 복합, 배열→IN·null→IS NULL 암묵, `$model($db)` 재바인딩, `fetchValue`/`column(cb)` 후처리 훅. 본 엔티티의 단일 컬럼 `getsBy`·`getCountBy`, 전체 primary key·unique key의 `getBy`는 네 언어 생성 API다.
 PHP 파서: camel 호출 구간 토큰화 → 선두 키워드 전체토큰 최장일치 → 술어 `[Op] Column (And|Or [Op] Column)*`에서 Column은 엔티티 컬럼표와 최장일치(YAML 규칙으로 유일성 보장) → `match/join/relation`의 `With` 양쪽을 각 엔티티 컬럼표로 해석. 파싱 결과는 생성된 정적 배열(opcache 공유)로 사전 계산, 동적 이름만 런타임 파싱.
 
 ### 시나리오 예 (PHP / Go / Rust 줄 단위 대응 — R9: 조인 + 괄호 OR fulltext)

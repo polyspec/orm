@@ -34,6 +34,16 @@ impl Key {
         Some(Key::S(out))
     }
 
+    pub fn of_values(values: &[Val]) -> Key {
+        if values.len() == 1 { return Key::of(&values[0]); }
+        let mut out = String::new();
+        for value in values {
+            let part = value.as_string();
+            out.push_str(&format!("{}:{}", part.len(), part));
+        }
+        Key::S(out)
+    }
+
     pub fn as_i64(&self) -> i64 {
         match self {
             Key::I(x) => *x,

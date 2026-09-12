@@ -16,7 +16,7 @@ pub struct AesRotationColumn {
 #[derive(Debug, Clone)]
 pub struct AesRotationSpec {
     pub table: String,
-    pub primary_key: String,
+    pub primary_keys: Vec<String>,
     pub version_column: String,
     pub columns: Vec<AesRotationColumn>,
 }
@@ -127,24 +127,32 @@ pub async fn rotate_aes_rows(ex: &impl Exec, spec: &AesRotationSpec, keyring: &A
 
 async fn rotate_in_transaction(ex: &impl Exec, spec: &AesRotationSpec, keyring: &AesKeyring) -> Result<u64> {
     if spec.columns.is_empty() { return Err(Error::Config("AES rotation columns are empty".into())); }
-    let driver = ex.db().driver(); let table = quote(driver, &spec.table)?; let primary = quote(driver, &spec.primary_key)?; let version = quote(driver, &spec.version_column)?;
+    if spec.primary_keys.is_empty() { return Err(Error::Config("AES rotation primary keys are empty".into())); }
+    let driver = ex.db().driver(); let table = quote(driver, &spec.table)?; let primary: Vec<String> = spec.primary_keys.iter().map(|key| quote(driver, key)).collect::<Result<_>>()?; let version = quote(driver, &spec.version_column)?;
     let columns: Vec<String> = spec.columns.iter().map(|column| quote(driver, &column.name)).collect::<Result<_>>()?;
-    let select = step(format!("SELECT {primary}, {version}, {} FROM {table} WHERE {version} <> {} ORDER BY {primary}", columns.join(", "), placeholder(driver, 1)), vec![parameter(0)]);
+    let select = step(format!("SELECT {}, {version}, {} FROM {table} WHERE {version} <> {} ORDER BY {}", primary.join(", "), columns.join(", "), placeholder(driver, 1), primary.join(", ")), vec![parameter(0)]);
     let rows = ex.query(&select, &[Param::I64(keyring.current_version as i64)], vec![]).await?;
     let mut sets: Vec<String> = columns.iter().enumerate().map(|(index, name)| format!("{name} = {}", placeholder(driver, index + 1))).collect();
     sets.push(format!("{version} = {}", placeholder(driver, columns.len() + 1)));
-    let update = step(format!("UPDATE {table} SET {} WHERE {primary} = {} AND {version} = {}", sets.join(", "), placeholder(driver, columns.len() + 2), placeholder(driver, columns.len() + 3)), (0..columns.len()+3).map(parameter).collect());
+    let mut predicates: Vec<String> = primary.iter().enumerate().map(|(index, key)| format!("{key} = {}", placeholder(driver, columns.len() + 2 + index))).collect();
+    predicates.push(format!("{version} = {}", placeholder(driver, columns.len() + 2 + primary.len())));
+    let bind_count = columns.len() + primary.len() + 2;
+    let update = step(format!("UPDATE {table} SET {} WHERE {}", sets.join(", "), predicates.join(" AND ")), (0..bind_count).map(parameter).collect());
     let mut count = 0;
     for row in rows {
-        let values = read_row(&row, columns.len() + 2)?;
-        let mut source = BTreeMap::new(); source.insert(spec.primary_key.clone(), values[0].clone()); source.insert(spec.version_column.clone(), values[1].clone());
-        for (index, column) in spec.columns.iter().enumerate() { source.insert(column.name.clone(), values[index + 2].clone()); }
+        let values = read_row(&row, primary.len() + columns.len() + 1)?;
+        let mut source = BTreeMap::new();
+        for (index, key) in spec.primary_keys.iter().enumerate() { source.insert(key.clone(), values[index].clone()); }
+        source.insert(spec.version_column.clone(), values[primary.len()].clone());
+        for (index, column) in spec.columns.iter().enumerate() { source.insert(column.name.clone(), values[index + primary.len() + 1].clone()); }
         let rotated = keyring.rotate_row(&source, &spec.version_column, &spec.columns, keyring.current_version, crate::codec::host_decode, encode)?;
-        let mut args = Vec::with_capacity(columns.len() + 3);
+        let mut args = Vec::with_capacity(bind_count);
         for column in &spec.columns { args.push(param(&rotated[&column.name])?); }
-        args.push(Param::I64(keyring.current_version as i64)); args.push(param(&values[0])?); args.push(Param::I64(values[1].as_i64()));
+        args.push(Param::I64(keyring.current_version as i64));
+        for value in &values[..primary.len()] { args.push(param(value)?); }
+        args.push(Param::I64(values[primary.len()].as_i64()));
         let (_, affected) = ex.execute(&update, &args).await?;
-        if affected != 1 { return Err(Error::Engine { code: crate::codes::OPTIMISTIC_LOCK.into(), msg: format!("AES rotation changed {} primary key {:?}", spec.table, values[0]) }); }
+        if affected != 1 { return Err(Error::Engine { code: crate::codes::OPTIMISTIC_LOCK.into(), msg: format!("AES rotation changed {} primary key {:?}", spec.table, &values[..primary.len()]) }); }
         count += 1;
     }
     Ok(count)

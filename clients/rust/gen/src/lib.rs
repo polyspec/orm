@@ -7,7 +7,7 @@ use std::sync::{Arc, OnceLock};
 pub mod interfaces;
 
 /// The manifest hash this crate was generated from (schema.json `schema_hash`).
-pub const SCHEMA_HASH: &str = "4a1b32fbfa6fc46b";
+pub const SCHEMA_HASH: &str = "794a20b6a27c5797";
 
 static ENGINE: OnceLock<Arc<orm::Engine>> = OnceLock::new();
 
