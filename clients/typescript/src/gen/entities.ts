@@ -5,7 +5,9 @@ import type { Point } from '../codec.js';
 
 import { OrmError } from '../runtime_error.js';
 
-export class AuthorRow extends Row {
+import type { AuthorInterface, AuthorRowInterface, UserInterface, UserRowInterface, ServiceInterface, ServiceRowInterface, ServiceRegionInterface, ServiceRegionRowInterface, ServiceMemberInterface, ServiceMemberRowInterface } from './interfaces.js';
+
+export class AuthorRow extends Row implements AuthorRowInterface {
   public static override entity(): string { return 'author'; }
   public static override primaryKey(): string { return 'seq'; }
   public static override versionColumn(): string { return 'updated_ts'; }
@@ -83,7 +85,7 @@ export class AuthorRow extends Row {
   public getUser(): UserRow | null { return this.relation('user'); }
 }
 
-export class UserRow extends Row {
+export class UserRow extends Row implements UserRowInterface {
   public static override entity(): string { return 'user'; }
   public static override primaryKey(): string { return 'seq'; }
   public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','name':'string'}; }
@@ -94,7 +96,7 @@ export class UserRow extends Row {
   public getServiceMembers(): Collection<ServiceMemberRow> { return this.relation('service_members') ?? new Collection(); }
 }
 
-export class ServiceRow extends Row {
+export class ServiceRow extends Row implements ServiceRowInterface {
   public static override entity(): string { return 'service'; }
   public static override primaryKey(): string { return 'seq'; }
   public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','name':'string'}; }
@@ -106,7 +108,7 @@ export class ServiceRow extends Row {
   public getModules(): Collection<ServiceRegionRow> { return this.relation('modules') ?? new Collection(); }
 }
 
-export class ServiceRegionRow extends Row {
+export class ServiceRegionRow extends Row implements ServiceRegionRowInterface {
   public static override entity(): string { return 'service_region'; }
   public static override primaryKey(): string { return 'seq'; }
   public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','service_seq':'i64','name':'string'}; }
@@ -119,7 +121,7 @@ export class ServiceRegionRow extends Row {
   public getService(): ServiceRow | null { return this.relation('service'); }
 }
 
-export class ServiceMemberRow extends Row {
+export class ServiceMemberRow extends Row implements ServiceMemberRowInterface {
   public static override entity(): string { return 'service_member'; }
   public static override primaryKey(): string { return 'seq'; }
   public static override columns(): Readonly<Record<string,string>> { return {'seq':'i64','service_seq':'i64','user_seq':'i64'}; }
@@ -177,16 +179,16 @@ export class AuthorWhere {
   public expression(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
   public startedAfter(value0: unknown): this { this.core.expression('`start_dt` > ?',[value0]); return this; }
   public visible(): this { this.core.expression('`is_close` = FALSE AND `is_display` = TRUE',[]); return this; }
-  public seqEq(value: unknown): this { this.core.predicate('seq','eq',value); return this; }
-  public seq(value: unknown): this { return this.seqEq(value); }
-  public seqNotEq(value: unknown): this { this.core.predicate('seq','not_eq',value); return this; }
-  public seqGt(value: unknown): this { this.core.predicate('seq','gt',value); return this; }
-  public seqGte(value: unknown): this { this.core.predicate('seq','gte',value); return this; }
-  public seqLt(value: unknown): this { this.core.predicate('seq','lt',value); return this; }
-  public seqLte(value: unknown): this { this.core.predicate('seq','lte',value); return this; }
-  public seqIn(values: readonly unknown[]): this { this.core.predicateList('seq','in',values); return this; }
-  public seqNotIn(values: readonly unknown[]): this { this.core.predicateList('seq','not_in',values); return this; }
-  public seqBetween(low: unknown, high: unknown): this { this.core.predicateList('seq','between',[low,high]); return this; }
+  public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.core.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.core.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.core.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.core.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.core.predicateList('seq','between',[low,high]); return this; }
   public seqIsNull(): this { this.core.predicateNull('seq','is_null'); return this; }
   public seqIsNotNull(): this { this.core.predicateNull('seq','is_not_null'); return this; }
   public seqEqCol(reference: ColumnReference): this { this.core.predicateColumn('seq','eq_col',reference); return this; }
@@ -195,42 +197,42 @@ export class AuthorWhere {
   public seqGteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','gte_col',reference); return this; }
   public seqLtCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lt_col',reference); return this; }
   public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
-  public nameEq(value: unknown): this { this.core.predicate('name','eq',value); return this; }
-  public name(value: unknown): this { return this.nameEq(value); }
-  public nameNotEq(value: unknown): this { this.core.predicate('name','not_eq',value); return this; }
-  public nameIn(values: readonly unknown[]): this { this.core.predicateList('name','in',values); return this; }
-  public nameNotIn(values: readonly unknown[]): this { this.core.predicateList('name','not_in',values); return this; }
-  public nameLike(value: unknown): this { this.core.predicate('name','like',value); return this; }
-  public nameLikeBinary(value: unknown): this { this.core.predicate('name','like_binary',value); return this; }
-  public nameContains(value: unknown): this { this.core.predicate('name','contains',value); return this; }
-  public nameStartsWith(value: unknown): this { this.core.predicate('name','starts_with',value); return this; }
-  public nameEndsWith(value: unknown): this { this.core.predicate('name','ends_with',value); return this; }
+  public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.core.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.core.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.core.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.core.predicate('name','ends_with',value); return this; }
   public nameIsNull(): this { this.core.predicateNull('name','is_null'); return this; }
   public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
-  public descriptionEq(value: unknown): this { this.core.predicate('description','eq',value); return this; }
-  public description(value: unknown): this { return this.descriptionEq(value); }
-  public descriptionNotEq(value: unknown): this { this.core.predicate('description','not_eq',value); return this; }
-  public descriptionLike(value: unknown): this { this.core.predicate('description','like',value); return this; }
-  public descriptionLikeBinary(value: unknown): this { this.core.predicate('description','like_binary',value); return this; }
-  public descriptionContains(value: unknown): this { this.core.predicate('description','contains',value); return this; }
-  public descriptionStartsWith(value: unknown): this { this.core.predicate('description','starts_with',value); return this; }
-  public descriptionEndsWith(value: unknown): this { this.core.predicate('description','ends_with',value); return this; }
+  public descriptionEq(value: string): this { this.core.predicate('description','eq',value); return this; }
+  public description(value: string): this { return this.descriptionEq(value); }
+  public descriptionNotEq(value: string): this { this.core.predicate('description','not_eq',value); return this; }
+  public descriptionLike(value: string): this { this.core.predicate('description','like',value); return this; }
+  public descriptionLikeBinary(value: string): this { this.core.predicate('description','like_binary',value); return this; }
+  public descriptionContains(value: string): this { this.core.predicate('description','contains',value); return this; }
+  public descriptionStartsWith(value: string): this { this.core.predicate('description','starts_with',value); return this; }
+  public descriptionEndsWith(value: string): this { this.core.predicate('description','ends_with',value); return this; }
   public descriptionIsNull(): this { this.core.predicateNull('description','is_null'); return this; }
   public descriptionIsNotNull(): this { this.core.predicateNull('description','is_not_null'); return this; }
   public descriptionEqCol(reference: ColumnReference): this { this.core.predicateColumn('description','eq_col',reference); return this; }
   public descriptionNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('description','not_eq_col',reference); return this; }
-  public createdTsEq(value: unknown): this { this.core.predicate('created_ts','eq',value); return this; }
-  public createdTs(value: unknown): this { return this.createdTsEq(value); }
-  public createdTsNotEq(value: unknown): this { this.core.predicate('created_ts','not_eq',value); return this; }
-  public createdTsGt(value: unknown): this { this.core.predicate('created_ts','gt',value); return this; }
-  public createdTsGte(value: unknown): this { this.core.predicate('created_ts','gte',value); return this; }
-  public createdTsLt(value: unknown): this { this.core.predicate('created_ts','lt',value); return this; }
-  public createdTsLte(value: unknown): this { this.core.predicate('created_ts','lte',value); return this; }
-  public createdTsIn(values: readonly unknown[]): this { this.core.predicateList('created_ts','in',values); return this; }
-  public createdTsNotIn(values: readonly unknown[]): this { this.core.predicateList('created_ts','not_in',values); return this; }
-  public createdTsBetween(low: unknown, high: unknown): this { this.core.predicateList('created_ts','between',[low,high]); return this; }
+  public createdTsEq(value: string | Date): this { this.core.predicate('created_ts','eq',value); return this; }
+  public createdTs(value: string | Date): this { return this.createdTsEq(value); }
+  public createdTsNotEq(value: string | Date): this { this.core.predicate('created_ts','not_eq',value); return this; }
+  public createdTsGt(value: string | Date): this { this.core.predicate('created_ts','gt',value); return this; }
+  public createdTsGte(value: string | Date): this { this.core.predicate('created_ts','gte',value); return this; }
+  public createdTsLt(value: string | Date): this { this.core.predicate('created_ts','lt',value); return this; }
+  public createdTsLte(value: string | Date): this { this.core.predicate('created_ts','lte',value); return this; }
+  public createdTsIn(values: readonly (string | Date)[]): this { this.core.predicateList('created_ts','in',values); return this; }
+  public createdTsNotIn(values: readonly (string | Date)[]): this { this.core.predicateList('created_ts','not_in',values); return this; }
+  public createdTsBetween(low: string | Date, high: string | Date): this { this.core.predicateList('created_ts','between',[low,high]); return this; }
   public createdTsIsNull(): this { this.core.predicateNull('created_ts','is_null'); return this; }
   public createdTsIsNotNull(): this { this.core.predicateNull('created_ts','is_not_null'); return this; }
   public createdTsEqCol(reference: ColumnReference): this { this.core.predicateColumn('created_ts','eq_col',reference); return this; }
@@ -239,16 +241,16 @@ export class AuthorWhere {
   public createdTsGteCol(reference: ColumnReference): this { this.core.predicateColumn('created_ts','gte_col',reference); return this; }
   public createdTsLtCol(reference: ColumnReference): this { this.core.predicateColumn('created_ts','lt_col',reference); return this; }
   public createdTsLteCol(reference: ColumnReference): this { this.core.predicateColumn('created_ts','lte_col',reference); return this; }
-  public updatedTsEq(value: unknown): this { this.core.predicate('updated_ts','eq',value); return this; }
-  public updatedTs(value: unknown): this { return this.updatedTsEq(value); }
-  public updatedTsNotEq(value: unknown): this { this.core.predicate('updated_ts','not_eq',value); return this; }
-  public updatedTsGt(value: unknown): this { this.core.predicate('updated_ts','gt',value); return this; }
-  public updatedTsGte(value: unknown): this { this.core.predicate('updated_ts','gte',value); return this; }
-  public updatedTsLt(value: unknown): this { this.core.predicate('updated_ts','lt',value); return this; }
-  public updatedTsLte(value: unknown): this { this.core.predicate('updated_ts','lte',value); return this; }
-  public updatedTsIn(values: readonly unknown[]): this { this.core.predicateList('updated_ts','in',values); return this; }
-  public updatedTsNotIn(values: readonly unknown[]): this { this.core.predicateList('updated_ts','not_in',values); return this; }
-  public updatedTsBetween(low: unknown, high: unknown): this { this.core.predicateList('updated_ts','between',[low,high]); return this; }
+  public updatedTsEq(value: string | Date): this { this.core.predicate('updated_ts','eq',value); return this; }
+  public updatedTs(value: string | Date): this { return this.updatedTsEq(value); }
+  public updatedTsNotEq(value: string | Date): this { this.core.predicate('updated_ts','not_eq',value); return this; }
+  public updatedTsGt(value: string | Date): this { this.core.predicate('updated_ts','gt',value); return this; }
+  public updatedTsGte(value: string | Date): this { this.core.predicate('updated_ts','gte',value); return this; }
+  public updatedTsLt(value: string | Date): this { this.core.predicate('updated_ts','lt',value); return this; }
+  public updatedTsLte(value: string | Date): this { this.core.predicate('updated_ts','lte',value); return this; }
+  public updatedTsIn(values: readonly (string | Date)[]): this { this.core.predicateList('updated_ts','in',values); return this; }
+  public updatedTsNotIn(values: readonly (string | Date)[]): this { this.core.predicateList('updated_ts','not_in',values); return this; }
+  public updatedTsBetween(low: string | Date, high: string | Date): this { this.core.predicateList('updated_ts','between',[low,high]); return this; }
   public updatedTsIsNull(): this { this.core.predicateNull('updated_ts','is_null'); return this; }
   public updatedTsIsNotNull(): this { this.core.predicateNull('updated_ts','is_not_null'); return this; }
   public updatedTsEqCol(reference: ColumnReference): this { this.core.predicateColumn('updated_ts','eq_col',reference); return this; }
@@ -257,30 +259,30 @@ export class AuthorWhere {
   public updatedTsGteCol(reference: ColumnReference): this { this.core.predicateColumn('updated_ts','gte_col',reference); return this; }
   public updatedTsLtCol(reference: ColumnReference): this { this.core.predicateColumn('updated_ts','lt_col',reference); return this; }
   public updatedTsLteCol(reference: ColumnReference): this { this.core.predicateColumn('updated_ts','lte_col',reference); return this; }
-  public isCloseEq(value: unknown): this { this.core.predicate('is_close','eq',value); return this; }
-  public isClose(value: unknown): this { return this.isCloseEq(value); }
-  public isCloseNotEq(value: unknown): this { this.core.predicate('is_close','not_eq',value); return this; }
+  public isCloseEq(value: boolean): this { this.core.predicate('is_close','eq',value); return this; }
+  public isClose(value: boolean): this { return this.isCloseEq(value); }
+  public isCloseNotEq(value: boolean): this { this.core.predicate('is_close','not_eq',value); return this; }
   public isCloseIsNull(): this { this.core.predicateNull('is_close','is_null'); return this; }
   public isCloseIsNotNull(): this { this.core.predicateNull('is_close','is_not_null'); return this; }
   public isCloseEqCol(reference: ColumnReference): this { this.core.predicateColumn('is_close','eq_col',reference); return this; }
   public isCloseNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('is_close','not_eq_col',reference); return this; }
-  public isDisplayEq(value: unknown): this { this.core.predicate('is_display','eq',value); return this; }
-  public isDisplay(value: unknown): this { return this.isDisplayEq(value); }
-  public isDisplayNotEq(value: unknown): this { this.core.predicate('is_display','not_eq',value); return this; }
+  public isDisplayEq(value: boolean): this { this.core.predicate('is_display','eq',value); return this; }
+  public isDisplay(value: boolean): this { return this.isDisplayEq(value); }
+  public isDisplayNotEq(value: boolean): this { this.core.predicate('is_display','not_eq',value); return this; }
   public isDisplayIsNull(): this { this.core.predicateNull('is_display','is_null'); return this; }
   public isDisplayIsNotNull(): this { this.core.predicateNull('is_display','is_not_null'); return this; }
   public isDisplayEqCol(reference: ColumnReference): this { this.core.predicateColumn('is_display','eq_col',reference); return this; }
   public isDisplayNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('is_display','not_eq_col',reference); return this; }
-  public displayStartDtEq(value: unknown): this { this.core.predicate('display_start_dt','eq',value); return this; }
-  public displayStartDt(value: unknown): this { return this.displayStartDtEq(value); }
-  public displayStartDtNotEq(value: unknown): this { this.core.predicate('display_start_dt','not_eq',value); return this; }
-  public displayStartDtGt(value: unknown): this { this.core.predicate('display_start_dt','gt',value); return this; }
-  public displayStartDtGte(value: unknown): this { this.core.predicate('display_start_dt','gte',value); return this; }
-  public displayStartDtLt(value: unknown): this { this.core.predicate('display_start_dt','lt',value); return this; }
-  public displayStartDtLte(value: unknown): this { this.core.predicate('display_start_dt','lte',value); return this; }
-  public displayStartDtIn(values: readonly unknown[]): this { this.core.predicateList('display_start_dt','in',values); return this; }
-  public displayStartDtNotIn(values: readonly unknown[]): this { this.core.predicateList('display_start_dt','not_in',values); return this; }
-  public displayStartDtBetween(low: unknown, high: unknown): this { this.core.predicateList('display_start_dt','between',[low,high]); return this; }
+  public displayStartDtEq(value: string | Date): this { this.core.predicate('display_start_dt','eq',value); return this; }
+  public displayStartDt(value: string | Date): this { return this.displayStartDtEq(value); }
+  public displayStartDtNotEq(value: string | Date): this { this.core.predicate('display_start_dt','not_eq',value); return this; }
+  public displayStartDtGt(value: string | Date): this { this.core.predicate('display_start_dt','gt',value); return this; }
+  public displayStartDtGte(value: string | Date): this { this.core.predicate('display_start_dt','gte',value); return this; }
+  public displayStartDtLt(value: string | Date): this { this.core.predicate('display_start_dt','lt',value); return this; }
+  public displayStartDtLte(value: string | Date): this { this.core.predicate('display_start_dt','lte',value); return this; }
+  public displayStartDtIn(values: readonly (string | Date)[]): this { this.core.predicateList('display_start_dt','in',values); return this; }
+  public displayStartDtNotIn(values: readonly (string | Date)[]): this { this.core.predicateList('display_start_dt','not_in',values); return this; }
+  public displayStartDtBetween(low: string | Date, high: string | Date): this { this.core.predicateList('display_start_dt','between',[low,high]); return this; }
   public displayStartDtIsNull(): this { this.core.predicateNull('display_start_dt','is_null'); return this; }
   public displayStartDtIsNotNull(): this { this.core.predicateNull('display_start_dt','is_not_null'); return this; }
   public displayStartDtEqCol(reference: ColumnReference): this { this.core.predicateColumn('display_start_dt','eq_col',reference); return this; }
@@ -289,16 +291,16 @@ export class AuthorWhere {
   public displayStartDtGteCol(reference: ColumnReference): this { this.core.predicateColumn('display_start_dt','gte_col',reference); return this; }
   public displayStartDtLtCol(reference: ColumnReference): this { this.core.predicateColumn('display_start_dt','lt_col',reference); return this; }
   public displayStartDtLteCol(reference: ColumnReference): this { this.core.predicateColumn('display_start_dt','lte_col',reference); return this; }
-  public displayEndDtEq(value: unknown): this { this.core.predicate('display_end_dt','eq',value); return this; }
-  public displayEndDt(value: unknown): this { return this.displayEndDtEq(value); }
-  public displayEndDtNotEq(value: unknown): this { this.core.predicate('display_end_dt','not_eq',value); return this; }
-  public displayEndDtGt(value: unknown): this { this.core.predicate('display_end_dt','gt',value); return this; }
-  public displayEndDtGte(value: unknown): this { this.core.predicate('display_end_dt','gte',value); return this; }
-  public displayEndDtLt(value: unknown): this { this.core.predicate('display_end_dt','lt',value); return this; }
-  public displayEndDtLte(value: unknown): this { this.core.predicate('display_end_dt','lte',value); return this; }
-  public displayEndDtIn(values: readonly unknown[]): this { this.core.predicateList('display_end_dt','in',values); return this; }
-  public displayEndDtNotIn(values: readonly unknown[]): this { this.core.predicateList('display_end_dt','not_in',values); return this; }
-  public displayEndDtBetween(low: unknown, high: unknown): this { this.core.predicateList('display_end_dt','between',[low,high]); return this; }
+  public displayEndDtEq(value: string | Date): this { this.core.predicate('display_end_dt','eq',value); return this; }
+  public displayEndDt(value: string | Date): this { return this.displayEndDtEq(value); }
+  public displayEndDtNotEq(value: string | Date): this { this.core.predicate('display_end_dt','not_eq',value); return this; }
+  public displayEndDtGt(value: string | Date): this { this.core.predicate('display_end_dt','gt',value); return this; }
+  public displayEndDtGte(value: string | Date): this { this.core.predicate('display_end_dt','gte',value); return this; }
+  public displayEndDtLt(value: string | Date): this { this.core.predicate('display_end_dt','lt',value); return this; }
+  public displayEndDtLte(value: string | Date): this { this.core.predicate('display_end_dt','lte',value); return this; }
+  public displayEndDtIn(values: readonly (string | Date)[]): this { this.core.predicateList('display_end_dt','in',values); return this; }
+  public displayEndDtNotIn(values: readonly (string | Date)[]): this { this.core.predicateList('display_end_dt','not_in',values); return this; }
+  public displayEndDtBetween(low: string | Date, high: string | Date): this { this.core.predicateList('display_end_dt','between',[low,high]); return this; }
   public displayEndDtIsNull(): this { this.core.predicateNull('display_end_dt','is_null'); return this; }
   public displayEndDtIsNotNull(): this { this.core.predicateNull('display_end_dt','is_not_null'); return this; }
   public displayEndDtEqCol(reference: ColumnReference): this { this.core.predicateColumn('display_end_dt','eq_col',reference); return this; }
@@ -307,23 +309,23 @@ export class AuthorWhere {
   public displayEndDtGteCol(reference: ColumnReference): this { this.core.predicateColumn('display_end_dt','gte_col',reference); return this; }
   public displayEndDtLtCol(reference: ColumnReference): this { this.core.predicateColumn('display_end_dt','lt_col',reference); return this; }
   public displayEndDtLteCol(reference: ColumnReference): this { this.core.predicateColumn('display_end_dt','lte_col',reference); return this; }
-  public isAlldayEq(value: unknown): this { this.core.predicate('is_allday','eq',value); return this; }
-  public isAllday(value: unknown): this { return this.isAlldayEq(value); }
-  public isAlldayNotEq(value: unknown): this { this.core.predicate('is_allday','not_eq',value); return this; }
+  public isAlldayEq(value: boolean): this { this.core.predicate('is_allday','eq',value); return this; }
+  public isAllday(value: boolean): this { return this.isAlldayEq(value); }
+  public isAlldayNotEq(value: boolean): this { this.core.predicate('is_allday','not_eq',value); return this; }
   public isAlldayIsNull(): this { this.core.predicateNull('is_allday','is_null'); return this; }
   public isAlldayIsNotNull(): this { this.core.predicateNull('is_allday','is_not_null'); return this; }
   public isAlldayEqCol(reference: ColumnReference): this { this.core.predicateColumn('is_allday','eq_col',reference); return this; }
   public isAlldayNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('is_allday','not_eq_col',reference); return this; }
-  public targetClubReaderCountEq(value: unknown): this { this.core.predicate('target_club_reader_count','eq',value); return this; }
-  public targetClubReaderCount(value: unknown): this { return this.targetClubReaderCountEq(value); }
-  public targetClubReaderCountNotEq(value: unknown): this { this.core.predicate('target_club_reader_count','not_eq',value); return this; }
-  public targetClubReaderCountGt(value: unknown): this { this.core.predicate('target_club_reader_count','gt',value); return this; }
-  public targetClubReaderCountGte(value: unknown): this { this.core.predicate('target_club_reader_count','gte',value); return this; }
-  public targetClubReaderCountLt(value: unknown): this { this.core.predicate('target_club_reader_count','lt',value); return this; }
-  public targetClubReaderCountLte(value: unknown): this { this.core.predicate('target_club_reader_count','lte',value); return this; }
-  public targetClubReaderCountIn(values: readonly unknown[]): this { this.core.predicateList('target_club_reader_count','in',values); return this; }
-  public targetClubReaderCountNotIn(values: readonly unknown[]): this { this.core.predicateList('target_club_reader_count','not_in',values); return this; }
-  public targetClubReaderCountBetween(low: unknown, high: unknown): this { this.core.predicateList('target_club_reader_count','between',[low,high]); return this; }
+  public targetClubReaderCountEq(value: number): this { this.core.predicate('target_club_reader_count','eq',value); return this; }
+  public targetClubReaderCount(value: number): this { return this.targetClubReaderCountEq(value); }
+  public targetClubReaderCountNotEq(value: number): this { this.core.predicate('target_club_reader_count','not_eq',value); return this; }
+  public targetClubReaderCountGt(value: number): this { this.core.predicate('target_club_reader_count','gt',value); return this; }
+  public targetClubReaderCountGte(value: number): this { this.core.predicate('target_club_reader_count','gte',value); return this; }
+  public targetClubReaderCountLt(value: number): this { this.core.predicate('target_club_reader_count','lt',value); return this; }
+  public targetClubReaderCountLte(value: number): this { this.core.predicate('target_club_reader_count','lte',value); return this; }
+  public targetClubReaderCountIn(values: readonly (number)[]): this { this.core.predicateList('target_club_reader_count','in',values); return this; }
+  public targetClubReaderCountNotIn(values: readonly (number)[]): this { this.core.predicateList('target_club_reader_count','not_in',values); return this; }
+  public targetClubReaderCountBetween(low: number, high: number): this { this.core.predicateList('target_club_reader_count','between',[low,high]); return this; }
   public targetClubReaderCountIsNull(): this { this.core.predicateNull('target_club_reader_count','is_null'); return this; }
   public targetClubReaderCountIsNotNull(): this { this.core.predicateNull('target_club_reader_count','is_not_null'); return this; }
   public targetClubReaderCountEqCol(reference: ColumnReference): this { this.core.predicateColumn('target_club_reader_count','eq_col',reference); return this; }
@@ -332,16 +334,16 @@ export class AuthorWhere {
   public targetClubReaderCountGteCol(reference: ColumnReference): this { this.core.predicateColumn('target_club_reader_count','gte_col',reference); return this; }
   public targetClubReaderCountLtCol(reference: ColumnReference): this { this.core.predicateColumn('target_club_reader_count','lt_col',reference); return this; }
   public targetClubReaderCountLteCol(reference: ColumnReference): this { this.core.predicateColumn('target_club_reader_count','lte_col',reference); return this; }
-  public successCountEq(value: unknown): this { this.core.predicate('success_count','eq',value); return this; }
-  public successCount(value: unknown): this { return this.successCountEq(value); }
-  public successCountNotEq(value: unknown): this { this.core.predicate('success_count','not_eq',value); return this; }
-  public successCountGt(value: unknown): this { this.core.predicate('success_count','gt',value); return this; }
-  public successCountGte(value: unknown): this { this.core.predicate('success_count','gte',value); return this; }
-  public successCountLt(value: unknown): this { this.core.predicate('success_count','lt',value); return this; }
-  public successCountLte(value: unknown): this { this.core.predicate('success_count','lte',value); return this; }
-  public successCountIn(values: readonly unknown[]): this { this.core.predicateList('success_count','in',values); return this; }
-  public successCountNotIn(values: readonly unknown[]): this { this.core.predicateList('success_count','not_in',values); return this; }
-  public successCountBetween(low: unknown, high: unknown): this { this.core.predicateList('success_count','between',[low,high]); return this; }
+  public successCountEq(value: number): this { this.core.predicate('success_count','eq',value); return this; }
+  public successCount(value: number): this { return this.successCountEq(value); }
+  public successCountNotEq(value: number): this { this.core.predicate('success_count','not_eq',value); return this; }
+  public successCountGt(value: number): this { this.core.predicate('success_count','gt',value); return this; }
+  public successCountGte(value: number): this { this.core.predicate('success_count','gte',value); return this; }
+  public successCountLt(value: number): this { this.core.predicate('success_count','lt',value); return this; }
+  public successCountLte(value: number): this { this.core.predicate('success_count','lte',value); return this; }
+  public successCountIn(values: readonly (number)[]): this { this.core.predicateList('success_count','in',values); return this; }
+  public successCountNotIn(values: readonly (number)[]): this { this.core.predicateList('success_count','not_in',values); return this; }
+  public successCountBetween(low: number, high: number): this { this.core.predicateList('success_count','between',[low,high]); return this; }
   public successCountIsNull(): this { this.core.predicateNull('success_count','is_null'); return this; }
   public successCountIsNotNull(): this { this.core.predicateNull('success_count','is_not_null'); return this; }
   public successCountEqCol(reference: ColumnReference): this { this.core.predicateColumn('success_count','eq_col',reference); return this; }
@@ -350,16 +352,16 @@ export class AuthorWhere {
   public successCountGteCol(reference: ColumnReference): this { this.core.predicateColumn('success_count','gte_col',reference); return this; }
   public successCountLtCol(reference: ColumnReference): this { this.core.predicateColumn('success_count','lt_col',reference); return this; }
   public successCountLteCol(reference: ColumnReference): this { this.core.predicateColumn('success_count','lte_col',reference); return this; }
-  public readerCountEq(value: unknown): this { this.core.predicate('reader_count','eq',value); return this; }
-  public readerCount(value: unknown): this { return this.readerCountEq(value); }
-  public readerCountNotEq(value: unknown): this { this.core.predicate('reader_count','not_eq',value); return this; }
-  public readerCountGt(value: unknown): this { this.core.predicate('reader_count','gt',value); return this; }
-  public readerCountGte(value: unknown): this { this.core.predicate('reader_count','gte',value); return this; }
-  public readerCountLt(value: unknown): this { this.core.predicate('reader_count','lt',value); return this; }
-  public readerCountLte(value: unknown): this { this.core.predicate('reader_count','lte',value); return this; }
-  public readerCountIn(values: readonly unknown[]): this { this.core.predicateList('reader_count','in',values); return this; }
-  public readerCountNotIn(values: readonly unknown[]): this { this.core.predicateList('reader_count','not_in',values); return this; }
-  public readerCountBetween(low: unknown, high: unknown): this { this.core.predicateList('reader_count','between',[low,high]); return this; }
+  public readerCountEq(value: number): this { this.core.predicate('reader_count','eq',value); return this; }
+  public readerCount(value: number): this { return this.readerCountEq(value); }
+  public readerCountNotEq(value: number): this { this.core.predicate('reader_count','not_eq',value); return this; }
+  public readerCountGt(value: number): this { this.core.predicate('reader_count','gt',value); return this; }
+  public readerCountGte(value: number): this { this.core.predicate('reader_count','gte',value); return this; }
+  public readerCountLt(value: number): this { this.core.predicate('reader_count','lt',value); return this; }
+  public readerCountLte(value: number): this { this.core.predicate('reader_count','lte',value); return this; }
+  public readerCountIn(values: readonly (number)[]): this { this.core.predicateList('reader_count','in',values); return this; }
+  public readerCountNotIn(values: readonly (number)[]): this { this.core.predicateList('reader_count','not_in',values); return this; }
+  public readerCountBetween(low: number, high: number): this { this.core.predicateList('reader_count','between',[low,high]); return this; }
   public readerCountIsNull(): this { this.core.predicateNull('reader_count','is_null'); return this; }
   public readerCountIsNotNull(): this { this.core.predicateNull('reader_count','is_not_null'); return this; }
   public readerCountEqCol(reference: ColumnReference): this { this.core.predicateColumn('reader_count','eq_col',reference); return this; }
@@ -368,16 +370,16 @@ export class AuthorWhere {
   public readerCountGteCol(reference: ColumnReference): this { this.core.predicateColumn('reader_count','gte_col',reference); return this; }
   public readerCountLtCol(reference: ColumnReference): this { this.core.predicateColumn('reader_count','lt_col',reference); return this; }
   public readerCountLteCol(reference: ColumnReference): this { this.core.predicateColumn('reader_count','lte_col',reference); return this; }
-  public readCountEq(value: unknown): this { this.core.predicate('read_count','eq',value); return this; }
-  public readCount(value: unknown): this { return this.readCountEq(value); }
-  public readCountNotEq(value: unknown): this { this.core.predicate('read_count','not_eq',value); return this; }
-  public readCountGt(value: unknown): this { this.core.predicate('read_count','gt',value); return this; }
-  public readCountGte(value: unknown): this { this.core.predicate('read_count','gte',value); return this; }
-  public readCountLt(value: unknown): this { this.core.predicate('read_count','lt',value); return this; }
-  public readCountLte(value: unknown): this { this.core.predicate('read_count','lte',value); return this; }
-  public readCountIn(values: readonly unknown[]): this { this.core.predicateList('read_count','in',values); return this; }
-  public readCountNotIn(values: readonly unknown[]): this { this.core.predicateList('read_count','not_in',values); return this; }
-  public readCountBetween(low: unknown, high: unknown): this { this.core.predicateList('read_count','between',[low,high]); return this; }
+  public readCountEq(value: number): this { this.core.predicate('read_count','eq',value); return this; }
+  public readCount(value: number): this { return this.readCountEq(value); }
+  public readCountNotEq(value: number): this { this.core.predicate('read_count','not_eq',value); return this; }
+  public readCountGt(value: number): this { this.core.predicate('read_count','gt',value); return this; }
+  public readCountGte(value: number): this { this.core.predicate('read_count','gte',value); return this; }
+  public readCountLt(value: number): this { this.core.predicate('read_count','lt',value); return this; }
+  public readCountLte(value: number): this { this.core.predicate('read_count','lte',value); return this; }
+  public readCountIn(values: readonly (number)[]): this { this.core.predicateList('read_count','in',values); return this; }
+  public readCountNotIn(values: readonly (number)[]): this { this.core.predicateList('read_count','not_in',values); return this; }
+  public readCountBetween(low: number, high: number): this { this.core.predicateList('read_count','between',[low,high]); return this; }
   public readCountIsNull(): this { this.core.predicateNull('read_count','is_null'); return this; }
   public readCountIsNotNull(): this { this.core.predicateNull('read_count','is_not_null'); return this; }
   public readCountEqCol(reference: ColumnReference): this { this.core.predicateColumn('read_count','eq_col',reference); return this; }
@@ -386,30 +388,30 @@ export class AuthorWhere {
   public readCountGteCol(reference: ColumnReference): this { this.core.predicateColumn('read_count','gte_col',reference); return this; }
   public readCountLtCol(reference: ColumnReference): this { this.core.predicateColumn('read_count','lt_col',reference); return this; }
   public readCountLteCol(reference: ColumnReference): this { this.core.predicateColumn('read_count','lte_col',reference); return this; }
-  public photoUrlEq(value: unknown): this { this.core.predicate('photo_url','eq',value); return this; }
-  public photoUrl(value: unknown): this { return this.photoUrlEq(value); }
-  public photoUrlNotEq(value: unknown): this { this.core.predicate('photo_url','not_eq',value); return this; }
-  public photoUrlIn(values: readonly unknown[]): this { this.core.predicateList('photo_url','in',values); return this; }
-  public photoUrlNotIn(values: readonly unknown[]): this { this.core.predicateList('photo_url','not_in',values); return this; }
-  public photoUrlLike(value: unknown): this { this.core.predicate('photo_url','like',value); return this; }
-  public photoUrlLikeBinary(value: unknown): this { this.core.predicate('photo_url','like_binary',value); return this; }
-  public photoUrlContains(value: unknown): this { this.core.predicate('photo_url','contains',value); return this; }
-  public photoUrlStartsWith(value: unknown): this { this.core.predicate('photo_url','starts_with',value); return this; }
-  public photoUrlEndsWith(value: unknown): this { this.core.predicate('photo_url','ends_with',value); return this; }
+  public photoUrlEq(value: string): this { this.core.predicate('photo_url','eq',value); return this; }
+  public photoUrl(value: string): this { return this.photoUrlEq(value); }
+  public photoUrlNotEq(value: string): this { this.core.predicate('photo_url','not_eq',value); return this; }
+  public photoUrlIn(values: readonly (string)[]): this { this.core.predicateList('photo_url','in',values); return this; }
+  public photoUrlNotIn(values: readonly (string)[]): this { this.core.predicateList('photo_url','not_in',values); return this; }
+  public photoUrlLike(value: string): this { this.core.predicate('photo_url','like',value); return this; }
+  public photoUrlLikeBinary(value: string): this { this.core.predicate('photo_url','like_binary',value); return this; }
+  public photoUrlContains(value: string): this { this.core.predicate('photo_url','contains',value); return this; }
+  public photoUrlStartsWith(value: string): this { this.core.predicate('photo_url','starts_with',value); return this; }
+  public photoUrlEndsWith(value: string): this { this.core.predicate('photo_url','ends_with',value); return this; }
   public photoUrlIsNull(): this { this.core.predicateNull('photo_url','is_null'); return this; }
   public photoUrlIsNotNull(): this { this.core.predicateNull('photo_url','is_not_null'); return this; }
   public photoUrlEqCol(reference: ColumnReference): this { this.core.predicateColumn('photo_url','eq_col',reference); return this; }
   public photoUrlNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('photo_url','not_eq_col',reference); return this; }
-  public userSeqEq(value: unknown): this { this.core.predicate('user_seq','eq',value); return this; }
-  public userSeq(value: unknown): this { return this.userSeqEq(value); }
-  public userSeqNotEq(value: unknown): this { this.core.predicate('user_seq','not_eq',value); return this; }
-  public userSeqGt(value: unknown): this { this.core.predicate('user_seq','gt',value); return this; }
-  public userSeqGte(value: unknown): this { this.core.predicate('user_seq','gte',value); return this; }
-  public userSeqLt(value: unknown): this { this.core.predicate('user_seq','lt',value); return this; }
-  public userSeqLte(value: unknown): this { this.core.predicate('user_seq','lte',value); return this; }
-  public userSeqIn(values: readonly unknown[]): this { this.core.predicateList('user_seq','in',values); return this; }
-  public userSeqNotIn(values: readonly unknown[]): this { this.core.predicateList('user_seq','not_in',values); return this; }
-  public userSeqBetween(low: unknown, high: unknown): this { this.core.predicateList('user_seq','between',[low,high]); return this; }
+  public userSeqEq(value: number): this { this.core.predicate('user_seq','eq',value); return this; }
+  public userSeq(value: number): this { return this.userSeqEq(value); }
+  public userSeqNotEq(value: number): this { this.core.predicate('user_seq','not_eq',value); return this; }
+  public userSeqGt(value: number): this { this.core.predicate('user_seq','gt',value); return this; }
+  public userSeqGte(value: number): this { this.core.predicate('user_seq','gte',value); return this; }
+  public userSeqLt(value: number): this { this.core.predicate('user_seq','lt',value); return this; }
+  public userSeqLte(value: number): this { this.core.predicate('user_seq','lte',value); return this; }
+  public userSeqIn(values: readonly (number)[]): this { this.core.predicateList('user_seq','in',values); return this; }
+  public userSeqNotIn(values: readonly (number)[]): this { this.core.predicateList('user_seq','not_in',values); return this; }
+  public userSeqBetween(low: number, high: number): this { this.core.predicateList('user_seq','between',[low,high]); return this; }
   public userSeqIsNull(): this { this.core.predicateNull('user_seq','is_null'); return this; }
   public userSeqIsNotNull(): this { this.core.predicateNull('user_seq','is_not_null'); return this; }
   public userSeqEqCol(reference: ColumnReference): this { this.core.predicateColumn('user_seq','eq_col',reference); return this; }
@@ -418,16 +420,16 @@ export class AuthorWhere {
   public userSeqGteCol(reference: ColumnReference): this { this.core.predicateColumn('user_seq','gte_col',reference); return this; }
   public userSeqLtCol(reference: ColumnReference): this { this.core.predicateColumn('user_seq','lt_col',reference); return this; }
   public userSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('user_seq','lte_col',reference); return this; }
-  public serviceSeqEq(value: unknown): this { this.core.predicate('service_seq','eq',value); return this; }
-  public serviceSeq(value: unknown): this { return this.serviceSeqEq(value); }
-  public serviceSeqNotEq(value: unknown): this { this.core.predicate('service_seq','not_eq',value); return this; }
-  public serviceSeqGt(value: unknown): this { this.core.predicate('service_seq','gt',value); return this; }
-  public serviceSeqGte(value: unknown): this { this.core.predicate('service_seq','gte',value); return this; }
-  public serviceSeqLt(value: unknown): this { this.core.predicate('service_seq','lt',value); return this; }
-  public serviceSeqLte(value: unknown): this { this.core.predicate('service_seq','lte',value); return this; }
-  public serviceSeqIn(values: readonly unknown[]): this { this.core.predicateList('service_seq','in',values); return this; }
-  public serviceSeqNotIn(values: readonly unknown[]): this { this.core.predicateList('service_seq','not_in',values); return this; }
-  public serviceSeqBetween(low: unknown, high: unknown): this { this.core.predicateList('service_seq','between',[low,high]); return this; }
+  public serviceSeqEq(value: number): this { this.core.predicate('service_seq','eq',value); return this; }
+  public serviceSeq(value: number): this { return this.serviceSeqEq(value); }
+  public serviceSeqNotEq(value: number): this { this.core.predicate('service_seq','not_eq',value); return this; }
+  public serviceSeqGt(value: number): this { this.core.predicate('service_seq','gt',value); return this; }
+  public serviceSeqGte(value: number): this { this.core.predicate('service_seq','gte',value); return this; }
+  public serviceSeqLt(value: number): this { this.core.predicate('service_seq','lt',value); return this; }
+  public serviceSeqLte(value: number): this { this.core.predicate('service_seq','lte',value); return this; }
+  public serviceSeqIn(values: readonly (number)[]): this { this.core.predicateList('service_seq','in',values); return this; }
+  public serviceSeqNotIn(values: readonly (number)[]): this { this.core.predicateList('service_seq','not_in',values); return this; }
+  public serviceSeqBetween(low: number, high: number): this { this.core.predicateList('service_seq','between',[low,high]); return this; }
   public serviceSeqIsNull(): this { this.core.predicateNull('service_seq','is_null'); return this; }
   public serviceSeqIsNotNull(): this { this.core.predicateNull('service_seq','is_not_null'); return this; }
   public serviceSeqEqCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','eq_col',reference); return this; }
@@ -436,16 +438,16 @@ export class AuthorWhere {
   public serviceSeqGteCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','gte_col',reference); return this; }
   public serviceSeqLtCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','lt_col',reference); return this; }
   public serviceSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','lte_col',reference); return this; }
-  public serviceRegionSeqEq(value: unknown): this { this.core.predicate('service_region_seq','eq',value); return this; }
-  public serviceRegionSeq(value: unknown): this { return this.serviceRegionSeqEq(value); }
-  public serviceRegionSeqNotEq(value: unknown): this { this.core.predicate('service_region_seq','not_eq',value); return this; }
-  public serviceRegionSeqGt(value: unknown): this { this.core.predicate('service_region_seq','gt',value); return this; }
-  public serviceRegionSeqGte(value: unknown): this { this.core.predicate('service_region_seq','gte',value); return this; }
-  public serviceRegionSeqLt(value: unknown): this { this.core.predicate('service_region_seq','lt',value); return this; }
-  public serviceRegionSeqLte(value: unknown): this { this.core.predicate('service_region_seq','lte',value); return this; }
-  public serviceRegionSeqIn(values: readonly unknown[]): this { this.core.predicateList('service_region_seq','in',values); return this; }
-  public serviceRegionSeqNotIn(values: readonly unknown[]): this { this.core.predicateList('service_region_seq','not_in',values); return this; }
-  public serviceRegionSeqBetween(low: unknown, high: unknown): this { this.core.predicateList('service_region_seq','between',[low,high]); return this; }
+  public serviceRegionSeqEq(value: number): this { this.core.predicate('service_region_seq','eq',value); return this; }
+  public serviceRegionSeq(value: number): this { return this.serviceRegionSeqEq(value); }
+  public serviceRegionSeqNotEq(value: number): this { this.core.predicate('service_region_seq','not_eq',value); return this; }
+  public serviceRegionSeqGt(value: number): this { this.core.predicate('service_region_seq','gt',value); return this; }
+  public serviceRegionSeqGte(value: number): this { this.core.predicate('service_region_seq','gte',value); return this; }
+  public serviceRegionSeqLt(value: number): this { this.core.predicate('service_region_seq','lt',value); return this; }
+  public serviceRegionSeqLte(value: number): this { this.core.predicate('service_region_seq','lte',value); return this; }
+  public serviceRegionSeqIn(values: readonly (number)[]): this { this.core.predicateList('service_region_seq','in',values); return this; }
+  public serviceRegionSeqNotIn(values: readonly (number)[]): this { this.core.predicateList('service_region_seq','not_in',values); return this; }
+  public serviceRegionSeqBetween(low: number, high: number): this { this.core.predicateList('service_region_seq','between',[low,high]); return this; }
   public serviceRegionSeqIsNull(): this { this.core.predicateNull('service_region_seq','is_null'); return this; }
   public serviceRegionSeqIsNotNull(): this { this.core.predicateNull('service_region_seq','is_not_null'); return this; }
   public serviceRegionSeqEqCol(reference: ColumnReference): this { this.core.predicateColumn('service_region_seq','eq_col',reference); return this; }
@@ -454,16 +456,16 @@ export class AuthorWhere {
   public serviceRegionSeqGteCol(reference: ColumnReference): this { this.core.predicateColumn('service_region_seq','gte_col',reference); return this; }
   public serviceRegionSeqLtCol(reference: ColumnReference): this { this.core.predicateColumn('service_region_seq','lt_col',reference); return this; }
   public serviceRegionSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('service_region_seq','lte_col',reference); return this; }
-  public serviceMemberSeqEq(value: unknown): this { this.core.predicate('service_member_seq','eq',value); return this; }
-  public serviceMemberSeq(value: unknown): this { return this.serviceMemberSeqEq(value); }
-  public serviceMemberSeqNotEq(value: unknown): this { this.core.predicate('service_member_seq','not_eq',value); return this; }
-  public serviceMemberSeqGt(value: unknown): this { this.core.predicate('service_member_seq','gt',value); return this; }
-  public serviceMemberSeqGte(value: unknown): this { this.core.predicate('service_member_seq','gte',value); return this; }
-  public serviceMemberSeqLt(value: unknown): this { this.core.predicate('service_member_seq','lt',value); return this; }
-  public serviceMemberSeqLte(value: unknown): this { this.core.predicate('service_member_seq','lte',value); return this; }
-  public serviceMemberSeqIn(values: readonly unknown[]): this { this.core.predicateList('service_member_seq','in',values); return this; }
-  public serviceMemberSeqNotIn(values: readonly unknown[]): this { this.core.predicateList('service_member_seq','not_in',values); return this; }
-  public serviceMemberSeqBetween(low: unknown, high: unknown): this { this.core.predicateList('service_member_seq','between',[low,high]); return this; }
+  public serviceMemberSeqEq(value: number): this { this.core.predicate('service_member_seq','eq',value); return this; }
+  public serviceMemberSeq(value: number): this { return this.serviceMemberSeqEq(value); }
+  public serviceMemberSeqNotEq(value: number): this { this.core.predicate('service_member_seq','not_eq',value); return this; }
+  public serviceMemberSeqGt(value: number): this { this.core.predicate('service_member_seq','gt',value); return this; }
+  public serviceMemberSeqGte(value: number): this { this.core.predicate('service_member_seq','gte',value); return this; }
+  public serviceMemberSeqLt(value: number): this { this.core.predicate('service_member_seq','lt',value); return this; }
+  public serviceMemberSeqLte(value: number): this { this.core.predicate('service_member_seq','lte',value); return this; }
+  public serviceMemberSeqIn(values: readonly (number)[]): this { this.core.predicateList('service_member_seq','in',values); return this; }
+  public serviceMemberSeqNotIn(values: readonly (number)[]): this { this.core.predicateList('service_member_seq','not_in',values); return this; }
+  public serviceMemberSeqBetween(low: number, high: number): this { this.core.predicateList('service_member_seq','between',[low,high]); return this; }
   public serviceMemberSeqIsNull(): this { this.core.predicateNull('service_member_seq','is_null'); return this; }
   public serviceMemberSeqIsNotNull(): this { this.core.predicateNull('service_member_seq','is_not_null'); return this; }
   public serviceMemberSeqEqCol(reference: ColumnReference): this { this.core.predicateColumn('service_member_seq','eq_col',reference); return this; }
@@ -472,16 +474,16 @@ export class AuthorWhere {
   public serviceMemberSeqGteCol(reference: ColumnReference): this { this.core.predicateColumn('service_member_seq','gte_col',reference); return this; }
   public serviceMemberSeqLtCol(reference: ColumnReference): this { this.core.predicateColumn('service_member_seq','lt_col',reference); return this; }
   public serviceMemberSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('service_member_seq','lte_col',reference); return this; }
-  public startDtEq(value: unknown): this { this.core.predicate('start_dt','eq',value); return this; }
-  public startDt(value: unknown): this { return this.startDtEq(value); }
-  public startDtNotEq(value: unknown): this { this.core.predicate('start_dt','not_eq',value); return this; }
-  public startDtGt(value: unknown): this { this.core.predicate('start_dt','gt',value); return this; }
-  public startDtGte(value: unknown): this { this.core.predicate('start_dt','gte',value); return this; }
-  public startDtLt(value: unknown): this { this.core.predicate('start_dt','lt',value); return this; }
-  public startDtLte(value: unknown): this { this.core.predicate('start_dt','lte',value); return this; }
-  public startDtIn(values: readonly unknown[]): this { this.core.predicateList('start_dt','in',values); return this; }
-  public startDtNotIn(values: readonly unknown[]): this { this.core.predicateList('start_dt','not_in',values); return this; }
-  public startDtBetween(low: unknown, high: unknown): this { this.core.predicateList('start_dt','between',[low,high]); return this; }
+  public startDtEq(value: string | Date): this { this.core.predicate('start_dt','eq',value); return this; }
+  public startDt(value: string | Date): this { return this.startDtEq(value); }
+  public startDtNotEq(value: string | Date): this { this.core.predicate('start_dt','not_eq',value); return this; }
+  public startDtGt(value: string | Date): this { this.core.predicate('start_dt','gt',value); return this; }
+  public startDtGte(value: string | Date): this { this.core.predicate('start_dt','gte',value); return this; }
+  public startDtLt(value: string | Date): this { this.core.predicate('start_dt','lt',value); return this; }
+  public startDtLte(value: string | Date): this { this.core.predicate('start_dt','lte',value); return this; }
+  public startDtIn(values: readonly (string | Date)[]): this { this.core.predicateList('start_dt','in',values); return this; }
+  public startDtNotIn(values: readonly (string | Date)[]): this { this.core.predicateList('start_dt','not_in',values); return this; }
+  public startDtBetween(low: string | Date, high: string | Date): this { this.core.predicateList('start_dt','between',[low,high]); return this; }
   public startDtIsNull(): this { this.core.predicateNull('start_dt','is_null'); return this; }
   public startDtIsNotNull(): this { this.core.predicateNull('start_dt','is_not_null'); return this; }
   public startDtEqCol(reference: ColumnReference): this { this.core.predicateColumn('start_dt','eq_col',reference); return this; }
@@ -490,16 +492,16 @@ export class AuthorWhere {
   public startDtGteCol(reference: ColumnReference): this { this.core.predicateColumn('start_dt','gte_col',reference); return this; }
   public startDtLtCol(reference: ColumnReference): this { this.core.predicateColumn('start_dt','lt_col',reference); return this; }
   public startDtLteCol(reference: ColumnReference): this { this.core.predicateColumn('start_dt','lte_col',reference); return this; }
-  public endDtEq(value: unknown): this { this.core.predicate('end_dt','eq',value); return this; }
-  public endDt(value: unknown): this { return this.endDtEq(value); }
-  public endDtNotEq(value: unknown): this { this.core.predicate('end_dt','not_eq',value); return this; }
-  public endDtGt(value: unknown): this { this.core.predicate('end_dt','gt',value); return this; }
-  public endDtGte(value: unknown): this { this.core.predicate('end_dt','gte',value); return this; }
-  public endDtLt(value: unknown): this { this.core.predicate('end_dt','lt',value); return this; }
-  public endDtLte(value: unknown): this { this.core.predicate('end_dt','lte',value); return this; }
-  public endDtIn(values: readonly unknown[]): this { this.core.predicateList('end_dt','in',values); return this; }
-  public endDtNotIn(values: readonly unknown[]): this { this.core.predicateList('end_dt','not_in',values); return this; }
-  public endDtBetween(low: unknown, high: unknown): this { this.core.predicateList('end_dt','between',[low,high]); return this; }
+  public endDtEq(value: string | Date): this { this.core.predicate('end_dt','eq',value); return this; }
+  public endDt(value: string | Date): this { return this.endDtEq(value); }
+  public endDtNotEq(value: string | Date): this { this.core.predicate('end_dt','not_eq',value); return this; }
+  public endDtGt(value: string | Date): this { this.core.predicate('end_dt','gt',value); return this; }
+  public endDtGte(value: string | Date): this { this.core.predicate('end_dt','gte',value); return this; }
+  public endDtLt(value: string | Date): this { this.core.predicate('end_dt','lt',value); return this; }
+  public endDtLte(value: string | Date): this { this.core.predicate('end_dt','lte',value); return this; }
+  public endDtIn(values: readonly (string | Date)[]): this { this.core.predicateList('end_dt','in',values); return this; }
+  public endDtNotIn(values: readonly (string | Date)[]): this { this.core.predicateList('end_dt','not_in',values); return this; }
+  public endDtBetween(low: string | Date, high: string | Date): this { this.core.predicateList('end_dt','between',[low,high]); return this; }
   public endDtIsNull(): this { this.core.predicateNull('end_dt','is_null'); return this; }
   public endDtIsNotNull(): this { this.core.predicateNull('end_dt','is_not_null'); return this; }
   public endDtEqCol(reference: ColumnReference): this { this.core.predicateColumn('end_dt','eq_col',reference); return this; }
@@ -508,37 +510,37 @@ export class AuthorWhere {
   public endDtGteCol(reference: ColumnReference): this { this.core.predicateColumn('end_dt','gte_col',reference); return this; }
   public endDtLtCol(reference: ColumnReference): this { this.core.predicateColumn('end_dt','lt_col',reference); return this; }
   public endDtLteCol(reference: ColumnReference): this { this.core.predicateColumn('end_dt','lte_col',reference); return this; }
-  public uuidEq(value: unknown): this { this.core.predicate('uuid','eq',value); return this; }
-  public uuid(value: unknown): this { return this.uuidEq(value); }
-  public uuidNotEq(value: unknown): this { this.core.predicate('uuid','not_eq',value); return this; }
-  public uuidIn(values: readonly unknown[]): this { this.core.predicateList('uuid','in',values); return this; }
-  public uuidNotIn(values: readonly unknown[]): this { this.core.predicateList('uuid','not_in',values); return this; }
-  public uuidLike(value: unknown): this { this.core.predicate('uuid','like',value); return this; }
-  public uuidLikeBinary(value: unknown): this { this.core.predicate('uuid','like_binary',value); return this; }
-  public uuidContains(value: unknown): this { this.core.predicate('uuid','contains',value); return this; }
-  public uuidStartsWith(value: unknown): this { this.core.predicate('uuid','starts_with',value); return this; }
-  public uuidEndsWith(value: unknown): this { this.core.predicate('uuid','ends_with',value); return this; }
+  public uuidEq(value: string): this { this.core.predicate('uuid','eq',value); return this; }
+  public uuid(value: string): this { return this.uuidEq(value); }
+  public uuidNotEq(value: string): this { this.core.predicate('uuid','not_eq',value); return this; }
+  public uuidIn(values: readonly (string)[]): this { this.core.predicateList('uuid','in',values); return this; }
+  public uuidNotIn(values: readonly (string)[]): this { this.core.predicateList('uuid','not_in',values); return this; }
+  public uuidLike(value: string): this { this.core.predicate('uuid','like',value); return this; }
+  public uuidLikeBinary(value: string): this { this.core.predicate('uuid','like_binary',value); return this; }
+  public uuidContains(value: string): this { this.core.predicate('uuid','contains',value); return this; }
+  public uuidStartsWith(value: string): this { this.core.predicate('uuid','starts_with',value); return this; }
+  public uuidEndsWith(value: string): this { this.core.predicate('uuid','ends_with',value); return this; }
   public uuidIsNull(): this { this.core.predicateNull('uuid','is_null'); return this; }
   public uuidIsNotNull(): this { this.core.predicateNull('uuid','is_not_null'); return this; }
   public uuidEqCol(reference: ColumnReference): this { this.core.predicateColumn('uuid','eq_col',reference); return this; }
   public uuidNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('uuid','not_eq_col',reference); return this; }
-  public isSingleWorkEq(value: unknown): this { this.core.predicate('is_single_work','eq',value); return this; }
-  public isSingleWork(value: unknown): this { return this.isSingleWorkEq(value); }
-  public isSingleWorkNotEq(value: unknown): this { this.core.predicate('is_single_work','not_eq',value); return this; }
+  public isSingleWorkEq(value: boolean): this { this.core.predicate('is_single_work','eq',value); return this; }
+  public isSingleWork(value: boolean): this { return this.isSingleWorkEq(value); }
+  public isSingleWorkNotEq(value: boolean): this { this.core.predicate('is_single_work','not_eq',value); return this; }
   public isSingleWorkIsNull(): this { this.core.predicateNull('is_single_work','is_null'); return this; }
   public isSingleWorkIsNotNull(): this { this.core.predicateNull('is_single_work','is_not_null'); return this; }
   public isSingleWorkEqCol(reference: ColumnReference): this { this.core.predicateColumn('is_single_work','eq_col',reference); return this; }
   public isSingleWorkNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('is_single_work','not_eq_col',reference); return this; }
-  public likeCountEq(value: unknown): this { this.core.predicate('like_count','eq',value); return this; }
-  public likeCount(value: unknown): this { return this.likeCountEq(value); }
-  public likeCountNotEq(value: unknown): this { this.core.predicate('like_count','not_eq',value); return this; }
-  public likeCountGt(value: unknown): this { this.core.predicate('like_count','gt',value); return this; }
-  public likeCountGte(value: unknown): this { this.core.predicate('like_count','gte',value); return this; }
-  public likeCountLt(value: unknown): this { this.core.predicate('like_count','lt',value); return this; }
-  public likeCountLte(value: unknown): this { this.core.predicate('like_count','lte',value); return this; }
-  public likeCountIn(values: readonly unknown[]): this { this.core.predicateList('like_count','in',values); return this; }
-  public likeCountNotIn(values: readonly unknown[]): this { this.core.predicateList('like_count','not_in',values); return this; }
-  public likeCountBetween(low: unknown, high: unknown): this { this.core.predicateList('like_count','between',[low,high]); return this; }
+  public likeCountEq(value: number): this { this.core.predicate('like_count','eq',value); return this; }
+  public likeCount(value: number): this { return this.likeCountEq(value); }
+  public likeCountNotEq(value: number): this { this.core.predicate('like_count','not_eq',value); return this; }
+  public likeCountGt(value: number): this { this.core.predicate('like_count','gt',value); return this; }
+  public likeCountGte(value: number): this { this.core.predicate('like_count','gte',value); return this; }
+  public likeCountLt(value: number): this { this.core.predicate('like_count','lt',value); return this; }
+  public likeCountLte(value: number): this { this.core.predicate('like_count','lte',value); return this; }
+  public likeCountIn(values: readonly (number)[]): this { this.core.predicateList('like_count','in',values); return this; }
+  public likeCountNotIn(values: readonly (number)[]): this { this.core.predicateList('like_count','not_in',values); return this; }
+  public likeCountBetween(low: number, high: number): this { this.core.predicateList('like_count','between',[low,high]); return this; }
   public likeCountIsNull(): this { this.core.predicateNull('like_count','is_null'); return this; }
   public likeCountIsNotNull(): this { this.core.predicateNull('like_count','is_not_null'); return this; }
   public likeCountEqCol(reference: ColumnReference): this { this.core.predicateColumn('like_count','eq_col',reference); return this; }
@@ -547,16 +549,16 @@ export class AuthorWhere {
   public likeCountGteCol(reference: ColumnReference): this { this.core.predicateColumn('like_count','gte_col',reference); return this; }
   public likeCountLtCol(reference: ColumnReference): this { this.core.predicateColumn('like_count','lt_col',reference); return this; }
   public likeCountLteCol(reference: ColumnReference): this { this.core.predicateColumn('like_count','lte_col',reference); return this; }
-  public aesKeyVersionEq(value: unknown): this { this.core.predicate('aes_key_version','eq',value); return this; }
-  public aesKeyVersion(value: unknown): this { return this.aesKeyVersionEq(value); }
-  public aesKeyVersionNotEq(value: unknown): this { this.core.predicate('aes_key_version','not_eq',value); return this; }
-  public aesKeyVersionGt(value: unknown): this { this.core.predicate('aes_key_version','gt',value); return this; }
-  public aesKeyVersionGte(value: unknown): this { this.core.predicate('aes_key_version','gte',value); return this; }
-  public aesKeyVersionLt(value: unknown): this { this.core.predicate('aes_key_version','lt',value); return this; }
-  public aesKeyVersionLte(value: unknown): this { this.core.predicate('aes_key_version','lte',value); return this; }
-  public aesKeyVersionIn(values: readonly unknown[]): this { this.core.predicateList('aes_key_version','in',values); return this; }
-  public aesKeyVersionNotIn(values: readonly unknown[]): this { this.core.predicateList('aes_key_version','not_in',values); return this; }
-  public aesKeyVersionBetween(low: unknown, high: unknown): this { this.core.predicateList('aes_key_version','between',[low,high]); return this; }
+  public aesKeyVersionEq(value: number): this { this.core.predicate('aes_key_version','eq',value); return this; }
+  public aesKeyVersion(value: number): this { return this.aesKeyVersionEq(value); }
+  public aesKeyVersionNotEq(value: number): this { this.core.predicate('aes_key_version','not_eq',value); return this; }
+  public aesKeyVersionGt(value: number): this { this.core.predicate('aes_key_version','gt',value); return this; }
+  public aesKeyVersionGte(value: number): this { this.core.predicate('aes_key_version','gte',value); return this; }
+  public aesKeyVersionLt(value: number): this { this.core.predicate('aes_key_version','lt',value); return this; }
+  public aesKeyVersionLte(value: number): this { this.core.predicate('aes_key_version','lte',value); return this; }
+  public aesKeyVersionIn(values: readonly (number)[]): this { this.core.predicateList('aes_key_version','in',values); return this; }
+  public aesKeyVersionNotIn(values: readonly (number)[]): this { this.core.predicateList('aes_key_version','not_in',values); return this; }
+  public aesKeyVersionBetween(low: number, high: number): this { this.core.predicateList('aes_key_version','between',[low,high]); return this; }
   public aesKeyVersionIsNull(): this { this.core.predicateNull('aes_key_version','is_null'); return this; }
   public aesKeyVersionIsNotNull(): this { this.core.predicateNull('aes_key_version','is_not_null'); return this; }
   public aesKeyVersionEqCol(reference: ColumnReference): this { this.core.predicateColumn('aes_key_version','eq_col',reference); return this; }
@@ -565,34 +567,34 @@ export class AuthorWhere {
   public aesKeyVersionGteCol(reference: ColumnReference): this { this.core.predicateColumn('aes_key_version','gte_col',reference); return this; }
   public aesKeyVersionLtCol(reference: ColumnReference): this { this.core.predicateColumn('aes_key_version','lt_col',reference); return this; }
   public aesKeyVersionLteCol(reference: ColumnReference): this { this.core.predicateColumn('aes_key_version','lte_col',reference); return this; }
-  public aesHexEmailEq(value: unknown): this { this.core.predicate('aes_hex_email','eq',value); return this; }
-  public aesHexEmail(value: unknown): this { return this.aesHexEmailEq(value); }
-  public aesHexEmailNotEq(value: unknown): this { this.core.predicate('aes_hex_email','not_eq',value); return this; }
-  public aesHexEmailIn(values: readonly unknown[]): this { this.core.predicateList('aes_hex_email','in',values); return this; }
-  public aesHexEmailNotIn(values: readonly unknown[]): this { this.core.predicateList('aes_hex_email','not_in',values); return this; }
+  public aesHexEmailEq(value: string): this { this.core.predicate('aes_hex_email','eq',value); return this; }
+  public aesHexEmail(value: string): this { return this.aesHexEmailEq(value); }
+  public aesHexEmailNotEq(value: string): this { this.core.predicate('aes_hex_email','not_eq',value); return this; }
+  public aesHexEmailIn(values: readonly (string)[]): this { this.core.predicateList('aes_hex_email','in',values); return this; }
+  public aesHexEmailNotIn(values: readonly (string)[]): this { this.core.predicateList('aes_hex_email','not_in',values); return this; }
   public aesHexEmailIsNull(): this { this.core.predicateNull('aes_hex_email','is_null'); return this; }
   public aesHexEmailIsNotNull(): this { this.core.predicateNull('aes_hex_email','is_not_null'); return this; }
   public aesHexEmailEqCol(reference: ColumnReference): this { this.core.predicateColumn('aes_hex_email','eq_col',reference); return this; }
   public aesHexEmailNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('aes_hex_email','not_eq_col',reference); return this; }
-  public aesHexPhoneEq(value: unknown): this { this.core.predicate('aes_hex_phone','eq',value); return this; }
-  public aesHexPhone(value: unknown): this { return this.aesHexPhoneEq(value); }
-  public aesHexPhoneNotEq(value: unknown): this { this.core.predicate('aes_hex_phone','not_eq',value); return this; }
-  public aesHexPhoneIn(values: readonly unknown[]): this { this.core.predicateList('aes_hex_phone','in',values); return this; }
-  public aesHexPhoneNotIn(values: readonly unknown[]): this { this.core.predicateList('aes_hex_phone','not_in',values); return this; }
+  public aesHexPhoneEq(value: string): this { this.core.predicate('aes_hex_phone','eq',value); return this; }
+  public aesHexPhone(value: string): this { return this.aesHexPhoneEq(value); }
+  public aesHexPhoneNotEq(value: string): this { this.core.predicate('aes_hex_phone','not_eq',value); return this; }
+  public aesHexPhoneIn(values: readonly (string)[]): this { this.core.predicateList('aes_hex_phone','in',values); return this; }
+  public aesHexPhoneNotIn(values: readonly (string)[]): this { this.core.predicateList('aes_hex_phone','not_in',values); return this; }
   public aesHexPhoneIsNull(): this { this.core.predicateNull('aes_hex_phone','is_null'); return this; }
   public aesHexPhoneIsNotNull(): this { this.core.predicateNull('aes_hex_phone','is_not_null'); return this; }
   public aesHexPhoneEqCol(reference: ColumnReference): this { this.core.predicateColumn('aes_hex_phone','eq_col',reference); return this; }
   public aesHexPhoneNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('aes_hex_phone','not_eq_col',reference); return this; }
-  public priceEq(value: unknown): this { this.core.predicate('price','eq',value); return this; }
-  public price(value: unknown): this { return this.priceEq(value); }
-  public priceNotEq(value: unknown): this { this.core.predicate('price','not_eq',value); return this; }
-  public priceGt(value: unknown): this { this.core.predicate('price','gt',value); return this; }
-  public priceGte(value: unknown): this { this.core.predicate('price','gte',value); return this; }
-  public priceLt(value: unknown): this { this.core.predicate('price','lt',value); return this; }
-  public priceLte(value: unknown): this { this.core.predicate('price','lte',value); return this; }
-  public priceIn(values: readonly unknown[]): this { this.core.predicateList('price','in',values); return this; }
-  public priceNotIn(values: readonly unknown[]): this { this.core.predicateList('price','not_in',values); return this; }
-  public priceBetween(low: unknown, high: unknown): this { this.core.predicateList('price','between',[low,high]); return this; }
+  public priceEq(value: number): this { this.core.predicate('price','eq',value); return this; }
+  public price(value: number): this { return this.priceEq(value); }
+  public priceNotEq(value: number): this { this.core.predicate('price','not_eq',value); return this; }
+  public priceGt(value: number): this { this.core.predicate('price','gt',value); return this; }
+  public priceGte(value: number): this { this.core.predicate('price','gte',value); return this; }
+  public priceLt(value: number): this { this.core.predicate('price','lt',value); return this; }
+  public priceLte(value: number): this { this.core.predicate('price','lte',value); return this; }
+  public priceIn(values: readonly (number)[]): this { this.core.predicateList('price','in',values); return this; }
+  public priceNotIn(values: readonly (number)[]): this { this.core.predicateList('price','not_in',values); return this; }
+  public priceBetween(low: number, high: number): this { this.core.predicateList('price','between',[low,high]); return this; }
   public priceIsNull(): this { this.core.predicateNull('price','is_null'); return this; }
   public priceIsNotNull(): this { this.core.predicateNull('price','is_not_null'); return this; }
   public priceEqCol(reference: ColumnReference): this { this.core.predicateColumn('price','eq_col',reference); return this; }
@@ -601,11 +603,11 @@ export class AuthorWhere {
   public priceGteCol(reference: ColumnReference): this { this.core.predicateColumn('price','gte_col',reference); return this; }
   public priceLtCol(reference: ColumnReference): this { this.core.predicateColumn('price','lt_col',reference); return this; }
   public priceLteCol(reference: ColumnReference): this { this.core.predicateColumn('price','lte_col',reference); return this; }
-  public ipEq(value: unknown): this { this.core.predicate('ip','eq',value); return this; }
-  public ip(value: unknown): this { return this.ipEq(value); }
-  public ipNotEq(value: unknown): this { this.core.predicate('ip','not_eq',value); return this; }
-  public ipIn(values: readonly unknown[]): this { this.core.predicateList('ip','in',values); return this; }
-  public ipNotIn(values: readonly unknown[]): this { this.core.predicateList('ip','not_in',values); return this; }
+  public ipEq(value: string): this { this.core.predicate('ip','eq',value); return this; }
+  public ip(value: string): this { return this.ipEq(value); }
+  public ipNotEq(value: string): this { this.core.predicate('ip','not_eq',value); return this; }
+  public ipIn(values: readonly (string)[]): this { this.core.predicateList('ip','in',values); return this; }
+  public ipNotIn(values: readonly (string)[]): this { this.core.predicateList('ip','not_in',values); return this; }
   public ipIsNull(): this { this.core.predicateNull('ip','is_null'); return this; }
   public ipIsNotNull(): this { this.core.predicateNull('ip','is_not_null'); return this; }
   public ipEqCol(reference: ColumnReference): this { this.core.predicateColumn('ip','eq_col',reference); return this; }
@@ -628,7 +630,7 @@ export class AuthorWhere {
   public user(callback: (where: UserWhere) => void): this { this.core.navigate('user',core=>callback(new UserWhere(core))); return this; }
 }
 
-export class AuthorQuery extends QueryCore {
+export class AuthorQuery extends QueryCore implements AuthorInterface {
   public constructor() { super('author'); }
   public override scope(value: number): this { return super.scope(value); }
   public and(callback: (where: AuthorWhere) => void): this { this.whereCore().and(core=>callback(new AuthorWhere(core))); return this; }
@@ -637,16 +639,16 @@ export class AuthorQuery extends QueryCore {
   public having(callback: (where: AuthorWhere) => void): this { return this.havingGroup(core=>callback(new AuthorWhere(core))); }
   public startedAfter(value0: unknown): this { this.expression('`start_dt` > ?',[value0]); return this; }
   public visible(): this { this.expression('`is_close` = FALSE AND `is_display` = TRUE',[]); return this; }
-  public seqEq(value: unknown): this { this.predicate('seq','eq',value); return this; }
-  public seq(value: unknown): this { return this.seqEq(value); }
-  public seqNotEq(value: unknown): this { this.predicate('seq','not_eq',value); return this; }
-  public seqGt(value: unknown): this { this.predicate('seq','gt',value); return this; }
-  public seqGte(value: unknown): this { this.predicate('seq','gte',value); return this; }
-  public seqLt(value: unknown): this { this.predicate('seq','lt',value); return this; }
-  public seqLte(value: unknown): this { this.predicate('seq','lte',value); return this; }
-  public seqIn(values: readonly unknown[]): this { this.predicateList('seq','in',values); return this; }
-  public seqNotIn(values: readonly unknown[]): this { this.predicateList('seq','not_in',values); return this; }
-  public seqBetween(low: unknown, high: unknown): this { this.predicateList('seq','between',[low,high]); return this; }
+  public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.predicateList('seq','between',[low,high]); return this; }
   public seqIsNull(): this { this.predicateNull('seq','is_null'); return this; }
   public seqIsNotNull(): this { this.predicateNull('seq','is_not_null'); return this; }
   public seqEqCol(reference: ColumnReference): this { this.predicateColumn('seq','eq_col',reference); return this; }
@@ -655,42 +657,42 @@ export class AuthorQuery extends QueryCore {
   public seqGteCol(reference: ColumnReference): this { this.predicateColumn('seq','gte_col',reference); return this; }
   public seqLtCol(reference: ColumnReference): this { this.predicateColumn('seq','lt_col',reference); return this; }
   public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
-  public nameEq(value: unknown): this { this.predicate('name','eq',value); return this; }
-  public name(value: unknown): this { return this.nameEq(value); }
-  public nameNotEq(value: unknown): this { this.predicate('name','not_eq',value); return this; }
-  public nameIn(values: readonly unknown[]): this { this.predicateList('name','in',values); return this; }
-  public nameNotIn(values: readonly unknown[]): this { this.predicateList('name','not_in',values); return this; }
-  public nameLike(value: unknown): this { this.predicate('name','like',value); return this; }
-  public nameLikeBinary(value: unknown): this { this.predicate('name','like_binary',value); return this; }
-  public nameContains(value: unknown): this { this.predicate('name','contains',value); return this; }
-  public nameStartsWith(value: unknown): this { this.predicate('name','starts_with',value); return this; }
-  public nameEndsWith(value: unknown): this { this.predicate('name','ends_with',value); return this; }
+  public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.predicate('name','ends_with',value); return this; }
   public nameIsNull(): this { this.predicateNull('name','is_null'); return this; }
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
-  public descriptionEq(value: unknown): this { this.predicate('description','eq',value); return this; }
-  public description(value: unknown): this { return this.descriptionEq(value); }
-  public descriptionNotEq(value: unknown): this { this.predicate('description','not_eq',value); return this; }
-  public descriptionLike(value: unknown): this { this.predicate('description','like',value); return this; }
-  public descriptionLikeBinary(value: unknown): this { this.predicate('description','like_binary',value); return this; }
-  public descriptionContains(value: unknown): this { this.predicate('description','contains',value); return this; }
-  public descriptionStartsWith(value: unknown): this { this.predicate('description','starts_with',value); return this; }
-  public descriptionEndsWith(value: unknown): this { this.predicate('description','ends_with',value); return this; }
+  public descriptionEq(value: string): this { this.predicate('description','eq',value); return this; }
+  public description(value: string): this { return this.descriptionEq(value); }
+  public descriptionNotEq(value: string): this { this.predicate('description','not_eq',value); return this; }
+  public descriptionLike(value: string): this { this.predicate('description','like',value); return this; }
+  public descriptionLikeBinary(value: string): this { this.predicate('description','like_binary',value); return this; }
+  public descriptionContains(value: string): this { this.predicate('description','contains',value); return this; }
+  public descriptionStartsWith(value: string): this { this.predicate('description','starts_with',value); return this; }
+  public descriptionEndsWith(value: string): this { this.predicate('description','ends_with',value); return this; }
   public descriptionIsNull(): this { this.predicateNull('description','is_null'); return this; }
   public descriptionIsNotNull(): this { this.predicateNull('description','is_not_null'); return this; }
   public descriptionEqCol(reference: ColumnReference): this { this.predicateColumn('description','eq_col',reference); return this; }
   public descriptionNotEqCol(reference: ColumnReference): this { this.predicateColumn('description','not_eq_col',reference); return this; }
-  public createdTsEq(value: unknown): this { this.predicate('created_ts','eq',value); return this; }
-  public createdTs(value: unknown): this { return this.createdTsEq(value); }
-  public createdTsNotEq(value: unknown): this { this.predicate('created_ts','not_eq',value); return this; }
-  public createdTsGt(value: unknown): this { this.predicate('created_ts','gt',value); return this; }
-  public createdTsGte(value: unknown): this { this.predicate('created_ts','gte',value); return this; }
-  public createdTsLt(value: unknown): this { this.predicate('created_ts','lt',value); return this; }
-  public createdTsLte(value: unknown): this { this.predicate('created_ts','lte',value); return this; }
-  public createdTsIn(values: readonly unknown[]): this { this.predicateList('created_ts','in',values); return this; }
-  public createdTsNotIn(values: readonly unknown[]): this { this.predicateList('created_ts','not_in',values); return this; }
-  public createdTsBetween(low: unknown, high: unknown): this { this.predicateList('created_ts','between',[low,high]); return this; }
+  public createdTsEq(value: string | Date): this { this.predicate('created_ts','eq',value); return this; }
+  public createdTs(value: string | Date): this { return this.createdTsEq(value); }
+  public createdTsNotEq(value: string | Date): this { this.predicate('created_ts','not_eq',value); return this; }
+  public createdTsGt(value: string | Date): this { this.predicate('created_ts','gt',value); return this; }
+  public createdTsGte(value: string | Date): this { this.predicate('created_ts','gte',value); return this; }
+  public createdTsLt(value: string | Date): this { this.predicate('created_ts','lt',value); return this; }
+  public createdTsLte(value: string | Date): this { this.predicate('created_ts','lte',value); return this; }
+  public createdTsIn(values: readonly (string | Date)[]): this { this.predicateList('created_ts','in',values); return this; }
+  public createdTsNotIn(values: readonly (string | Date)[]): this { this.predicateList('created_ts','not_in',values); return this; }
+  public createdTsBetween(low: string | Date, high: string | Date): this { this.predicateList('created_ts','between',[low,high]); return this; }
   public createdTsIsNull(): this { this.predicateNull('created_ts','is_null'); return this; }
   public createdTsIsNotNull(): this { this.predicateNull('created_ts','is_not_null'); return this; }
   public createdTsEqCol(reference: ColumnReference): this { this.predicateColumn('created_ts','eq_col',reference); return this; }
@@ -699,16 +701,16 @@ export class AuthorQuery extends QueryCore {
   public createdTsGteCol(reference: ColumnReference): this { this.predicateColumn('created_ts','gte_col',reference); return this; }
   public createdTsLtCol(reference: ColumnReference): this { this.predicateColumn('created_ts','lt_col',reference); return this; }
   public createdTsLteCol(reference: ColumnReference): this { this.predicateColumn('created_ts','lte_col',reference); return this; }
-  public updatedTsEq(value: unknown): this { this.predicate('updated_ts','eq',value); return this; }
-  public updatedTs(value: unknown): this { return this.updatedTsEq(value); }
-  public updatedTsNotEq(value: unknown): this { this.predicate('updated_ts','not_eq',value); return this; }
-  public updatedTsGt(value: unknown): this { this.predicate('updated_ts','gt',value); return this; }
-  public updatedTsGte(value: unknown): this { this.predicate('updated_ts','gte',value); return this; }
-  public updatedTsLt(value: unknown): this { this.predicate('updated_ts','lt',value); return this; }
-  public updatedTsLte(value: unknown): this { this.predicate('updated_ts','lte',value); return this; }
-  public updatedTsIn(values: readonly unknown[]): this { this.predicateList('updated_ts','in',values); return this; }
-  public updatedTsNotIn(values: readonly unknown[]): this { this.predicateList('updated_ts','not_in',values); return this; }
-  public updatedTsBetween(low: unknown, high: unknown): this { this.predicateList('updated_ts','between',[low,high]); return this; }
+  public updatedTsEq(value: string | Date): this { this.predicate('updated_ts','eq',value); return this; }
+  public updatedTs(value: string | Date): this { return this.updatedTsEq(value); }
+  public updatedTsNotEq(value: string | Date): this { this.predicate('updated_ts','not_eq',value); return this; }
+  public updatedTsGt(value: string | Date): this { this.predicate('updated_ts','gt',value); return this; }
+  public updatedTsGte(value: string | Date): this { this.predicate('updated_ts','gte',value); return this; }
+  public updatedTsLt(value: string | Date): this { this.predicate('updated_ts','lt',value); return this; }
+  public updatedTsLte(value: string | Date): this { this.predicate('updated_ts','lte',value); return this; }
+  public updatedTsIn(values: readonly (string | Date)[]): this { this.predicateList('updated_ts','in',values); return this; }
+  public updatedTsNotIn(values: readonly (string | Date)[]): this { this.predicateList('updated_ts','not_in',values); return this; }
+  public updatedTsBetween(low: string | Date, high: string | Date): this { this.predicateList('updated_ts','between',[low,high]); return this; }
   public updatedTsIsNull(): this { this.predicateNull('updated_ts','is_null'); return this; }
   public updatedTsIsNotNull(): this { this.predicateNull('updated_ts','is_not_null'); return this; }
   public updatedTsEqCol(reference: ColumnReference): this { this.predicateColumn('updated_ts','eq_col',reference); return this; }
@@ -717,30 +719,30 @@ export class AuthorQuery extends QueryCore {
   public updatedTsGteCol(reference: ColumnReference): this { this.predicateColumn('updated_ts','gte_col',reference); return this; }
   public updatedTsLtCol(reference: ColumnReference): this { this.predicateColumn('updated_ts','lt_col',reference); return this; }
   public updatedTsLteCol(reference: ColumnReference): this { this.predicateColumn('updated_ts','lte_col',reference); return this; }
-  public isCloseEq(value: unknown): this { this.predicate('is_close','eq',value); return this; }
-  public isClose(value: unknown): this { return this.isCloseEq(value); }
-  public isCloseNotEq(value: unknown): this { this.predicate('is_close','not_eq',value); return this; }
+  public isCloseEq(value: boolean): this { this.predicate('is_close','eq',value); return this; }
+  public isClose(value: boolean): this { return this.isCloseEq(value); }
+  public isCloseNotEq(value: boolean): this { this.predicate('is_close','not_eq',value); return this; }
   public isCloseIsNull(): this { this.predicateNull('is_close','is_null'); return this; }
   public isCloseIsNotNull(): this { this.predicateNull('is_close','is_not_null'); return this; }
   public isCloseEqCol(reference: ColumnReference): this { this.predicateColumn('is_close','eq_col',reference); return this; }
   public isCloseNotEqCol(reference: ColumnReference): this { this.predicateColumn('is_close','not_eq_col',reference); return this; }
-  public isDisplayEq(value: unknown): this { this.predicate('is_display','eq',value); return this; }
-  public isDisplay(value: unknown): this { return this.isDisplayEq(value); }
-  public isDisplayNotEq(value: unknown): this { this.predicate('is_display','not_eq',value); return this; }
+  public isDisplayEq(value: boolean): this { this.predicate('is_display','eq',value); return this; }
+  public isDisplay(value: boolean): this { return this.isDisplayEq(value); }
+  public isDisplayNotEq(value: boolean): this { this.predicate('is_display','not_eq',value); return this; }
   public isDisplayIsNull(): this { this.predicateNull('is_display','is_null'); return this; }
   public isDisplayIsNotNull(): this { this.predicateNull('is_display','is_not_null'); return this; }
   public isDisplayEqCol(reference: ColumnReference): this { this.predicateColumn('is_display','eq_col',reference); return this; }
   public isDisplayNotEqCol(reference: ColumnReference): this { this.predicateColumn('is_display','not_eq_col',reference); return this; }
-  public displayStartDtEq(value: unknown): this { this.predicate('display_start_dt','eq',value); return this; }
-  public displayStartDt(value: unknown): this { return this.displayStartDtEq(value); }
-  public displayStartDtNotEq(value: unknown): this { this.predicate('display_start_dt','not_eq',value); return this; }
-  public displayStartDtGt(value: unknown): this { this.predicate('display_start_dt','gt',value); return this; }
-  public displayStartDtGte(value: unknown): this { this.predicate('display_start_dt','gte',value); return this; }
-  public displayStartDtLt(value: unknown): this { this.predicate('display_start_dt','lt',value); return this; }
-  public displayStartDtLte(value: unknown): this { this.predicate('display_start_dt','lte',value); return this; }
-  public displayStartDtIn(values: readonly unknown[]): this { this.predicateList('display_start_dt','in',values); return this; }
-  public displayStartDtNotIn(values: readonly unknown[]): this { this.predicateList('display_start_dt','not_in',values); return this; }
-  public displayStartDtBetween(low: unknown, high: unknown): this { this.predicateList('display_start_dt','between',[low,high]); return this; }
+  public displayStartDtEq(value: string | Date): this { this.predicate('display_start_dt','eq',value); return this; }
+  public displayStartDt(value: string | Date): this { return this.displayStartDtEq(value); }
+  public displayStartDtNotEq(value: string | Date): this { this.predicate('display_start_dt','not_eq',value); return this; }
+  public displayStartDtGt(value: string | Date): this { this.predicate('display_start_dt','gt',value); return this; }
+  public displayStartDtGte(value: string | Date): this { this.predicate('display_start_dt','gte',value); return this; }
+  public displayStartDtLt(value: string | Date): this { this.predicate('display_start_dt','lt',value); return this; }
+  public displayStartDtLte(value: string | Date): this { this.predicate('display_start_dt','lte',value); return this; }
+  public displayStartDtIn(values: readonly (string | Date)[]): this { this.predicateList('display_start_dt','in',values); return this; }
+  public displayStartDtNotIn(values: readonly (string | Date)[]): this { this.predicateList('display_start_dt','not_in',values); return this; }
+  public displayStartDtBetween(low: string | Date, high: string | Date): this { this.predicateList('display_start_dt','between',[low,high]); return this; }
   public displayStartDtIsNull(): this { this.predicateNull('display_start_dt','is_null'); return this; }
   public displayStartDtIsNotNull(): this { this.predicateNull('display_start_dt','is_not_null'); return this; }
   public displayStartDtEqCol(reference: ColumnReference): this { this.predicateColumn('display_start_dt','eq_col',reference); return this; }
@@ -749,16 +751,16 @@ export class AuthorQuery extends QueryCore {
   public displayStartDtGteCol(reference: ColumnReference): this { this.predicateColumn('display_start_dt','gte_col',reference); return this; }
   public displayStartDtLtCol(reference: ColumnReference): this { this.predicateColumn('display_start_dt','lt_col',reference); return this; }
   public displayStartDtLteCol(reference: ColumnReference): this { this.predicateColumn('display_start_dt','lte_col',reference); return this; }
-  public displayEndDtEq(value: unknown): this { this.predicate('display_end_dt','eq',value); return this; }
-  public displayEndDt(value: unknown): this { return this.displayEndDtEq(value); }
-  public displayEndDtNotEq(value: unknown): this { this.predicate('display_end_dt','not_eq',value); return this; }
-  public displayEndDtGt(value: unknown): this { this.predicate('display_end_dt','gt',value); return this; }
-  public displayEndDtGte(value: unknown): this { this.predicate('display_end_dt','gte',value); return this; }
-  public displayEndDtLt(value: unknown): this { this.predicate('display_end_dt','lt',value); return this; }
-  public displayEndDtLte(value: unknown): this { this.predicate('display_end_dt','lte',value); return this; }
-  public displayEndDtIn(values: readonly unknown[]): this { this.predicateList('display_end_dt','in',values); return this; }
-  public displayEndDtNotIn(values: readonly unknown[]): this { this.predicateList('display_end_dt','not_in',values); return this; }
-  public displayEndDtBetween(low: unknown, high: unknown): this { this.predicateList('display_end_dt','between',[low,high]); return this; }
+  public displayEndDtEq(value: string | Date): this { this.predicate('display_end_dt','eq',value); return this; }
+  public displayEndDt(value: string | Date): this { return this.displayEndDtEq(value); }
+  public displayEndDtNotEq(value: string | Date): this { this.predicate('display_end_dt','not_eq',value); return this; }
+  public displayEndDtGt(value: string | Date): this { this.predicate('display_end_dt','gt',value); return this; }
+  public displayEndDtGte(value: string | Date): this { this.predicate('display_end_dt','gte',value); return this; }
+  public displayEndDtLt(value: string | Date): this { this.predicate('display_end_dt','lt',value); return this; }
+  public displayEndDtLte(value: string | Date): this { this.predicate('display_end_dt','lte',value); return this; }
+  public displayEndDtIn(values: readonly (string | Date)[]): this { this.predicateList('display_end_dt','in',values); return this; }
+  public displayEndDtNotIn(values: readonly (string | Date)[]): this { this.predicateList('display_end_dt','not_in',values); return this; }
+  public displayEndDtBetween(low: string | Date, high: string | Date): this { this.predicateList('display_end_dt','between',[low,high]); return this; }
   public displayEndDtIsNull(): this { this.predicateNull('display_end_dt','is_null'); return this; }
   public displayEndDtIsNotNull(): this { this.predicateNull('display_end_dt','is_not_null'); return this; }
   public displayEndDtEqCol(reference: ColumnReference): this { this.predicateColumn('display_end_dt','eq_col',reference); return this; }
@@ -767,23 +769,23 @@ export class AuthorQuery extends QueryCore {
   public displayEndDtGteCol(reference: ColumnReference): this { this.predicateColumn('display_end_dt','gte_col',reference); return this; }
   public displayEndDtLtCol(reference: ColumnReference): this { this.predicateColumn('display_end_dt','lt_col',reference); return this; }
   public displayEndDtLteCol(reference: ColumnReference): this { this.predicateColumn('display_end_dt','lte_col',reference); return this; }
-  public isAlldayEq(value: unknown): this { this.predicate('is_allday','eq',value); return this; }
-  public isAllday(value: unknown): this { return this.isAlldayEq(value); }
-  public isAlldayNotEq(value: unknown): this { this.predicate('is_allday','not_eq',value); return this; }
+  public isAlldayEq(value: boolean): this { this.predicate('is_allday','eq',value); return this; }
+  public isAllday(value: boolean): this { return this.isAlldayEq(value); }
+  public isAlldayNotEq(value: boolean): this { this.predicate('is_allday','not_eq',value); return this; }
   public isAlldayIsNull(): this { this.predicateNull('is_allday','is_null'); return this; }
   public isAlldayIsNotNull(): this { this.predicateNull('is_allday','is_not_null'); return this; }
   public isAlldayEqCol(reference: ColumnReference): this { this.predicateColumn('is_allday','eq_col',reference); return this; }
   public isAlldayNotEqCol(reference: ColumnReference): this { this.predicateColumn('is_allday','not_eq_col',reference); return this; }
-  public targetClubReaderCountEq(value: unknown): this { this.predicate('target_club_reader_count','eq',value); return this; }
-  public targetClubReaderCount(value: unknown): this { return this.targetClubReaderCountEq(value); }
-  public targetClubReaderCountNotEq(value: unknown): this { this.predicate('target_club_reader_count','not_eq',value); return this; }
-  public targetClubReaderCountGt(value: unknown): this { this.predicate('target_club_reader_count','gt',value); return this; }
-  public targetClubReaderCountGte(value: unknown): this { this.predicate('target_club_reader_count','gte',value); return this; }
-  public targetClubReaderCountLt(value: unknown): this { this.predicate('target_club_reader_count','lt',value); return this; }
-  public targetClubReaderCountLte(value: unknown): this { this.predicate('target_club_reader_count','lte',value); return this; }
-  public targetClubReaderCountIn(values: readonly unknown[]): this { this.predicateList('target_club_reader_count','in',values); return this; }
-  public targetClubReaderCountNotIn(values: readonly unknown[]): this { this.predicateList('target_club_reader_count','not_in',values); return this; }
-  public targetClubReaderCountBetween(low: unknown, high: unknown): this { this.predicateList('target_club_reader_count','between',[low,high]); return this; }
+  public targetClubReaderCountEq(value: number): this { this.predicate('target_club_reader_count','eq',value); return this; }
+  public targetClubReaderCount(value: number): this { return this.targetClubReaderCountEq(value); }
+  public targetClubReaderCountNotEq(value: number): this { this.predicate('target_club_reader_count','not_eq',value); return this; }
+  public targetClubReaderCountGt(value: number): this { this.predicate('target_club_reader_count','gt',value); return this; }
+  public targetClubReaderCountGte(value: number): this { this.predicate('target_club_reader_count','gte',value); return this; }
+  public targetClubReaderCountLt(value: number): this { this.predicate('target_club_reader_count','lt',value); return this; }
+  public targetClubReaderCountLte(value: number): this { this.predicate('target_club_reader_count','lte',value); return this; }
+  public targetClubReaderCountIn(values: readonly (number)[]): this { this.predicateList('target_club_reader_count','in',values); return this; }
+  public targetClubReaderCountNotIn(values: readonly (number)[]): this { this.predicateList('target_club_reader_count','not_in',values); return this; }
+  public targetClubReaderCountBetween(low: number, high: number): this { this.predicateList('target_club_reader_count','between',[low,high]); return this; }
   public targetClubReaderCountIsNull(): this { this.predicateNull('target_club_reader_count','is_null'); return this; }
   public targetClubReaderCountIsNotNull(): this { this.predicateNull('target_club_reader_count','is_not_null'); return this; }
   public targetClubReaderCountEqCol(reference: ColumnReference): this { this.predicateColumn('target_club_reader_count','eq_col',reference); return this; }
@@ -792,16 +794,16 @@ export class AuthorQuery extends QueryCore {
   public targetClubReaderCountGteCol(reference: ColumnReference): this { this.predicateColumn('target_club_reader_count','gte_col',reference); return this; }
   public targetClubReaderCountLtCol(reference: ColumnReference): this { this.predicateColumn('target_club_reader_count','lt_col',reference); return this; }
   public targetClubReaderCountLteCol(reference: ColumnReference): this { this.predicateColumn('target_club_reader_count','lte_col',reference); return this; }
-  public successCountEq(value: unknown): this { this.predicate('success_count','eq',value); return this; }
-  public successCount(value: unknown): this { return this.successCountEq(value); }
-  public successCountNotEq(value: unknown): this { this.predicate('success_count','not_eq',value); return this; }
-  public successCountGt(value: unknown): this { this.predicate('success_count','gt',value); return this; }
-  public successCountGte(value: unknown): this { this.predicate('success_count','gte',value); return this; }
-  public successCountLt(value: unknown): this { this.predicate('success_count','lt',value); return this; }
-  public successCountLte(value: unknown): this { this.predicate('success_count','lte',value); return this; }
-  public successCountIn(values: readonly unknown[]): this { this.predicateList('success_count','in',values); return this; }
-  public successCountNotIn(values: readonly unknown[]): this { this.predicateList('success_count','not_in',values); return this; }
-  public successCountBetween(low: unknown, high: unknown): this { this.predicateList('success_count','between',[low,high]); return this; }
+  public successCountEq(value: number): this { this.predicate('success_count','eq',value); return this; }
+  public successCount(value: number): this { return this.successCountEq(value); }
+  public successCountNotEq(value: number): this { this.predicate('success_count','not_eq',value); return this; }
+  public successCountGt(value: number): this { this.predicate('success_count','gt',value); return this; }
+  public successCountGte(value: number): this { this.predicate('success_count','gte',value); return this; }
+  public successCountLt(value: number): this { this.predicate('success_count','lt',value); return this; }
+  public successCountLte(value: number): this { this.predicate('success_count','lte',value); return this; }
+  public successCountIn(values: readonly (number)[]): this { this.predicateList('success_count','in',values); return this; }
+  public successCountNotIn(values: readonly (number)[]): this { this.predicateList('success_count','not_in',values); return this; }
+  public successCountBetween(low: number, high: number): this { this.predicateList('success_count','between',[low,high]); return this; }
   public successCountIsNull(): this { this.predicateNull('success_count','is_null'); return this; }
   public successCountIsNotNull(): this { this.predicateNull('success_count','is_not_null'); return this; }
   public successCountEqCol(reference: ColumnReference): this { this.predicateColumn('success_count','eq_col',reference); return this; }
@@ -810,16 +812,16 @@ export class AuthorQuery extends QueryCore {
   public successCountGteCol(reference: ColumnReference): this { this.predicateColumn('success_count','gte_col',reference); return this; }
   public successCountLtCol(reference: ColumnReference): this { this.predicateColumn('success_count','lt_col',reference); return this; }
   public successCountLteCol(reference: ColumnReference): this { this.predicateColumn('success_count','lte_col',reference); return this; }
-  public readerCountEq(value: unknown): this { this.predicate('reader_count','eq',value); return this; }
-  public readerCount(value: unknown): this { return this.readerCountEq(value); }
-  public readerCountNotEq(value: unknown): this { this.predicate('reader_count','not_eq',value); return this; }
-  public readerCountGt(value: unknown): this { this.predicate('reader_count','gt',value); return this; }
-  public readerCountGte(value: unknown): this { this.predicate('reader_count','gte',value); return this; }
-  public readerCountLt(value: unknown): this { this.predicate('reader_count','lt',value); return this; }
-  public readerCountLte(value: unknown): this { this.predicate('reader_count','lte',value); return this; }
-  public readerCountIn(values: readonly unknown[]): this { this.predicateList('reader_count','in',values); return this; }
-  public readerCountNotIn(values: readonly unknown[]): this { this.predicateList('reader_count','not_in',values); return this; }
-  public readerCountBetween(low: unknown, high: unknown): this { this.predicateList('reader_count','between',[low,high]); return this; }
+  public readerCountEq(value: number): this { this.predicate('reader_count','eq',value); return this; }
+  public readerCount(value: number): this { return this.readerCountEq(value); }
+  public readerCountNotEq(value: number): this { this.predicate('reader_count','not_eq',value); return this; }
+  public readerCountGt(value: number): this { this.predicate('reader_count','gt',value); return this; }
+  public readerCountGte(value: number): this { this.predicate('reader_count','gte',value); return this; }
+  public readerCountLt(value: number): this { this.predicate('reader_count','lt',value); return this; }
+  public readerCountLte(value: number): this { this.predicate('reader_count','lte',value); return this; }
+  public readerCountIn(values: readonly (number)[]): this { this.predicateList('reader_count','in',values); return this; }
+  public readerCountNotIn(values: readonly (number)[]): this { this.predicateList('reader_count','not_in',values); return this; }
+  public readerCountBetween(low: number, high: number): this { this.predicateList('reader_count','between',[low,high]); return this; }
   public readerCountIsNull(): this { this.predicateNull('reader_count','is_null'); return this; }
   public readerCountIsNotNull(): this { this.predicateNull('reader_count','is_not_null'); return this; }
   public readerCountEqCol(reference: ColumnReference): this { this.predicateColumn('reader_count','eq_col',reference); return this; }
@@ -828,16 +830,16 @@ export class AuthorQuery extends QueryCore {
   public readerCountGteCol(reference: ColumnReference): this { this.predicateColumn('reader_count','gte_col',reference); return this; }
   public readerCountLtCol(reference: ColumnReference): this { this.predicateColumn('reader_count','lt_col',reference); return this; }
   public readerCountLteCol(reference: ColumnReference): this { this.predicateColumn('reader_count','lte_col',reference); return this; }
-  public readCountEq(value: unknown): this { this.predicate('read_count','eq',value); return this; }
-  public readCount(value: unknown): this { return this.readCountEq(value); }
-  public readCountNotEq(value: unknown): this { this.predicate('read_count','not_eq',value); return this; }
-  public readCountGt(value: unknown): this { this.predicate('read_count','gt',value); return this; }
-  public readCountGte(value: unknown): this { this.predicate('read_count','gte',value); return this; }
-  public readCountLt(value: unknown): this { this.predicate('read_count','lt',value); return this; }
-  public readCountLte(value: unknown): this { this.predicate('read_count','lte',value); return this; }
-  public readCountIn(values: readonly unknown[]): this { this.predicateList('read_count','in',values); return this; }
-  public readCountNotIn(values: readonly unknown[]): this { this.predicateList('read_count','not_in',values); return this; }
-  public readCountBetween(low: unknown, high: unknown): this { this.predicateList('read_count','between',[low,high]); return this; }
+  public readCountEq(value: number): this { this.predicate('read_count','eq',value); return this; }
+  public readCount(value: number): this { return this.readCountEq(value); }
+  public readCountNotEq(value: number): this { this.predicate('read_count','not_eq',value); return this; }
+  public readCountGt(value: number): this { this.predicate('read_count','gt',value); return this; }
+  public readCountGte(value: number): this { this.predicate('read_count','gte',value); return this; }
+  public readCountLt(value: number): this { this.predicate('read_count','lt',value); return this; }
+  public readCountLte(value: number): this { this.predicate('read_count','lte',value); return this; }
+  public readCountIn(values: readonly (number)[]): this { this.predicateList('read_count','in',values); return this; }
+  public readCountNotIn(values: readonly (number)[]): this { this.predicateList('read_count','not_in',values); return this; }
+  public readCountBetween(low: number, high: number): this { this.predicateList('read_count','between',[low,high]); return this; }
   public readCountIsNull(): this { this.predicateNull('read_count','is_null'); return this; }
   public readCountIsNotNull(): this { this.predicateNull('read_count','is_not_null'); return this; }
   public readCountEqCol(reference: ColumnReference): this { this.predicateColumn('read_count','eq_col',reference); return this; }
@@ -846,30 +848,30 @@ export class AuthorQuery extends QueryCore {
   public readCountGteCol(reference: ColumnReference): this { this.predicateColumn('read_count','gte_col',reference); return this; }
   public readCountLtCol(reference: ColumnReference): this { this.predicateColumn('read_count','lt_col',reference); return this; }
   public readCountLteCol(reference: ColumnReference): this { this.predicateColumn('read_count','lte_col',reference); return this; }
-  public photoUrlEq(value: unknown): this { this.predicate('photo_url','eq',value); return this; }
-  public photoUrl(value: unknown): this { return this.photoUrlEq(value); }
-  public photoUrlNotEq(value: unknown): this { this.predicate('photo_url','not_eq',value); return this; }
-  public photoUrlIn(values: readonly unknown[]): this { this.predicateList('photo_url','in',values); return this; }
-  public photoUrlNotIn(values: readonly unknown[]): this { this.predicateList('photo_url','not_in',values); return this; }
-  public photoUrlLike(value: unknown): this { this.predicate('photo_url','like',value); return this; }
-  public photoUrlLikeBinary(value: unknown): this { this.predicate('photo_url','like_binary',value); return this; }
-  public photoUrlContains(value: unknown): this { this.predicate('photo_url','contains',value); return this; }
-  public photoUrlStartsWith(value: unknown): this { this.predicate('photo_url','starts_with',value); return this; }
-  public photoUrlEndsWith(value: unknown): this { this.predicate('photo_url','ends_with',value); return this; }
+  public photoUrlEq(value: string): this { this.predicate('photo_url','eq',value); return this; }
+  public photoUrl(value: string): this { return this.photoUrlEq(value); }
+  public photoUrlNotEq(value: string): this { this.predicate('photo_url','not_eq',value); return this; }
+  public photoUrlIn(values: readonly (string)[]): this { this.predicateList('photo_url','in',values); return this; }
+  public photoUrlNotIn(values: readonly (string)[]): this { this.predicateList('photo_url','not_in',values); return this; }
+  public photoUrlLike(value: string): this { this.predicate('photo_url','like',value); return this; }
+  public photoUrlLikeBinary(value: string): this { this.predicate('photo_url','like_binary',value); return this; }
+  public photoUrlContains(value: string): this { this.predicate('photo_url','contains',value); return this; }
+  public photoUrlStartsWith(value: string): this { this.predicate('photo_url','starts_with',value); return this; }
+  public photoUrlEndsWith(value: string): this { this.predicate('photo_url','ends_with',value); return this; }
   public photoUrlIsNull(): this { this.predicateNull('photo_url','is_null'); return this; }
   public photoUrlIsNotNull(): this { this.predicateNull('photo_url','is_not_null'); return this; }
   public photoUrlEqCol(reference: ColumnReference): this { this.predicateColumn('photo_url','eq_col',reference); return this; }
   public photoUrlNotEqCol(reference: ColumnReference): this { this.predicateColumn('photo_url','not_eq_col',reference); return this; }
-  public userSeqEq(value: unknown): this { this.predicate('user_seq','eq',value); return this; }
-  public userSeq(value: unknown): this { return this.userSeqEq(value); }
-  public userSeqNotEq(value: unknown): this { this.predicate('user_seq','not_eq',value); return this; }
-  public userSeqGt(value: unknown): this { this.predicate('user_seq','gt',value); return this; }
-  public userSeqGte(value: unknown): this { this.predicate('user_seq','gte',value); return this; }
-  public userSeqLt(value: unknown): this { this.predicate('user_seq','lt',value); return this; }
-  public userSeqLte(value: unknown): this { this.predicate('user_seq','lte',value); return this; }
-  public userSeqIn(values: readonly unknown[]): this { this.predicateList('user_seq','in',values); return this; }
-  public userSeqNotIn(values: readonly unknown[]): this { this.predicateList('user_seq','not_in',values); return this; }
-  public userSeqBetween(low: unknown, high: unknown): this { this.predicateList('user_seq','between',[low,high]); return this; }
+  public userSeqEq(value: number): this { this.predicate('user_seq','eq',value); return this; }
+  public userSeq(value: number): this { return this.userSeqEq(value); }
+  public userSeqNotEq(value: number): this { this.predicate('user_seq','not_eq',value); return this; }
+  public userSeqGt(value: number): this { this.predicate('user_seq','gt',value); return this; }
+  public userSeqGte(value: number): this { this.predicate('user_seq','gte',value); return this; }
+  public userSeqLt(value: number): this { this.predicate('user_seq','lt',value); return this; }
+  public userSeqLte(value: number): this { this.predicate('user_seq','lte',value); return this; }
+  public userSeqIn(values: readonly (number)[]): this { this.predicateList('user_seq','in',values); return this; }
+  public userSeqNotIn(values: readonly (number)[]): this { this.predicateList('user_seq','not_in',values); return this; }
+  public userSeqBetween(low: number, high: number): this { this.predicateList('user_seq','between',[low,high]); return this; }
   public userSeqIsNull(): this { this.predicateNull('user_seq','is_null'); return this; }
   public userSeqIsNotNull(): this { this.predicateNull('user_seq','is_not_null'); return this; }
   public userSeqEqCol(reference: ColumnReference): this { this.predicateColumn('user_seq','eq_col',reference); return this; }
@@ -878,16 +880,16 @@ export class AuthorQuery extends QueryCore {
   public userSeqGteCol(reference: ColumnReference): this { this.predicateColumn('user_seq','gte_col',reference); return this; }
   public userSeqLtCol(reference: ColumnReference): this { this.predicateColumn('user_seq','lt_col',reference); return this; }
   public userSeqLteCol(reference: ColumnReference): this { this.predicateColumn('user_seq','lte_col',reference); return this; }
-  public serviceSeqEq(value: unknown): this { this.predicate('service_seq','eq',value); return this; }
-  public serviceSeq(value: unknown): this { return this.serviceSeqEq(value); }
-  public serviceSeqNotEq(value: unknown): this { this.predicate('service_seq','not_eq',value); return this; }
-  public serviceSeqGt(value: unknown): this { this.predicate('service_seq','gt',value); return this; }
-  public serviceSeqGte(value: unknown): this { this.predicate('service_seq','gte',value); return this; }
-  public serviceSeqLt(value: unknown): this { this.predicate('service_seq','lt',value); return this; }
-  public serviceSeqLte(value: unknown): this { this.predicate('service_seq','lte',value); return this; }
-  public serviceSeqIn(values: readonly unknown[]): this { this.predicateList('service_seq','in',values); return this; }
-  public serviceSeqNotIn(values: readonly unknown[]): this { this.predicateList('service_seq','not_in',values); return this; }
-  public serviceSeqBetween(low: unknown, high: unknown): this { this.predicateList('service_seq','between',[low,high]); return this; }
+  public serviceSeqEq(value: number): this { this.predicate('service_seq','eq',value); return this; }
+  public serviceSeq(value: number): this { return this.serviceSeqEq(value); }
+  public serviceSeqNotEq(value: number): this { this.predicate('service_seq','not_eq',value); return this; }
+  public serviceSeqGt(value: number): this { this.predicate('service_seq','gt',value); return this; }
+  public serviceSeqGte(value: number): this { this.predicate('service_seq','gte',value); return this; }
+  public serviceSeqLt(value: number): this { this.predicate('service_seq','lt',value); return this; }
+  public serviceSeqLte(value: number): this { this.predicate('service_seq','lte',value); return this; }
+  public serviceSeqIn(values: readonly (number)[]): this { this.predicateList('service_seq','in',values); return this; }
+  public serviceSeqNotIn(values: readonly (number)[]): this { this.predicateList('service_seq','not_in',values); return this; }
+  public serviceSeqBetween(low: number, high: number): this { this.predicateList('service_seq','between',[low,high]); return this; }
   public serviceSeqIsNull(): this { this.predicateNull('service_seq','is_null'); return this; }
   public serviceSeqIsNotNull(): this { this.predicateNull('service_seq','is_not_null'); return this; }
   public serviceSeqEqCol(reference: ColumnReference): this { this.predicateColumn('service_seq','eq_col',reference); return this; }
@@ -896,16 +898,16 @@ export class AuthorQuery extends QueryCore {
   public serviceSeqGteCol(reference: ColumnReference): this { this.predicateColumn('service_seq','gte_col',reference); return this; }
   public serviceSeqLtCol(reference: ColumnReference): this { this.predicateColumn('service_seq','lt_col',reference); return this; }
   public serviceSeqLteCol(reference: ColumnReference): this { this.predicateColumn('service_seq','lte_col',reference); return this; }
-  public serviceRegionSeqEq(value: unknown): this { this.predicate('service_region_seq','eq',value); return this; }
-  public serviceRegionSeq(value: unknown): this { return this.serviceRegionSeqEq(value); }
-  public serviceRegionSeqNotEq(value: unknown): this { this.predicate('service_region_seq','not_eq',value); return this; }
-  public serviceRegionSeqGt(value: unknown): this { this.predicate('service_region_seq','gt',value); return this; }
-  public serviceRegionSeqGte(value: unknown): this { this.predicate('service_region_seq','gte',value); return this; }
-  public serviceRegionSeqLt(value: unknown): this { this.predicate('service_region_seq','lt',value); return this; }
-  public serviceRegionSeqLte(value: unknown): this { this.predicate('service_region_seq','lte',value); return this; }
-  public serviceRegionSeqIn(values: readonly unknown[]): this { this.predicateList('service_region_seq','in',values); return this; }
-  public serviceRegionSeqNotIn(values: readonly unknown[]): this { this.predicateList('service_region_seq','not_in',values); return this; }
-  public serviceRegionSeqBetween(low: unknown, high: unknown): this { this.predicateList('service_region_seq','between',[low,high]); return this; }
+  public serviceRegionSeqEq(value: number): this { this.predicate('service_region_seq','eq',value); return this; }
+  public serviceRegionSeq(value: number): this { return this.serviceRegionSeqEq(value); }
+  public serviceRegionSeqNotEq(value: number): this { this.predicate('service_region_seq','not_eq',value); return this; }
+  public serviceRegionSeqGt(value: number): this { this.predicate('service_region_seq','gt',value); return this; }
+  public serviceRegionSeqGte(value: number): this { this.predicate('service_region_seq','gte',value); return this; }
+  public serviceRegionSeqLt(value: number): this { this.predicate('service_region_seq','lt',value); return this; }
+  public serviceRegionSeqLte(value: number): this { this.predicate('service_region_seq','lte',value); return this; }
+  public serviceRegionSeqIn(values: readonly (number)[]): this { this.predicateList('service_region_seq','in',values); return this; }
+  public serviceRegionSeqNotIn(values: readonly (number)[]): this { this.predicateList('service_region_seq','not_in',values); return this; }
+  public serviceRegionSeqBetween(low: number, high: number): this { this.predicateList('service_region_seq','between',[low,high]); return this; }
   public serviceRegionSeqIsNull(): this { this.predicateNull('service_region_seq','is_null'); return this; }
   public serviceRegionSeqIsNotNull(): this { this.predicateNull('service_region_seq','is_not_null'); return this; }
   public serviceRegionSeqEqCol(reference: ColumnReference): this { this.predicateColumn('service_region_seq','eq_col',reference); return this; }
@@ -914,16 +916,16 @@ export class AuthorQuery extends QueryCore {
   public serviceRegionSeqGteCol(reference: ColumnReference): this { this.predicateColumn('service_region_seq','gte_col',reference); return this; }
   public serviceRegionSeqLtCol(reference: ColumnReference): this { this.predicateColumn('service_region_seq','lt_col',reference); return this; }
   public serviceRegionSeqLteCol(reference: ColumnReference): this { this.predicateColumn('service_region_seq','lte_col',reference); return this; }
-  public serviceMemberSeqEq(value: unknown): this { this.predicate('service_member_seq','eq',value); return this; }
-  public serviceMemberSeq(value: unknown): this { return this.serviceMemberSeqEq(value); }
-  public serviceMemberSeqNotEq(value: unknown): this { this.predicate('service_member_seq','not_eq',value); return this; }
-  public serviceMemberSeqGt(value: unknown): this { this.predicate('service_member_seq','gt',value); return this; }
-  public serviceMemberSeqGte(value: unknown): this { this.predicate('service_member_seq','gte',value); return this; }
-  public serviceMemberSeqLt(value: unknown): this { this.predicate('service_member_seq','lt',value); return this; }
-  public serviceMemberSeqLte(value: unknown): this { this.predicate('service_member_seq','lte',value); return this; }
-  public serviceMemberSeqIn(values: readonly unknown[]): this { this.predicateList('service_member_seq','in',values); return this; }
-  public serviceMemberSeqNotIn(values: readonly unknown[]): this { this.predicateList('service_member_seq','not_in',values); return this; }
-  public serviceMemberSeqBetween(low: unknown, high: unknown): this { this.predicateList('service_member_seq','between',[low,high]); return this; }
+  public serviceMemberSeqEq(value: number): this { this.predicate('service_member_seq','eq',value); return this; }
+  public serviceMemberSeq(value: number): this { return this.serviceMemberSeqEq(value); }
+  public serviceMemberSeqNotEq(value: number): this { this.predicate('service_member_seq','not_eq',value); return this; }
+  public serviceMemberSeqGt(value: number): this { this.predicate('service_member_seq','gt',value); return this; }
+  public serviceMemberSeqGte(value: number): this { this.predicate('service_member_seq','gte',value); return this; }
+  public serviceMemberSeqLt(value: number): this { this.predicate('service_member_seq','lt',value); return this; }
+  public serviceMemberSeqLte(value: number): this { this.predicate('service_member_seq','lte',value); return this; }
+  public serviceMemberSeqIn(values: readonly (number)[]): this { this.predicateList('service_member_seq','in',values); return this; }
+  public serviceMemberSeqNotIn(values: readonly (number)[]): this { this.predicateList('service_member_seq','not_in',values); return this; }
+  public serviceMemberSeqBetween(low: number, high: number): this { this.predicateList('service_member_seq','between',[low,high]); return this; }
   public serviceMemberSeqIsNull(): this { this.predicateNull('service_member_seq','is_null'); return this; }
   public serviceMemberSeqIsNotNull(): this { this.predicateNull('service_member_seq','is_not_null'); return this; }
   public serviceMemberSeqEqCol(reference: ColumnReference): this { this.predicateColumn('service_member_seq','eq_col',reference); return this; }
@@ -932,16 +934,16 @@ export class AuthorQuery extends QueryCore {
   public serviceMemberSeqGteCol(reference: ColumnReference): this { this.predicateColumn('service_member_seq','gte_col',reference); return this; }
   public serviceMemberSeqLtCol(reference: ColumnReference): this { this.predicateColumn('service_member_seq','lt_col',reference); return this; }
   public serviceMemberSeqLteCol(reference: ColumnReference): this { this.predicateColumn('service_member_seq','lte_col',reference); return this; }
-  public startDtEq(value: unknown): this { this.predicate('start_dt','eq',value); return this; }
-  public startDt(value: unknown): this { return this.startDtEq(value); }
-  public startDtNotEq(value: unknown): this { this.predicate('start_dt','not_eq',value); return this; }
-  public startDtGt(value: unknown): this { this.predicate('start_dt','gt',value); return this; }
-  public startDtGte(value: unknown): this { this.predicate('start_dt','gte',value); return this; }
-  public startDtLt(value: unknown): this { this.predicate('start_dt','lt',value); return this; }
-  public startDtLte(value: unknown): this { this.predicate('start_dt','lte',value); return this; }
-  public startDtIn(values: readonly unknown[]): this { this.predicateList('start_dt','in',values); return this; }
-  public startDtNotIn(values: readonly unknown[]): this { this.predicateList('start_dt','not_in',values); return this; }
-  public startDtBetween(low: unknown, high: unknown): this { this.predicateList('start_dt','between',[low,high]); return this; }
+  public startDtEq(value: string | Date): this { this.predicate('start_dt','eq',value); return this; }
+  public startDt(value: string | Date): this { return this.startDtEq(value); }
+  public startDtNotEq(value: string | Date): this { this.predicate('start_dt','not_eq',value); return this; }
+  public startDtGt(value: string | Date): this { this.predicate('start_dt','gt',value); return this; }
+  public startDtGte(value: string | Date): this { this.predicate('start_dt','gte',value); return this; }
+  public startDtLt(value: string | Date): this { this.predicate('start_dt','lt',value); return this; }
+  public startDtLte(value: string | Date): this { this.predicate('start_dt','lte',value); return this; }
+  public startDtIn(values: readonly (string | Date)[]): this { this.predicateList('start_dt','in',values); return this; }
+  public startDtNotIn(values: readonly (string | Date)[]): this { this.predicateList('start_dt','not_in',values); return this; }
+  public startDtBetween(low: string | Date, high: string | Date): this { this.predicateList('start_dt','between',[low,high]); return this; }
   public startDtIsNull(): this { this.predicateNull('start_dt','is_null'); return this; }
   public startDtIsNotNull(): this { this.predicateNull('start_dt','is_not_null'); return this; }
   public startDtEqCol(reference: ColumnReference): this { this.predicateColumn('start_dt','eq_col',reference); return this; }
@@ -950,16 +952,16 @@ export class AuthorQuery extends QueryCore {
   public startDtGteCol(reference: ColumnReference): this { this.predicateColumn('start_dt','gte_col',reference); return this; }
   public startDtLtCol(reference: ColumnReference): this { this.predicateColumn('start_dt','lt_col',reference); return this; }
   public startDtLteCol(reference: ColumnReference): this { this.predicateColumn('start_dt','lte_col',reference); return this; }
-  public endDtEq(value: unknown): this { this.predicate('end_dt','eq',value); return this; }
-  public endDt(value: unknown): this { return this.endDtEq(value); }
-  public endDtNotEq(value: unknown): this { this.predicate('end_dt','not_eq',value); return this; }
-  public endDtGt(value: unknown): this { this.predicate('end_dt','gt',value); return this; }
-  public endDtGte(value: unknown): this { this.predicate('end_dt','gte',value); return this; }
-  public endDtLt(value: unknown): this { this.predicate('end_dt','lt',value); return this; }
-  public endDtLte(value: unknown): this { this.predicate('end_dt','lte',value); return this; }
-  public endDtIn(values: readonly unknown[]): this { this.predicateList('end_dt','in',values); return this; }
-  public endDtNotIn(values: readonly unknown[]): this { this.predicateList('end_dt','not_in',values); return this; }
-  public endDtBetween(low: unknown, high: unknown): this { this.predicateList('end_dt','between',[low,high]); return this; }
+  public endDtEq(value: string | Date): this { this.predicate('end_dt','eq',value); return this; }
+  public endDt(value: string | Date): this { return this.endDtEq(value); }
+  public endDtNotEq(value: string | Date): this { this.predicate('end_dt','not_eq',value); return this; }
+  public endDtGt(value: string | Date): this { this.predicate('end_dt','gt',value); return this; }
+  public endDtGte(value: string | Date): this { this.predicate('end_dt','gte',value); return this; }
+  public endDtLt(value: string | Date): this { this.predicate('end_dt','lt',value); return this; }
+  public endDtLte(value: string | Date): this { this.predicate('end_dt','lte',value); return this; }
+  public endDtIn(values: readonly (string | Date)[]): this { this.predicateList('end_dt','in',values); return this; }
+  public endDtNotIn(values: readonly (string | Date)[]): this { this.predicateList('end_dt','not_in',values); return this; }
+  public endDtBetween(low: string | Date, high: string | Date): this { this.predicateList('end_dt','between',[low,high]); return this; }
   public endDtIsNull(): this { this.predicateNull('end_dt','is_null'); return this; }
   public endDtIsNotNull(): this { this.predicateNull('end_dt','is_not_null'); return this; }
   public endDtEqCol(reference: ColumnReference): this { this.predicateColumn('end_dt','eq_col',reference); return this; }
@@ -968,37 +970,37 @@ export class AuthorQuery extends QueryCore {
   public endDtGteCol(reference: ColumnReference): this { this.predicateColumn('end_dt','gte_col',reference); return this; }
   public endDtLtCol(reference: ColumnReference): this { this.predicateColumn('end_dt','lt_col',reference); return this; }
   public endDtLteCol(reference: ColumnReference): this { this.predicateColumn('end_dt','lte_col',reference); return this; }
-  public uuidEq(value: unknown): this { this.predicate('uuid','eq',value); return this; }
-  public uuid(value: unknown): this { return this.uuidEq(value); }
-  public uuidNotEq(value: unknown): this { this.predicate('uuid','not_eq',value); return this; }
-  public uuidIn(values: readonly unknown[]): this { this.predicateList('uuid','in',values); return this; }
-  public uuidNotIn(values: readonly unknown[]): this { this.predicateList('uuid','not_in',values); return this; }
-  public uuidLike(value: unknown): this { this.predicate('uuid','like',value); return this; }
-  public uuidLikeBinary(value: unknown): this { this.predicate('uuid','like_binary',value); return this; }
-  public uuidContains(value: unknown): this { this.predicate('uuid','contains',value); return this; }
-  public uuidStartsWith(value: unknown): this { this.predicate('uuid','starts_with',value); return this; }
-  public uuidEndsWith(value: unknown): this { this.predicate('uuid','ends_with',value); return this; }
+  public uuidEq(value: string): this { this.predicate('uuid','eq',value); return this; }
+  public uuid(value: string): this { return this.uuidEq(value); }
+  public uuidNotEq(value: string): this { this.predicate('uuid','not_eq',value); return this; }
+  public uuidIn(values: readonly (string)[]): this { this.predicateList('uuid','in',values); return this; }
+  public uuidNotIn(values: readonly (string)[]): this { this.predicateList('uuid','not_in',values); return this; }
+  public uuidLike(value: string): this { this.predicate('uuid','like',value); return this; }
+  public uuidLikeBinary(value: string): this { this.predicate('uuid','like_binary',value); return this; }
+  public uuidContains(value: string): this { this.predicate('uuid','contains',value); return this; }
+  public uuidStartsWith(value: string): this { this.predicate('uuid','starts_with',value); return this; }
+  public uuidEndsWith(value: string): this { this.predicate('uuid','ends_with',value); return this; }
   public uuidIsNull(): this { this.predicateNull('uuid','is_null'); return this; }
   public uuidIsNotNull(): this { this.predicateNull('uuid','is_not_null'); return this; }
   public uuidEqCol(reference: ColumnReference): this { this.predicateColumn('uuid','eq_col',reference); return this; }
   public uuidNotEqCol(reference: ColumnReference): this { this.predicateColumn('uuid','not_eq_col',reference); return this; }
-  public isSingleWorkEq(value: unknown): this { this.predicate('is_single_work','eq',value); return this; }
-  public isSingleWork(value: unknown): this { return this.isSingleWorkEq(value); }
-  public isSingleWorkNotEq(value: unknown): this { this.predicate('is_single_work','not_eq',value); return this; }
+  public isSingleWorkEq(value: boolean): this { this.predicate('is_single_work','eq',value); return this; }
+  public isSingleWork(value: boolean): this { return this.isSingleWorkEq(value); }
+  public isSingleWorkNotEq(value: boolean): this { this.predicate('is_single_work','not_eq',value); return this; }
   public isSingleWorkIsNull(): this { this.predicateNull('is_single_work','is_null'); return this; }
   public isSingleWorkIsNotNull(): this { this.predicateNull('is_single_work','is_not_null'); return this; }
   public isSingleWorkEqCol(reference: ColumnReference): this { this.predicateColumn('is_single_work','eq_col',reference); return this; }
   public isSingleWorkNotEqCol(reference: ColumnReference): this { this.predicateColumn('is_single_work','not_eq_col',reference); return this; }
-  public likeCountEq(value: unknown): this { this.predicate('like_count','eq',value); return this; }
-  public likeCount(value: unknown): this { return this.likeCountEq(value); }
-  public likeCountNotEq(value: unknown): this { this.predicate('like_count','not_eq',value); return this; }
-  public likeCountGt(value: unknown): this { this.predicate('like_count','gt',value); return this; }
-  public likeCountGte(value: unknown): this { this.predicate('like_count','gte',value); return this; }
-  public likeCountLt(value: unknown): this { this.predicate('like_count','lt',value); return this; }
-  public likeCountLte(value: unknown): this { this.predicate('like_count','lte',value); return this; }
-  public likeCountIn(values: readonly unknown[]): this { this.predicateList('like_count','in',values); return this; }
-  public likeCountNotIn(values: readonly unknown[]): this { this.predicateList('like_count','not_in',values); return this; }
-  public likeCountBetween(low: unknown, high: unknown): this { this.predicateList('like_count','between',[low,high]); return this; }
+  public likeCountEq(value: number): this { this.predicate('like_count','eq',value); return this; }
+  public likeCount(value: number): this { return this.likeCountEq(value); }
+  public likeCountNotEq(value: number): this { this.predicate('like_count','not_eq',value); return this; }
+  public likeCountGt(value: number): this { this.predicate('like_count','gt',value); return this; }
+  public likeCountGte(value: number): this { this.predicate('like_count','gte',value); return this; }
+  public likeCountLt(value: number): this { this.predicate('like_count','lt',value); return this; }
+  public likeCountLte(value: number): this { this.predicate('like_count','lte',value); return this; }
+  public likeCountIn(values: readonly (number)[]): this { this.predicateList('like_count','in',values); return this; }
+  public likeCountNotIn(values: readonly (number)[]): this { this.predicateList('like_count','not_in',values); return this; }
+  public likeCountBetween(low: number, high: number): this { this.predicateList('like_count','between',[low,high]); return this; }
   public likeCountIsNull(): this { this.predicateNull('like_count','is_null'); return this; }
   public likeCountIsNotNull(): this { this.predicateNull('like_count','is_not_null'); return this; }
   public likeCountEqCol(reference: ColumnReference): this { this.predicateColumn('like_count','eq_col',reference); return this; }
@@ -1007,16 +1009,16 @@ export class AuthorQuery extends QueryCore {
   public likeCountGteCol(reference: ColumnReference): this { this.predicateColumn('like_count','gte_col',reference); return this; }
   public likeCountLtCol(reference: ColumnReference): this { this.predicateColumn('like_count','lt_col',reference); return this; }
   public likeCountLteCol(reference: ColumnReference): this { this.predicateColumn('like_count','lte_col',reference); return this; }
-  public aesKeyVersionEq(value: unknown): this { this.predicate('aes_key_version','eq',value); return this; }
-  public aesKeyVersion(value: unknown): this { return this.aesKeyVersionEq(value); }
-  public aesKeyVersionNotEq(value: unknown): this { this.predicate('aes_key_version','not_eq',value); return this; }
-  public aesKeyVersionGt(value: unknown): this { this.predicate('aes_key_version','gt',value); return this; }
-  public aesKeyVersionGte(value: unknown): this { this.predicate('aes_key_version','gte',value); return this; }
-  public aesKeyVersionLt(value: unknown): this { this.predicate('aes_key_version','lt',value); return this; }
-  public aesKeyVersionLte(value: unknown): this { this.predicate('aes_key_version','lte',value); return this; }
-  public aesKeyVersionIn(values: readonly unknown[]): this { this.predicateList('aes_key_version','in',values); return this; }
-  public aesKeyVersionNotIn(values: readonly unknown[]): this { this.predicateList('aes_key_version','not_in',values); return this; }
-  public aesKeyVersionBetween(low: unknown, high: unknown): this { this.predicateList('aes_key_version','between',[low,high]); return this; }
+  public aesKeyVersionEq(value: number): this { this.predicate('aes_key_version','eq',value); return this; }
+  public aesKeyVersion(value: number): this { return this.aesKeyVersionEq(value); }
+  public aesKeyVersionNotEq(value: number): this { this.predicate('aes_key_version','not_eq',value); return this; }
+  public aesKeyVersionGt(value: number): this { this.predicate('aes_key_version','gt',value); return this; }
+  public aesKeyVersionGte(value: number): this { this.predicate('aes_key_version','gte',value); return this; }
+  public aesKeyVersionLt(value: number): this { this.predicate('aes_key_version','lt',value); return this; }
+  public aesKeyVersionLte(value: number): this { this.predicate('aes_key_version','lte',value); return this; }
+  public aesKeyVersionIn(values: readonly (number)[]): this { this.predicateList('aes_key_version','in',values); return this; }
+  public aesKeyVersionNotIn(values: readonly (number)[]): this { this.predicateList('aes_key_version','not_in',values); return this; }
+  public aesKeyVersionBetween(low: number, high: number): this { this.predicateList('aes_key_version','between',[low,high]); return this; }
   public aesKeyVersionIsNull(): this { this.predicateNull('aes_key_version','is_null'); return this; }
   public aesKeyVersionIsNotNull(): this { this.predicateNull('aes_key_version','is_not_null'); return this; }
   public aesKeyVersionEqCol(reference: ColumnReference): this { this.predicateColumn('aes_key_version','eq_col',reference); return this; }
@@ -1025,34 +1027,34 @@ export class AuthorQuery extends QueryCore {
   public aesKeyVersionGteCol(reference: ColumnReference): this { this.predicateColumn('aes_key_version','gte_col',reference); return this; }
   public aesKeyVersionLtCol(reference: ColumnReference): this { this.predicateColumn('aes_key_version','lt_col',reference); return this; }
   public aesKeyVersionLteCol(reference: ColumnReference): this { this.predicateColumn('aes_key_version','lte_col',reference); return this; }
-  public aesHexEmailEq(value: unknown): this { this.predicate('aes_hex_email','eq',value); return this; }
-  public aesHexEmail(value: unknown): this { return this.aesHexEmailEq(value); }
-  public aesHexEmailNotEq(value: unknown): this { this.predicate('aes_hex_email','not_eq',value); return this; }
-  public aesHexEmailIn(values: readonly unknown[]): this { this.predicateList('aes_hex_email','in',values); return this; }
-  public aesHexEmailNotIn(values: readonly unknown[]): this { this.predicateList('aes_hex_email','not_in',values); return this; }
+  public aesHexEmailEq(value: string): this { this.predicate('aes_hex_email','eq',value); return this; }
+  public aesHexEmail(value: string): this { return this.aesHexEmailEq(value); }
+  public aesHexEmailNotEq(value: string): this { this.predicate('aes_hex_email','not_eq',value); return this; }
+  public aesHexEmailIn(values: readonly (string)[]): this { this.predicateList('aes_hex_email','in',values); return this; }
+  public aesHexEmailNotIn(values: readonly (string)[]): this { this.predicateList('aes_hex_email','not_in',values); return this; }
   public aesHexEmailIsNull(): this { this.predicateNull('aes_hex_email','is_null'); return this; }
   public aesHexEmailIsNotNull(): this { this.predicateNull('aes_hex_email','is_not_null'); return this; }
   public aesHexEmailEqCol(reference: ColumnReference): this { this.predicateColumn('aes_hex_email','eq_col',reference); return this; }
   public aesHexEmailNotEqCol(reference: ColumnReference): this { this.predicateColumn('aes_hex_email','not_eq_col',reference); return this; }
-  public aesHexPhoneEq(value: unknown): this { this.predicate('aes_hex_phone','eq',value); return this; }
-  public aesHexPhone(value: unknown): this { return this.aesHexPhoneEq(value); }
-  public aesHexPhoneNotEq(value: unknown): this { this.predicate('aes_hex_phone','not_eq',value); return this; }
-  public aesHexPhoneIn(values: readonly unknown[]): this { this.predicateList('aes_hex_phone','in',values); return this; }
-  public aesHexPhoneNotIn(values: readonly unknown[]): this { this.predicateList('aes_hex_phone','not_in',values); return this; }
+  public aesHexPhoneEq(value: string): this { this.predicate('aes_hex_phone','eq',value); return this; }
+  public aesHexPhone(value: string): this { return this.aesHexPhoneEq(value); }
+  public aesHexPhoneNotEq(value: string): this { this.predicate('aes_hex_phone','not_eq',value); return this; }
+  public aesHexPhoneIn(values: readonly (string)[]): this { this.predicateList('aes_hex_phone','in',values); return this; }
+  public aesHexPhoneNotIn(values: readonly (string)[]): this { this.predicateList('aes_hex_phone','not_in',values); return this; }
   public aesHexPhoneIsNull(): this { this.predicateNull('aes_hex_phone','is_null'); return this; }
   public aesHexPhoneIsNotNull(): this { this.predicateNull('aes_hex_phone','is_not_null'); return this; }
   public aesHexPhoneEqCol(reference: ColumnReference): this { this.predicateColumn('aes_hex_phone','eq_col',reference); return this; }
   public aesHexPhoneNotEqCol(reference: ColumnReference): this { this.predicateColumn('aes_hex_phone','not_eq_col',reference); return this; }
-  public priceEq(value: unknown): this { this.predicate('price','eq',value); return this; }
-  public price(value: unknown): this { return this.priceEq(value); }
-  public priceNotEq(value: unknown): this { this.predicate('price','not_eq',value); return this; }
-  public priceGt(value: unknown): this { this.predicate('price','gt',value); return this; }
-  public priceGte(value: unknown): this { this.predicate('price','gte',value); return this; }
-  public priceLt(value: unknown): this { this.predicate('price','lt',value); return this; }
-  public priceLte(value: unknown): this { this.predicate('price','lte',value); return this; }
-  public priceIn(values: readonly unknown[]): this { this.predicateList('price','in',values); return this; }
-  public priceNotIn(values: readonly unknown[]): this { this.predicateList('price','not_in',values); return this; }
-  public priceBetween(low: unknown, high: unknown): this { this.predicateList('price','between',[low,high]); return this; }
+  public priceEq(value: number): this { this.predicate('price','eq',value); return this; }
+  public price(value: number): this { return this.priceEq(value); }
+  public priceNotEq(value: number): this { this.predicate('price','not_eq',value); return this; }
+  public priceGt(value: number): this { this.predicate('price','gt',value); return this; }
+  public priceGte(value: number): this { this.predicate('price','gte',value); return this; }
+  public priceLt(value: number): this { this.predicate('price','lt',value); return this; }
+  public priceLte(value: number): this { this.predicate('price','lte',value); return this; }
+  public priceIn(values: readonly (number)[]): this { this.predicateList('price','in',values); return this; }
+  public priceNotIn(values: readonly (number)[]): this { this.predicateList('price','not_in',values); return this; }
+  public priceBetween(low: number, high: number): this { this.predicateList('price','between',[low,high]); return this; }
   public priceIsNull(): this { this.predicateNull('price','is_null'); return this; }
   public priceIsNotNull(): this { this.predicateNull('price','is_not_null'); return this; }
   public priceEqCol(reference: ColumnReference): this { this.predicateColumn('price','eq_col',reference); return this; }
@@ -1061,11 +1063,11 @@ export class AuthorQuery extends QueryCore {
   public priceGteCol(reference: ColumnReference): this { this.predicateColumn('price','gte_col',reference); return this; }
   public priceLtCol(reference: ColumnReference): this { this.predicateColumn('price','lt_col',reference); return this; }
   public priceLteCol(reference: ColumnReference): this { this.predicateColumn('price','lte_col',reference); return this; }
-  public ipEq(value: unknown): this { this.predicate('ip','eq',value); return this; }
-  public ip(value: unknown): this { return this.ipEq(value); }
-  public ipNotEq(value: unknown): this { this.predicate('ip','not_eq',value); return this; }
-  public ipIn(values: readonly unknown[]): this { this.predicateList('ip','in',values); return this; }
-  public ipNotIn(values: readonly unknown[]): this { this.predicateList('ip','not_in',values); return this; }
+  public ipEq(value: string): this { this.predicate('ip','eq',value); return this; }
+  public ip(value: string): this { return this.ipEq(value); }
+  public ipNotEq(value: string): this { this.predicate('ip','not_eq',value); return this; }
+  public ipIn(values: readonly (string)[]): this { this.predicateList('ip','in',values); return this; }
+  public ipNotIn(values: readonly (string)[]): this { this.predicateList('ip','not_in',values); return this; }
   public ipIsNull(): this { this.predicateNull('ip','is_null'); return this; }
   public ipIsNotNull(): this { this.predicateNull('ip','is_not_null'); return this; }
   public ipEqCol(reference: ColumnReference): this { this.predicateColumn('ip','eq_col',reference); return this; }
@@ -1568,9 +1570,9 @@ export class AuthorQuery extends QueryCore {
   public async getByName(value: string): Promise<AuthorRow | null> { this.predicate('name','eq',value); return this.get(); }
   public async getsByName(value: string): Promise<Collection<AuthorRow>> { this.predicate('name','eq',value); return this.gets(); }
   public async getCountByName(value: string): Promise<number> { this.predicate('name','eq',value); return this.getCount(); }
-  public async getByDescription(value: string | null): Promise<AuthorRow | null> { this.predicate('description','eq',value); return this.get(); }
-  public async getsByDescription(value: string | null): Promise<Collection<AuthorRow>> { this.predicate('description','eq',value); return this.gets(); }
-  public async getCountByDescription(value: string | null): Promise<number> { this.predicate('description','eq',value); return this.getCount(); }
+  public async getByDescription(value: string): Promise<AuthorRow | null> { this.predicate('description','eq',value); return this.get(); }
+  public async getsByDescription(value: string): Promise<Collection<AuthorRow>> { this.predicate('description','eq',value); return this.gets(); }
+  public async getCountByDescription(value: string): Promise<number> { this.predicate('description','eq',value); return this.getCount(); }
   public async getByCreatedTs(value: string | Date): Promise<AuthorRow | null> { this.predicate('created_ts','eq',value); return this.get(); }
   public async getsByCreatedTs(value: string | Date): Promise<Collection<AuthorRow>> { this.predicate('created_ts','eq',value); return this.gets(); }
   public async getCountByCreatedTs(value: string | Date): Promise<number> { this.predicate('created_ts','eq',value); return this.getCount(); }
@@ -1583,12 +1585,12 @@ export class AuthorQuery extends QueryCore {
   public async getByIsDisplay(value: boolean): Promise<AuthorRow | null> { this.predicate('is_display','eq',value); return this.get(); }
   public async getsByIsDisplay(value: boolean): Promise<Collection<AuthorRow>> { this.predicate('is_display','eq',value); return this.gets(); }
   public async getCountByIsDisplay(value: boolean): Promise<number> { this.predicate('is_display','eq',value); return this.getCount(); }
-  public async getByDisplayStartDt(value: string | Date | null): Promise<AuthorRow | null> { this.predicate('display_start_dt','eq',value); return this.get(); }
-  public async getsByDisplayStartDt(value: string | Date | null): Promise<Collection<AuthorRow>> { this.predicate('display_start_dt','eq',value); return this.gets(); }
-  public async getCountByDisplayStartDt(value: string | Date | null): Promise<number> { this.predicate('display_start_dt','eq',value); return this.getCount(); }
-  public async getByDisplayEndDt(value: string | Date | null): Promise<AuthorRow | null> { this.predicate('display_end_dt','eq',value); return this.get(); }
-  public async getsByDisplayEndDt(value: string | Date | null): Promise<Collection<AuthorRow>> { this.predicate('display_end_dt','eq',value); return this.gets(); }
-  public async getCountByDisplayEndDt(value: string | Date | null): Promise<number> { this.predicate('display_end_dt','eq',value); return this.getCount(); }
+  public async getByDisplayStartDt(value: string | Date): Promise<AuthorRow | null> { this.predicate('display_start_dt','eq',value); return this.get(); }
+  public async getsByDisplayStartDt(value: string | Date): Promise<Collection<AuthorRow>> { this.predicate('display_start_dt','eq',value); return this.gets(); }
+  public async getCountByDisplayStartDt(value: string | Date): Promise<number> { this.predicate('display_start_dt','eq',value); return this.getCount(); }
+  public async getByDisplayEndDt(value: string | Date): Promise<AuthorRow | null> { this.predicate('display_end_dt','eq',value); return this.get(); }
+  public async getsByDisplayEndDt(value: string | Date): Promise<Collection<AuthorRow>> { this.predicate('display_end_dt','eq',value); return this.gets(); }
+  public async getCountByDisplayEndDt(value: string | Date): Promise<number> { this.predicate('display_end_dt','eq',value); return this.getCount(); }
   public async getByIsAllday(value: boolean): Promise<AuthorRow | null> { this.predicate('is_allday','eq',value); return this.get(); }
   public async getsByIsAllday(value: boolean): Promise<Collection<AuthorRow>> { this.predicate('is_allday','eq',value); return this.gets(); }
   public async getCountByIsAllday(value: boolean): Promise<number> { this.predicate('is_allday','eq',value); return this.getCount(); }
@@ -1604,9 +1606,9 @@ export class AuthorQuery extends QueryCore {
   public async getByReadCount(value: number): Promise<AuthorRow | null> { this.predicate('read_count','eq',value); return this.get(); }
   public async getsByReadCount(value: number): Promise<Collection<AuthorRow>> { this.predicate('read_count','eq',value); return this.gets(); }
   public async getCountByReadCount(value: number): Promise<number> { this.predicate('read_count','eq',value); return this.getCount(); }
-  public async getByPhotoUrl(value: string | null): Promise<AuthorRow | null> { this.predicate('photo_url','eq',value); return this.get(); }
-  public async getsByPhotoUrl(value: string | null): Promise<Collection<AuthorRow>> { this.predicate('photo_url','eq',value); return this.gets(); }
-  public async getCountByPhotoUrl(value: string | null): Promise<number> { this.predicate('photo_url','eq',value); return this.getCount(); }
+  public async getByPhotoUrl(value: string): Promise<AuthorRow | null> { this.predicate('photo_url','eq',value); return this.get(); }
+  public async getsByPhotoUrl(value: string): Promise<Collection<AuthorRow>> { this.predicate('photo_url','eq',value); return this.gets(); }
+  public async getCountByPhotoUrl(value: string): Promise<number> { this.predicate('photo_url','eq',value); return this.getCount(); }
   public async getByUserSeq(value: number): Promise<AuthorRow | null> { this.predicate('user_seq','eq',value); return this.get(); }
   public async getsByUserSeq(value: number): Promise<Collection<AuthorRow>> { this.predicate('user_seq','eq',value); return this.gets(); }
   public async getCountByUserSeq(value: number): Promise<number> { this.predicate('user_seq','eq',value); return this.getCount(); }
@@ -1625,9 +1627,9 @@ export class AuthorQuery extends QueryCore {
   public async getByEndDt(value: string | Date): Promise<AuthorRow | null> { this.predicate('end_dt','eq',value); return this.get(); }
   public async getsByEndDt(value: string | Date): Promise<Collection<AuthorRow>> { this.predicate('end_dt','eq',value); return this.gets(); }
   public async getCountByEndDt(value: string | Date): Promise<number> { this.predicate('end_dt','eq',value); return this.getCount(); }
-  public async getByUuid(value: string | null): Promise<AuthorRow | null> { this.predicate('uuid','eq',value); return this.get(); }
-  public async getsByUuid(value: string | null): Promise<Collection<AuthorRow>> { this.predicate('uuid','eq',value); return this.gets(); }
-  public async getCountByUuid(value: string | null): Promise<number> { this.predicate('uuid','eq',value); return this.getCount(); }
+  public async getByUuid(value: string): Promise<AuthorRow | null> { this.predicate('uuid','eq',value); return this.get(); }
+  public async getsByUuid(value: string): Promise<Collection<AuthorRow>> { this.predicate('uuid','eq',value); return this.gets(); }
+  public async getCountByUuid(value: string): Promise<number> { this.predicate('uuid','eq',value); return this.getCount(); }
   public async getByIsSingleWork(value: boolean): Promise<AuthorRow | null> { this.predicate('is_single_work','eq',value); return this.get(); }
   public async getsByIsSingleWork(value: boolean): Promise<Collection<AuthorRow>> { this.predicate('is_single_work','eq',value); return this.gets(); }
   public async getCountByIsSingleWork(value: boolean): Promise<number> { this.predicate('is_single_work','eq',value); return this.getCount(); }
@@ -1637,18 +1639,18 @@ export class AuthorQuery extends QueryCore {
   public async getByAesKeyVersion(value: number): Promise<AuthorRow | null> { this.predicate('aes_key_version','eq',value); return this.get(); }
   public async getsByAesKeyVersion(value: number): Promise<Collection<AuthorRow>> { this.predicate('aes_key_version','eq',value); return this.gets(); }
   public async getCountByAesKeyVersion(value: number): Promise<number> { this.predicate('aes_key_version','eq',value); return this.getCount(); }
-  public async getByAesHexEmail(value: string | null): Promise<AuthorRow | null> { this.predicate('aes_hex_email','eq',value); return this.get(); }
-  public async getsByAesHexEmail(value: string | null): Promise<Collection<AuthorRow>> { this.predicate('aes_hex_email','eq',value); return this.gets(); }
-  public async getCountByAesHexEmail(value: string | null): Promise<number> { this.predicate('aes_hex_email','eq',value); return this.getCount(); }
-  public async getByAesHexPhone(value: string | null): Promise<AuthorRow | null> { this.predicate('aes_hex_phone','eq',value); return this.get(); }
-  public async getsByAesHexPhone(value: string | null): Promise<Collection<AuthorRow>> { this.predicate('aes_hex_phone','eq',value); return this.gets(); }
-  public async getCountByAesHexPhone(value: string | null): Promise<number> { this.predicate('aes_hex_phone','eq',value); return this.getCount(); }
-  public async getByPrice(value: number | null): Promise<AuthorRow | null> { this.predicate('price','eq',value); return this.get(); }
-  public async getsByPrice(value: number | null): Promise<Collection<AuthorRow>> { this.predicate('price','eq',value); return this.gets(); }
-  public async getCountByPrice(value: number | null): Promise<number> { this.predicate('price','eq',value); return this.getCount(); }
-  public async getByIp(value: string | null): Promise<AuthorRow | null> { this.predicate('ip','eq',value); return this.get(); }
-  public async getsByIp(value: string | null): Promise<Collection<AuthorRow>> { this.predicate('ip','eq',value); return this.gets(); }
-  public async getCountByIp(value: string | null): Promise<number> { this.predicate('ip','eq',value); return this.getCount(); }
+  public async getByAesHexEmail(value: string): Promise<AuthorRow | null> { this.predicate('aes_hex_email','eq',value); return this.get(); }
+  public async getsByAesHexEmail(value: string): Promise<Collection<AuthorRow>> { this.predicate('aes_hex_email','eq',value); return this.gets(); }
+  public async getCountByAesHexEmail(value: string): Promise<number> { this.predicate('aes_hex_email','eq',value); return this.getCount(); }
+  public async getByAesHexPhone(value: string): Promise<AuthorRow | null> { this.predicate('aes_hex_phone','eq',value); return this.get(); }
+  public async getsByAesHexPhone(value: string): Promise<Collection<AuthorRow>> { this.predicate('aes_hex_phone','eq',value); return this.gets(); }
+  public async getCountByAesHexPhone(value: string): Promise<number> { this.predicate('aes_hex_phone','eq',value); return this.getCount(); }
+  public async getByPrice(value: number): Promise<AuthorRow | null> { this.predicate('price','eq',value); return this.get(); }
+  public async getsByPrice(value: number): Promise<Collection<AuthorRow>> { this.predicate('price','eq',value); return this.gets(); }
+  public async getCountByPrice(value: number): Promise<number> { this.predicate('price','eq',value); return this.getCount(); }
+  public async getByIp(value: string): Promise<AuthorRow | null> { this.predicate('ip','eq',value); return this.get(); }
+  public async getsByIp(value: string): Promise<Collection<AuthorRow>> { this.predicate('ip','eq',value); return this.gets(); }
+  public async getCountByIp(value: string): Promise<number> { this.predicate('ip','eq',value); return this.getCount(); }
 }
 export function Author(): AuthorQuery { return new AuthorQuery(); }
 registerRow('author',AuthorRow);
@@ -1663,16 +1665,16 @@ export class UserWhere {
   public or(): this { this.core.or(); return this; }
   public and(callback: (where: UserWhere) => void): this { this.core.and(core=>callback(new UserWhere(core))); return this; }
   public expression(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
-  public seqEq(value: unknown): this { this.core.predicate('seq','eq',value); return this; }
-  public seq(value: unknown): this { return this.seqEq(value); }
-  public seqNotEq(value: unknown): this { this.core.predicate('seq','not_eq',value); return this; }
-  public seqGt(value: unknown): this { this.core.predicate('seq','gt',value); return this; }
-  public seqGte(value: unknown): this { this.core.predicate('seq','gte',value); return this; }
-  public seqLt(value: unknown): this { this.core.predicate('seq','lt',value); return this; }
-  public seqLte(value: unknown): this { this.core.predicate('seq','lte',value); return this; }
-  public seqIn(values: readonly unknown[]): this { this.core.predicateList('seq','in',values); return this; }
-  public seqNotIn(values: readonly unknown[]): this { this.core.predicateList('seq','not_in',values); return this; }
-  public seqBetween(low: unknown, high: unknown): this { this.core.predicateList('seq','between',[low,high]); return this; }
+  public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.core.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.core.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.core.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.core.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.core.predicateList('seq','between',[low,high]); return this; }
   public seqIsNull(): this { this.core.predicateNull('seq','is_null'); return this; }
   public seqIsNotNull(): this { this.core.predicateNull('seq','is_not_null'); return this; }
   public seqEqCol(reference: ColumnReference): this { this.core.predicateColumn('seq','eq_col',reference); return this; }
@@ -1681,16 +1683,16 @@ export class UserWhere {
   public seqGteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','gte_col',reference); return this; }
   public seqLtCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lt_col',reference); return this; }
   public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
-  public nameEq(value: unknown): this { this.core.predicate('name','eq',value); return this; }
-  public name(value: unknown): this { return this.nameEq(value); }
-  public nameNotEq(value: unknown): this { this.core.predicate('name','not_eq',value); return this; }
-  public nameIn(values: readonly unknown[]): this { this.core.predicateList('name','in',values); return this; }
-  public nameNotIn(values: readonly unknown[]): this { this.core.predicateList('name','not_in',values); return this; }
-  public nameLike(value: unknown): this { this.core.predicate('name','like',value); return this; }
-  public nameLikeBinary(value: unknown): this { this.core.predicate('name','like_binary',value); return this; }
-  public nameContains(value: unknown): this { this.core.predicate('name','contains',value); return this; }
-  public nameStartsWith(value: unknown): this { this.core.predicate('name','starts_with',value); return this; }
-  public nameEndsWith(value: unknown): this { this.core.predicate('name','ends_with',value); return this; }
+  public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.core.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.core.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.core.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.core.predicate('name','ends_with',value); return this; }
   public nameIsNull(): this { this.core.predicateNull('name','is_null'); return this; }
   public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
@@ -1699,22 +1701,22 @@ export class UserWhere {
   public serviceMembers(callback: (where: ServiceMemberWhere) => void): this { this.core.navigate('service_members',core=>callback(new ServiceMemberWhere(core))); return this; }
 }
 
-export class UserQuery extends QueryCore {
+export class UserQuery extends QueryCore implements UserInterface {
   public constructor() { super('user'); }
   public and(callback: (where: UserWhere) => void): this { this.whereCore().and(core=>callback(new UserWhere(core))); return this; }
   public on(callback: (where: UserWhere) => void): this { return this.onGroup(core=>callback(new UserWhere(core))); }
   public where(callback: (where: UserWhere) => void): this { callback(new UserWhere(this.whereCore())); return this; }
   public having(callback: (where: UserWhere) => void): this { return this.havingGroup(core=>callback(new UserWhere(core))); }
-  public seqEq(value: unknown): this { this.predicate('seq','eq',value); return this; }
-  public seq(value: unknown): this { return this.seqEq(value); }
-  public seqNotEq(value: unknown): this { this.predicate('seq','not_eq',value); return this; }
-  public seqGt(value: unknown): this { this.predicate('seq','gt',value); return this; }
-  public seqGte(value: unknown): this { this.predicate('seq','gte',value); return this; }
-  public seqLt(value: unknown): this { this.predicate('seq','lt',value); return this; }
-  public seqLte(value: unknown): this { this.predicate('seq','lte',value); return this; }
-  public seqIn(values: readonly unknown[]): this { this.predicateList('seq','in',values); return this; }
-  public seqNotIn(values: readonly unknown[]): this { this.predicateList('seq','not_in',values); return this; }
-  public seqBetween(low: unknown, high: unknown): this { this.predicateList('seq','between',[low,high]); return this; }
+  public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.predicateList('seq','between',[low,high]); return this; }
   public seqIsNull(): this { this.predicateNull('seq','is_null'); return this; }
   public seqIsNotNull(): this { this.predicateNull('seq','is_not_null'); return this; }
   public seqEqCol(reference: ColumnReference): this { this.predicateColumn('seq','eq_col',reference); return this; }
@@ -1723,16 +1725,16 @@ export class UserQuery extends QueryCore {
   public seqGteCol(reference: ColumnReference): this { this.predicateColumn('seq','gte_col',reference); return this; }
   public seqLtCol(reference: ColumnReference): this { this.predicateColumn('seq','lt_col',reference); return this; }
   public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
-  public nameEq(value: unknown): this { this.predicate('name','eq',value); return this; }
-  public name(value: unknown): this { return this.nameEq(value); }
-  public nameNotEq(value: unknown): this { this.predicate('name','not_eq',value); return this; }
-  public nameIn(values: readonly unknown[]): this { this.predicateList('name','in',values); return this; }
-  public nameNotIn(values: readonly unknown[]): this { this.predicateList('name','not_in',values); return this; }
-  public nameLike(value: unknown): this { this.predicate('name','like',value); return this; }
-  public nameLikeBinary(value: unknown): this { this.predicate('name','like_binary',value); return this; }
-  public nameContains(value: unknown): this { this.predicate('name','contains',value); return this; }
-  public nameStartsWith(value: unknown): this { this.predicate('name','starts_with',value); return this; }
-  public nameEndsWith(value: unknown): this { this.predicate('name','ends_with',value); return this; }
+  public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.predicate('name','ends_with',value); return this; }
   public nameIsNull(): this { this.predicateNull('name','is_null'); return this; }
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
@@ -1841,16 +1843,16 @@ export class ServiceWhere {
   public or(): this { this.core.or(); return this; }
   public and(callback: (where: ServiceWhere) => void): this { this.core.and(core=>callback(new ServiceWhere(core))); return this; }
   public expression(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
-  public seqEq(value: unknown): this { this.core.predicate('seq','eq',value); return this; }
-  public seq(value: unknown): this { return this.seqEq(value); }
-  public seqNotEq(value: unknown): this { this.core.predicate('seq','not_eq',value); return this; }
-  public seqGt(value: unknown): this { this.core.predicate('seq','gt',value); return this; }
-  public seqGte(value: unknown): this { this.core.predicate('seq','gte',value); return this; }
-  public seqLt(value: unknown): this { this.core.predicate('seq','lt',value); return this; }
-  public seqLte(value: unknown): this { this.core.predicate('seq','lte',value); return this; }
-  public seqIn(values: readonly unknown[]): this { this.core.predicateList('seq','in',values); return this; }
-  public seqNotIn(values: readonly unknown[]): this { this.core.predicateList('seq','not_in',values); return this; }
-  public seqBetween(low: unknown, high: unknown): this { this.core.predicateList('seq','between',[low,high]); return this; }
+  public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.core.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.core.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.core.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.core.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.core.predicateList('seq','between',[low,high]); return this; }
   public seqIsNull(): this { this.core.predicateNull('seq','is_null'); return this; }
   public seqIsNotNull(): this { this.core.predicateNull('seq','is_not_null'); return this; }
   public seqEqCol(reference: ColumnReference): this { this.core.predicateColumn('seq','eq_col',reference); return this; }
@@ -1859,16 +1861,16 @@ export class ServiceWhere {
   public seqGteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','gte_col',reference); return this; }
   public seqLtCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lt_col',reference); return this; }
   public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
-  public nameEq(value: unknown): this { this.core.predicate('name','eq',value); return this; }
-  public name(value: unknown): this { return this.nameEq(value); }
-  public nameNotEq(value: unknown): this { this.core.predicate('name','not_eq',value); return this; }
-  public nameIn(values: readonly unknown[]): this { this.core.predicateList('name','in',values); return this; }
-  public nameNotIn(values: readonly unknown[]): this { this.core.predicateList('name','not_in',values); return this; }
-  public nameLike(value: unknown): this { this.core.predicate('name','like',value); return this; }
-  public nameLikeBinary(value: unknown): this { this.core.predicate('name','like_binary',value); return this; }
-  public nameContains(value: unknown): this { this.core.predicate('name','contains',value); return this; }
-  public nameStartsWith(value: unknown): this { this.core.predicate('name','starts_with',value); return this; }
-  public nameEndsWith(value: unknown): this { this.core.predicate('name','ends_with',value); return this; }
+  public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.core.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.core.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.core.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.core.predicate('name','ends_with',value); return this; }
   public nameIsNull(): this { this.core.predicateNull('name','is_null'); return this; }
   public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
@@ -1878,22 +1880,22 @@ export class ServiceWhere {
   public modules(callback: (where: ServiceRegionWhere) => void): this { this.core.navigate('modules',core=>callback(new ServiceRegionWhere(core))); return this; }
 }
 
-export class ServiceQuery extends QueryCore {
+export class ServiceQuery extends QueryCore implements ServiceInterface {
   public constructor() { super('service'); }
   public and(callback: (where: ServiceWhere) => void): this { this.whereCore().and(core=>callback(new ServiceWhere(core))); return this; }
   public on(callback: (where: ServiceWhere) => void): this { return this.onGroup(core=>callback(new ServiceWhere(core))); }
   public where(callback: (where: ServiceWhere) => void): this { callback(new ServiceWhere(this.whereCore())); return this; }
   public having(callback: (where: ServiceWhere) => void): this { return this.havingGroup(core=>callback(new ServiceWhere(core))); }
-  public seqEq(value: unknown): this { this.predicate('seq','eq',value); return this; }
-  public seq(value: unknown): this { return this.seqEq(value); }
-  public seqNotEq(value: unknown): this { this.predicate('seq','not_eq',value); return this; }
-  public seqGt(value: unknown): this { this.predicate('seq','gt',value); return this; }
-  public seqGte(value: unknown): this { this.predicate('seq','gte',value); return this; }
-  public seqLt(value: unknown): this { this.predicate('seq','lt',value); return this; }
-  public seqLte(value: unknown): this { this.predicate('seq','lte',value); return this; }
-  public seqIn(values: readonly unknown[]): this { this.predicateList('seq','in',values); return this; }
-  public seqNotIn(values: readonly unknown[]): this { this.predicateList('seq','not_in',values); return this; }
-  public seqBetween(low: unknown, high: unknown): this { this.predicateList('seq','between',[low,high]); return this; }
+  public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.predicateList('seq','between',[low,high]); return this; }
   public seqIsNull(): this { this.predicateNull('seq','is_null'); return this; }
   public seqIsNotNull(): this { this.predicateNull('seq','is_not_null'); return this; }
   public seqEqCol(reference: ColumnReference): this { this.predicateColumn('seq','eq_col',reference); return this; }
@@ -1902,16 +1904,16 @@ export class ServiceQuery extends QueryCore {
   public seqGteCol(reference: ColumnReference): this { this.predicateColumn('seq','gte_col',reference); return this; }
   public seqLtCol(reference: ColumnReference): this { this.predicateColumn('seq','lt_col',reference); return this; }
   public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
-  public nameEq(value: unknown): this { this.predicate('name','eq',value); return this; }
-  public name(value: unknown): this { return this.nameEq(value); }
-  public nameNotEq(value: unknown): this { this.predicate('name','not_eq',value); return this; }
-  public nameIn(values: readonly unknown[]): this { this.predicateList('name','in',values); return this; }
-  public nameNotIn(values: readonly unknown[]): this { this.predicateList('name','not_in',values); return this; }
-  public nameLike(value: unknown): this { this.predicate('name','like',value); return this; }
-  public nameLikeBinary(value: unknown): this { this.predicate('name','like_binary',value); return this; }
-  public nameContains(value: unknown): this { this.predicate('name','contains',value); return this; }
-  public nameStartsWith(value: unknown): this { this.predicate('name','starts_with',value); return this; }
-  public nameEndsWith(value: unknown): this { this.predicate('name','ends_with',value); return this; }
+  public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.predicate('name','ends_with',value); return this; }
   public nameIsNull(): this { this.predicateNull('name','is_null'); return this; }
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
@@ -2022,16 +2024,16 @@ export class ServiceRegionWhere {
   public or(): this { this.core.or(); return this; }
   public and(callback: (where: ServiceRegionWhere) => void): this { this.core.and(core=>callback(new ServiceRegionWhere(core))); return this; }
   public expression(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
-  public seqEq(value: unknown): this { this.core.predicate('seq','eq',value); return this; }
-  public seq(value: unknown): this { return this.seqEq(value); }
-  public seqNotEq(value: unknown): this { this.core.predicate('seq','not_eq',value); return this; }
-  public seqGt(value: unknown): this { this.core.predicate('seq','gt',value); return this; }
-  public seqGte(value: unknown): this { this.core.predicate('seq','gte',value); return this; }
-  public seqLt(value: unknown): this { this.core.predicate('seq','lt',value); return this; }
-  public seqLte(value: unknown): this { this.core.predicate('seq','lte',value); return this; }
-  public seqIn(values: readonly unknown[]): this { this.core.predicateList('seq','in',values); return this; }
-  public seqNotIn(values: readonly unknown[]): this { this.core.predicateList('seq','not_in',values); return this; }
-  public seqBetween(low: unknown, high: unknown): this { this.core.predicateList('seq','between',[low,high]); return this; }
+  public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.core.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.core.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.core.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.core.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.core.predicateList('seq','between',[low,high]); return this; }
   public seqIsNull(): this { this.core.predicateNull('seq','is_null'); return this; }
   public seqIsNotNull(): this { this.core.predicateNull('seq','is_not_null'); return this; }
   public seqEqCol(reference: ColumnReference): this { this.core.predicateColumn('seq','eq_col',reference); return this; }
@@ -2040,16 +2042,16 @@ export class ServiceRegionWhere {
   public seqGteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','gte_col',reference); return this; }
   public seqLtCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lt_col',reference); return this; }
   public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
-  public serviceSeqEq(value: unknown): this { this.core.predicate('service_seq','eq',value); return this; }
-  public serviceSeq(value: unknown): this { return this.serviceSeqEq(value); }
-  public serviceSeqNotEq(value: unknown): this { this.core.predicate('service_seq','not_eq',value); return this; }
-  public serviceSeqGt(value: unknown): this { this.core.predicate('service_seq','gt',value); return this; }
-  public serviceSeqGte(value: unknown): this { this.core.predicate('service_seq','gte',value); return this; }
-  public serviceSeqLt(value: unknown): this { this.core.predicate('service_seq','lt',value); return this; }
-  public serviceSeqLte(value: unknown): this { this.core.predicate('service_seq','lte',value); return this; }
-  public serviceSeqIn(values: readonly unknown[]): this { this.core.predicateList('service_seq','in',values); return this; }
-  public serviceSeqNotIn(values: readonly unknown[]): this { this.core.predicateList('service_seq','not_in',values); return this; }
-  public serviceSeqBetween(low: unknown, high: unknown): this { this.core.predicateList('service_seq','between',[low,high]); return this; }
+  public serviceSeqEq(value: number): this { this.core.predicate('service_seq','eq',value); return this; }
+  public serviceSeq(value: number): this { return this.serviceSeqEq(value); }
+  public serviceSeqNotEq(value: number): this { this.core.predicate('service_seq','not_eq',value); return this; }
+  public serviceSeqGt(value: number): this { this.core.predicate('service_seq','gt',value); return this; }
+  public serviceSeqGte(value: number): this { this.core.predicate('service_seq','gte',value); return this; }
+  public serviceSeqLt(value: number): this { this.core.predicate('service_seq','lt',value); return this; }
+  public serviceSeqLte(value: number): this { this.core.predicate('service_seq','lte',value); return this; }
+  public serviceSeqIn(values: readonly (number)[]): this { this.core.predicateList('service_seq','in',values); return this; }
+  public serviceSeqNotIn(values: readonly (number)[]): this { this.core.predicateList('service_seq','not_in',values); return this; }
+  public serviceSeqBetween(low: number, high: number): this { this.core.predicateList('service_seq','between',[low,high]); return this; }
   public serviceSeqIsNull(): this { this.core.predicateNull('service_seq','is_null'); return this; }
   public serviceSeqIsNotNull(): this { this.core.predicateNull('service_seq','is_not_null'); return this; }
   public serviceSeqEqCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','eq_col',reference); return this; }
@@ -2058,16 +2060,16 @@ export class ServiceRegionWhere {
   public serviceSeqGteCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','gte_col',reference); return this; }
   public serviceSeqLtCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','lt_col',reference); return this; }
   public serviceSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','lte_col',reference); return this; }
-  public nameEq(value: unknown): this { this.core.predicate('name','eq',value); return this; }
-  public name(value: unknown): this { return this.nameEq(value); }
-  public nameNotEq(value: unknown): this { this.core.predicate('name','not_eq',value); return this; }
-  public nameIn(values: readonly unknown[]): this { this.core.predicateList('name','in',values); return this; }
-  public nameNotIn(values: readonly unknown[]): this { this.core.predicateList('name','not_in',values); return this; }
-  public nameLike(value: unknown): this { this.core.predicate('name','like',value); return this; }
-  public nameLikeBinary(value: unknown): this { this.core.predicate('name','like_binary',value); return this; }
-  public nameContains(value: unknown): this { this.core.predicate('name','contains',value); return this; }
-  public nameStartsWith(value: unknown): this { this.core.predicate('name','starts_with',value); return this; }
-  public nameEndsWith(value: unknown): this { this.core.predicate('name','ends_with',value); return this; }
+  public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.core.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.core.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.core.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.core.predicate('name','ends_with',value); return this; }
   public nameIsNull(): this { this.core.predicateNull('name','is_null'); return this; }
   public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
@@ -2076,22 +2078,22 @@ export class ServiceRegionWhere {
   public service(callback: (where: ServiceWhere) => void): this { this.core.navigate('service',core=>callback(new ServiceWhere(core))); return this; }
 }
 
-export class ServiceRegionQuery extends QueryCore {
+export class ServiceRegionQuery extends QueryCore implements ServiceRegionInterface {
   public constructor() { super('service_region'); }
   public and(callback: (where: ServiceRegionWhere) => void): this { this.whereCore().and(core=>callback(new ServiceRegionWhere(core))); return this; }
   public on(callback: (where: ServiceRegionWhere) => void): this { return this.onGroup(core=>callback(new ServiceRegionWhere(core))); }
   public where(callback: (where: ServiceRegionWhere) => void): this { callback(new ServiceRegionWhere(this.whereCore())); return this; }
   public having(callback: (where: ServiceRegionWhere) => void): this { return this.havingGroup(core=>callback(new ServiceRegionWhere(core))); }
-  public seqEq(value: unknown): this { this.predicate('seq','eq',value); return this; }
-  public seq(value: unknown): this { return this.seqEq(value); }
-  public seqNotEq(value: unknown): this { this.predicate('seq','not_eq',value); return this; }
-  public seqGt(value: unknown): this { this.predicate('seq','gt',value); return this; }
-  public seqGte(value: unknown): this { this.predicate('seq','gte',value); return this; }
-  public seqLt(value: unknown): this { this.predicate('seq','lt',value); return this; }
-  public seqLte(value: unknown): this { this.predicate('seq','lte',value); return this; }
-  public seqIn(values: readonly unknown[]): this { this.predicateList('seq','in',values); return this; }
-  public seqNotIn(values: readonly unknown[]): this { this.predicateList('seq','not_in',values); return this; }
-  public seqBetween(low: unknown, high: unknown): this { this.predicateList('seq','between',[low,high]); return this; }
+  public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.predicateList('seq','between',[low,high]); return this; }
   public seqIsNull(): this { this.predicateNull('seq','is_null'); return this; }
   public seqIsNotNull(): this { this.predicateNull('seq','is_not_null'); return this; }
   public seqEqCol(reference: ColumnReference): this { this.predicateColumn('seq','eq_col',reference); return this; }
@@ -2100,16 +2102,16 @@ export class ServiceRegionQuery extends QueryCore {
   public seqGteCol(reference: ColumnReference): this { this.predicateColumn('seq','gte_col',reference); return this; }
   public seqLtCol(reference: ColumnReference): this { this.predicateColumn('seq','lt_col',reference); return this; }
   public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
-  public serviceSeqEq(value: unknown): this { this.predicate('service_seq','eq',value); return this; }
-  public serviceSeq(value: unknown): this { return this.serviceSeqEq(value); }
-  public serviceSeqNotEq(value: unknown): this { this.predicate('service_seq','not_eq',value); return this; }
-  public serviceSeqGt(value: unknown): this { this.predicate('service_seq','gt',value); return this; }
-  public serviceSeqGte(value: unknown): this { this.predicate('service_seq','gte',value); return this; }
-  public serviceSeqLt(value: unknown): this { this.predicate('service_seq','lt',value); return this; }
-  public serviceSeqLte(value: unknown): this { this.predicate('service_seq','lte',value); return this; }
-  public serviceSeqIn(values: readonly unknown[]): this { this.predicateList('service_seq','in',values); return this; }
-  public serviceSeqNotIn(values: readonly unknown[]): this { this.predicateList('service_seq','not_in',values); return this; }
-  public serviceSeqBetween(low: unknown, high: unknown): this { this.predicateList('service_seq','between',[low,high]); return this; }
+  public serviceSeqEq(value: number): this { this.predicate('service_seq','eq',value); return this; }
+  public serviceSeq(value: number): this { return this.serviceSeqEq(value); }
+  public serviceSeqNotEq(value: number): this { this.predicate('service_seq','not_eq',value); return this; }
+  public serviceSeqGt(value: number): this { this.predicate('service_seq','gt',value); return this; }
+  public serviceSeqGte(value: number): this { this.predicate('service_seq','gte',value); return this; }
+  public serviceSeqLt(value: number): this { this.predicate('service_seq','lt',value); return this; }
+  public serviceSeqLte(value: number): this { this.predicate('service_seq','lte',value); return this; }
+  public serviceSeqIn(values: readonly (number)[]): this { this.predicateList('service_seq','in',values); return this; }
+  public serviceSeqNotIn(values: readonly (number)[]): this { this.predicateList('service_seq','not_in',values); return this; }
+  public serviceSeqBetween(low: number, high: number): this { this.predicateList('service_seq','between',[low,high]); return this; }
   public serviceSeqIsNull(): this { this.predicateNull('service_seq','is_null'); return this; }
   public serviceSeqIsNotNull(): this { this.predicateNull('service_seq','is_not_null'); return this; }
   public serviceSeqEqCol(reference: ColumnReference): this { this.predicateColumn('service_seq','eq_col',reference); return this; }
@@ -2118,16 +2120,16 @@ export class ServiceRegionQuery extends QueryCore {
   public serviceSeqGteCol(reference: ColumnReference): this { this.predicateColumn('service_seq','gte_col',reference); return this; }
   public serviceSeqLtCol(reference: ColumnReference): this { this.predicateColumn('service_seq','lt_col',reference); return this; }
   public serviceSeqLteCol(reference: ColumnReference): this { this.predicateColumn('service_seq','lte_col',reference); return this; }
-  public nameEq(value: unknown): this { this.predicate('name','eq',value); return this; }
-  public name(value: unknown): this { return this.nameEq(value); }
-  public nameNotEq(value: unknown): this { this.predicate('name','not_eq',value); return this; }
-  public nameIn(values: readonly unknown[]): this { this.predicateList('name','in',values); return this; }
-  public nameNotIn(values: readonly unknown[]): this { this.predicateList('name','not_in',values); return this; }
-  public nameLike(value: unknown): this { this.predicate('name','like',value); return this; }
-  public nameLikeBinary(value: unknown): this { this.predicate('name','like_binary',value); return this; }
-  public nameContains(value: unknown): this { this.predicate('name','contains',value); return this; }
-  public nameStartsWith(value: unknown): this { this.predicate('name','starts_with',value); return this; }
-  public nameEndsWith(value: unknown): this { this.predicate('name','ends_with',value); return this; }
+  public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
+  public name(value: string): this { return this.nameEq(value); }
+  public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
+  public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
+  public nameLike(value: string): this { this.predicate('name','like',value); return this; }
+  public nameLikeBinary(value: string): this { this.predicate('name','like_binary',value); return this; }
+  public nameContains(value: string): this { this.predicate('name','contains',value); return this; }
+  public nameStartsWith(value: string): this { this.predicate('name','starts_with',value); return this; }
+  public nameEndsWith(value: string): this { this.predicate('name','ends_with',value); return this; }
   public nameIsNull(): this { this.predicateNull('name','is_null'); return this; }
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
@@ -2265,16 +2267,16 @@ export class ServiceMemberWhere {
   public or(): this { this.core.or(); return this; }
   public and(callback: (where: ServiceMemberWhere) => void): this { this.core.and(core=>callback(new ServiceMemberWhere(core))); return this; }
   public expression(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
-  public seqEq(value: unknown): this { this.core.predicate('seq','eq',value); return this; }
-  public seq(value: unknown): this { return this.seqEq(value); }
-  public seqNotEq(value: unknown): this { this.core.predicate('seq','not_eq',value); return this; }
-  public seqGt(value: unknown): this { this.core.predicate('seq','gt',value); return this; }
-  public seqGte(value: unknown): this { this.core.predicate('seq','gte',value); return this; }
-  public seqLt(value: unknown): this { this.core.predicate('seq','lt',value); return this; }
-  public seqLte(value: unknown): this { this.core.predicate('seq','lte',value); return this; }
-  public seqIn(values: readonly unknown[]): this { this.core.predicateList('seq','in',values); return this; }
-  public seqNotIn(values: readonly unknown[]): this { this.core.predicateList('seq','not_in',values); return this; }
-  public seqBetween(low: unknown, high: unknown): this { this.core.predicateList('seq','between',[low,high]); return this; }
+  public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.core.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.core.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.core.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.core.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.core.predicateList('seq','between',[low,high]); return this; }
   public seqIsNull(): this { this.core.predicateNull('seq','is_null'); return this; }
   public seqIsNotNull(): this { this.core.predicateNull('seq','is_not_null'); return this; }
   public seqEqCol(reference: ColumnReference): this { this.core.predicateColumn('seq','eq_col',reference); return this; }
@@ -2283,16 +2285,16 @@ export class ServiceMemberWhere {
   public seqGteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','gte_col',reference); return this; }
   public seqLtCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lt_col',reference); return this; }
   public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
-  public serviceSeqEq(value: unknown): this { this.core.predicate('service_seq','eq',value); return this; }
-  public serviceSeq(value: unknown): this { return this.serviceSeqEq(value); }
-  public serviceSeqNotEq(value: unknown): this { this.core.predicate('service_seq','not_eq',value); return this; }
-  public serviceSeqGt(value: unknown): this { this.core.predicate('service_seq','gt',value); return this; }
-  public serviceSeqGte(value: unknown): this { this.core.predicate('service_seq','gte',value); return this; }
-  public serviceSeqLt(value: unknown): this { this.core.predicate('service_seq','lt',value); return this; }
-  public serviceSeqLte(value: unknown): this { this.core.predicate('service_seq','lte',value); return this; }
-  public serviceSeqIn(values: readonly unknown[]): this { this.core.predicateList('service_seq','in',values); return this; }
-  public serviceSeqNotIn(values: readonly unknown[]): this { this.core.predicateList('service_seq','not_in',values); return this; }
-  public serviceSeqBetween(low: unknown, high: unknown): this { this.core.predicateList('service_seq','between',[low,high]); return this; }
+  public serviceSeqEq(value: number): this { this.core.predicate('service_seq','eq',value); return this; }
+  public serviceSeq(value: number): this { return this.serviceSeqEq(value); }
+  public serviceSeqNotEq(value: number): this { this.core.predicate('service_seq','not_eq',value); return this; }
+  public serviceSeqGt(value: number): this { this.core.predicate('service_seq','gt',value); return this; }
+  public serviceSeqGte(value: number): this { this.core.predicate('service_seq','gte',value); return this; }
+  public serviceSeqLt(value: number): this { this.core.predicate('service_seq','lt',value); return this; }
+  public serviceSeqLte(value: number): this { this.core.predicate('service_seq','lte',value); return this; }
+  public serviceSeqIn(values: readonly (number)[]): this { this.core.predicateList('service_seq','in',values); return this; }
+  public serviceSeqNotIn(values: readonly (number)[]): this { this.core.predicateList('service_seq','not_in',values); return this; }
+  public serviceSeqBetween(low: number, high: number): this { this.core.predicateList('service_seq','between',[low,high]); return this; }
   public serviceSeqIsNull(): this { this.core.predicateNull('service_seq','is_null'); return this; }
   public serviceSeqIsNotNull(): this { this.core.predicateNull('service_seq','is_not_null'); return this; }
   public serviceSeqEqCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','eq_col',reference); return this; }
@@ -2301,16 +2303,16 @@ export class ServiceMemberWhere {
   public serviceSeqGteCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','gte_col',reference); return this; }
   public serviceSeqLtCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','lt_col',reference); return this; }
   public serviceSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','lte_col',reference); return this; }
-  public userSeqEq(value: unknown): this { this.core.predicate('user_seq','eq',value); return this; }
-  public userSeq(value: unknown): this { return this.userSeqEq(value); }
-  public userSeqNotEq(value: unknown): this { this.core.predicate('user_seq','not_eq',value); return this; }
-  public userSeqGt(value: unknown): this { this.core.predicate('user_seq','gt',value); return this; }
-  public userSeqGte(value: unknown): this { this.core.predicate('user_seq','gte',value); return this; }
-  public userSeqLt(value: unknown): this { this.core.predicate('user_seq','lt',value); return this; }
-  public userSeqLte(value: unknown): this { this.core.predicate('user_seq','lte',value); return this; }
-  public userSeqIn(values: readonly unknown[]): this { this.core.predicateList('user_seq','in',values); return this; }
-  public userSeqNotIn(values: readonly unknown[]): this { this.core.predicateList('user_seq','not_in',values); return this; }
-  public userSeqBetween(low: unknown, high: unknown): this { this.core.predicateList('user_seq','between',[low,high]); return this; }
+  public userSeqEq(value: number): this { this.core.predicate('user_seq','eq',value); return this; }
+  public userSeq(value: number): this { return this.userSeqEq(value); }
+  public userSeqNotEq(value: number): this { this.core.predicate('user_seq','not_eq',value); return this; }
+  public userSeqGt(value: number): this { this.core.predicate('user_seq','gt',value); return this; }
+  public userSeqGte(value: number): this { this.core.predicate('user_seq','gte',value); return this; }
+  public userSeqLt(value: number): this { this.core.predicate('user_seq','lt',value); return this; }
+  public userSeqLte(value: number): this { this.core.predicate('user_seq','lte',value); return this; }
+  public userSeqIn(values: readonly (number)[]): this { this.core.predicateList('user_seq','in',values); return this; }
+  public userSeqNotIn(values: readonly (number)[]): this { this.core.predicateList('user_seq','not_in',values); return this; }
+  public userSeqBetween(low: number, high: number): this { this.core.predicateList('user_seq','between',[low,high]); return this; }
   public userSeqIsNull(): this { this.core.predicateNull('user_seq','is_null'); return this; }
   public userSeqIsNotNull(): this { this.core.predicateNull('user_seq','is_not_null'); return this; }
   public userSeqEqCol(reference: ColumnReference): this { this.core.predicateColumn('user_seq','eq_col',reference); return this; }
@@ -2324,22 +2326,22 @@ export class ServiceMemberWhere {
   public user(callback: (where: UserWhere) => void): this { this.core.navigate('user',core=>callback(new UserWhere(core))); return this; }
 }
 
-export class ServiceMemberQuery extends QueryCore {
+export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterface {
   public constructor() { super('service_member'); }
   public and(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().and(core=>callback(new ServiceMemberWhere(core))); return this; }
   public on(callback: (where: ServiceMemberWhere) => void): this { return this.onGroup(core=>callback(new ServiceMemberWhere(core))); }
   public where(callback: (where: ServiceMemberWhere) => void): this { callback(new ServiceMemberWhere(this.whereCore())); return this; }
   public having(callback: (where: ServiceMemberWhere) => void): this { return this.havingGroup(core=>callback(new ServiceMemberWhere(core))); }
-  public seqEq(value: unknown): this { this.predicate('seq','eq',value); return this; }
-  public seq(value: unknown): this { return this.seqEq(value); }
-  public seqNotEq(value: unknown): this { this.predicate('seq','not_eq',value); return this; }
-  public seqGt(value: unknown): this { this.predicate('seq','gt',value); return this; }
-  public seqGte(value: unknown): this { this.predicate('seq','gte',value); return this; }
-  public seqLt(value: unknown): this { this.predicate('seq','lt',value); return this; }
-  public seqLte(value: unknown): this { this.predicate('seq','lte',value); return this; }
-  public seqIn(values: readonly unknown[]): this { this.predicateList('seq','in',values); return this; }
-  public seqNotIn(values: readonly unknown[]): this { this.predicateList('seq','not_in',values); return this; }
-  public seqBetween(low: unknown, high: unknown): this { this.predicateList('seq','between',[low,high]); return this; }
+  public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
+  public seq(value: number): this { return this.seqEq(value); }
+  public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
+  public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
+  public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
+  public seqLt(value: number): this { this.predicate('seq','lt',value); return this; }
+  public seqLte(value: number): this { this.predicate('seq','lte',value); return this; }
+  public seqIn(values: readonly (number)[]): this { this.predicateList('seq','in',values); return this; }
+  public seqNotIn(values: readonly (number)[]): this { this.predicateList('seq','not_in',values); return this; }
+  public seqBetween(low: number, high: number): this { this.predicateList('seq','between',[low,high]); return this; }
   public seqIsNull(): this { this.predicateNull('seq','is_null'); return this; }
   public seqIsNotNull(): this { this.predicateNull('seq','is_not_null'); return this; }
   public seqEqCol(reference: ColumnReference): this { this.predicateColumn('seq','eq_col',reference); return this; }
@@ -2348,16 +2350,16 @@ export class ServiceMemberQuery extends QueryCore {
   public seqGteCol(reference: ColumnReference): this { this.predicateColumn('seq','gte_col',reference); return this; }
   public seqLtCol(reference: ColumnReference): this { this.predicateColumn('seq','lt_col',reference); return this; }
   public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
-  public serviceSeqEq(value: unknown): this { this.predicate('service_seq','eq',value); return this; }
-  public serviceSeq(value: unknown): this { return this.serviceSeqEq(value); }
-  public serviceSeqNotEq(value: unknown): this { this.predicate('service_seq','not_eq',value); return this; }
-  public serviceSeqGt(value: unknown): this { this.predicate('service_seq','gt',value); return this; }
-  public serviceSeqGte(value: unknown): this { this.predicate('service_seq','gte',value); return this; }
-  public serviceSeqLt(value: unknown): this { this.predicate('service_seq','lt',value); return this; }
-  public serviceSeqLte(value: unknown): this { this.predicate('service_seq','lte',value); return this; }
-  public serviceSeqIn(values: readonly unknown[]): this { this.predicateList('service_seq','in',values); return this; }
-  public serviceSeqNotIn(values: readonly unknown[]): this { this.predicateList('service_seq','not_in',values); return this; }
-  public serviceSeqBetween(low: unknown, high: unknown): this { this.predicateList('service_seq','between',[low,high]); return this; }
+  public serviceSeqEq(value: number): this { this.predicate('service_seq','eq',value); return this; }
+  public serviceSeq(value: number): this { return this.serviceSeqEq(value); }
+  public serviceSeqNotEq(value: number): this { this.predicate('service_seq','not_eq',value); return this; }
+  public serviceSeqGt(value: number): this { this.predicate('service_seq','gt',value); return this; }
+  public serviceSeqGte(value: number): this { this.predicate('service_seq','gte',value); return this; }
+  public serviceSeqLt(value: number): this { this.predicate('service_seq','lt',value); return this; }
+  public serviceSeqLte(value: number): this { this.predicate('service_seq','lte',value); return this; }
+  public serviceSeqIn(values: readonly (number)[]): this { this.predicateList('service_seq','in',values); return this; }
+  public serviceSeqNotIn(values: readonly (number)[]): this { this.predicateList('service_seq','not_in',values); return this; }
+  public serviceSeqBetween(low: number, high: number): this { this.predicateList('service_seq','between',[low,high]); return this; }
   public serviceSeqIsNull(): this { this.predicateNull('service_seq','is_null'); return this; }
   public serviceSeqIsNotNull(): this { this.predicateNull('service_seq','is_not_null'); return this; }
   public serviceSeqEqCol(reference: ColumnReference): this { this.predicateColumn('service_seq','eq_col',reference); return this; }
@@ -2366,16 +2368,16 @@ export class ServiceMemberQuery extends QueryCore {
   public serviceSeqGteCol(reference: ColumnReference): this { this.predicateColumn('service_seq','gte_col',reference); return this; }
   public serviceSeqLtCol(reference: ColumnReference): this { this.predicateColumn('service_seq','lt_col',reference); return this; }
   public serviceSeqLteCol(reference: ColumnReference): this { this.predicateColumn('service_seq','lte_col',reference); return this; }
-  public userSeqEq(value: unknown): this { this.predicate('user_seq','eq',value); return this; }
-  public userSeq(value: unknown): this { return this.userSeqEq(value); }
-  public userSeqNotEq(value: unknown): this { this.predicate('user_seq','not_eq',value); return this; }
-  public userSeqGt(value: unknown): this { this.predicate('user_seq','gt',value); return this; }
-  public userSeqGte(value: unknown): this { this.predicate('user_seq','gte',value); return this; }
-  public userSeqLt(value: unknown): this { this.predicate('user_seq','lt',value); return this; }
-  public userSeqLte(value: unknown): this { this.predicate('user_seq','lte',value); return this; }
-  public userSeqIn(values: readonly unknown[]): this { this.predicateList('user_seq','in',values); return this; }
-  public userSeqNotIn(values: readonly unknown[]): this { this.predicateList('user_seq','not_in',values); return this; }
-  public userSeqBetween(low: unknown, high: unknown): this { this.predicateList('user_seq','between',[low,high]); return this; }
+  public userSeqEq(value: number): this { this.predicate('user_seq','eq',value); return this; }
+  public userSeq(value: number): this { return this.userSeqEq(value); }
+  public userSeqNotEq(value: number): this { this.predicate('user_seq','not_eq',value); return this; }
+  public userSeqGt(value: number): this { this.predicate('user_seq','gt',value); return this; }
+  public userSeqGte(value: number): this { this.predicate('user_seq','gte',value); return this; }
+  public userSeqLt(value: number): this { this.predicate('user_seq','lt',value); return this; }
+  public userSeqLte(value: number): this { this.predicate('user_seq','lte',value); return this; }
+  public userSeqIn(values: readonly (number)[]): this { this.predicateList('user_seq','in',values); return this; }
+  public userSeqNotIn(values: readonly (number)[]): this { this.predicateList('user_seq','not_in',values); return this; }
+  public userSeqBetween(low: number, high: number): this { this.predicateList('user_seq','between',[low,high]); return this; }
   public userSeqIsNull(): this { this.predicateNull('user_seq','is_null'); return this; }
   public userSeqIsNotNull(): this { this.predicateNull('user_seq','is_not_null'); return this; }
   public userSeqEqCol(reference: ColumnReference): this { this.predicateColumn('user_seq','eq_col',reference); return this; }

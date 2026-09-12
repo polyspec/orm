@@ -22,7 +22,7 @@ function keyIdentity(key: Key): string {
 }
 
 export class Collection<T extends Row = Row> implements Iterable<T> {
-  private readonly items = new Map<string, { key: Key; value: T }>();
+  private readonly items: Map<string, { key: Key; value: T }> = new Map();
   public put(key: Key, value: T): void { this.items.set(keyIdentity(key), { key, value }); }
   public get(key: Key): T | undefined { return this.items.get(keyIdentity(key))?.value; }
   public first(): T | undefined { return this.items.values().next().value?.value; }
@@ -73,14 +73,14 @@ export class ExecutionRows {
 
 export class Row {
   protected values: unknown[] = [];
-  protected indexes = new Map<string, number>();
-  protected relations = new Map<string, Row | Collection | null>();
-  protected dirty = new Map<string, unknown>();
-  protected dirtyStyles = new Map<string, readonly string[]>();
-  protected hidden = new Set<string>();
-  protected extras = new Map<string, unknown>();
-  protected binding?: Db;
-  protected loaded = false;
+  protected indexes: Map<string, number> = new Map();
+  protected relations: Map<string, Row | Collection | null> = new Map();
+  protected dirty: Map<string, unknown> = new Map();
+  protected dirtyStyles: Map<string, readonly string[]> = new Map();
+  protected hidden: Set<string> = new Set();
+  protected extras: Map<string, unknown> = new Map();
+  protected binding: Db | undefined;
+  protected loaded: boolean = false;
   protected identity: unknown;
   protected originalVersion: unknown;
   protected cascade: string[] = [];

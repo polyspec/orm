@@ -44,7 +44,7 @@ func checkOwners(lang string, symbols Symbols, owners []Owner, s *schema.Manifes
 				if lang == "go" {
 					return pascal(name)
 				}
-				if strings.Contains(" as break const continue crate else enum extern false fn for if impl in let loop match mod move mut pub ref return self static struct super trait true type unsafe use where while async await dyn ", " "+name+" ") {
+				if lang == "rust" && strings.Contains(" as break const continue crate else enum extern false fn for if impl in let loop match mod move mut pub ref return self static struct super trait true type unsafe use where while async await dyn ", " "+name+" ") {
 					return name + "_"
 				}
 				return name
