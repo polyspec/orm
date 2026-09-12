@@ -9,7 +9,7 @@ Rules: no polling or timers, no symlinks, one execution path, Mermaid is the sou
 - **S1 complete:** engine, generators, three clients, conformance harness, `ormgen tokens`, and the demo are implemented.
 - **S2 complete except T2.15:** relation, codec, type, and 58-vector checks pass; the 150-table Rust fixture is pending.
 - **S3–S6 complete:** writes, joins, PHP compatibility, deployment, PostgreSQL, and SQLite support are implemented. TypeScript execution and fixed-cost optimization remain incomplete.
-- Current conformance coverage is **58 vectors × 3 clients × 3 databases**. Codec coverage is 60 vectors across three clients. TypeScript currently has structure checks only.
+- Current conformance coverage is **58 vectors × 3 clients × 3 databases**. Codec coverage is 80 vectors across Go, PHP, Rust, and TypeScript. TypeScript database execution remains incomplete.
 
 ## Common interface verification
 
@@ -84,10 +84,10 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [ ] T7.1 Implement the typed protobuf/Connect path for all four clients and run shared vectors.
 - [x] T7.3 Implement deterministic `ormgen diff` and destructive-change checks.
 - [~] T7.4 Implement `scope` validation and generated methods. Add IR application, tenant-isolation database tests, and TypeScript execution.
-- [ ] T7.5 Implement common `point`, `yaml`, and `curlfile` codecs with shared vectors.
+- [~] T7.5 Implemented the common recursive `curlfile` value and 80 shared codec vectors. `point` and `yaml` remain.
 - [ ] T7.6 Implement server streaming, cancellation, errors, and row ownership checks.
 - [x] T7.7 Implement deterministic static query precompilation and schema-hash checks.
-- [~] T7.8 Implement TypeScript structure and AST checks. Type checking, package build, AST checks, `interface_attach`, and 60 shared codec vectors pass; the complete TypeScript runner and database vector execution remain.
+- [~] T7.8 Implement TypeScript structure and AST checks. Type checking, package build, AST checks, `interface_attach`, and 80 shared codec vectors pass; the complete TypeScript runner and database vector execution remain.
 - [ ] T7.9 Compare Rust `mysql_async` with the current driver using recorded results.
 - [ ] T7.10 Implement and verify the `multi_statement` relation plan.
 - [ ] T7.11 Implement typed direct scans for Go and PHP and rerun the performance gates.

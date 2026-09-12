@@ -19,7 +19,7 @@ Local and [GitHub CI](https://github.com/polyspec/orm/actions/runs/34649545210) 
 | IF-02, IF-24 | `has`/`relLoaded` and conversion of unloaded columns assigned through setters. `selectNone()` retains PK and FK |
 | IF-25, IF-26 | Typed keys, duplicate positions, and entries. `interface_typed_keys`. Map/array conversion in every language returns IR_INVALID on key collisions. `interface_nested_keys` checks propagation from nested relation collisions to parent conversion |
 | IF-27 | Declaration comparison for five Page fields, `interface_invalid_page`, and existing pagination vectors |
-| IF-28, IF-30, IF-31 | Configuration, 60 codec cases, AES, hook masking, and statement order |
+| IF-28, IF-30, IF-31 | Configuration, 80 codec cases, AES, hook masking, and statement order |
 | IF-33 | Manifest-based interface and diagram generation, generation drift, structure, and execution checks connected to CI |
 | IF-34 | PHP value argument guards and the dynamic compatibility layer. PHP integration and compatibility checks |
 

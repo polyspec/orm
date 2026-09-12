@@ -46,6 +46,9 @@ for (const [name, operation, code] of [
   ['serialized object', () => decodeCodec(['serialize'], 'O:8:"stdClass":0:{}'), 'CODEC_UNSUPPORTED'],
   ['bad zlib', () => decodeCodec(['serialize', 'gz'], 'not zlib'), 'CODEC_DECODE'],
   ['unknown style', () => encodeCodec(['unknown'], 'value'), 'CODEC_UNSUPPORTED'],
+  ['invalid public upload file', () => encodeCodec(['curlfile', 'serialize'], { $type: 'upload_file', path: '', mime: 'text/plain', name: 'a.txt' }), 'CODEC_ENCODE'],
+  ['invalid stored upload file', () => decodeCodec(['curlfile', 'serialize'], 'a:4:{s:12:"is_curl_file";b:1;s:4:"mime";s:10:"text/plain";s:4:"name";s:5:"a.txt";s:4:"path";s:0:"";}'), 'CODEC_DECODE'],
+  ['invalid curlfile order', () => encodeCodec(['serialize', 'curlfile'], {}), 'CODEC_UNSUPPORTED'],
 ]) {
   try {
     operation();

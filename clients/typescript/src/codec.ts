@@ -1,5 +1,6 @@
 import { deflateSync, inflateSync } from 'node:zlib';
 
+export type UploadFileValue = { $type: 'upload_file'; path: string; mime: string; name: string };
 export type CodecValue = null | boolean | number | string | CodecValue[] | { [key: string]: CodecValue };
 export type EncodedValue = string | Uint8Array | null;
 
@@ -38,6 +39,11 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
   let value: CodecValue | undefined;
   for (let index = styles.length - 1; index >= 0; index--) {
     const style = styles[index]!;
+    if (style === 'curlfile') {
+      if (value === undefined) throw new CodecError('CODEC_UNSUPPORTED', 'curlfile must precede serialize on write');
+      value = restoreUploadFiles(value);
+      continue;
+    }
     if (value !== undefined) throw new CodecError('CODEC_DECODE', `style ${style} after a decoded value`);
     switch (style) {
       case 'gz':
@@ -71,18 +77,23 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
 export function encode(styles: readonly string[], value: CodecValue): EncodedValue {
   if (value === null) return null;
   let current = new Uint8Array();
+  let transformed: CodecValue = value;
   for (let index = 0; index < styles.length; index++) {
     const style = styles[index]!;
     switch (style) {
+      case 'curlfile':
+        if (index !== 0) throw new CodecError('CODEC_UNSUPPORTED', 'curlfile must be the first style');
+        transformed = prepareUploadFiles(transformed);
+        break;
       case 'serialize':
-        if (index !== 0) throw new CodecError('CODEC_UNSUPPORTED', 'serialize must be the first style');
-        current = utf8.encode(phpSerialize(value));
+        if (index !== 0 && !(index === 1 && styles[0] === 'curlfile')) throw new CodecError('CODEC_UNSUPPORTED', 'serialize must be the first encoding style');
+        current = utf8.encode(phpSerialize(transformed));
         break;
       case 'json':
       case 'jsons':
         if (index !== 0) throw new CodecError('CODEC_UNSUPPORTED', 'json must be the first style');
         try {
-          current = utf8.encode(JSON.stringify(value));
+          current = utf8.encode(JSON.stringify(transformed));
         } catch (error) {
           throw new CodecError('CODEC_ENCODE', `json: ${String(error)}`);
         }
@@ -102,6 +113,36 @@ export function encode(styles: readonly string[], value: CodecValue): EncodedVal
     }
   }
   return string(current, 'encode');
+}
+
+function prepareUploadFiles(value: CodecValue): CodecValue {
+  if (Array.isArray(value)) return value.map(prepareUploadFiles);
+  if (value !== null && typeof value === 'object') {
+    if (value.$type === 'upload_file') {
+      const keys = Object.keys(value);
+      if (keys.length !== 4 || typeof value.path !== 'string' || value.path === '' || typeof value.mime !== 'string' || typeof value.name !== 'string' || value.name === '') {
+        throw new CodecError('CODEC_ENCODE', 'curlfile: upload_file requires non-empty path and name plus string mime');
+      }
+      return { is_curl_file: true, mime: value.mime, name: value.name, path: value.path };
+    }
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, prepareUploadFiles(item)]));
+  }
+  return value;
+}
+
+function restoreUploadFiles(value: CodecValue): CodecValue {
+  if (Array.isArray(value)) return value.map(restoreUploadFiles);
+  if (value !== null && typeof value === 'object') {
+    if (value.is_curl_file === true) {
+      const keys = Object.keys(value);
+      if (keys.length !== 4 || typeof value.path !== 'string' || value.path === '' || typeof value.mime !== 'string' || typeof value.name !== 'string' || value.name === '') {
+        throw new CodecError('CODEC_DECODE', 'curlfile: invalid stored upload file');
+      }
+      return { $type: 'upload_file', mime: value.mime, name: value.name, path: value.path };
+    }
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, restoreUploadFiles(item)]));
+  }
+  return value;
 }
 
 function phpSerialize(value: CodecValue): string {

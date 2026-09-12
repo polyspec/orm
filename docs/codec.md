@@ -1,6 +1,6 @@
 # Codecs — reading and writing column styles (S2)
 
-Column styles are stored in the manifest `styles: [...]` in **write order** (`gz_*` → `['serialize','gz']`: serialize, then compress). Reading applies the reverse order. `aes`, `hex`, and `ip` are host stages; the remaining stages are executor codecs. Go, PHP, Rust, and TypeScript decode the same 60-vector file and produce the same normalized values. Deterministic encodings are byte-identical except for a PHP serialized integral float in TypeScript: JavaScript represents both `2` and `2.0` as the same `number`, so TypeScript re-encodes it as an integer.
+Column styles are stored in the manifest `styles: [...]` in **write order** (`gz_*` → `['serialize','gz']`: serialize, then compress). Reading applies the reverse order. `aes`, `hex`, and `ip` are host stages; the remaining stages are executor codecs. Go, PHP, Rust, and TypeScript decode the same 80-vector file and produce the same normalized values. Deterministic encodings are byte-identical except for a PHP serialized integral float in TypeScript: JavaScript represents both `2` and `2.0` as the same `number`, so TypeScript re-encodes it as an integer.
 
 | style | write (value → stored bytes) | read (stored bytes → value) | reference |
 |---|---|---|---|
@@ -8,6 +8,7 @@ Column styles are stored in the manifest `styles: [...]` in **write order** (`gz
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
 | `base64` | base64(serialize(v)) | unserialize(base64_decode) | same |
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |
+| `curlfile` | convert upload records, then serialize | unserialize, then restore upload records | `['curlfile','serialize']` |
 
 ## Value model
 Styled columns use JSON-like values: null, bool, integer (i64), float (f64), string, list, and string-keyed map.
@@ -19,11 +20,20 @@ Styled columns use JSON-like values: null, bool, integer (i64), float (f64), str
 
 PHP arrays are ordered maps. An array with exactly the keys `0..n-1` is read as a list; other keys are read as a map. Serialize-family codecs preserve the key representation. Go and Rust sort JSON map keys; PHP keeps insertion order, so bytes can differ while values remain equal.
 
+`curlfile` uses the following public record in every client:
+
+```json
+{"$type":"upload_file","path":"/tmp/report.txt","mime":"text/plain","name":"report.txt"}
+```
+
+Encoding recursively converts it to `{"is_curl_file":true,"mime":"text/plain","name":"report.txt","path":"/tmp/report.txt"}` before PHP serialization. Decoding restores the public record. `path` and `name` must be non-empty strings, `mime` must be a string, and no additional fields are allowed. The codec does not open the path or construct a PHP `CURLFile`; file I/O remains the caller's operation.
+
 ## Cases
 - PHP cannot distinguish an empty object from an empty list. An empty PHP array is stored as JSON `[]` or serialize `a:0:{}` and is read as an empty list by all clients. Pass `new \stdClass` to write a JSON empty object.
 - NULL and an empty string are read as `null`.
 - `json` and `jsons` preserve `[]`, `{}`, `0`, and `""`. A parse failure returns `CODEC_DECODE`.
 - A serialize-family format failure returns `CODEC_DECODE`. `O:`, `C:`, `R:`, and `r:` return `CODEC_UNSUPPORTED`.
+- An invalid public upload record returns `CODEC_ENCODE`. An invalid stored upload marker returns `CODEC_DECODE`. A `curlfile` stage outside the first position returns `CODEC_UNSUPPORTED`.
 - String lengths use byte length. Compressed bytes can vary by implementation, so `gz` guarantees equal round-trip values.
 
 ## Vectors (`tests/codec`)

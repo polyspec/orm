@@ -14,6 +14,8 @@ const example = `erDiagram
     datetime(6)  updated_ts              "=now onupdate"
     tinyint      is_close                "=0 bool"
     varchar(255) aes_hex_email           "? aes,hex"
+    text         curlfile_serialize_files
+    text         upload_archive          "? curlfile,serialize"
     int          aes_key_version         "=1"
     varbinary(16) ip                     "ip"
     varchar(36)  uuid                UK  "?"
@@ -46,7 +48,7 @@ func TestParseExample(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(d.Entities) != 2 || d.Entities[0].Name != "battle" || len(d.Entities[0].Columns) != 16 {
+	if len(d.Entities) != 2 || d.Entities[0].Name != "battle" || len(d.Entities[0].Columns) != 18 {
 		t.Fatalf("entities: %+v", d.Entities)
 	}
 	cols := map[string]*DColumn{}
@@ -67,6 +69,12 @@ func TestParseExample(t *testing.T) {
 	}
 	if c := cols["aes_hex_email"]; strings.Join(c.Styles, ",") != "aes,hex" || !c.Nullable {
 		t.Errorf("aes_hex_email: %+v", c)
+	}
+	if c := cols["curlfile_serialize_files"]; len(c.Styles) != 0 {
+		t.Errorf("curlfile_serialize_files parser styles: %+v", c)
+	}
+	if c := cols["upload_archive"]; strings.Join(c.Styles, ",") != "curlfile,serialize" || !c.Nullable {
+		t.Errorf("upload_archive: %+v", c)
 	}
 	if c := cols["ip"]; strings.Join(c.Styles, ",") != "ip" {
 		t.Errorf("ip: %+v", c)

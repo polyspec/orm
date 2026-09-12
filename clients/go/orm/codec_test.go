@@ -119,4 +119,22 @@ func TestCodecErrors(t *testing.T) {
 	if s, _ := Encode([]string{"serialize"}, map[string]any{"07": 1, "-3": 2, "10": 3, "x": 4.0, "y": 1e25}); s != `a:5:{i:-3;i:2;s:2:"07";i:1;i:10;i:3;s:1:"x";d:4;s:1:"y";d:1.0E+25;}` {
 		t.Errorf("php keys/floats: %s", s)
 	}
+	for name, operation := range map[string]func() error{
+		"invalid public upload file": func() error {
+			_, err := Encode([]string{"curlfile", "serialize"}, map[string]any{"$type": "upload_file", "path": "", "mime": "text/plain", "name": "a.txt"})
+			return err
+		},
+		"invalid stored upload file": func() error {
+			_, err := Decode([]string{"curlfile", "serialize"}, `a:4:{s:12:"is_curl_file";b:1;s:4:"mime";s:10:"text/plain";s:4:"name";s:5:"a.txt";s:4:"path";s:0:"";}`)
+			return err
+		},
+		"invalid curlfile order": func() error {
+			_, err := Encode([]string{"serialize", "curlfile"}, map[string]any{})
+			return err
+		},
+	} {
+		if err := operation(); err == nil {
+			t.Errorf("%s: expected codec error", name)
+		}
+	}
 }

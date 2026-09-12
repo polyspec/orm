@@ -315,7 +315,8 @@ func buildColumn(dc *DColumn) (*Col, error) {
 	default:
 		return nil, fmt.Errorf("column %s: unsupported type %q", dc.Name, dc.Type)
 	}
-	// Style inference from column naming: aes_hex_x, aes_x, gz_x, json_x, jsons_x, base64_x, serialize_x; column named ip.
+	// Style inference from column naming: aes_hex_x, aes_x, gz_x, json_x, jsons_x,
+	// base64_x, serialize_x, curlfile_serialize_x; column named ip.
 	if len(c.Styles) == 0 {
 		switch {
 		case strings.HasPrefix(dc.Name, "aes_hex_"):
@@ -332,6 +333,8 @@ func buildColumn(dc *DColumn) (*Col, error) {
 			c.Styles = []string{"serialize", "base64"}
 		case strings.HasPrefix(dc.Name, "serialize_"):
 			c.Styles = []string{"serialize"}
+		case strings.HasPrefix(dc.Name, "curlfile_serialize_"):
+			c.Styles = []string{"curlfile", "serialize"}
 		case dc.Name == "ip":
 			c.Styles = []string{"ip"}
 		}
