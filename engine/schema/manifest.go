@@ -491,6 +491,14 @@ func (m *Manifest) addDirective(x *Directive) error {
 func (m *Manifest) validate() error {
 	for _, name := range m.Order {
 		e := m.Entities[name]
+		for _, c := range e.Columns {
+			if len(c.Styles) > 0 && c.Styles[0] == "aes" {
+				version := e.Column("aes_key_version")
+				if version == nil || version.Nullable || (version.Type != "i32" && version.Type != "i64") {
+					return &BuildError{e.Line, fmt.Sprintf("%s.%s requires non-null integer aes_key_version", e.Name, c.Name)}
+				}
+			}
+		}
 		for rn, r := range e.Relations {
 			if reservedNames[rn] {
 				return &BuildError{e.Line, fmt.Sprintf("relation name %s.%s is a reserved DSL word", e.Name, rn)}

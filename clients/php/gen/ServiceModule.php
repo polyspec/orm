@@ -280,6 +280,7 @@ final class ServiceModule extends Q implements ServiceModuleInterface
     public function ifParentUuidEq(string $v): static { $this->ifParent('uuid', $v); return $this; }
     public function ifParentIsSinglePlayEq(bool $v): static { $this->ifParent('is_single_play', $v); return $this; }
     public function ifParentLikeCountEq(int $v): static { $this->ifParent('like_count', $v); return $this; }
+    public function ifParentAesKeyVersionEq(int $v): static { $this->ifParent('aes_key_version', $v); return $this; }
     public function ifParentAesHexEmailEq(string $v): static { $this->ifParent('aes_hex_email', $v); return $this; }
     public function ifParentAesHexPhoneEq(string $v): static { $this->ifParent('aes_hex_phone', $v); return $this; }
 

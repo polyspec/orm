@@ -40,6 +40,7 @@ async fn gets_by_end_dt(&mut self, v: chrono::NaiveDateTime) -> Result<Collectio
 async fn gets_by_uuid(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>>;
 async fn gets_by_is_single_play(&mut self, v: bool) -> Result<Collection<BattleRow>>;
 async fn gets_by_like_count(&mut self, v: i64) -> Result<Collection<BattleRow>>;
+async fn gets_by_aes_key_version(&mut self, v: i32) -> Result<Collection<BattleRow>>;
 async fn gets_by_aes_hex_email(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>>;
 async fn gets_by_aes_hex_phone(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>>;
 async fn gets_by_price(&mut self, v: f64) -> Result<Collection<BattleRow>>;
@@ -68,6 +69,7 @@ async fn get_count_by_end_dt(&mut self, v: chrono::NaiveDateTime) -> Result<i64>
 async fn get_count_by_uuid(&mut self, v: impl Into<String>) -> Result<i64>;
 async fn get_count_by_is_single_play(&mut self, v: bool) -> Result<i64>;
 async fn get_count_by_like_count(&mut self, v: i64) -> Result<i64>;
+async fn get_count_by_aes_key_version(&mut self, v: i32) -> Result<i64>;
 async fn get_count_by_aes_hex_email(&mut self, v: impl Into<String>) -> Result<i64>;
 async fn get_count_by_aes_hex_phone(&mut self, v: impl Into<String>) -> Result<i64>;
 async fn get_count_by_price(&mut self, v: f64) -> Result<i64>;
@@ -96,6 +98,7 @@ fn end_dt_eq(self, v: chrono::NaiveDateTime) -> Self;
 fn uuid_eq(self, v: impl Into<String>) -> Self;
 fn is_single_play_eq(self, v: bool) -> Self;
 fn like_count_eq(self, v: i64) -> Self;
+fn aes_key_version_eq(self, v: i32) -> Self;
 fn aes_hex_email_eq(self, v: impl Into<String>) -> Self;
 fn aes_hex_phone_eq(self, v: impl Into<String>) -> Self;
 fn price_eq(self, v: f64) -> Self;
@@ -124,6 +127,7 @@ fn end_dt(self, v: chrono::NaiveDateTime) -> Self;
 fn uuid(self, v: impl Into<String>) -> Self;
 fn is_single_play(self, v: bool) -> Self;
 fn like_count(self, v: i64) -> Self;
+fn aes_key_version(self, v: i32) -> Self;
 fn aes_hex_email(self, v: impl Into<String>) -> Self;
 fn aes_hex_phone(self, v: impl Into<String>) -> Self;
 fn price(self, v: f64) -> Self;
@@ -165,6 +169,7 @@ async fn gets_by_end_dt(&mut self, v: chrono::NaiveDateTime) -> Result<Collectio
 async fn gets_by_uuid(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> { Battle::gets_by_uuid(self,v).await }
 async fn gets_by_is_single_play(&mut self, v: bool) -> Result<Collection<BattleRow>> { Battle::gets_by_is_single_play(self,v).await }
 async fn gets_by_like_count(&mut self, v: i64) -> Result<Collection<BattleRow>> { Battle::gets_by_like_count(self,v).await }
+async fn gets_by_aes_key_version(&mut self, v: i32) -> Result<Collection<BattleRow>> { Battle::gets_by_aes_key_version(self,v).await }
 async fn gets_by_aes_hex_email(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> { Battle::gets_by_aes_hex_email(self,v).await }
 async fn gets_by_aes_hex_phone(&mut self, v: impl Into<String>) -> Result<Collection<BattleRow>> { Battle::gets_by_aes_hex_phone(self,v).await }
 async fn gets_by_price(&mut self, v: f64) -> Result<Collection<BattleRow>> { Battle::gets_by_price(self,v).await }
@@ -193,6 +198,7 @@ async fn get_count_by_end_dt(&mut self, v: chrono::NaiveDateTime) -> Result<i64>
 async fn get_count_by_uuid(&mut self, v: impl Into<String>) -> Result<i64> { Battle::get_count_by_uuid(self,v).await }
 async fn get_count_by_is_single_play(&mut self, v: bool) -> Result<i64> { Battle::get_count_by_is_single_play(self,v).await }
 async fn get_count_by_like_count(&mut self, v: i64) -> Result<i64> { Battle::get_count_by_like_count(self,v).await }
+async fn get_count_by_aes_key_version(&mut self, v: i32) -> Result<i64> { Battle::get_count_by_aes_key_version(self,v).await }
 async fn get_count_by_aes_hex_email(&mut self, v: impl Into<String>) -> Result<i64> { Battle::get_count_by_aes_hex_email(self,v).await }
 async fn get_count_by_aes_hex_phone(&mut self, v: impl Into<String>) -> Result<i64> { Battle::get_count_by_aes_hex_phone(self,v).await }
 async fn get_count_by_price(&mut self, v: f64) -> Result<i64> { Battle::get_count_by_price(self,v).await }
@@ -221,6 +227,7 @@ fn end_dt_eq(mut self, v: chrono::NaiveDateTime) -> Self { Battle::end_dt_eq(sel
 fn uuid_eq(mut self, v: impl Into<String>) -> Self { Battle::uuid_eq(self,v) }
 fn is_single_play_eq(mut self, v: bool) -> Self { Battle::is_single_play_eq(self,v) }
 fn like_count_eq(mut self, v: i64) -> Self { Battle::like_count_eq(self,v) }
+fn aes_key_version_eq(mut self, v: i32) -> Self { Battle::aes_key_version_eq(self,v) }
 fn aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { Battle::aes_hex_email_eq(self,v) }
 fn aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { Battle::aes_hex_phone_eq(self,v) }
 fn price_eq(mut self, v: f64) -> Self { Battle::price_eq(self,v) }
@@ -249,6 +256,7 @@ fn end_dt(self, v: chrono::NaiveDateTime) -> Self { Battle::end_dt(self,v) }
 fn uuid(self, v: impl Into<String>) -> Self { Battle::uuid(self,v) }
 fn is_single_play(self, v: bool) -> Self { Battle::is_single_play(self,v) }
 fn like_count(self, v: i64) -> Self { Battle::like_count(self,v) }
+fn aes_key_version(self, v: i32) -> Self { Battle::aes_key_version(self,v) }
 fn aes_hex_email(self, v: impl Into<String>) -> Self { Battle::aes_hex_email(self,v) }
 fn aes_hex_phone(self, v: impl Into<String>) -> Self { Battle::aes_hex_phone(self,v) }
 fn price(self, v: f64) -> Self { Battle::price(self,v) }

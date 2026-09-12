@@ -27,6 +27,7 @@ CREATE TABLE battle (
   uuid varchar(36) NULL,
   is_single_play tinyint unsigned NOT NULL DEFAULT 0,
   like_count int unsigned NOT NULL DEFAULT 0,
+  aes_key_version int NOT NULL DEFAULT 1,
   aes_hex_email varchar(255) NULL,
   aes_hex_phone varchar(255) NULL,
   price decimal(13,3) NULL,
@@ -48,12 +49,12 @@ CREATE TABLE battle (
 SET SESSION cte_max_recursion_depth = 200000;
 INSERT INTO battle (name, description, is_close, is_display, display_start_dt, display_end_dt, is_allday,
   target_team_player_count, success_count, player_count, read_count, cover_url, user_seq, service_seq,
-  service_module_seq, service_member_seq, start_dt, end_dt, uuid, is_single_play, like_count, aes_hex_email, aes_hex_phone)
+  service_module_seq, service_member_seq, start_dt, end_dt, uuid, is_single_play, like_count, aes_key_version, aes_hex_email, aes_hex_phone)
 WITH RECURSIVE n AS (SELECT 1 AS i UNION ALL SELECT i + 1 FROM n WHERE i < 100000)
 SELECT CONCAT('battle-', i), CONCAT('desc-', i, ' ', REPEAT('x', 200)),
   i % 7 = 0, i % 3 <> 0, '2026-01-01', '2027-01-01', i % 2,
   2, i % 7, i % 11, i % 1000, CONCAT('https://cdn/', i, '.jpg'), i % 5000 + 1, i % 100 + 1,
-  i % 10 + 1, i % 5000 + 1, '2026-06-01', '2026-12-31', UUID(), i % 4 = 0, i % 97,
+  i % 10 + 1, i % 5000 + 1, '2026-06-01', '2026-12-31', UUID(), i % 4 = 0, i % 97, 1,
   HEX(AES_ENCRYPT(CONCAT('user', i, '@example.com'), 'bench-salt')),
   HEX(AES_ENCRYPT(CONCAT('010-', LPAD(i, 8, '0')), 'bench-salt'))
 FROM n;
