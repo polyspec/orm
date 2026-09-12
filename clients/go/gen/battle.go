@@ -1078,6 +1078,7 @@ func (w *BattleWhere) Expr(frag string, binds ...any) *BattleWhere {
 	w.w.Expr(frag, binds...)
 	return w
 }
+func (w *BattleWhere) Scope(v int64) *BattleWhere { w.w.Pred("service_seq", "eq", v); return w }
 func (w *BattleWhere) Service(fn func(*ServiceWhere)) *BattleWhere {
 	w.w.Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return w
@@ -3982,6 +3983,7 @@ func (q *BattleQuery) Expr(frag string, binds ...any) *BattleQuery {
 	q.q.W().Expr(frag, binds...)
 	return q
 }
+func (q *BattleQuery) Scope(v int64) *BattleQuery { q.q.W().Pred("service_seq", "eq", v); return q }
 func (q *BattleQuery) Service(fn func(*ServiceWhere)) *BattleQuery {
 	q.q.W().Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return q

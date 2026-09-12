@@ -106,6 +106,18 @@ func TestAllowedColumnNames(t *testing.T) {
 	}
 }
 
+func TestScopeDirectiveRequiresNonNullTenantColumn(t *testing.T) {
+	good := mustBuild(t, "erDiagram\n tenant {\n bigint id PK \"auto\"\n bigint account_id\n }\n %% scope tenant account_id\n")
+	if got := good.Entities["tenant"].Scope; got != "account_id" { t.Fatalf("scope = %q", got) }
+	for _, src := range []string{
+		"erDiagram\n tenant {\n bigint id PK \"auto\"\n bigint account_id \"?\"\n }\n %% scope tenant account_id\n",
+		"erDiagram\n tenant {\n bigint id PK \"auto\"\n text account_id\n }\n %% scope tenant account_id\n",
+	} {
+		d, err := Parse(src); if err != nil { t.Fatal(err) }
+		if _, err := Build(d); err == nil { t.Fatalf("scope validation accepted: %s", src) }
+	}
+}
+
 // ml expands one-line entity blocks used for brevity in tests into the
 // multi-line form the parser (and Mermaid) require.
 func ml(src string) string {

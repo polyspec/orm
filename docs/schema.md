@@ -53,6 +53,7 @@ erDiagram
   %% unique   battle (game_group_seq, game_group_number)
   %% index    battle (service_seq, is_close)              ik
   %% fulltext battle (name, description)
+  %% scope battle service_seq
 ```
 
 ## 2. 규칙
@@ -93,6 +94,7 @@ Mermaid 표준 그대로다. `PK`/`FK`/`UK`는 Mermaid 키워드(`PK, FK`처럼 
 %% fulltext <table> (<col>, …)              # FULLTEXT → `<a>With<b>Match…()` 생성
 %% timestamps <table> created_ts updated_ts # 자동 타임스탬프 컬럼 지정(기본: 이름이 created_ts/updated_ts면 자동)
 %% predicate <table> <name> : <expr 조각>   # 재사용 술어 → `<name>(args…)` 메서드. 백틱 컬럼은 검증, `?`마다 인자 하나
+%% scope <table> <column>                 # query API에 scope(value) 조건 생성
 ```
 
 ### 2.4 생략 가능한 것 (기본 규칙)
@@ -156,4 +158,3 @@ ormgen check    --lang php                                                   # �
 - 인덱스: 복합 unique→`%% unique`, fulltext→`%% fulltext`, 복합/비FK 단일 인덱스→`%% index … 이름`, 단일 컬럼 unique→컬럼 줄 `UK`, FK 단일 인덱스는 생략(자동).
 - PostgreSQL(`--driver postgres`, `postgres://…` DSN이면 자동): `information_schema.columns` + `pg_index`를 읽어 같은 다이어그램을 만든다. 타입은 정규 타입으로 되돌려 적는다(`character varying(191)`→`varchar(191)`, `boolean`→`tinyint`, `numeric(p,s)`→`decimal(p,s)`, `timestamp(6)`→`datetime(6)`, `inet`→`varbinary(16)`, `jsonb`→`json`), identity/`nextval`→`auto`, GIN 인덱스→`%% fulltext`. MySQL에만 있는 `unsigned`·`onupdate`는 나오지 않으므로, 같은 DB를 MySQL과 PostgreSQL에서 각각 임포트하면 그 두 속성만 다르다(정규 타입·관계·인덱스는 동일 — 로컬 orm_bench로 확인).
 - `--out`이 이미 있으면 DB가 모르는 사실을 이어받는다: 관계 라벨 재정의 `(child / parent)`, 컬럼 속성 `lazy`/`bool`/`int`/명시 스타일, `%% predicate` 줄. 그 외는 DB가 진실이다.
-

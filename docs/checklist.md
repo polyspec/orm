@@ -163,7 +163,7 @@ S7 항목은 구현과 문서 작업을 각각 완료해야 한다. 구현하지
 
 - [ ] T7.1 protobuf/Connect 전송 형식과 Go·PHP·Rust·TypeScript 클라이언트 구현
 - [x] T7.3 `ormgen diff` 구현, 파괴적 변경 명시 옵션과 결정성 테스트 추가
-- [ ] T7.4 멀티테넌시 `scope`의 스키마·IR·생성 API 구현
+- [~] T7.4 `scope` 지시문·NULL 불가 컬럼 검사·Go/PHP/Rust 생성 API 구현; IR 자동 적용·DB 격리 테스트·TypeScript 전체 생성은 미착수
 - [ ] T7.5 `point`, `yaml`, `curlfile` 스타일의 공통 codec 구현
 - [ ] T7.6 서버 스트리밍 API 구현
 - [x] T7.7 `ormgen precompile` 구현, 요청·스키마 해시 포함 출력과 검증 테스트 추가

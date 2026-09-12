@@ -125,6 +125,7 @@ type rustData struct {
 	Indexes                       []string
 	Fulltext                      [][]string
 	UpdatedTs                     string
+	Scope                         string
 	KeyCols                       []string // PK/auto columns: never copied into on_duplicate
 }
 
@@ -468,7 +469,10 @@ pub struct {{.Type}}Where<'a> { pub(crate) w: W<'a> }
 impl<'a> {{.Type}}Where<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
     pub fn and(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { self.w.and_with(|w| { f({{.Type}}Where { w }); }); self }
-    pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
+	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
+{{- if .Scope}}
+    pub fn scope(mut self, v: impl Into<Param>) -> Self { self.w.pred({{printf "%q" .Scope}}, "eq", v.into()); self }
+{{- end}}
 {{- range .Preds}}
     pub fn {{.Ident}}(mut self{{predParams .Args}}) -> Self { self.w.expr({{printf "%q" .Expr}}, {{predBinds .Args}}); self }
 {{- end}}
@@ -521,6 +525,9 @@ impl {{.Type}} {
     pub fn or(mut self) -> Self { self.q.or(); self }
     pub fn and(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { self.q.w().and_with(|w| { f({{.Type}}Where { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
+{{- if .Scope}}
+    pub fn scope(mut self, v: impl Into<Param>) -> Self { self.q.w().pred({{printf "%q" .Scope}}, "eq", v.into()); self }
+{{- end}}
 {{- range .Preds}}
     pub fn {{.Ident}}(mut self{{predParams .Args}}) -> Self { self.q.w().expr({{printf "%q" .Expr}}, {{predBinds .Args}}); self }
 {{- end}}
@@ -885,7 +892,7 @@ func genRust(m *schema.Manifest, outDir string) error {
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		ge := buildGoEntity(m, e)
-		d := rustData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs, SchemaHash: m.SchemaHash, Links: ge.Links}
+		d := rustData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs, SchemaHash: m.SchemaHash, Links: ge.Links, Scope: ge.Scope}
 		for _, c := range ge.Cols {
 			col := e.Column(c.Name)
 			rc := rustCol{goCol: c, RType: rustType(col), Ident: rustIdent(c.Name)}
