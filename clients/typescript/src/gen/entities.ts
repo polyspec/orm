@@ -631,7 +631,10 @@ export class AuthorWhere {
 export class AuthorQuery extends QueryCore {
   public constructor() { super('author'); }
   public override scope(value: number): this { return super.scope(value); }
-  public and(callback: (where: AuthorWhere) => void): this { this.where().and(core=>callback(new AuthorWhere(core))); return this; }
+  public and(callback: (where: AuthorWhere) => void): this { this.whereCore().and(core=>callback(new AuthorWhere(core))); return this; }
+  public on(callback: (where: AuthorWhere) => void): this { return this.onGroup(core=>callback(new AuthorWhere(core))); }
+  public where(callback: (where: AuthorWhere) => void): this { callback(new AuthorWhere(this.whereCore())); return this; }
+  public having(callback: (where: AuthorWhere) => void): this { return this.havingGroup(core=>callback(new AuthorWhere(core))); }
   public startedAfter(value0: unknown): this { this.expression('`start_dt` > ?',[value0]); return this; }
   public visible(): this { this.expression('`is_close` = FALSE AND `is_display` = TRUE',[]); return this; }
   public seqEq(value: unknown): this { this.predicate('seq','eq',value); return this; }
@@ -1519,10 +1522,10 @@ export class AuthorQuery extends QueryCore {
   public ifParentUserSeqEq(value: unknown): this { return this.ifParent('user_seq',value); }
   public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
   public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
-  public service(callback: (where: ServiceWhere) => void): this { this.where().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
-  public serviceMember(callback: (where: ServiceMemberWhere) => void): this { this.where().navigate('service_member',core=>callback(new ServiceMemberWhere(core))); return this; }
-  public serviceRegion(callback: (where: ServiceRegionWhere) => void): this { this.where().navigate('service_region',core=>callback(new ServiceRegionWhere(core))); return this; }
-  public user(callback: (where: UserWhere) => void): this { this.where().navigate('user',core=>callback(new UserWhere(core))); return this; }
+  public service(callback: (where: ServiceWhere) => void): this { this.whereCore().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
+  public serviceMember(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigate('service_member',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public serviceRegion(callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigate('service_region',core=>callback(new ServiceRegionWhere(core))); return this; }
+  public user(callback: (where: UserWhere) => void): this { this.whereCore().navigate('user',core=>callback(new UserWhere(core))); return this; }
   public joinServiceSeqWithSeq(child: ServiceQuery): this { return this.attachJoin('service',child,'inner'); }
   public leftJoinServiceSeqWithSeq(child: ServiceQuery): this { return this.attachJoin('service',child,'left'); }
   public relationServiceSeqWithSeq(child: ServiceQuery): this { return this.attachRelation('service',child); }
@@ -1698,7 +1701,10 @@ export class UserWhere {
 
 export class UserQuery extends QueryCore {
   public constructor() { super('user'); }
-  public and(callback: (where: UserWhere) => void): this { this.where().and(core=>callback(new UserWhere(core))); return this; }
+  public and(callback: (where: UserWhere) => void): this { this.whereCore().and(core=>callback(new UserWhere(core))); return this; }
+  public on(callback: (where: UserWhere) => void): this { return this.onGroup(core=>callback(new UserWhere(core))); }
+  public where(callback: (where: UserWhere) => void): this { callback(new UserWhere(this.whereCore())); return this; }
+  public having(callback: (where: UserWhere) => void): this { return this.havingGroup(core=>callback(new UserWhere(core))); }
   public seqEq(value: unknown): this { this.predicate('seq','eq',value); return this; }
   public seq(value: unknown): this { return this.seqEq(value); }
   public seqNotEq(value: unknown): this { this.predicate('seq','not_eq',value); return this; }
@@ -1795,8 +1801,8 @@ export class UserQuery extends QueryCore {
   public ifParentSerializeDataEq(value: unknown): this { return this.ifParent('serialize_data',value); }
   public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
   public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
-  public authors(callback: (where: AuthorWhere) => void): this { this.where().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
-  public serviceMembers(callback: (where: ServiceMemberWhere) => void): this { this.where().navigate('service_members',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public authors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
+  public serviceMembers(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigate('service_members',core=>callback(new ServiceMemberWhere(core))); return this; }
   private resolveRelation(child: QueryCore, expected?: 'one'|'many'): string { const entity=child.request.ir.entity; const link=child.linkSelection; const candidates=this.relationDefinitions().filter(value=>value.target===entity&&(!expected||value.kind===expected)&&(!link||(value.left===link.parentKey&&value.right===link.childKey))); if(candidates.length!==1) throw new OrmError('IR_INVALID', `relation from ${this.request.ir.entity} to ${entity} is ${candidates.length===0?'not declared':'ambiguous'}; select a key pair`); return candidates[0]!.name; }
   private relationDefinitions(): ReadonlyArray<{name:string;kind:'one'|'many';target:string;left:string;right:string}> { return [{name:'authors',kind:'many',target:'author',left:'seq',right:'user_seq'},{name:'service_members',kind:'many',target:'service_member',left:'seq',right:'user_seq'}]; }
   public join(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'inner'); }
@@ -1874,7 +1880,10 @@ export class ServiceWhere {
 
 export class ServiceQuery extends QueryCore {
   public constructor() { super('service'); }
-  public and(callback: (where: ServiceWhere) => void): this { this.where().and(core=>callback(new ServiceWhere(core))); return this; }
+  public and(callback: (where: ServiceWhere) => void): this { this.whereCore().and(core=>callback(new ServiceWhere(core))); return this; }
+  public on(callback: (where: ServiceWhere) => void): this { return this.onGroup(core=>callback(new ServiceWhere(core))); }
+  public where(callback: (where: ServiceWhere) => void): this { callback(new ServiceWhere(this.whereCore())); return this; }
+  public having(callback: (where: ServiceWhere) => void): this { return this.havingGroup(core=>callback(new ServiceWhere(core))); }
   public seqEq(value: unknown): this { this.predicate('seq','eq',value); return this; }
   public seq(value: unknown): this { return this.seqEq(value); }
   public seqNotEq(value: unknown): this { this.predicate('seq','not_eq',value); return this; }
@@ -1971,9 +1980,9 @@ export class ServiceQuery extends QueryCore {
   public ifParentSerializeDataEq(value: unknown): this { return this.ifParent('serialize_data',value); }
   public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
   public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
-  public authors(callback: (where: AuthorWhere) => void): this { this.where().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
-  public members(callback: (where: ServiceMemberWhere) => void): this { this.where().navigate('members',core=>callback(new ServiceMemberWhere(core))); return this; }
-  public modules(callback: (where: ServiceRegionWhere) => void): this { this.where().navigate('modules',core=>callback(new ServiceRegionWhere(core))); return this; }
+  public authors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
+  public members(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().navigate('members',core=>callback(new ServiceMemberWhere(core))); return this; }
+  public modules(callback: (where: ServiceRegionWhere) => void): this { this.whereCore().navigate('modules',core=>callback(new ServiceRegionWhere(core))); return this; }
   private resolveRelation(child: QueryCore, expected?: 'one'|'many'): string { const entity=child.request.ir.entity; const link=child.linkSelection; const candidates=this.relationDefinitions().filter(value=>value.target===entity&&(!expected||value.kind===expected)&&(!link||(value.left===link.parentKey&&value.right===link.childKey))); if(candidates.length!==1) throw new OrmError('IR_INVALID', `relation from ${this.request.ir.entity} to ${entity} is ${candidates.length===0?'not declared':'ambiguous'}; select a key pair`); return candidates[0]!.name; }
   private relationDefinitions(): ReadonlyArray<{name:string;kind:'one'|'many';target:string;left:string;right:string}> { return [{name:'authors',kind:'many',target:'author',left:'seq',right:'service_seq'},{name:'members',kind:'many',target:'service_member',left:'seq',right:'service_seq'},{name:'modules',kind:'many',target:'service_region',left:'seq',right:'service_seq'}]; }
   public join(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'inner'); }
@@ -2069,7 +2078,10 @@ export class ServiceRegionWhere {
 
 export class ServiceRegionQuery extends QueryCore {
   public constructor() { super('service_region'); }
-  public and(callback: (where: ServiceRegionWhere) => void): this { this.where().and(core=>callback(new ServiceRegionWhere(core))); return this; }
+  public and(callback: (where: ServiceRegionWhere) => void): this { this.whereCore().and(core=>callback(new ServiceRegionWhere(core))); return this; }
+  public on(callback: (where: ServiceRegionWhere) => void): this { return this.onGroup(core=>callback(new ServiceRegionWhere(core))); }
+  public where(callback: (where: ServiceRegionWhere) => void): this { callback(new ServiceRegionWhere(this.whereCore())); return this; }
+  public having(callback: (where: ServiceRegionWhere) => void): this { return this.havingGroup(core=>callback(new ServiceRegionWhere(core))); }
   public seqEq(value: unknown): this { this.predicate('seq','eq',value); return this; }
   public seq(value: unknown): this { return this.seqEq(value); }
   public seqNotEq(value: unknown): this { this.predicate('seq','not_eq',value); return this; }
@@ -2201,8 +2213,8 @@ export class ServiceRegionQuery extends QueryCore {
   public ifParentSerializeDataEq(value: unknown): this { return this.ifParent('serialize_data',value); }
   public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
   public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
-  public authors(callback: (where: AuthorWhere) => void): this { this.where().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
-  public service(callback: (where: ServiceWhere) => void): this { this.where().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
+  public authors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
+  public service(callback: (where: ServiceWhere) => void): this { this.whereCore().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
   public joinSeqWithServiceRegionSeq(child: AuthorQuery): this { return this.attachJoin('authors',child,'inner'); }
   public leftJoinSeqWithServiceRegionSeq(child: AuthorQuery): this { return this.attachJoin('authors',child,'left'); }
   public relationsSeqWithServiceRegionSeq(child: AuthorQuery): this { return this.attachRelation('authors',child); }
@@ -2314,7 +2326,10 @@ export class ServiceMemberWhere {
 
 export class ServiceMemberQuery extends QueryCore {
   public constructor() { super('service_member'); }
-  public and(callback: (where: ServiceMemberWhere) => void): this { this.where().and(core=>callback(new ServiceMemberWhere(core))); return this; }
+  public and(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().and(core=>callback(new ServiceMemberWhere(core))); return this; }
+  public on(callback: (where: ServiceMemberWhere) => void): this { return this.onGroup(core=>callback(new ServiceMemberWhere(core))); }
+  public where(callback: (where: ServiceMemberWhere) => void): this { callback(new ServiceMemberWhere(this.whereCore())); return this; }
+  public having(callback: (where: ServiceMemberWhere) => void): this { return this.havingGroup(core=>callback(new ServiceMemberWhere(core))); }
   public seqEq(value: unknown): this { this.predicate('seq','eq',value); return this; }
   public seq(value: unknown): this { return this.seqEq(value); }
   public seqNotEq(value: unknown): this { this.predicate('seq','not_eq',value); return this; }
@@ -2456,9 +2471,9 @@ export class ServiceMemberQuery extends QueryCore {
   public ifParentSerializeDataEq(value: unknown): this { return this.ifParent('serialize_data',value); }
   public onDuplicateSetAll(skip: readonly string[] = []): this { return this.duplicateAll(skip); }
   public async rawAll(): Promise<Array<Record<string,unknown>>> { return await this.terminal('raw') as Array<Record<string,unknown>>; }
-  public authors(callback: (where: AuthorWhere) => void): this { this.where().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
-  public service(callback: (where: ServiceWhere) => void): this { this.where().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
-  public user(callback: (where: UserWhere) => void): this { this.where().navigate('user',core=>callback(new UserWhere(core))); return this; }
+  public authors(callback: (where: AuthorWhere) => void): this { this.whereCore().navigate('authors',core=>callback(new AuthorWhere(core))); return this; }
+  public service(callback: (where: ServiceWhere) => void): this { this.whereCore().navigate('service',core=>callback(new ServiceWhere(core))); return this; }
+  public user(callback: (where: UserWhere) => void): this { this.whereCore().navigate('user',core=>callback(new UserWhere(core))); return this; }
   public joinSeqWithServiceMemberSeq(child: AuthorQuery): this { return this.attachJoin('authors',child,'inner'); }
   public leftJoinSeqWithServiceMemberSeq(child: AuthorQuery): this { return this.attachJoin('authors',child,'left'); }
   public relationsSeqWithServiceMemberSeq(child: AuthorQuery): this { return this.attachRelation('authors',child); }

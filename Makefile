@@ -1,4 +1,4 @@
-.PHONY: check db-test perf-check interface-check ts-check schema-check proto-check typescript-build rust-150-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check
+.PHONY: check db-test perf-check interface-check ts-check ts-db-check schema-check proto-check typescript-build rust-150-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
 check: docs-rules-check docs-check docs-verify-idempotent interface-check ts-check schema-check proto-check db-test perf-check
@@ -15,6 +15,9 @@ perf-check:
 
 ts-check:
 	npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs && node tests/typescript/compiler-bridge.mjs && node tests/typescript/driver.mjs && node tests/typescript/database.mjs && node tests/typescript/codec-vector.mjs
+
+ts-db-check:
+	./scripts/typescript/sqlite-test.sh
 
 schema-check:
 	npm run schema:check
