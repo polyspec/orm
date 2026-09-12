@@ -22,7 +22,7 @@ The following defects changed the architecture.
 | Query shape is fixed in source; caching value-independent plans means the execution path is paid only on the cold path | **Per-client plan cache** (IR shape hash + IN cardinality). Hot path = native driver + cached SQL |
 | Actual code opens WHERE parentheses at the root and closes them in a join model; per-join WHERE validation fails | Validate with **one token stream** joining root and joins, including leading connectors and `orJoin(alias)` splices |
 | Relation details such as keyName rekeying, parentNode merge, matchKeyRemove, possible, per-relation connectors, and duplicate ONE rows are missing | Specify IR fields and rules (§ Protocol) |
-| `delete(true)` walks the client-loaded tree; the engine cannot retry a deadlock inside a transaction | Ordered `MutationBatch`; on deadlock the **client re-runs the closure** |
+| `delete(true)` walks the client-loaded tree; the engine cannot retry a deadlock inside a transaction | Ordered `MutationBatch`; deadlock retry is caller-enabled through `TransactionOptions` |
 | Aggregate and raw SQL roots (26 cases), computed columns `addColumn(col,alias,'ST_Y(%s)')`, and `Model::function` are not represented | Add `aggregate`, `Query.raw`, `columns.computed`, and `Predicate.lhs_expr` |
 | The three client syntaxes differ in heads (`X::query()($db)` versus `x.Query(db)`), relation creation, terminals, and result access | **Canonical token syntax**: `query()` head, shared intermediate tokens, terminals receiving the executor, `and(f)`/`or(f)` groups, and typed aliases from YAML-declared relations |
 | A 21–28 week schedule is unrealistic for one engineer; building three packaging variants before M1 is a trap | Three-day spike plus four-week thin slice, about 15–16 weeks total. WASM, protobuf, and Connect are later experiments |
@@ -203,7 +203,7 @@ let products = product::query()
 - `cmd/ormd`: length-prefixed JSON frames over UDS, stateless and PHP-only.
 
 ## Executors (per language, thin)
-- Common: plan cache (shape hash→Plan, filled on request; no expiry timer; schema hash changes naturally invalidate the key), step runner (`bind_from`, `LIST_EXPAND`), result-tree assembly (ONE/MANY/JOIN links, parent_node, possible, strip), host codecs (gz=zlib, json, jsons, serialize read, base64; MySQL handles AES/ip in SQL), `on_query(sql, binds, duration)` hook, `debug()` SQL dump with masked binds, deadlock closure retry (up to three times), and `Page`. One `orm.toml` declares DSN, engine path, socket path, and schema blob path.
+- Common: plan cache (shape hash→Plan, filled on request; no expiry timer; schema hash changes naturally invalidate the key), step runner (`bind_from`, `LIST_EXPAND`), result-tree assembly (ONE/MANY/JOIN links, parent_node, possible, strip), host codecs (gz=zlib, json, jsons, serialize read, base64, authenticated AES), `on_query(sql, binds, duration)` hook, `debug()` SQL dump with masked binds, caller-enabled deadlock retry, and `Page`. One `orm.toml` declares DSN, engine path, socket path, and schema blob path.
 - Go: `Collection[T]` (slice plus index, order retained), in-process engine, direct typed-struct row scan.
 - Rust: `IndexMap`, sqlx (mysql feature first), `Tx: Clone` handle, separate generated crate (`--tables`, one module per table).
 - PHP: PDO, `ArrayAccess` plus magic-getter models, `__call` parser, APCu plan cache, persistent UDS transport, and `Pagination`-compatible `paginate()`.

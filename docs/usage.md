@@ -397,7 +397,7 @@ Battle::query()->seq($id)->using($db)->delete();
 
 - `update` always writes `updated_ts` explicitly so the value is consistent across dialects.
 - `minus<Col>` clamps at zero. Use `set<Col>Expr('`read_count` * ? + 1', [2])` for an expression.
-- Transactions use each language native transaction API. On deadlock (1213/40001), the closure is **re-run up to three times in a new transaction**.
+- Transactions use each language native transaction API. The callback runs once by default. Deadlock retry requires `TransactionOptions` with `retryDeadlocks` enabled and is limited by `maxAttempts` (default 3).
 
 ```go
 row, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {

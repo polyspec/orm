@@ -16,7 +16,7 @@ spl_autoload_register(function (string $class) use ($root): void {
                 $prefix === 'Orm\\' && in_array($rel, ['Row', 'Rows', 'Collection', 'Page', 'Registry', 'Names', 'StreamResult'], true) => $dir . 'Row.php',
                 $prefix === 'Orm\\' && in_array($rel, ['W', 'Q', 'Req', 'ColRef'], true) => $dir . 'Query.php',
                 $prefix === 'Orm\\' && in_array($rel, ['Compat', 'CompatQuery', 'CompatWhere'], true) => $dir . 'Compat.php',
-                $prefix === 'Orm\\' && in_array($rel, ['Db', 'Tx', 'Transform'], true) => $dir . 'Db.php',
+                $prefix === 'Orm\\' && in_array($rel, ['Db', 'Tx', 'Transform', 'TransactionOptions'], true) => $dir . 'Db.php',
                 $prefix === 'Orm\\' && in_array($rel, ['Orm', 'Config', 'OrmException'], true) => $dir . 'Orm.php',
                 $prefix === 'Orm\\' && in_array($rel, ['Transport', 'Assemble'], true) => $dir . 'Transport.php',
                 $prefix === 'Orm\\' && in_array($rel, ['Codec', 'Code', 'Toml', 'ConnectionBinding', 'Binding', 'Wire', 'CompilerBridge', 'CompilerTransport', 'ConnectCompiler'], true) => $dir . $rel . '.php',

@@ -138,6 +138,8 @@ Transaction ownership belongs to the code that created the transaction. Commit a
 
 Errors preserve their stable code and the original driver message. Cancellation releases the transaction and does not leave an active connection in a client-owned object.
 
+`transaction` executes its callback once by default. Deadlock retry is disabled by default. The caller may pass `TransactionOptions` with `retryDeadlocks` and `maxAttempts`; each retry creates a new transaction and re-executes the complete callback. The callback must be safe to execute more than once when retry is enabled.
+
 ## 7. Compile, plan, and assembly — IF-18 to IF-20
 
 `Request` contains the schema hash, IR version, entity, predicate tree, relation requests, projection, and parameter count. Parameter values are stored separately from the request shape. The compiler produces an immutable plan with dialect-specific SQL and positional assembly metadata.

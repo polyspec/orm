@@ -12,6 +12,7 @@ use App\Orm\Battle;
 use Orm\Config;
 use Orm\Orm;
 use Orm\Tx;
+use Orm\TransactionOptions;
 
 [, $sock, $schema, $first, $second, $tag] = $argv;
 Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', driver: orm_test_driver()));
@@ -28,5 +29,5 @@ $db->transaction(function (Tx $tx) use (&$runs, $first, $second, $tag): void {
         fgets(STDIN);
     }
     Battle::query()->seqEq((int) $second)->setName("dl-php-$tag")->using($tx)->update();
-});
+}, new TransactionOptions(retryDeadlocks: true, maxAttempts: 3));
 fwrite(STDOUT, "done $runs\n");

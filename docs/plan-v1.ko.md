@@ -22,7 +22,7 @@
 | 쿼리 형태는 소스에서 고정 → 값 무관 플랜을 캐시하면 호출 구간는 콜드패스에서만 | **언어별 플랜 캐시**(IR 형태 해시 + IN 카디널리티). 핫패스 = 네이티브 드라이버 + 캐시된 SQL |
 | WHERE 괄호가 루트에서 열려 조인 모델에서 닫히는 실제 코드 존재; 조인별 where 검증은 깨짐 | 루트+조인을 잇는 **단일 토큰 스트림**으로 검증, 선행 연결자, `orJoin(alias)` 스플라이스 |
 | relation 세부(keyName 재키잉·parentNode 병합·matchKeyRemove·possible·관계별 연결·ONE 중복) 누락 | IR 필드·규칙 명시 (§프로토콜) |
-| `delete(true)`는 클라이언트가 로드한 트리를 걷는 것; 트랜잭션 내 데드락 재시도는 엔진이 불가 | 순서 있는 `MutationBatch`; 데드락 시 **클라이언트가 클로저 재실행** |
+| `delete(true)`는 클라이언트가 로드한 트리를 걷는 것; 트랜잭션 내 데드락 재시도는 엔진이 불가 | 순서 있는 `MutationBatch`; 데드락 재시도는 호출자가 `TransactionOptions`로 활성화 |
 | 집계·raw SQL 루트(26곳)·계산 컬럼 `addColumn(col,alias,'ST_Y(%s)')`·`Model::function` 미표현 | `aggregate`, `Query.raw`, `columns.computed`, `Predicate.lhs_expr` 추가 |
 | 세 언어 문법이 머리(`X::query()($db)` vs `x.Query(db)`)·관계 생성·터미널·결과 접근에서 갈라짐 | **정규 토큰 문법**: 머리 `query()`, 동일 중간 토큰, 실행기를 받는 터미널, `and(f)/or(f)` 그룹, YAML 선언 관계로 `alias<Name>()` 타입화 |
 | 일정 21–28주는 1인에게 비현실적; A/B/C 세 패키징을 M1 전에 만드는 건 함정 | 3일 스파이크 + 4주 thin slice, 총 ≈15–16주. WASM·protobuf·Connect는 후순위 실험 |
@@ -203,7 +203,7 @@ let products = product::query()
 - `cmd/ormd`: length-prefixed JSON 프레임, UDS, 무상태(PHP 전용).
 
 ## 실행기 (언어별, 얇게)
-- 공통: 플랜 캐시(형태 해시→Plan, 요청 시 채움·만료 타이머 없음, `schema_hash` 변경 시 키가 달라져 자연 무효화), 단계 러너(bind_from·LIST_EXPAND), 결과 트리 조립(ONE/MANY/JOIN 링크, parent_node, possible, strip), 호스트측 코덱(gz=zlib, json, jsons, serialize 읽기, base64; MySQL에선 AES/ip는 SQL), `on_query(sql, binds, duration)` 훅, `debug()` SQL 덤프(바인드 마스킹), 데드락 클로저 재실행(최대 3회), `Page`. 설정은 `orm.toml` 한 파일(연결 DSN·엔진 경로·소켓 경로·스키마 blob 경로 전부 명시).
+- 공통: 플랜 캐시(형태 해시→Plan, 요청 시 채움·만료 타이머 없음, `schema_hash` 변경 시 키가 달라져 자연 무효화), 단계 러너(bind_from·LIST_EXPAND), 결과 트리 조립(ONE/MANY/JOIN 링크, parent_node, possible, strip), 호스트측 코덱(gz=zlib, json, jsons, serialize 읽기, base64, 인증된 AES), `on_query(sql, binds, duration)` 훅, `debug()` SQL 덤프(바인드 마스킹), 호출자가 활성화하는 데드락 재시도, `Page`. 설정은 `orm.toml` 한 파일(연결 DSN·엔진 경로·소켓 경로·스키마 blob 경로 전부 명시).
 - Go: `Collection[T]`(슬라이스+인덱스, 순서 유지), in-process 엔진, 행을 typed struct로 직접 스캔.
 - Rust: `IndexMap`, sqlx(mysql feature 우선), `Tx: Clone` 핸들, 생성 crate 별도(`--tables`, 모듈=테이블).
 - PHP: PDO, `ArrayAccess`+magic getter 모델, `__call` 파서, APCu 플랜 캐시, 영속 UDS 트랜스포트, `Pagination` 호환 `paginate()`.

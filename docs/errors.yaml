@@ -63,7 +63,7 @@ codes:
   - code: INTERNAL
     origin: executor
   # ---- driver (mapped) ----
-  - code: DEADLOCK                # MySQL 1213 / SQLSTATE 40001 — transaction() re-runs the closure up to 3 times before surfacing it
+  - code: DEADLOCK                # MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions
     origin: driver
   - code: DUPLICATE_KEY           # MySQL 1062 / SQLSTATE 23000
     origin: driver

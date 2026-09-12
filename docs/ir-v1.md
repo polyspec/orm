@@ -1,6 +1,6 @@
 # IR v1 specification
 
-> Legacy design document. Current implementation references are [common interface](interfaces.md), [DSL](dsl.md), [protocol](protocol.md), and [schema](schema.md).
+Current implementation references are [common interface](interfaces.md), [DSL](dsl.md), [protocol](protocol.md), and [schema](schema.md).
 
 Goal: **one schema → one parser → spec.json (IR) → four renderers (PHP/Go/Rust/TypeScript)**.
 Renderers do not parse. They read the IR and compose names.
@@ -121,7 +121,7 @@ Default matrix:
 
 Style adjustment — **ordering comparisons have no meaning for encoded columns.**
 
-- `["aes"]`, `["aes","hex"]`: deterministic (MySQL default ECB), so retain `eq ne in is_null` and remove the rest.
+- `["aes"]`, `["aes","hex"]`: authenticated versioned ciphertext, so retain `eq ne in is_null` and remove the rest.
 - `["gz"]`, `["base64"]`, `["serialize"]`, `["json"]`: retain only `is_null`.
 - `["ip"]`: `eq ne in is_null` (`gt/lt` may be considered in v2 because `INET6_ATON` results can be ordered).
 - Remove `is_null` when `nullable: false`.

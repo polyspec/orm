@@ -211,19 +211,35 @@ func (t *Tx) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	return t.tx.StmtContext(ctx, st), nil
 }
 
-// Transaction runs fn in a transaction. An error or panic rolls back. On a
-// deadlock the whole closure is re-run in a new transaction, at most 3 attempts
-// with 50ms·2^n + jitter between them.
+// Transaction runs fn once in a transaction. An error or panic rolls back.
 func Transaction[T any](ctx context.Context, d *DB, fn func(*Tx) (T, error)) (T, error) {
+	return TransactionWithOptions(ctx, d, TransactionOptions{}, fn)
+}
+
+// TransactionOptions controls transaction retry. Retry is disabled by default.
+type TransactionOptions struct {
+	RetryDeadlocks bool
+	MaxAttempts    int
+}
+
+// TransactionWithOptions runs a transaction with an explicit retry policy.
+func TransactionWithOptions[T any](ctx context.Context, d *DB, options TransactionOptions, fn func(*Tx) (T, error)) (T, error) {
 	var zero T
 	var lastErr error
-	for attempt := 0; attempt < 3; attempt++ {
+	attempts := 1
+	if options.RetryDeadlocks {
+		attempts = options.MaxAttempts
+		if attempts <= 0 {
+			attempts = 3
+		}
+	}
+	for attempt := 0; attempt < attempts; attempt++ {
 		v, err := runTx(ctx, d, fn)
 		if err == nil {
 			return v, nil
 		}
 		lastErr = err
-		if !IsDeadlock(err) {
+		if !options.RetryDeadlocks || !IsDeadlock(err) {
 			return zero, err
 		}
 		delay := time.Duration(50<<attempt)*time.Millisecond + time.Duration(rand.IntN(20))*time.Millisecond
