@@ -3,8 +3,10 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/polyspec/orm/engine"
@@ -98,4 +100,63 @@ func TestStatementCacheEvictsOldestAndCloseIsIdempotent(t *testing.T) {
 	if _, err := db.stmt(ctx, "SELECT 4"); err == nil {
 		t.Fatal("prepare after close succeeded")
 	}
+}
+
+func TestPlanCacheConcurrentAccess(t *testing.T) {
+	sqlDB, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sqlDB.Close()
+	eng, err := engine.LoadJSON(mustSchemaJSON(t), "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	var callsMu sync.Mutex
+	counting := cachePlanCompilerFunc(func(ctx context.Context, r *ir.Request) (*plan.Plan, error) {
+		callsMu.Lock()
+		calls++
+		callsMu.Unlock()
+		return &plan.Plan{SchemaHash: r.SchemaHash, Kind: r.Kind, Steps: []plan.Step{{Role: "main", SQL: r.Kind}}}, nil
+	})
+	db := &DB{SQL: sqlDB, Eng: eng, compiler: counting, cfg: Config{PlanCacheSize: 4}, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}
+	request := NewReq(eng, "all", "battle")
+	const workers = 32
+	errs := make(chan error, workers)
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			compiled, err := db.Plan(context.Background(), request)
+			if err == nil && (compiled == nil || compiled.Kind != "all") {
+				err = fmt.Errorf("unexpected compiled plan: %#v", compiled)
+			}
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	db.planMu.RLock()
+	cacheSize := len(db.plans)
+	db.planMu.RUnlock()
+	if cacheSize != 1 {
+		t.Fatalf("concurrent plan cache size=%d, want 1", cacheSize)
+	}
+}
+
+type cachePlanCompilerFunc func(context.Context, *ir.Request) (*plan.Plan, error)
+
+func (f cachePlanCompilerFunc) Compile(ctx context.Context, r *ir.Request) (*plan.Plan, error) {
+	return f(ctx, r)
+}
+
+func (cachePlanCompilerFunc) Metadata(context.Context) (*compilerv1.GetMetadataResponse, error) {
+	return &compilerv1.GetMetadataResponse{SchemaHash: "unused", Dialect: "sqlite", IrVersion: ir.Version}, nil
 }
