@@ -23,12 +23,14 @@ aes = "bench-salt"          # or aes_env = "ORM_AES_KEY"
 # aes_keys = { "1" = "old-key", "2" = "bench-salt" }  # required for key rotation
 # aes_version = 2             # current version for new writes and rotation
 
-[engine]                    # Rust only: the wasm engine and where wasmtime may cache its compilation
+[engine]                    # compatibility compiler settings during the Connect migration
 wasm = "/srv/app/bin/ormengine.wasm"
 cache_dir = "/var/cache/orm"
 
-[ormd]                      # PHP only: the compile daemon
-socket = "/run/orm/ormd.sock"
+[ormd]                      # compiler transport
+endpoint = "http://127.0.0.1:8080"
+timeout_ms = 5000
+socket = "/run/orm/ormd.sock" # PHP compatibility executor during the Connect migration
 
 [debug]
 on_query = false            # log every statement (sql, binds with secrets masked, duration, plan id)
@@ -36,7 +38,7 @@ on_query = false            # log every statement (sql, binds with secrets maske
 
 Checks at startup (all four): `schema` exists and its `schema_hash` equals the generated client's
 (`SCHEMA_HASH_MISMATCH` otherwise — no watching, no reload); `ormd`/`engine` paths exist and are absolute;
-`secrets.aes` or `aes_env` present when the schema has aes columns; `[db].user/password` only with mysql DSNs (other drivers carry the user in the URL); the daemon/engine dialect must equal `[db].driver` (`CONFIG` otherwise).
+`secrets.aes` or `aes_env` present when the schema has aes columns; `[db].user/password` only with mysql DSNs (other drivers carry the user in the URL); the compiler dialect and IR version must equal `[db].driver` and the client IR version (`CONFIG` or `VERSION_MISMATCH` otherwise). Go uses `[ormd].endpoint` for plan compilation. Rust and PHP executor migration remains in T7.1.
 
 `fromConfig` opens the configured database; it does not install a default query connection.
 Select it for a root query with Go `Using(ctx, db)`, PHP `using($db)`, or Rust `using(&db)`.

@@ -89,7 +89,7 @@ The common compiler service is `orm.compiler.v1.CompilerService` from `proto/orm
 
 `contracts/interfaces.json` defines the service path, operation names, request and response types, errors, and native symbols for all four transports. The Protobuf check rejects missing interface methods or implementation declarations. Runtime symbol snapshots exclude generated Protobuf files; `proto/generated.sha256.json` checks every generated file instead.
 
-The existing Go in-process compiler, Rust WASM compiler, and PHP length-prefixed Unix socket compiler remain active in the database executors during T7.1 migration. They do not satisfy the completed transport requirement. T7.1 completes after the executors use Connect and the 58 database vectors pass in all four languages.
+The Go database executor compiles every plan-cache miss through `CompilerTransport`; startup rejects mismatched schema hash, dialect, and IR version metadata. Its 58 SQLite database vectors pass through Connect. Rust still uses WASM and PHP still uses the length-prefixed Unix socket. These compatibility paths do not satisfy the completed transport requirement. T7.1 completes after all four executors use Connect and the 58 database vectors pass in all four languages.
 
 The cache key is the schema hash plus the request shape and IN cardinality. Parameter values are excluded.
 
