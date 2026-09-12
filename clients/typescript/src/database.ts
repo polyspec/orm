@@ -328,6 +328,9 @@ export class Tx extends Db {
   public override readonly compiler: Compiler;
   public async commit(): Promise<void> { this.assertActive(); await this.transactionConnection.commit(); this.active = false; }
   public async rollback(): Promise<void> { this.assertActive(); await this.transactionConnection.rollback(); this.active = false; }
+  public async savepoint(name: string): Promise<void> { this.assertActive(); await this.transactionConnection.savepoint(name); }
+  public async rollbackTo(name: string): Promise<void> { this.assertActive(); await this.transactionConnection.rollbackTo(name); }
+  public async releaseSavepoint(name: string): Promise<void> { this.assertActive(); await this.transactionConnection.releaseSavepoint(name); }
   public override async execute(plan: Plan, params: Param[]): Promise<unknown> { this.assertActive(); return super.execute(plan, params); }
   private assertActive(): void { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); }
 }

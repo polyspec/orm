@@ -134,7 +134,7 @@ An unbound terminal returns `CONFIG`. A terminal after transaction completion re
 
 A binding contains the execution context and one database or transaction reference. Query copies share the request value structure but do not share mutable builder state. A child relation uses the root binding. A loaded row retains the binding needed for its update and delete methods.
 
-Transaction ownership belongs to the code that created the transaction. Commit and rollback end the binding. After either operation, all queries and rows from that transaction reject execution. Nested transactions and savepoints are outside v1.
+Transaction ownership belongs to the code that created the transaction. Commit and rollback end the binding. After either operation, all queries and rows from that transaction reject execution. A transaction exposes `savepoint(name)`, `rollbackTo(name)`, and `releaseSavepoint(name)`; names must match `[A-Za-z_][A-Za-z0-9_]*`. These operations preserve the outer transaction and reject invalid names with `CONFIG`.
 
 Errors preserve their stable code and the original driver message. Cancellation releases the transaction and does not leave an active connection in a client-owned object.
 

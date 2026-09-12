@@ -41,6 +41,14 @@ export interface DriverConnection {
 export interface DriverTransaction extends DriverConnection {
   commit(): Promise<void>;
   rollback(): Promise<void>;
+  savepoint(name: string): Promise<void>;
+  rollbackTo(name: string): Promise<void>;
+  releaseSavepoint(name: string): Promise<void>;
+}
+
+function savepointName(name: string): string {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new OrmError('CONFIG', 'savepoint name must match [A-Za-z_][A-Za-z0-9_]*');
+  return name;
 }
 
 async function closeReadable(readable: Readable | undefined): Promise<void> {
@@ -115,6 +123,10 @@ class MySqlTx extends MySqlDriver implements DriverTransaction {
   }
   public async commit(): Promise<void> { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); await this.tx.commit(); this.finish(); }
   public async rollback(): Promise<void> { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); await this.tx.rollback(); this.finish(); }
+  public async savepoint(name: string): Promise<void> { this.assertControl(); await this.tx.query(`SAVEPOINT ${savepointName(name)}`); }
+  public async rollbackTo(name: string): Promise<void> { this.assertControl(); await this.tx.query(`ROLLBACK TO SAVEPOINT ${savepointName(name)}`); }
+  public async releaseSavepoint(name: string): Promise<void> { this.assertControl(); await this.tx.query(`RELEASE SAVEPOINT ${savepointName(name)}`); }
+  private assertControl(): void { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); }
   private finish(): void { this.active = false; this.tx.release(); }
 }
 
@@ -169,12 +181,16 @@ class PostgresTx extends PostgresDriver implements DriverTransaction {
   }
   public async commit(): Promise<void> { await this.end('COMMIT'); }
   public async rollback(): Promise<void> { await this.end('ROLLBACK'); }
+  public async savepoint(name: string): Promise<void> { this.assertControl(); await this.tx.query(`SAVEPOINT ${savepointName(name)}`); }
+  public async rollbackTo(name: string): Promise<void> { this.assertControl(); await this.tx.query(`ROLLBACK TO SAVEPOINT ${savepointName(name)}`); }
+  public async releaseSavepoint(name: string): Promise<void> { this.assertControl(); await this.tx.query(`RELEASE SAVEPOINT ${savepointName(name)}`); }
+  private assertControl(): void { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); }
   private async end(sql: string): Promise<void> { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); await this.tx.query(sql); this.active = false; this.tx.release(); }
 }
 
 class SqliteDriver implements DriverConnection {
   public readonly name = 'sqlite' as const;
-  private active = true;
+  protected active = true;
   public constructor(protected readonly connection: DatabaseSync, private readonly owner = false, private readonly transaction = false) {}
   public async execute(sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
     if (!this.active) throw new OrmError('CONFIG', 'transaction already finished');
@@ -222,6 +238,10 @@ class SqliteTx extends SqliteDriver implements DriverTransaction {
   public constructor(connection: DatabaseSync) { super(connection, false, true); }
   public async commit(): Promise<void> { this.connection.exec('COMMIT'); this.finish(); }
   public async rollback(): Promise<void> { this.connection.exec('ROLLBACK'); this.finish(); }
+  public async savepoint(name: string): Promise<void> { this.assertControl(); this.connection.exec(`SAVEPOINT ${savepointName(name)}`); }
+  public async rollbackTo(name: string): Promise<void> { this.assertControl(); this.connection.exec(`ROLLBACK TO SAVEPOINT ${savepointName(name)}`); }
+  public async releaseSavepoint(name: string): Promise<void> { this.assertControl(); this.connection.exec(`RELEASE SAVEPOINT ${savepointName(name)}`); }
+  private assertControl(): void { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); }
 }
 
 export function openMySql(uri: string, pool = 10): DriverConnection {
