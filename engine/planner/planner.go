@@ -299,6 +299,9 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			} else {
 				inner += "(" + strings.Join(parentCols, ", ") + ") IN ((" + parentList + "))"
 			}
+			if rc.through.SoftDelete != "" {
+				inner += " AND " + p.D.Quote(throughAlias) + "." + p.D.Quote(rc.through.SoftDelete) + " IS NULL"
+			}
 			if len(rc.childKeys) == 1 {
 				where = append(where, p.qcol(root, rc.childKeys[0])+" IN ("+inner+")")
 			} else {
