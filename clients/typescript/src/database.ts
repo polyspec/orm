@@ -148,7 +148,7 @@ export class Db implements Database, Executor {
     const attempts = options.retryDeadlocks ? Math.max(1, options.maxAttempts ?? 3) : 1;
     let last: unknown;
     for (let attempt = 0; attempt < attempts; attempt++) {
-      const connection = await this.connection.begin();
+      const connection = await this.connection.begin({ isolation: options.isolation ?? 'default', readOnly: options.readOnly ?? false });
       const transaction = new Tx(connection, this);
       try {
         const result = await callback(transaction);

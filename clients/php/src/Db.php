@@ -12,9 +12,14 @@ final class TransactionOptions
     public function __construct(
         public readonly bool $retryDeadlocks = false,
         public readonly int $maxAttempts = 3,
+        public readonly string $isolation = 'default',
+        public readonly bool $readOnly = false,
     ) {
         if ($this->maxAttempts < 1) {
             throw new OrmException(Code::CONFIG, 'transaction maxAttempts must be at least 1');
+        }
+        if (!in_array($this->isolation, ['default', 'read_uncommitted', 'read_committed', 'repeatable_read', 'serializable'], true)) {
+            throw new OrmException(Code::CONFIG, "unsupported transaction isolation {$this->isolation}");
         }
     }
 }
@@ -190,6 +195,7 @@ class Db
         $last = null;
         $attempts = $options->retryDeadlocks ? $options->maxAttempts : 1;
         for ($attempt = 0; $attempt < $attempts; $attempt++) {
+            $this->configureTransaction($options);
             $this->pdo->beginTransaction();
             $tx = new Tx($this);
             try {
@@ -213,6 +219,22 @@ class Db
             }
         }
         throw $last;
+    }
+
+    private function configureTransaction(TransactionOptions $options): void
+    {
+        if ($this->driver === 'sqlite' && ($options->isolation !== 'default' || $options->readOnly)) {
+            throw new OrmException(Code::CONFIG, 'sqlite does not support transaction isolation or read-only mode');
+        }
+        if ($options->isolation !== 'default') {
+            $level = strtoupper(str_replace('_', ' ', $options->isolation));
+            try { $this->pdo->exec('SET TRANSACTION ISOLATION LEVEL ' . $level); }
+            catch (\PDOException $e) { throw OrmException::fromDriver($e, $this->driver); }
+        }
+        if ($options->readOnly) {
+            try { $this->pdo->exec('SET TRANSACTION READ ONLY'); }
+            catch (\PDOException $e) { throw OrmException::fromDriver($e, $this->driver); }
+        }
     }
 
     /** @param array{table:string, primary_keys:non-empty-list<string>, version_column:string, columns:list<array{name:string,styles:list<string>}>} $spec */

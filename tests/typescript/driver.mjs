@@ -30,6 +30,8 @@ try {
   let finished = false;
   try { await commit.execute('SELECT 1', []); } catch (error) { finished = error?.code === 'CONFIG'; }
   if (!finished) throw new Error('finished transaction accepted a statement');
+  try { await db.begin({ readOnly: true }); throw new Error('SQLite read-only transaction option was accepted'); }
+  catch (error) { if (error?.code !== 'CONFIG') throw error; }
 } finally {
   await db.close();
   await rm(root, { recursive: true, force: true });
