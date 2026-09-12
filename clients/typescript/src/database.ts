@@ -380,6 +380,7 @@ export class Db implements Database, Executor {
           if (slot.transform) value = transform(slot.transform, String(value));
           if (slot.host_styles.includes('blind_index')) {
             if (slot.host_styles.length !== 1) throw new OrmError('CONFIG', 'blind_index must be the only host style');
+            if (this.blindIndexKey === '') throw new OrmError('CONFIG', 'secret blind_index not configured');
             value = blindIndex(value, this.blindIndexKey);
           } else if (slot.host_styles.length > 0) value = hostEncode(value, slot.host_styles, this.aesKey);
           if (slot.col_type === 'point' && value !== null) value = this.driver === 'postgres' ? postgresPoint(value) : pointText(parsePoint(value as string));

@@ -171,7 +171,7 @@ async fn main() {
         compiler,
         Config {
             aes_key: "bench-salt".into(),
-            blind_index_key: "bench-blind-index".into(),
+            blind_index_key: String::new(),
             aes_version: 1,
             aes_keys: [(1, "bench-salt".into())].into_iter().collect(),
             plan_cache_size: 256,
