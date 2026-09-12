@@ -1754,7 +1754,6 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public async getByIp(value: string): Promise<BattleRow | null> { this.predicate('ip','eq',value); return this.get(); }
   public async getsByIp(value: string): Promise<Collection<BattleRow>> { this.predicate('ip','eq',value); return this.gets(); }
   public async getCountByIp(value: string): Promise<number> { this.predicate('ip','eq',value); return this.getCount(); }
-  public async oneBySeq(value: number): Promise<BattleRow | null> { return this.getBySeq(value); }
 }
 export function Battle(): BattleQuery { return new BattleQuery(); }
 registerRow('battle',BattleRow);
@@ -1943,7 +1942,6 @@ export class UserQuery extends QueryCore implements UserInterface {
   public async getByName(value: string): Promise<UserRow | null> { this.predicate('name','eq',value); return this.get(); }
   public async getsByName(value: string): Promise<Collection<UserRow>> { this.predicate('name','eq',value); return this.gets(); }
   public async getCountByName(value: string): Promise<number> { this.predicate('name','eq',value); return this.getCount(); }
-  public async oneBySeq(value: number): Promise<UserRow | null> { return this.getBySeq(value); }
 }
 export function User(): UserQuery { return new UserQuery(); }
 registerRow('user',UserRow);
@@ -2134,7 +2132,6 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public async getByName(value: string): Promise<ServiceRow | null> { this.predicate('name','eq',value); return this.get(); }
   public async getsByName(value: string): Promise<Collection<ServiceRow>> { this.predicate('name','eq',value); return this.gets(); }
   public async getCountByName(value: string): Promise<number> { this.predicate('name','eq',value); return this.getCount(); }
-  public async oneBySeq(value: number): Promise<ServiceRow | null> { return this.getBySeq(value); }
 }
 export function Service(): ServiceQuery { return new ServiceQuery(); }
 registerRow('service',ServiceRow);
@@ -2390,7 +2387,6 @@ export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterf
   public async getByName(value: string): Promise<ServiceModuleRow | null> { this.predicate('name','eq',value); return this.get(); }
   public async getsByName(value: string): Promise<Collection<ServiceModuleRow>> { this.predicate('name','eq',value); return this.gets(); }
   public async getCountByName(value: string): Promise<number> { this.predicate('name','eq',value); return this.getCount(); }
-  public async oneBySeq(value: number): Promise<ServiceModuleRow | null> { return this.getBySeq(value); }
 }
 export function ServiceModule(): ServiceModuleQuery { return new ServiceModuleQuery(); }
 registerRow('service_module',ServiceModuleRow);
@@ -2667,7 +2663,6 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public async getByUserSeq(value: number): Promise<ServiceMemberRow | null> { this.predicate('user_seq','eq',value); return this.get(); }
   public async getsByUserSeq(value: number): Promise<Collection<ServiceMemberRow>> { this.predicate('user_seq','eq',value); return this.gets(); }
   public async getCountByUserSeq(value: number): Promise<number> { this.predicate('user_seq','eq',value); return this.getCount(); }
-  public async oneBySeq(value: number): Promise<ServiceMemberRow | null> { return this.getBySeq(value); }
 }
 export function ServiceMember(): ServiceMemberQuery { return new ServiceMemberQuery(); }
 registerRow('service_member',ServiceMemberRow);
@@ -2885,7 +2880,6 @@ export class CompositeAccountQuery extends QueryCore implements CompositeAccount
   public async getByName(value: string): Promise<CompositeAccountRow | null> { this.predicate('name','eq',value); return this.get(); }
   public async getsByName(value: string): Promise<Collection<CompositeAccountRow>> { this.predicate('name','eq',value); return this.gets(); }
   public async getCountByName(value: string): Promise<number> { this.predicate('name','eq',value); return this.getCount(); }
-  public async oneByTenantId(value: number): Promise<CompositeAccountRow | null> { return this.getByTenantId(value); }
   public async getByTenantIdAndAccountId(value0:number,value1:number): Promise<CompositeAccountRow | null> { this.predicate('tenant_id','eq',value0); this.predicate('account_id','eq',value1); return this.get(); }
 }
 export function CompositeAccount(): CompositeAccountQuery { return new CompositeAccountQuery(); }
@@ -3104,7 +3098,6 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
   public async getByRole(value: string): Promise<CompositeMembershipRow | null> { this.predicate('role','eq',value); return this.get(); }
   public async getsByRole(value: string): Promise<Collection<CompositeMembershipRow>> { this.predicate('role','eq',value); return this.gets(); }
   public async getCountByRole(value: string): Promise<number> { this.predicate('role','eq',value); return this.getCount(); }
-  public async oneByTenantId(value: number): Promise<CompositeMembershipRow | null> { return this.getByTenantId(value); }
   public async getByTenantIdAndAccountId(value0:number,value1:number): Promise<CompositeMembershipRow | null> { this.predicate('tenant_id','eq',value0); this.predicate('account_id','eq',value1); return this.get(); }
 }
 export function CompositeMembership(): CompositeMembershipQuery { return new CompositeMembershipQuery(); }
