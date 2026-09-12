@@ -174,6 +174,10 @@ pub struct Navigation {
     pub group: ::core::option::Option<Group>,
     #[prost(string, tag="4")]
     pub mode: ::prost::alloc::string::String,
+    #[prost(string, tag="5")]
+    pub count_operator: ::prost::alloc::string::String,
+    #[prost(uint32, optional, tag="6")]
+    pub count_parameter: ::core::option::Option<u32>,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Predicate {
