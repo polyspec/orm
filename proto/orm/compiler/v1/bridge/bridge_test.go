@@ -93,6 +93,27 @@ func TestNavigationCountRoundTrips(t *testing.T) {
 	}
 }
 
+func TestKeysetRoundTrips(t *testing.T) {
+	req := &ir.Request{IRVersion: ir.Version, SchemaHash: "schema", Kind: "all", NParams: 2, Query: ir.Query{
+		Entity: "battle", Order: []ir.Order{{Column: "seq"}}, Limit: &ir.Limit{Count: 2},
+		Keyset: &ir.Keyset{Direction: "after", Values: []int{1}},
+	}}
+	wire, err := RequestToProto(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if wire.Root.GetKeyset() == nil || wire.Root.GetKeyset().GetDirection() != "after" || len(wire.Root.GetKeyset().GetValues()) != 1 || wire.Root.GetKeyset().GetValues()[0] != 1 {
+		t.Fatalf("keyset was not encoded: %#v", wire.Root.GetKeyset())
+	}
+	decoded, err := RequestFromProto(wire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decoded.Query.Keyset == nil || decoded.Query.Keyset.Direction != "after" || len(decoded.Query.Keyset.Values) != 1 || decoded.Query.Keyset.Values[0] != 1 {
+		t.Fatalf("keyset was not decoded: %#v", decoded.Query.Keyset)
+	}
+}
+
 func intPtr(v int) *int { return &v }
 
 func TestPlanFromProtoRejectsMissingPlanData(t *testing.T) {
