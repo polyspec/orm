@@ -118,3 +118,27 @@ func TestParseErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestCommentsAreManifestData(t *testing.T) {
+	src := "erDiagram\n  account {\n    bigint seq PK\n    varchar(64) email\n  }\n  %% table_comment account \"customer account\"\n  %% column_comment account email \"login address\"\n"
+	d, err := Parse(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Entities["account"].Comment != "customer account" || m.Entities["account"].Column("email").Comment != "login address" {
+		t.Fatalf("comments not retained: %#v", m.Entities["account"])
+	}
+	first := m.SchemaHash
+	d.Directives[0].Raw = "changed"
+	m2, err := Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == m2.SchemaHash {
+		t.Fatal("table comment did not affect schema hash")
+	}
+}

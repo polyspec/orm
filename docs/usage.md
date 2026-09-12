@@ -100,6 +100,8 @@ go run ./cmd/ormgen verify --dsn "$ORM_DSN" --schema schema/schema.json
 
 The plan stores the source manifest, target hash, ordered operations, destructive flags, and plan checksum. `apply` checks the live source schema before execution and rejects destructive operations unless `--allow-destructive` is explicit.
 
+Comments are included in the manifest and migration comparison. Use `%% table_comment` and `%% column_comment` in the Mermaid source. The importer reads database comments, and the DDL generator emits dialect-specific comment statements.
+
 Each execution also writes a JSON audit file under `migrations/logs` by default. The filename is `<UTC timestamp>__<migration-id>.json`; it contains the driver, schema hashes, plan checksum, status, operation count, start time, finish time, and error detail. Use `--log-dir` to select another directory. An applied migration fails verification if no file log matches its database record.
 
 ```sh

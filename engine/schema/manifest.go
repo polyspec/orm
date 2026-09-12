@@ -22,6 +22,7 @@ type Manifest struct {
 type Entity struct {
 	Name       string                `json:"name"`
 	Table      string                `json:"table"`
+	Comment    string                `json:"comment,omitempty"`
 	PK         []string              `json:"pk"`
 	Auto       string                `json:"auto,omitempty"`
 	Columns    []*Col                `json:"columns"`
@@ -67,6 +68,7 @@ type Col struct {
 	FK        bool     `json:"fk,omitempty"`
 	UK        bool     `json:"uk,omitempty"`
 	Describe  string   `json:"describe,omitempty"`
+	Comment   string   `json:"comment,omitempty"`
 	Line      int      `json:"-"`
 }
 
@@ -164,7 +166,7 @@ func buildEntity(e *DEntity) (*Entity, error) {
 	if !reIdent.MatchString(e.Name) {
 		return nil, &BuildError{e.Line, "entity name must be snake_case: " + e.Name}
 	}
-	ent := &Entity{Name: e.Name, Table: e.Name, Relations: map[string]*Rel{}, Line: e.Line, cols: map[string]*Col{}}
+	ent := &Entity{Name: e.Name, Table: e.Name, Comment: e.Comment, Relations: map[string]*Rel{}, Line: e.Line, cols: map[string]*Col{}}
 	for _, dc := range e.Columns {
 		if err := checkColumnName(dc.Name); err != nil {
 			return nil, &BuildError{dc.Line, err.Error()}
@@ -240,7 +242,7 @@ func checkColumnName(n string) error {
 // naming conventions (is_* → bool, *_seq prefix styles, text/blob → lazy).
 func buildColumn(dc *DColumn) (*Col, error) {
 	c := &Col{Name: dc.Name, Raw: dc.Type, Nullable: dc.Nullable, Default: dc.Default, Auto: dc.Auto,
-		OnUpdate: dc.OnUpdate, Unsigned: dc.Unsigned, Lazy: dc.Lazy, Styles: dc.Styles, Describe: dc.Describe, Line: dc.Line}
+		OnUpdate: dc.OnUpdate, Unsigned: dc.Unsigned, Lazy: dc.Lazy, Styles: dc.Styles, Describe: dc.Describe, Comment: dc.DBComment, Line: dc.Line}
 	m := reTypeParen.FindStringSubmatch(strings.ToLower(dc.Type))
 	if m == nil {
 		return nil, fmt.Errorf("column %s: bad type %q", dc.Name, dc.Type)
@@ -437,6 +439,10 @@ func (m *Manifest) addDirective(x *Directive) error {
 		}
 	}
 	switch x.Kind {
+	case "table_comment":
+		ent.Comment = x.Raw
+	case "column_comment":
+		ent.cols[x.Columns[0]].Comment = x.Raw
 	case "unique":
 		ent.Unique = append(ent.Unique, x.Columns)
 	case "index":
