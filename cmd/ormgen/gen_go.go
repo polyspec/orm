@@ -925,7 +925,7 @@ func (q *{{$.Type}}Query) OnDuplicateMinus{{.Field}}(v {{.Type}}) *{{$.Type}}Que
 func (q *{{.Type}}Query) OnDuplicateSetAll() *{{.Type}}Query { q.q.OnDuplicateSetAll({{printf "%q" .PK}}{{if .Auto}}, {{printf "%q" .AutoCol}}{{end}}); return q }
 
 // Terminals.
-func (q *{{.Type}}Query) One() (*{{.Type}}Row, error) {
+func (q *{{.Type}}Query) Get() (*{{.Type}}Row, error) {
 	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
 	q.q.Req.IR.Kind = "one"
 	if direct, used, err := orm.QueryDirect(ctx, ex, q.q.Req, accepts{{.Type}}Direct, scan{{.Type}}Direct); used {
@@ -939,7 +939,7 @@ func (q *{{.Type}}Query) One() (*{{.Type}}Row, error) {
 	return scan{{.Type}}(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *{{.Type}}Query) All() (*orm.Collection[{{.Type}}Row], error) {
+func (q *{{.Type}}Query) Gets() (*orm.Collection[{{.Type}}Row], error) {
 	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
 	q.q.Req.IR.Kind = "all"
 	if direct, used, err := orm.QueryDirect(ctx, ex, q.q.Req, accepts{{.Type}}Direct, scan{{.Type}}Direct); used {
@@ -951,16 +951,6 @@ func (q *{{.Type}}Query) All() (*orm.Collection[{{.Type}}Row], error) {
 		return nil, err
 	}
 	return collect{{.Type}}(rows, q.keyFn), nil
-}
-
-// Get is the preferred single-row terminal. One is kept as a compatibility alias.
-func (q *{{.Type}}Query) Get() (*{{.Type}}Row, error) {
-	return q.One()
-}
-
-// Gets is the preferred collection terminal. All is kept as a compatibility alias.
-func (q *{{.Type}}Query) Gets() (*orm.Collection[{{.Type}}Row], error) {
-	return q.All()
 }
 
 // Stream visits independently owned rows without accumulating the complete result.
@@ -1003,16 +993,11 @@ func collect{{.Type}}Direct(rows []*{{.Type}}Row, keyFn func(*{{.Type}}Row) orm.
 	return c
 }
 
-func (q *{{.Type}}Query) Count() (int64, error) {
+func (q *{{.Type}}Query) GetCount() (int64, error) {
 	ctx, ex, err := q.binding.Resolve(); if err != nil { return 0, err }
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
-}
-
-// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
-func (q *{{.Type}}Query) GetCount() (int64, error) {
-	return q.Count()
 }
 
 {{range .EqCols}}
@@ -1109,10 +1094,10 @@ func (q *{{.Type}}Query) Insert() (*{{.Type}}Row, error) {
 		return nil, err
 	}
 {{- if .Auto}}
-	return {{.Type}}().Using(ctx, ex).{{pascal .PK}}Eq({{.PKType}}(id)).One()
+	return {{.Type}}().Using(ctx, ex).{{pascal .PK}}Eq({{.PKType}}(id)).Get()
 {{- else}}
 	_ = id
-	return {{.Type}}().Using(ctx, ex){{range $i, $c := .PKCols}}.{{$c.Field}}Eq(keys[{{$i}}].({{$c.Type}})){{end}}.One()
+	return {{.Type}}().Using(ctx, ex){{range $i, $c := .PKCols}}.{{$c.Field}}Eq(keys[{{$i}}].({{$c.Type}})){{end}}.Get()
 {{- end}}
 }
 
@@ -1128,7 +1113,7 @@ func (q *{{.Type}}Query) Save() (*{{.Type}}Row, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return {{.Type}}().Using(ctx, ex){{range $i, $c := .PKCols}}.{{$c.Field}}Eq(keys[{{$i}}].({{$c.Type}})){{end}}.One()
+	return {{.Type}}().Using(ctx, ex){{range $i, $c := .PKCols}}.{{$c.Field}}Eq(keys[{{$i}}].({{$c.Type}})){{end}}.Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
@@ -1154,13 +1139,8 @@ func (q *{{.Type}}Query) SQL() (*orm.Statement, error) {
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *{{.Type}}Query) OneBy{{pascal .PK}}(v {{.PKType}}) (*{{.Type}}Row, error) {
-	return q.{{pascal .PK}}Eq(v).One()
-}
-
-// GetBy{{pascal .PK}} is the preferred primary-key lookup. OneBy{{pascal .PK}} is kept as a compatibility alias.
 func (q *{{.Type}}Query) GetBy{{pascal .PK}}(v {{.PKType}}) (*{{.Type}}Row, error) {
-	return q.OneBy{{pascal .PK}}(v)
+	return q.{{pascal .PK}}Eq(v).Get()
 }
 {{- if gt (len .PKCols) 1}}
 

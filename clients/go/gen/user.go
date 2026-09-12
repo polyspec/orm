@@ -677,7 +677,7 @@ func (q *UserQuery) OnDuplicateSetNameExpr(frag string, binds ...any) *UserQuery
 func (q *UserQuery) OnDuplicateSetAll() *UserQuery { q.q.OnDuplicateSetAll("seq", "seq"); return q }
 
 // Terminals.
-func (q *UserQuery) One() (*UserRow, error) {
+func (q *UserQuery) Get() (*UserRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
@@ -696,7 +696,7 @@ func (q *UserQuery) One() (*UserRow, error) {
 	return scanUser(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *UserQuery) All() (*orm.Collection[UserRow], error) {
+func (q *UserQuery) Gets() (*orm.Collection[UserRow], error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
@@ -713,16 +713,6 @@ func (q *UserQuery) All() (*orm.Collection[UserRow], error) {
 		return nil, err
 	}
 	return collectUser(rows, q.keyFn), nil
-}
-
-// Get is the preferred single-row terminal. One is kept as a compatibility alias.
-func (q *UserQuery) Get() (*UserRow, error) {
-	return q.One()
-}
-
-// Gets is the preferred collection terminal. All is kept as a compatibility alias.
-func (q *UserQuery) Gets() (*orm.Collection[UserRow], error) {
-	return q.All()
 }
 
 // Stream visits independently owned rows without accumulating the complete result.
@@ -780,7 +770,7 @@ func collectUserDirect(rows []*UserRow, keyFn func(*UserRow) orm.Key) *orm.Colle
 	return c
 }
 
-func (q *UserQuery) Count() (int64, error) {
+func (q *UserQuery) GetCount() (int64, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return 0, err
@@ -788,11 +778,6 @@ func (q *UserQuery) Count() (int64, error) {
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
-}
-
-// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
-func (q *UserQuery) GetCount() (int64, error) {
-	return q.Count()
 }
 
 // GetCountBySeq applies seq = v and runs the scalar count terminal.
@@ -965,7 +950,7 @@ func (q *UserQuery) Insert() (*UserRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return User().Using(ctx, ex).SeqEq(int64(id)).One()
+	return User().Using(ctx, ex).SeqEq(int64(id)).Get()
 }
 
 // Save updates when every primary-key column was assigned and inserts when none was assigned.
@@ -985,7 +970,7 @@ func (q *UserQuery) Save() (*UserRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return User().Using(ctx, ex).SeqEq(keys[0].(int64)).One()
+	return User().Using(ctx, ex).SeqEq(keys[0].(int64)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
@@ -1020,11 +1005,6 @@ func (q *UserQuery) SQL() (*orm.Statement, error) {
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *UserQuery) OneBySeq(v int64) (*UserRow, error) {
-	return q.SeqEq(v).One()
-}
-
-// GetBySeq is the preferred primary-key lookup. OneBySeq is kept as a compatibility alias.
 func (q *UserQuery) GetBySeq(v int64) (*UserRow, error) {
-	return q.OneBySeq(v)
+	return q.SeqEq(v).Get()
 }

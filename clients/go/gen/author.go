@@ -6108,7 +6108,7 @@ func (q *AuthorQuery) OnDuplicateMinusPrice(v float64) *AuthorQuery {
 func (q *AuthorQuery) OnDuplicateSetAll() *AuthorQuery { q.q.OnDuplicateSetAll("seq", "seq"); return q }
 
 // Terminals.
-func (q *AuthorQuery) One() (*AuthorRow, error) {
+func (q *AuthorQuery) Get() (*AuthorRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
@@ -6127,7 +6127,7 @@ func (q *AuthorQuery) One() (*AuthorRow, error) {
 	return scanAuthor(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *AuthorQuery) All() (*orm.Collection[AuthorRow], error) {
+func (q *AuthorQuery) Gets() (*orm.Collection[AuthorRow], error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
@@ -6144,16 +6144,6 @@ func (q *AuthorQuery) All() (*orm.Collection[AuthorRow], error) {
 		return nil, err
 	}
 	return collectAuthor(rows, q.keyFn), nil
-}
-
-// Get is the preferred single-row terminal. One is kept as a compatibility alias.
-func (q *AuthorQuery) Get() (*AuthorRow, error) {
-	return q.One()
-}
-
-// Gets is the preferred collection terminal. All is kept as a compatibility alias.
-func (q *AuthorQuery) Gets() (*orm.Collection[AuthorRow], error) {
-	return q.All()
 }
 
 // Stream visits independently owned rows without accumulating the complete result.
@@ -6346,7 +6336,7 @@ func collectAuthorDirect(rows []*AuthorRow, keyFn func(*AuthorRow) orm.Key) *orm
 	return c
 }
 
-func (q *AuthorQuery) Count() (int64, error) {
+func (q *AuthorQuery) GetCount() (int64, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return 0, err
@@ -6354,11 +6344,6 @@ func (q *AuthorQuery) Count() (int64, error) {
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
-}
-
-// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
-func (q *AuthorQuery) GetCount() (int64, error) {
-	return q.Count()
 }
 
 // GetCountBySeq applies seq = v and runs the scalar count terminal.
@@ -7916,7 +7901,7 @@ func (q *AuthorQuery) Insert() (*AuthorRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Author().Using(ctx, ex).SeqEq(int64(id)).One()
+	return Author().Using(ctx, ex).SeqEq(int64(id)).Get()
 }
 
 // Save updates when every primary-key column was assigned and inserts when none was assigned.
@@ -7936,7 +7921,7 @@ func (q *AuthorQuery) Save() (*AuthorRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return Author().Using(ctx, ex).SeqEq(keys[0].(int64)).One()
+	return Author().Using(ctx, ex).SeqEq(keys[0].(int64)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
@@ -7971,13 +7956,8 @@ func (q *AuthorQuery) SQL() (*orm.Statement, error) {
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *AuthorQuery) OneBySeq(v int64) (*AuthorRow, error) {
-	return q.SeqEq(v).One()
-}
-
-// GetBySeq is the preferred primary-key lookup. OneBySeq is kept as a compatibility alias.
 func (q *AuthorQuery) GetBySeq(v int64) (*AuthorRow, error) {
-	return q.OneBySeq(v)
+	return q.SeqEq(v).Get()
 }
 
 // GetByUuid applies the equality predicates for the declared unique key.

@@ -795,7 +795,7 @@ func (q *ServiceQuery) OnDuplicateSetAll() *ServiceQuery {
 }
 
 // Terminals.
-func (q *ServiceQuery) One() (*ServiceRow, error) {
+func (q *ServiceQuery) Get() (*ServiceRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
@@ -814,7 +814,7 @@ func (q *ServiceQuery) One() (*ServiceRow, error) {
 	return scanService(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *ServiceQuery) All() (*orm.Collection[ServiceRow], error) {
+func (q *ServiceQuery) Gets() (*orm.Collection[ServiceRow], error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
@@ -831,16 +831,6 @@ func (q *ServiceQuery) All() (*orm.Collection[ServiceRow], error) {
 		return nil, err
 	}
 	return collectService(rows, q.keyFn), nil
-}
-
-// Get is the preferred single-row terminal. One is kept as a compatibility alias.
-func (q *ServiceQuery) Get() (*ServiceRow, error) {
-	return q.One()
-}
-
-// Gets is the preferred collection terminal. All is kept as a compatibility alias.
-func (q *ServiceQuery) Gets() (*orm.Collection[ServiceRow], error) {
-	return q.All()
 }
 
 // Stream visits independently owned rows without accumulating the complete result.
@@ -898,7 +888,7 @@ func collectServiceDirect(rows []*ServiceRow, keyFn func(*ServiceRow) orm.Key) *
 	return c
 }
 
-func (q *ServiceQuery) Count() (int64, error) {
+func (q *ServiceQuery) GetCount() (int64, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return 0, err
@@ -906,11 +896,6 @@ func (q *ServiceQuery) Count() (int64, error) {
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
-}
-
-// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
-func (q *ServiceQuery) GetCount() (int64, error) {
-	return q.Count()
 }
 
 // GetCountBySeq applies seq = v and runs the scalar count terminal.
@@ -1083,7 +1068,7 @@ func (q *ServiceQuery) Insert() (*ServiceRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Service().Using(ctx, ex).SeqEq(int64(id)).One()
+	return Service().Using(ctx, ex).SeqEq(int64(id)).Get()
 }
 
 // Save updates when every primary-key column was assigned and inserts when none was assigned.
@@ -1103,7 +1088,7 @@ func (q *ServiceQuery) Save() (*ServiceRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return Service().Using(ctx, ex).SeqEq(keys[0].(int64)).One()
+	return Service().Using(ctx, ex).SeqEq(keys[0].(int64)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
@@ -1138,11 +1123,6 @@ func (q *ServiceQuery) SQL() (*orm.Statement, error) {
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *ServiceQuery) OneBySeq(v int64) (*ServiceRow, error) {
-	return q.SeqEq(v).One()
-}
-
-// GetBySeq is the preferred primary-key lookup. OneBySeq is kept as a compatibility alias.
 func (q *ServiceQuery) GetBySeq(v int64) (*ServiceRow, error) {
-	return q.OneBySeq(v)
+	return q.SeqEq(v).Get()
 }

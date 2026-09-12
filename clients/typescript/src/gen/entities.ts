@@ -1659,8 +1659,6 @@ export class AuthorQuery extends QueryCore implements AuthorInterface {
   public async get(): Promise<AuthorRow | null> { return await this.terminal('one') as AuthorRow | null; }
   public async gets(): Promise<Collection<AuthorRow>> { const rows=await this.terminal('all') as Collection<AuthorRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: AuthorRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<AuthorRow>(visitor); }
-  public async one(): Promise<AuthorRow | null> { return this.get(); }
-  public async all(): Promise<Collection<AuthorRow>> { return this.gets(); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<AuthorRow>> { return await this.terminal('group_count') as Collection<AuthorRow>; }
   public async insert(): Promise<AuthorRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new AuthorQuery().using(database).predicate('seq','eq',key).get(); }
@@ -1931,8 +1929,6 @@ export class UserQuery extends QueryCore implements UserInterface {
   public async get(): Promise<UserRow | null> { return await this.terminal('one') as UserRow | null; }
   public async gets(): Promise<Collection<UserRow>> { const rows=await this.terminal('all') as Collection<UserRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: UserRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<UserRow>(visitor); }
-  public async one(): Promise<UserRow | null> { return this.get(); }
-  public async all(): Promise<Collection<UserRow>> { return this.gets(); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<UserRow>> { return await this.terminal('group_count') as Collection<UserRow>; }
   public async insert(): Promise<UserRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new UserQuery().using(database).predicate('seq','eq',key).get(); }
@@ -2124,8 +2120,6 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public async get(): Promise<ServiceRow | null> { return await this.terminal('one') as ServiceRow | null; }
   public async gets(): Promise<Collection<ServiceRow>> { const rows=await this.terminal('all') as Collection<ServiceRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: ServiceRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<ServiceRow>(visitor); }
-  public async one(): Promise<ServiceRow | null> { return this.get(); }
-  public async all(): Promise<Collection<ServiceRow>> { return this.gets(); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<ServiceRow>> { return await this.terminal('group_count') as Collection<ServiceRow>; }
   public async insert(): Promise<ServiceRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ServiceQuery().using(database).predicate('seq','eq',key).get(); }
@@ -2379,8 +2373,6 @@ export class ServiceRegionQuery extends QueryCore implements ServiceRegionInterf
   public async get(): Promise<ServiceRegionRow | null> { return await this.terminal('one') as ServiceRegionRow | null; }
   public async gets(): Promise<Collection<ServiceRegionRow>> { const rows=await this.terminal('all') as Collection<ServiceRegionRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: ServiceRegionRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<ServiceRegionRow>(visitor); }
-  public async one(): Promise<ServiceRegionRow | null> { return this.get(); }
-  public async all(): Promise<Collection<ServiceRegionRow>> { return this.gets(); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<ServiceRegionRow>> { return await this.terminal('group_count') as Collection<ServiceRegionRow>; }
   public async insert(): Promise<ServiceRegionRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ServiceRegionQuery().using(database).predicate('seq','eq',key).get(); }
@@ -2658,8 +2650,6 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public async get(): Promise<ServiceMemberRow | null> { return await this.terminal('one') as ServiceMemberRow | null; }
   public async gets(): Promise<Collection<ServiceMemberRow>> { const rows=await this.terminal('all') as Collection<ServiceMemberRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: ServiceMemberRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<ServiceMemberRow>(visitor); }
-  public async one(): Promise<ServiceMemberRow | null> { return this.get(); }
-  public async all(): Promise<Collection<ServiceMemberRow>> { return this.gets(); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<ServiceMemberRow>> { return await this.terminal('group_count') as Collection<ServiceMemberRow>; }
   public async insert(): Promise<ServiceMemberRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ServiceMemberQuery().using(database).predicate('seq','eq',key).get(); }
@@ -2878,8 +2868,6 @@ export class CompositeAccountQuery extends QueryCore implements CompositeAccount
   public async get(): Promise<CompositeAccountRow | null> { return await this.terminal('one') as CompositeAccountRow | null; }
   public async gets(): Promise<Collection<CompositeAccountRow>> { const rows=await this.terminal('all') as Collection<CompositeAccountRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: CompositeAccountRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<CompositeAccountRow>(visitor); }
-  public async one(): Promise<CompositeAccountRow | null> { return this.get(); }
-  public async all(): Promise<Collection<CompositeAccountRow>> { return this.gets(); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<CompositeAccountRow>> { return await this.terminal('group_count') as Collection<CompositeAccountRow>; }
   public async insert(): Promise<CompositeAccountRow | null> { const database=this.binding.resolve(); const keys=this.assignedKeyValues(['tenant_id','account_id']); await this.insertKey(); const query=new CompositeAccountQuery().using(database); query.predicate('tenant_id','eq',keys[0]); query.predicate('account_id','eq',keys[1]); return query.get(); }
@@ -3099,8 +3087,6 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
   public async get(): Promise<CompositeMembershipRow | null> { return await this.terminal('one') as CompositeMembershipRow | null; }
   public async gets(): Promise<Collection<CompositeMembershipRow>> { const rows=await this.terminal('all') as Collection<CompositeMembershipRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: CompositeMembershipRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<CompositeMembershipRow>(visitor); }
-  public async one(): Promise<CompositeMembershipRow | null> { return this.get(); }
-  public async all(): Promise<Collection<CompositeMembershipRow>> { return this.gets(); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<CompositeMembershipRow>> { return await this.terminal('group_count') as Collection<CompositeMembershipRow>; }
   public async insert(): Promise<CompositeMembershipRow | null> { const database=this.binding.resolve(); const keys=this.assignedKeyValues(['tenant_id','account_id']); await this.insertKey(); const query=new CompositeMembershipQuery().using(database); query.predicate('tenant_id','eq',keys[0]); query.predicate('account_id','eq',keys[1]); return query.get(); }

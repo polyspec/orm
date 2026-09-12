@@ -1102,7 +1102,7 @@ func (q *ServiceRegionQuery) OnDuplicateSetAll() *ServiceRegionQuery {
 }
 
 // Terminals.
-func (q *ServiceRegionQuery) One() (*ServiceRegionRow, error) {
+func (q *ServiceRegionQuery) Get() (*ServiceRegionRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
@@ -1121,7 +1121,7 @@ func (q *ServiceRegionQuery) One() (*ServiceRegionRow, error) {
 	return scanServiceRegion(rows.Data[0], rows.Assemble, rows), nil
 }
 
-func (q *ServiceRegionQuery) All() (*orm.Collection[ServiceRegionRow], error) {
+func (q *ServiceRegionQuery) Gets() (*orm.Collection[ServiceRegionRow], error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
@@ -1138,16 +1138,6 @@ func (q *ServiceRegionQuery) All() (*orm.Collection[ServiceRegionRow], error) {
 		return nil, err
 	}
 	return collectServiceRegion(rows, q.keyFn), nil
-}
-
-// Get is the preferred single-row terminal. One is kept as a compatibility alias.
-func (q *ServiceRegionQuery) Get() (*ServiceRegionRow, error) {
-	return q.One()
-}
-
-// Gets is the preferred collection terminal. All is kept as a compatibility alias.
-func (q *ServiceRegionQuery) Gets() (*orm.Collection[ServiceRegionRow], error) {
-	return q.All()
 }
 
 // Stream visits independently owned rows without accumulating the complete result.
@@ -1210,7 +1200,7 @@ func collectServiceRegionDirect(rows []*ServiceRegionRow, keyFn func(*ServiceReg
 	return c
 }
 
-func (q *ServiceRegionQuery) Count() (int64, error) {
+func (q *ServiceRegionQuery) GetCount() (int64, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return 0, err
@@ -1218,11 +1208,6 @@ func (q *ServiceRegionQuery) Count() (int64, error) {
 	q.q.Req.IR.Kind = "count"
 	v, err := orm.Scalar(ctx, ex, q.q.Req)
 	return orm.AsInt64(v), err
-}
-
-// GetCount is the preferred scalar count terminal. Count is kept as a compatibility alias.
-func (q *ServiceRegionQuery) GetCount() (int64, error) {
-	return q.Count()
 }
 
 // GetCountBySeq applies seq = v and runs the scalar count terminal.
@@ -1462,7 +1447,7 @@ func (q *ServiceRegionQuery) Insert() (*ServiceRegionRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ServiceRegion().Using(ctx, ex).SeqEq(int64(id)).One()
+	return ServiceRegion().Using(ctx, ex).SeqEq(int64(id)).Get()
 }
 
 // Save updates when every primary-key column was assigned and inserts when none was assigned.
@@ -1482,7 +1467,7 @@ func (q *ServiceRegionQuery) Save() (*ServiceRegionRow, error) {
 	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
 		return nil, err
 	}
-	return ServiceRegion().Using(ctx, ex).SeqEq(keys[0].(int64)).One()
+	return ServiceRegion().Using(ctx, ex).SeqEq(keys[0].(int64)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
@@ -1517,11 +1502,6 @@ func (q *ServiceRegionQuery) SQL() (*orm.Statement, error) {
 	return orm.SQL(ctx, ex, q.q.Req)
 }
 
-func (q *ServiceRegionQuery) OneBySeq(v int64) (*ServiceRegionRow, error) {
-	return q.SeqEq(v).One()
-}
-
-// GetBySeq is the preferred primary-key lookup. OneBySeq is kept as a compatibility alias.
 func (q *ServiceRegionQuery) GetBySeq(v int64) (*ServiceRegionRow, error) {
-	return q.OneBySeq(v)
+	return q.SeqEq(v).Get()
 }
