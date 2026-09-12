@@ -1,8 +1,11 @@
-.PHONY: check db-test perf-check ts-check schema-check proto-check typescript-build rust-150-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check
+.PHONY: check db-test perf-check interface-check ts-check schema-check proto-check typescript-build rust-150-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
-check: docs-rules-check docs-check docs-verify-idempotent ts-check schema-check proto-check db-test perf-check
+check: docs-rules-check docs-check docs-verify-idempotent interface-check ts-check schema-check proto-check db-test perf-check
 	go test ./...
+
+interface-check:
+	PATH="$(HOME)/.cargo/bin:$(PATH)" go run ./tests/interfaces/check --self-test
 
 db-test:
 	./scripts/db-test.sh
