@@ -107,6 +107,14 @@ func code(err error) any {
 	return err.Error()
 }
 
+func servicePageKeys(page *orm.KeysetPage[gen.ServiceRow]) []any {
+	keys := make([]any, 0, page.Items.Len())
+	for _, key := range page.Items.Keys() {
+		keys = append(keys, key.Value())
+	}
+	return keys
+}
+
 // dsn is ORM_MYSQL_DSN_GO when set (CI), else the local socket.
 // driver/dsnFlag come from -driver/-dsn (default mysql on the local socket, or ORM_MYSQL_DSN_GO).
 var (
@@ -1066,6 +1074,17 @@ func main() {
 		}
 		deleted, err := gen.Service().NameIn(names).Using(ctx, db).Delete()
 		return map[string]any{"attempted": result.Attempted, "affected": result.Affected, "inserted": result.Inserted, "deleted": deleted}, err
+	})
+	run("keyset_pages", func() (any, error) {
+		first, err := gen.Service().OrderBySeqAsc().Using(ctx, db).GetsAfter("", 3)
+		if err != nil {
+			return nil, err
+		}
+		second, err := gen.Service().OrderBySeqAsc().Using(ctx, db).GetsAfter(first.NextCursor, 3)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"first": servicePageKeys(first), "second": servicePageKeys(second), "has_cursor": first.NextCursor != ""}, nil
 	})
 	run("codec_roundtrip", func() (any, error) {
 		value := map[string]any{"a": int64(1), "b": []any{int64(1), int64(2), map[string]any{"c": "한글/slash"}}, "d": nil, "e": true, "f": 1.5}
