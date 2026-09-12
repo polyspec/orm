@@ -157,6 +157,9 @@ final class {{.Type}}Where
     /** and(fn) opens a parenthesised group; and('(') / and('sql …', binds) / and('Name', v) are compat tokens. */
     public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new self($this->w->group())); $this->w->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
+{{- if .Scope}}
+    public function scope({{.ScopeType}} $v): static { $this->w->pred('{{.Scope}}', 'eq', $v); return $this; }
+{{- end}}
 {{- range .Predicates}}
     public function {{.Method}}({{.Params}}): static { $this->w->expr({{phpStr .Expr}}, [{{.Args}}]); return $this; }
 {{- end}}
@@ -202,6 +205,9 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
     /** and(fn) opens a parenthesised group; and('(') / and('sql …', binds) / and('Name', v) are compat tokens. */
     public function and(\Closure|string|null $fn = null, mixed $v = null): static { if ($fn instanceof \Closure) { $fn(new {{.Type}}Where($this->w()->group())); $this->req->end(); return $this; } return $this->compatConn('and', $fn, $v); }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
+{{- if .Scope}}
+    public function scope({{.ScopeType}} $v): static { $this->w()->pred('{{.Scope}}', 'eq', $v); return $this; }
+{{- end}}
 {{- range .Predicates}}
     public function {{.Method}}({{.Params}}): static { $this->w()->expr({{phpStr .Expr}}, [{{.Args}}]); return $this; }
 {{- end}}
@@ -472,19 +478,19 @@ type phpPred struct {
 }
 
 type phpTmplData struct {
-	Name, Type, Table, PK, PKPhp, Namespace, UpdatedTs string
-	Auto                                               bool
-	Cols                                               []phpCol
-	EqCols                                             []phpCol // columns that support the default equality predicate (getsBy/getCountBy)
-	UniqueFinders                                      []phpFinder
-	Numeric                                            []phpCol
-	ParentCols                                         []phpCol
-	Rels                                               []goRel
-	Links                                              []goLink
-	Indexes                                            []string
-	Fulltext                                           [][]string
-	Protected                                          []string // PK and auto columns: never assigned by onDuplicateSetAll
-	Predicates                                         []phpPred
+	Name, Type, Table, PK, PKPhp, Namespace, UpdatedTs, Scope, ScopeType string
+	Auto                                                                 bool
+	Cols                                                                 []phpCol
+	EqCols                                                               []phpCol // columns that support the default equality predicate (getsBy/getCountBy)
+	UniqueFinders                                                        []phpFinder
+	Numeric                                                              []phpCol
+	ParentCols                                                           []phpCol
+	Rels                                                                 []goRel
+	Links                                                                []goLink
+	Indexes                                                              []string
+	Fulltext                                                             [][]string
+	Protected                                                            []string // PK and auto columns: never assigned by onDuplicateSetAll
+	Predicates                                                           []phpPred
 }
 
 func genPHP(m *schema.Manifest, outDir, namespace string) error {
@@ -499,7 +505,10 @@ func genPHP(m *schema.Manifest, outDir, namespace string) error {
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		ge := buildGoEntity(m, e)
-		d := phpTmplData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Namespace: namespace, Rels: ge.Rels, Links: ge.Links, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs}
+		d := phpTmplData{Name: ge.Name, Type: ge.Type, Table: ge.Table, PK: ge.PK, Auto: ge.Auto, Namespace: namespace, Rels: ge.Rels, Links: ge.Links, Indexes: ge.Indexes, Fulltext: ge.Fulltext, UpdatedTs: ge.UpdatedTs, Scope: ge.Scope}
+		if ge.Scope != "" {
+			d.ScopeType = phpType(e.Column(ge.Scope))
+		}
 		for _, c := range ge.Cols {
 			sc := e.Column(c.Name)
 			pc := phpCol{goCol: c, PhpType: phpType(sc), Agg: (len(sc.Styles) == 0 || sc.Styles[0] == "ip") && sc.Type != "json" && sc.Type != "bytes"}

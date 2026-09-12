@@ -1078,6 +1078,7 @@ func (w *AuthorWhere) Expr(frag string, binds ...any) *AuthorWhere {
 	w.w.Expr(frag, binds...)
 	return w
 }
+func (w *AuthorWhere) Scope(v int64) *AuthorWhere { w.w.Pred("service_seq", "eq", v); return w }
 func (w *AuthorWhere) Service(fn func(*ServiceWhere)) *AuthorWhere {
 	w.w.Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return w
@@ -3982,6 +3983,7 @@ func (q *AuthorQuery) Expr(frag string, binds ...any) *AuthorQuery {
 	q.q.W().Expr(frag, binds...)
 	return q
 }
+func (q *AuthorQuery) Scope(v int64) *AuthorQuery { q.q.W().Pred("service_seq", "eq", v); return q }
 func (q *AuthorQuery) Service(fn func(*ServiceWhere)) *AuthorQuery {
 	q.q.W().Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return q
