@@ -110,7 +110,8 @@ export class Db implements Database, Executor {
     if (spec.primaryKeys.length === 0) throw new OrmError('CONFIG', 'AES rotation primary keys are empty');
     const table = this.identifier(spec.table); const primary = spec.primaryKeys.map(key => this.identifier(key)); const version = this.identifier(spec.versionColumn);
     const columns = spec.columns.map(column => this.identifier(column.name));
-    const select = `SELECT ${primary.join(', ')}, ${version}, ${columns.join(', ')} FROM ${table} WHERE ${version} <> ${this.placeholder(1)} ORDER BY ${primary.join(', ')}`;
+    const batchSize = spec.batchSize && spec.batchSize > 0 ? Math.floor(spec.batchSize) : 1000;
+    const select = `SELECT ${primary.join(', ')}, ${version}, ${columns.join(', ')} FROM ${table} WHERE ${version} <> ${this.placeholder(1)} ORDER BY ${primary.join(', ')} LIMIT ${batchSize}`;
     const rows = (await this.connection.execute(select, [keyring.currentVersion])).rows;
     const sets = [...columns.map((column, index) => `${column} = ${this.placeholder(index + 1)}`), `${version} = ${this.placeholder(columns.length + 1)}`];
     const where = primary.map((key, index) => `${key} = ${this.placeholder(columns.length + 2 + index)}`);

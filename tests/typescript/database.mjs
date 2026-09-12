@@ -126,14 +126,15 @@ try {
   await sqliteConnection.execute('CREATE TABLE "orm_aes_rotation_test" ("tenant_id" INTEGER NOT NULL, "id" INTEGER NOT NULL, "aes_key_version" INTEGER NOT NULL, "aes_hex_email" TEXT, "aes_hex_phone" TEXT, PRIMARY KEY ("tenant_id", "id"))', []);
   const encrypted = [hostEncode('member@example.test', ['aes', 'hex'], 'rotation-key-v1'), hostEncode('01012345678', ['aes', 'hex'], 'rotation-key-v1')];
   await sqliteConnection.execute('INSERT INTO "orm_aes_rotation_test" ("tenant_id", "id", "aes_key_version", "aes_hex_email", "aes_hex_phone") VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)', [7, 1, 1, ...encrypted, 7, 2, 1, ...encrypted]);
-  const spec = { table: 'orm_aes_rotation_test', primaryKeys: ['tenant_id', 'id'], versionColumn: 'aes_key_version', columns: [{ name: 'aes_hex_email', styles: ['aes', 'hex'] }, { name: 'aes_hex_phone', styles: ['aes', 'hex'] }] };
+  const spec = { table: 'orm_aes_rotation_test', primaryKeys: ['tenant_id', 'id'], versionColumn: 'aes_key_version', columns: [{ name: 'aes_hex_email', styles: ['aes', 'hex'] }, { name: 'aes_hex_phone', styles: ['aes', 'hex'] }], batchSize: 1 };
   const keyring = new AesKeyring(new Map([[1, 'rotation-key-v1'], [2, 'rotation-key-v2']]), 2);
   const before = await sqliteDb.aesStatus(spec, keyring);
   const changed = await sqliteDb.rotateAESRows(spec, keyring);
+  const resumed = await sqliteDb.rotateAESRows(spec, keyring);
   const after = await sqliteDb.aesStatus(spec, keyring);
   const repeated = await sqliteDb.rotateAESRows(spec, keyring);
   if (before.total !== 2 || before.pending !== 2 || before.versions['1'] !== 2) throw new Error('AES source status differs');
-  if (changed !== 2 || after.pending !== 0 || after.versions['2'] !== 2 || repeated !== 0) throw new Error('AES rotation is not idempotent');
+  if (changed !== 1 || resumed !== 1 || after.pending !== 0 || after.versions['2'] !== 2 || repeated !== 0) throw new Error('AES rotation is not bounded or idempotent');
   const stored = (await sqliteConnection.execute('SELECT "aes_key_version", "aes_hex_email", "aes_hex_phone" FROM "orm_aes_rotation_test" WHERE "tenant_id" = 7 AND "id" = 1', [])).rows[0];
   if (Number(stored[0]) !== 2 || hostDecode(stored[1], ['aes', 'hex'], 'rotation-key-v2') !== 'member@example.test' || hostDecode(stored[2], ['aes', 'hex'], 'rotation-key-v2') !== '01012345678') throw new Error('AES rotated values differ');
 } finally {
