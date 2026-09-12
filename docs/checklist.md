@@ -102,7 +102,7 @@ Every S7 item requires implementation, tests, documentation, and static publicat
 - [x] T7.20 Split oversized root `IN` predicates in Go, PHP, Rust, and TypeScript, preserve non-`IN` parameters, merge rows, sum count results, reject unsafe query shapes, and verify the generated Protobuf keyset field.
 - [~] T7.21 Add the declarative `soft_delete` schema directive, validate its nullable datetime column, apply active-row predicates to reads and updates, convert deletes to timestamp updates, and verify all four clients on physical databases. Unit, planner, and migration physical checks pass; four-client physical verification remains open.
 - [~] T7.22 Add relation existence and count predicates with correlated subqueries, Protobuf fields, generated APIs, parameter-index shifting, and paired documentation. Unit, bridge, and client build checks pass; all-client physical execution remains open.
-- [~] T7.23 Add declarative many-to-many through relations with ordered source, through, and target keys. Schema and planner unit coverage passes; generated client and physical execution coverage remains open.
+- [~] T7.23 Add declarative many-to-many through relations with ordered source, through, and target keys. Schema, planner, and four-language generator coverage passes, including different composite-key widths; physical execution coverage remains open.
 
 ## Documentation tasks
 
