@@ -939,6 +939,9 @@ func (p *Planner) renderExistence(b *builder, parent *scope, nav *ir.Nav) (strin
 	if nav.Mode == "not_exists" {
 		keyword = "NOT EXISTS"
 	}
+	if nav.Mode == "count" {
+		return "(SELECT COUNT(*) FROM " + p.D.Quote(target.Table) + " AS " + p.D.Quote(child.alias) + " WHERE " + strings.Join(conditions, " AND ") + ") " + cmp(nav.CountOp) + " " + b.param(*nav.P), nil
+	}
 	return keyword + " (SELECT 1 FROM " + p.D.Quote(target.Table) + " AS " + p.D.Quote(child.alias) + " WHERE " + strings.Join(conditions, " AND ") + ")", nil
 }
 

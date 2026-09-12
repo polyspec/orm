@@ -173,6 +173,10 @@ pub struct Nav {
     pub group: Group,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub mode: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub count_op: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub p: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -267,7 +271,12 @@ impl Group {
                     }
                 }
                 Item::Group { group } => group.shift(off),
-                Item::Nav { nav } => nav.group.shift(off),
+                Item::Nav { nav } => {
+                    if let Some(p) = nav.p.as_mut() {
+                        *p += off;
+                    }
+                    nav.group.shift(off)
+                },
             }
         }
     }

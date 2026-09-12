@@ -249,6 +249,9 @@ func (s *shape) group(g *ir.Group) {
 			s.byte(1)
 			s.str(it.Nav.Conn)
 			s.str(it.Nav.Rel)
+			s.str(it.Nav.Mode)
+			s.str(it.Nav.CountOp)
+			s.optInt(it.Nav.P)
 			s.group(it.Nav.Group)
 		}
 	}

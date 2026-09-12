@@ -257,6 +257,8 @@ fn group(input: &ir::Group, path: &str) -> Result<wire::Group> {
                     relation: nav.rel.clone(),
                     group: Some(group(&nav.group, &format!("{item_path}.navigation.group"))?),
                     mode: nav.mode.clone(),
+                    count_operator: nav.count_op.clone(),
+                    count_parameter: nav.p.map(|v| v as u32),
                 }),
             };
             Ok(wire::Item { value: Some(value) })

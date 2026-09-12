@@ -224,7 +224,11 @@ func groupFromProto(in *compilerv1.Group) *ir.Group {
 			}
 		}
 		if navigation := value.GetNavigation(); navigation != nil {
-			item.Nav = &ir.Nav{Conn: navigation.Connector, Rel: navigation.Relation, Group: groupFromProto(navigation.Group), Mode: navigation.Mode}
+			item.Nav = &ir.Nav{Conn: navigation.Connector, Rel: navigation.Relation, Group: groupFromProto(navigation.Group), Mode: navigation.Mode, CountOp: navigation.CountOperator}
+			if navigation.CountParameter != nil {
+				value := int(*navigation.CountParameter)
+				item.Nav.P = &value
+			}
 		}
 		out.Items = append(out.Items, item)
 	}
@@ -273,7 +277,12 @@ func groupToProto(in *ir.Group, path string) (*compilerv1.Group, error) {
 			if err != nil {
 				return nil, err
 			}
-			out.Items = append(out.Items, &compilerv1.Item{Value: &compilerv1.Item_Navigation{Navigation: &compilerv1.Navigation{Connector: value.Nav.Conn, Relation: value.Nav.Rel, Group: group, Mode: value.Nav.Mode}}})
+			navigation := &compilerv1.Navigation{Connector: value.Nav.Conn, Relation: value.Nav.Rel, Group: group, Mode: value.Nav.Mode, CountOperator: value.Nav.CountOp}
+			if value.Nav.P != nil {
+				value := uint32(*value.Nav.P)
+				navigation.CountParameter = &value
+			}
+			out.Items = append(out.Items, &compilerv1.Item{Value: &compilerv1.Item_Navigation{Navigation: navigation}})
 		}
 		if count != 1 {
 			return nil, invalid("%s must contain exactly one value", itemPath)

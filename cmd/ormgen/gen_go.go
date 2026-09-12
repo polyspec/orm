@@ -779,6 +779,12 @@ func (w *{{.Type}}Where) Expr(frag string, binds ...any) *{{.Type}}Where { w.w.E
 func (w *{{$.Type}}Where) {{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.Nav({{printf "%q" .Name}}, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
 func (w *{{$.Type}}Where) Has{{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.NavMode({{printf "%q" .Name}}, "exists", func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
 func (w *{{$.Type}}Where) NotHas{{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.NavMode({{printf "%q" .Name}}, "not_exists", func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
+func (w *{{$.Type}}Where) Count{{.Method}}Eq(v int64, fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.NavCount({{printf "%q" .Name}}, "eq", v, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
+func (w *{{$.Type}}Where) Count{{.Method}}Gte(v int64, fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.NavCount({{printf "%q" .Name}}, "gte", v, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
+func (w *{{$.Type}}Where) Count{{.Method}}Gt(v int64, fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.NavCount({{printf "%q" .Name}}, "gt", v, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
+func (w *{{$.Type}}Where) Count{{.Method}}Lte(v int64, fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.NavCount({{printf "%q" .Name}}, "lte", v, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
+func (w *{{$.Type}}Where) Count{{.Method}}Lt(v int64, fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.NavCount({{printf "%q" .Name}}, "lt", v, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
+func (w *{{$.Type}}Where) Count{{.Method}}NotEq(v int64, fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.NavCount({{printf "%q" .Name}}, "not_eq", v, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
 {{- end}}
 {{range .Cols}}{{$c := .}}{{range .Ops}}
 {{- if eq .Kind "one"}}
@@ -827,6 +833,12 @@ func (q *{{.Type}}Query) Scope(v {{.ScopeType}}) *{{.Type}}Query { q.q.Scope(v);
 func (q *{{$.Type}}Query) {{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().Nav({{printf "%q" .Name}}, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
 func (q *{{$.Type}}Query) Has{{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().NavMode({{printf "%q" .Name}}, "exists", func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
 func (q *{{$.Type}}Query) NotHas{{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().NavMode({{printf "%q" .Name}}, "not_exists", func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
+func (q *{{$.Type}}Query) Count{{.Method}}Eq(v int64, fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().NavCount({{printf "%q" .Name}}, "eq", v, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
+func (q *{{$.Type}}Query) Count{{.Method}}Gte(v int64, fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().NavCount({{printf "%q" .Name}}, "gte", v, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
+func (q *{{$.Type}}Query) Count{{.Method}}Gt(v int64, fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().NavCount({{printf "%q" .Name}}, "gt", v, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
+func (q *{{$.Type}}Query) Count{{.Method}}Lte(v int64, fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().NavCount({{printf "%q" .Name}}, "lte", v, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
+func (q *{{$.Type}}Query) Count{{.Method}}Lt(v int64, fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().NavCount({{printf "%q" .Name}}, "lt", v, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
+func (q *{{$.Type}}Query) Count{{.Method}}NotEq(v int64, fn func(*{{.TargetType}}Where)) *{{$.Type}}Query { q.q.W().NavCount({{printf "%q" .Name}}, "not_eq", v, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return q }
 {{- end}}
 
 // Join children: On = ON clause, Where = parent WHERE group. Bare predicates on a join child are rejected by the engine.

@@ -717,7 +717,7 @@ impl<'a> W<'a> {
 		self.nav_with_mode(rel, "", f);
 	}
 
-	pub fn nav_with_mode(&mut self, rel: &str, mode: &str, f: impl FnOnce(W<'_>)) {
+    pub fn nav_with_mode(&mut self, rel: &str, mode: &str, f: impl FnOnce(W<'_>)) {
         let conn = self.conn();
         self.g.items.push(Item::Nav {
             nav: Nav {
@@ -725,6 +725,8 @@ impl<'a> W<'a> {
                 rel: rel.into(),
                 group: Group::default(),
 				mode: mode.into(),
+				count_op: String::new(),
+				p: None,
             },
         });
         let Some(Item::Nav { nav }) = self.g.items.last_mut() else {
@@ -735,6 +737,14 @@ impl<'a> W<'a> {
             g: &mut nav.group,
             pending_or: false,
         });
+    }
+
+    pub fn nav_with_count(&mut self, rel: &str, op: &str, value: impl Into<Param>, f: impl FnOnce(W<'_>)) {
+        let conn = self.conn();
+        let p = self.p(value);
+        self.g.items.push(Item::Nav { nav: Nav { conn, rel: rel.into(), group: Group::default(), mode: "count".into(), count_op: op.into(), p: Some(p) } });
+        let Some(Item::Nav { nav }) = self.g.items.last_mut() else { unreachable!() };
+        f(W { params: &mut *self.params, g: &mut nav.group, pending_or: false });
     }
 }
 

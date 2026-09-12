@@ -96,6 +96,7 @@ const previous = await Battle().orderBySeqAsc().using(db).getsBefore(next.previo
 | `and(fn)` / `or(fn)` | 중첩 그룹을 추가한다. |
 | `<rel>(fn)` | 선언된 join relation의 조건을 추가한다. 선언되지 않은 경로는 `ENTITY_NOT_JOINED`다. |
 | `has<Rel>(fn)` / `notHas<Rel>(fn)` | 선언된 relation에 `EXISTS` 또는 `NOT EXISTS` predicate를 추가한다. join 없이 relation key mapping과 대상 조건을 사용한다. |
+| `count<Rel><Op>(value, fn)` | `eq`, `notEq`, `gt`, `gte`, `lt`, `lte`로 일치하는 related row 수를 비교한다. correlated count subquery를 사용하며 join이 필요하지 않다. |
 | `on(fn)` / `where(fn)` | join ON과 WHERE에서 같은 Where builder를 사용한다. |
 
 그룹 첫 위치의 `or()`와 `or(fn)`은 `OR_AT_GROUP_START`다. 술어 없이 연결자를 두 번 사용하면 `DANGLING_CONNECTOR`다. 그룹은 깊이 제한 없이 중첩할 수 있다.

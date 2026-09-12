@@ -882,13 +882,15 @@ func (*Item_Group) isItem_Value() {}
 func (*Item_Navigation) isItem_Value() {}
 
 type Navigation struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Connector     string                 `protobuf:"bytes,1,opt,name=connector,proto3" json:"connector,omitempty"`
-	Relation      string                 `protobuf:"bytes,2,opt,name=relation,proto3" json:"relation,omitempty"`
-	Group         *Group                 `protobuf:"bytes,3,opt,name=group,proto3" json:"group,omitempty"`
-	Mode          string                 `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Connector      string                 `protobuf:"bytes,1,opt,name=connector,proto3" json:"connector,omitempty"`
+	Relation       string                 `protobuf:"bytes,2,opt,name=relation,proto3" json:"relation,omitempty"`
+	Group          *Group                 `protobuf:"bytes,3,opt,name=group,proto3" json:"group,omitempty"`
+	Mode           string                 `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"`
+	CountOperator  string                 `protobuf:"bytes,5,opt,name=count_operator,json=countOperator,proto3" json:"count_operator,omitempty"`
+	CountParameter *uint32                `protobuf:"varint,6,opt,name=count_parameter,json=countParameter,proto3,oneof" json:"count_parameter,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Navigation) Reset() {
@@ -947,6 +949,20 @@ func (x *Navigation) GetMode() string {
 		return x.Mode
 	}
 	return ""
+}
+
+func (x *Navigation) GetCountOperator() string {
+	if x != nil {
+		return x.CountOperator
+	}
+	return ""
+}
+
+func (x *Navigation) GetCountParameter() uint32 {
+	if x != nil && x.CountParameter != nil {
+		return *x.CountParameter
+	}
+	return 0
 }
 
 type Predicate struct {
@@ -2511,13 +2527,16 @@ const file_proto_orm_compiler_v1_compiler_proto_rawDesc = "" +
 	"\n" +
 	"navigation\x18\x03 \x01(\v2\x1b.orm.compiler.v1.NavigationH\x00R\n" +
 	"navigationB\a\n" +
-	"\x05value\"\x88\x01\n" +
+	"\x05value\"\xf1\x01\n" +
 	"\n" +
 	"Navigation\x12\x1c\n" +
 	"\tconnector\x18\x01 \x01(\tR\tconnector\x12\x1a\n" +
 	"\brelation\x18\x02 \x01(\tR\brelation\x12,\n" +
 	"\x05group\x18\x03 \x01(\v2\x16.orm.compiler.v1.GroupR\x05group\x12\x12\n" +
-	"\x04mode\x18\x04 \x01(\tR\x04mode\"\xb3\x02\n" +
+	"\x04mode\x18\x04 \x01(\tR\x04mode\x12%\n" +
+	"\x0ecount_operator\x18\x05 \x01(\tR\rcountOperator\x12,\n" +
+	"\x0fcount_parameter\x18\x06 \x01(\rH\x00R\x0ecountParameter\x88\x01\x01B\x12\n" +
+	"\x10_count_parameter\"\xb3\x02\n" +
 	"\tPredicate\x12\x1c\n" +
 	"\tconnector\x18\x01 \x01(\tR\tconnector\x12\x16\n" +
 	"\x06column\x18\x02 \x01(\tR\x06column\x12\x1a\n" +
@@ -2793,6 +2812,7 @@ func file_proto_orm_compiler_v1_compiler_proto_init() {
 		(*Item_Group)(nil),
 		(*Item_Navigation)(nil),
 	}
+	file_proto_orm_compiler_v1_compiler_proto_msgTypes[8].OneofWrappers = []any{}
 	file_proto_orm_compiler_v1_compiler_proto_msgTypes[9].OneofWrappers = []any{}
 	file_proto_orm_compiler_v1_compiler_proto_msgTypes[15].OneofWrappers = []any{}
 	file_proto_orm_compiler_v1_compiler_proto_msgTypes[18].OneofWrappers = []any{
