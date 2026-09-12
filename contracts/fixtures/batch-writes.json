@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "feature": "batch_writes",
+  "cases": [
+    {
+      "id": "insert",
+      "operation": "batchInsert",
+      "request_count": 2,
+      "chunk_size": 1,
+      "expected": {"attempted": 2, "affected": 2, "inserted": 2, "committed": true}
+    },
+    {
+      "id": "upsert_duplicate",
+      "operation": "batchUpsert",
+      "request_count": 1,
+      "chunk_size": 1,
+      "expected": {"attempted": 1, "affected": 1, "committed": true}
+    },
+    {
+      "id": "primary_key_update",
+      "operation": "batchUpdate",
+      "request_count": 1,
+      "chunk_size": 1,
+      "expected": {"attempted": 1, "affected": 1, "committed": true}
+    },
+    {
+      "id": "primary_key_delete",
+      "operation": "batchDelete",
+      "request_count": 2,
+      "chunk_size": 1,
+      "expected": {"attempted": 2, "affected": 2, "committed": true}
+    },
+    {
+      "id": "rollback_on_error",
+      "operation": "batchInsert",
+      "request_count": 2,
+      "chunk_size": 1,
+      "error": "DUPLICATE_KEY",
+      "expected": {"attempted": 2, "affected": 0, "inserted": 0, "committed": false, "rows_persisted": 0}
+    }
+  ]
+}
