@@ -25,6 +25,7 @@ if (!declarations.has('Battle') || !ts.isFunctionDeclaration(declarations.get('B
 for (const name of ['User', 'Service', 'ServiceModule', 'ServiceMember']) {
   if (!declarations.has(name) || !ts.isFunctionDeclaration(declarations.get(name))) throw new Error(`${file}: missing ${name} factory`);
 }
+if (!source.includes("scope is not declared for")) throw new Error(`${file}: scope guard is missing for entities without a scope directive`);
 const keyring = declarations.get('AesKeyring');
 const rotation = keyring.members.filter(ts.isMethodDeclaration).map(node => node.name.getText(ast));
 for (const name of ['versions', 'rotateRow']) if (!rotation.includes(name)) throw new Error(`${file}: AesKeyring missing ${name}`);
