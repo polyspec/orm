@@ -28,6 +28,7 @@ test -n "$endpoint"
 
 go run ./tests/proto/runner_go "$endpoint" >"$OUT/go.json"
 php tests/proto/runner.php "$endpoint" >"$OUT/php.json"
+php clients/php/tests/compiler_bridge.php
 node tests/proto/runner.mjs "$endpoint" >"$OUT/typescript.json"
 clients/rust/target/debug/compiler_connect "$endpoint" >"$OUT/rust.json"
 node tests/proto/compare.mjs "$OUT/go.json" "$OUT/php.json" "$OUT/rust.json" "$OUT/typescript.json"

@@ -599,16 +599,16 @@ class Q
 
     // ---- terminals (generated classes wrap these with typed results) ----
 
-    protected function plan(string $kind): array
+    protected function plan(Db $ex, string $kind): array
     {
         $this->parenCheck(null);
-        return Orm::transport()->planFor($this->req, $kind);
+        return $ex->db()->planFor($this->req, $kind);
     }
 
     /** Runs the select plan (main step + relation steps). */
     public function runQuery(Db $ex, string $kind): Rows
     {
-        return $ex->runPlan($this->plan($kind), $this->req->params);
+        return $ex->runPlan($this->plan($ex, $kind), $this->req->params);
     }
 
     public function runScalar(Db $ex, string $kind, ?string $agg = null): mixed
@@ -617,7 +617,7 @@ class Q
             $this->req->ir['agg'] = $agg;
             $this->req->sig .= "|agg$agg";
         }
-        $plan = $this->plan($kind);
+        $plan = $this->plan($ex, $kind);
         return $ex->scalar($plan['steps'][0], $this->req->params);
     }
 
@@ -626,7 +626,7 @@ class Q
     {
         $page = max(1, $page);
         $this->setLimit(($page - 1) * $per, $per);
-        $plan = $this->plan('paginate');
+        $plan = $this->plan($ex, 'paginate');
         $rows = $ex->runPlan($plan, $this->req->params);
         $total = 0;
         foreach ($plan['steps'] as $st) {
@@ -640,7 +640,7 @@ class Q
     /** @return int|string|null last insert id */
     public function runInsert(Db $ex): int|string|null
     {
-        $plan = $this->plan('insert');
+        $plan = $this->plan($ex, 'insert');
         [$id] = $ex->write($plan['steps'][0], $this->req->params, true, false);
         return $id;
     }
@@ -648,7 +648,7 @@ class Q
     /** UPDATE set[] / DELETE by the query's where (the engine rejects a missing where). @return int affected rows */
     public function runWrite(Db $ex, string $kind): int
     {
-        $plan = $this->plan($kind);
+        $plan = $this->plan($ex, $kind);
         [, $affected] = $ex->write($plan['steps'][0], $this->req->params, false, false);
         return $affected;
     }
@@ -680,13 +680,13 @@ class Q
     /** Runs the raw() statement (step role raw, no assemble): rows keyed by column name, values as the driver gives them. @return list<array<string, mixed>> */
     public function runRaw(Db $ex): array
     {
-        return $ex->rows($this->plan('raw')['steps'][0], $this->req->params);
+        return $ex->rows($this->plan($ex, 'raw')['steps'][0], $this->req->params);
     }
 
     /** The main step's SQL and resolved binds without executing (the plan is compiled and cached as usual). */
     public function runSql(Db $ex): array
     {
-        return $ex->sqlOf($this->plan('all')['steps'][0], $this->req->params);
+        return $ex->sqlOf($this->plan($ex, 'all')['steps'][0], $this->req->params);
     }
 }
 

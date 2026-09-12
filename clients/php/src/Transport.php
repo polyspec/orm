@@ -14,8 +14,12 @@ final class Transport
     private $fp = null;
     /** @var array<string, array> plans by Req signature (this request only) */
     private array $local = [];
+    private ?CompilerTransport $compiler;
 
-    public function __construct(private readonly Config $config) {}
+    public function __construct(private readonly Config $config)
+    {
+        $this->compiler = $config->endpoint === null ? null : new ConnectCompiler($config->endpoint, $config->timeoutSeconds);
+    }
 
     /** @return resource */
     private function conn()
@@ -91,6 +95,10 @@ final class Transport
      */
     public function info(): array
     {
+        if ($this->compiler !== null) {
+            $metadata = $this->compiler->metadata();
+            return ['schema_hash' => $metadata->getSchemaHash(), 'dialect' => $metadata->getDialect(), 'ir_version' => $metadata->getIrVersion()];
+        }
         $r = $this->decode($this->call('{"op":"hash"}'));
         if (!isset($r['schema_hash'])) {
             throw new OrmException(Code::INTERNAL, 'ormd: no schema_hash');
@@ -129,7 +137,9 @@ final class Transport
                 return $hit;
             }
         }
-        $plan = $this->decode($this->call('{"op":"compile","ir":' . $shape . '}'))['plan'];
+        $plan = $this->compiler === null
+            ? $this->decode($this->call('{"op":"compile","ir":' . $shape . '}'))['plan']
+            : CompilerBridge::plan($this->compiler->compile(CompilerBridge::request($ir)));
         Wire::check('Plan', $plan);
         // Precompute per-step data once (name→index maps, styled flag, plan id), so rows never need array_combine.
         Assemble::index($plan, $id);

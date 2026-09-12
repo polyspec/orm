@@ -38,8 +38,9 @@ class Db
      * compares as text against an expression without affinity: COUNT(*) > '1' is never true)
      */
     private bool $typed = false;
+    private readonly Transport $compiler;
 
-    public function __construct(public readonly \PDO $pdo, private readonly string $driver = 'mysql')
+    public function __construct(public readonly \PDO $pdo, private readonly string $driver = 'mysql', ?Transport $compiler = null)
     {
         if (!in_array($driver, self::DRIVERS, true)) {
             throw new OrmException(Code::CONFIG, "driver $driver: want mysql, postgres or sqlite");
@@ -51,6 +52,7 @@ class Db
         // pdo_pgsql / pdo_sqlite prepare natively: the plan's placeholders reach the server, types come from the column
         $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql' && self::EMULATE_PREPARES);
         $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
+        $this->compiler = $compiler ?? Orm::transport();
     }
 
     /** Open a MySQL connection with FOUND_ROWS, persistence, and utf8mb4 enabled. */
@@ -112,6 +114,16 @@ class Db
     public function db(): Db
     {
         return $this;
+    }
+
+    public function planFor(Req $req, string $kind): array
+    {
+        return $this->compiler->planFor($req, $kind);
+    }
+
+    public function compiler(): Transport
+    {
+        return $this->compiler;
     }
 
     public function stmt(string $sql): \PDOStatement
@@ -596,7 +608,7 @@ final class Tx extends Db
 
     public function __construct(private readonly Db $outer)
     {
-        parent::__construct($outer->pdo, $outer->driver());
+        parent::__construct($outer->pdo, $outer->driver(), $outer->compiler());
     }
 
     public function db(): Db

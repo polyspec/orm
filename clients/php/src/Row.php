@@ -272,7 +272,7 @@ abstract class Row implements \ArrayAccess
         if ($optimistic) {
             $q->optimistic(static::versionColumn(), $this->originalVersion);
         }
-        $plan = Orm::transport()->planFor($q->req, 'update');
+        $plan = $ex->db()->planFor($q->req, 'update');
         $ex->write($plan['steps'][0], $q->req->params, false, $optimistic);
         $this->dirty = [];
         $this->dirtyStyles = [];
@@ -297,7 +297,7 @@ abstract class Row implements \ArrayAccess
         $q = new Q(static::entity());
         $pk = static::pk();
         $q->w()->pred($pk, 'eq', $this->identity);
-        $plan = Orm::transport()->planFor($q->req, 'delete');
+        $plan = $ex->db()->planFor($q->req, 'delete');
         $ex->write($plan['steps'][0], $q->req->params, false, false);
     }
 
