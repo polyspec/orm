@@ -134,6 +134,22 @@ export class QueryCore {
   public requestShape(kind: QueryKind = this.request.ir.kind): Request { return this.request.shape(kind); }
   public parameters(): Param[] { return [...this.request.params]; }
   protected async terminal(kind: QueryKind): Promise<unknown> { if (this.request.deferredError) throw this.request.deferredError; const database=this.binding.resolve(); return database.execute(await database.plan(this.request.shape(kind)), [...this.request.params]); }
+  protected async insertKey(): Promise<unknown> { return (await this.terminal('insert') as { insertId: unknown }).insertId; }
+  protected async writeAffected(kind: 'update'|'delete'): Promise<number> { return (await this.terminal(kind) as { affected: number }).affected; }
+  protected async saveKey(primaryKey: string): Promise<unknown> {
+    const assignments = this.request.ir.set ?? [];
+    const index = assignments.findIndex(assignment => assignment.column === primaryKey);
+    if (index < 0) return this.insertKey();
+    const assignment = assignments[index]!;
+    if (assignment.p === undefined) throw new OrmError('IR_INVALID', `save: ${primaryKey} must be set to a value`);
+    this.request.ir.set = assignments.filter((_, current) => current !== index);
+    const predicate: Predicate = { column: primaryKey, op: 'eq', p: assignment.p };
+    this.request.ir.where ??= { items: [] };
+    this.request.ir.where.items.push({ pred: predicate });
+    await this.writeAffected('update');
+    return this.request.params[assignment.p];
+  }
+  protected async statement(): Promise<{sql:string;binds:unknown[]}> { const database=this.binding.resolve(); const plan=await database.plan(this.request.shape('all')); return database.sql(plan.steps[0]!,this.request.params); }
 }
 
 function uint(value: number, name: string): number { if (!Number.isSafeInteger(value) || value < 0 || value > 0xffffffff) throw new OrmError('IR_INVALID', `${name} is outside uint32`); return value; }

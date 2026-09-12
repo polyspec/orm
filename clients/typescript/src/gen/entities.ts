@@ -1113,9 +1113,11 @@ export class BattleQuery extends QueryCore {
   public async gets(): Promise<Collection<BattleRow>> { return await this.terminal('all') as Collection<BattleRow>; }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<BattleRow>> { return await this.terminal('group_count') as Collection<BattleRow>; }
-  public async insert(): Promise<unknown> { return this.terminal('insert'); }
-  public async update(): Promise<unknown> { return this.terminal('update'); }
-  public async delete(): Promise<unknown> { return this.terminal('delete'); }
+  public async insert(): Promise<BattleRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new BattleQuery().using(database).predicate('seq','eq',key).get(); }
+  public async save(): Promise<BattleRow | null> { const database=this.binding.resolve(); const key=await this.saveKey('seq'); return new BattleQuery().using(database).predicate('seq','eq',key).get(); }
+  public async update(): Promise<number> { return this.writeAffected('update'); }
+  public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
   public async paginate(page: number, per: number): Promise<Page<BattleRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new Error('paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<BattleRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
   public async getBySeq(value: number): Promise<BattleRow | null> { this.predicate('seq','eq',value); return this.get(); }
   public async getsBySeq(value: number): Promise<Collection<BattleRow>> { this.predicate('seq','eq',value); return this.gets(); }
@@ -1303,9 +1305,11 @@ export class UserQuery extends QueryCore {
   public async gets(): Promise<Collection<UserRow>> { return await this.terminal('all') as Collection<UserRow>; }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<UserRow>> { return await this.terminal('group_count') as Collection<UserRow>; }
-  public async insert(): Promise<unknown> { return this.terminal('insert'); }
-  public async update(): Promise<unknown> { return this.terminal('update'); }
-  public async delete(): Promise<unknown> { return this.terminal('delete'); }
+  public async insert(): Promise<UserRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new UserQuery().using(database).predicate('seq','eq',key).get(); }
+  public async save(): Promise<UserRow | null> { const database=this.binding.resolve(); const key=await this.saveKey('seq'); return new UserQuery().using(database).predicate('seq','eq',key).get(); }
+  public async update(): Promise<number> { return this.writeAffected('update'); }
+  public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
   public async paginate(page: number, per: number): Promise<Page<UserRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new Error('paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<UserRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
   public async getBySeq(value: number): Promise<UserRow | null> { this.predicate('seq','eq',value); return this.get(); }
   public async getsBySeq(value: number): Promise<Collection<UserRow>> { this.predicate('seq','eq',value); return this.gets(); }
@@ -1414,9 +1418,11 @@ export class ServiceQuery extends QueryCore {
   public async gets(): Promise<Collection<ServiceRow>> { return await this.terminal('all') as Collection<ServiceRow>; }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<ServiceRow>> { return await this.terminal('group_count') as Collection<ServiceRow>; }
-  public async insert(): Promise<unknown> { return this.terminal('insert'); }
-  public async update(): Promise<unknown> { return this.terminal('update'); }
-  public async delete(): Promise<unknown> { return this.terminal('delete'); }
+  public async insert(): Promise<ServiceRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ServiceQuery().using(database).predicate('seq','eq',key).get(); }
+  public async save(): Promise<ServiceRow | null> { const database=this.binding.resolve(); const key=await this.saveKey('seq'); return new ServiceQuery().using(database).predicate('seq','eq',key).get(); }
+  public async update(): Promise<number> { return this.writeAffected('update'); }
+  public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
   public async paginate(page: number, per: number): Promise<Page<ServiceRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new Error('paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<ServiceRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
   public async getBySeq(value: number): Promise<ServiceRow | null> { this.predicate('seq','eq',value); return this.get(); }
   public async getsBySeq(value: number): Promise<Collection<ServiceRow>> { this.predicate('seq','eq',value); return this.gets(); }
@@ -1568,9 +1574,11 @@ export class ServiceModuleQuery extends QueryCore {
   public async gets(): Promise<Collection<ServiceModuleRow>> { return await this.terminal('all') as Collection<ServiceModuleRow>; }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<ServiceModuleRow>> { return await this.terminal('group_count') as Collection<ServiceModuleRow>; }
-  public async insert(): Promise<unknown> { return this.terminal('insert'); }
-  public async update(): Promise<unknown> { return this.terminal('update'); }
-  public async delete(): Promise<unknown> { return this.terminal('delete'); }
+  public async insert(): Promise<ServiceModuleRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ServiceModuleQuery().using(database).predicate('seq','eq',key).get(); }
+  public async save(): Promise<ServiceModuleRow | null> { const database=this.binding.resolve(); const key=await this.saveKey('seq'); return new ServiceModuleQuery().using(database).predicate('seq','eq',key).get(); }
+  public async update(): Promise<number> { return this.writeAffected('update'); }
+  public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
   public async paginate(page: number, per: number): Promise<Page<ServiceModuleRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new Error('paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<ServiceModuleRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
   public async getBySeq(value: number): Promise<ServiceModuleRow | null> { this.predicate('seq','eq',value); return this.get(); }
   public async getsBySeq(value: number): Promise<Collection<ServiceModuleRow>> { this.predicate('seq','eq',value); return this.gets(); }
@@ -1740,9 +1748,11 @@ export class ServiceMemberQuery extends QueryCore {
   public async gets(): Promise<Collection<ServiceMemberRow>> { return await this.terminal('all') as Collection<ServiceMemberRow>; }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<ServiceMemberRow>> { return await this.terminal('group_count') as Collection<ServiceMemberRow>; }
-  public async insert(): Promise<unknown> { return this.terminal('insert'); }
-  public async update(): Promise<unknown> { return this.terminal('update'); }
-  public async delete(): Promise<unknown> { return this.terminal('delete'); }
+  public async insert(): Promise<ServiceMemberRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ServiceMemberQuery().using(database).predicate('seq','eq',key).get(); }
+  public async save(): Promise<ServiceMemberRow | null> { const database=this.binding.resolve(); const key=await this.saveKey('seq'); return new ServiceMemberQuery().using(database).predicate('seq','eq',key).get(); }
+  public async update(): Promise<number> { return this.writeAffected('update'); }
+  public async delete(): Promise<number> { return this.writeAffected('delete'); }
+  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }
   public async paginate(page: number, per: number): Promise<Page<ServiceMemberRow>> { if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(per)||per<1) throw new Error('paginate requires page >= 1 and per > 0'); const saved=this.request.ir.limit; this.limit((page-1)*per,per); const result=await this.terminal('paginate') as {rows: unknown;total:number}; this.request.ir.limit=saved; const items=result.rows instanceof Collection?result.rows:new Collection<ServiceMemberRow>(); return new Page(items,result.total,Math.ceil(result.total/per),page,per); }
   public async getBySeq(value: number): Promise<ServiceMemberRow | null> { this.predicate('seq','eq',value); return this.get(); }
   public async getsBySeq(value: number): Promise<Collection<ServiceMemberRow>> { this.predicate('seq','eq',value); return this.gets(); }
