@@ -73,7 +73,7 @@ go run ./cmd/ormgen ddl --schema schema/schema.json --dialect postgres --out cre
 go run ./cmd/ormgen ddl --schema schema/schema.json --dialect sqlite --out create.sqlite.sql
 ```
 
-Apply the selected SQL file with the database's migration tool or client. `ormgen ddl` writes SQL and does not connect to a database.
+Apply the selected SQL file with the database's migration tool or client. `ormgen ddl` writes SQL and does not connect to a database. For idempotent database execution, use `ormgen migrate` against a physical database.
 
 To create a migration, keep the previous manifest, update the Mermaid schema, build the new manifest, and generate a diff:
 
@@ -84,7 +84,16 @@ go run ./cmd/ormgen diff --from schema/schema.previous.json --to schema/schema.j
   --dialect mysql --out migration.mysql.sql
 ```
 
-Review the SQL before applying it. Table removal, column removal, and column definition changes require `--allow-destructive`. Renames require an explicit migration because the tool cannot infer whether a rename is safe. The tool does not apply migrations or provide rollback SQL; keep the previous schema and write rollback SQL as part of the migration review.
+Review the generated SQL before applying it. Table removal, column removal, and column definition changes require `--allow-destructive` with `ormgen diff`; the migration command rejects these changes. Renames require an explicit migration because the tool cannot infer whether a rename is safe.
+
+`ormgen migrate` reads the live schema, creates `orm_schema_migrations`, computes a plan, applies supported non-destructive changes, verifies the live schema, and records the result. Repeating the same `migration-id` is a no-op only when the recorded migration and live schema match. Use `--dry-run` to print the plan without changing the database.
+
+```sh
+go run ./cmd/ormgen migrate --driver mysql --dsn "$ORM_DSN" \
+  --schema schema/schema.json --migration-id 20260912-initial --dry-run
+go run ./cmd/ormgen migrate --driver mysql --dsn "$ORM_DSN" \
+  --schema schema/schema.json --migration-id 20260912-initial
+```
 
 ---
 
