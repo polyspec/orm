@@ -387,16 +387,13 @@ final class Collection implements \ArrayAccess, \IteratorAggregate, \Countable
         foreach ($rows->data as $vals) {
             $r = $rowClass::fromRow($vals, $rows->asm, $rows);
             if ($keyFn === null) {
-                $refs = [];
-                foreach ($rowClass::primaryKeys() as $name) {
-                    if (!isset($rows->asm['idx'][$name])) { throw new OrmException(Code::INTERNAL, "primary key $name is missing from the assembly"); }
-                    $refs[] = ['column' => $name, 'index' => $rows->asm['idx'][$name]];
-                }
+                $refs = $rows->asm['key'] ?? [];
+                if ($refs === []) { throw new OrmException(Code::INTERNAL, 'assembly collection key is empty'); }
                 $key = Db::rowKey($vals, $refs);
             } else { $key = $keyFn($r); }
             // Expression groups can yield a scalar instead of an integer/text PK.
             // Match the native Key::of conversion; explicit key selectors stay typed.
-            if ($keyFn === null && count($rowClass::primaryKeys()) === 1) { $key = self::keyOf($key); }
+            if ($keyFn === null && count($refs) === 1) { $key = self::keyOf($key); }
             $c->put($key, $r);
         }
         return $c;

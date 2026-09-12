@@ -256,7 +256,15 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		b.WriteString("  public async one(): Promise<" + ge.Type + "Row | null> { return this.get(); }\n  public async all(): Promise<Collection<" + ge.Type + "Row>> { return this.gets(); }\n")
 		b.WriteString("  public async getCount(): Promise<number> { return Number(await this.terminal('count')); }\n")
 		b.WriteString("  public async getsCount(): Promise<Collection<" + ge.Type + "Row>> { return await this.terminal('group_count') as Collection<" + ge.Type + "Row>; }\n")
-		fmt.Fprintf(&b, "  public async insert(): Promise<%sRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new %sQuery().using(database).predicate(%s,'eq',key).get(); }\n", ge.Type, ge.Type, tsString(ge.PK))
+		if ge.Auto {
+			fmt.Fprintf(&b, "  public async insert(): Promise<%sRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new %sQuery().using(database).predicate(%s,'eq',key).get(); }\n", ge.Type, ge.Type, tsString(ge.PK))
+		} else {
+			fmt.Fprintf(&b, "  public async insert(): Promise<%sRow | null> { const database=this.binding.resolve(); const keys=this.assignedKeyValues([%s]); await this.insertKey(); const query=new %sQuery().using(database);", ge.Type, strings.Join(pkNames, ","), ge.Type)
+			for i, key := range ge.PKNames {
+				fmt.Fprintf(&b, " query.predicate(%s,'eq',keys[%d]);", tsString(key), i)
+			}
+			b.WriteString(" return query.get(); }\n")
+		}
 		fmt.Fprintf(&b, "  public async save(): Promise<%sRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys([%s]); const query=new %sQuery().using(database);", ge.Type, strings.Join(pkNames, ","), ge.Type)
 		for i, key := range ge.PKNames {
 			fmt.Fprintf(&b, " query.predicate(%s,'eq',keys[%d]);", tsString(key), i)

@@ -759,7 +759,11 @@ func collectUser(rows *orm.Rows, keyFn func(*UserRow) orm.Key) *orm.Collection[U
 			c.Put(keyFn(r), r)
 			continue
 		}
-		c.Put(orm.KeyFromValues([]any{r.Seq}), r)
+		key, ok := orm.KeyFromRow(vals, rows.Assemble.Key)
+		if !ok {
+			panic("assembly collection key contains null")
+		}
+		c.Put(key, r)
 	}
 	return c
 }

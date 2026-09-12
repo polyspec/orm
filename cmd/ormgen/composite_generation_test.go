@@ -15,14 +15,14 @@ func compositeGeneratorManifest(t *testing.T) *schema.Manifest {
   account {
     bigint tenant_id PK
     bigint id PK
-    varchar name
+    varchar(191) name
     int aes_key_version
-    varchar aes_hex_email "aes hex"
+    varchar(255) aes_hex_email "aes hex"
   }
   membership {
     bigint tenant_id PK,FK
     bigint account_id PK,FK
-    varchar role
+    varchar(191) role
   }
   account ||--o{ membership : "(tenant_id, account_id) (account / memberships) cascade"
 `)

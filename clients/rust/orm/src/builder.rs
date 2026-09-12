@@ -322,6 +322,15 @@ impl Q {
         for (key, value) in keys.iter().zip(values.iter()) { self.w().pred(key, "eq", value.clone()); }
         Ok(Some(values))
     }
+
+    pub fn set_values(&self, keys: &[&str]) -> crate::Result<Vec<Param>> {
+        keys.iter().map(|key| {
+            let assignment = self.req.ir.set.iter().find(|assignment| assignment.column == *key)
+                .ok_or_else(|| crate::Error::Engine { code: crate::codes::IR_INVALID.into(), msg: "insert requires every non-auto primary-key column".into() })?;
+            let index = assignment.p.ok_or_else(|| crate::Error::Engine { code: crate::codes::IR_INVALID.into(), msg: "insert primary-key assignments must use values".into() })?;
+            Ok(self.req.params[index].clone())
+        }).collect()
+    }
 }
 
 /// Group builder: borrows the params list and the group it edits (disjoint fields of Req).
@@ -445,5 +454,24 @@ mod tests {
         assert!(query.take_sets(&["tenant_id", "account_id"]).is_err());
         assert_eq!(query.req.ir.set.len(), 2);
         assert!(query.req.ir.query.where_.is_none());
+    }
+
+    #[test]
+    fn composite_insert_reads_every_key_without_mutation() {
+        let mut query = Q::new("schema", "membership");
+        query.set("tenant_id", 7_i64);
+        query.set("account_id", 11_i64);
+        query.set("name", "created");
+        let values = query.set_values(&["tenant_id", "account_id"]).unwrap();
+        assert_eq!(values, vec![Param::I64(7), Param::I64(11)]);
+        assert_eq!(query.req.ir.set.len(), 3);
+        assert!(query.req.ir.query.where_.is_none());
+
+        let mut partial = Q::new("schema", "membership");
+        partial.set("tenant_id", 7_i64);
+        partial.set("name", "created");
+        assert!(partial.set_values(&["tenant_id", "account_id"]).is_err());
+        assert_eq!(partial.req.ir.set.len(), 2);
+        assert!(partial.req.ir.query.where_.is_none());
     }
 }

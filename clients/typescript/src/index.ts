@@ -161,7 +161,7 @@ export interface BindSlot { from:string; param:number; transform:string; name:st
 export interface PlanIfParent { column:string; index:number; param:number; }
 export interface KeyReference { column:string; index:number; }
 export interface ParentReference { step:number; keys:KeyReference[]; if_parent?:PlanIfParent; }
-export interface Assemble { entity:string; alias:string; columns:OutputColumn[]; children:Child[]; }
+export interface Assemble { entity:string; alias:string; columns:OutputColumn[]; children:Child[]; key:KeyReference[]; }
 export interface OutputColumn { index:number; name:string; column:string; type:string; styles:string[]; hidden:boolean; }
 export interface Child { rel:string; kind:string; step:number; parent_keys:KeyReference[]; child_keys:KeyReference[]; key:KeyReference[]; flatten:boolean; cascade:boolean; assemble?:Assemble; }
 

@@ -563,3 +563,147 @@ fn has(&self, name: &str) -> bool { ServiceMemberRow::has(self,name) }
 fn rel_loaded(&self, name: &str) -> bool { ServiceMemberRow::rel_loaded(self,name) }
 fn to_map(&self) -> Result<serde_json::Value> { ServiceMemberRow::to_map(self) }
 }
+
+pub trait CompositeAccountInterface: Sized {
+async fn get(&mut self) -> Result<Option<CompositeAccountRow>>;
+async fn gets(&mut self) -> Result<Collection<CompositeAccountRow>>;
+async fn stream(&mut self, visit: impl FnMut(CompositeAccountRow) -> bool) -> Result<db::StreamResult>;
+async fn get_count(&mut self) -> Result<i64>;
+async fn gets_count(&mut self) -> Result<Collection<CompositeAccountRow>>;
+async fn insert(&mut self) -> Result<Option<CompositeAccountRow>>;
+async fn save(&mut self) -> Result<Option<CompositeAccountRow>>;
+async fn update(&mut self) -> Result<u64>;
+async fn delete(&mut self) -> Result<u64>;
+async fn sql(&mut self) -> Result<db::Sql>;
+fn using(self, ex: &impl Exec) -> Self;
+async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<CompositeAccountRow>>;
+async fn gets_by_tenant_id(&mut self, v: i64) -> Result<Collection<CompositeAccountRow>>;
+async fn gets_by_account_id(&mut self, v: i64) -> Result<Collection<CompositeAccountRow>>;
+async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<CompositeAccountRow>>;
+async fn get_count_by_tenant_id(&mut self, v: i64) -> Result<i64>;
+async fn get_count_by_account_id(&mut self, v: i64) -> Result<i64>;
+async fn get_count_by_name(&mut self, v: impl Into<String>) -> Result<i64>;
+fn tenant_id_eq(self, v: i64) -> Self;
+fn account_id_eq(self, v: i64) -> Self;
+fn name_eq(self, v: impl Into<String>) -> Self;
+fn tenant_id(self, v: i64) -> Self;
+fn account_id(self, v: i64) -> Self;
+fn name(self, v: impl Into<String>) -> Self;
+}
+impl CompositeAccountInterface for CompositeAccount {
+async fn get(&mut self) -> Result<Option<CompositeAccountRow>> { CompositeAccount::get(self).await }
+async fn gets(&mut self) -> Result<Collection<CompositeAccountRow>> { CompositeAccount::gets(self).await }
+async fn stream(&mut self, visit: impl FnMut(CompositeAccountRow) -> bool) -> Result<db::StreamResult> { CompositeAccount::stream(self,visit).await }
+async fn get_count(&mut self) -> Result<i64> { CompositeAccount::get_count(self).await }
+async fn gets_count(&mut self) -> Result<Collection<CompositeAccountRow>> { CompositeAccount::gets_count(self).await }
+async fn insert(&mut self) -> Result<Option<CompositeAccountRow>> { CompositeAccount::insert(self).await }
+async fn save(&mut self) -> Result<Option<CompositeAccountRow>> { CompositeAccount::save(self).await }
+async fn update(&mut self) -> Result<u64> { CompositeAccount::update(self).await }
+async fn delete(&mut self) -> Result<u64> { CompositeAccount::delete(self).await }
+async fn sql(&mut self) -> Result<db::Sql> { CompositeAccount::sql(self).await }
+fn using(mut self, ex: &impl Exec) -> Self { CompositeAccount::using(self,ex) }
+async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<CompositeAccountRow>> { CompositeAccount::paginate(self,page,per).await }
+async fn gets_by_tenant_id(&mut self, v: i64) -> Result<Collection<CompositeAccountRow>> { CompositeAccount::gets_by_tenant_id(self,v).await }
+async fn gets_by_account_id(&mut self, v: i64) -> Result<Collection<CompositeAccountRow>> { CompositeAccount::gets_by_account_id(self,v).await }
+async fn gets_by_name(&mut self, v: impl Into<String>) -> Result<Collection<CompositeAccountRow>> { CompositeAccount::gets_by_name(self,v).await }
+async fn get_count_by_tenant_id(&mut self, v: i64) -> Result<i64> { CompositeAccount::get_count_by_tenant_id(self,v).await }
+async fn get_count_by_account_id(&mut self, v: i64) -> Result<i64> { CompositeAccount::get_count_by_account_id(self,v).await }
+async fn get_count_by_name(&mut self, v: impl Into<String>) -> Result<i64> { CompositeAccount::get_count_by_name(self,v).await }
+fn tenant_id_eq(mut self, v: i64) -> Self { CompositeAccount::tenant_id_eq(self,v) }
+fn account_id_eq(mut self, v: i64) -> Self { CompositeAccount::account_id_eq(self,v) }
+fn name_eq(mut self, v: impl Into<String>) -> Self { CompositeAccount::name_eq(self,v) }
+fn tenant_id(self, v: i64) -> Self { CompositeAccount::tenant_id(self,v) }
+fn account_id(self, v: i64) -> Self { CompositeAccount::account_id(self,v) }
+fn name(self, v: impl Into<String>) -> Self { CompositeAccount::name(self,v) }
+}
+
+pub trait CompositeAccountRowInterface: Sized {
+fn using(&mut self, ex: &impl Exec) -> &mut Self;
+async fn update(&mut self) -> Result<()>;
+async fn delete(&self) -> Result<()>;
+async fn delete_cascade(&self) -> Result<()>;
+fn has(&self, name: &str) -> bool;
+fn rel_loaded(&self, name: &str) -> bool;
+fn to_map(&self) -> Result<serde_json::Value>;
+}
+impl CompositeAccountRowInterface for CompositeAccountRow {
+fn using(&mut self, ex: &impl Exec) -> &mut Self { CompositeAccountRow::using(self,ex) }
+async fn update(&mut self) -> Result<()> { CompositeAccountRow::update(self).await }
+async fn delete(&self) -> Result<()> { CompositeAccountRow::delete(self).await }
+async fn delete_cascade(&self) -> Result<()> { CompositeAccountRow::delete_cascade(self).await }
+fn has(&self, name: &str) -> bool { CompositeAccountRow::has(self,name) }
+fn rel_loaded(&self, name: &str) -> bool { CompositeAccountRow::rel_loaded(self,name) }
+fn to_map(&self) -> Result<serde_json::Value> { CompositeAccountRow::to_map(self) }
+}
+
+pub trait CompositeMembershipInterface: Sized {
+async fn get(&mut self) -> Result<Option<CompositeMembershipRow>>;
+async fn gets(&mut self) -> Result<Collection<CompositeMembershipRow>>;
+async fn stream(&mut self, visit: impl FnMut(CompositeMembershipRow) -> bool) -> Result<db::StreamResult>;
+async fn get_count(&mut self) -> Result<i64>;
+async fn gets_count(&mut self) -> Result<Collection<CompositeMembershipRow>>;
+async fn insert(&mut self) -> Result<Option<CompositeMembershipRow>>;
+async fn save(&mut self) -> Result<Option<CompositeMembershipRow>>;
+async fn update(&mut self) -> Result<u64>;
+async fn delete(&mut self) -> Result<u64>;
+async fn sql(&mut self) -> Result<db::Sql>;
+fn using(self, ex: &impl Exec) -> Self;
+async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<CompositeMembershipRow>>;
+async fn gets_by_tenant_id(&mut self, v: i64) -> Result<Collection<CompositeMembershipRow>>;
+async fn gets_by_account_id(&mut self, v: i64) -> Result<Collection<CompositeMembershipRow>>;
+async fn gets_by_role(&mut self, v: impl Into<String>) -> Result<Collection<CompositeMembershipRow>>;
+async fn get_count_by_tenant_id(&mut self, v: i64) -> Result<i64>;
+async fn get_count_by_account_id(&mut self, v: i64) -> Result<i64>;
+async fn get_count_by_role(&mut self, v: impl Into<String>) -> Result<i64>;
+fn tenant_id_eq(self, v: i64) -> Self;
+fn account_id_eq(self, v: i64) -> Self;
+fn role_eq(self, v: impl Into<String>) -> Self;
+fn tenant_id(self, v: i64) -> Self;
+fn account_id(self, v: i64) -> Self;
+fn role(self, v: impl Into<String>) -> Self;
+}
+impl CompositeMembershipInterface for CompositeMembership {
+async fn get(&mut self) -> Result<Option<CompositeMembershipRow>> { CompositeMembership::get(self).await }
+async fn gets(&mut self) -> Result<Collection<CompositeMembershipRow>> { CompositeMembership::gets(self).await }
+async fn stream(&mut self, visit: impl FnMut(CompositeMembershipRow) -> bool) -> Result<db::StreamResult> { CompositeMembership::stream(self,visit).await }
+async fn get_count(&mut self) -> Result<i64> { CompositeMembership::get_count(self).await }
+async fn gets_count(&mut self) -> Result<Collection<CompositeMembershipRow>> { CompositeMembership::gets_count(self).await }
+async fn insert(&mut self) -> Result<Option<CompositeMembershipRow>> { CompositeMembership::insert(self).await }
+async fn save(&mut self) -> Result<Option<CompositeMembershipRow>> { CompositeMembership::save(self).await }
+async fn update(&mut self) -> Result<u64> { CompositeMembership::update(self).await }
+async fn delete(&mut self) -> Result<u64> { CompositeMembership::delete(self).await }
+async fn sql(&mut self) -> Result<db::Sql> { CompositeMembership::sql(self).await }
+fn using(mut self, ex: &impl Exec) -> Self { CompositeMembership::using(self,ex) }
+async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<CompositeMembershipRow>> { CompositeMembership::paginate(self,page,per).await }
+async fn gets_by_tenant_id(&mut self, v: i64) -> Result<Collection<CompositeMembershipRow>> { CompositeMembership::gets_by_tenant_id(self,v).await }
+async fn gets_by_account_id(&mut self, v: i64) -> Result<Collection<CompositeMembershipRow>> { CompositeMembership::gets_by_account_id(self,v).await }
+async fn gets_by_role(&mut self, v: impl Into<String>) -> Result<Collection<CompositeMembershipRow>> { CompositeMembership::gets_by_role(self,v).await }
+async fn get_count_by_tenant_id(&mut self, v: i64) -> Result<i64> { CompositeMembership::get_count_by_tenant_id(self,v).await }
+async fn get_count_by_account_id(&mut self, v: i64) -> Result<i64> { CompositeMembership::get_count_by_account_id(self,v).await }
+async fn get_count_by_role(&mut self, v: impl Into<String>) -> Result<i64> { CompositeMembership::get_count_by_role(self,v).await }
+fn tenant_id_eq(mut self, v: i64) -> Self { CompositeMembership::tenant_id_eq(self,v) }
+fn account_id_eq(mut self, v: i64) -> Self { CompositeMembership::account_id_eq(self,v) }
+fn role_eq(mut self, v: impl Into<String>) -> Self { CompositeMembership::role_eq(self,v) }
+fn tenant_id(self, v: i64) -> Self { CompositeMembership::tenant_id(self,v) }
+fn account_id(self, v: i64) -> Self { CompositeMembership::account_id(self,v) }
+fn role(self, v: impl Into<String>) -> Self { CompositeMembership::role(self,v) }
+}
+
+pub trait CompositeMembershipRowInterface: Sized {
+fn using(&mut self, ex: &impl Exec) -> &mut Self;
+async fn update(&mut self) -> Result<()>;
+async fn delete(&self) -> Result<()>;
+async fn delete_cascade(&self) -> Result<()>;
+fn has(&self, name: &str) -> bool;
+fn rel_loaded(&self, name: &str) -> bool;
+fn to_map(&self) -> Result<serde_json::Value>;
+}
+impl CompositeMembershipRowInterface for CompositeMembershipRow {
+fn using(&mut self, ex: &impl Exec) -> &mut Self { CompositeMembershipRow::using(self,ex) }
+async fn update(&mut self) -> Result<()> { CompositeMembershipRow::update(self).await }
+async fn delete(&self) -> Result<()> { CompositeMembershipRow::delete(self).await }
+async fn delete_cascade(&self) -> Result<()> { CompositeMembershipRow::delete_cascade(self).await }
+fn has(&self, name: &str) -> bool { CompositeMembershipRow::has(self,name) }
+fn rel_loaded(&self, name: &str) -> bool { CompositeMembershipRow::rel_loaded(self,name) }
+fn to_map(&self) -> Result<serde_json::Value> { CompositeMembershipRow::to_map(self) }
+}

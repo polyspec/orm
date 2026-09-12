@@ -67,7 +67,7 @@ export function requestToProto(value: Request): WireRequest {
 }
 
 function assemble(value: NonNullable<WirePlan['steps'][number]['assemble']>): Assemble {
-  return {entity:value.entity,alias:value.alias,columns:value.columns.map(v=>({index:v.index,name:v.name,column:v.column,type:v.type,styles:[...v.styles],hidden:v.hidden})),children:value.children.map(v=>({rel:v.relation,kind:v.kind,step:v.step,parent_keys:v.parentKeys.map(k=>({column:k.column,index:k.index})),child_keys:v.childKeys.map(k=>({column:k.column,index:k.index})),key:v.key.map(k=>({column:k.column,index:k.index})),flatten:v.flatten,cascade:v.cascade,assemble:v.assemble?assemble(v.assemble):undefined}))};
+  return {entity:value.entity,alias:value.alias,columns:value.columns.map(v=>({index:v.index,name:v.name,column:v.column,type:v.type,styles:[...v.styles],hidden:v.hidden})),children:value.children.map(v=>({rel:v.relation,kind:v.kind,step:v.step,parent_keys:v.parentKeys.map(k=>({column:k.column,index:k.index})),child_keys:v.childKeys.map(k=>({column:k.column,index:k.index})),key:v.key.map(k=>({column:k.column,index:k.index})),flatten:v.flatten,cascade:v.cascade,assemble:v.assemble?assemble(v.assemble):undefined})),key:value.key.map(k=>({column:k.column,index:k.index}))};
 }
 
 export function planFromProto(value: WirePlan): Plan {

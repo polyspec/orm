@@ -368,6 +368,30 @@ func (q *Q) MoveKeysToWhere(keys []string) (values []any, found bool, err error)
 	return values, true, nil
 }
 
+// AssignedKeyValues returns every primary-key value without changing the
+// draft. Explicit Insert uses it to read a non-auto row after execution.
+func (q *Q) AssignedKeyValues(keys []string) ([]any, error) {
+	values := make([]any, len(keys))
+	for i, key := range keys {
+		found := false
+		for _, assignment := range q.Req.IR.Set {
+			if assignment.Column != key {
+				continue
+			}
+			if assignment.P == nil {
+				return nil, &ir.Error{Code: CodeIrInvalid, Msg: "insert primary-key assignments must use values"}
+			}
+			values[i] = q.Req.Params[*assignment.P]
+			found = true
+			break
+		}
+		if !found {
+			return nil, &ir.Error{Code: CodeIrInvalid, Msg: "insert requires every non-auto primary-key column"}
+		}
+	}
+	return values, nil
+}
+
 // MovePKToWhere is the single-key compatibility form.
 func (q *Q) MovePKToWhere(pk string) (v any, ok bool) {
 	values, ok, err := q.MoveKeysToWhere([]string{pk})

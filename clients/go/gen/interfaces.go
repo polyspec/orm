@@ -314,3 +314,85 @@ type ServiceMemberRowInterface interface {
 }
 
 var _ ServiceMemberRowInterface = (*ServiceMemberRow)(nil)
+
+type CompositeAccountInterface interface {
+	Get() (*CompositeAccountRow, error)
+	Gets() (*orm.Collection[CompositeAccountRow], error)
+	Stream(visit func(*CompositeAccountRow) bool) (orm.StreamResult, error)
+	GetCount() (int64, error)
+	GetsCount() (*orm.Collection[CompositeAccountRow], error)
+	Insert() (*CompositeAccountRow, error)
+	Save() (*CompositeAccountRow, error)
+	Update() (int64, error)
+	Delete() (int64, error)
+	SQL() (*orm.Statement, error)
+	Using(ctx context.Context, ex orm.Exec) *CompositeAccountQuery
+	Paginate(page, per int) (*orm.Page[CompositeAccountRow], error)
+	GetsByTenantId(v int64) (*orm.Collection[CompositeAccountRow], error)
+	GetsByAccountId(v int64) (*orm.Collection[CompositeAccountRow], error)
+	GetsByName(v string) (*orm.Collection[CompositeAccountRow], error)
+	GetCountByTenantId(v int64) (int64, error)
+	GetCountByAccountId(v int64) (int64, error)
+	GetCountByName(v string) (int64, error)
+	TenantIdEq(v int64) *CompositeAccountQuery
+	AccountIdEq(v int64) *CompositeAccountQuery
+	NameEq(v string) *CompositeAccountQuery
+	TenantId(v int64) *CompositeAccountQuery
+	AccountId(v int64) *CompositeAccountQuery
+	Name(v string) *CompositeAccountQuery
+}
+
+var _ CompositeAccountInterface = (*CompositeAccountQuery)(nil)
+
+type CompositeAccountRowInterface interface {
+	Using(ctx context.Context, ex orm.Exec) *CompositeAccountRow
+	Update() error
+	Delete() error
+	DeleteCascade() error
+	Has(name string) bool
+	RelLoaded(rel string) bool
+	ToArray() (map[string]any, error)
+}
+
+var _ CompositeAccountRowInterface = (*CompositeAccountRow)(nil)
+
+type CompositeMembershipInterface interface {
+	Get() (*CompositeMembershipRow, error)
+	Gets() (*orm.Collection[CompositeMembershipRow], error)
+	Stream(visit func(*CompositeMembershipRow) bool) (orm.StreamResult, error)
+	GetCount() (int64, error)
+	GetsCount() (*orm.Collection[CompositeMembershipRow], error)
+	Insert() (*CompositeMembershipRow, error)
+	Save() (*CompositeMembershipRow, error)
+	Update() (int64, error)
+	Delete() (int64, error)
+	SQL() (*orm.Statement, error)
+	Using(ctx context.Context, ex orm.Exec) *CompositeMembershipQuery
+	Paginate(page, per int) (*orm.Page[CompositeMembershipRow], error)
+	GetsByTenantId(v int64) (*orm.Collection[CompositeMembershipRow], error)
+	GetsByAccountId(v int64) (*orm.Collection[CompositeMembershipRow], error)
+	GetsByRole(v string) (*orm.Collection[CompositeMembershipRow], error)
+	GetCountByTenantId(v int64) (int64, error)
+	GetCountByAccountId(v int64) (int64, error)
+	GetCountByRole(v string) (int64, error)
+	TenantIdEq(v int64) *CompositeMembershipQuery
+	AccountIdEq(v int64) *CompositeMembershipQuery
+	RoleEq(v string) *CompositeMembershipQuery
+	TenantId(v int64) *CompositeMembershipQuery
+	AccountId(v int64) *CompositeMembershipQuery
+	Role(v string) *CompositeMembershipQuery
+}
+
+var _ CompositeMembershipInterface = (*CompositeMembershipQuery)(nil)
+
+type CompositeMembershipRowInterface interface {
+	Using(ctx context.Context, ex orm.Exec) *CompositeMembershipRow
+	Update() error
+	Delete() error
+	DeleteCascade() error
+	Has(name string) bool
+	RelLoaded(rel string) bool
+	ToArray() (map[string]any, error)
+}
+
+var _ CompositeMembershipRowInterface = (*CompositeMembershipRow)(nil)

@@ -28,7 +28,7 @@ func TestSQLiteCompositeSchemaRoundTripAndCascadeAreIdempotent(t *testing.T) {
   composite_membership {
     bigint tenant_id PK,FK
     bigint account_id PK,FK
-    varchar role
+    varchar(191) role
   }
   composite_account ||--o{ composite_membership : "(tenant_id, account_id) (account / memberships) cascade"
 `)

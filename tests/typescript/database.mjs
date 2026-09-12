@@ -18,12 +18,19 @@ registerRow('child', ChildRow);
 
 class CompositeSaveQuery extends QueryCore {
   async move(keys) { return this.saveKeys(keys); }
+  assigned(keys) { return this.assignedKeyValues(keys); }
 }
 const partialSave = new CompositeSaveQuery('membership');
 partialSave.set('tenant_id', 7).set('name', 'updated');
 let partialRejected = false;
 try { await partialSave.move(['tenant_id', 'account_id']); } catch (error) { partialRejected = error?.code === 'IR_INVALID'; }
 if (!partialRejected || partialSave.request.ir.set.length !== 2 || partialSave.request.ir.where !== undefined) throw new Error('partial composite save changed the request');
+const completeInsert = new CompositeSaveQuery('membership').set('tenant_id', 7).set('account_id', 11).set('name', 'created');
+if (completeInsert.assigned(['tenant_id', 'account_id']).join(',') !== '7,11' || completeInsert.request.ir.set.length !== 3 || completeInsert.request.ir.where !== undefined) throw new Error('composite insert key inspection changed the request');
+const partialInsert = new CompositeSaveQuery('membership').set('tenant_id', 7).set('name', 'created');
+let partialInsertRejected = false;
+try { partialInsert.assigned(['tenant_id', 'account_id']); } catch (error) { partialInsertRejected = error?.code === 'IR_INVALID'; }
+if (!partialInsertRejected || partialInsert.request.ir.set.length !== 2 || partialInsert.request.ir.where !== undefined) throw new Error('partial composite insert changed the request');
 
 const calls = [];
 const connection = {
@@ -44,12 +51,12 @@ const db = new Db(connection, { schemaHash: 'hash', compiler: transport, onQuery
 const itemAssembly = { entity: 'item', alias: 'a', columns: [
   { index: 0, name: 'seq', column: 'seq', type: 'i64', styles: [], hidden: false },
   { index: 1, name: 'name', column: 'name', type: 'string', styles: [], hidden: false },
-], children: [{ rel: 'children', kind: 'many', step: 1, parent_keys: [{ column: 'seq', index: 0 }], child_keys: [{ column: 'parent_seq', index: 1 }], key: [{ column: 'seq', index: 0 }], flatten: false, cascade: true }] };
+], children: [{ rel: 'children', kind: 'many', step: 1, parent_keys: [{ column: 'seq', index: 0 }], child_keys: [{ column: 'parent_seq', index: 1 }], key: [{ column: 'seq', index: 0 }], flatten: false, cascade: true }], key: [{ column: 'seq', index: 0 }] };
 const childAssembly = { entity: 'child', alias: 'b', columns: [
   { index: 0, name: 'seq', column: 'seq', type: 'i64', styles: [], hidden: false },
   { index: 1, name: 'parent_seq', column: 'parent_seq', type: 'i64', styles: [], hidden: false },
   { index: 2, name: 'name', column: 'name', type: 'string', styles: [], hidden: false },
-], children: [] };
+], children: [], key: [{ column: 'seq', index: 0 }] };
 const plan = { schema_hash: 'hash', kind: 'all', steps: [
   { id: 0, role: 'main', sql: 'main', bind_slots: [], assemble: itemAssembly },
   { id: 1, role: 'relation', sql: 'children (?)', bind_slots: [{ from: 'parent', param: 0, transform: '', name: '', step: 0, column: '', host_styles: [], col_type: '' }], parent: { step: 0, keys: [{ column: 'seq', index: 0 }] }, assemble: childAssembly },
@@ -77,11 +84,11 @@ const compositeChild = { entity: 'child', alias: 'c', columns: [
   { index: 0, name: 'seq', column: 'seq', type: 'i64', styles: [], hidden: false },
   { index: 1, name: 'tenant_id', column: 'tenant_id', type: 'i64', styles: [], hidden: false },
   { index: 2, name: 'parent_id', column: 'parent_id', type: 'i64', styles: [], hidden: false },
-], children: [] };
+], children: [], key: [{ column: 'seq', index: 0 }] };
 const compositeRoot = { entity: 'item', alias: 'p', columns: [
   { index: 0, name: 'tenant_id', column: 'tenant_id', type: 'i64', styles: [], hidden: false },
   { index: 1, name: 'seq', column: 'seq', type: 'i64', styles: [], hidden: false },
-], children: [{ rel: 'children', kind: 'many', step: 1, parent_keys: [{column:'tenant_id',index:0},{column:'seq',index:1}], child_keys: [{column:'tenant_id',index:1},{column:'parent_id',index:2}], key: [{column:'seq',index:0}], flatten:false, cascade:true }] };
+], children: [{ rel: 'children', kind: 'many', step: 1, parent_keys: [{column:'tenant_id',index:0},{column:'seq',index:1}], child_keys: [{column:'tenant_id',index:1},{column:'parent_id',index:2}], key: [{column:'seq',index:0}], flatten:false, cascade:true }], key: [{column:'tenant_id',index:0},{column:'seq',index:1}] };
 await compositeDb.execute({ schema_hash:'hash', kind:'all', steps:[
   { id:0, role:'main', sql:'composite-main', bind_slots:[], assemble:compositeRoot },
   { id:1, role:'relation', sql:'composite-children ((?))', bind_slots:[{from:'parent',param:0,transform:'',name:'',step:0,column:'',host_styles:[],col_type:''}], parent:{step:0,keys:[{column:'tenant_id',index:0},{column:'seq',index:1}]}, assemble:compositeChild },
@@ -102,7 +109,7 @@ try {
   const streamAssembly = { entity: 'item', alias: 'a', columns: [
     { index: 0, name: 'seq', column: 'seq', type: 'i64', styles: [], hidden: false },
     { index: 1, name: 'name', column: 'name', type: 'string', styles: [], hidden: false },
-  ], children: [] };
+  ], children: [], key: [{ column: 'seq', index: 0 }] };
   const streamPlan = { schema_hash: 'hash', kind: 'all', steps: [{ id: 0, role: 'main', sql: 'SELECT "seq", "name" FROM "orm_stream_test" ORDER BY "seq"', bind_slots: [], assemble: streamAssembly }] };
   const streamed = [];
   const stopped = await sqliteDb.stream(streamPlan, [], row => { streamed.push(row); return streamed.length < 2; });
