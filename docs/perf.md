@@ -1,7 +1,7 @@
 # perf.md — S0 measurements and decisions
 
 Measurement environment: Apple M3 Pro, macOS, MySQL 8.4.11 local Unix socket (`/tmp/mysql.sock`), `orm_bench.battle` 100,000 rows (two `aes_hex_*` columns),
-Go 1.27, Rust 1.98.1 (sqlx 0.9, wasmtime 48), PHP 8.5.10 (mysqlnd, msgpack, APCu). One connection, p50. Raw data: `docs/perf-raw-*.txt`.
+Go 1.27, Rust 1.98.1 (sqlx 0.9, wasmtime 48), PHP 8.5.10 (mysqlnd, msgpack). One connection, p50. Raw data: `docs/perf-raw-*.txt`. PHP plan-cache measurements below are historical APCu measurements and are not a runtime dependency.
 
 ## 1. Engine compilation cost (Go in-process, JSON in → JSON out)
 | Workload | ns/op | allocs |
@@ -18,7 +18,7 @@ Runs once per shape (plan cache), so the hot-path contribution is zero.
 | Rust `libloading` (.dylib 2.7MB) | 11.4µs | 5.4µs | dlopen 366ms (once), Go runtime and signals embedded in the host process |
 | Rust `wasmtime` (.wasm 4.6MB) | 50.6µs | 24.0µs | module compilation 390ms(디스크 after caching 22ms), instantiation 1.9ms, no runtime embedding |
 | PHP persistent UDS → ormd | 26.5µs | 17.4µs | wire overhead ≈12–15µs; +22µs with a new connect per request |
-| PHP APCu hit (xxh3 + fetch) | 0.25µs | | cached plan `json_decode` 8.3µs → array storage avoids decoding |
+| PHP local cache hit | 0.25µs | historical APCu benchmark; current runtime uses the same bounded local lookup without APCu | cached plan `json_decode` 8.3µs → array storage avoids decoding |
 
 **Decision R1 — Rust execution path = wasmtime.** Both paths have a 100x margin under the budget (≤2ms per shape). The 4.4x difference occurs only on the cold path, and FFI puts the Go runtime in the tokio process, adding signal, thread, and 366ms dlopen operational risk. One artifact covers every OS and architecture, including the fourth language (TS/edge).
 
@@ -65,7 +65,7 @@ Valid reversal conditions: a new method avoids row transfer, such as FrankenPHP 
 | Plan cache hit (without compilation) | — | 1.7µs / 14 allocs | IR JSON serialization + FNV |
 Measured loss is zero and within measurement error. Allocations are doubled (positional `[]any` scan to struct); this has no CPU impact and typed scanning can reduce it later. **G0/G1 Go check passed.**
 
-### PHP measurements (generated client, ormd compilation + PDO execution, APCu plan cache)
+### PHP measurements (generated client, ormd compilation + PDO execution, historical APCu benchmark)
 | Workload | Direct PDO | Generated client | Notes |
 |---|---:|---:|---|
 | Single row by PK | 30.5µs | 31.4µs (+3%) | including a 1.8µs plan-cache hit |

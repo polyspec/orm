@@ -5,8 +5,8 @@ namespace Orm;
 
 /**
  * Persistent unix-socket connection to ormd (length-prefixed JSON frames) and
- * the plan cache: APCu across workers, plus a per-request array keyed by the
- * builder's shape signature (no IR encoding on a local hit).
+ * and a bounded per-process plan cache keyed by the builder's shape signature
+ * (no IR encoding on a local hit).
  */
 final class Transport
 {
@@ -17,6 +17,7 @@ final class Transport
     /** @var list<string> */
     private array $localOrder = [];
     private ?CompilerTransport $compiler;
+    private bool $closed = false;
 
     public function __construct(private readonly Config $config)
     {
@@ -26,6 +27,9 @@ final class Transport
     /** @return resource */
     private function conn()
     {
+        if ($this->closed) {
+            throw new OrmException(Code::CONFIG, 'compiler transport is closed');
+        }
         if ($this->fp !== null) {
             return $this->fp;
         }
@@ -114,10 +118,11 @@ final class Transport
     /**
      * The plan of a request. The per-request cache is keyed by the builder's signature
      * (kind + the tokens every builder call appended + param count), so a repeated shape
-     * costs one array lookup; only a miss encodes the IR for the APCu / ormd key.
+     * costs one array lookup; only a miss encodes the IR for the compiler.
      */
     public function planFor(Req $req, string $kind): array
     {
+        if ($this->closed) throw new OrmException(Code::CONFIG, 'compiler transport is closed');
         if ($req->error !== null) { throw $req->error; }
         $key = $kind . "\x1f" . $req->sig . "\x1f" . count($req->params);
         if (isset($this->local[$key])) return $this->local[$key];
@@ -140,6 +145,7 @@ final class Transport
      */
     public function loadPlanBundle(array|string $bundle, Req $req, string $kind): void
     {
+        if ($this->closed) throw new OrmException(Code::CONFIG, 'compiler transport is closed');
         if ($req->error !== null) throw $req->error;
         if (is_string($bundle)) {
             $bundle = json_decode($bundle, true);
@@ -181,9 +187,7 @@ final class Transport
             if ($oldest !== null) unset($this->local[$oldest]);
         }
         $shape = json_encode($ir, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $cacheKey = 'orm:' . Orm::config()->driver . ':' . Orm::config()->schemaHash() . ':' . hash('xxh3', $shape);
         Assemble::index($plan, hash('xxh3', $shape));
-        if (function_exists('apcu_store')) apcu_store($cacheKey, $plan);
     }
 
     private static function canonicalJson(mixed $value): mixed
@@ -203,26 +207,35 @@ final class Transport
      */
     public function plan(array $ir): array
     {
+        if ($this->closed) throw new OrmException(Code::CONFIG, 'compiler transport is closed');
         Wire::check('IRRequest', $ir);
         $shape = json_encode($ir, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $id = hash('xxh3', $shape);
-        $key = 'orm:' . $this->config->driver . ':' . $this->config->schemaHash() . ':' . $id; // plans are dialect text
-        if (function_exists('apcu_fetch')) {
-            $hit = apcu_fetch($key, $ok);
-            if ($ok && is_array($hit)) {
-                return $hit;
-            }
-        }
+        $key = $this->config->driver . ':' . $this->config->schemaHash() . ':' . $id;
+        if (isset($this->local[$key])) return $this->local[$key];
         $plan = $this->compiler === null
             ? $this->decode($this->call('{"op":"compile","ir":' . $shape . '}'))['plan']
             : CompilerBridge::plan($this->compiler->compile(CompilerBridge::request($ir)));
         Wire::check('Plan', $plan);
         // Precompute per-step data once (name→index maps, styled flag, plan id), so rows never need array_combine.
         Assemble::index($plan, $id);
-        if (function_exists('apcu_store')) {
-            apcu_store($key, $plan);
+        $this->local[$key] = $plan;
+        $this->localOrder[] = $key;
+        while (count($this->localOrder) > Orm::config()->planCacheSize) {
+            $oldest = array_shift($this->localOrder);
+            if ($oldest !== null) unset($this->local[$oldest]);
         }
         return $plan;
+    }
+
+    public function close(): void
+    {
+        if ($this->closed) return;
+        $this->closed = true;
+        $this->local = [];
+        $this->localOrder = [];
+        if (is_resource($this->fp)) fclose($this->fp);
+        $this->fp = null;
     }
 }
 

@@ -148,4 +148,4 @@ $battles = Battle::query()->addAllColumns()->withItems(BattleItem::query()->orde
 - 총 기간 변화 없음(≈15–16주). PHP 조립·코덱·데드락 구현이 빠진 만큼 `ormd` 커넥션 핀·프레이밍이 들어온다.
 
 ## 7. v1에서 그대로 유지
-컴파일러 전용 엔진, 형태 해시 플랜 캐시(Go/Rust 프로세스 내, PHP는 APCu에 IR→응답이 아니라 **IR 해시→ormd 플랜 id**), Mermaid 스키마·`import/validate`·`schema_hash`, Relation 의미론(배치 IN, keyName 재키잉, parentNode 병합 순서, ONE 첫 행, groupLimit 파티션, possible strict), MutationBatch·낙관 락·`CLIENT_FOUND_ROWS`, 결과 접근·컬렉션 규칙, 에러 enum 생성, 코덱 벡터, 설계 원칙 3개, S0 스파이크 골격, `--tables`.
+컴파일러 전용 엔진, 형태 해시 플랜 캐시(Go/Rust 프로세스 내, PHP 제한된 process-local cache), Mermaid 스키마·`import/validate`·`schema_hash`, Relation 의미론(배치 IN, keyName 재키잉, parentNode 병합 순서, ONE 첫 행, groupLimit 파티션, possible strict), MutationBatch·낙관 락·`CLIENT_FOUND_ROWS`, 결과 접근·컬렉션 규칙, 에러 enum 생성, 코덱 벡터, 설계 원칙 3개, S0 스파이크 골격, `--tables`.
