@@ -138,6 +138,8 @@ transaction을 만든 코드가 소유권을 가진다. commit과 rollback은 bi
 
 오류는 안정된 code와 원래 driver message를 보존한다. 취소 시 transaction을 해제하고 client 객체에 활성 connection을 남기지 않는다.
 
+`transaction`은 기본적으로 callback을 한 번 실행한다. deadlock 재시도는 기본 비활성화다. 호출자는 `TransactionOptions`의 `retryDeadlocks`와 `maxAttempts`를 지정할 수 있다. 재시도마다 새 transaction을 만들고 callback 전체를 다시 실행한다. 재시도를 활성화하면 callback은 여러 번 실행되어도 안전해야 한다.
+
 ## 7. Compile·Plan·조립 — IF-18 ~ IF-20
 
 `Request`는 schema hash, IR version, entity, predicate tree, relation request, projection, parameter count를 포함한다. parameter 값은 request shape와 분리한다. compiler는 dialect SQL과 위치 기반 조립 정보를 포함한 immutable plan을 만든다.

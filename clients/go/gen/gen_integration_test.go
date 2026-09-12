@@ -658,7 +658,7 @@ func TestDeadlockRetry(t *testing.T) {
 	locked.Add(2)
 	writer := func(tag int64, first, second int64) error {
 		attempt := 0
-		_, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (struct{}, error) {
+		_, err := orm.TransactionWithOptions(ctx, db, orm.TransactionOptions{RetryDeadlocks: true, MaxAttempts: 3}, func(tx *orm.Tx) (struct{}, error) {
 			attempt++
 			calls.Add(1)
 			if _, err := gen.Battle().SeqEq(first).SetLikeCount(tag).Using(ctx, tx).Update(); err != nil {

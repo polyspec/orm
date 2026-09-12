@@ -1,6 +1,6 @@
 # IR v1 스펙
 
-> 이전 설계 문서. 현행 구현 기준은 [공통 인터페이스](interfaces.md), [DSL](dsl.md), [프로토콜](protocol.md), [스키마](schema.md)다.
+현행 구현 기준은 [공통 인터페이스](interfaces.md), [DSL](dsl.md), [프로토콜](protocol.md), [스키마](schema.md)다.
 
 목표: **스키마 1개 → 파서 1개 → spec.json(IR) → 렌더러 4개(PHP/Go/Rust/TypeScript)**.
 렌더러는 파싱을 하지 않는다. IR을 읽어 이름을 조합만 한다.
@@ -84,7 +84,7 @@ nullable은 PHP `?T`, Go `*T`, Rust `Option<T>`, TypeScript `T | null`을 사용
 ```json
 "style": ["json"]              // json_encode
 "style": ["serialize","gz"]    // serialize → gzcompress
-"style": ["aes","hex"]         // 인증된 AES ciphertext → HEX
+"style": ["aes","hex"]         // authenticated AES ciphertext → HEX
 "style": ["ip"]                // INET6_ATON / INET6_NTOA
 ```
 
@@ -121,7 +121,7 @@ SQL 위치 stage가 있으면 SELECT 목록과 바인드가 같이 바뀌므로,
 
 스타일 보정 — **인코딩된 컬럼에 순서 비교는 무의미하다.**
 
-- `["aes"]`, `["aes","hex"]` : deterministic(MySQL 기본 ECB)이라 `eq ne in is_null` 유지, 나머지 제거
+- `["aes"]`, `["aes","hex"]` : 인증된 버전 ciphertext이므로 `eq ne in is_null` 유지, 나머지 제거
 - `["gz"]`, `["base64"]`, `["serialize"]`, `["json"]` : `is_null` 만
 - `["ip"]` : `eq ne in is_null` (`INET6_ATON` 결과는 정렬 가능하므로 `gt/lt`는 v2에서 검토)
 - `nullable: false` 면 `is_null` 제거

@@ -397,7 +397,7 @@ Battle::query()->seq($id)->using($db)->delete();
 
 - `update`는 항상 `updated_ts`를 명시적으로 넣는다(방언 무관하게 같은 값이 되도록).
 - `minus<Col>`는 0에서 멈춘다. `set<Col>Expr('`read_count` * ? + 1', [2])`로 식을 쓸 수 있다.
-- 트랜잭션은 각 언어의 네이티브 트랜잭션이고, 데드락(1213/40001)이면 **클로저를 새 트랜잭션으로 최대 3회 재실행**한다.
+- 트랜잭션은 각 언어의 네이티브 트랜잭션을 사용한다. callback은 기본적으로 한 번 실행한다. deadlock 재시도는 `TransactionOptions`의 `retryDeadlocks`를 활성화해야 하며 `maxAttempts`로 횟수를 제한한다(기본 3회).
 
 ```go
 row, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {

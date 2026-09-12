@@ -1,5 +1,5 @@
 import { AesKeyring } from './index.js';
-import type { AesRotationSpec, AesRotationStatus, Compiler, Database, Executor, Param, Plan, PlanStep, Request, StreamResult } from './index.js';
+import type { AesRotationSpec, AesRotationStatus, Compiler, Database, Executor, Param, Plan, PlanStep, Request, StreamResult, TransactionOptions } from './index.js';
 import { readFile } from 'node:fs/promises';
 import { ConnectCompiler, ConnectPlanCompiler, type CompilerTransport } from './compiler.js';
 import { loadConfig, resolveAesKey } from './config.js';
@@ -132,9 +132,10 @@ export class Db implements Database, Executor {
     }
     return rows.length;
   }
-  public async transaction<T>(callback: (transaction: Tx) => Promise<T>): Promise<T> {
+  public async transaction<T>(callback: (transaction: Tx) => Promise<T>, options: TransactionOptions = {}): Promise<T> {
+    const attempts = options.retryDeadlocks ? Math.max(1, options.maxAttempts ?? 3) : 1;
     let last: unknown;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < attempts; attempt++) {
       const connection = await this.connection.begin();
       const transaction = new Tx(connection, this);
       try {
@@ -143,7 +144,7 @@ export class Db implements Database, Executor {
         return result;
       } catch (error) {
         if (transaction.active) await transaction.rollback();
-        if (!(error instanceof OrmError) || error.code !== 'DEADLOCK') throw error;
+        if (!options.retryDeadlocks || !(error instanceof OrmError) || error.code !== 'DEADLOCK') throw error;
         last = error;
         await new Promise(resolve => setTimeout(resolve, (50 << attempt) + Math.floor(Math.random() * 20)));
       }
