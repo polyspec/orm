@@ -1,6 +1,6 @@
 .PHONY: check ts-check schema-check proto-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check
 
-check: docs-rules-check ts-check schema-check
+check: docs-rules-check docs-check docs-verify-idempotent ts-check schema-check proto-check
 	go test ./...
 
 ts-check:
