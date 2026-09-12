@@ -63,6 +63,29 @@ go run ./cmd/ormgen import --dsn "root@unix(/tmp/mysql.sock)/mydb" --out schema/
 go run ./cmd/ormgen import --dsn "postgres://user@localhost:5432/mydb" --out schema/app.mmd   # PostgreSQL도 동일
 ```
 
+## 2.1 Create tables and generate migrations
+
+Generate database-specific `CREATE TABLE` statements from the manifest:
+
+```sh
+go run ./cmd/ormgen ddl --schema schema/schema.json --dialect mysql --out create.mysql.sql
+go run ./cmd/ormgen ddl --schema schema/schema.json --dialect postgres --out create.postgres.sql
+go run ./cmd/ormgen ddl --schema schema/schema.json --dialect sqlite --out create.sqlite.sql
+```
+
+Apply the selected SQL file with the database's migration tool or client. `ormgen ddl` writes SQL and does not connect to a database.
+
+To create a migration, keep the previous manifest, update the Mermaid schema, build the new manifest, and generate a diff:
+
+```sh
+cp schema/schema.json schema/schema.previous.json
+go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
+go run ./cmd/ormgen diff --from schema/schema.previous.json --to schema/schema.json \
+  --dialect mysql --out migration.mysql.sql
+```
+
+Review the SQL before applying it. Table removal, column removal, and column definition changes require `--allow-destructive`. Renames require an explicit migration because the tool cannot infer whether a rename is safe. The tool does not apply migrations or provide rollback SQL; keep the previous schema and write rollback SQL as part of the migration review.
+
 ---
 
 ## 3. Code generation
