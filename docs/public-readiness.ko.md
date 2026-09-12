@@ -33,7 +33,7 @@
 
 - [ ] P9.1 Batch insert, upsert, primary key update, primary key delete가 typed input, 제한된 chunk, 하나의 transaction, 결정적인 affected-row result를 사용한다.
 - [ ] P9.2 Keyset pagination이 generated typed cursor, 완전한 composite order, version cursor encoding, validation, forward/backward traversal, duplicate-page test를 사용한다.
-- [ ] P9.3 Transaction callback은 기본으로 재시도하지 않는다. 명시적인 retry policy가 deadlock retry를 제어하고 callback 요구사항을 문서화한다.
+- [x] P9.3 Transaction callback은 기본으로 재시도하지 않는다. 명시적인 retry policy가 deadlock retry를 제어하고 callback 요구사항을 문서화한다. Go·PHP·Rust·TypeScript 검사가 기본 경로와 명시적 재시도 경로를 확인한다.
 - [ ] P9.4 Transaction option이 isolation, read-only mode, nested savepoint, query timeout/cancellation, 지원되는 row lock을 처리한다. 지원하지 않는 database mode는 정확한 capability error를 반환한다.
 - [ ] P9.5 모든 client가 검증된 precompiled plan bundle을 로드하고 일치하는 cache hit에서 compiler request 없이 사용한다.
 - [ ] P9.6 CHECK constraint와 완전한 index·foreign-key metadata가 Mermaid, manifest, SQL, live database import, diff, migration, verification에서 보존된다.

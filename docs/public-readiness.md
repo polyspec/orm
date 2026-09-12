@@ -33,7 +33,7 @@ Each item requires:
 
 - [ ] P9.1 Batch insert, upsert, update by primary key, and delete by primary key use typed inputs, bounded chunks, one transaction, and deterministic affected-row results.
 - [ ] P9.2 Keyset pagination uses generated typed cursors, a total composite order, versioned cursor encoding, validation, forward/backward traversal, and duplicate-page tests.
-- [ ] P9.3 Transaction callbacks do not retry by default. An explicit retry policy controls deadlock retries and documents callback requirements.
+- [x] P9.3 Transaction callbacks do not retry by default. An explicit retry policy controls deadlock retries and documents callback requirements. Go, PHP, Rust, and TypeScript tests verify the default and opt-in paths.
 - [ ] P9.4 Transaction options cover isolation, read-only mode, nested savepoints, query timeout/cancellation, and supported row locks. Unsupported database modes return exact capability errors.
 - [ ] P9.5 All clients load validated precompiled plan bundles and use them without a compiler request on a matching cache hit.
 - [ ] P9.6 CHECK constraints and complete index/foreign-key metadata survive Mermaid, manifest, SQL, live database import, diff, migration, and verification.
