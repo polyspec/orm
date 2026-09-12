@@ -35,7 +35,7 @@
     "clients/php/src/Proto/Orm/Compiler/V1/Raw.php": "a628847f174624aa80f3ed240d6528f2e3d627f1070572eb84f84ea9bf1b1397",
     "clients/php/src/Proto/Orm/Compiler/V1/Relation.php": "b66f0e9cb004df9a286100bdd900bdcef71999963010456ed9c9bbb2fe46e70f",
     "clients/rust/orm/src/gen/orm/compiler/v1/orm.compiler.v1.rs": "0f254dc062c63fd0102074cb8d00a32f0f815bb65e4926bb59c2bf958ff26163",
-    "clients/typescript/src/gen/entities.ts": "3e56e1e39008718c6dece12fd8ecc086087ac77e15526427fbca94ae27ec1d44",
+    "clients/typescript/src/gen/entities.ts": "48c390f1e5d54abe015ce7ad89bc0200303ded475f21282b3f2d270b63114795",
     "clients/typescript/src/gen/interfaces.ts": "93fb54f382d9cb27e9c0940be4b5d0a02d0c767b729ef1a03861b31baf37af8e",
     "clients/typescript/src/gen/proto/orm/compiler/v1/compiler_pb.ts": "9ef75c4fd9ecd3c9fdc2ab1e1db0e5b9ecef4d1b54fda39ec734c01fd7a6f362",
     "proto/orm/compiler/v1/compiler.pb.go": "c53e0e7534795d2ee5818eae64058b898fa4c169c67a221cadcf3da26c081b79",
