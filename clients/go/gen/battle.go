@@ -5847,6 +5847,8 @@ func (q *BattleQuery) Limit(offset, count int) *BattleQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
+func (q *BattleQuery) ForUpdate() *BattleQuery    { q.q.Lock("update"); return q }
+func (q *BattleQuery) ForShare() *BattleQuery     { q.q.Lock("share"); return q }
 func (q *BattleQuery) Distinct() *BattleQuery     { q.q.Node.Distinct = true; return q }
 func (q *BattleQuery) ForceIndexIk() *BattleQuery { q.q.Node.ForceIdx = "ik"; return q }
 func (q *BattleQuery) ForceIndexIxEmailBlindIndex() *BattleQuery {

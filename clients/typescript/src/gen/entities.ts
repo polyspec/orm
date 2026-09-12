@@ -1190,6 +1190,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
   public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
+  public forUpdate(): this { return this.lock('update'); }
+  public forShare(): this { return this.lock('share'); }
   public selectSeq(): this { return this.select('seq'); }
   public omitSeq(): this { return this.omit('seq'); }
   public orderBySeqAsc(): this { return this.orderBy('seq'); }
@@ -1943,6 +1945,8 @@ export class UserQuery extends QueryCore implements UserInterface {
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
   public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
+  public forUpdate(): this { return this.lock('update'); }
+  public forShare(): this { return this.lock('share'); }
   public selectSeq(): this { return this.select('seq'); }
   public omitSeq(): this { return this.omit('seq'); }
   public orderBySeqAsc(): this { return this.orderBy('seq'); }
@@ -2140,6 +2144,8 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
   public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
+  public forUpdate(): this { return this.lock('update'); }
+  public forShare(): this { return this.lock('share'); }
   public selectSeq(): this { return this.select('seq'); }
   public omitSeq(): this { return this.omit('seq'); }
   public orderBySeqAsc(): this { return this.orderBy('seq'); }
@@ -2377,6 +2383,8 @@ export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterf
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
   public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
+  public forUpdate(): this { return this.lock('update'); }
+  public forShare(): this { return this.lock('share'); }
   public selectSeq(): this { return this.select('seq'); }
   public omitSeq(): this { return this.omit('seq'); }
   public orderBySeqAsc(): this { return this.orderBy('seq'); }
@@ -2643,6 +2651,8 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
   public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
+  public forUpdate(): this { return this.lock('update'); }
+  public forShare(): this { return this.lock('share'); }
   public selectSeq(): this { return this.select('seq'); }
   public omitSeq(): this { return this.omit('seq'); }
   public orderBySeqAsc(): this { return this.orderBy('seq'); }
@@ -2911,6 +2921,8 @@ export class CompositeAccountQuery extends QueryCore implements CompositeAccount
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
   public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
+  public forUpdate(): this { return this.lock('update'); }
+  public forShare(): this { return this.lock('share'); }
   public selectTenantId(): this { return this.select('tenant_id'); }
   public omitTenantId(): this { return this.omit('tenant_id'); }
   public orderByTenantIdAsc(): this { return this.orderBy('tenant_id'); }
@@ -3129,6 +3141,8 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
   public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
+  public forUpdate(): this { return this.lock('update'); }
+  public forShare(): this { return this.lock('share'); }
   public selectTenantId(): this { return this.select('tenant_id'); }
   public omitTenantId(): this { return this.omit('tenant_id'); }
   public orderByTenantIdAsc(): this { return this.orderBy('tenant_id'); }

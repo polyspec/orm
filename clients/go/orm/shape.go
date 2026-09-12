@@ -182,6 +182,7 @@ func (s *shape) query(q *ir.Query) {
 	}
 	s.bool(q.Distinct)
 	s.str(q.ForceIdx)
+	s.str(q.Lock)
 	s.str(q.KeyBy)
 	s.bool(q.Flatten)
 	s.int(q.LimitPerParent)

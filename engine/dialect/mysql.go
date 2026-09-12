@@ -19,6 +19,16 @@ func (MySQL) InsertReturningID() bool        { return false }
 func (MySQL) Now() string                    { return "CURRENT_TIMESTAMP" }
 func (MySQL) Supports(string) bool           { return true }
 func (MySQL) HostNow() bool                  { return false }
+func (MySQL) RowLock(mode string) (string, bool) {
+	switch mode {
+	case "update":
+		return " FOR UPDATE", true
+	case "share":
+		return " FOR SHARE", true
+	default:
+		return "", false
+	}
+}
 
 // AES is host-side so row version metadata can select the key before decode.
 // hex and ip remain SQL-side because they do not depend on a secret.

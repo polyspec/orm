@@ -927,6 +927,11 @@ func (q *CompositeMembershipQuery) Limit(offset, count int) *CompositeMembership
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
+func (q *CompositeMembershipQuery) ForUpdate() *CompositeMembershipQuery {
+	q.q.Lock("update")
+	return q
+}
+func (q *CompositeMembershipQuery) ForShare() *CompositeMembershipQuery { q.q.Lock("share"); return q }
 func (q *CompositeMembershipQuery) Distinct() *CompositeMembershipQuery {
 	q.q.Node.Distinct = true
 	return q

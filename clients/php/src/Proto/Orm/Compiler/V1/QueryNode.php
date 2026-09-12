@@ -94,6 +94,10 @@ class QueryNode extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>optional uint32 scope_parameter = 20;</code>
      */
     protected $scope_parameter = null;
+    /**
+     * Generated from protobuf field <code>string lock = 21;</code>
+     */
+    protected $lock = '';
 
     /**
      * Constructor.
@@ -121,6 +125,7 @@ class QueryNode extends \Google\Protobuf\Internal\Message
      *     @type bool $drop_child_key
      *     @type bool $no_cascade_delete
      *     @type int $scope_parameter
+     *     @type string $lock
      * }
      */
     public function __construct($data = null)
@@ -625,6 +630,28 @@ class QueryNode extends \Google\Protobuf\Internal\Message
     {
         GPBUtil::checkUint32($var);
         $this->scope_parameter = $var;
+
+        return $this;
+    }
+
+    /**
+     * Generated from protobuf field <code>string lock = 21;</code>
+     * @return string
+     */
+    public function getLock()
+    {
+        return $this->lock;
+    }
+
+    /**
+     * Generated from protobuf field <code>string lock = 21;</code>
+     * @param string $var
+     * @return $this
+     */
+    public function setLock(string $var)
+    {
+        GPBUtil::checkString($var, true);
+        $this->lock = $var;
 
         return $this;
     }
