@@ -34,6 +34,7 @@ export default defineConfig({
       { text: '사용법', link: '/usage' },
       { text: '공통 인터페이스', link: '/interfaces' },
       { text: '구현 상태', link: '/interface-implementation' },
+      { text: 'S7 작업 목록', link: '/s7' },
     ],
     sidebar: [
       { text: '시작하기', items: [
@@ -58,6 +59,7 @@ export default defineConfig({
         { text: '패키징', link: '/packaging' },
         { text: '문서 빌드와 배포', link: '/docs-development' },
         { text: '이전 설계 기록', link: '/archive' },
+        { text: 'S7 작업 목록', link: '/s7' },
       ] },
     ],
     outline: { level: [2, 3], label: '이 문서의 내용' },
