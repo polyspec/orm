@@ -128,6 +128,14 @@ go run ./cmd/ormgen gen --schema schema/schema.json --lang rust --out clients/ru
 Each entity produces a query type, Row type, Where builder, and column references. After changing the schema, **regenerate and redeploy**.
 A mismatch between the generated `schema_hash` and the engine hash stops startup with `SCHEMA_HASH_MISMATCH`.
 
+The TypeScript package is built and checked with:
+
+```sh
+npm run typescript:check
+npm run typescript:build
+node tests/typescript/common-vector.mjs
+```
+
 ---
 
 ## 4. Connections
