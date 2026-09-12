@@ -66,20 +66,6 @@ func migrateCmd(args []string) {
 	if err := ensureMigrationTable(ctx, db, *driver); err != nil {
 		fail(err)
 	}
-	if _, ok, err := appliedMigration(ctx, db, *driver, *id); err != nil {
-		fail(err)
-	} else if ok {
-		live, err := liveManifest(db, *driver)
-		if err != nil {
-			fail(fmt.Errorf("MIGRATION_INTROSPECT: %w", err))
-		}
-		if !schemaMatches(want, live, *driver) {
-			fail(fmt.Errorf("MIGRATION_DRIFT: migration_id=%s expected_schema_hash=%s actual_schema_hash=%s", *id, want.SchemaHash, live.SchemaHash))
-		}
-		fmt.Printf("migration_id=%s status=noop operations=0 schema_hash=%s\n", *id, want.SchemaHash)
-		return
-	}
-
 	live, err := liveManifest(db, *driver)
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_INTROSPECT: driver=%s: %w", *driver, err))
@@ -94,12 +80,26 @@ func migrateCmd(args []string) {
 		fail(fmt.Errorf("MIGRATION_PLAN: from=%s to=%s: %w", live.SchemaHash, want.SchemaHash, err))
 	}
 	operations := countSQLStatements(sqlText)
+	checksum := checksumText(sqlText)
+	previous, found, err := appliedMigration(ctx, db, *driver, *id)
+	if err != nil {
+		fail(err)
+	}
+	if found {
+		if previous.ToHash != want.SchemaHash || previous.FromHash != live.SchemaHash || previous.Checksum != checksum {
+			fail(fmt.Errorf("MIGRATION_HISTORY_CONFLICT: migration_id=%s recorded_from=%s requested_from=%s recorded_to=%s requested_to=%s recorded_plan_checksum=%s requested_plan_checksum=%s", *id, previous.FromHash, live.SchemaHash, previous.ToHash, want.SchemaHash, previous.Checksum, checksum))
+		}
+		if !schemaMatches(want, live, *driver) {
+			fail(fmt.Errorf("MIGRATION_DRIFT: migration_id=%s expected_schema_hash=%s actual_schema_hash=%s", *id, want.SchemaHash, live.SchemaHash))
+		}
+		fmt.Printf("migration_id=%s status=noop operations=0 schema_hash=%s\n", *id, want.SchemaHash)
+		return
+	}
 	if *dryRun {
 		fmt.Printf("migration_id=%s status=planned from_schema_hash=%s to_schema_hash=%s operations=%d\n%s", *id, live.SchemaHash, want.SchemaHash, operations, sqlText)
 		return
 	}
 
-	checksum := checksumText(sqlText)
 	if err := insertMigration(ctx, db, *driver, migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "applying", Operations: operations}); err != nil {
 		fail(err)
 	}
