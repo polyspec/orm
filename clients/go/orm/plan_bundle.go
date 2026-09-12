@@ -29,6 +29,9 @@ func (d *DB) LoadPlanBundle(bundle []byte, r *Req) error {
 	if r == nil {
 		return &ir.Error{Code: CodeConfig, Msg: "precompiled plan requires a request"}
 	}
+	if r.IR.SchemaHash != d.Eng.M.SchemaHash {
+		return &ir.Error{Code: CodeSchemaHashMismatch, Msg: fmt.Sprintf("request schema %s but client schema is %s", r.IR.SchemaHash, d.Eng.M.SchemaHash)}
+	}
 	var envelope planBundle
 	if err := json.Unmarshal(bundle, &envelope); err != nil {
 		return &ir.Error{Code: CodeConfig, Msg: "precompiled plan is invalid JSON: " + err.Error()}

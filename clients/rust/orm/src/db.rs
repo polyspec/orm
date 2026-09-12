@@ -461,6 +461,9 @@ impl Db {
         if let Some(e) = &req.err {
             return Err(e.error());
         }
+        if req.ir.schema_hash != self.engine.schema_hash {
+            return Err(Error::Engine { code: crate::codes::SCHEMA_HASH_MISMATCH.into(), msg: format!("request schema {} but client schema is {}", req.ir.schema_hash, self.engine.schema_hash) });
+        }
         let key = req.shape_key();
         if let Some(p) = self.plans.lock().unwrap().get(&key) {
             return Ok(p.clone());

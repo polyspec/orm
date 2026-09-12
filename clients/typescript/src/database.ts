@@ -193,6 +193,7 @@ export class Db implements Database, Executor {
     } else value = bundle;
     if (value.version !== 1) throw new OrmError('VERSION_MISMATCH', `precompiled plan version ${String(value.version ?? 0)} is not supported`);
     if (value.schema_hash !== this.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `precompiled plan schema ${String(value.schema_hash ?? '')} but client schema is ${this.schemaHash}`);
+    if (request.schema_hash !== this.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `request schema ${request.schema_hash} but client schema is ${this.schemaHash}`);
     if (value.dialect !== this.driver) throw new OrmError('CONFIG', `precompiled plan dialect ${String(value.dialect ?? '')} but database driver is ${this.driver}`);
     if (typeof value.request_sha256 !== 'string' || value.request_sha256 === '') throw new OrmError('CONFIG', 'precompiled plan requires request_sha256');
     const plan = value.plan as Plan | undefined;

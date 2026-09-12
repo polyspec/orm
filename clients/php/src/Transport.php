@@ -140,6 +140,7 @@ final class Transport
      */
     public function loadPlanBundle(array|string $bundle, Req $req, string $kind): void
     {
+        if ($req->error !== null) throw $req->error;
         if (is_string($bundle)) {
             $bundle = json_decode($bundle, true);
             if (!is_array($bundle)) throw new OrmException(Code::CONFIG, 'precompiled plan is invalid JSON');
@@ -150,6 +151,9 @@ final class Transport
         $schema = (string) ($bundle['schema_hash'] ?? '');
         if ($schema !== Orm::config()->schemaHash()) {
             throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "precompiled plan schema $schema but client schema is " . Orm::config()->schemaHash());
+        }
+        if (($req->ir['schema_hash'] ?? null) !== $schema) {
+            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "request schema " . (string) ($req->ir['schema_hash'] ?? '') . " but client schema is $schema");
         }
         $dialect = (string) ($bundle['dialect'] ?? '');
         if ($dialect !== Orm::config()->driver) {
