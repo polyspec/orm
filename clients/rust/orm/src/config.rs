@@ -47,6 +47,10 @@ pub struct DbSection {
     pub password: Option<String>,
     #[serde(default = "default_pool")]
     pub pool: u32,
+    #[serde(default = "default_cache_size")]
+    pub plan_cache_size: usize,
+    #[serde(default = "default_cache_size")]
+    pub statement_cache_size: usize,
 }
 
 fn default_pool() -> u32 {
@@ -56,6 +60,8 @@ fn default_pool() -> u32 {
 fn default_driver() -> String {
     "mysql".into()
 }
+
+fn default_cache_size() -> usize { 256 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
 #[serde(deny_unknown_fields)]
@@ -154,6 +160,9 @@ impl OrmConfig {
         if cfg.db.dsn.is_empty() {
             return Err(cfg_err("db.dsn is empty"));
         }
+		if cfg.db.plan_cache_size == 0 || cfg.db.statement_cache_size == 0 {
+			return Err(cfg_err("db cache sizes must be positive"));
+		}
         if !matches!(cfg.db.driver.as_str(), "mysql" | "postgres" | "sqlite") {
             return Err(cfg_err(format!("db.driver {:?}: want mysql, postgres or sqlite", cfg.db.driver)));
         }
@@ -283,7 +292,7 @@ impl Db {
         } else {
             cfg.secrets.aes_keys.iter().filter_map(|(version, key)| version.parse::<i32>().ok().map(|v| (v, key.clone()))).collect()
         };
-        let runtime = Config { aes_key, blind_index_key, aes_version, aes_keys, on_query };
+        let runtime = Config { aes_key, blind_index_key, aes_version, aes_keys, plan_cache_size: cfg.db.plan_cache_size, statement_cache_size: cfg.db.statement_cache_size, on_query };
         if let Some(ormd) = &cfg.ormd {
             if let Some(endpoint) = &ormd.endpoint {
                 let compiler = Arc::new(ConnectCompiler::new(endpoint, std::time::Duration::from_millis(ormd.timeout_ms))?);
