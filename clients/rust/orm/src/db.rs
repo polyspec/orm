@@ -1518,9 +1518,27 @@ mod tests {
     use super::*;
     use sha2::Digest;
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     struct BundleCompiler {
         schema_hash: String,
+    }
+
+    struct CountingPlanCompiler {
+        schema_hash: String,
+        calls: Arc<AtomicUsize>,
+    }
+
+    #[async_trait::async_trait]
+    impl PlanCompiler for CountingPlanCompiler {
+        async fn compile(&self, request: &ir::Request) -> Result<Plan> {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            Ok(Plan { schema_hash: self.schema_hash.clone(), kind: request.kind.clone(), steps: vec![Step { plan_id: 0, id: 0, role: "main".into(), sql: request.kind.clone(), bind_slots: Vec::new(), assemble: None, parent: None }] })
+        }
+
+        async fn metadata(&self) -> Result<GetMetadataResponse> {
+            Ok(GetMetadataResponse { schema_hash: self.schema_hash.clone(), dialect: "sqlite".into(), ir_version: 1 })
+        }
     }
 
     #[async_trait::async_trait]
@@ -1625,5 +1643,29 @@ mod tests {
         pool.close().await;
         let error = sqlx::query("SELECT 1").execute(&pool).await.unwrap_err();
         assert!(matches!(error, sqlx::Error::PoolClosed));
+    }
+
+    #[tokio::test]
+    async fn plan_cache_evicts_oldest_and_close_clears_entries() {
+        let schema = std::fs::read("../../../schema/schema.json").unwrap();
+        let wasm = std::fs::read("../../../bin/ormengine.wasm").unwrap();
+        let engine = Arc::new(Engine::new(crate::engine::EngineConfig { wasm: &wasm, schema_json: &schema, dialect: "sqlite", cache_dir: None }).unwrap());
+        let calls = Arc::new(AtomicUsize::new(0));
+        let compiler = Arc::new(CountingPlanCompiler { schema_hash: engine.schema_hash.clone(), calls: calls.clone() });
+        let opts = ConnectOptions::parse("sqlite", "sqlite::memory:").unwrap();
+        let cfg = Config { aes_key: String::new(), blind_index_key: String::new(), aes_version: 1, aes_keys: BTreeMap::new(), plan_cache_size: 2, statement_cache_size: 2, on_query: None };
+        let db = Db::connect_with_plan_compiler(opts, 1, engine.clone(), compiler, cfg).await.unwrap();
+        let mut requests = Vec::new();
+        for kind in ["all", "count", "one"] {
+            let mut request = Req::new(&engine.schema_hash, "battle");
+            request.ir.kind = kind.into();
+            requests.push(request);
+        }
+        for request in &mut requests { db.plan(request).await.unwrap(); }
+        db.plan(&mut requests[0]).await.unwrap();
+        assert_eq!(calls.load(Ordering::SeqCst), 4);
+        db.close().await;
+        assert!(db.plans.lock().unwrap().is_empty());
+        assert!(db.plan_order.lock().unwrap().is_empty());
     }
 }

@@ -36,6 +36,7 @@ $driver = orm_test_driver();
 $log = [];
 $hooked = [];
 Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index', driver: $driver,
+    planCacheSize: 2,
     statementCacheSize: 2,
     onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log, &$hooked) { $log[] = orm_norm_sql($sql); $hooked[] = [$binds, $planId, $e]; }));
 $db = orm_open_db($driver, orm_test_dsn());
@@ -46,6 +47,12 @@ $db->stmt('SELECT 120');
 $db->stmt('SELECT 130');
 $statementCache = (new \ReflectionProperty(Db::class, 'stmts'))->getValue($db);
 check(count($statementCache) === 2 && !isset($statementCache['SELECT 110']), 'PHP statement cache eviction');
+$cacheRequests = [new Q('battle'), new Q('battle'), new Q('battle')];
+foreach (['all', 'count', 'one'] as $i => $kind) {
+    Orm::transport()->planFor($cacheRequests[$i]->req, $kind);
+}
+$planCache = (new \ReflectionProperty(\Orm\Transport::class, 'local'))->getValue(Orm::transport());
+check(count($planCache) === 2 && !array_key_exists("all\x1fbattle\x1f0", $planCache), 'PHP plan cache bound and oldest eviction');
 // A precompiled plan loaded for the same request shape is returned from the local cache.
 $bundleQuery = new Q('battle');
 $bundleRequest = $bundleQuery->req;

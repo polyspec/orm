@@ -102,6 +102,24 @@ const bundleRequest = { ir_version: 1, schema_hash: 'hash', kind: 'count', entit
 const bundleHash = createHash('sha256').update(JSON.stringify(bundleRequest, Object.keys(bundleRequest).sort())).digest('hex');
 db.loadPlanBundle({ version: 1, schema_hash: 'hash', dialect: 'sqlite', request_sha256: bundleHash, plan: { schema_hash: 'hash', kind: 'count', steps: [{ id: 0, role: 'count', sql: 'count', bind_slots: [] }] } }, bundleRequest);
 if ((await db.plan(bundleRequest)).steps[0].sql !== 'count') throw new Error('precompiled plan was not loaded into the cache');
+const planCompilerCalls = [];
+const planCompiler = {
+  async compile(request) {
+    const names = { 1: 'one', 2: 'all', 3: 'count' };
+    planCompilerCalls.push(names[request.kind]);
+    return { schemaHash: 'hash', kind: request.kind, steps: [{ id: 0, role: 'main', sql: names[request.kind], binds: [] }] };
+  },
+  async metadata() { return { schemaHash: 'hash', dialect: 'sqlite', irVersion: 1 }; },
+};
+const cacheDb = new Db(connection, { schemaHash: 'hash', compiler: planCompiler, planCacheSize: 2 });
+const cacheRequests = ['all', 'count', 'one'].map(kind => ({ ir_version: 1, schema_hash: 'hash', kind, entity: 'item', n_params: 0 }));
+for (const request of cacheRequests) await cacheDb.plan(request);
+await cacheDb.plan(cacheRequests[0]);
+if (planCompilerCalls.join(',') !== 'all,count,one,all') throw new Error('TypeScript plan cache did not evict the oldest shape');
+await cacheDb.close();
+let closedPlanRejected = false;
+try { await cacheDb.plan(cacheRequests[1]); } catch (error) { closedPlanRejected = error?.code === 'CONFIG'; }
+if (!closedPlanRejected) throw new Error('TypeScript plan cache accepted a request after close');
 const write = await db.execute({ schema_hash: 'hash', kind: 'insert', steps: [{ id: 0, role: 'main', sql: 'write', bind_slots: [] }] }, []);
 if (write.affected !== 1 || write.insertId !== 8) throw new Error('write execution failed');
 
