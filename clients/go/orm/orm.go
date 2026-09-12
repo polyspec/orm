@@ -548,6 +548,11 @@ func IsDeadlock(err error) bool {
 	return strings.Contains(s, "1213") || strings.Contains(s, "40001") || strings.Contains(strings.ToLower(s), "deadlock")
 }
 
+// IsNoRows reports whether a query returned no rows.
+func IsNoRows(err error) bool {
+	return errors.Is(err, sql.ErrNoRows)
+}
+
 // Req is one statement under construction: the value-free IR plus the values.
 type Req struct {
 	IR     ir.Request
