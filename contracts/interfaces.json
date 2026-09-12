@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:a1152183adc88c5a84136fae1171c7bf2fd57c1bed6574344a4c3fa411228b13",
-    "php": "sha256:d0a11d096f1fd7607e18c6ba467c7e865c7079fe46f3d2ad201e367482ad341e",
-    "rust": "sha256:297e866f38640e92b776b6450a4225e68db62aa73503c46b21c087b734c6cb2d",
-    "typescript": "sha256:defed2a4dc663248ebdb2a602f87483e8a1855fecb431ca7a1e73ec9ae843136"
+    "go": "sha256:f7bcbae2b1be071d5684a1154001816026cd8889c53c290480ecce63d0416db3",
+    "php": "sha256:77f669b3145808da815b81b2d5a68d74b6231032c9bdc2d05955b09612fc5911",
+    "rust": "sha256:e2dce026fd2d6c88bd38331f5910e7d3c222ded8ccfc36ffd41c75f7ced74a8c",
+    "typescript": "sha256:c3670cfeadbca3f0785ca654c32d15bc90a95486896c56d232364fbf3dbb4b6d"
   },
   "components": [
     {
@@ -55,6 +55,7 @@
         "relation",
         "get",
         "gets",
+        "stream",
         "getCount",
         "insert",
         "save",
@@ -162,6 +163,7 @@
       "methods": [
         "database",
         "queryStep",
+        "streamStep",
         "writeStep"
       ],
       "ownership": "Defines database and pinned transaction execution operations.",
@@ -179,6 +181,7 @@
       "methods": [
         "transaction",
         "queryStep",
+        "streamStep",
         "writeStep"
       ],
       "ownership": "Stores connections, plan cache, statement cache, and runtime configuration.",
@@ -257,6 +260,16 @@
       "methods": [],
       "ownership": "Requires a positive per value. total does not depend on the requested page.",
       "ownership_ko": "per는 양수여야 한다. total은 요청한 page와 관계없이 계산한다."
+    },
+    {
+      "id": "StreamResult",
+      "fields": {
+        "state": "StreamState",
+        "count": "I64"
+      },
+      "methods": [],
+      "ownership": "Reports whether the cursor was exhausted or stopped and how many independently owned rows were delivered.",
+      "ownership_ko": "cursor 완료 또는 중단 상태와 독립된 row를 전달한 수를 반환한다."
     },
     {
       "id": "AESKeyring",
@@ -435,6 +448,38 @@
         "typescript": {
           "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.gets",
           "signature": "public async gets(): Promise<Collection<{Entity}Row>>"
+        }
+      }
+    },
+    {
+      "id": "Query.stream",
+      "for": "entity",
+      "inputs": [
+        "RowVisitor"
+      ],
+      "output": "StreamResult",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver/codec/visitor error"
+      ],
+      "state": "Query retained; cursor closes on exhaustion, visitor stop, cancellation, or error",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Stream",
+          "signature": "receiver=*{Entity}Query func(visit func(*{Entity}Row) bool) (orm.StreamResult, error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::Polyspec\\Orm\\Tests\\Model\\{Entity}::stream",
+          "signature": "public function stream(callable $visit): Orm\\StreamResult"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::stream",
+          "signature": "pub async fn stream(&mut self, visit: impl FnMut({Entity}Row) -> bool) -> Result<db::StreamResult>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.stream",
+          "signature": "public async stream(visitor: (row: {Entity}Row) => boolean | Promise<boolean>): Promise<StreamResult>"
         }
       }
     },
@@ -1614,6 +1659,34 @@
         "error": "IR_INVALID"
       },
       "statements": 2
+    },
+    {
+      "id": "interface_stream",
+      "steps": [
+        "open root cursor",
+        "deliver independently owned rows",
+        "stop or exhaust",
+        "close cursor"
+      ],
+      "expected": {
+        "stopped": {
+          "state": "stopped",
+          "count": 3
+        },
+        "exhausted": {
+          "state": "exhausted",
+          "count": 4
+        },
+        "relation_error": "IR_INVALID"
+      },
+      "suite": "tests/streaming",
+      "required_languages": [
+        "go",
+        "php",
+        "rust",
+        "typescript"
+      ],
+      "statements": 2
     }
   ],
   "inventory_policy": {
@@ -1801,6 +1874,13 @@
       "role": "returns status",
       "from": "Query",
       "role_ko": "상태 반환"
+    },
+    {
+      "to": "StreamResult",
+      "kind": "-->",
+      "role": "returns stream result",
+      "from": "Query",
+      "role_ko": "stream 결과 반환"
     }
   ],
   "records": [

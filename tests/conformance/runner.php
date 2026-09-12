@@ -204,6 +204,35 @@ $run('interface_nested_keys', function () use ($db) {
     $members=$r->getMembers();$first=$members->first();$members->put(1,$first);$members->put('1',$first);
     return $r->toArray();
 });
+$run('interface_stream', function () use ($db) {
+    $seen = 0;
+    $first = null;
+    $firstSeq = null;
+    $stopped = Author::query()->serviceSeq(7)->orderBySeqAsc()->using($db)->stream(
+        function (AuthorRow $row) use (&$seen, &$first, &$firstSeq): bool {
+            if ($first === null) {
+                $first = $row;
+                $firstSeq = $row->getSeq();
+            }
+            return ++$seen < 3;
+        }
+    );
+    if ($first === null || $first->getSeq() !== $firstSeq) {
+        throw new \RuntimeException('stream row ownership check failed');
+    }
+    $exhausted = Author::query()->serviceSeq(7)->orderBySeqAsc()->limit(0, 4)->using($db)->stream(fn(AuthorRow $row): bool => true);
+    try {
+        Author::query()->serviceSeq(7)->relation(User::query())->using($db)->stream(fn(AuthorRow $row): bool => true);
+        $relationError = null;
+    } catch (OrmException $e) {
+        $relationError = $e->code_;
+    }
+    return [
+        'stopped' => ['state' => $stopped->state, 'count' => $stopped->count],
+        'exhausted' => ['state' => $exhausted->state, 'count' => $exhausted->count],
+        'relation_error' => $relationError,
+    ];
+});
 $run('unbound_terminal', fn() => Author::query()->getCountByServiceSeq(7));
 $run('bound_count_finder', fn() => Author::query()->using($db)
     ->join(Service::query()->where(fn(ServiceWhere $w) => $w->name('service-7')))

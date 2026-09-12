@@ -220,6 +220,12 @@ export function rowCollection<T extends Row>(rows: ExecutionRows, assemble: Asse
   return collection;
 }
 
+export function rowFromResult<T extends Row>(rows: ExecutionRows, assemble: Assemble, values: unknown[]): T {
+  const type = rowTypes.get(assemble.entity);
+  if (!type) throw new OrmError('INTERNAL', `row type ${assemble.entity} is not registered`);
+  return type.fromResult(values, assemble, rows) as T;
+}
+
 export function scalarKey(value: unknown): string { return value === null ? 'null:' : `${typeof value}:${String(value)}`; }
 function asKey(value: unknown): Key {
   if (typeof value === 'number' || typeof value === 'string' || typeof value === 'bigint') return value;

@@ -3,6 +3,16 @@ declare(strict_types=1);
 
 namespace Orm;
 
+final readonly class StreamResult
+{
+    public const EXHAUSTED = 'exhausted';
+    public const STOPPED = 'stopped';
+    public const FAILED = 'failed';
+    public const CANCELLED = 'cancelled';
+
+    public function __construct(public string $state, public int $count) {}
+}
+
 /**
  * Base of every generated row class. Holds the positional values and a
  * reference to the assemble node's name→index map, so reads never copy.

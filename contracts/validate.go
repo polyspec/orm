@@ -34,6 +34,7 @@ func validateRules(d document) error {
 		"Row":               {"go": "*{Entity}Row", "php": "static", "rust": "&mutSelf", "typescript": "this"},
 		"AESRotationStatus": {"go": "(orm.AESRotationStatus,error)", "php": "Orm\\AesRotationStatus", "rust": "Result<orm::aes_rotation::AesRotationStatus>", "typescript": "Promise<AesRotationStatus>"},
 		"RowCount":          {"go": "(int,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
+		"StreamResult":      {"go": "(orm.StreamResult,error)", "php": "Orm\\StreamResult", "rust": "Result<db::StreamResult>", "typescript": "Promise<StreamResult>"},
 	}
 	for _, r := range d.Rules {
 		if seen[r.ID] {
@@ -47,7 +48,8 @@ func validateRules(d document) error {
 				return fmt.Errorf("%s missing %s", r.ID, lang)
 			}
 			sig := compact(n.Signature)
-			begin, end := strings.Index(sig, "("), strings.Index(sig, ")")
+			begin := strings.Index(sig, "(")
+			end := matchingParen(sig, begin)
 			if begin < 0 || end < begin {
 				return fmt.Errorf("%s/%s invalid signature", r.ID, lang)
 			}
@@ -102,6 +104,13 @@ func validateRules(d document) error {
 				permitted = map[string][]string{"go": {"page,perint"}, "php": {"int$page,int$per"}, "rust": {"page:u32,per:u32"}, "typescript": {"page:number,per:number"}}[lang]
 			case "AESKeyring":
 				permitted = map[string][]string{"go": {"keyringorm.AESKeyring"}, "php": {"Orm\\AesKeyring$keyring"}, "rust": {"keyring:&orm::aes_rotation::AesKeyring"}, "typescript": {"keyring:AesKeyring"}}[lang]
+			case "RowVisitor":
+				permitted = map[string][]string{
+					"go":         {"visitfunc(*{Entity}Row)bool"},
+					"php":        {"callable$visit"},
+					"rust":       {"visit:implFnMut({Entity}Row)->bool"},
+					"typescript": {"visitor:(row:{Entity}Row)=>boolean|Promise<boolean>"},
+				}[lang]
 			case "Column", "Relation":
 				permitted = map[string][]string{"go": {"namestring", "relstring"}, "php": {"string$col", "string$name"}, "rust": {"name:&str"}, "typescript": {"column:string", "relation:string"}}[lang]
 			default:
@@ -122,4 +131,23 @@ func validateRules(d document) error {
 		}
 	}
 	return nil
+}
+
+func matchingParen(value string, open int) int {
+	if open < 0 || open >= len(value) || value[open] != '(' {
+		return -1
+	}
+	depth := 0
+	for i := open; i < len(value); i++ {
+		switch value[i] {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
 }

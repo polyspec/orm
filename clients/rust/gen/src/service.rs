@@ -467,6 +467,17 @@ impl Service {
         self.all().await
     }
 
+    /// Visits independently owned rows without accumulating the complete result.
+    pub async fn stream(&mut self, visit: impl FnMut(ServiceRow) -> bool) -> Result<db::StreamResult> {
+        let mut visit = visit;
+        let binding = self.binding.clone();
+        let ex = binding.resolve()?;
+        db::stream(ex, &mut self.q.req, |mut src, rows| {
+            let row = ServiceRow::from_row(&mut src, &rows.assemble, rows)?;
+            Ok(visit(row))
+        }).await
+    }
+
 
     /// Applies seq = value and runs the collection terminal.
     pub async fn gets_by_seq(&mut self, v: i64) -> Result<Collection<ServiceRow>> {

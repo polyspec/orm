@@ -213,7 +213,7 @@ func liveManifest(db *sql.DB, driver string) (*schema.Manifest, error) {
 	if err != nil {
 		return nil, err
 	}
-	return schema.Build(d)
+	return schema.BuildMigrationSource(d)
 }
 
 func filterManagedTables(tables []impTable) []impTable {

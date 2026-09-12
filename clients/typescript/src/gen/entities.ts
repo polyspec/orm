@@ -4,7 +4,7 @@ import { Collection, Page, Row, registerRow } from '../model.js';
 import { registerSchemaHash } from '../registry.js';
 import type { Point } from '../codec.js';
 
-import type { AesKeyring, AesRotationStatus } from '../index.js';
+import type { AesKeyring, AesRotationStatus, StreamResult } from '../index.js';
 import { OrmError } from '../runtime_error.js';
 
 import type { AuthorInterface, AuthorRowInterface, UserInterface, UserRowInterface, ServiceInterface, ServiceRowInterface, ServiceRegionInterface, ServiceRegionRowInterface, ServiceMemberInterface, ServiceMemberRowInterface } from './interfaces.js';
@@ -1625,6 +1625,7 @@ export class AuthorQuery extends QueryCore implements AuthorInterface {
   public onSeqWithServiceMemberSeq(): this { return this.matchKeys('seq','service_member_seq'); }
   public async get(): Promise<AuthorRow | null> { return await this.terminal('one') as AuthorRow | null; }
   public async gets(): Promise<Collection<AuthorRow>> { const rows=await this.terminal('all') as Collection<AuthorRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
+  public async stream(visitor: (row: AuthorRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<AuthorRow>(visitor); }
   public async one(): Promise<AuthorRow | null> { return this.get(); }
   public async all(): Promise<Collection<AuthorRow>> { return this.gets(); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -1896,6 +1897,7 @@ export class UserQuery extends QueryCore implements UserInterface {
   public onUserSeqWithSeq(): this { return this.matchKeys('user_seq','seq'); }
   public async get(): Promise<UserRow | null> { return await this.terminal('one') as UserRow | null; }
   public async gets(): Promise<Collection<UserRow>> { const rows=await this.terminal('all') as Collection<UserRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
+  public async stream(visitor: (row: UserRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<UserRow>(visitor); }
   public async one(): Promise<UserRow | null> { return this.get(); }
   public async all(): Promise<Collection<UserRow>> { return this.gets(); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -2088,6 +2090,7 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public onServiceSeqWithSeq(): this { return this.matchKeys('service_seq','seq'); }
   public async get(): Promise<ServiceRow | null> { return await this.terminal('one') as ServiceRow | null; }
   public async gets(): Promise<Collection<ServiceRow>> { const rows=await this.terminal('all') as Collection<ServiceRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
+  public async stream(visitor: (row: ServiceRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<ServiceRow>(visitor); }
   public async one(): Promise<ServiceRow | null> { return this.get(); }
   public async all(): Promise<Collection<ServiceRow>> { return this.gets(); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -2342,6 +2345,7 @@ export class ServiceRegionQuery extends QueryCore implements ServiceRegionInterf
   public onSeqWithServiceSeq(): this { return this.matchKeys('seq','service_seq'); }
   public async get(): Promise<ServiceRegionRow | null> { return await this.terminal('one') as ServiceRegionRow | null; }
   public async gets(): Promise<Collection<ServiceRegionRow>> { const rows=await this.terminal('all') as Collection<ServiceRegionRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
+  public async stream(visitor: (row: ServiceRegionRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<ServiceRegionRow>(visitor); }
   public async one(): Promise<ServiceRegionRow | null> { return this.get(); }
   public async all(): Promise<Collection<ServiceRegionRow>> { return this.gets(); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -2620,6 +2624,7 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public onSeqWithServiceSeq(): this { return this.matchKeys('seq','service_seq'); }
   public async get(): Promise<ServiceMemberRow | null> { return await this.terminal('one') as ServiceMemberRow | null; }
   public async gets(): Promise<Collection<ServiceMemberRow>> { const rows=await this.terminal('all') as Collection<ServiceMemberRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
+  public async stream(visitor: (row: ServiceMemberRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<ServiceMemberRow>(visitor); }
   public async one(): Promise<ServiceMemberRow | null> { return this.get(); }
   public async all(): Promise<Collection<ServiceMemberRow>> { return this.gets(); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }

@@ -13,6 +13,8 @@ use Orm\Page;
 use Orm\Q;
 use Orm\Row;
 use Orm\Registry;
+use Orm\Rows;
+use Orm\StreamResult;
 use Orm\W;
 
 /** One row of service_region. */
@@ -327,6 +329,17 @@ final class ServiceRegion extends Q implements ServiceRegionInterface
     {
         $this->terminalArity(func_num_args());
         return $this->all();
+    }
+
+    /** Visits independently owned rows without accumulating the complete result. */
+    public function stream(callable $visit): StreamResult
+    {
+        $this->terminalArity(func_num_args(), 1);
+        $db = $this->terminalDb();
+        $plan = $db->planFor($this->req, 'all');
+        return $db->streamPlan($plan, $this->req->params, static function (array $values, Rows $rows) use ($visit): bool {
+            return (bool) $visit(ServiceRegionRow::fromRow($values, $rows->asm, $rows));
+        });
     }
 
     /** Preferred single-row terminal; one() remains available for compatibility. */

@@ -50,6 +50,7 @@ func TestPhysicalMigration(t *testing.T) {
 				t.Fatal(err)
 			}
 			resetPhysicalSchema(t, db, tc.driver, want)
+			assertPhysicalAESVersionUpgrade(t, ctx, db, tc.driver)
 			if err := ensureMigrationTable(ctx, db, tc.driver); err != nil {
 				t.Fatal(err)
 			}
@@ -91,6 +92,43 @@ func TestPhysicalMigration(t *testing.T) {
 			assertPhysicalPoint(t, ctx, db, tc.driver)
 			assertPhysicalScope(t, ctx, db, tc.driver)
 		})
+	}
+}
+
+func assertPhysicalAESVersionUpgrade(t *testing.T, ctx context.Context, db *sql.DB, driver string) {
+	t.Helper()
+	quote := func(value string) string { return `"` + value + `"` }
+	if driver == "mysql" {
+		quote = func(value string) string { return "`" + value + "`" }
+	}
+	table := quote("aes_upgrade_probe")
+	if _, err := db.ExecContext(ctx, "CREATE TABLE "+table+" ("+quote("seq")+" bigint NOT NULL PRIMARY KEY, "+quote("aes_hex_email")+" varchar(255) NOT NULL)"); err != nil {
+		t.Fatal(err)
+	}
+	target := buildPhysicalManifest(t, "erDiagram\n  aes_upgrade_probe {\n    bigint seq PK\n    varchar(255) aes_hex_email\n    int aes_key_version \"=1\"\n  }\n")
+	live, err := liveManifest(db, driver)
+	if err != nil {
+		t.Fatalf("read AES schema without version column: %v", err)
+	}
+	plan, err := renderDiff(live, target, driver, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(plan, "aes_key_version") {
+		t.Fatalf("AES version plan does not add the version column: %s", plan)
+	}
+	if err := executeMigration(ctx, db, driver, plan); err != nil {
+		t.Fatal(err)
+	}
+	upgraded, err := liveManifest(db, driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !schemaMatches(target, upgraded, driver) {
+		t.Fatalf("AES version upgrade mismatch: %s", manifestMismatch(target, upgraded))
+	}
+	if _, err := db.ExecContext(ctx, "DROP TABLE "+table); err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -127,6 +127,16 @@ var (
 
 // Build derives the manifest from parsed diagrams and validates it.
 func Build(diagrams ...*Diagram) (*Manifest, error) {
+	return build(false, diagrams...)
+}
+
+// BuildMigrationSource accepts a live schema that predates required AES version metadata.
+// Migration targets must continue to use Build.
+func BuildMigrationSource(diagrams ...*Diagram) (*Manifest, error) {
+	return build(true, diagrams...)
+}
+
+func build(allowMissingAESVersion bool, diagrams ...*Diagram) (*Manifest, error) {
 	m := &Manifest{Entities: map[string]*Entity{}}
 	for _, d := range diagrams {
 		for _, e := range d.Entities {
@@ -155,7 +165,7 @@ func Build(diagrams ...*Diagram) (*Manifest, error) {
 			}
 		}
 	}
-	if err := m.validate(); err != nil {
+	if err := m.validate(allowMissingAESVersion); err != nil {
 		return nil, err
 	}
 	m.SchemaHash = m.hash()
@@ -504,13 +514,16 @@ func (m *Manifest) addDirective(x *Directive) error {
 	return nil
 }
 
-func (m *Manifest) validate() error {
+func (m *Manifest) validate(allowMissingAESVersion bool) error {
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		for _, c := range e.Columns {
 			if len(c.Styles) > 0 && c.Styles[0] == "aes" {
 				version := e.Column("aes_key_version")
 				if version == nil || version.Nullable || (version.Type != "i32" && version.Type != "i64") {
+					if allowMissingAESVersion && version == nil {
+						continue
+					}
 					return &BuildError{e.Line, fmt.Sprintf("%s.%s requires non-null integer aes_key_version", e.Name, c.Name)}
 				}
 			}

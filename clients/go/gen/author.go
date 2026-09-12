@@ -5956,6 +5956,22 @@ func (q *AuthorQuery) Gets() (*orm.Collection[AuthorRow], error) {
 	return q.All()
 }
 
+// Stream visits independently owned rows without accumulating the complete result.
+// Returning false stops the query and closes its database cursor.
+func (q *AuthorQuery) Stream(visit func(*AuthorRow) bool) (orm.StreamResult, error) {
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return orm.StreamResult{}, err
+	}
+	if visit == nil {
+		return orm.StreamResult{}, &ir.Error{Code: orm.CodeIrInvalid, Msg: "stream visitor is required"}
+	}
+	q.q.Req.IR.Kind = "all"
+	return orm.Stream(ctx, ex, q.q.Req, func(vals []any, rows *orm.Rows) bool {
+		return visit(scanAuthor(vals, rows.Assemble, rows))
+	})
+}
+
 // GetsBySeq applies seq = v and runs the collection terminal.
 func (q *AuthorQuery) GetsBySeq(v int64) (*orm.Collection[AuthorRow], error) {
 	return q.Seq(v).Gets()

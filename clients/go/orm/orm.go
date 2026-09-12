@@ -648,6 +648,28 @@ type Rows struct {
 	params   []any
 }
 
+// StreamResult reports how a row stream finished. Count is the number of rows
+// delivered to the visitor. State is exhausted when the query ended normally
+// and stopped when the visitor returned false.
+type StreamResult struct {
+	State string
+	Count int64
+}
+
+const (
+	StreamExhausted = "exhausted"
+	StreamStopped   = "stopped"
+	StreamFailed    = "failed"
+	StreamCancelled = "cancelled"
+)
+
+func streamErrorState(err error) string {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return StreamCancelled
+	}
+	return StreamFailed
+}
+
 // Projection is the assembly facts of one node, shared by every row scanned
 // from it (generated scanners pass it to Row.SetProjection).
 func (r *Rows) Projection(a *plan.Assemble) *Projection {
@@ -740,6 +762,26 @@ func Query(ctx context.Context, ex Exec, r *Req) (*Rows, error) {
 		return nil, err
 	}
 	return runPlan(ctx, ex, c, r)
+}
+
+// Stream runs a single select step and delivers one independently owned row at
+// a time. Separate relation steps are rejected because they require additional
+// statements while the root cursor is open. SQL joins remain supported.
+func Stream(ctx context.Context, ex Exec, r *Req, visit func([]any, *Rows) bool) (StreamResult, error) {
+	d := ex.db()
+	c, err := d.plan(ctx, r)
+	if err != nil {
+		return StreamResult{State: streamErrorState(err)}, err
+	}
+	for _, st := range c.plan.Steps[1:] {
+		if st.Role == "relation" {
+			err := &ir.Error{Code: CodeIrInvalid, Msg: "stream does not support separate relation steps; use a join or gets"}
+			return StreamResult{State: StreamFailed}, err
+		}
+	}
+	st := &c.plan.Steps[0]
+	context := &Rows{Binding: NewBinding(ctx, ex), Assemble: st.Assemble, c: c, params: r.Params}
+	return streamSelect(ctx, ex, c, st, r, func(vals []any) bool { return visit(vals, context) })
 }
 
 func runPlan(ctx context.Context, ex Exec, c *cached, r *Req) (*Rows, error) {
@@ -959,25 +1001,88 @@ func runSelect(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req, p
 		for i := range cells {
 			vals[i] = cells[i].v
 		}
-		for _, sc := range si.styled {
-			codec, host := splitHost(sc.Styles)
-			v := vals[sc.Index]
-			var err error
-			if len(host) > 0 {
-				if v, err = hostDecode(v, host, d.cfg.AESKey); err != nil {
-					return nil, fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.Name, err)
-				}
-			}
-			if len(codec) > 0 {
-				if v, err = Decode(codec, v); err != nil {
-					return nil, fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.Name, err)
-				}
-			}
-			vals[sc.Index] = v
+		if err := decodeSelectedRow(vals, si, st, d.cfg.AESKey); err != nil {
+			return nil, err
 		}
 		out = append(out, vals)
 	}
 	return out, mapDriverErr(rows.Err())
+}
+
+func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, aesKey string) error {
+	for _, sc := range si.styled {
+		codec, host := splitHost(sc.Styles)
+		v := vals[sc.Index]
+		var err error
+		if len(host) > 0 {
+			if v, err = hostDecode(v, host, aesKey); err != nil {
+				return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.Name, err)
+			}
+		}
+		if len(codec) > 0 {
+			if v, err = Decode(codec, v); err != nil {
+				return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.Name, err)
+			}
+		}
+		vals[sc.Index] = v
+	}
+	return nil
+}
+
+func streamSelect(ctx context.Context, ex Exec, c *cached, st *plan.Step, r *Req, visit func([]any) bool) (result StreamResult, err error) {
+	d := ex.db()
+	args, masks, err := d.args(st, r, nil)
+	if err != nil {
+		result.State = streamErrorState(err)
+		return result, err
+	}
+	stmt, err := ex.stmt(ctx, st.SQL)
+	if err != nil {
+		result.State = streamErrorState(err)
+		return result, err
+	}
+	start := time.Now()
+	rows, err := stmt.QueryContext(ctx, args...)
+	if err != nil {
+		err = mapDriverErr(err)
+		result.State = streamErrorState(err)
+		d.emit(c, st.SQL, args, masks, start, err)
+		return result, err
+	}
+	defer rows.Close()
+	si := c.scans[st]
+	cells := make([]cell, si.n)
+	ptrs := make([]any, si.n)
+	for i := range cells {
+		ptrs[i] = &cells[i]
+	}
+	result.State = StreamExhausted
+	for rows.Next() {
+		if err = rows.Scan(ptrs...); err != nil {
+			err = mapDriverErr(err)
+			break
+		}
+		vals := make([]any, si.n)
+		for i := range cells {
+			vals[i] = cells[i].v
+		}
+		if err = decodeSelectedRow(vals, si, st, d.cfg.AESKey); err != nil {
+			break
+		}
+		result.Count++
+		if !visit(vals) {
+			result.State = StreamStopped
+			break
+		}
+	}
+	if err == nil && result.State == StreamExhausted {
+		err = mapDriverErr(rows.Err())
+	}
+	if err != nil {
+		result.State = streamErrorState(err)
+	}
+	d.emit(c, st.SQL, args, masks, start, err)
+	return result, err
 }
 
 // countCols is the width of one positional row: the node's columns plus its joins'.

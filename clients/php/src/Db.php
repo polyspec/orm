@@ -459,6 +459,51 @@ class Db
         return $rows;
     }
 
+    /**
+     * Visits one independently owned positional row at a time and closes the
+     * statement cursor on completion, visitor stop, or error.
+     * @param callable(list<mixed>, Rows): bool $visit
+     */
+    public function streamPlan(array $plan, array $params, callable $visit): StreamResult
+    {
+        foreach (array_slice($plan['steps'], 1) as $step) {
+            if (($step['role'] ?? '') === 'relation') {
+                throw new OrmException(Code::IR_INVALID, 'stream does not support separate relation steps; use a join or gets');
+            }
+        }
+        $step = $plan['steps'][0] ?? throw new OrmException(Code::INTERNAL, 'plan has no steps');
+        $args = $this->args($step, $params);
+        $start = microtime(true);
+        $statement = null;
+        $count = 0;
+        $error = null;
+        try {
+            $statement = $this->stmt($step['sql']);
+            $this->exec($statement, $args);
+            $rows = new Rows($plan, $step['assemble'], [], $params);
+            $rows->db = $this;
+            while (($values = $statement->fetch(\PDO::FETCH_NUM)) !== false) {
+                if ($step['styled']) {
+                    Codec::decodeRow($values, $step['assemble']);
+                }
+                $count++;
+                if (!$visit($values, $rows)) {
+                    return new StreamResult(StreamResult::STOPPED, $count);
+                }
+            }
+            return new StreamResult(StreamResult::EXHAUSTED, $count);
+        } catch (\PDOException $caught) {
+            $error = $this->failed($statement, $caught);
+            throw $error;
+        } catch (\Throwable $caught) {
+            $error = $caught;
+            throw $caught;
+        } finally {
+            try { $statement?->closeCursor(); } catch (\PDOException) {}
+            $this->emit($step['sql'], $args, $start, $step['plan_id'], $error);
+        }
+    }
+
     /** Runs a select plan: the main step, then every relation step bound to its parent's rows. */
     public function runPlan(array $plan, array $params): Rows
     {
