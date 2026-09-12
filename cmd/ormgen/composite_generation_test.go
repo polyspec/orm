@@ -88,3 +88,57 @@ func TestCompositeKeyGenerationHasTheSameStructuresInEveryLanguage(t *testing.T)
 		})
 	}
 }
+
+func TestManyToManyGenerationSupportsDifferentCompositeKeyWidths(t *testing.T) {
+	d, err := schema.Parse(`erDiagram
+  account {
+    bigint tenant_id PK
+    bigint id PK
+  }
+  project {
+    bigint id PK
+  }
+  account_project {
+    bigint tenant_id PK "-> account.tenant_id"
+    bigint account_id PK "-> account.id"
+    bigint project_id PK "-> project.id"
+  }
+  %% many_to_many account project projects accounts through account_project
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := schema.Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	relation := m.Entities["account"].Relations["projects"]
+	left, right, suffix := relationText(m, m.Entities["account"], relation)
+	if left != "tenant_id,id" || right != "id" || suffix != "TenantIdWithIdAndId" {
+		t.Fatalf("many-to-many relation identity = (%q, %q, %q)", left, right, suffix)
+	}
+	for _, test := range []struct {
+		name string
+		gen  func(string) error
+		file string
+	}{
+		{"go", func(out string) error { return genGo(m, out) }, "account.go"},
+		{"php", func(out string) error { return genPHP(m, out, "App\\Orm") }, "Account.php"},
+		{"rust", func(out string) error { return genRust(m, out) }, filepath.Join("src", "account.rs")},
+		{"typescript", func(out string) error { return genTypeScript(m, out) }, "entities.ts"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			out := t.TempDir()
+			if err := test.gen(out); err != nil {
+				t.Fatal(err)
+			}
+			body, err := os.ReadFile(filepath.Join(out, test.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(body) == 0 {
+				t.Fatalf("generated file is empty")
+			}
+		})
+	}
+}
