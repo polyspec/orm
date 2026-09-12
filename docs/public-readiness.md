@@ -40,6 +40,7 @@ Each item requires:
 - [x] P9.6 CHECK constraints and complete index/foreign-key metadata survive Mermaid, manifest, SQL, live database import, diff, migration, and verification. SQLite unit tests and physical MySQL/PostgreSQL importer tests verify named CHECK restoration.
 - [ ] P9.7 Many-to-many traversal uses an explicit through entity and typed relation metadata in every client.
 - [ ] P9.8 Relation existence/count predicates and declarative soft-delete policy use planner-enforced predicates in reads and writes.
+  - [x] P9.8a The `soft_delete` schema directive validates a nullable datetime column and the planner excludes deleted rows and converts deletes to timestamp updates. Physical four-client verification remains open.
 
 ## P10: verification
 

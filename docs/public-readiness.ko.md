@@ -40,6 +40,7 @@
 - [x] P9.6 CHECK constraint와 완전한 index·foreign-key metadata가 Mermaid, manifest, SQL, live database import, diff, migration, verification에서 보존된다. SQLite unit test와 물리 MySQL·PostgreSQL importer test가 명명된 CHECK 복원을 검증한다.
 - [ ] P9.7 Many-to-many traversal이 명시적인 through entity와 typed relation metadata를 모든 client에서 사용한다.
 - [ ] P9.8 Relation existence/count predicate와 선언형 soft-delete policy가 조회와 쓰기에 planner 강제 predicate를 사용한다.
+  - [x] P9.8a `soft_delete` schema directive가 nullable datetime column을 검증하고 planner가 삭제 행을 제외하며 delete를 timestamp update로 변환한다. 네 client의 물리 DB 검증은 남아 있다.
 
 ## P10: 검증
 
