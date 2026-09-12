@@ -53,6 +53,11 @@ try {
   if (second?.getRole() !== 'editor') throw new Error('composite save did not use every key component');
   const page = await CompositeMembership().tenantIdEq(tenantId).orderByTenantIdAsc().orderByAccountIdAsc().using(db).paginate(1, 1);
   if (page.total !== 2 || page.items.length !== 1 || page.items.first()?.getAccountId() !== 11) throw new Error('composite pagination order differs');
+  const firstKeyset = await Battle().serviceSeq(7).orderBySeqAsc().using(db).getsAfter('', 2);
+  const secondKeyset = await Battle().serviceSeq(7).orderBySeqAsc().using(db).getsAfter(firstKeyset.nextCursor, 2);
+  if (firstKeyset.items.length !== 2 || firstKeyset.nextCursor === '' || (secondKeyset.items.first()?.getSeq() ?? 0) <= (firstKeyset.items.first()?.getSeq() ?? 0)) throw new Error('keyset after is not ordered and exclusive');
+  const previousKeyset = await Battle().serviceSeq(7).orderBySeqAsc().using(db).getsBefore(secondKeyset.previousCursor, 2);
+  if (previousKeyset.items.first()?.getSeq() !== firstKeyset.items.first()?.getSeq()) throw new Error('keyset before did not restore request order');
   const accounts = await CompositeAccount().tenantIdEq(tenantId).orderByAccountIdAsc().relations(CompositeMembership()).using(db).gets();
   if (accounts.length !== 2 || accounts.first()?.getMemberships().length !== 1) throw new Error('composite relation omitted a key component');
   await first.delete();

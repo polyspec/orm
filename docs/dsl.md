@@ -40,6 +40,33 @@ Query() → using(executor) → select/join/where/relation → order/limit → g
 
 Rows are separate generated types. A row provides getters, setters, `update`, `updateOptimistic`, `delete`, and `deleteCascade` according to the schema.
 
+### Keyset pagination
+
+`getsAfter(cursor, per)` and `getsBefore(cursor, per)` return `KeysetPage<Row>`. The first call uses an empty cursor. The query order must contain table columns only; the generator appends missing primary-key columns in ascending order. The cursor stores the normalized order and typed cursor values. `per` must be positive and offset pagination cannot be combined with a keyset call.
+
+```php
+$first = Battle::query()->orderBySeqAsc()->using($db)->getsAfter('', 20);
+$next = Battle::query()->orderBySeqAsc()->using($db)->getsAfter($first->nextCursor, 20);
+$previous = Battle::query()->orderBySeqAsc()->using($db)->getsBefore($next->previousCursor, 20);
+```
+```go
+first, err := gen.Battle().OrderBySeqAsc().Using(ctx, db).GetsAfter("", 20)
+next, err := gen.Battle().OrderBySeqAsc().Using(ctx, db).GetsAfter(first.NextCursor, 20)
+previous, err := gen.Battle().OrderBySeqAsc().Using(ctx, db).GetsBefore(next.PreviousCursor, 20)
+```
+```rust
+let first = battle::query().order_by_seq_asc().using(&db).gets_after("", 20).await?;
+let next = battle::query().order_by_seq_asc().using(&db).gets_after(&first.next_cursor, 20).await?;
+let previous = battle::query().order_by_seq_asc().using(&db).gets_before(&next.previous_cursor, 20).await?;
+```
+```ts
+const first = await Battle().orderBySeqAsc().using(db).getsAfter('', 20);
+const next = await Battle().orderBySeqAsc().using(db).getsAfter(first.nextCursor, 20);
+const previous = await Battle().orderBySeqAsc().using(db).getsBefore(next.previousCursor, 20);
+```
+
+An invalid version, order, value type, expression order, nullable order column, duplicate order column, or cursor order mismatch returns `CURSOR_INVALID` before SQL execution. Keyset pagination is a root query operation; joins and relations are preserved in the fetched page but cannot define the cursor order.
+
 ## 2. Tokens
 
 ### 2.1 Predicates `<col><Op>(value)` — WHERE

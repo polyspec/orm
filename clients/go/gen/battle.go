@@ -6733,6 +6733,43 @@ func collectBattleDirect(rows []*BattleRow, keyFn func(*BattleRow) orm.Key) *orm
 	return c
 }
 
+// GetsAfter reads the next keyset page. An empty cursor starts at the first row.
+func (q *BattleQuery) GetsAfter(cursor string, per int) (*orm.KeysetPage[BattleRow], error) {
+	if err := q.q.Keyset("after", cursor, per, []string{"seq"}); err != nil {
+		return nil, err
+	}
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "all"
+	rows, err := orm.Query(ctx, ex, q.q.Req)
+	if err != nil {
+		return nil, err
+	}
+	items := collectBattle(rows, q.keyFn)
+	return orm.KeysetPageFromRows(rows, items, q.q.Req.IR.Order)
+}
+
+// GetsBefore reads the previous keyset page and restores the requested order.
+func (q *BattleQuery) GetsBefore(cursor string, per int) (*orm.KeysetPage[BattleRow], error) {
+	if err := q.q.Keyset("before", cursor, per, []string{"seq"}); err != nil {
+		return nil, err
+	}
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "all"
+	rows, err := orm.Query(ctx, ex, q.q.Req)
+	if err != nil {
+		return nil, err
+	}
+	orm.ReverseRows(rows)
+	items := collectBattle(rows, q.keyFn)
+	return orm.KeysetPageFromRows(rows, items, q.q.Req.IR.Order)
+}
+
 func (q *BattleQuery) GetCount() (int64, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {

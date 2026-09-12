@@ -919,3 +919,23 @@ func TestOnQueryEvent(t *testing.T) {
 		t.Error("the host AES path must not emit secret binds")
 	}
 }
+
+func TestKeysetPaginationAcrossPhysicalDriver(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	first, err := gen.Battle().OrderBySeqAsc().Using(ctx, db).GetsAfter("", 2)
+	if err != nil || first == nil || first.Items.Len() != 2 || first.NextCursor == "" {
+		t.Fatalf("first keyset page: items=%v err=%v", first, err)
+	}
+	second, err := gen.Battle().OrderBySeqAsc().Using(ctx, db).GetsAfter(first.NextCursor, 2)
+	if err != nil || second == nil || second.Items.Len() != 2 {
+		t.Fatalf("second keyset page: items=%v err=%v", second, err)
+	}
+	if second.Items.First().Seq <= first.Items.First().Seq || second.Items.First().Seq == first.Items.Entries()[1].Value.Seq {
+		t.Fatalf("keyset boundary was not exclusive: first=%v second=%v", first.Items.ToSlice(), second.Items.ToSlice())
+	}
+	previous, err := gen.Battle().OrderBySeqAsc().Using(ctx, db).GetsBefore(second.PreviousCursor, 2)
+	if err != nil || previous == nil || previous.Items.Len() != 2 || previous.Items.First().Seq != first.Items.First().Seq {
+		t.Fatalf("before keyset page: items=%v err=%v", previous, err)
+	}
+}

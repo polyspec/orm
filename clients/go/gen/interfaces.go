@@ -26,6 +26,8 @@ type BattleInterface interface {
 	Using(ctx context.Context, ex orm.Exec) *BattleQuery
 	Scope(v int64) *BattleQuery
 	Paginate(page, per int) (*orm.Page[BattleRow], error)
+	GetsAfter(cursor string, per int) (*orm.KeysetPage[BattleRow], error)
+	GetsBefore(cursor string, per int) (*orm.KeysetPage[BattleRow], error)
 	GetsBySeq(v int64) (*orm.Collection[BattleRow], error)
 	GetsByName(v string) (*orm.Collection[BattleRow], error)
 	GetsByDescription(v string) (*orm.Collection[BattleRow], error)
@@ -180,6 +182,8 @@ type UserInterface interface {
 	SQL() (*orm.Statement, error)
 	Using(ctx context.Context, ex orm.Exec) *UserQuery
 	Paginate(page, per int) (*orm.Page[UserRow], error)
+	GetsAfter(cursor string, per int) (*orm.KeysetPage[UserRow], error)
+	GetsBefore(cursor string, per int) (*orm.KeysetPage[UserRow], error)
 	GetsBySeq(v int64) (*orm.Collection[UserRow], error)
 	GetsByName(v string) (*orm.Collection[UserRow], error)
 	GetCountBySeq(v int64) (int64, error)
@@ -217,6 +221,8 @@ type ServiceInterface interface {
 	SQL() (*orm.Statement, error)
 	Using(ctx context.Context, ex orm.Exec) *ServiceQuery
 	Paginate(page, per int) (*orm.Page[ServiceRow], error)
+	GetsAfter(cursor string, per int) (*orm.KeysetPage[ServiceRow], error)
+	GetsBefore(cursor string, per int) (*orm.KeysetPage[ServiceRow], error)
 	GetsBySeq(v int64) (*orm.Collection[ServiceRow], error)
 	GetsByName(v string) (*orm.Collection[ServiceRow], error)
 	GetCountBySeq(v int64) (int64, error)
@@ -254,6 +260,8 @@ type ServiceModuleInterface interface {
 	SQL() (*orm.Statement, error)
 	Using(ctx context.Context, ex orm.Exec) *ServiceModuleQuery
 	Paginate(page, per int) (*orm.Page[ServiceModuleRow], error)
+	GetsAfter(cursor string, per int) (*orm.KeysetPage[ServiceModuleRow], error)
+	GetsBefore(cursor string, per int) (*orm.KeysetPage[ServiceModuleRow], error)
 	GetsBySeq(v int64) (*orm.Collection[ServiceModuleRow], error)
 	GetsByServiceSeq(v int64) (*orm.Collection[ServiceModuleRow], error)
 	GetsByName(v string) (*orm.Collection[ServiceModuleRow], error)
@@ -295,6 +303,8 @@ type ServiceMemberInterface interface {
 	SQL() (*orm.Statement, error)
 	Using(ctx context.Context, ex orm.Exec) *ServiceMemberQuery
 	Paginate(page, per int) (*orm.Page[ServiceMemberRow], error)
+	GetsAfter(cursor string, per int) (*orm.KeysetPage[ServiceMemberRow], error)
+	GetsBefore(cursor string, per int) (*orm.KeysetPage[ServiceMemberRow], error)
 	GetsBySeq(v int64) (*orm.Collection[ServiceMemberRow], error)
 	GetsByServiceSeq(v int64) (*orm.Collection[ServiceMemberRow], error)
 	GetsByUserSeq(v int64) (*orm.Collection[ServiceMemberRow], error)
@@ -336,6 +346,8 @@ type CompositeAccountInterface interface {
 	SQL() (*orm.Statement, error)
 	Using(ctx context.Context, ex orm.Exec) *CompositeAccountQuery
 	Paginate(page, per int) (*orm.Page[CompositeAccountRow], error)
+	GetsAfter(cursor string, per int) (*orm.KeysetPage[CompositeAccountRow], error)
+	GetsBefore(cursor string, per int) (*orm.KeysetPage[CompositeAccountRow], error)
 	GetsByTenantId(v int64) (*orm.Collection[CompositeAccountRow], error)
 	GetsByAccountId(v int64) (*orm.Collection[CompositeAccountRow], error)
 	GetsByName(v string) (*orm.Collection[CompositeAccountRow], error)
@@ -377,6 +389,8 @@ type CompositeMembershipInterface interface {
 	SQL() (*orm.Statement, error)
 	Using(ctx context.Context, ex orm.Exec) *CompositeMembershipQuery
 	Paginate(page, per int) (*orm.Page[CompositeMembershipRow], error)
+	GetsAfter(cursor string, per int) (*orm.KeysetPage[CompositeMembershipRow], error)
+	GetsBefore(cursor string, per int) (*orm.KeysetPage[CompositeMembershipRow], error)
 	GetsByTenantId(v int64) (*orm.Collection[CompositeMembershipRow], error)
 	GetsByAccountId(v int64) (*orm.Collection[CompositeMembershipRow], error)
 	GetsByRole(v string) (*orm.Collection[CompositeMembershipRow], error)

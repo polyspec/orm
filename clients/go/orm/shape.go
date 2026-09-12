@@ -183,6 +183,13 @@ func (s *shape) query(q *ir.Query) {
 	s.bool(q.Distinct)
 	s.str(q.ForceIdx)
 	s.str(q.Lock)
+	if q.Keyset == nil {
+		s.byte(0)
+	} else {
+		s.byte(1)
+		s.str(q.Keyset.Direction)
+		s.ints(q.Keyset.Values)
+	}
 	s.str(q.KeyBy)
 	s.bool(q.Flatten)
 	s.int(q.LimitPerParent)

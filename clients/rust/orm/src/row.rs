@@ -62,7 +62,9 @@ pub trait Src {
     fn f64(&mut self, i: usize) -> Result<f64>;
     fn bool(&mut self, i: usize) -> Result<bool>;
     fn string(&mut self, i: usize) -> Result<String>;
-    fn point(&mut self, i: usize) -> Result<crate::Point> { crate::parse_point(&self.string(i)?) }
+    fn point(&mut self, i: usize) -> Result<crate::Point> {
+        crate::parse_point(&self.string(i)?)
+    }
     fn datetime(&mut self, i: usize) -> Result<NaiveDateTime>;
     fn date(&mut self, i: usize) -> Result<NaiveDate>;
     /// A styled cell after decoding (docs/codec.md): `Val::Json`, `Val::Str`, or `Val::Null` for NULL/empty.
@@ -153,8 +155,11 @@ fn type_name(r: &MySqlRow, i: usize) -> &str {
 
 fn raw_i64(r: &MySqlRow, i: usize) -> Result<i64> {
     Ok(match type_name(r, i) {
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => r.try_get::<Option<i64>, _>(i)?.unwrap_or(0),
-        "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => r.try_get::<Option<u64>, _>(i)?.unwrap_or(0) as i64,
+        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => {
+            r.try_get::<Option<i64>, _>(i)?.unwrap_or(0)
+        }
+        "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED"
+        | "BIGINT UNSIGNED" => r.try_get::<Option<u64>, _>(i)?.unwrap_or(0) as i64,
         "BOOLEAN" => r.try_get::<Option<bool>, _>(i)?.unwrap_or(false) as i64,
         _ => read_cell_mysql(r, i)?.as_i64(),
     })
@@ -163,7 +168,9 @@ fn raw_i64(r: &MySqlRow, i: usize) -> Result<i64> {
 fn raw_f64(r: &MySqlRow, i: usize) -> Result<f64> {
     Ok(match type_name(r, i) {
         "FLOAT" | "DOUBLE" => r.try_get::<Option<f64>, _>(i)?.unwrap_or(0.0),
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => r.try_get::<Option<i64>, _>(i)?.unwrap_or(0) as f64,
+        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => {
+            r.try_get::<Option<i64>, _>(i)?.unwrap_or(0) as f64
+        }
         _ => read_cell_mysql(r, i)?.as_f64(),
     })
 }
@@ -171,22 +178,31 @@ fn raw_f64(r: &MySqlRow, i: usize) -> Result<f64> {
 fn raw_bool(r: &MySqlRow, i: usize) -> Result<bool> {
     Ok(match type_name(r, i) {
         "BOOLEAN" => r.try_get::<Option<bool>, _>(i)?.unwrap_or(false),
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => r.try_get::<Option<i64>, _>(i)?.unwrap_or(0) != 0,
+        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => {
+            r.try_get::<Option<i64>, _>(i)?.unwrap_or(0) != 0
+        }
         _ => read_cell_mysql(r, i)?.as_bool(),
     })
 }
 
 fn raw_string(r: &MySqlRow, i: usize) -> Result<String> {
     Ok(match type_name(r, i) {
-        "VARCHAR" | "CHAR" | "TEXT" | "TINYTEXT" | "MEDIUMTEXT" | "LONGTEXT" | "ENUM" | "SET" => r.try_get::<Option<String>, _>(i)?.unwrap_or_default(),
+        "VARCHAR" | "CHAR" | "TEXT" | "TINYTEXT" | "MEDIUMTEXT" | "LONGTEXT" | "ENUM" | "SET" => {
+            r.try_get::<Option<String>, _>(i)?.unwrap_or_default()
+        }
         _ => read_cell_mysql(r, i)?.take_string(),
     })
 }
 
 fn raw_datetime(r: &MySqlRow, i: usize) -> Result<NaiveDateTime> {
     Ok(match type_name(r, i) {
-        "DATETIME" => r.try_get::<Option<NaiveDateTime>, _>(i)?.unwrap_or_default(),
-        "TIMESTAMP" => r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?.map(|t| t.naive_utc()).unwrap_or_default(),
+        "DATETIME" => r
+            .try_get::<Option<NaiveDateTime>, _>(i)?
+            .unwrap_or_default(),
+        "TIMESTAMP" => r
+            .try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?
+            .map(|t| t.naive_utc())
+            .unwrap_or_default(),
         _ => read_cell_mysql(r, i)?.as_datetime(),
     })
 }
@@ -209,20 +225,35 @@ fn text_or_bytes(b: Vec<u8>) -> Val {
 /// Reads one MySQL cell as a `Val` by its column type name.
 pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
     let v = match type_name(row, i) {
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => row.try_get::<Option<i64>, _>(i)?.map(Val::I64),
-        "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => row.try_get::<Option<u64>, _>(i)?.map(|x| Val::I64(x as i64)),
+        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => {
+            row.try_get::<Option<i64>, _>(i)?.map(Val::I64)
+        }
+        "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED"
+        | "BIGINT UNSIGNED" => row
+            .try_get::<Option<u64>, _>(i)?
+            .map(|x| Val::I64(x as i64)),
         "FLOAT" | "DOUBLE" => row.try_get::<Option<f64>, _>(i)?.map(Val::F64),
         // NEWDECIMAL is only compatible with a decimal type in sqlx; we surface it as f64 like Go/PHP.
-        "DECIMAL" => row.try_get::<Option<rust_decimal::Decimal>, _>(i)?.map(|d| Val::F64(rust_decimal::prelude::ToPrimitive::to_f64(&d).unwrap_or(0.0))),
+        "DECIMAL" => row
+            .try_get::<Option<rust_decimal::Decimal>, _>(i)?
+            .map(|d| Val::F64(rust_decimal::prelude::ToPrimitive::to_f64(&d).unwrap_or(0.0))),
         // sqlx's NaiveDateTime only accepts DATETIME; TIMESTAMP columns decode as DateTime<Utc> (session tz is UTC).
-        "DATETIME" => row.try_get::<Option<NaiveDateTime>, _>(i)?.map(Val::DateTime),
-        "TIMESTAMP" => row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?.map(|t| Val::DateTime(t.naive_utc())),
+        "DATETIME" => row
+            .try_get::<Option<NaiveDateTime>, _>(i)?
+            .map(Val::DateTime),
+        "TIMESTAMP" => row
+            .try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?
+            .map(|t| Val::DateTime(t.naive_utc())),
         "DATE" => row.try_get::<Option<NaiveDate>, _>(i)?.map(Val::Date),
         "BOOLEAN" => row.try_get::<Option<bool>, _>(i)?.map(Val::Bool),
         // MySQL JSON columns arrive parsed; the json style then keeps the value as is.
-        "JSON" => row.try_get::<Option<serde_json::Value>, _>(i)?.map(Val::Json),
+        "JSON" => row
+            .try_get::<Option<serde_json::Value>, _>(i)?
+            .map(Val::Json),
         // Authenticated AES envelopes are BLOB values; decode them as text when possible.
-        "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" | "VARBINARY" | "BINARY" => row.try_get::<Option<Vec<u8>>, _>(i)?.map(text_or_bytes),
+        "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" | "VARBINARY" | "BINARY" => {
+            row.try_get::<Option<Vec<u8>>, _>(i)?.map(text_or_bytes)
+        }
         _ => row.try_get::<Option<String>, _>(i)?.map(Val::Str),
     };
     Ok(v.unwrap_or(Val::Null))
@@ -233,22 +264,42 @@ pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
 /// inet as its text (the plans select `host(col)`, so this is for raw statements).
 pub fn read_cell_pg(row: &PgRow, i: usize) -> Result<Val> {
     let v = match row.column(i).type_info().name() {
-        "INT2" => row.try_get::<Option<i16>, _>(i)?.map(|x| Val::I64(x as i64)),
-        "INT4" => row.try_get::<Option<i32>, _>(i)?.map(|x| Val::I64(x as i64)),
+        "INT2" => row
+            .try_get::<Option<i16>, _>(i)?
+            .map(|x| Val::I64(x as i64)),
+        "INT4" => row
+            .try_get::<Option<i32>, _>(i)?
+            .map(|x| Val::I64(x as i64)),
         "INT8" => row.try_get::<Option<i64>, _>(i)?.map(Val::I64),
-        "FLOAT4" => row.try_get::<Option<f32>, _>(i)?.map(|x| Val::F64(x as f64)),
+        "FLOAT4" => row
+            .try_get::<Option<f32>, _>(i)?
+            .map(|x| Val::F64(x as f64)),
         "FLOAT8" => row.try_get::<Option<f64>, _>(i)?.map(Val::F64),
-        "NUMERIC" => row.try_get::<Option<rust_decimal::Decimal>, _>(i)?.map(|d| Val::F64(rust_decimal::prelude::ToPrimitive::to_f64(&d).unwrap_or(0.0))),
+        "NUMERIC" => row
+            .try_get::<Option<rust_decimal::Decimal>, _>(i)?
+            .map(|d| Val::F64(rust_decimal::prelude::ToPrimitive::to_f64(&d).unwrap_or(0.0))),
         "BOOL" => row.try_get::<Option<bool>, _>(i)?.map(Val::Bool),
-        "TIMESTAMP" => row.try_get::<Option<NaiveDateTime>, _>(i)?.map(Val::DateTime),
-        "TIMESTAMPTZ" => row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?.map(|t| Val::DateTime(t.naive_utc())),
+        "TIMESTAMP" => row
+            .try_get::<Option<NaiveDateTime>, _>(i)?
+            .map(Val::DateTime),
+        "TIMESTAMPTZ" => row
+            .try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?
+            .map(|t| Val::DateTime(t.naive_utc())),
         "DATE" => row.try_get::<Option<NaiveDate>, _>(i)?.map(Val::Date),
-        "JSONB" | "JSON" => row.try_get::<Option<serde_json::Value>, _>(i)?.map(Val::Json),
+        "JSONB" | "JSON" => row
+            .try_get::<Option<serde_json::Value>, _>(i)?
+            .map(Val::Json),
         "BYTEA" => row.try_get::<Option<Vec<u8>>, _>(i)?.map(text_or_bytes),
-        "INET" | "CIDR" => row.try_get::<Option<sqlx::types::ipnet::IpNet>, _>(i)?.map(|n| {
-            // PostgreSQL's text form: no mask on a host address
-            Val::Str(if n.prefix_len() == n.max_prefix_len() { n.addr().to_string() } else { n.to_string() })
-        }),
+        "INET" | "CIDR" => row
+            .try_get::<Option<sqlx::types::ipnet::IpNet>, _>(i)?
+            .map(|n| {
+                // PostgreSQL's text form: no mask on a host address
+                Val::Str(if n.prefix_len() == n.max_prefix_len() {
+                    n.addr().to_string()
+                } else {
+                    n.to_string()
+                })
+            }),
         _ => row.try_get::<Option<String>, _>(i)?.map(Val::Str),
     };
     Ok(v.unwrap_or(Val::Null))
@@ -269,7 +320,11 @@ pub fn read_cell_sqlite(row: &SqliteRow, i: usize) -> Result<Val> {
         "TEXT" => Val::Str(row.try_get::<String, _>(i)?),
         "BLOB" => text_or_bytes(row.try_get::<Vec<u8>, _>(i)?),
         "BOOLEAN" => Val::Bool(row.try_get::<bool, _>(i)?),
-        other => return Err(crate::Error::Config(format!("sqlite column {i} holds a {other} value"))),
+        other => {
+            return Err(crate::Error::Config(format!(
+                "sqlite column {i} holds a {other} value"
+            )))
+        }
     })
 }
 
@@ -290,17 +345,32 @@ pub fn read_row(row: &DriverRow, n: usize) -> Result<Vec<Val>> {
 /// Decodes styled cells of every positional row of a step in place: the host stages a
 /// dialect left to the executor (aes/hex/ip, with the AES secret) first, then the codec
 /// stages (docs/codec.md).
-pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_keys: &std::collections::BTreeMap<i32, String>) -> Result<()> {
+pub fn decode_styled(
+    asm: &crate::plan::Assemble,
+    data: &mut [Vec<Val>],
+    aes_keys: &std::collections::BTreeMap<i32, String>,
+) -> Result<()> {
     let styled = crate::codec::styled_cols(asm);
     if styled.is_empty() {
         return Ok(());
     }
     for row in data.iter_mut() {
-        let version = asm.columns.iter().find(|c| c.hidden && c.column == "aes_key_version").map(|c| row[c.index].as_i64()).unwrap_or(1) as i32;
+        let version = asm
+            .columns
+            .iter()
+            .find(|c| c.hidden && c.column == "aes_key_version")
+            .map(|c| row[c.index].as_i64())
+            .unwrap_or(1) as i32;
         for sc in &styled {
             let mut v = std::mem::take(&mut row[sc.index]);
             if !sc.host.is_empty() {
-                let key = if sc.host.iter().any(|style| style == "aes") { aes_keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config(format!("AES version {version} is not declared")))? } else { aes_keys.values().next().map(String::as_str).unwrap_or("") };
+                let key = if sc.host.iter().any(|style| style == "aes") {
+                    aes_keys.get(&version).map(String::as_str).ok_or_else(|| {
+                        Error::Config(format!("AES version {version} is not declared"))
+                    })?
+                } else {
+                    aes_keys.values().next().map(String::as_str).unwrap_or("")
+                };
                 v = crate::codec::host_decode(&v, &sc.host, key)?;
             }
             if !sc.codec.is_empty() {

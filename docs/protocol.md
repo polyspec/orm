@@ -17,6 +17,7 @@ The client renders the chain from [docs/dsl.md](dsl.md) into the IR below and ca
   "group_by":  ["seq"],
   "group_by_expr": [{"expr": "ROUND(`score`)", "as": "score_bucket"}],
   "limit":     {"offset": 0, "count": 20},
+  "keyset":    {"direction": "after|before", "values": [parameter indexes]},
   "distinct":  false,
   "force_index": "ik",
   "agg": "amount",                                  // sum/avg
@@ -25,7 +26,7 @@ The client renders the chain from [docs/dsl.md](dsl.md) into the IR below and ca
   "debug": false
 }
 ```
-`Query` (shared by root, join child, and relation child) = `entity columns on where joins relations order group_by group_by_expr limit distinct force_index` plus relation options.
+`Query` (shared by root, join child, and relation child) = `entity columns on where joins relations order group_by group_by_expr limit distinct force_index` plus relation options. A root keyset request adds `keyset: {"direction":"after|before","values":[parameter indexes]}`; values follow the normalized order, including missing primary-key columns. Keyset requires a positive limit with offset zero and rejects joins or relations as cursor order sources.
 
 ### Group / Item
 ```json

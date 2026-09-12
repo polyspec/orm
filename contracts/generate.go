@@ -211,8 +211,9 @@ func GenerateInterfaces(m *schema.Manifest, lang, outDir, namespace string) erro
 		quoted := strings.NewReplacer("\\", "\\\\", "'", "\\'").Replace(string(records))
 		fmt.Fprintf(&b, "\\Orm\\Wire::register(json_decode('%s', true, 512, JSON_THROW_ON_ERROR));\n", quoted)
 	case "rust":
-		b.WriteString("// Code generated from contracts/interfaces.json; DO NOT EDIT.\n#![allow(unused_imports, unused_mut, async_fn_in_trait)]\nuse super::*;\nuse orm::{Collection, Page, Result};\nuse orm::db::{self, Exec};\n")
+		b.WriteString("// Code generated from contracts/interfaces.json; DO NOT EDIT.\n#![allow(unused_imports, unused_mut, async_fn_in_trait)]\nuse super::*;\nuse orm::{Collection, KeysetPage, Page, Result};\nuse orm::db::{self, Exec};\n")
 	case "typescript":
+		b.WriteString("import type { KeysetPage } from '../model.js';\n")
 		b.WriteString("// Code generated from contracts/interfaces.json; DO NOT EDIT.\nimport type { Collection, Page } from '../model.js';\nimport type { Db } from '../database.js';\nimport type { Point } from '../codec.js';\nimport type { AesKeyring, AesRotationStatus, StreamResult } from '../index.js';\nimport type { ")
 		for i, entity := range m.Order {
 			if i > 0 {

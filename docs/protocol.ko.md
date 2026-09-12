@@ -17,6 +17,7 @@
   "group_by":  ["seq"],
   "group_by_expr": [{"expr": "ROUND(`score`)", "as": "score_bucket"}],
   "limit":     {"offset": 0, "count": 20},
+  "keyset":    {"direction": "after|before", "values": [parameter indexes]},
   "distinct":  false,
   "force_index": "ik",
   "agg": "amount",                                  // sum/avg
@@ -25,7 +26,9 @@
   "debug": false
 }
 ```
-`Query` (shared by root, join child, and relation child) = `entity columns on where joins relations order group_by group_by_expr limit distinct force_index` plus relation options.
+`Query` (shared by root, join child, relation child) = `entity columns on where joins relations order group_by group_by_expr limit distinct force_index` plus relation options. root keyset request는 `keyset: {"direction":"after|before","values":[parameter index]}`를 추가하며 values는 누락된 primary-key column을 포함한 정규화된 order에 대응한다.
+
+keyset은 offset이 0인 양수 limit을 요구하며 join이나 relation column을 cursor order로 사용할 수 없다.
 
 ### Group / Item
 ```json

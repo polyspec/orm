@@ -12,14 +12,16 @@ use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::future::Future;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 use chrono::{NaiveDate, NaiveDateTime};
 use futures_util::TryStreamExt;
 use sqlx::mysql::{MySql, MySqlConnectOptions, MySqlPool, MySqlPoolOptions, MySqlRow};
 use sqlx::postgres::{PgConnectOptions, PgPool, PgPoolOptions, PgRow, PgTypeInfo, Postgres};
-use sqlx::sqlite::{Sqlite, SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions, SqliteRow};
+use sqlx::sqlite::{
+    Sqlite, SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions, SqliteRow,
+};
 use sqlx::{Executor, SqlSafeStr as _, Statement as _, TypeInfo as _};
 
 use crate::builder::Req;
@@ -37,7 +39,8 @@ use crate::{Error, Result};
 /// The statement hook: `(sql, binds, duration, plan_id, err)`. Secret binds arrive masked
 /// as `Param::Str("$SECRET")`; `plan_id` is the plan-cache key of the statement's plan
 /// (render it as 16 lowercase hex digits, `{plan_id:016x}`, to group logs by shape).
-pub type OnQuery = Box<dyn Fn(&str, &[Param], std::time::Duration, u64, Option<&Error>) + Send + Sync>;
+pub type OnQuery =
+    Box<dyn Fn(&str, &[Param], std::time::Duration, u64, Option<&Error>) + Send + Sync>;
 
 /// The masked form of a secret bind in the hook payload and in `sql()`.
 pub const SECRET_MASK: &str = "$SECRET";
@@ -75,9 +78,16 @@ impl ConnectOptions {
             "mysql" => ConnectOptions::MySql(MySqlConnectOptions::from_str(dsn).map_err(bad)?),
             "postgres" => ConnectOptions::Postgres(PgConnectOptions::from_str(dsn).map_err(bad)?),
             "sqlite" => ConnectOptions::Sqlite(
-                SqliteConnectOptions::from_str(dsn).map_err(bad)?.busy_timeout(std::time::Duration::from_secs(5)).journal_mode(SqliteJournalMode::Wal),
+                SqliteConnectOptions::from_str(dsn)
+                    .map_err(bad)?
+                    .busy_timeout(std::time::Duration::from_secs(5))
+                    .journal_mode(SqliteJournalMode::Wal),
             ),
-            other => return Err(Error::Config(format!("driver {other:?}: want mysql, postgres or sqlite"))),
+            other => {
+                return Err(Error::Config(format!(
+                    "driver {other:?}: want mysql, postgres or sqlite"
+                )))
+            }
         })
     }
 
@@ -119,11 +129,16 @@ fn canonical_json(value: serde_json::Value) -> serde_json::Value {
             keys.sort();
             let mut out = serde_json::Map::new();
             for key in keys {
-                out.insert(key.clone(), canonical_json(values.get(&key).cloned().unwrap_or(serde_json::Value::Null)));
+                out.insert(
+                    key.clone(),
+                    canonical_json(values.get(&key).cloned().unwrap_or(serde_json::Value::Null)),
+                );
             }
             serde_json::Value::Object(out)
         }
-        serde_json::Value::Array(values) => serde_json::Value::Array(values.into_iter().map(canonical_json).collect()),
+        serde_json::Value::Array(values) => {
+            serde_json::Value::Array(values.into_iter().map(canonical_json).collect())
+        }
         other => other,
     }
 }
@@ -156,13 +171,18 @@ struct WasmPlanCompiler {
 #[async_trait::async_trait]
 impl PlanCompiler for WasmPlanCompiler {
     async fn compile(&self, request: &ir::Request) -> Result<Plan> {
-        let body = serde_json::to_vec(request).map_err(|error| Error::internal(error.to_string()))?;
+        let body =
+            serde_json::to_vec(request).map_err(|error| Error::internal(error.to_string()))?;
         let output = self.engine.compile(&body)?;
         serde_json::from_slice(&output).map_err(|error| Error::internal(error.to_string()))
     }
 
     async fn metadata(&self) -> Result<GetMetadataResponse> {
-        Ok(GetMetadataResponse { schema_hash: self.engine.schema_hash.clone(), dialect: self.engine.dialect.clone(), ir_version: 1 })
+        Ok(GetMetadataResponse {
+            schema_hash: self.engine.schema_hash.clone(),
+            dialect: self.engine.dialect.clone(),
+            ir_version: 1,
+        })
     }
 }
 
@@ -207,6 +227,40 @@ impl Rows {
         std::mem::take(&mut self.cells)
     }
 
+    pub fn reverse_main(&mut self) {
+        self.cells.reverse();
+    }
+
+    pub fn keyset_cursors(&mut self, order: &[ir::Order]) -> Result<(String, String)> {
+        if self.cells.is_empty() {
+            return Ok((String::new(), String::new()));
+        }
+        let values = |cell: &mut Cells| -> Result<Vec<Val>> {
+            order
+                .iter()
+                .map(|item| {
+                    let column = self
+                        .assemble
+                        .columns
+                        .iter()
+                        .find(|meta| meta.column == item.column)
+                        .ok_or_else(|| Error::Engine {
+                            code: crate::codes::CURSOR_INVALID.into(),
+                            msg: format!("keyset order column is not projected: {}", item.column),
+                        })?;
+                    cell.val(column.index)
+                })
+                .collect()
+        };
+        let last_index = self.cells.len() - 1;
+        let first = values(&mut self.cells[0])?;
+        let last = values(&mut self.cells[last_index])?;
+        Ok((
+            crate::keyset::encode(order, &last)?,
+            crate::keyset::encode(order, &first)?,
+        ))
+    }
+
     /// The main step's rows as positional rows (every row is `Cells::Pos` when the plan
     /// has relation steps).
     fn positional(&self) -> impl Iterator<Item = &[Val]> {
@@ -219,7 +273,9 @@ impl Rows {
     /// The rows of relation child `ch` that belong to one parent row. Empty when the
     /// parent's value is null, when the step was skipped, or when the parent fails `if_parent`.
     pub fn related(&self, ch: &Child, parent: &mut impl Src) -> Result<Vec<&[Val]>> {
-        let Some(sr) = self.steps.get(&ch.step) else { return Ok(Vec::new()) };
+        let Some(sr) = self.steps.get(&ch.step) else {
+            return Ok(Vec::new());
+        };
         let st = &self.plan.steps[ch.step as usize];
         if let Some(ifp) = st.parent.as_ref().and_then(|p| p.if_parent.as_ref()) {
             if !same_scalar(&parent.val(ifp.index)?, &self.params[ifp.param]) {
@@ -227,8 +283,22 @@ impl Rows {
             }
         }
         let mut values = Vec::with_capacity(ch.parent_keys.len());
-        for reference in &ch.parent_keys { values.push(parent.val(reference.index)?); }
-        let Some(key) = Key::of_row(&values, &ch.parent_keys.iter().enumerate().map(|(index, reference)| crate::plan::KeyRef { column: reference.column.clone(), index }).collect::<Vec<_>>()) else { return Ok(Vec::new()) };
+        for reference in &ch.parent_keys {
+            values.push(parent.val(reference.index)?);
+        }
+        let Some(key) = Key::of_row(
+            &values,
+            &ch.parent_keys
+                .iter()
+                .enumerate()
+                .map(|(index, reference)| crate::plan::KeyRef {
+                    column: reference.column.clone(),
+                    index,
+                })
+                .collect::<Vec<_>>(),
+        ) else {
+            return Ok(Vec::new());
+        };
         Ok(match sr.by_key.get(&key) {
             Some(idxs) => idxs.iter().map(|&i| sr.data[i].as_slice()).collect(),
             None => Vec::new(),
@@ -237,7 +307,10 @@ impl Rows {
 
     /// The assembly of the step a relation child's rows come from.
     pub fn step_assemble(&self, ch: &Child) -> &Arc<Assemble> {
-        self.plan.steps[ch.step as usize].assemble.as_ref().expect("relation step has an assemble")
+        self.plan.steps[ch.step as usize]
+            .assemble
+            .as_ref()
+            .expect("relation step has an assemble")
     }
 }
 
@@ -271,7 +344,11 @@ pub fn same_scalar(v: &Val, p: &Param) -> bool {
 
 /// Distinct non-null values a relation step binds, first-seen order, from the
 /// parent rows that pass `if_parent`.
-fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'a [Val]>, params: &[Param]) -> Vec<Param> {
+fn parent_values<'a>(
+    pr: &ParentRef,
+    parents: impl Iterator<Item = &'a [Val]>,
+    params: &[Param],
+) -> Vec<Param> {
     let mut seen: std::collections::HashSet<Key> = std::collections::HashSet::new();
     let mut out = Vec::new();
     for row in parents {
@@ -280,21 +357,23 @@ fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'a [Val]>, p
                 continue;
             }
         }
-        let Some(key) = Key::of_row(row, &pr.keys) else { continue };
+        let Some(key) = Key::of_row(row, &pr.keys) else {
+            continue;
+        };
         if seen.insert(key) {
             for reference in &pr.keys {
-              let v = &row[reference.index];
-              out.push(match v {
-                Val::I64(x) => Param::I64(*x),
-                Val::Str(s) => Param::Str(s.clone()),
-                Val::Bytes(b) => Param::Bytes(b.clone()),
-                Val::Bool(b) => Param::Bool(*b),
-                Val::F64(x) => Param::F64(*x),
-                Val::DateTime(t) => Param::DateTime(*t),
-                Val::Date(d) => Param::Date(*d),
-                Val::Json(j) => Param::Str(j.to_string()),
-                Val::Null => Param::Null,
-              });
+                let v = &row[reference.index];
+                out.push(match v {
+                    Val::I64(x) => Param::I64(*x),
+                    Val::Str(s) => Param::Str(s.clone()),
+                    Val::Bytes(b) => Param::Bytes(b.clone()),
+                    Val::Bool(b) => Param::Bool(*b),
+                    Val::F64(x) => Param::F64(*x),
+                    Val::DateTime(t) => Param::DateTime(*t),
+                    Val::Date(d) => Param::Date(*d),
+                    Val::Json(j) => Param::Str(j.to_string()),
+                    Val::Null => Param::Null,
+                });
             }
         }
     }
@@ -307,9 +386,12 @@ fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'a [Val]>, p
 /// `$k` per slot in slot order: the parent slot becomes n placeholders and every later
 /// number shifts by n-1 (docs/dialects.md).
 fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (String, Vec<Param>) {
-	let width = st.parent.as_ref().map(|p| p.keys.len()).unwrap_or(0);
-	assert!(width > 0 && vals.len() % width == 0, "invalid relation parent key values");
-	let tuples = vals.len() / width;
+    let width = st.parent.as_ref().map(|p| p.keys.len()).unwrap_or(0);
+    assert!(
+        width > 0 && vals.len() % width == 0,
+        "invalid relation parent key values"
+    );
+    let tuples = vals.len() / width;
     let mut n = 1;
     while n < tuples {
         n <<= 1;
@@ -320,7 +402,12 @@ fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (String, Vec<Pa
     }
     let mut sql = String::with_capacity(st.sql.len() + 4 * n);
     if numbered {
-        let parent = st.bind_slots.iter().position(|b| b.from == "parent").map(|i| i + 1).unwrap_or(0);
+        let parent = st
+            .bind_slots
+            .iter()
+            .position(|b| b.from == "parent")
+            .map(|i| i + 1)
+            .unwrap_or(0);
         let bytes = st.sql.as_bytes();
         let mut i = 0;
         while i < bytes.len() {
@@ -339,7 +426,11 @@ fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (String, Vec<Pa
             if k == parent {
                 for m in 0..n * width {
                     if m > 0 {
-                        if width > 1 && m % width == 0 { sql.push_str("), ("); } else { sql.push_str(", "); }
+                        if width > 1 && m % width == 0 {
+                            sql.push_str("), (");
+                        } else {
+                            sql.push_str(", ");
+                        }
                     }
                     sql.push_str(&format!("${}", k + m));
                 }
@@ -361,7 +452,11 @@ fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (String, Vec<Pa
         if st.bind_slots[slot].from == "parent" {
             sql.push('?');
             for m in 1..n * width {
-                if width > 1 && m % width == 0 { sql.push_str("), (?"); } else { sql.push_str(", ?"); }
+                if width > 1 && m % width == 0 {
+                    sql.push_str("), (?");
+                } else {
+                    sql.push_str(", ?");
+                }
             }
         } else {
             sql.push('?');
@@ -377,7 +472,12 @@ fn param_arg(b: &BindSlot, params: &[Param]) -> Result<Param> {
     if b.transform.is_empty() {
         return Ok(v.clone());
     }
-    let Param::Str(s) = v else { return Err(Error::Config(format!("transform {} needs a string", b.transform))) };
+    let Param::Str(s) = v else {
+        return Err(Error::Config(format!(
+            "transform {} needs a string",
+            b.transform
+        )));
+    };
     Ok(Param::Str(transform(&b.transform, s)))
 }
 
@@ -423,43 +523,107 @@ fn child_keys(plan: &Plan, id: u32) -> Vec<crate::plan::KeyRef> {
         }
         None
     }
-    plan.steps.iter().filter_map(|s| s.assemble.as_deref()).find_map(|a| find(a, id)).expect("relation step without a child spec")
+    plan.steps
+        .iter()
+        .filter_map(|s| s.assemble.as_deref())
+        .find_map(|a| find(a, id))
+        .expect("relation step without a child spec")
 }
 
 impl Db {
     /// Connects the pool. The driver of `opts` must be the dialect the engine compiles for
     /// (docs/dialects.md): the plans are dialect-specific text.
-    pub async fn connect(opts: ConnectOptions, max_connections: u32, engine: Arc<Engine>, cfg: Config) -> Result<Db> {
-        let compiler: Arc<dyn PlanCompiler> = Arc::new(WasmPlanCompiler { engine: engine.clone() });
+    pub async fn connect(
+        opts: ConnectOptions,
+        max_connections: u32,
+        engine: Arc<Engine>,
+        cfg: Config,
+    ) -> Result<Db> {
+        let compiler: Arc<dyn PlanCompiler> = Arc::new(WasmPlanCompiler {
+            engine: engine.clone(),
+        });
         Self::connect_with_plan_compiler(opts, max_connections, engine, compiler, cfg).await
     }
 
     /// Connects the pool and compiles every plan-cache miss through the typed compiler transport.
-    pub async fn connect_with_compiler(opts: ConnectOptions, max_connections: u32, engine: Arc<Engine>, compiler: Arc<dyn CompilerTransport>, cfg: Config) -> Result<Db> {
-        let compiler: Arc<dyn PlanCompiler> = Arc::new(TransportPlanCompiler { transport: compiler });
+    pub async fn connect_with_compiler(
+        opts: ConnectOptions,
+        max_connections: u32,
+        engine: Arc<Engine>,
+        compiler: Arc<dyn CompilerTransport>,
+        cfg: Config,
+    ) -> Result<Db> {
+        let compiler: Arc<dyn PlanCompiler> = Arc::new(TransportPlanCompiler {
+            transport: compiler,
+        });
         Self::connect_with_plan_compiler(opts, max_connections, engine, compiler, cfg).await
     }
 
-    async fn connect_with_plan_compiler(opts: ConnectOptions, max_connections: u32, engine: Arc<Engine>, compiler: Arc<dyn PlanCompiler>, cfg: Config) -> Result<Db> {
-		if cfg.plan_cache_size == 0 || cfg.statement_cache_size == 0 {
-			return Err(Error::Config("cache sizes must be positive".into()));
-		}
+    async fn connect_with_plan_compiler(
+        opts: ConnectOptions,
+        max_connections: u32,
+        engine: Arc<Engine>,
+        compiler: Arc<dyn PlanCompiler>,
+        cfg: Config,
+    ) -> Result<Db> {
+        if cfg.plan_cache_size == 0 || cfg.statement_cache_size == 0 {
+            return Err(Error::Config("cache sizes must be positive".into()));
+        }
         let metadata = compiler.metadata().await?;
         if metadata.schema_hash != engine.schema_hash {
-            return Err(Error::Engine { code: crate::codes::SCHEMA_HASH_MISMATCH.into(), msg: format!("client schema {} but compiler loaded {}", engine.schema_hash, metadata.schema_hash) });
+            return Err(Error::Engine {
+                code: crate::codes::SCHEMA_HASH_MISMATCH.into(),
+                msg: format!(
+                    "client schema {} but compiler loaded {}",
+                    engine.schema_hash, metadata.schema_hash
+                ),
+            });
         }
         if metadata.dialect != opts.driver() {
-            return Err(Error::Config(format!("driver {} but the compiler uses {}", opts.driver(), metadata.dialect)));
+            return Err(Error::Config(format!(
+                "driver {} but the compiler uses {}",
+                opts.driver(),
+                metadata.dialect
+            )));
         }
         if metadata.ir_version != 1 {
-            return Err(Error::Engine { code: crate::codes::VERSION_MISMATCH.into(), msg: format!("client IR version 1 but compiler uses {}", metadata.ir_version) });
+            return Err(Error::Engine {
+                code: crate::codes::VERSION_MISMATCH.into(),
+                msg: format!(
+                    "client IR version 1 but compiler uses {}",
+                    metadata.ir_version
+                ),
+            });
         }
         let pool = match opts {
-            ConnectOptions::MySql(o) => Pool::MySql(MySqlPoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(cfg.statement_cache_size)).await?),
-            ConnectOptions::Postgres(o) => Pool::Postgres(PgPoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(cfg.statement_cache_size)).await?),
-            ConnectOptions::Sqlite(o) => Pool::Sqlite(SqlitePoolOptions::new().max_connections(max_connections).connect_with(o.statement_cache_capacity(cfg.statement_cache_size)).await?),
+            ConnectOptions::MySql(o) => Pool::MySql(
+                MySqlPoolOptions::new()
+                    .max_connections(max_connections)
+                    .connect_with(o.statement_cache_capacity(cfg.statement_cache_size))
+                    .await?,
+            ),
+            ConnectOptions::Postgres(o) => Pool::Postgres(
+                PgPoolOptions::new()
+                    .max_connections(max_connections)
+                    .connect_with(o.statement_cache_capacity(cfg.statement_cache_size))
+                    .await?,
+            ),
+            ConnectOptions::Sqlite(o) => Pool::Sqlite(
+                SqlitePoolOptions::new()
+                    .max_connections(max_connections)
+                    .connect_with(o.statement_cache_capacity(cfg.statement_cache_size))
+                    .await?,
+            ),
         };
-        Ok(Db { pool, engine, compiler, cfg: Arc::new(cfg), plans: Arc::new(Mutex::new(HashMap::new())), plan_order: Arc::new(Mutex::new(VecDeque::new())), pg_types: Arc::new(Mutex::new(HashMap::new())) })
+        Ok(Db {
+            pool,
+            engine,
+            compiler,
+            cfg: Arc::new(cfg),
+            plans: Arc::new(Mutex::new(HashMap::new())),
+            plan_order: Arc::new(Mutex::new(VecDeque::new())),
+            pg_types: Arc::new(Mutex::new(HashMap::new())),
+        })
     }
 
     /// The database this Db talks to (mysql | postgres | sqlite).
@@ -478,7 +642,13 @@ impl Db {
             return Err(e.error());
         }
         if req.ir.schema_hash != self.engine.schema_hash {
-            return Err(Error::Engine { code: crate::codes::SCHEMA_HASH_MISMATCH.into(), msg: format!("request schema {} but client schema is {}", req.ir.schema_hash, self.engine.schema_hash) });
+            return Err(Error::Engine {
+                code: crate::codes::SCHEMA_HASH_MISMATCH.into(),
+                msg: format!(
+                    "request schema {} but client schema is {}",
+                    req.ir.schema_hash, self.engine.schema_hash
+                ),
+            });
         }
         let key = req.shape_key();
         if let Some(p) = self.plans.lock().unwrap().get(&key) {
@@ -496,7 +666,9 @@ impl Db {
             let mut order = self.plan_order.lock().unwrap();
             order.push_back(key);
             while order.len() > self.cfg.plan_cache_size {
-                if let Some(oldest) = order.pop_front() { plans.remove(&oldest); }
+                if let Some(oldest) = order.pop_front() {
+                    plans.remove(&oldest);
+                }
             }
         }
         Ok(plan)
@@ -511,34 +683,75 @@ impl Db {
         }
         let envelope: serde_json::Value = serde_json::from_slice(bundle)
             .map_err(|e| Error::Config(format!("precompiled plan is invalid JSON: {e}")))?;
-        let version = envelope.get("version").and_then(serde_json::Value::as_i64).unwrap_or(0);
+        let version = envelope
+            .get("version")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0);
         if version != 1 {
-            return Err(Error::Engine { code: crate::codes::VERSION_MISMATCH.into(), msg: format!("precompiled plan version {version} is not supported") });
+            return Err(Error::Engine {
+                code: crate::codes::VERSION_MISMATCH.into(),
+                msg: format!("precompiled plan version {version} is not supported"),
+            });
         }
-        let schema = envelope.get("schema_hash").and_then(serde_json::Value::as_str).unwrap_or("");
+        let schema = envelope
+            .get("schema_hash")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
         if schema != self.engine.schema_hash {
-            return Err(Error::Engine { code: crate::codes::SCHEMA_HASH_MISMATCH.into(), msg: format!("precompiled plan schema {schema} but client schema is {}", self.engine.schema_hash) });
+            return Err(Error::Engine {
+                code: crate::codes::SCHEMA_HASH_MISMATCH.into(),
+                msg: format!(
+                    "precompiled plan schema {schema} but client schema is {}",
+                    self.engine.schema_hash
+                ),
+            });
         }
-        let dialect = envelope.get("dialect").and_then(serde_json::Value::as_str).unwrap_or("");
+        let dialect = envelope
+            .get("dialect")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
         if dialect != self.driver() {
-            return Err(Error::Config(format!("precompiled plan dialect {dialect} but database driver is {}", self.driver())));
+            return Err(Error::Config(format!(
+                "precompiled plan dialect {dialect} but database driver is {}",
+                self.driver()
+            )));
         }
-        let request_hash = envelope.get("request_sha256").and_then(serde_json::Value::as_str).filter(|v| !v.is_empty()).ok_or_else(|| Error::Config("precompiled plan requires request_sha256".into()))?;
+        let request_hash = envelope
+            .get("request_sha256")
+            .and_then(serde_json::Value::as_str)
+            .filter(|v| !v.is_empty())
+            .ok_or_else(|| Error::Config("precompiled plan requires request_sha256".into()))?;
         req.ir.n_params = req.params.len();
-        let request_value = serde_json::to_value(&req.ir).map_err(|e| Error::Config(format!("request JSON: {e}")))?;
+        let request_value = serde_json::to_value(&req.ir)
+            .map_err(|e| Error::Config(format!("request JSON: {e}")))?;
         let canonical = canonical_json(request_value);
         use sha2::{Digest, Sha256};
-        let got = format!("{:x}", Sha256::digest(serde_json::to_vec(&canonical).map_err(|e| Error::Config(format!("canonical request JSON: {e}")))?));
+        let got = format!(
+            "{:x}",
+            Sha256::digest(
+                serde_json::to_vec(&canonical)
+                    .map_err(|e| Error::Config(format!("canonical request JSON: {e}")))?
+            )
+        );
         if request_hash != got {
-            return Err(Error::Config(format!("precompiled plan request hash {request_hash} does not match request shape {got}")));
+            return Err(Error::Config(format!(
+                "precompiled plan request hash {request_hash} does not match request shape {got}"
+            )));
         }
-        let raw_plan = envelope.get("plan").ok_or_else(|| Error::Config("precompiled plan requires plan".into()))?;
-        let mut plan: Plan = serde_json::from_value(raw_plan.clone()).map_err(|e| Error::Config(format!("precompiled plan body is invalid: {e}")))?;
+        let raw_plan = envelope
+            .get("plan")
+            .ok_or_else(|| Error::Config("precompiled plan requires plan".into()))?;
+        let mut plan: Plan = serde_json::from_value(raw_plan.clone())
+            .map_err(|e| Error::Config(format!("precompiled plan body is invalid: {e}")))?;
         if plan.schema_hash != schema || plan.kind != req.ir.kind || plan.steps.is_empty() {
-            return Err(Error::Config("precompiled plan body does not match its envelope or request".into()));
+            return Err(Error::Config(
+                "precompiled plan body does not match its envelope or request".into(),
+            ));
         }
         let key = req.shape_key();
-        for step in &mut plan.steps { step.plan_id = key; }
+        for step in &mut plan.steps {
+            step.plan_id = key;
+        }
         let plan = Arc::new(plan);
         let mut plans = self.plans.lock().unwrap();
         if !plans.contains_key(&key) {
@@ -546,7 +759,9 @@ impl Db {
             let mut order = self.plan_order.lock().unwrap();
             order.push_back(key);
             while order.len() > self.cfg.plan_cache_size {
-                if let Some(oldest) = order.pop_front() { plans.remove(&oldest); }
+                if let Some(oldest) = order.pop_front() {
+                    plans.remove(&oldest);
+                }
             }
         }
         Ok(())
@@ -576,30 +791,68 @@ impl Db {
                     if b.col_type == "point" {
                         v = match v {
                             Param::Null => Param::Null,
-                            Param::Point(point) => Param::Str(if matches!(&self.pool, Pool::Postgres(_)) { crate::value::postgres_point_text(point)? } else { crate::point_text(point)? }),
+                            Param::Point(point) => {
+                                Param::Str(if matches!(&self.pool, Pool::Postgres(_)) {
+                                    crate::value::postgres_point_text(point)?
+                                } else {
+                                    crate::point_text(point)?
+                                })
+                            }
                             Param::Str(text) => {
                                 let point = crate::parse_point(&text)?;
-                                Param::Str(if matches!(&self.pool, Pool::Postgres(_)) { crate::value::postgres_point_text(point)? } else { crate::point_text(point)? })
-                            },
-                            other => return Err(Error::Config(format!("point parameter requires two coordinates, received {other:?}"))),
+                                Param::Str(if matches!(&self.pool, Pool::Postgres(_)) {
+                                    crate::value::postgres_point_text(point)?
+                                } else {
+                                    crate::point_text(point)?
+                                })
+                            }
+                            other => {
+                                return Err(Error::Config(format!(
+                                    "point parameter requires two coordinates, received {other:?}"
+                                )))
+                            }
                         };
                     }
-                    out.push(if b.host_styles.is_empty() { v } else if b.host_styles.iter().any(|s| s == "blind_index") {
-                        if b.host_styles.len() != 1 { return Err(Error::Config("blind_index must be the only host style".into())); }
-                        if matches!(v, Param::Null) { Param::Null } else { Param::Str(crate::codec::blind_index(&v, &self.cfg.blind_index_key)?) }
-                    } else { crate::codec::host_encode(&v, &b.host_styles, &self.cfg.aes_key)? });
+                    out.push(if b.host_styles.is_empty() {
+                        v
+                    } else if b.host_styles.iter().any(|s| s == "blind_index") {
+                        if b.host_styles.len() != 1 {
+                            return Err(Error::Config(
+                                "blind_index must be the only host style".into(),
+                            ));
+                        }
+                        if matches!(v, Param::Null) {
+                            Param::Null
+                        } else {
+                            Param::Str(crate::codec::blind_index(&v, &self.cfg.blind_index_key)?)
+                        }
+                    } else {
+                        crate::codec::host_encode(&v, &b.host_styles, &self.cfg.aes_key)?
+                    });
                 }
-                "secret" => {
-                    match b.name.as_str() {
-                        "aes" if !self.cfg.aes_key.is_empty() => out.push(Param::Str(self.cfg.aes_key.clone())),
-                        _ => return Err(Error::Config(format!("secret {} not configured", b.name))),
+                "secret" => match b.name.as_str() {
+                    "aes" if !self.cfg.aes_key.is_empty() => {
+                        out.push(Param::Str(self.cfg.aes_key.clone()))
                     }
-                }
-                "config" => match b.name.as_str() {
-                    "aes_version" if self.cfg.aes_version > 0 => out.push(Param::I64(self.cfg.aes_version as i64)),
-                    _ => return Err(Error::Config(format!("config value {} not configured", b.name))),
+                    _ => return Err(Error::Config(format!("secret {} not configured", b.name))),
                 },
-                "now" => out.push(Param::Str(chrono::Utc::now().naive_utc().format(SQLITE_DATETIME).to_string())),
+                "config" => match b.name.as_str() {
+                    "aes_version" if self.cfg.aes_version > 0 => {
+                        out.push(Param::I64(self.cfg.aes_version as i64))
+                    }
+                    _ => {
+                        return Err(Error::Config(format!(
+                            "config value {} not configured",
+                            b.name
+                        )))
+                    }
+                },
+                "now" => out.push(Param::Str(
+                    chrono::Utc::now()
+                        .naive_utc()
+                        .format(SQLITE_DATETIME)
+                        .to_string(),
+                )),
                 other => return Err(Error::Config(format!("bind from {other}"))),
             }
         }
@@ -613,10 +866,22 @@ impl Db {
         Ok(out)
     }
 
-    fn emit(&self, st: &Step, sql: &str, args: &[Param], n_parent: usize, start: std::time::Instant, err: Option<&Error>) {
+    fn emit(
+        &self,
+        st: &Step,
+        sql: &str,
+        args: &[Param],
+        n_parent: usize,
+        start: std::time::Instant,
+        err: Option<&Error>,
+    ) {
         if let Some(h) = &self.cfg.on_query {
             let d = start.elapsed();
-            if st.bind_slots.iter().any(|b| b.from == "secret" || b.from == "now") {
+            if st
+                .bind_slots
+                .iter()
+                .any(|b| b.from == "secret" || b.from == "now")
+            {
                 h(sql, &masked(st, args, n_parent), d, st.plan_id, err);
             } else {
                 h(sql, args, d, st.plan_id, err);
@@ -632,17 +897,27 @@ impl Db {
         }
         let mut conn = pool.acquire().await?;
         let t = pg_describe(&mut *conn, sql).await?;
-        self.pg_types.lock().unwrap().insert(sql.to_owned(), t.clone());
+        self.pg_types
+            .lock()
+            .unwrap()
+            .insert(sql.to_owned(), t.clone());
         Ok(t)
     }
 
     /// Same, prepared on a transaction's own connection.
-    async fn pg_types_conn(&self, conn: &mut sqlx::PgConnection, sql: &str) -> Result<Arc<[PgTypeInfo]>> {
+    async fn pg_types_conn(
+        &self,
+        conn: &mut sqlx::PgConnection,
+        sql: &str,
+    ) -> Result<Arc<[PgTypeInfo]>> {
         if let Some(t) = self.pg_types.lock().unwrap().get(sql) {
             return Ok(t.clone());
         }
         let t = pg_describe(conn, sql).await?;
-        self.pg_types.lock().unwrap().insert(sql.to_owned(), t.clone());
+        self.pg_types
+            .lock()
+            .unwrap()
+            .insert(sql.to_owned(), t.clone());
         Ok(t)
     }
 
@@ -656,26 +931,43 @@ impl Db {
                 let mut conn = p.acquire().await?;
                 if let Some(level) = level {
                     let statement = format!("SET TRANSACTION ISOLATION LEVEL {level}");
-                    sqlx::raw_sql(sqlx::AssertSqlSafe(statement).into_sql_str()).execute(&mut *conn).await?;
+                    sqlx::raw_sql(sqlx::AssertSqlSafe(statement).into_sql_str())
+                        .execute(&mut *conn)
+                        .await?;
                 }
-                let statement = if options.read_only { "START TRANSACTION READ ONLY" } else { "START TRANSACTION" };
+                let statement = if options.read_only {
+                    "START TRANSACTION READ ONLY"
+                } else {
+                    "START TRANSACTION"
+                };
                 sqlx::raw_sql(statement).execute(&mut *conn).await?;
-				TxInner::MySql(MySqlOwnedTx { conn: Some(conn) })
+                TxInner::MySql(MySqlOwnedTx { conn: Some(conn) })
             }
             Pool::Postgres(p) => {
-                let statement = if options.isolation == IsolationLevel::Default && !options.read_only {
-                    "BEGIN".to_owned()
-                } else {
-                    let mut statement = String::from("BEGIN");
-                    if let Some(level) = level { statement.push_str(" ISOLATION LEVEL "); statement.push_str(level); }
-                    if options.read_only { statement.push_str(" READ ONLY"); }
-                    statement
-                };
-                TxInner::Postgres(p.begin_with(sqlx::AssertSqlSafe(statement).into_sql_str()).await?)
+                let statement =
+                    if options.isolation == IsolationLevel::Default && !options.read_only {
+                        "BEGIN".to_owned()
+                    } else {
+                        let mut statement = String::from("BEGIN");
+                        if let Some(level) = level {
+                            statement.push_str(" ISOLATION LEVEL ");
+                            statement.push_str(level);
+                        }
+                        if options.read_only {
+                            statement.push_str(" READ ONLY");
+                        }
+                        statement
+                    };
+                TxInner::Postgres(
+                    p.begin_with(sqlx::AssertSqlSafe(statement).into_sql_str())
+                        .await?,
+                )
             }
             Pool::Sqlite(p) => {
                 if options.isolation != IsolationLevel::Default || options.read_only {
-                    return Err(Error::Config("sqlite does not support transaction isolation or read-only mode".into()));
+                    return Err(Error::Config(
+                        "sqlite does not support transaction isolation or read-only mode".into(),
+                    ));
                 }
                 TxInner::Sqlite(p.begin().await?)
             }
@@ -688,19 +980,32 @@ impl Db {
         F: Fn(Tx) -> Fut,
         Fut: Future<Output = Result<T>>,
     {
-        self.transaction_with_options(f, TransactionOptions::default()).await
+        self.transaction_with_options(f, TransactionOptions::default())
+            .await
     }
 
     /// Run `f` with an explicit deadlock retry policy.
-    pub async fn transaction_with_options<T, F, Fut>(&self, f: F, options: TransactionOptions) -> Result<T>
+    pub async fn transaction_with_options<T, F, Fut>(
+        &self,
+        f: F,
+        options: TransactionOptions,
+    ) -> Result<T>
     where
         F: Fn(Tx) -> Fut,
         Fut: Future<Output = Result<T>>,
     {
-        let attempts = if options.retry_deadlocks { options.max_attempts.max(1) } else { 1 };
+        let attempts = if options.retry_deadlocks {
+            options.max_attempts.max(1)
+        } else {
+            1
+        };
         let mut last = None;
         for attempt in 0..attempts {
-            let tx = Tx { inner: Arc::new(tokio::sync::Mutex::new(Some(self.begin(options).await?))), db: self.clone(), finished: Arc::new(AtomicBool::new(false)) };
+            let tx = Tx {
+                inner: Arc::new(tokio::sync::Mutex::new(Some(self.begin(options).await?))),
+                db: self.clone(),
+                finished: Arc::new(AtomicBool::new(false)),
+            };
             let _scope = TxScope(tx.clone());
             match f(tx.clone()).await {
                 Ok(v) => {
@@ -714,7 +1019,10 @@ impl Db {
                     }
                     last = Some(e);
                     let jitter = rand::random::<u64>() % 20;
-                    tokio::time::sleep(std::time::Duration::from_millis((50u64 << attempt) + jitter)).await;
+                    tokio::time::sleep(std::time::Duration::from_millis(
+                        (50u64 << attempt) + jitter,
+                    ))
+                    .await;
                 }
             }
         }
@@ -753,16 +1061,28 @@ pub struct TransactionOptions {
 
 impl Default for TransactionOptions {
     fn default() -> Self {
-        Self { retry_deadlocks: false, max_attempts: 3, isolation: IsolationLevel::Default, read_only: false }
+        Self {
+            retry_deadlocks: false,
+            max_attempts: 3,
+            isolation: IsolationLevel::Default,
+            read_only: false,
+        }
     }
 }
 
 /// Prepares `sql` with no declared parameter types so the server infers them, and returns them.
-async fn pg_describe<'e, E: Executor<'e, Database = Postgres>>(e: E, sql: &str) -> Result<Arc<[PgTypeInfo]>> {
-    let stmt = e.prepare(sqlx::AssertSqlSafe(sql.to_owned()).into_sql_str()).await?;
+async fn pg_describe<'e, E: Executor<'e, Database = Postgres>>(
+    e: E,
+    sql: &str,
+) -> Result<Arc<[PgTypeInfo]>> {
+    let stmt = e
+        .prepare(sqlx::AssertSqlSafe(sql.to_owned()).into_sql_str())
+        .await?;
     match stmt.parameters() {
         Some(sqlx::Either::Left(types)) => Ok(Arc::from(types.to_vec())),
-        _ => Err(Error::internal("postgres did not describe the statement's parameters")),
+        _ => Err(Error::internal(
+            "postgres did not describe the statement's parameters",
+        )),
     }
 }
 
@@ -776,32 +1096,40 @@ enum TxInner {
 /// A MySQL transaction whose pool connection is retained after the explicit
 /// `SET TRANSACTION` and `START TRANSACTION` statements.
 struct MySqlOwnedTx {
-	conn: Option<sqlx::pool::PoolConnection<MySql>>,
+    conn: Option<sqlx::pool::PoolConnection<MySql>>,
 }
 
 impl MySqlOwnedTx {
-	async fn commit(mut self) -> sqlx::Result<()> {
-		let mut conn = self.conn.take().expect("active MySQL transaction connection");
-		sqlx::raw_sql("COMMIT").execute(&mut *conn).await?;
-		Ok(())
-	}
+    async fn commit(mut self) -> sqlx::Result<()> {
+        let mut conn = self
+            .conn
+            .take()
+            .expect("active MySQL transaction connection");
+        sqlx::raw_sql("COMMIT").execute(&mut *conn).await?;
+        Ok(())
+    }
 
-	async fn rollback(mut self) -> sqlx::Result<()> {
-		let mut conn = self.conn.take().expect("active MySQL transaction connection");
-		sqlx::raw_sql("ROLLBACK").execute(&mut *conn).await?;
-		Ok(())
-	}
+    async fn rollback(mut self) -> sqlx::Result<()> {
+        let mut conn = self
+            .conn
+            .take()
+            .expect("active MySQL transaction connection");
+        sqlx::raw_sql("ROLLBACK").execute(&mut *conn).await?;
+        Ok(())
+    }
 }
 
 impl Drop for MySqlOwnedTx {
-	fn drop(&mut self) {
-		let Some(mut conn) = self.conn.take() else { return };
-		if let Ok(handle) = tokio::runtime::Handle::try_current() {
-			handle.spawn(async move {
-			let _ = sqlx::raw_sql("ROLLBACK").execute(&mut *conn).await;
-			});
-		}
-	}
+    fn drop(&mut self) {
+        let Some(mut conn) = self.conn.take() else {
+            return;
+        };
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle.spawn(async move {
+                let _ = sqlx::raw_sql("ROLLBACK").execute(&mut *conn).await;
+            });
+        }
+    }
 }
 
 /// A transaction handle: cheap to clone, so closures can `async move` it.
@@ -823,7 +1151,9 @@ impl Drop for TxScope {
             inner.take(); // sqlx queues rollback when its transaction is dropped.
         } else {
             let tx = self.0.clone();
-            tokio::spawn(async move { tx.rollback().await; });
+            tokio::spawn(async move {
+                tx.rollback().await;
+            });
         }
     }
 }
@@ -836,22 +1166,49 @@ impl Tx {
         Ok(())
     }
 
-    pub async fn savepoint(&self, name: &str) -> Result<()> { self.control("SAVEPOINT", name).await }
-    pub async fn rollback_to(&self, name: &str) -> Result<()> { self.control("ROLLBACK TO SAVEPOINT", name).await }
-    pub async fn release_savepoint(&self, name: &str) -> Result<()> { self.control("RELEASE SAVEPOINT", name).await }
+    pub async fn savepoint(&self, name: &str) -> Result<()> {
+        self.control("SAVEPOINT", name).await
+    }
+    pub async fn rollback_to(&self, name: &str) -> Result<()> {
+        self.control("ROLLBACK TO SAVEPOINT", name).await
+    }
+    pub async fn release_savepoint(&self, name: &str) -> Result<()> {
+        self.control("RELEASE SAVEPOINT", name).await
+    }
 
     async fn control(&self, command: &str, name: &str) -> Result<()> {
         self.assert_active()?;
         if !valid_savepoint_name(name) {
-            return Err(Error::Config("savepoint name must match [A-Za-z_][A-Za-z0-9_]*".into()));
+            return Err(Error::Config(
+                "savepoint name must match [A-Za-z_][A-Za-z0-9_]*".into(),
+            ));
         }
         let sql = format!("{command} {name}");
         let mut guard = self.inner.lock().await;
-        let tx = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
+        let tx = guard
+            .as_mut()
+            .ok_or_else(|| Error::Config("transaction already finished".into()))?;
         match tx {
-            TxInner::MySql(t) => { sqlx::raw_sql(sqlx::AssertSqlSafe(sql.clone()).into_sql_str()).execute(&mut **t.conn.as_mut().expect("active MySQL transaction connection")).await?; }
-            TxInner::Postgres(t) => { sqlx::query(sqlx::AssertSqlSafe(sql.clone()).into_sql_str()).execute(&mut **t).await?; }
-            TxInner::Sqlite(t) => { sqlx::query(sqlx::AssertSqlSafe(sql.clone()).into_sql_str()).execute(&mut **t).await?; }
+            TxInner::MySql(t) => {
+                sqlx::raw_sql(sqlx::AssertSqlSafe(sql.clone()).into_sql_str())
+                    .execute(
+                        &mut **t
+                            .conn
+                            .as_mut()
+                            .expect("active MySQL transaction connection"),
+                    )
+                    .await?;
+            }
+            TxInner::Postgres(t) => {
+                sqlx::query(sqlx::AssertSqlSafe(sql.clone()).into_sql_str())
+                    .execute(&mut **t)
+                    .await?;
+            }
+            TxInner::Sqlite(t) => {
+                sqlx::query(sqlx::AssertSqlSafe(sql.clone()).into_sql_str())
+                    .execute(&mut **t)
+                    .await?;
+            }
         }
         Ok(())
     }
@@ -928,8 +1285,16 @@ fn parse_datetime(s: &str) -> Option<NaiveDateTime> {
     NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S%.f")
         .or_else(|_| NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S"))
         .ok()
-        .or_else(|| chrono::DateTime::parse_from_rfc3339(s).ok().map(|t| t.naive_utc()))
-        .or_else(|| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok().map(|d| d.and_hms_opt(0, 0, 0).unwrap()))
+        .or_else(|| {
+            chrono::DateTime::parse_from_rfc3339(s)
+                .ok()
+                .map(|t| t.naive_utc())
+        })
+        .or_else(|| {
+            NaiveDate::parse_from_str(s, "%Y-%m-%d")
+                .ok()
+                .map(|d| d.and_hms_opt(0, 0, 0).unwrap())
+        })
 }
 
 /// Binds one PostgreSQL parameter as the type the server inferred for its placeholder
@@ -937,7 +1302,12 @@ fn parse_datetime(s: &str) -> Option<NaiveDateTime> {
 /// that type is CONFIG (the statement text and the value are named).
 fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usize) -> Result<PgQuery<'q>> {
     let name = ty.name();
-    let bad = || Error::Config(format!("postgres parameter ${} is {name}: cannot bind {p:?}", i + 1));
+    let bad = || {
+        Error::Config(format!(
+            "postgres parameter ${} is {name}: cannot bind {p:?}",
+            i + 1
+        ))
+    };
     macro_rules! int {
         ($t:ty) => {
             match p {
@@ -945,7 +1315,9 @@ fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usize) -> Resul
                 Param::I64(x) => q.bind(<$t>::try_from(*x).map_err(|_| bad())?),
                 Param::Bool(b) => q.bind(*b as $t),
                 Param::Str(s) => q.bind(s.trim().parse::<$t>().map_err(|_| bad())?),
-                Param::F64(x) if x.fract() == 0.0 => q.bind(<$t>::try_from(*x as i64).map_err(|_| bad())?),
+                Param::F64(x) if x.fract() == 0.0 => {
+                    q.bind(<$t>::try_from(*x as i64).map_err(|_| bad())?)
+                }
                 _ => return Err(bad()),
             }
         };
@@ -1015,7 +1387,9 @@ fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usize) -> Resul
         },
         "JSONB" | "JSON" => match p {
             Param::Null => q.bind(Option::<sqlx::types::Json<serde_json::Value>>::None),
-            Param::Str(s) => q.bind(sqlx::types::Json(serde_json::value::RawValue::from_string(s.clone()).map_err(|_| bad())?)),
+            Param::Str(s) => q.bind(sqlx::types::Json(
+                serde_json::value::RawValue::from_string(s.clone()).map_err(|_| bad())?,
+            )),
             _ => return Err(bad()),
         },
         "BYTEA" => match p {
@@ -1029,11 +1403,20 @@ fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usize) -> Resul
             Param::Str(s) => q.bind(s.trim().parse::<std::net::IpAddr>().map_err(|_| bad())?),
             _ => return Err(bad()),
         },
-        other => return Err(Error::Config(format!("postgres parameter ${} has type {other}, which the executor cannot bind", i + 1))),
+        other => {
+            return Err(Error::Config(format!(
+                "postgres parameter ${} has type {other}, which the executor cannot bind",
+                i + 1
+            )))
+        }
     })
 }
 
-async fn fetch_mysql<'e, E: Executor<'e, Database = MySql>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<Vec<MySqlRow>> {
+async fn fetch_mysql<'e, E: Executor<'e, Database = MySql>>(
+    sql: &str,
+    args: &[Param],
+    e: E,
+) -> sqlx::Result<Vec<MySqlRow>> {
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for a in args {
         q = bind_mysql(q, a);
@@ -1041,7 +1424,12 @@ async fn fetch_mysql<'e, E: Executor<'e, Database = MySql>>(sql: &str, args: &[P
     q.fetch_all(e).await
 }
 
-async fn stream_mysql<'e, E, F>(sql: &str, args: &[Param], e: E, visit: &mut F) -> Result<(u64, bool)>
+async fn stream_mysql<'e, E, F>(
+    sql: &str,
+    args: &[Param],
+    e: E,
+    visit: &mut F,
+) -> Result<(u64, bool)>
 where
     E: Executor<'e, Database = MySql>,
     F: FnMut(DriverRow) -> Result<bool>,
@@ -1061,7 +1449,11 @@ where
     Ok((count, true))
 }
 
-async fn exec_mysql<'e, E: Executor<'e, Database = MySql>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<(u64, u64)> {
+async fn exec_mysql<'e, E: Executor<'e, Database = MySql>>(
+    sql: &str,
+    args: &[Param],
+    e: E,
+) -> sqlx::Result<(u64, u64)> {
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for a in args {
         q = bind_mysql(q, a);
@@ -1072,7 +1464,11 @@ async fn exec_mysql<'e, E: Executor<'e, Database = MySql>>(sql: &str, args: &[Pa
 
 fn pg_query<'q>(sql: &str, args: &'q [Param], types: &[PgTypeInfo]) -> Result<PgQuery<'q>> {
     if types.len() != args.len() {
-        return Err(Error::internal(format!("postgres described {} parameters, the plan binds {}", types.len(), args.len())));
+        return Err(Error::internal(format!(
+            "postgres described {} parameters, the plan binds {}",
+            types.len(),
+            args.len()
+        )));
     }
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for (i, (a, ty)) in args.iter().zip(types).enumerate() {
@@ -1081,11 +1477,22 @@ fn pg_query<'q>(sql: &str, args: &'q [Param], types: &[PgTypeInfo]) -> Result<Pg
     Ok(q)
 }
 
-async fn fetch_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str, args: &[Param], types: &[PgTypeInfo], e: E) -> Result<Vec<PgRow>> {
+async fn fetch_pg<'e, E: Executor<'e, Database = Postgres>>(
+    sql: &str,
+    args: &[Param],
+    types: &[PgTypeInfo],
+    e: E,
+) -> Result<Vec<PgRow>> {
     Ok(pg_query(sql, args, types)?.fetch_all(e).await?)
 }
 
-async fn stream_pg<'e, E, F>(sql: &str, args: &[Param], types: &[PgTypeInfo], e: E, visit: &mut F) -> Result<(u64, bool)>
+async fn stream_pg<'e, E, F>(
+    sql: &str,
+    args: &[Param],
+    types: &[PgTypeInfo],
+    e: E,
+    visit: &mut F,
+) -> Result<(u64, bool)>
 where
     E: Executor<'e, Database = Postgres>,
     F: FnMut(DriverRow) -> Result<bool>,
@@ -1102,12 +1509,21 @@ where
     Ok((count, true))
 }
 
-async fn exec_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str, args: &[Param], types: &[PgTypeInfo], e: E) -> Result<(u64, u64)> {
+async fn exec_pg<'e, E: Executor<'e, Database = Postgres>>(
+    sql: &str,
+    args: &[Param],
+    types: &[PgTypeInfo],
+    e: E,
+) -> Result<(u64, u64)> {
     let r = pg_query(sql, args, types)?.execute(e).await?;
     Ok((0, r.rows_affected()))
 }
 
-async fn fetch_sqlite<'e, E: Executor<'e, Database = Sqlite>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<Vec<SqliteRow>> {
+async fn fetch_sqlite<'e, E: Executor<'e, Database = Sqlite>>(
+    sql: &str,
+    args: &[Param],
+    e: E,
+) -> sqlx::Result<Vec<SqliteRow>> {
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for a in args {
         q = bind_sqlite(q, a);
@@ -1115,7 +1531,12 @@ async fn fetch_sqlite<'e, E: Executor<'e, Database = Sqlite>>(sql: &str, args: &
     q.fetch_all(e).await
 }
 
-async fn stream_sqlite<'e, E, F>(sql: &str, args: &[Param], e: E, visit: &mut F) -> Result<(u64, bool)>
+async fn stream_sqlite<'e, E, F>(
+    sql: &str,
+    args: &[Param],
+    e: E,
+    visit: &mut F,
+) -> Result<(u64, bool)>
 where
     E: Executor<'e, Database = Sqlite>,
     F: FnMut(DriverRow) -> Result<bool>,
@@ -1135,7 +1556,11 @@ where
     Ok((count, true))
 }
 
-async fn exec_sqlite<'e, E: Executor<'e, Database = Sqlite>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<(u64, u64)> {
+async fn exec_sqlite<'e, E: Executor<'e, Database = Sqlite>>(
+    sql: &str,
+    args: &[Param],
+    e: E,
+) -> sqlx::Result<(u64, u64)> {
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for a in args {
         q = bind_sqlite(q, a);
@@ -1160,29 +1585,64 @@ fn statement(st: &Step, parent_vals: Vec<Param>, numbered: bool) -> (Cow<'_, str
     }
 }
 
-async fn run_query(db: &Db, target: Target<'_>, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<DriverRow>> {
+async fn run_query(
+    db: &Db,
+    target: Target<'_>,
+    st: &Step,
+    params: &[Param],
+    parent_vals: Vec<Param>,
+) -> Result<Vec<DriverRow>> {
     let (sql, parent_vals) = statement(st, parent_vals, matches!(db.pool, Pool::Postgres(_)));
     let args = db.args(st, params, &parent_vals)?;
     let start = std::time::Instant::now();
     let r: Result<Vec<DriverRow>> = match target {
-        Target::Pool(Pool::MySql(p)) => fetch_mysql(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
-		Target::Tx(TxInner::MySql(t)) => fetch_mysql(&sql, &args, &mut **t.conn.as_mut().expect("active MySQL transaction connection")).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
+        Target::Pool(Pool::MySql(p)) => fetch_mysql(&sql, &args, p)
+            .await
+            .map(|v| v.into_iter().map(DriverRow::MySql).collect())
+            .map_err(Error::from),
+        Target::Tx(TxInner::MySql(t)) => fetch_mysql(
+            &sql,
+            &args,
+            &mut **t
+                .conn
+                .as_mut()
+                .expect("active MySQL transaction connection"),
+        )
+        .await
+        .map(|v| v.into_iter().map(DriverRow::MySql).collect())
+        .map_err(Error::from),
         Target::Pool(Pool::Postgres(p)) => match db.pg_types_pool(p, &sql).await {
-            Ok(types) => fetch_pg(&sql, &args, &types, p).await.map(|v| v.into_iter().map(DriverRow::Postgres).collect()),
+            Ok(types) => fetch_pg(&sql, &args, &types, p)
+                .await
+                .map(|v| v.into_iter().map(DriverRow::Postgres).collect()),
             Err(e) => Err(e),
         },
         Target::Tx(TxInner::Postgres(t)) => match db.pg_types_conn(&mut **t, &sql).await {
-            Ok(types) => fetch_pg(&sql, &args, &types, &mut **t).await.map(|v| v.into_iter().map(DriverRow::Postgres).collect()),
+            Ok(types) => fetch_pg(&sql, &args, &types, &mut **t)
+                .await
+                .map(|v| v.into_iter().map(DriverRow::Postgres).collect()),
             Err(e) => Err(e),
         },
-        Target::Pool(Pool::Sqlite(p)) => fetch_sqlite(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from),
-        Target::Tx(TxInner::Sqlite(t)) => fetch_sqlite(&sql, &args, &mut **t).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from),
+        Target::Pool(Pool::Sqlite(p)) => fetch_sqlite(&sql, &args, p)
+            .await
+            .map(|v| v.into_iter().map(DriverRow::Sqlite).collect())
+            .map_err(Error::from),
+        Target::Tx(TxInner::Sqlite(t)) => fetch_sqlite(&sql, &args, &mut **t)
+            .await
+            .map(|v| v.into_iter().map(DriverRow::Sqlite).collect())
+            .map_err(Error::from),
     };
     db.emit(st, &sql, &args, parent_vals.len(), start, r.as_ref().err());
     r
 }
 
-async fn run_stream<F>(db: &Db, target: Target<'_>, st: &Step, params: &[Param], visit: &mut F) -> Result<(u64, bool)>
+async fn run_stream<F>(
+    db: &Db,
+    target: Target<'_>,
+    st: &Step,
+    params: &[Param],
+    visit: &mut F,
+) -> Result<(u64, bool)>
 where
     F: FnMut(DriverRow) -> Result<bool>,
 {
@@ -1191,7 +1651,18 @@ where
     let start = std::time::Instant::now();
     let result = match target {
         Target::Pool(Pool::MySql(pool)) => stream_mysql(sql, &args, pool, visit).await,
-		Target::Tx(TxInner::MySql(tx)) => stream_mysql(sql, &args, &mut **tx.conn.as_mut().expect("active MySQL transaction connection"), visit).await,
+        Target::Tx(TxInner::MySql(tx)) => {
+            stream_mysql(
+                sql,
+                &args,
+                &mut **tx
+                    .conn
+                    .as_mut()
+                    .expect("active MySQL transaction connection"),
+                visit,
+            )
+            .await
+        }
         Target::Pool(Pool::Postgres(pool)) => {
             let types = db.pg_types_pool(pool, sql).await?;
             stream_pg(sql, &args, &types, pool, visit).await
@@ -1207,13 +1678,27 @@ where
     result
 }
 
-async fn run_execute(db: &Db, target: Target<'_>, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
+async fn run_execute(
+    db: &Db,
+    target: Target<'_>,
+    st: &Step,
+    params: &[Param],
+) -> Result<(u64, u64)> {
     let args = db.args(st, params, &[])?;
     let sql = st.sql.as_str();
     let start = std::time::Instant::now();
     let r: Result<(u64, u64)> = match target {
         Target::Pool(Pool::MySql(p)) => exec_mysql(sql, &args, p).await.map_err(Error::from),
-		Target::Tx(TxInner::MySql(t)) => exec_mysql(sql, &args, &mut **t.conn.as_mut().expect("active MySQL transaction connection")).await.map_err(Error::from),
+        Target::Tx(TxInner::MySql(t)) => exec_mysql(
+            sql,
+            &args,
+            &mut **t
+                .conn
+                .as_mut()
+                .expect("active MySQL transaction connection"),
+        )
+        .await
+        .map_err(Error::from),
         Target::Pool(Pool::Postgres(p)) => match db.pg_types_pool(p, sql).await {
             Ok(types) => exec_pg(sql, &args, &types, p).await,
             Err(e) => Err(e),
@@ -1223,7 +1708,9 @@ async fn run_execute(db: &Db, target: Target<'_>, st: &Step, params: &[Param]) -
             Err(e) => Err(e),
         },
         Target::Pool(Pool::Sqlite(p)) => exec_sqlite(sql, &args, p).await.map_err(Error::from),
-        Target::Tx(TxInner::Sqlite(t)) => exec_sqlite(sql, &args, &mut **t).await.map_err(Error::from),
+        Target::Tx(TxInner::Sqlite(t)) => {
+            exec_sqlite(sql, &args, &mut **t).await.map_err(Error::from)
+        }
     };
     db.emit(st, sql, &args, 0, start, r.as_ref().err());
     r
@@ -1235,9 +1722,18 @@ pub trait Exec: Sync {
     /// The transaction this executor runs in; None for a `Db` (each statement on its own).
     fn tx(&self) -> Option<&Tx>;
     /// Runs a select step; `parent_vals` are the values for its `parent` slot (empty for the main step).
-    fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> impl Future<Output = Result<Vec<DriverRow>>> + Send;
+    fn query(
+        &self,
+        st: &Step,
+        params: &[Param],
+        parent_vals: Vec<Param>,
+    ) -> impl Future<Output = Result<Vec<DriverRow>>> + Send;
     /// Runs a write step; returns (last insert id as the driver reports it, rows affected).
-    fn execute(&self, st: &Step, params: &[Param]) -> impl Future<Output = Result<(u64, u64)>> + Send;
+    fn execute(
+        &self,
+        st: &Step,
+        params: &[Param],
+    ) -> impl Future<Output = Result<(u64, u64)>> + Send;
 }
 
 impl Exec for Db {
@@ -1249,7 +1745,12 @@ impl Exec for Db {
         None
     }
 
-    async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<DriverRow>> {
+    async fn query(
+        &self,
+        st: &Step,
+        params: &[Param],
+        parent_vals: Vec<Param>,
+    ) -> Result<Vec<DriverRow>> {
         run_query(self, Target::Pool(&self.pool), st, params, parent_vals).await
     }
 
@@ -1267,17 +1768,26 @@ impl Exec for Tx {
         Some(self)
     }
 
-    async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<DriverRow>> {
+    async fn query(
+        &self,
+        st: &Step,
+        params: &[Param],
+        parent_vals: Vec<Param>,
+    ) -> Result<Vec<DriverRow>> {
         let mut guard = self.inner.lock().await;
         self.assert_active()?;
-        let tx = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
+        let tx = guard
+            .as_mut()
+            .ok_or_else(|| Error::Config("transaction already finished".into()))?;
         run_query(&self.db, Target::Tx(tx), st, params, parent_vals).await
     }
 
     async fn execute(&self, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
         let mut guard = self.inner.lock().await;
         self.assert_active()?;
-        let tx = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
+        let tx = guard
+            .as_mut()
+            .ok_or_else(|| Error::Config("transaction already finished".into()))?;
         run_execute(&self.db, Target::Tx(tx), st, params).await
     }
 }
@@ -1297,14 +1807,22 @@ where
 {
     req.ir.kind = "all".into();
     let plan = ex.db().plan(req).await?;
-    if plan.steps.iter().skip(1).any(|step| step.role == "relation") {
+    if plan
+        .steps
+        .iter()
+        .skip(1)
+        .any(|step| step.role == "relation")
+    {
         return Err(Error::Engine {
             code: crate::codes::IR_INVALID.into(),
             msg: "stream does not support separate relation steps; use a join or gets".into(),
         });
     }
     let step = &plan.steps[0];
-    let assemble = step.assemble.clone().ok_or_else(|| Error::internal("no assemble"))?;
+    let assemble = step
+        .assemble
+        .clone()
+        .ok_or_else(|| Error::internal("no assemble"))?;
     let context = Rows {
         binding: crate::binding::Binding::new(ex),
         assemble: assemble.clone(),
@@ -1328,17 +1846,30 @@ where
     let (count, exhausted) = if let Some(tx) = ex.tx() {
         let mut guard = tx.inner.lock().await;
         tx.assert_active()?;
-        let target = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
+        let target = guard
+            .as_mut()
+            .ok_or_else(|| Error::Config("transaction already finished".into()))?;
         run_stream(db, Target::Tx(target), step, &req.params, &mut decode).await?
     } else {
         run_stream(db, Target::Pool(&db.pool), step, &req.params, &mut decode).await?
     };
-    Ok(StreamResult { state: if exhausted { STREAM_EXHAUSTED } else { STREAM_STOPPED }, count })
+    Ok(StreamResult {
+        state: if exhausted {
+            STREAM_EXHAUSTED
+        } else {
+            STREAM_STOPPED
+        },
+        count,
+    })
 }
 
 /// Driver rows as decoded positional rows: cells by column type, styled cells through their
 /// host and codec stages.
-fn positional(raw: &[DriverRow], asm: &Assemble, aes_keys: &BTreeMap<i32, String>) -> Result<Vec<Vec<Val>>> {
+fn positional(
+    raw: &[DriverRow],
+    asm: &Assemble,
+    aes_keys: &BTreeMap<i32, String>,
+) -> Result<Vec<Vec<Val>>> {
     let n = asm.total_columns();
     let mut data: Vec<Vec<Val>> = raw.iter().map(|r| read_row(r, n)).collect::<Result<_>>()?;
     decode_styled(asm, &mut data, aes_keys)?;
@@ -1348,17 +1879,33 @@ fn positional(raw: &[DriverRow], asm: &Assemble, aes_keys: &BTreeMap<i32, String
 async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows> {
     let db = ex.db();
     let st = &plan.steps[0];
-    let asm = st.assemble.clone().ok_or_else(|| Error::internal("no assemble"))?;
+    let asm = st
+        .assemble
+        .clone()
+        .ok_or_else(|| Error::internal("no assemble"))?;
     let raw = ex.query(st, &req.params, Vec::new()).await?;
     let has_relations = plan.steps.iter().skip(1).any(|s| s.role == "relation");
     // Relation steps read parent values positionally and attach by key. Without them a MySQL
     // driver row goes straight to the generated struct; PostgreSQL/SQLite rows are decoded here.
-    let cells: Vec<Cells> = if !has_relations && matches!(db.pool, Pool::MySql(_)) && !assemble_has_aes(&asm) {
-        raw.into_iter().map(|r| Cells::Raw(r.into_mysql())).collect()
-    } else {
-        positional(&raw, &asm, &db.cfg.aes_keys)?.into_iter().map(Cells::Pos).collect()
+    let cells: Vec<Cells> =
+        if !has_relations && matches!(db.pool, Pool::MySql(_)) && !assemble_has_aes(&asm) {
+            raw.into_iter()
+                .map(|r| Cells::Raw(r.into_mysql()))
+                .collect()
+        } else {
+            positional(&raw, &asm, &db.cfg.aes_keys)?
+                .into_iter()
+                .map(Cells::Pos)
+                .collect()
+        };
+    let mut rows = Rows {
+        binding: crate::binding::Binding::new(ex),
+        assemble: asm,
+        cells,
+        plan: plan.clone(),
+        steps: HashMap::new(),
+        params: Vec::new(),
     };
-    let mut rows = Rows { binding: crate::binding::Binding::new(ex), assemble: asm, cells, plan: plan.clone(), steps: HashMap::new(), params: Vec::new() };
     for st in plan.steps.iter().skip(1) {
         if st.role != "relation" {
             continue;
@@ -1367,9 +1914,16 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
         let vals = if pr.step == 0 {
             parent_values(pr, rows.positional(), &req.params)
         } else {
-            parent_values(pr, rows.steps[&pr.step].data.iter().map(Vec::as_slice), &req.params)
+            parent_values(
+                pr,
+                rows.steps[&pr.step].data.iter().map(Vec::as_slice),
+                &req.params,
+            )
         };
-        let mut sr = StepRows { data: Vec::new(), by_key: HashMap::new() };
+        let mut sr = StepRows {
+            data: Vec::new(),
+            by_key: HashMap::new(),
+        };
         if !vals.is_empty() {
             let asm = st.assemble.as_ref().expect("relation step has an assemble");
             for chunk in relation_chunks(st, vals, db.driver())? {
@@ -1378,7 +1932,9 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
             }
             let keys = child_keys(&plan, st.id);
             for (j, row) in sr.data.iter().enumerate() {
-                if let Some(key) = Key::of_row(row, &keys) { sr.by_key.entry(key).or_default().push(j); }
+                if let Some(key) = Key::of_row(row, &keys) {
+                    sr.by_key.entry(key).or_default().push(j);
+                }
             }
         }
         rows.steps.insert(st.id, sr);
@@ -1388,18 +1944,40 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
 }
 
 fn relation_chunks(st: &Step, vals: Vec<Param>, driver: &str) -> Result<Vec<Vec<Param>>> {
-    let width = st.parent.as_ref().map(|parent| parent.keys.len()).unwrap_or(0);
+    let width = st
+        .parent
+        .as_ref()
+        .map(|parent| parent.keys.len())
+        .unwrap_or(0);
     if width == 0 || vals.len() % width != 0 {
-        return Err(Error::Engine { code: crate::codes::IR_INVALID.into(), msg: format!("relation {} has invalid parent key values", st.id) });
+        return Err(Error::Engine {
+            code: crate::codes::IR_INVALID.into(),
+            msg: format!("relation {} has invalid parent key values", st.id),
+        });
     }
-    let non_parent = st.bind_slots.iter().filter(|bind| bind.from != "parent").count();
+    let non_parent = st
+        .bind_slots
+        .iter()
+        .filter(|bind| bind.from != "parent")
+        .count();
     let limit: usize = if driver == "sqlite" { 999 } else { 65535 };
     let max_tuples = (limit.saturating_sub(non_parent)) / width;
     if max_tuples == 0 {
-        return Err(Error::Engine { code: crate::codes::IR_INVALID.into(), msg: format!("relation {} needs at least {} bind parameters but {} permits {}", st.id, non_parent + width, driver, limit) });
+        return Err(Error::Engine {
+            code: crate::codes::IR_INVALID.into(),
+            msg: format!(
+                "relation {} needs at least {} bind parameters but {} permits {}",
+                st.id,
+                non_parent + width,
+                driver,
+                limit
+            ),
+        });
     }
     let mut chunk_tuples = 1usize;
-    while chunk_tuples.saturating_mul(2) <= max_tuples { chunk_tuples *= 2; }
+    while chunk_tuples.saturating_mul(2) <= max_tuples {
+        chunk_tuples *= 2;
+    }
     let tuples = vals.len() / width;
     let mut chunks = Vec::with_capacity((tuples + chunk_tuples - 1) / chunk_tuples);
     for start in (0..tuples).step_by(chunk_tuples) {
@@ -1410,8 +1988,14 @@ fn relation_chunks(st: &Step, vals: Vec<Param>, driver: &str) -> Result<Vec<Vec<
 }
 
 fn assemble_has_aes(asm: &Assemble) -> bool {
-    asm.columns.iter().any(|c| c.styles.iter().any(|style| style == "aes"))
-        || asm.children.iter().filter_map(|child| child.assemble.as_deref()).any(assemble_has_aes)
+    asm.columns
+        .iter()
+        .any(|c| c.styles.iter().any(|style| style == "aes"))
+        || asm
+            .children
+            .iter()
+            .filter_map(|child| child.assemble.as_deref())
+            .any(assemble_has_aes)
 }
 
 /// The first cell of the first row (Null when there is no row).
@@ -1453,7 +2037,11 @@ pub async fn paginate(ex: &impl Exec, req: &mut Req) -> Result<(Rows, i64)> {
     req.ir.kind = "paginate".into();
     let plan = ex.db().plan(req).await?;
     let rows = run_plan(ex, plan.clone(), req).await?;
-    let count = plan.steps.iter().find(|s| s.role == "count").expect("paginate plan has a count step");
+    let count = plan
+        .steps
+        .iter()
+        .find(|s| s.role == "count")
+        .expect("paginate plan has a count step");
     let cnt = ex.query(count, &rows.params, Vec::new()).await?;
     let total = first_cell(&cnt)?.as_i64();
     Ok((rows, total))
@@ -1484,7 +2072,9 @@ pub struct BatchOptions {
 }
 
 impl Default for BatchOptions {
-    fn default() -> Self { Self { chunk_size: 1000 } }
+    fn default() -> Self {
+        Self { chunk_size: 1000 }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -1494,7 +2084,12 @@ pub struct BatchResult {
     pub inserted: u64,
 }
 
-async fn batch_write_target(ex: &impl Exec, requests: &mut [Req], kind: &str, options: BatchOptions) -> Result<BatchResult> {
+async fn batch_write_target(
+    ex: &impl Exec,
+    requests: &mut [Req],
+    kind: &str,
+    options: BatchOptions,
+) -> Result<BatchResult> {
     let mut result = BatchResult::default();
     for chunk in requests.chunks_mut(options.chunk_size.max(1)) {
         for request in chunk {
@@ -1515,20 +2110,31 @@ async fn batch_write_target(ex: &impl Exec, requests: &mut [Req], kind: &str, op
 
 /// Executes typed generated requests in one transaction. A transaction
 /// supplied by the caller is reused; a pool executor creates one transaction.
-pub async fn batch_write(ex: &impl Exec, mut requests: Vec<Req>, kind: &str, options: BatchOptions) -> Result<BatchResult> {
+pub async fn batch_write(
+    ex: &impl Exec,
+    mut requests: Vec<Req>,
+    kind: &str,
+    options: BatchOptions,
+) -> Result<BatchResult> {
     if !matches!(kind, "insert" | "update" | "delete") {
-        return Err(Error::Config(format!("batch kind {kind:?} is not supported")));
+        return Err(Error::Config(format!(
+            "batch kind {kind:?} is not supported"
+        )));
     }
-    if requests.is_empty() { return Ok(BatchResult::default()); }
+    if requests.is_empty() {
+        return Ok(BatchResult::default());
+    }
     if ex.tx().is_some() {
         return batch_write_target(ex, &mut requests, kind, options).await;
     }
     let kind = kind.to_owned();
-    ex.db().transaction(|tx| {
-        let mut requests = requests.clone();
-        let kind = kind.clone();
-        async move { batch_write_target(&tx, &mut requests, &kind, options).await }
-    }).await
+    ex.db()
+        .transaction(|tx| {
+            let mut requests = requests.clone();
+            let kind = kind.clone();
+            async move { batch_write_target(&tx, &mut requests, &kind, options).await }
+        })
+        .await
 }
 
 /// The main statement of a query, rendered but not executed (`sql(&db)`).
@@ -1552,14 +2158,25 @@ pub async fn sql(ex: &impl Exec, req: &mut Req, kind: &str) -> Result<Sql> {
             "param" => binds.push(param_arg(b, &req.params)?),
             "secret" => binds.push(Param::Str(SECRET_MASK.into())),
             "config" => match b.name.as_str() {
-                "aes_version" if ex.db().cfg.aes_version > 0 => binds.push(Param::I64(ex.db().cfg.aes_version as i64)),
-                _ => return Err(Error::Config(format!("config value {} not configured", b.name))),
+                "aes_version" if ex.db().cfg.aes_version > 0 => {
+                    binds.push(Param::I64(ex.db().cfg.aes_version as i64))
+                }
+                _ => {
+                    return Err(Error::Config(format!(
+                        "config value {} not configured",
+                        b.name
+                    )))
+                }
             },
             "now" => binds.push(Param::Str(NOW_MASK.into())),
             other => return Err(Error::Config(format!("bind from {other}"))),
         }
     }
-    Ok(Sql { sql: st.sql.clone(), binds, plan_id: st.plan_id })
+    Ok(Sql {
+        sql: st.sql.clone(),
+        binds,
+        plan_id: st.plan_id,
+    })
 }
 
 /// Whether a joined node's slice of the row is present (its first column is not NULL).
@@ -1571,8 +2188,8 @@ pub fn join_present(src: &mut impl Src, a: &Assemble) -> bool {
 mod tests {
     use super::*;
     use sha2::Digest;
-    use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
 
     struct BundleCompiler {
         schema_hash: String,
@@ -1587,22 +2204,45 @@ mod tests {
     impl PlanCompiler for CountingPlanCompiler {
         async fn compile(&self, request: &ir::Request) -> Result<Plan> {
             self.calls.fetch_add(1, Ordering::SeqCst);
-            Ok(Plan { schema_hash: self.schema_hash.clone(), kind: request.kind.clone(), steps: vec![Step { plan_id: 0, id: 0, role: "main".into(), sql: request.kind.clone(), bind_slots: Vec::new(), assemble: None, parent: None }] })
+            Ok(Plan {
+                schema_hash: self.schema_hash.clone(),
+                kind: request.kind.clone(),
+                steps: vec![Step {
+                    plan_id: 0,
+                    id: 0,
+                    role: "main".into(),
+                    sql: request.kind.clone(),
+                    bind_slots: Vec::new(),
+                    assemble: None,
+                    parent: None,
+                }],
+            })
         }
 
         async fn metadata(&self) -> Result<GetMetadataResponse> {
-            Ok(GetMetadataResponse { schema_hash: self.schema_hash.clone(), dialect: "sqlite".into(), ir_version: 1 })
+            Ok(GetMetadataResponse {
+                schema_hash: self.schema_hash.clone(),
+                dialect: "sqlite".into(),
+                ir_version: 1,
+            })
         }
     }
 
     #[async_trait::async_trait]
     impl CompilerTransport for BundleCompiler {
-        async fn compile(&self, _request: crate::compiler_proto::CompileRequest) -> Result<crate::compiler_proto::Plan> {
+        async fn compile(
+            &self,
+            _request: crate::compiler_proto::CompileRequest,
+        ) -> Result<crate::compiler_proto::Plan> {
             panic!("compiler must not be called after loading a plan bundle")
         }
 
         async fn metadata(&self) -> Result<GetMetadataResponse> {
-            Ok(GetMetadataResponse { schema_hash: self.schema_hash.clone(), dialect: "sqlite".into(), ir_version: 1 })
+            Ok(GetMetadataResponse {
+                schema_hash: self.schema_hash.clone(),
+                dialect: "sqlite".into(),
+                ir_version: 1,
+            })
         }
     }
 
@@ -1612,55 +2252,131 @@ mod tests {
             id: 1,
             role: "relation".into(),
             sql: sql.into(),
-            bind_slots: slots.iter().map(|f| BindSlot { from: f.to_string(), param: 0, transform: String::new(), name: String::new(), step: 0, column: String::new(), host_styles: Vec::new(), col_type: String::new() }).collect(),
+            bind_slots: slots
+                .iter()
+                .map(|f| BindSlot {
+                    from: f.to_string(),
+                    param: 0,
+                    transform: String::new(),
+                    name: String::new(),
+                    step: 0,
+                    column: String::new(),
+                    host_styles: Vec::new(),
+                    col_type: String::new(),
+                })
+                .collect(),
             assemble: None,
-            parent: Some(ParentRef { step: 0, keys: vec![crate::plan::KeyRef { column: "seq".into(), index: 0 }], if_parent: None }),
+            parent: Some(ParentRef {
+                step: 0,
+                keys: vec![crate::plan::KeyRef {
+                    column: "seq".into(),
+                    index: 0,
+                }],
+                if_parent: None,
+            }),
         }
     }
 
     #[test]
     fn expand_in_renumbers_postgres_placeholders() {
-        let st = step(r#"SELECT "a"."seq" FROM "t" AS "a" WHERE "a"."x" = $1 AND "a"."seq" IN ($2) AND "a"."y" > $3 ORDER BY $4"#, &["param", "parent", "param", "param"]);
+        let st = step(
+            r#"SELECT "a"."seq" FROM "t" AS "a" WHERE "a"."x" = $1 AND "a"."seq" IN ($2) AND "a"."y" > $3 ORDER BY $4"#,
+            &["param", "parent", "param", "param"],
+        );
         let vals = vec![Param::I64(1), Param::I64(2), Param::I64(3)];
         let (sql, padded) = expand_in(&st, vals, true);
-        assert_eq!(sql, r#"SELECT "a"."seq" FROM "t" AS "a" WHERE "a"."x" = $1 AND "a"."seq" IN ($2, $3, $4, $5) AND "a"."y" > $6 ORDER BY $7"#);
-        assert_eq!(padded, vec![Param::I64(1), Param::I64(2), Param::I64(3), Param::I64(3)]);
+        assert_eq!(
+            sql,
+            r#"SELECT "a"."seq" FROM "t" AS "a" WHERE "a"."x" = $1 AND "a"."seq" IN ($2, $3, $4, $5) AND "a"."y" > $6 ORDER BY $7"#
+        );
+        assert_eq!(
+            padded,
+            vec![Param::I64(1), Param::I64(2), Param::I64(3), Param::I64(3)]
+        );
         let (sql, padded) = expand_in(&st, vec![Param::I64(9)], true);
-        assert_eq!(sql, r#"SELECT "a"."seq" FROM "t" AS "a" WHERE "a"."x" = $1 AND "a"."seq" IN ($2) AND "a"."y" > $3 ORDER BY $4"#);
+        assert_eq!(
+            sql,
+            r#"SELECT "a"."seq" FROM "t" AS "a" WHERE "a"."x" = $1 AND "a"."seq" IN ($2) AND "a"."y" > $3 ORDER BY $4"#
+        );
         assert_eq!(padded, vec![Param::I64(9)]);
     }
 
     #[test]
     fn expand_in_question_marks() {
-        let st = step("SELECT 1 FROM t WHERE x = ? AND seq IN (?) AND y > ?", &["param", "parent", "param"]);
-        let (sql, padded) = expand_in(&st, vec![Param::I64(1), Param::I64(2), Param::I64(3)], false);
-        assert_eq!(sql, "SELECT 1 FROM t WHERE x = ? AND seq IN (?, ?, ?, ?) AND y > ?");
+        let st = step(
+            "SELECT 1 FROM t WHERE x = ? AND seq IN (?) AND y > ?",
+            &["param", "parent", "param"],
+        );
+        let (sql, padded) = expand_in(
+            &st,
+            vec![Param::I64(1), Param::I64(2), Param::I64(3)],
+            false,
+        );
+        assert_eq!(
+            sql,
+            "SELECT 1 FROM t WHERE x = ? AND seq IN (?, ?, ?, ?) AND y > ?"
+        );
         assert_eq!(padded.len(), 4);
     }
 
     #[test]
     fn composite_parent_values_and_expansion_preserve_tuples() {
-        let mut st = step("SELECT 1 WHERE (tenant_id, parent_id) IN ((?))", &["parent"]);
+        let mut st = step(
+            "SELECT 1 WHERE (tenant_id, parent_id) IN ((?))",
+            &["parent"],
+        );
         st.parent.as_mut().unwrap().keys = vec![
-            crate::plan::KeyRef { column: "tenant_id".into(), index: 0 },
-            crate::plan::KeyRef { column: "parent_id".into(), index: 1 },
+            crate::plan::KeyRef {
+                column: "tenant_id".into(),
+                index: 0,
+            },
+            crate::plan::KeyRef {
+                column: "parent_id".into(),
+                index: 1,
+            },
         ];
-        let rows = vec![vec![Val::I64(1), Val::I64(2)], vec![Val::I64(1), Val::I64(3)], vec![Val::I64(1), Val::I64(2)], vec![Val::I64(2), Val::Null]];
-        let values = parent_values(st.parent.as_ref().unwrap(), rows.iter().map(Vec::as_slice), &[]);
-        assert_eq!(values, vec![Param::I64(1), Param::I64(2), Param::I64(1), Param::I64(3)]);
+        let rows = vec![
+            vec![Val::I64(1), Val::I64(2)],
+            vec![Val::I64(1), Val::I64(3)],
+            vec![Val::I64(1), Val::I64(2)],
+            vec![Val::I64(2), Val::Null],
+        ];
+        let values = parent_values(
+            st.parent.as_ref().unwrap(),
+            rows.iter().map(Vec::as_slice),
+            &[],
+        );
+        assert_eq!(
+            values,
+            vec![Param::I64(1), Param::I64(2), Param::I64(1), Param::I64(3)]
+        );
         let (sql, values) = expand_in(&st, values, false);
-        assert_eq!(sql, "SELECT 1 WHERE (tenant_id, parent_id) IN ((?, ?), (?, ?))");
+        assert_eq!(
+            sql,
+            "SELECT 1 WHERE (tenant_id, parent_id) IN ((?, ?), (?, ?))"
+        );
         assert_eq!(values.len(), 4);
     }
 
     #[test]
     fn relation_chunks_bound_sqlite_parameters_and_preserve_order() {
-        let mut st = step("SELECT 1 WHERE (tenant_id, parent_id) IN ((?))", &["parent", "param"]);
+        let mut st = step(
+            "SELECT 1 WHERE (tenant_id, parent_id) IN ((?))",
+            &["parent", "param"],
+        );
         st.parent.as_mut().unwrap().keys = vec![
-            crate::plan::KeyRef { column: "tenant_id".into(), index: 0 },
-            crate::plan::KeyRef { column: "parent_id".into(), index: 1 },
+            crate::plan::KeyRef {
+                column: "tenant_id".into(),
+                index: 0,
+            },
+            crate::plan::KeyRef {
+                column: "parent_id".into(),
+                index: 1,
+            },
         ];
-        let values = (0..600).flat_map(|id| [Param::I64(1), Param::I64(id)]).collect();
+        let values = (0..600)
+            .flat_map(|id| [Param::I64(1), Param::I64(id)])
+            .collect();
         let chunks = relation_chunks(&st, values, "sqlite").unwrap();
         assert_eq!(chunks.len(), 3);
         assert!(chunks.iter().all(|chunk| chunk.len() <= 512));
@@ -1672,16 +2388,40 @@ mod tests {
     async fn loaded_plan_bundle_skips_compiler() {
         let schema = std::fs::read("../../../schema/schema.json").unwrap();
         let wasm = std::fs::read("../../../bin/ormengine.wasm").unwrap();
-        let engine = Arc::new(Engine::new(crate::engine::EngineConfig { wasm: &wasm, schema_json: &schema, dialect: "sqlite", cache_dir: None }).unwrap());
-        let compiler = Arc::new(BundleCompiler { schema_hash: engine.schema_hash.clone() });
+        let engine = Arc::new(
+            Engine::new(crate::engine::EngineConfig {
+                wasm: &wasm,
+                schema_json: &schema,
+                dialect: "sqlite",
+                cache_dir: None,
+            })
+            .unwrap(),
+        );
+        let compiler = Arc::new(BundleCompiler {
+            schema_hash: engine.schema_hash.clone(),
+        });
         let opts = ConnectOptions::parse("sqlite", "sqlite::memory:").unwrap();
-        let cfg = Config { aes_key: String::new(), blind_index_key: String::new(), aes_version: 1, aes_keys: BTreeMap::new(), plan_cache_size: 2, statement_cache_size: 2, on_query: None };
-        let db = Db::connect_with_compiler(opts, 1, engine.clone(), compiler, cfg).await.unwrap();
+        let cfg = Config {
+            aes_key: String::new(),
+            blind_index_key: String::new(),
+            aes_version: 1,
+            aes_keys: BTreeMap::new(),
+            plan_cache_size: 2,
+            statement_cache_size: 2,
+            on_query: None,
+        };
+        let db = Db::connect_with_compiler(opts, 1, engine.clone(), compiler, cfg)
+            .await
+            .unwrap();
         let mut req = Req::new(&engine.schema_hash, "battle");
         let canonical = canonical_json(serde_json::to_value(&req.ir).unwrap());
-        let request_hash = format!("{:x}", sha2::Sha256::digest(serde_json::to_vec(&canonical).unwrap()));
+        let request_hash = format!(
+            "{:x}",
+            sha2::Sha256::digest(serde_json::to_vec(&canonical).unwrap())
+        );
         let bundle = serde_json::json!({"version":1,"schema_hash":engine.schema_hash,"dialect":"sqlite","request_sha256":request_hash,"plan":{"schema_hash":engine.schema_hash,"kind":"all","steps":[{"id":0,"role":"main","sql":"SELECT 1"}]}});
-        db.load_plan_bundle(&serde_json::to_vec(&bundle).unwrap(), &mut req).unwrap();
+        db.load_plan_bundle(&serde_json::to_vec(&bundle).unwrap(), &mut req)
+            .unwrap();
         let plan = db.plan(&mut req).await.unwrap();
         assert_eq!(plan.steps[0].sql, "SELECT 1");
         db.close().await;
@@ -1689,8 +2429,14 @@ mod tests {
 
     #[tokio::test]
     async fn sqlx_statement_cache_pressure_and_close() {
-        let options = SqliteConnectOptions::from_str("sqlite::memory:").unwrap().statement_cache_capacity(2);
-        let pool = SqlitePoolOptions::new().max_connections(1).connect_with(options).await.unwrap();
+        let options = SqliteConnectOptions::from_str("sqlite::memory:")
+            .unwrap()
+            .statement_cache_capacity(2);
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(options)
+            .await
+            .unwrap();
         for sql in ["SELECT 110", "SELECT 120", "SELECT 130", "SELECT 110"] {
             sqlx::query(sql).execute(&pool).await.unwrap();
         }
@@ -1703,19 +2449,42 @@ mod tests {
     async fn plan_cache_evicts_oldest_and_close_clears_entries() {
         let schema = std::fs::read("../../../schema/schema.json").unwrap();
         let wasm = std::fs::read("../../../bin/ormengine.wasm").unwrap();
-        let engine = Arc::new(Engine::new(crate::engine::EngineConfig { wasm: &wasm, schema_json: &schema, dialect: "sqlite", cache_dir: None }).unwrap());
+        let engine = Arc::new(
+            Engine::new(crate::engine::EngineConfig {
+                wasm: &wasm,
+                schema_json: &schema,
+                dialect: "sqlite",
+                cache_dir: None,
+            })
+            .unwrap(),
+        );
         let calls = Arc::new(AtomicUsize::new(0));
-        let compiler = Arc::new(CountingPlanCompiler { schema_hash: engine.schema_hash.clone(), calls: calls.clone() });
+        let compiler = Arc::new(CountingPlanCompiler {
+            schema_hash: engine.schema_hash.clone(),
+            calls: calls.clone(),
+        });
         let opts = ConnectOptions::parse("sqlite", "sqlite::memory:").unwrap();
-        let cfg = Config { aes_key: String::new(), blind_index_key: String::new(), aes_version: 1, aes_keys: BTreeMap::new(), plan_cache_size: 2, statement_cache_size: 2, on_query: None };
-        let db = Db::connect_with_plan_compiler(opts, 1, engine.clone(), compiler, cfg).await.unwrap();
+        let cfg = Config {
+            aes_key: String::new(),
+            blind_index_key: String::new(),
+            aes_version: 1,
+            aes_keys: BTreeMap::new(),
+            plan_cache_size: 2,
+            statement_cache_size: 2,
+            on_query: None,
+        };
+        let db = Db::connect_with_plan_compiler(opts, 1, engine.clone(), compiler, cfg)
+            .await
+            .unwrap();
         let mut requests = Vec::new();
         for kind in ["all", "count", "one"] {
             let mut request = Req::new(&engine.schema_hash, "battle");
             request.ir.kind = kind.into();
             requests.push(request);
         }
-        for request in &mut requests { db.plan(request).await.unwrap(); }
+        for request in &mut requests {
+            db.plan(request).await.unwrap();
+        }
         db.plan(&mut requests[0]).await.unwrap();
         assert_eq!(calls.load(Ordering::SeqCst), 4);
         db.close().await;

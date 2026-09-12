@@ -252,6 +252,13 @@ export class Db implements Database, Executor {
     }
   }
 
+  /** Executes a row plan and retains raw rows for generated keyset cursors. */
+  public async executeRows(plan: Plan, params: Param[]): Promise<ExecutionRows> {
+    if (this.closed) throw new OrmError('CONFIG', 'database is closed');
+    if (plan.schema_hash !== this.schemaHash || plan.kind !== 'all') throw new OrmError('CONFIG', 'keyset row plan does not match this database');
+    return this.select(plan, params);
+  }
+
   public async stream<T extends Row>(plan: Plan, params: Param[], visit: (row: T) => boolean | Promise<boolean>): Promise<StreamResult> {
     if (plan.schema_hash !== this.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `plan schema ${plan.schema_hash} but client schema is ${this.schemaHash}`);
     if (plan.steps.slice(1).some(step => step.role === 'relation')) throw new OrmError('IR_INVALID', 'stream does not support separate relation steps; use a join or gets');

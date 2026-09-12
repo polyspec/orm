@@ -108,12 +108,18 @@ export interface RequestQuery {
   distinct?: boolean;
   force_index?: string;
   lock?: 'update' | 'share';
+  keyset?: Keyset;
   key_by?: string;
   flatten?: boolean;
   limit_per_parent?: number;
   if_parent?: IfParent;
   drop_child_key?: boolean;
   no_cascade_delete?: boolean;
+}
+
+export interface Keyset {
+  direction: 'after' | 'before';
+  values: number[];
 }
 
 export interface Request extends RequestQuery {
@@ -212,7 +218,8 @@ export { Db, Tx, batchWrite } from './database.js';
 export type { DatabaseOptions, QueryEvent } from './database.js';
 export { loadConfig, resolveAesKey, resolveBlindIndexKey } from './config.js';
 export type { FileConfig } from './config.js';
-export { Collection, ExecutionRows, Page, Row, registerRow, rowFromResult } from './model.js';
+export { Collection, ExecutionRows, KeysetPage, Page, Row, keysetPage, registerRow, rowFromResult } from './model.js';
+export { decodeKeysetCursor, encodeKeysetCursor } from './keyset.js';
 export { Binding, ColumnReference, QueryCore, RequestState, WhereCore } from './builder.js';
 export * from './gen/entities.js';
 export type { Key, RowConstructor } from './model.js';

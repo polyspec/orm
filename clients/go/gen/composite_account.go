@@ -1098,6 +1098,43 @@ func collectCompositeAccountDirect(rows []*CompositeAccountRow, keyFn func(*Comp
 	return c
 }
 
+// GetsAfter reads the next keyset page. An empty cursor starts at the first row.
+func (q *CompositeAccountQuery) GetsAfter(cursor string, per int) (*orm.KeysetPage[CompositeAccountRow], error) {
+	if err := q.q.Keyset("after", cursor, per, []string{"tenant_id", "account_id"}); err != nil {
+		return nil, err
+	}
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "all"
+	rows, err := orm.Query(ctx, ex, q.q.Req)
+	if err != nil {
+		return nil, err
+	}
+	items := collectCompositeAccount(rows, q.keyFn)
+	return orm.KeysetPageFromRows(rows, items, q.q.Req.IR.Order)
+}
+
+// GetsBefore reads the previous keyset page and restores the requested order.
+func (q *CompositeAccountQuery) GetsBefore(cursor string, per int) (*orm.KeysetPage[CompositeAccountRow], error) {
+	if err := q.q.Keyset("before", cursor, per, []string{"tenant_id", "account_id"}); err != nil {
+		return nil, err
+	}
+	ctx, ex, err := q.binding.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	q.q.Req.IR.Kind = "all"
+	rows, err := orm.Query(ctx, ex, q.q.Req)
+	if err != nil {
+		return nil, err
+	}
+	orm.ReverseRows(rows)
+	items := collectCompositeAccount(rows, q.keyFn)
+	return orm.KeysetPageFromRows(rows, items, q.q.Req.IR.Order)
+}
+
 func (q *CompositeAccountQuery) GetCount() (int64, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {

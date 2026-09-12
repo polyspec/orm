@@ -17,6 +17,8 @@ classDiagram
         relation()
         get()
         gets()
+        getsAfter()
+        getsBefore()
         stream()
         getCount()
         insert()
