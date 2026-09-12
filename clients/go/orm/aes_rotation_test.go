@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -110,5 +111,75 @@ func TestRotateAESRowsRollsBackOnMidBatchFailureAndResumes(t *testing.T) {
 	}
 	if changed, err := db.RotateAESRows(ctx, db, spec, keyring); err != nil || changed != 0 {
 		t.Fatalf("repeat: changed=%d err=%v", changed, err)
+	}
+}
+
+func TestRotateAESRowsConcurrentCallLeavesNoMixedVersions(t *testing.T) {
+	dsn := "file:" + filepath.Join(t.TempDir(), "rotation-concurrent.sqlite") + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
+	first, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer first.Close()
+	second, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Close()
+	ctx := context.Background()
+	if _, err := first.ExecContext(ctx, `CREATE TABLE rotation_concurrent (id INTEGER PRIMARY KEY, aes_key_version INTEGER NOT NULL, aes_hex_value TEXT)`); err != nil {
+		t.Fatal(err)
+	}
+	value, err := HostEncode("concurrent-value", []string{"aes", "hex"}, "old")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id := 1; id <= 4; id++ {
+		if _, err := first.ExecContext(ctx, `INSERT INTO rotation_concurrent (id, aes_key_version, aes_hex_value) VALUES (?, 1, ?)`, id, value); err != nil {
+			t.Fatal(err)
+		}
+	}
+	keyring, err := NewAESKeyring(map[int32]string{1: "old", 2: "new"}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec := AESRotationSpec{Table: "rotation_concurrent", PrimaryKeys: []string{"id"}, VersionColumn: "aes_key_version", Columns: []AESRotationColumn{{Name: "aes_hex_value", Styles: []string{"aes", "hex"}}}, BatchSize: 4}
+	dbs := []*DB{{SQL: first, driver: "sqlite", stmts: map[string]*sql.Stmt{}}, {SQL: second, driver: "sqlite", stmts: map[string]*sql.Stmt{}}}
+	results := make(chan struct {
+		changed int
+		err     error
+	}, len(dbs))
+	var wg sync.WaitGroup
+	for _, db := range dbs {
+		wg.Add(1)
+		go func(db *DB) {
+			defer wg.Done()
+			changed, err := db.RotateAESRows(ctx, db, spec, keyring)
+			results <- struct {
+				changed int
+				err     error
+			}{changed, err}
+		}(db)
+	}
+	wg.Wait()
+	close(results)
+	succeeded := 0
+	for result := range results {
+		if result.err == nil {
+			if result.changed != 0 && result.changed != 4 {
+				t.Fatalf("concurrent rotation changed=%d", result.changed)
+			}
+			succeeded++
+		}
+	}
+	if succeeded == 0 {
+		t.Fatal("both concurrent rotations failed")
+	}
+	var pending int
+	if err := first.QueryRowContext(ctx, `SELECT COUNT(*) FROM rotation_concurrent WHERE aes_key_version <> 2`).Scan(&pending); err != nil {
+		t.Fatal(err)
+	}
+	if pending != 0 {
+		t.Fatalf("concurrent rotation left %d rows pending", pending)
 	}
 }

@@ -47,7 +47,7 @@
 - [x] P10.1 model 및 property test가 schema round trip, migration operation order, cursor round trip, query cloning, codec round trip을 검사한다. schema와 generator 갱신 후 대상 test와 100회 manifest round-trip property test가 통과했다.
 - [x] P10.2 fuzz test가 Mermaid, manifest, IR, SQL migration statement splitting, cursor, ciphertext decoder의 panic 및 무제한 allocation을 검사한다. 필요한 6개 fuzz target이 로컬 1초 smoke 실행을 모두 통과했다.
 - [x] P10.3 Failure-injection test가 compiler failure, driver failure, cancellation, transaction failure, cache eviction, migration interruption, rotation interruption을 검사한다. 기존 client·migration test가 앞의 6개 실패를 검사하고, AES test가 batch 중간 database failure를 주입하여 transaction rollback과 재실행을 검사한다.
-- [ ] P10.4 Concurrency test가 optimistic update, deadlock, savepoint, migration lock, AES rotation, cache access를 검사한다.
+- [x] P10.4 Concurrency test가 optimistic update, deadlock, savepoint, migration lock, AES rotation, cache access를 검사한다. Go test가 race detector에서 concurrent plan cache 접근을 검사하고, concurrent AES rotation 후 key version 혼합이 없는지 검사한다.
 - [ ] P10.5 MySQL·PostgreSQL·SQLite 물리 검사가 parameter limit, 모든 migration operation, batch write, keyset pagination, transaction mode, encryption 변경을 `-state` 없는 containerctl로 검사한다.
 - [ ] P10.6 Go·PHP·Rust·TypeScript가 추가된 모든 operation에서 동일한 common-vector result와 호환되는 public structure를 생성한다.
 
