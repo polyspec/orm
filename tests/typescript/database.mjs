@@ -35,7 +35,7 @@ const db = new Db(connection, { schemaHash: 'hash', compiler: transport, onQuery
 const itemAssembly = { entity: 'item', alias: 'a', columns: [
   { index: 0, name: 'seq', column: 'seq', type: 'i64', styles: [], hidden: false },
   { index: 1, name: 'name', column: 'name', type: 'string', styles: [], hidden: false },
-], children: [{ rel: 'children', kind: 'many', step: 1, parent_column: 'seq', parent_index: 0, child_column: 'parent_seq', child_index: 1, key_by: 'seq', key_index: 0, flatten: false, cascade: true }] };
+], children: [{ rel: 'children', kind: 'many', step: 1, parent_keys: [{ column: 'seq', index: 0 }], child_keys: [{ column: 'parent_seq', index: 1 }], key: [{ column: 'seq', index: 0 }], flatten: false, cascade: true }] };
 const childAssembly = { entity: 'child', alias: 'b', columns: [
   { index: 0, name: 'seq', column: 'seq', type: 'i64', styles: [], hidden: false },
   { index: 1, name: 'parent_seq', column: 'parent_seq', type: 'i64', styles: [], hidden: false },
@@ -43,13 +43,41 @@ const childAssembly = { entity: 'child', alias: 'b', columns: [
 ], children: [] };
 const plan = { schema_hash: 'hash', kind: 'all', steps: [
   { id: 0, role: 'main', sql: 'main', bind_slots: [], assemble: itemAssembly },
-  { id: 1, role: 'relation', sql: 'children (?)', bind_slots: [{ from: 'parent', param: 0, transform: '', name: '', step: 0, column: '', host_styles: [], col_type: '' }], parent: { step: 0, column: 'seq', index: 0 }, assemble: childAssembly },
+  { id: 1, role: 'relation', sql: 'children (?)', bind_slots: [{ from: 'parent', param: 0, transform: '', name: '', step: 0, column: '', host_styles: [], col_type: '' }], parent: { step: 0, keys: [{ column: 'seq', index: 0 }] }, assemble: childAssembly },
 ] };
 const items = await db.execute(plan, []);
 if (items.length !== 2 || items.first().column('name') !== 'first') throw new Error('root assembly failed');
 const children = items.first().relation('children');
 if (children.length !== 2 || children.keys().join(',') !== '10,11') throw new Error('relation assembly failed');
 if (calls[2].sql !== 'children (?, ?)' || calls[2].params.join(',') !== '1,2') throw new Error('parent bind expansion failed');
+
+const compositeCalls = [];
+const compositeConnection = {
+  name: 'sqlite',
+  async execute(sql, params) {
+    compositeCalls.push({ sql, params });
+    if (sql === 'composite-main') return { rows: [[1, 2], [1, 3], [1, 2]], columns: [], affected: 0, insertId: null };
+    if (sql.startsWith('composite-children')) return { rows: [[10, 1, 2], [11, 1, 3]], columns: [], affected: 0, insertId: null };
+    throw new Error(`unexpected composite SQL ${sql}`);
+  },
+  async begin() { throw new Error('unused'); },
+  async close() {},
+};
+const compositeDb = new Db(compositeConnection, { schemaHash: 'hash', compiler: transport });
+const compositeChild = { entity: 'child', alias: 'c', columns: [
+  { index: 0, name: 'seq', column: 'seq', type: 'i64', styles: [], hidden: false },
+  { index: 1, name: 'tenant_id', column: 'tenant_id', type: 'i64', styles: [], hidden: false },
+  { index: 2, name: 'parent_id', column: 'parent_id', type: 'i64', styles: [], hidden: false },
+], children: [] };
+const compositeRoot = { entity: 'item', alias: 'p', columns: [
+  { index: 0, name: 'tenant_id', column: 'tenant_id', type: 'i64', styles: [], hidden: false },
+  { index: 1, name: 'seq', column: 'seq', type: 'i64', styles: [], hidden: false },
+], children: [{ rel: 'children', kind: 'many', step: 1, parent_keys: [{column:'tenant_id',index:0},{column:'seq',index:1}], child_keys: [{column:'tenant_id',index:1},{column:'parent_id',index:2}], key: [{column:'seq',index:0}], flatten:false, cascade:true }] };
+await compositeDb.execute({ schema_hash:'hash', kind:'all', steps:[
+  { id:0, role:'main', sql:'composite-main', bind_slots:[], assemble:compositeRoot },
+  { id:1, role:'relation', sql:'composite-children ((?))', bind_slots:[{from:'parent',param:0,transform:'',name:'',step:0,column:'',host_styles:[],col_type:''}], parent:{step:0,keys:[{column:'tenant_id',index:0},{column:'seq',index:1}]}, assemble:compositeChild },
+] }, []);
+if (compositeCalls[1].sql !== 'composite-children ((?, ?), (?, ?))' || compositeCalls[1].params.join(',') !== '1,2,1,3') throw new Error('composite parent expansion or tuple deduplication failed');
 
 const count = await db.execute({ schema_hash: 'hash', kind: 'count', steps: [{ id: 0, role: 'count', sql: 'count', bind_slots: [] }] }, []);
 if (count !== 2) throw new Error('scalar execution failed');

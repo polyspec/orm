@@ -67,11 +67,11 @@ export function requestToProto(value: Request): WireRequest {
 }
 
 function assemble(value: NonNullable<WirePlan['steps'][number]['assemble']>): Assemble {
-  return {entity:value.entity,alias:value.alias,columns:value.columns.map(v=>({index:v.index,name:v.name,column:v.column,type:v.type,styles:[...v.styles],hidden:v.hidden})),children:value.children.map(v=>({rel:v.relation,kind:v.kind,step:v.step,parent_column:v.parentColumn,parent_index:v.parentIndex,child_column:v.childColumn,child_index:v.childIndex,key_by:v.keyBy,key_index:v.keyIndex,flatten:v.flatten,cascade:v.cascade,assemble:v.assemble?assemble(v.assemble):undefined}))};
+  return {entity:value.entity,alias:value.alias,columns:value.columns.map(v=>({index:v.index,name:v.name,column:v.column,type:v.type,styles:[...v.styles],hidden:v.hidden})),children:value.children.map(v=>({rel:v.relation,kind:v.kind,step:v.step,parent_keys:v.parentKeys.map(k=>({column:k.column,index:k.index})),child_keys:v.childKeys.map(k=>({column:k.column,index:k.index})),key:v.key.map(k=>({column:k.column,index:k.index})),flatten:v.flatten,cascade:v.cascade,assemble:v.assemble?assemble(v.assemble):undefined}))};
 }
 
 export function planFromProto(value: WirePlan): Plan {
   const kind = kindNames.get(value.kind);
   if (!kind) throw new CompilerError('INTERNAL', `compiler returned unknown query kind ${value.kind}`);
-  return {schema_hash:value.schemaHash,kind,steps:value.steps.map(v=>({id:v.id,role:v.role,sql:v.sql,bind_slots:v.binds.map(b=>({from:b.source,param:b.parameter,transform:b.transform,name:b.name,step:b.step,column:b.column,host_styles:[...b.hostStyles],col_type:b.columnType})),assemble:v.assemble?assemble(v.assemble):undefined,parent:v.parent?{step:v.parent.step,column:v.parent.column,index:v.parent.index,if_parent:v.parent.ifParent?{column:v.parent.ifParent.column,index:v.parent.ifParent.index,param:v.parent.ifParent.parameter}:undefined}:undefined}))};
+  return {schema_hash:value.schemaHash,kind,steps:value.steps.map(v=>({id:v.id,role:v.role,sql:v.sql,bind_slots:v.binds.map(b=>({from:b.source,param:b.parameter,transform:b.transform,name:b.name,step:b.step,column:b.column,host_styles:[...b.hostStyles],col_type:b.columnType})),assemble:v.assemble?assemble(v.assemble):undefined,parent:v.parent?{step:v.parent.step,keys:v.parent.keys.map(k=>({column:k.column,index:k.index})),if_parent:v.parent.ifParent?{column:v.parent.ifParent.column,index:v.parent.ifParent.index,param:v.parent.ifParent.parameter}:undefined}:undefined}))};
 }

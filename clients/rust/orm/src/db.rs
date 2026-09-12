@@ -205,11 +205,10 @@ impl Rows {
                 return Ok(Vec::new());
             }
         }
-        let pv = parent.val(ch.parent_index)?;
-        if pv.is_null() {
-            return Ok(Vec::new());
-        }
-        Ok(match sr.by_key.get(&Key::of(&pv)) {
+        let mut values = Vec::with_capacity(ch.parent_keys.len());
+        for reference in &ch.parent_keys { values.push(parent.val(reference.index)?); }
+        let Some(key) = Key::of_row(&values, &ch.parent_keys.iter().enumerate().map(|(index, reference)| crate::plan::KeyRef { column: reference.column.clone(), index }).collect::<Vec<_>>()) else { return Ok(Vec::new()) };
+        Ok(match sr.by_key.get(&key) {
             Some(idxs) => idxs.iter().map(|&i| sr.data[i].as_slice()).collect(),
             None => Vec::new(),
         })
@@ -260,12 +259,11 @@ fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'a [Val]>, p
                 continue;
             }
         }
-        let v = &row[pr.index];
-        if v.is_null() {
-            continue;
-        }
-        if seen.insert(Key::of(v)) {
-            out.push(match v {
+        let Some(key) = Key::of_row(row, &pr.keys) else { continue };
+        if seen.insert(key) {
+            for reference in &pr.keys {
+              let v = &row[reference.index];
+              out.push(match v {
                 Val::I64(x) => Param::I64(*x),
                 Val::Str(s) => Param::Str(s.clone()),
                 Val::Bytes(b) => Param::Bytes(b.clone()),
@@ -275,7 +273,8 @@ fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'a [Val]>, p
                 Val::Date(d) => Param::Date(*d),
                 Val::Json(j) => Param::Str(j.to_string()),
                 Val::Null => Param::Null,
-            });
+              });
+            }
         }
     }
     out
@@ -287,13 +286,16 @@ fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'a [Val]>, p
 /// `$k` per slot in slot order: the parent slot becomes n placeholders and every later
 /// number shifts by n-1 (docs/dialects.md).
 fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (String, Vec<Param>) {
+	let width = st.parent.as_ref().map(|p| p.keys.len()).unwrap_or(0);
+	assert!(width > 0 && vals.len() % width == 0, "invalid relation parent key values");
+	let tuples = vals.len() / width;
     let mut n = 1;
-    while n < vals.len() {
+    while n < tuples {
         n <<= 1;
     }
-    let last = vals.last().cloned().unwrap_or(Param::Null);
-    while vals.len() < n {
-        vals.push(last.clone());
+    let last = vals[(tuples - 1) * width..tuples * width].to_vec();
+    while vals.len() < n * width {
+        vals.extend(last.iter().cloned());
     }
     let mut sql = String::with_capacity(st.sql.len() + 4 * n);
     if numbered {
@@ -314,14 +316,14 @@ fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (String, Vec<Pa
             }
             let k: usize = st.sql[i + 1..j].parse().unwrap_or(0);
             if k == parent {
-                for m in 0..n {
+                for m in 0..n * width {
                     if m > 0 {
-                        sql.push_str(", ");
+                        if width > 1 && m % width == 0 { sql.push_str("), ("); } else { sql.push_str(", "); }
                     }
                     sql.push_str(&format!("${}", k + m));
                 }
             } else if k > parent {
-                sql.push_str(&format!("${}", k + n - 1));
+                sql.push_str(&format!("${}", k + n * width - 1));
             } else {
                 sql.push_str(&st.sql[i..j]);
             }
@@ -337,8 +339,8 @@ fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (String, Vec<Pa
         }
         if st.bind_slots[slot].from == "parent" {
             sql.push('?');
-            for _ in 1..n {
-                sql.push_str(", ?");
+            for m in 1..n * width {
+                if width > 1 && m % width == 0 { sql.push_str("), (?"); } else { sql.push_str(", ?"); }
             }
         } else {
             sql.push('?');
@@ -386,11 +388,11 @@ fn masked(st: &Step, args: &[Param], n_parent: usize) -> Vec<Param> {
 }
 
 /// Finds the match column of a relation step from the child spec that references it.
-fn child_index(plan: &Plan, id: u32) -> usize {
-    fn find(a: &Assemble, id: u32) -> Option<usize> {
+fn child_keys(plan: &Plan, id: u32) -> Vec<crate::plan::KeyRef> {
+    fn find(a: &Assemble, id: u32) -> Option<Vec<crate::plan::KeyRef>> {
         for ch in &a.children {
             if ch.kind != "join" && ch.step == id {
-                return Some(ch.child_index);
+                return Some(ch.child_keys.clone());
             }
             if let Some(ja) = &ch.assemble {
                 if let Some(i) = find(ja, id) {
@@ -1140,9 +1142,9 @@ async fn run_plan(ex: &impl Exec, plan: Arc<Plan>, req: &mut Req) -> Result<Rows
             let asm = st.assemble.as_ref().expect("relation step has an assemble");
             let raw = ex.query(st, &req.params, vals).await?;
             sr.data = positional(&raw, asm, &db.cfg.aes_key)?;
-            let ci = child_index(&plan, st.id);
+            let keys = child_keys(&plan, st.id);
             for (j, row) in sr.data.iter().enumerate() {
-                sr.by_key.entry(Key::of(&row[ci])).or_default().push(j);
+                if let Some(key) = Key::of_row(row, &keys) { sr.by_key.entry(key).or_default().push(j); }
             }
         }
         rows.steps.insert(st.id, sr);
@@ -1262,7 +1264,7 @@ mod tests {
             sql: sql.into(),
             bind_slots: slots.iter().map(|f| BindSlot { from: f.to_string(), param: 0, transform: String::new(), name: String::new(), step: 0, column: String::new(), host_styles: Vec::new(), col_type: String::new() }).collect(),
             assemble: None,
-            parent: None,
+            parent: Some(ParentRef { step: 0, keys: vec![crate::plan::KeyRef { column: "seq".into(), index: 0 }], if_parent: None }),
         }
     }
 
@@ -1284,5 +1286,20 @@ mod tests {
         let (sql, padded) = expand_in(&st, vec![Param::I64(1), Param::I64(2), Param::I64(3)], false);
         assert_eq!(sql, "SELECT 1 FROM t WHERE x = ? AND seq IN (?, ?, ?, ?) AND y > ?");
         assert_eq!(padded.len(), 4);
+    }
+
+    #[test]
+    fn composite_parent_values_and_expansion_preserve_tuples() {
+        let mut st = step("SELECT 1 WHERE (tenant_id, parent_id) IN ((?))", &["parent"]);
+        st.parent.as_mut().unwrap().keys = vec![
+            crate::plan::KeyRef { column: "tenant_id".into(), index: 0 },
+            crate::plan::KeyRef { column: "parent_id".into(), index: 1 },
+        ];
+        let rows = vec![vec![Val::I64(1), Val::I64(2)], vec![Val::I64(1), Val::I64(3)], vec![Val::I64(1), Val::I64(2)], vec![Val::I64(2), Val::Null]];
+        let values = parent_values(st.parent.as_ref().unwrap(), rows.iter().map(Vec::as_slice), &[]);
+        assert_eq!(values, vec![Param::I64(1), Param::I64(2), Param::I64(1), Param::I64(3)]);
+        let (sql, values) = expand_in(&st, values, false);
+        assert_eq!(sql, "SELECT 1 WHERE (tenant_id, parent_id) IN ((?, ?), (?, ?))");
+        assert_eq!(values.len(), 4);
     }
 }

@@ -19,17 +19,13 @@ class ParentReference extends \Google\Protobuf\Internal\Message
      */
     protected $step = 0;
     /**
-     * Generated from protobuf field <code>string column = 2;</code>
-     */
-    protected $column = '';
-    /**
-     * Generated from protobuf field <code>uint32 index = 3;</code>
-     */
-    protected $index = 0;
-    /**
      * Generated from protobuf field <code>.orm.compiler.v1.ParentCondition if_parent = 4;</code>
      */
     protected $if_parent = null;
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference keys = 5;</code>
+     */
+    private $keys;
 
     /**
      * Constructor.
@@ -38,9 +34,8 @@ class ParentReference extends \Google\Protobuf\Internal\Message
      *     Optional. Data for populating the Message object.
      *
      *     @type int $step
-     *     @type string $column
-     *     @type int $index
      *     @type \Orm\Compiler\V1\ParentCondition $if_parent
+     *     @type \Orm\Compiler\V1\KeyReference[] $keys
      * }
      */
     public function __construct($data = null)
@@ -72,50 +67,6 @@ class ParentReference extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Generated from protobuf field <code>string column = 2;</code>
-     * @return string
-     */
-    public function getColumn()
-    {
-        return $this->column;
-    }
-
-    /**
-     * Generated from protobuf field <code>string column = 2;</code>
-     * @param string $var
-     * @return $this
-     */
-    public function setColumn(string $var)
-    {
-        GPBUtil::checkString($var, true);
-        $this->column = $var;
-
-        return $this;
-    }
-
-    /**
-     * Generated from protobuf field <code>uint32 index = 3;</code>
-     * @return int
-     */
-    public function getIndex()
-    {
-        return $this->index;
-    }
-
-    /**
-     * Generated from protobuf field <code>uint32 index = 3;</code>
-     * @param int $var
-     * @return $this
-     */
-    public function setIndex(int $var)
-    {
-        GPBUtil::checkUint32($var);
-        $this->index = $var;
-
-        return $this;
-    }
-
-    /**
      * Generated from protobuf field <code>.orm.compiler.v1.ParentCondition if_parent = 4;</code>
      * @return \Orm\Compiler\V1\ParentCondition|null
      */
@@ -142,6 +93,28 @@ class ParentReference extends \Google\Protobuf\Internal\Message
     public function setIfParent(\Orm\Compiler\V1\ParentCondition|null $var)
     {
         $this->if_parent = $var;
+
+        return $this;
+    }
+
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference keys = 5;</code>
+     * @return RepeatedField<\Orm\Compiler\V1\KeyReference>
+     */
+    public function getKeys()
+    {
+        return $this->keys;
+    }
+
+    /**
+     * Generated from protobuf field <code>repeated .orm.compiler.v1.KeyReference keys = 5;</code>
+     * @param \Orm\Compiler\V1\KeyReference[] $var
+     * @return $this
+     */
+    public function setKeys(array|RepeatedField $var)
+    {
+        $arr = GPBUtil::checkRepeatedField($var, \Google\Protobuf\Internal\GPBType::MESSAGE, \Orm\Compiler\V1\KeyReference::class);
+        $this->keys = $arr;
 
         return $this;
     }

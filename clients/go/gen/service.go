@@ -187,21 +187,24 @@ func scanService(vals []any, a *plan.Assemble, rs *orm.Rows) *ServiceRow {
 			rows := rs.Related(ch, vals)
 			c := orm.NewCollection[AuthorRow](len(rows))
 			for _, row := range rows {
-				c.Put(orm.KeyOf(row[ch.KeyIndex]), scanAuthor(row, rs.StepAssemble(ch), rs))
+				key, _ := orm.KeyFromRow(row, ch.Key)
+				c.Put(key, scanAuthor(row, rs.StepAssemble(ch), rs))
 			}
 			r.Authors = c
 		case "members":
 			rows := rs.Related(ch, vals)
 			c := orm.NewCollection[ServiceMemberRow](len(rows))
 			for _, row := range rows {
-				c.Put(orm.KeyOf(row[ch.KeyIndex]), scanServiceMember(row, rs.StepAssemble(ch), rs))
+				key, _ := orm.KeyFromRow(row, ch.Key)
+				c.Put(key, scanServiceMember(row, rs.StepAssemble(ch), rs))
 			}
 			r.Members = c
 		case "modules":
 			rows := rs.Related(ch, vals)
 			c := orm.NewCollection[ServiceRegionRow](len(rows))
 			for _, row := range rows {
-				c.Put(orm.KeyOf(row[ch.KeyIndex]), scanServiceRegion(row, rs.StepAssemble(ch), rs))
+				key, _ := orm.KeyFromRow(row, ch.Key)
+				c.Put(key, scanServiceRegion(row, rs.StepAssemble(ch), rs))
 			}
 			r.Modules = c
 		}

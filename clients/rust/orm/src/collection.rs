@@ -19,6 +19,21 @@ impl Key {
         }
     }
 
+    pub fn of_row(row: &[Val], refs: &[crate::plan::KeyRef]) -> Option<Key> {
+        if refs.len() == 1 {
+            let value = &row[refs[0].index];
+            return (!value.is_null()).then(|| Key::of(value));
+        }
+        let mut out = String::new();
+        for reference in refs {
+            let value = &row[reference.index];
+            if value.is_null() { return None; }
+            let part = value.as_string();
+            out.push_str(&format!("{}:{}", part.len(), part));
+        }
+        Some(Key::S(out))
+    }
+
     pub fn as_i64(&self) -> i64 {
         match self {
             Key::I(x) => *x,

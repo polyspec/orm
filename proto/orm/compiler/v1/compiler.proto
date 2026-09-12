@@ -140,7 +140,13 @@ message BindSlot {
   repeated string host_styles = 7;
   string column_type = 8;
 }
-message ParentReference { uint32 step = 1; string column = 2; uint32 index = 3; ParentCondition if_parent = 4; }
+message KeyReference { string column = 1; uint32 index = 2; }
+message ParentReference {
+  uint32 step = 1;
+  reserved 2, 3;
+  ParentCondition if_parent = 4;
+  repeated KeyReference keys = 5;
+}
 message ParentCondition { string column = 1; uint32 index = 2; uint32 parameter = 3; }
 message Assemble { string entity = 1; string alias = 2; repeated OutputColumn columns = 3; repeated Child children = 4; }
 message OutputColumn {
@@ -155,15 +161,13 @@ message Child {
   string relation = 1;
   string kind = 2;
   uint32 step = 3;
-  string parent_column = 4;
-  uint32 parent_index = 5;
-  string child_column = 6;
-  uint32 child_index = 7;
-  string key_by = 8;
-  uint32 key_index = 9;
+  reserved 4, 5, 6, 7, 8, 9;
   bool flatten = 10;
   bool cascade = 11;
   Assemble assemble = 12;
+  repeated KeyReference parent_keys = 13;
+  repeated KeyReference child_keys = 14;
+  repeated KeyReference key = 15;
 }
 message CompileError { string code = 1; string message = 2; }
 message GetMetadataRequest {}

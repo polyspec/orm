@@ -65,17 +65,20 @@ export class ExecutionRows {
   public related(child: Child, parent: readonly unknown[]): unknown[][] {
     const rows = this.steps.get(child.step);
     if (!rows) return [];
-    return (rows.byKey.get(scalarKey(parent[child.parent_index])) ?? []).map(index => rows.data[index]!);
+    const key = rowKey(parent, child.parent_keys);
+    if (key === undefined) return [];
+    return (rows.byKey.get(key) ?? []).map(index => rows.data[index]!);
   }
   public stepAssemble(child: Child): Assemble {
     const assemble = this.plan.steps.find(step => step.id === child.step)?.assemble;
     if (!assemble) throw new OrmError('INTERNAL', `relation step ${child.step} has no assembly`);
     return assemble;
   }
-  public setStep(id: number, data: unknown[][], childIndex: number): void {
+  public setStep(id: number, data: unknown[][], childKeys: readonly import('./index.js').KeyReference[]): void {
     const byKey = new Map<string, number[]>();
     data.forEach((row, index) => {
-      const key = scalarKey(row[childIndex]);
+      const key = rowKey(row, childKeys);
+      if (key === undefined) return;
       const indexes = byKey.get(key) ?? [];
       indexes.push(index);
       byKey.set(key, indexes);
@@ -143,7 +146,7 @@ export class Row {
     }
     if (child.cascade) this.cascade.push(child.rel);
     const collection = new Collection();
-    for (const values of related) collection.put(asKey(values[child.key_index]), type.fromResult(values, assemble, rows));
+    for (const values of related) collection.put(rowCollectionKey(values, child.key), type.fromResult(values, assemble, rows));
     this.relations.set(child.rel, collection);
   }
 
@@ -227,6 +230,23 @@ export function rowFromResult<T extends Row>(rows: ExecutionRows, assemble: Asse
 }
 
 export function scalarKey(value: unknown): string { return value === null ? 'null:' : `${typeof value}:${String(value)}`; }
+export function rowKey(row: readonly unknown[], refs: readonly import('./index.js').KeyReference[]): string | undefined {
+  const parts: string[] = [];
+  for (const ref of refs) {
+    const value = row[ref.index];
+    if (value === null || value === undefined) return undefined;
+    const part = scalarKey(value);
+    parts.push(`${part.length}:${part}`);
+  }
+  return parts.join('');
+}
+
+function rowCollectionKey(row: readonly unknown[], refs: readonly import('./index.js').KeyReference[]): number | string | bigint {
+  if (refs.length === 1) return asKey(row[refs[0]!.index]);
+  const key = rowKey(row, refs);
+  if (key === undefined) throw new OrmError('INTERNAL', 'collection row has a null key component');
+  return key;
+}
 function asKey(value: unknown): Key {
   if (typeof value === 'number' || typeof value === 'string' || typeof value === 'bigint') return value;
   throw new OrmError('IR_INVALID', `collection key must be an integer or string: ${String(value)}`);
