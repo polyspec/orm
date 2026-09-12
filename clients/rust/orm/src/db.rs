@@ -1614,4 +1614,16 @@ mod tests {
         assert_eq!(plan.steps[0].sql, "SELECT 1");
         db.close().await;
     }
+
+    #[tokio::test]
+    async fn sqlx_statement_cache_pressure_and_close() {
+        let options = SqliteConnectOptions::from_str("sqlite::memory:").unwrap().statement_cache_capacity(2);
+        let pool = SqlitePoolOptions::new().max_connections(1).connect_with(options).await.unwrap();
+        for sql in ["SELECT 110", "SELECT 120", "SELECT 130", "SELECT 110"] {
+            sqlx::query(sql).execute(&pool).await.unwrap();
+        }
+        pool.close().await;
+        let error = sqlx::query("SELECT 1").execute(&pool).await.unwrap_err();
+        assert!(matches!(error, sqlx::Error::PoolClosed));
+    }
 }
