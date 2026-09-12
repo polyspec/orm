@@ -1495,6 +1495,22 @@ pub fn join_present(src: &mut impl Src, a: &Assemble) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
+
+    struct BundleCompiler {
+        schema_hash: String,
+    }
+
+    #[async_trait::async_trait]
+    impl CompilerTransport for BundleCompiler {
+        async fn compile(&self, _request: crate::compiler_proto::CompileRequest) -> Result<crate::compiler_proto::Plan> {
+            panic!("compiler must not be called after loading a plan bundle")
+        }
+
+        async fn metadata(&self) -> Result<GetMetadataResponse> {
+            Ok(GetMetadataResponse { schema_hash: self.schema_hash.clone(), dialect: "sqlite".into(), ir_version: 1 })
+        }
+    }
 
     fn step(sql: &str, slots: &[&str]) -> Step {
         Step {
@@ -1556,5 +1572,22 @@ mod tests {
         assert!(chunks.iter().all(|chunk| chunk.len() <= 512));
         assert_eq!(chunks[0][0], Param::I64(1));
         assert_eq!(chunks.last().unwrap().last(), Some(&Param::I64(599)));
+    }
+
+    #[tokio::test]
+    async fn loaded_plan_bundle_skips_compiler() {
+        let schema = std::fs::read("../../../schema/schema.json").unwrap();
+        let wasm = std::fs::read("../../../bin/ormengine.wasm").unwrap();
+        let engine = Arc::new(Engine::new(crate::engine::EngineConfig { wasm: &wasm, schema_json: &schema, dialect: "sqlite", cache_dir: None }).unwrap());
+        let compiler = Arc::new(BundleCompiler { schema_hash: engine.schema_hash.clone() });
+        let opts = ConnectOptions::parse("sqlite", "sqlite::memory:").unwrap();
+        let cfg = Config { aes_key: String::new(), blind_index_key: String::new(), aes_version: 1, aes_keys: BTreeMap::new(), plan_cache_size: 2, statement_cache_size: 2, on_query: None };
+        let db = Db::connect_with_compiler(opts, 1, engine.clone(), compiler, cfg).await.unwrap();
+        let mut req = Req::new(&engine.schema_hash, "battle");
+        let bundle = serde_json::json!({"version":1,"schema_hash":engine.schema_hash,"dialect":"sqlite","request_sha256":"test","plan":{"schema_hash":engine.schema_hash,"kind":"all","steps":[{"id":0,"role":"main","sql":"SELECT 1"}]}});
+        db.load_plan_bundle(&serde_json::to_vec(&bundle).unwrap(), &mut req).unwrap();
+        let plan = db.plan(&mut req).await.unwrap();
+        assert_eq!(plan.steps[0].sql, "SELECT 1");
+        db.close().await;
     }
 }

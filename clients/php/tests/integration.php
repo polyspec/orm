@@ -39,6 +39,12 @@ Orm::init(new Config(socket: $sock, schemaPath: $schema, aesKey: 'bench-salt', b
     onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$log, &$hooked) { $log[] = orm_norm_sql($sql); $hooked[] = [$binds, $planId, $e]; }));
 $db = orm_open_db($driver, orm_test_dsn());
 check($db->driver() === $driver, 'Db::driver()');
+// A precompiled plan loaded for the same request shape is returned from the local cache.
+$bundleQuery = new Q('battle');
+$bundleRequest = $bundleQuery->req;
+$bundlePlan = Orm::transport()->plan($bundleRequest->shape('all'));
+Orm::transport()->loadPlanBundle(['version' => 1, 'schema_hash' => Orm::config()->schemaHash(), 'dialect' => $driver, 'request_sha256' => 'test', 'plan' => $bundlePlan], $bundleRequest, 'all');
+check(Orm::transport()->planFor($bundleRequest, 'all')['kind'] === 'all', 'precompiled plan cache load');
 /** the binds sql() and the hook show for the aes select: the key twice on MySQL (AES in SQL), nothing else elsewhere (host AES) */
 $aesBinds = [7];
 
