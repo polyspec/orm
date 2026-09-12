@@ -1,4 +1,4 @@
-# Common components
+# 공통 구성요소
 
 <!-- Generated from contracts/interfaces.json; DO NOT EDIT. -->
 
