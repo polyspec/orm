@@ -38,7 +38,10 @@
     "typescript": "sha256:a40741dcf2c2a49993854358e644cda521579f8e7ae134e9e95f759bc80e441d"
   },
   "prohibited_symbols": [
-    "multi_statement"
+    "multi_statement",
+    "in_flight_cancellation",
+    "query_cancel",
+    "transaction_cancel"
   ],
   "components": [
     {
