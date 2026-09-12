@@ -534,6 +534,15 @@ $run('relation_predicates', function () use ($db) {
     $count = Service::query()->seq(7)->countMembersEq(50, fn(ServiceMemberWhere $w): ServiceMemberWhere => $w)->using($db)->getCount();
     return ['exists' => $exists, 'count' => $count];
 });
+$run('batch_insert_delete', function () use ($db) {
+    $names = ['conformance-batch-a', 'conformance-batch-b'];
+    Service::query()->nameIn($names)->using($db)->delete();
+    $result = Service::query()->using($db)->batchInsert([
+        Service::query()->setName($names[0]), Service::query()->setName($names[1]),
+    ], new \Orm\BatchOptions(1));
+    $deleted = Service::query()->nameIn($names)->using($db)->delete();
+    return ['attempted' => $result->attempted, 'affected' => $result->affected, 'inserted' => $result->inserted, 'deleted' => $deleted];
+});
 $run('codec_roundtrip', function () use ($db, $remask) {
     $value = ['a' => 1, 'b' => [1, 2, ['c' => '한글/slash']], 'd' => null, 'e' => true, 'f' => 1.5];
     $created = $db->transaction(fn(Tx $tx) => Battle::query()
