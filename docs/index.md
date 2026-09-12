@@ -1,9 +1,9 @@
 ---
 layout: home
-title: Go · PHP · Rust 공통 ORM
+title: Common ORM for Go, PHP, Rust, and TypeScript
 hero:
   name: orm
-  text: Common ORM Interface for Go, PHP, and Rust
+  text: Common ORM Interface for Go, PHP, Rust, and TypeScript
   tagline: Generate query, row, and relation types from a schema and execute them with language-specific drivers.
   actions:
     - theme: brand
@@ -14,7 +14,7 @@ hero:
       link: /interfaces
 features:
   - title: Common syntax and structure
-    details: The interface defines Query, Binding, Row, and Collection roles and checks Go, PHP, and Rust declarations and results.
+    details: The interface defines Query, Binding, Row, and Collection roles and checks Go, PHP, Rust, and TypeScript declarations and results.
     link: /interfaces
   - title: Bind before execution
     details: Bind the executor to the root query. Terminals receive values only, and relation queries use the root executor.
@@ -24,7 +24,7 @@ features:
     link: /dialects
 ---
 
-## One query in three clients
+## One query in four clients
 
 ### Go
 
@@ -44,12 +44,18 @@ $count = Battle::query()->using($db)->getCountByServiceSeq(7);
 let count = battle::query().using(&db).get_count_by_service_seq(7).await?;
 ```
 
-Go `gen.Battle()` returns `*gen.BattleQuery`. Go passes `ctx` with the executor, and Rust uses `await` for asynchronous results. Syntax follows each language; argument meaning, data structure roles, and execution rules are shared.
+### TypeScript
+
+```ts [TypeScript]
+const count = await Battle().serviceSeqEq(7).using(db).getCount()
+```
+
+Go `gen.Battle()` returns `*gen.BattleQuery`. Go passes `ctx` with the executor, and Rust and TypeScript use asynchronous results. Syntax follows each language; argument meaning, data structure roles, and execution rules are shared.
 
 [Read the guide](usage.md) for binding, reads, writes, and relations. See the [component diagram](interfaces-model.md) for ownership rules.
 
 ## Implementation status
 
-The implemented clients are **Go, PHP, and Rust**. TypeScript is not implemented. See the [implementation matrix](interface-implementation.md), [checklist](checklist.md), and [S7 work list](s7.md) for verification scope and remaining work.
+The implemented clients are **Go, PHP, Rust, and TypeScript**. TypeScript currently covers the common query structure and requires full generated entity coverage. See the [implementation matrix](interface-implementation.md), [checklist](checklist.md), and [S7 work list](s7.md) for verification scope and remaining work.
 
-[DSL](dsl.md) · [Schema](schema.md) · [IR / Plan](protocol.md) · [Complex query example](examples/complex-query.md) · [Documentation build and deployment](docs-development.md) · [한국어 문서](s7.ko.md)
+[DSL](dsl.md) · [Schema](schema.md) · [IR / Plan](protocol.md) · [Complex query example](examples/complex-query.md) · [Documentation build and deployment](docs-development.md) · [한국어 문서](index.ko.md)
