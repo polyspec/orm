@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { AesKeyring, Db, QueryCore, Row, hostDecode, hostEncode, openSqlite, registerRow } from '../../clients/typescript/dist/index.js';
+import { AesKeyring, Db, QueryCore, Row, batchWrite, hostDecode, hostEncode, openSqlite, registerRow } from '../../clients/typescript/dist/index.js';
 
 class ItemRow extends Row {
   static entity() { return 'item'; }
@@ -122,6 +122,11 @@ try { await cacheDb.plan(cacheRequests[1]); } catch (error) { closedPlanRejected
 if (!closedPlanRejected) throw new Error('TypeScript plan cache accepted a request after close');
 const write = await db.execute({ schema_hash: 'hash', kind: 'insert', steps: [{ id: 0, role: 'main', sql: 'write', bind_slots: [] }] }, []);
 if (write.affected !== 1 || write.insertId !== 8) throw new Error('write execution failed');
+const emptyBatch = await batchWrite(db, [], 'insert', { chunkSize: 1 });
+if (emptyBatch.attempted !== 0 || emptyBatch.affected !== 0 || emptyBatch.inserted !== 0) throw new Error('empty batch result differs');
+let invalidBatchRejected = false;
+try { await batchWrite(db, [], 'merge'); } catch (error) { invalidBatchRejected = error?.code === 'CONFIG'; }
+if (!invalidBatchRejected) throw new Error('invalid batch kind was accepted');
 
 const directory = await mkdtemp(join(tmpdir(), 'orm-aes-'));
 const sqliteConnection = openSqlite(join(directory, 'rotation.sqlite'));

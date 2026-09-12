@@ -1666,6 +1666,62 @@ func Write(ctx context.Context, ex Exec, r *Req) (lastID, affected int64, err er
 	return lastID, affected, nil
 }
 
+// BatchOptions bounds the number of requests processed between progress
+// checks. All requests still run in one transaction when the executor is a
+// bare DB; a caller-provided Tx is reused.
+type BatchOptions struct {
+	ChunkSize int
+}
+
+// BatchResult reports deterministic counts for a completed or rolled-back
+// batch. Attempted includes the request that returned an error.
+type BatchResult struct {
+	Attempted int
+	Affected  int64
+	Inserted  int64
+}
+
+// BatchWrite executes homogeneous write requests in one transaction. The
+// requests are already typed by the generated client; this function owns the
+// transaction boundary and result accounting shared by generated batch APIs.
+func BatchWrite(ctx context.Context, ex Exec, requests []*Req, kind string, options BatchOptions) (BatchResult, error) {
+	result := BatchResult{}
+	if kind != "insert" && kind != "update" && kind != "delete" {
+		return result, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("batch kind %q is not supported", kind)}
+	}
+	if options.ChunkSize <= 0 {
+		options.ChunkSize = 1000
+	}
+	if len(requests) == 0 {
+		return result, nil
+	}
+	run := func(target Exec) error {
+		for start := 0; start < len(requests); start += options.ChunkSize {
+			end := start + options.ChunkSize
+			if end > len(requests) {
+				end = len(requests)
+			}
+			for _, request := range requests[start:end] {
+				result.Attempted++
+				request.IR.Kind = kind
+				_, affected, err := Write(ctx, target, request)
+				if err != nil {
+					return err
+				}
+				result.Affected += affected
+				if kind == "insert" {
+					result.Inserted++
+				}
+			}
+		}
+		return nil
+	}
+	if err := InTx(ctx, ex, run); err != nil {
+		return result, err
+	}
+	return result, nil
+}
+
 // Key is a collection key: an int64 or a string, whichever the key column yields.
 type Key struct {
 	I     int64

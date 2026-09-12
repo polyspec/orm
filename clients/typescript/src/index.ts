@@ -35,6 +35,12 @@ export interface TransactionOptions {
   readOnly?: boolean;
 }
 
+export interface BatchOptions { chunkSize?: number; }
+
+export interface BatchResult { attempted: number; affected: number; inserted: number; }
+
+export interface BatchRequest { plan: Plan; params: readonly Param[]; }
+
 export interface AesRowCodec {
   decode(value: unknown, styles: readonly string[], key: string): unknown;
   encode(value: unknown, styles: readonly string[], key: string): unknown;
@@ -202,7 +208,7 @@ export type { CompilerTransport } from './compiler.js';
 export { openMySql, openPostgres, openSqlite } from './driver.js';
 export type { DriverConnection, DriverName, DriverResult, DriverStreamResult, DriverTransaction, DriverValue } from './driver.js';
 export { OrmError } from './runtime_error.js';
-export { Db, Tx } from './database.js';
+export { Db, Tx, batchWrite } from './database.js';
 export type { DatabaseOptions, QueryEvent } from './database.js';
 export { loadConfig, resolveAesKey, resolveBlindIndexKey } from './config.js';
 export type { FileConfig } from './config.js';

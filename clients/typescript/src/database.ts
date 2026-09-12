@@ -1,5 +1,5 @@
 import { AesKeyring } from './index.js';
-import type { AesRotationSpec, AesRotationStatus, Compiler, Database, Executor, Param, Plan, PlanStep, Request, StreamResult, TransactionOptions } from './index.js';
+import type { AesRotationSpec, AesRotationStatus, BatchOptions, BatchRequest, BatchResult, Compiler, Database, Executor, Param, Plan, PlanStep, Request, StreamResult, TransactionOptions } from './index.js';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { ConnectCompiler, ConnectPlanCompiler, type CompilerTransport } from './compiler.js';
@@ -372,6 +372,32 @@ export class Tx extends Db {
   public async releaseSavepoint(name: string): Promise<void> { this.assertActive(); await this.transactionConnection.releaseSavepoint(name); }
   public override async execute(plan: Plan, params: Param[]): Promise<unknown> { this.assertActive(); return super.execute(plan, params); }
   private assertActive(): void { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); }
+}
+
+/** Execute homogeneous generated write requests in one transaction. */
+export async function batchWrite(executor: Db, requests: readonly BatchRequest[], kind: 'insert' | 'update' | 'delete', options: BatchOptions = {}): Promise<BatchResult> {
+  const chunkSize = options.chunkSize ?? 1000;
+  if (!Number.isSafeInteger(chunkSize) || chunkSize < 1) throw new OrmError('CONFIG', 'batch chunkSize must be a positive integer');
+  if (requests.length === 0) {
+    if (kind !== 'insert' && kind !== 'update' && kind !== 'delete') throw new OrmError('CONFIG', `batch kind ${kind} is not supported`);
+    return { attempted: 0, affected: 0, inserted: 0 };
+  }
+  for (const request of requests) if (request.plan.kind !== kind) throw new OrmError('CONFIG', `batch request kind ${request.plan.kind} does not match ${kind}`);
+  const run = async (target: Db): Promise<BatchResult> => {
+    const result: BatchResult = { attempted: 0, affected: 0, inserted: 0 };
+    for (let start = 0; start < requests.length; start += chunkSize) {
+      for (const request of requests.slice(start, start + chunkSize)) {
+        result.attempted++;
+        const value = await target.execute(request.plan, [...request.params]);
+        const write = value as { affected?: unknown };
+        result.affected += typeof write.affected === 'number' ? write.affected : 0;
+        if (kind === 'insert') result.inserted++;
+      }
+    }
+    return result;
+  };
+  if (executor instanceof Tx) return run(executor);
+  return executor.transaction(run);
 }
 
 const transportUnavailable: CompilerTransport = {
