@@ -190,7 +190,7 @@ step 6  query   my_order_item (ONE, group_limit 1)  bind_from: step0.seq
   link: {kind: one, parent_column: seq, child_column: product_seq}
 ```
 
-- Seven round trips, one query per relation. `multi_statement` remains an unimplemented post-S7 candidate; steps 1, 2, 4, and 6 depend only on step 0 and could then share one round trip.
+- Seven round trips, one query per relation. The public API excludes `multi_statement`; tests verify the ordered steps and exact statement count.
 - Steps 1 through 6 do not run when the parent has zero rows. Empty IN lists are prohibited.
 - This plan has a fixed shape independent of values and is cached. User `IN` list lengths are padded to power-of-two buckets, so each bucket has one shape; relation-stage IN uses a `LIST_EXPAND` slot and remains a cache hit regardless of parent row count.
 

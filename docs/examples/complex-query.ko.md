@@ -190,7 +190,7 @@ step 6  query   my_order_item (ONE, group_limit 1)  bind_from: step0.seq
   link: {kind: one, parent_column: seq, child_column: product_seq}
 ```
 
-- 왕복 7회(관계당 1쿼리). `multi_statement`는 아직 구현하지 않은 S7 이후 후보이며, 구현되면 step 1·2·4·6은 step 0 결과만 의존하므로 한 왕복으로 묶을 수 있다.
+- 왕복 7회(관계당 1쿼리). 공개 API에서 `multi_statement`를 제외하며 테스트가 순서가 지정된 단계와 정확한 문장 수를 검사한다.
 - 부모가 0행이면 step 1~6은 실행하지 않는다(빈 IN 금지).
 - 이 플랜은 값과 무관하게 형태가 고정이라 캐시된다. 사용자 `IN` 리스트 길이는 2의 거듭제곱 bucket으로 패딩되어 bucket마다 한 형태만 생긴다; 관계 단계의 IN은 `LIST_EXPAND` 슬롯이라 부모 행 수와 무관하게 캐시 히트.
 
