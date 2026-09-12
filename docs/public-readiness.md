@@ -36,7 +36,7 @@ Each item requires:
 - [x] P9.3 Transaction callbacks do not retry by default. An explicit retry policy controls deadlock retries and documents callback requirements. Go, PHP, Rust, and TypeScript tests verify the default and opt-in paths.
 - [ ] P9.4 Transaction options cover isolation, read-only mode, nested savepoints, query timeout/cancellation, and supported row locks. Unsupported database modes return exact capability errors.
 - [ ] P9.5 All clients load validated precompiled plan bundles and use them without a compiler request on a matching cache hit.
-- [ ] P9.6 CHECK constraints and complete index/foreign-key metadata survive Mermaid, manifest, SQL, live database import, diff, migration, and verification.
+- [x] P9.6 CHECK constraints and complete index/foreign-key metadata survive Mermaid, manifest, SQL, live database import, diff, migration, and verification. SQLite unit tests and physical MySQL/PostgreSQL importer tests verify named CHECK restoration.
 - [ ] P9.7 Many-to-many traversal uses an explicit through entity and typed relation metadata in every client.
 - [ ] P9.8 Relation existence/count predicates and declarative soft-delete policy use planner-enforced predicates in reads and writes.
 
