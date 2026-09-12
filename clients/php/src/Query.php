@@ -36,6 +36,42 @@ final class Req
         return count($this->params) - 1;
     }
 
+    /** Returns an independent request tree for executor-side parameter splitting. */
+    public function copy(): self
+    {
+        $copy = clone $this;
+        $copy->ir = self::copyTree($this->ir);
+        $copy->params = $this->params;
+        return $copy;
+    }
+
+    /** Reindexes parameter references after executor-side request splitting. */
+    public function compactParams(): void
+    {
+        $map = [];
+        $rewrite = function (&$value, ?string $key = null) use (&$rewrite, &$map): void {
+            if (is_array($value)) {
+                if ($key === 'ps') {
+                    foreach ($value as &$index) {
+                        if (is_int($index)) $index = $map[$index] ??= count($map);
+                    }
+                    unset($index);
+                    return;
+                }
+                foreach ($value as $childKey => &$child) $rewrite($child, (string) $childKey);
+                unset($child);
+                return;
+            }
+            if (is_int($value) && in_array($key, ['p', 'plus_p', 'minus_p', 'scope_p'], true)) {
+                $value = $map[$value] ??= count($map);
+            }
+        };
+        $rewrite($this->ir);
+        $params = [];
+        foreach ($map as $old => $new) $params[$new] = $this->params[$old] ?? null;
+        $this->params = $params;
+    }
+
     /** Closes the group opened by the last W::group()/nav() (the generated and()/nav closures call it). */
     public function end(): void
     {
@@ -573,7 +609,16 @@ class Q
     /** Runs the select plan (main step + relation steps). */
     public function runQuery(Db $ex, string $kind): Rows
     {
-        return $ex->runPlan($this->plan($ex, $kind), $this->req->params);
+        $plan = $this->plan($ex, $kind);
+		$parts = self::rootInParts($this->req, $plan, $ex->driver());
+		if (count($parts) === 1) return $ex->runPlan($plan, $this->req->params);
+		$rows = null;
+		foreach ($parts as $part) {
+			$part->ir['kind'] = $kind;
+			$partRows = $ex->runPlan($ex->db()->compiler()->plan($part->shape($kind)), $part->params);
+			if ($rows === null) $rows = $partRows; else $rows->append($partRows);
+		}
+		return $rows ?? throw new OrmException(Code::INTERNAL, 'root IN split produced no rows');
     }
 
     public function runScalar(Db $ex, string $kind, ?string $agg = null): mixed
@@ -583,8 +628,106 @@ class Q
             $this->req->sig .= "|agg$agg";
         }
         $plan = $this->plan($ex, $kind);
+		$parts = self::rootInParts($this->req, $plan, $ex->driver());
+		if (count($parts) > 1) {
+			if ($kind !== 'count') {
+				throw new OrmException(Code::IR_INVALID, "root IN splitting supports count only for aggregate $kind");
+			}
+			$total = 0;
+			foreach ($parts as $part) {
+				$part->ir['kind'] = $kind;
+				$partPlan = $ex->db()->compiler()->plan($part->shape($kind));
+				$total += (int) $ex->scalar($partPlan['steps'][0], $part->params);
+			}
+			return $total;
+		}
         return $ex->scalar($plan['steps'][0], $this->req->params);
     }
+
+	/** @return list<Req> */
+	private static function rootInParts(Req $req, array $plan, string $driver): array
+	{
+		$query = $req->ir;
+		$step = $plan['steps'][0] ?? throw new OrmException(Code::INTERNAL, 'plan has no root step');
+		$limit = $driver === 'sqlite' ? 999 : 65535;
+		$restricted = false;
+		foreach (['limit', 'order', 'distinct', 'group_by', 'group_by_expr', 'having', 'keyset'] as $name) if (array_key_exists($name, $query) && $query[$name] !== [] && $query[$name] !== false && $query[$name] !== null) $restricted = true;
+		if (count($step['bind_slots'] ?? []) > $limit && $restricted) throw new OrmException(Code::IR_INVALID, "root query requires " . count($step['bind_slots'] ?? []) . " bind parameters but $driver permits $limit; root IN cannot be split with ordering, limiting, grouping, distinct, or keyset semantics");
+		if ($restricted) return [$req];
+		$predicates = [];
+		self::collectIn($query['where'] ?? null, $predicates);
+		$target = null;
+		foreach ($predicates as $index => $predicate) {
+			if ($predicate['op'] === 'not_in' && count($step['bind_slots'] ?? []) > $limit) throw new OrmException(Code::IR_INVALID, "root NOT IN requires " . count($step['bind_slots'] ?? []) . " bind parameters but $driver permits $limit; exclusion semantics are not split");
+			if ($predicate['op'] === 'in' && count($step['bind_slots'] ?? []) > $limit && ($target === null || count($predicate['ps'] ?? []) > count($target[1]['ps'] ?? []))) {
+				$target = [$index, $predicate];
+			}
+		}
+		if ($target === null) return [$req];
+		[$targetIndex, $targetPredicate] = $target;
+		$available = $limit - (count($step['bind_slots'] ?? []) - count($targetPredicate['ps'] ?? []));
+		if ($available < 1) throw new OrmException(Code::IR_INVALID, "root IN has no bind capacity on $driver");
+		$size = 1;
+		while ($size * 2 <= $available) $size *= 2;
+		$unique = array_values($targetPredicate['ps'] ?? []);
+		// predList pads only the tail with the last value. Remove that padding
+		// without collapsing intentional duplicate values in the caller's list.
+		while (count($unique) > 1) {
+			$last = count($unique) - 1;
+			if (($req->params[$unique[$last]] ?? null) !== ($req->params[$unique[$last - 1]] ?? null)) break;
+			array_pop($unique);
+		}
+		$parts = [];
+		for ($offset = 0, $total = count($unique); $offset < $total; $offset += $size) {
+			$chunk = array_values(array_slice($unique, $offset, $size));
+			while (count($chunk) < $size) $chunk[] = $chunk[count($chunk) - 1];
+			$part = $req->copy();
+			$where = $part->ir['where'] ?? null;
+			if ($where === null) throw new OrmException(Code::INTERNAL, 'root IN target disappeared while cloning request');
+			$ordinal = 0;
+			if (($where = self::replaceIn($where, $targetIndex, $chunk, $ordinal)) === null) {
+				throw new OrmException(Code::INTERNAL, 'root IN target disappeared while cloning request');
+			}
+			$part->ir['where'] = $where;
+			$part->compactParams();
+			$part->sig .= '|root_in:' . hash('sha256', json_encode($part->ir, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+			$parts[] = $part;
+		}
+		return $parts;
+	}
+
+	private static function collectIn(?array $group, array &$out): void
+	{
+		foreach ($group['items'] ?? [] as $item) {
+			if (isset($item['pred']) && in_array($item['pred']['op'] ?? '', ['in', 'not_in'], true)) $out[] = $item['pred'];
+			if (isset($item['group'])) self::collectIn($item['group'], $out);
+			if (isset($item['nav'])) self::collectIn($item['nav']['group'] ?? null, $out);
+		}
+	}
+
+	private static function replaceIn(array $group, int $target, array $values, int &$ordinal): ?array
+	{
+		if (!isset($group['items']) || !is_array($group['items'])) return null;
+		foreach ($group['items'] as $index => $item) {
+			if (isset($item['pred']) && in_array($item['pred']['op'] ?? '', ['in', 'not_in'], true)) {
+				if ($ordinal === $target) {
+					$item['pred']['ps'] = $values;
+					$group['items'][$index] = $item;
+					return $group;
+				}
+				$ordinal++;
+			}
+			if (isset($item['group'])) {
+				$replaced = self::replaceIn($item['group'], $target, $values, $ordinal);
+				if ($replaced !== null) { $item['group'] = $replaced; $group['items'][$index] = $item; return $group; }
+			}
+			if (isset($item['nav']['group'])) {
+				$replaced = self::replaceIn($item['nav']['group'], $target, $values, $ordinal);
+				if ($replaced !== null) { $item['nav']['group'] = $replaced; $group['items'][$index] = $item; return $group; }
+			}
+		}
+		return null;
+	}
 
     /** @return array{0: Rows, 1: int} rows (with relations) and total */
     public function runPaginate(Db $ex, int $page, int $per): array

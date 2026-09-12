@@ -161,8 +161,8 @@ export class QueryCore {
   }
   public requestShape(kind: QueryKind = this.request.ir.kind): Request { return this.request.shape(kind); }
   public parameters(): Param[] { return [...this.request.params]; }
-  protected async terminal(kind: QueryKind): Promise<unknown> { if (this.request.deferredError) throw this.request.deferredError; const database=this.binding.resolve(); return database.execute(await database.plan(this.request.shape(kind)), [...this.request.params]); }
-  protected async terminalRows(): Promise<import('./model.js').ExecutionRows> { if (this.request.deferredError) throw this.request.deferredError; const database=this.binding.resolve(); return database.executeRows(await database.plan(this.request.shape('all')), [...this.request.params]); }
+  protected async terminal(kind: QueryKind): Promise<unknown> { if (this.request.deferredError) throw this.request.deferredError; const database=this.binding.resolve(); return database.executeRequest(this.request.shape(kind), [...this.request.params]); }
+  protected async terminalRows(): Promise<import('./model.js').ExecutionRows> { if (this.request.deferredError) throw this.request.deferredError; const database=this.binding.resolve(); return database.executeRowsRequest(this.request.shape('all'), [...this.request.params]); }
   protected async streamRows<T extends import('./model.js').Row>(visit: (row: T) => boolean | Promise<boolean>): Promise<import('./index.js').StreamResult> { if(this.request.deferredError)throw this.request.deferredError;const database=this.binding.resolve();return database.stream<T>(await database.plan(this.request.shape('all')),[...this.request.params],visit); }
   protected async insertKey(): Promise<unknown> { return (await this.terminal('insert') as { insertId: unknown }).insertId; }
   protected async writeAffected(kind: 'update'|'delete'): Promise<number> { return (await this.terminal(kind) as { affected: number }).affected; }

@@ -71,6 +71,7 @@ Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt 
 - `step.parent = {step, keys:[{column,index},...], if_parent?{column,index,param}}`: 실행기는 배열 순서대로 각 부모 키 튜플을 읽고, null을 포함한 튜플을 제거하며, 처음 확인한 순서대로 중복을 제거한다. `if_parent`가 있으면 `params[param]`과 같은 부모 행만 사용한다. 남은 튜플이 없으면 쿼리를 실행하지 않는다.
 - SQL `parent` 슬롯은 플레이스홀더 하나다. 실행기는 단일 키를 N개 스칼라 플레이스홀더로 확장하고 복합 키를 N개 괄호 튜플로 확장한다. N은 마지막 완전한 튜플을 반복해 2의 거듭제곱으로 맞춘다. Go, PHP, Rust, TypeScript에 같은 규칙을 적용한다.
 - 사용자가 지정한 `IN` 목록도 빌더가 IR을 생성하기 전에 같은 패딩 규칙을 적용한다. 목록 길이별로 prepared statement가 생성되는 것을 제한한다.
+- root positive `IN` request가 driver parameter limit을 초과하면 Go·PHP·Rust·TypeScript는 목록을 power-of-two chunk로 분할하고 다른 parameter를 보존하며 row 결과를 병합하고 count 결과를 합산한다. 분할로 의미가 변경되는 ordering, limit, distinct, grouping, having, keyset 또는 `NOT IN` query는 `IR_INVALID`로 거부한다.
 - `children[].kind = one`은 첫 번째 자식 행을 연결한다. `many`는 순서가 있는 `key` 참조로 키 맵을 생성하고 행 순서를 유지하며 중복 키에는 마지막 행을 사용한다. `if_parent`에서 제외된 부모에는 null 또는 빈 collection을 설정한다.
 - `limit_per_parent n`은 `ROW_NUMBER() OVER (PARTITION BY right ORDER BY …)` 하위 쿼리를 사용한다. 출력 컬럼 순서는 바뀌지 않는다.
 - `flatten`은 one 관계에만 사용할 수 있다. 자식 컬럼을 배열 또는 JSON 결과에 병합하고 이름이 같으면 부모 컬럼을 유지한다. 타입 accessor는 계속 사용할 수 있다.

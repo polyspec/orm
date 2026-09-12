@@ -69,6 +69,8 @@ pub struct QueryNode {
     pub scope_parameter: ::core::option::Option<u32>,
     #[prost(string, tag="21")]
     pub lock: ::prost::alloc::string::String,
+    #[prost(message, optional, tag="22")]
+    pub keyset: ::core::option::Option<Keyset>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Projection {
@@ -130,6 +132,13 @@ pub struct Relation {
     pub relation: ::prost::alloc::string::String,
     #[prost(message, optional, tag="2")]
     pub query: ::core::option::Option<QueryNode>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct Keyset {
+    #[prost(string, tag="1")]
+    pub direction: ::prost::alloc::string::String,
+    #[prost(uint32, repeated, tag="2")]
+    pub values: ::prost::alloc::vec::Vec<u32>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Group {

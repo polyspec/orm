@@ -208,6 +208,20 @@ fn query(input: &ir::Query, path: &str) -> Result<wire::QueryNode> {
             .map(|v| index(v, &format!("{path}.scope_parameter")))
             .transpose()?,
         lock: input.lock.clone(),
+        keyset: input
+            .keyset
+            .as_ref()
+            .map(|v| {
+                Ok::<wire::Keyset, Error>(wire::Keyset {
+                    direction: v.direction.clone(),
+                    values: v
+                        .values
+                        .iter()
+                        .map(|p| index(*p, &format!("{path}.keyset.values")))
+                        .collect::<Result<_>>()?,
+                })
+            })
+            .transpose()?,
     })
 }
 
