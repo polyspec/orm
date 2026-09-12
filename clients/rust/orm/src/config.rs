@@ -9,6 +9,7 @@ use serde::Deserialize;
 use crate::db::{Config, ConnectOptions, Db, OnQuery};
 use crate::engine::{Engine, EngineConfig};
 use crate::value::Param;
+use crate::ConnectCompiler;
 use crate::{Error, Result};
 
 #[derive(Deserialize, Debug, Clone)]
@@ -21,7 +22,7 @@ pub struct OrmConfig {
     pub secrets: SecretsSection,
     /// The wasm engine (Rust only).
     pub engine: EngineSection,
-    /// The PHP compile daemon: read by the PHP client, accepted here.
+    /// The shared compiler service. A missing endpoint keeps the compatibility WASM path.
     #[serde(default)]
     pub ormd: Option<OrmdSection>,
     #[serde(default)]
@@ -76,8 +77,15 @@ pub struct EngineSection {
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct OrmdSection {
-    pub socket: PathBuf,
+    #[serde(default)]
+    pub endpoint: Option<String>,
+    #[serde(default = "default_compiler_timeout_ms")]
+    pub timeout_ms: u64,
+    #[serde(default)]
+    pub socket: Option<PathBuf>,
 }
+
+fn default_compiler_timeout_ms() -> u64 { 5000 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
 #[serde(deny_unknown_fields)]
@@ -125,8 +133,13 @@ impl OrmConfig {
             check_path("engine.cache_dir", dir)?;
         }
         if let Some(o) = &cfg.ormd {
-            if !o.socket.is_absolute() {
-                return Err(cfg_err(format!("ormd.socket: {} is not absolute", o.socket.display())));
+            if let Some(socket) = &o.socket {
+                if !socket.is_absolute() {
+                    return Err(cfg_err(format!("ormd.socket: {} is not absolute", socket.display())));
+                }
+            }
+            if o.timeout_ms == 0 {
+                return Err(cfg_err("ormd.timeout_ms must be positive"));
             }
         }
         if cfg.db.dsn.is_empty() {
@@ -212,7 +225,15 @@ impl Db {
         }
         let engine = Arc::new(Engine::new(EngineConfig { wasm: &wasm, schema_json: &schema, dialect: &cfg.db.driver, cache_dir: cfg.engine.cache_dir.as_deref() })?);
         let on_query = cfg.debug.on_query.then(stderr_logger);
-        Db::connect(cfg.connect_options()?, cfg.db.pool, engine, Config { aes_key, on_query }).await
+        let options = cfg.connect_options()?;
+        let runtime = Config { aes_key, on_query };
+        if let Some(ormd) = &cfg.ormd {
+            if let Some(endpoint) = &ormd.endpoint {
+                let compiler = Arc::new(ConnectCompiler::new(endpoint, std::time::Duration::from_millis(ormd.timeout_ms))?);
+                return Db::connect_with_compiler(options, cfg.db.pool, engine, compiler, runtime).await;
+            }
+        }
+        Db::connect(options, cfg.db.pool, engine, runtime).await
     }
 }
 
