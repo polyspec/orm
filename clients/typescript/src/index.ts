@@ -13,6 +13,7 @@ export interface AesRotationSpec {
   primaryKeys: readonly string[];
   versionColumn: string;
   columns: readonly AesRotationColumn[];
+  batchSize?: number;
 }
 
 export interface AesRotationStatus {

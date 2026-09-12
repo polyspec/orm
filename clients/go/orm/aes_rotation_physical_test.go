@@ -82,15 +82,17 @@ func testPhysicalAESRotation(t *testing.T, driver, dsn string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	spec := AESRotationSpec{Table: table, PrimaryKeys: []string{"tenant_id", "id"}, VersionColumn: "aes_key_version", Columns: []AESRotationColumn{{Name: "aes_hex_email", Styles: []string{"aes", "hex"}}, {Name: "aes_hex_phone", Styles: []string{"aes", "hex"}}}}
+	spec := AESRotationSpec{Table: table, PrimaryKeys: []string{"tenant_id", "id"}, VersionColumn: "aes_key_version", Columns: []AESRotationColumn{{Name: "aes_hex_email", Styles: []string{"aes", "hex"}}, {Name: "aes_hex_phone", Styles: []string{"aes", "hex"}}}, BatchSize: 1}
 	before, err := db.AESStatus(ctx, db, spec, keyring)
 	if err != nil || before.Total != 2 || before.Pending != 2 || before.Versions[1] != 2 {
 		t.Fatalf("before status: %#v, %v", before, err)
 	}
 	changed, err := db.RotateAESRows(ctx, db, spec, keyring)
-	if err != nil || changed != 2 {
+	if err != nil || changed != 1 {
 		t.Fatalf("rotate: changed=%d err=%v", changed, err)
 	}
+	changed, err = db.RotateAESRows(ctx, db, spec, keyring)
+	if err != nil || changed != 1 { t.Fatalf("resume: changed=%d err=%v", changed, err) }
 	after, err := db.AESStatus(ctx, db, spec, keyring)
 	if err != nil || after.Pending != 0 || after.Versions[2] != 2 {
 		t.Fatalf("after status: %#v, %v", after, err)

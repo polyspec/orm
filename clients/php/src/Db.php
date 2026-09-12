@@ -214,7 +214,9 @@ class Db
         $columns = $spec['columns'];
         if ($columns === []) { throw new OrmException(Code::CONFIG, 'AES rotation columns are empty'); }
         $names = array_map(fn(array $column): string => $this->aesIdentifier($column['name']), $columns);
-        $select = $this->stmt("SELECT " . implode(', ', $primary) . ", $version, " . implode(', ', $names) . " FROM $table WHERE $version <> ? ORDER BY " . implode(', ', $primary));
+        $batchSize = (int) ($spec['batch_size'] ?? 1000);
+        if ($batchSize < 1) { $batchSize = 1000; }
+        $select = $this->stmt("SELECT " . implode(', ', $primary) . ", $version, " . implode(', ', $names) . " FROM $table WHERE $version <> ? ORDER BY " . implode(', ', $primary) . " LIMIT " . $batchSize);
         $select->execute([$keyring->currentVersion]);
         $rows = $select->fetchAll(\PDO::FETCH_NUM);
         $select->closeCursor();

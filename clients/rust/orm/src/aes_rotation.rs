@@ -19,6 +19,7 @@ pub struct AesRotationSpec {
     pub primary_keys: Vec<String>,
     pub version_column: String,
     pub columns: Vec<AesRotationColumn>,
+    pub batch_size: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -134,7 +135,8 @@ async fn rotate_in_transaction(ex: &impl Exec, spec: &AesRotationSpec, keyring: 
     if spec.primary_keys.is_empty() { return Err(Error::Config("AES rotation primary keys are empty".into())); }
     let driver = ex.db().driver(); let table = quote(driver, &spec.table)?; let primary: Vec<String> = spec.primary_keys.iter().map(|key| quote(driver, key)).collect::<Result<_>>()?; let version = quote(driver, &spec.version_column)?;
     let columns: Vec<String> = spec.columns.iter().map(|column| quote(driver, &column.name)).collect::<Result<_>>()?;
-    let select = step(format!("SELECT {}, {version}, {} FROM {table} WHERE {version} <> {} ORDER BY {}", primary.join(", "), columns.join(", "), placeholder(driver, 1), primary.join(", ")), vec![parameter(0)]);
+    let batch_size = if spec.batch_size == 0 { 1000 } else { spec.batch_size };
+    let select = step(format!("SELECT {}, {version}, {} FROM {table} WHERE {version} <> {} ORDER BY {} LIMIT {batch_size}", primary.join(", "), columns.join(", "), placeholder(driver, 1), primary.join(", ")), vec![parameter(0)]);
     let rows = ex.query(&select, &[Param::I64(keyring.current_version as i64)], vec![]).await?;
     let mut sets: Vec<String> = columns.iter().enumerate().map(|(index, name)| format!("{name} = {}", placeholder(driver, index + 1))).collect();
     sets.push(format!("{version} = {}", placeholder(driver, columns.len() + 1)));
