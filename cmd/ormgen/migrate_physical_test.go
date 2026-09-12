@@ -94,7 +94,32 @@ func TestPhysicalMigration(t *testing.T) {
 			assertPhysicalRollback(t, ctx, db, tc.driver)
 			assertPhysicalPoint(t, ctx, db, tc.driver)
 			assertPhysicalScope(t, ctx, db, tc.driver)
+			assertPhysicalCheckImport(t, ctx, db, tc.driver)
 		})
+	}
+}
+
+func assertPhysicalCheckImport(t *testing.T, ctx context.Context, db *sql.DB, driver string) {
+	t.Helper()
+	q := func(name string) string {
+		if driver == "mysql" {
+			return "`" + name + "`"
+		}
+		return `"` + name + `"`
+	}
+	table := "check_import_probe"
+	_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+q(table))
+	t.Cleanup(func() { _, _ = db.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+q(table)) })
+	create := "CREATE TABLE " + q(table) + " (" + q("id") + " BIGINT NOT NULL PRIMARY KEY, " + q("quantity") + " INTEGER NOT NULL, CONSTRAINT " + q("positive_quantity") + " CHECK (" + q("quantity") + " >= 0))"
+	if _, err := db.ExecContext(ctx, create); err != nil {
+		t.Fatal(err)
+	}
+	tables, err := readTables(db, driver, map[string]bool{table: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tables) != 1 || len(tables[0].Checks) != 1 || tables[0].Checks[0].Name != "positive_quantity" || !strings.Contains(tables[0].Checks[0].Expr, "quantity") {
+		t.Fatalf("%s check import=%#v", driver, tables)
 	}
 }
 
