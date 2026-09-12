@@ -65,6 +65,8 @@ jobs:
         run: go test ./engine/... ./contracts ./tests/interfaces/check && go vet ./...
       - name: typescript common structure
         run: npm run typescript:check && node tests/typescript/check.mjs
+      - name: schema AES version rule
+        run: npm run schema:check
       - name: artifacts
         run: |
           mkdir -p bin
