@@ -29,7 +29,11 @@ go run ./tests/conformance/check run -driver postgres -dsn 'postgres://…'
 go run ./tests/conformance/check run -driver sqlite -dsn '/abs.sqlite'
 ```
 
-`-langs go,php`는 지정한 실행기만 실행한다. `check record -driver <db> out/<db>/go.json`은 검토 후 기대값을 갱신할 때 사용한다.
+`-langs go,php`는 지정한 실행기만 실행한다. SQLite는 클라이언트별 DSN
+문법이 다르므로 `-go-dsn file:/abs.sqlite`, `-rust-dsn sqlite:///abs.sqlite`,
+`-php-dsn` 또는 `-typescript-dsn /abs.sqlite`를 사용할 수 있다. 이 옵션은
+선택한 실행기에서 `-dsn`보다 우선한다. `check record -driver <db> out/<db>/go.json`은
+검토 후 기대값을 갱신할 때 사용한다.
 
 ## 벡터 추가
 
