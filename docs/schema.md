@@ -95,7 +95,14 @@ When the same parent is referenced twice (`user_seq`, `updated_user_seq`), draw 
 %% timestamps <table> created_ts updated_ts # 자동 타임스탬프 컬럼 지정(기본: 이름이 created_ts/updated_ts면 자동)
 %% predicate <table> <name> : <expr 조각>   # 재사용 술어 → `<name>(args…)` 메서드. 백틱 컬럼은 검증, `?`마다 인자 하나
 %% scope <table> <column>                 # query API에 scope(value) 조건 생성
+%% table_comment <table> "database table comment"
+%% column_comment <table> <column> "database column comment"
 ```
+
+Table and column comments are schema data. `ormgen ddl` emits MySQL comments,
+PostgreSQL `COMMENT ON` statements, and SQLite rows in `orm_schema_comments`.
+`ormgen import` reads the same database metadata and writes these directives.
+Changing a comment changes the schema hash and produces an idempotent migration.
 
 ### 2.4 Optional declarations (default rules)
 - A PK named `seq` with `auto` can be written as `bigint seq PK "auto"`.

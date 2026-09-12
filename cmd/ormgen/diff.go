@@ -133,6 +133,16 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 					}
 					changes = append(changes, schemaChange{sql: stmt, destructive: true})
 				}
+				if ook && nok && o.Comment != n.Comment {
+					stmt, err := alterComment(newEnt.Table, n, dialect, quote)
+					if err != nil {
+						return "", err
+					}
+					changes = append(changes, schemaChange{sql: stmt})
+				}
+			}
+			if oldEnt.Comment != newEnt.Comment {
+				changes = append(changes, schemaChange{sql: alterTableComment(newEnt.Table, newEnt.Comment, dialect, quote)})
 			}
 		}
 	}
@@ -185,5 +195,50 @@ func alterColumn(table, def, dialect string, quote func(string) string) (string,
 		return "", fmt.Errorf("sqlite does not support deterministic ALTER COLUMN; recreate the table explicitly")
 	default:
 		return "", fmt.Errorf("unknown dialect %q", dialect)
+	}
+}
+
+func alterTableComment(table, comment, dialect string, quote func(string) string) string {
+	q := sqlQuote(comment)
+	switch dialect {
+	case "mysql":
+		return fmt.Sprintf("ALTER TABLE %s COMMENT = '%s';", quote(table), q)
+	case "postgres":
+		if comment == "" {
+			return fmt.Sprintf("COMMENT ON TABLE %s IS NULL;", quote(table))
+		}
+		return fmt.Sprintf("COMMENT ON TABLE %s IS '%s';", quote(table), q)
+	default:
+		if comment == "" {
+			return fmt.Sprintf("DELETE FROM orm_schema_comments WHERE table_name='%s' AND column_name='';", sqlQuote(table))
+		}
+		return fmt.Sprintf("INSERT OR REPLACE INTO orm_schema_comments (table_name,column_name,comment) VALUES ('%s','','%s');", sqlQuote(table), q)
+	}
+}
+
+func alterComment(table string, c *schema.Col, dialect string, quote func(string) string) (string, error) {
+	q := sqlQuote(c.Comment)
+	switch dialect {
+	case "mysql":
+		def, err := ddlColumn(c, dialect, quote)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("ALTER TABLE %s MODIFY COLUMN %s;", quote(table), def+func() string {
+			if c.Comment != "" {
+				return " COMMENT '" + q + "'"
+			}
+			return " COMMENT ''"
+		}()), nil
+	case "postgres":
+		if c.Comment == "" {
+			return fmt.Sprintf("COMMENT ON COLUMN %s.%s IS NULL;", quote(table), quote(c.Name)), nil
+		}
+		return fmt.Sprintf("COMMENT ON COLUMN %s.%s IS '%s';", quote(table), quote(c.Name), q), nil
+	default:
+		if c.Comment == "" {
+			return fmt.Sprintf("DELETE FROM orm_schema_comments WHERE table_name='%s' AND column_name='%s';", sqlQuote(table), sqlQuote(c.Name)), nil
+		}
+		return fmt.Sprintf("INSERT OR REPLACE INTO orm_schema_comments (table_name,column_name,comment) VALUES ('%s','%s','%s');", sqlQuote(table), sqlQuote(c.Name), q), nil
 	}
 }

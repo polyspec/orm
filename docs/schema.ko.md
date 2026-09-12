@@ -95,7 +95,14 @@ Mermaid 표준 그대로다. `PK`/`FK`/`UK`는 Mermaid 키워드(`PK, FK`처럼 
 %% timestamps <table> created_ts updated_ts # 자동 타임스탬프 컬럼 지정(기본: 이름이 created_ts/updated_ts면 자동)
 %% predicate <table> <name> : <expr 조각>   # 재사용 술어 → `<name>(args…)` 메서드. 백틱 컬럼은 검증, `?`마다 인자 하나
 %% scope <table> <column>                 # query API에 scope(value) 조건 생성
+%% table_comment <table> "database table comment"
+%% column_comment <table> <column> "database column comment"
 ```
+
+테이블 주석과 컬럼 주석은 스키마 데이터입니다. `ormgen ddl`은 MySQL 주석,
+PostgreSQL `COMMENT ON` 문, SQLite의 `orm_schema_comments` 행을 생성합니다.
+`ormgen import`는 같은 데이터베이스 메타데이터를 읽어 이 지시문을 생성합니다.
+주석을 변경하면 스키마 해시가 변경되고 멱등 마이그레이션이 생성됩니다.
 
 ### 2.4 생략 가능한 것 (기본 규칙)
 - PK가 `seq`이고 `auto`면 `bigint seq PK "auto"` 한 줄.
