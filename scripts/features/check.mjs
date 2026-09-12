@@ -33,6 +33,19 @@ for (const feature of manifest.features ?? []) {
     try { await stat(resolve(root, relative)); }
     catch { errors.push(`${feature.id}: missing path ${relative}`); }
   }
+  for (const relative of feature.fixtures) {
+    if (!relative.startsWith('contracts/fixtures/') || !relative.endsWith('.json')) continue;
+    try {
+      const fixture = JSON.parse(await readFile(resolve(root, relative), 'utf8'));
+      if (fixture.feature !== feature.id) errors.push(`${feature.id}: fixture ${relative} has a different feature id`);
+      if (!Array.isArray(fixture.cases) || fixture.cases.length === 0) errors.push(`${feature.id}: fixture ${relative} has no cases`);
+      for (const testCase of fixture.cases ?? []) {
+        if (!testCase.id || !testCase.operation || !testCase.expected) errors.push(`${feature.id}: fixture ${relative} has an incomplete case`);
+      }
+    } catch (error) {
+      errors.push(`${feature.id}: invalid JSON fixture ${relative}: ${error.message}`);
+    }
+  }
   for (const doc of feature.docs) {
     if (!doc.endsWith('.md')) continue;
     const korean = doc.replace(/\.md$/, '.ko.md');
