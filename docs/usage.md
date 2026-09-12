@@ -399,9 +399,9 @@ Battle::query()->seq($id)->using($db)->delete();
 - `minus<Col>` clamps at zero. Use `set<Col>Expr('`read_count` * ? + 1', [2])` for an expression.
 - Transactions use each language native transaction API. The callback runs once by default. Deadlock retry requires `TransactionOptions` with `retryDeadlocks` enabled and is limited by `maxAttempts` (default 3).
 - A transaction can use `savepoint(name)`, `rollbackTo(name)`, and `releaseSavepoint(name)` without ending the outer transaction. Savepoint names use `[A-Za-z_][A-Za-z0-9_]*`; invalid names fail with `CONFIG` before SQL execution.
-- `TransactionOptions` can select `isolation` and `readOnly`. The supported names are `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, and `serializable`. SQLite rejects explicit isolation and read-only options. Rust with MySQL applies isolation on the same retained pool connection before starting the transaction. Unsupported modes return `CONFIG`.
+- `TransactionOptions` can select `isolation`, `readOnly`, and `timeoutMs`. The supported isolation names are `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, and `serializable`. PostgreSQL applies transaction settings after `BEGIN`; MySQL applies them before `START TRANSACTION` on the retained connection. SQLite rejects explicit isolation and read-only options. A positive `timeoutMs` applies PostgreSQL `statement_timeout`; MySQL and SQLite return `CAPABILITY_UNSUPPORTED`.
 - Root row queries provide `forUpdate()` and `forShare()` (`ForUpdate()` and `ForShare()` in Go; `for_update()` and `for_share()` in Rust). MySQL and PostgreSQL execute the selected row lock. SQLite returns `CAPABILITY_UNSUPPORTED`.
-- A common query timeout/cancellation API is not available. The supported drivers do not provide one portable in-flight statement cancellation behavior, so the ORM does not expose a partial timeout API.
+- `timeoutMs` is a transaction option for PostgreSQL statement timeout. In-flight cancellation remains language-native where the client and driver expose it; there is no common cancellation method.
 
 ```go
 row, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {

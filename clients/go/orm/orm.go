@@ -411,6 +411,7 @@ type TransactionOptions struct {
 	MaxAttempts    int
 	Isolation      IsolationLevel
 	ReadOnly       bool
+	TimeoutMS      int
 }
 
 // TransactionWithOptions runs a transaction with an explicit retry policy.
@@ -452,6 +453,12 @@ func runTx[T any](ctx context.Context, d *DB, options TransactionOptions, fn fun
 	if err != nil {
 		return v, mapDriverErr(err)
 	}
+	if options.TimeoutMS > 0 {
+		if _, err := tx.ExecContext(ctx, fmt.Sprintf("SET LOCAL statement_timeout = %d", options.TimeoutMS)); err != nil {
+			tx.Rollback()
+			return v, mapDriverErr(err)
+		}
+	}
 	ex := &Tx{d: d, tx: tx}
 	defer ex.finished.Store(true)
 	defer func() {
@@ -472,6 +479,12 @@ func runTx[T any](ctx context.Context, d *DB, options TransactionOptions, fn fun
 }
 
 func sqlTransactionOptions(driver string, options TransactionOptions) (*sql.TxOptions, error) {
+	if options.TimeoutMS < 0 {
+		return nil, &ir.Error{Code: CodeConfig, Msg: "transaction timeout_ms must not be negative"}
+	}
+	if options.TimeoutMS > 0 && driver != "postgres" {
+		return nil, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction timeout_ms is supported only by postgres"}
+	}
 	if driver == "sqlite" && (options.Isolation != IsolationDefault || options.ReadOnly) {
 		return nil, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "sqlite does not support transaction isolation or read-only mode"}
 	}

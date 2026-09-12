@@ -216,6 +216,20 @@ if ($driver === 'sqlite') {
     } catch (OrmException $e) {
         check($e->code_ === Code::CAPABILITY_UNSUPPORTED, 'SQLite transaction capability error code');
     }
+    try {
+        $db->transaction(static function (Tx $tx): void {}, new \Orm\TransactionOptions(timeoutMs: 1));
+        check(false, 'SQLite accepted unsupported transaction timeout');
+    } catch (OrmException $e) {
+        check($e->code_ === Code::CAPABILITY_UNSUPPORTED, 'SQLite transaction timeout capability error code');
+    }
+}
+if ($driver === 'postgres') {
+    try {
+        $db->transaction(static fn(Tx $tx) => Battle::query()->raw('SELECT pg_sleep(0.1)')->using($tx)->rawAll(), new \Orm\TransactionOptions(timeoutMs: 1));
+        check(false, 'PostgreSQL transaction timeout was not enforced');
+    } catch (\Throwable $e) {
+        check(str_contains($e->getMessage(), '57014') || str_contains(strtolower($e->getMessage()), 'statement timeout'), 'PostgreSQL transaction timeout returned a detailed driver error');
+    }
 }
 
 $created->setName('php-write-2')->setLikeCount(5)->using($db)->updateOptimistic();

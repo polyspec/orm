@@ -98,6 +98,15 @@ try {
   } catch (error) { if (error !== rollback) throw error; }
   if (createdSeq === undefined || await Battle().using(db).getCountBySeq(createdSeq) !== 0) throw new Error('transaction rollback state differs');
   if (await CompositeAccount().tenantIdEq(tenantId).accountIdEq(13).using(db).getCount() !== 0) throw new Error('composite transaction rollback retained rows');
+  if (driver === 'postgres') {
+    let timedOut = false;
+    try {
+      await db.transaction(async transaction => Battle().raw('SELECT pg_sleep(0.1)').using(transaction).rawAll(), { timeoutMs: 1 });
+    } catch (error) {
+      timedOut = error?.code !== 'CONFIG';
+    }
+    if (!timedOut) throw new Error('PostgreSQL transaction timeout was not enforced');
+  }
   const soft = await SoftRecord().setName('soft-delete').using(db).insert();
   if (!soft || await SoftRecord().using(db).getCount() !== 1) throw new Error('soft-delete insert was not visible');
   await soft.delete();

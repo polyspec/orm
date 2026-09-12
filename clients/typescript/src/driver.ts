@@ -20,7 +20,7 @@ pg.types.setTypeParser(3802, value => value);
 
 export type DriverName = 'mysql' | 'postgres' | 'sqlite';
 export type DriverIsolation = 'default' | 'read_uncommitted' | 'read_committed' | 'repeatable_read' | 'serializable';
-export interface DriverTransactionOptions { isolation?: DriverIsolation; readOnly?: boolean; }
+export interface DriverTransactionOptions { isolation?: DriverIsolation; readOnly?: boolean; timeoutMs?: number; }
 export type DriverValue = null | boolean | number | string | bigint | Uint8Array | Date;
 
 export interface DriverResult {
@@ -217,10 +217,14 @@ class PostgresDriver implements DriverConnection {
   public async begin(options: DriverTransactionOptions = {}): Promise<DriverTransaction> {
     if (!(this.connection instanceof pg.Pool)) throw new OrmError('CONFIG', 'nested transactions are not supported');
     const connection: pg.PoolClient = await this.connection.connect();
+    let began = false;
     try {
-      await configureTransaction(connection, this.name, options);
       await connection.query('BEGIN');
+      began = true;
+      await configureTransaction(connection, this.name, options);
+      if ((options.timeoutMs ?? 0) > 0) await connection.query(`SET LOCAL statement_timeout = ${options.timeoutMs}`);
     } catch (error) {
+      if (began) { try { await connection.query('ROLLBACK'); } catch {} }
       connection.release();
       throw error;
     }
@@ -304,7 +308,7 @@ class SqliteDriver implements DriverConnection {
   }
   public async begin(options: DriverTransactionOptions = {}): Promise<DriverTransaction> {
     if (this.transaction) throw new OrmError('CONFIG', 'nested transactions are not supported');
-    if (options.isolation !== undefined && options.isolation !== 'default' || options.readOnly) throw new OrmError('CAPABILITY_UNSUPPORTED', 'sqlite does not support transaction isolation or read-only mode');
+    if (options.isolation !== undefined && options.isolation !== 'default' || options.readOnly || (options.timeoutMs ?? 0) > 0) throw new OrmError('CAPABILITY_UNSUPPORTED', 'sqlite does not support transaction isolation, read-only mode, or timeout_ms');
     this.connection.exec('BEGIN IMMEDIATE');
     return new SqliteTx(this.connection);
   }
@@ -313,6 +317,7 @@ class SqliteDriver implements DriverConnection {
 }
 
 async function configureTransaction(connection: { query(sql: string): Promise<unknown> }, driver: DriverName, options: DriverTransactionOptions): Promise<void> {
+  if ((options.timeoutMs ?? 0) > 0 && driver !== 'postgres') throw new OrmError('CAPABILITY_UNSUPPORTED', 'transaction timeout_ms is supported only by postgres');
   const isolation = options.isolation ?? 'default';
   if (isolation !== 'default') await connection.query(`SET TRANSACTION ISOLATION LEVEL ${isolation.replaceAll('_', ' ').toUpperCase()}`);
   if (options.readOnly) await connection.query('SET TRANSACTION READ ONLY');
