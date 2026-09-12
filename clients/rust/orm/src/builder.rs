@@ -714,12 +714,17 @@ impl<'a> W<'a> {
 
     /// Descends into a joined relation.
     pub fn nav_with(&mut self, rel: &str, f: impl FnOnce(W<'_>)) {
+		self.nav_with_mode(rel, "", f);
+	}
+
+	pub fn nav_with_mode(&mut self, rel: &str, mode: &str, f: impl FnOnce(W<'_>)) {
         let conn = self.conn();
         self.g.items.push(Item::Nav {
             nav: Nav {
                 conn,
                 rel: rel.into(),
                 group: Group::default(),
+				mode: mode.into(),
             },
         });
         let Some(Item::Nav { nav }) = self.g.items.last_mut() else {

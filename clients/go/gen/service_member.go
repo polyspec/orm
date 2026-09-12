@@ -359,12 +359,36 @@ func (w *ServiceMemberWhere) Authors(fn func(*AuthorWhere)) *ServiceMemberWhere 
 	w.w.Nav("authors", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
 	return w
 }
+func (w *ServiceMemberWhere) HasAuthors(fn func(*AuthorWhere)) *ServiceMemberWhere {
+	w.w.NavMode("authors", "exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return w
+}
+func (w *ServiceMemberWhere) NotHasAuthors(fn func(*AuthorWhere)) *ServiceMemberWhere {
+	w.w.NavMode("authors", "not_exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return w
+}
 func (w *ServiceMemberWhere) Service(fn func(*ServiceWhere)) *ServiceMemberWhere {
 	w.w.Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return w
 }
+func (w *ServiceMemberWhere) HasService(fn func(*ServiceWhere)) *ServiceMemberWhere {
+	w.w.NavMode("service", "exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
+func (w *ServiceMemberWhere) NotHasService(fn func(*ServiceWhere)) *ServiceMemberWhere {
+	w.w.NavMode("service", "not_exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
 func (w *ServiceMemberWhere) User(fn func(*UserWhere)) *ServiceMemberWhere {
 	w.w.Nav("user", func(x *orm.W) { fn(&UserWhere{w: x}) })
+	return w
+}
+func (w *ServiceMemberWhere) HasUser(fn func(*UserWhere)) *ServiceMemberWhere {
+	w.w.NavMode("user", "exists", func(x *orm.W) { fn(&UserWhere{w: x}) })
+	return w
+}
+func (w *ServiceMemberWhere) NotHasUser(fn func(*UserWhere)) *ServiceMemberWhere {
+	w.w.NavMode("user", "not_exists", func(x *orm.W) { fn(&UserWhere{w: x}) })
 	return w
 }
 
@@ -782,12 +806,36 @@ func (q *ServiceMemberQuery) Authors(fn func(*AuthorWhere)) *ServiceMemberQuery 
 	q.q.W().Nav("authors", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
 	return q
 }
+func (q *ServiceMemberQuery) HasAuthors(fn func(*AuthorWhere)) *ServiceMemberQuery {
+	q.q.W().NavMode("authors", "exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return q
+}
+func (q *ServiceMemberQuery) NotHasAuthors(fn func(*AuthorWhere)) *ServiceMemberQuery {
+	q.q.W().NavMode("authors", "not_exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return q
+}
 func (q *ServiceMemberQuery) Service(fn func(*ServiceWhere)) *ServiceMemberQuery {
 	q.q.W().Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return q
 }
+func (q *ServiceMemberQuery) HasService(fn func(*ServiceWhere)) *ServiceMemberQuery {
+	q.q.W().NavMode("service", "exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
+func (q *ServiceMemberQuery) NotHasService(fn func(*ServiceWhere)) *ServiceMemberQuery {
+	q.q.W().NavMode("service", "not_exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
 func (q *ServiceMemberQuery) User(fn func(*UserWhere)) *ServiceMemberQuery {
 	q.q.W().Nav("user", func(x *orm.W) { fn(&UserWhere{w: x}) })
+	return q
+}
+func (q *ServiceMemberQuery) HasUser(fn func(*UserWhere)) *ServiceMemberQuery {
+	q.q.W().NavMode("user", "exists", func(x *orm.W) { fn(&UserWhere{w: x}) })
+	return q
+}
+func (q *ServiceMemberQuery) NotHasUser(fn func(*UserWhere)) *ServiceMemberQuery {
+	q.q.W().NavMode("user", "not_exists", func(x *orm.W) { fn(&UserWhere{w: x}) })
 	return q
 }
 

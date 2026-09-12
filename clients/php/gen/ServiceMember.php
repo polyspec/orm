@@ -82,8 +82,14 @@ final class ServiceMemberWhere
     public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
     public function authors(\Closure $fn): static { $fn(new AuthorWhere($this->w->nav('authors'))); $this->w->req->end(); return $this; }
+    public function hasAuthors(\Closure $fn): static { $fn(new AuthorWhere($this->w->navMode('authors', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasAuthors(\Closure $fn): static { $fn(new AuthorWhere($this->w->navMode('authors', 'not_exists'))); $this->w->req->end(); return $this; }
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w->nav('service'))); $this->w->req->end(); return $this; }
+    public function hasService(\Closure $fn): static { $fn(new ServiceWhere($this->w->navMode('service', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasService(\Closure $fn): static { $fn(new ServiceWhere($this->w->navMode('service', 'not_exists'))); $this->w->req->end(); return $this; }
     public function user(\Closure $fn): static { $fn(new UserWhere($this->w->nav('user'))); $this->w->req->end(); return $this; }
+    public function hasUser(\Closure $fn): static { $fn(new UserWhere($this->w->navMode('user', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasUser(\Closure $fn): static { $fn(new UserWhere($this->w->navMode('user', 'not_exists'))); $this->w->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }
@@ -154,8 +160,14 @@ final class ServiceMember extends Q implements ServiceMemberInterface
     public function and(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
     public function authors(\Closure $fn): static { $fn(new AuthorWhere($this->w()->nav('authors'))); $this->req->end(); return $this; }
+    public function hasAuthors(\Closure $fn): static { $fn(new AuthorWhere($this->w()->navMode('authors', 'exists'))); $this->req->end(); return $this; }
+    public function notHasAuthors(\Closure $fn): static { $fn(new AuthorWhere($this->w()->navMode('authors', 'not_exists'))); $this->req->end(); return $this; }
     public function service(\Closure $fn): static { $fn(new ServiceWhere($this->w()->nav('service'))); $this->req->end(); return $this; }
+    public function hasService(\Closure $fn): static { $fn(new ServiceWhere($this->w()->navMode('service', 'exists'))); $this->req->end(); return $this; }
+    public function notHasService(\Closure $fn): static { $fn(new ServiceWhere($this->w()->navMode('service', 'not_exists'))); $this->req->end(); return $this; }
     public function user(\Closure $fn): static { $fn(new UserWhere($this->w()->nav('user'))); $this->req->end(); return $this; }
+    public function hasUser(\Closure $fn): static { $fn(new UserWhere($this->w()->navMode('user', 'exists'))); $this->req->end(); return $this; }
+    public function notHasUser(\Closure $fn): static { $fn(new UserWhere($this->w()->navMode('user', 'not_exists'))); $this->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w()->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }

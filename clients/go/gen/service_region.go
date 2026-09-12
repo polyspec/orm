@@ -327,8 +327,24 @@ func (w *ServiceRegionWhere) Authors(fn func(*AuthorWhere)) *ServiceRegionWhere 
 	w.w.Nav("authors", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
 	return w
 }
+func (w *ServiceRegionWhere) HasAuthors(fn func(*AuthorWhere)) *ServiceRegionWhere {
+	w.w.NavMode("authors", "exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return w
+}
+func (w *ServiceRegionWhere) NotHasAuthors(fn func(*AuthorWhere)) *ServiceRegionWhere {
+	w.w.NavMode("authors", "not_exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return w
+}
 func (w *ServiceRegionWhere) Service(fn func(*ServiceWhere)) *ServiceRegionWhere {
 	w.w.Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
+func (w *ServiceRegionWhere) HasService(fn func(*ServiceWhere)) *ServiceRegionWhere {
+	w.w.NavMode("service", "exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return w
+}
+func (w *ServiceRegionWhere) NotHasService(fn func(*ServiceWhere)) *ServiceRegionWhere {
+	w.w.NavMode("service", "not_exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return w
 }
 
@@ -714,8 +730,24 @@ func (q *ServiceRegionQuery) Authors(fn func(*AuthorWhere)) *ServiceRegionQuery 
 	q.q.W().Nav("authors", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
 	return q
 }
+func (q *ServiceRegionQuery) HasAuthors(fn func(*AuthorWhere)) *ServiceRegionQuery {
+	q.q.W().NavMode("authors", "exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return q
+}
+func (q *ServiceRegionQuery) NotHasAuthors(fn func(*AuthorWhere)) *ServiceRegionQuery {
+	q.q.W().NavMode("authors", "not_exists", func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+	return q
+}
 func (q *ServiceRegionQuery) Service(fn func(*ServiceWhere)) *ServiceRegionQuery {
 	q.q.W().Nav("service", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
+func (q *ServiceRegionQuery) HasService(fn func(*ServiceWhere)) *ServiceRegionQuery {
+	q.q.W().NavMode("service", "exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+	return q
+}
+func (q *ServiceRegionQuery) NotHasService(fn func(*ServiceWhere)) *ServiceRegionQuery {
+	q.q.W().NavMode("service", "not_exists", func(x *orm.W) { fn(&ServiceWhere{w: x}) })
 	return q
 }
 

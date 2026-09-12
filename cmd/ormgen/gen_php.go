@@ -183,6 +183,8 @@ final class {{.Type}}Where
 {{- end}}
 {{- range .Rels}}
     public function {{camel .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w->nav('{{.Name}}'))); $this->w->req->end(); return $this; }
+    public function has{{pascal .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w->navMode('{{.Name}}', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHas{{pascal .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w->navMode('{{.Name}}', 'not_exists'))); $this->w->req->end(); return $this; }
 {{- end}}
 {{range .Cols}}{{$c := .}}{{range .Ops}}
 {{- if eq .Kind "one"}}
@@ -243,6 +245,8 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
 {{- end}}
 {{- range .Rels}}
     public function {{camel .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w()->nav('{{.Name}}'))); $this->req->end(); return $this; }
+    public function has{{pascal .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w()->navMode('{{.Name}}', 'exists'))); $this->req->end(); return $this; }
+    public function notHas{{pascal .Name}}(\Closure $fn): static { $fn(new {{.TargetType}}Where($this->w()->navMode('{{.Name}}', 'not_exists'))); $this->req->end(); return $this; }
 {{- end}}
 {{range .Cols}}{{$c := .}}{{range .Ops}}
 {{- if eq .Kind "one"}}

@@ -70,7 +70,8 @@ export class WhereCore {
   public expression(expression: string, values: readonly Param[] = []): this { this.item({ pred: { expr: expression, ps: values.map(value => this.request.parameter(value)) } }); return this; }
   public match(columns: readonly string[], value: string, boolean = false): this { this.item({ pred: { op: boolean ? 'match_boolean' : 'match', match: [...columns], p: this.request.parameter(value) } }); return this; }
   public and(callback: (where: WhereCore) => void): this { const group: Group = { items: [] }; this.item({ group }); callback(new WhereCore(this.request, group)); return this; }
-  public navigate(relation: string, callback: (where: WhereCore) => void): this { const group: Group = { items: [] }; this.item({ nav: { rel: relation, group } }); callback(new WhereCore(this.request, group)); return this; }
+  public navigate(relation: string, callback: (where: WhereCore) => void): this { return this.navigateMode(relation, '', callback); }
+  public navigateMode(relation: string, mode: '' | 'exists' | 'not_exists', callback: (where: WhereCore) => void): this { const group: Group = { items: [] }; this.item({ nav: { rel: relation, group, mode } }); callback(new WhereCore(this.request, group)); return this; }
 }
 
 export class Binding {

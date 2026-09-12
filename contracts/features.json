@@ -161,7 +161,7 @@
       "errors": [{"code": "SCHEMA_INVALID", "when": "relation keys or through entity are incomplete"}],
       "clients": {"go": "partial", "php": "partial", "rust": "partial", "typescript": "partial"},
       "fixtures": ["schema/schema.json"],
-      "tests": ["engine/engine_test.go", "clients/php/tests/integration.php", "clients/rust/tests/src/integration.rs", "tests/typescript/sqlite-integration.mjs", "engine/schema/manifest_test.go"],
+      "tests": ["engine/engine_test.go", "engine/planner/soft_delete_test.go", "proto/orm/compiler/v1/bridge/bridge_test.go", "clients/php/tests/integration.php", "clients/rust/tests/src/integration.rs", "tests/typescript/sqlite-integration.mjs", "engine/schema/manifest_test.go"],
       "docs": ["docs/schema.md", "docs/dsl.md"],
       "verification": [{"id": "relation-unit", "command": "go test ./engine/... -run 'Relation|Join|Scope|Composite' -count=1"}]
     },

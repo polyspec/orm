@@ -171,6 +171,8 @@ pub struct Nav {
     pub conn: String,
     pub rel: String,
     pub group: Group,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub mode: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

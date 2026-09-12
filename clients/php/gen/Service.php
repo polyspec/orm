@@ -74,8 +74,14 @@ final class ServiceWhere
     public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
     public function authors(\Closure $fn): static { $fn(new AuthorWhere($this->w->nav('authors'))); $this->w->req->end(); return $this; }
+    public function hasAuthors(\Closure $fn): static { $fn(new AuthorWhere($this->w->navMode('authors', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasAuthors(\Closure $fn): static { $fn(new AuthorWhere($this->w->navMode('authors', 'not_exists'))); $this->w->req->end(); return $this; }
     public function members(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w->nav('members'))); $this->w->req->end(); return $this; }
+    public function hasMembers(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w->navMode('members', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasMembers(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w->navMode('members', 'not_exists'))); $this->w->req->end(); return $this; }
     public function modules(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w->nav('modules'))); $this->w->req->end(); return $this; }
+    public function hasModules(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w->navMode('modules', 'exists'))); $this->w->req->end(); return $this; }
+    public function notHasModules(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w->navMode('modules', 'not_exists'))); $this->w->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }
@@ -124,8 +130,14 @@ final class Service extends Q implements ServiceInterface
     public function and(\Closure $fn): static { $fn(new ServiceWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
     public function authors(\Closure $fn): static { $fn(new AuthorWhere($this->w()->nav('authors'))); $this->req->end(); return $this; }
+    public function hasAuthors(\Closure $fn): static { $fn(new AuthorWhere($this->w()->navMode('authors', 'exists'))); $this->req->end(); return $this; }
+    public function notHasAuthors(\Closure $fn): static { $fn(new AuthorWhere($this->w()->navMode('authors', 'not_exists'))); $this->req->end(); return $this; }
     public function members(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->nav('members'))); $this->req->end(); return $this; }
+    public function hasMembers(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->navMode('members', 'exists'))); $this->req->end(); return $this; }
+    public function notHasMembers(\Closure $fn): static { $fn(new ServiceMemberWhere($this->w()->navMode('members', 'not_exists'))); $this->req->end(); return $this; }
     public function modules(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->nav('modules'))); $this->req->end(); return $this; }
+    public function hasModules(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->navMode('modules', 'exists'))); $this->req->end(); return $this; }
+    public function notHasModules(\Closure $fn): static { $fn(new ServiceRegionWhere($this->w()->navMode('modules', 'not_exists'))); $this->req->end(); return $this; }
 
     public function seqEq(int $v): static { $this->w()->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }
