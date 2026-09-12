@@ -56,6 +56,6 @@ Go `gen.Battle()` returns `*gen.BattleQuery`. Go passes `ctx` with the executor,
 
 ## Implementation status
 
-The implemented clients are **Go, PHP, Rust, and TypeScript**. All four clients provide generated entity APIs and native database execution. See the [implementation matrix](interface-implementation.md), [checklist](checklist.md), and [S7 work list](s7.md) for verification scope and remaining work.
+The implemented clients are **Go, PHP, Rust, and TypeScript**. All four clients provide generated entity APIs and native database execution. See the [implementation matrix](interface-implementation.md), [checklist](checklist.md), [public source readiness plan](public-readiness.md), and [S7 work list](s7.md) for verification scope and remaining work.
 
 [DSL](dsl.md) · [Schema](schema.md) · [IR / Plan](protocol.md) · [Complex query example](examples/complex-query.md) · [Documentation build and deployment](docs-development.md) · [한국어 문서](index.ko.md)
