@@ -564,9 +564,9 @@
       "id": "constraints_and_relations",
       "title": "Constraints and relation predicates",
       "title_ko": "Constraint 및 relation predicate",
-      "status": "partial",
-      "description": "Preserve CHECK, index, foreign-key, soft-delete, relation existence, relation count, and many-to-many through metadata in the planner and migration system. Generated client and physical through execution remain incomplete.",
-      "description_ko": "CHECK, index, foreign-key, soft-delete, relation existence, relation count, many-to-many through metadata를 planner와 migration system에서 보존한다. 생성 client와 물리 through 실행은 미완료 상태다.",
+      "status": "implemented",
+      "description": "Preserve CHECK, index, foreign-key, soft-delete, relation existence, relation count, and many-to-many through metadata in the planner and migration system. Generated clients execute the declared operations on MySQL, PostgreSQL, and SQLite.",
+      "description_ko": "CHECK, index, foreign-key, soft-delete, relation existence, relation count, many-to-many through metadata를 planner와 migration system에서 보존한다. 생성 client가 MySQL·PostgreSQL·SQLite에서 선언된 operation을 실행한다.",
       "inputs": {
         "type": "RelationDefinition",
         "fields": [
@@ -597,10 +597,10 @@
         }
       ],
       "clients": {
-        "go": "partial",
-        "php": "partial",
-        "rust": "partial",
-        "typescript": "partial"
+        "go": "pass",
+        "php": "pass",
+        "rust": "pass",
+        "typescript": "pass"
       },
       "fixtures": [
         "schema/schema.json"

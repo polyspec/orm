@@ -38,9 +38,9 @@
   - [x] P9.4a root `forUpdate`와 `forShare` row lock이 공통 IR을 사용하고 MySQL/PostgreSQL에서 실행된다. SQLite는 `CAPABILITY_UNSUPPORTED`를 반환한다. timeout/cancellation이 남아 있으므로 P9.4 전체를 완료하지 않는다.
 - [x] P9.5 모든 client가 검증된 precompiled plan bundle을 로드하고 일치하는 cache hit에서 compiler request 없이 사용한다. Go·PHP·Rust·TypeScript가 bundle version, schema hash, dialect, request hash, request kind, plan body를 검사하며 client test가 일치하는 cache hit에서 compiler를 호출하지 않는 것을 확인한다.
 - [x] P9.6 CHECK constraint와 완전한 index·foreign-key metadata가 Mermaid, manifest, SQL, live database import, diff, migration, verification에서 보존된다. SQLite unit test와 물리 MySQL·PostgreSQL importer test가 명명된 CHECK 복원을 검증한다.
-- [ ] P9.7 Many-to-many traversal이 명시적인 through entity와 typed relation metadata를 모든 client에서 사용한다.
-- [ ] P9.8 Relation existence/count predicate와 선언형 soft-delete policy가 조회와 쓰기에 planner 강제 predicate를 사용한다.
-  - [x] P9.8a `soft_delete` schema directive가 nullable datetime column을 검증하고 planner가 삭제 행을 제외하며 delete를 timestamp update로 변환한다. 네 client의 물리 DB 검증은 남아 있다.
+- [x] P9.7 Many-to-many traversal이 명시적인 through entity와 typed relation metadata를 모든 client에서 사용한다. 새 MySQL·PostgreSQL·SQLite fixture를 Go·PHP·Rust·TypeScript에서 통과시켰다.
+- [x] P9.8 Relation existence/count predicate와 선언형 soft-delete policy가 조회와 쓰기에 planner 강제 predicate를 사용한다. 새 MySQL·PostgreSQL·SQLite fixture를 네 client에서 통과시켰다.
+  - [x] P9.8a `soft_delete` schema directive가 nullable datetime column을 검증하고 planner가 삭제 행을 제외하며 delete를 timestamp update로 변환한다. 모든 client가 SQLite foreign key를 활성화하고 물리 검사를 통과한다.
 
 ## P10: 검증
 
