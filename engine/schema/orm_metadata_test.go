@@ -23,6 +23,10 @@ func TestValidateORMMetadata(t *testing.T) {
 	if err := m.ValidateORM(); err != nil {
 		t.Fatal(err)
 	}
+	crud, err := m.BuildCRUDManifest()
+	if err != nil || len(crud.Routes) != 1 || crud.Routes[0].ID != "product.collection" || crud.Routes[0].Scopes[0].Param != "company_uuid" {
+		t.Fatalf("CRUD manifest: %+v, error=%v", crud, err)
+	}
 }
 
 func TestValidateORMRejectsResourceWithoutPublicKey(t *testing.T) {

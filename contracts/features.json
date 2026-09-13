@@ -27,7 +27,10 @@
       "fixtures": ["engine/schema/mermaid_test.go"],
       "tests": ["engine/schema/mermaid_test.go"],
       "docs": ["docs/spec/crud-generation.md"],
-      "verification": [{"id": "crud-directive-parser", "command": "go test ./engine/schema -run 'ORMDirective' -count=1"}]
+      "verification": [
+        {"id": "crud-directive-parser", "command": "go test ./engine/schema -run 'ORMDirective' -count=1"},
+        {"id": "crud-manifest", "command": "./scripts/crud-check.sh"}
+      ]
     },
     {
       "id": "dsn_connection",
