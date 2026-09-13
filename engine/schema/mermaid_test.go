@@ -131,6 +131,37 @@ func TestCheckDirectiveParsesAndValidatesColumns(t *testing.T) {
 	}
 }
 
+func TestParseORMDirectives(t *testing.T) {
+	src := `erDiagram
+  product {
+    bigint company_seq FK
+  }
+  %% orm:field product.company_seq relation=scope fk=company.seq public=company.uuid required=true order=1
+  %% orm:route product.collection
+  %% orm:path /company/{company_uuid}/product
+  %% orm:scope route=product.collection param=company_uuid field=product.company_seq
+  %% orm:operation route=product.collection method=GET
+`
+	d, err := Parse(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(d.ORM) != 5 || d.ORM[0].Name != "product.company_seq" || d.ORM[0].Args["relation"] != "scope" {
+		t.Fatalf("ORM directives: %+v", d.ORM)
+	}
+}
+
+func TestParseORMDirectiveRejectsContinuationAndUnknownOption(t *testing.T) {
+	for _, src := range []string{
+		"erDiagram\n  item {\n    bigint seq PK\n  }\n  %% orm:route item\n  public=item.uuid\n",
+		"erDiagram\n  item {\n    bigint seq PK\n  }\n  %% orm:route item typo=true\n",
+	} {
+		if _, err := Parse(src); err == nil {
+			t.Fatalf("invalid ORM directive accepted: %q", src)
+		}
+	}
+}
+
 func TestParseCompositeRelationLabel(t *testing.T) {
 	d, err := Parse("erDiagram\n parent ||--o{ child : \"(tenant_id, parent_id) (parent / children) cascade\"\n")
 	if err != nil {

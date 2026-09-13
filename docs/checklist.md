@@ -13,6 +13,8 @@ Rules: no polling or timers, no symlinks, one execution path, Mermaid is the sou
 
 ## Common interface verification
 
+- [~] I6 Implement namespaced `orm:*` Mermaid directives for CRUD metadata. The parser preserves validated one-line directives; profile validation and emitters remain pending.
+
 - [x] I1 Define common structure, ownership, and state transitions in `interfaces.md`, `contracts/interfaces.json`, and Mermaid diagrams.
 - [x] I2 Generate and compare Go, PHP, Rust, and TypeScript Query and Row interfaces.
 - [x] I3 Compare 25 Request and Plan records. Check AST, reflection, and source-change counterexamples.

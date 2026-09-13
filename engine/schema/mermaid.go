@@ -12,6 +12,8 @@ import (
 	"bufio"
 	"fmt"
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -20,6 +22,17 @@ type Diagram struct {
 	Entities   []*DEntity
 	Relations  []*DRelation
 	Directives []*Directive
+	ORM        []*ORMDirective
+}
+
+// ORMDirective is a namespaced extension preserved in schema.json for higher-level
+// generators. The core ORM does not infer CRUD or authorization meaning from it.
+type ORMDirective struct {
+	Kind string            `json:"kind"`
+	Name string            `json:"name,omitempty"`
+	Args map[string]string `json:"args,omitempty"`
+	Raw  string            `json:"raw"`
+	Line int               `json:"-"`
 }
 
 type DEntity struct {
@@ -93,6 +106,7 @@ var (
 	reRelationNames  = regexp.MustCompile(`^(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
 	reRef            = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
 	reDirectiveIdent = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+	reORMName        = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)?$`)
 )
 
 var styleWords = map[string]bool{"aes": true, "hex": true, "gz": true, "json": true, "jsons": true, "base64": true, "serialize": true, "ip": true, "yaml": true, "curlfile": true}
@@ -114,6 +128,14 @@ func Parse(src string) (*Diagram, error) {
 			continue
 		}
 		if strings.HasPrefix(t, "%%") {
+			if strings.HasPrefix(t, "%% orm:") {
+				x, err := parseORMDirective(t, line)
+				if err != nil {
+					return nil, err
+				}
+				d.ORM = append(d.ORM, x)
+				continue
+			}
 			if m := reDirective.FindStringSubmatch(t); m != nil {
 				dir, err := parseDirective(m, line)
 				if err != nil {
@@ -173,6 +195,152 @@ func Parse(src string) (*Diagram, error) {
 		return nil, &ParseError{0, "empty file"}
 	}
 	return d, nil
+}
+
+var ormKinds = map[string]map[string]bool{
+	"field":        {"relation": true, "fk": true, "public": true, "required": true, "order": true},
+	"public-key":   {"entity": true, "field": true, "type": true, "unique": true, "stable": true},
+	"resource-key": {"route": true, "param": true, "field": true},
+	"route":        {},
+	"path":         {},
+	"scope":        {"route": true, "param": true, "field": true},
+	"filter":       {"route": true, "param": true, "field": true},
+	"operation":    {"route": true, "method": true},
+	"permission":   {"route": true, "action": true, "owner": true},
+}
+
+func parseORMDirective(line string, number int) (*ORMDirective, error) {
+	body := strings.TrimSpace(strings.TrimPrefix(line, "%% orm:"))
+	if body == "" {
+		return nil, &ParseError{number, "%% orm:<kind> requires a directive kind"}
+	}
+	parts := strings.Fields(body)
+	kind := parts[0]
+	allowed, ok := ormKinds[kind]
+	if !ok {
+		return nil, &ParseError{number, "unknown ORM directive " + kind}
+	}
+	x := &ORMDirective{Kind: kind, Raw: body, Line: number, Args: map[string]string{}}
+	positional := parts[1:]
+	if kind == "route" || kind == "path" {
+		if len(positional) != 1 || !reORMName.MatchString(positional[0]) && kind == "route" {
+			return nil, &ParseError{number, "%% orm:" + kind + " requires one identifier"}
+		}
+		if kind == "path" && len(positional) != 1 || kind == "path" && positional[0] == "" {
+			return nil, &ParseError{number, "%% orm:path requires one path"}
+		}
+		x.Name = positional[0]
+		return x, nil
+	}
+	if kind == "field" {
+		if len(positional) < 1 || !regexp.MustCompile(`^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$`).MatchString(positional[0]) {
+			return nil, &ParseError{number, "%% orm:field requires entity.field before options"}
+		}
+		x.Name = positional[0]
+		positional = positional[1:]
+	}
+	for _, token := range positional {
+		key, value, found := strings.Cut(token, "=")
+		if !found || !reDirectiveIdent.MatchString(key) || value == "" {
+			return nil, &ParseError{number, fmt.Sprintf("%% orm:%s requires key=value options", kind)}
+		}
+		if !allowed[key] {
+			return nil, &ParseError{number, fmt.Sprintf("%% orm:%s: unknown option %s", kind, key)}
+		}
+		if _, duplicate := x.Args[key]; duplicate {
+			return nil, &ParseError{number, fmt.Sprintf("%% orm:%s: duplicate option %s", kind, key)}
+		}
+		x.Args[key] = value
+	}
+	for _, required := range ormRequired[kind] {
+		if _, exists := x.Args[required]; !exists {
+			return nil, &ParseError{number, fmt.Sprintf("%% orm:%s: missing option %s", kind, required)}
+		}
+	}
+	if err := validateORMArgs(x); err != nil {
+		return nil, &ParseError{number, err.Error()}
+	}
+	return x, nil
+}
+
+func validateORMArgs(x *ORMDirective) error {
+	ref := func(key string) error {
+		if !regexp.MustCompile(`^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$`).MatchString(x.Args[key]) {
+			return fmt.Errorf("%% orm:%s: %s must be entity.field", x.Kind, key)
+		}
+		return nil
+	}
+	switch x.Kind {
+	case "field":
+		if !slices.Contains([]string{"scope", "reference", "owner"}, x.Args["relation"]) {
+			return fmt.Errorf("%% orm:field: relation must be scope, reference, or owner")
+		}
+		if err := ref("fk"); err != nil {
+			return err
+		}
+		if value := x.Args["public"]; value != "" {
+			if err := ref("public"); err != nil {
+				return err
+			}
+		}
+		if value := x.Args["required"]; value != "" && value != "true" && value != "false" {
+			return fmt.Errorf("%% orm:field: required must be true or false")
+		}
+		if value := x.Args["order"]; value != "" {
+			n, err := strconv.Atoi(value)
+			if err != nil || n < 1 || x.Args["relation"] != "scope" {
+				return fmt.Errorf("%% orm:field: order must be a positive integer on scope")
+			}
+		}
+	case "public-key":
+		if !slices.Contains([]string{"uuid", "stable-string"}, x.Args["type"]) {
+			return fmt.Errorf("%% orm:public-key: type must be uuid or stable-string")
+		}
+		for _, key := range []string{"unique", "stable"} {
+			if x.Args[key] != "true" {
+				return fmt.Errorf("%% orm:public-key: %s must be true", key)
+			}
+		}
+	case "resource-key":
+		if err := ref("field"); err != nil {
+			return err
+		}
+	case "scope", "filter":
+		if !reDirectiveIdent.MatchString(x.Args["route"]) && !reORMName.MatchString(x.Args["route"]) {
+			return fmt.Errorf("%% orm:%s: invalid route", x.Kind)
+		}
+		if !reDirectiveIdent.MatchString(x.Args["param"]) {
+			return fmt.Errorf("%% orm:%s: invalid param", x.Kind)
+		}
+		if err := ref("field"); err != nil {
+			return err
+		}
+	case "operation":
+		if !reORMName.MatchString(x.Args["route"]) {
+			return fmt.Errorf("%% orm:operation: invalid route")
+		}
+		if !slices.Contains([]string{"GET", "POST", "PATCH", "DELETE"}, x.Args["method"]) {
+			return fmt.Errorf("%% orm:operation: method must be GET, POST, PATCH, or DELETE")
+		}
+	case "permission":
+		if !reORMName.MatchString(x.Args["route"]) {
+			return fmt.Errorf("%% orm:permission: invalid route")
+		}
+		if err := ref("owner"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var ormRequired = map[string][]string{
+	"field":        {"relation", "fk"},
+	"public-key":   {"entity", "field", "type", "unique", "stable"},
+	"resource-key": {"route", "param", "field"},
+	"scope":        {"route", "param", "field"},
+	"filter":       {"route", "param", "field"},
+	"operation":    {"route", "method"},
+	"permission":   {"route", "action", "owner"},
 }
 
 func parseColumnComment(c *DColumn) error {
