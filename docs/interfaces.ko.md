@@ -151,6 +151,8 @@ PostgreSQL transaction은 transaction 범위 직렬화를 위해 `advisoryLock(k
 
 스키마 설치는 호출자가 소유한 transaction에서 `installDDL(statements)`(Go: `InstallDDL`)를 사용한다. ORM은 문장을 순서대로 실행하고 첫 오류를 반환하므로 transaction 소유자가 전체 설치를 rollback할 수 있다.
 
+PostgreSQL transaction은 transaction 종료 시 되돌리는 값에 `setLocal(key, value)`(Go: `SetLocal`), 현재 mode를 확인하는 `readOnly()`와 `isolation()`(Go: `ReadOnly`, `Isolation`), 설치를 확인하는 `schemaInstalled(schema, table)`와 `schemaExists(schema)`(Go: `SchemaInstalled`, `SchemaExists`)도 제공한다. `grantPlatformRuntimePrivileges(role)`(Go: `GrantPlatformRuntimePrivileges`)는 설치 후 고정된 `core` 및 `audit` runtime privilege를 부여한다. 이 작업은 PostgreSQL 이외 driver에서 `CAPABILITY_UNSUPPORTED`를 반환한다. runtime role 이름은 비어 있지 않은 한 줄이어야 하며 grant statement에 사용하기 전에 quote한다.
+
 `TransactionOptions`는 `isolation`(`default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`), `readOnly`, `timeoutMs`(언어별 snake case 표기)를 받는다. Go는 isolation과 read-only를 `database/sql.TxOptions`로 전달하고 PHP·TypeScript는 PostgreSQL에서 `BEGIN` 후, MySQL에서 `START TRANSACTION` 전에 설정한다. Rust도 driver별 transaction 시작 규칙을 적용한다. SQLite는 명시적인 isolation·read-only·timeout을 거부한다. MySQL과 SQLite는 `timeoutMs`를 거부하고 PostgreSQL은 transaction 로컬 `statement_timeout`으로 적용한다. 지원하지 않는 capability는 `CAPABILITY_UNSUPPORTED`를 반환한다.
 
 root row select는 `forUpdate()`와 `forShare()`를 제공한다(Go: `ForUpdate()`와 `ForShare()`, Rust: `for_update()`와 `for_share()`). request는 공통 IR에 `lock`을 저장한다. MySQL과 PostgreSQL은 order와 limit 뒤에 선택한 lock 절을 추가한다. SQLite는 두 mode를 모두 `CAPABILITY_UNSUPPORTED`로 거부하며 client가 row lock을 대체하지 않는다.
