@@ -264,6 +264,7 @@ func TestPostgresTransactionAPIsRejectUnsupportedOrInvalidUse(t *testing.T) {
 		func() error { _, err := unsupported.Isolation(ctx); return err },
 		func() error { _, err := unsupported.SchemaInstalled(ctx, "core", "initialization"); return err },
 		func() error { _, err := unsupported.SchemaExists(ctx, "core"); return err },
+		func() error { _, err := unsupported.PrimaryKeyColumn(ctx, "core.table", "owner_uuid"); return err },
 		func() error { return unsupported.SetLocal(ctx, "app.tenant", "tenant-1") },
 		func() error { return unsupported.GrantPlatformRuntimePrivileges(ctx, "runtime") },
 	} {
