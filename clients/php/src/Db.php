@@ -60,6 +60,70 @@ class Db
     public const SECRET = '$SECRET';
     public const NOW = '$NOW';
 
+    /** Open the database selected by a mysql://, postgres://, or sqlite:// DSN. */
+    public static function connect(string $dsn, bool $persistent = true): self
+    {
+        $driver = self::driverFromDsn($dsn);
+        $parts = $driver === 'sqlite' ? ['scheme' => 'sqlite', 'path' => substr($dsn, strlen('sqlite://'))] : parse_url($dsn);
+        if ($parts === false) throw new OrmException(Code::CONFIG, 'invalid DSN URI');
+        try {
+            return match ($driver) {
+                'mysql' => self::mysql(self::mysqlUriToPdo($parts), $parts['user'] ?? '', $parts['pass'] ?? '', $persistent),
+                'postgres' => self::postgres(self::postgresUriToPdo($parts), $parts['user'] ?? null, $parts['pass'] ?? null, $persistent),
+                'sqlite' => self::sqlite(self::sqliteUriToPath($parts), $persistent),
+                default => throw new OrmException(Code::CONFIG, "unsupported DSN scheme {$driver}; want mysql, postgres, or sqlite"),
+            };
+        } catch (\PDOException $e) {
+            throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
+        }
+    }
+
+    /** Returns the driver selected by a canonical DSN URI. */
+    public static function driverFromDsn(string $dsn): string
+    {
+        if (!preg_match('/^([a-z][a-z0-9+.-]*):\/\//i', $dsn, $match)) {
+            throw new OrmException(Code::CONFIG, 'dsn must be a URI using mysql://, postgres://, or sqlite://');
+        }
+        $driver = strtolower($match[1]);
+        if (!in_array($driver, self::DRIVERS, true)) {
+            throw new OrmException(Code::CONFIG, "unsupported DSN scheme {$driver}; want mysql, postgres, or sqlite");
+        }
+        return $driver;
+    }
+
+    /** @param array<string,mixed> $parts */
+    private static function mysqlUriToPdo(array $parts): string
+    {
+        $query = [];
+        parse_str((string) ($parts['query'] ?? ''), $query);
+        $db = ltrim((string) ($parts['path'] ?? ''), '/');
+        if ($db === '') throw new OrmException(Code::CONFIG, 'mysql DSN must include a database');
+        if (isset($query['socket'])) return 'mysql:unix_socket=' . $query['socket'] . ';dbname=' . $db . ';charset=utf8mb4';
+        if (!isset($parts['host']) || $parts['host'] === '') throw new OrmException(Code::CONFIG, 'mysql DSN must include a host');
+        $dsn = 'mysql:host=' . $parts['host'];
+        if (isset($parts['port'])) $dsn .= ';port=' . $parts['port'];
+        return $dsn . ';dbname=' . $db . ';charset=utf8mb4';
+    }
+
+    /** @param array<string,mixed> $parts */
+    private static function postgresUriToPdo(array $parts): string
+    {
+        $db = ltrim((string) ($parts['path'] ?? ''), '/');
+        if ($db === '' || !isset($parts['host']) || $parts['host'] === '') throw new OrmException(Code::CONFIG, 'postgres DSN must include host and database');
+        $dsn = 'pgsql:host=' . $parts['host'] . ';port=' . ($parts['port'] ?? 5432) . ';dbname=' . $db;
+        parse_str((string) ($parts['query'] ?? ''), $query);
+        if (isset($query['sslmode'])) $dsn .= ';sslmode=' . $query['sslmode'];
+        return $dsn;
+    }
+
+    /** @param array<string,mixed> $parts */
+    private static function sqliteUriToPath(array $parts): string
+    {
+        $path = (string) ($parts['path'] ?? '');
+        if ($path === '' || $path[0] !== '/') throw new OrmException(Code::CONFIG, 'sqlite DSN path must be absolute');
+        return $path;
+    }
+
     /** @var array<string, \PDOStatement> */
     private array $stmts = [];
 	private array $stmtOrder = [];

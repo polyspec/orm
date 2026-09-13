@@ -17,23 +17,15 @@ import (
 
 	"github.com/polyspec/orm/clients/go/gen"
 	"github.com/polyspec/orm/clients/go/orm"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
 )
 
 const iterations = 500
 
 func main() {
-	js, err := os.ReadFile(os.Args[1])
-	check(err)
-	m, err := schema.Load(js)
-	check(err)
-	eng, err := engine.New(m, "mysql")
-	check(err)
 	var lastSQL string
 	var lastArgs []any
 	const aesKey = "bench-salt"
-	db, err := orm.Open("mysql", dsn(), eng, orm.Config{
+	db, err := gen.Connect(dsn(), os.Args[1], orm.Config{
 		AESKey: aesKey,
 		OnQuery: func(e orm.Event) {
 			lastSQL, lastArgs = e.SQL, e.Args
@@ -46,7 +38,6 @@ func main() {
 		},
 	})
 	check(err)
-	check(gen.Init(eng))
 	ctx := context.Background()
 	now := time.Date(2026, 9, 11, 0, 0, 0, 0, time.UTC)
 
@@ -100,7 +91,7 @@ func dsn() string {
 	if v := os.Getenv("ORM_MYSQL_DSN_GO"); v != "" {
 		return v
 	}
-	return "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true"
+	return "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&parseTime=true&clientFoundRows=true"
 }
 
 func p50(f func()) int64 {

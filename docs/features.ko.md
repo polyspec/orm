@@ -4,6 +4,7 @@
 
 | ID | 기능 | 상태 | Client 지원 |
 |---|---|---|---|
+| dsn_connection | DSN URI 연결 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | schema_migrations | Schema migration | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | composite_keys | Composite keys | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | authenticated_encryption | Versioned authenticated encryption | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
@@ -17,6 +18,7 @@
 
 ## 현재 동작
 
+- `dsn_connection`: 하나의 URI DSN으로 database를 연다. URI scheme이 database를 선택하며 runtime compiler 내부 구조는 호출자 API에 포함하지 않는다.
 - `schema_migrations`: 모델 schema 상태를 비교하고 검증된 forward 및 rollback operation을 생성한다.
 - `composite_keys`: 선언된 primary 및 foreign key component 전체를 identity, CRUD, relation, pagination, rotation에서 보존한다.
 - `authenticated_encryption`: 인증된 version ciphertext를 저장하고 여러 key version을 읽으며 모든 암호화 column을 제한된 재개 가능 batch로 회전한다.

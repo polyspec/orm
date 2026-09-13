@@ -1,7 +1,7 @@
 # Project checklist (0.0.1 completion)
 
 Legend: `[ ]` not started, `[~]` in progress, `[x]` complete. **P** marks parallel work. **→ T#** marks a prerequisite. Every item has a completion condition.
-Rules: no polling or timers, no symlinks, one execution path, Mermaid is the source for diagrams, generated artifacts are stored separately, and version 0.0.1 is fixed.
+Rules: no polling or timers, no symlinks, one execution path, Mermaid is the source for diagrams, generated artifacts are stored separately, version 0.0.1 is fixed, and public clients receive one DSN URI without a driver or compiler engine argument.
 
 ## Current status (2026-09-13)
 

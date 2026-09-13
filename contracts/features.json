@@ -13,6 +13,71 @@
   },
   "features": [
     {
+      "id": "dsn_connection",
+      "title": "DSN URI connection",
+      "title_ko": "DSN URI 연결",
+      "status": "implemented",
+      "description": "Open a database from one URI DSN. The URI scheme selects the database and runtime compiler internals are not part of the caller API.",
+      "description_ko": "하나의 URI DSN으로 database를 연다. URI scheme이 database를 선택하며 runtime compiler 내부 구조는 호출자 API에 포함하지 않는다.",
+      "inputs": {
+        "type": "DsnConnectionRequest",
+        "fields": [
+          "dsn",
+          "connection_options"
+        ]
+      },
+      "outputs": {
+        "type": "Db",
+        "fields": [
+          "connection_pool",
+          "runtime_executor"
+        ]
+      },
+      "state": [
+        "parse DSN scheme",
+        "select native driver",
+        "validate dialect and schema",
+        "open connection pool"
+      ],
+      "errors": [
+        {
+          "code": "CONFIG",
+          "when": "DSN scheme or connection parameters are invalid"
+        },
+        {
+          "code": "SCHEMA_HASH_MISMATCH",
+          "when": "runtime compiler schema differs from generated schema"
+        }
+      ],
+      "clients": {
+        "go": "pass",
+        "php": "pass",
+        "rust": "pass",
+        "typescript": "pass"
+      },
+      "fixtures": [
+        "contracts/features.json"
+      ],
+      "tests": [
+        "clients/go/orm/dsn_test.go",
+        "tests/typescript/dsn.mjs"
+      ],
+      "docs": [
+        "docs/usage.md",
+        "docs/usage.md"
+      ],
+      "verification": [
+        {
+          "id": "dsn-connection-unit",
+          "command": "go test ./clients/go/orm -run 'DSN|Dsn' -count=1"
+        },
+        {
+          "id": "dsn-client-validation",
+          "command": "php clients/php/tests/dsn.php && npm run typescript:build && node tests/typescript/dsn.mjs"
+        }
+      ]
+    },
+    {
       "id": "schema_migrations",
       "title": "Schema migration",
       "title_ko": "Schema migration",

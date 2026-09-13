@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:a25e184b6c8abe3d7c0449264f5fa594997f91558dfcf3d5cc6a3c4cd1cc315c",
-    "php": "sha256:96aa26cb0ffed4a630ee787b80c2cd6006310d0efef5737cd68fb859824f481b",
-    "rust": "sha256:8d7513990735d6eb19be5433c2ac7a3708f0be671bd9c86847e7b12cc2d2badf",
-    "typescript": "sha256:a40741dcf2c2a49993854358e644cda521579f8e7ae134e9e95f759bc80e441d"
+    "go": "sha256:30e1dae8008294734d4c1ec5cd9dbf29734ee23457870445ad0fa43a08a4f2a3",
+    "php": "sha256:be802c15a88454062de63183d4ddc2a5c83e25884f1424e6829d702feef7e103",
+    "rust": "sha256:507821a721e7d66ef93c748e0e47cc7b1b796adae68e13b072a3b56b622fd036",
+    "typescript": "sha256:1910fd2ecae5327b3feedad0d8535b13fcf301373ba80bc7969adeb69d9e3d83"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -176,6 +176,18 @@
       ],
       "ownership": "Defines database and pinned transaction execution operations.",
       "ownership_ko": "database와 고정 transaction의 실행 작업을 정의한다."
+    },
+    {
+      "id": "Connection",
+      "fields": {
+        "dsn": "Text",
+        "options": "ConnectionOptions"
+      },
+      "methods": [
+        "connect"
+      ],
+      "ownership": "Creates a Db from one DSN URI. The URI scheme selects the database; compiler internals are hidden from callers.",
+      "ownership_ko": "하나의 DSN URI로 Db를 생성한다. URI scheme이 database를 선택하며 compiler 내부 구조는 호출자에게 노출하지 않는다."
     },
     {
       "id": "Db",

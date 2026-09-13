@@ -103,22 +103,27 @@ type DB struct {
 
 const defaultCacheSize = 256
 
-// Open connects with database/sql. The DSN must enable clientFoundRows (needed
-// for optimistic locking) — Open refuses DSNs without it rather than guessing.
-// Open connects with database/sql. driver is mysql | postgres | sqlite and must
-// be the dialect the engine compiles for (docs/dialects.md): the plans are
-// dialect-specific text.
-func Open(driver, dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
-	return open(context.Background(), driver, dsn, eng, enginePlanCompiler{engine: eng}, cfg)
+// Open connects using the database selected by the DSN URI scheme. The engine
+// is the internal query compiler bound to the generated schema.
+func Open(dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
+	driver, native, err := parseDSN(dsn)
+	if err != nil {
+		return nil, err
+	}
+	return open(context.Background(), driver, native, eng, enginePlanCompiler{engine: eng}, cfg)
 }
 
 // OpenWithCompiler connects with database/sql and uses compiler for every plan
 // cache miss. Metadata must match the generated schema and database dialect.
-func OpenWithCompiler(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler CompilerTransport, cfg Config) (*DB, error) {
+func OpenWithCompiler(ctx context.Context, dsn string, eng *engine.Engine, compiler CompilerTransport, cfg Config) (*DB, error) {
 	if compiler == nil {
 		return nil, &ir.Error{Code: CodeConfig, Msg: "compiler transport is required"}
 	}
-	return open(ctx, driver, dsn, eng, transportPlanCompiler{transport: compiler}, cfg)
+	driver, native, err := parseDSN(dsn)
+	if err != nil {
+		return nil, err
+	}
+	return open(ctx, driver, native, eng, transportPlanCompiler{transport: compiler}, cfg)
 }
 
 func open(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler planCompiler, cfg Config) (*DB, error) {
@@ -154,9 +159,6 @@ func open(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler 
 	}
 	if metadata.IrVersion != ir.Version {
 		return nil, &ir.Error{Code: CodeVersionMismatch, Msg: fmt.Sprintf("client IR version %d but compiler uses %d", ir.Version, metadata.IrVersion)}
-	}
-	if driver == "mysql" && !strings.Contains(dsn, "clientFoundRows=true") {
-		return nil, &ir.Error{Code: CodeConfig, Msg: "mysql DSN must include clientFoundRows=true"}
 	}
 	if driver == "sqlite" && !strings.Contains(dsn, "_pragma=foreign_keys") {
 		separator := "?"

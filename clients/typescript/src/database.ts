@@ -24,6 +24,20 @@ export interface DatabaseOptions {
   statementCacheSize?: number;
 }
 
+export type DsnDriver = 'mysql' | 'postgres' | 'sqlite';
+
+function dsnDriver(dsn: string): DsnDriver {
+  let url: URL;
+  try { url = new URL(dsn); } catch (error) { throw new OrmError('CONFIG', `dsn must be a URI using mysql://, postgres://, or sqlite://: ${(error as Error).message}`); }
+  if (url.protocol === 'mysql:') return 'mysql';
+  if (url.protocol === 'postgres:') return 'postgres';
+  if (url.protocol === 'sqlite:') {
+    if (!url.pathname.startsWith('/')) throw new OrmError('CONFIG', 'sqlite DSN path must be absolute');
+    return 'sqlite';
+  }
+  throw new OrmError('CONFIG', `unsupported DSN scheme ${url.protocol}; want mysql, postgres, or sqlite`);
+}
+
 function mysqlDsn(dsn: string, user?: string, password?: string): string {
   let url: URL;
   try { url = new URL(dsn); } catch (error) { throw new OrmError('CONFIG', `db.dsn must be a MySQL URL: ${(error as Error).message}`); }
@@ -70,16 +84,21 @@ export class Db implements Database, Executor {
   public get executor(): Executor { return this; }
   public get driver(): string { return this.connection.name; }
 
-  public static async connect(connection: DriverConnection, options: DatabaseOptions): Promise<Db> {
+  private static async connectConnection(connection: DriverConnection, options: DatabaseOptions): Promise<Db> {
     const metadata = await options.compiler.metadata();
     if (metadata.schemaHash !== options.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `client schema ${options.schemaHash} but compiler loaded ${metadata.schemaHash}`);
     if (metadata.dialect !== connection.name) throw new OrmError('CONFIG', `driver ${connection.name} but compiler uses ${metadata.dialect}`);
     if (metadata.irVersion !== 1) throw new OrmError('VERSION_MISMATCH', `client IR version 1 but compiler uses ${metadata.irVersion}`);
     return new Db(connection, options);
   }
-  public static mysql(uri: string, options: DatabaseOptions): Promise<Db> { return Db.connect(openMySql(uri, 10, options.statementCacheSize), options); }
-  public static postgres(uri: string, options: DatabaseOptions): Promise<Db> { return Db.connect(openPostgres(uri, 10, options.statementCacheSize), options); }
-  public static sqlite(path: string, options: DatabaseOptions): Promise<Db> { return Db.connect(openSqlite(path, options.statementCacheSize), options); }
+  /** Opens the database selected by the DSN URI scheme. */
+  public static async connect(dsn: string, options: DatabaseOptions): Promise<Db> {
+    switch (dsnDriver(dsn)) {
+      case 'mysql': return Db.connectConnection(openMySql(dsn, 10, options.statementCacheSize), options);
+      case 'postgres': return Db.connectConnection(openPostgres(dsn, 10, options.statementCacheSize), options);
+      case 'sqlite': return Db.connectConnection(openSqlite(new URL(dsn).pathname, options.statementCacheSize), options);
+    }
+  }
 
   public static async fromConfig(path: string): Promise<Db> {
     const config = await loadConfig(path);
@@ -100,9 +119,7 @@ export class Db implements Database, Executor {
     } : undefined;
     const aesKeys = config.secrets.aes_keys === undefined ? undefined : new Map(Object.entries(config.secrets.aes_keys).map(([version, key]) => [Number(version), key] as const));
     const options = { schemaHash: manifest.schema_hash, compiler, aesKey, blindIndexKey, aesVersion: config.secrets.aes_version, aesKeys, onQuery, planCacheSize: config.db.plan_cache_size, statementCacheSize: config.db.statement_cache_size };
-    if (config.db.driver === 'sqlite') return Db.connect(openSqlite(config.db.dsn, config.db.statement_cache_size), options);
-    if (config.db.driver === 'postgres') return Db.connect(openPostgres(config.db.dsn, config.db.pool, config.db.statement_cache_size), options);
-    return Db.connect(openMySql(mysqlDsn(config.db.dsn, config.db.user, config.db.password), config.db.pool, config.db.statement_cache_size), options);
+    return Db.connect(config.db.dsn, options);
   }
 
   public async close(): Promise<void> {

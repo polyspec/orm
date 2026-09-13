@@ -182,7 +182,7 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	db, err := orm.OpenWithCompiler(ctx, driver, dsn(), eng, compiler, orm.Config{
+	db, err := orm.OpenWithCompiler(ctx, dsn(), eng, compiler, orm.Config{
 		AESKey: aesKey,
 		OnQuery: func(e orm.Event) {
 			binds := make([]any, len(e.Args))

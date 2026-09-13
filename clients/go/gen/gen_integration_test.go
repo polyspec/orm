@@ -28,7 +28,7 @@ import (
 	"github.com/polyspec/orm/engine/schema"
 )
 
-const localDSN = "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true"
+const localDSN = "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&parseTime=true&clientFoundRows=true"
 
 // dsn is ORM_MYSQL_DSN_GO when set (CI), else the local socket; the test skips
 // when neither is available.
@@ -99,7 +99,7 @@ func open(t *testing.T) *orm.DB {
 	d := dsn(t)
 	eng := loadEngine(t)
 	var log []string
-	db, err := orm.Open(testDriver(), d, eng, orm.Config{
+	db, err := orm.Open(d, eng, orm.Config{
 		AESKey: "bench-salt", BlindIndexKey: "bench-blind-index",
 		OnQuery: func(e orm.Event) { log = append(log, normSQL(e.SQL)) },
 	})

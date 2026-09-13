@@ -85,6 +85,11 @@ classDiagram
         streamStep()
         writeStep()
     }
+    class Connection {
+        Text dsn
+        ConnectionOptions options
+        connect()
+    }
     class Db {
         CompilerTransport compiler
         RuntimeConfig config
@@ -249,6 +254,7 @@ classDiagram
 | QueryNode | root 또는 child 조건 tree를 저장한다. |
 | Binding | 명시한 executor를 저장한다. 현재 실행 중인 transaction을 자동 선택하지 않는다. |
 | Executor | database와 고정 transaction의 실행 작업을 정의한다. |
+| Connection | 하나의 DSN URI로 Db를 생성한다. URI scheme이 database를 선택하며 compiler 내부 구조는 호출자에게 노출하지 않는다. |
 | Db | connection, plan cache, statement cache, runtime 설정을 저장한다. |
 | Tx | commit 또는 rollback 후 해당 transaction을 사용하는 query와 row는 무효다. |
 | Row | 조회한 identity, 값, 변경 사항, relation, 실행 binding을 구분해 저장한다. |
@@ -335,6 +341,8 @@ classDiagram
 | QueryNode.where | `Optional<Group>` |
 | Binding.control | `NativeExecutionControl` |
 | Binding.executor | `Optional<Executor>` |
+| Connection.dsn | `Text` |
+| Connection.options | `ConnectionOptions` |
 | Db.compiler | `CompilerTransport` |
 | Db.config | `RuntimeConfig` |
 | Db.connection | `ConnectionResource` |
