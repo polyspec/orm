@@ -13,6 +13,23 @@
   },
   "features": [
     {
+      "id": "crud_generation_directives",
+      "title": "CRUD generation directives",
+      "title_ko": "CRUD 생성 directive",
+      "status": "partial",
+      "description": "The schema parser preserves one-line orm:* relation, public-key, route, operation, and permission metadata for profile validators.",
+      "description_ko": "schema parser가 한 줄 orm:* 관계, public-key, route, operation, permission metadata를 profile validator용으로 보존한다.",
+      "inputs": {"type": "MermaidSchema", "fields": ["orm_directives"]},
+      "outputs": {"type": "ManifestExtension", "fields": ["orm_directives"]},
+      "state": ["parse one-line directive", "validate options", "preserve normalized metadata"],
+      "errors": [{"code": "SCHEMA_INVALID", "when": "directive syntax or option validation fails"}],
+      "clients": {"go": "partial", "php": "unsupported", "rust": "unsupported", "typescript": "unsupported"},
+      "fixtures": ["engine/schema/mermaid_test.go"],
+      "tests": ["engine/schema/mermaid_test.go"],
+      "docs": ["docs/spec/crud-generation.md"],
+      "verification": [{"id": "crud-directive-parser", "command": "go test ./engine/schema -run 'ORMDirective' -count=1"}]
+    },
+    {
       "id": "dsn_connection",
       "title": "DSN URI connection",
       "title_ko": "DSN URI 연결",
