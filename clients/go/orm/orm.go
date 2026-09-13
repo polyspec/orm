@@ -489,6 +489,28 @@ func (t *Tx) GrantPlatformRuntimePrivileges(ctx context.Context, role string) er
 	return t.execStatements(ctx, statements)
 }
 
+// GrantTablePrivileges grants runtime DML access to one qualified module table.
+// Identifier quoting and PostgreSQL privilege statements remain inside the ORM adapter.
+func (t *Tx) GrantTablePrivileges(ctx context.Context, table, role string) error {
+	if t == nil || t.finished.Load() {
+		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "table privileges are supported only by postgres"}
+	}
+	parts := strings.Split(table, ".")
+	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" || strings.ContainsAny(table, "\x00\r\n") || strings.TrimSpace(role) == "" || strings.ContainsAny(role, "\x00\r\n") {
+		return &ir.Error{Code: CodeConfig, Msg: "qualified table and runtime role are required"}
+	}
+	quote := func(value string) string { return `"` + strings.ReplaceAll(value, `"`, `""`) + `"` }
+	qualified := quote(parts[0]) + "." + quote(parts[1])
+	identifier := quote(role)
+	return t.execStatements(ctx, []string{
+		"GRANT USAGE ON SCHEMA " + quote(parts[0]) + " TO " + identifier,
+		"GRANT SELECT,INSERT,UPDATE,DELETE ON " + qualified + " TO " + identifier,
+	})
+}
+
 func (t *Tx) execStatements(ctx context.Context, statements []string) error {
 	for _, statement := range statements {
 		stmt, err := t.stmt(ctx, statement)
