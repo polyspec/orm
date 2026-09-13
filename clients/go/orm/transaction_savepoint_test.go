@@ -91,3 +91,10 @@ func TestAdvisoryLockRejectsUnsupportedDriver(t *testing.T) {
 		t.Fatalf("wrong advisory lock error: %v", err)
 	}
 }
+
+func TestInstallDDLRejectsEmptyStatements(t *testing.T) {
+	tx := &Tx{tx: &sql.Tx{}}
+	if err := tx.InstallDDL(context.Background(), []string{" "}); err == nil {
+		t.Fatal("empty schema statement was accepted")
+	}
+}
