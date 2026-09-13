@@ -102,7 +102,11 @@ func prep(db *sql.DB, q string) *sql.Stmt {
 }
 
 func open(tb testing.TB) *sql.DB {
-	db, err := sql.Open("mysql", dsn())
+	native, err := orm.NativeDSN(dsn())
+	if err != nil {
+		tb.Fatal(err)
+	}
+	db, err := sql.Open("mysql", native)
 	if err != nil {
 		tb.Fatal(err)
 	}
