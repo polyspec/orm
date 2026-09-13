@@ -163,6 +163,16 @@ func TestParseORMDirectiveRejectsContinuationAndUnknownOption(t *testing.T) {
 	}
 }
 
+func TestParseORMHyphenatedDirectiveName(t *testing.T) {
+	d, err := Parse("erDiagram\n  item {\n    bigint seq PK\n  }\n  %% orm:public-key entity=item field=seq type=stable-string unique=true stable=true")
+	if err != nil {
+		t.Fatalf("hyphenated ORM directive rejected: %v", err)
+	}
+	if len(d.ORM) != 1 || d.ORM[0].Kind != "public-key" {
+		t.Fatalf("unexpected ORM directives: %+v", d.ORM)
+	}
+}
+
 func TestParseCompositeRelationLabel(t *testing.T) {
 	d, err := Parse("erDiagram\n parent ||--o{ child : \"(tenant_id, parent_id) (parent / children) cascade\"\n")
 	if err != nil {
