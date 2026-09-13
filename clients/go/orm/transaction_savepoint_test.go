@@ -3,11 +3,96 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
+	"io"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/polyspec/orm/engine/ir"
 	_ "modernc.org/sqlite"
 )
+
+type transactionProbe struct {
+	mu        sync.Mutex
+	queries   []string
+	execs     []string
+	arguments [][]driver.NamedValue
+	results   map[string]driver.Value
+}
+
+type transactionProbeDriver struct{ probe *transactionProbe }
+type transactionProbeConn struct{ probe *transactionProbe }
+type transactionProbeTx struct{}
+type transactionProbeStmt struct {
+	probe *transactionProbe
+	query string
+}
+type transactionProbeRows struct {
+	value driver.Value
+	sent  bool
+}
+
+func (d transactionProbeDriver) Open(string) (driver.Conn, error) {
+	return transactionProbeConn{probe: d.probe}, nil
+}
+func (c transactionProbeConn) Prepare(query string) (driver.Stmt, error) {
+	return transactionProbeStmt{probe: c.probe, query: query}, nil
+}
+func (c transactionProbeConn) Close() error              { return nil }
+func (c transactionProbeConn) Begin() (driver.Tx, error) { return transactionProbeTx{}, nil }
+func (transactionProbeTx) Commit() error                 { return nil }
+func (transactionProbeTx) Rollback() error               { return nil }
+func (s transactionProbeStmt) Close() error              { return nil }
+func (s transactionProbeStmt) NumInput() int             { return -1 }
+func (s transactionProbeStmt) Exec([]driver.Value) (driver.Result, error) {
+	return driver.RowsAffected(1), nil
+}
+func (s transactionProbeStmt) Query([]driver.Value) (driver.Rows, error) { return nil, driver.ErrSkip }
+func (s transactionProbeStmt) ExecContext(_ context.Context, args []driver.NamedValue) (driver.Result, error) {
+	s.probe.mu.Lock()
+	defer s.probe.mu.Unlock()
+	s.probe.execs = append(s.probe.execs, s.query)
+	s.probe.arguments = append(s.probe.arguments, append([]driver.NamedValue(nil), args...))
+	return driver.RowsAffected(1), nil
+}
+func (s transactionProbeStmt) QueryContext(_ context.Context, args []driver.NamedValue) (driver.Rows, error) {
+	s.probe.mu.Lock()
+	defer s.probe.mu.Unlock()
+	s.probe.queries = append(s.probe.queries, s.query)
+	s.probe.arguments = append(s.probe.arguments, append([]driver.NamedValue(nil), args...))
+	return &transactionProbeRows{value: s.probe.results[s.query]}, nil
+}
+func (r *transactionProbeRows) Columns() []string { return []string{"value"} }
+func (r *transactionProbeRows) Close() error      { return nil }
+func (r *transactionProbeRows) Next(dest []driver.Value) error {
+	if r.sent {
+		return io.EOF
+	}
+	r.sent = true
+	dest[0] = r.value
+	return nil
+}
+
+func probePostgresTx(t *testing.T, results map[string]driver.Value) (*Tx, *transactionProbe, func()) {
+	t.Helper()
+	probe := &transactionProbe{results: results}
+	db := sql.OpenDB(transactionProbeConnector{probe: probe})
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &Tx{d: &DB{driver: "postgres"}, tx: tx}, probe, func() { _ = tx.Rollback(); _ = db.Close() }
+}
+
+type transactionProbeConnector struct{ probe *transactionProbe }
+
+func (c transactionProbeConnector) Connect(context.Context) (driver.Conn, error) {
+	return transactionProbeConn{probe: c.probe}, nil
+}
+func (c transactionProbeConnector) Driver() driver.Driver {
+	return transactionProbeDriver{probe: c.probe}
+}
 
 func TestSavepointRollsBackOnlyChangesAfterMarker(t *testing.T) {
 	db, err := sql.Open("sqlite", ":memory:")
@@ -96,5 +181,91 @@ func TestInstallDDLRejectsEmptyStatements(t *testing.T) {
 	tx := &Tx{tx: &sql.Tx{}}
 	if err := tx.InstallDDL(context.Background(), []string{" "}); err == nil {
 		t.Fatal("empty schema statement was accepted")
+	}
+}
+
+func TestPostgresTransactionInspectionAPIs(t *testing.T) {
+	const (
+		readOnlySQL  = "SELECT current_setting('transaction_read_only')::boolean"
+		isolationSQL = "SELECT current_setting('transaction_isolation')"
+		installedSQL = "SELECT to_regclass($1)||'' IS NOT NULL"
+		schemaSQL    = "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname=$1)"
+	)
+	tx, probe, closeDB := probePostgresTx(t, map[string]driver.Value{
+		readOnlySQL: true, isolationSQL: "serializable", installedSQL: true, schemaSQL: false,
+	})
+	defer closeDB()
+	ctx := context.Background()
+	if got, err := tx.ReadOnly(ctx); err != nil || !got {
+		t.Fatalf("ReadOnly() = %v, %v", got, err)
+	}
+	if got, err := tx.Isolation(ctx); err != nil || got != "serializable" {
+		t.Fatalf("Isolation() = %q, %v", got, err)
+	}
+	if got, err := tx.SchemaInstalled(ctx, "core", "initialization"); err != nil || !got {
+		t.Fatalf("SchemaInstalled() = %v, %v", got, err)
+	}
+	if got, err := tx.SchemaExists(ctx, "audit"); err != nil || got {
+		t.Fatalf("SchemaExists() = %v, %v", got, err)
+	}
+	if got := strings.Join(probe.queries, "\n"); got != strings.Join([]string{readOnlySQL, isolationSQL, installedSQL, schemaSQL}, "\n") {
+		t.Fatalf("inspection SQL = %q", got)
+	}
+	if got := probe.arguments[2][0].Value; got != "core.initialization" {
+		t.Fatalf("SchemaInstalled argument = %#v", got)
+	}
+	if got := probe.arguments[3][0].Value; got != "audit" {
+		t.Fatalf("SchemaExists argument = %#v", got)
+	}
+}
+
+func TestPostgresSetLocalAndRuntimePrivileges(t *testing.T) {
+	tx, probe, closeDB := probePostgresTx(t, nil)
+	defer closeDB()
+	ctx := context.Background()
+	if err := tx.SetLocal(ctx, "app.tenant", "tenant-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.GrantPlatformRuntimePrivileges(ctx, "runtime\"role"); err != nil {
+		t.Fatal(err)
+	}
+	if len(probe.execs) != 9 {
+		t.Fatalf("executed %d statements, want 9", len(probe.execs))
+	}
+	if got := probe.execs[0]; got != "SELECT set_config($1,$2,true)" {
+		t.Fatalf("SetLocal SQL = %q", got)
+	}
+	if args := probe.arguments[0]; len(args) != 2 || args[0].Value != "app.tenant" || args[1].Value != "tenant-1" {
+		t.Fatalf("SetLocal arguments = %#v", args)
+	}
+	for _, statement := range probe.execs[1:] {
+		if !strings.HasSuffix(statement, ` TO "runtime""role"`) && !strings.HasSuffix(statement, ` FROM "runtime""role"`) {
+			t.Fatalf("unquoted runtime role in %q", statement)
+		}
+	}
+}
+
+func TestPostgresTransactionAPIsRejectUnsupportedOrInvalidUse(t *testing.T) {
+	unsupported := &Tx{d: &DB{driver: "sqlite"}}
+	ctx := context.Background()
+	for _, call := range []func() error{
+		func() error { _, err := unsupported.ReadOnly(ctx); return err },
+		func() error { _, err := unsupported.Isolation(ctx); return err },
+		func() error { _, err := unsupported.SchemaInstalled(ctx, "core", "initialization"); return err },
+		func() error { _, err := unsupported.SchemaExists(ctx, "core"); return err },
+		func() error { return unsupported.SetLocal(ctx, "app.tenant", "tenant-1") },
+		func() error { return unsupported.GrantPlatformRuntimePrivileges(ctx, "runtime") },
+	} {
+		if err := call(); err == nil {
+			t.Fatal("unsupported driver was accepted")
+		} else if typed, ok := err.(*ir.Error); !ok || typed.Code != CodeCapabilityUnsupported {
+			t.Fatalf("wrong unsupported-driver error: %v", err)
+		}
+	}
+	tx := &Tx{d: &DB{driver: "postgres"}}
+	if err := tx.GrantPlatformRuntimePrivileges(ctx, " bad\nrole"); err == nil {
+		t.Fatal("invalid runtime role was accepted")
+	} else if typed, ok := err.(*ir.Error); !ok || typed.Code != CodeConfig {
+		t.Fatalf("wrong invalid-role error: %v", err)
 	}
 }
