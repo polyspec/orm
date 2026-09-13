@@ -116,8 +116,8 @@ var (
 	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|check|blind_index|timestamps|scope|soft_delete|predicate|many_to_many|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
 	reRelationNames  = regexp.MustCompile(`^(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
 	reRef            = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
-	reDirectiveIdent = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
-	reORMName        = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)?$`)
+	reDirectiveIdent = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
+	reORMName        = regexp.MustCompile(`^[a-z][a-z0-9_-]*(\.[a-z][a-z0-9_-]*)?$`)
 )
 
 var styleWords = map[string]bool{"aes": true, "hex": true, "gz": true, "json": true, "jsons": true, "base64": true, "serialize": true, "ip": true, "yaml": true, "curlfile": true}
