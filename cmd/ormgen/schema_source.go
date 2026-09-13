@@ -57,6 +57,9 @@ func buildMermaidSource(path string, b []byte) (*schema.Manifest, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
+	if err := m.ValidateORM(); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
 	return m, nil
 }
 
