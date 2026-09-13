@@ -186,13 +186,18 @@ func TestInstallDDLRejectsEmptyStatements(t *testing.T) {
 
 func TestPostgresTransactionInspectionAPIs(t *testing.T) {
 	const (
-		readOnlySQL  = "SELECT current_setting('transaction_read_only')::boolean"
-		isolationSQL = "SELECT current_setting('transaction_isolation')"
-		installedSQL = "SELECT to_regclass($1)||'' IS NOT NULL"
-		schemaSQL    = "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname=$1)"
+		readOnlySQL   = "SELECT current_setting('transaction_read_only')::boolean"
+		isolationSQL  = "SELECT current_setting('transaction_isolation')"
+		installedSQL  = "SELECT to_regclass($1)||'' IS NOT NULL"
+		schemaSQL     = "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname=$1)"
+		primaryKeySQL = `SELECT EXISTS(
+ SELECT 1 FROM pg_attribute a JOIN pg_index i ON i.indrelid=a.attrelid
+ WHERE a.attrelid=to_regclass($1) AND a.attname=$2 AND NOT a.attisdropped
+ AND a.atttypid='uuid'::regtype AND a.attnotnull AND i.indisprimary
+ AND a.attnum=ANY(i.indkey))`
 	)
 	tx, probe, closeDB := probePostgresTx(t, map[string]driver.Value{
-		readOnlySQL: true, isolationSQL: "serializable", installedSQL: true, schemaSQL: false,
+		readOnlySQL: true, isolationSQL: "serializable", installedSQL: true, schemaSQL: false, primaryKeySQL: true,
 	})
 	defer closeDB()
 	ctx := context.Background()
@@ -208,7 +213,10 @@ func TestPostgresTransactionInspectionAPIs(t *testing.T) {
 	if got, err := tx.SchemaExists(ctx, "audit"); err != nil || got {
 		t.Fatalf("SchemaExists() = %v, %v", got, err)
 	}
-	if got := strings.Join(probe.queries, "\n"); got != strings.Join([]string{readOnlySQL, isolationSQL, installedSQL, schemaSQL}, "\n") {
+	if got, err := tx.PrimaryKeyColumn(ctx, "module.product", "owner_uuid"); err != nil || !got {
+		t.Fatalf("PrimaryKeyColumn() = %v, %v", got, err)
+	}
+	if got := strings.Join(probe.queries, "\n"); got != strings.Join([]string{readOnlySQL, isolationSQL, installedSQL, schemaSQL, primaryKeySQL}, "\n") {
 		t.Fatalf("inspection SQL = %q", got)
 	}
 	if got := probe.arguments[2][0].Value; got != "core.initialization" {
@@ -216,6 +224,9 @@ func TestPostgresTransactionInspectionAPIs(t *testing.T) {
 	}
 	if got := probe.arguments[3][0].Value; got != "audit" {
 		t.Fatalf("SchemaExists argument = %#v", got)
+	}
+	if got := probe.arguments[4]; len(got) != 2 || got[0].Value != "module.product" || got[1].Value != "owner_uuid" {
+		t.Fatalf("PrimaryKeyColumn arguments = %#v", got)
 	}
 }
 
