@@ -398,6 +398,36 @@ func (t *Tx) SchemaExists(ctx context.Context, schema string) (bool, error) {
 	return exists, nil
 }
 
+// GrantPlatformRuntimePrivileges applies the fixed privileges required by the
+// platform runtime role after schema installation.
+func (t *Tx) GrantPlatformRuntimePrivileges(ctx context.Context, role string) error {
+	if t == nil || t.finished.Load() { return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"} }
+	if t.d == nil || t.d.driver != "postgres" { return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "runtime privileges are supported only by postgres"} }
+	if strings.TrimSpace(role) == "" || strings.ContainsAny(role, "\x00\r\n") { return &ir.Error{Code: CodeConfig, Msg: "runtime role is required"} }
+	identifier := `"` + strings.ReplaceAll(role, `"`, `""`) + `"`
+	statements := []string{
+		"GRANT USAGE ON SCHEMA core,audit TO " + identifier,
+		"GRANT SELECT ON ALL TABLES IN SCHEMA core,audit TO " + identifier,
+		"GRANT INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA core TO " + identifier,
+		"REVOKE INSERT,UPDATE,DELETE ON core.initialization FROM " + identifier,
+		"GRANT INSERT ON audit.operations TO " + identifier,
+		"GRANT INSERT ON audit.http_access TO " + identifier,
+		"GRANT INSERT ON audit.contract_calls TO " + identifier,
+		"GRANT INSERT ON audit.host_calls TO " + identifier,
+	}
+	return t.execStatements(ctx, statements)
+}
+
+func (t *Tx) execStatements(ctx context.Context, statements []string) error {
+	for _, statement := range statements {
+		stmt, err := t.stmt(ctx, statement)
+		if err != nil { return err }
+		if _, err := stmt.ExecContext(ctx); err != nil { stmt.Close(); return mapDriverErr(err) }
+		stmt.Close()
+	}
+	return nil
+}
+
 func (t *Tx) db() *DB { return t.d }
 
 func (t *Tx) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
