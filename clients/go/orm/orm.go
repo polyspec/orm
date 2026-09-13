@@ -369,6 +369,17 @@ func (t *Tx) ReadOnly(ctx context.Context) (bool, error) {
 	return readOnly, nil
 }
 
+// Isolation reports the transaction isolation level.
+func (t *Tx) Isolation(ctx context.Context) (string, error) {
+	if t == nil || t.finished.Load() { return "", &ir.Error{Code: CodeConfig, Msg: "transaction already finished"} }
+	if t.d == nil || t.d.driver != "postgres" { return "", &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction isolation is supported only by postgres"} }
+	stmt, err := t.stmt(ctx, "SELECT current_setting('transaction_isolation')")
+	if err != nil { return "", err }; defer stmt.Close()
+	var isolation string
+	if err := stmt.QueryRowContext(ctx).Scan(&isolation); err != nil { return "", mapDriverErr(err) }
+	return isolation, nil
+}
+
 // SchemaInstalled reports whether the named PostgreSQL schema and table exist.
 func (t *Tx) SchemaInstalled(ctx context.Context, schema, table string) (bool, error) {
 	if t == nil || t.finished.Load() {
