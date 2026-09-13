@@ -463,6 +463,31 @@ func (t *Tx) SchemaExists(ctx context.Context, schema string) (bool, error) {
 	return exists, nil
 }
 
+// InstallerSessionAuthorized reports whether the current PostgreSQL session is
+// the installer owner of the core schema and is distinct from the runtime role.
+func (t *Tx) InstallerSessionAuthorized(ctx context.Context, runtimeRole string) (bool, error) {
+	if t == nil || t.finished.Load() {
+		return false, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return false, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "installer session inspection is supported only by postgres"}
+	}
+	if strings.TrimSpace(runtimeRole) == "" || strings.ContainsAny(runtimeRole, "\x00\r\n") {
+		return false, &ir.Error{Code: CodeConfig, Msg: "runtime role is required"}
+	}
+	stmt, err := t.stmt(ctx, `SELECT current_user=session_user AND current_user<>$1
+ AND EXISTS(SELECT 1 FROM pg_namespace WHERE nspname='core' AND nspowner=(SELECT oid FROM pg_roles WHERE rolname=session_user))`)
+	if err != nil {
+		return false, err
+	}
+	defer stmt.Close()
+	var authorized bool
+	if err := stmt.QueryRowContext(ctx, runtimeRole).Scan(&authorized); err != nil {
+		return false, mapDriverErr(err)
+	}
+	return authorized, nil
+}
+
 // GrantPlatformRuntimePrivileges applies the fixed privileges required by the
 // platform runtime role after schema installation.
 func (t *Tx) GrantPlatformRuntimePrivileges(ctx context.Context, role string) error {

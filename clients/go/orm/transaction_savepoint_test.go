@@ -267,6 +267,7 @@ func TestPostgresTransactionAPIsRejectUnsupportedOrInvalidUse(t *testing.T) {
 		func() error { _, err := unsupported.PrimaryKeyColumn(ctx, "core.table", "owner_uuid"); return err },
 		func() error { return unsupported.SetLocal(ctx, "app.tenant", "tenant-1") },
 		func() error { return unsupported.GrantPlatformRuntimePrivileges(ctx, "runtime") },
+		func() error { _, err := unsupported.InstallerSessionAuthorized(ctx, "runtime"); return err },
 	} {
 		if err := call(); err == nil {
 			t.Fatal("unsupported driver was accepted")
@@ -274,13 +275,25 @@ func TestPostgresTransactionAPIsRejectUnsupportedOrInvalidUse(t *testing.T) {
 			t.Fatalf("wrong unsupported-driver error: %v", err)
 		}
 	}
+	probeTx, probe, closeDB := probePostgresTx(t, map[string]driver.Value{
+		`SELECT current_user=session_user AND current_user<>$1
+ AND EXISTS(SELECT 1 FROM pg_namespace WHERE nspname='core' AND nspowner=(SELECT oid FROM pg_roles WHERE rolname=session_user))`: true,
+	})
+	defer closeDB()
+	authorized, err := probeTx.InstallerSessionAuthorized(ctx, "runtime")
+	if err != nil || !authorized {
+		t.Fatalf("InstallerSessionAuthorized() = %v, %v", authorized, err)
+	}
+	if len(probe.arguments) != 1 || probe.arguments[0][0].Value != "runtime" {
+		t.Fatalf("installer role argument = %#v", probe.arguments)
+	}
 	tx := &Tx{d: &DB{driver: "postgres"}}
 	if err := tx.GrantPlatformRuntimePrivileges(ctx, " bad\nrole"); err == nil {
 		t.Fatal("invalid runtime role was accepted")
 	} else if typed, ok := err.(*ir.Error); !ok || typed.Code != CodeConfig {
 		t.Fatalf("wrong invalid-role error: %v", err)
 	}
-	probeTx, probe, closeDB := probePostgresTx(t, nil)
+	probeTx, probe, closeDB = probePostgresTx(t, nil)
 	defer closeDB()
 	if err := probeTx.GrantTablePrivileges(ctx, `module.product`, `runtime"role`); err != nil {
 		t.Fatal(err)
