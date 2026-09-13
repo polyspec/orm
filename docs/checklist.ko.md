@@ -13,7 +13,7 @@
 
 ## 공통 인터페이스 검사
 
-- [~] I6 CRUD metadata용 namespaced `orm:*` Mermaid directive를 구현한다. parser는 검증된 한 줄 directive를 보존하며 profile 검증과 emitter는 미착수다.
+- [x] I7 CRUD metadata용 namespaced `orm:*` Mermaid directive, semantic validator, deterministic CRUD manifest, Go transaction contract emitter, TypeScript CRUDUI contract emitter, 부정 fixture와 `scripts/crud-check.sh` 검증을 구현했다.
 
 - [x] I1 `interfaces.md`, `contracts/interfaces.json`, Mermaid 도표에 공통 구조·소유권·상태 전이를 정의한다.
 - [x] I2 Go·PHP·Rust·TypeScript Query와 Row 인터페이스를 생성하고 대조한다.
