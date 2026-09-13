@@ -4,7 +4,7 @@ import "testing"
 
 func TestValidateORMMetadata(t *testing.T) {
 	m := &Manifest{Entities: map[string]*Entity{
-		"company": {Name: "company", Columns: []*Col{{Name: "seq", Type: "i64", PK: true}, {Name: "uuid", Type: "string", UK: true}}, cols: map[string]*Col{}},
+		"company": {Name: "company", Columns: []*Col{{Name: "seq", Type: "i64", PK: true}, {Name: "uuid", Type: "string", Len: 36, UK: true}}, Unique: [][]string{{"uuid"}}, cols: map[string]*Col{}},
 		"product": {Name: "product", Columns: []*Col{{Name: "company_seq", Type: "i64", FK: true, Ref: &Ref{Entity: "company", Column: "seq"}}}, cols: map[string]*Col{}},
 	}, Order: []string{"company", "product"}}
 	for _, entity := range m.Entities {

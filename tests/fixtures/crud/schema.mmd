@@ -41,6 +41,7 @@ erDiagram
   %% orm:scope route=product.collection param=store_uuid field=product.store_seq
   %% orm:operation route=product.collection method=GET
   %% orm:operation route=product.collection method=POST
+  %% orm:permission route=product.collection action=create owner=product.owner_seq
   %% orm:route product.item
   %% orm:path /company/{company_uuid}/store/{store_uuid}/product/{product_uuid}
   %% orm:scope route=product.item param=company_uuid field=product.company_seq
@@ -50,3 +51,4 @@ erDiagram
   %% orm:operation route=product.item method=PATCH
   %% orm:operation route=product.item method=DELETE
   %% orm:permission route=product.item action=update owner=product.owner_seq
+  %% orm:permission route=product.item action=delete owner=product.owner_seq

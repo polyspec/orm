@@ -22,3 +22,11 @@ Every directive occupies one physical line. Continuation lines, unknown options,
 `fk` is the physical foreign key target. `public` is the stable resolver key of that target. `scope` values are resolved and added to list, detail, update, and delete ORM builders; insert uses them as FK values. `reference` values are used only by an explicit body or route filter. `owner` is a permission candidate and requires a separate permission declaration. `resource-key` identifies one public resource; `seq` and internal FK values are never public keys.
 
 The generated source calls the ORM builder and terminal methods. It does not contain SQL, driver calls, or database procedures. Write resolvers and mutations run in one ORM transaction. A caller-owned transaction is accepted through the generated transaction binding and is not committed by the wrapper.
+
+## Validation and generated interfaces
+
+`platformgen build --schema schema.mmd` validates the extension and writes a deterministic JSON intermediate manifest. `--lang go` emits the Go operation table and `Using`/`UsingTx` transaction interface. `--lang typescript` emits the CRUDUI route, scope, filter, resource, and operation types. Both outputs consume the same manifest; neither output infers schema meaning or writes SQL.
+
+Validation rejects an FK without `orm:field`, a physical FK mismatch, a missing or non-null single-column public key, a non-stable resource key, a path parameter without a declaration, scope order or path order mismatch, invalid route methods, and mutation operations without the corresponding permission action. The generated Go interface calls `orm.InTx` for `Using`; `UsingTx` passes the caller executor through without commit or rollback.
+
+Run `./scripts/crud-check.sh` to validate the fixture, compare repeated manifest and source output, parse generated Go, format-check it, and type-check generated TypeScript.
