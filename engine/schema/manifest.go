@@ -18,6 +18,7 @@ type Manifest struct {
 	SchemaHash string             `json:"schema_hash"`
 	Order      []string           `json:"order"` // entity names in source order
 	Entities   map[string]*Entity `json:"entities"`
+	ORM        []*ORMDirective    `json:"orm,omitempty"`
 }
 
 type Entity struct {
@@ -156,6 +157,7 @@ func BuildMigrationSource(diagrams ...*Diagram) (*Manifest, error) {
 func build(allowMissingAESVersion bool, diagrams ...*Diagram) (*Manifest, error) {
 	m := &Manifest{Entities: map[string]*Entity{}}
 	for _, d := range diagrams {
+		m.ORM = append(m.ORM, d.ORM...)
 		for _, e := range d.Entities {
 			if _, dup := m.Entities[e.Name]; dup {
 				return nil, &BuildError{e.Line, "duplicate entity " + e.Name}
