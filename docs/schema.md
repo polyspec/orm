@@ -155,6 +155,14 @@ Commas are invalid in Mermaid type strings; use `_` such as `decimal(13_3)` and 
 ```
 Commit this file but do not edit the generated manifest. `ormgen validate` reports mismatches among `.mmd`, `schema.json`, and the live database.
 
+## 3.1 Namespaced ORM extensions
+
+The parser preserves `%% orm:<kind>` lines in `Manifest.ORM`. The core validates the directive kind, identifier syntax, key/value syntax, duplicate options, and duplicate declarations. It does not validate route, permission, public-key, or CRUD meaning. A higher-level generator owns those checks.
+
+```text
+%% orm:field product.company_seq relation=scope fk=company.seq public=company.uuid required=true order=1
+```
+
 ## 4. Commands
 ```
 ormgen import   --dsn mysql://… --schema service --out schema/service.mmd   # DB → Mermaid (멱등: 라벨의 이름 재정의·주석 속성 보존)
