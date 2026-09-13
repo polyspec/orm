@@ -209,7 +209,15 @@ node tests/typescript/common-vector.mjs
 
 ## 4. Connections
 
-Compiler implementations are language-specific: Go uses its in-process compiler, Rust uses WASM, and PHP uses the Unix-socket `ormd` transport by default. Connect/Protobuf is the common compiler service path and the TypeScript default. It validates the schema hash, dialect, and IR version and returns typed plans. Database statements and row data remain in each client process.
+The application injects one DSN URI from its environment or Secret Manager. The URI scheme selects the database; callers do not pass a second driver value.
+
+```text
+mysql://user:password@host:3306/app?parseTime=true&clientFoundRows=true
+postgres://user:password@host:5432/app?sslmode=disable
+sqlite:///var/lib/app.sqlite
+```
+
+Each client accepts the DSN and creates the matching native driver and pool. Schema, compiler, and AES initialization are internal runtime operations. Callers do not construct or pass an engine.
 
 ```sh
 bin/ormd -listen 127.0.0.1:8080 -schema /srv/app/schema/schema.json -dialect mysql
@@ -218,12 +226,7 @@ bin/ormd -listen 127.0.0.1:8080 -schema /srv/app/schema/schema.json -dialect mys
 ### Go
 
 ```go
-js, _ := os.ReadFile("schema/schema.json")
-m, _ := schema.Load(js)
-eng, _ := engine.New(m, "mysql")
-compiler, _ := orm.NewConnectCompiler("http://127.0.0.1:8080", 5*time.Second)
-db, err := orm.OpenWithCompiler(ctx, "mysql", dsn, eng, compiler, orm.Config{AESKey: "…"})
-if err := gen.Init(eng); err != nil { … }
+db, err := gen.Connect(dsn, options)
 ```
 
 The MySQL DSN requires `parseTime=true&clientFoundRows=true` because optimistic updates depend on `clientFoundRows`.
@@ -231,58 +234,24 @@ The MySQL DSN requires `parseTime=true&clientFoundRows=true` because optimistic 
 ### PHP
 
 ```php
-use Orm\{Config, Db, Orm};
-
-Orm::init(new Config(socket: '/unused', schemaPath: '/srv/app/schema/schema.json', aesKey: '…', endpoint: 'http://127.0.0.1:8080'));
-$db = Db::mysql('mysql:unix_socket=/tmp/mysql.sock;dbname=app;charset=utf8mb4', 'user', 'pass');
+$db = Orm::connect($dsn, $options);
 ```
 
 ### Rust
 
 ```rust
-let engine = Arc::new(Engine::new(EngineConfig {
-    wasm: &std::fs::read("bin/ormengine.wasm")?,
-    schema_json: &std::fs::read("schema/schema.json")?,
-    ..Default::default()
-})?);
-gen::init(engine.clone())?;
-let compiler = Arc::new(ConnectCompiler::new("http://127.0.0.1:8080", Duration::from_secs(5))?);
-let db = Db::connect_with_compiler(ConnectOptions::parse("mysql", url)?, 8, engine,
-                                  compiler, Config { aes_key: "…".into(), on_query: None }).await?;
+let db = gen::connect(&dsn, options).await?;
 ```
 
 ### TypeScript
 
 ```typescript
-import { ConnectCompiler, Db } from '@polyspec/orm-typescript';
+import { Db } from '@polyspec/orm-typescript';
 
-const compiler = new ConnectCompiler('http://127.0.0.1:8080');
-const db = await Db.mysql(dsn, { schemaHash, compiler, aesKey: '…' });
+const db = await Db.connect(dsn, options);
 ```
 
 Each client caches plans by request shape. The compiler does not receive database rows or connect to the application database.
-
-### One configuration file
-
-All four clients read the declared connection fields from one `orm.toml` file ([config.md](config.md)). Paths must be absolute; symlinks are rejected.
-
-```toml
-schema = "/srv/app/schema/schema.json"
-[db]
-driver = "mysql"
-dsn = "user@unix(/tmp/mysql.sock)/app?parseTime=true&clientFoundRows=true"
-pool = 8
-[secrets]
-aes_env = "ORM_AES_KEY"
-[ormd]                       # PHP
-socket = "/run/orm/ormd.sock"
-[engine]                     # Rust
-wasm = "/srv/app/bin/ormengine.wasm"
-cache_dir = "/var/cache/orm"
-```
-```go
-db, err := orm.OpenConfig("/srv/app/orm.toml")   // PHP: Orm::fromConfig(...)  Rust: Db::from_config(...).await  TypeScript: await Db.fromConfig(...)
-```
 
 ---
 
@@ -439,9 +408,9 @@ The same statement produces the same result on all three databases, although sta
 go run ./cmd/ormgen ddl --schema schema/schema.json --dialect postgres --out app.pg.sql
 psql … -f app.pg.sql
 ```
-- Go: `orm.Open("postgres", url, eng, …)` with the driver package imported; use `engine.New(m, "postgres")`.
-- PHP: start the daemon with `ormd -dialect postgres` and use `Db::postgres(...)`. A dialect mismatch returns `CONFIG`.
-- Rust: `EngineConfig { dialect: "postgres", .. }` + `ConnectOptions::parse("postgres", url)`.
+- Go: `gen.Connect(url, schemaPath, options)`; the DSN scheme selects the driver.
+- PHP: `Orm::connect(url, config)`; the DSN scheme selects the PDO driver.
+- Rust: `gen::connect(url, wasm, schema_json, pool_size, config).await?`; the generated client creates the compiler internally.
 - SQLite rejects `likeBinary` and fulltext (`OPERATOR_NOT_ALLOWED`).
 
 ---

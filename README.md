@@ -1,7 +1,6 @@
 # orm 0.0.1
 
-A schema-driven fluent query grammar for **Go, PHP, Rust, and TypeScript** that compiles through a single Go engine
-into database plans and executes on each language's native driver. Version 0.0.1.
+A schema-driven fluent query grammar for **Go, PHP, Rust, and TypeScript**. Version 0.0.1.
 
 ```php
 $battles = Battle::query()->using($db)->serviceSeq(7)->isClose(false)
@@ -46,8 +45,7 @@ const battles = await Battle().using(db).getsByServiceSeq(7);
 
 ## How it works
 - **Schema**: one hand-written Mermaid `erDiagram` (`schema/*.mmd`) → `ormgen build` → `schema.json` (manifest with `schema_hash`).
-- **Engine** (`engine/`, Go, compiler only): JSON IR → Plan (SQL text + bind slots + positional assembly). Never executes. Plans are value-free and cached per statement shape in every client. The default compiler path is Go in-process, Rust WASM, and PHP Unix socket. TypeScript uses the common Connect/Protobuf compiler service.
-- **Executors**: Go `database/sql`, PHP `PDO`, Rust `sqlx`, and TypeScript native drivers execute database plans. Connect/Protobuf is the common compiler service path; it is also TypeScript's default path. Row data remains in the client process.
+- **Runtime**: The generated client opens the database from the DSN URI and executes queries through the language-native driver.
 - **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.35+ use the same request and result rules (`docs/dialects.md`).
 - **Generated code**: `ormgen gen --lang go|php|rust|typescript` emits typed builders, rows, and relation accessors per entity.
 
@@ -55,7 +53,7 @@ const battles = await Battle().using(db).getsByServiceSeq(7);
 ```sh
 mysql -uroot orm_bench < bench/sql/battle.sql
 mysql -uroot orm_bench < bench/sql/seed.mysql.sql                  # schema + 100k rows
-go run ./bench/seedaes -driver mysql -dsn 'root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true'
+go run ./bench/seedaes -driver mysql -dsn 'mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&parseTime=true&clientFoundRows=true'
 go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
 for l in go php rust; do go run ./cmd/ormgen gen --schema schema/schema.json --lang $l --out clients/$l/gen; done
 go run ./cmd/ormgen gen --schema schema/schema.json --lang typescript --out clients/typescript/src/gen
@@ -78,7 +76,7 @@ go run ./tests/conformance/check run                                # starts Con
 [**Security**](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Changelog](CHANGELOG.md)
 
 `examples/thin-slice` · `examples/complex` · `docs/dsl.md` grammar · `docs/schema.md` Mermaid dialect, import, validate · `docs/protocol.md` IR/Plan ·
-`docs/codec.md` column styles · `docs/dialects.md` MySQL/PostgreSQL/SQLite · `docs/config.md` orm.toml ·
+`docs/codec.md` column styles · `docs/dialects.md` MySQL/PostgreSQL/SQLite ·
 `docs/errors.yaml` codes · `docs/perf.md` measurements and gates · `docs/checklist.md` work plan · `docs/lanes/` parallel lane specs.
 
 ## Tooling

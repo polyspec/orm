@@ -30,23 +30,16 @@ Start it with the manifest the client was generated from:
 when the hash differs from the generated code's (`SCHEMA_HASH_MISMATCH`) or the dialect differs
 from the `Config` driver (`CONFIG`); nothing is watched or reloaded.
 
-## Configuration
-Either construct it in code:
+## Connection
+
+The application injects the DSN and runtime secrets. The DSN scheme selects the PDO driver; no separate driver argument or runtime configuration file is used:
 
 ```php
-Orm::init(new Config(socket: '/run/orm/ormd.sock', schemaPath: '/srv/app/schema/schema.json', aesKey: 'secret'));
-$db = Db::mysql('mysql:unix_socket=/tmp/mysql.sock;dbname=app;charset=utf8mb4', 'root', '');
-// or, with ormd -dialect postgres / sqlite and Config(..., driver: 'postgres' | 'sqlite'):
-$db = Db::postgres('pgsql:host=localhost;port=5432;dbname=app;user=app', null, 'secret');
-$db = Db::sqlite('/srv/app/app.sqlite');   // PRAGMA busy_timeout=5000, journal_mode=WAL on open
+Orm::connect('mysql://root@localhost/app?socket=/tmp/mysql.sock&clientFoundRows=true', new Config(socket: '/run/orm/ormd.sock', schemaPath: '/srv/app/schema/schema.json', aesKey: getenv('ORM_AES_KEY') ?: ''));
 ```
 
-or load `orm.toml` (`docs/config.md`) — `Orm::fromConfig('/srv/app/orm.toml')` returns the `Db`;
-`[db].driver` (`mysql` default, `postgres`, `sqlite`) picks the constructor, and for `sqlite`
-`[db].dsn` is the database file. Paths must be absolute, exist and not be symlinks; `[db].user`/
-`password` apply only when the DSN names no user; `[debug].on_query = true` logs every statement
-through `error_log`. `Db::driver()` tells which database a `Db` speaks; a `Db` of another driver
-than the `Config` is `CONFIG`.
+Use `postgres://user:password@host/app` or `sqlite:///var/lib/app.sqlite` for the other drivers. The
+compiler socket and schema path remain runtime options because PHP uses the Unix socket compiler path.
 
 The `on_query` hook is `fn(string $sql, array $binds, float $seconds, string $planId, ?\Throwable $err)`:
 secret binds read `"$SECRET"`, the SQLite `updated_ts` timestamp the executor binds reads `"$NOW"`

@@ -14,20 +14,11 @@ import (
 
 	"github.com/polyspec/orm/clients/go/gen"
 	"github.com/polyspec/orm/clients/go/orm"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
 )
 
 func main() {
-	js, err := os.ReadFile(os.Args[1])
+	db, err := gen.Connect(dsn(), os.Args[1], orm.Config{AESKey: "bench-salt"})
 	check(err)
-	m, err := schema.Load(js)
-	check(err)
-	eng, err := engine.New(m, "mysql")
-	check(err)
-	db, err := orm.Open("mysql", dsn(), eng, orm.Config{AESKey: "bench-salt"})
-	check(err)
-	check(gen.Init(eng))
 	ctx := context.Background()
 
 	// A join carrying its own ON and WHERE, a root group mixing a predicate with
@@ -80,7 +71,7 @@ func dsn() string {
 	if v := os.Getenv("ORM_MYSQL_DSN_GO"); v != "" {
 		return v
 	}
-	return "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true"
+	return "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&parseTime=true&clientFoundRows=true"
 }
 
 func check(err error) {

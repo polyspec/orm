@@ -209,7 +209,15 @@ node tests/typescript/common-vector.mjs
 
 ## 4. 연결
 
-compiler 구현은 언어별로 다르다. Go는 in-process compiler, Rust는 WASM, PHP는 Unix socket `ormd` transport를 기본 사용한다. Connect/Protobuf는 공통 compiler service 경로이며 TypeScript의 기본 경로다. 이 서비스는 schema hash, dialect, IR version을 검사하고 typed plan을 반환한다. 데이터베이스 문장 실행과 row 데이터는 각 client process에서 처리한다.
+애플리케이션은 환경변수 또는 Secret Manager에서 하나의 DSN URI를 주입한다. URI scheme이 database를 선택하므로 별도의 driver 값을 전달하지 않는다.
+
+```text
+mysql://user:password@host:3306/app?parseTime=true&clientFoundRows=true
+postgres://user:password@host:5432/app?sslmode=disable
+sqlite:///var/lib/app.sqlite
+```
+
+각 client는 DSN을 받아 해당 native driver와 pool을 생성한다. schema, compiler, AES 초기화는 runtime 내부에서 처리한다. 호출자는 engine을 생성하거나 전달하지 않는다.
 
 ```sh
 bin/ormd -listen 127.0.0.1:8080 -schema /srv/app/schema/schema.json -dialect mysql
@@ -218,12 +226,7 @@ bin/ormd -listen 127.0.0.1:8080 -schema /srv/app/schema/schema.json -dialect mys
 ### Go
 
 ```go
-js, _ := os.ReadFile("schema/schema.json")
-m, _ := schema.Load(js)
-eng, _ := engine.New(m, "mysql")
-compiler, _ := orm.NewConnectCompiler("http://127.0.0.1:8080", 5*time.Second)
-db, err := orm.OpenWithCompiler(ctx, "mysql", dsn, eng, compiler, orm.Config{AESKey: "…"})
-if err := gen.Init(eng); err != nil { … }
+db, err := gen.Connect(dsn, schemaPath, options)
 ```
 
 MySQL DSN에는 `parseTime=true&clientFoundRows=true`가 필요하다. optimistic update가 `clientFoundRows`를 사용한다.
@@ -231,58 +234,24 @@ MySQL DSN에는 `parseTime=true&clientFoundRows=true`가 필요하다. optimisti
 ### PHP
 
 ```php
-use Orm\{Config, Db, Orm};
-
-Orm::init(new Config(socket: '/unused', schemaPath: '/srv/app/schema/schema.json', aesKey: '…', endpoint: 'http://127.0.0.1:8080'));
-$db = Db::mysql('mysql:unix_socket=/tmp/mysql.sock;dbname=app;charset=utf8mb4', 'user', 'pass');
+$db = Orm::connect($dsn, $options);
 ```
 
 ### Rust
 
 ```rust
-let engine = Arc::new(Engine::new(EngineConfig {
-    wasm: &std::fs::read("bin/ormengine.wasm")?,
-    schema_json: &std::fs::read("schema/schema.json")?,
-    ..Default::default()
-})?);
-gen::init(engine.clone())?;
-let compiler = Arc::new(ConnectCompiler::new("http://127.0.0.1:8080", Duration::from_secs(5))?);
-let db = Db::connect_with_compiler(ConnectOptions::parse("mysql", url)?, 8, engine,
-                                  compiler, Config { aes_key: "…".into(), on_query: None }).await?;
+let db = gen::connect(&dsn, wasm, &schema_json, pool_size, options).await?;
 ```
 
 ### TypeScript
 
 ```typescript
-import { ConnectCompiler, Db } from '@polyspec/orm-typescript';
+import { Db } from '@polyspec/orm-typescript';
 
-const compiler = new ConnectCompiler('http://127.0.0.1:8080');
-const db = await Db.mysql(dsn, { schemaHash, compiler, aesKey: '…' });
+const db = await Db.connect(dsn, options);
 ```
 
 각 클라이언트는 요청 형태별로 plan을 캐시한다. compiler는 데이터베이스 row를 받지 않고 애플리케이션 데이터베이스에 연결하지 않는다.
-
-### 하나의 설정 파일
-
-네 클라이언트는 하나의 `orm.toml` 파일에서 선언된 연결 필드를 읽는다([config.md](config.md)). 경로는 절대 경로여야 하며 symlink는 거부한다.
-
-```toml
-schema = "/srv/app/schema/schema.json"
-[db]
-driver = "mysql"
-dsn = "user@unix(/tmp/mysql.sock)/app?parseTime=true&clientFoundRows=true"
-pool = 8
-[secrets]
-aes_env = "ORM_AES_KEY"
-[ormd]                       # PHP
-socket = "/run/orm/ormd.sock"
-[engine]                     # Rust
-wasm = "/srv/app/bin/ormengine.wasm"
-cache_dir = "/var/cache/orm"
-```
-```go
-db, err := orm.OpenConfig("/srv/app/orm.toml")   // PHP: Orm::fromConfig(...)  Rust: Db::from_config(...).await  TypeScript: await Db.fromConfig(...)
-```
 
 ---
 
@@ -439,9 +408,9 @@ $b->getJsonSetting()['a'];
 go run ./cmd/ormgen ddl --schema schema/schema.json --dialect postgres --out app.pg.sql
 psql … -f app.pg.sql
 ```
-- Go: `orm.Open("postgres", url, eng, …)` + 드라이버 패키지 임포트, 엔진도 `engine.New(m, "postgres")`.
-- PHP: `ormd -dialect postgres`로 데몬을 띄우고 `Db::postgres(...)`. 방언이 다르면 `CONFIG` 에러.
-- Rust: `EngineConfig { dialect: "postgres", .. }` + `ConnectOptions::parse("postgres", url)`.
+- Go: `gen.Connect(url, schemaPath, options)`을 사용한다. DSN scheme이 driver를 선택한다.
+- PHP: `Orm::connect(url, config)`을 사용한다. DSN scheme이 PDO driver를 선택한다.
+- Rust: `gen::connect(url, wasm, schema_json, pool_size, config).await?`를 사용한다. 생성 client가 compiler를 내부에서 생성한다.
 - SQLite는 `likeBinary`와 fulltext를 거부한다(`OPERATOR_NOT_ALLOWED`).
 
 ---

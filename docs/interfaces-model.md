@@ -85,6 +85,11 @@ classDiagram
         streamStep()
         writeStep()
     }
+    class Connection {
+        Text dsn
+        ConnectionOptions options
+        connect()
+    }
     class Db {
         CompilerTransport compiler
         RuntimeConfig config
@@ -249,6 +254,7 @@ classDiagram
 | QueryNode | Contains the root or child condition tree. |
 | Binding | Stores an explicit executor. Does not select an ambient transaction. |
 | Executor | Defines database and pinned transaction execution operations. |
+| Connection | Creates a Db from one DSN URI. The URI scheme selects the database; compiler internals are hidden from callers. |
 | Db | Stores connections, plan cache, statement cache, and runtime configuration. |
 | Tx | commit or rollback invalidates queries and rows that use the transaction. |
 | Row | Separates loaded identity, values, pending changes, relations, and execution binding. |
@@ -335,6 +341,8 @@ An underscore in a diagram type name separates nested types. The table defines t
 | QueryNode.where | `Optional<Group>` |
 | Binding.control | `NativeExecutionControl` |
 | Binding.executor | `Optional<Executor>` |
+| Connection.dsn | `Text` |
+| Connection.options | `ConnectionOptions` |
 | Db.compiler | `CompilerTransport` |
 | Db.config | `RuntimeConfig` |
 | Db.connection | `ConnectionResource` |
