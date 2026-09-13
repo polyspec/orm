@@ -1,6 +1,6 @@
 # orm 0.0.1
 
-**Go, PHP, Rust, TypeScript**를 지원하는 스키마 기반 fluent query grammar다. 하나의 Go engine이 query를 database plan으로 컴파일하고, 각 언어의 native driver가 plan을 실행한다. 버전은 0.0.1이다.
+**Go, PHP, Rust, TypeScript**를 지원하는 스키마 기반 fluent query grammar다. 버전은 0.0.1이다.
 
 네 클라이언트는 같은 query 구조에서 같은 SQL, bind, 결과를 생성한다. `tests/conformance`는 MySQL, PostgreSQL, SQLite에서 공통 벡터를 검사한다.
 
@@ -29,9 +29,7 @@ const battles = await Battle().using(db).getsByServiceSeq(7);
 ## 동작 구조
 
 - **Schema**: 직접 작성한 Mermaid `erDiagram`(`schema/*.mmd`)를 `ormgen build`로 `schema.json` manifest로 변환한다. manifest에는 `schema_hash`가 포함된다.
-- **Engine**: JSON IR을 SQL text, bind slot, positional assembly가 포함된 plan으로 변환한다. database query를 실행하지 않는다.
-- **Compiler 경로**: Go는 in-process compiler, Rust는 WASM compiler, PHP는 Unix socket compiler transport를 기본 사용한다. Connect/Protobuf는 공통 compiler service 경로이며 TypeScript의 기본 경로다.
-- **Executors**: Go `database/sql`, PHP `PDO`, Rust `sqlx`, TypeScript native driver가 database plan을 실행한다. row data는 각 client process 안에 남는다.
+- **Runtime**: 생성된 client가 DSN URI에서 database를 선택하고 각 언어의 native driver로 query를 실행한다.
 - **Databases**: MySQL 8, PostgreSQL 12+, SQLite 3.35+에서 같은 request와 result 규칙을 사용한다.
 - **Generated code**: `ormgen gen --lang go|php|rust|typescript`가 entity별 typed builder, row, relation accessor를 생성한다.
 
@@ -40,7 +38,7 @@ const battles = await Battle().using(db).getsByServiceSeq(7);
 ```sh
 mysql -uroot orm_bench < bench/sql/battle.sql
 mysql -uroot orm_bench < bench/sql/seed.mysql.sql
-go run ./bench/seedaes -driver mysql -dsn 'root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true'
+go run ./bench/seedaes -driver mysql -dsn 'mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&parseTime=true&clientFoundRows=true'
 go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
 for l in go php rust; do go run ./cmd/ormgen gen --schema schema/schema.json --lang $l --out clients/$l/gen; done
 go run ./cmd/ormgen gen --schema schema/schema.json --lang typescript --out clients/typescript/src/gen
@@ -59,7 +57,6 @@ npm run typescript:check && npm run typescript:build
 - [Protocol](docs/protocol.ko.md)
 - [Codec](docs/codec.ko.md)
 - [Dialect](docs/dialects.ko.md)
-- [Configuration](docs/config.ko.md)
 - [Checklist](docs/checklist.ko.md)
 - [보안 정책](SECURITY.ko.md) · [기여 안내](CONTRIBUTING.ko.md) · [행동 강령](CODE_OF_CONDUCT.ko.md) · [변경 이력](CHANGELOG.ko.md)
 

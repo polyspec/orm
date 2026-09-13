@@ -92,6 +92,17 @@ Each entity occurrence has one query object and one Where builder. A group conta
 
 ## 5. Public API — IF-09 to IF-12
 
+### 5.0 Connection input
+
+Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite://` select the database driver. The caller does not pass a second driver value and does not construct the compiler engine.
+
+| Client | Public connection call | Result |
+|---|---|---|
+| Go | `gen.Connect(dsn, schemaPath, options)` | `(*orm.DB, error)` |
+| PHP | `Orm::connect(dsn, config)` | `Db` |
+| Rust | `gen::connect(dsn, wasm, schema_json, pool_size, config).await?` | `orm::Db` |
+| TypeScript | `Db.connect(dsn, options)` | `Promise<Db>` |
+
 ### 5.1 Creation and language forms
 
 | Operation | PHP | Go | Rust | TypeScript |

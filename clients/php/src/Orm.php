@@ -39,6 +39,14 @@ final class Orm
         }
     }
 
+    /** Initializes the runtime and opens the database selected by the DSN URI. */
+    public static function connect(string $dsn, Config $config): Db
+    {
+        $driver = Db::driverFromDsn($dsn);
+        self::init($config->withDriver($driver));
+        return Db::connect($dsn);
+    }
+
     /**
      * Loads orm.toml (docs/config.md), installs it with init() and opens the database.
      * `[db].driver` (mysql, the default | postgres | sqlite) selects the PDO driver; ormd must run with
@@ -291,6 +299,25 @@ final class Config
     public function compilerLocation(): string
     {
         return $this->endpoint ?? $this->socket;
+    }
+
+    /** Creates the same runtime options with the driver selected from the DSN. */
+    public function withDriver(string $driver): self
+    {
+        return new self(
+            $this->socket,
+            $this->schemaPath,
+            $this->aesKey,
+            $this->blindIndexKey,
+            $this->aesVersion,
+            $this->aesKeys,
+            $this->onQuery,
+            $driver,
+            $this->endpoint,
+            $this->timeoutSeconds,
+            $this->planCacheSize,
+            $this->statementCacheSize,
+        );
     }
 
     private function manifest(): array

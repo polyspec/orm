@@ -7,6 +7,6 @@
 | PHP runtime | `ormd` daemon over a persistent Unix socket + bounded process-local plan cache | compile round trip once per uncached shape; hot path is PDO only | FrankenPHP/in-process PHP remains a separate runtime implementation |
 | artifacts | `ormengine-0.0.1.wasm` (all hosts), `ormd-0.0.1-<os>-<arch>`, `ormgen-0.0.1-<os>-<arch>`, `SHA256SUMS` (`scripts/build-artifacts.sh`) | — | — (version stays 0.0.1; file names carry it, never a "latest" symlink) |
 | distribution | Go: module path; PHP: composer package with `bin/ormd-…` next to it; Rust: crate loading the wasm from `[engine].wasm` (optional `include_bytes!` documented) | — | a registry publish is a separate decision |
-| configuration | one `orm.toml` per deployment, absolute paths, no discovery (`docs/config.md`) | — | — |
+| configuration | DSN and secrets are injected by the application; compiler and schema paths are runtime options | — | — |
 | drivers | Go `go-sql-driver/mysql` (MPL-2.0), Rust `sqlx` (MIT/Apache), PHP `pdo_mysql` | sqlx PK 78µs is the driver's own cost (F2) | a measured 2× win from `mysql_async` on the hot path would justify swapping `db.rs` only |
 | YAML codec | Go `go.yaml.in/yaml/v3`, PHP `symfony/yaml`, Rust `serde_yaml_ng` with `yaml-rust2` validation, TypeScript `yaml`; lock files are committed | the same 96 vectors and invalid-input cases run in all four clients | replace a library only when the shared vectors and error cases remain unchanged |
