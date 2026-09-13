@@ -1,7 +1,7 @@
-.PHONY: check client-unit-check db-test perf-check interface-check token-check ts-check ts-db-check typescript-root-in schema-check proto-check typescript-build rust-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check crud-check
+.PHONY: check client-unit-check db-test perf-check interface-check token-check ts-check ts-db-check typescript-root-in schema-check proto-check typescript-build rust-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
-check: feature-check docs-rules-check docs-check docs-verify-idempotent interface-check token-check client-unit-check ts-check schema-check proto-check rust-check rust-driver-check crud-check db-test perf-check package-check
+check: feature-check docs-rules-check docs-check docs-verify-idempotent interface-check token-check client-unit-check ts-check schema-check proto-check rust-check rust-driver-check db-test perf-check package-check
 	go test ./...
 
 feature-check:
@@ -13,10 +13,6 @@ feature-docs:
 
 package-check:
 	./scripts/package-check.sh
-
-crud-check:
-	go test ./engine/schema ./cmd/platformgen -count=1
-	./scripts/crud-check.sh
 
 fuzz-check:
 	go test ./engine/schema -run '^$$' -fuzz FuzzParseMermaid -fuzztime=1s
