@@ -358,6 +358,17 @@ func (t *Tx) SetLocal(ctx context.Context, key, value string) error {
 	return nil
 }
 
+// ReadOnly reports the transaction access mode.
+func (t *Tx) ReadOnly(ctx context.Context) (bool, error) {
+	if t == nil || t.finished.Load() { return false, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"} }
+	if t.d == nil || t.d.driver != "postgres" { return false, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction access mode is supported only by postgres"} }
+	stmt, err := t.stmt(ctx, "SELECT current_setting('transaction_read_only')::boolean")
+	if err != nil { return false, err }; defer stmt.Close()
+	var readOnly bool
+	if err := stmt.QueryRowContext(ctx).Scan(&readOnly); err != nil { return false, mapDriverErr(err) }
+	return readOnly, nil
+}
+
 // SchemaInstalled reports whether the named PostgreSQL schema and table exist.
 func (t *Tx) SchemaInstalled(ctx context.Context, schema, table string) (bool, error) {
 	if t == nil || t.finished.Load() {
