@@ -155,6 +155,7 @@ func TestParseORMDirectiveRejectsContinuationAndUnknownOption(t *testing.T) {
 	for _, src := range []string{
 		"erDiagram\n  item {\n    bigint seq PK\n  }\n  %% orm:route item\n  public=item.uuid\n",
 		"erDiagram\n  item {\n    bigint seq PK\n  }\n  %% orm:route item typo=true\n",
+		"erDiagram\n  item {\n    bigint seq PK\n  }\n  %% orm:route item\n  %% orm:route item\n",
 	} {
 		if _, err := Parse(src); err == nil {
 			t.Fatalf("invalid ORM directive accepted: %q", src)

@@ -119,6 +119,7 @@ func Parse(src string) (*Diagram, error) {
 	sc.Buffer(make([]byte, 1<<20), 1<<20)
 	var cur *DEntity
 	lastORMRoute := ""
+	seenORM := map[string]bool{}
 	line := 0
 	seenHeader := false
 	for sc.Scan() {
@@ -142,6 +143,11 @@ func Parse(src string) (*Diagram, error) {
 					}
 					x.Args["route"] = lastORMRoute
 				}
+				identity := ormDirectiveIdentity(x)
+				if seenORM[identity] {
+					return nil, &ParseError{line, "duplicate ORM directive " + identity}
+				}
+				seenORM[identity] = true
 				d.ORM = append(d.ORM, x)
 				continue
 			}
@@ -204,6 +210,28 @@ func Parse(src string) (*Diagram, error) {
 		return nil, &ParseError{0, "empty file"}
 	}
 	return d, nil
+}
+
+func ormDirectiveIdentity(x *ORMDirective) string {
+	if x.Kind == "field" {
+		return x.Kind + ":" + x.Name
+	}
+	if x.Kind == "route" {
+		return x.Kind + ":" + x.Name
+	}
+	if x.Kind == "path" {
+		return x.Kind + ":" + x.Args["route"]
+	}
+	if route := x.Args["route"]; route != "" {
+		return x.Kind + ":" + route + ":" + x.Args["param"] + ":" + x.Args["method"] + ":" + x.Args["action"]
+	}
+	if x.Kind == "public-key" {
+		return x.Kind + ":" + x.Args["entity"] + "." + x.Args["field"]
+	}
+	if x.Kind == "resource-key" {
+		return x.Kind + ":" + x.Args["route"] + ":" + x.Args["param"]
+	}
+	return x.Kind + ":" + x.Raw
 }
 
 var ormKinds = map[string]map[string]bool{
