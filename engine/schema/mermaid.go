@@ -118,6 +118,7 @@ func Parse(src string) (*Diagram, error) {
 	sc := bufio.NewScanner(strings.NewReader(src))
 	sc.Buffer(make([]byte, 1<<20), 1<<20)
 	var cur *DEntity
+	lastORMRoute := ""
 	line := 0
 	seenHeader := false
 	for sc.Scan() {
@@ -132,6 +133,14 @@ func Parse(src string) (*Diagram, error) {
 				x, err := parseORMDirective(t, line)
 				if err != nil {
 					return nil, err
+				}
+				if x.Kind == "route" {
+					lastORMRoute = x.Name
+				} else if x.Kind == "path" {
+					if lastORMRoute == "" {
+						return nil, &ParseError{line, "%% orm:path requires a preceding route"}
+					}
+					x.Args["route"] = lastORMRoute
 				}
 				d.ORM = append(d.ORM, x)
 				continue
