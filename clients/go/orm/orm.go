@@ -338,6 +338,26 @@ func (t *Tx) AdvisoryLock(ctx context.Context, key int64) error {
 	return nil
 }
 
+// SetLocal sets a transaction-local PostgreSQL configuration value.
+// Transaction-local settings are reverted when the transaction ends.
+func (t *Tx) SetLocal(ctx context.Context, key, value string) error {
+	if t == nil || t.finished.Load() {
+		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction-local settings are supported only by postgres"}
+	}
+	stmt, err := t.stmt(ctx, "SELECT set_config($1,$2,true)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	if _, err := stmt.ExecContext(ctx, key, value); err != nil {
+		return mapDriverErr(err)
+	}
+	return nil
+}
+
 func (t *Tx) db() *DB { return t.d }
 
 func (t *Tx) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
