@@ -295,6 +295,27 @@ type Tx struct {
 	finished atomic.Bool
 }
 
+// AdvisoryLock serializes work for the transaction on database engines that
+// provide transaction-scoped advisory locks. The lock is released when the
+// transaction ends.
+func (t *Tx) AdvisoryLock(ctx context.Context, key int64) error {
+	if t == nil || t.finished.Load() {
+		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction advisory locks are supported only by postgres"}
+	}
+	stmt, err := t.stmt(ctx, "SELECT pg_advisory_xact_lock($1)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	if _, err := stmt.ExecContext(ctx, key); err != nil {
+		return mapDriverErr(err)
+	}
+	return nil
+}
+
 func (t *Tx) db() *DB { return t.d }
 
 func (t *Tx) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {

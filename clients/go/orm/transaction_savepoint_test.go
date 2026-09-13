@@ -82,3 +82,12 @@ func TestTransactionOptionsRejectUnsupportedSQLiteModes(t *testing.T) {
 		t.Fatal("negative transaction timeout was accepted")
 	}
 }
+
+func TestAdvisoryLockRejectsUnsupportedDriver(t *testing.T) {
+	tx := &Tx{d: &DB{driver: "sqlite"}}
+	if err := tx.AdvisoryLock(context.Background(), 1); err == nil {
+		t.Fatal("sqlite advisory lock was accepted")
+	} else if e, ok := err.(*ir.Error); !ok || e.Code != CodeCapabilityUnsupported {
+		t.Fatalf("wrong advisory lock error: %v", err)
+	}
+}
