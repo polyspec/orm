@@ -190,8 +190,8 @@ func validateORMRoute(route *ormRoute, fields map[string]*ORMDirective, publicKe
 	} else if slices.Contains(route.operations, "PATCH") || slices.Contains(route.operations, "DELETE") {
 		return fmt.Errorf("route %s: PATCH and DELETE require a resource key", route.name)
 	}
-	if route.resource == nil && slices.Contains(route.operations, "POST") == false {
-		// A collection GET is valid; this branch only documents the absence of a mutation.
+	if route.resource != nil && slices.Contains(route.operations, "POST") {
+		return fmt.Errorf("route %s: POST requires a collection route without a resource key", route.name)
 	}
 	return nil
 }
