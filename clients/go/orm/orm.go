@@ -358,6 +358,46 @@ func (t *Tx) SetLocal(ctx context.Context, key, value string) error {
 	return nil
 }
 
+// SchemaInstalled reports whether the named PostgreSQL schema and table exist.
+func (t *Tx) SchemaInstalled(ctx context.Context, schema, table string) (bool, error) {
+	if t == nil || t.finished.Load() {
+		return false, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return false, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "schema inspection is supported only by postgres"}
+	}
+	stmt, err := t.stmt(ctx, "SELECT to_regclass($1)||'' IS NOT NULL")
+	if err != nil {
+		return false, err
+	}
+	defer stmt.Close()
+	var exists bool
+	if err := stmt.QueryRowContext(ctx, schema+"."+table).Scan(&exists); err != nil {
+		return false, mapDriverErr(err)
+	}
+	return exists, nil
+}
+
+// SchemaExists reports whether a PostgreSQL schema exists.
+func (t *Tx) SchemaExists(ctx context.Context, schema string) (bool, error) {
+	if t == nil || t.finished.Load() {
+		return false, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return false, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "schema inspection is supported only by postgres"}
+	}
+	stmt, err := t.stmt(ctx, "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname=$1)")
+	if err != nil {
+		return false, err
+	}
+	defer stmt.Close()
+	var exists bool
+	if err := stmt.QueryRowContext(ctx, schema).Scan(&exists); err != nil {
+		return false, mapDriverErr(err)
+	}
+	return exists, nil
+}
+
 func (t *Tx) db() *DB { return t.d }
 
 func (t *Tx) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
