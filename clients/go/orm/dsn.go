@@ -67,3 +67,10 @@ func DriverFromDSN(raw string) (string, error) {
 	driver, _, err := parseDSN(raw)
 	return driver, err
 }
+
+// NativeDSN returns the driver-specific DSN for internal adapter and benchmark
+// code. Public application code should pass the canonical URI to Open.
+func NativeDSN(raw string) (string, error) {
+	_, native, err := parseDSN(raw)
+	return native, err
+}
