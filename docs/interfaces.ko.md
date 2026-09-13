@@ -149,6 +149,8 @@ transaction을 만든 코드가 소유권을 가진다. commit과 rollback은 bi
 
 PostgreSQL transaction은 transaction 범위 직렬화를 위해 `advisoryLock(key)`(Go: `AdvisoryLock`)를 제공한다. lock은 transaction 종료 시 해제된다. 다른 driver는 이 작업을 `CAPABILITY_UNSUPPORTED`로 거부한다.
 
+스키마 설치는 호출자가 소유한 transaction에서 `installDDL(statements)`(Go: `InstallDDL`)를 사용한다. ORM은 문장을 순서대로 실행하고 첫 오류를 반환하므로 transaction 소유자가 전체 설치를 rollback할 수 있다.
+
 `TransactionOptions`는 `isolation`(`default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`), `readOnly`, `timeoutMs`(언어별 snake case 표기)를 받는다. Go는 isolation과 read-only를 `database/sql.TxOptions`로 전달하고 PHP·TypeScript는 PostgreSQL에서 `BEGIN` 후, MySQL에서 `START TRANSACTION` 전에 설정한다. Rust도 driver별 transaction 시작 규칙을 적용한다. SQLite는 명시적인 isolation·read-only·timeout을 거부한다. MySQL과 SQLite는 `timeoutMs`를 거부하고 PostgreSQL은 transaction 로컬 `statement_timeout`으로 적용한다. 지원하지 않는 capability는 `CAPABILITY_UNSUPPORTED`를 반환한다.
 
 root row select는 `forUpdate()`와 `forShare()`를 제공한다(Go: `ForUpdate()`와 `ForShare()`, Rust: `for_update()`와 `for_share()`). request는 공통 IR에 `lock`을 저장한다. MySQL과 PostgreSQL은 order와 limit 뒤에 선택한 lock 절을 추가한다. SQLite는 두 mode를 모두 `CAPABILITY_UNSUPPORTED`로 거부하며 client가 row lock을 대체하지 않는다.
