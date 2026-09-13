@@ -14,7 +14,7 @@ func TestLoadConfigVersionedAESKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 	configPath := filepath.Join(dir, "orm.toml")
-	body := fmt.Sprintf("schema = %q\n[db]\ndsn = \"root@tcp(localhost:3306)/test\"\n[secrets]\naes_version = 2\n[secrets.aes_keys]\n1 = \"old-key\"\n2 = \"current-key\"\n", schemaPath)
+	body := fmt.Sprintf("schema = %q\n[db]\ndsn = \"mysql://root@localhost/test?parseTime=true&clientFoundRows=true\"\n[secrets]\naes_version = 2\n[secrets.aes_keys]\n1 = \"old-key\"\n2 = \"current-key\"\n", schemaPath)
 	if err := os.WriteFile(configPath, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}

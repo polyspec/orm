@@ -20,7 +20,7 @@ import (
 	"github.com/polyspec/orm/clients/go/orm"
 )
 
-const localDSN = "root@unix(/tmp/mysql.sock)/orm_bench?parseTime=true&clientFoundRows=true&interpolateParams=false"
+const localDSN = "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&parseTime=true&clientFoundRows=true&interpolateParams=false"
 
 // dsn is the local socket unless ORM_MYSQL_DSN_GO names another server (CI).
 func dsn() string {

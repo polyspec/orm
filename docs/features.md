@@ -4,6 +4,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 
 | ID | Feature | Status | Client support |
 |---|---|---|---|
+| dsn_connection | DSN URI connection | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | schema_migrations | Schema migration | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | composite_keys | Composite keys | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | authenticated_encryption | Versioned authenticated encryption | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
@@ -17,6 +18,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 
 ## Current behavior
 
+- `dsn_connection`: Open a database from one URI DSN. The URI scheme selects the database and runtime compiler internals are not part of the caller API.
 - `schema_migrations`: Compare modeled schema state and produce validated forward and rollback operations.
 - `composite_keys`: Preserve every declared primary and foreign key component in identity, CRUD, relations, pagination, and rotation.
 - `authenticated_encryption`: Encode authenticated versioned ciphertext, read mixed key versions, and rotate every encrypted column in bounded resumable batches.

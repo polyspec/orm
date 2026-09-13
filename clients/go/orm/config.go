@@ -235,7 +235,14 @@ func hasBlindIndex(m *schema.Manifest) bool {
 // mysqlDSN applies [db].user/password to the DSN when the DSN itself carries
 // no user; a DSN that names a different user than [db].user is a CONFIG error.
 func mysqlDSN(db *DBConfig) (string, error) {
-	cfg, err := mysql.ParseDSN(db.DSN)
+	driver, native, err := parseDSN(db.DSN)
+	if err != nil {
+		return "", err
+	}
+	if driver != "mysql" {
+		return "", configErr("db.dsn scheme %q does not match mysql configuration", driver)
+	}
+	cfg, err := mysql.ParseDSN(native)
 	if err != nil {
 		return "", configErr("db.dsn: %v", err)
 	}
@@ -317,7 +324,9 @@ func OpenConfigContext(ctx context.Context, path string) (*DB, error) {
 	}
 	var db *DB
 	if fc.Ormd.Endpoint == "" {
-		db, err = Open(driver, dsn, eng, cfg)
+		// mysqlDSN has already normalized the URI and merged the optional
+		// credentials from the file configuration.
+		db, err = open(context.Background(), driver, dsn, eng, enginePlanCompiler{engine: eng}, cfg)
 	} else {
 		timeout := fc.Ormd.TimeoutMS
 		if timeout == 0 {
@@ -327,7 +336,7 @@ func OpenConfigContext(ctx context.Context, path string) (*DB, error) {
 		if compilerErr != nil {
 			return nil, compilerErr
 		}
-		db, err = OpenWithCompiler(ctx, driver, dsn, eng, compiler, cfg)
+		db, err = open(ctx, driver, dsn, eng, transportPlanCompiler{transport: compiler}, cfg)
 	}
 	if err != nil {
 		return nil, err

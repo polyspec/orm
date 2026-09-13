@@ -72,6 +72,18 @@ pub enum ConnectOptions {
 }
 
 impl ConnectOptions {
+    /// Parses the database kind from the DSN URI scheme.
+    pub fn parse_dsn(dsn: &str) -> Result<ConnectOptions> {
+        let scheme = dsn
+            .split_once("://")
+            .map(|(value, _)| value)
+            .ok_or_else(|| Error::Config("dsn must be a URI using mysql://, postgres://, or sqlite://".into()))?;
+        match scheme {
+            "mysql" | "postgres" | "sqlite" => Self::parse(scheme, dsn),
+            other => Err(Error::Config(format!("unsupported DSN scheme {other:?}; want mysql, postgres, or sqlite"))),
+        }
+    }
+
     pub fn parse(driver: &str, dsn: &str) -> Result<ConnectOptions> {
         let bad = |e: sqlx::Error| Error::Config(format!("{driver} dsn: {e}"));
         Ok(match driver {
@@ -532,6 +544,17 @@ fn child_keys(plan: &Plan, id: u32) -> Vec<crate::plan::KeyRef> {
 }
 
 impl Db {
+    /// Connects using the database selected by the DSN URI scheme.
+    pub async fn connect_dsn(
+        dsn: &str,
+        max_connections: u32,
+        engine: Arc<Engine>,
+        cfg: Config,
+    ) -> Result<Db> {
+        let options = ConnectOptions::parse_dsn(dsn)?;
+        Self::connect(options, max_connections, engine, cfg).await
+    }
+
     /// Connects the pool. The driver of `opts` must be the dialect the engine compiles for
     /// (docs/dialects.md): the plans are dialect-specific text.
     pub async fn connect(
