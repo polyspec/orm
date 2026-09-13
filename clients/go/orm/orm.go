@@ -360,23 +360,41 @@ func (t *Tx) SetLocal(ctx context.Context, key, value string) error {
 
 // ReadOnly reports the transaction access mode.
 func (t *Tx) ReadOnly(ctx context.Context) (bool, error) {
-	if t == nil || t.finished.Load() { return false, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"} }
-	if t.d == nil || t.d.driver != "postgres" { return false, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction access mode is supported only by postgres"} }
+	if t == nil || t.finished.Load() {
+		return false, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return false, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction access mode is supported only by postgres"}
+	}
 	stmt, err := t.stmt(ctx, "SELECT current_setting('transaction_read_only')::boolean")
-	if err != nil { return false, err }; defer stmt.Close()
+	if err != nil {
+		return false, err
+	}
+	defer stmt.Close()
 	var readOnly bool
-	if err := stmt.QueryRowContext(ctx).Scan(&readOnly); err != nil { return false, mapDriverErr(err) }
+	if err := stmt.QueryRowContext(ctx).Scan(&readOnly); err != nil {
+		return false, mapDriverErr(err)
+	}
 	return readOnly, nil
 }
 
 // Isolation reports the transaction isolation level.
 func (t *Tx) Isolation(ctx context.Context) (string, error) {
-	if t == nil || t.finished.Load() { return "", &ir.Error{Code: CodeConfig, Msg: "transaction already finished"} }
-	if t.d == nil || t.d.driver != "postgres" { return "", &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction isolation is supported only by postgres"} }
+	if t == nil || t.finished.Load() {
+		return "", &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return "", &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction isolation is supported only by postgres"}
+	}
 	stmt, err := t.stmt(ctx, "SELECT current_setting('transaction_isolation')")
-	if err != nil { return "", err }; defer stmt.Close()
+	if err != nil {
+		return "", err
+	}
+	defer stmt.Close()
 	var isolation string
-	if err := stmt.QueryRowContext(ctx).Scan(&isolation); err != nil { return "", mapDriverErr(err) }
+	if err := stmt.QueryRowContext(ctx).Scan(&isolation); err != nil {
+		return "", mapDriverErr(err)
+	}
 	return isolation, nil
 }
 
@@ -398,6 +416,31 @@ func (t *Tx) SchemaInstalled(ctx context.Context, schema, table string) (bool, e
 		return false, mapDriverErr(err)
 	}
 	return exists, nil
+}
+
+// PrimaryKeyColumn reports whether a PostgreSQL table contains the named
+// non-null UUID column as part of its primary key.
+func (t *Tx) PrimaryKeyColumn(ctx context.Context, table, column string) (bool, error) {
+	if t == nil || t.finished.Load() {
+		return false, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return false, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "schema inspection is supported only by postgres"}
+	}
+	stmt, err := t.stmt(ctx, `SELECT EXISTS(
+ SELECT 1 FROM pg_attribute a JOIN pg_index i ON i.indrelid=a.attrelid
+ WHERE a.attrelid=to_regclass($1) AND a.attname=$2 AND NOT a.attisdropped
+ AND a.atttypid='uuid'::regtype AND a.attnotnull AND i.indisprimary
+ AND a.attnum=ANY(i.indkey))`)
+	if err != nil {
+		return false, err
+	}
+	defer stmt.Close()
+	var valid bool
+	if err := stmt.QueryRowContext(ctx, table, column).Scan(&valid); err != nil {
+		return false, mapDriverErr(err)
+	}
+	return valid, nil
 }
 
 // SchemaExists reports whether a PostgreSQL schema exists.
@@ -423,9 +466,15 @@ func (t *Tx) SchemaExists(ctx context.Context, schema string) (bool, error) {
 // GrantPlatformRuntimePrivileges applies the fixed privileges required by the
 // platform runtime role after schema installation.
 func (t *Tx) GrantPlatformRuntimePrivileges(ctx context.Context, role string) error {
-	if t == nil || t.finished.Load() { return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"} }
-	if t.d == nil || t.d.driver != "postgres" { return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "runtime privileges are supported only by postgres"} }
-	if strings.TrimSpace(role) == "" || strings.ContainsAny(role, "\x00\r\n") { return &ir.Error{Code: CodeConfig, Msg: "runtime role is required"} }
+	if t == nil || t.finished.Load() {
+		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "runtime privileges are supported only by postgres"}
+	}
+	if strings.TrimSpace(role) == "" || strings.ContainsAny(role, "\x00\r\n") {
+		return &ir.Error{Code: CodeConfig, Msg: "runtime role is required"}
+	}
 	identifier := `"` + strings.ReplaceAll(role, `"`, `""`) + `"`
 	statements := []string{
 		"GRANT USAGE ON SCHEMA core,audit TO " + identifier,
@@ -443,8 +492,13 @@ func (t *Tx) GrantPlatformRuntimePrivileges(ctx context.Context, role string) er
 func (t *Tx) execStatements(ctx context.Context, statements []string) error {
 	for _, statement := range statements {
 		stmt, err := t.stmt(ctx, statement)
-		if err != nil { return err }
-		if _, err := stmt.ExecContext(ctx); err != nil { stmt.Close(); return mapDriverErr(err) }
+		if err != nil {
+			return err
+		}
+		if _, err := stmt.ExecContext(ctx); err != nil {
+			stmt.Close()
+			return mapDriverErr(err)
+		}
 		stmt.Close()
 	}
 	return nil
