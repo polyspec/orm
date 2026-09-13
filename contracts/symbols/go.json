@@ -4673,6 +4673,7 @@
   "clients/go/orm/config.go::hasBlindIndex": "func(m *schema.Manifest) bool",
   "clients/go/orm/config.go::mysqlDSN": "func(db *DBConfig) (string, error)",
   "clients/go/orm/dsn.go::DriverFromDSN": "func(raw string) (string, error)",
+  "clients/go/orm/dsn.go::NativeDSN": "func(raw string) (string, error)",
   "clients/go/orm/dsn.go::parseDSN": "func(raw string) (string, string, error)",
   "clients/go/orm/hostcodec.go::AESDecrypt": "func(ciphertext []byte, key string) ([]byte, error)",
   "clients/go/orm/hostcodec.go::AESEncrypt": "func(plain []byte, key string) ([]byte, error)",
