@@ -280,4 +280,17 @@ func TestPostgresTransactionAPIsRejectUnsupportedOrInvalidUse(t *testing.T) {
 	} else if typed, ok := err.(*ir.Error); !ok || typed.Code != CodeConfig {
 		t.Fatalf("wrong invalid-role error: %v", err)
 	}
+	probeTx, probe, closeDB := probePostgresTx(t, nil)
+	defer closeDB()
+	if err := probeTx.GrantTablePrivileges(ctx, `module.product`, `runtime"role`); err != nil {
+		t.Fatal(err)
+	}
+	if len(probe.execs) != 2 || !strings.HasSuffix(probe.execs[0], ` TO "runtime""role"`) || !strings.Contains(probe.execs[1], `"module"."product"`) {
+		t.Fatalf("table privilege SQL = %#v", probe.execs)
+	}
+	for _, table := range []string{"product", "module.product.bad", "module\n.product"} {
+		if err := probeTx.GrantTablePrivileges(ctx, table, "runtime"); err == nil {
+			t.Fatalf("invalid table %q accepted", table)
+		}
+	}
 }
