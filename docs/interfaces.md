@@ -149,6 +149,8 @@ Transaction ownership belongs to the code that created the transaction. Commit a
 
 PostgreSQL transactions expose `advisoryLock(key)` (Go: `AdvisoryLock`) for transaction-scoped serialization. The lock is released when the transaction ends. Other drivers reject this operation with `CAPABILITY_UNSUPPORTED`.
 
+Schema installation uses `installDDL(statements)` (Go: `InstallDDL`) on a caller-owned transaction. The ORM executes statements in order and returns the first error so the transaction owner can roll back the complete installation.
+
 `TransactionOptions` accepts `isolation` (`default`, `read_uncommitted`, `read_committed`, `repeatable_read`, or `serializable`), `readOnly`, and `timeoutMs` (or the language's snake-case equivalent). Go maps isolation and read-only settings to `database/sql.TxOptions`; PHP and TypeScript apply PostgreSQL settings after `BEGIN` and MySQL settings before `START TRANSACTION`; Rust emits the equivalent driver-specific transaction start. SQLite rejects explicit isolation, read-only, and timeout options. MySQL and SQLite reject `timeoutMs`; PostgreSQL applies it as transaction-local `statement_timeout`. Unsupported capabilities return `CAPABILITY_UNSUPPORTED`.
 
 Root row selects expose `forUpdate()` and `forShare()` (Go: `ForUpdate()` and `ForShare()`, Rust: `for_update()` and `for_share()`). The request stores `lock` in the common IR. MySQL and PostgreSQL append the selected lock clause after ordering and limits. SQLite rejects either mode with `CAPABILITY_UNSUPPORTED`; the client does not emulate a row lock.

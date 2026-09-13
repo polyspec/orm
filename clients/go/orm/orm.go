@@ -295,6 +295,28 @@ type Tx struct {
 	finished atomic.Bool
 }
 
+// InstallDDL executes schema statements in the caller-owned transaction. DDL
+// execution is part of the ORM adapter boundary; callers do not access the
+// database driver to install a schema. Statements execute in order and any
+// error is returned to the transaction owner for rollback.
+func (t *Tx) InstallDDL(ctx context.Context, statements []string) error {
+	if t == nil || t.finished.Load() {
+		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if len(statements) == 0 {
+		return &ir.Error{Code: CodeConfig, Msg: "schema statements are required"}
+	}
+	for _, statement := range statements {
+		if strings.TrimSpace(statement) == "" {
+			return &ir.Error{Code: CodeConfig, Msg: "schema statement must not be empty"}
+		}
+		if _, err := t.tx.ExecContext(ctx, statement); err != nil {
+			return mapDriverErr(err)
+		}
+	}
+	return nil
+}
+
 // AdvisoryLock serializes work for the transaction on database engines that
 // provide transaction-scoped advisory locks. The lock is released when the
 // transaction ends.
