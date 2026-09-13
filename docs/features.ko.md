@@ -4,7 +4,6 @@
 
 | ID | 기능 | 상태 | Client 지원 |
 |---|---|---|---|
-| crud_generation_directives | CRUD 생성 directive | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | dsn_connection | DSN URI 연결 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | schema_migrations | Schema migration | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | composite_keys | Composite keys | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
@@ -19,7 +18,6 @@
 
 ## 현재 동작
 
-- `crud_generation_directives`: schema parser가 한 줄 orm:* metadata를 보존·검증하고 deterministic CRUD manifest와 Go·PHP·Rust·TypeScript 공통 interface를 생성한다.
 - `dsn_connection`: 하나의 URI DSN으로 database를 연다. URI scheme이 database를 선택하며 runtime compiler 내부 구조는 호출자 API에 포함하지 않는다.
 - `schema_migrations`: 모델 schema 상태를 비교하고 검증된 forward 및 rollback operation을 생성한다.
 - `composite_keys`: 선언된 primary 및 foreign key component 전체를 identity, CRUD, relation, pagination, rotation에서 보존한다.

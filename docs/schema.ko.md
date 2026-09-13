@@ -155,6 +155,14 @@ PostgreSQL `COMMENT ON` 문, SQLite의 `orm_schema_comments` 행을 생성합니
 ```
 이 파일은 커밋하되 편집하지 않는다. `ormgen validate`가 `.mmd`↔`schema.json`↔라이브 DB 세 방향의 불일치를 오류로 표시한다.
 
+## 3.1 Namespaced ORM extension
+
+parser는 `%% orm:<kind>` 줄을 `Manifest.ORM`에 보존한다. core는 directive kind, identifier 문법, key/value 문법, 중복 option, 중복 선언만 검사한다. route, permission, public-key, CRUD 의미는 검사하지 않는다. 상위 generator가 해당 검사를 담당한다.
+
+```text
+%% orm:field product.company_seq relation=scope fk=company.seq public=company.uuid required=true order=1
+```
+
 ## 4. 명령
 ```
 ormgen import   --dsn mysql://… --schema service --out schema/service.mmd   # DB → Mermaid (멱등: 라벨의 이름 재정의·주석 속성 보존)
