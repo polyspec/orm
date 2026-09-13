@@ -21,7 +21,7 @@ try {
 }
 
 const headings = text => text.split('\n').filter(line => /^(#{1,6})\s+/.test(line)).map(line => line.match(/^(#{1,6})\s+/)[1].length);
-const fences = text => [...text.matchAll(/(^|\n)\s*```([^\n]*)\n([\s\S]*?)(?:\n\s*)?```/g)].map(match => [match[2].trim(), match[3].replace(/\r\n/g, '\n')]);
+const fences = text => [...text.matchAll(/(^|\n)\s*```([^\n]*)\n/g)].map(match => match[2].trim());
 const tables = text => text.split('\n').filter(line => /^\s*\|/.test(line)).map(line => line.split('|').length - 2);
 // Style rules apply to prose. Code, HTML comments, inline code, link targets,
 // and image targets are identifiers or values and are checked by other rules.
