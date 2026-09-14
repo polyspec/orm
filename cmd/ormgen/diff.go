@@ -741,7 +741,7 @@ func foreignKeyClause(fk diffForeignKey, m *schema.Manifest, quote func(string) 
 	for i, column := range fk.targetCols {
 		targetColumns[i] = quote(column)
 	}
-	stmt := fmt.Sprintf("CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", quote(fk.name), strings.Join(columns, ", "), quote(target), strings.Join(targetColumns, ", "))
+	stmt := fmt.Sprintf("CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", quote(strings.ReplaceAll(fk.name, ".", "_")), strings.Join(columns, ", "), quote(target), strings.Join(targetColumns, ", "))
 	switch fk.onDelete {
 	case "cascade":
 		stmt += " ON DELETE CASCADE"
