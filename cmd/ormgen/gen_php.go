@@ -324,6 +324,8 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
     public function limit(int $offset, int $count): static { $this->setLimit($offset, $count); return $this; }
     public function forUpdate(): static { $this->lock('update'); return $this; }
     public function forShare(): static { $this->lock('share'); return $this; }
+    public function forUpdateNoWait(): static { $this->lock('update_nowait'); return $this; }
+    public function forShareNoWait(): static { $this->lock('share_nowait'); return $this; }
     public function distinct(): static { $this->opt('distinct', true); return $this; }
 {{- range .Indexes}}
     public function forceIndex{{pascal .}}(): static { $this->opt('force_index', '{{.}}'); return $this; }
