@@ -24,6 +24,18 @@ func TestRenderDiffAddColumnIsSafe(t *testing.T) {
 	}
 }
 
+func TestRenderDDLQuotesQualifiedPhysicalTable(t *testing.T) {
+	m := testManifest(&schema.Col{Name: "id", Type: "i64", Raw: "bigint", PK: true})
+	m.Entities["thing"].Table = "core.thing"
+	sql, err := renderDDL(m, "postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(sql, `CREATE TABLE "core"."thing"`) || strings.Contains(sql, `CREATE TABLE "core.thing"`) {
+		t.Fatalf("qualified table was not quoted by component: %s", sql)
+	}
+}
+
 func TestRenderDiffRejectsDestructiveChange(t *testing.T) {
 	old := testManifest(&schema.Col{Name: "id", Type: "i64", Raw: "bigint", PK: true}, &schema.Col{Name: "name", Type: "string", Raw: "varchar(20)"})
 	now := testManifest(&schema.Col{Name: "id", Type: "i64", Raw: "bigint", PK: true})
