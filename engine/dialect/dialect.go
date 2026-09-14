@@ -4,6 +4,10 @@ package dialect
 
 import "strings"
 
+// CurrentTimeToken is replaced in trusted ORM expression fragments with the
+// dialect's advancing wall-clock expression.
+const CurrentTimeToken = "$CURRENT_TIME"
+
 type Dialect interface {
 	Name() string
 	// Quote an identifier.
@@ -32,6 +36,8 @@ type Dialect interface {
 	WriteExpr(ph func() string, colType string, styles []string) (string, int)
 	// Now renders CURRENT_TIMESTAMP.
 	Now() string
+	// CurrentTime renders a wall-clock expression that advances during a transaction.
+	CurrentTime() string
 	// Supports reports whether a predicate operator exists in this dialect (false → OPERATOR_NOT_ALLOWED).
 	Supports(op string) bool
 	// HandlesStyle reports whether a column style stage is applied in SQL here

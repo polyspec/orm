@@ -19,6 +19,7 @@ func (Postgres) Limit(offset, count int) string {
 func (Postgres) ForceIndex(string) string   { return "" } // planner hints are not a thing in PostgreSQL
 func (Postgres) InsertReturningID() bool    { return true }
 func (Postgres) Now() string                { return "CURRENT_TIMESTAMP" }
+func (Postgres) CurrentTime() string        { return "clock_timestamp()" }
 func (Postgres) Supports(op string) bool    { return true }
 func (Postgres) HandlesStyle(s string) bool { return s == "ip" }
 

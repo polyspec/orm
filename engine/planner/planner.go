@@ -1227,6 +1227,7 @@ func (p *Planner) resolvePath(s *scope, path string) (*scope, error) {
 // renderExpr checks backtick-quoted column names in a fragment against the
 // scope's entity and rewrites them as alias-qualified identifiers.
 func (p *Planner) renderExpr(s *scope, frag string) (string, error) {
+	frag = strings.ReplaceAll(frag, dialect.CurrentTimeToken, p.D.CurrentTime())
 	var out strings.Builder
 	i := 0
 	for i < len(frag) {
