@@ -103,6 +103,9 @@ func (t *Tx) InstallImmutable(ctx context.Context, tableName string) error {
 	if !ok {
 		return configAuditError("immutable table must be qualified")
 	}
+	if t.d == nil {
+		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "immutable guards are supported only by postgres and sqlite"}
+	}
 	digest := sha256.Sum256([]byte("immutable:" + tableName))
 	name := "orm_immutable_" + hex.EncodeToString(digest[:])[:20]
 	if t.d != nil && t.d.driver == "postgres" {

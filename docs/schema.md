@@ -190,3 +190,11 @@ The importer reads MySQL `information_schema` and writes the diagram. It is dete
 - MySQL and PostgreSQL read actual foreign-key targets, ordered columns, and delete rules from their catalogs. SQLite reads `PRAGMA foreign_key_list`. Single and composite foreign keys become relation lines; composite labels use the ordered parenthesized FK list. `cascade` and `setnull` are preserved, and an omitted action uses `RESTRICT`.
 - PostgreSQL (`--driver postgres`, or a `postgres://` DSN) reads `information_schema.columns`, `pg_index`, and `pg_constraint` and writes the same diagram. It normalizes types (`character varying(191)`→`varchar(191)`, `boolean`→`tinyint`, `numeric(p,s)`→`decimal(p,s)`, `timestamp(6) with time zone`→`datetime(6)`, `inet`→`varbinary(16)`, `jsonb`→`json`), maps identity/`nextval` to `auto`, and reconstructs generated GIN full-text indexes from `pg_get_indexdef`. PostgreSQL `datetime` columns are generated as `timestamp with time zone` so Go `time.Time` values retain their instant across session time zones.
 - When `--out` already exists, the importer preserves details unavailable from the database: relation-label overrides `(child / parent)`, `lazy`/`bool`/`int` and explicit column styles, and `%% predicate` lines. The database is authoritative for everything else.
+### Database-bound administrative operations
+
+The Go transaction adapter exposes database-specific administrative operations
+behind typed methods. PostgreSQL callers use `InstallImmutable` for immutable
+tables, `GrantTablePrivileges` and `RevokeTablePrivilege` for explicit role
+boundaries, `InspectTablePrivileges` for verification, and `LockTable` for
+transaction-scoped lock tests. Callers do not construct these SQL statements
+or access `database/sql` directly.

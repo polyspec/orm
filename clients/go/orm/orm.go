@@ -562,6 +562,88 @@ func (t *Tx) GrantTablePrivileges(ctx context.Context, table, role string) error
 	})
 }
 
+// TablePrivileges describes the current PostgreSQL session's table privileges.
+// It keeps privilege verification inside the ORM transaction boundary.
+type TablePrivileges struct {
+	Insert   bool
+	Select   bool
+	Update   bool
+	Delete   bool
+	Truncate bool
+}
+
+// InspectTablePrivileges reports the current session's privileges for a
+// qualified PostgreSQL table.
+func (t *Tx) InspectTablePrivileges(ctx context.Context, table string) (TablePrivileges, error) {
+	if t == nil || t.finished.Load() {
+		return TablePrivileges{}, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return TablePrivileges{}, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "table privilege inspection is supported only by postgres"}
+	}
+	schema, name, ok := splitAuditIdentifier(table)
+	if !ok {
+		return TablePrivileges{}, &ir.Error{Code: CodeConfig, Msg: "qualified table is required"}
+	}
+	stmt, err := t.stmt(ctx, `SELECT has_table_privilege(current_user,$1,'INSERT'),
+ has_table_privilege(current_user,$1,'SELECT'),has_table_privilege(current_user,$1,'UPDATE'),
+ has_table_privilege(current_user,$1,'DELETE'),has_table_privilege(current_user,$1,'TRUNCATE')`)
+	if err != nil {
+		return TablePrivileges{}, err
+	}
+	defer stmt.Close()
+	var privileges TablePrivileges
+	if err := stmt.QueryRowContext(ctx, quoteIdentifier("postgres", schema)+"."+quoteIdentifier("postgres", name)).Scan(&privileges.Insert, &privileges.Select, &privileges.Update, &privileges.Delete, &privileges.Truncate); err != nil {
+		return TablePrivileges{}, mapDriverErr(err)
+	}
+	return privileges, nil
+}
+
+// RevokeTablePrivilege revokes one PostgreSQL table privilege from a role.
+// The caller must use this only for an explicitly scoped installation role.
+func (t *Tx) RevokeTablePrivilege(ctx context.Context, table, privilege, role string) error {
+	if t == nil || t.finished.Load() {
+		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "table privilege changes are supported only by postgres"}
+	}
+	schema, name, ok := splitAuditIdentifier(table)
+	if !ok || strings.TrimSpace(role) == "" || strings.ContainsAny(role, "\x00\r\n") {
+		return &ir.Error{Code: CodeConfig, Msg: "qualified table and role are required"}
+	}
+	allowed := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "TRUNCATE": true}
+	privilege = strings.ToUpper(strings.TrimSpace(privilege))
+	if !allowed[privilege] {
+		return &ir.Error{Code: CodeConfig, Msg: "unsupported table privilege"}
+	}
+	quote := func(value string) string { return `"` + strings.ReplaceAll(value, `"`, `""`) + `"` }
+	statement := "REVOKE " + privilege + " ON " + quote(schema) + "." + quote(name) + " FROM " + quote(role)
+	_, err := t.Exec(ctx, statement)
+	return err
+}
+
+// LockTable takes a PostgreSQL table lock for the lifetime of the transaction.
+func (t *Tx) LockTable(ctx context.Context, table, mode string) error {
+	if t == nil || t.finished.Load() {
+		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "table locks are supported only by postgres"}
+	}
+	schema, name, ok := splitAuditIdentifier(table)
+	if !ok {
+		return &ir.Error{Code: CodeConfig, Msg: "qualified table is required"}
+	}
+	mode = strings.ToUpper(strings.TrimSpace(mode))
+	allowed := map[string]bool{"ACCESS SHARE": true, "ROW SHARE": true, "ROW EXCLUSIVE": true, "SHARE UPDATE EXCLUSIVE": true, "SHARE": true, "SHARE ROW EXCLUSIVE": true, "EXCLUSIVE": true, "ACCESS EXCLUSIVE": true}
+	if !allowed[mode] {
+		return &ir.Error{Code: CodeConfig, Msg: "unsupported table lock mode"}
+	}
+	_, err := t.Exec(ctx, "LOCK TABLE "+quoteIdentifier("postgres", schema)+"."+quoteIdentifier("postgres", name)+" IN "+mode+" MODE")
+	return err
+}
+
 func (t *Tx) execStatements(ctx context.Context, statements []string) error {
 	for _, statement := range statements {
 		stmt, err := t.stmt(ctx, statement)
