@@ -1,5 +1,5 @@
 {
-  "schema_hash": "bcda5a01f985861d",
+  "schema_hash": "37a6106a33435373",
   "order": [
     "battle",
     "user",
@@ -484,7 +484,8 @@
           "arity": 0
         }
       },
-      "scope": "service_seq"
+      "scope": "service_seq",
+      "aes_version": "aes_key_version"
     },
     "composite_account": {
       "name": "composite_account",

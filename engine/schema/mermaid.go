@@ -18,7 +18,7 @@ import (
 // The core checks extension syntax and preserves values. Semantic meaning is
 // validated by the consuming generator.
 var ormDirectiveOptions = map[string]map[string]bool{
-	"table":       {"entity": true, "name": true},
+	"table":        {"entity": true, "name": true},
 	"field":        {"relation": true, "fk": true, "public": true, "required": true, "order": true},
 	"public-key":   {"entity": true, "field": true, "type": true, "unique": true, "stable": true},
 	"resource-key": {"route": true, "param": true, "field": true},
@@ -114,7 +114,7 @@ var (
 	// parent CARD child : label
 	reRelation = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s+([|}o]{1,2}[-.]{2}[|{o]{1,2})\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$`)
 	// %% kind table (a, b) [name]
-	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|check|blind_index|timestamps|scope|soft_delete|predicate|many_to_many|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
+	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|check|blind_index|timestamps|scope|aes_version|soft_delete|predicate|many_to_many|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
 	reRelationNames  = regexp.MustCompile(`^(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
 	reRef            = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
 	reDirectiveIdent = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
@@ -418,6 +418,11 @@ func parseDirective(m []string, line int) (*Directive, error) {
 		d.Columns = strings.Fields(d.Raw)
 		if len(d.Columns) != 1 {
 			return nil, &ParseError{line, "%% scope <table> <column>"}
+		}
+	case "aes_version":
+		d.Columns = strings.Fields(d.Raw)
+		if len(d.Columns) != 1 || !reDirectiveIdent.MatchString(d.Columns[0]) {
+			return nil, &ParseError{line, "%% aes_version <table> <version_column>"}
 		}
 	case "soft_delete":
 		d.Columns = strings.Fields(d.Raw)
