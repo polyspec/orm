@@ -363,20 +363,40 @@ func auditFunctionBody(spec AuditSpec) string {
 		b.WriteString(")), true);\n")
 	}
 	if spec.Mode == AuditChanges {
+		b.WriteString("  IF TG_OP = 'UPDATE' THEN\n    old_full := old_value;\n    new_full := new_value;\n    old_value := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(old_full) WHERE new_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n    new_value := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(new_full) WHERE old_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n  END IF;\n")
 		for _, path := range spec.RedactedPaths {
-			b.WriteString("  new_value := jsonb_set(new_value, ")
+			if len(path) > 1 {
+				parent := path[:len(path)-1]
+				b.WriteString("  IF jsonb_typeof(new_value #> ")
+				b.WriteString(quotePath(parent))
+				b.WriteString(") = 'object' THEN ")
+			}
+			b.WriteString("new_value := jsonb_set(new_value, ")
 			b.WriteString(quotePath(path))
 			b.WriteString(", jsonb_build_object('redacted', true, 'present', (new_value #> ")
 			b.WriteString(quotePath(path))
-			b.WriteString(") IS NOT NULL), true);\n")
-			b.WriteString("  old_value := jsonb_set(old_value, ")
+			if len(path) > 1 {
+				b.WriteString(") IS NOT NULL), true); END IF;\n")
+			} else {
+				b.WriteString(") IS NOT NULL), true);\n")
+			}
+			if len(path) > 1 {
+				parent := path[:len(path)-1]
+				b.WriteString("  IF jsonb_typeof(old_value #> ")
+				b.WriteString(quotePath(parent))
+				b.WriteString(") = 'object' THEN ")
+			}
+			b.WriteString("old_value := jsonb_set(old_value, ")
 			b.WriteString(quotePath(path))
 			b.WriteString(", jsonb_build_object('redacted', true, 'present', (old_value #> ")
 			b.WriteString(quotePath(path))
-			b.WriteString(") IS NOT NULL), true);\n")
+			if len(path) > 1 {
+				b.WriteString(") IS NOT NULL), true); END IF;\n")
+			} else {
+				b.WriteString(") IS NOT NULL), true);\n")
+			}
 		}
-		b.WriteString("  IF TG_OP = 'UPDATE' THEN\n    old_full := old_value;\n    new_full := new_value;\n    old_value := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(old_full) WHERE new_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n    new_value := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(new_full) WHERE old_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n  END IF;\n")
-		b.WriteString("  INSERT INTO ")
+		b.WriteString("  IF TG_OP <> 'UPDATE' OR old_value <> '{}'::jsonb OR new_value <> '{}'::jsonb THEN\n  INSERT INTO ")
 		b.WriteString(change)
 		b.WriteString(" (")
 		b.WriteString(q(spec.ChangeOperationSeqColumn))
@@ -392,7 +412,7 @@ func auditFunctionBody(spec AuditSpec) string {
 		b.WriteString(q(spec.ChangeOldValueColumn))
 		b.WriteString(", ")
 		b.WriteString(q(spec.ChangeNewValueColumn))
-		b.WriteString(") VALUES (operation_seq, site_id, TG_TABLE_SCHEMA || '.' || TG_TABLE_NAME, entity_key, TG_OP, old_value, new_value);\n")
+		b.WriteString(") VALUES (operation_seq, site_id, TG_TABLE_SCHEMA || '.' || TG_TABLE_NAME, entity_key, TG_OP, old_value, new_value);\n  END IF;\n")
 	}
 	b.WriteString("  IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\nEND")
 	return b.String()
