@@ -86,6 +86,8 @@ func colType(c *schema.Col, lang string) string {
 			return "time.Time"
 		case "point":
 			return "orm.Point"
+		case "bytes":
+			return "[]byte"
 		default:
 			return "string"
 		}
