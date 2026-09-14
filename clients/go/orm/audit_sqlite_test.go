@@ -86,3 +86,35 @@ func TestInstallAuditSQLiteCapturesChanges(t *testing.T) {
 		t.Fatalf("audit context rows after commit = %d, want 0", count)
 	}
 }
+
+func TestInstallImmutableSQLiteRejectsRowMutations(t *testing.T) {
+	ctx := context.Background()
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.ExecContext(ctx, `CREATE TABLE record (seq INTEGER PRIMARY KEY, value TEXT NOT NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ex := &Tx{d: &DB{driver: "sqlite"}, tx: tx}
+	if err := ex.InstallImmutable(ctx, "core.record"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO record(seq, value) VALUES (1, 'one')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE record SET value='two' WHERE seq=1`); err == nil {
+		t.Fatal("immutable update was accepted")
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM record WHERE seq=1`); err == nil {
+		t.Fatal("immutable delete was accepted")
+	}
+	if err := ex.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+}
