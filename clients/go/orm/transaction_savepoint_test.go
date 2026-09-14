@@ -240,8 +240,8 @@ func TestPostgresSetLocalAndRuntimePrivileges(t *testing.T) {
 	if err := tx.GrantPlatformRuntimePrivileges(ctx, "runtime\"role"); err != nil {
 		t.Fatal(err)
 	}
-	if len(probe.execs) != 9 {
-		t.Fatalf("executed %d statements, want 9", len(probe.execs))
+	if len(probe.execs) != 5 {
+		t.Fatalf("executed %d statements, want 5", len(probe.execs))
 	}
 	if got := probe.execs[0]; got != "SELECT set_config($1,$2,true)" {
 		t.Fatalf("SetLocal SQL = %q", got)
@@ -252,6 +252,9 @@ func TestPostgresSetLocalAndRuntimePrivileges(t *testing.T) {
 	for _, statement := range probe.execs[1:] {
 		if !strings.HasSuffix(statement, ` TO "runtime""role"`) && !strings.HasSuffix(statement, ` FROM "runtime""role"`) {
 			t.Fatalf("unquoted runtime role in %q", statement)
+		}
+		if strings.Contains(statement, "audit") {
+			t.Fatalf("deprecated audit schema privilege in %q", statement)
 		}
 	}
 }
