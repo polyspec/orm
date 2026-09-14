@@ -46,5 +46,9 @@ type Dialect interface {
 
 // QuoteWith is a helper for dialects using a single quote character.
 func QuoteWith(q string, ident string) string {
-	return q + strings.ReplaceAll(ident, q, q+q) + q
+	parts := strings.Split(ident, ".")
+	for i := range parts {
+		parts[i] = q + strings.ReplaceAll(parts[i], q, q+q) + q
+	}
+	return strings.Join(parts, ".")
 }
