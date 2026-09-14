@@ -82,6 +82,10 @@ const Secret = "$SECRET"
 // Now replaces executor-supplied timestamps (`now` slots) in hook payloads.
 const Now = "$NOW"
 
+// CurrentTime is replaced by the dialect's advancing database-clock expression
+// inside generated expression fragments.
+const CurrentTime = "$CURRENT_TIME"
+
 // DB wraps *sql.DB with the compiler, the plan cache and the statement cache.
 type DB struct {
 	SQL      *sql.DB

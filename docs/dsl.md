@@ -112,6 +112,8 @@ A leading `or()` or `or(fn)` returns `OR_AT_GROUP_START`. Two connectors without
 | `select<Col>As(name)` | Select one column with an output name. |
 | `selectExpr(name, fragment)` | Select a schema-checked expression. |
 
+The trusted expression token `$CURRENT_TIME` renders the advancing database wall clock: `clock_timestamp()` on PostgreSQL and `CURRENT_TIMESTAMP` on SQLite and MySQL. It is distinct from transaction-stable timestamp defaults.
+
 Output mapping is positional and uses `{alias, column, out_name, index}`. Join columns remain in their alias namespace.
 
 ### 2.4 Relations and joins
