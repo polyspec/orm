@@ -392,7 +392,7 @@ func ddlType(c *schema.Col, dialect string) (string, error) {
 		case "time":
 			return "time", nil
 		case "datetime":
-			return "timestamp" + prec(c.Precision), nil
+			return "timestamp" + prec(c.Precision) + " with time zone", nil
 		case "json":
 			return "jsonb", nil
 		case "inet":
