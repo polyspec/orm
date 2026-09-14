@@ -2475,6 +2475,19 @@ func AsString(v any) string {
 	return fmt.Sprint(v)
 }
 
+// AsBytes converts a database byte value to an owned byte slice.
+func AsBytes(v any) []byte {
+	switch x := v.(type) {
+	case []byte:
+		return append([]byte(nil), x...)
+	case string:
+		return []byte(x)
+	case nil:
+		return nil
+	}
+	return []byte(fmt.Sprint(v))
+}
+
 func AsBool(v any) bool {
 	switch x := v.(type) {
 	case bool:
