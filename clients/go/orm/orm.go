@@ -1012,6 +1012,13 @@ func IsNoRows(err error) bool {
 	return errors.Is(err, sql.ErrNoRows)
 }
 
+// IsTransactionFinished reports whether execution was attempted after the
+// caller committed or rolled back the ORM transaction.
+func IsTransactionFinished(err error) bool {
+	var e *ir.Error
+	return errors.As(err, &e) && e.Code == CodeConfig && e.Msg == "transaction already finished"
+}
+
 // Req is one statement under construction: the value-free IR plus the values.
 type Req struct {
 	IR     ir.Request
