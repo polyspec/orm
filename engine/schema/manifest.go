@@ -171,6 +171,26 @@ func build(allowMissingAESVersion bool, diagrams ...*Diagram) (*Manifest, error)
 		}
 	}
 	for _, d := range diagrams {
+		for _, x := range d.ORM {
+			if x.Kind != "table" {
+				continue
+			}
+			entity := x.Args["entity"]
+			name := x.Args["name"]
+			ent, ok := m.Entities[entity]
+			if !ok {
+				return nil, &BuildError{x.Line, "%% orm:table: unknown entity " + entity}
+			}
+			if !qualifiedTableName(name) {
+				return nil, &BuildError{x.Line, "%% orm:table: name must be schema.table: " + name}
+			}
+			if ent.Table != entity {
+				return nil, &BuildError{x.Line, "%% orm:table: duplicate entity " + entity}
+			}
+			ent.Table = name
+		}
+	}
+	for _, d := range diagrams {
 		for _, r := range d.Relations {
 			if err := m.addRelation(r); err != nil {
 				return nil, err
@@ -189,6 +209,11 @@ func build(allowMissingAESVersion bool, diagrams ...*Diagram) (*Manifest, error)
 	}
 	m.SchemaHash = m.hash()
 	return m, nil
+}
+
+func qualifiedTableName(name string) bool {
+	parts := strings.Split(name, ".")
+	return len(parts) == 2 && reIdent.MatchString(parts[0]) && reIdent.MatchString(parts[1])
 }
 
 func buildEntity(e *DEntity) (*Entity, error) {

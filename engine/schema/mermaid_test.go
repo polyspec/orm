@@ -228,3 +228,32 @@ func TestCommentsAreManifestData(t *testing.T) {
 		t.Fatal("table comment did not affect schema hash")
 	}
 }
+
+func TestORMTableDirectiveSetsQualifiedPhysicalName(t *testing.T) {
+	src := "erDiagram\n  account {\n    bigint seq PK\n  }\n  %% orm:table entity=account name=core.account\n"
+	d, err := Parse(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := m.Entities["account"].Table; got != "core.account" {
+		t.Fatalf("qualified physical name = %q", got)
+	}
+	for _, name := range []string{"core", "account", "core.account"} {
+		bad, err := Build(mustParse("erDiagram\n  account {\n    bigint seq PK\n  }\n  %% orm:table entity=account name=" + name + "\n"))
+		if err == nil && name != "core.account" {
+			t.Fatalf("accepted unqualified table name %q: %#v", name, bad)
+		}
+	}
+}
+
+func mustParse(src string) *Diagram {
+	d, err := Parse(src)
+	if err != nil {
+		panic(err)
+	}
+	return d
+}
