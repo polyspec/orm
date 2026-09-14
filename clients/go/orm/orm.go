@@ -489,7 +489,9 @@ func (t *Tx) InstallerSessionAuthorized(ctx context.Context, runtimeRole string)
 }
 
 // GrantPlatformRuntimePrivileges applies the fixed privileges required by the
-// platform runtime role after schema installation.
+// platform runtime role after core schema installation. Audit records are
+// stored by the platform's generated core operation tables; this contract does
+// not require a separate hand-written audit schema.
 func (t *Tx) GrantPlatformRuntimePrivileges(ctx context.Context, role string) error {
 	if t == nil || t.finished.Load() {
 		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
@@ -502,14 +504,10 @@ func (t *Tx) GrantPlatformRuntimePrivileges(ctx context.Context, role string) er
 	}
 	identifier := `"` + strings.ReplaceAll(role, `"`, `""`) + `"`
 	statements := []string{
-		"GRANT USAGE ON SCHEMA core,audit TO " + identifier,
-		"GRANT SELECT ON ALL TABLES IN SCHEMA core,audit TO " + identifier,
+		"GRANT USAGE ON SCHEMA core TO " + identifier,
+		"GRANT SELECT ON ALL TABLES IN SCHEMA core TO " + identifier,
 		"GRANT INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA core TO " + identifier,
 		"REVOKE INSERT,UPDATE,DELETE ON core.initialization FROM " + identifier,
-		"GRANT INSERT ON audit.operations TO " + identifier,
-		"GRANT INSERT ON audit.http_access TO " + identifier,
-		"GRANT INSERT ON audit.contract_calls TO " + identifier,
-		"GRANT INSERT ON audit.host_calls TO " + identifier,
 	}
 	return t.execStatements(ctx, statements)
 }
