@@ -261,8 +261,8 @@ func TestPostgresSetLocalAndRuntimePrivileges(t *testing.T) {
 	if err := tx.GrantPlatformRuntimePrivileges(ctx, "runtime\"role"); err != nil {
 		t.Fatal(err)
 	}
-	if len(probe.execs) != 5 {
-		t.Fatalf("executed %d statements, want 5", len(probe.execs))
+	if len(probe.execs) != 6 {
+		t.Fatalf("executed %d statements, want 6", len(probe.execs))
 	}
 	if got := probe.execs[0]; got != "SELECT set_config($1,$2,true)" {
 		t.Fatalf("SetLocal SQL = %q", got)

@@ -530,6 +530,7 @@ func (t *Tx) GrantPlatformRuntimePrivileges(ctx context.Context, role string) er
 		"GRANT USAGE ON SCHEMA core TO " + identifier,
 		"GRANT SELECT ON ALL TABLES IN SCHEMA core TO " + identifier,
 		"GRANT INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA core TO " + identifier,
+		"GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA core TO " + identifier,
 		"REVOKE INSERT,UPDATE,DELETE ON core.initialization FROM " + identifier,
 	}
 	return t.execStatements(ctx, statements)
