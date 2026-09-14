@@ -38,6 +38,7 @@ type Entity struct {
 	Predicates  map[string]*Predicate `json:"predicates,omitempty"`  // %% predicate → generated <name>(args…) methods
 	Scope       string                `json:"scope,omitempty"`       // %% scope <table> <column>
 	SoftDelete  string                `json:"soft_delete,omitempty"` // %% soft_delete <table> <nullable datetime column>
+	AESVersion  string                `json:"aes_version,omitempty"` // %% aes_version <table> <version column>
 	Line        int                   `json:"-"`
 
 	cols map[string]*Col
@@ -255,6 +256,12 @@ func buildEntity(e *DEntity) (*Entity, error) {
 	}
 	if len(ent.PK) == 0 {
 		return nil, &BuildError{e.Line, "entity " + e.Name + " has no PK"}
+	}
+	// The conventional version column remains an input convention, but the
+	// generated clients consume the resolved manifest field rather than naming
+	// it themselves. An explicit %% aes_version directive may replace it.
+	if ent.cols["aes_key_version"] != nil {
+		ent.AESVersion = "aes_key_version"
 	}
 	// Timestamps by convention; %% timestamps overrides.
 	if ent.cols["created_ts"] != nil || ent.cols["updated_ts"] != nil {
@@ -573,6 +580,15 @@ func (m *Manifest) addDirective(x *Directive) error {
 			return &BuildError{x.Line, "scope column " + x.Columns[0] + " must be an integer or string"}
 		}
 		ent.Scope = x.Columns[0]
+	case "aes_version":
+		if ent.AESVersion != "" && ent.AESVersion != "aes_key_version" {
+			return &BuildError{x.Line, "aes version declared twice for " + ent.Name}
+		}
+		column := ent.Column(x.Columns[0])
+		if column == nil {
+			return &BuildError{x.Line, "aes version column " + x.Columns[0] + " is unknown"}
+		}
+		ent.AESVersion = x.Columns[0]
 	case "soft_delete":
 		if ent.SoftDelete != "" {
 			return &BuildError{x.Line, "soft_delete declared twice for " + ent.Name}
@@ -748,12 +764,12 @@ func (m *Manifest) validate(allowMissingAESVersion bool) error {
 		e := m.Entities[name]
 		for _, c := range e.Columns {
 			if len(c.Styles) > 0 && c.Styles[0] == "aes" {
-				version := e.Column("aes_key_version")
+				version := e.Column(e.AESVersion)
 				if version == nil || version.Nullable || (version.Type != "i32" && version.Type != "i64") {
 					if allowMissingAESVersion && version == nil {
 						continue
 					}
-					return &BuildError{e.Line, fmt.Sprintf("%s.%s requires non-null integer aes_key_version", e.Name, c.Name)}
+					return &BuildError{e.Line, fmt.Sprintf("%s.%s requires a non-null integer aes version column", e.Name, c.Name)}
 				}
 			}
 		}

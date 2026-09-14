@@ -321,3 +321,17 @@ func TestBuildErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestAESVersionDirectiveFeedsManifest(t *testing.T) {
+	d, err := Parse("erDiagram\n account {\n bigint seq PK\n int revision \"=1\"\n varchar(255) secret \"aes\"\n }\n %% aes_version account revision\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := m.Entities["account"].AESVersion; got != "revision" {
+		t.Fatalf("AES version column=%q, want revision", got)
+	}
+}

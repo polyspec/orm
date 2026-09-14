@@ -98,6 +98,7 @@ Mermaid 문법을 사용한다. `PK`, `FK`, `UK`는 Mermaid keyword다. 기본�
 %% timestamps <table> created_ts updated_ts # 자동 타임스탬프 컬럼 지정(기본: 이름이 created_ts/updated_ts면 자동)
 %% predicate <table> <name> : <expr 조각>   # 재사용 술어 → `<name>(args…)` 메서드. 백틱 컬럼은 검증, `?`마다 인자 하나
 %% scope <table> <column>                 # query API와 IR에 독립된 tenant scope 생성
+%% aes_version <table> <column>           # AES payload가 사용하는 NULL 불가 정수 version column
 %% soft_delete <table> <column>            # nullable datetime; reads exclude non-NULL rows and delete writes the current timestamp
 %% many_to_many <source> <target> <source_relation> <target_relation> through <through_entity>
 %% table_comment <table> "database table comment"

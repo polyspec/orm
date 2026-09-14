@@ -142,3 +142,32 @@ func TestManyToManyGenerationSupportsDifferentCompositeKeyWidths(t *testing.T) {
 		})
 	}
 }
+
+func TestAESGenerationUsesDeclaredVersionColumn(t *testing.T) {
+	d, err := schema.Parse(`erDiagram
+  account {
+    bigint seq PK
+    int revision "=1"
+    varchar(255) secret "aes"
+  }
+  %% aes_version account revision
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := schema.Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := t.TempDir()
+	if err := genGo(m, out); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(out, "account.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), `VersionColumn: "revision"`) || strings.Contains(string(body), "aes_key_version") {
+		t.Fatalf("generated AES rotation did not use declared version column: %s", body)
+	}
+}
