@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
+
+	"github.com/polyspec/orm/engine/ir"
 )
 
 func TestIsNoRowsRecognizesDatabaseNoRows(t *testing.T) {
@@ -15,5 +17,14 @@ func TestIsNoRowsRecognizesDatabaseNoRows(t *testing.T) {
 	}
 	if IsNoRows(errors.New("other error")) {
 		t.Fatal("unrelated error was recognized as no rows")
+	}
+}
+
+func TestIsTransactionFinishedRecognizesORMTransactionState(t *testing.T) {
+	if !IsTransactionFinished(&ir.Error{Code: CodeConfig, Msg: "transaction already finished"}) {
+		t.Fatal("finished transaction error was not recognized")
+	}
+	if IsTransactionFinished(&ir.Error{Code: CodeConfig, Msg: "other configuration error"}) {
+		t.Fatal("unrelated configuration error was recognized")
 	}
 }
