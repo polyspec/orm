@@ -122,6 +122,14 @@ func open(t *testing.T) *orm.DB {
 func TestReadPaths(t *testing.T) {
 	db := open(t)
 	ctx := context.Background()
+	missing, err := gen.Battle().SeqEq(-1).Using(ctx, db).Get()
+	if !errors.Is(err, orm.ErrNoRows) || missing != nil {
+		t.Fatalf("Get missing row = %v, %v; want nil, ErrNoRows", missing, err)
+	}
+	optional, err := gen.Battle().SeqEq(-1).Using(ctx, db).GetOrNil()
+	if err != nil || optional != nil {
+		t.Fatalf("GetOrNil missing row = %v, %v; want nil, nil", optional, err)
+	}
 
 	b, err := gen.Battle().Using(ctx, db).GetBySeq(42)
 	if err != nil || b == nil {

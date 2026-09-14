@@ -1065,6 +1065,18 @@ func (q *CompositeAccountQuery) OnDuplicateSetAll() *CompositeAccountQuery {
 
 // Terminals.
 func (q *CompositeAccountQuery) Get() (*CompositeAccountRow, error) {
+	row, err := q.GetOrNil()
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, orm.ErrNoRows
+	}
+	return row, nil
+}
+
+// GetOrNil returns nil, nil when the query has no row.
+func (q *CompositeAccountQuery) GetOrNil() (*CompositeAccountRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err

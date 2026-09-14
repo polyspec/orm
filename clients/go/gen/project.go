@@ -699,6 +699,18 @@ func (q *ProjectQuery) OnDuplicateSetAll() *ProjectQuery {
 
 // Terminals.
 func (q *ProjectQuery) Get() (*ProjectRow, error) {
+	row, err := q.GetOrNil()
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, orm.ErrNoRows
+	}
+	return row, nil
+}
+
+// GetOrNil returns nil, nil when the query has no row.
+func (q *ProjectQuery) GetOrNil() (*ProjectRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err

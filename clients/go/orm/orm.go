@@ -817,6 +817,10 @@ func IsDeadlock(err error) bool {
 	return strings.Contains(s, "1213") || strings.Contains(s, "40001") || strings.Contains(strings.ToLower(s), "deadlock")
 }
 
+// ErrNoRows is returned by generated Get methods when the query has no row.
+// GetOrNil methods preserve the explicit optional-row form.
+var ErrNoRows = sql.ErrNoRows
+
 // IsNoRows reports whether a query returned no rows.
 func IsNoRows(err error) bool {
 	return errors.Is(err, sql.ErrNoRows)

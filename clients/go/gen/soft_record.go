@@ -824,6 +824,18 @@ func (q *SoftRecordQuery) OnDuplicateSetAll() *SoftRecordQuery {
 
 // Terminals.
 func (q *SoftRecordQuery) Get() (*SoftRecordRow, error) {
+	row, err := q.GetOrNil()
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, orm.ErrNoRows
+	}
+	return row, nil
+}
+
+// GetOrNil returns nil, nil when the query has no row.
+func (q *SoftRecordQuery) GetOrNil() (*SoftRecordRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
