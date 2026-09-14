@@ -670,6 +670,63 @@ type TransactionOptions struct {
 	TimeoutMS      int
 }
 
+// Begin creates a caller-owned transaction. The caller must finish it with
+// Commit or Rollback; unlike TransactionWithOptions, it does not retry or
+// invoke a callback.
+func Begin(ctx context.Context, d *DB, options TransactionOptions) (*Tx, error) {
+	if d == nil || d.SQL == nil {
+		return nil, &ir.Error{Code: CodeConfig, Msg: "database is required"}
+	}
+	txOptions, err := sqlTransactionOptions(d.driver, options)
+	if err != nil {
+		return nil, err
+	}
+	native, err := d.SQL.BeginTx(ctx, txOptions)
+	if err != nil {
+		return nil, mapDriverErr(err)
+	}
+	if options.TimeoutMS > 0 {
+		if _, err := native.ExecContext(ctx, fmt.Sprintf("SET LOCAL statement_timeout = %d", options.TimeoutMS)); err != nil {
+			_ = native.Rollback()
+			return nil, mapDriverErr(err)
+		}
+	}
+	return &Tx{d: d, tx: native}, nil
+}
+
+// Commit ends a caller-owned transaction and invalidates its ORM binding.
+func (t *Tx) Commit(_ context.Context) error {
+	if t == nil || t.finished.Swap(true) {
+		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	return mapDriverErr(t.tx.Commit())
+}
+
+// Rollback ends a caller-owned transaction and invalidates its ORM binding.
+func (t *Tx) Rollback(_ context.Context) error {
+	if t == nil || t.finished.Swap(true) {
+		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	return mapDriverErr(t.tx.Rollback())
+}
+
+// BackendPID returns the PostgreSQL backend process ID for this transaction.
+// It exists for integration orchestration that must observe real lock waits;
+// other drivers reject it as an unsupported capability.
+func (t *Tx) BackendPID(ctx context.Context) (int32, error) {
+	if t == nil || t.finished.Load() {
+		return 0, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil || t.d.driver != "postgres" {
+		return 0, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "backend PID is supported only by postgres"}
+	}
+	var pid int32
+	if err := t.QueryRow(ctx, "SELECT pg_backend_pid()").Scan(&pid); err != nil {
+		return 0, err
+	}
+	return pid, nil
+}
+
 // TransactionWithOptions runs a transaction with an explicit retry policy.
 func TransactionWithOptions[T any](ctx context.Context, d *DB, options TransactionOptions, fn func(*Tx) (T, error)) (T, error) {
 	var zero T
