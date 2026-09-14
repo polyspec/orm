@@ -95,6 +95,10 @@ func (Postgres) RowLock(mode string) (string, bool) {
 		return " FOR UPDATE", true
 	case "share":
 		return " FOR SHARE", true
+	case "update_nowait":
+		return " FOR UPDATE NOWAIT", true
+	case "share_nowait":
+		return " FOR SHARE NOWAIT", true
 	default:
 		return "", false
 	}

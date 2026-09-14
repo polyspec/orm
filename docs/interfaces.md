@@ -159,7 +159,7 @@ PostgreSQL transactions also expose `setLocal(key, value)` (Go: `SetLocal`) for 
 
 `TransactionOptions` accepts `isolation` (`default`, `read_uncommitted`, `read_committed`, `repeatable_read`, or `serializable`), `readOnly`, and `timeoutMs` (or the language's snake-case equivalent). Go maps isolation and read-only settings to `database/sql.TxOptions`; PHP and TypeScript apply PostgreSQL settings after `BEGIN` and MySQL settings before `START TRANSACTION`; Rust emits the equivalent driver-specific transaction start. SQLite rejects explicit isolation, read-only, and timeout options. MySQL and SQLite reject `timeoutMs`; PostgreSQL applies it as transaction-local `statement_timeout`. Unsupported capabilities return `CAPABILITY_UNSUPPORTED`.
 
-Root row selects expose `forUpdate()` and `forShare()` (Go: `ForUpdate()` and `ForShare()`, Rust: `for_update()` and `for_share()`). The request stores `lock` in the common IR. MySQL and PostgreSQL append the selected lock clause after ordering and limits. SQLite rejects either mode with `CAPABILITY_UNSUPPORTED`; the client does not emulate a row lock.
+Root row selects expose `forUpdate()`, `forShare()`, `forUpdateNoWait()`, and `forShareNoWait()` using each client's naming convention. The request stores `lock` in the common IR. MySQL and PostgreSQL append the selected lock clause after ordering and limits; `NoWait` fails immediately when the row is unavailable. SQLite rejects all row-lock modes with `CAPABILITY_UNSUPPORTED`; the client does not emulate a row lock.
 
 Errors preserve their stable code and the original driver message. Transaction timeout is available through `timeoutMs` where the driver supports PostgreSQL `statement_timeout`; in-flight cancellation remains native to each language runtime.
 
