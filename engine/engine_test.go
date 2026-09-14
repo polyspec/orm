@@ -460,7 +460,7 @@ func TestCompileErrors(t *testing.T) {
 		`{"ir_version":1,"schema_hash":"nope","kind":"all","entity":"battle"}`:                                                                                                                  "SCHEMA_HASH_MISMATCH",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"nope"}`:                                                                                                               "ENTITY_UNKNOWN",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"nope","op":"eq","p":2}}]}}`:                                 "COLUMN_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"name","op":"gt","p":0}}]}}`:                                 "OPERATOR_NOT_ALLOWED",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"name","op":"between","p":0,"ps":[1,2]}}]}}`:                       "OPERATOR_NOT_ALLOWED",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"aes_hex_email","op":"contains","p":0}}]}}`:                  "OPERATOR_NOT_ALLOWED",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"pred":{"conn":"or","column":"seq","op":"eq","p":2}}]}}`:                                   "OR_AT_GROUP_START",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"pred":{"column":"seq","op":"in","ps":[]}}]}}`:                                             "EMPTY_IN",

@@ -289,6 +289,10 @@ export class BattleWhere {
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.core.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.core.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
@@ -300,9 +304,17 @@ export class BattleWhere {
   public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.core.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.core.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.core.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.core.predicateColumn('name','lte_col',reference); return this; }
   public descriptionEq(value: string): this { this.core.predicate('description','eq',value); return this; }
   public description(value: string): this { return this.descriptionEq(value); }
   public descriptionNotEq(value: string): this { this.core.predicate('description','not_eq',value); return this; }
+  public descriptionGt(value: string): this { this.core.predicate('description','gt',value); return this; }
+  public descriptionGte(value: string): this { this.core.predicate('description','gte',value); return this; }
+  public descriptionLt(value: string): this { this.core.predicate('description','lt',value); return this; }
+  public descriptionLte(value: string): this { this.core.predicate('description','lte',value); return this; }
   public descriptionLike(value: string): this { this.core.predicate('description','like',value); return this; }
   public descriptionLikeBinary(value: string): this { this.core.predicate('description','like_binary',value); return this; }
   public descriptionContains(value: string): this { this.core.predicate('description','contains',value); return this; }
@@ -312,6 +324,10 @@ export class BattleWhere {
   public descriptionIsNotNull(): this { this.core.predicateNull('description','is_not_null'); return this; }
   public descriptionEqCol(reference: ColumnReference): this { this.core.predicateColumn('description','eq_col',reference); return this; }
   public descriptionNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('description','not_eq_col',reference); return this; }
+  public descriptionGtCol(reference: ColumnReference): this { this.core.predicateColumn('description','gt_col',reference); return this; }
+  public descriptionGteCol(reference: ColumnReference): this { this.core.predicateColumn('description','gte_col',reference); return this; }
+  public descriptionLtCol(reference: ColumnReference): this { this.core.predicateColumn('description','lt_col',reference); return this; }
+  public descriptionLteCol(reference: ColumnReference): this { this.core.predicateColumn('description','lte_col',reference); return this; }
   public createdTsEq(value: string | Date): this { this.core.predicate('created_ts','eq',value); return this; }
   public createdTs(value: string | Date): this { return this.createdTsEq(value); }
   public createdTsNotEq(value: string | Date): this { this.core.predicate('created_ts','not_eq',value); return this; }
@@ -480,6 +496,10 @@ export class BattleWhere {
   public coverUrlEq(value: string): this { this.core.predicate('cover_url','eq',value); return this; }
   public coverUrl(value: string): this { return this.coverUrlEq(value); }
   public coverUrlNotEq(value: string): this { this.core.predicate('cover_url','not_eq',value); return this; }
+  public coverUrlGt(value: string): this { this.core.predicate('cover_url','gt',value); return this; }
+  public coverUrlGte(value: string): this { this.core.predicate('cover_url','gte',value); return this; }
+  public coverUrlLt(value: string): this { this.core.predicate('cover_url','lt',value); return this; }
+  public coverUrlLte(value: string): this { this.core.predicate('cover_url','lte',value); return this; }
   public coverUrlIn(values: readonly (string)[]): this { this.core.predicateList('cover_url','in',values); return this; }
   public coverUrlNotIn(values: readonly (string)[]): this { this.core.predicateList('cover_url','not_in',values); return this; }
   public coverUrlLike(value: string): this { this.core.predicate('cover_url','like',value); return this; }
@@ -491,6 +511,10 @@ export class BattleWhere {
   public coverUrlIsNotNull(): this { this.core.predicateNull('cover_url','is_not_null'); return this; }
   public coverUrlEqCol(reference: ColumnReference): this { this.core.predicateColumn('cover_url','eq_col',reference); return this; }
   public coverUrlNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('cover_url','not_eq_col',reference); return this; }
+  public coverUrlGtCol(reference: ColumnReference): this { this.core.predicateColumn('cover_url','gt_col',reference); return this; }
+  public coverUrlGteCol(reference: ColumnReference): this { this.core.predicateColumn('cover_url','gte_col',reference); return this; }
+  public coverUrlLtCol(reference: ColumnReference): this { this.core.predicateColumn('cover_url','lt_col',reference); return this; }
+  public coverUrlLteCol(reference: ColumnReference): this { this.core.predicateColumn('cover_url','lte_col',reference); return this; }
   public userSeqEq(value: number): this { this.core.predicate('user_seq','eq',value); return this; }
   public userSeq(value: number): this { return this.userSeqEq(value); }
   public userSeqNotEq(value: number): this { this.core.predicate('user_seq','not_eq',value); return this; }
@@ -602,6 +626,10 @@ export class BattleWhere {
   public uuidEq(value: string): this { this.core.predicate('uuid','eq',value); return this; }
   public uuid(value: string): this { return this.uuidEq(value); }
   public uuidNotEq(value: string): this { this.core.predicate('uuid','not_eq',value); return this; }
+  public uuidGt(value: string): this { this.core.predicate('uuid','gt',value); return this; }
+  public uuidGte(value: string): this { this.core.predicate('uuid','gte',value); return this; }
+  public uuidLt(value: string): this { this.core.predicate('uuid','lt',value); return this; }
+  public uuidLte(value: string): this { this.core.predicate('uuid','lte',value); return this; }
   public uuidIn(values: readonly (string)[]): this { this.core.predicateList('uuid','in',values); return this; }
   public uuidNotIn(values: readonly (string)[]): this { this.core.predicateList('uuid','not_in',values); return this; }
   public uuidLike(value: string): this { this.core.predicate('uuid','like',value); return this; }
@@ -613,6 +641,10 @@ export class BattleWhere {
   public uuidIsNotNull(): this { this.core.predicateNull('uuid','is_not_null'); return this; }
   public uuidEqCol(reference: ColumnReference): this { this.core.predicateColumn('uuid','eq_col',reference); return this; }
   public uuidNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('uuid','not_eq_col',reference); return this; }
+  public uuidGtCol(reference: ColumnReference): this { this.core.predicateColumn('uuid','gt_col',reference); return this; }
+  public uuidGteCol(reference: ColumnReference): this { this.core.predicateColumn('uuid','gte_col',reference); return this; }
+  public uuidLtCol(reference: ColumnReference): this { this.core.predicateColumn('uuid','lt_col',reference); return this; }
+  public uuidLteCol(reference: ColumnReference): this { this.core.predicateColumn('uuid','lte_col',reference); return this; }
   public isSinglePlayEq(value: boolean): this { this.core.predicate('is_single_play','eq',value); return this; }
   public isSinglePlay(value: boolean): this { return this.isSinglePlayEq(value); }
   public isSinglePlayNotEq(value: boolean): this { this.core.predicate('is_single_play','not_eq',value); return this; }
@@ -668,6 +700,10 @@ export class BattleWhere {
   public emailBlindIndexEq(value: string): this { this.core.predicate('email_blind_index','eq',value); return this; }
   public emailBlindIndex(value: string): this { return this.emailBlindIndexEq(value); }
   public emailBlindIndexNotEq(value: string): this { this.core.predicate('email_blind_index','not_eq',value); return this; }
+  public emailBlindIndexGt(value: string): this { this.core.predicate('email_blind_index','gt',value); return this; }
+  public emailBlindIndexGte(value: string): this { this.core.predicate('email_blind_index','gte',value); return this; }
+  public emailBlindIndexLt(value: string): this { this.core.predicate('email_blind_index','lt',value); return this; }
+  public emailBlindIndexLte(value: string): this { this.core.predicate('email_blind_index','lte',value); return this; }
   public emailBlindIndexIn(values: readonly (string)[]): this { this.core.predicateList('email_blind_index','in',values); return this; }
   public emailBlindIndexNotIn(values: readonly (string)[]): this { this.core.predicateList('email_blind_index','not_in',values); return this; }
   public emailBlindIndexLike(value: string): this { this.core.predicate('email_blind_index','like',value); return this; }
@@ -679,6 +715,10 @@ export class BattleWhere {
   public emailBlindIndexIsNotNull(): this { this.core.predicateNull('email_blind_index','is_not_null'); return this; }
   public emailBlindIndexEqCol(reference: ColumnReference): this { this.core.predicateColumn('email_blind_index','eq_col',reference); return this; }
   public emailBlindIndexNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('email_blind_index','not_eq_col',reference); return this; }
+  public emailBlindIndexGtCol(reference: ColumnReference): this { this.core.predicateColumn('email_blind_index','gt_col',reference); return this; }
+  public emailBlindIndexGteCol(reference: ColumnReference): this { this.core.predicateColumn('email_blind_index','gte_col',reference); return this; }
+  public emailBlindIndexLtCol(reference: ColumnReference): this { this.core.predicateColumn('email_blind_index','lt_col',reference); return this; }
+  public emailBlindIndexLteCol(reference: ColumnReference): this { this.core.predicateColumn('email_blind_index','lte_col',reference); return this; }
   public aesHexPhoneEq(value: string): this { this.core.predicate('aes_hex_phone','eq',value); return this; }
   public aesHexPhone(value: string): this { return this.aesHexPhoneEq(value); }
   public aesHexPhoneNotEq(value: string): this { this.core.predicate('aes_hex_phone','not_eq',value); return this; }
@@ -691,6 +731,10 @@ export class BattleWhere {
   public phoneBlindIndexEq(value: string): this { this.core.predicate('phone_blind_index','eq',value); return this; }
   public phoneBlindIndex(value: string): this { return this.phoneBlindIndexEq(value); }
   public phoneBlindIndexNotEq(value: string): this { this.core.predicate('phone_blind_index','not_eq',value); return this; }
+  public phoneBlindIndexGt(value: string): this { this.core.predicate('phone_blind_index','gt',value); return this; }
+  public phoneBlindIndexGte(value: string): this { this.core.predicate('phone_blind_index','gte',value); return this; }
+  public phoneBlindIndexLt(value: string): this { this.core.predicate('phone_blind_index','lt',value); return this; }
+  public phoneBlindIndexLte(value: string): this { this.core.predicate('phone_blind_index','lte',value); return this; }
   public phoneBlindIndexIn(values: readonly (string)[]): this { this.core.predicateList('phone_blind_index','in',values); return this; }
   public phoneBlindIndexNotIn(values: readonly (string)[]): this { this.core.predicateList('phone_blind_index','not_in',values); return this; }
   public phoneBlindIndexLike(value: string): this { this.core.predicate('phone_blind_index','like',value); return this; }
@@ -702,6 +746,10 @@ export class BattleWhere {
   public phoneBlindIndexIsNotNull(): this { this.core.predicateNull('phone_blind_index','is_not_null'); return this; }
   public phoneBlindIndexEqCol(reference: ColumnReference): this { this.core.predicateColumn('phone_blind_index','eq_col',reference); return this; }
   public phoneBlindIndexNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('phone_blind_index','not_eq_col',reference); return this; }
+  public phoneBlindIndexGtCol(reference: ColumnReference): this { this.core.predicateColumn('phone_blind_index','gt_col',reference); return this; }
+  public phoneBlindIndexGteCol(reference: ColumnReference): this { this.core.predicateColumn('phone_blind_index','gte_col',reference); return this; }
+  public phoneBlindIndexLtCol(reference: ColumnReference): this { this.core.predicateColumn('phone_blind_index','lt_col',reference); return this; }
+  public phoneBlindIndexLteCol(reference: ColumnReference): this { this.core.predicateColumn('phone_blind_index','lte_col',reference); return this; }
   public priceEq(value: number): this { this.core.predicate('price','eq',value); return this; }
   public price(value: number): this { return this.priceEq(value); }
   public priceNotEq(value: number): this { this.core.predicate('price','not_eq',value); return this; }
@@ -811,6 +859,10 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.predicate('name','like',value); return this; }
@@ -822,9 +874,17 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.predicateColumn('name','lte_col',reference); return this; }
   public descriptionEq(value: string): this { this.predicate('description','eq',value); return this; }
   public description(value: string): this { return this.descriptionEq(value); }
   public descriptionNotEq(value: string): this { this.predicate('description','not_eq',value); return this; }
+  public descriptionGt(value: string): this { this.predicate('description','gt',value); return this; }
+  public descriptionGte(value: string): this { this.predicate('description','gte',value); return this; }
+  public descriptionLt(value: string): this { this.predicate('description','lt',value); return this; }
+  public descriptionLte(value: string): this { this.predicate('description','lte',value); return this; }
   public descriptionLike(value: string): this { this.predicate('description','like',value); return this; }
   public descriptionLikeBinary(value: string): this { this.predicate('description','like_binary',value); return this; }
   public descriptionContains(value: string): this { this.predicate('description','contains',value); return this; }
@@ -834,6 +894,10 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public descriptionIsNotNull(): this { this.predicateNull('description','is_not_null'); return this; }
   public descriptionEqCol(reference: ColumnReference): this { this.predicateColumn('description','eq_col',reference); return this; }
   public descriptionNotEqCol(reference: ColumnReference): this { this.predicateColumn('description','not_eq_col',reference); return this; }
+  public descriptionGtCol(reference: ColumnReference): this { this.predicateColumn('description','gt_col',reference); return this; }
+  public descriptionGteCol(reference: ColumnReference): this { this.predicateColumn('description','gte_col',reference); return this; }
+  public descriptionLtCol(reference: ColumnReference): this { this.predicateColumn('description','lt_col',reference); return this; }
+  public descriptionLteCol(reference: ColumnReference): this { this.predicateColumn('description','lte_col',reference); return this; }
   public createdTsEq(value: string | Date): this { this.predicate('created_ts','eq',value); return this; }
   public createdTs(value: string | Date): this { return this.createdTsEq(value); }
   public createdTsNotEq(value: string | Date): this { this.predicate('created_ts','not_eq',value); return this; }
@@ -1002,6 +1066,10 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public coverUrlEq(value: string): this { this.predicate('cover_url','eq',value); return this; }
   public coverUrl(value: string): this { return this.coverUrlEq(value); }
   public coverUrlNotEq(value: string): this { this.predicate('cover_url','not_eq',value); return this; }
+  public coverUrlGt(value: string): this { this.predicate('cover_url','gt',value); return this; }
+  public coverUrlGte(value: string): this { this.predicate('cover_url','gte',value); return this; }
+  public coverUrlLt(value: string): this { this.predicate('cover_url','lt',value); return this; }
+  public coverUrlLte(value: string): this { this.predicate('cover_url','lte',value); return this; }
   public coverUrlIn(values: readonly (string)[]): this { this.predicateList('cover_url','in',values); return this; }
   public coverUrlNotIn(values: readonly (string)[]): this { this.predicateList('cover_url','not_in',values); return this; }
   public coverUrlLike(value: string): this { this.predicate('cover_url','like',value); return this; }
@@ -1013,6 +1081,10 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public coverUrlIsNotNull(): this { this.predicateNull('cover_url','is_not_null'); return this; }
   public coverUrlEqCol(reference: ColumnReference): this { this.predicateColumn('cover_url','eq_col',reference); return this; }
   public coverUrlNotEqCol(reference: ColumnReference): this { this.predicateColumn('cover_url','not_eq_col',reference); return this; }
+  public coverUrlGtCol(reference: ColumnReference): this { this.predicateColumn('cover_url','gt_col',reference); return this; }
+  public coverUrlGteCol(reference: ColumnReference): this { this.predicateColumn('cover_url','gte_col',reference); return this; }
+  public coverUrlLtCol(reference: ColumnReference): this { this.predicateColumn('cover_url','lt_col',reference); return this; }
+  public coverUrlLteCol(reference: ColumnReference): this { this.predicateColumn('cover_url','lte_col',reference); return this; }
   public userSeqEq(value: number): this { this.predicate('user_seq','eq',value); return this; }
   public userSeq(value: number): this { return this.userSeqEq(value); }
   public userSeqNotEq(value: number): this { this.predicate('user_seq','not_eq',value); return this; }
@@ -1124,6 +1196,10 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public uuidEq(value: string): this { this.predicate('uuid','eq',value); return this; }
   public uuid(value: string): this { return this.uuidEq(value); }
   public uuidNotEq(value: string): this { this.predicate('uuid','not_eq',value); return this; }
+  public uuidGt(value: string): this { this.predicate('uuid','gt',value); return this; }
+  public uuidGte(value: string): this { this.predicate('uuid','gte',value); return this; }
+  public uuidLt(value: string): this { this.predicate('uuid','lt',value); return this; }
+  public uuidLte(value: string): this { this.predicate('uuid','lte',value); return this; }
   public uuidIn(values: readonly (string)[]): this { this.predicateList('uuid','in',values); return this; }
   public uuidNotIn(values: readonly (string)[]): this { this.predicateList('uuid','not_in',values); return this; }
   public uuidLike(value: string): this { this.predicate('uuid','like',value); return this; }
@@ -1135,6 +1211,10 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public uuidIsNotNull(): this { this.predicateNull('uuid','is_not_null'); return this; }
   public uuidEqCol(reference: ColumnReference): this { this.predicateColumn('uuid','eq_col',reference); return this; }
   public uuidNotEqCol(reference: ColumnReference): this { this.predicateColumn('uuid','not_eq_col',reference); return this; }
+  public uuidGtCol(reference: ColumnReference): this { this.predicateColumn('uuid','gt_col',reference); return this; }
+  public uuidGteCol(reference: ColumnReference): this { this.predicateColumn('uuid','gte_col',reference); return this; }
+  public uuidLtCol(reference: ColumnReference): this { this.predicateColumn('uuid','lt_col',reference); return this; }
+  public uuidLteCol(reference: ColumnReference): this { this.predicateColumn('uuid','lte_col',reference); return this; }
   public isSinglePlayEq(value: boolean): this { this.predicate('is_single_play','eq',value); return this; }
   public isSinglePlay(value: boolean): this { return this.isSinglePlayEq(value); }
   public isSinglePlayNotEq(value: boolean): this { this.predicate('is_single_play','not_eq',value); return this; }
@@ -1190,6 +1270,10 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public emailBlindIndexEq(value: string): this { this.predicate('email_blind_index','eq',value); return this; }
   public emailBlindIndex(value: string): this { return this.emailBlindIndexEq(value); }
   public emailBlindIndexNotEq(value: string): this { this.predicate('email_blind_index','not_eq',value); return this; }
+  public emailBlindIndexGt(value: string): this { this.predicate('email_blind_index','gt',value); return this; }
+  public emailBlindIndexGte(value: string): this { this.predicate('email_blind_index','gte',value); return this; }
+  public emailBlindIndexLt(value: string): this { this.predicate('email_blind_index','lt',value); return this; }
+  public emailBlindIndexLte(value: string): this { this.predicate('email_blind_index','lte',value); return this; }
   public emailBlindIndexIn(values: readonly (string)[]): this { this.predicateList('email_blind_index','in',values); return this; }
   public emailBlindIndexNotIn(values: readonly (string)[]): this { this.predicateList('email_blind_index','not_in',values); return this; }
   public emailBlindIndexLike(value: string): this { this.predicate('email_blind_index','like',value); return this; }
@@ -1201,6 +1285,10 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public emailBlindIndexIsNotNull(): this { this.predicateNull('email_blind_index','is_not_null'); return this; }
   public emailBlindIndexEqCol(reference: ColumnReference): this { this.predicateColumn('email_blind_index','eq_col',reference); return this; }
   public emailBlindIndexNotEqCol(reference: ColumnReference): this { this.predicateColumn('email_blind_index','not_eq_col',reference); return this; }
+  public emailBlindIndexGtCol(reference: ColumnReference): this { this.predicateColumn('email_blind_index','gt_col',reference); return this; }
+  public emailBlindIndexGteCol(reference: ColumnReference): this { this.predicateColumn('email_blind_index','gte_col',reference); return this; }
+  public emailBlindIndexLtCol(reference: ColumnReference): this { this.predicateColumn('email_blind_index','lt_col',reference); return this; }
+  public emailBlindIndexLteCol(reference: ColumnReference): this { this.predicateColumn('email_blind_index','lte_col',reference); return this; }
   public aesHexPhoneEq(value: string): this { this.predicate('aes_hex_phone','eq',value); return this; }
   public aesHexPhone(value: string): this { return this.aesHexPhoneEq(value); }
   public aesHexPhoneNotEq(value: string): this { this.predicate('aes_hex_phone','not_eq',value); return this; }
@@ -1213,6 +1301,10 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public phoneBlindIndexEq(value: string): this { this.predicate('phone_blind_index','eq',value); return this; }
   public phoneBlindIndex(value: string): this { return this.phoneBlindIndexEq(value); }
   public phoneBlindIndexNotEq(value: string): this { this.predicate('phone_blind_index','not_eq',value); return this; }
+  public phoneBlindIndexGt(value: string): this { this.predicate('phone_blind_index','gt',value); return this; }
+  public phoneBlindIndexGte(value: string): this { this.predicate('phone_blind_index','gte',value); return this; }
+  public phoneBlindIndexLt(value: string): this { this.predicate('phone_blind_index','lt',value); return this; }
+  public phoneBlindIndexLte(value: string): this { this.predicate('phone_blind_index','lte',value); return this; }
   public phoneBlindIndexIn(values: readonly (string)[]): this { this.predicateList('phone_blind_index','in',values); return this; }
   public phoneBlindIndexNotIn(values: readonly (string)[]): this { this.predicateList('phone_blind_index','not_in',values); return this; }
   public phoneBlindIndexLike(value: string): this { this.predicate('phone_blind_index','like',value); return this; }
@@ -1224,6 +1316,10 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public phoneBlindIndexIsNotNull(): this { this.predicateNull('phone_blind_index','is_not_null'); return this; }
   public phoneBlindIndexEqCol(reference: ColumnReference): this { this.predicateColumn('phone_blind_index','eq_col',reference); return this; }
   public phoneBlindIndexNotEqCol(reference: ColumnReference): this { this.predicateColumn('phone_blind_index','not_eq_col',reference); return this; }
+  public phoneBlindIndexGtCol(reference: ColumnReference): this { this.predicateColumn('phone_blind_index','gt_col',reference); return this; }
+  public phoneBlindIndexGteCol(reference: ColumnReference): this { this.predicateColumn('phone_blind_index','gte_col',reference); return this; }
+  public phoneBlindIndexLtCol(reference: ColumnReference): this { this.predicateColumn('phone_blind_index','lt_col',reference); return this; }
+  public phoneBlindIndexLteCol(reference: ColumnReference): this { this.predicateColumn('phone_blind_index','lte_col',reference); return this; }
   public priceEq(value: number): this { this.predicate('price','eq',value); return this; }
   public price(value: number): this { return this.priceEq(value); }
   public priceNotEq(value: number): this { this.predicate('price','not_eq',value); return this; }
@@ -2004,6 +2100,10 @@ export class UserWhere {
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.core.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.core.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
@@ -2015,6 +2115,10 @@ export class UserWhere {
   public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.core.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.core.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.core.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.core.predicateColumn('name','lte_col',reference); return this; }
   public battles(callback: (where: BattleWhere) => void): this { this.core.navigate('battles',core=>callback(new BattleWhere(core))); return this; }
   public hasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','exists',core=>callback(new BattleWhere(core))); return this; }
   public notHasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','not_exists',core=>callback(new BattleWhere(core))); return this; }
@@ -2062,6 +2166,10 @@ export class UserQuery extends QueryCore implements UserInterface {
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.predicate('name','like',value); return this; }
@@ -2073,6 +2181,10 @@ export class UserQuery extends QueryCore implements UserInterface {
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.predicateColumn('name','lte_col',reference); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }
   public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
@@ -2241,6 +2353,10 @@ export class ServiceWhere {
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.core.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.core.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
@@ -2252,6 +2368,10 @@ export class ServiceWhere {
   public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.core.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.core.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.core.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.core.predicateColumn('name','lte_col',reference); return this; }
   public battles(callback: (where: BattleWhere) => void): this { this.core.navigate('battles',core=>callback(new BattleWhere(core))); return this; }
   public hasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','exists',core=>callback(new BattleWhere(core))); return this; }
   public notHasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','not_exists',core=>callback(new BattleWhere(core))); return this; }
@@ -2308,6 +2428,10 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.predicate('name','like',value); return this; }
@@ -2319,6 +2443,10 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.predicateColumn('name','lte_col',reference); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }
   public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
@@ -2518,6 +2646,10 @@ export class ServiceModuleWhere {
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.core.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.core.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
@@ -2529,6 +2661,10 @@ export class ServiceModuleWhere {
   public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.core.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.core.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.core.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.core.predicateColumn('name','lte_col',reference); return this; }
   public battles(callback: (where: BattleWhere) => void): this { this.core.navigate('battles',core=>callback(new BattleWhere(core))); return this; }
   public hasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','exists',core=>callback(new BattleWhere(core))); return this; }
   public notHasBattles(callback: (where: BattleWhere) => void): this { this.core.navigateMode('battles','not_exists',core=>callback(new BattleWhere(core))); return this; }
@@ -2594,6 +2730,10 @@ export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterf
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.predicate('name','like',value); return this; }
@@ -2605,6 +2745,10 @@ export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterf
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.predicateColumn('name','lte_col',reference); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }
   public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
@@ -3151,6 +3295,10 @@ export class CompositeAccountWhere {
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.core.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.core.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
@@ -3162,6 +3310,10 @@ export class CompositeAccountWhere {
   public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.core.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.core.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.core.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.core.predicateColumn('name','lte_col',reference); return this; }
   public memberships(callback: (where: CompositeMembershipWhere) => void): this { this.core.navigate('memberships',core=>callback(new CompositeMembershipWhere(core))); return this; }
   public hasMemberships(callback: (where: CompositeMembershipWhere) => void): this { this.core.navigateMode('memberships','exists',core=>callback(new CompositeMembershipWhere(core))); return this; }
   public notHasMemberships(callback: (where: CompositeMembershipWhere) => void): this { this.core.navigateMode('memberships','not_exists',core=>callback(new CompositeMembershipWhere(core))); return this; }
@@ -3218,6 +3370,10 @@ export class CompositeAccountQuery extends QueryCore implements CompositeAccount
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.predicate('name','like',value); return this; }
@@ -3229,6 +3385,10 @@ export class CompositeAccountQuery extends QueryCore implements CompositeAccount
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.predicateColumn('name','lte_col',reference); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }
   public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
@@ -3394,6 +3554,10 @@ export class CompositeMembershipWhere {
   public roleEq(value: string): this { this.core.predicate('role','eq',value); return this; }
   public role(value: string): this { return this.roleEq(value); }
   public roleNotEq(value: string): this { this.core.predicate('role','not_eq',value); return this; }
+  public roleGt(value: string): this { this.core.predicate('role','gt',value); return this; }
+  public roleGte(value: string): this { this.core.predicate('role','gte',value); return this; }
+  public roleLt(value: string): this { this.core.predicate('role','lt',value); return this; }
+  public roleLte(value: string): this { this.core.predicate('role','lte',value); return this; }
   public roleIn(values: readonly (string)[]): this { this.core.predicateList('role','in',values); return this; }
   public roleNotIn(values: readonly (string)[]): this { this.core.predicateList('role','not_in',values); return this; }
   public roleLike(value: string): this { this.core.predicate('role','like',value); return this; }
@@ -3405,6 +3569,10 @@ export class CompositeMembershipWhere {
   public roleIsNotNull(): this { this.core.predicateNull('role','is_not_null'); return this; }
   public roleEqCol(reference: ColumnReference): this { this.core.predicateColumn('role','eq_col',reference); return this; }
   public roleNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('role','not_eq_col',reference); return this; }
+  public roleGtCol(reference: ColumnReference): this { this.core.predicateColumn('role','gt_col',reference); return this; }
+  public roleGteCol(reference: ColumnReference): this { this.core.predicateColumn('role','gte_col',reference); return this; }
+  public roleLtCol(reference: ColumnReference): this { this.core.predicateColumn('role','lt_col',reference); return this; }
+  public roleLteCol(reference: ColumnReference): this { this.core.predicateColumn('role','lte_col',reference); return this; }
   public account(callback: (where: CompositeAccountWhere) => void): this { this.core.navigate('account',core=>callback(new CompositeAccountWhere(core))); return this; }
   public hasAccount(callback: (where: CompositeAccountWhere) => void): this { this.core.navigateMode('account','exists',core=>callback(new CompositeAccountWhere(core))); return this; }
   public notHasAccount(callback: (where: CompositeAccountWhere) => void): this { this.core.navigateMode('account','not_exists',core=>callback(new CompositeAccountWhere(core))); return this; }
@@ -3461,6 +3629,10 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
   public roleEq(value: string): this { this.predicate('role','eq',value); return this; }
   public role(value: string): this { return this.roleEq(value); }
   public roleNotEq(value: string): this { this.predicate('role','not_eq',value); return this; }
+  public roleGt(value: string): this { this.predicate('role','gt',value); return this; }
+  public roleGte(value: string): this { this.predicate('role','gte',value); return this; }
+  public roleLt(value: string): this { this.predicate('role','lt',value); return this; }
+  public roleLte(value: string): this { this.predicate('role','lte',value); return this; }
   public roleIn(values: readonly (string)[]): this { this.predicateList('role','in',values); return this; }
   public roleNotIn(values: readonly (string)[]): this { this.predicateList('role','not_in',values); return this; }
   public roleLike(value: string): this { this.predicate('role','like',value); return this; }
@@ -3472,6 +3644,10 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
   public roleIsNotNull(): this { this.predicateNull('role','is_not_null'); return this; }
   public roleEqCol(reference: ColumnReference): this { this.predicateColumn('role','eq_col',reference); return this; }
   public roleNotEqCol(reference: ColumnReference): this { this.predicateColumn('role','not_eq_col',reference); return this; }
+  public roleGtCol(reference: ColumnReference): this { this.predicateColumn('role','gt_col',reference); return this; }
+  public roleGteCol(reference: ColumnReference): this { this.predicateColumn('role','gte_col',reference); return this; }
+  public roleLtCol(reference: ColumnReference): this { this.predicateColumn('role','lt_col',reference); return this; }
+  public roleLteCol(reference: ColumnReference): this { this.predicateColumn('role','lte_col',reference); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }
   public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
@@ -3619,6 +3795,10 @@ export class SoftRecordWhere {
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.core.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.core.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
@@ -3630,6 +3810,10 @@ export class SoftRecordWhere {
   public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.core.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.core.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.core.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.core.predicateColumn('name','lte_col',reference); return this; }
   public deletedAtEq(value: string | Date): this { this.core.predicate('deleted_at','eq',value); return this; }
   public deletedAt(value: string | Date): this { return this.deletedAtEq(value); }
   public deletedAtNotEq(value: string | Date): this { this.core.predicate('deleted_at','not_eq',value); return this; }
@@ -3677,6 +3861,10 @@ export class SoftRecordQuery extends QueryCore implements SoftRecordInterface {
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.predicate('name','like',value); return this; }
@@ -3688,6 +3876,10 @@ export class SoftRecordQuery extends QueryCore implements SoftRecordInterface {
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.predicateColumn('name','lte_col',reference); return this; }
   public deletedAtEq(value: string | Date): this { this.predicate('deleted_at','eq',value); return this; }
   public deletedAt(value: string | Date): this { return this.deletedAtEq(value); }
   public deletedAtNotEq(value: string | Date): this { this.predicate('deleted_at','not_eq',value); return this; }
@@ -3829,6 +4021,10 @@ export class AccountWhere {
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.core.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.core.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
@@ -3840,6 +4036,10 @@ export class AccountWhere {
   public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.core.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.core.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.core.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.core.predicateColumn('name','lte_col',reference); return this; }
   public projects(callback: (where: ProjectWhere) => void): this { this.core.navigate('projects',core=>callback(new ProjectWhere(core))); return this; }
   public hasProjects(callback: (where: ProjectWhere) => void): this { this.core.navigateMode('projects','exists',core=>callback(new ProjectWhere(core))); return this; }
   public notHasProjects(callback: (where: ProjectWhere) => void): this { this.core.navigateMode('projects','not_exists',core=>callback(new ProjectWhere(core))); return this; }
@@ -3878,6 +4078,10 @@ export class AccountQuery extends QueryCore implements AccountInterface {
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.predicate('name','like',value); return this; }
@@ -3889,6 +4093,10 @@ export class AccountQuery extends QueryCore implements AccountInterface {
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.predicateColumn('name','lte_col',reference); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }
   public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
@@ -4011,6 +4219,10 @@ export class ProjectWhere {
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.core.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.core.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.core.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.core.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.core.predicate('name','like',value); return this; }
@@ -4022,6 +4234,10 @@ export class ProjectWhere {
   public nameIsNotNull(): this { this.core.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.core.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.core.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.core.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.core.predicateColumn('name','lte_col',reference); return this; }
   public accounts(callback: (where: AccountWhere) => void): this { this.core.navigate('accounts',core=>callback(new AccountWhere(core))); return this; }
   public hasAccounts(callback: (where: AccountWhere) => void): this { this.core.navigateMode('accounts','exists',core=>callback(new AccountWhere(core))); return this; }
   public notHasAccounts(callback: (where: AccountWhere) => void): this { this.core.navigateMode('accounts','not_exists',core=>callback(new AccountWhere(core))); return this; }
@@ -4060,6 +4276,10 @@ export class ProjectQuery extends QueryCore implements ProjectInterface {
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
+  public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
+  public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
+  public nameLt(value: string): this { this.predicate('name','lt',value); return this; }
+  public nameLte(value: string): this { this.predicate('name','lte',value); return this; }
   public nameIn(values: readonly (string)[]): this { this.predicateList('name','in',values); return this; }
   public nameNotIn(values: readonly (string)[]): this { this.predicateList('name','not_in',values); return this; }
   public nameLike(value: string): this { this.predicate('name','like',value); return this; }
@@ -4071,6 +4291,10 @@ export class ProjectQuery extends QueryCore implements ProjectInterface {
   public nameIsNotNull(): this { this.predicateNull('name','is_not_null'); return this; }
   public nameEqCol(reference: ColumnReference): this { this.predicateColumn('name','eq_col',reference); return this; }
   public nameNotEqCol(reference: ColumnReference): this { this.predicateColumn('name','not_eq_col',reference); return this; }
+  public nameGtCol(reference: ColumnReference): this { this.predicateColumn('name','gt_col',reference); return this; }
+  public nameGteCol(reference: ColumnReference): this { this.predicateColumn('name','gte_col',reference); return this; }
+  public nameLtCol(reference: ColumnReference): this { this.predicateColumn('name','lt_col',reference); return this; }
+  public nameLteCol(reference: ColumnReference): this { this.predicateColumn('name','lte_col',reference); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }
   public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }
   public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }
