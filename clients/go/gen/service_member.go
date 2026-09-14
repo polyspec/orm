@@ -1440,6 +1440,18 @@ func (q *ServiceMemberQuery) OnDuplicateSetAll() *ServiceMemberQuery {
 
 // Terminals.
 func (q *ServiceMemberQuery) Get() (*ServiceMemberRow, error) {
+	row, err := q.GetOrNil()
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, orm.ErrNoRows
+	}
+	return row, nil
+}
+
+// GetOrNil returns nil, nil when the query has no row.
+func (q *ServiceMemberQuery) GetOrNil() (*ServiceMemberRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err

@@ -968,6 +968,14 @@ func (q *{{.Type}}Query) OnDuplicateSetAll() *{{.Type}}Query { q.q.OnDuplicateSe
 
 // Terminals.
 func (q *{{.Type}}Query) Get() (*{{.Type}}Row, error) {
+	row, err := q.GetOrNil()
+	if err != nil { return nil, err }
+	if row == nil { return nil, orm.ErrNoRows }
+	return row, nil
+}
+
+// GetOrNil returns nil, nil when the query has no row.
+func (q *{{.Type}}Query) GetOrNil() (*{{.Type}}Row, error) {
 	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
 	q.q.Req.IR.Kind = "one"
 	if direct, used, err := orm.QueryDirect(ctx, ex, q.q.Req, accepts{{.Type}}Direct, scan{{.Type}}Direct); used {

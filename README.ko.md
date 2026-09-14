@@ -24,7 +24,7 @@ const battles = await Battle().using(db).getsByServiceSeq(7);
 
 `getBy`는 primary key 또는 unique key로 한 행을 반환하고, `getCountBy`는 scalar count를 반환한다. `getsBy<Field>`와 `getCountBy<Field>`는 root table equality shortcut이다. 여러 조건은 같은 root query에서 column method를 연결한 뒤 `gets` 또는 `getCount`를 호출한다.
 
-`gen.Battle()`은 Go query factory이며 `*gen.BattleQuery`를 반환한다. PHP와 Rust는 각각 `Battle::query()`와 `battle::query()`를 사용한다. query operation과 의미는 공통이고 생성 문법, 소유권, 비동기 실행은 언어 규칙을 따른다. `get`은 한 행, `gets`는 collection, `getCount`는 scalar count를 반환한다. 실행 전에 `using`으로 executor를 지정한다. Go는 executor와 함께 context를 전달한다.
+`gen.Battle()`은 Go query factory이며 `*gen.BattleQuery`를 반환한다. PHP와 Rust는 각각 `Battle::query()`와 `battle::query()`를 사용한다. query operation과 의미는 공통이고 생성 문법, 소유권, 비동기 실행은 언어 규칙을 따른다. `get`은 반드시 한 행을 반환하며 결과가 없으면 `NO_ROWS`를 반환한다. 선택적 조회가 필요하면 명시적인 `getOrNil`을 사용한다. `gets`는 collection, `getCount`는 scalar count를 반환한다. 실행 전에 `using`으로 executor를 지정한다. Go는 executor와 함께 context를 전달한다.
 
 ## 동작 구조
 
