@@ -65,6 +65,8 @@ func goType(c *schema.Col) string {
 		t = "bool"
 	case "date", "datetime":
 		t = "time.Time"
+	case "bytes":
+		t = "[]byte"
 	default:
 		t = "string"
 	}
@@ -411,6 +413,8 @@ var goTmpl = template.Must(template.New("go").Funcs(template.FuncMap{
 			return "orm.AsTime(v)"
 		case "orm.Point":
 			return "orm.AsPoint(v)"
+		case "[]byte":
+			return "orm.AsBytes(v)"
 		case "any":
 			return "v"
 		}

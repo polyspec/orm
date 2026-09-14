@@ -206,7 +206,7 @@ var opsByType = map[string][]string{
 	"enum":     {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},
 	"bool":     {"eq", "not_eq", "is_null", "is_not_null"},
 	"inet":     {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},
-	"bytes":    {"is_null", "is_not_null"},
+	"bytes":    {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},
 	"json":     {"is_null", "is_not_null"},
 	"point":    {"is_null", "is_not_null"},
 }

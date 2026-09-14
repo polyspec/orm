@@ -47,3 +47,31 @@ func TestGoGeneratorEmitsFixedDefaultScanner(t *testing.T) {
 		t.Fatal("lazy column detail is present in the default direct scanner")
 	}
 }
+
+func TestGoGeneratorEmitsEqualityForBinaryPrimaryKey(t *testing.T) {
+	diagram, err := schema.Parse("erDiagram\n  installation_limit {\n    varbinary(32) key PK\n    datetime(6) started_at\n  }\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := schema.Build(diagram)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	if err := genGo(manifest, dir); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "installation_limit.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(body)
+	for _, required := range []string{
+		"KeyEq(v []byte)",
+		"func (q *InstallationLimitQuery) GetByKey(v []byte)",
+	} {
+		if !strings.Contains(source, required) {
+			t.Errorf("generated Go source does not contain %q", required)
+		}
+	}
+}
