@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Go generated `Get` methods now return `NO_ROWS` for an empty result; generated `GetOrNil` methods provide the explicit optional-row contract.
+- AES version columns can be declared with `%% aes_version`; generators consume the resolved manifest metadata instead of assuming a column name.
 
 ## 0.0.1
 
