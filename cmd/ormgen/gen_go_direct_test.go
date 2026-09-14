@@ -35,6 +35,9 @@ func TestGoGeneratorEmitsFixedDefaultScanner(t *testing.T) {
 		"&r.Name",
 		"&rawCreatedAt",
 		"orm.QueryDirect(ctx, ex, q.q.Req, acceptsItemDirect, scanItemDirect)",
+		"func (q *ItemQuery) GetOrNil() (*ItemRow, error)",
+		"if row == nil {",
+		"return nil, orm.ErrNoRows",
 	} {
 		if !strings.Contains(source, required) {
 			t.Errorf("generated Go source does not contain %q", required)

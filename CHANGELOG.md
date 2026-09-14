@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Go generated `Get` methods now return `NO_ROWS` for an empty result; generated `GetOrNil` methods provide the explicit optional-row contract.
+
 ## 0.0.1
 
 - Initial development version.

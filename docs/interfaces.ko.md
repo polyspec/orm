@@ -132,7 +132,8 @@ classDiagram
 
 | 메서드 | 결과 | 필수 binding |
 |---|---|---|
-| `get` | optional row | root executor |
+| `get` | 한 행 또는 `NO_ROWS` | root executor |
+| `getOrNil` | 선택적 행 | root executor |
 | `gets` | collection | root executor |
 | `getCount` | integer | root executor |
 | `insert` | row 또는 key | root executor |
