@@ -148,6 +148,8 @@ binding은 실행 context와 database 또는 transaction 참조 하나를 포함
 
 transaction을 만든 코드가 소유권을 가진다. commit과 rollback은 binding을 종료한다. 이후 해당 transaction의 query와 row는 실행을 거부한다. transaction은 `savepoint(name)`, `rollbackTo(name)`, `releaseSavepoint(name)`을 제공한다. 이름은 `[A-Za-z_][A-Za-z0-9_]*`와 일치해야 하며 잘못된 이름은 `CONFIG`로 거부한다. 이 작업은 바깥 transaction을 종료하지 않는다.
 
+Go는 callback 재시도 없이 호출자가 명시적으로 `tx.Commit(ctx)` 또는 `tx.Rollback(ctx)`로 종료하는 `orm.Begin(ctx, db, options)`도 제공한다. PostgreSQL은 실제 통합 테스트의 lock orchestration을 위해 `tx.BackendPID(ctx)`를 제공하며, 다른 driver는 `CAPABILITY_UNSUPPORTED`를 반환한다.
+
 PostgreSQL transaction은 transaction 범위 직렬화를 위해 `advisoryLock(key)`(Go: `AdvisoryLock`)를 제공한다. lock은 transaction 종료 시 해제된다. 다른 driver는 이 작업을 `CAPABILITY_UNSUPPORTED`로 거부한다.
 
 스키마 설치는 호출자가 소유한 transaction에서 `installDDL(statements)`(Go: `InstallDDL`)를 사용한다. ORM은 문장을 순서대로 실행하고 첫 오류를 반환하므로 transaction 소유자가 전체 설치를 rollback할 수 있다.

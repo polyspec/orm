@@ -148,6 +148,8 @@ A binding contains the execution context and one database or transaction referen
 
 Transaction ownership belongs to the code that created the transaction. Commit and rollback end the binding. After either operation, all queries and rows from that transaction reject execution. A transaction exposes `savepoint(name)`, `rollbackTo(name)`, and `releaseSavepoint(name)`; names must match `[A-Za-z_][A-Za-z0-9_]*`. These operations preserve the outer transaction and reject invalid names with `CONFIG`.
 
+Go also exposes `orm.Begin(ctx, db, options)` for a caller-owned transaction that is finished explicitly with `tx.Commit(ctx)` or `tx.Rollback(ctx)`. It performs no callback retry. PostgreSQL exposes `tx.BackendPID(ctx)` for real integration lock orchestration; other drivers return `CAPABILITY_UNSUPPORTED`.
+
 PostgreSQL transactions expose `advisoryLock(key)` (Go: `AdvisoryLock`) for transaction-scoped serialization. The lock is released when the transaction ends. Other drivers reject this operation with `CAPABILITY_UNSUPPORTED`.
 
 Schema installation uses `installDDL(statements)` (Go: `InstallDDL`) on a caller-owned transaction. The ORM executes statements in order and returns the first error so the transaction owner can roll back the complete installation.

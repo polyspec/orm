@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"io"
 	"strings"
 	"sync"
@@ -133,6 +134,26 @@ func TestSavepointRollsBackOnlyChangesAfterMarker(t *testing.T) {
 	}
 	if count != 1 {
 		t.Fatalf("savepoint rollback kept %d rows, want 1", count)
+	}
+}
+
+func TestBeginExplicitlyOwnsAndFinishesTransaction(t *testing.T) {
+	sqlDB, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sqlDB.Close()
+	db := &DB{SQL: sqlDB, driver: "sqlite", stmts: map[string]*sql.Stmt{}, plans: map[uint64]*cached{}}
+	tx, err := Begin(context.Background(), db, TransactionOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Rollback(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	var configErr *ir.Error
+	if err := tx.Rollback(context.Background()); !errors.As(err, &configErr) || configErr.Code != CodeConfig {
+		t.Fatalf("second rollback error = %v", err)
 	}
 }
 
