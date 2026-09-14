@@ -104,7 +104,10 @@ When the same parent is referenced twice (`user_seq`, `updated_user_seq`), draw 
 %% column_comment <table> <column> "database column comment"
 %% rename_table <new_table> <old_table>      # migration rename
 %% rename_column <table> <new_col> <old_col> # migration rename
+%% orm:table entity=<entity> name=<schema.table> # qualified physical table name
 ```
+
+The `orm:table` directive is the only schema-source declaration for a qualified physical table. The manifest preserves both identifier components. PostgreSQL DDL and query quoting treat the schema and table as separate identifiers; SQLite does not gain a namespace from this directive.
 
 Rename directives are migration metadata. `ormgen diff` never infers a rename from similar names. A target directive generates the forward `RENAME`; the same structured plan generates the reverse `RENAME` for rollback. Keep the directive in later schema versions. If the current table or column name already exists, a repeated diff is a no-op. Missing, duplicate, self-referencing, and ambiguous rename sources fail during schema validation or diff generation.
 

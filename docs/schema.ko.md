@@ -104,7 +104,10 @@ Mermaid 문법을 사용한다. `PK`, `FK`, `UK`는 Mermaid keyword다. 기본�
 %% column_comment <table> <column> "database column comment"
 %% rename_table <new_table> <old_table>      # migration rename
 %% rename_column <table> <new_col> <old_col> # migration rename
+%% orm:table entity=<entity> name=<schema.table> # 정규화된 물리 테이블 이름
 ```
+
+`orm:table` directive가 정규화된 물리 테이블을 선언하는 schema source의 유일한 방법이다. manifest는 두 식별자 구성요소를 보존한다. PostgreSQL DDL과 query quoting은 schema와 table을 별도 식별자로 처리하며, SQLite에는 이 directive만으로 namespace가 생기지 않는다.
 
 Rename directive는 migration metadata다. `ormgen diff`는 비슷한 이름을 rename으로 추정하지 않는다. target directive는 정방향 `RENAME`을 생성하며 같은 구조화 plan은 rollback용 역방향 `RENAME`을 생성한다. 이후 schema version에도 directive를 유지한다. 현재 table이나 column 이름이 이미 있으면 반복 diff는 no-op이다. 누락, 중복, 자기 참조, 모호한 rename source는 schema 검증이나 diff 생성 단계에서 실패한다.
 
