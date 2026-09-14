@@ -50,7 +50,7 @@ type Query struct {
 	Limit       *Limit      `json:"limit,omitempty"`
 	Distinct    bool        `json:"distinct,omitempty"`
 	ForceIdx    string      `json:"force_index,omitempty"`
-	Lock        string      `json:"lock,omitempty"`   // update or share; root row-select only
+	Lock        string      `json:"lock,omitempty"`   // update, share, update_nowait or share_nowait; root row-select only
 	Keyset      *Keyset     `json:"keyset,omitempty"` // root keyset boundary; values reference Request.Params
 
 	// Relation-child options.
@@ -560,8 +560,8 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 	if q.Limit != nil && (q.Limit.Offset < 0 || q.Limit.Count <= 0) {
 		return errf("IR_INVALID", "limit offset>=0, count>0")
 	}
-	if q.Lock != "" && q.Lock != "update" && q.Lock != "share" {
-		return errf("IR_INVALID", "lock %q: want update or share", q.Lock)
+	if q.Lock != "" && q.Lock != "update" && q.Lock != "share" && q.Lock != "update_nowait" && q.Lock != "share_nowait" {
+		return errf("IR_INVALID", "lock %q: want update, share, update_nowait or share_nowait", q.Lock)
 	}
 	if q.Lock != "" && (isJoin || isRelation || q.GroupBy != nil || q.GroupByExpr != nil || q.LimitPerParent > 0) {
 		return errf("IR_INVALID", "row lock is only valid on a root row select")

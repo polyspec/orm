@@ -1366,6 +1366,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
   public forUpdate(): this { return this.lock('update'); }
   public forShare(): this { return this.lock('share'); }
+  public forUpdateNoWait(): this { return this.lock('update_nowait'); }
+  public forShareNoWait(): this { return this.lock('share_nowait'); }
   public selectSeq(): this { return this.select('seq'); }
   public omitSeq(): this { return this.omit('seq'); }
   public orderBySeqAsc(): this { return this.orderBy('seq'); }
@@ -2192,6 +2194,8 @@ export class UserQuery extends QueryCore implements UserInterface {
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
   public forUpdate(): this { return this.lock('update'); }
   public forShare(): this { return this.lock('share'); }
+  public forUpdateNoWait(): this { return this.lock('update_nowait'); }
+  public forShareNoWait(): this { return this.lock('share_nowait'); }
   public selectSeq(): this { return this.select('seq'); }
   public omitSeq(): this { return this.omit('seq'); }
   public orderBySeqAsc(): this { return this.orderBy('seq'); }
@@ -2454,6 +2458,8 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
   public forUpdate(): this { return this.lock('update'); }
   public forShare(): this { return this.lock('share'); }
+  public forUpdateNoWait(): this { return this.lock('update_nowait'); }
+  public forShareNoWait(): this { return this.lock('share_nowait'); }
   public selectSeq(): this { return this.select('seq'); }
   public omitSeq(): this { return this.omit('seq'); }
   public orderBySeqAsc(): this { return this.orderBy('seq'); }
@@ -2756,6 +2762,8 @@ export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterf
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
   public forUpdate(): this { return this.lock('update'); }
   public forShare(): this { return this.lock('share'); }
+  public forUpdateNoWait(): this { return this.lock('update_nowait'); }
+  public forShareNoWait(): this { return this.lock('share_nowait'); }
   public selectSeq(): this { return this.select('seq'); }
   public omitSeq(): this { return this.omit('seq'); }
   public orderBySeqAsc(): this { return this.orderBy('seq'); }
@@ -3071,6 +3079,8 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
   public forUpdate(): this { return this.lock('update'); }
   public forShare(): this { return this.lock('share'); }
+  public forUpdateNoWait(): this { return this.lock('update_nowait'); }
+  public forShareNoWait(): this { return this.lock('share_nowait'); }
   public selectSeq(): this { return this.select('seq'); }
   public omitSeq(): this { return this.omit('seq'); }
   public orderBySeqAsc(): this { return this.orderBy('seq'); }
@@ -3396,6 +3406,8 @@ export class CompositeAccountQuery extends QueryCore implements CompositeAccount
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
   public forUpdate(): this { return this.lock('update'); }
   public forShare(): this { return this.lock('share'); }
+  public forUpdateNoWait(): this { return this.lock('update_nowait'); }
+  public forShareNoWait(): this { return this.lock('share_nowait'); }
   public selectTenantId(): this { return this.select('tenant_id'); }
   public omitTenantId(): this { return this.omit('tenant_id'); }
   public orderByTenantIdAsc(): this { return this.orderBy('tenant_id'); }
@@ -3655,6 +3667,8 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
   public forUpdate(): this { return this.lock('update'); }
   public forShare(): this { return this.lock('share'); }
+  public forUpdateNoWait(): this { return this.lock('update_nowait'); }
+  public forShareNoWait(): this { return this.lock('share_nowait'); }
   public selectTenantId(): this { return this.select('tenant_id'); }
   public omitTenantId(): this { return this.omit('tenant_id'); }
   public orderByTenantIdAsc(): this { return this.orderBy('tenant_id'); }
@@ -3905,6 +3919,8 @@ export class SoftRecordQuery extends QueryCore implements SoftRecordInterface {
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
   public forUpdate(): this { return this.lock('update'); }
   public forShare(): this { return this.lock('share'); }
+  public forUpdateNoWait(): this { return this.lock('update_nowait'); }
+  public forShareNoWait(): this { return this.lock('share_nowait'); }
   public selectSeq(): this { return this.select('seq'); }
   public omitSeq(): this { return this.omit('seq'); }
   public orderBySeqAsc(): this { return this.orderBy('seq'); }
@@ -4104,6 +4120,8 @@ export class AccountQuery extends QueryCore implements AccountInterface {
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
   public forUpdate(): this { return this.lock('update'); }
   public forShare(): this { return this.lock('share'); }
+  public forUpdateNoWait(): this { return this.lock('update_nowait'); }
+  public forShareNoWait(): this { return this.lock('share_nowait'); }
   public selectSeq(): this { return this.select('seq'); }
   public omitSeq(): this { return this.omit('seq'); }
   public orderBySeqAsc(): this { return this.orderBy('seq'); }
@@ -4302,6 +4320,8 @@ export class ProjectQuery extends QueryCore implements ProjectInterface {
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
   public forUpdate(): this { return this.lock('update'); }
   public forShare(): this { return this.lock('share'); }
+  public forUpdateNoWait(): this { return this.lock('update_nowait'); }
+  public forShareNoWait(): this { return this.lock('share_nowait'); }
   public selectSeq(): this { return this.select('seq'); }
   public omitSeq(): this { return this.omit('seq'); }
   public orderBySeqAsc(): this { return this.orderBy('seq'); }
@@ -4483,6 +4503,8 @@ export class AccountProjectQuery extends QueryCore implements AccountProjectInte
   public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }
   public forUpdate(): this { return this.lock('update'); }
   public forShare(): this { return this.lock('share'); }
+  public forUpdateNoWait(): this { return this.lock('update_nowait'); }
+  public forShareNoWait(): this { return this.lock('share_nowait'); }
   public selectAccountSeq(): this { return this.select('account_seq'); }
   public omitAccountSeq(): this { return this.omit('account_seq'); }
   public orderByAccountSeqAsc(): this { return this.orderBy('account_seq'); }

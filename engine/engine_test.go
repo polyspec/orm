@@ -163,6 +163,15 @@ func TestRowLock(t *testing.T) {
 	if got := string(ErrorJSON(mustCompileError(t, sqliteEngine, full))); !strings.Contains(got, `"code":"CAPABILITY_UNSUPPORTED"`) {
 		t.Fatalf("sqlite row lock wire error: %s", got)
 	}
+	postgresEngine, err := New(m, "postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nowait := `{"ir_version":1,"schema_hash":"` + postgresEngine.M.SchemaHash + `","n_params":0,"kind":"one","entity":"battle","lock":"update_nowait"}`
+	plan, err := postgresEngine.Compile([]byte(nowait))
+	if err != nil || !strings.Contains(string(plan), "FOR UPDATE NOWAIT") {
+		t.Fatalf("postgres nowait row lock: %v", err)
+	}
 }
 
 func mustCompileError(t *testing.T, e *Engine, input string) error {
