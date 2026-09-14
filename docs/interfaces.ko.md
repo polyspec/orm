@@ -150,6 +150,8 @@ transaction을 만든 코드가 소유권을 가진다. commit과 rollback은 bi
 
 Go는 callback 재시도 없이 호출자가 명시적으로 `tx.Commit(ctx)` 또는 `tx.Rollback(ctx)`로 종료하는 `orm.Begin(ctx, db, options)`도 제공한다. PostgreSQL은 실제 통합 테스트의 lock orchestration을 위해 `tx.BackendPID(ctx)`를 제공하며, 다른 driver는 `CAPABILITY_UNSUPPORTED`를 반환한다.
 
+Go는 ORM이 소유한 connection pool 상태를 확인하는 `db.Stats()`와 lifecycle 조정만을 위한 불투명한 `db.Acquire(ctx)` 및 `ConnectionLease`도 제공한다. lease는 명시적으로 닫을 수 있지만 `database/sql`이나 query 실행을 노출하지 않는다. 데이터 접근은 generated query와 ORM transaction 경계만 사용한다.
+
 PostgreSQL transaction은 transaction 범위 직렬화를 위해 `advisoryLock(key)`(Go: `AdvisoryLock`)를 제공한다. lock은 transaction 종료 시 해제된다. 다른 driver는 이 작업을 `CAPABILITY_UNSUPPORTED`로 거부한다.
 
 스키마 설치는 호출자가 소유한 transaction에서 `installDDL(statements)`(Go: `InstallDDL`)를 사용한다. ORM은 문장을 순서대로 실행하고 첫 오류를 반환하므로 transaction 소유자가 전체 설치를 rollback할 수 있다.
