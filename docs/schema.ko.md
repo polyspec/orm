@@ -135,7 +135,7 @@ PostgreSQL `COMMENT ON` 문, SQLite의 `orm_schema_comments` 행을 생성합니
 | FK 참조 동작 | 관계선 라벨 속성 `cascade`/`setnull` (기본 RESTRICT) |
 | 3 DB 방언 차이 | 파일에 없음. 타입 어휘를 고정하고 `ormgen ddl --dialect mysql\|postgres\|sqlite`가 방언별 CREATE문을 생성 |
 | CHECK, 파티션, 콜레이션·엔진 옵션, 뷰·함수·시퀀스·확장 | 다루지 않음(ORM 범위 밖). 마이그레이션 SQL에 직접 |
-| 임의 트리거 | 스키마 생성기는 다루지 않는다. Go adapter의 명시적 `Tx.InstallAudit` 계약만 지원되는 트리거 설치 경로이며, 선언된 감사 관계를 검증하고 방언별 트리거 SQL을 소유한다. |
+| 임의 트리거 | 스키마 생성기는 다루지 않는다. Go adapter의 명시적 `Tx.InstallAudit` 계약만 지원되는 트리거 설치 경로이며, 선언된 감사 관계를 검증하고 PostgreSQL·SQLite의 방언별 트리거 SQL을 소유한다. PostgreSQL은 transaction-local 설정을 사용하고 SQLite는 ORM 소유 transaction context table을 사용한다. |
 
 타입 문자열에 쉼표는 Mermaid 문법상 불가 → `decimal(13_3)`, `enum(a_b_c)`처럼 `_`로 쓴다(ormgen이 해석). 방언별 매핑 규칙표(정규 타입 → DDL)는 `docs/dialects.md`(S6)에 둔다.
 
