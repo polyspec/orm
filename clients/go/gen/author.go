@@ -6752,6 +6752,18 @@ func (q *AuthorQuery) OnDuplicateSetAll() *AuthorQuery { q.q.OnDuplicateSetAll("
 
 // Terminals.
 func (q *AuthorQuery) Get() (*AuthorRow, error) {
+	row, err := q.GetOrNil()
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, orm.ErrNoRows
+	}
+	return row, nil
+}
+
+// GetOrNil returns nil, nil when the query has no row.
+func (q *AuthorQuery) GetOrNil() (*AuthorRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err

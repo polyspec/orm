@@ -132,7 +132,8 @@ The entry-point spelling follows the host language. The method role, stored requ
 
 | Method | Result | Required binding |
 |---|---|---|
-| `get` | optional row | root executor |
+| `get` | one row, or `NO_ROWS` | root executor |
+| `getOrNil` | optional row | root executor |
 | `gets` | collection | root executor |
 | `getCount` | integer | root executor |
 | `insert` | row or key | root executor |

@@ -841,6 +841,18 @@ func (q *UserQuery) OnDuplicateSetAll() *UserQuery { q.q.OnDuplicateSetAll("seq"
 
 // Terminals.
 func (q *UserQuery) Get() (*UserRow, error) {
+	row, err := q.GetOrNil()
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, orm.ErrNoRows
+	}
+	return row, nil
+}
+
+// GetOrNil returns nil, nil when the query has no row.
+func (q *UserQuery) GetOrNil() (*UserRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err

@@ -1240,6 +1240,18 @@ func (q *ServiceRegionQuery) OnDuplicateSetAll() *ServiceRegionQuery {
 
 // Terminals.
 func (q *ServiceRegionQuery) Get() (*ServiceRegionRow, error) {
+	row, err := q.GetOrNil()
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, orm.ErrNoRows
+	}
+	return row, nil
+}
+
+// GetOrNil returns nil, nil when the query has no row.
+func (q *ServiceRegionQuery) GetOrNil() (*ServiceRegionRow, error) {
 	ctx, ex, err := q.binding.Resolve()
 	if err != nil {
 		return nil, err
