@@ -190,3 +190,11 @@ ormgen check    --lang php                                                   # �
 - MySQL과 PostgreSQL은 카탈로그에서 실제 외래키 대상, 컬럼 순서, 삭제 규칙을 읽는다. SQLite는 `PRAGMA foreign_key_list`를 읽는다. 단일·복합 외래키를 관계선으로 생성하며 복합 라벨은 순서가 있는 괄호형 FK 목록을 사용한다. `cascade`와 `setnull`을 보존하고 생략된 동작은 `RESTRICT`를 사용한다.
 - PostgreSQL(`--driver postgres`, `postgres://…` DSN이면 자동)은 `information_schema.columns`, `pg_index`, `pg_constraint`를 읽어 같은 다이어그램을 만든다. 타입은 정규 타입으로 변환하고(`character varying(191)`→`varchar(191)`, `boolean`→`tinyint`, `numeric(p,s)`→`decimal(p,s)`, `timestamp(6) with time zone`→`datetime(6)`, `inet`→`varbinary(16)`, `jsonb`→`json`) identity/`nextval`은 `auto`로 변환하며, 생성된 GIN full-text 인덱스는 `pg_get_indexdef`에서 복원한다. PostgreSQL의 `datetime` 컬럼은 session time zone이 바뀌어도 Go `time.Time`의 instant를 보존하도록 `timestamp with time zone`으로 생성한다.
 - `--out`이 이미 있으면 DB가 모르는 사실을 이어받는다: 관계 라벨 재정의 `(child / parent)`, 컬럼 속성 `lazy`/`bool`/`int`/명시 스타일, `%% predicate` 줄. 그 외는 DB가 진실이다.
+### 데이터베이스 경계 관리 작업
+
+Go transaction adapter는 데이터베이스별 관리 작업을 타입이 지정된 메서드
+뒤에 둡니다. PostgreSQL 호출자는 불변 테이블에 `InstallImmutable`을,
+명시적인 역할 경계에 `GrantTablePrivileges`와 `RevokeTablePrivilege`를,
+검증에 `InspectTablePrivileges`를, transaction 범위 잠금 테스트에
+`LockTable`을 사용합니다. 호출자는 이 SQL 문을 직접 만들거나
+`database/sql`에 직접 접근하지 않습니다.
