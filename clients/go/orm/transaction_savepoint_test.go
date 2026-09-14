@@ -281,7 +281,7 @@ func TestPostgresSetLocalAndRuntimePrivileges(t *testing.T) {
 }
 
 func TestPostgresTransactionAPIsRejectUnsupportedOrInvalidUse(t *testing.T) {
-	unsupported := &Tx{d: &DB{driver: "sqlite"}}
+	unsupported := &Tx{d: &DB{driver: "mysql"}}
 	ctx := context.Background()
 	for _, call := range []func() error{
 		func() error { _, err := unsupported.ReadOnly(ctx); return err },

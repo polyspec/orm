@@ -290,9 +290,10 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 
 // Tx is a transaction handle; it reuses the DB's prepared statements.
 type Tx struct {
-	d        *DB
-	tx       *sql.Tx
-	finished atomic.Bool
+	d            *DB
+	tx           *sql.Tx
+	finished     atomic.Bool
+	auditContext bool
 }
 
 // InstallDDL executes schema statements in the caller-owned transaction. DDL
@@ -344,8 +345,30 @@ func (t *Tx) SetLocal(ctx context.Context, key, value string) error {
 	if t == nil || t.finished.Load() {
 		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
 	}
-	if t.d == nil || t.d.driver != "postgres" {
+	if t.d == nil {
+		return &ir.Error{Code: CodeConfig, Msg: "database is required"}
+	}
+	if t.d.driver == "sqlite" {
+		if t.tx == nil {
+			return &ir.Error{Code: CodeConfig, Msg: "transaction is required"}
+		}
+		if !validContextKey(key) {
+			return &ir.Error{Code: CodeConfig, Msg: "transaction context key is invalid"}
+		}
+		if _, err := t.tx.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS orm_audit_context (key TEXT PRIMARY KEY, value TEXT NOT NULL)"); err != nil {
+			return mapDriverErr(err)
+		}
+		if _, err := t.tx.ExecContext(ctx, "INSERT INTO orm_audit_context (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", key, value); err != nil {
+			return mapDriverErr(err)
+		}
+		t.auditContext = true
+		return nil
+	}
+	if t.d.driver != "postgres" {
 		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction-local settings are supported only by postgres"}
+	}
+	if t.tx == nil {
+		return &ir.Error{Code: CodeConfig, Msg: "transaction is required"}
 	}
 	stmt, err := t.stmt(ctx, "SELECT set_config($1,$2,true)")
 	if err != nil {
@@ -645,6 +668,18 @@ func validSavepointName(name string) bool {
 	return true
 }
 
+func validContextKey(key string) bool {
+	if key == "" {
+		return false
+	}
+	for i, r := range key {
+		if !(r == '.' || r == '_' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r >= '0' && r <= '9') || i == 0 && r == '.' {
+			return false
+		}
+	}
+	return true
+}
+
 // Transaction runs fn once in a transaction. An error or panic rolls back.
 func Transaction[T any](ctx context.Context, d *DB, fn func(*Tx) (T, error)) (T, error) {
 	return TransactionWithOptions(ctx, d, TransactionOptions{}, fn)
@@ -695,11 +730,18 @@ func Begin(ctx context.Context, d *DB, options TransactionOptions) (*Tx, error) 
 }
 
 // Commit ends a caller-owned transaction and invalidates its ORM binding.
-func (t *Tx) Commit(_ context.Context) error {
-	if t == nil || t.finished.Swap(true) {
+func (t *Tx) Commit(ctx context.Context) error {
+	if t == nil || t.finished.Load() {
 		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
 	}
-	return mapDriverErr(t.tx.Commit())
+	if t.d != nil && t.d.driver == "sqlite" && t.auditContext {
+		if _, err := t.tx.ExecContext(ctx, "DELETE FROM orm_audit_context"); err != nil {
+			return mapDriverErr(err)
+		}
+	}
+	err := mapDriverErr(t.tx.Commit())
+	t.finished.Store(true)
+	return err
 }
 
 // Rollback ends a caller-owned transaction and invalidates its ORM binding.
@@ -785,7 +827,7 @@ func runTx[T any](ctx context.Context, d *DB, options TransactionOptions, fn fun
 		tx.Rollback()
 		return v, err
 	}
-	if err := tx.Commit(); err != nil {
+	if err := ex.Commit(ctx); err != nil {
 		return v, mapDriverErr(err)
 	}
 	return v, nil
