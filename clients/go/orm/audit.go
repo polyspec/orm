@@ -75,11 +75,14 @@ func (t *Tx) InstallAudit(ctx context.Context, spec AuditSpec) error {
 	fn := quoteIdentifier(t.d.driver, tableSchema) + "." + quoteIdentifier(t.d.driver, name)
 	table := quoteIdentifier(t.d.driver, tableSchema) + "." + quoteIdentifier(t.d.driver, tableName)
 	trigger := quoteIdentifier(t.d.driver, name)
+	truncateTrigger := quoteIdentifier(t.d.driver, name+"_truncate")
 	body := auditFunctionBody(spec)
 	statements := []string{
 		"CREATE OR REPLACE FUNCTION " + fn + "() RETURNS trigger LANGUAGE plpgsql AS $$\n" + body + "\n$$",
 		"DROP TRIGGER IF EXISTS " + trigger + " ON " + table,
 		"CREATE TRIGGER " + trigger + " BEFORE INSERT OR UPDATE OR DELETE ON " + table + " FOR EACH ROW EXECUTE FUNCTION " + fn + "()",
+		"DROP TRIGGER IF EXISTS " + truncateTrigger + " ON " + table,
+		"CREATE TRIGGER " + truncateTrigger + " BEFORE TRUNCATE ON " + table + " FOR EACH STATEMENT EXECUTE FUNCTION " + fn + "()",
 	}
 	for _, statement := range statements {
 		if _, err := t.tx.ExecContext(ctx, statement); err != nil {
@@ -341,6 +344,7 @@ func auditFunctionBody(spec AuditSpec) string {
 	b.WriteString(" WHERE ")
 	b.WriteString(q(spec.OperationUUIDColumn))
 	b.WriteString(" = operation_id;\n  IF operation_seq IS NULL THEN\n    RAISE EXCEPTION 'audit operation does not exist';\n  END IF;\n")
+	b.WriteString("  IF TG_OP = 'TRUNCATE' THEN RETURN NULL; END IF;\n")
 	b.WriteString("  IF TG_OP = 'INSERT' THEN new_value := to_jsonb(NEW); ELSIF TG_OP = 'UPDATE' THEN old_value := to_jsonb(OLD); new_value := to_jsonb(NEW); ELSE old_value := to_jsonb(OLD); END IF;\n")
 	if spec.SiteColumn != "" {
 		b.WriteString("  site_id := COALESCE(new_value ->> ")
