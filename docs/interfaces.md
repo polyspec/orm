@@ -150,6 +150,8 @@ Transaction ownership belongs to the code that created the transaction. Commit a
 
 Go also exposes `orm.Begin(ctx, db, options)` for a caller-owned transaction that is finished explicitly with `tx.Commit(ctx)` or `tx.Rollback(ctx)`. It performs no callback retry. PostgreSQL exposes `tx.BackendPID(ctx)` for real integration lock orchestration; other drivers return `CAPABILITY_UNSUPPORTED`.
 
+Go exposes `db.Stats()` as ORM-owned connection-pool statistics and `db.Acquire(ctx)` as an opaque `ConnectionLease` for lifecycle coordination. A lease can be closed explicitly and does not expose `database/sql` or permit query execution; generated queries and ORM transactions remain the only data-access paths.
+
 PostgreSQL transactions expose `advisoryLock(key)` (Go: `AdvisoryLock`) for transaction-scoped serialization. The lock is released when the transaction ends. Other drivers reject this operation with `CAPABILITY_UNSUPPORTED`.
 
 Schema installation uses `installDDL(statements)` (Go: `InstallDDL`) on a caller-owned transaction. The ORM executes statements in order and returns the first error so the transaction owner can roll back the complete installation.
