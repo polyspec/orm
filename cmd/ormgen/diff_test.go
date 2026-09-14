@@ -36,6 +36,17 @@ func TestRenderDDLQuotesQualifiedPhysicalTable(t *testing.T) {
 	}
 }
 
+func TestRenderDDLUsesInstantDatetimeForPostgres(t *testing.T) {
+	m := testManifest(&schema.Col{Name: "id", Type: "i64", Raw: "bigint", PK: true}, &schema.Col{Name: "created_at", Type: "datetime", Raw: "datetime(6)", Precision: 6})
+	sql, err := renderDDL(m, "postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(sql, `"created_at" timestamp(6) with time zone NOT NULL`) {
+		t.Fatalf("datetime lost instant semantics: %s", sql)
+	}
+}
+
 func TestRenderDiffRejectsDestructiveChange(t *testing.T) {
 	old := testManifest(&schema.Col{Name: "id", Type: "i64", Raw: "bigint", PK: true}, &schema.Col{Name: "name", Type: "string", Raw: "varchar(20)"})
 	now := testManifest(&schema.Col{Name: "id", Type: "i64", Raw: "bigint", PK: true})
