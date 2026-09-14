@@ -11,9 +11,12 @@ import (
 // style stage is app-side here (host AES, packed inet).
 type SQLite struct{}
 
-func (SQLite) Name() string              { return "sqlite" }
-func (SQLite) Quote(ident string) string { return QuoteWith(`"`, ident) }
-func (SQLite) Placeholder(int) string    { return "?" }
+func (SQLite) Name() string { return "sqlite" }
+func (SQLite) Quote(ident string) string {
+	parts := strings.Split(ident, ".")
+	return QuoteWith(`"`, parts[len(parts)-1])
+}
+func (SQLite) Placeholder(int) string { return "?" }
 func (SQLite) Limit(offset, count int) string {
 	return fmt.Sprintf(" LIMIT %d OFFSET %d", count, offset)
 }
