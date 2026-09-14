@@ -242,7 +242,7 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 		}
 	}
 	for _, c := range e.Columns {
-		gc := goCol{Name: c.Name, Field: pascal(c.Name), Type: goType(c), ColType: c.Type, Nullable: c.Nullable, Lazy: c.Lazy, PK: c.PK, Auto: c.Auto, Managed: hasAES && c.Name == "aes_key_version", Ops: opsFor(c), ColOps: colOpsFor(c), Styles: appStyles(c)}
+		gc := goCol{Name: c.Name, Field: pascal(c.Name), Type: goType(c), ColType: c.Type, Nullable: c.Nullable, Lazy: c.Lazy, PK: c.PK, Auto: c.Auto, Managed: hasAES && c.Name == e.AESVersion, Ops: opsFor(c), ColOps: colOpsFor(c), Styles: appStyles(c)}
 		gc.Direct = len(c.Styles) == 0 && (gc.Type == "int32" || gc.Type == "int64" || gc.Type == "float64" || gc.Type == "bool" || gc.Type == "string")
 		if len(gc.Styles) > 0 {
 			gc.Nullable = false // `any` carries nil itself
@@ -263,7 +263,7 @@ func buildGoEntity(m *schema.Manifest, e *schema.Entity) goEntity {
 		if len(c.Styles) > 0 && c.Styles[0] == "aes" {
 			ge.AESCols = append(ge.AESCols, goCol{Name: c.Name, Styles: append([]string(nil), c.Styles...)})
 		}
-		if c.Name == "aes_key_version" {
+		if c.Name == e.AESVersion {
 			ge.AESVersion = c.Name
 		}
 		if !gc.Managed && (c.Type == "i32" || c.Type == "i64" || c.Type == "f64" || c.Type == "decimal") {

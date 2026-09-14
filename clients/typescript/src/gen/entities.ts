@@ -10,7 +10,7 @@ import { OrmError } from '../runtime_error.js';
 
 import type { BattleInterface, BattleRowInterface, UserInterface, UserRowInterface, ServiceInterface, ServiceRowInterface, ServiceModuleInterface, ServiceModuleRowInterface, ServiceMemberInterface, ServiceMemberRowInterface, CompositeAccountInterface, CompositeAccountRowInterface, CompositeMembershipInterface, CompositeMembershipRowInterface, SoftRecordInterface, SoftRecordRowInterface, AccountInterface, AccountRowInterface, ProjectInterface, ProjectRowInterface, AccountProjectInterface, AccountProjectRowInterface } from './interfaces.js';
 
-export const SCHEMA_HASH = 'bcda5a01f985861d';
+export const SCHEMA_HASH = '37a6106a33435373';
 registerSchemaHash(SCHEMA_HASH);
 
 export interface BattleKey { readonly seq:number; }
