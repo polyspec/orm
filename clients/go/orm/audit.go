@@ -43,15 +43,18 @@ type AuditSpec struct {
 }
 
 // InstallAudit installs the adapter-owned audit trigger for one table in the
-// caller-owned transaction. PostgreSQL is the initial implementation; other
-// adapters return an explicit capability error until they implement the same
-// logical contract.
+// caller-owned transaction. PostgreSQL uses transaction-local settings;
+// SQLite uses a transaction-local context table because it has no session
+// settings. Other adapters return an explicit capability error.
 func (t *Tx) InstallAudit(ctx context.Context, spec AuditSpec) error {
 	if t == nil || t.finished.Load() {
 		return configAuditError("transaction already finished")
 	}
 	if t.d == nil || t.d.driver != "postgres" {
-		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "audit triggers are supported only by postgres"}
+		if t.d != nil && t.d.driver == "sqlite" {
+			return t.installAuditSQLite(ctx, spec)
+		}
+		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "audit triggers are supported only by postgres and sqlite"}
 	}
 	if err := validateAuditSpec(spec); err != nil {
 		return err
@@ -84,6 +87,181 @@ func (t *Tx) InstallAudit(ctx context.Context, spec AuditSpec) error {
 		}
 	}
 	return nil
+}
+
+func (t *Tx) installAuditSQLite(ctx context.Context, spec AuditSpec) error {
+	if err := validateAuditSpec(spec); err != nil {
+		return err
+	}
+	_, tableName := splitAuditIdentifierMust(spec.Table)
+	_, operationName := splitAuditIdentifierMust(spec.OperationTable)
+	_, changeName := splitAuditIdentifierMust(spec.ChangeTable)
+	columns, keys, err := t.auditSQLiteColumns(ctx, tableName)
+	if err != nil {
+		return err
+	}
+	if len(keys) == 0 {
+		return configAuditError("audited table must have a primary key")
+	}
+	if len(spec.EntityKeyColumns) == 0 {
+		spec.EntityKeyColumns = keys
+	}
+	for _, key := range append(append([]string{}, spec.EntityKeyColumns...), spec.SiteColumn) {
+		if key != "" && !containsString(columns, key) {
+			return configAuditError("audit column does not exist")
+		}
+	}
+	if _, err := t.tx.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS orm_audit_context (key TEXT PRIMARY KEY, value TEXT NOT NULL)"); err != nil {
+		return mapDriverErr(err)
+	}
+	digest := sha256.Sum256([]byte(fmt.Sprintf("sqlite:%#v", spec)))
+	triggerName := "orm_audit_" + hex.EncodeToString(digest[:])[:20]
+	for _, event := range []string{"INSERT", "UPDATE", "DELETE"} {
+		body := sqliteAuditTrigger(spec, event, tableName, operationName, changeName, columns, triggerName)
+		if _, err := t.tx.ExecContext(ctx, "DROP TRIGGER IF EXISTS "+quoteIdentifier("sqlite", triggerName+"_"+strings.ToLower(event))); err != nil {
+			return mapDriverErr(err)
+		}
+		if _, err := t.tx.ExecContext(ctx, body); err != nil {
+			return mapDriverErr(err)
+		}
+	}
+	t.auditContext = true
+	return nil
+}
+
+func sqliteAuditTrigger(spec AuditSpec, event, tableName, operationName, changeName string, columns []string, triggerName string) string {
+	table := quoteIdentifier("sqlite", tableName)
+	trigger := quoteIdentifier("sqlite", triggerName+"_"+strings.ToLower(event))
+	contextValue := "(SELECT value FROM orm_audit_context WHERE key=" + quoteLiteral(spec.OperationContextKey) + ")"
+	operationSeq := "(SELECT " + quoteIdentifier("sqlite", spec.OperationSeqColumn) + " FROM " + quoteIdentifier("sqlite", operationName) + " WHERE " + quoteIdentifier("sqlite", spec.OperationUUIDColumn) + "=" + contextValue + ")"
+	newValue, oldValue := "'{}'", "'{}'"
+	if event == "INSERT" || event == "UPDATE" {
+		newValue = sqliteJSONExpr("NEW", columns)
+	}
+	if event == "UPDATE" || event == "DELETE" {
+		oldValue = sqliteJSONExpr("OLD", columns)
+	}
+	newValue, oldValue = sqliteRedactExpr(newValue, oldValue, spec.RedactedPaths)
+	if event == "UPDATE" {
+		newValue, oldValue = sqliteChangedExpr(newValue, oldValue, columns)
+	}
+	keyPrefix := "OLD"
+	if event != "DELETE" {
+		keyPrefix = "NEW"
+	}
+	keyExpr := sqliteEntityKeyExpr(event, keyPrefix, spec.EntityKeyColumns)
+	siteExpr := "NULL"
+	if spec.SiteColumn != "" {
+		if event == "INSERT" {
+			siteExpr = "NEW." + quoteIdentifier("sqlite", spec.SiteColumn)
+		} else if event == "DELETE" {
+			siteExpr = "OLD." + quoteIdentifier("sqlite", spec.SiteColumn)
+		} else {
+			siteExpr = "COALESCE(NEW." + quoteIdentifier("sqlite", spec.SiteColumn) + ",OLD." + quoteIdentifier("sqlite", spec.SiteColumn) + ")"
+		}
+	}
+	var body strings.Builder
+	body.WriteString("CREATE TRIGGER ")
+	body.WriteString(trigger)
+	body.WriteString(" BEFORE ")
+	body.WriteString(event)
+	body.WriteString(" ON ")
+	body.WriteString(table)
+	body.WriteString(" FOR EACH ROW BEGIN\nSELECT RAISE(ABORT,'audit operation context is required') WHERE COALESCE(")
+	body.WriteString(contextValue)
+	body.WriteString(",'')='';\nSELECT RAISE(ABORT,'audit operation does not exist') WHERE ")
+	body.WriteString(operationSeq)
+	body.WriteString(" IS NULL;\n")
+	if spec.Mode == AuditChanges {
+		q := func(value string) string { return quoteIdentifier("sqlite", value) }
+		body.WriteString("INSERT INTO ")
+		body.WriteString(q(changeName))
+		body.WriteString(" (")
+		body.WriteString(strings.Join([]string{q(spec.ChangeOperationSeqColumn), q(spec.ChangeSiteColumn), q(spec.ChangeTableColumn), q(spec.ChangeEntityKeyColumn), q(spec.ChangeOperationColumn), q(spec.ChangeOldValueColumn), q(spec.ChangeNewValueColumn)}, ","))
+		body.WriteString(") VALUES (")
+		body.WriteString(strings.Join([]string{operationSeq, siteExpr, quoteLiteral(tableName), keyExpr, quoteLiteral(event), oldValue, newValue}, ","))
+		body.WriteString(");\n")
+	}
+	body.WriteString("END")
+	return body.String()
+}
+
+func (t *Tx) auditSQLiteColumns(ctx context.Context, table string) ([]string, []string, error) {
+	rows, err := t.tx.QueryContext(ctx, "PRAGMA table_info("+quoteIdentifier("sqlite", table)+")")
+	if err != nil {
+		return nil, nil, mapDriverErr(err)
+	}
+	defer rows.Close()
+	columns, keys := []string{}, []string{}
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notNull, primary int
+		var defaultValue any
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &defaultValue, &primary); err != nil {
+			return nil, nil, mapDriverErr(err)
+		}
+		columns = append(columns, name)
+		if primary > 0 {
+			keys = append(keys, name)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, mapDriverErr(err)
+	}
+	return columns, keys, nil
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
+func sqliteJSONExpr(prefix string, columns []string) string {
+	args := make([]string, 0, len(columns)*2)
+	for _, column := range columns {
+		args = append(args, quoteLiteral(column), prefix+"."+quoteIdentifier("sqlite", column))
+	}
+	return "json_object(" + strings.Join(args, ",") + ")"
+}
+
+func sqliteRedactExpr(newValue, oldValue string, paths [][]string) (string, string) {
+	for _, path := range paths {
+		segments := make([]string, len(path))
+		for i, segment := range path {
+			segments[i] = `."` + strings.ReplaceAll(segment, `"`, `""`) + `"`
+		}
+		jsonPath := "$" + strings.Join(segments, "")
+		newValue = "json_set(" + newValue + "," + quoteLiteral(jsonPath) + ",json_object('redacted',1,'present',json_type(" + newValue + "," + quoteLiteral(jsonPath) + ") IS NOT NULL))"
+		oldValue = "json_set(" + oldValue + "," + quoteLiteral(jsonPath) + ",json_object('redacted',1,'present',json_type(" + oldValue + "," + quoteLiteral(jsonPath) + ") IS NOT NULL))"
+	}
+	return newValue, oldValue
+}
+
+func sqliteChangedExpr(newValue, oldValue string, columns []string) (string, string) {
+	newArgs, oldArgs := []string{}, []string{}
+	for _, column := range columns {
+		path := quoteLiteral("$." + column)
+		newArgs = append(newArgs, "CASE WHEN NEW."+quoteIdentifier("sqlite", column)+" IS OLD."+quoteIdentifier("sqlite", column)+" THEN "+path+" ELSE '$.__unchanged' END")
+		oldArgs = append(oldArgs, "CASE WHEN NEW."+quoteIdentifier("sqlite", column)+" IS OLD."+quoteIdentifier("sqlite", column)+" THEN "+path+" ELSE '$.__unchanged' END")
+	}
+	return "json_remove(" + newValue + "," + strings.Join(newArgs, ",") + ")", "json_remove(" + oldValue + "," + strings.Join(oldArgs, ",") + ")"
+}
+
+func sqliteEntityKeyExpr(event, newPrefix string, keys []string) string {
+	args := make([]string, 0, len(keys)*2)
+	for _, key := range keys {
+		value := newPrefix + "." + quoteIdentifier("sqlite", key)
+		if event == "UPDATE" {
+			value = "COALESCE(NEW." + quoteIdentifier("sqlite", key) + ",OLD." + quoteIdentifier("sqlite", key) + ")"
+		}
+		args = append(args, quoteLiteral(key), value)
+	}
+	return "json_object(" + strings.Join(args, ",") + ")"
 }
 
 func (t *Tx) auditPrimaryKeyColumns(ctx context.Context, schema, table string) ([]string, error) {
