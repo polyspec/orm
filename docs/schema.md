@@ -135,7 +135,7 @@ Changing a comment changes the schema hash and produces an idempotent migration.
 | FK actions | `cascade`/`setnull` relation-label attributes (RESTRICT by default) |
 | Three database dialect differences | Not stored in the file; fixed type vocabulary and `ormgen ddl --dialect mysql\|postgres\|sqlite` generate dialect-specific CREATE statements |
 | CHECK, partitions, collation/engine options, views, functions, sequences, extensions | Unsupported by the ORM; write them in migration SQL |
-| Arbitrary triggers | Unsupported by the schema generator. The Go adapter's explicit `Tx.InstallAudit` contract is the only supported trigger installation path; it validates a declared audit relationship and owns dialect-specific trigger SQL for PostgreSQL and SQLite. PostgreSQL uses transaction-local settings; SQLite uses an ORM-owned transaction context table. |
+| Arbitrary triggers | Unsupported by the schema generator. The Go adapter's explicit `Tx.InstallAudit` contract validates a declared audit relationship and owns dialect-specific audit trigger SQL for PostgreSQL and SQLite. `Tx.InstallImmutable` provides the same adapter-owned path for append-only tables, rejecting UPDATE and DELETE (and PostgreSQL TRUNCATE). PostgreSQL uses transaction-local settings; SQLite uses an ORM-owned transaction context table. |
 
 Commas are invalid in Mermaid type strings; use `_` such as `decimal(13_3)` and `enum(a_b_c)`; ormgen interprets them. Dialect mapping from normalized types to DDL is in `docs/dialects.md` (S6).
 

@@ -92,6 +92,55 @@ func (t *Tx) InstallAudit(ctx context.Context, spec AuditSpec) error {
 	return nil
 }
 
+// InstallImmutable installs adapter-owned guards that reject UPDATE and DELETE
+// for a qualified table. PostgreSQL also rejects TRUNCATE; SQLite has no
+// TRUNCATE statement and therefore guards the supported row mutations.
+func (t *Tx) InstallImmutable(ctx context.Context, tableName string) error {
+	if t == nil || t.finished.Load() {
+		return configAuditError("transaction already finished")
+	}
+	schema, table, ok := splitAuditIdentifier(tableName)
+	if !ok {
+		return configAuditError("immutable table must be qualified")
+	}
+	digest := sha256.Sum256([]byte("immutable:" + tableName))
+	name := "orm_immutable_" + hex.EncodeToString(digest[:])[:20]
+	if t.d != nil && t.d.driver == "postgres" {
+		qualifiedTable := quoteIdentifier("postgres", schema) + "." + quoteIdentifier("postgres", table)
+		function := quoteIdentifier("postgres", schema) + "." + quoteIdentifier("postgres", name)
+		trigger := quoteIdentifier("postgres", name)
+		truncateTrigger := quoteIdentifier("postgres", name+"_truncate")
+		statements := []string{
+			"CREATE OR REPLACE FUNCTION " + function + "() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'immutable table'; END; $$",
+			"DROP TRIGGER IF EXISTS " + trigger + " ON " + qualifiedTable,
+			"CREATE TRIGGER " + trigger + " BEFORE UPDATE OR DELETE ON " + qualifiedTable + " FOR EACH STATEMENT EXECUTE FUNCTION " + function + "()",
+			"DROP TRIGGER IF EXISTS " + truncateTrigger + " ON " + qualifiedTable,
+			"CREATE TRIGGER " + truncateTrigger + " BEFORE TRUNCATE ON " + qualifiedTable + " FOR EACH STATEMENT EXECUTE FUNCTION " + function + "()",
+		}
+		for _, statement := range statements {
+			if _, err := t.tx.ExecContext(ctx, statement); err != nil {
+				return mapDriverErr(err)
+			}
+		}
+		return nil
+	}
+	if t.d.driver != "sqlite" {
+		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "immutable guards are supported only by postgres and sqlite"}
+	}
+	quotedTable := quoteIdentifier("sqlite", table)
+	for _, event := range []string{"UPDATE", "DELETE"} {
+		trigger := quoteIdentifier("sqlite", name+"_"+strings.ToLower(event))
+		if _, err := t.tx.ExecContext(ctx, "DROP TRIGGER IF EXISTS "+trigger); err != nil {
+			return mapDriverErr(err)
+		}
+		statement := "CREATE TRIGGER " + trigger + " BEFORE " + event + " ON " + quotedTable + " FOR EACH ROW BEGIN SELECT RAISE(ABORT,'immutable table'); END"
+		if _, err := t.tx.ExecContext(ctx, statement); err != nil {
+			return mapDriverErr(err)
+		}
+	}
+	return nil
+}
+
 func (t *Tx) installAuditSQLite(ctx context.Context, spec AuditSpec) error {
 	if err := validateAuditSpec(spec); err != nil {
 		return err
