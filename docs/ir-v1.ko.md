@@ -113,7 +113,7 @@ SQL 위치 stage가 있으면 SELECT 목록과 바인드가 같이 바뀌므로,
 | type | ops |
 |---|---|
 | `i32 i64 f64 decimal date datetime timestamp` | `eq ne gt ge lt le in between is_null` |
-| `string text` | `eq ne in lk lb is_null` (+ 인덱스가 있으면 `gt ge lt le`) |
+| `string text` | `eq ne gt ge lt le in lk lb is_null` |
 | `enum` | `eq ne in is_null` |
 | `bool` | `eq ne is_null` |
 | `inet` | `eq ne in is_null` |
