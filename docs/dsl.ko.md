@@ -112,6 +112,8 @@ const previous = await Battle().orderBySeqAsc().using(db).getsBefore(next.previo
 | `select<Col>As(name)` | 출력 이름을 지정해 선택한다. |
 | `selectExpr(name, fragment)` | 스키마 검사 expression을 선택한다. |
 
+신뢰된 expression token `$CURRENT_TIME`은 database wall clock을 렌더링한다. PostgreSQL에서는 `clock_timestamp()`, SQLite·MySQL에서는 `CURRENT_TIMESTAMP`가 된다. transaction에서 고정되는 timestamp default와는 다르다.
+
 출력 매핑은 `{alias, column, out_name, index}` 위치 정보로 처리한다. join 컬럼은 alias namespace에 둔다.
 
 ### 2.4 관계와 조인

@@ -98,6 +98,41 @@ func TestSelectAll(t *testing.T) {
 	}
 }
 
+func TestCurrentTimeExpressionUsesDialectWallClock(t *testing.T) {
+	src, err := os.ReadFile("../schema/bench.mmd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := schema.Parse(string(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := schema.Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		dialect string
+		want    string
+	}{
+		{"postgres", "clock_timestamp()"},
+		{"sqlite", "CURRENT_TIMESTAMP"},
+	} {
+		e, err := New(m, tc.dialect)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body := `{"kind":"one","entity":"battle","columns":{"mode":"none","expr":{"database_now":"$CURRENT_TIME"}}}`
+		out, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + m.SchemaHash + `",` + body[1:]))
+		if err != nil {
+			t.Fatalf("%s: %v", tc.dialect, err)
+		}
+		if !strings.Contains(string(out), tc.want) {
+			t.Fatalf("%s: expected %q in %s", tc.dialect, tc.want, out)
+		}
+	}
+}
+
 func TestRowLock(t *testing.T) {
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"all","entity":"battle","lock":"update","limit":{"offset":0,"count":1}`)
