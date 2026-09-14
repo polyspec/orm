@@ -105,6 +105,57 @@ type DB struct {
 	closeErr  error
 }
 
+// DBStats reports the connection-pool state owned by the ORM runtime.
+// It intentionally does not expose database/sql types to callers.
+type DBStats struct {
+	OpenConnections int
+	InUse           int
+	Idle            int
+}
+
+// ConnectionLease reserves one ORM-managed database connection until Close.
+// The lease is for lifecycle coordination only; query execution remains behind
+// the generated ORM and transaction APIs.
+type ConnectionLease struct {
+	conn      *sql.Conn
+	closeOnce sync.Once
+	closeErr  error
+}
+
+// Stats returns the current connection-pool state.
+func (d *DB) Stats() DBStats {
+	if d == nil || d.SQL == nil {
+		return DBStats{}
+	}
+	stats := d.SQL.Stats()
+	return DBStats{OpenConnections: stats.OpenConnections, InUse: stats.InUse, Idle: stats.Idle}
+}
+
+// Acquire reserves one ORM-managed connection for lifecycle coordination.
+func (d *DB) Acquire(ctx context.Context) (*ConnectionLease, error) {
+	if d == nil || d.SQL == nil {
+		return nil, &ir.Error{Code: CodeConfig, Msg: "database is required"}
+	}
+	conn, err := d.SQL.Conn(ctx)
+	if err != nil {
+		return nil, mapDriverErr(err)
+	}
+	return &ConnectionLease{conn: conn}, nil
+}
+
+// Close releases the reserved ORM connection. It is idempotent.
+func (c *ConnectionLease) Close() error {
+	if c == nil {
+		return nil
+	}
+	c.closeOnce.Do(func() {
+		if c.conn != nil {
+			c.closeErr = c.conn.Close()
+		}
+	})
+	return c.closeErr
+}
+
 const defaultCacheSize = 256
 
 // Open connects using the database selected by the DSN URI scheme. The engine
