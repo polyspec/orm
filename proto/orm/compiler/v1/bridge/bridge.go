@@ -389,7 +389,7 @@ func PlanFromProto(in *compilerv1.Plan) (*planmodel.Plan, error) {
 }
 
 func stepToProto(in *planmodel.Step) *compilerv1.PlanStep {
-	out := &compilerv1.PlanStep{Id: uint32(in.ID), Role: in.Role, Sql: in.SQL, Assemble: assembleToProto(in.Assemble)}
+	out := &compilerv1.PlanStep{Id: uint32(in.ID), Role: in.Role, Sql: in.SQL, Lock: in.Lock, Assemble: assembleToProto(in.Assemble)}
 	for _, value := range in.BindSlots {
 		out.Binds = append(out.Binds, &compilerv1.BindSlot{Source: value.From, Parameter: uint32(value.Param), Transform: value.Transform, Name: value.Name, Step: uint32(value.Step), Column: value.Column, HostStyles: append([]string(nil), value.HostStyles...), ColumnType: value.ColType})
 	}
@@ -403,7 +403,7 @@ func stepToProto(in *planmodel.Step) *compilerv1.PlanStep {
 }
 
 func stepFromProto(in *compilerv1.PlanStep) planmodel.Step {
-	out := planmodel.Step{ID: int(in.Id), Role: in.Role, SQL: in.Sql, BindSlots: make([]planmodel.BindSlot, 0, len(in.Binds)), Assemble: assembleFromProto(in.Assemble)}
+	out := planmodel.Step{ID: int(in.Id), Role: in.Role, SQL: in.Sql, Lock: in.Lock, BindSlots: make([]planmodel.BindSlot, 0, len(in.Binds)), Assemble: assembleFromProto(in.Assemble)}
 	for _, value := range in.Binds {
 		out.BindSlots = append(out.BindSlots, planmodel.BindSlot{From: value.Source, Param: int(value.Parameter), Transform: value.Transform, Name: value.Name, Step: int(value.Step), Column: value.Column, HostStyles: append([]string(nil), value.HostStyles...), ColType: value.ColumnType})
 	}

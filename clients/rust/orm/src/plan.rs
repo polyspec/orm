@@ -18,6 +18,8 @@ pub struct Step {
     pub id: u32,
     pub role: String,
     pub sql: String,
+    #[serde(default)]
+    pub lock: String,
     /// `null` from the engine when the statement binds nothing (a Go nil slice).
     #[serde(default, deserialize_with = "null_as_empty")]
     pub bind_slots: Vec<BindSlot>,

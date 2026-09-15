@@ -161,7 +161,7 @@ PostgreSQL transaction은 transaction 종료 시 되돌리는 값에 `setLocal(k
 
 `TransactionOptions`는 `isolation`(`default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`), `readOnly`, `timeoutMs`(언어별 snake case 표기)를 받는다. Go는 isolation과 read-only를 `database/sql.TxOptions`로 전달하고 PHP·TypeScript는 PostgreSQL에서 `BEGIN` 후, MySQL에서 `START TRANSACTION` 전에 설정한다. Rust도 driver별 transaction 시작 규칙을 적용한다. SQLite는 명시적인 isolation·read-only·timeout을 거부한다. MySQL과 SQLite는 `timeoutMs`를 거부하고 PostgreSQL은 transaction 로컬 `statement_timeout`으로 적용한다. 지원하지 않는 capability는 `CAPABILITY_UNSUPPORTED`를 반환한다.
 
-root row select는 `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`를 각 언어의 명명 규칙으로 제공한다. request는 공통 IR에 `lock`을 저장한다. MySQL과 PostgreSQL은 order와 limit 뒤에 선택한 lock 절을 추가하며 `NoWait` mode는 row를 즉시 사용할 수 없으면 실패한다. SQLite는 `forUpdate()`와 `forShare()`를 transaction 수준 직렬화로 구현한다. ORM은 transaction을 `BEGIN IMMEDIATE`로 시작하고 SQLite lock suffix는 생성하지 않는다. SQLite는 transaction 시작 후 표현할 수 없는 `NoWait` mode를 `CAPABILITY_UNSUPPORTED`로 거부한다.
+root row select는 `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`를 각 언어의 명명 규칙으로 제공한다. request는 공통 IR에 `lock`을 저장한다. MySQL과 PostgreSQL은 order와 limit 뒤에 선택한 lock 절을 추가하며 `NoWait` mode는 row를 즉시 사용할 수 없으면 실패한다. SQLite는 lock suffix를 생성하지 않고 ORM이 `forUpdate()`, `forShare()`와 두 `NoWait` variant를 transaction 범위의 database lock 행으로 구현한다. `NoWait`은 일시적으로 busy timeout을 0으로 설정하여 경합에서 즉시 실패한다.
 
 오류는 안정된 code와 원래 driver message를 보존한다. transaction timeout은 driver가 PostgreSQL `statement_timeout`을 지원하는 경우 `timeoutMs`로 제공하며 실행 중 cancellation은 각 언어 runtime의 native 방식을 사용한다.
 

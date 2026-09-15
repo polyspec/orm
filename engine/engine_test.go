@@ -161,8 +161,8 @@ func TestRowLock(t *testing.T) {
 		t.Fatalf("sqlite transaction-level row lock: %v", err)
 	}
 	sqliteNowait := `{"ir_version":1,"schema_hash":"` + sqliteEngine.M.SchemaHash + `","n_params":0,"kind":"all","entity":"battle","lock":"update_nowait"}`
-	if _, err := sqliteEngine.Compile([]byte(sqliteNowait)); err == nil || !strings.Contains(err.Error(), "CAPABILITY_UNSUPPORTED") {
-		t.Fatalf("sqlite nowait lock error: %v", err)
+	if plan, err := sqliteEngine.Compile([]byte(sqliteNowait)); err != nil || strings.Contains(string(plan), "CAPABILITY_UNSUPPORTED") {
+		t.Fatalf("sqlite nowait lock: %v", err)
 	}
 	postgresEngine, err := New(m, "postgres")
 	if err != nil {

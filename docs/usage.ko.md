@@ -369,7 +369,7 @@ Battle::query()->seq($id)->using($db)->delete();
 - 트랜잭션은 각 언어의 네이티브 트랜잭션을 사용한다. callback은 기본적으로 한 번 실행한다. deadlock 재시도는 `TransactionOptions`의 `retryDeadlocks`를 활성화해야 하며 `maxAttempts`로 횟수를 제한한다(기본 3회).
 - transaction은 바깥 transaction을 종료하지 않고 `savepoint(name)`, `rollbackTo(name)`, `releaseSavepoint(name)`을 사용할 수 있다. savepoint 이름은 `[A-Za-z_][A-Za-z0-9_]*`를 사용하며 잘못된 이름은 SQL 실행 전에 `CONFIG`로 실패한다.
 - `TransactionOptions`로 `isolation`, `readOnly`, `timeoutMs`를 지정할 수 있다. isolation 이름은 `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`이다. PostgreSQL은 `BEGIN` 후 transaction 설정을 적용하고 MySQL은 같은 retained connection에서 `START TRANSACTION` 전에 적용한다. SQLite는 명시적인 isolation과 read-only 옵션을 거부한다. 양수 `timeoutMs`는 PostgreSQL `statement_timeout`으로 적용하며 MySQL·SQLite는 `CAPABILITY_UNSUPPORTED`를 반환한다.
-- root row query는 `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`를 각 client의 명명 규칙으로 제공한다. MySQL과 PostgreSQL은 선택한 row lock을 실행하며 `NoWait`은 row를 즉시 사용할 수 없으면 실패한다. SQLite는 `forUpdate()`와 `forShare()`를 `BEGIN IMMEDIATE`를 통한 transaction 수준 직렬화로 실행하고 `NoWait` mode에는 `CAPABILITY_UNSUPPORTED`를 반환한다.
+- root row query는 `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`를 각 client의 명명 규칙으로 제공한다. MySQL과 PostgreSQL은 선택한 row lock을 실행하며 `NoWait`은 row를 즉시 사용할 수 없으면 실패한다. SQLite는 lock suffix를 생성하지 않고 네 mode 모두 ORM transaction 범위의 database lock 행으로 구현하며, `NoWait`은 busy timeout을 일시적으로 0으로 설정해 경합에서 즉시 실패한다.
 - `timeoutMs`는 PostgreSQL statement timeout을 위한 transaction option이다. 실행 중 cancellation은 client와 driver가 제공하는 언어별 방식을 사용하며 공통 cancellation method는 제공하지 않는다.
 
 ```go

@@ -1679,6 +1679,7 @@ type PlanStep struct {
 	Binds         []*BindSlot            `protobuf:"bytes,4,rep,name=binds,proto3" json:"binds,omitempty"`
 	Assemble      *Assemble              `protobuf:"bytes,5,opt,name=assemble,proto3" json:"assemble,omitempty"`
 	Parent        *ParentReference       `protobuf:"bytes,6,opt,name=parent,proto3" json:"parent,omitempty"`
+	Lock          string                 `protobuf:"bytes,7,opt,name=lock,proto3" json:"lock,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1753,6 +1754,13 @@ func (x *PlanStep) GetParent() *ParentReference {
 		return x.Parent
 	}
 	return nil
+}
+
+func (x *PlanStep) GetLock() string {
+	if x != nil {
+		return x.Lock
+	}
+	return ""
 }
 
 type BindSlot struct {
@@ -2606,14 +2614,15 @@ const file_proto_orm_compiler_v1_compiler_proto_rawDesc = "" +
 	"\vschema_hash\x18\x01 \x01(\tR\n" +
 	"schemaHash\x12.\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1a.orm.compiler.v1.QueryKindR\x04kind\x12/\n" +
-	"\x05steps\x18\x03 \x03(\v2\x19.orm.compiler.v1.PlanStepR\x05steps\"\xe2\x01\n" +
+	"\x05steps\x18\x03 \x03(\v2\x19.orm.compiler.v1.PlanStepR\x05steps\"\xf6\x01\n" +
 	"\bPlanStep\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x12\n" +
 	"\x04role\x18\x02 \x01(\tR\x04role\x12\x10\n" +
 	"\x03sql\x18\x03 \x01(\tR\x03sql\x12/\n" +
 	"\x05binds\x18\x04 \x03(\v2\x19.orm.compiler.v1.BindSlotR\x05binds\x125\n" +
 	"\bassemble\x18\x05 \x01(\v2\x19.orm.compiler.v1.AssembleR\bassemble\x128\n" +
-	"\x06parent\x18\x06 \x01(\v2 .orm.compiler.v1.ParentReferenceR\x06parent\"\xe0\x01\n" +
+	"\x06parent\x18\x06 \x01(\v2 .orm.compiler.v1.ParentReferenceR\x06parent\x12\x12\n" +
+	"\x04lock\x18\a \x01(\tR\x04lock\"\xe0\x01\n" +
 	"\bBindSlot\x12\x16\n" +
 	"\x06source\x18\x01 \x01(\tR\x06source\x12\x1c\n" +
 	"\tparameter\x18\x02 \x01(\rR\tparameter\x12\x1c\n" +
