@@ -15,7 +15,7 @@
 
 | 스타일 | 쓰기(값 → 저장 바이트) | 읽기(저장 바이트 → 값) | 기준 |
 |---|---|---|---|
-| `json`, `jsons` | 공통 값 모델의 ordered-json 텍스트 | ordered-json 파싱 | 모노레포 Go 경로 `github.com/polyspec/ordered-json/go` `v0.0.1` |
+| `json`, `jsons` | 공통 값 모델의 ordered-json 텍스트 | ordered-json 파싱 | immutable revision `v0.0.0-20260915123419-26c2aebc9789`의 `github.com/polyspec/ordered-json/go` |
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
 | `base64` | base64(serialize(v)) | unserialize(base64_decode) | 동일 |
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |
