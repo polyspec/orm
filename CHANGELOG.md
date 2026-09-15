@@ -21,3 +21,4 @@
 - Verify SQLite duplicate-key and foreign-key errors are mapped to the adapter-neutral ORM error contract.
 - Add SQLite support to the adapter-neutral `SchemaInstalled` transaction operation for flattened logical schema names.
 - Add adapter-neutral database-emptiness inspection for safe initial-schema preflight on PostgreSQL and SQLite.
+- Exclude PostgreSQL system namespaces such as `pg_toast` from empty-database preflight detection.
