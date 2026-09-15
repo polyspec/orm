@@ -7,7 +7,7 @@ require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/polyspec/ordered-json/go v0.0.1
+	github.com/polyspec/ordered-json/go v0.0.0-20260915123419-26c2aebc9789
 	go.yaml.in/yaml/v3 v3.0.5
 	google.golang.org/protobuf v1.36.12
 	modernc.org/sqlite v1.58.0
@@ -30,5 +30,3 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )
-
-replace github.com/polyspec/ordered-json/go => ../ordered-json/go
