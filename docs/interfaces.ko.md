@@ -140,7 +140,7 @@ classDiagram
 | `update` | affected count | row 또는 root executor |
 | `delete` | affected count | row 또는 root executor |
 
-binding이 없는 terminal은 `CONFIG`다. transaction 종료 후 terminal도 `CONFIG`다. terminal에 database 인자를 전달할 수 없다.
+binding이 없는 terminal은 `CONFIG`다. transaction 종료 후 terminal도 `CONFIG`다. terminal에 database 인자를 전달할 수 없다. 바인딩된 executor는 생성 요청이 사용하는 schema engine을 포함해야 하며, 그렇지 않으면 binding 해석이 `CONFIG`를 반환한다. 이 검증은 ORM binding과 생성 클라이언트가 소유하며 호출자가 engine을 직접 검사하지 않는다.
 
 ## 6. Binding·executor·transaction — IF-13 ~ IF-17
 

@@ -105,6 +105,15 @@ type DB struct {
 	closeErr  error
 }
 
+// Engine returns the schema compiler bound to this ORM database. Generated
+// query clients use it when a query is bound to this executor.
+func (d *DB) Engine() *engine.Engine {
+	if d == nil {
+		return nil
+	}
+	return d.Eng
+}
+
 // DBStats reports the connection-pool state owned by the ORM runtime.
 // It intentionally does not expose database/sql types to callers.
 type DBStats struct {
@@ -1081,7 +1090,9 @@ type Req struct {
 func NewReq(eng *engine.Engine, kind, entity string) *Req {
 	r := &Req{}
 	r.IR.IRVersion = ir.Version
-	r.IR.SchemaHash = eng.M.SchemaHash
+	if eng != nil {
+		r.IR.SchemaHash = eng.M.SchemaHash
+	}
 	r.IR.Kind = kind
 	r.IR.Entity = entity
 	return r

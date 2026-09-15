@@ -349,7 +349,7 @@ func renderSQLiteRebuild(from, to *schema.Manifest, old, next *schema.Entity, qu
 		lines = append(lines, "  CONSTRAINT "+quote("uq_"+next.Table+"_"+strings.Join(unique, "_"))+" UNIQUE ("+joinQuoted(unique, quote)+")")
 	}
 	for _, fk := range sortedForeignKeys(to, next) {
-		lines = append(lines, "  "+foreignKeyClause(fk, to, quote))
+		lines = append(lines, "  "+foreignKeyClause(fk, to, "sqlite", quote))
 	}
 	for _, check := range next.Checks {
 		expr, err := quotedCheckExpression(check.Expr, quote)
@@ -608,6 +608,7 @@ type diffForeignKey struct {
 	target     string
 	targetCols []string
 	onDelete   string
+	deferred   bool
 }
 
 func diffIndexesAndForeignKeys(from, to *schema.Manifest, oldEnt, newEnt *schema.Entity, dialect string, quote func(string) string) ([]schemaChange, []schemaChange, error) {
@@ -657,7 +658,7 @@ func diffIndexesAndForeignKeys(from, to *schema.Manifest, oldEnt, newEnt *schema
 			foreignDrops = append(foreignDrops, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s %s %s;", quote(oldEnt.Table), verb, quote(o.name))})
 		}
 		if nok {
-			foreignAdds = append(foreignAdds, schemaChange{sql: "ALTER TABLE " + quote(newEnt.Table) + " ADD " + foreignKeyClause(n, to, quote) + ";"})
+			foreignAdds = append(foreignAdds, schemaChange{sql: "ALTER TABLE " + quote(newEnt.Table) + " ADD " + foreignKeyClause(n, to, dialect, quote) + ";"})
 		}
 	}
 	return append(foreignDrops, indexDrops...), append(indexAdds, foreignAdds...), nil
@@ -668,7 +669,7 @@ func foreignKeysEqualWithoutName(left, right diffForeignKey) bool {
 }
 
 func foreignKeysEqual(left, right diffForeignKey, compareName bool) bool {
-	return (!compareName || left.name == right.name) && stringSlicesEqual(left.columns, right.columns) && left.target == right.target && stringSlicesEqual(left.targetCols, right.targetCols) && left.onDelete == right.onDelete
+	return (!compareName || left.name == right.name) && stringSlicesEqual(left.columns, right.columns) && left.target == right.target && stringSlicesEqual(left.targetCols, right.targetCols) && left.onDelete == right.onDelete && left.deferred == right.deferred
 }
 
 func entityIndexes(e *schema.Entity) map[string]diffIndex {
@@ -725,10 +726,36 @@ func entityForeignKeys(m *schema.Manifest, e *schema.Entity) map[string]diffFore
 		fk := diffForeignKey{name: "fk_" + e.Table + "_" + c.Name, columns: []string{c.Name}, target: c.Ref.Entity, targetCols: []string{c.Ref.Column}}
 		out[c.Name] = fk
 	}
+	for _, fk := range m.ExternalFKs {
+		if fk.Entity != e.Name {
+			continue
+		}
+		name := fk.Name
+		if name == "" {
+			name = "fk_" + strings.ReplaceAll(e.Table, ".", "_") + "_" + strings.Join(fk.Columns, "_")
+		}
+		matched := false
+		for key, existing := range out {
+			target := existing.target
+			if targetEntity := m.Entities[target]; targetEntity != nil {
+				target = targetEntity.Table
+			}
+			if target == fk.TargetTable && stringSlicesEqual(existing.columns, fk.Columns) && stringSlicesEqual(existing.targetCols, fk.TargetCols) {
+				existing.name, existing.deferred = name, fk.Deferred
+				out[key], matched = existing, true
+				break
+			}
+		}
+		if matched {
+			continue
+		}
+		key := "external:" + strings.Join(fk.Columns, "\x1f") + "\x1e" + fk.TargetTable
+		out[key] = diffForeignKey{name: name, columns: append([]string(nil), fk.Columns...), target: fk.TargetTable, targetCols: append([]string(nil), fk.TargetCols...), onDelete: fk.OnDelete, deferred: fk.Deferred}
+	}
 	return out
 }
 
-func foreignKeyClause(fk diffForeignKey, m *schema.Manifest, quote func(string) string) string {
+func foreignKeyClause(fk diffForeignKey, m *schema.Manifest, dialect string, quote func(string) string) string {
 	target := fk.target
 	if e := m.Entities[fk.target]; e != nil {
 		target = e.Table
@@ -749,6 +776,9 @@ func foreignKeyClause(fk diffForeignKey, m *schema.Manifest, quote func(string) 
 		stmt += " ON DELETE SET NULL"
 	default:
 		stmt += " ON DELETE RESTRICT"
+	}
+	if fk.deferred && (dialect == "postgres" || dialect == "sqlite") {
+		stmt += " DEFERRABLE INITIALLY DEFERRED"
 	}
 	return stmt
 }
