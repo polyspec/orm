@@ -278,7 +278,7 @@ var ServiceRegionCols = struct {
 	Name:       orm.ColRef{Column: "name"},
 }
 
-// ServiceRegionQuery builds a statement over service_region: ServiceRegion() → Using(ctx, db) → chain → terminal().
+// ServiceRegionQuery builds a statement over service_region: ServiceRegion() → chain → Using(ctx, db) → terminal().
 type ServiceRegionQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -294,13 +294,20 @@ func (q *ServiceRegionQuery) KeyByFn(fn func(*ServiceRegionRow) orm.Key) *Servic
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *ServiceRegionQuery) Req() *orm.Req { return q.q.Req }
 
-// ServiceRegion starts a query over service_region.
+// ServiceRegion starts a query over service_region. The builder may be configured
+// before Using; the bound ORM executor supplies the schema engine at Using.
 func ServiceRegion() *ServiceRegionQuery {
-	return &ServiceRegionQuery{q: orm.NewQ(mustEngine(), "service_region")}
+	return &ServiceRegionQuery{q: orm.NewQ(eng, "service_region")}
 }
 
 // Using selects the context and pool or transaction for this query.
 func (q *ServiceRegionQuery) Using(ctx context.Context, ex orm.Exec) *ServiceRegionQuery {
+	if q.q == nil && ex != nil {
+		q.q = orm.NewQ(eng, "service_region")
+	}
+	if q.q != nil && ex != nil && ex.DB() != nil {
+		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
+	}
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
@@ -675,6 +682,38 @@ func (q *ServiceRegionQuery) NameNotEq(v string) *ServiceRegionQuery {
 	q.q.W().Pred("name", "not_eq", v)
 	return q
 }
+func (w *ServiceRegionWhere) NameGt(v string) *ServiceRegionWhere {
+	w.w.Pred("name", "gt", v)
+	return w
+}
+func (q *ServiceRegionQuery) NameGt(v string) *ServiceRegionQuery {
+	q.q.W().Pred("name", "gt", v)
+	return q
+}
+func (w *ServiceRegionWhere) NameGte(v string) *ServiceRegionWhere {
+	w.w.Pred("name", "gte", v)
+	return w
+}
+func (q *ServiceRegionQuery) NameGte(v string) *ServiceRegionQuery {
+	q.q.W().Pred("name", "gte", v)
+	return q
+}
+func (w *ServiceRegionWhere) NameLt(v string) *ServiceRegionWhere {
+	w.w.Pred("name", "lt", v)
+	return w
+}
+func (q *ServiceRegionQuery) NameLt(v string) *ServiceRegionQuery {
+	q.q.W().Pred("name", "lt", v)
+	return q
+}
+func (w *ServiceRegionWhere) NameLte(v string) *ServiceRegionWhere {
+	w.w.Pred("name", "lte", v)
+	return w
+}
+func (q *ServiceRegionQuery) NameLte(v string) *ServiceRegionQuery {
+	q.q.W().Pred("name", "lte", v)
+	return q
+}
 func (w *ServiceRegionWhere) NameIn(vs []string) *ServiceRegionWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
@@ -761,6 +800,38 @@ func (w *ServiceRegionWhere) NameNotEqCol(ref orm.ColRef) *ServiceRegionWhere {
 }
 func (q *ServiceRegionQuery) NameNotEqCol(ref orm.ColRef) *ServiceRegionQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) NameGtCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("name", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegionQuery) NameGtCol(ref orm.ColRef) *ServiceRegionQuery {
+	q.q.W().PredCol("name", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) NameGteCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("name", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegionQuery) NameGteCol(ref orm.ColRef) *ServiceRegionQuery {
+	q.q.W().PredCol("name", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) NameLtCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("name", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegionQuery) NameLtCol(ref orm.ColRef) *ServiceRegionQuery {
+	q.q.W().PredCol("name", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceRegionWhere) NameLteCol(ref orm.ColRef) *ServiceRegionWhere {
+	w.w.PredCol("name", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceRegionQuery) NameLteCol(ref orm.ColRef) *ServiceRegionQuery {
+	q.q.W().PredCol("name", "lte_col", ref.Path, ref.Column)
 	return q
 }
 
@@ -1073,7 +1144,12 @@ func (q *ServiceRegionQuery) Limit(offset, count int) *ServiceRegionQuery {
 }
 func (q *ServiceRegionQuery) ForUpdate() *ServiceRegionQuery { q.q.Lock("update"); return q }
 func (q *ServiceRegionQuery) ForShare() *ServiceRegionQuery  { q.q.Lock("share"); return q }
-func (q *ServiceRegionQuery) Distinct() *ServiceRegionQuery  { q.q.Node.Distinct = true; return q }
+func (q *ServiceRegionQuery) ForUpdateNoWait() *ServiceRegionQuery {
+	q.q.Lock("update_nowait")
+	return q
+}
+func (q *ServiceRegionQuery) ForShareNoWait() *ServiceRegionQuery { q.q.Lock("share_nowait"); return q }
+func (q *ServiceRegionQuery) Distinct() *ServiceRegionQuery       { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
 func (q *ServiceRegionQuery) Flatten() *ServiceRegionQuery { q.q.Node.Flatten = true; return q }
@@ -1706,6 +1782,9 @@ func (q *ServiceRegionQuery) batchWrite(rows []*ServiceRegionQuery, kind string,
 	for i, row := range rows {
 		if row == nil || row.q == nil {
 			return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"}
+		}
+		if ex.DB() != nil {
+			row.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 		}
 		requests[i] = row.q.Req
 	}

@@ -253,7 +253,7 @@ var CompositeAccountCols = struct {
 	Name:      orm.ColRef{Column: "name"},
 }
 
-// CompositeAccountQuery builds a statement over composite_account: CompositeAccount() → Using(ctx, db) → chain → terminal().
+// CompositeAccountQuery builds a statement over composite_account: CompositeAccount() → chain → Using(ctx, db) → terminal().
 type CompositeAccountQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -269,13 +269,20 @@ func (q *CompositeAccountQuery) KeyByFn(fn func(*CompositeAccountRow) orm.Key) *
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *CompositeAccountQuery) Req() *orm.Req { return q.q.Req }
 
-// CompositeAccount starts a query over composite_account.
+// CompositeAccount starts a query over composite_account. The builder may be configured
+// before Using; the bound ORM executor supplies the schema engine at Using.
 func CompositeAccount() *CompositeAccountQuery {
-	return &CompositeAccountQuery{q: orm.NewQ(mustEngine(), "composite_account")}
+	return &CompositeAccountQuery{q: orm.NewQ(eng, "composite_account")}
 }
 
 // Using selects the context and pool or transaction for this query.
 func (q *CompositeAccountQuery) Using(ctx context.Context, ex orm.Exec) *CompositeAccountQuery {
+	if q.q == nil && ex != nil {
+		q.q = orm.NewQ(eng, "composite_account")
+	}
+	if q.q != nil && ex != nil && ex.DB() != nil {
+		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
+	}
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
@@ -629,6 +636,38 @@ func (q *CompositeAccountQuery) NameNotEq(v string) *CompositeAccountQuery {
 	q.q.W().Pred("name", "not_eq", v)
 	return q
 }
+func (w *CompositeAccountWhere) NameGt(v string) *CompositeAccountWhere {
+	w.w.Pred("name", "gt", v)
+	return w
+}
+func (q *CompositeAccountQuery) NameGt(v string) *CompositeAccountQuery {
+	q.q.W().Pred("name", "gt", v)
+	return q
+}
+func (w *CompositeAccountWhere) NameGte(v string) *CompositeAccountWhere {
+	w.w.Pred("name", "gte", v)
+	return w
+}
+func (q *CompositeAccountQuery) NameGte(v string) *CompositeAccountQuery {
+	q.q.W().Pred("name", "gte", v)
+	return q
+}
+func (w *CompositeAccountWhere) NameLt(v string) *CompositeAccountWhere {
+	w.w.Pred("name", "lt", v)
+	return w
+}
+func (q *CompositeAccountQuery) NameLt(v string) *CompositeAccountQuery {
+	q.q.W().Pred("name", "lt", v)
+	return q
+}
+func (w *CompositeAccountWhere) NameLte(v string) *CompositeAccountWhere {
+	w.w.Pred("name", "lte", v)
+	return w
+}
+func (q *CompositeAccountQuery) NameLte(v string) *CompositeAccountQuery {
+	q.q.W().Pred("name", "lte", v)
+	return q
+}
 func (w *CompositeAccountWhere) NameIn(vs []string) *CompositeAccountWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
@@ -715,6 +754,38 @@ func (w *CompositeAccountWhere) NameNotEqCol(ref orm.ColRef) *CompositeAccountWh
 }
 func (q *CompositeAccountQuery) NameNotEqCol(ref orm.ColRef) *CompositeAccountQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *CompositeAccountWhere) NameGtCol(ref orm.ColRef) *CompositeAccountWhere {
+	w.w.PredCol("name", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *CompositeAccountQuery) NameGtCol(ref orm.ColRef) *CompositeAccountQuery {
+	q.q.W().PredCol("name", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *CompositeAccountWhere) NameGteCol(ref orm.ColRef) *CompositeAccountWhere {
+	w.w.PredCol("name", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *CompositeAccountQuery) NameGteCol(ref orm.ColRef) *CompositeAccountQuery {
+	q.q.W().PredCol("name", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *CompositeAccountWhere) NameLtCol(ref orm.ColRef) *CompositeAccountWhere {
+	w.w.PredCol("name", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *CompositeAccountQuery) NameLtCol(ref orm.ColRef) *CompositeAccountQuery {
+	q.q.W().PredCol("name", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *CompositeAccountWhere) NameLteCol(ref orm.ColRef) *CompositeAccountWhere {
+	w.w.PredCol("name", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *CompositeAccountQuery) NameLteCol(ref orm.ColRef) *CompositeAccountQuery {
+	q.q.W().PredCol("name", "lte_col", ref.Path, ref.Column)
 	return q
 }
 
@@ -978,7 +1049,15 @@ func (q *CompositeAccountQuery) Limit(offset, count int) *CompositeAccountQuery 
 }
 func (q *CompositeAccountQuery) ForUpdate() *CompositeAccountQuery { q.q.Lock("update"); return q }
 func (q *CompositeAccountQuery) ForShare() *CompositeAccountQuery  { q.q.Lock("share"); return q }
-func (q *CompositeAccountQuery) Distinct() *CompositeAccountQuery  { q.q.Node.Distinct = true; return q }
+func (q *CompositeAccountQuery) ForUpdateNoWait() *CompositeAccountQuery {
+	q.q.Lock("update_nowait")
+	return q
+}
+func (q *CompositeAccountQuery) ForShareNoWait() *CompositeAccountQuery {
+	q.q.Lock("share_nowait")
+	return q
+}
+func (q *CompositeAccountQuery) Distinct() *CompositeAccountQuery { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
 func (q *CompositeAccountQuery) Flatten() *CompositeAccountQuery { q.q.Node.Flatten = true; return q }
@@ -1536,6 +1615,9 @@ func (q *CompositeAccountQuery) batchWrite(rows []*CompositeAccountQuery, kind s
 	for i, row := range rows {
 		if row == nil || row.q == nil {
 			return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"}
+		}
+		if ex.DB() != nil {
+			row.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 		}
 		requests[i] = row.q.Req
 	}

@@ -1301,7 +1301,7 @@ var AuthorCols = struct {
 	SerializeData:         orm.ColRef{Column: "serialize_data"},
 }
 
-// AuthorQuery builds a statement over author: Author() → Using(ctx, db) → chain → terminal().
+// AuthorQuery builds a statement over author: Author() → chain → Using(ctx, db) → terminal().
 type AuthorQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -1314,11 +1314,18 @@ func (q *AuthorQuery) KeyByFn(fn func(*AuthorRow) orm.Key) *AuthorQuery { q.keyF
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *AuthorQuery) Req() *orm.Req { return q.q.Req }
 
-// Author starts a query over author.
-func Author() *AuthorQuery { return &AuthorQuery{q: orm.NewQ(mustEngine(), "author")} }
+// Author starts a query over author. The builder may be configured
+// before Using; the bound ORM executor supplies the schema engine at Using.
+func Author() *AuthorQuery { return &AuthorQuery{q: orm.NewQ(eng, "author")} }
 
 // Using selects the context and pool or transaction for this query.
 func (q *AuthorQuery) Using(ctx context.Context, ex orm.Exec) *AuthorQuery {
+	if q.q == nil && ex != nil {
+		q.q = orm.NewQ(eng, "author")
+	}
+	if q.q != nil && ex != nil && ex.DB() != nil {
+		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
+	}
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
@@ -1607,6 +1614,14 @@ func (w *AuthorWhere) Name(v string) *AuthorWhere      { return w.NameEq(v) }
 func (q *AuthorQuery) Name(v string) *AuthorQuery      { return q.NameEq(v) }
 func (w *AuthorWhere) NameNotEq(v string) *AuthorWhere { w.w.Pred("name", "not_eq", v); return w }
 func (q *AuthorQuery) NameNotEq(v string) *AuthorQuery { q.q.W().Pred("name", "not_eq", v); return q }
+func (w *AuthorWhere) NameGt(v string) *AuthorWhere    { w.w.Pred("name", "gt", v); return w }
+func (q *AuthorQuery) NameGt(v string) *AuthorQuery    { q.q.W().Pred("name", "gt", v); return q }
+func (w *AuthorWhere) NameGte(v string) *AuthorWhere   { w.w.Pred("name", "gte", v); return w }
+func (q *AuthorQuery) NameGte(v string) *AuthorQuery   { q.q.W().Pred("name", "gte", v); return q }
+func (w *AuthorWhere) NameLt(v string) *AuthorWhere    { w.w.Pred("name", "lt", v); return w }
+func (q *AuthorQuery) NameLt(v string) *AuthorQuery    { q.q.W().Pred("name", "lt", v); return q }
+func (w *AuthorWhere) NameLte(v string) *AuthorWhere   { w.w.Pred("name", "lte", v); return w }
+func (q *AuthorQuery) NameLte(v string) *AuthorQuery   { q.q.W().Pred("name", "lte", v); return q }
 func (w *AuthorWhere) NameIn(vs []string) *AuthorWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
@@ -1671,6 +1686,38 @@ func (q *AuthorQuery) NameNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
+func (w *AuthorWhere) NameGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("name", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) NameGtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("name", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) NameGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("name", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) NameGteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("name", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) NameLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("name", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) NameLtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("name", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) NameLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("name", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) NameLteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("name", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) DescriptionEq(v string) *AuthorWhere {
 	w.w.Pred("description", "eq", v)
 	return w
@@ -1687,6 +1734,38 @@ func (w *AuthorWhere) DescriptionNotEq(v string) *AuthorWhere {
 }
 func (q *AuthorQuery) DescriptionNotEq(v string) *AuthorQuery {
 	q.q.W().Pred("description", "not_eq", v)
+	return q
+}
+func (w *AuthorWhere) DescriptionGt(v string) *AuthorWhere {
+	w.w.Pred("description", "gt", v)
+	return w
+}
+func (q *AuthorQuery) DescriptionGt(v string) *AuthorQuery {
+	q.q.W().Pred("description", "gt", v)
+	return q
+}
+func (w *AuthorWhere) DescriptionGte(v string) *AuthorWhere {
+	w.w.Pred("description", "gte", v)
+	return w
+}
+func (q *AuthorQuery) DescriptionGte(v string) *AuthorQuery {
+	q.q.W().Pred("description", "gte", v)
+	return q
+}
+func (w *AuthorWhere) DescriptionLt(v string) *AuthorWhere {
+	w.w.Pred("description", "lt", v)
+	return w
+}
+func (q *AuthorQuery) DescriptionLt(v string) *AuthorQuery {
+	q.q.W().Pred("description", "lt", v)
+	return q
+}
+func (w *AuthorWhere) DescriptionLte(v string) *AuthorWhere {
+	w.w.Pred("description", "lte", v)
+	return w
+}
+func (q *AuthorQuery) DescriptionLte(v string) *AuthorQuery {
+	q.q.W().Pred("description", "lte", v)
 	return q
 }
 func (w *AuthorWhere) DescriptionLike(v string) *AuthorWhere {
@@ -1759,6 +1838,38 @@ func (w *AuthorWhere) DescriptionNotEqCol(ref orm.ColRef) *AuthorWhere {
 }
 func (q *AuthorQuery) DescriptionNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("description", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DescriptionGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("description", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) DescriptionGtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("description", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DescriptionGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("description", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) DescriptionGteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("description", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DescriptionLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("description", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) DescriptionLtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("description", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) DescriptionLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("description", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) DescriptionLteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("description", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) CreatedTsEq(v time.Time) *AuthorWhere {
@@ -2974,6 +3085,20 @@ func (q *AuthorQuery) PhotoUrlNotEq(v string) *AuthorQuery {
 	q.q.W().Pred("photo_url", "not_eq", v)
 	return q
 }
+func (w *AuthorWhere) PhotoUrlGt(v string) *AuthorWhere  { w.w.Pred("photo_url", "gt", v); return w }
+func (q *AuthorQuery) PhotoUrlGt(v string) *AuthorQuery  { q.q.W().Pred("photo_url", "gt", v); return q }
+func (w *AuthorWhere) PhotoUrlGte(v string) *AuthorWhere { w.w.Pred("photo_url", "gte", v); return w }
+func (q *AuthorQuery) PhotoUrlGte(v string) *AuthorQuery {
+	q.q.W().Pred("photo_url", "gte", v)
+	return q
+}
+func (w *AuthorWhere) PhotoUrlLt(v string) *AuthorWhere  { w.w.Pred("photo_url", "lt", v); return w }
+func (q *AuthorQuery) PhotoUrlLt(v string) *AuthorQuery  { q.q.W().Pred("photo_url", "lt", v); return q }
+func (w *AuthorWhere) PhotoUrlLte(v string) *AuthorWhere { w.w.Pred("photo_url", "lte", v); return w }
+func (q *AuthorQuery) PhotoUrlLte(v string) *AuthorQuery {
+	q.q.W().Pred("photo_url", "lte", v)
+	return q
+}
 func (w *AuthorWhere) PhotoUrlIn(vs []string) *AuthorWhere {
 	w.w.PredList("photo_url", "in", orm.Anys(vs))
 	return w
@@ -3054,6 +3179,38 @@ func (w *AuthorWhere) PhotoUrlNotEqCol(ref orm.ColRef) *AuthorWhere {
 }
 func (q *AuthorQuery) PhotoUrlNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("photo_url", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PhotoUrlGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("photo_url", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) PhotoUrlGtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("photo_url", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PhotoUrlGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("photo_url", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) PhotoUrlGteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("photo_url", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PhotoUrlLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("photo_url", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) PhotoUrlLtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("photo_url", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PhotoUrlLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("photo_url", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) PhotoUrlLteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("photo_url", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) UserSeqEq(v int64) *AuthorWhere    { w.w.Pred("user_seq", "eq", v); return w }
@@ -3779,6 +3936,14 @@ func (w *AuthorWhere) Uuid(v string) *AuthorWhere      { return w.UuidEq(v) }
 func (q *AuthorQuery) Uuid(v string) *AuthorQuery      { return q.UuidEq(v) }
 func (w *AuthorWhere) UuidNotEq(v string) *AuthorWhere { w.w.Pred("uuid", "not_eq", v); return w }
 func (q *AuthorQuery) UuidNotEq(v string) *AuthorQuery { q.q.W().Pred("uuid", "not_eq", v); return q }
+func (w *AuthorWhere) UuidGt(v string) *AuthorWhere    { w.w.Pred("uuid", "gt", v); return w }
+func (q *AuthorQuery) UuidGt(v string) *AuthorQuery    { q.q.W().Pred("uuid", "gt", v); return q }
+func (w *AuthorWhere) UuidGte(v string) *AuthorWhere   { w.w.Pred("uuid", "gte", v); return w }
+func (q *AuthorQuery) UuidGte(v string) *AuthorQuery   { q.q.W().Pred("uuid", "gte", v); return q }
+func (w *AuthorWhere) UuidLt(v string) *AuthorWhere    { w.w.Pred("uuid", "lt", v); return w }
+func (q *AuthorQuery) UuidLt(v string) *AuthorQuery    { q.q.W().Pred("uuid", "lt", v); return q }
+func (w *AuthorWhere) UuidLte(v string) *AuthorWhere   { w.w.Pred("uuid", "lte", v); return w }
+func (q *AuthorQuery) UuidLte(v string) *AuthorQuery   { q.q.W().Pred("uuid", "lte", v); return q }
 func (w *AuthorWhere) UuidIn(vs []string) *AuthorWhere {
 	w.w.PredList("uuid", "in", orm.Anys(vs))
 	return w
@@ -3841,6 +4006,38 @@ func (w *AuthorWhere) UuidNotEqCol(ref orm.ColRef) *AuthorWhere {
 }
 func (q *AuthorQuery) UuidNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("uuid", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UuidGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("uuid", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) UuidGtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("uuid", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UuidGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("uuid", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) UuidGteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("uuid", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UuidLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("uuid", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) UuidLtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("uuid", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) UuidLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("uuid", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) UuidLteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("uuid", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) IsSingleWorkEq(v bool) *AuthorWhere {
@@ -4235,6 +4432,38 @@ func (q *AuthorQuery) EmailBlindIndexNotEq(v string) *AuthorQuery {
 	q.q.W().Pred("email_blind_index", "not_eq", v)
 	return q
 }
+func (w *AuthorWhere) EmailBlindIndexGt(v string) *AuthorWhere {
+	w.w.Pred("email_blind_index", "gt", v)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexGt(v string) *AuthorQuery {
+	q.q.W().Pred("email_blind_index", "gt", v)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexGte(v string) *AuthorWhere {
+	w.w.Pred("email_blind_index", "gte", v)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexGte(v string) *AuthorQuery {
+	q.q.W().Pred("email_blind_index", "gte", v)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexLt(v string) *AuthorWhere {
+	w.w.Pred("email_blind_index", "lt", v)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexLt(v string) *AuthorQuery {
+	q.q.W().Pred("email_blind_index", "lt", v)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexLte(v string) *AuthorWhere {
+	w.w.Pred("email_blind_index", "lte", v)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexLte(v string) *AuthorQuery {
+	q.q.W().Pred("email_blind_index", "lte", v)
+	return q
+}
 func (w *AuthorWhere) EmailBlindIndexIn(vs []string) *AuthorWhere {
 	w.w.PredList("email_blind_index", "in", orm.Anys(vs))
 	return w
@@ -4323,6 +4552,38 @@ func (q *AuthorQuery) EmailBlindIndexNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("email_blind_index", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
+func (w *AuthorWhere) EmailBlindIndexGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("email_blind_index", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexGtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("email_blind_index", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("email_blind_index", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexGteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("email_blind_index", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("email_blind_index", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexLtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("email_blind_index", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) EmailBlindIndexLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("email_blind_index", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) EmailBlindIndexLteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("email_blind_index", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *AuthorWhere) AesHexPhoneEq(v string) *AuthorWhere {
 	w.w.Pred("aes_hex_phone", "eq", v)
 	return w
@@ -4405,6 +4666,38 @@ func (w *AuthorWhere) PhoneBlindIndexNotEq(v string) *AuthorWhere {
 }
 func (q *AuthorQuery) PhoneBlindIndexNotEq(v string) *AuthorQuery {
 	q.q.W().Pred("phone_blind_index", "not_eq", v)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexGt(v string) *AuthorWhere {
+	w.w.Pred("phone_blind_index", "gt", v)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexGt(v string) *AuthorQuery {
+	q.q.W().Pred("phone_blind_index", "gt", v)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexGte(v string) *AuthorWhere {
+	w.w.Pred("phone_blind_index", "gte", v)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexGte(v string) *AuthorQuery {
+	q.q.W().Pred("phone_blind_index", "gte", v)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexLt(v string) *AuthorWhere {
+	w.w.Pred("phone_blind_index", "lt", v)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexLt(v string) *AuthorQuery {
+	q.q.W().Pred("phone_blind_index", "lt", v)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexLte(v string) *AuthorWhere {
+	w.w.Pred("phone_blind_index", "lte", v)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexLte(v string) *AuthorQuery {
+	q.q.W().Pred("phone_blind_index", "lte", v)
 	return q
 }
 func (w *AuthorWhere) PhoneBlindIndexIn(vs []string) *AuthorWhere {
@@ -4493,6 +4786,38 @@ func (w *AuthorWhere) PhoneBlindIndexNotEqCol(ref orm.ColRef) *AuthorWhere {
 }
 func (q *AuthorQuery) PhoneBlindIndexNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("phone_blind_index", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexGtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("phone_blind_index", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexGtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("phone_blind_index", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexGteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("phone_blind_index", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexGteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("phone_blind_index", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexLtCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("phone_blind_index", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexLtCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("phone_blind_index", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AuthorWhere) PhoneBlindIndexLteCol(ref orm.ColRef) *AuthorWhere {
+	w.w.PredCol("phone_blind_index", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AuthorQuery) PhoneBlindIndexLteCol(ref orm.ColRef) *AuthorQuery {
+	q.q.W().PredCol("phone_blind_index", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *AuthorWhere) PriceEq(v float64) *AuthorWhere    { w.w.Pred("price", "eq", v); return w }
@@ -6103,10 +6428,12 @@ func (q *AuthorQuery) Limit(offset, count int) *AuthorQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *AuthorQuery) ForUpdate() *AuthorQuery    { q.q.Lock("update"); return q }
-func (q *AuthorQuery) ForShare() *AuthorQuery     { q.q.Lock("share"); return q }
-func (q *AuthorQuery) Distinct() *AuthorQuery     { q.q.Node.Distinct = true; return q }
-func (q *AuthorQuery) ForceIndexIk() *AuthorQuery { q.q.Node.ForceIdx = "ik"; return q }
+func (q *AuthorQuery) ForUpdate() *AuthorQuery       { q.q.Lock("update"); return q }
+func (q *AuthorQuery) ForShare() *AuthorQuery        { q.q.Lock("share"); return q }
+func (q *AuthorQuery) ForUpdateNoWait() *AuthorQuery { q.q.Lock("update_nowait"); return q }
+func (q *AuthorQuery) ForShareNoWait() *AuthorQuery  { q.q.Lock("share_nowait"); return q }
+func (q *AuthorQuery) Distinct() *AuthorQuery        { q.q.Node.Distinct = true; return q }
+func (q *AuthorQuery) ForceIndexIk() *AuthorQuery    { q.q.Node.ForceIdx = "ik"; return q }
 func (q *AuthorQuery) ForceIndexIxEmailBlindIndex() *AuthorQuery {
 	q.q.Node.ForceIdx = "ix_email_blind_index"
 	return q
@@ -8770,6 +9097,9 @@ func (q *AuthorQuery) batchWrite(rows []*AuthorQuery, kind string, options orm.B
 	for i, row := range rows {
 		if row == nil || row.q == nil {
 			return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"}
+		}
+		if ex.DB() != nil {
+			row.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 		}
 		requests[i] = row.q.Req
 	}

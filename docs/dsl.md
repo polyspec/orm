@@ -130,7 +130,8 @@ Use `orderBy<Col>Asc`, `orderBy<Col>Desc`, `groupBy<Col>`, `groupByExpr`, `havin
 
 | Terminal | Return |
 |---|---|
-| `get()` | one row or null |
+| `get()` | one row; `NO_ROWS` when absent |
+| `getOrNull()` / `get_or_none()` | optional row |
 | `gets()` | collection of rows |
 | `getCount()` | integer count |
 | `getsCount()` | grouped count rows |

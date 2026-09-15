@@ -520,6 +520,8 @@ impl ServiceMember {
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
     pub fn for_update(mut self) -> Self { self.q.lock("update"); self }
     pub fn for_share(mut self) -> Self { self.q.lock("share"); self }
+    pub fn for_update_no_wait(mut self) -> Self { self.q.lock("update_nowait"); self }
+    pub fn for_share_no_wait(mut self) -> Self { self.q.lock("share_nowait"); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
     /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
     pub fn having(mut self, f: impl FnOnce(ServiceMemberWhere<'_>) -> ServiceMemberWhere<'_>) -> Self { { let w = self.q.having_w(); f(ServiceMemberWhere { w }); } self }
@@ -581,7 +583,9 @@ impl ServiceMember {
     pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&["seq"]); self }
 
     // ---- terminals ----
-    pub async fn get(&mut self) -> Result<Option<ServiceMemberRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn get(&mut self) -> Result<ServiceMemberRow> { let row = self.get_or_none().await?; row.ok_or(orm::Error::NoRows) }
+
+    pub async fn get_or_none(&mut self) -> Result<Option<ServiceMemberRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
         Ok(match rows.take_cells().into_iter().next() {
             Some(mut src) => Some(ServiceMemberRow::from_row(&mut src, &rows.assemble, &rows)?),
@@ -709,7 +713,7 @@ impl ServiceMember {
 
     pub async fn insert(&mut self) -> Result<Option<ServiceMemberRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
-        super::service_member::query().using(ex).seq_eq(id as i64).get().await
+        super::service_member::query().using(ex).seq_eq(id as i64).get_or_none().await
     }
 
     /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
@@ -719,7 +723,7 @@ impl ServiceMember {
                 db::write(ex, &mut self.q.req, "update").await?;
                 let mut q = super::service_member::query().using(ex);
                 for (column, value) in ["seq"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.get().await
+                q.get_or_none().await
             }
             None => self.insert().await,
         }
@@ -754,7 +758,7 @@ impl ServiceMember {
 
     pub async fn get_by_seq(&mut self, v: i64) -> Result<Option<ServiceMemberRow>> {
         self.q.w().pred("seq", "eq", v);
-        self.get().await
+        self.get_or_none().await
     }
 
 }

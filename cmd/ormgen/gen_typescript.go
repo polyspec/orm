@@ -254,7 +254,8 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		for _, link := range ge.Links {
 			fmt.Fprintf(&b, "  public %s(): this { return this.matchKeys(%s,%s); }\n  public %s(): this { return this.matchKeys(%s,%s); }\n", tsMethod(link.Match), tsString(link.Left), tsString(link.Right), tsMethod(link.On), tsString(link.Left), tsString(link.Right))
 		}
-		b.WriteString("  public async get(): Promise<" + ge.Type + "Row | null> { return await this.terminal('one') as " + ge.Type + "Row | null; }\n")
+		b.WriteString("  public async get(): Promise<" + ge.Type + "Row> { const row=await this.getOrNull(); if (row===null) throw new OrmError('NO_ROWS','query returned no rows'); return row; }\n")
+		b.WriteString("  public async getOrNull(): Promise<" + ge.Type + "Row | null> { return await this.terminal('one') as " + ge.Type + "Row | null; }\n")
 		b.WriteString("  public async gets(): Promise<Collection<" + ge.Type + "Row>> { const rows=await this.terminal('all') as Collection<" + ge.Type + "Row>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }\n")
 		b.WriteString("  public async stream(visitor: (row: " + ge.Type + "Row) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<" + ge.Type + "Row>(visitor); }\n")
 		b.WriteString("  public async getCount(): Promise<number> { return Number(await this.terminal('count')); }\n")

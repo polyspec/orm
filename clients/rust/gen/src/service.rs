@@ -287,6 +287,10 @@ impl<'a> ServiceWhere<'a> {
     pub fn name_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "eq", v.into()); self }
     pub fn name(self, v: impl Into<String>) -> Self { self.name_eq(v) }
     pub fn name_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "not_eq", v.into()); self }
+    pub fn name_gt(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "gt", v.into()); self }
+    pub fn name_gte(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "gte", v.into()); self }
+    pub fn name_lt(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "lt", v.into()); self }
+    pub fn name_lte(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "lte", v.into()); self }
     pub fn name_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("name", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn name_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("name", "not_in", vs.into_iter().map(Into::into).collect()); self }
     pub fn name_like(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "like", v.into()); self }
@@ -298,6 +302,10 @@ impl<'a> ServiceWhere<'a> {
     pub fn name_is_not_null(mut self) -> Self { self.w.pred_null("name", "is_not_null"); self }
     pub fn name_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "eq_col", r); self }
     pub fn name_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "not_eq_col", r); self }
+    pub fn name_gt_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "gt_col", r); self }
+    pub fn name_gte_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "gte_col", r); self }
+    pub fn name_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "lt_col", r); self }
+    pub fn name_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "lte_col", r); self }
 }
 
 /// Query over service: query() → using(&db) → chain → terminal().await.
@@ -372,6 +380,10 @@ impl Service {
     pub fn name_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "eq", v.into()); self }
     pub fn name(self, v: impl Into<String>) -> Self { self.name_eq(v) }
     pub fn name_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "not_eq", v.into()); self }
+    pub fn name_gt(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "gt", v.into()); self }
+    pub fn name_gte(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "gte", v.into()); self }
+    pub fn name_lt(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "lt", v.into()); self }
+    pub fn name_lte(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "lte", v.into()); self }
     pub fn name_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("name", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn name_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("name", "not_in", vs.into_iter().map(Into::into).collect()); self }
     pub fn name_like(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "like", v.into()); self }
@@ -383,6 +395,10 @@ impl Service {
     pub fn name_is_not_null(mut self) -> Self { self.q.w().pred_null("name", "is_not_null"); self }
     pub fn name_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "eq_col", r); self }
     pub fn name_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "not_eq_col", r); self }
+    pub fn name_gt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "gt_col", r); self }
+    pub fn name_gte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "gte_col", r); self }
+    pub fn name_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "lt_col", r); self }
+    pub fn name_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "lte_col", r); self }
 
     // ---- join children: on() = ON, where_() = parent WHERE group ----
     pub fn on(mut self, f: impl FnOnce(ServiceWhere<'_>) -> ServiceWhere<'_>) -> Self { { let w = self.q.on_w(); f(ServiceWhere { w }); } self }
@@ -458,6 +474,8 @@ impl Service {
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
     pub fn for_update(mut self) -> Self { self.q.lock("update"); self }
     pub fn for_share(mut self) -> Self { self.q.lock("share"); self }
+    pub fn for_update_no_wait(mut self) -> Self { self.q.lock("update_nowait"); self }
+    pub fn for_share_no_wait(mut self) -> Self { self.q.lock("share_nowait"); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
     /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
     pub fn having(mut self, f: impl FnOnce(ServiceWhere<'_>) -> ServiceWhere<'_>) -> Self { { let w = self.q.having_w(); f(ServiceWhere { w }); } self }
@@ -507,7 +525,9 @@ impl Service {
     pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&["seq"]); self }
 
     // ---- terminals ----
-    pub async fn get(&mut self) -> Result<Option<ServiceRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn get(&mut self) -> Result<ServiceRow> { let row = self.get_or_none().await?; row.ok_or(orm::Error::NoRows) }
+
+    pub async fn get_or_none(&mut self) -> Result<Option<ServiceRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
         Ok(match rows.take_cells().into_iter().next() {
             Some(mut src) => Some(ServiceRow::from_row(&mut src, &rows.assemble, &rows)?),
@@ -614,7 +634,7 @@ impl Service {
 
     pub async fn insert(&mut self) -> Result<Option<ServiceRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
-        super::service::query().using(ex).seq_eq(id as i64).get().await
+        super::service::query().using(ex).seq_eq(id as i64).get_or_none().await
     }
 
     /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
@@ -624,7 +644,7 @@ impl Service {
                 db::write(ex, &mut self.q.req, "update").await?;
                 let mut q = super::service::query().using(ex);
                 for (column, value) in ["seq"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.get().await
+                q.get_or_none().await
             }
             None => self.insert().await,
         }
@@ -659,7 +679,7 @@ impl Service {
 
     pub async fn get_by_seq(&mut self, v: i64) -> Result<Option<ServiceRow>> {
         self.q.w().pred("seq", "eq", v);
-        self.get().await
+        self.get_or_none().await
     }
 
 }

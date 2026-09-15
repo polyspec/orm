@@ -316,6 +316,8 @@ final class ServiceMember extends Q implements ServiceMemberInterface
     public function limit(int $offset, int $count): static { $this->setLimit($offset, $count); return $this; }
     public function forUpdate(): static { $this->lock('update'); return $this; }
     public function forShare(): static { $this->lock('share'); return $this; }
+    public function forUpdateNoWait(): static { $this->lock('update_nowait'); return $this; }
+    public function forShareNoWait(): static { $this->lock('share_nowait'); return $this; }
     public function distinct(): static { $this->opt('distinct', true); return $this; }
 
     // ---- relation-child options ----
@@ -372,7 +374,14 @@ final class ServiceMember extends Q implements ServiceMemberInterface
     public function onDuplicateMinusUserSeq(int $v): static { $this->onDuplicateMinus('user_seq', $v); return $this; }
 
     // ---- terminals ----
-    public function get(): ?ServiceMemberRow
+    public function get(): ServiceMemberRow
+    {
+        $row = $this->getOrNull();
+        if ($row === null) throw new \Orm\OrmException(\Orm\Code::NO_ROWS, 'query returned no rows');
+        return $row;
+    }
+
+    public function getOrNull(): ?ServiceMemberRow
     {
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();

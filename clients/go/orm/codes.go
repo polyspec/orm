@@ -25,6 +25,7 @@ const (
 	CodeEntityNotJoined = "ENTITY_NOT_JOINED" // engine: nav into a relation that was not joined in this statement
 	CodeLimitInRelation = "LIMIT_IN_RELATION" // engine: limit() on a relation child (use limitPerParent)
 	CodeCursorInvalid = "CURSOR_INVALID" // engine: keyset cursor version, order, or typed value is invalid
+	CodeNoRows = "NO_ROWS" // executor: strict one-row query matched no row
 	CodeOptimisticLock = "OPTIMISTIC_LOCK" // executor: updateOptimistic matched no row (updated_ts changed)
 	CodeCodecDecode = "CODEC_DECODE" // executor: styled column bytes could not be decoded (docs/codec.md)
 	CodeCodecEncode = "CODEC_ENCODE" // executor

@@ -40,6 +40,8 @@ pub enum Error {
     Engine { code: String, msg: String },
     /// Driver error.
     Sqlx(sqlx::Error),
+    /// A strict one-row query matched no row.
+    NoRows,
     /// Update with optimistic locking matched no row.
     OptimisticLock,
     /// Executor configuration problem (missing AES key, bad transform input, …).
@@ -51,6 +53,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::Engine { code, msg } => write!(f, "{code}: {msg}"),
             Error::Sqlx(e) => write!(f, "sqlx: {e}"),
+            Error::NoRows => write!(f, "{}: query returned no rows", codes::NO_ROWS),
             Error::OptimisticLock => write!(
                 f,
                 "{}: row changed since it was read",
@@ -119,6 +122,7 @@ impl Error {
         match self {
             Error::Engine { code, .. } => code,
             Error::Sqlx(_) => "SQLX",
+            Error::NoRows => codes::NO_ROWS,
             Error::OptimisticLock => codes::OPTIMISTIC_LOCK,
             Error::Config(_) => codes::CONFIG,
         }

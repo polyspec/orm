@@ -340,6 +340,8 @@ impl AccountProject {
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
     pub fn for_update(mut self) -> Self { self.q.lock("update"); self }
     pub fn for_share(mut self) -> Self { self.q.lock("share"); self }
+    pub fn for_update_no_wait(mut self) -> Self { self.q.lock("update_nowait"); self }
+    pub fn for_share_no_wait(mut self) -> Self { self.q.lock("share_nowait"); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
     /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
     pub fn having(mut self, f: impl FnOnce(AccountProjectWhere<'_>) -> AccountProjectWhere<'_>) -> Self { { let w = self.q.having_w(); f(AccountProjectWhere { w }); } self }
@@ -368,7 +370,9 @@ impl AccountProject {
     pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&["account_seq", "project_seq"]); self }
 
     // ---- terminals ----
-    pub async fn get(&mut self) -> Result<Option<AccountProjectRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn get(&mut self) -> Result<AccountProjectRow> { let row = self.get_or_none().await?; row.ok_or(orm::Error::NoRows) }
+
+    pub async fn get_or_none(&mut self) -> Result<Option<AccountProjectRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
         Ok(match rows.take_cells().into_iter().next() {
             Some(mut src) => Some(AccountProjectRow::from_row(&mut src, &rows.assemble, &rows)?),
@@ -481,7 +485,7 @@ impl AccountProject {
         let _ = id;
         let mut query = super::account_project::query().using(ex);
         for (column, value) in ["account_seq", "project_seq"].iter().zip(keys) { query.q.w().pred(column, "eq", value); }
-        query.get().await
+        query.get_or_none().await
     }
 
     /// With set_account_seq: UPDATE the other set columns WHERE account_seq = that value and re-read the row; otherwise INSERT.
@@ -491,7 +495,7 @@ impl AccountProject {
                 db::write(ex, &mut self.q.req, "update").await?;
                 let mut q = super::account_project::query().using(ex);
                 for (column, value) in ["account_seq", "project_seq"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.get().await
+                q.get_or_none().await
             }
             None => self.insert().await,
         }
@@ -526,11 +530,11 @@ impl AccountProject {
 
     pub async fn get_by_account_seq(&mut self, v: i64) -> Result<Option<AccountProjectRow>> {
         self.q.w().pred("account_seq", "eq", v);
-        self.get().await
+        self.get_or_none().await
     }
     pub async fn get_by_account_seq_and_project_seq(&mut self, v0: i64, v1: i64) -> Result<Option<AccountProjectRow>> {
         self.q.w().pred("account_seq", "eq", v0); self.q.w().pred("project_seq", "eq", v1);
-        self.get().await
+        self.get_or_none().await
     }
 
 }

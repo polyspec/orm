@@ -761,12 +761,12 @@ func (q *{{.Type}}Query) Req() *orm.Req { return q.q.Req }
 
 // {{.Type}} starts a query over {{.Table}}. The builder may be configured
 // before Using; the bound ORM executor supplies the schema engine at Using.
-func {{.Type}}() *{{.Type}}Query { return &{{.Type}}Query{q: orm.NewQ(nil, {{printf "%q" .Name}})} }
+func {{.Type}}() *{{.Type}}Query { return &{{.Type}}Query{q: orm.NewQ(eng, {{printf "%q" .Name}})} }
 
 // Using selects the context and pool or transaction for this query.
 func (q *{{.Type}}Query) Using(ctx context.Context, ex orm.Exec) *{{.Type}}Query {
-	if q.q == nil && ex != nil { q.q = orm.NewQ(nil, {{printf "%q" .Name}}) }
-	if q.q != nil && ex != nil { q.q.BindEngine(ex.DB().Engine()) }
+	if q.q == nil && ex != nil { q.q = orm.NewQ(eng, {{printf "%q" .Name}}) }
+	if q.q != nil && ex != nil && ex.DB() != nil { q.q.BindEngine(ex.DB().EngineFor(SchemaHash)) }
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
@@ -1226,7 +1226,11 @@ func (q *{{.Type}}Query) BatchDelete(rows []*{{.Type}}Query, options orm.BatchOp
 func (q *{{.Type}}Query) batchWrite(rows []*{{.Type}}Query, kind string, options orm.BatchOptions) (orm.BatchResult, error) {
 	ctx, ex, err := q.binding.Resolve(); if err != nil { return orm.BatchResult{}, err }
 	requests := make([]*orm.Req, len(rows))
-	for i, row := range rows { if row == nil || row.q == nil { return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"} }; requests[i] = row.q.Req }
+	for i, row := range rows {
+		if row == nil || row.q == nil { return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"} }
+		if ex.DB() != nil { row.q.BindEngine(ex.DB().EngineFor(SchemaHash)) }
+		requests[i] = row.q.Req
+	}
 	return orm.BatchWrite(ctx, ex, requests, kind, options)
 }
 

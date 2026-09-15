@@ -229,7 +229,7 @@ var SoftRecordCols = struct {
 	DeletedAt: orm.ColRef{Column: "deleted_at"},
 }
 
-// SoftRecordQuery builds a statement over soft_record: SoftRecord() → Using(ctx, db) → chain → terminal().
+// SoftRecordQuery builds a statement over soft_record: SoftRecord() → chain → Using(ctx, db) → terminal().
 type SoftRecordQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -245,11 +245,18 @@ func (q *SoftRecordQuery) KeyByFn(fn func(*SoftRecordRow) orm.Key) *SoftRecordQu
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *SoftRecordQuery) Req() *orm.Req { return q.q.Req }
 
-// SoftRecord starts a query over soft_record.
-func SoftRecord() *SoftRecordQuery { return &SoftRecordQuery{q: orm.NewQ(mustEngine(), "soft_record")} }
+// SoftRecord starts a query over soft_record. The builder may be configured
+// before Using; the bound ORM executor supplies the schema engine at Using.
+func SoftRecord() *SoftRecordQuery { return &SoftRecordQuery{q: orm.NewQ(eng, "soft_record")} }
 
 // Using selects the context and pool or transaction for this query.
 func (q *SoftRecordQuery) Using(ctx context.Context, ex orm.Exec) *SoftRecordQuery {
+	if q.q == nil && ex != nil {
+		q.q = orm.NewQ(eng, "soft_record")
+	}
+	if q.q != nil && ex != nil && ex.DB() != nil {
+		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
+	}
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
@@ -384,6 +391,20 @@ func (q *SoftRecordQuery) NameNotEq(v string) *SoftRecordQuery {
 	q.q.W().Pred("name", "not_eq", v)
 	return q
 }
+func (w *SoftRecordWhere) NameGt(v string) *SoftRecordWhere  { w.w.Pred("name", "gt", v); return w }
+func (q *SoftRecordQuery) NameGt(v string) *SoftRecordQuery  { q.q.W().Pred("name", "gt", v); return q }
+func (w *SoftRecordWhere) NameGte(v string) *SoftRecordWhere { w.w.Pred("name", "gte", v); return w }
+func (q *SoftRecordQuery) NameGte(v string) *SoftRecordQuery {
+	q.q.W().Pred("name", "gte", v)
+	return q
+}
+func (w *SoftRecordWhere) NameLt(v string) *SoftRecordWhere  { w.w.Pred("name", "lt", v); return w }
+func (q *SoftRecordQuery) NameLt(v string) *SoftRecordQuery  { q.q.W().Pred("name", "lt", v); return q }
+func (w *SoftRecordWhere) NameLte(v string) *SoftRecordWhere { w.w.Pred("name", "lte", v); return w }
+func (q *SoftRecordQuery) NameLte(v string) *SoftRecordQuery {
+	q.q.W().Pred("name", "lte", v)
+	return q
+}
 func (w *SoftRecordWhere) NameIn(vs []string) *SoftRecordWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
@@ -464,6 +485,38 @@ func (w *SoftRecordWhere) NameNotEqCol(ref orm.ColRef) *SoftRecordWhere {
 }
 func (q *SoftRecordQuery) NameNotEqCol(ref orm.ColRef) *SoftRecordQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *SoftRecordWhere) NameGtCol(ref orm.ColRef) *SoftRecordWhere {
+	w.w.PredCol("name", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *SoftRecordQuery) NameGtCol(ref orm.ColRef) *SoftRecordQuery {
+	q.q.W().PredCol("name", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *SoftRecordWhere) NameGteCol(ref orm.ColRef) *SoftRecordWhere {
+	w.w.PredCol("name", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *SoftRecordQuery) NameGteCol(ref orm.ColRef) *SoftRecordQuery {
+	q.q.W().PredCol("name", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *SoftRecordWhere) NameLtCol(ref orm.ColRef) *SoftRecordWhere {
+	w.w.PredCol("name", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *SoftRecordQuery) NameLtCol(ref orm.ColRef) *SoftRecordQuery {
+	q.q.W().PredCol("name", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *SoftRecordWhere) NameLteCol(ref orm.ColRef) *SoftRecordWhere {
+	w.w.PredCol("name", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *SoftRecordQuery) NameLteCol(ref orm.ColRef) *SoftRecordQuery {
+	q.q.W().PredCol("name", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *SoftRecordWhere) DeletedAtEq(v time.Time) *SoftRecordWhere {
@@ -761,9 +814,11 @@ func (q *SoftRecordQuery) Limit(offset, count int) *SoftRecordQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *SoftRecordQuery) ForUpdate() *SoftRecordQuery { q.q.Lock("update"); return q }
-func (q *SoftRecordQuery) ForShare() *SoftRecordQuery  { q.q.Lock("share"); return q }
-func (q *SoftRecordQuery) Distinct() *SoftRecordQuery  { q.q.Node.Distinct = true; return q }
+func (q *SoftRecordQuery) ForUpdate() *SoftRecordQuery       { q.q.Lock("update"); return q }
+func (q *SoftRecordQuery) ForShare() *SoftRecordQuery        { q.q.Lock("share"); return q }
+func (q *SoftRecordQuery) ForUpdateNoWait() *SoftRecordQuery { q.q.Lock("update_nowait"); return q }
+func (q *SoftRecordQuery) ForShareNoWait() *SoftRecordQuery  { q.q.Lock("share_nowait"); return q }
+func (q *SoftRecordQuery) Distinct() *SoftRecordQuery        { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
 func (q *SoftRecordQuery) Flatten() *SoftRecordQuery { q.q.Node.Flatten = true; return q }
@@ -1270,6 +1325,9 @@ func (q *SoftRecordQuery) batchWrite(rows []*SoftRecordQuery, kind string, optio
 	for i, row := range rows {
 		if row == nil || row.q == nil {
 			return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"}
+		}
+		if ex.DB() != nil {
+			row.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 		}
 		requests[i] = row.q.Req
 	}

@@ -33,6 +33,11 @@ func buildVocabulary(m *schema.Manifest) *vocabulary {
 	for _, t := range []string{"get", "gets", "getCount", "getsCount", "paginate", "insert", "update", "updateOptimistic", "delete", "deleteCascade", "save", "sql", "rawAll"} {
 		v.terminals[t] = true
 	}
+	// Optional one-row terminals have language-specific spellings but the same
+	// query role as the strict one-row terminal in parity checks.
+	for _, t := range []string{"getOrNil", "getOrNull", "getOrNone"} {
+		v.terminals[t] = true
+	}
 	for _, t := range []string{"and", "or", "on", "where", "expr", "limit", "distinct", "selectAll", "selectNone", "selectExpr", "orderByExpr", "groupByExpr",
 		"using", "flatten", "limitPerParent", "dropChildKey", "noCascadeDelete", "keyByFn", "transaction", "onDuplicateSetAll", "having", "raw"} {
 		v.other[t] = true
@@ -216,6 +221,9 @@ func tokenize(v *vocabulary, path string, src string) []string {
 			canon = snakeToCamel(name)
 		default:
 			canon = name
+		}
+		if canon == "getOrNil" || canon == "getOrNull" || canon == "getOrNone" {
+			canon = "get"
 		}
 		if lang == "rs" && name == "new" { // heads are captured by reHeadRust
 			continue

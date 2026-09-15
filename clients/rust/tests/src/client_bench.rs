@@ -68,13 +68,12 @@ async fn main() {
     let mut s = Vec::new();
     for i in 0..iters {
         let t = Instant::now();
-        let r = author::query()
+        let _r = author::query()
             .seq_eq((i % 100000 + 1) as i64)
             .using(&db)
             .get()
             .await
             .unwrap();
-        assert!(r.is_some());
         s.push(t.elapsed().as_nanos() as u64);
     }
     stats("client pk one", s);
