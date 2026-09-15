@@ -69,7 +69,16 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 		e := m.Entities[order[i]]
 		sb.WriteString(fmt.Sprintf("\nDROP TABLE IF EXISTS %s;\n", q(ddlTable(e.Table, dialect))))
 	}
-	for _, name := range order {
+	position := make(map[string]int, len(order))
+	for i, name := range order {
+		position[name] = i
+	}
+	type deferredForeignKey struct {
+		table string
+		fk    diffForeignKey
+	}
+	var deferred []deferredForeignKey
+	for current, name := range order {
 		e := m.Entities[name]
 		sb.WriteString(fmt.Sprintf("\nCREATE TABLE %s (\n", q(ddlTable(e.Table, dialect))))
 		var lines []string
@@ -141,7 +150,12 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 			lines = append(lines, "  CONSTRAINT "+q("uq_"+ddlBase(e.Table)+"_"+strings.Join(uk, "_"))+" UNIQUE ("+joinQuoted(uk, q)+")")
 		}
 		for _, fk := range sortedForeignKeys(m, e) {
-			lines = append(lines, "  "+foreignKeyClause(fk, m, q))
+			target, ok := foreignKeyTargetEntity(m, fk.target)
+			if ok && dialect != "sqlite" && position[target.Name] > current {
+				deferred = append(deferred, deferredForeignKey{table: e.Table, fk: fk})
+				continue
+			}
+			lines = append(lines, "  "+foreignKeyClause(fk, m, dialect, q))
 		}
 		for _, check := range e.Checks {
 			expr, err := quotedCheckExpression(check.Expr, q)
@@ -199,7 +213,44 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 			}
 		}
 	}
+	for _, item := range deferred {
+		sb.WriteString("ALTER TABLE " + q(item.table) + " ADD " + foreignKeyClause(item.fk, m, dialect, q) + ";\n")
+	}
+	for _, entityName := range m.Immutable {
+		e := m.Entities[entityName]
+		if e == nil {
+			continue
+		}
+		if dialect == "postgres" {
+			function := e.Table + "_immutable_reject"
+			trigger := ddlBase(e.Table) + "_immutable"
+			sb.WriteString("\nCREATE OR REPLACE FUNCTION " + q(function) + "() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'immutable table: " + sqlQuote(e.Table) + "'; END; $$;\n")
+			sb.WriteString("DROP TRIGGER IF EXISTS " + q(trigger) + " ON " + q(e.Table) + ";\n")
+			sb.WriteString("CREATE TRIGGER " + q(trigger) + " BEFORE UPDATE OR DELETE OR TRUNCATE ON " + q(e.Table) + " FOR EACH STATEMENT EXECUTE FUNCTION " + q(function) + "();\n")
+		} else if dialect == "sqlite" {
+			base := ddlBase(e.Table) + "_immutable"
+			for _, event := range []string{"update", "delete"} {
+				trigger := base + "_" + event
+				sb.WriteString("\nDROP TRIGGER IF EXISTS " + q(trigger) + ";\n")
+				sb.WriteString("CREATE TRIGGER " + q(trigger) + " BEFORE " + strings.ToUpper(event) + " ON " + q(e.Table) + " BEGIN SELECT RAISE(ABORT, 'immutable table: " + sqlQuote(e.Table) + "'); END;\n")
+			}
+		} else {
+			return "", fmt.Errorf("immutable table %s is supported only for postgres and sqlite", e.Table)
+		}
+	}
 	return sb.String(), nil
+}
+
+func foreignKeyTargetEntity(m *schema.Manifest, target string) (*schema.Entity, bool) {
+	if entity, ok := m.Entities[target]; ok {
+		return entity, true
+	}
+	for _, entity := range m.Entities {
+		if entity.Table == target {
+			return entity, true
+		}
+	}
+	return nil, false
 }
 
 func ddlTable(table, dialect string) string {
@@ -379,6 +430,9 @@ func ddlType(c *schema.Col, dialect string) (string, error) {
 		case "bool":
 			return "boolean", nil
 		case "string", "enum":
+			if strings.EqualFold(c.Raw, "uuid") {
+				return "uuid", nil
+			}
 			if c.Len > 0 {
 				return fmt.Sprintf("varchar(%d)", c.Len), nil
 			}

@@ -140,7 +140,7 @@ The entry-point spelling follows the host language. The method role, stored requ
 | `update` | affected count | row or root executor |
 | `delete` | affected count | row or root executor |
 
-An unbound terminal returns `CONFIG`. A terminal after transaction completion returns `CONFIG`. A database argument on a terminal is invalid.
+An unbound terminal returns `CONFIG`. A terminal after transaction completion returns `CONFIG`. A database argument on a terminal is invalid. A bound executor must carry the schema engine used by the generated request; otherwise binding resolution returns `CONFIG`. Generated clients own this validation through the ORM binding and callers do not inspect the engine directly.
 
 ## 6. Binding, executor, and transaction — IF-13 to IF-17
 

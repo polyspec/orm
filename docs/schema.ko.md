@@ -61,7 +61,7 @@ erDiagram
 ### 2.1 컬럼 줄 — `타입 이름 [PK|FK|UK] ["주석"]`
 Mermaid 문법을 사용한다. `PK`, `FK`, `UK`는 Mermaid keyword다. 기본키를 구성하는 모든 컬럼에 `PK`를 지정하며 선언 순서가 복합키 순서다. 복합 unique key는 아래 `%% unique`로 표현한다.
 생성된 복합키 타입과 전체 키 조회 메서드는 이 순서를 보존한다. 자동 키가 없는 엔터티에 insert하려면 모든 primary key 값을 지정해야 하며, insert 후 모든 키 조건으로 행을 조회한다. `save`는 실행 전에 부분 primary key를 거부한다.
-타입은 DB 타입을 그대로 쓴다(`bigint`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum('a','b')`). 매니페스트가 정규 타입(i64/string/datetime/…)으로 바꾼다.
+타입은 DB 타입을 그대로 쓴다(`bigint`, `uuid`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum('a','b')`). 매니페스트가 정규 타입(i64/string/datetime/…)으로 바꾸며 UUID 바인딩은 문자열을 사용하고 PostgreSQL DDL은 native `uuid`를 보존한다.
 `varchar`와 `char`에는 양의 길이가 필요하다. 길이가 없거나 0이거나 잘못된 값이면 DDL 생성 전에 schema build가 실패한다.
 
 주석 문자열은 공백으로 나눈 **속성 목록**이다. 없으면 NOT NULL, 기본값 없음, 일반 컬럼.
@@ -106,9 +106,13 @@ Mermaid 문법을 사용한다. `PK`, `FK`, `UK`는 Mermaid keyword다. 기본�
 %% rename_table <new_table> <old_table>      # migration rename
 %% rename_column <table> <new_col> <old_col> # migration rename
 %% orm:table entity=<entity> name=<schema.table> # 정규화된 물리 테이블 이름
+%% orm:foreign entity=<entity> columns=<local_col>[,<local_col>...] references=<schema.table>(<col>[,<col>...]) [name=<constraint>] [on_delete=<action>] [deferred=true]
+%% orm:immutable entity=<entity> # 생성된 데이터베이스 trigger가 UPDATE·DELETE·TRUNCATE를 거부
 ```
 
 `orm:table` directive가 정규화된 물리 테이블을 선언하는 schema source의 유일한 방법이다. manifest는 두 식별자 구성요소를 보존한다. PostgreSQL DDL과 query quoting은 schema와 table을 별도 식별자로 처리하며, SQLite에는 이 directive만으로 namespace가 생기지 않는다.
+
+`orm:foreign`은 현재 manifest 외부의 table을 참조하는 물리 foreign key나 명시적 제약 옵션이 필요한 관계를 선언한다. 로컬·참조 column 수는 같아야 한다. `deferred=true`는 PostgreSQL과 SQLite에서 deferrable, initially deferred 제약을 생성하며 지원하지 않는 action이나 잘못된 참조는 schema validation에서 실패한다. `orm:immutable`은 선언한 entity의 행 update·delete·truncate를 거부하는 dialect별 database trigger를 생성한다.
 
 Rename directive는 migration metadata다. `ormgen diff`는 비슷한 이름을 rename으로 추정하지 않는다. target directive는 정방향 `RENAME`을 생성하며 같은 구조화 plan은 rollback용 역방향 `RENAME`을 생성한다. 이후 schema version에도 directive를 유지한다. 현재 table이나 column 이름이 이미 있으면 반복 diff는 no-op이다. 누락, 중복, 자기 참조, 모호한 rename source는 schema 검증이나 diff 생성 단계에서 실패한다.
 

@@ -746,7 +746,7 @@ var {{.Type}}Cols = struct {
 {{- end}}
 }
 
-// {{.Type}}Query builds a statement over {{.Table}}: {{.Type}}() → Using(ctx, db) → chain → terminal().
+// {{.Type}}Query builds a statement over {{.Table}}: {{.Type}}() → chain → Using(ctx, db) → terminal().
 type {{.Type}}Query struct {
 	binding orm.Binding
 	q     *orm.Q
@@ -759,11 +759,17 @@ func (q *{{.Type}}Query) KeyByFn(fn func(*{{.Type}}Row) orm.Key) *{{.Type}}Query
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *{{.Type}}Query) Req() *orm.Req { return q.q.Req }
 
-// {{.Type}} starts a query over {{.Table}}.
-func {{.Type}}() *{{.Type}}Query { return &{{.Type}}Query{q: orm.NewQ(mustEngine(), {{printf "%q" .Name}})} }
+// {{.Type}} starts a query over {{.Table}}. The builder may be configured
+// before Using; the bound ORM executor supplies the schema engine at Using.
+func {{.Type}}() *{{.Type}}Query { return &{{.Type}}Query{q: orm.NewQ(nil, {{printf "%q" .Name}})} }
 
 // Using selects the context and pool or transaction for this query.
-func (q *{{.Type}}Query) Using(ctx context.Context, ex orm.Exec) *{{.Type}}Query { q.binding = orm.NewBinding(ctx, ex); return q }
+func (q *{{.Type}}Query) Using(ctx context.Context, ex orm.Exec) *{{.Type}}Query {
+	if q.q == nil && ex != nil { q.q = orm.NewQ(nil, {{printf "%q" .Name}}) }
+	if q.q != nil && ex != nil { q.q.BindEngine(ex.DB().Engine()) }
+	q.binding = orm.NewBinding(ctx, ex)
+	return q
+}
 
 {{- if .AESCols}}
 // AESStatus returns row counts by stored AES key version.
@@ -1274,13 +1280,6 @@ func Init(e *engine.Engine) error {
 	}
 	eng = e
 	return nil
-}
-
-func mustEngine() *engine.Engine {
-	if eng == nil {
-		panic("gen: call gen.Init(engine) before building queries")
-	}
-	return eng
 }
 
 // Connect opens the database selected by dsn. Engine creation and schema
