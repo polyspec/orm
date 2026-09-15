@@ -1126,19 +1126,37 @@ func mapMySQLErr(err error) error {
 	return err
 }
 
+// ErrorCode returns the common ORM error code carried by err. An empty string
+// means err is not an ORM-coded error.
+func ErrorCode(err error) string {
+	if err == nil {
+		return ""
+	}
+	var e *ir.Error
+	if errors.As(err, &e) {
+		return e.Code
+	}
+	return ""
+}
+
 // IsDeadlock reports a DEADLOCK error: the mapped code, or for errors that did
 // not pass through the executor (a foreign driver), the message.
 func IsDeadlock(err error) bool {
 	if err == nil {
 		return false
 	}
-	var e *ir.Error
-	if errors.As(err, &e) {
-		return e.Code == CodeDeadlock
+	if ErrorCode(err) != "" {
+		return ErrorCode(err) == CodeDeadlock
 	}
 	s := err.Error()
 	return strings.Contains(s, "1213") || strings.Contains(s, "40001") || strings.Contains(strings.ToLower(s), "deadlock")
 }
+
+// IsDuplicateKey reports a DUPLICATE_KEY error returned by an ORM adapter.
+func IsDuplicateKey(err error) bool { return ErrorCode(err) == CodeDuplicateKey }
+
+// IsForeignKey reports a FOREIGN_KEY error returned by an ORM adapter.
+func IsForeignKey(err error) bool { return ErrorCode(err) == CodeForeignKey }
 
 // ErrNoRows is returned by generated Get methods when the query has no row.
 // GetOrNil methods preserve the explicit optional-row form.
