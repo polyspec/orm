@@ -53,6 +53,18 @@ func orderedJSONReflect(reflectValue reflect.Value) (*orderedjson.Value, error) 
 }
 
 func orderedJSONKind(reflectValue reflect.Value) (*orderedjson.Value, error) {
+	switch reflectValue.Kind() {
+	case reflect.Bool:
+		return orderedjson.Boolean(reflectValue.Bool()), nil
+	case reflect.String:
+		return orderedjson.String(reflectValue.String())
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return orderedjson.Number(strconv.FormatInt(reflectValue.Int(), 10))
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return orderedjson.Number(strconv.FormatUint(reflectValue.Uint(), 10))
+	case reflect.Float32, reflect.Float64:
+		return orderedJSONFloat(reflectValue.Float())
+	}
 	value := reflectValue.Interface()
 	switch v := value.(type) {
 	case nil:
