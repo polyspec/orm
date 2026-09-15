@@ -1802,9 +1802,6 @@ func QueryDirect[T any](ctx context.Context, ex Exec, r *Req, accepts func(*plan
 	if err != nil {
 		return nil, true, err
 	}
-	if err := acquireSQLiteRowLock(ctx, ex, r.IR.Query.Lock); err != nil {
-		return nil, true, err
-	}
 	if parts, splitErr := rootINParts(r, &c.plan.Steps[0], d.Driver()); splitErr != nil {
 		return nil, true, splitErr
 	} else if len(parts) > 1 {
@@ -1823,6 +1820,9 @@ func QueryDirect[T any](ctx context.Context, ex Exec, r *Req, accepts func(*plan
 				return nil, false, nil
 			}
 		}
+	}
+	if err := acquireSQLiteRowLock(ctx, ex, r.IR.Query.Lock); err != nil {
+		return nil, true, err
 	}
 	args, masks, err := d.args(st, r, nil)
 	if err != nil {
