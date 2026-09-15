@@ -88,6 +88,7 @@ The comment string is a space-separated **attribute list**. With no comment, the
 Label: a single-column relation starts with the child FK column. A composite relation starts with the ordered child FK list, such as `(tenant_id, account_id)`, and must include explicit names: `(tenant_id, account_id) (account / memberships)`. The FK count must equal the parent primary-key count; each FK maps to the parent key at the same position. `(child / parent)` overrides relation names and is optional only for a single-column relation.
 Default names: child side removes `_seq` from the FK (`service_seq`→`service`, `updated_user_seq`→`updated_user`); parent side removes the parent-table prefix from the child table and pluralizes (`battle_item`→`items`, `product_review`→`reviews`, or `battles` without a prefix).
 When the same parent is referenced twice (`user_seq`, `updated_user_seq`), draw two relation lines. `ormgen` reports name collisions as errors.
+The same child column may participate in more than one foreign key, including overlapping composite foreign keys. Each relation line remains authoritative for its ordered local/target key pairs; generated DDL emits each distinct constraint and generated relation metadata preserves every pair. A source-level `-> table.column` declaration still names one explicit target and cannot conflict with a relation line.
 
 ### 2.3 `%%` directives (Mermaid ignores them as comments; only ormgen reads them)
 ```
