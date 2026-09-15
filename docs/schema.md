@@ -144,6 +144,8 @@ Changing a comment changes the schema hash and produces an idempotent migration.
 
 For SQLite audit triggers, generated JSON columns are stored as text. The adapter restores valid JSON text to a JSON node before building the audited row object, so nested redaction paths have the same logical meaning as PostgreSQL `jsonb`; non-JSON text remains a scalar. Qualified logical tables use the same `schema__table` physical mapping for audit discovery, trigger targets, operation tables, change tables, and immutable guards.
 
+SQLite `ForUpdate`, `ForShare`, and their `NoWait` forms are adapter-owned. The ORM initializes its transaction lock table before a caller-owned transaction begins, acquires the lock row inside that transaction, waits and honors cancellation for normal lock modes, and returns immediately for `NoWait`. The application does not branch on the selected database driver.
+
 Commas are invalid in Mermaid type strings; use `_` such as `decimal(13_3)` and `enum(a_b_c)`; ormgen interprets them. Dialect mapping from normalized types to DDL is in `docs/dialects.md` (S6).
 
 ## 3. Manifest (generated `schema.json`)

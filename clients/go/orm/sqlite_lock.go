@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/polyspec/orm/engine/ir"
 )
@@ -34,11 +35,63 @@ func acquireSQLiteRowLock(ctx context.Context, ex Exec, mode string) error {
 			_, _ = tx.tx.ExecContext(context.Background(), fmt.Sprintf("PRAGMA busy_timeout=%d", previousBusyTimeout))
 		}()
 	}
-	if _, err := tx.tx.ExecContext(ctx, sqliteRowLockDDL); err != nil {
-		return mapDriverErr(err)
+	if err := ensureSQLiteRowLock(ctx, tx.d); err != nil {
+		return err
 	}
-	if _, err := tx.tx.ExecContext(ctx, `INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"`); err != nil {
-		return mapDriverErr(err)
+	for {
+		if _, err := tx.tx.ExecContext(ctx, `INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"`); err != nil {
+			if mapped := mapDriverErr(err); !sqliteLockRetryable(err, mapped) || strings.HasSuffix(mode, "_nowait") {
+				return mapped
+			}
+			if err := waitForSQLiteLock(ctx); err != nil {
+				return err
+			}
+			continue
+		}
+		return nil
 	}
-	return nil
+}
+
+func ensureSQLiteRowLock(ctx context.Context, d *DB) error {
+	if d.sqliteRowLockReady.Load() {
+		return nil
+	}
+	d.sqliteRowLockMu.Lock()
+	defer d.sqliteRowLockMu.Unlock()
+	if d.sqliteRowLockReady.Load() {
+		return nil
+	}
+	for {
+		_, err := d.SQL.ExecContext(ctx, sqliteRowLockDDL)
+		if err == nil {
+			d.sqliteRowLockReady.Store(true)
+			return nil
+		}
+		mapped := mapDriverErr(err)
+		if !sqliteLockRetryable(err, mapped) {
+			return mapped
+		}
+		if err := waitForSQLiteLock(ctx); err != nil {
+			return err
+		}
+	}
+}
+
+func sqliteLockRetryable(original, mapped error) bool {
+	if IsDeadlock(mapped) {
+		return true
+	}
+	message := strings.ToLower(original.Error())
+	return strings.Contains(message, "sqlite_busy") || strings.Contains(message, "database is locked")
+}
+
+func waitForSQLiteLock(ctx context.Context) error {
+	timer := time.NewTimer(5 * time.Millisecond)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }

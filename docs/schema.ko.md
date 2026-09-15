@@ -144,6 +144,8 @@ PostgreSQL `COMMENT ON` 문, SQLite의 `orm_schema_comments` 행을 생성합니
 
 SQLite audit trigger에서 생성 JSON column은 text로 저장된다. adapter는 감사 row object를 만들기 전에 유효한 JSON text를 JSON node로 복원하므로 nested redaction path가 PostgreSQL `jsonb`와 같은 논리적 의미를 가지며, JSON이 아닌 text는 scalar로 유지한다. qualified logical table은 audit discovery, trigger 대상, operation/change table과 immutable guard 모두에서 같은 `schema__table` 물리 매핑을 사용한다.
 
+SQLite의 `ForUpdate`, `ForShare`와 `NoWait` 형식은 adapter가 소유한다. ORM은 caller-owned transaction이 시작되기 전에 transaction lock table을 초기화하고, 해당 transaction 안에서 lock row를 획득하며, 일반 lock mode에서는 대기와 cancellation을 준수하고 `NoWait`에서는 즉시 반환한다. 애플리케이션은 선택한 database driver에 따라 분기하지 않는다.
+
 타입 문자열에 쉼표는 Mermaid 문법상 불가 → `decimal(13_3)`, `enum(a_b_c)`처럼 `_`로 쓴다(ormgen이 해석). 방언별 매핑 규칙표(정규 타입 → DDL)는 `docs/dialects.md`(S6)에 둔다.
 
 ## 3. 매니페스트 (생성물, `schema.json`)
