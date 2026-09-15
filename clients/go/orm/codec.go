@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -15,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	orderedjson "github.com/polyspec/ordered-json/go"
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/plan"
 	goyaml "go.yaml.in/yaml/v3"
@@ -24,8 +24,8 @@ func codecErr(code, format string, a ...any) error {
 	return &ir.Error{Code: code, Msg: fmt.Sprintf(format, a...)}
 }
 
-// Decode turns a stored cell (string/[]byte/nil) into the JSON-like value model:
-// nil, bool, int64, float64, string, []any, map[string]any.
+// Decode turns a stored cell (string/[]byte/nil) into the declared value model.
+// JSON and JSONS return *orderedjson.Value so object order and node kinds remain explicit.
 func Decode(styles []string, raw any) (any, error) {
 	var b []byte
 	switch x := raw.(type) {
@@ -86,7 +86,7 @@ func Decode(styles []string, raw any) (any, error) {
 				return nil, err
 			}
 		case "json", "jsons":
-			v, err = jsonDecode(cur)
+			v, err = orderedjson.ParseBytes(cur)
 			if err != nil {
 				return nil, codecErr(CodeCodecDecode, "json: %v", err)
 			}
@@ -143,16 +143,15 @@ func Encode(styles []string, v any) (any, error) {
 			if i != 0 {
 				return nil, codecErr(CodeCodecUnsupported, "json must be the first style")
 			}
-			if _, ok := value.([]byte); ok {
-				return nil, codecErr(CodeCodecEncode, "json: []byte is not a common JSON value")
+			ordered, err := orderedJSONValue(value)
+			if err != nil {
+				return nil, err
 			}
-			var buf bytes.Buffer
-			enc := json.NewEncoder(&buf)
-			enc.SetEscapeHTML(false)
-			if err := enc.Encode(value); err != nil {
+			raw, err := ordered.Compact()
+			if err != nil {
 				return nil, codecErr(CodeCodecEncode, "json: %v", err)
 			}
-			cur = bytes.TrimRight(buf.Bytes(), "\n")
+			cur = []byte(raw)
 		case "base64":
 			cur = []byte(base64.StdEncoding.EncodeToString(cur))
 		case "gz":
@@ -336,40 +335,6 @@ func restoreUploadFiles(v any) (any, error) {
 	default:
 		return v, nil
 	}
-}
-
-// jsonDecode keeps integers as int64 and everything else as the value model.
-func jsonDecode(b []byte) (any, error) {
-	dec := json.NewDecoder(bytes.NewReader(b))
-	dec.UseNumber()
-	var v any
-	if err := dec.Decode(&v); err != nil {
-		return nil, err
-	}
-	if dec.More() {
-		return nil, fmt.Errorf("trailing data")
-	}
-	return jsonNumbers(v), nil
-}
-
-func jsonNumbers(v any) any {
-	switch x := v.(type) {
-	case json.Number:
-		if i, err := strconv.ParseInt(string(x), 10, 64); err == nil {
-			return i
-		}
-		f, _ := strconv.ParseFloat(string(x), 64)
-		return f
-	case []any:
-		for i := range x {
-			x[i] = jsonNumbers(x[i])
-		}
-	case map[string]any:
-		for k := range x {
-			x[k] = jsonNumbers(x[k])
-		}
-	}
-	return v
 }
 
 // ---- PHP serialize format ----
