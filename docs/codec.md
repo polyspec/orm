@@ -14,7 +14,7 @@ Every AES column has a non-null integer `aes_key_version` column in the same ent
 
 | style | write (value → stored bytes) | read (stored bytes → value) | reference |
 |---|---|---|---|
-| `json`, `jsons` | JSON text from the common value model | JSON parse | `json_encode` / `json_decode(true)` |
+| `json`, `jsons` | ordered-json text from the common value model | ordered-json parse | `github.com/polyspec/ordered-json` |
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
 | `base64` | base64(serialize(v)) | unserialize(base64_decode) | same |
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |
@@ -22,12 +22,14 @@ Every AES column has a non-null integer `aes_key_version` column in the same ent
 | `yaml` | YAML 1.2 document | YAML 1.2 parse | single document and common value model |
 
 ## Value model
-Styled columns use JSON-like values: null, bool, integer (i64), float (f64), string, list, and string-keyed map.
+Styled columns use JSON-like values: null, bool, integer (i64), float (f64), string, list, and string-keyed map. JSON and JSONS columns use the ordered-json value tree, which preserves object member order and distinguishes an empty object from an empty array.
+
+The Go JSON codec returns `*orderedjson.Value` from `Decode` and accepts that value from `Encode`. It does not use Go's `encoding/json` as the user-value boundary. Portable scalar/list/map values are converted to ordered-json explicitly; parsed ordered-json values retain their original order and node kinds.
 
 Go `[]byte` is not a common JSON value and JSON encoding rejects it with `CODEC_ENCODE`; it is not silently converted to Go's base64 JSON string representation. Decode bytes into the common value model before assigning a JSON column.
 | | Go | Rust | PHP | TypeScript |
 |---|---|---|---|---|
-| field type | `any` | `serde_json::Value` (`Option<…>` when nullable) | `mixed` (array/scalar/null) | `CodecValue` |
+| field type | `*orderedjson.Value` | ordered-json value tree | ordered-json value tree | ordered-json value tree |
 | list | `[]any` | `Value::Array` | list array | `unknown[]` |
 | map | `map[string]any` | `Value::Object` (sorted keys) | associative array (insertion order) | `Record<string, unknown>` |
 
@@ -46,7 +48,7 @@ Encoding recursively converts it to `{"is_curl_file":true,"mime":"text/plain","n
 `point` is a column type, not a style. Its public value is `[x, y]`: Go `orm.Point`, PHP `array{float,float}`, Rust `orm::Point`, and TypeScript `Point`. `parsePoint`/`parse_point`/`Codec::point` accept `POINT(x y)` and PostgreSQL `(x,y)` output. The write conversion emits `POINT(x y)`. Values with a coordinate count other than two return `CODEC_DECODE`; non-finite output coordinates return `CODEC_ENCODE`.
 
 ## Cases
-- PHP cannot distinguish an empty object from an empty list. An empty PHP array is stored as JSON `[]` or serialize `a:0:{}` and is read as an empty list by all clients. Pass `new \stdClass` to write a JSON empty object.
+- Ordered-json distinguishes an empty object from an empty list. `{}` remains an object and `[]` remains an array through parse, encode, and repeated round trips in every client.
 - NULL and an empty string are read as `null`.
 - `json` and `jsons` preserve `[]`, `{}`, `0`, and `""`. A parse failure returns `CODEC_DECODE`.
 - A serialize-family format failure returns `CODEC_DECODE`. `O:`, `C:`, `R:`, and `r:` return `CODEC_UNSUPPORTED`.

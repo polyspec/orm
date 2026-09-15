@@ -15,7 +15,7 @@
 
 | 스타일 | 쓰기(값 → 저장 바이트) | 읽기(저장 바이트 → 값) | 기준 |
 |---|---|---|---|
-| `json`, `jsons` | JSON 텍스트 | JSON 파싱 | `json_encode` / `json_decode(true)` |
+| `json`, `jsons` | 공통 값 모델의 ordered-json 텍스트 | ordered-json 파싱 | `github.com/polyspec/ordered-json` |
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
 | `base64` | base64(serialize(v)) | unserialize(base64_decode) | 동일 |
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |
@@ -23,18 +23,20 @@
 | `yaml` | YAML 1.2 문서 | YAML 1.2 파싱 | 단일 문서와 공통 값 모델 |
 
 ## 값 모델
-스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵.
+스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵. JSON과 JSONS 컬럼은 객체 멤버 순서를 보존하고 빈 객체와 빈 배열을 구분하는 ordered-json 값 트리를 사용한다.
+
+Go JSON codec의 `Decode`는 `*orderedjson.Value`를 반환하고 `Encode`는 이 값을 입력으로 받는다. 사용자 값 경계에서 Go의 `encoding/json`을 사용하지 않는다. portable scalar/list/map 값은 ordered-json으로 명시적으로 변환하며, 파싱한 ordered-json 값은 원래 순서와 노드 종류를 유지한다.
 Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE`로 거부한다. Go의 base64 JSON 문자열 표현으로 조용히 변환하지 않으며, JSON column에 대입하기 전에 byte를 공통 값 모델로 decode해야 한다.
 | | Go | Rust | PHP | TypeScript |
 |---|---|---|---|---|
-| 필드 타입 | `any` | `serde_json::Value` (nullable이면 `Option<…>`) | `mixed` (array/스칼라/null) | `CodecValue` |
+| 필드 타입 | `*orderedjson.Value` | ordered-json 값 트리 | ordered-json 값 트리 | ordered-json 값 트리 |
 | 리스트 | `[]any` | `Value::Array` | list 배열 | `unknown[]` |
 | 맵 | `map[string]any` | `Value::Object` (키 정렬) | 연관 배열(삽입 순서) | `Record<string, unknown>` |
 
 PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하다:
 - **읽기**: 키가 정확히 `0..n-1`인 배열 → 리스트, 그 외 → 맵(정수 키는 십진 문자열로).
 - **쓰기(serialize/base64/gz)**: 리스트 → `i:0…i:n-1` 키, 맵 → 키가 정규 십진 정수(`"7"`, `"-3"`, 선행 0·`+` 없음)면 `i:7;`, 아니면 `s:…`. PHP가 같은 논리 배열을 serialize한 바이트와 같다(맵 키 순서가 같을 때).
-- **쓰기(json)**: 맵 키는 Go/Rust에서 정렬, PHP는 삽입 순서. 바이트는 다를 수 있고 값은 같다. 슬래시·비ASCII는 이스케이프하지 않는다(PHP는 `JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE`로 맞춘다).
+- **쓰기(json)**: portable map은 결정적인 순서로 ordered-json에 기록하고, 이미 파싱한 ordered-json 값은 원래 멤버 순서를 유지한다. 슬래시·비ASCII는 이스케이프하지 않는다.
 
 `curlfile`은 모든 클라이언트에서 다음 공개 레코드를 사용한다.
 
@@ -49,7 +51,7 @@ PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하�
 `point`는 스타일이 아닌 컬럼 타입이다. 공개 값은 `[x, y]`이며 Go는 `orm.Point`, PHP는 `array{float,float}`, Rust는 `orm::Point`, TypeScript는 `Point`를 사용한다. `parsePoint`·`parse_point`·`Codec::point`는 `POINT(x y)`와 PostgreSQL 출력 `(x,y)`를 입력받는다. 쓰기 변환은 `POINT(x y)`를 생성한다. 좌표가 두 개가 아니면 `CODEC_DECODE`, 출력 좌표가 유한하지 않으면 `CODEC_ENCODE`를 반환한다.
 
 ## 사례
-- **PHP는 빈 객체와 빈 리스트를 구분하지 못한다**(둘 다 빈 배열). 빈 PHP 배열은 JSON `[]` / serialize `a:0:{}`로 저장되고 세 언어 모두 **빈 리스트**로 읽는다. PHP에서 JSON 스타일에 빈 객체를 저장하려면 `new \stdClass`를 넘긴다(읽을 때는 다시 빈 배열). Go/Rust가 쓴 `{}`를 PHP가 읽으면 빈 배열이다.
+- ordered-json은 빈 객체와 빈 리스트를 구분한다. `{}`는 모든 client에서 파싱·인코딩·반복 왕복 후에도 객체로 유지되고, `[]`는 배열로 유지된다.
 - NULL, 빈 문자열 → `null`.
 - `json`/`jsons`: **`[]`·`{}`·`0`·`""`는 그 값 그대로** 유지한다. 파싱 실패 → 에러 `CODEC_DECODE`.
 - `serialize` 계열: 형식 오류 → `CODEC_DECODE`. `O:`(객체)·`C:`·참조(`R:`/`r:`) → `CODEC_UNSUPPORTED`.
