@@ -76,8 +76,12 @@ func TestSQLiteORMRowLockSerializesAndNoWaits(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer secondORM.Rollback(context.Background())
+	started := time.Now()
 	if err := acquireSQLiteRowLock(ctx, secondORM, "update_nowait"); err == nil {
 		t.Fatal("SQLite no-wait lock succeeded while another transaction held the ORM lock")
+	}
+	if elapsed := time.Since(started); elapsed > 500*time.Millisecond {
+		t.Fatalf("SQLite no-wait lock waited %s", elapsed)
 	}
 }
 
