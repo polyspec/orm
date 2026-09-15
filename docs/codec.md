@@ -24,12 +24,12 @@ Every AES column has a non-null integer `aes_key_version` column in the same ent
 ## Value model
 Styled columns use JSON-like values: null, bool, integer (i64), float (f64), string, list, and string-keyed map. JSON and JSONS columns use the ordered-json value tree, which preserves object member order and distinguishes an empty object from an empty array.
 
-The Go JSON codec returns `*orderedjson.Value` from `Decode` and accepts that value from `Encode`. It does not use Go's `encoding/json` as the user-value boundary. Portable scalar/list/map values are converted to ordered-json explicitly; parsed ordered-json values retain their original order and node kinds. A `jsontext.Value` is accepted only as an already-encoded raw JSON value and is parsed immediately into ordered-json.
+The Go JSON codec returns `*orderedjson.Value` from `Decode` and accepts that value from `Encode`. It does not use Go's `encoding/json` as the user-value boundary. Portable scalar/list/map values and Go structs with `json` field tags are converted to ordered-json explicitly; parsed ordered-json values retain their original order and node kinds. A `jsontext.Value` is accepted only as an already-encoded raw JSON value and is parsed immediately into ordered-json. Unsupported Go kinds, non-string map keys, `[]byte`, and non-finite numbers return `CODEC_ENCODE`.
 
 Go `[]byte` is not a common JSON value and JSON encoding rejects it with `CODEC_ENCODE`; it is not silently converted to Go's base64 JSON string representation. Decode bytes into the common value model before assigning a JSON column.
 | | Go | Rust | PHP | TypeScript |
 |---|---|---|---|---|
-| field type | `*orderedjson.Value` | ordered-json value tree | ordered-json value tree | ordered-json value tree |
+| field type | `*orderedjson.Value` or tagged Go value | ordered-json value tree | ordered-json value tree | ordered-json value tree |
 | list | `[]any` | `Value::Array` | list array | `unknown[]` |
 | map | `map[string]any` | `Value::Object` (sorted keys) | associative array (insertion order) | `Record<string, unknown>` |
 
