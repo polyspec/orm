@@ -17,9 +17,9 @@ func TestInstallAuditSQLiteCapturesChanges(t *testing.T) {
 	}
 	defer db.Close()
 	for _, statement := range []string{
-		`CREATE TABLE operation (seq INTEGER PRIMARY KEY, operation_uuid TEXT NOT NULL UNIQUE)`,
-		`CREATE TABLE operation_change (operation_seq INTEGER NOT NULL, site_id TEXT, table_name TEXT NOT NULL, entity_key TEXT NOT NULL, change_operation TEXT NOT NULL, old_value TEXT NOT NULL, new_value TEXT NOT NULL)`,
-		`CREATE TABLE account (id TEXT PRIMARY KEY, site_id TEXT NOT NULL, secret TEXT, value TEXT)`,
+		`CREATE TABLE "core__operation" (seq INTEGER PRIMARY KEY, operation_uuid TEXT NOT NULL UNIQUE)`,
+		`CREATE TABLE "core__operation_change" (operation_seq INTEGER NOT NULL, site_id TEXT, table_name TEXT NOT NULL, entity_key TEXT NOT NULL, change_operation TEXT NOT NULL, old_value TEXT NOT NULL, new_value TEXT NOT NULL)`,
+		`CREATE TABLE "core__account" (id TEXT PRIMARY KEY, site_id TEXT NOT NULL, secret TEXT, value TEXT)`,
 	} {
 		if _, err := db.ExecContext(ctx, statement); err != nil {
 			t.Fatal(err)
@@ -52,30 +52,37 @@ func TestInstallAuditSQLiteCapturesChanges(t *testing.T) {
 	if err := ex.InstallAudit(ctx, spec); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO operation(seq, operation_uuid) VALUES (7, 'op-7')`); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO "core__operation"(seq, operation_uuid) VALUES (7, 'op-7')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO account(id, site_id, secret, value) VALUES ('a-1', 'site-1', 'hidden', 'one')`); err == nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO "core__account"(id, site_id, secret, value) VALUES ('a-1', 'site-1', 'hidden', 'one')`); err == nil {
 		t.Fatal("audit mutation without operation context was accepted")
 	}
 	if err := ex.SetLocal(ctx, "platform.operation_id", "op-7"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO account(id, site_id, secret, value) VALUES ('a-1', 'site-1', 'hidden', 'one')`); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO "core__account"(id, site_id, secret, value) VALUES ('a-1', 'site-1', 'hidden', 'one')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE account SET secret='changed', value='two' WHERE id='a-1'`); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE "core__account" SET secret='changed', value='two' WHERE id='a-1'`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM account WHERE id='a-1'`); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM "core__account" WHERE id='a-1'`); err != nil {
 		t.Fatal(err)
 	}
 	var count int
-	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM operation_change`).Scan(&count); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM "core__operation_change"`).Scan(&count); err != nil {
 		t.Fatal(err)
 	}
 	if count != 3 {
 		t.Fatalf("operation_change rows = %d, want 3", count)
+	}
+	var records string
+	if err := tx.QueryRowContext(ctx, `SELECT group_concat(table_name || old_value || new_value, '|') FROM "core__operation_change"`).Scan(&records); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(records, "hidden") || strings.Contains(records, "changed") || !strings.Contains(records, `"redacted":1`) || !strings.Contains(records, "core.account") {
+		t.Fatalf("qualified SQLite audit did not redact or preserve logical table name: %s", records)
 	}
 	if err := ex.Commit(ctx); err != nil {
 		t.Fatal(err)
@@ -108,7 +115,7 @@ func TestInstallImmutableSQLiteRejectsRowMutations(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if _, err := db.ExecContext(ctx, `CREATE TABLE record (seq INTEGER PRIMARY KEY, value TEXT NOT NULL)`); err != nil {
+	if _, err := db.ExecContext(ctx, `CREATE TABLE "core__record" (seq INTEGER PRIMARY KEY, value TEXT NOT NULL)`); err != nil {
 		t.Fatal(err)
 	}
 	tx, err := db.BeginTx(ctx, nil)
@@ -119,13 +126,13 @@ func TestInstallImmutableSQLiteRejectsRowMutations(t *testing.T) {
 	if err := ex.InstallImmutable(ctx, "core.record"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO record(seq, value) VALUES (1, 'one')`); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO "core__record"(seq, value) VALUES (1, 'one')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE record SET value='two' WHERE seq=1`); err == nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE "core__record" SET value='two' WHERE seq=1`); err == nil {
 		t.Fatal("immutable update was accepted")
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM record WHERE seq=1`); err == nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM "core__record" WHERE seq=1`); err == nil {
 		t.Fatal("immutable delete was accepted")
 	}
 	if err := ex.Rollback(ctx); err != nil {
