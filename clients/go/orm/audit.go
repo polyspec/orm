@@ -130,7 +130,7 @@ func (t *Tx) InstallImmutable(ctx context.Context, tableName string) error {
 	if t.d.driver != "sqlite" {
 		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "immutable guards are supported only by postgres and sqlite"}
 	}
-	quotedTable := quoteIdentifier("sqlite", table)
+	quotedTable := quoteIdentifier("sqlite", sqlitePhysicalTableName(schema, table))
 	for _, event := range []string{"UPDATE", "DELETE"} {
 		trigger := quoteIdentifier("sqlite", name+"_"+strings.ToLower(event))
 		if _, err := t.tx.ExecContext(ctx, "DROP TRIGGER IF EXISTS "+trigger); err != nil {
@@ -148,10 +148,13 @@ func (t *Tx) installAuditSQLite(ctx context.Context, spec AuditSpec) error {
 	if err := validateAuditSpec(spec); err != nil {
 		return err
 	}
-	_, tableName := splitAuditIdentifierMust(spec.Table)
-	_, operationName := splitAuditIdentifierMust(spec.OperationTable)
-	_, changeName := splitAuditIdentifierMust(spec.ChangeTable)
-	columns, keys, err := t.auditSQLiteColumns(ctx, tableName)
+	tableSchema, tableName := splitAuditIdentifierMust(spec.Table)
+	operationSchema, operationName := splitAuditIdentifierMust(spec.OperationTable)
+	changeSchema, changeName := splitAuditIdentifierMust(spec.ChangeTable)
+	physicalTableName := sqlitePhysicalTableName(tableSchema, tableName)
+	physicalOperationName := sqlitePhysicalTableName(operationSchema, operationName)
+	physicalChangeName := sqlitePhysicalTableName(changeSchema, changeName)
+	columns, keys, err := t.auditSQLiteColumns(ctx, physicalTableName)
 	if err != nil {
 		return err
 	}
@@ -172,7 +175,7 @@ func (t *Tx) installAuditSQLite(ctx context.Context, spec AuditSpec) error {
 	digest := sha256.Sum256([]byte(fmt.Sprintf("sqlite:%#v", spec)))
 	triggerName := "orm_audit_" + hex.EncodeToString(digest[:])[:20]
 	for _, event := range []string{"INSERT", "UPDATE", "DELETE"} {
-		body := sqliteAuditTrigger(spec, event, tableName, operationName, changeName, columns, triggerName)
+		body := sqliteAuditTrigger(spec, event, physicalTableName, tableSchema+"."+tableName, physicalOperationName, physicalChangeName, columns, triggerName)
 		if _, err := t.tx.ExecContext(ctx, "DROP TRIGGER IF EXISTS "+quoteIdentifier("sqlite", triggerName+"_"+strings.ToLower(event))); err != nil {
 			return mapDriverErr(err)
 		}
@@ -184,8 +187,8 @@ func (t *Tx) installAuditSQLite(ctx context.Context, spec AuditSpec) error {
 	return nil
 }
 
-func sqliteAuditTrigger(spec AuditSpec, event, tableName, operationName, changeName string, columns []string, triggerName string) string {
-	table := quoteIdentifier("sqlite", tableName)
+func sqliteAuditTrigger(spec AuditSpec, event, physicalTableName, logicalTableName, operationName, changeName string, columns []string, triggerName string) string {
+	table := quoteIdentifier("sqlite", physicalTableName)
 	trigger := quoteIdentifier("sqlite", triggerName+"_"+strings.ToLower(event))
 	contextValue := "(SELECT value FROM orm_audit_context WHERE key=" + quoteLiteral(spec.OperationContextKey) + ")"
 	operationSeq := "(SELECT " + quoteIdentifier("sqlite", spec.OperationSeqColumn) + " FROM " + quoteIdentifier("sqlite", operationName) + " WHERE " + quoteIdentifier("sqlite", spec.OperationUUIDColumn) + "=" + contextValue + ")"
@@ -234,7 +237,7 @@ func sqliteAuditTrigger(spec AuditSpec, event, tableName, operationName, changeN
 		body.WriteString(" (")
 		body.WriteString(strings.Join([]string{q(spec.ChangeOperationSeqColumn), q(spec.ChangeSiteColumn), q(spec.ChangeTableColumn), q(spec.ChangeEntityKeyColumn), q(spec.ChangeOperationColumn), q(spec.ChangeOldValueColumn), q(spec.ChangeNewValueColumn)}, ","))
 		body.WriteString(") VALUES (")
-		body.WriteString(strings.Join([]string{operationSeq, siteExpr, quoteLiteral(tableName), keyExpr, quoteLiteral(event), oldValue, newValue}, ","))
+		body.WriteString(strings.Join([]string{operationSeq, siteExpr, quoteLiteral(logicalTableName), keyExpr, quoteLiteral(event), oldValue, newValue}, ","))
 		body.WriteString(");\n")
 	}
 	body.WriteString("END")
@@ -279,7 +282,13 @@ func containsString(values []string, want string) bool {
 func sqliteJSONExpr(prefix string, columns []string) string {
 	args := make([]string, 0, len(columns)*2)
 	for _, column := range columns {
-		args = append(args, quoteLiteral(column), prefix+"."+quoteIdentifier("sqlite", column))
+		value := prefix + "." + quoteIdentifier("sqlite", column)
+		// SQLite stores generated ORM JSON columns as TEXT. Decode valid JSON
+		// text before placing it in the outer object so redaction paths traverse
+		// the same logical JSON tree as PostgreSQL jsonb columns. Non-JSON text
+		// remains a scalar value.
+		value = "CASE WHEN json_valid(" + value + ") THEN json(" + value + ") ELSE " + value + " END"
+		args = append(args, quoteLiteral(column), value)
 	}
 	return "json_object(" + strings.Join(args, ",") + ")"
 }
@@ -466,6 +475,10 @@ func splitAuditIdentifierMust(value string) (string, string) {
 		panic("invalid validated audit identifier")
 	}
 	return a, b
+}
+
+func sqlitePhysicalTableName(schema, table string) string {
+	return schema + "__" + table
 }
 
 func validAuditIdentifier(value string) bool {
