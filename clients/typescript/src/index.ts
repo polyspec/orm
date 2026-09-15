@@ -108,7 +108,7 @@ export interface RequestQuery {
   limit?: Limit;
   distinct?: boolean;
   force_index?: string;
-  lock?: 'update' | 'share';
+  lock?: 'update' | 'share' | 'update_nowait' | 'share_nowait';
   keyset?: Keyset;
   key_by?: string;
   flatten?: boolean;

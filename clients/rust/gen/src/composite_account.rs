@@ -268,6 +268,10 @@ impl<'a> CompositeAccountWhere<'a> {
     pub fn name_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "eq", v.into()); self }
     pub fn name(self, v: impl Into<String>) -> Self { self.name_eq(v) }
     pub fn name_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "not_eq", v.into()); self }
+    pub fn name_gt(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "gt", v.into()); self }
+    pub fn name_gte(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "gte", v.into()); self }
+    pub fn name_lt(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "lt", v.into()); self }
+    pub fn name_lte(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "lte", v.into()); self }
     pub fn name_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("name", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn name_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("name", "not_in", vs.into_iter().map(Into::into).collect()); self }
     pub fn name_like(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "like", v.into()); self }
@@ -279,6 +283,10 @@ impl<'a> CompositeAccountWhere<'a> {
     pub fn name_is_not_null(mut self) -> Self { self.w.pred_null("name", "is_not_null"); self }
     pub fn name_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "eq_col", r); self }
     pub fn name_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "not_eq_col", r); self }
+    pub fn name_gt_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "gt_col", r); self }
+    pub fn name_gte_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "gte_col", r); self }
+    pub fn name_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "lt_col", r); self }
+    pub fn name_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "lte_col", r); self }
 }
 
 /// Query over composite_account: query() → using(&db) → chain → terminal().await.
@@ -353,6 +361,10 @@ impl CompositeAccount {
     pub fn name_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "eq", v.into()); self }
     pub fn name(self, v: impl Into<String>) -> Self { self.name_eq(v) }
     pub fn name_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "not_eq", v.into()); self }
+    pub fn name_gt(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "gt", v.into()); self }
+    pub fn name_gte(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "gte", v.into()); self }
+    pub fn name_lt(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "lt", v.into()); self }
+    pub fn name_lte(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "lte", v.into()); self }
     pub fn name_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("name", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn name_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("name", "not_in", vs.into_iter().map(Into::into).collect()); self }
     pub fn name_like(mut self, v: impl Into<String>) -> Self { self.q.w().pred("name", "like", v.into()); self }
@@ -364,6 +376,10 @@ impl CompositeAccount {
     pub fn name_is_not_null(mut self) -> Self { self.q.w().pred_null("name", "is_not_null"); self }
     pub fn name_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "eq_col", r); self }
     pub fn name_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "not_eq_col", r); self }
+    pub fn name_gt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "gt_col", r); self }
+    pub fn name_gte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "gte_col", r); self }
+    pub fn name_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "lt_col", r); self }
+    pub fn name_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("name", "lte_col", r); self }
 
     // ---- join children: on() = ON, where_() = parent WHERE group ----
     pub fn on(mut self, f: impl FnOnce(CompositeAccountWhere<'_>) -> CompositeAccountWhere<'_>) -> Self { { let w = self.q.on_w(); f(CompositeAccountWhere { w }); } self }
@@ -432,6 +448,8 @@ impl CompositeAccount {
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
     pub fn for_update(mut self) -> Self { self.q.lock("update"); self }
     pub fn for_share(mut self) -> Self { self.q.lock("share"); self }
+    pub fn for_update_no_wait(mut self) -> Self { self.q.lock("update_nowait"); self }
+    pub fn for_share_no_wait(mut self) -> Self { self.q.lock("share_nowait"); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
     /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
     pub fn having(mut self, f: impl FnOnce(CompositeAccountWhere<'_>) -> CompositeAccountWhere<'_>) -> Self { { let w = self.q.having_w(); f(CompositeAccountWhere { w }); } self }
@@ -467,7 +485,9 @@ impl CompositeAccount {
     pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&["tenant_id", "account_id"]); self }
 
     // ---- terminals ----
-    pub async fn get(&mut self) -> Result<Option<CompositeAccountRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn get(&mut self) -> Result<CompositeAccountRow> { let row = self.get_or_none().await?; row.ok_or(orm::Error::NoRows) }
+
+    pub async fn get_or_none(&mut self) -> Result<Option<CompositeAccountRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
         Ok(match rows.take_cells().into_iter().next() {
             Some(mut src) => Some(CompositeAccountRow::from_row(&mut src, &rows.assemble, &rows)?),
@@ -597,7 +617,7 @@ impl CompositeAccount {
         let _ = id;
         let mut query = super::composite_account::query().using(ex);
         for (column, value) in ["tenant_id", "account_id"].iter().zip(keys) { query.q.w().pred(column, "eq", value); }
-        query.get().await
+        query.get_or_none().await
     }
 
     /// With set_tenant_id: UPDATE the other set columns WHERE tenant_id = that value and re-read the row; otherwise INSERT.
@@ -607,7 +627,7 @@ impl CompositeAccount {
                 db::write(ex, &mut self.q.req, "update").await?;
                 let mut q = super::composite_account::query().using(ex);
                 for (column, value) in ["tenant_id", "account_id"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.get().await
+                q.get_or_none().await
             }
             None => self.insert().await,
         }
@@ -642,11 +662,11 @@ impl CompositeAccount {
 
     pub async fn get_by_tenant_id(&mut self, v: i64) -> Result<Option<CompositeAccountRow>> {
         self.q.w().pred("tenant_id", "eq", v);
-        self.get().await
+        self.get_or_none().await
     }
     pub async fn get_by_tenant_id_and_account_id(&mut self, v0: i64, v1: i64) -> Result<Option<CompositeAccountRow>> {
         self.q.w().pred("tenant_id", "eq", v0); self.q.w().pred("account_id", "eq", v1);
-        self.get().await
+        self.get_or_none().await
     }
 
 }

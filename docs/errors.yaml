@@ -1,4 +1,4 @@
-# Error codes shared by the engine and the three executors. `ormgen errors --lang go|php|rust`
+# Error codes shared by the engine and every executor. `ormgen errors --lang go|php|rust`
 # (S5) generates one enum per language from this file; codes are the wire form (`error.code`).
 # origin: engine = raised while compiling IR → Plan (ormd / wasm / in-process alike);
 #         executor = raised by the language runtime; driver = passed through from the DB driver
@@ -50,6 +50,8 @@ codes:
   - code: CURSOR_INVALID           # keyset cursor version, order, or typed value is invalid
     origin: engine
   # ---- executor ----
+  - code: NO_ROWS                # strict one-row query matched no row
+    origin: executor
   - code: OPTIMISTIC_LOCK         # updateOptimistic matched no row (updated_ts changed)
     origin: executor
   - code: CODEC_DECODE            # styled column bytes could not be decoded (docs/codec.md)

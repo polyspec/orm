@@ -310,7 +310,7 @@ var ServiceMemberCols = struct {
 	UserSeq:    orm.ColRef{Column: "user_seq"},
 }
 
-// ServiceMemberQuery builds a statement over service_member: ServiceMember() → Using(ctx, db) → chain → terminal().
+// ServiceMemberQuery builds a statement over service_member: ServiceMember() → chain → Using(ctx, db) → terminal().
 type ServiceMemberQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -326,13 +326,20 @@ func (q *ServiceMemberQuery) KeyByFn(fn func(*ServiceMemberRow) orm.Key) *Servic
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *ServiceMemberQuery) Req() *orm.Req { return q.q.Req }
 
-// ServiceMember starts a query over service_member.
+// ServiceMember starts a query over service_member. The builder may be configured
+// before Using; the bound ORM executor supplies the schema engine at Using.
 func ServiceMember() *ServiceMemberQuery {
-	return &ServiceMemberQuery{q: orm.NewQ(mustEngine(), "service_member")}
+	return &ServiceMemberQuery{q: orm.NewQ(eng, "service_member")}
 }
 
 // Using selects the context and pool or transaction for this query.
 func (q *ServiceMemberQuery) Using(ctx context.Context, ex orm.Exec) *ServiceMemberQuery {
+	if q.q == nil && ex != nil {
+		q.q = orm.NewQ(eng, "service_member")
+	}
+	if q.q != nil && ex != nil && ex.DB() != nil {
+		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
+	}
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
@@ -1254,7 +1261,12 @@ func (q *ServiceMemberQuery) Limit(offset, count int) *ServiceMemberQuery {
 }
 func (q *ServiceMemberQuery) ForUpdate() *ServiceMemberQuery { q.q.Lock("update"); return q }
 func (q *ServiceMemberQuery) ForShare() *ServiceMemberQuery  { q.q.Lock("share"); return q }
-func (q *ServiceMemberQuery) Distinct() *ServiceMemberQuery  { q.q.Node.Distinct = true; return q }
+func (q *ServiceMemberQuery) ForUpdateNoWait() *ServiceMemberQuery {
+	q.q.Lock("update_nowait")
+	return q
+}
+func (q *ServiceMemberQuery) ForShareNoWait() *ServiceMemberQuery { q.q.Lock("share_nowait"); return q }
+func (q *ServiceMemberQuery) Distinct() *ServiceMemberQuery       { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
 func (q *ServiceMemberQuery) Flatten() *ServiceMemberQuery { q.q.Node.Flatten = true; return q }
@@ -1926,6 +1938,9 @@ func (q *ServiceMemberQuery) batchWrite(rows []*ServiceMemberQuery, kind string,
 	for i, row := range rows {
 		if row == nil || row.q == nil {
 			return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"}
+		}
+		if ex.DB() != nil {
+			row.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 		}
 		requests[i] = row.q.Req
 	}

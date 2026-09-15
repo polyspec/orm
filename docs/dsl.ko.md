@@ -130,7 +130,8 @@ join 조건에서는 `child.on(fn)`을 ON에 사용하고 `child.where(fn)`을 W
 
 | Terminal | 반환값 |
 |---|---|
-| `get()` | 행 하나 또는 null |
+| `get()` | 한 행; 없으면 `NO_ROWS` |
+| `getOrNull()` / `get_or_none()` | 선택적 행 |
 | `gets()` | 행 collection |
 | `getCount()` | 정수 count |
 | `getsCount()` | 그룹 count 행 |

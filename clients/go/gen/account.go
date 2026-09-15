@@ -220,7 +220,7 @@ var AccountCols = struct {
 	Name: orm.ColRef{Column: "name"},
 }
 
-// AccountQuery builds a statement over account: Account() → Using(ctx, db) → chain → terminal().
+// AccountQuery builds a statement over account: Account() → chain → Using(ctx, db) → terminal().
 type AccountQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -233,11 +233,18 @@ func (q *AccountQuery) KeyByFn(fn func(*AccountRow) orm.Key) *AccountQuery { q.k
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *AccountQuery) Req() *orm.Req { return q.q.Req }
 
-// Account starts a query over account.
-func Account() *AccountQuery { return &AccountQuery{q: orm.NewQ(mustEngine(), "account")} }
+// Account starts a query over account. The builder may be configured
+// before Using; the bound ORM executor supplies the schema engine at Using.
+func Account() *AccountQuery { return &AccountQuery{q: orm.NewQ(eng, "account")} }
 
 // Using selects the context and pool or transaction for this query.
 func (q *AccountQuery) Using(ctx context.Context, ex orm.Exec) *AccountQuery {
+	if q.q == nil && ex != nil {
+		q.q = orm.NewQ(eng, "account")
+	}
+	if q.q != nil && ex != nil && ex.DB() != nil {
+		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
+	}
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
@@ -393,6 +400,14 @@ func (w *AccountWhere) Name(v string) *AccountWhere      { return w.NameEq(v) }
 func (q *AccountQuery) Name(v string) *AccountQuery      { return q.NameEq(v) }
 func (w *AccountWhere) NameNotEq(v string) *AccountWhere { w.w.Pred("name", "not_eq", v); return w }
 func (q *AccountQuery) NameNotEq(v string) *AccountQuery { q.q.W().Pred("name", "not_eq", v); return q }
+func (w *AccountWhere) NameGt(v string) *AccountWhere    { w.w.Pred("name", "gt", v); return w }
+func (q *AccountQuery) NameGt(v string) *AccountQuery    { q.q.W().Pred("name", "gt", v); return q }
+func (w *AccountWhere) NameGte(v string) *AccountWhere   { w.w.Pred("name", "gte", v); return w }
+func (q *AccountQuery) NameGte(v string) *AccountQuery   { q.q.W().Pred("name", "gte", v); return q }
+func (w *AccountWhere) NameLt(v string) *AccountWhere    { w.w.Pred("name", "lt", v); return w }
+func (q *AccountQuery) NameLt(v string) *AccountQuery    { q.q.W().Pred("name", "lt", v); return q }
+func (w *AccountWhere) NameLte(v string) *AccountWhere   { w.w.Pred("name", "lte", v); return w }
+func (q *AccountQuery) NameLte(v string) *AccountQuery   { q.q.W().Pred("name", "lte", v); return q }
 func (w *AccountWhere) NameIn(vs []string) *AccountWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
@@ -464,6 +479,38 @@ func (w *AccountWhere) NameNotEqCol(ref orm.ColRef) *AccountWhere {
 }
 func (q *AccountQuery) NameNotEqCol(ref orm.ColRef) *AccountQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AccountWhere) NameGtCol(ref orm.ColRef) *AccountWhere {
+	w.w.PredCol("name", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AccountQuery) NameGtCol(ref orm.ColRef) *AccountQuery {
+	q.q.W().PredCol("name", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AccountWhere) NameGteCol(ref orm.ColRef) *AccountWhere {
+	w.w.PredCol("name", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AccountQuery) NameGteCol(ref orm.ColRef) *AccountQuery {
+	q.q.W().PredCol("name", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AccountWhere) NameLtCol(ref orm.ColRef) *AccountWhere {
+	w.w.PredCol("name", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AccountQuery) NameLtCol(ref orm.ColRef) *AccountQuery {
+	q.q.W().PredCol("name", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *AccountWhere) NameLteCol(ref orm.ColRef) *AccountWhere {
+	w.w.PredCol("name", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *AccountQuery) NameLteCol(ref orm.ColRef) *AccountQuery {
+	q.q.W().PredCol("name", "lte_col", ref.Path, ref.Column)
 	return q
 }
 
@@ -657,9 +704,11 @@ func (q *AccountQuery) Limit(offset, count int) *AccountQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *AccountQuery) ForUpdate() *AccountQuery { q.q.Lock("update"); return q }
-func (q *AccountQuery) ForShare() *AccountQuery  { q.q.Lock("share"); return q }
-func (q *AccountQuery) Distinct() *AccountQuery  { q.q.Node.Distinct = true; return q }
+func (q *AccountQuery) ForUpdate() *AccountQuery       { q.q.Lock("update"); return q }
+func (q *AccountQuery) ForShare() *AccountQuery        { q.q.Lock("share"); return q }
+func (q *AccountQuery) ForUpdateNoWait() *AccountQuery { q.q.Lock("update_nowait"); return q }
+func (q *AccountQuery) ForShareNoWait() *AccountQuery  { q.q.Lock("share_nowait"); return q }
+func (q *AccountQuery) Distinct() *AccountQuery        { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
 func (q *AccountQuery) Flatten() *AccountQuery                { q.q.Node.Flatten = true; return q }
@@ -1093,6 +1142,9 @@ func (q *AccountQuery) batchWrite(rows []*AccountQuery, kind string, options orm
 	for i, row := range rows {
 		if row == nil || row.q == nil {
 			return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"}
+		}
+		if ex.DB() != nil {
+			row.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 		}
 		requests[i] = row.q.Req
 	}

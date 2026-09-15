@@ -257,7 +257,7 @@ var CompositeMembershipCols = struct {
 	Role:      orm.ColRef{Column: "role"},
 }
 
-// CompositeMembershipQuery builds a statement over composite_membership: CompositeMembership() → Using(ctx, db) → chain → terminal().
+// CompositeMembershipQuery builds a statement over composite_membership: CompositeMembership() → chain → Using(ctx, db) → terminal().
 type CompositeMembershipQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -273,13 +273,20 @@ func (q *CompositeMembershipQuery) KeyByFn(fn func(*CompositeMembershipRow) orm.
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *CompositeMembershipQuery) Req() *orm.Req { return q.q.Req }
 
-// CompositeMembership starts a query over composite_membership.
+// CompositeMembership starts a query over composite_membership. The builder may be configured
+// before Using; the bound ORM executor supplies the schema engine at Using.
 func CompositeMembership() *CompositeMembershipQuery {
-	return &CompositeMembershipQuery{q: orm.NewQ(mustEngine(), "composite_membership")}
+	return &CompositeMembershipQuery{q: orm.NewQ(eng, "composite_membership")}
 }
 
 // Using selects the context and pool or transaction for this query.
 func (q *CompositeMembershipQuery) Using(ctx context.Context, ex orm.Exec) *CompositeMembershipQuery {
+	if q.q == nil && ex != nil {
+		q.q = orm.NewQ(eng, "composite_membership")
+	}
+	if q.q != nil && ex != nil && ex.DB() != nil {
+		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
+	}
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
@@ -641,6 +648,38 @@ func (q *CompositeMembershipQuery) RoleNotEq(v string) *CompositeMembershipQuery
 	q.q.W().Pred("role", "not_eq", v)
 	return q
 }
+func (w *CompositeMembershipWhere) RoleGt(v string) *CompositeMembershipWhere {
+	w.w.Pred("role", "gt", v)
+	return w
+}
+func (q *CompositeMembershipQuery) RoleGt(v string) *CompositeMembershipQuery {
+	q.q.W().Pred("role", "gt", v)
+	return q
+}
+func (w *CompositeMembershipWhere) RoleGte(v string) *CompositeMembershipWhere {
+	w.w.Pred("role", "gte", v)
+	return w
+}
+func (q *CompositeMembershipQuery) RoleGte(v string) *CompositeMembershipQuery {
+	q.q.W().Pred("role", "gte", v)
+	return q
+}
+func (w *CompositeMembershipWhere) RoleLt(v string) *CompositeMembershipWhere {
+	w.w.Pred("role", "lt", v)
+	return w
+}
+func (q *CompositeMembershipQuery) RoleLt(v string) *CompositeMembershipQuery {
+	q.q.W().Pred("role", "lt", v)
+	return q
+}
+func (w *CompositeMembershipWhere) RoleLte(v string) *CompositeMembershipWhere {
+	w.w.Pred("role", "lte", v)
+	return w
+}
+func (q *CompositeMembershipQuery) RoleLte(v string) *CompositeMembershipQuery {
+	q.q.W().Pred("role", "lte", v)
+	return q
+}
 func (w *CompositeMembershipWhere) RoleIn(vs []string) *CompositeMembershipWhere {
 	w.w.PredList("role", "in", orm.Anys(vs))
 	return w
@@ -727,6 +766,38 @@ func (w *CompositeMembershipWhere) RoleNotEqCol(ref orm.ColRef) *CompositeMember
 }
 func (q *CompositeMembershipQuery) RoleNotEqCol(ref orm.ColRef) *CompositeMembershipQuery {
 	q.q.W().PredCol("role", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *CompositeMembershipWhere) RoleGtCol(ref orm.ColRef) *CompositeMembershipWhere {
+	w.w.PredCol("role", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *CompositeMembershipQuery) RoleGtCol(ref orm.ColRef) *CompositeMembershipQuery {
+	q.q.W().PredCol("role", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *CompositeMembershipWhere) RoleGteCol(ref orm.ColRef) *CompositeMembershipWhere {
+	w.w.PredCol("role", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *CompositeMembershipQuery) RoleGteCol(ref orm.ColRef) *CompositeMembershipQuery {
+	q.q.W().PredCol("role", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *CompositeMembershipWhere) RoleLtCol(ref orm.ColRef) *CompositeMembershipWhere {
+	w.w.PredCol("role", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *CompositeMembershipQuery) RoleLtCol(ref orm.ColRef) *CompositeMembershipQuery {
+	q.q.W().PredCol("role", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *CompositeMembershipWhere) RoleLteCol(ref orm.ColRef) *CompositeMembershipWhere {
+	w.w.PredCol("role", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *CompositeMembershipQuery) RoleLteCol(ref orm.ColRef) *CompositeMembershipQuery {
+	q.q.W().PredCol("role", "lte_col", ref.Path, ref.Column)
 	return q
 }
 
@@ -996,6 +1067,14 @@ func (q *CompositeMembershipQuery) ForUpdate() *CompositeMembershipQuery {
 	return q
 }
 func (q *CompositeMembershipQuery) ForShare() *CompositeMembershipQuery { q.q.Lock("share"); return q }
+func (q *CompositeMembershipQuery) ForUpdateNoWait() *CompositeMembershipQuery {
+	q.q.Lock("update_nowait")
+	return q
+}
+func (q *CompositeMembershipQuery) ForShareNoWait() *CompositeMembershipQuery {
+	q.q.Lock("share_nowait")
+	return q
+}
 func (q *CompositeMembershipQuery) Distinct() *CompositeMembershipQuery {
 	q.q.Node.Distinct = true
 	return q
@@ -1560,6 +1639,9 @@ func (q *CompositeMembershipQuery) batchWrite(rows []*CompositeMembershipQuery, 
 	for i, row := range rows {
 		if row == nil || row.q == nil {
 			return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"}
+		}
+		if ex.DB() != nil {
+			row.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 		}
 		requests[i] = row.q.Req
 	}

@@ -198,7 +198,7 @@ var AccountProjectCols = struct {
 	ProjectSeq: orm.ColRef{Column: "project_seq"},
 }
 
-// AccountProjectQuery builds a statement over account_project: AccountProject() → Using(ctx, db) → chain → terminal().
+// AccountProjectQuery builds a statement over account_project: AccountProject() → chain → Using(ctx, db) → terminal().
 type AccountProjectQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -214,13 +214,20 @@ func (q *AccountProjectQuery) KeyByFn(fn func(*AccountProjectRow) orm.Key) *Acco
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *AccountProjectQuery) Req() *orm.Req { return q.q.Req }
 
-// AccountProject starts a query over account_project.
+// AccountProject starts a query over account_project. The builder may be configured
+// before Using; the bound ORM executor supplies the schema engine at Using.
 func AccountProject() *AccountProjectQuery {
-	return &AccountProjectQuery{q: orm.NewQ(mustEngine(), "account_project")}
+	return &AccountProjectQuery{q: orm.NewQ(eng, "account_project")}
 }
 
 // Using selects the context and pool or transaction for this query.
 func (q *AccountProjectQuery) Using(ctx context.Context, ex orm.Exec) *AccountProjectQuery {
+	if q.q == nil && ex != nil {
+		q.q = orm.NewQ(eng, "account_project")
+	}
+	if q.q != nil && ex != nil && ex.DB() != nil {
+		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
+	}
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
@@ -673,7 +680,15 @@ func (q *AccountProjectQuery) Limit(offset, count int) *AccountProjectQuery {
 }
 func (q *AccountProjectQuery) ForUpdate() *AccountProjectQuery { q.q.Lock("update"); return q }
 func (q *AccountProjectQuery) ForShare() *AccountProjectQuery  { q.q.Lock("share"); return q }
-func (q *AccountProjectQuery) Distinct() *AccountProjectQuery  { q.q.Node.Distinct = true; return q }
+func (q *AccountProjectQuery) ForUpdateNoWait() *AccountProjectQuery {
+	q.q.Lock("update_nowait")
+	return q
+}
+func (q *AccountProjectQuery) ForShareNoWait() *AccountProjectQuery {
+	q.q.Lock("share_nowait")
+	return q
+}
+func (q *AccountProjectQuery) Distinct() *AccountProjectQuery { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
 func (q *AccountProjectQuery) Flatten() *AccountProjectQuery { q.q.Node.Flatten = true; return q }
@@ -1151,6 +1166,9 @@ func (q *AccountProjectQuery) batchWrite(rows []*AccountProjectQuery, kind strin
 	for i, row := range rows {
 		if row == nil || row.q == nil {
 			return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"}
+		}
+		if ex.DB() != nil {
+			row.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 		}
 		requests[i] = row.q.Req
 	}

@@ -43,6 +43,8 @@ pub const ENTITY_NOT_JOINED: &str = "ENTITY_NOT_JOINED";
 pub const LIMIT_IN_RELATION: &str = "LIMIT_IN_RELATION";
 /// engine: keyset cursor version, order, or typed value is invalid
 pub const CURSOR_INVALID: &str = "CURSOR_INVALID";
+/// executor: strict one-row query matched no row
+pub const NO_ROWS: &str = "NO_ROWS";
 /// executor: updateOptimistic matched no row (updated_ts changed)
 pub const OPTIMISTIC_LOCK: &str = "OPTIMISTIC_LOCK";
 /// executor: styled column bytes could not be decoded (docs/codec.md)

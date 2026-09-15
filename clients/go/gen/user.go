@@ -248,7 +248,7 @@ var UserCols = struct {
 	Name: orm.ColRef{Column: "name"},
 }
 
-// UserQuery builds a statement over user: User() → Using(ctx, db) → chain → terminal().
+// UserQuery builds a statement over user: User() → chain → Using(ctx, db) → terminal().
 type UserQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -261,11 +261,18 @@ func (q *UserQuery) KeyByFn(fn func(*UserRow) orm.Key) *UserQuery { q.keyFn = fn
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *UserQuery) Req() *orm.Req { return q.q.Req }
 
-// User starts a query over user.
-func User() *UserQuery { return &UserQuery{q: orm.NewQ(mustEngine(), "user")} }
+// User starts a query over user. The builder may be configured
+// before Using; the bound ORM executor supplies the schema engine at Using.
+func User() *UserQuery { return &UserQuery{q: orm.NewQ(eng, "user")} }
 
 // Using selects the context and pool or transaction for this query.
 func (q *UserQuery) Using(ctx context.Context, ex orm.Exec) *UserQuery {
+	if q.q == nil && ex != nil {
+		q.q = orm.NewQ(eng, "user")
+	}
+	if q.q != nil && ex != nil && ex.DB() != nil {
+		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
+	}
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
@@ -451,6 +458,14 @@ func (w *UserWhere) Name(v string) *UserWhere      { return w.NameEq(v) }
 func (q *UserQuery) Name(v string) *UserQuery      { return q.NameEq(v) }
 func (w *UserWhere) NameNotEq(v string) *UserWhere { w.w.Pred("name", "not_eq", v); return w }
 func (q *UserQuery) NameNotEq(v string) *UserQuery { q.q.W().Pred("name", "not_eq", v); return q }
+func (w *UserWhere) NameGt(v string) *UserWhere    { w.w.Pred("name", "gt", v); return w }
+func (q *UserQuery) NameGt(v string) *UserQuery    { q.q.W().Pred("name", "gt", v); return q }
+func (w *UserWhere) NameGte(v string) *UserWhere   { w.w.Pred("name", "gte", v); return w }
+func (q *UserQuery) NameGte(v string) *UserQuery   { q.q.W().Pred("name", "gte", v); return q }
+func (w *UserWhere) NameLt(v string) *UserWhere    { w.w.Pred("name", "lt", v); return w }
+func (q *UserQuery) NameLt(v string) *UserQuery    { q.q.W().Pred("name", "lt", v); return q }
+func (w *UserWhere) NameLte(v string) *UserWhere   { w.w.Pred("name", "lte", v); return w }
+func (q *UserQuery) NameLte(v string) *UserQuery   { q.q.W().Pred("name", "lte", v); return q }
 func (w *UserWhere) NameIn(vs []string) *UserWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
@@ -501,6 +516,38 @@ func (w *UserWhere) NameNotEqCol(ref orm.ColRef) *UserWhere {
 }
 func (q *UserQuery) NameNotEqCol(ref orm.ColRef) *UserQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *UserWhere) NameGtCol(ref orm.ColRef) *UserWhere {
+	w.w.PredCol("name", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *UserQuery) NameGtCol(ref orm.ColRef) *UserQuery {
+	q.q.W().PredCol("name", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *UserWhere) NameGteCol(ref orm.ColRef) *UserWhere {
+	w.w.PredCol("name", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *UserQuery) NameGteCol(ref orm.ColRef) *UserQuery {
+	q.q.W().PredCol("name", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *UserWhere) NameLtCol(ref orm.ColRef) *UserWhere {
+	w.w.PredCol("name", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *UserQuery) NameLtCol(ref orm.ColRef) *UserQuery {
+	q.q.W().PredCol("name", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *UserWhere) NameLteCol(ref orm.ColRef) *UserWhere {
+	w.w.PredCol("name", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *UserQuery) NameLteCol(ref orm.ColRef) *UserQuery {
+	q.q.W().PredCol("name", "lte_col", ref.Path, ref.Column)
 	return q
 }
 
@@ -749,9 +796,11 @@ func (q *UserQuery) Limit(offset, count int) *UserQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *UserQuery) ForUpdate() *UserQuery { q.q.Lock("update"); return q }
-func (q *UserQuery) ForShare() *UserQuery  { q.q.Lock("share"); return q }
-func (q *UserQuery) Distinct() *UserQuery  { q.q.Node.Distinct = true; return q }
+func (q *UserQuery) ForUpdate() *UserQuery       { q.q.Lock("update"); return q }
+func (q *UserQuery) ForShare() *UserQuery        { q.q.Lock("share"); return q }
+func (q *UserQuery) ForUpdateNoWait() *UserQuery { q.q.Lock("update_nowait"); return q }
+func (q *UserQuery) ForShareNoWait() *UserQuery  { q.q.Lock("share_nowait"); return q }
+func (q *UserQuery) Distinct() *UserQuery        { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
 func (q *UserQuery) Flatten() *UserQuery                   { q.q.Node.Flatten = true; return q }
@@ -1235,6 +1284,9 @@ func (q *UserQuery) batchWrite(rows []*UserQuery, kind string, options orm.Batch
 	for i, row := range rows {
 		if row == nil || row.q == nil {
 			return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"}
+		}
+		if ex.DB() != nil {
+			row.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 		}
 		requests[i] = row.q.Req
 	}

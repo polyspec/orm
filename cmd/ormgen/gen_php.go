@@ -368,7 +368,14 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
 {{- end}}{{end}}
 
     // ---- terminals ----
-    public function get(): ?{{.Type}}Row
+    public function get(): {{.Type}}Row
+    {
+        $row = $this->getOrNull();
+        if ($row === null) throw new \Orm\OrmException(\Orm\Code::NO_ROWS, 'query returned no rows');
+        return $row;
+    }
+
+    public function getOrNull(): ?{{.Type}}Row
     {
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();

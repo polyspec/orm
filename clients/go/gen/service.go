@@ -276,7 +276,7 @@ var ServiceCols = struct {
 	Name: orm.ColRef{Column: "name"},
 }
 
-// ServiceQuery builds a statement over service: Service() → Using(ctx, db) → chain → terminal().
+// ServiceQuery builds a statement over service: Service() → chain → Using(ctx, db) → terminal().
 type ServiceQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -289,11 +289,18 @@ func (q *ServiceQuery) KeyByFn(fn func(*ServiceRow) orm.Key) *ServiceQuery { q.k
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *ServiceQuery) Req() *orm.Req { return q.q.Req }
 
-// Service starts a query over service.
-func Service() *ServiceQuery { return &ServiceQuery{q: orm.NewQ(mustEngine(), "service")} }
+// Service starts a query over service. The builder may be configured
+// before Using; the bound ORM executor supplies the schema engine at Using.
+func Service() *ServiceQuery { return &ServiceQuery{q: orm.NewQ(eng, "service")} }
 
 // Using selects the context and pool or transaction for this query.
 func (q *ServiceQuery) Using(ctx context.Context, ex orm.Exec) *ServiceQuery {
+	if q.q == nil && ex != nil {
+		q.q = orm.NewQ(eng, "service")
+	}
+	if q.q != nil && ex != nil && ex.DB() != nil {
+		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
+	}
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
@@ -521,6 +528,14 @@ func (w *ServiceWhere) Name(v string) *ServiceWhere      { return w.NameEq(v) }
 func (q *ServiceQuery) Name(v string) *ServiceQuery      { return q.NameEq(v) }
 func (w *ServiceWhere) NameNotEq(v string) *ServiceWhere { w.w.Pred("name", "not_eq", v); return w }
 func (q *ServiceQuery) NameNotEq(v string) *ServiceQuery { q.q.W().Pred("name", "not_eq", v); return q }
+func (w *ServiceWhere) NameGt(v string) *ServiceWhere    { w.w.Pred("name", "gt", v); return w }
+func (q *ServiceQuery) NameGt(v string) *ServiceQuery    { q.q.W().Pred("name", "gt", v); return q }
+func (w *ServiceWhere) NameGte(v string) *ServiceWhere   { w.w.Pred("name", "gte", v); return w }
+func (q *ServiceQuery) NameGte(v string) *ServiceQuery   { q.q.W().Pred("name", "gte", v); return q }
+func (w *ServiceWhere) NameLt(v string) *ServiceWhere    { w.w.Pred("name", "lt", v); return w }
+func (q *ServiceQuery) NameLt(v string) *ServiceQuery    { q.q.W().Pred("name", "lt", v); return q }
+func (w *ServiceWhere) NameLte(v string) *ServiceWhere   { w.w.Pred("name", "lte", v); return w }
+func (q *ServiceQuery) NameLte(v string) *ServiceQuery   { q.q.W().Pred("name", "lte", v); return q }
 func (w *ServiceWhere) NameIn(vs []string) *ServiceWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
@@ -592,6 +607,38 @@ func (w *ServiceWhere) NameNotEqCol(ref orm.ColRef) *ServiceWhere {
 }
 func (q *ServiceQuery) NameNotEqCol(ref orm.ColRef) *ServiceQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceWhere) NameGtCol(ref orm.ColRef) *ServiceWhere {
+	w.w.PredCol("name", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceQuery) NameGtCol(ref orm.ColRef) *ServiceQuery {
+	q.q.W().PredCol("name", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceWhere) NameGteCol(ref orm.ColRef) *ServiceWhere {
+	w.w.PredCol("name", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceQuery) NameGteCol(ref orm.ColRef) *ServiceQuery {
+	q.q.W().PredCol("name", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceWhere) NameLtCol(ref orm.ColRef) *ServiceWhere {
+	w.w.PredCol("name", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceQuery) NameLtCol(ref orm.ColRef) *ServiceQuery {
+	q.q.W().PredCol("name", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ServiceWhere) NameLteCol(ref orm.ColRef) *ServiceWhere {
+	w.w.PredCol("name", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ServiceQuery) NameLteCol(ref orm.ColRef) *ServiceQuery {
+	q.q.W().PredCol("name", "lte_col", ref.Path, ref.Column)
 	return q
 }
 
@@ -919,9 +966,11 @@ func (q *ServiceQuery) Limit(offset, count int) *ServiceQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *ServiceQuery) ForUpdate() *ServiceQuery { q.q.Lock("update"); return q }
-func (q *ServiceQuery) ForShare() *ServiceQuery  { q.q.Lock("share"); return q }
-func (q *ServiceQuery) Distinct() *ServiceQuery  { q.q.Node.Distinct = true; return q }
+func (q *ServiceQuery) ForUpdate() *ServiceQuery       { q.q.Lock("update"); return q }
+func (q *ServiceQuery) ForShare() *ServiceQuery        { q.q.Lock("share"); return q }
+func (q *ServiceQuery) ForUpdateNoWait() *ServiceQuery { q.q.Lock("update_nowait"); return q }
+func (q *ServiceQuery) ForShareNoWait() *ServiceQuery  { q.q.Lock("share_nowait"); return q }
+func (q *ServiceQuery) Distinct() *ServiceQuery        { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
 func (q *ServiceQuery) Flatten() *ServiceQuery                 { q.q.Node.Flatten = true; return q }
@@ -1429,6 +1478,9 @@ func (q *ServiceQuery) batchWrite(rows []*ServiceQuery, kind string, options orm
 	for i, row := range rows {
 		if row == nil || row.q == nil {
 			return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"}
+		}
+		if ex.DB() != nil {
+			row.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 		}
 		requests[i] = row.q.Req
 	}

@@ -220,7 +220,7 @@ var ProjectCols = struct {
 	Name: orm.ColRef{Column: "name"},
 }
 
-// ProjectQuery builds a statement over project: Project() → Using(ctx, db) → chain → terminal().
+// ProjectQuery builds a statement over project: Project() → chain → Using(ctx, db) → terminal().
 type ProjectQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -233,11 +233,18 @@ func (q *ProjectQuery) KeyByFn(fn func(*ProjectRow) orm.Key) *ProjectQuery { q.k
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *ProjectQuery) Req() *orm.Req { return q.q.Req }
 
-// Project starts a query over project.
-func Project() *ProjectQuery { return &ProjectQuery{q: orm.NewQ(mustEngine(), "project")} }
+// Project starts a query over project. The builder may be configured
+// before Using; the bound ORM executor supplies the schema engine at Using.
+func Project() *ProjectQuery { return &ProjectQuery{q: orm.NewQ(eng, "project")} }
 
 // Using selects the context and pool or transaction for this query.
 func (q *ProjectQuery) Using(ctx context.Context, ex orm.Exec) *ProjectQuery {
+	if q.q == nil && ex != nil {
+		q.q = orm.NewQ(eng, "project")
+	}
+	if q.q != nil && ex != nil && ex.DB() != nil {
+		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
+	}
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
@@ -393,6 +400,14 @@ func (w *ProjectWhere) Name(v string) *ProjectWhere      { return w.NameEq(v) }
 func (q *ProjectQuery) Name(v string) *ProjectQuery      { return q.NameEq(v) }
 func (w *ProjectWhere) NameNotEq(v string) *ProjectWhere { w.w.Pred("name", "not_eq", v); return w }
 func (q *ProjectQuery) NameNotEq(v string) *ProjectQuery { q.q.W().Pred("name", "not_eq", v); return q }
+func (w *ProjectWhere) NameGt(v string) *ProjectWhere    { w.w.Pred("name", "gt", v); return w }
+func (q *ProjectQuery) NameGt(v string) *ProjectQuery    { q.q.W().Pred("name", "gt", v); return q }
+func (w *ProjectWhere) NameGte(v string) *ProjectWhere   { w.w.Pred("name", "gte", v); return w }
+func (q *ProjectQuery) NameGte(v string) *ProjectQuery   { q.q.W().Pred("name", "gte", v); return q }
+func (w *ProjectWhere) NameLt(v string) *ProjectWhere    { w.w.Pred("name", "lt", v); return w }
+func (q *ProjectQuery) NameLt(v string) *ProjectQuery    { q.q.W().Pred("name", "lt", v); return q }
+func (w *ProjectWhere) NameLte(v string) *ProjectWhere   { w.w.Pred("name", "lte", v); return w }
+func (q *ProjectQuery) NameLte(v string) *ProjectQuery   { q.q.W().Pred("name", "lte", v); return q }
 func (w *ProjectWhere) NameIn(vs []string) *ProjectWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
@@ -464,6 +479,38 @@ func (w *ProjectWhere) NameNotEqCol(ref orm.ColRef) *ProjectWhere {
 }
 func (q *ProjectQuery) NameNotEqCol(ref orm.ColRef) *ProjectQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ProjectWhere) NameGtCol(ref orm.ColRef) *ProjectWhere {
+	w.w.PredCol("name", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ProjectQuery) NameGtCol(ref orm.ColRef) *ProjectQuery {
+	q.q.W().PredCol("name", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ProjectWhere) NameGteCol(ref orm.ColRef) *ProjectWhere {
+	w.w.PredCol("name", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ProjectQuery) NameGteCol(ref orm.ColRef) *ProjectQuery {
+	q.q.W().PredCol("name", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ProjectWhere) NameLtCol(ref orm.ColRef) *ProjectWhere {
+	w.w.PredCol("name", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ProjectQuery) NameLtCol(ref orm.ColRef) *ProjectQuery {
+	q.q.W().PredCol("name", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *ProjectWhere) NameLteCol(ref orm.ColRef) *ProjectWhere {
+	w.w.PredCol("name", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *ProjectQuery) NameLteCol(ref orm.ColRef) *ProjectQuery {
+	q.q.W().PredCol("name", "lte_col", ref.Path, ref.Column)
 	return q
 }
 
@@ -657,9 +704,11 @@ func (q *ProjectQuery) Limit(offset, count int) *ProjectQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *ProjectQuery) ForUpdate() *ProjectQuery { q.q.Lock("update"); return q }
-func (q *ProjectQuery) ForShare() *ProjectQuery  { q.q.Lock("share"); return q }
-func (q *ProjectQuery) Distinct() *ProjectQuery  { q.q.Node.Distinct = true; return q }
+func (q *ProjectQuery) ForUpdate() *ProjectQuery       { q.q.Lock("update"); return q }
+func (q *ProjectQuery) ForShare() *ProjectQuery        { q.q.Lock("share"); return q }
+func (q *ProjectQuery) ForUpdateNoWait() *ProjectQuery { q.q.Lock("update_nowait"); return q }
+func (q *ProjectQuery) ForShareNoWait() *ProjectQuery  { q.q.Lock("share_nowait"); return q }
+func (q *ProjectQuery) Distinct() *ProjectQuery        { q.q.Node.Distinct = true; return q }
 
 // Relation-child options.
 func (q *ProjectQuery) Flatten() *ProjectQuery                { q.q.Node.Flatten = true; return q }
@@ -1093,6 +1142,9 @@ func (q *ProjectQuery) batchWrite(rows []*ProjectQuery, kind string, options orm
 	for i, row := range rows {
 		if row == nil || row.q == nil {
 			return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"}
+		}
+		if ex.DB() != nil {
+			row.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 		}
 		requests[i] = row.q.Req
 	}
