@@ -88,6 +88,7 @@ Mermaid 문법을 사용한다. `PK`, `FK`, `UK`는 Mermaid keyword다. 기본�
 라벨: 단일 컬럼 관계는 자식 FK 컬럼으로 시작한다. 복합 관계는 `(tenant_id, account_id)`처럼 순서가 있는 자식 FK 목록으로 시작하고 `(tenant_id, account_id) (account / memberships)`처럼 관계 이름을 반드시 명시한다. FK 수는 부모 기본키 수와 같아야 하며 같은 위치의 부모 키에 대응한다. `(자식측 / 부모측)` 관계 이름은 단일 컬럼 관계에서만 생략할 수 있다.
 이름 기본값: 자식측 = FK 컬럼에서 `_seq` 제거(`service_seq`→`service`, `updated_user_seq`→`updated_user`), 부모측 = 자식 테이블명에서 부모 테이블명 접두어를 떼고 복수형(`battle_item`→`items`, `product_review`→`reviews`, 접두어가 없으면 테이블명 복수형 `battles`).
 같은 부모를 두 번 참조하면(`user_seq`, `updated_user_seq`) 관계선을 두 줄 긋는다. 이름 충돌은 `ormgen`이 오류로 표시한다.
+같은 자식 column이 서로 겹치는 복합 foreign key를 포함해 둘 이상의 foreign key에 참여할 수 있다. 각 관계선의 순서 있는 local/target key pair가 계속 정본이며 generated DDL은 서로 다른 제약을 모두 생성하고 generated relation metadata도 모든 pair를 보존한다. 소스의 `-> table.column` 선언은 하나의 명시적 target을 지정하므로 관계선과 충돌할 수 없다.
 
 ### 2.3 `%%` 지시문 (Mermaid는 주석으로 무시, ormgen만 읽음)
 ```

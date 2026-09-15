@@ -92,12 +92,17 @@ type Col struct {
 	Styles      []string `json:"styles,omitempty"`
 	BlindIndex  string   `json:"blind_index,omitempty"`
 	Ref         *Ref     `json:"ref,omitempty"`
-	PK          bool     `json:"pk,omitempty"`
-	FK          bool     `json:"fk,omitempty"`
-	UK          bool     `json:"uk,omitempty"`
-	Describe    string   `json:"describe,omitempty"`
-	Comment     string   `json:"comment,omitempty"`
-	Line        int      `json:"-"`
+	// RefExplicit distinguishes a source-level -> target declaration from a
+	// relation-inferred reference. It is build-time metadata and is not part of
+	// the generated manifest; a column may participate in additional relation
+	// foreign keys after its first inferred reference.
+	RefExplicit bool   `json:"-"`
+	PK          bool   `json:"pk,omitempty"`
+	FK          bool   `json:"fk,omitempty"`
+	UK          bool   `json:"uk,omitempty"`
+	Describe    string `json:"describe,omitempty"`
+	Comment     string `json:"comment,omitempty"`
+	Line        int    `json:"-"`
 }
 
 type Ref struct {
@@ -115,6 +120,10 @@ type Rel struct {
 	Through     string   `json:"through,omitempty"`
 	ThroughKeys []RelKey `json:"through_keys,omitempty"`
 	OnDelete    string   `json:"on_delete,omitempty"`
+	// ForeignKey is emitted only when this relation is an additional child-side
+	// foreign key whose local columns already have another inferred target.
+	// Ordinary relations retain the historical column Ref representation.
+	ForeignKey bool `json:"foreign_key,omitempty"`
 }
 
 type RelKey struct {
@@ -522,6 +531,7 @@ func buildColumn(dc *DColumn) (*Col, error) {
 	if dc.Ref != "" {
 		ent, col, _ := strings.Cut(dc.Ref, ".")
 		c.Ref = &Ref{Entity: ent, Column: col}
+		c.RefExplicit = true
 		c.FK = true
 	}
 	return c, nil
@@ -539,6 +549,7 @@ func (m *Manifest) addRelation(r *DRelation) error {
 	if len(r.FKs) != len(parent.PK) {
 		return &BuildError{r.Line, fmt.Sprintf("relation %s -> %s: %d FK columns do not match %d target PK columns", r.Parent, r.Child, len(r.FKs), len(parent.PK))}
 	}
+	overlapping := false
 	for i, name := range r.FKs {
 		fk := child.cols[name]
 		if fk == nil {
@@ -548,7 +559,10 @@ func (m *Manifest) addRelation(r *DRelation) error {
 		if fk.Ref == nil {
 			fk.Ref = &Ref{Entity: parent.Name, Column: parent.PK[i]}
 		} else if fk.Ref.Entity != parent.Name || fk.Ref.Column != parent.PK[i] {
-			return &BuildError{r.Line, fmt.Sprintf("relation %s -> %s: FK column %s references %s.%s, expected %s.%s", r.Parent, r.Child, name, fk.Ref.Entity, fk.Ref.Column, parent.Name, parent.PK[i])}
+			if fk.RefExplicit {
+				return &BuildError{r.Line, fmt.Sprintf("relation %s -> %s: FK column %s references %s.%s, expected %s.%s", r.Parent, r.Child, name, fk.Ref.Entity, fk.Ref.Column, parent.Name, parent.PK[i])}
+			}
+			overlapping = true
 		}
 	}
 	// Cardinality: right side of the token is the child side.
@@ -584,7 +598,7 @@ func (m *Manifest) addRelation(r *DRelation) error {
 		childKeys[i] = RelKey{Local: r.FKs[i], Target: parent.PK[i]}
 		parentKeys[i] = RelKey{Local: parent.PK[i], Target: r.FKs[i]}
 	}
-	child.Relations[childName] = &Rel{Name: childName, Kind: "one", Target: parent.Name, Keys: childKeys, OnDelete: r.OnDelete}
+	child.Relations[childName] = &Rel{Name: childName, Kind: "one", Target: parent.Name, Keys: childKeys, OnDelete: r.OnDelete, ForeignKey: overlapping}
 	kind := "many"
 	if !childMany {
 		kind = "one"
