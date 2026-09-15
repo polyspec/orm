@@ -143,6 +143,9 @@ func Encode(styles []string, v any) (any, error) {
 			if i != 0 {
 				return nil, codecErr(CodeCodecUnsupported, "json must be the first style")
 			}
+			if _, ok := value.([]byte); ok {
+				return nil, codecErr(CodeCodecEncode, "json: []byte is not a common JSON value")
+			}
 			var buf bytes.Buffer
 			enc := json.NewEncoder(&buf)
 			enc.SetEscapeHTML(false)
