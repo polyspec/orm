@@ -28,3 +28,21 @@ func TestIsTransactionFinishedRecognizesORMTransactionState(t *testing.T) {
 		t.Fatal("unrelated configuration error was recognized")
 	}
 }
+
+func TestErrorClassificationExposesMappedCodes(t *testing.T) {
+	deadlock := &ir.Error{Code: CodeDeadlock, Msg: "deadlock"}
+	duplicate := &ir.Error{Code: CodeDuplicateKey, Msg: "duplicate"}
+	foreignKey := &ir.Error{Code: CodeForeignKey, Msg: "foreign key"}
+	if ErrorCode(deadlock) != CodeDeadlock || !IsDeadlock(deadlock) {
+		t.Fatal("deadlock code was not exposed")
+	}
+	if ErrorCode(duplicate) != CodeDuplicateKey || !IsDuplicateKey(duplicate) {
+		t.Fatal("duplicate-key code was not exposed")
+	}
+	if ErrorCode(foreignKey) != CodeForeignKey || !IsForeignKey(foreignKey) {
+		t.Fatal("foreign-key code was not exposed")
+	}
+	if ErrorCode(errors.New("other")) != "" || IsDuplicateKey(errors.New("other")) || IsForeignKey(errors.New("other")) {
+		t.Fatal("unrelated error was classified")
+	}
+}
