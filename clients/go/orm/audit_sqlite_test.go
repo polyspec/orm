@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -84,6 +85,19 @@ func TestInstallAuditSQLiteCapturesChanges(t *testing.T) {
 	}
 	if count != 0 {
 		t.Fatalf("audit context rows after commit = %d, want 0", count)
+	}
+}
+
+func TestSQLiteRedactionLeavesMissingPathUnchanged(t *testing.T) {
+	newValue, oldValue := sqliteRedactExpr("new_value", "old_value", [][]string{{"details", "private"}})
+	if !strings.Contains(newValue, "CASE WHEN json_type(new_value,'$.\"details\".\"private\"') IS NOT NULL") {
+		t.Fatalf("new-value redaction does not guard missing paths: %s", newValue)
+	}
+	if !strings.Contains(oldValue, "CASE WHEN json_type(old_value,'$.\"details\".\"private\"') IS NOT NULL") {
+		t.Fatalf("old-value redaction does not guard missing paths: %s", oldValue)
+	}
+	if strings.Contains(newValue, "'present',0") || strings.Contains(oldValue, "'present',0") {
+		t.Fatal("missing redaction paths must not produce a synthetic present=false marker")
 	}
 }
 

@@ -291,8 +291,8 @@ func sqliteRedactExpr(newValue, oldValue string, paths [][]string) (string, stri
 			segments[i] = `."` + strings.ReplaceAll(segment, `"`, `""`) + `"`
 		}
 		jsonPath := "$" + strings.Join(segments, "")
-		newValue = "json_set(" + newValue + "," + quoteLiteral(jsonPath) + ",json_object('redacted',1,'present',json_type(" + newValue + "," + quoteLiteral(jsonPath) + ") IS NOT NULL))"
-		oldValue = "json_set(" + oldValue + "," + quoteLiteral(jsonPath) + ",json_object('redacted',1,'present',json_type(" + oldValue + "," + quoteLiteral(jsonPath) + ") IS NOT NULL))"
+		newValue = "CASE WHEN json_type(" + newValue + "," + quoteLiteral(jsonPath) + ") IS NOT NULL THEN json_set(" + newValue + "," + quoteLiteral(jsonPath) + ",json_object('redacted',1,'present',1)) ELSE " + newValue + " END"
+		oldValue = "CASE WHEN json_type(" + oldValue + "," + quoteLiteral(jsonPath) + ") IS NOT NULL THEN json_set(" + oldValue + "," + quoteLiteral(jsonPath) + ",json_object('redacted',1,'present',1)) ELSE " + oldValue + " END"
 	}
 	return newValue, oldValue
 }
@@ -417,36 +417,18 @@ func auditFunctionBody(spec AuditSpec) string {
 	if spec.Mode == AuditChanges {
 		b.WriteString("  IF TG_OP = 'UPDATE' THEN\n    old_full := old_value;\n    new_full := new_value;\n    old_value := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(old_full) WHERE new_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n    new_value := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(new_full) WHERE old_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n  END IF;\n")
 		for _, path := range spec.RedactedPaths {
-			if len(path) > 1 {
-				parent := path[:len(path)-1]
-				b.WriteString("  IF jsonb_typeof(new_value #> ")
-				b.WriteString(quotePath(parent))
-				b.WriteString(") = 'object' THEN ")
-			}
+			b.WriteString("  IF (new_value #> ")
+			b.WriteString(quotePath(path))
+			b.WriteString(") IS NOT NULL THEN ")
 			b.WriteString("new_value := jsonb_set(new_value, ")
 			b.WriteString(quotePath(path))
-			b.WriteString(", jsonb_build_object('redacted', true, 'present', (new_value #> ")
+			b.WriteString(", jsonb_build_object('redacted', true, 'present', true), true); END IF;\n")
+			b.WriteString("  IF (old_value #> ")
 			b.WriteString(quotePath(path))
-			if len(path) > 1 {
-				b.WriteString(") IS NOT NULL), true); END IF;\n")
-			} else {
-				b.WriteString(") IS NOT NULL), true);\n")
-			}
-			if len(path) > 1 {
-				parent := path[:len(path)-1]
-				b.WriteString("  IF jsonb_typeof(old_value #> ")
-				b.WriteString(quotePath(parent))
-				b.WriteString(") = 'object' THEN ")
-			}
+			b.WriteString(") IS NOT NULL THEN ")
 			b.WriteString("old_value := jsonb_set(old_value, ")
 			b.WriteString(quotePath(path))
-			b.WriteString(", jsonb_build_object('redacted', true, 'present', (old_value #> ")
-			b.WriteString(quotePath(path))
-			if len(path) > 1 {
-				b.WriteString(") IS NOT NULL), true); END IF;\n")
-			} else {
-				b.WriteString(") IS NOT NULL), true);\n")
-			}
+			b.WriteString(", jsonb_build_object('redacted', true, 'present', true), true); END IF;\n")
 		}
 		b.WriteString("  IF TG_OP <> 'UPDATE' OR old_value <> '{}'::jsonb OR new_value <> '{}'::jsonb THEN\n  INSERT INTO ")
 		b.WriteString(change)
