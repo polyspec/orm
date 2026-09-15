@@ -996,7 +996,7 @@ impl Db {
                         "sqlite does not support transaction isolation or read-only mode".into(),
                     });
                 }
-                TxInner::Sqlite(p.begin().await?)
+                TxInner::Sqlite(p.begin_with("BEGIN IMMEDIATE").await?)
             }
         };
         if options.timeout_ms > 0 {

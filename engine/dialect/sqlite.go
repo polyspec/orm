@@ -60,5 +60,18 @@ func (SQLite) Upsert(conflict []string, assigns string) string {
 func (SQLite) ReadExpr(col, _ string, _ []string, _ func() string) (string, int) { return col, 0 }
 func (SQLite) WriteExpr(ph func() string, _ string, _ []string) (string, int)    { return ph(), 1 }
 
-func (SQLite) HostNow() bool                 { return true }
-func (SQLite) RowLock(string) (string, bool) { return "", false }
+func (SQLite) HostNow() bool { return true }
+
+// SQLite has no row-lock clause. The Go adapter opens ORM transactions with
+// BEGIN IMMEDIATE, which serializes writers for the transaction containing the
+// selected row. update/share therefore have an explicit transaction-level
+// implementation; no-wait cannot be expressed without changing the active
+// transaction and remains unsupported.
+func (SQLite) RowLock(mode string) (string, bool) {
+	switch mode {
+	case "update", "share":
+		return "", true
+	default:
+		return "", false
+	}
+}

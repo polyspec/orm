@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Implement SQLite `forUpdate` and `forShare` through ORM-controlled `BEGIN IMMEDIATE` transaction serialization; reject only lock modes that SQLite cannot express (`NoWait`). Go, PHP, Rust, and TypeScript use the same SQLite transaction start contract.
 - Preserve logical schema namespaces in SQLite physical table names by mapping `schema.table` to `schema__table`, preventing same-named tables from colliding in one database.
 - Namespace generated SQLite index names with their qualified physical table name so module indexes with the same logical name cannot collide.
 - Preserve overlapping foreign keys when one child column participates in multiple relation lines, including distinct composite constraints. Generated DDL ordering and migration diffing use relation metadata instead of collapsing those constraints to one column reference.
