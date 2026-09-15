@@ -48,6 +48,19 @@ func orderedJSONReflect(reflectValue reflect.Value) (*orderedjson.Value, error) 
 		return parsed, nil
 	}
 	if reflectValue.CanInterface() {
+		if marshaler, ok := reflectValue.Interface().(json.Marshaler); ok {
+			body, err := marshaler.MarshalJSON()
+			if err != nil {
+				return nil, codecErr(CodeCodecEncode, "json: custom marshaler: %v", err)
+			}
+			parsed, err := orderedjson.ParseBytes(body)
+			if err != nil {
+				return nil, codecErr(CodeCodecEncode, "json: custom marshaler returned invalid JSON: %v", err)
+			}
+			return parsed, nil
+		}
+	}
+	if reflectValue.CanInterface() {
 		if value, ok := reflectValue.Interface().(*orderedjson.Value); ok {
 			if value == nil {
 				return orderedjson.Null(), nil
