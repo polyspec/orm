@@ -157,11 +157,12 @@ func TestRowLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	full := `{"ir_version":1,"schema_hash":"` + sqliteEngine.M.SchemaHash + `","n_params":0,"kind":"all","entity":"battle","lock":"share"}`
-	if _, err := sqliteEngine.Compile([]byte(full)); err == nil || !strings.Contains(err.Error(), "CAPABILITY_UNSUPPORTED") {
-		t.Fatalf("sqlite row lock error: %v", err)
+	if plan, err := sqliteEngine.Compile([]byte(full)); err != nil || strings.Contains(string(plan), "CAPABILITY_UNSUPPORTED") {
+		t.Fatalf("sqlite transaction-level row lock: %v", err)
 	}
-	if got := string(ErrorJSON(mustCompileError(t, sqliteEngine, full))); !strings.Contains(got, `"code":"CAPABILITY_UNSUPPORTED"`) {
-		t.Fatalf("sqlite row lock wire error: %s", got)
+	sqliteNowait := `{"ir_version":1,"schema_hash":"` + sqliteEngine.M.SchemaHash + `","n_params":0,"kind":"all","entity":"battle","lock":"update_nowait"}`
+	if _, err := sqliteEngine.Compile([]byte(sqliteNowait)); err == nil || !strings.Contains(err.Error(), "CAPABILITY_UNSUPPORTED") {
+		t.Fatalf("sqlite nowait lock error: %v", err)
 	}
 	postgresEngine, err := New(m, "postgres")
 	if err != nil {
@@ -469,7 +470,7 @@ func TestCompileErrors(t *testing.T) {
 		`{"ir_version":1,"schema_hash":"nope","kind":"all","entity":"battle"}`:                                                                                                                  "SCHEMA_HASH_MISMATCH",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"nope"}`:                                                                                                               "ENTITY_UNKNOWN",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"nope","op":"eq","p":2}}]}}`:                                 "COLUMN_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"name","op":"between","p":0,"ps":[1,2]}}]}}`:                       "OPERATOR_NOT_ALLOWED",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"name","op":"between","p":0,"ps":[1,2]}}]}}`:                 "OPERATOR_NOT_ALLOWED",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"aes_hex_email","op":"contains","p":0}}]}}`:                  "OPERATOR_NOT_ALLOWED",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"pred":{"conn":"or","column":"seq","op":"eq","p":2}}]}}`:                                   "OR_AT_GROUP_START",
 		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"pred":{"column":"seq","op":"in","ps":[]}}]}}`:                                             "EMPTY_IN",

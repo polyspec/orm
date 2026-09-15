@@ -52,10 +52,15 @@ func parseDSN(raw string) (string, string, error) {
 		if !strings.HasPrefix(path, "/") {
 			return "", "", configErr("sqlite DSN path must be absolute")
 		}
-		native := "file:" + path
-		if u.RawQuery != "" {
-			native += "?" + u.RawQuery
+		q := u.Query()
+		// SQLite has no FOR UPDATE syntax. The ORM implements the common
+		// update/share lock contract with transaction-level serialization, so
+		// every ORM transaction must begin with BEGIN IMMEDIATE.
+		if txlock := q.Get("_txlock"); txlock != "" && strings.ToLower(txlock) != "immediate" {
+			return "", "", configErr("sqlite DSN _txlock must be immediate for ORM lock semantics")
 		}
+		q.Set("_txlock", "immediate")
+		native := "file:" + path + "?" + q.Encode()
 		return "sqlite", native, nil
 	default:
 		return "", "", configErr("unsupported DSN scheme %q; want mysql, postgres, or sqlite", u.Scheme)

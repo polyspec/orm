@@ -291,7 +291,11 @@ class Db
         $attempts = $options->retryDeadlocks ? $options->maxAttempts : 1;
         for ($attempt = 0; $attempt < $attempts; $attempt++) {
             if ($this->driver !== 'postgres') $this->configureTransaction($options);
-            $this->pdo->beginTransaction();
+            if ($this->driver === 'sqlite') {
+                $this->pdo->exec('BEGIN IMMEDIATE');
+            } else {
+                $this->pdo->beginTransaction();
+            }
             $tx = new Tx($this);
             try {
                 if ($this->driver === 'postgres') $this->configureTransaction($options);
