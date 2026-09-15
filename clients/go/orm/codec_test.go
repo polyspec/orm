@@ -1,11 +1,15 @@
 package orm
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
+
+	orderedjson "github.com/polyspec/ordered-json/go"
 )
 
 type codecVector struct {
@@ -97,8 +101,31 @@ func deref(s *string) string {
 // reNumber re-decodes the vector's value with UseNumber so integers compare as int64.
 func reNumber(v any) any {
 	b, _ := json.Marshal(v)
-	d, _ := jsonDecode(b)
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.UseNumber()
+	var d any
+	_ = dec.Decode(&d)
 	return d
+}
+
+func jsonNumbers(v any) any {
+	switch x := v.(type) {
+	case json.Number:
+		if i, err := strconv.ParseInt(string(x), 10, 64); err == nil {
+			return i
+		}
+		f, _ := strconv.ParseFloat(string(x), 64)
+		return f
+	case []any:
+		for i := range x {
+			x[i] = jsonNumbers(x[i])
+		}
+	case map[string]any:
+		for k := range x {
+			x[k] = jsonNumbers(x[k])
+		}
+	}
+	return v
 }
 
 func TestCodecErrors(t *testing.T) {
@@ -153,5 +180,47 @@ func TestCodecErrors(t *testing.T) {
 		if err := operation(); err == nil {
 			t.Errorf("%s: expected codec error", name)
 		}
+	}
+}
+
+func TestOrderedJSONCodecPreservesKindsAndObjectOrder(t *testing.T) {
+	const source = `{"z":{},"a":[],"nested":{"second":2,"first":1}}`
+	decoded, err := Decode([]string{"json"}, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	value, ok := decoded.(*orderedjson.Value)
+	if !ok {
+		t.Fatalf("decoded JSON type = %T, want *orderedjson.Value", decoded)
+	}
+	if value.Kind() != orderedjson.ObjectKind {
+		t.Fatalf("root kind = %q, want object", value.Kind())
+	}
+	members, err := value.Members()
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys := members.Keys()
+	if len(keys) != 3 {
+		t.Fatalf("member count = %d, want 3", len(keys))
+	}
+	for i, want := range []string{"z", "a", "nested"} {
+		got, err := keys[i].StringValue()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != want {
+			t.Fatalf("member key %d = %q, want %q", i, got, want)
+		}
+	}
+	if value.Get("z").Kind() != orderedjson.ObjectKind || value.Get("a").Kind() != orderedjson.ArrayKind {
+		t.Fatal("empty object and array kinds were not preserved")
+	}
+	encoded, err := Encode([]string{"json"}, value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded != source {
+		t.Fatalf("encoded JSON = %q, want %q", encoded, source)
 	}
 }

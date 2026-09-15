@@ -7,6 +7,7 @@
 - Go generated `Get` methods now return `NO_ROWS` for an empty result; generated `GetOrNil` methods provide the explicit optional-row contract.
 - AES version columns can be declared with `%% aes_version`; generators consume the resolved manifest metadata instead of assuming a column name.
 - Audit redaction preserves values when a declared JSON path is absent and avoids materializing missing PostgreSQL parent objects.
+- Go JSON and JSONS codecs use ordered-json values, preserving object member order and distinguishing empty objects from empty arrays.
 
 ## 0.0.1
 
