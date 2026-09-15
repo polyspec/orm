@@ -24,12 +24,18 @@ func (b Binding) Resolve() (context.Context, Exec, error) {
 		if ex == nil {
 			return nil, nil, &ir.Error{Code: CodeConfig, Msg: "cannot execute with a nil database"}
 		}
+		if ex.Eng == nil {
+			return nil, nil, &ir.Error{Code: CodeConfig, Msg: "database is not bound to a schema engine"}
+		}
 	case *Tx:
 		if ex == nil {
 			return nil, nil, &ir.Error{Code: CodeConfig, Msg: "cannot execute with a nil transaction"}
 		}
 		if ex.finished.Load() {
 			return nil, nil, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+		}
+		if ex.d == nil || ex.d.Eng == nil {
+			return nil, nil, &ir.Error{Code: CodeConfig, Msg: "transaction is not bound to a schema engine"}
 		}
 	}
 	return b.ctx, b.ex, nil

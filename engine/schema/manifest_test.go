@@ -108,6 +108,14 @@ func TestBuildExample(t *testing.T) {
 	}
 }
 
+func TestBuildUUIDColumn(t *testing.T) {
+	m := mustBuild(t, "erDiagram\n  item {\n    uuid id PK\n  }\n")
+	c := m.Entities["item"].Column("id")
+	if c.Type != "string" || c.Raw != "uuid" {
+		t.Fatalf("uuid column = %+v, want string binding with uuid raw type", c)
+	}
+}
+
 func TestSoftDeleteDirectiveStoresValidatedColumn(t *testing.T) {
 	m := mustBuild(t, "erDiagram\n account {\n bigint id PK\n datetime deleted_at \"?\"\n }\n %% soft_delete account deleted_at\n")
 	if got := m.Entities["account"].SoftDelete; got != "deleted_at" {

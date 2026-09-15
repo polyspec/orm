@@ -19,6 +19,8 @@ import (
 // validated by the consuming generator.
 var ormDirectiveOptions = map[string]map[string]bool{
 	"table":        {"entity": true, "name": true},
+	"foreign":      {"entity": true, "columns": true, "references": true, "name": true, "on_delete": true, "deferred": true},
+	"immutable":    {"entity": true},
 	"field":        {"relation": true, "fk": true, "public": true, "required": true, "order": true},
 	"public-key":   {"entity": true, "field": true, "type": true, "unique": true, "stable": true},
 	"resource-key": {"route": true, "param": true, "field": true},
