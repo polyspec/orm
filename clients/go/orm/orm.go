@@ -625,7 +625,7 @@ func (t *Tx) DatabaseEmpty(ctx context.Context) (bool, error) {
 		}
 		return empty, nil
 	case "postgres":
-		stmt, err := t.stmt(ctx, `SELECT NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname NOT IN ('pg_catalog','information_schema','public')) AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema','public') AND c.relkind IN ('r','p','v','m','f'))`)
+		stmt, err := t.stmt(ctx, `SELECT NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname NOT IN ('information_schema','public')) AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname NOT IN ('information_schema','public') AND c.relkind IN ('r','p','v','m','f'))`)
 		if err != nil {
 			return false, err
 		}
