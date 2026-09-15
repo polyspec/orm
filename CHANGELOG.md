@@ -8,6 +8,7 @@
 - AES version columns can be declared with `%% aes_version`; generators consume the resolved manifest metadata instead of assuming a column name.
 - Audit redaction preserves values when a declared JSON path is absent and avoids materializing missing PostgreSQL parent objects.
 - Go JSON and JSONS codecs use ordered-json values, preserving object member order and distinguishing empty objects from empty arrays.
+- Go JSON and JSONS codecs convert tagged Go structs and raw `jsontext.Value` inputs into ordered-json without using the standard JSON encoder as the value boundary.
 
 ## 0.0.1
 

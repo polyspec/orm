@@ -228,3 +228,26 @@ func TestOrderedJSONCodecPreservesKindsAndObjectOrder(t *testing.T) {
 		t.Fatalf("encoded JSON = %q, want %q", encoded, source)
 	}
 }
+
+func TestOrderedJSONCodecConvertsTaggedGoStructs(t *testing.T) {
+	type value struct {
+		ID      string         `json:"id"`
+		Empty   string         `json:"empty,omitempty"`
+		Items   []int          `json:"items"`
+		Raw     jsontext.Value `json:"raw"`
+		Ignored string         `json:"-"`
+	}
+	encoded, err := Encode([]string{"json"}, value{
+		ID:      "module.example",
+		Items:   []int{1, 2},
+		Raw:     jsontext.Value(`{"enabled":true}`),
+		Ignored: "must not be stored",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"id":"module.example","items":[1,2],"raw":{"enabled":true}}`
+	if encoded != want {
+		t.Fatalf("encoded struct = %q, want %q", encoded, want)
+	}
+}

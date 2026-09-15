@@ -4,8 +4,10 @@ import (
 	"encoding/json/jsontext"
 	"fmt"
 	"math"
+	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 
 	orderedjson "github.com/polyspec/ordered-json/go"
 )
@@ -14,12 +16,45 @@ import (
 // JSON columns accept the explicit ordered-json value or the documented
 // scalar/list/map model; driver byte slices are never interpreted as JSON.
 func orderedJSONValue(value any) (*orderedjson.Value, error) {
-	switch v := value.(type) {
-	case *orderedjson.Value:
-		if v == nil {
+	return orderedJSONReflect(reflect.ValueOf(value))
+}
+
+var jsonTextValueType = reflect.TypeOf(jsontext.Value(nil))
+
+func orderedJSONReflect(reflectValue reflect.Value) (*orderedjson.Value, error) {
+	if !reflectValue.IsValid() {
+		return orderedjson.Null(), nil
+	}
+	if reflectValue.Type() == jsonTextValueType {
+		if reflectValue.IsNil() {
 			return orderedjson.Null(), nil
 		}
-		return v, nil
+		parsed, err := orderedjson.ParseBytes(reflectValue.Bytes())
+		if err != nil {
+			return nil, codecErr(CodeCodecEncode, "json: raw value: %v", err)
+		}
+		return parsed, nil
+	}
+	if reflectValue.CanInterface() {
+		if value, ok := reflectValue.Interface().(*orderedjson.Value); ok {
+			if value == nil {
+				return orderedjson.Null(), nil
+			}
+			return value, nil
+		}
+	}
+	if reflectValue.Kind() == reflect.Interface || reflectValue.Kind() == reflect.Pointer {
+		if reflectValue.IsNil() {
+			return orderedjson.Null(), nil
+		}
+		return orderedJSONReflect(reflectValue.Elem())
+	}
+	return orderedJSONKind(reflectValue)
+}
+
+func orderedJSONKind(reflectValue reflect.Value) (*orderedjson.Value, error) {
+	value := reflectValue.Interface()
+	switch v := value.(type) {
 	case nil:
 		return orderedjson.Null(), nil
 	case bool:
@@ -52,12 +87,6 @@ func orderedJSONValue(value any) (*orderedjson.Value, error) {
 		return orderedJSONFloat(v)
 	case []byte:
 		return nil, codecErr(CodeCodecEncode, "json: []byte is not a common JSON value")
-	case jsontext.Value:
-		parsed, err := orderedjson.ParseBytes([]byte(v))
-		if err != nil {
-			return nil, codecErr(CodeCodecEncode, "json: raw value: %v", err)
-		}
-		return parsed, nil
 	case []any:
 		items := make([]*orderedjson.Value, len(v))
 		for i, item := range v {
@@ -90,8 +119,116 @@ func orderedJSONValue(value any) (*orderedjson.Value, error) {
 		}
 		return orderedjson.Object(&members)
 	default:
-		return nil, fmt.Errorf("%s: unsupported Go value %T", CodeCodecEncode, value)
+		return orderedJSONReflectByKind(reflectValue)
 	}
+}
+
+func orderedJSONReflectByKind(value reflect.Value) (*orderedjson.Value, error) {
+	switch value.Kind() {
+	case reflect.Array, reflect.Slice:
+		if value.Kind() == reflect.Slice && value.IsNil() {
+			return orderedjson.Null(), nil
+		}
+		items := make([]*orderedjson.Value, value.Len())
+		for i := range items {
+			converted, err := orderedJSONReflect(value.Index(i))
+			if err != nil {
+				return nil, err
+			}
+			items[i] = converted
+		}
+		return orderedjson.Array(items)
+	case reflect.Map:
+		if value.IsNil() {
+			return orderedjson.Null(), nil
+		}
+		if value.Type().Key().Kind() != reflect.String {
+			return nil, fmt.Errorf("%s: JSON map keys must be strings, got %s", CodeCodecEncode, value.Type().Key())
+		}
+		keys := value.MapKeys()
+		sort.Slice(keys, func(i, j int) bool { return keys[i].String() < keys[j].String() })
+		var members orderedjson.OrderedMap
+		for _, key := range keys {
+			converted, err := orderedJSONReflect(value.MapIndex(key))
+			if err != nil {
+				return nil, err
+			}
+			name, err := orderedjson.String(key.String())
+			if err != nil {
+				return nil, err
+			}
+			if err := members.Set(name, converted); err != nil {
+				return nil, err
+			}
+		}
+		return orderedjson.Object(&members)
+	case reflect.Struct:
+		return orderedJSONStruct(value)
+	default:
+		return nil, fmt.Errorf("%s: unsupported Go value %s", CodeCodecEncode, value.Type())
+	}
+}
+
+func orderedJSONStruct(value reflect.Value) (*orderedjson.Value, error) {
+	typeOfValue := value.Type()
+	var members orderedjson.OrderedMap
+	for i := 0; i < value.NumField(); i++ {
+		field := typeOfValue.Field(i)
+		if field.PkgPath != "" {
+			continue
+		}
+		name, omitEmpty, skip := orderedJSONFieldName(field)
+		if skip || (omitEmpty && orderedJSONEmpty(value.Field(i))) {
+			continue
+		}
+		converted, err := orderedJSONReflect(value.Field(i))
+		if err != nil {
+			return nil, fmt.Errorf("%s field %s: %w", CodeCodecEncode, field.Name, err)
+		}
+		key, err := orderedjson.String(name)
+		if err != nil {
+			return nil, err
+		}
+		if err := members.Set(key, converted); err != nil {
+			return nil, err
+		}
+	}
+	return orderedjson.Object(&members)
+}
+
+func orderedJSONFieldName(field reflect.StructField) (string, bool, bool) {
+	tag, ok := field.Tag.Lookup("json")
+	if !ok {
+		return field.Name, false, false
+	}
+	parts := strings.Split(tag, ",")
+	if parts[0] == "-" {
+		return "", false, true
+	}
+	name := field.Name
+	if parts[0] != "" {
+		name = parts[0]
+	}
+	omitEmpty := false
+	for _, option := range parts[1:] {
+		omitEmpty = omitEmpty || option == "omitempty"
+	}
+	return name, omitEmpty, false
+}
+
+func orderedJSONEmpty(value reflect.Value) bool {
+	if !value.IsValid() {
+		return true
+	}
+	switch value.Kind() {
+	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
+		return value.Len() == 0
+	case reflect.Bool:
+		return !value.Bool()
+	case reflect.Interface, reflect.Pointer:
+		return value.IsNil()
+	}
+	return false
 }
 
 func orderedJSONFloat(value float64) (*orderedjson.Value, error) {
