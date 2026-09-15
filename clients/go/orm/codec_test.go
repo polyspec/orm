@@ -264,3 +264,21 @@ func TestOrderedJSONCodecParsesJSONRawMessage(t *testing.T) {
 		t.Fatalf("encoded raw message = %q", encoded)
 	}
 }
+
+func TestOrderedJSONCodecUsesCustomJSONMarshaler(t *testing.T) {
+	type value struct {
+		Body customJSONValue `json:"body"`
+	}
+	encoded, err := Encode([]string{"json"}, value{Body: customJSONValue{body: []byte(`{"number":900719925474099312345678901234567890}`)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"body":{"number":900719925474099312345678901234567890}}`
+	if encoded != want {
+		t.Fatalf("encoded custom JSON value = %q, want %q", encoded, want)
+	}
+}
+
+type customJSONValue struct{ body []byte }
+
+func (v customJSONValue) MarshalJSON() ([]byte, error) { return v.body, nil }
