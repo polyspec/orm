@@ -564,7 +564,7 @@ async fn main() {
             Ok(row(battle::query()
                 .seq(42)
                 .using(&db)
-                .get()
+                .get_or_none()
                 .await?
                 .as_ref()))
         }
@@ -583,7 +583,7 @@ async fn main() {
     );
     run!(
         "pk_missing",
-        async { Ok(row(battle::query().seq(0).using(&db).get().await?.as_ref())) }.await
+        async { Ok(row(battle::query().seq(0).using(&db).get_or_none().await?.as_ref())) }.await
     );
     run!(
         "select_lazy",
@@ -592,7 +592,7 @@ async fn main() {
                 .select_description()
                 .seq(42)
                 .using(&db)
-                .get()
+                .get_or_none()
                 .await?
                 .unwrap();
             Ok(json!({"seq": b.seq, "description_prefix": &b.description.as_deref().unwrap()[..7]}))
@@ -685,7 +685,7 @@ async fn main() {
                 .join(service::query().where_(|w| w.seq(7)))
                 .seq(6)
                 .using(&db)
-                .get()
+                .get_or_none()
                 .await?
                 .unwrap();
             let s = b.service().unwrap();
@@ -856,7 +856,7 @@ async fn main() {
                 .select_expr("tag", "CONCAT(`name`, '!')")
                 .seq(42)
                 .using(&db)
-                .get()
+                .get_or_none()
                 .await?
                 .unwrap();
             Ok(json!({"seq": b.seq, "tag": b.extra("tag").map(|v| v.as_string())}))
@@ -885,7 +885,7 @@ async fn main() {
                     ),
                 )
                 .using(&db)
-                .get()
+                .get_or_none()
                 .await?
                 .unwrap()
                 .to_map()?)
@@ -900,7 +900,7 @@ async fn main() {
                 .seq(7)
                 .relation(service::query().order_by_seq_desc())
                 .using(&db)
-                .get()
+                .get_or_none()
                 .await?
                 .unwrap()
                 .to_map()?)
@@ -948,7 +948,7 @@ async fn main() {
                 .seq(8)
                 .join(service::query().relations(service_module::query()))
                 .using(&db)
-                .get()
+                .get_or_none()
                 .await?
                 .unwrap()
                 .to_map()?)
@@ -971,7 +971,7 @@ async fn main() {
                         .key_by_user_seq(),
                 )
                 .using(&db)
-                .get()
+                .get_or_none()
                 .await?
                 .unwrap()
                 .to_map()?)
@@ -985,7 +985,7 @@ async fn main() {
                 .seq(7)
                 .relations(service_module::query().select_none().key_by_name())
                 .using(&db)
-                .get()
+                .get_or_none()
                 .await?
                 .unwrap()
                 .to_map()?)
@@ -1003,7 +1003,7 @@ async fn main() {
                 .using(&tx).insert().await
         }).await?.unwrap();
         mask_created(&mask, &log, Mask { seqs: vec![created.seq], ts: Some(created.updated_ts) });
-        let b = battle::query().select_json_setting().select_jsons_tags().select_serialize_data().seq(created.seq).using(&db).get().await?.unwrap();
+        let b = battle::query().select_json_setting().select_jsons_tags().select_serialize_data().seq(created.seq).using(&db).get_or_none().await?.unwrap();
         b.delete().await?;
         Ok(json!({
             "display_start_dt": fmt_time(b.display_start_dt.as_ref().unwrap()), "is_display": b.is_display, "is_close": b.is_close,
@@ -1044,7 +1044,7 @@ async fn main() {
                         .drop_child_key(),
                 )
                 .using(&db)
-                .get()
+                .get_or_none()
                 .await?
                 .unwrap();
             u.to_map()
@@ -1194,7 +1194,7 @@ async fn main() {
         service::query().seq(s)
             .relations(service_member::query().order_by_seq_asc())
             .relations(service_module::query().no_cascade_delete())
-            .using(&db).get().await?.unwrap()
+            .using(&db).get_or_none().await?.unwrap()
             .using(&db).delete_cascade().await?;
         let members_left = service_member::query().service_seq(s).using(&db).get_count().await?;
         let modules_left = service_module::query().service_seq(s).using(&db).get_count().await?;
@@ -1290,7 +1290,7 @@ async fn main() {
                         .join(service::query().select_none()),
                 )
                 .using(&db)
-                .get()
+                .get_or_none()
                 .await?
                 .unwrap()
                 .to_map()?)
@@ -1351,7 +1351,7 @@ async fn main() {
                 .using(&tx).insert().await
         }}).await?.unwrap();
         mask_created(&mask, &log, Mask { seqs: vec![created.seq], ts: Some(created.updated_ts) });
-        let b = battle::query().select_json_setting().select_jsons_tags().select_base64_extra().select_serialize_data().select_gz_extend().seq(created.seq).using(&db).get().await?.unwrap();
+        let b = battle::query().select_json_setting().select_jsons_tags().select_base64_extra().select_serialize_data().select_gz_extend().seq(created.seq).using(&db).get_or_none().await?.unwrap();
         b.delete().await?;
         Ok(json!({"json_setting": b.json_setting, "jsons_tags": b.jsons_tags, "base64_extra": b.base64_extra, "serialize_data": b.serialize_data, "gz_extend": b.gz_extend, "ip": b.ip}))
     }.await);

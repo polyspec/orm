@@ -7,7 +7,8 @@ import type { AesKeyring, AesRotationStatus, StreamResult } from '../index.js';
 import type { BattleRow, UserRow, ServiceRow, ServiceModuleRow, ServiceMemberRow, CompositeAccountRow, CompositeMembershipRow, SoftRecordRow, AccountRow, ProjectRow, AccountProjectRow } from './entities.js';
 
 export interface BattleInterface {
-get(): Promise<BattleRow | null>;
+get(): Promise<BattleRow>;
+getOrNull(): Promise<BattleRow | null>;
 gets(): Promise<Collection<BattleRow>>;
 stream(visitor: (row: BattleRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
@@ -162,7 +163,8 @@ toObject(): Record<string, unknown>;
 }
 
 export interface UserInterface {
-get(): Promise<UserRow | null>;
+get(): Promise<UserRow>;
+getOrNull(): Promise<UserRow | null>;
 gets(): Promise<Collection<UserRow>>;
 stream(visitor: (row: UserRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
@@ -197,7 +199,8 @@ toObject(): Record<string, unknown>;
 }
 
 export interface ServiceInterface {
-get(): Promise<ServiceRow | null>;
+get(): Promise<ServiceRow>;
+getOrNull(): Promise<ServiceRow | null>;
 gets(): Promise<Collection<ServiceRow>>;
 stream(visitor: (row: ServiceRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
@@ -232,7 +235,8 @@ toObject(): Record<string, unknown>;
 }
 
 export interface ServiceModuleInterface {
-get(): Promise<ServiceModuleRow | null>;
+get(): Promise<ServiceModuleRow>;
+getOrNull(): Promise<ServiceModuleRow | null>;
 gets(): Promise<Collection<ServiceModuleRow>>;
 stream(visitor: (row: ServiceModuleRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
@@ -271,7 +275,8 @@ toObject(): Record<string, unknown>;
 }
 
 export interface ServiceMemberInterface {
-get(): Promise<ServiceMemberRow | null>;
+get(): Promise<ServiceMemberRow>;
+getOrNull(): Promise<ServiceMemberRow | null>;
 gets(): Promise<Collection<ServiceMemberRow>>;
 stream(visitor: (row: ServiceMemberRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
@@ -310,7 +315,8 @@ toObject(): Record<string, unknown>;
 }
 
 export interface CompositeAccountInterface {
-get(): Promise<CompositeAccountRow | null>;
+get(): Promise<CompositeAccountRow>;
+getOrNull(): Promise<CompositeAccountRow | null>;
 gets(): Promise<Collection<CompositeAccountRow>>;
 stream(visitor: (row: CompositeAccountRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
@@ -349,7 +355,8 @@ toObject(): Record<string, unknown>;
 }
 
 export interface CompositeMembershipInterface {
-get(): Promise<CompositeMembershipRow | null>;
+get(): Promise<CompositeMembershipRow>;
+getOrNull(): Promise<CompositeMembershipRow | null>;
 gets(): Promise<Collection<CompositeMembershipRow>>;
 stream(visitor: (row: CompositeMembershipRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
@@ -388,7 +395,8 @@ toObject(): Record<string, unknown>;
 }
 
 export interface SoftRecordInterface {
-get(): Promise<SoftRecordRow | null>;
+get(): Promise<SoftRecordRow>;
+getOrNull(): Promise<SoftRecordRow | null>;
 gets(): Promise<Collection<SoftRecordRow>>;
 stream(visitor: (row: SoftRecordRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
@@ -427,7 +435,8 @@ toObject(): Record<string, unknown>;
 }
 
 export interface AccountInterface {
-get(): Promise<AccountRow | null>;
+get(): Promise<AccountRow>;
+getOrNull(): Promise<AccountRow | null>;
 gets(): Promise<Collection<AccountRow>>;
 stream(visitor: (row: AccountRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
@@ -462,7 +471,8 @@ toObject(): Record<string, unknown>;
 }
 
 export interface ProjectInterface {
-get(): Promise<ProjectRow | null>;
+get(): Promise<ProjectRow>;
+getOrNull(): Promise<ProjectRow | null>;
 gets(): Promise<Collection<ProjectRow>>;
 stream(visitor: (row: ProjectRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;
@@ -497,7 +507,8 @@ toObject(): Record<string, unknown>;
 }
 
 export interface AccountProjectInterface {
-get(): Promise<AccountProjectRow | null>;
+get(): Promise<AccountProjectRow>;
+getOrNull(): Promise<AccountProjectRow | null>;
 gets(): Promise<Collection<AccountProjectRow>>;
 stream(visitor: (row: AccountProjectRow) => boolean | Promise<boolean>): Promise<StreamResult>;
 getCount(): Promise<number>;

@@ -310,7 +310,7 @@ async fn main() {
         .select_description()
         .seq_eq(42)
         .using(&db)
-        .get()
+        .get_or_none()
         .await
         .unwrap()
         .unwrap();
@@ -474,7 +474,7 @@ async fn main() {
         .join(service::query().where_(|w| w.seq_eq(7)))
         .seq_eq(6)
         .using(&db)
-        .get()
+        .get_or_none()
         .await
         .unwrap()
         .unwrap();
@@ -913,7 +913,7 @@ async fn main() {
         .seq_eq(42)
         .relation(service::query().relations(service_member::query().limit_per_parent(1)))
         .using(&db)
-        .get()
+        .get_or_none()
         .await
         .expect("one")
         .expect("row 42");
@@ -1269,7 +1269,7 @@ async fn main() {
     let batch_row = battle::query()
         .uuid_eq(format!("{batch_prefix}-insert"))
         .using(&db)
-        .get()
+        .get_or_none()
         .await
         .expect("batch row")
         .expect("batch row");
@@ -1393,7 +1393,7 @@ async fn main() {
         .relations(service_member::query().order_by_seq_asc())
         .relations(service_module::query().no_cascade_delete())
         .using(&db)
-        .get()
+        .get_or_none()
         .await
         .expect("service")
         .expect("service row");

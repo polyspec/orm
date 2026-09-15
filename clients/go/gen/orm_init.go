@@ -25,13 +25,6 @@ func Init(e *engine.Engine) error {
 	return nil
 }
 
-func mustEngine() *engine.Engine {
-	if eng == nil {
-		panic("gen: call gen.Init(engine) before building queries")
-	}
-	return eng
-}
-
 // Connect opens the database selected by dsn. Engine creation and schema
 // validation stay inside the generated bootstrap.
 func Connect(dsn, schemaPath string, cfg orm.Config) (*orm.DB, error) {

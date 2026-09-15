@@ -90,6 +90,8 @@ const CurrentTime = "$CURRENT_TIME"
 type DB struct {
 	SQL      *sql.DB
 	Eng      *engine.Engine
+	engineMu sync.RWMutex
+	engines  map[string]*engine.Engine
 	compiler planCompiler
 	cfg      Config
 	driver   string
@@ -105,6 +107,11 @@ type DB struct {
 	closeErr  error
 }
 
+var processSchemas = struct {
+	sync.RWMutex
+	byDriver map[string]map[string]*engine.Engine
+}{byDriver: map[string]map[string]*engine.Engine{}}
+
 // Engine returns the schema compiler bound to this ORM database. Generated
 // query clients use it when a query is bound to this executor.
 func (d *DB) Engine() *engine.Engine {
@@ -112,6 +119,70 @@ func (d *DB) Engine() *engine.Engine {
 		return nil
 	}
 	return d.Eng
+}
+
+// RegisterSchema adds a generated package schema compiler to this database.
+// All registered schemas share the same SQL connection and dialect; the
+// schema hash selects the compiler used by a generated client.
+func (d *DB) RegisterSchema(eng *engine.Engine) error {
+	if d == nil || eng == nil || eng.M == nil {
+		return &ir.Error{Code: CodeConfig, Msg: "schema engine is required"}
+	}
+	if eng.P == nil || eng.P.D.Name() != d.driver {
+		return &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("schema engine dialect must be %s", d.driver)}
+	}
+	d.engineMu.Lock()
+	defer d.engineMu.Unlock()
+	if d.engines == nil {
+		d.engines = map[string]*engine.Engine{}
+	}
+	// SchemaHash is the immutable manifest identity. Separate database handles
+	// may load equivalent manifests into different Go pointers, so pointer
+	// identity must not make registration non-idempotent.
+	d.engines[eng.M.SchemaHash] = eng
+	processSchemas.Lock()
+	if processSchemas.byDriver[d.driver] == nil {
+		processSchemas.byDriver[d.driver] = map[string]*engine.Engine{}
+	}
+	processSchemas.byDriver[d.driver][eng.M.SchemaHash] = eng
+	processSchemas.Unlock()
+	return nil
+}
+
+// EngineFor returns the compiler for a generated schema hash. It is used by
+// generated clients and returns nil when the package schema is not registered.
+func (d *DB) EngineFor(schemaHash string) *engine.Engine {
+	if d == nil || schemaHash == "" {
+		return nil
+	}
+	d.engineMu.RLock()
+	local := d.engines[schemaHash]
+	d.engineMu.RUnlock()
+	if local != nil {
+		return local
+	}
+	processSchemas.RLock()
+	defer processSchemas.RUnlock()
+	return processSchemas.byDriver[d.driver][schemaHash]
+}
+
+func (d *DB) compilerFor(schemaHash string) (planCompiler, error) {
+	if schemaHash == "" {
+		return nil, &ir.Error{Code: CodeConfig, Msg: "generated query schema is not bound"}
+	}
+	if d.Eng == nil {
+		// Custom compiler users may construct DB in tests or adapters without a
+		// local engine. The compiler owns validation in that configuration.
+		return d.compiler, nil
+	}
+	if schemaHash == d.Eng.M.SchemaHash {
+		return d.compiler, nil
+	}
+	eng := d.EngineFor(schemaHash)
+	if eng == nil {
+		return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("schema %s is not registered with this database", schemaHash)}
+	}
+	return enginePlanCompiler{engine: eng}, nil
 }
 
 // DBStats reports the connection-pool state owned by the ORM runtime.
@@ -244,7 +315,13 @@ func open(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler 
 	if len(cfg.AESKeys) == 0 && cfg.AESKey != "" {
 		cfg.AESKeys = map[int32]string{cfg.AESVersion: cfg.AESKey}
 	}
-	return &DB{SQL: s, Eng: eng, compiler: compiler, cfg: cfg, driver: driver, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
+	engines := map[string]*engine.Engine{eng.M.SchemaHash: eng}
+	processSchemas.RLock()
+	for hash, registered := range processSchemas.byDriver[driver] {
+		engines[hash] = registered
+	}
+	processSchemas.RUnlock()
+	return &DB{SQL: s, Eng: eng, engines: engines, compiler: compiler, cfg: cfg, driver: driver, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
 }
 
 // Close releases cached statements and the underlying database connection.
@@ -1235,7 +1312,11 @@ func (d *DB) plan(ctx context.Context, r *Req) (*cached, error) {
 	if ok {
 		return c, nil
 	}
-	p, err := d.compiler.Compile(ctx, &request)
+	compiler, err := d.compilerFor(request.SchemaHash)
+	if err != nil {
+		return nil, err
+	}
+	p, err := compiler.Compile(ctx, &request)
 	if err != nil {
 		return nil, err
 	}
@@ -2699,4 +2780,9 @@ func (d *DB) DB() *DB { return d }
 
 // Cfg is the live configuration (hooks may be swapped at runtime, e.g. by tests).
 func (d *DB) Cfg() *Config { return &d.cfg }
-func (t *Tx) DB() *DB      { return t.d }
+func (t *Tx) DB() *DB {
+	if t == nil {
+		return nil
+	}
+	return t.d
+}

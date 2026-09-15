@@ -298,7 +298,7 @@ const rows = await Battle()
 - Column selection: `selectAll()`, `selectNone()`, `select<Col>()`, `unselect<Col>()`, `select<Col>As("name")`, and `selectExpr("name", "fragment")`.
   `text`, `blob`, and styled columns are excluded from the default SELECT and enabled with `select<Col>()`.
 - Terminals: `get`, `gets`, `getCount`, `getsCount`, `countDistinct<Col>`, `sum<Col>`, `avg<Col>`, `min<Col>`, `max<Col>`, and `paginate(page, per)`.
-  `getBy<PK>`, `getsBy<Col>`, and `getCountBy<Col>` take values only. Set the execution target with `using` at the root; Go also sets its context there. Returned rows inherit the root target. `get` returns null/nil/None when absent; `gets` and `getsBy` return non-null empty collections.
+  `getBy<PK>`, `getsBy<Col>`, and `getCountBy<Col>` take values only. Set the execution target with `using` at the root; Go also sets its context there. Returned rows inherit the root target. Strict `get` returns one row and raises/returns `NO_ROWS` when absent; use `getOrNull` (Go: `GetOrNil`, Rust: `get_or_none`) when absence is an expected value. `gets` and `getsBy` return non-null empty collections.
 - A collection is an ordered map keyed by PK or `keyBy<Col>`: `first()`, `count()`, and `toArray()` are available, and iteration yields `key => row`.
 - Row and collection map/array conversion returns `IR_INVALID` for keys with the same string form, such as integer `1` and string `"1"`. Go uses `values, err := rows.ToArray()`, Rust uses `let values = rows.to_map()?`, and PHP uses `$values = $rows->toArray()`. Use entries to retain order and key types.
 

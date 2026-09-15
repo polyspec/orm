@@ -407,6 +407,10 @@ final class BattleWhere
     public function nameEq(string $v): static { $this->w->pred('name', 'eq', $v); return $this; }
     public function name(string $v): static { return $this->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w->pred('name', 'not_eq', $v); return $this; }
+    public function nameGt(string $v): static { $this->w->pred('name', 'gt', $v); return $this; }
+    public function nameGte(string $v): static { $this->w->pred('name', 'gte', $v); return $this; }
+    public function nameLt(string $v): static { $this->w->pred('name', 'lt', $v); return $this; }
+    public function nameLte(string $v): static { $this->w->pred('name', 'lte', $v); return $this; }
     public function nameIn(array $vs): static { $this->w->predList('name', 'in', array_values($vs)); return $this; }
     public function nameNotIn(array $vs): static { $this->w->predList('name', 'not_in', array_values($vs)); return $this; }
     public function nameLike(string $v): static { $this->w->pred('name', 'like', $v); return $this; }
@@ -418,9 +422,17 @@ final class BattleWhere
     public function nameIsNotNull(): static { $this->w->predNull('name', 'is_not_null'); return $this; }
     public function nameEqCol(ColRef $ref): static { $this->w->predCol('name', 'eq_col', $ref); return $this; }
     public function nameNotEqCol(ColRef $ref): static { $this->w->predCol('name', 'not_eq_col', $ref); return $this; }
+    public function nameGtCol(ColRef $ref): static { $this->w->predCol('name', 'gt_col', $ref); return $this; }
+    public function nameGteCol(ColRef $ref): static { $this->w->predCol('name', 'gte_col', $ref); return $this; }
+    public function nameLtCol(ColRef $ref): static { $this->w->predCol('name', 'lt_col', $ref); return $this; }
+    public function nameLteCol(ColRef $ref): static { $this->w->predCol('name', 'lte_col', $ref); return $this; }
     public function descriptionEq(string $v): static { $this->w->pred('description', 'eq', $v); return $this; }
     public function description(string $v): static { return $this->descriptionEq($v); }
     public function descriptionNotEq(string $v): static { $this->w->pred('description', 'not_eq', $v); return $this; }
+    public function descriptionGt(string $v): static { $this->w->pred('description', 'gt', $v); return $this; }
+    public function descriptionGte(string $v): static { $this->w->pred('description', 'gte', $v); return $this; }
+    public function descriptionLt(string $v): static { $this->w->pred('description', 'lt', $v); return $this; }
+    public function descriptionLte(string $v): static { $this->w->pred('description', 'lte', $v); return $this; }
     public function descriptionLike(string $v): static { $this->w->pred('description', 'like', $v); return $this; }
     public function descriptionLikeBinary(string $v): static { $this->w->pred('description', 'like_binary', $v); return $this; }
     public function descriptionContains(string $v): static { $this->w->pred('description', 'contains', $v); return $this; }
@@ -430,6 +442,10 @@ final class BattleWhere
     public function descriptionIsNotNull(): static { $this->w->predNull('description', 'is_not_null'); return $this; }
     public function descriptionEqCol(ColRef $ref): static { $this->w->predCol('description', 'eq_col', $ref); return $this; }
     public function descriptionNotEqCol(ColRef $ref): static { $this->w->predCol('description', 'not_eq_col', $ref); return $this; }
+    public function descriptionGtCol(ColRef $ref): static { $this->w->predCol('description', 'gt_col', $ref); return $this; }
+    public function descriptionGteCol(ColRef $ref): static { $this->w->predCol('description', 'gte_col', $ref); return $this; }
+    public function descriptionLtCol(ColRef $ref): static { $this->w->predCol('description', 'lt_col', $ref); return $this; }
+    public function descriptionLteCol(ColRef $ref): static { $this->w->predCol('description', 'lte_col', $ref); return $this; }
     public function createdTsEq(string $v): static { $this->w->pred('created_ts', 'eq', $v); return $this; }
     public function createdTs(string $v): static { return $this->createdTsEq($v); }
     public function createdTsNotEq(string $v): static { $this->w->pred('created_ts', 'not_eq', $v); return $this; }
@@ -598,6 +614,10 @@ final class BattleWhere
     public function coverUrlEq(string $v): static { $this->w->pred('cover_url', 'eq', $v); return $this; }
     public function coverUrl(string $v): static { return $this->coverUrlEq($v); }
     public function coverUrlNotEq(string $v): static { $this->w->pred('cover_url', 'not_eq', $v); return $this; }
+    public function coverUrlGt(string $v): static { $this->w->pred('cover_url', 'gt', $v); return $this; }
+    public function coverUrlGte(string $v): static { $this->w->pred('cover_url', 'gte', $v); return $this; }
+    public function coverUrlLt(string $v): static { $this->w->pred('cover_url', 'lt', $v); return $this; }
+    public function coverUrlLte(string $v): static { $this->w->pred('cover_url', 'lte', $v); return $this; }
     public function coverUrlIn(array $vs): static { $this->w->predList('cover_url', 'in', array_values($vs)); return $this; }
     public function coverUrlNotIn(array $vs): static { $this->w->predList('cover_url', 'not_in', array_values($vs)); return $this; }
     public function coverUrlLike(string $v): static { $this->w->pred('cover_url', 'like', $v); return $this; }
@@ -609,6 +629,10 @@ final class BattleWhere
     public function coverUrlIsNotNull(): static { $this->w->predNull('cover_url', 'is_not_null'); return $this; }
     public function coverUrlEqCol(ColRef $ref): static { $this->w->predCol('cover_url', 'eq_col', $ref); return $this; }
     public function coverUrlNotEqCol(ColRef $ref): static { $this->w->predCol('cover_url', 'not_eq_col', $ref); return $this; }
+    public function coverUrlGtCol(ColRef $ref): static { $this->w->predCol('cover_url', 'gt_col', $ref); return $this; }
+    public function coverUrlGteCol(ColRef $ref): static { $this->w->predCol('cover_url', 'gte_col', $ref); return $this; }
+    public function coverUrlLtCol(ColRef $ref): static { $this->w->predCol('cover_url', 'lt_col', $ref); return $this; }
+    public function coverUrlLteCol(ColRef $ref): static { $this->w->predCol('cover_url', 'lte_col', $ref); return $this; }
     public function userSeqEq(int $v): static { $this->w->pred('user_seq', 'eq', $v); return $this; }
     public function userSeq(int $v): static { return $this->userSeqEq($v); }
     public function userSeqNotEq(int $v): static { $this->w->pred('user_seq', 'not_eq', $v); return $this; }
@@ -720,6 +744,10 @@ final class BattleWhere
     public function uuidEq(string $v): static { $this->w->pred('uuid', 'eq', $v); return $this; }
     public function uuid(string $v): static { return $this->uuidEq($v); }
     public function uuidNotEq(string $v): static { $this->w->pred('uuid', 'not_eq', $v); return $this; }
+    public function uuidGt(string $v): static { $this->w->pred('uuid', 'gt', $v); return $this; }
+    public function uuidGte(string $v): static { $this->w->pred('uuid', 'gte', $v); return $this; }
+    public function uuidLt(string $v): static { $this->w->pred('uuid', 'lt', $v); return $this; }
+    public function uuidLte(string $v): static { $this->w->pred('uuid', 'lte', $v); return $this; }
     public function uuidIn(array $vs): static { $this->w->predList('uuid', 'in', array_values($vs)); return $this; }
     public function uuidNotIn(array $vs): static { $this->w->predList('uuid', 'not_in', array_values($vs)); return $this; }
     public function uuidLike(string $v): static { $this->w->pred('uuid', 'like', $v); return $this; }
@@ -731,6 +759,10 @@ final class BattleWhere
     public function uuidIsNotNull(): static { $this->w->predNull('uuid', 'is_not_null'); return $this; }
     public function uuidEqCol(ColRef $ref): static { $this->w->predCol('uuid', 'eq_col', $ref); return $this; }
     public function uuidNotEqCol(ColRef $ref): static { $this->w->predCol('uuid', 'not_eq_col', $ref); return $this; }
+    public function uuidGtCol(ColRef $ref): static { $this->w->predCol('uuid', 'gt_col', $ref); return $this; }
+    public function uuidGteCol(ColRef $ref): static { $this->w->predCol('uuid', 'gte_col', $ref); return $this; }
+    public function uuidLtCol(ColRef $ref): static { $this->w->predCol('uuid', 'lt_col', $ref); return $this; }
+    public function uuidLteCol(ColRef $ref): static { $this->w->predCol('uuid', 'lte_col', $ref); return $this; }
     public function isSinglePlayEq(bool $v): static { $this->w->pred('is_single_play', 'eq', $v); return $this; }
     public function isSinglePlay(bool $v): static { return $this->isSinglePlayEq($v); }
     public function isSinglePlayNotEq(bool $v): static { $this->w->pred('is_single_play', 'not_eq', $v); return $this; }
@@ -786,6 +818,10 @@ final class BattleWhere
     public function emailBlindIndexEq(string $v): static { $this->w->pred('email_blind_index', 'eq', $v); return $this; }
     public function emailBlindIndex(string $v): static { return $this->emailBlindIndexEq($v); }
     public function emailBlindIndexNotEq(string $v): static { $this->w->pred('email_blind_index', 'not_eq', $v); return $this; }
+    public function emailBlindIndexGt(string $v): static { $this->w->pred('email_blind_index', 'gt', $v); return $this; }
+    public function emailBlindIndexGte(string $v): static { $this->w->pred('email_blind_index', 'gte', $v); return $this; }
+    public function emailBlindIndexLt(string $v): static { $this->w->pred('email_blind_index', 'lt', $v); return $this; }
+    public function emailBlindIndexLte(string $v): static { $this->w->pred('email_blind_index', 'lte', $v); return $this; }
     public function emailBlindIndexIn(array $vs): static { $this->w->predList('email_blind_index', 'in', array_values($vs)); return $this; }
     public function emailBlindIndexNotIn(array $vs): static { $this->w->predList('email_blind_index', 'not_in', array_values($vs)); return $this; }
     public function emailBlindIndexLike(string $v): static { $this->w->pred('email_blind_index', 'like', $v); return $this; }
@@ -797,6 +833,10 @@ final class BattleWhere
     public function emailBlindIndexIsNotNull(): static { $this->w->predNull('email_blind_index', 'is_not_null'); return $this; }
     public function emailBlindIndexEqCol(ColRef $ref): static { $this->w->predCol('email_blind_index', 'eq_col', $ref); return $this; }
     public function emailBlindIndexNotEqCol(ColRef $ref): static { $this->w->predCol('email_blind_index', 'not_eq_col', $ref); return $this; }
+    public function emailBlindIndexGtCol(ColRef $ref): static { $this->w->predCol('email_blind_index', 'gt_col', $ref); return $this; }
+    public function emailBlindIndexGteCol(ColRef $ref): static { $this->w->predCol('email_blind_index', 'gte_col', $ref); return $this; }
+    public function emailBlindIndexLtCol(ColRef $ref): static { $this->w->predCol('email_blind_index', 'lt_col', $ref); return $this; }
+    public function emailBlindIndexLteCol(ColRef $ref): static { $this->w->predCol('email_blind_index', 'lte_col', $ref); return $this; }
     public function aesHexPhoneEq(string $v): static { $this->w->pred('aes_hex_phone', 'eq', $v); return $this; }
     public function aesHexPhone(string $v): static { return $this->aesHexPhoneEq($v); }
     public function aesHexPhoneNotEq(string $v): static { $this->w->pred('aes_hex_phone', 'not_eq', $v); return $this; }
@@ -809,6 +849,10 @@ final class BattleWhere
     public function phoneBlindIndexEq(string $v): static { $this->w->pred('phone_blind_index', 'eq', $v); return $this; }
     public function phoneBlindIndex(string $v): static { return $this->phoneBlindIndexEq($v); }
     public function phoneBlindIndexNotEq(string $v): static { $this->w->pred('phone_blind_index', 'not_eq', $v); return $this; }
+    public function phoneBlindIndexGt(string $v): static { $this->w->pred('phone_blind_index', 'gt', $v); return $this; }
+    public function phoneBlindIndexGte(string $v): static { $this->w->pred('phone_blind_index', 'gte', $v); return $this; }
+    public function phoneBlindIndexLt(string $v): static { $this->w->pred('phone_blind_index', 'lt', $v); return $this; }
+    public function phoneBlindIndexLte(string $v): static { $this->w->pred('phone_blind_index', 'lte', $v); return $this; }
     public function phoneBlindIndexIn(array $vs): static { $this->w->predList('phone_blind_index', 'in', array_values($vs)); return $this; }
     public function phoneBlindIndexNotIn(array $vs): static { $this->w->predList('phone_blind_index', 'not_in', array_values($vs)); return $this; }
     public function phoneBlindIndexLike(string $v): static { $this->w->pred('phone_blind_index', 'like', $v); return $this; }
@@ -820,6 +864,10 @@ final class BattleWhere
     public function phoneBlindIndexIsNotNull(): static { $this->w->predNull('phone_blind_index', 'is_not_null'); return $this; }
     public function phoneBlindIndexEqCol(ColRef $ref): static { $this->w->predCol('phone_blind_index', 'eq_col', $ref); return $this; }
     public function phoneBlindIndexNotEqCol(ColRef $ref): static { $this->w->predCol('phone_blind_index', 'not_eq_col', $ref); return $this; }
+    public function phoneBlindIndexGtCol(ColRef $ref): static { $this->w->predCol('phone_blind_index', 'gt_col', $ref); return $this; }
+    public function phoneBlindIndexGteCol(ColRef $ref): static { $this->w->predCol('phone_blind_index', 'gte_col', $ref); return $this; }
+    public function phoneBlindIndexLtCol(ColRef $ref): static { $this->w->predCol('phone_blind_index', 'lt_col', $ref); return $this; }
+    public function phoneBlindIndexLteCol(ColRef $ref): static { $this->w->predCol('phone_blind_index', 'lte_col', $ref); return $this; }
     public function priceEq(float $v): static { $this->w->pred('price', 'eq', $v); return $this; }
     public function price(float $v): static { return $this->priceEq($v); }
     public function priceNotEq(float $v): static { $this->w->pred('price', 'not_eq', $v); return $this; }
@@ -948,6 +996,10 @@ final class Battle extends Q implements BattleInterface
     public function nameEq(string $v): static { $this->w()->pred('name', 'eq', $v); return $this; }
     public function name(string $v): static { return $this->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w()->pred('name', 'not_eq', $v); return $this; }
+    public function nameGt(string $v): static { $this->w()->pred('name', 'gt', $v); return $this; }
+    public function nameGte(string $v): static { $this->w()->pred('name', 'gte', $v); return $this; }
+    public function nameLt(string $v): static { $this->w()->pred('name', 'lt', $v); return $this; }
+    public function nameLte(string $v): static { $this->w()->pred('name', 'lte', $v); return $this; }
     public function nameIn(array $vs): static { $this->w()->predList('name', 'in', array_values($vs)); return $this; }
     public function nameNotIn(array $vs): static { $this->w()->predList('name', 'not_in', array_values($vs)); return $this; }
     public function nameLike(string $v): static { $this->w()->pred('name', 'like', $v); return $this; }
@@ -959,9 +1011,17 @@ final class Battle extends Q implements BattleInterface
     public function nameIsNotNull(): static { $this->w()->predNull('name', 'is_not_null'); return $this; }
     public function nameEqCol(ColRef $ref): static { $this->w()->predCol('name', 'eq_col', $ref); return $this; }
     public function nameNotEqCol(ColRef $ref): static { $this->w()->predCol('name', 'not_eq_col', $ref); return $this; }
+    public function nameGtCol(ColRef $ref): static { $this->w()->predCol('name', 'gt_col', $ref); return $this; }
+    public function nameGteCol(ColRef $ref): static { $this->w()->predCol('name', 'gte_col', $ref); return $this; }
+    public function nameLtCol(ColRef $ref): static { $this->w()->predCol('name', 'lt_col', $ref); return $this; }
+    public function nameLteCol(ColRef $ref): static { $this->w()->predCol('name', 'lte_col', $ref); return $this; }
     public function descriptionEq(string $v): static { $this->w()->pred('description', 'eq', $v); return $this; }
     public function description(string $v): static { return $this->descriptionEq($v); }
     public function descriptionNotEq(string $v): static { $this->w()->pred('description', 'not_eq', $v); return $this; }
+    public function descriptionGt(string $v): static { $this->w()->pred('description', 'gt', $v); return $this; }
+    public function descriptionGte(string $v): static { $this->w()->pred('description', 'gte', $v); return $this; }
+    public function descriptionLt(string $v): static { $this->w()->pred('description', 'lt', $v); return $this; }
+    public function descriptionLte(string $v): static { $this->w()->pred('description', 'lte', $v); return $this; }
     public function descriptionLike(string $v): static { $this->w()->pred('description', 'like', $v); return $this; }
     public function descriptionLikeBinary(string $v): static { $this->w()->pred('description', 'like_binary', $v); return $this; }
     public function descriptionContains(string $v): static { $this->w()->pred('description', 'contains', $v); return $this; }
@@ -971,6 +1031,10 @@ final class Battle extends Q implements BattleInterface
     public function descriptionIsNotNull(): static { $this->w()->predNull('description', 'is_not_null'); return $this; }
     public function descriptionEqCol(ColRef $ref): static { $this->w()->predCol('description', 'eq_col', $ref); return $this; }
     public function descriptionNotEqCol(ColRef $ref): static { $this->w()->predCol('description', 'not_eq_col', $ref); return $this; }
+    public function descriptionGtCol(ColRef $ref): static { $this->w()->predCol('description', 'gt_col', $ref); return $this; }
+    public function descriptionGteCol(ColRef $ref): static { $this->w()->predCol('description', 'gte_col', $ref); return $this; }
+    public function descriptionLtCol(ColRef $ref): static { $this->w()->predCol('description', 'lt_col', $ref); return $this; }
+    public function descriptionLteCol(ColRef $ref): static { $this->w()->predCol('description', 'lte_col', $ref); return $this; }
     public function createdTsEq(string $v): static { $this->w()->pred('created_ts', 'eq', $v); return $this; }
     public function createdTs(string $v): static { return $this->createdTsEq($v); }
     public function createdTsNotEq(string $v): static { $this->w()->pred('created_ts', 'not_eq', $v); return $this; }
@@ -1139,6 +1203,10 @@ final class Battle extends Q implements BattleInterface
     public function coverUrlEq(string $v): static { $this->w()->pred('cover_url', 'eq', $v); return $this; }
     public function coverUrl(string $v): static { return $this->coverUrlEq($v); }
     public function coverUrlNotEq(string $v): static { $this->w()->pred('cover_url', 'not_eq', $v); return $this; }
+    public function coverUrlGt(string $v): static { $this->w()->pred('cover_url', 'gt', $v); return $this; }
+    public function coverUrlGte(string $v): static { $this->w()->pred('cover_url', 'gte', $v); return $this; }
+    public function coverUrlLt(string $v): static { $this->w()->pred('cover_url', 'lt', $v); return $this; }
+    public function coverUrlLte(string $v): static { $this->w()->pred('cover_url', 'lte', $v); return $this; }
     public function coverUrlIn(array $vs): static { $this->w()->predList('cover_url', 'in', array_values($vs)); return $this; }
     public function coverUrlNotIn(array $vs): static { $this->w()->predList('cover_url', 'not_in', array_values($vs)); return $this; }
     public function coverUrlLike(string $v): static { $this->w()->pred('cover_url', 'like', $v); return $this; }
@@ -1150,6 +1218,10 @@ final class Battle extends Q implements BattleInterface
     public function coverUrlIsNotNull(): static { $this->w()->predNull('cover_url', 'is_not_null'); return $this; }
     public function coverUrlEqCol(ColRef $ref): static { $this->w()->predCol('cover_url', 'eq_col', $ref); return $this; }
     public function coverUrlNotEqCol(ColRef $ref): static { $this->w()->predCol('cover_url', 'not_eq_col', $ref); return $this; }
+    public function coverUrlGtCol(ColRef $ref): static { $this->w()->predCol('cover_url', 'gt_col', $ref); return $this; }
+    public function coverUrlGteCol(ColRef $ref): static { $this->w()->predCol('cover_url', 'gte_col', $ref); return $this; }
+    public function coverUrlLtCol(ColRef $ref): static { $this->w()->predCol('cover_url', 'lt_col', $ref); return $this; }
+    public function coverUrlLteCol(ColRef $ref): static { $this->w()->predCol('cover_url', 'lte_col', $ref); return $this; }
     public function userSeqEq(int $v): static { $this->w()->pred('user_seq', 'eq', $v); return $this; }
     public function userSeq(int $v): static { return $this->userSeqEq($v); }
     public function userSeqNotEq(int $v): static { $this->w()->pred('user_seq', 'not_eq', $v); return $this; }
@@ -1261,6 +1333,10 @@ final class Battle extends Q implements BattleInterface
     public function uuidEq(string $v): static { $this->w()->pred('uuid', 'eq', $v); return $this; }
     public function uuid(string $v): static { return $this->uuidEq($v); }
     public function uuidNotEq(string $v): static { $this->w()->pred('uuid', 'not_eq', $v); return $this; }
+    public function uuidGt(string $v): static { $this->w()->pred('uuid', 'gt', $v); return $this; }
+    public function uuidGte(string $v): static { $this->w()->pred('uuid', 'gte', $v); return $this; }
+    public function uuidLt(string $v): static { $this->w()->pred('uuid', 'lt', $v); return $this; }
+    public function uuidLte(string $v): static { $this->w()->pred('uuid', 'lte', $v); return $this; }
     public function uuidIn(array $vs): static { $this->w()->predList('uuid', 'in', array_values($vs)); return $this; }
     public function uuidNotIn(array $vs): static { $this->w()->predList('uuid', 'not_in', array_values($vs)); return $this; }
     public function uuidLike(string $v): static { $this->w()->pred('uuid', 'like', $v); return $this; }
@@ -1272,6 +1348,10 @@ final class Battle extends Q implements BattleInterface
     public function uuidIsNotNull(): static { $this->w()->predNull('uuid', 'is_not_null'); return $this; }
     public function uuidEqCol(ColRef $ref): static { $this->w()->predCol('uuid', 'eq_col', $ref); return $this; }
     public function uuidNotEqCol(ColRef $ref): static { $this->w()->predCol('uuid', 'not_eq_col', $ref); return $this; }
+    public function uuidGtCol(ColRef $ref): static { $this->w()->predCol('uuid', 'gt_col', $ref); return $this; }
+    public function uuidGteCol(ColRef $ref): static { $this->w()->predCol('uuid', 'gte_col', $ref); return $this; }
+    public function uuidLtCol(ColRef $ref): static { $this->w()->predCol('uuid', 'lt_col', $ref); return $this; }
+    public function uuidLteCol(ColRef $ref): static { $this->w()->predCol('uuid', 'lte_col', $ref); return $this; }
     public function isSinglePlayEq(bool $v): static { $this->w()->pred('is_single_play', 'eq', $v); return $this; }
     public function isSinglePlay(bool $v): static { return $this->isSinglePlayEq($v); }
     public function isSinglePlayNotEq(bool $v): static { $this->w()->pred('is_single_play', 'not_eq', $v); return $this; }
@@ -1327,6 +1407,10 @@ final class Battle extends Q implements BattleInterface
     public function emailBlindIndexEq(string $v): static { $this->w()->pred('email_blind_index', 'eq', $v); return $this; }
     public function emailBlindIndex(string $v): static { return $this->emailBlindIndexEq($v); }
     public function emailBlindIndexNotEq(string $v): static { $this->w()->pred('email_blind_index', 'not_eq', $v); return $this; }
+    public function emailBlindIndexGt(string $v): static { $this->w()->pred('email_blind_index', 'gt', $v); return $this; }
+    public function emailBlindIndexGte(string $v): static { $this->w()->pred('email_blind_index', 'gte', $v); return $this; }
+    public function emailBlindIndexLt(string $v): static { $this->w()->pred('email_blind_index', 'lt', $v); return $this; }
+    public function emailBlindIndexLte(string $v): static { $this->w()->pred('email_blind_index', 'lte', $v); return $this; }
     public function emailBlindIndexIn(array $vs): static { $this->w()->predList('email_blind_index', 'in', array_values($vs)); return $this; }
     public function emailBlindIndexNotIn(array $vs): static { $this->w()->predList('email_blind_index', 'not_in', array_values($vs)); return $this; }
     public function emailBlindIndexLike(string $v): static { $this->w()->pred('email_blind_index', 'like', $v); return $this; }
@@ -1338,6 +1422,10 @@ final class Battle extends Q implements BattleInterface
     public function emailBlindIndexIsNotNull(): static { $this->w()->predNull('email_blind_index', 'is_not_null'); return $this; }
     public function emailBlindIndexEqCol(ColRef $ref): static { $this->w()->predCol('email_blind_index', 'eq_col', $ref); return $this; }
     public function emailBlindIndexNotEqCol(ColRef $ref): static { $this->w()->predCol('email_blind_index', 'not_eq_col', $ref); return $this; }
+    public function emailBlindIndexGtCol(ColRef $ref): static { $this->w()->predCol('email_blind_index', 'gt_col', $ref); return $this; }
+    public function emailBlindIndexGteCol(ColRef $ref): static { $this->w()->predCol('email_blind_index', 'gte_col', $ref); return $this; }
+    public function emailBlindIndexLtCol(ColRef $ref): static { $this->w()->predCol('email_blind_index', 'lt_col', $ref); return $this; }
+    public function emailBlindIndexLteCol(ColRef $ref): static { $this->w()->predCol('email_blind_index', 'lte_col', $ref); return $this; }
     public function aesHexPhoneEq(string $v): static { $this->w()->pred('aes_hex_phone', 'eq', $v); return $this; }
     public function aesHexPhone(string $v): static { return $this->aesHexPhoneEq($v); }
     public function aesHexPhoneNotEq(string $v): static { $this->w()->pred('aes_hex_phone', 'not_eq', $v); return $this; }
@@ -1350,6 +1438,10 @@ final class Battle extends Q implements BattleInterface
     public function phoneBlindIndexEq(string $v): static { $this->w()->pred('phone_blind_index', 'eq', $v); return $this; }
     public function phoneBlindIndex(string $v): static { return $this->phoneBlindIndexEq($v); }
     public function phoneBlindIndexNotEq(string $v): static { $this->w()->pred('phone_blind_index', 'not_eq', $v); return $this; }
+    public function phoneBlindIndexGt(string $v): static { $this->w()->pred('phone_blind_index', 'gt', $v); return $this; }
+    public function phoneBlindIndexGte(string $v): static { $this->w()->pred('phone_blind_index', 'gte', $v); return $this; }
+    public function phoneBlindIndexLt(string $v): static { $this->w()->pred('phone_blind_index', 'lt', $v); return $this; }
+    public function phoneBlindIndexLte(string $v): static { $this->w()->pred('phone_blind_index', 'lte', $v); return $this; }
     public function phoneBlindIndexIn(array $vs): static { $this->w()->predList('phone_blind_index', 'in', array_values($vs)); return $this; }
     public function phoneBlindIndexNotIn(array $vs): static { $this->w()->predList('phone_blind_index', 'not_in', array_values($vs)); return $this; }
     public function phoneBlindIndexLike(string $v): static { $this->w()->pred('phone_blind_index', 'like', $v); return $this; }
@@ -1361,6 +1453,10 @@ final class Battle extends Q implements BattleInterface
     public function phoneBlindIndexIsNotNull(): static { $this->w()->predNull('phone_blind_index', 'is_not_null'); return $this; }
     public function phoneBlindIndexEqCol(ColRef $ref): static { $this->w()->predCol('phone_blind_index', 'eq_col', $ref); return $this; }
     public function phoneBlindIndexNotEqCol(ColRef $ref): static { $this->w()->predCol('phone_blind_index', 'not_eq_col', $ref); return $this; }
+    public function phoneBlindIndexGtCol(ColRef $ref): static { $this->w()->predCol('phone_blind_index', 'gt_col', $ref); return $this; }
+    public function phoneBlindIndexGteCol(ColRef $ref): static { $this->w()->predCol('phone_blind_index', 'gte_col', $ref); return $this; }
+    public function phoneBlindIndexLtCol(ColRef $ref): static { $this->w()->predCol('phone_blind_index', 'lt_col', $ref); return $this; }
+    public function phoneBlindIndexLteCol(ColRef $ref): static { $this->w()->predCol('phone_blind_index', 'lte_col', $ref); return $this; }
     public function priceEq(float $v): static { $this->w()->pred('price', 'eq', $v); return $this; }
     public function price(float $v): static { return $this->priceEq($v); }
     public function priceNotEq(float $v): static { $this->w()->pred('price', 'not_eq', $v); return $this; }
@@ -1693,6 +1789,8 @@ final class Battle extends Q implements BattleInterface
     public function limit(int $offset, int $count): static { $this->setLimit($offset, $count); return $this; }
     public function forUpdate(): static { $this->lock('update'); return $this; }
     public function forShare(): static { $this->lock('share'); return $this; }
+    public function forUpdateNoWait(): static { $this->lock('update_nowait'); return $this; }
+    public function forShareNoWait(): static { $this->lock('share_nowait'); return $this; }
     public function distinct(): static { $this->opt('distinct', true); return $this; }
     public function forceIndexIk(): static { $this->opt('force_index', 'ik'); return $this; }
     public function forceIndexIxEmailBlindIndex(): static { $this->opt('force_index', 'ix_email_blind_index'); return $this; }
@@ -1896,7 +1994,14 @@ final class Battle extends Q implements BattleInterface
     public function onDuplicateMinusPrice(float $v): static { $this->onDuplicateMinus('price', $v); return $this; }
 
     // ---- terminals ----
-    public function get(): ?BattleRow
+    public function get(): BattleRow
+    {
+        $row = $this->getOrNull();
+        if ($row === null) throw new \Orm\OrmException(\Orm\Code::NO_ROWS, 'query returned no rows');
+        return $row;
+    }
+
+    public function getOrNull(): ?BattleRow
     {
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();

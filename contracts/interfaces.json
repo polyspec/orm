@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:eff6832f58ee647b83c4320c87fc371eac3d25bb274387b935a03fbc1bf90306",
-    "php": "sha256:19c7a5f683373a623b09c848e532383436d35de15eef08644bd3652d3d625ab8",
-    "rust": "sha256:a058f27097dcc783f22b9ec00354363e0b7a271015589d6b430a9767364bdb5c",
-    "typescript": "sha256:3c2e25c5b1a34da265837d8fd5589794b946608281f86bb72d779b33122708ce"
+    "go": "sha256:cae943421dd590f96ec1ffab2c6a65e48174a9b09f4278095462d621e8a8281f",
+    "php": "sha256:d920d52094da86884ec7d9c17c624eb5a920ae34400de211fe0c13445d220b3e",
+    "rust": "sha256:8f3d32aca80e7aee4f2648e7b143987958ba2de4739bfb2880503672e72b62d1",
+    "typescript": "sha256:97f9fe4cffbd6c9e43c478b904abaf5386a4c389517a0c033b6df8583f109339"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -60,6 +60,7 @@
         "join",
         "relation",
         "get",
+        "getOrNull",
         "gets",
         "getsAfter",
         "getsBefore",
@@ -431,7 +432,7 @@
       "id": "Query.get",
       "for": "entity",
       "inputs": [],
-      "output": "Optional<Row>",
+      "output": "Required<Row>",
       "errors": [
         "CONFIG",
         "IR_INVALID",
@@ -445,15 +446,45 @@
         },
         "php": {
           "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::get",
-          "signature": "public function get(): ?App\\Orm\\{Entity}Row"
+          "signature": "public function get(): App\\Orm\\{Entity}Row"
         },
         "rust": {
           "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::get",
-          "signature": "pub async fn get(&mut self) -> Result<Option<{Entity}Row>>"
+          "signature": "pub async fn get(&mut self) -> Result<{Entity}Row>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.get",
-          "signature": "public async get(): Promise<{Entity}Row | null>"
+          "signature": "public async get(): Promise<{Entity}Row>"
+        }
+      }
+    },
+    {
+      "id": "Query.getOrNull",
+      "for": "entity",
+      "inputs": [],
+      "output": "Optional<Row>",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver/codec error"
+      ],
+      "state": "Query retained; only execution kind changes",
+      "native": {
+        "go": {
+          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetOrNil",
+          "signature": "receiver=*{Entity}Query func() (*{Entity}Row, error)"
+        },
+        "php": {
+          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::getOrNull",
+          "signature": "public function getOrNull(): ?App\\Orm\\{Entity}Row"
+        },
+        "rust": {
+          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::get_or_none",
+          "signature": "pub async fn get_or_none(&mut self) -> Result<Option<{Entity}Row>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getOrNull",
+          "signature": "public async getOrNull(): Promise<{Entity}Row | null>"
         }
       }
     },

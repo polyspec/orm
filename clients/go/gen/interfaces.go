@@ -12,6 +12,7 @@ var _ time.Time
 
 type BattleInterface interface {
 	Get() (*BattleRow, error)
+	GetOrNil() (*BattleRow, error)
 	Gets() (*orm.Collection[BattleRow], error)
 	Stream(visit func(*BattleRow) bool) (orm.StreamResult, error)
 	GetCount() (int64, error)
@@ -171,6 +172,7 @@ var _ BattleRowInterface = (*BattleRow)(nil)
 
 type UserInterface interface {
 	Get() (*UserRow, error)
+	GetOrNil() (*UserRow, error)
 	Gets() (*orm.Collection[UserRow], error)
 	Stream(visit func(*UserRow) bool) (orm.StreamResult, error)
 	GetCount() (int64, error)
@@ -210,6 +212,7 @@ var _ UserRowInterface = (*UserRow)(nil)
 
 type ServiceInterface interface {
 	Get() (*ServiceRow, error)
+	GetOrNil() (*ServiceRow, error)
 	Gets() (*orm.Collection[ServiceRow], error)
 	Stream(visit func(*ServiceRow) bool) (orm.StreamResult, error)
 	GetCount() (int64, error)
@@ -249,6 +252,7 @@ var _ ServiceRowInterface = (*ServiceRow)(nil)
 
 type ServiceModuleInterface interface {
 	Get() (*ServiceModuleRow, error)
+	GetOrNil() (*ServiceModuleRow, error)
 	Gets() (*orm.Collection[ServiceModuleRow], error)
 	Stream(visit func(*ServiceModuleRow) bool) (orm.StreamResult, error)
 	GetCount() (int64, error)
@@ -292,6 +296,7 @@ var _ ServiceModuleRowInterface = (*ServiceModuleRow)(nil)
 
 type ServiceMemberInterface interface {
 	Get() (*ServiceMemberRow, error)
+	GetOrNil() (*ServiceMemberRow, error)
 	Gets() (*orm.Collection[ServiceMemberRow], error)
 	Stream(visit func(*ServiceMemberRow) bool) (orm.StreamResult, error)
 	GetCount() (int64, error)
@@ -335,6 +340,7 @@ var _ ServiceMemberRowInterface = (*ServiceMemberRow)(nil)
 
 type CompositeAccountInterface interface {
 	Get() (*CompositeAccountRow, error)
+	GetOrNil() (*CompositeAccountRow, error)
 	Gets() (*orm.Collection[CompositeAccountRow], error)
 	Stream(visit func(*CompositeAccountRow) bool) (orm.StreamResult, error)
 	GetCount() (int64, error)
@@ -378,6 +384,7 @@ var _ CompositeAccountRowInterface = (*CompositeAccountRow)(nil)
 
 type CompositeMembershipInterface interface {
 	Get() (*CompositeMembershipRow, error)
+	GetOrNil() (*CompositeMembershipRow, error)
 	Gets() (*orm.Collection[CompositeMembershipRow], error)
 	Stream(visit func(*CompositeMembershipRow) bool) (orm.StreamResult, error)
 	GetCount() (int64, error)
@@ -421,6 +428,7 @@ var _ CompositeMembershipRowInterface = (*CompositeMembershipRow)(nil)
 
 type SoftRecordInterface interface {
 	Get() (*SoftRecordRow, error)
+	GetOrNil() (*SoftRecordRow, error)
 	Gets() (*orm.Collection[SoftRecordRow], error)
 	Stream(visit func(*SoftRecordRow) bool) (orm.StreamResult, error)
 	GetCount() (int64, error)
@@ -464,6 +472,7 @@ var _ SoftRecordRowInterface = (*SoftRecordRow)(nil)
 
 type AccountInterface interface {
 	Get() (*AccountRow, error)
+	GetOrNil() (*AccountRow, error)
 	Gets() (*orm.Collection[AccountRow], error)
 	Stream(visit func(*AccountRow) bool) (orm.StreamResult, error)
 	GetCount() (int64, error)
@@ -503,6 +512,7 @@ var _ AccountRowInterface = (*AccountRow)(nil)
 
 type ProjectInterface interface {
 	Get() (*ProjectRow, error)
+	GetOrNil() (*ProjectRow, error)
 	Gets() (*orm.Collection[ProjectRow], error)
 	Stream(visit func(*ProjectRow) bool) (orm.StreamResult, error)
 	GetCount() (int64, error)
@@ -542,6 +552,7 @@ var _ ProjectRowInterface = (*ProjectRow)(nil)
 
 type AccountProjectInterface interface {
 	Get() (*AccountProjectRow, error)
+	GetOrNil() (*AccountProjectRow, error)
 	Gets() (*orm.Collection[AccountProjectRow], error)
 	Stream(visit func(*AccountProjectRow) bool) (orm.StreamResult, error)
 	GetCount() (int64, error)

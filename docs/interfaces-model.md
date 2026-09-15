@@ -16,6 +16,7 @@ classDiagram
         join()
         relation()
         get()
+        getOrNull()
         gets()
         getsAfter()
         getsBefore()
