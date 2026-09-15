@@ -251,3 +251,16 @@ func TestOrderedJSONCodecConvertsTaggedGoStructs(t *testing.T) {
 		t.Fatalf("encoded struct = %q, want %q", encoded, want)
 	}
 }
+
+func TestOrderedJSONCodecParsesJSONRawMessage(t *testing.T) {
+	type value struct {
+		Config json.RawMessage `json:"config"`
+	}
+	encoded, err := Encode([]string{"json"}, value{Config: json.RawMessage(`{"enabled":true,"items":[]}`)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded != `{"config":{"enabled":true,"items":[]}}` {
+		t.Fatalf("encoded raw message = %q", encoded)
+	}
+}

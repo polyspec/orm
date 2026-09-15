@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"encoding/json"
 	"encoding/json/jsontext"
 	"fmt"
 	"math"
@@ -20,6 +21,7 @@ func orderedJSONValue(value any) (*orderedjson.Value, error) {
 }
 
 var jsonTextValueType = reflect.TypeOf(jsontext.Value(nil))
+var jsonRawMessageType = reflect.TypeOf(json.RawMessage(nil))
 
 func orderedJSONReflect(reflectValue reflect.Value) (*orderedjson.Value, error) {
 	if !reflectValue.IsValid() {
@@ -32,6 +34,16 @@ func orderedJSONReflect(reflectValue reflect.Value) (*orderedjson.Value, error) 
 		parsed, err := orderedjson.ParseBytes(reflectValue.Bytes())
 		if err != nil {
 			return nil, codecErr(CodeCodecEncode, "json: raw value: %v", err)
+		}
+		return parsed, nil
+	}
+	if reflectValue.Type() == jsonRawMessageType {
+		if reflectValue.IsNil() {
+			return orderedjson.Null(), nil
+		}
+		parsed, err := orderedjson.ParseBytes(reflectValue.Bytes())
+		if err != nil {
+			return nil, codecErr(CodeCodecEncode, "json: raw message: %v", err)
 		}
 		return parsed, nil
 	}
