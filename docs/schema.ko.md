@@ -146,6 +146,8 @@ SQLite audit trigger에서 생성 JSON column은 text로 저장된다. adapter�
 
 SQLite의 `ForUpdate`, `ForShare`와 `NoWait` 형식은 adapter가 소유한다. ORM은 caller-owned transaction이 시작되기 전에 transaction lock table을 초기화하고, 해당 transaction 안에서 lock row를 획득하며, 일반 lock mode에서는 대기와 cancellation을 준수하고 `NoWait`에서는 즉시 반환한다. 애플리케이션은 선택한 database driver에 따라 분기하지 않는다.
 
+Go adapter regression test는 lock 직렬화, 즉시 `NoWait`, 소유 transaction 종료 후 완료와 대기 중 cancellation을 검증한다. 각 사례는 제한된 focused test timeout을 사용한다.
+
 타입 문자열에 쉼표는 Mermaid 문법상 불가 → `decimal(13_3)`, `enum(a_b_c)`처럼 `_`로 쓴다(ormgen이 해석). 방언별 매핑 규칙표(정규 타입 → DDL)는 `docs/dialects.md`(S6)에 둔다.
 
 ## 3. 매니페스트 (생성물, `schema.json`)
