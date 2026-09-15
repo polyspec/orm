@@ -12,6 +12,7 @@ type Step struct {
 	ID        int        `json:"id"`
 	Role      string     `json:"role"` // main | count | relation
 	SQL       string     `json:"sql"`
+	Lock      string     `json:"lock,omitempty"` // adapter lock mode for a root row select
 	BindSlots []BindSlot `json:"bind_slots"`
 	Assemble  *Assemble  `json:"assemble,omitempty"`
 	Parent    *ParentRef `json:"parent,omitempty"` // relation steps: where the IN values come from

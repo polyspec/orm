@@ -130,7 +130,7 @@ final class CompilerBridge
     /** @return array<string,mixed> */
     private static function step(PlanStep $step): array
     {
-        $out = ['id'=>$step->getId(), 'role'=>$step->getRole(), 'sql'=>$step->getSql(), 'bind_slots'=>array_map(fn(BindSlot $v) => ['from'=>$v->getSource(),'param'=>$v->getParameter(),'transform'=>$v->getTransform(),'name'=>$v->getName(),'step'=>$v->getStep(),'column'=>$v->getColumn(),'host_styles'=>iterator_to_array($v->getHostStyles()),'col_type'=>$v->getColumnType()], iterator_to_array($step->getBinds()))];
+        $out = ['id'=>$step->getId(), 'role'=>$step->getRole(), 'sql'=>$step->getSql(), 'lock'=>$step->getLock(), 'bind_slots'=>array_map(fn(BindSlot $v) => ['from'=>$v->getSource(),'param'=>$v->getParameter(),'transform'=>$v->getTransform(),'name'=>$v->getName(),'step'=>$v->getStep(),'column'=>$v->getColumn(),'host_styles'=>iterator_to_array($v->getHostStyles()),'col_type'=>$v->getColumnType()], iterator_to_array($step->getBinds()))];
         if ($step->hasAssemble()) $out['assemble'] = self::assemble($step->getAssemble());
         if ($step->hasParent()) {
             $p=$step->getParent(); $out['parent']=['step'=>$p->getStep(),'keys'=>self::keys($p->getKeys())];

@@ -402,7 +402,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			}
 		}
 	}
-	st := &plan.Step{Role: "main", SQL: sb.String(), BindSlots: b.binds}
+	st := &plan.Step{Role: "main", SQL: sb.String(), Lock: q.Lock, BindSlots: b.binds}
 	switch {
 	case kind == "count" && len(ps.steps) > 0:
 		st.Role = "count"

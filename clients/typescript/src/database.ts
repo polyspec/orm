@@ -324,6 +324,7 @@ export class Db implements Database, Executor {
     if (plan.steps.slice(1).some(step => step.role === 'relation')) throw new OrmError('IR_INVALID', 'stream does not support separate relation steps; use a join or gets');
     const step = plan.steps[0];
     if (!step) throw new OrmError('INTERNAL', 'plan has no steps');
+    await this.connection.acquireRowLock?.(step.lock ?? '');
     const assemble = requiredAssemble(step);
     const binds = this.binds(step, params, []);
     const rows = new ExecutionRows(this, plan, params, []);
@@ -381,6 +382,7 @@ export class Db implements Database, Executor {
     const binds = this.binds(step, params, parents);
     const started = performance.now();
     try {
+      if (sql === step.sql) await this.connection.acquireRowLock?.(step.lock ?? '');
       const result = await this.connection.execute(sql, binds as DriverValue[]);
       this.onQuery?.({ sql, binds: maskBinds(step, binds), seconds: (performance.now() - started) / 1000 });
       return result;
