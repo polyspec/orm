@@ -142,6 +142,8 @@ Changing a comment changes the schema hash and produces an idempotent migration.
 | CHECK, partitions, collation/engine options, views, functions, sequences, extensions | Unsupported by the ORM; write them in migration SQL |
 | Arbitrary triggers | Unsupported by the schema generator. The Go adapter's explicit `Tx.InstallAudit` interface validates a declared audit relationship and owns dialect-specific audit trigger SQL for PostgreSQL and SQLite. `Tx.InstallImmutable` provides the same adapter-owned path for append-only tables, rejecting UPDATE and DELETE (and PostgreSQL TRUNCATE). PostgreSQL uses transaction-local settings; SQLite uses an ORM-owned transaction context table. |
 
+For SQLite audit triggers, generated JSON columns are stored as text. The adapter restores valid JSON text to a JSON node before building the audited row object, so nested redaction paths have the same logical meaning as PostgreSQL `jsonb`; non-JSON text remains a scalar. Qualified logical tables use the same `schema__table` physical mapping for audit discovery, trigger targets, operation tables, change tables, and immutable guards.
+
 Commas are invalid in Mermaid type strings; use `_` such as `decimal(13_3)` and `enum(a_b_c)`; ormgen interprets them. Dialect mapping from normalized types to DDL is in `docs/dialects.md` (S6).
 
 ## 3. Manifest (generated `schema.json`)
