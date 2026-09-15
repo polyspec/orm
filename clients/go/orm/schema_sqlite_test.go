@@ -23,7 +23,7 @@ func TestSchemaInstalledUsesSQLitePhysicalTable(t *testing.T) {
 	if empty, err := tx.DatabaseEmpty(context.Background()); err != nil || !empty {
 		t.Fatalf("empty SQLite database = %v, %v; want true", empty, err)
 	}
-	if err := tx.InstallDDL(context.Background(), []string{"CREATE TABLE initialization (seq INTEGER PRIMARY KEY)"}); err != nil {
+	if err := tx.InstallDDL(context.Background(), []string{"CREATE TABLE \"core__initialization\" (seq INTEGER PRIMARY KEY)"}); err != nil {
 		t.Fatal(err)
 	}
 	if exists, err := tx.SchemaInstalled(context.Background(), "core", "initialization"); err != nil || !exists {

@@ -14,7 +14,10 @@ type SQLite struct{}
 func (SQLite) Name() string { return "sqlite" }
 func (SQLite) Quote(ident string) string {
 	parts := strings.Split(ident, ".")
-	return QuoteWith(`"`, parts[len(parts)-1])
+	if len(parts) == 1 {
+		return QuoteWith(`"`, parts[0])
+	}
+	return QuoteWith(`"`, strings.Join(parts, "__"))
 }
 func (SQLite) Placeholder(int) string { return "?" }
 func (SQLite) Limit(offset, count int) string {

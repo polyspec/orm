@@ -111,7 +111,7 @@ The same child column may participate in more than one foreign key, including ov
 %% orm:immutable entity=<entity> # generated database triggers reject UPDATE, DELETE and TRUNCATE
 ```
 
-The `orm:table` directive is the only schema-source declaration for a qualified physical table. The manifest preserves both identifier components. PostgreSQL DDL and query quoting treat the schema and table as separate identifiers; SQLite does not gain a namespace from this directive.
+The `orm:table` directive is the only schema-source declaration for a qualified physical table. The manifest preserves both identifier components. PostgreSQL DDL and query quoting treat the schema and table as separate identifiers; SQLite preserves the namespace by mapping `schema.table` to the deterministic physical name `schema__table`. This prevents two module schemas with the same table base name from colliding in one SQLite database.
 
 `orm:foreign` declares a physical foreign key for a table outside the current manifest or for a relation with explicit constraint options. Local and referenced columns must have equal cardinality. `deferred=true` emits a deferrable, initially deferred constraint on PostgreSQL and SQLite; unsupported actions or malformed references fail schema validation. `orm:immutable` emits dialect-specific database triggers that reject row updates, deletes and truncation for the declared entity.
 

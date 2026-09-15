@@ -255,8 +255,7 @@ func foreignKeyTargetEntity(m *schema.Manifest, target string) (*schema.Entity, 
 
 func ddlTable(table, dialect string) string {
 	if dialect == "sqlite" {
-		parts := strings.Split(table, ".")
-		return parts[len(parts)-1]
+		return strings.ReplaceAll(table, ".", "__")
 	}
 	return table
 }
