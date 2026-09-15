@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"encoding/json/jsontext"
 	"fmt"
 	"math"
 	"sort"
@@ -51,6 +52,12 @@ func orderedJSONValue(value any) (*orderedjson.Value, error) {
 		return orderedJSONFloat(v)
 	case []byte:
 		return nil, codecErr(CodeCodecEncode, "json: []byte is not a common JSON value")
+	case jsontext.Value:
+		parsed, err := orderedjson.ParseBytes([]byte(v))
+		if err != nil {
+			return nil, codecErr(CodeCodecEncode, "json: raw value: %v", err)
+		}
+		return parsed, nil
 	case []any:
 		items := make([]*orderedjson.Value, len(v))
 		for i, item := range v {
