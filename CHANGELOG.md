@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Preserve logical schema namespaces in SQLite physical table names by mapping `schema.table` to `schema__table`, preventing same-named tables from colliding in one database.
 - Preserve overlapping foreign keys when one child column participates in multiple relation lines, including distinct composite constraints. Generated DDL ordering and migration diffing use relation metadata instead of collapsing those constraints to one column reference.
 - Add adapter-neutral Go error classification through `ErrorCode`, `IsDuplicateKey` and `IsForeignKey`; callers do not inspect driver error types.
 - The Go ORM client exposes ORM-owned pool statistics and opaque connection leases through `DB.Stats` and `DB.Acquire`, without exposing `database/sql` query access.
@@ -20,6 +21,6 @@
 - Added transaction-scoped PostgreSQL advisory locks to the Go ORM.
 - Added ordered DDL installation through the Go ORM transaction boundary.
 - Verify SQLite duplicate-key and foreign-key errors are mapped to the adapter-neutral ORM error contract.
-- Add SQLite support to the adapter-neutral `SchemaInstalled` transaction operation for flattened logical schema names.
+- Add SQLite support to the adapter-neutral `SchemaInstalled` transaction operation for namespaced physical table names.
 - Add adapter-neutral database-emptiness inspection for safe initial-schema preflight on PostgreSQL and SQLite.
 - Exclude PostgreSQL system namespaces such as `pg_toast` from empty-database preflight detection.

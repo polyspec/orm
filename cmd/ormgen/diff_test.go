@@ -36,6 +36,18 @@ func TestRenderDDLQuotesQualifiedPhysicalTable(t *testing.T) {
 	}
 }
 
+func TestRenderDDLPreservesQualifiedSQLiteTableNames(t *testing.T) {
+	m := testManifest(&schema.Col{Name: "id", Type: "i64", Raw: "bigint", PK: true})
+	m.Entities["thing"].Table = "core.thing"
+	sql, err := renderDDL(m, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(sql, `CREATE TABLE "core__thing"`) || strings.Contains(sql, `CREATE TABLE "thing"`) {
+		t.Fatalf("qualified SQLite table namespace was not preserved: %s", sql)
+	}
+}
+
 func TestRenderDDLUsesInstantDatetimeForPostgres(t *testing.T) {
 	m := testManifest(&schema.Col{Name: "id", Type: "i64", Raw: "bigint", PK: true}, &schema.Col{Name: "created_at", Type: "datetime", Raw: "datetime(6)", Precision: 6})
 	sql, err := renderDDL(m, "postgres")

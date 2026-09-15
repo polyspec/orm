@@ -563,8 +563,8 @@ func (t *Tx) Isolation(ctx context.Context) (string, error) {
 }
 
 // SchemaInstalled reports whether the named logical schema and table exist.
-// SQLite flattens the logical schema namespace into the physical table name,
-// so schema is accepted for the common contract but is not part of the lookup.
+// SQLite preserves the logical schema namespace in the physical name using
+// the same schema__table mapping as query planning and generated DDL.
 func (t *Tx) SchemaInstalled(ctx context.Context, schema, table string) (bool, error) {
 	if t == nil || t.finished.Load() {
 		return false, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
@@ -582,7 +582,7 @@ func (t *Tx) SchemaInstalled(ctx context.Context, schema, table string) (bool, e
 		}
 		defer stmt.Close()
 		var exists bool
-		if err := stmt.QueryRowContext(ctx, table).Scan(&exists); err != nil {
+		if err := stmt.QueryRowContext(ctx, schema+"__"+table).Scan(&exists); err != nil {
 			return false, mapDriverErr(err)
 		}
 		return exists, nil
