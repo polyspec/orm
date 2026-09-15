@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"os"
 	"strconv"
 	"strings"
@@ -129,6 +130,9 @@ func jsonNumbers(v any) any {
 }
 
 func TestCodecErrors(t *testing.T) {
+	if encoded, err := Encode([]string{"json"}, jsontext.Value(`{"object":{},"array":[]}`)); err != nil || encoded != `{"object":{},"array":[]}` {
+		t.Fatalf("jsontext.Value must be parsed as ordered JSON: %v (%v)", encoded, err)
+	}
 	if _, err := Encode([]string{"json"}, []byte(`{"value":1}`)); err == nil || !strings.HasPrefix(err.Error(), "CODEC_ENCODE") {
 		t.Fatalf("json []byte input must be rejected as a non-portable value: %v", err)
 	}

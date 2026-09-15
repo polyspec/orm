@@ -25,7 +25,7 @@
 ## 값 모델
 스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵. JSON과 JSONS 컬럼은 객체 멤버 순서를 보존하고 빈 객체와 빈 배열을 구분하는 ordered-json 값 트리를 사용한다.
 
-Go JSON codec의 `Decode`는 `*orderedjson.Value`를 반환하고 `Encode`는 이 값을 입력으로 받는다. 사용자 값 경계에서 Go의 `encoding/json`을 사용하지 않는다. portable scalar/list/map 값은 ordered-json으로 명시적으로 변환하며, 파싱한 ordered-json 값은 원래 순서와 노드 종류를 유지한다.
+Go JSON codec의 `Decode`는 `*orderedjson.Value`를 반환하고 `Encode`는 이 값을 입력으로 받는다. 사용자 값 경계에서 Go의 `encoding/json`을 사용하지 않는다. portable scalar/list/map 값은 ordered-json으로 명시적으로 변환하며, 파싱한 ordered-json 값은 원래 순서와 노드 종류를 유지한다. `jsontext.Value`는 이미 인코딩된 raw JSON 값일 때만 받아 즉시 ordered-json으로 파싱한다.
 Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE`로 거부한다. Go의 base64 JSON 문자열 표현으로 조용히 변환하지 않으며, JSON column에 대입하기 전에 byte를 공통 값 모델로 decode해야 한다.
 | | Go | Rust | PHP | TypeScript |
 |---|---|---|---|---|
