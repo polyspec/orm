@@ -85,6 +85,57 @@ func TestSQLiteORMRowLockSerializesAndNoWaits(t *testing.T) {
 	}
 }
 
+func TestSQLiteORMRowLockWaitsForTransaction(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "lock-wait.sqlite")
+	_, native, err := parseDSN("sqlite://" + path + "?_busy_timeout=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstSQL, err := sql.Open("sqlite", native)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer firstSQL.Close()
+	secondSQL, err := sql.Open("sqlite", native)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer secondSQL.Close()
+	firstDB := &DB{SQL: firstSQL, driver: "sqlite", stmts: map[string]*sql.Stmt{}}
+	secondDB := &DB{SQL: secondSQL, driver: "sqlite", stmts: map[string]*sql.Stmt{}}
+	first, err := Begin(context.Background(), firstDB, TransactionOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer first.Rollback(context.Background())
+	if err = acquireSQLiteRowLock(context.Background(), first, "update"); err != nil {
+		t.Fatal("first SQLite lock", err)
+	}
+	second, err := Begin(context.Background(), secondDB, TransactionOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Rollback(context.Background())
+	result := make(chan error, 1)
+	go func() { result <- acquireSQLiteRowLock(context.Background(), second, "update") }()
+	select {
+	case err := <-result:
+		t.Fatalf("second SQLite lock returned before first transaction ended: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	if err = first.Rollback(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-result:
+		if err != nil {
+			t.Fatalf("second SQLite lock after first transaction ended: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("second SQLite lock did not complete after first transaction ended")
+	}
+}
+
 func TestParseDSNRejectsUnsupportedOrUnsafeDSN(t *testing.T) {
 	for _, input := range []string{
 		"mysql://root@localhost/app?parseTime=true",

@@ -96,15 +96,17 @@ type DB struct {
 	cfg      Config
 	driver   string
 
-	planMu    sync.RWMutex
-	plans     map[uint64]*cached // shape key -> compiled plan plus the per-step facts derived from it
-	planOrder []uint64
-	stmMu     sync.Mutex
-	stmts     map[string]*sql.Stmt
-	stmtOrder []string
-	closeOnce sync.Once
-	closed    atomic.Bool
-	closeErr  error
+	planMu             sync.RWMutex
+	plans              map[uint64]*cached // shape key -> compiled plan plus the per-step facts derived from it
+	planOrder          []uint64
+	stmMu              sync.Mutex
+	stmts              map[string]*sql.Stmt
+	stmtOrder          []string
+	closeOnce          sync.Once
+	closed             atomic.Bool
+	closeErr           error
+	sqliteRowLockMu    sync.Mutex
+	sqliteRowLockReady atomic.Bool
 }
 
 var processSchemas = struct {
@@ -1005,6 +1007,11 @@ func Begin(ctx context.Context, d *DB, options TransactionOptions) (*Tx, error) 
 	txOptions, err := sqlTransactionOptions(d.driver, options)
 	if err != nil {
 		return nil, err
+	}
+	if d.driver == "sqlite" {
+		if err := ensureSQLiteRowLock(ctx, d); err != nil {
+			return nil, err
+		}
 	}
 	native, err := d.SQL.BeginTx(ctx, txOptions)
 	if err != nil {
