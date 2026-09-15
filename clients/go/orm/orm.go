@@ -602,6 +602,43 @@ func (t *Tx) SchemaInstalled(ctx context.Context, schema, table string) (bool, e
 	return exists, nil
 }
 
+// DatabaseEmpty reports whether the selected database has any user-owned
+// schema or table objects. It is used before initial DDL so an incomplete or
+// unrelated database is rejected instead of being extended in place.
+func (t *Tx) DatabaseEmpty(ctx context.Context) (bool, error) {
+	if t == nil || t.finished.Load() {
+		return false, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil {
+		return false, &ir.Error{Code: CodeConfig, Msg: "database is required"}
+	}
+	var empty bool
+	switch t.d.driver {
+	case "sqlite":
+		stmt, err := t.stmt(ctx, "SELECT NOT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name <> 'sqlite_sequence')")
+		if err != nil {
+			return false, err
+		}
+		defer stmt.Close()
+		if err := stmt.QueryRowContext(ctx).Scan(&empty); err != nil {
+			return false, mapDriverErr(err)
+		}
+		return empty, nil
+	case "postgres":
+		stmt, err := t.stmt(ctx, `SELECT NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname NOT IN ('pg_catalog','information_schema','public')) AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema','public') AND c.relkind IN ('r','p','v','m','f'))`)
+		if err != nil {
+			return false, err
+		}
+		defer stmt.Close()
+		if err := stmt.QueryRowContext(ctx).Scan(&empty); err != nil {
+			return false, mapDriverErr(err)
+		}
+		return empty, nil
+	default:
+		return false, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "database emptiness inspection is supported only by postgres and sqlite"}
+	}
+}
+
 // PrimaryKeyColumn reports whether a PostgreSQL table contains the named
 // non-null UUID column as part of its primary key.
 func (t *Tx) PrimaryKeyColumn(ctx context.Context, table, column string) (bool, error) {
