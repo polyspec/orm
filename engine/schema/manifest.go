@@ -15,10 +15,25 @@ import (
 // Manifest is the generated schema.json: everything the engine, generators and
 // executors need, with every name and type already decided. Never hand-edited.
 type Manifest struct {
-	SchemaHash string             `json:"schema_hash"`
-	Order      []string           `json:"order"` // entity names in source order
-	Entities   map[string]*Entity `json:"entities"`
-	ORM        []*ORMDirective    `json:"orm,omitempty"`
+	SchemaHash  string             `json:"schema_hash"`
+	Order       []string           `json:"order"` // entity names in source order
+	Entities    map[string]*Entity `json:"entities"`
+	ORM         []*ORMDirective    `json:"orm,omitempty"`
+	ExternalFKs []ExternalFK       `json:"external_fks,omitempty"`
+	Immutable   []string           `json:"immutable,omitempty"`
+}
+
+// ExternalFK describes a foreign key whose target table belongs to another
+// schema manifest. It affects generated DDL only; no duplicate target entity
+// or generated relation is created in the package model.
+type ExternalFK struct {
+	Entity      string   `json:"entity"`
+	Columns     []string `json:"columns"`
+	TargetTable string   `json:"target_table"`
+	TargetCols  []string `json:"target_columns"`
+	Name        string   `json:"name,omitempty"`
+	OnDelete    string   `json:"on_delete,omitempty"`
+	Deferred    bool     `json:"deferred,omitempty"`
 }
 
 type Entity struct {
@@ -205,11 +220,88 @@ func build(allowMissingAESVersion bool, diagrams ...*Diagram) (*Manifest, error)
 			}
 		}
 	}
+	for _, d := range diagrams {
+		for _, x := range d.ORM {
+			if x.Kind == "immutable" {
+				entity := x.Args["entity"]
+				if m.Entities[entity] == nil {
+					return nil, &BuildError{x.Line, "%% orm:immutable: unknown entity " + entity}
+				}
+				if !slices.Contains(m.Immutable, entity) {
+					m.Immutable = append(m.Immutable, entity)
+				}
+			}
+			if x.Kind != "foreign" {
+				continue
+			}
+			fk, err := externalFK(x, m)
+			if err != nil {
+				return nil, err
+			}
+			m.ExternalFKs = append(m.ExternalFKs, fk)
+		}
+	}
 	if err := m.validate(allowMissingAESVersion); err != nil {
 		return nil, err
 	}
 	m.SchemaHash = m.hash()
 	return m, nil
+}
+
+func externalFK(x *ORMDirective, m *Manifest) (ExternalFK, error) {
+	entity := x.Args["entity"]
+	e := m.Entities[entity]
+	if e == nil {
+		return ExternalFK{}, &BuildError{x.Line, "%% orm:foreign: unknown entity " + entity}
+	}
+	columns := splitDirectiveList(x.Args["columns"])
+	if len(columns) == 0 {
+		return ExternalFK{}, &BuildError{x.Line, "%% orm:foreign: columns must not be empty"}
+	}
+	for _, column := range columns {
+		if e.Column(column) == nil {
+			return ExternalFK{}, &BuildError{x.Line, fmt.Sprintf("%% orm:foreign: unknown column %s.%s", entity, column)}
+		}
+	}
+	table, targetColumns, ok := parseExternalReference(x.Args["references"])
+	if !ok || table == "" || len(targetColumns) != len(columns) {
+		return ExternalFK{}, &BuildError{x.Line, "%% orm:foreign: references must be table(col,...) with matching columns"}
+	}
+	name := x.Args["name"]
+	if name == "" {
+		name = "fk_" + strings.ReplaceAll(e.Table, ".", "_") + "_" + strings.Join(columns, "_")
+	}
+	onDelete := x.Args["on_delete"]
+	if onDelete != "" && onDelete != "cascade" && onDelete != "setnull" {
+		return ExternalFK{}, &BuildError{x.Line, "%% orm:foreign: on_delete must be cascade or setnull"}
+	}
+	deferred := x.Args["deferred"] == "true"
+	if value := x.Args["deferred"]; value != "" && value != "true" && value != "false" {
+		return ExternalFK{}, &BuildError{x.Line, "%% orm:foreign: deferred must be true or false"}
+	}
+	return ExternalFK{Entity: entity, Columns: columns, TargetTable: table, TargetCols: targetColumns, Name: name, OnDelete: onDelete, Deferred: deferred}, nil
+}
+
+func splitDirectiveList(value string) []string {
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			result = append(result, part)
+		}
+	}
+	return result
+}
+
+func parseExternalReference(value string) (string, []string, bool) {
+	open := strings.LastIndexByte(value, '(')
+	if open <= 0 || !strings.HasSuffix(value, ")") {
+		return "", nil, false
+	}
+	table := strings.TrimSpace(value[:open])
+	columns := splitDirectiveList(strings.TrimSuffix(value[open+1:], ")"))
+	return table, columns, table != "" && len(columns) > 0
 }
 
 func qualifiedTableName(name string) bool {
@@ -346,6 +438,10 @@ func buildColumn(dc *DColumn) (*Col, error) {
 			return nil, fmt.Errorf("column %s: %s requires a positive length, got %q", dc.Name, base, arg)
 		}
 		c.Len = n
+	case "uuid":
+		// UUID is represented as a string in generated language bindings while
+		// retaining its native database type through Col.Raw for DDL.
+		c.Type = "string"
 	case "text", "tinytext", "mediumtext", "longtext":
 		c.Type = "text"
 	case "blob", "tinyblob", "mediumblob", "longblob", "varbinary", "binary":

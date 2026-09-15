@@ -26,6 +26,16 @@ func NewQ(eng *engine.Engine, entity string) *Q {
 	return &Q{Req: r, Node: &r.IR.Query}
 }
 
+// BindEngine supplies the schema engine to a request that was built before
+// its executor was known. Generated builders use this at Using time so
+// setters and predicates may safely precede Using.
+func (q *Q) BindEngine(eng *engine.Engine) {
+	if q == nil || q.Req == nil || eng == nil {
+		return
+	}
+	q.Req.IR.SchemaHash = eng.M.SchemaHash
+}
+
 // SetLink records the parent/child key pair selected on this child query.
 // The parent relation or join operation consumes it when resolving the manifest relation.
 func (q *Q) SetLink(left, right string) { q.LinkLeft, q.LinkRight = left, right }

@@ -61,7 +61,7 @@ erDiagram
 ### 2.1 Column lines — `type name [PK|FK|UK] ["comment"]`
 This follows Mermaid syntax. `PK`, `FK`, and `UK` are Mermaid keywords. Mark every primary-key column with `PK`; declaration order defines composite-key order. Composite unique keys use `%% unique` below.
 Generated composite-key types and complete-key finders preserve this order. An insert into an entity without an automatic key requires every primary-key value and reads the inserted row with all key predicates. `save` rejects a partial primary key before execution.
-Use the database type directly (`bigint`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum('a','b')`). The manifest normalizes it to types such as i64, string, and datetime.
+Use the database type directly (`bigint`, `uuid`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum('a','b')`). The manifest normalizes it to types such as i64, string, and datetime; UUID bindings use strings while PostgreSQL DDL preserves native `uuid`.
 `varchar` and `char` require a positive length. Schema build rejects a missing, zero, or invalid length before DDL generation.
 
 The comment string is a space-separated **attribute list**. With no comment, the column is NOT NULL, has no default, and is ordinary.
@@ -106,9 +106,13 @@ When the same parent is referenced twice (`user_seq`, `updated_user_seq`), draw 
 %% rename_table <new_table> <old_table>      # migration rename
 %% rename_column <table> <new_col> <old_col> # migration rename
 %% orm:table entity=<entity> name=<schema.table> # qualified physical table name
+%% orm:foreign entity=<entity> columns=<local_col>[,<local_col>...] references=<schema.table>(<col>[,<col>...]) [name=<constraint>] [on_delete=<action>] [deferred=true]
+%% orm:immutable entity=<entity> # generated database triggers reject UPDATE, DELETE and TRUNCATE
 ```
 
 The `orm:table` directive is the only schema-source declaration for a qualified physical table. The manifest preserves both identifier components. PostgreSQL DDL and query quoting treat the schema and table as separate identifiers; SQLite does not gain a namespace from this directive.
+
+`orm:foreign` declares a physical foreign key for a table outside the current manifest or for a relation with explicit constraint options. Local and referenced columns must have equal cardinality. `deferred=true` emits a deferrable, initially deferred constraint on PostgreSQL and SQLite; unsupported actions or malformed references fail schema validation. `orm:immutable` emits dialect-specific database triggers that reject row updates, deletes and truncation for the declared entity.
 
 Rename directives are migration metadata. `ormgen diff` never infers a rename from similar names. A target directive generates the forward `RENAME`; the same structured plan generates the reverse `RENAME` for rollback. Keep the directive in later schema versions. If the current table or column name already exists, a repeated diff is a no-op. Missing, duplicate, self-referencing, and ambiguous rename sources fail during schema validation or diff generation.
 
