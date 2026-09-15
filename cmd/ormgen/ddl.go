@@ -200,7 +200,7 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 		if dialect != "mysql" {
 			for _, ixName := range sortedIndexNames(e.Indexes) {
 				cols := e.Indexes[ixName]
-				sb.WriteString(fmt.Sprintf("CREATE INDEX %s ON %s (%s);\n", q(ddlBase(e.Table)+"_"+ixName), q(e.Table), joinQuoted(cols, q)))
+				sb.WriteString(fmt.Sprintf("CREATE INDEX %s ON %s (%s);\n", q(ddlIndexName(e.Table, ixName, dialect)), q(e.Table), joinQuoted(cols, q)))
 			}
 			if dialect == "postgres" {
 				for _, cols := range e.Fulltext {
@@ -208,7 +208,7 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 					for i, c := range cols {
 						doc[i] = "coalesce(" + q(c) + ", '')"
 					}
-					sb.WriteString(fmt.Sprintf("CREATE INDEX %s ON %s USING GIN (to_tsvector('simple', %s));\n", q(ddlBase(e.Table)+"_ft_"+strings.Join(cols, "_")), q(e.Table), strings.Join(doc, " || ' ' || ")))
+					sb.WriteString(fmt.Sprintf("CREATE INDEX %s ON %s USING GIN (to_tsvector('simple', %s));\n", q(ddlIndexName(e.Table, "ft_"+strings.Join(cols, "_"), dialect)), q(e.Table), strings.Join(doc, " || ' ' || ")))
 				}
 			}
 		}
@@ -263,6 +263,14 @@ func ddlTable(table, dialect string) string {
 func ddlBase(table string) string {
 	parts := strings.Split(table, ".")
 	return parts[len(parts)-1]
+}
+
+func ddlIndexName(table, index, dialect string) string {
+	name := ddlBase(table) + "_" + index
+	if dialect == "sqlite" {
+		return ddlTable(table, dialect) + "_" + index
+	}
+	return name
 }
 
 func ddlSchemas(m *schema.Manifest) []string {

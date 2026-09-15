@@ -111,7 +111,7 @@ Mermaid 문법을 사용한다. `PK`, `FK`, `UK`는 Mermaid keyword다. 기본�
 %% orm:immutable entity=<entity> # 생성된 데이터베이스 trigger가 UPDATE·DELETE·TRUNCATE를 거부
 ```
 
-`orm:table` directive가 정규화된 물리 테이블을 선언하는 schema source의 유일한 방법이다. manifest는 두 식별자 구성요소를 보존한다. PostgreSQL DDL과 query quoting은 schema와 table을 별도 식별자로 처리하며, SQLite는 `schema.table`을 결정적인 물리 이름 `schema__table`로 매핑해 namespace를 보존한다. 따라서 하나의 SQLite database에서 같은 table 기본 이름을 가진 module schema가 충돌하지 않는다.
+`orm:table` directive가 정규화된 물리 테이블을 선언하는 schema source의 유일한 방법이다. manifest는 두 식별자 구성요소를 보존한다. PostgreSQL DDL과 query quoting은 schema와 table을 별도 식별자로 처리하며, SQLite는 `schema.table`을 결정적인 물리 이름 `schema__table`로 매핑하고 generated index 이름에도 같은 namespace를 사용해 namespace를 보존한다. 따라서 하나의 SQLite database에서 같은 table 기본 이름을 가진 module schema가 충돌하지 않는다.
 
 `orm:foreign`은 현재 manifest 외부의 table을 참조하는 물리 foreign key나 명시적 제약 옵션이 필요한 관계를 선언한다. 로컬·참조 column 수는 같아야 한다. `deferred=true`는 PostgreSQL과 SQLite에서 deferrable, initially deferred 제약을 생성하며 지원하지 않는 action이나 잘못된 참조는 schema validation에서 실패한다. `orm:immutable`은 선언한 entity의 행 update·delete·truncate를 거부하는 dialect별 database trigger를 생성한다.
 
