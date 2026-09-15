@@ -562,13 +562,33 @@ func (t *Tx) Isolation(ctx context.Context) (string, error) {
 	return isolation, nil
 }
 
-// SchemaInstalled reports whether the named PostgreSQL schema and table exist.
+// SchemaInstalled reports whether the named logical schema and table exist.
+// SQLite flattens the logical schema namespace into the physical table name,
+// so schema is accepted for the common contract but is not part of the lookup.
 func (t *Tx) SchemaInstalled(ctx context.Context, schema, table string) (bool, error) {
 	if t == nil || t.finished.Load() {
 		return false, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
 	}
-	if t.d == nil || t.d.driver != "postgres" {
-		return false, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "schema inspection is supported only by postgres"}
+	if t.d == nil {
+		return false, &ir.Error{Code: CodeConfig, Msg: "database is required"}
+	}
+	if schema == "" || table == "" || !validIdentifier(schema) || !validIdentifier(table) {
+		return false, &ir.Error{Code: CodeConfig, Msg: "schema and table identifiers are required"}
+	}
+	if t.d.driver == "sqlite" {
+		stmt, err := t.stmt(ctx, "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name=?)")
+		if err != nil {
+			return false, err
+		}
+		defer stmt.Close()
+		var exists bool
+		if err := stmt.QueryRowContext(ctx, table).Scan(&exists); err != nil {
+			return false, mapDriverErr(err)
+		}
+		return exists, nil
+	}
+	if t.d.driver != "postgres" {
+		return false, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "schema inspection is supported only by postgres and sqlite"}
 	}
 	stmt, err := t.stmt(ctx, "SELECT to_regclass($1)||'' IS NOT NULL")
 	if err != nil {
@@ -902,6 +922,15 @@ func validContextKey(key string) bool {
 		}
 	}
 	return true
+}
+
+func validIdentifier(value string) bool {
+	for i, r := range value {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') || (i == 0 && r >= '0' && r <= '9') {
+			return false
+		}
+	}
+	return value != ""
 }
 
 // Transaction runs fn once in a transaction. An error or panic rolls back.
