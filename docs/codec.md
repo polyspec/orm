@@ -14,7 +14,7 @@ Every AES column has a non-null integer `aes_key_version` column in the same ent
 
 | style | write (value → stored bytes) | read (stored bytes → value) | reference |
 |---|---|---|---|
-| `json`, `jsons` | JSON text | JSON parse | `json_encode` / `json_decode(true)` |
+| `json`, `jsons` | JSON text from the common value model | JSON parse | `json_encode` / `json_decode(true)` |
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
 | `base64` | base64(serialize(v)) | unserialize(base64_decode) | same |
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |
@@ -23,6 +23,8 @@ Every AES column has a non-null integer `aes_key_version` column in the same ent
 
 ## Value model
 Styled columns use JSON-like values: null, bool, integer (i64), float (f64), string, list, and string-keyed map.
+
+Go `[]byte` is not a common JSON value and JSON encoding rejects it with `CODEC_ENCODE`; it is not silently converted to Go's base64 JSON string representation. Decode bytes into the common value model before assigning a JSON column.
 | | Go | Rust | PHP | TypeScript |
 |---|---|---|---|---|
 | field type | `any` | `serde_json::Value` (`Option<…>` when nullable) | `mixed` (array/scalar/null) | `CodecValue` |

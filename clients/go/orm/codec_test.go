@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -101,6 +102,9 @@ func reNumber(v any) any {
 }
 
 func TestCodecErrors(t *testing.T) {
+	if _, err := Encode([]string{"json"}, []byte(`{"value":1}`)); err == nil || !strings.HasPrefix(err.Error(), "CODEC_ENCODE") {
+		t.Fatalf("json []byte input must be rejected as a non-portable value: %v", err)
+	}
 	for _, c := range []struct {
 		styles    []string
 		raw, code string
