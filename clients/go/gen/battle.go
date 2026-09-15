@@ -1301,7 +1301,7 @@ var BattleCols = struct {
 	SerializeData:         orm.ColRef{Column: "serialize_data"},
 }
 
-// BattleQuery builds a statement over battle: Battle() → Using(ctx, db) → chain → terminal().
+// BattleQuery builds a statement over battle: Battle() → chain → Using(ctx, db) → terminal().
 type BattleQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -1314,11 +1314,18 @@ func (q *BattleQuery) KeyByFn(fn func(*BattleRow) orm.Key) *BattleQuery { q.keyF
 // Req exposes the underlying request (debugging, plan inspection).
 func (q *BattleQuery) Req() *orm.Req { return q.q.Req }
 
-// Battle starts a query over battle.
-func Battle() *BattleQuery { return &BattleQuery{q: orm.NewQ(mustEngine(), "battle")} }
+// Battle starts a query over battle. The builder may be configured
+// before Using; the bound ORM executor supplies the schema engine at Using.
+func Battle() *BattleQuery { return &BattleQuery{q: orm.NewQ(eng, "battle")} }
 
 // Using selects the context and pool or transaction for this query.
 func (q *BattleQuery) Using(ctx context.Context, ex orm.Exec) *BattleQuery {
+	if q.q == nil && ex != nil {
+		q.q = orm.NewQ(eng, "battle")
+	}
+	if q.q != nil && ex != nil && ex.DB() != nil {
+		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
+	}
 	q.binding = orm.NewBinding(ctx, ex)
 	return q
 }
@@ -1607,6 +1614,14 @@ func (w *BattleWhere) Name(v string) *BattleWhere      { return w.NameEq(v) }
 func (q *BattleQuery) Name(v string) *BattleQuery      { return q.NameEq(v) }
 func (w *BattleWhere) NameNotEq(v string) *BattleWhere { w.w.Pred("name", "not_eq", v); return w }
 func (q *BattleQuery) NameNotEq(v string) *BattleQuery { q.q.W().Pred("name", "not_eq", v); return q }
+func (w *BattleWhere) NameGt(v string) *BattleWhere    { w.w.Pred("name", "gt", v); return w }
+func (q *BattleQuery) NameGt(v string) *BattleQuery    { q.q.W().Pred("name", "gt", v); return q }
+func (w *BattleWhere) NameGte(v string) *BattleWhere   { w.w.Pred("name", "gte", v); return w }
+func (q *BattleQuery) NameGte(v string) *BattleQuery   { q.q.W().Pred("name", "gte", v); return q }
+func (w *BattleWhere) NameLt(v string) *BattleWhere    { w.w.Pred("name", "lt", v); return w }
+func (q *BattleQuery) NameLt(v string) *BattleQuery    { q.q.W().Pred("name", "lt", v); return q }
+func (w *BattleWhere) NameLte(v string) *BattleWhere   { w.w.Pred("name", "lte", v); return w }
+func (q *BattleQuery) NameLte(v string) *BattleQuery   { q.q.W().Pred("name", "lte", v); return q }
 func (w *BattleWhere) NameIn(vs []string) *BattleWhere {
 	w.w.PredList("name", "in", orm.Anys(vs))
 	return w
@@ -1671,6 +1686,38 @@ func (q *BattleQuery) NameNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("name", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
+func (w *BattleWhere) NameGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("name", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) NameGtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("name", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) NameGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("name", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) NameGteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("name", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) NameLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("name", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) NameLtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("name", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) NameLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("name", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) NameLteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("name", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) DescriptionEq(v string) *BattleWhere {
 	w.w.Pred("description", "eq", v)
 	return w
@@ -1687,6 +1734,38 @@ func (w *BattleWhere) DescriptionNotEq(v string) *BattleWhere {
 }
 func (q *BattleQuery) DescriptionNotEq(v string) *BattleQuery {
 	q.q.W().Pred("description", "not_eq", v)
+	return q
+}
+func (w *BattleWhere) DescriptionGt(v string) *BattleWhere {
+	w.w.Pred("description", "gt", v)
+	return w
+}
+func (q *BattleQuery) DescriptionGt(v string) *BattleQuery {
+	q.q.W().Pred("description", "gt", v)
+	return q
+}
+func (w *BattleWhere) DescriptionGte(v string) *BattleWhere {
+	w.w.Pred("description", "gte", v)
+	return w
+}
+func (q *BattleQuery) DescriptionGte(v string) *BattleQuery {
+	q.q.W().Pred("description", "gte", v)
+	return q
+}
+func (w *BattleWhere) DescriptionLt(v string) *BattleWhere {
+	w.w.Pred("description", "lt", v)
+	return w
+}
+func (q *BattleQuery) DescriptionLt(v string) *BattleQuery {
+	q.q.W().Pred("description", "lt", v)
+	return q
+}
+func (w *BattleWhere) DescriptionLte(v string) *BattleWhere {
+	w.w.Pred("description", "lte", v)
+	return w
+}
+func (q *BattleQuery) DescriptionLte(v string) *BattleQuery {
+	q.q.W().Pred("description", "lte", v)
 	return q
 }
 func (w *BattleWhere) DescriptionLike(v string) *BattleWhere {
@@ -1759,6 +1838,38 @@ func (w *BattleWhere) DescriptionNotEqCol(ref orm.ColRef) *BattleWhere {
 }
 func (q *BattleQuery) DescriptionNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("description", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DescriptionGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("description", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) DescriptionGtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("description", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DescriptionGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("description", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) DescriptionGteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("description", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DescriptionLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("description", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) DescriptionLtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("description", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) DescriptionLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("description", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) DescriptionLteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("description", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) CreatedTsEq(v time.Time) *BattleWhere {
@@ -2974,6 +3085,20 @@ func (q *BattleQuery) CoverUrlNotEq(v string) *BattleQuery {
 	q.q.W().Pred("cover_url", "not_eq", v)
 	return q
 }
+func (w *BattleWhere) CoverUrlGt(v string) *BattleWhere  { w.w.Pred("cover_url", "gt", v); return w }
+func (q *BattleQuery) CoverUrlGt(v string) *BattleQuery  { q.q.W().Pred("cover_url", "gt", v); return q }
+func (w *BattleWhere) CoverUrlGte(v string) *BattleWhere { w.w.Pred("cover_url", "gte", v); return w }
+func (q *BattleQuery) CoverUrlGte(v string) *BattleQuery {
+	q.q.W().Pred("cover_url", "gte", v)
+	return q
+}
+func (w *BattleWhere) CoverUrlLt(v string) *BattleWhere  { w.w.Pred("cover_url", "lt", v); return w }
+func (q *BattleQuery) CoverUrlLt(v string) *BattleQuery  { q.q.W().Pred("cover_url", "lt", v); return q }
+func (w *BattleWhere) CoverUrlLte(v string) *BattleWhere { w.w.Pred("cover_url", "lte", v); return w }
+func (q *BattleQuery) CoverUrlLte(v string) *BattleQuery {
+	q.q.W().Pred("cover_url", "lte", v)
+	return q
+}
 func (w *BattleWhere) CoverUrlIn(vs []string) *BattleWhere {
 	w.w.PredList("cover_url", "in", orm.Anys(vs))
 	return w
@@ -3054,6 +3179,38 @@ func (w *BattleWhere) CoverUrlNotEqCol(ref orm.ColRef) *BattleWhere {
 }
 func (q *BattleQuery) CoverUrlNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("cover_url", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) CoverUrlGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("cover_url", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) CoverUrlGtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("cover_url", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) CoverUrlGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("cover_url", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) CoverUrlGteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("cover_url", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) CoverUrlLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("cover_url", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) CoverUrlLtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("cover_url", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) CoverUrlLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("cover_url", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) CoverUrlLteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("cover_url", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) UserSeqEq(v int64) *BattleWhere    { w.w.Pred("user_seq", "eq", v); return w }
@@ -3779,6 +3936,14 @@ func (w *BattleWhere) Uuid(v string) *BattleWhere      { return w.UuidEq(v) }
 func (q *BattleQuery) Uuid(v string) *BattleQuery      { return q.UuidEq(v) }
 func (w *BattleWhere) UuidNotEq(v string) *BattleWhere { w.w.Pred("uuid", "not_eq", v); return w }
 func (q *BattleQuery) UuidNotEq(v string) *BattleQuery { q.q.W().Pred("uuid", "not_eq", v); return q }
+func (w *BattleWhere) UuidGt(v string) *BattleWhere    { w.w.Pred("uuid", "gt", v); return w }
+func (q *BattleQuery) UuidGt(v string) *BattleQuery    { q.q.W().Pred("uuid", "gt", v); return q }
+func (w *BattleWhere) UuidGte(v string) *BattleWhere   { w.w.Pred("uuid", "gte", v); return w }
+func (q *BattleQuery) UuidGte(v string) *BattleQuery   { q.q.W().Pred("uuid", "gte", v); return q }
+func (w *BattleWhere) UuidLt(v string) *BattleWhere    { w.w.Pred("uuid", "lt", v); return w }
+func (q *BattleQuery) UuidLt(v string) *BattleQuery    { q.q.W().Pred("uuid", "lt", v); return q }
+func (w *BattleWhere) UuidLte(v string) *BattleWhere   { w.w.Pred("uuid", "lte", v); return w }
+func (q *BattleQuery) UuidLte(v string) *BattleQuery   { q.q.W().Pred("uuid", "lte", v); return q }
 func (w *BattleWhere) UuidIn(vs []string) *BattleWhere {
 	w.w.PredList("uuid", "in", orm.Anys(vs))
 	return w
@@ -3841,6 +4006,38 @@ func (w *BattleWhere) UuidNotEqCol(ref orm.ColRef) *BattleWhere {
 }
 func (q *BattleQuery) UuidNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("uuid", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UuidGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("uuid", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) UuidGtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("uuid", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UuidGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("uuid", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) UuidGteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("uuid", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UuidLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("uuid", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) UuidLtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("uuid", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) UuidLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("uuid", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) UuidLteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("uuid", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) IsSinglePlayEq(v bool) *BattleWhere {
@@ -4235,6 +4432,38 @@ func (q *BattleQuery) EmailBlindIndexNotEq(v string) *BattleQuery {
 	q.q.W().Pred("email_blind_index", "not_eq", v)
 	return q
 }
+func (w *BattleWhere) EmailBlindIndexGt(v string) *BattleWhere {
+	w.w.Pred("email_blind_index", "gt", v)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexGt(v string) *BattleQuery {
+	q.q.W().Pred("email_blind_index", "gt", v)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexGte(v string) *BattleWhere {
+	w.w.Pred("email_blind_index", "gte", v)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexGte(v string) *BattleQuery {
+	q.q.W().Pred("email_blind_index", "gte", v)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexLt(v string) *BattleWhere {
+	w.w.Pred("email_blind_index", "lt", v)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexLt(v string) *BattleQuery {
+	q.q.W().Pred("email_blind_index", "lt", v)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexLte(v string) *BattleWhere {
+	w.w.Pred("email_blind_index", "lte", v)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexLte(v string) *BattleQuery {
+	q.q.W().Pred("email_blind_index", "lte", v)
+	return q
+}
 func (w *BattleWhere) EmailBlindIndexIn(vs []string) *BattleWhere {
 	w.w.PredList("email_blind_index", "in", orm.Anys(vs))
 	return w
@@ -4323,6 +4552,38 @@ func (q *BattleQuery) EmailBlindIndexNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("email_blind_index", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
+func (w *BattleWhere) EmailBlindIndexGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("email_blind_index", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexGtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("email_blind_index", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("email_blind_index", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexGteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("email_blind_index", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("email_blind_index", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexLtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("email_blind_index", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) EmailBlindIndexLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("email_blind_index", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) EmailBlindIndexLteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("email_blind_index", "lte_col", ref.Path, ref.Column)
+	return q
+}
 func (w *BattleWhere) AesHexPhoneEq(v string) *BattleWhere {
 	w.w.Pred("aes_hex_phone", "eq", v)
 	return w
@@ -4405,6 +4666,38 @@ func (w *BattleWhere) PhoneBlindIndexNotEq(v string) *BattleWhere {
 }
 func (q *BattleQuery) PhoneBlindIndexNotEq(v string) *BattleQuery {
 	q.q.W().Pred("phone_blind_index", "not_eq", v)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexGt(v string) *BattleWhere {
+	w.w.Pred("phone_blind_index", "gt", v)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexGt(v string) *BattleQuery {
+	q.q.W().Pred("phone_blind_index", "gt", v)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexGte(v string) *BattleWhere {
+	w.w.Pred("phone_blind_index", "gte", v)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexGte(v string) *BattleQuery {
+	q.q.W().Pred("phone_blind_index", "gte", v)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexLt(v string) *BattleWhere {
+	w.w.Pred("phone_blind_index", "lt", v)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexLt(v string) *BattleQuery {
+	q.q.W().Pred("phone_blind_index", "lt", v)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexLte(v string) *BattleWhere {
+	w.w.Pred("phone_blind_index", "lte", v)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexLte(v string) *BattleQuery {
+	q.q.W().Pred("phone_blind_index", "lte", v)
 	return q
 }
 func (w *BattleWhere) PhoneBlindIndexIn(vs []string) *BattleWhere {
@@ -4493,6 +4786,38 @@ func (w *BattleWhere) PhoneBlindIndexNotEqCol(ref orm.ColRef) *BattleWhere {
 }
 func (q *BattleQuery) PhoneBlindIndexNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("phone_blind_index", "not_eq_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexGtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("phone_blind_index", "gt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexGtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("phone_blind_index", "gt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexGteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("phone_blind_index", "gte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexGteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("phone_blind_index", "gte_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexLtCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("phone_blind_index", "lt_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexLtCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("phone_blind_index", "lt_col", ref.Path, ref.Column)
+	return q
+}
+func (w *BattleWhere) PhoneBlindIndexLteCol(ref orm.ColRef) *BattleWhere {
+	w.w.PredCol("phone_blind_index", "lte_col", ref.Path, ref.Column)
+	return w
+}
+func (q *BattleQuery) PhoneBlindIndexLteCol(ref orm.ColRef) *BattleQuery {
+	q.q.W().PredCol("phone_blind_index", "lte_col", ref.Path, ref.Column)
 	return q
 }
 func (w *BattleWhere) PriceEq(v float64) *BattleWhere    { w.w.Pred("price", "eq", v); return w }
@@ -6103,10 +6428,12 @@ func (q *BattleQuery) Limit(offset, count int) *BattleQuery {
 	q.q.Node.Limit = &ir.Limit{Offset: offset, Count: count}
 	return q
 }
-func (q *BattleQuery) ForUpdate() *BattleQuery    { q.q.Lock("update"); return q }
-func (q *BattleQuery) ForShare() *BattleQuery     { q.q.Lock("share"); return q }
-func (q *BattleQuery) Distinct() *BattleQuery     { q.q.Node.Distinct = true; return q }
-func (q *BattleQuery) ForceIndexIk() *BattleQuery { q.q.Node.ForceIdx = "ik"; return q }
+func (q *BattleQuery) ForUpdate() *BattleQuery       { q.q.Lock("update"); return q }
+func (q *BattleQuery) ForShare() *BattleQuery        { q.q.Lock("share"); return q }
+func (q *BattleQuery) ForUpdateNoWait() *BattleQuery { q.q.Lock("update_nowait"); return q }
+func (q *BattleQuery) ForShareNoWait() *BattleQuery  { q.q.Lock("share_nowait"); return q }
+func (q *BattleQuery) Distinct() *BattleQuery        { q.q.Node.Distinct = true; return q }
+func (q *BattleQuery) ForceIndexIk() *BattleQuery    { q.q.Node.ForceIdx = "ik"; return q }
 func (q *BattleQuery) ForceIndexIxEmailBlindIndex() *BattleQuery {
 	q.q.Node.ForceIdx = "ix_email_blind_index"
 	return q
@@ -8770,6 +9097,9 @@ func (q *BattleQuery) batchWrite(rows []*BattleQuery, kind string, options orm.B
 	for i, row := range rows {
 		if row == nil || row.q == nil {
 			return orm.BatchResult{}, &ir.Error{Code: "IR_INVALID", Msg: "batch row is nil"}
+		}
+		if ex.DB() != nil {
+			row.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 		}
 		requests[i] = row.q.Req
 	}

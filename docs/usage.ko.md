@@ -298,7 +298,7 @@ const rows = await Battle()
 - 컬럼 선택: `selectAll() selectNone() select<Col>() unselect<Col>() select<Col>As("이름") selectExpr("이름", "조각")`.
   `text`/`blob`/스타일 컬럼은 기본 SELECT에서 빠져 있고 `select<Col>()`로 켠다.
 - 터미널: `get` `gets` `getCount` `getsCount` `countDistinct<Col>` `sum<Col>` `avg<Col>` `min<Col>` `max<Col>` `paginate(page, per)`
-  `getBy<PK>`·`getsBy<Col>`·`getCountBy<Col>` — 전부 값만 인자로 받는다. 루트에 `using`으로 실행 대상을 지정하고 Go의 컨텍스트도 이때 지정한다. 반환된 행은 루트의 실행 대상을 사용한다. `get`은 없으면 null/nil/None, `gets`와 `getsBy`는 절대 null이 아닌 빈 컬렉션이다.
+  `getBy<PK>`·`getsBy<Col>`·`getCountBy<Col>` — 전부 값만 인자로 받는다. 루트에 `using`으로 실행 대상을 지정하고 Go의 컨텍스트도 이때 지정한다. 반환된 행은 루트의 실행 대상을 사용한다. strict `get`은 한 행을 반환하며 없으면 `NO_ROWS`를 발생/반환한다. 없음을 정상적인 값으로 처리할 때는 `getOrNull`(Go: `GetOrNil`, Rust: `get_or_none`)을 사용한다. `gets`와 `getsBy`는 절대 null이 아닌 빈 컬렉션이다.
 - 컬렉션은 PK(또는 `keyBy<Col>`) 키의 순서 있는 맵이다: `first() count() toArray()`, 반복은 `키 => 행`.
 - 행·컬렉션의 맵/배열 변환은 정수 `1`과 문자열 `"1"`처럼 문자열 표현이 겹치는 키를 `IR_INVALID`로 거부한다. Go는 `values, err := rows.ToArray()`, Rust는 `let values = rows.to_map()?`, PHP는 `$values = $rows->toArray()`로 오류를 처리한다. 순서와 키 타입을 유지하려면 entries를 사용한다.
 

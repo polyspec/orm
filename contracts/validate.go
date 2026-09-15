@@ -20,6 +20,7 @@ func compact(s string) string {
 func validateRules(d document) error {
 	seen := map[string]bool{}
 	outputs := map[string]map[string]string{
+		"Required<Row>":     {"go": "(*{Entity}Row,error)", "php": "App\\Orm\\{Entity}Row", "rust": "Result<{Entity}Row>", "typescript": "Promise<{Entity}Row>"},
 		"Optional<Row>":     {"go": "(*{Entity}Row,error)", "php": "?App\\Orm\\{Entity}Row", "rust": "Result<Option<{Entity}Row>>", "typescript": "Promise<{Entity}Row|null>"},
 		"Collection<Row>":   {"go": "(*orm.Collection[{Entity}Row],error)", "php": "Orm\\Collection", "rust": "Result<Collection<{Entity}Row>>", "typescript": "Promise<Collection<{Entity}Row>>"},
 		"I64":               {"go": "(int64,error)", "php": "int", "rust": "Result<i64>", "typescript": "Promise<number>"},

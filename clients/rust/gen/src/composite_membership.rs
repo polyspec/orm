@@ -266,6 +266,10 @@ impl<'a> CompositeMembershipWhere<'a> {
     pub fn role_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("role", "eq", v.into()); self }
     pub fn role(self, v: impl Into<String>) -> Self { self.role_eq(v) }
     pub fn role_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("role", "not_eq", v.into()); self }
+    pub fn role_gt(mut self, v: impl Into<String>) -> Self { self.w.pred("role", "gt", v.into()); self }
+    pub fn role_gte(mut self, v: impl Into<String>) -> Self { self.w.pred("role", "gte", v.into()); self }
+    pub fn role_lt(mut self, v: impl Into<String>) -> Self { self.w.pred("role", "lt", v.into()); self }
+    pub fn role_lte(mut self, v: impl Into<String>) -> Self { self.w.pred("role", "lte", v.into()); self }
     pub fn role_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("role", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn role_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("role", "not_in", vs.into_iter().map(Into::into).collect()); self }
     pub fn role_like(mut self, v: impl Into<String>) -> Self { self.w.pred("role", "like", v.into()); self }
@@ -277,6 +281,10 @@ impl<'a> CompositeMembershipWhere<'a> {
     pub fn role_is_not_null(mut self) -> Self { self.w.pred_null("role", "is_not_null"); self }
     pub fn role_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("role", "eq_col", r); self }
     pub fn role_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("role", "not_eq_col", r); self }
+    pub fn role_gt_col(mut self, r: ColRef) -> Self { self.w.pred_col("role", "gt_col", r); self }
+    pub fn role_gte_col(mut self, r: ColRef) -> Self { self.w.pred_col("role", "gte_col", r); self }
+    pub fn role_lt_col(mut self, r: ColRef) -> Self { self.w.pred_col("role", "lt_col", r); self }
+    pub fn role_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("role", "lte_col", r); self }
 }
 
 /// Query over composite_membership: query() → using(&db) → chain → terminal().await.
@@ -351,6 +359,10 @@ impl CompositeMembership {
     pub fn role_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("role", "eq", v.into()); self }
     pub fn role(self, v: impl Into<String>) -> Self { self.role_eq(v) }
     pub fn role_not_eq(mut self, v: impl Into<String>) -> Self { self.q.w().pred("role", "not_eq", v.into()); self }
+    pub fn role_gt(mut self, v: impl Into<String>) -> Self { self.q.w().pred("role", "gt", v.into()); self }
+    pub fn role_gte(mut self, v: impl Into<String>) -> Self { self.q.w().pred("role", "gte", v.into()); self }
+    pub fn role_lt(mut self, v: impl Into<String>) -> Self { self.q.w().pred("role", "lt", v.into()); self }
+    pub fn role_lte(mut self, v: impl Into<String>) -> Self { self.q.w().pred("role", "lte", v.into()); self }
     pub fn role_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("role", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn role_not_in(mut self, vs: Vec<String>) -> Self { self.q.w().pred_list("role", "not_in", vs.into_iter().map(Into::into).collect()); self }
     pub fn role_like(mut self, v: impl Into<String>) -> Self { self.q.w().pred("role", "like", v.into()); self }
@@ -362,6 +374,10 @@ impl CompositeMembership {
     pub fn role_is_not_null(mut self) -> Self { self.q.w().pred_null("role", "is_not_null"); self }
     pub fn role_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("role", "eq_col", r); self }
     pub fn role_not_eq_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("role", "not_eq_col", r); self }
+    pub fn role_gt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("role", "gt_col", r); self }
+    pub fn role_gte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("role", "gte_col", r); self }
+    pub fn role_lt_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("role", "lt_col", r); self }
+    pub fn role_lte_col(mut self, r: ColRef) -> Self { self.q.w().pred_col("role", "lte_col", r); self }
 
     // ---- join children: on() = ON, where_() = parent WHERE group ----
     pub fn on(mut self, f: impl FnOnce(CompositeMembershipWhere<'_>) -> CompositeMembershipWhere<'_>) -> Self { { let w = self.q.on_w(); f(CompositeMembershipWhere { w }); } self }
@@ -430,6 +446,8 @@ impl CompositeMembership {
     pub fn limit(mut self, offset: u32, count: u32) -> Self { self.q.node().limit = Some(orm::ir::Limit { offset, count }); self }
     pub fn for_update(mut self) -> Self { self.q.lock("update"); self }
     pub fn for_share(mut self) -> Self { self.q.lock("share"); self }
+    pub fn for_update_no_wait(mut self) -> Self { self.q.lock("update_nowait"); self }
+    pub fn for_share_no_wait(mut self) -> Self { self.q.lock("share_nowait"); self }
     pub fn distinct(mut self) -> Self { self.q.node().distinct = true; self }
     /// Group predicates after group_by_<col>(); the closure gets the same Where builder (aggregates via expr("COUNT(*) > ?", …)).
     pub fn having(mut self, f: impl FnOnce(CompositeMembershipWhere<'_>) -> CompositeMembershipWhere<'_>) -> Self { { let w = self.q.having_w(); f(CompositeMembershipWhere { w }); } self }
@@ -465,7 +483,9 @@ impl CompositeMembership {
     pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&["tenant_id", "account_id"]); self }
 
     // ---- terminals ----
-    pub async fn get(&mut self) -> Result<Option<CompositeMembershipRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn get(&mut self) -> Result<CompositeMembershipRow> { let row = self.get_or_none().await?; row.ok_or(orm::Error::NoRows) }
+
+    pub async fn get_or_none(&mut self) -> Result<Option<CompositeMembershipRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
         Ok(match rows.take_cells().into_iter().next() {
             Some(mut src) => Some(CompositeMembershipRow::from_row(&mut src, &rows.assemble, &rows)?),
@@ -595,7 +615,7 @@ impl CompositeMembership {
         let _ = id;
         let mut query = super::composite_membership::query().using(ex);
         for (column, value) in ["tenant_id", "account_id"].iter().zip(keys) { query.q.w().pred(column, "eq", value); }
-        query.get().await
+        query.get_or_none().await
     }
 
     /// With set_tenant_id: UPDATE the other set columns WHERE tenant_id = that value and re-read the row; otherwise INSERT.
@@ -605,7 +625,7 @@ impl CompositeMembership {
                 db::write(ex, &mut self.q.req, "update").await?;
                 let mut q = super::composite_membership::query().using(ex);
                 for (column, value) in ["tenant_id", "account_id"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.get().await
+                q.get_or_none().await
             }
             None => self.insert().await,
         }
@@ -640,11 +660,11 @@ impl CompositeMembership {
 
     pub async fn get_by_tenant_id(&mut self, v: i64) -> Result<Option<CompositeMembershipRow>> {
         self.q.w().pred("tenant_id", "eq", v);
-        self.get().await
+        self.get_or_none().await
     }
     pub async fn get_by_tenant_id_and_account_id(&mut self, v0: i64, v1: i64) -> Result<Option<CompositeMembershipRow>> {
         self.q.w().pred("tenant_id", "eq", v0); self.q.w().pred("account_id", "eq", v1);
-        self.get().await
+        self.get_or_none().await
     }
 
 }

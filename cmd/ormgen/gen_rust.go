@@ -728,7 +728,9 @@ impl {{.Type}} {
     pub fn on_duplicate_set_all(mut self) -> Self { self.q.on_duplicate_set_all(&[{{rsList .KeyCols}}]); self }
 
     // ---- terminals ----
-    pub async fn get(&mut self) -> Result<Option<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
+    pub async fn get(&mut self) -> Result<{{.Type}}Row> { let row = self.get_or_none().await?; row.ok_or(orm::Error::NoRows) }
+
+    pub async fn get_or_none(&mut self) -> Result<Option<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let mut rows = db::select(ex, &mut self.q.req, "one").await?;
         Ok(match rows.take_cells().into_iter().next() {
             Some(mut src) => Some({{.Type}}Row::from_row(&mut src, &rows.assemble, &rows)?),
@@ -826,12 +828,12 @@ impl {{.Type}} {
 {{- end}}
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
 {{- if .Auto}}
-        super::{{.Name}}::query().using(ex).{{ident .PK}}_eq(id as {{.PKType}}).get().await
+        super::{{.Name}}::query().using(ex).{{ident .PK}}_eq(id as {{.PKType}}).get_or_none().await
 {{- else}}
         let _ = id;
         let mut query = super::{{.Name}}::query().using(ex);
         for (column, value) in [{{rsList .KeyCols}}].iter().zip(keys) { query.q.w().pred(column, "eq", value); }
-        query.get().await
+        query.get_or_none().await
 {{- end}}
     }
 
@@ -842,7 +844,7 @@ impl {{.Type}} {
                 db::write(ex, &mut self.q.req, "update").await?;
                 let mut q = super::{{.Name}}::query().using(ex);
                 for (column, value) in [{{rsList .KeyCols}}].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.get().await
+                q.get_or_none().await
             }
             None => self.insert().await,
         }
@@ -877,19 +879,19 @@ impl {{.Type}} {
 
     pub async fn get_by_{{ident .PK}}(&mut self, v: {{.PKType}}) -> Result<Option<{{.Type}}Row>> {
         self.q.w().pred({{printf "%q" .PK}}, "eq", v);
-        self.get().await
+        self.get_or_none().await
     }
 {{- if gt (len .PKCols) 1}}
     pub async fn get_by_{{finderSnake .PKMethod}}(&mut self, {{finderParams .PKCols}}) -> Result<Option<{{.Type}}Row>> {
         {{finderChain .PKCols}}
-        self.get().await
+        self.get_or_none().await
     }
 {{- end}}
 {{range .UniqueFinders}}
     /// Applies the equality predicates for the declared unique key and runs the single-row terminal.
     pub async fn get_by_{{finderSnake .Method}}(&mut self, {{finderParams .Fields}}) -> Result<Option<{{$.Type}}Row>> {
         {{finderChain .Fields}}
-        self.get().await
+        self.get_or_none().await
     }
 {{end}}
 }

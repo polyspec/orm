@@ -129,6 +129,10 @@ final class CompositeMembershipWhere
     public function roleEq(string $v): static { $this->w->pred('role', 'eq', $v); return $this; }
     public function role(string $v): static { return $this->roleEq($v); }
     public function roleNotEq(string $v): static { $this->w->pred('role', 'not_eq', $v); return $this; }
+    public function roleGt(string $v): static { $this->w->pred('role', 'gt', $v); return $this; }
+    public function roleGte(string $v): static { $this->w->pred('role', 'gte', $v); return $this; }
+    public function roleLt(string $v): static { $this->w->pred('role', 'lt', $v); return $this; }
+    public function roleLte(string $v): static { $this->w->pred('role', 'lte', $v); return $this; }
     public function roleIn(array $vs): static { $this->w->predList('role', 'in', array_values($vs)); return $this; }
     public function roleNotIn(array $vs): static { $this->w->predList('role', 'not_in', array_values($vs)); return $this; }
     public function roleLike(string $v): static { $this->w->pred('role', 'like', $v); return $this; }
@@ -140,6 +144,10 @@ final class CompositeMembershipWhere
     public function roleIsNotNull(): static { $this->w->predNull('role', 'is_not_null'); return $this; }
     public function roleEqCol(ColRef $ref): static { $this->w->predCol('role', 'eq_col', $ref); return $this; }
     public function roleNotEqCol(ColRef $ref): static { $this->w->predCol('role', 'not_eq_col', $ref); return $this; }
+    public function roleGtCol(ColRef $ref): static { $this->w->predCol('role', 'gt_col', $ref); return $this; }
+    public function roleGteCol(ColRef $ref): static { $this->w->predCol('role', 'gte_col', $ref); return $this; }
+    public function roleLtCol(ColRef $ref): static { $this->w->predCol('role', 'lt_col', $ref); return $this; }
+    public function roleLteCol(ColRef $ref): static { $this->w->predCol('role', 'lte_col', $ref); return $this; }
 }
 
 /** Query over composite_membership: CompositeMembership::query() → using($db) → typed chain → terminal(). */
@@ -203,6 +211,10 @@ final class CompositeMembership extends Q implements CompositeMembershipInterfac
     public function roleEq(string $v): static { $this->w()->pred('role', 'eq', $v); return $this; }
     public function role(string $v): static { return $this->roleEq($v); }
     public function roleNotEq(string $v): static { $this->w()->pred('role', 'not_eq', $v); return $this; }
+    public function roleGt(string $v): static { $this->w()->pred('role', 'gt', $v); return $this; }
+    public function roleGte(string $v): static { $this->w()->pred('role', 'gte', $v); return $this; }
+    public function roleLt(string $v): static { $this->w()->pred('role', 'lt', $v); return $this; }
+    public function roleLte(string $v): static { $this->w()->pred('role', 'lte', $v); return $this; }
     public function roleIn(array $vs): static { $this->w()->predList('role', 'in', array_values($vs)); return $this; }
     public function roleNotIn(array $vs): static { $this->w()->predList('role', 'not_in', array_values($vs)); return $this; }
     public function roleLike(string $v): static { $this->w()->pred('role', 'like', $v); return $this; }
@@ -214,6 +226,10 @@ final class CompositeMembership extends Q implements CompositeMembershipInterfac
     public function roleIsNotNull(): static { $this->w()->predNull('role', 'is_not_null'); return $this; }
     public function roleEqCol(ColRef $ref): static { $this->w()->predCol('role', 'eq_col', $ref); return $this; }
     public function roleNotEqCol(ColRef $ref): static { $this->w()->predCol('role', 'not_eq_col', $ref); return $this; }
+    public function roleGtCol(ColRef $ref): static { $this->w()->predCol('role', 'gt_col', $ref); return $this; }
+    public function roleGteCol(ColRef $ref): static { $this->w()->predCol('role', 'gte_col', $ref); return $this; }
+    public function roleLtCol(ColRef $ref): static { $this->w()->predCol('role', 'lt_col', $ref); return $this; }
+    public function roleLteCol(ColRef $ref): static { $this->w()->predCol('role', 'lte_col', $ref); return $this; }
 
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->onW())); return $this; }
@@ -261,6 +277,8 @@ final class CompositeMembership extends Q implements CompositeMembershipInterfac
     public function limit(int $offset, int $count): static { $this->setLimit($offset, $count); return $this; }
     public function forUpdate(): static { $this->lock('update'); return $this; }
     public function forShare(): static { $this->lock('share'); return $this; }
+    public function forUpdateNoWait(): static { $this->lock('update_nowait'); return $this; }
+    public function forShareNoWait(): static { $this->lock('share_nowait'); return $this; }
     public function distinct(): static { $this->opt('distinct', true); return $this; }
 
     // ---- relation-child options ----
@@ -290,7 +308,14 @@ final class CompositeMembership extends Q implements CompositeMembershipInterfac
     public function onDuplicateSetRoleExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('role', $frag, $binds); return $this; }
 
     // ---- terminals ----
-    public function get(): ?CompositeMembershipRow
+    public function get(): CompositeMembershipRow
+    {
+        $row = $this->getOrNull();
+        if ($row === null) throw new \Orm\OrmException(\Orm\Code::NO_ROWS, 'query returned no rows');
+        return $row;
+    }
+
+    public function getOrNull(): ?CompositeMembershipRow
     {
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();

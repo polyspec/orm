@@ -1956,7 +1956,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public onSeqWithServiceModuleSeq(): this { return this.matchKeys('seq','service_module_seq'); }
   public matchSeqWithServiceMemberSeq(): this { return this.matchKeys('seq','service_member_seq'); }
   public onSeqWithServiceMemberSeq(): this { return this.matchKeys('seq','service_member_seq'); }
-  public async get(): Promise<BattleRow | null> { return await this.terminal('one') as BattleRow | null; }
+  public async get(): Promise<BattleRow> { const row=await this.getOrNull(); if (row===null) throw new OrmError('NO_ROWS','query returned no rows'); return row; }
+  public async getOrNull(): Promise<BattleRow | null> { return await this.terminal('one') as BattleRow | null; }
   public async gets(): Promise<Collection<BattleRow>> { const rows=await this.terminal('all') as Collection<BattleRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: BattleRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<BattleRow>(visitor); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -2298,7 +2299,8 @@ export class UserQuery extends QueryCore implements UserInterface {
   public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
   public matchUserSeqWithSeq(): this { return this.matchKeys('user_seq','seq'); }
   public onUserSeqWithSeq(): this { return this.matchKeys('user_seq','seq'); }
-  public async get(): Promise<UserRow | null> { return await this.terminal('one') as UserRow | null; }
+  public async get(): Promise<UserRow> { const row=await this.getOrNull(); if (row===null) throw new OrmError('NO_ROWS','query returned no rows'); return row; }
+  public async getOrNull(): Promise<UserRow | null> { return await this.terminal('one') as UserRow | null; }
   public async gets(): Promise<Collection<UserRow>> { const rows=await this.terminal('all') as Collection<UserRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: UserRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<UserRow>(visitor); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -2574,7 +2576,8 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
   public matchServiceSeqWithSeq(): this { return this.matchKeys('service_seq','seq'); }
   public onServiceSeqWithSeq(): this { return this.matchKeys('service_seq','seq'); }
-  public async get(): Promise<ServiceRow | null> { return await this.terminal('one') as ServiceRow | null; }
+  public async get(): Promise<ServiceRow> { const row=await this.getOrNull(); if (row===null) throw new OrmError('NO_ROWS','query returned no rows'); return row; }
+  public async getOrNull(): Promise<ServiceRow | null> { return await this.terminal('one') as ServiceRow | null; }
   public async gets(): Promise<Collection<ServiceRow>> { const rows=await this.terminal('all') as Collection<ServiceRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: ServiceRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<ServiceRow>(visitor); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -2887,7 +2890,8 @@ export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterf
   public onServiceModuleSeqWithSeq(): this { return this.matchKeys('service_module_seq','seq'); }
   public matchSeqWithServiceSeq(): this { return this.matchKeys('seq','service_seq'); }
   public onSeqWithServiceSeq(): this { return this.matchKeys('seq','service_seq'); }
-  public async get(): Promise<ServiceModuleRow | null> { return await this.terminal('one') as ServiceModuleRow | null; }
+  public async get(): Promise<ServiceModuleRow> { const row=await this.getOrNull(); if (row===null) throw new OrmError('NO_ROWS','query returned no rows'); return row; }
+  public async getOrNull(): Promise<ServiceModuleRow | null> { return await this.terminal('one') as ServiceModuleRow | null; }
   public async gets(): Promise<Collection<ServiceModuleRow>> { const rows=await this.terminal('all') as Collection<ServiceModuleRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: ServiceModuleRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<ServiceModuleRow>(visitor); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -3224,7 +3228,8 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public onSeqWithUserSeq(): this { return this.matchKeys('seq','user_seq'); }
   public matchSeqWithServiceSeq(): this { return this.matchKeys('seq','service_seq'); }
   public onSeqWithServiceSeq(): this { return this.matchKeys('seq','service_seq'); }
-  public async get(): Promise<ServiceMemberRow | null> { return await this.terminal('one') as ServiceMemberRow | null; }
+  public async get(): Promise<ServiceMemberRow> { const row=await this.getOrNull(); if (row===null) throw new OrmError('NO_ROWS','query returned no rows'); return row; }
+  public async getOrNull(): Promise<ServiceMemberRow | null> { return await this.terminal('one') as ServiceMemberRow | null; }
   public async gets(): Promise<Collection<ServiceMemberRow>> { const rows=await this.terminal('all') as Collection<ServiceMemberRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: ServiceMemberRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<ServiceMemberRow>(visitor); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -3484,7 +3489,8 @@ export class CompositeAccountQuery extends QueryCore implements CompositeAccount
   public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
   public matchTenantIdWithTenantIdAndAccountIdWithAccountId(): this { return this.matchKeys('tenant_id,account_id','tenant_id,account_id'); }
   public onTenantIdWithTenantIdAndAccountIdWithAccountId(): this { return this.matchKeys('tenant_id,account_id','tenant_id,account_id'); }
-  public async get(): Promise<CompositeAccountRow | null> { return await this.terminal('one') as CompositeAccountRow | null; }
+  public async get(): Promise<CompositeAccountRow> { const row=await this.getOrNull(); if (row===null) throw new OrmError('NO_ROWS','query returned no rows'); return row; }
+  public async getOrNull(): Promise<CompositeAccountRow | null> { return await this.terminal('one') as CompositeAccountRow | null; }
   public async gets(): Promise<Collection<CompositeAccountRow>> { const rows=await this.terminal('all') as Collection<CompositeAccountRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: CompositeAccountRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<CompositeAccountRow>(visitor); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -3745,7 +3751,8 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
   public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
   public matchTenantIdWithTenantIdAndAccountIdWithAccountId(): this { return this.matchKeys('tenant_id,account_id','tenant_id,account_id'); }
   public onTenantIdWithTenantIdAndAccountIdWithAccountId(): this { return this.matchKeys('tenant_id,account_id','tenant_id,account_id'); }
-  public async get(): Promise<CompositeMembershipRow | null> { return await this.terminal('one') as CompositeMembershipRow | null; }
+  public async get(): Promise<CompositeMembershipRow> { const row=await this.getOrNull(); if (row===null) throw new OrmError('NO_ROWS','query returned no rows'); return row; }
+  public async getOrNull(): Promise<CompositeMembershipRow | null> { return await this.terminal('one') as CompositeMembershipRow | null; }
   public async gets(): Promise<Collection<CompositeMembershipRow>> { const rows=await this.terminal('all') as Collection<CompositeMembershipRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: CompositeMembershipRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<CompositeMembershipRow>(visitor); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -3975,7 +3982,8 @@ export class SoftRecordQuery extends QueryCore implements SoftRecordInterface {
   public leftJoin(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'left'); }
   public relation(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'one'),child); }
   public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
-  public async get(): Promise<SoftRecordRow | null> { return await this.terminal('one') as SoftRecordRow | null; }
+  public async get(): Promise<SoftRecordRow> { const row=await this.getOrNull(); if (row===null) throw new OrmError('NO_ROWS','query returned no rows'); return row; }
+  public async getOrNull(): Promise<SoftRecordRow | null> { return await this.terminal('one') as SoftRecordRow | null; }
   public async gets(): Promise<Collection<SoftRecordRow>> { const rows=await this.terminal('all') as Collection<SoftRecordRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: SoftRecordRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<SoftRecordRow>(visitor); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -4178,7 +4186,8 @@ export class AccountQuery extends QueryCore implements AccountInterface {
   public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
   public matchSeqWithSeq(): this { return this.matchKeys('seq','seq'); }
   public onSeqWithSeq(): this { return this.matchKeys('seq','seq'); }
-  public async get(): Promise<AccountRow | null> { return await this.terminal('one') as AccountRow | null; }
+  public async get(): Promise<AccountRow> { const row=await this.getOrNull(); if (row===null) throw new OrmError('NO_ROWS','query returned no rows'); return row; }
+  public async getOrNull(): Promise<AccountRow | null> { return await this.terminal('one') as AccountRow | null; }
   public async gets(): Promise<Collection<AccountRow>> { const rows=await this.terminal('all') as Collection<AccountRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: AccountRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<AccountRow>(visitor); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -4378,7 +4387,8 @@ export class ProjectQuery extends QueryCore implements ProjectInterface {
   public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
   public matchSeqWithSeq(): this { return this.matchKeys('seq','seq'); }
   public onSeqWithSeq(): this { return this.matchKeys('seq','seq'); }
-  public async get(): Promise<ProjectRow | null> { return await this.terminal('one') as ProjectRow | null; }
+  public async get(): Promise<ProjectRow> { const row=await this.getOrNull(); if (row===null) throw new OrmError('NO_ROWS','query returned no rows'); return row; }
+  public async getOrNull(): Promise<ProjectRow | null> { return await this.terminal('one') as ProjectRow | null; }
   public async gets(): Promise<Collection<ProjectRow>> { const rows=await this.terminal('all') as Collection<ProjectRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: ProjectRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<ProjectRow>(visitor); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
@@ -4551,7 +4561,8 @@ export class AccountProjectQuery extends QueryCore implements AccountProjectInte
   public leftJoin(child: QueryCore): this { return this.attachJoin(this.resolveRelation(child),child,'left'); }
   public relation(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'one'),child); }
   public relations(child: QueryCore): this { return this.attachRelation(this.resolveRelation(child,'many'),child); }
-  public async get(): Promise<AccountProjectRow | null> { return await this.terminal('one') as AccountProjectRow | null; }
+  public async get(): Promise<AccountProjectRow> { const row=await this.getOrNull(); if (row===null) throw new OrmError('NO_ROWS','query returned no rows'); return row; }
+  public async getOrNull(): Promise<AccountProjectRow | null> { return await this.terminal('one') as AccountProjectRow | null; }
   public async gets(): Promise<Collection<AccountProjectRow>> { const rows=await this.terminal('all') as Collection<AccountProjectRow>; return this.keySelector?rows.rekey(row=>this.keySelector!(row) as number|string|bigint):rows; }
   public async stream(visitor: (row: AccountProjectRow) => boolean | Promise<boolean>): Promise<StreamResult> { return this.streamRows<AccountProjectRow>(visitor); }
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }

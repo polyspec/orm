@@ -5,7 +5,8 @@ use orm::{Collection, KeysetPage, Page, Result};
 use orm::db::{self, Exec};
 
 pub trait BattleInterface: Sized {
-async fn get(&mut self) -> Result<Option<BattleRow>>;
+async fn get(&mut self) -> Result<BattleRow>;
+async fn get_or_none(&mut self) -> Result<Option<BattleRow>>;
 async fn gets(&mut self) -> Result<Collection<BattleRow>>;
 async fn stream(&mut self, visit: impl FnMut(BattleRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
@@ -148,7 +149,8 @@ fn price(self, v: f64) -> Self;
 fn ip(self, v: impl Into<String>) -> Self;
 }
 impl BattleInterface for Battle {
-async fn get(&mut self) -> Result<Option<BattleRow>> { Battle::get(self).await }
+async fn get(&mut self) -> Result<BattleRow> { Battle::get(self).await }
+async fn get_or_none(&mut self) -> Result<Option<BattleRow>> { Battle::get_or_none(self).await }
 async fn gets(&mut self) -> Result<Collection<BattleRow>> { Battle::gets(self).await }
 async fn stream(&mut self, visit: impl FnMut(BattleRow) -> bool) -> Result<db::StreamResult> { Battle::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { Battle::get_count(self).await }
@@ -313,7 +315,8 @@ fn to_map(&self) -> Result<serde_json::Value> { BattleRow::to_map(self) }
 }
 
 pub trait UserInterface: Sized {
-async fn get(&mut self) -> Result<Option<UserRow>>;
+async fn get(&mut self) -> Result<UserRow>;
+async fn get_or_none(&mut self) -> Result<Option<UserRow>>;
 async fn gets(&mut self) -> Result<Collection<UserRow>>;
 async fn stream(&mut self, visit: impl FnMut(UserRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
@@ -337,7 +340,8 @@ fn seq(self, v: i64) -> Self;
 fn name(self, v: impl Into<String>) -> Self;
 }
 impl UserInterface for User {
-async fn get(&mut self) -> Result<Option<UserRow>> { User::get(self).await }
+async fn get(&mut self) -> Result<UserRow> { User::get(self).await }
+async fn get_or_none(&mut self) -> Result<Option<UserRow>> { User::get_or_none(self).await }
 async fn gets(&mut self) -> Result<Collection<UserRow>> { User::gets(self).await }
 async fn stream(&mut self, visit: impl FnMut(UserRow) -> bool) -> Result<db::StreamResult> { User::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { User::get_count(self).await }
@@ -381,7 +385,8 @@ fn to_map(&self) -> Result<serde_json::Value> { UserRow::to_map(self) }
 }
 
 pub trait ServiceInterface: Sized {
-async fn get(&mut self) -> Result<Option<ServiceRow>>;
+async fn get(&mut self) -> Result<ServiceRow>;
+async fn get_or_none(&mut self) -> Result<Option<ServiceRow>>;
 async fn gets(&mut self) -> Result<Collection<ServiceRow>>;
 async fn stream(&mut self, visit: impl FnMut(ServiceRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
@@ -405,7 +410,8 @@ fn seq(self, v: i64) -> Self;
 fn name(self, v: impl Into<String>) -> Self;
 }
 impl ServiceInterface for Service {
-async fn get(&mut self) -> Result<Option<ServiceRow>> { Service::get(self).await }
+async fn get(&mut self) -> Result<ServiceRow> { Service::get(self).await }
+async fn get_or_none(&mut self) -> Result<Option<ServiceRow>> { Service::get_or_none(self).await }
 async fn gets(&mut self) -> Result<Collection<ServiceRow>> { Service::gets(self).await }
 async fn stream(&mut self, visit: impl FnMut(ServiceRow) -> bool) -> Result<db::StreamResult> { Service::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { Service::get_count(self).await }
@@ -449,7 +455,8 @@ fn to_map(&self) -> Result<serde_json::Value> { ServiceRow::to_map(self) }
 }
 
 pub trait ServiceModuleInterface: Sized {
-async fn get(&mut self) -> Result<Option<ServiceModuleRow>>;
+async fn get(&mut self) -> Result<ServiceModuleRow>;
+async fn get_or_none(&mut self) -> Result<Option<ServiceModuleRow>>;
 async fn gets(&mut self) -> Result<Collection<ServiceModuleRow>>;
 async fn stream(&mut self, visit: impl FnMut(ServiceModuleRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
@@ -477,7 +484,8 @@ fn service_seq(self, v: i64) -> Self;
 fn name(self, v: impl Into<String>) -> Self;
 }
 impl ServiceModuleInterface for ServiceModule {
-async fn get(&mut self) -> Result<Option<ServiceModuleRow>> { ServiceModule::get(self).await }
+async fn get(&mut self) -> Result<ServiceModuleRow> { ServiceModule::get(self).await }
+async fn get_or_none(&mut self) -> Result<Option<ServiceModuleRow>> { ServiceModule::get_or_none(self).await }
 async fn gets(&mut self) -> Result<Collection<ServiceModuleRow>> { ServiceModule::gets(self).await }
 async fn stream(&mut self, visit: impl FnMut(ServiceModuleRow) -> bool) -> Result<db::StreamResult> { ServiceModule::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { ServiceModule::get_count(self).await }
@@ -525,7 +533,8 @@ fn to_map(&self) -> Result<serde_json::Value> { ServiceModuleRow::to_map(self) }
 }
 
 pub trait ServiceMemberInterface: Sized {
-async fn get(&mut self) -> Result<Option<ServiceMemberRow>>;
+async fn get(&mut self) -> Result<ServiceMemberRow>;
+async fn get_or_none(&mut self) -> Result<Option<ServiceMemberRow>>;
 async fn gets(&mut self) -> Result<Collection<ServiceMemberRow>>;
 async fn stream(&mut self, visit: impl FnMut(ServiceMemberRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
@@ -553,7 +562,8 @@ fn service_seq(self, v: i64) -> Self;
 fn user_seq(self, v: i64) -> Self;
 }
 impl ServiceMemberInterface for ServiceMember {
-async fn get(&mut self) -> Result<Option<ServiceMemberRow>> { ServiceMember::get(self).await }
+async fn get(&mut self) -> Result<ServiceMemberRow> { ServiceMember::get(self).await }
+async fn get_or_none(&mut self) -> Result<Option<ServiceMemberRow>> { ServiceMember::get_or_none(self).await }
 async fn gets(&mut self) -> Result<Collection<ServiceMemberRow>> { ServiceMember::gets(self).await }
 async fn stream(&mut self, visit: impl FnMut(ServiceMemberRow) -> bool) -> Result<db::StreamResult> { ServiceMember::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { ServiceMember::get_count(self).await }
@@ -601,7 +611,8 @@ fn to_map(&self) -> Result<serde_json::Value> { ServiceMemberRow::to_map(self) }
 }
 
 pub trait CompositeAccountInterface: Sized {
-async fn get(&mut self) -> Result<Option<CompositeAccountRow>>;
+async fn get(&mut self) -> Result<CompositeAccountRow>;
+async fn get_or_none(&mut self) -> Result<Option<CompositeAccountRow>>;
 async fn gets(&mut self) -> Result<Collection<CompositeAccountRow>>;
 async fn stream(&mut self, visit: impl FnMut(CompositeAccountRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
@@ -629,7 +640,8 @@ fn account_id(self, v: i64) -> Self;
 fn name(self, v: impl Into<String>) -> Self;
 }
 impl CompositeAccountInterface for CompositeAccount {
-async fn get(&mut self) -> Result<Option<CompositeAccountRow>> { CompositeAccount::get(self).await }
+async fn get(&mut self) -> Result<CompositeAccountRow> { CompositeAccount::get(self).await }
+async fn get_or_none(&mut self) -> Result<Option<CompositeAccountRow>> { CompositeAccount::get_or_none(self).await }
 async fn gets(&mut self) -> Result<Collection<CompositeAccountRow>> { CompositeAccount::gets(self).await }
 async fn stream(&mut self, visit: impl FnMut(CompositeAccountRow) -> bool) -> Result<db::StreamResult> { CompositeAccount::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { CompositeAccount::get_count(self).await }
@@ -677,7 +689,8 @@ fn to_map(&self) -> Result<serde_json::Value> { CompositeAccountRow::to_map(self
 }
 
 pub trait CompositeMembershipInterface: Sized {
-async fn get(&mut self) -> Result<Option<CompositeMembershipRow>>;
+async fn get(&mut self) -> Result<CompositeMembershipRow>;
+async fn get_or_none(&mut self) -> Result<Option<CompositeMembershipRow>>;
 async fn gets(&mut self) -> Result<Collection<CompositeMembershipRow>>;
 async fn stream(&mut self, visit: impl FnMut(CompositeMembershipRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
@@ -705,7 +718,8 @@ fn account_id(self, v: i64) -> Self;
 fn role(self, v: impl Into<String>) -> Self;
 }
 impl CompositeMembershipInterface for CompositeMembership {
-async fn get(&mut self) -> Result<Option<CompositeMembershipRow>> { CompositeMembership::get(self).await }
+async fn get(&mut self) -> Result<CompositeMembershipRow> { CompositeMembership::get(self).await }
+async fn get_or_none(&mut self) -> Result<Option<CompositeMembershipRow>> { CompositeMembership::get_or_none(self).await }
 async fn gets(&mut self) -> Result<Collection<CompositeMembershipRow>> { CompositeMembership::gets(self).await }
 async fn stream(&mut self, visit: impl FnMut(CompositeMembershipRow) -> bool) -> Result<db::StreamResult> { CompositeMembership::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { CompositeMembership::get_count(self).await }
@@ -753,7 +767,8 @@ fn to_map(&self) -> Result<serde_json::Value> { CompositeMembershipRow::to_map(s
 }
 
 pub trait SoftRecordInterface: Sized {
-async fn get(&mut self) -> Result<Option<SoftRecordRow>>;
+async fn get(&mut self) -> Result<SoftRecordRow>;
+async fn get_or_none(&mut self) -> Result<Option<SoftRecordRow>>;
 async fn gets(&mut self) -> Result<Collection<SoftRecordRow>>;
 async fn stream(&mut self, visit: impl FnMut(SoftRecordRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
@@ -781,7 +796,8 @@ fn name(self, v: impl Into<String>) -> Self;
 fn deleted_at(self, v: chrono::NaiveDateTime) -> Self;
 }
 impl SoftRecordInterface for SoftRecord {
-async fn get(&mut self) -> Result<Option<SoftRecordRow>> { SoftRecord::get(self).await }
+async fn get(&mut self) -> Result<SoftRecordRow> { SoftRecord::get(self).await }
+async fn get_or_none(&mut self) -> Result<Option<SoftRecordRow>> { SoftRecord::get_or_none(self).await }
 async fn gets(&mut self) -> Result<Collection<SoftRecordRow>> { SoftRecord::gets(self).await }
 async fn stream(&mut self, visit: impl FnMut(SoftRecordRow) -> bool) -> Result<db::StreamResult> { SoftRecord::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { SoftRecord::get_count(self).await }
@@ -829,7 +845,8 @@ fn to_map(&self) -> Result<serde_json::Value> { SoftRecordRow::to_map(self) }
 }
 
 pub trait AccountInterface: Sized {
-async fn get(&mut self) -> Result<Option<AccountRow>>;
+async fn get(&mut self) -> Result<AccountRow>;
+async fn get_or_none(&mut self) -> Result<Option<AccountRow>>;
 async fn gets(&mut self) -> Result<Collection<AccountRow>>;
 async fn stream(&mut self, visit: impl FnMut(AccountRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
@@ -853,7 +870,8 @@ fn seq(self, v: i64) -> Self;
 fn name(self, v: impl Into<String>) -> Self;
 }
 impl AccountInterface for Account {
-async fn get(&mut self) -> Result<Option<AccountRow>> { Account::get(self).await }
+async fn get(&mut self) -> Result<AccountRow> { Account::get(self).await }
+async fn get_or_none(&mut self) -> Result<Option<AccountRow>> { Account::get_or_none(self).await }
 async fn gets(&mut self) -> Result<Collection<AccountRow>> { Account::gets(self).await }
 async fn stream(&mut self, visit: impl FnMut(AccountRow) -> bool) -> Result<db::StreamResult> { Account::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { Account::get_count(self).await }
@@ -897,7 +915,8 @@ fn to_map(&self) -> Result<serde_json::Value> { AccountRow::to_map(self) }
 }
 
 pub trait ProjectInterface: Sized {
-async fn get(&mut self) -> Result<Option<ProjectRow>>;
+async fn get(&mut self) -> Result<ProjectRow>;
+async fn get_or_none(&mut self) -> Result<Option<ProjectRow>>;
 async fn gets(&mut self) -> Result<Collection<ProjectRow>>;
 async fn stream(&mut self, visit: impl FnMut(ProjectRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
@@ -921,7 +940,8 @@ fn seq(self, v: i64) -> Self;
 fn name(self, v: impl Into<String>) -> Self;
 }
 impl ProjectInterface for Project {
-async fn get(&mut self) -> Result<Option<ProjectRow>> { Project::get(self).await }
+async fn get(&mut self) -> Result<ProjectRow> { Project::get(self).await }
+async fn get_or_none(&mut self) -> Result<Option<ProjectRow>> { Project::get_or_none(self).await }
 async fn gets(&mut self) -> Result<Collection<ProjectRow>> { Project::gets(self).await }
 async fn stream(&mut self, visit: impl FnMut(ProjectRow) -> bool) -> Result<db::StreamResult> { Project::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { Project::get_count(self).await }
@@ -965,7 +985,8 @@ fn to_map(&self) -> Result<serde_json::Value> { ProjectRow::to_map(self) }
 }
 
 pub trait AccountProjectInterface: Sized {
-async fn get(&mut self) -> Result<Option<AccountProjectRow>>;
+async fn get(&mut self) -> Result<AccountProjectRow>;
+async fn get_or_none(&mut self) -> Result<Option<AccountProjectRow>>;
 async fn gets(&mut self) -> Result<Collection<AccountProjectRow>>;
 async fn stream(&mut self, visit: impl FnMut(AccountProjectRow) -> bool) -> Result<db::StreamResult>;
 async fn get_count(&mut self) -> Result<i64>;
@@ -989,7 +1010,8 @@ fn account_seq(self, v: i64) -> Self;
 fn project_seq(self, v: i64) -> Self;
 }
 impl AccountProjectInterface for AccountProject {
-async fn get(&mut self) -> Result<Option<AccountProjectRow>> { AccountProject::get(self).await }
+async fn get(&mut self) -> Result<AccountProjectRow> { AccountProject::get(self).await }
+async fn get_or_none(&mut self) -> Result<Option<AccountProjectRow>> { AccountProject::get_or_none(self).await }
 async fn gets(&mut self) -> Result<Collection<AccountProjectRow>> { AccountProject::gets(self).await }
 async fn stream(&mut self, visit: impl FnMut(AccountProjectRow) -> bool) -> Result<db::StreamResult> { AccountProject::stream(self,visit).await }
 async fn get_count(&mut self) -> Result<i64> { AccountProject::get_count(self).await }

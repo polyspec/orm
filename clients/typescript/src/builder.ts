@@ -114,7 +114,7 @@ export class QueryCore {
   private projectionMode(mode: 'all' | 'none'): this { (this.request.ir.columns ??= {}).mode = mode; return this; }
   public orderBy(column: string, descending = false): this { this.request.ir.order ??= []; this.request.ir.order.push({ column, desc: descending }); return this; }
   public orderByExpression(expression: string, descending = false): this { this.request.ir.order ??= []; this.request.ir.order.push({ expr: expression, desc: descending }); return this; }
-  public lock(mode: 'update' | 'share'): this { this.request.ir.lock = mode; return this; }
+  public lock(mode: 'update' | 'share' | 'update_nowait' | 'share_nowait'): this { this.request.ir.lock = mode; return this; }
   public groupBy(column: string): this { this.request.ir.group_by ??= []; this.request.ir.group_by.push(column); return this; }
   public groupByExpression(expression: string, alias: string): this { this.request.ir.group_by_expr ??= []; this.request.ir.group_by_expr.push({ expr: expression, as: alias }); return this; }
   public limit(offset: number, count: number): this { this.request.ir.limit = { offset: uint(offset, 'limit offset'), count: uint(count, 'limit count') }; return this; }

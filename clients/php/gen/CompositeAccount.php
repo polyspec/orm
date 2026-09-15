@@ -129,6 +129,10 @@ final class CompositeAccountWhere
     public function nameEq(string $v): static { $this->w->pred('name', 'eq', $v); return $this; }
     public function name(string $v): static { return $this->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w->pred('name', 'not_eq', $v); return $this; }
+    public function nameGt(string $v): static { $this->w->pred('name', 'gt', $v); return $this; }
+    public function nameGte(string $v): static { $this->w->pred('name', 'gte', $v); return $this; }
+    public function nameLt(string $v): static { $this->w->pred('name', 'lt', $v); return $this; }
+    public function nameLte(string $v): static { $this->w->pred('name', 'lte', $v); return $this; }
     public function nameIn(array $vs): static { $this->w->predList('name', 'in', array_values($vs)); return $this; }
     public function nameNotIn(array $vs): static { $this->w->predList('name', 'not_in', array_values($vs)); return $this; }
     public function nameLike(string $v): static { $this->w->pred('name', 'like', $v); return $this; }
@@ -140,6 +144,10 @@ final class CompositeAccountWhere
     public function nameIsNotNull(): static { $this->w->predNull('name', 'is_not_null'); return $this; }
     public function nameEqCol(ColRef $ref): static { $this->w->predCol('name', 'eq_col', $ref); return $this; }
     public function nameNotEqCol(ColRef $ref): static { $this->w->predCol('name', 'not_eq_col', $ref); return $this; }
+    public function nameGtCol(ColRef $ref): static { $this->w->predCol('name', 'gt_col', $ref); return $this; }
+    public function nameGteCol(ColRef $ref): static { $this->w->predCol('name', 'gte_col', $ref); return $this; }
+    public function nameLtCol(ColRef $ref): static { $this->w->predCol('name', 'lt_col', $ref); return $this; }
+    public function nameLteCol(ColRef $ref): static { $this->w->predCol('name', 'lte_col', $ref); return $this; }
 }
 
 /** Query over composite_account: CompositeAccount::query() → using($db) → typed chain → terminal(). */
@@ -203,6 +211,10 @@ final class CompositeAccount extends Q implements CompositeAccountInterface
     public function nameEq(string $v): static { $this->w()->pred('name', 'eq', $v); return $this; }
     public function name(string $v): static { return $this->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w()->pred('name', 'not_eq', $v); return $this; }
+    public function nameGt(string $v): static { $this->w()->pred('name', 'gt', $v); return $this; }
+    public function nameGte(string $v): static { $this->w()->pred('name', 'gte', $v); return $this; }
+    public function nameLt(string $v): static { $this->w()->pred('name', 'lt', $v); return $this; }
+    public function nameLte(string $v): static { $this->w()->pred('name', 'lte', $v); return $this; }
     public function nameIn(array $vs): static { $this->w()->predList('name', 'in', array_values($vs)); return $this; }
     public function nameNotIn(array $vs): static { $this->w()->predList('name', 'not_in', array_values($vs)); return $this; }
     public function nameLike(string $v): static { $this->w()->pred('name', 'like', $v); return $this; }
@@ -214,6 +226,10 @@ final class CompositeAccount extends Q implements CompositeAccountInterface
     public function nameIsNotNull(): static { $this->w()->predNull('name', 'is_not_null'); return $this; }
     public function nameEqCol(ColRef $ref): static { $this->w()->predCol('name', 'eq_col', $ref); return $this; }
     public function nameNotEqCol(ColRef $ref): static { $this->w()->predCol('name', 'not_eq_col', $ref); return $this; }
+    public function nameGtCol(ColRef $ref): static { $this->w()->predCol('name', 'gt_col', $ref); return $this; }
+    public function nameGteCol(ColRef $ref): static { $this->w()->predCol('name', 'gte_col', $ref); return $this; }
+    public function nameLtCol(ColRef $ref): static { $this->w()->predCol('name', 'lt_col', $ref); return $this; }
+    public function nameLteCol(ColRef $ref): static { $this->w()->predCol('name', 'lte_col', $ref); return $this; }
 
     // ---- join children: on() = ON, where() = parent WHERE group ----
     public function on(\Closure $fn): static { $fn(new CompositeAccountWhere($this->onW())); return $this; }
@@ -261,6 +277,8 @@ final class CompositeAccount extends Q implements CompositeAccountInterface
     public function limit(int $offset, int $count): static { $this->setLimit($offset, $count); return $this; }
     public function forUpdate(): static { $this->lock('update'); return $this; }
     public function forShare(): static { $this->lock('share'); return $this; }
+    public function forUpdateNoWait(): static { $this->lock('update_nowait'); return $this; }
+    public function forShareNoWait(): static { $this->lock('share_nowait'); return $this; }
     public function distinct(): static { $this->opt('distinct', true); return $this; }
 
     // ---- relation-child options ----
@@ -290,7 +308,14 @@ final class CompositeAccount extends Q implements CompositeAccountInterface
     public function onDuplicateSetNameExpr(string $frag, array $binds = []): static { $this->onDuplicateExpr('name', $frag, $binds); return $this; }
 
     // ---- terminals ----
-    public function get(): ?CompositeAccountRow
+    public function get(): CompositeAccountRow
+    {
+        $row = $this->getOrNull();
+        if ($row === null) throw new \Orm\OrmException(\Orm\Code::NO_ROWS, 'query returned no rows');
+        return $row;
+    }
+
+    public function getOrNull(): ?CompositeAccountRow
     {
         $this->terminalArity(func_num_args());
         $db = $this->terminalDb();
