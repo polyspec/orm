@@ -332,6 +332,11 @@ func ddlEntityOrder(m *schema.Manifest) ([]string, error) {
 				deps[c.Ref.Entity] = true
 			}
 		}
+		for _, rel := range e.Relations {
+			if rel.ForeignKey && rel.Target != name && m.Entities[rel.Target] != nil {
+				deps[rel.Target] = true
+			}
+		}
 		orderedDeps := make([]string, 0, len(deps))
 		for dep := range deps {
 			orderedDeps = append(orderedDeps, dep)
@@ -352,6 +357,25 @@ func ddlEntityOrder(m *schema.Manifest) ([]string, error) {
 		}
 	}
 	return result, nil
+}
+
+func relationMatchesColumnReference(e *schema.Entity, rel *schema.Rel) bool {
+	if rel == nil || len(rel.Keys) == 0 {
+		return false
+	}
+	for _, key := range rel.Keys {
+		var column *schema.Col
+		for _, candidate := range e.Columns {
+			if candidate.Name == key.Local {
+				column = candidate
+				break
+			}
+		}
+		if column == nil || column.Ref == nil || column.Ref.Entity != rel.Target || column.Ref.Column != key.Target {
+			return false
+		}
+	}
+	return true
 }
 
 func sortedForeignKeys(m *schema.Manifest, e *schema.Entity) []diffForeignKey {

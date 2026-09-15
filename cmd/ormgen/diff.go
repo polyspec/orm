@@ -692,6 +692,9 @@ func entityForeignKeys(m *schema.Manifest, e *schema.Entity) map[string]diffFore
 	out := map[string]diffForeignKey{}
 	consumed := map[string]bool{}
 	for _, rel := range e.Relations {
+		if rel.Kind != "one" || (!rel.ForeignKey && !relationMatchesColumnReference(e, rel)) {
+			continue
+		}
 		columns := make([]string, len(rel.Keys))
 		targetColumns := make([]string, len(rel.Keys))
 		valid := len(rel.Keys) > 0
@@ -703,7 +706,7 @@ func entityForeignKeys(m *schema.Manifest, e *schema.Entity) map[string]diffFore
 					break
 				}
 			}
-			if column == nil || column.Ref == nil || column.Ref.Entity != rel.Target || column.Ref.Column != key.Target {
+			if column == nil {
 				valid = false
 				break
 			}
