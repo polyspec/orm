@@ -24,6 +24,7 @@
 
 ## 값 모델
 스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵.
+Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE`로 거부한다. Go의 base64 JSON 문자열 표현으로 조용히 변환하지 않으며, JSON column에 대입하기 전에 byte를 공통 값 모델로 decode해야 한다.
 | | Go | Rust | PHP | TypeScript |
 |---|---|---|---|---|
 | 필드 타입 | `any` | `serde_json::Value` (nullable이면 `Option<…>`) | `mixed` (array/스칼라/null) | `CodecValue` |
