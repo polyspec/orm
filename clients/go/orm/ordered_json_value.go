@@ -214,6 +214,29 @@ func orderedJSONStruct(value reflect.Value) (*orderedjson.Value, error) {
 		if field.PkgPath != "" {
 			continue
 		}
+		if field.Anonymous && field.Type.Kind() == reflect.Struct {
+			tag, hasTag := field.Tag.Lookup("json")
+			if !hasTag || strings.Split(tag, ",")[0] == "" {
+				converted, err := orderedJSONReflect(value.Field(i))
+				if err != nil {
+					return nil, fmt.Errorf("%s embedded field %s: %w", CodeCodecEncode, field.Name, err)
+				}
+				embedded, err := converted.Members()
+				if err != nil {
+					return nil, fmt.Errorf("%s embedded field %s: %w", CodeCodecEncode, field.Name, err)
+				}
+				for _, key := range embedded.Keys() {
+					name, err := key.StringValue()
+					if err != nil {
+						return nil, err
+					}
+					if err := members.Set(key, embedded.Get(name)); err != nil {
+						return nil, err
+					}
+				}
+				continue
+			}
+		}
 		name, omitEmpty, skip := orderedJSONFieldName(field)
 		if skip || (omitEmpty && orderedJSONEmpty(value.Field(i))) {
 			continue
