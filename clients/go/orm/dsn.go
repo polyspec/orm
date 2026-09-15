@@ -53,13 +53,13 @@ func parseDSN(raw string) (string, string, error) {
 			return "", "", configErr("sqlite DSN path must be absolute")
 		}
 		q := u.Query()
-		// SQLite has no FOR UPDATE syntax. The ORM implements the common
-		// update/share lock contract with transaction-level serialization, so
-		// every ORM transaction must begin with BEGIN IMMEDIATE.
-		if txlock := q.Get("_txlock"); txlock != "" && strings.ToLower(txlock) != "immediate" {
-			return "", "", configErr("sqlite DSN _txlock must be immediate for ORM lock semantics")
+		// SQLite has no FOR UPDATE syntax. The ORM implements the common lock
+		// contract with a transaction-scoped lock row, so transactions remain
+		// deferred until a generated query actually requests a lock.
+		if txlock := q.Get("_txlock"); txlock != "" && strings.ToLower(txlock) != "deferred" {
+			return "", "", configErr("sqlite DSN _txlock must be deferred for ORM lock semantics")
 		}
-		q.Set("_txlock", "immediate")
+		q.Set("_txlock", "deferred")
 		native := "file:" + path + "?" + q.Encode()
 		return "sqlite", native, nil
 	default:

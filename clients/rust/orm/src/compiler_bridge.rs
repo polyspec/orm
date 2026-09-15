@@ -322,6 +322,7 @@ fn step(input: wire::PlanStep) -> Result<plan::Step> {
         id: input.id,
         role: input.role,
         sql: input.sql,
+        lock: input.lock,
         bind_slots: input
             .binds
             .into_iter()
@@ -495,6 +496,7 @@ mod tests {
                 id: 0,
                 role: "root".into(),
                 sql: "SELECT ?".into(),
+                lock: "update".into(),
                 binds: vec![wire::BindSlot {
                     source: "param".into(),
                     parameter: 1,
@@ -554,6 +556,7 @@ mod tests {
         };
         let plan = plan_from_proto(wire).unwrap();
         assert_eq!(plan.kind, "all");
+        assert_eq!(plan.steps[0].lock, "update");
         assert_eq!(plan.steps[0].bind_slots[0].host_styles, vec!["hex"]);
         assert_eq!(
             plan.steps[0]

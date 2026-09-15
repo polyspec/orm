@@ -132,6 +132,7 @@ message PlanStep {
   repeated BindSlot binds = 4;
   Assemble assemble = 5;
   ParentReference parent = 6;
+  string lock = 7;
 }
 message BindSlot {
   string source = 1;
