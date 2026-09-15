@@ -36,11 +36,16 @@ func TestAuditFunctionBodyCapturesChangedFieldsAndRedactsPaths(t *testing.T) {
 		"current_setting('platform.operation_id', true)",
 		"jsonb_object_agg(key, value)",
 		"jsonb_build_object('redacted', true",
+		"IF (new_value #> ARRAY['details','private']) IS NOT NULL THEN",
+		"jsonb_build_object('redacted', true, 'present', true)",
 		"'details','private'",
 		"TG_OP",
 	} {
 		if !strings.Contains(body, fragment) {
 			t.Fatalf("audit function body missing %q: %s", fragment, body)
 		}
+	}
+	if strings.Contains(body, "jsonb_typeof(") {
+		t.Fatal("audit redaction must not materialize a parent JSON value to test its type")
 	}
 }
