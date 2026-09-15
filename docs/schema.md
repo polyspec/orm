@@ -146,6 +146,8 @@ For SQLite audit triggers, generated JSON columns are stored as text. The adapte
 
 SQLite `ForUpdate`, `ForShare`, and their `NoWait` forms are adapter-owned. The ORM initializes its transaction lock table before a caller-owned transaction begins, acquires the lock row inside that transaction, waits and honors cancellation for normal lock modes, and returns immediately for `NoWait`. The application does not branch on the selected database driver.
 
+The Go adapter regression tests cover serialization, immediate `NoWait`, completion after the owning transaction ends, and cancellation while waiting. Each case uses a bounded focused test timeout.
+
 Commas are invalid in Mermaid type strings; use `_` such as `decimal(13_3)` and `enum(a_b_c)`; ormgen interprets them. Dialect mapping from normalized types to DDL is in `docs/dialects.md` (S6).
 
 ## 3. Manifest (generated `schema.json`)
