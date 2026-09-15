@@ -279,6 +279,23 @@ func TestOrderedJSONCodecUsesCustomJSONMarshaler(t *testing.T) {
 	}
 }
 
+func TestOrderedJSONCodecFlattensAnonymousStruct(t *testing.T) {
+	type Details struct {
+		ID string `json:"id"`
+	}
+	type value struct {
+		Details
+		Name string `json:"name"`
+	}
+	encoded, err := Encode([]string{"json"}, value{Details: Details{ID: "1"}, Name: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded != `{"id":"1","name":"test"}` {
+		t.Fatalf("encoded anonymous struct = %q", encoded)
+	}
+}
+
 type customJSONValue struct{ body []byte }
 
 func (v customJSONValue) MarshalJSON() ([]byte, error) { return v.body, nil }
