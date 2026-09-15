@@ -996,7 +996,7 @@ impl Db {
                         "sqlite does not support transaction isolation or read-only mode".into(),
                     });
                 }
-                TxInner::Sqlite(p.begin_with("BEGIN IMMEDIATE").await?)
+                TxInner::Sqlite(p.begin().await?)
             }
         };
         if options.timeout_ms > 0 {
@@ -1611,6 +1611,49 @@ enum Target<'a> {
     Tx(&'a mut TxInner),
 }
 
+async fn acquire_sqlite_row_lock(target: &mut Target<'_>, mode: &str) -> Result<()> {
+    if mode.is_empty() {
+        return Ok(());
+    }
+    let tx = match target {
+        Target::Tx(TxInner::Sqlite(tx)) => tx,
+        Target::Pool(Pool::Sqlite(_)) => {
+            return Err(Error::Config("SQLite row locks require an ORM transaction".into()))
+        }
+        _ => return Ok(()),
+    };
+    let nowait = mode.ends_with("_nowait");
+    let previous: i64 = sqlx::query_scalar("PRAGMA busy_timeout")
+        .fetch_one(&mut **tx)
+        .await?;
+    if nowait {
+        sqlx::raw_sql("PRAGMA busy_timeout=0")
+            .execute(&mut **tx)
+            .await?;
+    }
+    let result = async {
+        sqlx::raw_sql(
+            "CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))",
+        )
+        .execute(&mut **tx)
+        .await?;
+        sqlx::raw_sql(
+            "INSERT INTO \"orm__row_lock\" (\"id\") VALUES (1) ON CONFLICT (\"id\") DO UPDATE SET \"id\"=excluded.\"id\"",
+        )
+        .execute(&mut **tx)
+        .await?;
+        Ok::<(), sqlx::Error>(())
+    }
+    .await;
+    if nowait {
+        let statement = format!("PRAGMA busy_timeout={previous}");
+        let _ = sqlx::raw_sql(sqlx::AssertSqlSafe(statement).into_sql_str())
+            .execute(&mut **tx)
+            .await;
+    }
+    result.map_err(Error::from)
+}
+
 /// The statement text of a step: the plan's SQL as is, or with its `parent` placeholder expanded.
 fn statement(st: &Step, parent_vals: Vec<Param>, numbered: bool) -> (Cow<'_, str>, Vec<Param>) {
     if parent_vals.is_empty() {
@@ -1622,12 +1665,13 @@ fn statement(st: &Step, parent_vals: Vec<Param>, numbered: bool) -> (Cow<'_, str
 }
 
 async fn run_query(
-    db: &Db,
-    target: Target<'_>,
+	db: &Db,
+	mut target: Target<'_>,
     st: &Step,
     params: &[Param],
     parent_vals: Vec<Param>,
 ) -> Result<Vec<DriverRow>> {
+	acquire_sqlite_row_lock(&mut target, &st.lock).await?;
     let (sql, parent_vals) = statement(st, parent_vals, matches!(db.pool, Pool::Postgres(_)));
     let args = db.args(st, params, &parent_vals)?;
     let start = std::time::Instant::now();
@@ -1673,8 +1717,8 @@ async fn run_query(
 }
 
 async fn run_stream<F>(
-    db: &Db,
-    target: Target<'_>,
+	db: &Db,
+	mut target: Target<'_>,
     st: &Step,
     params: &[Param],
     visit: &mut F,
@@ -1682,6 +1726,7 @@ async fn run_stream<F>(
 where
     F: FnMut(DriverRow) -> Result<bool>,
 {
+	acquire_sqlite_row_lock(&mut target, &st.lock).await?;
     let sql = st.sql.as_str();
     let args = db.args(st, params, &[])?;
     let start = std::time::Instant::now();
@@ -2363,6 +2408,7 @@ mod tests {
                     id: 0,
                     role: "main".into(),
                     sql: request.kind.clone(),
+                    lock: String::new(),
                     bind_slots: Vec::new(),
                     assemble: None,
                     parent: None,
@@ -2403,6 +2449,7 @@ mod tests {
             id: 1,
             role: "relation".into(),
             sql: sql.into(),
+            lock: String::new(),
             bind_slots: slots
                 .iter()
                 .map(|f| BindSlot {
@@ -2473,6 +2520,7 @@ mod tests {
             id: 0,
             role: "main".into(),
             sql: String::new(),
+            lock: String::new(),
             bind_slots: (0..1000).map(|index| BindSlot { from: "param".into(), param: index, transform: String::new(), name: String::new(), step: 0, column: String::new(), host_styles: Vec::new(), col_type: String::new() }).collect(),
             assemble: None,
             parent: None,

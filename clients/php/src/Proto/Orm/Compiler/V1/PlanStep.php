@@ -38,6 +38,10 @@ class PlanStep extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>.orm.compiler.v1.ParentReference parent = 6;</code>
      */
     protected $parent = null;
+    /**
+     * Generated from protobuf field <code>string lock = 7;</code>
+     */
+    protected $lock = '';
 
     /**
      * Constructor.
@@ -51,6 +55,7 @@ class PlanStep extends \Google\Protobuf\Internal\Message
      *     @type \Orm\Compiler\V1\BindSlot[] $binds
      *     @type \Orm\Compiler\V1\Assemble $assemble
      *     @type \Orm\Compiler\V1\ParentReference $parent
+     *     @type string $lock
      * }
      */
     public function __construct($data = null)
@@ -205,6 +210,28 @@ class PlanStep extends \Google\Protobuf\Internal\Message
     public function setParent(\Orm\Compiler\V1\ParentReference|null $var)
     {
         $this->parent = $var;
+
+        return $this;
+    }
+
+    /**
+     * Generated from protobuf field <code>string lock = 7;</code>
+     * @return string
+     */
+    public function getLock()
+    {
+        return $this->lock;
+    }
+
+    /**
+     * Generated from protobuf field <code>string lock = 7;</code>
+     * @param string $var
+     * @return $this
+     */
+    public function setLock(string $var)
+    {
+        GPBUtil::checkString($var, true);
+        $this->lock = $var;
 
         return $this;
     }

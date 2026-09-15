@@ -39,6 +39,7 @@ export interface DriverConnection {
   stream(sql: string, params: readonly DriverValue[], visit: DriverRowVisitor): Promise<DriverStreamResult>;
   begin(options?: DriverTransactionOptions): Promise<DriverTransaction>;
   close(): Promise<void>;
+  acquireRowLock?(mode: string): Promise<void>;
 }
 
 export interface DriverTransaction extends DriverConnection {
@@ -309,8 +310,22 @@ class SqliteDriver implements DriverConnection {
   public async begin(options: DriverTransactionOptions = {}): Promise<DriverTransaction> {
     if (this.transaction) throw new OrmError('CONFIG', 'nested transactions are not supported');
     if (options.isolation !== undefined && options.isolation !== 'default' || options.readOnly || (options.timeoutMs ?? 0) > 0) throw new OrmError('CAPABILITY_UNSUPPORTED', 'sqlite does not support transaction isolation, read-only mode, or timeout_ms');
-    this.connection.exec('BEGIN IMMEDIATE');
+    this.connection.exec('BEGIN');
     return new SqliteTx(this.connection);
+  }
+  public async acquireRowLock(mode: string): Promise<void> {
+    if (mode === '') return;
+    if (!this.transaction) throw new OrmError('CONFIG', 'SQLite row locks require an ORM transaction');
+    const noWait = mode.endsWith('_nowait');
+    const row = this.connection.prepare('PRAGMA busy_timeout').get() as Record<string, unknown> | undefined;
+    const previous = Number(row?.busy_timeout ?? row?.timeout ?? 5000);
+    if (noWait) this.connection.exec('PRAGMA busy_timeout=0');
+    try {
+      this.connection.exec('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
+      this.connection.exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"');
+    } finally {
+      if (noWait) this.connection.exec(`PRAGMA busy_timeout=${previous}`);
+    }
   }
   public async close(): Promise<void> { if (this.owner) this.connection.close(); }
   protected finish(): void { this.active = false; }

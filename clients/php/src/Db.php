@@ -291,11 +291,7 @@ class Db
         $attempts = $options->retryDeadlocks ? $options->maxAttempts : 1;
         for ($attempt = 0; $attempt < $attempts; $attempt++) {
             if ($this->driver !== 'postgres') $this->configureTransaction($options);
-            if ($this->driver === 'sqlite') {
-                $this->pdo->exec('BEGIN IMMEDIATE');
-            } else {
-                $this->pdo->beginTransaction();
-            }
+            $this->pdo->beginTransaction();
             $tx = new Tx($this);
             try {
                 if ($this->driver === 'postgres') $this->configureTransaction($options);
@@ -607,10 +603,26 @@ class Db
         }
     }
 
+    private function acquireSQLiteRowLock(string $mode): void
+    {
+        if ($mode === '' || $this->driver !== 'sqlite') return;
+        if (!$this->pdo->inTransaction()) throw new OrmException(Code::CONFIG, 'SQLite row locks require an ORM transaction');
+        $noWait = str_ends_with($mode, '_nowait');
+        $previous = (int) $this->pdo->query('PRAGMA busy_timeout')->fetchColumn();
+        if ($noWait) $this->pdo->exec('PRAGMA busy_timeout=0');
+        try {
+            $this->pdo->exec('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
+            $this->pdo->exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"');
+        } finally {
+            if ($noWait) $this->pdo->exec('PRAGMA busy_timeout=' . $previous);
+        }
+    }
+
     /** @return list<list<mixed>> rows (positional); styled cells decoded */
     public function query(array $step, array $params, ?string $sql = null, array $parentVals = []): array
     {
         $sql ??= $step['sql'];
+        $this->acquireSQLiteRowLock((string) ($step['lock'] ?? ''));
         $args = $this->args($step, $params, $parentVals);
         $start = microtime(true);
         $st = null;
@@ -647,6 +659,7 @@ class Db
             }
         }
         $step = $plan['steps'][0] ?? throw new OrmException(Code::INTERNAL, 'plan has no steps');
+        $this->acquireSQLiteRowLock((string) ($step['lock'] ?? ''));
         $args = $this->args($step, $params);
         $start = microtime(true);
         $statement = null;
@@ -897,6 +910,7 @@ class Db
 
     public function scalar(array $step, array $params): mixed
     {
+        $this->acquireSQLiteRowLock((string) ($step['lock'] ?? ''));
         $args = $this->args($step, $params);
         $start = microtime(true);
         $st = null;

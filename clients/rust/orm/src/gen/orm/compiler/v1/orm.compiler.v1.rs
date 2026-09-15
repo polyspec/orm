@@ -304,6 +304,8 @@ pub struct PlanStep {
     pub assemble: ::core::option::Option<Assemble>,
     #[prost(message, optional, tag="6")]
     pub parent: ::core::option::Option<ParentReference>,
+    #[prost(string, tag="7")]
+    pub lock: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct BindSlot {

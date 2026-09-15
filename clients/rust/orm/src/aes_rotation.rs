@@ -141,6 +141,7 @@ fn step(sql: String, binds: Vec<BindSlot>) -> Step {
         id: 0,
         role: "aes_rotation".into(),
         sql,
+        lock: String::new(),
         bind_slots: binds,
         assemble: None,
         parent: None,

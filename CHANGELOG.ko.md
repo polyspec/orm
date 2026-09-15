@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- SQLite `forUpdate`와 `forShare`를 ORM이 제어하는 `BEGIN IMMEDIATE` transaction 직렬화로 구현하고 SQLite가 표현할 수 없는 lock mode(`NoWait`)만 거부한다. Go·PHP·Rust·TypeScript가 같은 SQLite transaction 시작 계약을 사용한다.
+- SQLite `forUpdate`·`forShare`와 두 `NoWait` mode를 ORM 소유 transaction 범위 lock 행으로 구현한다. SQLite lock suffix는 생성하지 않고 `NoWait`은 busy timeout을 일시적으로 0으로 설정한다. Go·PHP·Rust·TypeScript가 같은 lock mode를 plan 계약으로 전달한다.
 - SQLite 물리 테이블 이름에서 논리 schema namespace를 보존하도록 `schema.table`을 `schema__table`로 매핑하여 하나의 database에서 같은 이름의 table이 충돌하지 않게 한다.
 - 생성 SQLite index 이름에도 qualified 물리 table 이름을 namespace로 사용하여 module의 같은 논리 index 이름이 충돌하지 않게 한다.
 - 하나의 자식 column이 서로 다른 복합 관계선을 포함한 둘 이상의 foreign key에 참여할 때 이를 보존한다. generated DDL 순서와 migration diff가 하나의 column reference로 제약을 합치지 않고 관계 metadata를 사용한다.
