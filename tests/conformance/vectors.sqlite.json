@@ -1611,7 +1611,7 @@
     },
     {
       "name": "save_branch",
-      "chain": "Battle.setName('conf-save')….save(tx) → INSERT; Battle.setSeq(seq).setName('conf-save-2').save(db) → UPDATE by PK; read; delete",
+      "chain": "Battle.setName('conf-save')….insert(tx) → INSERT; Battle.setSeq(seq).setName('conf-save-2').update(db) → UPDATE by PK; read; delete",
       "expect": {
         "result": {
           "after": "conf-save-2",

@@ -529,7 +529,7 @@ impl ServiceModule {
     pub fn if_parent_aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_phone", v.into()); self }
     pub fn if_parent_phone_blind_index_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("phone_blind_index", v.into()); self }
 
-    // ---- insert/update draft (set_<pk> only decides save: INSERT rejects it, UPDATE cannot change it) ----
+    // ---- insert/update draft (set_<pk> is accepted by Insert and cannot be changed by Update) ----
     pub fn set_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("seq", v); self }
     pub fn set_service_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("service_seq", v); self }
     pub fn set_service_seq_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("service_seq", frag, binds); self }

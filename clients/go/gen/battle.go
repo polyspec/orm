@@ -1318,7 +1318,7 @@ func (q *BattleQuery) Req() *orm.Req { return q.q.Req }
 // before Using; the bound ORM executor supplies the schema engine at Using.
 func Battle() *BattleQuery { return &BattleQuery{q: orm.NewQ(eng, "battle")} }
 
-// Using selects the pool or transaction for this query.
+// Using selects the context and pool or transaction for this query.
 func (q *BattleQuery) Using(ex orm.Exec) *BattleQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "battle")
@@ -1355,7 +1355,7 @@ func (q *BattleQuery) RotateAES(keyring orm.AESKeyring) (int, error) {
 	}, keyring)
 }
 
-// Using selects the pool or transaction for this loaded row.
+// Using selects the context and pool or transaction for this loaded row.
 func (r *BattleRow) Using(ex orm.Exec) *BattleRow {
 	r.Binding = orm.NewBindingForExecutor(ex)
 	return r

@@ -23,34 +23,25 @@ expect(Db::rowKey([7], [['column' => 'id', 'index' => 0]]) === 7, 'single intege
 expect(method_exists(\App\Orm\Battle::class, 'get') && method_exists(\App\Orm\Battle::class, 'gets') && method_exists(\App\Orm\Battle::class, 'getCount'), 'canonical terminals are missing');
 expect(!method_exists(\App\Orm\Battle::class, 'one') && !method_exists(\App\Orm\Battle::class, 'all') && !method_exists(\App\Orm\Battle::class, 'count'), 'removed terminal aliases remain public');
 
-$partial = (new ReflectionClass(Q::class))->newInstanceWithoutConstructor();
+$completeInsert = (new ReflectionClass(Q::class))->newInstanceWithoutConstructor();
 $request = (new ReflectionClass(Req::class))->newInstanceWithoutConstructor();
 $request->ir = ['ir_version' => 1, 'schema_hash' => 'test', 'kind' => '', 'entity' => 'membership', 'set' => [
     ['column' => 'tenant_id', 'p' => 0],
-    ['column' => 'name', 'p' => 1],
-]];
-$request->params = [7, 'updated'];
-$request->sig = 'membership';
-$partial->req = $request;
-$fakeDb = (new ReflectionClass(Db::class))->newInstanceWithoutConstructor();
-try {
-    $partial->runSave($fakeDb, ['tenant_id', 'account_id']);
-    throw new RuntimeException('partial composite save was accepted');
-} catch (\Orm\OrmException $error) {
-    expect($error->code_ === \Orm\Code::IR_INVALID, 'partial composite save returned the wrong error');
-}
-expect(count($partial->req->ir['set']) === 2 && !isset($partial->req->ir['where']), 'partial composite save changed the request');
-
-$completeInsert = clone $partial;
-$completeInsert->req = clone $request;
-$completeInsert->req->ir['set'] = [
-    ['column' => 'tenant_id', 'p' => 0],
     ['column' => 'account_id', 'p' => 1],
     ['column' => 'name', 'p' => 2],
-];
-$completeInsert->req->params = [7, 11, 'created'];
+]];
+$request->params = [7, 11, 'created'];
+$request->sig = 'membership';
+$completeInsert->req = clone $request;
 expect($completeInsert->assignedKeyValues(['tenant_id', 'account_id']) === [7, 11], 'composite insert key order differs');
 expect(count($completeInsert->req->ir['set']) === 3 && !isset($completeInsert->req->ir['where']), 'composite insert key inspection changed the request');
+$partial = clone $completeInsert;
+$partial->req = clone $request;
+$partial->req->ir['set'] = [
+    ['column' => 'tenant_id', 'p' => 0],
+    ['column' => 'name', 'p' => 1],
+];
+$partial->req->params = [7, 'created'];
 try {
     $partial->assignedKeyValues(['tenant_id', 'account_id']);
     throw new RuntimeException('partial composite insert was accepted');

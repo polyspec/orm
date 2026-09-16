@@ -300,7 +300,7 @@ func ServiceModule() *ServiceModuleQuery {
 	return &ServiceModuleQuery{q: orm.NewQ(eng, "service_module")}
 }
 
-// Using selects the pool or transaction for this query.
+// Using selects the context and pool or transaction for this query.
 func (q *ServiceModuleQuery) Using(ex orm.Exec) *ServiceModuleQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "service_module")
@@ -312,7 +312,7 @@ func (q *ServiceModuleQuery) Using(ex orm.Exec) *ServiceModuleQuery {
 	return q
 }
 
-// Using selects the pool or transaction for this loaded row.
+// Using selects the context and pool or transaction for this loaded row.
 func (r *ServiceModuleRow) Using(ex orm.Exec) *ServiceModuleRow {
 	r.Binding = orm.NewBindingForExecutor(ex)
 	return r

@@ -30,7 +30,7 @@ type vocabulary struct {
 
 func buildVocabulary(m *schema.Manifest) *vocabulary {
 	v := &vocabulary{heads: map[string]bool{}, terminals: map[string]bool{}, navs: map[string]bool{}, other: map[string]bool{}}
-	for _, t := range []string{"get", "gets", "getCount", "getsCount", "paginate", "insert", "update", "updateOptimistic", "delete", "deleteCascade", "save", "sql", "rawAll"} {
+	for _, t := range []string{"get", "gets", "getCount", "getsCount", "paginate", "insert", "update", "updateOptimistic", "delete", "deleteCascade", "sql", "rawAll"} {
 		v.terminals[t] = true
 	}
 	// Optional one-row terminals have language-specific spellings but the same
