@@ -15,6 +15,24 @@ type Binding struct {
 
 func NewBinding(ctx context.Context, ex Exec) Binding { return Binding{ctx: ctx, ex: ex} }
 
+// NewBindingForExecutor binds a generated query to a database or transaction.
+// The executor owns the context; callers do not pair a context with each
+// query, which prevents context/executor mismatches across multiple DBs.
+func NewBindingForExecutor(ex Exec) Binding {
+	var ctx context.Context
+	switch value := ex.(type) {
+	case *DB:
+		if value != nil {
+			ctx = value.ctx
+		}
+	case *Tx:
+		if value != nil && value.d != nil {
+			ctx = value.d.ctx
+		}
+	}
+	return Binding{ctx: ctx, ex: ex}
+}
+
 func (b Binding) Resolve() (context.Context, Exec, error) {
 	if b.ctx == nil || b.ex == nil {
 		return nil, nil, &ir.Error{Code: CodeConfig, Msg: "bind a context and database or transaction before executing"}

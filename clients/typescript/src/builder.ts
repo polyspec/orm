@@ -72,7 +72,8 @@ export class WhereCore {
   public predicateColumn(column: string, operator: string, reference: ColumnReference): this { this.item({ pred: { column, op: operator, ref: { path: reference.path, column: reference.column } } }); return this; }
   public expression(expression: string, values: readonly Param[] = []): this { this.item({ pred: { expr: expression, ps: values.map(value => this.request.parameter(value)) } }); return this; }
   public match(columns: readonly string[], value: string, boolean = false): this { this.item({ pred: { op: boolean ? 'match_boolean' : 'match', match: [...columns], p: this.request.parameter(value) } }); return this; }
-  public and(callback: (where: WhereCore) => void): this { const group: Group = { items: [] }; this.item({ group }); callback(new WhereCore(this.request, group)); return this; }
+  public and(callback?: (where: WhereCore) => void): this { if (!callback) return this; const group: Group = { items: [] }; this.item({ group }); callback(new WhereCore(this.request, group)); return this; }
+  public andConnector(): this { return this; }
   public navigate(relation: string, callback: (where: WhereCore) => void): this { return this.navigateMode(relation, '', callback); }
   public navigateMode(relation: string, mode: '' | 'exists' | 'not_exists', callback: (where: WhereCore) => void): this { const group: Group = { items: [] }; this.item({ nav: { rel: relation, group, mode } }); callback(new WhereCore(this.request, group)); return this; }
   public navigateCount(relation: string, operator: string, value: Param, callback: (where: WhereCore) => void): this { const group: Group = { items: [] }; const p = this.request.parameter(value); this.item({ nav: { rel: relation, group, mode: 'count', count_op: operator, p } }); callback(new WhereCore(this.request, group)); return this; }
@@ -101,6 +102,7 @@ export class QueryCore {
   public predicateColumn(column: string, operator: string, reference: ColumnReference): this { this.whereCore().predicateColumn(column, operator, reference); return this; }
   public expression(expression: string, values: readonly Param[] = []): this { this.whereCore().expression(expression, values); return this; }
   public or(): this { this.whereCore().or(); return this; }
+  public and(): this { this.whereCore().andConnector(); return this; }
   public match(columns: readonly string[], value: string, boolean = false): this { this.whereCore().match(columns, value, boolean); return this; }
   protected attachJoin(relation: string, child: QueryCore, kind: 'inner' | 'left' = 'inner'): this { this.request.ir.joins ??= []; this.request.ir.joins.push({ rel: relation, kind, query: this.request.attach(child.request) }); return this; }
   protected attachRelation(relation: string, child: QueryCore): this { this.request.ir.relations ??= []; this.request.ir.relations.push({ rel: relation, query: this.request.attach(child.request) }); return this; }
@@ -171,21 +173,6 @@ export class QueryCore {
   protected async streamRows<T extends import('./model.js').Row>(visit: (row: T) => boolean | Promise<boolean>): Promise<import('./index.js').StreamResult> { if(this.request.deferredError)throw this.request.deferredError;const database=this.binding.resolve();return database.stream<T>(await database.plan(this.request.shape('all')),[...this.request.params],visit); }
   protected async insertKey(): Promise<unknown> { return (await this.terminal('insert') as { insertId: unknown }).insertId; }
   protected async writeAffected(kind: 'update'|'delete'): Promise<number> { return (await this.terminal(kind) as { affected: number }).affected; }
-  protected async saveKeys(primaryKeys: readonly string[]): Promise<unknown[]> {
-    const assignments = this.request.ir.set ?? [];
-    const indexes = primaryKeys.map(key => assignments.findIndex(assignment => assignment.column === key));
-    const present = indexes.filter(index => index >= 0).length;
-    if (present === 0) return [await this.insertKey()];
-    if (present !== primaryKeys.length) throw new OrmError('IR_INVALID', 'save requires every primary-key column or none');
-    const selected = indexes.map(index => assignments[index]!);
-    if (selected.some(assignment => assignment.p === undefined)) throw new OrmError('IR_INVALID', 'save primary-key assignments must use values');
-    const removed = new Set(indexes);
-    this.request.ir.set = assignments.filter((_, current) => !removed.has(current));
-    this.request.ir.where ??= { items: [] };
-    selected.forEach((assignment, index) => this.request.ir.where!.items.push({ pred: { column: primaryKeys[index]!, op: 'eq', p: assignment.p } }));
-    await this.writeAffected('update');
-    return selected.map(assignment => this.request.params[assignment.p!]);
-  }
   protected assignedKeyValues(primaryKeys: readonly string[]): unknown[] {
     const assignments = this.request.ir.set ?? [];
     return primaryKeys.map(key => {

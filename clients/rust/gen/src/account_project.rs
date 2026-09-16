@@ -187,11 +187,14 @@ pub struct AccountProjectWhere<'a> { pub(crate) w: W<'a> }
 
 impl<'a> AccountProjectWhere<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
-    pub fn and(mut self, f: impl FnOnce(AccountProjectWhere<'_>) -> AccountProjectWhere<'_>) -> Self { self.w.and_with(|w| { f(AccountProjectWhere { w }); }); self }
+    pub fn and(mut self) -> Self { self.w.and(); self }
+    pub fn and_group(mut self, f: impl FnOnce(AccountProjectWhere<'_>) -> AccountProjectWhere<'_>) -> Self { self.w.and_with(|w| { f(AccountProjectWhere { w }); }); self }
 	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
 
     pub fn account_seq_eq(mut self, v: i64) -> Self { self.w.pred("account_seq", "eq", v); self }
     pub fn account_seq(self, v: i64) -> Self { self.account_seq_eq(v) }
+    pub fn and_account_seq(mut self, v: i64) -> Self { self.w.and(); self.account_seq_eq(v) }
+    pub fn or_account_seq(mut self, v: i64) -> Self { self.w.or(); self.account_seq_eq(v) }
     pub fn account_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("account_seq", "not_eq", v); self }
     pub fn account_seq_gt(mut self, v: i64) -> Self { self.w.pred("account_seq", "gt", v); self }
     pub fn account_seq_gte(mut self, v: i64) -> Self { self.w.pred("account_seq", "gte", v); self }
@@ -210,6 +213,8 @@ impl<'a> AccountProjectWhere<'a> {
     pub fn account_seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("account_seq", "lte_col", r); self }
     pub fn project_seq_eq(mut self, v: i64) -> Self { self.w.pred("project_seq", "eq", v); self }
     pub fn project_seq(self, v: i64) -> Self { self.project_seq_eq(v) }
+    pub fn and_project_seq(mut self, v: i64) -> Self { self.w.and(); self.project_seq_eq(v) }
+    pub fn or_project_seq(mut self, v: i64) -> Self { self.w.or(); self.project_seq_eq(v) }
     pub fn project_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("project_seq", "not_eq", v); self }
     pub fn project_seq_gt(mut self, v: i64) -> Self { self.w.pred("project_seq", "gt", v); self }
     pub fn project_seq_gte(mut self, v: i64) -> Self { self.w.pred("project_seq", "gte", v); self }
@@ -249,7 +254,8 @@ impl AccountProject {
 
     // ---- WHERE ----
     pub fn or(mut self) -> Self { self.q.or(); self }
-    pub fn and(mut self, f: impl FnOnce(AccountProjectWhere<'_>) -> AccountProjectWhere<'_>) -> Self { self.q.w().and_with(|w| { f(AccountProjectWhere { w }); }); self }
+    pub fn and(mut self) -> Self { self.q.w().and(); self }
+    pub fn and_group(mut self, f: impl FnOnce(AccountProjectWhere<'_>) -> AccountProjectWhere<'_>) -> Self { self.q.w().and_with(|w| { f(AccountProjectWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
 
     pub fn account_seq_eq(mut self, v: i64) -> Self { self.q.w().pred("account_seq", "eq", v); self }
@@ -355,7 +361,7 @@ impl AccountProject {
     pub fn drop_child_key(mut self) -> Self { self.q.node().drop_child_key = true; self }
     pub fn no_cascade_delete(mut self) -> Self { self.q.node().no_cascade_delete = true; self }
 
-    // ---- insert/update draft (set_<pk> only decides save: INSERT rejects it, UPDATE cannot change it) ----
+    // ---- insert/update draft (set_<pk> is accepted by Insert and cannot be changed by Update) ----
     pub fn set_account_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("account_seq", v); self }
     pub fn set_account_seq_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("account_seq", frag, binds); self }
     pub fn set_project_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("project_seq", v); self }
@@ -486,19 +492,6 @@ impl AccountProject {
         let mut query = super::account_project::query().using(ex);
         for (column, value) in ["account_seq", "project_seq"].iter().zip(keys) { query.q.w().pred(column, "eq", value); }
         query.get_or_none().await
-    }
-
-    /// With set_account_seq: UPDATE the other set columns WHERE account_seq = that value and re-read the row; otherwise INSERT.
-    pub async fn save(&mut self) -> Result<Option<AccountProjectRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
-        match self.q.take_sets(&["account_seq", "project_seq"])? {
-            Some(keys) => {
-                db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = super::account_project::query().using(ex);
-                for (column, value) in ["account_seq", "project_seq"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.get_or_none().await
-            }
-            None => self.insert().await,
-        }
     }
 
     /// UPDATE set_*/plus_*/minus_*/set_*_expr WHERE the query's predicates; returns the affected count.

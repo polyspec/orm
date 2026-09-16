@@ -37,5 +37,5 @@ func Connect(dsn, schemaPath string, cfg orm.Config) (*orm.DB, error) {
 	e, err := engine.New(m, driver)
 	if err != nil { return nil, err }
 	if err := Init(e); err != nil { return nil, err }
-	return orm.Open(dsn, e, cfg)
+	return orm.OpenWithEngine(dsn, e, cfg)
 }

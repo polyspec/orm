@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:b99227ebf0fab3a75175a99313ab4376c5c08665e4c8c2b60fbeb45482a16e6f",
-    "php": "sha256:8454dc8f459f38704087ec2ab0f9a7c4b71693e7dcbce4f19f227322d35c13a5",
-    "rust": "sha256:8168ae91ef1ff58b8c6c862d0084451b16db724ea793c1aecf120e35a952cbbe",
-    "typescript": "sha256:4b24238d91877305677e8a752108986584cdfc08a54a7618ee28a73b4c84705e"
+    "go": "sha256:bacb703d5d0d5f2e59b26894eca0f5bc6db3238a66da7bef5a09dd5288b37f10",
+    "php": "sha256:8d1b9a9374d6eff04db236be4eb5b2f4e8586d203b8310d118d46afec7f3b3db",
+    "rust": "sha256:d835a063ccfaf55f3bb619a907112c67680d6467741c46716bfbf0bb82f72027",
+    "typescript": "sha256:250124b9a88daa2234af441fdb9a7640dee5dc526121f8bb3aaaa92c134c8ee7"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -67,7 +67,6 @@
         "stream",
         "getCount",
         "insert",
-        "save",
         "update",
         "delete",
         "sql"
@@ -706,36 +705,6 @@
       }
     },
     {
-      "id": "Query.save",
-      "for": "entity",
-      "inputs": [],
-      "output": "Optional<Row>",
-      "errors": [
-        "CONFIG",
-        "IR_INVALID",
-        "driver/codec error"
-      ],
-      "state": "Query retained; write followed by same-executor readback when a key is available",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Save",
-          "signature": "receiver=*{Entity}Query func() (*{Entity}Row, error)"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::Polyspec\\Orm\\Tests\\Model\\{Entity}::save",
-          "signature": "public function save(): ?Polyspec\\Orm\\Tests\\Model\\{Entity}Row"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::save",
-          "signature": "pub async fn save(&mut self) -> Result<Option<{Entity}Row>>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.save",
-          "signature": "public async save(): Promise<{Entity}Row | null>"
-        }
-      }
-    },
-    {
       "id": "Query.update",
       "for": "entity",
       "inputs": [],
@@ -855,8 +824,7 @@
       "id": "Query.using",
       "for": "entity",
       "inputs": [
-        "Executor",
-        "NativeExecutionControl"
+        "Executor"
       ],
       "output": "Query",
       "errors": [],
@@ -864,7 +832,7 @@
       "native": {
         "go": {
           "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Using",
-          "signature": "receiver=*{Entity}Query func(ctx context.Context, ex orm.Exec) *{Entity}Query"
+          "signature": "receiver=*{Entity}Query func(ex orm.Exec) *{Entity}Query"
         },
         "php": {
           "symbol": "clients/php/src/Query.php::Orm\\Q::using",
@@ -1186,8 +1154,7 @@
       "id": "Row.using",
       "for": "entity",
       "inputs": [
-        "Executor",
-        "NativeExecutionControl"
+        "Executor"
       ],
       "output": "Row",
       "errors": [],
@@ -1195,7 +1162,7 @@
       "native": {
         "go": {
           "symbol": "clients/go/gen/{entity}.go::{Entity}Row.Using",
-          "signature": "receiver=*{Entity}Row func(ctx context.Context, ex orm.Exec) *{Entity}Row"
+          "signature": "receiver=*{Entity}Row func(ex orm.Exec) *{Entity}Row"
         },
         "php": {
           "symbol": "clients/php/src/Row.php::Orm\\Row::using",
@@ -2397,11 +2364,13 @@
         "id": "integer",
         "role": "text",
         "sql": "text",
+        "lock": "text",
         "bind_slots": "list<PlanBindSlot>",
         "assemble": "PlanAssemble",
         "parent": "PlanParent"
       },
       "optional": [
+        "lock",
         "assemble",
         "parent"
       ]

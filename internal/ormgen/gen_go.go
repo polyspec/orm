@@ -747,7 +747,7 @@ var {{.Type}}Cols = struct {
 {{- end}}
 }
 
-// {{.Type}}Query builds a statement over {{.Table}}: {{.Type}}() → chain → Using(ctx, db) → terminal().
+// {{.Type}}Query builds a statement over {{.Table}}: {{.Type}}() → chain → Using(db) → terminal().
 type {{.Type}}Query struct {
 	binding orm.Binding
 	q     *orm.Q
@@ -765,10 +765,10 @@ func (q *{{.Type}}Query) Req() *orm.Req { return q.q.Req }
 func {{.Type}}() *{{.Type}}Query { return &{{.Type}}Query{q: orm.NewQ(eng, {{printf "%q" .Name}})} }
 
 // Using selects the context and pool or transaction for this query.
-func (q *{{.Type}}Query) Using(ctx context.Context, ex orm.Exec) *{{.Type}}Query {
+func (q *{{.Type}}Query) Using(ex orm.Exec) *{{.Type}}Query {
 	if q.q == nil && ex != nil { q.q = orm.NewQ(eng, {{printf "%q" .Name}}) }
 	if q.q != nil && ex != nil && ex.DB() != nil { q.q.BindEngine(ex.DB().EngineFor(SchemaHash)) }
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
@@ -795,13 +795,13 @@ func (q *{{.Type}}Query) RotateAES(keyring orm.AESKeyring) (int, error) {
 {{- end}}
 
 // Using selects the context and pool or transaction for this loaded row.
-func (r *{{.Type}}Row) Using(ctx context.Context, ex orm.Exec) *{{.Type}}Row { r.Binding = orm.NewBinding(ctx, ex); return r }
+func (r *{{.Type}}Row) Using(ex orm.Exec) *{{.Type}}Row { r.Binding = orm.NewBindingForExecutor(ex); return r }
 
 // {{.Type}}Where edits one WHERE/ON group of {{.Table}}.
 type {{.Type}}Where struct{ w *orm.W }
 
-func (w *{{.Type}}Where) Or() *{{.Type}}Where { w.w.Or(); return w }
-func (w *{{.Type}}Where) And(fn func(*{{.Type}}Where)) *{{.Type}}Where { w.w.And(func(x *orm.W) { fn(&{{.Type}}Where{w: x}) }); return w }
+func (w *{{.Type}}Where) Or(fn ...func(*{{.Type}}Where)) *{{.Type}}Where { if len(fn) == 0 { w.w.Or(); return w }; w.w.Or(func(x *orm.W) { fn[0](&{{.Type}}Where{w: x}) }); return w }
+func (w *{{.Type}}Where) And(fn ...func(*{{.Type}}Where)) *{{.Type}}Where { if len(fn) == 0 { w.w.And(); return w }; w.w.And(func(x *orm.W) { fn[0](&{{.Type}}Where{w: x}) }); return w }
 func (w *{{.Type}}Where) Expr(frag string, binds ...any) *{{.Type}}Where { w.w.Expr(frag, binds...); return w }
 {{- range .Rels}}
 func (w *{{$.Type}}Where) {{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.Nav({{printf "%q" .Name}}, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
@@ -821,6 +821,10 @@ func (q *{{$.Type}}Query) {{$c.Field}}{{.Suffix}}(v {{$c.Type}}) *{{$.Type}}Quer
 {{- if eq .Op "eq"}}
 func (w *{{$.Type}}Where) {{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Where { return w.{{$c.Field}}Eq(v) }
 func (q *{{$.Type}}Query) {{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Query { return q.{{$c.Field}}Eq(v) }
+func (w *{{$.Type}}Where) And{{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Where { w.w.And(); return w.{{$c.Field}}Eq(v) }
+func (q *{{$.Type}}Query) And{{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Query { q.q.W().And(); return q.{{$c.Field}}Eq(v) }
+func (w *{{$.Type}}Where) Or{{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Where { w.w.Or(); return w.{{$c.Field}}Eq(v) }
+func (q *{{$.Type}}Query) Or{{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Query { q.q.Or(); return q.{{$c.Field}}Eq(v) }
 {{- end}}
 {{- else if eq .Kind "list"}}
 func (w *{{$.Type}}Where) {{$c.Field}}{{.Suffix}}(vs []{{$c.Type}}) *{{$.Type}}Where { w.w.PredList({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, orm.Anys(vs)); return w }
@@ -850,9 +854,10 @@ func (w *{{$.Type}}Where) {{.Method}}({{predParams .Arity}}) *{{$.Type}}Where { 
 func (q *{{$.Type}}Query) {{.Method}}({{predParams .Arity}}) *{{$.Type}}Query { q.q.W().Expr({{printf "%q" .Expr}}{{predArgs .Arity}}); return q }
 {{- end}}
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *{{.Type}}Query) Or() *{{.Type}}Query { q.q.Or(); return q }
-func (q *{{.Type}}Query) And(fn func(*{{.Type}}Where)) *{{.Type}}Query { q.q.W().And(func(x *orm.W) { fn(&{{.Type}}Where{w: x}) }); return q }
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *{{.Type}}Query) Or(fn ...func(*{{.Type}}Where)) *{{.Type}}Query { if len(fn) == 0 { q.q.Or(); return q }; q.q.W().Or(func(x *orm.W) { fn[0](&{{.Type}}Where{w: x}) }); return q }
+func (q *{{.Type}}Query) And(fn ...func(*{{.Type}}Where)) *{{.Type}}Query { if len(fn) == 0 { q.q.W().And(); return q }; q.q.W().And(func(x *orm.W) { fn[0](&{{.Type}}Where{w: x}) }); return q }
 func (q *{{.Type}}Query) Expr(frag string, binds ...any) *{{.Type}}Query { q.q.W().Expr(frag, binds...); return q }
 {{- if .Scope}}
 func (q *{{.Type}}Query) Scope(v {{.ScopeType}}) *{{.Type}}Query { q.q.Scope(v); return q }
@@ -1178,26 +1183,11 @@ func (q *{{.Type}}Query) Insert() (*{{.Type}}Row, error) {
 		return nil, err
 	}
 {{- if .Auto}}
-	return {{.Type}}().Using(ctx, ex).{{pascal .PK}}Eq({{.PKType}}(id)).Get()
+	return {{.Type}}().Using(ex).{{pascal .PK}}Eq({{.PKType}}(id)).Get()
 {{- else}}
 	_ = id
-	return {{.Type}}().Using(ctx, ex){{range $i, $c := .PKCols}}.{{$c.Field}}Eq(keys[{{$i}}].({{$c.Type}})){{end}}.Get()
+	return {{.Type}}().Using(ex){{range $i, $c := .PKCols}}.{{$c.Field}}Eq(keys[{{$i}}].({{$c.Type}})){{end}}.Get()
 {{- end}}
-}
-
-// Save updates when every primary-key column was assigned and inserts when none was assigned.
-func (q *{{.Type}}Query) Save() (*{{.Type}}Row, error) {
-	ctx, ex, err := q.binding.Resolve(); if err != nil { return nil, err }
-	keys, ok, err := q.q.MoveKeysToWhere([]string{ {{quoteList .PKNames}} })
-	if err != nil { return nil, err }
-	if !ok {
-		return q.Insert()
-	}
-	q.q.Req.IR.Kind = "update"
-	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
-		return nil, err
-	}
-	return {{.Type}}().Using(ctx, ex){{range $i, $c := .PKCols}}.{{$c.Field}}Eq(keys[{{$i}}].({{$c.Type}})){{end}}.Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
@@ -1299,7 +1289,7 @@ func Connect(dsn, schemaPath string, cfg orm.Config) (*orm.DB, error) {
 	e, err := engine.New(m, driver)
 	if err != nil { return nil, err }
 	if err := Init(e); err != nil { return nil, err }
-	return orm.Open(dsn, e, cfg)
+	return orm.OpenWithEngine(dsn, e, cfg)
 }
 `
 
