@@ -116,6 +116,13 @@ func TestBuildUUIDColumn(t *testing.T) {
 	}
 }
 
+func TestBuildAllowsNonSeqPrimaryKey(t *testing.T) {
+	m := mustBuild(t, "erDiagram\n  account {\n    varchar(36) account_uuid PK\n    varchar(191) name\n  }\n")
+	if len(m.Entities["account"].PK) != 1 || m.Entities["account"].PK[0] != "account_uuid" {
+		t.Fatalf("non-seq primary key was not preserved: %#v", m.Entities["account"].PK)
+	}
+}
+
 func TestSoftDeleteDirectiveStoresValidatedColumn(t *testing.T) {
 	m := mustBuild(t, "erDiagram\n account {\n bigint id PK\n datetime deleted_at \"?\"\n }\n %% soft_delete account deleted_at\n")
 	if got := m.Entities["account"].SoftDelete; got != "deleted_at" {
@@ -313,6 +320,9 @@ func TestBuildErrors(t *testing.T) {
 		"erDiagram\n a { bigint seq PK \"-> zz.seq\" }":                                                                 "target does not exist",
 		"erDiagram\n a { bigint seq PK }\n %% index a (nope)":                                                           "unknown column nope",
 		"erDiagram\n a { bigint seq PK\n varchar(3) b_seq FK }\n b { bigint seq PK }\n b ||--o{ a : \"b_seq (or / x)\"": "reserved DSL word",
+		"erDiagram\n order { bigint seq PK }":                                                                           "entity name is a reserved ORM/SQL word",
+		"erDiagram\n a { bigint seq PK\n varchar(32) match }":                                                           "reserved ORM/SQL word",
+		"erDiagram\n select { bigint seq PK }":                                                                          "entity name is a reserved ORM/SQL word",
 		"erDiagram\n a { bigint seq PK\n bigint item FK }\n b { bigint seq PK }\n b ||--o{ a : \"item (item / x)\"":     "collides with a column",
 		"erDiagram\n a { whatever seq PK }":                                                                             "unsupported type",
 		"erDiagram\n a { bigint seq PK\n varchar name }":                                                                "varchar requires a positive length",
