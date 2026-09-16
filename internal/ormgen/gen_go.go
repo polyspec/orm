@@ -1327,3 +1327,6 @@ func genGo(m *schema.Manifest, outDir string) error {
 	}
 	return nil
 }
+
+// GenerateGo is the internal implementation used by the public generator API.
+func GenerateGo(m *schema.Manifest, outDir string) error { return genGo(m, outDir) }

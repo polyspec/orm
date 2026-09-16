@@ -1,5 +1,7 @@
 # Changelog
 
+- Expose the canonical schema client generator through `github.com/polyspec/orm/generator` for Go, PHP, Rust and TypeScript.
+
 - Specify `Tx.InstallSchema(context.Context, []byte) error` as the ORM-owned canonical schema installation call; it takes no SQL or dialect-specific DDL.
 
 - Go caller-owned transactions expose `Tx.Driver()` for canonical adapter selection while keeping query, mutation, and transaction APIs identical across MySQL, PostgreSQL, and SQLite.
