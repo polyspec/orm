@@ -5,7 +5,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -19,8 +18,6 @@ import (
 func main() {
 	db, err := gen.Connect(dsn(), os.Args[1], orm.Config{AESKey: "bench-salt"})
 	check(err)
-	ctx := context.Background()
-
 	// A join carrying its own ON and WHERE, a root group mixing a predicate with
 	// navigation into the joined entity, and three levels of relations with options.
 	rows, err := gen.Battle().
