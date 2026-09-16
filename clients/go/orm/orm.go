@@ -437,6 +437,9 @@ type Tx struct {
 	tx           *sql.Tx
 	finished     atomic.Bool
 	auditContext bool
+	readOnly     bool
+	isolation    IsolationLevel
+	sqliteMode   bool
 }
 
 // InstallDDL executes schema statements in the caller-owned transaction. DDL
@@ -529,7 +532,13 @@ func (t *Tx) ReadOnly(ctx context.Context) (bool, error) {
 	if t == nil || t.finished.Load() {
 		return false, &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
 	}
-	if t.d == nil || t.d.driver != "postgres" {
+	if t.d == nil {
+		return false, &ir.Error{Code: CodeConfig, Msg: "database is required"}
+	}
+	if t.d.driver == "sqlite" {
+		return t.readOnly, nil
+	}
+	if t.d.driver != "postgres" {
 		return false, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction access mode is supported only by postgres"}
 	}
 	stmt, err := t.stmt(ctx, "SELECT current_setting('transaction_read_only')::boolean")
@@ -549,7 +558,24 @@ func (t *Tx) Isolation(ctx context.Context) (string, error) {
 	if t == nil || t.finished.Load() {
 		return "", &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
 	}
-	if t.d == nil || t.d.driver != "postgres" {
+	if t.d == nil {
+		return "", &ir.Error{Code: CodeConfig, Msg: "database is required"}
+	}
+	if t.d.driver == "sqlite" {
+		switch t.isolation {
+		case IsolationReadUncommitted:
+			return "read uncommitted", nil
+		case IsolationReadCommitted:
+			return "read committed", nil
+		case IsolationRepeatableRead:
+			return "repeatable read", nil
+		case IsolationSerializable, IsolationDefault:
+			return "serializable", nil
+		default:
+			return "", &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("unsupported transaction isolation %q", t.isolation)}
+		}
+	}
+	if t.d.driver != "postgres" {
 		return "", &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction isolation is supported only by postgres"}
 	}
 	stmt, err := t.stmt(ctx, "SELECT current_setting('transaction_isolation')")
@@ -617,7 +643,7 @@ func (t *Tx) DatabaseEmpty(ctx context.Context) (bool, error) {
 	var empty bool
 	switch t.d.driver {
 	case "sqlite":
-		stmt, err := t.stmt(ctx, "SELECT NOT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name <> 'sqlite_sequence')")
+		stmt, err := t.stmt(ctx, "SELECT NOT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name NOT IN ('sqlite_sequence','orm__row_lock'))")
 		if err != nil {
 			return false, err
 		}
@@ -1023,7 +1049,14 @@ func Begin(ctx context.Context, d *DB, options TransactionOptions) (*Tx, error) 
 			return nil, mapDriverErr(err)
 		}
 	}
-	return &Tx{d: d, tx: native}, nil
+	bound := &Tx{d: d, tx: native, readOnly: options.ReadOnly, isolation: options.Isolation}
+	if d.driver == "sqlite" {
+		if err := bound.beginSQLiteMode(ctx); err != nil {
+			_ = native.Rollback()
+			return nil, err
+		}
+	}
+	return bound, nil
 }
 
 // Commit ends a caller-owned transaction and invalidates its ORM binding.
@@ -1036,17 +1069,62 @@ func (t *Tx) Commit(ctx context.Context) error {
 			return mapDriverErr(err)
 		}
 	}
+	if err := t.finishSQLiteMode(ctx); err != nil {
+		_ = t.tx.Rollback()
+		t.finished.Store(true)
+		return err
+	}
 	err := mapDriverErr(t.tx.Commit())
 	t.finished.Store(true)
 	return err
 }
 
 // Rollback ends a caller-owned transaction and invalidates its ORM binding.
-func (t *Tx) Rollback(_ context.Context) error {
+func (t *Tx) Rollback(ctx context.Context) error {
 	if t == nil || t.finished.Swap(true) {
 		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
 	}
+	if err := t.finishSQLiteMode(ctx); err != nil {
+		_ = t.tx.Rollback()
+		return err
+	}
 	return mapDriverErr(t.tx.Rollback())
+}
+
+func (t *Tx) beginSQLiteMode(ctx context.Context) error {
+	if t == nil || t.d == nil || t.d.driver != "sqlite" || t.tx == nil {
+		return nil
+	}
+	if t.isolation == IsolationReadUncommitted {
+		if _, err := t.tx.ExecContext(ctx, "PRAGMA read_uncommitted = 1"); err != nil {
+			return mapDriverErr(err)
+		}
+	}
+	if t.readOnly {
+		if _, err := t.tx.ExecContext(ctx, "PRAGMA query_only = 1"); err != nil {
+			return mapDriverErr(err)
+		}
+	}
+	t.sqliteMode = t.isolation == IsolationReadUncommitted || t.readOnly
+	return nil
+}
+
+func (t *Tx) finishSQLiteMode(ctx context.Context) error {
+	if t == nil || !t.sqliteMode || t.tx == nil {
+		return nil
+	}
+	if t.readOnly {
+		if _, err := t.tx.ExecContext(ctx, "PRAGMA query_only = 0"); err != nil {
+			return mapDriverErr(err)
+		}
+	}
+	if t.isolation == IsolationReadUncommitted {
+		if _, err := t.tx.ExecContext(ctx, "PRAGMA read_uncommitted = 0"); err != nil {
+			return mapDriverErr(err)
+		}
+	}
+	t.sqliteMode = false
+	return nil
 }
 
 // BackendPID returns the PostgreSQL backend process ID for this transaction.
@@ -1111,7 +1189,13 @@ func runTx[T any](ctx context.Context, d *DB, options TransactionOptions, fn fun
 			return v, mapDriverErr(err)
 		}
 	}
-	ex := &Tx{d: d, tx: tx}
+	ex := &Tx{d: d, tx: tx, readOnly: options.ReadOnly, isolation: options.Isolation}
+	if d.driver == "sqlite" {
+		if err := ex.beginSQLiteMode(ctx); err != nil {
+			tx.Rollback()
+			return v, err
+		}
+	}
 	defer ex.finished.Store(true)
 	defer func() {
 		if r := recover(); r != nil {
@@ -1137,9 +1221,6 @@ func sqlTransactionOptions(driver string, options TransactionOptions) (*sql.TxOp
 	if options.TimeoutMS > 0 && driver != "postgres" {
 		return nil, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction timeout_ms is supported only by postgres"}
 	}
-	if driver == "sqlite" && (options.Isolation != IsolationDefault || options.ReadOnly) {
-		return nil, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "sqlite does not support transaction isolation or read-only mode"}
-	}
 	level := sql.LevelDefault
 	switch options.Isolation {
 	case IsolationDefault:
@@ -1153,6 +1234,11 @@ func sqlTransactionOptions(driver string, options TransactionOptions) (*sql.TxOp
 		level = sql.LevelSerializable
 	default:
 		return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("unsupported transaction isolation %q", options.Isolation)}
+	}
+	if driver == "sqlite" {
+		// SQLite's driver rejects database/sql isolation and read-only flags.
+		// The ORM applies both modes on the transaction's connection instead.
+		return &sql.TxOptions{}, nil
 	}
 	return &sql.TxOptions{Isolation: level, ReadOnly: options.ReadOnly}, nil
 }

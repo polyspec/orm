@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/polyspec/orm/engine/ir"
 	_ "modernc.org/sqlite"
@@ -166,17 +167,65 @@ func TestSavepointRejectsIdentifierInjection(t *testing.T) {
 	}
 }
 
-func TestTransactionOptionsRejectUnsupportedSQLiteModes(t *testing.T) {
+func TestTransactionOptionsPreservePortableSQLiteModes(t *testing.T) {
+	started := time.Now()
+	t.Logf("RUN TestTransactionOptionsPreservePortableSQLiteModes")
+	t.Cleanup(func() {
+		result := "PASS"
+		if t.Failed() {
+			result = "FAIL"
+		}
+		t.Logf("%s TestTransactionOptionsPreservePortableSQLiteModes elapsed=%s", result, time.Since(started).Round(time.Millisecond))
+	})
 	for _, options := range []TransactionOptions{
 		{Isolation: IsolationSerializable},
-		{ReadOnly: true},
-		{TimeoutMS: 1},
+		{Isolation: IsolationReadCommitted, ReadOnly: true},
+		{Isolation: IsolationReadUncommitted},
 	} {
-		if _, err := sqlTransactionOptions("sqlite", options); err == nil {
-			t.Fatalf("sqlite accepted unsupported transaction options: %+v", options)
-		} else if e, ok := err.(*ir.Error); !ok || e.Code != CodeCapabilityUnsupported {
-			t.Fatalf("sqlite returned the wrong capability error: %v", err)
+		if _, err := sqlTransactionOptions("sqlite", options); err != nil {
+			t.Fatalf("sqlite rejected portable transaction options %+v: %v", options, err)
 		}
+	}
+	if _, err := sqlTransactionOptions("sqlite", TransactionOptions{TimeoutMS: 1}); err == nil {
+		t.Fatal("sqlite accepted unsupported transaction timeout")
+	} else if e, ok := err.(*ir.Error); !ok || e.Code != CodeCapabilityUnsupported {
+		t.Fatalf("sqlite returned the wrong capability error: %v", err)
+	}
+	sqlDB, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sqlDB.Close()
+	sqlDB.SetMaxOpenConns(1)
+	if _, err = sqlDB.Exec("CREATE TABLE probe (id INTEGER PRIMARY KEY)"); err != nil {
+		t.Fatal(err)
+	}
+	db := &DB{SQL: sqlDB, driver: "sqlite", stmts: map[string]*sql.Stmt{}}
+	tx, err := Begin(t.Context(), db, TransactionOptions{Isolation: IsolationReadCommitted, ReadOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if readOnly, err := tx.ReadOnly(t.Context()); err != nil || !readOnly {
+		t.Fatalf("SQLite ReadOnly() = %v, %v", readOnly, err)
+	}
+	if isolation, err := tx.Isolation(t.Context()); err != nil || isolation != "read committed" {
+		t.Fatalf("SQLite Isolation() = %q, %v", isolation, err)
+	}
+	if _, err = tx.Exec(t.Context(), "INSERT INTO probe (id) VALUES (?)", 1); err == nil {
+		t.Fatal("SQLite read-only transaction accepted a write")
+	}
+	if err = tx.Rollback(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	tx, err = Begin(t.Context(), db, TransactionOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = tx.Exec(t.Context(), "INSERT INTO probe (id) VALUES (?)", 1); err != nil {
+		t.Fatal("SQLite mode was not restored after read-only rollback", err)
+	}
+	if err = tx.Commit(t.Context()); err != nil {
+		t.Fatal(err)
 	}
 	if options, err := sqlTransactionOptions("postgres", TransactionOptions{Isolation: IsolationSerializable, ReadOnly: true}); err != nil || options.Isolation != sql.LevelSerializable || !options.ReadOnly {
 		t.Fatalf("postgres transaction options were not translated: options=%+v err=%v", options, err)
