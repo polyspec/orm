@@ -220,7 +220,7 @@ var AccountCols = struct {
 	Name: orm.ColRef{Column: "name"},
 }
 
-// AccountQuery builds a statement over account: Account() → chain → Using(ctx, db) → terminal().
+// AccountQuery builds a statement over account: Account() → chain → Using(db) → terminal().
 type AccountQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -237,21 +237,21 @@ func (q *AccountQuery) Req() *orm.Req { return q.q.Req }
 // before Using; the bound ORM executor supplies the schema engine at Using.
 func Account() *AccountQuery { return &AccountQuery{q: orm.NewQ(eng, "account")} }
 
-// Using selects the context and pool or transaction for this query.
-func (q *AccountQuery) Using(ctx context.Context, ex orm.Exec) *AccountQuery {
+// Using selects the pool or transaction for this query.
+func (q *AccountQuery) Using(ex orm.Exec) *AccountQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "account")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
-// Using selects the context and pool or transaction for this loaded row.
-func (r *AccountRow) Using(ctx context.Context, ex orm.Exec) *AccountRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+// Using selects the pool or transaction for this loaded row.
+func (r *AccountRow) Using(ex orm.Exec) *AccountRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
@@ -1100,7 +1100,7 @@ func (q *AccountQuery) Insert() (*AccountRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Account().Using(ctx, ex).SeqEq(int64(id)).Get()
+	return Account().Using(ex).SeqEq(int64(id)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

@@ -146,8 +146,8 @@ fulltext: [[name, description]]
 | `addAllColumns() removeAllColumns() addColumn<Col>() removeColumn<Col>() addColumnRaw(alias, fmt, cols)` | 동일 | 동일 | 동일 |
 | `set<Col>(v)` `setRaw<Col>(expr, binds)` `plus<Col>(n)` `minus<Col>(n)` | 동일 | 동일 | 동일 |
 | `debug()` · `clone` · `sql(db)` | `->debug()`, `clone $q` | `.Debug()`, `q.Clone()` | `.debug()`, `q.clone()` |
-| **터미널** `get gets count sum avg create update save delete paginate` — 실행기를 인자로 | `->using($db)->gets()` | `.Using(ctx, db).Gets()` | `.using(&db).gets().await?` |
-| `getBy<PK\|unique>(…)`, `getsBy<Col>(…)`, `getCountBy<Col>(…)` 생성 | `->using($db)->getBySeq($seq)` / `->using($db)->getsByServiceSeq($seq)` | `.Using(ctx, db).GetBySeq(seq)` / `.Using(ctx, db).GetsByServiceSeq(seq)` | `.using(&db).get_by_seq(seq).await?` / `.using(&db).gets_by_service_seq(seq).await?` |
+| **터미널** `get gets count sum avg create update save delete paginate` — 실행기를 인자로 | `->using($db)->gets()` | `.Using(db).Gets()` | `.using(&db).gets().await?` |
+| `getBy<PK\|unique>(…)`, `getsBy<Col>(…)`, `getCountBy<Col>(…)` 생성 | `->using($db)->getBySeq($seq)` / `->using($db)->getsByServiceSeq($seq)` | `.Using(db).GetBySeq(seq)` / `.Using(db).GetsByServiceSeq(seq)` | `.using(&db).get_by_seq(seq).await?` / `.using(&db).gets_by_service_seq(seq).await?` |
 | 트랜잭션 | `$db->transaction(function ($tx) {…})` | `orm.Transaction(ctx, db, func(tx *orm.Tx) (T, error) {…})` | `db.transaction(\|tx\| async move {…}).await?` (`Tx: Clone`) |
 | 결과 스칼라 | `$m->getSeq()`, `$m->getName($default)`, `$m['name']` | `m.Seq` / nil-safe `m.GetSeq()` | `m.seq` (nullable은 `Option`) |
 | 결과 관계 | `$m->getUser()`→null, `$m->getItems([])` | `m.GetUser()`→nil, `m.GetItems()`→빈 컬렉션 | `m.user() -> Option&lt;&User&gt;`, `m.items() -> &Items` |
@@ -173,7 +173,7 @@ products, err := m.Product().
     LeftJoinProductBrandSeqWithSeq(m.ProductBrand().Alias("ga2").FulltextBooleanNameWithDescription(kw)).
     ServiceSeq(serviceSeq).IsClose(0).
     And(func(q *m.Product) { q.FulltextBooleanNameWithShortDescriptionWithContent(kw).OrJoin("ga2") }).
-    GroupBySeq().Limit(0, 100).Using(ctx, slave1).Gets()
+    GroupBySeq().Limit(0, 100).Using(slave1).Gets()
 ```
 ```rust
 let products = product::query()

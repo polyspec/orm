@@ -20,7 +20,7 @@ $battle = Battle::query()->using($db);
 $count = $battle->getCountByServiceSeq(7);
 ```
 ```go
-battle := gen.Battle().Using(ctx, db)
+battle := gen.Battle().Using(db)
 count, err := battle.GetCountByServiceSeq(7)
 ```
 ```rust
@@ -50,9 +50,9 @@ $next = Battle::query()->orderBySeqAsc()->using($db)->getsAfter($first->nextCurs
 $previous = Battle::query()->orderBySeqAsc()->using($db)->getsBefore($next->previousCursor, 20);
 ```
 ```go
-first, err := gen.Battle().OrderBySeqAsc().Using(ctx, db).GetsAfter("", 20)
-next, err := gen.Battle().OrderBySeqAsc().Using(ctx, db).GetsAfter(first.NextCursor, 20)
-previous, err := gen.Battle().OrderBySeqAsc().Using(ctx, db).GetsBefore(next.PreviousCursor, 20)
+first, err := gen.Battle().OrderBySeqAsc().Using(db).GetsAfter("", 20)
+next, err := gen.Battle().OrderBySeqAsc().Using(db).GetsAfter(first.NextCursor, 20)
+previous, err := gen.Battle().OrderBySeqAsc().Using(db).GetsBefore(next.PreviousCursor, 20)
 ```
 ```rust
 let first = battle::query().order_by_seq_asc().using(&db).gets_after("", 20).await?;
@@ -166,7 +166,7 @@ $battles = Battle::query()
 ## 4. 예: 관계와 부모별 제한
 
 ```go
-battles, err := gen.Battle().Using(ctx, db).
+battles, err := gen.Battle().Using(db).
     ServiceSeq(7).IsClose(false).
     WithUser(gen.User().OrderBySeqDesc()).
     LimitPerParent(20).Gets()
