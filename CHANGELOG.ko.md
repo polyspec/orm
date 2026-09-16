@@ -1,5 +1,7 @@
 # 변경 이력
 
+- Go 의존성 `github.com/polyspec/ordered-json/go`를 ordered-json 커밋 `40c9f98`의 `v0.0.0-20260916062150-40c9f98cde3a`로 갱신했다. 이전 버전은 `v0.0.0-20260915123419-26c2aebc9789`이며 ORM 버전은 `0.0.1`로 유지한다.
+
 - 제한된 PostgreSQL integration orchestration을 위한 ORM 소유 `DB.BackendWaitingForLock` inspection API를 추가했다. PostgreSQL이 아닌 adapter는 driver-specific application 경로를 노출하지 않고 `false`를 반환한다.
 
 - `github.com/polyspec/orm/generator`를 통해 Go·PHP·Rust·TypeScript용 정본 schema client 생성기를 공개한다.
