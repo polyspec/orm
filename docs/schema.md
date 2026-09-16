@@ -209,3 +209,7 @@ tables, `GrantTablePrivileges` and `RevokeTablePrivilege` for explicit role
 boundaries, `InspectTablePrivileges` for verification, and `LockTable` for
 transaction-scoped lock tests. Callers do not construct these SQL statements
 or access `database/sql` directly.
+
+### Canonical schema installation
+
+The Go transaction adapter must accept the canonical `schema.json` manifest through `Tx.InstallSchema(context.Context, []byte) error`. The bound transaction selects its own dialect, renders the manifest through the ORM schema renderer, and executes the apply-safe statements in the same caller-owned transaction. Consumers do not provide SQL, DDL strings, dialect branches, or driver transactions. The manifest is the only schema input for this boundary.
