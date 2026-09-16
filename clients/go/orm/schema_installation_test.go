@@ -59,6 +59,9 @@ func TestInstallSchemaUsesTheBoundSQLiteDialect(t *testing.T) {
 	if err := tx.InstallSchema(context.Background(), manifestJSON); err != nil {
 		t.Fatal(err)
 	}
+	if db.EngineFor(manifest.SchemaHash) == nil {
+		t.Fatalf("installed schema %s was not registered with the ORM database", manifest.SchemaHash)
+	}
 	installed, err := tx.SchemaInstalled(context.Background(), "sample", "counter")
 	if err != nil {
 		t.Fatal(err)
