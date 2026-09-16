@@ -275,7 +275,7 @@ func CompositeAccount() *CompositeAccountQuery {
 	return &CompositeAccountQuery{q: orm.NewQ(eng, "composite_account")}
 }
 
-// Using selects the pool or transaction for this query.
+// Using selects the context and pool or transaction for this query.
 func (q *CompositeAccountQuery) Using(ex orm.Exec) *CompositeAccountQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "composite_account")
@@ -287,7 +287,7 @@ func (q *CompositeAccountQuery) Using(ex orm.Exec) *CompositeAccountQuery {
 	return q
 }
 
-// Using selects the pool or transaction for this loaded row.
+// Using selects the context and pool or transaction for this loaded row.
 func (r *CompositeAccountRow) Using(ex orm.Exec) *CompositeAccountRow {
 	r.Binding = orm.NewBindingForExecutor(ex)
 	return r

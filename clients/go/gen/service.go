@@ -293,7 +293,7 @@ func (q *ServiceQuery) Req() *orm.Req { return q.q.Req }
 // before Using; the bound ORM executor supplies the schema engine at Using.
 func Service() *ServiceQuery { return &ServiceQuery{q: orm.NewQ(eng, "service")} }
 
-// Using selects the pool or transaction for this query.
+// Using selects the context and pool or transaction for this query.
 func (q *ServiceQuery) Using(ex orm.Exec) *ServiceQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "service")
@@ -305,7 +305,7 @@ func (q *ServiceQuery) Using(ex orm.Exec) *ServiceQuery {
 	return q
 }
 
-// Using selects the pool or transaction for this loaded row.
+// Using selects the context and pool or transaction for this loaded row.
 func (r *ServiceRow) Using(ex orm.Exec) *ServiceRow {
 	r.Binding = orm.NewBindingForExecutor(ex)
 	return r

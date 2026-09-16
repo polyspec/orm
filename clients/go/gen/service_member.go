@@ -332,7 +332,7 @@ func ServiceMember() *ServiceMemberQuery {
 	return &ServiceMemberQuery{q: orm.NewQ(eng, "service_member")}
 }
 
-// Using selects the pool or transaction for this query.
+// Using selects the context and pool or transaction for this query.
 func (q *ServiceMemberQuery) Using(ex orm.Exec) *ServiceMemberQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "service_member")
@@ -344,7 +344,7 @@ func (q *ServiceMemberQuery) Using(ex orm.Exec) *ServiceMemberQuery {
 	return q
 }
 
-// Using selects the pool or transaction for this loaded row.
+// Using selects the context and pool or transaction for this loaded row.
 func (r *ServiceMemberRow) Using(ex orm.Exec) *ServiceMemberRow {
 	r.Binding = orm.NewBindingForExecutor(ex)
 	return r

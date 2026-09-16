@@ -249,7 +249,7 @@ func (q *SoftRecordQuery) Req() *orm.Req { return q.q.Req }
 // before Using; the bound ORM executor supplies the schema engine at Using.
 func SoftRecord() *SoftRecordQuery { return &SoftRecordQuery{q: orm.NewQ(eng, "soft_record")} }
 
-// Using selects the pool or transaction for this query.
+// Using selects the context and pool or transaction for this query.
 func (q *SoftRecordQuery) Using(ex orm.Exec) *SoftRecordQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "soft_record")
@@ -261,7 +261,7 @@ func (q *SoftRecordQuery) Using(ex orm.Exec) *SoftRecordQuery {
 	return q
 }
 
-// Using selects the pool or transaction for this loaded row.
+// Using selects the context and pool or transaction for this loaded row.
 func (r *SoftRecordRow) Using(ex orm.Exec) *SoftRecordRow {
 	r.Binding = orm.NewBindingForExecutor(ex)
 	return r

@@ -409,7 +409,7 @@ impl Account {
     pub fn if_parent_seq_eq(mut self, v: i64) -> Self { self.q.if_parent("seq", v); self }
     pub fn if_parent_name_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("name", v.into()); self }
 
-    // ---- insert/update draft (set_<pk> only decides save: INSERT rejects it, UPDATE cannot change it) ----
+    // ---- insert/update draft (set_<pk> is accepted by Insert and cannot be changed by Update) ----
     pub fn set_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("seq", v); self }
     pub fn set_name(mut self, v: impl Into<String>) -> Self { let v: String = v.into(); self.q.set("name", v); self }
     pub fn set_name_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("name", frag, binds); self }

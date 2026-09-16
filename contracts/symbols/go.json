@@ -5028,8 +5028,6 @@
   "clients/go/orm/builder.go::Q.Keyset": "receiver=*Q func(direction, cursor string, per int, primaryKeys []string) error",
   "clients/go/orm/builder.go::Q.Lock": "receiver=*Q func(mode string)",
   "clients/go/orm/builder.go::Q.Minus": "receiver=*Q func(col string, v any)",
-  "clients/go/orm/builder.go::Q.MoveKeysToWhere": "receiver=*Q func(keys []string) (values []any, found bool, err error)",
-  "clients/go/orm/builder.go::Q.MovePKToWhere": "receiver=*Q func(pk string) (v any, ok bool)",
   "clients/go/orm/builder.go::Q.OnDuplicate": "receiver=*Q func(col string, v any)",
   "clients/go/orm/builder.go::Q.OnDuplicateExpr": "receiver=*Q func(col, frag string, binds ...any)",
   "clients/go/orm/builder.go::Q.OnDuplicateMinus": "receiver=*Q func(col string, v any)",

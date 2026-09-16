@@ -6012,8 +6012,6 @@
   "clients/rust/orm/src/builder.rs::Q::set_expr": "pub fn set_expr (\u0026 mut self , col : \u0026 str , frag : \u0026 str , binds : Vec \u003c Param \u003e)",
   "clients/rust/orm/src/builder.rs::Q::set_link": "pub fn set_link (\u0026 mut self , left : \u0026 str , right : \u0026 str)",
   "clients/rust/orm/src/builder.rs::Q::set_values": "pub fn set_values (\u0026 self , keys : \u0026 [\u0026 str]) -\u003e crate :: Result \u003c Vec \u003c Param \u003e \u003e",
-  "clients/rust/orm/src/builder.rs::Q::take_set": "pub fn take_set (\u0026 mut self , col : \u0026 str) -\u003e Option \u003c Param \u003e",
-  "clients/rust/orm/src/builder.rs::Q::take_sets": "pub fn take_sets (\u0026 mut self , keys : \u0026 [\u0026 str]) -\u003e crate :: Result \u003c Option \u003c Vec \u003c Param \u003e \u003e \u003e",
   "clients/rust/orm/src/builder.rs::Q::w": "pub fn w (\u0026 mut self) -\u003e W \u003c '_ \u003e",
   "clients/rust/orm/src/builder.rs::Req": "pub struct Req  { pub ir : Request , pub params : Vec \u003c Param \u003e , # [doc = \" First deferred builder error (codec encode); surfaces from the terminal.\"] pub err : Option \u003c DeferredError \u003e , }",
   "clients/rust/orm/src/builder.rs::Req#field.err": "Option \u003c DeferredError \u003e",

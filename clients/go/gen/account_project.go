@@ -220,7 +220,7 @@ func AccountProject() *AccountProjectQuery {
 	return &AccountProjectQuery{q: orm.NewQ(eng, "account_project")}
 }
 
-// Using selects the pool or transaction for this query.
+// Using selects the context and pool or transaction for this query.
 func (q *AccountProjectQuery) Using(ex orm.Exec) *AccountProjectQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "account_project")
@@ -232,7 +232,7 @@ func (q *AccountProjectQuery) Using(ex orm.Exec) *AccountProjectQuery {
 	return q
 }
 
-// Using selects the pool or transaction for this loaded row.
+// Using selects the context and pool or transaction for this loaded row.
 func (r *AccountProjectRow) Using(ex orm.Exec) *AccountProjectRow {
 	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
