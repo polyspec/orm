@@ -442,6 +442,17 @@ type Tx struct {
 	sqliteMode   bool
 }
 
+// Driver reports the database adapter bound to the caller-owned transaction.
+// It returns the same canonical name as DB.Driver: mysql, postgres, or sqlite.
+// Callers use this only to select adapter-owned behavior; query and mutation
+// APIs remain identical across drivers.
+func (t *Tx) Driver() string {
+	if t == nil || t.d == nil {
+		return ""
+	}
+	return t.d.driver
+}
+
 // InstallDDL executes schema statements in the caller-owned transaction. DDL
 // execution is part of the ORM adapter boundary; callers do not access the
 // database driver to install a schema. Statements execute in order and any
