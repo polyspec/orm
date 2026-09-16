@@ -2087,7 +2087,6 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<BattleRow>> { return await this.terminal('group_count') as Collection<BattleRow>; }
   public async insert(): Promise<BattleRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new BattleQuery().using(database).predicate('seq','eq',key).get(); }
-  public async save(): Promise<BattleRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new BattleQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async batchInsert(rows: readonly BattleQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
@@ -2438,7 +2437,6 @@ export class UserQuery extends QueryCore implements UserInterface {
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<UserRow>> { return await this.terminal('group_count') as Collection<UserRow>; }
   public async insert(): Promise<UserRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new UserQuery().using(database).predicate('seq','eq',key).get(); }
-  public async save(): Promise<UserRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new UserQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async batchInsert(rows: readonly UserQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
@@ -2723,7 +2721,6 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<ServiceRow>> { return await this.terminal('group_count') as Collection<ServiceRow>; }
   public async insert(): Promise<ServiceRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ServiceQuery().using(database).predicate('seq','eq',key).get(); }
-  public async save(): Promise<ServiceRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new ServiceQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async batchInsert(rows: readonly ServiceQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
@@ -3049,7 +3046,6 @@ export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterf
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<ServiceModuleRow>> { return await this.terminal('group_count') as Collection<ServiceModuleRow>; }
   public async insert(): Promise<ServiceModuleRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ServiceModuleQuery().using(database).predicate('seq','eq',key).get(); }
-  public async save(): Promise<ServiceModuleRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new ServiceModuleQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async batchInsert(rows: readonly ServiceModuleQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
@@ -3399,7 +3395,6 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<ServiceMemberRow>> { return await this.terminal('group_count') as Collection<ServiceMemberRow>; }
   public async insert(): Promise<ServiceMemberRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ServiceMemberQuery().using(database).predicate('seq','eq',key).get(); }
-  public async save(): Promise<ServiceMemberRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new ServiceMemberQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async batchInsert(rows: readonly ServiceMemberQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
@@ -3672,7 +3667,6 @@ export class CompositeAccountQuery extends QueryCore implements CompositeAccount
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<CompositeAccountRow>> { return await this.terminal('group_count') as Collection<CompositeAccountRow>; }
   public async insert(): Promise<CompositeAccountRow | null> { const database=this.binding.resolve(); const keys=this.assignedKeyValues(['tenant_id','account_id']); await this.insertKey(); const query=new CompositeAccountQuery().using(database); query.predicate('tenant_id','eq',keys[0]); query.predicate('account_id','eq',keys[1]); return query.get(); }
-  public async save(): Promise<CompositeAccountRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['tenant_id','account_id']); const query=new CompositeAccountQuery().using(database); query.predicate('tenant_id','eq',keys[0]); query.predicate('account_id','eq',keys[1]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async batchInsert(rows: readonly CompositeAccountQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
@@ -3946,7 +3940,6 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<CompositeMembershipRow>> { return await this.terminal('group_count') as Collection<CompositeMembershipRow>; }
   public async insert(): Promise<CompositeMembershipRow | null> { const database=this.binding.resolve(); const keys=this.assignedKeyValues(['tenant_id','account_id']); await this.insertKey(); const query=new CompositeMembershipQuery().using(database); query.predicate('tenant_id','eq',keys[0]); query.predicate('account_id','eq',keys[1]); return query.get(); }
-  public async save(): Promise<CompositeMembershipRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['tenant_id','account_id']); const query=new CompositeMembershipQuery().using(database); query.predicate('tenant_id','eq',keys[0]); query.predicate('account_id','eq',keys[1]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async batchInsert(rows: readonly CompositeMembershipQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
@@ -4189,7 +4182,6 @@ export class SoftRecordQuery extends QueryCore implements SoftRecordInterface {
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<SoftRecordRow>> { return await this.terminal('group_count') as Collection<SoftRecordRow>; }
   public async insert(): Promise<SoftRecordRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new SoftRecordQuery().using(database).predicate('seq','eq',key).get(); }
-  public async save(): Promise<SoftRecordRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new SoftRecordQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async batchInsert(rows: readonly SoftRecordQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
@@ -4401,7 +4393,6 @@ export class AccountQuery extends QueryCore implements AccountInterface {
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<AccountRow>> { return await this.terminal('group_count') as Collection<AccountRow>; }
   public async insert(): Promise<AccountRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new AccountQuery().using(database).predicate('seq','eq',key).get(); }
-  public async save(): Promise<AccountRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new AccountQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async batchInsert(rows: readonly AccountQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
@@ -4610,7 +4601,6 @@ export class ProjectQuery extends QueryCore implements ProjectInterface {
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<ProjectRow>> { return await this.terminal('group_count') as Collection<ProjectRow>; }
   public async insert(): Promise<ProjectRow | null> { const database=this.binding.resolve(); const key=await this.insertKey(); return new ProjectQuery().using(database).predicate('seq','eq',key).get(); }
-  public async save(): Promise<ProjectRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['seq']); const query=new ProjectQuery().using(database); query.predicate('seq','eq',keys[0]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async batchInsert(rows: readonly ProjectQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }
@@ -4792,7 +4782,6 @@ export class AccountProjectQuery extends QueryCore implements AccountProjectInte
   public async getCount(): Promise<number> { return Number(await this.terminal('count')); }
   public async getsCount(): Promise<Collection<AccountProjectRow>> { return await this.terminal('group_count') as Collection<AccountProjectRow>; }
   public async insert(): Promise<AccountProjectRow | null> { const database=this.binding.resolve(); const keys=this.assignedKeyValues(['account_seq','project_seq']); await this.insertKey(); const query=new AccountProjectQuery().using(database); query.predicate('account_seq','eq',keys[0]); query.predicate('project_seq','eq',keys[1]); return query.get(); }
-  public async save(): Promise<AccountProjectRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys(['account_seq','project_seq']); const query=new AccountProjectQuery().using(database); query.predicate('account_seq','eq',keys[0]); query.predicate('project_seq','eq',keys[1]); return query.get(); }
   public async update(): Promise<number> { return this.writeAffected('update'); }
   public async delete(): Promise<number> { return this.writeAffected('delete'); }
   public async batchInsert(rows: readonly AccountProjectQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }

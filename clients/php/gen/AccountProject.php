@@ -212,7 +212,7 @@ final class AccountProject extends Q implements AccountProjectInterface
     public function dropChildKey(): static { $this->opt('drop_child_key', true); return $this; }
     public function noCascadeDelete(): static { $this->opt('no_cascade_delete', true); return $this; }
 
-    // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
+    // ---- write draft (insert / update) ----
     public function setAccountSeq(int $v): static { $this->set('account_seq', $v); return $this; }
     public function setAccountSeqExpr(string $frag, array $binds = []): static { $this->setExpr('account_seq', $frag, $binds); return $this; }
     public function setProjectSeq(int $v): static { $this->set('project_seq', $v); return $this; }
@@ -355,16 +355,6 @@ final class AccountProject extends Q implements AccountProjectInterface
         $db = $this->terminalDb();
         $keys = $this->assignedKeyValues(['account_seq', 'project_seq']);
         $id = $this->runInsert($db);
-        return AccountProject::query()->using($db)->accountSeqEq($keys[0])->projectSeqEq($keys[1])->get();
-    }
-
-    /** UPDATE when every primary-key column was assigned; otherwise INSERT. */
-    public function save(): ?AccountProjectRow
-    {
-        $this->terminalArity(func_num_args());
-        $db = $this->terminalDb();
-        [$updated, $keys] = $this->runSave($db, ['account_seq', 'project_seq']);
-        if (!$updated) { return null; }
         return AccountProject::query()->using($db)->accountSeqEq($keys[0])->projectSeqEq($keys[1])->get();
     }
 

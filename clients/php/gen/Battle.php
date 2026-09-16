@@ -1932,7 +1932,7 @@ final class Battle extends Q implements BattleInterface
     public function ifParentServiceSeqEq(int $v): static { $this->ifParent('service_seq', $v); return $this; }
     public function ifParentUserSeqEq(int $v): static { $this->ifParent('user_seq', $v); return $this; }
 
-    // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
+    // ---- write draft (insert / update) ----
     public function setSeq(int $v): static { $this->set('seq', $v); return $this; }
     public function setSeqExpr(string $frag, array $binds = []): static { $this->setExpr('seq', $frag, $binds); return $this; }
     public function setName(string $v): static { $this->set('name', $v); return $this; }
@@ -2806,16 +2806,6 @@ final class Battle extends Q implements BattleInterface
         $db = $this->terminalDb();
         $id = $this->runInsert($db);
         return Battle::query()->using($db)->seqEq((int) $id)->get();
-    }
-
-    /** UPDATE when every primary-key column was assigned; otherwise INSERT. */
-    public function save(): ?BattleRow
-    {
-        $this->terminalArity(func_num_args());
-        $db = $this->terminalDb();
-        [$updated, $keys] = $this->runSave($db, ['seq']);
-        if (!$updated) { $keys = [(int) $keys[0]]; }
-        return Battle::query()->using($db)->seqEq($keys[0])->get();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */

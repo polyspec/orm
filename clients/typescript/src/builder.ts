@@ -173,21 +173,6 @@ export class QueryCore {
   protected async streamRows<T extends import('./model.js').Row>(visit: (row: T) => boolean | Promise<boolean>): Promise<import('./index.js').StreamResult> { if(this.request.deferredError)throw this.request.deferredError;const database=this.binding.resolve();return database.stream<T>(await database.plan(this.request.shape('all')),[...this.request.params],visit); }
   protected async insertKey(): Promise<unknown> { return (await this.terminal('insert') as { insertId: unknown }).insertId; }
   protected async writeAffected(kind: 'update'|'delete'): Promise<number> { return (await this.terminal(kind) as { affected: number }).affected; }
-  protected async saveKeys(primaryKeys: readonly string[]): Promise<unknown[]> {
-    const assignments = this.request.ir.set ?? [];
-    const indexes = primaryKeys.map(key => assignments.findIndex(assignment => assignment.column === key));
-    const present = indexes.filter(index => index >= 0).length;
-    if (present === 0) return [await this.insertKey()];
-    if (present !== primaryKeys.length) throw new OrmError('IR_INVALID', 'save requires every primary-key column or none');
-    const selected = indexes.map(index => assignments[index]!);
-    if (selected.some(assignment => assignment.p === undefined)) throw new OrmError('IR_INVALID', 'save primary-key assignments must use values');
-    const removed = new Set(indexes);
-    this.request.ir.set = assignments.filter((_, current) => !removed.has(current));
-    this.request.ir.where ??= { items: [] };
-    selected.forEach((assignment, index) => this.request.ir.where!.items.push({ pred: { column: primaryKeys[index]!, op: 'eq', p: assignment.p } }));
-    await this.writeAffected('update');
-    return selected.map(assignment => this.request.params[assignment.p!]);
-  }
   protected assignedKeyValues(primaryKeys: readonly string[]): unknown[] {
     const assignments = this.request.ir.set ?? [];
     return primaryKeys.map(key => {

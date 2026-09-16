@@ -344,7 +344,7 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
     public function ifParent{{.Field}}Eq({{.PhpType}} $v): static { $this->ifParent('{{.Name}}', $v); return $this; }
 {{- end}}{{end}}
 
-    // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
+    // ---- write draft (insert / update) ----
 {{- range .Cols}}{{if not .Managed}}
 {{- if .IsPoint}}
     /** @param {{if .Nullable}}array{float|int,float|int}|null{{else}}array{float|int,float|int}{{end}} $v */
@@ -491,20 +491,6 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
 {{- else}}
         return {{.Type}}::query()->using($db){{range $i, $c := .PKCols}}->{{camel $c.Name}}Eq($keys[{{$i}}]){{end}}->get();
 {{- end}}
-    }
-
-    /** UPDATE when every primary-key column was assigned; otherwise INSERT. */
-    public function save(): ?{{.Type}}Row
-    {
-        $this->terminalArity(func_num_args());
-        $db = $this->terminalDb();
-        [$updated, $keys] = $this->runSave($db, [{{phpList .PKNames}}]);
-{{- if .Auto}}
-        if (!$updated) { $keys = [(int) $keys[0]]; }
-{{- else}}
-        if (!$updated) { return null; }
-{{- end}}
-        return {{.Type}}::query()->using($db){{range $i, $c := .PKCols}}->{{camel $c.Name}}Eq($keys[{{$i}}]){{end}}->get();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */

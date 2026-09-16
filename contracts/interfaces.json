@@ -32,10 +32,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:cae943421dd590f96ec1ffab2c6a65e48174a9b09f4278095462d621e8a8281f",
-    "php": "sha256:d920d52094da86884ec7d9c17c624eb5a920ae34400de211fe0c13445d220b3e",
-    "rust": "sha256:8f3d32aca80e7aee4f2648e7b143987958ba2de4739bfb2880503672e72b62d1",
-    "typescript": "sha256:97f9fe4cffbd6c9e43c478b904abaf5386a4c389517a0c033b6df8583f109339"
+    "go": "sha256:c87490dffa89c36a3b1922a0d600e0a10fde98d7f93007ddf093d2d0d4160e87",
+    "php": "sha256:798ad2aaab4ebfef1b4238680870a6c8d8c213ec970fb6caa4c6b6fb621cb440",
+    "rust": "sha256:7e9b2ee1efacb6df108a9606f195fe2c220b627cc3fd2b12d1fe354ca77b5abb",
+    "typescript": "sha256:dbec1df34ccf02b6c763824a7870f1634c6e494c65b1745fd0ea298f5e1c79e6"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -67,7 +67,6 @@
         "stream",
         "getCount",
         "insert",
-        "save",
         "update",
         "delete",
         "sql"
@@ -702,36 +701,6 @@
         "typescript": {
           "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.insert",
           "signature": "public async insert(): Promise<{Entity}Row | null>"
-        }
-      }
-    },
-    {
-      "id": "Query.save",
-      "for": "entity",
-      "inputs": [],
-      "output": "Optional<Row>",
-      "errors": [
-        "CONFIG",
-        "IR_INVALID",
-        "driver/codec error"
-      ],
-      "state": "Query retained; write followed by same-executor readback when a key is available",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Save",
-          "signature": "receiver=*{Entity}Query func() (*{Entity}Row, error)"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::save",
-          "signature": "public function save(): ?App\\Orm\\{Entity}Row"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::save",
-          "signature": "pub async fn save(&mut self) -> Result<Option<{Entity}Row>>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.save",
-          "signature": "public async save(): Promise<{Entity}Row | null>"
         }
       }
     },
@@ -2397,11 +2366,13 @@
         "id": "integer",
         "role": "text",
         "sql": "text",
+        "lock": "text",
         "bind_slots": "list<PlanBindSlot>",
         "assemble": "PlanAssemble",
         "parent": "PlanParent"
       },
       "optional": [
+        "lock",
         "assemble",
         "parent"
       ]

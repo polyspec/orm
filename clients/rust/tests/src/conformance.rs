@@ -1143,7 +1143,7 @@ async fn main() {
                 .transaction(|tx| async move {
                     fks(battle::query().set_name("conf-save"))
                         .using(&tx)
-                        .save()
+                        .insert()
                         .await
                 })
                 .await?
@@ -1156,13 +1156,13 @@ async fn main() {
                     ts: Some(r.updated_ts),
                 },
             );
-            let after = battle::query()
-                .set_seq(r.seq)
+            battle::query()
+                .seq(r.seq)
                 .set_name("conf-save-2")
                 .using(&db)
-                .save()
-                .await?
-                .unwrap();
+                .update()
+                .await?;
+            let after = battle::query().seq(r.seq).using(&db).get().await?;
             after.delete().await?;
             Ok(json!({"inserted": r.seq > 0, "after": after.name}))
         }
