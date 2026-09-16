@@ -237,7 +237,7 @@ func (q *ProjectQuery) Req() *orm.Req { return q.q.Req }
 // before Using; the bound ORM executor supplies the schema engine at Using.
 func Project() *ProjectQuery { return &ProjectQuery{q: orm.NewQ(eng, "project")} }
 
-// Using selects the pool or transaction for this query.
+// Using selects the context and pool or transaction for this query.
 func (q *ProjectQuery) Using(ex orm.Exec) *ProjectQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "project")
@@ -249,7 +249,7 @@ func (q *ProjectQuery) Using(ex orm.Exec) *ProjectQuery {
 	return q
 }
 
-// Using selects the pool or transaction for this loaded row.
+// Using selects the context and pool or transaction for this loaded row.
 func (r *ProjectRow) Using(ex orm.Exec) *ProjectRow {
 	r.Binding = orm.NewBindingForExecutor(ex)
 	return r

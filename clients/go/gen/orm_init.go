@@ -3,10 +3,10 @@
 package gen
 
 import (
+	"os"
 	"github.com/polyspec/orm/clients/go/orm"
 	"github.com/polyspec/orm/engine"
 	"github.com/polyspec/orm/engine/schema"
-	"os"
 )
 
 // SchemaHash is the schema_hash of the schema.json this package was generated from.
@@ -22,9 +22,6 @@ func Init(e *engine.Engine) error {
 		return err
 	}
 	eng = e
-	if err := orm.RegisterEngine(e); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -32,23 +29,13 @@ func Init(e *engine.Engine) error {
 // validation stay inside the generated bootstrap.
 func Connect(dsn, schemaPath string, cfg orm.Config) (*orm.DB, error) {
 	js, err := os.ReadFile(schemaPath)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 	m, err := schema.Load(js)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 	driver, err := orm.DriverFromDSN(dsn)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 	e, err := engine.New(m, driver)
-	if err != nil {
-		return nil, err
-	}
-	if err := Init(e); err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
+	if err := Init(e); err != nil { return nil, err }
 	return orm.OpenWithEngine(dsn, e, cfg)
 }

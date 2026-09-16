@@ -5408,7 +5408,6 @@
   "clients/php/src/Query.php::Orm\\Q::runPaginate": "public function runPaginate(Orm\\Db $ex, int $page, int $per): array",
   "clients/php/src/Query.php::Orm\\Q::runQuery": "public function runQuery(Orm\\Db $ex, string $kind): Orm\\Rows",
   "clients/php/src/Query.php::Orm\\Q::runRaw": "public function runRaw(Orm\\Db $ex): array",
-  "clients/php/src/Query.php::Orm\\Q::runSave": "public function runSave(Orm\\Db $ex, array $keys): array",
   "clients/php/src/Query.php::Orm\\Q::runScalar": "public function runScalar(Orm\\Db $ex, string $kind, ?string $agg=null): mixed",
   "clients/php/src/Query.php::Orm\\Q::runSql": "public function runSql(Orm\\Db $ex): array",
   "clients/php/src/Query.php::Orm\\Q::runWrite": "public function runWrite(Orm\\Db $ex, string $kind): int",

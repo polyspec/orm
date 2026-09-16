@@ -779,38 +779,6 @@ class Q
         return $affected;
     }
 
-    /**
-     * save: when the draft sets the PK, UPDATE the other set[] columns WHERE pk = that value
-     * (the assignment's param slot becomes the where); otherwise INSERT.
-     * @return array{0: bool, 1: mixed} whether it was an update, and the key to re-read by (the PK value, or the insert id)
-     */
-    public function runSave(Db $ex, array $keys): array
-    {
-        if ($keys === []) { throw new OrmException(Code::IR_INVALID, 'save requires at least one primary-key column'); }
-        $assignments = $this->req->ir['set'] ?? [];
-        $indexes = [];
-        foreach ($keys as $key) {
-            $index = null;
-            foreach ($assignments as $i => $assignment) { if ($assignment['column'] === $key) { $index = $i; break; } }
-            $indexes[] = $index;
-        }
-        $present = count(array_filter($indexes, static fn($index) => $index !== null));
-        if ($present === 0) { return [false, [$this->runInsert($ex)]]; }
-        if ($present !== count($keys)) { throw new OrmException(Code::IR_INVALID, 'save requires every primary-key column or none'); }
-        $values = [];
-        foreach ($indexes as $i => $index) {
-            $assignment = $assignments[$index];
-            if (!isset($assignment['p'])) { throw new OrmException(Code::IR_INVALID, 'save primary-key assignments must use values'); }
-            $values[] = $this->req->params[$assignment['p']];
-            $this->w()->predAt($keys[$i], 'eq', $assignment['p']);
-        }
-        $remove = array_flip($indexes);
-        $this->req->ir['set'] = array_values(array_filter($assignments, static fn($_, $i) => !isset($remove[$i]), ARRAY_FILTER_USE_BOTH));
-        $this->req->sig .= '|save:' . implode(',', $keys);
-        $this->runWrite($ex, 'update');
-        return [true, $values];
-    }
-
     /** Runs the raw() statement (step role raw, no assemble): rows keyed by column name, values as the driver gives them. @return list<array<string, mixed>> */
     public function runRaw(Db $ex): array
     {

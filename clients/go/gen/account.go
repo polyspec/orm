@@ -237,7 +237,7 @@ func (q *AccountQuery) Req() *orm.Req { return q.q.Req }
 // before Using; the bound ORM executor supplies the schema engine at Using.
 func Account() *AccountQuery { return &AccountQuery{q: orm.NewQ(eng, "account")} }
 
-// Using selects the pool or transaction for this query.
+// Using selects the context and pool or transaction for this query.
 func (q *AccountQuery) Using(ex orm.Exec) *AccountQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "account")
@@ -249,7 +249,7 @@ func (q *AccountQuery) Using(ex orm.Exec) *AccountQuery {
 	return q
 }
 
-// Using selects the pool or transaction for this loaded row.
+// Using selects the context and pool or transaction for this loaded row.
 func (r *AccountRow) Using(ex orm.Exec) *AccountRow {
 	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
