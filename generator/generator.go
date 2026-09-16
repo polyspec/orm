@@ -24,6 +24,8 @@ type Options struct {
 	Language  Language
 	OutputDir string
 	Namespace string
+	// PackageName selects the Go package name. It is ignored by other languages.
+	PackageName string
 }
 
 // Generate writes the client described by the canonical manifest to OutputDir.
@@ -37,7 +39,7 @@ func Generate(options Options) error {
 	}
 	switch options.Language {
 	case Go:
-		return ormgen.GenerateGo(options.Manifest, options.OutputDir)
+		return ormgen.GenerateGo(options.Manifest, options.OutputDir, options.PackageName)
 	case PHP:
 		return ormgen.GeneratePHP(options.Manifest, options.OutputDir, options.Namespace)
 	case Rust:
