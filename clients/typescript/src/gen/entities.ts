@@ -263,13 +263,15 @@ export class BattleColumns {
 
 export class BattleWhere {
   public constructor(private readonly core: WhereCore) {}
-  public or(): this { this.core.or(); return this; }
-  public and(callback: (where: BattleWhere) => void): this { this.core.and(core=>callback(new BattleWhere(core))); return this; }
+  public or(callback?: (where: BattleWhere) => void): this { if (!callback) { this.core.or(); return this; } this.core.or(); this.core.and(core=>callback(new BattleWhere(core))); return this; }
+  public and(callback?: (where: BattleWhere) => void): this { if (!callback) { this.core.andConnector(); return this; } this.core.and(core=>callback(new BattleWhere(core))); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
   public startedAfter(value0: unknown): this { this.core.expression('`start_dt` > ?',[value0]); return this; }
   public visible(): this { this.core.expression('`is_close` = FALSE AND `is_display` = TRUE',[]); return this; }
   public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
@@ -288,6 +290,8 @@ export class BattleWhere {
   public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
@@ -310,6 +314,8 @@ export class BattleWhere {
   public nameLteCol(reference: ColumnReference): this { this.core.predicateColumn('name','lte_col',reference); return this; }
   public descriptionEq(value: string): this { this.core.predicate('description','eq',value); return this; }
   public description(value: string): this { return this.descriptionEq(value); }
+  public anddescription(value: string): this { return this.and().descriptionEq(value); }
+  public ordescription(value: string): this { return this.or().descriptionEq(value); }
   public descriptionNotEq(value: string): this { this.core.predicate('description','not_eq',value); return this; }
   public descriptionGt(value: string): this { this.core.predicate('description','gt',value); return this; }
   public descriptionGte(value: string): this { this.core.predicate('description','gte',value); return this; }
@@ -330,6 +336,8 @@ export class BattleWhere {
   public descriptionLteCol(reference: ColumnReference): this { this.core.predicateColumn('description','lte_col',reference); return this; }
   public createdTsEq(value: string | Date): this { this.core.predicate('created_ts','eq',value); return this; }
   public createdTs(value: string | Date): this { return this.createdTsEq(value); }
+  public andcreatedTs(value: string | Date): this { return this.and().createdTsEq(value); }
+  public orcreatedTs(value: string | Date): this { return this.or().createdTsEq(value); }
   public createdTsNotEq(value: string | Date): this { this.core.predicate('created_ts','not_eq',value); return this; }
   public createdTsGt(value: string | Date): this { this.core.predicate('created_ts','gt',value); return this; }
   public createdTsGte(value: string | Date): this { this.core.predicate('created_ts','gte',value); return this; }
@@ -348,6 +356,8 @@ export class BattleWhere {
   public createdTsLteCol(reference: ColumnReference): this { this.core.predicateColumn('created_ts','lte_col',reference); return this; }
   public updatedTsEq(value: string | Date): this { this.core.predicate('updated_ts','eq',value); return this; }
   public updatedTs(value: string | Date): this { return this.updatedTsEq(value); }
+  public andupdatedTs(value: string | Date): this { return this.and().updatedTsEq(value); }
+  public orupdatedTs(value: string | Date): this { return this.or().updatedTsEq(value); }
   public updatedTsNotEq(value: string | Date): this { this.core.predicate('updated_ts','not_eq',value); return this; }
   public updatedTsGt(value: string | Date): this { this.core.predicate('updated_ts','gt',value); return this; }
   public updatedTsGte(value: string | Date): this { this.core.predicate('updated_ts','gte',value); return this; }
@@ -366,6 +376,8 @@ export class BattleWhere {
   public updatedTsLteCol(reference: ColumnReference): this { this.core.predicateColumn('updated_ts','lte_col',reference); return this; }
   public isCloseEq(value: boolean): this { this.core.predicate('is_close','eq',value); return this; }
   public isClose(value: boolean): this { return this.isCloseEq(value); }
+  public andisClose(value: boolean): this { return this.and().isCloseEq(value); }
+  public orisClose(value: boolean): this { return this.or().isCloseEq(value); }
   public isCloseNotEq(value: boolean): this { this.core.predicate('is_close','not_eq',value); return this; }
   public isCloseIsNull(): this { this.core.predicateNull('is_close','is_null'); return this; }
   public isCloseIsNotNull(): this { this.core.predicateNull('is_close','is_not_null'); return this; }
@@ -373,6 +385,8 @@ export class BattleWhere {
   public isCloseNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('is_close','not_eq_col',reference); return this; }
   public isDisplayEq(value: boolean): this { this.core.predicate('is_display','eq',value); return this; }
   public isDisplay(value: boolean): this { return this.isDisplayEq(value); }
+  public andisDisplay(value: boolean): this { return this.and().isDisplayEq(value); }
+  public orisDisplay(value: boolean): this { return this.or().isDisplayEq(value); }
   public isDisplayNotEq(value: boolean): this { this.core.predicate('is_display','not_eq',value); return this; }
   public isDisplayIsNull(): this { this.core.predicateNull('is_display','is_null'); return this; }
   public isDisplayIsNotNull(): this { this.core.predicateNull('is_display','is_not_null'); return this; }
@@ -380,6 +394,8 @@ export class BattleWhere {
   public isDisplayNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('is_display','not_eq_col',reference); return this; }
   public displayStartDtEq(value: string | Date): this { this.core.predicate('display_start_dt','eq',value); return this; }
   public displayStartDt(value: string | Date): this { return this.displayStartDtEq(value); }
+  public anddisplayStartDt(value: string | Date): this { return this.and().displayStartDtEq(value); }
+  public ordisplayStartDt(value: string | Date): this { return this.or().displayStartDtEq(value); }
   public displayStartDtNotEq(value: string | Date): this { this.core.predicate('display_start_dt','not_eq',value); return this; }
   public displayStartDtGt(value: string | Date): this { this.core.predicate('display_start_dt','gt',value); return this; }
   public displayStartDtGte(value: string | Date): this { this.core.predicate('display_start_dt','gte',value); return this; }
@@ -398,6 +414,8 @@ export class BattleWhere {
   public displayStartDtLteCol(reference: ColumnReference): this { this.core.predicateColumn('display_start_dt','lte_col',reference); return this; }
   public displayEndDtEq(value: string | Date): this { this.core.predicate('display_end_dt','eq',value); return this; }
   public displayEndDt(value: string | Date): this { return this.displayEndDtEq(value); }
+  public anddisplayEndDt(value: string | Date): this { return this.and().displayEndDtEq(value); }
+  public ordisplayEndDt(value: string | Date): this { return this.or().displayEndDtEq(value); }
   public displayEndDtNotEq(value: string | Date): this { this.core.predicate('display_end_dt','not_eq',value); return this; }
   public displayEndDtGt(value: string | Date): this { this.core.predicate('display_end_dt','gt',value); return this; }
   public displayEndDtGte(value: string | Date): this { this.core.predicate('display_end_dt','gte',value); return this; }
@@ -416,6 +434,8 @@ export class BattleWhere {
   public displayEndDtLteCol(reference: ColumnReference): this { this.core.predicateColumn('display_end_dt','lte_col',reference); return this; }
   public isAlldayEq(value: boolean): this { this.core.predicate('is_allday','eq',value); return this; }
   public isAllday(value: boolean): this { return this.isAlldayEq(value); }
+  public andisAllday(value: boolean): this { return this.and().isAlldayEq(value); }
+  public orisAllday(value: boolean): this { return this.or().isAlldayEq(value); }
   public isAlldayNotEq(value: boolean): this { this.core.predicate('is_allday','not_eq',value); return this; }
   public isAlldayIsNull(): this { this.core.predicateNull('is_allday','is_null'); return this; }
   public isAlldayIsNotNull(): this { this.core.predicateNull('is_allday','is_not_null'); return this; }
@@ -423,6 +443,8 @@ export class BattleWhere {
   public isAlldayNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('is_allday','not_eq_col',reference); return this; }
   public targetTeamPlayerCountEq(value: number): this { this.core.predicate('target_team_player_count','eq',value); return this; }
   public targetTeamPlayerCount(value: number): this { return this.targetTeamPlayerCountEq(value); }
+  public andtargetTeamPlayerCount(value: number): this { return this.and().targetTeamPlayerCountEq(value); }
+  public ortargetTeamPlayerCount(value: number): this { return this.or().targetTeamPlayerCountEq(value); }
   public targetTeamPlayerCountNotEq(value: number): this { this.core.predicate('target_team_player_count','not_eq',value); return this; }
   public targetTeamPlayerCountGt(value: number): this { this.core.predicate('target_team_player_count','gt',value); return this; }
   public targetTeamPlayerCountGte(value: number): this { this.core.predicate('target_team_player_count','gte',value); return this; }
@@ -441,6 +463,8 @@ export class BattleWhere {
   public targetTeamPlayerCountLteCol(reference: ColumnReference): this { this.core.predicateColumn('target_team_player_count','lte_col',reference); return this; }
   public successCountEq(value: number): this { this.core.predicate('success_count','eq',value); return this; }
   public successCount(value: number): this { return this.successCountEq(value); }
+  public andsuccessCount(value: number): this { return this.and().successCountEq(value); }
+  public orsuccessCount(value: number): this { return this.or().successCountEq(value); }
   public successCountNotEq(value: number): this { this.core.predicate('success_count','not_eq',value); return this; }
   public successCountGt(value: number): this { this.core.predicate('success_count','gt',value); return this; }
   public successCountGte(value: number): this { this.core.predicate('success_count','gte',value); return this; }
@@ -459,6 +483,8 @@ export class BattleWhere {
   public successCountLteCol(reference: ColumnReference): this { this.core.predicateColumn('success_count','lte_col',reference); return this; }
   public playerCountEq(value: number): this { this.core.predicate('player_count','eq',value); return this; }
   public playerCount(value: number): this { return this.playerCountEq(value); }
+  public andplayerCount(value: number): this { return this.and().playerCountEq(value); }
+  public orplayerCount(value: number): this { return this.or().playerCountEq(value); }
   public playerCountNotEq(value: number): this { this.core.predicate('player_count','not_eq',value); return this; }
   public playerCountGt(value: number): this { this.core.predicate('player_count','gt',value); return this; }
   public playerCountGte(value: number): this { this.core.predicate('player_count','gte',value); return this; }
@@ -477,6 +503,8 @@ export class BattleWhere {
   public playerCountLteCol(reference: ColumnReference): this { this.core.predicateColumn('player_count','lte_col',reference); return this; }
   public readCountEq(value: number): this { this.core.predicate('read_count','eq',value); return this; }
   public readCount(value: number): this { return this.readCountEq(value); }
+  public andreadCount(value: number): this { return this.and().readCountEq(value); }
+  public orreadCount(value: number): this { return this.or().readCountEq(value); }
   public readCountNotEq(value: number): this { this.core.predicate('read_count','not_eq',value); return this; }
   public readCountGt(value: number): this { this.core.predicate('read_count','gt',value); return this; }
   public readCountGte(value: number): this { this.core.predicate('read_count','gte',value); return this; }
@@ -495,6 +523,8 @@ export class BattleWhere {
   public readCountLteCol(reference: ColumnReference): this { this.core.predicateColumn('read_count','lte_col',reference); return this; }
   public coverUrlEq(value: string): this { this.core.predicate('cover_url','eq',value); return this; }
   public coverUrl(value: string): this { return this.coverUrlEq(value); }
+  public andcoverUrl(value: string): this { return this.and().coverUrlEq(value); }
+  public orcoverUrl(value: string): this { return this.or().coverUrlEq(value); }
   public coverUrlNotEq(value: string): this { this.core.predicate('cover_url','not_eq',value); return this; }
   public coverUrlGt(value: string): this { this.core.predicate('cover_url','gt',value); return this; }
   public coverUrlGte(value: string): this { this.core.predicate('cover_url','gte',value); return this; }
@@ -517,6 +547,8 @@ export class BattleWhere {
   public coverUrlLteCol(reference: ColumnReference): this { this.core.predicateColumn('cover_url','lte_col',reference); return this; }
   public userSeqEq(value: number): this { this.core.predicate('user_seq','eq',value); return this; }
   public userSeq(value: number): this { return this.userSeqEq(value); }
+  public anduserSeq(value: number): this { return this.and().userSeqEq(value); }
+  public oruserSeq(value: number): this { return this.or().userSeqEq(value); }
   public userSeqNotEq(value: number): this { this.core.predicate('user_seq','not_eq',value); return this; }
   public userSeqGt(value: number): this { this.core.predicate('user_seq','gt',value); return this; }
   public userSeqGte(value: number): this { this.core.predicate('user_seq','gte',value); return this; }
@@ -535,6 +567,8 @@ export class BattleWhere {
   public userSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('user_seq','lte_col',reference); return this; }
   public serviceSeqEq(value: number): this { this.core.predicate('service_seq','eq',value); return this; }
   public serviceSeq(value: number): this { return this.serviceSeqEq(value); }
+  public andserviceSeq(value: number): this { return this.and().serviceSeqEq(value); }
+  public orserviceSeq(value: number): this { return this.or().serviceSeqEq(value); }
   public serviceSeqNotEq(value: number): this { this.core.predicate('service_seq','not_eq',value); return this; }
   public serviceSeqGt(value: number): this { this.core.predicate('service_seq','gt',value); return this; }
   public serviceSeqGte(value: number): this { this.core.predicate('service_seq','gte',value); return this; }
@@ -553,6 +587,8 @@ export class BattleWhere {
   public serviceSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','lte_col',reference); return this; }
   public serviceModuleSeqEq(value: number): this { this.core.predicate('service_module_seq','eq',value); return this; }
   public serviceModuleSeq(value: number): this { return this.serviceModuleSeqEq(value); }
+  public andserviceModuleSeq(value: number): this { return this.and().serviceModuleSeqEq(value); }
+  public orserviceModuleSeq(value: number): this { return this.or().serviceModuleSeqEq(value); }
   public serviceModuleSeqNotEq(value: number): this { this.core.predicate('service_module_seq','not_eq',value); return this; }
   public serviceModuleSeqGt(value: number): this { this.core.predicate('service_module_seq','gt',value); return this; }
   public serviceModuleSeqGte(value: number): this { this.core.predicate('service_module_seq','gte',value); return this; }
@@ -571,6 +607,8 @@ export class BattleWhere {
   public serviceModuleSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('service_module_seq','lte_col',reference); return this; }
   public serviceMemberSeqEq(value: number): this { this.core.predicate('service_member_seq','eq',value); return this; }
   public serviceMemberSeq(value: number): this { return this.serviceMemberSeqEq(value); }
+  public andserviceMemberSeq(value: number): this { return this.and().serviceMemberSeqEq(value); }
+  public orserviceMemberSeq(value: number): this { return this.or().serviceMemberSeqEq(value); }
   public serviceMemberSeqNotEq(value: number): this { this.core.predicate('service_member_seq','not_eq',value); return this; }
   public serviceMemberSeqGt(value: number): this { this.core.predicate('service_member_seq','gt',value); return this; }
   public serviceMemberSeqGte(value: number): this { this.core.predicate('service_member_seq','gte',value); return this; }
@@ -589,6 +627,8 @@ export class BattleWhere {
   public serviceMemberSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('service_member_seq','lte_col',reference); return this; }
   public startDtEq(value: string | Date): this { this.core.predicate('start_dt','eq',value); return this; }
   public startDt(value: string | Date): this { return this.startDtEq(value); }
+  public andstartDt(value: string | Date): this { return this.and().startDtEq(value); }
+  public orstartDt(value: string | Date): this { return this.or().startDtEq(value); }
   public startDtNotEq(value: string | Date): this { this.core.predicate('start_dt','not_eq',value); return this; }
   public startDtGt(value: string | Date): this { this.core.predicate('start_dt','gt',value); return this; }
   public startDtGte(value: string | Date): this { this.core.predicate('start_dt','gte',value); return this; }
@@ -607,6 +647,8 @@ export class BattleWhere {
   public startDtLteCol(reference: ColumnReference): this { this.core.predicateColumn('start_dt','lte_col',reference); return this; }
   public endDtEq(value: string | Date): this { this.core.predicate('end_dt','eq',value); return this; }
   public endDt(value: string | Date): this { return this.endDtEq(value); }
+  public andendDt(value: string | Date): this { return this.and().endDtEq(value); }
+  public orendDt(value: string | Date): this { return this.or().endDtEq(value); }
   public endDtNotEq(value: string | Date): this { this.core.predicate('end_dt','not_eq',value); return this; }
   public endDtGt(value: string | Date): this { this.core.predicate('end_dt','gt',value); return this; }
   public endDtGte(value: string | Date): this { this.core.predicate('end_dt','gte',value); return this; }
@@ -625,6 +667,8 @@ export class BattleWhere {
   public endDtLteCol(reference: ColumnReference): this { this.core.predicateColumn('end_dt','lte_col',reference); return this; }
   public uuidEq(value: string): this { this.core.predicate('uuid','eq',value); return this; }
   public uuid(value: string): this { return this.uuidEq(value); }
+  public anduuid(value: string): this { return this.and().uuidEq(value); }
+  public oruuid(value: string): this { return this.or().uuidEq(value); }
   public uuidNotEq(value: string): this { this.core.predicate('uuid','not_eq',value); return this; }
   public uuidGt(value: string): this { this.core.predicate('uuid','gt',value); return this; }
   public uuidGte(value: string): this { this.core.predicate('uuid','gte',value); return this; }
@@ -647,6 +691,8 @@ export class BattleWhere {
   public uuidLteCol(reference: ColumnReference): this { this.core.predicateColumn('uuid','lte_col',reference); return this; }
   public isSinglePlayEq(value: boolean): this { this.core.predicate('is_single_play','eq',value); return this; }
   public isSinglePlay(value: boolean): this { return this.isSinglePlayEq(value); }
+  public andisSinglePlay(value: boolean): this { return this.and().isSinglePlayEq(value); }
+  public orisSinglePlay(value: boolean): this { return this.or().isSinglePlayEq(value); }
   public isSinglePlayNotEq(value: boolean): this { this.core.predicate('is_single_play','not_eq',value); return this; }
   public isSinglePlayIsNull(): this { this.core.predicateNull('is_single_play','is_null'); return this; }
   public isSinglePlayIsNotNull(): this { this.core.predicateNull('is_single_play','is_not_null'); return this; }
@@ -654,6 +700,8 @@ export class BattleWhere {
   public isSinglePlayNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('is_single_play','not_eq_col',reference); return this; }
   public likeCountEq(value: number): this { this.core.predicate('like_count','eq',value); return this; }
   public likeCount(value: number): this { return this.likeCountEq(value); }
+  public andlikeCount(value: number): this { return this.and().likeCountEq(value); }
+  public orlikeCount(value: number): this { return this.or().likeCountEq(value); }
   public likeCountNotEq(value: number): this { this.core.predicate('like_count','not_eq',value); return this; }
   public likeCountGt(value: number): this { this.core.predicate('like_count','gt',value); return this; }
   public likeCountGte(value: number): this { this.core.predicate('like_count','gte',value); return this; }
@@ -672,6 +720,8 @@ export class BattleWhere {
   public likeCountLteCol(reference: ColumnReference): this { this.core.predicateColumn('like_count','lte_col',reference); return this; }
   public aesKeyVersionEq(value: number): this { this.core.predicate('aes_key_version','eq',value); return this; }
   public aesKeyVersion(value: number): this { return this.aesKeyVersionEq(value); }
+  public andaesKeyVersion(value: number): this { return this.and().aesKeyVersionEq(value); }
+  public oraesKeyVersion(value: number): this { return this.or().aesKeyVersionEq(value); }
   public aesKeyVersionNotEq(value: number): this { this.core.predicate('aes_key_version','not_eq',value); return this; }
   public aesKeyVersionGt(value: number): this { this.core.predicate('aes_key_version','gt',value); return this; }
   public aesKeyVersionGte(value: number): this { this.core.predicate('aes_key_version','gte',value); return this; }
@@ -690,6 +740,8 @@ export class BattleWhere {
   public aesKeyVersionLteCol(reference: ColumnReference): this { this.core.predicateColumn('aes_key_version','lte_col',reference); return this; }
   public aesHexEmailEq(value: string): this { this.core.predicate('aes_hex_email','eq',value); return this; }
   public aesHexEmail(value: string): this { return this.aesHexEmailEq(value); }
+  public andaesHexEmail(value: string): this { return this.and().aesHexEmailEq(value); }
+  public oraesHexEmail(value: string): this { return this.or().aesHexEmailEq(value); }
   public aesHexEmailNotEq(value: string): this { this.core.predicate('aes_hex_email','not_eq',value); return this; }
   public aesHexEmailIn(values: readonly (string)[]): this { this.core.predicateList('aes_hex_email','in',values); return this; }
   public aesHexEmailNotIn(values: readonly (string)[]): this { this.core.predicateList('aes_hex_email','not_in',values); return this; }
@@ -699,6 +751,8 @@ export class BattleWhere {
   public aesHexEmailNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('aes_hex_email','not_eq_col',reference); return this; }
   public emailBlindIndexEq(value: string): this { this.core.predicate('email_blind_index','eq',value); return this; }
   public emailBlindIndex(value: string): this { return this.emailBlindIndexEq(value); }
+  public andemailBlindIndex(value: string): this { return this.and().emailBlindIndexEq(value); }
+  public oremailBlindIndex(value: string): this { return this.or().emailBlindIndexEq(value); }
   public emailBlindIndexNotEq(value: string): this { this.core.predicate('email_blind_index','not_eq',value); return this; }
   public emailBlindIndexGt(value: string): this { this.core.predicate('email_blind_index','gt',value); return this; }
   public emailBlindIndexGte(value: string): this { this.core.predicate('email_blind_index','gte',value); return this; }
@@ -721,6 +775,8 @@ export class BattleWhere {
   public emailBlindIndexLteCol(reference: ColumnReference): this { this.core.predicateColumn('email_blind_index','lte_col',reference); return this; }
   public aesHexPhoneEq(value: string): this { this.core.predicate('aes_hex_phone','eq',value); return this; }
   public aesHexPhone(value: string): this { return this.aesHexPhoneEq(value); }
+  public andaesHexPhone(value: string): this { return this.and().aesHexPhoneEq(value); }
+  public oraesHexPhone(value: string): this { return this.or().aesHexPhoneEq(value); }
   public aesHexPhoneNotEq(value: string): this { this.core.predicate('aes_hex_phone','not_eq',value); return this; }
   public aesHexPhoneIn(values: readonly (string)[]): this { this.core.predicateList('aes_hex_phone','in',values); return this; }
   public aesHexPhoneNotIn(values: readonly (string)[]): this { this.core.predicateList('aes_hex_phone','not_in',values); return this; }
@@ -730,6 +786,8 @@ export class BattleWhere {
   public aesHexPhoneNotEqCol(reference: ColumnReference): this { this.core.predicateColumn('aes_hex_phone','not_eq_col',reference); return this; }
   public phoneBlindIndexEq(value: string): this { this.core.predicate('phone_blind_index','eq',value); return this; }
   public phoneBlindIndex(value: string): this { return this.phoneBlindIndexEq(value); }
+  public andphoneBlindIndex(value: string): this { return this.and().phoneBlindIndexEq(value); }
+  public orphoneBlindIndex(value: string): this { return this.or().phoneBlindIndexEq(value); }
   public phoneBlindIndexNotEq(value: string): this { this.core.predicate('phone_blind_index','not_eq',value); return this; }
   public phoneBlindIndexGt(value: string): this { this.core.predicate('phone_blind_index','gt',value); return this; }
   public phoneBlindIndexGte(value: string): this { this.core.predicate('phone_blind_index','gte',value); return this; }
@@ -752,6 +810,8 @@ export class BattleWhere {
   public phoneBlindIndexLteCol(reference: ColumnReference): this { this.core.predicateColumn('phone_blind_index','lte_col',reference); return this; }
   public priceEq(value: number): this { this.core.predicate('price','eq',value); return this; }
   public price(value: number): this { return this.priceEq(value); }
+  public andprice(value: number): this { return this.and().priceEq(value); }
+  public orprice(value: number): this { return this.or().priceEq(value); }
   public priceNotEq(value: number): this { this.core.predicate('price','not_eq',value); return this; }
   public priceGt(value: number): this { this.core.predicate('price','gt',value); return this; }
   public priceGte(value: number): this { this.core.predicate('price','gte',value); return this; }
@@ -770,6 +830,8 @@ export class BattleWhere {
   public priceLteCol(reference: ColumnReference): this { this.core.predicateColumn('price','lte_col',reference); return this; }
   public ipEq(value: string): this { this.core.predicate('ip','eq',value); return this; }
   public ip(value: string): this { return this.ipEq(value); }
+  public andip(value: string): this { return this.and().ipEq(value); }
+  public orip(value: string): this { return this.or().ipEq(value); }
   public ipNotEq(value: string): this { this.core.predicate('ip','not_eq',value); return this; }
   public ipIn(values: readonly (string)[]): this { this.core.predicateList('ip','in',values); return this; }
   public ipNotIn(values: readonly (string)[]): this { this.core.predicateList('ip','not_in',values); return this; }
@@ -832,7 +894,7 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public aesStatus(keyring: AesKeyring): Promise<AesRotationStatus> { return this.binding.resolve().aesStatus({table:'battle',primaryKeys:['seq'],versionColumn:'aes_key_version',columns:[]},keyring); }
   public rotateAES(keyring: AesKeyring): Promise<number> { return this.binding.resolve().rotateAESRows({table:'battle',primaryKeys:['seq'],versionColumn:'aes_key_version',columns:[{name:'aes_hex_email',styles:['aes','hex']},{name:'aes_hex_phone',styles:['aes','hex']}]},keyring); }
   public override scope(value: number): this { return super.scope(value); }
-  public and(callback: (where: BattleWhere) => void): this { this.whereCore().and(core=>callback(new BattleWhere(core))); return this; }
+  public and(callback?: (where: BattleWhere) => void): this { if (!callback) { this.whereCore().andConnector(); return this; } this.whereCore().and(core=>callback(new BattleWhere(core))); return this; }
   public on(callback: (where: BattleWhere) => void): this { return this.onGroup(core=>callback(new BattleWhere(core))); }
   public where(callback: (where: BattleWhere) => void): this { callback(new BattleWhere(this.whereCore())); return this; }
   public having(callback: (where: BattleWhere) => void): this { return this.havingGroup(core=>callback(new BattleWhere(core))); }
@@ -840,6 +902,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public visible(): this { this.expression('`is_close` = FALSE AND `is_display` = TRUE',[]); return this; }
   public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
@@ -858,6 +922,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
@@ -880,6 +946,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public nameLteCol(reference: ColumnReference): this { this.predicateColumn('name','lte_col',reference); return this; }
   public descriptionEq(value: string): this { this.predicate('description','eq',value); return this; }
   public description(value: string): this { return this.descriptionEq(value); }
+  public anddescription(value: string): this { return this.and().descriptionEq(value); }
+  public ordescription(value: string): this { return this.or().descriptionEq(value); }
   public descriptionNotEq(value: string): this { this.predicate('description','not_eq',value); return this; }
   public descriptionGt(value: string): this { this.predicate('description','gt',value); return this; }
   public descriptionGte(value: string): this { this.predicate('description','gte',value); return this; }
@@ -900,6 +968,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public descriptionLteCol(reference: ColumnReference): this { this.predicateColumn('description','lte_col',reference); return this; }
   public createdTsEq(value: string | Date): this { this.predicate('created_ts','eq',value); return this; }
   public createdTs(value: string | Date): this { return this.createdTsEq(value); }
+  public andcreatedTs(value: string | Date): this { return this.and().createdTsEq(value); }
+  public orcreatedTs(value: string | Date): this { return this.or().createdTsEq(value); }
   public createdTsNotEq(value: string | Date): this { this.predicate('created_ts','not_eq',value); return this; }
   public createdTsGt(value: string | Date): this { this.predicate('created_ts','gt',value); return this; }
   public createdTsGte(value: string | Date): this { this.predicate('created_ts','gte',value); return this; }
@@ -918,6 +988,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public createdTsLteCol(reference: ColumnReference): this { this.predicateColumn('created_ts','lte_col',reference); return this; }
   public updatedTsEq(value: string | Date): this { this.predicate('updated_ts','eq',value); return this; }
   public updatedTs(value: string | Date): this { return this.updatedTsEq(value); }
+  public andupdatedTs(value: string | Date): this { return this.and().updatedTsEq(value); }
+  public orupdatedTs(value: string | Date): this { return this.or().updatedTsEq(value); }
   public updatedTsNotEq(value: string | Date): this { this.predicate('updated_ts','not_eq',value); return this; }
   public updatedTsGt(value: string | Date): this { this.predicate('updated_ts','gt',value); return this; }
   public updatedTsGte(value: string | Date): this { this.predicate('updated_ts','gte',value); return this; }
@@ -936,6 +1008,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public updatedTsLteCol(reference: ColumnReference): this { this.predicateColumn('updated_ts','lte_col',reference); return this; }
   public isCloseEq(value: boolean): this { this.predicate('is_close','eq',value); return this; }
   public isClose(value: boolean): this { return this.isCloseEq(value); }
+  public andisClose(value: boolean): this { return this.and().isCloseEq(value); }
+  public orisClose(value: boolean): this { return this.or().isCloseEq(value); }
   public isCloseNotEq(value: boolean): this { this.predicate('is_close','not_eq',value); return this; }
   public isCloseIsNull(): this { this.predicateNull('is_close','is_null'); return this; }
   public isCloseIsNotNull(): this { this.predicateNull('is_close','is_not_null'); return this; }
@@ -943,6 +1017,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public isCloseNotEqCol(reference: ColumnReference): this { this.predicateColumn('is_close','not_eq_col',reference); return this; }
   public isDisplayEq(value: boolean): this { this.predicate('is_display','eq',value); return this; }
   public isDisplay(value: boolean): this { return this.isDisplayEq(value); }
+  public andisDisplay(value: boolean): this { return this.and().isDisplayEq(value); }
+  public orisDisplay(value: boolean): this { return this.or().isDisplayEq(value); }
   public isDisplayNotEq(value: boolean): this { this.predicate('is_display','not_eq',value); return this; }
   public isDisplayIsNull(): this { this.predicateNull('is_display','is_null'); return this; }
   public isDisplayIsNotNull(): this { this.predicateNull('is_display','is_not_null'); return this; }
@@ -950,6 +1026,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public isDisplayNotEqCol(reference: ColumnReference): this { this.predicateColumn('is_display','not_eq_col',reference); return this; }
   public displayStartDtEq(value: string | Date): this { this.predicate('display_start_dt','eq',value); return this; }
   public displayStartDt(value: string | Date): this { return this.displayStartDtEq(value); }
+  public anddisplayStartDt(value: string | Date): this { return this.and().displayStartDtEq(value); }
+  public ordisplayStartDt(value: string | Date): this { return this.or().displayStartDtEq(value); }
   public displayStartDtNotEq(value: string | Date): this { this.predicate('display_start_dt','not_eq',value); return this; }
   public displayStartDtGt(value: string | Date): this { this.predicate('display_start_dt','gt',value); return this; }
   public displayStartDtGte(value: string | Date): this { this.predicate('display_start_dt','gte',value); return this; }
@@ -968,6 +1046,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public displayStartDtLteCol(reference: ColumnReference): this { this.predicateColumn('display_start_dt','lte_col',reference); return this; }
   public displayEndDtEq(value: string | Date): this { this.predicate('display_end_dt','eq',value); return this; }
   public displayEndDt(value: string | Date): this { return this.displayEndDtEq(value); }
+  public anddisplayEndDt(value: string | Date): this { return this.and().displayEndDtEq(value); }
+  public ordisplayEndDt(value: string | Date): this { return this.or().displayEndDtEq(value); }
   public displayEndDtNotEq(value: string | Date): this { this.predicate('display_end_dt','not_eq',value); return this; }
   public displayEndDtGt(value: string | Date): this { this.predicate('display_end_dt','gt',value); return this; }
   public displayEndDtGte(value: string | Date): this { this.predicate('display_end_dt','gte',value); return this; }
@@ -986,6 +1066,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public displayEndDtLteCol(reference: ColumnReference): this { this.predicateColumn('display_end_dt','lte_col',reference); return this; }
   public isAlldayEq(value: boolean): this { this.predicate('is_allday','eq',value); return this; }
   public isAllday(value: boolean): this { return this.isAlldayEq(value); }
+  public andisAllday(value: boolean): this { return this.and().isAlldayEq(value); }
+  public orisAllday(value: boolean): this { return this.or().isAlldayEq(value); }
   public isAlldayNotEq(value: boolean): this { this.predicate('is_allday','not_eq',value); return this; }
   public isAlldayIsNull(): this { this.predicateNull('is_allday','is_null'); return this; }
   public isAlldayIsNotNull(): this { this.predicateNull('is_allday','is_not_null'); return this; }
@@ -993,6 +1075,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public isAlldayNotEqCol(reference: ColumnReference): this { this.predicateColumn('is_allday','not_eq_col',reference); return this; }
   public targetTeamPlayerCountEq(value: number): this { this.predicate('target_team_player_count','eq',value); return this; }
   public targetTeamPlayerCount(value: number): this { return this.targetTeamPlayerCountEq(value); }
+  public andtargetTeamPlayerCount(value: number): this { return this.and().targetTeamPlayerCountEq(value); }
+  public ortargetTeamPlayerCount(value: number): this { return this.or().targetTeamPlayerCountEq(value); }
   public targetTeamPlayerCountNotEq(value: number): this { this.predicate('target_team_player_count','not_eq',value); return this; }
   public targetTeamPlayerCountGt(value: number): this { this.predicate('target_team_player_count','gt',value); return this; }
   public targetTeamPlayerCountGte(value: number): this { this.predicate('target_team_player_count','gte',value); return this; }
@@ -1011,6 +1095,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public targetTeamPlayerCountLteCol(reference: ColumnReference): this { this.predicateColumn('target_team_player_count','lte_col',reference); return this; }
   public successCountEq(value: number): this { this.predicate('success_count','eq',value); return this; }
   public successCount(value: number): this { return this.successCountEq(value); }
+  public andsuccessCount(value: number): this { return this.and().successCountEq(value); }
+  public orsuccessCount(value: number): this { return this.or().successCountEq(value); }
   public successCountNotEq(value: number): this { this.predicate('success_count','not_eq',value); return this; }
   public successCountGt(value: number): this { this.predicate('success_count','gt',value); return this; }
   public successCountGte(value: number): this { this.predicate('success_count','gte',value); return this; }
@@ -1029,6 +1115,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public successCountLteCol(reference: ColumnReference): this { this.predicateColumn('success_count','lte_col',reference); return this; }
   public playerCountEq(value: number): this { this.predicate('player_count','eq',value); return this; }
   public playerCount(value: number): this { return this.playerCountEq(value); }
+  public andplayerCount(value: number): this { return this.and().playerCountEq(value); }
+  public orplayerCount(value: number): this { return this.or().playerCountEq(value); }
   public playerCountNotEq(value: number): this { this.predicate('player_count','not_eq',value); return this; }
   public playerCountGt(value: number): this { this.predicate('player_count','gt',value); return this; }
   public playerCountGte(value: number): this { this.predicate('player_count','gte',value); return this; }
@@ -1047,6 +1135,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public playerCountLteCol(reference: ColumnReference): this { this.predicateColumn('player_count','lte_col',reference); return this; }
   public readCountEq(value: number): this { this.predicate('read_count','eq',value); return this; }
   public readCount(value: number): this { return this.readCountEq(value); }
+  public andreadCount(value: number): this { return this.and().readCountEq(value); }
+  public orreadCount(value: number): this { return this.or().readCountEq(value); }
   public readCountNotEq(value: number): this { this.predicate('read_count','not_eq',value); return this; }
   public readCountGt(value: number): this { this.predicate('read_count','gt',value); return this; }
   public readCountGte(value: number): this { this.predicate('read_count','gte',value); return this; }
@@ -1065,6 +1155,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public readCountLteCol(reference: ColumnReference): this { this.predicateColumn('read_count','lte_col',reference); return this; }
   public coverUrlEq(value: string): this { this.predicate('cover_url','eq',value); return this; }
   public coverUrl(value: string): this { return this.coverUrlEq(value); }
+  public andcoverUrl(value: string): this { return this.and().coverUrlEq(value); }
+  public orcoverUrl(value: string): this { return this.or().coverUrlEq(value); }
   public coverUrlNotEq(value: string): this { this.predicate('cover_url','not_eq',value); return this; }
   public coverUrlGt(value: string): this { this.predicate('cover_url','gt',value); return this; }
   public coverUrlGte(value: string): this { this.predicate('cover_url','gte',value); return this; }
@@ -1087,6 +1179,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public coverUrlLteCol(reference: ColumnReference): this { this.predicateColumn('cover_url','lte_col',reference); return this; }
   public userSeqEq(value: number): this { this.predicate('user_seq','eq',value); return this; }
   public userSeq(value: number): this { return this.userSeqEq(value); }
+  public anduserSeq(value: number): this { return this.and().userSeqEq(value); }
+  public oruserSeq(value: number): this { return this.or().userSeqEq(value); }
   public userSeqNotEq(value: number): this { this.predicate('user_seq','not_eq',value); return this; }
   public userSeqGt(value: number): this { this.predicate('user_seq','gt',value); return this; }
   public userSeqGte(value: number): this { this.predicate('user_seq','gte',value); return this; }
@@ -1105,6 +1199,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public userSeqLteCol(reference: ColumnReference): this { this.predicateColumn('user_seq','lte_col',reference); return this; }
   public serviceSeqEq(value: number): this { this.predicate('service_seq','eq',value); return this; }
   public serviceSeq(value: number): this { return this.serviceSeqEq(value); }
+  public andserviceSeq(value: number): this { return this.and().serviceSeqEq(value); }
+  public orserviceSeq(value: number): this { return this.or().serviceSeqEq(value); }
   public serviceSeqNotEq(value: number): this { this.predicate('service_seq','not_eq',value); return this; }
   public serviceSeqGt(value: number): this { this.predicate('service_seq','gt',value); return this; }
   public serviceSeqGte(value: number): this { this.predicate('service_seq','gte',value); return this; }
@@ -1123,6 +1219,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public serviceSeqLteCol(reference: ColumnReference): this { this.predicateColumn('service_seq','lte_col',reference); return this; }
   public serviceModuleSeqEq(value: number): this { this.predicate('service_module_seq','eq',value); return this; }
   public serviceModuleSeq(value: number): this { return this.serviceModuleSeqEq(value); }
+  public andserviceModuleSeq(value: number): this { return this.and().serviceModuleSeqEq(value); }
+  public orserviceModuleSeq(value: number): this { return this.or().serviceModuleSeqEq(value); }
   public serviceModuleSeqNotEq(value: number): this { this.predicate('service_module_seq','not_eq',value); return this; }
   public serviceModuleSeqGt(value: number): this { this.predicate('service_module_seq','gt',value); return this; }
   public serviceModuleSeqGte(value: number): this { this.predicate('service_module_seq','gte',value); return this; }
@@ -1141,6 +1239,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public serviceModuleSeqLteCol(reference: ColumnReference): this { this.predicateColumn('service_module_seq','lte_col',reference); return this; }
   public serviceMemberSeqEq(value: number): this { this.predicate('service_member_seq','eq',value); return this; }
   public serviceMemberSeq(value: number): this { return this.serviceMemberSeqEq(value); }
+  public andserviceMemberSeq(value: number): this { return this.and().serviceMemberSeqEq(value); }
+  public orserviceMemberSeq(value: number): this { return this.or().serviceMemberSeqEq(value); }
   public serviceMemberSeqNotEq(value: number): this { this.predicate('service_member_seq','not_eq',value); return this; }
   public serviceMemberSeqGt(value: number): this { this.predicate('service_member_seq','gt',value); return this; }
   public serviceMemberSeqGte(value: number): this { this.predicate('service_member_seq','gte',value); return this; }
@@ -1159,6 +1259,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public serviceMemberSeqLteCol(reference: ColumnReference): this { this.predicateColumn('service_member_seq','lte_col',reference); return this; }
   public startDtEq(value: string | Date): this { this.predicate('start_dt','eq',value); return this; }
   public startDt(value: string | Date): this { return this.startDtEq(value); }
+  public andstartDt(value: string | Date): this { return this.and().startDtEq(value); }
+  public orstartDt(value: string | Date): this { return this.or().startDtEq(value); }
   public startDtNotEq(value: string | Date): this { this.predicate('start_dt','not_eq',value); return this; }
   public startDtGt(value: string | Date): this { this.predicate('start_dt','gt',value); return this; }
   public startDtGte(value: string | Date): this { this.predicate('start_dt','gte',value); return this; }
@@ -1177,6 +1279,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public startDtLteCol(reference: ColumnReference): this { this.predicateColumn('start_dt','lte_col',reference); return this; }
   public endDtEq(value: string | Date): this { this.predicate('end_dt','eq',value); return this; }
   public endDt(value: string | Date): this { return this.endDtEq(value); }
+  public andendDt(value: string | Date): this { return this.and().endDtEq(value); }
+  public orendDt(value: string | Date): this { return this.or().endDtEq(value); }
   public endDtNotEq(value: string | Date): this { this.predicate('end_dt','not_eq',value); return this; }
   public endDtGt(value: string | Date): this { this.predicate('end_dt','gt',value); return this; }
   public endDtGte(value: string | Date): this { this.predicate('end_dt','gte',value); return this; }
@@ -1195,6 +1299,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public endDtLteCol(reference: ColumnReference): this { this.predicateColumn('end_dt','lte_col',reference); return this; }
   public uuidEq(value: string): this { this.predicate('uuid','eq',value); return this; }
   public uuid(value: string): this { return this.uuidEq(value); }
+  public anduuid(value: string): this { return this.and().uuidEq(value); }
+  public oruuid(value: string): this { return this.or().uuidEq(value); }
   public uuidNotEq(value: string): this { this.predicate('uuid','not_eq',value); return this; }
   public uuidGt(value: string): this { this.predicate('uuid','gt',value); return this; }
   public uuidGte(value: string): this { this.predicate('uuid','gte',value); return this; }
@@ -1217,6 +1323,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public uuidLteCol(reference: ColumnReference): this { this.predicateColumn('uuid','lte_col',reference); return this; }
   public isSinglePlayEq(value: boolean): this { this.predicate('is_single_play','eq',value); return this; }
   public isSinglePlay(value: boolean): this { return this.isSinglePlayEq(value); }
+  public andisSinglePlay(value: boolean): this { return this.and().isSinglePlayEq(value); }
+  public orisSinglePlay(value: boolean): this { return this.or().isSinglePlayEq(value); }
   public isSinglePlayNotEq(value: boolean): this { this.predicate('is_single_play','not_eq',value); return this; }
   public isSinglePlayIsNull(): this { this.predicateNull('is_single_play','is_null'); return this; }
   public isSinglePlayIsNotNull(): this { this.predicateNull('is_single_play','is_not_null'); return this; }
@@ -1224,6 +1332,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public isSinglePlayNotEqCol(reference: ColumnReference): this { this.predicateColumn('is_single_play','not_eq_col',reference); return this; }
   public likeCountEq(value: number): this { this.predicate('like_count','eq',value); return this; }
   public likeCount(value: number): this { return this.likeCountEq(value); }
+  public andlikeCount(value: number): this { return this.and().likeCountEq(value); }
+  public orlikeCount(value: number): this { return this.or().likeCountEq(value); }
   public likeCountNotEq(value: number): this { this.predicate('like_count','not_eq',value); return this; }
   public likeCountGt(value: number): this { this.predicate('like_count','gt',value); return this; }
   public likeCountGte(value: number): this { this.predicate('like_count','gte',value); return this; }
@@ -1242,6 +1352,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public likeCountLteCol(reference: ColumnReference): this { this.predicateColumn('like_count','lte_col',reference); return this; }
   public aesKeyVersionEq(value: number): this { this.predicate('aes_key_version','eq',value); return this; }
   public aesKeyVersion(value: number): this { return this.aesKeyVersionEq(value); }
+  public andaesKeyVersion(value: number): this { return this.and().aesKeyVersionEq(value); }
+  public oraesKeyVersion(value: number): this { return this.or().aesKeyVersionEq(value); }
   public aesKeyVersionNotEq(value: number): this { this.predicate('aes_key_version','not_eq',value); return this; }
   public aesKeyVersionGt(value: number): this { this.predicate('aes_key_version','gt',value); return this; }
   public aesKeyVersionGte(value: number): this { this.predicate('aes_key_version','gte',value); return this; }
@@ -1260,6 +1372,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public aesKeyVersionLteCol(reference: ColumnReference): this { this.predicateColumn('aes_key_version','lte_col',reference); return this; }
   public aesHexEmailEq(value: string): this { this.predicate('aes_hex_email','eq',value); return this; }
   public aesHexEmail(value: string): this { return this.aesHexEmailEq(value); }
+  public andaesHexEmail(value: string): this { return this.and().aesHexEmailEq(value); }
+  public oraesHexEmail(value: string): this { return this.or().aesHexEmailEq(value); }
   public aesHexEmailNotEq(value: string): this { this.predicate('aes_hex_email','not_eq',value); return this; }
   public aesHexEmailIn(values: readonly (string)[]): this { this.predicateList('aes_hex_email','in',values); return this; }
   public aesHexEmailNotIn(values: readonly (string)[]): this { this.predicateList('aes_hex_email','not_in',values); return this; }
@@ -1269,6 +1383,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public aesHexEmailNotEqCol(reference: ColumnReference): this { this.predicateColumn('aes_hex_email','not_eq_col',reference); return this; }
   public emailBlindIndexEq(value: string): this { this.predicate('email_blind_index','eq',value); return this; }
   public emailBlindIndex(value: string): this { return this.emailBlindIndexEq(value); }
+  public andemailBlindIndex(value: string): this { return this.and().emailBlindIndexEq(value); }
+  public oremailBlindIndex(value: string): this { return this.or().emailBlindIndexEq(value); }
   public emailBlindIndexNotEq(value: string): this { this.predicate('email_blind_index','not_eq',value); return this; }
   public emailBlindIndexGt(value: string): this { this.predicate('email_blind_index','gt',value); return this; }
   public emailBlindIndexGte(value: string): this { this.predicate('email_blind_index','gte',value); return this; }
@@ -1291,6 +1407,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public emailBlindIndexLteCol(reference: ColumnReference): this { this.predicateColumn('email_blind_index','lte_col',reference); return this; }
   public aesHexPhoneEq(value: string): this { this.predicate('aes_hex_phone','eq',value); return this; }
   public aesHexPhone(value: string): this { return this.aesHexPhoneEq(value); }
+  public andaesHexPhone(value: string): this { return this.and().aesHexPhoneEq(value); }
+  public oraesHexPhone(value: string): this { return this.or().aesHexPhoneEq(value); }
   public aesHexPhoneNotEq(value: string): this { this.predicate('aes_hex_phone','not_eq',value); return this; }
   public aesHexPhoneIn(values: readonly (string)[]): this { this.predicateList('aes_hex_phone','in',values); return this; }
   public aesHexPhoneNotIn(values: readonly (string)[]): this { this.predicateList('aes_hex_phone','not_in',values); return this; }
@@ -1300,6 +1418,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public aesHexPhoneNotEqCol(reference: ColumnReference): this { this.predicateColumn('aes_hex_phone','not_eq_col',reference); return this; }
   public phoneBlindIndexEq(value: string): this { this.predicate('phone_blind_index','eq',value); return this; }
   public phoneBlindIndex(value: string): this { return this.phoneBlindIndexEq(value); }
+  public andphoneBlindIndex(value: string): this { return this.and().phoneBlindIndexEq(value); }
+  public orphoneBlindIndex(value: string): this { return this.or().phoneBlindIndexEq(value); }
   public phoneBlindIndexNotEq(value: string): this { this.predicate('phone_blind_index','not_eq',value); return this; }
   public phoneBlindIndexGt(value: string): this { this.predicate('phone_blind_index','gt',value); return this; }
   public phoneBlindIndexGte(value: string): this { this.predicate('phone_blind_index','gte',value); return this; }
@@ -1322,6 +1442,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public phoneBlindIndexLteCol(reference: ColumnReference): this { this.predicateColumn('phone_blind_index','lte_col',reference); return this; }
   public priceEq(value: number): this { this.predicate('price','eq',value); return this; }
   public price(value: number): this { return this.priceEq(value); }
+  public andprice(value: number): this { return this.and().priceEq(value); }
+  public orprice(value: number): this { return this.or().priceEq(value); }
   public priceNotEq(value: number): this { this.predicate('price','not_eq',value); return this; }
   public priceGt(value: number): this { this.predicate('price','gt',value); return this; }
   public priceGte(value: number): this { this.predicate('price','gte',value); return this; }
@@ -1340,6 +1462,8 @@ export class BattleQuery extends QueryCore implements BattleInterface {
   public priceLteCol(reference: ColumnReference): this { this.predicateColumn('price','lte_col',reference); return this; }
   public ipEq(value: string): this { this.predicate('ip','eq',value); return this; }
   public ip(value: string): this { return this.ipEq(value); }
+  public andip(value: string): this { return this.and().ipEq(value); }
+  public orip(value: string): this { return this.or().ipEq(value); }
   public ipNotEq(value: string): this { this.predicate('ip','not_eq',value); return this; }
   public ipIn(values: readonly (string)[]): this { this.predicateList('ip','in',values); return this; }
   public ipNotIn(values: readonly (string)[]): this { this.predicateList('ip','not_in',values); return this; }
@@ -2079,11 +2203,13 @@ export class UserColumns {
 
 export class UserWhere {
   public constructor(private readonly core: WhereCore) {}
-  public or(): this { this.core.or(); return this; }
-  public and(callback: (where: UserWhere) => void): this { this.core.and(core=>callback(new UserWhere(core))); return this; }
+  public or(callback?: (where: UserWhere) => void): this { if (!callback) { this.core.or(); return this; } this.core.or(); this.core.and(core=>callback(new UserWhere(core))); return this; }
+  public and(callback?: (where: UserWhere) => void): this { if (!callback) { this.core.andConnector(); return this; } this.core.and(core=>callback(new UserWhere(core))); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
   public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
@@ -2102,6 +2228,8 @@ export class UserWhere {
   public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
@@ -2144,12 +2272,14 @@ export class UserWhere {
 
 export class UserQuery extends QueryCore implements UserInterface {
   public constructor() { super('user'); }
-  public and(callback: (where: UserWhere) => void): this { this.whereCore().and(core=>callback(new UserWhere(core))); return this; }
+  public and(callback?: (where: UserWhere) => void): this { if (!callback) { this.whereCore().andConnector(); return this; } this.whereCore().and(core=>callback(new UserWhere(core))); return this; }
   public on(callback: (where: UserWhere) => void): this { return this.onGroup(core=>callback(new UserWhere(core))); }
   public where(callback: (where: UserWhere) => void): this { callback(new UserWhere(this.whereCore())); return this; }
   public having(callback: (where: UserWhere) => void): this { return this.havingGroup(core=>callback(new UserWhere(core))); }
   public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
@@ -2168,6 +2298,8 @@ export class UserQuery extends QueryCore implements UserInterface {
   public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
@@ -2335,11 +2467,13 @@ export class ServiceColumns {
 
 export class ServiceWhere {
   public constructor(private readonly core: WhereCore) {}
-  public or(): this { this.core.or(); return this; }
-  public and(callback: (where: ServiceWhere) => void): this { this.core.and(core=>callback(new ServiceWhere(core))); return this; }
+  public or(callback?: (where: ServiceWhere) => void): this { if (!callback) { this.core.or(); return this; } this.core.or(); this.core.and(core=>callback(new ServiceWhere(core))); return this; }
+  public and(callback?: (where: ServiceWhere) => void): this { if (!callback) { this.core.andConnector(); return this; } this.core.and(core=>callback(new ServiceWhere(core))); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
   public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
@@ -2358,6 +2492,8 @@ export class ServiceWhere {
   public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
@@ -2409,12 +2545,14 @@ export class ServiceWhere {
 
 export class ServiceQuery extends QueryCore implements ServiceInterface {
   public constructor() { super('service'); }
-  public and(callback: (where: ServiceWhere) => void): this { this.whereCore().and(core=>callback(new ServiceWhere(core))); return this; }
+  public and(callback?: (where: ServiceWhere) => void): this { if (!callback) { this.whereCore().andConnector(); return this; } this.whereCore().and(core=>callback(new ServiceWhere(core))); return this; }
   public on(callback: (where: ServiceWhere) => void): this { return this.onGroup(core=>callback(new ServiceWhere(core))); }
   public where(callback: (where: ServiceWhere) => void): this { callback(new ServiceWhere(this.whereCore())); return this; }
   public having(callback: (where: ServiceWhere) => void): this { return this.havingGroup(core=>callback(new ServiceWhere(core))); }
   public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
@@ -2433,6 +2571,8 @@ export class ServiceQuery extends QueryCore implements ServiceInterface {
   public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
@@ -2613,11 +2753,13 @@ export class ServiceModuleColumns {
 
 export class ServiceModuleWhere {
   public constructor(private readonly core: WhereCore) {}
-  public or(): this { this.core.or(); return this; }
-  public and(callback: (where: ServiceModuleWhere) => void): this { this.core.and(core=>callback(new ServiceModuleWhere(core))); return this; }
+  public or(callback?: (where: ServiceModuleWhere) => void): this { if (!callback) { this.core.or(); return this; } this.core.or(); this.core.and(core=>callback(new ServiceModuleWhere(core))); return this; }
+  public and(callback?: (where: ServiceModuleWhere) => void): this { if (!callback) { this.core.andConnector(); return this; } this.core.and(core=>callback(new ServiceModuleWhere(core))); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
   public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
@@ -2636,6 +2778,8 @@ export class ServiceModuleWhere {
   public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
   public serviceSeqEq(value: number): this { this.core.predicate('service_seq','eq',value); return this; }
   public serviceSeq(value: number): this { return this.serviceSeqEq(value); }
+  public andserviceSeq(value: number): this { return this.and().serviceSeqEq(value); }
+  public orserviceSeq(value: number): this { return this.or().serviceSeqEq(value); }
   public serviceSeqNotEq(value: number): this { this.core.predicate('service_seq','not_eq',value); return this; }
   public serviceSeqGt(value: number): this { this.core.predicate('service_seq','gt',value); return this; }
   public serviceSeqGte(value: number): this { this.core.predicate('service_seq','gte',value); return this; }
@@ -2654,6 +2798,8 @@ export class ServiceModuleWhere {
   public serviceSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
@@ -2696,12 +2842,14 @@ export class ServiceModuleWhere {
 
 export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterface {
   public constructor() { super('service_module'); }
-  public and(callback: (where: ServiceModuleWhere) => void): this { this.whereCore().and(core=>callback(new ServiceModuleWhere(core))); return this; }
+  public and(callback?: (where: ServiceModuleWhere) => void): this { if (!callback) { this.whereCore().andConnector(); return this; } this.whereCore().and(core=>callback(new ServiceModuleWhere(core))); return this; }
   public on(callback: (where: ServiceModuleWhere) => void): this { return this.onGroup(core=>callback(new ServiceModuleWhere(core))); }
   public where(callback: (where: ServiceModuleWhere) => void): this { callback(new ServiceModuleWhere(this.whereCore())); return this; }
   public having(callback: (where: ServiceModuleWhere) => void): this { return this.havingGroup(core=>callback(new ServiceModuleWhere(core))); }
   public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
@@ -2720,6 +2868,8 @@ export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterf
   public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
   public serviceSeqEq(value: number): this { this.predicate('service_seq','eq',value); return this; }
   public serviceSeq(value: number): this { return this.serviceSeqEq(value); }
+  public andserviceSeq(value: number): this { return this.and().serviceSeqEq(value); }
+  public orserviceSeq(value: number): this { return this.or().serviceSeqEq(value); }
   public serviceSeqNotEq(value: number): this { this.predicate('service_seq','not_eq',value); return this; }
   public serviceSeqGt(value: number): this { this.predicate('service_seq','gt',value); return this; }
   public serviceSeqGte(value: number): this { this.predicate('service_seq','gte',value); return this; }
@@ -2738,6 +2888,8 @@ export class ServiceModuleQuery extends QueryCore implements ServiceModuleInterf
   public serviceSeqLteCol(reference: ColumnReference): this { this.predicateColumn('service_seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
@@ -2930,11 +3082,13 @@ export class ServiceMemberColumns {
 
 export class ServiceMemberWhere {
   public constructor(private readonly core: WhereCore) {}
-  public or(): this { this.core.or(); return this; }
-  public and(callback: (where: ServiceMemberWhere) => void): this { this.core.and(core=>callback(new ServiceMemberWhere(core))); return this; }
+  public or(callback?: (where: ServiceMemberWhere) => void): this { if (!callback) { this.core.or(); return this; } this.core.or(); this.core.and(core=>callback(new ServiceMemberWhere(core))); return this; }
+  public and(callback?: (where: ServiceMemberWhere) => void): this { if (!callback) { this.core.andConnector(); return this; } this.core.and(core=>callback(new ServiceMemberWhere(core))); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
   public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
@@ -2953,6 +3107,8 @@ export class ServiceMemberWhere {
   public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
   public serviceSeqEq(value: number): this { this.core.predicate('service_seq','eq',value); return this; }
   public serviceSeq(value: number): this { return this.serviceSeqEq(value); }
+  public andserviceSeq(value: number): this { return this.and().serviceSeqEq(value); }
+  public orserviceSeq(value: number): this { return this.or().serviceSeqEq(value); }
   public serviceSeqNotEq(value: number): this { this.core.predicate('service_seq','not_eq',value); return this; }
   public serviceSeqGt(value: number): this { this.core.predicate('service_seq','gt',value); return this; }
   public serviceSeqGte(value: number): this { this.core.predicate('service_seq','gte',value); return this; }
@@ -2971,6 +3127,8 @@ export class ServiceMemberWhere {
   public serviceSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('service_seq','lte_col',reference); return this; }
   public userSeqEq(value: number): this { this.core.predicate('user_seq','eq',value); return this; }
   public userSeq(value: number): this { return this.userSeqEq(value); }
+  public anduserSeq(value: number): this { return this.and().userSeqEq(value); }
+  public oruserSeq(value: number): this { return this.or().userSeqEq(value); }
   public userSeqNotEq(value: number): this { this.core.predicate('user_seq','not_eq',value); return this; }
   public userSeqGt(value: number): this { this.core.predicate('user_seq','gt',value); return this; }
   public userSeqGte(value: number): this { this.core.predicate('user_seq','gte',value); return this; }
@@ -3018,12 +3176,14 @@ export class ServiceMemberWhere {
 
 export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterface {
   public constructor() { super('service_member'); }
-  public and(callback: (where: ServiceMemberWhere) => void): this { this.whereCore().and(core=>callback(new ServiceMemberWhere(core))); return this; }
+  public and(callback?: (where: ServiceMemberWhere) => void): this { if (!callback) { this.whereCore().andConnector(); return this; } this.whereCore().and(core=>callback(new ServiceMemberWhere(core))); return this; }
   public on(callback: (where: ServiceMemberWhere) => void): this { return this.onGroup(core=>callback(new ServiceMemberWhere(core))); }
   public where(callback: (where: ServiceMemberWhere) => void): this { callback(new ServiceMemberWhere(this.whereCore())); return this; }
   public having(callback: (where: ServiceMemberWhere) => void): this { return this.havingGroup(core=>callback(new ServiceMemberWhere(core))); }
   public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
@@ -3042,6 +3202,8 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
   public serviceSeqEq(value: number): this { this.predicate('service_seq','eq',value); return this; }
   public serviceSeq(value: number): this { return this.serviceSeqEq(value); }
+  public andserviceSeq(value: number): this { return this.and().serviceSeqEq(value); }
+  public orserviceSeq(value: number): this { return this.or().serviceSeqEq(value); }
   public serviceSeqNotEq(value: number): this { this.predicate('service_seq','not_eq',value); return this; }
   public serviceSeqGt(value: number): this { this.predicate('service_seq','gt',value); return this; }
   public serviceSeqGte(value: number): this { this.predicate('service_seq','gte',value); return this; }
@@ -3060,6 +3222,8 @@ export class ServiceMemberQuery extends QueryCore implements ServiceMemberInterf
   public serviceSeqLteCol(reference: ColumnReference): this { this.predicateColumn('service_seq','lte_col',reference); return this; }
   public userSeqEq(value: number): this { this.predicate('user_seq','eq',value); return this; }
   public userSeq(value: number): this { return this.userSeqEq(value); }
+  public anduserSeq(value: number): this { return this.and().userSeqEq(value); }
+  public oruserSeq(value: number): this { return this.or().userSeqEq(value); }
   public userSeqNotEq(value: number): this { this.predicate('user_seq','not_eq',value); return this; }
   public userSeqGt(value: number): this { this.predicate('user_seq','gt',value); return this; }
   public userSeqGte(value: number): this { this.predicate('user_seq','gte',value); return this; }
@@ -3268,11 +3432,13 @@ export class CompositeAccountColumns {
 
 export class CompositeAccountWhere {
   public constructor(private readonly core: WhereCore) {}
-  public or(): this { this.core.or(); return this; }
-  public and(callback: (where: CompositeAccountWhere) => void): this { this.core.and(core=>callback(new CompositeAccountWhere(core))); return this; }
+  public or(callback?: (where: CompositeAccountWhere) => void): this { if (!callback) { this.core.or(); return this; } this.core.or(); this.core.and(core=>callback(new CompositeAccountWhere(core))); return this; }
+  public and(callback?: (where: CompositeAccountWhere) => void): this { if (!callback) { this.core.andConnector(); return this; } this.core.and(core=>callback(new CompositeAccountWhere(core))); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
   public tenantIdEq(value: number): this { this.core.predicate('tenant_id','eq',value); return this; }
   public tenantId(value: number): this { return this.tenantIdEq(value); }
+  public andtenantId(value: number): this { return this.and().tenantIdEq(value); }
+  public ortenantId(value: number): this { return this.or().tenantIdEq(value); }
   public tenantIdNotEq(value: number): this { this.core.predicate('tenant_id','not_eq',value); return this; }
   public tenantIdGt(value: number): this { this.core.predicate('tenant_id','gt',value); return this; }
   public tenantIdGte(value: number): this { this.core.predicate('tenant_id','gte',value); return this; }
@@ -3291,6 +3457,8 @@ export class CompositeAccountWhere {
   public tenantIdLteCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','lte_col',reference); return this; }
   public accountIdEq(value: number): this { this.core.predicate('account_id','eq',value); return this; }
   public accountId(value: number): this { return this.accountIdEq(value); }
+  public andaccountId(value: number): this { return this.and().accountIdEq(value); }
+  public oraccountId(value: number): this { return this.or().accountIdEq(value); }
   public accountIdNotEq(value: number): this { this.core.predicate('account_id','not_eq',value); return this; }
   public accountIdGt(value: number): this { this.core.predicate('account_id','gt',value); return this; }
   public accountIdGte(value: number): this { this.core.predicate('account_id','gte',value); return this; }
@@ -3309,6 +3477,8 @@ export class CompositeAccountWhere {
   public accountIdLteCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','lte_col',reference); return this; }
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
@@ -3342,12 +3512,14 @@ export class CompositeAccountWhere {
 
 export class CompositeAccountQuery extends QueryCore implements CompositeAccountInterface {
   public constructor() { super('composite_account'); }
-  public and(callback: (where: CompositeAccountWhere) => void): this { this.whereCore().and(core=>callback(new CompositeAccountWhere(core))); return this; }
+  public and(callback?: (where: CompositeAccountWhere) => void): this { if (!callback) { this.whereCore().andConnector(); return this; } this.whereCore().and(core=>callback(new CompositeAccountWhere(core))); return this; }
   public on(callback: (where: CompositeAccountWhere) => void): this { return this.onGroup(core=>callback(new CompositeAccountWhere(core))); }
   public where(callback: (where: CompositeAccountWhere) => void): this { callback(new CompositeAccountWhere(this.whereCore())); return this; }
   public having(callback: (where: CompositeAccountWhere) => void): this { return this.havingGroup(core=>callback(new CompositeAccountWhere(core))); }
   public tenantIdEq(value: number): this { this.predicate('tenant_id','eq',value); return this; }
   public tenantId(value: number): this { return this.tenantIdEq(value); }
+  public andtenantId(value: number): this { return this.and().tenantIdEq(value); }
+  public ortenantId(value: number): this { return this.or().tenantIdEq(value); }
   public tenantIdNotEq(value: number): this { this.predicate('tenant_id','not_eq',value); return this; }
   public tenantIdGt(value: number): this { this.predicate('tenant_id','gt',value); return this; }
   public tenantIdGte(value: number): this { this.predicate('tenant_id','gte',value); return this; }
@@ -3366,6 +3538,8 @@ export class CompositeAccountQuery extends QueryCore implements CompositeAccount
   public tenantIdLteCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','lte_col',reference); return this; }
   public accountIdEq(value: number): this { this.predicate('account_id','eq',value); return this; }
   public accountId(value: number): this { return this.accountIdEq(value); }
+  public andaccountId(value: number): this { return this.and().accountIdEq(value); }
+  public oraccountId(value: number): this { return this.or().accountIdEq(value); }
   public accountIdNotEq(value: number): this { this.predicate('account_id','not_eq',value); return this; }
   public accountIdGt(value: number): this { this.predicate('account_id','gt',value); return this; }
   public accountIdGte(value: number): this { this.predicate('account_id','gte',value); return this; }
@@ -3384,6 +3558,8 @@ export class CompositeAccountQuery extends QueryCore implements CompositeAccount
   public accountIdLteCol(reference: ColumnReference): this { this.predicateColumn('account_id','lte_col',reference); return this; }
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
@@ -3530,11 +3706,13 @@ export class CompositeMembershipColumns {
 
 export class CompositeMembershipWhere {
   public constructor(private readonly core: WhereCore) {}
-  public or(): this { this.core.or(); return this; }
-  public and(callback: (where: CompositeMembershipWhere) => void): this { this.core.and(core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public or(callback?: (where: CompositeMembershipWhere) => void): this { if (!callback) { this.core.or(); return this; } this.core.or(); this.core.and(core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public and(callback?: (where: CompositeMembershipWhere) => void): this { if (!callback) { this.core.andConnector(); return this; } this.core.and(core=>callback(new CompositeMembershipWhere(core))); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
   public tenantIdEq(value: number): this { this.core.predicate('tenant_id','eq',value); return this; }
   public tenantId(value: number): this { return this.tenantIdEq(value); }
+  public andtenantId(value: number): this { return this.and().tenantIdEq(value); }
+  public ortenantId(value: number): this { return this.or().tenantIdEq(value); }
   public tenantIdNotEq(value: number): this { this.core.predicate('tenant_id','not_eq',value); return this; }
   public tenantIdGt(value: number): this { this.core.predicate('tenant_id','gt',value); return this; }
   public tenantIdGte(value: number): this { this.core.predicate('tenant_id','gte',value); return this; }
@@ -3553,6 +3731,8 @@ export class CompositeMembershipWhere {
   public tenantIdLteCol(reference: ColumnReference): this { this.core.predicateColumn('tenant_id','lte_col',reference); return this; }
   public accountIdEq(value: number): this { this.core.predicate('account_id','eq',value); return this; }
   public accountId(value: number): this { return this.accountIdEq(value); }
+  public andaccountId(value: number): this { return this.and().accountIdEq(value); }
+  public oraccountId(value: number): this { return this.or().accountIdEq(value); }
   public accountIdNotEq(value: number): this { this.core.predicate('account_id','not_eq',value); return this; }
   public accountIdGt(value: number): this { this.core.predicate('account_id','gt',value); return this; }
   public accountIdGte(value: number): this { this.core.predicate('account_id','gte',value); return this; }
@@ -3571,6 +3751,8 @@ export class CompositeMembershipWhere {
   public accountIdLteCol(reference: ColumnReference): this { this.core.predicateColumn('account_id','lte_col',reference); return this; }
   public roleEq(value: string): this { this.core.predicate('role','eq',value); return this; }
   public role(value: string): this { return this.roleEq(value); }
+  public androle(value: string): this { return this.and().roleEq(value); }
+  public orrole(value: string): this { return this.or().roleEq(value); }
   public roleNotEq(value: string): this { this.core.predicate('role','not_eq',value); return this; }
   public roleGt(value: string): this { this.core.predicate('role','gt',value); return this; }
   public roleGte(value: string): this { this.core.predicate('role','gte',value); return this; }
@@ -3604,12 +3786,14 @@ export class CompositeMembershipWhere {
 
 export class CompositeMembershipQuery extends QueryCore implements CompositeMembershipInterface {
   public constructor() { super('composite_membership'); }
-  public and(callback: (where: CompositeMembershipWhere) => void): this { this.whereCore().and(core=>callback(new CompositeMembershipWhere(core))); return this; }
+  public and(callback?: (where: CompositeMembershipWhere) => void): this { if (!callback) { this.whereCore().andConnector(); return this; } this.whereCore().and(core=>callback(new CompositeMembershipWhere(core))); return this; }
   public on(callback: (where: CompositeMembershipWhere) => void): this { return this.onGroup(core=>callback(new CompositeMembershipWhere(core))); }
   public where(callback: (where: CompositeMembershipWhere) => void): this { callback(new CompositeMembershipWhere(this.whereCore())); return this; }
   public having(callback: (where: CompositeMembershipWhere) => void): this { return this.havingGroup(core=>callback(new CompositeMembershipWhere(core))); }
   public tenantIdEq(value: number): this { this.predicate('tenant_id','eq',value); return this; }
   public tenantId(value: number): this { return this.tenantIdEq(value); }
+  public andtenantId(value: number): this { return this.and().tenantIdEq(value); }
+  public ortenantId(value: number): this { return this.or().tenantIdEq(value); }
   public tenantIdNotEq(value: number): this { this.predicate('tenant_id','not_eq',value); return this; }
   public tenantIdGt(value: number): this { this.predicate('tenant_id','gt',value); return this; }
   public tenantIdGte(value: number): this { this.predicate('tenant_id','gte',value); return this; }
@@ -3628,6 +3812,8 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
   public tenantIdLteCol(reference: ColumnReference): this { this.predicateColumn('tenant_id','lte_col',reference); return this; }
   public accountIdEq(value: number): this { this.predicate('account_id','eq',value); return this; }
   public accountId(value: number): this { return this.accountIdEq(value); }
+  public andaccountId(value: number): this { return this.and().accountIdEq(value); }
+  public oraccountId(value: number): this { return this.or().accountIdEq(value); }
   public accountIdNotEq(value: number): this { this.predicate('account_id','not_eq',value); return this; }
   public accountIdGt(value: number): this { this.predicate('account_id','gt',value); return this; }
   public accountIdGte(value: number): this { this.predicate('account_id','gte',value); return this; }
@@ -3646,6 +3832,8 @@ export class CompositeMembershipQuery extends QueryCore implements CompositeMemb
   public accountIdLteCol(reference: ColumnReference): this { this.predicateColumn('account_id','lte_col',reference); return this; }
   public roleEq(value: string): this { this.predicate('role','eq',value); return this; }
   public role(value: string): this { return this.roleEq(value); }
+  public androle(value: string): this { return this.and().roleEq(value); }
+  public orrole(value: string): this { return this.or().roleEq(value); }
   public roleNotEq(value: string): this { this.predicate('role','not_eq',value); return this; }
   public roleGt(value: string): this { this.predicate('role','gt',value); return this; }
   public roleGte(value: string): this { this.predicate('role','gte',value); return this; }
@@ -3792,11 +3980,13 @@ export class SoftRecordColumns {
 
 export class SoftRecordWhere {
   public constructor(private readonly core: WhereCore) {}
-  public or(): this { this.core.or(); return this; }
-  public and(callback: (where: SoftRecordWhere) => void): this { this.core.and(core=>callback(new SoftRecordWhere(core))); return this; }
+  public or(callback?: (where: SoftRecordWhere) => void): this { if (!callback) { this.core.or(); return this; } this.core.or(); this.core.and(core=>callback(new SoftRecordWhere(core))); return this; }
+  public and(callback?: (where: SoftRecordWhere) => void): this { if (!callback) { this.core.andConnector(); return this; } this.core.and(core=>callback(new SoftRecordWhere(core))); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
   public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
@@ -3815,6 +4005,8 @@ export class SoftRecordWhere {
   public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
@@ -3837,6 +4029,8 @@ export class SoftRecordWhere {
   public nameLteCol(reference: ColumnReference): this { this.core.predicateColumn('name','lte_col',reference); return this; }
   public deletedAtEq(value: string | Date): this { this.core.predicate('deleted_at','eq',value); return this; }
   public deletedAt(value: string | Date): this { return this.deletedAtEq(value); }
+  public anddeletedAt(value: string | Date): this { return this.and().deletedAtEq(value); }
+  public ordeletedAt(value: string | Date): this { return this.or().deletedAtEq(value); }
   public deletedAtNotEq(value: string | Date): this { this.core.predicate('deleted_at','not_eq',value); return this; }
   public deletedAtGt(value: string | Date): this { this.core.predicate('deleted_at','gt',value); return this; }
   public deletedAtGte(value: string | Date): this { this.core.predicate('deleted_at','gte',value); return this; }
@@ -3857,12 +4051,14 @@ export class SoftRecordWhere {
 
 export class SoftRecordQuery extends QueryCore implements SoftRecordInterface {
   public constructor() { super('soft_record'); }
-  public and(callback: (where: SoftRecordWhere) => void): this { this.whereCore().and(core=>callback(new SoftRecordWhere(core))); return this; }
+  public and(callback?: (where: SoftRecordWhere) => void): this { if (!callback) { this.whereCore().andConnector(); return this; } this.whereCore().and(core=>callback(new SoftRecordWhere(core))); return this; }
   public on(callback: (where: SoftRecordWhere) => void): this { return this.onGroup(core=>callback(new SoftRecordWhere(core))); }
   public where(callback: (where: SoftRecordWhere) => void): this { callback(new SoftRecordWhere(this.whereCore())); return this; }
   public having(callback: (where: SoftRecordWhere) => void): this { return this.havingGroup(core=>callback(new SoftRecordWhere(core))); }
   public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
@@ -3881,6 +4077,8 @@ export class SoftRecordQuery extends QueryCore implements SoftRecordInterface {
   public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
@@ -3903,6 +4101,8 @@ export class SoftRecordQuery extends QueryCore implements SoftRecordInterface {
   public nameLteCol(reference: ColumnReference): this { this.predicateColumn('name','lte_col',reference); return this; }
   public deletedAtEq(value: string | Date): this { this.predicate('deleted_at','eq',value); return this; }
   public deletedAt(value: string | Date): this { return this.deletedAtEq(value); }
+  public anddeletedAt(value: string | Date): this { return this.and().deletedAtEq(value); }
+  public ordeletedAt(value: string | Date): this { return this.or().deletedAtEq(value); }
   public deletedAtNotEq(value: string | Date): this { this.predicate('deleted_at','not_eq',value); return this; }
   public deletedAtGt(value: string | Date): this { this.predicate('deleted_at','gt',value); return this; }
   public deletedAtGte(value: string | Date): this { this.predicate('deleted_at','gte',value); return this; }
@@ -4021,11 +4221,13 @@ export class AccountColumns {
 
 export class AccountWhere {
   public constructor(private readonly core: WhereCore) {}
-  public or(): this { this.core.or(); return this; }
-  public and(callback: (where: AccountWhere) => void): this { this.core.and(core=>callback(new AccountWhere(core))); return this; }
+  public or(callback?: (where: AccountWhere) => void): this { if (!callback) { this.core.or(); return this; } this.core.or(); this.core.and(core=>callback(new AccountWhere(core))); return this; }
+  public and(callback?: (where: AccountWhere) => void): this { if (!callback) { this.core.andConnector(); return this; } this.core.and(core=>callback(new AccountWhere(core))); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
   public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
@@ -4044,6 +4246,8 @@ export class AccountWhere {
   public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
@@ -4077,12 +4281,14 @@ export class AccountWhere {
 
 export class AccountQuery extends QueryCore implements AccountInterface {
   public constructor() { super('account'); }
-  public and(callback: (where: AccountWhere) => void): this { this.whereCore().and(core=>callback(new AccountWhere(core))); return this; }
+  public and(callback?: (where: AccountWhere) => void): this { if (!callback) { this.whereCore().andConnector(); return this; } this.whereCore().and(core=>callback(new AccountWhere(core))); return this; }
   public on(callback: (where: AccountWhere) => void): this { return this.onGroup(core=>callback(new AccountWhere(core))); }
   public where(callback: (where: AccountWhere) => void): this { callback(new AccountWhere(this.whereCore())); return this; }
   public having(callback: (where: AccountWhere) => void): this { return this.havingGroup(core=>callback(new AccountWhere(core))); }
   public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
@@ -4101,6 +4307,8 @@ export class AccountQuery extends QueryCore implements AccountInterface {
   public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
@@ -4222,11 +4430,13 @@ export class ProjectColumns {
 
 export class ProjectWhere {
   public constructor(private readonly core: WhereCore) {}
-  public or(): this { this.core.or(); return this; }
-  public and(callback: (where: ProjectWhere) => void): this { this.core.and(core=>callback(new ProjectWhere(core))); return this; }
+  public or(callback?: (where: ProjectWhere) => void): this { if (!callback) { this.core.or(); return this; } this.core.or(); this.core.and(core=>callback(new ProjectWhere(core))); return this; }
+  public and(callback?: (where: ProjectWhere) => void): this { if (!callback) { this.core.andConnector(); return this; } this.core.and(core=>callback(new ProjectWhere(core))); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
   public seqEq(value: number): this { this.core.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.core.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.core.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.core.predicate('seq','gte',value); return this; }
@@ -4245,6 +4455,8 @@ export class ProjectWhere {
   public seqLteCol(reference: ColumnReference): this { this.core.predicateColumn('seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.core.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.core.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.core.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.core.predicate('name','gte',value); return this; }
@@ -4278,12 +4490,14 @@ export class ProjectWhere {
 
 export class ProjectQuery extends QueryCore implements ProjectInterface {
   public constructor() { super('project'); }
-  public and(callback: (where: ProjectWhere) => void): this { this.whereCore().and(core=>callback(new ProjectWhere(core))); return this; }
+  public and(callback?: (where: ProjectWhere) => void): this { if (!callback) { this.whereCore().andConnector(); return this; } this.whereCore().and(core=>callback(new ProjectWhere(core))); return this; }
   public on(callback: (where: ProjectWhere) => void): this { return this.onGroup(core=>callback(new ProjectWhere(core))); }
   public where(callback: (where: ProjectWhere) => void): this { callback(new ProjectWhere(this.whereCore())); return this; }
   public having(callback: (where: ProjectWhere) => void): this { return this.havingGroup(core=>callback(new ProjectWhere(core))); }
   public seqEq(value: number): this { this.predicate('seq','eq',value); return this; }
   public seq(value: number): this { return this.seqEq(value); }
+  public andseq(value: number): this { return this.and().seqEq(value); }
+  public orseq(value: number): this { return this.or().seqEq(value); }
   public seqNotEq(value: number): this { this.predicate('seq','not_eq',value); return this; }
   public seqGt(value: number): this { this.predicate('seq','gt',value); return this; }
   public seqGte(value: number): this { this.predicate('seq','gte',value); return this; }
@@ -4302,6 +4516,8 @@ export class ProjectQuery extends QueryCore implements ProjectInterface {
   public seqLteCol(reference: ColumnReference): this { this.predicateColumn('seq','lte_col',reference); return this; }
   public nameEq(value: string): this { this.predicate('name','eq',value); return this; }
   public name(value: string): this { return this.nameEq(value); }
+  public andname(value: string): this { return this.and().nameEq(value); }
+  public orname(value: string): this { return this.or().nameEq(value); }
   public nameNotEq(value: string): this { this.predicate('name','not_eq',value); return this; }
   public nameGt(value: string): this { this.predicate('name','gt',value); return this; }
   public nameGte(value: string): this { this.predicate('name','gte',value); return this; }
@@ -4423,11 +4639,13 @@ export class AccountProjectColumns {
 
 export class AccountProjectWhere {
   public constructor(private readonly core: WhereCore) {}
-  public or(): this { this.core.or(); return this; }
-  public and(callback: (where: AccountProjectWhere) => void): this { this.core.and(core=>callback(new AccountProjectWhere(core))); return this; }
+  public or(callback?: (where: AccountProjectWhere) => void): this { if (!callback) { this.core.or(); return this; } this.core.or(); this.core.and(core=>callback(new AccountProjectWhere(core))); return this; }
+  public and(callback?: (where: AccountProjectWhere) => void): this { if (!callback) { this.core.andConnector(); return this; } this.core.and(core=>callback(new AccountProjectWhere(core))); return this; }
   public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }
   public accountSeqEq(value: number): this { this.core.predicate('account_seq','eq',value); return this; }
   public accountSeq(value: number): this { return this.accountSeqEq(value); }
+  public andaccountSeq(value: number): this { return this.and().accountSeqEq(value); }
+  public oraccountSeq(value: number): this { return this.or().accountSeqEq(value); }
   public accountSeqNotEq(value: number): this { this.core.predicate('account_seq','not_eq',value); return this; }
   public accountSeqGt(value: number): this { this.core.predicate('account_seq','gt',value); return this; }
   public accountSeqGte(value: number): this { this.core.predicate('account_seq','gte',value); return this; }
@@ -4446,6 +4664,8 @@ export class AccountProjectWhere {
   public accountSeqLteCol(reference: ColumnReference): this { this.core.predicateColumn('account_seq','lte_col',reference); return this; }
   public projectSeqEq(value: number): this { this.core.predicate('project_seq','eq',value); return this; }
   public projectSeq(value: number): this { return this.projectSeqEq(value); }
+  public andprojectSeq(value: number): this { return this.and().projectSeqEq(value); }
+  public orprojectSeq(value: number): this { return this.or().projectSeqEq(value); }
   public projectSeqNotEq(value: number): this { this.core.predicate('project_seq','not_eq',value); return this; }
   public projectSeqGt(value: number): this { this.core.predicate('project_seq','gt',value); return this; }
   public projectSeqGte(value: number): this { this.core.predicate('project_seq','gte',value); return this; }
@@ -4466,12 +4686,14 @@ export class AccountProjectWhere {
 
 export class AccountProjectQuery extends QueryCore implements AccountProjectInterface {
   public constructor() { super('account_project'); }
-  public and(callback: (where: AccountProjectWhere) => void): this { this.whereCore().and(core=>callback(new AccountProjectWhere(core))); return this; }
+  public and(callback?: (where: AccountProjectWhere) => void): this { if (!callback) { this.whereCore().andConnector(); return this; } this.whereCore().and(core=>callback(new AccountProjectWhere(core))); return this; }
   public on(callback: (where: AccountProjectWhere) => void): this { return this.onGroup(core=>callback(new AccountProjectWhere(core))); }
   public where(callback: (where: AccountProjectWhere) => void): this { callback(new AccountProjectWhere(this.whereCore())); return this; }
   public having(callback: (where: AccountProjectWhere) => void): this { return this.havingGroup(core=>callback(new AccountProjectWhere(core))); }
   public accountSeqEq(value: number): this { this.predicate('account_seq','eq',value); return this; }
   public accountSeq(value: number): this { return this.accountSeqEq(value); }
+  public andaccountSeq(value: number): this { return this.and().accountSeqEq(value); }
+  public oraccountSeq(value: number): this { return this.or().accountSeqEq(value); }
   public accountSeqNotEq(value: number): this { this.predicate('account_seq','not_eq',value); return this; }
   public accountSeqGt(value: number): this { this.predicate('account_seq','gt',value); return this; }
   public accountSeqGte(value: number): this { this.predicate('account_seq','gte',value); return this; }
@@ -4490,6 +4712,8 @@ export class AccountProjectQuery extends QueryCore implements AccountProjectInte
   public accountSeqLteCol(reference: ColumnReference): this { this.predicateColumn('account_seq','lte_col',reference); return this; }
   public projectSeqEq(value: number): this { this.predicate('project_seq','eq',value); return this; }
   public projectSeq(value: number): this { return this.projectSeqEq(value); }
+  public andprojectSeq(value: number): this { return this.and().projectSeqEq(value); }
+  public orprojectSeq(value: number): this { return this.or().projectSeqEq(value); }
   public projectSeqNotEq(value: number): this { this.predicate('project_seq','not_eq',value); return this; }
   public projectSeqGt(value: number): this { this.predicate('project_seq','gt',value); return this; }
   public projectSeqGte(value: number): this { this.predicate('project_seq','gte',value); return this; }

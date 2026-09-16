@@ -158,7 +158,7 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		b.WriteString("}\n\n")
 
 		fmt.Fprintf(&b, "export class %sWhere {\n  public constructor(private readonly core: WhereCore) {}\n", ge.Type)
-		fmt.Fprintf(&b, "  public or(): this { this.core.or(); return this; }\n  public and(callback: (where: %sWhere) => void): this { this.core.and(core=>callback(new %sWhere(core))); return this; }\n", ge.Type, ge.Type)
+		fmt.Fprintf(&b, "  public or(callback?: (where: %sWhere) => void): this { if (!callback) { this.core.or(); return this; } this.core.or(); this.core.and(core=>callback(new %sWhere(core))); return this; }\n  public and(callback?: (where: %sWhere) => void): this { if (!callback) { this.core.andConnector(); return this; } this.core.and(core=>callback(new %sWhere(core))); return this; }\n", ge.Type, ge.Type, ge.Type, ge.Type)
 		b.WriteString("  public expr(sql: string, values: readonly unknown[] = []): this { this.core.expression(sql,values); return this; }\n")
 		writeTSPredicates(&b, ge, "this.core")
 		for _, rel := range ge.Rels {
@@ -187,7 +187,7 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 		if ge.Scope != "" {
 			fmt.Fprintf(&b, "  public override scope(value: %s): this { return super.scope(value); }\n", tsType(e.Column(ge.Scope)))
 		}
-		fmt.Fprintf(&b, "  public and(callback: (where: %sWhere) => void): this { this.whereCore().and(core=>callback(new %sWhere(core))); return this; }\n", ge.Type, ge.Type)
+		fmt.Fprintf(&b, "  public and(callback?: (where: %sWhere) => void): this { if (!callback) { this.whereCore().andConnector(); return this; } this.whereCore().and(core=>callback(new %sWhere(core))); return this; }\n", ge.Type, ge.Type)
 		fmt.Fprintf(&b, "  public on(callback: (where: %sWhere) => void): this { return this.onGroup(core=>callback(new %sWhere(core))); }\n  public where(callback: (where: %sWhere) => void): this { callback(new %sWhere(this.whereCore())); return this; }\n  public having(callback: (where: %sWhere) => void): this { return this.havingGroup(core=>callback(new %sWhere(core))); }\n", ge.Type, ge.Type, ge.Type, ge.Type, ge.Type, ge.Type)
 		writeTSPredicates(&b, ge, "this")
 		b.WriteString("  public expr(sql: string, values: readonly unknown[] = []): this { return this.expression(sql,values); }\n  public selectExpr(alias: string, expression: string): this { return this.selectExpression(alias,expression); }\n  public orderByExpr(expression: string, descending = false): this { return this.orderByExpression(expression,descending); }\n  public groupByExpr(expression: string, alias: string): this { return this.groupByExpression(expression,alias); }\n  public keyByFn(selector: (row: unknown) => number|string|bigint): this { return this.keyByFunction(selector); }\n")
@@ -340,6 +340,7 @@ func writeTSPredicates(b *bytes.Buffer, ge goEntity, target string) {
 			}
 			if op.Op == "eq" {
 				fmt.Fprintf(b, "  public %s(value: %s): this { return this.%s(value); }\n", tsMethod(c.Name), typ, method)
+				fmt.Fprintf(b, "  public and%s(value: %s): this { return this.and().%s(value); }\n  public or%s(value: %s): this { return this.or().%s(value); }\n", tsMethod(c.Name), typ, method, tsMethod(c.Name), typ, method)
 			}
 		}
 		for _, op := range c.ColOps {
