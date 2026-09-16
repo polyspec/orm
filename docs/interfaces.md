@@ -108,7 +108,7 @@ Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite:
 | Operation | PHP | Go | Rust | TypeScript |
 |---|---|---|---|---|
 | root entry | `Battle::query()` | `gen.Battle()` | `battle::query()` | `Battle()` |
-| bind executor | `using($db)` | `Using(ctx, db)` | `using(&db)` | `using(database)` |
+| bind executor | `using($db)` | `Using(db)` | `using(&db)` | `using(database)` |
 | collection terminal | `gets()` | `Gets()` | `gets().await?` | `gets()` |
 | count terminal | `getCount()` | `GetCount()` | `get_count().await?` | `getCount()` |
 

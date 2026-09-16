@@ -29,7 +29,7 @@ features:
 ### Go
 
 ```go [Go]
-count, err := gen.Battle().Using(ctx, db).GetCountByServiceSeq(7)
+count, err := gen.Battle().Using(db).GetCountByServiceSeq(7)
 ```
 
 ### PHP

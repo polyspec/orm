@@ -3,6 +3,15 @@
 Generate Go, PHP, Rust, and TypeScript clients from one Mermaid schema and execute the same statement as the same SQL in each client.
 Supported databases are MySQL 8 by default, PostgreSQL 12+, and SQLite 3.35+.
 
+Go generated clients bind the database without a per-query context. Initialize the generated schema once, then open the DSN-selected database:
+
+```go
+if err := gen.Init(engine); err != nil { return err }
+db, err := orm.Open(dsn, orm.Config{})
+```
+
+`OpenWithEngine` is reserved for generated bootstrap and tests. Query and row methods use `Using(db)`; the database owns the execution context.
+
 The complete syntax is in [dsl.md](dsl.md), diagram syntax is in [schema.md](schema.md), and the IR/Plan format is in [protocol.md](protocol.md).
 Dialect differences are in [dialects.md](dialects.md), configuration is in [config.md](config.md), and error codes are in [errors.yaml](errors.yaml).
 
@@ -272,7 +281,7 @@ rows, err := gen.Battle().
     ServiceSeq(7).IsClose(false).
     And(func(w *gen.BattleWhere) { w.IsDisplay(true).Or().IsAllday(true) }).
     SeqIn([]int64{6, 106, 206}).
-    OrderBySeqDesc().Limit(0, 20).Using(ctx, db).Gets()
+    OrderBySeqDesc().Limit(0, 20).Using(db).Gets()
 ```
 ```rust
 let rows = battle::query()
@@ -374,7 +383,7 @@ Battle::query()->seq($id)->using($db)->delete();
 
 ```go
 row, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {
-    return gen.Battle().SetName("x").….Using(ctx, tx).Insert()
+    return gen.Battle().SetName("x").….Using(tx).Insert()
 })
 ```
 ```php
@@ -422,7 +431,7 @@ psql … -f app.pg.sql
 | Compare schema with the live database | `ormgen validate --dsn … --schema schema/schema.json` (다르면 exit 1) |
 | Check generated files | `ormgen gen …` 후 `git diff --exit-code` |
 | Statement log | `Config.OnQuery` / `onQuery` / `Config { on_query }` → `(sql, binds, 시간, plan_id, err)`, 비밀은 `$SECRET`로 마스킹 |
-| View SQL without executing | `->using($db)->sql()` / `.Using(ctx, db).SQL()` / `.using(&db).sql()` |
+| View SQL without executing | `->using($db)->sql()` / `.Using(db).SQL()` / `.using(&db).sql()` |
 | Error constants | `ormgen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | Release artifacts | `scripts/build-artifacts.sh` → `dist/`(버전이 파일명에, SHA256SUMS) |
 | Daemon units | `deploy/ormd.service`, `deploy/com.orm.ormd.plist` |

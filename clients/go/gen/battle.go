@@ -1301,7 +1301,7 @@ var BattleCols = struct {
 	SerializeData:         orm.ColRef{Column: "serialize_data"},
 }
 
-// BattleQuery builds a statement over battle: Battle() → chain → Using(ctx, db) → terminal().
+// BattleQuery builds a statement over battle: Battle() → chain → Using(db) → terminal().
 type BattleQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -1318,15 +1318,15 @@ func (q *BattleQuery) Req() *orm.Req { return q.q.Req }
 // before Using; the bound ORM executor supplies the schema engine at Using.
 func Battle() *BattleQuery { return &BattleQuery{q: orm.NewQ(eng, "battle")} }
 
-// Using selects the context and pool or transaction for this query.
-func (q *BattleQuery) Using(ctx context.Context, ex orm.Exec) *BattleQuery {
+// Using selects the pool or transaction for this query.
+func (q *BattleQuery) Using(ex orm.Exec) *BattleQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "battle")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
@@ -1355,9 +1355,9 @@ func (q *BattleQuery) RotateAES(keyring orm.AESKeyring) (int, error) {
 	}, keyring)
 }
 
-// Using selects the context and pool or transaction for this loaded row.
-func (r *BattleRow) Using(ctx context.Context, ex orm.Exec) *BattleRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+// Using selects the pool or transaction for this loaded row.
+func (r *BattleRow) Using(ex orm.Exec) *BattleRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
@@ -9255,7 +9255,7 @@ func (q *BattleQuery) Insert() (*BattleRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Battle().Using(ctx, ex).SeqEq(int64(id)).Get()
+	return Battle().Using(ex).SeqEq(int64(id)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

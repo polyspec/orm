@@ -23,7 +23,7 @@ type BattleInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Using(ctx context.Context, ex orm.Exec) *BattleQuery
+	Using(ex orm.Exec) *BattleQuery
 	Scope(v int64) *BattleQuery
 	Paginate(page, per int) (*orm.Page[BattleRow], error)
 	GetsAfter(cursor string, per int) (*orm.KeysetPage[BattleRow], error)
@@ -157,7 +157,7 @@ type BattleInterface interface {
 var _ BattleInterface = (*BattleQuery)(nil)
 
 type BattleRowInterface interface {
-	Using(ctx context.Context, ex orm.Exec) *BattleRow
+	Using(ex orm.Exec) *BattleRow
 	Update() error
 	UpdateOptimistic() error
 	Delete() error
@@ -180,7 +180,7 @@ type UserInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Using(ctx context.Context, ex orm.Exec) *UserQuery
+	Using(ex orm.Exec) *UserQuery
 	Paginate(page, per int) (*orm.Page[UserRow], error)
 	GetsAfter(cursor string, per int) (*orm.KeysetPage[UserRow], error)
 	GetsBefore(cursor string, per int) (*orm.KeysetPage[UserRow], error)
@@ -197,7 +197,7 @@ type UserInterface interface {
 var _ UserInterface = (*UserQuery)(nil)
 
 type UserRowInterface interface {
-	Using(ctx context.Context, ex orm.Exec) *UserRow
+	Using(ex orm.Exec) *UserRow
 	Update() error
 	Delete() error
 	DeleteCascade() error
@@ -219,7 +219,7 @@ type ServiceInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Using(ctx context.Context, ex orm.Exec) *ServiceQuery
+	Using(ex orm.Exec) *ServiceQuery
 	Paginate(page, per int) (*orm.Page[ServiceRow], error)
 	GetsAfter(cursor string, per int) (*orm.KeysetPage[ServiceRow], error)
 	GetsBefore(cursor string, per int) (*orm.KeysetPage[ServiceRow], error)
@@ -236,7 +236,7 @@ type ServiceInterface interface {
 var _ ServiceInterface = (*ServiceQuery)(nil)
 
 type ServiceRowInterface interface {
-	Using(ctx context.Context, ex orm.Exec) *ServiceRow
+	Using(ex orm.Exec) *ServiceRow
 	Update() error
 	Delete() error
 	DeleteCascade() error
@@ -258,7 +258,7 @@ type ServiceModuleInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Using(ctx context.Context, ex orm.Exec) *ServiceModuleQuery
+	Using(ex orm.Exec) *ServiceModuleQuery
 	Paginate(page, per int) (*orm.Page[ServiceModuleRow], error)
 	GetsAfter(cursor string, per int) (*orm.KeysetPage[ServiceModuleRow], error)
 	GetsBefore(cursor string, per int) (*orm.KeysetPage[ServiceModuleRow], error)
@@ -279,7 +279,7 @@ type ServiceModuleInterface interface {
 var _ ServiceModuleInterface = (*ServiceModuleQuery)(nil)
 
 type ServiceModuleRowInterface interface {
-	Using(ctx context.Context, ex orm.Exec) *ServiceModuleRow
+	Using(ex orm.Exec) *ServiceModuleRow
 	Update() error
 	Delete() error
 	DeleteCascade() error
@@ -301,7 +301,7 @@ type ServiceMemberInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Using(ctx context.Context, ex orm.Exec) *ServiceMemberQuery
+	Using(ex orm.Exec) *ServiceMemberQuery
 	Paginate(page, per int) (*orm.Page[ServiceMemberRow], error)
 	GetsAfter(cursor string, per int) (*orm.KeysetPage[ServiceMemberRow], error)
 	GetsBefore(cursor string, per int) (*orm.KeysetPage[ServiceMemberRow], error)
@@ -322,7 +322,7 @@ type ServiceMemberInterface interface {
 var _ ServiceMemberInterface = (*ServiceMemberQuery)(nil)
 
 type ServiceMemberRowInterface interface {
-	Using(ctx context.Context, ex orm.Exec) *ServiceMemberRow
+	Using(ex orm.Exec) *ServiceMemberRow
 	Update() error
 	Delete() error
 	DeleteCascade() error
@@ -344,7 +344,7 @@ type CompositeAccountInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Using(ctx context.Context, ex orm.Exec) *CompositeAccountQuery
+	Using(ex orm.Exec) *CompositeAccountQuery
 	Paginate(page, per int) (*orm.Page[CompositeAccountRow], error)
 	GetsAfter(cursor string, per int) (*orm.KeysetPage[CompositeAccountRow], error)
 	GetsBefore(cursor string, per int) (*orm.KeysetPage[CompositeAccountRow], error)
@@ -365,7 +365,7 @@ type CompositeAccountInterface interface {
 var _ CompositeAccountInterface = (*CompositeAccountQuery)(nil)
 
 type CompositeAccountRowInterface interface {
-	Using(ctx context.Context, ex orm.Exec) *CompositeAccountRow
+	Using(ex orm.Exec) *CompositeAccountRow
 	Update() error
 	Delete() error
 	DeleteCascade() error
@@ -387,7 +387,7 @@ type CompositeMembershipInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Using(ctx context.Context, ex orm.Exec) *CompositeMembershipQuery
+	Using(ex orm.Exec) *CompositeMembershipQuery
 	Paginate(page, per int) (*orm.Page[CompositeMembershipRow], error)
 	GetsAfter(cursor string, per int) (*orm.KeysetPage[CompositeMembershipRow], error)
 	GetsBefore(cursor string, per int) (*orm.KeysetPage[CompositeMembershipRow], error)
@@ -408,7 +408,7 @@ type CompositeMembershipInterface interface {
 var _ CompositeMembershipInterface = (*CompositeMembershipQuery)(nil)
 
 type CompositeMembershipRowInterface interface {
-	Using(ctx context.Context, ex orm.Exec) *CompositeMembershipRow
+	Using(ex orm.Exec) *CompositeMembershipRow
 	Update() error
 	Delete() error
 	DeleteCascade() error
@@ -430,7 +430,7 @@ type SoftRecordInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Using(ctx context.Context, ex orm.Exec) *SoftRecordQuery
+	Using(ex orm.Exec) *SoftRecordQuery
 	Paginate(page, per int) (*orm.Page[SoftRecordRow], error)
 	GetsAfter(cursor string, per int) (*orm.KeysetPage[SoftRecordRow], error)
 	GetsBefore(cursor string, per int) (*orm.KeysetPage[SoftRecordRow], error)
@@ -451,7 +451,7 @@ type SoftRecordInterface interface {
 var _ SoftRecordInterface = (*SoftRecordQuery)(nil)
 
 type SoftRecordRowInterface interface {
-	Using(ctx context.Context, ex orm.Exec) *SoftRecordRow
+	Using(ex orm.Exec) *SoftRecordRow
 	Update() error
 	Delete() error
 	DeleteCascade() error
@@ -473,7 +473,7 @@ type AccountInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Using(ctx context.Context, ex orm.Exec) *AccountQuery
+	Using(ex orm.Exec) *AccountQuery
 	Paginate(page, per int) (*orm.Page[AccountRow], error)
 	GetsAfter(cursor string, per int) (*orm.KeysetPage[AccountRow], error)
 	GetsBefore(cursor string, per int) (*orm.KeysetPage[AccountRow], error)
@@ -490,7 +490,7 @@ type AccountInterface interface {
 var _ AccountInterface = (*AccountQuery)(nil)
 
 type AccountRowInterface interface {
-	Using(ctx context.Context, ex orm.Exec) *AccountRow
+	Using(ex orm.Exec) *AccountRow
 	Update() error
 	Delete() error
 	DeleteCascade() error
@@ -512,7 +512,7 @@ type ProjectInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Using(ctx context.Context, ex orm.Exec) *ProjectQuery
+	Using(ex orm.Exec) *ProjectQuery
 	Paginate(page, per int) (*orm.Page[ProjectRow], error)
 	GetsAfter(cursor string, per int) (*orm.KeysetPage[ProjectRow], error)
 	GetsBefore(cursor string, per int) (*orm.KeysetPage[ProjectRow], error)
@@ -529,7 +529,7 @@ type ProjectInterface interface {
 var _ ProjectInterface = (*ProjectQuery)(nil)
 
 type ProjectRowInterface interface {
-	Using(ctx context.Context, ex orm.Exec) *ProjectRow
+	Using(ex orm.Exec) *ProjectRow
 	Update() error
 	Delete() error
 	DeleteCascade() error
@@ -551,7 +551,7 @@ type AccountProjectInterface interface {
 	Update() (int64, error)
 	Delete() (int64, error)
 	SQL() (*orm.Statement, error)
-	Using(ctx context.Context, ex orm.Exec) *AccountProjectQuery
+	Using(ex orm.Exec) *AccountProjectQuery
 	Paginate(page, per int) (*orm.Page[AccountProjectRow], error)
 	GetsAfter(cursor string, per int) (*orm.KeysetPage[AccountProjectRow], error)
 	GetsBefore(cursor string, per int) (*orm.KeysetPage[AccountProjectRow], error)
@@ -568,7 +568,7 @@ type AccountProjectInterface interface {
 var _ AccountProjectInterface = (*AccountProjectQuery)(nil)
 
 type AccountProjectRowInterface interface {
-	Using(ctx context.Context, ex orm.Exec) *AccountProjectRow
+	Using(ex orm.Exec) *AccountProjectRow
 	Update() error
 	Delete() error
 	DeleteCascade() error

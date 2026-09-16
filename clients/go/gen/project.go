@@ -220,7 +220,7 @@ var ProjectCols = struct {
 	Name: orm.ColRef{Column: "name"},
 }
 
-// ProjectQuery builds a statement over project: Project() → chain → Using(ctx, db) → terminal().
+// ProjectQuery builds a statement over project: Project() → chain → Using(db) → terminal().
 type ProjectQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -237,21 +237,21 @@ func (q *ProjectQuery) Req() *orm.Req { return q.q.Req }
 // before Using; the bound ORM executor supplies the schema engine at Using.
 func Project() *ProjectQuery { return &ProjectQuery{q: orm.NewQ(eng, "project")} }
 
-// Using selects the context and pool or transaction for this query.
-func (q *ProjectQuery) Using(ctx context.Context, ex orm.Exec) *ProjectQuery {
+// Using selects the pool or transaction for this query.
+func (q *ProjectQuery) Using(ex orm.Exec) *ProjectQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "project")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
-// Using selects the context and pool or transaction for this loaded row.
-func (r *ProjectRow) Using(ctx context.Context, ex orm.Exec) *ProjectRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+// Using selects the pool or transaction for this loaded row.
+func (r *ProjectRow) Using(ex orm.Exec) *ProjectRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
@@ -1100,7 +1100,7 @@ func (q *ProjectQuery) Insert() (*ProjectRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Project().Using(ctx, ex).SeqEq(int64(id)).Get()
+	return Project().Using(ex).SeqEq(int64(id)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
