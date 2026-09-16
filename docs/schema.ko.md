@@ -60,7 +60,7 @@ erDiagram
 
 ### 2.1 컬럼 줄 — `타입 이름 [PK|FK|UK] ["주석"]`
 Mermaid 문법을 사용한다. `PK`, `FK`, `UK`는 Mermaid keyword다. 기본키를 구성하는 모든 컬럼에 `PK`를 지정하며 선언 순서가 복합키 순서다. 복합 unique key는 아래 `%% unique`로 표현한다.
-생성된 복합키 타입과 전체 키 조회 메서드는 이 순서를 보존한다. 자동 키가 없는 엔터티에 insert하려면 모든 primary key 값을 지정해야 하며, insert 후 모든 키 조건으로 행을 조회한다. `save`는 실행 전에 부분 primary key를 거부한다.
+생성된 복합키 타입과 전체 키 조회 메서드는 이 순서를 보존한다. PK는 임의의 유효한 컬럼명을 사용할 수 있고 여러 컬럼으로 구성할 수 있다. `seq`는 자동 증가 키에 사용하는 프로젝트 관례일 뿐이다. 자동 키가 없는 엔터티에 insert하려면 모든 primary key 값을 지정해야 하며, insert 후 모든 키 조건으로 행을 조회한다. `save`는 실행 전에 부분 primary key를 거부한다.
 타입은 DB 타입을 그대로 쓴다(`bigint`, `uuid`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum('a','b')`). 매니페스트가 정규 타입(i64/string/datetime/…)으로 바꾸며 UUID 바인딩은 문자열을 사용하고 PostgreSQL DDL은 native `uuid`를 보존한다.
 `varchar`와 `char`에는 양의 길이가 필요하다. 길이가 없거나 0이거나 잘못된 값이면 DDL 생성 전에 schema build가 실패한다.
 
@@ -86,7 +86,7 @@ Mermaid 문법을 사용한다. `PK`, `FK`, `UK`는 Mermaid keyword다. 기본�
 | `}o--o{` (N : M) | 직접 지원 안 함 — 조인 테이블을 엔티티로 그린다(`a_match_b` 관례) |
 
 라벨: 단일 컬럼 관계는 자식 FK 컬럼으로 시작한다. 복합 관계는 `(tenant_id, account_id)`처럼 순서가 있는 자식 FK 목록으로 시작하고 `(tenant_id, account_id) (account / memberships)`처럼 관계 이름을 반드시 명시한다. FK 수는 부모 기본키 수와 같아야 하며 같은 위치의 부모 키에 대응한다. `(자식측 / 부모측)` 관계 이름은 단일 컬럼 관계에서만 생략할 수 있다.
-이름 기본값: 자식측 = FK 컬럼에서 `_seq` 제거(`service_seq`→`service`, `updated_user_seq`→`updated_user`), 부모측 = 자식 테이블명에서 부모 테이블명 접두어를 떼고 복수형(`battle_item`→`items`, `product_review`→`reviews`, 접두어가 없으면 테이블명 복수형 `battles`).
+이름 기본값: 자식측 = FK 컬럼에서 `_seq` 또는 `_id` 제거(`service_seq`→`service`, `created_by`→`created_by`), 부모측 = 자식 테이블명에서 부모 테이블명 접두어를 떼고 복수형(`battle_item`→`items`, `product_review`→`reviews`, 접두어가 없으면 테이블명 복수형 `battles`). FK 컬럼명이 `_seq`일 필요는 없으며 관계선이 기준이다.
 같은 부모를 두 번 참조하면(`user_seq`, `updated_user_seq`) 관계선을 두 줄 긋는다. 이름 충돌은 `ormgen`이 오류로 표시한다.
 같은 자식 column이 서로 겹치는 복합 foreign key를 포함해 둘 이상의 foreign key에 참여할 수 있다. 각 관계선의 순서 있는 local/target key pair가 계속 정본이며 generated DDL은 서로 다른 제약을 모두 생성하고 generated relation metadata도 모든 pair를 보존한다. 소스의 `-> table.column` 선언은 하나의 명시적 target을 지정하므로 관계선과 충돌할 수 없다.
 
@@ -125,11 +125,11 @@ PostgreSQL `COMMENT ON` 문, SQLite의 `orm_schema_comments` 행을 생성합니
 `many_to_many`는 하나의 지시문으로 양쪽 typed relation 이름을 선언한다. through entity에는 source primary-key component마다 참조 column 하나와 target primary-key component마다 참조 column 하나가 있어야 하며, 이 FK column들이 through entity의 primary key를 구성해야 한다. 관계 로딩은 through table subquery로 target table을 제한하고 선언된 key 순서를 유지한다.
 
 ### 2.4 생략 가능한 것 (기본 규칙)
-- PK가 `seq`이고 `auto`면 `bigint seq PK "auto"` 한 줄.
+- `seq` PK에 `auto`를 지정하는 형식은 `bigint seq PK "auto"`이다. 다른 PK 이름과 복합 PK도 허용한다.
 - `created_ts`/`updated_ts`는 이름만으로 타임스탬프 컬럼.
 - `is_*` tinyint는 `bool` 없이도 bool로 노출(임포터 기본; 끄려면 `int` 속성).
 - text/blob/스타일 컬럼은 자동 lazy(`aes_hex_*`만 예외로 기본 포함).
-- FK 컬럼이 `<table>_seq`이고 관계선이 있으면 `-> table.seq` 불필요.
+- 관계선이 FK 대상을 명시하면 `-> table.seq`는 불필요하다. `<table>_seq`는 명명 관례이며 필수 조건이 아니다.
 
 ### 2.5 표준 Mermaid가 못 담는 것과 그 자리 (CREATE문 대체 범위)
 | CREATE문 요소 | 자리 |
