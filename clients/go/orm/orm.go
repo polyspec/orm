@@ -22,6 +22,8 @@ import (
 	"github.com/polyspec/orm/engine"
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/plan"
+	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/internal/ormgen"
 )
 
 // Config is the executor configuration. Paths and secrets are declared, never discovered.
@@ -473,6 +475,28 @@ func (t *Tx) InstallDDL(ctx context.Context, statements []string) error {
 		}
 	}
 	return nil
+}
+
+// InstallSchema installs the canonical schema manifest for the dialect bound
+// to this caller-owned transaction. Manifest rendering and statement execution
+// remain inside the ORM; consumers do not provide SQL or select a dialect.
+func (t *Tx) InstallSchema(ctx context.Context, manifestJSON []byte) error {
+	if t == nil || t.finished.Load() {
+		return &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	manifest, err := schema.Load(manifestJSON)
+	if err != nil {
+		return &ir.Error{Code: CodeConfig, Msg: "invalid schema manifest: " + err.Error()}
+	}
+	ddl, err := ormgen.RenderCreateDDL(manifest, t.Driver())
+	if err != nil {
+		return &ir.Error{Code: CodeConfig, Msg: "render schema: " + err.Error()}
+	}
+	statements := ormgen.SplitSQL(ddl)
+	if len(statements) == 0 {
+		return &ir.Error{Code: CodeConfig, Msg: "schema manifest produced no statements"}
+	}
+	return t.InstallDDL(ctx, statements)
 }
 
 // AdvisoryLock serializes work for the transaction on database engines that
