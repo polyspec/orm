@@ -321,9 +321,20 @@ func (r *ServiceRegionRow) Using(ctx context.Context, ex orm.Exec) *ServiceRegio
 // ServiceRegionWhere edits one WHERE/ON group of service_region.
 type ServiceRegionWhere struct{ w *orm.W }
 
-func (w *ServiceRegionWhere) Or() *ServiceRegionWhere { w.w.Or(); return w }
-func (w *ServiceRegionWhere) And(fn func(*ServiceRegionWhere)) *ServiceRegionWhere {
-	w.w.And(func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+func (w *ServiceRegionWhere) Or(fn ...func(*ServiceRegionWhere)) *ServiceRegionWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&ServiceRegionWhere{w: x}) })
+	return w
+}
+func (w *ServiceRegionWhere) And(fn ...func(*ServiceRegionWhere)) *ServiceRegionWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&ServiceRegionWhere{w: x}) })
 	return w
 }
 func (w *ServiceRegionWhere) Expr(frag string, binds ...any) *ServiceRegionWhere {
@@ -408,8 +419,12 @@ func (q *ServiceRegionQuery) SeqEq(v int64) *ServiceRegionQuery {
 	q.q.W().Pred("seq", "eq", v)
 	return q
 }
-func (w *ServiceRegionWhere) Seq(v int64) *ServiceRegionWhere { return w.SeqEq(v) }
-func (q *ServiceRegionQuery) Seq(v int64) *ServiceRegionQuery { return q.SeqEq(v) }
+func (w *ServiceRegionWhere) Seq(v int64) *ServiceRegionWhere    { return w.SeqEq(v) }
+func (q *ServiceRegionQuery) Seq(v int64) *ServiceRegionQuery    { return q.SeqEq(v) }
+func (w *ServiceRegionWhere) AndSeq(v int64) *ServiceRegionWhere { w.w.And(); return w.SeqEq(v) }
+func (q *ServiceRegionQuery) AndSeq(v int64) *ServiceRegionQuery { q.q.W().And(); return q.SeqEq(v) }
+func (w *ServiceRegionWhere) OrSeq(v int64) *ServiceRegionWhere  { w.w.Or(); return w.SeqEq(v) }
+func (q *ServiceRegionQuery) OrSeq(v int64) *ServiceRegionQuery  { q.q.Or(); return q.SeqEq(v) }
 func (w *ServiceRegionWhere) SeqNotEq(v int64) *ServiceRegionWhere {
 	w.w.Pred("seq", "not_eq", v)
 	return w
@@ -536,6 +551,22 @@ func (q *ServiceRegionQuery) ServiceSeqEq(v int64) *ServiceRegionQuery {
 }
 func (w *ServiceRegionWhere) ServiceSeq(v int64) *ServiceRegionWhere { return w.ServiceSeqEq(v) }
 func (q *ServiceRegionQuery) ServiceSeq(v int64) *ServiceRegionQuery { return q.ServiceSeqEq(v) }
+func (w *ServiceRegionWhere) AndServiceSeq(v int64) *ServiceRegionWhere {
+	w.w.And()
+	return w.ServiceSeqEq(v)
+}
+func (q *ServiceRegionQuery) AndServiceSeq(v int64) *ServiceRegionQuery {
+	q.q.W().And()
+	return q.ServiceSeqEq(v)
+}
+func (w *ServiceRegionWhere) OrServiceSeq(v int64) *ServiceRegionWhere {
+	w.w.Or()
+	return w.ServiceSeqEq(v)
+}
+func (q *ServiceRegionQuery) OrServiceSeq(v int64) *ServiceRegionQuery {
+	q.q.Or()
+	return q.ServiceSeqEq(v)
+}
 func (w *ServiceRegionWhere) ServiceSeqNotEq(v int64) *ServiceRegionWhere {
 	w.w.Pred("service_seq", "not_eq", v)
 	return w
@@ -672,8 +703,12 @@ func (q *ServiceRegionQuery) NameEq(v string) *ServiceRegionQuery {
 	q.q.W().Pred("name", "eq", v)
 	return q
 }
-func (w *ServiceRegionWhere) Name(v string) *ServiceRegionWhere { return w.NameEq(v) }
-func (q *ServiceRegionQuery) Name(v string) *ServiceRegionQuery { return q.NameEq(v) }
+func (w *ServiceRegionWhere) Name(v string) *ServiceRegionWhere    { return w.NameEq(v) }
+func (q *ServiceRegionQuery) Name(v string) *ServiceRegionQuery    { return q.NameEq(v) }
+func (w *ServiceRegionWhere) AndName(v string) *ServiceRegionWhere { w.w.And(); return w.NameEq(v) }
+func (q *ServiceRegionQuery) AndName(v string) *ServiceRegionQuery { q.q.W().And(); return q.NameEq(v) }
+func (w *ServiceRegionWhere) OrName(v string) *ServiceRegionWhere  { w.w.Or(); return w.NameEq(v) }
+func (q *ServiceRegionQuery) OrName(v string) *ServiceRegionQuery  { q.q.Or(); return q.NameEq(v) }
 func (w *ServiceRegionWhere) NameNotEq(v string) *ServiceRegionWhere {
 	w.w.Pred("name", "not_eq", v)
 	return w
@@ -835,10 +870,22 @@ func (q *ServiceRegionQuery) NameLteCol(ref orm.ColRef) *ServiceRegionQuery {
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *ServiceRegionQuery) Or() *ServiceRegionQuery { q.q.Or(); return q }
-func (q *ServiceRegionQuery) And(fn func(*ServiceRegionWhere)) *ServiceRegionQuery {
-	q.q.W().And(func(x *orm.W) { fn(&ServiceRegionWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *ServiceRegionQuery) Or(fn ...func(*ServiceRegionWhere)) *ServiceRegionQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&ServiceRegionWhere{w: x}) })
+	return q
+}
+func (q *ServiceRegionQuery) And(fn ...func(*ServiceRegionWhere)) *ServiceRegionQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&ServiceRegionWhere{w: x}) })
 	return q
 }
 func (q *ServiceRegionQuery) Expr(frag string, binds ...any) *ServiceRegionQuery {

@@ -800,8 +800,8 @@ func (r *{{.Type}}Row) Using(ctx context.Context, ex orm.Exec) *{{.Type}}Row { r
 // {{.Type}}Where edits one WHERE/ON group of {{.Table}}.
 type {{.Type}}Where struct{ w *orm.W }
 
-func (w *{{.Type}}Where) Or() *{{.Type}}Where { w.w.Or(); return w }
-func (w *{{.Type}}Where) And(fn func(*{{.Type}}Where)) *{{.Type}}Where { w.w.And(func(x *orm.W) { fn(&{{.Type}}Where{w: x}) }); return w }
+func (w *{{.Type}}Where) Or(fn ...func(*{{.Type}}Where)) *{{.Type}}Where { if len(fn) == 0 { w.w.Or(); return w }; w.w.Or(func(x *orm.W) { fn[0](&{{.Type}}Where{w: x}) }); return w }
+func (w *{{.Type}}Where) And(fn ...func(*{{.Type}}Where)) *{{.Type}}Where { if len(fn) == 0 { w.w.And(); return w }; w.w.And(func(x *orm.W) { fn[0](&{{.Type}}Where{w: x}) }); return w }
 func (w *{{.Type}}Where) Expr(frag string, binds ...any) *{{.Type}}Where { w.w.Expr(frag, binds...); return w }
 {{- range .Rels}}
 func (w *{{$.Type}}Where) {{.Method}}(fn func(*{{.TargetType}}Where)) *{{$.Type}}Where { w.w.Nav({{printf "%q" .Name}}, func(x *orm.W) { fn(&{{.TargetType}}Where{w: x}) }); return w }
@@ -821,6 +821,10 @@ func (q *{{$.Type}}Query) {{$c.Field}}{{.Suffix}}(v {{$c.Type}}) *{{$.Type}}Quer
 {{- if eq .Op "eq"}}
 func (w *{{$.Type}}Where) {{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Where { return w.{{$c.Field}}Eq(v) }
 func (q *{{$.Type}}Query) {{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Query { return q.{{$c.Field}}Eq(v) }
+func (w *{{$.Type}}Where) And{{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Where { w.w.And(); return w.{{$c.Field}}Eq(v) }
+func (q *{{$.Type}}Query) And{{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Query { q.q.W().And(); return q.{{$c.Field}}Eq(v) }
+func (w *{{$.Type}}Where) Or{{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Where { w.w.Or(); return w.{{$c.Field}}Eq(v) }
+func (q *{{$.Type}}Query) Or{{$c.Field}}(v {{$c.Type}}) *{{$.Type}}Query { q.q.Or(); return q.{{$c.Field}}Eq(v) }
 {{- end}}
 {{- else if eq .Kind "list"}}
 func (w *{{$.Type}}Where) {{$c.Field}}{{.Suffix}}(vs []{{$c.Type}}) *{{$.Type}}Where { w.w.PredList({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, orm.Anys(vs)); return w }
@@ -850,9 +854,10 @@ func (w *{{$.Type}}Where) {{.Method}}({{predParams .Arity}}) *{{$.Type}}Where { 
 func (q *{{$.Type}}Query) {{.Method}}({{predParams .Arity}}) *{{$.Type}}Query { q.q.W().Expr({{printf "%q" .Expr}}{{predArgs .Arity}}); return q }
 {{- end}}
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *{{.Type}}Query) Or() *{{.Type}}Query { q.q.Or(); return q }
-func (q *{{.Type}}Query) And(fn func(*{{.Type}}Where)) *{{.Type}}Query { q.q.W().And(func(x *orm.W) { fn(&{{.Type}}Where{w: x}) }); return q }
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *{{.Type}}Query) Or(fn ...func(*{{.Type}}Where)) *{{.Type}}Query { if len(fn) == 0 { q.q.Or(); return q }; q.q.W().Or(func(x *orm.W) { fn[0](&{{.Type}}Where{w: x}) }); return q }
+func (q *{{.Type}}Query) And(fn ...func(*{{.Type}}Where)) *{{.Type}}Query { if len(fn) == 0 { q.q.W().And(); return q }; q.q.W().And(func(x *orm.W) { fn[0](&{{.Type}}Where{w: x}) }); return q }
 func (q *{{.Type}}Query) Expr(frag string, binds ...any) *{{.Type}}Query { q.q.W().Expr(frag, binds...); return q }
 {{- if .Scope}}
 func (q *{{.Type}}Query) Scope(v {{.ScopeType}}) *{{.Type}}Query { q.q.Scope(v); return q }

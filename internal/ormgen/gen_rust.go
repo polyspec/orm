@@ -488,7 +488,8 @@ pub struct {{.Type}}Where<'a> { pub(crate) w: W<'a> }
 
 impl<'a> {{.Type}}Where<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
-    pub fn and(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { self.w.and_with(|w| { f({{.Type}}Where { w }); }); self }
+    pub fn and(mut self) -> Self { self.w.and(); self }
+    pub fn and_group(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { self.w.and_with(|w| { f({{.Type}}Where { w }); }); self }
 	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
 {{- range .Preds}}
     pub fn {{.Ident}}(mut self{{predParams .Args}}) -> Self { self.w.expr({{printf "%q" .Expr}}, {{predBinds .Args}}); self }
@@ -509,6 +510,8 @@ impl<'a> {{.Type}}Where<'a> {
     pub fn {{$c.Ident}}_{{opSnake .Suffix}}(mut self, v: {{if $c.IsStr}}impl Into<String>{{else}}{{$c.RType}}{{end}}) -> Self { self.w.pred({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, {{if $c.IsStr}}v.into(){{else}}v{{end}}); self }
 {{- if eq .Op "eq"}}
     pub fn {{$c.Ident}}(self, v: {{if $c.IsStr}}impl Into<String>{{else}}{{$c.RType}}{{end}}) -> Self { self.{{$c.Ident}}_eq(v) }
+    pub fn and_{{$c.Ident}}(mut self, v: {{if $c.IsStr}}impl Into<String>{{else}}{{$c.RType}}{{end}}) -> Self { self.w.and(); self.{{$c.Ident}}_eq(v) }
+    pub fn or_{{$c.Ident}}(mut self, v: {{if $c.IsStr}}impl Into<String>{{else}}{{$c.RType}}{{end}}) -> Self { self.w.or(); self.{{$c.Ident}}_eq(v) }
 {{- end}}
 {{- else if eq .Kind "list"}}
     pub fn {{$c.Ident}}_{{opSnake .Suffix}}(mut self, vs: Vec<{{$c.RType}}>) -> Self { self.w.pred_list({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, vs.into_iter().map(Into::into).collect()); self }
@@ -565,7 +568,8 @@ impl {{.Type}} {
 
     // ---- WHERE ----
     pub fn or(mut self) -> Self { self.q.or(); self }
-    pub fn and(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { self.q.w().and_with(|w| { f({{.Type}}Where { w }); }); self }
+    pub fn and(mut self) -> Self { self.q.w().and(); self }
+    pub fn and_group(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { self.q.w().and_with(|w| { f({{.Type}}Where { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
 {{- if .Scope}}
     pub fn scope(mut self, v: {{.ScopeType}}) -> Self { self.q.scope(v); self }

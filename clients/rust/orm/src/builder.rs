@@ -610,6 +610,11 @@ impl<'a> W<'a> {
         self.pending_or = true;
     }
 
+    /// Starts the explicit AND connector. AND is the default IR connector,
+    /// so this clears no state and exists to keep the generated grammar
+    /// explicit and consistent across languages.
+    pub fn and(&mut self) {}
+
     pub fn pred(&mut self, col: &str, op: &str, v: impl Into<Param>) {
         let conn = self.conn();
         let p = self.p(v);

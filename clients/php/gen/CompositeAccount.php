@@ -77,8 +77,8 @@ final class CompositeAccountWhere
 
     public function __construct(private W $w) {}
 
-    public function or(): static { $this->w->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    public function or(?\Closure $fn = null): static { if ($fn === null) { $this->w->orConn(); return $this; } $this->w->orConn(); $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    public function and(?\Closure $fn = null): static { if ($fn === null) { return $this; } $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
     public function memberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->nav('memberships'))); $this->w->req->end(); return $this; }
     public function hasMemberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w->navMode('memberships', 'exists'))); $this->w->req->end(); return $this; }
@@ -92,6 +92,8 @@ final class CompositeAccountWhere
 
     public function tenantIdEq(int $v): static { $this->w->pred('tenant_id', 'eq', $v); return $this; }
     public function tenantId(int $v): static { return $this->tenantIdEq($v); }
+    public function andTenantId(int $v): static { return $this->and()->tenantIdEq($v); }
+    public function orTenantId(int $v): static { return $this->or()->tenantIdEq($v); }
     public function tenantIdNotEq(int $v): static { $this->w->pred('tenant_id', 'not_eq', $v); return $this; }
     public function tenantIdGt(int $v): static { $this->w->pred('tenant_id', 'gt', $v); return $this; }
     public function tenantIdGte(int $v): static { $this->w->pred('tenant_id', 'gte', $v); return $this; }
@@ -110,6 +112,8 @@ final class CompositeAccountWhere
     public function tenantIdLteCol(ColRef $ref): static { $this->w->predCol('tenant_id', 'lte_col', $ref); return $this; }
     public function accountIdEq(int $v): static { $this->w->pred('account_id', 'eq', $v); return $this; }
     public function accountId(int $v): static { return $this->accountIdEq($v); }
+    public function andAccountId(int $v): static { return $this->and()->accountIdEq($v); }
+    public function orAccountId(int $v): static { return $this->or()->accountIdEq($v); }
     public function accountIdNotEq(int $v): static { $this->w->pred('account_id', 'not_eq', $v); return $this; }
     public function accountIdGt(int $v): static { $this->w->pred('account_id', 'gt', $v); return $this; }
     public function accountIdGte(int $v): static { $this->w->pred('account_id', 'gte', $v); return $this; }
@@ -128,6 +132,8 @@ final class CompositeAccountWhere
     public function accountIdLteCol(ColRef $ref): static { $this->w->predCol('account_id', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w->pred('name', 'eq', $v); return $this; }
     public function name(string $v): static { return $this->nameEq($v); }
+    public function andName(string $v): static { return $this->and()->nameEq($v); }
+    public function orName(string $v): static { return $this->or()->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w->pred('name', 'not_eq', $v); return $this; }
     public function nameGt(string $v): static { $this->w->pred('name', 'gt', $v); return $this; }
     public function nameGte(string $v): static { $this->w->pred('name', 'gte', $v); return $this; }
@@ -159,8 +165,8 @@ final class CompositeAccount extends Q implements CompositeAccountInterface
     public static function query(): static { return new static(); }
 
     // ---- WHERE ----
-    public function or(): static { $this->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new CompositeAccountWhere($this->w()->group())); $this->req->end(); return $this; }
+    public function or(?\Closure $fn = null): static { if ($fn === null) { $this->orConn(); return $this; } $this->orConn(); $fn(new CompositeAccountWhere($this->w()->group())); $this->req->end(); return $this; }
+    public function and(?\Closure $fn = null): static { if ($fn === null) { return $this; } $fn(new CompositeAccountWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
     public function memberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->nav('memberships'))); $this->req->end(); return $this; }
     public function hasMemberships(\Closure $fn): static { $fn(new CompositeMembershipWhere($this->w()->navMode('memberships', 'exists'))); $this->req->end(); return $this; }
@@ -174,6 +180,8 @@ final class CompositeAccount extends Q implements CompositeAccountInterface
 
     public function tenantIdEq(int $v): static { $this->w()->pred('tenant_id', 'eq', $v); return $this; }
     public function tenantId(int $v): static { return $this->tenantIdEq($v); }
+    public function andTenantId(int $v): static { return $this->and()->tenantIdEq($v); }
+    public function orTenantId(int $v): static { return $this->or()->tenantIdEq($v); }
     public function tenantIdNotEq(int $v): static { $this->w()->pred('tenant_id', 'not_eq', $v); return $this; }
     public function tenantIdGt(int $v): static { $this->w()->pred('tenant_id', 'gt', $v); return $this; }
     public function tenantIdGte(int $v): static { $this->w()->pred('tenant_id', 'gte', $v); return $this; }
@@ -192,6 +200,8 @@ final class CompositeAccount extends Q implements CompositeAccountInterface
     public function tenantIdLteCol(ColRef $ref): static { $this->w()->predCol('tenant_id', 'lte_col', $ref); return $this; }
     public function accountIdEq(int $v): static { $this->w()->pred('account_id', 'eq', $v); return $this; }
     public function accountId(int $v): static { return $this->accountIdEq($v); }
+    public function andAccountId(int $v): static { return $this->and()->accountIdEq($v); }
+    public function orAccountId(int $v): static { return $this->or()->accountIdEq($v); }
     public function accountIdNotEq(int $v): static { $this->w()->pred('account_id', 'not_eq', $v); return $this; }
     public function accountIdGt(int $v): static { $this->w()->pred('account_id', 'gt', $v); return $this; }
     public function accountIdGte(int $v): static { $this->w()->pred('account_id', 'gte', $v); return $this; }
@@ -210,6 +220,8 @@ final class CompositeAccount extends Q implements CompositeAccountInterface
     public function accountIdLteCol(ColRef $ref): static { $this->w()->predCol('account_id', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w()->pred('name', 'eq', $v); return $this; }
     public function name(string $v): static { return $this->nameEq($v); }
+    public function andName(string $v): static { return $this->and()->nameEq($v); }
+    public function orName(string $v): static { return $this->or()->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w()->pred('name', 'not_eq', $v); return $this; }
     public function nameGt(string $v): static { $this->w()->pred('name', 'gt', $v); return $this; }
     public function nameGte(string $v): static { $this->w()->pred('name', 'gte', $v); return $this; }

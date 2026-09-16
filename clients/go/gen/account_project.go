@@ -241,9 +241,20 @@ func (r *AccountProjectRow) Using(ctx context.Context, ex orm.Exec) *AccountProj
 // AccountProjectWhere edits one WHERE/ON group of account_project.
 type AccountProjectWhere struct{ w *orm.W }
 
-func (w *AccountProjectWhere) Or() *AccountProjectWhere { w.w.Or(); return w }
-func (w *AccountProjectWhere) And(fn func(*AccountProjectWhere)) *AccountProjectWhere {
-	w.w.And(func(x *orm.W) { fn(&AccountProjectWhere{w: x}) })
+func (w *AccountProjectWhere) Or(fn ...func(*AccountProjectWhere)) *AccountProjectWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&AccountProjectWhere{w: x}) })
+	return w
+}
+func (w *AccountProjectWhere) And(fn ...func(*AccountProjectWhere)) *AccountProjectWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&AccountProjectWhere{w: x}) })
 	return w
 }
 func (w *AccountProjectWhere) Expr(frag string, binds ...any) *AccountProjectWhere {
@@ -261,6 +272,22 @@ func (q *AccountProjectQuery) AccountSeqEq(v int64) *AccountProjectQuery {
 }
 func (w *AccountProjectWhere) AccountSeq(v int64) *AccountProjectWhere { return w.AccountSeqEq(v) }
 func (q *AccountProjectQuery) AccountSeq(v int64) *AccountProjectQuery { return q.AccountSeqEq(v) }
+func (w *AccountProjectWhere) AndAccountSeq(v int64) *AccountProjectWhere {
+	w.w.And()
+	return w.AccountSeqEq(v)
+}
+func (q *AccountProjectQuery) AndAccountSeq(v int64) *AccountProjectQuery {
+	q.q.W().And()
+	return q.AccountSeqEq(v)
+}
+func (w *AccountProjectWhere) OrAccountSeq(v int64) *AccountProjectWhere {
+	w.w.Or()
+	return w.AccountSeqEq(v)
+}
+func (q *AccountProjectQuery) OrAccountSeq(v int64) *AccountProjectQuery {
+	q.q.Or()
+	return q.AccountSeqEq(v)
+}
 func (w *AccountProjectWhere) AccountSeqNotEq(v int64) *AccountProjectWhere {
 	w.w.Pred("account_seq", "not_eq", v)
 	return w
@@ -399,6 +426,22 @@ func (q *AccountProjectQuery) ProjectSeqEq(v int64) *AccountProjectQuery {
 }
 func (w *AccountProjectWhere) ProjectSeq(v int64) *AccountProjectWhere { return w.ProjectSeqEq(v) }
 func (q *AccountProjectQuery) ProjectSeq(v int64) *AccountProjectQuery { return q.ProjectSeqEq(v) }
+func (w *AccountProjectWhere) AndProjectSeq(v int64) *AccountProjectWhere {
+	w.w.And()
+	return w.ProjectSeqEq(v)
+}
+func (q *AccountProjectQuery) AndProjectSeq(v int64) *AccountProjectQuery {
+	q.q.W().And()
+	return q.ProjectSeqEq(v)
+}
+func (w *AccountProjectWhere) OrProjectSeq(v int64) *AccountProjectWhere {
+	w.w.Or()
+	return w.ProjectSeqEq(v)
+}
+func (q *AccountProjectQuery) OrProjectSeq(v int64) *AccountProjectQuery {
+	q.q.Or()
+	return q.ProjectSeqEq(v)
+}
 func (w *AccountProjectWhere) ProjectSeqNotEq(v int64) *AccountProjectWhere {
 	w.w.Pred("project_seq", "not_eq", v)
 	return w
@@ -528,10 +571,22 @@ func (q *AccountProjectQuery) ProjectSeqLteCol(ref orm.ColRef) *AccountProjectQu
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *AccountProjectQuery) Or() *AccountProjectQuery { q.q.Or(); return q }
-func (q *AccountProjectQuery) And(fn func(*AccountProjectWhere)) *AccountProjectQuery {
-	q.q.W().And(func(x *orm.W) { fn(&AccountProjectWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *AccountProjectQuery) Or(fn ...func(*AccountProjectWhere)) *AccountProjectQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&AccountProjectWhere{w: x}) })
+	return q
+}
+func (q *AccountProjectQuery) And(fn ...func(*AccountProjectWhere)) *AccountProjectQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&AccountProjectWhere{w: x}) })
 	return q
 }
 func (q *AccountProjectQuery) Expr(frag string, binds ...any) *AccountProjectQuery {

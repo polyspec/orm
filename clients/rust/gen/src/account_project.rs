@@ -187,11 +187,14 @@ pub struct AccountProjectWhere<'a> { pub(crate) w: W<'a> }
 
 impl<'a> AccountProjectWhere<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
-    pub fn and(mut self, f: impl FnOnce(AccountProjectWhere<'_>) -> AccountProjectWhere<'_>) -> Self { self.w.and_with(|w| { f(AccountProjectWhere { w }); }); self }
+    pub fn and(mut self) -> Self { self.w.and(); self }
+    pub fn and_group(mut self, f: impl FnOnce(AccountProjectWhere<'_>) -> AccountProjectWhere<'_>) -> Self { self.w.and_with(|w| { f(AccountProjectWhere { w }); }); self }
 	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
 
     pub fn account_seq_eq(mut self, v: i64) -> Self { self.w.pred("account_seq", "eq", v); self }
     pub fn account_seq(self, v: i64) -> Self { self.account_seq_eq(v) }
+    pub fn and_account_seq(mut self, v: i64) -> Self { self.w.and(); self.account_seq_eq(v) }
+    pub fn or_account_seq(mut self, v: i64) -> Self { self.w.or(); self.account_seq_eq(v) }
     pub fn account_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("account_seq", "not_eq", v); self }
     pub fn account_seq_gt(mut self, v: i64) -> Self { self.w.pred("account_seq", "gt", v); self }
     pub fn account_seq_gte(mut self, v: i64) -> Self { self.w.pred("account_seq", "gte", v); self }
@@ -210,6 +213,8 @@ impl<'a> AccountProjectWhere<'a> {
     pub fn account_seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("account_seq", "lte_col", r); self }
     pub fn project_seq_eq(mut self, v: i64) -> Self { self.w.pred("project_seq", "eq", v); self }
     pub fn project_seq(self, v: i64) -> Self { self.project_seq_eq(v) }
+    pub fn and_project_seq(mut self, v: i64) -> Self { self.w.and(); self.project_seq_eq(v) }
+    pub fn or_project_seq(mut self, v: i64) -> Self { self.w.or(); self.project_seq_eq(v) }
     pub fn project_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("project_seq", "not_eq", v); self }
     pub fn project_seq_gt(mut self, v: i64) -> Self { self.w.pred("project_seq", "gt", v); self }
     pub fn project_seq_gte(mut self, v: i64) -> Self { self.w.pred("project_seq", "gte", v); self }
@@ -249,7 +254,8 @@ impl AccountProject {
 
     // ---- WHERE ----
     pub fn or(mut self) -> Self { self.q.or(); self }
-    pub fn and(mut self, f: impl FnOnce(AccountProjectWhere<'_>) -> AccountProjectWhere<'_>) -> Self { self.q.w().and_with(|w| { f(AccountProjectWhere { w }); }); self }
+    pub fn and(mut self) -> Self { self.q.w().and(); self }
+    pub fn and_group(mut self, f: impl FnOnce(AccountProjectWhere<'_>) -> AccountProjectWhere<'_>) -> Self { self.q.w().and_with(|w| { f(AccountProjectWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
 
     pub fn account_seq_eq(mut self, v: i64) -> Self { self.q.w().pred("account_seq", "eq", v); self }
