@@ -488,6 +488,13 @@ func (t *Tx) InstallSchema(ctx context.Context, manifestJSON []byte) error {
 	if err != nil {
 		return &ir.Error{Code: CodeConfig, Msg: "invalid schema manifest: " + err.Error()}
 	}
+	compiled, err := engine.New(manifest, t.Driver())
+	if err != nil {
+		return &ir.Error{Code: CodeConfig, Msg: "compile schema: " + err.Error()}
+	}
+	if err := t.d.RegisterSchema(compiled); err != nil {
+		return err
+	}
 	ddl, err := ormgen.RenderCreateDDL(manifest, t.Driver())
 	if err != nil {
 		return &ir.Error{Code: CodeConfig, Msg: "render schema: " + err.Error()}
