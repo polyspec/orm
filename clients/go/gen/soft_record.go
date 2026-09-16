@@ -270,9 +270,20 @@ func (r *SoftRecordRow) Using(ctx context.Context, ex orm.Exec) *SoftRecordRow {
 // SoftRecordWhere edits one WHERE/ON group of soft_record.
 type SoftRecordWhere struct{ w *orm.W }
 
-func (w *SoftRecordWhere) Or() *SoftRecordWhere { w.w.Or(); return w }
-func (w *SoftRecordWhere) And(fn func(*SoftRecordWhere)) *SoftRecordWhere {
-	w.w.And(func(x *orm.W) { fn(&SoftRecordWhere{w: x}) })
+func (w *SoftRecordWhere) Or(fn ...func(*SoftRecordWhere)) *SoftRecordWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&SoftRecordWhere{w: x}) })
+	return w
+}
+func (w *SoftRecordWhere) And(fn ...func(*SoftRecordWhere)) *SoftRecordWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&SoftRecordWhere{w: x}) })
 	return w
 }
 func (w *SoftRecordWhere) Expr(frag string, binds ...any) *SoftRecordWhere {
@@ -284,6 +295,10 @@ func (w *SoftRecordWhere) SeqEq(v int64) *SoftRecordWhere    { w.w.Pred("seq", "
 func (q *SoftRecordQuery) SeqEq(v int64) *SoftRecordQuery    { q.q.W().Pred("seq", "eq", v); return q }
 func (w *SoftRecordWhere) Seq(v int64) *SoftRecordWhere      { return w.SeqEq(v) }
 func (q *SoftRecordQuery) Seq(v int64) *SoftRecordQuery      { return q.SeqEq(v) }
+func (w *SoftRecordWhere) AndSeq(v int64) *SoftRecordWhere   { w.w.And(); return w.SeqEq(v) }
+func (q *SoftRecordQuery) AndSeq(v int64) *SoftRecordQuery   { q.q.W().And(); return q.SeqEq(v) }
+func (w *SoftRecordWhere) OrSeq(v int64) *SoftRecordWhere    { w.w.Or(); return w.SeqEq(v) }
+func (q *SoftRecordQuery) OrSeq(v int64) *SoftRecordQuery    { q.q.Or(); return q.SeqEq(v) }
 func (w *SoftRecordWhere) SeqNotEq(v int64) *SoftRecordWhere { w.w.Pred("seq", "not_eq", v); return w }
 func (q *SoftRecordQuery) SeqNotEq(v int64) *SoftRecordQuery {
 	q.q.W().Pred("seq", "not_eq", v)
@@ -379,10 +394,14 @@ func (q *SoftRecordQuery) SeqLteCol(ref orm.ColRef) *SoftRecordQuery {
 	q.q.W().PredCol("seq", "lte_col", ref.Path, ref.Column)
 	return q
 }
-func (w *SoftRecordWhere) NameEq(v string) *SoftRecordWhere { w.w.Pred("name", "eq", v); return w }
-func (q *SoftRecordQuery) NameEq(v string) *SoftRecordQuery { q.q.W().Pred("name", "eq", v); return q }
-func (w *SoftRecordWhere) Name(v string) *SoftRecordWhere   { return w.NameEq(v) }
-func (q *SoftRecordQuery) Name(v string) *SoftRecordQuery   { return q.NameEq(v) }
+func (w *SoftRecordWhere) NameEq(v string) *SoftRecordWhere  { w.w.Pred("name", "eq", v); return w }
+func (q *SoftRecordQuery) NameEq(v string) *SoftRecordQuery  { q.q.W().Pred("name", "eq", v); return q }
+func (w *SoftRecordWhere) Name(v string) *SoftRecordWhere    { return w.NameEq(v) }
+func (q *SoftRecordQuery) Name(v string) *SoftRecordQuery    { return q.NameEq(v) }
+func (w *SoftRecordWhere) AndName(v string) *SoftRecordWhere { w.w.And(); return w.NameEq(v) }
+func (q *SoftRecordQuery) AndName(v string) *SoftRecordQuery { q.q.W().And(); return q.NameEq(v) }
+func (w *SoftRecordWhere) OrName(v string) *SoftRecordWhere  { w.w.Or(); return w.NameEq(v) }
+func (q *SoftRecordQuery) OrName(v string) *SoftRecordQuery  { q.q.Or(); return q.NameEq(v) }
 func (w *SoftRecordWhere) NameNotEq(v string) *SoftRecordWhere {
 	w.w.Pred("name", "not_eq", v)
 	return w
@@ -529,6 +548,22 @@ func (q *SoftRecordQuery) DeletedAtEq(v time.Time) *SoftRecordQuery {
 }
 func (w *SoftRecordWhere) DeletedAt(v time.Time) *SoftRecordWhere { return w.DeletedAtEq(v) }
 func (q *SoftRecordQuery) DeletedAt(v time.Time) *SoftRecordQuery { return q.DeletedAtEq(v) }
+func (w *SoftRecordWhere) AndDeletedAt(v time.Time) *SoftRecordWhere {
+	w.w.And()
+	return w.DeletedAtEq(v)
+}
+func (q *SoftRecordQuery) AndDeletedAt(v time.Time) *SoftRecordQuery {
+	q.q.W().And()
+	return q.DeletedAtEq(v)
+}
+func (w *SoftRecordWhere) OrDeletedAt(v time.Time) *SoftRecordWhere {
+	w.w.Or()
+	return w.DeletedAtEq(v)
+}
+func (q *SoftRecordQuery) OrDeletedAt(v time.Time) *SoftRecordQuery {
+	q.q.Or()
+	return q.DeletedAtEq(v)
+}
 func (w *SoftRecordWhere) DeletedAtNotEq(v time.Time) *SoftRecordWhere {
 	w.w.Pred("deleted_at", "not_eq", v)
 	return w
@@ -658,10 +693,22 @@ func (q *SoftRecordQuery) DeletedAtLteCol(ref orm.ColRef) *SoftRecordQuery {
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *SoftRecordQuery) Or() *SoftRecordQuery { q.q.Or(); return q }
-func (q *SoftRecordQuery) And(fn func(*SoftRecordWhere)) *SoftRecordQuery {
-	q.q.W().And(func(x *orm.W) { fn(&SoftRecordWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *SoftRecordQuery) Or(fn ...func(*SoftRecordWhere)) *SoftRecordQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&SoftRecordWhere{w: x}) })
+	return q
+}
+func (q *SoftRecordQuery) And(fn ...func(*SoftRecordWhere)) *SoftRecordQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&SoftRecordWhere{w: x}) })
 	return q
 }
 func (q *SoftRecordQuery) Expr(frag string, binds ...any) *SoftRecordQuery {

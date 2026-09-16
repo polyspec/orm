@@ -175,8 +175,8 @@ final class {{.Type}}Where
 
     public function __construct(private W $w) {}
 
-    public function or(): static { $this->w->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    public function or(?\Closure $fn = null): static { if ($fn === null) { $this->w->orConn(); return $this; } $this->w->orConn(); $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    public function and(?\Closure $fn = null): static { if ($fn === null) { return $this; } $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
 {{- range .Predicates}}
     public function {{.Method}}({{.Params}}): static { $this->w->expr({{phpStr .Expr}}, [{{.Args}}]); return $this; }
@@ -197,6 +197,8 @@ final class {{.Type}}Where
     public function {{camel $c.Name}}{{.Suffix}}({{$c.PhpType}} $v): static { $this->w->pred('{{$c.Name}}', '{{.Op}}', $v); return $this; }
 {{- if eq .Op "eq"}}
     public function {{camel $c.Name}}({{$c.PhpType}} $v): static { return $this->{{camel $c.Name}}Eq($v); }
+    public function and{{pascal $c.Name}}({{$c.PhpType}} $v): static { return $this->and()->{{camel $c.Name}}Eq($v); }
+    public function or{{pascal $c.Name}}({{$c.PhpType}} $v): static { return $this->or()->{{camel $c.Name}}Eq($v); }
 {{- end}}
 {{- else if eq .Kind "list"}}
     public function {{camel $c.Name}}{{.Suffix}}(array $vs): static { $this->w->predList('{{$c.Name}}', '{{.Op}}', array_values($vs)); return $this; }
@@ -240,8 +242,8 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
 {{- end}}
 
     // ---- WHERE ----
-    public function or(): static { $this->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new {{.Type}}Where($this->w()->group())); $this->req->end(); return $this; }
+    public function or(?\Closure $fn = null): static { if ($fn === null) { $this->orConn(); return $this; } $this->orConn(); $fn(new {{.Type}}Where($this->w()->group())); $this->req->end(); return $this; }
+    public function and(?\Closure $fn = null): static { if ($fn === null) { return $this; } $fn(new {{.Type}}Where($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
 {{- if .Scope}}
     public function scope({{.ScopeType}} $v): static { $this->scopeValue($v); return $this; }
@@ -265,6 +267,8 @@ final class {{.Type}} extends Q implements {{.Type}}Interface
     public function {{camel $c.Name}}{{.Suffix}}({{$c.PhpType}} $v): static { $this->w()->pred('{{$c.Name}}', '{{.Op}}', $v); return $this; }
 {{- if eq .Op "eq"}}
     public function {{camel $c.Name}}({{$c.PhpType}} $v): static { return $this->{{camel $c.Name}}Eq($v); }
+    public function and{{pascal $c.Name}}({{$c.PhpType}} $v): static { return $this->and()->{{camel $c.Name}}Eq($v); }
+    public function or{{pascal $c.Name}}({{$c.PhpType}} $v): static { return $this->or()->{{camel $c.Name}}Eq($v); }
 {{- end}}
 {{- else if eq .Kind "list"}}
     public function {{camel $c.Name}}{{.Suffix}}(array $vs): static { $this->w()->predList('{{$c.Name}}', '{{.Op}}', array_values($vs)); return $this; }

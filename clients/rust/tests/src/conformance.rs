@@ -223,7 +223,7 @@ async fn main() {
         .await
     );
     run!("interface_attach", async {
-        let child=user::query().seq_in(vec![1,2]).and(|w|w.name("user-1").or().name("user-2"));
+        let child=user::query().seq_in(vec![1,2]).and_group(|w|w.name("user-1").or().name("user-2"));
         let a=battle::query().service_seq(7).join(&child);
         let b=battle::query().service_seq(8).join(&child);
         let child=child.name("later");
@@ -636,10 +636,10 @@ async fn main() {
                 &battle::query()
                     .service_seq(7)
                     .is_close(false)
-                    .and(|w| {
+                    .and_group(|w| {
                         w.is_display(true)
                             .or()
-                            .and(|w| w.is_display(false).display_start_dt_lt(now))
+                            .and_group(|w| w.is_display(false).display_start_dt_lt(now))
                     })
                     .seq_in(vec![6, 106, 206, 306, 406])
                     .order_by_seq_desc()
@@ -670,7 +670,7 @@ async fn main() {
                     .join(service::query().where_(|w| w.name("service-7")))
                     .left_join(user::query().on(|w| w.name_contains("user")))
                     .is_close(false)
-                    .and(|w| w.is_display(true).or().service(|s| s.seq_gt(1000)))
+                    .and_group(|w| w.is_display(true).or().service(|s| s.seq_gt(1000)))
                     .using(&db)
                     .get_count()
                     .await?
@@ -1247,7 +1247,7 @@ async fn main() {
                 battle::query()
                     .join(service::query().where_(|w| w.seq(7)))
                     .is_close(false)
-                    .and(|w| w
+                    .and_group(|w| w
                         .name_with_description_match_boolean("battle")
                         .or()
                         .service(|s| s.name("service-999")))

@@ -636,7 +636,8 @@ pub struct BattleWhere<'a> { pub(crate) w: W<'a> }
 
 impl<'a> BattleWhere<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
-    pub fn and(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { self.w.and_with(|w| { f(BattleWhere { w }); }); self }
+    pub fn and(mut self) -> Self { self.w.and(); self }
+    pub fn and_group(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { self.w.and_with(|w| { f(BattleWhere { w }); }); self }
 	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
     pub fn started_after(mut self, a0: impl Into<Param>) -> Self { self.w.expr("`start_dt` > ?", vec![a0.into()]); self }
     pub fn visible(mut self) -> Self { self.w.expr("`is_close` = FALSE AND `is_display` = TRUE", vec![]); self }
@@ -679,6 +680,8 @@ impl<'a> BattleWhere<'a> {
 
     pub fn seq_eq(mut self, v: i64) -> Self { self.w.pred("seq", "eq", v); self }
     pub fn seq(self, v: i64) -> Self { self.seq_eq(v) }
+    pub fn and_seq(mut self, v: i64) -> Self { self.w.and(); self.seq_eq(v) }
+    pub fn or_seq(mut self, v: i64) -> Self { self.w.or(); self.seq_eq(v) }
     pub fn seq_not_eq(mut self, v: i64) -> Self { self.w.pred("seq", "not_eq", v); self }
     pub fn seq_gt(mut self, v: i64) -> Self { self.w.pred("seq", "gt", v); self }
     pub fn seq_gte(mut self, v: i64) -> Self { self.w.pred("seq", "gte", v); self }
@@ -697,6 +700,8 @@ impl<'a> BattleWhere<'a> {
     pub fn seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("seq", "lte_col", r); self }
     pub fn name_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "eq", v.into()); self }
     pub fn name(self, v: impl Into<String>) -> Self { self.name_eq(v) }
+    pub fn and_name(mut self, v: impl Into<String>) -> Self { self.w.and(); self.name_eq(v) }
+    pub fn or_name(mut self, v: impl Into<String>) -> Self { self.w.or(); self.name_eq(v) }
     pub fn name_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "not_eq", v.into()); self }
     pub fn name_gt(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "gt", v.into()); self }
     pub fn name_gte(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "gte", v.into()); self }
@@ -719,6 +724,8 @@ impl<'a> BattleWhere<'a> {
     pub fn name_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("name", "lte_col", r); self }
     pub fn description_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("description", "eq", v.into()); self }
     pub fn description(self, v: impl Into<String>) -> Self { self.description_eq(v) }
+    pub fn and_description(mut self, v: impl Into<String>) -> Self { self.w.and(); self.description_eq(v) }
+    pub fn or_description(mut self, v: impl Into<String>) -> Self { self.w.or(); self.description_eq(v) }
     pub fn description_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("description", "not_eq", v.into()); self }
     pub fn description_gt(mut self, v: impl Into<String>) -> Self { self.w.pred("description", "gt", v.into()); self }
     pub fn description_gte(mut self, v: impl Into<String>) -> Self { self.w.pred("description", "gte", v.into()); self }
@@ -739,6 +746,8 @@ impl<'a> BattleWhere<'a> {
     pub fn description_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("description", "lte_col", r); self }
     pub fn created_ts_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("created_ts", "eq", v); self }
     pub fn created_ts(self, v: chrono::NaiveDateTime) -> Self { self.created_ts_eq(v) }
+    pub fn and_created_ts(mut self, v: chrono::NaiveDateTime) -> Self { self.w.and(); self.created_ts_eq(v) }
+    pub fn or_created_ts(mut self, v: chrono::NaiveDateTime) -> Self { self.w.or(); self.created_ts_eq(v) }
     pub fn created_ts_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("created_ts", "not_eq", v); self }
     pub fn created_ts_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("created_ts", "gt", v); self }
     pub fn created_ts_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("created_ts", "gte", v); self }
@@ -757,6 +766,8 @@ impl<'a> BattleWhere<'a> {
     pub fn created_ts_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("created_ts", "lte_col", r); self }
     pub fn updated_ts_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("updated_ts", "eq", v); self }
     pub fn updated_ts(self, v: chrono::NaiveDateTime) -> Self { self.updated_ts_eq(v) }
+    pub fn and_updated_ts(mut self, v: chrono::NaiveDateTime) -> Self { self.w.and(); self.updated_ts_eq(v) }
+    pub fn or_updated_ts(mut self, v: chrono::NaiveDateTime) -> Self { self.w.or(); self.updated_ts_eq(v) }
     pub fn updated_ts_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("updated_ts", "not_eq", v); self }
     pub fn updated_ts_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("updated_ts", "gt", v); self }
     pub fn updated_ts_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("updated_ts", "gte", v); self }
@@ -775,6 +786,8 @@ impl<'a> BattleWhere<'a> {
     pub fn updated_ts_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("updated_ts", "lte_col", r); self }
     pub fn is_close_eq(mut self, v: bool) -> Self { self.w.pred("is_close", "eq", v); self }
     pub fn is_close(self, v: bool) -> Self { self.is_close_eq(v) }
+    pub fn and_is_close(mut self, v: bool) -> Self { self.w.and(); self.is_close_eq(v) }
+    pub fn or_is_close(mut self, v: bool) -> Self { self.w.or(); self.is_close_eq(v) }
     pub fn is_close_not_eq(mut self, v: bool) -> Self { self.w.pred("is_close", "not_eq", v); self }
     pub fn is_close_is_null(mut self) -> Self { self.w.pred_null("is_close", "is_null"); self }
     pub fn is_close_is_not_null(mut self) -> Self { self.w.pred_null("is_close", "is_not_null"); self }
@@ -782,6 +795,8 @@ impl<'a> BattleWhere<'a> {
     pub fn is_close_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_close", "not_eq_col", r); self }
     pub fn is_display_eq(mut self, v: bool) -> Self { self.w.pred("is_display", "eq", v); self }
     pub fn is_display(self, v: bool) -> Self { self.is_display_eq(v) }
+    pub fn and_is_display(mut self, v: bool) -> Self { self.w.and(); self.is_display_eq(v) }
+    pub fn or_is_display(mut self, v: bool) -> Self { self.w.or(); self.is_display_eq(v) }
     pub fn is_display_not_eq(mut self, v: bool) -> Self { self.w.pred("is_display", "not_eq", v); self }
     pub fn is_display_is_null(mut self) -> Self { self.w.pred_null("is_display", "is_null"); self }
     pub fn is_display_is_not_null(mut self) -> Self { self.w.pred_null("is_display", "is_not_null"); self }
@@ -789,6 +804,8 @@ impl<'a> BattleWhere<'a> {
     pub fn is_display_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_display", "not_eq_col", r); self }
     pub fn display_start_dt_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_start_dt", "eq", v); self }
     pub fn display_start_dt(self, v: chrono::NaiveDateTime) -> Self { self.display_start_dt_eq(v) }
+    pub fn and_display_start_dt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.and(); self.display_start_dt_eq(v) }
+    pub fn or_display_start_dt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.or(); self.display_start_dt_eq(v) }
     pub fn display_start_dt_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_start_dt", "not_eq", v); self }
     pub fn display_start_dt_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_start_dt", "gt", v); self }
     pub fn display_start_dt_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_start_dt", "gte", v); self }
@@ -807,6 +824,8 @@ impl<'a> BattleWhere<'a> {
     pub fn display_start_dt_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("display_start_dt", "lte_col", r); self }
     pub fn display_end_dt_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_end_dt", "eq", v); self }
     pub fn display_end_dt(self, v: chrono::NaiveDateTime) -> Self { self.display_end_dt_eq(v) }
+    pub fn and_display_end_dt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.and(); self.display_end_dt_eq(v) }
+    pub fn or_display_end_dt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.or(); self.display_end_dt_eq(v) }
     pub fn display_end_dt_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_end_dt", "not_eq", v); self }
     pub fn display_end_dt_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_end_dt", "gt", v); self }
     pub fn display_end_dt_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("display_end_dt", "gte", v); self }
@@ -825,6 +844,8 @@ impl<'a> BattleWhere<'a> {
     pub fn display_end_dt_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("display_end_dt", "lte_col", r); self }
     pub fn is_allday_eq(mut self, v: bool) -> Self { self.w.pred("is_allday", "eq", v); self }
     pub fn is_allday(self, v: bool) -> Self { self.is_allday_eq(v) }
+    pub fn and_is_allday(mut self, v: bool) -> Self { self.w.and(); self.is_allday_eq(v) }
+    pub fn or_is_allday(mut self, v: bool) -> Self { self.w.or(); self.is_allday_eq(v) }
     pub fn is_allday_not_eq(mut self, v: bool) -> Self { self.w.pred("is_allday", "not_eq", v); self }
     pub fn is_allday_is_null(mut self) -> Self { self.w.pred_null("is_allday", "is_null"); self }
     pub fn is_allday_is_not_null(mut self) -> Self { self.w.pred_null("is_allday", "is_not_null"); self }
@@ -832,6 +853,8 @@ impl<'a> BattleWhere<'a> {
     pub fn is_allday_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_allday", "not_eq_col", r); self }
     pub fn target_team_player_count_eq(mut self, v: i64) -> Self { self.w.pred("target_team_player_count", "eq", v); self }
     pub fn target_team_player_count(self, v: i64) -> Self { self.target_team_player_count_eq(v) }
+    pub fn and_target_team_player_count(mut self, v: i64) -> Self { self.w.and(); self.target_team_player_count_eq(v) }
+    pub fn or_target_team_player_count(mut self, v: i64) -> Self { self.w.or(); self.target_team_player_count_eq(v) }
     pub fn target_team_player_count_not_eq(mut self, v: i64) -> Self { self.w.pred("target_team_player_count", "not_eq", v); self }
     pub fn target_team_player_count_gt(mut self, v: i64) -> Self { self.w.pred("target_team_player_count", "gt", v); self }
     pub fn target_team_player_count_gte(mut self, v: i64) -> Self { self.w.pred("target_team_player_count", "gte", v); self }
@@ -850,6 +873,8 @@ impl<'a> BattleWhere<'a> {
     pub fn target_team_player_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("target_team_player_count", "lte_col", r); self }
     pub fn success_count_eq(mut self, v: i64) -> Self { self.w.pred("success_count", "eq", v); self }
     pub fn success_count(self, v: i64) -> Self { self.success_count_eq(v) }
+    pub fn and_success_count(mut self, v: i64) -> Self { self.w.and(); self.success_count_eq(v) }
+    pub fn or_success_count(mut self, v: i64) -> Self { self.w.or(); self.success_count_eq(v) }
     pub fn success_count_not_eq(mut self, v: i64) -> Self { self.w.pred("success_count", "not_eq", v); self }
     pub fn success_count_gt(mut self, v: i64) -> Self { self.w.pred("success_count", "gt", v); self }
     pub fn success_count_gte(mut self, v: i64) -> Self { self.w.pred("success_count", "gte", v); self }
@@ -868,6 +893,8 @@ impl<'a> BattleWhere<'a> {
     pub fn success_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("success_count", "lte_col", r); self }
     pub fn player_count_eq(mut self, v: i64) -> Self { self.w.pred("player_count", "eq", v); self }
     pub fn player_count(self, v: i64) -> Self { self.player_count_eq(v) }
+    pub fn and_player_count(mut self, v: i64) -> Self { self.w.and(); self.player_count_eq(v) }
+    pub fn or_player_count(mut self, v: i64) -> Self { self.w.or(); self.player_count_eq(v) }
     pub fn player_count_not_eq(mut self, v: i64) -> Self { self.w.pred("player_count", "not_eq", v); self }
     pub fn player_count_gt(mut self, v: i64) -> Self { self.w.pred("player_count", "gt", v); self }
     pub fn player_count_gte(mut self, v: i64) -> Self { self.w.pred("player_count", "gte", v); self }
@@ -886,6 +913,8 @@ impl<'a> BattleWhere<'a> {
     pub fn player_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("player_count", "lte_col", r); self }
     pub fn read_count_eq(mut self, v: i64) -> Self { self.w.pred("read_count", "eq", v); self }
     pub fn read_count(self, v: i64) -> Self { self.read_count_eq(v) }
+    pub fn and_read_count(mut self, v: i64) -> Self { self.w.and(); self.read_count_eq(v) }
+    pub fn or_read_count(mut self, v: i64) -> Self { self.w.or(); self.read_count_eq(v) }
     pub fn read_count_not_eq(mut self, v: i64) -> Self { self.w.pred("read_count", "not_eq", v); self }
     pub fn read_count_gt(mut self, v: i64) -> Self { self.w.pred("read_count", "gt", v); self }
     pub fn read_count_gte(mut self, v: i64) -> Self { self.w.pred("read_count", "gte", v); self }
@@ -904,6 +933,8 @@ impl<'a> BattleWhere<'a> {
     pub fn read_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("read_count", "lte_col", r); self }
     pub fn cover_url_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("cover_url", "eq", v.into()); self }
     pub fn cover_url(self, v: impl Into<String>) -> Self { self.cover_url_eq(v) }
+    pub fn and_cover_url(mut self, v: impl Into<String>) -> Self { self.w.and(); self.cover_url_eq(v) }
+    pub fn or_cover_url(mut self, v: impl Into<String>) -> Self { self.w.or(); self.cover_url_eq(v) }
     pub fn cover_url_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("cover_url", "not_eq", v.into()); self }
     pub fn cover_url_gt(mut self, v: impl Into<String>) -> Self { self.w.pred("cover_url", "gt", v.into()); self }
     pub fn cover_url_gte(mut self, v: impl Into<String>) -> Self { self.w.pred("cover_url", "gte", v.into()); self }
@@ -926,6 +957,8 @@ impl<'a> BattleWhere<'a> {
     pub fn cover_url_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("cover_url", "lte_col", r); self }
     pub fn user_seq_eq(mut self, v: i64) -> Self { self.w.pred("user_seq", "eq", v); self }
     pub fn user_seq(self, v: i64) -> Self { self.user_seq_eq(v) }
+    pub fn and_user_seq(mut self, v: i64) -> Self { self.w.and(); self.user_seq_eq(v) }
+    pub fn or_user_seq(mut self, v: i64) -> Self { self.w.or(); self.user_seq_eq(v) }
     pub fn user_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("user_seq", "not_eq", v); self }
     pub fn user_seq_gt(mut self, v: i64) -> Self { self.w.pred("user_seq", "gt", v); self }
     pub fn user_seq_gte(mut self, v: i64) -> Self { self.w.pred("user_seq", "gte", v); self }
@@ -944,6 +977,8 @@ impl<'a> BattleWhere<'a> {
     pub fn user_seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("user_seq", "lte_col", r); self }
     pub fn service_seq_eq(mut self, v: i64) -> Self { self.w.pred("service_seq", "eq", v); self }
     pub fn service_seq(self, v: i64) -> Self { self.service_seq_eq(v) }
+    pub fn and_service_seq(mut self, v: i64) -> Self { self.w.and(); self.service_seq_eq(v) }
+    pub fn or_service_seq(mut self, v: i64) -> Self { self.w.or(); self.service_seq_eq(v) }
     pub fn service_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("service_seq", "not_eq", v); self }
     pub fn service_seq_gt(mut self, v: i64) -> Self { self.w.pred("service_seq", "gt", v); self }
     pub fn service_seq_gte(mut self, v: i64) -> Self { self.w.pred("service_seq", "gte", v); self }
@@ -962,6 +997,8 @@ impl<'a> BattleWhere<'a> {
     pub fn service_seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("service_seq", "lte_col", r); self }
     pub fn service_module_seq_eq(mut self, v: i64) -> Self { self.w.pred("service_module_seq", "eq", v); self }
     pub fn service_module_seq(self, v: i64) -> Self { self.service_module_seq_eq(v) }
+    pub fn and_service_module_seq(mut self, v: i64) -> Self { self.w.and(); self.service_module_seq_eq(v) }
+    pub fn or_service_module_seq(mut self, v: i64) -> Self { self.w.or(); self.service_module_seq_eq(v) }
     pub fn service_module_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("service_module_seq", "not_eq", v); self }
     pub fn service_module_seq_gt(mut self, v: i64) -> Self { self.w.pred("service_module_seq", "gt", v); self }
     pub fn service_module_seq_gte(mut self, v: i64) -> Self { self.w.pred("service_module_seq", "gte", v); self }
@@ -980,6 +1017,8 @@ impl<'a> BattleWhere<'a> {
     pub fn service_module_seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("service_module_seq", "lte_col", r); self }
     pub fn service_member_seq_eq(mut self, v: i64) -> Self { self.w.pred("service_member_seq", "eq", v); self }
     pub fn service_member_seq(self, v: i64) -> Self { self.service_member_seq_eq(v) }
+    pub fn and_service_member_seq(mut self, v: i64) -> Self { self.w.and(); self.service_member_seq_eq(v) }
+    pub fn or_service_member_seq(mut self, v: i64) -> Self { self.w.or(); self.service_member_seq_eq(v) }
     pub fn service_member_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("service_member_seq", "not_eq", v); self }
     pub fn service_member_seq_gt(mut self, v: i64) -> Self { self.w.pred("service_member_seq", "gt", v); self }
     pub fn service_member_seq_gte(mut self, v: i64) -> Self { self.w.pred("service_member_seq", "gte", v); self }
@@ -998,6 +1037,8 @@ impl<'a> BattleWhere<'a> {
     pub fn service_member_seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("service_member_seq", "lte_col", r); self }
     pub fn start_dt_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("start_dt", "eq", v); self }
     pub fn start_dt(self, v: chrono::NaiveDateTime) -> Self { self.start_dt_eq(v) }
+    pub fn and_start_dt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.and(); self.start_dt_eq(v) }
+    pub fn or_start_dt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.or(); self.start_dt_eq(v) }
     pub fn start_dt_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("start_dt", "not_eq", v); self }
     pub fn start_dt_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("start_dt", "gt", v); self }
     pub fn start_dt_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("start_dt", "gte", v); self }
@@ -1016,6 +1057,8 @@ impl<'a> BattleWhere<'a> {
     pub fn start_dt_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("start_dt", "lte_col", r); self }
     pub fn end_dt_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("end_dt", "eq", v); self }
     pub fn end_dt(self, v: chrono::NaiveDateTime) -> Self { self.end_dt_eq(v) }
+    pub fn and_end_dt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.and(); self.end_dt_eq(v) }
+    pub fn or_end_dt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.or(); self.end_dt_eq(v) }
     pub fn end_dt_not_eq(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("end_dt", "not_eq", v); self }
     pub fn end_dt_gt(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("end_dt", "gt", v); self }
     pub fn end_dt_gte(mut self, v: chrono::NaiveDateTime) -> Self { self.w.pred("end_dt", "gte", v); self }
@@ -1034,6 +1077,8 @@ impl<'a> BattleWhere<'a> {
     pub fn end_dt_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("end_dt", "lte_col", r); self }
     pub fn uuid_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("uuid", "eq", v.into()); self }
     pub fn uuid(self, v: impl Into<String>) -> Self { self.uuid_eq(v) }
+    pub fn and_uuid(mut self, v: impl Into<String>) -> Self { self.w.and(); self.uuid_eq(v) }
+    pub fn or_uuid(mut self, v: impl Into<String>) -> Self { self.w.or(); self.uuid_eq(v) }
     pub fn uuid_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("uuid", "not_eq", v.into()); self }
     pub fn uuid_gt(mut self, v: impl Into<String>) -> Self { self.w.pred("uuid", "gt", v.into()); self }
     pub fn uuid_gte(mut self, v: impl Into<String>) -> Self { self.w.pred("uuid", "gte", v.into()); self }
@@ -1056,6 +1101,8 @@ impl<'a> BattleWhere<'a> {
     pub fn uuid_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("uuid", "lte_col", r); self }
     pub fn is_single_play_eq(mut self, v: bool) -> Self { self.w.pred("is_single_play", "eq", v); self }
     pub fn is_single_play(self, v: bool) -> Self { self.is_single_play_eq(v) }
+    pub fn and_is_single_play(mut self, v: bool) -> Self { self.w.and(); self.is_single_play_eq(v) }
+    pub fn or_is_single_play(mut self, v: bool) -> Self { self.w.or(); self.is_single_play_eq(v) }
     pub fn is_single_play_not_eq(mut self, v: bool) -> Self { self.w.pred("is_single_play", "not_eq", v); self }
     pub fn is_single_play_is_null(mut self) -> Self { self.w.pred_null("is_single_play", "is_null"); self }
     pub fn is_single_play_is_not_null(mut self) -> Self { self.w.pred_null("is_single_play", "is_not_null"); self }
@@ -1063,6 +1110,8 @@ impl<'a> BattleWhere<'a> {
     pub fn is_single_play_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("is_single_play", "not_eq_col", r); self }
     pub fn like_count_eq(mut self, v: i64) -> Self { self.w.pred("like_count", "eq", v); self }
     pub fn like_count(self, v: i64) -> Self { self.like_count_eq(v) }
+    pub fn and_like_count(mut self, v: i64) -> Self { self.w.and(); self.like_count_eq(v) }
+    pub fn or_like_count(mut self, v: i64) -> Self { self.w.or(); self.like_count_eq(v) }
     pub fn like_count_not_eq(mut self, v: i64) -> Self { self.w.pred("like_count", "not_eq", v); self }
     pub fn like_count_gt(mut self, v: i64) -> Self { self.w.pred("like_count", "gt", v); self }
     pub fn like_count_gte(mut self, v: i64) -> Self { self.w.pred("like_count", "gte", v); self }
@@ -1081,6 +1130,8 @@ impl<'a> BattleWhere<'a> {
     pub fn like_count_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("like_count", "lte_col", r); self }
     pub fn aes_key_version_eq(mut self, v: i32) -> Self { self.w.pred("aes_key_version", "eq", v); self }
     pub fn aes_key_version(self, v: i32) -> Self { self.aes_key_version_eq(v) }
+    pub fn and_aes_key_version(mut self, v: i32) -> Self { self.w.and(); self.aes_key_version_eq(v) }
+    pub fn or_aes_key_version(mut self, v: i32) -> Self { self.w.or(); self.aes_key_version_eq(v) }
     pub fn aes_key_version_not_eq(mut self, v: i32) -> Self { self.w.pred("aes_key_version", "not_eq", v); self }
     pub fn aes_key_version_gt(mut self, v: i32) -> Self { self.w.pred("aes_key_version", "gt", v); self }
     pub fn aes_key_version_gte(mut self, v: i32) -> Self { self.w.pred("aes_key_version", "gte", v); self }
@@ -1099,6 +1150,8 @@ impl<'a> BattleWhere<'a> {
     pub fn aes_key_version_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_key_version", "lte_col", r); self }
     pub fn aes_hex_email_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_email", "eq", v.into()); self }
     pub fn aes_hex_email(self, v: impl Into<String>) -> Self { self.aes_hex_email_eq(v) }
+    pub fn and_aes_hex_email(mut self, v: impl Into<String>) -> Self { self.w.and(); self.aes_hex_email_eq(v) }
+    pub fn or_aes_hex_email(mut self, v: impl Into<String>) -> Self { self.w.or(); self.aes_hex_email_eq(v) }
     pub fn aes_hex_email_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_email", "not_eq", v.into()); self }
     pub fn aes_hex_email_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("aes_hex_email", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn aes_hex_email_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("aes_hex_email", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -1108,6 +1161,8 @@ impl<'a> BattleWhere<'a> {
     pub fn aes_hex_email_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_hex_email", "not_eq_col", r); self }
     pub fn email_blind_index_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("email_blind_index", "eq", v.into()); self }
     pub fn email_blind_index(self, v: impl Into<String>) -> Self { self.email_blind_index_eq(v) }
+    pub fn and_email_blind_index(mut self, v: impl Into<String>) -> Self { self.w.and(); self.email_blind_index_eq(v) }
+    pub fn or_email_blind_index(mut self, v: impl Into<String>) -> Self { self.w.or(); self.email_blind_index_eq(v) }
     pub fn email_blind_index_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("email_blind_index", "not_eq", v.into()); self }
     pub fn email_blind_index_gt(mut self, v: impl Into<String>) -> Self { self.w.pred("email_blind_index", "gt", v.into()); self }
     pub fn email_blind_index_gte(mut self, v: impl Into<String>) -> Self { self.w.pred("email_blind_index", "gte", v.into()); self }
@@ -1130,6 +1185,8 @@ impl<'a> BattleWhere<'a> {
     pub fn email_blind_index_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("email_blind_index", "lte_col", r); self }
     pub fn aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_phone", "eq", v.into()); self }
     pub fn aes_hex_phone(self, v: impl Into<String>) -> Self { self.aes_hex_phone_eq(v) }
+    pub fn and_aes_hex_phone(mut self, v: impl Into<String>) -> Self { self.w.and(); self.aes_hex_phone_eq(v) }
+    pub fn or_aes_hex_phone(mut self, v: impl Into<String>) -> Self { self.w.or(); self.aes_hex_phone_eq(v) }
     pub fn aes_hex_phone_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("aes_hex_phone", "not_eq", v.into()); self }
     pub fn aes_hex_phone_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("aes_hex_phone", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn aes_hex_phone_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("aes_hex_phone", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -1139,6 +1196,8 @@ impl<'a> BattleWhere<'a> {
     pub fn aes_hex_phone_not_eq_col(mut self, r: ColRef) -> Self { self.w.pred_col("aes_hex_phone", "not_eq_col", r); self }
     pub fn phone_blind_index_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("phone_blind_index", "eq", v.into()); self }
     pub fn phone_blind_index(self, v: impl Into<String>) -> Self { self.phone_blind_index_eq(v) }
+    pub fn and_phone_blind_index(mut self, v: impl Into<String>) -> Self { self.w.and(); self.phone_blind_index_eq(v) }
+    pub fn or_phone_blind_index(mut self, v: impl Into<String>) -> Self { self.w.or(); self.phone_blind_index_eq(v) }
     pub fn phone_blind_index_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("phone_blind_index", "not_eq", v.into()); self }
     pub fn phone_blind_index_gt(mut self, v: impl Into<String>) -> Self { self.w.pred("phone_blind_index", "gt", v.into()); self }
     pub fn phone_blind_index_gte(mut self, v: impl Into<String>) -> Self { self.w.pred("phone_blind_index", "gte", v.into()); self }
@@ -1161,6 +1220,8 @@ impl<'a> BattleWhere<'a> {
     pub fn phone_blind_index_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("phone_blind_index", "lte_col", r); self }
     pub fn price_eq(mut self, v: f64) -> Self { self.w.pred("price", "eq", v); self }
     pub fn price(self, v: f64) -> Self { self.price_eq(v) }
+    pub fn and_price(mut self, v: f64) -> Self { self.w.and(); self.price_eq(v) }
+    pub fn or_price(mut self, v: f64) -> Self { self.w.or(); self.price_eq(v) }
     pub fn price_not_eq(mut self, v: f64) -> Self { self.w.pred("price", "not_eq", v); self }
     pub fn price_gt(mut self, v: f64) -> Self { self.w.pred("price", "gt", v); self }
     pub fn price_gte(mut self, v: f64) -> Self { self.w.pred("price", "gte", v); self }
@@ -1179,6 +1240,8 @@ impl<'a> BattleWhere<'a> {
     pub fn price_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("price", "lte_col", r); self }
     pub fn ip_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("ip", "eq", v.into()); self }
     pub fn ip(self, v: impl Into<String>) -> Self { self.ip_eq(v) }
+    pub fn and_ip(mut self, v: impl Into<String>) -> Self { self.w.and(); self.ip_eq(v) }
+    pub fn or_ip(mut self, v: impl Into<String>) -> Self { self.w.or(); self.ip_eq(v) }
     pub fn ip_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("ip", "not_eq", v.into()); self }
     pub fn ip_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("ip", "in", vs.into_iter().map(Into::into).collect()); self }
     pub fn ip_not_in(mut self, vs: Vec<String>) -> Self { self.w.pred_list("ip", "not_in", vs.into_iter().map(Into::into).collect()); self }
@@ -1236,7 +1299,8 @@ impl Battle {
 
     // ---- WHERE ----
     pub fn or(mut self) -> Self { self.q.or(); self }
-    pub fn and(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { self.q.w().and_with(|w| { f(BattleWhere { w }); }); self }
+    pub fn and(mut self) -> Self { self.q.w().and(); self }
+    pub fn and_group(mut self, f: impl FnOnce(BattleWhere<'_>) -> BattleWhere<'_>) -> Self { self.q.w().and_with(|w| { f(BattleWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
     pub fn scope(mut self, v: i64) -> Self { self.q.scope(v); self }
     pub fn started_after(mut self, a0: impl Into<Param>) -> Self { self.q.w().expr("`start_dt` > ?", vec![a0.into()]); self }

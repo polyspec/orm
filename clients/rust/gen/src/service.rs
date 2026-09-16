@@ -236,7 +236,8 @@ pub struct ServiceWhere<'a> { pub(crate) w: W<'a> }
 
 impl<'a> ServiceWhere<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
-    pub fn and(mut self, f: impl FnOnce(ServiceWhere<'_>) -> ServiceWhere<'_>) -> Self { self.w.and_with(|w| { f(ServiceWhere { w }); }); self }
+    pub fn and(mut self) -> Self { self.w.and(); self }
+    pub fn and_group(mut self, f: impl FnOnce(ServiceWhere<'_>) -> ServiceWhere<'_>) -> Self { self.w.and_with(|w| { f(ServiceWhere { w }); }); self }
 	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
     pub fn battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.w.nav_with("battles", |w| { f(super::battle::BattleWhere { w }); }); self }
     pub fn has_battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.w.nav_with_mode("battles", "exists", |w| { f(super::battle::BattleWhere { w }); }); self }
@@ -268,6 +269,8 @@ impl<'a> ServiceWhere<'a> {
 
     pub fn seq_eq(mut self, v: i64) -> Self { self.w.pred("seq", "eq", v); self }
     pub fn seq(self, v: i64) -> Self { self.seq_eq(v) }
+    pub fn and_seq(mut self, v: i64) -> Self { self.w.and(); self.seq_eq(v) }
+    pub fn or_seq(mut self, v: i64) -> Self { self.w.or(); self.seq_eq(v) }
     pub fn seq_not_eq(mut self, v: i64) -> Self { self.w.pred("seq", "not_eq", v); self }
     pub fn seq_gt(mut self, v: i64) -> Self { self.w.pred("seq", "gt", v); self }
     pub fn seq_gte(mut self, v: i64) -> Self { self.w.pred("seq", "gte", v); self }
@@ -286,6 +289,8 @@ impl<'a> ServiceWhere<'a> {
     pub fn seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("seq", "lte_col", r); self }
     pub fn name_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "eq", v.into()); self }
     pub fn name(self, v: impl Into<String>) -> Self { self.name_eq(v) }
+    pub fn and_name(mut self, v: impl Into<String>) -> Self { self.w.and(); self.name_eq(v) }
+    pub fn or_name(mut self, v: impl Into<String>) -> Self { self.w.or(); self.name_eq(v) }
     pub fn name_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "not_eq", v.into()); self }
     pub fn name_gt(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "gt", v.into()); self }
     pub fn name_gte(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "gte", v.into()); self }
@@ -329,7 +334,8 @@ impl Service {
 
     // ---- WHERE ----
     pub fn or(mut self) -> Self { self.q.or(); self }
-    pub fn and(mut self, f: impl FnOnce(ServiceWhere<'_>) -> ServiceWhere<'_>) -> Self { self.q.w().and_with(|w| { f(ServiceWhere { w }); }); self }
+    pub fn and(mut self) -> Self { self.q.w().and(); self }
+    pub fn and_group(mut self, f: impl FnOnce(ServiceWhere<'_>) -> ServiceWhere<'_>) -> Self { self.q.w().and_with(|w| { f(ServiceWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
     pub fn battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.q.w().nav_with("battles", |w| { f(super::battle::BattleWhere { w }); }); self }
     pub fn has_battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.q.w().nav_with_mode("battles", "exists", |w| { f(super::battle::BattleWhere { w }); }); self }
