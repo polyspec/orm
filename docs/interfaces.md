@@ -163,7 +163,7 @@ PostgreSQL transactions also expose `setLocal(key, value)` (Go: `SetLocal`) for 
 
 Root row selects expose `forUpdate()`, `forShare()`, `forUpdateNoWait()`, and `forShareNoWait()` using each client's naming convention. The request stores `lock` in the common IR. MySQL and PostgreSQL append the selected lock clause after ordering and limits; `NoWait` fails immediately when the row is unavailable. SQLite emits no lock suffix and the ORM acquires a transaction-scoped database lock row for `forUpdate()`, `forShare()`, and their `NoWait` variants; `NoWait` temporarily uses a zero busy timeout so contention fails immediately.
 
-Errors preserve their stable code and the original driver message. Transaction timeout is available through `timeoutMs` where the driver supports PostgreSQL `statement_timeout`; in-flight cancellation remains native to each language runtime.
+Errors preserve their stable code and the original driver message. `newTransactionConflict(message)` (Go: `NewTransactionConflict`) creates the adapter-neutral retryable transaction-conflict error used for serialization failures and deadlocks; it carries `DEADLOCK` and does not expose a driver error type. Transaction timeout is available through `timeoutMs` where the driver supports PostgreSQL `statement_timeout`; in-flight cancellation remains native to each language runtime.
 
 `transaction` executes its callback once by default. Deadlock retry is disabled by default. The caller may pass `TransactionOptions` with `retryDeadlocks` and `maxAttempts`; each retry creates a new transaction and re-executes the complete callback. The callback must be safe to execute more than once when retry is enabled.
 
