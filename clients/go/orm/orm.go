@@ -215,6 +215,27 @@ func (d *DB) Stats() DBStats {
 	return DBStats{OpenConnections: stats.OpenConnections, InUse: stats.InUse, Idle: stats.Idle}
 }
 
+// BackendWaitingForLock reports whether a PostgreSQL backend is currently
+// waiting on a database lock. It is an inspection API for bounded integration
+// orchestration; non-PostgreSQL adapters return false because they do not
+// expose PostgreSQL backend state.
+func (d *DB) BackendWaitingForLock(ctx context.Context, pid int32) (bool, error) {
+	if d != nil && d.driver != "postgres" {
+		return false, nil
+	}
+	if d == nil || d.closed.Load() || d.SQL == nil {
+		return false, &ir.Error{Code: CodeConfig, Msg: "database is not open"}
+	}
+	if pid <= 0 {
+		return false, &ir.Error{Code: CodeConfig, Msg: "backend PID must be positive"}
+	}
+	var waiting bool
+	if err := d.SQL.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE pid=$1 AND wait_event_type='Lock')", pid).Scan(&waiting); err != nil {
+		return false, mapDriverErr(err)
+	}
+	return waiting, nil
+}
+
 // Acquire reserves one ORM-managed connection for lifecycle coordination.
 func (d *DB) Acquire(ctx context.Context) (*ConnectionLease, error) {
 	if d == nil || d.SQL == nil {
