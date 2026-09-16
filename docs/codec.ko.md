@@ -15,7 +15,7 @@
 
 | 스타일 | 쓰기(값 → 저장 바이트) | 읽기(저장 바이트 → 값) | 기준 |
 |---|---|---|---|
-| `json`, `jsons` | 공통 값 모델의 ordered-json 텍스트 | ordered-json 파싱 | 공통 ordered-json `0.0.1`; Go는 go.mod가 요구하는 version의 `github.com/polyspec/ordered-json/go`를 사용하고 Rust·PHP·TypeScript는 각 로컬 codec으로 같은 테스트 벡터를 검증한다 |
+| `json`, `jsons` | 공통 값 모델의 ordered-json 텍스트 | ordered-json 파싱 | 공통 ordered-json `0.0.1`; Go는 go.mod가 요구하는 version의 `github.com/polyspec/ordered-json/go`를 사용하고 Rust·PHP·TypeScript는 root package를 사용한다 |
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
 | `base64` | base64(serialize(v)) | unserialize(base64_decode) | 동일 |
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |

@@ -14,7 +14,7 @@ Every AES column has a non-null integer `aes_key_version` column in the same ent
 
 | style | write (value → stored bytes) | read (stored bytes → value) | reference |
 |---|---|---|---|
-| `json`, `jsons` | ordered-json text from the common value model | ordered-json parse | Common ordered-json `0.0.1`; Go uses `github.com/polyspec/ordered-json/go` at the version go.mod requires, Rust/PHP/TypeScript verify the same test vectors through their local codecs |
+| `json`, `jsons` | ordered-json text from the common value model | ordered-json parse | Common ordered-json `0.0.1`; Go uses `github.com/polyspec/ordered-json/go` at the version go.mod requires, and Rust/PHP/TypeScript use the root package |
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
 | `base64` | base64(serialize(v)) | unserialize(base64_decode) | same |
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |

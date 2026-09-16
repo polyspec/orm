@@ -1728,6 +1728,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
 
 [[package]]
+name = "ordered-json"
+version = "0.0.1"
+source = "git+https://github.com/polyspec/ordered-json.git?rev=6d23a2a#6d23a2a5e7c0c5d501d759b6d32a439661f153f2"
+
+[[package]]
 name = "orm"
 version = "0.0.1"
 dependencies = [
@@ -1739,6 +1744,7 @@ dependencies = [
  "futures-util",
  "hmac 0.12.1",
  "indexmap",
+ "ordered-json",
  "prost",
  "rand 0.10.2",
  "reqwest",

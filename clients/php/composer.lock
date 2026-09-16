@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4ce6ae45b8f8921b697be402a5ccf495",
+    "content-hash": "5a87e75eabbce0dff4d0375797699063",
     "packages": [
         {
             "name": "google/protobuf",
@@ -49,6 +49,45 @@
                 "source": "https://github.com/protocolbuffers/protobuf-php/tree/v5.36.1"
             },
             "time": "2026-08-31T22:07:31+00:00"
+        },
+        {
+            "name": "ordered-json/ordered-json",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/polyspec/ordered-json.git",
+                "reference": "6d23a2a5e7c0c5d501d759b6d32a439661f153f2"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/polyspec/ordered-json/zipball/6d23a2a5e7c0c5d501d759b6d32a439661f153f2",
+                "reference": "6d23a2a5e7c0c5d501d759b6d32a439661f153f2",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "ext-pcre": "*",
+                "php": ">=8.2"
+            },
+            "suggest": {
+                "ext-ordered_json": "Native backend from the ordered-json/ordered-json-extension PIE package"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "php/src/OrderedJson.php"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "JSON document order at every depth, with optional native parser",
+            "support": {
+                "source": "https://github.com/polyspec/ordered-json/tree/main",
+                "issues": "https://github.com/polyspec/ordered-json/issues"
+            },
+            "time": "2026-09-16T09:04:24+00:00"
         },
         {
             "name": "symfony/deprecation-contracts",
@@ -284,7 +323,9 @@
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "ordered-json/ordered-json": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
