@@ -148,7 +148,7 @@ A binding contains the execution context and one database or transaction referen
 
 Transaction ownership belongs to the code that created the transaction. Commit and rollback end the binding. After either operation, all queries and rows from that transaction reject execution. A transaction exposes `savepoint(name)`, `rollbackTo(name)`, and `releaseSavepoint(name)`; names must match `[A-Za-z_][A-Za-z0-9_]*`. These operations preserve the outer transaction and reject invalid names with `CONFIG`.
 
-Go also exposes `orm.Begin(ctx, db, options)` for a caller-owned transaction that is finished explicitly with `tx.Commit(ctx)` or `tx.Rollback(ctx)`. It performs no callback retry. PostgreSQL exposes `tx.BackendPID(ctx)` for real integration lock orchestration; other drivers return `CAPABILITY_UNSUPPORTED`.
+Go also exposes `orm.Begin(ctx, db, options)` for a caller-owned transaction that is finished explicitly with `tx.Commit(ctx)` or `tx.Rollback(ctx)`. `tx.Driver()` reports the canonical adapter name (`mysql`, `postgres`, or `sqlite`) without changing the common query, mutation, or transaction API. It performs no callback retry. PostgreSQL exposes `tx.BackendPID(ctx)` for real integration lock orchestration; other drivers return `CAPABILITY_UNSUPPORTED`.
 
 Go exposes `db.Stats()` as ORM-owned connection-pool statistics and `db.Acquire(ctx)` as an opaque `ConnectionLease` for lifecycle coordination. A lease can be closed explicitly and does not expose `database/sql` or permit query execution; generated queries and ORM transactions remain the only data-access paths.
 
