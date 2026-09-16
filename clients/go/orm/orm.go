@@ -463,6 +463,7 @@ type Tx struct {
 	readOnly     bool
 	isolation    IsolationLevel
 	sqliteMode   bool
+	localValues  map[string]string
 }
 
 // Driver reports the database adapter bound to the caller-owned transaction.
@@ -571,6 +572,10 @@ func (t *Tx) SetLocal(ctx context.Context, key, value string) error {
 			return mapDriverErr(err)
 		}
 		t.auditContext = true
+		if t.localValues == nil {
+			t.localValues = make(map[string]string)
+		}
+		t.localValues[key] = value
 		return nil
 	}
 	if t.d.driver != "postgres" {
@@ -587,7 +592,34 @@ func (t *Tx) SetLocal(ctx context.Context, key, value string) error {
 	if _, err := stmt.ExecContext(ctx, key, value); err != nil {
 		return mapDriverErr(err)
 	}
+	if t.localValues == nil {
+		t.localValues = make(map[string]string)
+	}
+	t.localValues[key] = value
 	return nil
+}
+
+// Local returns a transaction-local value previously set through SetLocal.
+// The value is held by this ORM transaction and is available consistently
+// across adapters; the adapter may also persist it for audit hooks.
+func (t *Tx) Local(ctx context.Context, key string) (string, error) {
+	if t == nil || t.finished.Load() {
+		return "", &ir.Error{Code: CodeConfig, Msg: "transaction already finished"}
+	}
+	if t.d == nil {
+		return "", &ir.Error{Code: CodeConfig, Msg: "database is required"}
+	}
+	if !validContextKey(key) {
+		return "", &ir.Error{Code: CodeConfig, Msg: "transaction context key is invalid"}
+	}
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	value, ok := t.localValues[key]
+	if !ok {
+		return "", ErrNoRows
+	}
+	return value, nil
 }
 
 // ReadOnly reports the transaction access mode.
