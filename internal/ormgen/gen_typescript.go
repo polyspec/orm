@@ -309,6 +309,11 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 	return os.WriteFile(filepath.Join(outDir, "entities.ts"), output, 0o644)
 }
 
+// GenerateTypeScript is the internal implementation used by the public generator API.
+func GenerateTypeScript(m *schema.Manifest, outDir string) error {
+	return genTypeScript(m, outDir)
+}
+
 func writeTSPredicates(b *bytes.Buffer, ge goEntity, target string) {
 	for _, p := range ge.Preds {
 		args := make([]string, p.Arity)

@@ -660,3 +660,8 @@ func genPHP(m *schema.Manifest, outDir, namespace string) error {
 	}
 	return os.WriteFile(filepath.Join(outDir, "bootstrap.php"), boot.Bytes(), 0o644)
 }
+
+// GeneratePHP is the internal implementation used by the public generator API.
+func GeneratePHP(m *schema.Manifest, outDir, namespace string) error {
+	return genPHP(m, outDir, namespace)
+}

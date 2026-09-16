@@ -213,3 +213,6 @@ or access `database/sql` directly.
 ### Canonical schema installation
 
 The Go transaction adapter accepts the canonical `schema.json` manifest through `Tx.InstallSchema(context.Context, []byte) error`. The bound transaction selects its own dialect, renders the manifest through the ORM schema renderer, and executes the apply-safe statements in the same caller-owned transaction. Consumers do not provide SQL, DDL strings, dialect branches, or driver transactions. The manifest is the only schema input for this boundary.
+## Public client generation
+
+The `github.com/polyspec/orm/generator` package is the client-generation API. `generator.Generate` accepts a canonical manifest, one of `Go`, `PHP`, `Rust` or `TypeScript`, and an output directory. Naming, field mapping and language output remain in the ORM generator; consumers do not implement entity-specific generation rules.
