@@ -1,6 +1,7 @@
 import { deflateSync, inflateSync } from 'node:zlib';
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
+import { parse as orderedJsonParse, stringify as orderedJsonStringify } from 'ordered-json';
 import { isScalar, parseDocument, stringify as stringifyYaml, visit } from 'yaml';
 
 export type UploadFileValue = { $type: 'upload_file'; path: string; mime: string; name: string };
@@ -190,7 +191,8 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
       case 'json':
       case 'jsons':
         try {
-          value = JSON.parse(string(current, 'decode')) as CodecValue;
+          const parsed = orderedJsonParse(string(current, 'decode'));
+          value = JSON.parse(orderedJsonStringify(parsed)) as CodecValue;
         } catch (error) {
           throw new CodecError('CODEC_DECODE', `json: ${String(error)}`);
         }
@@ -229,7 +231,8 @@ export function encode(styles: readonly string[], value: CodecValue): EncodedVal
       case 'jsons':
         if (index !== 0) throw new CodecError('CODEC_UNSUPPORTED', 'json must be the first style');
         try {
-          current = utf8.encode(JSON.stringify(transformed));
+          const parsed = orderedJsonParse(JSON.stringify(transformed));
+          current = utf8.encode(orderedJsonStringify(parsed));
         } catch (error) {
           throw new CodecError('CODEC_ENCODE', `json: ${String(error)}`);
         }

@@ -5,6 +5,7 @@ use std::collections::HashSet;
 use std::io::{Read, Write};
 
 use base64::Engine as _;
+use ordered_json as strict_json;
 use serde_json::{Map, Value};
 use yaml_rust2::parser::{Event as YamlEvent, MarkedEventReceiver, Parser as YamlParser};
 use yaml_rust2::scanner::{Marker as YamlMarker, TScalarStyle};
@@ -75,10 +76,10 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
                 );
             }
             "json" | "jsons" => {
-                value = Some(
-                    serde_json::from_slice(&cur)
-                        .map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?,
-                )
+                strict_json::parse_bytes(&cur)
+                    .map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?;
+                value = Some(serde_json::from_slice(&cur)
+                    .map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?)
             }
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
@@ -128,8 +129,11 @@ pub fn encode(styles: &[&str], v: Option<&Value>) -> Result<Param> {
                 if i != 0 {
                     return Err(err(CODEC_UNSUPPORTED, "json must be the first style"));
                 }
-                cur = serde_json::to_vec(&value)
+                let raw = serde_json::to_vec(&value)
                     .map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
+                let parsed = strict_json::parse_bytes(&raw)
+                    .map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
+                cur = strict_json::stringify(&parsed).into_bytes();
             }
             "base64" => {
                 cur = base64::engine::general_purpose::STANDARD
