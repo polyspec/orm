@@ -1393,6 +1393,14 @@ func ErrorCode(err error) string {
 	return ""
 }
 
+// NewTransactionConflict creates the adapter-neutral retryable transaction
+// conflict returned for serialization failures and deadlocks. It is useful
+// when an adapter or a deterministic fixture must surface the same error
+// contract without exposing a driver error type.
+func NewTransactionConflict(message string) error {
+	return &ir.Error{Code: CodeDeadlock, Msg: message}
+}
+
 // IsDeadlock reports a DEADLOCK error: the mapped code, or for errors that did
 // not pass through the executor (a foreign driver), the message.
 func IsDeadlock(err error) bool {

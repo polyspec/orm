@@ -163,7 +163,7 @@ PostgreSQL transaction은 transaction 종료 시 되돌리는 값에 `setLocal(k
 
 root row select는 `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`를 각 언어의 명명 규칙으로 제공한다. request는 공통 IR에 `lock`을 저장한다. MySQL과 PostgreSQL은 order와 limit 뒤에 선택한 lock 절을 추가하며 `NoWait` mode는 row를 즉시 사용할 수 없으면 실패한다. SQLite는 lock suffix를 생성하지 않고 ORM이 `forUpdate()`, `forShare()`와 두 `NoWait` variant를 transaction 범위의 database lock 행으로 구현한다. `NoWait`은 일시적으로 busy timeout을 0으로 설정하여 경합에서 즉시 실패한다.
 
-오류는 안정된 code와 원래 driver message를 보존한다. transaction timeout은 driver가 PostgreSQL `statement_timeout`을 지원하는 경우 `timeoutMs`로 제공하며 실행 중 cancellation은 각 언어 runtime의 native 방식을 사용한다.
+오류는 안정된 code와 원래 driver message를 보존한다. `newTransactionConflict(message)`(Go: `NewTransactionConflict`)는 serialization failure와 deadlock에 사용하는 adapter-neutral 재시도 가능한 transaction-conflict 오류를 만들며 `DEADLOCK`을 전달하고 driver 오류 type을 노출하지 않는다. transaction timeout은 driver가 PostgreSQL `statement_timeout`을 지원하는 경우 `timeoutMs`로 제공하며 실행 중 cancellation은 각 언어 runtime의 native 방식을 사용한다.
 
 `transaction`은 기본적으로 callback을 한 번 실행한다. deadlock 재시도는 기본 비활성화다. 호출자는 `TransactionOptions`의 `retryDeadlocks`와 `maxAttempts`를 지정할 수 있다. 재시도마다 새 transaction을 만들고 callback 전체를 다시 실행한다. 재시도를 활성화하면 callback은 여러 번 실행되어도 안전해야 한다.
 

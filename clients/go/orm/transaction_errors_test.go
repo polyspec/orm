@@ -47,6 +47,13 @@ func TestErrorClassificationExposesMappedCodes(t *testing.T) {
 	}
 }
 
+func TestNewTransactionConflictIsRetryable(t *testing.T) {
+	err := NewTransactionConflict("serialization fixture")
+	if ErrorCode(err) != CodeDeadlock || !IsDeadlock(err) {
+		t.Fatalf("transaction conflict = %v, code=%q", err, ErrorCode(err))
+	}
+}
+
 func TestBackendWaitingForLockIsFalseForNonPostgres(t *testing.T) {
 	db := &DB{driver: "sqlite"}
 	waiting, err := db.BackendWaitingForLock(t.Context(), 1)
