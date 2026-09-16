@@ -1,5 +1,7 @@
 # Changelog
 
+- Specify `Tx.InstallSchema(context.Context, []byte) error` as the ORM-owned canonical schema installation boundary; consumers do not provide SQL or dialect-specific DDL.
+
 - Go caller-owned transactions expose `Tx.Driver()` for canonical adapter selection while keeping query, mutation, and transaction APIs identical across MySQL, PostgreSQL, and SQLite.
 
 - Apply SQLite transaction `readOnly` and isolation options through ORM-owned connection pragmas instead of rejecting them. Expose the logical mode through `Tx.ReadOnly` and `Tx.Isolation`, restore connection state before transaction completion, and verify read-only write rejection and subsequent connection reuse.
