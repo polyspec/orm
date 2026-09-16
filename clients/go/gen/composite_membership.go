@@ -279,7 +279,7 @@ func CompositeMembership() *CompositeMembershipQuery {
 	return &CompositeMembershipQuery{q: orm.NewQ(eng, "composite_membership")}
 }
 
-// Using selects the pool or transaction for this query.
+// Using selects the context and pool or transaction for this query.
 func (q *CompositeMembershipQuery) Using(ex orm.Exec) *CompositeMembershipQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "composite_membership")
@@ -291,7 +291,7 @@ func (q *CompositeMembershipQuery) Using(ex orm.Exec) *CompositeMembershipQuery 
 	return q
 }
 
-// Using selects the pool or transaction for this loaded row.
+// Using selects the context and pool or transaction for this loaded row.
 func (r *CompositeMembershipRow) Using(ex orm.Exec) *CompositeMembershipRow {
 	r.Binding = orm.NewBindingForExecutor(ex)
 	return r

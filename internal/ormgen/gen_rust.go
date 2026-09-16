@@ -708,7 +708,7 @@ impl {{.Type}} {
     pub fn if_parent_{{.Ident}}_eq(mut self, v: {{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}) -> Self { self.q.if_parent({{printf "%q" .Name}}, {{if .IsStr}}v.into(){{else}}v{{end}}); self }
 {{- end}}{{end}}
 
-    // ---- insert/update draft (set_<pk> only decides save: INSERT rejects it, UPDATE cannot change it) ----
+    // ---- insert/update draft (set_<pk> is accepted by Insert and cannot be changed by Update) ----
 {{- range .Cols}}{{if and (or (not .Auto) .PK) (not .Managed)}}
     pub fn set_{{.Ident}}(mut self, v: {{if .Nullable}}Option<{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}>{{else}}{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}{{end}}) -> Self { let v: {{if .Nullable}}Option<{{.RType}}>{{else}}{{.RType}}{{end}} = {{if .Nullable}}v.map(|x| x.into()){{else}}v.into(){{end}}; {{if .Styles}}match orm::codec::encode(&[{{rsList .Styles}}], {{if .Nullable}}v.as_ref(){{else}}Some(&v){{end}}) { Ok(p) => self.q.set({{printf "%q" .Name}}, p), Err(e) => self.q.defer_err(e) }{{else}}self.q.set({{printf "%q" .Name}}, v){{end}}; self }
 {{- end}}{{if and (not .Auto) (not .Managed)}}

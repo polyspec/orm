@@ -474,7 +474,7 @@ impl CompositeAccount {
     pub fn if_parent_account_id_eq(mut self, v: i64) -> Self { self.q.if_parent("account_id", v); self }
     pub fn if_parent_role_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("role", v.into()); self }
 
-    // ---- insert/update draft (set_<pk> only decides save: INSERT rejects it, UPDATE cannot change it) ----
+    // ---- insert/update draft (set_<pk> is accepted by Insert and cannot be changed by Update) ----
     pub fn set_tenant_id(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("tenant_id", v); self }
     pub fn set_tenant_id_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("tenant_id", frag, binds); self }
     pub fn set_account_id(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("account_id", v); self }

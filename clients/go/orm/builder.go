@@ -433,58 +433,6 @@ func (q *Q) OnDuplicateSetAll(exclude ...string) {
 	}
 }
 
-// MoveKeysToWhere turns a draft into an update when every primary-key column
-// was assigned. No assigned key means insert. A partial key is rejected before
-// the request is changed.
-func (q *Q) MoveKeysToWhere(keys []string) (values []any, found bool, err error) {
-	if len(keys) == 0 {
-		return nil, false, &ir.Error{Code: CodeIrInvalid, Msg: "save requires at least one primary-key column"}
-	}
-	indexes := make([]int, len(keys))
-	for i := range indexes {
-		indexes[i] = -1
-	}
-	for i, a := range q.Req.IR.Set {
-		for keyIndex, key := range keys {
-			if a.Column == key {
-				if a.P == nil {
-					return nil, false, &ir.Error{Code: CodeIrInvalid, Msg: "save primary-key assignments must use values"}
-				}
-				indexes[keyIndex] = i
-			}
-		}
-	}
-	present := 0
-	for _, index := range indexes {
-		if index >= 0 {
-			present++
-		}
-	}
-	if present == 0 {
-		return nil, false, nil
-	}
-	if present != len(keys) {
-		return nil, false, &ir.Error{Code: CodeIrInvalid, Msg: "save requires every primary-key column or none"}
-	}
-	values = make([]any, len(keys))
-	remove := make(map[int]bool, len(keys))
-	for i, index := range indexes {
-		values[i] = q.Req.Params[*q.Req.IR.Set[index].P]
-		remove[index] = true
-	}
-	set := q.Req.IR.Set[:0]
-	for i, assignment := range q.Req.IR.Set {
-		if !remove[i] {
-			set = append(set, assignment)
-		}
-	}
-	q.Req.IR.Set = set
-	for i, key := range keys {
-		q.W().Pred(key, "eq", values[i])
-	}
-	return values, true, nil
-}
-
 // AssignedKeyValues returns every primary-key value without changing the
 // draft. Explicit Insert uses it to read a non-auto row after execution.
 func (q *Q) AssignedKeyValues(keys []string) ([]any, error) {
@@ -507,15 +455,6 @@ func (q *Q) AssignedKeyValues(keys []string) ([]any, error) {
 		}
 	}
 	return values, nil
-}
-
-// MovePKToWhere is the single-key compatibility form.
-func (q *Q) MovePKToWhere(pk string) (v any, ok bool) {
-	values, ok, err := q.MoveKeysToWhere([]string{pk})
-	if err != nil || !ok {
-		return nil, false
-	}
-	return values[0], true
 }
 
 // Row is embedded in every generated row struct: it remembers where the row

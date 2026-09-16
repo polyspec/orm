@@ -1318,7 +1318,7 @@ func (q *AuthorQuery) Req() *orm.Req { return q.q.Req }
 // before Using; the bound ORM executor supplies the schema engine at Using.
 func Author() *AuthorQuery { return &AuthorQuery{q: orm.NewQ(eng, "author")} }
 
-// Using selects the pool or transaction for this query.
+// Using selects the context and pool or transaction for this query.
 func (q *AuthorQuery) Using(ex orm.Exec) *AuthorQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "author")
@@ -1355,7 +1355,7 @@ func (q *AuthorQuery) RotateAES(keyring orm.AESKeyring) (int, error) {
 	}, keyring)
 }
 
-// Using selects the pool or transaction for this loaded row.
+// Using selects the context and pool or transaction for this loaded row.
 func (r *AuthorRow) Using(ex orm.Exec) *AuthorRow {
 	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
