@@ -253,7 +253,7 @@ var CompositeAccountCols = struct {
 	Name:      orm.ColRef{Column: "name"},
 }
 
-// CompositeAccountQuery builds a statement over composite_account: CompositeAccount() → chain → Using(ctx, db) → terminal().
+// CompositeAccountQuery builds a statement over composite_account: CompositeAccount() → chain → Using(db) → terminal().
 type CompositeAccountQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -275,21 +275,21 @@ func CompositeAccount() *CompositeAccountQuery {
 	return &CompositeAccountQuery{q: orm.NewQ(eng, "composite_account")}
 }
 
-// Using selects the context and pool or transaction for this query.
-func (q *CompositeAccountQuery) Using(ctx context.Context, ex orm.Exec) *CompositeAccountQuery {
+// Using selects the pool or transaction for this query.
+func (q *CompositeAccountQuery) Using(ex orm.Exec) *CompositeAccountQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "composite_account")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
-// Using selects the context and pool or transaction for this loaded row.
-func (r *CompositeAccountRow) Using(ctx context.Context, ex orm.Exec) *CompositeAccountRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+// Using selects the pool or transaction for this loaded row.
+func (r *CompositeAccountRow) Using(ex orm.Exec) *CompositeAccountRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
@@ -1607,7 +1607,7 @@ func (q *CompositeAccountQuery) Insert() (*CompositeAccountRow, error) {
 		return nil, err
 	}
 	_ = id
-	return CompositeAccount().Using(ctx, ex).TenantIdEq(keys[0].(int64)).AccountIdEq(keys[1].(int64)).Get()
+	return CompositeAccount().Using(ex).TenantIdEq(keys[0].(int64)).AccountIdEq(keys[1].(int64)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

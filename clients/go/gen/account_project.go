@@ -198,7 +198,7 @@ var AccountProjectCols = struct {
 	ProjectSeq: orm.ColRef{Column: "project_seq"},
 }
 
-// AccountProjectQuery builds a statement over account_project: AccountProject() → chain → Using(ctx, db) → terminal().
+// AccountProjectQuery builds a statement over account_project: AccountProject() → chain → Using(db) → terminal().
 type AccountProjectQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -220,21 +220,21 @@ func AccountProject() *AccountProjectQuery {
 	return &AccountProjectQuery{q: orm.NewQ(eng, "account_project")}
 }
 
-// Using selects the context and pool or transaction for this query.
-func (q *AccountProjectQuery) Using(ctx context.Context, ex orm.Exec) *AccountProjectQuery {
+// Using selects the pool or transaction for this query.
+func (q *AccountProjectQuery) Using(ex orm.Exec) *AccountProjectQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "account_project")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
-// Using selects the context and pool or transaction for this loaded row.
-func (r *AccountProjectRow) Using(ctx context.Context, ex orm.Exec) *AccountProjectRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+// Using selects the pool or transaction for this loaded row.
+func (r *AccountProjectRow) Using(ex orm.Exec) *AccountProjectRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
@@ -1148,7 +1148,7 @@ func (q *AccountProjectQuery) Insert() (*AccountProjectRow, error) {
 		return nil, err
 	}
 	_ = id
-	return AccountProject().Using(ctx, ex).AccountSeqEq(keys[0].(int64)).ProjectSeqEq(keys[1].(int64)).Get()
+	return AccountProject().Using(ex).AccountSeqEq(keys[0].(int64)).ProjectSeqEq(keys[1].(int64)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

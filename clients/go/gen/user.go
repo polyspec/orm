@@ -248,7 +248,7 @@ var UserCols = struct {
 	Name: orm.ColRef{Column: "name"},
 }
 
-// UserQuery builds a statement over user: User() → chain → Using(ctx, db) → terminal().
+// UserQuery builds a statement over user: User() → chain → Using(db) → terminal().
 type UserQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -265,23 +265,20 @@ func (q *UserQuery) Req() *orm.Req { return q.q.Req }
 // before Using; the bound ORM executor supplies the schema engine at Using.
 func User() *UserQuery { return &UserQuery{q: orm.NewQ(eng, "user")} }
 
-// Using selects the context and pool or transaction for this query.
-func (q *UserQuery) Using(ctx context.Context, ex orm.Exec) *UserQuery {
+// Using selects the pool or transaction for this query.
+func (q *UserQuery) Using(ex orm.Exec) *UserQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "user")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
-// Using selects the context and pool or transaction for this loaded row.
-func (r *UserRow) Using(ctx context.Context, ex orm.Exec) *UserRow {
-	r.Binding = orm.NewBinding(ctx, ex)
-	return r
-}
+// Using selects the pool or transaction for this loaded row.
+func (r *UserRow) Using(ex orm.Exec) *UserRow { r.Binding = orm.NewBindingForExecutor(ex); return r }
 
 // UserWhere edits one WHERE/ON group of user.
 type UserWhere struct{ w *orm.W }
@@ -1242,7 +1239,7 @@ func (q *UserQuery) Insert() (*UserRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return User().Using(ctx, ex).SeqEq(int64(id)).Get()
+	return User().Using(ex).SeqEq(int64(id)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

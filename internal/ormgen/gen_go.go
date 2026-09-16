@@ -747,7 +747,7 @@ var {{.Type}}Cols = struct {
 {{- end}}
 }
 
-// {{.Type}}Query builds a statement over {{.Table}}: {{.Type}}() → chain → Using(ctx, db) → terminal().
+// {{.Type}}Query builds a statement over {{.Table}}: {{.Type}}() → chain → Using(db) → terminal().
 type {{.Type}}Query struct {
 	binding orm.Binding
 	q     *orm.Q
@@ -765,10 +765,10 @@ func (q *{{.Type}}Query) Req() *orm.Req { return q.q.Req }
 func {{.Type}}() *{{.Type}}Query { return &{{.Type}}Query{q: orm.NewQ(eng, {{printf "%q" .Name}})} }
 
 // Using selects the context and pool or transaction for this query.
-func (q *{{.Type}}Query) Using(ctx context.Context, ex orm.Exec) *{{.Type}}Query {
+func (q *{{.Type}}Query) Using(ex orm.Exec) *{{.Type}}Query {
 	if q.q == nil && ex != nil { q.q = orm.NewQ(eng, {{printf "%q" .Name}}) }
 	if q.q != nil && ex != nil && ex.DB() != nil { q.q.BindEngine(ex.DB().EngineFor(SchemaHash)) }
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
@@ -795,7 +795,7 @@ func (q *{{.Type}}Query) RotateAES(keyring orm.AESKeyring) (int, error) {
 {{- end}}
 
 // Using selects the context and pool or transaction for this loaded row.
-func (r *{{.Type}}Row) Using(ctx context.Context, ex orm.Exec) *{{.Type}}Row { r.Binding = orm.NewBinding(ctx, ex); return r }
+func (r *{{.Type}}Row) Using(ex orm.Exec) *{{.Type}}Row { r.Binding = orm.NewBindingForExecutor(ex); return r }
 
 // {{.Type}}Where edits one WHERE/ON group of {{.Table}}.
 type {{.Type}}Where struct{ w *orm.W }
@@ -1183,10 +1183,10 @@ func (q *{{.Type}}Query) Insert() (*{{.Type}}Row, error) {
 		return nil, err
 	}
 {{- if .Auto}}
-	return {{.Type}}().Using(ctx, ex).{{pascal .PK}}Eq({{.PKType}}(id)).Get()
+	return {{.Type}}().Using(ex).{{pascal .PK}}Eq({{.PKType}}(id)).Get()
 {{- else}}
 	_ = id
-	return {{.Type}}().Using(ctx, ex){{range $i, $c := .PKCols}}.{{$c.Field}}Eq(keys[{{$i}}].({{$c.Type}})){{end}}.Get()
+	return {{.Type}}().Using(ex){{range $i, $c := .PKCols}}.{{$c.Field}}Eq(keys[{{$i}}].({{$c.Type}})){{end}}.Get()
 {{- end}}
 }
 
@@ -1289,7 +1289,7 @@ func Connect(dsn, schemaPath string, cfg orm.Config) (*orm.DB, error) {
 	e, err := engine.New(m, driver)
 	if err != nil { return nil, err }
 	if err := Init(e); err != nil { return nil, err }
-	return orm.Open(dsn, e, cfg)
+	return orm.OpenWithEngine(dsn, e, cfg)
 }
 `
 

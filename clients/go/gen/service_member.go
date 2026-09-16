@@ -310,7 +310,7 @@ var ServiceMemberCols = struct {
 	UserSeq:    orm.ColRef{Column: "user_seq"},
 }
 
-// ServiceMemberQuery builds a statement over service_member: ServiceMember() → chain → Using(ctx, db) → terminal().
+// ServiceMemberQuery builds a statement over service_member: ServiceMember() → chain → Using(db) → terminal().
 type ServiceMemberQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -332,21 +332,21 @@ func ServiceMember() *ServiceMemberQuery {
 	return &ServiceMemberQuery{q: orm.NewQ(eng, "service_member")}
 }
 
-// Using selects the context and pool or transaction for this query.
-func (q *ServiceMemberQuery) Using(ctx context.Context, ex orm.Exec) *ServiceMemberQuery {
+// Using selects the pool or transaction for this query.
+func (q *ServiceMemberQuery) Using(ex orm.Exec) *ServiceMemberQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "service_member")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
-// Using selects the context and pool or transaction for this loaded row.
-func (r *ServiceMemberRow) Using(ctx context.Context, ex orm.Exec) *ServiceMemberRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+// Using selects the pool or transaction for this loaded row.
+func (r *ServiceMemberRow) Using(ex orm.Exec) *ServiceMemberRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
@@ -1918,7 +1918,7 @@ func (q *ServiceMemberQuery) Insert() (*ServiceMemberRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ServiceMember().Using(ctx, ex).SeqEq(int64(id)).Get()
+	return ServiceMember().Using(ex).SeqEq(int64(id)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
