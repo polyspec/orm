@@ -91,6 +91,7 @@ fn direct_step(sql: String, parameters: usize) -> Step {
             .collect(),
         assemble: None,
         parent: None,
+        lock: String::new(),
     }
 }
 
@@ -330,10 +331,10 @@ async fn main() {
     let rows = battle::query()
         .service_seq_eq(7)
         .is_close_eq(false)
-        .and(|w| {
+        .and_group(|w| {
             w.is_display_eq(true)
                 .or()
-                .and(|w| w.is_display_eq(false).display_start_dt_lt(now))
+                .and_group(|w| w.is_display_eq(false).display_start_dt_lt(now))
         })
         .seq_in(vec![6, 106, 206, 306, 406])
         .order_by_seq_desc()
@@ -401,7 +402,7 @@ async fn main() {
         .join(service::query().where_(|w| w.name_eq("service-7")))
         .left_join(user::query().on(|w| w.name_contains("user")))
         .is_close_eq(false)
-        .and(|w| w.is_display_eq(true).or().service(|s| s.seq_gt(1000)))
+        .and_group(|w| w.is_display_eq(true).or().service(|s| s.seq_gt(1000)))
         .using(&db)
         .get_count()
         .await
@@ -741,7 +742,7 @@ async fn main() {
         fails,
         battle::query()
             .service_seq_eq(7)
-            .and(|w| w.visible().or().started_after("2999-01-01 00:00:00"))
+            .and_group(|w| w.visible().or().started_after("2999-01-01 00:00:00"))
             .using(&db)
             .get_count()
             .await
@@ -1160,14 +1161,19 @@ async fn main() {
                 == 0,
         "minus clamps at zero"
     );
-    let saved = battle::query()
-        .set_seq(a.seq)
+    battle::query()
+        .seq(a.seq)
         .set_name("rust-saved")
         .using(&db)
-        .save()
+        .update()
         .await
-        .expect("save update")
-        .unwrap();
+        .expect("explicit update");
+    let saved = battle::query()
+        .seq(a.seq)
+        .using(&db)
+        .get()
+        .await
+        .expect("read updated row");
     check!(
         fails,
         saved.seq == a.seq
@@ -1177,9 +1183,9 @@ async fn main() {
     );
     let inserted = draft("rust-saved-new")
         .using(&db)
-        .save()
+        .insert()
         .await
-        .expect("save insert")
+        .expect("insert")
         .unwrap();
     check!(
         fails,
@@ -1641,19 +1647,24 @@ async fn main() {
         .expect("membership row");
     first.set_role("owner");
     first.update().await.expect("composite row update");
-    let second = composite_membership::query()
-        .set_tenant_id(tenant_id)
-        .set_account_id(12)
+    let _affected = composite_membership::query()
+        .tenant_id_eq(tenant_id)
+        .account_id_eq(12)
         .set_role("editor")
         .using(&db)
-        .save()
+        .update()
         .await
-        .expect("composite save")
-        .expect("saved membership");
+        .expect("composite update");
+    let second = composite_membership::query()
+        .using(&db)
+        .get_by_tenant_id_and_account_id(tenant_id, 12)
+        .await
+        .expect("composite read")
+        .expect("updated membership");
     check!(
         fails,
         second.role == "editor",
-        "composite save uses every key component"
+        "composite update uses every key component"
     );
     let page = composite_membership::query()
         .tenant_id_eq(tenant_id)

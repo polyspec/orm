@@ -74,10 +74,10 @@ async fn main() {
         battle::query()
             .service_seq(7)
             .is_close(false)
-            .and(|w| {
+            .and_group(|w| {
                 w.is_display(true)
                     .or()
-                    .and(|w| w.is_display(false).display_start_dt_lt(now))
+                    .and_group(|w| w.is_display(false).display_start_dt_lt(now))
             })
             .seq_in(vec![6, 106, 206, 306, 406])
             .order_by_seq_desc()

@@ -14,10 +14,9 @@ import (
 func BenchmarkClientPKGet(b *testing.B) {
 	db := open(&testing.T{})
 	db.SQL.SetMaxOpenConns(1)
-	ctx := context.Background()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		r, err := gen.Battle().SeqEq(int64(i%100000+1)).Using(ctx, db).Get()
+		r, err := gen.Battle().SeqEq(int64(i%100000 + 1)).Using(db).Get()
 		if err != nil || r == nil {
 			b.Fatal(err)
 		}
@@ -27,10 +26,9 @@ func BenchmarkClientPKGet(b *testing.B) {
 func BenchmarkClientList100(b *testing.B) {
 	db := open(&testing.T{})
 	db.SQL.SetMaxOpenConns(1)
-	ctx := context.Background()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		rows, err := gen.Battle().ServiceSeqEq(int64(i%100+1)).IsCloseEq(false).OrderBySeqDesc().Limit(0, 100).Using(ctx, db).Gets()
+		rows, err := gen.Battle().ServiceSeqEq(int64(i%100+1)).IsCloseEq(false).OrderBySeqDesc().Limit(0, 100).Using(db).Gets()
 		if err != nil || rows.Len() == 0 {
 			b.Fatalf("%v %d", err, rows.Len())
 		}

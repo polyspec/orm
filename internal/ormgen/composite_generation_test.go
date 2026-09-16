@@ -49,20 +49,20 @@ func TestCompositeKeyGenerationHasTheSameStructuresInEveryLanguage(t *testing.T)
 		{"go", func(out string) error { return genGo(manifest, out) }, "membership.go", []string{
 			"type MembershipKey struct", "TenantId  int64", "AccountId int64",
 			`r.Mark("membership", []string{"tenant_id", "account_id"}, []any{r.TenantId, r.AccountId})`,
-			"GetByTenantIdAndAccountId(v0 int64, v1 int64)", `MoveKeysToWhere([]string{"tenant_id", "account_id"})`,
-		}, []string{`Mark("membership", "tenant_id"`}},
+			"GetByTenantIdAndAccountId(v0 int64, v1 int64)",
+		}, []string{`Mark("membership", "tenant_id"`, "Save()"}},
 		{"php", func(out string) error { return genPHP(manifest, out, "App\\Orm") }, "Membership.php", []string{
 			"final readonly class MembershipKey", "public int $tenantId", "public int $accountId", "primaryKeys(): array { return ['tenant_id', 'account_id']; }", "getByTenantIdAndAccountId(int $v0, int $v1)",
-			"runSave($db, ['tenant_id', 'account_id'])",
+			"public function update(): int",
 		}, []string{"function pk(): string"}},
 		{"rust", func(out string) error { return genRust(manifest, out) }, filepath.Join("src", "membership.rs"), []string{
 			"pub struct MembershipKey", "pub tenant_id: i64", "pub account_id: i64", `PRIMARY_KEYS: &'static [&'static str] = &["tenant_id", "account_id"]`,
-			"original_key: Option<Vec<Param>>", "get_by_tenant_id_and_account_id", `take_sets(&["tenant_id", "account_id"])`,
+			"get_by_tenant_id_and_account_id", "pub async fn update",
 		}, []string{"original_key: Option<Param>"}},
 		{"typescript", func(out string) error { return genTypeScript(manifest, out) }, "entities.ts", []string{
 			"export interface MembershipKey", "readonly tenantId:number", "readonly accountId:number", "primaryKeys(): readonly string[] { return ['tenant_id','account_id']; }",
-			"getByTenantIdAndAccountId(value0:number,value1:number)", "saveKeys(['tenant_id','account_id'])",
-		}, []string{"primaryKey(): string"}},
+			"getByTenantIdAndAccountId(value0:number,value1:number)", "public async update(): Promise<number>",
+		}, []string{"primaryKey(): string", "save():"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

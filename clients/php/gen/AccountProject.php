@@ -68,12 +68,14 @@ final class AccountProjectWhere
 
     public function __construct(private W $w) {}
 
-    public function or(): static { $this->w->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    public function or(?\Closure $fn = null): static { if ($fn === null) { $this->w->orConn(); return $this; } $this->w->orConn(); $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    public function and(?\Closure $fn = null): static { if ($fn === null) { return $this; } $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
 
     public function accountSeqEq(int $v): static { $this->w->pred('account_seq', 'eq', $v); return $this; }
     public function accountSeq(int $v): static { return $this->accountSeqEq($v); }
+    public function andAccountSeq(int $v): static { return $this->and()->accountSeqEq($v); }
+    public function orAccountSeq(int $v): static { return $this->or()->accountSeqEq($v); }
     public function accountSeqNotEq(int $v): static { $this->w->pred('account_seq', 'not_eq', $v); return $this; }
     public function accountSeqGt(int $v): static { $this->w->pred('account_seq', 'gt', $v); return $this; }
     public function accountSeqGte(int $v): static { $this->w->pred('account_seq', 'gte', $v); return $this; }
@@ -92,6 +94,8 @@ final class AccountProjectWhere
     public function accountSeqLteCol(ColRef $ref): static { $this->w->predCol('account_seq', 'lte_col', $ref); return $this; }
     public function projectSeqEq(int $v): static { $this->w->pred('project_seq', 'eq', $v); return $this; }
     public function projectSeq(int $v): static { return $this->projectSeqEq($v); }
+    public function andProjectSeq(int $v): static { return $this->and()->projectSeqEq($v); }
+    public function orProjectSeq(int $v): static { return $this->or()->projectSeqEq($v); }
     public function projectSeqNotEq(int $v): static { $this->w->pred('project_seq', 'not_eq', $v); return $this; }
     public function projectSeqGt(int $v): static { $this->w->pred('project_seq', 'gt', $v); return $this; }
     public function projectSeqGte(int $v): static { $this->w->pred('project_seq', 'gte', $v); return $this; }
@@ -119,12 +123,14 @@ final class AccountProject extends Q implements AccountProjectInterface
     public static function query(): static { return new static(); }
 
     // ---- WHERE ----
-    public function or(): static { $this->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new AccountProjectWhere($this->w()->group())); $this->req->end(); return $this; }
+    public function or(?\Closure $fn = null): static { if ($fn === null) { $this->orConn(); return $this; } $this->orConn(); $fn(new AccountProjectWhere($this->w()->group())); $this->req->end(); return $this; }
+    public function and(?\Closure $fn = null): static { if ($fn === null) { return $this; } $fn(new AccountProjectWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
 
     public function accountSeqEq(int $v): static { $this->w()->pred('account_seq', 'eq', $v); return $this; }
     public function accountSeq(int $v): static { return $this->accountSeqEq($v); }
+    public function andAccountSeq(int $v): static { return $this->and()->accountSeqEq($v); }
+    public function orAccountSeq(int $v): static { return $this->or()->accountSeqEq($v); }
     public function accountSeqNotEq(int $v): static { $this->w()->pred('account_seq', 'not_eq', $v); return $this; }
     public function accountSeqGt(int $v): static { $this->w()->pred('account_seq', 'gt', $v); return $this; }
     public function accountSeqGte(int $v): static { $this->w()->pred('account_seq', 'gte', $v); return $this; }
@@ -143,6 +149,8 @@ final class AccountProject extends Q implements AccountProjectInterface
     public function accountSeqLteCol(ColRef $ref): static { $this->w()->predCol('account_seq', 'lte_col', $ref); return $this; }
     public function projectSeqEq(int $v): static { $this->w()->pred('project_seq', 'eq', $v); return $this; }
     public function projectSeq(int $v): static { return $this->projectSeqEq($v); }
+    public function andProjectSeq(int $v): static { return $this->and()->projectSeqEq($v); }
+    public function orProjectSeq(int $v): static { return $this->or()->projectSeqEq($v); }
     public function projectSeqNotEq(int $v): static { $this->w()->pred('project_seq', 'not_eq', $v); return $this; }
     public function projectSeqGt(int $v): static { $this->w()->pred('project_seq', 'gt', $v); return $this; }
     public function projectSeqGte(int $v): static { $this->w()->pred('project_seq', 'gte', $v); return $this; }
@@ -204,7 +212,7 @@ final class AccountProject extends Q implements AccountProjectInterface
     public function dropChildKey(): static { $this->opt('drop_child_key', true); return $this; }
     public function noCascadeDelete(): static { $this->opt('no_cascade_delete', true); return $this; }
 
-    // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
+    // ---- write draft (insert / update) ----
     public function setAccountSeq(int $v): static { $this->set('account_seq', $v); return $this; }
     public function setAccountSeqExpr(string $frag, array $binds = []): static { $this->setExpr('account_seq', $frag, $binds); return $this; }
     public function setProjectSeq(int $v): static { $this->set('project_seq', $v); return $this; }
@@ -347,16 +355,6 @@ final class AccountProject extends Q implements AccountProjectInterface
         $db = $this->terminalDb();
         $keys = $this->assignedKeyValues(['account_seq', 'project_seq']);
         $id = $this->runInsert($db);
-        return AccountProject::query()->using($db)->accountSeqEq($keys[0])->projectSeqEq($keys[1])->get();
-    }
-
-    /** UPDATE when every primary-key column was assigned; otherwise INSERT. */
-    public function save(): ?AccountProjectRow
-    {
-        $this->terminalArity(func_num_args());
-        $db = $this->terminalDb();
-        [$updated, $keys] = $this->runSave($db, ['account_seq', 'project_seq']);
-        if (!$updated) { return null; }
         return AccountProject::query()->using($db)->accountSeqEq($keys[0])->projectSeqEq($keys[1])->get();
     }
 

@@ -239,8 +239,8 @@ try {
     return { same_seq: a.getSeq() === b.getSeq(), name: b.getName(), read_count: b.getReadCount() };
   }));
   await run('save_branch', async () => {
-    const row = await db.transaction(tx => fks(Battle().setName('conf-save')).using(tx).save()); maskRows(row.getUpdatedTs(), row.getSeq());
-    const after = await Battle().setSeq(row.getSeq()).setName('conf-save-2').using(db).save(); await after.delete(); return { inserted: row.getSeq() > 0, after: after.getName() };
+    const row = await db.transaction(tx => fks(Battle().setName('conf-save')).using(tx).insert()); maskRows(row.getUpdatedTs(), row.getSeq());
+    await Battle().seq(row.getSeq()).setName('conf-save-2').using(db).update(); const after = await Battle().seq(row.getSeq()).using(db).get(); await after.delete(); return { inserted: row.getSeq() > 0, after: after.getName() };
   });
   await run('bulk_update_plus_minus', async () => {
     const row = await db.transaction(tx => fks(Battle().setReadCount(3).setName('conf-bulk')).using(tx).insert()); maskRows(row.getUpdatedTs(), row.getSeq());

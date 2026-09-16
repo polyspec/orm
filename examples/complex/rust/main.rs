@@ -54,7 +54,7 @@ async fn main() {
                 .where_(|w| w.name("service-7")),
         )
         .is_close(false)
-        .and(|w| w.is_display(true).or().service(|s| s.seq(7)))
+        .and_group(|w| w.is_display(true).or().service(|s| s.seq(7)))
         .relation(
             user::query().relations(
                 battle::query()

@@ -3,6 +3,15 @@
 하나의 Mermaid 스키마에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
 대상 DB는 MySQL 8(기본), PostgreSQL 12+, SQLite 3.35+.
 
+Go generated client는 query마다 context를 받지 않는다. 생성된 schema를 한 번 초기화한 뒤 DSN으로 database를 연다.
+
+```go
+if err := gen.Init(engine); err != nil { return err }
+db, err := orm.Open(dsn, orm.Config{})
+```
+
+`OpenWithEngine`은 generated bootstrap과 테스트에서만 사용한다. query와 row는 `Using(db)`를 사용하며 실행 context는 database가 소유한다.
+
 문법의 전체 목록은 [dsl.md](dsl.md), 다이어그램 문법은 [schema.md](schema.md), IR/Plan 명세은 [protocol.md](protocol.md),
 방언 차이는 [dialects.md](dialects.md), 설정은 [config.md](config.md), 에러 코드는 [errors.yaml](errors.yaml)에 있다.
 
@@ -272,7 +281,7 @@ rows, err := gen.Battle().
     ServiceSeq(7).IsClose(false).
     And(func(w *gen.BattleWhere) { w.IsDisplay(true).Or().IsAllday(true) }).
     SeqIn([]int64{6, 106, 206}).
-    OrderBySeqDesc().Limit(0, 20).Using(ctx, db).Gets()
+    OrderBySeqDesc().Limit(0, 20).Using(db).Gets()
 ```
 ```rust
 let rows = battle::query()
@@ -374,7 +383,7 @@ Battle::query()->seq($id)->using($db)->delete();
 
 ```go
 row, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {
-    return gen.Battle().SetName("x").….Using(ctx, tx).Insert()
+    return gen.Battle().SetName("x").….Using(tx).Insert()
 })
 ```
 ```php
@@ -422,7 +431,7 @@ psql … -f app.pg.sql
 | 스키마가 라이브 DB와 같은지 | `ormgen validate --dsn … --schema schema/schema.json` (다르면 exit 1) |
 | 생성물이 최신인지 | `ormgen gen …` 후 `git diff --exit-code` |
 | 문장 로그 | `Config.OnQuery` / `onQuery` / `Config { on_query }` → `(sql, binds, 시간, plan_id, err)`, 비밀은 `$SECRET`로 마스킹 |
-| 실행 없이 SQL 보기 | `->using($db)->sql()` / `.Using(ctx, db).SQL()` / `.using(&db).sql()` |
+| 실행 없이 SQL 보기 | `->using($db)->sql()` / `.Using(db).SQL()` / `.using(&db).sql()` |
 | 에러 코드 상수 | `ormgen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | 배포 아티팩트 | `scripts/build-artifacts.sh` → `dist/`(버전이 파일명에, SHA256SUMS) |
 | 데몬 유닛 | `deploy/ormd.service`, `deploy/com.orm.ormd.plist` |

@@ -300,10 +300,11 @@ try {
 check($batchRollbackFailed && Battle::query()->uuidEq($batchPrefix . '-rollback')->using($db)->getCount() === 0, 'batch rollback');
 $batchCleanup();
 
-$r = $draft('php-save')->using($db)->save();
-check($r !== null && $r->getSeq() > 0 && $r->getName() === 'php-save', 'save without pk inserts');
-$r2 = Battle::query()->setSeq($r->getSeq())->setName('php-save-2')->using($db)->save();
-check($r2 !== null && $r2->getSeq() === $r->getSeq() && $r2->getName() === 'php-save-2' && $r2->getUserSeq() === 1, 'save with pk updates the other columns only');
+$r = $draft('php-save')->using($db)->insert();
+check($r !== null && $r->getSeq() > 0 && $r->getName() === 'php-save', 'insert returns the row');
+check(Battle::query()->seq($r->getSeq())->setName('php-save-2')->using($db)->update() === 1, 'explicit query update succeeds');
+$r2 = Battle::query()->seq($r->getSeq())->using($db)->get();
+check($r2 !== null && $r2->getSeq() === $r->getSeq() && $r2->getName() === 'php-save-2' && $r2->getUserSeq() === 1, 'explicit update changes the selected row');
 check(Battle::query()->seq($r->getSeq())->plusReadCount(2)->setLikeCount(7)->using($db)->update() === 1, 'query update returns the affected count');
 $r3 = Battle::query()->using($db)->getBySeq($r->getSeq());
 check($r3->getReadCount() === 3 && $r3->getLikeCount() === 7, 'query update applied (read_count 1 + 2)');
@@ -596,8 +597,9 @@ foreach ([11, 12] as $accountId) {
 $first = CompositeMembership::query()->using($db)->getByTenantIdAndAccountId($tenantId, 11);
 check($first !== null, 'composite primary-key finder');
 $first->setRole('owner')->using($db)->update();
-$second = CompositeMembership::query()->setTenantId($tenantId)->setAccountId(12)->setRole('editor')->using($db)->save();
-check($second?->getRole() === 'editor', 'composite save uses every key component');
+check(CompositeMembership::query()->tenantIdEq($tenantId)->accountIdEq(12)->setRole('editor')->using($db)->update() === 1, 'composite update uses every key component');
+$second = CompositeMembership::query()->using($db)->getByTenantIdAndAccountId($tenantId, 12);
+check($second?->getRole() === 'editor', 'composite update returns the selected row');
 $page = CompositeMembership::query()->tenantIdEq($tenantId)->orderByTenantIdAsc()->orderByAccountIdAsc()->using($db)->paginate(1, 1);
 check($page->total === 2 && count($page->items) === 1 && $page->items->first()?->getAccountId() === 11, 'composite pagination preserves complete order');
 $accounts = CompositeAccount::query()->tenantIdEq($tenantId)->orderByAccountIdAsc()->relationsTenantIdWithTenantIdAndAccountIdWithAccountId(CompositeMembership::query())->using($db)->gets();

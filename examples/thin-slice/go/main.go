@@ -50,7 +50,7 @@ func main() {
 			}).
 			SeqIn([]int64{6, 106, 206, 306, 406}).
 			OrderBySeqDesc().
-			Limit(0, 3).Using(ctx, db).Gets()
+			Limit(0, 3).Using(db).Gets()
 	}
 
 	rows, err := query()

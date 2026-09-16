@@ -17,18 +17,12 @@ class ChildRow extends Row {
 registerRow('item', ItemRow);
 registerRow('child', ChildRow);
 
-class CompositeSaveQuery extends QueryCore {
-  async move(keys) { return this.saveKeys(keys); }
+class CompositeInsertQuery extends QueryCore {
   assigned(keys) { return this.assignedKeyValues(keys); }
 }
-const partialSave = new CompositeSaveQuery('membership');
-partialSave.set('tenant_id', 7).set('name', 'updated');
-let partialRejected = false;
-try { await partialSave.move(['tenant_id', 'account_id']); } catch (error) { partialRejected = error?.code === 'IR_INVALID'; }
-if (!partialRejected || partialSave.request.ir.set.length !== 2 || partialSave.request.ir.where !== undefined) throw new Error('partial composite save changed the request');
-const completeInsert = new CompositeSaveQuery('membership').set('tenant_id', 7).set('account_id', 11).set('name', 'created');
+const completeInsert = new CompositeInsertQuery('membership').set('tenant_id', 7).set('account_id', 11).set('name', 'created');
 if (completeInsert.assigned(['tenant_id', 'account_id']).join(',') !== '7,11' || completeInsert.request.ir.set.length !== 3 || completeInsert.request.ir.where !== undefined) throw new Error('composite insert key inspection changed the request');
-const partialInsert = new CompositeSaveQuery('membership').set('tenant_id', 7).set('name', 'created');
+const partialInsert = new CompositeInsertQuery('membership').set('tenant_id', 7).set('name', 'created');
 let partialInsertRejected = false;
 try { partialInsert.assigned(['tenant_id', 'account_id']); } catch (error) { partialInsertRejected = error?.code === 'IR_INVALID'; }
 if (!partialInsertRejected || partialInsert.request.ir.set.length !== 2 || partialInsert.request.ir.where !== undefined) throw new Error('partial composite insert changed the request');
