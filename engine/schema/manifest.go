@@ -150,13 +150,31 @@ func (e *BuildError) Error() string {
 	return e.Msg
 }
 
-// Names that collide with DSL tokens or generated methods.
+// Names that cannot be represented safely by the generated DSL or by the
+// common SQL DDL surface. This is the union of the reserved words used by
+// PostgreSQL, MySQL, and SQLite plus words consumed by generated methods.
+// Identifier quoting is not a workaround: generated identifiers also become
+// method names, relation names, and migration symbols.
 var reservedNames = map[string]bool{
 	"or": true, "and": true, "on": true, "where": true, "select": true, "limit": true, "distinct": true,
 	"one": true, "all": true, "count": true, "sum": true, "avg": true, "insert": true, "update": true,
 	"delete": true, "save": true, "debug": true, "sql": true, "clone": true, "expr": true, "paginate": true,
 	"flatten": true, "relation": true, "relations": true, "join": true, "left_join": true, "order_by": true,
 	"group_by": true, "group_by_expr": true, "key_by": true, "set": true, "get": true, "get_count": true, "gets_count": true, "new": true,
+	// DDL and query words shared by the supported dialects.
+	"add": true, "alter": true, "asc": true, "begin": true, "between": true, "by": true, "case": true,
+	"check": true, "column": true, "commit": true, "constraint": true, "create": true, "database": true,
+	"default": true, "deferrable": true, "deferred": true, "desc": true, "drop": true, "else": true,
+	"end": true, "escape": true, "except": true, "exists": true, "foreign": true, "from": true,
+	"full": true, "function": true, "grant": true, "group": true, "having": true, "if": true,
+	"in": true, "index": true, "inner": true, "intersect": true, "into": true, "is": true, "key": true,
+	"left": true, "like": true, "match": true, "natural": true, "null": true, "offset": true, "outer": true,
+	"primary": true, "procedure": true, "references": true, "recursive": true, "rename": true, "replace": true,
+	"returning": true, "revoke": true, "right": true, "rollback": true, "row": true, "rows": true,
+	"order":  true,
+	"schema": true, "setnull": true, "table": true, "then": true, "transaction": true, "trigger": true,
+	"union": true, "unique": true, "until": true, "using": true, "values": true, "view": true,
+	"when": true, "with": true, "without": true, "window": true,
 }
 
 var opSuffixes = []string{"_eq", "_not_eq", "_gt", "_gte", "_lt", "_lte", "_in", "_not_in", "_like",
@@ -322,6 +340,9 @@ func buildEntity(e *DEntity) (*Entity, error) {
 	if !reIdent.MatchString(e.Name) {
 		return nil, &BuildError{e.Line, "entity name must be snake_case: " + e.Name}
 	}
+	if reservedNames[e.Name] {
+		return nil, &BuildError{e.Line, "entity name is a reserved ORM/SQL word: " + e.Name}
+	}
 	ent := &Entity{Name: e.Name, Table: e.Name, Comment: e.Comment, Relations: map[string]*Rel{}, Line: e.Line, cols: map[string]*Col{}}
 	for _, dc := range e.Columns {
 		if err := checkColumnName(dc.Name); err != nil {
@@ -395,7 +416,7 @@ func checkColumnName(n string) error {
 		}
 	}
 	if reservedNames[n] {
-		return fmt.Errorf("column name is a reserved DSL word: %s", n)
+		return fmt.Errorf("column name is a reserved ORM/SQL word: %s", n)
 	}
 	return nil
 }
