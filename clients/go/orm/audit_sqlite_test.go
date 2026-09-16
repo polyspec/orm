@@ -61,6 +61,13 @@ func TestInstallAuditSQLiteCapturesChanges(t *testing.T) {
 	if err := ex.SetLocal(ctx, "platform.operation_id", "op-7"); err != nil {
 		t.Fatal(err)
 	}
+	value, err := ex.Local(ctx, "platform.operation_id")
+	if err != nil || value != "op-7" {
+		t.Fatalf("Local() = %q, %v; want op-7", value, err)
+	}
+	if _, err := ex.Local(ctx, "missing"); !IsNoRows(err) {
+		t.Fatalf("Local(missing) error = %v; want NO_ROWS", err)
+	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO "core__account"(id, site_id, secret, value) VALUES ('a-1', 'site-1', 'hidden', 'one')`); err != nil {
 		t.Fatal(err)
 	}
