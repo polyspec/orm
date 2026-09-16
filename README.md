@@ -8,7 +8,7 @@ $authors = Author::query()->using($db)->serviceSeq(7)->isClose(false)
     ->relation(User::query())->orderBySeqDesc()->limit(0, 20)->gets();
 ```
 ```go
-authors, err := gen.Author().Using(ctx, db).ServiceSeq(7).IsClose(false).
+authors, err := gen.Author().Using(db).ServiceSeq(7).IsClose(false).
     And(func(w *gen.AuthorWhere) { w.IsDisplay(true).Or().IsAllday(true) }).
     Relation(gen.User()).OrderBySeqDesc().Limit(0, 20).Gets()
 ```
@@ -30,7 +30,7 @@ For a direct finder, the same `getsBy` token is generated in all four clients:
 $authors = Author::query()->using($db)->getsByServiceSeq(7);
 ```
 ```go
-authors, err := gen.Author().Using(ctx, db).GetsByServiceSeq(7)
+authors, err := gen.Author().Using(db).GetsByServiceSeq(7)
 ```
 ```rust
 let authors = author::query().using(&db).gets_by_service_seq(7).await?;
