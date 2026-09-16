@@ -1103,26 +1103,6 @@ func (q *ProjectQuery) Insert() (*ProjectRow, error) {
 	return Project().Using(ctx, ex).SeqEq(int64(id)).Get()
 }
 
-// Save updates when every primary-key column was assigned and inserts when none was assigned.
-func (q *ProjectQuery) Save() (*ProjectRow, error) {
-	ctx, ex, err := q.binding.Resolve()
-	if err != nil {
-		return nil, err
-	}
-	keys, ok, err := q.q.MoveKeysToWhere([]string{"seq"})
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return q.Insert()
-	}
-	q.q.Req.IR.Kind = "update"
-	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
-		return nil, err
-	}
-	return Project().Using(ctx, ex).SeqEq(keys[0].(int64)).Get()
-}
-
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
 func (q *ProjectQuery) Update() (int64, error) {
 	ctx, ex, err := q.binding.Resolve()

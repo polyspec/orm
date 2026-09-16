@@ -557,9 +557,12 @@ func TestCompositeCRUDRelationsAndPagination(t *testing.T) {
 	if err := first.Update(); err != nil {
 		t.Fatal(err)
 	}
-	second, err := gen.CompositeMembership().SetTenantId(tenantID).SetAccountId(12).SetRole("editor").Using(ctx, db).Save()
+	if _, err := gen.CompositeMembership().TenantIdEq(tenantID).AccountIdEq(12).SetRole("editor").Using(ctx, db).Update(); err != nil {
+		t.Fatalf("composite update: err=%v", err)
+	}
+	second, err := gen.CompositeMembership().Using(ctx, db).GetByTenantIdAndAccountId(tenantID, 12)
 	if err != nil || second == nil || second.Role != "editor" {
-		t.Fatalf("composite save: row=%#v err=%v", second, err)
+		t.Fatalf("composite update readback: row=%#v err=%v", second, err)
 	}
 	page, err := gen.CompositeMembership().TenantIdEq(tenantID).OrderByTenantIdAsc().OrderByAccountIdAsc().Using(ctx, db).Paginate(1, 1)
 	if err != nil || page.Total != 2 || page.Items.Len() != 1 || page.Items.First().AccountId != 11 {
