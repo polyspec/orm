@@ -146,8 +146,8 @@ Render rule: token `fooBar` → PHP `fooBar` / Go `FooBar` / Rust `foo_bar`. Hea
 | `addAllColumns() removeAllColumns() addColumn<Col>() removeColumn<Col>() addColumnRaw(alias, fmt, cols)` | Same | Same | Same |
 | `set<Col>(v)` `setRaw<Col>(expr, binds)` `plus<Col>(n)` `minus<Col>(n)` | Same | Same | Same |
 | `debug()` · `clone` · `sql(db)` | `->debug()`, `clone $q` | `.Debug()`, `q.Clone()` | `.debug()`, `q.clone()` |
-| **Terminal** `get gets count sum avg create update save delete paginate` — receives the executor | `->using($db)->gets()` | `.Using(ctx, db).Gets()` | `.using(&db).gets().await?` |
-| `getBy<PK\|unique>(…)`, `getsBy<Col>(…)`, `getCountBy<Col>(…)` generated | `->using($db)->getBySeq($seq)` / `->using($db)->getsByServiceSeq($seq)` | `.Using(ctx, db).GetBySeq(seq)` / `.Using(ctx, db).GetsByServiceSeq(seq)` | `.using(&db).get_by_seq(seq).await?` / `.using(&db).gets_by_service_seq(seq).await?` |
+| **Terminal** `get gets count sum avg create update save delete paginate` — receives the executor | `->using($db)->gets()` | `.Using(db).Gets()` | `.using(&db).gets().await?` |
+| `getBy<PK\|unique>(…)`, `getsBy<Col>(…)`, `getCountBy<Col>(…)` generated | `->using($db)->getBySeq($seq)` / `->using($db)->getsByServiceSeq($seq)` | `.Using(db).GetBySeq(seq)` / `.Using(db).GetsByServiceSeq(seq)` | `.using(&db).get_by_seq(seq).await?` / `.using(&db).gets_by_service_seq(seq).await?` |
 | Transaction | `$db->transaction(function ($tx) {…})` | `orm.Transaction(ctx, db, func(tx *orm.Tx) (T, error) {…})` | `db.transaction(\|tx\| async move {…}).await?` (`Tx: Clone`) |
 | Scalar result | `$m->getSeq()`, `$m->getName($default)`, `$m['name']` | `m.Seq` / nil-safe `m.GetSeq()` | `m.seq` (nullable uses `Option`) |
 | Relation result | `$m->getUser()`→null, `$m->getItems([])` | `m.GetUser()`→nil, `m.GetItems()`→empty collection | `m.user() -> Option&lt;&User&gt;`, `m.items() -> &Items` |
@@ -173,7 +173,7 @@ products, err := m.Product().
     LeftJoinProductBrandSeqWithSeq(m.ProductBrand().Alias("ga2").FulltextBooleanNameWithDescription(kw)).
     ServiceSeq(serviceSeq).IsClose(0).
     And(func(q *m.Product) { q.FulltextBooleanNameWithShortDescriptionWithContent(kw).OrJoin("ga2") }).
-    GroupBySeq().Limit(0, 100).Using(ctx, slave1).Gets()
+    GroupBySeq().Limit(0, 100).Using(slave1).Gets()
 ```
 ```rust
 let products = product::query()

@@ -20,7 +20,7 @@ $author = Author::query()->using($db);
 $count = $author->getCountByServiceSeq(7);
 ```
 ```go
-author := gen.Author().Using(ctx, db)
+author := gen.Author().Using(db)
 count, err := author.GetCountByServiceSeq(7)
 ```
 ```rust
@@ -50,9 +50,9 @@ $next = Author::query()->orderBySeqAsc()->using($db)->getsAfter($first->nextCurs
 $previous = Author::query()->orderBySeqAsc()->using($db)->getsBefore($next->previousCursor, 20);
 ```
 ```go
-first, err := gen.Author().OrderBySeqAsc().Using(ctx, db).GetsAfter("", 20)
-next, err := gen.Author().OrderBySeqAsc().Using(ctx, db).GetsAfter(first.NextCursor, 20)
-previous, err := gen.Author().OrderBySeqAsc().Using(ctx, db).GetsBefore(next.PreviousCursor, 20)
+first, err := gen.Author().OrderBySeqAsc().Using(db).GetsAfter("", 20)
+next, err := gen.Author().OrderBySeqAsc().Using(db).GetsAfter(first.NextCursor, 20)
+previous, err := gen.Author().OrderBySeqAsc().Using(db).GetsBefore(next.PreviousCursor, 20)
 ```
 ```rust
 let first = author::query().order_by_seq_asc().using(&db).gets_after("", 20).await?;
@@ -166,7 +166,7 @@ $authors = Author::query()
 ## 4. 예: 관계와 부모별 제한
 
 ```go
-authors, err := gen.Author().Using(ctx, db).
+authors, err := gen.Author().Using(db).
     ServiceSeq(7).IsClose(false).
     WithUser(gen.User().OrderBySeqDesc()).
     LimitPerParent(20).Gets()

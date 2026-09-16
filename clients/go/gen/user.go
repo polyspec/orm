@@ -248,7 +248,7 @@ var UserCols = struct {
 	Name: orm.ColRef{Column: "name"},
 }
 
-// UserQuery builds a statement over user: User() → chain → Using(ctx, db) → terminal().
+// UserQuery builds a statement over user: User() → chain → Using(db) → terminal().
 type UserQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -266,29 +266,37 @@ func (q *UserQuery) Req() *orm.Req { return q.q.Req }
 func User() *UserQuery { return &UserQuery{q: orm.NewQ(eng, "user")} }
 
 // Using selects the context and pool or transaction for this query.
-func (q *UserQuery) Using(ctx context.Context, ex orm.Exec) *UserQuery {
+func (q *UserQuery) Using(ex orm.Exec) *UserQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "user")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
 // Using selects the context and pool or transaction for this loaded row.
-func (r *UserRow) Using(ctx context.Context, ex orm.Exec) *UserRow {
-	r.Binding = orm.NewBinding(ctx, ex)
-	return r
-}
+func (r *UserRow) Using(ex orm.Exec) *UserRow { r.Binding = orm.NewBindingForExecutor(ex); return r }
 
 // UserWhere edits one WHERE/ON group of user.
 type UserWhere struct{ w *orm.W }
 
-func (w *UserWhere) Or() *UserWhere { w.w.Or(); return w }
-func (w *UserWhere) And(fn func(*UserWhere)) *UserWhere {
-	w.w.And(func(x *orm.W) { fn(&UserWhere{w: x}) })
+func (w *UserWhere) Or(fn ...func(*UserWhere)) *UserWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&UserWhere{w: x}) })
+	return w
+}
+func (w *UserWhere) And(fn ...func(*UserWhere)) *UserWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&UserWhere{w: x}) })
 	return w
 }
 func (w *UserWhere) Expr(frag string, binds ...any) *UserWhere { w.w.Expr(frag, binds...); return w }
@@ -369,6 +377,10 @@ func (w *UserWhere) SeqEq(v int64) *UserWhere    { w.w.Pred("seq", "eq", v); ret
 func (q *UserQuery) SeqEq(v int64) *UserQuery    { q.q.W().Pred("seq", "eq", v); return q }
 func (w *UserWhere) Seq(v int64) *UserWhere      { return w.SeqEq(v) }
 func (q *UserQuery) Seq(v int64) *UserQuery      { return q.SeqEq(v) }
+func (w *UserWhere) AndSeq(v int64) *UserWhere   { w.w.And(); return w.SeqEq(v) }
+func (q *UserQuery) AndSeq(v int64) *UserQuery   { q.q.W().And(); return q.SeqEq(v) }
+func (w *UserWhere) OrSeq(v int64) *UserWhere    { w.w.Or(); return w.SeqEq(v) }
+func (q *UserQuery) OrSeq(v int64) *UserQuery    { q.q.Or(); return q.SeqEq(v) }
 func (w *UserWhere) SeqNotEq(v int64) *UserWhere { w.w.Pred("seq", "not_eq", v); return w }
 func (q *UserQuery) SeqNotEq(v int64) *UserQuery { q.q.W().Pred("seq", "not_eq", v); return q }
 func (w *UserWhere) SeqGt(v int64) *UserWhere    { w.w.Pred("seq", "gt", v); return w }
@@ -456,6 +468,10 @@ func (w *UserWhere) NameEq(v string) *UserWhere    { w.w.Pred("name", "eq", v); 
 func (q *UserQuery) NameEq(v string) *UserQuery    { q.q.W().Pred("name", "eq", v); return q }
 func (w *UserWhere) Name(v string) *UserWhere      { return w.NameEq(v) }
 func (q *UserQuery) Name(v string) *UserQuery      { return q.NameEq(v) }
+func (w *UserWhere) AndName(v string) *UserWhere   { w.w.And(); return w.NameEq(v) }
+func (q *UserQuery) AndName(v string) *UserQuery   { q.q.W().And(); return q.NameEq(v) }
+func (w *UserWhere) OrName(v string) *UserWhere    { w.w.Or(); return w.NameEq(v) }
+func (q *UserQuery) OrName(v string) *UserQuery    { q.q.Or(); return q.NameEq(v) }
 func (w *UserWhere) NameNotEq(v string) *UserWhere { w.w.Pred("name", "not_eq", v); return w }
 func (q *UserQuery) NameNotEq(v string) *UserQuery { q.q.W().Pred("name", "not_eq", v); return q }
 func (w *UserWhere) NameGt(v string) *UserWhere    { w.w.Pred("name", "gt", v); return w }
@@ -551,10 +567,22 @@ func (q *UserQuery) NameLteCol(ref orm.ColRef) *UserQuery {
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *UserQuery) Or() *UserQuery { q.q.Or(); return q }
-func (q *UserQuery) And(fn func(*UserWhere)) *UserQuery {
-	q.q.W().And(func(x *orm.W) { fn(&UserWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *UserQuery) Or(fn ...func(*UserWhere)) *UserQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&UserWhere{w: x}) })
+	return q
+}
+func (q *UserQuery) And(fn ...func(*UserWhere)) *UserQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&UserWhere{w: x}) })
 	return q
 }
 func (q *UserQuery) Expr(frag string, binds ...any) *UserQuery {
@@ -1211,27 +1239,7 @@ func (q *UserQuery) Insert() (*UserRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return User().Using(ctx, ex).SeqEq(int64(id)).Get()
-}
-
-// Save updates when every primary-key column was assigned and inserts when none was assigned.
-func (q *UserQuery) Save() (*UserRow, error) {
-	ctx, ex, err := q.binding.Resolve()
-	if err != nil {
-		return nil, err
-	}
-	keys, ok, err := q.q.MoveKeysToWhere([]string{"seq"})
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return q.Insert()
-	}
-	q.q.Req.IR.Kind = "update"
-	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
-		return nil, err
-	}
-	return User().Using(ctx, ex).SeqEq(keys[0].(int64)).Get()
+	return User().Using(ex).SeqEq(int64(id)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

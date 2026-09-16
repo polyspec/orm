@@ -220,7 +220,7 @@ var AccountCols = struct {
 	Name: orm.ColRef{Column: "name"},
 }
 
-// AccountQuery builds a statement over account: Account() → chain → Using(ctx, db) → terminal().
+// AccountQuery builds a statement over account: Account() → chain → Using(db) → terminal().
 type AccountQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -238,29 +238,40 @@ func (q *AccountQuery) Req() *orm.Req { return q.q.Req }
 func Account() *AccountQuery { return &AccountQuery{q: orm.NewQ(eng, "account")} }
 
 // Using selects the context and pool or transaction for this query.
-func (q *AccountQuery) Using(ctx context.Context, ex orm.Exec) *AccountQuery {
+func (q *AccountQuery) Using(ex orm.Exec) *AccountQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "account")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
 // Using selects the context and pool or transaction for this loaded row.
-func (r *AccountRow) Using(ctx context.Context, ex orm.Exec) *AccountRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+func (r *AccountRow) Using(ex orm.Exec) *AccountRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
 // AccountWhere edits one WHERE/ON group of account.
 type AccountWhere struct{ w *orm.W }
 
-func (w *AccountWhere) Or() *AccountWhere { w.w.Or(); return w }
-func (w *AccountWhere) And(fn func(*AccountWhere)) *AccountWhere {
-	w.w.And(func(x *orm.W) { fn(&AccountWhere{w: x}) })
+func (w *AccountWhere) Or(fn ...func(*AccountWhere)) *AccountWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&AccountWhere{w: x}) })
+	return w
+}
+func (w *AccountWhere) And(fn ...func(*AccountWhere)) *AccountWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&AccountWhere{w: x}) })
 	return w
 }
 func (w *AccountWhere) Expr(frag string, binds ...any) *AccountWhere {
@@ -308,6 +319,10 @@ func (w *AccountWhere) SeqEq(v int64) *AccountWhere    { w.w.Pred("seq", "eq", v
 func (q *AccountQuery) SeqEq(v int64) *AccountQuery    { q.q.W().Pred("seq", "eq", v); return q }
 func (w *AccountWhere) Seq(v int64) *AccountWhere      { return w.SeqEq(v) }
 func (q *AccountQuery) Seq(v int64) *AccountQuery      { return q.SeqEq(v) }
+func (w *AccountWhere) AndSeq(v int64) *AccountWhere   { w.w.And(); return w.SeqEq(v) }
+func (q *AccountQuery) AndSeq(v int64) *AccountQuery   { q.q.W().And(); return q.SeqEq(v) }
+func (w *AccountWhere) OrSeq(v int64) *AccountWhere    { w.w.Or(); return w.SeqEq(v) }
+func (q *AccountQuery) OrSeq(v int64) *AccountQuery    { q.q.Or(); return q.SeqEq(v) }
 func (w *AccountWhere) SeqNotEq(v int64) *AccountWhere { w.w.Pred("seq", "not_eq", v); return w }
 func (q *AccountQuery) SeqNotEq(v int64) *AccountQuery { q.q.W().Pred("seq", "not_eq", v); return q }
 func (w *AccountWhere) SeqGt(v int64) *AccountWhere    { w.w.Pred("seq", "gt", v); return w }
@@ -398,6 +413,10 @@ func (w *AccountWhere) NameEq(v string) *AccountWhere    { w.w.Pred("name", "eq"
 func (q *AccountQuery) NameEq(v string) *AccountQuery    { q.q.W().Pred("name", "eq", v); return q }
 func (w *AccountWhere) Name(v string) *AccountWhere      { return w.NameEq(v) }
 func (q *AccountQuery) Name(v string) *AccountQuery      { return q.NameEq(v) }
+func (w *AccountWhere) AndName(v string) *AccountWhere   { w.w.And(); return w.NameEq(v) }
+func (q *AccountQuery) AndName(v string) *AccountQuery   { q.q.W().And(); return q.NameEq(v) }
+func (w *AccountWhere) OrName(v string) *AccountWhere    { w.w.Or(); return w.NameEq(v) }
+func (q *AccountQuery) OrName(v string) *AccountQuery    { q.q.Or(); return q.NameEq(v) }
 func (w *AccountWhere) NameNotEq(v string) *AccountWhere { w.w.Pred("name", "not_eq", v); return w }
 func (q *AccountQuery) NameNotEq(v string) *AccountQuery { q.q.W().Pred("name", "not_eq", v); return q }
 func (w *AccountWhere) NameGt(v string) *AccountWhere    { w.w.Pred("name", "gt", v); return w }
@@ -514,10 +533,22 @@ func (q *AccountQuery) NameLteCol(ref orm.ColRef) *AccountQuery {
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *AccountQuery) Or() *AccountQuery { q.q.Or(); return q }
-func (q *AccountQuery) And(fn func(*AccountWhere)) *AccountQuery {
-	q.q.W().And(func(x *orm.W) { fn(&AccountWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *AccountQuery) Or(fn ...func(*AccountWhere)) *AccountQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&AccountWhere{w: x}) })
+	return q
+}
+func (q *AccountQuery) And(fn ...func(*AccountWhere)) *AccountQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&AccountWhere{w: x}) })
 	return q
 }
 func (q *AccountQuery) Expr(frag string, binds ...any) *AccountQuery {
@@ -1069,27 +1100,7 @@ func (q *AccountQuery) Insert() (*AccountRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Account().Using(ctx, ex).SeqEq(int64(id)).Get()
-}
-
-// Save updates when every primary-key column was assigned and inserts when none was assigned.
-func (q *AccountQuery) Save() (*AccountRow, error) {
-	ctx, ex, err := q.binding.Resolve()
-	if err != nil {
-		return nil, err
-	}
-	keys, ok, err := q.q.MoveKeysToWhere([]string{"seq"})
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return q.Insert()
-	}
-	q.q.Req.IR.Kind = "update"
-	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
-		return nil, err
-	}
-	return Account().Using(ctx, ex).SeqEq(keys[0].(int64)).Get()
+	return Account().Using(ex).SeqEq(int64(id)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

@@ -257,7 +257,7 @@ var CompositeMembershipCols = struct {
 	Role:      orm.ColRef{Column: "role"},
 }
 
-// CompositeMembershipQuery builds a statement over composite_membership: CompositeMembership() → chain → Using(ctx, db) → terminal().
+// CompositeMembershipQuery builds a statement over composite_membership: CompositeMembership() → chain → Using(db) → terminal().
 type CompositeMembershipQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -280,29 +280,40 @@ func CompositeMembership() *CompositeMembershipQuery {
 }
 
 // Using selects the context and pool or transaction for this query.
-func (q *CompositeMembershipQuery) Using(ctx context.Context, ex orm.Exec) *CompositeMembershipQuery {
+func (q *CompositeMembershipQuery) Using(ex orm.Exec) *CompositeMembershipQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "composite_membership")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
 // Using selects the context and pool or transaction for this loaded row.
-func (r *CompositeMembershipRow) Using(ctx context.Context, ex orm.Exec) *CompositeMembershipRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+func (r *CompositeMembershipRow) Using(ex orm.Exec) *CompositeMembershipRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
 // CompositeMembershipWhere edits one WHERE/ON group of composite_membership.
 type CompositeMembershipWhere struct{ w *orm.W }
 
-func (w *CompositeMembershipWhere) Or() *CompositeMembershipWhere { w.w.Or(); return w }
-func (w *CompositeMembershipWhere) And(fn func(*CompositeMembershipWhere)) *CompositeMembershipWhere {
-	w.w.And(func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+func (w *CompositeMembershipWhere) Or(fn ...func(*CompositeMembershipWhere)) *CompositeMembershipWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&CompositeMembershipWhere{w: x}) })
+	return w
+}
+func (w *CompositeMembershipWhere) And(fn ...func(*CompositeMembershipWhere)) *CompositeMembershipWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&CompositeMembershipWhere{w: x}) })
 	return w
 }
 func (w *CompositeMembershipWhere) Expr(frag string, binds ...any) *CompositeMembershipWhere {
@@ -358,6 +369,22 @@ func (w *CompositeMembershipWhere) TenantId(v int64) *CompositeMembershipWhere {
 	return w.TenantIdEq(v)
 }
 func (q *CompositeMembershipQuery) TenantId(v int64) *CompositeMembershipQuery {
+	return q.TenantIdEq(v)
+}
+func (w *CompositeMembershipWhere) AndTenantId(v int64) *CompositeMembershipWhere {
+	w.w.And()
+	return w.TenantIdEq(v)
+}
+func (q *CompositeMembershipQuery) AndTenantId(v int64) *CompositeMembershipQuery {
+	q.q.W().And()
+	return q.TenantIdEq(v)
+}
+func (w *CompositeMembershipWhere) OrTenantId(v int64) *CompositeMembershipWhere {
+	w.w.Or()
+	return w.TenantIdEq(v)
+}
+func (q *CompositeMembershipQuery) OrTenantId(v int64) *CompositeMembershipQuery {
+	q.q.Or()
 	return q.TenantIdEq(v)
 }
 func (w *CompositeMembershipWhere) TenantIdNotEq(v int64) *CompositeMembershipWhere {
@@ -502,6 +529,22 @@ func (w *CompositeMembershipWhere) AccountId(v int64) *CompositeMembershipWhere 
 func (q *CompositeMembershipQuery) AccountId(v int64) *CompositeMembershipQuery {
 	return q.AccountIdEq(v)
 }
+func (w *CompositeMembershipWhere) AndAccountId(v int64) *CompositeMembershipWhere {
+	w.w.And()
+	return w.AccountIdEq(v)
+}
+func (q *CompositeMembershipQuery) AndAccountId(v int64) *CompositeMembershipQuery {
+	q.q.W().And()
+	return q.AccountIdEq(v)
+}
+func (w *CompositeMembershipWhere) OrAccountId(v int64) *CompositeMembershipWhere {
+	w.w.Or()
+	return w.AccountIdEq(v)
+}
+func (q *CompositeMembershipQuery) OrAccountId(v int64) *CompositeMembershipQuery {
+	q.q.Or()
+	return q.AccountIdEq(v)
+}
 func (w *CompositeMembershipWhere) AccountIdNotEq(v int64) *CompositeMembershipWhere {
 	w.w.Pred("account_id", "not_eq", v)
 	return w
@@ -640,6 +683,22 @@ func (q *CompositeMembershipQuery) RoleEq(v string) *CompositeMembershipQuery {
 }
 func (w *CompositeMembershipWhere) Role(v string) *CompositeMembershipWhere { return w.RoleEq(v) }
 func (q *CompositeMembershipQuery) Role(v string) *CompositeMembershipQuery { return q.RoleEq(v) }
+func (w *CompositeMembershipWhere) AndRole(v string) *CompositeMembershipWhere {
+	w.w.And()
+	return w.RoleEq(v)
+}
+func (q *CompositeMembershipQuery) AndRole(v string) *CompositeMembershipQuery {
+	q.q.W().And()
+	return q.RoleEq(v)
+}
+func (w *CompositeMembershipWhere) OrRole(v string) *CompositeMembershipWhere {
+	w.w.Or()
+	return w.RoleEq(v)
+}
+func (q *CompositeMembershipQuery) OrRole(v string) *CompositeMembershipQuery {
+	q.q.Or()
+	return q.RoleEq(v)
+}
 func (w *CompositeMembershipWhere) RoleNotEq(v string) *CompositeMembershipWhere {
 	w.w.Pred("role", "not_eq", v)
 	return w
@@ -801,10 +860,22 @@ func (q *CompositeMembershipQuery) RoleLteCol(ref orm.ColRef) *CompositeMembersh
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *CompositeMembershipQuery) Or() *CompositeMembershipQuery { q.q.Or(); return q }
-func (q *CompositeMembershipQuery) And(fn func(*CompositeMembershipWhere)) *CompositeMembershipQuery {
-	q.q.W().And(func(x *orm.W) { fn(&CompositeMembershipWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *CompositeMembershipQuery) Or(fn ...func(*CompositeMembershipWhere)) *CompositeMembershipQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&CompositeMembershipWhere{w: x}) })
+	return q
+}
+func (q *CompositeMembershipQuery) And(fn ...func(*CompositeMembershipWhere)) *CompositeMembershipQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&CompositeMembershipWhere{w: x}) })
 	return q
 }
 func (q *CompositeMembershipQuery) Expr(frag string, binds ...any) *CompositeMembershipQuery {
@@ -1566,27 +1637,7 @@ func (q *CompositeMembershipQuery) Insert() (*CompositeMembershipRow, error) {
 		return nil, err
 	}
 	_ = id
-	return CompositeMembership().Using(ctx, ex).TenantIdEq(keys[0].(int64)).AccountIdEq(keys[1].(int64)).Get()
-}
-
-// Save updates when every primary-key column was assigned and inserts when none was assigned.
-func (q *CompositeMembershipQuery) Save() (*CompositeMembershipRow, error) {
-	ctx, ex, err := q.binding.Resolve()
-	if err != nil {
-		return nil, err
-	}
-	keys, ok, err := q.q.MoveKeysToWhere([]string{"tenant_id", "account_id"})
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return q.Insert()
-	}
-	q.q.Req.IR.Kind = "update"
-	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
-		return nil, err
-	}
-	return CompositeMembership().Using(ctx, ex).TenantIdEq(keys[0].(int64)).AccountIdEq(keys[1].(int64)).Get()
+	return CompositeMembership().Using(ex).TenantIdEq(keys[0].(int64)).AccountIdEq(keys[1].(int64)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

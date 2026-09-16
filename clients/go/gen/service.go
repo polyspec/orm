@@ -276,7 +276,7 @@ var ServiceCols = struct {
 	Name: orm.ColRef{Column: "name"},
 }
 
-// ServiceQuery builds a statement over service: Service() → chain → Using(ctx, db) → terminal().
+// ServiceQuery builds a statement over service: Service() → chain → Using(db) → terminal().
 type ServiceQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -294,29 +294,40 @@ func (q *ServiceQuery) Req() *orm.Req { return q.q.Req }
 func Service() *ServiceQuery { return &ServiceQuery{q: orm.NewQ(eng, "service")} }
 
 // Using selects the context and pool or transaction for this query.
-func (q *ServiceQuery) Using(ctx context.Context, ex orm.Exec) *ServiceQuery {
+func (q *ServiceQuery) Using(ex orm.Exec) *ServiceQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "service")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
 // Using selects the context and pool or transaction for this loaded row.
-func (r *ServiceRow) Using(ctx context.Context, ex orm.Exec) *ServiceRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+func (r *ServiceRow) Using(ex orm.Exec) *ServiceRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
 // ServiceWhere edits one WHERE/ON group of service.
 type ServiceWhere struct{ w *orm.W }
 
-func (w *ServiceWhere) Or() *ServiceWhere { w.w.Or(); return w }
-func (w *ServiceWhere) And(fn func(*ServiceWhere)) *ServiceWhere {
-	w.w.And(func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+func (w *ServiceWhere) Or(fn ...func(*ServiceWhere)) *ServiceWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&ServiceWhere{w: x}) })
+	return w
+}
+func (w *ServiceWhere) And(fn ...func(*ServiceWhere)) *ServiceWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&ServiceWhere{w: x}) })
 	return w
 }
 func (w *ServiceWhere) Expr(frag string, binds ...any) *ServiceWhere {
@@ -436,6 +447,10 @@ func (w *ServiceWhere) SeqEq(v int64) *ServiceWhere    { w.w.Pred("seq", "eq", v
 func (q *ServiceQuery) SeqEq(v int64) *ServiceQuery    { q.q.W().Pred("seq", "eq", v); return q }
 func (w *ServiceWhere) Seq(v int64) *ServiceWhere      { return w.SeqEq(v) }
 func (q *ServiceQuery) Seq(v int64) *ServiceQuery      { return q.SeqEq(v) }
+func (w *ServiceWhere) AndSeq(v int64) *ServiceWhere   { w.w.And(); return w.SeqEq(v) }
+func (q *ServiceQuery) AndSeq(v int64) *ServiceQuery   { q.q.W().And(); return q.SeqEq(v) }
+func (w *ServiceWhere) OrSeq(v int64) *ServiceWhere    { w.w.Or(); return w.SeqEq(v) }
+func (q *ServiceQuery) OrSeq(v int64) *ServiceQuery    { q.q.Or(); return q.SeqEq(v) }
 func (w *ServiceWhere) SeqNotEq(v int64) *ServiceWhere { w.w.Pred("seq", "not_eq", v); return w }
 func (q *ServiceQuery) SeqNotEq(v int64) *ServiceQuery { q.q.W().Pred("seq", "not_eq", v); return q }
 func (w *ServiceWhere) SeqGt(v int64) *ServiceWhere    { w.w.Pred("seq", "gt", v); return w }
@@ -526,6 +541,10 @@ func (w *ServiceWhere) NameEq(v string) *ServiceWhere    { w.w.Pred("name", "eq"
 func (q *ServiceQuery) NameEq(v string) *ServiceQuery    { q.q.W().Pred("name", "eq", v); return q }
 func (w *ServiceWhere) Name(v string) *ServiceWhere      { return w.NameEq(v) }
 func (q *ServiceQuery) Name(v string) *ServiceQuery      { return q.NameEq(v) }
+func (w *ServiceWhere) AndName(v string) *ServiceWhere   { w.w.And(); return w.NameEq(v) }
+func (q *ServiceQuery) AndName(v string) *ServiceQuery   { q.q.W().And(); return q.NameEq(v) }
+func (w *ServiceWhere) OrName(v string) *ServiceWhere    { w.w.Or(); return w.NameEq(v) }
+func (q *ServiceQuery) OrName(v string) *ServiceQuery    { q.q.Or(); return q.NameEq(v) }
 func (w *ServiceWhere) NameNotEq(v string) *ServiceWhere { w.w.Pred("name", "not_eq", v); return w }
 func (q *ServiceQuery) NameNotEq(v string) *ServiceQuery { q.q.W().Pred("name", "not_eq", v); return q }
 func (w *ServiceWhere) NameGt(v string) *ServiceWhere    { w.w.Pred("name", "gt", v); return w }
@@ -642,10 +661,22 @@ func (q *ServiceQuery) NameLteCol(ref orm.ColRef) *ServiceQuery {
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *ServiceQuery) Or() *ServiceQuery { q.q.Or(); return q }
-func (q *ServiceQuery) And(fn func(*ServiceWhere)) *ServiceQuery {
-	q.q.W().And(func(x *orm.W) { fn(&ServiceWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *ServiceQuery) Or(fn ...func(*ServiceWhere)) *ServiceQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&ServiceWhere{w: x}) })
+	return q
+}
+func (q *ServiceQuery) And(fn ...func(*ServiceWhere)) *ServiceQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&ServiceWhere{w: x}) })
 	return q
 }
 func (q *ServiceQuery) Expr(frag string, binds ...any) *ServiceQuery {
@@ -1405,27 +1436,7 @@ func (q *ServiceQuery) Insert() (*ServiceRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Service().Using(ctx, ex).SeqEq(int64(id)).Get()
-}
-
-// Save updates when every primary-key column was assigned and inserts when none was assigned.
-func (q *ServiceQuery) Save() (*ServiceRow, error) {
-	ctx, ex, err := q.binding.Resolve()
-	if err != nil {
-		return nil, err
-	}
-	keys, ok, err := q.q.MoveKeysToWhere([]string{"seq"})
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return q.Insert()
-	}
-	q.q.Req.IR.Kind = "update"
-	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
-		return nil, err
-	}
-	return Service().Using(ctx, ex).SeqEq(keys[0].(int64)).Get()
+	return Service().Using(ex).SeqEq(int64(id)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

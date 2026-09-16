@@ -198,7 +198,7 @@ var AccountProjectCols = struct {
 	ProjectSeq: orm.ColRef{Column: "project_seq"},
 }
 
-// AccountProjectQuery builds a statement over account_project: AccountProject() → chain → Using(ctx, db) → terminal().
+// AccountProjectQuery builds a statement over account_project: AccountProject() → chain → Using(db) → terminal().
 type AccountProjectQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -221,29 +221,40 @@ func AccountProject() *AccountProjectQuery {
 }
 
 // Using selects the context and pool or transaction for this query.
-func (q *AccountProjectQuery) Using(ctx context.Context, ex orm.Exec) *AccountProjectQuery {
+func (q *AccountProjectQuery) Using(ex orm.Exec) *AccountProjectQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "account_project")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
 // Using selects the context and pool or transaction for this loaded row.
-func (r *AccountProjectRow) Using(ctx context.Context, ex orm.Exec) *AccountProjectRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+func (r *AccountProjectRow) Using(ex orm.Exec) *AccountProjectRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
 // AccountProjectWhere edits one WHERE/ON group of account_project.
 type AccountProjectWhere struct{ w *orm.W }
 
-func (w *AccountProjectWhere) Or() *AccountProjectWhere { w.w.Or(); return w }
-func (w *AccountProjectWhere) And(fn func(*AccountProjectWhere)) *AccountProjectWhere {
-	w.w.And(func(x *orm.W) { fn(&AccountProjectWhere{w: x}) })
+func (w *AccountProjectWhere) Or(fn ...func(*AccountProjectWhere)) *AccountProjectWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&AccountProjectWhere{w: x}) })
+	return w
+}
+func (w *AccountProjectWhere) And(fn ...func(*AccountProjectWhere)) *AccountProjectWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&AccountProjectWhere{w: x}) })
 	return w
 }
 func (w *AccountProjectWhere) Expr(frag string, binds ...any) *AccountProjectWhere {
@@ -261,6 +272,22 @@ func (q *AccountProjectQuery) AccountSeqEq(v int64) *AccountProjectQuery {
 }
 func (w *AccountProjectWhere) AccountSeq(v int64) *AccountProjectWhere { return w.AccountSeqEq(v) }
 func (q *AccountProjectQuery) AccountSeq(v int64) *AccountProjectQuery { return q.AccountSeqEq(v) }
+func (w *AccountProjectWhere) AndAccountSeq(v int64) *AccountProjectWhere {
+	w.w.And()
+	return w.AccountSeqEq(v)
+}
+func (q *AccountProjectQuery) AndAccountSeq(v int64) *AccountProjectQuery {
+	q.q.W().And()
+	return q.AccountSeqEq(v)
+}
+func (w *AccountProjectWhere) OrAccountSeq(v int64) *AccountProjectWhere {
+	w.w.Or()
+	return w.AccountSeqEq(v)
+}
+func (q *AccountProjectQuery) OrAccountSeq(v int64) *AccountProjectQuery {
+	q.q.Or()
+	return q.AccountSeqEq(v)
+}
 func (w *AccountProjectWhere) AccountSeqNotEq(v int64) *AccountProjectWhere {
 	w.w.Pred("account_seq", "not_eq", v)
 	return w
@@ -399,6 +426,22 @@ func (q *AccountProjectQuery) ProjectSeqEq(v int64) *AccountProjectQuery {
 }
 func (w *AccountProjectWhere) ProjectSeq(v int64) *AccountProjectWhere { return w.ProjectSeqEq(v) }
 func (q *AccountProjectQuery) ProjectSeq(v int64) *AccountProjectQuery { return q.ProjectSeqEq(v) }
+func (w *AccountProjectWhere) AndProjectSeq(v int64) *AccountProjectWhere {
+	w.w.And()
+	return w.ProjectSeqEq(v)
+}
+func (q *AccountProjectQuery) AndProjectSeq(v int64) *AccountProjectQuery {
+	q.q.W().And()
+	return q.ProjectSeqEq(v)
+}
+func (w *AccountProjectWhere) OrProjectSeq(v int64) *AccountProjectWhere {
+	w.w.Or()
+	return w.ProjectSeqEq(v)
+}
+func (q *AccountProjectQuery) OrProjectSeq(v int64) *AccountProjectQuery {
+	q.q.Or()
+	return q.ProjectSeqEq(v)
+}
 func (w *AccountProjectWhere) ProjectSeqNotEq(v int64) *AccountProjectWhere {
 	w.w.Pred("project_seq", "not_eq", v)
 	return w
@@ -528,10 +571,22 @@ func (q *AccountProjectQuery) ProjectSeqLteCol(ref orm.ColRef) *AccountProjectQu
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *AccountProjectQuery) Or() *AccountProjectQuery { q.q.Or(); return q }
-func (q *AccountProjectQuery) And(fn func(*AccountProjectWhere)) *AccountProjectQuery {
-	q.q.W().And(func(x *orm.W) { fn(&AccountProjectWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *AccountProjectQuery) Or(fn ...func(*AccountProjectWhere)) *AccountProjectQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&AccountProjectWhere{w: x}) })
+	return q
+}
+func (q *AccountProjectQuery) And(fn ...func(*AccountProjectWhere)) *AccountProjectQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&AccountProjectWhere{w: x}) })
 	return q
 }
 func (q *AccountProjectQuery) Expr(frag string, binds ...any) *AccountProjectQuery {
@@ -1093,27 +1148,7 @@ func (q *AccountProjectQuery) Insert() (*AccountProjectRow, error) {
 		return nil, err
 	}
 	_ = id
-	return AccountProject().Using(ctx, ex).AccountSeqEq(keys[0].(int64)).ProjectSeqEq(keys[1].(int64)).Get()
-}
-
-// Save updates when every primary-key column was assigned and inserts when none was assigned.
-func (q *AccountProjectQuery) Save() (*AccountProjectRow, error) {
-	ctx, ex, err := q.binding.Resolve()
-	if err != nil {
-		return nil, err
-	}
-	keys, ok, err := q.q.MoveKeysToWhere([]string{"account_seq", "project_seq"})
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return q.Insert()
-	}
-	q.q.Req.IR.Kind = "update"
-	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
-		return nil, err
-	}
-	return AccountProject().Using(ctx, ex).AccountSeqEq(keys[0].(int64)).ProjectSeqEq(keys[1].(int64)).Get()
+	return AccountProject().Using(ex).AccountSeqEq(keys[0].(int64)).ProjectSeqEq(keys[1].(int64)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

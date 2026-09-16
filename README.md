@@ -8,7 +8,7 @@ $authors = Author::query()->using($db)->serviceSeq(7)->isClose(false)
     ->relation(User::query())->orderBySeqDesc()->limit(0, 20)->gets();
 ```
 ```go
-authors, err := gen.Author().Using(ctx, db).ServiceSeq(7).IsClose(false).
+authors, err := gen.Author().Using(db).ServiceSeq(7).IsClose(false).
     And(func(w *gen.AuthorWhere) { w.IsDisplay(true).Or().IsAllday(true) }).
     Relation(gen.User()).OrderBySeqDesc().Limit(0, 20).Gets()
 ```
@@ -30,7 +30,7 @@ For a direct finder, the same `getsBy` token is generated in all four clients:
 $authors = Author::query()->using($db)->getsByServiceSeq(7);
 ```
 ```go
-authors, err := gen.Author().Using(ctx, db).GetsByServiceSeq(7)
+authors, err := gen.Author().Using(db).GetsByServiceSeq(7)
 ```
 ```rust
 let authors = author::query().using(&db).gets_by_service_seq(7).await?;
@@ -41,7 +41,7 @@ const authors = await Author().using(db).getsByServiceSeq(7);
 `getBy` is the one-row form for a primary or unique key; `getCountBy` is the scalar count form.
 `getsBy<Field>` and `getCountBy<Field>` are root-table equality shortcuts; index declarations affect the database plan, not whether the shortcut exists. For multiple predicates, keep the same root query and chain the columns before `gets` or `getCount`.
 
-`gen.Author()` is Go's query factory and returns `*gen.AuthorQuery`. PHP and Rust use `Author::query()` and `author::query()` for the same query head. Creation, ownership and asynchronous execution follow each language; the query operations and semantics are shared. `get` returns one required row and returns `NO_ROWS` when none exists; `getOrNil` is the explicit optional-row form. `gets` returns a collection, and `getCount` returns a scalar count. Select the executor with `using` before execution; terminals receive only values. The selected executor runs every join and relation step, and loaded rows inherit it. Calling `using` again selects another database or transaction without changing the query predicates. Go passes its context with the executor. Unbound queries and finished transactions return `CONFIG`.
+`gen.Author()` is Go's query factory and returns `*gen.AuthorQuery`. PHP and Rust use `Author::query()` and `author::query()` for the same query head. Creation, ownership and asynchronous execution follow each language; the query operations and semantics are shared. `get` returns one required row and returns `NO_ROWS` when none exists; `getOrNil` is the explicit optional-row form. `gets` returns a collection, and `getCount` returns a scalar count. Select the executor with `using` before execution; terminals receive only values. The selected executor runs every join and relation step, and loaded rows inherit it. Calling `using` again selects another database or transaction without changing the query predicates. Go stores the execution context in the database opened from the DSN; callers provide only the database or transaction executor. Unbound queries and finished transactions return `CONFIG`.
 
 ## How it works
 - **Schema**: one hand-written Mermaid `erDiagram` (`schema/*.mmd`) → `ormgen build` → `schema.json` (manifest with `schema_hash`).
