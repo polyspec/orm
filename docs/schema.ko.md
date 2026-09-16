@@ -217,4 +217,4 @@ Go transaction adapter는 데이터베이스별 관리 작업을 타입이 지�
 Go transaction adapter는 정본 `schema.json` manifest를 `Tx.InstallSchema(context.Context, []byte) error`로 받는다. 연결된 transaction이 자신의 dialect를 선택하고 manifest의 schema engine을 공용 ORM database에 compile·등록한 뒤 ORM schema renderer를 통해 변환하고 caller-owned transaction 안에서 적용 가능한 문장을 실행한다. 소비자는 SQL·DDL 문자열·dialect 분기·driver transaction을 제공하지 않는다. 이 경계의 유일한 schema 입력은 manifest다.
 ## 공개 client 생성
 
-`github.com/polyspec/orm/generator` 패키지가 client 생성 API다. `generator.Generate`는 정본 manifest, `Go`·`PHP`·`Rust`·`TypeScript` 중 하나와 출력 디렉터리를 받는다. 이름·필드 매핑·언어별 출력은 ORM generator가 소유하며 소비자는 entity별 생성 규칙을 구현하지 않는다.
+`github.com/polyspec/orm/generator` 패키지가 client 생성 API다. `generator.Generate`는 정본 manifest, `Go`·`PHP`·`Rust`·`TypeScript` 중 하나와 출력 디렉터리를 받는다. Go 생성은 선택적으로 `PackageName`을 받아 기본값 `gen` 대신 `storage` 같은 명시적 package를 생성할 수 있다. 이름·필드 매핑·언어별 출력은 ORM generator가 소유하며 소비자는 entity별 생성 규칙을 구현하지 않는다.

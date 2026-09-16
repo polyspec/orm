@@ -3,6 +3,7 @@
 - Add the ORM-owned `DB.BackendWaitingForLock` inspection API for bounded PostgreSQL integration orchestration; non-PostgreSQL adapters return `false` without exposing driver-specific application paths.
 
 - Expose the canonical schema client generator through `github.com/polyspec/orm/generator` for Go, PHP, Rust and TypeScript.
+- Allow Go client generation to select an explicit package name while retaining `gen` as the default.
 
 - Specify `Tx.InstallSchema(context.Context, []byte) error` as the ORM-owned canonical schema installation boundary; consumers do not provide SQL or dialect-specific DDL.
 
