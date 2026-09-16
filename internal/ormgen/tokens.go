@@ -222,6 +222,9 @@ func tokenize(v *vocabulary, path string, src string) []string {
 		default:
 			canon = name
 		}
+		if lang == "rs" && canon == "andGroup" {
+			canon = "and"
+		}
 		if canon == "getOrNil" || canon == "getOrNull" || canon == "getOrNone" {
 			canon = "get"
 		}
