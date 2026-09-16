@@ -229,7 +229,7 @@ var SoftRecordCols = struct {
 	DeletedAt: orm.ColRef{Column: "deleted_at"},
 }
 
-// SoftRecordQuery builds a statement over soft_record: SoftRecord() → chain → Using(ctx, db) → terminal().
+// SoftRecordQuery builds a statement over soft_record: SoftRecord() → chain → Using(db) → terminal().
 type SoftRecordQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -249,21 +249,21 @@ func (q *SoftRecordQuery) Req() *orm.Req { return q.q.Req }
 // before Using; the bound ORM executor supplies the schema engine at Using.
 func SoftRecord() *SoftRecordQuery { return &SoftRecordQuery{q: orm.NewQ(eng, "soft_record")} }
 
-// Using selects the context and pool or transaction for this query.
-func (q *SoftRecordQuery) Using(ctx context.Context, ex orm.Exec) *SoftRecordQuery {
+// Using selects the pool or transaction for this query.
+func (q *SoftRecordQuery) Using(ex orm.Exec) *SoftRecordQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "soft_record")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
-// Using selects the context and pool or transaction for this loaded row.
-func (r *SoftRecordRow) Using(ctx context.Context, ex orm.Exec) *SoftRecordRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+// Using selects the pool or transaction for this loaded row.
+func (r *SoftRecordRow) Using(ex orm.Exec) *SoftRecordRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
@@ -1299,7 +1299,7 @@ func (q *SoftRecordQuery) Insert() (*SoftRecordRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return SoftRecord().Using(ctx, ex).SeqEq(int64(id)).Get()
+	return SoftRecord().Using(ex).SeqEq(int64(id)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

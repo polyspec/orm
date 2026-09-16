@@ -70,7 +70,7 @@ products, err := m.Product().
         OrPred(ga1.Cols().FulltextBooleanNameWithDescription(kw)).
         OrPred(ga2.Cols().FulltextBooleanNameWithDescription(kw)).
         OrPred(ga3.Cols().FulltextBooleanNameWithShortDescriptionWithContent(kw)) }).
-    GroupBySeq().Limit(0, 100).Using(ctx, db).Gets()
+    GroupBySeq().Limit(0, 100).Using(db).Gets()
 ```
 ```rust
 let ga1 = product_brand_lang::query().alias("ga1");  let ga2 = product_brand::query().alias("ga2");  let ga3 = product_lang::query().alias("ga3");

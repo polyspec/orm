@@ -32,7 +32,7 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:87c49532ea096ca24ba8bb308f5e5ffe8c816fdfdfba74ff9f4dc017fc6bcb22",
+    "go": "sha256:2e9cdfe2af3481c2347f1f1b78ed8986bd773343fbff8b9d13d77b6cf96faa1d",
     "php": "sha256:bcf351a083248ed8a1b64b84a2408567a27804ac7cd5c73c6d9ae99fadc58e7c",
     "rust": "sha256:457edf2e81f290d36656a5c01674bcc78ba9a950566bc50a881a6d24ee62e939",
     "typescript": "sha256:250124b9a88daa2234af441fdb9a7640dee5dc526121f8bb3aaaa92c134c8ee7"
@@ -824,8 +824,7 @@
       "id": "Query.using",
       "for": "entity",
       "inputs": [
-        "Executor",
-        "NativeExecutionControl"
+        "Executor"
       ],
       "output": "Query",
       "errors": [],
@@ -833,7 +832,7 @@
       "native": {
         "go": {
           "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Using",
-          "signature": "receiver=*{Entity}Query func(ctx context.Context, ex orm.Exec) *{Entity}Query"
+          "signature": "receiver=*{Entity}Query func(ex orm.Exec) *{Entity}Query"
         },
         "php": {
           "symbol": "clients/php/src/Query.php::Orm\\Q::using",
@@ -1155,8 +1154,7 @@
       "id": "Row.using",
       "for": "entity",
       "inputs": [
-        "Executor",
-        "NativeExecutionControl"
+        "Executor"
       ],
       "output": "Row",
       "errors": [],
@@ -1164,7 +1162,7 @@
       "native": {
         "go": {
           "symbol": "clients/go/gen/{entity}.go::{Entity}Row.Using",
-          "signature": "receiver=*{Entity}Row func(ctx context.Context, ex orm.Exec) *{Entity}Row"
+          "signature": "receiver=*{Entity}Row func(ex orm.Exec) *{Entity}Row"
         },
         "php": {
           "symbol": "clients/php/src/Row.php::Orm\\Row::using",

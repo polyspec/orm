@@ -82,7 +82,7 @@ page, err := m.Product().
         w.Or().LangAll(func(l *m.ProductLangWhere) { l.NameWithShortDescriptionWithContentMatchBoolean(kw) })
     }).
     GroupBySeq().
-    OrderByLikeCountDesc().OrderBySeqDesc().Using(ctx, db).Paginate(pageNo, 20)
+    OrderByLikeCountDesc().OrderBySeqDesc().Using(db).Paginate(pageNo, 20)
 
 for seq, p := range page.Items.All() {
     _ = p.Name                                  // lang 평탄화 → typed 필드
@@ -130,7 +130,7 @@ for (seq, p) in &page.items {
 let _ = page.total; let _ = page.pages;
 ```
 
-The three blocks correspond line by line. Other differences are language-specific syntax: `X::query()`/`m.X()`/`x::query()`, 클로저 머리(`fn($w) =>` / `func(w *m.ProductWhere) {` / `|w|`), 터미널 `paginate($db,…)` / `Paginate(ctx, db,…)` / `paginate(&db,…).await?`, 결과 접근의 null 처리(`?->` / nil-safe getter / `Option`).
+The three blocks correspond line by line. Other differences are language-specific syntax: `X::query()`/`m.X()`/`x::query()`, 클로저 머리(`fn($w) =>` / `func(w *m.ProductWhere) {` / `|w|`), 터미널 `paginate($db,…)` / `Paginate(db,…)` / `paginate(&db,…).await?`, 결과 접근의 null 처리(`?->` / nil-safe getter / `Option`).
 
 ## Plan produced by the engine (MySQL dialect)
 

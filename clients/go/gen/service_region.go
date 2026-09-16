@@ -278,7 +278,7 @@ var ServiceRegionCols = struct {
 	Name:       orm.ColRef{Column: "name"},
 }
 
-// ServiceRegionQuery builds a statement over service_region: ServiceRegion() → chain → Using(ctx, db) → terminal().
+// ServiceRegionQuery builds a statement over service_region: ServiceRegion() → chain → Using(db) → terminal().
 type ServiceRegionQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -300,21 +300,21 @@ func ServiceRegion() *ServiceRegionQuery {
 	return &ServiceRegionQuery{q: orm.NewQ(eng, "service_region")}
 }
 
-// Using selects the context and pool or transaction for this query.
-func (q *ServiceRegionQuery) Using(ctx context.Context, ex orm.Exec) *ServiceRegionQuery {
+// Using selects the pool or transaction for this query.
+func (q *ServiceRegionQuery) Using(ex orm.Exec) *ServiceRegionQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "service_region")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
-// Using selects the context and pool or transaction for this loaded row.
-func (r *ServiceRegionRow) Using(ctx context.Context, ex orm.Exec) *ServiceRegionRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+// Using selects the pool or transaction for this loaded row.
+func (r *ServiceRegionRow) Using(ex orm.Exec) *ServiceRegionRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
@@ -1756,7 +1756,7 @@ func (q *ServiceRegionQuery) Insert() (*ServiceRegionRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ServiceRegion().Using(ctx, ex).SeqEq(int64(id)).Get()
+	return ServiceRegion().Using(ex).SeqEq(int64(id)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

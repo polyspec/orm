@@ -1301,7 +1301,7 @@ var AuthorCols = struct {
 	SerializeData:         orm.ColRef{Column: "serialize_data"},
 }
 
-// AuthorQuery builds a statement over author: Author() → chain → Using(ctx, db) → terminal().
+// AuthorQuery builds a statement over author: Author() → chain → Using(db) → terminal().
 type AuthorQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -1318,15 +1318,15 @@ func (q *AuthorQuery) Req() *orm.Req { return q.q.Req }
 // before Using; the bound ORM executor supplies the schema engine at Using.
 func Author() *AuthorQuery { return &AuthorQuery{q: orm.NewQ(eng, "author")} }
 
-// Using selects the context and pool or transaction for this query.
-func (q *AuthorQuery) Using(ctx context.Context, ex orm.Exec) *AuthorQuery {
+// Using selects the pool or transaction for this query.
+func (q *AuthorQuery) Using(ex orm.Exec) *AuthorQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "author")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
@@ -1355,9 +1355,9 @@ func (q *AuthorQuery) RotateAES(keyring orm.AESKeyring) (int, error) {
 	}, keyring)
 }
 
-// Using selects the context and pool or transaction for this loaded row.
-func (r *AuthorRow) Using(ctx context.Context, ex orm.Exec) *AuthorRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+// Using selects the pool or transaction for this loaded row.
+func (r *AuthorRow) Using(ex orm.Exec) *AuthorRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
@@ -9255,7 +9255,7 @@ func (q *AuthorQuery) Insert() (*AuthorRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Author().Using(ctx, ex).SeqEq(int64(id)).Get()
+	return Author().Using(ex).SeqEq(int64(id)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

@@ -257,7 +257,7 @@ var CompositeMembershipCols = struct {
 	Role:      orm.ColRef{Column: "role"},
 }
 
-// CompositeMembershipQuery builds a statement over composite_membership: CompositeMembership() → chain → Using(ctx, db) → terminal().
+// CompositeMembershipQuery builds a statement over composite_membership: CompositeMembership() → chain → Using(db) → terminal().
 type CompositeMembershipQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -279,21 +279,21 @@ func CompositeMembership() *CompositeMembershipQuery {
 	return &CompositeMembershipQuery{q: orm.NewQ(eng, "composite_membership")}
 }
 
-// Using selects the context and pool or transaction for this query.
-func (q *CompositeMembershipQuery) Using(ctx context.Context, ex orm.Exec) *CompositeMembershipQuery {
+// Using selects the pool or transaction for this query.
+func (q *CompositeMembershipQuery) Using(ex orm.Exec) *CompositeMembershipQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "composite_membership")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
-// Using selects the context and pool or transaction for this loaded row.
-func (r *CompositeMembershipRow) Using(ctx context.Context, ex orm.Exec) *CompositeMembershipRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+// Using selects the pool or transaction for this loaded row.
+func (r *CompositeMembershipRow) Using(ex orm.Exec) *CompositeMembershipRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
@@ -1637,7 +1637,7 @@ func (q *CompositeMembershipQuery) Insert() (*CompositeMembershipRow, error) {
 		return nil, err
 	}
 	_ = id
-	return CompositeMembership().Using(ctx, ex).TenantIdEq(keys[0].(int64)).AccountIdEq(keys[1].(int64)).Get()
+	return CompositeMembership().Using(ex).TenantIdEq(keys[0].(int64)).AccountIdEq(keys[1].(int64)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).
