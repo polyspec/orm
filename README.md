@@ -8,7 +8,7 @@ $battles = Battle::query()->using($db)->serviceSeq(7)->isClose(false)
     ->relation(User::query())->orderBySeqDesc()->limit(0, 20)->gets();
 ```
 ```go
-battles, err := gen.Battle().Using(ctx, db).ServiceSeq(7).IsClose(false).
+battles, err := gen.Battle().Using(db).ServiceSeq(7).IsClose(false).
     And(func(w *gen.BattleWhere) { w.IsDisplay(true).Or().IsAllday(true) }).
     Relation(gen.User()).OrderBySeqDesc().Limit(0, 20).Gets()
 ```
@@ -30,7 +30,7 @@ For a direct finder, the same `getsBy` token is generated in all four clients:
 $battles = Battle::query()->using($db)->getsByServiceSeq(7);
 ```
 ```go
-battles, err := gen.Battle().Using(ctx, db).GetsByServiceSeq(7)
+battles, err := gen.Battle().Using(db).GetsByServiceSeq(7)
 ```
 ```rust
 let battles = battle::query().using(&db).gets_by_service_seq(7).await?;
