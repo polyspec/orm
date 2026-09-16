@@ -46,3 +46,14 @@ func TestErrorClassificationExposesMappedCodes(t *testing.T) {
 		t.Fatal("unrelated error was classified")
 	}
 }
+
+func TestBackendWaitingForLockIsFalseForNonPostgres(t *testing.T) {
+	db := &DB{driver: "sqlite"}
+	waiting, err := db.BackendWaitingForLock(t.Context(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if waiting {
+		t.Fatal("non-PostgreSQL backend reported a PostgreSQL lock wait")
+	}
+}

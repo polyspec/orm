@@ -148,6 +148,8 @@ SQLite `ForUpdate`, `ForShare`, and their `NoWait` forms are adapter-owned. The 
 
 The Go adapter regression tests cover serialization, immediate `NoWait`, completion after the owning transaction ends, and cancellation while waiting. Each case uses a bounded focused test timeout.
 
+`DB.BackendWaitingForLock` is the bounded integration-orchestration inspection API for PostgreSQL lock waits. Non-PostgreSQL adapters return `false` without exposing driver types or requiring a database-specific application path.
+
 Commas are invalid in Mermaid type strings; use `_` such as `decimal(13_3)` and `enum(a_b_c)`; ormgen interprets them. Dialect mapping from normalized types to DDL is in `docs/dialects.md` (S6).
 
 ## 3. Manifest (generated `schema.json`)
