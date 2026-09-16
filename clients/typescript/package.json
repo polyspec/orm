@@ -31,6 +31,7 @@
     "mysql2": "^3.24.4",
     "pg": "^8.23.0",
     "pg-query-stream": "4.17.0",
+    "ordered-json": "https://github.com/polyspec/ordered-json/archive/6d23a2a.tar.gz",
     "smol-toml": "1.8.0",
     "yaml": "2.9.1"
   },

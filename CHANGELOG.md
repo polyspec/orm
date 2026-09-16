@@ -46,4 +46,4 @@
 - Add SQLite support to the adapter-neutral `SchemaInstalled` transaction operation for namespaced physical table names.
 - Add adapter-neutral database-emptiness inspection for safe initial-schema preflight on PostgreSQL and SQLite.
 - Exclude PostgreSQL system namespaces such as `pg_toast` from empty-database preflight detection.
-- Record the ordered-json monorepo revision `40c9f98cde3ac560e060d4363667143c8c052ace` for all four ORM client implementations. Go consumes the package at `v0.0.0-20260916062150-40c9f98cde3a`; Rust, PHP, and TypeScript keep their local codecs and run the same ordered-json test vectors. The ORM version remains `0.0.1`.
+- Update all four ORM clients to ordered-json revision `6d23a2a5e7c0c5d501d759b6d32a439661f153f2`. Go uses module `v0.0.0-20260916090424-6d23a2a5e7c0`; Rust, PHP, and TypeScript use the root package. The ORM version remains `0.0.1`.

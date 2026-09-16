@@ -38,4 +38,4 @@
 - namespace를 보존한 물리 table 이름을 처리하도록 어댑터 독립 `SchemaInstalled` transaction 연산에 SQLite 지원을 추가한다.
 - PostgreSQL·SQLite에서 안전한 초기 schema preflight를 수행할 수 있도록 어댑터 독립 database-empty 검사를 추가한다.
 - 빈 database preflight가 `pg_toast` 같은 PostgreSQL system namespace를 사용자 객체로 세지 않도록 수정한다.
-- 네 언어 ORM client의 검증 기준을 ordered-json 모노레포 revision `40c9f98cde3ac560e060d4363667143c8c052ace`로 갱신했다. Go는 `v0.0.0-20260916062150-40c9f98cde3a` 패키지를 사용하고 Rust·PHP·TypeScript는 로컬 codec으로 같은 ordered-json 테스트 벡터를 실행한다. ORM 버전은 `0.0.1`로 유지한다.
+- 네 언어 ORM client를 ordered-json revision `6d23a2a5e7c0c5d501d759b6d32a439661f153f2`로 갱신했다. Go는 `v0.0.0-20260916090424-6d23a2a5e7c0` 모듈을 사용하고 Rust·PHP·TypeScript는 root package를 사용한다. ORM 버전은 `0.0.1`로 유지한다.
