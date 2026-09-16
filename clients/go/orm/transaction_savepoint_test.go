@@ -247,6 +247,17 @@ func TestAdvisoryLockRejectsUnsupportedDriver(t *testing.T) {
 	}
 }
 
+func TestTransactionDriverReportsBoundDatabase(t *testing.T) {
+	for _, driver := range []string{"mysql", "postgres", "sqlite"} {
+		t.Run(driver, func(t *testing.T) {
+			tx := &Tx{d: &DB{driver: driver}}
+			if got := tx.Driver(); got != driver {
+				t.Fatalf("Driver() = %q, want %q", got, driver)
+			}
+		})
+	}
+}
+
 func TestInstallDDLRejectsEmptyStatements(t *testing.T) {
 	tx := &Tx{tx: &sql.Tx{}}
 	if err := tx.InstallDDL(context.Background(), []string{" "}); err == nil {
