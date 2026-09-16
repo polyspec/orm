@@ -212,4 +212,4 @@ Go transaction adapter는 데이터베이스별 관리 작업을 타입이 지�
 
 ### 정본 스키마 설치
 
-Go transaction adapter는 정본 `schema.json` manifest를 `Tx.InstallSchema(context.Context, []byte) error`로 받아야 한다. 연결된 transaction이 자신의 dialect를 선택하고 ORM schema renderer를 통해 manifest를 변환한 뒤 caller-owned transaction 안에서 적용 가능한 문장을 실행한다. 소비자는 SQL·DDL 문자열·dialect 분기·driver transaction을 제공하지 않는다. 이 경계의 유일한 schema 입력은 manifest다.
+Go transaction adapter는 정본 `schema.json` manifest를 `Tx.InstallSchema(context.Context, []byte) error`로 받는다. 연결된 transaction이 자신의 dialect를 선택하고 ORM schema renderer를 통해 manifest를 변환한 뒤 caller-owned transaction 안에서 적용 가능한 문장을 실행한다. 소비자는 SQL·DDL 문자열·dialect 분기·driver transaction을 제공하지 않는다. 이 경계의 유일한 schema 입력은 manifest다.
