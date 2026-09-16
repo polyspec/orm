@@ -3014,19 +3014,6 @@ impl Battle {
         super::battle::query().using(ex).seq_eq(id as i64).get_or_none().await
     }
 
-    /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
-    pub async fn save(&mut self) -> Result<Option<BattleRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
-        match self.q.take_sets(&["seq"])? {
-            Some(keys) => {
-                db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = super::battle::query().using(ex);
-                for (column, value) in ["seq"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.get_or_none().await
-            }
-            None => self.insert().await,
-        }
-    }
-
     /// UPDATE set_*/plus_*/minus_*/set_*_expr WHERE the query's predicates; returns the affected count.
     /// The engine rejects a missing where (IR_INVALID).
     pub async fn update(&mut self) -> Result<u64> { let binding = self.binding.clone(); let ex = binding.resolve()?;

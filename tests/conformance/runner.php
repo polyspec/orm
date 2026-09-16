@@ -457,10 +457,10 @@ $run('upsert_set_all', function () use ($db, $fks, $remask) {
     return ['same_seq' => $a->getSeq() === $b->getSeq(), 'name' => $b->getName(), 'read_count' => $b->getReadCount()];
 });
 $run('save_branch', function () use ($db, $fks, $remask) {
-    $r = $db->transaction(fn(Tx $tx) => $fks(Battle::query()->setName('conf-save'))->using($tx)->save());
+    $r = $db->transaction(fn(Tx $tx) => $fks(Battle::query()->setName('conf-save'))->using($tx)->insert());
     $remask([$r->getSeq()], $r->getUpdatedTs());
-    // save() re-reads the row after its UPDATE; that SELECT is the read-back.
-    $after = Battle::query()->setSeq($r->getSeq())->setName('conf-save-2')->using($db)->save();
+    Battle::query()->seq($r->getSeq())->setName('conf-save-2')->using($db)->update();
+    $after = Battle::query()->seq($r->getSeq())->using($db)->get();
     $after->delete();
     return ['inserted' => $r->getSeq() > 0, 'after' => $after->getName()];
 });

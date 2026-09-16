@@ -14,7 +14,6 @@ async fn gets_count(&mut self) -> Result<Collection<BattleRow>>;
 async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus>;
 async fn rotate_aes(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<u64>;
 async fn insert(&mut self) -> Result<Option<BattleRow>>;
-async fn save(&mut self) -> Result<Option<BattleRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
@@ -158,7 +157,6 @@ async fn gets_count(&mut self) -> Result<Collection<BattleRow>> { Battle::gets_c
 async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus> { Battle::aes_status(self,keyring).await }
 async fn rotate_aes(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<u64> { Battle::rotate_aes(self,keyring).await }
 async fn insert(&mut self) -> Result<Option<BattleRow>> { Battle::insert(self).await }
-async fn save(&mut self) -> Result<Option<BattleRow>> { Battle::save(self).await }
 async fn update(&mut self) -> Result<u64> { Battle::update(self).await }
 async fn delete(&mut self) -> Result<u64> { Battle::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { Battle::sql(self).await }
@@ -322,7 +320,6 @@ async fn stream(&mut self, visit: impl FnMut(UserRow) -> bool) -> Result<db::Str
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<UserRow>>;
 async fn insert(&mut self) -> Result<Option<UserRow>>;
-async fn save(&mut self) -> Result<Option<UserRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
@@ -347,7 +344,6 @@ async fn stream(&mut self, visit: impl FnMut(UserRow) -> bool) -> Result<db::Str
 async fn get_count(&mut self) -> Result<i64> { User::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<UserRow>> { User::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<UserRow>> { User::insert(self).await }
-async fn save(&mut self) -> Result<Option<UserRow>> { User::save(self).await }
 async fn update(&mut self) -> Result<u64> { User::update(self).await }
 async fn delete(&mut self) -> Result<u64> { User::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { User::sql(self).await }
@@ -392,7 +388,6 @@ async fn stream(&mut self, visit: impl FnMut(ServiceRow) -> bool) -> Result<db::
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<ServiceRow>>;
 async fn insert(&mut self) -> Result<Option<ServiceRow>>;
-async fn save(&mut self) -> Result<Option<ServiceRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
@@ -417,7 +412,6 @@ async fn stream(&mut self, visit: impl FnMut(ServiceRow) -> bool) -> Result<db::
 async fn get_count(&mut self) -> Result<i64> { Service::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<ServiceRow>> { Service::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<ServiceRow>> { Service::insert(self).await }
-async fn save(&mut self) -> Result<Option<ServiceRow>> { Service::save(self).await }
 async fn update(&mut self) -> Result<u64> { Service::update(self).await }
 async fn delete(&mut self) -> Result<u64> { Service::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { Service::sql(self).await }
@@ -462,7 +456,6 @@ async fn stream(&mut self, visit: impl FnMut(ServiceModuleRow) -> bool) -> Resul
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<ServiceModuleRow>>;
 async fn insert(&mut self) -> Result<Option<ServiceModuleRow>>;
-async fn save(&mut self) -> Result<Option<ServiceModuleRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
@@ -491,7 +484,6 @@ async fn stream(&mut self, visit: impl FnMut(ServiceModuleRow) -> bool) -> Resul
 async fn get_count(&mut self) -> Result<i64> { ServiceModule::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<ServiceModuleRow>> { ServiceModule::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<ServiceModuleRow>> { ServiceModule::insert(self).await }
-async fn save(&mut self) -> Result<Option<ServiceModuleRow>> { ServiceModule::save(self).await }
 async fn update(&mut self) -> Result<u64> { ServiceModule::update(self).await }
 async fn delete(&mut self) -> Result<u64> { ServiceModule::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { ServiceModule::sql(self).await }
@@ -540,7 +532,6 @@ async fn stream(&mut self, visit: impl FnMut(ServiceMemberRow) -> bool) -> Resul
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<ServiceMemberRow>>;
 async fn insert(&mut self) -> Result<Option<ServiceMemberRow>>;
-async fn save(&mut self) -> Result<Option<ServiceMemberRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
@@ -569,7 +560,6 @@ async fn stream(&mut self, visit: impl FnMut(ServiceMemberRow) -> bool) -> Resul
 async fn get_count(&mut self) -> Result<i64> { ServiceMember::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<ServiceMemberRow>> { ServiceMember::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<ServiceMemberRow>> { ServiceMember::insert(self).await }
-async fn save(&mut self) -> Result<Option<ServiceMemberRow>> { ServiceMember::save(self).await }
 async fn update(&mut self) -> Result<u64> { ServiceMember::update(self).await }
 async fn delete(&mut self) -> Result<u64> { ServiceMember::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { ServiceMember::sql(self).await }
@@ -618,7 +608,6 @@ async fn stream(&mut self, visit: impl FnMut(CompositeAccountRow) -> bool) -> Re
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<CompositeAccountRow>>;
 async fn insert(&mut self) -> Result<Option<CompositeAccountRow>>;
-async fn save(&mut self) -> Result<Option<CompositeAccountRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
@@ -647,7 +636,6 @@ async fn stream(&mut self, visit: impl FnMut(CompositeAccountRow) -> bool) -> Re
 async fn get_count(&mut self) -> Result<i64> { CompositeAccount::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<CompositeAccountRow>> { CompositeAccount::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<CompositeAccountRow>> { CompositeAccount::insert(self).await }
-async fn save(&mut self) -> Result<Option<CompositeAccountRow>> { CompositeAccount::save(self).await }
 async fn update(&mut self) -> Result<u64> { CompositeAccount::update(self).await }
 async fn delete(&mut self) -> Result<u64> { CompositeAccount::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { CompositeAccount::sql(self).await }
@@ -696,7 +684,6 @@ async fn stream(&mut self, visit: impl FnMut(CompositeMembershipRow) -> bool) ->
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<CompositeMembershipRow>>;
 async fn insert(&mut self) -> Result<Option<CompositeMembershipRow>>;
-async fn save(&mut self) -> Result<Option<CompositeMembershipRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
@@ -725,7 +712,6 @@ async fn stream(&mut self, visit: impl FnMut(CompositeMembershipRow) -> bool) ->
 async fn get_count(&mut self) -> Result<i64> { CompositeMembership::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<CompositeMembershipRow>> { CompositeMembership::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<CompositeMembershipRow>> { CompositeMembership::insert(self).await }
-async fn save(&mut self) -> Result<Option<CompositeMembershipRow>> { CompositeMembership::save(self).await }
 async fn update(&mut self) -> Result<u64> { CompositeMembership::update(self).await }
 async fn delete(&mut self) -> Result<u64> { CompositeMembership::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { CompositeMembership::sql(self).await }
@@ -774,7 +760,6 @@ async fn stream(&mut self, visit: impl FnMut(SoftRecordRow) -> bool) -> Result<d
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<SoftRecordRow>>;
 async fn insert(&mut self) -> Result<Option<SoftRecordRow>>;
-async fn save(&mut self) -> Result<Option<SoftRecordRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
@@ -803,7 +788,6 @@ async fn stream(&mut self, visit: impl FnMut(SoftRecordRow) -> bool) -> Result<d
 async fn get_count(&mut self) -> Result<i64> { SoftRecord::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<SoftRecordRow>> { SoftRecord::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<SoftRecordRow>> { SoftRecord::insert(self).await }
-async fn save(&mut self) -> Result<Option<SoftRecordRow>> { SoftRecord::save(self).await }
 async fn update(&mut self) -> Result<u64> { SoftRecord::update(self).await }
 async fn delete(&mut self) -> Result<u64> { SoftRecord::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { SoftRecord::sql(self).await }
@@ -852,7 +836,6 @@ async fn stream(&mut self, visit: impl FnMut(AccountRow) -> bool) -> Result<db::
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<AccountRow>>;
 async fn insert(&mut self) -> Result<Option<AccountRow>>;
-async fn save(&mut self) -> Result<Option<AccountRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
@@ -877,7 +860,6 @@ async fn stream(&mut self, visit: impl FnMut(AccountRow) -> bool) -> Result<db::
 async fn get_count(&mut self) -> Result<i64> { Account::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<AccountRow>> { Account::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<AccountRow>> { Account::insert(self).await }
-async fn save(&mut self) -> Result<Option<AccountRow>> { Account::save(self).await }
 async fn update(&mut self) -> Result<u64> { Account::update(self).await }
 async fn delete(&mut self) -> Result<u64> { Account::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { Account::sql(self).await }
@@ -922,7 +904,6 @@ async fn stream(&mut self, visit: impl FnMut(ProjectRow) -> bool) -> Result<db::
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<ProjectRow>>;
 async fn insert(&mut self) -> Result<Option<ProjectRow>>;
-async fn save(&mut self) -> Result<Option<ProjectRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
@@ -947,7 +928,6 @@ async fn stream(&mut self, visit: impl FnMut(ProjectRow) -> bool) -> Result<db::
 async fn get_count(&mut self) -> Result<i64> { Project::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<ProjectRow>> { Project::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<ProjectRow>> { Project::insert(self).await }
-async fn save(&mut self) -> Result<Option<ProjectRow>> { Project::save(self).await }
 async fn update(&mut self) -> Result<u64> { Project::update(self).await }
 async fn delete(&mut self) -> Result<u64> { Project::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { Project::sql(self).await }
@@ -992,7 +972,6 @@ async fn stream(&mut self, visit: impl FnMut(AccountProjectRow) -> bool) -> Resu
 async fn get_count(&mut self) -> Result<i64>;
 async fn gets_count(&mut self) -> Result<Collection<AccountProjectRow>>;
 async fn insert(&mut self) -> Result<Option<AccountProjectRow>>;
-async fn save(&mut self) -> Result<Option<AccountProjectRow>>;
 async fn update(&mut self) -> Result<u64>;
 async fn delete(&mut self) -> Result<u64>;
 async fn sql(&mut self) -> Result<db::Sql>;
@@ -1017,7 +996,6 @@ async fn stream(&mut self, visit: impl FnMut(AccountProjectRow) -> bool) -> Resu
 async fn get_count(&mut self) -> Result<i64> { AccountProject::get_count(self).await }
 async fn gets_count(&mut self) -> Result<Collection<AccountProjectRow>> { AccountProject::gets_count(self).await }
 async fn insert(&mut self) -> Result<Option<AccountProjectRow>> { AccountProject::insert(self).await }
-async fn save(&mut self) -> Result<Option<AccountProjectRow>> { AccountProject::save(self).await }
 async fn update(&mut self) -> Result<u64> { AccountProject::update(self).await }
 async fn delete(&mut self) -> Result<u64> { AccountProject::delete(self).await }
 async fn sql(&mut self) -> Result<db::Sql> { AccountProject::sql(self).await }

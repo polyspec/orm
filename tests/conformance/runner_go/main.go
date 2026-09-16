@@ -867,15 +867,17 @@ func main() {
 		})
 	})
 	run("save_branch", func() (any, error) {
-		// no PK in set[] → INSERT; PK set → UPDATE of the other columns and a re-read
 		r, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {
-			return fks(gen.Battle().SetName("conf-save")).Using(ctx, tx).Save()
+			return fks(gen.Battle().SetName("conf-save")).Using(ctx, tx).Insert()
 		})
 		if err != nil {
 			return nil, err
 		}
 		maskRows(r.UpdatedTs, r.Seq)
-		after, err := gen.Battle().SetSeq(r.Seq).SetName("conf-save-2").Using(ctx, db).Save()
+		if _, err := gen.Battle().Seq(r.Seq).SetName("conf-save-2").Using(ctx, db).Update(); err != nil {
+			return nil, err
+		}
+		after, err := gen.Battle().Seq(r.Seq).Using(ctx, db).Get()
 		if err != nil {
 			return nil, err
 		}

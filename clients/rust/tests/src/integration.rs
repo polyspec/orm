@@ -1161,14 +1161,19 @@ async fn main() {
                 == 0,
         "minus clamps at zero"
     );
-    let saved = battle::query()
-        .set_seq(a.seq)
+    battle::query()
+        .seq(a.seq)
         .set_name("rust-saved")
         .using(&db)
-        .save()
+        .update()
         .await
-        .expect("save update")
-        .unwrap();
+        .expect("explicit update");
+    let saved = battle::query()
+        .seq(a.seq)
+        .using(&db)
+        .get()
+        .await
+        .expect("read updated row");
     check!(
         fails,
         saved.seq == a.seq
@@ -1178,9 +1183,9 @@ async fn main() {
     );
     let inserted = draft("rust-saved-new")
         .using(&db)
-        .save()
+        .insert()
         .await
-        .expect("save insert")
+        .expect("insert")
         .unwrap();
     check!(
         fails,
@@ -1642,19 +1647,24 @@ async fn main() {
         .expect("membership row");
     first.set_role("owner");
     first.update().await.expect("composite row update");
-    let second = composite_membership::query()
-        .set_tenant_id(tenant_id)
-        .set_account_id(12)
+    let _affected = composite_membership::query()
+        .tenant_id_eq(tenant_id)
+        .account_id_eq(12)
         .set_role("editor")
         .using(&db)
-        .save()
+        .update()
         .await
-        .expect("composite save")
-        .expect("saved membership");
+        .expect("composite update");
+    let second = composite_membership::query()
+        .using(&db)
+        .get_by_tenant_id_and_account_id(tenant_id, 12)
+        .await
+        .expect("composite read")
+        .expect("updated membership");
     check!(
         fails,
         second.role == "editor",
-        "composite save uses every key component"
+        "composite update uses every key component"
     );
     let page = composite_membership::query()
         .tenant_id_eq(tenant_id)

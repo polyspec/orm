@@ -344,7 +344,7 @@ final class ServiceModule extends Q implements ServiceModuleInterface
     public function ifParentAesHexPhoneEq(string $v): static { $this->ifParent('aes_hex_phone', $v); return $this; }
     public function ifParentPhoneBlindIndexEq(string $v): static { $this->ifParent('phone_blind_index', $v); return $this; }
 
-    // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
+    // ---- write draft (insert / update) ----
     public function setSeq(int $v): static { $this->set('seq', $v); return $this; }
     public function setSeqExpr(string $frag, array $binds = []): static { $this->setExpr('seq', $frag, $binds); return $this; }
     public function setServiceSeq(int $v): static { $this->set('service_seq', $v); return $this; }
@@ -514,16 +514,6 @@ final class ServiceModule extends Q implements ServiceModuleInterface
         $db = $this->terminalDb();
         $id = $this->runInsert($db);
         return ServiceModule::query()->using($db)->seqEq((int) $id)->get();
-    }
-
-    /** UPDATE when every primary-key column was assigned; otherwise INSERT. */
-    public function save(): ?ServiceModuleRow
-    {
-        $this->terminalArity(func_num_args());
-        $db = $this->terminalDb();
-        [$updated, $keys] = $this->runSave($db, ['seq']);
-        if (!$updated) { $keys = [(int) $keys[0]]; }
-        return ServiceModule::query()->using($db)->seqEq($keys[0])->get();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */

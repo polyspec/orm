@@ -245,7 +245,7 @@ final class Account extends Q implements AccountInterface
     public function ifParentSeqEq(int $v): static { $this->ifParent('seq', $v); return $this; }
     public function ifParentNameEq(string $v): static { $this->ifParent('name', $v); return $this; }
 
-    // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
+    // ---- write draft (insert / update) ----
     public function setSeq(int $v): static { $this->set('seq', $v); return $this; }
     public function setSeqExpr(string $frag, array $binds = []): static { $this->setExpr('seq', $frag, $binds); return $this; }
     public function setName(string $v): static { $this->set('name', $v); return $this; }
@@ -386,16 +386,6 @@ final class Account extends Q implements AccountInterface
         $db = $this->terminalDb();
         $id = $this->runInsert($db);
         return Account::query()->using($db)->seqEq((int) $id)->get();
-    }
-
-    /** UPDATE when every primary-key column was assigned; otherwise INSERT. */
-    public function save(): ?AccountRow
-    {
-        $this->terminalArity(func_num_args());
-        $db = $this->terminalDb();
-        [$updated, $keys] = $this->runSave($db, ['seq']);
-        if (!$updated) { $keys = [(int) $keys[0]]; }
-        return Account::query()->using($db)->seqEq($keys[0])->get();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */
