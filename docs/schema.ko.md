@@ -148,6 +148,8 @@ SQLite의 `ForUpdate`, `ForShare`와 `NoWait` 형식은 adapter가 소유한다.
 
 Go adapter regression test는 lock 직렬화, 즉시 `NoWait`, 소유 transaction 종료 후 완료와 대기 중 cancellation을 검증한다. 각 사례는 제한된 focused test timeout을 사용한다.
 
+`DB.BackendWaitingForLock`은 PostgreSQL lock wait를 확인하는 제한된 integration orchestration inspection API다. PostgreSQL이 아닌 adapter는 driver type이나 database-specific application 경로를 노출하지 않고 `false`를 반환한다.
+
 타입 문자열에 쉼표는 Mermaid 문법상 불가 → `decimal(13_3)`, `enum(a_b_c)`처럼 `_`로 쓴다(ormgen이 해석). 방언별 매핑 규칙표(정규 타입 → DDL)는 `docs/dialects.md`(S6)에 둔다.
 
 ## 3. 매니페스트 (생성물, `schema.json`)
