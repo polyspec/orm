@@ -1,5 +1,7 @@
 # Changelog
 
+- Update the Go dependency `github.com/polyspec/ordered-json/go` from `v0.0.0-20260915123419-26c2aebc9789` to `v0.0.0-20260916062150-40c9f98cde3a` from ordered-json commit `40c9f98`. The ORM version remains `0.0.1`.
+
 - Add the ORM-owned `DB.BackendWaitingForLock` inspection API for bounded PostgreSQL integration orchestration; non-PostgreSQL adapters return `false` without exposing driver-specific application paths.
 
 - Add adapter-neutral Go transaction-local context reads through `Tx.Local`; values set through `Tx.SetLocal` can be read without direct SQL, and missing keys return `NO_ROWS`.
