@@ -1080,3 +1080,6 @@ func genRust(m *schema.Manifest, outDir string) error {
 	}
 	return os.WriteFile(filepath.Join(outDir, "Cargo.toml"), []byte(rustCargo), 0o644)
 }
+
+// GenerateRust is the internal implementation used by the public generator API.
+func GenerateRust(m *schema.Manifest, outDir string) error { return genRust(m, outDir) }
