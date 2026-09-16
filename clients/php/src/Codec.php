@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace Orm;
 
 use Symfony\Component\Yaml\Yaml;
+use function OrderedJson\parse as orderedJsonParse;
+use function OrderedJson\stringify as orderedJsonStringify;
 
 /**
  * Column-style codecs (docs/codec.md). Styles are in write order; decode applies them in reverse.
@@ -128,7 +130,7 @@ final class Codec
                 case 'json':
                 case 'jsons':
                     try {
-                        $v = json_decode($v, true, 512, JSON_THROW_ON_ERROR);
+                        $v = json_decode(orderedJsonStringify(orderedJsonParse($v)), true, 512, JSON_THROW_ON_ERROR);
                     } catch (\JsonException $e) {
                         throw new OrmException(Code::CODEC_DECODE, 'json: ' . $e->getMessage());
                     }
@@ -176,7 +178,7 @@ final class Codec
                     break;
                 case 'json':
                 case 'jsons':
-                    $cur = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+                    $cur = orderedJsonStringify(orderedJsonParse(json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)));
                     break;
                 case 'base64':
                     $cur = base64_encode($cur);
