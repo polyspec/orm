@@ -60,7 +60,7 @@ erDiagram
 
 ### 2.1 Column lines — `type name [PK|FK|UK] ["comment"]`
 This follows Mermaid syntax. `PK`, `FK`, and `UK` are Mermaid keywords. Mark every primary-key column with `PK`; declaration order defines composite-key order. Composite unique keys use `%% unique` below.
-Generated composite-key types and complete-key finders preserve this order. An insert into an entity without an automatic key requires every primary-key value and reads the inserted row with all key predicates. `save` rejects a partial primary key before execution.
+Generated composite-key types and complete-key finders preserve this order. A primary key may use any valid identifier and may contain multiple columns; `seq` is only a project convention for auto-increment keys. An insert into an entity without an automatic key requires every primary-key value and reads the inserted row with all key predicates. `save` rejects a partial primary key before execution.
 Use the database type directly (`bigint`, `uuid`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum('a','b')`). The manifest normalizes it to types such as i64, string, and datetime; UUID bindings use strings while PostgreSQL DDL preserves native `uuid`.
 `varchar` and `char` require a positive length. Schema build rejects a missing, zero, or invalid length before DDL generation.
 
@@ -86,7 +86,7 @@ The comment string is a space-separated **attribute list**. With no comment, the
 | `}o--o{` (N : M) | Unsupported directly; model a join table as an entity (`a_match_b`) |
 
 Label: a single-column relation starts with the child FK column. A composite relation starts with the ordered child FK list, such as `(tenant_id, account_id)`, and must include explicit names: `(tenant_id, account_id) (account / memberships)`. The FK count must equal the parent primary-key count; each FK maps to the parent key at the same position. `(child / parent)` overrides relation names and is optional only for a single-column relation.
-Default names: child side removes `_seq` from the FK (`service_seq`→`service`, `updated_user_seq`→`updated_user`); parent side removes the parent-table prefix from the child table and pluralizes (`battle_item`→`items`, `product_review`→`reviews`, or `battles` without a prefix).
+Default names: child-side relation names remove `_seq` or `_id` from the FK when present (`service_seq`→`service`, `created_by`→`created_by`); parent side removes the parent-table prefix from the child table and pluralizes (`battle_item`→`items`, `product_review`→`reviews`, or `battles` without a prefix). FK names are not required to contain `_seq`; the relation line is authoritative.
 When the same parent is referenced twice (`user_seq`, `updated_user_seq`), draw two relation lines. `ormgen` reports name collisions as errors.
 The same child column may participate in more than one foreign key, including overlapping composite foreign keys. Each relation line remains authoritative for its ordered local/target key pairs; generated DDL emits each distinct constraint and generated relation metadata preserves every pair. A source-level `-> table.column` declaration still names one explicit target and cannot conflict with a relation line.
 
@@ -125,11 +125,11 @@ Changing a comment changes the schema hash and produces an idempotent migration.
 `many_to_many` declares both typed relation names in one directive. The through entity must have one column referencing every source primary-key component and one column referencing every target primary-key component. These FK columns must form the through entity's primary key. Relation loading uses the target table with a through-table subquery and preserves the declared key order.
 
 ### 2.4 Optional declarations (default rules)
-- A PK named `seq` with `auto` can be written as `bigint seq PK "auto"`.
+- A `seq` PK with `auto` is the conventional form: `bigint seq PK "auto"`. Other PK names and composite PKs are valid.
 - `created_ts` and `updated_ts` are timestamp columns by name.
 - `is_*` tinyint columns are exposed as bool without `bool`; use `int` to disable this import default.
 - Text, blob, and styled columns are lazy by default; `aes_hex_*` is the exception.
-- `-> table.seq` is unnecessary when an FK is `<table>_seq` and has a relation line.
+- `-> table.seq` is unnecessary when a relation line explicitly defines the FK target. `<table>_seq` is a naming convention, not a requirement.
 
 ### 2.5 Data outside standard Mermaid and its location (CREATE replacement scope)
 | CREATE element | Location |
