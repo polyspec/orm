@@ -49,7 +49,8 @@ try {
   if (!first) throw new Error('composite primary-key finder failed');
   first.setRole('owner');
   await first.update();
-  const second = await CompositeMembership().setTenantId(tenantId).setAccountId(12).setRole('editor').using(db).save();
+  await CompositeMembership().tenantIdEq(tenantId).accountIdEq(12).setRole('editor').using(db).update();
+  const second = await CompositeMembership().using(db).getByTenantIdAndAccountId(tenantId, 12);
   if (second?.getRole() !== 'editor') throw new Error('composite save did not use every key component');
   const page = await CompositeMembership().tenantIdEq(tenantId).orderByTenantIdAsc().orderByAccountIdAsc().using(db).paginate(1, 1);
   if (page.total !== 2 || page.items.length !== 1 || page.items.first()?.getAccountId() !== 11) throw new Error('composite pagination order differs');

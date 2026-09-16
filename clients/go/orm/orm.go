@@ -92,6 +92,7 @@ const CurrentTime = "$CURRENT_TIME"
 type DB struct {
 	SQL      *sql.DB
 	Eng      *engine.Engine
+	ctx      context.Context
 	engineMu sync.RWMutex
 	engines  map[string]*engine.Engine
 	compiler planCompiler
@@ -263,14 +264,65 @@ func (c *ConnectionLease) Close() error {
 
 const defaultCacheSize = 256
 
-// Open connects using the database selected by the DSN URI scheme. The engine
-// is the internal query compiler bound to the generated schema.
-func Open(dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
+// Open connects using the database selected by the DSN URI scheme. The schema
+// engine is resolved from the single registered engine for that driver.
+func Open(dsn string, cfg Config) (*DB, error) {
 	driver, native, err := parseDSN(dsn)
 	if err != nil {
 		return nil, err
 	}
+	eng, err := registeredEngine(driver)
+	if err != nil {
+		return nil, err
+	}
 	return open(context.Background(), driver, native, eng, enginePlanCompiler{engine: eng}, cfg)
+}
+
+// OpenWithEngine is used by generated bootstrap code and tests that compile a
+// schema in the same process. Application code should use Open after the
+// generated package has registered its schema engine.
+func OpenWithEngine(dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
+	if eng == nil || eng.P == nil {
+		return nil, &ir.Error{Code: CodeConfig, Msg: "schema engine is required; initialize the generated schema before opening the database"}
+	}
+	driver, native, err := parseDSN(dsn)
+	if err != nil {
+		return nil, err
+	}
+	if eng.P.D.Name() != driver {
+		return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("schema engine dialect must be %s", driver)}
+	}
+	return open(context.Background(), driver, native, eng, enginePlanCompiler{engine: eng}, cfg)
+}
+
+func RegisterEngine(eng *engine.Engine) error {
+	if eng == nil || eng.P == nil || eng.M == nil {
+		return &ir.Error{Code: CodeConfig, Msg: "schema engine is required"}
+	}
+	driver := eng.P.D.Name()
+	processSchemas.Lock()
+	if processSchemas.byDriver[driver] == nil {
+		processSchemas.byDriver[driver] = map[string]*engine.Engine{}
+	}
+	processSchemas.byDriver[driver][eng.M.SchemaHash] = eng
+	processSchemas.Unlock()
+	return nil
+}
+
+func registeredEngine(driver string) (*engine.Engine, error) {
+	processSchemas.RLock()
+	defer processSchemas.RUnlock()
+	engines := processSchemas.byDriver[driver]
+	if len(engines) == 0 {
+		return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("no schema engine registered for %s; initialize the generated schema package before orm.Open", driver)}
+	}
+	if len(engines) != 1 {
+		return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("multiple schema engines registered for %s; use generated Connect or orm.OpenWithEngine", driver)}
+	}
+	for _, eng := range engines {
+		return eng, nil
+	}
+	panic("unreachable")
 }
 
 // OpenWithCompiler connects with database/sql and uses compiler for every plan
@@ -346,7 +398,10 @@ func open(ctx context.Context, driver, dsn string, eng *engine.Engine, compiler 
 		engines[hash] = registered
 	}
 	processSchemas.RUnlock()
-	return &DB{SQL: s, Eng: eng, engines: engines, compiler: compiler, cfg: cfg, driver: driver, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return &DB{SQL: s, Eng: eng, ctx: ctx, engines: engines, compiler: compiler, cfg: cfg, driver: driver, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
 }
 
 // Close releases cached statements and the underlying database connection.

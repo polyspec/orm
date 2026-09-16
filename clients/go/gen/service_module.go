@@ -278,7 +278,7 @@ var ServiceModuleCols = struct {
 	Name:       orm.ColRef{Column: "name"},
 }
 
-// ServiceModuleQuery builds a statement over service_module: ServiceModule() → chain → Using(ctx, db) → terminal().
+// ServiceModuleQuery builds a statement over service_module: ServiceModule() → chain → Using(db) → terminal().
 type ServiceModuleQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -301,29 +301,40 @@ func ServiceModule() *ServiceModuleQuery {
 }
 
 // Using selects the context and pool or transaction for this query.
-func (q *ServiceModuleQuery) Using(ctx context.Context, ex orm.Exec) *ServiceModuleQuery {
+func (q *ServiceModuleQuery) Using(ex orm.Exec) *ServiceModuleQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "service_module")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
 // Using selects the context and pool or transaction for this loaded row.
-func (r *ServiceModuleRow) Using(ctx context.Context, ex orm.Exec) *ServiceModuleRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+func (r *ServiceModuleRow) Using(ex orm.Exec) *ServiceModuleRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
 // ServiceModuleWhere edits one WHERE/ON group of service_module.
 type ServiceModuleWhere struct{ w *orm.W }
 
-func (w *ServiceModuleWhere) Or() *ServiceModuleWhere { w.w.Or(); return w }
-func (w *ServiceModuleWhere) And(fn func(*ServiceModuleWhere)) *ServiceModuleWhere {
-	w.w.And(func(x *orm.W) { fn(&ServiceModuleWhere{w: x}) })
+func (w *ServiceModuleWhere) Or(fn ...func(*ServiceModuleWhere)) *ServiceModuleWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&ServiceModuleWhere{w: x}) })
+	return w
+}
+func (w *ServiceModuleWhere) And(fn ...func(*ServiceModuleWhere)) *ServiceModuleWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&ServiceModuleWhere{w: x}) })
 	return w
 }
 func (w *ServiceModuleWhere) Expr(frag string, binds ...any) *ServiceModuleWhere {
@@ -408,8 +419,12 @@ func (q *ServiceModuleQuery) SeqEq(v int64) *ServiceModuleQuery {
 	q.q.W().Pred("seq", "eq", v)
 	return q
 }
-func (w *ServiceModuleWhere) Seq(v int64) *ServiceModuleWhere { return w.SeqEq(v) }
-func (q *ServiceModuleQuery) Seq(v int64) *ServiceModuleQuery { return q.SeqEq(v) }
+func (w *ServiceModuleWhere) Seq(v int64) *ServiceModuleWhere    { return w.SeqEq(v) }
+func (q *ServiceModuleQuery) Seq(v int64) *ServiceModuleQuery    { return q.SeqEq(v) }
+func (w *ServiceModuleWhere) AndSeq(v int64) *ServiceModuleWhere { w.w.And(); return w.SeqEq(v) }
+func (q *ServiceModuleQuery) AndSeq(v int64) *ServiceModuleQuery { q.q.W().And(); return q.SeqEq(v) }
+func (w *ServiceModuleWhere) OrSeq(v int64) *ServiceModuleWhere  { w.w.Or(); return w.SeqEq(v) }
+func (q *ServiceModuleQuery) OrSeq(v int64) *ServiceModuleQuery  { q.q.Or(); return q.SeqEq(v) }
 func (w *ServiceModuleWhere) SeqNotEq(v int64) *ServiceModuleWhere {
 	w.w.Pred("seq", "not_eq", v)
 	return w
@@ -536,6 +551,22 @@ func (q *ServiceModuleQuery) ServiceSeqEq(v int64) *ServiceModuleQuery {
 }
 func (w *ServiceModuleWhere) ServiceSeq(v int64) *ServiceModuleWhere { return w.ServiceSeqEq(v) }
 func (q *ServiceModuleQuery) ServiceSeq(v int64) *ServiceModuleQuery { return q.ServiceSeqEq(v) }
+func (w *ServiceModuleWhere) AndServiceSeq(v int64) *ServiceModuleWhere {
+	w.w.And()
+	return w.ServiceSeqEq(v)
+}
+func (q *ServiceModuleQuery) AndServiceSeq(v int64) *ServiceModuleQuery {
+	q.q.W().And()
+	return q.ServiceSeqEq(v)
+}
+func (w *ServiceModuleWhere) OrServiceSeq(v int64) *ServiceModuleWhere {
+	w.w.Or()
+	return w.ServiceSeqEq(v)
+}
+func (q *ServiceModuleQuery) OrServiceSeq(v int64) *ServiceModuleQuery {
+	q.q.Or()
+	return q.ServiceSeqEq(v)
+}
 func (w *ServiceModuleWhere) ServiceSeqNotEq(v int64) *ServiceModuleWhere {
 	w.w.Pred("service_seq", "not_eq", v)
 	return w
@@ -672,8 +703,12 @@ func (q *ServiceModuleQuery) NameEq(v string) *ServiceModuleQuery {
 	q.q.W().Pred("name", "eq", v)
 	return q
 }
-func (w *ServiceModuleWhere) Name(v string) *ServiceModuleWhere { return w.NameEq(v) }
-func (q *ServiceModuleQuery) Name(v string) *ServiceModuleQuery { return q.NameEq(v) }
+func (w *ServiceModuleWhere) Name(v string) *ServiceModuleWhere    { return w.NameEq(v) }
+func (q *ServiceModuleQuery) Name(v string) *ServiceModuleQuery    { return q.NameEq(v) }
+func (w *ServiceModuleWhere) AndName(v string) *ServiceModuleWhere { w.w.And(); return w.NameEq(v) }
+func (q *ServiceModuleQuery) AndName(v string) *ServiceModuleQuery { q.q.W().And(); return q.NameEq(v) }
+func (w *ServiceModuleWhere) OrName(v string) *ServiceModuleWhere  { w.w.Or(); return w.NameEq(v) }
+func (q *ServiceModuleQuery) OrName(v string) *ServiceModuleQuery  { q.q.Or(); return q.NameEq(v) }
 func (w *ServiceModuleWhere) NameNotEq(v string) *ServiceModuleWhere {
 	w.w.Pred("name", "not_eq", v)
 	return w
@@ -835,10 +870,22 @@ func (q *ServiceModuleQuery) NameLteCol(ref orm.ColRef) *ServiceModuleQuery {
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *ServiceModuleQuery) Or() *ServiceModuleQuery { q.q.Or(); return q }
-func (q *ServiceModuleQuery) And(fn func(*ServiceModuleWhere)) *ServiceModuleQuery {
-	q.q.W().And(func(x *orm.W) { fn(&ServiceModuleWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *ServiceModuleQuery) Or(fn ...func(*ServiceModuleWhere)) *ServiceModuleQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&ServiceModuleWhere{w: x}) })
+	return q
+}
+func (q *ServiceModuleQuery) And(fn ...func(*ServiceModuleWhere)) *ServiceModuleQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&ServiceModuleWhere{w: x}) })
 	return q
 }
 func (q *ServiceModuleQuery) Expr(frag string, binds ...any) *ServiceModuleQuery {
@@ -1709,27 +1756,7 @@ func (q *ServiceModuleQuery) Insert() (*ServiceModuleRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ServiceModule().Using(ctx, ex).SeqEq(int64(id)).Get()
-}
-
-// Save updates when every primary-key column was assigned and inserts when none was assigned.
-func (q *ServiceModuleQuery) Save() (*ServiceModuleRow, error) {
-	ctx, ex, err := q.binding.Resolve()
-	if err != nil {
-		return nil, err
-	}
-	keys, ok, err := q.q.MoveKeysToWhere([]string{"seq"})
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return q.Insert()
-	}
-	q.q.Req.IR.Kind = "update"
-	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
-		return nil, err
-	}
-	return ServiceModule().Using(ctx, ex).SeqEq(keys[0].(int64)).Get()
+	return ServiceModule().Using(ex).SeqEq(int64(id)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

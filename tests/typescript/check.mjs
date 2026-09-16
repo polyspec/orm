@@ -39,7 +39,7 @@ for (const [entity, value] of Object.entries(schema.entities)) {
   for (const suffix of ['Row', 'Columns', 'Where', 'Query']) if (!generated.out.has(type + suffix)) throw new Error(`${generatedPath}: missing ${type}${suffix}`);
   if (!generated.out.has(type) || !ts.isFunctionDeclaration(generated.out.get(type))) throw new Error(`${generatedPath}: missing ${type} factory`);
   const query = methods(generated.out.get(type + 'Query'), generated.ast);
-  for (const name of ['and', 'join', 'leftJoin', 'relation', 'relations', 'get', 'gets', 'getCount', 'getsCount', 'insert', 'save', 'update', 'delete', 'sql', 'paginate']) {
+  for (const name of ['and', 'join', 'leftJoin', 'relation', 'relations', 'get', 'gets', 'getCount', 'getsCount', 'insert', 'update', 'delete', 'sql', 'paginate']) {
     if (!query.has(name)) throw new Error(`${generatedPath}: ${type}Query missing ${name}`);
   }
   if (value.scope && !query.has('scope')) throw new Error(`${generatedPath}: ${type}Query missing scope`);

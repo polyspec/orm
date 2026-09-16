@@ -1,7 +1,6 @@
 package gen_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/gen"
@@ -13,7 +12,6 @@ import (
 // number of distinct statements, so the list is padded to a power of two.
 func TestINListIsBucketed(t *testing.T) {
 	db := open(t)
-	ctx := context.Background()
 	seen := map[string]int{}
 	db.Cfg().OnQuery = func(e orm.Event) { seen[e.SQL] = len(e.Args) }
 	for n := 1; n <= 12; n++ {
@@ -21,7 +19,7 @@ func TestINListIsBucketed(t *testing.T) {
 		for i := range ids {
 			ids[i] = int64(i + 1)
 		}
-		got, err := gen.Battle().SeqIn(ids).Using(ctx, db).GetCount()
+		got, err := gen.Battle().SeqIn(ids).Using(db).GetCount()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -44,22 +42,20 @@ func TestLargeRootINIsChunkedForSQLite(t *testing.T) {
 		t.Skip("requires the SQLite physical fixture")
 	}
 	db := open(t)
-	ctx := context.Background()
 	ids := existingBattleIDs(t, db, 1000)
-	if _, err := gen.Battle().SeqIn(ids).Using(ctx, db).GetCount(); err != nil {
+	if _, err := gen.Battle().SeqIn(ids).Using(db).GetCount(); err != nil {
 		t.Fatalf("large root IN failed on SQLite: %v", err)
 	}
 }
 
 func TestLargeRootINRowsAndCount(t *testing.T) {
 	db := open(t)
-	ctx := context.Background()
 	ids := existingBattleIDs(t, db, 1000)
-	count, err := gen.Battle().SeqIn(ids).Using(ctx, db).GetCount()
+	count, err := gen.Battle().SeqIn(ids).Using(db).GetCount()
 	if err != nil || count != int64(len(ids)) {
 		t.Fatalf("large root IN count=%d err=%v, want %d", count, err, len(ids))
 	}
-	rows, err := gen.Battle().SeqIn(ids).Using(ctx, db).Gets()
+	rows, err := gen.Battle().SeqIn(ids).Using(db).Gets()
 	if err != nil {
 		t.Fatalf("large root IN rows failed: %v", err)
 	}

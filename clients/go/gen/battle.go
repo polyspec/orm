@@ -1301,7 +1301,7 @@ var BattleCols = struct {
 	SerializeData:         orm.ColRef{Column: "serialize_data"},
 }
 
-// BattleQuery builds a statement over battle: Battle() → chain → Using(ctx, db) → terminal().
+// BattleQuery builds a statement over battle: Battle() → chain → Using(db) → terminal().
 type BattleQuery struct {
 	binding orm.Binding
 	q       *orm.Q
@@ -1319,14 +1319,14 @@ func (q *BattleQuery) Req() *orm.Req { return q.q.Req }
 func Battle() *BattleQuery { return &BattleQuery{q: orm.NewQ(eng, "battle")} }
 
 // Using selects the context and pool or transaction for this query.
-func (q *BattleQuery) Using(ctx context.Context, ex orm.Exec) *BattleQuery {
+func (q *BattleQuery) Using(ex orm.Exec) *BattleQuery {
 	if q.q == nil && ex != nil {
 		q.q = orm.NewQ(eng, "battle")
 	}
 	if q.q != nil && ex != nil && ex.DB() != nil {
 		q.q.BindEngine(ex.DB().EngineFor(SchemaHash))
 	}
-	q.binding = orm.NewBinding(ctx, ex)
+	q.binding = orm.NewBindingForExecutor(ex)
 	return q
 }
 
@@ -1356,17 +1356,28 @@ func (q *BattleQuery) RotateAES(keyring orm.AESKeyring) (int, error) {
 }
 
 // Using selects the context and pool or transaction for this loaded row.
-func (r *BattleRow) Using(ctx context.Context, ex orm.Exec) *BattleRow {
-	r.Binding = orm.NewBinding(ctx, ex)
+func (r *BattleRow) Using(ex orm.Exec) *BattleRow {
+	r.Binding = orm.NewBindingForExecutor(ex)
 	return r
 }
 
 // BattleWhere edits one WHERE/ON group of battle.
 type BattleWhere struct{ w *orm.W }
 
-func (w *BattleWhere) Or() *BattleWhere { w.w.Or(); return w }
-func (w *BattleWhere) And(fn func(*BattleWhere)) *BattleWhere {
-	w.w.And(func(x *orm.W) { fn(&BattleWhere{w: x}) })
+func (w *BattleWhere) Or(fn ...func(*BattleWhere)) *BattleWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&BattleWhere{w: x}) })
+	return w
+}
+func (w *BattleWhere) And(fn ...func(*BattleWhere)) *BattleWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&BattleWhere{w: x}) })
 	return w
 }
 func (w *BattleWhere) Expr(frag string, binds ...any) *BattleWhere {
@@ -1522,6 +1533,10 @@ func (w *BattleWhere) SeqEq(v int64) *BattleWhere    { w.w.Pred("seq", "eq", v);
 func (q *BattleQuery) SeqEq(v int64) *BattleQuery    { q.q.W().Pred("seq", "eq", v); return q }
 func (w *BattleWhere) Seq(v int64) *BattleWhere      { return w.SeqEq(v) }
 func (q *BattleQuery) Seq(v int64) *BattleQuery      { return q.SeqEq(v) }
+func (w *BattleWhere) AndSeq(v int64) *BattleWhere   { w.w.And(); return w.SeqEq(v) }
+func (q *BattleQuery) AndSeq(v int64) *BattleQuery   { q.q.W().And(); return q.SeqEq(v) }
+func (w *BattleWhere) OrSeq(v int64) *BattleWhere    { w.w.Or(); return w.SeqEq(v) }
+func (q *BattleQuery) OrSeq(v int64) *BattleQuery    { q.q.Or(); return q.SeqEq(v) }
 func (w *BattleWhere) SeqNotEq(v int64) *BattleWhere { w.w.Pred("seq", "not_eq", v); return w }
 func (q *BattleQuery) SeqNotEq(v int64) *BattleQuery { q.q.W().Pred("seq", "not_eq", v); return q }
 func (w *BattleWhere) SeqGt(v int64) *BattleWhere    { w.w.Pred("seq", "gt", v); return w }
@@ -1612,6 +1627,10 @@ func (w *BattleWhere) NameEq(v string) *BattleWhere    { w.w.Pred("name", "eq", 
 func (q *BattleQuery) NameEq(v string) *BattleQuery    { q.q.W().Pred("name", "eq", v); return q }
 func (w *BattleWhere) Name(v string) *BattleWhere      { return w.NameEq(v) }
 func (q *BattleQuery) Name(v string) *BattleQuery      { return q.NameEq(v) }
+func (w *BattleWhere) AndName(v string) *BattleWhere   { w.w.And(); return w.NameEq(v) }
+func (q *BattleQuery) AndName(v string) *BattleQuery   { q.q.W().And(); return q.NameEq(v) }
+func (w *BattleWhere) OrName(v string) *BattleWhere    { w.w.Or(); return w.NameEq(v) }
+func (q *BattleQuery) OrName(v string) *BattleQuery    { q.q.Or(); return q.NameEq(v) }
 func (w *BattleWhere) NameNotEq(v string) *BattleWhere { w.w.Pred("name", "not_eq", v); return w }
 func (q *BattleQuery) NameNotEq(v string) *BattleQuery { q.q.W().Pred("name", "not_eq", v); return q }
 func (w *BattleWhere) NameGt(v string) *BattleWhere    { w.w.Pred("name", "gt", v); return w }
@@ -1726,8 +1745,12 @@ func (q *BattleQuery) DescriptionEq(v string) *BattleQuery {
 	q.q.W().Pred("description", "eq", v)
 	return q
 }
-func (w *BattleWhere) Description(v string) *BattleWhere { return w.DescriptionEq(v) }
-func (q *BattleQuery) Description(v string) *BattleQuery { return q.DescriptionEq(v) }
+func (w *BattleWhere) Description(v string) *BattleWhere    { return w.DescriptionEq(v) }
+func (q *BattleQuery) Description(v string) *BattleQuery    { return q.DescriptionEq(v) }
+func (w *BattleWhere) AndDescription(v string) *BattleWhere { w.w.And(); return w.DescriptionEq(v) }
+func (q *BattleQuery) AndDescription(v string) *BattleQuery { q.q.W().And(); return q.DescriptionEq(v) }
+func (w *BattleWhere) OrDescription(v string) *BattleWhere  { w.w.Or(); return w.DescriptionEq(v) }
+func (q *BattleQuery) OrDescription(v string) *BattleQuery  { q.q.Or(); return q.DescriptionEq(v) }
 func (w *BattleWhere) DescriptionNotEq(v string) *BattleWhere {
 	w.w.Pred("description", "not_eq", v)
 	return w
@@ -1880,8 +1903,12 @@ func (q *BattleQuery) CreatedTsEq(v time.Time) *BattleQuery {
 	q.q.W().Pred("created_ts", "eq", v)
 	return q
 }
-func (w *BattleWhere) CreatedTs(v time.Time) *BattleWhere { return w.CreatedTsEq(v) }
-func (q *BattleQuery) CreatedTs(v time.Time) *BattleQuery { return q.CreatedTsEq(v) }
+func (w *BattleWhere) CreatedTs(v time.Time) *BattleWhere    { return w.CreatedTsEq(v) }
+func (q *BattleQuery) CreatedTs(v time.Time) *BattleQuery    { return q.CreatedTsEq(v) }
+func (w *BattleWhere) AndCreatedTs(v time.Time) *BattleWhere { w.w.And(); return w.CreatedTsEq(v) }
+func (q *BattleQuery) AndCreatedTs(v time.Time) *BattleQuery { q.q.W().And(); return q.CreatedTsEq(v) }
+func (w *BattleWhere) OrCreatedTs(v time.Time) *BattleWhere  { w.w.Or(); return w.CreatedTsEq(v) }
+func (q *BattleQuery) OrCreatedTs(v time.Time) *BattleQuery  { q.q.Or(); return q.CreatedTsEq(v) }
 func (w *BattleWhere) CreatedTsNotEq(v time.Time) *BattleWhere {
 	w.w.Pred("created_ts", "not_eq", v)
 	return w
@@ -2015,8 +2042,12 @@ func (q *BattleQuery) UpdatedTsEq(v time.Time) *BattleQuery {
 	q.q.W().Pred("updated_ts", "eq", v)
 	return q
 }
-func (w *BattleWhere) UpdatedTs(v time.Time) *BattleWhere { return w.UpdatedTsEq(v) }
-func (q *BattleQuery) UpdatedTs(v time.Time) *BattleQuery { return q.UpdatedTsEq(v) }
+func (w *BattleWhere) UpdatedTs(v time.Time) *BattleWhere    { return w.UpdatedTsEq(v) }
+func (q *BattleQuery) UpdatedTs(v time.Time) *BattleQuery    { return q.UpdatedTsEq(v) }
+func (w *BattleWhere) AndUpdatedTs(v time.Time) *BattleWhere { w.w.And(); return w.UpdatedTsEq(v) }
+func (q *BattleQuery) AndUpdatedTs(v time.Time) *BattleQuery { q.q.W().And(); return q.UpdatedTsEq(v) }
+func (w *BattleWhere) OrUpdatedTs(v time.Time) *BattleWhere  { w.w.Or(); return w.UpdatedTsEq(v) }
+func (q *BattleQuery) OrUpdatedTs(v time.Time) *BattleQuery  { q.q.Or(); return q.UpdatedTsEq(v) }
 func (w *BattleWhere) UpdatedTsNotEq(v time.Time) *BattleWhere {
 	w.w.Pred("updated_ts", "not_eq", v)
 	return w
@@ -2146,6 +2177,10 @@ func (w *BattleWhere) IsCloseEq(v bool) *BattleWhere    { w.w.Pred("is_close", "
 func (q *BattleQuery) IsCloseEq(v bool) *BattleQuery    { q.q.W().Pred("is_close", "eq", v); return q }
 func (w *BattleWhere) IsClose(v bool) *BattleWhere      { return w.IsCloseEq(v) }
 func (q *BattleQuery) IsClose(v bool) *BattleQuery      { return q.IsCloseEq(v) }
+func (w *BattleWhere) AndIsClose(v bool) *BattleWhere   { w.w.And(); return w.IsCloseEq(v) }
+func (q *BattleQuery) AndIsClose(v bool) *BattleQuery   { q.q.W().And(); return q.IsCloseEq(v) }
+func (w *BattleWhere) OrIsClose(v bool) *BattleWhere    { w.w.Or(); return w.IsCloseEq(v) }
+func (q *BattleQuery) OrIsClose(v bool) *BattleQuery    { q.q.Or(); return q.IsCloseEq(v) }
 func (w *BattleWhere) IsCloseNotEq(v bool) *BattleWhere { w.w.Pred("is_close", "not_eq", v); return w }
 func (q *BattleQuery) IsCloseNotEq(v bool) *BattleQuery {
 	q.q.W().Pred("is_close", "not_eq", v)
@@ -2177,10 +2212,14 @@ func (q *BattleQuery) IsCloseNotEqCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("is_close", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
-func (w *BattleWhere) IsDisplayEq(v bool) *BattleWhere { w.w.Pred("is_display", "eq", v); return w }
-func (q *BattleQuery) IsDisplayEq(v bool) *BattleQuery { q.q.W().Pred("is_display", "eq", v); return q }
-func (w *BattleWhere) IsDisplay(v bool) *BattleWhere   { return w.IsDisplayEq(v) }
-func (q *BattleQuery) IsDisplay(v bool) *BattleQuery   { return q.IsDisplayEq(v) }
+func (w *BattleWhere) IsDisplayEq(v bool) *BattleWhere  { w.w.Pred("is_display", "eq", v); return w }
+func (q *BattleQuery) IsDisplayEq(v bool) *BattleQuery  { q.q.W().Pred("is_display", "eq", v); return q }
+func (w *BattleWhere) IsDisplay(v bool) *BattleWhere    { return w.IsDisplayEq(v) }
+func (q *BattleQuery) IsDisplay(v bool) *BattleQuery    { return q.IsDisplayEq(v) }
+func (w *BattleWhere) AndIsDisplay(v bool) *BattleWhere { w.w.And(); return w.IsDisplayEq(v) }
+func (q *BattleQuery) AndIsDisplay(v bool) *BattleQuery { q.q.W().And(); return q.IsDisplayEq(v) }
+func (w *BattleWhere) OrIsDisplay(v bool) *BattleWhere  { w.w.Or(); return w.IsDisplayEq(v) }
+func (q *BattleQuery) OrIsDisplay(v bool) *BattleQuery  { q.q.Or(); return q.IsDisplayEq(v) }
 func (w *BattleWhere) IsDisplayNotEq(v bool) *BattleWhere {
 	w.w.Pred("is_display", "not_eq", v)
 	return w
@@ -2228,6 +2267,22 @@ func (q *BattleQuery) DisplayStartDtEq(v time.Time) *BattleQuery {
 }
 func (w *BattleWhere) DisplayStartDt(v time.Time) *BattleWhere { return w.DisplayStartDtEq(v) }
 func (q *BattleQuery) DisplayStartDt(v time.Time) *BattleQuery { return q.DisplayStartDtEq(v) }
+func (w *BattleWhere) AndDisplayStartDt(v time.Time) *BattleWhere {
+	w.w.And()
+	return w.DisplayStartDtEq(v)
+}
+func (q *BattleQuery) AndDisplayStartDt(v time.Time) *BattleQuery {
+	q.q.W().And()
+	return q.DisplayStartDtEq(v)
+}
+func (w *BattleWhere) OrDisplayStartDt(v time.Time) *BattleWhere {
+	w.w.Or()
+	return w.DisplayStartDtEq(v)
+}
+func (q *BattleQuery) OrDisplayStartDt(v time.Time) *BattleQuery {
+	q.q.Or()
+	return q.DisplayStartDtEq(v)
+}
 func (w *BattleWhere) DisplayStartDtNotEq(v time.Time) *BattleWhere {
 	w.w.Pred("display_start_dt", "not_eq", v)
 	return w
@@ -2366,6 +2421,16 @@ func (q *BattleQuery) DisplayEndDtEq(v time.Time) *BattleQuery {
 }
 func (w *BattleWhere) DisplayEndDt(v time.Time) *BattleWhere { return w.DisplayEndDtEq(v) }
 func (q *BattleQuery) DisplayEndDt(v time.Time) *BattleQuery { return q.DisplayEndDtEq(v) }
+func (w *BattleWhere) AndDisplayEndDt(v time.Time) *BattleWhere {
+	w.w.And()
+	return w.DisplayEndDtEq(v)
+}
+func (q *BattleQuery) AndDisplayEndDt(v time.Time) *BattleQuery {
+	q.q.W().And()
+	return q.DisplayEndDtEq(v)
+}
+func (w *BattleWhere) OrDisplayEndDt(v time.Time) *BattleWhere { w.w.Or(); return w.DisplayEndDtEq(v) }
+func (q *BattleQuery) OrDisplayEndDt(v time.Time) *BattleQuery { q.q.Or(); return q.DisplayEndDtEq(v) }
 func (w *BattleWhere) DisplayEndDtNotEq(v time.Time) *BattleWhere {
 	w.w.Pred("display_end_dt", "not_eq", v)
 	return w
@@ -2494,10 +2559,14 @@ func (q *BattleQuery) DisplayEndDtLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("display_end_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
-func (w *BattleWhere) IsAlldayEq(v bool) *BattleWhere { w.w.Pred("is_allday", "eq", v); return w }
-func (q *BattleQuery) IsAlldayEq(v bool) *BattleQuery { q.q.W().Pred("is_allday", "eq", v); return q }
-func (w *BattleWhere) IsAllday(v bool) *BattleWhere   { return w.IsAlldayEq(v) }
-func (q *BattleQuery) IsAllday(v bool) *BattleQuery   { return q.IsAlldayEq(v) }
+func (w *BattleWhere) IsAlldayEq(v bool) *BattleWhere  { w.w.Pred("is_allday", "eq", v); return w }
+func (q *BattleQuery) IsAlldayEq(v bool) *BattleQuery  { q.q.W().Pred("is_allday", "eq", v); return q }
+func (w *BattleWhere) IsAllday(v bool) *BattleWhere    { return w.IsAlldayEq(v) }
+func (q *BattleQuery) IsAllday(v bool) *BattleQuery    { return q.IsAlldayEq(v) }
+func (w *BattleWhere) AndIsAllday(v bool) *BattleWhere { w.w.And(); return w.IsAlldayEq(v) }
+func (q *BattleQuery) AndIsAllday(v bool) *BattleQuery { q.q.W().And(); return q.IsAlldayEq(v) }
+func (w *BattleWhere) OrIsAllday(v bool) *BattleWhere  { w.w.Or(); return w.IsAlldayEq(v) }
+func (q *BattleQuery) OrIsAllday(v bool) *BattleQuery  { q.q.Or(); return q.IsAlldayEq(v) }
 func (w *BattleWhere) IsAlldayNotEq(v bool) *BattleWhere {
 	w.w.Pred("is_allday", "not_eq", v)
 	return w
@@ -2547,6 +2616,22 @@ func (w *BattleWhere) TargetTeamPlayerCount(v int64) *BattleWhere {
 	return w.TargetTeamPlayerCountEq(v)
 }
 func (q *BattleQuery) TargetTeamPlayerCount(v int64) *BattleQuery {
+	return q.TargetTeamPlayerCountEq(v)
+}
+func (w *BattleWhere) AndTargetTeamPlayerCount(v int64) *BattleWhere {
+	w.w.And()
+	return w.TargetTeamPlayerCountEq(v)
+}
+func (q *BattleQuery) AndTargetTeamPlayerCount(v int64) *BattleQuery {
+	q.q.W().And()
+	return q.TargetTeamPlayerCountEq(v)
+}
+func (w *BattleWhere) OrTargetTeamPlayerCount(v int64) *BattleWhere {
+	w.w.Or()
+	return w.TargetTeamPlayerCountEq(v)
+}
+func (q *BattleQuery) OrTargetTeamPlayerCount(v int64) *BattleQuery {
+	q.q.Or()
 	return q.TargetTeamPlayerCountEq(v)
 }
 func (w *BattleWhere) TargetTeamPlayerCountNotEq(v int64) *BattleWhere {
@@ -2685,8 +2770,15 @@ func (q *BattleQuery) SuccessCountEq(v int64) *BattleQuery {
 	q.q.W().Pred("success_count", "eq", v)
 	return q
 }
-func (w *BattleWhere) SuccessCount(v int64) *BattleWhere { return w.SuccessCountEq(v) }
-func (q *BattleQuery) SuccessCount(v int64) *BattleQuery { return q.SuccessCountEq(v) }
+func (w *BattleWhere) SuccessCount(v int64) *BattleWhere    { return w.SuccessCountEq(v) }
+func (q *BattleQuery) SuccessCount(v int64) *BattleQuery    { return q.SuccessCountEq(v) }
+func (w *BattleWhere) AndSuccessCount(v int64) *BattleWhere { w.w.And(); return w.SuccessCountEq(v) }
+func (q *BattleQuery) AndSuccessCount(v int64) *BattleQuery {
+	q.q.W().And()
+	return q.SuccessCountEq(v)
+}
+func (w *BattleWhere) OrSuccessCount(v int64) *BattleWhere { w.w.Or(); return w.SuccessCountEq(v) }
+func (q *BattleQuery) OrSuccessCount(v int64) *BattleQuery { q.q.Or(); return q.SuccessCountEq(v) }
 func (w *BattleWhere) SuccessCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("success_count", "not_eq", v)
 	return w
@@ -2823,8 +2915,12 @@ func (q *BattleQuery) PlayerCountEq(v int64) *BattleQuery {
 	q.q.W().Pred("player_count", "eq", v)
 	return q
 }
-func (w *BattleWhere) PlayerCount(v int64) *BattleWhere { return w.PlayerCountEq(v) }
-func (q *BattleQuery) PlayerCount(v int64) *BattleQuery { return q.PlayerCountEq(v) }
+func (w *BattleWhere) PlayerCount(v int64) *BattleWhere    { return w.PlayerCountEq(v) }
+func (q *BattleQuery) PlayerCount(v int64) *BattleQuery    { return q.PlayerCountEq(v) }
+func (w *BattleWhere) AndPlayerCount(v int64) *BattleWhere { w.w.And(); return w.PlayerCountEq(v) }
+func (q *BattleQuery) AndPlayerCount(v int64) *BattleQuery { q.q.W().And(); return q.PlayerCountEq(v) }
+func (w *BattleWhere) OrPlayerCount(v int64) *BattleWhere  { w.w.Or(); return w.PlayerCountEq(v) }
+func (q *BattleQuery) OrPlayerCount(v int64) *BattleQuery  { q.q.Or(); return q.PlayerCountEq(v) }
 func (w *BattleWhere) PlayerCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("player_count", "not_eq", v)
 	return w
@@ -2958,8 +3054,12 @@ func (q *BattleQuery) ReadCountEq(v int64) *BattleQuery {
 	q.q.W().Pred("read_count", "eq", v)
 	return q
 }
-func (w *BattleWhere) ReadCount(v int64) *BattleWhere { return w.ReadCountEq(v) }
-func (q *BattleQuery) ReadCount(v int64) *BattleQuery { return q.ReadCountEq(v) }
+func (w *BattleWhere) ReadCount(v int64) *BattleWhere    { return w.ReadCountEq(v) }
+func (q *BattleQuery) ReadCount(v int64) *BattleQuery    { return q.ReadCountEq(v) }
+func (w *BattleWhere) AndReadCount(v int64) *BattleWhere { w.w.And(); return w.ReadCountEq(v) }
+func (q *BattleQuery) AndReadCount(v int64) *BattleQuery { q.q.W().And(); return q.ReadCountEq(v) }
+func (w *BattleWhere) OrReadCount(v int64) *BattleWhere  { w.w.Or(); return w.ReadCountEq(v) }
+func (q *BattleQuery) OrReadCount(v int64) *BattleQuery  { q.q.Or(); return q.ReadCountEq(v) }
 func (w *BattleWhere) ReadCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("read_count", "not_eq", v)
 	return w
@@ -3073,10 +3173,14 @@ func (q *BattleQuery) ReadCountLteCol(ref orm.ColRef) *BattleQuery {
 	q.q.W().PredCol("read_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
-func (w *BattleWhere) CoverUrlEq(v string) *BattleWhere { w.w.Pred("cover_url", "eq", v); return w }
-func (q *BattleQuery) CoverUrlEq(v string) *BattleQuery { q.q.W().Pred("cover_url", "eq", v); return q }
-func (w *BattleWhere) CoverUrl(v string) *BattleWhere   { return w.CoverUrlEq(v) }
-func (q *BattleQuery) CoverUrl(v string) *BattleQuery   { return q.CoverUrlEq(v) }
+func (w *BattleWhere) CoverUrlEq(v string) *BattleWhere  { w.w.Pred("cover_url", "eq", v); return w }
+func (q *BattleQuery) CoverUrlEq(v string) *BattleQuery  { q.q.W().Pred("cover_url", "eq", v); return q }
+func (w *BattleWhere) CoverUrl(v string) *BattleWhere    { return w.CoverUrlEq(v) }
+func (q *BattleQuery) CoverUrl(v string) *BattleQuery    { return q.CoverUrlEq(v) }
+func (w *BattleWhere) AndCoverUrl(v string) *BattleWhere { w.w.And(); return w.CoverUrlEq(v) }
+func (q *BattleQuery) AndCoverUrl(v string) *BattleQuery { q.q.W().And(); return q.CoverUrlEq(v) }
+func (w *BattleWhere) OrCoverUrl(v string) *BattleWhere  { w.w.Or(); return w.CoverUrlEq(v) }
+func (q *BattleQuery) OrCoverUrl(v string) *BattleQuery  { q.q.Or(); return q.CoverUrlEq(v) }
 func (w *BattleWhere) CoverUrlNotEq(v string) *BattleWhere {
 	w.w.Pred("cover_url", "not_eq", v)
 	return w
@@ -3217,6 +3321,10 @@ func (w *BattleWhere) UserSeqEq(v int64) *BattleWhere    { w.w.Pred("user_seq", 
 func (q *BattleQuery) UserSeqEq(v int64) *BattleQuery    { q.q.W().Pred("user_seq", "eq", v); return q }
 func (w *BattleWhere) UserSeq(v int64) *BattleWhere      { return w.UserSeqEq(v) }
 func (q *BattleQuery) UserSeq(v int64) *BattleQuery      { return q.UserSeqEq(v) }
+func (w *BattleWhere) AndUserSeq(v int64) *BattleWhere   { w.w.And(); return w.UserSeqEq(v) }
+func (q *BattleQuery) AndUserSeq(v int64) *BattleQuery   { q.q.W().And(); return q.UserSeqEq(v) }
+func (w *BattleWhere) OrUserSeq(v int64) *BattleWhere    { w.w.Or(); return w.UserSeqEq(v) }
+func (q *BattleQuery) OrUserSeq(v int64) *BattleQuery    { q.q.Or(); return q.UserSeqEq(v) }
 func (w *BattleWhere) UserSeqNotEq(v int64) *BattleWhere { w.w.Pred("user_seq", "not_eq", v); return w }
 func (q *BattleQuery) UserSeqNotEq(v int64) *BattleQuery {
 	q.q.W().Pred("user_seq", "not_eq", v)
@@ -3317,8 +3425,12 @@ func (q *BattleQuery) ServiceSeqEq(v int64) *BattleQuery {
 	q.q.W().Pred("service_seq", "eq", v)
 	return q
 }
-func (w *BattleWhere) ServiceSeq(v int64) *BattleWhere { return w.ServiceSeqEq(v) }
-func (q *BattleQuery) ServiceSeq(v int64) *BattleQuery { return q.ServiceSeqEq(v) }
+func (w *BattleWhere) ServiceSeq(v int64) *BattleWhere    { return w.ServiceSeqEq(v) }
+func (q *BattleQuery) ServiceSeq(v int64) *BattleQuery    { return q.ServiceSeqEq(v) }
+func (w *BattleWhere) AndServiceSeq(v int64) *BattleWhere { w.w.And(); return w.ServiceSeqEq(v) }
+func (q *BattleQuery) AndServiceSeq(v int64) *BattleQuery { q.q.W().And(); return q.ServiceSeqEq(v) }
+func (w *BattleWhere) OrServiceSeq(v int64) *BattleWhere  { w.w.Or(); return w.ServiceSeqEq(v) }
+func (q *BattleQuery) OrServiceSeq(v int64) *BattleQuery  { q.q.Or(); return q.ServiceSeqEq(v) }
 func (w *BattleWhere) ServiceSeqNotEq(v int64) *BattleWhere {
 	w.w.Pred("service_seq", "not_eq", v)
 	return w
@@ -3451,6 +3563,22 @@ func (q *BattleQuery) ServiceModuleSeqEq(v int64) *BattleQuery {
 }
 func (w *BattleWhere) ServiceModuleSeq(v int64) *BattleWhere { return w.ServiceModuleSeqEq(v) }
 func (q *BattleQuery) ServiceModuleSeq(v int64) *BattleQuery { return q.ServiceModuleSeqEq(v) }
+func (w *BattleWhere) AndServiceModuleSeq(v int64) *BattleWhere {
+	w.w.And()
+	return w.ServiceModuleSeqEq(v)
+}
+func (q *BattleQuery) AndServiceModuleSeq(v int64) *BattleQuery {
+	q.q.W().And()
+	return q.ServiceModuleSeqEq(v)
+}
+func (w *BattleWhere) OrServiceModuleSeq(v int64) *BattleWhere {
+	w.w.Or()
+	return w.ServiceModuleSeqEq(v)
+}
+func (q *BattleQuery) OrServiceModuleSeq(v int64) *BattleQuery {
+	q.q.Or()
+	return q.ServiceModuleSeqEq(v)
+}
 func (w *BattleWhere) ServiceModuleSeqNotEq(v int64) *BattleWhere {
 	w.w.Pred("service_module_seq", "not_eq", v)
 	return w
@@ -3589,6 +3717,22 @@ func (q *BattleQuery) ServiceMemberSeqEq(v int64) *BattleQuery {
 }
 func (w *BattleWhere) ServiceMemberSeq(v int64) *BattleWhere { return w.ServiceMemberSeqEq(v) }
 func (q *BattleQuery) ServiceMemberSeq(v int64) *BattleQuery { return q.ServiceMemberSeqEq(v) }
+func (w *BattleWhere) AndServiceMemberSeq(v int64) *BattleWhere {
+	w.w.And()
+	return w.ServiceMemberSeqEq(v)
+}
+func (q *BattleQuery) AndServiceMemberSeq(v int64) *BattleQuery {
+	q.q.W().And()
+	return q.ServiceMemberSeqEq(v)
+}
+func (w *BattleWhere) OrServiceMemberSeq(v int64) *BattleWhere {
+	w.w.Or()
+	return w.ServiceMemberSeqEq(v)
+}
+func (q *BattleQuery) OrServiceMemberSeq(v int64) *BattleQuery {
+	q.q.Or()
+	return q.ServiceMemberSeqEq(v)
+}
 func (w *BattleWhere) ServiceMemberSeqNotEq(v int64) *BattleWhere {
 	w.w.Pred("service_member_seq", "not_eq", v)
 	return w
@@ -3722,8 +3866,12 @@ func (q *BattleQuery) StartDtEq(v time.Time) *BattleQuery {
 	q.q.W().Pred("start_dt", "eq", v)
 	return q
 }
-func (w *BattleWhere) StartDt(v time.Time) *BattleWhere { return w.StartDtEq(v) }
-func (q *BattleQuery) StartDt(v time.Time) *BattleQuery { return q.StartDtEq(v) }
+func (w *BattleWhere) StartDt(v time.Time) *BattleWhere    { return w.StartDtEq(v) }
+func (q *BattleQuery) StartDt(v time.Time) *BattleQuery    { return q.StartDtEq(v) }
+func (w *BattleWhere) AndStartDt(v time.Time) *BattleWhere { w.w.And(); return w.StartDtEq(v) }
+func (q *BattleQuery) AndStartDt(v time.Time) *BattleQuery { q.q.W().And(); return q.StartDtEq(v) }
+func (w *BattleWhere) OrStartDt(v time.Time) *BattleWhere  { w.w.Or(); return w.StartDtEq(v) }
+func (q *BattleQuery) OrStartDt(v time.Time) *BattleQuery  { q.q.Or(); return q.StartDtEq(v) }
 func (w *BattleWhere) StartDtNotEq(v time.Time) *BattleWhere {
 	w.w.Pred("start_dt", "not_eq", v)
 	return w
@@ -3838,6 +3986,10 @@ func (w *BattleWhere) EndDtEq(v time.Time) *BattleWhere    { w.w.Pred("end_dt", 
 func (q *BattleQuery) EndDtEq(v time.Time) *BattleQuery    { q.q.W().Pred("end_dt", "eq", v); return q }
 func (w *BattleWhere) EndDt(v time.Time) *BattleWhere      { return w.EndDtEq(v) }
 func (q *BattleQuery) EndDt(v time.Time) *BattleQuery      { return q.EndDtEq(v) }
+func (w *BattleWhere) AndEndDt(v time.Time) *BattleWhere   { w.w.And(); return w.EndDtEq(v) }
+func (q *BattleQuery) AndEndDt(v time.Time) *BattleQuery   { q.q.W().And(); return q.EndDtEq(v) }
+func (w *BattleWhere) OrEndDt(v time.Time) *BattleWhere    { w.w.Or(); return w.EndDtEq(v) }
+func (q *BattleQuery) OrEndDt(v time.Time) *BattleQuery    { q.q.Or(); return q.EndDtEq(v) }
 func (w *BattleWhere) EndDtNotEq(v time.Time) *BattleWhere { w.w.Pred("end_dt", "not_eq", v); return w }
 func (q *BattleQuery) EndDtNotEq(v time.Time) *BattleQuery {
 	q.q.W().Pred("end_dt", "not_eq", v)
@@ -3934,6 +4086,10 @@ func (w *BattleWhere) UuidEq(v string) *BattleWhere    { w.w.Pred("uuid", "eq", 
 func (q *BattleQuery) UuidEq(v string) *BattleQuery    { q.q.W().Pred("uuid", "eq", v); return q }
 func (w *BattleWhere) Uuid(v string) *BattleWhere      { return w.UuidEq(v) }
 func (q *BattleQuery) Uuid(v string) *BattleQuery      { return q.UuidEq(v) }
+func (w *BattleWhere) AndUuid(v string) *BattleWhere   { w.w.And(); return w.UuidEq(v) }
+func (q *BattleQuery) AndUuid(v string) *BattleQuery   { q.q.W().And(); return q.UuidEq(v) }
+func (w *BattleWhere) OrUuid(v string) *BattleWhere    { w.w.Or(); return w.UuidEq(v) }
+func (q *BattleQuery) OrUuid(v string) *BattleQuery    { q.q.Or(); return q.UuidEq(v) }
 func (w *BattleWhere) UuidNotEq(v string) *BattleWhere { w.w.Pred("uuid", "not_eq", v); return w }
 func (q *BattleQuery) UuidNotEq(v string) *BattleQuery { q.q.W().Pred("uuid", "not_eq", v); return q }
 func (w *BattleWhere) UuidGt(v string) *BattleWhere    { w.w.Pred("uuid", "gt", v); return w }
@@ -4048,8 +4204,12 @@ func (q *BattleQuery) IsSinglePlayEq(v bool) *BattleQuery {
 	q.q.W().Pred("is_single_play", "eq", v)
 	return q
 }
-func (w *BattleWhere) IsSinglePlay(v bool) *BattleWhere { return w.IsSinglePlayEq(v) }
-func (q *BattleQuery) IsSinglePlay(v bool) *BattleQuery { return q.IsSinglePlayEq(v) }
+func (w *BattleWhere) IsSinglePlay(v bool) *BattleWhere    { return w.IsSinglePlayEq(v) }
+func (q *BattleQuery) IsSinglePlay(v bool) *BattleQuery    { return q.IsSinglePlayEq(v) }
+func (w *BattleWhere) AndIsSinglePlay(v bool) *BattleWhere { w.w.And(); return w.IsSinglePlayEq(v) }
+func (q *BattleQuery) AndIsSinglePlay(v bool) *BattleQuery { q.q.W().And(); return q.IsSinglePlayEq(v) }
+func (w *BattleWhere) OrIsSinglePlay(v bool) *BattleWhere  { w.w.Or(); return w.IsSinglePlayEq(v) }
+func (q *BattleQuery) OrIsSinglePlay(v bool) *BattleQuery  { q.q.Or(); return q.IsSinglePlayEq(v) }
 func (w *BattleWhere) IsSinglePlayNotEq(v bool) *BattleWhere {
 	w.w.Pred("is_single_play", "not_eq", v)
 	return w
@@ -4095,8 +4255,12 @@ func (q *BattleQuery) LikeCountEq(v int64) *BattleQuery {
 	q.q.W().Pred("like_count", "eq", v)
 	return q
 }
-func (w *BattleWhere) LikeCount(v int64) *BattleWhere { return w.LikeCountEq(v) }
-func (q *BattleQuery) LikeCount(v int64) *BattleQuery { return q.LikeCountEq(v) }
+func (w *BattleWhere) LikeCount(v int64) *BattleWhere    { return w.LikeCountEq(v) }
+func (q *BattleQuery) LikeCount(v int64) *BattleQuery    { return q.LikeCountEq(v) }
+func (w *BattleWhere) AndLikeCount(v int64) *BattleWhere { w.w.And(); return w.LikeCountEq(v) }
+func (q *BattleQuery) AndLikeCount(v int64) *BattleQuery { q.q.W().And(); return q.LikeCountEq(v) }
+func (w *BattleWhere) OrLikeCount(v int64) *BattleWhere  { w.w.Or(); return w.LikeCountEq(v) }
+func (q *BattleQuery) OrLikeCount(v int64) *BattleQuery  { q.q.Or(); return q.LikeCountEq(v) }
 func (w *BattleWhere) LikeCountNotEq(v int64) *BattleWhere {
 	w.w.Pred("like_count", "not_eq", v)
 	return w
@@ -4218,8 +4382,15 @@ func (q *BattleQuery) AesKeyVersionEq(v int32) *BattleQuery {
 	q.q.W().Pred("aes_key_version", "eq", v)
 	return q
 }
-func (w *BattleWhere) AesKeyVersion(v int32) *BattleWhere { return w.AesKeyVersionEq(v) }
-func (q *BattleQuery) AesKeyVersion(v int32) *BattleQuery { return q.AesKeyVersionEq(v) }
+func (w *BattleWhere) AesKeyVersion(v int32) *BattleWhere    { return w.AesKeyVersionEq(v) }
+func (q *BattleQuery) AesKeyVersion(v int32) *BattleQuery    { return q.AesKeyVersionEq(v) }
+func (w *BattleWhere) AndAesKeyVersion(v int32) *BattleWhere { w.w.And(); return w.AesKeyVersionEq(v) }
+func (q *BattleQuery) AndAesKeyVersion(v int32) *BattleQuery {
+	q.q.W().And()
+	return q.AesKeyVersionEq(v)
+}
+func (w *BattleWhere) OrAesKeyVersion(v int32) *BattleWhere { w.w.Or(); return w.AesKeyVersionEq(v) }
+func (q *BattleQuery) OrAesKeyVersion(v int32) *BattleQuery { q.q.Or(); return q.AesKeyVersionEq(v) }
 func (w *BattleWhere) AesKeyVersionNotEq(v int32) *BattleWhere {
 	w.w.Pred("aes_key_version", "not_eq", v)
 	return w
@@ -4356,8 +4527,12 @@ func (q *BattleQuery) AesHexEmailEq(v string) *BattleQuery {
 	q.q.W().Pred("aes_hex_email", "eq", v)
 	return q
 }
-func (w *BattleWhere) AesHexEmail(v string) *BattleWhere { return w.AesHexEmailEq(v) }
-func (q *BattleQuery) AesHexEmail(v string) *BattleQuery { return q.AesHexEmailEq(v) }
+func (w *BattleWhere) AesHexEmail(v string) *BattleWhere    { return w.AesHexEmailEq(v) }
+func (q *BattleQuery) AesHexEmail(v string) *BattleQuery    { return q.AesHexEmailEq(v) }
+func (w *BattleWhere) AndAesHexEmail(v string) *BattleWhere { w.w.And(); return w.AesHexEmailEq(v) }
+func (q *BattleQuery) AndAesHexEmail(v string) *BattleQuery { q.q.W().And(); return q.AesHexEmailEq(v) }
+func (w *BattleWhere) OrAesHexEmail(v string) *BattleWhere  { w.w.Or(); return w.AesHexEmailEq(v) }
+func (q *BattleQuery) OrAesHexEmail(v string) *BattleQuery  { q.q.Or(); return q.AesHexEmailEq(v) }
 func (w *BattleWhere) AesHexEmailNotEq(v string) *BattleWhere {
 	w.w.Pred("aes_hex_email", "not_eq", v)
 	return w
@@ -4424,6 +4599,22 @@ func (q *BattleQuery) EmailBlindIndexEq(v string) *BattleQuery {
 }
 func (w *BattleWhere) EmailBlindIndex(v string) *BattleWhere { return w.EmailBlindIndexEq(v) }
 func (q *BattleQuery) EmailBlindIndex(v string) *BattleQuery { return q.EmailBlindIndexEq(v) }
+func (w *BattleWhere) AndEmailBlindIndex(v string) *BattleWhere {
+	w.w.And()
+	return w.EmailBlindIndexEq(v)
+}
+func (q *BattleQuery) AndEmailBlindIndex(v string) *BattleQuery {
+	q.q.W().And()
+	return q.EmailBlindIndexEq(v)
+}
+func (w *BattleWhere) OrEmailBlindIndex(v string) *BattleWhere {
+	w.w.Or()
+	return w.EmailBlindIndexEq(v)
+}
+func (q *BattleQuery) OrEmailBlindIndex(v string) *BattleQuery {
+	q.q.Or()
+	return q.EmailBlindIndexEq(v)
+}
 func (w *BattleWhere) EmailBlindIndexNotEq(v string) *BattleWhere {
 	w.w.Pred("email_blind_index", "not_eq", v)
 	return w
@@ -4592,8 +4783,12 @@ func (q *BattleQuery) AesHexPhoneEq(v string) *BattleQuery {
 	q.q.W().Pred("aes_hex_phone", "eq", v)
 	return q
 }
-func (w *BattleWhere) AesHexPhone(v string) *BattleWhere { return w.AesHexPhoneEq(v) }
-func (q *BattleQuery) AesHexPhone(v string) *BattleQuery { return q.AesHexPhoneEq(v) }
+func (w *BattleWhere) AesHexPhone(v string) *BattleWhere    { return w.AesHexPhoneEq(v) }
+func (q *BattleQuery) AesHexPhone(v string) *BattleQuery    { return q.AesHexPhoneEq(v) }
+func (w *BattleWhere) AndAesHexPhone(v string) *BattleWhere { w.w.And(); return w.AesHexPhoneEq(v) }
+func (q *BattleQuery) AndAesHexPhone(v string) *BattleQuery { q.q.W().And(); return q.AesHexPhoneEq(v) }
+func (w *BattleWhere) OrAesHexPhone(v string) *BattleWhere  { w.w.Or(); return w.AesHexPhoneEq(v) }
+func (q *BattleQuery) OrAesHexPhone(v string) *BattleQuery  { q.q.Or(); return q.AesHexPhoneEq(v) }
 func (w *BattleWhere) AesHexPhoneNotEq(v string) *BattleWhere {
 	w.w.Pred("aes_hex_phone", "not_eq", v)
 	return w
@@ -4660,6 +4855,22 @@ func (q *BattleQuery) PhoneBlindIndexEq(v string) *BattleQuery {
 }
 func (w *BattleWhere) PhoneBlindIndex(v string) *BattleWhere { return w.PhoneBlindIndexEq(v) }
 func (q *BattleQuery) PhoneBlindIndex(v string) *BattleQuery { return q.PhoneBlindIndexEq(v) }
+func (w *BattleWhere) AndPhoneBlindIndex(v string) *BattleWhere {
+	w.w.And()
+	return w.PhoneBlindIndexEq(v)
+}
+func (q *BattleQuery) AndPhoneBlindIndex(v string) *BattleQuery {
+	q.q.W().And()
+	return q.PhoneBlindIndexEq(v)
+}
+func (w *BattleWhere) OrPhoneBlindIndex(v string) *BattleWhere {
+	w.w.Or()
+	return w.PhoneBlindIndexEq(v)
+}
+func (q *BattleQuery) OrPhoneBlindIndex(v string) *BattleQuery {
+	q.q.Or()
+	return q.PhoneBlindIndexEq(v)
+}
 func (w *BattleWhere) PhoneBlindIndexNotEq(v string) *BattleWhere {
 	w.w.Pred("phone_blind_index", "not_eq", v)
 	return w
@@ -4824,6 +5035,10 @@ func (w *BattleWhere) PriceEq(v float64) *BattleWhere    { w.w.Pred("price", "eq
 func (q *BattleQuery) PriceEq(v float64) *BattleQuery    { q.q.W().Pred("price", "eq", v); return q }
 func (w *BattleWhere) Price(v float64) *BattleWhere      { return w.PriceEq(v) }
 func (q *BattleQuery) Price(v float64) *BattleQuery      { return q.PriceEq(v) }
+func (w *BattleWhere) AndPrice(v float64) *BattleWhere   { w.w.And(); return w.PriceEq(v) }
+func (q *BattleQuery) AndPrice(v float64) *BattleQuery   { q.q.W().And(); return q.PriceEq(v) }
+func (w *BattleWhere) OrPrice(v float64) *BattleWhere    { w.w.Or(); return w.PriceEq(v) }
+func (q *BattleQuery) OrPrice(v float64) *BattleQuery    { q.q.Or(); return q.PriceEq(v) }
 func (w *BattleWhere) PriceNotEq(v float64) *BattleWhere { w.w.Pred("price", "not_eq", v); return w }
 func (q *BattleQuery) PriceNotEq(v float64) *BattleQuery {
 	q.q.W().Pred("price", "not_eq", v)
@@ -4920,6 +5135,10 @@ func (w *BattleWhere) IpEq(v string) *BattleWhere    { w.w.Pred("ip", "eq", v); 
 func (q *BattleQuery) IpEq(v string) *BattleQuery    { q.q.W().Pred("ip", "eq", v); return q }
 func (w *BattleWhere) Ip(v string) *BattleWhere      { return w.IpEq(v) }
 func (q *BattleQuery) Ip(v string) *BattleQuery      { return q.IpEq(v) }
+func (w *BattleWhere) AndIp(v string) *BattleWhere   { w.w.And(); return w.IpEq(v) }
+func (q *BattleQuery) AndIp(v string) *BattleQuery   { q.q.W().And(); return q.IpEq(v) }
+func (w *BattleWhere) OrIp(v string) *BattleWhere    { w.w.Or(); return w.IpEq(v) }
+func (q *BattleQuery) OrIp(v string) *BattleQuery    { q.q.Or(); return q.IpEq(v) }
 func (w *BattleWhere) IpNotEq(v string) *BattleWhere { w.w.Pred("ip", "not_eq", v); return w }
 func (q *BattleQuery) IpNotEq(v string) *BattleQuery { q.q.W().Pred("ip", "not_eq", v); return q }
 func (w *BattleWhere) IpIn(vs []string) *BattleWhere {
@@ -5063,10 +5282,22 @@ func (q *BattleQuery) Visible() *BattleQuery {
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *BattleQuery) Or() *BattleQuery { q.q.Or(); return q }
-func (q *BattleQuery) And(fn func(*BattleWhere)) *BattleQuery {
-	q.q.W().And(func(x *orm.W) { fn(&BattleWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *BattleQuery) Or(fn ...func(*BattleWhere)) *BattleQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&BattleWhere{w: x}) })
+	return q
+}
+func (q *BattleQuery) And(fn ...func(*BattleWhere)) *BattleQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&BattleWhere{w: x}) })
 	return q
 }
 func (q *BattleQuery) Expr(frag string, binds ...any) *BattleQuery {
@@ -9024,27 +9255,7 @@ func (q *BattleQuery) Insert() (*BattleRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Battle().Using(ctx, ex).SeqEq(int64(id)).Get()
-}
-
-// Save updates when every primary-key column was assigned and inserts when none was assigned.
-func (q *BattleQuery) Save() (*BattleRow, error) {
-	ctx, ex, err := q.binding.Resolve()
-	if err != nil {
-		return nil, err
-	}
-	keys, ok, err := q.q.MoveKeysToWhere([]string{"seq"})
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return q.Insert()
-	}
-	q.q.Req.IR.Kind = "update"
-	if _, _, err := orm.Write(ctx, ex, q.q.Req); err != nil {
-		return nil, err
-	}
-	return Battle().Using(ctx, ex).SeqEq(keys[0].(int64)).Get()
+	return Battle().Using(ex).SeqEq(int64(id)).Get()
 }
 
 // Update applies the draft's assignments to every row the WHERE matches (the engine rejects a missing WHERE).

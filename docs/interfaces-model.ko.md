@@ -23,7 +23,6 @@ classDiagram
         stream()
         getCount()
         insert()
-        save()
         update()
         delete()
         sql()

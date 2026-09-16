@@ -243,7 +243,8 @@ pub struct ServiceMemberWhere<'a> { pub(crate) w: W<'a> }
 
 impl<'a> ServiceMemberWhere<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
-    pub fn and(mut self, f: impl FnOnce(ServiceMemberWhere<'_>) -> ServiceMemberWhere<'_>) -> Self { self.w.and_with(|w| { f(ServiceMemberWhere { w }); }); self }
+    pub fn and(mut self) -> Self { self.w.and(); self }
+    pub fn and_group(mut self, f: impl FnOnce(ServiceMemberWhere<'_>) -> ServiceMemberWhere<'_>) -> Self { self.w.and_with(|w| { f(ServiceMemberWhere { w }); }); self }
 	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
     pub fn battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.w.nav_with("battles", |w| { f(super::battle::BattleWhere { w }); }); self }
     pub fn has_battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.w.nav_with_mode("battles", "exists", |w| { f(super::battle::BattleWhere { w }); }); self }
@@ -275,6 +276,8 @@ impl<'a> ServiceMemberWhere<'a> {
 
     pub fn seq_eq(mut self, v: i64) -> Self { self.w.pred("seq", "eq", v); self }
     pub fn seq(self, v: i64) -> Self { self.seq_eq(v) }
+    pub fn and_seq(mut self, v: i64) -> Self { self.w.and(); self.seq_eq(v) }
+    pub fn or_seq(mut self, v: i64) -> Self { self.w.or(); self.seq_eq(v) }
     pub fn seq_not_eq(mut self, v: i64) -> Self { self.w.pred("seq", "not_eq", v); self }
     pub fn seq_gt(mut self, v: i64) -> Self { self.w.pred("seq", "gt", v); self }
     pub fn seq_gte(mut self, v: i64) -> Self { self.w.pred("seq", "gte", v); self }
@@ -293,6 +296,8 @@ impl<'a> ServiceMemberWhere<'a> {
     pub fn seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("seq", "lte_col", r); self }
     pub fn service_seq_eq(mut self, v: i64) -> Self { self.w.pred("service_seq", "eq", v); self }
     pub fn service_seq(self, v: i64) -> Self { self.service_seq_eq(v) }
+    pub fn and_service_seq(mut self, v: i64) -> Self { self.w.and(); self.service_seq_eq(v) }
+    pub fn or_service_seq(mut self, v: i64) -> Self { self.w.or(); self.service_seq_eq(v) }
     pub fn service_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("service_seq", "not_eq", v); self }
     pub fn service_seq_gt(mut self, v: i64) -> Self { self.w.pred("service_seq", "gt", v); self }
     pub fn service_seq_gte(mut self, v: i64) -> Self { self.w.pred("service_seq", "gte", v); self }
@@ -311,6 +316,8 @@ impl<'a> ServiceMemberWhere<'a> {
     pub fn service_seq_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("service_seq", "lte_col", r); self }
     pub fn user_seq_eq(mut self, v: i64) -> Self { self.w.pred("user_seq", "eq", v); self }
     pub fn user_seq(self, v: i64) -> Self { self.user_seq_eq(v) }
+    pub fn and_user_seq(mut self, v: i64) -> Self { self.w.and(); self.user_seq_eq(v) }
+    pub fn or_user_seq(mut self, v: i64) -> Self { self.w.or(); self.user_seq_eq(v) }
     pub fn user_seq_not_eq(mut self, v: i64) -> Self { self.w.pred("user_seq", "not_eq", v); self }
     pub fn user_seq_gt(mut self, v: i64) -> Self { self.w.pred("user_seq", "gt", v); self }
     pub fn user_seq_gte(mut self, v: i64) -> Self { self.w.pred("user_seq", "gte", v); self }
@@ -350,7 +357,8 @@ impl ServiceMember {
 
     // ---- WHERE ----
     pub fn or(mut self) -> Self { self.q.or(); self }
-    pub fn and(mut self, f: impl FnOnce(ServiceMemberWhere<'_>) -> ServiceMemberWhere<'_>) -> Self { self.q.w().and_with(|w| { f(ServiceMemberWhere { w }); }); self }
+    pub fn and(mut self) -> Self { self.q.w().and(); self }
+    pub fn and_group(mut self, f: impl FnOnce(ServiceMemberWhere<'_>) -> ServiceMemberWhere<'_>) -> Self { self.q.w().and_with(|w| { f(ServiceMemberWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
     pub fn battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.q.w().nav_with("battles", |w| { f(super::battle::BattleWhere { w }); }); self }
     pub fn has_battles(mut self, f: impl FnOnce(super::battle::BattleWhere<'_>) -> super::battle::BattleWhere<'_>) -> Self { self.q.w().nav_with_mode("battles", "exists", |w| { f(super::battle::BattleWhere { w }); }); self }
@@ -557,7 +565,7 @@ impl ServiceMember {
     pub fn if_parent_aes_hex_phone_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("aes_hex_phone", v.into()); self }
     pub fn if_parent_phone_blind_index_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("phone_blind_index", v.into()); self }
 
-    // ---- insert/update draft (set_<pk> only decides save: INSERT rejects it, UPDATE cannot change it) ----
+    // ---- insert/update draft (set_<pk> is accepted by Insert and cannot be changed by Update) ----
     pub fn set_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("seq", v); self }
     pub fn set_service_seq(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("service_seq", v); self }
     pub fn set_service_seq_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("service_seq", frag, binds); self }
@@ -714,19 +722,6 @@ impl ServiceMember {
     pub async fn insert(&mut self) -> Result<Option<ServiceMemberRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
         let (id, _) = db::write(ex, &mut self.q.req, "insert").await?;
         super::service_member::query().using(ex).seq_eq(id as i64).get_or_none().await
-    }
-
-    /// With set_seq: UPDATE the other set columns WHERE seq = that value and re-read the row; otherwise INSERT.
-    pub async fn save(&mut self) -> Result<Option<ServiceMemberRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
-        match self.q.take_sets(&["seq"])? {
-            Some(keys) => {
-                db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = super::service_member::query().using(ex);
-                for (column, value) in ["seq"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.get_or_none().await
-            }
-            None => self.insert().await,
-        }
     }
 
     /// UPDATE set_*/plus_*/minus_*/set_*_expr WHERE the query's predicates; returns the affected count.

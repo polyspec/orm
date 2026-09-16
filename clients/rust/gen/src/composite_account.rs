@@ -217,7 +217,8 @@ pub struct CompositeAccountWhere<'a> { pub(crate) w: W<'a> }
 
 impl<'a> CompositeAccountWhere<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
-    pub fn and(mut self, f: impl FnOnce(CompositeAccountWhere<'_>) -> CompositeAccountWhere<'_>) -> Self { self.w.and_with(|w| { f(CompositeAccountWhere { w }); }); self }
+    pub fn and(mut self) -> Self { self.w.and(); self }
+    pub fn and_group(mut self, f: impl FnOnce(CompositeAccountWhere<'_>) -> CompositeAccountWhere<'_>) -> Self { self.w.and_with(|w| { f(CompositeAccountWhere { w }); }); self }
 	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
     pub fn memberships(mut self, f: impl FnOnce(super::composite_membership::CompositeMembershipWhere<'_>) -> super::composite_membership::CompositeMembershipWhere<'_>) -> Self { self.w.nav_with("memberships", |w| { f(super::composite_membership::CompositeMembershipWhere { w }); }); self }
     pub fn has_memberships(mut self, f: impl FnOnce(super::composite_membership::CompositeMembershipWhere<'_>) -> super::composite_membership::CompositeMembershipWhere<'_>) -> Self { self.w.nav_with_mode("memberships", "exists", |w| { f(super::composite_membership::CompositeMembershipWhere { w }); }); self }
@@ -231,6 +232,8 @@ impl<'a> CompositeAccountWhere<'a> {
 
     pub fn tenant_id_eq(mut self, v: i64) -> Self { self.w.pred("tenant_id", "eq", v); self }
     pub fn tenant_id(self, v: i64) -> Self { self.tenant_id_eq(v) }
+    pub fn and_tenant_id(mut self, v: i64) -> Self { self.w.and(); self.tenant_id_eq(v) }
+    pub fn or_tenant_id(mut self, v: i64) -> Self { self.w.or(); self.tenant_id_eq(v) }
     pub fn tenant_id_not_eq(mut self, v: i64) -> Self { self.w.pred("tenant_id", "not_eq", v); self }
     pub fn tenant_id_gt(mut self, v: i64) -> Self { self.w.pred("tenant_id", "gt", v); self }
     pub fn tenant_id_gte(mut self, v: i64) -> Self { self.w.pred("tenant_id", "gte", v); self }
@@ -249,6 +252,8 @@ impl<'a> CompositeAccountWhere<'a> {
     pub fn tenant_id_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("tenant_id", "lte_col", r); self }
     pub fn account_id_eq(mut self, v: i64) -> Self { self.w.pred("account_id", "eq", v); self }
     pub fn account_id(self, v: i64) -> Self { self.account_id_eq(v) }
+    pub fn and_account_id(mut self, v: i64) -> Self { self.w.and(); self.account_id_eq(v) }
+    pub fn or_account_id(mut self, v: i64) -> Self { self.w.or(); self.account_id_eq(v) }
     pub fn account_id_not_eq(mut self, v: i64) -> Self { self.w.pred("account_id", "not_eq", v); self }
     pub fn account_id_gt(mut self, v: i64) -> Self { self.w.pred("account_id", "gt", v); self }
     pub fn account_id_gte(mut self, v: i64) -> Self { self.w.pred("account_id", "gte", v); self }
@@ -267,6 +272,8 @@ impl<'a> CompositeAccountWhere<'a> {
     pub fn account_id_lte_col(mut self, r: ColRef) -> Self { self.w.pred_col("account_id", "lte_col", r); self }
     pub fn name_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "eq", v.into()); self }
     pub fn name(self, v: impl Into<String>) -> Self { self.name_eq(v) }
+    pub fn and_name(mut self, v: impl Into<String>) -> Self { self.w.and(); self.name_eq(v) }
+    pub fn or_name(mut self, v: impl Into<String>) -> Self { self.w.or(); self.name_eq(v) }
     pub fn name_not_eq(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "not_eq", v.into()); self }
     pub fn name_gt(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "gt", v.into()); self }
     pub fn name_gte(mut self, v: impl Into<String>) -> Self { self.w.pred("name", "gte", v.into()); self }
@@ -310,7 +317,8 @@ impl CompositeAccount {
 
     // ---- WHERE ----
     pub fn or(mut self) -> Self { self.q.or(); self }
-    pub fn and(mut self, f: impl FnOnce(CompositeAccountWhere<'_>) -> CompositeAccountWhere<'_>) -> Self { self.q.w().and_with(|w| { f(CompositeAccountWhere { w }); }); self }
+    pub fn and(mut self) -> Self { self.q.w().and(); self }
+    pub fn and_group(mut self, f: impl FnOnce(CompositeAccountWhere<'_>) -> CompositeAccountWhere<'_>) -> Self { self.q.w().and_with(|w| { f(CompositeAccountWhere { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
     pub fn memberships(mut self, f: impl FnOnce(super::composite_membership::CompositeMembershipWhere<'_>) -> super::composite_membership::CompositeMembershipWhere<'_>) -> Self { self.q.w().nav_with("memberships", |w| { f(super::composite_membership::CompositeMembershipWhere { w }); }); self }
     pub fn has_memberships(mut self, f: impl FnOnce(super::composite_membership::CompositeMembershipWhere<'_>) -> super::composite_membership::CompositeMembershipWhere<'_>) -> Self { self.q.w().nav_with_mode("memberships", "exists", |w| { f(super::composite_membership::CompositeMembershipWhere { w }); }); self }
@@ -466,7 +474,7 @@ impl CompositeAccount {
     pub fn if_parent_account_id_eq(mut self, v: i64) -> Self { self.q.if_parent("account_id", v); self }
     pub fn if_parent_role_eq(mut self, v: impl Into<String>) -> Self { self.q.if_parent("role", v.into()); self }
 
-    // ---- insert/update draft (set_<pk> only decides save: INSERT rejects it, UPDATE cannot change it) ----
+    // ---- insert/update draft (set_<pk> is accepted by Insert and cannot be changed by Update) ----
     pub fn set_tenant_id(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("tenant_id", v); self }
     pub fn set_tenant_id_expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.set_expr("tenant_id", frag, binds); self }
     pub fn set_account_id(mut self, v: i64) -> Self { let v: i64 = v.into(); self.q.set("account_id", v); self }
@@ -618,19 +626,6 @@ impl CompositeAccount {
         let mut query = super::composite_account::query().using(ex);
         for (column, value) in ["tenant_id", "account_id"].iter().zip(keys) { query.q.w().pred(column, "eq", value); }
         query.get_or_none().await
-    }
-
-    /// With set_tenant_id: UPDATE the other set columns WHERE tenant_id = that value and re-read the row; otherwise INSERT.
-    pub async fn save(&mut self) -> Result<Option<CompositeAccountRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
-        match self.q.take_sets(&["tenant_id", "account_id"])? {
-            Some(keys) => {
-                db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = super::composite_account::query().using(ex);
-                for (column, value) in ["tenant_id", "account_id"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.get_or_none().await
-            }
-            None => self.insert().await,
-        }
     }
 
     /// UPDATE set_*/plus_*/minus_*/set_*_expr WHERE the query's predicates; returns the affected count.

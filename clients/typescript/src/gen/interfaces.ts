@@ -16,7 +16,6 @@ getsCount(): Promise<Collection<BattleRow>>;
 aesStatus(keyring: AesKeyring): Promise<AesRotationStatus>;
 rotateAES(keyring: AesKeyring): Promise<number>;
 insert(): Promise<BattleRow | null>;
-save(): Promise<BattleRow | null>;
 update(): Promise<number>;
 delete(): Promise<number>;
 sql(): Promise<{ sql: string; binds: unknown[]; }>;
@@ -170,7 +169,6 @@ stream(visitor: (row: UserRow) => boolean | Promise<boolean>): Promise<StreamRes
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<UserRow>>;
 insert(): Promise<UserRow | null>;
-save(): Promise<UserRow | null>;
 update(): Promise<number>;
 delete(): Promise<number>;
 sql(): Promise<{ sql: string; binds: unknown[]; }>;
@@ -206,7 +204,6 @@ stream(visitor: (row: ServiceRow) => boolean | Promise<boolean>): Promise<Stream
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<ServiceRow>>;
 insert(): Promise<ServiceRow | null>;
-save(): Promise<ServiceRow | null>;
 update(): Promise<number>;
 delete(): Promise<number>;
 sql(): Promise<{ sql: string; binds: unknown[]; }>;
@@ -242,7 +239,6 @@ stream(visitor: (row: ServiceModuleRow) => boolean | Promise<boolean>): Promise<
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<ServiceModuleRow>>;
 insert(): Promise<ServiceModuleRow | null>;
-save(): Promise<ServiceModuleRow | null>;
 update(): Promise<number>;
 delete(): Promise<number>;
 sql(): Promise<{ sql: string; binds: unknown[]; }>;
@@ -282,7 +278,6 @@ stream(visitor: (row: ServiceMemberRow) => boolean | Promise<boolean>): Promise<
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<ServiceMemberRow>>;
 insert(): Promise<ServiceMemberRow | null>;
-save(): Promise<ServiceMemberRow | null>;
 update(): Promise<number>;
 delete(): Promise<number>;
 sql(): Promise<{ sql: string; binds: unknown[]; }>;
@@ -322,7 +317,6 @@ stream(visitor: (row: CompositeAccountRow) => boolean | Promise<boolean>): Promi
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<CompositeAccountRow>>;
 insert(): Promise<CompositeAccountRow | null>;
-save(): Promise<CompositeAccountRow | null>;
 update(): Promise<number>;
 delete(): Promise<number>;
 sql(): Promise<{ sql: string; binds: unknown[]; }>;
@@ -362,7 +356,6 @@ stream(visitor: (row: CompositeMembershipRow) => boolean | Promise<boolean>): Pr
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<CompositeMembershipRow>>;
 insert(): Promise<CompositeMembershipRow | null>;
-save(): Promise<CompositeMembershipRow | null>;
 update(): Promise<number>;
 delete(): Promise<number>;
 sql(): Promise<{ sql: string; binds: unknown[]; }>;
@@ -402,7 +395,6 @@ stream(visitor: (row: SoftRecordRow) => boolean | Promise<boolean>): Promise<Str
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<SoftRecordRow>>;
 insert(): Promise<SoftRecordRow | null>;
-save(): Promise<SoftRecordRow | null>;
 update(): Promise<number>;
 delete(): Promise<number>;
 sql(): Promise<{ sql: string; binds: unknown[]; }>;
@@ -442,7 +434,6 @@ stream(visitor: (row: AccountRow) => boolean | Promise<boolean>): Promise<Stream
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<AccountRow>>;
 insert(): Promise<AccountRow | null>;
-save(): Promise<AccountRow | null>;
 update(): Promise<number>;
 delete(): Promise<number>;
 sql(): Promise<{ sql: string; binds: unknown[]; }>;
@@ -478,7 +469,6 @@ stream(visitor: (row: ProjectRow) => boolean | Promise<boolean>): Promise<Stream
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<ProjectRow>>;
 insert(): Promise<ProjectRow | null>;
-save(): Promise<ProjectRow | null>;
 update(): Promise<number>;
 delete(): Promise<number>;
 sql(): Promise<{ sql: string; binds: unknown[]; }>;
@@ -514,7 +504,6 @@ stream(visitor: (row: AccountProjectRow) => boolean | Promise<boolean>): Promise
 getCount(): Promise<number>;
 getsCount(): Promise<Collection<AccountProjectRow>>;
 insert(): Promise<AccountProjectRow | null>;
-save(): Promise<AccountProjectRow | null>;
 update(): Promise<number>;
 delete(): Promise<number>;
 sql(): Promise<{ sql: string; binds: unknown[]; }>;

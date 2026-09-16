@@ -102,6 +102,8 @@ func validateRules(d document) error {
 				permitted = map[string][]string{"go": {"v{type}"}, "php": {"{type}$v", "{type}$value"}, "rust": {"v:{type}"}, "typescript": {"value:{type}"}}[lang]
 			case "Executor,NativeExecutionControl":
 				permitted = map[string][]string{"go": {"ctxcontext.Context,exorm.Exec"}, "php": {"Orm\\Db|PDO$db"}, "rust": {"ex:&implExec"}, "typescript": {"database:Db"}}[lang]
+			case "Executor":
+				permitted = map[string][]string{"go": {"exorm.Exec"}, "php": {"Orm\\Db|PDO$db"}, "rust": {"ex:&implExec"}, "typescript": {"database:Db"}}[lang]
 			case "page,per":
 				permitted = map[string][]string{"go": {"page,perint"}, "php": {"int$page,int$per"}, "rust": {"page:u32,per:u32"}, "typescript": {"page:number,per:number"}}[lang]
 			case "Cursor,PositiveLimit":

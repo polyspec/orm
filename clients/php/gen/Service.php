@@ -70,8 +70,8 @@ final class ServiceWhere
 
     public function __construct(private W $w) {}
 
-    public function or(): static { $this->w->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    public function or(?\Closure $fn = null): static { if ($fn === null) { $this->w->orConn(); return $this; } $this->w->orConn(); $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    public function and(?\Closure $fn = null): static { if ($fn === null) { return $this; } $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
     public function battles(\Closure $fn): static { $fn(new BattleWhere($this->w->nav('battles'))); $this->w->req->end(); return $this; }
     public function hasBattles(\Closure $fn): static { $fn(new BattleWhere($this->w->navMode('battles', 'exists'))); $this->w->req->end(); return $this; }
@@ -103,6 +103,8 @@ final class ServiceWhere
 
     public function seqEq(int $v): static { $this->w->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }
+    public function andSeq(int $v): static { return $this->and()->seqEq($v); }
+    public function orSeq(int $v): static { return $this->or()->seqEq($v); }
     public function seqNotEq(int $v): static { $this->w->pred('seq', 'not_eq', $v); return $this; }
     public function seqGt(int $v): static { $this->w->pred('seq', 'gt', $v); return $this; }
     public function seqGte(int $v): static { $this->w->pred('seq', 'gte', $v); return $this; }
@@ -121,6 +123,8 @@ final class ServiceWhere
     public function seqLteCol(ColRef $ref): static { $this->w->predCol('seq', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w->pred('name', 'eq', $v); return $this; }
     public function name(string $v): static { return $this->nameEq($v); }
+    public function andName(string $v): static { return $this->and()->nameEq($v); }
+    public function orName(string $v): static { return $this->or()->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w->pred('name', 'not_eq', $v); return $this; }
     public function nameGt(string $v): static { $this->w->pred('name', 'gt', $v); return $this; }
     public function nameGte(string $v): static { $this->w->pred('name', 'gte', $v); return $this; }
@@ -152,8 +156,8 @@ final class Service extends Q implements ServiceInterface
     public static function query(): static { return new static(); }
 
     // ---- WHERE ----
-    public function or(): static { $this->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new ServiceWhere($this->w()->group())); $this->req->end(); return $this; }
+    public function or(?\Closure $fn = null): static { if ($fn === null) { $this->orConn(); return $this; } $this->orConn(); $fn(new ServiceWhere($this->w()->group())); $this->req->end(); return $this; }
+    public function and(?\Closure $fn = null): static { if ($fn === null) { return $this; } $fn(new ServiceWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
     public function battles(\Closure $fn): static { $fn(new BattleWhere($this->w()->nav('battles'))); $this->req->end(); return $this; }
     public function hasBattles(\Closure $fn): static { $fn(new BattleWhere($this->w()->navMode('battles', 'exists'))); $this->req->end(); return $this; }
@@ -185,6 +189,8 @@ final class Service extends Q implements ServiceInterface
 
     public function seqEq(int $v): static { $this->w()->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }
+    public function andSeq(int $v): static { return $this->and()->seqEq($v); }
+    public function orSeq(int $v): static { return $this->or()->seqEq($v); }
     public function seqNotEq(int $v): static { $this->w()->pred('seq', 'not_eq', $v); return $this; }
     public function seqGt(int $v): static { $this->w()->pred('seq', 'gt', $v); return $this; }
     public function seqGte(int $v): static { $this->w()->pred('seq', 'gte', $v); return $this; }
@@ -203,6 +209,8 @@ final class Service extends Q implements ServiceInterface
     public function seqLteCol(ColRef $ref): static { $this->w()->predCol('seq', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w()->pred('name', 'eq', $v); return $this; }
     public function name(string $v): static { return $this->nameEq($v); }
+    public function andName(string $v): static { return $this->and()->nameEq($v); }
+    public function orName(string $v): static { return $this->or()->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w()->pred('name', 'not_eq', $v); return $this; }
     public function nameGt(string $v): static { $this->w()->pred('name', 'gt', $v); return $this; }
     public function nameGte(string $v): static { $this->w()->pred('name', 'gte', $v); return $this; }
@@ -301,7 +309,7 @@ final class Service extends Q implements ServiceInterface
     public function ifParentAesHexPhoneEq(string $v): static { $this->ifParent('aes_hex_phone', $v); return $this; }
     public function ifParentPhoneBlindIndexEq(string $v): static { $this->ifParent('phone_blind_index', $v); return $this; }
 
-    // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
+    // ---- write draft (insert / update) ----
     public function setSeq(int $v): static { $this->set('seq', $v); return $this; }
     public function setSeqExpr(string $frag, array $binds = []): static { $this->setExpr('seq', $frag, $binds); return $this; }
     public function setName(string $v): static { $this->set('name', $v); return $this; }
@@ -442,16 +450,6 @@ final class Service extends Q implements ServiceInterface
         $db = $this->terminalDb();
         $id = $this->runInsert($db);
         return Service::query()->using($db)->seqEq((int) $id)->get();
-    }
-
-    /** UPDATE when every primary-key column was assigned; otherwise INSERT. */
-    public function save(): ?ServiceRow
-    {
-        $this->terminalArity(func_num_args());
-        $db = $this->terminalDb();
-        [$updated, $keys] = $this->runSave($db, ['seq']);
-        if (!$updated) { $keys = [(int) $keys[0]]; }
-        return Service::query()->using($db)->seqEq($keys[0])->get();
     }
 
     /** UPDATE the set, plus, minus and expr assignments WHERE the chain's predicates (a missing where is an engine error). @return int affected rows */

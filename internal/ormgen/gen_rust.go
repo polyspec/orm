@@ -488,7 +488,8 @@ pub struct {{.Type}}Where<'a> { pub(crate) w: W<'a> }
 
 impl<'a> {{.Type}}Where<'a> {
     pub fn or(mut self) -> Self { self.w.or(); self }
-    pub fn and(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { self.w.and_with(|w| { f({{.Type}}Where { w }); }); self }
+    pub fn and(mut self) -> Self { self.w.and(); self }
+    pub fn and_group(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { self.w.and_with(|w| { f({{.Type}}Where { w }); }); self }
 	pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.w.expr(frag, binds); self }
 {{- range .Preds}}
     pub fn {{.Ident}}(mut self{{predParams .Args}}) -> Self { self.w.expr({{printf "%q" .Expr}}, {{predBinds .Args}}); self }
@@ -509,6 +510,8 @@ impl<'a> {{.Type}}Where<'a> {
     pub fn {{$c.Ident}}_{{opSnake .Suffix}}(mut self, v: {{if $c.IsStr}}impl Into<String>{{else}}{{$c.RType}}{{end}}) -> Self { self.w.pred({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, {{if $c.IsStr}}v.into(){{else}}v{{end}}); self }
 {{- if eq .Op "eq"}}
     pub fn {{$c.Ident}}(self, v: {{if $c.IsStr}}impl Into<String>{{else}}{{$c.RType}}{{end}}) -> Self { self.{{$c.Ident}}_eq(v) }
+    pub fn and_{{$c.Ident}}(mut self, v: {{if $c.IsStr}}impl Into<String>{{else}}{{$c.RType}}{{end}}) -> Self { self.w.and(); self.{{$c.Ident}}_eq(v) }
+    pub fn or_{{$c.Ident}}(mut self, v: {{if $c.IsStr}}impl Into<String>{{else}}{{$c.RType}}{{end}}) -> Self { self.w.or(); self.{{$c.Ident}}_eq(v) }
 {{- end}}
 {{- else if eq .Kind "list"}}
     pub fn {{$c.Ident}}_{{opSnake .Suffix}}(mut self, vs: Vec<{{$c.RType}}>) -> Self { self.w.pred_list({{printf "%q" $c.Name}}, {{printf "%q" .Op}}, vs.into_iter().map(Into::into).collect()); self }
@@ -565,7 +568,8 @@ impl {{.Type}} {
 
     // ---- WHERE ----
     pub fn or(mut self) -> Self { self.q.or(); self }
-    pub fn and(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { self.q.w().and_with(|w| { f({{.Type}}Where { w }); }); self }
+    pub fn and(mut self) -> Self { self.q.w().and(); self }
+    pub fn and_group(mut self, f: impl FnOnce({{.Type}}Where<'_>) -> {{.Type}}Where<'_>) -> Self { self.q.w().and_with(|w| { f({{.Type}}Where { w }); }); self }
     pub fn expr(mut self, frag: &str, binds: Vec<Param>) -> Self { self.q.w().expr(frag, binds); self }
 {{- if .Scope}}
     pub fn scope(mut self, v: {{.ScopeType}}) -> Self { self.q.scope(v); self }
@@ -704,7 +708,7 @@ impl {{.Type}} {
     pub fn if_parent_{{.Ident}}_eq(mut self, v: {{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}) -> Self { self.q.if_parent({{printf "%q" .Name}}, {{if .IsStr}}v.into(){{else}}v{{end}}); self }
 {{- end}}{{end}}
 
-    // ---- insert/update draft (set_<pk> only decides save: INSERT rejects it, UPDATE cannot change it) ----
+    // ---- insert/update draft (set_<pk> is accepted by Insert and cannot be changed by Update) ----
 {{- range .Cols}}{{if and (or (not .Auto) .PK) (not .Managed)}}
     pub fn set_{{.Ident}}(mut self, v: {{if .Nullable}}Option<{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}>{{else}}{{if .IsStr}}impl Into<String>{{else}}{{.RType}}{{end}}{{end}}) -> Self { let v: {{if .Nullable}}Option<{{.RType}}>{{else}}{{.RType}}{{end}} = {{if .Nullable}}v.map(|x| x.into()){{else}}v.into(){{end}}; {{if .Styles}}match orm::codec::encode(&[{{rsList .Styles}}], {{if .Nullable}}v.as_ref(){{else}}Some(&v){{end}}) { Ok(p) => self.q.set({{printf "%q" .Name}}, p), Err(e) => self.q.defer_err(e) }{{else}}self.q.set({{printf "%q" .Name}}, v){{end}}; self }
 {{- end}}{{if and (not .Auto) (not .Managed)}}
@@ -835,19 +839,6 @@ impl {{.Type}} {
         for (column, value) in [{{rsList .KeyCols}}].iter().zip(keys) { query.q.w().pred(column, "eq", value); }
         query.get_or_none().await
 {{- end}}
-    }
-
-    /// With set_{{ident .PK}}: UPDATE the other set columns WHERE {{.PK}} = that value and re-read the row; otherwise INSERT.
-    pub async fn save(&mut self) -> Result<Option<{{.Type}}Row>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
-        match self.q.take_sets(&[{{rsList .KeyCols}}])? {
-            Some(keys) => {
-                db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = super::{{.Name}}::query().using(ex);
-                for (column, value) in [{{rsList .KeyCols}}].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.get_or_none().await
-            }
-            None => self.insert().await,
-        }
     }
 
     /// UPDATE set_*/plus_*/minus_*/set_*_expr WHERE the query's predicates; returns the affected count.

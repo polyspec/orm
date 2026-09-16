@@ -5,7 +5,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -19,8 +18,6 @@ import (
 func main() {
 	db, err := gen.Connect(dsn(), os.Args[1], orm.Config{AESKey: "bench-salt"})
 	check(err)
-	ctx := context.Background()
-
 	// A join carrying its own ON and WHERE, a root group mixing a predicate with
 	// navigation into the joined entity, and three levels of relations with options.
 	rows, err := gen.Battle().
@@ -36,7 +33,7 @@ func main() {
 			Relations(gen.Battle().SelectNone().OrderBySeqDesc().LimitPerParent(2).DropChildKey())).
 		Relation(gen.Service().
 			Relations(gen.ServiceMember().SelectNone().OrderBySeqAsc().LimitPerParent(2).KeyByUserSeq())).
-		OrderBySeqAsc().Limit(0, 2).Using(ctx, db).Gets()
+		OrderBySeqAsc().Limit(0, 2).Using(db).Gets()
 	check(err)
 	items := []any{}
 	for _, b := range rows.All() {
@@ -47,13 +44,13 @@ func main() {
 
 	// Aggregates over the same slice of data: a grouped count with HAVING, min/max, distinct.
 	groups, err := gen.Battle().ServiceSeq(7).GroupByUserSeq().
-		Having(func(w *gen.BattleWhere) { w.Expr("COUNT(*) > ?", 1) }).Using(ctx, db).GetCount()
+		Having(func(w *gen.BattleWhere) { w.Expr("COUNT(*) > ?", 1) }).Using(db).GetCount()
 	check(err)
-	min, err := gen.Battle().ServiceSeq(7).Using(ctx, db).MinSeq()
+	min, err := gen.Battle().ServiceSeq(7).Using(db).MinSeq()
 	check(err)
-	max, err := gen.Battle().ServiceSeq(7).Using(ctx, db).MaxSeq()
+	max, err := gen.Battle().ServiceSeq(7).Using(db).MaxSeq()
 	check(err)
-	users, err := gen.Battle().ServiceSeq(7).Using(ctx, db).CountDistinctUserSeq()
+	users, err := gen.Battle().ServiceSeq(7).Using(db).CountDistinctUserSeq()
 	check(err)
 
 	out, err := json.MarshalIndent(map[string]any{

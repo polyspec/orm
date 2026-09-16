@@ -234,7 +234,7 @@ func main() {
 	now := time.Date(2026, 9, 11, 0, 0, 0, 0, time.UTC)
 
 	run("interface_query_reuse", func() (any, error) {
-		q := gen.Battle().Using(ctx, db).ServiceSeq(7).Limit(0, 2)
+		q := gen.Battle().Using(db).ServiceSeq(7).Limit(0, 2)
 		first, err := q.GetCount()
 		if err != nil {
 			return nil, err
@@ -269,13 +269,13 @@ func main() {
 		return out, nil
 	})
 	run("interface_invalid_page", func() (any, error) {
-		_, err := gen.Battle().Using(ctx, db).Paginate(1, 0)
+		_, err := gen.Battle().Using(db).Paginate(1, 0)
 		return nil, err
 	})
 	run("interface_error", func() (any, error) {
 		child := gen.User()
 		_, child.Req().Err = orm.Encode([]string{"unsupported"}, "x")
-		q := gen.Battle().Using(ctx, db).Join(child)
+		q := gen.Battle().Using(db).Join(child)
 		_, first := q.SQL()
 		_, second := q.SQL()
 		return []any{code(first), code(second)}, nil
@@ -284,7 +284,7 @@ func main() {
 		var result any
 		rollback := errors.New("interface rollback")
 		_, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (any, error) {
-			r, err := gen.Battle().Using(ctx, tx).SelectNone().SelectSeq().GetBySeq(6)
+			r, err := gen.Battle().Using(tx).SelectNone().SelectSeq().GetBySeq(6)
 			if err != nil {
 				return nil, err
 			}
@@ -313,12 +313,12 @@ func main() {
 		var result any
 		rollback := errors.New("interface rollback")
 		_, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (any, error) {
-			r, err := gen.Battle().Using(ctx, tx).GetBySeq(6)
+			r, err := gen.Battle().Using(tx).GetBySeq(6)
 			if err != nil {
 				return nil, err
 			}
 			maskRows(r.UpdatedTs)
-			if _, err := gen.Battle().Using(ctx, tx).Seq(6).SetUpdatedTs(time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)).Update(); err != nil {
+			if _, err := gen.Battle().Using(tx).Seq(6).SetUpdatedTs(time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)).Update(); err != nil {
 				return nil, err
 			}
 			r.SetName("interface-pending")
@@ -336,7 +336,7 @@ func main() {
 		var result any
 		rollback := errors.New("interface rollback")
 		_, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (any, error) {
-			r, err := gen.Battle().Using(ctx, tx).GetBySeq(6)
+			r, err := gen.Battle().Using(tx).GetBySeq(6)
 			if err != nil {
 				return nil, err
 			}
@@ -346,13 +346,13 @@ func main() {
 			if err := r.UpdateOptimistic(); err != nil {
 				return nil, err
 			}
-			sparse, err := gen.Battle().Using(ctx, tx).SelectNone().SelectSeq().GetBySeq(6)
+			sparse, err := gen.Battle().Using(tx).SelectNone().SelectSeq().GetBySeq(6)
 			if err != nil {
 				return nil, err
 			}
 			sparse.SetName("not-written")
 			missing := sparse.UpdateOptimistic()
-			stored, err := gen.Battle().Using(ctx, tx).GetBySeq(6)
+			stored, err := gen.Battle().Using(tx).GetBySeq(6)
 			if err != nil {
 				return nil, err
 			}
@@ -368,7 +368,7 @@ func main() {
 		var result any
 		rollback := errors.New("interface rollback")
 		_, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (any, error) {
-			r, err := gen.Battle().Using(ctx, tx).GetBySeq(6)
+			r, err := gen.Battle().Using(tx).GetBySeq(6)
 			if err != nil {
 				return nil, err
 			}
@@ -377,18 +377,18 @@ func main() {
 			if err := r.Update(); err != nil {
 				return nil, err
 			}
-			stored, err := gen.Battle().Using(ctx, tx).GetBySeq(6)
+			stored, err := gen.Battle().Using(tx).GetBySeq(6)
 			if err != nil {
 				return nil, err
 			}
 			if err := r.Delete(); err != nil {
 				return nil, err
 			}
-			original, err := gen.Battle().Using(ctx, tx).GetCountBySeq(6)
+			original, err := gen.Battle().Using(tx).GetCountBySeq(6)
 			if err != nil {
 				return nil, err
 			}
-			other, err := gen.Battle().Using(ctx, tx).GetCountBySeq(5)
+			other, err := gen.Battle().Using(tx).GetCountBySeq(5)
 			if err != nil {
 				return nil, err
 			}
@@ -401,7 +401,7 @@ func main() {
 		return result, nil
 	})
 	run("interface_nested_keys", func() (any, error) {
-		r, err := gen.Service().Using(ctx, db).Relations(gen.ServiceMember().OrderBySeqAsc().LimitPerParent(1)).GetBySeq(7)
+		r, err := gen.Service().Using(db).Relations(gen.ServiceMember().OrderBySeqAsc().LimitPerParent(1)).GetBySeq(7)
 		if err != nil {
 			return nil, err
 		}
@@ -415,7 +415,7 @@ func main() {
 		seen := 0
 		var first *gen.BattleRow
 		var firstSeq int64
-		stopped, err := gen.Battle().ServiceSeq(7).OrderBySeqAsc().Using(ctx, db).Stream(func(row *gen.BattleRow) bool {
+		stopped, err := gen.Battle().ServiceSeq(7).OrderBySeqAsc().Using(db).Stream(func(row *gen.BattleRow) bool {
 			if first == nil {
 				first = row
 				firstSeq = row.Seq
@@ -429,12 +429,12 @@ func main() {
 		if first == nil || first.Seq != firstSeq {
 			return nil, fmt.Errorf("stream row ownership check failed")
 		}
-		exhausted, err := gen.Battle().ServiceSeq(7).OrderBySeqAsc().Limit(0, 4).Using(ctx, db).Stream(func(*gen.BattleRow) bool { return true })
+		exhausted, err := gen.Battle().ServiceSeq(7).OrderBySeqAsc().Limit(0, 4).Using(db).Stream(func(*gen.BattleRow) bool { return true })
 		if err != nil {
 			return nil, err
 		}
 		var relationErr error
-		_, relationErr = gen.Battle().ServiceSeq(7).Relation(gen.User()).Using(ctx, db).Stream(func(*gen.BattleRow) bool { return true })
+		_, relationErr = gen.Battle().ServiceSeq(7).Relation(gen.User()).Using(db).Stream(func(*gen.BattleRow) bool { return true })
 		return map[string]any{
 			"stopped":        map[string]any{"state": stopped.State, "count": stopped.Count},
 			"exhausted":      map[string]any{"state": exhausted.State, "count": exhausted.Count},
@@ -445,13 +445,13 @@ func main() {
 		return gen.Battle().GetCountByServiceSeq(7)
 	})
 	run("bound_count_finder", func() (any, error) {
-		return gen.Battle().Using(ctx, db).
+		return gen.Battle().Using(db).
 			Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
 			Relation(gen.User()).GetCountByServiceSeq(7)
 	})
 	run("finished_transaction", func() (any, error) {
 		q, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleQuery, error) {
-			return gen.Battle().Using(ctx, tx), nil
+			return gen.Battle().Using(tx), nil
 		})
 		if err != nil {
 			return nil, err
@@ -466,19 +466,19 @@ func main() {
 		var joinedName string
 		_, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (bool, error) {
 			var err error
-			s, err = gen.Service().Using(ctx, tx).SetName("conf-bind").Insert()
+			s, err = gen.Service().Using(tx).SetName("conf-bind").Insert()
 			if err != nil {
 				return false, err
 			}
 			if err = s.SetName("conf-bound").Update(); err != nil {
 				return false, err
 			}
-			m, err = gen.ServiceMember().Using(ctx, tx).SetServiceSeq(s.Seq).SetUserSeq(1).Insert()
+			m, err = gen.ServiceMember().Using(tx).SetServiceSeq(s.Seq).SetUserSeq(1).Insert()
 			if err != nil {
 				return false, err
 			}
-			parent, err := gen.Service().Using(ctx, db).Using(ctx, tx).
-				Relations(gen.ServiceMember().Using(ctx, db).Join(gen.User())).GetBySeq(s.Seq)
+			parent, err := gen.Service().Using(db).Using(tx).
+				Relations(gen.ServiceMember().Using(db).Join(gen.User())).GetBySeq(s.Seq)
 			if err != nil {
 				return false, err
 			}
@@ -492,11 +492,11 @@ func main() {
 			if err = child.GetUser().SetName("conf-user").Update(); err != nil {
 				return false, err
 			}
-			changed, err = gen.ServiceMember().Using(ctx, tx).UserSeq(2).GetCountByServiceSeq(s.Seq)
+			changed, err = gen.ServiceMember().Using(tx).UserSeq(2).GetCountByServiceSeq(s.Seq)
 			if err != nil {
 				return false, err
 			}
-			u, err := gen.User().Using(ctx, tx).GetBySeq(1)
+			u, err := gen.User().Using(tx).GetBySeq(1)
 			if err != nil {
 				return false, err
 			}
@@ -508,15 +508,15 @@ func main() {
 		}
 		maskRows(time.Time{}, s.Seq, m.Seq)
 		expired := code(m.Delete())
-		membersLeft, err := gen.ServiceMember().Using(ctx, db).GetCountByServiceSeq(s.Seq)
+		membersLeft, err := gen.ServiceMember().Using(db).GetCountByServiceSeq(s.Seq)
 		if err != nil {
 			return nil, err
 		}
-		serviceLeft, err := gen.Service().Using(ctx, db).GetCountBySeq(s.Seq)
+		serviceLeft, err := gen.Service().Using(db).GetCountBySeq(s.Seq)
 		if err != nil {
 			return nil, err
 		}
-		u, err := gen.User().Using(ctx, db).GetBySeq(1)
+		u, err := gen.User().Using(db).GetBySeq(1)
 		if err != nil {
 			return nil, err
 		}
@@ -524,33 +524,33 @@ func main() {
 	})
 
 	run("pk_one", func() (any, error) {
-		b, err := gen.Battle().Seq(42).Using(ctx, db).Get()
+		b, err := gen.Battle().Seq(42).Using(db).Get()
 		return row(b), err
 	})
 	run("pk_one_by", func() (any, error) {
-		b, err := gen.Battle().Using(ctx, db).GetBySeq(42)
+		b, err := gen.Battle().Using(db).GetBySeq(42)
 		return row(b), err
 	})
 	run("pk_missing", func() (any, error) {
-		b, err := gen.Battle().Seq(0).Using(ctx, db).Get()
+		b, err := gen.Battle().Seq(0).Using(db).Get()
 		return row(b), err
 	})
 	run("select_lazy", func() (any, error) {
-		b, err := gen.Battle().SelectDescription().Seq(42).Using(ctx, db).Get()
+		b, err := gen.Battle().SelectDescription().Seq(42).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
 		return map[string]any{"seq": b.Seq, "description_prefix": (*b.Description)[:7]}, nil
 	})
 	run("list_order_limit", func() (any, error) {
-		c, err := gen.Battle().ServiceSeq(7).IsClose(false).OrderBySeqDesc().Limit(0, 5).Using(ctx, db).Gets()
+		c, err := gen.Battle().ServiceSeq(7).IsClose(false).OrderBySeqDesc().Limit(0, 5).Using(db).Gets()
 		if err != nil {
 			return nil, err
 		}
 		return keyed(c), nil
 	})
 	run("in_keyed", func() (any, error) {
-		c, err := gen.Battle().SeqIn([]int64{306, 6, 106}).OrderBySeqAsc().Using(ctx, db).Gets()
+		c, err := gen.Battle().SeqIn([]int64{306, 6, 106}).OrderBySeqAsc().Using(db).Gets()
 		if err != nil {
 			return nil, err
 		}
@@ -565,22 +565,22 @@ func main() {
 			}).
 			SeqIn([]int64{6, 106, 206, 306, 406}).
 			OrderBySeqDesc().
-			Limit(0, 3).Using(ctx, db).Gets()
+			Limit(0, 3).Using(db).Gets()
 		if err != nil {
 			return nil, err
 		}
 		return keyed(c), nil
 	})
 	run("aggregates", func() (any, error) {
-		n, err := gen.Battle().ServiceSeq(7).Using(ctx, db).GetCount()
+		n, err := gen.Battle().ServiceSeq(7).Using(db).GetCount()
 		if err != nil {
 			return nil, err
 		}
-		sum, err := gen.Battle().ServiceSeq(7).Using(ctx, db).SumLikeCount()
+		sum, err := gen.Battle().ServiceSeq(7).Using(db).SumLikeCount()
 		if err != nil {
 			return nil, err
 		}
-		avg, err := gen.Battle().ServiceSeq(7).Using(ctx, db).AvgLikeCount()
+		avg, err := gen.Battle().ServiceSeq(7).Using(db).AvgLikeCount()
 		if err != nil {
 			return nil, err
 		}
@@ -593,10 +593,10 @@ func main() {
 			IsClose(false).
 			And(func(w *gen.BattleWhere) {
 				w.IsDisplay(true).Or().Service(func(s *gen.ServiceWhere) { s.SeqGt(1000) })
-			}).Using(ctx, db).GetCount()
+			}).Using(db).GetCount()
 	})
 	run("join_row", func() (any, error) {
-		b, err := gen.Battle().Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.Seq(7) })).Seq(6).Using(ctx, db).Get()
+		b, err := gen.Battle().Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.Seq(7) })).Seq(6).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -605,7 +605,7 @@ func main() {
 	run("root_finder_join_relation", func() (any, error) {
 		c, err := gen.Battle().SelectNone().
 			Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
-			Relation(gen.User()).OrderBySeqAsc().Limit(0, 2).Using(ctx, db).GetsByServiceSeq(7)
+			Relation(gen.User()).OrderBySeqAsc().Limit(0, 2).Using(db).GetsByServiceSeq(7)
 		if err != nil {
 			return nil, err
 		}
@@ -620,17 +620,17 @@ func main() {
 		return items, nil
 	})
 	run("paginate", func() (any, error) {
-		p, err := gen.Battle().ServiceSeq(7).OrderBySeqAsc().Using(ctx, db).Paginate(2, 10)
+		p, err := gen.Battle().ServiceSeq(7).OrderBySeqAsc().Using(db).Paginate(2, 10)
 		if err != nil {
 			return nil, err
 		}
 		return map[string]any{"total": p.Total, "pages": p.Pages, "current": p.Current, "per": p.Per, "keys": keys(p.Items)}, nil
 	})
 	run("contains_escape", func() (any, error) {
-		return gen.Battle().NameContains("%").Using(ctx, db).GetCount()
+		return gen.Battle().NameContains("%").Using(db).GetCount()
 	})
 	run("empty_in_error", func() (any, error) {
-		return gen.Battle().SeqIn([]int64{}).Using(ctx, db).GetCount()
+		return gen.Battle().SeqIn([]int64{}).Using(db).GetCount()
 	})
 	run("op_not_allowed_error", func() (any, error) {
 		// Not expressible through the typed builder (the method does not exist); the untyped core reaches the engine.
@@ -645,26 +645,26 @@ func main() {
 				SetName("conf-write").
 				SetUserSeq(1).SetServiceSeq(999).SetServiceModuleSeq(1).SetServiceMemberSeq(1).
 				SetStartDt(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)).SetEndDt(time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)).
-				SetAesHexEmail("w@example.com").Using(ctx, tx).Insert()
+				SetAesHexEmail("w@example.com").Using(tx).Insert()
 		})
 		if err != nil {
 			return nil, err
 		}
 		maskRows(created.UpdatedTs, created.Seq)
 		created.SetName("conf-write-2").SetLikeCount(5)
-		if err := created.Using(ctx, db).UpdateOptimistic(); err != nil {
+		if err := created.Using(db).UpdateOptimistic(); err != nil {
 			return nil, err
 		}
-		again, err := gen.Battle().Using(ctx, db).GetBySeq(created.Seq)
+		again, err := gen.Battle().Using(db).GetBySeq(created.Seq)
 		if err != nil {
 			return nil, err
 		}
 		created.SetName("stale")
-		stale := code(created.Using(ctx, db).UpdateOptimistic())
+		stale := code(created.Using(db).UpdateOptimistic())
 		if err := again.Delete(); err != nil {
 			return nil, err
 		}
-		left, err := gen.Battle().Seq(created.Seq).Using(ctx, db).GetCount()
+		left, err := gen.Battle().Seq(created.Seq).Using(db).GetCount()
 		if err != nil {
 			return nil, err
 		}
@@ -679,17 +679,17 @@ func main() {
 		// service.seq = a.service_module_seq → battles 1..9 only (seq 10 has service 11, module 1)
 		c, err := gen.Battle().
 			Join(gen.Service().Where(func(w *gen.ServiceWhere) { w.SeqEqCol(gen.BattleCols.ServiceModuleSeq) })).
-			SeqIn([]int64{1, 2, 10}).OrderBySeqAsc().Using(ctx, db).Gets()
+			SeqIn([]int64{1, 2, 10}).OrderBySeqAsc().Using(db).Gets()
 		if err != nil {
 			return nil, err
 		}
 		return keys(c), nil
 	})
 	run("expr_where", func() (any, error) {
-		return gen.Battle().ServiceSeq(7).Expr("LENGTH(`name`) > ?", 8).Using(ctx, db).GetCount()
+		return gen.Battle().ServiceSeq(7).Expr("LENGTH(`name`) > ?", 8).Using(db).GetCount()
 	})
 	run("select_expr", func() (any, error) {
-		b, err := gen.Battle().SelectExpr("tag", "CONCAT(`name`, '!')").Seq(42).Using(ctx, db).Get()
+		b, err := gen.Battle().SelectExpr("tag", "CONCAT(`name`, '!')").Seq(42).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -701,7 +701,7 @@ func main() {
 			Relation(gen.Service().
 				Relations(gen.ServiceMember().OrderBySeqAsc().LimitPerParent(2).
 					Relation(gen.User().
-						Relations(gen.Battle().SelectNone().OrderBySeqAsc().LimitPerParent(1))))).Using(ctx, db).Get()
+						Relations(gen.Battle().SelectNone().OrderBySeqAsc().LimitPerParent(1))))).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -709,14 +709,14 @@ func main() {
 	})
 	run("relation_one_ordered", func() (any, error) {
 		// a one-relation with an ORDER is fetched through a per-parent window of 1
-		b, err := gen.Battle().SelectNone().Seq(7).Relation(gen.Service().OrderBySeqDesc()).Using(ctx, db).Get()
+		b, err := gen.Battle().SelectNone().Seq(7).Relation(gen.Service().OrderBySeqDesc()).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
 		return b.ToArray()
 	})
 	run("relation_if_parent", func() (any, error) {
-		c, err := gen.Battle().SelectNone().SeqIn([]int64{7, 8, 14}).OrderBySeqAsc().Relation(gen.User().IfParentIsCloseEq(true)).Using(ctx, db).Gets()
+		c, err := gen.Battle().SelectNone().SeqIn([]int64{7, 8, 14}).OrderBySeqAsc().Relation(gen.User().IfParentIsCloseEq(true)).Using(db).Gets()
 		if err != nil {
 			return nil, err
 		}
@@ -731,21 +731,21 @@ func main() {
 		return items, nil
 	})
 	run("relation_empty_parents", func() (any, error) {
-		c, err := gen.Battle().Seq(0).Relation(gen.User()).Using(ctx, db).Gets()
+		c, err := gen.Battle().Seq(0).Relation(gen.User()).Using(db).Gets()
 		if err != nil {
 			return nil, err
 		}
 		return keys(c), nil
 	})
 	run("relation_off_join", func() (any, error) {
-		b, err := gen.Battle().SelectNone().Seq(8).Join(gen.Service().Relations(gen.ServiceModule())).Using(ctx, db).Get()
+		b, err := gen.Battle().SelectNone().Seq(8).Join(gen.Service().Relations(gen.ServiceModule())).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
 		return b.ToArray()
 	})
 	run("paginate_relations", func() (any, error) {
-		p, err := gen.Battle().SelectNone().ServiceSeq(7).OrderBySeqAsc().Relation(gen.User()).Using(ctx, db).Paginate(1, 3)
+		p, err := gen.Battle().SelectNone().ServiceSeq(7).OrderBySeqAsc().Relation(gen.User()).Using(db).Paginate(1, 3)
 		if err != nil {
 			return nil, err
 		}
@@ -760,7 +760,7 @@ func main() {
 		return map[string]any{"total": p.Total, "items": items}, nil
 	})
 	run("key_by_column", func() (any, error) {
-		s, err := gen.Service().Seq(7).Relations(gen.ServiceMember().OrderBySeqAsc().LimitPerParent(3).KeyByUserSeq()).Using(ctx, db).Get()
+		s, err := gen.Service().Seq(7).Relations(gen.ServiceMember().OrderBySeqAsc().LimitPerParent(3).KeyByUserSeq()).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -768,7 +768,7 @@ func main() {
 	})
 	run("key_by_unselected", func() (any, error) {
 		// key_by on a column outside the projection: the planner selects it for keying
-		s, err := gen.Service().Seq(7).Relations(gen.ServiceModule().SelectNone().KeyByName()).Using(ctx, db).Get()
+		s, err := gen.Service().Seq(7).Relations(gen.ServiceModule().SelectNone().KeyByName()).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -781,13 +781,13 @@ func main() {
 				SetName("conf-types").
 				SetUserSeq(1).SetServiceSeq(999).SetServiceModuleSeq(1).SetServiceMemberSeq(1).
 				SetStartDt(dt).SetEndDt(dt).SetDisplayStartDt(dt).SetIsDisplay(true).SetTargetTeamPlayerCount(2147483647).SetReadCount(4294967295).SetPrice(12345.678).
-				SetJsonSetting(map[string]any{"k": []any{}}).SetJsonsTags([]any{}).SetSerializeData("").Using(ctx, tx).Insert()
+				SetJsonSetting(map[string]any{"k": []any{}}).SetJsonsTags([]any{}).SetSerializeData("").Using(tx).Insert()
 		})
 		if err != nil {
 			return nil, err
 		}
 		maskRows(created.UpdatedTs, created.Seq)
-		b, err := gen.Battle().SelectJsonSetting().SelectJsonsTags().SelectSerializeData().Seq(created.Seq).Using(ctx, db).Get()
+		b, err := gen.Battle().SelectJsonSetting().SelectJsonsTags().SelectSerializeData().Seq(created.Seq).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -804,7 +804,7 @@ func main() {
 		// root keyed by a function; flattened user columns merge into the member's array form
 		c, err := gen.ServiceMember().ServiceSeq(7).OrderBySeqAsc().Limit(0, 2).
 			Relation(gen.User().Flatten()).
-			KeyByFn(func(m *gen.ServiceMemberRow) orm.Key { return orm.KeyOf(fmt.Sprintf("u%d", m.UserSeq)) }).Using(ctx, db).Gets()
+			KeyByFn(func(m *gen.ServiceMemberRow) orm.Key { return orm.KeyOf(fmt.Sprintf("u%d", m.UserSeq)) }).Using(db).Gets()
 		if err != nil {
 			return nil, err
 		}
@@ -819,7 +819,7 @@ func main() {
 		return items, nil
 	})
 	run("drop_child_key_to_array", func() (any, error) {
-		u, err := gen.User().Seq(5).Relations(gen.Battle().SelectNone().OrderBySeqAsc().LimitPerParent(2).DropChildKey()).Using(ctx, db).Get()
+		u, err := gen.User().Seq(5).Relations(gen.Battle().SelectNone().OrderBySeqAsc().LimitPerParent(2).DropChildKey()).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -832,14 +832,14 @@ func main() {
 	}
 	run("upsert", func() (any, error) {
 		return orm.Transaction(ctx, db, func(tx *orm.Tx) (any, error) {
-			a, err := fks(gen.Battle().SetUuid("conf-upsert").SetName("u1").SetReadCount(1)).Using(ctx, tx).Insert()
+			a, err := fks(gen.Battle().SetUuid("conf-upsert").SetName("u1").SetReadCount(1)).Using(tx).Insert()
 			if err != nil {
 				return nil, err
 			}
 			maskRows(a.UpdatedTs, a.Seq)
 			// the duplicate uuid turns the insert into an update; LAST_INSERT_ID(seq) makes the re-read find the existing row
 			b, err := fks(gen.Battle().SetUuid("conf-upsert").SetName("u2").SetReadCount(1)).
-				OnDuplicateSetName("u2").OnDuplicatePlusReadCount(5).Using(ctx, tx).Insert()
+				OnDuplicateSetName("u2").OnDuplicatePlusReadCount(5).Using(tx).Insert()
 			if err != nil {
 				return nil, err
 			}
@@ -851,12 +851,12 @@ func main() {
 	})
 	run("upsert_set_all", func() (any, error) {
 		return orm.Transaction(ctx, db, func(tx *orm.Tx) (any, error) {
-			a, err := fks(gen.Battle().SetUuid("conf-upsert").SetName("u1").SetReadCount(1)).Using(ctx, tx).Insert()
+			a, err := fks(gen.Battle().SetUuid("conf-upsert").SetName("u1").SetReadCount(1)).Using(tx).Insert()
 			if err != nil {
 				return nil, err
 			}
 			maskRows(a.UpdatedTs, a.Seq)
-			b, err := fks(gen.Battle().SetUuid("conf-upsert").SetName("u3").SetReadCount(9)).OnDuplicateSetAll().Using(ctx, tx).Insert()
+			b, err := fks(gen.Battle().SetUuid("conf-upsert").SetName("u3").SetReadCount(9)).OnDuplicateSetAll().Using(tx).Insert()
 			if err != nil {
 				return nil, err
 			}
@@ -867,15 +867,17 @@ func main() {
 		})
 	})
 	run("save_branch", func() (any, error) {
-		// no PK in set[] → INSERT; PK set → UPDATE of the other columns and a re-read
 		r, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {
-			return fks(gen.Battle().SetName("conf-save")).Using(ctx, tx).Save()
+			return fks(gen.Battle().SetName("conf-save")).Using(tx).Insert()
 		})
 		if err != nil {
 			return nil, err
 		}
 		maskRows(r.UpdatedTs, r.Seq)
-		after, err := gen.Battle().SetSeq(r.Seq).SetName("conf-save-2").Using(ctx, db).Save()
+		if _, err := gen.Battle().Seq(r.Seq).SetName("conf-save-2").Using(db).Update(); err != nil {
+			return nil, err
+		}
+		after, err := gen.Battle().Seq(r.Seq).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
@@ -886,20 +888,20 @@ func main() {
 	})
 	run("bulk_update_plus_minus", func() (any, error) {
 		created, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.BattleRow, error) {
-			return fks(gen.Battle().SetReadCount(3).SetName("conf-bulk")).Using(ctx, tx).Insert()
+			return fks(gen.Battle().SetReadCount(3).SetName("conf-bulk")).Using(tx).Insert()
 		})
 		if err != nil {
 			return nil, err
 		}
 		maskRows(created.UpdatedTs, created.Seq)
 		readCount := func() (int64, error) {
-			b, err := gen.Battle().Using(ctx, db).GetBySeq(created.Seq)
+			b, err := gen.Battle().Using(db).GetBySeq(created.Seq)
 			if err != nil {
 				return 0, err
 			}
 			return b.ReadCount, nil
 		}
-		if _, err := gen.Battle().Seq(created.Seq).PlusReadCount(2).Using(ctx, db).Update(); err != nil {
+		if _, err := gen.Battle().Seq(created.Seq).PlusReadCount(2).Using(db).Update(); err != nil {
 			return nil, err
 		}
 		afterPlus, err := readCount()
@@ -907,21 +909,21 @@ func main() {
 			return nil, err
 		}
 		// minus clamps at zero
-		if _, err := gen.Battle().Seq(created.Seq).MinusReadCount(10).Using(ctx, db).Update(); err != nil {
+		if _, err := gen.Battle().Seq(created.Seq).MinusReadCount(10).Using(db).Update(); err != nil {
 			return nil, err
 		}
 		afterMinus, err := readCount()
 		if err != nil {
 			return nil, err
 		}
-		if _, err := gen.Battle().Seq(created.Seq).SetReadCountExpr("`read_count` * ? + 1", 2).Using(ctx, db).Update(); err != nil {
+		if _, err := gen.Battle().Seq(created.Seq).SetReadCountExpr("`read_count` * ? + 1", 2).Using(db).Update(); err != nil {
 			return nil, err
 		}
 		afterExpr, err := readCount()
 		if err != nil {
 			return nil, err
 		}
-		deleted, err := gen.Battle().Seq(created.Seq).Using(ctx, db).Delete()
+		deleted, err := gen.Battle().Seq(created.Seq).Using(db).Delete()
 		if err != nil {
 			return nil, err
 		}
@@ -937,16 +939,16 @@ func main() {
 		made, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (tree, error) {
 			var t tree
 			var err error
-			if t.service, err = gen.Service().SetName("conf-svc").Using(ctx, tx).Insert(); err != nil {
+			if t.service, err = gen.Service().SetName("conf-svc").Using(tx).Insert(); err != nil {
 				return t, err
 			}
-			if t.members[0], err = gen.ServiceMember().SetServiceSeq(t.service.Seq).SetUserSeq(1).Using(ctx, tx).Insert(); err != nil {
+			if t.members[0], err = gen.ServiceMember().SetServiceSeq(t.service.Seq).SetUserSeq(1).Using(tx).Insert(); err != nil {
 				return t, err
 			}
-			if t.members[1], err = gen.ServiceMember().SetServiceSeq(t.service.Seq).SetUserSeq(2).Using(ctx, tx).Insert(); err != nil {
+			if t.members[1], err = gen.ServiceMember().SetServiceSeq(t.service.Seq).SetUserSeq(2).Using(tx).Insert(); err != nil {
 				return t, err
 			}
-			t.module, err = gen.ServiceModule().SetServiceSeq(t.service.Seq).SetName("conf-mod").Using(ctx, tx).Insert()
+			t.module, err = gen.ServiceModule().SetServiceSeq(t.service.Seq).SetName("conf-mod").Using(tx).Insert()
 			return t, err
 		})
 		if err != nil {
@@ -955,32 +957,32 @@ func main() {
 		maskRows(time.Time{}, made.service.Seq, made.members[0].Seq, made.members[1].Seq, made.module.Seq)
 		svc, err := gen.Service().Seq(made.service.Seq).
 			Relations(gen.ServiceMember().OrderBySeqAsc()).
-			Relations(gen.ServiceModule().NoCascadeDelete()).Using(ctx, db).Get()
+			Relations(gen.ServiceModule().NoCascadeDelete()).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
-		if err := svc.Using(ctx, db).DeleteCascade(); err != nil {
+		if err := svc.Using(db).DeleteCascade(); err != nil {
 			return nil, err
 		}
-		membersLeft, err := gen.ServiceMember().ServiceSeq(made.service.Seq).Using(ctx, db).GetCount()
+		membersLeft, err := gen.ServiceMember().ServiceSeq(made.service.Seq).Using(db).GetCount()
 		if err != nil {
 			return nil, err
 		}
-		modulesLeft, err := gen.ServiceModule().ServiceSeq(made.service.Seq).Using(ctx, db).GetCount()
+		modulesLeft, err := gen.ServiceModule().ServiceSeq(made.service.Seq).Using(db).GetCount()
 		if err != nil {
 			return nil, err
 		}
-		serviceLeft, err := gen.Service().Seq(made.service.Seq).Using(ctx, db).GetCount()
+		serviceLeft, err := gen.Service().Seq(made.service.Seq).Using(db).GetCount()
 		if err != nil {
 			return nil, err
 		}
-		if _, err := gen.ServiceModule().Seq(made.module.Seq).Using(ctx, db).Delete(); err != nil {
+		if _, err := gen.ServiceModule().Seq(made.module.Seq).Using(db).Delete(); err != nil {
 			return nil, err
 		}
 		return map[string]any{"members_left": membersLeft, "modules_left": modulesLeft, "service_left": serviceLeft}, nil
 	})
 	run("sql_dump", func() (any, error) {
-		st, err := gen.Battle().ServiceSeq(7).SelectAesHexEmail().Limit(0, 1).Using(ctx, db).SQL()
+		st, err := gen.Battle().ServiceSeq(7).SelectAesHexEmail().Limit(0, 1).Using(db).SQL()
 		if err != nil {
 			return nil, err
 		}
@@ -992,15 +994,15 @@ func main() {
 	})
 	// S4: aggregates, group count + having, named predicates, raw root.
 	run("agg_min_max", func() (any, error) {
-		mn, err := gen.Battle().ServiceSeq(7).Using(ctx, db).MinSeq()
+		mn, err := gen.Battle().ServiceSeq(7).Using(db).MinSeq()
 		if err != nil {
 			return nil, err
 		}
-		mx, err := gen.Battle().ServiceSeq(7).Using(ctx, db).MaxSeq()
+		mx, err := gen.Battle().ServiceSeq(7).Using(db).MaxSeq()
 		if err != nil {
 			return nil, err
 		}
-		users, err := gen.Battle().ServiceSeq(7).Using(ctx, db).CountDistinctUserSeq()
+		users, err := gen.Battle().ServiceSeq(7).Using(db).CountDistinctUserSeq()
 		if err != nil {
 			return nil, err
 		}
@@ -1008,14 +1010,14 @@ func main() {
 	})
 	run("group_count_having", func() (any, error) {
 		return gen.Battle().ServiceSeq(7).GroupByUserSeq().
-			Having(func(w *gen.BattleWhere) { w.Expr("COUNT(*) > ?", 1) }).Using(ctx, db).GetCount()
+			Having(func(w *gen.BattleWhere) { w.Expr("COUNT(*) > ?", 1) }).Using(db).GetCount()
 	})
 	run("predicate_named", func() (any, error) {
-		visible, err := gen.Battle().Visible().ServiceSeq(7).Using(ctx, db).GetCount()
+		visible, err := gen.Battle().Visible().ServiceSeq(7).Using(db).GetCount()
 		if err != nil {
 			return nil, err
 		}
-		after, err := gen.Battle().StartedAfter("2026-01-01 00:00:00").ServiceSeq(7).Using(ctx, db).GetCount()
+		after, err := gen.Battle().StartedAfter("2026-01-01 00:00:00").ServiceSeq(7).Using(db).GetCount()
 		if err != nil {
 			return nil, err
 		}
@@ -1023,7 +1025,7 @@ func main() {
 	})
 	run("raw_root", func() (any, error) {
 		return gen.Battle().
-			Raw("SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?", 7, false).Using(ctx, db).RawAll()
+			Raw("SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?", 7, false).Using(db).RawAll()
 	})
 	run("join_fulltext_or", func() (any, error) {
 		// R9 shape: a join whose child carries its own where, plus a root group mixing
@@ -1033,54 +1035,54 @@ func main() {
 			IsClose(false).
 			And(func(w *gen.BattleWhere) {
 				w.NameWithDescriptionMatchBoolean("battle").Or().Service(func(s *gen.ServiceWhere) { s.Name("service-999") })
-			}).Using(ctx, db).GetCount()
+			}).Using(db).GetCount()
 	})
 	run("join_two_groups", func() (any, error) {
 		// two joined entities, each with its own on() and where(), and an IN at the root
 		return gen.Battle().
 			Join(gen.Service().On(func(w *gen.ServiceWhere) { w.Name("service-7") }).Where(func(w *gen.ServiceWhere) { w.SeqGt(0) })).
 			LeftJoin(gen.User().Where(func(w *gen.UserWhere) { w.NameContains("user-4") })).
-			SeqIn([]int64{6, 106, 206, 406}).Using(ctx, db).GetCount()
+			SeqIn([]int64{6, 106, 206, 406}).Using(db).GetCount()
 	})
 	run("join_multi_level", func() (any, error) {
 		// two levels of joins off one child: aliases are path-derived and each keeps its own columns
 		b, err := gen.Battle().SelectNone().Seq(6).
 			Join(gen.ServiceMember().SelectNone().
 				Join(gen.User().SelectNone()).
-				Join(gen.Service().SelectNone())).Using(ctx, db).Get()
+				Join(gen.Service().SelectNone())).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
 		return b.ToArray()
 	})
 	run("relation_predicates", func() (any, error) {
-		exists, err := gen.Service().Seq(7).HasMembers(func(*gen.ServiceMemberWhere) {}).Using(ctx, db).GetCount()
+		exists, err := gen.Service().Seq(7).HasMembers(func(*gen.ServiceMemberWhere) {}).Using(db).GetCount()
 		if err != nil {
 			return nil, err
 		}
-		count, err := gen.Service().Seq(7).CountMembersEq(50, func(*gen.ServiceMemberWhere) {}).Using(ctx, db).GetCount()
+		count, err := gen.Service().Seq(7).CountMembersEq(50, func(*gen.ServiceMemberWhere) {}).Using(db).GetCount()
 		return map[string]any{"exists": exists, "count": count}, err
 	})
 	run("batch_insert_delete", func() (any, error) {
 		names := []string{"conformance-batch-a", "conformance-batch-b"}
-		if _, err := gen.Service().NameIn(names).Using(ctx, db).Delete(); err != nil {
+		if _, err := gen.Service().NameIn(names).Using(db).Delete(); err != nil {
 			return nil, err
 		}
-		result, err := gen.Service().Using(ctx, db).BatchInsert([]*gen.ServiceQuery{
+		result, err := gen.Service().Using(db).BatchInsert([]*gen.ServiceQuery{
 			gen.Service().SetName(names[0]), gen.Service().SetName(names[1]),
 		}, orm.BatchOptions{ChunkSize: 1})
 		if err != nil {
 			return nil, err
 		}
-		deleted, err := gen.Service().NameIn(names).Using(ctx, db).Delete()
+		deleted, err := gen.Service().NameIn(names).Using(db).Delete()
 		return map[string]any{"attempted": result.Attempted, "affected": result.Affected, "inserted": result.Inserted, "deleted": deleted}, err
 	})
 	run("keyset_pages", func() (any, error) {
-		first, err := gen.Service().OrderBySeqAsc().Using(ctx, db).GetsAfter("", 3)
+		first, err := gen.Service().OrderBySeqAsc().Using(db).GetsAfter("", 3)
 		if err != nil {
 			return nil, err
 		}
-		second, err := gen.Service().OrderBySeqAsc().Using(ctx, db).GetsAfter(first.NextCursor, 3)
+		second, err := gen.Service().OrderBySeqAsc().Using(db).GetsAfter(first.NextCursor, 3)
 		if err != nil {
 			return nil, err
 		}
@@ -1091,7 +1093,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		status, err := gen.Battle().Using(ctx, db).AESStatus(keyring)
+		status, err := gen.Battle().Using(db).AESStatus(keyring)
 		return map[string]any{"current": status.Current, "pending": status.Pending, "total": status.Total, "versions": status.Versions}, err
 	})
 	run("codec_roundtrip", func() (any, error) {
@@ -1102,13 +1104,13 @@ func main() {
 				SetName("conf-codec").
 				SetUserSeq(1).SetServiceSeq(999).SetServiceModuleSeq(1).SetServiceMemberSeq(1).
 				SetStartDt(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)).SetEndDt(time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)).
-				SetJsonSetting(value).SetJsonsTags([]any{"x", "y"}).SetBase64Extra(value).SetSerializeData(value).SetGzExtend(value).SetIp(ip).Using(ctx, tx).Insert()
+				SetJsonSetting(value).SetJsonsTags([]any{"x", "y"}).SetBase64Extra(value).SetSerializeData(value).SetGzExtend(value).SetIp(ip).Using(tx).Insert()
 		})
 		if err != nil {
 			return nil, err
 		}
 		maskRows(created.UpdatedTs, created.Seq)
-		b, err := gen.Battle().SelectJsonSetting().SelectJsonsTags().SelectBase64Extra().SelectSerializeData().SelectGzExtend().Seq(created.Seq).Using(ctx, db).Get()
+		b, err := gen.Battle().SelectJsonSetting().SelectJsonsTags().SelectBase64Extra().SelectSerializeData().SelectGzExtend().Seq(created.Seq).Using(db).Get()
 		if err != nil {
 			return nil, err
 		}
