@@ -258,9 +258,20 @@ func (r *AccountRow) Using(ctx context.Context, ex orm.Exec) *AccountRow {
 // AccountWhere edits one WHERE/ON group of account.
 type AccountWhere struct{ w *orm.W }
 
-func (w *AccountWhere) Or() *AccountWhere { w.w.Or(); return w }
-func (w *AccountWhere) And(fn func(*AccountWhere)) *AccountWhere {
-	w.w.And(func(x *orm.W) { fn(&AccountWhere{w: x}) })
+func (w *AccountWhere) Or(fn ...func(*AccountWhere)) *AccountWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&AccountWhere{w: x}) })
+	return w
+}
+func (w *AccountWhere) And(fn ...func(*AccountWhere)) *AccountWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&AccountWhere{w: x}) })
 	return w
 }
 func (w *AccountWhere) Expr(frag string, binds ...any) *AccountWhere {
@@ -308,6 +319,10 @@ func (w *AccountWhere) SeqEq(v int64) *AccountWhere    { w.w.Pred("seq", "eq", v
 func (q *AccountQuery) SeqEq(v int64) *AccountQuery    { q.q.W().Pred("seq", "eq", v); return q }
 func (w *AccountWhere) Seq(v int64) *AccountWhere      { return w.SeqEq(v) }
 func (q *AccountQuery) Seq(v int64) *AccountQuery      { return q.SeqEq(v) }
+func (w *AccountWhere) AndSeq(v int64) *AccountWhere   { w.w.And(); return w.SeqEq(v) }
+func (q *AccountQuery) AndSeq(v int64) *AccountQuery   { q.q.W().And(); return q.SeqEq(v) }
+func (w *AccountWhere) OrSeq(v int64) *AccountWhere    { w.w.Or(); return w.SeqEq(v) }
+func (q *AccountQuery) OrSeq(v int64) *AccountQuery    { q.q.Or(); return q.SeqEq(v) }
 func (w *AccountWhere) SeqNotEq(v int64) *AccountWhere { w.w.Pred("seq", "not_eq", v); return w }
 func (q *AccountQuery) SeqNotEq(v int64) *AccountQuery { q.q.W().Pred("seq", "not_eq", v); return q }
 func (w *AccountWhere) SeqGt(v int64) *AccountWhere    { w.w.Pred("seq", "gt", v); return w }
@@ -398,6 +413,10 @@ func (w *AccountWhere) NameEq(v string) *AccountWhere    { w.w.Pred("name", "eq"
 func (q *AccountQuery) NameEq(v string) *AccountQuery    { q.q.W().Pred("name", "eq", v); return q }
 func (w *AccountWhere) Name(v string) *AccountWhere      { return w.NameEq(v) }
 func (q *AccountQuery) Name(v string) *AccountQuery      { return q.NameEq(v) }
+func (w *AccountWhere) AndName(v string) *AccountWhere   { w.w.And(); return w.NameEq(v) }
+func (q *AccountQuery) AndName(v string) *AccountQuery   { q.q.W().And(); return q.NameEq(v) }
+func (w *AccountWhere) OrName(v string) *AccountWhere    { w.w.Or(); return w.NameEq(v) }
+func (q *AccountQuery) OrName(v string) *AccountQuery    { q.q.Or(); return q.NameEq(v) }
 func (w *AccountWhere) NameNotEq(v string) *AccountWhere { w.w.Pred("name", "not_eq", v); return w }
 func (q *AccountQuery) NameNotEq(v string) *AccountQuery { q.q.W().Pred("name", "not_eq", v); return q }
 func (w *AccountWhere) NameGt(v string) *AccountWhere    { w.w.Pred("name", "gt", v); return w }
@@ -514,10 +533,22 @@ func (q *AccountQuery) NameLteCol(ref orm.ColRef) *AccountQuery {
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *AccountQuery) Or() *AccountQuery { q.q.Or(); return q }
-func (q *AccountQuery) And(fn func(*AccountWhere)) *AccountQuery {
-	q.q.W().And(func(x *orm.W) { fn(&AccountWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *AccountQuery) Or(fn ...func(*AccountWhere)) *AccountQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&AccountWhere{w: x}) })
+	return q
+}
+func (q *AccountQuery) And(fn ...func(*AccountWhere)) *AccountQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&AccountWhere{w: x}) })
 	return q
 }
 func (q *AccountQuery) Expr(frag string, binds ...any) *AccountQuery {

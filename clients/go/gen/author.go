@@ -1364,9 +1364,20 @@ func (r *AuthorRow) Using(ctx context.Context, ex orm.Exec) *AuthorRow {
 // AuthorWhere edits one WHERE/ON group of author.
 type AuthorWhere struct{ w *orm.W }
 
-func (w *AuthorWhere) Or() *AuthorWhere { w.w.Or(); return w }
-func (w *AuthorWhere) And(fn func(*AuthorWhere)) *AuthorWhere {
-	w.w.And(func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+func (w *AuthorWhere) Or(fn ...func(*AuthorWhere)) *AuthorWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&AuthorWhere{w: x}) })
+	return w
+}
+func (w *AuthorWhere) And(fn ...func(*AuthorWhere)) *AuthorWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&AuthorWhere{w: x}) })
 	return w
 }
 func (w *AuthorWhere) Expr(frag string, binds ...any) *AuthorWhere {
@@ -1522,6 +1533,10 @@ func (w *AuthorWhere) SeqEq(v int64) *AuthorWhere    { w.w.Pred("seq", "eq", v);
 func (q *AuthorQuery) SeqEq(v int64) *AuthorQuery    { q.q.W().Pred("seq", "eq", v); return q }
 func (w *AuthorWhere) Seq(v int64) *AuthorWhere      { return w.SeqEq(v) }
 func (q *AuthorQuery) Seq(v int64) *AuthorQuery      { return q.SeqEq(v) }
+func (w *AuthorWhere) AndSeq(v int64) *AuthorWhere   { w.w.And(); return w.SeqEq(v) }
+func (q *AuthorQuery) AndSeq(v int64) *AuthorQuery   { q.q.W().And(); return q.SeqEq(v) }
+func (w *AuthorWhere) OrSeq(v int64) *AuthorWhere    { w.w.Or(); return w.SeqEq(v) }
+func (q *AuthorQuery) OrSeq(v int64) *AuthorQuery    { q.q.Or(); return q.SeqEq(v) }
 func (w *AuthorWhere) SeqNotEq(v int64) *AuthorWhere { w.w.Pred("seq", "not_eq", v); return w }
 func (q *AuthorQuery) SeqNotEq(v int64) *AuthorQuery { q.q.W().Pred("seq", "not_eq", v); return q }
 func (w *AuthorWhere) SeqGt(v int64) *AuthorWhere    { w.w.Pred("seq", "gt", v); return w }
@@ -1612,6 +1627,10 @@ func (w *AuthorWhere) NameEq(v string) *AuthorWhere    { w.w.Pred("name", "eq", 
 func (q *AuthorQuery) NameEq(v string) *AuthorQuery    { q.q.W().Pred("name", "eq", v); return q }
 func (w *AuthorWhere) Name(v string) *AuthorWhere      { return w.NameEq(v) }
 func (q *AuthorQuery) Name(v string) *AuthorQuery      { return q.NameEq(v) }
+func (w *AuthorWhere) AndName(v string) *AuthorWhere   { w.w.And(); return w.NameEq(v) }
+func (q *AuthorQuery) AndName(v string) *AuthorQuery   { q.q.W().And(); return q.NameEq(v) }
+func (w *AuthorWhere) OrName(v string) *AuthorWhere    { w.w.Or(); return w.NameEq(v) }
+func (q *AuthorQuery) OrName(v string) *AuthorQuery    { q.q.Or(); return q.NameEq(v) }
 func (w *AuthorWhere) NameNotEq(v string) *AuthorWhere { w.w.Pred("name", "not_eq", v); return w }
 func (q *AuthorQuery) NameNotEq(v string) *AuthorQuery { q.q.W().Pred("name", "not_eq", v); return q }
 func (w *AuthorWhere) NameGt(v string) *AuthorWhere    { w.w.Pred("name", "gt", v); return w }
@@ -1726,8 +1745,12 @@ func (q *AuthorQuery) DescriptionEq(v string) *AuthorQuery {
 	q.q.W().Pred("description", "eq", v)
 	return q
 }
-func (w *AuthorWhere) Description(v string) *AuthorWhere { return w.DescriptionEq(v) }
-func (q *AuthorQuery) Description(v string) *AuthorQuery { return q.DescriptionEq(v) }
+func (w *AuthorWhere) Description(v string) *AuthorWhere    { return w.DescriptionEq(v) }
+func (q *AuthorQuery) Description(v string) *AuthorQuery    { return q.DescriptionEq(v) }
+func (w *AuthorWhere) AndDescription(v string) *AuthorWhere { w.w.And(); return w.DescriptionEq(v) }
+func (q *AuthorQuery) AndDescription(v string) *AuthorQuery { q.q.W().And(); return q.DescriptionEq(v) }
+func (w *AuthorWhere) OrDescription(v string) *AuthorWhere  { w.w.Or(); return w.DescriptionEq(v) }
+func (q *AuthorQuery) OrDescription(v string) *AuthorQuery  { q.q.Or(); return q.DescriptionEq(v) }
 func (w *AuthorWhere) DescriptionNotEq(v string) *AuthorWhere {
 	w.w.Pred("description", "not_eq", v)
 	return w
@@ -1880,8 +1903,12 @@ func (q *AuthorQuery) CreatedTsEq(v time.Time) *AuthorQuery {
 	q.q.W().Pred("created_ts", "eq", v)
 	return q
 }
-func (w *AuthorWhere) CreatedTs(v time.Time) *AuthorWhere { return w.CreatedTsEq(v) }
-func (q *AuthorQuery) CreatedTs(v time.Time) *AuthorQuery { return q.CreatedTsEq(v) }
+func (w *AuthorWhere) CreatedTs(v time.Time) *AuthorWhere    { return w.CreatedTsEq(v) }
+func (q *AuthorQuery) CreatedTs(v time.Time) *AuthorQuery    { return q.CreatedTsEq(v) }
+func (w *AuthorWhere) AndCreatedTs(v time.Time) *AuthorWhere { w.w.And(); return w.CreatedTsEq(v) }
+func (q *AuthorQuery) AndCreatedTs(v time.Time) *AuthorQuery { q.q.W().And(); return q.CreatedTsEq(v) }
+func (w *AuthorWhere) OrCreatedTs(v time.Time) *AuthorWhere  { w.w.Or(); return w.CreatedTsEq(v) }
+func (q *AuthorQuery) OrCreatedTs(v time.Time) *AuthorQuery  { q.q.Or(); return q.CreatedTsEq(v) }
 func (w *AuthorWhere) CreatedTsNotEq(v time.Time) *AuthorWhere {
 	w.w.Pred("created_ts", "not_eq", v)
 	return w
@@ -2015,8 +2042,12 @@ func (q *AuthorQuery) UpdatedTsEq(v time.Time) *AuthorQuery {
 	q.q.W().Pred("updated_ts", "eq", v)
 	return q
 }
-func (w *AuthorWhere) UpdatedTs(v time.Time) *AuthorWhere { return w.UpdatedTsEq(v) }
-func (q *AuthorQuery) UpdatedTs(v time.Time) *AuthorQuery { return q.UpdatedTsEq(v) }
+func (w *AuthorWhere) UpdatedTs(v time.Time) *AuthorWhere    { return w.UpdatedTsEq(v) }
+func (q *AuthorQuery) UpdatedTs(v time.Time) *AuthorQuery    { return q.UpdatedTsEq(v) }
+func (w *AuthorWhere) AndUpdatedTs(v time.Time) *AuthorWhere { w.w.And(); return w.UpdatedTsEq(v) }
+func (q *AuthorQuery) AndUpdatedTs(v time.Time) *AuthorQuery { q.q.W().And(); return q.UpdatedTsEq(v) }
+func (w *AuthorWhere) OrUpdatedTs(v time.Time) *AuthorWhere  { w.w.Or(); return w.UpdatedTsEq(v) }
+func (q *AuthorQuery) OrUpdatedTs(v time.Time) *AuthorQuery  { q.q.Or(); return q.UpdatedTsEq(v) }
 func (w *AuthorWhere) UpdatedTsNotEq(v time.Time) *AuthorWhere {
 	w.w.Pred("updated_ts", "not_eq", v)
 	return w
@@ -2146,6 +2177,10 @@ func (w *AuthorWhere) IsCloseEq(v bool) *AuthorWhere    { w.w.Pred("is_close", "
 func (q *AuthorQuery) IsCloseEq(v bool) *AuthorQuery    { q.q.W().Pred("is_close", "eq", v); return q }
 func (w *AuthorWhere) IsClose(v bool) *AuthorWhere      { return w.IsCloseEq(v) }
 func (q *AuthorQuery) IsClose(v bool) *AuthorQuery      { return q.IsCloseEq(v) }
+func (w *AuthorWhere) AndIsClose(v bool) *AuthorWhere   { w.w.And(); return w.IsCloseEq(v) }
+func (q *AuthorQuery) AndIsClose(v bool) *AuthorQuery   { q.q.W().And(); return q.IsCloseEq(v) }
+func (w *AuthorWhere) OrIsClose(v bool) *AuthorWhere    { w.w.Or(); return w.IsCloseEq(v) }
+func (q *AuthorQuery) OrIsClose(v bool) *AuthorQuery    { q.q.Or(); return q.IsCloseEq(v) }
 func (w *AuthorWhere) IsCloseNotEq(v bool) *AuthorWhere { w.w.Pred("is_close", "not_eq", v); return w }
 func (q *AuthorQuery) IsCloseNotEq(v bool) *AuthorQuery {
 	q.q.W().Pred("is_close", "not_eq", v)
@@ -2177,10 +2212,14 @@ func (q *AuthorQuery) IsCloseNotEqCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("is_close", "not_eq_col", ref.Path, ref.Column)
 	return q
 }
-func (w *AuthorWhere) IsDisplayEq(v bool) *AuthorWhere { w.w.Pred("is_display", "eq", v); return w }
-func (q *AuthorQuery) IsDisplayEq(v bool) *AuthorQuery { q.q.W().Pred("is_display", "eq", v); return q }
-func (w *AuthorWhere) IsDisplay(v bool) *AuthorWhere   { return w.IsDisplayEq(v) }
-func (q *AuthorQuery) IsDisplay(v bool) *AuthorQuery   { return q.IsDisplayEq(v) }
+func (w *AuthorWhere) IsDisplayEq(v bool) *AuthorWhere  { w.w.Pred("is_display", "eq", v); return w }
+func (q *AuthorQuery) IsDisplayEq(v bool) *AuthorQuery  { q.q.W().Pred("is_display", "eq", v); return q }
+func (w *AuthorWhere) IsDisplay(v bool) *AuthorWhere    { return w.IsDisplayEq(v) }
+func (q *AuthorQuery) IsDisplay(v bool) *AuthorQuery    { return q.IsDisplayEq(v) }
+func (w *AuthorWhere) AndIsDisplay(v bool) *AuthorWhere { w.w.And(); return w.IsDisplayEq(v) }
+func (q *AuthorQuery) AndIsDisplay(v bool) *AuthorQuery { q.q.W().And(); return q.IsDisplayEq(v) }
+func (w *AuthorWhere) OrIsDisplay(v bool) *AuthorWhere  { w.w.Or(); return w.IsDisplayEq(v) }
+func (q *AuthorQuery) OrIsDisplay(v bool) *AuthorQuery  { q.q.Or(); return q.IsDisplayEq(v) }
 func (w *AuthorWhere) IsDisplayNotEq(v bool) *AuthorWhere {
 	w.w.Pred("is_display", "not_eq", v)
 	return w
@@ -2228,6 +2267,22 @@ func (q *AuthorQuery) DisplayStartDtEq(v time.Time) *AuthorQuery {
 }
 func (w *AuthorWhere) DisplayStartDt(v time.Time) *AuthorWhere { return w.DisplayStartDtEq(v) }
 func (q *AuthorQuery) DisplayStartDt(v time.Time) *AuthorQuery { return q.DisplayStartDtEq(v) }
+func (w *AuthorWhere) AndDisplayStartDt(v time.Time) *AuthorWhere {
+	w.w.And()
+	return w.DisplayStartDtEq(v)
+}
+func (q *AuthorQuery) AndDisplayStartDt(v time.Time) *AuthorQuery {
+	q.q.W().And()
+	return q.DisplayStartDtEq(v)
+}
+func (w *AuthorWhere) OrDisplayStartDt(v time.Time) *AuthorWhere {
+	w.w.Or()
+	return w.DisplayStartDtEq(v)
+}
+func (q *AuthorQuery) OrDisplayStartDt(v time.Time) *AuthorQuery {
+	q.q.Or()
+	return q.DisplayStartDtEq(v)
+}
 func (w *AuthorWhere) DisplayStartDtNotEq(v time.Time) *AuthorWhere {
 	w.w.Pred("display_start_dt", "not_eq", v)
 	return w
@@ -2366,6 +2421,16 @@ func (q *AuthorQuery) DisplayEndDtEq(v time.Time) *AuthorQuery {
 }
 func (w *AuthorWhere) DisplayEndDt(v time.Time) *AuthorWhere { return w.DisplayEndDtEq(v) }
 func (q *AuthorQuery) DisplayEndDt(v time.Time) *AuthorQuery { return q.DisplayEndDtEq(v) }
+func (w *AuthorWhere) AndDisplayEndDt(v time.Time) *AuthorWhere {
+	w.w.And()
+	return w.DisplayEndDtEq(v)
+}
+func (q *AuthorQuery) AndDisplayEndDt(v time.Time) *AuthorQuery {
+	q.q.W().And()
+	return q.DisplayEndDtEq(v)
+}
+func (w *AuthorWhere) OrDisplayEndDt(v time.Time) *AuthorWhere { w.w.Or(); return w.DisplayEndDtEq(v) }
+func (q *AuthorQuery) OrDisplayEndDt(v time.Time) *AuthorQuery { q.q.Or(); return q.DisplayEndDtEq(v) }
 func (w *AuthorWhere) DisplayEndDtNotEq(v time.Time) *AuthorWhere {
 	w.w.Pred("display_end_dt", "not_eq", v)
 	return w
@@ -2494,10 +2559,14 @@ func (q *AuthorQuery) DisplayEndDtLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("display_end_dt", "lte_col", ref.Path, ref.Column)
 	return q
 }
-func (w *AuthorWhere) IsAlldayEq(v bool) *AuthorWhere { w.w.Pred("is_allday", "eq", v); return w }
-func (q *AuthorQuery) IsAlldayEq(v bool) *AuthorQuery { q.q.W().Pred("is_allday", "eq", v); return q }
-func (w *AuthorWhere) IsAllday(v bool) *AuthorWhere   { return w.IsAlldayEq(v) }
-func (q *AuthorQuery) IsAllday(v bool) *AuthorQuery   { return q.IsAlldayEq(v) }
+func (w *AuthorWhere) IsAlldayEq(v bool) *AuthorWhere  { w.w.Pred("is_allday", "eq", v); return w }
+func (q *AuthorQuery) IsAlldayEq(v bool) *AuthorQuery  { q.q.W().Pred("is_allday", "eq", v); return q }
+func (w *AuthorWhere) IsAllday(v bool) *AuthorWhere    { return w.IsAlldayEq(v) }
+func (q *AuthorQuery) IsAllday(v bool) *AuthorQuery    { return q.IsAlldayEq(v) }
+func (w *AuthorWhere) AndIsAllday(v bool) *AuthorWhere { w.w.And(); return w.IsAlldayEq(v) }
+func (q *AuthorQuery) AndIsAllday(v bool) *AuthorQuery { q.q.W().And(); return q.IsAlldayEq(v) }
+func (w *AuthorWhere) OrIsAllday(v bool) *AuthorWhere  { w.w.Or(); return w.IsAlldayEq(v) }
+func (q *AuthorQuery) OrIsAllday(v bool) *AuthorQuery  { q.q.Or(); return q.IsAlldayEq(v) }
 func (w *AuthorWhere) IsAlldayNotEq(v bool) *AuthorWhere {
 	w.w.Pred("is_allday", "not_eq", v)
 	return w
@@ -2547,6 +2616,22 @@ func (w *AuthorWhere) TargetClubReaderCount(v int64) *AuthorWhere {
 	return w.TargetClubReaderCountEq(v)
 }
 func (q *AuthorQuery) TargetClubReaderCount(v int64) *AuthorQuery {
+	return q.TargetClubReaderCountEq(v)
+}
+func (w *AuthorWhere) AndTargetClubReaderCount(v int64) *AuthorWhere {
+	w.w.And()
+	return w.TargetClubReaderCountEq(v)
+}
+func (q *AuthorQuery) AndTargetClubReaderCount(v int64) *AuthorQuery {
+	q.q.W().And()
+	return q.TargetClubReaderCountEq(v)
+}
+func (w *AuthorWhere) OrTargetClubReaderCount(v int64) *AuthorWhere {
+	w.w.Or()
+	return w.TargetClubReaderCountEq(v)
+}
+func (q *AuthorQuery) OrTargetClubReaderCount(v int64) *AuthorQuery {
+	q.q.Or()
 	return q.TargetClubReaderCountEq(v)
 }
 func (w *AuthorWhere) TargetClubReaderCountNotEq(v int64) *AuthorWhere {
@@ -2685,8 +2770,15 @@ func (q *AuthorQuery) SuccessCountEq(v int64) *AuthorQuery {
 	q.q.W().Pred("success_count", "eq", v)
 	return q
 }
-func (w *AuthorWhere) SuccessCount(v int64) *AuthorWhere { return w.SuccessCountEq(v) }
-func (q *AuthorQuery) SuccessCount(v int64) *AuthorQuery { return q.SuccessCountEq(v) }
+func (w *AuthorWhere) SuccessCount(v int64) *AuthorWhere    { return w.SuccessCountEq(v) }
+func (q *AuthorQuery) SuccessCount(v int64) *AuthorQuery    { return q.SuccessCountEq(v) }
+func (w *AuthorWhere) AndSuccessCount(v int64) *AuthorWhere { w.w.And(); return w.SuccessCountEq(v) }
+func (q *AuthorQuery) AndSuccessCount(v int64) *AuthorQuery {
+	q.q.W().And()
+	return q.SuccessCountEq(v)
+}
+func (w *AuthorWhere) OrSuccessCount(v int64) *AuthorWhere { w.w.Or(); return w.SuccessCountEq(v) }
+func (q *AuthorQuery) OrSuccessCount(v int64) *AuthorQuery { q.q.Or(); return q.SuccessCountEq(v) }
 func (w *AuthorWhere) SuccessCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("success_count", "not_eq", v)
 	return w
@@ -2823,8 +2915,12 @@ func (q *AuthorQuery) ReaderCountEq(v int64) *AuthorQuery {
 	q.q.W().Pred("reader_count", "eq", v)
 	return q
 }
-func (w *AuthorWhere) ReaderCount(v int64) *AuthorWhere { return w.ReaderCountEq(v) }
-func (q *AuthorQuery) ReaderCount(v int64) *AuthorQuery { return q.ReaderCountEq(v) }
+func (w *AuthorWhere) ReaderCount(v int64) *AuthorWhere    { return w.ReaderCountEq(v) }
+func (q *AuthorQuery) ReaderCount(v int64) *AuthorQuery    { return q.ReaderCountEq(v) }
+func (w *AuthorWhere) AndReaderCount(v int64) *AuthorWhere { w.w.And(); return w.ReaderCountEq(v) }
+func (q *AuthorQuery) AndReaderCount(v int64) *AuthorQuery { q.q.W().And(); return q.ReaderCountEq(v) }
+func (w *AuthorWhere) OrReaderCount(v int64) *AuthorWhere  { w.w.Or(); return w.ReaderCountEq(v) }
+func (q *AuthorQuery) OrReaderCount(v int64) *AuthorQuery  { q.q.Or(); return q.ReaderCountEq(v) }
 func (w *AuthorWhere) ReaderCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("reader_count", "not_eq", v)
 	return w
@@ -2958,8 +3054,12 @@ func (q *AuthorQuery) ReadCountEq(v int64) *AuthorQuery {
 	q.q.W().Pred("read_count", "eq", v)
 	return q
 }
-func (w *AuthorWhere) ReadCount(v int64) *AuthorWhere { return w.ReadCountEq(v) }
-func (q *AuthorQuery) ReadCount(v int64) *AuthorQuery { return q.ReadCountEq(v) }
+func (w *AuthorWhere) ReadCount(v int64) *AuthorWhere    { return w.ReadCountEq(v) }
+func (q *AuthorQuery) ReadCount(v int64) *AuthorQuery    { return q.ReadCountEq(v) }
+func (w *AuthorWhere) AndReadCount(v int64) *AuthorWhere { w.w.And(); return w.ReadCountEq(v) }
+func (q *AuthorQuery) AndReadCount(v int64) *AuthorQuery { q.q.W().And(); return q.ReadCountEq(v) }
+func (w *AuthorWhere) OrReadCount(v int64) *AuthorWhere  { w.w.Or(); return w.ReadCountEq(v) }
+func (q *AuthorQuery) OrReadCount(v int64) *AuthorQuery  { q.q.Or(); return q.ReadCountEq(v) }
 func (w *AuthorWhere) ReadCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("read_count", "not_eq", v)
 	return w
@@ -3073,10 +3173,14 @@ func (q *AuthorQuery) ReadCountLteCol(ref orm.ColRef) *AuthorQuery {
 	q.q.W().PredCol("read_count", "lte_col", ref.Path, ref.Column)
 	return q
 }
-func (w *AuthorWhere) PhotoUrlEq(v string) *AuthorWhere { w.w.Pred("photo_url", "eq", v); return w }
-func (q *AuthorQuery) PhotoUrlEq(v string) *AuthorQuery { q.q.W().Pred("photo_url", "eq", v); return q }
-func (w *AuthorWhere) PhotoUrl(v string) *AuthorWhere   { return w.PhotoUrlEq(v) }
-func (q *AuthorQuery) PhotoUrl(v string) *AuthorQuery   { return q.PhotoUrlEq(v) }
+func (w *AuthorWhere) PhotoUrlEq(v string) *AuthorWhere  { w.w.Pred("photo_url", "eq", v); return w }
+func (q *AuthorQuery) PhotoUrlEq(v string) *AuthorQuery  { q.q.W().Pred("photo_url", "eq", v); return q }
+func (w *AuthorWhere) PhotoUrl(v string) *AuthorWhere    { return w.PhotoUrlEq(v) }
+func (q *AuthorQuery) PhotoUrl(v string) *AuthorQuery    { return q.PhotoUrlEq(v) }
+func (w *AuthorWhere) AndPhotoUrl(v string) *AuthorWhere { w.w.And(); return w.PhotoUrlEq(v) }
+func (q *AuthorQuery) AndPhotoUrl(v string) *AuthorQuery { q.q.W().And(); return q.PhotoUrlEq(v) }
+func (w *AuthorWhere) OrPhotoUrl(v string) *AuthorWhere  { w.w.Or(); return w.PhotoUrlEq(v) }
+func (q *AuthorQuery) OrPhotoUrl(v string) *AuthorQuery  { q.q.Or(); return q.PhotoUrlEq(v) }
 func (w *AuthorWhere) PhotoUrlNotEq(v string) *AuthorWhere {
 	w.w.Pred("photo_url", "not_eq", v)
 	return w
@@ -3217,6 +3321,10 @@ func (w *AuthorWhere) UserSeqEq(v int64) *AuthorWhere    { w.w.Pred("user_seq", 
 func (q *AuthorQuery) UserSeqEq(v int64) *AuthorQuery    { q.q.W().Pred("user_seq", "eq", v); return q }
 func (w *AuthorWhere) UserSeq(v int64) *AuthorWhere      { return w.UserSeqEq(v) }
 func (q *AuthorQuery) UserSeq(v int64) *AuthorQuery      { return q.UserSeqEq(v) }
+func (w *AuthorWhere) AndUserSeq(v int64) *AuthorWhere   { w.w.And(); return w.UserSeqEq(v) }
+func (q *AuthorQuery) AndUserSeq(v int64) *AuthorQuery   { q.q.W().And(); return q.UserSeqEq(v) }
+func (w *AuthorWhere) OrUserSeq(v int64) *AuthorWhere    { w.w.Or(); return w.UserSeqEq(v) }
+func (q *AuthorQuery) OrUserSeq(v int64) *AuthorQuery    { q.q.Or(); return q.UserSeqEq(v) }
 func (w *AuthorWhere) UserSeqNotEq(v int64) *AuthorWhere { w.w.Pred("user_seq", "not_eq", v); return w }
 func (q *AuthorQuery) UserSeqNotEq(v int64) *AuthorQuery {
 	q.q.W().Pred("user_seq", "not_eq", v)
@@ -3317,8 +3425,12 @@ func (q *AuthorQuery) ServiceSeqEq(v int64) *AuthorQuery {
 	q.q.W().Pred("service_seq", "eq", v)
 	return q
 }
-func (w *AuthorWhere) ServiceSeq(v int64) *AuthorWhere { return w.ServiceSeqEq(v) }
-func (q *AuthorQuery) ServiceSeq(v int64) *AuthorQuery { return q.ServiceSeqEq(v) }
+func (w *AuthorWhere) ServiceSeq(v int64) *AuthorWhere    { return w.ServiceSeqEq(v) }
+func (q *AuthorQuery) ServiceSeq(v int64) *AuthorQuery    { return q.ServiceSeqEq(v) }
+func (w *AuthorWhere) AndServiceSeq(v int64) *AuthorWhere { w.w.And(); return w.ServiceSeqEq(v) }
+func (q *AuthorQuery) AndServiceSeq(v int64) *AuthorQuery { q.q.W().And(); return q.ServiceSeqEq(v) }
+func (w *AuthorWhere) OrServiceSeq(v int64) *AuthorWhere  { w.w.Or(); return w.ServiceSeqEq(v) }
+func (q *AuthorQuery) OrServiceSeq(v int64) *AuthorQuery  { q.q.Or(); return q.ServiceSeqEq(v) }
 func (w *AuthorWhere) ServiceSeqNotEq(v int64) *AuthorWhere {
 	w.w.Pred("service_seq", "not_eq", v)
 	return w
@@ -3451,6 +3563,22 @@ func (q *AuthorQuery) ServiceRegionSeqEq(v int64) *AuthorQuery {
 }
 func (w *AuthorWhere) ServiceRegionSeq(v int64) *AuthorWhere { return w.ServiceRegionSeqEq(v) }
 func (q *AuthorQuery) ServiceRegionSeq(v int64) *AuthorQuery { return q.ServiceRegionSeqEq(v) }
+func (w *AuthorWhere) AndServiceRegionSeq(v int64) *AuthorWhere {
+	w.w.And()
+	return w.ServiceRegionSeqEq(v)
+}
+func (q *AuthorQuery) AndServiceRegionSeq(v int64) *AuthorQuery {
+	q.q.W().And()
+	return q.ServiceRegionSeqEq(v)
+}
+func (w *AuthorWhere) OrServiceRegionSeq(v int64) *AuthorWhere {
+	w.w.Or()
+	return w.ServiceRegionSeqEq(v)
+}
+func (q *AuthorQuery) OrServiceRegionSeq(v int64) *AuthorQuery {
+	q.q.Or()
+	return q.ServiceRegionSeqEq(v)
+}
 func (w *AuthorWhere) ServiceRegionSeqNotEq(v int64) *AuthorWhere {
 	w.w.Pred("service_region_seq", "not_eq", v)
 	return w
@@ -3589,6 +3717,22 @@ func (q *AuthorQuery) ServiceMemberSeqEq(v int64) *AuthorQuery {
 }
 func (w *AuthorWhere) ServiceMemberSeq(v int64) *AuthorWhere { return w.ServiceMemberSeqEq(v) }
 func (q *AuthorQuery) ServiceMemberSeq(v int64) *AuthorQuery { return q.ServiceMemberSeqEq(v) }
+func (w *AuthorWhere) AndServiceMemberSeq(v int64) *AuthorWhere {
+	w.w.And()
+	return w.ServiceMemberSeqEq(v)
+}
+func (q *AuthorQuery) AndServiceMemberSeq(v int64) *AuthorQuery {
+	q.q.W().And()
+	return q.ServiceMemberSeqEq(v)
+}
+func (w *AuthorWhere) OrServiceMemberSeq(v int64) *AuthorWhere {
+	w.w.Or()
+	return w.ServiceMemberSeqEq(v)
+}
+func (q *AuthorQuery) OrServiceMemberSeq(v int64) *AuthorQuery {
+	q.q.Or()
+	return q.ServiceMemberSeqEq(v)
+}
 func (w *AuthorWhere) ServiceMemberSeqNotEq(v int64) *AuthorWhere {
 	w.w.Pred("service_member_seq", "not_eq", v)
 	return w
@@ -3722,8 +3866,12 @@ func (q *AuthorQuery) StartDtEq(v time.Time) *AuthorQuery {
 	q.q.W().Pred("start_dt", "eq", v)
 	return q
 }
-func (w *AuthorWhere) StartDt(v time.Time) *AuthorWhere { return w.StartDtEq(v) }
-func (q *AuthorQuery) StartDt(v time.Time) *AuthorQuery { return q.StartDtEq(v) }
+func (w *AuthorWhere) StartDt(v time.Time) *AuthorWhere    { return w.StartDtEq(v) }
+func (q *AuthorQuery) StartDt(v time.Time) *AuthorQuery    { return q.StartDtEq(v) }
+func (w *AuthorWhere) AndStartDt(v time.Time) *AuthorWhere { w.w.And(); return w.StartDtEq(v) }
+func (q *AuthorQuery) AndStartDt(v time.Time) *AuthorQuery { q.q.W().And(); return q.StartDtEq(v) }
+func (w *AuthorWhere) OrStartDt(v time.Time) *AuthorWhere  { w.w.Or(); return w.StartDtEq(v) }
+func (q *AuthorQuery) OrStartDt(v time.Time) *AuthorQuery  { q.q.Or(); return q.StartDtEq(v) }
 func (w *AuthorWhere) StartDtNotEq(v time.Time) *AuthorWhere {
 	w.w.Pred("start_dt", "not_eq", v)
 	return w
@@ -3838,6 +3986,10 @@ func (w *AuthorWhere) EndDtEq(v time.Time) *AuthorWhere    { w.w.Pred("end_dt", 
 func (q *AuthorQuery) EndDtEq(v time.Time) *AuthorQuery    { q.q.W().Pred("end_dt", "eq", v); return q }
 func (w *AuthorWhere) EndDt(v time.Time) *AuthorWhere      { return w.EndDtEq(v) }
 func (q *AuthorQuery) EndDt(v time.Time) *AuthorQuery      { return q.EndDtEq(v) }
+func (w *AuthorWhere) AndEndDt(v time.Time) *AuthorWhere   { w.w.And(); return w.EndDtEq(v) }
+func (q *AuthorQuery) AndEndDt(v time.Time) *AuthorQuery   { q.q.W().And(); return q.EndDtEq(v) }
+func (w *AuthorWhere) OrEndDt(v time.Time) *AuthorWhere    { w.w.Or(); return w.EndDtEq(v) }
+func (q *AuthorQuery) OrEndDt(v time.Time) *AuthorQuery    { q.q.Or(); return q.EndDtEq(v) }
 func (w *AuthorWhere) EndDtNotEq(v time.Time) *AuthorWhere { w.w.Pred("end_dt", "not_eq", v); return w }
 func (q *AuthorQuery) EndDtNotEq(v time.Time) *AuthorQuery {
 	q.q.W().Pred("end_dt", "not_eq", v)
@@ -3934,6 +4086,10 @@ func (w *AuthorWhere) UuidEq(v string) *AuthorWhere    { w.w.Pred("uuid", "eq", 
 func (q *AuthorQuery) UuidEq(v string) *AuthorQuery    { q.q.W().Pred("uuid", "eq", v); return q }
 func (w *AuthorWhere) Uuid(v string) *AuthorWhere      { return w.UuidEq(v) }
 func (q *AuthorQuery) Uuid(v string) *AuthorQuery      { return q.UuidEq(v) }
+func (w *AuthorWhere) AndUuid(v string) *AuthorWhere   { w.w.And(); return w.UuidEq(v) }
+func (q *AuthorQuery) AndUuid(v string) *AuthorQuery   { q.q.W().And(); return q.UuidEq(v) }
+func (w *AuthorWhere) OrUuid(v string) *AuthorWhere    { w.w.Or(); return w.UuidEq(v) }
+func (q *AuthorQuery) OrUuid(v string) *AuthorQuery    { q.q.Or(); return q.UuidEq(v) }
 func (w *AuthorWhere) UuidNotEq(v string) *AuthorWhere { w.w.Pred("uuid", "not_eq", v); return w }
 func (q *AuthorQuery) UuidNotEq(v string) *AuthorQuery { q.q.W().Pred("uuid", "not_eq", v); return q }
 func (w *AuthorWhere) UuidGt(v string) *AuthorWhere    { w.w.Pred("uuid", "gt", v); return w }
@@ -4048,8 +4204,12 @@ func (q *AuthorQuery) IsSingleWorkEq(v bool) *AuthorQuery {
 	q.q.W().Pred("is_single_work", "eq", v)
 	return q
 }
-func (w *AuthorWhere) IsSingleWork(v bool) *AuthorWhere { return w.IsSingleWorkEq(v) }
-func (q *AuthorQuery) IsSingleWork(v bool) *AuthorQuery { return q.IsSingleWorkEq(v) }
+func (w *AuthorWhere) IsSingleWork(v bool) *AuthorWhere    { return w.IsSingleWorkEq(v) }
+func (q *AuthorQuery) IsSingleWork(v bool) *AuthorQuery    { return q.IsSingleWorkEq(v) }
+func (w *AuthorWhere) AndIsSingleWork(v bool) *AuthorWhere { w.w.And(); return w.IsSingleWorkEq(v) }
+func (q *AuthorQuery) AndIsSingleWork(v bool) *AuthorQuery { q.q.W().And(); return q.IsSingleWorkEq(v) }
+func (w *AuthorWhere) OrIsSingleWork(v bool) *AuthorWhere  { w.w.Or(); return w.IsSingleWorkEq(v) }
+func (q *AuthorQuery) OrIsSingleWork(v bool) *AuthorQuery  { q.q.Or(); return q.IsSingleWorkEq(v) }
 func (w *AuthorWhere) IsSingleWorkNotEq(v bool) *AuthorWhere {
 	w.w.Pred("is_single_work", "not_eq", v)
 	return w
@@ -4095,8 +4255,12 @@ func (q *AuthorQuery) LikeCountEq(v int64) *AuthorQuery {
 	q.q.W().Pred("like_count", "eq", v)
 	return q
 }
-func (w *AuthorWhere) LikeCount(v int64) *AuthorWhere { return w.LikeCountEq(v) }
-func (q *AuthorQuery) LikeCount(v int64) *AuthorQuery { return q.LikeCountEq(v) }
+func (w *AuthorWhere) LikeCount(v int64) *AuthorWhere    { return w.LikeCountEq(v) }
+func (q *AuthorQuery) LikeCount(v int64) *AuthorQuery    { return q.LikeCountEq(v) }
+func (w *AuthorWhere) AndLikeCount(v int64) *AuthorWhere { w.w.And(); return w.LikeCountEq(v) }
+func (q *AuthorQuery) AndLikeCount(v int64) *AuthorQuery { q.q.W().And(); return q.LikeCountEq(v) }
+func (w *AuthorWhere) OrLikeCount(v int64) *AuthorWhere  { w.w.Or(); return w.LikeCountEq(v) }
+func (q *AuthorQuery) OrLikeCount(v int64) *AuthorQuery  { q.q.Or(); return q.LikeCountEq(v) }
 func (w *AuthorWhere) LikeCountNotEq(v int64) *AuthorWhere {
 	w.w.Pred("like_count", "not_eq", v)
 	return w
@@ -4218,8 +4382,15 @@ func (q *AuthorQuery) AesKeyVersionEq(v int32) *AuthorQuery {
 	q.q.W().Pred("aes_key_version", "eq", v)
 	return q
 }
-func (w *AuthorWhere) AesKeyVersion(v int32) *AuthorWhere { return w.AesKeyVersionEq(v) }
-func (q *AuthorQuery) AesKeyVersion(v int32) *AuthorQuery { return q.AesKeyVersionEq(v) }
+func (w *AuthorWhere) AesKeyVersion(v int32) *AuthorWhere    { return w.AesKeyVersionEq(v) }
+func (q *AuthorQuery) AesKeyVersion(v int32) *AuthorQuery    { return q.AesKeyVersionEq(v) }
+func (w *AuthorWhere) AndAesKeyVersion(v int32) *AuthorWhere { w.w.And(); return w.AesKeyVersionEq(v) }
+func (q *AuthorQuery) AndAesKeyVersion(v int32) *AuthorQuery {
+	q.q.W().And()
+	return q.AesKeyVersionEq(v)
+}
+func (w *AuthorWhere) OrAesKeyVersion(v int32) *AuthorWhere { w.w.Or(); return w.AesKeyVersionEq(v) }
+func (q *AuthorQuery) OrAesKeyVersion(v int32) *AuthorQuery { q.q.Or(); return q.AesKeyVersionEq(v) }
 func (w *AuthorWhere) AesKeyVersionNotEq(v int32) *AuthorWhere {
 	w.w.Pred("aes_key_version", "not_eq", v)
 	return w
@@ -4356,8 +4527,12 @@ func (q *AuthorQuery) AesHexEmailEq(v string) *AuthorQuery {
 	q.q.W().Pred("aes_hex_email", "eq", v)
 	return q
 }
-func (w *AuthorWhere) AesHexEmail(v string) *AuthorWhere { return w.AesHexEmailEq(v) }
-func (q *AuthorQuery) AesHexEmail(v string) *AuthorQuery { return q.AesHexEmailEq(v) }
+func (w *AuthorWhere) AesHexEmail(v string) *AuthorWhere    { return w.AesHexEmailEq(v) }
+func (q *AuthorQuery) AesHexEmail(v string) *AuthorQuery    { return q.AesHexEmailEq(v) }
+func (w *AuthorWhere) AndAesHexEmail(v string) *AuthorWhere { w.w.And(); return w.AesHexEmailEq(v) }
+func (q *AuthorQuery) AndAesHexEmail(v string) *AuthorQuery { q.q.W().And(); return q.AesHexEmailEq(v) }
+func (w *AuthorWhere) OrAesHexEmail(v string) *AuthorWhere  { w.w.Or(); return w.AesHexEmailEq(v) }
+func (q *AuthorQuery) OrAesHexEmail(v string) *AuthorQuery  { q.q.Or(); return q.AesHexEmailEq(v) }
 func (w *AuthorWhere) AesHexEmailNotEq(v string) *AuthorWhere {
 	w.w.Pred("aes_hex_email", "not_eq", v)
 	return w
@@ -4424,6 +4599,22 @@ func (q *AuthorQuery) EmailBlindIndexEq(v string) *AuthorQuery {
 }
 func (w *AuthorWhere) EmailBlindIndex(v string) *AuthorWhere { return w.EmailBlindIndexEq(v) }
 func (q *AuthorQuery) EmailBlindIndex(v string) *AuthorQuery { return q.EmailBlindIndexEq(v) }
+func (w *AuthorWhere) AndEmailBlindIndex(v string) *AuthorWhere {
+	w.w.And()
+	return w.EmailBlindIndexEq(v)
+}
+func (q *AuthorQuery) AndEmailBlindIndex(v string) *AuthorQuery {
+	q.q.W().And()
+	return q.EmailBlindIndexEq(v)
+}
+func (w *AuthorWhere) OrEmailBlindIndex(v string) *AuthorWhere {
+	w.w.Or()
+	return w.EmailBlindIndexEq(v)
+}
+func (q *AuthorQuery) OrEmailBlindIndex(v string) *AuthorQuery {
+	q.q.Or()
+	return q.EmailBlindIndexEq(v)
+}
 func (w *AuthorWhere) EmailBlindIndexNotEq(v string) *AuthorWhere {
 	w.w.Pred("email_blind_index", "not_eq", v)
 	return w
@@ -4592,8 +4783,12 @@ func (q *AuthorQuery) AesHexPhoneEq(v string) *AuthorQuery {
 	q.q.W().Pred("aes_hex_phone", "eq", v)
 	return q
 }
-func (w *AuthorWhere) AesHexPhone(v string) *AuthorWhere { return w.AesHexPhoneEq(v) }
-func (q *AuthorQuery) AesHexPhone(v string) *AuthorQuery { return q.AesHexPhoneEq(v) }
+func (w *AuthorWhere) AesHexPhone(v string) *AuthorWhere    { return w.AesHexPhoneEq(v) }
+func (q *AuthorQuery) AesHexPhone(v string) *AuthorQuery    { return q.AesHexPhoneEq(v) }
+func (w *AuthorWhere) AndAesHexPhone(v string) *AuthorWhere { w.w.And(); return w.AesHexPhoneEq(v) }
+func (q *AuthorQuery) AndAesHexPhone(v string) *AuthorQuery { q.q.W().And(); return q.AesHexPhoneEq(v) }
+func (w *AuthorWhere) OrAesHexPhone(v string) *AuthorWhere  { w.w.Or(); return w.AesHexPhoneEq(v) }
+func (q *AuthorQuery) OrAesHexPhone(v string) *AuthorQuery  { q.q.Or(); return q.AesHexPhoneEq(v) }
 func (w *AuthorWhere) AesHexPhoneNotEq(v string) *AuthorWhere {
 	w.w.Pred("aes_hex_phone", "not_eq", v)
 	return w
@@ -4660,6 +4855,22 @@ func (q *AuthorQuery) PhoneBlindIndexEq(v string) *AuthorQuery {
 }
 func (w *AuthorWhere) PhoneBlindIndex(v string) *AuthorWhere { return w.PhoneBlindIndexEq(v) }
 func (q *AuthorQuery) PhoneBlindIndex(v string) *AuthorQuery { return q.PhoneBlindIndexEq(v) }
+func (w *AuthorWhere) AndPhoneBlindIndex(v string) *AuthorWhere {
+	w.w.And()
+	return w.PhoneBlindIndexEq(v)
+}
+func (q *AuthorQuery) AndPhoneBlindIndex(v string) *AuthorQuery {
+	q.q.W().And()
+	return q.PhoneBlindIndexEq(v)
+}
+func (w *AuthorWhere) OrPhoneBlindIndex(v string) *AuthorWhere {
+	w.w.Or()
+	return w.PhoneBlindIndexEq(v)
+}
+func (q *AuthorQuery) OrPhoneBlindIndex(v string) *AuthorQuery {
+	q.q.Or()
+	return q.PhoneBlindIndexEq(v)
+}
 func (w *AuthorWhere) PhoneBlindIndexNotEq(v string) *AuthorWhere {
 	w.w.Pred("phone_blind_index", "not_eq", v)
 	return w
@@ -4824,6 +5035,10 @@ func (w *AuthorWhere) PriceEq(v float64) *AuthorWhere    { w.w.Pred("price", "eq
 func (q *AuthorQuery) PriceEq(v float64) *AuthorQuery    { q.q.W().Pred("price", "eq", v); return q }
 func (w *AuthorWhere) Price(v float64) *AuthorWhere      { return w.PriceEq(v) }
 func (q *AuthorQuery) Price(v float64) *AuthorQuery      { return q.PriceEq(v) }
+func (w *AuthorWhere) AndPrice(v float64) *AuthorWhere   { w.w.And(); return w.PriceEq(v) }
+func (q *AuthorQuery) AndPrice(v float64) *AuthorQuery   { q.q.W().And(); return q.PriceEq(v) }
+func (w *AuthorWhere) OrPrice(v float64) *AuthorWhere    { w.w.Or(); return w.PriceEq(v) }
+func (q *AuthorQuery) OrPrice(v float64) *AuthorQuery    { q.q.Or(); return q.PriceEq(v) }
 func (w *AuthorWhere) PriceNotEq(v float64) *AuthorWhere { w.w.Pred("price", "not_eq", v); return w }
 func (q *AuthorQuery) PriceNotEq(v float64) *AuthorQuery {
 	q.q.W().Pred("price", "not_eq", v)
@@ -4920,6 +5135,10 @@ func (w *AuthorWhere) IpEq(v string) *AuthorWhere    { w.w.Pred("ip", "eq", v); 
 func (q *AuthorQuery) IpEq(v string) *AuthorQuery    { q.q.W().Pred("ip", "eq", v); return q }
 func (w *AuthorWhere) Ip(v string) *AuthorWhere      { return w.IpEq(v) }
 func (q *AuthorQuery) Ip(v string) *AuthorQuery      { return q.IpEq(v) }
+func (w *AuthorWhere) AndIp(v string) *AuthorWhere   { w.w.And(); return w.IpEq(v) }
+func (q *AuthorQuery) AndIp(v string) *AuthorQuery   { q.q.W().And(); return q.IpEq(v) }
+func (w *AuthorWhere) OrIp(v string) *AuthorWhere    { w.w.Or(); return w.IpEq(v) }
+func (q *AuthorQuery) OrIp(v string) *AuthorQuery    { q.q.Or(); return q.IpEq(v) }
 func (w *AuthorWhere) IpNotEq(v string) *AuthorWhere { w.w.Pred("ip", "not_eq", v); return w }
 func (q *AuthorQuery) IpNotEq(v string) *AuthorQuery { q.q.W().Pred("ip", "not_eq", v); return q }
 func (w *AuthorWhere) IpIn(vs []string) *AuthorWhere {
@@ -5063,10 +5282,22 @@ func (q *AuthorQuery) Visible() *AuthorQuery {
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *AuthorQuery) Or() *AuthorQuery { q.q.Or(); return q }
-func (q *AuthorQuery) And(fn func(*AuthorWhere)) *AuthorQuery {
-	q.q.W().And(func(x *orm.W) { fn(&AuthorWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *AuthorQuery) Or(fn ...func(*AuthorWhere)) *AuthorQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&AuthorWhere{w: x}) })
+	return q
+}
+func (q *AuthorQuery) And(fn ...func(*AuthorWhere)) *AuthorQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&AuthorWhere{w: x}) })
 	return q
 }
 func (q *AuthorQuery) Expr(frag string, binds ...any) *AuthorQuery {

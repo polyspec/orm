@@ -72,7 +72,8 @@ export class WhereCore {
   public predicateColumn(column: string, operator: string, reference: ColumnReference): this { this.item({ pred: { column, op: operator, ref: { path: reference.path, column: reference.column } } }); return this; }
   public expression(expression: string, values: readonly Param[] = []): this { this.item({ pred: { expr: expression, ps: values.map(value => this.request.parameter(value)) } }); return this; }
   public match(columns: readonly string[], value: string, boolean = false): this { this.item({ pred: { op: boolean ? 'match_boolean' : 'match', match: [...columns], p: this.request.parameter(value) } }); return this; }
-  public and(callback: (where: WhereCore) => void): this { const group: Group = { items: [] }; this.item({ group }); callback(new WhereCore(this.request, group)); return this; }
+  public and(callback?: (where: WhereCore) => void): this { if (!callback) return this; const group: Group = { items: [] }; this.item({ group }); callback(new WhereCore(this.request, group)); return this; }
+  public andConnector(): this { return this; }
   public navigate(relation: string, callback: (where: WhereCore) => void): this { return this.navigateMode(relation, '', callback); }
   public navigateMode(relation: string, mode: '' | 'exists' | 'not_exists', callback: (where: WhereCore) => void): this { const group: Group = { items: [] }; this.item({ nav: { rel: relation, group, mode } }); callback(new WhereCore(this.request, group)); return this; }
   public navigateCount(relation: string, operator: string, value: Param, callback: (where: WhereCore) => void): this { const group: Group = { items: [] }; const p = this.request.parameter(value); this.item({ nav: { rel: relation, group, mode: 'count', count_op: operator, p } }); callback(new WhereCore(this.request, group)); return this; }
@@ -101,6 +102,7 @@ export class QueryCore {
   public predicateColumn(column: string, operator: string, reference: ColumnReference): this { this.whereCore().predicateColumn(column, operator, reference); return this; }
   public expression(expression: string, values: readonly Param[] = []): this { this.whereCore().expression(expression, values); return this; }
   public or(): this { this.whereCore().or(); return this; }
+  public and(): this { this.whereCore().andConnector(); return this; }
   public match(columns: readonly string[], value: string, boolean = false): this { this.whereCore().match(columns, value, boolean); return this; }
   protected attachJoin(relation: string, child: QueryCore, kind: 'inner' | 'left' = 'inner'): this { this.request.ir.joins ??= []; this.request.ir.joins.push({ rel: relation, kind, query: this.request.attach(child.request) }); return this; }
   protected attachRelation(relation: string, child: QueryCore): this { this.request.ir.relations ??= []; this.request.ir.relations.push({ rel: relation, query: this.request.attach(child.request) }); return this; }

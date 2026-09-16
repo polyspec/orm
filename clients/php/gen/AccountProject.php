@@ -68,12 +68,14 @@ final class AccountProjectWhere
 
     public function __construct(private W $w) {}
 
-    public function or(): static { $this->w->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    public function or(?\Closure $fn = null): static { if ($fn === null) { $this->w->orConn(); return $this; } $this->w->orConn(); $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    public function and(?\Closure $fn = null): static { if ($fn === null) { return $this; } $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
 
     public function accountSeqEq(int $v): static { $this->w->pred('account_seq', 'eq', $v); return $this; }
     public function accountSeq(int $v): static { return $this->accountSeqEq($v); }
+    public function andAccountSeq(int $v): static { return $this->and()->accountSeqEq($v); }
+    public function orAccountSeq(int $v): static { return $this->or()->accountSeqEq($v); }
     public function accountSeqNotEq(int $v): static { $this->w->pred('account_seq', 'not_eq', $v); return $this; }
     public function accountSeqGt(int $v): static { $this->w->pred('account_seq', 'gt', $v); return $this; }
     public function accountSeqGte(int $v): static { $this->w->pred('account_seq', 'gte', $v); return $this; }
@@ -92,6 +94,8 @@ final class AccountProjectWhere
     public function accountSeqLteCol(ColRef $ref): static { $this->w->predCol('account_seq', 'lte_col', $ref); return $this; }
     public function projectSeqEq(int $v): static { $this->w->pred('project_seq', 'eq', $v); return $this; }
     public function projectSeq(int $v): static { return $this->projectSeqEq($v); }
+    public function andProjectSeq(int $v): static { return $this->and()->projectSeqEq($v); }
+    public function orProjectSeq(int $v): static { return $this->or()->projectSeqEq($v); }
     public function projectSeqNotEq(int $v): static { $this->w->pred('project_seq', 'not_eq', $v); return $this; }
     public function projectSeqGt(int $v): static { $this->w->pred('project_seq', 'gt', $v); return $this; }
     public function projectSeqGte(int $v): static { $this->w->pred('project_seq', 'gte', $v); return $this; }
@@ -119,12 +123,14 @@ final class AccountProject extends Q implements AccountProjectInterface
     public static function query(): static { return new static(); }
 
     // ---- WHERE ----
-    public function or(): static { $this->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new AccountProjectWhere($this->w()->group())); $this->req->end(); return $this; }
+    public function or(?\Closure $fn = null): static { if ($fn === null) { $this->orConn(); return $this; } $this->orConn(); $fn(new AccountProjectWhere($this->w()->group())); $this->req->end(); return $this; }
+    public function and(?\Closure $fn = null): static { if ($fn === null) { return $this; } $fn(new AccountProjectWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
 
     public function accountSeqEq(int $v): static { $this->w()->pred('account_seq', 'eq', $v); return $this; }
     public function accountSeq(int $v): static { return $this->accountSeqEq($v); }
+    public function andAccountSeq(int $v): static { return $this->and()->accountSeqEq($v); }
+    public function orAccountSeq(int $v): static { return $this->or()->accountSeqEq($v); }
     public function accountSeqNotEq(int $v): static { $this->w()->pred('account_seq', 'not_eq', $v); return $this; }
     public function accountSeqGt(int $v): static { $this->w()->pred('account_seq', 'gt', $v); return $this; }
     public function accountSeqGte(int $v): static { $this->w()->pred('account_seq', 'gte', $v); return $this; }
@@ -143,6 +149,8 @@ final class AccountProject extends Q implements AccountProjectInterface
     public function accountSeqLteCol(ColRef $ref): static { $this->w()->predCol('account_seq', 'lte_col', $ref); return $this; }
     public function projectSeqEq(int $v): static { $this->w()->pred('project_seq', 'eq', $v); return $this; }
     public function projectSeq(int $v): static { return $this->projectSeqEq($v); }
+    public function andProjectSeq(int $v): static { return $this->and()->projectSeqEq($v); }
+    public function orProjectSeq(int $v): static { return $this->or()->projectSeqEq($v); }
     public function projectSeqNotEq(int $v): static { $this->w()->pred('project_seq', 'not_eq', $v); return $this; }
     public function projectSeqGt(int $v): static { $this->w()->pred('project_seq', 'gt', $v); return $this; }
     public function projectSeqGte(int $v): static { $this->w()->pred('project_seq', 'gte', $v); return $this; }

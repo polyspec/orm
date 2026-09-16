@@ -296,9 +296,20 @@ func (r *CompositeAccountRow) Using(ctx context.Context, ex orm.Exec) *Composite
 // CompositeAccountWhere edits one WHERE/ON group of composite_account.
 type CompositeAccountWhere struct{ w *orm.W }
 
-func (w *CompositeAccountWhere) Or() *CompositeAccountWhere { w.w.Or(); return w }
-func (w *CompositeAccountWhere) And(fn func(*CompositeAccountWhere)) *CompositeAccountWhere {
-	w.w.And(func(x *orm.W) { fn(&CompositeAccountWhere{w: x}) })
+func (w *CompositeAccountWhere) Or(fn ...func(*CompositeAccountWhere)) *CompositeAccountWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&CompositeAccountWhere{w: x}) })
+	return w
+}
+func (w *CompositeAccountWhere) And(fn ...func(*CompositeAccountWhere)) *CompositeAccountWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&CompositeAccountWhere{w: x}) })
 	return w
 }
 func (w *CompositeAccountWhere) Expr(frag string, binds ...any) *CompositeAccountWhere {
@@ -352,6 +363,22 @@ func (q *CompositeAccountQuery) TenantIdEq(v int64) *CompositeAccountQuery {
 }
 func (w *CompositeAccountWhere) TenantId(v int64) *CompositeAccountWhere { return w.TenantIdEq(v) }
 func (q *CompositeAccountQuery) TenantId(v int64) *CompositeAccountQuery { return q.TenantIdEq(v) }
+func (w *CompositeAccountWhere) AndTenantId(v int64) *CompositeAccountWhere {
+	w.w.And()
+	return w.TenantIdEq(v)
+}
+func (q *CompositeAccountQuery) AndTenantId(v int64) *CompositeAccountQuery {
+	q.q.W().And()
+	return q.TenantIdEq(v)
+}
+func (w *CompositeAccountWhere) OrTenantId(v int64) *CompositeAccountWhere {
+	w.w.Or()
+	return w.TenantIdEq(v)
+}
+func (q *CompositeAccountQuery) OrTenantId(v int64) *CompositeAccountQuery {
+	q.q.Or()
+	return q.TenantIdEq(v)
+}
 func (w *CompositeAccountWhere) TenantIdNotEq(v int64) *CompositeAccountWhere {
 	w.w.Pred("tenant_id", "not_eq", v)
 	return w
@@ -490,6 +517,22 @@ func (q *CompositeAccountQuery) AccountIdEq(v int64) *CompositeAccountQuery {
 }
 func (w *CompositeAccountWhere) AccountId(v int64) *CompositeAccountWhere { return w.AccountIdEq(v) }
 func (q *CompositeAccountQuery) AccountId(v int64) *CompositeAccountQuery { return q.AccountIdEq(v) }
+func (w *CompositeAccountWhere) AndAccountId(v int64) *CompositeAccountWhere {
+	w.w.And()
+	return w.AccountIdEq(v)
+}
+func (q *CompositeAccountQuery) AndAccountId(v int64) *CompositeAccountQuery {
+	q.q.W().And()
+	return q.AccountIdEq(v)
+}
+func (w *CompositeAccountWhere) OrAccountId(v int64) *CompositeAccountWhere {
+	w.w.Or()
+	return w.AccountIdEq(v)
+}
+func (q *CompositeAccountQuery) OrAccountId(v int64) *CompositeAccountQuery {
+	q.q.Or()
+	return q.AccountIdEq(v)
+}
 func (w *CompositeAccountWhere) AccountIdNotEq(v int64) *CompositeAccountWhere {
 	w.w.Pred("account_id", "not_eq", v)
 	return w
@@ -628,6 +671,16 @@ func (q *CompositeAccountQuery) NameEq(v string) *CompositeAccountQuery {
 }
 func (w *CompositeAccountWhere) Name(v string) *CompositeAccountWhere { return w.NameEq(v) }
 func (q *CompositeAccountQuery) Name(v string) *CompositeAccountQuery { return q.NameEq(v) }
+func (w *CompositeAccountWhere) AndName(v string) *CompositeAccountWhere {
+	w.w.And()
+	return w.NameEq(v)
+}
+func (q *CompositeAccountQuery) AndName(v string) *CompositeAccountQuery {
+	q.q.W().And()
+	return q.NameEq(v)
+}
+func (w *CompositeAccountWhere) OrName(v string) *CompositeAccountWhere { w.w.Or(); return w.NameEq(v) }
+func (q *CompositeAccountQuery) OrName(v string) *CompositeAccountQuery { q.q.Or(); return q.NameEq(v) }
 func (w *CompositeAccountWhere) NameNotEq(v string) *CompositeAccountWhere {
 	w.w.Pred("name", "not_eq", v)
 	return w
@@ -789,10 +842,22 @@ func (q *CompositeAccountQuery) NameLteCol(ref orm.ColRef) *CompositeAccountQuer
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *CompositeAccountQuery) Or() *CompositeAccountQuery { q.q.Or(); return q }
-func (q *CompositeAccountQuery) And(fn func(*CompositeAccountWhere)) *CompositeAccountQuery {
-	q.q.W().And(func(x *orm.W) { fn(&CompositeAccountWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *CompositeAccountQuery) Or(fn ...func(*CompositeAccountWhere)) *CompositeAccountQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&CompositeAccountWhere{w: x}) })
+	return q
+}
+func (q *CompositeAccountQuery) And(fn ...func(*CompositeAccountWhere)) *CompositeAccountQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&CompositeAccountWhere{w: x}) })
 	return q
 }
 func (q *CompositeAccountQuery) Expr(frag string, binds ...any) *CompositeAccountQuery {

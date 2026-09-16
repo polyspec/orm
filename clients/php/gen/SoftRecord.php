@@ -75,12 +75,14 @@ final class SoftRecordWhere
 
     public function __construct(private W $w) {}
 
-    public function or(): static { $this->w->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    public function or(?\Closure $fn = null): static { if ($fn === null) { $this->w->orConn(); return $this; } $this->w->orConn(); $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
+    public function and(?\Closure $fn = null): static { if ($fn === null) { return $this; } $fn(new self($this->w->group())); $this->w->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w->expr($frag, $binds); return $this; }
 
     public function seqEq(int $v): static { $this->w->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }
+    public function andSeq(int $v): static { return $this->and()->seqEq($v); }
+    public function orSeq(int $v): static { return $this->or()->seqEq($v); }
     public function seqNotEq(int $v): static { $this->w->pred('seq', 'not_eq', $v); return $this; }
     public function seqGt(int $v): static { $this->w->pred('seq', 'gt', $v); return $this; }
     public function seqGte(int $v): static { $this->w->pred('seq', 'gte', $v); return $this; }
@@ -99,6 +101,8 @@ final class SoftRecordWhere
     public function seqLteCol(ColRef $ref): static { $this->w->predCol('seq', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w->pred('name', 'eq', $v); return $this; }
     public function name(string $v): static { return $this->nameEq($v); }
+    public function andName(string $v): static { return $this->and()->nameEq($v); }
+    public function orName(string $v): static { return $this->or()->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w->pred('name', 'not_eq', $v); return $this; }
     public function nameGt(string $v): static { $this->w->pred('name', 'gt', $v); return $this; }
     public function nameGte(string $v): static { $this->w->pred('name', 'gte', $v); return $this; }
@@ -121,6 +125,8 @@ final class SoftRecordWhere
     public function nameLteCol(ColRef $ref): static { $this->w->predCol('name', 'lte_col', $ref); return $this; }
     public function deletedAtEq(string $v): static { $this->w->pred('deleted_at', 'eq', $v); return $this; }
     public function deletedAt(string $v): static { return $this->deletedAtEq($v); }
+    public function andDeletedAt(string $v): static { return $this->and()->deletedAtEq($v); }
+    public function orDeletedAt(string $v): static { return $this->or()->deletedAtEq($v); }
     public function deletedAtNotEq(string $v): static { $this->w->pred('deleted_at', 'not_eq', $v); return $this; }
     public function deletedAtGt(string $v): static { $this->w->pred('deleted_at', 'gt', $v); return $this; }
     public function deletedAtGte(string $v): static { $this->w->pred('deleted_at', 'gte', $v); return $this; }
@@ -148,12 +154,14 @@ final class SoftRecord extends Q implements SoftRecordInterface
     public static function query(): static { return new static(); }
 
     // ---- WHERE ----
-    public function or(): static { $this->orConn(); return $this; }
-    public function and(\Closure $fn): static { $fn(new SoftRecordWhere($this->w()->group())); $this->req->end(); return $this; }
+    public function or(?\Closure $fn = null): static { if ($fn === null) { $this->orConn(); return $this; } $this->orConn(); $fn(new SoftRecordWhere($this->w()->group())); $this->req->end(); return $this; }
+    public function and(?\Closure $fn = null): static { if ($fn === null) { return $this; } $fn(new SoftRecordWhere($this->w()->group())); $this->req->end(); return $this; }
     public function expr(string $frag, array $binds = []): static { $this->w()->expr($frag, $binds); return $this; }
 
     public function seqEq(int $v): static { $this->w()->pred('seq', 'eq', $v); return $this; }
     public function seq(int $v): static { return $this->seqEq($v); }
+    public function andSeq(int $v): static { return $this->and()->seqEq($v); }
+    public function orSeq(int $v): static { return $this->or()->seqEq($v); }
     public function seqNotEq(int $v): static { $this->w()->pred('seq', 'not_eq', $v); return $this; }
     public function seqGt(int $v): static { $this->w()->pred('seq', 'gt', $v); return $this; }
     public function seqGte(int $v): static { $this->w()->pred('seq', 'gte', $v); return $this; }
@@ -172,6 +180,8 @@ final class SoftRecord extends Q implements SoftRecordInterface
     public function seqLteCol(ColRef $ref): static { $this->w()->predCol('seq', 'lte_col', $ref); return $this; }
     public function nameEq(string $v): static { $this->w()->pred('name', 'eq', $v); return $this; }
     public function name(string $v): static { return $this->nameEq($v); }
+    public function andName(string $v): static { return $this->and()->nameEq($v); }
+    public function orName(string $v): static { return $this->or()->nameEq($v); }
     public function nameNotEq(string $v): static { $this->w()->pred('name', 'not_eq', $v); return $this; }
     public function nameGt(string $v): static { $this->w()->pred('name', 'gt', $v); return $this; }
     public function nameGte(string $v): static { $this->w()->pred('name', 'gte', $v); return $this; }
@@ -194,6 +204,8 @@ final class SoftRecord extends Q implements SoftRecordInterface
     public function nameLteCol(ColRef $ref): static { $this->w()->predCol('name', 'lte_col', $ref); return $this; }
     public function deletedAtEq(string $v): static { $this->w()->pred('deleted_at', 'eq', $v); return $this; }
     public function deletedAt(string $v): static { return $this->deletedAtEq($v); }
+    public function andDeletedAt(string $v): static { return $this->and()->deletedAtEq($v); }
+    public function orDeletedAt(string $v): static { return $this->or()->deletedAtEq($v); }
     public function deletedAtNotEq(string $v): static { $this->w()->pred('deleted_at', 'not_eq', $v); return $this; }
     public function deletedAtGt(string $v): static { $this->w()->pred('deleted_at', 'gt', $v); return $this; }
     public function deletedAtGte(string $v): static { $this->w()->pred('deleted_at', 'gte', $v); return $this; }

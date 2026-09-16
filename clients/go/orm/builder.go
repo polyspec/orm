@@ -66,6 +66,12 @@ type W struct {
 
 func NewW(req *Req, g *ir.Group) *W { return &W{Req: req, G: g} }
 
+func (w *W) fail(message string) {
+	if w != nil && w.Req != nil && w.Req.Err == nil {
+		w.Req.Err = &ir.Error{Code: CodeIrInvalid, Msg: message}
+	}
+}
+
 func (w *W) conn() string {
 	if w.pendingOr {
 		w.pendingOr = false
@@ -74,7 +80,22 @@ func (w *W) conn() string {
 	return ""
 }
 
-func (w *W) Or() { w.pendingOr = true }
+// Or starts an explicit OR connector, or opens an OR group when a callback is
+// supplied. The variadic form keeps the public grammar explicit while Go has
+// no method overloading.
+func (w *W) Or(fn ...func(*W)) {
+	if len(fn) == 0 {
+		w.pendingOr = true
+		return
+	}
+	if len(fn) != 1 {
+		w.fail("OR accepts at most one group callback")
+		return
+	}
+	g := &ir.Group{Conn: "or"}
+	w.G.Items = append(w.G.Items, ir.Item{Group: g})
+	fn[0](NewW(w.Req, g))
+}
 
 func (w *W) Pred(col, op string, v any) {
 	i := w.Req.P(v)
@@ -152,10 +173,21 @@ func (w *W) Expr(frag string, binds ...any) {
 }
 
 // And opens a parenthesised group; fn receives a W over the new group.
-func (w *W) And(fn func(*W)) {
+
+// And starts an explicit AND connector, or opens an AND group when a
+// callback is supplied. An empty call is intentionally supported so generated
+// clients have the same connector grammar in every language.
+func (w *W) And(fn ...func(*W)) {
+	if len(fn) == 0 {
+		return
+	}
+	if len(fn) != 1 {
+		w.fail("AND accepts at most one group callback")
+		return
+	}
 	g := &ir.Group{Conn: w.conn()}
 	w.G.Items = append(w.G.Items, ir.Item{Group: g})
-	fn(NewW(w.Req, g))
+	fn[0](NewW(w.Req, g))
 }
 
 // Nav descends into a joined relation.

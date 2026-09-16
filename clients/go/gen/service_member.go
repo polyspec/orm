@@ -353,9 +353,20 @@ func (r *ServiceMemberRow) Using(ctx context.Context, ex orm.Exec) *ServiceMembe
 // ServiceMemberWhere edits one WHERE/ON group of service_member.
 type ServiceMemberWhere struct{ w *orm.W }
 
-func (w *ServiceMemberWhere) Or() *ServiceMemberWhere { w.w.Or(); return w }
-func (w *ServiceMemberWhere) And(fn func(*ServiceMemberWhere)) *ServiceMemberWhere {
-	w.w.And(func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+func (w *ServiceMemberWhere) Or(fn ...func(*ServiceMemberWhere)) *ServiceMemberWhere {
+	if len(fn) == 0 {
+		w.w.Or()
+		return w
+	}
+	w.w.Or(func(x *orm.W) { fn[0](&ServiceMemberWhere{w: x}) })
+	return w
+}
+func (w *ServiceMemberWhere) And(fn ...func(*ServiceMemberWhere)) *ServiceMemberWhere {
+	if len(fn) == 0 {
+		w.w.And()
+		return w
+	}
+	w.w.And(func(x *orm.W) { fn[0](&ServiceMemberWhere{w: x}) })
 	return w
 }
 func (w *ServiceMemberWhere) Expr(frag string, binds ...any) *ServiceMemberWhere {
@@ -476,8 +487,12 @@ func (q *ServiceMemberQuery) SeqEq(v int64) *ServiceMemberQuery {
 	q.q.W().Pred("seq", "eq", v)
 	return q
 }
-func (w *ServiceMemberWhere) Seq(v int64) *ServiceMemberWhere { return w.SeqEq(v) }
-func (q *ServiceMemberQuery) Seq(v int64) *ServiceMemberQuery { return q.SeqEq(v) }
+func (w *ServiceMemberWhere) Seq(v int64) *ServiceMemberWhere    { return w.SeqEq(v) }
+func (q *ServiceMemberQuery) Seq(v int64) *ServiceMemberQuery    { return q.SeqEq(v) }
+func (w *ServiceMemberWhere) AndSeq(v int64) *ServiceMemberWhere { w.w.And(); return w.SeqEq(v) }
+func (q *ServiceMemberQuery) AndSeq(v int64) *ServiceMemberQuery { q.q.W().And(); return q.SeqEq(v) }
+func (w *ServiceMemberWhere) OrSeq(v int64) *ServiceMemberWhere  { w.w.Or(); return w.SeqEq(v) }
+func (q *ServiceMemberQuery) OrSeq(v int64) *ServiceMemberQuery  { q.q.Or(); return q.SeqEq(v) }
 func (w *ServiceMemberWhere) SeqNotEq(v int64) *ServiceMemberWhere {
 	w.w.Pred("seq", "not_eq", v)
 	return w
@@ -604,6 +619,22 @@ func (q *ServiceMemberQuery) ServiceSeqEq(v int64) *ServiceMemberQuery {
 }
 func (w *ServiceMemberWhere) ServiceSeq(v int64) *ServiceMemberWhere { return w.ServiceSeqEq(v) }
 func (q *ServiceMemberQuery) ServiceSeq(v int64) *ServiceMemberQuery { return q.ServiceSeqEq(v) }
+func (w *ServiceMemberWhere) AndServiceSeq(v int64) *ServiceMemberWhere {
+	w.w.And()
+	return w.ServiceSeqEq(v)
+}
+func (q *ServiceMemberQuery) AndServiceSeq(v int64) *ServiceMemberQuery {
+	q.q.W().And()
+	return q.ServiceSeqEq(v)
+}
+func (w *ServiceMemberWhere) OrServiceSeq(v int64) *ServiceMemberWhere {
+	w.w.Or()
+	return w.ServiceSeqEq(v)
+}
+func (q *ServiceMemberQuery) OrServiceSeq(v int64) *ServiceMemberQuery {
+	q.q.Or()
+	return q.ServiceSeqEq(v)
+}
 func (w *ServiceMemberWhere) ServiceSeqNotEq(v int64) *ServiceMemberWhere {
 	w.w.Pred("service_seq", "not_eq", v)
 	return w
@@ -742,6 +773,16 @@ func (q *ServiceMemberQuery) UserSeqEq(v int64) *ServiceMemberQuery {
 }
 func (w *ServiceMemberWhere) UserSeq(v int64) *ServiceMemberWhere { return w.UserSeqEq(v) }
 func (q *ServiceMemberQuery) UserSeq(v int64) *ServiceMemberQuery { return q.UserSeqEq(v) }
+func (w *ServiceMemberWhere) AndUserSeq(v int64) *ServiceMemberWhere {
+	w.w.And()
+	return w.UserSeqEq(v)
+}
+func (q *ServiceMemberQuery) AndUserSeq(v int64) *ServiceMemberQuery {
+	q.q.W().And()
+	return q.UserSeqEq(v)
+}
+func (w *ServiceMemberWhere) OrUserSeq(v int64) *ServiceMemberWhere { w.w.Or(); return w.UserSeqEq(v) }
+func (q *ServiceMemberQuery) OrUserSeq(v int64) *ServiceMemberQuery { q.q.Or(); return q.UserSeqEq(v) }
 func (w *ServiceMemberWhere) UserSeqNotEq(v int64) *ServiceMemberWhere {
 	w.w.Pred("user_seq", "not_eq", v)
 	return w
@@ -871,10 +912,22 @@ func (q *ServiceMemberQuery) UserSeqLteCol(ref orm.ColRef) *ServiceMemberQuery {
 	return q
 }
 
-// WHERE structure on the query: or() connector, and(fn) group, expr, relation navigation.
-func (q *ServiceMemberQuery) Or() *ServiceMemberQuery { q.q.Or(); return q }
-func (q *ServiceMemberQuery) And(fn func(*ServiceMemberWhere)) *ServiceMemberQuery {
-	q.q.W().And(func(x *orm.W) { fn(&ServiceMemberWhere{w: x}) })
+// WHERE structure on the query: explicit or()/and() connectors, optional
+// connector groups, expr, and relation navigation.
+func (q *ServiceMemberQuery) Or(fn ...func(*ServiceMemberWhere)) *ServiceMemberQuery {
+	if len(fn) == 0 {
+		q.q.Or()
+		return q
+	}
+	q.q.W().Or(func(x *orm.W) { fn[0](&ServiceMemberWhere{w: x}) })
+	return q
+}
+func (q *ServiceMemberQuery) And(fn ...func(*ServiceMemberWhere)) *ServiceMemberQuery {
+	if len(fn) == 0 {
+		q.q.W().And()
+		return q
+	}
+	q.q.W().And(func(x *orm.W) { fn[0](&ServiceMemberWhere{w: x}) })
 	return q
 }
 func (q *ServiceMemberQuery) Expr(frag string, binds ...any) *ServiceMemberQuery {
