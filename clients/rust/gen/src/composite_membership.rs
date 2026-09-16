@@ -626,19 +626,6 @@ impl CompositeMembership {
         query.get_or_none().await
     }
 
-    /// With set_tenant_id: UPDATE the other set columns WHERE tenant_id = that value and re-read the row; otherwise INSERT.
-    pub async fn save(&mut self) -> Result<Option<CompositeMembershipRow>> { let binding = self.binding.clone(); let ex = binding.resolve()?;
-        match self.q.take_sets(&["tenant_id", "account_id"])? {
-            Some(keys) => {
-                db::write(ex, &mut self.q.req, "update").await?;
-                let mut q = super::composite_membership::query().using(ex);
-                for (column, value) in ["tenant_id", "account_id"].iter().zip(keys) { q.q.w().pred(column, "eq", value); }
-                q.get_or_none().await
-            }
-            None => self.insert().await,
-        }
-    }
-
     /// UPDATE set_*/plus_*/minus_*/set_*_expr WHERE the query's predicates; returns the affected count.
     /// The engine rejects a missing where (IR_INVALID).
     pub async fn update(&mut self) -> Result<u64> { let binding = self.binding.clone(); let ex = binding.resolve()?;

@@ -302,7 +302,7 @@ final class CompositeMembership extends Q implements CompositeMembershipInterfac
     public function ifParentAccountIdEq(int $v): static { $this->ifParent('account_id', $v); return $this; }
     public function ifParentNameEq(string $v): static { $this->ifParent('name', $v); return $this; }
 
-    // ---- write draft (insert / save / update): the PK setter is what turns save() into an UPDATE ----
+    // ---- write draft (insert / update) ----
     public function setTenantId(int $v): static { $this->set('tenant_id', $v); return $this; }
     public function setTenantIdExpr(string $frag, array $binds = []): static { $this->setExpr('tenant_id', $frag, $binds); return $this; }
     public function setAccountId(int $v): static { $this->set('account_id', $v); return $this; }
@@ -468,16 +468,6 @@ final class CompositeMembership extends Q implements CompositeMembershipInterfac
         $db = $this->terminalDb();
         $keys = $this->assignedKeyValues(['tenant_id', 'account_id']);
         $id = $this->runInsert($db);
-        return CompositeMembership::query()->using($db)->tenantIdEq($keys[0])->accountIdEq($keys[1])->get();
-    }
-
-    /** UPDATE when every primary-key column was assigned; otherwise INSERT. */
-    public function save(): ?CompositeMembershipRow
-    {
-        $this->terminalArity(func_num_args());
-        $db = $this->terminalDb();
-        [$updated, $keys] = $this->runSave($db, ['tenant_id', 'account_id']);
-        if (!$updated) { return null; }
         return CompositeMembership::query()->using($db)->tenantIdEq($keys[0])->accountIdEq($keys[1])->get();
     }
 

@@ -867,15 +867,17 @@ func main() {
 		})
 	})
 	run("save_branch", func() (any, error) {
-		// no PK in set[] → INSERT; PK set → UPDATE of the other columns and a re-read
 		r, err := orm.Transaction(ctx, db, func(tx *orm.Tx) (*gen.AuthorRow, error) {
-			return fks(gen.Author().SetName("conf-save")).Using(ctx, tx).Save()
+			return fks(gen.Author().SetName("conf-save")).Using(ctx, tx).Insert()
 		})
 		if err != nil {
 			return nil, err
 		}
 		maskRows(r.UpdatedTs, r.Seq)
-		after, err := gen.Author().SetSeq(r.Seq).SetName("conf-save-2").Using(ctx, db).Save()
+		if _, err := gen.Author().Seq(r.Seq).SetName("conf-save-2").Using(ctx, db).Update(); err != nil {
+			return nil, err
+		}
+		after, err := gen.Author().Seq(r.Seq).Using(ctx, db).Get()
 		if err != nil {
 			return nil, err
 		}

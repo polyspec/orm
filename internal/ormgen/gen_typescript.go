@@ -269,11 +269,6 @@ func genTypeScript(m *schema.Manifest, outDir string) error {
 			}
 			b.WriteString(" return query.get(); }\n")
 		}
-		fmt.Fprintf(&b, "  public async save(): Promise<%sRow | null> { const database=this.binding.resolve(); const keys=await this.saveKeys([%s]); const query=new %sQuery().using(database);", ge.Type, strings.Join(pkNames, ","), ge.Type)
-		for i, key := range ge.PKNames {
-			fmt.Fprintf(&b, " query.predicate(%s,'eq',keys[%d]);", tsString(key), i)
-		}
-		b.WriteString(" return query.get(); }\n")
 		b.WriteString("  public async update(): Promise<number> { return this.writeAffected('update'); }\n  public async delete(): Promise<number> { return this.writeAffected('delete'); }\n")
 		fmt.Fprintf(&b, "  public async batchInsert(rows: readonly %sQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }\n  public async batchUpsert(rows: readonly %sQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'insert', options); }\n  public async batchUpdate(rows: readonly %sQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'update', options); }\n  public async batchDelete(rows: readonly %sQuery[], options: BatchOptions = {}): Promise<BatchResult> { return this.batchWrite(rows, 'delete', options); }\n  private async batchWrite(rows: readonly %sQuery[], kind: 'insert'|'update'|'delete', options: BatchOptions): Promise<BatchResult> { const database=this.binding.resolve(); const requests: BatchRequest[]=[]; for (const row of rows) { row.using(database); requests.push({ plan: await database.plan(row.requestShape(kind)), params: row.parameters() }); } return batchWrite(database, requests, kind, options); }\n", ge.Type, ge.Type, ge.Type, ge.Type, ge.Type)
 		b.WriteString("  public async sql(): Promise<{sql:string;binds:unknown[]}> { return this.statement(); }\n")
