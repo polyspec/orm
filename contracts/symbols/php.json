@@ -924,7 +924,7 @@
   "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::site": "private static function site(array $a, string $event, Closure $q): string",
   "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::sqliteAudit": "private static function sqliteAudit(array $m, array $e, array $a, string $markers): array",
   "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::text": "public static function text(array $o): string",
-  "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::unchanged": "private static function unchanged(array $e, string $object, string $dialect, Closure $q): string",
+  "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::unchanged": "private static function unchanged(array $e, string $object, Closure $q): string",
   "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::value": "private static function value(array $c, string $ref, string $dialect): string",
   "clients/php/src/UsageError.php::Orm\\UsageError": "final class Orm\\UsageError extends RuntimeException implements Stringable,Throwable uses ",
   "clients/php/src/Utils.php::Orm\\AesUtils": "final class Orm\\AesUtils extends  implements  uses ",
