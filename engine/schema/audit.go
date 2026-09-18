@@ -143,8 +143,15 @@ func (m *Manifest) addAudit(x *ORMDirective) error {
 					return &BuildError{x.Line, "%% orm:audit: invalid redact path " + item}
 				}
 			}
-			if e.Column(path[0]) == nil {
+			column := e.Column(path[0])
+			if column == nil {
 				return &BuildError{x.Line, "%% orm:audit: " + fmt.Sprintf("unknown column %s.%s", name, path[0])}
+			}
+			if column.PK {
+				return &BuildError{x.Line, "%% orm:audit: " + fmt.Sprintf("%s.%s is a key column and identifies the row", name, path[0])}
+			}
+			if len(path) > 1 && column.Type != "jsontext" {
+				return &BuildError{x.Line, "%% orm:audit: " + fmt.Sprintf("%s.%s is not a jsontext column, so %s has no path", name, path[0], item)}
 			}
 			for _, previous := range audit.Redact {
 				n := min(len(previous), len(path))

@@ -470,3 +470,28 @@ func dropAuditTables(t *testing.T, ctx context.Context, db *sql.DB, driver strin
 		}
 	}
 }
+
+// TestAuditRejectsRedactionThatCannotApply checks the redaction declarations a
+// schema cannot carry out: an unknown column, a key column that identifies the
+// row, and a path into a column that holds no JSON.
+func TestAuditRejectsRedactionThatCannotApply(t *testing.T) {
+	for _, c := range []struct{ name, redact, want string }{
+		{"unknown column", "missing", "unknown column audit_item.missing"},
+		{"key column", "seq", "is a key column"},
+		{"path into a plain column", "title.token", "is not a jsontext column"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			source := auditHead + auditLogLine +
+				"  %% orm:audit entity=audit_item mode=changes site=site_ref redact=" + c.redact + "\n" +
+				auditNoteLine
+			d, err := schema.Parse(source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = schema.Build(d)
+			if err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("build error = %v, want one naming %q", err, c.want)
+			}
+		})
+	}
+}
