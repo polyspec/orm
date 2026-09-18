@@ -9,6 +9,7 @@ package ormgen
 import (
 	"flag"
 	"fmt"
+	"go/format"
 	"os"
 	"strings"
 )
@@ -89,7 +90,15 @@ func errorsCmd(args []string) {
 	default:
 		fail(fmt.Errorf("unknown lang %q", *lang))
 	}
-	if err := os.WriteFile(*out, []byte(sb.String()), 0o644); err != nil {
+	body := []byte(sb.String())
+	if *lang == "go" {
+		formatted, err := format.Source(body)
+		if err != nil {
+			fail(err)
+		}
+		body = formatted
+	}
+	if err := os.WriteFile(*out, body, 0o644); err != nil {
 		fail(err)
 	}
 	fmt.Fprintf(os.Stderr, "ormgen: %d codes → %s\n", len(codes), *out)

@@ -39,12 +39,7 @@ func (MySQL) RowLock(mode string) (string, bool) {
 // hex and ip remain SQL-side because they do not depend on a secret.
 func (MySQL) HandlesStyle(s string) bool { return s == "hex" || s == "ip" }
 
-func (MySQL) Like(col, ph string, binary bool) string {
-	if binary {
-		return col + " LIKE BINARY " + ph
-	}
-	return col + " LIKE " + ph
-}
+func (MySQL) Like(col, ph string) string { return col + " LIKE " + ph }
 
 func (MySQL) Fulltext(cols []string, ph string, boolean bool) string {
 	mode := " IN NATURAL LANGUAGE MODE"

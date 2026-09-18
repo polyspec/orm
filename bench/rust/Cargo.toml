@@ -5,10 +5,6 @@ edition = "2021"
 publish = false
 
 [[bin]]
-name = "boundary"
-path = "src/boundary.rs"
-
-[[bin]]
 name = "native"
 path = "src/native.rs"
 
@@ -20,9 +16,6 @@ path = "src/driver_compare.rs"
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql"] }
 mysql_async = { version = "0.37.1", default-features = false, features = ["minimal-rust"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-libloading = "0.9"
-wasmtime = "48"
-wasmtime-wasi = "48"
 
 [profile.release]
 opt-level = 3

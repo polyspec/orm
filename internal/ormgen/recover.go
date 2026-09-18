@@ -16,14 +16,18 @@ func recoverCmd(args []string) {
 	fs := flag.NewFlagSet("recover", flag.ExitOnError)
 	planPath := fs.String("plan", "", "migration plan JSON (required)")
 	migrationID := fs.String("migration-id", "", "migration identifier recorded by ormgen migrate")
-	dsn := fs.String("dsn", "", "database DSN or SQLite path (required)")
-	driver := fs.String("driver", "", "mysql|postgres|sqlite; defaults to plan driver")
+	dsnFlag := fs.String("dsn", "", "database DSN URI: mysql://, postgres://, or sqlite:///path (required)")
 	schemaPath := fs.String("schema", "", "target schema.json (required)")
 	logDir := fs.String("log-dir", "migrations/logs", "directory for migration JSON logs")
 	fs.Parse(args)
-	if (*planPath == "") == (*migrationID == "") || *dsn == "" || *schemaPath == "" {
+	if (*planPath == "") == (*migrationID == "") || *dsnFlag == "" || *schemaPath == "" {
 		fail(fmt.Errorf("MIGRATION_CONFIG: exactly one of --plan or --migration-id, plus --dsn and --schema, is required"))
 	}
+	dsn, err := parseToolDSN(*dsnFlag)
+	if err != nil {
+		fail(err)
+	}
+	driver := dsn.dialect
 	var plan migrationPlanFile
 	if *planPath != "" {
 		b, err := os.ReadFile(*planPath)
@@ -36,45 +40,33 @@ func recoverCmd(args []string) {
 		if plan.Version != 1 || plan.MigrationID == "" || plan.Driver == "" {
 			fail(fmt.Errorf("MIGRATION_SOURCE: plan version, migration_id and driver are required"))
 		}
-		if *driver == "" {
-			*driver = plan.Driver
-		}
-		if *driver != plan.Driver {
-			fail(fmt.Errorf("MIGRATION_CONFIG: plan driver=%s does not match requested driver=%s", plan.Driver, *driver))
+		if driver != plan.Driver {
+			fail(fmt.Errorf("MIGRATION_CONFIG: plan driver=%s does not match the DSN driver=%s", plan.Driver, driver))
 		}
 		if checksumText(planSQL(plan.Operations)) != plan.Checksum {
 			fail(fmt.Errorf("MIGRATION_PLAN: plan checksum mismatch"))
 		}
-	} else if *driver == "" {
-		fail(fmt.Errorf("MIGRATION_CONFIG: --driver is required with --migration-id"))
 	}
-	if *driver != "mysql" && *driver != "postgres" && *driver != "sqlite" {
-		fail(fmt.Errorf("MIGRATION_CONFIG: unsupported driver %q", *driver))
-	}
-	want, err := loadSchemaSource(*schemaPath, *driver)
+	want, err := loadSchemaSource(*schemaPath, driver)
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_SOURCE: target schema: %w", err))
 	}
 	if *planPath != "" && want.SchemaHash != plan.ToHash {
 		fail(fmt.Errorf("MIGRATION_PLAN: target manifest hash does not match plan expected_hash=%s actual_hash=%s", plan.ToHash, want.SchemaHash))
 	}
-	name, openDSN := sqlDriver(*driver, *dsn)
-	db, err := sql.Open(name, openDSN)
+	db, _, err := openToolDB(*dsnFlag)
 	if err != nil {
-		fail(fmt.Errorf("MIGRATION_CONNECT: %w", err))
+		fail(err)
 	}
 	defer db.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if err := db.PingContext(ctx); err != nil {
-		fail(fmt.Errorf("MIGRATION_CONNECT: driver=%s dsn=%s: %w", *driver, redactDSN(*dsn), err))
-	}
 	status := ""
 	if *planPath != "" {
-		status, err = recoverMigration(ctx, db, *driver, plan, want, *logDir)
+		status, err = recoverMigration(ctx, db, driver, plan, want, *logDir)
 		*migrationID = plan.MigrationID
 	} else {
-		status, err = recoverMigrationByID(ctx, db, *driver, *migrationID, want, *logDir)
+		status, err = recoverMigrationByID(ctx, db, driver, *migrationID, want, *logDir)
 	}
 	if err != nil {
 		fail(err)

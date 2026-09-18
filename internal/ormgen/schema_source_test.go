@@ -11,7 +11,7 @@ import (
 )
 
 func TestSchemaSourcesPreserveManifest(t *testing.T) {
-	src := "erDiagram\n  account {\n    bigint id PK\n    bigint tenant_id\n    varchar(32) secret \"aes hex\"\n    int aes_key_version \"=1\"\n  }\n  %% scope account tenant_id\n  %% table_comment account \"accounts\"\n  %% column_comment account secret \"encrypted\"\n"
+	src := "erDiagram\n  account {\n    bigint id PK\n    bigint tenant_id\n    varchar(32) secret \"aes hex\"\n    int aes_key_version \"=1\"\n  }\n  %% table_comment account \"accounts\"\n  %% column_comment account secret \"encrypted\"\n"
 	d, err := schema.Parse(src)
 	if err != nil {
 		t.Fatal(err)
@@ -49,8 +49,8 @@ func TestSchemaSourcesPreserveManifest(t *testing.T) {
 			t.Fatal(err)
 		}
 		got, err := loadSchemaSource(path, driver)
-		if err != nil || got.SchemaHash != want.SchemaHash || got.Entities["account"].Scope != "tenant_id" {
-			t.Fatalf("sql source %s hash=%v scope=%q err=%v", driver, schemaHash(got), gotScope(got, "account"), err)
+		if err != nil || got.SchemaHash != want.SchemaHash {
+			t.Fatalf("sql source %s hash=%v err=%v", driver, schemaHash(got), err)
 		}
 	}
 }
@@ -65,7 +65,7 @@ func TestSchemaSourceReadsLiveSQLiteAndRejectsLossySQL(t *testing.T) {
 		t.Fatal(err)
 	}
 	db.Close()
-	got, err := loadSchemaSource("db:"+path, "sqlite")
+	got, err := loadSchemaSource("db:sqlite://"+path, "sqlite")
 	if err != nil || got.Entities["item"] == nil {
 		t.Fatalf("live source: %#v %v", got, err)
 	}
@@ -116,8 +116,8 @@ func TestSchemaSourceConversionMatrix(t *testing.T) {
 	}
 	liveDB.Close()
 
-	for _, source := range []string{mmdPath, jsonPath, sqlPath, "db:" + livePath} {
-		t.Run(filepath.Base(strings.TrimPrefix(source, "db:")), func(t *testing.T) {
+	for _, source := range []string{mmdPath, jsonPath, sqlPath, "db:sqlite://" + livePath} {
+		t.Run(filepath.Base(strings.TrimPrefix(source, "db:sqlite://")), func(t *testing.T) {
 			target, err := loadSchemaSource(source, "sqlite")
 			if err != nil {
 				t.Fatal(err)
@@ -143,7 +143,7 @@ func TestSchemaSourceConversionMatrix(t *testing.T) {
 				t.Fatal(err)
 			}
 			if !schemaMatches(target, actual, "sqlite") {
-				t.Fatalf("source %s did not produce its target schema: %v", source, diffManifests(target, actual))
+				t.Fatalf("source %s did not produce its target schema: %v", source, diffManifests(target, actual, "sqlite"))
 			}
 		})
 	}
@@ -154,11 +154,4 @@ func schemaHash(m *schema.Manifest) string {
 		return ""
 	}
 	return m.SchemaHash
-}
-
-func gotScope(m *schema.Manifest, entity string) string {
-	if m == nil || m.Entities[entity] == nil {
-		return ""
-	}
-	return m.Entities[entity].Scope
 }

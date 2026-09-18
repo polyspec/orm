@@ -29,21 +29,18 @@ type scope struct {
 	q      *ir.Query
 	joins  map[string]*scope
 	parent *scope
+	outer  *scope   // enclosing query of a subquery root ("^" refs)
 	extra  []string // columns a relation step needs selected (its match column, key_by)
 }
 
 // relCtx describes the relation a step loads: which parent step/column feeds
 // its IN list and how the rows attach.
 type relCtx struct {
-	parentStep        int
-	parentAsm         *plan.Assemble
-	parentKeys        []string
-	childKeys         []string
-	kind              string
-	through           *schema.Entity
-	throughName       string
-	throughParentKeys []string
-	throughKeys       []string
+	parentStep int
+	parentAsm  *plan.Assemble
+	parentKeys []string
+	childKeys  []string
+	kind       string
 }
 
 // stepSet numbers steps in build order, so a parent always precedes its relation steps.
@@ -59,6 +56,7 @@ type builder struct {
 	p     *Planner
 	binds []plan.BindSlot
 	n     int
+	subs  int // subquery alias counter
 }
 
 func (b *builder) param(i int) string {
@@ -123,7 +121,7 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 	ps := &stepSet{}
 	var err error
 	switch r.Kind {
-	case "one", "all", "count", "group_count", "count_distinct", "sum", "avg", "min", "max":
+	case "one", "all", "count", "group_count", "sum", "avg":
 		_, err = p.selectStep(ps, &r.Query, r.Kind, r.Agg, nil)
 	case "paginate":
 		// main (+ its relation steps), then the count step: executors find it by role.
@@ -145,15 +143,6 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 		if st, err = p.deleteStep(r); err == nil {
 			ps.add(st)
 		}
-	case "raw":
-		b := &builder{p: p}
-		ent := p.M.Entities[r.Entity]
-		sql, err2 := p.fillPlaceholders(b, strings.ReplaceAll(r.Raw.SQL, "{table}", p.D.Quote(ent.Table)), r.Raw.Ps)
-		if err2 != nil {
-			err = err2
-			break
-		}
-		ps.add(&plan.Step{Role: "raw", SQL: sql, BindSlots: b.binds})
 	}
 	if err != nil {
 		return nil, err
@@ -184,11 +173,6 @@ func (p *Planner) buildScopes(q *ir.Query, alias string, parent *scope) *scope {
 func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *relCtx) (*plan.Step, error) {
 	b := &builder{p: p}
 	root := p.buildScopes(q, "a", nil)
-	if rc == nil && q.Keyset != nil {
-		if err := p.prepareKeyset(root.ent, q); err != nil {
-			return nil, err
-		}
-	}
 	if rc != nil {
 		root.extra = append(root.extra, rc.childKeys...)
 		if q.KeyBy != "" {
@@ -197,42 +181,22 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	}
 	var sb strings.Builder
 	sb.WriteString("SELECT ")
-	if q.Distinct && kind != "count" && kind != "group_count" {
-		sb.WriteString("DISTINCT ")
-	}
 	asm := &plan.Assemble{Entity: root.ent.Name, Alias: root.alias}
 	var outNames []string
 	idx := 0
 	groupCount := kind == "count" && (len(q.GroupBy) > 0 || len(q.GroupByExpr) > 0) // number of groups: wrap the grouped statement
-	distinctRootCount := kind == "count" && q.Distinct && len(root.ent.PK) > 1
 	groupRows := kind == "group_count"
 	switch kind {
 	case "count":
 		if groupCount {
 			sb.WriteString("1")
-		} else if distinctRootCount {
-			sb.WriteString("DISTINCT ")
-			for i, key := range root.ent.PK {
-				if i > 0 {
-					sb.WriteString(", ")
-				}
-				sb.WriteString(p.qcol(root, key))
-			}
-		} else if q.Distinct {
-			sb.WriteString("COUNT(DISTINCT " + p.qcol(root, root.ent.PK[0]) + ")")
 		} else {
 			sb.WriteString("COUNT(*)")
 		}
-	case "count_distinct":
-		sb.WriteString("COUNT(DISTINCT " + p.qcol(root, agg) + ")")
 	case "sum":
 		sb.WriteString("COALESCE(SUM(" + p.qcol(root, agg) + "), 0)")
 	case "avg":
 		sb.WriteString("AVG(" + p.qcol(root, agg) + ")")
-	case "min":
-		sb.WriteString("MIN(" + p.qcol(root, agg) + ")")
-	case "max":
-		sb.WriteString("MAX(" + p.qcol(root, agg) + ")")
 	case "group_count":
 		if err := p.selectGroupCountList(b, &sb, root, asm, &idx, &outNames); err != nil {
 			return nil, err
@@ -258,7 +222,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 		}
 	}
 	if perParent > 0 {
-		order, err := p.renderOrder(root, q)
+		order, err := p.renderOrder(b, root, q)
 		if err != nil {
 			return nil, err
 		}
@@ -278,60 +242,21 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	// WHERE = [parent IN list] AND root group AND each join's where group (declaration order).
 	var where []string
 	if rc != nil {
-		if rc.through == nil && len(rc.childKeys) == 1 {
+		if len(rc.childKeys) == 1 {
 			where = append(where, p.qcol(root, rc.childKeys[0])+" IN ("+b.parentList(rc.parentStep)+")")
-		} else if rc.through == nil {
-			where = append(where, "("+strings.Join(p.qualified(root, rc.childKeys), ", ")+") IN (("+b.parentList(rc.parentStep)+"))")
 		} else {
-			throughAlias := "through__" + rc.throughName
-			throughCols := make([]string, len(rc.throughKeys))
-			for i, column := range rc.throughKeys {
-				throughCols[i] = p.D.Quote(throughAlias) + "." + p.D.Quote(column)
-			}
-			parentCols := make([]string, len(rc.throughParentKeys))
-			for i, column := range rc.throughParentKeys {
-				parentCols[i] = p.D.Quote(throughAlias) + "." + p.D.Quote(column)
-			}
-			parentList := b.parentList(rc.parentStep)
-			inner := "SELECT " + strings.Join(throughCols, ", ") + " FROM " + p.D.Quote(rc.through.Table) + " AS " + p.D.Quote(throughAlias) + " WHERE "
-			if len(parentCols) == 1 {
-				inner += parentCols[0] + " IN (" + parentList + ")"
-			} else {
-				inner += "(" + strings.Join(parentCols, ", ") + ") IN ((" + parentList + "))"
-			}
-			if rc.through.SoftDelete != "" {
-				inner += " AND " + p.D.Quote(throughAlias) + "." + p.D.Quote(rc.through.SoftDelete) + " IS NULL"
-			}
-			if len(rc.childKeys) == 1 {
-				where = append(where, p.qcol(root, rc.childKeys[0])+" IN ("+inner+")")
-			} else {
-				where = append(where, "("+strings.Join(p.qualified(root, rc.childKeys), ", ")+") IN ("+inner+")")
-			}
+			where = append(where, "("+strings.Join(p.qualified(root, rc.childKeys), ", ")+") IN (("+b.parentList(rc.parentStep)+"))")
 		}
-	}
-	if q.ScopeP != nil {
-		clause, err := p.scopeClause(b, root)
-		if err != nil {
-			return nil, err
-		}
-		where = append(where, clause)
 	}
 	if root.ent.SoftDelete != "" {
 		where = append(where, p.qcol(root, root.ent.SoftDelete)+" IS NULL")
 	}
 	if q.Where != nil && len(q.Where.Items) > 0 {
-		s, err := p.renderGroup(b, root, q.Where, rc == nil && q.ScopeP == nil)
+		s, err := p.renderGroup(b, root, q.Where, rc == nil)
 		if err != nil {
 			return nil, err
 		}
 		where = append(where, s)
-	}
-	if rc == nil && q.Keyset != nil {
-		boundary, err := p.renderKeyset(b, root, q)
-		if err != nil {
-			return nil, err
-		}
-		where = append(where, boundary)
 	}
 	if err := p.collectJoinWhere(b, root, &where); err != nil {
 		return nil, err
@@ -347,15 +272,8 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			return nil, err
 		}
 		sb.WriteString(group)
-		if q.Having != nil && len(q.Having.Items) > 0 {
-			h, err := p.renderGroup(b, root, q.Having, true)
-			if err != nil {
-				return nil, err
-			}
-			sb.WriteString(" HAVING " + h)
-		}
 	}
-	if groupCount || distinctRootCount {
+	if groupCount {
 		wrapped := "SELECT COUNT(*) FROM (" + sb.String() + ") AS " + p.D.Quote("orm_g")
 		sb.Reset()
 		sb.WriteString(wrapped)
@@ -382,7 +300,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			outer.WriteString(", " + p.D.Quote("orm_w") + "." + p.D.Quote("orm_rn"))
 			sb = outer
 		} else {
-			order, err := p.renderOrder(root, q)
+			order, err := p.renderOrder(b, root, q)
 			if err != nil {
 				return nil, err
 			}
@@ -412,11 +330,6 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 		if q.IfParent != nil {
 			st.Parent.IfParent = &plan.IfParent{Column: q.IfParent.Column, Index: indexOf(rc.parentAsm, q.IfParent.Column), Param: q.IfParent.P}
 		}
-		if q.DropChildKey {
-			for _, key := range rc.childKeys {
-				asm.Columns[indexOf(asm, key)].Hidden = true
-			}
-		}
 	}
 	if kind == "one" || kind == "all" || kind == "group_count" {
 		st.Assemble = asm
@@ -434,31 +347,24 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 // recursively) and records how its rows attach in asm.Children.
 func (p *Planner) relationSteps(ps *stepSet, s *scope, asm *plan.Assemble, stepID int) error {
 	for _, r := range s.q.Relations {
-		rel := s.ent.Relations[r.Rel]
-		parentKeys, childKeys := relationColumns(rel)
-		var through *schema.Entity
-		if rel.Through != "" {
-			through = p.M.Entities[rel.Through]
+		rc := &relCtx{parentStep: stepID, parentAsm: asm}
+		var target *schema.Entity
+		if r.Left != "" {
+			rc.parentKeys, rc.childKeys, rc.kind = []string{r.Left}, []string{r.Right}, r.Kind
+			target = p.M.Entities[r.Query.Entity]
+		} else {
+			rel := s.ent.Relations[r.Rel]
+			rc.parentKeys, rc.childKeys = relationColumns(rel)
+			rc.kind = rel.Kind
+			target = p.M.Entities[rel.Target]
 		}
-		throughKeys := make([]string, len(rel.ThroughKeys))
-		for i, key := range rel.ThroughKeys {
-			throughKeys[i] = key.Local
-		}
-		throughParentKeys := make([]string, len(rel.Keys))
-		for i, key := range rel.Keys {
-			throughParentKeys[i] = key.Target
-		}
-		if through != nil && len(throughKeys) == 0 {
-			throughKeys = nil
-		}
-		rc := &relCtx{parentStep: stepID, parentAsm: asm, parentKeys: parentKeys, childKeys: childKeys, kind: rel.Kind, through: through, throughName: rel.Name, throughParentKeys: throughParentKeys, throughKeys: throughKeys}
+		parentKeys, childKeys := rc.parentKeys, rc.childKeys
 		st, err := p.selectStep(ps, r.Query, "all", "", rc)
 		if err != nil {
 			return err
 		}
-		target := p.M.Entities[rel.Target]
 		ch := &plan.Child{
-			Rel: r.Rel, Kind: rel.Kind, Step: st.ID,
+			Rel: r.Rel, Kind: rc.kind, Step: st.ID,
 			ParentKeys: keyRefs(asm, parentKeys),
 			ChildKeys:  keyRefs(st.Assemble, childKeys),
 			Flatten:    r.Query.Flatten,
@@ -510,12 +416,6 @@ func relationColumns(rel *schema.Rel) ([]string, []string) {
 	for i, key := range rel.Keys {
 		local[i], target[i] = key.Local, key.Target
 	}
-	if rel.Through != "" {
-		target = make([]string, len(rel.ThroughKeys))
-		for i, key := range rel.ThroughKeys {
-			target[i] = key.Target
-		}
-	}
 	return local, target
 }
 
@@ -527,7 +427,7 @@ func (p *Planner) qualified(scope *scope, columns []string) []string {
 	return out
 }
 
-func (p *Planner) renderOrder(root *scope, q *ir.Query) (string, error) {
+func (p *Planner) renderOrder(b *builder, root *scope, q *ir.Query) (string, error) {
 	if len(q.Order) == 0 {
 		return "", nil
 	}
@@ -537,100 +437,34 @@ func (p *Planner) renderOrder(root *scope, q *ir.Query) (string, error) {
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		if o.Expr != "" {
+		switch {
+		case o.Random:
+			sb.WriteString(p.D.Random())
+			continue
+		case o.Expr != "":
+			// A raw order expression carries its own direction.
 			s, err := p.renderExpr(root, o.Expr)
 			if err != nil {
 				return "", err
 			}
 			sb.WriteString(s)
-		} else {
+			continue
+		case o.Fn != nil:
+			s, err := p.columnFunction(b, root, o.Column, o.Fn)
+			if err != nil {
+				return "", err
+			}
+			sb.WriteString(s)
+		default:
 			sb.WriteString(p.qcol(root, o.Column))
 		}
-		desc := o.Desc
-		if q.Keyset != nil && q.Keyset.Direction == "before" {
-			desc = !desc
-		}
-		if desc {
+		if o.Desc {
 			sb.WriteString(" DESC")
 		} else {
 			sb.WriteString(" ASC")
 		}
 	}
 	return sb.String(), nil
-}
-
-func (p *Planner) prepareKeyset(ent *schema.Entity, q *ir.Query) error {
-	if q.Keyset.Direction != "after" && q.Keyset.Direction != "before" {
-		return &ir.Error{Code: "CURSOR_INVALID", Msg: "keyset direction must be after or before"}
-	}
-	if q.Limit == nil || q.Limit.Count < 1 || q.Limit.Offset != 0 {
-		return &ir.Error{Code: "IR_INVALID", Msg: "keyset requires a positive limit count and zero offset"}
-	}
-	seen := map[string]bool{}
-	for _, o := range q.Order {
-		if o.Expr != "" || o.Column == "" {
-			return &ir.Error{Code: "CURSOR_INVALID", Msg: "keyset order must use non-null table columns"}
-		}
-		col := ent.Column(o.Column)
-		if col == nil {
-			return &ir.Error{Code: "COLUMN_UNKNOWN", Msg: ent.Name + "." + o.Column}
-		}
-		if col.Nullable || len(col.Styles) > 0 {
-			return &ir.Error{Code: "CURSOR_INVALID", Msg: ent.Name + "." + o.Column + " cannot be used as a keyset order column"}
-		}
-		if seen[o.Column] {
-			return &ir.Error{Code: "CURSOR_INVALID", Msg: "keyset order contains duplicate column " + o.Column}
-		}
-		seen[o.Column] = true
-	}
-	for _, name := range ent.PK {
-		if !seen[name] {
-			q.Order = append(q.Order, ir.Order{Column: name})
-			seen[name] = true
-		}
-	}
-	if len(q.Keyset.Values) != len(q.Order) {
-		return &ir.Error{Code: "CURSOR_INVALID", Msg: fmt.Sprintf("keyset has %d values for %d order columns", len(q.Keyset.Values), len(q.Order))}
-	}
-	return nil
-}
-
-func (p *Planner) renderKeyset(b *builder, root *scope, q *ir.Query) (string, error) {
-	terms := make([]string, 0, len(q.Order))
-	for i, order := range q.Order {
-		parts := make([]string, 0, i+1)
-		for j := 0; j < i; j++ {
-			previous := q.Order[j]
-			if previous.Expr != "" {
-				return "", &ir.Error{Code: "CURSOR_INVALID", Msg: "keyset does not support expression order"}
-			}
-			col := root.ent.Column(previous.Column)
-			value, err := p.renderValue(b, col, q.Keyset.Values[j])
-			if err != nil {
-				return "", err
-			}
-			parts = append(parts, p.qcol(root, previous.Column)+" = "+value)
-		}
-		col := root.ent.Column(order.Column)
-		value, err := p.renderValue(b, col, q.Keyset.Values[i])
-		if err != nil {
-			return "", err
-		}
-		op := "gt"
-		if order.Desc {
-			op = "lt"
-		}
-		if q.Keyset.Direction == "before" {
-			if op == "gt" {
-				op = "lt"
-			} else {
-				op = "gt"
-			}
-		}
-		parts = append(parts, p.qcol(root, order.Column)+" "+cmp(op)+" "+value)
-		terms = append(terms, "("+strings.Join(parts, " AND ")+")")
-	}
-	return "(" + strings.Join(terms, " OR ") + ")", nil
 }
 
 func (p *Planner) renderGroupBy(root *scope, q *ir.Query) (string, error) {
@@ -714,13 +548,31 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		col := s.ent.Column(c.column)
 		var expr string
 		var styles []string
+		typ := "string"
 		switch {
-		case c.expr != "":
-			e, err := p.renderExpr(s, c.expr)
+		case c.fn != nil:
+			e, err := p.columnFunction(b, s, c.column, c.fn)
 			if err != nil {
 				return err
 			}
 			expr = e
+			typ = functionType(c.fn.Name, col)
+			col = nil
+		case c.sub != nil:
+			e, err := p.subSelect(b, s, c.sub)
+			if err != nil {
+				return err
+			}
+			expr = "(" + e + ")"
+			typ = p.subType(c.sub)
+		case c.expr != nil:
+			e, err := p.renderExpr(s, c.expr.SQL)
+			if err != nil {
+				return err
+			}
+			if expr, err = p.fillPlaceholders(b, e, c.expr.Ps); err != nil {
+				return err
+			}
 		default:
 			e, _ := p.D.ReadExpr(p.qcol(s, c.column), col.Type, p.sqlStyles(col.Styles), func() string { return b.secret("aes") })
 			expr = e
@@ -728,7 +580,6 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		}
 		sb.WriteString(expr + " AS " + p.D.Quote(s.alias+"__"+c.name))
 		*outNames = append(*outNames, s.alias+"__"+c.name)
-		typ := "string"
 		if col != nil {
 			typ = col.Type
 		}
@@ -782,7 +633,12 @@ func aesVersionCol(e *schema.Entity) *schema.Col {
 	return nil
 }
 
-type outCol struct{ name, column, expr string }
+type outCol struct {
+	name, column string
+	expr         *ir.Expr
+	fn           *ir.Func
+	sub          *ir.Sub
+}
 
 // projection resolves columns mode/add/remove/as/expr into an ordered list.
 func (p *Planner) projection(s *scope) ([]outCol, error) {
@@ -830,10 +686,15 @@ func (p *Planner) projection(s *scope) ([]outCol, error) {
 		}
 	}
 	for _, r := range s.q.Relations {
-		rel := s.ent.Relations[r.Rel]
-		for _, key := range rel.Keys {
-			if !contains(base, key.Local) {
-				base = append(base, key.Local)
+		if r.Left != "" {
+			if !contains(base, r.Left) {
+				base = append(base, r.Left)
+			}
+		} else {
+			for _, key := range s.ent.Relations[r.Rel].Keys {
+				if !contains(base, key.Local) {
+					base = append(base, key.Local)
+				}
 			}
 		}
 		if r.Query.IfParent != nil && !contains(base, r.Query.IfParent.Column) {
@@ -851,11 +712,26 @@ func (p *Planner) projection(s *scope) ([]outCol, error) {
 		out = append(out, outCol{name: x, column: x})
 	}
 	if c != nil {
-		for _, name := range sortedKeys(c.As) {
-			out = append(out, outCol{name: name, column: c.As[name]})
-		}
 		for _, name := range sortedKeys(c.Expr) {
-			out = append(out, outCol{name: name, expr: c.Expr[name]})
+			e := c.Expr[name]
+			out = append(out, outCol{name: name, expr: &e})
+		}
+		fnNames := make([]string, 0, len(c.Fn))
+		for name := range c.Fn {
+			fnNames = append(fnNames, name)
+		}
+		slices.Sort(fnNames)
+		for _, name := range fnNames {
+			cf := c.Fn[name]
+			out = append(out, outCol{name: name, column: cf.Column, fn: &cf.Fn})
+		}
+		subNames := make([]string, 0, len(c.Sub))
+		for name := range c.Sub {
+			subNames = append(subNames, name)
+		}
+		slices.Sort(subNames)
+		for _, name := range subNames {
+			out = append(out, outCol{name: name, sub: c.Sub[name]})
 		}
 	}
 	return out, nil
@@ -864,23 +740,21 @@ func (p *Planner) projection(s *scope) ([]outCol, error) {
 func (p *Planner) renderJoins(b *builder, sb *strings.Builder, s *scope) error {
 	for _, j := range s.q.Joins {
 		js := s.joins[j.Rel]
-		rel := s.ent.Relations[j.Rel]
 		kw := " INNER JOIN "
 		if j.Kind == "left" {
 			kw = " LEFT JOIN "
 		}
-		conditions := make([]string, len(rel.Keys))
-		for i, key := range rel.Keys {
-			conditions[i] = p.qcol(s, key.Local) + " = " + p.qcol(js, key.Target)
+		var conditions []string
+		if j.Left != "" {
+			conditions = []string{p.qcol(s, j.Left) + " = " + p.qcol(js, j.Right)}
+		} else {
+			rel := s.ent.Relations[j.Rel]
+			conditions = make([]string, len(rel.Keys))
+			for i, key := range rel.Keys {
+				conditions[i] = p.qcol(s, key.Local) + " = " + p.qcol(js, key.Target)
+			}
 		}
 		sb.WriteString(kw + p.D.Quote(js.ent.Table) + " AS " + p.D.Quote(js.alias) + " ON " + strings.Join(conditions, " AND "))
-		if j.Query.ScopeP != nil {
-			scope, err := p.scopeClause(b, js)
-			if err != nil {
-				return err
-			}
-			sb.WriteString(" AND " + scope)
-		}
 		if j.Query.On != nil && len(j.Query.On.Items) > 0 {
 			on, err := p.renderGroup(b, js, j.Query.On, true)
 			if err != nil {
@@ -897,9 +771,13 @@ func (p *Planner) renderJoins(b *builder, sb *strings.Builder, s *scope) error {
 
 // collectJoinWhere appends each join child's where group (and its nested joins') as "(…)".
 func (p *Planner) collectJoinWhere(b *builder, s *scope, where *[]string) error {
+	placed := map[string]bool{}
+	if s.q.Where != nil {
+		placedJoins(s.q.Where, placed)
+	}
 	for _, j := range s.q.Joins {
 		js := s.joins[j.Rel]
-		if j.Query.Where != nil && len(j.Query.Where.Items) > 0 {
+		if j.Query.Where != nil && len(j.Query.Where.Items) > 0 && !placed[j.Rel] {
 			g, err := p.renderGroup(b, js, j.Query.Where, false)
 			if err != nil {
 				return err
@@ -911,18 +789,6 @@ func (p *Planner) collectJoinWhere(b *builder, s *scope, where *[]string) error 
 		}
 	}
 	return nil
-}
-
-func (p *Planner) scopeClause(b *builder, s *scope) (string, error) {
-	if s.q.ScopeP == nil {
-		return "", nil
-	}
-	col := s.ent.Column(s.ent.Scope)
-	value, err := p.renderValue(b, col, *s.q.ScopeP)
-	if err != nil {
-		return "", err
-	}
-	return p.qcol(s, s.ent.Scope) + " = " + value, nil
 }
 
 // renderGroup writes a group; top omits the outer parentheses.
@@ -938,14 +804,10 @@ func (p *Planner) renderGroup(b *builder, s *scope, g *ir.Group, top bool) (stri
 		case it.Group != nil:
 			conn = it.Group.Conn
 			text, err = p.renderGroup(b, s, it.Group, false)
-		case it.Nav != nil:
-			conn = it.Nav.Conn
-			if it.Nav.Mode == "" {
-				js := s.joins[it.Nav.Rel]
-				text, err = p.renderGroup(b, js, it.Nav.Group, false)
-			} else {
-				text, err = p.renderExistence(b, s, it.Nav)
-			}
+		case it.Joined != nil:
+			conn = it.Joined.Conn
+			js := s.joins[it.Joined.Join]
+			text, err = p.renderGroup(b, js, js.q.Where, false)
 		}
 		if err != nil {
 			return "", err
@@ -964,71 +826,6 @@ func (p *Planner) renderGroup(b *builder, s *scope, g *ir.Group, top bool) (stri
 		out = "(" + out + ")"
 	}
 	return out, nil
-}
-
-func (p *Planner) renderExistence(b *builder, parent *scope, nav *ir.Nav) (string, error) {
-	rel := parent.ent.Relations[nav.Rel]
-	if rel == nil {
-		return "", &ir.Error{Code: "RELATION_UNKNOWN", Msg: parent.ent.Name + "." + nav.Rel}
-	}
-	target := p.M.Entities[rel.Target]
-	child := &scope{ent: target, alias: "exists__" + nav.Rel, q: &ir.Query{Entity: target.Name}, joins: map[string]*scope{}, parent: parent}
-	conditions := make([]string, 0, len(rel.Keys)+1)
-	if rel.Through == "" {
-		for _, key := range rel.Keys {
-			conditions = append(conditions, p.qcol(child, key.Target)+" = "+p.qcol(parent, key.Local))
-		}
-	} else {
-		through := p.M.Entities[rel.Through]
-		if through == nil || len(rel.ThroughKeys) == 0 {
-			return "", &ir.Error{Code: "SCHEMA_INVALID", Msg: parent.ent.Name + "." + nav.Rel + " has incomplete through metadata"}
-		}
-		throughAlias := "through__" + nav.Rel
-		var targetCols, sourceCols, parentCols []string
-		for _, key := range rel.ThroughKeys {
-			targetCols = append(targetCols, p.D.Quote(throughAlias)+"."+p.D.Quote(key.Local))
-		}
-		for _, key := range rel.Keys {
-			sourceCols = append(sourceCols, p.D.Quote(throughAlias)+"."+p.D.Quote(key.Target))
-			parentCols = append(parentCols, p.qcol(parent, key.Local))
-		}
-		inner := "SELECT " + strings.Join(targetCols, ", ") + " FROM " + p.D.Quote(through.Table) + " AS " + p.D.Quote(throughAlias) + " WHERE "
-		if len(sourceCols) == 1 {
-			inner += sourceCols[0] + " = " + parentCols[0]
-		} else {
-			inner += "(" + strings.Join(sourceCols, ", ") + ") = (" + strings.Join(parentCols, ", ") + ")"
-		}
-		if through.SoftDelete != "" {
-			inner += " AND " + p.D.Quote(throughAlias) + "." + p.D.Quote(through.SoftDelete) + " IS NULL"
-		}
-		childTargetCols := make([]string, len(rel.ThroughKeys))
-		for i, key := range rel.ThroughKeys {
-			childTargetCols[i] = p.qcol(child, key.Target)
-		}
-		if len(childTargetCols) == 1 {
-			conditions = append(conditions, childTargetCols[0]+" IN ("+inner+")")
-		} else {
-			conditions = append(conditions, "("+strings.Join(childTargetCols, ", ")+") IN ("+inner+")")
-		}
-	}
-	if target.SoftDelete != "" {
-		conditions = append(conditions, p.qcol(child, target.SoftDelete)+" IS NULL")
-	}
-	if nav.Group != nil && len(nav.Group.Items) > 0 {
-		group, err := p.renderGroup(b, child, nav.Group, false)
-		if err != nil {
-			return "", err
-		}
-		conditions = append(conditions, group)
-	}
-	keyword := "EXISTS"
-	if nav.Mode == "not_exists" {
-		keyword = "NOT EXISTS"
-	}
-	if nav.Mode == "count" {
-		return "(SELECT COUNT(*) FROM " + p.D.Quote(target.Table) + " AS " + p.D.Quote(child.alias) + " WHERE " + strings.Join(conditions, " AND ") + ") " + cmp(nav.CountOp) + " " + b.param(*nav.P), nil
-	}
-	return keyword + " (SELECT 1 FROM " + p.D.Quote(target.Table) + " AS " + p.D.Quote(child.alias) + " WHERE " + strings.Join(conditions, " AND ") + ")", nil
 }
 
 func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) {
@@ -1058,8 +855,66 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		}
 		return p.D.Fulltext(cols, b.paramT(*pr.P, transform), boolean), nil
 	}
+	if pr.Op == "tuple_in" || pr.Op == "tuple_not_in" {
+		cols := p.qualified(s, pr.Cols)
+		var rows [][]string
+		for i := 0; i < len(pr.Ps); i += len(pr.Cols) {
+			row := make([]string, len(pr.Cols))
+			for k, name := range pr.Cols {
+				v, err := p.renderValue(b, s.ent.Column(name), pr.Ps[i+k])
+				if err != nil {
+					return "", err
+				}
+				row[k] = v
+			}
+			rows = append(rows, row)
+		}
+		return p.D.TupleIn(cols, rows, pr.Op == "tuple_not_in"), nil
+	}
 	col := s.ent.Column(pr.Column)
 	lhs := p.qcol(s, pr.Column)
+	if pr.Sub != nil {
+		inner, err := p.subSelect(b, s, pr.Sub)
+		if err != nil {
+			return "", err
+		}
+		op := " IN "
+		if pr.Op == "not_in" {
+			op = " NOT IN "
+		}
+		return lhs + op + "(" + inner + ")", nil
+	}
+	if pr.Value != nil {
+		arg := func() string { return b.param(pr.Value.Ps[0]) }
+		value, ok := p.D.ValueFunction(pr.Value.Name, arg, b.now)
+		if !ok {
+			return "", &ir.Error{Code: "CAPABILITY_UNSUPPORTED", Msg: pr.Value.Name + " is not available on " + p.D.Name()}
+		}
+		return lhs + " " + cmp(pr.Op) + " " + value, nil
+	}
+	if pr.Fn != nil {
+		fn, err := p.columnFunction(b, s, pr.Column, pr.Fn)
+		if err != nil {
+			return "", err
+		}
+		plain := func(i int) string { return b.param(i) }
+		switch pr.Op {
+		case "in", "not_in":
+			phs := make([]string, len(pr.Ps))
+			for k, i := range pr.Ps {
+				phs[k] = plain(i)
+			}
+			op := " IN "
+			if pr.Op == "not_in" {
+				op = " NOT IN "
+			}
+			return fn + op + "(" + strings.Join(phs, ", ") + ")", nil
+		case "between":
+			return fn + " BETWEEN " + plain(pr.Ps[0]) + " AND " + plain(pr.Ps[1]), nil
+		default:
+			return fn + " " + cmp(pr.Op) + " " + plain(*pr.P), nil
+		}
+	}
 	switch pr.Op {
 	case "eq", "not_eq", "gt", "gte", "lt", "lte":
 		if slices.Contains(col.Styles, "aes") {
@@ -1137,14 +992,10 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		return lhs + " IS NULL", nil
 	case "is_not_null":
 		return lhs + " IS NOT NULL", nil
-	case "like", "like_binary":
-		return p.D.Like(lhs, b.param(*pr.P), pr.Op == "like_binary"), nil
 	case "contains":
-		return p.D.Like(lhs, b.paramT(*pr.P, "like_contains"), false), nil
-	case "starts_with":
-		return p.D.Like(lhs, b.paramT(*pr.P, "like_starts"), false), nil
-	case "ends_with":
-		return p.D.Like(lhs, b.paramT(*pr.P, "like_ends"), false), nil
+		return p.D.Like(lhs, b.paramT(*pr.P, "like_contains")), nil
+	case "contains_binary":
+		return p.D.ContainsBinary(lhs, func(transform string) string { return b.paramT(*pr.P, transform) }), nil
 	}
 	return "", &ir.Error{Code: "OPERATOR_UNKNOWN", Msg: pr.Op}
 }
@@ -1203,16 +1054,22 @@ func bindType(col *schema.Col) string {
 }
 
 func (p *Planner) resolvePath(s *scope, path string) (*scope, error) {
-	if path == "" {
-		// "" means the parent of a join child's on(), or the root
-		if s.parent != nil {
-			return s.parent, nil
+	if path == "^" {
+		cur := s
+		for cur.parent != nil {
+			cur = cur.parent
 		}
-		return s, nil
+		if cur.outer == nil {
+			return nil, &ir.Error{Code: "IR_INVALID", Msg: "^ reference outside a subquery"}
+		}
+		return cur.outer, nil
 	}
 	cur := s
 	for cur.parent != nil {
 		cur = cur.parent
+	}
+	if path == "" {
+		return cur, nil
 	}
 	for _, seg := range strings.Split(path, "/") {
 		next, ok := cur.joins[seg]
@@ -1231,6 +1088,19 @@ func (p *Planner) renderExpr(s *scope, frag string) (string, error) {
 	var out strings.Builder
 	i := 0
 	for i < len(frag) {
+		if frag[i] == '{' {
+			j := strings.IndexByte(frag[i+1:], '}')
+			if j < 0 {
+				return "", &ir.Error{Code: "IR_INVALID", Msg: "unterminated { in expr"}
+			}
+			name := frag[i+1 : i+1+j]
+			if s.ent.Column(name) == nil {
+				return "", &ir.Error{Code: "COLUMN_UNKNOWN", Msg: s.ent.Name + "." + name + " in expr"}
+			}
+			out.WriteString(p.qcol(s, name))
+			i += j + 2
+			continue
+		}
 		if frag[i] != '`' {
 			out.WriteByte(frag[i])
 			i++
@@ -1258,9 +1128,6 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	if err := validateAESAssignments(ent, set, false); err != nil {
 		return nil, err
 	}
-	if r.ScopeP != nil && !assigned(set, ent.Scope) {
-		set = append(set, ir.Assign{Column: ent.Scope, P: r.ScopeP})
-	}
 	var cols, vals []string
 	for _, a := range set {
 		col := ent.Column(a.Column)
@@ -1278,7 +1145,46 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		cols = append(cols, p.D.Quote(version))
 		vals = append(vals, b.config("aes_version"))
 	}
+	// A dialect without a session time zone stores the executor clock, which
+	// is in the connection time zone, instead of its UTC column default.
+	nowCols := hostNowColumns(p, ent, set)
+	for _, c := range nowCols {
+		cols = append(cols, p.D.Quote(c))
+		vals = append(vals, b.now())
+	}
 	sql := "INSERT INTO " + p.D.Quote(ent.Table) + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(vals, ", ") + ")"
+	if len(r.Rows) > 0 {
+		// source maps each rendered column to its value in r.Set; derived
+		// blind-index columns take the value of their AES source column.
+		source := make([]int, len(set))
+		for i, a := range set {
+			source[i] = i
+			if i >= len(r.Set) {
+				src := blindIndexSource(ent, a.Column)
+				source[i] = slices.IndexFunc(r.Set, func(x ir.Assign) bool { return x.Column == src.Name })
+			}
+		}
+		for _, row := range r.Rows {
+			more := make([]string, len(set))
+			for i := range set {
+				param := row[source[i]]
+				a := ir.Assign{Column: set[i].Column, P: &param}
+				v, err := p.renderAssign(b, ent, ent.Column(a.Column), &a)
+				if err != nil {
+					return nil, err
+				}
+				more[i] = v
+			}
+			if version := aesVersionColumn(ent); version != "" && !assigned(set, version) {
+				more = append(more, b.config("aes_version"))
+			}
+			for range nowCols {
+				more = append(more, b.now())
+			}
+			sql += ", (" + strings.Join(more, ", ") + ")"
+		}
+		return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
+	}
 	if len(r.OnDuplicate) > 0 {
 		duplicate := addBlindIndexAssignments(ent, slices.Clone(r.OnDuplicate))
 		if err := validateAESAssignments(ent, duplicate, true); err != nil {
@@ -1469,25 +1375,33 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 			sets = append(sets, p.D.Quote(ts.Updated)+" = "+now)
 		}
 	}
-	where, err := p.renderGroup(b, root, r.Where, r.ScopeP == nil)
+	where, err := p.renderGroup(b, root, r.Where, true)
 	if err != nil {
 		return nil, err
 	}
 	if r.Optimistic != nil {
 		where += " AND " + p.qcol(root, r.Optimistic.Column) + " = " + b.param(r.Optimistic.P)
 	}
-	if r.ScopeP != nil {
-		scope, e := p.scopeClause(b, root)
-		if e != nil {
-			return nil, e
-		}
-		where = scope + " AND " + where
-	}
 	if ent.SoftDelete != "" {
 		where += " AND " + p.qcol(root, ent.SoftDelete) + " IS NULL"
 	}
 	sql := "UPDATE " + p.D.Quote(ent.Table) + " SET " + strings.Join(sets, ", ") + " WHERE " + where
 	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
+}
+
+// hostNowColumns lists the unassigned columns with a clock default when the
+// dialect has no session time zone.
+func hostNowColumns(p *Planner, ent *schema.Entity, set []ir.Assign) []string {
+	if !p.D.HostNow() {
+		return nil
+	}
+	var out []string
+	for _, c := range ent.Columns {
+		if c.Default != nil && *c.Default == "now" && !assigned(set, c.Name) {
+			out = append(out, c.Name)
+		}
+	}
+	return out
 }
 
 func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
@@ -1501,16 +1415,9 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 			now = b.now()
 		}
 	}
-	where, err := p.renderGroup(b, root, r.Where, r.ScopeP == nil)
+	where, err := p.renderGroup(b, root, r.Where, true)
 	if err != nil {
 		return nil, err
-	}
-	if r.ScopeP != nil {
-		scope, e := p.scopeClause(b, root)
-		if e != nil {
-			return nil, e
-		}
-		where = scope + " AND " + where
 	}
 	if ent.SoftDelete != "" {
 		where += " AND " + p.qcol(root, ent.SoftDelete) + " IS NULL"
@@ -1573,7 +1480,7 @@ func contains(xs []string, x string) bool {
 	return false
 }
 
-func sortedKeys(m map[string]string) []string {
+func sortedKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
@@ -1588,3 +1495,103 @@ func sortedKeys(m map[string]string) []string {
 }
 
 var _ = fmt.Sprintf
+
+// placedJoins collects the joins whose conditions a group places.
+func placedJoins(g *ir.Group, out map[string]bool) {
+	for _, it := range g.Items {
+		if it.Joined != nil {
+			out[it.Joined.Join] = true
+		}
+		if it.Group != nil {
+			placedJoins(it.Group, out)
+		}
+	}
+}
+
+// columnFunction renders an ORM column function on a column of s.
+func (p *Planner) columnFunction(b *builder, s *scope, column string, f *ir.Func) (string, error) {
+	out, ok := p.D.ColumnFunction(f.Name, p.qcol(s, column), func(i int) string { return b.param(f.Ps[i]) })
+	if !ok {
+		return "", &ir.Error{Code: "CAPABILITY_UNSUPPORTED", Msg: f.Name + " is not available on " + p.D.Name()}
+	}
+	return out, nil
+}
+
+// subSelect renders a subquery for an IN list or a scalar column. The
+// subquery root gets its own alias and resolves "^" refs against outer.
+func (p *Planner) subSelect(b *builder, outer *scope, sub *ir.Sub) (string, error) {
+	b.subs++
+	root := p.buildScopes(sub.Query, "s"+strconv.Itoa(b.subs), nil)
+	root.outer = outer
+	var sb strings.Builder
+	sb.WriteString("SELECT ")
+	switch sub.Agg {
+	case "sum":
+		sb.WriteString("COALESCE(SUM(" + p.qcol(root, sub.Column) + "), 0)")
+	case "avg":
+		sb.WriteString("AVG(" + p.qcol(root, sub.Column) + ")")
+	case "count":
+		sb.WriteString("COUNT(*)")
+	default:
+		sb.WriteString(p.qcol(root, sub.Column))
+	}
+	sb.WriteString(" FROM " + p.D.Quote(root.ent.Table) + " AS " + p.D.Quote(root.alias))
+	if err := p.renderJoins(b, &sb, root); err != nil {
+		return "", err
+	}
+	var where []string
+	if root.ent.SoftDelete != "" {
+		where = append(where, p.qcol(root, root.ent.SoftDelete)+" IS NULL")
+	}
+	if sub.Query.Where != nil && len(sub.Query.Where.Items) > 0 {
+		w, err := p.renderGroup(b, root, sub.Query.Where, true)
+		if err != nil {
+			return "", err
+		}
+		where = append(where, w)
+	}
+	if err := p.collectJoinWhere(b, root, &where); err != nil {
+		return "", err
+	}
+	if len(where) > 0 {
+		sb.WriteString(" WHERE " + strings.Join(where, " AND "))
+	}
+	if len(sub.Query.GroupBy) > 0 {
+		group, err := p.renderGroupBy(root, sub.Query)
+		if err != nil {
+			return "", err
+		}
+		sb.WriteString(" GROUP BY " + group)
+	}
+	return sb.String(), nil
+}
+
+// functionType is the assembled type of a column function result.
+func functionType(name string, col *schema.Col) string {
+	switch name {
+	case "day_of_week", "year", "month":
+		return "i64"
+	case "date":
+		return "date"
+	case "distance", "point_x", "point_y":
+		return "f64"
+	}
+	if col != nil {
+		return col.Type
+	}
+	return "string"
+}
+
+// subType is the assembled type of a scalar subquery column.
+func (p *Planner) subType(sub *ir.Sub) string {
+	switch sub.Agg {
+	case "count":
+		return "i64"
+	case "avg":
+		return "f64"
+	}
+	if c := p.M.Entities[sub.Query.Entity].Column(sub.Column); c != nil {
+		return c.Type
+	}
+	return "string"
+}

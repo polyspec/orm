@@ -1,14 +1,11 @@
 package ormgen
 
 import (
-	"context"
-	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/polyspec/orm/engine/schema"
 )
@@ -84,30 +81,28 @@ func manifestFromDDL(path string, b []byte) (*schema.Manifest, error) {
 		}
 		return m, nil
 	}
-	return nil, fmt.Errorf("MIGRATION_SOURCE_LOSS: %s has no orm-schema-v1 metadata; SQL cannot represent scope, codec styles, named predicates, or relation options", path)
+	return nil, fmt.Errorf("MIGRATION_SOURCE_LOSS: %s has no orm-schema-v1 metadata; SQL cannot represent codec styles or relation options", path)
 }
 
-func loadDatabaseSchema(dsn, driver string) (*schema.Manifest, error) {
-	if dsn == "" {
+func loadDatabaseSchema(raw, dialect string) (*schema.Manifest, error) {
+	if raw == "" {
 		return nil, fmt.Errorf("MIGRATION_SOURCE: db: requires a DSN")
 	}
-	if driver != "mysql" && driver != "postgres" && driver != "sqlite" {
-		return nil, fmt.Errorf("MIGRATION_CONFIG: db source requires --driver mysql, postgres, or sqlite")
-	}
-	name, openDSN := sqlDriver(driver, dsn)
-	db, err := sql.Open(name, openDSN)
+	dsn, err := parseToolDSN(raw)
 	if err != nil {
-		return nil, fmt.Errorf("MIGRATION_CONNECT: driver=%s dsn=%s: %w", driver, redactDSN(dsn), err)
+		return nil, err
+	}
+	if dsn.dialect != dialect {
+		return nil, fmt.Errorf("MIGRATION_CONFIG: db source %s is %s, not %s", dsn.redacted(), dsn.dialect, dialect)
+	}
+	db, _, err := openToolDB(raw)
+	if err != nil {
+		return nil, err
 	}
 	defer db.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	if err := db.PingContext(ctx); err != nil {
-		return nil, fmt.Errorf("MIGRATION_CONNECT: driver=%s dsn=%s: %w", driver, redactDSN(dsn), err)
-	}
-	m, err := liveManifest(db, driver)
+	m, err := liveManifest(db, dsn.dialect)
 	if err != nil {
-		return nil, fmt.Errorf("MIGRATION_INTROSPECT: driver=%s dsn=%s: %w", driver, redactDSN(dsn), err)
+		return nil, fmt.Errorf("MIGRATION_INTROSPECT: driver=%s dsn=%s: %w", dsn.dialect, dsn.redacted(), err)
 	}
 	return m, nil
 }

@@ -52,43 +52,39 @@ func (l migrationLog) withError(detail string) migrationLog {
 
 func migrateCmd(args []string) {
 	fs := flag.NewFlagSet("migrate", flag.ExitOnError)
-	dsn := fs.String("dsn", "", "database DSN or SQLite path (required)")
-	driver := fs.String("driver", "mysql", "mysql|postgres|sqlite")
+	dsnFlag := fs.String("dsn", "", "database DSN URI: mysql://, postgres://, or sqlite:///path (required)")
 	schemaPath := fs.String("schema", "", "target .mmd, .json, ormgen .sql, or db:<dsn> (required)")
 	id := fs.String("migration-id", "initial", "stable migration identifier")
 	name := fs.String("name", "schema sync", "migration name")
 	logDir := fs.String("log-dir", "migrations/logs", "directory for migration JSON logs")
 	dryRun := fs.Bool("dry-run", false, "show the plan without changing the database")
 	fs.Parse(args)
-	if *dsn == "" || *schemaPath == "" {
+	if *dsnFlag == "" || *schemaPath == "" {
 		fail(fmt.Errorf("MIGRATION_CONFIG: --dsn and --schema are required"))
 	}
-	if *driver != "mysql" && *driver != "postgres" && *driver != "sqlite" {
-		fail(fmt.Errorf("MIGRATION_CONFIG: unsupported driver %q", *driver))
+	db, dsn, err := openToolDB(*dsnFlag)
+	if err != nil {
+		fail(err)
 	}
-	want, err := loadSchemaSource(*schemaPath, *driver)
+	defer db.Close()
+	driver := dsn.dialect
+	want, err := loadSchemaSource(*schemaPath, driver)
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_SOURCE: %w", err))
 	}
-	driverName, openDSN := sqlDriver(*driver, *dsn)
-	db, err := sql.Open(driverName, openDSN)
-	if err != nil {
-		fail(fmt.Errorf("MIGRATION_CONNECT: %w", err))
-	}
-	defer db.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if err := db.PingContext(ctx); err != nil {
-		fail(fmt.Errorf("MIGRATION_CONNECT: driver=%s dsn=%s: %w", *driver, redactDSN(*dsn), err))
-	}
-	if err := ensureMigrationTable(ctx, db, *driver); err != nil {
+	if err := ensureMigrationTable(ctx, db, driver); err != nil {
 		fail(err)
 	}
-	live, err := liveManifest(db, *driver)
+	live, err := liveManifest(db, driver)
 	if err != nil {
-		fail(fmt.Errorf("MIGRATION_INTROSPECT: driver=%s: %w", *driver, err))
+		fail(fmt.Errorf("MIGRATION_INTROSPECT: driver=%s: %w", driver, err))
 	}
-	previous, found, err := migrationByID(ctx, db, *driver, *id)
+	if err := alignLiveChecks(ctx, db, driver, live, want); err != nil {
+		fail(fmt.Errorf("MIGRATION_INTROSPECT: driver=%s: %w", driver, err))
+	}
+	previous, found, err := migrationByID(ctx, db, driver, *id)
 	if err != nil {
 		fail(err)
 	}
@@ -98,10 +94,10 @@ func migrateCmd(args []string) {
 			if previous.ToHash != want.SchemaHash {
 				fail(fmt.Errorf("MIGRATION_HISTORY_CONFLICT: migration_id=%s recorded_to=%s requested_to=%s", *id, previous.ToHash, want.SchemaHash))
 			}
-			if !schemaMatches(want, live, *driver) {
+			if !schemaMatches(want, live, driver) {
 				fail(fmt.Errorf("MIGRATION_DRIFT: migration_id=%s status=applied expected_schema_hash=%s actual_schema_hash=%s", *id, want.SchemaHash, live.SchemaHash))
 			}
-			if err := verifyMigrationLog(*logDir, previous, *driver); err != nil {
+			if err := verifyMigrationLog(*logDir, previous, driver); err != nil {
 				fail(err)
 			}
 			fmt.Printf("migration_id=%s status=noop operations=0 schema_hash=%s\n", *id, want.SchemaHash)
@@ -116,9 +112,9 @@ func migrateCmd(args []string) {
 	}
 	var sqlText string
 	if len(live.Entities) == 0 {
-		sqlText, err = renderCreateDDL(want, *driver)
+		sqlText, err = renderCreateDDL(want, driver)
 	} else {
-		sqlText, err = renderDiff(live, want, *driver, false)
+		sqlText, err = renderDiff(live, want, driver, false)
 	}
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_PLAN: from=%s to=%s: %w", live.SchemaHash, want.SchemaHash, err))
@@ -137,71 +133,47 @@ func migrateCmd(args []string) {
 
 	record := migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "queued", Operations: operations}
 	startedAt := time.Now().UTC()
-	if err := writeMigrationLog(*logDir, migrationLogFromRecord(record, *driver, startedAt, time.Time{})); err != nil {
+	if err := writeMigrationLog(*logDir, migrationLogFromRecord(record, driver, startedAt, time.Time{})); err != nil {
 		fail(err)
 	}
 	expectedStatus := "queued"
 	if found {
 		expectedStatus = "retryable"
 	} else {
-		if err := insertMigration(ctx, db, *driver, record); err != nil {
-			_ = writeMigrationLog(*logDir, migrationLogFromRecord(record, *driver, startedAt, time.Now().UTC()).withError(err.Error()))
+		if err := insertMigration(ctx, db, driver, record); err != nil {
+			_ = writeMigrationLog(*logDir, migrationLogFromRecord(record, driver, startedAt, time.Now().UTC()).withError(err.Error()))
 			fail(err)
 		}
 	}
-	if err := executeClaimedMigration(ctx, db, *driver, *id, expectedStatus, sqlText); err != nil {
+	if err := executeClaimedMigration(ctx, db, driver, *id, expectedStatus, sqlText); err != nil {
 		detail := fmt.Sprintf("operation execution failed: %v", err)
-		_ = markMigrationFailed(ctx, db, *driver, *id, detail)
-		_ = writeMigrationLog(*logDir, migrationLogFromRecord(migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "failed", Operations: operations}, *driver, startedAt, time.Now().UTC()).withError(detail))
+		_ = markMigrationFailed(ctx, db, driver, *id, detail)
+		_ = writeMigrationLog(*logDir, migrationLogFromRecord(migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "failed", Operations: operations}, driver, startedAt, time.Now().UTC()).withError(detail))
 		fail(fmt.Errorf("MIGRATION_APPLY_FAILED: migration_id=%s from=%s to=%s: %w", *id, live.SchemaHash, want.SchemaHash, err))
 	}
-	check, err := liveManifest(db, *driver)
+	check, err := liveManifest(db, driver)
 	if err != nil {
-		_ = updateMigration(ctx, db, *driver, *id, "failed", err.Error())
+		_ = updateMigration(ctx, db, driver, *id, "failed", err.Error())
 		fail(fmt.Errorf("MIGRATION_VERIFY_FAILED: migration_id=%s: %w", *id, err))
 	}
-	if !schemaMatches(want, check, *driver) {
+	if !schemaMatches(want, check, driver) {
 		detail := fmt.Sprintf("expected %s got %s", want.SchemaHash, check.SchemaHash)
-		_ = updateMigration(ctx, db, *driver, *id, "failed", detail)
+		_ = updateMigration(ctx, db, driver, *id, "failed", detail)
 		fail(fmt.Errorf("MIGRATION_VERIFY_FAILED: migration_id=%s %s", *id, detail))
 	}
-	if err := updateMigration(ctx, db, *driver, *id, "applied", ""); err != nil {
+	if err := updateMigration(ctx, db, driver, *id, "applied", ""); err != nil {
 		fail(fmt.Errorf("MIGRATION_HISTORY_WRITE: migration_id=%s: %w", *id, err))
 	}
-	if err := writeMigrationLog(*logDir, migrationLogFromRecord(migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "applied", Operations: operations}, *driver, startedAt, time.Now().UTC())); err != nil {
+	if err := writeMigrationLog(*logDir, migrationLogFromRecord(migrationRecord{MigrationID: *id, Name: *name, FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksum, Status: "applied", Operations: operations}, driver, startedAt, time.Now().UTC())); err != nil {
 		fail(err)
 	}
 	fmt.Printf("migration_id=%s status=applied from_schema_hash=%s to_schema_hash=%s operations=%d\n", *id, live.SchemaHash, want.SchemaHash, operations)
 }
 
-func sqlDriver(driver, dsn string) (string, string) {
-	if driver == "postgres" {
-		return "pgx", dsn
-	}
-	if driver == "sqlite" {
-		return "sqlite", dsn
-	}
-	return "mysql", dsn
-}
-
-func redactDSN(s string) string {
-	if i := strings.IndexByte(s, '@'); i >= 0 && strings.Contains(s[:i], ":") {
-		return "***@" + s[i+1:]
-	}
-	return s
-}
-
 func emptyManifest() *schema.Manifest { return &schema.Manifest{Entities: map[string]*schema.Entity{}} }
 
 func liveManifest(db *sql.DB, driver string) (*schema.Manifest, error) {
-	var tables []impTable
-	var err error
-	switch driver {
-	case "sqlite":
-		tables, err = readTablesSQLite(db)
-	default:
-		tables, err = readTables(db, driver, nil)
-	}
+	tables, err := readTables(db, driver, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +181,11 @@ func liveManifest(db *sql.DB, driver string) (*schema.Manifest, error) {
 	if len(tables) == 0 {
 		return emptyManifest(), nil
 	}
-	d, err := schema.Parse(renderMermaid(tables, nil))
+	text, err := withTriggerDirectives(db, driver, tables, renderMermaid(tables, nil))
+	if err != nil {
+		return nil, err
+	}
+	d, err := schema.Parse(text)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +195,7 @@ func liveManifest(db *sql.DB, driver string) (*schema.Manifest, error) {
 func filterManagedTables(tables []impTable) []impTable {
 	out := tables[:0]
 	for _, table := range tables {
-		if table.Name == "orm_schema_migrations" {
+		if table.Name == "orm_schema_migrations" || table.Name == "orm__context" {
 			continue
 		}
 		out = append(out, table)
@@ -228,7 +204,7 @@ func filterManagedTables(tables []impTable) []impTable {
 }
 
 func readTablesSQLite(db *sql.DB) ([]impTable, error) {
-	rows, err := db.Query(`SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'orm_schema_migrations' AND name <> 'orm_schema_comments' ORDER BY name`)
+	rows, err := db.Query(`SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'orm_schema_migrations' AND name <> 'orm_schema_comments' AND name <> 'orm__context' ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -259,13 +235,19 @@ func readTablesSQLite(db *sql.DB) ([]impTable, error) {
 				return nil, err
 			}
 			c.Nullable = notnull == 0 && pk == 0
-			if def.Valid {
-				c.Default = def.String
-			} else {
+			switch {
+			case !def.Valid:
 				c.Default = "\x00"
+			case sqliteClockDefault(def.String):
+				c.Default = "CURRENT_TIMESTAMP"
+			default:
+				c.Default = def.String
 			}
 			if pk > 0 {
 				c.Key = "PRI"
+				if sqliteAutoIncrement(createSQL, c.Name) {
+					c.Extra = "auto_increment"
+				}
 			}
 			t.Columns = append(t.Columns, c)
 		}
@@ -376,6 +358,29 @@ func readTablesSQLite(db *sql.DB) ([]impTable, error) {
 		return nil, fmt.Errorf("sqlite schema comments: %w", err)
 	}
 	return out, nil
+}
+
+// sqliteClockDefault reports the column default the DDL writes for =now.
+func sqliteClockDefault(def string) bool {
+	def = strings.TrimSpace(def)
+	for len(def) > 1 && def[0] == '(' && def[len(def)-1] == ')' {
+		def = strings.TrimSpace(def[1 : len(def)-1])
+	}
+	return strings.EqualFold(def, "CURRENT_TIMESTAMP") || def == "strftime('%Y-%m-%d %H:%M:%f', 'now') || '000'"
+}
+
+// sqliteAutoIncrement reports whether the CREATE TABLE text declares column
+// as INTEGER PRIMARY KEY AUTOINCREMENT.
+func sqliteAutoIncrement(createSQL, column string) bool {
+	fields := strings.Fields(strings.ToUpper(createSQL))
+	names := map[string]bool{`"` + strings.ToUpper(column) + `"`: true, "`" + strings.ToUpper(column) + "`": true, strings.ToUpper(column): true, "[" + strings.ToUpper(column) + "]": true}
+	for i := 0; i+4 < len(fields); i++ {
+		name := strings.TrimLeft(fields[i], "(,")
+		if names[name] && fields[i+1] == "INTEGER" && fields[i+2] == "PRIMARY" && fields[i+3] == "KEY" && strings.TrimRight(fields[i+4], ",)") == "AUTOINCREMENT" {
+			return true
+		}
+	}
+	return false
 }
 
 func sqliteChecks(table, createSQL string) ([]impCheck, error) {
@@ -618,6 +623,7 @@ type sqliteRebuildMarker struct {
 }
 
 func preflightSQLiteRebuild(ctx context.Context, conn *sql.Conn, text string) error {
+	dropped := droppedTriggers(text)
 	for _, marker := range sqliteRebuildMarkers(text) {
 		var tempCount int
 		if err := conn.QueryRowContext(ctx, `SELECT count(*) FROM sqlite_master WHERE name=?`, marker.temp).Scan(&tempCount); err != nil {
@@ -636,6 +642,9 @@ func preflightSQLiteRebuild(ctx context.Context, conn *sql.Conn, text string) er
 			if err := rows.Scan(&kind, &name); err != nil {
 				rows.Close()
 				return fmt.Errorf("SQLITE_REBUILD_PREFLIGHT: table=%s dependencies: %w", marker.table, err)
+			}
+			if kind == "trigger" && dropped[name] {
+				continue
 			}
 			dependencies = append(dependencies, kind+":"+name)
 		}
@@ -666,6 +675,18 @@ func preflightSQLiteRebuild(ctx context.Context, conn *sql.Conn, text string) er
 		}
 	}
 	return nil
+}
+
+// droppedTriggers lists the triggers a migration drops before it rebuilds a
+// table; the rebuild creates them again.
+func droppedTriggers(text string) map[string]bool {
+	dropped := map[string]bool{}
+	for _, statement := range splitSQL(text) {
+		if name, ok := strings.CutPrefix(statement, "DROP TRIGGER IF EXISTS "); ok {
+			dropped[strings.Trim(name, `"`)] = true
+		}
+	}
+	return dropped
 }
 
 func sqliteRebuildMarkers(text string) []sqliteRebuildMarker {
@@ -786,12 +807,17 @@ func withMigrationLock(ctx context.Context, db *sql.DB, driver string, run func(
 	return nil
 }
 
+// splitSQL splits a script into statements. A CREATE TRIGGER statement keeps
+// its BEGIN ... END body; CASE ... END nests inside it and END IF, END LOOP,
+// END WHILE, and END REPEAT close no block.
 func splitSQL(text string) []string {
 	var out []string
 	start := 0
 	quote := byte(0)
 	lineComment, blockComment := false, false
 	var dollarTag string
+	var words []string
+	depth := 0
 	flush := func(end int) {
 		s := strings.TrimSpace(text[start:end])
 		if s == "" {
@@ -876,13 +902,60 @@ func splitSQL(text string) []string {
 				}
 			}
 		}
-		if c == ';' {
+		if sqlWordStart(text, i) {
+			end := i
+			for end < len(text) && sqlWordByte(text[end]) {
+				end++
+			}
+			word := strings.ToUpper(text[i:end])
+			if len(words) < 2 {
+				words = append(words, word)
+			}
+			if len(words) == 2 && words[0] == "CREATE" && words[1] == "TRIGGER" {
+				switch word {
+				case "BEGIN", "CASE":
+					depth++
+				case "END":
+					switch strings.ToUpper(sqlNextWord(text, end)) {
+					case "IF", "LOOP", "WHILE", "REPEAT":
+					default:
+						if depth > 0 {
+							depth--
+						}
+					}
+				}
+			}
+			i = end - 1
+			continue
+		}
+		if c == ';' && depth == 0 {
 			flush(i)
 			start = i + 1
+			words = words[:0]
 		}
 	}
 	flush(len(text))
 	return out
+}
+
+func sqlWordByte(b byte) bool {
+	return b == '_' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b >= '0' && b <= '9'
+}
+
+func sqlWordStart(text string, i int) bool {
+	b := text[i]
+	return (b == '_' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z') && (i == 0 || !sqlWordByte(text[i-1]) && text[i-1] != '$' && text[i-1] != '.' && text[i-1] != '@')
+}
+
+func sqlNextWord(text string, i int) string {
+	for i < len(text) && (text[i] == ' ' || text[i] == '\t' || text[i] == '\n' || text[i] == '\r') {
+		i++
+	}
+	end := i
+	for end < len(text) && sqlWordByte(text[end]) {
+		end++
+	}
+	return text[i:end]
 }
 
 func countSQLStatements(text string) int { return len(splitSQL(text)) }
@@ -971,8 +1044,11 @@ func verifyMigrationLog(dir string, r migrationRecord, driver string) error {
 	return fmt.Errorf("MIGRATION_LOG_CONFLICT: migration_id=%s database record has no matching file log", r.MigrationID)
 }
 
+// schemaMatches compares tables and columns by name. Column order is not a
+// schema property: a column added by a migration is appended by the database
+// wherever the declaration places it.
 func schemaMatches(want, live *schema.Manifest, driver string) bool {
-	if len(want.Entities) != len(live.Entities) {
+	if len(want.Entities) != len(live.Entities) || !sameTriggers(want, live) {
 		return false
 	}
 	for name, we := range want.Entities {
@@ -980,13 +1056,18 @@ func schemaMatches(want, live *schema.Manifest, driver string) bool {
 		if le == nil || we.Table != le.Table || we.Comment != le.Comment || len(we.Columns) != len(le.Columns) {
 			return false
 		}
-		for i, wc := range we.Columns {
-			lc := le.Columns[i]
-			typeMatch := wc.Type == lc.Type
+		for _, wc := range we.Columns {
+			lc := le.Column(wc.Name)
+			if lc == nil {
+				return false
+			}
+			wantType, _, _ := columnStorage(wc, driver)
+			liveType, _, _ := columnStorage(lc, driver)
+			typeMatch := wantType == liveType
 			if driver == "sqlite" {
 				typeMatch = sqliteTypeMatches(wc.Type, lc.Type)
 			}
-			if wc.Name != lc.Name || wc.Comment != lc.Comment || wc.Nullable != lc.Nullable || !typeMatch {
+			if wc.Comment != lc.Comment || wc.Nullable != lc.Nullable || !typeMatch {
 				return false
 			}
 		}
@@ -1004,7 +1085,7 @@ func sqliteTypeMatches(want, live string) bool {
 	case "f64":
 		return want == "f64" || want == "decimal"
 	case "text":
-		return want == "string" || want == "text" || want == "json" || want == "datetime" || want == "date" || want == "time" || want == "enum" || want == "point"
+		return want == "string" || want == "text" || want == "jsontext" || want == "datetime" || want == "date" || want == "time" || want == "enum" || want == "point"
 	case "bytes":
 		return want == "bytes" || want == "inet"
 	default:

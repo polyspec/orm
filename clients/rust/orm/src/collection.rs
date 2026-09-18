@@ -1,10 +1,13 @@
-//! Ordered map keyed by PK (or key_by), and the paginate result.
+//! Collections of models and pages.
 
-use indexmap::IndexMap;
+use std::any::Any;
+use std::collections::HashMap;
 
-use crate::value::Val;
+use crate::model::{AnyModel, Model};
+use crate::value::{Param, Val};
+use crate::Result;
 
-/// Collection key: an integer or a string, whichever the key column yields.
+/// A collection key. The integer 7 and the text "7" are different keys.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Key {
     I(i64),
@@ -15,25 +18,21 @@ impl Key {
     pub fn of(v: &Val) -> Key {
         match v {
             Val::I64(x) => Key::I(*x),
+            Val::Bool(b) => Key::I(*b as i64),
             other => Key::S(other.as_string()),
         }
     }
 
     pub fn of_row(row: &[Val], refs: &[crate::plan::KeyRef]) -> Option<Key> {
-        if refs.len() == 1 {
-            let value = &row[refs[0].index];
-            return (!value.is_null()).then(|| Key::of(value));
-        }
-        let mut out = String::new();
-        for reference in refs {
-            let value = &row[reference.index];
-            if value.is_null() {
+        let mut values = Vec::with_capacity(refs.len());
+        for r in refs {
+            let v = &row[r.index];
+            if v.is_null() {
                 return None;
             }
-            let part = value.as_string();
-            out.push_str(&format!("{}:{}", part.len(), part));
+            values.push(v.clone());
         }
-        Some(Key::S(out))
+        Some(Key::of_values(&values))
     }
 
     pub fn of_values(values: &[Val]) -> Key {
@@ -42,16 +41,55 @@ impl Key {
         }
         let mut out = String::new();
         for value in values {
-            let part = value.as_string();
+            let part = match value {
+                Val::Bool(b) => (*b as i64).to_string(),
+                other => other.as_string(),
+            };
             out.push_str(&format!("{}:{}", part.len(), part));
         }
         Key::S(out)
     }
 
-    pub fn as_i64(&self) -> i64 {
+    /// The key as JSON: a number or a string.
+    pub fn to_json(&self) -> serde_json::Value {
         match self {
-            Key::I(x) => *x,
-            Key::S(s) => s.parse().unwrap_or(0),
+            Key::I(x) => serde_json::json!(x),
+            Key::S(s) => serde_json::json!(s),
+        }
+    }
+}
+
+impl From<i64> for Key {
+    fn from(v: i64) -> Key {
+        Key::I(v)
+    }
+}
+
+impl From<i32> for Key {
+    fn from(v: i32) -> Key {
+        Key::I(v as i64)
+    }
+}
+
+impl From<&str> for Key {
+    fn from(v: &str) -> Key {
+        Key::S(v.to_owned())
+    }
+}
+
+impl From<String> for Key {
+    fn from(v: String) -> Key {
+        Key::S(v)
+    }
+}
+
+impl From<Param> for Key {
+    fn from(v: Param) -> Key {
+        match v {
+            Param::I64(x) => Key::I(x),
+            Param::Bool(b) => Key::I(b as i64),
+            Param::Str(s) => Key::S(s),
+            other => Key::S(format!("{other:?}")),
         }
     }
 }
@@ -65,117 +103,144 @@ impl std::fmt::Display for Key {
     }
 }
 
-/// Never null from a terminal: `gets()` on no rows returns an empty collection.
-#[derive(Debug, Clone)]
-pub struct Collection<T> {
-    items: IndexMap<Key, T>,
+/// An ordered set of models keyed by primary key, key column, or key callback.
+/// A later model with the same key replaces the earlier one.
+#[derive(Clone)]
+pub struct Collection<M> {
+    pub(crate) keys: Vec<Key>,
+    pub(crate) items: HashMap<Key, M>,
+    pub(crate) fetched: HashMap<Key, serde_json::Value>,
 }
 
-pub trait RowExport {
-    fn to_map(&self) -> crate::Result<serde_json::Value>;
-}
-
-impl<T: RowExport> Collection<T> {
-    pub fn to_map(&self) -> crate::Result<serde_json::Value> {
-        let mut out = serde_json::Map::new();
-        for (key, row) in self.iter() {
-            let key = key.to_string();
-            if out.contains_key(&key) {
-                return Err(crate::Error::Engine {
-                    code: "IR_INVALID".into(),
-                    msg: "array conversion loses key type; use entries".into(),
-                });
-            }
-            out.insert(key, row.to_map()?);
-        }
-        Ok(serde_json::Value::Object(out))
-    }
-}
-
-impl<T> Default for Collection<T> {
+impl<M> Default for Collection<M> {
     fn default() -> Self {
-        Collection {
-            items: IndexMap::new(),
-        }
+        Collection { keys: Vec::new(), items: HashMap::new(), fetched: HashMap::new() }
     }
 }
 
-impl<T> Collection<T> {
-    pub fn with_capacity(n: usize) -> Self {
-        Collection {
-            items: IndexMap::with_capacity(n),
+impl<M: Model> Collection<M> {
+    pub(crate) fn put(&mut self, k: Key, v: M) {
+        if !self.items.contains_key(&k) {
+            self.keys.push(k.clone());
         }
-    }
-
-    pub fn put(&mut self, k: Key, v: T) {
         self.items.insert(k, v);
     }
 
-    pub fn get(&self, k: &Key) -> Option<&T> {
-        self.items.get(k)
+    /// Builds a typed collection from assembled models. Generated entities use it.
+    pub fn from_boxes(items: crate::model::Boxed, fetched: HashMap<Key, serde_json::Value>) -> Self {
+        let mut out = Collection { fetched, ..Default::default() };
+        for (k, m) in items {
+            let m = *m.into_any().downcast::<M>().expect("collection model type");
+            out.put(k, m);
+        }
+        out
     }
 
-    pub fn get_mut(&mut self, k: &Key) -> Option<&mut T> {
-        self.items.get_mut(k)
-    }
-
-    pub fn keys(&self) -> impl Iterator<Item = &Key> {
-        self.items.keys()
-    }
-
-    pub fn entries(&self) -> impl Iterator<Item = (&Key, &T)> {
-        self.items.iter()
-    }
-
-    pub fn first(&self) -> Option<&T> {
-        self.items.values().next()
-    }
-
-    pub fn first_mut(&mut self) -> Option<&mut T> {
-        self.items.values_mut().next()
-    }
-
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Key, &mut T)> {
-        self.items.iter_mut()
-    }
-
+    /// The number of models.
     pub fn len(&self) -> usize {
-        self.items.len()
+        self.keys.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.items.is_empty()
+        self.keys.is_empty()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&Key, &T)> {
-        self.items.iter()
+    /// The model with the key.
+    pub fn get(&self, key: impl Into<Key>) -> Option<&M> {
+        self.items.get(&key.into())
     }
 
-    pub fn to_vec(self) -> Vec<T> {
-        self.items.into_values().collect()
+    /// The first model.
+    pub fn first(&self) -> Option<&M> {
+        self.keys.first().and_then(|k| self.items.get(k))
+    }
+
+    /// The keys in order.
+    pub fn keys(&self) -> &[Key] {
+        &self.keys
+    }
+
+    /// The keys and models in order.
+    pub fn iter(&self) -> impl Iterator<Item = (&Key, &M)> {
+        self.keys.iter().map(|k| (k, &self.items[k]))
+    }
+
+    /// The models in order.
+    pub fn models(&self) -> impl Iterator<Item = &M> {
+        self.keys.iter().map(|k| &self.items[k])
+    }
+
+    /// The models in order, by value.
+    pub fn into_vec(mut self) -> Vec<M> {
+        let keys = std::mem::take(&mut self.keys);
+        keys.iter().filter_map(|k| self.items.remove(k)).collect()
+    }
+
+    /// The fetch_value result of the key.
+    pub fn fetched_value(&self, key: impl Into<Key>) -> Option<&serde_json::Value> {
+        self.fetched.get(&key.into())
+    }
+
+    /// Sets the connection of every model.
+    pub fn connect(mut self, db: &crate::Db) -> Self {
+        for m in self.items.values_mut() {
+            m.core_mut().connect(db);
+        }
+        self
+    }
+
+    /// Deletes every model in one transaction; `delete(true)` first deletes
+    /// loaded related rows.
+    pub async fn delete(&self, recursive: bool) -> Result<()> {
+        let Some(first) = self.first() else { return Ok(()) };
+        let conn = first.core().conn.clone();
+        crate::model::in_transaction(&conn, async || {
+            for m in self.models() {
+                crate::model::delete_row(m, recursive).await?;
+            }
+            Ok(())
+        })
+        .await
+    }
+
+    /// The models as arrays.
+    pub fn to_array(&self) -> serde_json::Value {
+        serde_json::Value::Array(self.models().map(|m| crate::model::to_json(m)).collect())
     }
 }
 
-impl<'a, T> IntoIterator for &'a Collection<T> {
-    type Item = (&'a Key, &'a T);
-    type IntoIter = indexmap::map::Iter<'a, Key, T>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.items.iter()
+/// A collection seen without its model type.
+pub trait AnyCollection: Any + Send + Sync {
+    fn models_dyn(&self) -> Vec<&dyn AnyModel>;
+    fn as_any(&self) -> &dyn Any;
+    fn to_json(&self) -> serde_json::Value;
+}
+
+impl<M: Model> AnyCollection for Collection<M> {
+    fn models_dyn(&self) -> Vec<&dyn AnyModel> {
+        self.models().map(|m| m as &dyn AnyModel).collect()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn to_json(&self) -> serde_json::Value {
+        self.to_array()
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Page<T> {
-    pub items: Collection<T>,
-    pub total: i64,
-    pub pages: i64,
-    pub current: i64,
-    pub per: i64,
+impl<M: Model> serde::Serialize for Collection<M> {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
+        self.to_array().serialize(s)
+    }
 }
 
-#[derive(Debug, Clone)]
-pub struct KeysetPage<T> {
-    pub items: Collection<T>,
-    pub next_cursor: String,
-    pub previous_cursor: String,
+/// One page of a collection.
+pub struct Page<M> {
+    pub items: Collection<M>,
+    pub total_count: i64,
+    pub total_pages: i64,
+    pub page: u32,
+    pub per_page: u32,
 }

@@ -40,6 +40,9 @@ func diffCmd(args []string) {
 	if err != nil {
 		fail(err)
 	}
+	if err := alignSourceChecks(*fromPath, *toPath, from, to); err != nil {
+		fail(err)
+	}
 	text, err := renderDiff(from, to, *dialect, *allow)
 	if err != nil {
 		fail(err)
@@ -70,6 +73,7 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 	}
 	changes := make([]schemaChange, 0)
 	pairs := matchDiffEntities(from, to)
+	rebuilt := map[string]bool{}
 	for _, pair := range pairs {
 		oldEnt, newEnt := pair.old, pair.next
 		oldOK, newOK := oldEnt != nil, newEnt != nil
@@ -97,6 +101,8 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 					return "", err
 				}
 				if sqliteNeedsRebuild(from, to, oldEnt, newEnt) {
+					rebuilt[oldEnt.Table] = true
+					rebuilt[newEnt.Table] = true
 					statement, destructive, err := renderSQLiteRebuild(from, to, oldEnt, newEnt, quote)
 					if err != nil {
 						return "", err
@@ -140,14 +146,24 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 					if err != nil {
 						return "", err
 					}
+					if dialect == "mysql" && n.Comment != "" {
+						def += " COMMENT '" + sqlQuote(n.Comment) + "'"
+					}
 					changes = append(changes, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s;", quote(newEnt.Table), def)})
+					if dialect != "mysql" && n.Comment != "" {
+						stmt, err := alterComment(newEnt.Table, n, dialect, quote)
+						if err != nil {
+							return "", err
+						}
+						changes = append(changes, schemaChange{sql: stmt})
+					}
 				case !nok:
 					changes = append(changes, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s;", quote(oldEnt.Table), quote(col)), destructive: true})
 				default:
 					if o.Name != n.Name {
 						changes = append(changes, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s;", quote(newEnt.Table), quote(o.Name), quote(n.Name))})
 					}
-					changed := columnChanged(o, n)
+					changed := columnChanged(o, n, dialect)
 					if dialect == "sqlite" {
 						changed = !sqliteColumnsEquivalent(o, n)
 					}
@@ -177,6 +193,11 @@ func renderDiff(from, to *schema.Manifest, dialect string, allowDestructive bool
 			changes = append(changes, checkAdds...)
 		}
 	}
+	triggerDrops, triggerCreates, err := diffTriggers(from, to, dialect, rebuilt)
+	if err != nil {
+		return "", err
+	}
+	changes = append(append(triggerDrops, changes...), triggerCreates...)
 	for _, c := range changes {
 		if c.destructive && !allowDestructive {
 			return "", fmt.Errorf("destructive schema change requires --allow-destructive: %s", c.sql)
@@ -324,9 +345,6 @@ func columnGroupsEqual(left, right [][]string) bool {
 }
 
 func renderSQLiteRebuild(from, to *schema.Manifest, old, next *schema.Entity, quote func(string) string) (string, bool, error) {
-	if len(next.Fulltext) > 0 {
-		return "", false, fmt.Errorf("sqlite full-text indexes require an explicit auxiliary migration")
-	}
 	temp := "__orm_rebuild_" + next.Table
 	lines := make([]string, 0, len(next.Columns)+len(next.Unique)+len(next.Columns))
 	for _, c := range next.Columns {
@@ -505,8 +523,31 @@ func removeDropStatement(s string) string {
 	return strings.Join(out, "\n")
 }
 
-func columnChanged(a, b *schema.Col) bool {
-	return a.Type != b.Type || a.Raw != b.Raw || a.Nullable != b.Nullable || colDefault(a) != colDefault(b) || a.Auto != b.Auto || a.OnUpdate != b.OnUpdate || a.Unsigned != b.Unsigned || a.Len != b.Len || a.Precision != b.Precision || a.Scale != b.Scale
+// columnChanged reports a physical column difference. The update time is a
+// column property only on MySQL; the other dialects assign it in the planned
+// UPDATE statement.
+func columnChanged(a, b *schema.Col, dialect string) bool {
+	onUpdate := dialect == "mysql" && a.OnUpdate != b.OnUpdate
+	aType, aRaw, aLen := columnStorage(a, dialect)
+	bType, bRaw, bLen := columnStorage(b, dialect)
+	return aType != bType || aRaw != bRaw || a.Nullable != b.Nullable || colDefault(a) != colDefault(b) || a.Auto != b.Auto || onUpdate || a.Unsigned != b.Unsigned || aLen != bLen || a.Precision != b.Precision || a.Scale != b.Scale
+}
+
+// columnStorage returns the type, raw type, and length a dialect stores: a
+// MySQL uuid column is char(36), and a jsontext column is the dialect's text
+// type, which a live schema reports without the codec.
+func columnStorage(c *schema.Col, dialect string) (string, string, int) {
+	if dialect == "mysql" && strings.EqualFold(c.Raw, "uuid") {
+		return c.Type, mysqlUUID, 36
+	}
+	if c.Type == "jsontext" || c.Type == "text" {
+		raw := "text"
+		if dialect == "mysql" {
+			raw = mysqlJSONText
+		}
+		return "text", raw, 0
+	}
+	return c.Type, c.Raw, c.Len
 }
 
 func colDefault(c *schema.Col) string {
@@ -522,6 +563,9 @@ func alterColumn(table string, old, next *schema.Col, dialect string, quote func
 		def, err := ddlColumn(next, dialect, quote)
 		if err != nil {
 			return nil, err
+		}
+		if next.Comment != "" {
+			def += " COMMENT '" + sqlQuote(next.Comment) + "'"
 		}
 		return []string{fmt.Sprintf("ALTER TABLE %s MODIFY COLUMN %s;", quote(table), def)}, nil
 	case "postgres":
@@ -578,22 +622,11 @@ func ddlDefault(c *schema.Col, dialect string) (string, error) {
 	if c.Default == nil {
 		return "", fmt.Errorf("column %s has no default", c.Name)
 	}
-	v := *c.Default
-	switch {
-	case v == "now":
-		return "CURRENT_TIMESTAMP", nil
-	case v == "null":
-		return "NULL", nil
-	case isNumber(v) && c.Type == "bool" && dialect == "postgres":
-		if v == "0" {
-			return "false", nil
-		}
-		return "true", nil
-	case isNumber(v):
-		return v, nil
-	default:
-		return "'" + sqlQuote(strings.Trim(v, "'")) + "'", nil
+	t, err := ddlType(c, dialect)
+	if err != nil {
+		return "", err
 	}
+	return defaultExpression(c, t, dialect), nil
 }
 
 type diffIndex struct {
@@ -612,8 +645,8 @@ type diffForeignKey struct {
 }
 
 func diffIndexesAndForeignKeys(from, to *schema.Manifest, oldEnt, newEnt *schema.Entity, dialect string, quote func(string) string) ([]schemaChange, []schemaChange, error) {
-	oldIndexes := entityIndexes(oldEnt)
-	newIndexes := entityIndexes(newEnt)
+	oldIndexes := entityIndexes(oldEnt, dialect)
+	newIndexes := entityIndexes(newEnt, dialect)
 	var indexDrops, indexAdds, foreignDrops, foreignAdds []schemaChange
 	keys := unionSortedKeys(oldIndexes, newIndexes)
 	for _, key := range keys {
@@ -672,7 +705,9 @@ func foreignKeysEqual(left, right diffForeignKey, compareName bool) bool {
 	return (!compareName || left.name == right.name) && stringSlicesEqual(left.columns, right.columns) && left.target == right.target && stringSlicesEqual(left.targetCols, right.targetCols) && left.onDelete == right.onDelete && left.deferred == right.deferred
 }
 
-func entityIndexes(e *schema.Entity) map[string]diffIndex {
+// entityIndexes lists the physical indexes of an entity. SQLite evaluates
+// full-text conditions without an index, so it has no full-text objects.
+func entityIndexes(e *schema.Entity, dialect string) map[string]diffIndex {
 	out := map[string]diffIndex{}
 	for name, cols := range e.Indexes {
 		out["index:"+name] = diffIndex{name: name, kind: "index", cols: append([]string(nil), cols...)}
@@ -682,6 +717,9 @@ func entityIndexes(e *schema.Entity) map[string]diffIndex {
 		out["unique:"+name] = diffIndex{name: name, kind: "unique", cols: append([]string(nil), cols...)}
 	}
 	for _, cols := range e.Fulltext {
+		if dialect == "sqlite" {
+			break
+		}
 		name := "ft_" + strings.Join(cols, "_")
 		out["fulltext:"+name] = diffIndex{name: name, kind: "fulltext", cols: append([]string(nil), cols...)}
 	}
@@ -802,9 +840,6 @@ func dropIndex(table string, index diffIndex, dialect string, quote func(string)
 	if dialect == "mysql" {
 		return fmt.Sprintf("DROP INDEX %s ON %s;", quote(name), quote(table)), nil
 	}
-	if dialect == "sqlite" && index.kind == "fulltext" {
-		return "", fmt.Errorf("sqlite full-text index changes are not supported")
-	}
 	return fmt.Sprintf("DROP INDEX %s;", quote(name)), nil
 }
 
@@ -836,8 +871,6 @@ func createIndex(table string, index diffIndex, dialect string, quote func(strin
 				doc[i] = "coalesce(" + quote(c) + ", '')"
 			}
 			return fmt.Sprintf("CREATE INDEX %s ON %s USING GIN (to_tsvector('simple', %s));", quote(name), quote(table), strings.Join(doc, " || ' ' || ")), nil
-		default:
-			return "", fmt.Errorf("sqlite full-text index changes are not supported")
 		}
 	}
 	return "", fmt.Errorf("unknown index kind %q", index.kind)
@@ -912,6 +945,6 @@ func alterComment(table string, c *schema.Col, dialect string, quote func(string
 		if c.Comment == "" {
 			return fmt.Sprintf("DELETE FROM orm_schema_comments WHERE table_name='%s' AND column_name='%s';", sqlQuote(table), sqlQuote(c.Name)), nil
 		}
-		return fmt.Sprintf("INSERT OR REPLACE INTO orm_schema_comments (table_name,column_name,comment) VALUES ('%s','%s','%s');", sqlQuote(table), sqlQuote(c.Name), q), nil
+		return fmt.Sprintf("CREATE TABLE IF NOT EXISTS orm_schema_comments (table_name TEXT NOT NULL, column_name TEXT NOT NULL, comment TEXT NOT NULL, PRIMARY KEY (table_name, column_name));\nINSERT OR REPLACE INTO orm_schema_comments (table_name,column_name,comment) VALUES ('%s','%s','%s');", sqlQuote(table), sqlQuote(c.Name), q), nil
 	}
 }

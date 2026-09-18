@@ -7,7 +7,8 @@ export PATH
 
 PACK_JSON=$(mktemp)
 TMP_GO=$(mktemp -d)
-trap 'rm -f "$PACK_JSON"; rm -rf "$TMP_GO"' EXIT
+TMP_RUST=$(mktemp -d)
+trap 'rm -f "$PACK_JSON"; rm -rf "$TMP_GO" "$TMP_RUST"' EXIT
 
 (
   cd "$ROOT/clients/typescript"
@@ -16,7 +17,28 @@ trap 'rm -f "$PACK_JSON"; rm -rf "$TMP_GO"' EXIT
 node -e 'const p=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))[0]; if (p.name !== "@polyspec/orm-typescript" || p.version !== "0.0.1" || !p.files.some(f => f.path === "dist/index.js")) process.exit(1); console.log(`typescript package: ${p.name}@${p.version}, ${p.files.length} files`)' "$PACK_JSON"
 
 composer validate --working-dir="$ROOT/clients/php" --no-check-publish
-cargo package --manifest-path "$ROOT/clients/rust/orm/Cargo.toml" --locked --allow-dirty --no-verify
+# The Rust client depends on git crates that are not on a registry, so it is
+# checked as a path dependency of an external crate instead of `cargo package`.
+mkdir -p "$TMP_RUST/src"
+cat > "$TMP_RUST/Cargo.toml" <<EOF
+[package]
+name = "orm-external-check"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+orm = { path = "$ROOT/clients/rust/orm" }
+
+[workspace]
+EOF
+cat > "$TMP_RUST/src/lib.rs" <<'EOF'
+pub fn config_code() -> &'static str {
+    orm::codes::CONFIG
+}
+EOF
+CARGO_TARGET_DIR="$ROOT/clients/rust/target" cargo check --manifest-path "$TMP_RUST/Cargo.toml" --quiet
+echo "rust package: orm builds as an external path dependency"
 
 (
   cd "$TMP_GO"

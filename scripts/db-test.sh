@@ -27,9 +27,9 @@ if command -v containerctl >/dev/null 2>&1; then
   exit "$code"
 fi
 
-if [ "${CI:-}" = "true" ] && [ -n "${ORM_MIGRATION_MYSQL_DSN:-}" ] && [ -n "${ORM_MIGRATION_POSTGRES_DSN:-}" ]; then
+if [ "${CI:-}" = "true" ] && [ -n "${ORM_TOOLS_MYSQL_DSN:-}" ] && [ -n "${ORM_TOOLS_POSTGRES_DSN:-}" ]; then
   cd "$ROOT"
-  exec go test -tags physical ./cmd/ormgen -run 'TestPhysicalMigration|TestSQLite(Diff|Rebuild)' -count=1
+  exec go test -tags physical ./internal/ormgen -run 'TestPhysicalMigration|TestSQLite(Diff|Rebuild)' -count=1
 fi
 
 echo "containerctl is required for local physical DB tests" >&2

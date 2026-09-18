@@ -1,376 +1,519 @@
 import { DatabaseSync } from 'node:sqlite';
-import type { Readable } from 'node:stream';
-import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection } from 'mysql2/promise';
-import type { PoolConnection as MySqlCoreConnection } from 'mysql2';
-import pg from 'pg';
-import QueryStream from 'pg-query-stream';
-import { OrmError } from './runtime_error.js';
 import { createHash } from 'node:crypto';
+import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection } from 'mysql2/promise';
+import pg from 'pg';
+import { OrmError } from './runtime_error.js';
 
 pg.types.setTypeParser(20, value => {
   const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed)) throw new OrmError('DRIVER', `postgres int8 is outside the TypeScript safe integer range: ${value}`);
+  if (!Number.isSafeInteger(parsed)) throw new OrmError('CODEC_DECODE', `postgres int8 is outside the TypeScript safe integer range: ${value}`);
   return parsed;
 });
 pg.types.setTypeParser(1700, value => Number(value));
 pg.types.setTypeParser(1082, value => value);
 pg.types.setTypeParser(1114, value => value);
+pg.types.setTypeParser(1184, value => value);
 pg.types.setTypeParser(114, value => value);
 pg.types.setTypeParser(3802, value => value);
 
 export type DriverName = 'mysql' | 'postgres' | 'sqlite';
-export type DriverIsolation = 'default' | 'read_uncommitted' | 'read_committed' | 'repeatable_read' | 'serializable';
-export interface DriverTransactionOptions { isolation?: DriverIsolation; readOnly?: boolean; timeoutMs?: number; }
-export type DriverValue = null | boolean | number | string | bigint | Uint8Array | Date;
+export type Isolation = 'read_uncommitted' | 'read_committed' | 'repeatable_read' | 'serializable';
+export interface DriverTransactionOptions { isolation?: Isolation; readOnly?: boolean; timeoutMs?: number; }
+export type DriverValue = null | boolean | number | string | bigint | Uint8Array;
 
 export interface DriverResult {
   rows: unknown[][];
-  columns: string[];
   affected: number;
   insertId: number | bigint | string | null;
 }
 
-export interface DriverStreamResult { count: number; exhausted: boolean; }
-export type DriverRowVisitor = (row: unknown[]) => boolean | Promise<boolean>;
+export interface PoolStats { maxOpenConnections: number; openConnections: number; inUse: number; idle: number; }
 
+/** A connection pool or one transaction connection. */
 export interface DriverConnection {
   readonly name: DriverName;
-  execute(sql: string, params: readonly DriverValue[]): Promise<DriverResult>;
-  stream(sql: string, params: readonly DriverValue[], visit: DriverRowVisitor): Promise<DriverStreamResult>;
-  begin(options?: DriverTransactionOptions): Promise<DriverTransaction>;
+  /** Runs one statement; an aborted signal cancels it and raises CANCELED. */
+  execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult>;
+}
+
+export interface DriverPool extends DriverConnection {
+  begin(options: DriverTransactionOptions): Promise<DriverTransaction>;
+  /** Runs statements that are not prepared on one connection outside a transaction (MySQL schema statements). */
+  unprepared?(statements: readonly string[]): Promise<void>;
+  stats(): PoolStats;
   close(): Promise<void>;
-  acquireRowLock?(mode: string): Promise<void>;
 }
 
 export interface DriverTransaction extends DriverConnection {
+  /** Runs a statement that is not prepared (savepoints, locks, session values). */
+  control(sql: string, params?: readonly DriverValue[]): Promise<DriverResult>;
   commit(): Promise<void>;
   rollback(): Promise<void>;
-  savepoint(name: string): Promise<void>;
-  rollbackTo(name: string): Promise<void>;
-  releaseSavepoint(name: string): Promise<void>;
-}
-
-function savepointName(name: string): string {
-  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new OrmError('CONFIG', 'savepoint name must match [A-Za-z_][A-Za-z0-9_]*');
-  return name;
-}
-
-async function closeReadable(readable: Readable | undefined): Promise<void> {
-  if (readable === undefined || readable.closed) return;
-  await new Promise<void>(resolve => {
-    readable.once('close', resolve);
-    if (!readable.destroyed) readable.destroy();
-  });
+  rowLock(mode: string): Promise<void>;
 }
 
 function driverError(name: DriverName, error: unknown): OrmError {
-  const source = error as { code?: string; errno?: number; errcode?: number; message?: string };
-  const duplicate = source.code === 'ER_DUP_ENTRY' || source.code === '23505' || source.code === 'SQLITE_CONSTRAINT_UNIQUE';
-  const foreignKey = source.code === 'ER_NO_REFERENCED_ROW_2' || source.code === 'ER_ROW_IS_REFERENCED_2' || source.code === '23503' || source.code === 'SQLITE_CONSTRAINT_FOREIGNKEY' || source.errcode === 787 || source.errcode === 1811 || /foreign key/i.test(source.message ?? '');
-  const deadlock = source.code === 'ER_LOCK_DEADLOCK' || source.code === '40P01' || source.code === 'SQLITE_BUSY';
-  return new OrmError(duplicate ? 'DUPLICATE' : foreignKey ? 'FOREIGN_KEY' : deadlock ? 'DEADLOCK' : 'DRIVER', `${name}: ${source.message ?? String(error)}`, error);
+  if (error instanceof OrmError) return error;
+  const source = error as { code?: string; errcode?: number; message?: string };
+  const message = source.message ?? String(error);
+  // MySQL 1317/3024, PostgreSQL 57014, and SQLite 9 all report a statement
+  // that was stopped before it finished.
+  if (source.code === 'ER_QUERY_INTERRUPTED' || source.code === 'ER_QUERY_TIMEOUT' || source.code === '57014' || source.errcode === 9) {
+    return new OrmError('CANCELED', `${name}: ${message}`, error);
+  }
+  const duplicate = source.code === 'ER_DUP_ENTRY' || source.code === '23505' || source.errcode === 2067 || source.errcode === 1555;
+  const foreignKey = source.code === 'ER_NO_REFERENCED_ROW_2' || source.code === 'ER_ROW_IS_REFERENCED_2' || source.code === '23503' || source.errcode === 787;
+  const deadlock = source.code === 'ER_LOCK_DEADLOCK' || source.code === '40P01' || source.code === '40001' || source.errcode === 5 || source.errcode === 6 || source.errcode === 261 || source.errcode === 262;
+  const code = duplicate ? 'DUPLICATE_KEY' : foreignKey ? 'FOREIGN_KEY' : deadlock ? 'DEADLOCK' : 'DRIVER';
+  return new OrmError(code, `${name}: ${message}`, error);
 }
 
-type MySqlExecutor = MySqlPool | MySqlConnection;
-class MySqlDriver implements DriverConnection {
-  public readonly name = 'mysql' as const;
-  public constructor(protected readonly connection: MySqlExecutor, private readonly owner = false) {}
-  public async execute(sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
-    try {
-      const [value, fields] = await this.connection.execute({ sql, rowsAsArray: true }, [...params]);
-      if (Array.isArray(value)) {
-        return { rows: value as unknown[][], columns: (fields ?? []).map(field => field.name), affected: 0, insertId: null };
-      }
-      const result = value as { affectedRows: number; insertId: number };
-      return { rows: [], columns: [], affected: result.affectedRows, insertId: result.insertId || null };
-    } catch (error) { throw driverError(this.name, error); }
+/** The error of a statement the caller cancelled. */
+function canceled(name: DriverName): OrmError {
+  return new OrmError('CANCELED', `${name}: the statement was cancelled`);
+}
+
+/**
+ * Awaits work while signal is watched: an abort asks the database to stop the
+ * statement with stop, and the statement itself ends with CANCELED.
+ */
+async function cancellable<T>(name: DriverName, signal: AbortSignal, stop: () => Promise<void>, work: Promise<T>): Promise<T> {
+  if (signal.aborted) {
+    await work.catch(() => undefined);
+    throw canceled(name);
   }
-  public async stream(sql: string, params: readonly DriverValue[], visit: DriverRowVisitor): Promise<DriverStreamResult> {
-    let borrowed: MySqlConnection | undefined;
-    let readable: Readable | undefined;
-    let count = 0;
-    let visitorError: unknown;
+  const abort = () => { void stop().catch(() => undefined); };
+  signal.addEventListener('abort', abort, { once: true });
+  try {
+    return await work;
+  } catch (error) {
+    if (signal.aborted) throw error instanceof OrmError && error.code === 'CANCELED' ? error : canceled(name);
+    throw error;
+  } finally {
+    signal.removeEventListener('abort', abort);
+  }
+}
+
+function isolationSql(isolation: Isolation): string {
+  if (!['read_uncommitted', 'read_committed', 'repeatable_read', 'serializable'].includes(isolation)) throw new OrmError('CONFIG', `unsupported transaction isolation ${isolation}`);
+  return isolation.replaceAll('_', ' ').toUpperCase();
+}
+
+async function mysqlExecute(connection: MySqlPool | MySqlConnection, sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
+  try {
+    const [value] = await connection.execute({ sql, rowsAsArray: true }, [...params]);
+    if (Array.isArray(value)) return { rows: value as unknown[][], affected: 0, insertId: null };
+    const result = value as { affectedRows: number; insertId: number };
+    return { rows: [], affected: result.affectedRows, insertId: result.insertId || null };
+  } catch (error) { throw driverError('mysql', error); }
+}
+
+/** Stops the statement running on connection from another connection of the pool. */
+async function mysqlKill(pool: MySqlPool, connection: MySqlConnection): Promise<void> {
+  const id = (connection as unknown as { threadId: number }).threadId;
+  await pool.query(`KILL QUERY ${Number(id)}`);
+}
+
+/** The failure of the session setup that runs on each new MySQL connection. */
+interface SessionSetup { error?: unknown; }
+
+function sessionError(setup: SessionSetup): OrmError | undefined {
+  const error = setup.error as { errno?: number; sqlMessage?: string; message?: string } | undefined;
+  if (error === undefined) return undefined;
+  if (error.errno === 1298) return new OrmError('CONFIG', `dsn timezone: ${error.sqlMessage ?? error.message}; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)`, error);
+  return driverError('mysql', error);
+}
+
+class MySqlPoolDriver implements DriverPool {
+  public readonly name = 'mysql' as const;
+  public constructor(private readonly pool: MySqlPool, private readonly setup: SessionSetup, private readonly maxOpen: number) {}
+  // The session setup is queued ahead of the statement on the same
+  // connection, so its outcome is known when the statement settles.
+  private checked<T>(result: Promise<T>): Promise<T> {
+    return result.then(
+      value => { const failure = sessionError(this.setup); if (failure) throw failure; return value; },
+      error => { throw sessionError(this.setup) ?? error; },
+    );
+  }
+  public async execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
+    if (signal === undefined) return this.checked(mysqlExecute(this.pool, sql, params));
+    // A cancellable statement holds its own connection, so KILL QUERY names
+    // the thread that runs it.
+    let connection: MySqlConnection;
+    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw error instanceof OrmError ? error : driverError(this.name, error); }
     try {
-      const executor = 'getConnection' in this.connection ? (borrowed = await this.connection.getConnection()) : this.connection;
-      const core = executor.connection as unknown as MySqlCoreConnection;
-      readable = core.query({ sql, values: [...params], rowsAsArray: true }).stream({ highWaterMark: 1 });
-      for await (const row of readable) {
-        count++;
-        let keep: boolean;
-        try { keep = await visit(row as unknown[]); } catch (error) { visitorError = error; throw error; }
-        if (!keep) return { count, exhausted: false };
-      }
-      return { count, exhausted: true };
-    } catch (error) { if (error === visitorError) throw error; throw driverError(this.name, error); }
-    finally {
-      await closeReadable(readable);
-      borrowed?.release();
+      return await cancellable(this.name, signal, () => mysqlKill(this.pool, connection), this.checked(mysqlExecute(connection, sql, params)));
+    } finally {
+      connection.release();
     }
   }
-  public async begin(options: DriverTransactionOptions = {}): Promise<DriverTransaction> {
-    if (!('getConnection' in this.connection)) throw new OrmError('CONFIG', 'nested transactions are not supported');
-    const connection = await this.connection.getConnection();
+  public async unprepared(statements: readonly string[]): Promise<void> {
+    let connection: MySqlConnection;
+    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw error instanceof OrmError ? error : driverError(this.name, error); }
     try {
-      await configureTransaction(connection, this.name, options);
+      for (const sql of statements) await connection.query(sql);
+    } catch (error) {
+      throw driverError(this.name, error);
+    } finally {
+      connection.release();
+    }
+  }
+  public async begin(options: DriverTransactionOptions): Promise<DriverTransaction> {
+    if ((options.timeoutMs ?? 0) > 0) throw new OrmError('CAPABILITY_UNSUPPORTED', 'transaction timeoutMs is supported only by postgres');
+    let connection: MySqlConnection;
+    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw error instanceof OrmError ? error : driverError(this.name, error); }
+    try {
+      if (options.isolation) await connection.query(`SET TRANSACTION ISOLATION LEVEL ${isolationSql(options.isolation)}`);
+      if (options.readOnly) await connection.query('SET TRANSACTION READ ONLY');
       await connection.beginTransaction();
     } catch (error) {
       connection.release();
-      throw error;
+      throw driverError(this.name, error);
     }
-    return new MySqlTx(connection);
+    return new MySqlTx(connection, this.pool);
   }
-  public async close(): Promise<void> { if (this.owner && 'end' in this.connection) await this.connection.end(); }
-}
-class MySqlTx extends MySqlDriver implements DriverTransaction {
-  private active = true;
-  public constructor(private readonly tx: MySqlConnection) { super(tx); }
-  public override async execute(sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
-    if (!this.active) throw new OrmError('CONFIG', 'transaction already finished');
-    return super.execute(sql, params);
+  public stats(): PoolStats {
+    const inner = (this.pool as unknown as { pool: { _allConnections: { length: number }; _freeConnections: { length: number } } }).pool;
+    const open = inner._allConnections.length;
+    const idle = inner._freeConnections.length;
+    return { maxOpenConnections: this.maxOpen, openConnections: open, inUse: open - idle, idle };
   }
-  public override async stream(sql: string, params: readonly DriverValue[], visit: DriverRowVisitor): Promise<DriverStreamResult> {
-    if (!this.active) throw new OrmError('CONFIG', 'transaction already finished');
-    return super.stream(sql, params, visit);
-  }
-  public async commit(): Promise<void> { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); await this.tx.commit(); this.finish(); }
-  public async rollback(): Promise<void> { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); await this.tx.rollback(); this.finish(); }
-  public async savepoint(name: string): Promise<void> { this.assertControl(); await this.tx.query(`SAVEPOINT ${savepointName(name)}`); }
-  public async rollbackTo(name: string): Promise<void> { this.assertControl(); await this.tx.query(`ROLLBACK TO SAVEPOINT ${savepointName(name)}`); }
-  public async releaseSavepoint(name: string): Promise<void> { this.assertControl(); await this.tx.query(`RELEASE SAVEPOINT ${savepointName(name)}`); }
-  private assertControl(): void { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); }
-  private finish(): void { this.active = false; this.tx.release(); }
+  public async close(): Promise<void> { await this.pool.end(); }
 }
 
-type PgExecutor = pg.Pool | pg.PoolClient;
+class MySqlTx implements DriverTransaction {
+  public readonly name = 'mysql' as const;
+  public constructor(private readonly connection: MySqlConnection, private readonly pool: MySqlPool) {}
+  public execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
+    const work = mysqlExecute(this.connection, sql, params);
+    return signal === undefined ? work : cancellable(this.name, signal, () => mysqlKill(this.pool, this.connection), work);
+  }
+  public async control(sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
+    try {
+      const [value] = await this.connection.query({ sql, rowsAsArray: true }, [...params]);
+      if (Array.isArray(value)) return { rows: value as unknown[][], affected: 0, insertId: null };
+      return { rows: [], affected: (value as { affectedRows: number }).affectedRows, insertId: null };
+    } catch (error) { throw driverError(this.name, error); }
+  }
+  public async commit(): Promise<void> {
+    try { await this.connection.commit(); } catch (error) { throw driverError(this.name, error); } finally { this.connection.release(); }
+  }
+  public async rollback(): Promise<void> {
+    try { await this.connection.rollback(); } finally { this.connection.release(); }
+  }
+  public async rowLock(): Promise<void> {}
+}
+
 class StatementNames {
   private readonly names = new Map<string, string>();
-  public constructor(public readonly limit: number) {
-    if (!Number.isSafeInteger(limit) || limit < 1) throw new OrmError('CONFIG', 'statement cache size must be a positive integer');
-  }
-  public name(sql: string): string {
+  public constructor(private readonly limit: number) {}
+  public name(sql: string): { name: string; evicted?: string } {
     const existing = this.names.get(sql);
     if (existing !== undefined) {
       this.names.delete(sql);
       this.names.set(sql, existing);
-      return existing;
+      return { name: existing };
     }
-    // PostgreSQL limits prepared statement names to 63 bytes. The 59 hex
-    // characters after the prefix retain 236 bits of hash space.
+    // PostgreSQL limits statement names to 63 bytes.
     const name = `orm_${createHash('sha256').update(sql).digest('hex').slice(0, 59)}`;
     this.names.set(sql, name);
-    return name;
-  }
-  public evicted(): string | undefined {
-    if (this.names.size <= this.limit) return undefined;
-    const oldest = this.names.entries().next().value as [string, string] | undefined;
-    if (oldest !== undefined) this.names.delete(oldest[0]);
-    return oldest?.[1];
+    if (this.names.size <= this.limit) return { name };
+    const oldest = this.names.entries().next().value as [string, string];
+    this.names.delete(oldest[0]);
+    return { name, evicted: oldest[1] };
   }
 }
-class PostgresDriver implements DriverConnection {
+
+const statementCaches = new WeakMap<object, StatementNames>();
+
+async function pgExecute(client: pg.PoolClient, sql: string, params: readonly DriverValue[], cacheSize: number): Promise<DriverResult> {
+  let cache = statementCaches.get(client);
+  if (cache === undefined) {
+    cache = new StatementNames(cacheSize);
+    statementCaches.set(client, cache);
+  }
+  try {
+    const { name, evicted } = cache.name(sql);
+    const result = await client.query({ name, text: sql, values: [...params], rowMode: 'array' });
+    if (evicted !== undefined) await client.query(`DEALLOCATE "${evicted}"`);
+    return { rows: result.rows as unknown[][], affected: result.rowCount ?? 0, insertId: (result.rows[0] as unknown[] | undefined)?.[0] as DriverResult['insertId'] ?? null };
+  } catch (error) { throw driverError('postgres', error); }
+}
+
+/**
+ * Asks PostgreSQL to stop the statement of a backend. The request runs on a
+ * connection of its own so a busy pool cannot hold it up.
+ */
+async function pgCancel(config: pg.PoolConfig, client: pg.PoolClient): Promise<void> {
+  const pid = (client as unknown as { processID: number | null }).processID;
+  if (pid === null || pid === undefined) return;
+  const canceller = new pg.Client(config as pg.ClientConfig);
+  await canceller.connect();
+  try { await canceller.query('SELECT pg_cancel_backend($1)', [pid]); } finally { await canceller.end(); }
+}
+
+class PostgresPoolDriver implements DriverPool {
   public readonly name = 'postgres' as const;
-  private readonly statementCacheSize: number;
-  private readonly statements = new WeakMap<object, StatementNames>();
-  public constructor(protected readonly connection: PgExecutor, private readonly owner = false, statementCacheSize = 256) {
-    if (!Number.isSafeInteger(statementCacheSize) || statementCacheSize < 1) throw new OrmError('CONFIG', 'statement cache size must be a positive integer');
-    this.statementCacheSize = statementCacheSize;
-  }
-  private statementCache(client: PgExecutor): StatementNames {
-    const key = client as object;
-    let cache = this.statements.get(key);
-    if (cache === undefined) {
-      cache = new StatementNames(this.statementCacheSize);
-      this.statements.set(key, cache);
-    }
-    return cache;
-  }
-  public async execute(sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
-    const client = this.connection instanceof pg.Pool ? await this.connection.connect() : this.connection;
+  public constructor(private readonly pool: pg.Pool, private readonly cacheSize: number, private readonly maxOpen: number, private readonly config: pg.PoolConfig) {}
+  public async execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
+    let client: pg.PoolClient;
+    try { client = await this.pool.connect(); } catch (error) { throw driverError(this.name, error); }
     try {
-      const statements = this.statementCache(client);
-      const name = statements.name(sql);
-      const result = await client.query({ name, text: sql, values: [...params], rowMode: 'array' });
-      const evicted = statements.evicted();
-      if (evicted !== undefined) await client.query(`DEALLOCATE "${evicted}"`);
-      return { rows: result.rows as unknown[][], columns: result.fields.map(field => field.name), affected: result.rowCount ?? 0, insertId: result.rows[0]?.[0] as DriverResult['insertId'] ?? null };
-    } catch (error) { throw driverError(this.name, error); } finally { if (this.connection instanceof pg.Pool) client.release(); }
+      const work = pgExecute(client, sql, params, this.cacheSize);
+      return await (signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, client), work));
+    } finally { client.release(); }
   }
-  public async stream(sql: string, params: readonly DriverValue[], visit: DriverRowVisitor): Promise<DriverStreamResult> {
-    let borrowed: pg.PoolClient | undefined;
-    const executor = this.connection instanceof pg.Pool ? (borrowed = await this.connection.connect()) : this.connection;
-    const readable = executor.query(new QueryStream(sql, [...params], { rowMode: 'array', batchSize: 64 }));
-    let count = 0;
-    let visitorError: unknown;
-    try {
-      for await (const row of readable) {
-        count++;
-        let keep: boolean;
-        try { keep = await visit(row as unknown[]); } catch (error) { visitorError = error; throw error; }
-        if (!keep) return { count, exhausted: false };
-      }
-      return { count, exhausted: true };
-    } catch (error) { if (error === visitorError) throw error; throw driverError(this.name, error); }
-    finally {
-      await closeReadable(readable);
-      borrowed?.release();
-    }
-  }
-  public async begin(options: DriverTransactionOptions = {}): Promise<DriverTransaction> {
-    if (!(this.connection instanceof pg.Pool)) throw new OrmError('CONFIG', 'nested transactions are not supported');
-    const connection: pg.PoolClient = await this.connection.connect();
+  public async begin(options: DriverTransactionOptions): Promise<DriverTransaction> {
+    let client: pg.PoolClient;
+    try { client = await this.pool.connect(); } catch (error) { throw driverError(this.name, error); }
     let began = false;
     try {
-      await connection.query('BEGIN');
+      await client.query('BEGIN');
       began = true;
-      await configureTransaction(connection, this.name, options);
-      if ((options.timeoutMs ?? 0) > 0) await connection.query(`SET LOCAL statement_timeout = ${options.timeoutMs}`);
+      if (options.isolation) await client.query(`SET TRANSACTION ISOLATION LEVEL ${isolationSql(options.isolation)}`);
+      if (options.readOnly) await client.query('SET TRANSACTION READ ONLY');
+      if ((options.timeoutMs ?? 0) > 0) await client.query(`SET LOCAL statement_timeout = ${Math.floor(options.timeoutMs!)}`);
     } catch (error) {
-      if (began) { try { await connection.query('ROLLBACK'); } catch {} }
-      connection.release();
-      throw error;
-    }
-    return new PostgresTx(connection, undefined, this.statementCacheSize);
-  }
-  public async close(): Promise<void> { if (this.owner && 'end' in this.connection) await this.connection.end(); }
-}
-class PostgresTx extends PostgresDriver implements DriverTransaction {
-  private active = true;
-  public constructor(private readonly tx: pg.PoolClient, owner?: boolean, statementCacheSize = 256) { super(tx, owner, statementCacheSize); }
-  public override async execute(sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
-    if (!this.active) throw new OrmError('CONFIG', 'transaction already finished');
-    return super.execute(sql, params);
-  }
-  public override async stream(sql: string, params: readonly DriverValue[], visit: DriverRowVisitor): Promise<DriverStreamResult> {
-    if (!this.active) throw new OrmError('CONFIG', 'transaction already finished');
-    return super.stream(sql, params, visit);
-  }
-  public async commit(): Promise<void> { await this.end('COMMIT'); }
-  public async rollback(): Promise<void> { await this.end('ROLLBACK'); }
-  public async savepoint(name: string): Promise<void> { this.assertControl(); await this.tx.query(`SAVEPOINT ${savepointName(name)}`); }
-  public async rollbackTo(name: string): Promise<void> { this.assertControl(); await this.tx.query(`ROLLBACK TO SAVEPOINT ${savepointName(name)}`); }
-  public async releaseSavepoint(name: string): Promise<void> { this.assertControl(); await this.tx.query(`RELEASE SAVEPOINT ${savepointName(name)}`); }
-  private assertControl(): void { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); }
-  private async end(sql: string): Promise<void> { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); await this.tx.query(sql); this.active = false; this.tx.release(); }
-}
-
-class SqliteDriver implements DriverConnection {
-  public readonly name = 'sqlite' as const;
-  protected active = true;
-  private readonly statements = new Map<string, ReturnType<DatabaseSync['prepare']>>();
-  private readonly statementOrder: string[] = [];
-  public constructor(protected readonly connection: DatabaseSync, private readonly owner = false, private readonly transaction = false, private readonly statementCacheSize = 256) {
-    if (!Number.isSafeInteger(statementCacheSize) || statementCacheSize < 1) throw new OrmError('CONFIG', 'statement cache size must be a positive integer');
-  }
-  private statement(sql: string): ReturnType<DatabaseSync['prepare']> {
-    const existing = this.statements.get(sql);
-    if (existing !== undefined) return existing;
-    const statement = this.connection.prepare(sql);
-    this.statements.set(sql, statement);
-    this.statementOrder.push(sql);
-    while (this.statementOrder.length > this.statementCacheSize) {
-      const oldest = this.statementOrder.shift();
-      if (oldest !== undefined) this.statements.delete(oldest);
-    }
-    return statement;
-  }
-  public async execute(sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
-    if (!this.active) throw new OrmError('CONFIG', 'transaction already finished');
-    try {
-      const statement = this.statement(sql);
-      const values = params.map(value => value instanceof Date ? sqlDate(value) : typeof value === 'boolean' ? Number(value) : value);
-      if (/^\s*(?:SELECT|WITH|PRAGMA)\b/i.test(sql) || /\bRETURNING\b/i.test(sql)) {
-        statement.setReturnArrays(true);
-        const rows = statement.all(...values) as unknown as unknown[][];
-        return { rows, columns: statement.columns().map(column => column.name), affected: rows.length, insertId: rows[0]?.[0] as DriverResult['insertId'] ?? null };
-      }
-      const result = statement.run(...values);
-      return { rows: [], columns: [], affected: Number(result.changes), insertId: result.lastInsertRowid };
-    } catch (error) { throw driverError(this.name, error); }
-  }
-  public async stream(sql: string, params: readonly DriverValue[], visit: DriverRowVisitor): Promise<DriverStreamResult> {
-    if (!this.active) throw new OrmError('CONFIG', 'transaction already finished');
-    let visitorError: unknown;
-    try {
-      const statement = this.statement(sql);
-      statement.setReturnArrays(true);
-      const values = params.map(value => value instanceof Date ? sqlDate(value) : typeof value === 'boolean' ? Number(value) : value);
-      let count = 0;
-      for (const row of statement.iterate(...values) as unknown as Iterable<unknown[]>) {
-        count++;
-        try {
-          if (!await visit(row)) return { count, exhausted: false };
-        } catch (error) { visitorError = error; throw error; }
-      }
-      return { count, exhausted: true };
-    } catch (error) {
-      if (typeof visitorError !== 'undefined' && error === visitorError) throw error;
+      if (began) await client.query('ROLLBACK').catch(() => undefined);
+      client.release();
       throw driverError(this.name, error);
     }
+    return new PostgresTx(client, this.cacheSize, this.config);
   }
-  public async begin(options: DriverTransactionOptions = {}): Promise<DriverTransaction> {
-    if (this.transaction) throw new OrmError('CONFIG', 'nested transactions are not supported');
-    if (options.isolation !== undefined && options.isolation !== 'default' || options.readOnly || (options.timeoutMs ?? 0) > 0) throw new OrmError('CAPABILITY_UNSUPPORTED', 'sqlite does not support transaction isolation, read-only mode, or timeout_ms');
-    this.connection.exec('BEGIN');
-    return new SqliteTx(this.connection);
+  public stats(): PoolStats {
+    return { maxOpenConnections: this.maxOpen, openConnections: this.pool.totalCount, inUse: this.pool.totalCount - this.pool.idleCount, idle: this.pool.idleCount };
   }
-  public async acquireRowLock(mode: string): Promise<void> {
-    if (mode === '') return;
-    if (!this.transaction) throw new OrmError('CONFIG', 'SQLite row locks require an ORM transaction');
-    const noWait = mode.endsWith('_nowait');
-    const row = this.connection.prepare('PRAGMA busy_timeout').get() as Record<string, unknown> | undefined;
-    const previous = Number(row?.busy_timeout ?? row?.timeout ?? 5000);
-    if (noWait) this.connection.exec('PRAGMA busy_timeout=0');
+  public async close(): Promise<void> { await this.pool.end(); }
+}
+
+class PostgresTx implements DriverTransaction {
+  public readonly name = 'postgres' as const;
+  public constructor(private readonly client: pg.PoolClient, private readonly cacheSize: number, private readonly config: pg.PoolConfig) {}
+  public execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
+    const work = pgExecute(this.client, sql, params, this.cacheSize);
+    return signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, this.client), work);
+  }
+  public async control(sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
     try {
-      this.connection.exec('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
-      this.connection.exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"');
-    } finally {
-      if (noWait) this.connection.exec(`PRAGMA busy_timeout=${previous}`);
+      const result = await this.client.query({ text: sql, values: [...params], rowMode: 'array' });
+      return { rows: result.rows as unknown[][], affected: result.rowCount ?? 0, insertId: null };
+    } catch (error) { throw driverError(this.name, error); }
+  }
+  public async commit(): Promise<void> {
+    try { await this.client.query('COMMIT'); } catch (error) { throw driverError(this.name, error); } finally { this.client.release(); }
+  }
+  public async rollback(): Promise<void> {
+    try { await this.client.query('ROLLBACK'); } finally { this.client.release(); }
+  }
+  public async rowLock(): Promise<void> {}
+}
+
+class SqliteState {
+  public busy = false;
+  private readonly statements = new Map<string, ReturnType<DatabaseSync['prepare']>>();
+  public constructor(public readonly db: DatabaseSync, private readonly cacheSize: number) {}
+  public statement(sql: string): ReturnType<DatabaseSync['prepare']> {
+    const existing = this.statements.get(sql);
+    if (existing !== undefined) return existing;
+    const statement = this.db.prepare(sql);
+    this.statements.set(sql, statement);
+    if (this.statements.size > this.cacheSize) this.statements.delete(this.statements.keys().next().value as string);
+    return statement;
+  }
+}
+
+function sqliteExecute(state: SqliteState, sql: string, params: readonly DriverValue[]): DriverResult {
+  try {
+    const statement = state.statement(sql);
+    const values = params.map(value => typeof value === 'boolean' ? Number(value) : value) as Array<null | number | string | bigint | Uint8Array>;
+    if (/^\s*(?:SELECT|WITH|PRAGMA)\b/i.test(sql) || /\bRETURNING\b/i.test(sql)) {
+      statement.setReturnArrays(true);
+      const rows = statement.all(...values) as unknown as unknown[][];
+      return { rows, affected: rows.length, insertId: rows[0]?.[0] as DriverResult['insertId'] ?? null };
+    }
+    const result = statement.run(...values);
+    return { rows: [], affected: Number(result.changes), insertId: result.lastInsertRowid };
+  } catch (error) { throw driverError('sqlite', error); }
+}
+
+class SqlitePoolDriver implements DriverPool {
+  public readonly name = 'sqlite' as const;
+  private readonly state: SqliteState;
+  private waiters: Array<() => void> = [];
+  public constructor(db: DatabaseSync, cacheSize: number) { this.state = new SqliteState(db, cacheSize); }
+  public async execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
+    await this.idle();
+    // node:sqlite runs a statement to its end without yielding, so the signal
+    // is read before the statement starts.
+    if (signal?.aborted) throw canceled(this.name);
+    return sqliteExecute(this.state, sql, params);
+  }
+  /** Waits until no transaction holds the single SQLite connection. */
+  private async idle(): Promise<void> {
+    while (this.state.busy) await new Promise<void>(resolve => this.waiters.push(resolve));
+  }
+  public async begin(options: DriverTransactionOptions): Promise<DriverTransaction> {
+    if ((options.timeoutMs ?? 0) > 0) throw new OrmError('CAPABILITY_UNSUPPORTED', 'transaction timeoutMs is supported only by postgres');
+    if (options.isolation) isolationSql(options.isolation);
+    await this.idle();
+    this.state.busy = true;
+    try {
+      this.state.db.exec('BEGIN DEFERRED');
+      if (options.isolation === 'read_uncommitted') this.state.db.exec('PRAGMA read_uncommitted = 1');
+      if (options.readOnly) this.state.db.exec('PRAGMA query_only = 1');
+    } catch (error) {
+      this.release();
+      throw driverError(this.name, error);
+    }
+    return new SqliteTx(this.state, options, () => this.release());
+  }
+  private release(): void {
+    this.state.busy = false;
+    const waiters = this.waiters;
+    this.waiters = [];
+    for (const wake of waiters) wake();
+  }
+  public stats(): PoolStats { return { maxOpenConnections: 1, openConnections: 1, inUse: this.state.busy ? 1 : 0, idle: this.state.busy ? 0 : 1 }; }
+  public async close(): Promise<void> { this.state.db.close(); }
+}
+
+class SqliteTx implements DriverTransaction {
+  public readonly name = 'sqlite' as const;
+  public constructor(private readonly state: SqliteState, private readonly options: DriverTransactionOptions, private readonly release: () => void) {}
+  public async execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
+    if (signal?.aborted) throw canceled(this.name);
+    return sqliteExecute(this.state, sql, params);
+  }
+  public async control(sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> { return sqliteExecute(this.state, sql, params); }
+  private finishModes(): void {
+    if (this.options.readOnly) this.state.db.exec('PRAGMA query_only = 0');
+    if (this.options.isolation === 'read_uncommitted') this.state.db.exec('PRAGMA read_uncommitted = 0');
+  }
+  public async commit(): Promise<void> {
+    try {
+      this.finishModes();
+      this.state.db.exec('COMMIT');
+    } catch (error) {
+      try { this.state.db.exec('ROLLBACK'); } catch { /* the transaction already ended */ }
+      throw driverError(this.name, error);
+    } finally { this.release(); }
+  }
+  public async rollback(): Promise<void> {
+    try {
+      this.finishModes();
+      this.state.db.exec('ROLLBACK');
+    } finally { this.release(); }
+  }
+  /** SQLite has no row-lock clause; one lock row serializes ORM lock requests. */
+  public async rowLock(mode: string): Promise<void> {
+    if (mode === '') return;
+    this.state.db.exec('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
+    this.state.db.exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id" = excluded."id"');
+  }
+}
+
+export interface ParsedDsn { driver: DriverName; zone: string; }
+
+/** Splits a DSN URI into the dialect and the connection time zone. */
+export function parseDsn(dsn: string): ParsedDsn {
+  let url: URL;
+  try { url = new URL(dsn); } catch { throw new OrmError('CONFIG', 'dsn must be a URI using mysql://, postgres://, or sqlite://'); }
+  const zone = url.searchParams.get('timezone') ?? '';
+  if (zone !== '') zoneOffset(zone, new Date());
+  switch (url.protocol) {
+    case 'mysql:':
+      if (url.hostname === '' || url.pathname.replace(/\//g, '') === '') throw new OrmError('CONFIG', 'mysql DSN must include host and database');
+      return { driver: 'mysql', zone };
+    case 'postgres:':
+      if ((url.hostname === '' && !url.searchParams.has('host')) || url.pathname.replace(/\//g, '') === '') throw new OrmError('CONFIG', 'postgres DSN must include host and database');
+      return { driver: 'postgres', zone };
+    case 'sqlite:':
+      if (url.hostname !== '' || !url.pathname.startsWith('/') || url.pathname === '/') throw new OrmError('CONFIG', 'sqlite DSN must include an absolute database path');
+      if ((url.searchParams.get('_txlock') ?? 'deferred') !== 'deferred') throw new OrmError('CONFIG', 'sqlite DSN _txlock must be deferred');
+      return { driver: 'sqlite', zone };
+  }
+  throw new OrmError('CONFIG', `unsupported DSN scheme ${url.protocol.replace(/:$/, '')}; want mysql, postgres, or sqlite`);
+}
+
+/** Returns the offset of zone at instant in minutes east of UTC. */
+export function zoneOffset(zone: string, instant: Date): number {
+  const fixed = /^([+-])(\d{2}):(\d{2})$/.exec(zone);
+  if (fixed) return (fixed[1] === '-' ? -1 : 1) * (Number(fixed[2]) * 60 + Number(fixed[3]));
+  if (zone === '') return -instant.getTimezoneOffset();
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(instant);
+  } catch { throw new OrmError('CONFIG', `dsn timezone ${zone} is unknown`); }
+  const get = (type: string) => Number(parts.find(part => part.type === type)!.value);
+  const wall = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
+  return Math.round((wall - Math.floor(instant.getTime() / 1000) * 1000) / 60_000);
+}
+
+/**
+ * Writes a fixed offset in the POSIX form PostgreSQL expects, where the sign
+ * after the name is inverted: +09:00 becomes <+09:00>-09:00.
+ */
+export function postgresZone(zone: string): string {
+  const fixed = /^([+-])(\d{2}:\d{2})$/.exec(zone);
+  return fixed ? `<${zone}>${fixed[1] === '-' ? '+' : '-'}${fixed[2]}` : zone;
+}
+
+export function offsetText(minutes: number): string {
+  const abs = Math.abs(minutes);
+  return `${minutes < 0 ? '-' : '+'}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
+}
+
+export function openDriver(dsn: string, parsed: ParsedDsn, pool: number, statementCacheSize: number, statementTimeoutMs = 0): DriverPool {
+  const url = new URL(dsn);
+  url.searchParams.delete('timezone');
+  switch (parsed.driver) {
+    case 'mysql': {
+      const socket = url.searchParams.get('socket');
+      const created = mysql.createPool({
+        ...(socket ? { socketPath: socket } : { host: url.hostname, port: url.port ? Number(url.port) : undefined }),
+        user: decodeURIComponent(url.username),
+        password: decodeURIComponent(url.password),
+        database: decodeURIComponent(url.pathname.slice(1)),
+        connectionLimit: pool,
+        namedPlaceholders: false,
+        dateStrings: true,
+        decimalNumbers: true,
+        jsonStrings: true,
+        maxPreparedStatements: statementCacheSize,
+      });
+      // Without a timezone parameter the session uses the offset of the process time zone.
+      const zone = () => `'${(parsed.zone !== '' ? parsed.zone : offsetText(zoneOffset('', new Date()))).replaceAll("'", "''")}'`;
+      const setup: SessionSetup = {};
+      (created as unknown as { pool: { on(event: 'connection', listener: (connection: { query(sql: string, done: (error: unknown) => void): void }) => void): void } }).pool
+        .on('connection', connection => {
+          // MySQL bounds SELECT statements with max_execution_time.
+          const session = statementTimeoutMs > 0 ? `SET time_zone = ${zone()}, SESSION max_execution_time = ${statementTimeoutMs}` : `SET time_zone = ${zone()}`;
+          connection.query(session, error => { if (error) setup.error = error; });
+        });
+      return new MySqlPoolDriver(created, setup, pool);
+    }
+    case 'postgres': {
+      const config: pg.PoolConfig = { connectionString: url.toString(), max: pool };
+      // Without a timezone parameter the session uses the process time zone.
+      config.options = `-c TimeZone=${parsed.zone !== '' ? postgresZone(parsed.zone) : Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+      if (statementTimeoutMs > 0) config.options += ` -c statement_timeout=${statementTimeoutMs}`;
+      return new PostgresPoolDriver(new pg.Pool(config), statementCacheSize, pool, config);
+    }
+    case 'sqlite': {
+      const db = new DatabaseSync(decodeURIComponent(url.pathname));
+      const version = String((db.prepare('SELECT sqlite_version() AS v').get() as { v: string }).v);
+      const [major, minor] = version.split('.').map(Number);
+      if (major! < 3 || (major === 3 && minor! < 46)) {
+        db.close();
+        throw new OrmError('CAPABILITY_UNSUPPORTED', `SQLite ${version} is older than 3.46`);
+      }
+      db.exec('PRAGMA foreign_keys = ON');
+      for (const pragma of url.searchParams.getAll('_pragma')) {
+        const match = /^([a-z_]+)\(([A-Za-z0-9_]+)\)$/.exec(pragma);
+        if (!match) throw new OrmError('CONFIG', `sqlite DSN _pragma ${pragma} is invalid`);
+        db.exec(`PRAGMA ${match[1]} = ${match[2]}`);
+      }
+      return new SqlitePoolDriver(db, statementCacheSize);
     }
   }
-  public async close(): Promise<void> { if (this.owner) this.connection.close(); }
-  protected finish(): void { this.active = false; }
-}
-
-async function configureTransaction(connection: { query(sql: string): Promise<unknown> }, driver: DriverName, options: DriverTransactionOptions): Promise<void> {
-  if ((options.timeoutMs ?? 0) > 0 && driver !== 'postgres') throw new OrmError('CAPABILITY_UNSUPPORTED', 'transaction timeout_ms is supported only by postgres');
-  const isolation = options.isolation ?? 'default';
-  if (isolation !== 'default') await connection.query(`SET TRANSACTION ISOLATION LEVEL ${isolation.replaceAll('_', ' ').toUpperCase()}`);
-  if (options.readOnly) await connection.query('SET TRANSACTION READ ONLY');
-}
-class SqliteTx extends SqliteDriver implements DriverTransaction {
-  public constructor(connection: DatabaseSync, statementCacheSize = 256) { super(connection, false, true, statementCacheSize); }
-  public async commit(): Promise<void> { this.connection.exec('COMMIT'); this.finish(); }
-  public async rollback(): Promise<void> { this.connection.exec('ROLLBACK'); this.finish(); }
-  public async savepoint(name: string): Promise<void> { this.assertControl(); this.connection.exec(`SAVEPOINT ${savepointName(name)}`); }
-  public async rollbackTo(name: string): Promise<void> { this.assertControl(); this.connection.exec(`ROLLBACK TO SAVEPOINT ${savepointName(name)}`); }
-  public async releaseSavepoint(name: string): Promise<void> { this.assertControl(); this.connection.exec(`RELEASE SAVEPOINT ${savepointName(name)}`); }
-  private assertControl(): void { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); }
-}
-
-export function openMySql(uri: string, pool = 10, statementCacheSize = 256): DriverConnection {
-  return new MySqlDriver(mysql.createPool({
-    uri,
-    connectionLimit: pool,
-    namedPlaceholders: false,
-    timezone: 'Z',
-    dateStrings: true,
-    decimalNumbers: true,
-    jsonStrings: true,
-    maxPreparedStatements: statementCacheSize,
-  }), true);
-}
-export function openPostgres(connectionString: string, pool = 10, statementCacheSize = 256): DriverConnection {
-  return new PostgresDriver(new pg.Pool({ connectionString, max: pool }), true, statementCacheSize);
-}
-export function openSqlite(path: string, statementCacheSize = 256): DriverConnection {
-  if (!path.startsWith('/')) throw new OrmError('CONFIG', `sqlite path must be absolute: ${path}`);
-  const connection = new DatabaseSync(path);
-  connection.exec('PRAGMA foreign_keys=ON');
-  connection.exec('PRAGMA busy_timeout=5000');
-  connection.exec('PRAGMA journal_mode=WAL');
-  return new SqliteDriver(connection, true, false, statementCacheSize);
-}
-
-function sqlDate(value: Date): string {
-  return value.toISOString().replace('T', ' ').replace('Z', '').replace(/\.([0-9]{3})$/, '.$1000');
 }

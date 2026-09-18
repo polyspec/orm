@@ -141,7 +141,9 @@ impl<T: Into<Param>> From<Option<T>> for Param {
 
 /// A value read from a row, positionally. `Json` is a styled column after decoding (docs/codec.md).
 #[derive(Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub enum Val {
+    #[default]
     Null,
     I64(i64),
     F64(f64),
@@ -153,11 +155,6 @@ pub enum Val {
     Json(serde_json::Value),
 }
 
-impl Default for Val {
-    fn default() -> Self {
-        Val::Null
-    }
-}
 
 impl Val {
     pub fn is_null(&self) -> bool {
@@ -198,6 +195,14 @@ impl Val {
             Val::Json(v) => Some(std::mem::take(v)),
             Val::Null => None,
             other => Some(serde_json::Value::String(other.as_string())),
+        }
+    }
+
+    /// Moves the bytes out (leaves Null).
+    pub fn take_bytes(&mut self) -> Vec<u8> {
+        match std::mem::take(self) {
+            Val::Bytes(b) => b,
+            other => other.as_string().into_bytes(),
         }
     }
 
