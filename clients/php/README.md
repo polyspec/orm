@@ -130,6 +130,7 @@ such as one past `statementTimeoutMs`); other driver errors keep the driver mess
       php clients/php/tests/schema_db_test.php   # drops every table in those databases
     go run ./tests/conformance/check run -langs php -driver mysql|postgres|sqlite
 
-`model_test.php` always runs on SQLite, and on MySQL and PostgreSQL when their DSN names an empty
-test database (its tables are dropped and installed with `utils()->schema()->install()`).
+`model_test.php` runs on SQLite, MySQL and PostgreSQL and fails when a MySQL or PostgreSQL DSN is
+unset; each DSN names an empty test database (its tables are dropped and installed with
+`utils()->schema()->install()`).
 `perf_gate.php <schema.json>` compares the client with PDO on the seeded bench database.

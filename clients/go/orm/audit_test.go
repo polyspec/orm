@@ -111,10 +111,8 @@ func TestAuditTriggers(t *testing.T) {
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
 	for driver, dsn := range targets {
-		if dsn == "" {
-			continue
-		}
 		t.Run(driver, func(t *testing.T) {
+			requireTarget(t, driver, dsn)
 			tables := []string{"app.audit_item", "app.audit_change", "app.audit_operation"}
 			if driver == "mysql" {
 				tables = []string{"audit_item", "audit_change", "audit_operation"}
