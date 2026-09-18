@@ -82,10 +82,8 @@ func TestJsonTextOrderPreservation(t *testing.T) {
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
 	for driver, dsn := range targets {
-		if dsn == "" {
-			continue
-		}
 		t.Run(driver, func(t *testing.T) {
+			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "json_data")
 			defer dropTable(t, driver, dsn, "json_data")
 			eng, err := engine.New(m, driver)

@@ -20,9 +20,9 @@ const schemaPath = "../../../schema/schema.json"
 
 var tables = []string{"account_project", "composite_membership", "composite_account", "battle", "service_member", "service_module", "soft_record", "account", "project", "user", "service"}
 
-// databases returns a fresh database for each configured dialect. SQLite
-// always runs; MySQL and PostgreSQL run when ORM_TEST_MYSQL_DSN and
-// ORM_TEST_POSTGRES_DSN name an empty test database.
+// databases returns a fresh SQLite, MySQL and PostgreSQL database;
+// ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases, and
+// the test fails when either is unset.
 func databases(t *testing.T) map[string]*orm.DB {
 	t.Helper()
 	out := map[string]*orm.DB{}
@@ -37,7 +37,7 @@ func databases(t *testing.T) map[string]*orm.DB {
 	}
 	for driver, dsn := range targets {
 		if dsn == "" {
-			continue
+			t.Fatalf("ORM_TEST_%s_DSN is required; database tests never skip", strings.ToUpper(driver))
 		}
 		db, err := model.Connect(dsn, schemaPath, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
 		if err != nil {
@@ -305,7 +305,7 @@ func dsnOf(t *testing.T, db *orm.DB) string {
 	t.Helper()
 	v, ok := dsns.Load(db)
 	if !ok {
-		t.Skip("connection DSN is not recorded")
+		t.Fatal("connection DSN is not recorded")
 	}
 	return v.(string)
 }

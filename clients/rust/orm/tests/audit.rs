@@ -1,11 +1,18 @@
 //! Audit triggers: log tables from one manifest, audited tables from a second
 //! manifest installed on the same connection, and writes inside a transaction
-//! that names its operation with set_local. SQLite always runs; MySQL and
-//! PostgreSQL run when ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name a
-//! test database.
+//! that names its operation with set_local, on SQLite, MySQL and PostgreSQL.
+//! The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
 use orm::db::Pool;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
+
+/// Returns the DSN in `var`; an unset or empty variable fails the test.
+fn require_dsn(var: &str) -> String {
+    match std::env::var(var) {
+        Ok(dsn) if !dsn.is_empty() => dsn,
+        _ => panic!("{var} is required; database tests never skip"),
+    }
+}
 
 static LOG_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_log.json"), "35b6d3b7a427c672");
 static ITEM_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_item.json"), "1bc7bcaa76c9579b");
@@ -101,14 +108,13 @@ async fn drop_tables(db: &Db, driver: &str) {
 async fn audit_triggers() {
     let tmp = std::env::temp_dir().join(format!("orm-rust-audit-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
-    let mut targets = vec![("sqlite".to_owned(), format!("sqlite://{}", tmp.join("audit.sqlite").display()))];
-    for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
-        if let Ok(dsn) = std::env::var(var) {
-            if !dsn.is_empty() {
-                targets.push((driver.to_owned(), dsn));
-            }
-        }
-    }
+    let mysql_dsn = require_dsn("ORM_TEST_MYSQL_DSN");
+    let postgres_dsn = require_dsn("ORM_TEST_POSTGRES_DSN");
+    let targets = vec![
+        ("sqlite".to_owned(), format!("sqlite://{}", tmp.join("audit.sqlite").display())),
+        ("mysql".to_owned(), mysql_dsn),
+        ("postgres".to_owned(), postgres_dsn),
+    ];
     for (driver, dsn) in &targets {
         let plain = driver == "mysql";
         let db = Db::connect(dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
