@@ -771,7 +771,7 @@
   "clients/rust/orm-schema/src/triggers.rs::trigger_directives": "pub fn trigger_directives (bodies : \u0026 [String] , tables : \u0026 BTreeSet \u003c String \u003e) -\u003e Vec \u003c String \u003e",
   "clients/rust/orm-schema/src/triggers.rs::trigger_name": " fn trigger_name (table : \u0026 str , suffix : \u0026 str , dialect : \u0026 str) -\u003e String",
   "clients/rust/orm-schema/src/triggers.rs::trigger_objects": "pub fn trigger_objects (m : \u0026 Manifest , dialect : \u0026 str) -\u003e Result \u003c Vec \u003c TriggerObject \u003e , String \u003e",
-  "clients/rust/orm-schema/src/triggers.rs::unchanged": " fn unchanged (e : \u0026 Entity , object : \u0026 str , dialect : \u0026 str , q : \u0026 dyn Fn (\u0026 str) -\u003e String) -\u003e String",
+  "clients/rust/orm-schema/src/triggers.rs::unchanged": " fn unchanged (e : \u0026 Entity , object : \u0026 str , q : \u0026 dyn Fn (\u0026 str) -\u003e String) -\u003e String",
   "clients/rust/orm/src/args.rs::\u0026 String as LikeArg::into_value": " fn into_value (self) -\u003e Value",
   "clients/rust/orm/src/args.rs::\u0026 str as IntoColumnFormat::into_column_format": " fn into_column_format (self) -\u003e ColumnFormat",
   "clients/rust/orm/src/args.rs::\u0026 str as LikeArg::into_value": " fn into_value (self) -\u003e Value",

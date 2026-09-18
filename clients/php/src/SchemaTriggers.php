@@ -258,16 +258,15 @@ final class SchemaTriggers
         return ($dialect === 'mysql' ? 'JSON_OBJECT(' : 'json_object(') . implode(', ', $parts) . ')';
     }
 
-    private static function unchanged(array $e, string $object, string $dialect, \Closure $q): string
+    /** Removes the SQLite columns whose stored bytes did not change. */
+    private static function unchanged(array $e, string $object, \Closure $q): string
     {
         $parts = [];
         foreach (self::columns($e) as $c) {
             $path = self::literal('$."' . $c['name'] . '"');
-            $parts[] = $dialect === 'mysql'
-                ? 'IF(NEW.' . $q($c['name']) . ' <=> OLD.' . $q($c['name']) . ', ' . $path . ", '$.\"__orm_unchanged\"')"
-                : 'CASE WHEN NEW.' . $q($c['name']) . ' IS OLD.' . $q($c['name']) . ' THEN ' . $path . " ELSE '$.\"__orm_unchanged\"' END";
+            $parts[] = 'CASE WHEN CAST(NEW.' . $q($c['name']) . ' AS BLOB) IS CAST(OLD.' . $q($c['name']) . ' AS BLOB) THEN ' . $path . " ELSE '$.\"__orm_unchanged\"' END";
         }
-        return ($dialect === 'mysql' ? 'JSON_REMOVE(' : 'json_remove(') . $object . ', ' . implode(', ', $parts) . ')';
+        return 'json_remove(' . $object . ', ' . implode(', ', $parts) . ')';
     }
 
     private static function jsonPath(array $path): string
@@ -380,8 +379,8 @@ final class SchemaTriggers
                 $old = $event !== 'INSERT' ? self::rowObject($e, 'OLD', 'sqlite', $q) : 'json_object()';
                 $new = $event !== 'DELETE' ? self::rowObject($e, 'NEW', 'sqlite', $q) : 'json_object()';
                 if ($event === 'UPDATE') {
-                    $old = self::unchanged($e, $old, 'sqlite', $q);
-                    $new = self::unchanged($e, $new, 'sqlite', $q);
+                    $old = self::unchanged($e, $old, $q);
+                    $new = self::unchanged($e, $new, $q);
                 }
                 $source = 'SELECT ' . $new . ' AS n, ' . $old . ' AS o';
                 foreach ($a['redact'] as $path) {

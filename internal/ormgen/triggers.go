@@ -297,12 +297,13 @@ func auditRowObject(e *schema.Entity, row, dialect string, q func(string) string
 	return fn + strings.Join(parts, ", ") + ")"
 }
 
-// auditUnchanged removes the columns an update did not change.
-func auditUnchanged(e *schema.Entity, object, dialect string, q func(string) string) string {
+// auditUnchanged removes the SQLite columns whose stored bytes an update did
+// not change.
+func auditUnchanged(e *schema.Entity, object string, q func(string) string) string {
 	parts := make([]string, 0, len(e.Columns))
 	for _, c := range auditColumns(e) {
 		path := sqlLiteral(`$."` + c.Name + `"`)
-		parts = append(parts, "CASE WHEN NEW."+q(c.Name)+" IS OLD."+q(c.Name)+" THEN "+path+" ELSE '$.\"__orm_unchanged\"' END")
+		parts = append(parts, "CASE WHEN CAST(NEW."+q(c.Name)+" AS BLOB) IS CAST(OLD."+q(c.Name)+" AS BLOB) THEN "+path+" ELSE '$.\"__orm_unchanged\"' END")
 	}
 	return "json_remove(" + object + ", " + strings.Join(parts, ", ") + ")"
 }
@@ -439,8 +440,8 @@ func sqliteAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, markers 
 				newValue = auditRowObject(e, "NEW", "sqlite", q)
 			}
 			if event == "UPDATE" {
-				oldValue = auditUnchanged(e, oldValue, "sqlite", q)
-				newValue = auditUnchanged(e, newValue, "sqlite", q)
+				oldValue = auditUnchanged(e, oldValue, q)
+				newValue = auditUnchanged(e, newValue, q)
 			}
 			source := "SELECT " + newValue + " AS n, " + oldValue + " AS o"
 			for _, path := range a.Redact {
