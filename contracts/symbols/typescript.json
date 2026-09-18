@@ -772,7 +772,7 @@
   "clients/typescript/src/engine/triggers.ts::triggerName": "function triggerName(table: string, suffix: string, dialect: string): string",
   "clients/typescript/src/engine/triggers.ts::triggerObjects": "export function triggerObjects(m: Manifest, dialect: string): TriggerObject[]",
   "clients/typescript/src/engine/triggers.ts::triggerText": "export function triggerText(o: TriggerObject): string",
-  "clients/typescript/src/engine/triggers.ts::unchanged": "function unchanged(e: Entity, object: string, dialect: string, q: Quote): string",
+  "clients/typescript/src/engine/triggers.ts::unchanged": "function unchanged(e: Entity, object: string, q: Quote): string",
   "clients/typescript/src/engine/validate.ts::Validator": "class Validator",
   "clients/typescript/src/engine/validate.ts::Validator#field.m": "Manifest",
   "clients/typescript/src/engine/validate.ts::Validator#field.n": "number",
