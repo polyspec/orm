@@ -105,7 +105,7 @@ function postgresAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: str
   b += `${markers}\n`;
   b += `DECLARE\n  audit_operation_id text := current_setting(${literal(l.context)}, true);\n  audit_operation_seq bigint;\n`;
   if (a.mode === 'changes') {
-    b += "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_old_full jsonb;\n  audit_new_full jsonb;\n  audit_site text;\n  audit_key jsonb;\n";
+    b += "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_site text;\n  audit_key jsonb;\n";
   }
   b += 'BEGIN\n';
   b += `  IF audit_operation_id IS NULL OR audit_operation_id = '' THEN RAISE EXCEPTION ${contextMessage}; END IF;\n`;
@@ -113,26 +113,26 @@ function postgresAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: str
   b += `  IF audit_operation_seq IS NULL THEN RAISE EXCEPTION ${operationMessage}; END IF;\n`;
   if (a.mode === 'changes') {
     b += "  IF TG_OP = 'TRUNCATE' THEN RETURN NULL; END IF;\n";
-    b += "  IF TG_OP <> 'INSERT' THEN audit_old := to_jsonb(OLD); END IF;\n";
-    b += "  IF TG_OP <> 'DELETE' THEN audit_new := to_jsonb(NEW); END IF;\n";
-    // A text column holding JSON, such as jsontext, is recorded as JSON, as
-    // it is on MySQL and SQLite.
+    // An insert and a delete record every column. An update compares each
+    // column's stored bytes and records only the changed columns, so an
+    // unchanged large value is neither parsed nor compared under a collation.
+    b += "  IF TG_OP = 'INSERT' THEN\n";
+    b += `    audit_new := ${postgresRowObject(e, 'NEW', q)};\n`;
+    b += "  ELSIF TG_OP = 'DELETE' THEN\n";
+    b += `    audit_old := ${postgresRowObject(e, 'OLD', q)};\n`;
+    b += '  ELSE\n';
     for (const c of auditColumns(e)) {
-      const type = ddlType(c, 'postgres');
-      if (type !== 'text' && !type.startsWith('varchar')) continue;
-      const path = literal(`{${c.name}}`);
-      b += `  IF TG_OP <> 'INSERT' AND OLD.${q(c.name)} IS JSON THEN audit_old := jsonb_set(audit_old, ${path}, OLD.${q(c.name)}::jsonb); END IF;\n`;
-      b += `  IF TG_OP <> 'DELETE' AND NEW.${q(c.name)} IS JSON THEN audit_new := jsonb_set(audit_new, ${path}, NEW.${q(c.name)}::jsonb); END IF;\n`;
+      const name = literal(c.name);
+      b += `    IF OLD.${q(c.name)}::text IS DISTINCT FROM NEW.${q(c.name)}::text THEN\n`;
+      b += `      audit_old := audit_old || jsonb_build_object(${name}, ${postgresValue(c, `OLD.${q(c.name)}`)});\n`;
+      b += `      audit_new := audit_new || jsonb_build_object(${name}, ${postgresValue(c, `NEW.${q(c.name)}`)});\n`;
+      b += '    END IF;\n';
     }
-    if ((a.site ?? '') !== '') b += `  audit_site := COALESCE(audit_new ->> ${literal(a.site!)}, audit_old ->> ${literal(a.site!)});\n`;
-    const keys = e.pk.flatMap(k => [literal(k), `COALESCE(audit_new -> ${literal(k)}, audit_old -> ${literal(k)})`]);
-    b += `  audit_key := jsonb_build_object(${keys.join(', ')});\n`;
-    b += "  IF TG_OP = 'UPDATE' THEN\n";
-    b += '    audit_old_full := audit_old;\n    audit_new_full := audit_new;\n';
-    b += "    audit_old := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(audit_old_full) WHERE audit_new_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n";
-    b += "    audit_new := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(audit_new_full) WHERE audit_old_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n";
-    b += "    IF audit_old = '{}'::jsonb AND audit_new = '{}'::jsonb THEN RETURN NULL; END IF;\n";
+    b += "    IF audit_old::text = '{}' AND audit_new::text = '{}' THEN RETURN NULL; END IF;\n";
     b += '  END IF;\n';
+    if ((a.site ?? '') !== '') b += `  audit_site := CASE TG_OP WHEN 'DELETE' THEN OLD.${q(a.site!)}::text ELSE NEW.${q(a.site!)}::text END;\n`;
+    const keys = e.pk.flatMap(k => [literal(k), `to_jsonb(CASE TG_OP WHEN 'DELETE' THEN OLD.${q(k)} ELSE NEW.${q(k)} END)`]);
+    b += `  audit_key := jsonb_build_object(${keys.join(', ')});\n`;
     for (const path of a.redact ?? []) {
       const p = literal(`{${path.join(',')}}`);
       for (const v of ['audit_new', 'audit_old']) {
@@ -161,6 +161,24 @@ function postgresAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: str
 }
 
 /** A column value for a JSON object on MySQL and SQLite. */
+/** A PostgreSQL JSON value; a text column holding JSON is recorded as JSON. */
+function postgresValue(c: Column, ref: string): string {
+  const type = ddlType(c, 'postgres');
+  if (type === 'text' || type.startsWith('varchar')) return `CASE WHEN ${ref} IS JSON THEN ${ref}::jsonb ELSE to_jsonb(${ref}) END`;
+  return `to_jsonb(${ref})`;
+}
+
+/** Every column of a row as one JSON object, built in parts of 50 pairs. */
+function postgresRowObject(e: Entity, row: string, q: Quote): string {
+  const columns = auditColumns(e);
+  const parts: string[] = [];
+  for (let i = 0; i < columns.length; i += 50) {
+    const args = columns.slice(i, i + 50).flatMap(c => [literal(c.name), postgresValue(c, `${row}.${q(c.name)}`)]);
+    parts.push(`jsonb_build_object(${args.join(', ')})`);
+  }
+  return parts.length === 0 ? "'{}'::jsonb" : parts.join(' || ');
+}
+
 function auditValue(c: Column, ref: string, dialect: string): string {
   if (dialect === 'sqlite') {
     switch (ddlType(c, 'sqlite')) {
@@ -235,14 +253,25 @@ function mysqlAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: string
     b += `  SET audit_operation_seq = (SELECT ${q(l.operation.columns[0]!)} FROM ${q(l.operation.table)} WHERE ${q(l.operation.columns[1]!)} = audit_operation_id LIMIT 1);\n`;
     b += `  IF audit_operation_seq IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = ${operationMessage}; END IF;\n`;
     if (a.mode === 'changes') {
-      let oldValue = event !== 'INSERT' ? rowObject(e, 'OLD', 'mysql', q) : 'JSON_OBJECT()';
-      let newValue = event !== 'DELETE' ? rowObject(e, 'NEW', 'mysql', q) : 'JSON_OBJECT()';
-      if (event === 'UPDATE') {
-        oldValue = unchanged(e, oldValue, 'mysql', q);
-        newValue = unchanged(e, newValue, 'mysql', q);
+      if (event === 'INSERT') {
+        b += '  SET audit_old = JSON_OBJECT();\n';
+        b += `  SET audit_new = ${rowObject(e, 'NEW', 'mysql', q)};\n`;
+      } else if (event === 'DELETE') {
+        b += `  SET audit_old = ${rowObject(e, 'OLD', 'mysql', q)};\n`;
+        b += '  SET audit_new = JSON_OBJECT();\n';
+      } else {
+        // Only the changed columns are rendered, and stored bytes decide a
+        // change; the column collation would treat values that differ only in
+        // case or accents as equal.
+        b += '  SET audit_old = JSON_OBJECT();\n  SET audit_new = JSON_OBJECT();\n';
+        for (const c of auditColumns(e)) {
+          const path = literal(`$."${c.name}"`);
+          b += `  IF NOT (CAST(NEW.${q(c.name)} AS BINARY) <=> CAST(OLD.${q(c.name)} AS BINARY)) THEN\n`;
+          b += `    SET audit_old = JSON_SET(audit_old, ${path}, ${auditValue(c, `OLD.${q(c.name)}`, 'mysql')});\n`;
+          b += `    SET audit_new = JSON_SET(audit_new, ${path}, ${auditValue(c, `NEW.${q(c.name)}`, 'mysql')});\n`;
+          b += '  END IF;\n';
+        }
       }
-      b += `  SET audit_old = ${oldValue};\n`;
-      b += `  SET audit_new = ${newValue};\n`;
       for (const path of a.redact ?? []) {
         const p = jsonPath(path);
         for (const v of ['audit_new', 'audit_old']) {
