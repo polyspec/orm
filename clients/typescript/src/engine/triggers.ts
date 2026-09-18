@@ -206,14 +206,13 @@ function rowObject(e: Entity, row: string, dialect: string, q: Quote): string {
   return `${dialect === 'mysql' ? 'JSON_OBJECT(' : 'json_object('}${parts.join(', ')})`;
 }
 
-function unchanged(e: Entity, object: string, dialect: string, q: Quote): string {
+/** Removes the SQLite columns whose stored bytes did not change. */
+function unchanged(e: Entity, object: string, q: Quote): string {
   const parts = auditColumns(e).map(c => {
     const path = literal(`$."${c.name}"`);
-    return dialect === 'mysql'
-      ? `IF(NEW.${q(c.name)} <=> OLD.${q(c.name)}, ${path}, '$."__orm_unchanged"')`
-      : `CASE WHEN NEW.${q(c.name)} IS OLD.${q(c.name)} THEN ${path} ELSE '$."__orm_unchanged"' END`;
+    return `CASE WHEN CAST(NEW.${q(c.name)} AS BLOB) IS CAST(OLD.${q(c.name)} AS BLOB) THEN ${path} ELSE '$."__orm_unchanged"' END`;
   });
-  return `${dialect === 'mysql' ? 'JSON_REMOVE(' : 'json_remove('}${object}, ${parts.join(', ')})`;
+  return `json_remove(${object}, ${parts.join(', ')})`;
 }
 
 const jsonPath = (path: readonly string[]): string => literal(`$."${path.join('"."')}"`);
@@ -307,8 +306,8 @@ function sqliteAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: strin
       let oldValue = event !== 'INSERT' ? rowObject(e, 'OLD', 'sqlite', q) : 'json_object()';
       let newValue = event !== 'DELETE' ? rowObject(e, 'NEW', 'sqlite', q) : 'json_object()';
       if (event === 'UPDATE') {
-        oldValue = unchanged(e, oldValue, 'sqlite', q);
-        newValue = unchanged(e, newValue, 'sqlite', q);
+        oldValue = unchanged(e, oldValue, q);
+        newValue = unchanged(e, newValue, q);
       }
       let source = `SELECT ${newValue} AS n, ${oldValue} AS o`;
       for (const path of a.redact ?? []) {

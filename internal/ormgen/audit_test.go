@@ -497,3 +497,44 @@ func TestAuditRejectsRedactionThatCannotApply(t *testing.T) {
 		})
 	}
 }
+
+// TestSQLiteAuditRecordsCaseOnlyChange records a change that differs only in
+// case in a column whose collation treats the two values as equal: a change is
+// decided by the stored bytes, as it is on PostgreSQL and MySQL.
+func TestSQLiteAuditRecordsCaseOnlyChange(t *testing.T) {
+	ctx := context.Background()
+	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "audit.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	create, err := renderCreateDDL(buildLiveDiffManifest(t, auditBase), "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const title = `"title" TEXT NOT NULL`
+	if !strings.Contains(create, title) {
+		t.Fatalf("create DDL has no %s:\n%s", title, create)
+	}
+	create = strings.Replace(create, title, title+" COLLATE NOCASE", 1)
+	if err := executeMigration(ctx, db, "sqlite", create); err != nil {
+		t.Fatal(err)
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback()
+	execAudit(t, ctx, tx, "INSERT INTO audit_operation (operation_uuid) VALUES ('op-case')")
+	setAuditContext(t, ctx, tx, "sqlite", "op-case")
+	execAudit(t, ctx, tx, "INSERT INTO audit_item (site_ref, title) VALUES ('s1', 'a')")
+	execAudit(t, ctx, tx, "UPDATE audit_item SET title = 'A'")
+	var before, after string
+	err = tx.QueryRowContext(ctx, "SELECT before_value, after_value FROM audit_change WHERE change_kind = 'UPDATE'").Scan(&before, &after)
+	if err != nil {
+		t.Fatalf("the case-only update was not recorded: %v", err)
+	}
+	if before != `{"title":"a"}` || after != `{"title":"A"}` {
+		t.Fatalf("recorded %s -> %s", before, after)
+	}
+}

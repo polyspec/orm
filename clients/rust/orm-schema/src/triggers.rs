@@ -279,20 +279,17 @@ fn row_object(e: &Entity, row: &str, dialect: &str, q: &dyn Fn(&str) -> String) 
     format!("{}{})", if dialect == "mysql" { "JSON_OBJECT(" } else { "json_object(" }, parts.join(", "))
 }
 
-fn unchanged(e: &Entity, object: &str, dialect: &str, q: &dyn Fn(&str) -> String) -> String {
+/// Removes the SQLite columns whose stored bytes did not change.
+fn unchanged(e: &Entity, object: &str, q: &dyn Fn(&str) -> String) -> String {
     let parts: Vec<String> = audit_columns(e)
         .into_iter()
         .map(|c| {
             let path = literal(&format!("$.\"{}\"", c.name));
             let n = q(&c.name);
-            if dialect == "mysql" {
-                format!("IF(NEW.{n} <=> OLD.{n}, {path}, '$.\"__orm_unchanged\"')")
-            } else {
-                format!("CASE WHEN NEW.{n} IS OLD.{n} THEN {path} ELSE '$.\"__orm_unchanged\"' END")
-            }
+            format!("CASE WHEN CAST(NEW.{n} AS BLOB) IS CAST(OLD.{n} AS BLOB) THEN {path} ELSE '$.\"__orm_unchanged\"' END")
         })
         .collect();
-    format!("{}{object}, {})", if dialect == "mysql" { "JSON_REMOVE(" } else { "json_remove(" }, parts.join(", "))
+    format!("json_remove({object}, {})", parts.join(", "))
 }
 
 fn json_path(path: &[String]) -> String {
@@ -423,8 +420,8 @@ fn sqlite_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> TriggerOb
             let mut old_value = if event != "INSERT" { row_object(e, "OLD", "sqlite", &q) } else { "json_object()".into() };
             let mut new_value = if event != "DELETE" { row_object(e, "NEW", "sqlite", &q) } else { "json_object()".into() };
             if event == "UPDATE" {
-                old_value = unchanged(e, &old_value, "sqlite", &q);
-                new_value = unchanged(e, &new_value, "sqlite", &q);
+                old_value = unchanged(e, &old_value, &q);
+                new_value = unchanged(e, &new_value, &q);
             }
             let mut source = format!("SELECT {new_value} AS n, {old_value} AS o");
             for path in &a.redact {
