@@ -170,7 +170,7 @@ func postgresAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, marker
 	b.WriteString(markers + "\n")
 	b.WriteString("DECLARE\n  audit_operation_id text := current_setting(" + sqlLiteral(l.Context) + ", true);\n  audit_operation_seq bigint;\n")
 	if a.Mode == "changes" {
-		b.WriteString("  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_old_full jsonb;\n  audit_new_full jsonb;\n  audit_site text;\n  audit_key jsonb;\n")
+		b.WriteString("  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_site text;\n  audit_key jsonb;\n")
 	}
 	b.WriteString("BEGIN\n")
 	b.WriteString("  IF audit_operation_id IS NULL OR audit_operation_id = '' THEN RAISE EXCEPTION " + auditContextMessage + "; END IF;\n")
@@ -178,32 +178,32 @@ func postgresAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, marker
 	b.WriteString("  IF audit_operation_seq IS NULL THEN RAISE EXCEPTION " + auditOperationMessage + "; END IF;\n")
 	if a.Mode == "changes" {
 		b.WriteString("  IF TG_OP = 'TRUNCATE' THEN RETURN NULL; END IF;\n")
-		b.WriteString("  IF TG_OP <> 'INSERT' THEN audit_old := to_jsonb(OLD); END IF;\n")
-		b.WriteString("  IF TG_OP <> 'DELETE' THEN audit_new := to_jsonb(NEW); END IF;\n")
-		// A text column holding JSON, such as jsontext, is recorded as JSON,
-		// as it is on MySQL and SQLite.
+		// An insert and a delete record every column. An update compares each
+		// column's stored bytes and records only the changed columns, so an
+		// unchanged large value is neither parsed nor compared under a
+		// collation.
+		b.WriteString("  IF TG_OP = 'INSERT' THEN\n")
+		b.WriteString("    audit_new := " + postgresRowObject(e, "NEW", q) + ";\n")
+		b.WriteString("  ELSIF TG_OP = 'DELETE' THEN\n")
+		b.WriteString("    audit_old := " + postgresRowObject(e, "OLD", q) + ";\n")
+		b.WriteString("  ELSE\n")
 		for _, c := range auditColumns(e) {
-			if t, err := ddlType(c, "postgres"); err != nil || t != "text" && !strings.HasPrefix(t, "varchar") {
-				continue
-			}
-			path := sqlLiteral("{" + c.Name + "}")
-			b.WriteString("  IF TG_OP <> 'INSERT' AND OLD." + q(c.Name) + " IS JSON THEN audit_old := jsonb_set(audit_old, " + path + ", OLD." + q(c.Name) + "::jsonb); END IF;\n")
-			b.WriteString("  IF TG_OP <> 'DELETE' AND NEW." + q(c.Name) + " IS JSON THEN audit_new := jsonb_set(audit_new, " + path + ", NEW." + q(c.Name) + "::jsonb); END IF;\n")
+			name := sqlLiteral(c.Name)
+			b.WriteString("    IF OLD." + q(c.Name) + "::text IS DISTINCT FROM NEW." + q(c.Name) + "::text THEN\n")
+			b.WriteString("      audit_old := audit_old || jsonb_build_object(" + name + ", " + postgresAuditValue(c, "OLD."+q(c.Name)) + ");\n")
+			b.WriteString("      audit_new := audit_new || jsonb_build_object(" + name + ", " + postgresAuditValue(c, "NEW."+q(c.Name)) + ");\n")
+			b.WriteString("    END IF;\n")
 		}
+		b.WriteString("    IF audit_old::text = '{}' AND audit_new::text = '{}' THEN RETURN NULL; END IF;\n")
+		b.WriteString("  END IF;\n")
 		if a.Site != "" {
-			b.WriteString("  audit_site := COALESCE(audit_new ->> " + sqlLiteral(a.Site) + ", audit_old ->> " + sqlLiteral(a.Site) + ");\n")
+			b.WriteString("  audit_site := CASE TG_OP WHEN 'DELETE' THEN OLD." + q(a.Site) + "::text ELSE NEW." + q(a.Site) + "::text END;\n")
 		}
 		keys := make([]string, 0, len(e.PK)*2)
 		for _, k := range e.PK {
-			keys = append(keys, sqlLiteral(k), "COALESCE(audit_new -> "+sqlLiteral(k)+", audit_old -> "+sqlLiteral(k)+")")
+			keys = append(keys, sqlLiteral(k), "to_jsonb(CASE TG_OP WHEN 'DELETE' THEN OLD."+q(k)+" ELSE NEW."+q(k)+" END)")
 		}
 		b.WriteString("  audit_key := jsonb_build_object(" + strings.Join(keys, ", ") + ");\n")
-		b.WriteString("  IF TG_OP = 'UPDATE' THEN\n")
-		b.WriteString("    audit_old_full := audit_old;\n    audit_new_full := audit_new;\n")
-		b.WriteString("    audit_old := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(audit_old_full) WHERE audit_new_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n")
-		b.WriteString("    audit_new := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(audit_new_full) WHERE audit_old_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n")
-		b.WriteString("    IF audit_old = '{}'::jsonb AND audit_new = '{}'::jsonb THEN RETURN NULL; END IF;\n")
-		b.WriteString("  END IF;\n")
 		for _, path := range a.Redact {
 			p := sqlLiteral("{" + strings.Join(path, ",") + "}")
 			for _, v := range []string{"audit_new", "audit_old"} {
@@ -227,6 +227,36 @@ func postgresAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, marker
 		"CREATE TRIGGER " + truncate + " BEFORE TRUNCATE ON " + q(e.Table) + " FOR EACH STATEMENT EXECUTE FUNCTION " + function + "();",
 	}
 	return o
+}
+
+// postgresAuditValue renders a column value for a PostgreSQL JSON object. A
+// text column holding JSON, such as jsontext, is recorded as JSON, as it is on
+// MySQL and SQLite.
+func postgresAuditValue(c *schema.Col, ref string) string {
+	if t, err := ddlType(c, "postgres"); err == nil && (t == "text" || strings.HasPrefix(t, "varchar")) {
+		return "CASE WHEN " + ref + " IS JSON THEN " + ref + "::jsonb ELSE to_jsonb(" + ref + ") END"
+	}
+	return "to_jsonb(" + ref + ")"
+}
+
+// postgresRowObject renders every column of a row as one JSON object. A
+// function call takes at most 100 arguments, so wide tables are built in parts
+// and joined.
+func postgresRowObject(e *schema.Entity, row string, q func(string) string) string {
+	const pairs = 50
+	columns := auditColumns(e)
+	var parts []string
+	for i := 0; i < len(columns); i += pairs {
+		args := make([]string, 0, pairs*2)
+		for _, c := range columns[i:min(i+pairs, len(columns))] {
+			args = append(args, sqlLiteral(c.Name), postgresAuditValue(c, row+"."+q(c.Name)))
+		}
+		parts = append(parts, "jsonb_build_object("+strings.Join(args, ", ")+")")
+	}
+	if len(parts) == 0 {
+		return "'{}'::jsonb"
+	}
+	return strings.Join(parts, " || ")
 }
 
 // auditValue renders a column value for a JSON object on MySQL and SQLite.
@@ -272,14 +302,7 @@ func auditUnchanged(e *schema.Entity, object, dialect string, q func(string) str
 	parts := make([]string, 0, len(e.Columns))
 	for _, c := range auditColumns(e) {
 		path := sqlLiteral(`$."` + c.Name + `"`)
-		if dialect == "mysql" {
-			parts = append(parts, "IF(NEW."+q(c.Name)+" <=> OLD."+q(c.Name)+", "+path+", '$.\"__orm_unchanged\"')")
-		} else {
-			parts = append(parts, "CASE WHEN NEW."+q(c.Name)+" IS OLD."+q(c.Name)+" THEN "+path+" ELSE '$.\"__orm_unchanged\"' END")
-		}
-	}
-	if dialect == "mysql" {
-		return "JSON_REMOVE(" + object + ", " + strings.Join(parts, ", ") + ")"
+		parts = append(parts, "CASE WHEN NEW."+q(c.Name)+" IS OLD."+q(c.Name)+" THEN "+path+" ELSE '$.\"__orm_unchanged\"' END")
 	}
 	return "json_remove(" + object + ", " + strings.Join(parts, ", ") + ")"
 }
@@ -353,19 +376,26 @@ func mysqlAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, markers s
 		b.WriteString("  SET audit_operation_seq = (SELECT " + q(l.Operation.Columns[schema.AuditOperationSeq]) + " FROM " + q(l.Operation.Table) + " WHERE " + q(l.Operation.Columns[schema.AuditOperationUUID]) + " = audit_operation_id LIMIT 1);\n")
 		b.WriteString("  IF audit_operation_seq IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = " + auditOperationMessage + "; END IF;\n")
 		if a.Mode == "changes" {
-			oldValue, newValue := "JSON_OBJECT()", "JSON_OBJECT()"
-			if event != "INSERT" {
-				oldValue = auditRowObject(e, "OLD", "mysql", q)
+			switch event {
+			case "INSERT":
+				b.WriteString("  SET audit_old = JSON_OBJECT();\n")
+				b.WriteString("  SET audit_new = " + auditRowObject(e, "NEW", "mysql", q) + ";\n")
+			case "DELETE":
+				b.WriteString("  SET audit_old = " + auditRowObject(e, "OLD", "mysql", q) + ";\n")
+				b.WriteString("  SET audit_new = JSON_OBJECT();\n")
+			default:
+				// Only the changed columns are rendered, and stored bytes decide
+				// a change; the column collation would treat values that differ
+				// only in case or accents as equal.
+				b.WriteString("  SET audit_old = JSON_OBJECT();\n  SET audit_new = JSON_OBJECT();\n")
+				for _, c := range auditColumns(e) {
+					path := sqlLiteral(`$."` + c.Name + `"`)
+					b.WriteString("  IF NOT (CAST(NEW." + q(c.Name) + " AS BINARY) <=> CAST(OLD." + q(c.Name) + " AS BINARY)) THEN\n")
+					b.WriteString("    SET audit_old = JSON_SET(audit_old, " + path + ", " + auditValue(c, "OLD."+q(c.Name), "mysql") + ");\n")
+					b.WriteString("    SET audit_new = JSON_SET(audit_new, " + path + ", " + auditValue(c, "NEW."+q(c.Name), "mysql") + ");\n")
+					b.WriteString("  END IF;\n")
+				}
 			}
-			if event != "DELETE" {
-				newValue = auditRowObject(e, "NEW", "mysql", q)
-			}
-			if event == "UPDATE" {
-				oldValue = auditUnchanged(e, oldValue, "mysql", q)
-				newValue = auditUnchanged(e, newValue, "mysql", q)
-			}
-			b.WriteString("  SET audit_old = " + oldValue + ";\n")
-			b.WriteString("  SET audit_new = " + newValue + ";\n")
 			for _, path := range a.Redact {
 				p := auditJSONPath(path)
 				for _, v := range []string{"audit_new", "audit_old"} {
