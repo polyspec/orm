@@ -57,6 +57,24 @@
    }
   },
   {
+   "name": "clients/go/orm/jsontext_order_test.go#1",
+   "mmd": "erDiagram\n  json_data {\n    bigint       seq     PK \"auto\"\n    jsontext     data\n  }\n",
+   "manifest": {
+    "sha256": "732f1abcfaec1c16bd813225fc4dbbcb9fdea1b5b50d8a19bed0179d911085fc"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "3e0a73d40ee9bcb3171674c0a8320c2fff25d5bfe98994de03181a43893e2976"
+    },
+    "postgres": {
+     "sha256": "d8288292ee835d8192f831041f93e01d6055b007d928df0d37a4fa12534f9394"
+    },
+    "sqlite": {
+     "sha256": "07c022514da484fa476df212993c0da7471a0dfe623c06828c33c463e52e2af1"
+    }
+   }
+  },
+  {
    "name": "clients/go/orm/keyword_test.go#1",
    "mmd": "erDiagram\n  order {\n    bigint       seq     PK \"auto\"\n    varchar(20)  key\n    int          group      \"=0\"\n    int          select     \"=0\"\n  }\n  %% index order (key, group) ix_key\n",
    "manifest": {
@@ -1563,6 +1581,60 @@
    }
   },
   {
+   "name": "internal/ormgen/mysql_defects_test.go#1",
+   "mmd": "erDiagram\n  text_default_table {\n    bigint       id      PK \"auto\"\n    text         content \"=hello\"\n  }\n",
+   "manifest": {
+    "sha256": "df28ef15b972778df9a9e791130c937ca4ce37c83cb8d02b157bace3f14d101f"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "bd9cb1f11e53d0f4ef1e9bf256593f24847b7b9e18e82c46a1487d7fffe59bea"
+    },
+    "postgres": {
+     "sha256": "3eb1ccd4ebe82ae9d8d928bf7259ca61ea7709cbe0c161ebfa35e9484001848b"
+    },
+    "sqlite": {
+     "sha256": "8bbf305fc02ce2789e2dc3ed857db9366b53de153f941c53d6c9b17ef002d5dd"
+    }
+   }
+  },
+  {
+   "name": "internal/ormgen/mysql_defects_test.go#2",
+   "mmd": "erDiagram\n  schema_table {\n    bigint       id      PK \"auto\"\n    varchar(191) name\n  }\n  %% orm:table entity=schema_table name=my_schema.schema_table\n",
+   "manifest": {
+    "sha256": "8ef230d33b6e32d28057501bdce27972182a3fa7624e5bd887a9226b719c7f3d"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "66422b2d91f2736ea9d97ef3a8bfac2c19ee02af37b28605216a88e56b5655c6"
+    },
+    "postgres": {
+     "sha256": "dc885bbc7979f7b63b1ee505954442b9dc64530d38c07bcda2ce88926b6a0be1"
+    },
+    "sqlite": {
+     "sha256": "55f65b2a0ee270935fbf85897b42a930ad0405e568a3950e30b3f8666b2fdae0"
+    }
+   }
+  },
+  {
+   "name": "internal/ormgen/mysql_defects_test.go#3",
+   "mmd": "erDiagram\n  immutable_table {\n    bigint       id      PK \"auto\"\n    varchar(191) name\n  }\n  %% orm:immutable entity=immutable_table\n",
+   "manifest": {
+    "sha256": "526bf31d1cbac87e9e3159afd417779eb95a51ccfce94038e5d2e8aa1319c770"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "d33f545f6949b0b1506169a47eeb0281d42b6aa44234acf37bb1f4d4e1958941"
+    },
+    "postgres": {
+     "sha256": "5996fb314268b2a969a083b539a0eab5ecb2da647aab67df90085311dcbdf7c2"
+    },
+    "sqlite": {
+     "sha256": "cd1817a5b77fd4cb0ece52d8b26af6dec7efa55ffda5109b86fa1718cdcd926a"
+    }
+   }
+  },
+  {
    "name": "internal/ormgen/point_test.go#1",
    "mmd": "erDiagram\n  thing {\n    bigint id PK\n    point location \"?\"\n  }\n",
    "manifest": {
@@ -2505,6 +2577,48 @@
    "dialect": "sqlite",
    "allow_destructive": false,
    "error": "table rename app.audit_item -\u003e audit_item requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/jsontext_order_test.go#1",
+   "to": "clients/go/orm/jsontext_order_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "dae763ed209d3fc6f6ed84694b1bba737f8e7c8a1070ef49359d83fc2ec534ff"
+  },
+  {
+   "from": "clients/go/orm/jsontext_order_test.go#1",
+   "to": "clients/go/orm/jsontext_order_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "dae763ed209d3fc6f6ed84694b1bba737f8e7c8a1070ef49359d83fc2ec534ff"
+  },
+  {
+   "from": "clients/go/orm/jsontext_order_test.go#1",
+   "to": "clients/go/orm/jsontext_order_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "d76d182b7ab33aa7a45aa1f796174564805006617a701268b56251dc1514805a"
+  },
+  {
+   "from": "clients/go/orm/jsontext_order_test.go#1",
+   "to": "clients/go/orm/jsontext_order_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "d76d182b7ab33aa7a45aa1f796174564805006617a701268b56251dc1514805a"
+  },
+  {
+   "from": "clients/go/orm/jsontext_order_test.go#1",
+   "to": "clients/go/orm/jsontext_order_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "47ebe3d9714f3e3a1e5b01a56e7321c9ea7bfaa9e96d331d0ad633cb65a6e9f3"
+  },
+  {
+   "from": "clients/go/orm/jsontext_order_test.go#1",
+   "to": "clients/go/orm/jsontext_order_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "47ebe3d9714f3e3a1e5b01a56e7321c9ea7bfaa9e96d331d0ad633cb65a6e9f3"
   },
   {
    "from": "clients/go/orm/keyword_test.go#1",
@@ -18341,6 +18455,132 @@
    "sha256": "a91821d3834bf67e6b2d0f462629eeb9254e84baa472a35de268aa374264a193"
   },
   {
+   "from": "internal/ormgen/mysql_defects_test.go#1",
+   "to": "internal/ormgen/mysql_defects_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "cb1b16b89f72db98e90424024a9a3331529721a62d3080d3522c63b3406c5419"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#1",
+   "to": "internal/ormgen/mysql_defects_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "cb1b16b89f72db98e90424024a9a3331529721a62d3080d3522c63b3406c5419"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#1",
+   "to": "internal/ormgen/mysql_defects_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "8a3f930a2d52c6f8e575e6a9b997097aa254b5a8149ea0690b9521baacd28d9b"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#1",
+   "to": "internal/ormgen/mysql_defects_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "8a3f930a2d52c6f8e575e6a9b997097aa254b5a8149ea0690b9521baacd28d9b"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#1",
+   "to": "internal/ormgen/mysql_defects_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "c7cbec4eb7f3f9301895c042347d04cbe2ec8367274ea811e33f760206442f7a"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#1",
+   "to": "internal/ormgen/mysql_defects_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "c7cbec4eb7f3f9301895c042347d04cbe2ec8367274ea811e33f760206442f7a"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#2",
+   "to": "internal/ormgen/mysql_defects_test.go#2",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "51cb97d33d5dc8e6b3d645cd8c469ee54b19c6bda4389ba1213cee710201c59b"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#2",
+   "to": "internal/ormgen/mysql_defects_test.go#2",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "51cb97d33d5dc8e6b3d645cd8c469ee54b19c6bda4389ba1213cee710201c59b"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#2",
+   "to": "internal/ormgen/mysql_defects_test.go#2",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "c8188abd03c13d20888b4933d0fa57df13f0d96b5fa935141c049a2c5f52b930"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#2",
+   "to": "internal/ormgen/mysql_defects_test.go#2",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "c8188abd03c13d20888b4933d0fa57df13f0d96b5fa935141c049a2c5f52b930"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#2",
+   "to": "internal/ormgen/mysql_defects_test.go#2",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "2cff290a0a61897b69a09a2ac0eb82617e0b86898074ba2ad6d2f1ebf07d936f"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#2",
+   "to": "internal/ormgen/mysql_defects_test.go#2",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "2cff290a0a61897b69a09a2ac0eb82617e0b86898074ba2ad6d2f1ebf07d936f"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#3",
+   "to": "internal/ormgen/mysql_defects_test.go#3",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "5651cbdb78252605d3a9ab997555c819c0b7606c5b477c720858df4b1f4893ea"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#3",
+   "to": "internal/ormgen/mysql_defects_test.go#3",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "5651cbdb78252605d3a9ab997555c819c0b7606c5b477c720858df4b1f4893ea"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#3",
+   "to": "internal/ormgen/mysql_defects_test.go#3",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "ae27d8630e2eaf73d4522533864077b4b54154197cded6e059d8f0ae5265b2c0"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#3",
+   "to": "internal/ormgen/mysql_defects_test.go#3",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "ae27d8630e2eaf73d4522533864077b4b54154197cded6e059d8f0ae5265b2c0"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#3",
+   "to": "internal/ormgen/mysql_defects_test.go#3",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "095f491ecdef60cb57356c66409cbb35b0040958762c2db18ee9934731e04aed"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#3",
+   "to": "internal/ormgen/mysql_defects_test.go#3",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "095f491ecdef60cb57356c66409cbb35b0040958762c2db18ee9934731e04aed"
+  },
+  {
    "from": "internal/ormgen/point_test.go#1",
    "to": "engine/point_test.go#1",
    "dialect": "mysql",
@@ -21527,6 +21767,24 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "error": "MIGRATION_PLAN: table rename app.audit_item -\u003e audit_item requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/jsontext_order_test.go#1",
+   "to": "clients/go/orm/jsontext_order_test.go#1",
+   "dialect": "mysql",
+   "sha256": "0ad39f8214ae42eebc1d1a7898c525b8bb2313a88944ed2fd654869f9ab04062"
+  },
+  {
+   "from": "clients/go/orm/jsontext_order_test.go#1",
+   "to": "clients/go/orm/jsontext_order_test.go#1",
+   "dialect": "postgres",
+   "sha256": "c37e36f7f1a78a67b11283d2ab780a138a4addcba7f5ba3af532380ca3d69096"
+  },
+  {
+   "from": "clients/go/orm/jsontext_order_test.go#1",
+   "to": "clients/go/orm/jsontext_order_test.go#1",
+   "dialect": "sqlite",
+   "sha256": "a425550e0031280a2e6ba7ce7e9fc98343208b30c925673afbef65357dcd5640"
   },
   {
    "from": "clients/go/orm/keyword_test.go#1",
@@ -28313,6 +28571,60 @@
    "to": "internal/ormgen/migrate_test.go#9",
    "dialect": "sqlite",
    "sha256": "63ebea46c8e6a64c29a35534bfeb8cdf4865f184ed520a3fd3320ef15046f7bc"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#1",
+   "to": "internal/ormgen/mysql_defects_test.go#1",
+   "dialect": "mysql",
+   "sha256": "a9cc6d3863ac32c0b47a25e96c1a5859a839014c51d563993295779b49226d6c"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#1",
+   "to": "internal/ormgen/mysql_defects_test.go#1",
+   "dialect": "postgres",
+   "sha256": "4c10f8774cf9bb11092dc4292e92d37bcfe911d6c8efa034f1b51167e3d31314"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#1",
+   "to": "internal/ormgen/mysql_defects_test.go#1",
+   "dialect": "sqlite",
+   "sha256": "2bcfd5baa1ce343d245a746b4d944d2860a1006e4e8965458f8eefdaaeb34567"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#2",
+   "to": "internal/ormgen/mysql_defects_test.go#2",
+   "dialect": "mysql",
+   "sha256": "700f5552d39965f7b368b5866bfcc5211040f9e2182245b0021597b20ed9ac44"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#2",
+   "to": "internal/ormgen/mysql_defects_test.go#2",
+   "dialect": "postgres",
+   "sha256": "4a5117934091a3dd23eeb91bddb79805bc2bc582e7a995b5fd1102dbe5dfe183"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#2",
+   "to": "internal/ormgen/mysql_defects_test.go#2",
+   "dialect": "sqlite",
+   "sha256": "a2e375be43cfbab6f32bf5abe53430e3c36e4b76ac983ea42a17f3044ad75e0e"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#3",
+   "to": "internal/ormgen/mysql_defects_test.go#3",
+   "dialect": "mysql",
+   "sha256": "4b8f73cd10be8d807d908d5a5c3e0eef305889b17c0fcf45bf188974448f18f1"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#3",
+   "to": "internal/ormgen/mysql_defects_test.go#3",
+   "dialect": "postgres",
+   "sha256": "cb4c638faf186f5115a9a5e4dc755b61eee0b815020c4846d0e401eec1736487"
+  },
+  {
+   "from": "internal/ormgen/mysql_defects_test.go#3",
+   "to": "internal/ormgen/mysql_defects_test.go#3",
+   "dialect": "sqlite",
+   "sha256": "4e1ca20eab948ebcd3cc808d7458f8d1fecf29b3db448cf5bdcd007193644b69"
   },
   {
    "from": "internal/ormgen/point_test.go#1",
