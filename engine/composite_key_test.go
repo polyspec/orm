@@ -63,12 +63,3 @@ func TestCompositeRelationPlanUsesEveryKeyComponent(t *testing.T) {
 		t.Fatalf("join SQL omits a key: %s", join.Steps[0].SQL)
 	}
 }
-
-func TestCompositeDistinctCountUsesCollisionFreeSubquery(t *testing.T) {
-	e := compositeEngine(t, "sqlite")
-	plan := compile(t, e, `"kind":"count","entity":"membership","distinct":true`)
-	want := `SELECT COUNT(*) FROM (SELECT DISTINCT "a"."tenant_id", "a"."account_id" FROM "membership" AS "a") AS "orm_g"`
-	if plan.Steps[0].SQL != want {
-		t.Fatalf("distinct count\n got: %s\nwant: %s", plan.Steps[0].SQL, want)
-	}
-}

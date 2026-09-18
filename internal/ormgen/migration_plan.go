@@ -2,7 +2,6 @@ package ormgen
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -65,27 +64,39 @@ func planCmd(args []string) {
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_SOURCE: to: %w", err))
 	}
-	sqlText, err := renderDiff(from, to, *dialect, true)
-	if err != nil {
-		fail(fmt.Errorf("MIGRATION_PLAN: %w", err))
+	if err := alignSourceChecks(*fromPath, *toPath, from, to); err != nil {
+		fail(fmt.Errorf("MIGRATION_SOURCE: %w", err))
 	}
-	rollbackText, err := renderDiff(to, from, *dialect, true)
+	b, err := buildMigrationPlan(from, to, *dialect, *id, *name)
 	if err != nil {
-		fail(fmt.Errorf("MIGRATION_ROLLBACK_PLAN: %w", err))
+		fail(err)
+	}
+	if err := os.WriteFile(*out, b, 0o644); err != nil {
+		fail(fmt.Errorf("MIGRATION_PLAN: write %s: %w", *out, err))
+	}
+}
+
+// buildMigrationPlan renders the plan file written by ormgen plan.
+func buildMigrationPlan(from, to *schema.Manifest, dialect, id, name string) ([]byte, error) {
+	sqlText, err := renderDiff(from, to, dialect, true)
+	if err != nil {
+		return nil, fmt.Errorf("MIGRATION_PLAN: %w", err)
+	}
+	rollbackText, err := renderDiff(to, from, dialect, true)
+	if err != nil {
+		return nil, fmt.Errorf("MIGRATION_ROLLBACK_PLAN: %w", err)
 	}
 	operations := planOperations(sqlText)
 	rollbackOperations := planOperations(rollbackText)
-	plan := migrationPlanFile{Version: 1, MigrationID: *id, Name: *name, Driver: *dialect, FromHash: from.SchemaHash, FromSchema: from, ToHash: to.SchemaHash, ToSchema: to, Operations: operations, RollbackOperations: rollbackOperations}
+	plan := migrationPlanFile{Version: 1, MigrationID: id, Name: name, Driver: dialect, FromHash: from.SchemaHash, FromSchema: from, ToHash: to.SchemaHash, ToSchema: to, Operations: operations, RollbackOperations: rollbackOperations}
 	plan.Checksum = checksumText(planSQL(operations))
 	plan.RollbackChecksum = checksumText(planSQL(rollbackOperations))
 	plan.RollbackDataLossRisk = hasDestructive(operations) || hasDestructive(rollbackOperations)
 	b, err := json.MarshalIndent(plan, "", "  ")
 	if err != nil {
-		fail(fmt.Errorf("MIGRATION_PLAN: encode: %w", err))
+		return nil, fmt.Errorf("MIGRATION_PLAN: encode: %w", err)
 	}
-	if err := os.WriteFile(*out, append(b, '\n'), 0o644); err != nil {
-		fail(fmt.Errorf("MIGRATION_PLAN: write %s: %w", *out, err))
-	}
+	return append(b, '\n'), nil
 }
 
 var migrationPlanName = regexp.MustCompile(`^[0-9]{8}-[a-z0-9][a-z0-9._-]*$`)
@@ -155,36 +166,27 @@ func planSQL(operations []planOperation) string {
 
 func verifyCmd(args []string) {
 	fs := flag.NewFlagSet("verify", flag.ExitOnError)
-	dsn := fs.String("dsn", "", "database DSN or SQLite path (required)")
-	driver := fs.String("driver", "mysql", "mysql|postgres|sqlite")
+	dsnFlag := fs.String("dsn", "", "database DSN URI: mysql://, postgres://, or sqlite:///path (required)")
 	schemaPath := fs.String("schema", "", "target schema.json (required)")
 	fs.Parse(args)
-	if *dsn == "" || *schemaPath == "" {
+	if *dsnFlag == "" || *schemaPath == "" {
 		fail(fmt.Errorf("MIGRATION_CONFIG: --dsn and --schema are required"))
 	}
-	if *driver != "mysql" && *driver != "postgres" && *driver != "sqlite" {
-		fail(fmt.Errorf("MIGRATION_CONFIG: unsupported driver %q", *driver))
+	db, dsn, err := openToolDB(*dsnFlag)
+	if err != nil {
+		fail(err)
 	}
-	want, err := loadSchemaSource(*schemaPath, *driver)
+	defer db.Close()
+	driver := dsn.dialect
+	want, err := loadSchemaSource(*schemaPath, driver)
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_SOURCE: %w", err))
 	}
-	name, openDSN := sqlDriver(*driver, *dsn)
-	db, err := sql.Open(name, openDSN)
+	live, err := liveManifest(db, driver)
 	if err != nil {
-		fail(fmt.Errorf("MIGRATION_CONNECT: %w", err))
+		fail(fmt.Errorf("MIGRATION_INTROSPECT: driver=%s: %w", driver, err))
 	}
-	defer db.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	if err := db.PingContext(ctx); err != nil {
-		fail(fmt.Errorf("MIGRATION_CONNECT: driver=%s dsn=%s: %w", *driver, redactDSN(*dsn), err))
-	}
-	live, err := liveManifest(db, *driver)
-	if err != nil {
-		fail(fmt.Errorf("MIGRATION_INTROSPECT: driver=%s: %w", *driver, err))
-	}
-	if !schemaMatches(want, live, *driver) {
+	if !schemaMatches(want, live, driver) {
 		fail(fmt.Errorf("MIGRATION_VERIFY_FAILED: expected_schema_hash=%s actual_schema_hash=%s", want.SchemaHash, live.SchemaHash))
 	}
 	fmt.Printf("status=verified schema_hash=%s\n", want.SchemaHash)
@@ -193,13 +195,12 @@ func verifyCmd(args []string) {
 func applyCmd(args []string) {
 	fs := flag.NewFlagSet("apply", flag.ExitOnError)
 	planPath := fs.String("plan", "", "migration plan JSON (required)")
-	dsn := fs.String("dsn", "", "database DSN or SQLite path (required)")
-	driver := fs.String("driver", "", "mysql|postgres|sqlite; defaults to plan driver")
+	dsnFlag := fs.String("dsn", "", "database DSN URI: mysql://, postgres://, or sqlite:///path (required)")
 	schemaPath := fs.String("schema", "", "target schema.json (required)")
 	logDir := fs.String("log-dir", "migrations/logs", "directory for migration JSON logs")
 	allow := fs.Bool("allow-destructive", false, "allow destructive operations listed in the plan")
 	fs.Parse(args)
-	if *planPath == "" || *dsn == "" || *schemaPath == "" {
+	if *planPath == "" || *dsnFlag == "" || *schemaPath == "" {
 		fail(fmt.Errorf("MIGRATION_CONFIG: --plan, --dsn and --schema are required"))
 	}
 	b, err := os.ReadFile(*planPath)
@@ -213,11 +214,13 @@ func applyCmd(args []string) {
 	if plan.Version != 1 || plan.MigrationID == "" || plan.Driver == "" {
 		fail(fmt.Errorf("MIGRATION_SOURCE: plan version, migration_id and driver are required"))
 	}
-	if *driver == "" {
-		*driver = plan.Driver
+	dsn, err := parseToolDSN(*dsnFlag)
+	if err != nil {
+		fail(err)
 	}
-	if *driver != plan.Driver || (*driver != "mysql" && *driver != "postgres" && *driver != "sqlite") {
-		fail(fmt.Errorf("MIGRATION_CONFIG: plan driver=%s does not match requested driver=%s", plan.Driver, *driver))
+	driver := dsn.dialect
+	if driver != plan.Driver {
+		fail(fmt.Errorf("MIGRATION_CONFIG: plan driver=%s does not match the DSN driver=%s", plan.Driver, driver))
 	}
 	if err := validatePlanOperations("MIGRATION_PLAN", plan.Operations, plan.Checksum); err != nil {
 		fail(err)
@@ -232,32 +235,28 @@ func applyCmd(args []string) {
 			fail(fmt.Errorf("MIGRATION_PLAN: destructive operation requires --allow-destructive: %s", operation.SQL))
 		}
 	}
-	want, err := loadSchemaSource(*schemaPath, *driver)
+	want, err := loadSchemaSource(*schemaPath, driver)
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_SOURCE: target schema: %w", err))
 	}
 	if want.SchemaHash != plan.ToHash {
 		fail(fmt.Errorf("MIGRATION_PLAN: target manifest hash does not match plan expected_hash=%s actual_hash=%s", plan.ToHash, want.SchemaHash))
 	}
-	name, openDSN := sqlDriver(*driver, *dsn)
-	db, err := sql.Open(name, openDSN)
+	db, _, err := openToolDB(*dsnFlag)
 	if err != nil {
-		fail(fmt.Errorf("MIGRATION_CONNECT: %w", err))
+		fail(err)
 	}
 	defer db.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if err := db.PingContext(ctx); err != nil {
-		fail(fmt.Errorf("MIGRATION_CONNECT: driver=%s dsn=%s: %w", *driver, redactDSN(*dsn), err))
-	}
-	if err := ensureMigrationTable(ctx, db, *driver); err != nil {
+	if err := ensureMigrationTable(ctx, db, driver); err != nil {
 		fail(err)
 	}
-	live, err := liveManifest(db, *driver)
+	live, err := liveManifest(db, driver)
 	if err != nil {
 		fail(fmt.Errorf("MIGRATION_INTROSPECT: %w", err))
 	}
-	previous, found, err := migrationByID(ctx, db, *driver, plan.MigrationID)
+	previous, found, err := migrationByID(ctx, db, driver, plan.MigrationID)
 	if err != nil {
 		fail(err)
 	}
@@ -267,10 +266,10 @@ func applyCmd(args []string) {
 		}
 		switch previous.Status {
 		case "applied":
-			if !schemaMatches(want, live, *driver) {
+			if !schemaMatches(want, live, driver) {
 				fail(fmt.Errorf("MIGRATION_DRIFT: migration_id=%s status=applied expected_schema_hash=%s actual_schema_hash=%s", plan.MigrationID, want.SchemaHash, live.SchemaHash))
 			}
-			if err := verifyMigrationLog(*logDir, previous, *driver); err != nil {
+			if err := verifyMigrationLog(*logDir, previous, driver); err != nil {
 				fail(err)
 			}
 			fmt.Printf("migration_id=%s status=noop operations=0 schema_hash=%s\n", plan.MigrationID, plan.ToHash)
@@ -284,7 +283,7 @@ func applyCmd(args []string) {
 		}
 	}
 	if plan.FromSchema != nil {
-		if !schemaMatches(plan.FromSchema, live, *driver) {
+		if !schemaMatches(plan.FromSchema, live, driver) {
 			fail(fmt.Errorf("MIGRATION_PRECONDITION: source schema does not match live database expected_hash=%s actual_hash=%s", plan.FromHash, live.SchemaHash))
 		}
 	} else if live.SchemaHash != plan.FromHash {
@@ -294,41 +293,41 @@ func applyCmd(args []string) {
 	checksum := checksumText(planSQL(plan.Operations))
 	record := migrationRecord{MigrationID: plan.MigrationID, Name: plan.Name, FromHash: plan.FromHash, ToHash: plan.ToHash, Checksum: checksum, Status: "queued", Operations: operations}
 	startedAt := time.Now().UTC()
-	if err := writeMigrationLog(*logDir, migrationLogFromRecord(record, *driver, startedAt, time.Time{})); err != nil {
+	if err := writeMigrationLog(*logDir, migrationLogFromRecord(record, driver, startedAt, time.Time{})); err != nil {
 		fail(err)
 	}
 	expectedStatus := "queued"
 	if found {
 		expectedStatus = previous.Status
 	} else {
-		if err := insertMigration(ctx, db, *driver, record); err != nil {
+		if err := insertMigration(ctx, db, driver, record); err != nil {
 			fail(err)
 		}
 	}
-	if err := executeClaimedMigration(ctx, db, *driver, plan.MigrationID, expectedStatus, planSQL(plan.Operations)); err != nil {
+	if err := executeClaimedMigration(ctx, db, driver, plan.MigrationID, expectedStatus, planSQL(plan.Operations)); err != nil {
 		detail := fmt.Sprintf("operation execution failed: %v", err)
-		_ = markMigrationFailed(ctx, db, *driver, plan.MigrationID, detail)
+		_ = markMigrationFailed(ctx, db, driver, plan.MigrationID, detail)
 		failedRecord := record
 		failedRecord.Status = "failed"
-		_ = writeMigrationLog(*logDir, migrationLogFromRecord(failedRecord, *driver, startedAt, time.Now().UTC()).withError(detail))
+		_ = writeMigrationLog(*logDir, migrationLogFromRecord(failedRecord, driver, startedAt, time.Now().UTC()).withError(detail))
 		fail(fmt.Errorf("MIGRATION_APPLY_FAILED: migration_id=%s: %w", plan.MigrationID, err))
 	}
-	check, err := liveManifest(db, *driver)
-	if err != nil || !schemaMatches(want, check, *driver) {
+	check, err := liveManifest(db, driver)
+	if err != nil || !schemaMatches(want, check, driver) {
 		detail := ""
 		if err != nil {
 			detail = err.Error()
 		} else {
 			detail = fmt.Sprintf("expected=%s actual=%s", want.SchemaHash, check.SchemaHash)
 		}
-		_ = updateMigration(ctx, db, *driver, plan.MigrationID, "failed", detail)
-		_ = writeMigrationLog(*logDir, migrationLogFromRecord(record, *driver, startedAt, time.Now().UTC()).withError(detail))
+		_ = updateMigration(ctx, db, driver, plan.MigrationID, "failed", detail)
+		_ = writeMigrationLog(*logDir, migrationLogFromRecord(record, driver, startedAt, time.Now().UTC()).withError(detail))
 		fail(fmt.Errorf("MIGRATION_VERIFY_FAILED: migration_id=%s %s", plan.MigrationID, detail))
 	}
-	if err := updateMigration(ctx, db, *driver, plan.MigrationID, "applied", ""); err != nil {
+	if err := updateMigration(ctx, db, driver, plan.MigrationID, "applied", ""); err != nil {
 		fail(fmt.Errorf("MIGRATION_HISTORY_WRITE: %w", err))
 	}
-	if err := writeMigrationLog(*logDir, migrationLogFromRecord(migrationRecord{MigrationID: plan.MigrationID, Name: plan.Name, FromHash: plan.FromHash, ToHash: plan.ToHash, Checksum: checksum, Status: "applied", Operations: operations}, *driver, startedAt, time.Now().UTC())); err != nil {
+	if err := writeMigrationLog(*logDir, migrationLogFromRecord(migrationRecord{MigrationID: plan.MigrationID, Name: plan.Name, FromHash: plan.FromHash, ToHash: plan.ToHash, Checksum: checksum, Status: "applied", Operations: operations}, driver, startedAt, time.Now().UTC())); err != nil {
 		fail(err)
 	}
 	fmt.Printf("migration_id=%s status=applied operations=%d schema_hash=%s\n", plan.MigrationID, operations, plan.ToHash)

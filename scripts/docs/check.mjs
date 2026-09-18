@@ -119,7 +119,7 @@ try {
   await interactive.locator('.VPSidebar.open').waitFor();
   await interactive.locator('.VPSidebar.open a[href$="schema.html"]').click();
   await interactive.waitForURL(url => url.pathname.endsWith('/schema.html'));
-  await interactive.waitForFunction(() => document.querySelector('.vp-doc h1')?.textContent.includes('schema.md'));
+  await interactive.waitForFunction(() => document.querySelector('.vp-doc h1')?.textContent.includes('Schema'));
   const overflow = await interactive.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   assert.ok(overflow <= 1, `Mobile page overflows horizontally by ${overflow}px`);
   await context.close();

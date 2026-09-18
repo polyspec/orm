@@ -407,7 +407,7 @@ func TestMigrateCommandRepeatsAsNoop(t *testing.T) {
 	if err := os.WriteFile(schemaPath, manifestJSON, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	args := []string{"--driver", "sqlite", "--dsn", filepath.Join(dir, "command.sqlite"), "--schema", schemaPath, "--migration-id", "20260912-command", "--log-dir", filepath.Join(dir, "logs")}
+	args := []string{"--dsn", "sqlite://" + filepath.Join(dir, "command.sqlite"), "--schema", schemaPath, "--migration-id", "20260912-command", "--log-dir", filepath.Join(dir, "logs")}
 	first := runMigrationCommand(t, args)
 	if !strings.Contains(first, "status=applied") {
 		t.Fatalf("first output=%s", first)

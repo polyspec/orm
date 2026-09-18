@@ -84,18 +84,38 @@ func (s *shape) strs(vs []string) {
 	}
 }
 
-// strMap hashes a map order-independently: each entry is hashed on its own and
-// the entry hashes are summed, so no key sort (and no allocation) is needed.
-func (s *shape) strMap(m map[string]string) {
+// entries hashes map entries order-independently.
+func entries[V any](s *shape, m map[string]V, value func(*shape, V)) {
 	s.int(len(m))
 	var sum uint64
 	for k, v := range m {
 		e := shape{h: fnvOffset}
 		e.str(k)
-		e.str(v)
+		value(&e, v)
 		sum += e.h
 	}
 	s.int(int(sum))
+}
+
+func (s *shape) fn(f *ir.Func) {
+	if f == nil {
+		s.byte(0)
+		return
+	}
+	s.byte(1)
+	s.str(f.Name)
+	s.ints(f.Ps)
+}
+
+func (s *shape) sub(q *ir.Sub) {
+	if q == nil {
+		s.byte(0)
+		return
+	}
+	s.byte(1)
+	s.queryPtr(q.Query)
+	s.str(q.Column)
+	s.str(q.Agg)
 }
 
 func (s *shape) request(r *ir.Request) {
@@ -113,20 +133,15 @@ func (s *shape) request(r *ir.Request) {
 		s.int(r.Optimistic.P)
 	}
 	s.str(r.Agg)
-	if r.Raw == nil {
-		s.byte(0)
-	} else {
-		s.byte(1)
-		s.str(r.Raw.SQL)
-		s.ints(r.Raw.Ps)
-	}
-	s.bool(r.Debug)
 	s.int(r.NParams)
+	s.int(len(r.Rows))
+	for _, row := range r.Rows {
+		s.ints(row)
+	}
 }
 
 func (s *shape) query(q *ir.Query) {
 	s.str(q.Entity)
-	s.optInt(q.ScopeP)
 	if q.Columns == nil {
 		s.byte(0)
 	} else {
@@ -134,12 +149,12 @@ func (s *shape) query(q *ir.Query) {
 		s.str(q.Columns.Mode)
 		s.strs(q.Columns.Add)
 		s.strs(q.Columns.Remove)
-		s.strMap(q.Columns.As)
-		s.strMap(q.Columns.Expr)
+		entries(s, q.Columns.Expr, func(e *shape, v ir.Expr) { e.str(v.SQL); e.ints(v.Ps) })
+		entries(s, q.Columns.Fn, func(e *shape, v ir.ColFunc) { e.str(v.Column); e.fn(&v.Fn) })
+		entries(s, q.Columns.Sub, func(e *shape, v *ir.Sub) { e.sub(v) })
 	}
 	s.group(q.On)
 	s.group(q.Where)
-	s.group(q.Having)
 	s.int(len(q.Joins))
 	for _, j := range q.Joins {
 		if j == nil {
@@ -149,6 +164,8 @@ func (s *shape) query(q *ir.Query) {
 		s.byte(1)
 		s.str(j.Rel)
 		s.str(j.Kind)
+		s.str(j.Left)
+		s.str(j.Right)
 		s.queryPtr(j.Query)
 	}
 	s.int(len(q.Relations))
@@ -159,6 +176,9 @@ func (s *shape) query(q *ir.Query) {
 		}
 		s.byte(1)
 		s.str(rl.Rel)
+		s.str(rl.Kind)
+		s.str(rl.Left)
+		s.str(rl.Right)
 		s.queryPtr(rl.Query)
 	}
 	s.int(len(q.Order))
@@ -166,6 +186,8 @@ func (s *shape) query(q *ir.Query) {
 		s.str(o.Column)
 		s.str(o.Expr)
 		s.bool(o.Desc)
+		s.bool(o.Random)
+		s.fn(o.Fn)
 	}
 	s.strs(q.GroupBy)
 	s.int(len(q.GroupByExpr))
@@ -180,16 +202,8 @@ func (s *shape) query(q *ir.Query) {
 		s.int(q.Limit.Offset)
 		s.int(q.Limit.Count)
 	}
-	s.bool(q.Distinct)
 	s.str(q.ForceIdx)
 	s.str(q.Lock)
-	if q.Keyset == nil {
-		s.byte(0)
-	} else {
-		s.byte(1)
-		s.str(q.Keyset.Direction)
-		s.ints(q.Keyset.Values)
-	}
 	s.str(q.KeyBy)
 	s.bool(q.Flatten)
 	s.int(q.LimitPerParent)
@@ -200,7 +214,6 @@ func (s *shape) query(q *ir.Query) {
 		s.str(q.IfParent.Column)
 		s.int(q.IfParent.P)
 	}
-	s.bool(q.DropChildKey)
 	s.bool(q.NoCascadeDelete)
 }
 
@@ -241,19 +254,19 @@ func (s *shape) group(g *ir.Group) {
 			}
 			s.str(it.Pred.Expr)
 			s.strs(it.Pred.Match)
+			s.fn(it.Pred.Fn)
+			s.fn(it.Pred.Value)
+			s.strs(it.Pred.Cols)
+			s.sub(it.Pred.Sub)
 		}
-		s.group(it.Group)
-		if it.Nav == nil {
+		if it.Joined == nil {
 			s.byte(0)
 		} else {
 			s.byte(1)
-			s.str(it.Nav.Conn)
-			s.str(it.Nav.Rel)
-			s.str(it.Nav.Mode)
-			s.str(it.Nav.CountOp)
-			s.optInt(it.Nav.P)
-			s.group(it.Nav.Group)
+			s.str(it.Joined.Conn)
+			s.str(it.Joined.Join)
 		}
+		s.group(it.Group)
 	}
 }
 

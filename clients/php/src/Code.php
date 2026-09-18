@@ -13,14 +13,8 @@ final class Code
     public const SCHEMA_HASH_MISMATCH = 'SCHEMA_HASH_MISMATCH';
     /** engine: schema.json failed validation at load */
     public const SCHEMA_INVALID = 'SCHEMA_INVALID';
-    /** engine: wasm/ffi: orm_compile before orm_load */
-    public const SCHEMA_NOT_LOADED = 'SCHEMA_NOT_LOADED';
     /** engine */
     public const DIALECT_UNKNOWN = 'DIALECT_UNKNOWN';
-    /** engine: ormd: bad length-prefixed frame */
-    public const FRAME_INVALID = 'FRAME_INVALID';
-    /** engine: ormd: unknown op */
-    public const OP_UNKNOWN = 'OP_UNKNOWN';
     /** engine: structural: missing fields, wrong combination, param index out of range */
     public const IR_INVALID = 'IR_INVALID';
     /** engine: requested operation is not supported by the selected dialect */
@@ -37,18 +31,18 @@ final class Code
     public const COLUMN_ALIAS_CONFLICT = 'COLUMN_ALIAS_CONFLICT';
     /** engine */
     public const OPERATOR_UNKNOWN = 'OPERATOR_UNKNOWN';
+    /** engine: ORM function name outside the column or value function catalog */
+    public const FUNCTION_UNKNOWN = 'FUNCTION_UNKNOWN';
     /** engine: op not valid for the column's type/style (ir.OpAllowed) */
     public const OPERATOR_NOT_ALLOWED = 'OPERATOR_NOT_ALLOWED';
     /** engine: or() as the first item of a group */
     public const OR_AT_GROUP_START = 'OR_AT_GROUP_START';
     /** engine: in()/notIn() with no values */
     public const EMPTY_IN = 'EMPTY_IN';
-    /** engine: nav into a relation that was not joined in this statement */
+    /** engine: joined placement or column reference to a join missing from this statement */
     public const ENTITY_NOT_JOINED = 'ENTITY_NOT_JOINED';
     /** engine: limit() on a relation child (use limitPerParent) */
     public const LIMIT_IN_RELATION = 'LIMIT_IN_RELATION';
-    /** engine: keyset cursor version, order, or typed value is invalid */
-    public const CURSOR_INVALID = 'CURSOR_INVALID';
     /** executor: strict one-row query matched no row */
     public const NO_ROWS = 'NO_ROWS';
     /** executor: updateOptimistic matched no row (updated_ts changed) */
@@ -61,6 +55,8 @@ final class Code
     public const CODEC_UNSUPPORTED = 'CODEC_UNSUPPORTED';
     /** executor: missing secret, bad DSN/paths, transaction misuse */
     public const CONFIG = 'CONFIG';
+    /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs) */
+    public const CANCELED = 'CANCELED';
     /** executor */
     public const INTERNAL = 'INTERNAL';
     /** driver: MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions */

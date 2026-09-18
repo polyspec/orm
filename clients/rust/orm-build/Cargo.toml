@@ -1,0 +1,37 @@
+[package]
+name = "orm-build"
+version = "0.0.1"
+edition = "2021"
+publish = false
+description = "Build-time model generator for the Rust ORM: reads schema.json and generates the models that the crate's source calls"
+license = "MIT"
+repository = "https://github.com/polyspec/orm"
+readme = "../README.md"
+keywords = ["orm", "codegen", "build"]
+categories = ["database", "development-tools::build-utils"]
+
+[dependencies]
+orm-schema = { path = "../orm-schema" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+syn = { version = "2", features = ["full", "visit"] }
+proc-macro2 = { version = "1", features = ["span-locations"] }
+regex = "1"
+sqlx = { version = "0.9", optional = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite", "chrono"] }
+tokio = { version = "1", optional = true, features = ["rt-multi-thread", "macros", "sync"] }
+orm = { path = "../orm", optional = true }
+url = { version = "2", optional = true }
+
+[features]
+# The orm-gen command-line tool; its database commands need the drivers.
+cli = ["dep:orm", "dep:sqlx", "dep:tokio", "dep:url"]
+
+[[bin]]
+name = "orm-gen"
+path = "src/bin/orm-gen/main.rs"
+required-features = ["cli"]
+
+[[test]]
+name = "cli"
+required-features = ["cli"]

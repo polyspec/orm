@@ -7,14 +7,8 @@ pub const VERSION_MISMATCH: &str = "VERSION_MISMATCH";
 pub const SCHEMA_HASH_MISMATCH: &str = "SCHEMA_HASH_MISMATCH";
 /// engine: schema.json failed validation at load
 pub const SCHEMA_INVALID: &str = "SCHEMA_INVALID";
-/// engine: wasm/ffi: orm_compile before orm_load
-pub const SCHEMA_NOT_LOADED: &str = "SCHEMA_NOT_LOADED";
 /// engine
 pub const DIALECT_UNKNOWN: &str = "DIALECT_UNKNOWN";
-/// engine: ormd: bad length-prefixed frame
-pub const FRAME_INVALID: &str = "FRAME_INVALID";
-/// engine: ormd: unknown op
-pub const OP_UNKNOWN: &str = "OP_UNKNOWN";
 /// engine: structural: missing fields, wrong combination, param index out of range
 pub const IR_INVALID: &str = "IR_INVALID";
 /// engine: requested operation is not supported by the selected dialect
@@ -31,18 +25,18 @@ pub const INDEX_UNKNOWN: &str = "INDEX_UNKNOWN";
 pub const COLUMN_ALIAS_CONFLICT: &str = "COLUMN_ALIAS_CONFLICT";
 /// engine
 pub const OPERATOR_UNKNOWN: &str = "OPERATOR_UNKNOWN";
+/// engine: ORM function name outside the column or value function catalog
+pub const FUNCTION_UNKNOWN: &str = "FUNCTION_UNKNOWN";
 /// engine: op not valid for the column's type/style (ir.OpAllowed)
 pub const OPERATOR_NOT_ALLOWED: &str = "OPERATOR_NOT_ALLOWED";
 /// engine: or() as the first item of a group
 pub const OR_AT_GROUP_START: &str = "OR_AT_GROUP_START";
 /// engine: in()/notIn() with no values
 pub const EMPTY_IN: &str = "EMPTY_IN";
-/// engine: nav into a relation that was not joined in this statement
+/// engine: joined placement or column reference to a join missing from this statement
 pub const ENTITY_NOT_JOINED: &str = "ENTITY_NOT_JOINED";
 /// engine: limit() on a relation child (use limitPerParent)
 pub const LIMIT_IN_RELATION: &str = "LIMIT_IN_RELATION";
-/// engine: keyset cursor version, order, or typed value is invalid
-pub const CURSOR_INVALID: &str = "CURSOR_INVALID";
 /// executor: strict one-row query matched no row
 pub const NO_ROWS: &str = "NO_ROWS";
 /// executor: updateOptimistic matched no row (updated_ts changed)
@@ -55,6 +49,8 @@ pub const CODEC_ENCODE: &str = "CODEC_ENCODE";
 pub const CODEC_UNSUPPORTED: &str = "CODEC_UNSUPPORTED";
 /// executor: missing secret, bad DSN/paths, transaction misuse
 pub const CONFIG: &str = "CONFIG";
+/// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs)
+pub const CANCELED: &str = "CANCELED";
 /// executor
 pub const INTERNAL: &str = "INTERNAL";
 /// driver: MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions

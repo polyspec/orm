@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/polyspec/orm/engine/dialect"
 	"github.com/polyspec/orm/engine/schema"
 )
 
@@ -21,14 +22,15 @@ const Version = 1
 type Request struct {
 	IRVersion  int    `json:"ir_version"`
 	SchemaHash string `json:"schema_hash"`
-	Kind       string `json:"kind"` // one all count group_count count_distinct sum avg min max paginate insert update delete
+	Kind       string `json:"kind"` // one all count group_count sum avg paginate insert update delete
 	Query
-	Set         []Assign  `json:"set,omitempty"`
-	OnDuplicate []Assign  `json:"on_duplicate,omitempty"` // insert: assignments applied when the unique key already exists
-	Optimistic  *Optimist `json:"optimistic,omitempty"`
-	Agg         string    `json:"agg,omitempty"` // column for sum/avg/min/max/count_distinct
-	Raw         *Raw      `json:"raw,omitempty"` // kind raw: a hand-written SELECT (trusted code only)
-	Debug       bool      `json:"debug,omitempty"`
+	Set         []Assign `json:"set,omitempty"`
+	OnDuplicate []Assign `json:"on_duplicate,omitempty"` // insert: assignments applied when the unique key already exists
+	// Rows holds the parameters of each additional inserted row, in the
+	// column order of Set. Every Set item is then a value assignment.
+	Rows       [][]int   `json:"rows,omitempty"`
+	Optimistic *Optimist `json:"optimistic,omitempty"`
+	Agg        string    `json:"agg,omitempty"` // column for sum/avg
 	// NParams is how many parameters the client holds. The engine only checks
 	// indices against it; values never reach the engine.
 	NParams int `json:"n_params"`
@@ -37,56 +39,82 @@ type Request struct {
 // Query is the shape shared by the root, join children and relation children.
 type Query struct {
 	Entity      string      `json:"entity"`
-	ScopeP      *int        `json:"scope_p,omitempty"` // parameter for the entity's declared tenant scope
 	Columns     *Columns    `json:"columns,omitempty"`
 	On          *Group      `json:"on,omitempty"` // join children only
 	Where       *Group      `json:"where,omitempty"`
-	Having      *Group      `json:"having,omitempty"` // group predicates (needs group_by); expr items may use aggregates
 	Joins       []*Join     `json:"joins,omitempty"`
 	Relations   []*Relation `json:"relations,omitempty"`
 	Order       []Order     `json:"order,omitempty"`
 	GroupBy     []string    `json:"group_by,omitempty"`
 	GroupByExpr []GroupExpr `json:"group_by_expr,omitempty"`
 	Limit       *Limit      `json:"limit,omitempty"`
-	Distinct    bool        `json:"distinct,omitempty"`
 	ForceIdx    string      `json:"force_index,omitempty"`
-	Lock        string      `json:"lock,omitempty"`   // update, share, update_nowait or share_nowait; root row-select only
-	Keyset      *Keyset     `json:"keyset,omitempty"` // root keyset boundary; values reference Request.Params
+	Lock        string      `json:"lock,omitempty"` // update, share, update_nowait or share_nowait; root row-select only
 
 	// Relation-child options.
 	KeyBy           string    `json:"key_by,omitempty"`
 	Flatten         bool      `json:"flatten,omitempty"`
 	LimitPerParent  int       `json:"limit_per_parent,omitempty"`
 	IfParent        *IfParent `json:"if_parent,omitempty"`
-	DropChildKey    bool      `json:"drop_child_key,omitempty"`
 	NoCascadeDelete bool      `json:"no_cascade_delete,omitempty"` // deleteCascade stops at this relation
 }
 
-// Keyset is a value-free cursor boundary. Order is taken from Query.Order;
-// Values contains parameter indexes in that same order. The planner appends
-// missing primary-key columns to make the ordering total.
-type Keyset struct {
-	Direction string `json:"direction"` // after | before
-	Values    []int  `json:"values"`
-}
-
 type Columns struct {
-	Mode   string            `json:"mode,omitempty"` // "" (default) | all | none
-	Add    []string          `json:"add,omitempty"`
-	Remove []string          `json:"remove,omitempty"`
-	As     map[string]string `json:"as,omitempty"`   // out name -> column
-	Expr   map[string]string `json:"expr,omitempty"` // out name -> fragment
+	Mode   string             `json:"mode,omitempty"` // "" (default) | all | none
+	Add    []string           `json:"add,omitempty"`
+	Remove []string           `json:"remove,omitempty"`
+	Expr   map[string]Expr    `json:"expr,omitempty"` // out name -> fragment
+	Fn     map[string]ColFunc `json:"fn,omitempty"`   // out name -> column function
+	Sub    map[string]*Sub    `json:"sub,omitempty"`  // out name -> scalar subquery
 }
 
+// Expr is a raw fragment with `{column}` references and `?` placeholders
+// bound to the parameters in Ps.
+type Expr struct {
+	SQL string `json:"sql"`
+	Ps  []int  `json:"ps,omitempty"`
+}
+
+// Func names an ORM function and its bound arguments.
+type Func struct {
+	Name string `json:"name"`
+	Ps   []int  `json:"ps,omitempty"`
+}
+
+// ColFunc applies a column function to a column of the query's entity.
+type ColFunc struct {
+	Column string `json:"column"`
+	Fn     Func   `json:"fn"`
+}
+
+// Sub is a subquery. Column selects one column (IN lists and scalar columns);
+// Agg selects sum, avg, or count over Column for a scalar column. Refs with
+// path "^" inside the subquery point at the enclosing query.
+type Sub struct {
+	Query  *Query `json:"query"`
+	Column string `json:"column,omitempty"`
+	Agg    string `json:"agg,omitempty"`
+}
+
+// Join adds a child table to the statement. Rel is the join name. Schema
+// relations supply the keys unless Left and Right are set: Left is a column of
+// the parent and Right a child column.
 type Join struct {
 	Rel   string `json:"rel"`
 	Kind  string `json:"kind"` // inner | left
 	Query *Query `json:"query"`
+	Left  string `json:"left,omitempty"`
+	Right string `json:"right,omitempty"`
 }
 
+// Relation loads rows in a separate statement. Rel is the result name. Schema
+// relations supply keys and kind unless Left, Right and Kind are set.
 type Relation struct {
 	Rel   string `json:"rel"`
 	Query *Query `json:"query"`
+	Kind  string `json:"kind,omitempty"` // one | many
+	Left  string `json:"left,omitempty"`
+	Right string `json:"right,omitempty"`
 }
 
 // Group is a parenthesised list. Conn joins the group to its previous
@@ -96,11 +124,17 @@ type Group struct {
 	Items []Item `json:"items"`
 }
 
-// Item is exactly one of Pred, Group, Nav.
+// Item is exactly one of Pred, Group, Joined.
 type Item struct {
-	Pred  *Pred  `json:"pred,omitempty"`
-	Group *Group `json:"group,omitempty"`
-	Nav   *Nav   `json:"nav,omitempty"`
+	Pred   *Pred      `json:"pred,omitempty"`
+	Group  *Group     `json:"group,omitempty"`
+	Joined *JoinedRef `json:"joined,omitempty"`
+}
+
+// JoinedRef places the where conditions of the join named Join as a group.
+type JoinedRef struct {
+	Conn string `json:"conn,omitempty"`
+	Join string `json:"join"`
 }
 
 // Values never travel inside the tree: a predicate references parameters by
@@ -115,6 +149,10 @@ type Pred struct {
 	Ref    *ColRef  `json:"ref,omitempty"`   // *_col operators
 	Expr   string   `json:"expr,omitempty"`  // schema-checked fragment
 	Match  []string `json:"match,omitempty"` // fulltext columns
+	Fn     *Func    `json:"fn,omitempty"`    // column function applied to Column
+	Value  *Func    `json:"value,omitempty"` // value function compared with Column
+	Cols   []string `json:"cols,omitempty"`  // tuple_in, tuple_not_in columns; Ps holds the rows in order
+	Sub    *Sub     `json:"sub,omitempty"`   // in, not_in subquery
 }
 
 // ColRef points at a column on another entity in the same statement:
@@ -124,20 +162,12 @@ type ColRef struct {
 	Column string `json:"column"`
 }
 
-// Nav descends into a joined relation inside a group.
-type Nav struct {
-	Conn    string `json:"conn,omitempty"`
-	Rel     string `json:"rel"`
-	Group   *Group `json:"group"`
-	Mode    string `json:"mode,omitempty"`     // "" = joined navigation, exists, or not_exists
-	CountOp string `json:"count_op,omitempty"` // count mode: eq, not_eq, gt, gte, lt, lte
-	P       *int   `json:"p,omitempty"`        // count comparison parameter
-}
-
 type Order struct {
 	Column string `json:"column,omitempty"`
 	Expr   string `json:"expr,omitempty"`
 	Desc   bool   `json:"desc,omitempty"`
+	Random bool   `json:"random,omitempty"`
+	Fn     *Func  `json:"fn,omitempty"` // column function applied to Column
 }
 
 // GroupExpr is a trusted SQL expression used as a grouping key. As is the
@@ -169,14 +199,6 @@ type Assign struct {
 	MinusP *int   `json:"minus_p,omitempty"`
 }
 
-// Raw is a hand-written statement run as the root: `{table}` is replaced by the
-// entity's quoted table, each `?` is bound from Ps in order. Rows come back by
-// column name (no assembly), so this is the escape hatch, not the grammar.
-type Raw struct {
-	SQL string `json:"sql"`
-	Ps  []int  `json:"ps,omitempty"`
-}
-
 type Optimist struct {
 	Column string `json:"column"`
 	P      int    `json:"p"`
@@ -201,13 +223,13 @@ var opsByType = map[string][]string{
 	"date":     {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
 	"time":     {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
 	"datetime": {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
-	"string":   {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "like", "like_binary", "contains", "starts_with", "ends_with", "is_null", "is_not_null"},
-	"text":     {"eq", "not_eq", "gt", "gte", "lt", "lte", "like", "like_binary", "contains", "starts_with", "ends_with", "is_null", "is_not_null"},
+	"string":   {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "contains", "contains_binary", "is_null", "is_not_null"},
+	"text":     {"eq", "not_eq", "gt", "gte", "lt", "lte", "contains", "contains_binary", "is_null", "is_not_null"},
 	"enum":     {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},
 	"bool":     {"eq", "not_eq", "is_null", "is_not_null"},
 	"inet":     {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},
 	"bytes":    {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},
-	"json":     {"is_null", "is_not_null"},
+	"jsontext": {"is_null", "is_not_null"},
 	"point":    {"is_null", "is_not_null"},
 }
 
@@ -288,7 +310,7 @@ func Validate(m *schema.Manifest, r *Request) error {
 		return errf("SCHEMA_HASH_MISMATCH", "client %s, engine %s", r.SchemaHash, m.SchemaHash)
 	}
 	switch r.Kind {
-	case "one", "all", "count", "group_count", "count_distinct", "sum", "avg", "min", "max", "paginate", "insert", "update", "delete", "raw":
+	case "one", "all", "count", "group_count", "sum", "avg", "paginate", "insert", "update", "delete":
 	default:
 		return errf("IR_INVALID", "unknown kind %q", r.Kind)
 	}
@@ -300,9 +322,6 @@ func Validate(m *schema.Manifest, r *Request) error {
 		return errf("IR_INVALID", "row lock is only valid on one or all")
 	}
 	ent := m.Entities[r.Entity]
-	if r.ScopeP != nil && r.Kind == "raw" {
-		return errf("IR_INVALID", "scope cannot be applied to raw SQL")
-	}
 	switch r.Kind {
 	case "sum", "avg":
 		c := ent.Column(r.Agg)
@@ -312,33 +331,9 @@ func Validate(m *schema.Manifest, r *Request) error {
 		if c.Type != "i32" && c.Type != "i64" && c.Type != "f64" && c.Type != "decimal" {
 			return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", r.Kind, r.Entity, r.Agg, c.Type)
 		}
-	case "min", "max", "count_distinct":
-		c := ent.Column(r.Agg)
-		if c == nil {
-			return errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, r.Agg)
-		}
-		if len(c.Styles) > 0 && c.Styles[0] != "ip" || c.Type == "json" || c.Type == "bytes" {
-			return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", r.Kind, r.Entity, r.Agg, c.Type)
-		}
-	}
-	if r.Having != nil && !hasGroupBy(&r.Query) {
-		return errf("IR_INVALID", "having needs group_by")
 	}
 	if r.Kind == "group_count" && !hasGroupBy(&r.Query) {
 		return errf("IR_INVALID", "group_count needs group_by")
-	}
-	if r.Kind == "raw" {
-		if r.Raw == nil || strings.TrimSpace(r.Raw.SQL) == "" {
-			return errf("IR_INVALID", "raw needs raw.sql")
-		}
-		if n := strings.Count(r.Raw.SQL, "?"); n != len(r.Raw.Ps) {
-			return errf("IR_INVALID", "raw: %d placeholders but %d params", n, len(r.Raw.Ps))
-		}
-		if err := v.params(r.Raw.Ps); err != nil {
-			return err
-		}
-	} else if r.Raw != nil {
-		return errf("IR_INVALID", "raw is only valid with kind raw")
 	}
 	if r.Kind == "insert" || r.Kind == "update" {
 		if len(r.Set) == 0 {
@@ -348,10 +343,23 @@ func Validate(m *schema.Manifest, r *Request) error {
 			if err := v.assign(ent, r, &a); err != nil {
 				return err
 			}
-			if r.ScopeP != nil && a.Column == ent.Scope {
-				if r.Kind != "insert" || a.P == nil || *a.P != *r.ScopeP {
-					return errf("IR_INVALID", "scoped %s cannot assign %s.%s from a different parameter", r.Kind, r.Entity, ent.Scope)
-				}
+		}
+	}
+	if len(r.Rows) > 0 {
+		if r.Kind != "insert" || len(r.OnDuplicate) > 0 {
+			return errf("IR_INVALID", "rows are only valid on insert without on_duplicate")
+		}
+		for _, a := range r.Set {
+			if a.P == nil {
+				return errf("IR_INVALID", "multi-row insert assigns %s.%s without a value", r.Entity, a.Column)
+			}
+		}
+		for i, row := range r.Rows {
+			if len(row) != len(r.Set) {
+				return errf("IR_INVALID", "insert row %d has %d values for %d columns", i+1, len(row), len(r.Set))
+			}
+			if err := v.params(row); err != nil {
+				return err
 			}
 		}
 	}
@@ -365,9 +373,6 @@ func Validate(m *schema.Manifest, r *Request) error {
 			}
 			if c := ent.Column(a.Column); c.PK || c.Auto {
 				return errf("IR_INVALID", "on_duplicate cannot assign %s.%s", r.Entity, a.Column)
-			}
-			if r.ScopeP != nil && a.Column == ent.Scope {
-				return errf("IR_INVALID", "scoped upsert cannot update %s.%s", r.Entity, ent.Scope)
 			}
 		}
 	}
@@ -386,8 +391,9 @@ func Validate(m *schema.Manifest, r *Request) error {
 }
 
 type validator struct {
-	m *schema.Manifest
-	n int // NParams
+	m        *schema.Manifest
+	n        int // NParams
+	subDepth int // >0 while validating a subquery ("^" refs allowed)
 }
 
 func (v *validator) params(ps []int) error {
@@ -406,14 +412,6 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 	if !ok {
 		return errf("ENTITY_UNKNOWN", "%s", q.Entity)
 	}
-	if q.ScopeP != nil {
-		if ent.Scope == "" {
-			return errf("IR_INVALID", "scope is not declared for %s", q.Entity)
-		}
-		if err := v.params([]int{*q.ScopeP}); err != nil {
-			return err
-		}
-	}
 	if q.Columns != nil {
 		if q.Columns.Mode != "" && q.Columns.Mode != "all" && q.Columns.Mode != "none" {
 			return errf("IR_INVALID", "columns.mode %q", q.Columns.Mode)
@@ -423,38 +421,75 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 				return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, c)
 			}
 		}
-		for out, c := range q.Columns.As {
-			if ent.Column(c) == nil {
-				return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, c)
-			}
+		// an output name is the row's key: two projections cannot claim the same one
+		for out, e := range q.Columns.Expr {
 			if ent.Column(out) != nil {
 				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s already a column", q.Entity, out)
+			}
+			if strings.Count(e.SQL, "?") != len(e.Ps) {
+				return errf("IR_INVALID", "%s.%s expr has %d placeholders but %d binds", q.Entity, out, strings.Count(e.SQL, "?"), len(e.Ps))
+			}
+			if err := v.params(e.Ps); err != nil {
+				return err
 			}
 		}
-		// an output name is the row's key: two projections cannot claim the same one
+		outputs := map[string]bool{}
 		for out := range q.Columns.Expr {
-			if ent.Column(out) != nil {
-				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s already a column", q.Entity, out)
+			outputs[out] = true
+		}
+		for out, cf := range q.Columns.Fn {
+			if ent.Column(out) != nil || outputs[out] {
+				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s is already a row name", q.Entity, out)
 			}
-			if _, dup := q.Columns.As[out]; dup {
-				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s is both an alias and an expr output", q.Entity, out)
+			outputs[out] = true
+			col := ent.Column(cf.Column)
+			if col == nil {
+				return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, cf.Column)
+			}
+			if err := v.columnFunc(ent, col, &cf.Fn); err != nil {
+				return err
+			}
+		}
+		for out, sub := range q.Columns.Sub {
+			if ent.Column(out) != nil || outputs[out] {
+				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s is already a row name", q.Entity, out)
+			}
+			outputs[out] = true
+			if err := v.sub(sub, true); err != nil {
+				return err
 			}
 		}
 	}
 	joined := map[string]*Join{}
 	for _, j := range q.Joins {
-		rel := ent.Relations[j.Rel]
-		if rel == nil {
-			return errf("RELATION_UNKNOWN", "%s.%s", q.Entity, j.Rel)
-		}
 		if j.Kind != "inner" && j.Kind != "left" {
 			return errf("IR_INVALID", "join kind %q", j.Kind)
 		}
-		if j.Query == nil || j.Query.Entity != rel.Target {
-			return errf("IR_INVALID", "join %s: query entity must be %s", j.Rel, rel.Target)
+		if _, dup := joined[j.Rel]; dup || j.Rel == "" {
+			return errf("IR_INVALID", "join name %q is empty or used twice", j.Rel)
 		}
-		if _, dup := joined[j.Rel]; dup {
-			return errf("IR_INVALID", "join %s twice", j.Rel)
+		if j.Left != "" || j.Right != "" {
+			if j.Left == "" || j.Right == "" || j.Query == nil {
+				return errf("IR_INVALID", "join %s: left, right and query are required", j.Rel)
+			}
+			target, ok := v.m.Entities[j.Query.Entity]
+			if !ok {
+				return errf("ENTITY_UNKNOWN", "%s", j.Query.Entity)
+			}
+			if ent.Column(j.Left) == nil {
+				return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, j.Left)
+			}
+			if target.Column(j.Right) == nil {
+				return errf("COLUMN_UNKNOWN", "%s.%s", target.Name, j.Right)
+			}
+		} else {
+			rel := ent.Relations[j.Rel]
+			if rel == nil {
+				return errf("RELATION_UNKNOWN", "%s.%s", q.Entity, j.Rel)
+			}
+			if j.Query == nil || j.Query.Entity != rel.Target {
+				return errf("IR_INVALID", "join %s: query entity must be %s", j.Rel, rel.Target)
+			}
 		}
 		joined[j.Rel] = j
 		if err := v.query(j.Query, joinPath(path, j.Rel), true, false); err != nil {
@@ -473,30 +508,58 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 		if err := v.group(ent, q.Where, joined, true); err != nil {
 			return err
 		}
-	}
-	if q.Having != nil {
-		if isJoin || isRelation {
-			return errf("IR_INVALID", "having is only valid on the root query")
-		}
-		if err := v.group(ent, q.Having, joined, true); err != nil {
+		referenced := map[string]bool{}
+		if err := joinedRefs(q.Where, joined, referenced); err != nil {
 			return err
 		}
 	}
+	relationNames := map[string]bool{}
 	for _, r := range q.Relations {
-		rel := ent.Relations[r.Rel]
-		if rel == nil {
-			return errf("RELATION_UNKNOWN", "%s.%s", q.Entity, r.Rel)
+		if r.Rel == "" || relationNames[r.Rel] {
+			return errf("COLUMN_ALIAS_CONFLICT", "relation name %q is empty or used twice", r.Rel)
 		}
-		if r.Query == nil || r.Query.Entity != rel.Target {
-			return errf("IR_INVALID", "relation %s: query entity must be %s", r.Rel, rel.Target)
+		relationNames[r.Rel] = true
+		if ent.Column(r.Rel) != nil {
+			return errf("COLUMN_ALIAS_CONFLICT", "%s.%s is already a column", q.Entity, r.Rel)
+		}
+		if r.Query == nil {
+			return errf("IR_INVALID", "relation %s needs a query", r.Rel)
+		}
+		kind := r.Kind
+		if r.Left != "" || r.Right != "" {
+			if r.Left == "" || r.Right == "" || (kind != "one" && kind != "many") {
+				return errf("IR_INVALID", "relation %s: left, right and kind one|many are required", r.Rel)
+			}
+			target, ok := v.m.Entities[r.Query.Entity]
+			if !ok {
+				return errf("ENTITY_UNKNOWN", "%s", r.Query.Entity)
+			}
+			if ent.Column(r.Left) == nil {
+				return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, r.Left)
+			}
+			if target.Column(r.Right) == nil {
+				return errf("COLUMN_UNKNOWN", "%s.%s", target.Name, r.Right)
+			}
+		} else {
+			rel := ent.Relations[r.Rel]
+			if rel == nil {
+				return errf("RELATION_UNKNOWN", "%s.%s", q.Entity, r.Rel)
+			}
+			if r.Query.Entity != rel.Target {
+				return errf("IR_INVALID", "relation %s: query entity must be %s", r.Rel, rel.Target)
+			}
+			if kind != "" {
+				return errf("IR_INVALID", "relation %s: kind needs left and right", r.Rel)
+			}
+			kind = rel.Kind
 		}
 		if r.Query.Limit != nil {
 			return errf("LIMIT_IN_RELATION", "%s: use limit_per_parent", r.Rel)
 		}
-		if r.Query.Flatten && rel.Kind != "one" {
+		if r.Query.Flatten && kind != "one" {
 			return errf("IR_INVALID", "relation %s: flatten needs a one relation", r.Rel)
 		}
-		if r.Query.KeyBy != "" && rel.Kind != "many" {
+		if r.Query.KeyBy != "" && kind != "many" {
 			return errf("IR_INVALID", "relation %s: key_by needs a many relation", r.Rel)
 		}
 		if r.Query.IfParent != nil && ent.Column(r.Query.IfParent.Column) == nil {
@@ -517,23 +580,31 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 			return err
 		}
 	}
-	if q.Keyset != nil {
-		if isJoin || isRelation {
-			return errf("IR_INVALID", "keyset is only valid on the root query")
-		}
-		if err := v.params(q.Keyset.Values); err != nil {
-			return err
-		}
-	}
-	if !isRelation && (q.KeyBy != "" || q.Flatten || q.LimitPerParent > 0 || q.IfParent != nil || q.DropChildKey || q.NoCascadeDelete) {
+	if !isRelation && (q.KeyBy != "" || q.Flatten || q.LimitPerParent > 0 || q.IfParent != nil || q.NoCascadeDelete) {
 		return errf("IR_INVALID", "relation-only options on %s", q.Entity)
 	}
 	for _, o := range q.Order {
-		if (o.Column == "") == (o.Expr == "") {
-			return errf("IR_INVALID", "order needs column or expr")
+		kinds := 0
+		for _, has := range []bool{o.Column != "", o.Expr != "", o.Random} {
+			if has {
+				kinds++
+			}
 		}
-		if o.Column != "" && ent.Column(o.Column) == nil {
-			return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, o.Column)
+		if kinds != 1 {
+			return errf("IR_INVALID", "order needs exactly one of column, expr, random")
+		}
+		if o.Column != "" {
+			col := ent.Column(o.Column)
+			if col == nil {
+				return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, o.Column)
+			}
+			if o.Fn != nil {
+				if err := v.columnFunc(ent, col, o.Fn); err != nil {
+					return err
+				}
+			}
+		} else if o.Fn != nil {
+			return errf("IR_INVALID", "order function needs a column")
 		}
 	}
 	for _, g := range q.GroupBy {
@@ -585,24 +656,25 @@ func joinPath(path, rel string) string {
 	return path + "/" + rel
 }
 
-// group validates connectors, operators and navigation.
+// group validates connectors and operators.
 func (v *validator) group(ent *schema.Entity, g *Group, joined map[string]*Join, top bool) error {
 	for i, it := range g.Items {
 		n := 0
 		conn := ""
-		switch {
-		case it.Pred != nil:
+		if it.Pred != nil {
 			n++
 			conn = it.Pred.Conn
-		case it.Group != nil:
+		}
+		if it.Group != nil {
 			n++
 			conn = it.Group.Conn
-		case it.Nav != nil:
+		}
+		if it.Joined != nil {
 			n++
-			conn = it.Nav.Conn
+			conn = it.Joined.Conn
 		}
 		if n != 1 {
-			return errf("IR_INVALID", "where item must be exactly one of pred/group/nav")
+			return errf("IR_INVALID", "where item must be exactly one of pred/group/joined")
 		}
 		if conn != "" && conn != "and" && conn != "or" {
 			return errf("IR_INVALID", "conn %q", conn)
@@ -611,6 +683,14 @@ func (v *validator) group(ent *schema.Entity, g *Group, joined map[string]*Join,
 			return errf("OR_AT_GROUP_START", "a group may not start with OR")
 		}
 		switch {
+		case it.Joined != nil:
+			j, ok := joined[it.Joined.Join]
+			if !ok {
+				return errf("ENTITY_NOT_JOINED", "%s is not joined in this statement", it.Joined.Join)
+			}
+			if j.Query.Where == nil || len(j.Query.Where.Items) == 0 {
+				return errf("IR_INVALID", "joined %s has no conditions", it.Joined.Join)
+			}
 		case it.Pred != nil:
 			if err := v.pred(ent, it.Pred); err != nil {
 				return err
@@ -620,48 +700,6 @@ func (v *validator) group(ent *schema.Entity, g *Group, joined map[string]*Join,
 				return errf("IR_INVALID", "empty group")
 			}
 			if err := v.group(ent, it.Group, joined, false); err != nil {
-				return err
-			}
-		case it.Nav != nil:
-			var target *schema.Entity
-			if it.Nav.Mode == "" {
-				j, ok := joined[it.Nav.Rel]
-				if !ok {
-					return errf("ENTITY_NOT_JOINED", "%s.%s is not joined in this statement", ent.Name, it.Nav.Rel)
-				}
-				target = v.m.Entities[j.Query.Entity]
-			} else {
-				if it.Nav.Mode != "exists" && it.Nav.Mode != "not_exists" && it.Nav.Mode != "count" {
-					return errf("IR_INVALID", "navigation mode %q", it.Nav.Mode)
-				}
-				if it.Nav.Mode == "count" {
-					if it.Nav.P == nil || !slices.Contains([]string{"eq", "not_eq", "gt", "gte", "lt", "lte"}, it.Nav.CountOp) {
-						return errf("IR_INVALID", "count navigation needs a comparison operator and parameter")
-					}
-					if err := v.params([]int{*it.Nav.P}); err != nil {
-						return err
-					}
-				}
-				rel := ent.Relations[it.Nav.Rel]
-				if rel == nil {
-					return errf("RELATION_UNKNOWN", "%s.%s", ent.Name, it.Nav.Rel)
-				}
-				target = v.m.Entities[rel.Target]
-			}
-			if it.Nav.Mode == "" && (it.Nav.Group == nil || len(it.Nav.Group.Items) == 0) {
-				return errf("IR_INVALID", "empty nav group")
-			}
-			if it.Nav.Group == nil {
-				continue
-			}
-			nested := map[string]*Join{}
-			if it.Nav.Mode == "" {
-				j := joined[it.Nav.Rel]
-				for _, jj := range j.Query.Joins {
-					nested[jj.Rel] = jj
-				}
-			}
-			if err := v.group(target, it.Nav.Group, nested, false); err != nil {
 				return err
 			}
 		}
@@ -683,6 +721,96 @@ func (v *validator) pred(ent *schema.Entity, p *Pred) error {
 			return errf("IR_INVALID", "expr pred may not carry column/op")
 		}
 		return nil // fragment column names are checked by the dialect renderer
+	}
+	if p.Op == "tuple_in" || p.Op == "tuple_not_in" {
+		if len(p.Cols) < 2 {
+			return errf("IR_INVALID", "%s needs at least two columns", p.Op)
+		}
+		for _, name := range p.Cols {
+			c := ent.Column(name)
+			if c == nil {
+				return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, name)
+			}
+			if len(c.Styles) > 0 || c.Type == "jsontext" || c.Type == "point" {
+				return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s", p.Op, ent.Name, name)
+			}
+		}
+		if len(p.Ps) == 0 {
+			return errf("EMPTY_IN", "%s(%s)", ent.Name, strings.Join(p.Cols, ","))
+		}
+		if len(p.Ps)%len(p.Cols) != 0 {
+			return errf("IR_INVALID", "%s: %d values for %d columns", p.Op, len(p.Ps), len(p.Cols))
+		}
+		return nil
+	}
+	if len(p.Cols) > 0 {
+		return errf("IR_INVALID", "cols is only valid with tuple_in or tuple_not_in")
+	}
+	if p.Sub != nil {
+		c := ent.Column(p.Column)
+		if c == nil {
+			return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, p.Column)
+		}
+		if p.Op != "in" && p.Op != "not_in" {
+			return errf("IR_INVALID", "subquery needs in or not_in")
+		}
+		if p.P != nil || len(p.Ps) > 0 || p.Fn != nil || p.Value != nil {
+			return errf("IR_INVALID", "subquery pred may not carry values")
+		}
+		return v.sub(p.Sub, false)
+	}
+	if p.Fn != nil || p.Value != nil {
+		c := ent.Column(p.Column)
+		if c == nil {
+			return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, p.Column)
+		}
+		if p.Fn != nil && p.Value != nil {
+			return errf("IR_INVALID", "fn and value cannot be combined")
+		}
+		if p.Fn != nil {
+			if err := v.columnFunc(ent, c, p.Fn); err != nil {
+				return err
+			}
+			switch p.Op {
+			case "eq", "not_eq", "gt", "gte", "lt", "lte":
+				if p.P == nil {
+					return errf("IR_INVALID", "%s needs a value (p)", p.Op)
+				}
+			case "in", "not_in":
+				if len(p.Ps) == 0 {
+					return errf("EMPTY_IN", "%s.%s", ent.Name, p.Column)
+				}
+			case "between":
+				if len(p.Ps) != 2 {
+					return errf("IR_INVALID", "between needs 2 params (ps)")
+				}
+			default:
+				return errf("OPERATOR_NOT_ALLOWED", "%s with a column function", p.Op)
+			}
+			return nil
+		}
+		if !dialect.IsValueFunction(p.Value.Name) {
+			return errf("FUNCTION_UNKNOWN", "%s", p.Value.Name)
+		}
+		if c.Type != "date" && c.Type != "datetime" {
+			return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", p.Value.Name, ent.Name, p.Column, c.Type)
+		}
+		want := 0
+		if _, relative := dialect.ValueFunctionUnits[p.Value.Name]; relative {
+			want = 1
+		}
+		if len(p.Value.Ps) != want {
+			return errf("IR_INVALID", "%s takes %d arguments", p.Value.Name, want)
+		}
+		if p.P != nil || len(p.Ps) > 0 {
+			return errf("IR_INVALID", "value function pred may not carry p or ps")
+		}
+		switch p.Op {
+		case "eq", "not_eq", "gt", "gte", "lt", "lte":
+		default:
+			return errf("OPERATOR_NOT_ALLOWED", "%s with a value function", p.Op)
+		}
+		return v.params(p.Value.Ps)
 	}
 	if p.Op == "match" || p.Op == "match_boolean" {
 		if len(p.Match) == 0 {
@@ -743,4 +871,80 @@ func hasFulltext(ent *schema.Entity, cols []string) bool {
 		}
 	}
 	return false
+}
+
+// columnFunc validates a column function against the column type.
+func (v *validator) columnFunc(ent *schema.Entity, c *schema.Col, f *Func) error {
+	types, ok := dialect.ColumnFunctionTypes[f.Name]
+	if !ok {
+		return errf("FUNCTION_UNKNOWN", "%s", f.Name)
+	}
+	if !slices.Contains(types, c.Type) {
+		return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", f.Name, ent.Name, c.Name, c.Type)
+	}
+	if len(f.Ps) != dialect.ColumnFunctionArity[f.Name] {
+		return errf("IR_INVALID", "%s takes %d arguments", f.Name, dialect.ColumnFunctionArity[f.Name])
+	}
+	return v.params(f.Ps)
+}
+
+// sub validates a subquery; scalar subqueries accept an aggregate.
+func (v *validator) sub(s *Sub, scalar bool) error {
+	if s == nil || s.Query == nil {
+		return errf("IR_INVALID", "subquery needs a query")
+	}
+	ent, ok := v.m.Entities[s.Query.Entity]
+	if !ok {
+		return errf("ENTITY_UNKNOWN", "%s", s.Query.Entity)
+	}
+	switch s.Agg {
+	case "":
+		if s.Column == "" {
+			return errf("IR_INVALID", "subquery needs a column")
+		}
+	case "sum", "avg":
+		if !scalar {
+			return errf("IR_INVALID", "%s subquery is only valid as a column", s.Agg)
+		}
+		c := ent.Column(s.Column)
+		if c == nil {
+			return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, s.Column)
+		}
+		if c.Type != "i32" && c.Type != "i64" && c.Type != "f64" && c.Type != "decimal" {
+			return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", s.Agg, ent.Name, s.Column, c.Type)
+		}
+	case "count":
+		if !scalar {
+			return errf("IR_INVALID", "count subquery is only valid as a column")
+		}
+	default:
+		return errf("IR_INVALID", "subquery agg %q", s.Agg)
+	}
+	if s.Column != "" && ent.Column(s.Column) == nil {
+		return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, s.Column)
+	}
+	if s.Query.Limit != nil || len(s.Query.Relations) > 0 || s.Query.Lock != "" || s.Query.Columns != nil {
+		return errf("IR_INVALID", "subquery may not use limit, relations, lock or columns")
+	}
+	v.subDepth++
+	defer func() { v.subDepth-- }()
+	return v.query(s.Query, "", false, false)
+}
+
+// joinedRefs checks that each join referenced by a group appears once.
+func joinedRefs(g *Group, joined map[string]*Join, seen map[string]bool) error {
+	for _, it := range g.Items {
+		if it.Joined != nil {
+			if seen[it.Joined.Join] {
+				return errf("IR_INVALID", "joined %s is placed twice", it.Joined.Join)
+			}
+			seen[it.Joined.Join] = true
+		}
+		if it.Group != nil {
+			if err := joinedRefs(it.Group, joined, seen); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

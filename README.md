@@ -1,67 +1,66 @@
 # orm 0.0.1
 
-A schema-driven fluent query grammar for **Go, PHP, Rust, and TypeScript**. Version 0.0.1.
+A schema-driven model query grammar for **Go, PHP, Rust, and TypeScript**. Version 0.0.1. The target syntax is specified in [docs/dsl.md](docs/dsl.md) and the work order in [docs/plan.md](docs/plan.md).
 
 ```php
-$authors = Author::query()->using($db)->serviceSeq(7)->isClose(false)
-    ->and(fn(AuthorWhere $w) => $w->isDisplay(true)->or()->isAllday(true))
-    ->relation(User::query())->orderBySeqDesc()->limit(0, 20)->gets();
+$authors = (new Author)->connect($slave1)->serviceSeq(7)->andIsClose(false)
+    ->and(fn (Author $q) => $q->isDisplay(true)->or()->isAllday(true))
+    ->relation((new User)->matchUserSeqWithSeq())->orderBySeqDesc()->limit(0, 20)->gets();
 ```
 ```go
-authors, err := gen.Author().Using(db).ServiceSeq(7).IsClose(false).
-    And(func(w *gen.AuthorWhere) { w.IsDisplay(true).Or().IsAllday(true) }).
-    Relation(gen.User()).OrderBySeqDesc().Limit(0, 20).Gets()
+authors, err := model.Author().Connect(slave1).ServiceSeq(7).AndIsClose(false).
+    And(func(q *model.AuthorModel) { q.IsDisplay(true).Or().IsAllday(true) }).
+    Relation(model.User().MatchUserSeqWithSeq()).OrderBySeqDesc().Limit(0, 20).Gets()
 ```
 ```rust
-let authors = author::query().using(&db).service_seq(7).is_close(false)
-    .and(|w| w.is_display(true).or().is_allday(true))
-    .relation(user::query()).order_by_seq_desc().limit(0, 20).gets().await?;
+let authors = Author::new().connect(&slave1).service_seq(7).and_is_close(false)
+    .and(|q| q.is_display(true).or().is_allday(true))
+    .relation(User::new().match_user_seq_with_seq()).order_by_seq_desc().limit(0, 20).gets().await?;
 ```
 ```typescript
-const authors = await Author().using(db).serviceSeq(7).isClose(false)
-    .and(w => w.isDisplay(true).or().isAllday(true))
-    .relation(User()).orderBySeqDesc().limit(0, 20).gets();
+const authors = await new Author().connect(slave1).serviceSeq(7).andIsClose(false)
+    .and(q => q.isDisplay(true).or().isAllday(true))
+    .relation(new User().matchUserSeqWithSeq()).orderBySeqDesc().limit(0, 20).gets();
 ```
 The four chains produce the same SQL, binds, and results. `tests/conformance` checks the common vectors on MySQL, PostgreSQL, and SQLite.
 
-For a direct finder, the same `getsBy` token is generated in all four clients:
+Finders accept any column chain after `By`:
 
 ```php
-$authors = Author::query()->using($db)->getsByServiceSeq(7);
+$authors = (new Author)->connect($slave1)->getsByServiceSeqAndIsClose(7, false);
 ```
 ```go
-authors, err := gen.Author().Using(db).GetsByServiceSeq(7)
+authors, err := model.Author().Connect(slave1).GetsByServiceSeqAndIsClose(7, false)
 ```
 ```rust
-let authors = author::query().using(&db).gets_by_service_seq(7).await?;
+let authors = Author::new().connect(&slave1).gets_by_service_seq_and_is_close(7, false).await?;
 ```
 ```typescript
-const authors = await Author().using(db).getsByServiceSeq(7);
+const authors = await new Author().connect(slave1).getsByServiceSeqAndIsClose(7, false);
 ```
-`getBy` is the one-row form for a primary or unique key; `getCountBy` is the scalar count form.
-`getsBy<Field>` and `getCountBy<Field>` are root-table equality shortcuts; index declarations affect the database plan, not whether the shortcut exists. For multiple predicates, keep the same root query and chain the columns before `gets` or `getCount`.
-
-`gen.Author()` is Go's query factory and returns `*gen.AuthorQuery`. PHP and Rust use `Author::query()` and `author::query()` for the same query head. Creation, ownership and asynchronous execution follow each language; the query operations and semantics are shared. `get` returns one required row and returns `NO_ROWS` when none exists; `getOrNil` is the explicit optional-row form. `gets` returns a collection, and `getCount` returns a scalar count. Select the executor with `using` before execution; terminals receive only values. The selected executor runs every join and relation step, and loaded rows inherit it. Calling `using` again selects another database or transaction without changing the query predicates. Go stores the execution context in the database opened from the DSN; callers provide only the database or transaction executor. Unbound queries and finished transactions return `CONFIG`.
+`get` returns one row or null, `gets` returns a collection, and `getCount` returns a count. A model receives its database connection through `connect`; inside `connection.transaction(fn)`, a model without `connect` uses the active transaction. Relation children use the parent connection unless they call `connect`. A model without a connection outside a transaction returns `CONFIG`.
 
 ## How it works
 - **Schema**: one hand-written Mermaid `erDiagram` (`schema/*.mmd`) → `ormgen build` → `schema.json` (manifest with `schema_hash`).
-- **Runtime**: The generated client opens the database from the DSN URI and executes queries through the language-native driver.
-- **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.35+ use the same request and result rules (`docs/dialects.md`).
-- **Generated code**: `ormgen gen --lang go|php|rust|typescript` emits typed builders, rows, and relation accessors per entity.
+- **Models**: each language generates its models with its own build tool: `go generate` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin in `npm run build` (TypeScript), and the `orm-build` crate in `build.rs` (Rust).
+- **Runtime**: the client library validates each statement shape against `schema.json`, assembles the SQL in the calling process, caches the plan, and executes it through the language-native driver. No service, daemon, or extension runs beside it.
+- **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.46+ use the same request and result rules (`docs/dialects.md`).
+- **Equality**: `tests/conformance` runs the same vectors in the four clients and compares the SQL, binds, and results.
 
 ## Quick start (MySQL 8.x, local socket)
 ```sh
 mysql -uroot orm_bench < bench/sql/author.sql
 mysql -uroot orm_bench < bench/sql/seed.mysql.sql                  # schema + 100k rows
-go run ./bench/seedaes -driver mysql -dsn 'mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&parseTime=true&clientFoundRows=true'
+go run ./bench/seedaes -driver mysql -dsn 'root@unix(/tmp/mysql.sock)/orm_bench'
 go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
-for l in go php rust; do go run ./cmd/ormgen gen --schema schema/schema.json --lang $l --out clients/$l/gen; done
-go run ./cmd/ormgen gen --schema schema/schema.json --lang typescript --out clients/typescript/src/gen
-go build -o bin/ormd ./cmd/ormd
+(cd clients/go/model && go generate)                                # Go models
+php clients/php/bin/orm-gen gen --schema schema/schema.json --out clients/php/gen --namespace 'Polyspec\Orm\Tests\Model'
+(cd clients/typescript && npm run build)                            # TypeScript models and library
+(cd clients/rust && cargo build --release)                          # build.rs generates the Rust models
 go test ./...
-npm run typescript:check && npm run typescript:build
-(cd clients/rust && cargo test --release -p orm)
-go run ./tests/conformance/check run                                # starts Connect compiler and checks 4 clients
+npm run typescript:test
+(cd clients/rust && cargo test --workspace)
+go run ./tests/conformance/check run -driver mysql                  # compares the four clients
 ```
 
 ## Documents
@@ -80,8 +79,9 @@ go run ./tests/conformance/check run                                # starts Con
 `docs/errors.yaml` codes · `docs/perf.md` measurements and gates · `docs/checklist.md` work plan.
 
 ## Tooling
-`ormgen build | gen | import --dsn | validate --dsn | ddl --dialect | errors --lang | tokens | check --lang php`,
-`tests/conformance/check run|compare|record`, `scripts/build-artifacts.sh`, `deploy/` service units.
+`ormgen build | gen --lang go | import --dsn | validate --dsn | ddl --dialect | diff | errors --lang`,
+`vendor/bin/orm-gen gen | build | import | validate | ddl | diff | migrate` (PHP), `orm-gen` (TypeScript), `orm-build` (Rust),
+`tests/conformance/check run|compare|record`.
 
 ## License
 MIT — see [LICENSE](LICENSE).

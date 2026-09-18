@@ -103,10 +103,14 @@ fn visit(root: &Path, dir: &Path, out: &mut BTreeMap<String, String>) {
     let mut paths: Vec<_> = fs::read_dir(dir).unwrap().map(|x| x.unwrap().path()).collect();
     paths.sort();
     for p in paths {
-        if p.strip_prefix(root).is_ok_and(|relative| relative.starts_with("clients/rust/orm/src/gen")) { continue; }
         if p.is_dir() { visit(root, &p, out); }
-        else if p.extension().is_some_and(|x| x == "rs") {
-            let source = fs::read_to_string(&p).unwrap();
+        // orm-build keeps the fixed model methods in a Rust template that it
+        // includes as text; it is parsed like any other source file.
+        else if p.extension().is_some_and(|x| x == "rs") || p.to_str().is_some_and(|x| x.ends_with(".rs.txt")) {
+            let mut source = fs::read_to_string(&p).unwrap();
+            // The template is the open `impl T {` block that generated column
+            // methods continue; close it to parse the fixed methods.
+            if p.to_str().is_some_and(|x| x.ends_with(".rs.txt")) { source.push('}'); }
             let ast = syn::parse_file(&source).unwrap_or_else(|e| panic!("{}: {e}", p.display()));
             let rel = p.strip_prefix(root).unwrap().to_str().unwrap();
             items(out, rel, ast.items);

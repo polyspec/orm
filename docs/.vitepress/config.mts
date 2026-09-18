@@ -43,7 +43,6 @@ export default defineConfig({
       { text: 'Guide', link: '/usage' },
       { text: 'Common API', link: '/interfaces' },
       { text: 'Implementation', link: '/interface-implementation' },
-      { text: 'S7', link: '/s7' },
       { text: '한국어', link: '/ko/' },
     ],
     sidebar: [
@@ -55,6 +54,7 @@ export default defineConfig({
         { text: 'Complex query example', link: '/examples/complex-query' },
       ] },
       { text: 'Common specification', items: [
+        { text: 'Design plan', link: '/plan' },
         { text: 'Structure and public API', link: '/interfaces' },
         { text: 'Component diagram', link: '/interfaces-model' },
         { text: 'DSL', link: '/dsl' },
@@ -65,12 +65,9 @@ export default defineConfig({
       { text: 'Development and verification', items: [
         { text: 'Implementation matrix', link: '/interface-implementation' },
         { text: 'Checklist', link: '/checklist' },
-        { text: 'Public source readiness', link: '/public-readiness' },
         { text: 'Performance', link: '/perf' },
         { text: 'Packaging', link: '/packaging' },
         { text: 'Documentation build and deployment', link: '/docs-development' },
-        { text: 'Archived design notes', link: '/archive' },
-        { text: 'S7 work list', link: '/s7' },
       ] },
     ],
     outline: { level: [2, 3], label: 'On this page' },
@@ -102,7 +99,11 @@ export default defineConfig({
             if (!href || /^(?:[a-z]+:|\/\/|#)/i.test(href)) continue;
             const [name, suffix = ''] = href.split(/(?=[?#])/s, 2);
             const koreanPage = state.env.relativePath.startsWith('ko/') || state.env.path.endsWith('.ko.md');
-            let target = path.resolve(href.startsWith('/') ? docs : path.dirname(state.env.path), '.' + (href.startsWith('/') ? name : '/' + name));
+            // Rewritten Korean pages resolve relative links from their .ko.md source directory.
+            const sourcePath = state.env.relativePath.startsWith('ko/')
+              ? path.join(docs, state.env.relativePath.slice('ko/'.length).replace(/\.md$/, '.ko.md'))
+              : state.env.path;
+            let target = path.resolve(href.startsWith('/') ? docs : path.dirname(sourcePath), '.' + (href.startsWith('/') ? name : '/' + name));
             if (koreanPage && !existsSync(target)) target = path.resolve(docs, name);
             if (!koreanPage && target.startsWith(docs + path.sep) && target.endsWith('.ko.md')) {
               const relative = path.relative(docs, target).split(path.sep).map(encodeURIComponent).join('/');

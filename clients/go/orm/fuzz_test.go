@@ -2,15 +2,6 @@ package orm
 
 import "testing"
 
-func FuzzDecodeKeysetCursor(f *testing.F) {
-	f.Add("")
-	f.Add("eyJ2ZXJzaW9uIjoxLCJvcmRlciI6W10sInZhbHVlcyI6W119")
-	f.Add("not-a-cursor")
-	f.Fuzz(func(t *testing.T, input string) {
-		_, _ = DecodeKeysetCursor(input)
-	})
-}
-
 func FuzzDecodeCiphertext(f *testing.F) {
 	f.Add([]byte{})
 	f.Add([]byte("ORM-AES2"))

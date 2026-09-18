@@ -1,12 +1,10 @@
-// Package engine is the query compiler: JSON IR in, Plan JSON out. It is pure
+// Package engine is the query planner: IR in, Plan out. It is pure
 // and stateless apart from the loaded manifest; execution lives in the
 // language-native executors.
 package engine
 
 import (
 	"encoding/json"
-	"errors"
-	"sync/atomic"
 
 	"github.com/polyspec/orm/engine/dialect"
 	"github.com/polyspec/orm/engine/ir"
@@ -60,29 +58,4 @@ func (e *Engine) Compile(irJSON []byte) ([]byte, error) {
 		return nil, &ir.Error{Code: "INTERNAL", Msg: err.Error()}
 	}
 	return out, nil
-}
-
-// ErrorJSON renders an error as the wire envelope {"error":{code,msg}}.
-func ErrorJSON(err error) []byte {
-	var e *ir.Error
-	if !errors.As(err, &e) {
-		e = &ir.Error{Code: "INTERNAL", Msg: err.Error()}
-	}
-	b, _ := json.Marshal(struct {
-		Error *ir.Error `json:"error"`
-	}{e})
-	return b
-}
-
-// Global engine for the FFI/wasm/ormd entry points, set once by orm_load.
-var global atomic.Pointer[Engine]
-
-func SetGlobal(e *Engine) { global.Store(e) }
-
-func Global() (*Engine, error) {
-	e := global.Load()
-	if e == nil {
-		return nil, &ir.Error{Code: "SCHEMA_NOT_LOADED", Msg: "call orm_load with schema.json first"}
-	}
-	return e, nil
 }

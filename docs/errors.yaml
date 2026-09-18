@@ -1,23 +1,17 @@
-# Error codes shared by the engine and every executor. `ormgen errors --lang go|php|rust`
-# (S5) generates one enum per language from this file; codes are the wire form (`error.code`).
-# origin: engine = raised while compiling IR → Plan (ormd / wasm / in-process alike);
+# Error codes shared by the planner and every executor. `ormgen errors --lang go|php|rust`
+# generates one constants file per language from this file; codes are the stable `error.code`.
+# origin: engine = raised while planning a request in the client process;
 #         executor = raised by the language runtime; driver = passed through from the DB driver
 #         with the original message, only the listed ones are mapped to a code.
 codes:
-  # ---- request framing ----
+  # ---- request ----
   - code: VERSION_MISMATCH        # ir_version the engine does not speak
     origin: engine
   - code: SCHEMA_HASH_MISMATCH    # client generated from another schema.json than the engine loaded
     origin: engine
   - code: SCHEMA_INVALID          # schema.json failed validation at load
     origin: engine
-  - code: SCHEMA_NOT_LOADED       # wasm/ffi: orm_compile before orm_load
-    origin: engine
   - code: DIALECT_UNKNOWN
-    origin: engine
-  - code: FRAME_INVALID           # ormd: bad length-prefixed frame
-    origin: engine
-  - code: OP_UNKNOWN              # ormd: unknown op
     origin: engine
   - code: IR_INVALID              # structural: missing fields, wrong combination, param index out of range
     origin: engine
@@ -37,17 +31,17 @@ codes:
   # ---- predicates ----
   - code: OPERATOR_UNKNOWN
     origin: engine
+  - code: FUNCTION_UNKNOWN        # ORM function name outside the column or value function catalog
+    origin: engine
   - code: OPERATOR_NOT_ALLOWED    # op not valid for the column's type/style (ir.OpAllowed)
     origin: engine
   - code: OR_AT_GROUP_START       # or() as the first item of a group
     origin: engine
   - code: EMPTY_IN                # in()/notIn() with no values
     origin: engine
-  - code: ENTITY_NOT_JOINED       # nav into a relation that was not joined in this statement
+  - code: ENTITY_NOT_JOINED       # joined placement or column reference to a join missing from this statement
     origin: engine
   - code: LIMIT_IN_RELATION       # limit() on a relation child (use limitPerParent)
-    origin: engine
-  - code: CURSOR_INVALID           # keyset cursor version, order, or typed value is invalid
     origin: engine
   # ---- executor ----
   - code: NO_ROWS                # strict one-row query matched no row
@@ -61,6 +55,8 @@ codes:
   - code: CODEC_UNSUPPORTED       # PHP objects/references in serialize, unknown style
     origin: executor
   - code: CONFIG                  # missing secret, bad DSN/paths, transaction misuse
+    origin: executor
+  - code: CANCELED                # the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs)
     origin: executor
   - code: INTERNAL
     origin: executor

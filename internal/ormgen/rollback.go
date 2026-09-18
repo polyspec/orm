@@ -15,12 +15,11 @@ import (
 func rollbackCmd(args []string) {
 	fs := flag.NewFlagSet("rollback", flag.ExitOnError)
 	planPath := fs.String("plan", "", "reviewed migration plan JSON (required)")
-	dsn := fs.String("dsn", "", "database DSN or SQLite path (required)")
-	driver := fs.String("driver", "", "mysql|postgres|sqlite; defaults to plan driver")
+	dsnFlag := fs.String("dsn", "", "database DSN URI: mysql://, postgres://, or sqlite:///path (required)")
 	logDir := fs.String("log-dir", "migrations/logs", "directory for migration JSON logs")
 	allow := fs.Bool("allow-destructive", false, "acknowledge schema and data loss risk")
 	fs.Parse(args)
-	if *planPath == "" || *dsn == "" {
+	if *planPath == "" || *dsnFlag == "" {
 		fail(fmt.Errorf("MIGRATION_CONFIG: --plan and --dsn are required"))
 	}
 	b, err := os.ReadFile(*planPath)
@@ -34,29 +33,23 @@ func rollbackCmd(args []string) {
 	if err := validateRollbackPlan(plan); err != nil {
 		fail(err)
 	}
-	if *driver == "" {
-		*driver = plan.Driver
+	dsn, err := parseToolDSN(*dsnFlag)
+	if err != nil {
+		fail(err)
 	}
-	if *driver != plan.Driver {
-		fail(fmt.Errorf("MIGRATION_CONFIG: plan driver=%s does not match requested driver=%s", plan.Driver, *driver))
-	}
-	if *driver != "mysql" && *driver != "postgres" && *driver != "sqlite" {
-		fail(fmt.Errorf("MIGRATION_CONFIG: unsupported driver %q", *driver))
+	if dsn.dialect != plan.Driver {
+		fail(fmt.Errorf("MIGRATION_CONFIG: plan driver=%s does not match the DSN driver=%s", plan.Driver, dsn.dialect))
 	}
 	if plan.RollbackDataLossRisk && !*allow {
 		fail(fmt.Errorf("MIGRATION_ROLLBACK_DESTRUCTIVE: migration_id=%s requires --allow-destructive; schema rollback does not restore removed or overwritten data", plan.MigrationID))
 	}
-	name, openDSN := sqlDriver(*driver, *dsn)
-	db, err := sql.Open(name, openDSN)
+	db, _, err := openToolDB(*dsnFlag)
 	if err != nil {
-		fail(fmt.Errorf("MIGRATION_CONNECT: %w", err))
+		fail(err)
 	}
 	defer db.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if err := db.PingContext(ctx); err != nil {
-		fail(fmt.Errorf("MIGRATION_CONNECT: driver=%s dsn=%s: %w", *driver, redactDSN(*dsn), err))
-	}
 	status, err := rollbackMigration(ctx, db, plan, *logDir)
 	if err != nil {
 		fail(err)

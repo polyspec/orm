@@ -14,17 +14,14 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 )
 
 var aesV2Prefix = []byte("ORM-AES2\x00")
 
 // AESEncrypt returns the authenticated v2 envelope used by every client.
 func AESEncrypt(plain []byte, key string) ([]byte, error) {
-	block, err := aes.NewCipher(aesV2Key(key))
-	if err != nil {
-		return nil, err
-	}
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := aesGCM(key)
 	if err != nil {
 		return nil, err
 	}
@@ -43,11 +40,7 @@ func AESDecrypt(ciphertext []byte, key string) ([]byte, error) {
 	if len(ciphertext) < len(aesV2Prefix) || !bytes.HasPrefix(ciphertext, aesV2Prefix) {
 		return nil, codecErr(CodeCodecDecode, "aes: unsupported ciphertext format")
 	}
-	block, err := aes.NewCipher(aesV2Key(key))
-	if err != nil {
-		return nil, err
-	}
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := aesGCM(key)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +54,25 @@ func AESDecrypt(ciphertext []byte, key string) ([]byte, error) {
 		return nil, codecErr(CodeCodecDecode, "aes: authentication failed")
 	}
 	return plain, nil
+}
+
+// aesCiphers caches the AEAD of each key; an AEAD is safe for concurrent use.
+var aesCiphers sync.Map
+
+func aesGCM(key string) (cipher.AEAD, error) {
+	if v, ok := aesCiphers.Load(key); ok {
+		return v.(cipher.AEAD), nil
+	}
+	block, err := aes.NewCipher(aesV2Key(key))
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	aesCiphers.Store(key, gcm)
+	return gcm, nil
 }
 
 func aesV2Key(key string) []byte {

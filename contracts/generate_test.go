@@ -4,64 +4,57 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
-
-	"github.com/polyspec/orm/engine/schema"
 )
 
-func TestPointColumnTypeMappings(t *testing.T) {
-	c := &schema.Col{Type: "point"}
-	for lang, want := range map[string]string{"go": "orm.Point", "php": "array", "rust": "orm::Point", "typescript": "Point"} {
-		if got := colType(c, lang); got != want {
-			t.Errorf("%s point type=%q want %q", lang, got, want)
-		}
-	}
-}
-
 func TestLogicalContractRejectsNativeDrift(t *testing.T) {
-	base, err := load()
-	if err != nil {
+	if _, err := load(); err != nil {
 		t.Fatal(err)
 	}
-	for _, lang := range []string{"go", "php", "rust", "typescript"} {
+	find := func(d *document, id string) *rule {
+		for i := range d.Rules {
+			if d.Rules[i].ID == id {
+				return &d.Rules[i]
+			}
+		}
+		t.Fatalf("rule %s is missing", id)
+		return nil
+	}
+	for _, lang := range languages {
 		t.Run(lang, func(t *testing.T) {
 			var d document
 			_ = json.Unmarshal(source, &d)
-			for i := range d.Rules {
-				if d.Rules[i].ID == "Query.gets" {
-					n := d.Rules[i].Native[lang]
-					old := map[string]string{"go": "*orm.Collection[{Entity}Row]", "php": "Orm\\Collection", "rust": "Collection<{Entity}Row>", "typescript": "Collection<{Entity}Row>"}[lang]
-					n.Signature = strings.Replace(n.Signature, old, map[string]string{"go": "int64", "php": "int", "rust": "i64", "typescript": "number"}[lang], 1)
-					d.Rules[i].Native[lang] = n
-				}
-			}
+			r := find(&d, "Model.gets")
+			n := r.Native[lang]
+			old := map[string]string{"go": "*orm.Collection[*{Entity}Model]", "php": "Orm\\Collection", "rust": "orm::Collection<Self>", "typescript": "Collection<this>"}[lang]
+			n.Signature = strings.Replace(n.Signature, old, map[string]string{"go": "int64", "php": "int", "rust": "i64", "typescript": "number"}[lang], 1)
+			r.Native[lang] = n
 			if validateRules(d) == nil {
 				t.Fatal("a matching native snapshot could silently change Collection to scalar")
 			}
 		})
 	}
-	for _, mutate := range []func(*document){
-		func(d *document) { d.Rules[0].Inputs = []string{"ColumnValue"} },
-		func(d *document) { d.Rules[0].Output = "Collection<Row>" },
-		func(d *document) {
-			n := d.Rules[0].Native["rust"]
-			n.Signature = strings.Replace(n.Signature, "&mut self", "self", 1)
-			d.Rules[0].Native["rust"] = n
+	for name, mutate := range map[string]func(*document){
+		"inputs": func(d *document) { find(d, "Model.get").Inputs = []string{"Rows"} },
+		"output": func(d *document) { find(d, "Model.get").Output = "Collection<Model>" },
+		"rust receiver": func(d *document) {
+			r := find(d, "Model.create")
+			n := r.Native["rust"]
+			n.Signature = strings.Replace(n.Signature, "&mut self", "&self", 1)
+			r.Native["rust"] = n
 		},
-		func(d *document) {
-			n := d.Rules[0].Native["rust"]
+		"rust async": func(d *document) {
+			r := find(d, "Model.get")
+			n := r.Native["rust"]
 			n.Signature = strings.Replace(n.Signature, "async ", "", 1)
-			d.Rules[0].Native["rust"] = n
+			r.Native["rust"] = n
 		},
 	} {
 		var d document
 		_ = json.Unmarshal(source, &d)
 		mutate(&d)
 		if validateRules(d) == nil {
-			t.Fatal("inconsistent logical/native contract accepted")
+			t.Fatalf("%s: inconsistent logical/native contract accepted", name)
 		}
-	}
-	if len(base.Rules) < 26 {
-		t.Fatal("core Query/Where/Row rules missing")
 	}
 }
 

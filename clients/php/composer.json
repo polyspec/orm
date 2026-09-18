@@ -1,37 +1,40 @@
 {
     "name": "orm/php-client",
-    "description": "PHP executor of the orm compiler: generated typed builders over PDO, plans compiled by ormd",
+    "description": "PHP client of the orm model syntax: generated models over PDO with SQL assembled in process",
     "type": "library",
     "version": "0.0.1",
     "license": "MIT",
     "require": {
-        "php": ">=8.2",
+        "php": ">=8.4",
         "ordered-json/ordered-json": "dev-main",
         "ext-pdo": "*",
         "ext-pdo_mysql": "*",
         "ext-json": "*",
         "ext-zlib": "*",
-        "symfony/yaml": "^7.4",
-        "google/protobuf": "^5.36"
+        "symfony/yaml": "^7.4"
     },
     "repositories": [
-        {"type": "vcs", "url": "https://github.com/polyspec/ordered-json.git"}
+        {
+            "type": "vcs",
+            "url": "https://github.com/polyspec/ordered-json.git"
+        }
     ],
     "suggest": {
-        "ext-pdo_pgsql": "Db::postgres (ormd -dialect postgres)",
-        "ext-pdo_sqlite": "Db::sqlite (ormd -dialect sqlite)",
+        "ext-pdo_pgsql": "postgres:// DSNs",
+        "ext-pdo_sqlite": "sqlite:// DSNs",
         "ext-openssl": "host-side AES on PostgreSQL and SQLite (aes columns)"
     },
     "autoload": {
         "psr-4": {
-            "Orm\\Compiler\\V1\\": "src/Proto/Orm/Compiler/V1/",
-            "GPBMetadata\\Proto\\Orm\\Compiler\\V1\\": "src/Proto/GPBMetadata/Proto/Orm/Compiler/V1/",
             "Orm\\": "src/"
         },
         "classmap": [
             "src/"
         ]
     },
+    "bin": [
+        "bin/orm-gen"
+    ],
     "config": {
         "optimize-autoloader": true
     }
