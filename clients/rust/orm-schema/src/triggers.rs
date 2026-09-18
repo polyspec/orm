@@ -150,7 +150,7 @@ fn postgres_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> Trigger
     b += &format!("{markers}\n");
     b += &format!("DECLARE\n  audit_operation_id text := current_setting({}, true);\n  audit_operation_seq bigint;\n", literal(&l.context));
     if a.mode == "changes" {
-        b += "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_old_full jsonb;\n  audit_new_full jsonb;\n  audit_site text;\n  audit_key jsonb;\n";
+        b += "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_site text;\n  audit_key jsonb;\n";
     }
     b += "BEGIN\n";
     b += &format!("  IF audit_operation_id IS NULL OR audit_operation_id = '' THEN RAISE EXCEPTION {CONTEXT_MESSAGE}; END IF;\n");
@@ -163,31 +163,31 @@ fn postgres_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> Trigger
     b += &format!("  IF audit_operation_seq IS NULL THEN RAISE EXCEPTION {OPERATION_MESSAGE}; END IF;\n");
     if a.mode == "changes" {
         b += "  IF TG_OP = 'TRUNCATE' THEN RETURN NULL; END IF;\n";
-        b += "  IF TG_OP <> 'INSERT' THEN audit_old := to_jsonb(OLD); END IF;\n";
-        b += "  IF TG_OP <> 'DELETE' THEN audit_new := to_jsonb(NEW); END IF;\n";
-        // A text column holding JSON, such as jsontext, is recorded as JSON,
-        // as it is on MySQL and SQLite.
+        // An insert and a delete record every column. An update compares each
+        // column's stored bytes and records only the changed columns, so an
+        // unchanged large value is neither parsed nor compared under a collation.
+        b += "  IF TG_OP = 'INSERT' THEN\n";
+        b += &format!("    audit_new := {};\n", postgres_row_object(e, "NEW", &q));
+        b += "  ELSIF TG_OP = 'DELETE' THEN\n";
+        b += &format!("    audit_old := {};\n", postgres_row_object(e, "OLD", &q));
+        b += "  ELSE\n";
         for c in audit_columns(e) {
-            let t = ddl_type(c, "postgres").unwrap_or_default();
-            if t != "text" && !t.starts_with("varchar") {
-                continue;
-            }
-            let path = literal(&format!("{{{}}}", c.name));
-            b += &format!("  IF TG_OP <> 'INSERT' AND OLD.{0} IS JSON THEN audit_old := jsonb_set(audit_old, {path}, OLD.{0}::jsonb); END IF;\n", q(&c.name));
-            b += &format!("  IF TG_OP <> 'DELETE' AND NEW.{0} IS JSON THEN audit_new := jsonb_set(audit_new, {path}, NEW.{0}::jsonb); END IF;\n", q(&c.name));
+            let name = literal(&c.name);
+            let n = q(&c.name);
+            b += &format!("    IF OLD.{n}::text IS DISTINCT FROM NEW.{n}::text THEN\n");
+            b += &format!("      audit_old := audit_old || jsonb_build_object({name}, {});\n", postgres_value(c, &format!("OLD.{n}")));
+            b += &format!("      audit_new := audit_new || jsonb_build_object({name}, {});\n", postgres_value(c, &format!("NEW.{n}")));
+            b += "    END IF;\n";
         }
+        b += "    IF audit_old::text = '{}' AND audit_new::text = '{}' THEN RETURN NULL; END IF;\n";
+        b += "  END IF;\n";
         if !a.site.is_empty() {
-            b += &format!("  audit_site := COALESCE(audit_new ->> {}, audit_old ->> {});\n", literal(&a.site), literal(&a.site));
+            let site = q(&a.site);
+            b += &format!("  audit_site := CASE TG_OP WHEN 'DELETE' THEN OLD.{site}::text ELSE NEW.{site}::text END;\n");
         }
         let keys: Vec<String> =
-            e.pk.iter().flat_map(|k| [literal(k), format!("COALESCE(audit_new -> {}, audit_old -> {})", literal(k), literal(k))]).collect();
+            e.pk.iter().flat_map(|k| [literal(k), format!("to_jsonb(CASE TG_OP WHEN 'DELETE' THEN OLD.{0} ELSE NEW.{0} END)", q(k))]).collect();
         b += &format!("  audit_key := jsonb_build_object({});\n", keys.join(", "));
-        b += "  IF TG_OP = 'UPDATE' THEN\n";
-        b += "    audit_old_full := audit_old;\n    audit_new_full := audit_new;\n";
-        b += "    audit_old := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(audit_old_full) WHERE audit_new_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n";
-        b += "    audit_new := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(audit_new_full) WHERE audit_old_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n";
-        b += "    IF audit_old = '{}'::jsonb AND audit_new = '{}'::jsonb THEN RETURN NULL; END IF;\n";
-        b += "  END IF;\n";
         for path in &a.redact {
             let p = literal(&format!("{{{}}}", path.join(",")));
             for v in ["audit_new", "audit_old"] {
@@ -219,6 +219,27 @@ fn postgres_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> Trigger
             format!("CREATE TRIGGER {truncate} BEFORE TRUNCATE ON {table} FOR EACH STATEMENT EXECUTE FUNCTION {function}();"),
         ],
     }
+}
+
+/// A PostgreSQL JSON value; a text column holding JSON is recorded as JSON.
+fn postgres_value(c: &Col, r: &str) -> String {
+    let t = ddl_type(c, "postgres").unwrap_or_default();
+    if t == "text" || t.starts_with("varchar") {
+        return format!("CASE WHEN {r} IS JSON THEN {r}::jsonb ELSE to_jsonb({r}) END");
+    }
+    format!("to_jsonb({r})")
+}
+
+/// Every column of a row as one JSON object, built in parts of 50 pairs.
+fn postgres_row_object(e: &Entity, row: &str, q: &dyn Fn(&str) -> String) -> String {
+    let parts: Vec<String> = audit_columns(e)
+        .chunks(50)
+        .map(|chunk| {
+            let args: Vec<String> = chunk.iter().flat_map(|c| [literal(&c.name), postgres_value(c, &format!("{row}.{}", q(&c.name)))]).collect();
+            format!("jsonb_build_object({})", args.join(", "))
+        })
+        .collect();
+    if parts.is_empty() { "'{}'::jsonb".into() } else { parts.join(" || ") }
 }
 
 /// A column value for a JSON object on MySQL and SQLite. Binary values use
@@ -337,14 +358,26 @@ fn mysql_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> TriggerObj
         );
         b += &format!("  IF audit_operation_seq IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = {OPERATION_MESSAGE}; END IF;\n");
         if a.mode == "changes" {
-            let mut old_value = if event != "INSERT" { row_object(e, "OLD", "mysql", &q) } else { "JSON_OBJECT()".into() };
-            let mut new_value = if event != "DELETE" { row_object(e, "NEW", "mysql", &q) } else { "JSON_OBJECT()".into() };
-            if event == "UPDATE" {
-                old_value = unchanged(e, &old_value, "mysql", &q);
-                new_value = unchanged(e, &new_value, "mysql", &q);
+            if event == "INSERT" {
+                b += "  SET audit_old = JSON_OBJECT();\n";
+                b += &format!("  SET audit_new = {};\n", row_object(e, "NEW", "mysql", &q));
+            } else if event == "DELETE" {
+                b += &format!("  SET audit_old = {};\n", row_object(e, "OLD", "mysql", &q));
+                b += "  SET audit_new = JSON_OBJECT();\n";
+            } else {
+                // Only the changed columns are rendered, and stored bytes decide
+                // a change; the column collation would treat values that differ
+                // only in case or accents as equal.
+                b += "  SET audit_old = JSON_OBJECT();\n  SET audit_new = JSON_OBJECT();\n";
+                for c in audit_columns(e) {
+                    let path = literal(&format!("$.\"{}\"", c.name));
+                    let n = q(&c.name);
+                    b += &format!("  IF NOT (CAST(NEW.{n} AS BINARY) <=> CAST(OLD.{n} AS BINARY)) THEN\n");
+                    b += &format!("    SET audit_old = JSON_SET(audit_old, {path}, {});\n", audit_value(c, &format!("OLD.{n}"), "mysql"));
+                    b += &format!("    SET audit_new = JSON_SET(audit_new, {path}, {});\n", audit_value(c, &format!("NEW.{n}"), "mysql"));
+                    b += "  END IF;\n";
+                }
             }
-            b += &format!("  SET audit_old = {old_value};\n");
-            b += &format!("  SET audit_new = {new_value};\n");
             for path in &a.redact {
                 let p = json_path(path);
                 for v in ["audit_new", "audit_old"] {

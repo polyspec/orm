@@ -183,12 +183,14 @@ func TestAuditDiff(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		replaced := strings.Contains(added, "DROP TRIGGER IF EXISTS "+triggerQuote(dialect)(triggerName("audit_item", "audit_insert", dialect)))
+		// Every dialect renders the audited columns into its trigger, so a
+		// column change replaces the trigger around the table change.
+		trigger := triggerQuote(dialect)(triggerName("audit_item", "audit_insert", dialect))
 		if dialect == "postgres" {
-			if strings.Contains(added, "TRIGGER") {
-				t.Fatalf("postgres replaced a column-independent audit trigger:\n%s", added)
-			}
-		} else if !replaced || strings.Index(added, "DROP TRIGGER") > strings.Index(added, "ADD COLUMN") || strings.LastIndex(added, "CREATE TRIGGER") < strings.Index(added, "ADD COLUMN") {
+			trigger = `"audit_item_audit"`
+		}
+		replaced := strings.Contains(added, "DROP TRIGGER IF EXISTS "+trigger)
+		if !replaced || strings.Index(added, "DROP TRIGGER") > strings.Index(added, "ADD COLUMN") || strings.LastIndex(added, "CREATE TRIGGER") < strings.Index(added, "ADD COLUMN") {
 			t.Fatalf("%s did not replace the audit triggers around the column change:\n%s", dialect, added)
 		}
 		if strings.Contains(added, "audit_note_audit") {

@@ -915,6 +915,8 @@
   "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::name": "private static function name(string $table, string $suffix, string $dialect): string",
   "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::objects": "public static function objects(array $m, string $dialect): array",
   "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::postgresAudit": "private static function postgresAudit(array $m, array $e, array $a, string $markers): array",
+  "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::postgresRowObject": "private static function postgresRowObject(array $e, string $row, Closure $q): string",
+  "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::postgresValue": "private static function postgresValue(array $c, string $ref): string",
   "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::readBodies": "public static function readBodies(PDO $pdo, string $driver): array",
   "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::row": "private static function row(string $event): string",
   "clients/php/src/SchemaTriggers.php::Orm\\SchemaTriggers::rowObject": "private static function rowObject(array $e, string $row, string $dialect, Closure $q): string",
