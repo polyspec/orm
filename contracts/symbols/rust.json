@@ -760,6 +760,8 @@
   "clients/rust/orm-schema/src/triggers.rs::literal": " fn literal (s : \u0026 str) -\u003e String",
   "clients/rust/orm-schema/src/triggers.rs::mysql_audit": " fn mysql_audit (l : \u0026 AuditLog , e : \u0026 Entity , a : \u0026 Audit , markers : \u0026 str) -\u003e TriggerObject",
   "clients/rust/orm-schema/src/triggers.rs::postgres_audit": " fn postgres_audit (l : \u0026 AuditLog , e : \u0026 Entity , a : \u0026 Audit , markers : \u0026 str) -\u003e TriggerObject",
+  "clients/rust/orm-schema/src/triggers.rs::postgres_row_object": " fn postgres_row_object (e : \u0026 Entity , row : \u0026 str , q : \u0026 dyn Fn (\u0026 str) -\u003e String) -\u003e String",
+  "clients/rust/orm-schema/src/triggers.rs::postgres_value": " fn postgres_value (c : \u0026 Col , r : \u0026 str) -\u003e String",
   "clients/rust/orm-schema/src/triggers.rs::quote_for": " fn quote_for (dialect : \u0026 str) -\u003e impl Fn (\u0026 str) -\u003e String + '_",
   "clients/rust/orm-schema/src/triggers.rs::row_object": " fn row_object (e : \u0026 Entity , row : \u0026 str , dialect : \u0026 str , q : \u0026 dyn Fn (\u0026 str) -\u003e String) -\u003e String",
   "clients/rust/orm-schema/src/triggers.rs::row_of": " fn row_of (event : \u0026 str) -\u003e \u0026 'static str",

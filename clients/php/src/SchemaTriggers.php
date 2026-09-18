@@ -130,7 +130,7 @@ final class SchemaTriggers
         $b .= $markers . "\n";
         $b .= "DECLARE\n  audit_operation_id text := current_setting(" . self::literal($l['context']) . ", true);\n  audit_operation_seq bigint;\n";
         if ($a['mode'] === 'changes') {
-            $b .= "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_old_full jsonb;\n  audit_new_full jsonb;\n  audit_site text;\n  audit_key jsonb;\n";
+            $b .= "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_site text;\n  audit_key jsonb;\n";
         }
         $b .= "BEGIN\n";
         $b .= "  IF audit_operation_id IS NULL OR audit_operation_id = '' THEN RAISE EXCEPTION " . self::CONTEXT_MESSAGE . "; END IF;\n";
@@ -138,34 +138,33 @@ final class SchemaTriggers
         $b .= '  IF audit_operation_seq IS NULL THEN RAISE EXCEPTION ' . self::OPERATION_MESSAGE . "; END IF;\n";
         if ($a['mode'] === 'changes') {
             $b .= "  IF TG_OP = 'TRUNCATE' THEN RETURN NULL; END IF;\n";
-            $b .= "  IF TG_OP <> 'INSERT' THEN audit_old := to_jsonb(OLD); END IF;\n";
-            $b .= "  IF TG_OP <> 'DELETE' THEN audit_new := to_jsonb(NEW); END IF;\n";
-            // A text column holding JSON, such as jsontext, is recorded as
-            // JSON, as it is on MySQL and SQLite.
+            // An insert and a delete record every column. An update compares
+            // each column's stored bytes and records only the changed columns,
+            // so an unchanged large value is neither parsed nor compared under
+            // a collation.
+            $b .= "  IF TG_OP = 'INSERT' THEN\n";
+            $b .= '    audit_new := ' . self::postgresRowObject($e, 'NEW', $q) . ";\n";
+            $b .= "  ELSIF TG_OP = 'DELETE' THEN\n";
+            $b .= '    audit_old := ' . self::postgresRowObject($e, 'OLD', $q) . ";\n";
+            $b .= "  ELSE\n";
             foreach (self::columns($e) as $c) {
-                $type = SchemaDdl::type($c, 'postgres');
-                if ($type !== 'text' && !str_starts_with($type, 'varchar')) {
-                    continue;
-                }
-                $path = self::literal('{' . $c['name'] . '}');
-                $b .= "  IF TG_OP <> 'INSERT' AND OLD." . $q($c['name']) . ' IS JSON THEN audit_old := jsonb_set(audit_old, ' . $path . ', OLD.' . $q($c['name']) . "::jsonb); END IF;\n";
-                $b .= "  IF TG_OP <> 'DELETE' AND NEW." . $q($c['name']) . ' IS JSON THEN audit_new := jsonb_set(audit_new, ' . $path . ', NEW.' . $q($c['name']) . "::jsonb); END IF;\n";
+                $name = self::literal($c['name']);
+                $b .= '    IF OLD.' . $q($c['name']) . '::text IS DISTINCT FROM NEW.' . $q($c['name']) . "::text THEN\n";
+                $b .= '      audit_old := audit_old || jsonb_build_object(' . $name . ', ' . self::postgresValue($c, 'OLD.' . $q($c['name'])) . ");\n";
+                $b .= '      audit_new := audit_new || jsonb_build_object(' . $name . ', ' . self::postgresValue($c, 'NEW.' . $q($c['name'])) . ");\n";
+                $b .= "    END IF;\n";
             }
+            $b .= "    IF audit_old::text = '{}' AND audit_new::text = '{}' THEN RETURN NULL; END IF;\n";
+            $b .= "  END IF;\n";
             if ($a['site'] !== '') {
-                $b .= '  audit_site := COALESCE(audit_new ->> ' . self::literal($a['site']) . ', audit_old ->> ' . self::literal($a['site']) . ");\n";
+                $b .= "  audit_site := CASE TG_OP WHEN 'DELETE' THEN OLD." . $q($a['site']) . '::text ELSE NEW.' . $q($a['site']) . "::text END;\n";
             }
             $keys = [];
             foreach ($e['pk'] as $k) {
                 $keys[] = self::literal($k);
-                $keys[] = 'COALESCE(audit_new -> ' . self::literal($k) . ', audit_old -> ' . self::literal($k) . ')';
+                $keys[] = "to_jsonb(CASE TG_OP WHEN 'DELETE' THEN OLD." . $q($k) . ' ELSE NEW.' . $q($k) . ' END)';
             }
             $b .= '  audit_key := jsonb_build_object(' . implode(', ', $keys) . ");\n";
-            $b .= "  IF TG_OP = 'UPDATE' THEN\n";
-            $b .= "    audit_old_full := audit_old;\n    audit_new_full := audit_new;\n";
-            $b .= "    audit_old := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(audit_old_full) WHERE audit_new_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n";
-            $b .= "    audit_new := COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(audit_new_full) WHERE audit_old_full -> key IS DISTINCT FROM value), '{}'::jsonb);\n";
-            $b .= "    IF audit_old = '{}'::jsonb AND audit_new = '{}'::jsonb THEN RETURN NULL; END IF;\n";
-            $b .= "  END IF;\n";
             foreach ($a['redact'] as $path) {
                 $p = self::literal('{' . implode(',', $path) . '}');
                 foreach (['audit_new', 'audit_old'] as $v) {
@@ -194,6 +193,31 @@ final class SchemaTriggers
     }
 
     /** A column value for a JSON object on MySQL and SQLite. */
+    /** A PostgreSQL JSON value; a text column holding JSON is recorded as JSON. */
+    private static function postgresValue(array $c, string $ref): string
+    {
+        $type = SchemaDdl::type($c, 'postgres');
+        if ($type === 'text' || str_starts_with($type, 'varchar')) {
+            return 'CASE WHEN ' . $ref . ' IS JSON THEN ' . $ref . '::jsonb ELSE to_jsonb(' . $ref . ') END';
+        }
+        return 'to_jsonb(' . $ref . ')';
+    }
+
+    /** Every column of a row as one JSON object, built in parts of 50 pairs. */
+    private static function postgresRowObject(array $e, string $row, \Closure $q): string
+    {
+        $parts = [];
+        foreach (array_chunk(self::columns($e), 50) as $chunk) {
+            $args = [];
+            foreach ($chunk as $c) {
+                $args[] = self::literal($c['name']);
+                $args[] = self::postgresValue($c, $row . '.' . $q($c['name']));
+            }
+            $parts[] = 'jsonb_build_object(' . implode(', ', $args) . ')';
+        }
+        return $parts === [] ? "'{}'::jsonb" : implode(' || ', $parts);
+    }
+
     private static function value(array $c, string $ref, string $dialect): string
     {
         if ($dialect === 'sqlite') {
@@ -300,14 +324,25 @@ final class SchemaTriggers
             $b .= '  SET audit_operation_seq = (SELECT ' . $q($l['operation']['columns'][0]) . ' FROM ' . $q($l['operation']['table']) . ' WHERE ' . $q($l['operation']['columns'][1]) . " = audit_operation_id LIMIT 1);\n";
             $b .= "  IF audit_operation_seq IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = " . self::OPERATION_MESSAGE . "; END IF;\n";
             if ($a['mode'] === 'changes') {
-                $old = $event !== 'INSERT' ? self::rowObject($e, 'OLD', 'mysql', $q) : 'JSON_OBJECT()';
-                $new = $event !== 'DELETE' ? self::rowObject($e, 'NEW', 'mysql', $q) : 'JSON_OBJECT()';
-                if ($event === 'UPDATE') {
-                    $old = self::unchanged($e, $old, 'mysql', $q);
-                    $new = self::unchanged($e, $new, 'mysql', $q);
+                if ($event === 'INSERT') {
+                    $b .= "  SET audit_old = JSON_OBJECT();\n";
+                    $b .= '  SET audit_new = ' . self::rowObject($e, 'NEW', 'mysql', $q) . ";\n";
+                } elseif ($event === 'DELETE') {
+                    $b .= '  SET audit_old = ' . self::rowObject($e, 'OLD', 'mysql', $q) . ";\n";
+                    $b .= "  SET audit_new = JSON_OBJECT();\n";
+                } else {
+                    // Only the changed columns are rendered, and stored bytes
+                    // decide a change; the column collation would treat values
+                    // that differ only in case or accents as equal.
+                    $b .= "  SET audit_old = JSON_OBJECT();\n  SET audit_new = JSON_OBJECT();\n";
+                    foreach (self::columns($e) as $c) {
+                        $path = self::literal('$."' . $c['name'] . '"');
+                        $b .= '  IF NOT (CAST(NEW.' . $q($c['name']) . ' AS BINARY) <=> CAST(OLD.' . $q($c['name']) . " AS BINARY)) THEN\n";
+                        $b .= '    SET audit_old = JSON_SET(audit_old, ' . $path . ', ' . self::value($c, 'OLD.' . $q($c['name']), 'mysql') . ");\n";
+                        $b .= '    SET audit_new = JSON_SET(audit_new, ' . $path . ', ' . self::value($c, 'NEW.' . $q($c['name']), 'mysql') . ");\n";
+                        $b .= "  END IF;\n";
+                    }
                 }
-                $b .= '  SET audit_old = ' . $old . ";\n";
-                $b .= '  SET audit_new = ' . $new . ";\n";
                 foreach ($a['redact'] as $path) {
                     $p = self::jsonPath($path);
                     foreach (['audit_new', 'audit_old'] as $v) {
