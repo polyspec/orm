@@ -478,7 +478,7 @@ func TestAuditRejectsRedactionThatCannotApply(t *testing.T) {
 	for _, c := range []struct{ name, redact, want string }{
 		{"unknown column", "missing", "unknown column audit_item.missing"},
 		{"key column", "seq", "is a key column"},
-		{"path into a plain column", "title.token", "is not a jsontext column"},
+		{"path into a plain column", "title.token", "holds no JSON"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			source := auditHead + auditLogLine +
