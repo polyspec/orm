@@ -14,10 +14,10 @@ hero:
       link: /interfaces
 features:
   - title: Common syntax and structure
-    details: The interface defines Query, Binding, Row, and Collection roles and checks Go, PHP, Rust, and TypeScript declarations and results.
+    details: One model type builds the query and holds the loaded row. Go, PHP, Rust, and TypeScript share its method names, value rules, and results.
     link: /interfaces
-  - title: Bind before execution
-    details: Bind the executor to the root query. Terminals receive values only, and relation queries use the root executor.
+  - title: Connect, then execute
+    details: A model receives its connection through connect. Inside a transaction callback, models use the active transaction, and relation children use the parent connection.
     link: /dsl
   - title: Three databases
     details: MySQL, PostgreSQL, and SQLite preserve query semantics. SQL differences and supported features are documented by dialect.
@@ -29,33 +29,33 @@ features:
 ### Go
 
 ```go [Go]
-count, err := gen.Battle().Using(db).GetCountByServiceSeq(7)
+count, err := model.Battle().Connect(slave1).GetCountByServiceSeq(7)
 ```
 
 ### PHP
 
 ```php [PHP]
-$count = Battle::query()->using($db)->getCountByServiceSeq(7);
+$count = (new Battle)->connect($slave1)->getCountByServiceSeq(7);
 ```
 
 ### Rust
 
 ```rust [Rust]
-let count = battle::query().using(&db).get_count_by_service_seq(7).await?;
+let count = Battle::new().connect(&slave1).get_count_by_service_seq(7).await?;
 ```
 
 ### TypeScript
 
 ```ts [TypeScript]
-const count = await Battle().using(db).getCountByServiceSeq(7)
+const count = await new Battle().connect(slave1).getCountByServiceSeq(7)
 ```
 
-Go `gen.Battle()` returns `*gen.BattleQuery`. Go passes `ctx` with the executor, and Rust and TypeScript use asynchronous results. Syntax follows each language; argument meaning, data structure roles, and execution rules are shared.
+Go `model.Battle()` returns `*model.BattleModel`. Rust and TypeScript use asynchronous results. Syntax follows each language; argument meaning, data structure roles, and execution rules are shared.
 
 [Read the guide](usage.md) for binding, reads, writes, and relations. See the [component diagram](interfaces-model.md) for ownership rules.
 
 ## Implementation status
 
-The implemented clients are **Go, PHP, Rust, and TypeScript**. All four clients provide generated entity APIs and native database execution. See the [implementation matrix](interface-implementation.md), [checklist](checklist.md), [public source readiness plan](public-readiness.md), and [S7 work list](s7.md) for verification scope and remaining work.
+The implemented clients are **Go, PHP, Rust, and TypeScript**. All four clients generate their models with their own build tool, plan statements in the application process, and execute them through the native database driver. No service runs beside the application. See the [implementation matrix](interface-implementation.md) and the [checklist](checklist.md) for verification scope and remaining work.
 
 [DSL](dsl.md) · [Schema](schema.md) · [IR / Plan](protocol.md) · [Complex query example](examples/complex-query.md) · [Documentation build and deployment](docs-development.md) · [한국어 문서](index.ko.md)

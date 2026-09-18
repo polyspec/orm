@@ -4,400 +4,325 @@
 
 ```mermaid
 classDiagram
-    class Query {
-        Binding binding
-        Optional_Function_Row_Key keySelector
-        Optional_LinkSelection linkSelection
-        Request request
-        query()
-        using()
-        scope()
-        predicate()
-        join()
-        relation()
-        get()
-        getOrNull()
-        gets()
-        getsAfter()
-        getsBefore()
-        stream()
-        getCount()
-        insert()
-        update()
-        delete()
-        sql()
-    }
-    class LinkSelection {
-        Text childKey
-        Text parentKey
-    }
-    class Where {
-        Borrow_Group group
-        Connector pendingConnector
-        Borrow_Request request
-        predicate()
+    class Model {
+        Core core
+        connect()
         and()
         or()
-        navigate()
+        raw()
+        relation()
+        relations()
+        limit()
+        duplication()
+        get()
+        gets()
+        getsCount()
+        getCount()
+        getSum()
+        getAvg()
+        getsPage()
+        getQuery()
+        create()
+        creates()
+        update()
+        save()
+        delete()
+        toArray()
+    }
+    class Core {
+        Columns columns
+        Group conditions
+        Optional_Db connection
+        List_Model joins
+        Optional_Limit limit
+        Text lock
+        List_Order order
+        List_Model relations
+        Optional_RowState row
+        List_Assignment sets
+        build()
     }
     class Request {
-        Optional_Error deferredError
         RequestIR ir
         List_Value params
-        parameter()
-        attach()
         shape()
     }
     class RequestIR {
-        Optional_Column aggregate
-        QueryKind kind
+        Text kind
         List_Assignment onDuplicate
         Optional_Optimistic optimistic
-        I64 parameterCount
-        Optional_Raw raw
+        Integer parameterCount
         QueryNode root
+        List_List_Integer rows
         Text schemaHash
         List_Assignment set
-        I32 version
+        Integer version
     }
     class QueryNode {
-        Projection columns
-        Entity entity
-        List_GroupKey groupBy
-        Optional_Group having
-        List_JoinEdge joins
+        Columns columns
+        Text entity
+        List_Text groupBy
+        List_Join joins
         Optional_Limit limit
-        Optional_Group on
+        Text lock
+        Group on
         RelationOptions options
         List_Order order
-        List_RelationEdge relations
-        Optional_ParameterIndex scopeParameter
-        Optional_Group where
+        List_Relation relations
+        Group where
     }
-    class Binding {
-        NativeExecutionControl control
-        Optional_Executor executor
-        resolve()
-    }
-    class Executor {
-        database()
-        queryStep()
-        streamStep()
-        writeStep()
-    }
-    class Connection {
-        Text dsn
-        ConnectionOptions options
-        connect()
-    }
-    class Db {
-        CompilerTransport compiler
-        RuntimeConfig config
-        ConnectionResource connection
-        PlanCache plans
-        StatementCache statements
-        transaction()
-        queryStep()
-        streamStep()
-        writeStep()
-    }
-    class Tx {
-        PinnedConnection connection
-        Borrow_Db database
-        TxState state
-        queryStep()
-        writeStep()
-        commit()
-        rollback()
-    }
-    class Row {
-        Binding binding
-        Optional_Error deferredError
-        OrderedMap_Column_Assignment dirty
-        OrderedMap_Column_Value identity
-        Bool loaded
-        Optional_Value originalVersion
-        Projection projection
-        Map_Relation_RelatedValue relations
-        ValueStore values
-        getColumn()
-        has()
-        setColumn()
-        relLoaded()
-        using()
-        update()
-        updateOptimistic()
-        delete()
-        deleteCascade()
-        export()
-    }
-    class Collection {
-        Map_Key_Row items
-        List_Key orderedKeys
-        put()
-        get()
-        first()
-        len()
-        keys()
-        entries()
-    }
-    class Page {
-        I64 current
-        Collection_Row items
-        I64 pages
-        I64 per
-        I64 total
-    }
-    class StreamResult {
-        I64 count
-        StreamState state
-    }
-    class Batch {
-        BatchOptions options
-        List_Request requests
-        BatchResult result
-        batchInsert()
-        batchUpsert()
-        batchUpdate()
-        batchDelete()
-    }
-    class AESKeyring {
-        I32 currentVersion
-        OrderedMap_I32_Secret versions
-        versions()
-        rotateRow()
-    }
-    class AESRotationSpec {
-        List_AESRotationColumn columns
-        Column primaryKey
-        Table table
-        Column versionColumn
-    }
-    class AESRotationStatus {
-        I32 current
-        I64 pending
-        I64 total
-        OrderedMap_I32_I64 versions
-    }
-    class Compiler {
-        compile()
-    }
-    class CompilerTransport {
-        compile()
-        metadata()
+    class Planner {
+        Dialect dialect
+        SchemaManifest manifest
+        validate()
+        plan()
     }
     class Plan {
-        QueryKind kind
+        Text kind
         Text schemaHash
         List_Step steps
     }
     class Step {
         Optional_Assemble assemble
         List_BindSlot bindSlots
-        I32 id
+        Integer id
         Optional_ParentRef parent
-        StepRole role
+        Text role
         Text sql
     }
     class Assemble {
-        List_ChildAttachment children
-        List_OutColumn columns
-        Entity entity
+        List_Child children
+        List_OutputColumn columns
+        Text entity
     }
-    class ExecutionRows {
-        Binding binding
-        List_Value params
-        Plan plan
-        OrderedMap_StepId_StepRows steps
-        related()
-        stepAssemble()
+    class Db {
+        Config config
+        Map_SchemaHash_Planner planners
+        Cache_Shape_Plan plans
+        ConnectionPool pool
+        Cache_Sql_Statement statements
+        connect()
+        transaction()
+        utils()
+        close()
+        stats()
+    }
+    class TransactionFlow {
+        List_TransactionFrame frames
+        begin()
+        savepoint()
+        commit()
+        rollback()
+    }
+    class Collection {
+        Map_Key_Value fetched
+        Map_Key_Model items
+        List_Key keys
+        get()
+        first()
+        keys()
+        connect()
+        delete()
+        toArray()
+    }
+    class Page {
+        Collection items
+        Integer page
+        Integer perPage
+        Integer totalCount
+        Integer totalPages
+    }
+    class Utils {
+        Db db
+        lock()
+        setLocal()
+        local()
+        schema()
+        privileges()
+        aes()
+        stats()
+    }
+    class SchemaUtils {
+        Db db
+        install()
+        exists()
+        installed()
+        empty()
+    }
+    class AesUtils {
+        Db db
+        status()
+        rotate()
+    }
+    class AESKeyring {
+        Integer currentVersion
+        Map_Integer_Secret versions
+        versions()
+    }
+    class AESRotationStatus {
+        Integer current
+        Integer pending
+        Integer total
+        Map_Integer_Integer versions
+    }
+    class Generator {
+        SchemaManifest manifest
+        List_Path scan
+        generate()
     }
     class Error {
-        Optional_NativeError cause
+        Optional_Error cause
         Text code
         Text message
     }
-    Query *-- Request : stores request
-    Query *-- Binding : stores binding
-    Where --> Request : references request
+    Model *-- Core : stores chain state
+    Core --> Db : uses connection
+    Core --> TransactionFlow : uses flow transaction
+    Core --> Request : builds
     Request *-- RequestIR : stores IR
     RequestIR *-- QueryNode : contains root
     QueryNode *-- QueryNode : contains child nodes
-    Binding --> Executor : selects executor
-    Db ..|> Executor : implements
-    Db --> CompilerTransport : compiles plans
-    Tx ..|> Executor : implements
-    Tx --> Db : uses database
-    Row *-- Binding : uses root binding
-    Row *-- Collection : contains relations
-    Collection o-- Row : contains ordered rows
-    Page *-- Collection : contains items
-    Compiler --> Plan : returns
+    Db *-- Planner : plans per schema
+    Planner --> Plan : returns
     Plan *-- Step : contains ordered steps
     Step *-- Assemble : maps results
-    ExecutionRows --> Plan : uses plan
-    ExecutionRows *-- Binding : uses binding
-    CompilerTransport --> Compiler : calls
-    Query --> AESKeyring : uses keys
-    Query --> AESRotationSpec : uses generated specification
-    Query --> AESRotationStatus : returns status
-    Query --> StreamResult : returns stream result
+    Db --> TransactionFlow : opens
+    Db --> Utils : returns
+    Utils --> SchemaUtils : returns
+    Utils --> AesUtils : returns
+    SchemaUtils --> Planner : registers schema
+    AesUtils --> AESKeyring : uses keys
+    AesUtils --> AESRotationStatus : returns status
+    Collection o-- Model : contains ordered models
+    Page *-- Collection : contains items
+    Model *-- Collection : contains relations
+    Generator --> Model : emits
 ```
 
 | Component | Behavior and state |
 |---|---|
-| Query | Stores mutable query state. Loaded results use Row. |
-| LinkSelection | Stores parent and child keys until relation or join construction. |
-| Where | Valid only during its callback. Does not execute SQL. |
-| Request | attach copies child state and shifts parameter indexes in the copy. |
-| RequestIR | Contains compiler input without parameter values. |
-| QueryNode | Contains the root or child condition tree. |
-| Binding | Stores an explicit executor. Does not select an ambient transaction. |
-| Executor | Defines database and pinned transaction execution operations. |
-| Connection | Creates a Db from one DSN URI. The URI scheme selects the database; compiler internals are hidden from callers. |
-| Db | Stores connections, plan cache, statement cache, and runtime configuration. |
-| Tx | commit or rollback invalidates queries and rows that use the transaction. |
-| Row | Separates loaded identity, values, pending changes, relations, and execution binding. |
-| Collection | A duplicate key replaces its value without changing order. Integer and string keys are distinct. |
-| Page | Requires a positive per value. total does not depend on the requested page. |
-| StreamResult | Reports whether the cursor was exhausted or stopped and how many independently owned rows were delivered. |
-| Batch | Executes homogeneous typed write requests in bounded chunks and one transaction. |
-| AESKeyring | Stores versioned AES keys and the current write version. |
-| AESRotationSpec | Contains generated identifiers and codec stages for one AES entity. |
-| AESRotationStatus | Contains row counts by stored AES key version. |
-| Compiler | Accepts RequestIR and returns an immutable Plan. Does not execute SQL. |
-| CompilerTransport | Sends typed compiler requests and returns typed plans and metadata. |
-| Plan | Contains cached execution steps and cannot change during execution. |
-| Step | Contains one SQL statement, bind slots, parent input, and result mapping. |
-| Assemble | Maps result columns and relation results to rows. |
-| ExecutionRows | Stores the plan, parameters, step results, and root execution binding. |
-| Error | Separates failures from empty results and default values. |
+| Model | Generated per entity. Holds the column values of a new or loaded row and the chain state in its Core. |
+| Core | Stores the chain state and builds a value-free request with a separate parameter list. |
+| Request | The request shape is the plan cache key; values stay in the parameter list. |
+| RequestIR | The common request shape of every client. |
+| QueryNode | The root, a join child, a relation child, or a subquery. |
+| Planner | Runs in the client process. Validates a request against the manifest and renders the dialect SQL. |
+| Plan | Immutable statements and assembly metadata cached per request shape. |
+| Step | One SQL statement of a plan. |
+| Assemble | Maps result columns by position to models, joins, and relations. |
+| Db | Owns the pool, the planners of registered schemas, and the plan and statement caches. |
+| TransactionFlow | Private. The transaction of the current execution flow; models without a connection use it. |
+| Collection | Ordered models keyed by primary key, keyName, or fetchKey. |
+| Page | The rows and counts of getsPage. |
+| Utils | Connection utilities; lock and local values need an active transaction. |
+| SchemaUtils | Installs a manifest with the client DDL renderer. |
+| AesUtils | Reports and rotates AES key versions of a model table. |
+| AESKeyring | Keys by version; the current version encrypts new values. |
+| AESRotationStatus | Row counts per key version. |
+| Generator | One per language. Reads schema.json and emits models; Go and Rust emit only the chain methods the sources call. |
+| Error | A stable code from docs/errors.yaml. |
 
 | From | To | Relation |
 |---|---|---|
-| Query | Request | stores request |
-| Query | Binding | stores binding |
-| Where | Request | references request |
+| Model | Core | stores chain state |
+| Core | Db | uses connection |
+| Core | TransactionFlow | uses flow transaction |
+| Core | Request | builds |
 | Request | RequestIR | stores IR |
 | RequestIR | QueryNode | contains root |
 | QueryNode | QueryNode | contains child nodes |
-| Binding | Executor | selects executor |
-| Db | Executor | implements |
-| Db | CompilerTransport | compiles plans |
-| Tx | Executor | implements |
-| Tx | Db | uses database |
-| Row | Binding | uses root binding |
-| Row | Collection | contains relations |
-| Collection | Row | contains ordered rows |
-| Page | Collection | contains items |
-| Compiler | Plan | returns |
+| Db | Planner | plans per schema |
+| Planner | Plan | returns |
 | Plan | Step | contains ordered steps |
 | Step | Assemble | maps results |
-| ExecutionRows | Plan | uses plan |
-| ExecutionRows | Binding | uses binding |
-| CompilerTransport | Compiler | calls |
-| Query | AESKeyring | uses keys |
-| Query | AESRotationSpec | uses generated specification |
-| Query | AESRotationStatus | returns status |
-| Query | StreamResult | returns stream result |
+| Db | TransactionFlow | opens |
+| Db | Utils | returns |
+| Utils | SchemaUtils | returns |
+| Utils | AesUtils | returns |
+| SchemaUtils | Planner | registers schema |
+| AesUtils | AESKeyring | uses keys |
+| AesUtils | AESRotationStatus | returns status |
+| Collection | Model | contains ordered models |
+| Page | Collection | contains items |
+| Model | Collection | contains relations |
+| Generator | Model | emits |
 
 An underscore in a diagram type name separates nested types. The table defines the exact types.
 
 | Field | Common type |
 |---|---|
-| Query.binding | `Binding` |
-| Query.keySelector | `Optional<Function<Row,Key>>` |
-| Query.linkSelection | `Optional<LinkSelection>` |
-| Query.request | `Request` |
-| LinkSelection.childKey | `Text` |
-| LinkSelection.parentKey | `Text` |
-| Where.group | `Borrow<Group>` |
-| Where.pendingConnector | `Connector` |
-| Where.request | `Borrow<Request>` |
-| Request.deferredError | `Optional<Error>` |
+| Model.core | `Core` |
+| Core.columns | `Columns` |
+| Core.conditions | `Group` |
+| Core.connection | `Optional<Db>` |
+| Core.joins | `List<Model>` |
+| Core.limit | `Optional<Limit>` |
+| Core.lock | `Text` |
+| Core.order | `List<Order>` |
+| Core.relations | `List<Model>` |
+| Core.row | `Optional<RowState>` |
+| Core.sets | `List<Assignment>` |
 | Request.ir | `RequestIR` |
 | Request.params | `List<Value>` |
-| RequestIR.aggregate | `Optional<Column>` |
-| RequestIR.kind | `QueryKind` |
+| RequestIR.kind | `Text` |
 | RequestIR.onDuplicate | `List<Assignment>` |
 | RequestIR.optimistic | `Optional<Optimistic>` |
-| RequestIR.parameterCount | `I64` |
-| RequestIR.raw | `Optional<Raw>` |
+| RequestIR.parameterCount | `Integer` |
 | RequestIR.root | `QueryNode` |
+| RequestIR.rows | `List<List<Integer>>` |
 | RequestIR.schemaHash | `Text` |
 | RequestIR.set | `List<Assignment>` |
-| RequestIR.version | `I32` |
-| QueryNode.columns | `Projection` |
-| QueryNode.entity | `Entity` |
-| QueryNode.groupBy | `List<GroupKey>` |
-| QueryNode.having | `Optional<Group>` |
-| QueryNode.joins | `List<JoinEdge>` |
+| RequestIR.version | `Integer` |
+| QueryNode.columns | `Columns` |
+| QueryNode.entity | `Text` |
+| QueryNode.groupBy | `List<Text>` |
+| QueryNode.joins | `List<Join>` |
 | QueryNode.limit | `Optional<Limit>` |
-| QueryNode.on | `Optional<Group>` |
+| QueryNode.lock | `Text` |
+| QueryNode.on | `Group` |
 | QueryNode.options | `RelationOptions` |
 | QueryNode.order | `List<Order>` |
-| QueryNode.relations | `List<RelationEdge>` |
-| QueryNode.scopeParameter | `Optional<ParameterIndex>` |
-| QueryNode.where | `Optional<Group>` |
-| Binding.control | `NativeExecutionControl` |
-| Binding.executor | `Optional<Executor>` |
-| Connection.dsn | `Text` |
-| Connection.options | `ConnectionOptions` |
-| Db.compiler | `CompilerTransport` |
-| Db.config | `RuntimeConfig` |
-| Db.connection | `ConnectionResource` |
-| Db.plans | `PlanCache` |
-| Db.statements | `StatementCache` |
-| Tx.connection | `PinnedConnection` |
-| Tx.database | `Borrow<Db>` |
-| Tx.state | `TxState` |
-| Row.binding | `Binding` |
-| Row.deferredError | `Optional<Error>` |
-| Row.dirty | `OrderedMap<Column,Assignment>` |
-| Row.identity | `OrderedMap<Column,Value>` |
-| Row.loaded | `Bool` |
-| Row.originalVersion | `Optional<Value>` |
-| Row.projection | `Projection` |
-| Row.relations | `Map<Relation,RelatedValue>` |
-| Row.values | `ValueStore` |
-| Collection.items | `Map<Key,Row>` |
-| Collection.orderedKeys | `List<Key>` |
-| Page.current | `I64` |
-| Page.items | `Collection<Row>` |
-| Page.pages | `I64` |
-| Page.per | `I64` |
-| Page.total | `I64` |
-| StreamResult.count | `I64` |
-| StreamResult.state | `StreamState` |
-| Batch.options | `BatchOptions` |
-| Batch.requests | `List<Request>` |
-| Batch.result | `BatchResult` |
-| AESKeyring.currentVersion | `I32` |
-| AESKeyring.versions | `OrderedMap<I32,Secret>` |
-| AESRotationSpec.columns | `List<AESRotationColumn>` |
-| AESRotationSpec.primaryKey | `Column` |
-| AESRotationSpec.table | `Table` |
-| AESRotationSpec.versionColumn | `Column` |
-| AESRotationStatus.current | `I32` |
-| AESRotationStatus.pending | `I64` |
-| AESRotationStatus.total | `I64` |
-| AESRotationStatus.versions | `OrderedMap<I32,I64>` |
-| Plan.kind | `QueryKind` |
+| QueryNode.relations | `List<Relation>` |
+| QueryNode.where | `Group` |
+| Planner.dialect | `Dialect` |
+| Planner.manifest | `SchemaManifest` |
+| Plan.kind | `Text` |
 | Plan.schemaHash | `Text` |
 | Plan.steps | `List<Step>` |
 | Step.assemble | `Optional<Assemble>` |
 | Step.bindSlots | `List<BindSlot>` |
-| Step.id | `I32` |
+| Step.id | `Integer` |
 | Step.parent | `Optional<ParentRef>` |
-| Step.role | `StepRole` |
+| Step.role | `Text` |
 | Step.sql | `Text` |
-| Assemble.children | `List<ChildAttachment>` |
-| Assemble.columns | `List<OutColumn>` |
-| Assemble.entity | `Entity` |
-| ExecutionRows.binding | `Binding` |
-| ExecutionRows.params | `List<Value>` |
-| ExecutionRows.plan | `Plan` |
-| ExecutionRows.steps | `OrderedMap<StepId,StepRows>` |
-| Error.cause | `Optional<NativeError>` |
+| Assemble.children | `List<Child>` |
+| Assemble.columns | `List<OutputColumn>` |
+| Assemble.entity | `Text` |
+| Db.config | `Config` |
+| Db.planners | `Map<SchemaHash,Planner>` |
+| Db.plans | `Cache<Shape,Plan>` |
+| Db.pool | `ConnectionPool` |
+| Db.statements | `Cache<Sql,Statement>` |
+| TransactionFlow.frames | `List<TransactionFrame>` |
+| Collection.fetched | `Map<Key,Value>` |
+| Collection.items | `Map<Key,Model>` |
+| Collection.keys | `List<Key>` |
+| Page.items | `Collection` |
+| Page.page | `Integer` |
+| Page.perPage | `Integer` |
+| Page.totalCount | `Integer` |
+| Page.totalPages | `Integer` |
+| Utils.db | `Db` |
+| SchemaUtils.db | `Db` |
+| AesUtils.db | `Db` |
+| AESKeyring.currentVersion | `Integer` |
+| AESKeyring.versions | `Map<Integer,Secret>` |
+| AESRotationStatus.current | `Integer` |
+| AESRotationStatus.pending | `Integer` |
+| AESRotationStatus.total | `Integer` |
+| AESRotationStatus.versions | `Map<Integer,Integer>` |
+| Generator.manifest | `SchemaManifest` |
+| Generator.scan | `List<Path>` |
+| Error.cause | `Optional<Error>` |
 | Error.code | `Text` |
 | Error.message | `Text` |

@@ -164,18 +164,6 @@ func TestCodecErrors(t *testing.T) {
 		t.Errorf("yaml integer key: %v (%v)", got, err)
 	}
 	for name, operation := range map[string]func() error{
-		"invalid public upload file": func() error {
-			_, err := Encode([]string{"curlfile", "serialize"}, map[string]any{"$type": "upload_file", "path": "", "mime": "text/plain", "name": "a.txt"})
-			return err
-		},
-		"invalid stored upload file": func() error {
-			_, err := Decode([]string{"curlfile", "serialize"}, `a:4:{s:12:"is_curl_file";b:1;s:4:"mime";s:10:"text/plain";s:4:"name";s:5:"a.txt";s:4:"path";s:0:"";}`)
-			return err
-		},
-		"invalid curlfile order": func() error {
-			_, err := Encode([]string{"serialize", "curlfile"}, map[string]any{})
-			return err
-		},
 		"invalid yaml order": func() error {
 			_, err := Encode([]string{"serialize", "yaml"}, map[string]any{})
 			return err

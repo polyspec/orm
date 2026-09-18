@@ -2,65 +2,80 @@ package orm
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/plan"
 )
 
-// rootINParts creates requests for a root IN predicate that would exceed the
-// driver's bind limit. It keeps the original parameter indexes so transforms,
-// encryption, and event masking remain unchanged.
-func rootINParts(r *Req, st *plan.Step, driver string) ([]*Req, error) {
+// rootINParts splits a root IN list that exceeds the driver bind limit into
+// requests whose results together equal the original result. Only an IN
+// joined to the other root conditions with AND is split, and only when the
+// statement has no ordering, range, or grouping that a merge would change.
+func rootINParts(r *request, st *plan.Step, driver string) ([]*request, error) {
 	limit := driverBindLimit(driver)
-	if len(st.BindSlots) > limit && (r.IR.Query.Limit != nil || len(r.IR.Query.Order) > 0 || r.IR.Query.Distinct || len(r.IR.Query.GroupBy) > 0 || len(r.IR.Query.GroupByExpr) > 0 || r.IR.Query.Having != nil || r.IR.Query.Keyset != nil) {
-		return nil, &ir.Error{Code: CodeIrInvalid, Msg: fmt.Sprintf("root query requires %d bind parameters but %s permits %d; root IN cannot be split with ordering, limiting, grouping, distinct, or keyset semantics", len(st.BindSlots), driver, limit)}
-	}
-	var candidates []*ir.Pred
-	collectINPreds(r.IR.Query.Where, &candidates)
-	if len(candidates) == 0 {
+	if len(st.BindSlots) <= limit {
 		return nil, nil
 	}
-	var target *ir.Pred
-	targetOrdinal := -1
-	for ordinal, p := range candidates {
-		if p.Op == "not_in" {
-			if len(st.BindSlots) > limit {
-				return nil, &ir.Error{Code: CodeIrInvalid, Msg: fmt.Sprintf("root NOT IN requires %d bind parameters but %s permits %d; NOT IN is not split because independent queries cannot preserve exclusion semantics", len(st.BindSlots), driver, limit)}
-			}
+	q := &r.ir.Query
+	tooLarge := &ir.Error{Code: CodeIrInvalid, Msg: fmt.Sprintf("the statement needs %d bind parameters but %s permits %d", len(st.BindSlots), driver, limit)}
+	if q.Limit != nil || len(q.Order) > 0 || len(q.GroupBy) > 0 || len(q.GroupByExpr) > 0 || q.Where == nil {
+		return nil, tooLarge
+	}
+	target := -1
+	for i, item := range q.Where.Items {
+		if item.Pred == nil {
 			continue
 		}
-		if p.Op == "in" && len(st.BindSlots) > limit && (target == nil || len(p.Ps) > len(target.Ps)) {
-			target = p
-			targetOrdinal = ordinal
+		if item.Pred.Conn == "or" || (i+1 < len(q.Where.Items) && itemConn(q.Where.Items[i+1]) == "or") {
+			return nil, tooLarge
+		}
+		if item.Pred.Op == "in" && item.Pred.Sub == nil && (target < 0 || len(item.Pred.Ps) > len(q.Where.Items[target].Pred.Ps)) {
+			target = i
 		}
 	}
-	if target == nil {
-		return nil, nil
+	if target < 0 {
+		return nil, tooLarge
 	}
-	available := limit - (len(st.BindSlots) - len(target.Ps))
+	ps := q.Where.Items[target].Pred.Ps
+	available := limit - (len(st.BindSlots) - len(ps))
 	if available < 1 {
-		return nil, &ir.Error{Code: CodeIrInvalid, Msg: fmt.Sprintf("root IN requires at least one list bind but %s permits %d total bind parameters", driver, limit)}
+		return nil, tooLarge
 	}
-	chunkSize := 1
-	for chunkSize*2 <= available {
-		chunkSize *= 2
+	chunk := 1
+	for chunk*2 <= available {
+		chunk *= 2
 	}
-	indexes := uniqueParamIndexes(r, target.Ps)
-	parts := make([]*Req, 0, (len(indexes)+chunkSize-1)/chunkSize)
-	for start := 0; start < len(indexes); start += chunkSize {
-		end := start + chunkSize
-		if end > len(indexes) {
-			end = len(indexes)
+	seen := map[string]bool{}
+	unique := make([]int, 0, len(ps))
+	for _, idx := range ps {
+		key := scalarKey(r.params[idx])
+		if !seen[key] {
+			seen[key] = true
+			unique = append(unique, idx)
 		}
-		part := &Req{IR: r.IR, Params: r.Params, Err: r.Err}
-		part.IR.Query = ir.CloneQuery(r.IR.Query)
-		if !replaceINPredOrdinal(part.IR.Query.Where, targetOrdinal, indexes[start:end]) {
-			return nil, &ir.Error{Code: CodeInternal, Msg: "root IN split target disappeared while cloning request"}
-		}
-		parts = append(parts, part)
+	}
+	var parts []*request
+	for start := 0; start < len(unique); start += chunk {
+		end := min(start+chunk, len(unique))
+		part := *r
+		part.ir.Query = ir.CloneQuery(r.ir.Query)
+		part.ir.Query.Where.Items[target].Pred.Ps = padIndexes(unique[start:end])
+		parts = append(parts, &part)
 	}
 	return parts, nil
+}
+
+func padIndexes(ps []int) []int {
+	n := 1
+	for n < len(ps) {
+		n <<= 1
+	}
+	out := make([]int, n)
+	copy(out, ps)
+	for i := len(ps); i < n; i++ {
+		out[i] = ps[len(ps)-1]
+	}
+	return out
 }
 
 func driverBindLimit(driver string) int {
@@ -70,64 +85,14 @@ func driverBindLimit(driver string) int {
 	return 65535
 }
 
-func collectINPreds(g *ir.Group, out *[]*ir.Pred) {
-	if g == nil {
-		return
+func itemConn(item ir.Item) string {
+	switch {
+	case item.Pred != nil:
+		return item.Pred.Conn
+	case item.Group != nil:
+		return item.Group.Conn
+	case item.Joined != nil:
+		return item.Joined.Conn
 	}
-	for i := range g.Items {
-		if g.Items[i].Pred != nil {
-			p := g.Items[i].Pred
-			if p.Op == "in" || p.Op == "not_in" {
-				*out = append(*out, p)
-			}
-		}
-		collectINPreds(g.Items[i].Group, out)
-		if g.Items[i].Nav != nil {
-			collectINPreds(g.Items[i].Nav.Group, out)
-		}
-	}
-}
-
-func replaceINPredOrdinal(g *ir.Group, targetOrdinal int, indexes []int) bool {
-	ordinal := 0
-	return replaceINPredOrdinalAt(g, targetOrdinal, &ordinal, indexes)
-}
-
-func replaceINPredOrdinalAt(g *ir.Group, targetOrdinal int, ordinal *int, indexes []int) bool {
-	if g == nil {
-		return false
-	}
-	for i := range g.Items {
-		if g.Items[i].Pred != nil && (g.Items[i].Pred.Op == "in" || g.Items[i].Pred.Op == "not_in") {
-			if *ordinal == targetOrdinal {
-				g.Items[i].Pred.Ps = append([]int(nil), indexes...)
-				return true
-			}
-			(*ordinal)++
-		}
-		if replaceINPredOrdinalAt(g.Items[i].Group, targetOrdinal, ordinal, indexes) {
-			return true
-		}
-		if g.Items[i].Nav != nil && replaceINPredOrdinalAt(g.Items[i].Nav.Group, targetOrdinal, ordinal, indexes) {
-			return true
-		}
-	}
-	return false
-}
-
-func uniqueParamIndexes(r *Req, indexes []int) []int {
-	out := make([]int, 0, len(indexes))
-	for _, idx := range indexes {
-		duplicate := false
-		for _, prior := range out {
-			if reflect.DeepEqual(r.Params[idx], r.Params[prior]) {
-				duplicate = true
-				break
-			}
-		}
-		if !duplicate {
-			out = append(out, idx)
-		}
-	}
-	return out
+	return ""
 }

@@ -1,0 +1,17 @@
+[package]
+name = "orm-schema"
+version = "0.0.1"
+edition = "2021"
+publish = false
+description = "Schema definitions for the Rust ORM: Mermaid diagrams to schema.json, DDL, and migrations between manifests"
+license = "MIT"
+repository = "https://github.com/polyspec/orm"
+readme = "../README.md"
+keywords = ["orm", "schema", "ddl", "migration"]
+categories = ["database"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+regex = "1"

@@ -1,111 +1,155 @@
-# protocol.md — IR(JSON) to Plan(JSON)
+# IR and Plan protocol
 
-The client renders the chain from [docs/dsl.md](dsl.md) into the IR below and caches plans by shape hash. The type definitions in `engine/ir/ir.go` and `engine/plan/plan.go` are authoritative.
+A client renders the model built with the [DSL](dsl.md) into the request below, plans it in the application process, and caches the plan by the request shape. The type definitions in `engine/ir/ir.go` and `engine/plan/plan.go` are authoritative; every client implements the same fields.
 
 ## 1. Request
+
 ```json
 {
   "ir_version": 1,
   "schema_hash": "cd21c76a45bcb2dd",
-  "kind": "one | all | count | group_count | count_distinct | sum | avg | min | max | paginate | insert | update | delete",
+  "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete",
   "entity": "battle",
-  "columns": {"mode": "" | "all" | "none", "add": [], "remove": [], "as": {"out": "col"}, "expr": {"out": "ST_Y(`location`)"}},
-  "joins":     [{"rel": "campaign", "kind": "inner|left", "query": { …Query…, "on": Group }}],
-  "where":     Group,
-  "relations": [{"rel": "items", "query": { …Query…, "key_by": "col", "flatten": true, "limit_per_parent": 3, "if_parent": {"column","value"}, "drop_child_key": true }}],
-  "order":     [{"column": "seq", "desc": true} | {"expr": "…"}],
-  "group_by":  ["seq"],
-  "group_by_expr": [{"expr": "ROUND(`score`)", "as": "score_bucket"}],
-  "limit":     {"offset": 0, "count": 20},
-  "keyset":    {"direction": "after|before", "values": [parameter indexes]},
-  "distinct":  false,
-  "force_index": "ik",
-  "agg": "amount",                                  // sum/avg
-  "set": [{"column","value"} | {"column","expr","binds"} | {"column","plus"} | {"column","minus"}],   // insert/update
-  "optimistic": {"column": "updated_ts", "value": "…"},                                                 // update
-  "debug": false
+  "columns": Columns,
+  "where": Group,
+  "joins": [Join],
+  "relations": [Relation],
+  "order": [Order],
+  "group_by": ["user_seq"],
+  "group_by_expr": [{"expr": "DATE({created_ts})", "as": "group_1"}],
+  "limit": {"offset": 0, "count": 20},
+  "force_index": "ix_service",
+  "lock": "update | share | update_nowait | share_nowait",
+  "agg": "read_count",
+  "set": [Assign],
+  "rows": [[4, 5], [6, 7]],
+  "on_duplicate": [Assign],
+  "optimistic": {"column": "updated_ts", "p": 3},
+  "n_params": 8
 }
 ```
-`Query` (shared by root, join child, and relation child) = `entity columns on where joins relations order group_by group_by_expr limit distinct force_index` plus relation options. A root keyset request adds `keyset: {"direction":"after|before","values":[parameter indexes]}`; values follow the normalized order, including missing primary-key columns. Keyset requires a positive limit with offset zero and rejects joins or relations as cursor order sources.
 
-### Group / Item
+Values never appear in the request. Every value is a parameter index into the client's parameter list, and `n_params` is the length of that list. The plan is therefore independent of values.
+
+| Field | Rule |
+|---|---|
+| `kind` | `one` and `all` read rows, `count` counts rows or groups, `group_count` returns grouped rows with `row_count`, `sum` and `avg` aggregate `agg`, `paginate` returns the page statement and a count statement, `insert`, `update`, and `delete` write rows |
+| `set` | assignments of `insert` and `update` |
+| `rows` | parameters of each additional inserted row in the column order of `set`; every `set` item is then a value assignment and `on_duplicate` is not allowed |
+| `on_duplicate` | assignments applied when an inserted row meets an existing unique key |
+| `optimistic` | `update` matches only when the column still equals the parameter; no match returns `OPTIMISTIC_LOCK` |
+| `lock` | root row selection only; the client allows it only inside a transaction |
+
+`Query` is the shape shared by the root, a join child, a relation child, and a subquery: `entity`, `columns`, `on` (join child only), `where`, `joins`, `relations`, `order`, `group_by`, `group_by_expr`, `limit`, `force_index`, `lock`, and the relation options.
+
+### 1.1 Columns
+
 ```json
-Group = {"conn": "and|or", "items": [Item…]}          // conn = connector to the preceding sibling; absent for the first item
-Item = {"pred": Pred} | {"group": Group} | {"nav": {"conn", "rel": "campaign", "group": Group}}
-Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt gte lt lte like like_binary contains starts_with ends_with
-      | {"conn", "column", "op": "in|not_in|between", "values": [...]}
-      | {"conn", "column", "op": "is_null|is_not_null"}
-      | {"conn", "column", "op": "eq_col|…", "ref": {"path": "campaign/service", "column": "seq"}}
-      | {"conn", "op": "match|match_boolean", "match": ["name","description"], "value": "kw"}
-      | {"conn", "expr": "DAYOFWEEK(`created_ts`) = ?", "binds": [1]}
+Columns = {
+  "mode": "" | "all" | "none",
+  "add": ["name"],
+  "remove": ["description"],
+  "expr": {"doubled": {"sql": "({read_count} * ?)", "ps": [0]}},
+  "fn": {"distance": {"column": "location", "fn": Func}},
+  "sub": {"read_total": Sub}
+}
 ```
-- Consecutive predicates use AND. The `or()` token sets `conn: "or"` on the next item. `and(fn)`/`or(fn)` creates a `group`. `<rel>(fn)` creates `nav`; that relation must be joined in the current statement.
-- A join child's `on` is ON. Its `where` is added to the parent WHERE in parentheses. The client does not create the terminal predicate for a join child chain (`JOIN_PREDICATE_PLACEMENT`).
-- Backtick columns in `expr` are checked and aliases are substituted for the current entity. `?` values use `binds` order.
+
+- `mode` `""` selects the non-lazy columns, `all` selects every column, and `none` keeps primary and foreign keys.
+- `expr`, `fn`, and `sub` add named outputs. An output name must not be a column of the entity.
+- The primary key and the keys that relations bind are always selected.
+
+### 1.2 Joins and relations
+
+```json
+Join = {"rel": "service_model", "kind": "inner | left", "left": "service_seq", "right": "seq", "query": Query}
+Relation = {"rel": "writer", "kind": "one | many", "left": "user_seq", "right": "seq", "query": Query,
+            "key_by": "user_seq", "flatten": false, "limit_per_parent": 2,
+            "if_parent": {"column": "is_close", "p": 4}, "no_cascade_delete": false}
+```
+
+- `rel` is the result name. `left` is a column of the parent and `right` a column of the child.
+- A join child's `on` group is added to the `ON` clause. Its `where` group is placed where a `joined` item names it, otherwise it is appended to the parent `WHERE` with `AND`.
+- A relation runs as a separate statement. `limit_per_parent` limits child rows per parent key, `if_parent` loads the child only for parents whose column equals the parameter, `flatten` merges the child columns into the parent row, `key_by` keys the child collection, and `no_cascade_delete` excludes the relation from recursive delete.
+
+### 1.3 Groups and predicates
+
+```json
+Group = {"conn": "and | or", "items": [Item]}
+Item  = {"pred": Pred} | {"group": Group} | {"joined": {"conn": "and | or", "join": "service_model"}}
+Pred  = {"conn", "column", "op", "p"}                                   // eq not_eq gt gte lt lte contains contains_binary
+      | {"conn", "column", "op": "in | not_in | between", "ps": [...]}
+      | {"conn", "column", "op": "is_null | is_not_null"}
+      | {"conn", "column", "op": "eq_col | not_eq_col | gt_col | gte_col | lt_col | lte_col", "ref": {"path": "service_model", "column": "seq"}}
+      | {"conn", "op": "match | match_boolean", "match": ["name", "description"], "p"}
+      | {"conn", "op": "tuple_in | tuple_not_in", "cols": ["tenant_id", "account_id"], "ps": [0, 1, 2, 3]}
+      | {"conn", "column", "op": "in | not_in", "sub": Sub}
+      | {"conn", "column", "op", "p", "fn": Func}
+      | {"conn", "column", "op", "value": Func}
+      | {"conn", "expr": "{read_count} > ?", "ps": [0]}
+Func  = {"name": "day_of_week | year | month | date | distance | point_x | point_y | now | today | days_ago | …", "ps": [0, 1]}
+Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
+```
+
+- `conn` joins an item to the previous item of its group; the first item has none.
+- `ref.path` is the join path from the statement root (`""` is the root, `a/b` a nested join) or `^`, the model that owns a subquery.
+- `fn` applies a column function to `column` before the comparison with `p`. `value` compares `column` with a value function. Functions are structure only; each dialect renders them as described in [dialects](dialects.md), and an unknown name returns `FUNCTION_UNKNOWN`.
+- `expr` fragments reference columns of the owning model as `{column}` and bind `?` values in `ps` order; the placeholder count must equal the bind count.
+- `contains` and `contains_binary` bind the value between wildcards; `contains_binary` compares case-sensitively.
+
+### 1.4 Order and assignments
+
+```json
+Order  = {"column": "seq", "desc": true} | {"column": "start_dt", "fn": Func} | {"random": true} | {"expr": "{seq} DESC"}
+Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} | {"column", "plus_p"} | {"column", "minus_p"}
+```
+
+A raw order expression carries its own direction. `minus_p` never stores a negative value.
 
 ## 2. Plan
+
 ```json
 {
   "schema_hash": "…", "kind": "all",
   "steps": [
     {"id": 0, "role": "main", "sql": "SELECT `a`.`seq` AS `a__seq`, … FROM `battle` AS `a` … LIMIT 0, 20",
-     "bind_slots": [{"from": "secret", "name": "aes"}, {"from": "param", "value": 5}, …],
+     "bind_slots": [{"from": "param", "param": 0}, {"from": "secret", "name": "aes"}],
      "assemble": {"entity": "battle", "alias": "a",
-                  "columns": [{"index": 0, "name": "seq", "column": "seq", "type": "i64"}, {"index": 23, "name": "aes_hex_email", "column": "aes_hex_email", "type": "string"}],
+                  "columns": [{"index": 0, "name": "seq", "column": "seq", "type": "i64"}],
                   "key": [{"column": "seq", "index": 0}],
-                  "children": [{"rel": "campaign", "kind": "join", "assemble": {…}}]}},
-    {"id": 1, "role": "count", "sql": "SELECT COUNT(*) FROM …", "bind_slots": […]}
+                  "children": [{"rel": "service_model", "kind": "join", "assemble": {…}}]}},
+    {"id": 1, "role": "relation", "sql": "…", "bind_slots": [{"from": "parent"}], "parent": {"step": 0, "keys": [{"column": "user_seq", "index": 14}]}}
   ]
 }
 ```
-- `bind_slots.from`: `param` (IR values; the executor applies aes/hex/ip when `host_styles` exists, and normalizes date/time/datetime values using the client representation) · `secret` (the executor AES key) · `parent` (relation IN values from the parent rows, expanded to N values) · `now` (executor UTC microsecond text for timestamps such as SQLite `updated_ts`).
-- Result mapping uses `index`. SELECT aliases such as `alias__col` are for debug output; the executor does not inspect their names.
-- `assemble.columns[].styles` are application decode stages such as gz/json/serialize. SQL stages such as aes/hex/ip are already in SQL.
-- `assemble.key` is the ordered collection identity. A regular row uses every primary-key component. A `group_count` row uses each `group_by` column followed by each `group_by_expr` alias.
-- `children[].kind`: `join` stores a same-row `assemble`; `one` and `many` attach rows from another step by ordered `parent_keys` and `child_keys` arrays.
 
-### Relation stages (S2)
-- Each relation has one step with `role: relation`, after its parent step. Nested and join-child relations follow the same rule; paginate is main → relations → `count`.
-- `step.parent = {step, keys:[{column,index},...], if_parent?{column,index,param}}`: the executor reads each key tuple in array order, removes tuples containing null, and deduplicates tuples in first-seen order. With `if_parent`, only parent rows equal to `params[param]` are used. No query is issued when the tuple set is empty.
-- A SQL `parent` slot is one placeholder. The executor expands it to N scalar placeholders for one key component or N parenthesized tuples for multiple components. N is rounded up to a power of two by repeating the last complete tuple. Go, PHP, Rust, and TypeScript use the same rule.
-- User `IN` lists use the same padding rule before the builder creates IR. This keeps one prepared statement per size class instead of one per list length.
-- When a root positive `IN` request exceeds the driver parameter limit, Go, PHP, Rust, and TypeScript split the list into power-of-two chunks, preserve the other parameters, merge row results, and sum count results. Queries with ordering, limits, distinct, grouping, having, keyset, or `NOT IN` are rejected with `IR_INVALID` when splitting would change their meaning.
-- `children[].kind = one` attaches the first child row. `many` creates a key map from the ordered `key` references, retains row order, and uses the last row for a duplicate key. Parents excluded by `if_parent` receive null or an empty collection.
-- `limit_per_parent n` uses a `ROW_NUMBER() OVER (PARTITION BY right ORDER BY …)` subquery. Output column order is unchanged.
-- `flatten` is one-only. It merges child columns into array/JSON output; a parent column wins on name collision. Typed accessors remain available.
-- `drop_child_key` sets `columns[].hidden = true`; the match column remains available to binding and key construction and is omitted only from array/JSON output.
-- `columns[].styles` are decoded in reverse order immediately after reading a row (`docs/codec.md`). MySQL JSON values may already be parsed by the driver.
-- `key_by` is many-only, `flatten` is one-only, and `if_parent.column` must belong to the parent entity. Violations return `IR_INVALID`.
+- `bind_slots.from` is `param` (a request parameter, with `transform` for full-text and contains values and `host_styles` for AES, hex, and IP stages), `secret` (the AES key), `config` (the AES key version), `parent` (relation key values), or `now` (the client clock in the connection time zone).
+- Rows are read by position. `assemble.columns[].styles` lists the codec stages the client decodes; SQL-side stages are already applied.
+- `assemble.key` is the collection identity: every primary-key component, or the group columns of a `group_count` row.
+- `children[].kind` is `join` for a child in the same row, and `one` or `many` for a relation step matched by `parent_keys` and `child_keys`.
+
+### 2.1 Relation steps
+
+- Each relation has one `relation` step after its parent step; nested relations follow the same rule, and `paginate` orders the steps as main, relations, count.
+- The client reads the parent keys of every parent row in order, removes rows with a null key, removes duplicates, and skips the statement when no key remains. With `if_parent`, only parents whose column equals the parameter are used.
+- The `parent` slot is one placeholder that the client expands to the key list. The list is padded to a power of two by repeating the last key, so one prepared statement serves each size class. A list longer than the driver bind limit is split into chunks.
+- `one` attaches the first child row and `many` a collection in child order; a duplicate collection key keeps the last row.
 
 ## 3. Errors
-`{"error": {"code": "…", "msg": "…"}}` — codes: `IR_INVALID CAPABILITY_UNSUPPORTED VERSION_MISMATCH SCHEMA_HASH_MISMATCH SCHEMA_INVALID SCHEMA_NOT_LOADED ENTITY_UNKNOWN COLUMN_UNKNOWN RELATION_UNKNOWN INDEX_UNKNOWN OPERATOR_UNKNOWN OPERATOR_NOT_ALLOWED OR_AT_GROUP_START EMPTY_IN ENTITY_NOT_JOINED LIMIT_IN_RELATION COLUMN_ALIAS_CONFLICT DIALECT_UNKNOWN FRAME_INVALID OP_UNKNOWN INTERNAL`. Executor codes include `OPTIMISTIC_LOCK DEADLOCK DUPLICATE_KEY`.
 
-## 4. Transport
+Errors carry a code from [errors.yaml](errors.yaml) and a message, for example `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, and `COLUMN_ALIAS_CONFLICT`. Executors add `CONFIG`, `OPTIMISTIC_LOCK`, `DEADLOCK`, `DUPLICATE_KEY`, and `FOREIGN_KEY`.
 
-The common compiler service is `orm.compiler.v1.CompilerService` from `proto/orm/compiler/v1/compiler.proto`.
+## 4. Planning in the client
 
-| RPC | Connect path | Input | Output |
-|---|---|---|---|
-| Compile | `/orm.compiler.v1.CompilerService/Compile` | `CompileRequest` | `CompileResponse.plan` or `CompileResponse.error` |
-| GetMetadata | `/orm.compiler.v1.CompilerService/GetMetadata` | `GetMetadataRequest` | schema hash, dialect, IR version |
+Every client validates and plans requests in the application process. No compiler service, daemon, or extension is involved.
 
-`ormd -listen 127.0.0.1:8080 -schema schema/schema.json` accepts Connect unary requests with binary Protobuf. Go, PHP, Rust, and TypeScript provide `CompilerTransport` and `ConnectCompiler` with the same two operations. `make proto-check` executes one scope-sensitive request through all four implementations and compares the complete normalized result.
+| Client | Validation, planning, dialects, and DDL |
+|---|---|
+| Go | `engine/ir`, `engine/planner`, `engine/dialect`, `internal/ormgen` DDL |
+| PHP | `clients/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Ddl.php` |
+| Rust | `clients/rust/orm/src/engine/` |
+| TypeScript | `clients/typescript/src/engine/` |
 
-`contracts/interfaces.json` defines the service path, operation names, request and response types, errors, and native symbols for all four transports. The Protobuf check rejects missing interface methods or implementation declarations. Runtime symbol snapshots exclude generated Protobuf files; `proto/generated.sha256.json` checks every generated file instead.
+A connection loads `schema.json`, verifies its `schema_hash` against its content, and rejects generated models with a different hash (`SCHEMA_HASH_MISMATCH`). The plan cache key is the schema hash and the request shape. Parameter values are not part of the key.
 
-The Go, PHP, Rust, and TypeScript database executors compile every plan-cache miss through the configured `CompilerTransport`; startup rejects mismatched schema hash, dialect, and IR version metadata. The default compiler paths are Go in-process, Rust WASM, PHP Unix socket, and TypeScript Connect/Protobuf. Connect is also the shared compiler service implementation for all four clients. All four executors pass 63 vectors on MySQL, PostgreSQL, and SQLite through their declared compiler implementation.
-
-The cache key is the schema hash plus the request shape and IN cardinality. Parameter values are excluded.
-
-### Write extension (S3)
-- `on_duplicate: [Assign]` is insert-only and excludes PK/auto. The planner creates `INSERT … ON DUPLICATE KEY UPDATE a = ?, b = b + ?[, pk = LAST_INSERT_ID(pk)]`. The executor reads the row again by that id.
-- `no_cascade_delete: true` sets `children[].cascade = false`. Cascade applies only when the related row has the foreign key to the current row. `deleteCascade` removes loaded cascade relations depth first, then removes the current row. A parent-side relation is never removed.
-- `save`, query `update`/`delete`, and `sql` are executor rules without additional IR (`docs/lanes/s3.md`).
-
-### Aggregate extension (S4)
-- `kind`: `count_distinct`, `min`, and `max` with `agg` as the column. `count` with `group_by` returns the number of groups.
-- `group_by_expr`: `{expr, as}` entries. Backtick columns use the current entity; `as` is the output name for `getsCount`. Bind values are unsupported.
-- `having: Group` is root-only and requires `group_by` or `group_by_expr`. It uses the same group syntax and aggregate `expr` items.
-
-### Dialects (S6)
-The plan shape is independent of dialect. Dialect handling changes identifier quoting, placeholders, LIKE, upsert, fulltext, and SQL-side versus application-side style stages according to `docs/dialects.md`. Unsupported operators fail at compile time with `OPERATOR_NOT_ALLOWED`.
+The four planners produce the same SQL and bind slots for the same request. `tests/conformance` runs the same vectors in the four clients on MySQL, PostgreSQL, and SQLite and compares the statements, binds, and results with the recorded expectations.

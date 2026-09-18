@@ -19,10 +19,11 @@
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
 | `base64` | base64(serialize(v)) | unserialize(base64_decode) | 동일 |
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |
-| `curlfile` | 업로드 레코드 변환 후 serialize | unserialize 후 업로드 레코드 복원 | `['curlfile','serialize']` |
 | `yaml` | YAML 1.2 문서 | YAML 1.2 파싱 | 단일 문서와 공통 값 모델 |
 
 ## 값 모델
+`json`과 `jsons` 단계는 텍스트를 `jsontext` 컬럼에 저장한다. 이 컬럼은 세 데이터베이스에서 모두 텍스트이므로 저장한 텍스트를 적은 그대로 읽는다. 데이터베이스 안에서 질의하는 데이터는 컬럼이나 자식 테이블로 만들며, ORM에는 JSON 경로 조건과 JSON 인덱스가 없다.
+
 스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵. JSON과 JSONS 컬럼은 객체 멤버 순서를 보존하고 빈 객체와 빈 배열을 구분하는 ordered-json 값 트리를 사용한다.
 
 Go JSON codec의 `Decode`는 `*orderedjson.Value`를 반환하고 `Encode`는 이 값을 입력으로 받는다. 사용자 값에는 Go의 `encoding/json`을 사용하지 않는다. portable scalar/list/map 값, named scalar type, `json` field tag가 있는 Go 구조체는 ordered-json으로 명시적으로 변환하며, 파싱한 ordered-json 값은 원래 순서와 노드 종류를 유지한다. `jsontext.Value`와 `json.RawMessage`는 이미 인코딩된 raw JSON 값일 때만 받아 즉시 ordered-json으로 파싱한다. 지원하지 않는 Go kind, 문자열이 아닌 map key, `[]byte`, 유한하지 않은 수는 `CODEC_ENCODE`를 반환한다.
@@ -40,14 +41,6 @@ PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하�
 - **쓰기(serialize/base64/gz)**: 리스트 → `i:0…i:n-1` 키, 맵 → 키가 정규 십진 정수(`"7"`, `"-3"`, 선행 0·`+` 없음)면 `i:7;`, 아니면 `s:…`. PHP가 같은 논리 배열을 serialize한 바이트와 같다(맵 키 순서가 같을 때).
 - **쓰기(json)**: portable map은 결정적인 순서로 ordered-json에 기록하고, 이미 파싱한 ordered-json 값은 원래 멤버 순서를 유지한다. 슬래시·비ASCII는 이스케이프하지 않는다.
 
-`curlfile`은 모든 클라이언트에서 다음 공개 레코드를 사용한다.
-
-```json
-{"$type":"upload_file","path":"/tmp/report.txt","mime":"text/plain","name":"report.txt"}
-```
-
-인코딩은 PHP serialize 전에 이 레코드를 재귀적으로 `{"is_curl_file":true,"mime":"text/plain","name":"report.txt","path":"/tmp/report.txt"}`로 변환한다. 디코딩은 공개 레코드로 복원한다. `path`와 `name`은 비어 있지 않은 문자열이어야 하고 `mime`은 문자열이어야 하며 추가 필드를 허용하지 않는다. 코덱은 경로를 열거나 PHP `CURLFile`을 생성하지 않는다. 파일 입출력은 호출자가 수행한다.
-
 `yaml`은 YAML 1.2 문서 하나를 저장한다. 출력 값은 공통 값 모델을 사용한다. 매핑 키는 문자열이며 정수 YAML 키는 PHP 배열과의 호환을 위해 십진 문자열로 변환한다. 중복 키, 다중 문서, alias, anchor, 명시적 tag, 유한하지 않은 실수, collection 키, 따옴표 없는 boolean·null·실수 키는 `CODEC_DECODE`를 반환한다. YAML 출력 텍스트는 클라이언트마다 다를 수 있으므로 클라이언트 간 검사는 디코딩 값을 비교한다.
 
 `point`는 스타일이 아닌 컬럼 타입이다. 공개 값은 `[x, y]`이며 Go는 `orm.Point`, PHP는 `array{float,float}`, Rust는 `orm::Point`, TypeScript는 `Point`를 사용한다. `parsePoint`·`parse_point`·`Codec::point`는 `POINT(x y)`와 PostgreSQL 출력 `(x,y)`를 입력받는다. 쓰기 변환은 `POINT(x y)`를 생성한다. 좌표가 두 개가 아니면 `CODEC_DECODE`, 출력 좌표가 유한하지 않으면 `CODEC_ENCODE`를 반환한다.
@@ -57,7 +50,6 @@ PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하�
 - NULL, 빈 문자열 → `null`.
 - `json`/`jsons`: **`[]`·`{}`·`0`·`""`는 그 값 그대로** 유지한다. 파싱 실패 → 에러 `CODEC_DECODE`.
 - `serialize` 계열: 형식 오류 → `CODEC_DECODE`. `O:`(객체)·`C:`·참조(`R:`/`r:`) → `CODEC_UNSUPPORTED`.
-- 잘못된 공개 업로드 레코드는 `CODEC_ENCODE`, 잘못된 저장 업로드 마커는 `CODEC_DECODE`다. 첫 위치가 아닌 `curlfile` 단계는 `CODEC_UNSUPPORTED`다.
 - YAML 파싱·값 모델 오류는 `CODEC_DECODE`, YAML 인코딩 오류는 `CODEC_ENCODE`다. 첫 위치가 아닌 `yaml` 단계는 `CODEC_UNSUPPORTED`다.
 - 잘못된 point 입력은 `CODEC_DECODE`를 반환한다. NaN 또는 무한 값이 포함된 point 출력은 `CODEC_ENCODE`를 반환한다.
 - 실수: PHP `serialize_precision=-1`과 같은 최단 왕복 표기(`d:1.5;`). 정수 범위를 넘는 실수는 지수 표기.

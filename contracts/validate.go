@@ -15,128 +15,150 @@ func compact(s string) string {
 	}, s)
 }
 
-// Validate the language adapters against logical inputs/outputs. Updating a
-// native signature and its snapshot together must not change the common API.
+var languages = []string{"go", "php", "rust", "typescript"}
+
+// outputs maps a common result to the native return type of each language.
+// A native signature can change only together with this table, so a recorded
+// symbol snapshot cannot silently change the common API.
+var outputs = map[string]map[string]string{
+	"Chain":             {"go": "*{Entity}Model", "php": "static", "rust": "Self", "typescript": "this"},
+	"Optional<Model>":   {"go": "(*{Entity}Model,error)", "php": "?static", "rust": "orm::Result<Option<Self>>", "typescript": "Promise<this|null>"},
+	"Collection<Model>": {"go": "(*orm.Collection[*{Entity}Model],error)", "php": "Orm\\Collection", "rust": "orm::Result<orm::Collection<Self>>", "typescript": "Promise<Collection<this>>"},
+	"Count":             {"go": "(int64,error)", "php": "int", "rust": "orm::Result<i64>", "typescript": "Promise<number>"},
+	"Aggregate":         {"go": "(float64,error)", "php": "float", "rust": "orm::Result<f64>", "typescript": "Promise<number>"},
+	"Page<Model>":       {"go": "(*orm.Page[*{Entity}Model],error)", "php": "Orm\\Page", "rust": "orm::Result<orm::Page<Self>>", "typescript": "Promise<Page<this>>"},
+	"Statement":         {"go": "(*orm.Statement,error)", "php": "array", "rust": "orm::Result<orm::Statement>", "typescript": "Promise<{sql:string;binds:unknown[];}>"},
+	"WrittenModel":      {"go": "(*{Entity}Model,error)", "php": "static", "rust": "orm::Result<Self>", "typescript": "Promise<this>"},
+	// Rust updates the borrowed model in place instead of returning it.
+	"UpdatedModel":      {"go": "(*{Entity}Model,error)", "php": "static", "rust": "orm::Result<()>", "typescript": "Promise<this>"},
+	"InsertedRows":      {"go": "(int64,error)", "php": "int", "rust": "orm::Result<u64>", "typescript": "Promise<number>"},
+	"ModelSuccess":      {"go": "error", "php": "void", "rust": "orm::Result<()>", "typescript": "Promise<void>"},
+	"Success":           {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "Promise<void>"},
+	"RowMap":            {"go": "map[string]any", "php": "array", "rust": "orm::serde_json::Value", "typescript": "Record<string,unknown>"},
+	"Db":                {"go": "(*orm.DB,error)", "php": "Orm\\Db", "rust": "Result<Db>", "typescript": "Promise<Db>"},
+	"TransactionResult": {"go": "error", "php": "mixed", "rust": "Transaction<'_,F>", "typescript": "Promise<T>"},
+	"Utils":             {"go": "*Utils", "php": "Orm\\Utils", "rust": "Utils<'_>", "typescript": "Utils"},
+	"SchemaUtils":       {"go": "*SchemaUtils", "php": "Orm\\SchemaUtils", "rust": "SchemaUtils<'_>", "typescript": "SchemaUtils"},
+	"AesUtils":          {"go": "*AESUtils", "php": "Orm\\AesUtils", "rust": "AesUtils<'_>", "typescript": "AesUtils"},
+	"AesRotationStatus": {"go": "(AESRotationStatus,error)", "php": "Orm\\AesRotationStatus", "rust": "Result<AesRotationStatus>", "typescript": "Promise<AesRotationStatus>"},
+	"RotatedRows":       {"go": "(int,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
+}
+
+// inputs maps a common argument list to the native parameters of each
+// language. Rust receivers are checked separately.
+var inputs = map[string]map[string]string{
+	"":                    {"go": "", "php": "", "rust": "", "typescript": ""},
+	"Connection":          {"go": "db*orm.DB", "php": "Orm\\Db$db", "rust": "db:&orm::Db", "typescript": "db:Db"},
+	"ConnectorArgument":   {"go": "args...any", "php": "mixed...$args", "rust": "arg:A", "typescript": "arg?:((q:this)=>unknown)|Model"},
+	"RawSql":              {"go": "sqlstring,binds...any", "php": "string$sql,array$binds=[]", "rust": "sql:&str,binds:implorm::Binds", "typescript": "sql:string,...binds:unknown[]"},
+	"ChildModel":          {"go": "childorm.Model", "php": "Orm\\Model$child", "rust": "child:implorm::Model", "typescript": "child:Model"},
+	"OffsetCount":         {"go": "offset,countint", "php": "int$offset,int$count", "rust": "offset:u32,count:u32", "typescript": "offset:number,count:number"},
+	"DuplicateModel":      {"go": "m*{Entity}Model", "php": "Orm\\Model$model", "rust": "m:Self", "typescript": "model:this"},
+	"PagePerPage":         {"go": "page,perPageint", "php": "int$page,int$perPage", "rust": "page:u32,per_page:u32", "typescript": "page:number,perPage:number"},
+	"Rows":                {"go": "rows[]*{Entity}Model", "php": "array$rows", "rust": "rows:Vec<Self>", "typescript": "rows:readonlythis[]"},
+	"Optimistic":          {"go": "optimistic...bool", "php": "bool$optimistic=false", "rust": "optimistic:bool", "typescript": "optimistic=false"},
+	"Recursive":           {"go": "recursive...bool", "php": "bool$recursive=false", "rust": "recursive:bool", "typescript": "recursive=false"},
+	"ConnectionOptions":   {"go": "dsn,schemaPathstring,cfgorm.Config", "php": "string$dsn,Orm\\Config$config", "rust": "dsn:&str,pool_size:u32,mutcfg:Config", "typescript": "dsn:string,schemaPath:string,options:ConnectOptions={}"},
+	"TransactionCallback": {"go": "fnfunc()error,options...TransactionOption", "php": "Closure$fn,string$isolation=\"\",bool$readOnly=false,int$timeoutMs=0,int$retry=3", "rust": "f:F", "typescript": "callback:()=>Promise<T>|T,options:TransactionOptions={}"},
+	"LockKey":             {"go": "keystring", "php": "string$key", "rust": "key:&str", "typescript": "key:string"},
+	"ManifestJson":        {"go": "manifestJSON[]byte", "php": "string$manifestJson", "rust": "manifest_json:&[u8]", "typescript": "manifestJson:string"},
+	"ModelKeyring":        {"go": "mModel,keyringAESKeyring", "php": "Orm\\Model$model,Orm\\AesKeyring$keyring", "rust": "m:&M,keyring:&AesKeyring", "typescript": "model:unknown,keyring:AesKeyring"},
+}
+
+// validateRules checks every native adapter against the common inputs and
+// outputs. Updating a native signature and its snapshot together must not
+// change the common API.
 func validateRules(d document) error {
 	seen := map[string]bool{}
-	outputs := map[string]map[string]string{
-		"Required<Row>":     {"go": "(*{Entity}Row,error)", "php": "App\\Orm\\{Entity}Row", "rust": "Result<{Entity}Row>", "typescript": "Promise<{Entity}Row>"},
-		"Optional<Row>":     {"go": "(*{Entity}Row,error)", "php": "?App\\Orm\\{Entity}Row", "rust": "Result<Option<{Entity}Row>>", "typescript": "Promise<{Entity}Row|null>"},
-		"Collection<Row>":   {"go": "(*orm.Collection[{Entity}Row],error)", "php": "Orm\\Collection", "rust": "Result<Collection<{Entity}Row>>", "typescript": "Promise<Collection<{Entity}Row>>"},
-		"I64":               {"go": "(int64,error)", "php": "int", "rust": "Result<i64>", "typescript": "Promise<number>"},
-		"AffectedRows":      {"go": "(int64,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
-		"Page<Row>":         {"go": "(*orm.Page[{Entity}Row],error)", "php": "Orm\\Page", "rust": "Result<Page<{Entity}Row>>", "typescript": "Promise<Page<{Entity}Row>>"},
-		"KeysetPage<Row>":   {"go": "(*orm.KeysetPage[{Entity}Row],error)", "php": "Orm\\KeysetPage", "rust": "Result<orm::KeysetPage<{Entity}Row>>", "typescript": "Promise<KeysetPage<{Entity}Row>>"},
-		"SqlStatement":      {"go": "(*orm.Statement,error)", "php": "array", "rust": "Result<db::Sql>", "typescript": "Promise<{sql:string;binds:unknown[];}>"},
-		"Success":           {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "Promise<void>"},
-		"Bool":              {"go": "bool", "php": "bool", "rust": "bool", "typescript": "boolean"},
-		"RowMap":            {"go": "(map[string]any,error)", "php": "array", "rust": "Result<serde_json::Value>", "typescript": "Record<string,unknown>"},
-		"Query":             {"go": "*{Entity}Query", "php": "static", "rust": "Self", "typescript": "this"},
-		"Where":             {"go": "*{Entity}Where", "php": "static", "rust": "Self", "typescript": "this"},
-		"Row":               {"go": "*{Entity}Row", "php": "static", "rust": "&mutSelf", "typescript": "this"},
-		"AESRotationStatus": {"go": "(orm.AESRotationStatus,error)", "php": "Orm\\AesRotationStatus", "rust": "Result<orm::aes_rotation::AesRotationStatus>", "typescript": "Promise<AesRotationStatus>"},
-		"RowCount":          {"go": "(int,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
-		"StreamResult":      {"go": "(orm.StreamResult,error)", "php": "Orm\\StreamResult", "rust": "Result<db::StreamResult>", "typescript": "Promise<StreamResult>"},
-	}
 	for _, r := range d.Rules {
 		if seen[r.ID] {
 			return fmt.Errorf("duplicate rule %s", r.ID)
 		}
 		seen[r.ID] = true
-		role := strings.Split(r.ID, ".")[0]
-		for _, lang := range []string{"go", "php", "rust", "typescript"} {
+		if r.For != "entity" && r.For != "once" {
+			return fmt.Errorf("%s: unsupported expansion %s", r.ID, r.For)
+		}
+		want, ok := outputs[r.Output]
+		if !ok {
+			return fmt.Errorf("%s unknown output %s", r.ID, r.Output)
+		}
+		args, ok := inputs[strings.Join(r.Inputs, ",")]
+		if !ok {
+			return fmt.Errorf("%s unrecognized input contract %v", r.ID, r.Inputs)
+		}
+		for _, lang := range languages {
 			n, ok := r.Native[lang]
 			if !ok {
 				return fmt.Errorf("%s missing %s", r.ID, lang)
 			}
 			sig := compact(n.Signature)
-			begin := strings.Index(sig, "(")
+			begin := parameterStart(sig)
 			end := matchingParen(sig, begin)
 			if begin < 0 || end < begin {
 				return fmt.Errorf("%s/%s invalid signature", r.ID, lang)
 			}
-			args, ret := sig[begin+1:end], sig[end+1:]
-			if lang == "php" {
+			got, ret := sig[begin+1:end], sig[end+1:]
+			switch lang {
+			case "php", "typescript":
 				ret = strings.TrimPrefix(ret, ":")
-			}
-			if lang == "rust" {
+			case "rust":
 				ret = strings.TrimPrefix(ret, "->")
-			}
-			if lang == "typescript" {
-				ret = strings.TrimPrefix(ret, ":")
-			}
-			want, ok := outputs[r.Output][lang]
-			if !ok {
-				return fmt.Errorf("%s unknown output %s", r.ID, r.Output)
-			}
-			if r.ID == "Query.query" && lang == "rust" {
-				want = "{Entity}"
-			}
-			if r.ID == "Query.query" && lang == "typescript" {
-				want = "{Entity}Query"
-			}
-			if ret != want {
-				return fmt.Errorf("%s/%s return %s does not implement %s", r.ID, lang, ret, r.Output)
-			}
-			if lang == "rust" {
-				if strings.Contains(args, "self") {
-					parts := strings.SplitN(args, ",", 2)
-					receiver := parts[0]
-					args = ""
-					if len(parts) == 2 {
-						args = parts[1]
-					}
-					if len(r.Errors) > 0 && role == "Query" && receiver != "&mutself" && r.For != "aes_entity" {
-						return fmt.Errorf("%s must borrow query for execution", r.ID)
+				receiver, rest, _ := strings.Cut(got, ",")
+				if strings.HasSuffix(receiver, "self") {
+					got = rest
+					if wantReceiver := receiverOf(r); receiver != wantReceiver {
+						return fmt.Errorf("%s Rust receiver %s, want %s", r.ID, receiver, wantReceiver)
 					}
 				}
-				if len(r.Errors) > 0 && r.ID != "Row.export" && !strings.Contains(sig, "asyncfn") {
+				if len(r.Errors) > 0 && r.Output != "TransactionResult" && !strings.Contains(sig, "asyncfn") {
 					return fmt.Errorf("%s Rust execution must be async", r.ID)
 				}
 			}
-			var permitted []string
-			switch strings.Join(r.Inputs, ",") {
-			case "":
-				permitted = []string{""}
-			case "ColumnValue":
-				permitted = map[string][]string{"go": {"v{type}"}, "php": {"{type}$v", "{type}$value"}, "rust": {"v:{type}"}, "typescript": {"value:{type}"}}[lang]
-			case "Executor,NativeExecutionControl":
-				permitted = map[string][]string{"go": {"ctxcontext.Context,exorm.Exec"}, "php": {"Orm\\Db|PDO$db"}, "rust": {"ex:&implExec"}, "typescript": {"database:Db"}}[lang]
-			case "Executor":
-				permitted = map[string][]string{"go": {"exorm.Exec"}, "php": {"Orm\\Db|PDO$db"}, "rust": {"ex:&implExec"}, "typescript": {"database:Db"}}[lang]
-			case "page,per":
-				permitted = map[string][]string{"go": {"page,perint"}, "php": {"int$page,int$per"}, "rust": {"page:u32,per:u32"}, "typescript": {"page:number,per:number"}}[lang]
-			case "Cursor,PositiveLimit":
-				permitted = map[string][]string{"go": {"cursorstring,perint"}, "php": {"string$cursor,int$per"}, "rust": {"cursor:&str,per:u32"}, "typescript": {"cursor:string,per:number"}}[lang]
-			case "AESKeyring":
-				permitted = map[string][]string{"go": {"keyringorm.AESKeyring"}, "php": {"Orm\\AesKeyring$keyring"}, "rust": {"keyring:&orm::aes_rotation::AesKeyring"}, "typescript": {"keyring:AesKeyring"}}[lang]
-			case "RowVisitor":
-				permitted = map[string][]string{
-					"go":         {"visitfunc(*{Entity}Row)bool"},
-					"php":        {"callable$visit"},
-					"rust":       {"visit:implFnMut({Entity}Row)->bool"},
-					"typescript": {"visitor:(row:{Entity}Row)=>boolean|Promise<boolean>"},
-				}[lang]
-			case "Column", "Relation":
-				permitted = map[string][]string{"go": {"namestring", "relstring"}, "php": {"string$col", "string$name"}, "rust": {"name:&str"}, "typescript": {"column:string", "relation:string"}}[lang]
-			default:
-				return fmt.Errorf("%s unrecognized input contract %v", r.ID, r.Inputs)
+			if ret != want[lang] {
+				return fmt.Errorf("%s/%s return %s does not implement %s", r.ID, lang, ret, r.Output)
 			}
-			if r.ID == "Row.delete" && lang == "php" {
-				permitted = []string{"bool$cascade=false"}
-			}
-			valid := false
-			for _, p := range permitted {
-				if args == p {
-					valid = true
-				}
-			}
-			if !valid {
-				return fmt.Errorf("%s/%s arguments %s do not implement %v", r.ID, lang, args, r.Inputs)
+			if got != args[lang] {
+				return fmt.Errorf("%s/%s arguments %s do not implement %v", r.ID, lang, got, r.Inputs)
 			}
 		}
 	}
 	return nil
+}
+
+// receiverOf is the Rust receiver of a model method: chain methods take the
+// model by value, writes that store the result borrow it mutably, and every
+// other execution borrows it.
+func receiverOf(r rule) string {
+	switch {
+	case r.For != "entity" || len(r.Errors) == 0 && r.Output != "Chain":
+		return "&self"
+	case r.Output == "Chain":
+		return "mutself"
+	case r.Output == "WrittenModel" || r.Output == "UpdatedModel":
+		return "&mutself"
+	}
+	return "&self"
+}
+
+// parameterStart finds the parameter list after an optional generic list.
+func parameterStart(sig string) int {
+	depth := 0
+	for i, r := range sig {
+		switch r {
+		case '<':
+			depth++
+		case '>':
+			if i > 0 && sig[i-1] == '-' || i > 0 && sig[i-1] == '=' {
+				continue
+			}
+			depth--
+		case '(':
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
 }
 
 func matchingParen(value string, open int) int {

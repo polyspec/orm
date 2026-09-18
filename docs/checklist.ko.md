@@ -1,128 +1,94 @@
-# 전체 작업 체크리스트 (0.0.1 완료까지)
+# 프로젝트 체크리스트 (0.0.1 완료)
 
-범례: `[ ]` 미착수, `[~]` 진행 중, `[x]` 완료. **P**는 병렬 작업이다. **→ T#**는 선행 작업이다. 모든 항목은 완료 조건을 가진다.
-원칙: 폴링·타이머·symlink를 사용하지 않는다. 실행 경로는 하나로 유지한다. 도표 원본은 Mermaid로 관리한다. 생성물은 별도 경로에 저장한다. 버전은 0.0.1로 고정한다. 공개 client는 driver와 compiler engine 인자 없이 하나의 DSN URI를 받는다.
+표기: `[ ]` 시작 전, `[~]` 진행 중, `[x]` 완료. 모든 항목에는 완료 조건이 있다.
+규칙: 폴링·타이머 없음, 심볼릭 링크 없음, 실행 경로 하나, 다이어그램 원본은 Mermaid, 생성물은 별도 보관, 버전은 0.0.1 고정, 공개 클라이언트는 드라이버 인자 없이 DSN URI 하나를 받으며, ORM 도입에는 클라이언트 라이브러리만 필요하다.
 
-## 현재 상태 (2026-09-13)
+## 현재 상태 (2026-09-17)
 
-- **S0 완료:** `docs/perf.md`에 측정과 R1~R3, F1~F3 결정을 기록했다.
-- **S1 완료:** 엔진, 생성기, 4개 클라이언트, 적합성 하네스, `ormgen tokens`, 데모를 구현했다.
-- **S2 완료:** 관계·코덱·타입·63개 벡터·150테이블 Rust fixture 검사를 통과했다.
-- **S7 완료:** 네 클라이언트의 root `IN` parameter 분할, keyset transport, migration, transaction, relation, package, 검증 작업을 구현했다. 기능 및 검증 문서에 증거를 기록했다.
-- 현재 적합성 범위는 **63개 벡터 × 4개 클라이언트 × 3개 데이터베이스**다. 코덱 범위는 Go·PHP·Rust·TypeScript의 96개 벡터다.
+- [DSL](dsl.md)의 모델 문법이 Go, PHP, Rust, TypeScript에 구현되어 있다.
+- 모든 클라이언트는 애플리케이션 프로세스 안에서 문장을 검증하고 계획하며, 자기 모델 생성기를 제공한다. 컴파일러 서비스, 데몬, WASM 모듈, 확장은 사용하지 않는다.
+- 네 클라이언트는 **MySQL, PostgreSQL, SQLite에서 conformance 벡터 21개**에 대해 같은 문장, bind, 결과를 만든다. 코덱 검사는 네 클라이언트에서 벡터 80개다.
+- 남은 작업: conformance 검사기와 기록된 벡터, 이전 컴파일러 서비스 소스 제거, contracts, 언어별 스키마 도구, 성능 재측정, 최종 CI와 Pages 실행.
 
-## 공통 인터페이스 검사
+## 공통 인터페이스 검증
 
-- [x] I1 `interfaces.md`, `contracts/interfaces.json`, Mermaid 도표에 공통 구조·소유권·상태 전이를 정의한다.
-- [x] I2 Go·PHP·Rust·TypeScript Query와 Row 인터페이스를 생성하고 대조한다.
-- [x] I3 Request와 Plan 25개 레코드를 대조하고 AST·Reflection·소스 변경 반례를 검사한다.
-- [x] I4 네 클라이언트의 바인딩, 쿼리 재사용, 자식 복사, 오류 보존, dirty 상태, 원본 버전, typed key, 페이지를 검사한다.
-- [x] I5 생성물·구조·상태·문서·예제 검사를 CI에서 실행한다.
-- [x] I6 native PK 직접 변경 후 identity 보존과 중첩 컬렉션 키 충돌을 검사한다.
+- [x] I1 `interfaces.md`와 Mermaid 다이어그램에 공통 구조, 소유 규칙, 상태 전이를 정의한다.
+- [ ] I2 모델 문법에 맞춰 `contracts/interfaces.json`, 생성 구성 요소 페이지, 심볼 검사를 다시 생성한다.
+- [ ] I3 모델 문법과 프로세스 내 플래너에 맞춰 구현 대조표를 다시 작성한다.
+- [x] I4 네 클라이언트에서 연결, 트랜잭션, 관계, 쓰기, 시간대를 물리 데이터베이스로 검증한다.
 
 ## 온라인 문서
 
 - [x] D1 VitePress로 Markdown 페이지를 빌드하고 구현 상태와 로컬 검색을 제공한다.
-- [x] D2 Mermaid를 SVG로 생성하고 JavaScript 없는 본문을 검사한다.
-- [x] D3 `/orm/` 링크·앵커·직접 HTML 경로·검색·모바일 탐색·반복 빌드를 검사한다.
-- [x] D4 https://polyspec.github.io/orm/ GitHub Pages 배포를 확인한다.
+- [x] D2 Mermaid 다이어그램을 SVG로 렌더링하고 JavaScript 없는 페이지 내용을 검증한다.
+- [x] D3 `/orm/` 링크, 앵커, 직접 HTML 경로, 검색, 모바일 탐색, 반복 빌드를 검사한다.
+- [ ] D4 현재 페이지를 https://polyspec.github.io/orm/ 에 배포하고 검증한다.
 
 ## 작업 레인
 
 | 레인 | 범위 | 완료 조건 |
 |---|---|---|
-| **E Engine** | `engine/*`, `cmd/ormgen`, protocol 문서 | 공통 IR·Plan·토큰·오류 규칙을 클라이언트 작업 전에 정의한다. |
+| **E Engine** | `engine/*`, `cmd/ormgen`, 프로토콜 문서 | Go 기준 플래너, 방언, 스키마 빌드, 오류 규칙을 클라이언트 작업 전에 정의한다. |
 | **G Go** | `clients/go/*` | Go가 공통 스키마와 실행기 규칙을 사용한다. |
-| **P PHP** | `clients/php/*` | PHP가 공통 스키마와 실행기 규칙을 사용한다. |
-| **R Rust** | `clients/rust/*` | Rust가 공통 스키마와 실행기 규칙을 사용한다. |
-| **T TypeScript** | `clients/typescript/*` | TypeScript가 같은 request·result·상태 규칙을 사용한다. |
-| **V 검사** | `tests/*`, `schema/*`, `scripts/*` | 지원 클라이언트의 결과가 같은 검사 결과를 만든다. |
+| **P PHP** | `clients/php/*` | PHP가 프로세스 안에서 계획하고 공통 실행기 규칙을 사용한다. |
+| **R Rust** | `clients/rust/*` | Rust가 프로세스 안에서 계획하고 공통 실행기 규칙을 사용한다. |
+| **T TypeScript** | `clients/typescript/*` | TypeScript가 프로세스 안에서 계획하고 같은 요청, 결과, 상태 규칙을 사용한다. |
+| **V Verification** | `tests/*`, `schema/*`, `scripts/*` | 지원하는 모든 클라이언트가 검사된 같은 결과를 만든다. |
 
-레인 순서는 E → G/P/R/T → V다. 클라이언트 전용 기능은 모든 지원 클라이언트에 같은 논리 구조가 구현될 때까지 미완료로 둔다.
+레인 순서는 E → G/P/R/T → V다. 클라이언트 전용 기능은 같은 논리 기능이 지원하는 모든 클라이언트에 있기 전까지 미완료다.
 
-## 단계 0 — S0 기준선 [완료]
+## 1단계 — 모델 문법 [완료]
 
-- [x] 도구체인, 전송 방식, 데이터베이스, PHP 런타임, 기준선 측정을 기록한다.
-- [x] Rust 실행 방식, PHP wire 형식, PDO 정책, prepared statement, 성능 기준을 결정한다.
+- [x] M1 네 클라이언트에 모델 생성과 `connect`, 체인, 연결자, 그룹, 연산자, 값 형태, 컬럼 비교, 튜플, 서브쿼리를 구현한다.
+- [x] M2 관계, 조인, 컬럼 선택, 정렬, 그룹, limit, finder, 집계, 페이지를 구현한다.
+- [x] M3 쓰기를 구현한다: `set`, `setRaw`, `new<Name>`, `plus`, `minus`, `create`, `creates`, `duplication`, `update`, `update(true)`, `save`, `delete`.
+- [x] M4 실행 흐름 단위 트랜잭션, savepoint, 재시도, 옵션, 행 잠금, `connection.utils()`를 구현한다.
+- [x] M5 예약 컬럼 이름과 생성 메서드와 충돌하는 이름을 거부한다.
 
-## 단계 1 — S1 thin slice [완료]
+## 2단계 — 프로세스 내 계획과 생성기 [진행 중]
 
-- [x] Mermaid 파싱, schema build, IR v1, planner v1, MySQL dialect, FFI/WASM 진입점, 4개 클라이언트를 구현한다.
-- [x] 적합성 실행기, 토큰 대조, 생성 오류 코드, thin-slice 예제를 추가한다.
+- [x] N1 검증, 계획, 방언, DDL을 PHP, Rust, TypeScript로 이식하고, Go 클라이언트는 엔진 패키지를 직접 호출한다.
+- [x] N2 언어마다 생성기 하나를 제공한다: `ormgen gen --lang go`, `vendor/bin/orm-gen`, `orm-gen` npm bin, `orm-build` crate.
+- [x] N3 네 클라이언트에서 MySQL, PostgreSQL, SQLite의 `utils().schema().install()`을 구현한다.
+- [x] N4 세 데이터베이스에 연결 시간대를 적용한다: PostgreSQL 오프셋 시간대, 시각 읽기, SQLite 시계 기본값, MySQL 명칭 시간대 오류.
+- [ ] N5 프로세스 내 러너로 conformance 검사기를 실행하고 벡터를 다시 기록한다.
+- [ ] N6 컴파일러 서비스, 메시지 정의, WASM·FFI 진입점, 배포 유닛을 제거하고 Makefile과 CI를 갱신한다.
+- [ ] N7 문자열로 받은 SQLite datetime 텍스트를 저장 형식인 소수 여섯 자리 형태로 비교한다.
+- [ ] N8 `orm-build`로 150개 테이블 Rust 컴파일 검사를 실행한다.
 
-## 단계 2 — S2 관계와 코덱 [T2.15 잔여]
+## 3단계 — 언어별 스키마 도구 [시작 전]
 
-- [x] 관계 계획, 관계 페이지, keying, flattening, 타입 값, 컬럼 참조, 코덱, 연산자 검사를 구현한다.
-- [x] T2.15 `make rust-150-check`로 결정적인 150테이블 Rust fixture를 생성하고 컴파일했습니다.
-- [x] 현재 관계·코덱·타입·데이터베이스 벡터를 실행한다.
+- [ ] L1 모든 언어에서 `.mmd` 파일로 `schema.json`을 빌드한다.
+- [ ] L2 모든 언어에서 마이그레이션과 import 도구를 제공한다.
 
-## 단계 3 — S3 쓰기 [완료]
+## 스키마와 마이그레이션 도구 (Go) [완료]
 
-- [x] upsert, 중복 갱신, save, update, delete, cascade delete, optimistic locking, SQL hook을 구현한다.
-- [x] Go·PHP·Rust 쓰기·cascade 적합성 벡터를 실행한다.
-
-## 단계 4 — S4 조인 [완료]
-
-- [x] 조인, alias, aggregate, raw statement, named predicate, 관계 결과 namespace를 구현한다.
-- [x] 선언되지 않은 query method를 언어의 method lookup 단계에서 거부한다.
-- [x] `getBy`, `getsBy`, `getCountBy` finder를 값만 받는 terminal로 생성한다.
-
-## 단계 5 — S5 강화와 배포 [완료]
-
-- [x] schema import·validation, schema-hash 검사, 오류 코드, query hook, 패키지, 배포 unit, CI를 구현한다.
-- [x] T5.3b 고정 비용 최적화: Go는 기본 flat projection에 생성된 typed 스캔을 사용하고 PHP는 PDO positional 행을 직접 보관하며 두 언어가 PK·100행 회귀 검사를 통과한다.
-
-## 단계 6 — S6 PostgreSQL과 SQLite [완료]
-
-- [x] 두 dialect의 placeholder, quoting, returning, full-text 규칙, AES·HEX·IP 처리, 데이터베이스 설정을 구현한다.
-- [x] MySQL·PostgreSQL·SQLite에서 4개 클라이언트 벡터를 실행한다.
-
-## 단계 7 — S7 추가 기능 [완료]
-
-S7 항목은 구현·테스트·문서·정적 페이지 배포를 모두 완료해야 닫는다. Go·PHP·Rust·TypeScript에서 같은 논리 구조를 제공할 수 없으면 미완료로 유지한다.
-
-- [x] T7.1 Go·PHP·Rust·TypeScript의 typed Protobuf message, Connect compiler server, `CompilerTransport`를 구현하고 네 클라이언트가 MySQL·PostgreSQL·SQLite에서 데이터베이스 벡터 63개를 통과한다.
-- [x] T7.3 결정적인 `ormgen diff`와 destructive change 검사를 구현한다.
-- [x] T7.4 네 클라이언트에 query 수준 `scope_p`, planner 강제 적용, 생성 메서드, MySQL·PostgreSQL·SQLite tenant isolation 검사를 구현한다.
-- [x] T7.5 Go·PHP·Rust·TypeScript에 `curlfile`, YAML 1.2, `point` 변환을 구현한다. MySQL·PostgreSQL·SQLite에서 `point` DDL과 SQL을 검사한다.
-- [x] T7.6 데이터베이스 행 streaming, 취소, 오류, 행 소유권 검사를 구현한다.
-- [x] T7.7 결정적인 정적 query precompile과 schema-hash 검사를 구현한다.
-- [x] T7.8 TypeScript 모듈, 생성 entity API와 schema hash, `orm.toml` loader, 네이티브 데이터베이스 드라이버, 구조·AST 검사, 세 데이터베이스의 63개 벡터 실행기를 구현한다.
-- [x] T7.9 동일한 SQL, bind, typed 결과, connection 수, fixture로 Rust `mysql_async` 0.37.1과 sqlx 0.9를 비교했다. 측정 항목 모두 교체 기준인 2배 개선을 충족하지 않아 sqlx를 유지한다.
-- [x] T7.10 지원 데이터베이스가 동일하고 안전한 매개변수 실행 구조를 제공할 수 없으므로 모든 공개 API에서 `multi_statement`를 제외하고 IR 필드와 생성 심볼을 거부한다.
-- [x] T7.11 Go typed 스캔 생성, PHP positional hydration 검증, native projection 불일치 수정, Go·PHP 성능 검사를 완료한다.
-- [x] T7.12 고정된 Rust 의존성으로 결정적인 150테이블 Rust fixture를 생성하고 컴파일했습니다.
-- [x] T7.13 AES version column을 검사하고, write에 현재 버전을 저장하며, Go·PHP·Rust·TypeScript에 동일한 상태 조회와 transaction 행 재암호화 API를 구현했다. 실제 데이터베이스에서 반복 실행과 모든 AES 컬럼을 검사했다.
-- [x] T7.14 매니페스트, 스키마 해시, import, DDL, diff, SQLite 메타데이터에 테이블·컬럼 주석을 포함했습니다. 단위 테스트와 containerctl MySQL·PostgreSQL 테스트가 통과했습니다.
-- [x] T7.15 MySQL·PostgreSQL·SQLite의 마이그레이션 실행 잠금, 트랜잭션 처리 범위, 상세 복구 상태를 추가했습니다. 마이그레이션 잠금 안에서 도착·출발·unsafe 실제 상태를 판정합니다.
-- [x] T7.16 세미콜론 분할을 방언별 SQL 문장 분석기로 교체하고 문장별 실패 위치를 보존했습니다.
-- [x] T7.17 MMD, manifest JSON, metadata가 있는 ORM SQL, 실제 DB schema를 DDL·diff·구조화 plan·검증·복구·멱등 DB migration·검증된 rollback 실행 입력으로 지원한다.
-- [x] T7.18 containerctl로 MySQL·PostgreSQL의 주석, 계획 적용, 반복 실행, drift, 실패, 잠금 충돌, 복구, rollback, rollback no-op을 실제 DB에서 검증했습니다.
-- [x] T7.19 AES blind-index schema 선언, keyed equality predicate, write 동기화, 생성 관계 API를 추가하고 네 클라이언트의 MySQL·PostgreSQL·SQLite 통합 테스트를 통과한다.
-- [x] T7.20 Go·PHP·Rust·TypeScript에서 큰 root `IN` predicate를 분할하고 non-`IN` parameter를 보존하며 row를 병합하고 count를 합산한다. 안전하지 않은 query 형태를 거부하고 생성된 Protobuf keyset 필드를 검사한다.
-- [x] T7.21 선언형 `soft_delete` schema directive, nullable datetime 검증, read·update 활성 행 predicate, delete timestamp update 변환을 구현하고 네 client를 MySQL·PostgreSQL·SQLite 물리 DB에서 검증한다.
-- [x] T7.22 correlated subquery 기반 relation existence·count predicate, Protobuf field, 생성 API, parameter index 이동, 쌍 문서와 네 client·세 database 물리 검사를 완료한다.
-- [x] T7.23 ordered source·through·target key를 사용하는 선언형 many-to-many through relation을 구현하고 네 client·세 database 물리 실행을 검증한다.
+- [x] T7.3 결정적인 `ormgen diff`와 파괴적 변경 검사를 구현한다.
+- [x] T7.5 Go, PHP, Rust, TypeScript에 YAML 1.2와 `point` 변환을 구현한다. MySQL, PostgreSQL, SQLite에서 `point` DDL과 SQL을 검증한다.
+- [x] T7.9 같은 SQL, bind, 타입 결과, 연결 수, 픽스처로 Rust `mysql_async` 0.37.1과 sqlx 0.9를 비교한다. 두 측정 작업 모두 필요한 2배 개선이 없으므로 sqlx를 유지한다.
+- [x] T7.10 지원 데이터베이스가 같은 안전한 매개변수 실행 구조를 제공할 수 없으므로 모든 공개 API에서 `multi_statement`를 제외한다.
+- [x] T7.13 AES 버전 컬럼을 검증하고, 쓰기 시 현재 버전을 저장하고, Go, PHP, Rust, TypeScript에 상태 조회와 트랜잭션 회전 API를 제공한다.
+- [x] T7.14 테이블·컬럼 주석을 manifest, 스키마 해시, import, DDL, diff, SQLite 메타데이터에 포함한다.
+- [x] T7.15 MySQL, PostgreSQL, SQLite에 마이그레이션 실행 잠금, 트랜잭션 범위, 상세 복구 상태를 추가한다.
+- [x] T7.16 세미콜론 분리를 방언을 아는 SQL 문장 파서로 바꾸고 문장 단위 실패 위치를 유지한다.
+- [x] T7.17 DDL, diff, 구조화된 계획, 검증, 복구, 멱등 마이그레이션, 검증된 롤백에 MMD, manifest JSON, 메타데이터가 있는 ORM SQL, 라이브 DB 스키마 원본을 받는다.
+- [x] T7.19 AES blind-index 스키마 선언, 키 기반 동등 조건, 쓰기 동기화를 추가한다.
+- [x] T7.20 큰 루트 `IN` 조건을 나누고, `IN`이 아닌 매개변수를 유지하고, 행을 합치고, 개수 결과를 더하고, 안전하지 않은 query 형태를 거부한다.
+- [x] T7.21 `soft_delete` 스키마 지시어를 추가하고, 읽기와 갱신에 활성 행 조건을 적용하고, 삭제를 시각 갱신으로 바꾼다.
 
 ## 문서 작업
 
-- [x] T7.D1 각 영문 페이지 옆에 `.ko.md` 페이지를 둔다.
-- [x] T7.D2 쌍 문서의 제목, 코드 fence, 표, 링크 대상을 일치시킨다.
+- [x] T7.D1 각 영어 페이지 옆에 한국어 `.ko.md` 페이지를 둔다.
+- [x] T7.D2 짝 페이지의 제목, 코드 블록, 표, 링크 대상을 맞춘다.
 - [x] T7.D3 두 경로에 언어 링크와 검색을 제공한다.
-- [x] T7.D4 설명서에서 비격식·비유·의인화·모호한 표현을 제거한다.
-- [x] T7.D5 기능별 입력·출력·오류·상태 변경·지원 클라이언트를 기록한다.
-- [x] T7.D6 미구현 기능을 미착수 또는 진행으로 표시한다.
-- [x] T7.D7 쌍 문서 구조를 CI에서 검사한다.
-- [x] T7.D8 문체 규칙을 CI에서 검사한다.
-- [x] T7.D9 완료된 S7 기능의 예제와 재현 명령을 추가한다.
-- [x] T7.D10 두 언어 경로를 GitHub Pages에 게시하고 정적 검사를 실행한다.
+- [x] T7.D4 비격식, 비유, 의인화, 모호한 설명 문구를 제거한다.
+- [x] T7.D7 CI에서 짝 문서 구조를 검사한다.
+- [x] T7.D8 CI에서 설정된 작성 규칙을 검사한다.
+- [ ] T7.D11 갱신된 기능 manifest로 기능 페이지를 다시 생성한다.
 
-## 검사 기준
+## 검증
 
-- [x] G0 문서화한 기준으로 클라이언트 오버헤드를 측정한다.
-- [x] G1 공통 JSON과 토큰 스트림을 비교한다.
-- [x] G2 150테이블 Rust compile 검사를 완료하고 CI에 포함했습니다.
-- [x] G3 구현된 클라이언트의 쓰기·관계 벡터를 검사한다.
-- [x] G4 생성 심볼·스키마·CI 검사를 실행한다.
-- [x] G5 GitHub Actions 빌드를 확인한다.
-- [x] G7 모든 S7 기능, paired document, 로컬 물리 DB test, package check, 최종 repository 검증이 통과했다. commit `03ea865`의 CI run `34725432112`가 통과했다.
+- [ ] G0 프로세스 내 클라이언트의 오버헤드를 측정하고 `perf.md`에 기록한다.
+- [ ] G1 세 데이터베이스에서 네 클라이언트의 conformance 출력을 기록된 벡터와 비교한다.
+- [ ] G4 생성 심볼, 스키마, CI 검사를 실행한다.
+- [ ] G5 GitHub Actions 빌드를 검증한다.

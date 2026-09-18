@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/polyspec/orm/contracts"
 	"github.com/polyspec/orm/engine/schema"
 )
 
@@ -24,8 +23,6 @@ func Main() {
 		build(os.Args[2:])
 	case "gen":
 		gen(os.Args[2:])
-	case "tokens":
-		tokens(os.Args[2:])
 	case "import":
 		importCmd(os.Args[2:])
 	case "validate":
@@ -48,10 +45,6 @@ func Main() {
 		rollbackCmd(os.Args[2:])
 	case "verify":
 		verifyCmd(os.Args[2:])
-	case "precompile":
-		precompileCmd(os.Args[2:])
-	case "check":
-		checkCmd(os.Args[2:])
 	default:
 		usage()
 	}
@@ -59,65 +52,48 @@ func Main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: ormgen build <files.mmd...> --out schema/schema.json")
-	fmt.Fprintln(os.Stderr, "       ormgen gen --schema schema/schema.json --lang go|php|rust|typescript --out <directory>")
-	fmt.Fprintln(os.Stderr, "       ormgen tokens --schema schema/schema.json [--print] <file.go> <file.php> <file.rs> <file.ts|mjs>...")
+	fmt.Fprintln(os.Stderr, "       ormgen gen --schema schema/schema.json --lang go --out <directory> [--scan <package pattern>...]")
 	fmt.Fprintln(os.Stderr, "       ormgen import --dsn <dsn> --out schema/app.mmd [--tables a,b]")
 	fmt.Fprintln(os.Stderr, "       ormgen validate --dsn <dsn> --schema schema/schema.json")
 	fmt.Fprintln(os.Stderr, "       ormgen errors --lang go|php|rust --out <file>")
 	fmt.Fprintln(os.Stderr, "       ormgen ddl --schema <source> --dialect mysql|postgres|sqlite --out <file.sql>")
 	fmt.Fprintln(os.Stderr, "       ormgen diff --from <source> --to <source> --dialect mysql|postgres|sqlite --out <file.sql> [--allow-destructive]")
-	fmt.Fprintln(os.Stderr, "       ormgen migrate --dsn <dsn> --schema <source> [--driver mysql|postgres|sqlite] [--migration-id id] [--dry-run]")
+	fmt.Fprintln(os.Stderr, "       ormgen migrate --dsn <dsn> --schema <source> [--migration-id id] [--dry-run]")
 	fmt.Fprintln(os.Stderr, "       ormgen plan --from <source> --to <source> --dialect mysql|postgres|sqlite --out migration.json")
 	fmt.Fprintln(os.Stderr, "       source: schema.mmd | schema.json | ormgen.sql | db:<dsn>")
 	fmt.Fprintln(os.Stderr, "       ormgen apply --plan migration.json --dsn <dsn> --schema schema.json [--allow-destructive]")
-	fmt.Fprintln(os.Stderr, "       ormgen recover (--plan migration.json | --migration-id id) --dsn <dsn> --schema schema.json [--driver mysql|postgres|sqlite]")
-	fmt.Fprintln(os.Stderr, "       ormgen rollback --plan YYYYMMDD-name.json --dsn <dsn> [--allow-destructive] [--driver mysql|postgres|sqlite]")
-	fmt.Fprintln(os.Stderr, "       ormgen verify --dsn <dsn> --schema schema/schema.json [--driver mysql|postgres|sqlite]")
-	fmt.Fprintln(os.Stderr, "       ormgen precompile --schema schema.json --dialect mysql|postgres|sqlite --in request.json --out plan.json")
-	fmt.Fprintln(os.Stderr, "       ormgen check --lang php|go [--top n] [--schema schema/schema.json] <dir>...")
+	fmt.Fprintln(os.Stderr, "       ormgen recover (--plan migration.json | --migration-id id) --dsn <dsn> --schema schema.json")
+	fmt.Fprintln(os.Stderr, "       ormgen rollback --plan YYYYMMDD-name.json --dsn <dsn> [--allow-destructive]")
+	fmt.Fprintln(os.Stderr, "       ormgen verify --dsn <dsn> --schema schema/schema.json")
 	os.Exit(2)
 }
 
 func gen(args []string) {
 	fs := flag.NewFlagSet("gen", flag.ExitOnError)
 	schemaPath := fs.String("schema", "", "schema.json (required)")
-	lang := fs.String("lang", "", "go|php|rust|typescript (required)")
+	lang := fs.String("lang", "go", "go")
 	out := fs.String("out", "", "output directory (required)")
-	ns := fs.String("namespace", "App\\Orm", "PHP namespace")
+	var scan stringList
+	fs.Var(&scan, "scan", "Go package pattern whose model calls are generated (repeatable)")
 	fs.Parse(args)
-	if *schemaPath == "" || *lang == "" || *out == "" {
+	if *schemaPath == "" || *out == "" {
 		usage()
+	}
+	if *lang != "go" {
+		fail(fmt.Errorf("lang %q: ormgen generates Go; PHP, Rust, and TypeScript use their own generators", *lang))
 	}
 	js, err := os.ReadFile(*schemaPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
-		os.Exit(1)
+		fail(err)
 	}
 	m, err := schema.Load(js)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
-		os.Exit(1)
-	}
-	switch *lang {
-	case "go":
-		err = genGo(m, *out)
-	case "php":
-		err = genPHP(m, *out, *ns)
-	case "rust":
-		err = genRust(m, *out)
-	case "typescript":
-		err = genTypeScript(m, *out)
-	default:
-		err = fmt.Errorf("lang %q not implemented", *lang)
-	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
-		os.Exit(1)
-	}
-	if err := contracts.GenerateInterfaces(m, *lang, *out, *ns); err != nil {
 		fail(err)
 	}
-	fmt.Printf("ormgen: %d entities → %s (%s)\n", len(m.Order), *out, *lang)
+	if err := genGo(m, *out, scan); err != nil {
+		fail(err)
+	}
+	fmt.Printf("ormgen: %d entities → %s (go)\n", len(m.Order), *out)
 }
 
 func build(args []string) {
@@ -183,3 +159,9 @@ func build(args []string) {
 	}
 	fmt.Printf("ormgen: %d entities → %s (schema_hash %s)\n", len(m.Order), *out, m.SchemaHash)
 }
+
+// stringList collects a repeatable string flag.
+type stringList []string
+
+func (s *stringList) String() string     { return strings.Join(*s, ",") }
+func (s *stringList) Set(v string) error { *s = append(*s, v); return nil }

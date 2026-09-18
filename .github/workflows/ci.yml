@@ -1,5 +1,5 @@
-# CI (docs/checklist.md T5.8): engine, the four clients, conformance and codec vectors against
-# MySQL, PostgreSQL and SQLite, the fragment analyzer, token parity and the hot-path gate.
+# CI: the planner, the four clients, conformance and codec vectors against
+# MySQL, PostgreSQL, and SQLite, and the hot-path gate.
 name: ci
 on:
   push:
@@ -13,14 +13,12 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_USER: maxkwon
+          POSTGRES_USER: orm
           POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: orm_bench
-          TZ: UTC
-          PGTZ: UTC
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U maxkwon"
+          --health-cmd "pg_isready -U orm"
           --health-interval 5s --health-timeout 3s --health-retries 20
       mysql:
         image: mysql:8.4
@@ -32,10 +30,16 @@ jobs:
           --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot"
           --health-interval 5s --health-timeout 3s --health-retries 20
     env:
-      ORM_MYSQL_DSN_GO: "root@tcp(127.0.0.1:3306)/orm_bench?parseTime=true&clientFoundRows=true"
-      ORM_MYSQL_DSN_PHP: "mysql:host=127.0.0.1;port=3306;dbname=orm_bench;charset=utf8mb4"
-      ORM_MYSQL_URL_RUST: "mysql://root@127.0.0.1:3306/orm_bench"
-      ORM_MYSQL_DSN_TYPESCRIPT: "mysql://root@127.0.0.1:3306/orm_bench"
+      # bench databases for conformance and the hot-path gate
+      BENCH_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_bench?timezone=%2B00:00"
+      BENCH_POSTGRES_DSN: "postgres://orm@127.0.0.1:5432/orm_bench?sslmode=disable&timezone=%2B00:00"
+      BENCH_SQLITE_DSN: "sqlite:///tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00"
+      # empty databases for client tests that create and drop tables
+      ORM_TEST_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_test"
+      ORM_TEST_POSTGRES_DSN: "postgres://orm@127.0.0.1:5432/orm_test?sslmode=disable"
+      # empty databases for the schema tool tests of every language, which drop every table
+      ORM_TOOLS_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_tools"
+      ORM_TOOLS_POSTGRES_DSN: "postgres://orm@127.0.0.1:5432/orm_tools?sslmode=disable"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
@@ -50,103 +54,62 @@ jobs:
           npm ci --prefix clients/typescript
           npx playwright install --with-deps chromium
       - uses: dtolnay/rust-toolchain@stable
-      # sqlx and wasmtime are most of the build; without this the job spends ~6 of its 9 minutes compiling them again
+        with:
+          components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
             clients/rust -> target
+            bench/rust -> target
             tests/interfaces/rust -> target
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
-          extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, msgpack
-          ini-values: apc.enable_cli=1
+          extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, openssl
       - name: install PHP dependencies
         run: composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
-      - name: executable feature, documentation, and package contracts
-        run: make feature-check docs-rules-check docs-check docs-verify-idempotent package-check
-      - name: decoder fuzz smoke checks
-        run: make fuzz-check
-      - name: load bench schema (mysql, postgres, sqlite)
+      - name: prepare databases
         run: |
-          mysql -h 127.0.0.1 -uroot orm_bench < bench/sql/battle.sql
-          mysql -h 127.0.0.1 -uroot orm_bench < bench/sql/seed.mysql.sql
           sudo apt-get install -y -q postgresql-client sqlite3 >/dev/null
-          psql -h 127.0.0.1 -U maxkwon orm_bench -q -f bench/sql/battle.pg.sql
-          psql -h 127.0.0.1 -U maxkwon orm_bench -q -f bench/sql/seed.pg.sql
+          docker exec ${{ job.services.mysql.id }} sh -c 'mysql_tzinfo_to_sql /usr/share/zoneinfo 2>/dev/null | mysql -uroot mysql'
+          mysql -h 127.0.0.1 -uroot -e 'CREATE DATABASE orm_test; CREATE DATABASE orm_tools'
+          psql -h 127.0.0.1 -U orm orm_bench -q -c 'CREATE DATABASE orm_test' -c 'CREATE DATABASE orm_tools'
+          mysql -h 127.0.0.1 -uroot --init-command="SET time_zone='+00:00'" orm_bench < bench/sql/battle.sql
+          mysql -h 127.0.0.1 -uroot --init-command="SET time_zone='+00:00'" orm_bench < bench/sql/seed.mysql.sql
+          PGTZ=UTC psql -h 127.0.0.1 -U orm orm_bench -q -v ON_ERROR_STOP=1 -f bench/sql/battle.pg.sql
+          PGTZ=UTC psql -h 127.0.0.1 -U orm orm_bench -q -v ON_ERROR_STOP=1 -f bench/sql/seed.pg.sql
           sqlite3 /tmp/orm_bench.sqlite < bench/sql/battle.sqlite.sql
           sqlite3 /tmp/orm_bench.sqlite < bench/sql/seed.sqlite.sql
           go run ./bench/seedaes -driver mysql -dsn 'root@tcp(127.0.0.1:3306)/orm_bench?parseTime=true'
-          go run ./bench/seedaes -driver postgres -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable'
+          go run ./bench/seedaes -driver postgres -dsn 'postgres://orm@127.0.0.1:5432/orm_bench?sslmode=disable'
           go run ./bench/seedaes -driver sqlite -dsn 'file:/tmp/orm_bench.sqlite'
-      - name: engine
-        run: go test ./engine/... ./contracts ./tests/interfaces/check && go vet ./...
-      - name: complete Go test suite
-        run: go test ./...
-      - name: typescript common structure
-        run: npm run typescript:check && npm run typescript:build && node tests/typescript/check.mjs && node tests/typescript/common-vector.mjs && node tests/typescript/compiler-bridge.mjs && node tests/typescript/driver.mjs && node tests/typescript/database.mjs && node tests/typescript/root-in.mjs && node tests/typescript/codec-vector.mjs && node tests/typescript/transaction.mjs && node tests/typescript/keyset.mjs
-      - name: schema AES version rule
-        run: npm run schema:check
-      - name: protobuf compiler wire check
-        run: make proto-check
-      - name: artifacts
+      - name: feature, documentation, and package contracts
+        run: make feature-check docs-rules-check docs-check docs-verify-idempotent package-check
+      - name: decoder fuzz smoke checks
+        run: make fuzz-check
+      - name: Go
+        run: go vet ./... && go test ./...
+      - name: generated Go models are current
+        run: make go-model-check
+      - name: common interfaces
+        run: make interface-check
+      - name: schema rules
+        run: make schema-check
+      - name: PHP
+        run: make client-unit-check
+      - name: TypeScript
+        run: make ts-check
+      - name: Rust
+        run: make rust-check rust-150-check rust-driver-check
+      - name: client database tests (SQLite, MySQL, PostgreSQL)
+        run: make client-db-check
+      - name: conformance (4 languages identical on 3 databases)
         run: |
-          mkdir -p bin
-          go build -o bin/ormd ./cmd/ormd
-          GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o bin/ormengine.wasm ./engine/wasm
-      - name: generated clients are current
-        run: |
-          for l in go php rust; do go run ./cmd/ormgen gen --schema schema/schema.json --lang $l --out clients/$l/gen; done
-          go run ./cmd/ormgen gen --schema schema/schema.json --lang typescript --out clients/typescript/src/gen
-          git diff --exit-code -- clients/go/gen clients/php/gen clients/rust/gen clients/typescript/src/gen
-      - name: go client
-        run: go test ./clients/go/...
-      - name: common interfaces and native structure
-        run: go run ./tests/interfaces/check --self-test
-      - name: hot-path regression gate
-        run: ORM_RUN_PERF_GATE=1 go test ./bench/go -run TestHotPathGate -count=1 -v
-      - name: rust client
-        run: cd clients/rust && cargo build --release && cargo test --release -p orm
-      - name: rust 150-table generation
-        run: make rust-150-check
-      - name: php client
-        run: |
-          php clients/php/tests/hostcodec.php
-          php clients/php/tests/compiler_bridge.php
-          php clients/php/tests/keyset.php
-      - name: generated client integration on mysql, postgres, and sqlite
-        env:
-          ORM_CLIENT_DB_SKIP_BUILD: "1"
-        run: |
-          ORM_GO_DSN="$ORM_MYSQL_DSN_GO" \
-          ORM_PHP_DSN="$ORM_MYSQL_DSN_PHP" \
-          ORM_RUST_DSN="$ORM_MYSQL_URL_RUST" \
-          ORM_TYPESCRIPT_DSN="$ORM_MYSQL_DSN_TYPESCRIPT" \
-          ./scripts/client-db-test.sh mysql
-          ORM_GO_DSN='postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable' \
-          ORM_PHP_DSN='pgsql:host=127.0.0.1;port=5432;dbname=orm_bench;user=maxkwon' \
-          ORM_RUST_DSN='postgres://maxkwon@127.0.0.1:5432/orm_bench' \
-          ORM_TYPESCRIPT_DSN='postgres://maxkwon@127.0.0.1:5432/orm_bench' \
-          ./scripts/client-db-test.sh postgres
-          ORM_GO_DSN='file:/tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)' \
-          ORM_PHP_DSN='/tmp/orm_bench.sqlite' \
-          ORM_RUST_DSN='sqlite:///tmp/orm_bench.sqlite' \
-          ORM_TYPESCRIPT_DSN='/tmp/orm_bench.sqlite' \
-          ./scripts/client-db-test.sh sqlite
-      - name: conformance (4 languages identical)
-        run: go run ./tests/conformance/check run
-      - name: conformance on postgres and sqlite (4 languages; results identical to MySQL, statements per dialect)
-        run: |
-          go run ./tests/conformance/check run -driver postgres -langs go -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable'
-          go run ./tests/conformance/check run -driver postgres -langs php -dsn 'pgsql:host=127.0.0.1;port=5432;dbname=orm_bench;user=maxkwon'
-          go run ./tests/conformance/check run -driver sqlite -langs go -dsn 'file:/tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)'
-          go run ./tests/conformance/check run -driver sqlite -langs php -dsn '/tmp/orm_bench.sqlite'
-          go run ./tests/conformance/check run -driver postgres -langs rust -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench'
-          go run ./tests/conformance/check run -driver sqlite -langs rust -dsn 'sqlite:///tmp/orm_bench.sqlite'
-          go run ./tests/conformance/check run -driver postgres -langs typescript -dsn 'postgres://maxkwon@127.0.0.1:5432/orm_bench'
-          go run ./tests/conformance/check run -driver sqlite -langs typescript -dsn '/tmp/orm_bench.sqlite'
-          go run ./tests/conformance/check compare -driver postgres tests/conformance/out/postgres/go.json tests/conformance/out/postgres/php.json tests/conformance/out/postgres/rust.json tests/conformance/out/postgres/typescript.json
-          go run ./tests/conformance/check compare -driver sqlite tests/conformance/out/sqlite/go.json tests/conformance/out/sqlite/php.json tests/conformance/out/sqlite/rust.json tests/conformance/out/sqlite/typescript.json
+          (cd clients/rust && cargo build --locked --release -p orm-tests --bin conformance)
+          npm run typescript:build
+          go run ./tests/conformance/check run -driver mysql -dsn "$BENCH_MYSQL_DSN"
+          go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
+          go run ./tests/conformance/check run -driver sqlite -dsn "$BENCH_SQLITE_DSN"
       - name: common state and execution contracts
         run: |
           go run ./tests/interfaces/check --results tests/conformance/out
@@ -155,16 +118,11 @@ jobs:
       - name: codec vectors
         run: |
           go test ./clients/go/orm -run TestCodec
-          (cd clients/rust && cargo test --release -p orm codec)
+          (cd clients/rust && cargo test --locked -p orm codec)
           php tests/codec/check.php
-      - name: fragment analyzer (go)
-        run: go run ./cmd/ormgen check --lang go --schema schema/schema.json clients/go tests/conformance examples bench
-      - name: token parity
-        run: |
-          # the conformance runners are the parity contract; integration tests may differ in coverage per language
-          go run ./cmd/ormgen tokens --schema schema/schema.json tests/conformance/runner_go/main.go tests/conformance/runner.php clients/rust/tests/src/conformance.rs tests/conformance/runner_typescript.mjs
-      - name: physical migration recovery
+      - name: hot-path regression gate
         env:
-          ORM_MIGRATION_MYSQL_DSN: root@tcp(127.0.0.1:3306)/orm_bench?parseTime=true
-          ORM_MIGRATION_POSTGRES_DSN: postgres://maxkwon@127.0.0.1:5432/orm_bench?sslmode=disable
+          ORM_BENCH_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_bench"
+        run: make perf-check
+      - name: physical migration recovery
         run: CI=true ./scripts/db-test.sh

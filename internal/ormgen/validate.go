@@ -1,6 +1,6 @@
 // ormgen validate: does the live database still match the manifest the clients were generated from?
 //
-//	ormgen validate --dsn "root@unix(/tmp/mysql.sock)/orm_bench" --schema schema/schema.json
+//	ormgen validate --dsn "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock" --schema schema/schema.json
 //
 // Exit status 1 with one line per difference (CI gate, docs/checklist.md T5.1). The comparison
 // is at the canonical level the clients see: entity/table presence, column set and order, canonical
@@ -8,7 +8,6 @@
 package ormgen
 
 import (
-	"database/sql"
 	"flag"
 	"fmt"
 	"os"
@@ -19,37 +18,27 @@ import (
 
 func validateCmd(args []string) {
 	fs := flag.NewFlagSet("validate", flag.ExitOnError)
-	dsn := fs.String("dsn", "", "DSN/URL (required)")
-	driver := fs.String("driver", "", "mysql|postgres (default: inferred from the DSN)")
+	dsnFlag := fs.String("dsn", "", "database DSN URI: mysql://, postgres://, or sqlite:///path (required)")
 	schemaPath := fs.String("schema", "", "schema.json (required)")
 	fs.Parse(args)
-	if *dsn == "" || *schemaPath == "" {
-		fmt.Fprintln(os.Stderr, "usage: ormgen validate --dsn <dsn> [--driver mysql|postgres] --schema schema/schema.json")
+	if *dsnFlag == "" || *schemaPath == "" {
+		fmt.Fprintln(os.Stderr, "usage: ormgen validate --dsn <dsn> --schema schema/schema.json")
 		os.Exit(2)
 	}
-	if *driver == "" {
-		*driver = "mysql"
-		if strings.HasPrefix(*dsn, "postgres://") || strings.HasPrefix(*dsn, "postgresql://") || strings.Contains(*dsn, "host=") {
-			*driver = "postgres"
-		}
-	}
-	m, err := loadSchemaSource(*schemaPath, *driver)
-	if err != nil {
-		fail(err)
-	}
-	sqlDriver := map[string]string{"mysql": "mysql", "postgres": "pgx"}[*driver]
-	if sqlDriver == "" {
-		fail(fmt.Errorf("driver %q: want mysql or postgres", *driver))
-	}
-	db, err := sql.Open(sqlDriver, *dsn)
+	db, dsn, err := openToolDB(*dsnFlag)
 	if err != nil {
 		fail(err)
 	}
 	defer db.Close()
-	live, err := readTables(db, *driver, nil)
+	m, err := loadSchemaSource(*schemaPath, dsn.dialect)
 	if err != nil {
 		fail(err)
 	}
+	live, err := readTables(db, dsn.dialect, nil)
+	if err != nil {
+		fail(err)
+	}
+	live = filterManagedTables(live)
 	// the live tables through the same canonicalization the manifest went through
 	liveDiagram, err := schema.Parse(renderMermaid(live, nil))
 	if err != nil {
@@ -59,7 +48,7 @@ func validateCmd(args []string) {
 	if err != nil {
 		fail(fmt.Errorf("live schema does not build: %w", err))
 	}
-	diffs := diffManifests(m, lm)
+	diffs := diffManifests(m, lm, dsn.dialect)
 	for _, d := range diffs {
 		fmt.Println(d)
 	}
@@ -71,7 +60,7 @@ func validateCmd(args []string) {
 }
 
 // diffManifests lists what the clients would get wrong if they ran against `live`.
-func diffManifests(want, live *schema.Manifest) []string {
+func diffManifests(want, live *schema.Manifest, dialect string) []string {
 	var out []string
 	for _, name := range want.Order {
 		we := want.Entities[name]
@@ -90,7 +79,9 @@ func diffManifests(want, live *schema.Manifest) []string {
 				out = append(out, fmt.Sprintf("%s.%s: column missing in the database", we.Table, wc.Name))
 				continue
 			}
-			if wc.Type != lc.Type {
+			wantType, _, _ := columnStorage(wc, dialect)
+			liveType, _, _ := columnStorage(lc, dialect)
+			if wantType != liveType {
 				out = append(out, fmt.Sprintf("%s.%s: type %s in manifest, %s in the database", we.Table, wc.Name, wc.Type, lc.Type))
 			}
 			if wc.Nullable != lc.Nullable {

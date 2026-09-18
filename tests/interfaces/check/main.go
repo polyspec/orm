@@ -24,7 +24,6 @@ import (
 	"unicode"
 
 	"github.com/polyspec/orm/contracts"
-	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/schema"
 )
 
@@ -144,11 +143,6 @@ func main() {
 		}
 		if *selfTest {
 			must(parserMutations(abs, lang, rust))
-			if lang == "php" {
-				out, err := exec.Command("php", filepath.Join(abs, "tests/interfaces/wire.php"), abs).CombinedOutput()
-				fmt.Print(string(out))
-				must(err)
-			}
 		}
 		fmt.Printf("%s: %d native symbols inspected; shared signatures and records checked\n", lang, len(actual))
 	}
@@ -390,113 +384,30 @@ func checkRules(lang string, actual Symbols, rules []Rule, m *schema.Manifest) [
 			errors = append(errors, rule.ID+": missing "+lang+" mapping")
 			continue
 		}
-		for _, name := range m.Order {
-			ent := m.Entities[name]
-			maps := []map[string]string{}
-			base := map[string]string{"entity": name, "Entity": pascal(name)}
-			if rule.For == "versioned_entity" {
-				if ent.Timestamps != nil && ent.Timestamps.Updated != "" {
-					maps = append(maps, base)
-				}
-			} else if rule.For == "entity" {
-				maps = append(maps, base)
-			} else if rule.For == "scoped_entity" {
-				if ent.Scope != "" {
-					maps = append(maps, map[string]string{"entity": name, "Entity": pascal(name), "type": columnType(ent.Column(ent.Scope), lang)})
-				}
-			} else if rule.For == "aes_entity" {
-				if ent.Column("aes_key_version") != nil {
-					maps = append(maps, base)
-				}
-			} else if rule.For == "eq_column" {
-				for _, col := range ent.Columns {
-					if !ir.OpAllowed(col, "eq") {
-						continue
-					}
-					t := columnType(col, lang)
-					column := pascal(col.Name)
-					maps = append(maps, map[string]string{"entity": name, "Entity": pascal(name), "column": col.Name, "Column": column, "columnCamel": strings.ToLower(column[:1]) + column[1:], "type": t})
-				}
-			} else {
-				errors = append(errors, rule.ID+": unknown expansion "+rule.For)
-				break
+		var maps []map[string]string
+		switch rule.For {
+		case "once":
+			maps = append(maps, map[string]string{})
+		case "entity":
+			for _, name := range m.Order {
+				maps = append(maps, map[string]string{"entity": name, "Entity": pascal(name)})
 			}
-			for _, vars := range maps {
-				fill := func(s string) string {
-					for k, v := range vars {
-						s = strings.ReplaceAll(s, "{"+k+"}", v)
-					}
-					return s
+		default:
+			errors = append(errors, rule.ID+": unknown expansion "+rule.For)
+		}
+		for _, vars := range maps {
+			fill := func(s string) string {
+				for k, v := range vars {
+					s = strings.ReplaceAll(s, "{"+k+"}", v)
 				}
-				key, want := fill(n.Symbol), fill(n.Signature)
-				got, exists := actual[key]
-				if !exists || compact(got) != compact(want) {
-					errors = append(errors, fmt.Sprintf("%s/%s: %s\n  want %s\n  got  %s", lang, rule.ID, key, want, got))
-				}
+				return s
+			}
+			key, want := fill(n.Symbol), fill(n.Signature)
+			got, exists := actual[key]
+			if !exists || compact(got) != compact(want) {
+				errors = append(errors, fmt.Sprintf("%s/%s: %s\n  want %s\n  got  %s", lang, rule.ID, key, want, got))
 			}
 		}
 	}
 	return errors
-}
-
-func columnType(c *schema.Col, lang string) string {
-	t := c.Type
-	if lang == "go" {
-		switch t {
-		case "i32":
-			return "int32"
-		case "i64":
-			return "int64"
-		case "f64", "decimal":
-			return "float64"
-		case "bool":
-			return "bool"
-		case "date", "datetime":
-			return "time.Time"
-		default:
-			return "string"
-		}
-	}
-	if lang == "php" {
-		switch t {
-		case "i32", "i64":
-			return "int"
-		case "f64", "decimal":
-			return "float"
-		case "bool":
-			return "bool"
-		default:
-			return "string"
-		}
-	}
-	if lang == "typescript" {
-		switch t {
-		case "i32", "i64", "f64", "decimal":
-			return "number"
-		case "bool":
-			return "boolean"
-		case "date", "datetime":
-			return "string | Date"
-		case "point":
-			return "Point"
-		default:
-			return "string"
-		}
-	}
-	switch t {
-	case "i32":
-		return "i32"
-	case "i64":
-		return "i64"
-	case "f64", "decimal":
-		return "f64"
-	case "bool":
-		return "bool"
-	case "date":
-		return "chrono::NaiveDate"
-	case "datetime":
-		return "chrono::NaiveDateTime"
-	default:
-		return "impl Into<String>"
-	}
 }

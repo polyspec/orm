@@ -3,6 +3,7 @@ name = "orm-tests"
 version = "0.0.1"
 edition = "2021"
 publish = false
+build = "build.rs"
 
 [[bin]]
 name = "integration"
@@ -24,14 +25,12 @@ path = "../../../examples/complex/rust/main.rs"
 name = "demo"
 path = "../../../examples/thin-slice/rust/main.rs"
 
-[[bin]]
-name = "compiler_connect"
-path = "src/compiler_connect.rs"
-
 [dependencies]
 orm = { path = "../orm" }
-gen = { path = "../gen" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
-chrono = { version = "0.4", default-features = false, features = ["std"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 serde_json = "1"
+
+[build-dependencies]
+orm-build = { path = "../orm-build" }

@@ -1,5 +1,4 @@
-// A complex statement in three languages, one JSON document (docs/examples/complex-query.md
-// shows the same product-domain shapes). Run:
+// A complex statement in every client language, one JSON document. Run:
 //
 //	go run ./examples/complex/go schema/schema.json
 package main
@@ -9,66 +8,62 @@ import (
 	"fmt"
 	"os"
 
-	_ "github.com/go-sql-driver/mysql"
-
-	"github.com/polyspec/orm/clients/go/gen"
+	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
 )
 
 func main() {
-	db, err := gen.Connect(dsn(), os.Args[1], orm.Config{AESKey: "bench-salt"})
+	db, err := model.Connect(dsn(), os.Args[1], orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
 	check(err)
-	// A join carrying its own ON and WHERE, a root group mixing a predicate with
-	// navigation into the joined entity, and three levels of relations with options.
-	rows, err := gen.Battle().
-		SelectNone().SelectName().
-		Join(gen.Service().
-			On(func(w *gen.ServiceWhere) { w.SeqGt(0) }).
-			Where(func(w *gen.ServiceWhere) { w.Name("service-7") })).
-		IsClose(false).
-		And(func(w *gen.BattleWhere) {
-			w.IsDisplay(true).Or().Service(func(s *gen.ServiceWhere) { s.Seq(7) })
-		}).
-		Relation(gen.User().
-			Relations(gen.Battle().SelectNone().OrderBySeqDesc().LimitPerParent(2).DropChildKey())).
-		Relation(gen.Service().
-			Relations(gen.ServiceMember().SelectNone().OrderBySeqAsc().LimitPerParent(2).KeyByUserSeq())).
-		OrderBySeqAsc().Limit(0, 2).Using(db).Gets()
-	check(err)
-	items := []any{}
-	for _, b := range rows.All() {
-		item, err := b.ToArray()
-		check(err)
-		items = append(items, item)
-	}
+	defer db.Close()
 
-	// Aggregates over the same slice of data: a grouped count with HAVING, min/max, distinct.
-	groups, err := gen.Battle().ServiceSeq(7).GroupByUserSeq().
-		Having(func(w *gen.BattleWhere) { w.Expr("COUNT(*) > ?", 1) }).Using(db).GetCount()
+	// A join child with its own ON conditions whose WHERE conditions are placed
+	// in a group, and two levels of relations with options.
+	service := model.Service().
+		On(func(s *model.ServiceModel) { s.GtSeq(0) }).
+		Name("service-7")
+	rows, err := model.Battle().Connect(db).
+		RemoveAllColumns().AddColumnName().
+		JoinServiceSeqWithSeq(service).
+		IsClose(false).
+		And(func(q *model.BattleModel) { q.IsDisplay(true).Or(service) }).
+		Relation(model.User().MatchUserSeqWithSeq().
+			Relations(model.Battle().MatchSeqWithUserSeq().RemoveAllColumns().OrderBySeqDesc().GroupLimit(2))).
+		Relation(model.Service().MatchServiceSeqWithSeq().AliasOwnerService().
+			Relations(model.ServiceMember().MatchSeqWithServiceSeq().RemoveAllColumns().OrderBySeqAsc().GroupLimit(2).KeyNameUserSeq())).
+		OrderBySeqAsc().
+		Limit(0, 2).
+		Gets()
 	check(err)
-	min, err := gen.Battle().ServiceSeq(7).Using(db).MinSeq()
+
+	// Aggregates over the same data: grouped counts, a sum, an average, and a page.
+	groups, err := model.Battle().Connect(db).ServiceSeq(7).GroupByUserSeq().GetsCount()
 	check(err)
-	max, err := gen.Battle().ServiceSeq(7).Using(db).MaxSeq()
+	sum, err := model.Battle().Connect(db).ServiceSeq(7).SumReadCount().GetSum()
 	check(err)
-	users, err := gen.Battle().ServiceSeq(7).Using(db).CountDistinctUserSeq()
+	avg, err := model.Battle().Connect(db).ServiceSeq(7).AvgLikeCount().GetAvg()
+	check(err)
+	page, err := model.Battle().Connect(db).ServiceSeq(7).RemoveAllColumns().OrderBySeqAsc().GetsPage(2, 10)
 	check(err)
 
 	out, err := json.MarshalIndent(map[string]any{
-		"rows":       items,
-		"groups":     groups,
-		"min_seq":    *min,
-		"max_seq":    *max,
-		"user_count": users,
+		"rows":        rows,
+		"groups":      groups.Len(),
+		"read_sum":    sum,
+		"like_avg":    avg,
+		"page_total":  page.TotalCount,
+		"page_pages":  page.TotalPages,
+		"page_length": page.Items.Len(),
 	}, "", "  ")
 	check(err)
 	fmt.Println(string(out))
 }
 
 func dsn() string {
-	if v := os.Getenv("ORM_MYSQL_DSN_GO"); v != "" {
+	if v := os.Getenv("ORM_BENCH_MYSQL_DSN"); v != "" {
 		return v
 	}
-	return "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&parseTime=true&clientFoundRows=true"
+	return "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock"
 }
 
 func check(err error) {

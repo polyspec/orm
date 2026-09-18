@@ -1,20 +1,17 @@
-import { AesKeyring } from './index.js';
-import type { AesRotationSpec, AesRotationStatus, BatchOptions, BatchRequest, BatchResult, Compiler, Database, Executor, Group, Param, Plan, PlanStep, Request, StreamResult, TransactionOptions } from './index.js';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
-import { ConnectCompiler, ConnectPlanCompiler, type CompilerTransport } from './compiler.js';
-import { loadConfig, resolveAesKey, resolveBlindIndexKey } from './config.js';
 import { blindIndex, decode, hostDecode, hostEncode, parsePoint, pointText } from './codec.js';
-import type { DriverConnection, DriverTransaction, DriverValue } from './driver.js';
-import { openMySql, openPostgres, openSqlite } from './driver.js';
-import { ExecutionRows, Page, Row, rowCollection, rowFromResult, rowKey, scalarKey } from './model.js';
+import type { Assemble, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
+import { offsetText, openDriver, parseDsn, zoneOffset, type DriverPool, type DriverResult, type DriverTransaction, type DriverValue, type Isolation, type PoolStats } from './driver.js';
+import type { SchemaSet } from './names.js';
 import { OrmError } from './runtime_error.js';
-import { generatedSchemaHash } from './registry.js';
+import { Utils } from './utils.js';
+import { AesKeyring } from './aes.js';
+import { Engine } from './engine/index.js';
 
-export interface QueryEvent { sql: string; binds: readonly unknown[]; seconds: number; error?: unknown; }
-export interface DatabaseOptions {
-  schemaHash: string;
-  compiler: CompilerTransport;
+export interface QueryEvent { sql: string; binds: readonly unknown[]; seconds: number; planId: string; error?: unknown; }
+
+export interface ConnectOptions {
   aesKey?: string;
   blindIndexKey?: string;
   aesVersion?: number;
@@ -22,524 +19,706 @@ export interface DatabaseOptions {
   onQuery?: (event: QueryEvent) => void;
   planCacheSize?: number;
   statementCacheSize?: number;
+  /** maximum open connections; zero uses the driver default */
+  poolSize?: number;
+  /** bound of every statement of the connection in milliseconds; zero keeps the server default */
+  statementTimeoutMs?: number;
 }
 
-export type DsnDriver = 'mysql' | 'postgres' | 'sqlite';
+export interface TransactionOptions {
+  isolation?: Isolation;
+  readOnly?: boolean;
+  timeoutMs?: number;
+  /** Deadlock retries; the default is 3 and 0 disables retry. */
+  retry?: number;
+}
 
-function dsnDriver(dsn: string): DsnDriver {
-  let url: URL;
-  try { url = new URL(dsn); } catch (error) { throw new OrmError('CONFIG', `dsn must be a URI using mysql://, postgres://, or sqlite://: ${(error as Error).message}`); }
-  if (url.protocol === 'mysql:') return 'mysql';
-  if (url.protocol === 'postgres:') return 'postgres';
-  if (url.protocol === 'sqlite:') {
-    if (!url.pathname.startsWith('/')) throw new OrmError('CONFIG', 'sqlite DSN path must be absolute');
-    return 'sqlite';
+const schemas = new Map<string, SchemaSet>();
+
+/** Called by generated model modules. */
+export function registerSchema(set: SchemaSet): void { schemas.set(set.hash, set); }
+
+export function registeredSchema(hash: string): SchemaSet | undefined { return schemas.get(hash); }
+
+/** One active transaction. */
+export class TxFrame {
+  public busy = false;
+  public finished = false;
+  public savepoints = 0;
+  public readonly locals = new Map<string, string>();
+  public readonly locks: string[] = [];
+  public contextRow = false;
+  public constructor(public readonly db: Db, public readonly tx: DriverTransaction) {}
+}
+
+const flow = new AsyncLocalStorage<readonly TxFrame[]>();
+
+function frames(): readonly TxFrame[] { return flow.getStore() ?? []; }
+
+export function activeFor(db: Db): TxFrame | undefined {
+  const stack = frames();
+  // A signal handle is the same connection, so frames are matched by connection.
+  for (let i = stack.length - 1; i >= 0; i--) if (stack[i]!.db.pool === db.pool && !stack[i]!.finished) return stack[i];
+  return undefined;
+}
+
+/** Where a statement runs: a connection or an active transaction. */
+export interface Executor { readonly db: Db; readonly frame: TxFrame | undefined; }
+
+/** Selects the active transaction of the connection, the connection, or the innermost transaction. */
+export function resolve(conn: Db | undefined): Executor {
+  if (conn !== undefined) {
+    const frame = activeFor(conn);
+    if (frame) return { db: conn, frame };
+    if (conn.closed) throw new OrmError('CONFIG', 'database is closed');
+    return { db: conn, frame: undefined };
   }
-  throw new OrmError('CONFIG', `unsupported DSN scheme ${url.protocol}; want mysql, postgres, or sqlite`);
+  const stack = frames();
+  const frame = stack[stack.length - 1];
+  if (frame && !frame.finished) return { db: frame.db, frame };
+  throw new OrmError('CONFIG', 'the model has no connection; use connect or run it inside a transaction');
 }
 
-function mysqlDsn(dsn: string, user?: string, password?: string): string {
-  let url: URL;
-  try { url = new URL(dsn); } catch (error) { throw new OrmError('CONFIG', `db.dsn must be a MySQL URL: ${(error as Error).message}`); }
-  if (url.protocol !== 'mysql:') throw new OrmError('CONFIG', 'db.dsn must use mysql://');
-  const declaredUser = decodeURIComponent(url.username);
-  if (declaredUser !== '' && user !== undefined && declaredUser !== user) throw new OrmError('CONFIG', `db.user ${user} conflicts with the user in db.dsn ${declaredUser}`);
-  if (declaredUser === '' && user === undefined) throw new OrmError('CONFIG', 'db.user is required when db.dsn has no user');
-  if (declaredUser === '') url.username = user!;
-  if (url.password === '' && password !== undefined) url.password = password;
-  else if (url.password !== '' && password !== undefined && decodeURIComponent(url.password) !== password) throw new OrmError('CONFIG', 'db.password conflicts with the password in db.dsn');
-  return url.toString();
+export const SECRET = '$SECRET';
+export const NOW = '$NOW';
+
+function pad2(n: number): string { return String(n).padStart(2, '0'); }
+
+/** Formats an instant in a connection time zone as stored date-time text. */
+export function formatInstant(instant: Date, zone: string): string {
+  const shifted = new Date(instant.getTime() + zoneOffset(zone, instant) * 60_000);
+  const micro = String(shifted.getUTCMilliseconds()).padStart(3, '0') + '000';
+  return `${shifted.getUTCFullYear()}-${pad2(shifted.getUTCMonth() + 1)}-${pad2(shifted.getUTCDate())} ${pad2(shifted.getUTCHours())}:${pad2(shifted.getUTCMinutes())}:${pad2(shifted.getUTCSeconds())}.${micro}`;
 }
 
-export class Db implements Database, Executor {
-  public readonly compiler: Compiler;
-  public readonly schemaHash: string;
-  private readonly plans = new Map<string, Plan>();
-  private readonly planOrder: string[] = [];
+/** Normalizes stored date or time text to `YYYY-MM-DD HH:MM:SS.ffffff` in the connection zone. */
+export function normalizeTime(value: unknown, zone: string): string {
+  if (value instanceof Date) return formatInstant(value, zone);
+  const text = String(value);
+  const match = /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?)?\s*(Z|[+-]\d{2}(?::?\d{2})?)?$/.exec(text);
+  if (!match) throw new OrmError('CODEC_DECODE', `invalid date-time value ${text}`);
+  if (match[4] !== undefined) {
+    const offset = match[4] === 'Z' ? 'Z' : match[4].length === 3 ? `${match[4]}:00` : match[4].replace(/^([+-]\d{2})(\d{2})$/, '$1:$2');
+    const instant = new Date(`${match[1]}T${match[2] ?? '00:00:00'}${match[3] ? `.${match[3].slice(0, 3)}` : ''}${offset}`);
+    const base = formatInstant(instant, zone);
+    return base.slice(0, 20) + (match[3] ?? '').padEnd(6, '0').slice(0, 6);
+  }
+  return `${match[1]} ${match[2] ?? '00:00:00'}.${(match[3] ?? '').padEnd(6, '0').slice(0, 6)}`;
+}
+
+const sqliteDateTimeText = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2})?$/;
+const sqliteDateText = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function invalidTimeText(value: string, colType: string): OrmError {
+  const form = colType === 'date' ? 'YYYY-MM-DD' : 'YYYY-MM-DD HH:MM:SS[.ffffff][Z|±HH:MM]';
+  return new OrmError('CODEC_ENCODE', `${colType} value ${JSON.stringify(value)} is not ${form}`);
+}
+
+function validDate(y: string, m: string, d: string, h = '00', mi = '00', sec = '00'): boolean {
+  const t = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d), Number(h), Number(mi), Number(sec)));
+  return t.getUTCFullYear() === Number(y) && t.getUTCMonth() + 1 === Number(m) && t.getUTCDate() === Number(d)
+    && t.getUTCHours() === Number(h) && t.getUTCMinutes() === Number(mi) && t.getUTCSeconds() === Number(sec);
+}
+
+/**
+ * Writes a datetime or date value in the text form SQLite stores, so a string
+ * value compares equal to the stored value. A datetime string with an offset
+ * is converted to the connection time zone.
+ */
+export function sqliteTimeValue(value: unknown, colType: string, zone: string): unknown {
+  if (value instanceof Date) return colType === 'date' ? formatInstant(value, zone).slice(0, 10) : value;
+  if (typeof value !== 'string') return value;
+  if (colType === 'date') {
+    const m = sqliteDateText.exec(value);
+    if (!m || !validDate(m[1]!, m[2]!, m[3]!)) throw invalidTimeText(value, colType);
+    return value;
+  }
+  const m = sqliteDateTimeText.exec(value);
+  if (!m || !validDate(m[1]!, m[2]!, m[3]!, m[4]!, m[5]!, m[6]!)) throw invalidTimeText(value, colType);
+  const fraction = (m[7] ?? '').padEnd(6, '0');
+  const wall = `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}`;
+  if (m[8] === undefined) return `${wall}.${fraction}`;
+  const sign = m[8] === 'Z' || m[8].startsWith('+') ? 1 : -1;
+  const offset = m[8] === 'Z' ? 0 : sign * (Number(m[8].slice(1, 3)) * 60 + Number(m[8].slice(4, 6)));
+  const instant = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6])) - offset * 60_000);
+  return `${formatInstant(instant, zone).slice(0, 19)}.${fraction}`;
+}
+
+interface Cached { plan: Plan; id: string; }
+
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  if (value !== null && typeof value === 'object') return `{${Object.keys(value).sort().filter(key => (value as Record<string, unknown>)[key] !== undefined).map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(',')}}`;
+  return JSON.stringify(value);
+}
+
+function planId(key: string): string {
+  let h = 0xcbf29ce484222325n;
+  for (const byte of Buffer.from(key)) h = BigInt.asUintN(64, (h ^ BigInt(byte)) * 0x100000001b3n);
+  return h.toString(16).padStart(16, '0');
+}
+
+/** The positional result of a select plan. */
+export interface Result {
+  plan: Plan;
+  main: unknown[][];
+  steps: Map<number, { step: PlanStep; data: unknown[][]; byKey: Map<string, number[]> }>;
+  params: readonly unknown[];
+}
+
+export function scalarKey(value: unknown): string {
+  if (value === null || value === undefined) return '\u0000';
+  if (typeof value === 'boolean') return value ? '1' : '0';
+  if (value instanceof Uint8Array) return Buffer.from(value).toString();
+  return String(value);
+}
+
+export function rowKey(row: readonly unknown[], refs: readonly KeyReference[]): string | undefined {
+  const values: unknown[] = [];
+  for (const ref of refs) {
+    const value = row[ref.index];
+    if (value === null || value === undefined) return undefined;
+    values.push(value);
+  }
+  return keyOfValues(values);
+}
+
+/** A collection key: a number or a string, never equal to each other. */
+export type Key = number | string;
+
+export function keyOfValues(values: readonly unknown[]): string {
+  if (values.length === 1) return keyText(values[0]);
+  return values.map(v => { const part = scalarKey(v); return `${part.length}:${part}`; }).join('');
+}
+
+export function keyText(value: unknown): string {
+  if (typeof value === 'number' || typeof value === 'bigint') return `n:${value}`;
+  if (typeof value === 'boolean') return `n:${value ? 1 : 0}`;
+  return `s:${scalarKey(value)}`;
+}
+
+export function keyValue(value: unknown): Key {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'bigint') return Number(value);
+  if (typeof value === 'boolean') return value ? 1 : 0;
+  return scalarKey(value);
+}
+
+/** A database connection with its schemas, plan cache, and statement cache. */
+export class Db {
+  // State every handle of one connection shares.
+  private readonly shared = { closed: false };
+  public readonly signal: AbortSignal | undefined = undefined;
+  private readonly plans = new Map<string, Cached>();
+  private readonly engines = new Map<string, Engine>();
+  public readonly aesKey: string;
+  public readonly blindIndexKey: string;
+  public readonly aesVersion: number;
+  public readonly aesKeyring: AesKeyring | undefined;
+  public onQuery: ((event: QueryEvent) => void) | undefined;
   private readonly planCacheSize: number;
-  private closed = false;
-  public constructor(
-    protected readonly connection: DriverConnection,
-    options: DatabaseOptions,
-    protected readonly root: Db | undefined = undefined,
-  ) {
-    this.schemaHash = options.schemaHash;
-	this.planCacheSize = options.planCacheSize ?? 256;
-	if (!Number.isSafeInteger(this.planCacheSize) || this.planCacheSize < 1) throw new OrmError('CONFIG', 'plan cache size must be a positive integer');
-    const statementCacheSize = options.statementCacheSize ?? 256;
-    if (!Number.isSafeInteger(statementCacheSize) || statementCacheSize < 1) throw new OrmError('CONFIG', 'statement cache size must be a positive integer');
-    this.compiler = new ConnectPlanCompiler(options.compiler);
+
+  private constructor(public readonly pool: DriverPool, public readonly zone: string, engine: Engine, options: ConnectOptions) {
+    this.engines.set(engine.schemaHash, engine);
     this.aesKey = options.aesKey ?? '';
     this.blindIndexKey = options.blindIndexKey ?? '';
     this.aesVersion = options.aesVersion ?? 1;
     if (!Number.isSafeInteger(this.aesVersion) || this.aesVersion < 1) throw new OrmError('CONFIG', 'aes version must be a positive integer');
+    const keys = options.aesKeys ?? (this.aesKey === '' ? undefined : new Map([[this.aesVersion, this.aesKey]]));
+    this.aesKeyring = keys === undefined ? undefined : new AesKeyring(keys, this.aesVersion);
     this.onQuery = options.onQuery;
-    this.aesKeyring = options.aesKeys === undefined && this.aesKey === '' ? undefined : new AesKeyring(options.aesKeys ?? new Map([[this.aesVersion, this.aesKey]]), this.aesVersion);
+    this.planCacheSize = options.planCacheSize ?? 256;
+    if (!Number.isSafeInteger(this.planCacheSize) || this.planCacheSize < 1) throw new OrmError('CONFIG', 'plan cache size must be a positive integer');
   }
-  protected readonly aesKey: string;
-  protected readonly blindIndexKey: string;
-  protected readonly aesVersion: number;
-  protected readonly aesKeyring?: AesKeyring;
-  protected readonly onQuery?: (event: QueryEvent) => void;
-  public get executor(): Executor { return this; }
-  public get driver(): string { return this.connection.name; }
 
-  private static async connectConnection(connection: DriverConnection, options: DatabaseOptions): Promise<Db> {
-    const metadata = await options.compiler.metadata();
-    if (metadata.schemaHash !== options.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `client schema ${options.schemaHash} but compiler loaded ${metadata.schemaHash}`);
-    if (metadata.dialect !== connection.name) throw new OrmError('CONFIG', `driver ${connection.name} but compiler uses ${metadata.dialect}`);
-    if (metadata.irVersion !== 1) throw new OrmError('VERSION_MISMATCH', `client IR version 1 but compiler uses ${metadata.irVersion}`);
-    return new Db(connection, options);
-  }
-  /** Opens the database selected by the DSN URI scheme. */
-  public static async connect(dsn: string, options: DatabaseOptions): Promise<Db> {
-    switch (dsnDriver(dsn)) {
-      case 'mysql': return Db.connectConnection(openMySql(dsn, 10, options.statementCacheSize), options);
-      case 'postgres': return Db.connectConnection(openPostgres(dsn, 10, options.statementCacheSize), options);
-      case 'sqlite': return Db.connectConnection(openSqlite(new URL(dsn).pathname, options.statementCacheSize), options);
+  /**
+   * Opens the database selected by the DSN URI scheme with the schema.json
+   * the imported models were generated from.
+   */
+  public static async connect(dsn: string, schemaPath: string, options: ConnectOptions = {}): Promise<Db> {
+    const parsed = parseDsn(dsn);
+    const statementCacheSize = options.statementCacheSize ?? 256;
+    if (!Number.isSafeInteger(statementCacheSize) || statementCacheSize < 1) throw new OrmError('CONFIG', 'statement cache size must be a positive integer');
+    let text: string;
+    try { text = await readFile(schemaPath, 'utf8'); } catch (error) { throw new OrmError('CONFIG', `read schema ${schemaPath}: ${(error as Error).message}`); }
+    const engine = Engine.load(text, parsed.driver);
+    if (!schemas.has(engine.schemaHash)) {
+      throw new OrmError('SCHEMA_HASH_MISMATCH', `no imported models were generated from schema ${engine.schemaHash}: generate the models again`);
     }
+    if ((options.poolSize ?? 0) < 0) throw new OrmError('CONFIG', 'pool size must not be negative');
+    if ((options.statementTimeoutMs ?? 0) < 0) throw new OrmError('CONFIG', 'statement timeout must not be negative');
+    const pool = openDriver(dsn, parsed, options.poolSize ?? 10, statementCacheSize, options.statementTimeoutMs ?? 0);
+    const db = new Db(pool, parsed.zone, engine, options);
+    try { await pool.execute('SELECT 1', []); } catch (error) { await pool.close(); throw error; }
+    return db;
   }
 
-  public static async fromConfig(path: string): Promise<Db> {
-    const config = await loadConfig(path);
-    const manifest = JSON.parse(await readFile(config.schema, 'utf8')) as { schema_hash?: unknown; entities?: Record<string, { columns?: Array<{ styles?: string[]; blind_index?: string }> }> };
-    if (typeof manifest.schema_hash !== 'string' || manifest.schema_hash === '') throw new OrmError('CONFIG', `${config.schema}: schema_hash is required`);
-    const generated = generatedSchemaHash();
-    if (generated !== manifest.schema_hash) throw new OrmError('SCHEMA_HASH_MISMATCH', `generated from ${generated} but ${config.schema} contains ${manifest.schema_hash}`);
-    const aesKey = resolveAesKey(config);
-    const blindIndexKey = resolveBlindIndexKey(config);
-    const hasAes = Object.values(manifest.entities ?? {}).some(entity => (entity.columns ?? []).some(column => column.styles?.includes('aes')));
-    if (hasAes && aesKey === '') throw new OrmError('CONFIG', 'the schema has aes columns but secrets.aes or secrets.aes_env is not declared');
-    const hasBlindIndex = Object.values(manifest.entities ?? {}).some(entity => (entity.columns ?? []).some(column => column.blind_index !== undefined));
-    if (hasBlindIndex && blindIndexKey === '') throw new OrmError('CONFIG', 'the schema has blind indexes but secrets.blind_index or secrets.blind_index_env is not declared');
-    const compiler = new ConnectCompiler(config.ormd.endpoint, config.ormd.timeout_ms);
-    const onQuery = config.debug.on_query ? (event: QueryEvent) => {
-      const detail = event.error === undefined ? '' : ` error=${String(event.error)}`;
-      console.error(`orm ${(event.seconds * 1000).toFixed(3)}ms ${event.sql} ${JSON.stringify(event.binds)}${detail}`);
-    } : undefined;
-    const aesKeys = config.secrets.aes_keys === undefined ? undefined : new Map(Object.entries(config.secrets.aes_keys).map(([version, key]) => [Number(version), key] as const));
-    const options = { schemaHash: manifest.schema_hash, compiler, aesKey, blindIndexKey, aesVersion: config.secrets.aes_version, aesKeys, onQuery, planCacheSize: config.db.plan_cache_size, statementCacheSize: config.db.statement_cache_size };
-    return Db.connect(config.db.dsn, options);
+  /** Adds an installed schema to the connection. */
+  public registerEngine(engine: Engine): void {
+    if (engine.dialect !== this.driver) throw new OrmError('CONFIG', `schema compiled for ${engine.dialect} on a ${this.driver} connection`);
+    this.engines.set(engine.schemaHash, engine);
+  }
+
+  public get driver(): string { return this.pool.name; }
+
+  public get closed(): boolean { return this.shared.closed; }
+
+  /**
+   * Returns a handle on the same connection whose statements are bound to
+   * signal: aborting it cancels the statement in flight and raises CANCELED.
+   * Models connect to the handle as they connect to the connection, and
+   * transactions started on it are bound to the same signal. Closing either
+   * handle closes the connection.
+   */
+  public withSignal(signal: AbortSignal): Db {
+    const handle: Db = Object.create(Db.prototype) as Db;
+    Object.assign(handle, this);
+    Object.defineProperty(handle, 'signal', { value: signal, enumerable: true, writable: false });
+    Object.defineProperty(handle, 'rootDb', { value: this.root(), enumerable: false, writable: false });
+    return handle;
+  }
+
+  /** The connection this handle was derived from; a connection returns itself. */
+  public root(): Db {
+    return (this as { rootDb?: Db }).rootDb ?? this;
   }
 
   public async close(): Promise<void> {
     if (this.closed) return;
-    this.closed = true;
+    this.shared.closed = true;
     this.plans.clear();
-    this.planOrder.length = 0;
-    await this.connection.close();
+    await this.pool.close();
   }
 
-  public async aesStatus(spec: AesRotationSpec, keyring: AesKeyring): Promise<AesRotationStatus> {
-    const table = this.identifier(spec.table); const version = this.identifier(spec.versionColumn);
-    const result = await this.connection.execute(`SELECT ${version}, COUNT(*) FROM ${table} GROUP BY ${version} ORDER BY ${version}`, []);
-    const versions: Record<string, number> = {}; let total = 0; let pending = 0;
-    for (const row of result.rows) {
-      const stored = Number(row[0]); const count = Number(row[1]);
-      if (!Number.isSafeInteger(stored) || stored < 1 || !Number.isSafeInteger(count)) throw new OrmError('CODEC_DECODE', 'AES status returned an invalid version or count');
-      versions[String(stored)] = count; total += count;
-      if (stored !== keyring.currentVersion) pending += count;
-    }
-    return { current: keyring.currentVersion, total, pending, versions };
-  }
+  public utils(): Utils { return new Utils(this); }
 
-  public async rotateAESRows(spec: AesRotationSpec, keyring: AesKeyring): Promise<number> {
-    if (!(this instanceof Tx)) return this.transaction(transaction => transaction.rotateAESRows(spec, keyring));
-    if (spec.columns.length === 0) throw new OrmError('CONFIG', 'AES rotation columns are empty');
-    if (spec.primaryKeys.length === 0) throw new OrmError('CONFIG', 'AES rotation primary keys are empty');
-    const table = this.identifier(spec.table); const primary = spec.primaryKeys.map(key => this.identifier(key)); const version = this.identifier(spec.versionColumn);
-    const columns = spec.columns.map(column => this.identifier(column.name));
-    const batchSize = spec.batchSize && spec.batchSize > 0 ? Math.floor(spec.batchSize) : 1000;
-    const select = `SELECT ${primary.join(', ')}, ${version}, ${columns.join(', ')} FROM ${table} WHERE ${version} <> ${this.placeholder(1)} ORDER BY ${primary.join(', ')} LIMIT ${batchSize}`;
-    const rows = (await this.connection.execute(select, [keyring.currentVersion])).rows;
-    const sets = [...columns.map((column, index) => `${column} = ${this.placeholder(index + 1)}`), `${version} = ${this.placeholder(columns.length + 1)}`];
-    const where = primary.map((key, index) => `${key} = ${this.placeholder(columns.length + 2 + index)}`);
-    where.push(`${version} = ${this.placeholder(columns.length + 2 + primary.length)}`);
-    const update = `UPDATE ${table} SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
-    for (const values of rows) {
-      const row: Record<string, unknown> = {};
-      spec.primaryKeys.forEach((key, index) => { row[key] = values[index]; });
-      row[spec.versionColumn] = Number(values[primary.length]);
-      spec.columns.forEach((column, index) => { row[column.name] = values[index + primary.length + 1]; });
-      const rotated = keyring.rotateRow(row, spec.versionColumn, spec.columns, keyring.currentVersion, {
-        decode: (value, styles, key) => hostDecode(value as string | Uint8Array, styles, key),
-        encode: (value, styles, key) => hostEncode(value, styles, key),
-      });
-      const params = [...spec.columns.map(column => rotated[column.name]), keyring.currentVersion, ...values.slice(0, primary.length), Number(values[primary.length])] as DriverValue[];
-      const result = await this.connection.execute(update, params);
-      if (result.affected !== 1) throw new OrmError('OPTIMISTIC_LOCK', `AES rotation changed ${spec.table} primary key ${JSON.stringify(values.slice(0, primary.length))}`);
-    }
-    return rows.length;
-  }
-  public async transaction<T>(callback: (transaction: Tx) => Promise<T>, options: TransactionOptions = {}): Promise<T> {
+  public stats(): PoolStats { return this.pool.stats(); }
+
+  /**
+   * Runs callback in one transaction. An exception rolls back; otherwise the
+   * transaction commits and the callback result is returned. Models without
+   * connect inside the callback use this transaction. A transaction of the
+   * same connection inside an active one creates a savepoint.
+   */
+  public async transaction<T>(callback: () => Promise<T> | T, options: TransactionOptions = {}): Promise<T> {
+    const retry = options.retry ?? 3;
+    if (!Number.isSafeInteger(retry) || retry < 0) throw new OrmError('CONFIG', 'transaction retry must be a non-negative integer');
     const timeoutMs = options.timeoutMs ?? 0;
-    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) throw new OrmError('CONFIG', 'transaction timeout_ms must not be negative');
-    if (timeoutMs > 0 && this.driver !== 'postgres') throw new OrmError('CAPABILITY_UNSUPPORTED', 'transaction timeout_ms is supported only by postgres');
-    const attempts = options.retryDeadlocks ? Math.max(1, options.maxAttempts ?? 3) : 1;
-    let last: unknown;
-    for (let attempt = 0; attempt < attempts; attempt++) {
-      const connection = await this.connection.begin({ isolation: options.isolation ?? 'default', readOnly: options.readOnly ?? false, timeoutMs });
-      const transaction = new Tx(connection, this);
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) throw new OrmError('CONFIG', 'transaction timeoutMs must not be negative');
+    const outer = activeFor(this);
+    if (outer) {
+      if (options.isolation !== undefined || options.readOnly !== undefined || options.timeoutMs !== undefined) {
+        throw new OrmError('CONFIG', 'a nested transaction of the same connection accepts only the retry option');
+      }
+      return this.savepoint(outer, callback);
+    }
+    for (let attempt = 0; ; attempt++) {
       try {
-        const result = await callback(transaction);
-        await transaction.commit();
-        return result;
+        return await this.run(callback, { isolation: options.isolation, readOnly: options.readOnly, timeoutMs });
       } catch (error) {
-        if (transaction.active) await transaction.rollback();
-        if (!options.retryDeadlocks || !(error instanceof OrmError) || error.code !== 'DEADLOCK') throw error;
-        last = error;
+        if (!(error instanceof OrmError) || error.code !== 'DEADLOCK' || attempt >= retry) throw error;
         await new Promise(resolve => setTimeout(resolve, (50 << attempt) + Math.floor(Math.random() * 20)));
       }
     }
-    throw last;
   }
 
-  private identifier(value: string): string {
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) throw new OrmError('CONFIG', `invalid generated identifier ${value}`);
-    return this.driver === 'mysql' ? `\`${value}\`` : `"${value}"`;
+  private async run<T>(callback: () => Promise<T> | T, options: { isolation?: Isolation; readOnly?: boolean; timeoutMs: number }): Promise<T> {
+    if (this.closed) throw new OrmError('CONFIG', 'database is closed');
+    const tx = await this.pool.begin(options);
+    const frame = new TxFrame(this, tx);
+    let result: T;
+    try {
+      result = await flow.run([...frames(), frame], callback);
+    } catch (error) {
+      await this.finish(frame, false).catch(() => undefined);
+      throw error;
+    }
+    await this.finish(frame, true);
+    return result;
   }
-  private placeholder(position: number): string { return this.driver === 'postgres' ? `$${position}` : '?'; }
 
-  public async plan(request: Request): Promise<Plan> {
+  private async finish(frame: TxFrame, commit: boolean): Promise<void> {
+    if (frame.finished) return;
+    frame.finished = true;
+    try {
+      for (const key of frame.locks) await frame.tx.control('SELECT RELEASE_LOCK(?)', [key]);
+      if (this.driver === 'mysql') for (const key of frame.locals.keys()) await frame.tx.control(`SET @\`orm.${key}\` = NULL`);
+      if (commit && frame.contextRow) await frame.tx.control('DELETE FROM "orm__context"');
+    } catch (error) {
+      await frame.tx.rollback();
+      throw error;
+    }
+    if (commit) await frame.tx.commit();
+    else await frame.tx.rollback();
+  }
+
+  private async savepoint<T>(frame: TxFrame, callback: () => Promise<T> | T): Promise<T> {
+    frame.savepoints++;
+    const name = `orm_sp_${frame.savepoints}`;
+    try {
+      await frame.tx.control(`SAVEPOINT ${name}`);
+      let result: T;
+      try {
+        result = await flow.run([...frames(), frame], callback);
+      } catch (error) {
+        await frame.tx.control(`ROLLBACK TO SAVEPOINT ${name}`);
+        await frame.tx.control(`RELEASE SAVEPOINT ${name}`);
+        throw error;
+      }
+      await frame.tx.control(`RELEASE SAVEPOINT ${name}`);
+      return result;
+    } finally {
+      frame.savepoints--;
+    }
+  }
+
+  public async plan(request: Request): Promise<Cached> {
     if (this.closed) throw new OrmError('CONFIG', 'database is closed');
     const key = canonical(request);
     const cached = this.plans.get(key);
     if (cached) return cached;
-    const plan = await this.compiler.compile(request);
-    this.plans.set(key, plan);
-    this.planOrder.push(key);
-    while (this.planOrder.length > this.planCacheSize) {
-      const oldest = this.planOrder.shift();
-      if (oldest !== undefined) this.plans.delete(oldest);
-    }
-    return plan;
+    const engine = this.engines.get(request.schema_hash);
+    if (engine === undefined) throw new OrmError('SCHEMA_HASH_MISMATCH', `the models use schema ${request.schema_hash}, which the connection has not loaded`);
+    const plan = engine.compile(request);
+    const entry = { plan, id: planId(key) };
+    this.plans.set(key, entry);
+    if (this.plans.size > this.planCacheSize) this.plans.delete(this.plans.keys().next().value as string);
+    return entry;
   }
 
-  /** Validates and registers an ormgen precompiled plan for one request shape. */
-  public loadPlanBundle(bundle: string | Record<string, unknown>, request: Request): void {
-    let value: Record<string, unknown>;
-    if (typeof bundle === 'string') {
-      try { value = JSON.parse(bundle) as Record<string, unknown>; }
-      catch (error) { throw new OrmError('CONFIG', `precompiled plan is invalid JSON: ${(error as Error).message}`); }
-    } else value = bundle;
-    if (value.version !== 1) throw new OrmError('VERSION_MISMATCH', `precompiled plan version ${String(value.version ?? 0)} is not supported`);
-    if (value.schema_hash !== this.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `precompiled plan schema ${String(value.schema_hash ?? '')} but client schema is ${this.schemaHash}`);
-    if (request.schema_hash !== this.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `request schema ${request.schema_hash} but client schema is ${this.schemaHash}`);
-    if (value.dialect !== this.driver) throw new OrmError('CONFIG', `precompiled plan dialect ${String(value.dialect ?? '')} but database driver is ${this.driver}`);
-    if (typeof value.request_sha256 !== 'string' || value.request_sha256 === '') throw new OrmError('CONFIG', 'precompiled plan requires request_sha256');
-    const requestHash = createHash('sha256').update(canonical(request)).digest('hex');
-    if (requestHash !== value.request_sha256) throw new OrmError('CONFIG', `precompiled plan request hash ${value.request_sha256} does not match request shape ${requestHash}`);
-    const plan = value.plan as Plan | undefined;
-    if (plan === undefined || typeof plan !== 'object' || plan.schema_hash !== this.schemaHash || plan.kind !== request.kind || !Array.isArray(plan.steps) || plan.steps.length === 0) {
-      throw new OrmError('CONFIG', 'precompiled plan body does not match its envelope or request');
-    }
-    const key = canonical(request);
-    this.plans.set(key, plan);
-    this.planOrder.push(key);
-    while (this.planOrder.length > this.planCacheSize) {
-      const oldest = this.planOrder.shift();
-      if (oldest !== undefined) this.plans.delete(oldest);
-    }
+  /** The executor clock in the connection zone; PostgreSQL receives the offset because its columns store instants. */
+  public now(): string {
+    const instant = new Date();
+    const text = formatInstant(instant, this.zone);
+    return this.driver === 'postgres' ? text + offsetText(zoneOffset(this.zone, instant)) : text;
   }
 
-  public async execute(plan: Plan, params: Param[]): Promise<unknown> {
-    if (this.closed) throw new OrmError('CONFIG', 'database is closed');
-    if (plan.schema_hash !== this.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `plan schema ${plan.schema_hash} but client schema is ${this.schemaHash}`);
-    if (plan.steps.length === 0) throw new OrmError('INTERNAL', 'plan has no steps');
-    switch (plan.kind) {
-      case 'one': {
-        const rows = await this.select(plan, params);
-        return rowCollection(rows, requiredAssemble(plan.steps[0])).first() ?? null;
-      }
-      case 'all':
-      case 'group_count': {
-        const rows = await this.select(plan, params);
-        return rowCollection(rows, requiredAssemble(plan.steps[0]));
-      }
-      case 'paginate': {
-        const rows = await this.select(plan, params);
-        const count = await this.scalar(plan.steps.find(step => step.role === 'count')!, params);
-        return { rows: rowCollection(rows, requiredAssemble(plan.steps[0])), total: Number(count) };
-      }
-      case 'count': case 'count_distinct': case 'sum': case 'avg': case 'min': case 'max':
-        return this.scalar(plan.steps[0], params);
-      case 'raw': {
-        const result = await this.run(plan.steps[0], params);
-        return result.rows.map(row => Object.fromEntries(result.columns.map((column, index) => [column, row[index]])));
-      }
-      case 'insert': case 'update': case 'delete':
-        return this.write(plan.steps[0], params, plan.kind === 'insert');
-    }
-  }
-
-  /** Executes a generated request and applies driver bind-limit rules before SQL execution. */
-  public async executeRequest(request: Request, params: Param[]): Promise<unknown> {
-    const plan = await this.plan(request);
-    const parts = rootINParts(request, plan, this.driver, params);
-    if (parts.length <= 1) return this.execute(plan, params);
-    if (request.kind === 'count') {
-      let total = 0;
-      for (const part of parts) total += Number(await this.execute(await this.plan(part), params));
-      return total;
-    }
-    if (request.kind !== 'one' && request.kind !== 'all') throw new OrmError('IR_INVALID', `root IN splitting does not support query kind ${request.kind}`);
-    const first = await this.select(await this.plan(parts[0]!), params);
-    for (const part of parts.slice(1)) {
-      const next = await this.select(await this.plan(part), params);
-      first.data.push(...next.data);
-      for (const step of first.plan.steps) {
-        if (step.role !== 'relation') continue;
-        first.setStep(step.id, [...first.stepData(step.id), ...next.stepData(step.id)], childKeys(first.plan, step.id));
-      }
-    }
-    return request.kind === 'one' ? rowCollection(first, requiredAssemble(first.plan.steps[0]!)).first() ?? null : rowCollection(first, requiredAssemble(first.plan.steps[0]!));
-  }
-
-  /** Executes a row plan and retains raw rows for generated keyset cursors. */
-  public async executeRows(plan: Plan, params: Param[]): Promise<ExecutionRows> {
-    if (this.closed) throw new OrmError('CONFIG', 'database is closed');
-    if (plan.schema_hash !== this.schemaHash || plan.kind !== 'all') throw new OrmError('CONFIG', 'keyset row plan does not match this database');
-    return this.select(plan, params);
-  }
-
-  public async executeRowsRequest(request: Request, params: Param[]): Promise<ExecutionRows> {
-    const plan = await this.plan(request);
-    const parts = rootINParts(request, plan, this.driver, params);
-    if (parts.length === 1) return this.executeRows(plan, params);
-    if (request.kind !== 'all') throw new OrmError('IR_INVALID', `root IN row execution requires kind all, got ${request.kind}`);
-    const first = await this.select(await this.plan(parts[0]!), params);
-    for (const part of parts.slice(1)) {
-      const next = await this.select(await this.plan(part), params);
-      first.data.push(...next.data);
-      for (const step of first.plan.steps) {
-        if (step.role !== 'relation') continue;
-        first.setStep(step.id, [...first.stepData(step.id), ...next.stepData(step.id)], childKeys(first.plan, step.id));
-      }
-    }
-    return first;
-  }
-
-  public async stream<T extends Row>(plan: Plan, params: Param[], visit: (row: T) => boolean | Promise<boolean>): Promise<StreamResult> {
-    if (plan.schema_hash !== this.schemaHash) throw new OrmError('SCHEMA_HASH_MISMATCH', `plan schema ${plan.schema_hash} but client schema is ${this.schemaHash}`);
-    if (plan.steps.slice(1).some(step => step.role === 'relation')) throw new OrmError('IR_INVALID', 'stream does not support separate relation steps; use a join or gets');
-    const step = plan.steps[0];
-    if (!step) throw new OrmError('INTERNAL', 'plan has no steps');
-    await this.connection.acquireRowLock?.(step.lock ?? '');
-    const assemble = requiredAssemble(step);
-    const binds = this.binds(step, params, []);
-    const rows = new ExecutionRows(this, plan, params, []);
-    const started = performance.now();
-    try {
-      const result = await this.connection.stream(step.sql, binds as DriverValue[], async values => {
-        decodeAssembly(values, assemble, this.aesKey, this.aesKeyring);
-        return visit(rowFromResult<T>(rows, assemble, values));
-      });
-      this.onQuery?.({ sql: step.sql, binds: maskBinds(step, binds), seconds: (performance.now() - started) / 1000 });
-      return { state: result.exhausted ? 'exhausted' : 'stopped', count: result.count };
-    } catch (error) {
-      this.onQuery?.({ sql: step.sql, binds: maskBinds(step, binds), seconds: (performance.now() - started) / 1000, error });
-      throw error;
-    }
-  }
-
-  public async sql(step: PlanStep, params: readonly Param[]): Promise<{ sql: string; binds: unknown[] }> {
-    return { sql: step.sql, binds: this.binds(step, params, [], true) };
-  }
-
-  private async select(plan: Plan, params: readonly Param[]): Promise<ExecutionRows> {
-    const main = plan.steps[0]!;
-    const result = await this.run(main, params);
-    decodeRows(result.rows, requiredAssemble(main), this.aesKey, this.aesKeyring);
-    const rows = new ExecutionRows(this, plan, params, result.rows);
-    for (const step of plan.steps) {
-      if (step.role !== 'relation') continue;
-      if (!step.parent) throw new OrmError('INTERNAL', `relation step ${step.id} has no parent reference`);
-      const parents = step.parent.step === 0 ? rows.data : rows['steps'].get(step.parent.step)?.data ?? [];
-      const values = parentValues(step, parents, params);
-      if (values.length === 0) { rows.setStep(step.id, [], childKeys(plan, step.id)); continue; }
-      const collected: unknown[][] = [];
-      for (const chunk of relationChunks(step, values, this.connection.name)) {
-        const expanded = expandParent(step, chunk);
-        const result = await this.run(step, params, expanded.sql, expanded.values);
-        decodeRows(result.rows, requiredAssemble(step), this.aesKey, this.aesKeyring);
-        collected.push(...result.rows);
-      }
-      rows.setStep(step.id, collected, childKeys(plan, step.id));
-    }
-    return rows;
-  }
-
-  private async scalar(step: PlanStep, params: readonly Param[]): Promise<unknown> {
-    return (await this.run(step, params)).rows[0]?.[0] ?? null;
-  }
-
-  private async write(step: PlanStep, params: readonly Param[], insert: boolean): Promise<{ affected: number; insertId: unknown }> {
-    const result = await this.run(step, params);
-    return { affected: result.affected || (insert && result.rows.length ? 1 : 0), insertId: insert ? result.insertId : null };
-  }
-
-  private async run(step: PlanStep, params: readonly Param[], sql = step.sql, parents: readonly Param[] = []) {
-    const binds = this.binds(step, params, parents);
-    const started = performance.now();
-    try {
-      if (sql === step.sql) await this.connection.acquireRowLock?.(step.lock ?? '');
-      const result = await this.connection.execute(sql, binds as DriverValue[]);
-      this.onQuery?.({ sql, binds: maskBinds(step, binds), seconds: (performance.now() - started) / 1000 });
-      return result;
-    } catch (error) {
-      this.onQuery?.({ sql, binds: maskBinds(step, binds), seconds: (performance.now() - started) / 1000, error });
-      throw error;
-    }
-  }
-
-  private binds(step: PlanStep, params: readonly Param[], parents: readonly Param[], dump = false): unknown[] {
-    const out: unknown[] = [];
+  /** Resolves the bind slots of a step; masked marks secret and clock positions. */
+  public args(step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = []): { values: unknown[]; masked: unknown[] } {
+    const values: unknown[] = [];
+    const masked: unknown[] = [];
+    const push = (value: unknown, mask?: string) => { values.push(value); masked.push(mask ?? value); };
+    let clock: string | undefined;
     for (const slot of step.bind_slots) {
       switch (slot.from) {
-        case 'parent': out.push(...parents); break;
         case 'param': {
           let value = params[slot.param];
-          if (slot.transform) value = transform(slot.transform, String(value));
+          if (this.driver === 'sqlite' && (slot.col_type === 'datetime' || slot.col_type === 'date') && value !== null) {
+            value = sqliteTimeValue(value, slot.col_type, this.zone);
+          }
+          if (slot.transform) {
+            if (typeof value !== 'string') throw new OrmError('CONFIG', `${slot.transform} requires a string value`);
+            value = transform(slot.transform, value);
+          }
           if (slot.host_styles.includes('blind_index')) {
-            if (slot.host_styles.length !== 1) throw new OrmError('CONFIG', 'blind_index must be the only host style');
-            if (this.blindIndexKey === '') throw new OrmError('CONFIG', 'secret blind_index not configured');
-            value = blindIndex(value, this.blindIndexKey);
+            if (value !== null) value = blindIndex(value, this.blindIndexKey);
           } else if (slot.host_styles.length > 0) value = hostEncode(value, slot.host_styles, this.aesKey);
-          if (slot.col_type === 'point' && value !== null) value = this.driver === 'postgres' ? postgresPoint(value) : pointText(parsePoint(value as string));
-          if (this.driver === 'sqlite' && value instanceof Date) value = sqlDate(value);
-          if (this.driver === 'postgres' && value instanceof Date) value = sqlDate(value).replace(/\.000000$/, '');
-          out.push(value);
+          if (slot.col_type === 'point' && value !== null) {
+            const [x, y] = parsePoint(value as string);
+            value = this.driver === 'postgres' ? `(${pointText([x, y]).slice(6, -1).replace(' ', ',')})` : pointText([x, y]);
+          }
+          if (value instanceof Date) value = formatInstant(value, this.zone);
+          push(value);
           break;
         }
         case 'secret':
-          if (dump) out.push('$SECRET');
-          else if (slot.name === 'aes' && this.aesKey !== '') out.push(this.aesKey);
-          else throw new OrmError('CONFIG', `secret ${slot.name} not configured`);
+          if (slot.name !== 'aes' || this.aesKey === '') throw new OrmError('CONFIG', `secret ${slot.name} is not configured`);
+          push(this.aesKey, SECRET);
           break;
         case 'config':
-          if (slot.name === 'aes_version') out.push(this.aesVersion);
-          else throw new OrmError('CONFIG', `config value ${slot.name} not configured`);
+          if (slot.name !== 'aes_version') throw new OrmError('CONFIG', `config value ${slot.name} is not configured`);
+          push(this.aesVersion);
           break;
-        case 'now': out.push(dump ? '$NOW' : sqlDate(new Date())); break;
-        default: throw new OrmError('INTERNAL', `bind from ${slot.from}`);
+        case 'parent':
+          for (const value of parents) push(value);
+          break;
+        case 'now':
+          // One statement reads the clock once, so its clock columns are equal.
+          clock ??= this.now();
+          push(clock, NOW);
+          break;
+        default:
+          throw new OrmError('INTERNAL', `bind from ${slot.from}`);
       }
     }
-    return out;
+    return { values, masked };
+  }
+
+  public async execute(ex: Executor, cached: Cached, sql: string, step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = []): Promise<DriverResult> {
+    const { values, masked } = this.args(step, params, parents);
+    const started = performance.now();
+    const connection = ex.frame?.tx ?? this.pool;
+    try {
+      const result = await connection.execute(sql, values as DriverValue[], this.signal);
+      this.onQuery?.({ sql, binds: masked, seconds: (performance.now() - started) / 1000, planId: cached.id });
+      return result;
+    } catch (error) {
+      this.onQuery?.({ sql, binds: masked, seconds: (performance.now() - started) / 1000, planId: cached.id, error });
+      throw error;
+    }
   }
 }
 
-export class Tx extends Db {
-  public active: boolean = true;
-  public constructor(private readonly transactionConnection: DriverTransaction, outer: Db) {
-    super(transactionConnection, { schemaHash: outer.schemaHash, compiler: transportUnavailable, aesKey: outer['aesKey'], blindIndexKey: outer['blindIndexKey'], aesVersion: outer['aesVersion'], aesKeys: outer['aesKeyring']?.keyMap(), onQuery: outer['onQuery'] }, outer);
-    this.compiler = outer.compiler;
-  }
-  public override readonly compiler: Compiler;
-  public async commit(): Promise<void> { this.assertActive(); await this.transactionConnection.commit(); this.active = false; }
-  public async rollback(): Promise<void> { this.assertActive(); await this.transactionConnection.rollback(); this.active = false; }
-  public async savepoint(name: string): Promise<void> { this.assertActive(); await this.transactionConnection.savepoint(name); }
-  public async rollbackTo(name: string): Promise<void> { this.assertActive(); await this.transactionConnection.rollbackTo(name); }
-  public async releaseSavepoint(name: string): Promise<void> { this.assertActive(); await this.transactionConnection.releaseSavepoint(name); }
-  public override async execute(plan: Plan, params: Param[]): Promise<unknown> { this.assertActive(); return super.execute(plan, params); }
-  private assertActive(): void { if (!this.active) throw new OrmError('CONFIG', 'transaction already finished'); }
+/** Marks the start of a statement on an executor; a transaction rejects concurrent use. */
+async function guarded<T>(ex: Executor, work: () => Promise<T>): Promise<T> {
+  const frame = ex.frame;
+  if (frame === undefined) return work();
+  if (frame.finished) throw new OrmError('CONFIG', 'transaction already finished');
+  if (frame.busy) throw new OrmError('CONFIG', 'the transaction connection is already in use');
+  frame.busy = true;
+  try { return await work(); } finally { frame.busy = false; }
 }
 
-/** Execute homogeneous generated write requests in one transaction. */
-export async function batchWrite(executor: Db, requests: readonly BatchRequest[], kind: 'insert' | 'update' | 'delete', options: BatchOptions = {}): Promise<BatchResult> {
-  const chunkSize = options.chunkSize ?? 1000;
-  if (!Number.isSafeInteger(chunkSize) || chunkSize < 1) throw new OrmError('CONFIG', 'batch chunkSize must be a positive integer');
-  if (requests.length === 0) {
-    if (kind !== 'insert' && kind !== 'update' && kind !== 'delete') throw new OrmError('CONFIG', `batch kind ${kind} is not supported`);
-    return { attempted: 0, affected: 0, inserted: 0 };
-  }
-  for (const request of requests) if (request.plan.kind !== kind) throw new OrmError('CONFIG', `batch request kind ${request.plan.kind} does not match ${kind}`);
-  const run = async (target: Db): Promise<BatchResult> => {
-    const result: BatchResult = { attempted: 0, affected: 0, inserted: 0 };
-    for (let start = 0; start < requests.length; start += chunkSize) {
-      for (const request of requests.slice(start, start + chunkSize)) {
-        result.attempted++;
-        const value = await target.execute(request.plan, [...request.params]);
-        const write = value as { affected?: unknown };
-        if (kind === 'insert') {
-          // MySQL reports 2 for an upsert that updates a duplicate while
-          // PostgreSQL and SQLite report 1. Expose one per successful request.
-          result.affected++;
-          result.inserted++;
-        } else {
-          result.affected += typeof write.affected === 'number' ? write.affected : 0;
+function transform(kind: string, value: string): string {
+  if (kind === 'fulltext_boolean') return value.trim() === '' ? '' : `+${value.trim().replaceAll(' ', ' +')}*`;
+  const escaped = value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
+  if (kind === 'like_contains') return `%${escaped}%`;
+  if (kind === 'like_starts') return `${escaped}%`;
+  if (kind === 'like_ends') return `%${escaped}`;
+  return value;
+}
+
+function checkLock(ex: Executor, request: Request): void {
+  if ((request.lock ?? '') !== '' && ex.frame === undefined) throw new OrmError('CONFIG', 'row locks are allowed only inside a transaction');
+}
+
+function driverLimit(driver: string): number { return driver === 'sqlite' ? 999 : 65535; }
+
+export async function query(ex: Executor, request: Request, params: readonly unknown[]): Promise<Result> {
+  return guarded(ex, async () => {
+    checkLock(ex, request);
+    const db = ex.db;
+    const cached = await db.plan(request);
+    if ((request.lock ?? '') !== '') await ex.frame!.tx.rowLock(request.lock!);
+    const parts = rootInParts(request, cached.plan, db.driver, params);
+    let main: unknown[][];
+    if (parts.length > 1) {
+      main = [];
+      const seen = new Set<string>();
+      for (const part of parts) {
+        const partPlan = await db.plan(part);
+        const step = partPlan.plan.steps[0]!;
+        for (const row of await select(ex, partPlan, step, params)) {
+          const key = rowKey(row, step.assemble!.key) ?? '';
+          if (!seen.has(key)) { seen.add(key); main.push(row); }
         }
       }
-    }
-    return result;
-  };
-  if (executor instanceof Tx) return run(executor);
-  return executor.transaction(run);
+    } else main = await select(ex, cached, cached.plan.steps[0]!, params);
+    return relations(ex, cached, params, main);
+  });
 }
 
-const transportUnavailable: CompilerTransport = {
-  compile: async () => { throw new OrmError('INTERNAL', 'transaction compiler placeholder used'); },
-  metadata: async () => { throw new OrmError('INTERNAL', 'transaction compiler placeholder used'); },
-};
+async function relations(ex: Executor, cached: Cached, params: readonly unknown[], main: unknown[][]): Promise<Result> {
+  const out: Result = { plan: cached.plan, main, steps: new Map(), params };
+  for (const step of cached.plan.steps.slice(1)) {
+    if (step.role !== 'relation') continue;
+    const parents = step.parent!.step === 0 ? main : out.steps.get(step.parent!.step)?.data ?? [];
+    const values = parentValues(step, parents, params);
+    const data: unknown[][] = [];
+    if (values.length > 0) {
+      for (const chunk of relationChunks(step, values, ex.db.driver)) data.push(...await select(ex, cached, step, params, chunk));
+    }
+    const keys = childKeys(cached.plan, step.id);
+    const byKey = new Map<string, number[]>();
+    data.forEach((row, index) => {
+      const key = rowKey(row, keys);
+      if (key === undefined) return;
+      const list = byKey.get(key) ?? [];
+      list.push(index);
+      byKey.set(key, list);
+    });
+    out.steps.set(step.id, { step, data, byKey });
+  }
+  return out;
+}
 
-function requiredAssemble(step: PlanStep) { if (!step.assemble) throw new OrmError('INTERNAL', `step ${step.id} has no assembly`); return step.assemble; }
-function canonical(value: unknown): string { if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`; if (value && typeof value === 'object') return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(',')}}`; return JSON.stringify(value); }
-function transform(kind: string, value: string): string { const escaped = value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_'); if (kind === 'fulltext_boolean') return value.trim() === '' ? '' : `+${value.trim().replaceAll(' ', ' +')}*`; if (kind === 'like_contains') return `%${escaped}%`; if (kind === 'like_starts') return `${escaped}%`; if (kind === 'like_ends') return `%${escaped}`; return value; }
-function sqlDate(value: Date): string { return value.toISOString().replace('T', ' ').replace('Z', '').replace(/\.([0-9]{3})$/, '.$1000'); }
-function postgresPoint(value: unknown): string { const [x,y] = parsePoint(value as string); return `(${x},${y})`; }
-function maskBinds(step: PlanStep, binds: readonly unknown[]): unknown[] { const out: unknown[]=[]; let index=0; for (const slot of step.bind_slots) { if(slot.from==='parent') { while(index<binds.length-step.bind_slots.length+1) out.push(binds[index++]); } else { out.push(slot.from==='secret'?'$SECRET':slot.from==='now'?'$NOW':binds[index]); index++; } } return out.length===binds.length?out:[...binds]; }
-function decodeRows(rows: unknown[][], assemble: ReturnType<typeof requiredAssemble>, aesKey: string, keyring?: AesKeyring): void { for (const row of rows) decodeAssembly(row, assemble, aesKey, keyring); }
-function decodeAssembly(row: unknown[], assemble: ReturnType<typeof requiredAssemble>, aesKey: string, keyring?: AesKeyring): void {
-  let version = keyring?.currentVersion ?? 1;
-  for (const column of assemble.columns) if (column.hidden && column.column === 'aes_key_version') version = Number(row[column.index]);
+async function select(ex: Executor, cached: Cached, step: PlanStep, params: readonly unknown[], parents?: readonly unknown[]): Promise<unknown[][]> {
+  let sql = step.sql;
+  let values: readonly unknown[] = [];
+  if (parents !== undefined) ({ sql, values } = expandParent(step, parents));
+  const result = await ex.db.execute(ex, cached, sql, step, params, values);
+  for (const row of result.rows) decodeAssembly(row, step.assemble!, ex.db);
+  return result.rows;
+}
+
+function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void {
+  let version = db.aesKeyring?.currentVersion ?? 1;
+  for (const column of assemble.columns) if (column.hidden && column.column === 'aes_key_version' && row[column.index] !== null) version = Number(row[column.index]);
   for (const column of assemble.columns) {
     let value = row[column.index];
-    if (value !== null && column.styles.length) {
-      const host = column.styles.filter(style => style === 'aes' || style === 'hex' || style === 'ip');
-      const app = column.styles.filter(style => !host.some(value => value === style));
-      if (host.length) value = hostDecode(value as string | Uint8Array, host, host.includes('aes') ? keyring?.key(version) ?? aesKey : aesKey);
-      if (app.length) value = decode(app, value as string | Uint8Array);
-    }
-    if (value !== null && column.type === 'string' && value instanceof Uint8Array) {
-      try { value = new TextDecoder('utf-8', { fatal: true }).decode(value); }
-      catch (error) { throw new OrmError('CODEC_DECODE', `${assemble.entity}.${column.name}: invalid UTF-8 string: ${String(error)}`); }
-    } else if (value !== null && column.type === 'bool') {
-      value = value === true || value === 1 || value === '1' || value === 't';
-    } else if (value !== null && ['i32', 'i64', 'f64', 'decimal'].includes(column.type)) {
-      value = Number(value);
-    }
+    if (value === null || value === undefined || column.styles.length === 0) continue;
+    const host = column.styles.filter(style => style === 'aes' || style === 'hex' || style === 'ip');
+    const app = column.styles.filter(style => style !== 'aes' && style !== 'hex' && style !== 'ip');
+    const key = host.includes('aes') ? db.aesKeyring?.key(version) ?? db.aesKey : db.aesKey;
+    if (host.length > 0) value = hostDecode(value as string | Uint8Array, host, key);
+    if (app.length > 0) value = decode(app, value as string | Uint8Array);
     row[column.index] = value;
   }
-  for (const child of assemble.children) if (child.kind === 'join' && child.assemble) decodeAssembly(row, child.assemble, aesKey, keyring);
+  for (const child of assemble.children) if (child.kind === 'join' && child.assemble) decodeAssembly(row, child.assemble, db);
 }
-function parentValues(step: PlanStep, parents: unknown[][], params: readonly Param[]): Param[] { const ref=step.parent!; const seen=new Set<string>(); const out:Param[]=[]; for(const row of parents){if(ref.if_parent&&scalarKey(row[ref.if_parent.index])!==scalarKey(params[ref.if_parent.param]))continue;const key=rowKey(row,ref.keys);if(key===undefined||seen.has(key))continue;seen.add(key);for(const part of ref.keys)out.push(row[part.index] as Param);}return out; }
-function expandParent(step: PlanStep, source: Param[]): {sql:string;values:Param[]} { const width=step.parent?.keys.length??0;if(width===0||source.length%width!==0)throw new OrmError('INTERNAL',`relation step ${step.id} has invalid parent keys`);const tuples=source.length/width;let size=1;while(size<tuples)size<<=1;const values=[...source];while(values.length<size*width)values.push(...source.slice((tuples-1)*width,tuples*width));const replacement=(start:number,format:(n:number)=>string)=>Array.from({length:size},(_,tuple)=>Array.from({length:width},(_,part)=>format(start+tuple*width+part)).join(', ')).join(width===1?', ': '), (');const parentSlot=step.bind_slots.findIndex(slot=>slot.from==='parent');if(parentSlot<0)throw new OrmError('INTERNAL',`relation step ${step.id} has no parent bind`);if(step.sql.includes('$1')){const parent=parentSlot+1;return{sql:step.sql.replace(/\$(\d+)/g,(_,raw)=>{const n=Number(raw);if(n===parent)return replacement(n,i=>`$${i}`);return `$${n>parent?n+size*width-1:n}`;}),values};}let slot=0;return{sql:step.sql.replace(/\?/g,()=>step.bind_slots[slot++]?.from==='parent'?replacement(0,()=>'?'):'?'),values}; }
-function relationChunks(step: PlanStep, values: Param[], driver: string): Param[][] { const width=step.parent?.keys.length??0;if(width===0||values.length%width!==0)throw new OrmError('IR_INVALID',`relation step ${step.id} has invalid parent keys`);const nonParent=step.bind_slots.filter(slot=>slot.from!=='parent').length;const limit=driver==='sqlite'?999:65535;const max=Math.floor((limit-nonParent)/width);if(max<1)throw new OrmError('IR_INVALID',`relation step ${step.id} needs ${nonParent+width} bind parameters but ${driver} permits ${limit}`);let size=1;while(size*2<=max)size*=2;const tuples=values.length/width;const out:Param[][]=[];for(let start=0;start<tuples;start+=size)out.push(values.slice(start*width,Math.min(start+size,tuples)*width));return out; }
-function rootINParts(request: Request, plan: Plan, driver: string, params: readonly Param[]): Request[] {
-  const main = plan.steps[0]; if (!main) throw new OrmError('INTERNAL', 'plan has no root step');
-  const limit = driver === 'sqlite' ? 999 : 65535;
-  if (main.bind_slots.length > limit && (request.limit || request.order?.length || request.distinct || request.group_by?.length || request.group_by_expr?.length || request.having || request.keyset)) throw new OrmError('IR_INVALID', `root query requires ${main.bind_slots.length} bind parameters but ${driver} permits ${limit}; root IN cannot be split with ordering, limiting, grouping, distinct, or keyset semantics`);
-  if (request.limit || request.order?.length || request.distinct || request.group_by?.length || request.group_by_expr?.length || request.having || request.keyset) return [request];
-  const predicates: Array<{ op?: string; ps?: number[] }> = []; collectINPredicates(request.where, predicates);
-  const target = predicates.filter(value => value.op === 'in' && main.bind_slots.length > limit).sort((left, right) => (right.ps?.length ?? 0) - (left.ps?.length ?? 0))[0];
-  if (!target) {
-    if (main.bind_slots.length > (driver === 'sqlite' ? 999 : 65535) && predicates.some(value => value.op === 'not_in')) throw new OrmError('IR_INVALID', `root NOT IN requires ${main.bind_slots.length} bind parameters but ${driver} permits ${driver === 'sqlite' ? 999 : 65535}; exclusion semantics are not split`);
-    return [request];
+
+export async function scalar(ex: Executor, request: Request, params: readonly unknown[]): Promise<unknown> {
+  return guarded(ex, async () => {
+    checkLock(ex, request);
+    const db = ex.db;
+    const cached = await db.plan(request);
+    const parts = rootInParts(request, cached.plan, db.driver, params);
+    if (parts.length > 1) {
+      if (request.kind !== 'count') throw new OrmError('IR_INVALID', 'a split IN list can be merged only for a count');
+      let total = 0;
+      for (const part of parts) {
+        const partPlan = await db.plan(part);
+        total += Number((await db.execute(ex, partPlan, partPlan.plan.steps[0]!.sql, partPlan.plan.steps[0]!, params)).rows[0]?.[0] ?? 0);
+      }
+      return total;
+    }
+    const step = cached.plan.steps[0]!;
+    return (await db.execute(ex, cached, step.sql, step, params)).rows[0]?.[0] ?? null;
+  });
+}
+
+export async function paginate(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ result: Result; total: number }> {
+  return guarded(ex, async () => {
+    checkLock(ex, request);
+    const db = ex.db;
+    const cached = await db.plan(request);
+    const main = await select(ex, cached, cached.plan.steps[0]!, params);
+    const result = await relations(ex, cached, params, main);
+    const step = cached.plan.steps.find(s => s.role === 'count');
+    if (!step) throw new OrmError('INTERNAL', 'paginate plan has no count step');
+    const total = Number((await db.execute(ex, cached, step.sql, step, params)).rows[0]?.[0] ?? 0);
+    return { result, total };
+  });
+}
+
+export async function write(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ id: number | null; affected: number }> {
+  return guarded(ex, async () => {
+    const db = ex.db;
+    const cached = await db.plan(request);
+    const step = cached.plan.steps[0]!;
+    const result = await db.execute(ex, cached, step.sql, step, params);
+    if (request.kind === 'insert' && / RETURNING /.test(step.sql)) return { id: Number(result.rows[0]?.[0]), affected: 1 };
+    if (request.kind === 'update' && request.optimistic && result.affected === 0) throw new OrmError('OPTIMISTIC_LOCK', 'the row changed after it was read');
+    const id = request.kind === 'insert' && !request.rows && result.insertId !== null ? Number(result.insertId) : null;
+    return { id, affected: result.affected };
+  });
+}
+
+/** Returns the statement of a select request without executing it. */
+export async function statement(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ sql: string; binds: unknown[] }> {
+  const cached = await ex.db.plan(request);
+  const step = cached.plan.steps[0]!;
+  return { sql: step.sql, binds: ex.db.args(step, params).masked };
+}
+
+function parentValues(step: PlanStep, parents: readonly unknown[][], params: readonly unknown[]): unknown[] {
+  const ref = step.parent!;
+  const seen = new Set<string>();
+  const out: unknown[] = [];
+  for (const row of parents) {
+    if (ref.if_parent && scalarKey(row[ref.if_parent.index]) !== scalarKey(params[ref.if_parent.param])) continue;
+    const key = rowKey(row, ref.keys);
+    if (key === undefined || seen.has(key)) continue;
+    seen.add(key);
+    for (const part of ref.keys) out.push(row[part.index]);
   }
-  const available = limit - (main.bind_slots.length - (target.ps?.length ?? 0));
-  if (available < 1) throw new OrmError('IR_INVALID', `root IN has no bind capacity on ${driver}`);
-  let size = 1; while (size * 2 <= available) size *= 2;
-  const unique: number[] = []; const seen = new Set<string>();
-  for (const index of target.ps ?? []) { const key = canonical(params[index]); if (!seen.has(key)) { seen.add(key); unique.push(index); } }
+  return out;
+}
+
+function relationChunks(step: PlanStep, values: readonly unknown[], driver: string): unknown[][] {
+  const width = step.parent!.keys.length;
+  const nonParent = step.bind_slots.filter(slot => slot.from !== 'parent').length;
+  const max = Math.floor((driverLimit(driver) - nonParent) / width);
+  if (max < 1) throw new OrmError('IR_INVALID', `relation ${step.id} needs more bind parameters than ${driver} permits`);
+  let size = 1;
+  while (size * 2 <= max) size *= 2;
+  const tuples = values.length / width;
+  const out: unknown[][] = [];
+  for (let start = 0; start < tuples; start += size) out.push(values.slice(start * width, Math.min(start + size, tuples) * width));
+  return out;
+}
+
+function expandParent(step: PlanStep, source: readonly unknown[]): { sql: string; values: unknown[] } {
+  const width = step.parent!.keys.length;
+  const tuples = source.length / width;
+  let size = 1;
+  while (size < tuples) size <<= 1;
+  const values = [...source];
+  while (values.length < size * width) values.push(...source.slice((tuples - 1) * width, tuples * width));
+  const list = (format: (m: number) => string) => {
+    let out = '';
+    for (let m = 0; m < size * width; m++) {
+      if (m > 0) out += width > 1 && m % width === 0 ? '), (' : ', ';
+      out += format(m);
+    }
+    return out;
+  };
+  const parentSlot = step.bind_slots.findIndex(slot => slot.from === 'parent');
+  if (step.sql.includes('$1')) {
+    const parent = parentSlot + 1;
+    return {
+      sql: step.sql.replace(/\$(\d+)/g, (_, raw: string) => {
+        const n = Number(raw);
+        if (n === parent) return list(m => `$${n + m}`);
+        return `$${n > parent ? n + size * width - 1 : n}`;
+      }),
+      values,
+    };
+  }
+  let slot = 0;
+  return { sql: step.sql.replace(/\?/g, () => step.bind_slots[slot++]?.from === 'parent' ? list(() => '?') : '?'), values };
+}
+
+function childKeys(plan: Plan, id: number): KeyReference[] {
+  const find = (assemble: Assemble): KeyReference[] | undefined => {
+    for (const child of assemble.children) {
+      if (child.kind !== 'join' && child.step === id) return child.child_keys;
+      if (child.kind === 'join' && child.assemble) {
+        const found = find(child.assemble);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+  for (const step of plan.steps) if (step.assemble) { const found = find(step.assemble); if (found) return found; }
+  throw new OrmError('INTERNAL', `relation step ${id} has no child`);
+}
+
+function itemConn(item: Group['items'][number]): string | undefined {
+  return item.pred?.conn ?? item.group?.conn ?? item.joined?.conn;
+}
+
+/** Splits a root IN list joined with AND that exceeds the driver bind limit. */
+function rootInParts(request: Request, plan: Plan, driver: string, params: readonly unknown[]): Request[] {
+  const main = plan.steps[0]!;
+  const limit = driverLimit(driver);
+  if (main.bind_slots.length <= limit) return [request];
+  const tooLarge = new OrmError('IR_INVALID', `the statement needs ${main.bind_slots.length} bind parameters but ${driver} permits ${limit}`);
+  if (request.limit || request.order?.length || request.group_by?.length || request.group_by_expr?.length || !request.where) throw tooLarge;
+  const items = request.where.items;
+  let target = -1;
+  items.forEach((item, i) => {
+    if (!item.pred) return;
+    if (item.pred.conn === 'or' || (i + 1 < items.length && itemConn(items[i + 1]!) === 'or')) throw tooLarge;
+    if (item.pred.op === 'in' && !item.pred.sub && (target < 0 || (item.pred.ps?.length ?? 0) > (items[target]!.pred!.ps?.length ?? 0))) target = i;
+  });
+  if (target < 0) throw tooLarge;
+  const ps = items[target]!.pred!.ps!;
+  const available = limit - (main.bind_slots.length - ps.length);
+  if (available < 1) throw tooLarge;
+  let chunk = 1;
+  while (chunk * 2 <= available) chunk *= 2;
+  const seen = new Set<string>();
+  const unique = ps.filter(index => { const key = scalarKey(params[index]); if (seen.has(key)) return false; seen.add(key); return true; });
   const parts: Request[] = [];
-  for (let start = 0; start < unique.length; start += size) {
-    const part = structuredClone(request) as Request;
-    const values = unique.slice(start, start + size);
-    let ordinal = 0;
-    if (!replaceINOrdinal(part.where, predicates.indexOf(target), values, () => ordinal++)) throw new OrmError('INTERNAL', 'root IN target disappeared while cloning request');
+  for (let start = 0; start < unique.length; start += chunk) {
+    const part = structuredClone(request);
+    const slice = unique.slice(start, start + chunk);
+    let n = 1;
+    while (n < slice.length) n <<= 1;
+    while (slice.length < n) slice.push(slice[slice.length - 1]!);
+    part.where!.items[target]!.pred!.ps = slice;
     parts.push(part);
   }
   return parts;
 }
-function collectINPredicates(group: Group | undefined, out: Array<{ op?: string; ps?: number[] }>): void { for (const item of group?.items ?? []) { if (item.pred && (item.pred.op === 'in' || item.pred.op === 'not_in')) out.push(item.pred); collectINPredicates(item.group, out); if (item.nav) collectINPredicates(item.nav.group, out); } }
-function replaceINOrdinal(group: Group | undefined, target: number, values: number[], ordinal: () => number): boolean { for (const item of group?.items ?? []) { if (item.pred && (item.pred.op === 'in' || item.pred.op === 'not_in') && ordinal() === target) { item.pred.ps = [...values]; return true; } if (replaceINOrdinal(item.group, target, values, ordinal)) return true; if (item.nav && replaceINOrdinal(item.nav.group, target, values, ordinal)) return true; } return false; }
-function childKeys(plan: Plan,id:number):import('./index.js').KeyReference[] { const find=(assemble:ReturnType<typeof requiredAssemble>):import('./index.js').KeyReference[]|undefined=>{for(const child of assemble.children){if(child.kind!=='join'&&child.step===id)return child.child_keys;if(child.assemble){const found=find(child.assemble);if(found)return found;}}};for(const step of plan.steps)if(step.assemble){const found=find(step.assemble);if(found)return found;}throw new OrmError('INTERNAL',`relation step ${id} has no child attachment`); }

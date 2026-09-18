@@ -1,4 +1,4 @@
-//! Column-style codecs (docs/codec.md): json/jsons, serialize, base64, gz, curlfile, yaml.
+//! Column-style codecs (docs/codec.md): json/jsons, serialize, base64, gz, yaml.
 //! Styles are listed in write order; `decode` applies them in reverse.
 
 use std::collections::HashSet;
@@ -37,16 +37,6 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
     };
     let mut value: Option<Value> = None;
     for st in styles.iter().rev() {
-        if st == "curlfile" {
-            let decoded = value.take().ok_or_else(|| {
-                err(
-                    CODEC_UNSUPPORTED,
-                    "curlfile must precede serialize on write",
-                )
-            })?;
-            value = Some(restore_upload_files(decoded)?);
-            continue;
-        }
         if value.is_some() {
             return Err(err(
                 CODEC_DECODE,
@@ -97,17 +87,11 @@ pub fn encode(styles: &[&str], v: Option<&Value>) -> Result<Param> {
         return Ok(Param::Null);
     }
     let mut cur: Vec<u8> = Vec::new();
-    let mut value = v.clone();
+    let value = v.clone();
     for (i, st) in styles.iter().enumerate() {
         match *st {
-            "curlfile" => {
-                if i != 0 {
-                    return Err(err(CODEC_UNSUPPORTED, "curlfile must be the first style"));
-                }
-                value = prepare_upload_files(value)?;
-            }
             "serialize" => {
-                if i != 0 && !(i == 1 && styles[0] == "curlfile") {
+                if i != 0 {
                     return Err(err(
                         CODEC_UNSUPPORTED,
                         "serialize must be the first encoding style",
@@ -156,81 +140,6 @@ pub fn encode(styles: &[&str], v: Option<&Value>) -> Result<Param> {
     Ok(Param::Str(
         String::from_utf8(cur).map_err(|e| err(CODEC_ENCODE, e.to_string()))?,
     ))
-}
-
-fn prepare_upload_files(value: Value) -> Result<Value> {
-    match value {
-        Value::Array(items) => Ok(Value::Array(
-            items
-                .into_iter()
-                .map(prepare_upload_files)
-                .collect::<Result<_>>()?,
-        )),
-        Value::Object(mut fields) => {
-            if fields.get("$type") == Some(&Value::String("upload_file".into())) {
-                let valid = fields.len() == 4
-                    && fields
-                        .get("path")
-                        .and_then(Value::as_str)
-                        .is_some_and(|v| !v.is_empty())
-                    && fields.get("mime").and_then(Value::as_str).is_some()
-                    && fields
-                        .get("name")
-                        .and_then(Value::as_str)
-                        .is_some_and(|v| !v.is_empty());
-                if !valid {
-                    return Err(err(
-                        CODEC_ENCODE,
-                        "curlfile: upload_file requires non-empty path and name plus string mime",
-                    ));
-                }
-                fields.remove("$type");
-                fields.insert("is_curl_file".into(), Value::Bool(true));
-                return Ok(Value::Object(fields));
-            }
-            for item in fields.values_mut() {
-                *item = prepare_upload_files(std::mem::take(item))?;
-            }
-            Ok(Value::Object(fields))
-        }
-        other => Ok(other),
-    }
-}
-
-fn restore_upload_files(value: Value) -> Result<Value> {
-    match value {
-        Value::Array(items) => Ok(Value::Array(
-            items
-                .into_iter()
-                .map(restore_upload_files)
-                .collect::<Result<_>>()?,
-        )),
-        Value::Object(mut fields) => {
-            if fields.get("is_curl_file") == Some(&Value::Bool(true)) {
-                let valid = fields.len() == 4
-                    && fields
-                        .get("path")
-                        .and_then(Value::as_str)
-                        .is_some_and(|v| !v.is_empty())
-                    && fields.get("mime").and_then(Value::as_str).is_some()
-                    && fields
-                        .get("name")
-                        .and_then(Value::as_str)
-                        .is_some_and(|v| !v.is_empty());
-                if !valid {
-                    return Err(err(CODEC_DECODE, "curlfile: invalid stored upload file"));
-                }
-                fields.remove("is_curl_file");
-                fields.insert("$type".into(), Value::String("upload_file".into()));
-                return Ok(Value::Object(fields));
-            }
-            for item in fields.values_mut() {
-                *item = restore_upload_files(std::mem::take(item))?;
-            }
-            Ok(Value::Object(fields))
-        }
-        other => Ok(other),
-    }
 }
 
 enum YamlFrame {
@@ -707,7 +616,7 @@ pub fn hex_upper(b: &[u8]) -> String {
 /// `UNHEX(...)`: either case; whitespace around the text is ignored.
 pub fn hex_decode(s: &str) -> Result<Vec<u8>> {
     let s = s.trim().as_bytes();
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         return Err(err(CODEC_DECODE, "hex: odd length"));
     }
     let nibble = |c: u8| -> Result<u8> {
@@ -718,7 +627,7 @@ pub fn hex_decode(s: &str) -> Result<Vec<u8>> {
             _ => Err(err(CODEC_DECODE, format!("hex: invalid byte {c:#x}"))),
         }
     };
-    s.chunks_exact(2)
+    s.as_chunks::<2>().0.iter()
         .map(|p| Ok(nibble(p[0])? << 4 | nibble(p[1])?))
         .collect()
 }
@@ -978,23 +887,8 @@ mod tests {
             ),
             other => panic!("{other:?}"),
         }
-        let invalid_public = serde_json::json!({"$type": "upload_file", "path": "", "mime": "text/plain", "name": "a.txt"});
         assert_eq!(
-            encode(&["curlfile", "serialize"], Some(&invalid_public))
-                .unwrap_err()
-                .code(),
-            CODEC_ENCODE
-        );
-        let invalid_stored = "a:4:{s:12:\"is_curl_file\";b:1;s:4:\"mime\";s:10:\"text/plain\";s:4:\"name\";s:5:\"a.txt\";s:4:\"path\";s:0:\"\";}";
-        let styles = vec!["curlfile".to_string(), "serialize".to_string()];
-        assert_eq!(
-            decode(&styles, &Val::Str(invalid_stored.into()))
-                .unwrap_err()
-                .code(),
-            CODEC_DECODE
-        );
-        assert_eq!(
-            encode(&["serialize", "curlfile"], Some(&serde_json::json!({})))
+            encode(&["curlfile"], Some(&serde_json::json!({})))
                 .unwrap_err()
                 .code(),
             CODEC_UNSUPPORTED

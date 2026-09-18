@@ -4,19 +4,12 @@
 /target/
 /bench/rust/target/
 /clients/rust/target/
-/bench/php/vendor/
-*.dylib
-*.so
-*.h
-*.wasm
 *.test
 /docs/perf-raw/
 /tests/conformance/out/
 /tests/codec/out/
 /tests/interfaces/rust/target/
 
-# reports produced by `ormgen check` name files in the codebase being scanned; they belong there, not here
-/docs/check-*.txt
 /node_modules/
 /clients/typescript/node_modules/
 /clients/php/vendor/

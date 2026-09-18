@@ -14,8 +14,8 @@ const example = `erDiagram
     datetime(6)  updated_ts              "=now onupdate"
     tinyint      is_close                "=0 bool"
     varchar(255) aes_hex_email           "? aes,hex"
-    text         curlfile_serialize_files
-    text         upload_archive          "? curlfile,serialize"
+    text         serialize_files
+    text         upload_archive          "? serialize,base64"
     text         yaml_settings
     int          aes_key_version         "=1"
     varbinary(16) ip                     "ip"
@@ -41,7 +41,6 @@ const example = `erDiagram
   %% index    battle (service_seq, is_close)              ik
   %% fulltext battle (name, description)
   %% timestamps battle created_ts updated_ts
-  %% predicate battle display : ` + "`seq` > 0" + `
 `
 
 func TestParseExample(t *testing.T) {
@@ -71,10 +70,10 @@ func TestParseExample(t *testing.T) {
 	if c := cols["aes_hex_email"]; strings.Join(c.Styles, ",") != "aes,hex" || !c.Nullable {
 		t.Errorf("aes_hex_email: %+v", c)
 	}
-	if c := cols["curlfile_serialize_files"]; len(c.Styles) != 0 {
-		t.Errorf("curlfile_serialize_files parser styles: %+v", c)
+	if c := cols["serialize_files"]; len(c.Styles) != 0 {
+		t.Errorf("serialize_files parser styles: %+v", c)
 	}
-	if c := cols["upload_archive"]; strings.Join(c.Styles, ",") != "curlfile,serialize" || !c.Nullable {
+	if c := cols["upload_archive"]; strings.Join(c.Styles, ",") != "serialize,base64" || !c.Nullable {
 		t.Errorf("upload_archive: %+v", c)
 	}
 	if c := cols["ip"]; strings.Join(c.Styles, ",") != "ip" {
@@ -96,14 +95,11 @@ func TestParseExample(t *testing.T) {
 	if r := d.Relations[0]; strings.Join(r.FKs, ",") != "service_seq" || r.ChildName != "" || r.ParentName != "" {
 		t.Errorf("relation0: %+v", r)
 	}
-	if len(d.Directives) != 5 {
+	if len(d.Directives) != 4 {
 		t.Fatalf("directives: %d", len(d.Directives))
 	}
 	if x := d.Directives[1]; x.Kind != "index" || x.Name != "ik" || strings.Join(x.Columns, ",") != "service_seq,is_close" {
 		t.Errorf("index: %+v", x)
-	}
-	if x := d.Directives[4]; x.Kind != "predicate" || x.Name != "display" || x.Raw != "`seq` > 0" {
-		t.Errorf("predicate: %+v", x)
 	}
 }
 

@@ -21,6 +21,8 @@ var ormDirectiveOptions = map[string]map[string]bool{
 	"table":        {"entity": true, "name": true},
 	"foreign":      {"entity": true, "columns": true, "references": true, "name": true, "on_delete": true, "deferred": true},
 	"immutable":    {"entity": true},
+	"audit_log":    {"operation": true, "context": true, "change": true},
+	"audit":        {"entity": true, "mode": true, "site": true, "redact": true},
 	"field":        {"relation": true, "fk": true, "public": true, "required": true, "order": true},
 	"public-key":   {"entity": true, "field": true, "type": true, "unique": true, "stable": true},
 	"resource-key": {"route": true, "param": true, "field": true},
@@ -93,11 +95,10 @@ type DRelation struct {
 }
 
 type Directive struct {
-	Kind    string // unique, index, fulltext, check, blind_index, timestamps, predicate, many_to_many
+	Kind    string // unique, index, fulltext, check, blind_index, timestamps, …
 	Table   string
 	Columns []string
 	Name    string
-	Through string
 	Raw     string
 	Line    int
 }
@@ -116,14 +117,14 @@ var (
 	// parent CARD child : label
 	reRelation = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s+([|}o]{1,2}[-.]{2}[|{o]{1,2})\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$`)
 	// %% kind table (a, b) [name]
-	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|check|blind_index|timestamps|scope|aes_version|soft_delete|predicate|many_to_many|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
+	reDirective      = regexp.MustCompile(`^%%\s*(unique|index|fulltext|check|blind_index|timestamps|aes_version|soft_delete|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$`)
 	reRelationNames  = regexp.MustCompile(`^(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$`)
 	reRef            = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$`)
 	reDirectiveIdent = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
 	reORMName        = regexp.MustCompile(`^[a-z][a-z0-9_-]*(\.[a-z][a-z0-9_-]*)?$`)
 )
 
-var styleWords = map[string]bool{"aes": true, "hex": true, "gz": true, "json": true, "jsons": true, "base64": true, "serialize": true, "ip": true, "yaml": true, "curlfile": true}
+var styleWords = map[string]bool{"aes": true, "hex": true, "gz": true, "json": true, "jsons": true, "base64": true, "serialize": true, "ip": true, "yaml": true}
 
 // Parse reads one .mmd file. It accepts exactly the subset in docs/schema.md
 // and fails loudly on anything else — a schema file is not a place for guesses.
@@ -253,7 +254,7 @@ func parseORMDirective(line string, number int) (*ORMDirective, error) {
 	if body == "" {
 		return nil, &ParseError{number, "%% orm:<kind> requires a directive kind"}
 	}
-	parts := strings.Fields(body)
+	parts := splitORMFields(body)
 	kind := parts[0]
 	if !reDirectiveIdent.MatchString(kind) {
 		return nil, &ParseError{number, "invalid ORM directive kind " + kind}
@@ -416,11 +417,6 @@ func parseDirective(m []string, line int) (*Directive, error) {
 		if len(d.Columns) != 2 {
 			return nil, &ParseError{line, "%% timestamps <table> <created> <updated>"}
 		}
-	case "scope":
-		d.Columns = strings.Fields(d.Raw)
-		if len(d.Columns) != 1 {
-			return nil, &ParseError{line, "%% scope <table> <column>"}
-		}
 	case "aes_version":
 		d.Columns = strings.Fields(d.Raw)
 		if len(d.Columns) != 1 || !reDirectiveIdent.MatchString(d.Columns[0]) {
@@ -436,21 +432,6 @@ func parseDirective(m []string, line int) (*Directive, error) {
 		if len(d.Columns) != 2 || !reDirectiveIdent.MatchString(d.Columns[0]) || !reDirectiveIdent.MatchString(d.Columns[1]) {
 			return nil, &ParseError{line, "%% blind_index <table> <encrypted_column> <index_column>"}
 		}
-	case "predicate":
-		name, body, ok := strings.Cut(d.Raw, ":")
-		if !ok || strings.TrimSpace(name) == "" || strings.TrimSpace(body) == "" {
-			return nil, &ParseError{line, "%% predicate <table> <name> : <dsl>"}
-		}
-		d.Name = strings.TrimSpace(name)
-		d.Raw = strings.TrimSpace(body)
-	case "many_to_many":
-		parts := strings.Fields(d.Raw)
-		if len(parts) != 5 || parts[3] != "through" || !reDirectiveIdent.MatchString(parts[0]) || !reDirectiveIdent.MatchString(parts[1]) || !reDirectiveIdent.MatchString(parts[2]) || !reDirectiveIdent.MatchString(parts[4]) {
-			return nil, &ParseError{line, "%% many_to_many <target_entity> <source_relation> <target_relation> through <through_entity>"}
-		}
-		d.Columns = []string{parts[0], parts[2]}
-		d.Name = parts[1]
-		d.Through = parts[4]
 	case "table_comment":
 		if d.Raw == "" || !strings.HasPrefix(d.Raw, `"`) || !strings.HasSuffix(d.Raw, `"`) {
 			return nil, &ParseError{line, "%% table_comment <table> \"text\""}

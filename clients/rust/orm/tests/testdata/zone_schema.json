@@ -1,0 +1,42 @@
+{
+  "schema_hash": "61829838dcc62cf6",
+  "order": [
+    "zone_event"
+  ],
+  "entities": {
+    "zone_event": {
+      "name": "zone_event",
+      "table": "zone_event",
+      "pk": [
+        "seq"
+      ],
+      "auto": "seq",
+      "columns": [
+        {
+          "name": "seq",
+          "type": "i64",
+          "raw": "bigint",
+          "auto": true,
+          "pk": true
+        },
+        {
+          "name": "start_dt",
+          "type": "datetime",
+          "raw": "datetime(6)",
+          "precision": 6
+        },
+        {
+          "name": "created_ts",
+          "type": "datetime",
+          "raw": "datetime(6)",
+          "default": "now",
+          "precision": 6
+        }
+      ],
+      "relations": {},
+      "timestamps": {
+        "created": "created_ts"
+      }
+    }
+  }
+}

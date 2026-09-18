@@ -6,8 +6,8 @@ import (
 )
 
 // SQLite (3.35+ for RETURNING, 3.25+ for window functions). No fulltext outside
-// FTS5 virtual tables and no case-sensitive LIKE per expression, so `match` and
-// `like_binary` are rejected at compile time rather than approximated. Every
+// FTS5 virtual tables, so `match` is rejected at compile time rather than
+// approximated. Every
 // style stage is app-side here (host AES, packed inet).
 type SQLite struct{}
 
@@ -30,10 +30,10 @@ func (SQLite) CurrentTime() string           { return "CURRENT_TIMESTAMP" }
 func (SQLite) HandlesStyle(string) bool      { return false }
 
 func (SQLite) Supports(op string) bool {
-	return op != "match" && op != "match_boolean" && op != "like_binary"
+	return op != "match" && op != "match_boolean"
 }
 
-func (SQLite) Like(col, ph string, _ bool) string { return col + " LIKE " + ph + ` ESCAPE '\'` }
+func (SQLite) Like(col, ph string) string { return col + " LIKE " + ph + ` ESCAPE '\'` }
 
 func (SQLite) Fulltext(cols []string, ph string, boolean bool) string {
 	panic("sqlite: fulltext is rejected by Supports")

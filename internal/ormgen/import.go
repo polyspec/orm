@@ -1,12 +1,12 @@
-// ormgen import: a live MySQL schema → Mermaid erDiagram (docs/schema.md).
+// ormgen import: a live database schema → Mermaid erDiagram (docs/schema.md).
 //
-//	ormgen import --dsn "root@unix(/tmp/mysql.sock)/orm_bench" --out schema/app.mmd [--tables a,b]
+//	ormgen import --dsn "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock" --out schema/app.mmd [--tables a,b]
 //
 // Deterministic (tables alphabetical, columns by ordinal position) so a
 // re-import of an unchanged database is a no-op diff. When --out already
 // exists, hand-written facts that the database cannot express are carried
 // over: relation name overrides "(child / parent)", column attributes lazy /
-// bool / int / explicit styles, and %% predicate lines.
+// bool / int / explicit styles.
 package ormgen
 
 import (
@@ -61,30 +61,20 @@ type impTable struct {
 
 func importCmd(args []string) {
 	fs := flag.NewFlagSet("import", flag.ExitOnError)
-	dsn := fs.String("dsn", "", "DSN/URL (required)")
-	driver := fs.String("driver", "", "mysql|postgres (default: inferred from the DSN)")
+	dsnFlag := fs.String("dsn", "", "database DSN URI: mysql://, postgres://, or sqlite:///path (required)")
 	out := fs.String("out", "", "output .mmd path (required)")
 	tables := fs.String("tables", "", "comma-separated subset of tables")
 	fs.Parse(args)
-	if *dsn == "" || *out == "" {
-		fmt.Fprintln(os.Stderr, "usage: ormgen import --dsn <dsn> [--driver mysql|postgres] --out schema/app.mmd [--tables a,b]")
+	if *dsnFlag == "" || *out == "" {
+		fmt.Fprintln(os.Stderr, "usage: ormgen import --dsn <dsn> --out schema/app.mmd [--tables a,b]")
 		os.Exit(2)
 	}
-	if *driver == "" {
-		*driver = "mysql"
-		if strings.HasPrefix(*dsn, "postgres://") || strings.HasPrefix(*dsn, "postgresql://") || strings.Contains(*dsn, "host=") {
-			*driver = "postgres"
-		}
-	}
-	sqlDriver := map[string]string{"mysql": "mysql", "postgres": "pgx"}[*driver]
-	if sqlDriver == "" {
-		fail(fmt.Errorf("driver %q: want mysql or postgres", *driver))
-	}
-	db, err := sql.Open(sqlDriver, *dsn)
+	db, dsn, err := openToolDB(*dsnFlag)
 	if err != nil {
 		fail(err)
 	}
 	defer db.Close()
+	driver := dsn.dialect
 	var only map[string]bool
 	if *tables != "" {
 		only = map[string]bool{}
@@ -92,7 +82,7 @@ func importCmd(args []string) {
 			only[strings.TrimSpace(t)] = true
 		}
 	}
-	ts, err := readTables(db, *driver, only)
+	ts, err := readTables(db, driver, only)
 	if err != nil {
 		fail(err)
 	}
@@ -102,7 +92,10 @@ func importCmd(args []string) {
 			fail(fmt.Errorf("%s: %w (fix or remove it before importing over it)", *out, err))
 		}
 	}
-	text := renderMermaid(ts, prev)
+	text, err := withTriggerDirectives(db, driver, ts, renderMermaid(ts, prev))
+	if err != nil {
+		fail(err)
+	}
 	if err := os.WriteFile(*out, []byte(text), 0o644); err != nil {
 		fail(err)
 	}
@@ -118,8 +111,21 @@ func fail(err error) {
 }
 
 func readTables(db *sql.DB, driver string, only map[string]bool) ([]impTable, error) {
-	if driver == "postgres" {
+	switch driver {
+	case "postgres":
 		return readTablesPG(db, only)
+	case "sqlite":
+		tables, err := readTablesSQLite(db)
+		if err != nil || only == nil {
+			return tables, err
+		}
+		out := tables[:0]
+		for _, t := range tables {
+			if only[t.Name] {
+				out = append(out, t)
+			}
+		}
+		return out, nil
 	}
 	rows, err := db.Query(`SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, COLUMN_KEY, COLUMN_COMMENT
 		FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, ORDINAL_POSITION`)
@@ -143,6 +149,10 @@ func readTables(db *sql.DB, driver string, only map[string]bool) ([]impTable, er
 		c.Nullable = nullable == "YES"
 		if def.Valid {
 			c.Default = def.String
+			if literal, ok := mysqlExpressionLiteral(def.String, c.Extra); ok {
+				c.Default = literal
+				c.Extra = strings.TrimSpace(strings.Replace(c.Extra, "DEFAULT_GENERATED", "", 1))
+			}
 		} else {
 			c.Default = "\x00" // no default
 		}
@@ -297,6 +307,22 @@ func mermaidType(t string) (string, bool) {
 	return t, unsigned
 }
 
+// importedJSONText names a text column that carries the json codec as
+// jsontext, the type the ORM declares for the ordered-json text.
+func importedJSONText(name, typ string) string {
+	if typ == "jsontext" {
+		return typ
+	}
+	if !strings.HasPrefix(name, "json_") && !strings.HasPrefix(name, "jsons_") {
+		return typ
+	}
+	switch typ {
+	case "text", "longtext", "mediumtext", "tinytext":
+		return "jsontext"
+	}
+	return typ
+}
+
 func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 	tables := map[string]bool{}
 	primary := map[string][]string{}
@@ -311,7 +337,6 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 	// facts to carry over from the previous diagram
 	prevCols := map[string]*schema.DColumn{}
 	prevLabels := map[string]*schema.DRelation{}
-	var prevPredicates []string
 	if prev != nil {
 		for _, e := range prev.Entities {
 			for _, c := range e.Columns {
@@ -320,11 +345,6 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 		}
 		for _, r := range prev.Relations {
 			prevLabels[r.Parent+"/"+r.Child+"/"+strings.Join(r.FKs, ",")] = r
-		}
-		for _, d := range prev.Directives {
-			if d.Kind == "predicate" {
-				prevPredicates = append(prevPredicates, fmt.Sprintf("  %%%% predicate %s %s : %s", d.Table, d.Name, d.Raw))
-			}
 		}
 	}
 	var sb strings.Builder
@@ -361,6 +381,7 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 		}
 		for _, c := range t.Columns {
 			typ, unsigned := mermaidType(c.Type)
+			typ = importedJSONText(c.Name, typ)
 			var keys []string
 			if c.Key == "PRI" {
 				keys = append(keys, "PK")
@@ -475,10 +496,10 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 		}
 		sb.WriteString(fmt.Sprintf("  %-14s ||--o{ %-14s : %s\n", r.parent, r.child, label))
 	}
-	if len(directives)+len(prevPredicates) > 0 {
+	if len(directives) > 0 {
 		sb.WriteString("\n")
 	}
-	for _, d := range append(directives, prevPredicates...) {
+	for _, d := range directives {
 		sb.WriteString(d + "\n")
 	}
 	return sb.String()
@@ -524,6 +545,35 @@ func isNumber(s string) bool {
 // readTablesPG is the PostgreSQL half of the importer: information_schema for
 // columns (assembled back into a MySQL-shaped type text so one renderer serves
 // both) and pg_index for keys and indexes.
+var reMySQLStringDefault = regexp.MustCompile(`^_[A-Za-z0-9]+\\'(.*)\\'$`)
+
+// mysqlExpressionLiteral reads the literal of an expression default such as
+// DEFAULT ('x'), which MySQL reports as _utf8mb4\'x\'.
+func mysqlExpressionLiteral(def, extra string) (string, bool) {
+	if !strings.Contains(extra, "DEFAULT_GENERATED") {
+		return "", false
+	}
+	if m := reMySQLStringDefault.FindStringSubmatch(def); m != nil {
+		// The expression text escapes the literal, which escapes its quotes.
+		return mysqlUnescape(mysqlUnescape(m[1])), true
+	}
+	if isNumber(def) {
+		return def, true
+	}
+	return "", false
+}
+
+func mysqlUnescape(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			i++
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
+}
+
 func readTablesPG(db *sql.DB, only map[string]bool) ([]impTable, error) {
 	rows, err := db.Query(`SELECT c.table_name, c.column_name, c.data_type, c.character_maximum_length,
 		       c.numeric_precision, c.numeric_scale, c.datetime_precision, c.udt_name,
@@ -694,12 +744,8 @@ func readTablesPG(db *sql.DB, only map[string]bool) ([]impTable, error) {
 			crows.Close()
 			return nil, err
 		}
-		expr := strings.TrimSpace(definition)
-		if len(expr) >= 5 && strings.EqualFold(expr[:5], "CHECK") {
-			expr = strings.TrimSpace(expr[5:])
-		}
 		if tb := byName[table]; tb != nil {
-			tb.Checks = append(tb.Checks, impCheck{Name: name, Expr: expr})
+			tb.Checks = append(tb.Checks, impCheck{Name: name, Expr: postgresCheckExpr(definition)})
 		}
 	}
 	if err := crows.Err(); err != nil {
@@ -822,7 +868,7 @@ func pgTypeText(dataType, udt string, charLen, numPrec, numScale, dtPrec sql.Nul
 	case "bytea":
 		return "blob"
 	case "json", "jsonb":
-		return "json"
+		return "jsontext"
 	case "inet":
 		return "varbinary(16)"
 	case "text":

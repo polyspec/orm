@@ -23,12 +23,7 @@ func (Postgres) CurrentTime() string        { return "clock_timestamp()" }
 func (Postgres) Supports(op string) bool    { return true }
 func (Postgres) HandlesStyle(s string) bool { return s == "ip" }
 
-func (Postgres) Like(col, ph string, binary bool) string {
-	if binary {
-		return col + " LIKE " + ph
-	}
-	return col + " ILIKE " + ph
-}
+func (Postgres) Like(col, ph string) string { return col + " ILIKE " + ph }
 
 // Fulltext: the "simple" configuration keeps the semantics language-neutral;
 // boolean mode maps to websearch syntax (quotes, -, or), the closest thing to

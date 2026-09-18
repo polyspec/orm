@@ -1,39 +1,42 @@
 <?php
-// S1 demo (PHP): one statement, three languages, one JSON.
-// stdout: the result as JSON — byte-identical to the Go and Rust demos.
-// stderr: p50 of the generated client vs the same SQL through PDO directly.
+// Thin-slice demo (PHP): one statement in every client language, one JSON.
+// stdout: the result as JSON. stderr: p50 of the generated client and of the
+// same SQL through PDO directly.
 //
-//   php examples/thin-slice/php/main.php /abs/ormd.sock /abs/schema.json
+//   php examples/thin-slice/php/main.php /abs/schema/schema.json
 declare(strict_types=1);
 
 require dirname(__DIR__, 3) . '/clients/php/tests/autoload.php';
 
 use App\Orm\Battle;
-use App\Orm\BattleWhere;
 use Orm\Config;
 use Orm\Db;
 use Orm\Orm;
 
 const ITERATIONS = 500;
+const AES_KEY = 'bench-salt';
 
 $lastSql = '';
 $lastArgs = [];
-Orm::init(new Config(socket: $argv[1], schemaPath: $argv[2], aesKey: 'bench-salt',
-    onQuery: function (string $sql, array $binds, float $sec, string $planId, ?\Throwable $e) use (&$lastSql, &$lastArgs) { $lastSql = $sql; $lastArgs = array_map(fn($v) => $v === '$SECRET' ? 'bench-salt' : $v, $binds); }));
-$db = Db::mysql(orm_test_dsn(), 'root', '');
-$now = '2026-09-11 00:00:00';
+$db = Orm::connect(dsn(), new Config(
+    schemaPath: $argv[1],
+    aesKey: AES_KEY,
+    blindIndexKey: 'bench-blind-index',
+    onQuery: static function (string $sql, array $binds) use (&$lastSql, &$lastArgs): void {
+        $lastSql = $sql;
+        $lastArgs = array_map(static fn(mixed $v): mixed => $v === Db::SECRET ? AES_KEY : $v, $binds);
+    },
+));
+$now = new DateTimeImmutable('2026-09-11 00:00:00', new DateTimeZone('UTC'));
 
-$query = fn() => Battle::query()
+$query = static fn() => (new Battle)->connect($db)
     ->serviceSeq(7)
-    ->isClose(false)
-    ->and(fn(BattleWhere $w) => $w
-        ->isDisplay(true)
-        ->or()
-        ->and(fn(BattleWhere $w) => $w->isDisplay(false)->displayStartDtLt($now)))
-    ->seqIn([6, 106, 206, 306, 406])
+    ->andIsClose(false)
+    ->and(fn(Battle $q) => $q->isDisplay(true)->or(fn(Battle $q) => $q->isDisplay(false)->andLtDisplayStartDt($now)))
+    ->andSeq([6, 106, 206, 306, 406])
     ->orderBySeqDesc()
     ->limit(0, 3)
-    ->using($db)->gets();
+    ->gets();
 
 $out = [];
 foreach ($query() as $r) {
@@ -41,7 +44,22 @@ foreach ($query() as $r) {
 }
 echo json_encode($out, JSON_THROW_ON_ERROR), "\n";
 
-function p50(\Closure $f): int
+$client = p50($query);
+[, $pdoDsn, $user, $password] = Orm::parseDsn(dsn());
+$raw = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+$stmt = $raw->prepare($lastSql);
+$native = p50(static function () use ($stmt, $lastArgs): void {
+    $stmt->execute($lastArgs);
+    $stmt->fetchAll(PDO::FETCH_NUM);
+});
+fwrite(STDERR, sprintf("php: client p50 %dµs, native p50 %dµs (%d iterations)\n", $client, $native, ITERATIONS));
+
+function dsn(): string
+{
+    return getenv('ORM_BENCH_MYSQL_DSN') ?: 'mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock';
+}
+
+function p50(Closure $f): int
 {
     $s = [];
     for ($i = 0; $i < ITERATIONS; $i++) {
@@ -52,11 +70,3 @@ function p50(\Closure $f): int
     sort($s);
     return $s[intdiv(count($s), 2)];
 }
-
-$client = p50($query);
-$stmt = $db->pdo->prepare($lastSql);
-$native = p50(function () use ($stmt, $lastArgs) {
-    $stmt->execute($lastArgs);
-    $stmt->fetchAll(\PDO::FETCH_NUM);
-});
-fwrite(STDERR, sprintf("php: client p50 %dµs, native p50 %dµs (%d iterations)\n", $client, $native, ITERATIONS));

@@ -122,7 +122,7 @@ func TestCurrentTimeExpressionUsesDialectWallClock(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		body := `{"kind":"one","entity":"battle","columns":{"mode":"none","expr":{"database_now":"$CURRENT_TIME"}}}`
+		body := `{"kind":"one","entity":"battle","columns":{"mode":"none","expr":{"database_now":{"sql":"$CURRENT_TIME"}}}}`
 		out, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + m.SchemaHash + `",` + body[1:]))
 		if err != nil {
 			t.Fatalf("%s: %v", tc.dialect, err)
@@ -184,21 +184,20 @@ func mustCompileError(t *testing.T, e *Engine, input string) error {
 	return err
 }
 
-func TestJoinAndNav(t *testing.T) {
+func TestJoinAndPlacement(t *testing.T) {
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"count","entity":"battle",
 	 "joins":[{"rel":"service_module","kind":"left","query":{"entity":"service_module",
 	    "on":{"items":[{"pred":{"column":"name","op":"eq","p":0}}]},
-	    "where":{"items":[{"pred":{"column":"service_seq","op":"eq","p":1}}]},
-	    "joins":[{"rel":"service","kind":"inner","query":{"entity":"service"}}]}}],
+	    "where":{"items":[{"pred":{"column":"seq","op":"gt","p":3}}]},
+	    "joins":[{"rel":"service","kind":"inner","query":{"entity":"service",
+	       "where":{"items":[{"pred":{"column":"name","op":"eq","p":4}}]}}}]}}],
 	 "where":{"items":[
 	   {"pred":{"column":"user_seq","op":"eq","p":2}},
 	   {"group":{"conn":"and","items":[
 	     {"pred":{"column":"is_close","op":"eq","p":1}},
-	     {"nav":{"conn":"or","rel":"service_module","group":{"items":[
-	        {"pred":{"column":"seq","op":"gt","p":3}},
-	        {"nav":{"conn":"and","rel":"service","group":{"items":[{"pred":{"column":"name","op":"eq","p":4}}]}}}]}}}]}}]}`)
-	want := "SELECT COUNT(*) FROM `battle` AS `a` LEFT JOIN `service_module` AS `service_module` ON `a`.`service_module_seq` = `service_module`.`seq` AND `service_module`.`name` = ? INNER JOIN `service` AS `service_module__service` ON `service_module`.`service_seq` = `service_module__service`.`seq` WHERE `a`.`user_seq` = ? AND (`a`.`is_close` = ? OR (`service_module`.`seq` > ? AND (`service_module__service`.`name` = ?))) AND (`service_module`.`service_seq` = ?)"
+	     {"joined":{"conn":"or","join":"service_module"}}]}}]}`)
+	want := "SELECT COUNT(*) FROM `battle` AS `a` LEFT JOIN `service_module` AS `service_module` ON `a`.`service_module_seq` = `service_module`.`seq` AND `service_module`.`name` = ? INNER JOIN `service` AS `service_module__service` ON `service_module`.`service_seq` = `service_module__service`.`seq` WHERE `a`.`user_seq` = ? AND (`a`.`is_close` = ? OR (`service_module`.`seq` > ?)) AND (`service_module__service`.`name` = ?)"
 	if p.Steps[0].SQL != want {
 		t.Errorf("sql:\n got  %s\n want %s", p.Steps[0].SQL, want)
 	}
@@ -275,12 +274,9 @@ func TestUpsertAndCascade(t *testing.T) {
 func TestAggregates(t *testing.T) {
 	e := testEngine(t)
 	cases := map[string]string{
-		`"kind":"min","entity":"battle","agg":"start_dt","n_params":1,"where":{"items":[{"pred":{"column":"service_seq","op":"eq","p":0}}]}`: "SELECT MIN(`a`.`start_dt`) FROM `battle` AS `a` WHERE `a`.`service_seq` = ?",
-		`"kind":"max","entity":"battle","agg":"like_count"`:                                                                                       "SELECT MAX(`a`.`like_count`) FROM `battle` AS `a`",
-		`"kind":"count_distinct","entity":"battle","agg":"user_seq"`:                                                                              "SELECT COUNT(DISTINCT `a`.`user_seq`) FROM `battle` AS `a`",
-		`"kind":"count","entity":"battle","group_by":["service_seq"],"n_params":1,"having":{"items":[{"pred":{"expr":"COUNT(*) > ?","ps":[0]}}]}`: "SELECT COUNT(*) FROM (SELECT 1 FROM `battle` AS `a` GROUP BY `a`.`service_seq` HAVING (COUNT(*) > ?)) AS `orm_g`",
-		`"kind":"group_count","entity":"battle","group_by_expr":[{"expr":"ROUND(` + "`like_count`" + `)","as":"bucket"}]`:                         "SELECT ROUND(`a`.`like_count`) AS `a__bucket`, COUNT(*) AS `a__row_count` FROM `battle` AS `a` GROUP BY ROUND(`a`.`like_count`)",
-		`"kind":"all","entity":"battle","columns":{"mode":"none"},"group_by":["service_seq"],"n_params":1,"having":{"items":[{"pred":{"column":"service_seq","op":"gt","p":0}}]},"order":[{"column":"service_seq","desc":false}],"limit":{"offset":0,"count":2}`: "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_module_seq` AS `a__service_module_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `battle` AS `a` GROUP BY `a`.`service_seq` HAVING `a`.`service_seq` > ? ORDER BY `a`.`service_seq` ASC LIMIT 0, 2",
+		`"kind":"count","entity":"battle","group_by":["service_seq"],"n_params":0`:                                                                                           "SELECT COUNT(*) FROM (SELECT 1 FROM `battle` AS `a` GROUP BY `a`.`service_seq`) AS `orm_g`",
+		`"kind":"group_count","entity":"battle","group_by_expr":[{"expr":"ROUND(` + "`like_count`" + `)","as":"bucket"}]`:                                                    "SELECT ROUND(`a`.`like_count`) AS `a__bucket`, COUNT(*) AS `a__row_count` FROM `battle` AS `a` GROUP BY ROUND(`a`.`like_count`)",
+		`"kind":"all","entity":"battle","columns":{"mode":"none"},"group_by":["service_seq"],"order":[{"column":"service_seq","desc":false}],"limit":{"offset":0,"count":2}`: "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_module_seq` AS `a__service_module_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `battle` AS `a` GROUP BY `a`.`service_seq` ORDER BY `a`.`service_seq` ASC LIMIT 0, 2",
 	}
 	for irs, want := range cases {
 		p := compile(t, e, irs)
@@ -297,38 +293,13 @@ func TestAggregates(t *testing.T) {
 		t.Fatalf("composite row collection key = %#v", got)
 	}
 	for irs, code := range map[string]string{
-		`"kind":"all","entity":"battle","n_params":1,"having":{"items":[{"pred":{"column":"seq","op":"gt","p":0}}]}`: "IR_INVALID: having needs group_by",
-		`"kind":"group_count","entity":"battle","group_by_expr":[{"expr":"ROUND(` + "`nope`" + `)","as":"bucket"}]`:  "COLUMN_UNKNOWN",
-		`"kind":"group_count","entity":"battle","group_by_expr":[{"expr":"ROUND(like_count)","as":""}]`:              "IR_INVALID",
-		`"kind":"min","entity":"battle","agg":"aes_hex_email"`:                                                       "OPERATOR_NOT_ALLOWED",
-		`"kind":"max","entity":"battle","agg":"nope"`:                                                                "COLUMN_UNKNOWN",
+		`"kind":"group_count","entity":"battle","group_by_expr":[{"expr":"ROUND(` + "`nope`" + `)","as":"bucket"}]`: "COLUMN_UNKNOWN",
+		`"kind":"group_count","entity":"battle","group_by_expr":[{"expr":"ROUND(like_count)","as":""}]`:             "IR_INVALID",
 	} {
 		_, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `",` + irs + `}`))
 		if err == nil || !strings.HasPrefix(err.Error(), code) {
 			t.Errorf("%s\n got %v\n want %s", irs, err, code)
 		}
-	}
-}
-
-func TestRawAndPredicates(t *testing.T) {
-	e := testEngine(t)
-	p := compile(t, e, `"kind":"raw","entity":"battle","n_params":2,"raw":{"sql":"SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?","ps":[0,1]}`)
-	if p.Steps[0].Role != "raw" || p.Steps[0].SQL != "SELECT COUNT(*) AS n, MAX(seq) AS m FROM `battle` WHERE service_seq = ? AND is_close = ?" || len(p.Steps[0].BindSlots) != 2 || p.Steps[0].Assemble != nil {
-		t.Errorf("raw: %+v", p.Steps[0])
-	}
-	for irs, code := range map[string]string{
-		`"kind":"raw","entity":"battle","n_params":1,"raw":{"sql":"SELECT ? , ?","ps":[0]}`: "IR_INVALID: raw: 2 placeholders but 1 params",
-		`"kind":"all","entity":"battle","raw":{"sql":"SELECT 1"}`:                           "IR_INVALID: raw is only valid with kind raw",
-	} {
-		_, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `",` + irs + `}`))
-		if err == nil || !strings.HasPrefix(err.Error(), code) {
-			t.Errorf("%s\n got %v\n want %s", irs, err, code)
-		}
-	}
-	// named predicates come from the diagram, validated at build time
-	pr := e.M.Entities["battle"].Predicates
-	if pr["visible"] == nil || pr["visible"].Arity != 0 || pr["started_after"] == nil || pr["started_after"].Arity != 1 || pr["started_after"].Expr != "`start_dt` > ?" {
-		t.Errorf("predicates: %+v", pr)
 	}
 }
 
@@ -345,7 +316,7 @@ func testEngineFor(t *testing.T, dialect string) *Engine {
 func TestPostgresAndSQLite(t *testing.T) {
 	pg := testEngineFor(t, "postgres")
 	p := compile(t, pg, `"kind":"all","entity":"battle","columns":{"mode":"none"},"n_params":3,
-	 "where":{"items":[{"pred":{"column":"name","op":"contains","p":0}},{"pred":{"conn":"and","column":"name","op":"like_binary","p":1}},{"pred":{"conn":"and","column":"aes_hex_email","op":"eq","p":2}}]},
+	 "where":{"items":[{"pred":{"column":"name","op":"contains","p":0}},{"pred":{"conn":"and","column":"name","op":"contains_binary","p":1}},{"pred":{"conn":"and","column":"aes_hex_email","op":"eq","p":2}}]},
 	 "order":[{"column":"seq","desc":true}],"limit":{"offset":20,"count":10},"force_index":"ik"`)
 	if want := "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"battle\" AS \"a\" WHERE \"a\".\"name\" ILIKE $1 AND \"a\".\"name\" LIKE $2 AND \"a\".\"email_blind_index\" = $3 ORDER BY \"a\".\"seq\" DESC LIMIT 10 OFFSET 20"; p.Steps[0].SQL != want {
 		t.Errorf("postgres select:\n got  %s\n want %s", p.Steps[0].SQL, want)
@@ -380,12 +351,11 @@ func TestPostgresAndSQLite(t *testing.T) {
 	}
 
 	lite := testEngineFor(t, "sqlite")
-	p = compile(t, lite, `"kind":"all","entity":"battle","columns":{"mode":"none"},"n_params":1,"where":{"items":[{"pred":{"column":"name","op":"starts_with","p":0}}]},"limit":{"offset":0,"count":5},"force_index":"ik"`)
+	p = compile(t, lite, `"kind":"all","entity":"battle","columns":{"mode":"none"},"n_params":1,"where":{"items":[{"pred":{"column":"name","op":"contains","p":0}}]},"limit":{"offset":0,"count":5},"force_index":"ik"`)
 	if want := "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_module_seq\" AS \"a__service_module_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"battle\" AS \"a\" INDEXED BY \"ik\" WHERE \"a\".\"name\" LIKE ? ESCAPE '\\' LIMIT 5 OFFSET 0"; p.Steps[0].SQL != want {
 		t.Errorf("sqlite select:\n got  %s\n want %s", p.Steps[0].SQL, want)
 	}
 	for irs, code := range map[string]string{
-		`"kind":"count","entity":"battle","n_params":1,"where":{"items":[{"pred":{"column":"name","op":"like_binary","p":0}}]}`:          "OPERATOR_NOT_ALLOWED",
 		`"kind":"count","entity":"battle","n_params":1,"where":{"items":[{"pred":{"op":"match","match":["name","description"],"p":0}}]}`: "OPERATOR_NOT_ALLOWED",
 	} {
 		_, err := lite.Compile([]byte(`{"ir_version":1,"schema_hash":"` + lite.M.SchemaHash + `",` + irs + `}`))
@@ -404,12 +374,12 @@ func TestPostgresAndSQLite(t *testing.T) {
 // same target stay distinct and each keeps its own projection namespace.
 func TestJoinAliasNamespaces(t *testing.T) {
 	e := testEngine(t)
-	p := compile(t, e, `"kind":"one","entity":"battle","columns":{"mode":"none","as":{"battle_name":"name"}},"n_params":1,
+	p := compile(t, e, `"kind":"one","entity":"battle","columns":{"mode":"none","expr":{"battle_name":{"sql":"{name}"}}},"n_params":1,
 	 "where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},
 	 "joins":[{"rel":"service_member","kind":"inner","query":{"entity":"service_member","columns":{"mode":"none"},
-	     "joins":[{"rel":"service","kind":"inner","query":{"entity":"service","columns":{"mode":"none","as":{"service_name":"name"}}}},
-	              {"rel":"user","kind":"inner","query":{"entity":"user","columns":{"mode":"none","as":{"user_name":"name"}}}}]}},
-	          {"rel":"service","kind":"inner","query":{"entity":"service","columns":{"mode":"none","as":{"root_service_name":"name"}}}}]`)
+	     "joins":[{"rel":"service","kind":"inner","query":{"entity":"service","columns":{"mode":"none","expr":{"service_name":{"sql":"{name}"}}}}},
+	              {"rel":"user","kind":"inner","query":{"entity":"user","columns":{"mode":"none","expr":{"user_name":{"sql":"{name}"}}}}}]}},
+	          {"rel":"service","kind":"inner","query":{"entity":"service","columns":{"mode":"none","expr":{"root_service_name":{"sql":"{name}"}}}}}]`)
 	sql := p.Steps[0].SQL
 	for _, want := range []string{
 		"`service_member`.`name` AS `service_member__battle_name`", // not present: battle's alias belongs to the root
@@ -451,9 +421,7 @@ func TestJoinAliasNamespaces(t *testing.T) {
 		t.Errorf("aliases: %v", aliases)
 	}
 	for irs, code := range map[string]string{
-		`"kind":"all","entity":"battle","columns":{"as":{"seq":"name"}}`:                    "COLUMN_ALIAS_CONFLICT",
-		`"kind":"all","entity":"battle","columns":{"expr":{"seq":"1"}}`:                     "COLUMN_ALIAS_CONFLICT",
-		`"kind":"all","entity":"battle","columns":{"as":{"tag":"name"},"expr":{"tag":"1"}}`: "COLUMN_ALIAS_CONFLICT",
+		`"kind":"all","entity":"battle","columns":{"expr":{"seq":{"sql":"1"}}}`: "COLUMN_ALIAS_CONFLICT",
 	} {
 		_, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `",` + irs + `}`))
 		if err == nil || !strings.HasPrefix(err.Error(), code) {
@@ -466,23 +434,23 @@ func TestCompileErrors(t *testing.T) {
 	e := testEngine(t)
 	h := e.M.SchemaHash
 	cases := map[string]string{
-		`{"ir_version":2,"schema_hash":"` + h + `","kind":"all","entity":"battle"}`:                                                                                                             "VERSION_MISMATCH",
-		`{"ir_version":1,"schema_hash":"nope","kind":"all","entity":"battle"}`:                                                                                                                  "SCHEMA_HASH_MISMATCH",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"nope"}`:                                                                                                               "ENTITY_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"nope","op":"eq","p":2}}]}}`:                                 "COLUMN_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"name","op":"between","p":0,"ps":[1,2]}}]}}`:                 "OPERATOR_NOT_ALLOWED",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"aes_hex_email","op":"contains","p":0}}]}}`:                  "OPERATOR_NOT_ALLOWED",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"pred":{"conn":"or","column":"seq","op":"eq","p":2}}]}}`:                                   "OR_AT_GROUP_START",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"pred":{"column":"seq","op":"in","ps":[]}}]}}`:                                             "EMPTY_IN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"pred":{"column":"seq","op":"gt"}}]}}`:                                                     "IR_INVALID",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":1,"where":{"items":[{"pred":{"column":"seq","op":"eq","p":7}}]}}`:                                  "IR_INVALID: param index 7 out of range",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"nav":{"rel":"service","group":{"items":[{"pred":{"column":"seq","op":"eq","p":2}}]}}}]}}`: "ENTITY_NOT_JOINED",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","joins":[{"rel":"nope","kind":"inner","query":{"entity":"service"}}]}`:                                        "RELATION_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"update","entity":"battle","n_params":1,"set":[{"column":"name","p":0}]}`:                                                             "IR_INVALID: update without where",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","force_index":"nope"}`:                                                                                        "INDEX_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","order":[{"expr":"DATE(` + "`nope`" + `)"}]}`:                                                                 "COLUMN_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","relations":[{"rel":"service","query":{"entity":"service","limit":{"offset":0,"count":1}}}]}`:                 "LIMIT_IN_RELATION",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","multi_statement":true}`:                                                                                      "IR_INVALID",
+		`{"ir_version":2,"schema_hash":"` + h + `","kind":"all","entity":"battle"}`:                                                                                             "VERSION_MISMATCH",
+		`{"ir_version":1,"schema_hash":"nope","kind":"all","entity":"battle"}`:                                                                                                  "SCHEMA_HASH_MISMATCH",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"nope"}`:                                                                                               "ENTITY_UNKNOWN",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"nope","op":"eq","p":2}}]}}`:                 "COLUMN_UNKNOWN",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"name","op":"between","p":0,"ps":[1,2]}}]}}`: "OPERATOR_NOT_ALLOWED",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":8,"where":{"items":[{"pred":{"column":"aes_hex_email","op":"contains","p":0}}]}}`:  "OPERATOR_NOT_ALLOWED",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"pred":{"conn":"or","column":"seq","op":"eq","p":2}}]}}`:                   "OR_AT_GROUP_START",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"pred":{"column":"seq","op":"in","ps":[]}}]}}`:                             "EMPTY_IN",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"pred":{"column":"seq","op":"gt"}}]}}`:                                     "IR_INVALID",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","n_params":1,"where":{"items":[{"pred":{"column":"seq","op":"eq","p":7}}]}}`:                  "IR_INVALID: param index 7 out of range",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","where":{"items":[{"joined":{"join":"service"}}]}}`:                                           "ENTITY_NOT_JOINED",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","joins":[{"rel":"nope","kind":"inner","query":{"entity":"service"}}]}`:                        "RELATION_UNKNOWN",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"update","entity":"battle","n_params":1,"set":[{"column":"name","p":0}]}`:                                             "IR_INVALID: update without where",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","force_index":"nope"}`:                                                                        "INDEX_UNKNOWN",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","order":[{"expr":"DATE(` + "`nope`" + `)"}]}`:                                                 "COLUMN_UNKNOWN",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","relations":[{"rel":"service","query":{"entity":"service","limit":{"offset":0,"count":1}}}]}`: "LIMIT_IN_RELATION",
+		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"battle","multi_statement":true}`:                                                                      "IR_INVALID",
 	}
 	for irs, code := range cases {
 		_, err := e.Compile([]byte(irs))
@@ -508,13 +476,13 @@ func BenchmarkCompileList(b *testing.B) {
 
 func TestRelations(t *testing.T) {
 	e := testEngine(t)
-	// root battle → one user (if_parent, flatten) ; join service → many modules (key_by, limit_per_parent, nested one service, drop_child_key)
+	// root battle → one user (if_parent, flatten) ; join service → many modules (key_by, limit_per_parent, nested one service)
 	p := compile(t, e, `"kind":"all","entity":"battle",
 	 "columns":{"mode":"none"},
 	 "where":{"items":[{"pred":{"column":"service_seq","op":"eq","p":0}}]},
 	 "order":[{"column":"seq","desc":true}],"limit":{"offset":0,"count":20},
 	 "joins":[{"rel":"service","kind":"inner","query":{"entity":"service",
-	    "relations":[{"rel":"modules","query":{"entity":"service_module","key_by":"name","limit_per_parent":3,"drop_child_key":true,
+	    "relations":[{"rel":"modules","query":{"entity":"service_module","key_by":"name","limit_per_parent":3,
 	       "order":[{"column":"seq","desc":true}],
 	       "relations":[{"rel":"service","query":{"entity":"service","order":[{"column":"seq","desc":false}]}}]}}]}}],
 	 "relations":[{"rel":"user","query":{"entity":"user","flatten":true,"if_parent":{"column":"is_close","p":1},
@@ -538,13 +506,13 @@ func TestRelations(t *testing.T) {
 	if len(u.BindSlots) != 2 || u.BindSlots[0].From != "parent" || u.BindSlots[0].Step != 0 || u.BindSlots[1].Transform != "like_contains" {
 		t.Errorf("user binds: %+v", u.BindSlots)
 	}
-	// step 2: modules per service, 3 per parent by seq desc, service_seq hidden; step 3: nested one service ordered → per-parent 1
+	// step 2: modules per service, 3 per parent by seq desc; step 3: nested one service ordered → per-parent 1
 	m := p.Steps[2]
 	if want := "SELECT `orm_w`.`a__seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__name` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`name` AS `a__name`, ROW_NUMBER() OVER (PARTITION BY `a`.`service_seq` ORDER BY `a`.`seq` DESC) AS `orm_rn` FROM `service_module` AS `a` WHERE `a`.`service_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` <= 3 ORDER BY `orm_w`.`a__service_seq`, `orm_w`.`orm_rn`"; m.SQL != want {
 		t.Errorf("modules step:\n got  %s\n want %s", m.SQL, want)
 	}
-	if m.Parent.Step != 0 || len(m.Parent.Keys) != 1 || m.Parent.Keys[0].Index != 6 || !m.Assemble.Columns[1].Hidden {
-		t.Errorf("modules parent/hidden: %+v %+v", m.Parent, m.Assemble.Columns)
+	if m.Parent.Step != 0 || len(m.Parent.Keys) != 1 || m.Parent.Keys[0].Index != 6 {
+		t.Errorf("modules parent: %+v", m.Parent)
 	}
 	sv := p.Steps[3]
 	if !strings.Contains(sv.SQL, "ROW_NUMBER() OVER (PARTITION BY `a`.`seq` ORDER BY `a`.`seq` ASC)") || !strings.Contains(sv.SQL, "`orm_rn` <= 1") || sv.Parent.Step != 2 || len(sv.Parent.Keys) != 1 || sv.Parent.Keys[0].Index != 1 {

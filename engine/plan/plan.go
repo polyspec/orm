@@ -47,7 +47,7 @@ type IfParent struct {
 //   - now:    the executor's current UTC time as "YYYY-MM-DD HH:MM:SS.ffffff" (dialects without a sub-second clock)
 //
 // Transform (executor-side, value-level): "" | "fulltext_boolean" (
-// "+w1 +w2*") | "like_contains" | "like_starts" | "like_ends" (escape % _ \ then wrap).
+// "+w1 +w2*") | "like_contains" (escape % _ \ then wrap in %).
 type BindSlot struct {
 	From      string `json:"from"`
 	Param     int    `json:"param"`
@@ -81,7 +81,7 @@ type OutCol struct {
 	Column string   `json:"column,omitempty"` // source column, "" for expr
 	Type   string   `json:"type"`
 	Styles []string `json:"styles,omitempty"` // remaining app-side decode stages
-	Hidden bool     `json:"hidden,omitempty"` // selected for binding only (drop_child_key): left out of array/JSON forms
+	Hidden bool     `json:"hidden,omitempty"` // selected for writing only (the AES key version): left out of array/JSON forms
 }
 
 // Child is a joined entity's slice of the same row (kind join, Assemble set)

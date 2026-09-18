@@ -1,37 +1,39 @@
 # Common interface v1
 
-This page defines the shared public data structures, ownership rules, state transitions, and client call order. Implementation status is recorded in [the implementation matrix](interface-implementation.md). A defined interface does not prove that every client implements it.
+This page defines the shared public data structures, ownership rules, state transitions, and client call order for the syntax in the [DSL](dsl.md). Implementation status is recorded in [the implementation matrix](interface-implementation.md). A defined interface does not prove that every client implements it.
 
 ## 1. Call boundaries and change rules
 
-The schema manifest defines entities, fields, relations, operators, styles, and errors. The compiler receives a typed request shape and returns an immutable plan. An executor receives the plan, parameter values, and one root binding.
+The schema manifest defines entities, fields, operators, styles, and errors. Each language generates its models from the manifest with its own build tool. The client library validates a typed request shape and plans it in the application process into an immutable plan. An executor receives the plan, parameter values, and the connection selected for the model.
 
-The change order is: update the schema or interface specification, update the manifest and generated artifacts, update all clients, run shared vectors, then update paired documentation. A client cannot add a private field or alternate call order to satisfy a shared interface.
+The change order is: update the design plan and the DSL, update the manifest and generated artifacts, update all clients, run shared vectors, then update paired documentation. A client cannot add a private field or alternate call order to satisfy a shared interface.
 
 ## 2. Module call flow — IF-01
 
 ```mermaid
 flowchart LR
     Schema[Schema] --> Manifest[Manifest]
-    Manifest --> Generator[Generator]
+    Manifest --> Generator[Language generator]
     Generator --> Go[Go client]
     Generator --> PHP[PHP client]
     Generator --> Rust[Rust client]
-    TypeScript[TypeScript client] --> Request[Request]
-    Go --> Request
+    Generator --> TypeScript[TypeScript client]
+    Go --> Request[Request]
     PHP --> Request
     Rust --> Request
+    TypeScript --> Request
     Request --> IR[Request IR]
-    IR --> Compiler[Compiler]
-    Compiler --> Plan[Immutable Plan]
+    Manifest --> Planner[In-process planner]
+    IR --> Planner
+    Planner --> Plan[Immutable Plan]
     Plan --> Executor[Native executor]
-    Binding[Root binding] --> Executor
+    Binding[Model connection] --> Executor
     Values[Parameter values] --> Executor
     Executor --> Rows[Execution rows]
     Rows --> Result[Row, collection, page, or scalar]
 ```
 
-The compiler does not receive database credentials or parameter values. The executor owns database access. The root binding supplies the context and database or transaction. A child relation cannot replace the root binding.
+The planner does not receive database credentials or parameter values. The executor owns database access. A model receives its connection through `connect`; inside a transaction callback, a model without `connect` uses the active transaction of the current execution flow. A join or relation child without `connect` uses the parent connection.
 
 ## 3. Types and values — IF-02
 
@@ -51,22 +53,23 @@ The compiler does not receive database credentials or parameter values. The exec
 
 Null, an empty list, a missing field, and a default value are different states. Serialization preserves the logical type and field order required by the codec specification.
 
-## 4. Query objects and condition trees — IF-03 to IF-08
+## 4. Models and condition trees — IF-03 to IF-08
 
 ```mermaid
 classDiagram
-    class Query {
+    class Model {
         Entity entity
         Request request
-        Binding binding
-        scope(value) Query
-        where(callback) Query
-        and(callback) Query
-        or() Query
-        relation(child) Query
-        join(child) Query
+        Optional~Connection~ connection
+        connect(connection) Model
+        and(callbackOrModel) Model
+        or(callbackOrModel) Model
+        relation(child) Model
+        relations(child) Model
+        on(callback) Model
         get() Result~OptionalRow~
         gets() Result~Collection~
+        getsPage(page, perPage) Result~Page~
         getCount() Result~I64~
     }
     class Request {
@@ -75,107 +78,114 @@ classDiagram
         Optional~Error~ deferredError
     }
     class Group {
-        List~PredicateOrGroup~ items
+        List~ConditionOrGroup~ items
     }
     class Relation {
-        String name
-        Query query
+        String resultName
+        Model child
     }
-    Query --> Request
+    Model --> Request
     Request --> Group
-    Query --> Relation
+    Model --> Relation
 ```
 
-Each entity occurrence has one query object and one Where builder. A group contains predicates or nested groups. `or()` changes the connection for the next item. `and(fn)` and `or(fn)` create nested groups. A relation or join uses schema key mapping; callers do not provide a second relation mapping in regular syntax.
+A model is both the query builder and the loaded row type. A group contains conditions or nested groups in order, and each item after the first carries an explicit `AND` or `OR` connector. `and(fn)` and `or(fn)` create nested groups whose callback receives an empty model of the same type. `and(model)` and `or(model)` place the conditions of a joined child as a group. Join `ON` conditions are stored separately from `WHERE` conditions.
 
-`scope(value)` exists only on a query whose entity declares `%% scope`. It stores a parameter index in `RequestIR.query.scope_p`; the Where builder cannot change it. The compiler applies root and relation scope in WHERE and join scope in JOIN ON. Scoped inserts assign the scope column. Scoped updates and upserts cannot assign the scope column. Scoped raw SQL is invalid.
+A terminal does not change the stored request, so repeated terminals produce the same statement.
 
 ## 5. Public API — IF-09 to IF-12
 
 ### 5.0 Connection input
 
-Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite://` select the database driver. The caller does not pass a second driver value and does not construct the compiler engine.
+Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite://` select the database driver. The optional `timezone` parameter sets the connection time zone; without it the server environment time zone is used. The caller does not pass a second driver value.
 
 | Client | Public connection call | Result |
 |---|---|---|
-| Go | `gen.Connect(dsn, schemaPath, options)` | `(*orm.DB, error)` |
-| PHP | `Orm::connect(dsn, config)` | `Db` |
-| Rust | `gen::connect(dsn, wasm, schema_json, pool_size, config).await?` | `orm::Db` |
-| TypeScript | `Db.connect(dsn, options)` | `Promise<Db>` |
+| Go | `model.Connect(dsn, schemaPath, config)` | `(*orm.DB, error)` |
+| PHP | `Orm::connect(dsn, new Config(schemaPath: …))` | `Db` |
+| Rust | `orm::Db::connect(dsn, pool_size, config).await?` | `orm::Db` |
+| TypeScript | `Db.connect(dsn, schemaPath, options)` | `Promise<Db>` |
 
 ### 5.1 Creation and language forms
 
 | Operation | PHP | Go | Rust | TypeScript |
 |---|---|---|---|---|
-| root entry | `Battle::query()` | `gen.Battle()` | `battle::query()` | `Battle()` |
-| bind executor | `using($db)` | `Using(db)` | `using(&db)` | `using(database)` |
+| model creation | `new Product` | `model.Product()` | `Product::new()` | `new Product()` |
+| connection | `->connect($db)` or `($db)` | `.Connect(db)` | `.connect(&db)` | `.connect(db)` |
 | collection terminal | `gets()` | `Gets()` | `gets().await?` | `gets()` |
 | count terminal | `getCount()` | `GetCount()` | `get_count().await?` | `getCount()` |
 
-The entry-point spelling follows the host language. The method role, stored request, result type, error behavior, and call order remain the same.
+The creation spelling follows the host language. The method role, stored request, result type, error behavior, and call order remain the same.
 
 ### 5.2 Method groups
 
 | Group | Required behavior |
 |---|---|
-| predicates | Use generated columns and schema-allowed operators. |
+| conditions | Use column chains, operator prefixes, value shapes, and explicit connectors. |
 | groups | Preserve item order and nested group boundaries. |
-| relations | Use declared relation names and key mappings. |
-| joins | Keep ON and WHERE groups separate. |
-| projection | Preserve positional output mapping and aliases. |
+| relations | Use `match<L>With<R>` keys on the child and a separate statement per relation. |
+| joins | Keep `ON` and `WHERE` conditions separate and place child conditions where the child is passed to a group. |
+| projection | Preserve positional output mapping and reject duplicate row names. |
 | mutation | Record changed fields and original values. |
-| terminals | Receive values only and use the root binding. |
+| terminals | Receive chain values only and use the model connection. |
 
-`getsByX(value)` and `getCountByX(value)` are regular generated methods. They apply the equality predicate for `X` and call `gets()` or `getCount()`. The executor is configured before the finder and is never passed to the finder.
+`getBy<Chain>`, `getsBy<Chain>`, and `getCountBy<Chain>` apply the chain as the condition and call the terminal. PHP resolves chains at call time, and Go, Rust, and TypeScript generate the chains that consumer source code calls.
 
 ### 5.3 Execution methods
 
-| Method | Result | Required binding |
+| Method | Result | Connection |
 |---|---|---|
-| `get` | one row, or `NO_ROWS` | root executor |
-| `getOrNil` | optional row | root executor |
-| `gets` | collection | root executor |
-| `getCount` | integer | root executor |
-| `insert` | row or key | root executor |
-| `update` | affected count | row or root executor |
-| `delete` | affected count | row or root executor |
+| `get` | one row, or null | model connection or active transaction |
+| `gets` | collection | model connection or active transaction |
+| `getsPage` | page | model connection or active transaction |
+| `getCount` | integer | model connection or active transaction |
+| `create` | row with generated key | model connection or active transaction |
+| `creates` | inserted row count | model connection or active transaction |
+| `update` | row | row connection or active transaction |
+| `delete` | row or collection | row connection or active transaction |
 
-An unbound terminal returns `CONFIG`. A terminal after transaction completion returns `CONFIG`. A database argument on a terminal is invalid. A bound executor must carry the schema engine used by the generated request; otherwise binding resolution returns `CONFIG`. Generated clients own this validation through the ORM binding and callers do not inspect the engine directly.
+A terminal without a connection outside a transaction returns `CONFIG`. A connection must carry the schema engine used by the generated request; otherwise the terminal returns `CONFIG`.
 
-## 6. Binding, executor, and transaction — IF-13 to IF-17
+## 6. Connections, transactions, and utilities — IF-13 to IF-17
 
-A binding contains the execution context and one database or transaction reference. Query copies share the request value structure but do not share mutable builder state. A child relation uses the root binding. A loaded row retains the binding needed for its update and delete methods.
+`connection.transaction(fn, options)` runs the callback in one transaction. Begin, commit, rollback, and the executor are private. A callback error or exception rolls back the transaction; otherwise the transaction commits and the callback result is returned.
 
-Transaction ownership belongs to the code that created the transaction. Commit and rollback end the binding. After either operation, all queries and rows from that transaction reject execution. A transaction exposes `savepoint(name)`, `rollbackTo(name)`, and `releaseSavepoint(name)`; names must match `[A-Za-z_][A-Za-z0-9_]*`. These operations preserve the outer transaction and reject invalid names with `CONFIG`.
+| Option | Values |
+|---|---|
+| `isolation` | `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable` |
+| `readOnly` | boolean |
+| `timeoutMs` | positive integer; PostgreSQL applies `statement_timeout`, MySQL and SQLite return `CAPABILITY_UNSUPPORTED` |
+| `retry` | deadlock retry count, default `3`; each retry runs the complete callback again, and `0` disables retry |
 
-Go also exposes `orm.Begin(ctx, db, options)` for a caller-owned transaction that is finished explicitly with `tx.Commit(ctx)` or `tx.Rollback(ctx)`. `tx.Driver()` reports the canonical adapter name (`mysql`, `postgres`, or `sqlite`) without changing the common query, mutation, or transaction API. It performs no callback retry. PostgreSQL exposes `tx.BackendPID(ctx)` for real integration lock orchestration; other drivers return `CAPABILITY_UNSUPPORTED`.
+- Each execution flow keeps a stack of active transactions: the goroutine in Go, the request in PHP, the async context in TypeScript, and the task in Rust. A model without `connect` uses the innermost transaction.
+- A transaction on the same connection inside an active transaction creates a savepoint. An inner failure rolls back only the inner work unless the outer callback returns it.
+- Concurrent use of one transaction connection returns an error. A task or goroutine started inside the callback has no active transaction.
+- `transactionConflict(message)` (Go: `orm.TransactionConflict`) creates the retryable `DEADLOCK` error.
+- Row locks `forUpdate()`, `forShare()`, `forUpdateNoWait()`, and `forShareNoWait()` are allowed only inside a transaction. MySQL and PostgreSQL append the lock clause; SQLite uses an ORM transaction-scoped lock row.
 
-Go exposes `db.Stats()` as ORM-owned connection-pool statistics and `db.Acquire(ctx)` as an opaque `ConnectionLease` for lifecycle coordination. A lease can be closed explicitly and does not expose `database/sql` or permit query execution; generated queries and ORM transactions remain the only data-access paths.
+`connection.utils()` provides operations outside the query syntax.
 
-PostgreSQL transactions expose `advisoryLock(key)` (Go: `AdvisoryLock`) for transaction-scoped serialization. The lock is released when the transaction ends. Other drivers reject this operation with `CAPABILITY_UNSUPPORTED`.
+| Utility | Behavior |
+|---|---|
+| `lock(key)` | transaction-scoped named lock: MySQL `GET_LOCK`, PostgreSQL advisory lock, SQLite ORM lock row; requires an active transaction |
+| `setLocal(key, value)`, `local(key)` | transaction-local values; requires an active transaction; `local` returns `NO_ROWS` for a missing key |
+| `schema().install(manifestJson)` | creates the missing tables, keys, indexes, comments, and triggers of the manifest on every database and keeps existing tables; on MySQL a call inside a transaction returns `CONFIG` |
+| `schema().exists(schema)`, `schema().installed(schema, table)`, `schema().empty()` | schema inspection |
+| `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)` | table privileges; non-PostgreSQL dialects return `CAPABILITY_UNSUPPORTED` |
+| `aes().status(model, keyring)`, `aes().rotate(model, keyring)` | AES key version status and rotation of every AES column and the version in one transaction |
+| `stats()` | connection pool statistics |
 
-Schema installation uses `installDDL(statements)` (Go: `InstallDDL`) on a caller-owned transaction. The ORM executes statements in order and returns the first error so the transaction owner can roll back the complete installation.
+Utilities that change data open a transaction when none is active and join the active transaction of the same connection otherwise.
 
-PostgreSQL transactions also expose `setLocal(key, value)` (Go: `SetLocal`) for values reverted at transaction end and `local(key)` (Go: `Local`) to read a value set on the same ORM transaction; `readOnly()` and `isolation()` (Go: `ReadOnly` and `Isolation`) inspect the active mode; and `schemaInstalled(schema, table)` and `schemaExists(schema)` (Go: `SchemaInstalled` and `SchemaExists`) provide installation checks. `Local` returns `NO_ROWS` when the key is absent and is available on SQLite as well as PostgreSQL; SQLite retains the value in the ORM transaction context while its audit adapter also uses the context table. `grantPlatformRuntimePrivileges(role)` (Go: `GrantPlatformRuntimePrivileges`) grants the fixed `core` runtime privileges after installation, including DML access to core identity sequences. Audit records are part of the generated core operation tables and do not require a separate hand-written schema. `grantTablePrivileges(table, role)` (Go: `GrantTablePrivileges`) grants runtime DML privileges for one qualified module table. These operations reject non-PostgreSQL drivers with `CAPABILITY_UNSUPPORTED`; identifiers must be nonempty and single-line, qualified table names must contain exactly one schema separator, and identifiers are quoted before use in grant statements.
-`installerSessionAuthorized(role)` (Go: `InstallerSessionAuthorized`) checks that the current PostgreSQL session owns the `core` schema and is distinct from the runtime role.
+## 7. Planning and assembly — IF-18 to IF-20
 
-`TransactionOptions` accepts `isolation` (`default`, `read_uncommitted`, `read_committed`, `repeatable_read`, or `serializable`), `readOnly`, and `timeoutMs` (or the language's snake-case equivalent). Go maps isolation and read-only settings to `database/sql.TxOptions`; PHP and TypeScript apply PostgreSQL settings after `BEGIN` and MySQL settings before `START TRANSACTION`; Rust emits the equivalent driver-specific transaction start. SQLite rejects explicit isolation, read-only, and timeout options. MySQL and SQLite reject `timeoutMs`; PostgreSQL applies it as transaction-local `statement_timeout`. Unsupported capabilities return `CAPABILITY_UNSUPPORTED`.
-
-Root row selects expose `forUpdate()`, `forShare()`, `forUpdateNoWait()`, and `forShareNoWait()` using each client's naming convention. The request stores `lock` in the common IR. MySQL and PostgreSQL append the selected lock clause after ordering and limits; `NoWait` fails immediately when the row is unavailable. SQLite emits no lock suffix and the ORM acquires a transaction-scoped database lock row for `forUpdate()`, `forShare()`, and their `NoWait` variants; `NoWait` temporarily uses a zero busy timeout so contention fails immediately.
-
-Errors preserve their stable code and the original driver message. `newTransactionConflict(message)` (Go: `NewTransactionConflict`) creates the adapter-neutral retryable transaction-conflict error used for serialization failures and deadlocks; it carries `DEADLOCK` and does not expose a driver error type. Transaction timeout is available through `timeoutMs` where the driver supports PostgreSQL `statement_timeout`; in-flight cancellation remains native to each language runtime.
-
-`transaction` executes its callback once by default. Deadlock retry is disabled by default. The caller may pass `TransactionOptions` with `retryDeadlocks` and `maxAttempts`; each retry creates a new transaction and re-executes the complete callback. The callback must be safe to execute more than once when retry is enabled.
-
-## 7. Compile, plan, and assembly — IF-18 to IF-20
-
-`Request` contains the schema hash, IR version, entity, predicate tree, relation requests, projection, and parameter count. Parameter values are stored separately from the request shape. The compiler produces an immutable plan with dialect-specific SQL and positional assembly metadata.
+`Request` contains the schema hash, IR version, entity, predicate tree, relation requests, projection, and parameter count. Parameter values are stored separately from the request shape. The client planner produces an immutable plan with dialect-specific SQL and positional assembly metadata. The four planners produce the same SQL for the same request; the conformance vectors check this.
 
 Assembly uses `{alias, column, output_name, index}`. Join aliases remain separate from the root namespace. Duplicate output names return `COLUMN_ALIAS_CONFLICT`. A schema hash mismatch returns `SCHEMA_HASH_MISMATCH` before execution.
 
 ## 8. Row values, dirty state, and relations — IF-21 to IF-24
 
-A generated row stores declared fields and relation results. Getters return the declared type. Setters update the field and mark it dirty. Update operations send dirty fields only, except fields required by optimistic locking. The original version is read before mutation and is used in the update predicate.
+A model row stores declared fields, added columns, relation results, and values attached with `new<Name>` in one name space; duplicate names are rejected. Getters return the declared type. Setters update the field and mark it dirty. Update operations send dirty fields only, except fields required by optimistic locking. The original version is read before mutation and is used in the update predicate.
 
 A relation result is either one row or a collection according to the schema. Collection keying is deterministic. A duplicate key follows the declared key policy; an undeclared key function is invalid.
 
@@ -185,7 +195,7 @@ A relation result is either one row or a collection according to the schema. Col
 |---|---|
 | `Collection<T>` | ordered rows, length, first, key lookup |
 | `Key` | logical type tag and value |
-| `Page<T>` | page, per-page count, total count, rows |
+| `Page<T>` | `items`, `totalCount`, `totalPages`, `page`, `perPage` |
 
 The integer key `7` and text key `"7"` are different keys. Composite keys encode each typed component with its length, so `("1", "23")` and `("12", "3")` cannot collide. The plan records the ordered collection identity in `Assemble.key`. Regular rows use every primary-key component; grouped count rows use their group columns and expression aliases. A collection preserves database order unless an explicit order or key policy changes it. A page preserves the root result order and relation attachment order.
 
@@ -199,9 +209,9 @@ Query events expose the normalized SQL, bind count, duration, plan identifier, a
 
 ## 11. Generator, schema, and extension boundaries — IF-32 to IF-34
 
-The generator reads the schema manifest and emits the declared methods, fields, relations, column references, and error types. It must not emit a method for an undeclared column, relation, or operator. Generated code is checked against the manifest and the interface symbol list.
+The generator reads the schema manifest and emits models, fields, column methods, and error types. Go and Rust generation also reads consumer source and emits the chain, relation key, join, and `new<Name>` methods that the source calls. It must not emit a method for an undeclared column or operator. Generated code is checked against the manifest and the interface symbol list.
 
-The regular API uses declared relation methods such as `relation<Rel>`, `relations<Rel>`, `join<Rel>`, and `leftJoin<Rel>`. Undeclared method names fail during language-level method lookup.
+Relations use `relation(child)` and `relations(child)` with `match<L>With<R>()` on the child. Joins use `join<L>With<R>(child)` and `leftJoin<L>With<R>(child)`. Unknown names fail during PHP and TypeScript call resolution and during Go and Rust generation.
 
 ## 12. Verification
 
@@ -252,7 +262,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    Error[Driver or compiler error] --> Code[Stable error code]
+    Error[Driver or planner error] --> Code[Stable error code]
     Error --> Message[Original message]
     Code --> Client[Client result]
     Message --> Client

@@ -1,7 +1,7 @@
-//! Value-free IR (docs/protocol.md). Mirrors engine/ir/ir.go; serialized with
-//! the same field names so the engine validates it as-is.
+//! Value-free IR (docs/protocol.md). The serialized form is the plan-cache
+//! key.
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Request {
@@ -15,30 +15,19 @@ pub struct Request {
     /// insert only: assignments applied when the unique key already exists (never PK/auto).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub on_duplicate: Vec<Assign>,
+    /// insert only: parameters of each additional row in `set` column order.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub rows: Vec<Vec<usize>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub optimistic: Option<Optimist>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub agg: String,
-    /// kind raw: a hand-written SELECT run as the root (`{table}` = the entity table, `?` bound from ps).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub raw: Option<Raw>,
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
-    pub debug: bool,
     pub n_params: usize,
-}
-
-#[derive(Serialize, Debug, Clone, Default)]
-pub struct Raw {
-    pub sql: String,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub ps: Vec<usize>,
 }
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Query {
     pub entity: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub scope_p: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub columns: Option<Columns>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -55,19 +44,12 @@ pub struct Query {
     pub group_by: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub group_by_expr: Vec<GroupExpr>,
-    /// Root only, needs group_by: group predicates (aggregate expressions as expr items).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub having: Option<Group>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<Limit>,
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
-    pub distinct: bool,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub force_index: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub lock: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub keyset: Option<Keyset>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub key_by: String,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
@@ -76,18 +58,9 @@ pub struct Query {
     pub limit_per_parent: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub if_parent: Option<IfParent>,
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
-    pub drop_child_key: bool,
     /// delete_cascade stops at this relation (plan children[].cascade = false).
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub no_cascade_delete: bool,
-}
-
-#[derive(Serialize, Debug, Clone, Default)]
-pub struct Keyset {
-    pub direction: String,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub values: Vec<usize>,
 }
 
 fn is_zero(n: &u32) -> bool {
@@ -102,26 +75,68 @@ pub struct Columns {
     pub add: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub remove: Vec<String>,
-    #[serde(
-        rename = "as",
-        skip_serializing_if = "std::collections::BTreeMap::is_empty"
-    )]
-    pub as_: std::collections::BTreeMap<String, String>,
     #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
-    pub expr: std::collections::BTreeMap<String, String>,
+    pub expr: std::collections::BTreeMap<String, Expr>,
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub r#fn: std::collections::BTreeMap<String, ColFunc>,
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub sub: std::collections::BTreeMap<String, Sub>,
 }
 
-#[derive(Serialize, Debug, Clone)]
+/// A raw fragment with `{column}` references and `?` placeholders.
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct Expr {
+    pub sql: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub ps: Vec<usize>,
+}
+
+/// An ORM function and the indices of its bound arguments.
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct Func {
+    pub name: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+        pub ps: Vec<usize>,
+}
+
+/// A column function applied to a column of the query's entity.
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct ColFunc {
+    pub column: String,
+    pub r#fn: Func,
+}
+
+/// A subquery: one column for IN lists and scalar columns, or an aggregate.
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct Sub {
+    pub query: Box<Query>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub column: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub agg: String,
+}
+
+#[derive(Serialize, Debug, Clone, Default)]
 pub struct Join {
     pub rel: String,
     pub kind: String,
     pub query: Box<Query>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub left: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub right: String,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, Default)]
 pub struct Relation {
     pub rel: String,
     pub query: Box<Query>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub kind: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub left: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub right: String,
 }
 
 #[derive(Serialize, Debug, Clone, Default)]
@@ -134,9 +149,17 @@ pub struct Group {
 #[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Item {
-    Pred { pred: Pred },
+    Pred { pred: Box<Pred> },
     Group { group: Group },
-    Nav { nav: Nav },
+    Joined { joined: JoinedRef },
+}
+
+/// Places the where conditions of the named join as a group.
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct JoinedRef {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub conn: String,
+    pub join: String,
 }
 
 #[derive(Serialize, Debug, Clone, Default)]
@@ -157,52 +180,50 @@ pub struct Pred {
     pub expr: String,
     #[serde(rename = "match", skip_serializing_if = "Vec::is_empty")]
     pub match_: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub r#fn: Option<Func>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<Func>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub cols: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sub: Option<Sub>,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, Default)]
 pub struct ColRef {
     pub path: String,
     pub column: String,
 }
 
-#[derive(Serialize, Debug, Clone)]
-pub struct Nav {
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub conn: String,
-    pub rel: String,
-    pub group: Group,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub mode: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub count_op: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub p: Option<usize>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, Default)]
 pub struct Order {
-	#[serde(default, skip_serializing_if = "String::is_empty")]
-	pub column: String,
-	#[serde(default, skip_serializing_if = "String::is_empty")]
-	pub expr: String,
-	#[serde(default, skip_serializing_if = "std::ops::Not::not")]
-	pub desc: bool,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub column: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub expr: String,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub desc: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub random: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub r#fn: Option<Func>,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, Default)]
 pub struct GroupExpr {
     pub expr: String,
     #[serde(rename = "as")]
     pub as_: String,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, Default)]
 pub struct Limit {
     pub offset: u32,
     pub count: u32,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, Default)]
 pub struct IfParent {
     pub column: String,
     pub p: usize,
@@ -225,59 +246,8 @@ pub struct Assign {
     pub minus_p: Option<usize>,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, Default)]
 pub struct Optimist {
     pub column: String,
     pub p: usize,
-}
-
-impl Query {
-    /// Shift every parameter index by `off` (used when attaching a child query).
-    pub fn shift(&mut self, off: usize) {
-        if let Some(p) = self.scope_p.as_mut() {
-            *p += off;
-        }
-        if let Some(g) = self.on.as_mut() {
-            g.shift(off);
-        }
-        if let Some(g) = self.where_.as_mut() {
-            g.shift(off);
-        }
-        if let Some(g) = self.having.as_mut() {
-            g.shift(off);
-        }
-        for j in &mut self.joins {
-            j.query.shift(off);
-        }
-        for r in &mut self.relations {
-            r.query.shift(off);
-        }
-        if let Some(ip) = self.if_parent.as_mut() {
-            ip.p += off;
-        }
-    }
-}
-
-impl Group {
-    fn shift(&mut self, off: usize) {
-        for it in &mut self.items {
-            match it {
-                Item::Pred { pred } => {
-                    if let Some(p) = pred.p.as_mut() {
-                        *p += off;
-                    }
-                    for p in &mut pred.ps {
-                        *p += off;
-                    }
-                }
-                Item::Group { group } => group.shift(off),
-                Item::Nav { nav } => {
-                    if let Some(p) = nav.p.as_mut() {
-                        *p += off;
-                    }
-                    nav.group.shift(off)
-                },
-            }
-        }
-    }
 }

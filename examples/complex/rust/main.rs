@@ -1,120 +1,58 @@
-//! A complex statement in three languages, one JSON document (docs/examples/complex-query.md
-//! shows the same product-domain shapes). Run:
+//! A complex statement in every client language, one JSON document. Run:
 //!
-//!   clients/rust/target/release/complex bin/ormengine.wasm schema/schema.json
-use std::sync::Arc;
+//!   clients/rust/target/release/complex
+orm::models!();
 
-use gen::*;
-use orm::db::{Config, ConnectOptions, Db};
-use orm::engine::{Engine, EngineConfig};
+use model::{Battle, Service, ServiceMember, User};
 use serde_json::json;
 
-#[tokio::main]
-async fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    let wasm = std::fs::read(&args[1]).expect("wasm");
-    let schema = std::fs::read(&args[2]).expect("schema.json");
-    let engine = Arc::new(
-        Engine::new(EngineConfig {
-            wasm: &wasm,
-            schema_json: &schema,
-            ..Default::default()
-        })
-        .expect("engine"),
-    );
-    gen::init(engine.clone()).expect("init");
-    let dsn = std::env::var("ORM_MYSQL_URL_RUST")
-        .unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into());
-    let opts = ConnectOptions::parse("mysql", &dsn).expect("dsn");
-    let db = Db::connect(
-        opts,
-        4,
-        engine,
-        Config {
-            aes_key: "bench-salt".into(),
-            blind_index_key: "bench-blind-index".into(),
-            aes_version: 1,
-            aes_keys: [(1, "bench-salt".into())].into_iter().collect(),
-            plan_cache_size: 256,
-            statement_cache_size: 256,
-            on_query: None,
-        },
-    )
-    .await
-    .expect("connect");
+fn dsn() -> String {
+    std::env::var("ORM_BENCH_MYSQL_DSN").unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into())
+}
 
-    // A join carrying its own ON and WHERE, a root group mixing a predicate with
-    // navigation into the joined entity, and three levels of relations with options.
-    let rows = battle::query()
-        .select_none()
-        .select_name()
-        .join(
-            service::query()
-                .on(|w| w.seq_gt(0))
-                .where_(|w| w.name("service-7")),
-        )
+#[tokio::main]
+async fn main() -> orm::Result<()> {
+    let config = orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
+    let db = orm::Db::connect(&dsn(), 4, config).await?;
+
+    // A join child with its own ON conditions whose WHERE conditions are placed
+    // in a group, and two levels of relations with options.
+    let service = Service::new().on(|s: Service| s.gt_seq(0)).name("service-7");
+    let rows = Battle::new()
+        .connect(&db)
+        .remove_all_columns()
+        .add_column_name()
+        .join_service_seq_with_seq(service.clone())
         .is_close(false)
-        .and_group(|w| w.is_display(true).or().service(|s| s.seq(7)))
+        .and(|q: Battle| q.is_display(true).or(&service))
+        .relation(User::new().match_user_seq_with_seq().relations(Battle::new().match_seq_with_user_seq().remove_all_columns().order_by_seq_desc().group_limit(2)))
         .relation(
-            user::query().relations(
-                battle::query()
-                    .select_none()
-                    .order_by_seq_desc()
-                    .limit_per_parent(2)
-                    .drop_child_key(),
-            ),
-        )
-        .relation(
-            service::query().relations(
-                service_member::query()
-                    .select_none()
-                    .order_by_seq_asc()
-                    .limit_per_parent(2)
-                    .key_by_user_seq(),
-            ),
+            Service::new()
+                .match_service_seq_with_seq()
+                .alias_owner_service()
+                .relations(ServiceMember::new().match_seq_with_service_seq().remove_all_columns().order_by_seq_asc().group_limit(2).key_name_user_seq()),
         )
         .order_by_seq_asc()
         .limit(0, 2)
-        .using(&db)
         .gets()
-        .await
-        .expect("rows");
-    let items: Vec<_> = rows
-        .iter()
-        .map(|(_, b)| b.to_map())
-        .collect::<orm::Result<Vec<_>>>()
-        .expect("export");
+        .await?;
 
-    // Aggregates over the same slice of data: a grouped count with HAVING, min/max, distinct.
-    let groups = battle::query()
-        .service_seq(7)
-        .group_by_user_seq()
-        .having(|w| w.expr("COUNT(*) > ?", vec![1.into()]))
-        .using(&db)
-        .get_count()
-        .await
-        .expect("groups");
-    let min = battle::query()
-        .service_seq(7)
-        .using(&db)
-        .min_seq()
-        .await
-        .expect("min")
-        .expect("rows exist");
-    let max = battle::query()
-        .service_seq(7)
-        .using(&db)
-        .max_seq()
-        .await
-        .expect("max")
-        .expect("rows exist");
-    let users = battle::query()
-        .service_seq(7)
-        .using(&db)
-        .count_distinct_user_seq()
-        .await
-        .expect("distinct");
+    // Aggregates over the same data: grouped counts, a sum, an average, and a page.
+    let groups = Battle::new().connect(&db).service_seq(7).group_by_user_seq().gets_count().await?;
+    let sum = Battle::new().connect(&db).service_seq(7).sum_read_count().get_sum().await?;
+    let avg = Battle::new().connect(&db).service_seq(7).avg_like_count().get_avg().await?;
+    let page = Battle::new().connect(&db).service_seq(7).remove_all_columns().order_by_seq_asc().gets_page(2, 10).await?;
 
-    let out = json!({"rows": items, "groups": groups, "min_seq": min, "max_seq": max, "user_count": users});
+    let out = json!({
+        "rows": rows,
+        "groups": groups.len(),
+        "read_sum": sum,
+        "like_avg": avg,
+        "page_total": page.total_count,
+        "page_pages": page.total_pages,
+        "page_length": page.items.len(),
+    });
     println!("{}", serde_json::to_string_pretty(&out).unwrap());
+    db.close().await;
+    Ok(())
 }

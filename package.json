@@ -14,13 +14,11 @@
     "docs:verify-idempotent": "node scripts/docs/idempotent.mjs",
     "docs:rules-check": "node scripts/docs/rules.mjs",
     "schema:check": "node scripts/schema/check.mjs",
-    "proto:check": "node tests/proto/check.mjs",
     "typescript:check": "tsc -p clients/typescript/tsconfig.json --noEmit",
     "typescript:build": "npm --prefix clients/typescript run build",
-    "typescript:vector": "npm run typescript:build && node tests/typescript/common-vector.mjs"
+    "typescript:test": "npm run typescript:build && node tests/typescript/dsn.mjs && node tests/typescript/engine.mjs && node tests/typescript/generate.mjs && node tests/typescript/schema-cases.mjs && node tests/typescript/schema-tools.mjs && node tests/typescript/codec-vector.mjs && ./scripts/typescript/sqlite-test.sh"
   },
   "devDependencies": {
-    "@bufbuild/protoc-gen-es": "^2.15.0",
     "@types/node": "22.20.2",
     "markdown-it": "14.1.0",
     "mermaid": "11.17.2",

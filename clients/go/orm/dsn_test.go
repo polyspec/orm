@@ -1,203 +1,40 @@
 package orm
 
-import (
-	"context"
-	"database/sql"
-	"errors"
-	"path/filepath"
-	"testing"
-	"time"
-
-	_ "modernc.org/sqlite"
-)
+import "testing"
 
 func TestParseDSN(t *testing.T) {
 	tests := []struct {
-		name, input, driver, native string
+		name, input, driver, native, zone string
 	}{
-		{"mysql tcp", "mysql://app:secret@127.0.0.1:3306/app?parseTime=true&clientFoundRows=true", "mysql", "app:secret@tcp(127.0.0.1:3306)/app?clientFoundRows=true&parseTime=true"},
-		{"mysql socket", "mysql://root@localhost/app?socket=/tmp/mysql.sock&parseTime=true&clientFoundRows=true", "mysql", "root@unix(/tmp/mysql.sock)/app?clientFoundRows=true&parseTime=true"},
-		{"postgres", "postgres://app:secret@127.0.0.1:5432/app?sslmode=disable", "postgres", "postgres://app:secret@127.0.0.1:5432/app?sslmode=disable"},
-		{"sqlite", "sqlite:///tmp/app.sqlite?_pragma=busy_timeout(5000)", "sqlite", "file:/tmp/app.sqlite?_pragma=busy_timeout%285000%29&_txlock=deferred"},
+		{"mysql tcp", "mysql://app:secret@127.0.0.1:3306/app", "mysql", "app:secret@tcp(127.0.0.1:3306)/app?clientFoundRows=true&parseTime=true", "Local"},
+		{"mysql socket and zone", "mysql://root@localhost/app?socket=/tmp/mysql.sock&timezone=%2B09:00", "mysql", "root@unix(/tmp/mysql.sock)/app?clientFoundRows=true&parseTime=true&time_zone=%27%2B09%3A00%27", "+09:00"},
+		{"postgres", "postgres://app:secret@127.0.0.1:5432/app?timezone=Asia/Seoul", "postgres", "postgres://app:secret@127.0.0.1:5432/app?timezone=Asia/Seoul", "Asia/Seoul"},
+		{"postgres offset", "postgres:///app?host=/tmp&timezone=%2B09:00", "postgres", "postgres:///app?host=%2Ftmp&timezone=%3C%2B09%3A00%3E-09%3A00", "+09:00"},
+		{"postgres socket", "postgres:///app?host=/tmp", "postgres", "postgres:///app?host=/tmp", "Local"},
+		{"sqlite", "sqlite:///tmp/app.sqlite?_pragma=busy_timeout(5000)&timezone=UTC", "sqlite", "file:/tmp/app.sqlite?_pragma=busy_timeout%285000%29&_pragma=foreign_keys%281%29&_txlock=deferred", "UTC"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			driver, native, err := parseDSN(tt.input)
-			if err != nil || driver != tt.driver || native != tt.native {
-				t.Fatalf("parseDSN() = driver=%q native=%q err=%v, want driver=%q native=%q", driver, native, err, tt.driver, tt.native)
+			got, err := parseDSN(tt.input, 0)
+			if err != nil || got.driver != tt.driver || got.native != tt.native || got.location.String() != tt.zone {
+				t.Fatalf("parseDSN() = %+v, %v; want %s %s %s", got, err, tt.driver, tt.native, tt.zone)
 			}
 		})
 	}
 }
 
-func TestParseDSNRejectsSQLiteImmediateTransactions(t *testing.T) {
-	if _, _, err := parseDSN("sqlite:///tmp/app.sqlite?_txlock=immediate"); err == nil {
-		t.Fatal("parseDSN accepted immediate SQLite transactions")
-	}
-}
-
-func TestSQLiteORMRowLockSerializesAndNoWaits(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "lock.sqlite")
-	_, native, err := parseDSN("sqlite://" + path + "?_busy_timeout=1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	first, err := sql.Open("sqlite", native)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer first.Close()
-	second, err := sql.Open("sqlite", native)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer second.Close()
-	if _, err := first.ExecContext(context.Background(), "CREATE TABLE lock_probe (id INTEGER PRIMARY KEY)"); err != nil {
-		t.Fatal(err)
-	}
-	tx, err := first.BeginTx(context.Background(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer tx.Rollback()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	firstDB := &DB{SQL: first, driver: "sqlite", stmts: map[string]*sql.Stmt{}}
-	secondDB := &DB{SQL: second, driver: "sqlite", stmts: map[string]*sql.Stmt{}}
-	firstORM, err := Begin(context.Background(), firstDB, TransactionOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer firstORM.Rollback(context.Background())
-	if err := acquireSQLiteRowLock(context.Background(), firstORM, "update"); err != nil {
-		t.Fatal("first SQLite lock", err)
-	}
-	secondORM, err := Begin(context.Background(), secondDB, TransactionOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer secondORM.Rollback(context.Background())
-	started := time.Now()
-	if err := acquireSQLiteRowLock(ctx, secondORM, "update_nowait"); err == nil {
-		t.Fatal("SQLite no-wait lock succeeded while another transaction held the ORM lock")
-	}
-	if elapsed := time.Since(started); elapsed > 500*time.Millisecond {
-		t.Fatalf("SQLite no-wait lock waited %s", elapsed)
-	}
-}
-
-func TestSQLiteORMRowLockWaitsForTransaction(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "lock-wait.sqlite")
-	_, native, err := parseDSN("sqlite://" + path + "?_busy_timeout=1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	firstSQL, err := sql.Open("sqlite", native)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer firstSQL.Close()
-	secondSQL, err := sql.Open("sqlite", native)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer secondSQL.Close()
-	firstDB := &DB{SQL: firstSQL, driver: "sqlite", stmts: map[string]*sql.Stmt{}}
-	secondDB := &DB{SQL: secondSQL, driver: "sqlite", stmts: map[string]*sql.Stmt{}}
-	first, err := Begin(context.Background(), firstDB, TransactionOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer first.Rollback(context.Background())
-	if err = acquireSQLiteRowLock(context.Background(), first, "update"); err != nil {
-		t.Fatal("first SQLite lock", err)
-	}
-	second, err := Begin(context.Background(), secondDB, TransactionOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer second.Rollback(context.Background())
-	result := make(chan error, 1)
-	go func() { result <- acquireSQLiteRowLock(context.Background(), second, "update") }()
-	select {
-	case err := <-result:
-		t.Fatalf("second SQLite lock returned before first transaction ended: %v", err)
-	case <-time.After(50 * time.Millisecond):
-	}
-	if err = first.Rollback(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	select {
-	case err := <-result:
-		if err != nil {
-			t.Fatalf("second SQLite lock after first transaction ended: %v", err)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("second SQLite lock did not complete after first transaction ended")
-	}
-}
-
-func TestSQLiteORMRowLockWaitHonorsCancellation(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "lock-cancel.sqlite")
-	_, native, err := parseDSN("sqlite://" + path + "?_busy_timeout=1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	firstSQL, err := sql.Open("sqlite", native)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer firstSQL.Close()
-	secondSQL, err := sql.Open("sqlite", native)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer secondSQL.Close()
-	firstDB := &DB{SQL: firstSQL, driver: "sqlite", stmts: map[string]*sql.Stmt{}}
-	secondDB := &DB{SQL: secondSQL, driver: "sqlite", stmts: map[string]*sql.Stmt{}}
-	first, err := Begin(context.Background(), firstDB, TransactionOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer first.Rollback(context.Background())
-	if err = acquireSQLiteRowLock(context.Background(), first, "update"); err != nil {
-		t.Fatal("first SQLite lock", err)
-	}
-	second, err := Begin(context.Background(), secondDB, TransactionOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer second.Rollback(context.Background())
-	ctx, cancel := context.WithCancel(context.Background())
-	result := make(chan error, 1)
-	go func() { result <- acquireSQLiteRowLock(ctx, second, "update") }()
-	time.Sleep(50 * time.Millisecond)
-	started := time.Now()
-	cancel()
-	select {
-	case err := <-result:
-		if !errors.Is(err, context.Canceled) {
-			t.Fatalf("SQLite lock cancellation error = %v, want context canceled", err)
-		}
-		if elapsed := time.Since(started); elapsed > 500*time.Millisecond {
-			t.Fatalf("SQLite lock cancellation took %s", elapsed)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("SQLite lock did not honor cancellation")
-	}
-}
-
-func TestParseDSNRejectsUnsupportedOrUnsafeDSN(t *testing.T) {
+func TestParseDSNRejectsInvalidInput(t *testing.T) {
 	for _, input := range []string{
-		"mysql://root@localhost/app?parseTime=true",
-		"mysql://root@localhost/app",
 		"mysql://root@localhost",
 		"postgres://root@localhost",
 		"sqlite://relative.sqlite",
+		"sqlite:///tmp/app.sqlite?_txlock=immediate",
+		"mysql://root@localhost/app?timezone=Nowhere/City",
 		"oracle://root@localhost/app",
+		"root@tcp(localhost)/app",
 	} {
 		t.Run(input, func(t *testing.T) {
-			if _, _, err := parseDSN(input); err == nil {
+			if _, err := parseDSN(input, 0); err == nil {
 				t.Fatal("parseDSN accepted an invalid DSN")
 			}
 		})

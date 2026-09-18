@@ -32,8 +32,8 @@ erDiagram
     decimal(13_3) price                        "?"
     varbinary(16) ip                           "?"
     blob          gz_extend                    "?"
-    json          json_setting                 "?"
-    text          jsons_tags                   "?"
+    jsontext      json_setting                 "?"
+    jsontext      jsons_tags                   "?"
     text          base64_extra                 "?"
     text          serialize_data               "?"
   }
@@ -99,9 +99,5 @@ erDiagram
   %% index battle (phone_blind_index) ix_phone_blind_index
   %% blind_index battle aes_hex_email email_blind_index
   %% blind_index battle aes_hex_phone phone_blind_index
-  %% scope battle service_seq
   %% fulltext battle (name, description)
-  %% predicate battle visible : `is_close` = FALSE AND `is_display` = TRUE
-  %% predicate battle started_after : `start_dt` > ?
   %% soft_delete soft_record deleted_at
-  %% many_to_many account project projects accounts through account_project

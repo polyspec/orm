@@ -5,7 +5,6 @@ package ormgen
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -33,10 +32,10 @@ func TestPhysicalMigration(t *testing.T) {
 		t.Fatal(err)
 	}
 	cases := []struct {
-		driver, driverName, env string
+		driver, env string
 	}{
-		{"mysql", "mysql", "ORM_MIGRATION_MYSQL_DSN"},
-		{"postgres", "pgx", "ORM_MIGRATION_POSTGRES_DSN"},
+		{"mysql", "ORM_TOOLS_MYSQL_DSN"},
+		{"postgres", "ORM_TOOLS_POSTGRES_DSN"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.driver, func(t *testing.T) {
@@ -44,15 +43,15 @@ func TestPhysicalMigration(t *testing.T) {
 			if dsn == "" {
 				t.Fatalf("%s is required; physical DB tests never skip", tc.env)
 			}
-			db, err := sql.Open(tc.driverName, dsn)
+			db, opened, err := openToolDB(dsn)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer db.Close()
-			ctx := context.Background()
-			if err := db.PingContext(ctx); err != nil {
-				t.Fatal(err)
+			if opened.dialect != tc.driver {
+				t.Fatalf("%s names a %s database", tc.env, opened.dialect)
 			}
+			ctx := context.Background()
 			resetPhysicalSchema(t, db, tc.driver, want)
 			assertPhysicalAESVersionUpgrade(t, ctx, db, tc.driver)
 			if err := ensureMigrationTable(ctx, db, tc.driver); err != nil {
@@ -74,7 +73,7 @@ func TestPhysicalMigration(t *testing.T) {
 				t.Fatal(err)
 			}
 			if !schemaMatches(want, live, tc.driver) {
-				t.Fatalf("initial schema mismatch: want=%s got=%s: %s", want.SchemaHash, live.SchemaHash, manifestMismatch(want, live))
+				t.Fatalf("initial schema mismatch: want=%s got=%s: %s", want.SchemaHash, live.SchemaHash, manifestMismatch(want, live, tc.driver))
 			}
 			if err := insertMigration(ctx, db, tc.driver, migrationRecord{MigrationID: "physical-initial", Name: "physical initial", FromHash: live.SchemaHash, ToHash: want.SchemaHash, Checksum: checksumText(ddl), Status: "applied", Operations: countSQLStatements(ddl)}); err != nil {
 				t.Fatal(err)
@@ -97,9 +96,10 @@ func TestPhysicalMigration(t *testing.T) {
 			assertPhysicalStructuredPlan(t, ctx, db, tc.driver, want)
 			assertPhysicalRollback(t, ctx, db, tc.driver)
 			assertPhysicalPoint(t, ctx, db, tc.driver)
-			assertPhysicalScope(t, ctx, db, tc.driver)
 			assertPhysicalCheckImport(t, ctx, db, tc.driver)
 			assertPhysicalSoftDelete(t, ctx, db, tc.driver)
+			assertLiveIncrementalMigration(t, ctx, db, tc.driver)
+			assertLiveSourcePlan(t, ctx, db, tc.driver, dsn)
 		})
 	}
 }
@@ -475,7 +475,7 @@ func assertPhysicalAESVersionUpgrade(t *testing.T, ctx context.Context, db *sql.
 		t.Fatal(err)
 	}
 	if !schemaMatches(target, upgraded, driver) {
-		t.Fatalf("AES version upgrade mismatch: %s", manifestMismatch(target, upgraded))
+		t.Fatalf("AES version upgrade mismatch: %s", manifestMismatch(target, upgraded, driver))
 	}
 	if _, err := db.ExecContext(ctx, "DROP TABLE "+table); err != nil {
 		t.Fatal(err)
@@ -531,7 +531,7 @@ func assertPhysicalRollback(t *testing.T, ctx context.Context, db *sql.DB, drive
 	}
 	live, err := liveManifest(db, driver)
 	if err != nil || !schemaMatches(base, live, driver) {
-		t.Fatalf("physical rollback schema mismatch: %s err=%v", manifestMismatch(base, live), err)
+		t.Fatalf("physical rollback schema mismatch: %s err=%v", manifestMismatch(base, live, driver), err)
 	}
 	status, err = rollbackMigration(ctx, db, plan, logDir)
 	if err != nil || status != "noop" {
@@ -713,64 +713,44 @@ func assertPhysicalMigrationLock(t *testing.T, ctx context.Context, db *sql.DB, 
 	}
 }
 
-func manifestMismatch(want, live *schema.Manifest) string {
-	if len(want.Entities) != len(live.Entities) {
-		return fmt.Sprintf("tables want=%d got=%d want_names=%v got_names=%v", len(want.Entities), len(live.Entities), manifestNames(want), manifestNames(live))
-	}
-	for name, we := range want.Entities {
-		le := live.Entities[name]
-		if le == nil {
-			return fmt.Sprintf("missing table %s", name)
-		}
-		if we.Table != le.Table {
-			return fmt.Sprintf("entity %s table want=%s got=%s", name, we.Table, le.Table)
-		}
-		if len(we.Columns) != len(le.Columns) {
-			return fmt.Sprintf("table %s columns want=%d got=%d", name, len(we.Columns), len(le.Columns))
-		}
-		for i, wc := range we.Columns {
-			lc := le.Columns[i]
-			if wc.Name != lc.Name || wc.Type != lc.Type || wc.Raw != lc.Raw || wc.Nullable != lc.Nullable || !sameDefault(wc.Default, lc.Default) || wc.Auto != lc.Auto || wc.Unsigned != lc.Unsigned || wc.PK != lc.PK {
-				return fmt.Sprintf("column %s.%s want={type:%s raw:%s nullable:%t default:%v auto:%t unsigned:%t pk:%t} got={type:%s raw:%s nullable:%t default:%v auto:%t unsigned:%t pk:%t}", name, wc.Name, wc.Type, wc.Raw, wc.Nullable, wc.Default, wc.Auto, wc.Unsigned, wc.PK, lc.Type, lc.Raw, lc.Nullable, lc.Default, lc.Auto, lc.Unsigned, lc.PK)
-			}
-		}
-	}
-	return "manifest fields differ"
-}
-
-func manifestNames(m *schema.Manifest) []string {
-	names := make([]string, 0, len(m.Entities))
-	for name := range m.Entities {
-		names = append(names, name)
-	}
-	return names
-}
-
-func sameDefault(a, b *string) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return *a == *b
-}
-
-func resetPhysicalSchema(t *testing.T, db *sql.DB, driver string, m *schema.Manifest) {
+// resetPhysicalSchema drops every table of the scratch database the tool
+// DSN names.
+func resetPhysicalSchema(t *testing.T, db *sql.DB, driver string, _ *schema.Manifest) {
 	t.Helper()
-	q := func(s string) string {
-		if driver == "mysql" {
-			return "`" + s + "`"
-		}
-		return `"` + s + `"`
-	}
-	order, err := ddlEntityOrder(m)
+	ctx := context.Background()
+	conn, err := db.Conn(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i := len(order) - 1; i >= 0; i-- {
-		if _, err := db.Exec("DROP TABLE IF EXISTS " + q(m.Entities[order[i]].Table)); err != nil {
+	defer conn.Close()
+	list := "SELECT tablename FROM pg_tables WHERE schemaname = current_schema()"
+	if driver == "mysql" {
+		list = "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()"
+		if _, err := conn.ExecContext(ctx, "SET FOREIGN_KEY_CHECKS = 0"); err != nil {
 			t.Fatal(err)
 		}
+		defer conn.ExecContext(ctx, "SET FOREIGN_KEY_CHECKS = 1")
 	}
-	if _, err := db.Exec("DROP TABLE IF EXISTS orm_schema_migrations"); err != nil {
+	rows, err := conn.QueryContext(ctx, list)
+	if err != nil {
 		t.Fatal(err)
+	}
+	var tables []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			t.Fatal(err)
+		}
+		tables = append(tables, name)
+	}
+	rows.Close()
+	for _, name := range tables {
+		stmt := `DROP TABLE IF EXISTS "` + name + `" CASCADE`
+		if driver == "mysql" {
+			stmt = "DROP TABLE IF EXISTS `" + name + "`"
+		}
+		if _, err := conn.ExecContext(ctx, stmt); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
