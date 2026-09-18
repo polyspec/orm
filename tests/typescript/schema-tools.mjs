@@ -2,9 +2,9 @@
 // output as the Go `ormgen` for the shared Mermaid cases of
 // tests/schema/cases.json, variants of them, and live databases.
 //
-// SQLite always runs. MySQL and PostgreSQL run when ORM_TOOLS_MYSQL_DSN and
-// ORM_TOOLS_POSTGRES_DSN name empty scratch databases; the test drops every
-// table in them, e.g.
+// It runs on SQLite, MySQL and PostgreSQL. ORM_TOOLS_MYSQL_DSN and
+// ORM_TOOLS_POSTGRES_DSN name empty scratch databases and must be set; the test
+// drops every table in them, e.g.
 //   ORM_TOOLS_MYSQL_DSN='mysql://root@localhost/orm_ts_tools?socket=/tmp/mysql.sock'
 //   ORM_TOOLS_POSTGRES_DSN='postgres:///orm_ts_tools?host=/tmp'
 //
@@ -491,8 +491,10 @@ try {
   console.log(`diff: ${pairs.length} pairs`);
   await diffParity(pairs);
   const targets = [['sqlite', `sqlite://${join(work, 'live.sqlite')}`]];
-  if (process.env.ORM_TOOLS_MYSQL_DSN) targets.push(['mysql', process.env.ORM_TOOLS_MYSQL_DSN]);
-  if (process.env.ORM_TOOLS_POSTGRES_DSN) targets.push(['postgres', process.env.ORM_TOOLS_POSTGRES_DSN]);
+  if (!process.env.ORM_TOOLS_MYSQL_DSN) throw new Error('ORM_TOOLS_MYSQL_DSN is required; database tests never skip');
+  if (!process.env.ORM_TOOLS_POSTGRES_DSN) throw new Error('ORM_TOOLS_POSTGRES_DSN is required; database tests never skip');
+  targets.push(['mysql', process.env.ORM_TOOLS_MYSQL_DSN]);
+  targets.push(['postgres', process.env.ORM_TOOLS_POSTGRES_DSN]);
   for (const [driver, dsn] of targets) {
     await liveParity(driver, dsn);
     await liveCycle(driver, dsn);

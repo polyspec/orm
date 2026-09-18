@@ -65,4 +65,4 @@ ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/release/integration ..
 ./target/release/conformance --driver mysql --dsn "mysql://…" ../../schema/schema.json
 ```
 
-`integration` and the `zone` test always run on SQLite, and on MySQL and PostgreSQL when `ORM_TEST_MYSQL_DSN` and `ORM_TEST_POSTGRES_DSN` name test databases; they drop and install their tables there. `conformance`, `complex`, and `demo` read the seeded bench database.
+`integration` and the `zone` test run on SQLite, MySQL and PostgreSQL; `ORM_TEST_MYSQL_DSN` and `ORM_TEST_POSTGRES_DSN` must name test databases, and a test fails when either is unset. The tests drop and install their tables there. `conformance`, `complex`, and `demo` read the seeded bench database.

@@ -1,5 +1,5 @@
-// Model integration test. SQLite always runs; MySQL and PostgreSQL run when
-// ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name a test database, e.g.
+// Model integration test on SQLite, MySQL and PostgreSQL. ORM_TEST_MYSQL_DSN
+// and ORM_TEST_POSTGRES_DSN name test databases and must be set, e.g.
 //   ORM_TEST_MYSQL_DSN='mysql://root@localhost/orm_ts_test?socket=/tmp/mysql.sock'
 //   ORM_TEST_POSTGRES_DSN='postgres:///orm_ts_test?host=/tmp'
 // The test drops and recreates the schema tables in those databases.
@@ -416,8 +416,10 @@ async function dropAuditTables(dialect, dsn) {
 const zones = [['+00:00', 0], ['+09:00', 540], ['-05:30', -330], ['Asia/Seoul', 540]];
 
 const targets = [['sqlite', `sqlite://${join(work, 'model.sqlite')}?_pragma=busy_timeout(5000)`]];
-if (process.env.ORM_TEST_MYSQL_DSN) targets.push(['mysql', process.env.ORM_TEST_MYSQL_DSN]);
-if (process.env.ORM_TEST_POSTGRES_DSN) targets.push(['postgres', process.env.ORM_TEST_POSTGRES_DSN]);
+if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip');
+if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip');
+targets.push(['mysql', process.env.ORM_TEST_MYSQL_DSN]);
+targets.push(['postgres', process.env.ORM_TEST_POSTGRES_DSN]);
 const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, transactions, aesRotation, bindLimitSplitting };
 
 try {

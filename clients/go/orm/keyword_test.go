@@ -1,15 +1,10 @@
 package orm_test
 
 import (
-	"database/sql"
 	"encoding/json"
-	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
-
-	"github.com/go-sql-driver/mysql"
 
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/pg"
@@ -88,10 +83,8 @@ func TestSQLKeywordNames(t *testing.T) {
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
 	for driver, dsn := range targets {
-		if dsn == "" {
-			continue
-		}
 		t.Run(driver, func(t *testing.T) {
+			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "order")
 			eng, err := engine.New(m, driver)
 			if err != nil {
@@ -160,41 +153,5 @@ func TestSQLKeywordNames(t *testing.T) {
 				t.Fatalf("left: %d %v", left, err)
 			}
 		})
-	}
-}
-
-func dropTable(t *testing.T, driver, dsn, table string) {
-	t.Helper()
-	sqlDriver, native := driver, dsn
-	switch driver {
-	case "sqlite":
-		return
-	case "postgres":
-		sqlDriver = "pgx"
-	case "mysql":
-		u, err := url.Parse(dsn)
-		if err != nil {
-			t.Fatal(err)
-		}
-		cfg := mysql.NewConfig()
-		cfg.User = u.User.Username()
-		cfg.DBName = strings.TrimPrefix(u.Path, "/")
-		cfg.Net, cfg.Addr = "tcp", u.Host
-		if socket := u.Query().Get("socket"); socket != "" {
-			cfg.Net, cfg.Addr = "unix", socket
-		}
-		native = cfg.FormatDSN()
-	}
-	raw, err := sql.Open(sqlDriver, native)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer raw.Close()
-	stmt := `DROP TABLE IF EXISTS "` + table + `"`
-	if driver == "mysql" {
-		stmt = "DROP TABLE IF EXISTS `" + table + "`"
-	}
-	if _, err := raw.Exec(stmt); err != nil {
-		t.Fatal(err)
 	}
 }

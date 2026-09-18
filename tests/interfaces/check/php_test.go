@@ -11,7 +11,7 @@ import (
 
 func TestPHPRelativeTypes(t *testing.T) {
 	if _, err := exec.LookPath("php"); err != nil {
-		t.Skip("PHP CLI is not installed")
+		t.Fatalf("php CLI is required; tool tests never skip")
 	}
 	root, err := filepath.Abs("../../..")
 	if err != nil {

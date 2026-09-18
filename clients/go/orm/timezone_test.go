@@ -73,7 +73,8 @@ func TestConnectionTimeZone(t *testing.T) {
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
 	for driver, base := range targets {
-		if base == "" {
+		if base == "" && driver != "sqlite" {
+			t.Run(driver, func(t *testing.T) { requireTarget(t, driver, base) })
 			continue
 		}
 		for _, zone := range []string{"+00:00", "+09:00", "-05:30", "Asia/Seoul"} {

@@ -1,12 +1,20 @@
 //! Connection time zones: a wall-clock value is written and read back in the
 //! connection zone, and the clock default of a created row is in the same
-//! zone. SQLite always runs; MySQL and PostgreSQL run when
-//! ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name a test database.
+//! zone, on SQLite, MySQL and PostgreSQL. A test fails when
+//! ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
 use chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc};
 use orm::core::{Arg, ChainKey};
 use orm::db::Pool;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
+
+/// Returns the DSN in `var`; an unset or empty variable fails the test.
+fn require_dsn(var: &str) -> String {
+    match std::env::var(var) {
+        Ok(dsn) if !dsn.is_empty() => dsn,
+        _ => panic!("{var} is required; database tests never skip"),
+    }
+}
 
 static SCHEMA: Schema = Schema::new(include_bytes!("testdata/zone_schema.json"), "61829838dcc62cf6");
 
@@ -98,14 +106,13 @@ async fn connection_time_zone() {
     let _serial = SERIAL.lock().await;
     let tmp = std::env::temp_dir().join(format!("orm-rust-zone-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
-    let mut targets = vec![("sqlite".to_owned(), String::new())];
-    for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
-        if let Ok(dsn) = std::env::var(var) {
-            if !dsn.is_empty() {
-                targets.push((driver.to_owned(), dsn));
-            }
-        }
-    }
+    let mysql_dsn = require_dsn("ORM_TEST_MYSQL_DSN");
+    let postgres_dsn = require_dsn("ORM_TEST_POSTGRES_DSN");
+    let targets = vec![
+        ("sqlite".to_owned(), String::new()),
+        ("mysql".to_owned(), mysql_dsn),
+        ("postgres".to_owned(), postgres_dsn),
+    ];
     let start = NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap();
     for (driver, base) in &targets {
         for zone in ["+00:00", "+09:00", "-05:30", "Asia/Seoul"] {
@@ -158,10 +165,7 @@ async fn connection_time_zone() {
 #[tokio::test]
 async fn mysql_install_inside_transaction() {
     let _serial = SERIAL.lock().await;
-    let Ok(dsn) = std::env::var("ORM_TEST_MYSQL_DSN") else { return };
-    if dsn.is_empty() {
-        return;
-    }
+    let dsn = require_dsn("ORM_TEST_MYSQL_DSN");
     let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
     drop_table(&db).await;
     let inside: orm::Result<()> = db.transaction(async || db.utils().schema().install(SCHEMA.json()).await).await;
@@ -206,10 +210,7 @@ fn slow_count(db: &Db, condition: &str) -> Core {
 async fn statement_timeout() {
     let _serial = SERIAL.lock().await;
     for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
-        let Ok(dsn) = std::env::var(var) else { continue };
-        if dsn.is_empty() {
-            continue;
-        }
+        let dsn = require_dsn(var);
         let cfg = orm::Config { statement_timeout_ms: 200, ..orm::Config::default() };
         let db = Db::connect(&dsn, 2, cfg).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         drop_table(&db).await;
@@ -231,10 +232,7 @@ async fn statement_timeout() {
 async fn dropping_a_query_cancels_it() {
     let _serial = SERIAL.lock().await;
     for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
-        let Ok(dsn) = std::env::var(var) else { continue };
-        if dsn.is_empty() {
-            continue;
-        }
+        let dsn = require_dsn(var);
         let db = Db::connect(&dsn, 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         drop_table(&db).await;
         db.utils().schema().install(SCHEMA.json()).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));

@@ -1,6 +1,6 @@
 <?php
-// Model integration test: runs on SQLite always and on MySQL and PostgreSQL
-// when ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name an empty test database.
+// Model integration test on SQLite, MySQL and PostgreSQL. ORM_TEST_MYSQL_DSN and
+// ORM_TEST_POSTGRES_DSN name empty test databases; the test fails when either is unset.
 // Usage: php clients/php/tests/model_test.php
 declare(strict_types=1);
 
@@ -78,9 +78,10 @@ function database(string $driver, string $dsn): Db
 $targets = ['sqlite' => "sqlite://$work/model.sqlite?timezone=%2B00:00"];
 foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
     $v = getenv($env);
-    if (is_string($v) && $v !== '') {
-        $targets[$driver] = $v;
+    if ($v === false || $v === '') {
+        throw new RuntimeException("$env is required; database tests never skip");
     }
+    $targets[$driver] = $v;
 }
 
 $start = new DateTimeImmutable('2026-01-02 03:04:05', new DateTimeZone('UTC'));

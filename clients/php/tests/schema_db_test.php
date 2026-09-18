@@ -1,9 +1,9 @@
 <?php
 // Schema tool database test: import, validate, migrate, and db: sources give
 // the same results as the Go tooling, and a live table takes an incremental
-// migration, on SQLite and, when ORM_TOOLS_MYSQL_DSN and ORM_TOOLS_POSTGRES_DSN
-// name scratch databases, on MySQL and PostgreSQL. The test drops every table
-// in those databases.
+// migration, on SQLite, MySQL and PostgreSQL. ORM_TOOLS_MYSQL_DSN and
+// ORM_TOOLS_POSTGRES_DSN name scratch databases, and the test fails when either
+// is unset. The test drops every table in those databases.
 // The Go tool is built from this repository (or taken from $ORMGEN_BIN).
 // Usage: php clients/php/tests/schema_db_test.php
 declare(strict_types=1);
@@ -194,9 +194,10 @@ file_put_contents("$work/v2.mmd", str_replace("    int           score       \"=
 $targets = ['sqlite' => "sqlite://$work/schema.sqlite"];
 foreach (['mysql' => 'ORM_TOOLS_MYSQL_DSN', 'postgres' => 'ORM_TOOLS_POSTGRES_DSN'] as $driver => $env) {
     $v = getenv($env);
-    if (is_string($v) && $v !== '') {
-        $targets[$driver] = $v;
+    if ($v === false || $v === '') {
+        throw new RuntimeException("$env is required; database tests never skip");
     }
+    $targets[$driver] = $v;
 }
 
 foreach ($targets as $driver => $dsn) {
